@@ -13,11 +13,13 @@ import { type Metadata, type Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { connection } from 'next/server'
 import { ChunkReloadGuard } from './chunk-reload-guard'
+import { THEME_BOOT_SCRIPT, THEME_COLOR } from './theme-boot'
 import { Providers } from './providers'
 import { NavigationTrail } from '@/components/shell/navigation-trail'
 import type { AppConfig } from '@/shared/context'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import { isVlmConfigured } from '@/lib/documents/vlm-capability'
+import { getEffectiveMaxUploadBytes } from '@/lib/storage/upload-limit'
 import { getGridSession } from '@/lib/auth/session'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { PRODUCT_NAME } from '@/lib/brand'
@@ -76,6 +78,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   interactiveWidget: 'resizes-content',
+  // The browser UI (Android's status bar, Safari's tab bar) takes the app's
+  // paper or charcoal instead of a default white band above a dark app. The
+  // media pair answers 'system'; an explicit choice that disagrees with the OS
+  // is corrected by providers.tsx once React runs.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: THEME_COLOR.light },
+    { media: '(prefers-color-scheme: dark)', color: THEME_COLOR.dark },
+  ],
 }
 
 export const metadata: Metadata = {
@@ -86,7 +96,7 @@ export const metadata: Metadata = {
     template: `%s — ${PRODUCT_NAME}`,
   },
   description:
-    'Workspace for planning offices. Chat with Piloti about the project; answers are grounded in its files, the office archive, and Austrian building regulations.',
+    'Workspace for planning offices. Chat with Piloti about the project; answers are grounded in its files, Office filing, and Austrian building regulations.',
   // Icons come from the file conventions beside this layout (favicon.ico,
   // icon.svg, apple-icon.png) and manifest.ts; all are rendered from
   // shared/brand/piloti-mark.svg. The app is behind sign-in: see robots.ts.
@@ -136,6 +146,25 @@ const isSessionFlagEnabled = async (flag: KnownFeatureFlag): Promise<boolean> =>
 }
 
 /**
+ * The per-file upload limit of this session's organization, the number the
+ * upload routes enforce (`assertFileSizeAllowed`). `undefined` means the
+ * deployment default: a public page, a session without an organization, or a
+ * read that failed. Failing to the default is safe in both directions, because
+ * the server judges every file against the real number regardless.
+ */
+const getSessionMaxUploadBytes = async (): Promise<number | undefined> => {
+  try {
+    return await runWithTenantSlot(async () => {
+      const session = await getGridSession()
+      if (!session?.organizationId) return undefined
+      return getEffectiveMaxUploadBytes(session.organizationId)
+    })
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Runtime configuration from server-side environment variables.
  * These values can be changed at runtime without rebuilding the container.
  */
@@ -144,10 +173,11 @@ const getAppConfig = async (): Promise<AppConfig> => {
   // in this process, so there is no capability to derive). Resolved server-side
   // so the picker and validation share ONE accepted-types list with the upload
   // allow-list.
-  const [imageUploadEnabled, vlmAvailable, ifcUploadEnabled] = await Promise.all([
+  const [imageUploadEnabled, vlmAvailable, ifcUploadEnabled, maxFileSizeBytes] = await Promise.all([
     isImageUploadEnabled(),
     isVlmConfigured(),
     isIfcUploadEnabled(),
+    getSessionMaxUploadBytes(),
   ])
   return {
     authRequired: isAuthRequired(),
@@ -155,6 +185,7 @@ const getAppConfig = async (): Promise<AppConfig> => {
       imageUploadEnabled,
       vlmAvailable,
       ifcUploadEnabled,
+      maxFileSizeBytes,
     }),
     // Read server-side per request: the Docker image builds with no env
     // files, so a client-side `process.env.NEXT_PUBLIC_*` read would bake
@@ -181,10 +212,23 @@ const RootLayout = async ({ children }: RootLayoutProps): Promise<ReactNode> => 
     <html
       lang={locale}
       id="style-root"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} overscroll-none`}
       suppressHydrationWarning
     >
-      <body className="bg-surface-base text-foreground font-sans antialiased">
+      <head>
+        {/* Blocking on purpose: it sets `.dark` while <head> is parsed, so the
+            first paint is already in the reader's theme (theme-boot.ts). The
+            app sends no Content-Security-Policy for documents yet; the day it
+            does, this script needs the request nonce like Next's own. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
+      {/* `overscroll-none` on html and body: inside the app the document never
+          scrolls (the shell is one viewport tall and scrolls inside), so all a
+          pull past the edge can do on iOS is rubber-band the whole app, chrome
+          included, away from the keyboard and the composer. Pages that do
+          scroll the document still scroll; they lose only the bounce and
+          Android's pull-to-refresh. Inner scrollers keep their own setting. */}
+      <body className="bg-surface-base text-foreground font-sans antialiased overscroll-none">
         <ChunkReloadGuard />
         <a
           href="#main-content"

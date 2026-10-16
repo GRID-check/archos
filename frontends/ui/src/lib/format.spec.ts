@@ -4,13 +4,71 @@
 import { describe, test, expect } from 'vitest'
 import {
   formatBytes,
+  formatCount,
   formatCredits,
+  formatDate,
+  formatDayRange,
   formatDurationElapsed,
   formatDurationShort,
   formatEur,
   formatTokens,
   formatTransferRate,
+  formatUsd,
 } from './format'
+
+describe('formatUsd', () => {
+  test('formats cents as currency', () => {
+    expect(formatUsd(12.5, 'en')).toBe('$12.50')
+    expect(formatUsd(0, 'en')).toBe('$0.00')
+  })
+
+  test('shows a sub-cent cost as "< $0.01", not as free', () => {
+    expect(formatUsd(0.004, 'en')).toBe('< $0.01')
+    expect(formatUsd(0.004, 'de')).toBe('< 0,01\u00a0$')
+    expect(formatUsd(0.01, 'en')).toBe('$0.01')
+  })
+
+  test('a wider unit for rates moves the floor with it', () => {
+    expect(formatUsd(0.0001, 'en', { maximumFractionDigits: 4 })).toBe('$0.0001')
+    expect(formatUsd(0.1, 'en', { maximumFractionDigits: 4 })).toBe('$0.10')
+    expect(formatUsd(0.00001, 'en', { maximumFractionDigits: 4 })).toBe('< $0.0001')
+  })
+})
+
+describe('formatCount', () => {
+  test('groups for the locale and never compacts', () => {
+    expect(formatCount(1720, 'en')).toBe('1,720')
+    expect(formatCount(1720, 'de')).toBe('1.720')
+    expect(formatCount(12_400_000, 'en')).toBe('12,400,000')
+  })
+})
+
+describe('formatDate', () => {
+  test('a date without a time, per locale', () => {
+    expect(formatDate('2026-08-01T09:00:00Z', 'en')).toBe('Aug 1, 2026')
+    expect(formatDate('2026-08-01T09:00:00Z', 'de')).toBe('01.08.2026')
+    expect(formatDate('not a date', 'en')).toBe('not a date')
+  })
+})
+
+describe('formatDayRange', () => {
+  test('an inclusive range of UTC days in the locale range form', () => {
+    expect(formatDayRange('2026-09-01', '2026-09-30', 'de')).toBe('1.–30. Sept. 2026')
+    // English sets the dash between thin spaces (U+2009); ICU decides, not us.
+    expect(formatDayRange('2026-09-01', '2026-09-30', 'en')).toBe('Sep 1\u2009–\u200930, 2026')
+    expect(formatDayRange('2026-12-15', '2027-01-10', 'de')).toMatch(
+      /^15\. Dez\. 2026\s–\s10\. Jan\. 2027$/
+    )
+  })
+
+  test('one day prints once', () => {
+    expect(formatDayRange('2026-09-01', '2026-09-01', 'de')).toBe('1. Sept. 2026')
+  })
+
+  test('falls back to the raw days for unparseable input', () => {
+    expect(formatDayRange('nope', '2026-09-01', 'en')).toBe('nope – 2026-09-01')
+  })
+})
 
 describe('formatEur', () => {
   test('formats German amounts with comma decimal and trailing symbol', () => {

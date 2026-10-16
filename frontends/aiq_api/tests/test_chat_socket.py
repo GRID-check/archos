@@ -15,6 +15,7 @@ import hashlib
 import hmac
 import json
 import time
+import uuid
 from collections.abc import AsyncIterator
 from collections.abc import Callable
 from contextlib import asynccontextmanager
@@ -24,16 +25,23 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
+from langgraph.checkpoint.base import empty_checkpoint
+from langgraph.checkpoint.memory import InMemorySaver
 from starlette.datastructures import QueryParams
 from starlette.websockets import WebSocketDisconnect
 
+from aiq_agent.common.content_screen import ScreeningRules
+from aiq_agent.common.fenced_checkpointer import FencedCheckpointer
 from aiq_agent.common.human_prompt import build_human_prompt
 from aiq_agent.common.human_prompt import extract_user_response
+from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
 from aiq_agent.common.wire_v2 import HELLO
 from aiq_agent.common.wire_v2 import WIRE_EVENT
 from aiq_agent.common.wire_v2 import AnswerSnapshot
+from aiq_agent.common.wire_v2 import CancelTurn
 from aiq_agent.common.wire_v2 import KeyedCard
 from aiq_agent.common.wire_v2 import RunFinishedBody
+from aiq_agent.common.wire_v2 import ShownAnswer
 from aiq_agent.common.wire_v2 import StageValue
 from aiq_agent.common.wire_v2 import StateSnapshotBody
 from aiq_agent.common.wire_v2 import StatusStep
@@ -42,8 +50,11 @@ from aiq_agent.common.wire_v2 import TextMessageContentBody
 from aiq_agent.common.wire_v2 import TextMessageStartBody
 from aiq_agent.common.wire_v2 import TurnResult
 from aiq_agent.common.wire_v2 import WireSource
+from aiq_agent.common.write_fence import TurnFenced
+from aiq_agent.common.write_fence import current_write_fence
 from aiq_agent.turn.response import answer_message_id
 from aiq_api import chat_socket
+from aiq_api import internal_api as chat_socket_internal
 from aiq_api.auth.errors import AuthError
 from aiq_api.chat_socket import ChatRegistry
 from aiq_api.chat_socket import ChatSocket
@@ -55,6 +66,7 @@ from aiq_api.chat_socket import turn_row_metadata
 from aiq_api.conversation_bus import ConversationBus
 from aiq_api.conversation_bus import force_multi_replica_for_tests
 from aiq_api.conversation_bus import reset_bus_for_tests
+from aiq_api.internal_api import ChatScreening
 from nat.plugin_api import InteractionPrompt
 
 CONV = "conv-1"
@@ -268,7 +280,6 @@ def _types(events: list[dict]) -> list[str]:
 async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypatch):
     from fastapi import FastAPI
 
-    from aiq_api import plugin
     from aiq_api.plugin import AIQAPIConfig
     from aiq_api.plugin import AIQAPIWorker
     from nat.data_models.config import Config
@@ -284,11 +295,11 @@ async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypa
     assert config.step_adaptor.mode == StepAdaptorMode.OFF
 
     monkeypatch.setenv("NAT_CONFIG_FILE", "configs/config_oib_openrouter.yml")
+    monkeypatch.setenv("GRID_ROLE", "chat")
     worker = AIQAPIWorker(Config(general=GeneralConfig(front_end=config)))
     session_manager = object()
     monkeypatch.setattr(worker, "_create_chat_session_manager", AsyncMock(return_value=session_manager))
     monkeypatch.setattr(FastApiFrontEndPluginWorker, "add_routes", AsyncMock())
-    monkeypatch.setattr(plugin, "register_job_routes", AsyncMock())
     monkeypatch.setattr(worker, "_schedule_internal_api_check", lambda: None)
     monkeypatch.setattr(worker, "_install_signal_handlers", lambda: None)
     monkeypatch.setenv("AIQ_ENABLE_DEBUG", "false")
@@ -332,6 +343,7 @@ async def test_any_other_wire_version_is_closed_4426(harness, query):
 
 async def test_the_first_frame_is_hello_before_any_client_message(harness, monkeypatch):
     monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
+    monkeypatch.setenv("GRID_WIRE_V2_ADDITIVE_FIELDS", "on")
     sock = harness().connect()
     await until(lambda: sock.frames)
 
@@ -339,7 +351,7 @@ async def test_the_first_frame_is_hello_before_any_client_message(harness, monke
     assert hello["v"] == 2
     assert hello["type"] == "CUSTOM"
     assert hello["name"] == "hello"
-    assert hello["value"] == {"build": "abc1234"}
+    assert hello["value"] == {"build": "abc1234", "accepts": ["cancel_turn.shown"]}
     # A connection frame, not a turn's: nothing a fold or a cursor could key on.
     assert not {"conversation_id", "turn_id", "seq"} & hello.keys()
     assert sock.sent == []
@@ -354,7 +366,7 @@ async def test_a_build_without_a_sha_says_unknown_like_health(harness, monkeypat
     sock = harness().connect()
     await until(lambda: sock.frames)
 
-    assert sock.frames[0]["value"] == {"build": "unknown"}
+    assert sock.frames[0]["value"]["build"] == "unknown"
 
 
 async def test_an_unauthenticated_socket_gets_no_hello(harness):
@@ -495,7 +507,35 @@ async def test_a_turn_is_run_started_then_what_the_workflow_yields_in_seq_order(
     assert opened["user_id"] == "user_asker"  # NAT's Context.user_id and span user.id: the verified subject
     assert (opened["conversation_id"], opened["user_message_id"]) == (CONV, "t1")
     assert persisted[0]["message_id"] == answer_message_id(CONV, "t1")
-    assert persisted[0]["metadata"] == {"sources": [{"content": "c", "number": 1}]}
+    assert persisted[0]["metadata"] == {
+        "sources": [{"content": "c", "number": 1}],
+        # The trace the turn ran in, named by its answer (`observability.turn_trace`).
+        "trace_id": uuid.UUID(answer_message_id(CONV, "t1")).hex,
+    }
+
+
+async def test_the_workflow_runs_in_the_trace_its_answer_row_names(harness, persisted):
+    """The BFF scores a vote on the trace the row names, so the run must really be in it.
+
+    NAT adopts a `workflow_trace_id` already in the context instead of drawing a
+    random one, and every root span takes it; the pin is what the workflow sees.
+    """
+    from nat.plugin_api import ContextState
+
+    seen: list[int | None] = []
+
+    async def recording(request, ask):
+        seen.append(ContextState.get().workflow_trace_id.get())
+        yield _finished(request)
+
+    h = harness(recording)
+    sock = h.connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: persisted)
+
+    answer = uuid.UUID(answer_message_id(CONV, "t1"))
+    assert seen == [answer.int]
+    assert persisted[0]["metadata"]["trace_id"] == answer.hex == f"{seen[0]:032x}"
 
 
 async def test_a_second_message_for_the_running_turn_is_a_duplicate(harness):
@@ -614,8 +654,105 @@ async def test_the_asker_s_stop_cancels_the_run_and_keeps_what_was_read(harness,
     terminal = sock.events()[-1]
     assert (terminal["type"], terminal["outcome"]) == ("RUN_FINISHED", "cancelled")
     assert terminal["result"]["text"] == "Nach § 87"  # the pending [2] has no source
-    assert persisted[0]["metadata"] == {"stopped": True}
+    assert persisted[0]["metadata"] == {"stopped": True, "trace_id": uuid.UUID(answer_message_id(CONV, "t1")).hex}
     assert persisted[0]["text"] == "Nach § 87"
+
+
+class Reading:
+    """A turn that streams two sentences and then thinks: the asker has read only the first."""
+
+    SEEN, UNSEEN = "Gesehen [2] bis hier.", " Was der Leser nie sah."
+
+    def __init__(self) -> None:
+        self.streamed = asyncio.Event()
+
+    async def turn(self, request, ask):
+        yield TextMessageStartBody(message_id="m")
+        yield TextMessageContentBody(message_id="m", delta=self.SEEN)
+        yield TextMessageContentBody(message_id="m", delta=self.UNSEEN)
+        self.streamed.set()
+        await asyncio.sleep(3600)
+
+    @classmethod
+    def shown(cls, sock: FakeSocket) -> dict:
+        """Where the asker was: through the first sentence's frame, all of it on screen."""
+        first = next(e for e in sock.events() if e.get("delta") == cls.SEEN)
+        return {"seq": first["seq"], "chars": len(cls.SEEN)}
+
+
+async def test_the_asker_s_stop_keeps_exactly_what_was_on_their_screen(harness, persisted):
+    """The cancel says how much was shown; the terminal and the stored row are cut to it, not to what streamed."""
+    reading = Reading()
+    sock = harness(reading.turn).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(reading.streamed.is_set)
+    await until(lambda: any(e.get("delta") == Reading.UNSEEN for e in sock.events()))
+
+    sock.client(type="cancel_turn", turn_id="t1", shown=Reading.shown(sock))
+    await until(lambda: persisted)
+
+    terminal = sock.events()[-1]
+    assert (terminal["outcome"], terminal["result"]["text"]) == ("cancelled", "Gesehen bis hier.")
+    assert persisted[0]["text"] == "Gesehen bis hier."
+    assert persisted[0]["metadata"]["stopped"] is True
+
+
+async def test_a_stop_that_says_nothing_shown_keeps_everything_streamed(harness, persisted):
+    """An older page sends no ``shown``: the server keeps the prose so far, as it always did."""
+    reading = Reading()
+    sock = harness(reading.turn).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(reading.streamed.is_set)
+
+    sock.client(type="cancel_turn", turn_id="t1")
+    await until(lambda: persisted)
+
+    assert persisted[0]["text"] == "Gesehen bis hier. Was der Leser nie sah."
+
+
+async def test_a_stop_relayed_to_the_owner_keeps_what_the_asker_saw(harness, persisted):
+    owner, relay, _ = _replicas()
+    reading = Reading()
+    asker = harness(reading.turn, owner).connect()
+    asker_elsewhere = harness(reading.turn, relay).connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(reading.streamed.is_set)
+    await asyncio.sleep(0.02)  # the owner's input subscription lands
+
+    asker_elsewhere.client(type="cancel_turn", turn_id="t1", shown=Reading.shown(asker))
+    await until(lambda: persisted)
+
+    assert persisted[0]["text"] == "Gesehen bis hier."
+
+
+def test_a_relayed_stop_carries_shown_beside_the_message_so_an_older_owner_still_parses_it():
+    """An owner one release older reads ``CancelTurn`` strictly: the field inside the message would drop the Stop."""
+    message = CancelTurn(conversation_id=CONV, turn_id="t1", shown=ShownAnswer(seq=3, chars=10))
+
+    relayed = chat_socket._relayable(message)
+
+    assert "shown" not in relayed
+    assert relayed == {"v": 2, "type": "cancel_turn", "conversation_id": CONV, "turn_id": "t1"}
+
+
+@pytest.mark.parametrize(
+    ("payload", "shown"),
+    [
+        ({"shown": {"seq": 3, "chars": 10}}, ShownAnswer(seq=3, chars=10)),
+        ({}, None),  # an older relay
+        ({"shown": {"seq": -1}}, None),  # malformed: the Stop still counts, the cut does not
+    ],
+)
+def test_the_owner_reads_the_relayed_shown_position_leniently(payload, shown):
+    assert chat_socket._relayed_shown(payload) == shown
+
+
+def test_the_hello_names_the_shown_position_among_what_this_server_accepts():
+    """The page sends ``cancel_turn.shown`` only to a server whose hello names it: never to an older pod."""
+    assert "cancel_turn.shown" in ACCEPTED_CLIENT_FIELDS
+    assert CancelTurn.model_validate(
+        {"v": 2, "type": "cancel_turn", "conversation_id": CONV, "turn_id": "t1", "shown": {"seq": 1, "chars": 0}}
+    ).shown == ShownAnswer(seq=1, chars=0)
 
 
 async def test_a_colleague_s_stop_is_refused_and_the_turn_runs_on(harness):
@@ -1217,6 +1354,199 @@ async def test_a_newer_question_on_another_replica_stops_the_stale_turn(harness)
     assert gate.torn_down
 
 
+# ---------------------------------------------------------------------------
+# One running turn per conversation across replicas (ADR-0080)
+# ---------------------------------------------------------------------------
+
+
+async def _holder(bus: ConversationBus):
+    return await bus.running_holder(CONV)
+
+
+def _marker_held(bus: ConversationBus) -> bool:
+    return bus._t._live_keys().get(f"conv:{CONV}:running") is not None
+
+
+async def test_a_second_question_on_another_replica_starts_only_after_the_first_turn_stopped(harness):
+    owner, relay, relay_bus = _replicas()
+    gate = Gate()
+    started_after_stop: list[bool] = []
+
+    async def second(request, ask):
+        started_after_stop.append(gate.torn_down)  # the stale turn's graph run is gone by now
+        async for body in answering(request, ask):
+            yield body
+
+    first = harness(gate.turn, owner).connect()
+    first.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    await asyncio.sleep(0.02)  # the owner's input subscription lands
+    assert (await _holder(relay_bus)).turn_id == "t1"
+
+    elsewhere = harness(second, relay).connect()
+    elsewhere.client(type="user_message", message_id="t2", text="!")
+    await until(lambda: _last(elsewhere, "t2") == "RUN_FINISHED")
+
+    assert started_after_stop == [True]
+    assert first.events("t1")[-1]["outcome"] == "cancelled"
+    await until(lambda: not _marker_held(relay_bus))  # the second turn gave the marker back too
+
+
+async def test_a_question_is_refused_when_the_running_turn_does_not_stop_in_time(harness, monkeypatch):
+    """Never run beside a turn that may still write the thread: the question ends refused, runs nothing."""
+    monkeypatch.setattr(chat_socket, "SUPERSEDE_WAIT_SECONDS", 0.3)
+    owner, relay, relay_bus = _replicas()
+    ghost = ConversationBus(relay_bus._t, replica_id="ghost")  # a replica that holds the marker and answers nobody
+    await ghost.acquire_running(CONV, "t0")
+
+    h = harness(answering, relay)
+    sock = h.connect()
+    sock.client(type="user_message", message_id="t2", text="!")
+    await until(lambda: _last(sock, "t2") == "RUN_FINISHED")
+
+    finished = sock.events("t2")[-1]
+    assert _types(sock.events("t2")) == ["RUN_STARTED", "RUN_FINISHED"]
+    assert finished["outcome"] == "refused"
+    assert "still finishing the previous answer" in finished["result"]["text"]
+    assert finished["result"]["retry_after_seconds"] > 0
+    assert h.sessions.opened == []
+    assert (await _holder(relay_bus)).replica == "ghost"  # not ours to take or delete
+
+
+async def test_a_dead_owner_s_marker_expires_and_the_question_runs(harness, monkeypatch):
+    from aiq_api import conversation_bus
+
+    monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", 0.2)
+    owner, relay, relay_bus = _replicas()
+    await ConversationBus(relay_bus._t, replica_id="dead").acquire_running(CONV, "t0")
+
+    sock = harness(answering, relay).connect()
+    sock.client(type="user_message", message_id="t2", text="!")
+    await until(lambda: _last(sock, "t2") == "RUN_FINISHED")
+
+    assert sock.events("t2")[-1]["outcome"] == "answered"
+
+
+async def test_a_running_turn_keeps_its_marker_past_the_ttl_and_gives_it_back_at_the_end(harness, monkeypatch):
+    from aiq_api import conversation_bus
+
+    monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", 0.15)
+    owner, relay, relay_bus = _replicas()
+    gate = Gate()
+    sock = harness(gate.turn, owner).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+
+    await asyncio.sleep(0.5)  # three TTLs: only the renewals hold it
+    assert (await _holder(relay_bus)).turn_id == "t1"
+
+    gate.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    await until(lambda: not _marker_held(relay_bus))
+
+
+async def test_a_relay_idle_across_turns_neither_holds_the_marker_nor_blocks_the_next_turn(harness):
+    owner, relay, relay_bus = _replicas()
+    on_owner = harness(answering, owner)
+    on_relay = harness(answering, relay)
+    asker = on_owner.connect()
+    idle = on_relay.connect()
+    idle.client(type="attach", turn_id="t0", after_seq=0)  # a socket that only follows
+    await until(lambda: idle.rejected())
+
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: _last(idle) == "RUN_FINISHED")
+    await until(lambda: not _marker_held(relay_bus))
+
+    idle.client(type="user_message", message_id="t2", text="again")  # the next question lands on the idle replica
+    await until(lambda: _last(idle, "t2") == "RUN_FINISHED")
+
+    assert len(on_relay.sessions.opened) == 1
+    assert len(on_owner.sessions.opened) == 1
+    await until(lambda: _last(asker, "t2") == "RUN_FINISHED")  # the first replica relays what the second runs
+    await until(lambda: not _marker_held(relay_bus))
+
+
+async def test_a_draining_owner_finishes_its_turn_while_another_replica_streams_it(harness):
+    owner, relay, relay_bus = _replicas()
+    gate = Gate()
+    asker = harness(gate.turn, owner).connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+
+    draining = asyncio.create_task(owner.drain(timeout=5))
+    reader = harness(answering, relay).connect()  # the socket uvicorn closed reconnects elsewhere
+    reader.client(type="attach", turn_id="t1", after_seq=0)
+    await until(lambda: reader.events())
+    assert not draining.done()  # it waits for the turn, it does not cut it
+
+    gate.release.set()
+    await until(lambda: _last(reader) == "RUN_FINISHED")
+
+    assert await draining == 0
+    assert reader.events()[-1]["outcome"] == "answered"
+    await until(lambda: not _marker_held(relay_bus))
+
+
+async def test_a_drain_that_runs_out_cancels_the_turn_with_a_terminal(harness):
+    owner, relay, relay_bus = _replicas()
+    gate = Gate()
+    asker = harness(gate.turn, owner).connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+
+    assert await owner.drain(timeout=0.05) == 1
+
+    assert asker.events()[-1]["type"] == "RUN_FINISHED"
+    assert asker.events()[-1]["outcome"] == "cancelled"
+    assert gate.torn_down
+    await until(lambda: not _marker_held(relay_bus))
+
+
+async def test_with_the_bus_down_and_affinity_on_the_fence_fails_open(harness, monkeypatch):
+    owner, _, shared = _replicas()
+    monkeypatch.delenv("GRID_CHAT_AFFINITY", raising=False)
+    _bus_down(monkeypatch, shared, "set_nx", "get", "publish", "xadd")
+    sock = harness(answering, owner).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert sock.events()[-1]["outcome"] == "answered"
+
+
+async def test_with_the_bus_down_and_affinity_off_a_question_is_refused_not_run(harness, monkeypatch):
+    owner, _, shared = _replicas()
+    monkeypatch.setenv("GRID_CHAT_AFFINITY", "0")
+    _bus_down(monkeypatch, shared, "set_nx", "get", "publish", "xadd")
+    h = harness(answering, owner)
+    sock = h.connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert sock.events()[-1]["outcome"] == "refused"
+    assert h.sessions.opened == []
+
+
+async def test_a_duplicate_never_asks_the_running_turn_to_stop(harness):
+    """A late resend of a question must not cancel the turn that is running for it, or a newer one."""
+    owner, relay, _ = _replicas()
+    gate = Gate()
+    first = harness(gate.turn, owner).connect()
+    first.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    await asyncio.sleep(0.02)
+    elsewhere = harness(answering, relay).connect()
+    elsewhere.client(type="user_message", message_id="t1", text="?")  # resent while t1 runs
+    await until(lambda: elsewhere.rejected())
+
+    await asyncio.sleep(0.05)
+
+    assert elsewhere.rejected() == [{"of": "user_message", "code": "duplicate_turn"}]
+    assert not gate.torn_down  # t1 was not told to stop
+
+
 async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
     """NAT's semaphore queued a turn after RUN_STARTED, heartbeating, behind turns waiting on a person.
 
@@ -1231,6 +1561,7 @@ async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
     create = AsyncMock(return_value=object())
     monkeypatch.setattr(plugin.SessionManager, "create", create)
     monkeypatch.setenv("NAT_CONFIG_FILE", "configs/config_oib_openrouter.yml")
+    monkeypatch.setenv("GRID_ROLE", "chat")
     worker = AIQAPIWorker(Config(general=GeneralConfig(front_end=AIQAPIConfig())))
 
     manager = await worker._create_chat_session_manager(builder=object())
@@ -1266,6 +1597,56 @@ def test_the_row_is_the_typed_result_in_wire_spelling():
         "routing_decision": "shallow",
         "skills_activated": ["brandschutz"],
     }
+
+
+async def test_the_hello_names_nothing_it_accepts_while_the_additive_fields_are_off(harness, monkeypatch):
+    """An open tab of the previous release parses the hello strictly: ``accepts`` would mark it outdated."""
+    monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
+    monkeypatch.delenv("GRID_WIRE_V2_ADDITIVE_FIELDS", raising=False)
+    sock = harness().connect()
+    await until(lambda: sock.frames)
+
+    assert sock.frames[0]["value"] == {"build": "abc1234"}
+
+
+@pytest.mark.parametrize(("flag", "sent"), [(None, False), ("off", False), ("on", True), ("1", True)])
+async def test_the_level_reaches_the_frame_only_with_the_additive_fields_on(persisted, monkeypatch, flag, sent):
+    if flag is None:
+        monkeypatch.delenv("GRID_WIRE_V2_ADDITIVE_FIELDS", raising=False)
+    else:
+        monkeypatch.setenv("GRID_WIRE_V2_ADDITIVE_FIELDS", flag)
+    published: list[dict] = []
+
+    async def publish(_conversation_id: str, frame: dict) -> bool:
+        published.append(frame)
+        return True
+
+    wire = chat_socket.TurnWire(CONV, "t1", publish)
+    await wire.send(RunFinishedBody(outcome="answered", result=_result(text="Fertig.", reasoning_effort="low")))
+
+    [frame] = published
+    assert ("reasoning_effort" in frame["result"]) is sent
+    assert wire.replay() == published
+
+
+def test_the_level_the_turn_ran_at_is_kept_on_the_row():
+    # ``agent-answer-metadata.ts`` reads it back as ``reasoning_effort``, so a
+    # turn the asking tab never saw finish still offers the right thorough retry.
+    finished = RunFinishedBody(outcome="answered", result=_result(reasoning_effort="low"))
+
+    assert turn_row_metadata(finished) == {"reasoning_effort": "low"}
+
+
+async def test_a_stopped_turn_keeps_the_level_the_asker_stated(persisted):
+    registry = ChatRegistry()
+    wire = chat_socket.TurnWire(CONV, "t1", registry.publish)
+    turn = chat_socket.RunningTurn(wire=wire, asker_subject=None, reasoning_effort="xhigh")
+    await turn.publish(TextMessageContentBody(message_id="m", delta="Teil"))
+
+    await turn.finish_cancelled()
+    await asyncio.gather(*chat_socket._PERSIST_TASKS)
+
+    assert persisted[0]["metadata"]["reasoning_effort"] == "xhigh"
 
 
 def test_the_quote_stamps_are_kept_on_the_row_in_wire_spelling():
@@ -1345,3 +1726,532 @@ async def test_a_stopped_turn_keeps_the_settled_text_with_its_sources(
 def test_the_answer_id_is_stable_per_turn():
     assert answer_message_id(CONV, "t1") == answer_message_id(CONV, "t1")
     assert answer_message_id(CONV, "t1") != answer_message_id(CONV, "t2")
+
+
+# ---------------------------------------------------------------------------
+# A restricted scope does not hold the socket hostage (ADR-0087, ADR-0088)
+# ---------------------------------------------------------------------------
+
+_RESTRICTED = "proj_8f2c3b1e_r22222222aaaa"
+
+
+def _restricted_envelope(*collections: str) -> list[tuple[bytes, bytes]]:
+    scope = [{"collection": name, "shelf": "project"} for name in ("oib_knowledge", *collections)]
+    return _envelope(
+        {"organizationId": "org_1", "userId": "user_asker", "collectionScope": scope, "conversationId": CONV}
+    )
+
+
+async def test_a_restricted_scope_runs_the_turn_on_the_same_socket(harness):
+    """Which restricted folders a turn may draw on is the agent's question, per turn, not the socket's.
+
+    The socket used to close when the thread had been shared since the upgrade
+    signed its scope. A restricted collection is now narrowed away per turn
+    (``aiq_agent.knowledge.restricted_use``), so the socket stays and the turn runs.
+    """
+    h = harness()
+    sock = h.connect(headers=_restricted_envelope(_RESTRICTED))
+
+    sock.client(type="user_message", message_id="t1", text="Was kostet der Zimmerer?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert sock.closed_with is None
+    assert not hasattr(chat_socket, "conversation_confined_to")
+
+
+# ---------------------------------------------------------------------------
+# What may reach the model: the office's chat screening (ADR-0086)
+# ---------------------------------------------------------------------------
+
+_IBAN = "AT61 1904 3002 3457 3201"
+
+
+def _office_envelope() -> list[tuple[bytes, bytes]]:
+    return _envelope({"organizationId": "org_1", "userId": "user_asker", "conversationId": CONV})
+
+
+class OfficeScreening:
+    """The BFF's answer for the office's chat screening, and every organization it was asked for."""
+
+    def __init__(self, screening: ChatScreening) -> None:
+        self.screening = screening
+        self.asked: list[str | None] = []
+
+    async def __call__(self, organization_id: str | None) -> ChatScreening:
+        self.asked.append(organization_id)
+        return self.screening
+
+
+@pytest.fixture
+def office(monkeypatch) -> OfficeScreening:
+    rules = ScreeningRules.build(["Gehaltsabrechnung"], ["iban", "at_svnr", "credit_card"])
+    screening = OfficeScreening(ChatScreening(rules=rules, from_office=True))
+    monkeypatch.setattr(chat_socket, "chat_screening_for", screening)
+    return screening
+
+
+def _recording(seen: list[str]):
+    async def turn(request, ask):
+        seen.append(request.text)
+        yield _finished(request, text="ok")
+
+    return turn
+
+
+async def test_a_question_reaches_the_agent_masked(harness, office):
+    seen: list[str] = []
+    h = harness(_recording(seen))
+    sock = h.connect(headers=_office_envelope())
+
+    sock.client(type="user_message", message_id="t1", text=f"Gehaltsabrechnung für Anna, IBAN {_IBAN}")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    # What the workflow ran on is the turn's input, and so what its checkpoint keeps.
+    assert seen == ["[Begriff entfernt] für Anna, IBAN [IBAN entfernt]"]
+    assert office.asked == ["org_1"]  # the SIGNED organization's policy
+
+
+async def test_a_colleague_s_line_is_masked_before_the_agent_s_history_keeps_it(harness, office, monkeypatch):
+    stored: list[tuple[str, str]] = []
+
+    async def append(thread_id, text):
+        stored.append((thread_id, text))
+        return True
+
+    monkeypatch.setattr(chat_socket, "append_conversation_context", append)
+    sock = harness().connect(headers=_office_envelope())
+
+    sock.client(type="user_message", message_id="t1", text=f"Konto {_IBAN}", context_only=True, author_name="X")
+    await until(lambda: stored)
+
+    assert stored == [(CONV, "Anna Asker: Konto [IBAN entfernt]")]
+
+
+async def test_a_typed_answer_reaches_the_turn_masked_and_a_chosen_option_untouched(harness, office):
+    answers: list[str] = []
+
+    async def asking_free_text(request, ask):
+        prompt = InteractionPrompt(id="ask_01", timestamp="2026-10-02T10:00:00Z", content=build_human_prompt("Konto?"))
+        answers.append(extract_user_response(SimpleNamespace(content=await ask(prompt))))
+        yield _finished(request, text="ok")
+
+    h = harness(asking_free_text)
+    sock = h.connect(headers=_office_envelope())
+
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: "interaction_request" in _types(sock.events()))
+    sock.client(type="interaction_response", turn_id="t1", interaction_id="ask_01", answer={"text": f"Es ist {_IBAN}"})
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert answers == ["Es ist [IBAN entfernt]"]
+
+
+async def test_a_masked_question_is_masked_once(harness, office):
+    seen: list[str] = []
+    h = harness(_recording(seen))
+    sock = h.connect(headers=_office_envelope())
+
+    sock.client(type="user_message", message_id="t1", text="Bitte überweise an [IBAN entfernt]")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen == ["Bitte überweise an [IBAN entfernt]"]
+
+
+async def test_the_focus_file_name_reaches_the_agent_masked(harness, office):
+    """The composer's "Asking about <file>" name is client-supplied and the system prompt quotes it."""
+    names: list[str | None] = []
+
+    async def turn(request, ask):
+        names.append(request.focus_file_name)
+        yield _finished(request, text="ok")
+
+    h = harness(turn)
+    sock = h.connect(headers=_office_envelope())
+
+    sock.client(
+        type="user_message",
+        message_id="t1",
+        text="Was steht drin?",
+        focus_file_name=f"Gehaltsabrechnung {_IBAN}.pdf",
+        focus_shelf="project",
+    )
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert names == ["[Begriff entfernt] [IBAN entfernt].pdf"]
+
+
+async def test_without_the_office_s_policy_every_detector_applies_and_no_term(harness, monkeypatch):
+    """Fail closed: no organization to ask (off the BFF), or a BFF that cannot answer."""
+    monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
+    monkeypatch.delenv("FRONTEND_URL", raising=False)
+    seen: list[str] = []
+    h = harness(_recording(seen))
+    sock = h.connect(headers=_office_envelope())
+
+    sock.client(type="user_message", message_id="t1", text=f"Gehaltsabrechnung, {_IBAN}, 1237 010180")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen == ["Gehaltsabrechnung, [IBAN entfernt], [SV-Nummer entfernt]"]
+
+
+async def test_the_fallback_is_asked_again_and_the_office_s_answer_is_kept(harness, monkeypatch):
+    rules = ScreeningRules.build(["Gehaltsabrechnung"], [])
+    answers = [chat_socket_internal.CHAT_SCREENING_FALLBACK, ChatScreening(rules=rules, from_office=True)]
+    asked: list[str | None] = []
+
+    async def screening_for(organization_id):
+        asked.append(organization_id)
+        return answers[min(len(asked), len(answers)) - 1]
+
+    monkeypatch.setattr(chat_socket, "chat_screening_for", screening_for)
+    seen: list[str] = []
+    h = harness(_recording(seen))
+    sock = h.connect(headers=_office_envelope())
+
+    for turn_id in ("t1", "t2", "t3"):
+        sock.client(type="user_message", message_id=turn_id, text=f"Gehaltsabrechnung {_IBAN}")
+        await until(lambda turn_id=turn_id: _last(sock, turn_id) == "RUN_FINISHED")
+
+    assert seen == [
+        "Gehaltsabrechnung [IBAN entfernt]",  # every detector, no term
+        "[Begriff entfernt] AT61 1904 3002 3457 3201",  # the office's own list: a term, no detector
+        "[Begriff entfernt] AT61 1904 3002 3457 3201",
+    ]
+    assert asked == ["org_1", "org_1"]  # the office's answer is kept for the socket's life
+
+
+async def test_an_office_that_switched_screening_off_is_not_masked(harness, monkeypatch):
+    monkeypatch.setattr(chat_socket, "chat_screening_for", OfficeScreening(ChatScreening(rules=None, from_office=True)))
+    seen: list[str] = []
+    h = harness(_recording(seen))
+    sock = h.connect(headers=_office_envelope())
+
+    sock.client(type="user_message", message_id="t1", text=f"IBAN {_IBAN}")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen == [f"IBAN {_IBAN}"]
+
+
+# ---------------------------------------------------------------------------
+# The owner fences itself (ADR-0080): no write after a newer turn could own the conversation
+# ---------------------------------------------------------------------------
+
+#: A short marker TTL and write bound, so the deadline (TTL - margin = 0.7 s) and the expiry (1.0 s) are reachable.
+FENCE_TTL = 1.0
+FENCE_WRITE_TIMEOUT = 0.2
+FENCE_SLACK = 0.1
+
+
+class WriteLog:
+    """What happened to the conversation, in the order it happened, across both replicas."""
+
+    def __init__(self) -> None:
+        self.entries: list[tuple[str, str]] = []
+
+    def add(self, who: str, what: str) -> None:
+        self.entries.append((who, what))
+
+    def index(self, who: str, what: str) -> int:
+        return self.entries.index((who, what))
+
+    def after(self, marker: tuple[str, str]) -> list[tuple[str, str]]:
+        return self.entries[self.entries.index(marker) + 1 :]
+
+    def count(self, who: str, what: str) -> int:
+        return self.entries.count((who, what))
+
+
+class LoggingSaver(InMemorySaver):
+    """The conversation's thread: every commit is logged when it lands, after the write's own duration."""
+
+    def __init__(self, who: str, log: WriteLog) -> None:
+        super().__init__()
+        self.who, self.log, self.delay = who, log, 0.0
+
+    async def aput(self, config, checkpoint, metadata, new_versions):
+        await asyncio.sleep(self.delay)
+        self.log.add(self.who, "write")
+        return await super().aput(config, checkpoint, metadata, new_versions)
+
+
+class FencedReplica:
+    """One replica's registry, its fenced checkpointer, and a turn that writes the thread as long as it may."""
+
+    def __init__(self, who: str, registry: ChatRegistry, log: WriteLog) -> None:
+        self.who, self.registry, self.log = who, registry, log
+        self.saver = LoggingSaver(who, log)
+        self.checkpointer = FencedCheckpointer(self.saver)
+        self.writes_made = 0
+
+    async def write(self) -> None:
+        self.writes_made += 1
+        checkpoint = empty_checkpoint()
+        checkpoint["id"] = f"{self.who}-{self.writes_made:06d}"
+        await self.checkpointer.aput({"configurable": {"thread_id": CONV, "checkpoint_ns": ""}}, checkpoint, {}, {})
+
+    async def turn(self, request, ask):
+        """Write every 10 ms. A refused write is logged and tried again: the turn has no idea it is fenced."""
+        self.log.add(self.who, f"start {request.message_id}")
+        try:
+            yield TextMessageStartBody(message_id="m")
+            while True:
+                try:
+                    await self.write()
+                except TurnFenced:
+                    self.log.add(self.who, "refused")
+                await asyncio.sleep(0.01)
+        finally:
+            self.log.add(self.who, f"end {request.message_id}")
+
+
+def _fenced_cluster(monkeypatch, log: WriteLog) -> tuple[FencedReplica, FencedReplica, ConversationBus]:
+    """Two replicas on one Dragonfly with affinity off, and a log of every time a replica takes the marker."""
+    from aiq_api import conversation_bus
+    from aiq_api import turn_fence
+
+    monkeypatch.setenv("GRID_CHAT_AFFINITY", "0")
+    monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", FENCE_TTL)
+    monkeypatch.setattr(turn_fence, "GUARDED_WRITE_TIMEOUT_SECONDS", FENCE_WRITE_TIMEOUT)
+    monkeypatch.setattr(turn_fence, "FENCE_SLACK_SECONDS", FENCE_SLACK)
+    monkeypatch.setattr(chat_socket, "SUPERSEDE_WAIT_SECONDS", 3.0)
+    monkeypatch.setattr(chat_socket, "SUPERSEDE_REPUBLISH_SECONDS", 0.1)
+    owner_registry, relay_registry, shared = _replicas()
+    transport = shared._t
+    real_set_nx = transport.set_nx
+
+    async def logged_set_nx(key, value, ttl):
+        taken = await real_set_nx(key, value, ttl)
+        if taken and key.endswith(":running"):
+            holder = json.loads(value)
+            log.add("marker", f"{'B' if holder['replica'] == 'relay' else 'A'} took it for {holder['turn_id']}")
+        return taken
+
+    monkeypatch.setattr(transport, "set_nx", logged_set_nx)
+    return FencedReplica("A", owner_registry, log), FencedReplica("B", relay_registry, log), shared
+
+
+def _lose_the_cancel_and_the_renewals(replica: FencedReplica) -> None:
+    """Both of the old owner's ways of hearing "stop" come late: the renewing task never runs, the message is lost."""
+
+    async def starved(turn) -> None:
+        await asyncio.sleep(3600)
+
+    replica.registry.keep_conversation = starved
+    replica.registry._supersede_local = lambda *args, **kwargs: None
+
+
+async def test_an_owner_whose_renewals_and_cancel_are_both_late_writes_nothing_after_the_next_owner_took_over(
+    harness, monkeypatch
+):
+    log = WriteLog()
+    a, b, _ = _fenced_cluster(monkeypatch, log)
+    _lose_the_cancel_and_the_renewals(a)
+    first = harness(a.turn, a.registry).connect()
+    first.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: a.writes_made >= 3)
+
+    second = harness(b.turn, b.registry).connect()
+    second.client(type="user_message", message_id="t2", text="!")  # waits for the marker to run out, then takes it
+    taken = ("marker", "B took it for t2")
+    await until(lambda: taken in log.entries, timeout=5.0)
+    await until(lambda: b.writes_made >= 3)
+
+    assert ("A", "write") not in log.after(taken)  # the old owner never wrote again
+    assert ("A", "refused") in log.entries[: log.entries.index(taken)]  # and it was the fence that said no, not luck
+    assert ("B", "write") in log.after(taken)
+    assert log.count("A", "write") >= 3  # it did write while it was the owner
+
+
+async def test_a_starved_renewal_task_cannot_leave_a_stale_still_the_owner(harness, monkeypatch):
+    """A blocked loop runs no task, the renewal included: the next write must refuse by the clock alone."""
+    log = WriteLog()
+    a, _, _ = _fenced_cluster(monkeypatch, log)
+    seen: dict[str, Any] = {}
+
+    async def turn(request, ask):
+        yield TextMessageStartBody(message_id="m")
+        await a.write()
+        fence = current_write_fence()
+        time.sleep(fence.remaining() + 0.05)  # the loop is blocked: the renewal task, due long ago, cannot run
+        seen["flagged_by_a_task"] = fence._tripped
+        try:
+            await a.write()
+        except TurnFenced:
+            seen["refused"] = True
+        yield _finished(request, text="done")
+
+    sock = harness(turn, a.registry).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen == {"flagged_by_a_task": False, "refused": True}
+    assert log.count("A", "write") == 1
+
+
+async def test_a_write_in_flight_when_the_deadline_passes_lands_before_a_new_owner_can_take_the_marker(
+    harness, monkeypatch
+):
+    log = WriteLog()
+    a, b, _ = _fenced_cluster(monkeypatch, log)
+    _lose_the_cancel_and_the_renewals(a)
+    a.saver.delay = FENCE_WRITE_TIMEOUT * 0.75  # the longest write the bound lets through, nearly
+
+    async def turn(request, ask):
+        yield TextMessageStartBody(message_id="m")
+        fence = current_write_fence()
+        await asyncio.sleep(max(0.0, fence.remaining() - 0.02))  # the check passes, and the write outlives the deadline
+        await a.write()
+        log.add("A", "write returned")
+        await asyncio.sleep(3600)
+
+    first = harness(turn, a.registry).connect()
+    first.client(type="user_message", message_id="t1", text="?")
+    second = harness(answering, b.registry).connect()
+    second.client(type="user_message", message_id="t2", text="!")
+    taken = ("marker", "B took it for t2")
+    await until(lambda: taken in log.entries, timeout=5.0)
+
+    assert ("A", "write returned") in log.entries
+    assert log.index("A", "write returned") < log.index(*taken)
+    assert ("A", "write") not in log.after(taken)
+
+
+async def test_one_failed_bus_command_for_another_conversation_does_not_starve_the_renewals(harness, monkeypatch):
+    """The fail-fast window refuses commands without I/O; the renewal must not be one of them."""
+    from aiq_api.conversation_bus import BusUnavailable
+
+    log = WriteLog()
+    a, _, shared = _fenced_cluster(monkeypatch, log)
+    gate = Gate()
+    sock = harness(gate.turn, a.registry).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    guard = a.registry.running(CONV).guard
+    real_xadd = shared._t.xadd
+
+    async def slow_once(*args, **kwargs):
+        monkeypatch.setattr(shared._t, "xadd", real_xadd)
+        raise TimeoutError("Timeout reading from dragonfly:6379")
+
+    monkeypatch.setattr(shared._t, "xadd", slow_once)
+    with pytest.raises(BusUnavailable):
+        await a.registry.bus().publish_frame("another-conversation", {"turn_id": "x", "seq": 1})
+
+    await asyncio.sleep(FENCE_TTL * 2)  # the bus stays marked down for 5 s, well past the turn's deadline
+
+    assert not guard.fenced()
+    assert sock.events()[-1]["type"] != "RUN_FINISHED"
+    gate.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    assert sock.events()[-1]["outcome"] == "answered"
+
+
+async def test_a_renewal_that_fails_is_tried_again_before_the_deadline(monkeypatch):
+    """After a failed renewal the keeper retries sooner than an interval, never later than the deadline."""
+    monkeypatch.setattr(chat_socket, "RENEW_RETRY_SECONDS", 1.0)
+    monkeypatch.setattr(chat_socket, "running_renew_interval", lambda: 3.0)
+
+    assert chat_socket._renew_wait(None) == 3.0
+    assert chat_socket._renew_wait(None, retrying=True) == 1.0
+    guard = SimpleNamespace(remaining=lambda: 0.4)
+    assert chat_socket._renew_wait(guard, retrying=True) == 0.4
+
+
+async def test_a_renewal_that_finds_the_marker_gone_fences_the_turn_and_cancels_it_with_a_terminal(
+    harness, monkeypatch, persisted
+):
+    log = WriteLog()
+    a, _, _ = _fenced_cluster(monkeypatch, log)
+    gate = Gate()
+    sock = harness(gate.turn, a.registry).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    guard = a.registry.running(CONV).guard
+
+    async def lost(conversation_id, turn_id):
+        return False
+
+    monkeypatch.setattr(a.registry.bus(), "renew_running", lost)
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    await asyncio.gather(*chat_socket._PERSIST_TASKS)
+
+    assert sock.events()[-1]["outcome"] == "cancelled"
+    assert gate.torn_down  # the graph run was cancelled, not abandoned
+    assert guard.fenced()
+    assert persisted == []  # it had streamed prose, and a turn that lost its conversation persists none of it
+
+
+async def test_an_owner_cut_off_from_dragonfly_past_its_window_cancels_itself_and_sends_only_its_terminal(
+    harness, monkeypatch
+):
+    log = WriteLog()
+    a, _, shared = _fenced_cluster(monkeypatch, log)
+    gate = Gate()
+    sock = harness(gate.turn, a.registry).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    _bus_down(monkeypatch, shared, "expire_if_value", "publish", "xadd", "get")
+    heard = len(sock.events())
+
+    await until(lambda: _last(sock) == "RUN_FINISHED", timeout=5.0)
+
+    assert sock.events()[-1]["outcome"] == "cancelled"
+    assert gate.torn_down
+    assert [event["type"] for event in sock.events()[heard:]] == ["RUN_FINISHED"]  # no frame but the terminal
+
+
+async def test_two_questions_racing_from_an_empty_marker_never_run_at_once(harness, monkeypatch):
+    log = WriteLog()
+    a, b, _ = _fenced_cluster(monkeypatch, log)
+    first = harness(a.turn, a.registry).connect()
+    second = harness(b.turn, b.registry).connect()
+
+    first.client(type="user_message", message_id="t1", text="?")
+    second.client(type="user_message", message_id="t2", text="!")  # the same tick, another replica, another turn id
+    await until(lambda: sum(what.startswith("start ") for _, what in log.entries) >= 2, timeout=5.0)
+
+    running = 0
+    for _, what in log.entries:
+        running += what.startswith("start ") - what.startswith("end ")
+        assert running <= 1, log.entries  # a second turn started before the first had ended
+    takes = [what for who, what in log.entries if who == "marker"]
+    assert len(takes) == 2  # one took it, and the other only after that one had stopped and given it back
+    first_end = next(entry for entry in log.entries if entry[1].startswith("end "))
+    assert log.entries.index(first_end) < log.index("marker", takes[1])
+
+
+async def test_with_affinity_on_an_owner_that_cannot_renew_keeps_running_as_before(harness, monkeypatch):
+    """Affinity keeps both turns of a conversation in one process: the fence fails open, as the bus does."""
+    from aiq_api import conversation_bus
+
+    monkeypatch.delenv("GRID_CHAT_AFFINITY", raising=False)
+    monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", FENCE_TTL)
+    owner, _, shared = _replicas()
+    gate = Gate()
+    sock = harness(gate.turn, owner).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    assert owner.running(CONV).guard is None
+    _bus_down(monkeypatch, shared, "expire_if_value", "publish", "xadd", "get")
+
+    await asyncio.sleep(FENCE_TTL * 2)  # twice the marker's life, with no renewal getting through
+
+    assert owner.running(CONV) is not None
+    assert sock.events()[-1]["type"] != "RUN_FINISHED"
+    gate.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    assert sock.events()[-1]["outcome"] == "answered"
+
+
+async def test_a_finished_turn_takes_its_fence_off_so_the_stage_frames_behind_it_still_go_out(harness, monkeypatch):
+    log = WriteLog()
+    a, _, _ = _fenced_cluster(monkeypatch, log)
+    sock = harness(answering, a.registry).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    guard = a.registry.wire(CONV, "t1")._guard
+
+    assert guard is not None
+    await asyncio.sleep(FENCE_TTL)  # past the old deadline, with nobody renewing any more
+
+    assert not guard.fenced()

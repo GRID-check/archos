@@ -5,7 +5,7 @@
  * The project's address as the settings surface reads and rotates it: minted
  * on first read, one per project under a race, the organization switch, and
  * rotation. What each route asks for is `app/api/projects/[id]/inbound-address`'s
- * spec; receiving is `./receive.spec.ts`, filing `./drain.spec.ts`.
+ * spec; receiving is `./receive.spec.ts`, filing `./job.spec.ts`.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -55,7 +55,7 @@ beforeEach(() => {
   vi.stubEnv('GRID_INBOUND_MAIL_DOMAIN', 'piloti-post.at')
   vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', '')
   vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', 'true')
-  vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor' })
+  vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
   vi.mocked(can).mockResolvedValue(false)
   vi.mocked(findProjectInOrg).mockResolvedValue({ id: 'project-a', name: 'Wohnbau' } as Project)
   vi.mocked(findActiveAddressForProject).mockResolvedValue(null)

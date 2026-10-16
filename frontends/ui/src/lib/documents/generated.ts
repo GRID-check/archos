@@ -49,13 +49,15 @@ import { agentDocumentFilename } from './agent-namespace'
 import { ensureTenantBucketChecked } from '@/lib/storage/bucket'
 import { admitOrDiscard } from '@/lib/storage/admission'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { placementCollectionFor, requireFolderWrite } from '@/lib/authz/folder-access'
 import { aiProvenanceMarking, markingIsInBytes, type AiProvenanceMarking } from '@/lib/ai-provenance'
-import { latinize } from '@/lib/text/latinize'
+import { fileSlug } from '@/lib/text/latinize'
 import { FEATURE_FLAGS, isAgentAuthoredDocumentsEnabled } from '@/lib/authz/feature-flags'
 import { recordAuditEventOrThrow } from '@/lib/audit/service'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { getOrCreateProjectFolderByName } from '@/lib/projects/folder-service'
+import { findRootProjectFolderByName, getOrCreateProjectFolderByName } from '@/lib/projects/folder-service'
+import { requireMayFileFrom, type ConversationOrigin } from '@/lib/conversations/restricted-egress'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { AuthoredRefKind } from './document-authors'
 import { deleteProjectDocument, findDocumentAuthoredByRef } from './repository'
@@ -301,6 +303,14 @@ export interface FileGeneratedDocumentInput {
   render: (context: GeneratedRenderContext) => Promise<GeneratedRendering> | GeneratedRendering
   /** Source request, for the audit event's IP + user agent context. */
   request?: Request
+  /**
+   * The conversation the content came out of. A thread that drew on a
+   * restricted folder files only into a folder restricted at least as narrowly
+   * (ADR-0087, `lib/conversations/restricted-egress.ts`); checked before anything is
+   * rendered or created. Absent for a producer whose input is not a
+   * conversation's (a deep-research run, whose scope is always open).
+   */
+  origin?: ConversationOrigin
 }
 
 export interface FiledGeneratedDocument {
@@ -387,47 +397,22 @@ const EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
  */
 export function generatedFilename(title: string, contentType: string, now: Date): string {
   const day = now.toISOString().slice(0, 10)
-  const slug = latinize(title)
-    .replace(/[^a-zA-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase()
-    .slice(0, 60)
+  const slug = fileSlug(title)
   const extension = EXTENSION_BY_CONTENT_TYPE[contentType.split(';')[0].trim()] ?? 'bin'
   return `${slug || 'piloti'}-${day}.${extension}`
 }
 
 /**
- * File a machine-authored document into a project.
+ * Whether this session may file a generated document into this project today:
+ * resolves, or throws the refusal ({@link ForbiddenError} for a switched-off
+ * deployment, the authorization ladder's 403 or 404 for a missing permission).
  *
- * Returns the existing row when this reference has already been filed: a report is
- * fetched every time its tab is opened, and a second document per re-read would
- * be a silent duplicate of a multi-minute run's only artifact.
- *
- * ## Once per (reference, producer), whichever way the calls interleave
- *
- * That guarantee is TWO mechanisms, and it needs both. The probe below answers
- * the sequential case cheaply and before anything is rendered. The unique index
- * `uniq_documents_authored_ref_producer_per_project` (migration 0065, widening
- * 0064's key by the producer; renamed with its column by 0066) answers the concurrent one, which the probe cannot: two tabs open the same report, both
- * probe before either inserts, both miss, and a lookup has no way to know it
- * lost. The catch around `admitOrDiscard` is what turns the index's rejection
- * into the same `alreadyFiled` answer the probe gives.
- *
- * The duplicate this forecloses is not merely untidy. `generatedFilename` is
- * deterministic, so two rows of ONE producer agree on filename, display name,
- * size, folder, author, run and second — identical in every attribute a reader
- * can see. (Two rows of two producers do not: they differ by extension, which
- * is why 0065 lets a diagram be both an SVG and a PDF and still be one thing.) The
- * repository calls that out as "precisely the thing an office cannot untangle
- * later", and an office that cannot tell two reports apart keeps both.
+ * The gates {@link fileGeneratedDocument} runs first, on their own, so a caller
+ * that would only QUEUE the filing (a reader opening a finished report) can
+ * learn of a refusal when it asks, instead of queueing a job that is refused
+ * the same way every time it is read.
  */
-export async function fileGeneratedDocument(
-  input: FileGeneratedDocumentInput,
-): Promise<FiledGeneratedDocument> {
-  const { session, projectId, producer, ref, title, render, request } = input
-  // Not passed in, and that is the point — see the producer map's header.
-  const refKind = GENERATED_DOCUMENT_PRODUCER_REF_KINDS[producer]
-
+export async function assertMayFileGeneratedDocument(session: AuthorizedSession, projectId: string): Promise<void> {
   // ## The gates, in the order they are cheapest to fail
   //
   // First the deployment's own answer, which costs no I/O and is nobody's
@@ -497,6 +482,51 @@ export async function fileGeneratedDocument(
   await requireProjectAccess(session, projectId, ['project:documents:write', 'project:edit'])
   await requireProjectAccess(session, projectId, 'project:documents:generate')
 
+  // Filing is a write into the destination (ADR-0088): a „Berichte" this person
+  // may only read refuses (403), one they may not read is not found. Asked here,
+  // with the other gates, so a reader whose filing would be refused hears it
+  // when they ask rather than through a job refused on every read. Every
+  // producer lands in the same folder today; a destination that does not exist
+  // yet would be created at the root, inheriting the project, and is judged as
+  // such.
+  const destination = await findRootProjectFolderByName(projectId, GENERATED_DOCUMENT_FOLDER_NAME, session.organizationId)
+  await requireFolderWrite(session, projectId, [destination?.id ?? null])
+}
+
+/**
+ * File a machine-authored document into a project.
+ *
+ * Returns the existing row when this reference has already been filed: a report is
+ * fetched every time its tab is opened, and a second document per re-read would
+ * be a silent duplicate of a multi-minute run's only artifact.
+ *
+ * ## Once per (reference, producer), whichever way the calls interleave
+ *
+ * That guarantee is TWO mechanisms, and it needs both. The probe below answers
+ * the sequential case cheaply and before anything is rendered. The unique index
+ * `uniq_documents_authored_ref_producer_per_project` (migration 0065, widening
+ * 0064's key by the producer; renamed with its column by 0066) answers the concurrent one, which the probe cannot: two tabs open the same report, both
+ * probe before either inserts, both miss, and a lookup has no way to know it
+ * lost. The catch around `admitOrDiscard` is what turns the index's rejection
+ * into the same `alreadyFiled` answer the probe gives.
+ *
+ * The duplicate this forecloses is not merely untidy. `generatedFilename` is
+ * deterministic, so two rows of ONE producer agree on filename, display name,
+ * size, folder, author, run and second — identical in every attribute a reader
+ * can see. (Two rows of two producers do not: they differ by extension, which
+ * is why 0065 lets a diagram be both an SVG and a PDF and still be one thing.) The
+ * repository calls that out as "precisely the thing an office cannot untangle
+ * later", and an office that cannot tell two reports apart keeps both.
+ */
+export async function fileGeneratedDocument(
+  input: FileGeneratedDocumentInput,
+): Promise<FiledGeneratedDocument> {
+  const { session, projectId, producer, ref, title, render, request, origin } = input
+  // Not passed in, and that is the point — see the producer map's header.
+  const refKind = GENERATED_DOCUMENT_PRODUCER_REF_KINDS[producer]
+
+  await assertMayFileGeneratedDocument(session, projectId)
+
   // Idempotency, before any byte is rendered. The reference is the key because
   // it is the one identifier the producer and the row already share.
   //
@@ -517,6 +547,27 @@ export async function fileGeneratedDocument(
 
   const project = await findProjectInOrg(projectId, session.organizationId)
   if (!project) throw new NotFoundError('Project not found')
+
+  // Where it will land, judged before the render and the folder creation, so a
+  // refusal leaves nothing behind. Write on it was asked with the other gates
+  // (`assertMayFileGeneratedDocument`); a destination that does not exist yet
+  // would be created at the root, inheriting the project, and is judged as such.
+  const existingDestination = await findRootProjectFolderByName(
+    projectId,
+    resolveGeneratedDocumentDestination(producer).folderName,
+    session.organizationId,
+  )
+  // Restricted-folder content stays where only people who may read it read it
+  // (ADR-0087).
+  if (origin) {
+    const destination = existingDestination
+    await requireMayFileFrom(origin, {
+      organizationId: session.organizationId,
+      projectId,
+      projectCollection: project.collectionName,
+      folderId: destination?.id ?? null,
+    })
+  }
 
   const marking = generatedDocumentMarking(producer, ref)
   const rendered = await render({ projectId, projectName: project.name, marking })
@@ -545,7 +596,10 @@ export async function fileGeneratedDocument(
   // After the render, so a producer that fails leaves no empty `Berichte`
   // folder standing in a project that never got a report.
   const destination = resolveGeneratedDocumentDestination(producer)
-  const folder = await getOrCreateProjectFolderByName(projectId, destination.folderName)
+  const folder = await getOrCreateProjectFolderByName(projectId, destination.folderName, session.organizationId)
+  // A concurrent writer may have created it, or given it its own list, since
+  // the check above.
+  if (folder.id !== existingDestination?.id) await requireFolderWrite(session, projectId, [folder.id])
 
   const documentId = crypto.randomUUID()
   const storedName = generatedFilename(title, rendered.contentType, new Date())
@@ -612,7 +666,7 @@ export async function fileGeneratedDocument(
       // chunks until somebody publishes a version of it (ADR-0054), and the
       // safety comes from the dispatch that does not happen, never from this
       // string.
-      collectionName: project.collectionName,
+      collectionName: await placementCollectionFor(session.organizationId, projectId, project.collectionName, folder.id),
       fileSize: body.byteLength,
       contentType: rendered.contentType,
       // Terminal, and honest: the bytes are here and indexing was deliberately
@@ -685,6 +739,7 @@ export async function fileGeneratedDocument(
       action: 'document.generated',
       targetType: 'document',
       targetId: documentId,
+      filedIn: { projectId, folderId: folder.id },
       metadata: { projectId, producer, filename, fileSize: body.byteLength },
       request,
     })

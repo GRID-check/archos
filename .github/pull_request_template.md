@@ -10,7 +10,6 @@
 - [ ] I added or updated tests for behavior changes.
 - [ ] I updated documentation for user-facing or contributor-facing changes.
 - [ ] I confirmed this PR does not include secrets, credentials, or internal-only data.
-- [ ] I certify this contribution under the Developer Certificate of Origin (DCO) and signed my commits with `git commit -s` or an equivalent sign-off.
 
 #### Where should reviewers start?
 
@@ -19,6 +18,7 @@
 #### Related Issues
 
 <!-- Use Closes / Fixes / Resolves / Relates to when applicable, one keyword per issue:
-     "Fixes #1, fixes #2". "Fixes #1, #2" closes only #1 (the Closing keywords check rejects it). -->
+     "Fixes #1, fixes #2". A single keyword before several issue numbers closes
+     only the first (the Closing keywords check rejects that list form). -->
 
 - Relates to #

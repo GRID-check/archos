@@ -66,12 +66,16 @@ const chatState = {
   currentUserId: 'user-1' as string | null,
   conversations: [] as Conversation[],
   serverConversationsLoaded: true as boolean,
+  pendingMessagesFor: null as string | null,
   composerSubject: null as { resourceId: string } | null,
   setProjectId: vi.fn(),
   loadServerConversations: vi.fn(async () => {}),
   setComposerPrefill: vi.fn(),
   startNewSessionDraft: vi.fn(),
   selectConversation: vi.fn(),
+  setPendingMessagesFor: vi.fn((id: string | null) => {
+    chatState.pendingMessagesFor = id
+  }),
 } satisfies DeepPartial<ChatStoreWithHydration>
 
 vi.mock('@/features/chat', () => ({
@@ -87,7 +91,6 @@ const clientProps = {
   showConfidenceChip: true,
   showAnswerFeedback: true,
   showResearchInHistory: false,
-  projectCollection: null as string | null,
   projectName: 'Lacknergasse',
 }
 
@@ -100,6 +103,7 @@ describe('ProjectChatClient ?session= hydration', () => {
     chatState.conversations = []
     chatState.serverConversationsLoaded = true
     chatState.composerSubject = null
+    chatState.pendingMessagesFor = null
   })
 
   test('selects a job-output conversation the sessions panel hides', () => {
@@ -141,6 +145,9 @@ describe('ProjectChatClient ?session= hydration', () => {
 
     const { rerender } = render(<ProjectChatClient {...clientProps} />)
     expect(chatState.selectConversation).not.toHaveBeenCalled()
+    // Until it resolves, the thread shows it loading: not the greeting, not
+    // whatever was open before.
+    expect(chatState.pendingMessagesFor).toBe('conv-late')
 
     // The project load lands: the id resolves and is selected.
     chatState.conversations = [conversation({ id: 'conv-late' })]
@@ -160,5 +167,8 @@ describe('ProjectChatClient ?session= hydration', () => {
     // Selecting nothing keeps the wrong thread from opening here;
     // `useSessionUrl` clears the stale param.
     expect(chatState.selectConversation).not.toHaveBeenCalled()
+    // …and the thread is not left showing a skeleton for a link that resolved
+    // to nothing.
+    expect(chatState.pendingMessagesFor).toBeNull()
   })
 })

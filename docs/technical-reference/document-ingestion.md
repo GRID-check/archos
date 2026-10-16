@@ -82,33 +82,41 @@ Body: { projectId: string, file: File }
 7. **Record the job** — on success the row is updated to `status: 'pending'` with `metadata: { ingestJobId }` so status reads can later reconcile the row against the backend job (see Step 5)
 8. **Return response** — `{ documentId, jobId, status: 'pending' | 'uploaded' | 'processing' }`
 
-Two kinds of file skip steps 6 and 7 and return `processing` with no job id:
-an IFC model (`beginModelExtraction`) and, when `GOTENBERG_URL` is set, an
-office file. Without it, a Word, presentation, `.xls` or `.ods` file returns
-`failed` at once.
+Two kinds of file skip steps 6 and 7 and return `processing` with no ingest
+job id: an IFC model (`beginModelExtraction`) and, when `GOTENBERG_URL` is set,
+an office file. Each is queued as a `bim_extract` or `office_rendition` job on
+`bff_job_queue` (ADR-0079, [`kubernetes.md`](../deployment/kubernetes.md) §6.3c)
+and the row remembers the queue job as `metadata.bffJobId`. Without a converter,
+a Word, presentation, `.xls` or `.ods` file returns `failed` at once.
 
 ### Office files: convert, then ingest
 
 **File**: `frontends/ui/src/lib/documents/service.ts` (`beginRenditionIngest`)
 
 An office file (`isOfficeRenditionSource` on the row's filename and stored type)
-is converted to its PDF rendition before it is ingested, detached from the
-request ([ADR-0071](../adr/0071-word-and-presentation-files-are-indexed-from-their-rendition.md)):
+is converted to its PDF rendition before it is ingested, by a background job
+rather than in the request ([ADR-0071](../adr/0071-word-and-presentation-files-are-indexed-from-their-rendition.md)):
 
-1. The row is set to `processing` and the upload returns.
-2. In the background, `ensureRendition` (`lib/documents/rendition.ts`) writes
+1. The row is set to `processing`, an `office_rendition` job is queued
+   (`interactive` for an upload, `bulk` inside a reindex) and the upload
+   returns.
+2. A `bff-jobs` pod claims the job (fairly across organisations) and runs
+   `ensureRendition` (`lib/documents/rendition.ts`), which writes
    `<dir>/_render.pdf` through Gotenberg, with a 120-second timeout. Each BFF
    process runs at most `GOTENBERG_MAX_CONCURRENCY` conversions at once
-   (default 2), readers ahead of background work, and the 120 seconds start
-   when a slot is held, not while the conversion waits for one.
+   (default 2; a pool pod gets `bffJobsRenditionConcurrency`, 1), readers ahead
+   of background work, and the 120 seconds start when a slot is held, not while
+   the conversion waits for one. The pool's replicas times that number is the
+   fleet-wide ceiling, held to Gotenberg's capacity by `gotenberg.spec.ts`.
 3. `dispatchIngest` posts to `/v1/ingest` with `preview_ref`, a presigned GET of
    the rendition for the thumbnail, and, when `isIndexedFromRendition(filename)`
    (`lib/documents/preview-types.ts`: Word, presentations, `.xls`, `.ods`),
    `extraction_ref`, the same URL for text extraction. `.xlsx` and `.xlsm` get
    `preview_ref` only.
 4. The dispatch sets the row to `pending` with the job id, or to `failed`. A
-   throw anywhere around it marks the row `failed`, so a row never stays at
-   `processing` because of an error nobody saw.
+   throw anywhere around it is retried by the queue, and the last attempt marks
+   the row `failed` first, so a row never stays at `processing` because of an
+   error nobody saw.
 
 There is no fallback reader. A failed or timed-out conversion of a Word,
 presentation, `.xls` or `.ods` file marks the row `failed` with
@@ -117,8 +125,11 @@ dispatch marks such a file failed the same way, before any background work. A
 `.xlsx` or `.xlsm` goes out without `preview_ref` and is indexed from the
 original, only without a thumbnail. The re-ingest action („Erneut lesen“,
 `POST /api/documents/{id}/reingest`) takes the same path and converts again. A
-process restart during a conversion leaves the row at `processing` with no job,
-which re-ingest reads as lost and retries.
+process restart during a conversion gives the claim back and another pod runs
+it. A row left at `processing` without a live job (from before the jobs, or one
+whose job died) is found by the sweep `POST /api/internal/maintenance/
+reconcile-background-work`, which the scheduler worker calls every tick: a row
+with no job gets a new one, a row whose job is dead is failed with its reason.
 
 **SeaweedFS config** (`frontends/ui/src/lib/s3.ts`):
 - Endpoint: `process.env.SEAWEED_ENDPOINT`
@@ -153,7 +164,7 @@ downloading.
 1. Validates `file_ref` and `collection` are present, and passes `file_ref`, `extraction_ref`, `preview_ref` and `thumbnail_upload_url` through the object-store SSRF gates. It is the only gate those URLs meet: the job fetches them later without asking again
 2. With a `document_id`, looks for a live job under the dispatch key (sha256 of `document_id` and the object path of `file_ref`), under a per-key lock on this replica, and answers with that job's id when one exists
 3. Otherwise submits to the active ingestor: `ingestor.submit_job([DeferredObjectDownload(file_ref)], collection, config={cleanup_files: True, original_filenames: [...], ...})`. `original_filenames` is `file_name` when the BFF stated one and the URL basename otherwise; it becomes each chunk's `file_name` metadata. A rendition goes in as `extraction_paths: [DeferredObjectDownload(extraction_ref, suffix=".pdf")]`, positional like `original_filenames`, so the chunks are read from the PDF and still carry the original's name (`Bericht.docx`). `DeferredObjectDownload`'s `repr` is `<deferred object download>`: no presigned URL is logged or visible in the job config
-4. Returns `{ job_id, status: 'pending', document_id }` (202), then, only for an office original with `preview_ref` and no `extraction_ref` (a spreadsheet), draws its thumbnail from `preview_ref` in a background task
+4. Returns `{ job_id, status: 'pending', document_id }` (202) and fetches nothing itself. An office original with `preview_ref` and no `extraction_ref` (a spreadsheet) gets the rendition as the job's second deferred download (`preview_paths`), drawn into its thumbnail only after the screen passes (ADR-0086)
 
 A failed submit is a 500 with a fixed message. A missing object, an expired
 signature or an unreachable store is no longer a status of this request: it is a
@@ -193,8 +204,8 @@ The `LlamaIndexIngestor.submit_job()` creates a job with `JobState.PENDING` and 
 
 For each file:
 
-0. **Download and thumbnail** — a deferred original is downloaded first (`knowledge_layer.deferred_files.resolve_original`): one GET without redirects, into a temp file whose suffix comes from the response's `Content-Type` (the object path as fallback, scrubbed), owned and deleted by the job whether or not `cleanup_files` is set. A failed download fails the file with the stable error `original_download_failed: …` and nothing else is fetched for it, the rendition included; the log names the error class and HTTP status, never the URL. Then the rendition, when there is one, and then the 400px card thumbnail, drawn from the rendition or from a PDF or image original before any extraction, so the card has it as soon as anything has the bytes
-1. **Text extraction** — a PDF is read per page with pdfplumber, recording each line's font size and weight (`line_styles`). `.xlsx`/`.xlsm` go through `office_extractors`; `.md`, `.txt`, `.csv` and `.tsv` through `text_formats`, which decodes without dropping a byte (BOM, else strict UTF-8, else cp1252, else Latin-1; the encoding is stored as `source_encoding`). Any other extension falls to `SimpleDirectoryReader`. When the job carries an extraction path for the file, the PDF rendition is read instead and every later step treats it as a PDF: pages, tables, images and visual pages. For a `.pptx` or `.pptm` a companion reads the speaker notes from the original, one unit per slide labelled with its rendition page, because a PDF export drops them
+0. **Download and thumbnail** — a deferred original is downloaded first (`knowledge_layer.deferred_files.resolve_original`): one GET without redirects, into a temp file whose suffix comes from the response's `Content-Type` (the object path as fallback, scrubbed), owned and deleted by the job whether or not `cleanup_files` is set. A failed download fails the file with the stable error `original_download_failed: …` and nothing else is fetched for it, the rendition included; the log names the error class and HTTP status, never the URL. Then the rendition, when there is one. The 400px card thumbnail is drawn later, once the file's upload screen has passed (ADR-0086): from the rendition or a PDF original after its text screen, from an image once it passes on its name, from a spreadsheet's `preview_paths` rendition after its extracted text is screened. A quarantined file has none
+1. **Text extraction** — a PDF is read per page with pdfplumber, recording each line's font size and weight (`line_styles`). `.xlsx`/`.xlsm` go through `office_extractors`; `.md`, `.txt`, `.csv` and `.tsv` through `text_formats`, which decodes without dropping a byte (BOM, else strict UTF-8, else cp1252, else Latin-1; the encoding is stored as `source_encoding`). Any other extension falls to `SimpleDirectoryReader`. When the job carries an extraction path for the file, the PDF rendition is read instead and every later step treats it as a PDF: pages, tables, images and visual pages. For a `.pptx` or `.pptm` a companion reads the speaker notes from the original, one unit per slide labelled with its rendition page, because a PDF export drops them. On a job whose config carries `screening`, the [upload screen](#upload-screening-before-the-first-model-call) runs on this extracted text before anything below
    **Chunking.** Every text chunk carries a locator a citation and `read_passage(punkt=…)` can use:
 
    | Source | Unit | Locator (`punkt_id`) | `page_label` |
@@ -208,7 +219,7 @@ For each file:
    | `.xlsx`/`.xlsm` sheet | row groups that each repeat the header, at most 10,000 rows a sheet; the rest are stated in the last group and counted as `rows_over_cap` on the file's job status | `Raumliste: Zeilen 2-41` | the sheet name |
 
    A PDF counts as structured when it has at least three headings, at least half its text sits under one, and at most 30% of its lines are headings (`section_chunking.structure_is_usable`). A heading is a short line in a larger type than the body, in bold, or opened by a German numbering; lines that repeat at the top or bottom of most pages are running headers and are dropped. A transcribed page's Markdown ATX headings (`## 1 Befund`) are section headings. A numbered line in body type counts only when its title reads as one: at most 8 words, no finite verb, not ending mid-sentence. A line that runs on in lowercase into a line of another style is not a heading. Locators are normalised, so `§3` and `Art.3` become `§ 3` and `Art. 3`. `read_passage(page=N)` returns the chunks whose `[page_label, page_end]` range covers N, so a section chunk that starts on page 2 and ends on page 3 is found for page 3.
-2. **Table extraction** (PDF only, optional) — Uses `pdfplumber` to extract the tables the text pass did not already index as captioned tables; each becomes row groups that repeat the header row (`content_type: "table"`, `table_part` orders them), so the splitter never cuts a table into header-less rows
+2. **Table extraction** (PDF only, optional) — Uses `pdfplumber` to extract the tables the text pass did not already index as captioned tables; each becomes row groups that repeat the header row (`content_type: "table"`, `table_part` orders them), so the splitter never cuts a table into header-less rows. The tables are read right after the text, before the upload screen, and screened with it: the table pass opens the PDF on its own and also reads a page the text pass lost
 3. **Image extraction** (PDF only, optional) — Uses `pypdfium2` to extract images (min 100×100px to filter icons); each image is sent to the VLM API (default: `openai/gpt-6-luna` via OpenRouter — image input verified, caption quality on OIB drawings still open, see the Configuration table) for classification (chart vs image) and captioning; captions become `Document` objects with `content_type: "chart"` or `"image"` metadata
 
    Every PDFium call in the process (page triage, page renders, image extraction, thumbnails, `view_knowledge_image`) is serialized through `pdfium_lock` in `knowledge_layer/llamaindex/pdfium_lock.py`, because PDFium is not thread-safe; the lock is held per page and image encoding happens after it is released.
@@ -216,6 +227,27 @@ For each file:
 4. **Summarization** (optional) — If `generate_summary` is enabled, the first and last chunks are combined and sent, as two **concurrent** calls to the same `summary_model` LLM, for a one-sentence summary and a tag classification (document type + OIB discipline; see "Backfilling tags" below). Both calls independently swallow exceptions/timeouts and return nothing on failure. A deterministic, text-derived fallback summary now fires whenever the LLM summary is missing — for any reason, independent of whether tag classification succeeded — so a document that finishes ingestion always gets a `document_metadata` row (see "Silent summary-row loss" below for the fix and the reconciliation backstop).
 5. **Indexing** — All `Document` objects are inserted into a `VectorStoreIndex` backed by ChromaDB with OpenRouter embeddings (`openai/text-embedding-3-large` by default; see "Embedding-model changes" below — stored vectors only match query vectors from the same model)
 6. **Job completion** — Status updated to `JobState.COMPLETED` with metadata about chunks, tables, charts, and images created
+
+### Upload screening, before the first model call
+
+A job whose config carries `screening` (the organization's policy, sent by the BFF on `POST /v1/ingest`; see the [endpoint contract](../api/python-endpoints.md)) checks each file's locally extracted text against the office's terms and detectors (`sources/knowledge_layer/src/llamaindex/screening.py`) before any of it is sent to a model. A match fails the file with `error_message` `quarantined:{…}` and the loop moves to the next file; nothing of a quarantined file is transcribed, captioned, summarised or embedded. The job without a policy (the OIB corpus sync) runs exactly as before.
+
+Where it sits, per file, against the five places ingestion sends content out:
+
+| Order | Step | Local or external |
+|---|---|---|
+| 1 | download | local |
+| 2 | text extraction: pdfplumber per page (a rendition for Word and presentation files, plus pptx speaker notes) and the PDF's uncaptioned tables; `office_extractors`, `text_formats` or `SimpleDirectoryReader` otherwise | local |
+| 3 | page triage (`page_triage.triage_pdf`, PDFium) | local |
+| **4** | **upload screen**: PDF text pages, speaker notes and table row groups, or the extracted documents of any other format | **local** |
+| 4a | thumbnail, only when the screen passed (to the office's own object store, ADR-0086) | local |
+| 5 | OCR of scanned and garbled pages (`transcription.route_pdf_pages`) | external |
+| 6 | image captioning of a standalone image (`_build_image_documents`) | external |
+| 7 | VLM enrichment of embedded rasters and drawing pages (`processing.enrich_vlm_batch`) | external |
+| 8 | summary and tag classification (`summary_llm`) | external |
+| 9 | embeddings (`VectorStoreIndex`) | external |
+
+Each file of a screened job gets `file_details[].screening` on its job status: `quarantined`; `clean` when everything that goes on was screened; `partial` when the text layer was clean but something of the file reaches a model unscreened: pages the triage sends to transcription or drawing analysis (or a PDF it could not measure), or embedded rasters the VLM will caption (pdfplumber's per-page image count, read before any model call; the enrichment step also marks the file `partial` when it sends rasters the count missed); `partial` also when some of the file's text was never read, so never screened: a PDF page the text pass could not read (`pages_failed`; its tables, when the table pass reads them, are screened), or spreadsheet rows past the 10,000-row cap (`rows_over_cap`, not indexed either), or cells the extractors drop or shorten: spreadsheet columns past the 60th and the tail of a spreadsheet or CSV cell longer than 500 characters (`content_cut` on the documents, not indexed either); `unchecked` for a standalone image or a file with no local text. The triage the screen measured is handed to `route_pdf_pages`, so a screened PDF is measured once. Known gaps, accepted for content that cannot be read locally: scanned and drawing pages, standalone images and embedded rasters reach the VLM without being screened; the outcome says so (`partial` or `unchecked`), never `clean`. The thumbnail is drawn after the screen, and only when it passed. The log line for a quarantine names reason kinds and counts only, not the term, the value or the file name.
 
 ### A re-upload replaces the previous version once it has indexed
 
@@ -247,6 +279,14 @@ retrieval serves, and the job logs `Kept the previous version of …`. Deleting
 first, as this step once did, left such a document with no chunks at all.
 The cost is that both versions are retrievable for the length of the job.
 
+A file the upload screen quarantines is the exception. A quarantine holds the
+whole document, its earlier screened version included, from everyone but its
+uploader and its reviewers until a reviewer releases or deletes it (ADR-0086),
+so `_retire_held_predecessor` takes the previous version's chunks out of Chroma
+and the lexical mirror as the verdict lands, still under the replacement lock.
+It drops no metadata row: the Dokumentart and title a person set wait there for
+the release's reading.
+
 A file that fails after some of its chunks were inserted (an embedding batch
 timing out halfway through a long PDF) takes those chunks back out:
 `_discard_partial_version` deletes, from Chroma and the lexical mirror, the ids
@@ -258,14 +298,17 @@ the find until the file is retired or discarded. Without it two jobs uploading
 one name at once both collected the same predecessor, both retired it, and both
 new versions stayed. With it the second job waits, finds the first job's new
 version as its predecessor, and replaces it: the version that finishes last is
-the one left. On Postgres (`AIQ_SUMMARY_DB`, else `NAT_JOB_STORE_DB_URL`) it
-is a session advisory lock on a connection of its own, so it holds across
-replicas and is released when a replica dies; with SQLite or no database only
-the in-process lock holds, and an unreachable database lets the file ingest
-unguarded, logged.
+the one left. On Postgres it is a session advisory lock on a connection of its
+own, taken on `AIQ_LOCK_DB_URL`, the direct DSN and never the pooled one
+(ADR-0083), so it holds across replicas and is released when a replica dies;
+with SQLite or no database only the in-process lock holds. With Postgres it
+fails closed: an unreachable lock database raises, logged, and the file
+is marked failed (it does not replace its predecessor unguarded across replicas),
+so the failed-ingestion rescan picks it up. An ingest worker on Postgres with no
+`AIQ_LOCK_DB_URL` refuses to start.
 
-The OIB sync (`src/aiq_agent/oib_sync.py`) relies on the same step and calls no
-`delete_file` before it uploads.
+The base corpus (`src/aiq_agent/oib_sync.py`) relies on the same step: its ingest
+jobs run on the queue like any other and nothing deletes a file before it is ingested again.
 
 ### A document deleted while it indexed takes its chunks back out
 
@@ -397,7 +440,7 @@ Two fixes landed together, both described in
    summary is missing, independent of tag-classification success, and reads a
    wider text sample (first + last chunk).
 2. **Reconciliation backfill** (`42a4fa3`) — `reconcile_collection_summaries()`
-   runs at the end of every ingestion job (this ingestor, `scripts/ingest_oib.py`'s
+   runs at the end of every ingestion job (this ingestor, the base-corpus
    `oib_sync`, and any future caller), diffing indexed-and-successful files
    against the `document_metadata` table and backfilling a fallback summary for any
    gap it finds (logged as a WARNING per backfilled document — a gap still

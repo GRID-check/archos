@@ -10,101 +10,65 @@
  */
 
 import 'server-only'
-import { and, asc, desc, eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { withTenant } from '@/lib/db/tenant-context'
 import { documents, type Document } from '@/lib/db/schema'
 import {
-  DOCUMENT_LIST_LIMIT,
-  afterDocumentListCursor,
-  documentNameMatchColumns,
-  filenameLookupWhere,
-  probeDocumentNames,
-  type DocumentNameMatchRow,
-  cursorCreatedAtColumn,
-  documentListColumns,
-  readDocumentListPage,
+  findDocumentsByFilenames,
+  findDocumentsByNames,
+  listDocumentPage,
   type DocumentListPage,
   type DocumentListRow,
+  type DocumentNameMatchRow,
 } from '@/lib/documents/repository'
-import type { DocumentListCursor } from '@/lib/documents/list-cursor'
+import { ARCHIV_SHELF } from '@/lib/documents/shelf'
+import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 
 /**
- * One keyset page of an organization's Archiv, most-recent first.
- *
- * Bounded per page (`DOCUMENT_LIST_LIMIT`); the whole Archiv is reachable by
- * following `nextCursor`, in the same `created_at DESC, id ASC` order the
- * project listing uses, so the cursor codec is shared.
+ * One keyset page of an organization's Archiv, most-recent first — the shared
+ * shelf listing (`listDocumentPage`) on the Archiv shelf, so it filters by
+ * lifecycle and author, orders, pages and cursors exactly as a project's does
+ * (ADR-0078). Bounded per page; the whole Archiv is reachable by following
+ * `nextCursor`.
  */
-export async function listArchivDocuments(
+export function listArchivDocuments(
   organizationId: string,
-  { limit = DOCUMENT_LIST_LIMIT, cursor }: { limit?: number; cursor?: DocumentListCursor } = {},
+  options: Parameters<typeof listDocumentPage>[2],
 ): Promise<DocumentListPage> {
-  const db = getDb()
-  return readDocumentListPage(
-    (probeLimit) =>
-      db
-        .select({ ...documentListColumns, cursorCreatedAt: cursorCreatedAtColumn })
-        .from(documents)
-        .where(
-          and(
-            eq(documents.organizationId, organizationId),
-            eq(documents.scope, 'archiv'),
-            ...(cursor ? [afterDocumentListCursor(cursor)] : []),
-          ),
-        )
-        .orderBy(desc(documents.createdAt), asc(documents.id))
-        .limit(probeLimit),
-    limit,
-  )
+  return listDocumentPage(ARCHIV_SHELF, organizationId, options)
 }
 
 /**
  * The Archiv rows named `filenames` — the semantic search's join and the
  * by-name resolve, which must reach a document whatever page of the listing it
- * would sit on.
- *
- * Bounded by its input (`filenameLookupWhere`: at most
- * `FILENAME_LOOKUP_MAX_NAMES`, each in both Unicode forms and case-folded).
+ * would sit on. Bounded by its input (`filenameLookupWhere`).
  */
-export async function findArchivDocumentsByFilenames(
+export function findArchivDocumentsByFilenames(
   organizationId: string,
   filenames: readonly string[],
+  options: Parameters<typeof findDocumentsByFilenames>[3],
 ): Promise<DocumentListRow[]> {
-  const byName = filenameLookupWhere(filenames)
-  if (!byName) return []
-  const db = getDb()
-  return db
-    .select(documentListColumns)
-    .from(documents)
-    .where(and(eq(documents.organizationId, organizationId), eq(documents.scope, 'archiv'), byName))
-    .orderBy(desc(documents.createdAt), asc(documents.id))
-    .limit(DOCUMENT_LIST_LIMIT)
+  return findDocumentsByFilenames(ARCHIV_SHELF, organizationId, filenames, options)
 }
 
 /**
  * The Archiv documents answering to any of `names` — the upload planner's
  * name probe, matched the way the upload will match (`probeDocumentNames`).
  */
-export async function findArchivDocumentsByNames(
+export function findArchivDocumentsByNames(
   organizationId: string,
   names: readonly string[],
+  options: Parameters<typeof findDocumentsByNames>[3],
 ): Promise<DocumentNameMatchRow[]> {
-  const db = getDb()
-  return probeDocumentNames(names, (where, limit) =>
-    withTenant({ organizationId }, () =>
-      db
-        .select(documentNameMatchColumns)
-        .from(documents)
-        .where(and(eq(documents.organizationId, organizationId), eq(documents.scope, 'archiv'), where))
-        .orderBy(desc(documents.createdAt), asc(documents.id))
-        .limit(limit),
-    ),
-  )
+  return findDocumentsByNames(ARCHIV_SHELF, organizationId, names, options)
 }
 
-/** Load one Archiv document by id, scoped to its organization. */
-export async function findArchivDocument(documentId: string, organizationId: string): Promise<Document | null> {
+/** Load one Archiv document by id, scoped to its organization, as `reader` may see it (ADR-0086). */
+export async function findArchivDocument(
+  documentId: string,
+  organizationId: string,
+  reader: DocumentReader,
+): Promise<Document | null> {
   const db = getDb()
   const [row] = await db
     .select()
@@ -114,6 +78,7 @@ export async function findArchivDocument(documentId: string, organizationId: str
         eq(documents.id, documentId),
         eq(documents.organizationId, organizationId),
         eq(documents.scope, 'archiv'),
+        documentVisibleTo(reader),
       ),
     )
     .limit(1)

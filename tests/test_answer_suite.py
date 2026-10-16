@@ -13,6 +13,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -161,15 +162,20 @@ def test_a_second_kind_the_question_accepts_holds(tmp_path):
     assert suite.check(both, run, run.envelope)["kind"] is True
 
 
-def test_a_question_about_a_richtlinie_the_corpus_lacks_is_skipped_by_name(tmp_path):
-    registry = tmp_path / "oib_registry.json"
-    registry.write_text(json.dumps({"__chunk_format_version__": 4, "data/oib/oib-rl_2_ausgabe_mai_2023.pdf": {}}))
-    families = suite.corpus_families(registry)
+def test_a_question_about_a_richtlinie_the_corpus_lacks_is_skipped_by_name(tmp_path, monkeypatch):
+    from aiq_agent import corpus_store
+    from tests.object_corpus_fakes import install
+
+    install(monkeypatch, tmp_path)
+    corpus_store.put("oib-rl_2_ausgabe_mai_2023.pdf", b"%PDF")
+    families = suite.corpus_families()
     assert families == {"2"}
     assert suite.lacking_family({"family": "OIB-RL 5"}, families) == "OIB-RL 5"
     assert suite.lacking_family(QUESTION, families) is None
     assert suite.lacking_family({"family": "Bauordnung"}, families) is None
-    assert suite.lacking_family({"family": "OIB-RL 5"}, suite.corpus_families(tmp_path / "missing.json")) is None
+    monkeypatch.delenv("AIQ_SUMMARY_DB")
+    monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
+    assert suite.lacking_family({"family": "OIB-RL 5"}, suite.corpus_families()) is None
     report = suite.render([], [], {"started": "t", "runs_per_question": 1}, None, ["schallschutz (OIB-RL 5)"])
     assert "the ingested corpus lacks the Richtlinie: schallschutz (OIB-RL 5)." in report
 
@@ -365,6 +371,17 @@ def test_every_linked_package_is_checked_for_a_foreign_import():
     import census
 
     assert "tavily_web_search" in census.source_packages()
+
+
+def test_the_frontend_plugins_a_run_loads_come_from_this_checkout():
+    # From a worktree, the main checkout's editable `aiq_api` met the worktree's
+    # `aiq_agent` and every turn died, reported as a 0.0 s run.
+    import census
+
+    packages = census.source_packages()
+    for name in ("aiq_api", "aiq_debug"):
+        assert packages[name].is_relative_to(census.ROOT.resolve())
+        assert (packages[name] / "__init__.py").exists()
 
 
 def test_one_failing_run_does_not_sink_the_suite(tmp_path, monkeypatch):
@@ -656,3 +673,59 @@ def test_a_corpus_ingested_in_this_process_reads_as_ready(monkeypatch, tmp_path)
     collection = _make_chroma_client(path).get_or_create_collection(oib_sync.COLLECTION_NAME)
     collection.add(ids=["1"], documents=["Punkt 12"], embeddings=[[0.1, 0.2]])
     assert suite._corpus_ready()
+
+
+def _ingest_in_this_process(monkeypatch, tmp_path, *, succeed: bool):
+    """A corpus of one file, the real queue, and a "claiming source" that runs what is queued."""
+    from aiq_agent import corpus_store
+    from aiq_agent import oib_sync
+    from aiq_api.jobs import ingest_dispatch
+    from tests.corpus_job_fakes import FakeIngestor
+    from tests.corpus_job_fakes import run_worker
+    from tests.object_corpus_fakes import install
+
+    install(monkeypatch, tmp_path)
+    ingestor = FakeIngestor()
+    monkeypatch.setattr(oib_sync, "_get_oib_ingestor", lambda: ingestor)
+
+    def claim_and_run(*_args, **_kwargs):
+        run_worker(succeed=succeed)
+        return True
+
+    # Autospecced: a call `attach` itself would refuse (a keyword it no longer takes) fails here too.
+    attach = create_autospec(ingest_dispatch.attach, side_effect=claim_and_run)
+    monkeypatch.setattr(ingest_dispatch, "attach", attach)
+    corpus_store.put("a.pdf", b"%PDF-1.4 a")
+    return (
+        attach,
+        ingestor,
+        lambda: corpus_store.get_file("a.pdf").needs_ingestion(oib_sync.CHUNK_FORMAT_VERSION),
+    )
+
+
+def test_ingest_queues_the_corpus_jobs_and_claims_them_in_this_process(monkeypatch, tmp_path):
+    # `oib_sync.sync()` only queues; on a developer machine nothing else would run the jobs.
+    attach, ingestor, needs_ingestion = _ingest_in_this_process(monkeypatch, tmp_path, succeed=True)
+
+    assert suite._ingest_corpus(poll_seconds=0) is None
+    attach.assert_called_once_with(ingestor)
+    assert not needs_ingestion()
+
+
+def test_ingest_reports_a_file_whose_job_failed_instead_of_waiting_for_it(monkeypatch, tmp_path):
+    _attach, _ingestor, needs_ingestion = _ingest_in_this_process(monkeypatch, tmp_path, succeed=False)
+
+    assert suite._ingest_corpus(poll_seconds=0) == "1 file(s) could not be ingested"
+    assert needs_ingestion()
+
+
+def test_the_turn_decisions_precedent_is_read_off_its_log_line():
+    """Beside the lookups a run made, p(precedent) calibrates the prefetch threshold (ADR-0064)."""
+    line = (
+        "INFO aiq_agent.agents.piloti.decisions: Turn decision in 431 ms: evidence=0.97 corpus=referenz(0.92) "
+        "families=[] skill=None cards=[] self_contained=0.9 precedent=0.83\n"
+    )
+
+    assert suite.precedent_of(line) == 0.83
+    assert suite.precedent_of(line.replace("precedent=0.83", "precedent=None")) is None
+    assert suite.precedent_of("") is None

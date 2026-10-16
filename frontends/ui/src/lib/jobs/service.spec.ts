@@ -122,6 +122,7 @@ import {
   submitAgentRun,
   updateJob,
 } from './service'
+import { AGENT_RUN_INPUT_MAX_CHARS } from './types'
 
 const emptySkill = {} as SkillSnapshot
 const skillSnapshot: SkillSnapshot = {
@@ -614,6 +615,42 @@ describe('fireJob', () => {
     expect(vi.mocked(repository.insertRun).mock.calls[0][0].runMessageId).toBeNull()
   })
 
+  /**
+   * ADR-0079: capacity makes a job wait in the research queue, it never refuses
+   * it. A fire the backend queued is a QUEUED run (not skipped, not running),
+   * and a scheduled fire goes in as bulk so it waits behind the office's own
+   * questions.
+   */
+  it('records a fire the backend queued as a queued run, not a skipped one', async () => {
+    vi.mocked(submitJob).mockResolvedValue({ jobId: 'backend-1', queued: true })
+
+    const run = await fireJob(definitionRow(), 'schedule', 'scheduler')
+
+    expect(run.status).toBe('queued')
+    expect(vi.mocked(repository.insertRun).mock.calls[0][0]).toMatchObject({
+      status: 'queued',
+      backendJobId: 'backend-1',
+      startedAt: null,
+    })
+  })
+
+  it('records a queued fire as running when it has no message for the worker to start it through', async () => {
+    vi.mocked(submitJob).mockResolvedValue({ jobId: 'backend-1', queued: true })
+    vi.mocked(createRunMessage).mockResolvedValueOnce(null as never)
+
+    const run = await fireJob(definitionRow(), 'schedule', 'scheduler')
+
+    expect(run.status).toBe('running')
+  })
+
+  it('sends a scheduled fire as bulk and a manual one as interactive', async () => {
+    await fireJob(definitionRow(), 'schedule', 'scheduler')
+    await fireJob(definitionRow(), 'manual', 'user_1')
+
+    const priorities = vi.mocked(submitJob).mock.calls.map((call) => call[0].priority)
+    expect(priorities).toEqual(['bulk', 'interactive'])
+  })
+
   it('records a skipped fire as a visible run instead of losing it', async () => {
     vi.mocked(submitJob).mockRejectedValue(new JobSubmitSkippedError('org job cap reached', 60))
 
@@ -665,7 +702,25 @@ describe('fireScheduledJob', () => {
     expect(vi.mocked(repository.insertRun).mock.calls[0][0]).toMatchObject({ status: 'skipped' })
   })
 
+  it('skips a schedule whose project is closed, visibly, and submits nothing (ADR-0090)', async () => {
+    vi.mocked(findProjectInOrg).mockResolvedValueOnce({ collectionName: 'proj_x', status: 'closed' } as never)
+
+    const result = await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
+
+    expect(result).toEqual({ fired: false, reason: 'project-closed' })
+    expect(submitJob).not.toHaveBeenCalled()
+    expect(vi.mocked(repository.insertRun).mock.calls[0][0]).toMatchObject({ status: 'skipped', error: 'Project is closed' })
+  })
+
   it('fires and reports the backend id', async () => {
+    const result = await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
+
+    expect(result).toEqual({ fired: true, jobId: 'backend-1' })
+  })
+
+  it('counts a fire the backend queued as fired: a full queue is a wait, not a skip', async () => {
+    vi.mocked(submitJob).mockResolvedValue({ jobId: 'backend-1', queued: true })
+
     const result = await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
 
     expect(result).toEqual({ fired: true, jobId: 'backend-1' })
@@ -713,6 +768,31 @@ describe('submitAgentRun', () => {
     const submitted = vi.mocked(submitJob).mock.calls[0][0]
     expect(submitted).not.toHaveProperty('clarifier_result')
     expect(submitted).not.toHaveProperty('documents')
+  })
+
+  it('refuses a prompt over the backend ceiling in a sentence, before submitting', async () => {
+    const atCeiling = 'x'.repeat(AGENT_RUN_INPUT_MAX_CHARS)
+    await submitAgentRun({ ...spec, prompt: atCeiling })
+    expect(vi.mocked(submitJob).mock.calls[0][0].input).toBe(atCeiling)
+
+    vi.mocked(submitJob).mockClear()
+    const refusal = submitAgentRun({ ...spec, prompt: `${atCeiling}x` })
+    await expect(refusal).rejects.toBeInstanceOf(JobSubmitError)
+    await expect(refusal).rejects.toThrow(`at most ${AGENT_RUN_INPUT_MAX_CHARS}`)
+    expect(submitJob).not.toHaveBeenCalled()
+  })
+
+  it('never searches a restricted folder: its report is filed for the whole project (ADR-0087)', async () => {
+    // The real scope assembly, so the names on the wire are the ones checked.
+    const actual = await vi.importActual<typeof import('@/lib/collection-scope')>('@/lib/collection-scope')
+    vi.mocked(computeCollectionScope).mockImplementation(actual.computeCollectionScope)
+
+    await submitAgentRun(spec)
+
+    expect(vi.mocked(computeCollectionScope).mock.calls[0][1]).not.toHaveProperty('restrictedCollections')
+    const submitted = vi.mocked(submitJob).mock.calls[0][0]
+    expect(submitted.collection_scope).toContain('proj_x')
+    expect((submitted.collection_scope ?? []).filter((name) => /_r[0-9a-f]{12}$/.test(name))).toEqual([])
   })
 })
 

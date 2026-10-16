@@ -13,13 +13,13 @@
     "8000": { "label": "AI-Q Backend" },
     "5432": { "label": "PostgreSQL" }
   },
-  "postCreateCommand": "uv pip install ruff~=0.15.1 pytest pytest-asyncio pytest-cov >/dev/null 2>&1; cd frontends/ui && npm install",
+  "postCreateCommand": "uv pip install ruff~=0.16.9 pytest pytest-asyncio pytest-cov >/dev/null 2>&1; cd frontends/ui && npm install",
   "postStartCommand": "git config --global --add safe.directory /app || true",
   "remoteUser": "root",
   "customizations": {
     "vscode": {
       "extensions": [
-        "dbaeumer.vscode-eslint",
+        "oxc.oxc-vscode",
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
         "ms-python.python",
@@ -28,7 +28,7 @@
       "settings": {
         "python.defaultInterpreterPath": "/app/.venv/bin/python",
         "python.analysis.typeCheckingMode": "basic",
-        "eslint.workingDirectories": ["frontends/ui"],
+        "oxc.path.oxlint": "${workspaceFolder}/frontends/ui/node_modules/.bin/oxlint",
         "terminal.integrated.defaultProfile.linux": "bash"
       }
     }

@@ -1,39 +1,13 @@
-/** Org-wide Archiv: the top-level, cross-project document store (ADR-0024). */
+/** Office filing (Büroablage): the org-wide, top-level, cross-project document store (ADR-0024). */
 export const archiv = {
-  title: 'Archiv',
+  title: 'Office filing',
   subtitle: 'Shared documents available to every project in your organization',
   backToApp: 'Back to projects',
   backToProject: 'Back to project',
   backToNamedProject: 'Back to {name}',
+  // What only the Büroablage card says: the gold kind chip and where it came from.
   library: {
-    searchPlaceholder: 'Search the Archiv…',
-    searchLabel: 'Search Archiv documents',
-    resetSearch: 'Reset search',
-    categoriesLabel: 'Filter by category',
-    allCategories: 'All',
-    emptyTitle: 'The Archiv is empty',
-    emptyDescription:
-      'Documents stored here become office knowledge, available to every project in your organization.',
-    noMatchTitle: 'No matching documents',
-    noMatchDescription: 'No Archiv document matches your search or the selected category.',
-    clearFilters: 'Clear filters',
     provenance: 'From: {source}',
-    semantic: {
-      searchPlaceholder: 'Search the Archiv — press Enter for semantic search…',
-      run: 'Search',
-      reset: 'Show all documents',
-      banner: 'Semantic search: {count, plural, one {# result} other {# results}} for “{query}”',
-      searching: 'Searching the Archiv for “{query}”…',
-      noResults: 'No semantic matches for “{query}”',
-      /** A search that could not RUN — see the same pair in `files`. */
-      failed: 'The search could not be run',
-      failedDescription:
-        'Something went wrong on the way to the index. The Archiv is untouched — try the same search again, or go back to all documents.',
-      retry: 'Try again',
-      failedBanner: 'Semantic search for “{query}” could not be run',
-      noResultsDescription:
-        'Nothing in the Archiv matched the meaning of your query. Try different wording, or clear the search to browse every document.',
-    },
     kind: {
       floorplan: 'Floor plan',
       section: 'Section / elevation',
@@ -52,16 +26,10 @@ export const archiv = {
   toast: {
     // Fired the instant async ingestion finishes and the document becomes
     // citable across every project in the organization.
-    ingestionComplete: '“{name}” is now in the office Archiv — citable',
+    ingestionComplete: '“{name}” is now in Office filing — citable',
   },
   workspace: {
-    dropToUpload: 'Drop files to add them to the Archiv',
-    dropUnsupported: 'Some files are not a supported type',
-    uploadProblem: 'Upload problem',
-    dismissError: 'Dismiss error',
-    loadError: 'The Archiv could not be loaded.',
-    listTruncated: 'Showing the newest {count} documents. Older ones are missing from this list and from the name search.',
-    tryAgain: 'Try again',
+    dropToUpload: 'Drop files to add them to Office filing',
   },
   actions: {
     label: 'File actions for “{name}”',
@@ -79,6 +47,8 @@ export const archiv = {
     open: 'Open',
     ask: 'Ask about this',
     copyOriginPath: 'Copy origin path',
+    moved: '“{name}” moved to {folder}',
+    moveError: 'The document could not be moved. Please try again.',
     move: 'Move to folder',
     rename: 'Rename…',
     delete: 'Delete…',
@@ -103,13 +73,13 @@ export const archiv = {
     },
   },
   delete: {
-    action: 'Delete from Archiv',
+    action: 'Delete from Office filing',
     title: 'Delete “{name}”?',
     confirm: 'This removes the document for the whole organization. This cannot be undone.',
     confirmAction: 'Delete',
     cancel: 'Cancel',
     deleting: 'Deleting…',
-    success: '“{name}” was removed from the Archiv',
+    success: '“{name}” was removed from Office filing',
     error: 'The document could not be deleted',
     legalHold: 'The document is under a legal hold and cannot be deleted',
   },

@@ -11,8 +11,9 @@ settings card and every bounce link to.
 
 ## Where to find the address
 
-Open the project's settings and find the section **E-Mail-Eingang**. The
-**Projektadresse** looks like this:
+Open the project's settings, section **Dokumente & Index** (Documents &
+index), and find the card **E-Mail-Eingang**. The **Projektadresse** looks like
+this:
 
 ```
 wohnbau-hietzing.k3m7q2xw4pab@piloti.at
@@ -23,15 +24,19 @@ The part before the dot is the project name, there for you to recognise the
 address. Only the twelve characters after the dot identify the project, so
 renaming the project does not change the address and does not break it.
 
-If you do not see the section, one of two things is true: you may not add
-documents to this project, or the mail inbox is not switched on for your
-organization. Each organization gets it switched on separately, after it has
+If you do not see the card, one of three things is true: you may not add
+documents to this project, the project is closed (a closed project is
+read-only until somebody reopens it), or the mail inbox is not switched on for
+your organization. Each organization gets it switched on separately, after it has
 been told that mail is received through Cloudflare. Ask your administrator.
 
 ## Who can send
 
 Only members of the organization who may add documents to that project:
-people with `project:documents:write` or `project:edit` on it. Piloti checks
+people with `project:documents:write` or `project:edit` on it. Once the
+project has a folder **E-Mail-Eingang** with its own access list, the sender
+must also be allowed to write into that folder: its folder roles decide, as
+they do for an upload into it. A closed project accepts no mail. Piloti checks
 the **From** address of the mail against the members of the project's
 organization. Send from the address you sign in to Piloti with.
 
@@ -61,8 +66,12 @@ to people who have no use for it.
   `… Anna Berger (2)`.
 - **Every attachment becomes a project document**, is indexed, and can be
   searched and cited like any upload. It counts against your organization's
-  storage quota. Two attachments with the same name in one mail are filed as
-  `plan.pdf` and `plan (2).pdf`.
+  storage quota. Each file is named after the mail's folder and its own name,
+  `2026-09-30 10.15 – Anna Berger – plan.pdf`, as a mail imported from an
+  Outlook archive is: a project knows a document by its name, so a plain
+  `plan.pdf` from two mails would become two versions of one document. Two
+  attachments with the same name in one mail get `… plan.pdf` and
+  `… plan (2).pdf`.
 - **A mail forwarded as an attachment** (an `.eml`) is opened, and the files
   inside it are filed. The forwarded mail itself is not.
 - **A notification in your Piloti inbox** says how many files were filed and
@@ -82,6 +91,7 @@ to people who have no use for it.
 | Empty attachments, and unnamed parts whose type Piloti cannot recognise | Nothing to file | Name the file and attach it again |
 | Files past the hundredth in one mail | The limit per mail | Send the rest in a second mail |
 | A file type Piloti does not accept, a file that is too large, or a full storage quota | The same rules as an upload | Only that file is skipped; the rest are filed |
+| A file whose name your office's sensitive-data list holds back | The same name screening as an upload ([sensitive data](sensitive-data-and-access.md)) | Only that file is skipped. Upload it in the app, where you can release it with one tick |
 | Links to cloud files (OneDrive, Google Drive, WeTransfer) | Piloti does not fetch them | Attach the files, or upload them in the app |
 | **The text of the mail** | It is not stored | If the text matters, save it as a PDF and attach it |
 
@@ -113,6 +123,8 @@ addresses exist or who is a member. The reason is one of these:
 | The mail inbox is not switched on for your organization | Ask your administrator |
 | You are not a member of the project | Ask a project admin to add you |
 | You are a member but may not add documents | Ask a project admin for a role with document write access |
+| The folder **E-Mail-Eingang** has its own access list, and it does not let you write | Ask a project admin to give you write access to that folder |
+| The project is closed | Ask whoever may reopen it, or file the documents in another project |
 | You sent from a different address than your Piloti account | Send from the address you sign in with |
 | The project address was only in Bcc | Put it in To or Cc |
 | Your mail domain does not sign with DKIM | See below |

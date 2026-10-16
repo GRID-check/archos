@@ -65,7 +65,7 @@ function grant(held: string[], role: 'project-editor' | 'project-admin' = 'proje
   vi.mocked(requireProjectAccess).mockImplementation(async (_session, _project, permission) => {
     const asked = Array.isArray(permission) ? permission : [permission]
     if (!asked.some((p) => held.includes(p))) throw new NotFoundError()
-    return { role }
+    return { role, closed: false, readsBecauseClosed: false }
   })
 }
 

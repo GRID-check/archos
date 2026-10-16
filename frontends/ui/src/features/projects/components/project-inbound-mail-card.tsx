@@ -71,7 +71,7 @@ export function ProjectInboundMailCard({
   return (
     <SectionCard
       variant="raised"
-      title={t('project.sections.inboundMail')}
+      title={t('project.inboundMail.title')}
       description={t('project.inboundMail.description')}
       loading={state.status === 'loading'}
       skeletonRows={2}

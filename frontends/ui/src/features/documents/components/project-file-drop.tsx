@@ -36,11 +36,20 @@ export function routesDropToFiles(pathname: string, projectId: string): boolean 
   return !SECTIONS_WITH_OWN_DROP.has(parts[3] ?? '')
 }
 
-export function ProjectFileDrop({ projectId, children }: { projectId: string; children: ReactNode }) {
+export function ProjectFileDrop({
+  projectId,
+  disabled = false,
+  children,
+}: {
+  projectId: string
+  /** No drop target at all: a closed project takes no files (ADR-0090). */
+  disabled?: boolean
+  children: ReactNode
+}) {
   const pathname = usePathname() ?? ''
   const router = useRouter()
   const t = useTranslations('files')
-  const active = routesDropToFiles(pathname, projectId)
+  const active = !disabled && routesDropToFiles(pathname, projectId)
 
   const sendToFiles = useCallback(
     (files: File[]) => {
@@ -52,6 +61,7 @@ export function ProjectFileDrop({ projectId, children }: { projectId: string; ch
   const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
     onDrop: sendToFiles,
     disabled: !active,
+    acceptZip: true,
   })
   useWindowDragGuard()
 

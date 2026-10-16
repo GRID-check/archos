@@ -98,6 +98,33 @@ export const INBOX_ITEM_TYPES = [
    */
   'feedback.submitted',
   /**
+   * Operational: everything an upload of yours brought in has been read
+   * (ADR-0086, ticket „Was ist angekommen?"). Addressed to the uploader; the
+   * row opens the upload's summary.
+   */
+  'upload.completed',
+  /**
+   * Operational: the content check held a file back before any model read it
+   * (ADR-0086). Addressed to whoever may release or delete it, folded into one
+   * counted row per organization, and opening the quarantine queue.
+   */
+  'document.quarantined',
+  /**
+   * Operational: the uploader of a quarantined file asks for it to be released
+   * (ADR-0086, „Freigabe anfragen"). Addressed to whoever may release it, one
+   * row per file, opening the quarantine queue. It names the file: only the
+   * file's own reviewers receive it.
+   */
+  'document.release_requested',
+  /**
+   * Informational, operational tier: an Outlook archive the recipient started
+   * importing has been filed, or the import stopped (ADR-0085). Addressed to the
+   * person who started it, pointing at the project and anchored on the folder
+   * the import filed under, which is where the row lands.
+   */
+  'mail_import.completed',
+  'mail_import.failed',
+  /**
    * Informational, operational: the files of a mail the reader sent to a
    * project's inbox address were filed (ADR-0075). The inbox is the sender's
    * only feedback channel — Piloti sends no mail in v1 — so the row names how
@@ -135,6 +162,8 @@ export const INBOX_TARGET_TYPES = [
   'organization',
   'project',
   'product_feedback',
+  /** One upload gesture (migration 0110): the target of `upload.completed`. */
+  'upload_batch',
 ] as const
 export type InboxTargetType = (typeof INBOX_TARGET_TYPES)[number]
 

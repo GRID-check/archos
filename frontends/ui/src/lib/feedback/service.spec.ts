@@ -11,9 +11,11 @@ vi.mock('./repository', () => ({
   upsertAnswerFeedback: vi.fn(),
   deleteAnswerFeedbackForUser: vi.fn(),
   getAnswerFeedbackForUser: vi.fn(async () => null),
+  getAnswerTraceId: vi.fn(async () => null),
+  isRestrictedUseVote: vi.fn(async () => false),
+  getPersistedAnswerConversationId: vi.fn(async () => null),
   listAnswerFeedbackForConversation: vi.fn(),
   getFeedbackHealth: vi.fn(),
-  listFeedbackTurns: vi.fn(),
 }))
 
 // The memory-implication trigger: mocked wholesale — its own behavior is
@@ -22,7 +24,36 @@ vi.mock('@/lib/projects/memory-service', () => ({
   implicateMemoryFromFeedback: vi.fn(async () => 0),
 }))
 
+// The voter's folder clearance (ADR-0087), decided in the projects service.
+vi.mock('@/lib/projects/service', () => ({
+  memoryClearance: vi.fn(async () => ({ cleared: ['00000000-0000-4000-8000-0000000000aa'] })),
+}))
+
+// The office's chat screening (ADR-0086): the REAL matcher over Piloti's
+// suggested list, with no database behind it.
+vi.mock('@/lib/upload-screening/service', async () => {
+  const { chatScreeningRules, maskText } = await import('@/lib/upload-screening/content-screen')
+  const { SUGGESTED_SCREENING_POLICY } = await import('@/lib/upload-screening/policy')
+  return {
+    maskChatText: vi.fn(async (_organizationId: string, text: string) =>
+      maskText(text, chatScreeningRules(SUGGESTED_SCREENING_POLICY))
+    ),
+  }
+})
+
 vi.mock('./digest', () => ({ getFeedbackDigest: vi.fn() }))
+
+// The Langfuse client: its own behaviour is pinned in lib/langfuse/*.spec.ts;
+// here only when the service calls it, with what, and that it never waits on it.
+vi.mock('@/lib/langfuse/feedback-score', () => ({
+  feedbackScoringEnabled: vi.fn(() => true),
+  upsertFeedbackScore: vi.fn(async () => true),
+  deleteFeedbackScore: vi.fn(async () => true),
+}))
+
+vi.mock('@/lib/organizations/display-names', () => ({
+  getOrganizationDisplayNames: vi.fn(async () => new Map<string, string>()),
+}))
 
 vi.mock('@/lib/authz/platform', () => ({
   requirePlatformPermission: vi.fn(),
@@ -36,12 +67,22 @@ import { PlatformAccessDeniedError, requirePlatformPermission } from '@/lib/auth
 import {
   deleteAnswerFeedbackForUser,
   getAnswerFeedbackForUser,
+  getAnswerTraceId,
   getFeedbackHealth,
+  isRestrictedUseVote,
+  getPersistedAnswerConversationId,
   listAnswerFeedbackForConversation,
   upsertAnswerFeedback,
 } from './repository'
 import { implicateMemoryFromFeedback } from '@/lib/projects/memory-service'
+import { memoryClearance } from '@/lib/projects/service'
 import { getFeedbackDigest } from './digest'
+import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
+import {
+  deleteFeedbackScore,
+  feedbackScoringEnabled,
+  upsertFeedbackScore,
+} from '@/lib/langfuse/feedback-score'
 import {
   getAnswerFeedbackDigest,
   getAnswerFeedbackHealth,
@@ -49,6 +90,12 @@ import {
   retractAnswerFeedback,
   submitAnswerFeedback,
 } from './service'
+import { NO_RATINGS_FILTERS, type FeedbackQuery } from './filters'
+
+const Q: FeedbackQuery = {
+  scope: { from: '2026-09-10', to: '2026-10-09', organizationIds: [], projectIds: [] },
+  ratings: NO_RATINGS_FILTERS,
+}
 
 const mockRequireProjectAccess = vi.mocked(requireProjectAccess)
 const mockUpsert = vi.mocked(upsertAnswerFeedback)
@@ -79,9 +126,11 @@ const storedRow = {
   verdict: 'up' as const,
   reason: null,
   comment: null,
+  expectedAnswer: null,
   // No experiment arm: the holdout is off by default (see
   // lib/platform-lessons/holdout.ts), so an ordinary vote carries null.
   lessonsHoldout: null,
+  restrictedSource: false,
   createdAt: new Date(),
   updatedAt: new Date(),
 }
@@ -94,6 +143,27 @@ beforeEach(() => {
 })
 
 describe('submitAnswerFeedback', () => {
+  /**
+   * `conversation_id` used to be stored exactly as the client sent it, and the
+   * readers joined topics and titles on it. When the answer row exists in the
+   * voter's organization, its conversation is the one stored.
+   */
+  it("stores the persisted answer's conversation, not the one the client named", async () => {
+    vi.mocked(getPersistedAnswerConversationId).mockResolvedValueOnce('conv_real')
+    await submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'up', conversationId: 'conv_claimed' })
+
+    expect(getPersistedAnswerConversationId).toHaveBeenCalledWith('msg_1', 'org_1')
+    expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 'conv_real' }))
+  })
+
+  /** A shallow turn may never be persisted; its vote must still land. */
+  it("keeps the client's conversation for a turn that has no answer row", async () => {
+    vi.mocked(getPersistedAnswerConversationId).mockResolvedValueOnce(null)
+    await submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'up', conversationId: 'conv_1' })
+
+    expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 'conv_1' }))
+  })
+
   it('upserts an up vote scoped to the session user + org', async () => {
     const view = await submitAnswerFeedback(session, {
       messageId: 'msg_1',
@@ -108,11 +178,18 @@ describe('submitAnswerFeedback', () => {
       verdict: 'up',
       reason: null,
       comment: null,
+      expectedAnswer: null,
       conversationId: 'conv_1',
       lessonsHoldout: null,
       projectId: null,
     })
-    expect(view).toEqual({ messageId: 'msg_1', verdict: 'up', reason: null, comment: null })
+    expect(view).toEqual({
+      messageId: 'msg_1',
+      verdict: 'up',
+      reason: null,
+      comment: null,
+      expectedAnswer: null,
+    })
     expect(mockRequireProjectAccess).not.toHaveBeenCalled()
   })
 
@@ -125,13 +202,23 @@ describe('submitAnswerFeedback', () => {
       reason: 'inaccurate',
     })
 
-    expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({ verdict: 'down', reason: 'inaccurate' }))
-    expect(view).toEqual({ messageId: 'msg_1', verdict: 'down', reason: 'inaccurate', comment: null })
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ verdict: 'down', reason: 'inaccurate' })
+    )
+    expect(view).toEqual({
+      messageId: 'msg_1',
+      verdict: 'down',
+      reason: 'inaccurate',
+      comment: null,
+      expectedAnswer: null,
+    })
   })
 
   it('accepts a down vote without a reason (reason arrives on chip click)', async () => {
     await submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'down' })
-    expect(mockUpsert).toHaveBeenCalledWith(expect.objectContaining({ verdict: 'down', reason: null }))
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ verdict: 'down', reason: null })
+    )
   })
 
   it('implicates memory when a down vote carries new comment text', async () => {
@@ -149,11 +236,47 @@ describe('submitAnswerFeedback', () => {
       comment: 'OIB 4 falsch zitiert',
       projectId: 'proj_1',
     })
-    expect(mockImplicate).toHaveBeenCalledWith({
-      organizationId: 'org_1',
-      projectId: 'proj_1',
-      comment: 'OIB 4 falsch zitiert',
+    // Among the notes this voter may see (ADR-0087): their clearance rides along.
+    await vi.waitFor(() =>
+      expect(mockImplicate).toHaveBeenCalledWith({
+        organizationId: 'org_1',
+        projectId: 'proj_1',
+        comment: 'OIB 4 falsch zitiert',
+        readableFolderIds: ['00000000-0000-4000-8000-0000000000aa'],
+      })
+    )
+    expect(memoryClearance).toHaveBeenCalledWith(session, 'proj_1')
+  })
+
+  it('implicates open organization notes only for a vote outside a project', async () => {
+    mockUpsert.mockResolvedValue({ ...storedRow, verdict: 'down', comment: 'falsch' })
+    await submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'down', comment: 'falsch' })
+    await vi.waitFor(() =>
+      expect(mockImplicate).toHaveBeenCalledWith(expect.objectContaining({ readableFolderIds: [] }))
+    )
+    expect(memoryClearance).not.toHaveBeenCalled()
+  })
+
+  it("stores a down-vote comment masked against the office's policy (ADR-0086)", async () => {
+    await submitAnswerFeedback(session, {
+      messageId: 'msg_1',
+      verdict: 'down',
+      comment: 'Die IBAN AT61 1904 3002 3457 3201 aus dem Lohnzettel fehlt',
     })
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ comment: 'Die IBAN [IBAN entfernt] aus dem [Begriff entfernt] fehlt' })
+    )
+  })
+
+  it('stores the expected answer masked too: it becomes an eval case a model answers', async () => {
+    await submitAnswerFeedback(session, {
+      messageId: 'msg_1',
+      verdict: 'down',
+      expectedAnswer: 'Die Honorarnote an IBAN AT61 1904 3002 3457 3201',
+    })
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedAnswer: 'Die [Begriff entfernt] an IBAN [IBAN entfernt]' })
+    )
   })
 
   it('does not implicate memory again for an unchanged re-vote comment', async () => {
@@ -172,17 +295,21 @@ describe('submitAnswerFeedback', () => {
 
   it('rejects a reason on an up vote', async () => {
     await expect(
-      submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'up', reason: 'inaccurate' }),
+      submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'up', reason: 'inaccurate' })
     ).rejects.toBeInstanceOf(BadRequestError)
     expect(mockUpsert).not.toHaveBeenCalled()
   })
 
   it('rejects unknown verdicts and reasons (defense in depth beyond zod)', async () => {
     await expect(
-      submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'meh' as never }),
+      submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'meh' as never })
     ).rejects.toBeInstanceOf(BadRequestError)
     await expect(
-      submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'down', reason: 'nope' as never }),
+      submitAnswerFeedback(session, {
+        messageId: 'msg_1',
+        verdict: 'down',
+        reason: 'nope' as never,
+      })
     ).rejects.toBeInstanceOf(BadRequestError)
     expect(mockUpsert).not.toHaveBeenCalled()
   })
@@ -196,7 +323,7 @@ describe('submitAnswerFeedback', () => {
     expect(mockRequireProjectAccess).toHaveBeenCalledWith(
       session,
       '00000000-0000-0000-0000-000000000001',
-      'project:view',
+      'project:view'
     )
   })
 
@@ -207,7 +334,7 @@ describe('submitAnswerFeedback', () => {
         messageId: 'msg_1',
         verdict: 'up',
         projectId: '00000000-0000-0000-0000-000000000001',
-      }),
+      })
     ).rejects.toBeInstanceOf(NotFoundError)
     expect(mockUpsert).not.toHaveBeenCalled()
   })
@@ -215,14 +342,147 @@ describe('submitAnswerFeedback', () => {
 
 describe('retractAnswerFeedback', () => {
   it('deletes the vote scoped to the session user + org', async () => {
-    mockDelete.mockResolvedValue(true)
+    mockDelete.mockResolvedValue('fb_1')
     await retractAnswerFeedback(session, 'msg_1')
     expect(mockDelete).toHaveBeenCalledWith('user_1', 'msg_1', 'org_1')
   })
 
   it('is idempotent — retracting a non-existent vote is a success', async () => {
-    mockDelete.mockResolvedValue(false)
+    mockDelete.mockResolvedValue(null)
     await expect(retractAnswerFeedback(session, 'msg_gone')).resolves.toBeUndefined()
+    expect(deleteFeedbackScore).not.toHaveBeenCalled()
+  })
+
+  it("deletes the vote's Langfuse score by the deleted row's id", async () => {
+    mockDelete.mockResolvedValue('fb_1')
+    await retractAnswerFeedback(session, 'msg_1')
+    expect(deleteFeedbackScore).toHaveBeenCalledWith('fb_1')
+  })
+
+  it('does not wait for Langfuse to answer the retraction', async () => {
+    mockDelete.mockResolvedValue('fb_1')
+    vi.mocked(deleteFeedbackScore).mockReturnValueOnce(new Promise(() => {}))
+    await expect(retractAnswerFeedback(session, 'msg_1')).resolves.toBeUndefined()
+  })
+})
+
+/**
+ * Every vote also lands in Langfuse as a score on its answer's trace
+ * (ADR-0044, Amendment 3), after the database write and never in its way.
+ */
+describe('submitAnswerFeedback -> Langfuse score', () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+  it('scores the trace the answer row names, keyed by the feedback row', async () => {
+    vi.mocked(getAnswerTraceId).mockResolvedValueOnce('6135ac80f26d5f7dab0f1633fe313293')
+    mockUpsert.mockResolvedValueOnce({
+      ...storedRow,
+      verdict: 'down',
+      reason: 'inaccurate',
+      comment: 'R 60, nicht R 90',
+    })
+
+    await submitAnswerFeedback(session, {
+      messageId: 'msg_1',
+      verdict: 'down',
+      reason: 'inaccurate',
+      comment: 'R 60, nicht R 90',
+    })
+    await flush()
+
+    expect(getAnswerTraceId).toHaveBeenCalledWith('msg_1', 'org_1')
+    expect(upsertFeedbackScore).toHaveBeenCalledWith({
+      feedbackId: 'fb_1',
+      traceId: '6135ac80f26d5f7dab0f1633fe313293',
+      verdict: 'down',
+      reason: 'inaccurate',
+      comment: 'R 60, nicht R 90',
+      expectedAnswer: null,
+      previousVerdict: null,
+    })
+  })
+
+  /** As the platform's feedback views leave such a vote out (`OUTSIDE_RESTRICTED_USE`). */
+  it("scores a vote on a restricted conversation without the voter's words", async () => {
+    vi.mocked(getAnswerTraceId).mockResolvedValueOnce('6135ac80f26d5f7dab0f1633fe313293')
+    vi.mocked(isRestrictedUseVote).mockResolvedValueOnce(true)
+    mockUpsert.mockResolvedValueOnce({
+      ...storedRow,
+      verdict: 'down',
+      reason: 'inaccurate',
+      comment: 'Das Honorar aus dem Vertrag stimmt nicht',
+      expectedAnswer: '48.000 EUR',
+    })
+
+    await submitAnswerFeedback(session, {
+      messageId: 'msg_1',
+      verdict: 'down',
+      reason: 'inaccurate',
+      comment: 'Das Honorar aus dem Vertrag stimmt nicht',
+      expectedAnswer: '48.000 EUR',
+    })
+    await flush()
+
+    expect(isRestrictedUseVote).toHaveBeenCalledWith('fb_1', 'org_1')
+    expect(upsertFeedbackScore).toHaveBeenCalledWith({
+      feedbackId: 'fb_1',
+      traceId: '6135ac80f26d5f7dab0f1633fe313293',
+      verdict: 'down',
+      reason: 'inaccurate',
+      comment: null,
+      expectedAnswer: null,
+      previousVerdict: null,
+    })
+  })
+
+  /** The review queue takes a down-vote once, not again for every edit of it. */
+  it('passes the verdict the row held before this vote', async () => {
+    vi.mocked(getAnswerTraceId).mockResolvedValueOnce('6135ac80f26d5f7dab0f1633fe313293')
+    mockGetPrior.mockResolvedValueOnce({ ...storedRow, verdict: 'down', reason: 'inaccurate' })
+    mockUpsert.mockResolvedValueOnce({ ...storedRow, verdict: 'down', reason: 'wrong_source' })
+
+    await submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'down', reason: 'wrong_source' })
+    await flush()
+
+    expect(upsertFeedbackScore).toHaveBeenCalledWith(
+      expect.objectContaining({ verdict: 'down', reason: 'wrong_source', previousVerdict: 'down' })
+    )
+  })
+
+  it('sends nothing when the answer row names no trace', async () => {
+    vi.mocked(getAnswerTraceId).mockResolvedValueOnce(null)
+    await submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'up' })
+    await flush()
+    expect(upsertFeedbackScore).not.toHaveBeenCalled()
+  })
+
+  it('does not even look the trace up when Langfuse is not configured', async () => {
+    vi.mocked(feedbackScoringEnabled).mockReturnValueOnce(false)
+    await submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'up' })
+    await flush()
+    expect(getAnswerTraceId).not.toHaveBeenCalled()
+    expect(upsertFeedbackScore).not.toHaveBeenCalled()
+  })
+
+  it('returns the vote without waiting for Langfuse, and survives its failure', async () => {
+    vi.mocked(getAnswerTraceId).mockResolvedValueOnce('6135ac80f26d5f7dab0f1633fe313293')
+    vi.mocked(upsertFeedbackScore).mockReturnValueOnce(new Promise(() => {}))
+    await expect(
+      submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'up' })
+    ).resolves.toMatchObject({
+      verdict: 'up',
+    })
+
+    vi.mocked(getAnswerTraceId).mockRejectedValueOnce(new Error('db down'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await expect(
+      submitAnswerFeedback(session, { messageId: 'msg_1', verdict: 'up' })
+    ).resolves.toMatchObject({
+      verdict: 'up',
+    })
+    await flush()
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
   })
 })
 
@@ -237,8 +497,14 @@ describe('getOwnConversationFeedback', () => {
 
     expect(mockList).toHaveBeenCalledWith('user_1', 'conv_1', 'org_1')
     expect(views).toEqual([
-      { messageId: 'msg_1', verdict: 'up', reason: null, comment: null },
-      { messageId: 'msg_2', verdict: 'down', reason: 'too_slow', comment: null },
+      { messageId: 'msg_1', verdict: 'up', reason: null, comment: null, expectedAnswer: null },
+      {
+        messageId: 'msg_2',
+        verdict: 'down',
+        reason: 'too_slow',
+        comment: null,
+        expectedAnswer: null,
+      },
     ])
   })
 })
@@ -258,8 +524,8 @@ describe('getAnswerFeedbackHealth', () => {
   it('refuses anyone who is not a platform owner, and does not read first', async () => {
     vi.mocked(requirePlatformPermission).mockRejectedValue(new PlatformAccessDeniedError())
 
-    await expect(getAnswerFeedbackHealth({} as never)).rejects.toBeInstanceOf(
-      PlatformAccessDeniedError,
+    await expect(getAnswerFeedbackHealth({} as never, Q)).rejects.toBeInstanceOf(
+      PlatformAccessDeniedError
     )
     // The guard runs BEFORE the unscoped query — a refusal must not still have
     // touched every tenant's rows.
@@ -278,10 +544,85 @@ describe('getAnswerFeedbackHealth', () => {
       turns: [],
     } as never)
 
-    const health = await getAnswerFeedbackHealth({} as never)
+    const health = await getAnswerFeedbackHealth({} as never, Q)
 
     expect(health.totals).toEqual({ up: 4, down: 1 })
     expect(requirePlatformPermission).toHaveBeenCalledOnce()
+  })
+
+  /** The platform view links each rated turn to its trace, and the project to its scores. */
+  it('links turns to their Langfuse traces when the UI is configured, and not otherwise', async () => {
+    vi.mocked(requirePlatformPermission).mockResolvedValue(undefined)
+    const health = {
+      windowDays: 30,
+      totals: { up: 0, down: 2 },
+      reasons: [],
+      daily: [],
+      organizations: [],
+      topics: [],
+      turns: [
+        {
+          id: 'fb_1',
+          organizationId: 'org_1',
+          messageId: 'm1',
+          traceId: '6135ac80f26d5f7dab0f1633fe313293',
+        },
+        { id: 'fb_2', organizationId: 'org_1', messageId: 'm2', traceId: null },
+      ],
+    }
+    vi.mocked(getFeedbackHealth).mockResolvedValue(health as never)
+
+    vi.stubEnv('LANGFUSE_PUBLIC_URL', 'https://langfuse.example.at/')
+    vi.stubEnv('LANGFUSE_PROJECT_ID', 'grid')
+    try {
+      const linked = await getAnswerFeedbackHealth({} as never, Q)
+      expect(linked.turns.map((turn) => turn.langfuseTraceUrl)).toEqual([
+        'https://langfuse.example.at/project/grid/traces/6135ac80f26d5f7dab0f1633fe313293',
+        null,
+      ])
+      expect(linked.langfuse).toEqual({ projectUrl: 'https://langfuse.example.at/project/grid' })
+
+      vi.stubEnv('LANGFUSE_PROJECT_ID', '')
+      const unlinked = await getAnswerFeedbackHealth({} as never, Q)
+      expect(unlinked.turns.map((turn) => turn.langfuseTraceUrl)).toEqual([null, null])
+      expect(unlinked.langfuse).toBeNull()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  /** A raw `org_arch_buero` tells the platform owner nothing; the name does. */
+  it('names every organization in the rollup and in the drill-in, null where unknown', async () => {
+    vi.mocked(requirePlatformPermission).mockResolvedValue(undefined)
+    vi.mocked(getOrganizationDisplayNames).mockResolvedValue(
+      new Map([['org_arch_buero', 'Architekturbüro Huber']])
+    )
+    vi.mocked(getFeedbackHealth).mockResolvedValue({
+      windowDays: 30,
+      totals: { up: 0, down: 2 },
+      reasons: [],
+      daily: [],
+      organizations: [
+        { organizationId: 'org_arch_buero', up: 0, down: 1, voters: 1 },
+        { organizationId: 'org_gone', up: 0, down: 1, voters: 1 },
+      ],
+      topics: [],
+      turns: [
+        { id: 'fb_1', organizationId: 'org_arch_buero', messageId: 'm1' },
+        { id: 'fb_2', organizationId: 'org_gone', messageId: 'm2' },
+      ],
+    } as never)
+
+    const health = await getAnswerFeedbackHealth({} as never, Q)
+
+    expect(health.organizations.map((org) => org.organizationName)).toEqual([
+      'Architekturbüro Huber',
+      null,
+    ])
+    expect(health.turns.map((turn) => turn.organizationName)).toEqual([
+      'Architekturbüro Huber',
+      null,
+    ])
   })
 })
 
@@ -300,8 +641,8 @@ describe('getAnswerFeedbackDigest', () => {
   it('refuses anyone who is not a platform owner, and neither reads nor summarises', async () => {
     vi.mocked(requirePlatformPermission).mockRejectedValue(new PlatformAccessDeniedError())
 
-    await expect(getAnswerFeedbackDigest({} as never)).rejects.toBeInstanceOf(
-      PlatformAccessDeniedError,
+    await expect(getAnswerFeedbackDigest({} as never, Q)).rejects.toBeInstanceOf(
+      PlatformAccessDeniedError
     )
     expect(getFeedbackHealth).not.toHaveBeenCalled()
     expect(getFeedbackDigest).not.toHaveBeenCalled()
@@ -313,12 +654,12 @@ describe('getAnswerFeedbackDigest', () => {
     vi.mocked(getFeedbackHealth).mockResolvedValue(health)
     vi.mocked(getFeedbackDigest).mockResolvedValue({ digest: null, error: 'too_few_votes' })
 
-    const result = await getAnswerFeedbackDigest({} as never, { windowDays: 7 }, { locale: 'en' })
+    const result = await getAnswerFeedbackDigest({} as never, Q, { locale: 'en' })
 
-    // `limit: 0` — the digest samples its own turns in both directions, so the
-    // aggregate read must not also pay for a drill-in nobody will look at.
-    expect(getFeedbackHealth).toHaveBeenCalledWith({ windowDays: 7, limit: 0 })
-    expect(getFeedbackDigest).toHaveBeenCalledWith(health, { windowDays: 7 }, { locale: 'en' })
+    // `turnLimit: 0` — the digest samples its own turns in both directions, so
+    // the aggregate read must not also pay for a list nobody will look at.
+    expect(getFeedbackHealth).toHaveBeenCalledWith(Q, { turnLimit: 0 })
+    expect(getFeedbackDigest).toHaveBeenCalledWith(health, Q, { locale: 'en' })
     expect(result).toEqual({ digest: null, error: 'too_few_votes' })
   })
 })

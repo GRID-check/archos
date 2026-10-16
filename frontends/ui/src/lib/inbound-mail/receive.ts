@@ -1,13 +1,13 @@
 /**
  * Receiving one mail (Worker → BFF, ADR-0075): verify it, stage its
- * attachments, queue it, answer. Filing happens later, in `./drain`.
+ * attachments, queue it, answer. Filing happens later, in `./job`.
  *
  * ## Why accept and file are two steps
  *
  * The Worker holds the sender's SMTP transaction open while this runs, and a
  * mail of a hundred files through `uploadDocument` does not fit in that window.
  * So the webhook does only what decides the answer, stores the selected
- * attachments, and says 202; the scheduler's tick drains the queue.
+ * attachments, enqueues a job on the BFF's job queue, and says 202.
  *
  * ## The order of work, and why it is this order
  *
@@ -23,13 +23,21 @@
  *  5. Read the body under that cap, refusing a declared size over the maximum
  *     up front.
  *  6. Verify the sender, find them in THIS organization's roster, check they
- *     may write documents in THIS project.
+ *     may write documents in THIS project and into its `E-Mail-Eingang`
+ *     folder by its folder roles (ADR-0097), and that the project is not
+ *     closed (ADR-0090).
  *  7. Parse the mail and select its attachments.
  *  8. The delivery key; a mail already queued, filing or filed is a duplicate
  *     and costs nothing more.
  *  9. The rate limits, after the dedupe, so a redelivery is never refused.
+ *     Then an attachment larger than the organization may upload is skipped as
+ *     `size`, by the gate every upload passes, rather than staged for a filing
+ *     that would refuse it (the delivery key is the whole mail's, so a change
+ *     of the limit does not make a redelivery look new).
  * 10. Stage the selected attachments under the project's prefix.
- * 11. Queue the row.
+ * 11. Queue the row, and a job to file it (`./job`). A job that could not be
+ *     enqueued is not a refusal: the row is durable, and the sweep gives a
+ *     queued delivery without a job a new one.
  * 12. 202.
  *
  * ## The answer is a contract
@@ -42,16 +50,20 @@
 
 import 'server-only'
 import { randomUUID } from 'node:crypto'
-import { ApiError, NotFoundError, PayloadTooLargeError } from '@/lib/api/errors'
+import { ApiError, FileTooLargeError, ForbiddenError, NotFoundError, PayloadTooLargeError } from '@/lib/api/errors'
 import { errorResponse, readBoundedBody } from '@/lib/api/handler'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import { TransientAuthzError } from '@/lib/authz/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { requireProjectAccess } from '@/lib/authz/projects'
+import { requireFolderWrite } from '@/lib/authz/folder-access'
 import type { SkippedAttachment } from '@/lib/db/schema'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { enforceLimit, INBOUND_MAIL_ADDRESS_LIMIT, INBOUND_MAIL_ORG_LIMIT } from '@/lib/limits'
+import { mailFolderName } from '@/lib/mail-import/naming'
+import { findRootProjectFolderByName } from '@/lib/projects/folder-service'
+import { isProjectClosedError } from '@/lib/projects/project-status'
 import { loadOrganizationDirectory, type DirectoryPerson } from '@/lib/sharing/directory'
+import { assertFileSizeAllowed } from '@/lib/storage/upload-limit'
 import { isProjectMailInboxEnabledForOrg } from '@/lib/workos/feature-flags'
 import { asciiLower, inboundMailDomain, parseInboundAddress } from './address'
 import {
@@ -60,12 +72,12 @@ import {
   INBOUND_VERDICT_HEADER,
   INBOUND_VERDICT_REJECT,
 } from './contract'
-import { mailFolderName } from './folder-name'
+import { enqueueDelivery, INBOUND_MAIL_ROOT_FOLDER } from './job'
 import { deliveryKey, parseMail } from './mime'
 import { findActiveAddressByToken, findDelivery, queueDelivery, type ResolvedAddress } from './repository'
 import { verifySender } from './sender-auth'
 import { deleteStagedObjects, errorName, stageAttachments } from './staging'
-import type { ParsedMail } from './types'
+import type { ParsedMail, SelectedAttachment } from './types'
 
 /** Envoy's and the Worker's ceiling on one message, in raw bytes. */
 export const MAX_MESSAGE_BYTES = 26 * 1024 * 1024
@@ -93,12 +105,13 @@ type RefusalOutcome =
   | 'refused-sender'
   | 'refused-member'
   | 'refused-permission'
+  | 'refused-closed'
 
 type Outcome = 'accepted' | 'duplicate' | RefusalOutcome | `retry-${string}`
 
 /**
  * A permanent refusal: the one error the response marks with the reject
- * verdict. Three texts for six reasons, so the answer enumerates nothing a
+ * verdict. Three texts for seven reasons, so the answer enumerates nothing a
  * stranger could learn from (an address switched off reads as unknown).
  */
 export class InboundMailRefusal extends ApiError {
@@ -116,6 +129,9 @@ const REFUSALS: Record<RefusalOutcome, [number, string, string]> = {
   'refused-sender': [403, 'FORBIDDEN', SENDER_REFUSED],
   'refused-member': [403, 'FORBIDDEN', SENDER_REFUSED],
   'refused-permission': [403, 'FORBIDDEN', SENDER_REFUSED],
+  // A closed project is read-only (ADR-0090) until someone reopens it: a
+  // refusal like any other, not a retry the sending server repeats for days.
+  'refused-closed': [403, 'FORBIDDEN', SENDER_REFUSED],
 }
 
 /** What one delivery did, for its one log line. No names, no addresses, no subject. */
@@ -317,7 +333,31 @@ async function acceptMessage(delivery: Delivery): Promise<Accepted> {
 
   await enforceLimit(INBOUND_MAIL_ADDRESS_LIMIT, `${address.organizationId}:${address.addressId}`)
   await enforceLimit(INBOUND_MAIL_ORG_LIMIT, address.organizationId)
-  return queueMail(delivery, sender, mail, key)
+  const fitting = await withinUploadLimit(address.organizationId, mail)
+  trail.files = fitting.attachments.length
+  trail.skipped = fitting.skipped.length
+  return queueMail(delivery, sender, fitting, key)
+}
+
+/**
+ * The mail without the attachments its organization may not upload for their
+ * size, each skipped as `size`: the same `assertFileSizeAllowed` the upload
+ * path and the Outlook import ask. A limit that could not be read throws, and
+ * the sending server retries.
+ */
+async function withinUploadLimit(organizationId: string, mail: ParsedMail): Promise<ParsedMail> {
+  const attachments: SelectedAttachment[] = []
+  const skipped = [...mail.skipped]
+  for (const attachment of mail.attachments) {
+    try {
+      await assertFileSizeAllowed(organizationId, attachment.content.byteLength, attachment.filename)
+      attachments.push(attachment)
+    } catch (error) {
+      if (!(error instanceof FileTooLargeError)) throw error
+      skipped.push({ filename: attachment.filename, reason: 'size' })
+    }
+  }
+  return { ...mail, attachments, skipped }
 }
 
 interface AuthorizedSender {
@@ -341,7 +381,7 @@ async function authorizeSender(delivery: Delivery): Promise<AuthorizedSender> {
   )
   if (!session) throw new InboundMailRefusal('refused-member')
 
-  await requireDocumentWrite(session, address.projectId)
+  await requireInboxWrite(session, address.projectId)
   return { session, fromAddress: verdict.fromAddress, fromName: verdict.fromName }
 }
 
@@ -367,16 +407,26 @@ async function findMemberByEmail(organizationId: string, email: string): Promise
 }
 
 /**
- * The gate `uploadDocument` applies, asked up front with the same function, so
- * the webhook and the filing cannot disagree. Asked with `onError: 'throw'`:
- * an FGA check that could not complete is a {@link TransientAuthzError} (503,
- * retried), and only a definite "no" becomes a permanent refusal.
+ * The gate the filing applies, asked up front with the same function, so the
+ * webhook and the filing cannot disagree: document write in the project, and
+ * write on its `E-Mail-Eingang` folder once that exists, by the folder roles
+ * WorkOS holds (ADR-0097). A new folder below it inherits its list, so a
+ * sender who may not write there could file nothing. Asked with
+ * `onError: 'throw'`: a WorkOS lookup that could not complete is a
+ * {@link TransientAuthzError} (503, retried), and only a definite "no", or a
+ * closed project (ADR-0090), becomes a permanent refusal.
  */
-async function requireDocumentWrite(session: AuthorizedSession, projectId: string): Promise<void> {
+async function requireInboxWrite(session: AuthorizedSession, projectId: string): Promise<void> {
   try {
-    await requireProjectAccess(session, projectId, ['project:documents:write', 'project:edit'], { onError: 'throw' })
+    const root = await findRootProjectFolderByName(projectId, INBOUND_MAIL_ROOT_FOLDER, session.organizationId)
+    await requireFolderWrite(session, projectId, [root?.id ?? null], { onError: 'throw' })
   } catch (error) {
-    if (error instanceof NotFoundError) throw new InboundMailRefusal('refused-permission')
+    if (isProjectClosedError(error)) throw new InboundMailRefusal('refused-closed')
+    // Not found: no write in the project, or a folder they may not read. A
+    // plain 403 from the folder check: they may only read it.
+    if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+      throw new InboundMailRefusal('refused-permission')
+    }
     throw error
   }
 }
@@ -399,7 +449,10 @@ async function queueMail(
       id,
       deliveryKey: key,
       senderUserId: sender.session.userId,
-      folderName: mailFolderName(receivedAt, { name: sender.fromName ?? mail.fromName, address: sender.fromAddress }),
+      folderName: mailFolderName(receivedAt.toISOString(), {
+        name: sender.fromName ?? mail.fromName ?? '',
+        address: sender.fromAddress,
+      }),
       subject: mail.subject,
       stagingBucket: staging.bucket,
       staged: staging.staged,
@@ -415,8 +468,18 @@ async function queueMail(
     return { status: 200, body: { status: 'duplicate' } }
   }
   trail.rowId = rowId
+  await enqueueFiling(address, rowId)
   trail.outcome = 'accepted'
   return { status: 202, body: { status: 'queued', files: mail.attachments.length, skipped: mail.skipped.length } }
+}
+
+/** Step 11's job. Its failure is logged, never answered: the sweep enqueues one for a delivery without. */
+async function enqueueFiling(address: ResolvedAddress, deliveryId: string): Promise<void> {
+  try {
+    await enqueueDelivery(address.organizationId, { deliveryId, projectId: address.projectId })
+  } catch (error) {
+    console.warn(`[inbound-mail] the filing job was not enqueued; the sweep will row=${deliveryId} error=${errorName(error)}`)
+  }
 }
 
 /** Every skip is counted; only the first {@link MAX_NAMED_SKIPS} keep a name on the row. */

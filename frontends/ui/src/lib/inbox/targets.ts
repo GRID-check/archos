@@ -43,6 +43,7 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import { resolveResourceAccess } from '@/lib/sharing/access'
 import { describeResource } from '@/lib/sharing/registry'
 import { PLATFORM_INBOX_PERMISSION } from './registry'
+import { findOwnUploadBatch } from '@/lib/upload-batches/service'
 
 /** Row-level context a deep link may use. */
 export interface InboxTargetLinkContext {
@@ -117,6 +118,8 @@ export interface InboxTargetDescriptor {
  */
 const ORGANIZATION_DESTINATIONS: Partial<Record<InboxItemType, string>> = {
   'storage.quota_warning': '/app/organization/storage',
+  'document.quarantined': '/app/organization/quarantine',
+  'document.release_requested': '/app/organization/quarantine',
 }
 
 function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {
@@ -125,6 +128,10 @@ function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {
     resolve: async (session, resourceId) => {
       const access = await resolveResourceAccess(session, type, resourceId)
       if (!access.role) return null
+      // An item names its resource (a mention carries the thread's title). For a
+      // reader who may no longer read what the resource was drawn from, that
+      // line is content: the row renders redacted, like a revoked one.
+      if (access.contentLocked) return null
       return {
         deepLink: (context) =>
           describeResource(type).deepLink(resourceId, {
@@ -201,10 +208,16 @@ const projectTarget: InboxTargetDescriptor = {
     return {
       deepLink: (context) => {
         // A mail's row opens its folder: the files that landed, or for a mail
-        // the drain gave up on, whatever landed before it did (the row names
+        // the inbox gave up on, whatever landed before it did (the row names
         // the folder when there is one, else the file root).
         if (context.itemType === 'inbound_mail.filed' || context.itemType === 'inbound_mail.failed') {
           return filesDeepLink(resourceId, context.folderId)
+        }
+        // A mail import lands on the folder it filed into: the row's anchor,
+        // unless the import ended before making one (anchored `import:<id>`).
+        if (context.itemType === 'mail_import.completed' || context.itemType === 'mail_import.failed') {
+          const anchor = context.anchorId?.trim()
+          return filesDeepLink(resourceId, anchor && !anchor.startsWith('import:') ? anchor : null)
         }
         if (context.run) return runDeepLink(resourceId, context.run)
         const taskId = context.taskId?.trim() ? context.taskId.trim() : null
@@ -257,11 +270,29 @@ const productFeedbackTarget: InboxTargetDescriptor = {
   },
 }
 
+/**
+ * One upload gesture — the target of `upload.completed` (ADR-0086).
+ *
+ * Its summary is its uploader's: it lists what they sent and what the office's
+ * screening kept on their machine. Access is therefore "you made this upload",
+ * re-asked at read time (spec IB-13) through the same service the summary page
+ * reads with, so the row and the page cannot disagree.
+ */
+const uploadBatchTarget: InboxTargetDescriptor = {
+  type: 'upload_batch',
+  resolve: async (session, resourceId) => {
+    const batch = await findOwnUploadBatch(session, resourceId).catch(() => null)
+    if (!batch) return null
+    return { deepLink: () => `/app/uploads/${encodeURIComponent(resourceId)}` }
+  },
+}
+
 export const INBOX_TARGET_REGISTRY: Record<InboxTargetType, InboxTargetDescriptor> = {
   ...shareableTargets,
   organization: organizationTarget,
   project: projectTarget,
   product_feedback: productFeedbackTarget,
+  upload_batch: uploadBatchTarget,
 }
 
 /**

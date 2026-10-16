@@ -29,10 +29,13 @@ vi.mock('@/lib/db/tenant-context', () => ({
 }))
 vi.mock('./sender-auth', () => ({ verifySender: vi.fn() }))
 vi.mock('./mime', () => ({ parseMail: vi.fn(), deliveryKey: vi.fn() }))
-vi.mock('./folder-name', () => ({ mailFolderName: vi.fn(() => '2026-09-30 10.15 – Anna Berger') }))
+vi.mock('@/lib/mail-import/naming', () => ({ mailFolderName: vi.fn(() => '2026-09-30 10.15 – Anna Berger') }))
+vi.mock('./job', () => ({ enqueueDelivery: vi.fn(), INBOUND_MAIL_ROOT_FOLDER: 'E-Mail-Eingang' }))
+vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
-vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
+vi.mock('@/lib/authz/folder-access', () => ({ requireFolderWrite: vi.fn() }))
+vi.mock('@/lib/projects/folder-service', () => ({ findRootProjectFolderByName: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ isProjectMailInboxEnabledForOrg: vi.fn() }))
 vi.mock('@/lib/limits', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/limits')>()),
@@ -49,14 +52,18 @@ vi.mock('./staging', async (importOriginal) => ({
   deleteStagedObjects: vi.fn(),
 }))
 
-import { NotFoundError, TooManyRequestsError } from '@/lib/api/errors'
+import { FileTooLargeError, ForbiddenError, NotFoundError, TooManyRequestsError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { TransientAuthzError } from '@/lib/authz/errors'
-import { requireProjectAccess } from '@/lib/authz/projects'
+import { requireFolderWrite } from '@/lib/authz/folder-access'
+import { findRootProjectFolderByName } from '@/lib/projects/folder-service'
+import { projectClosedError } from '@/lib/projects/project-status'
 import { enforceLimit } from '@/lib/limits'
 import { loadOrganizationDirectory, type DirectoryPerson } from '@/lib/sharing/directory'
+import { assertFileSizeAllowed } from '@/lib/storage/upload-limit'
 import { isProjectMailInboxEnabledForOrg } from '@/lib/workos/feature-flags'
+import { enqueueDelivery } from './job'
 import { deliveryKey, parseMail } from './mime'
 import { findActiveAddressByToken, findDelivery, queueDelivery } from './repository'
 import { MAX_MESSAGE_BYTES, receiveInboundMail } from './receive'
@@ -142,7 +149,8 @@ beforeEach(() => {
   vi.mocked(resolvePinnedRequesterSession).mockImplementation(async (requester) =>
     sessionFor(requester.userId, requester.organizationId)
   )
-  vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor' })
+  vi.mocked(findRootProjectFolderByName).mockResolvedValue(null)
+  vi.mocked(requireFolderWrite).mockResolvedValue(undefined)
   vi.mocked(parseMail).mockResolvedValue(MAIL)
   vi.mocked(deliveryKey).mockReturnValue(KEY)
   vi.mocked(findDelivery).mockResolvedValue(null)
@@ -159,6 +167,7 @@ beforeEach(() => {
   }))
   vi.mocked(deleteStagedObjects).mockResolvedValue([])
   vi.mocked(queueDelivery).mockImplementation(async (input) => input.id)
+  vi.mocked(assertFileSizeAllowed).mockReset().mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -176,7 +185,7 @@ describe('accepting a mail', () => {
 
     const [where, staged] = vi.mocked(stageAttachments).mock.calls[0]
     expect(where).toMatchObject({ organizationId: 'org_A', projectId: 'project-a' })
-    expect(staged).toBe(MAIL.attachments)
+    expect(staged).toEqual(MAIL.attachments)
     const row = vi.mocked(queueDelivery).mock.calls[0][0]
     expect(row).toMatchObject({
       ...ADDRESS_A,
@@ -193,6 +202,46 @@ describe('accepting a mail', () => {
       `org/org_A/project/project-a/inbound-mail/${where.deliveryId}/2`,
     ])
     expect(deleteStagedObjects).not.toHaveBeenCalled()
+    // ...and hands the row to a job on the BFF's queue, in the address's organization.
+    expect(enqueueDelivery).toHaveBeenCalledWith('org_A', { deliveryId: where.deliveryId, projectId: 'project-a' })
+  })
+
+  it('still answers 202 when the job could not be enqueued: the row is durable, the sweep enqueues one', async () => {
+    vi.mocked(enqueueDelivery).mockRejectedValueOnce(new Error('database gone'))
+
+    const response = await receiveInboundMail(delivery().request)
+
+    expect(response.status).toBe(202)
+    expect(deleteStagedObjects).not.toHaveBeenCalled()
+    expect(logs.warn).toEqual([expect.stringContaining('the filing job was not enqueued')])
+  })
+
+  it('skips an attachment over the organization’s upload limit as size, before staging it', async () => {
+    vi.mocked(assertFileSizeAllowed).mockImplementation(async (_org, size, filename) => {
+      if (filename === MAIL.attachments[1].filename) throw new FileTooLargeError({ fileSize: size, maxSizeBytes: 1 })
+    })
+
+    const response = await receiveInboundMail(delivery().request)
+
+    expect(response.status).toBe(202)
+    expect(await response.json()).toEqual({ status: 'queued', files: 1, skipped: 2 })
+    expect(assertFileSizeAllowed).toHaveBeenCalledWith('org_A', MAIL.attachments[0].content.byteLength, MAIL.attachments[0].filename)
+    expect(vi.mocked(stageAttachments).mock.calls[0][1]).toEqual([MAIL.attachments[0]])
+    expect(vi.mocked(queueDelivery).mock.calls[0][0].skipped).toEqual([
+      { filename: 'image001.png', reason: 'embedded' },
+      { filename: MAIL.attachments[1].filename, reason: 'size' },
+    ])
+    // The key is the whole mail's: the limit does not decide what a redelivery is.
+    expect(deliveryKey).toHaveBeenCalledWith(MAIL.messageId, MAIL.attachments.map((a) => a.sha256))
+  })
+
+  it('retries when the upload limit could not be read', async () => {
+    vi.mocked(assertFileSizeAllowed).mockRejectedValueOnce(new Error('database gone'))
+
+    const response = await receiveInboundMail(delivery().request)
+
+    expect(response.status).toBe(503)
+    expect(stageAttachments).not.toHaveBeenCalled()
   })
 
   it('takes the twelve steps in order: token before body, switch before body, dedupe before budgets', async () => {
@@ -203,7 +252,7 @@ describe('accepting a mail', () => {
       order.push('verify')
       return { verdict: 'pass', fromAddress: 'anna@buero-a.at', fromName: null }
     })
-    vi.mocked(requireProjectAccess).mockImplementation(async () => (order.push('permission'), { role: 'project-editor' }))
+    vi.mocked(requireFolderWrite).mockImplementation(async () => void order.push('permission'))
     vi.mocked(parseMail).mockImplementation(async () => (order.push('parse'), MAIL))
     vi.mocked(findDelivery).mockImplementation(async () => (order.push('dedupe'), null))
     vi.mocked(enforceLimit).mockImplementation(async () => (order.push('limit'), {} as never))
@@ -265,7 +314,9 @@ describe('the reject verdict: permanent refusals only', () => {
     ['a sender verification fail', () => vi.mocked(verifySender).mockResolvedValue({ verdict: 'fail', reason: 'dkim' }), 403],
     ['a sender who is not a member', () => vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['x', { ...ANNA, userId: 'x', email: 'x@y.at' }]])), 403],
     ['a member who left since the roster was cached', () => vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(null), 403],
-    ['a member without document write', () => vi.mocked(requireProjectAccess).mockRejectedValue(new NotFoundError()), 403],
+    ['a member without document write', () => vi.mocked(requireFolderWrite).mockRejectedValue(new NotFoundError()), 403],
+    ['a member whose folder role reads E-Mail-Eingang only (ADR-0097)', () => vi.mocked(requireFolderWrite).mockRejectedValue(new ForbiddenError()), 403],
+    ['a closed project (ADR-0090)', () => vi.mocked(requireFolderWrite).mockRejectedValue(projectClosedError()), 403],
   ]
   for (const [label, arrange, status, options] of cases) {
     it(`${label}: ${status} with x-inbound-verdict: reject, a WARN, nothing stored`, async () => {
@@ -316,7 +367,8 @@ describe('retries: no verdict header, so the sending server tries again', () => 
     ['a missing recipient header', () => undefined, 503, { to: null }],
     ['a DNS temperror', () => vi.mocked(verifySender).mockResolvedValue({ verdict: 'temperror', reason: 'dns' }), 503],
     ['a switch that could not be read', () => vi.mocked(isProjectMailInboxEnabledForOrg).mockRejectedValue(new TransientAuthzError('feature-flags')), 503],
-    ['an FGA check that could not complete', () => vi.mocked(requireProjectAccess).mockRejectedValue(new TransientAuthzError('fga-check')), 503],
+    ['an FGA check that could not complete', () => vi.mocked(requireFolderWrite).mockRejectedValue(new TransientAuthzError('fga-check')), 503],
+    ['a folder-role lookup that could not complete', () => vi.mocked(requireFolderWrite).mockRejectedValue(new TransientAuthzError('folder-roles')), 503],
     ['a membership lookup that could not complete', () => vi.mocked(resolvePinnedRequesterSession).mockRejectedValue(new TransientAuthzError('membership')), 503],
     ['a roster that could not be read', () => vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map()), 503],
     ['a spent budget', () => vi.mocked(enforceLimit).mockRejectedValue(new TooManyRequestsError({ allowed: false, rule: 'inbound-mail-address', remaining: 0, limit: 60, retryAfterSeconds: 60, degraded: false })), 429],
@@ -387,7 +439,7 @@ describe('retries: no verdict header, so the sending server tries again', () => 
 })
 
 describe('dedupe', () => {
-  for (const status of ['queued', 'processing', 'filed'] as const) {
+  for (const status of ['queued', 'filed'] as const) {
     it(`answers a mail already ${status} with 200, staging nothing and spending no budget`, async () => {
       vi.mocked(findDelivery).mockResolvedValue({ id: 'row-1', status })
       const response = await receiveInboundMail(delivery().request)
@@ -461,13 +513,20 @@ describe('the Chinese wall', () => {
     expect(loadOrganizationDirectory).not.toHaveBeenCalledWith('org_B')
   })
 
-  it('asks for document write with the throwing lookup, the gate uploadDocument applies', async () => {
+  it('asks for document write with the throwing lookup, the gate the filing applies', async () => {
     await receiveInboundMail(delivery().request)
-    expect(requireProjectAccess).toHaveBeenCalledWith(
+    expect(requireFolderWrite).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-anna', organizationId: 'org_A' }),
       'project-a',
-      ['project:documents:write', 'project:edit'],
+      [null],
       { onError: 'throw' }
     )
+  })
+
+  it('asks it of the E-Mail-Eingang folder once that exists, by the sender\'s folder roles (ADR-0097)', async () => {
+    vi.mocked(findRootProjectFolderByName).mockResolvedValue({ id: 'folder-inbox' } as never)
+    await receiveInboundMail(delivery().request)
+    expect(findRootProjectFolderByName).toHaveBeenCalledWith('project-a', 'E-Mail-Eingang', 'org_A')
+    expect(requireFolderWrite).toHaveBeenCalledWith(expect.anything(), 'project-a', ['folder-inbox'], { onError: 'throw' })
   })
 })

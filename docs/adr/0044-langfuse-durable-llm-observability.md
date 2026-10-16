@@ -243,11 +243,14 @@ Two gaps this amendment deliberately does NOT close:
 - **The trace store has no backup.** Postgres has PITR (ADR-0042) and the S3
   event archive is in SeaweedFS, but ClickHouse has neither. Its PVC is pinned
   `Retain` and `protect`ed; that is the whole of its durability story.
-- **Nothing expires.** Data-retention policies are an Enterprise feature, so the
-  ClickHouse PVC grows for as long as the deployment runs. `clickhouseStorageSize`
-  is therefore a knob to watch rather than set once, and pruning is a manual
-  operator action. This is the clearest cost of taking the free build, and it is
-  a real one.
+- **Nothing expires on its own.** Data-retention policies are an Enterprise
+  feature, so Langfuse itself never deletes a trace. The scheduler does, through
+  the native delete API every edition has (Amendment 2026-10-06 below): traces
+  older than 30 days are deleted daily, and an erased chat's traces are deleted
+  with it. `clickhouseStorageSize` still sizes thirty days of traces plus
+  headroom, and is a knob to watch, because deletion is asynchronous and bounded
+  per run. The job replaces what the licence would have given; it is ours to
+  keep running.
 - Back-pressure is shared: both trace exporters sit on one pipeline, so a
   Langfuse outage long enough to fill its (bounded) sending queue will cost the
   dashboard spans too. Accepted — neither consumer is in a request path.
@@ -298,9 +301,9 @@ Two gaps this amendment deliberately does NOT close:
 
 ## Open Questions / Follow-ups
 
-- **Retention.** With no policy available in OSS, decide an operator runbook
-  (manual ClickHouse partition drops) or accept unbounded growth with alerting
-  on the PVC. Currently the latter, documented.
+- **Retention.** Answered by the scheduler's daily sweep, the purger's
+  per-conversation erasure and the scheduler's job for chats the BFF erased in
+  the delete request (Amendment 2026-10-06).
 - **Media capture** is deliberately not configured
   (`LANGFUSE_S3_MEDIA_UPLOAD_*`): no producer here emits it, and wiring it would
   add a browser-facing presign path for a feature with no consumer.
@@ -327,6 +330,114 @@ still has no retention (Enterprise feature) and still grows without bound;
 `clickhouseStorageSize` (default 50 Gi) sizes that. The Retention follow-up
 below is answered for server logs; it stands for trace data.
 
+## Amendment 3 (2026-10-08): every answer vote is a score on its trace
+
+Users rate answers (thumbs plus an optional reason and comment, stored in
+`answer_feedback`), and the platform page reads those votes. What it could not
+do is put a vote next to the trace that produced the answer, because nothing
+outside the agent knew which trace that was: NAT draws a random
+`workflow_trace_id` per run unless one is already in the context
+(`nat/runtime/runner.py`), and the id never left the process.
+
+**Change, in two halves.**
+
+- **The answer names its trace.** The chat socket pins each turn's trace id to
+  its answer id before the run starts. The answer id is already a UUID derived
+  per (conversation, turn), and a UUID is the 128 bits an OTel trace id is, so
+  NAT adopts it and every root span carries it; a research job the turn hands
+  off inherits it as before. The persisted answer row records it as
+  `metadata.trace_id` (32 hex digits, Langfuse's spelling): the chat socket
+  writes the pinned id, the jobs runner the id its run actually used.
+  `src/aiq_agent/observability/turn_trace.py`.
+- **The BFF scores the vote.** After the vote is stored, the BFF writes a
+  `user-feedback` score on that trace through the official JS client
+  (`@langfuse/client`), server side only: NUMERIC 1/0, so Langfuse's mean is
+  the helpful rate the platform page headlines; the comment carries the reason
+  chip and the voter's words. The score id is derived from the feedback row id,
+  so a re-vote upserts it and a retraction deletes it.
+  `frontends/ui/src/lib/langfuse/feedback-score.ts`.
+- **A down-vote is a reason and a review item (2026-10-09).** The analysts and
+  domain experts who review answers work in Langfuse, and a reason inside a
+  comment can be neither charted nor filtered. A down-vote therefore also writes
+  a CATEGORICAL `user-feedback-reason` score (the reason key; a down-vote
+  without one is `other`, as the platform page counts it), with an id derived
+  from the feedback row like the first; a re-vote to up or a retraction deletes
+  it. The vote that becomes a down-vote also adds its trace (`objectType:
+  TRACE`) to the annotation queue `answer-review`, which `task
+  langfuse:provision` creates. The BFF finds the queue by name and caches the id,
+  or its absence, for ten minutes; without the queue nothing is enqueued. The
+  queue-item API takes no client id, so duplicates are avoided at the source:
+  editing a standing down-vote adds nothing, and only down, retract, down again
+  adds a second item. A retraction leaves the item where it is.
+
+**What it does not do.** The BFF reads the trace id from the row and never
+derives it: a row from before this amendment, or a turn whose answer was never
+persisted, has no score rather than a score on a guessed trace. A vote's
+Langfuse write is fire-and-forget, bounded (5 s, one retry) and swallowed on
+failure, so Langfuse being slow or down never costs the voter anything; the
+`answer_feedback` row stays the record. Without `LANGFUSE_HOST` and both keys
+the whole path is a no-op, and there is deliberately no default host: the
+SDK's own default is Langfuse Cloud, which this ADR rejected.
+
+**Deployment.** Pulumi injects `LANGFUSE_HOST` (the in-cluster web Service),
+`LANGFUSE_PUBLIC_URL`, `LANGFUSE_PROJECT_ID` and the two keys (by reference to
+`langfuse-secrets`) into the frontend only where the tier is deployed, folds
+the keys into the frontend's rollout checksum, and adds the
+`allow-frontend-to-langfuse` NetworkPolicy: the frontend joins the collector as
+a named caller of the web tier, which stays withheld from the wholesale allow.
+The platform answer-feedback view gets `turns[].langfuseTraceUrl` and
+`langfuse.projectUrl` for deep links.
+
+## Amendment 4 (2026-10-06): traces are deleted by the purger and the scheduler
+
+Langfuse traces hold the prompts and answers of every turn, and nothing erased
+them: neither a deleted chat nor the age of a trace. Langfuse's automatic
+retention is Enterprise-only when self-hosted, and no licence is bought, so two
+workers do the deleting through `DELETE /api/public/traces` (`{ "traceIds": [...] }`,
+1 to 1,000 ids, asynchronous), which every edition has:
+
+- **Erasure.** The purger deletes a conversation's traces after the BFF erased
+  it, and a purged project's for every chat in it. Our spans carry the
+  conversation id as `langfuse.session.id`, so the traces are found by session id.
+- **Retention.** The scheduler deletes traces older than
+  `GRID_LANGFUSE_TRACE_RETENTION_DAYS` (default 30, minimum 3, Langfuse's own
+  floor) once a day, at most 50 batches a run, so a backlog drains over days.
+
+Both live in one client, `frontends/ui/workers/langfuse-traces.js`, which
+`deletion-pipeline.md` describes. Two facts about the pinned version (4.48.0)
+shaped it, and both are in the module header with their sources:
+
+- **The list endpoint is the v2 observations API, not `GET /api/public/traces`.**
+  Langfuse v4 answers the legacy trace list with 404 under its default write
+  mode (`events_only`), and this stack is moving from `dual` to that. The job
+  therefore lists `GET /api/public/v2/observations` (filters `sessionId`,
+  `toStartTime`, `isRootObservation`; cursor pages of up to 1,000), which exists
+  only in a v4 write mode. A Langfuse in write mode `legacy`, or still on v3, is
+  not supported and the job fails loudly (404) rather than reporting an empty
+  store.
+- **The client distrusts the filter.** It deletes what it is shown, and a filter
+  Langfuse ignores returns every trace. A row outside the requested session, or
+  newer than the cutoff, aborts the run before it deletes; an empty session id is
+  refused before a request is made.
+
+Not configured (`LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`) is
+a logged no-op; an unreachable Langfuse, a 429 or a 5xx makes the purge attempt
+fail so the queue's retry applies, and delays the retention run by an hour. The
+two workers read the project key pair from the Langfuse Secret and reach the web
+tier through a named NetworkPolicy rule (`allow-workers-to-langfuse`).
+
+A chat deleted by its own request is erased in the BFF, which does not call
+this client and whose queue row the purger never claims. A third job closes
+that: every scheduler tick it reads the `deletion_queue` rows the BFF closed as
+`purged` for conversations (within 35 days, at least 15 minutes ago, not under a
+legal hold, not yet stamped), deletes each chat's traces and stamps
+`payload.langfuseTracesErasedAt`. It is kept in the scheduler on purpose: the
+BFF's erasure stays untouched and trace deletion keeps one home (the BFF
+writes scores since Amendment 3, but deletes nothing). Its cost is
+that the traces go within the hour, not in the request, and a span exported
+after the stamp waits for the retention sweep. Copies saved into Langfuse
+datasets would survive a trace delete; Piloti creates none.
+
 ## References
 
 - ADR-0029: Aspire standalone dashboard as live telemetry pane
@@ -337,4 +448,6 @@ below is answered for server logs; it stands for trace data.
 - Operator guide: `docs/deployment/kubernetes.md` § Langfuse
 - Implementation: `deploy/pulumi/src/platform/langfuse.ts`,
   `deploy/pulumi/src/data/clickhouse.ts`,
-  `src/aiq_agent/observability/langfuse_trace_attributes.py`
+  `src/aiq_agent/observability/langfuse_trace_attributes.py`,
+  `src/aiq_agent/observability/turn_trace.py`,
+  `frontends/ui/src/lib/langfuse/`

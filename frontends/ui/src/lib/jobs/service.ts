@@ -25,6 +25,7 @@ import { enforcementOn, requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
+import { isProjectClosed } from '@/lib/projects/project-status'
 import { getBudgetStatus } from '@/lib/budgets/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
@@ -53,13 +54,17 @@ import {
   submitJob,
   JobSubmitError,
   JobSubmitSkippedError,
+  type JobPriority,
   type JobSubmitPayload,
 } from './backend-client'
 import * as repository from '@/lib/tasks/repository'
+import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
 import { previousDecisionsBlock } from '@/lib/tasks/service'
 import { taskThreadConversationId } from '@/lib/tasks/task-thread'
+import { isActiveTaskRunStatus, submittedRunStatus } from '@/lib/tasks/task-vocabulary'
 import { createRunMessage } from '@/lib/runs/service'
 import {
+  AGENT_RUN_INPUT_MAX_CHARS,
   emptySkillSnapshot,
   withAlwaysOnSources,
   type CreateJobInput,
@@ -310,6 +315,7 @@ export async function getJob(
   await requireProjectAccess(session, projectId, 'project:view')
   const definition = await repository.findDefinition(jobId, session.organizationId)
   if (!definition || definition.projectId !== projectId) throw new NotFoundError('Job not found.')
+  await requireMaySeeSubject(session, projectId, definition, 'Job not found.')
   return toJobView(definition)
 }
 
@@ -449,6 +455,7 @@ export async function listJobRuns(
 
   const definition = await repository.findDefinition(jobId, session.organizationId)
   if (!definition || definition.projectId !== projectId) throw new NotFoundError('Job not found.')
+  await requireMaySeeSubject(session, projectId, definition, 'Job not found.')
   const runs = await repository.listRunsForDefinition(jobId, session.organizationId, { limit, offset })
   return { runs: runs.map(toJobRunView) }
 }
@@ -541,6 +548,12 @@ export interface AgentRunSpec {
   clarifierResult?: string | null
   /** The Unterlagen the reader named on the plan card. */
   documents?: PlanDocuments | null
+  /**
+   * Where the run goes inside its organization's queue (ADR-0079). Absent is
+   * `interactive`: somebody asked for this run and is waiting on it. A
+   * scheduled fire is `bulk`, so a sweep of twenty never makes a question wait.
+   */
+  priority?: JobPriority
 }
 
 /**
@@ -552,6 +565,8 @@ export interface SubmittedAgentRun {
   conversationId: string | null
   /** Null when the thread is unknown or the message could not be minted. */
   runMessageId: string | null
+  /** The backend queued the job for a free worker instead of starting it at once. */
+  queued: boolean
 }
 
 /**
@@ -567,6 +582,15 @@ export interface SubmittedAgentRun {
  * same fire left a whole empty conversation behind.
  */
 export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgentRun> {
+  // The backend refuses the same prompt with a 422 whose body is a validation
+  // dump, and that body is what the run row would show. Refused here first, in
+  // a sentence, before any context is built for a run that cannot start.
+  if (spec.prompt.length > AGENT_RUN_INPUT_MAX_CHARS) {
+    throw new JobSubmitError(
+      `The run's prompt is ${spec.prompt.length} characters; a run accepts at most ${AGENT_RUN_INPUT_MAX_CHARS}`,
+      422,
+    )
+  }
   const { organizationId, projectId, userId } = spec
   const [
     budgetSnapshot,
@@ -615,6 +639,7 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     owner_email: spec.ownerEmail,
     budget_header: budgetHeader,
     model_overrides: modelOverrides,
+    priority: spec.priority ?? 'interactive',
   }
 
   const contextHeaders = buildGridRequestContextWireHeaders(
@@ -634,11 +659,11 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     process.env.GRID_INTERNAL_API_TOKEN,
   )
 
-  const { jobId } = await submitJob(payload, contextHeaders)
+  const { jobId, queued } = await submitJob(payload, contextHeaders)
   const runMessageId = conversationId
     ? await mintRunMessage(conversationId, spec.runId, spec.title)
     : null
-  return { backendJobId: jobId, conversationId, runMessageId }
+  return { backendJobId: jobId, conversationId, runMessageId, queued }
 }
 
 /**
@@ -696,7 +721,7 @@ export async function fireJob(
     // schedule, or a „Jetzt ausführen" somebody can press again — and its runs
     // belong together in one place rather than in a new conversation per fire.
     const thread = await createTaskThread(definition)
-    const { backendJobId, conversationId, runMessageId } = await submitAgentRun({
+    const submitted = await submitAgentRun({
       organizationId,
       projectId,
       userId: definition.requesterUserId,
@@ -712,9 +737,13 @@ export async function fireJob(
       dataSources: definition.plan.dataSources ?? null,
       runId,
       conversationId: thread,
+      // Nobody is waiting on a schedule: it queues behind the office's own
+      // questions. A person pressing „Jetzt ausführen" is waiting.
+      priority: trigger === 'schedule' ? 'bulk' : 'interactive',
     })
+    const { backendJobId, conversationId, runMessageId } = submitted
     return recordRun(definition, trigger, actor, runId, {
-      status: 'running',
+      status: submittedRunStatus(submitted),
       backendJobId,
       error: null,
       conversationId,
@@ -751,7 +780,7 @@ export async function fireJob(
 
 /** What one fire produced, as the row-writer below needs it. */
 interface FireOutcome {
-  status: 'running' | 'skipped' | 'error'
+  status: 'queued' | 'running' | 'skipped' | 'error'
   backendJobId: string | null
   error: string | null
   conversationId: string | null
@@ -877,9 +906,24 @@ export async function loadJobForFire(jobId: string): Promise<TaskDefinition | nu
  */
 export async function fireScheduledJob(
   definition: TaskDefinition,
-): Promise<{ fired: boolean; jobId?: string; reason?: 'disabled' | 'feature-disabled' | 'skipped' | 'error' }> {
+): Promise<{
+  fired: boolean
+  jobId?: string
+  reason?: 'disabled' | 'feature-disabled' | 'project-closed' | 'skipped' | 'error'
+}> {
   if (!definition.enabled) {
     return { fired: false, reason: 'disabled' }
+  }
+  // A closed project runs no task (ADR-0090): it is read-only, and a run files
+  // into it. The schedule stays, visibly skipped, so a reopen resumes it.
+  if (isProjectClosed(await findProjectInOrg(definition.projectId, definition.organizationId))) {
+    await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
+      status: 'skipped',
+      backendJobId: null,
+      error: 'Project is closed',
+      conversationId: null,
+    })
+    return { fired: false, reason: 'project-closed' }
   }
   if (enforcementOn()) {
     let flagOn = false
@@ -899,7 +943,7 @@ export async function fireScheduledJob(
     }
   }
   const run = await fireJob(definition, 'schedule', 'scheduler')
-  if (run.status === 'running') return { fired: true, jobId: run.backendJobId ?? undefined }
+  if (isActiveTaskRunStatus(run.status)) return { fired: true, jobId: run.backendJobId ?? undefined }
   return { fired: false, reason: run.status === 'skipped' ? 'skipped' : 'error' }
 }
 

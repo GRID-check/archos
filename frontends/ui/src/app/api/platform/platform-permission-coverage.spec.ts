@@ -68,12 +68,17 @@ const EXPECTED: Record<string, string> = {
   'norms/verify/route.ts POST': 'settingsManage',
   'organizations/[organizationId]/storage/route.ts GET': 'organizationsView',
   'organizations/[organizationId]/storage/route.ts PUT': 'organizationsManage',
+  'organizations/[organizationId]/upload-limit/route.ts PUT': 'organizationsManage',
+  'organizations/[organizationId]/budgets/route.ts GET': 'organizationsView',
+  'organizations/[organizationId]/budgets/route.ts PUT': 'organizationsManage',
   'overview/route.ts GET': 'organizationsView',
   // The price list (ADR-0053): platform-owned configuration.
   'pricing/route.ts GET': 'settingsView',
   'pricing/route.ts PUT': 'settingsManage',
   'profiler/conversations/[conversationId]/route.ts GET': 'organizationsView',
   'profiler/conversations/route.ts GET': 'organizationsView',
+  // The quality scope bar's organizations and projects: data about tenants.
+  'quality/scope-options/route.ts GET': 'organizationsView',
   'reasoning-efforts/route.ts GET': 'settingsView',
   'reasoning-efforts/route.ts PUT': 'settingsManage',
   'retrieval-settings/route.ts GET': 'settingsView',
@@ -95,15 +100,17 @@ const EXPECTED: Record<string, string> = {
 }
 
 /**
- * The three routes that authorize in their SERVICE rather than the factory
- * (`getAnswerFeedbackHealth` / `getAnswerFeedbackDigest` call
- * `requirePlatformPermission` themselves), so they declare `enforcedBy` instead.
- * `authz-coverage.spec.ts` already exempts them by name.
+ * The routes that authorize in their SERVICE rather than the factory
+ * (`getAnswerFeedbackHealth`, `getAnswerFeedbackDigest`, `getAnswerFeedbackExport`
+ * and `getAnswerFeedbackFilterOptions` call `requirePlatformPermission
+ * platform:organizations:view` themselves), so they declare `enforcedBy`
+ * instead. `authz-coverage.spec.ts` already exempts them by prefix.
  */
 const SERVICE_ENFORCED = new Set([
   'answer-feedback/route.ts',
   'answer-feedback/digest/route.ts',
   'answer-feedback/export/route.ts',
+  'answer-feedback/options/route.ts',
 ])
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const

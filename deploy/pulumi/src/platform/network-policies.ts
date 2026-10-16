@@ -1,8 +1,8 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { GridConfig, backendAutoscaled } from "../config";
 import { EDGE_RATE_LIMIT, GOTENBERG, LANGFUSE, PORT } from "../constants";
-import { KEDA_NAMESPACE } from "./keda";
+import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
 
 /**
@@ -27,6 +27,12 @@ const ERR2ISSUE = "err2issue";
 const LANGFUSE_WEB = LANGFUSE.web;
 const LANGFUSE_WORKER = LANGFUSE.worker;
 const CLICKHOUSE = LANGFUSE.clickhouse;
+
+/**
+ * The backend roles that carry the Langfuse API keys (`backendEnv`, less the
+ * ingest worker) and so are named callers of the web tier in rule 11d.
+ */
+export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"] as const;
 
 /**
  * Namespace-scoped NetworkPolicies for `grid`: a **default-deny for ingress**
@@ -297,6 +303,68 @@ export function installNetworkPolicies(
       })
     : undefined;
 
+  // 11b. The purger and the skill-scheduler → Langfuse web, for its public API:
+  //     the purger deletes an erased chat's traces and the scheduler deletes the
+  //     ones past retention (ADR-0044; `workers/langfuse-traces.js`). Rule 2
+  //     withholds the web tier from the wholesale allow, so each caller is named,
+  //     as the collector is in rule 11. Deleting traces is theirs alone: the BFF
+  //     (rule 11c) and the agent (rule 11d) write scores but delete nothing.
+  const workersToLangfuse = cfg.langfuse.enabled
+    ? mk("allow-workers-to-langfuse", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": LANGFUSE_WEB } },
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: ["purger", "skill-scheduler"].map((name) => ({
+              podSelector: { matchLabels: { "app.kubernetes.io/name": name } },
+            })),
+            ports: [{ protocol: "TCP", port: PORT.langfuseWeb }],
+          },
+        ],
+      })
+    : undefined;
+
+  // 11c. frontend (the BFF) → Langfuse web public API. The BFF writes every
+  //      answer-feedback vote as a score on its trace (ADR-0044, Amendment 3)
+  //      through `LANGFUSE_HOST`, the in-cluster Service: the public host sits
+  //      behind the edge's OIDC gate, which a server-side call cannot pass.
+  //      Named by caller, like the collector; the backend tiers have their own
+  //      rule (11d).
+  const frontendToLangfuse = cfg.langfuse.enabled
+    ? mk("allow-frontend-to-langfuse", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": LANGFUSE_WEB } },
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }],
+            ports: [{ protocol: "TCP", port: PORT.langfuseWeb }],
+          },
+        ],
+      })
+    : undefined;
+
+  // 11d. The backend tiers → Langfuse web public API. The agent writes the
+  //      answer pipeline's checks as scores on each turn's trace (ADR-0089,
+  //      `aiq_agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
+  //      the in-cluster Service, for the reason rule 11c gives. The three roles
+  //      that run answers or serve them: chat (`aiq-agent`), api (`aiq-api`)
+  //      and the research worker (`agent-worker`). The ingest worker is not
+  //      named and does not get the keys (`ingestWorkerEnv`): it writes none.
+  const backendToLangfuse = cfg.langfuse.enabled
+    ? mk("allow-backend-to-langfuse", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": LANGFUSE_WEB } },
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: LANGFUSE_BACKEND_CALLERS.map((name) => ({
+              podSelector: { matchLabels: { "app.kubernetes.io/name": name } },
+            })),
+            ports: [{ protocol: "TCP", port: PORT.langfuseWeb }],
+          },
+        ],
+      })
+    : undefined;
+
   // 12. Langfuse web + worker → ClickHouse, on both interfaces: HTTP 8123 for
   //     queries and native 9000 for the schema migrator. Nothing else in the
   //     deployment speaks to ClickHouse, and it holds the trace store in
@@ -321,7 +389,7 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 13. Gotenberg (ADR-0070): the frontend in, nothing out.
+  // 13. Gotenberg (ADR-0070): the frontend and the bff-jobs pool in, nothing out.
   //
   //     It parses untrusted office files, and an office file can reference
   //     external URLs (linked images, OLE links) that LibreOffice resolves
@@ -331,15 +399,23 @@ export function installNetworkPolicies(
   //     nothing to resolve.
   //
   //     Withheld from rule 2 on the same grounds as the dashboard, so the
-  //     frontend BFF is its one caller. The agent never calls it (the BFF hands
-  //     the backend the finished PDF), and nothing else has a reason to.
+  //     frontend BFF is its caller, and the bff-jobs pool is the same BFF
+  //     running the background conversions (ADR-0079), so it is named too: a
+  //     pool left out here would fail every office file with a green plan. The
+  //     agent never calls it (the BFF hands the backend the finished PDF), and
+  //     nothing else has a reason to.
   const gotenberg = cfg.gotenberg.enabled
     ? mk("gotenberg-frontend-only", {
         podSelector: { matchLabels: { "app.kubernetes.io/name": GOTENBERG.name } },
         policyTypes: ["Ingress", "Egress"],
         ingress: [
           {
-            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }],
+            from: [
+              { podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } },
+              ...(cfg.bffJobs.enabled
+                ? [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "bff-jobs" } } }]
+                : []),
+            ],
             ports: [{ protocol: "TCP", port: PORT.gotenberg }],
           },
         ],
@@ -348,14 +424,32 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 14. KEDA (its own namespace) reads the ingest queue's depth to scale the
-  //     ingest-worker tier (ADR-0076). Postgres only, and only when that tier
-  //     runs: the operator runs one COUNT(*) there and needs nothing else.
-  const kedaToPostgres = cfg.ingestWorker.enabled
-    ? mk("allow-keda-to-postgres", {
-        podSelector: { matchLabels: { "cnpg.io/cluster": POSTGRES_CLUSTER } },
+  // 14-15. KEDA (its own namespace) reaches exactly the two kinds of target its
+  //     triggers name, and nothing else in `grid`. The caller is the OPERATOR pod,
+  //     not the namespace: the operator runs every scaler (the metrics server and
+  //     the admission webhooks in `keda` ask it, they poll nothing), so those two
+  //     have no reason to open a connection into the app or data tier.
+  const kedaOperator = [{ ...nsLabel(KEDA_NAMESPACE), podSelector: { matchLabels: { ...KEDA_OPERATOR_LABEL } } }];
+
+  // 14. The queues' depth, to scale the ingest-worker and agent-worker tiers
+  //     (ADR-0076, ADR-0079) and the bff_job_queue's, to scale the bff-jobs pool:
+  //     Postgres only, port 5432 only. The operator runs one COUNT(*) there as the
+  //     read-only scaler login.
+  const kedaToPostgres = mk("allow-keda-to-postgres", {
+    podSelector: { matchLabels: { "cnpg.io/cluster": POSTGRES_CLUSTER } },
+    policyTypes: ["Ingress"],
+    ingress: [{ from: kedaOperator, ports: [{ protocol: "TCP", port: 5432 }] }],
+  });
+
+  // 15. The fleet's running turns, from the backend's internal occupancy route,
+  //     to scale the chat tier (ADR-0080). The backend port only, on the backend
+  //     pods only, and only when that tier autoscales. (Its cpu trigger reads
+  //     `metrics.k8s.io`, which is no connection into `grid`.)
+  const kedaToBackend = backendAutoscaled(cfg)
+    ? mk("allow-keda-to-aiq-agent", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": "aiq-agent" } },
         policyTypes: ["Ingress"],
-        ingress: [{ from: [nsLabel(KEDA_NAMESPACE)], ports: [{ protocol: "TCP", port: 5432 }] }],
+        ingress: [{ from: kedaOperator, ports: [{ protocol: "TCP", port: PORT.backend }] }],
       })
     : undefined;
 
@@ -364,6 +458,7 @@ export function installNetworkPolicies(
     intra,
     cnpg,
     ...(kedaToPostgres ? [kedaToPostgres] : []),
+    ...(kedaToBackend ? [kedaToBackend] : []),
     edgeFrontend,
     edgeS3,
     edgeWeb,
@@ -374,6 +469,9 @@ export function installNetworkPolicies(
     ...(collectorToErr2Issue ? [collectorToErr2Issue] : []),
     ...(edgeLangfuse ? [edgeLangfuse] : []),
     ...(collectorToLangfuse ? [collectorToLangfuse] : []),
+    ...(workersToLangfuse ? [workersToLangfuse] : []),
+    ...(frontendToLangfuse ? [frontendToLangfuse] : []),
+    ...(backendToLangfuse ? [backendToLangfuse] : []),
     ...(langfuseToClickhouse ? [langfuseToClickhouse] : []),
     ...(gotenberg ? [gotenberg] : []),
   ];

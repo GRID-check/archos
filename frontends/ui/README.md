@@ -41,6 +41,7 @@ Key variables for local development:
 ```bash
 # Backend URL (must match where your backend is running)
 BACKEND_URL=http://localhost:8000
+BACKEND_CHAT_URL=http://localhost:8001
 
 # Skip authentication for local development (uses Default User)
 REQUIRE_AUTH=false
@@ -87,8 +88,8 @@ bun run dev
 | `bun run dev`        | Start gateway + Next.js dev server (with HMR)          |
 | `bun run build`      | Build for production                                   |
 | `bun run start`      | Start production server (gateway with WebSocket proxy) |
-| `bun run lint`       | Run ESLint                                             |
-| `bun run lint:fix`   | Run ESLint with auto-fix                               |
+| `bun run lint`       | Run oxlint (repo rules included, see `.oxlintrc.json`) |
+| `bun run lint:fix`   | Run oxlint with auto-fix                               |
 | `bun run format`     | Format code with Prettier                              |
 | `bun run type-check` | Run TypeScript type checking                           |
 | `bun run test`       | Run tests once (Vitest)                                |
@@ -208,6 +209,7 @@ docker build -t aiq-blueprint-ui:latest .
 ```bash
 docker run -p 3000:3000 \
   -e BACKEND_URL=http://localhost:8000 \
+  -e BACKEND_CHAT_URL=http://localhost:8001 \
   -e REQUIRE_AUTH=false \
   aiq-blueprint-ui:latest
 ```
@@ -217,6 +219,7 @@ docker run -p 3000:3000 \
 ```bash
 docker run -p 3000:3000 \
   -e BACKEND_URL=http://localhost:8000 \
+  -e BACKEND_CHAT_URL=http://localhost:8001 \
   -e REQUIRE_AUTH=true \
   -e WORKOS_CLIENT_ID=client_xxx \
   -e WORKOS_API_KEY=sk_test_xxx \
@@ -234,6 +237,7 @@ services:
     environment:
       # Backend
       - BACKEND_URL=http://backend:8000
+      - BACKEND_CHAT_URL=http://backend-chat:8000
 
       # Authentication (auth is disabled by default)
       - REQUIRE_AUTH=${REQUIRE_AUTH:-false}
@@ -262,6 +266,7 @@ When running in Docker and connecting to services on the host machine:
 # Connect to backend running on host
 docker run -p 3000:3000 \
   -e BACKEND_URL=http://host.docker.internal:8000 \
+  -e BACKEND_CHAT_URL=http://host.docker.internal:8001 \
   -e REQUIRE_AUTH=false \
   aiq-blueprint-ui:latest
 ```
@@ -272,6 +277,7 @@ When using docker-compose or custom networks, use service names:
 
 ```bash
 -e BACKEND_URL=http://backend:8000
+-e BACKEND_CHAT_URL=http://backend-chat:8000
 ```
 
 ### Health Check
@@ -291,7 +297,8 @@ All environment variables are **runtime configurable** - no container rebuild ne
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BACKEND_URL` | `http://localhost:8000` | Backend API URL |
+| `BACKEND_URL` | `http://localhost:8000` | Backend api role URL: every HTTP call |
+| `BACKEND_CHAT_URL` | none (required) | The backend's chat role, dialled for the WebSocket alone; no fallback to `BACKEND_URL` |
 
 ### Authentication
 
@@ -322,45 +329,12 @@ See `.env.example` for the full list of available frontend variables.
 
 ## API Communication
 
-The UI supports two communication patterns with the backend:
+A question is asked over one WebSocket per conversation, chat wire v2: `src/adapters/api/turn-socket.ts`
+connects, `adapters/api/wire-v2.ts` parses every event and `features/chat/lib/turn-fold.ts` folds it. The backend
+serves no HTTP route that runs a turn. Protocol: [`docs/api/websocket-protocol.md`](../../docs/api/websocket-protocol.md).
 
-### HTTP Streaming (SSE)
-
-OpenAI-compatible chat completions via `/chat/stream`:
-
-```typescript
-import { streamChat } from '@/adapters/api'
-
-await streamChat(
-  { messages, sessionId },
-  {
-    onChunk: (content) => console.log(content),
-    onComplete: () => console.log('Done'),
-    onError: (error) => console.error(error),
-  }
-)
-```
-
-### WebSocket
-
-Custom protocol for real-time agent communication:
-
-```typescript
-import { createWebSocketClient } from '@/adapters/api'
-
-const ws = createWebSocketClient({
-  sessionId: 'abc123',
-  callbacks: {
-    onAgentText: (content, isFinal) => {},
-    onStatus: (status, message) => {},
-    onToolCall: (name, input, output) => {},
-    onError: (code, message) => {},
-  },
-})
-
-ws.connect()
-ws.sendMessage('Hello!')
-```
+Deep-research runs stream their own events over Server-Sent Events, through the same-origin job proxy
+(`src/adapters/api/deep-research-client.ts`).
 
 ## Authentication
 

@@ -72,7 +72,7 @@ Consequences, where a reader looks for them.
 | [0010](0010-llm-agnostic-openai-compatible.md) | LLM-agnostic via OpenAI-compatible endpoints | Accepted |
 | [0011](0011-deletion-pipeline.md) | Deletion pipeline (soft-delete → purge, legal holds) | Accepted |
 | [0012](0012-cards-as-rich-ui-layer.md) | Cards as a general rich-UI presentation layer | Accepted |
-| [0013](0013-base64url-context-headers.md) | base64url-encoded context headers | Accepted |
+| [0013](0013-base64url-context-headers.md) | base64url-encoded context headers | Superseded by ADR-0077 |
 | [0014](0014-org-runtime-model-configuration.md) | Org-level runtime model configuration per agent group | Accepted |
 | [0015](0015-llm-budgets-and-usage-ledger.md) | LLM spend limits and the auditable usage ledger | Accepted |
 | [0016](0016-platform-tier-and-permission-registry.md) | Platform tier and the permission-driven authorization model | Accepted |
@@ -136,6 +136,27 @@ Consequences, where a reader looks for them.
 | [0074](0074-zero-data-retention-is-the-default-enforced-at-one-seam.md) | Zero data retention is the default, enforced at one OpenRouter seam | Accepted |
 | [0075](0075-project-mail-inbox-via-cloudflare-email-routing.md) | Project mail inbox: receive through Cloudflare Email Routing and file through `uploadDocument` | Accepted |
 | [0076](0076-ingestion-is-claimed-fairly-from-a-durable-queue.md) | Ingestion is claimed fairly from a durable queue, by a tier that scales on its depth | Proposed |
+| [0077](0077-prompt-context-is-loaded-over-http-not-websocket-headers.md) | Prompt context is loaded over HTTP, not carried in WebSocket headers | Accepted |
+| [0078](0078-folders-are-a-property-of-a-shelf-not-of-a-project.md) | Folders are a property of a shelf, not of a project: the Archiv gains folders through the one folder implementation | Accepted |
+| [0079](0079-background-work-runs-on-one-claim-substrate.md) | Background work runs on one claim substrate, in worker pools KEDA scales on their queues | Proposed |
+| [0080](0080-chat-drops-affinity-for-the-conversation-bus.md) | Chat drops conversation affinity for the conversation bus, and the backend scales on turn occupancy | Proposed |
+| [0081](0081-every-model-call-passes-one-priority-aware-provider-limiter.md) | Every model call passes one priority-aware provider limiter that adapts to 429s | Proposed |
+| [0082](0082-backend-roles-are-split-by-job-and-named-after-it.md) | Backend roles are split by job, and named after it | Proposed |
+| [0083](0083-postgres-connections-go-through-a-transaction-pooler.md) | Postgres connections go through a transaction pooler; session features take a direct connection | Proposed |
+| [0084](0084-the-backend-authorizes-a-job-by-the-scope-the-bff-signed.md) | The backend authorizes a job by the scope the BFF signed | Proposed |
+| [0085](0085-outlook-archives-are-read-by-range-and-filed-as-the-person-per-mail.md) | Outlook archives are read by range and filed as the person, one folder per mail | Proposed |
+| [0086](0086-uploads-are-screened-locally-and-matches-wait-in-quarantine.md) | Uploads are screened locally before any model sees them, and matches wait in quarantine | Accepted |
+| [0087](0087-folder-access-follows-workos-roles-and-a-restricted-folder-is-its-own-collection.md) | Folder access follows WorkOS roles, and a restricted folder is its own retrieval collection (partly superseded by 0088) | Accepted |
+| [0088](0088-folder-access-is-read-write-per-role.md) | Folder access is read/write per role | Accepted |
+| [0089](0089-langfuse-is-the-observability-platform-and-everything-is-observable.md) | Langfuse is the observability platform, and everything the product does is observable in it | Accepted |
+| [0090](0090-a-closed-project-is-read-only-and-open-to-the-office.md) | A closed project is read-only and open to the whole office | Accepted |
+| [0091](0091-the-steckbrief-keeps-people-apart-from-the-profile.md) | The Steckbrief keeps its people apart from the profile | Accepted |
+| [0092](0092-ausmisten-proposes-from-metadata-and-bins-through-a-subfolder.md) | „Ausmisten" proposes from metadata, and bins through a subfolder of each document's folder | Accepted |
+| [0093](0093-the-server-marks-the-message-that-drew-on-a-restricted-folder.md) | The server marks the message that drew on a restricted folder, and the mark outlives the chat | Accepted |
+| [0094](0094-the-agent-searches-other-projects-as-the-conversations-audience.md) | The agent searches other projects as the conversation's audience, and a closed project restricts nobody | Accepted |
+| [0095](0095-permitting-memory-is-derived-from-the-documents-at-ingest.md) | Permitting memory is derived from the documents at ingest, read by meaning | Proposed |
+| [0096](0096-a-closed-project-s-experience-is-read-from-its-documents-as-suggestions.md) | A closed project's experience is read from its documents, as suggestions a person confirms | Proposed |
+| [0097](0097-who-holds-a-folder-s-own-list-is-a-workos-folder-role.md) | Who holds a folder's own access list is a WorkOS folder role | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
@@ -147,9 +168,9 @@ Consequences, where a reader looks for them.
 > Take the next number from `python3 scripts/check_adrs.py --next`, which reads
 > the directory, not from this table. It cannot see another open branch: on
 > 2026-10-01 0074 was taken twice that way, and the branch that merged later
-> renumbered its record (the project mail inbox to 0075). The check fails on
-> the merge, so the later branch finds out there; migration numbers collide the
-> same way (`0101`).
+> renumbered its record (the project mail inbox to 0075). The check fails on the merge, so the
+> later branch finds out there; migration numbers collide the same way
+> (`0101`).
 
 ## Related documents
 

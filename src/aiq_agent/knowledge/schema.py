@@ -13,9 +13,11 @@ Schema Rules (enforced by all adapters):
 5. Link Rot: image_url MUST be presigned URL, not internal S3 path
 """
 
+import uuid
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -157,6 +159,22 @@ class FileStatus(StrEnum):
     FAILED = "failed"
 
 
+#: Namespace of ``stable_file_id``. Fixed for good: changing it renames every file.
+_FILE_ID_NAMESPACE = uuid.UUID("6f1c0a52-3b7e-4d8a-9c41-5e2d7a90b3f6")
+
+
+def stable_file_id(collection_name: str, file_name: str) -> str:
+    """The id of a file: a function of where it lives and what it is called, nothing else.
+
+    A file is identified by ``(collection, file name)`` everywhere else (its
+    chunks, its summary row, a delete), so its id is too. Any process derives
+    the same id without asking another, which is what lets the ``api`` process
+    list a file the ``ingest-worker`` indexed, and delete it by the id it listed.
+    A random id per call, or per ingest, could not be handed from one to the other.
+    """
+    return str(uuid.uuid5(_FILE_ID_NAMESPACE, f"{collection_name}\x00{file_name}"))
+
+
 class CollectionInfo(BaseModel):
     """
     Metadata about a collection/index.
@@ -236,6 +254,16 @@ class FileProgress(BaseModel):
             "`drawing_pages_over_cap`: drawing pages past AIQ_MAX_RENDERED_PAGES."
         ),
     )
+    screening: Literal["clean", "partial", "unchecked", "quarantined"] | None = Field(
+        default=None,
+        description=(
+            "What the upload screen made of this file, when the job carried screening rules "
+            "(null otherwise): `clean` (all its content was screened, nothing matched), "
+            "`partial` (its text layer was clean, but some pages go to OCR or drawing analysis "
+            "unscreened), `unchecked` (an image, or no local text at all), `quarantined` "
+            "(a match; the file FAILED and `error_message` starts with `quarantined:`)."
+        ),
+    )
 
 
 class IngestionJobStatus(BaseModel):
@@ -289,7 +317,7 @@ class AvailableDocument(BaseModel):
     """One searchable document the agent may list in this turn.
 
     Identity is ``(collection, file_name)`` (ADR-0047): the same filename can
-    sit on the Büroarchiv and in a project as two different documents. ``shelf``
+    sit on the Büroablage and in a project as two different documents. ``shelf``
     is where it sits (``archiv`` / ``project`` / ``session`` / ``base``) and is
     stamped at aggregation from the signed scope — never guessed back from the
     filename. Missing shelf is unknown, not ``base``.

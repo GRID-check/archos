@@ -33,6 +33,7 @@
 #
 #   docker run -p 3000:3000 \
 #     -e BACKEND_URL=http://backend:8000 \
+#     -e BACKEND_CHAT_URL=http://backend-chat:8000 \
 #     -e REQUIRE_AUTH=true \
 #     -e WORKOS_CLIENT_ID=client_xxx \
 #     -e WORKOS_API_KEY=sk_test_xxx \
@@ -44,6 +45,7 @@
 #
 #   docker run -p 3000:3000 \
 #     -e BACKEND_URL=http://backend:8000 \
+#     -e BACKEND_CHAT_URL=http://backend-chat:8000 \
 #     -e REQUIRE_AUTH=false \
 #     aiq-blueprint-ui:latest
 #
@@ -52,7 +54,8 @@
 # -----------------------------------------------------------------------------
 #
 # Backend:
-#   BACKEND_URL                     - Backend API URL (default: http://localhost:8000)
+#   BACKEND_URL                     - Backend api role URL: every HTTP call (default: http://localhost:8000)
+#   BACKEND_CHAT_URL                - Backend chat role URL for the WebSocket (required, no default)
 #
 # Authentication:
 #   REQUIRE_AUTH                    - Set to 'true' to require WorkOS AuthKit login (default: false)
@@ -121,6 +124,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN bun run build
 
+# The deploy-time WorkOS Jobs (deploy/pulumi/src/app/workos-authz-jobs.ts) run
+# TypeScript scripts, and the runner keeps neither bun nor tsx. Bundle each to
+# one plain ESM file here: `src/` imports such as the authorization catalog are
+# inlined, packages stay imports and resolve from the production node_modules.
+RUN for script in provision-workos-authz migrate-folder-grants-to-workos; do \
+      bun build "scripts/$script.ts" --target=node --packages=external --format=esm \
+        --outfile="dist-scripts/$script.mjs" || exit 1; \
+    done
+
 # Remove devDependencies — keeps dev-only packages out of the production image
 RUN bun install --frozen-lockfile --production --ignore-scripts
 
@@ -162,6 +174,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/observability ./observability
 # step up to the BYPASSRLS role (ADR-0041). Without it neither worker starts.
 COPY --from=builder --chown=nextjs:nodejs /app/workers ./workers
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/dist-scripts ./dist-scripts
 # The only `src/` file the runtime needs: the audit action+schema registry the
 # deploy-time provisioning script reconciles into WorkOS. It is shared with the
 # app (which reaches it through the bundle, not from disk), so it lives in
@@ -196,6 +209,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/limits/ws-frames.js ./src
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-upgrade-headers.js ./src/lib/proxy/ws-upgrade-headers.js
 # And this one to classify and log WebSocket teardown after the upgrade.
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-teardown.js ./src/lib/proxy/ws-teardown.js
+# And this one to pick which aiq-agent address a chat socket dials (ADR-0080).
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/backend-target.js ./src/lib/proxy/backend-target.js
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 

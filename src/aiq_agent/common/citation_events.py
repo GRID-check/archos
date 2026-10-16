@@ -435,7 +435,7 @@ def _resolve_context(
 
     Precedence: an explicitly passed ``identity`` wins, then the active
     profiler, then the live request context. The profiler tier is what makes
-    async deep-research jobs work — a Dask worker has no request headers, but
+    async deep-research jobs work — a research worker has no request headers, but
     the job runner hands ``track_agent_profile`` the identity captured at
     submit time. Reusing the profiler's ``turn_id`` also links a citation
     defect to that turn's execution timeline on the platform dashboard.
@@ -498,6 +498,22 @@ def _post_batch(payload: dict[str, Any]) -> None:
         logger.warning("Failed to post citation events to internal endpoint", exc_info=True)
 
 
+def _score_in_langfuse(events: list[CitationEvent], agent: str) -> None:
+    """The same outcome as scores on the turn's trace (``observability.langfuse_scores``). Never raises.
+
+    Independent of the BFF ledger: the ledger answers "how often, for which
+    organization", the scores put each turn's outcome next to its trace, its
+    vote and its prompt version.
+    """
+    try:
+        from aiq_agent.observability.langfuse_scores import citation_scores
+        from aiq_agent.observability.langfuse_scores import emit_scores
+
+        emit_scores(citation_scores(events), writer=f"citations-{agent}")
+    except Exception:
+        logger.debug("Could not score citation health in Langfuse", exc_info=True)
+
+
 def emit_events(
     events: list[CitationEvent],
     *,
@@ -512,6 +528,7 @@ def emit_events(
     (tests, job workers that exit immediately after the turn). Everything here
     is wrapped so a telemetry failure can never surface in an answer.
     """
+    _score_in_langfuse(events, agent)
     if not events or not _events_enabled():
         return None
     try:

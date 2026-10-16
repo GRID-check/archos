@@ -3,10 +3,11 @@ export const files = {
   uploadZone: {
     clickToUpload: 'Click to upload',
     orDragAndDrop: ' or drag and drop',
-    maxSize: 'Up to {size} MB',
+    /** `size` is formatted with its unit ("100 MB"); the limit is per file. */
+    maxSize: 'Up to {size} per file',
     accepts: 'Accepts: {types}',
     dragOrBrowse: 'Drag files here or browse',
-    maxSizeShort: 'max. {size} MB',
+    maxSizeShort: 'max. {size} per file',
   },
   // The upload tray. Wording follows the surface's one rule: a number is
   // stated only where one was measured. "Reading" is what the backend does to a
@@ -69,6 +70,9 @@ export const files = {
     // the knowledge base. Neither a success ("Citable" would promise a citation
     // retrieval cannot make) nor a failure — nothing went wrong.
     stored: 'Filed',
+    // The content check (ADR-0086) matched: the file is in the project, no
+    // model has seen it, and someone has to decide.
+    quarantined: 'Quarantined',
     unknown: 'Unknown',
     // Only the office's own uploads: inside one office the queue reads in
     // order, across offices it takes turns (ADR-0076).
@@ -274,8 +278,23 @@ export const files = {
     timeout: 'Reading took too long and was stopped. Try again. Splitting a very large file helps.',
     empty: 'No text was found in this file. It may be password-protected, damaged or empty.',
     deleted: 'The file was deleted while Piloti was reading it.',
+    quarantined:
+      'This file contains something your office marks as sensitive. Piloti showed it to no model. An office or project admin releases or deletes it.',
     unknown: "Piloti couldn't read this document, so search can't find it.",
     details: 'Details',
+  },
+  screening: {
+    // Why a file was held back, by the content check (in the text) or the
+    // name check (in the file or folder name), ADR-0086.
+    reasonTerm: '“{term}” in the text',
+    reasonIban: 'IBAN {sample}',
+    reasonSvnr: 'Social security number {sample}',
+    reasonCard: 'Card number {sample}',
+    reasonPages: '{count, plural, one {page {pages}} other {pages {pages}}}',
+    nameInFile: 'File name contains “{term}”',
+    nameInFolder: 'Folder “{segment}” contains “{term}”',
+    partial: 'Some pages had no text layer and were not checked.',
+    unchecked: 'The content could not be read without a model and was checked by name only.',
   },
   browser: {
     folderEmptyTitle: 'This folder is empty',
@@ -338,6 +357,91 @@ export const files = {
     breadcrumb: 'Folder path',
     movedFolder: '“{name}” moved to “{parent}”.',
     moveFolderError: 'The folder could not be moved. Please try again.',
+    /** Folder access (ADR-0088, ADR-0097): restricting a folder to people. */
+    access: {
+      menu: 'Access…',
+      /** The lock on a folder: who is on the list only the dialog says. */
+      ownList: 'Own access: only the listed people',
+      ownListEveryoneReads: 'Own access: all project members read, only the listed people edit',
+      openRestricted: 'Open folder “{name}”. {access}',
+      title: 'Access to “{name}”',
+      description: 'Who in this project may read and edit this folder, its subfolders and their documents.',
+      inherit: 'Same as the parent folder',
+      inheritHint:
+        'The folder takes the access of the folder above it. At the top, the project applies: whoever may read reads, whoever may edit edits.',
+      custom: 'Own access',
+      customHint:
+        'Only the listed people get into the folder, each with “Read” or “Edit”. Anyone not listed does not see it, unless all project members may read. Organization admins may always do everything.',
+      everyoneReads: 'All project members may read',
+      everyoneReadsHint: 'The list then decides only who may edit.',
+      people: 'People',
+      unknownPerson: 'Person without project access',
+      levelRead: 'Read',
+      levelWrite: 'Edit',
+      levelFor: 'Access for {name}',
+      remove: 'Remove {name}',
+      add: 'Add a person…',
+      pickOne: 'Add at least one person, or let all project members read.',
+      nesting: 'A subfolder can only be narrower than its parent folder, never wider.',
+      ceiling: '“Edit” applies only to people who may edit in the project; everyone else reads.',
+      lockout:
+        'If you are not on the list yourself, the folder disappears for you too once you save, unless you are an organization admin.',
+      lockoutEveryoneReads:
+        'If you are not on the list with “Edit” yourself, you may only read the folder once you save, unless you are an organization admin.',
+      moveNotice:
+        'If who may read changes, Piloti moves the folder’s documents and reads them again. For a large folder that takes a few minutes; meanwhile the documents show as “Reading”.',
+      ifcNotice:
+        'Folders not every project member may read cannot hold building models (IFC) yet. Keep IFC models in folders everyone may read.',
+      /** The 409 from the IFC guard (ADR-0087): restricting, uploading or moving into a restricted folder. */
+      ifcRefused:
+        'Building models (IFC) cannot be filed in a folder not everyone may read yet: their building data is not protected by folder access. Keep IFC models in folders everyone may read.',
+      readOnlyBadge: 'Read only',
+      readOnlyHint: 'You may read this folder, but not upload, rename, move or delete anything in it.',
+      readOnlyMenu: 'Read only',
+      readOnlyRefused: 'You may only read in this folder.',
+      save: 'Save access',
+      saving: 'Saving…',
+      loadError: 'The access list could not be loaded.',
+      savedCustom: '“{name}” now has its own access.',
+      savedInherit: '“{name}” now takes the access of its parent folder.',
+      moving: '{count, plural, one {# document is} other {# documents are}} being moved and read again.',
+      failed:
+        '{count, plural, one {# document} other {# documents}} could not be moved yet. Save again to retry.',
+      saveError: 'Access could not be changed. Please try again.',
+      forbidden: 'Only project admins can change who may read and edit a folder.',
+    },
+  },
+  /** The Papierkorb of a project (ADR-0088). */
+  bin: {
+    title: 'Bin',
+    subtitle:
+      'Deleted folders with their subfolders and documents. Until they are permanently deleted they can be restored with their access.',
+    back: 'Back to files',
+    empty: 'The bin is empty.',
+    emptyHint: 'Deleted folders appear here and can be restored.',
+    deletedBy: 'Deleted by {name} on {date}',
+    deletedOn: 'Deleted on {date}',
+    contents:
+      '{documents, plural, one {# document} other {# documents}} · {folders, plural, one {# folder} other {# folders}}',
+    purgeOn: 'Permanently deleted on {date}',
+    purging: 'Being permanently deleted',
+    failed: 'The permanent deletion has stopped. An admin is looking into it.',
+    restore: 'Restore',
+    restored: '“{name}” is restored. Its documents are being read again.',
+    restoredToRoot: '“{name}” is restored at the top of the project, because its parent folder is deleted.',
+    restoreNameTaken: 'A folder named “{name}” already exists there. Rename it, then restore again.',
+    restoreReadOnly: 'It can be restored by someone who could edit the folder.',
+    restoreError: 'The folder could not be restored. Please try again.',
+    purge: 'Delete permanently',
+    purgeTitle: 'Permanently delete “{name}”?',
+    purgeDescription:
+      'The folder, its subfolders and {documents, plural, one {# document} other {# documents}} are deleted now, with every version and preview. This cannot be undone. What Piloti derived from them follows your organization’s setting.',
+    purged: '“{name}” is permanently deleted.',
+    held: 'This folder is under a retention obligation and cannot be deleted right now.',
+    purgeError: 'The folder could not be permanently deleted. Please try again.',
+    cancel: 'Cancel',
+    loadError: 'The bin could not be loaded.',
+    retry: 'Try again',
   },
   workspace: {
     renameFolderError: 'The folder could not be renamed. Please try again.',
@@ -347,6 +451,13 @@ export const files = {
       'Delete the folder “{name}”?\n\nIts {documents} document(s) and {folders} subfolder(s) are not deleted — they move to “{parent}”.',
     deleteFolderDone: '“{name}” deleted.',
     deleteFolderMoved: 'Folder deleted. {count} document(s) moved to “{parent}”.',
+    binFolderConfirm:
+      'Move the folder “{name}” to the bin?\n\nIts subfolders and documents go with it. From the bin it can be restored with its access until it is permanently deleted.',
+    binFolderDone: '“{name}” is in the bin. Restorable until {date}.',
+    deleteFolderProtected:
+      'This folder holds content you may not delete. It can be deleted by someone who may edit all of its subfolders.',
+    deleteFolderIndexDown: 'The folder was not deleted because the search index did not answer. Please try again.',
+    openBin: 'Bin',
     corpusSubtitle: 'Project knowledge — these documents ground Piloti’s answers',
     uploadDocuments: 'Upload documents',
     uploadProblem: 'Upload problem',
@@ -432,6 +543,18 @@ export const files = {
     legalHold: 'The document is under a legal hold and cannot be deleted',
   },
   /**
+   * A ZIP dropped on a shelf. It is unpacked in the browser and then handled as
+   * the folder it contains (`folderUpload.*`), so these are only the sentences
+   * for an archive that gave nothing.
+   */
+  zip: {
+    reading: 'Reading the ZIP…',
+    unreadable: '“{name}” could not be read. Is it a valid ZIP without a password?',
+    empty: '“{name}” contains no files.',
+    tooManyFiles: '“{name}” contains more than {limit} files, so nothing was taken from it. Split it into smaller ZIPs.',
+    tooLarge: '“{name}” unpacks to more than {limit}, so nothing was taken from it. Split it into smaller ZIPs.',
+  },
+  /**
    * The folder-upload plan — the dialog a dropped directory tree opens before
    * anything moves. `folderUpload.*` rather than under `upload.*` because it
    * describes a PLAN, not the transfer: the words here name what is about to
@@ -446,6 +569,7 @@ export const files = {
     destinationFiles: 'The files go into “{folder}”.',
     close: 'Close',
     compareError: 'Could not compare with what is already here. Nothing was uploaded.',
+    planChanged: 'The preview has changed. Nothing was uploaded. Please review it and confirm again.',
     single: {
       updateTitle: 'Upload a new version of “{name}”?',
       updateExplain:
@@ -485,6 +609,12 @@ export const files = {
     collisions: '{count} files share a name with another file in this upload',
     collisionsExplain:
       'A project holds one document per filename, so these are not uploaded. Rename them and drop them again.',
+    // Held back by the office's name screening (ADR-0086): the files do not
+    // leave this computer unless someone releases one of them.
+    excluded: '{count} file(s) stay on your computer',
+    excludedExplain:
+      'Your office marks these terms as sensitive, so these files are not uploaded. If one of them belongs in Piloti after all, tick it.',
+    releaseFile: 'Upload anyway',
     showAll: 'Show all {count} files',
     action: {
       new: 'New',
@@ -493,6 +623,7 @@ export const files = {
       collision: 'Conflict',
       duplicate: 'Already here',
       skipped: 'Skipped',
+      excluded: 'Excluded',
     },
     confirm: 'Upload {count} file(s)',
     // Nothing to upload, but the tree still says these belong elsewhere.
@@ -507,6 +638,92 @@ export const files = {
     // is what went wrong, which is a different thing to retry.
     applyError: 'This folder could not be uploaded completely. Check the list and try again.',
   },
+  /**
+   * The Outlook archive import (ADR-0085): a .pst or .ost sent in parts, then
+   * filed by a background job, one folder per mail.
+   */
+  mailImport: {
+    action: 'Import Outlook archive',
+    title: 'Import an Outlook archive',
+    description:
+      'Choose a .pst or .ost file. Each email becomes a folder under “E-Mail-Import” with its attachments and a note holding its text and headers.',
+    privacy:
+      'An archive holds the correspondence of everyone who wrote to this mailbox. Import what the project needs, not a whole mailbox.',
+    choose: 'Choose archive…',
+    maxSize: 'Up to {size}.',
+    notAnArchive: '“{name}” is not an Outlook archive (.pst or .ost).',
+    tooLarge: '“{name}” is larger than {size}.',
+    sending: 'Sending {sent} of {total}…',
+    sendingHint:
+      'You can go on working in Piloti meanwhile; just keep this tab open until the archive is sent. Filing then runs in the background.',
+    sendingLabel: 'Sending “{name}”',
+    joining: 'Sent. Piloti is putting the archive together…',
+    sendErrors: {
+      busy: 'This tab is still sending another archive. Wait until it is sent, then choose this one.',
+      alreadyRunning: 'An import of yours is still running in this project. Continue or cancel it first.',
+      cancelled: 'The import was cancelled while it was being sent.',
+      quota: 'The organization’s storage is full, so the archive cannot be imported.',
+      forbidden: 'You may not add documents to this project.',
+      rejected: 'Piloti did not accept this archive. Check that it is an Outlook .pst or .ost file.',
+      connection: 'The connection broke off. Choose the file again with “Continue sending” to pick up where it stopped.',
+      unknown: 'The archive could not be sent. Try again with “Continue sending”.',
+    },
+    resume: 'Continue sending',
+    resumeNamed: 'Continue sending “{name}”',
+    resumeHint: 'Choose “{name}” again to continue where sending stopped.',
+    resumeMismatch: 'That is not the same file. Choose “{name}” ({size}).',
+    resumeChanged:
+      '“{name}” has changed since sending began, so its parts no longer fit together. Cancel this import and start a new one.',
+    cancel: 'Cancel',
+    cancelNamed: 'Cancel the import of “{name}”',
+    cancelConfirm: {
+      title: 'Cancel this import?',
+      description:
+        'What has been filed so far stays. The archive is deleted from Piloti, so importing the rest means sending “{name}” again.',
+      confirm: 'Cancel import',
+      keep: 'Keep importing',
+    },
+    cancelError: 'The import could not be cancelled.',
+    close: 'Close',
+    history: 'Imports in this project',
+    empty: 'No archive has been imported into this project yet.',
+    loadError: 'The imports could not be loaded.',
+    openFolder: 'Open folder',
+    openFolderNamed: 'Open the folder of “{name}”',
+    importingLabel: 'Importing “{name}”',
+    startedBy: 'Started by {email}',
+    progress: '{done} of {total} items',
+    filed: '{mails, plural, one {# email} other {# emails}}, {files, plural, one {# attachment} other {# attachments}}',
+    skipped: '{count, plural, one {# skipped} other {# skipped}}',
+    skippedItem: '{file} in {mail}: {reason}',
+    skippedMail: '{mail}: {reason}',
+    status: {
+      uploading: 'Sending',
+      queued: 'Waiting',
+      importing: 'Importing',
+      completed: 'Imported',
+      failed: 'Failed',
+      cancelled: 'Cancelled',
+    },
+    errors: {
+      unreadable: 'This file could not be read as an Outlook archive. Export it again from Outlook as a .pst file.',
+      quota: 'The organization’s storage is full. What was imported until then stays.',
+      access: 'The person who started the import may not add documents to this project or its “E-Mail-Import” folder.',
+      requester_left: 'The person who started the import is no longer a member of the organization.',
+      stopped: 'The import stopped after repeated errors.',
+      stalled: 'The import stopped without finishing.',
+      upload_expired: 'The archive was not sent completely within two days.',
+    },
+    reasons: {
+      embedded_message: 'attached email',
+      type: 'file type not accepted',
+      size: 'too large',
+      unreadable: 'damaged in the archive',
+      screened: 'held back by the office’s name screening',
+      access: 'folder is read-only',
+      name_taken: 'name already used in the project',
+    },
+  },
   upload: {
     uploading: 'Uploading…',
     upload: 'Upload',
@@ -514,6 +731,15 @@ export const files = {
     uploadFiles: 'Choose files',
   },
   errors: {
+    projectClosed: 'This project is closed and read-only. Whoever manages it can reopen it in the settings.',
+    // Held back by the office's name screening (ADR-0086) on a path with no
+    // upload dialog, such as a chat attachment.
+    screenedOut: '{count} file(s) not uploaded because your office marks them as sensitive: {files}',
+    screenedOutFile: '“{name}” ({reason})',
+    // The office's list could not be read: without it nothing is sent, not
+    // even against Piloti's suggestion (ADR-0086).
+    screeningPolicyUnavailable:
+      "Your office's list of sensitive data could not be loaded. Nothing was uploaded. Please try again.",
     validation: {
       duplicateInBatch: '“{name}” is in this selection more than once',
       duplicateExisting: '“{name}” has already been added',
@@ -571,6 +797,7 @@ export const files = {
       ready: 'Citable',
     },
     originLabel: 'Origin',
+    tagLabel: 'Category',
     kindLabel: 'File type',
     kind: {
       floorplan: 'Floor plan',
@@ -622,7 +849,7 @@ export const files = {
       rejected: 'Rejected',
       superseded: 'Superseded',
       /**
-       * NOT "archived". This product's Archiv is the office archive, where a
+       * NOT "archived". Office filing (Büroablage, once "Archiv") is where a
        * document is placed so that it BECOMES cross-project office knowledge.
        * This state is the opposite: the file leaves the working set and its
        * knowledge-base entries are purged. One word for both would be the same
@@ -770,6 +997,8 @@ export const files = {
     errors: {
       /** The compare-and-swap lost: somebody decided first, so re-read. */
       conflict: 'This has moved on — reloading the current state.',
+      /** The file has not passed its upload screening yet (ADR-0086). */
+      held: 'This file is still being checked. It can be submitted once the check has cleared it.',
       actionFailed: 'That did not go through. Nothing has changed.',
       loadFailed: 'The version history could not be loaded.',
     },
@@ -810,7 +1039,7 @@ export const files = {
     welcomeAbout:
       'This thread is about {name}. Ask it something — answers will cite the file and the law.',
     subjectHint:
-      'Piloti searches this document. Other project files and the office archive stay out.',
+      'Piloti searches this document. Other project files and Office filing stay out.',
     subjectClear: 'Stop focusing on this file',
     loadingPeople: 'Loading people…',
     noPeople: 'No one in this project yet',

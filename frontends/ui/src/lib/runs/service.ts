@@ -38,6 +38,7 @@ import { BadRequestError, ConflictError, NotFoundError, UpstreamError } from '@/
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { projectClosedError } from '@/lib/projects/project-status'
 import { normalizeAgentAnswerMetadata } from '@/lib/conversations/agent-answer-metadata'
 import {
   findMessageInConversation,
@@ -47,16 +48,22 @@ import {
 } from '@/lib/conversations/repository'
 import type { Message, TaskRun } from '@/lib/db/schema'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
+import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
 import {
   addDocumentToBackendJob,
   cancelBackendJob,
   JobCancelError,
   writeNowBackendJob,
+  type JobControlCaller,
 } from '@/lib/jobs/backend-client'
+import { signJobRequestContext } from '@/lib/jobs/request-envelope'
 import type { PlanDocument } from './plan-documents'
+import { AGENT_REFUSAL_LOCALE, requirePlanDocumentsOpen } from '@/lib/conversations/restricted-egress'
+import type { Locale } from '@/i18n/config'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, resolveInboxItemsFor } from '@/lib/inbox/service'
 import * as taskRepository from '@/lib/tasks/repository'
+import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
 import { isActiveTaskRunStatus } from '@/lib/tasks/task-vocabulary'
 import {
   applyRunLedgerAppend,
@@ -230,9 +237,26 @@ async function foldRunLedgerOp(
       return { [RUN_LEDGER_METADATA_KEY]: ledger }
     })
     if (!stored) throw new NotFoundError('This run has no message to write a ledger into')
+    if (!onlyIfLive) await markStartedIfQueued(run, at)
     await notifyWaiting(run, current, ledger)
     return { ledger, applied }
   })
+}
+
+/**
+ * The worker's first flush is the proof a queued run has started: the research
+ * queue (ADR-0079) takes a job at once and starts it when an organization's turn
+ * comes, and until then the run's row says `queued`. Best-effort: the ledger is
+ * already written, and a row that stays `queued` is closed by the run's outcome
+ * exactly as a `running` one is.
+ */
+async function markStartedIfQueued(run: TaskRun, at: Date): Promise<void> {
+  if (run.status !== 'queued') return
+  try {
+    await taskRepository.markRunStarted(run.id, run.organizationId, at)
+  } catch (error) {
+    console.warn('[runs] could not move run', run.id, 'from queued to running', error)
+  }
 }
 
 /** How a run ended, as far as its ledger needs to know. */
@@ -429,6 +453,8 @@ export async function getRunView(
   await requireProjectAccess(session, projectId, 'project:view')
   const run = await taskRepository.findRunInProject(runId, projectId, session.organizationId)
   if (!run) throw new NotFoundError('Unknown run')
+  // A revision task is judged when read: its document's folder as it is now (ADR-0093).
+  await requireMaySeeSubject(session, projectId, run, 'Unknown run')
   return runView(run)
 }
 
@@ -451,6 +477,48 @@ async function runView(run: TaskRun): Promise<RunView> {
 }
 
 /**
+ * Who may act on a run (cancel it, have it write now, hand it a document): its
+ * requester, or a member of the project. Not someone who reads the project
+ * only because it is closed (ADR-0090): reading and chatting about a closed
+ * project is every member's, steering somebody else's run is not. Returns the
+ * run, found in the project.
+ */
+async function requireRunActor(
+  session: AuthorizedSession,
+  projectId: string,
+  runId: string,
+  options: { write?: boolean } = {}
+): Promise<TaskRun> {
+  await requireProjectAccess(session, projectId, 'project:view')
+  const access = await requireProjectAccess(session, projectId, CHAT_PERMISSIONS)
+  // Handing a run a document changes what it files into the project: a write.
+  if (options.write && access.closed) throw projectClosedError()
+  const run = await taskRepository.findRunInProject(runId, projectId, session.organizationId)
+  if (!run) throw new NotFoundError('Unknown run')
+  if (access.readsBecauseClosed && run.requesterUserId !== session.userId) throw new NotFoundError('Unknown run')
+  await requireMaySeeSubject(session, projectId, run, 'Unknown run')
+  return run
+}
+
+/**
+ * The credentials a run control carries to the backend: the person's token, and
+ * the project they were just authorized on, signed by the builder every job
+ * request uses (ADR-0084). The scope comes from `buildCollectionScopeFromRequest`
+ * so the project collection the backend compares is derived exactly as it was
+ * when the run was submitted.
+ */
+async function jobControlCaller(
+  session: AuthorizedSession,
+  projectId: string
+): Promise<JobControlCaller> {
+  const scope = await buildCollectionScopeFromRequest(session, { projectId })
+  return {
+    accessToken: session.accessToken ?? null,
+    contextHeaders: signJobRequestContext(session, scope),
+  }
+}
+
+/**
  * Stop a run on a person's request: the write door of the run primitive that
  * the block's „Abbrechen" presses (ADR-0055, ADR-0062).
  *
@@ -465,8 +533,9 @@ async function runView(run: TaskRun): Promise<RunView> {
  * endpoint (`cancelBackendJob`), the same credential, and the same permission
  * (`project:view` to read the run at all, `CHAT_PERMISSIONS` to act on the
  * agent in the project, exactly as `buildCollectionScopeFromRequest` gates the
- * proxy). The backend then enforces job ownership on top, which is why a run
- * somebody else commissioned answers 404 rather than 403.
+ * proxy). The project travels to the backend signed (ADR-0084), so a teammate
+ * may stop a run somebody else commissioned in it; the backend answers 404, not
+ * 403, for a job outside the signed project that the caller does not own.
  *
  * ## Nothing is written here
  *
@@ -487,15 +556,12 @@ export async function cancelRun(
   projectId: string,
   runId: string
 ): Promise<RunView> {
-  await requireProjectAccess(session, projectId, 'project:view')
-  await requireProjectAccess(session, projectId, CHAT_PERMISSIONS)
-  const run = await taskRepository.findRunInProject(runId, projectId, session.organizationId)
-  if (!run) throw new NotFoundError('Unknown run')
+  const run = await requireRunActor(session, projectId, runId)
   if (!isActiveTaskRunStatus(run.status)) throw new ConflictError('This run has already ended')
   if (!run.backendJobId) throw new ConflictError('This run has no backend job to cancel')
 
   try {
-    await cancelBackendJob(run.backendJobId, session.accessToken ?? null)
+    await cancelBackendJob(run.backendJobId, await jobControlCaller(session, projectId))
   } catch (error) {
     if (!(error instanceof JobCancelError)) throw error
     // The backend's verdict on a race: the job finished between the row read
@@ -512,22 +578,27 @@ export async function cancelRun(
  * Add a document to a running run's Grundlage on a person's request. Same
  * gate and the same refusals as „Jetzt schreiben" ({@link writeNowRun}); the
  * ledger lists the document through the run's own stream, never here.
+ *
+ * One refusal of its own: a document from a folder not every project member
+ * may read (`requirePlanDocumentsOpen`, 403 `CONVERSATION_CONFINED`), because
+ * the run's stream and report are read by the whole project. Refused before
+ * the backend hears of it. This is the only door a document reaches a running
+ * run by; the async proxy refuses `job/{id}/documents`.
  */
 export async function addRunDocument(
   session: AuthorizedSession,
   projectId: string,
   runId: string,
-  document: PlanDocument
+  document: PlanDocument,
+  locale: Locale = AGENT_REFUSAL_LOCALE
 ): Promise<RunView> {
-  await requireProjectAccess(session, projectId, 'project:view')
-  await requireProjectAccess(session, projectId, CHAT_PERMISSIONS)
-  const run = await taskRepository.findRunInProject(runId, projectId, session.organizationId)
-  if (!run) throw new NotFoundError('Unknown run')
+  const run = await requireRunActor(session, projectId, runId, { write: true })
   if (!isActiveTaskRunStatus(run.status)) throw new ConflictError('This run has already ended')
   if (!run.backendJobId) throw new ConflictError('This run has no backend job to hand the document to')
+  await requirePlanDocumentsOpen(session.organizationId, projectId, [document], locale)
 
   try {
-    await addDocumentToBackendJob(run.backendJobId, document, session.accessToken ?? null)
+    await addDocumentToBackendJob(run.backendJobId, document, await jobControlCaller(session, projectId))
   } catch (error) {
     if (!(error instanceof JobCancelError)) throw error
     if (error.status === 400) throw new ConflictError('This run has already ended')
@@ -548,15 +619,12 @@ export async function writeNowRun(
   projectId: string,
   runId: string
 ): Promise<RunView> {
-  await requireProjectAccess(session, projectId, 'project:view')
-  await requireProjectAccess(session, projectId, CHAT_PERMISSIONS)
-  const run = await taskRepository.findRunInProject(runId, projectId, session.organizationId)
-  if (!run) throw new NotFoundError('Unknown run')
+  const run = await requireRunActor(session, projectId, runId)
   if (!isActiveTaskRunStatus(run.status)) throw new ConflictError('This run has already ended')
   if (!run.backendJobId) throw new ConflictError('This run has no backend job to write from')
 
   try {
-    await writeNowBackendJob(run.backendJobId, session.accessToken ?? null)
+    await writeNowBackendJob(run.backendJobId, await jobControlCaller(session, projectId))
   } catch (error) {
     if (!(error instanceof JobCancelError)) throw error
     // The backend's verdict on a race: the job finished between the row read
