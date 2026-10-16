@@ -42,8 +42,6 @@ const PAIRS = [
   ['accent-600', [...LIGHT, 'hero-bg']],
   ['accent-700', ['tint']],
   ['ok', ['paper', 'chip-project']],
-  // The contact form's errors, on the page and inside its paper fields.
-  ['error', [...LIGHT, 'hero-bg']],
   ['chip-project-ink', ['chip-project']],
   ['chip-law-ink', ['chip-law']],
   ['on-dark', ['panel', 'accent-900']],

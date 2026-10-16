@@ -6,12 +6,10 @@
 - **Scope:** v1 of the project mail inbox, as decided in
   [ADR-0075](../adr/0075-project-mail-inbox-via-cloudflare-email-routing.md).
   Every project gets an address; a project member mails files to it and the
-  attachments are filed as if that member had uploaded them. Section 8 covers
-  the contact form on piloti.at, which ships in the same PR and uses the same
-  vendor.
+  attachments are filed as if that member had uploaded them.
 - **Amended 2026-10-01** for the decision to put project addresses on
   `piloti.at` itself rather than on a separate inbound domain (ADR-0075,
-  amendment of 2026-10-01): sections 1, 2, 4 and 8, and F4, F6, F15.
+  amendment of 2026-10-01): sections 1, 2 and 4, and F4, F6, F15.
 - **What this is.** An engineering review against the code and the vendor's
   published terms. It is not legal advice. The Datenschutzberater has not signed
   it off yet; that is open item 1.
@@ -25,8 +23,8 @@
 ```
 sender MTA
   → Cloudflare MX (Email Routing, 25 MiB cap)
-       literal rule (kontakt@)  → forwarded to the founders (section 8)
-       catch-all                → Email Worker
+       literal rule (a company address) → its own destination, not the inbox
+       catch-all                         → Email Worker
   → Email Worker: address not project-shaped → refused ("unknown address")
                   project-shaped → streams the raw bytes, does not parse
   → BFF webhook  POST /api/internal/inbound-mail
@@ -40,8 +38,8 @@ sender MTA
 ```
 
 1. The sending MTA delivers to Cloudflare's MX for `piloti.at`
-   (`GRID_INBOUND_MAIL_DOMAIN`), the product's own domain. Literal rules, such
-   as `kontakt@piloti.at` (section 8), are matched first and never reach the
+   (`GRID_INBOUND_MAIL_DOMAIN`), the product's own domain. Literal rules, one
+   per company address on the domain, are matched first and never reach the
    inbox. The zone's catch-all hands every other message to one Email Worker.
 2. The Worker reads only the envelope recipient and checks its shape (the rule
    the BFF's parser applies, `shared/inbound-address.json`). An address that
@@ -107,7 +105,7 @@ Status is the state in v1: **done** (the code or configuration does it),
 | F1 | Art. 28 | Cloudflare becomes a new sub-processor. Until now it only served DNS for the deployment: the application hosts are unproxied, and the one proxied record is the apex redirect placeholder, which carries no application traffic. With the inbox it carries every inbound mail in transit. Its DPA (v6.4, 2026-04-03) is incorporated into the Self-Serve Subscription Agreement and announces new sub-processors of its own 30 days ahead. The sub-processor page is updated in this change. **The feature is off for every organization until its WorkOS flag `project-mail-inbox` is enabled** (F16), so the operator can give each customer the notice its AVV promises before that customer's mail ever reaches Cloudflare. | open (per customer, before the flag is set) | `deploy/pulumi/src/platform/dns.ts` (`proxied: false` on host records); <https://www.cloudflare.com/trust-hub/gdpr/>; <https://www.cloudflare.com/cloudflare-customer-dpa/>; legal content `subprocessors` |
 | F2 | Art. 44 ff. | Transfer to the US rests on Cloudflare's EU-US Data Privacy Framework certification, with the SCCs in the DPA (Module 2/3) as fallback. Same basis as WorkOS and OpenRouter. The DPF list showed Cloudflare as **"Active – re-certification under review"** when checked on 2026-09-30. The DPF is also under legal challenge; if it falls, or the re-certification lapses, the SCCs carry the transfer and a transfer impact assessment is due. | accepted | <https://www.dataprivacyframework.gov/participant/5666> (checked 2026-09-30); DPA "Restricted Transfers" |
 | F3 | Art. 44 ff., processing location | Mail is processed in the Cloudflare data centre nearest the sender, with no EU guarantee. The Data Localization Suite is Enterprise-only, and we found no statement that it covers Email Routing. A customer that requires EU-only processing cannot use the v1 inbox; the alternative is Mailgun EU or Amazon SES in eu-central-1 (ADR-0075, considered options). | accepted | ADR-0075 |
-| F4 | Art. 5(1)(e) | Cloudflare states that Email Routing does not store or access routed mail. Its activity log keeps per-message metadata (from, to, subject, Message-ID, SPF/DKIM/DMARC verdicts, status), filterable over 30 days in the dashboard and queryable for 31 days. "Email preview" is an Email Sending setting: "Previews cover messages sent while the setting is turned on and are retained for about seven days", on by default for sending domains onboarded on or after 2026-07-02. `piloti.at` is onboarded for sending for the contact form (section 8), so its preview must be off. Cloudflare does not describe it as covering mail received through Email Routing, which is how project mail arrives. Nothing checks the setting; it is in the dashboard. | done (manual setting) | <https://developers.cloudflare.com/email-routing/> ("will not store or access the emails"); <https://developers.cloudflare.com/email-service/observability/logs/>; <https://developers.cloudflare.com/changelog/post/2026-07-17-email-message-preview/>; `docs/deployment/kubernetes.md` §3c and §3d |
+| F4 | Art. 5(1)(e) | Cloudflare states that Email Routing does not store or access routed mail. Its activity log keeps per-message metadata (from, to, subject, Message-ID, SPF/DKIM/DMARC verdicts, status), filterable over 30 days in the dashboard and queryable for 31 days. "Email preview" is an Email Sending setting: "Previews cover messages sent while the setting is turned on and are retained for about seven days", on by default for sending domains onboarded on or after 2026-07-02. Cloudflare does not describe it as covering mail received through Email Routing, which is how project mail arrives, and `piloti.at` is not onboarded for sending. If it ever is, its preview must be turned off; nothing checks the setting, it is in the dashboard. | done | <https://developers.cloudflare.com/email-routing/> ("will not store or access the emails"); <https://developers.cloudflare.com/email-service/observability/logs/>; <https://developers.cloudflare.com/changelog/post/2026-07-17-email-message-preview/>; `docs/deployment/kubernetes.md` §3c |
 | F5 | Art. 5(1)(c), (e) | The webhook stores no `.eml` and no body, and keeps only the attachments it selected, staged for at most 7 days. The folder name is `<YYYY-MM-DD HH.mm> – <sender name or local part>`, in Europe/Vienna time from the moment of receipt; **the subject is not in it**, so it does not reach folder names, storage keys or the assistant's grounding block, which names folders. The subject lives only on the queued row (nulled once the row is terminal) and in the sender's own notification (30 days). The delivery row is deleted after 30 days (section 1 table). Both new tables carry `organization_id` and `project_id` and cascade from the project through a foreign key on both columns, and the staged objects sit under the project's storage prefix, so the project purge removes all three (`purger/purge-project.js`). There is no organization purge today; an organization's projects are purged one by one. | done | `frontends/ui/drizzle/0102_inbound_mail.sql`; `frontends/ui/src/lib/inbound-mail/{folder-name,staging,repository,drain}.ts` |
 | F6 | Art. 5(1)(f), 32 | Misaddressed mail: an address that is not project-shaped is refused by the Worker without reaching Piloti's servers; an unknown or revoked token is refused by the BFF before the body is read. Nothing is stored in either case. Tokens are 12 base32 characters (about 60 bits) from `crypto.randomBytes`. Only the token resolves; the slug in front of it is decoration and is never looked up. `+detail` and surrounding quotes are stripped before the token is read. | done | `frontends/ui/src/lib/inbound-mail/address.ts`, `receive.ts`; `inbound-mail-worker.js`; the shape contract `shared/inbound-address.json` |
 | F7 | Art. 32 | **Sender trust is DKIM only.** Cloudflare does not pass its SPF, DKIM or DMARC verdicts to Workers (workerd#6740, open since 2026-05-07), so Piloti decides from the raw bytes and DNS. A mail is accepted only when one DKIM signature on it verifies, is aligned (relaxed, organizational domain) with the single From domain, covers the whole body (no `l=` tag), signs From, Subject and To or Cc, and uses neither rsa-sha1 nor a key in testing mode (`t=y`). The raw header block may hold only one of each field RFC 5322 §3.6 allows once, so an unsigned duplicate cannot change what the signature covers. A From address that is not plain ASCII is refused. **The earlier rule that admitted any From domain publishing DMARC `p=quarantine` or `p=reject` was removed**: an unsigned spoof passed it whenever the policy was not enforced (`pct`, `t=y`, quarantine), and whenever someone holding the Worker's token posted to the webhook directly, past Cloudflare's own checks. Consequence: Microsoft 365 and Google Workspace domains without custom DKIM are refused, whatever their DMARC says. A DNS failure or timeout is a `temperror` and the sender's server retries; only a definite failure bounces. | done | `frontends/ui/src/lib/inbound-mail/sender-auth.ts`; <https://github.com/cloudflare/workerd/issues/6740> |
@@ -198,10 +196,11 @@ tenant's mail out of another's projects.
   over; a transfer impact assessment becomes due, and customers with a strict
   reading may ask for the EU alternative.
 - **No EU processing guarantee** (F3). An EU-only customer cannot use v1.
-- **The preview setting is manual** (F4). Turning Email preview back on for
-  `piloti.at` would start storing the contact form's messages, and nothing
-  would notice. If Cloudflare ever extends it, or any other content retention,
-  to mail received through Email Routing, project mail would be affected too.
+- **The preview setting is manual** (F4). If `piloti.at` is ever onboarded for
+  Email Sending with Email preview on, Cloudflare would store what it sends,
+  and nothing would notice. If Cloudflare ever extends the preview, or any other
+  content retention, to mail received through Email Routing, project mail
+  would be affected.
 - **`piloti.at`'s mail is tied to Cloudflare Email Routing.** Moving it to
   another mail provider means moving the inbox to a domain of its own first,
   and giving every project a new address (ADR-0075, amendment of 2026-10-01).
@@ -224,10 +223,9 @@ tenant's mail out of another's projects.
    for a sub-processor notice period and give the notice (F1, F16).
 3. Terms: state that the customer informs its contacts that files mailed to a
    project address are processed in Piloti (F9).
-4. **Art. 30 before go-live.** Record the inbox, the refused-mail processing
-   (F15) and the contact form (section 8) in the register of processing
-   activities, and the TOMs, once the register exists (July audit, roadmap
-   item 5).
+4. **Art. 30 before go-live.** Record the inbox and the refused-mail
+   processing (F15) in the register of processing activities, and the TOMs,
+   once the register exists (July audit, roadmap item 5).
 5. **Launch gates**, neither of which the repository can prove:
    - a delivery to a staging project address showing that the
      `DKIM-Signature` header survives into the Worker's `message.raw`. If
@@ -244,7 +242,7 @@ tenant's mail out of another's projects.
 |---|---|
 | Worker, its address-shape filter and its verdict contract | `deploy/pulumi/src/platform/inbound-mail-worker.js`, `inbound-mail-worker.spec.ts`; the shape contract `shared/inbound-address.json`, also checked by `frontends/ui/src/lib/inbound-mail/address.spec.ts` |
 | Cloudflare resources, apex check, one stack per zone | `deploy/pulumi/src/platform/inbound-mail.ts`, `inbound-mail.spec.ts`, `deploy/pulumi/index-inbound-mail.spec.ts` |
-| Apex MX guard, shared with the contact address | `deploy/pulumi/src/platform/email-routing.ts`, `email-routing.spec.ts` |
+| The zone's Email Routing and the apex MX guard | `deploy/pulumi/src/platform/email-routing.ts`, `email-routing.spec.ts` |
 | Webhook and drain routes | `frontends/ui/src/app/api/internal/inbound-mail/route.ts` (spec `route.spec.ts`), `frontends/ui/src/app/api/internal/inbound-mail/drain/route.ts` |
 | Accept, verify, stage, queue | `frontends/ui/src/lib/inbound-mail/receive.ts`, `sender-auth.ts`, `mime.ts`, `staging.ts`, with `receive.spec.ts`, `sender-auth.spec.ts`, `mime.spec.ts`, `staging.spec.ts` |
 | Drain, folder, notification | `frontends/ui/src/lib/inbound-mail/drain.ts`, `filing-folder.ts`, `folder-name.ts`, `notify.ts`, with `drain.spec.ts`, `filing-folder.spec.ts`, `folder-name.spec.ts`, `notify.spec.ts` |
@@ -256,39 +254,3 @@ tenant's mail out of another's projects.
 | RLS coverage | `frontends/ui/src/lib/db/rls-coverage.spec.ts`, `task db:test:rls` |
 | Route authorization coverage | `frontends/ui/src/app/api/authz-coverage.spec.ts` |
 | The settings card | `frontends/ui/src/features/projects/components/project-inbound-mail-card.tsx`, `project-inbound-mail-card.spec.tsx` |
-| Contact address and form (section 8) | `deploy/pulumi/src/platform/contact-mail.ts`, `contact-mail.spec.ts`, `deploy/pulumi/index-contact-mail.spec.ts`, `deploy/pulumi/src/app/web-contact.spec.ts`, `frontends/web/src/lib/contact.ts`, `contact.test.ts` |
-
-## 8. The contact form on piloti.at
-
-The landing site has a contact form, and the company address
-`kontakt@piloti.at` replaces the founders' personal addresses. Here the
-operator is the **controller**: the people who write are prospective
-customers, not a customer's staff.
-
-- **Transport.** Mail to `kontakt@piloti.at` is forwarded by Cloudflare Email
-  Routing (one literal rule on the app zone) to the founders' own mailboxes.
-  The project inbox's catch-all on the same zone never sees it, because a
-  literal rule is matched first. The form sends through Cloudflare's Email Service REST API, only to
-  those same addresses, which Cloudflare requires to be verified destination
-  addresses. The submitter's address goes into `reply_to`, so the founders
-  answer from their own mail client. Cloudflare is the same sub-processor as in
-  F1 to F3.
-- **No storage on the site.** `frontends/web/src/lib/contact.ts` sends a valid
-  message once and keeps nothing. Its log lines carry an outcome code only, no
-  field, address or IP.
-- **The IP stays in memory.** The per-client rate limit (5 messages per
-  10 minutes, per pod) is keyed by an HMAC of the IP, held in the pod's memory
-  and forgotten when the window ends. The IP is never written and never sent
-  with the message.
-- **Retention is in the founders' mailboxes.** The website's privacy notice
-  says a message is deleted once the enquiry is handled, at the latest after
-  twelve months unless a contract follows. Nothing enforces that; it is the
-  founders' practice, and those mailbox providers belong in the Art. 30 record
-  (open item 4).
-- **Email preview must be off** for `piloti.at`. It is on by default for a
-  domain onboarded for Email Sending on or after 2026-07-02 and would keep
-  every form message for about seven days at Cloudflare. It is a dashboard setting nothing checks
-  (F4; `docs/deployment/kubernetes.md` §3d, step 3).
-- **Legal basis.** Art. 6(1)(b) where the enquiry concerns a contract or its
-  preparation, otherwise Art. 6(1)(f). Stated in the website's privacy notice,
-  section "Kontaktformular und E-Mail".

@@ -1,4 +1,4 @@
-import { CONTACT_EMAIL } from '../consts'
+import { CONTACT_EMAILS } from '../consts'
 import { founders } from './founders'
 
 /**
@@ -18,5 +18,5 @@ import { founders } from './founders'
 export const legalIdentity = {
   members: founders.map((f) => f.name),
   seat: { de: 'Wien, Österreich', en: 'Vienna, Austria' },
-  email: CONTACT_EMAIL,
+  emails: CONTACT_EMAILS,
 } as const

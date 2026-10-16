@@ -136,7 +136,6 @@ Consequences, where a reader looks for them.
 | [0074](0074-zero-data-retention-is-the-default-enforced-at-one-seam.md) | Zero data retention is the default, enforced at one OpenRouter seam | Accepted |
 | [0075](0075-project-mail-inbox-via-cloudflare-email-routing.md) | Project mail inbox: receive through Cloudflare Email Routing and file through `uploadDocument` | Accepted |
 | [0076](0076-ingestion-is-claimed-fairly-from-a-durable-queue.md) | Ingestion is claimed fairly from a durable queue, by a tier that scales on its depth | Proposed |
-| [0077](0077-contact-form-via-cloudflare-email-sending.md) | Contact form: send through Cloudflare Email Sending to verified addresses only | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
@@ -147,10 +146,10 @@ Consequences, where a reader looks for them.
 > a decision is not, so renumbering one does not rewrite it.
 > Take the next number from `python3 scripts/check_adrs.py --next`, which reads
 > the directory, not from this table. It cannot see another open branch: on
-> 2026-10-01 0074 and then 0076 were each taken twice that way, and the branch
-> that merged later renumbered its records (the project mail inbox to 0075, the
-> contact form to 0077). The check fails on the merge, so the later branch
-> finds out there; migration numbers collide the same way (`0101`).
+> 2026-10-01 0074 was taken twice that way, and the branch that merged later
+> renumbered its record (the project mail inbox to 0075). The check fails on
+> the merge, so the later branch finds out there; migration numbers collide the
+> same way (`0101`).
 
 ## Related documents
 

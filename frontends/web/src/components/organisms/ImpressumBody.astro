@@ -21,7 +21,13 @@ const t = ui[locale].legal
         {id.seat[locale]}
       </p>
       <p>
-        {t.emailLabel}: <a href={`mailto:${id.email}`}>{id.email}</a>
+        {t.emailLabel}:{' '}
+        {id.emails.map((e, i) => (
+          <>
+            {i > 0 && ', '}
+            <a href={`mailto:${e}`}>{e}</a>
+          </>
+        ))}
       </p>
       <h2>{t.impressum.statusHeading}</h2>
       <p>{t.impressum.status}</p>

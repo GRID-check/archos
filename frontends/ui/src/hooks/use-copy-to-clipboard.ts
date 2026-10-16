@@ -8,10 +8,9 @@ const COPIED_MS = 1500
 /**
  * Copy text and hold a short-lived `copied` flag for the acknowledgement.
  *
- * The one clipboard copy for a button that says "copied": `CopyField`,
- * `CodeBlock`, the citation link, the support reference and the user message
- * all use it. Each used to carry its own `setTimeout` that outlived an
- * unmounted component and cut a second click's acknowledgement short.
+ * For a button that says "copied" (`CopyField`). A bare `setTimeout` per
+ * component outlives an unmounted component and cuts a second click's
+ * acknowledgement short; this one does neither.
  *
  * `copy` resolves `false` when the Clipboard API is missing or refuses
  * (insecure context, denied permission), so the caller can say so instead of

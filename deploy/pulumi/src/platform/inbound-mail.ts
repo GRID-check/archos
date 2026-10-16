@@ -11,9 +11,8 @@ import type { MailZone } from "./email-routing";
  * which streams project addresses to the BFF and refuses the rest.
  *
  * Created only when `inboundMailDomain` is set. Email Routing on the zone (the
- * provider, the guards, the enablement) is `installMailZones` in
- * `email-routing.ts`, shared with the contact address when both are on the
- * product's own apex. Nothing here runs in the cluster; the only in-cluster
+ * provider, the guards, the enablement) is `installInboundMailZone` in
+ * `email-routing.ts`. Nothing here runs in the cluster; the only in-cluster
  * parts are the frontend's two env vars (`app/config.ts`) and the edge
  * rate-limit bucket (`app/httproutes.ts`).
  *
@@ -21,8 +20,8 @@ import type { MailZone } from "./email-routing";
  *
  * Project addresses live on the product domain (`<slug>.<token>@piloti.at`).
  * The zone's catch-all sends every address that no literal rule claims to the
- * Worker. Cloudflare matches literal rules first, so `kontakt@`
- * (`contact-mail.ts`) and any other company address given a rule never reach
+ * Worker. Cloudflare matches literal rules first, so a company address given a
+ * rule of its own (`kontakt@`, say, set up in the dashboard) never reaches
  * it. The Worker checks the recipient's shape against the address contract in
  * `shared/inbound-address.json` and refuses everything that is not a project
  * address itself, so typos and spam to random names get the "unknown
@@ -57,7 +56,7 @@ import type { MailZone } from "./email-routing";
  * domain, and the BFF would need a Cloudflare credential to mint an address),
  * and plus-addressing (`projekt+<slug>.<token>@`) was rejected in ADR-0075.
  * `loadConfig` refuses the subdomain-of-the-DNS-zone case statically; the zone
- * lookup in `installMailZones` refuses every other mismatch at preview.
+ * lookup in `installInboundMailZone` refuses every other mismatch at preview.
  *
  * ## The apex must not already receive mail elsewhere
  *
@@ -104,8 +103,8 @@ export function workerScriptName(stack: string): string {
 }
 
 /**
- * The inbox on `zone` (from `installMailZones`), which is undefined exactly
- * when the inbox is off.
+ * The inbox on `zone` (from `installInboundMailZone`), which is undefined
+ * exactly when the inbox is off.
  */
 export function installInboundMail(cfg: GridConfig, zone: MailZone | undefined): InboundMail | undefined {
   const mail = cfg.inboundMail;
