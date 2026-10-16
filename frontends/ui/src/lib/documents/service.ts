@@ -73,7 +73,8 @@ import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { reconcileDocumentStatuses, describeBackendIngestState, extractIngestJobId } from './reconcile-status'
 import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
 import { loadFassungFacts } from './fassung-facts'
-import { projectShelf } from './shelf'
+import { documentShelf, projectShelf } from './shelf'
+import { publishShelfChanged } from './shelf-live'
 import type { DocumentLevelQuery } from './list-query'
 import { uploadToShelf, type UploadDocumentResult } from './shelf-upload'
 import { resolveDocumentFolderPath } from './folder-path'
@@ -2238,6 +2239,7 @@ export async function renameDocument(
   }
 
   await setDocumentDisplayName(documentId, session.organizationId, displayName)
+  await publishShelfChanged(session.organizationId, documentShelf(doc))
 
   // Mirror the name onto the backend's metadata row so citation chips follow
   // the rename immediately, with no re-ingest (the retrieval layer prefers a
@@ -2337,6 +2339,7 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
   ])
 
   await deleteProjectDocument(doc.id, organizationId, projectId)
+  await publishShelfChanged(organizationId, projectShelf(projectId))
 
   // Once more, now that the row is gone: an ingest of this document that
   // asked `GET /api/internal/document-exists` before the row went saw it,

@@ -26,6 +26,7 @@ import { createDocumentByNameClient } from '@/lib/documents/by-name-client'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { shelfSummaryUrl, type LevelPageRequest } from '@/lib/documents/level-client'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
+import type { LiveShelf } from '@/lib/documents/shelf-live-events'
 import { offeredForRetry } from '@/lib/documents/retry-policy'
 import { inferDocumentKind } from '../document-kind'
 import type { FileItem, FolderItem } from '../file-types'
@@ -44,6 +45,7 @@ import { useLevelListing } from '../hooks/use-level-listing'
 import { useLinkedDocuments } from '../hooks/use-linked-documents'
 import { useModelStage } from '../hooks/use-model-stage'
 import { useSettleTrackedUploads } from '../hooks/use-settle-tracked-uploads'
+import { useShelfLive, type ShelfChange } from '../hooks/use-shelf-live'
 import { useShelfSummary } from '../hooks/use-shelf-summary'
 import { useShelfUpload } from '../hooks/use-shelf-upload'
 import { useViewPreference } from '../hooks/use-view-preference'
@@ -344,6 +346,23 @@ export function FileWorkspace({
   useEffect(() => {
     reloadFilesRef.current = reloadAll
   }, [reloadAll])
+
+  // Changes made anywhere else (a colleague, Piloti, the chat beside this,
+  // another tab) arrive as a hint on the shelf's channel; what is on screen
+  // is read again, quietly, and the folder tree when it moved too.
+  const liveShelf = useMemo<LiveShelf>(
+    () => (shelf.projectId ? { kind: 'project', projectId: shelf.projectId } : { kind: 'archiv' }),
+    [shelf.projectId]
+  )
+  const { load: loadFolders } = tree
+  const onShelfChanged = useCallback(
+    ({ folders: foldersChanged }: ShelfChange) => {
+      void reloadAll()
+      if (foldersChanged) void loadFolders()
+    },
+    [reloadAll, loadFolders]
+  )
+  useShelfLive(liveShelf, onShelfChanged)
 
   const upload = shelf.useUpload({
     collectionName,

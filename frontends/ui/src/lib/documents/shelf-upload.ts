@@ -38,6 +38,7 @@ import { assertMayReplaceHeld } from '@/lib/upload-screening/quarantine-reviewer
 import { recordAuditEvent } from '@/lib/audit/service'
 import { assertWithinStorageQuota } from '@/lib/storage/service'
 import { admitOrDiscard, admitReplacementOrDiscard } from '@/lib/storage/admission'
+import { publishShelfChanged } from './shelf-live'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { contentDigest } from './content-digest'
 import { documentReadFamily } from './document-status'
@@ -320,6 +321,9 @@ async function admitRow(
       createdBy: session.userId,
       uploadBatchId: input.uploadBatchId,
     })
+    // A new row announces itself when it is admitted (`lib/storage`); a
+    // replacement keeps its row, so the shelf is told here.
+    await publishShelfChanged(session.organizationId, input.shelf)
     return
   }
   // A `LiveFilenameTakenError` out of here is the lost first-upload race: the

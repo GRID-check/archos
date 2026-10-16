@@ -877,6 +877,24 @@ never drains the shelf for the default view.
   (as many rows as are on screen, up to 500, swapped in whole) and the summary.
   A move or delete patches the loaded rows at once and re-reads the summary, so
   the tiles' counts follow.
+- **Changes made elsewhere arrive live.** The workspace joins its shelf's live
+  channel (`shelf:project-<id>` or `shelf:archiv`, ADR-0110) through
+  `useShelfLive`. The server says `shelf.changed` after every write to the
+  shelf: a new or replaced document (a person's, a mail import, one Piloti
+  filed), a rename, a delete, a move, a folder made, renamed, moved, binned,
+  restored or given new access, an upload released from screening, and an
+  ingestion that finished, failed or was quarantined. The hint carries no data;
+  the workspace re-reads the level, the summary and, when `folders` is set, the
+  folder tree, quietly. Hints within 400 ms are one re-read. When the channel
+  comes up (first, after a dropped connection, after a phone wakes) everything
+  is read once more, so a hint missed while offline is not lost.
+  `lib/documents/shelf-live.spec.ts` fails a module that writes `documents` or
+  `project_folders` without announcing it, unless it is listed with the module
+  that does.
+- **Folder reads cross safely.** Only the newest read of the folder tree
+  commits, and a re-read that fails keeps the tree on screen; before, an older
+  answer landing last took a just-made folder off the screen, and one failed
+  request emptied the whole tree.
 
 Still open: a virtualised grid and list, and the kind/tag filters and the
 brief's content facts on the server once the backend's tags are mirrored into

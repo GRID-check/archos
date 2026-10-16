@@ -23,6 +23,8 @@ import { parseFassungNames, type FassungNames, type RawFassungFields } from './f
 import { parsePhotoCapture, type PhotoCapture } from './photo-capture'
 import { parseRevisionFacts, type RevisionFacts } from './revision-facts'
 import { setDocumentReconciledStatus } from './repository'
+import { documentShelf } from './shelf'
+import { publishShelfChanged } from './shelf-live'
 import { parseIngestFailureCategory, type IngestFailureFacts } from './retry-policy'
 
 /**
@@ -686,6 +688,25 @@ const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef):
 }
 
 /**
+ * One `shelf.changed` per shelf the settled rows are on. A row type that does
+ * not carry its shelf (`projectId`, `scope`) announces nothing; the listing
+ * and the per-document status read both carry it.
+ */
+async function announceSettledShelves(
+  organizationId: string,
+  rows: readonly ReconcilableDocument[],
+  settledIds: ReadonlySet<string>
+): Promise<void> {
+  const shelves = new Map<string, NonNullable<ReturnType<typeof documentShelf>>>()
+  for (const row of rows) {
+    if (!settledIds.has(row.id) || !('projectId' in row)) continue
+    const shelf = documentShelf(row as { projectId: string | null; scope?: string })
+    if (shelf) shelves.set(shelf.kind === 'project' ? shelf.projectId : 'archiv', shelf)
+  }
+  await Promise.all([...shelves.values()].map((shelf) => publishShelfChanged(organizationId, shelf)))
+}
+
+/**
  * Reconcile in-flight document rows with the backend's ingestion state and
  * persist any terminal transition (and re-check a recent `interrupted:`
  * failure, see {@link INTERRUPTED_REASON_PREFIX}), then merge the backend's read-only document
@@ -809,6 +830,10 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       organizationId,
       settled.map(([id, resolution]) => ({ id, status: resolution.status }))
     )
+    // The badge flipped for everyone reading the shelf, and a colleague's
+    // upload held until its screening passed is on their shelf from now on
+    // (ADR-0086): tell the workspaces open on it.
+    await announceSettledShelves(organizationId, rows, new Set(settled.map(([id]) => id)))
   }
 
   // --- Metadata enrichment (all rows) ---

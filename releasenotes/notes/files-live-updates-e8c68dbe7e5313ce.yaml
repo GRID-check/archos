@@ -1,0 +1,7 @@
+---
+improvements:
+  - >
+    Dateien and the Archiv now update while you look at them: a colleague's upload, a file Piloti filed, a move, a rename or a new folder appears without reloading the page, and a file's status changes as soon as it has been read.
+fixes:
+  - >
+    Folders no longer disappear from the folder list after you create or rename one, or after a brief connection drop.

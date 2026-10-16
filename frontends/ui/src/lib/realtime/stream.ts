@@ -146,7 +146,7 @@ export async function openRealtimeStream(
   const attach = ({ key, channel, params }: ResolvedChannel): void => {
     const entry: Opened = { resolved: { key, channel, params }, release: [], recheck: null }
     open.set(key, entry)
-    for (const topic of channel.topics(params)) {
+    for (const topic of channel.topics(params, session.organizationId)) {
       entry.release.push(
         subscribe(topic, (payload) => {
           const parsed = channel.events.safeParse(payload)

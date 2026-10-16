@@ -101,6 +101,8 @@ import type { Document } from '@/lib/db/schema'
 import { computePurgeAfter, folderGraceDays } from '@/lib/deletion/policy'
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { eraseProjectDocument } from '@/lib/documents/service'
+import { projectShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { deleteQueuedJob } from '@/lib/jobs-queue/repository'
 import {
@@ -346,6 +348,8 @@ export async function moveFolderToBin(
       return subtree
     })
   )
+  // Gone from the shelf for everyone looking at it, as of this commit.
+  await publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
 
   // Out of retrieval at once. Every purge confirmed, or the bin entry is
   // undone and the request refused: never in the bin and still searchable.
@@ -405,7 +409,7 @@ async function unbinEntry(
   const at = new Date()
   const jobId = randomUUID()
   try {
-    return await withTenant({ organizationId }, () =>
+    const restored = await withTenant({ organizationId }, () =>
       db.transaction(async (tx) => {
         await takeBinLock(tx, project.id)
         if (!(await closeBinEntryRestored(tx, organizationId, root.id))) {
@@ -434,6 +438,8 @@ async function unbinEntry(
         return { restoredTo, folders: folderIds.length, documents }
       })
     )
+    await publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
+    return restored
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
     throw new ConflictError('A folder with this name already exists there. Rename it, then restore again.', {
