@@ -62,10 +62,11 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
   const t = useTranslations('files')
   const verdict = givenVerdict !== undefined ? givenVerdict : parseQuarantine(errorMessage)
   const reasons = verdict?.reasons ?? []
-  // How the check came to each reason is said as text under the first reason of
-  // its kind, never only in a tooltip (a chip is no focus target, and a touch
-  // has no hover): five terms share one sentence rather than repeating it.
-  const explainedAt = new Set(reasons.map((reason) => reasons.findIndex((other) => other.kind === reason.kind)))
+  // How the check came to each reason is said as text after the last reason of
+  // its kind (the job lists a kind's reasons together), never only in a tooltip:
+  // a chip is no focus target and a touch has no hover. Five terms share one
+  // sentence rather than repeating it, and it does not split their chips.
+  const explainedAt = new Set(reasons.map((reason) => reasons.findLastIndex((other) => other.kind === reason.kind)))
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)} data-testid={testId}>
