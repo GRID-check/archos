@@ -41,6 +41,12 @@ hyphen before a blank line are left alone. A match is given back as a span of
 the ORIGINAL text, the invisible characters inside it included, so masking
 removes them with the rest.
 
+An invisible character joins a word, but may also have stood where a space
+would: two numbers printed against each other. Where one was left out between
+digits, a number's boundary still holds there (an IBAN is not "followed by a
+digit", a social-security number may start), and a card is tried with its run
+cut there as well as joined.
+
 Term matching
 -------------
 Both sides are folded the same way: Unicode NFKC, the default lowercase mapping,
@@ -108,6 +114,8 @@ import logging
 import math
 import re
 import unicodedata
+from bisect import bisect_left
+from bisect import bisect_right
 from collections.abc import Iterable
 from collections.abc import Iterator
 from collections.abc import Mapping
@@ -202,13 +210,32 @@ IGNORABLE = "\u00ad\u200b\u200c\u200d\u2060\ufeff"
 _BREAK_HYPHENS = "-\u2010\u2011"
 
 
+#: Where a reading may differ from the text: an invisible character, or a hyphen that may break a line.
+_DROP_SITE = re.compile(f"[{_BREAK_HYPHENS}{IGNORABLE}]")  # the ASCII hyphen first: not a range
+
+
 @dataclass(frozen=True)
 class _Reading:
-    """The text as a person reads it, and for each of its characters where it stands in the original."""
+    """The text as a person reads it, and for each of its characters where it stands in the original.
+
+    ``soft`` holds the reading's indices where an invisible character was left
+    out right before. It joins a word (``Gehalts`` + soft hyphen + ``abrechnung``)
+    but may also have stood where a space would (two numbers printed against
+    each other), so a number's boundary treats it as one: the IBAN before it is
+    not "followed by a digit", and a card is tried with its groups split there
+    as well as joined.
+    """
 
     text: str
-    starts: list[int]
-    ends: list[int]
+    #: Original index of each reading character; ``None`` when the reading is the text itself.
+    starts: list[int] | None = None
+    soft: frozenset[int] = frozenset()
+
+    def original(self, start: int, end: int) -> tuple[int, int]:
+        """The original span of the reading's ``start``..``end``."""
+        if self.starts is None:
+            return start, end
+        return self.starts[start], self.starts[end - 1] + 1
 
 
 def _line_break_at(text: str, index: int) -> int:
@@ -218,49 +245,67 @@ def _line_break_at(text: str, index: int) -> int:
     return index + 1 if index < len(text) and text[index] in _LINE_BREAKS else index
 
 
-def _hyphenation_end(text: str, index: int) -> int:
+def _skip(text: str, index: int, chars: str) -> int:
+    while index < len(text) and text[index] in chars:
+        index += 1
+    return index
+
+
+def _hyphenation_end(text: str, index: int, before: str) -> int:
     """Where a hyphen at ``index`` that breaks a word across lines ends, counting the break; ``index`` when it is none.
 
     ``Gehalts-`` + line break + ``abrechnung`` and ``05-`` + line break + ``32``
-    are one word and one number. One line break only: a blank line is a
-    paragraph, and a hyphen with a space before it is a dash.
+    are one word and one number. ``before`` is the character the reading has
+    just before the hyphen. One line break only: a blank line is a paragraph,
+    and a hyphen with a space before it is a dash. Invisible characters around
+    the break do not count.
     """
-    if text[index] not in _BREAK_HYPHENS or not _word_char_before(text, index):
+    if not before or not _is_word_char(before):
         return index
-    cursor = index + 1
-    while cursor < len(text) and text[cursor] in _HORIZONTAL_SPACE:
-        cursor += 1
+    cursor = _skip(text, index + 1, _HORIZONTAL_SPACE + IGNORABLE)
     broken = _line_break_at(text, cursor)
     if broken == cursor:
         return index
-    while broken < len(text) and text[broken] in _HORIZONTAL_SPACE:
-        broken += 1
+    broken = _skip(text, broken, _HORIZONTAL_SPACE + IGNORABLE)
     return broken if broken < len(text) and _is_word_char(text[broken]) else index
 
 
-def _word_char_before(text: str, index: int) -> bool:
-    return index > 0 and _is_word_char(text[index - 1])
-
-
 def _read(text: str) -> _Reading:
-    """``text`` without invisible characters and hyphenation breaks; every rule runs on this. Pure."""
-    chars: list[str] = []
+    """``text`` without invisible characters and hyphenation breaks; every rule runs on this. Pure.
+
+    Only the places a reading can differ (:data:`_DROP_SITE`) are looked at;
+    the text between them is copied whole, and a text with none is its own
+    reading.
+    """
+    if not _DROP_SITE.search(text):
+        return _Reading(text)
+    parts: list[str] = []
     starts: list[int] = []
-    ends: list[int] = []
-    index = 0
-    while index < len(text):
-        char = text[index]
-        skipped = _hyphenation_end(text, index)
-        if char in IGNORABLE:
-            index += 1
-        elif skipped > index:
-            index = skipped
-        else:
-            chars.append(char)
-            starts.append(index)
-            ends.append(index + 1)
-            index += 1
-    return _Reading("".join(chars), starts, ends)
+    soft: set[int] = set()
+    cursor = 0
+    before = ""
+    for match in _DROP_SITE.finditer(text):
+        index = match.start()
+        if index < cursor:
+            continue
+        if index > cursor:
+            parts.append(text[cursor:index])
+            starts.extend(range(cursor, index))
+            before = text[index - 1]
+        cursor = index + 1
+        if text[index] in IGNORABLE:
+            soft.add(len(starts))
+            continue
+        end = _hyphenation_end(text, index, before)
+        if end > index:
+            cursor = end
+            continue
+        parts.append(text[index])
+        starts.append(index)
+        before = text[index]
+    parts.append(text[cursor:])
+    starts.extend(range(cursor, len(text)))
+    return _Reading("".join(parts), starts, frozenset(soft))
 
 
 # ------------------------------------------------------------------------- fold
@@ -413,8 +458,10 @@ IBAN_LENGTHS: dict[str, int] = {
 #: fixes the length and the check digits decide, so the boundary adds no precision.
 #: The parse is :func:`_iban_at`.
 _IBAN_START = re.compile(r"(?<!\d)[A-Za-z](?=[A-Za-z])")
+_IBAN_AT = re.compile(r"[A-Za-z](?=[A-Za-z])")
 #: Where a social-security number may start: a digit not right after another.
 _SVNR_START = re.compile(r"(?<!\d)\d")
+_SVNR_AT = re.compile(r"\d")
 _SVNR_WEIGHTS = (3, 7, 9, 0, 5, 8, 4, 2, 1, 6)
 _SVNR_MARKS = "-./"
 #: What may join the groups of a card number: spaces, never a tab (a tab is a
@@ -437,13 +484,14 @@ def valid_iban(compact: str) -> bool:
     return int(digits) % 97 == 1
 
 
-def _iban_at(text: str, start: int) -> tuple[str, int] | None:
+def _iban_at(text: str, start: int, soft: frozenset[int]) -> tuple[str, int] | None:
     """The IBAN printed at ``start``: its compact form and where it ends; ``None`` when there is none.
 
     The country fixes the length, so the parse reads exactly that many
     characters and stops: what follows (``EUR``, a card number, the next IBAN)
-    is never part of it. A separator may stand after the country code and
-    before each group of four.
+    is never part of it, but a digit right after it makes it a longer number,
+    unless an invisible character stood between (``soft``). A separator may
+    stand after the country code and before each group of four.
     """
     country = text[start : start + 2].upper()
     length = IBAN_LENGTHS.get(country)
@@ -460,9 +508,14 @@ def _iban_at(text: str, start: int) -> tuple[str, int] | None:
         chars.append(char)
         index += 1
     compact = "".join(chars)
-    if _digit_at(text, index) is not None or not valid_iban(compact):
+    if _digit_touches(text, index, soft) or not valid_iban(compact):
         return None
     return compact, index
+
+
+def _digit_touches(text: str, index: int, soft: frozenset[int]) -> bool:
+    """Whether a digit stands at ``index`` right against what came before, without even an invisible character."""
+    return _digit_at(text, index) is not None and index not in soft
 
 
 def _iban_char(text: str, index: int, *, digits_only: bool) -> str | None:
@@ -506,7 +559,7 @@ def _digits_at(text: str, index: int, count: int) -> str | None:
     return digits
 
 
-def _svnr_at(text: str, start: int) -> tuple[str, int] | None:
+def _svnr_at(text: str, start: int, soft: frozenset[int]) -> tuple[str, int] | None:
     """The social-security number printed at ``start``: its ten digits and where it ends.
 
     ``SSSS DDMMYY``, with or without a separator after the serial; the date's
@@ -520,7 +573,7 @@ def _svnr_at(text: str, start: int) -> tuple[str, int] | None:
     end = year_at + 2
     parts = [_digits_at(text, start, 4), _digits_at(text, day_at, 2), _digits_at(text, month_at, 2)]
     parts.append(_digits_at(text, year_at, 2))
-    if (split and year_at == month_at + 2) or any(part is None for part in parts) or _digit_at(text, end) is not None:
+    if (split and year_at == month_at + 2) or any(part is None for part in parts) or _digit_touches(text, end, soft):
         return None
     digits = "".join(part or "" for part in parts)
     return (digits, end) if valid_at_svnr(digits) else None
@@ -559,8 +612,8 @@ def _stands_alone(groups: list[str], first: int, last: int) -> bool:
     return before and after
 
 
-def _cards_in(run: str) -> Iterator[tuple[str, int, int]]:
-    """Each card printed in a run of digit groups: its digits and where it starts and ends in the run.
+def _cards_in(groups: list[tuple[str, int, int]]) -> Iterator[tuple[str, int, int]]:
+    """Each card among a run's digit groups (digits, start, end): its digits and where it starts and ends in the run.
 
     A card is some consecutive groups that have a card's layout and pass its
     checksum; the leftmost start wins and takes the longest such stretch. What
@@ -570,18 +623,29 @@ def _cards_in(run: str) -> Iterator[tuple[str, int, int]]:
     whole, so a table of years gets no sliding window. The last group may be
     four digits long: it is the security code.
     """
-    matches = list(_DIGIT_GROUP.finditer(run))
-    groups = [_digits_at(run, match.start(), len(match.group())) or "" for match in matches]
+    digits_of = [digits for digits, _, _ in groups]
     first = 0
     while first < len(groups):
         for last in range(min(len(groups), first + _CARD_MAX_GROUPS), first, -1):
-            digits = "".join(groups[first:last])
-            sizes = tuple(len(group) for group in groups[first:last])
-            if _card_layout(sizes) and _stands_alone(groups, first, last) and valid_card(digits):
-                yield digits, matches[first].start(), matches[last - 1].end()
+            digits = "".join(digits_of[first:last])
+            sizes = tuple(len(group) for group in digits_of[first:last])
+            if _card_layout(sizes) and _stands_alone(digits_of, first, last) and valid_card(digits):
+                yield digits, groups[first][1], groups[last - 1][2]
                 first = last - 1
                 break
         first += 1
+
+
+def _digit_groups(run: str) -> list[tuple[str, int, int]]:
+    """The digit groups of a run as (ASCII digits, start, end)."""
+    return [(_digits_at(run, m.start(), len(m.group())) or "", m.start(), m.end()) for m in _DIGIT_GROUP.finditer(run)]
+
+
+def _cut_runs(run: str, cuts: list[int]) -> Iterator[list[tuple[str, int, int]]]:
+    """The run cut into runs of its own at ``cuts``, each as its digit groups (offsets stay those of ``run``)."""
+    bounds = [0, *cuts, len(run)]
+    for a, b in zip(bounds, bounds[1:], strict=False):
+        yield [(digits, start + a, end + a) for digits, start, end in _digit_groups(run[a:b])]
 
 
 def mask_card(digits: str) -> str:
@@ -602,32 +666,53 @@ class Span:
     sample: str | None = None
 
 
-def _iban_spans(text: str) -> Iterator[Span]:
+def _starts(text: str, soft: frozenset[int], start: re.Pattern[str], at: re.Pattern[str]) -> list[int]:
+    """Where a number may start: where ``start`` finds it, and right after an invisible character between digits."""
+    found = [match.start() for match in start.finditer(text)]
+    extra = [i for i in soft if 0 < i < len(text) and _digit_at(text, i - 1) is not None and at.match(text, i)]
+    return sorted({*found, *extra}) if extra else found
+
+
+def _iban_spans(text: str, soft: frozenset[int]) -> Iterator[Span]:
     """Every IBAN, in one pass: each start is parsed on its own, and the scan resumes after a match."""
     resume = 0
-    for match in _IBAN_START.finditer(text):
-        if match.start() < resume:
+    for start in _starts(text, soft, _IBAN_START, _IBAN_AT):
+        if start < resume:
             continue
-        found = _iban_at(text, match.start())
+        found = _iban_at(text, start, soft)
         if found is not None:
             compact, resume = found
-            yield Span("iban", match.start(), resume, sample=mask_iban(compact))
+            yield Span("iban", start, resume, sample=mask_iban(compact))
 
 
-def _svnr_spans(text: str) -> Iterator[Span]:
+def _svnr_spans(text: str, soft: frozenset[int]) -> Iterator[Span]:
     resume = 0
-    for match in _SVNR_START.finditer(text):
-        if match.start() < resume:
+    for start in _starts(text, soft, _SVNR_START, _SVNR_AT):
+        if start < resume:
             continue
-        found = _svnr_at(text, match.start())
+        found = _svnr_at(text, start, soft)
         if found is not None:
             digits, resume = found
-            yield Span("at_svnr", match.start(), resume, sample=mask_at_svnr(digits))
+            yield Span("at_svnr", start, resume, sample=mask_at_svnr(digits))
 
 
-def _card_spans(text: str) -> Iterator[Span]:
+def _card_spans(text: str, soft: frozenset[int]) -> Iterator[Span]:
+    """Cards in each run of digit groups; where an invisible character stood between digits, tried cut there too."""
+    cuts = sorted(soft)
     for match in _CARD_RUN.finditer(text):
-        for digits, start, end in _cards_in(match.group(0)):
+        run = match.group(0)
+        within = cuts[bisect_right(cuts, match.start()) : bisect_left(cuts, match.end())]
+        inside = [cut - match.start() for cut in within]
+        found = list(_cards_in(_digit_groups(run)))
+        if inside:
+            joined = list(found)
+            found += [
+                card
+                for groups in _cut_runs(run, inside)
+                for card in _cards_in(groups)
+                if not any(card[1] < end and start < card[2] for _, start, end in joined)
+            ]
+        for digits, start, end in sorted(found, key=lambda card: card[1]):
             yield Span("credit_card", match.start() + start, match.start() + end, sample=mask_card(digits))
 
 
@@ -700,21 +785,26 @@ def find_spans(text: str, rules: ScreeningRules) -> list[Span]:
     reading = _read(text)
     spans = list(_term_spans(reading.text, rules))
     for name in rules.detectors:
-        spans.extend(_DETECTOR_SPANS[name](reading.text))
-    spans = _outside_ibans(spans)
-    original = [replace(span, start=reading.starts[span.start], end=reading.ends[span.end - 1]) for span in spans]
+        spans.extend(_DETECTOR_SPANS[name](reading.text, reading.soft))
+    original = [_in_original(span, reading) for span in _outside_ibans(spans)]
     return [span for span in original if not _overlaps_any(span, protected)]
+
+
+def _in_original(span: Span, reading: _Reading) -> Span:
+    start, end = reading.original(span.start, span.end)
+    return replace(span, start=start, end=end)
 
 
 def _outside_ibans(spans: list[Span]) -> list[Span]:
     """``spans`` without the card and social-security matches that lie inside an IBAN's own digits."""
-    ibans = [span for span in spans if span.kind == "iban"]
-    return [
-        span
-        for span in spans
-        if span.kind not in ("at_svnr", "credit_card")
-        or not any(iban.start <= span.start and span.end <= iban.end for iban in ibans)
-    ]
+    ibans = sorted((span for span in spans if span.kind == "iban"), key=lambda span: span.start)
+    starts = [iban.start for iban in ibans]
+
+    def inside(span: Span) -> bool:
+        at = bisect_right(starts, span.start) - 1
+        return at >= 0 and span.end <= ibans[at].end
+
+    return [span for span in spans if span.kind not in ("at_svnr", "credit_card") or not inside(span)]
 
 
 def _overlaps_any(span: Span, regions: list[tuple[int, int]]) -> bool:

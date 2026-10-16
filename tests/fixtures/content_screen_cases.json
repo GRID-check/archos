@@ -1391,6 +1391,131 @@
           "sample": "•••• 0005"
         }
       ]
+    },
+    {
+      "name": "an invisible character between an IBAN and the next number keeps them apart",
+      "terms": [],
+      "detectors": [
+        "iban",
+        "at_svnr",
+        "credit_card"
+      ],
+      "text": "AT61 1904 3002 3457 3201​1237010180",
+      "matches": [
+        {
+          "kind": "iban",
+          "text": "AT61 1904 3002 3457 3201"
+        },
+        {
+          "kind": "at_svnr",
+          "text": "1237010180"
+        }
+      ],
+      "masked": "[IBAN entfernt]​[SV-Nummer entfernt]",
+      "findings": [
+        {
+          "kind": "iban",
+          "count": 1,
+          "sample": "AT61 •••• •••• •••• 3201"
+        },
+        {
+          "kind": "at_svnr",
+          "count": 1,
+          "sample": "•••• ••••80"
+        }
+      ]
+    },
+    {
+      "name": "an invisible character between two cards keeps them apart",
+      "terms": [],
+      "detectors": [
+        "credit_card"
+      ],
+      "text": "4111 1111 1111 1111­4111 1111 1111 1111",
+      "matches": [
+        {
+          "kind": "credit_card",
+          "text": "4111 1111 1111 1111"
+        },
+        {
+          "kind": "credit_card",
+          "text": "4111 1111 1111 1111"
+        }
+      ],
+      "masked": "[Kartennummer entfernt]­[Kartennummer entfernt]",
+      "findings": [
+        {
+          "kind": "credit_card",
+          "count": 2,
+          "sample": "•••• 1111"
+        }
+      ]
+    },
+    {
+      "name": "a card printed against an IBAN behind a soft hyphen is found once the IBAN is masked",
+      "terms": [],
+      "detectors": [
+        "iban",
+        "at_svnr",
+        "credit_card"
+      ],
+      "text": "AT61 1904 3002 3457 3201­4111 1111 1111 1111",
+      "matches": [
+        {
+          "kind": "iban",
+          "text": "AT61 1904 3002 3457 3201"
+        },
+        {
+          "kind": "credit_card",
+          "text": "4111 1111 1111 1111"
+        }
+      ],
+      "masked": "[IBAN entfernt]­[Kartennummer entfernt]",
+      "findings": [
+        {
+          "kind": "iban",
+          "count": 1,
+          "sample": "AT61 •••• •••• •••• 3201"
+        },
+        {
+          "kind": "credit_card",
+          "count": 1,
+          "sample": "•••• 1111"
+        }
+      ]
+    },
+    {
+      "name": "invisible characters around a line-break hyphen do not stop the join",
+      "terms": [
+        "Gehaltsabrechnung"
+      ],
+      "detectors": [],
+      "text": "Gehalts­-\nabrechnung, Gehalts-​\nabrechnung, Gehalts-\n⁠abrechnung",
+      "matches": [
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "text": "Gehalts­-\nabrechnung"
+        },
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "text": "Gehalts-​\nabrechnung"
+        },
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "text": "Gehalts-\n⁠abrechnung"
+        }
+      ],
+      "masked": "[Begriff entfernt], [Begriff entfernt], [Begriff entfernt]",
+      "findings": [
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "count": 3
+        }
+      ]
     }
   ],
   "unicode": {

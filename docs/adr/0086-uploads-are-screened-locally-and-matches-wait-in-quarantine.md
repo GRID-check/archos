@@ -604,7 +604,9 @@ file did not say whose rule held it.
   digit before it and, after ONE line break, a letter or digit. Every term and
   detector runs on that reading; spans are given back in the original text. A
   dash with a space before it and a hyphen before a blank line are left alone.
-  The reading's character sets are held by fixture cases, not by the fixture's
+  Where an invisible character was left out between digits it still counts as
+  a boundary for a number (two numbers printed against each other stay two),
+  and a card is tried cut there as well as joined. The reading's character sets are held by fixture cases, not by the fixture's
   `unicode` tables.
 - **A number is cut off by a digit, not a letter.** IBAN and SV-Nr may have a
   label against them; the fixed length and the checksum carry the precision.

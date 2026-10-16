@@ -137,10 +137,6 @@ function wordCharAt(text: string, index: number): boolean {
   return LETTER_OR_NUMBER.test(codePointAt(text, index))
 }
 
-function wordCharBefore(text: string, index: number): boolean {
-  return LETTER_OR_NUMBER.test(codePointBefore(text, index))
-}
-
 function isDecimalDigit(codePoint: number): boolean {
   return codePoint >= 0 && DECIMAL_DIGIT.test(String.fromCodePoint(codePoint))
 }
@@ -224,11 +220,26 @@ const LINE_BREAKS = '\n\v\f\r\x85\u2028\u2029'
 /** Whitespace that keeps a line. */
 const HORIZONTAL_SPACE = [...SCREENING_WHITESPACE].filter((char) => !LINE_BREAKS.includes(char)).join('')
 
-/** The text as a person reads it, and for each of its UTF-16 units where it stands in the original. */
+/** Where a reading may differ from the text: an invisible character, or a hyphen that may break a line. */
+const DROP_SITE = /[-\u2010\u2011\u00ad\u200b\u200c\u200d\u2060\ufeff]/g
+
+/**
+ * The text as a person reads it, and for each of its UTF-16 units where it
+ * stands in the original (`starts`; null when the reading is the text itself).
+ * `soft` holds the reading's indices where an invisible character was left out
+ * right before: it joins a word, but may have stood where a space would (two
+ * numbers printed against each other), so a number's boundary treats it as one.
+ */
 interface Reading {
   text: string
-  starts: number[]
-  ends: number[]
+  starts: number[] | null
+  soft: ReadonlySet<number>
+}
+
+/** The original span of the reading's `start`..`end`. */
+function originalSpan(reading: Reading, start: number, end: number): [number, number] {
+  if (!reading.starts) return [start, end]
+  return [reading.starts[start], reading.starts[end - 1] + 1]
 }
 
 /** `index` moved past one line break (`\r\n` is one); unchanged when none stands there. */
@@ -237,42 +248,66 @@ function lineBreakAt(text: string, index: number): number {
   return index < text.length && LINE_BREAKS.includes(text[index]) ? index + 1 : index
 }
 
+function skipChars(text: string, index: number, chars: string): number {
+  let cursor = index
+  while (cursor < text.length && chars.includes(text[cursor])) cursor += 1
+  return cursor
+}
+
 /**
  * Where a hyphen at `index` that breaks a word across lines ends, counting the
  * break; `index` when it is none. `Gehalts-` + line break + `abrechnung` and
- * `05-` + line break + `32` are one word and one number. One line break only: a
+ * `05-` + line break + `32` are one word and one number. `before` is the
+ * character the reading has just before the hyphen. One line break only: a
  * blank line is a paragraph, and a hyphen with a space before it is a dash.
+ * Invisible characters around the break do not count.
  */
-function hyphenationEnd(text: string, index: number): number {
-  if (!BREAK_HYPHENS.includes(text[index]) || !wordCharBefore(text, index)) return index
-  let cursor = index + 1
-  while (cursor < text.length && HORIZONTAL_SPACE.includes(text[cursor])) cursor += 1
+function hyphenationEnd(text: string, index: number, before: string): number {
+  if (!LETTER_OR_NUMBER.test(before)) return index
+  const cursor = skipChars(text, index + 1, HORIZONTAL_SPACE + SCREENING_IGNORABLE)
   let broken = lineBreakAt(text, cursor)
   if (broken === cursor) return index
-  while (broken < text.length && HORIZONTAL_SPACE.includes(text[broken])) broken += 1
+  broken = skipChars(text, broken, HORIZONTAL_SPACE + SCREENING_IGNORABLE)
   return broken < text.length && wordCharAt(text, broken) ? broken : index
 }
 
-/** `text` without invisible characters and hyphenation breaks; every rule runs on this. */
+/**
+ * `text` without invisible characters and hyphenation breaks; every rule runs
+ * on this. Only the places a reading can differ (`DROP_SITE`) are looked at;
+ * the text between them is copied whole, and a text with none is its own reading.
+ */
 function read(text: string): Reading {
-  const chars: string[] = []
+  if (text.search(DROP_SITE) === -1) return { text, starts: null, soft: new Set() }
+  const parts: string[] = []
   const starts: number[] = []
-  const ends: number[] = []
-  let index = 0
-  while (index < text.length) {
-    const skipped = hyphenationEnd(text, index)
-    if (SCREENING_IGNORABLE.includes(text[index])) {
-      index += 1
-    } else if (skipped > index) {
-      index = skipped
-    } else {
-      chars.push(text[index])
-      starts.push(index)
-      ends.push(index + 1)
-      index += 1
+  const soft = new Set<number>()
+  let cursor = 0
+  let before = ''
+  for (const match of text.matchAll(DROP_SITE)) {
+    const index = match.index
+    if (index < cursor) continue
+    if (index > cursor) {
+      parts.push(text.slice(cursor, index))
+      for (let i = cursor; i < index; i += 1) starts.push(i)
+      before = codePointBefore(text, index)
     }
+    cursor = index + 1
+    if (SCREENING_IGNORABLE.includes(text[index])) {
+      soft.add(starts.length)
+      continue
+    }
+    const end = hyphenationEnd(text, index, before)
+    if (end > index) {
+      cursor = end
+      continue
+    }
+    parts.push(text[index])
+    starts.push(index)
+    before = text[index]
   }
-  return { text: chars.join(''), starts, ends }
+  parts.push(text.slice(cursor))
+  for (let i = cursor; i < text.length; i += 1) starts.push(i)
+  return { text: parts.join(''), starts, soft }
 }
 
 // ------------------------------------------------------------------ fold
@@ -491,7 +526,16 @@ function ibanChar(text: string, index: number, digitsOnly: boolean): Digit | nul
  * fixes the length, so the parse reads exactly that many characters and stops;
  * a separator may stand after the country code and before each group of four.
  */
-function ibanAt(text: string, start: number): { compact: string; end: number } | null {
+/** Whether a digit stands at `index` right against what came before, without even an invisible character. */
+function digitTouches(text: string, index: number, soft: ReadonlySet<number>): boolean {
+  return digitAt(text, index) !== null && !soft.has(index)
+}
+
+function ibanAt(
+  text: string,
+  start: number,
+  soft: ReadonlySet<number>
+): { compact: string; end: number } | null {
   const country = text.slice(start, start + 2).toUpperCase()
   const length = IBAN_LENGTHS.get(country)
   if (length === undefined) return null
@@ -504,7 +548,7 @@ function ibanAt(text: string, start: number): { compact: string; end: number } |
     compact += char.value
     index += char.width
   }
-  if (digitAt(text, index) || !validIban(compact)) return null
+  if (digitTouches(text, index, soft) || !validIban(compact)) return null
   return { compact, end: index }
 }
 
@@ -529,7 +573,11 @@ export function validAtSvnr(digits: string): boolean {
  * a separator after the serial; the date's own parts are either all joined
  * (`010180`) or all separated (`01 01 80`, `01.01.80`).
  */
-function svnrAt(text: string, start: number): { digits: string; end: number } | null {
+function svnrAt(
+  text: string,
+  start: number,
+  soft: ReadonlySet<number>
+): { digits: string; end: number } | null {
   const serial = digitsAt(text, start, 4)
   if (!serial) return null
   const day = digitsAt(text, skipSeparator(text, serial.end, SVNR_MARKS), 2)
@@ -541,7 +589,7 @@ function svnrAt(text: string, start: number): { digits: string; end: number } | 
   const yearAt = split ? skipSeparator(text, month.end, SVNR_MARKS) : month.end
   if (split && yearAt === month.end) return null
   const year = digitsAt(text, yearAt, 2)
-  if (!year || digitAt(text, year.end)) return null
+  if (!year || digitTouches(text, year.end, soft)) return null
   const digits = serial.digits + day.digits + month.digits + year.digits
   return validAtSvnr(digits) ? { digits, end: year.end } : null
 }
@@ -583,27 +631,52 @@ function standsAlone(groups: readonly string[], first: number, last: number): bo
   return before && after
 }
 
+interface DigitGroup {
+  digits: string
+  start: number
+  end: number
+}
+
+/** The digit groups of a run (ASCII digits, start, end). */
+function digitGroups(run: string): DigitGroup[] {
+  return [...run.matchAll(DIGIT_GROUP)].map((match) => ({
+    digits: asciiDigits(match[0]),
+    start: match.index,
+    end: match.index + match[0].length,
+  }))
+}
+
+/** The run cut into runs of its own at `cuts`, each as its digit groups (offsets stay those of `run`). */
+function cutRuns(run: string, cuts: readonly number[]): DigitGroup[][] {
+  const bounds = [0, ...cuts, run.length]
+  return bounds.slice(1).map((end, i) =>
+    digitGroups(run.slice(bounds[i], end)).map((group) => ({
+      ...group,
+      start: group.start + bounds[i],
+      end: group.end + bounds[i],
+    }))
+  )
+}
+
 /**
- * Each card printed in a run of digit groups: its digits and where it starts
- * and ends in the run. A card is some consecutive groups that have a card's
- * layout and pass its checksum; the leftmost start wins and takes the longest
- * such stretch. What stands before it (a position) or after it (an expiry, a
- * security code) is not part of it. A group of four digits beside it is, though:
- * it makes the card a piece of a longer number printed in fours, which is judged
- * as a whole, so a table of years gets no sliding window. The last group may be
- * four digits long: it is the security code.
+ * Each card among a run's digit groups: its digits and where it starts and ends
+ * in the run. A card is some consecutive groups that have a card's layout and
+ * pass its checksum; the leftmost start wins and takes the longest such
+ * stretch. What stands before it (a position) or after it (an expiry, a
+ * security code) is not part of it. A group of four digits beside it is,
+ * though: it makes the card a piece of a longer number printed in fours, which
+ * is judged as a whole, so a table of years gets no sliding window. The last
+ * group may be four digits long: it is the security code.
  */
-function* cardsIn(run: string): Generator<{ digits: string; start: number; end: number }> {
-  const matches = [...run.matchAll(DIGIT_GROUP)]
-  const groups = matches.map((match) => asciiDigits(match[0]))
+function* cardsIn(groups: readonly DigitGroup[]): Generator<DigitGroup> {
+  const digitsOf = groups.map((group) => group.digits)
   let first = 0
   while (first < groups.length) {
     for (let last = Math.min(groups.length, first + CARD_MAX_GROUPS); last > first; last -= 1) {
-      const digits = groups.slice(first, last).join('')
-      const sizes = groups.slice(first, last).map((group) => group.length)
-      if (cardLayout(sizes) && standsAlone(groups, first, last) && validCard(digits)) {
-        const end = matches[last - 1]
-        yield { digits, start: matches[first].index, end: end.index + end[0].length }
+      const digits = digitsOf.slice(first, last).join('')
+      const sizes = digitsOf.slice(first, last).map((group) => group.length)
+      if (cardLayout(sizes) && standsAlone(digitsOf, first, last) && validCard(digits)) {
+        yield { digits, start: groups[first].start, end: groups[last - 1].end }
         first = last - 1
         break
       }
@@ -612,37 +685,73 @@ function* cardsIn(run: string): Generator<{ digits: string; start: number; end: 
   }
 }
 
+/** Where a number may start: where `pattern` finds it, and right after an invisible character between digits. */
+function startsOf(
+  text: string,
+  soft: ReadonlySet<number>,
+  pattern: RegExp,
+  fits: (index: number) => boolean
+): number[] {
+  const found = [...text.matchAll(pattern)].map((match) => match.index)
+  const extra = [...soft].filter(
+    (i) => i > 0 && i < text.length && digitBefore(text, i) && fits(i)
+  )
+  return extra.length > 0 ? [...new Set([...found, ...extra])].sort((a, b) => a - b) : found
+}
+
+function digitBefore(text: string, index: number): boolean {
+  const char = codePointBefore(text, index)
+  return char !== '' && decimalDigitValue(char.codePointAt(0) ?? -1) !== null
+}
+
+const isAsciiLetter = (char: string | undefined): boolean => !!char && ASCII_LETTER.test(char)
+
 /** Every IBAN, in one pass: each start is parsed on its own, and the scan resumes after a match. */
-function* ibanSpans(text: string): Generator<ContentSpan> {
+function* ibanSpans(text: string, soft: ReadonlySet<number>): Generator<ContentSpan> {
   let resume = 0
-  for (const match of text.matchAll(IBAN_START)) {
-    if (match.index < resume) continue
-    const found = ibanAt(text, match.index)
+  const fits = (i: number) => isAsciiLetter(text[i]) && isAsciiLetter(text[i + 1])
+  for (const start of startsOf(text, soft, IBAN_START, fits)) {
+    if (start < resume) continue
+    const found = ibanAt(text, start, soft)
     if (!found) continue
     resume = found.end
-    yield { kind: 'iban', start: match.index, end: found.end, sample: maskIban(found.compact) }
+    yield { kind: 'iban', start, end: found.end, sample: maskIban(found.compact) }
   }
 }
 
-function* svnrSpans(text: string): Generator<ContentSpan> {
+function* svnrSpans(text: string, soft: ReadonlySet<number>): Generator<ContentSpan> {
   let resume = 0
-  for (const match of text.matchAll(SVNR_START)) {
-    if (match.index < resume) continue
-    const found = svnrAt(text, match.index)
+  for (const start of startsOf(text, soft, SVNR_START, (i) => digitAt(text, i) !== null)) {
+    if (start < resume) continue
+    const found = svnrAt(text, start, soft)
     if (!found) continue
     resume = found.end
     yield {
       kind: 'at_svnr',
-      start: match.index,
+      start,
       end: found.end,
       sample: `${MASK} ${MASK}${found.digits.slice(-2)}`,
     }
   }
 }
 
-function* cardSpans(text: string): Generator<ContentSpan> {
+/** Cards in each run of digit groups; where an invisible character stood between digits, tried cut there too. */
+function* cardSpans(text: string, soft: ReadonlySet<number>): Generator<ContentSpan> {
+  const cuts = [...soft].sort((a, b) => a - b)
   for (const match of text.matchAll(CARD_RUN)) {
-    for (const card of cardsIn(match[0])) {
+    const run = match[0]
+    const runEnd = match.index + run.length
+    const inside = cuts.filter((cut) => cut > match.index && cut < runEnd).map((cut) => cut - match.index)
+    const found = [...cardsIn(digitGroups(run))]
+    if (inside.length > 0) {
+      const joined = [...found]
+      for (const groups of cutRuns(run, inside)) {
+        for (const card of cardsIn(groups)) {
+          if (!joined.some((other) => card.start < other.end && other.start < card.end)) found.push(card)
+        }
+      }
+    }
+    for (const card of found.sort((a, b) => a.start - b.start)) {
       yield {
         kind: 'credit_card',
         start: match.index + card.start,
@@ -653,7 +762,9 @@ function* cardSpans(text: string): Generator<ContentSpan> {
   }
 }
 
-const DETECTOR_SPANS: Readonly<Record<ScreeningDetector, (text: string) => Iterable<ContentSpan>>> =
+const DETECTOR_SPANS: Readonly<
+  Record<ScreeningDetector, (text: string, soft: ReadonlySet<number>) => Iterable<ContentSpan>>
+> =
   {
     iban: ibanSpans,
     at_svnr: svnrSpans,
@@ -713,9 +824,12 @@ export function findSpans(text: string, rules: ContentScreenRules): ContentSpan[
   )
   const reading = read(text)
   const spans = [...termSpans(reading.text, rules)]
-  for (const name of rules.detectors) spans.push(...DETECTOR_SPANS[name](reading.text))
+  for (const name of rules.detectors) spans.push(...DETECTOR_SPANS[name](reading.text, reading.soft))
   return outsideIbans(spans)
-    .map((span) => ({ ...span, start: reading.starts[span.start], end: reading.ends[span.end - 1] }))
+    .map((span) => {
+      const [start, end] = originalSpan(reading, span.start, span.end)
+      return { ...span, start, end }
+    })
     .filter((span) => !protectedRegions.some(([start, end]) => span.start < end && start < span.end))
 }
 
