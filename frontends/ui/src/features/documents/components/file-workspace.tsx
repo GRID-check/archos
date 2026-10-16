@@ -152,9 +152,6 @@ function mergeById(first: readonly FileItem[], second: readonly FileItem[]): Fil
   return [...first, ...second.filter((file) => !held.has(file.id))]
 }
 
-/** How long a live re-read waits, and asks again, while this tab's own moves are on the wire. */
-const SHELF_LIVE_MOVE_WAIT_MS = 500
-
 /**
  * The file workspace of a shelf of documents — one component for a project's
  * Dateien and for the office Archiv.
@@ -372,27 +369,14 @@ export function FileWorkspace({
     [shelf.projectId]
   )
   const { load: loadFolders } = tree
-  const liveRetry = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onShelfChanged = useCallback(
-    function apply(change: ShelfChange) {
-      if (liveRetry.current) clearTimeout(liveRetry.current)
-      liveRetry.current = null
-      if (isMoving()) {
-        liveRetry.current = setTimeout(() => apply(change), SHELF_LIVE_MOVE_WAIT_MS)
-        return
-      }
+    (change: ShelfChange) => {
       reloadQuietly()
       if (change.folders) void loadFolders()
     },
-    [isMoving, reloadQuietly, loadFolders]
+    [reloadQuietly, loadFolders]
   )
-  useEffect(
-    () => () => {
-      if (liveRetry.current) clearTimeout(liveRetry.current)
-    },
-    []
-  )
-  useShelfLive(liveShelf, onShelfChanged)
+  useShelfLive(liveShelf, onShelfChanged, { holdWhile: isMoving })
   // A move changes two folders' counts: the summary is read again after it.
   const moved = useCallback(
     (fileId: string, folderId: string | null) => {

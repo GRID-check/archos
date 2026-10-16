@@ -8,7 +8,10 @@ export interface ShelfChange {
   folders: boolean
 }
 
-export type ShelfLiveOptions = Pick<LiveHintOptions<ShelfEvent, ShelfChange>, 'link' | 'coalesceMs' | 'jitterMs'>
+export type ShelfLiveOptions = Pick<
+  LiveHintOptions<ShelfEvent, ShelfChange>,
+  'link' | 'coalesceMs' | 'jitterMs' | 'holdWhile' | 'holdMs'
+>
 
 const parseShelfEvent = (event: unknown): ShelfEvent | null => {
   const parsed = shelfEventSchema.safeParse(event)

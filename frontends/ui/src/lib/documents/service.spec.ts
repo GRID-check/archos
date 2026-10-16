@@ -911,6 +911,8 @@ describe('listDocuments', () => {
       {
         id: 'doc-1',
         filename: 'plan.pdf',
+        projectId: 'proj-1',
+        scope: 'project',
         displayName: null,
         lifecycle: 'active',
         publishedVersionId: null,
@@ -2543,6 +2545,8 @@ describe('the authorship gate on the (collection, filename) join', () => {
         {
           id: 'doc-agent',
           filename: collidingName,
+          projectId: 'proj-1',
+          scope: 'project',
           displayName: null,
           lifecycle: 'active',
           // Nothing published: an agent DRAFT, which is what a row filed by
@@ -2641,6 +2645,8 @@ describe('reindexProject', () => {
 
 describe('runReindexSlice', () => {
   const listRow = (id: string, filename: string): DocumentListRow => ({
+  projectId: 'proj-1',
+  scope: 'project',
     id,
     filename,
     displayName: null,

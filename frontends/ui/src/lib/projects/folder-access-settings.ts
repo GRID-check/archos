@@ -248,6 +248,9 @@ export async function setFolderAccess(
   // every reader re-reads it, without waiting for the placement below.
   publishShelfChanged(organizationId, projectShelf(input.projectId), { folders: true })
   const placement = await placeProjectDocuments(organizationId, input.projectId)
+  // And once more after it: placement re-filed documents between collections,
+  // and their badges moved with them.
+  if (placement.moved > 0) publishShelfChanged(organizationId, projectShelf(input.projectId))
   const stored: FolderAccessSetting =
     access.mode === 'custom' && people
       ? { mode: 'custom', everyoneReads: access.everyoneReads, people: people.map(({ userId, level }) => ({ userId, level })) }

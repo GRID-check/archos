@@ -14,10 +14,13 @@
  *   reopened for another channel, which the server's welcome marks) the
  *   surface is told `resync`, its "read everything" change.
  * - **Nothing after unmount.** A pending re-read dies with the surface.
+ * - **Not while the surface is busy.** `holdWhile` says the surface has
+ *   optimistic writes on the wire (the Files workspace's moves): a re-read then
+ *   would put rows back that are about to leave. The burst is kept, still
+ *   folding every hint that arrives, and asked again every `holdMs`.
  *
  * The surface's own echo arrives too, and re-reading it is harmless: the
- * answer is the server's truth. A surface with optimistic writes in flight
- * defers in its own `onChange` (the Files workspace waits for its moves).
+ * answer is the server's truth.
  */
 
 import { useEffect, useRef } from 'react'
@@ -43,7 +46,14 @@ export interface LiveHintOptions<E extends { kind: string }, C> {
   link?: ChannelLink
   coalesceMs?: number
   jitterMs?: number
+  /** True while a re-read would undo the surface's own optimistic writes. Need not be stable. */
+  holdWhile?: () => boolean
+  /** How often a held burst asks again. */
+  holdMs?: number
 }
+
+/** How often a held burst asks again whether the surface is still busy. */
+export const LIVE_HINT_HOLD_MS = 500
 
 export function useLiveHints<E extends { kind: string }, C>(
   key: string | null,
@@ -56,23 +66,31 @@ export function useLiveHints<E extends { kind: string }, C>(
     link,
     coalesceMs = LIVE_HINT_COALESCE_MS,
     jitterMs = LIVE_HINT_JITTER_MS,
+    holdWhile,
+    holdMs = LIVE_HINT_HOLD_MS,
   }: LiveHintOptions<E, C>
 ): void {
-  const latest = useRef({ fold, resync, onChange, coalesceMs, jitterMs })
-  latest.current = { fold, resync, onChange, coalesceMs, jitterMs }
+  const latest = useRef({ fold, resync, onChange, coalesceMs, jitterMs, holdWhile, holdMs })
+  latest.current = { fold, resync, onChange, coalesceMs, jitterMs, holdWhile, holdMs }
   const pending = useRef<{ change: C } | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const flush = useRef((): void => {
+    timer.current = null
+    if (latest.current.holdWhile?.()) {
+      // Kept, not dropped: hints that arrive meanwhile still fold into it.
+      timer.current = setTimeout(() => flush.current(), latest.current.holdMs)
+      return
+    }
+    const due = pending.current
+    pending.current = null
+    if (due) latest.current.onChange(due.change)
+  })
   const gather = useRef((change: (gathered: C | null) => C) => {
     pending.current = { change: change(pending.current?.change ?? null) }
     if (timer.current) return
     const { coalesceMs: wait, jitterMs: spread } = latest.current
-    timer.current = setTimeout(() => {
-      timer.current = null
-      const due = pending.current
-      pending.current = null
-      if (due) latest.current.onChange(due.change)
-    }, wait + Math.random() * spread)
+    timer.current = setTimeout(() => flush.current(), wait + Math.random() * spread)
   })
 
   const { status, self } = useChannel<E>(key, {

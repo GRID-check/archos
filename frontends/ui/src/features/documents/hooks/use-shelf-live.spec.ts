@@ -126,6 +126,29 @@ describe('useShelfLive', () => {
     expect(onChange).toHaveBeenLastCalledWith({ folders: true })
   })
 
+  it('holds a burst while the workspace is busy, and keeps a folder hint that came before a document one', () => {
+    const scripted = scriptedLink()
+    const onChange = vi.fn()
+    let moving = true
+    renderHook(() => useShelfLive(SHELF, onChange, { link: scripted.link, holdWhile: () => moving, holdMs: 500 }))
+    moving = false
+    scripted.open()
+    settle()
+    onChange.mockClear()
+    moving = true
+
+    scripted.hint({ kind: 'shelf.changed', folders: true })
+    settle()
+    scripted.hint({ kind: 'shelf.changed', folders: false })
+    act(() => vi.advanceTimersByTime(2_000))
+    expect(onChange).not.toHaveBeenCalled()
+
+    moving = false
+    act(() => vi.advanceTimersByTime(500))
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenLastCalledWith({ folders: true })
+  })
+
   it('calls nothing after the workspace is gone', () => {
     const scripted = scriptedLink()
     const onChange = vi.fn()

@@ -44,7 +44,7 @@ import {
   type DocumentLifecycle,
   type ResourceVisibility,
 } from '@/lib/db/schema'
-import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
+import type { DocumentScope, DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import { auditedQuarantineReasons, parseQuarantine } from '@/lib/upload-screening/quarantine'
 import { documentVisibleTo, heldAtRest, internalRead, SCREENED_ONLY, type DocumentReader } from './visibility'
 import { verdictPasses } from './document-reader'
@@ -61,6 +61,13 @@ export const DOCUMENT_LIST_LIMIT = 500
 export interface DocumentListRow {
   id: string
   filename: string
+  /**
+   * The shelf the row is on (`documentShelf`). Read by the status
+   * reconciliation, which announces a settled row on its shelf's live channel;
+   * a listing row that did not carry it settled for nobody. Not on the wire.
+   */
+  projectId: string | null
+  scope: DocumentScope
   /** The rename, when there is one; NULL means "show `filename`" (0048). */
   displayName: string | null
   fileSize: number | null
@@ -220,6 +227,8 @@ export function outsideHiddenFolders(hiddenFolderIds: readonly string[] | undefi
 export const documentListColumns = {
   id: documents.id,
   filename: documents.filename,
+  projectId: documents.projectId,
+  scope: documents.scope,
   displayName: documents.displayName,
   fileSize: documents.fileSize,
   contentType: documents.contentType,

@@ -37,7 +37,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     const real = window.fetch.bind(window)
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-      if (/\/api\/documents\/.+\/thumbnail$/.test(url)) return new Response(null, { status: 404 })
+      // Only this preview's fixtures (`s0`…`s8`): the shim outlives the page on
+      // a client navigation, and a real document's id is a UUID.
+      if (/\/api\/documents\/s\d+\/thumbnail$/.test(url)) return new Response(null, { status: 404 })
       return real(input, init)
     }
   }
