@@ -192,8 +192,16 @@
               "de": "Ein Details-Tab neben dem Dokument zeigt alles, was die Files-Ansicht darüber weiß: Piloti-Auswertung, Dokumenttyp, Fassungen und Freigabe sowie die Eigenschaften."
             },
             {
+              "en": "Dateien and the Archiv now update while you look at them: a colleague's upload, a file Piloti filed, a move, a rename or a new folder appears without reloading the page, and a file's status changes as soon as it has been read.",
+              "de": "Dateien und das Archiv aktualisieren sich jetzt, während Sie sie ansehen: Der Upload eines Kollegen, eine von Piloti abgelegte Datei, ein Verschieben, eine Umbenennung oder ein neuer Ordner werden ohne Neuladen der Seite angezeigt, und der Status einer Datei ändert sich, sobald sie gelesen wird."
+            },
+            {
               "en": "Very large folders in the Büroablage and in a project's files now open right away, and more documents load as you scroll to the end. The folder counts and the folder overview still cover every document in the folder.",
               "de": "Sehr große Ordner in der Büroablage und in den Dateien eines Projekts öffnen jetzt sofort, weitere Dokumente werden geladen, während Sie bis zum Ende scrollen. Die Dokumentanzahl und die Ordnerübersicht beziehen sich weiterhin auf alle Dokumente im Ordner."
+            },
+            {
+              "en": "While files upload and Piloti reads them, every status now has its own symbol, so a document that is waiting, being read, held back for review or filed unread is told apart at a glance in the upload panel, on the cards and in the list. A document that could not be read is marked in a calmer red, and shortened file names always show where they were cut.",
+              "de": "Während Dateien hochgeladen werden und Piloti sie einliest, hat jetzt jeder Status ein eigenes Symbol. So lassen sich wartende, gerade eingelesene, zur Prüfung zurückgestellte oder ungelesen abgelegte Dokumente im Upload-Panel, auf den Karten und in der Liste auf einen Blick unterscheiden. Dokumente, die nicht gelesen werden konnten, sind in einem dezenteren Rot markiert, und gekürzte Dateinamen zeigen immer an, wo sie gekürzt wurden."
             },
             {
               "en": "A PDF now opens the same way everywhere: a cited source, a file in Files, its enlarged view and the file beside the chat. The pages lie on one stage, with the controls in one bar at its foot.",
@@ -305,6 +313,10 @@
               "de": "Eine Datei, die aus einem dauerhaften Grund nicht gelesen werden kann, etwa ein verschlüsseltes oder leeres PDF, wird bei „Erneut lesen“ oder einem erneuten Scan nicht jedes Mal erneut gelesen, sondern erst, wenn sich ihre Bytes ändern oder sich die Lesefunktion von Piloti verbessert. Ein vorübergehender Fehler wie ein Timeout lässt sich weiterhin sofort erneut versuchen."
             },
             {
+              "en": "Folders no longer disappear from the folder list after you create or rename one, or after a brief connection drop.",
+              "de": "Ordner verschwinden nicht mehr aus der Ordnerliste, wenn Sie einen Ordner erstellen oder umbenennen oder die Verbindung kurz unterbrochen wird."
+            },
+            {
               "en": "Renaming a folder in the Dateiablage grid view works again: clicking into the name field places the cursor there instead of opening the folder.",
               "de": "Das Umbenennen eines Ordners in der Rasteransicht der Dateiablage funktioniert wieder: Wenn Sie in das Namensfeld klicken, wird der Cursor dort platziert, statt den Ordner zu öffnen."
             },
@@ -323,6 +335,10 @@
             {
               "en": "The upload panel and the chat now show a file the content check held back as held for review, with what was found, instead of as failed, and no longer offer to retry it. A file that was kept but not read is shown as filed rather than citable.",
               "de": "Das Upload-Panel und der Chat zeigen eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, nun als „zur Überprüfung zurückgehalten“ statt als „fehlgeschlagen“ und zeigen an, was gefunden wurde; ein erneuter Versuch wird nicht mehr angeboten. Eine gespeicherte, aber nicht gelesene Datei wird als abgelegt statt als zitierfähig angezeigt."
+            },
+            {
+              "en": "In a narrow Dateien list, such as beside the chat, file names no longer collapse under their status and long names are no longer cut off mid-letter: the list shows fewer columns and keeps the end of each name readable.",
+              "de": "In einer schmalen Dateienliste, etwa neben dem Chat, werden Dateinamen nicht mehr vom Status überlagert und lange Namen nicht mehr mitten in einem Buchstaben abgeschnitten: Die Liste zeigt weniger Spalten an und hält das Ende jedes Namens lesbar."
             },
             {
               "en": "On a phone, the schedule wizard's last step, the run history, the task filters, the Büroablage header and several project and administration pages no longer run off the edge of the screen.",

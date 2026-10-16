@@ -1084,6 +1084,10 @@
     "de": "Ctrl+F (Cmd+F am Mac) durchsucht ein PDF. Die Suche zählt die Treffer und springt zwischen ihnen."
   },
   {
+    "en": "Dateien and the Archiv now update while you look at them: a colleague's upload, a file Piloti filed, a move, a rename or a new folder appears without reloading the page, and a file's status changes as soon as it has been read.",
+    "de": "Dateien und das Archiv aktualisieren sich jetzt, während Sie sie ansehen: Der Upload eines Kollegen, eine von Piloti abgelegte Datei, ein Verschieben, eine Umbenennung oder ein neuer Ordner werden ohne Neuladen der Seite angezeigt, und der Status einer Datei ändert sich, sobald sie gelesen wird."
+  },
+  {
     "en": "Dateien and the Archiv now use the same words for reading a document: „Wird gelesen“, „Lesen fehlgeschlagen“ and „Erneut lesen“. Before, the same step appeared under five names.",
     "de": "Dateien und das Archiv verwenden jetzt dieselben Begriffe für das Lesen eines Dokuments: „Wird gelesen“, „Lesen fehlgeschlagen“ und „Erneut lesen“. Bisher erschien derselbe Schritt unter fünf Bezeichnungen."
   },
@@ -1436,6 +1440,10 @@
     "de": "Ordner sind in der Listenansicht nicht mehr gelb hinterlegt, was wie eine Warnung wirkte; ein Ordner ist an seinem Symbol zu erkennen."
   },
   {
+    "en": "Folders no longer disappear from the folder list after you create or rename one, or after a brief connection drop.",
+    "de": "Ordner verschwinden nicht mehr aus der Ordnerliste, wenn Sie einen Ordner erstellen oder umbenennen oder die Verbindung kurz unterbrochen wird."
+  },
+  {
     "en": "Follow-up questions are answered sooner, because only the cited passages of the last answer travel with the conversation.",
     "de": "Anschlussfragen sind schneller beantwortet, weil nur noch die belegten Fundstellen der letzten Antwort im Gespräch mitwandern."
   },
@@ -1554,6 +1562,10 @@
   {
     "en": "In a large project, Piloti can now also rename, move and assign files beyond the first 50 files. It used to refuse them as unknown files.",
     "de": "In einem großen Projekt kann Piloti jetzt auch Dateien ab der 51. Datei umbenennen, verschieben und zuordnen. Bisher hat es sie als unbekannte Dateien abgewiesen."
+  },
+  {
+    "en": "In a narrow Dateien list, such as beside the chat, file names no longer collapse under their status and long names are no longer cut off mid-letter: the list shows fewer columns and keeps the end of each name readable.",
+    "de": "In einer schmalen Dateienliste, etwa neben dem Chat, werden Dateinamen nicht mehr vom Status überlagert und lange Namen nicht mehr mitten in einem Buchstaben abgeschnitten: Die Liste zeigt weniger Spalten an und hält das Ende jedes Namens lesbar."
   },
   {
     "en": "In a shared chat Piloti searches only what everyone in it may open.",
@@ -3230,6 +3242,10 @@
   {
     "en": "While a run is going, „Dokument hinzufügen“ adds another document, and the block shows whether each named document was read. A report names any document it did not reach.",
     "de": "Während ein Durchlauf läuft, fügt „Dokument hinzufügen“ ein weiteres Dokument hinzu, und der Block zeigt für jedes genannte Dokument, ob es gelesen wurde. Ein Bericht nennt jedes Dokument, das er nicht erreicht hat."
+  },
+  {
+    "en": "While files upload and Piloti reads them, every status now has its own symbol, so a document that is waiting, being read, held back for review or filed unread is told apart at a glance in the upload panel, on the cards and in the list. A document that could not be read is marked in a calmer red, and shortened file names always show where they were cut.",
+    "de": "Während Dateien hochgeladen werden und Piloti sie einliest, hat jetzt jeder Status ein eigenes Symbol. So lassen sich wartende, gerade eingelesene, zur Prüfung zurückgestellte oder ungelesen abgelegte Dokumente im Upload-Panel, auf den Karten und in der Liste auf einen Blick unterscheiden. Dokumente, die nicht gelesen werden konnten, sind in einem dezenteren Rot markiert, und gekürzte Dateinamen zeigen immer an, wo sie gekürzt wurden."
   },
   {
     "en": "While research runs, its block shows the evidence gathered so far in each round. Jetzt schreiben ends the research after the current round and writes the report from what has been found.",
