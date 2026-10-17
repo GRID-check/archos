@@ -192,5 +192,7 @@ describe('useDocumentMoves.dropInFolder', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/documents/a/folder', expect.anything())
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('a.jpg'), expect.anything())
+    // And it is in the level it was dropped on at once, not on the next re-read.
+    expect(rows.find((row) => row.id === 'a')?.folderId).toBe('site')
   })
 })

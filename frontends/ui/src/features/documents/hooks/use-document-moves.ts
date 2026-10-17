@@ -31,12 +31,6 @@ export function useDocumentMoves(
   const inFlight = useRef(0)
   const isMoving = useCallback(() => inFlight.current > 0, [])
 
-  const moved = useCallback(
-    (fileId: string, folderId: string | null) =>
-      setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, folderId } : f))),
-    [setFiles]
-  )
-
   /**
    * Every document this workspace has listed, by id. A drag can outlive the
    * level it started on: held over a folder, the folder opens (see
@@ -48,6 +42,22 @@ export function useDocumentMoves(
   useEffect(() => {
     for (const file of files) seen.current.set(file.id, file)
   }, [files])
+
+  /**
+   * The row re-filed in the listing. A row the listing does not hold (carried
+   * here from another level by a drag that opened this folder) is added, so it
+   * appears in the level it was dropped on at once rather than on the next
+   * re-read; the caller's folder filter hides it wherever it does not belong.
+   */
+  const moved = useCallback(
+    (fileId: string, folderId: string | null) =>
+      setFiles((prev) => {
+        if (prev.some((f) => f.id === fileId)) return prev.map((f) => (f.id === fileId ? { ...f, folderId } : f))
+        const known = seen.current.get(fileId)
+        return known ? [...prev, { ...known, folderId }] : prev
+      }),
+    [setFiles]
+  )
 
   const folderLabel = useCallback(
     (folderId: string | null) =>
