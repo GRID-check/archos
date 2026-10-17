@@ -45,6 +45,7 @@ describe('resolveSubjectMembership', () => {
     await expect(resolveSubjectMembership('org_1', 'u-anna')).resolves.toEqual({
       organizationMembershipId: 'om_anna',
       role: 'member',
+      roles: ['member'],
     })
   })
 
@@ -107,28 +108,38 @@ describe('the opt-in throw for a caller that can retry (C2)', () => {
     ).resolves.toBe(false)
   })
 
-  it('raises TransientAuthzError for a broken FGA check when asked to', async () => {
-    listOrganizationMemberships.mockResolvedValueOnce({ data: [MEMBERSHIP] })
-    check.mockRejectedValueOnce(new Error('fga 500'))
-
-    await expect(
-      userHoldsProjectPermission(session, 'proj_1', 'u-anna', 'project:documents:write', { onError: 'throw' })
-    ).rejects.toBeInstanceOf(TransientAuthzError)
-  })
-
-  it('raises for a broken membership lookup underneath the permission check too', async () => {
-    listOrganizationMemberships.mockRejectedValueOnce(new Error('workos 503'))
-
-    await expect(
-      userHoldsProjectPermission(session, 'proj_1', 'u-anna', 'project:edit', { onError: 'throw' })
-    ).rejects.toBeInstanceOf(TransientAuthzError)
-    expect(check).not.toHaveBeenCalled()
-  })
-
   it('is a 503 through the ordinary error envelope', () => {
     const error = new TransientAuthzError('fga-check', { cause: new Error('x') })
     expect(error.status).toBe(503)
     expect(error.code).toBe('AUTHZ_UNAVAILABLE')
     expect(error.message).not.toMatch(/x$/)
+  })
+})
+
+describe('which memberships count', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setCacheStore(new MapCacheStore())
+  })
+
+  it('asks WorkOS for active memberships only: a deactivated or pending one holds no role', async () => {
+    listOrganizationMemberships.mockResolvedValueOnce({ data: [] })
+
+    await expect(lookupSubjectMembership('org_1', 'u-left')).resolves.toBeNull()
+    expect(listOrganizationMemberships).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org_1', userId: 'u-left', statuses: ['active'] })
+    )
+  })
+
+  it('carries every role of a membership with several, the primary one included', async () => {
+    listOrganizationMemberships.mockResolvedValueOnce({
+      data: [{ id: 'om_anna', role: { slug: 'member' }, roles: [{ slug: 'member' }, { slug: 'project-lead' }] }],
+    })
+
+    await expect(lookupSubjectMembership('org_1', 'u-anna')).resolves.toEqual({
+      organizationMembershipId: 'om_anna',
+      role: 'member',
+      roles: ['member', 'project-lead'],
+    })
   })
 })

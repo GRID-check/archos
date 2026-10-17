@@ -79,6 +79,7 @@ const SIGNATURE_REASONS = [
   'dkim-weak-algorithm',
   'dkim-invalid',
   'dkim-testing',
+  'dkim-stale',
 ] as const
 type SignatureReason = (typeof SIGNATURE_REASONS)[number]
 
@@ -107,7 +108,18 @@ export interface VerifySenderOptions {
   resolver?: DNSResolver
   /** How long the whole verification may take before it is a `temperror`. */
   deadlineMs?: number
+  /** The clock the signed Date is judged against; tests pin it. */
+  now?: Date
 }
+
+/**
+ * How old a signed `Date` may be. A replayed copy of a member's mail is refused
+ * once the 30-day dedupe record of the original is gone; real mail spends hours
+ * in a queue at most, never days.
+ */
+const MAX_MESSAGE_AGE_MS = 30 * 24 * 60 * 60 * 1000
+/** How far ahead a sender's clock may run. */
+const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000
 
 let defaultResolver: DNSResolver | null = null
 
@@ -209,11 +221,23 @@ function keyIsTesting(record: string | undefined): boolean {
 }
 
 /** What one signature says about the mail. Pure. */
-function judgeSignature(signature: VerifiedSignature, projectToken: string): SignatureOutcome {
+/**
+ * Judge one signature. `dateIsStale` says whether the message's Date header is
+ * outside the accepted window; it counts only when this signature signs Date,
+ * because an unsigned Date is whatever a replayer writes.
+ */
+function judgeSignature(signature: VerifiedSignature, projectToken: string, dateIsStale: boolean): SignatureOutcome {
   if (!signature.status.aligned) return 'dkim-unaligned'
   if (signature.canonBodyLengthLimited || signature.status.underSized) return 'dkim-body-length'
   const signed = signedFieldNames(signature)
-  if (!signed.has('from') || !signed.has('subject') || !(signed.has('to') || signed.has('cc'))) {
+  // Message-ID too: it is the dedupe key, and unsigned, a recipient of the
+  // member's mail could re-send it under a fresh one into the same project.
+  if (
+    !signed.has('from') ||
+    !signed.has('subject') ||
+    !signed.has('message-id') ||
+    !(signed.has('to') || signed.has('cc'))
+  ) {
     return 'dkim-headers'
   }
   if (!signsProjectRecipient(signature, projectToken)) return 'dkim-recipient'
@@ -222,7 +246,21 @@ function judgeSignature(signature: VerifiedSignature, projectToken: string): Sig
   if (result === 'temperror' || result === 'temperr') return 'temperror'
   if (result !== 'pass') return 'dkim-invalid'
   if (keyIsTesting(signature.rr)) return 'dkim-testing'
+  if (signed.has('date') && dateIsStale) return 'dkim-stale'
   return 'pass'
+}
+
+/**
+ * Whether the Date header is outside the accepted window. An absent or
+ * unparsable Date is not stale: it cannot be judged, and the dedupe record
+ * still refuses a copy for 30 days.
+ */
+function isStale(dateValue: string | undefined, now: Date): boolean {
+  if (dateValue === undefined) return false
+  const sent = Date.parse(dateValue.replace(/\s+/g, ' ').trim())
+  if (Number.isNaN(sent)) return false
+  const age = now.getTime() - sent
+  return age > MAX_MESSAGE_AGE_MS || age < -MAX_CLOCK_SKEW_MS
 }
 
 /** The verdict over all signatures: any pass admits, any doubt retries. */
@@ -294,7 +332,8 @@ async function evaluate(raw: Uint8Array, options: VerifySenderOptions): Promise<
     (result) => result.status.result !== 'none'
   )
   const projectToken = asciiLower(options.projectToken)
-  const refusal = combine(signatures.map((signature) => judgeSignature(signature, projectToken)))
+  const stale = isStale(fields.find((field) => field.name === 'date')?.value, options.now ?? new Date())
+  const refusal = combine(signatures.map((signature) => judgeSignature(signature, projectToken, stale)))
   if (refusal) return refusal
   return { verdict: 'pass', fromAddress, fromName: parsedFrom[0].name.trim() || null }
 }

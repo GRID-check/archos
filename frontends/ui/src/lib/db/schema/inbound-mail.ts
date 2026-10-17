@@ -72,6 +72,7 @@ export type InboundMailMessageStatus = (typeof INBOUND_MAIL_MESSAGE_STATUSES)[nu
 /** One staged attachment: an object under the project's `inbound-mail/` prefix. */
 export interface StagedAttachment {
   key: string
+  /** Emptied once the row is terminal: only the key is kept, for the delete. */
   filename: string
   contentType: string
   /** Hex sha256 of the bytes, as selected from the mail. */

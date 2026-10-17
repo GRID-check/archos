@@ -10,7 +10,7 @@
  */
 
 import 'server-only'
-import { and, eq, isNull, lt, sql } from 'drizzle-orm'
+import { and, eq, isNull, lt, sql, type SQL } from 'drizzle-orm'
 import type { PgUpdateSetSource } from 'drizzle-orm/pg-core'
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
@@ -208,6 +208,9 @@ export async function queueDelivery(input: NewDelivery): Promise<string | null> 
         skippedCount: 0,
         attempts: 0,
         lastError: null,
+        // The retention clocks (seven days of staging, thirty of the row)
+        // start again: this is a new receipt of the mail, with new staging.
+        receivedAt: input.receivedAt,
         updatedAt: sql`now()`,
       },
       setWhere: eq(inboundMailMessages.status, 'failed'),
@@ -238,12 +241,14 @@ function stillQueued(organizationId: string, id: string) {
 async function updateQueued(
   organizationId: string,
   id: string,
-  values: PgUpdateSetSource<typeof inboundMailMessages>
+  values: PgUpdateSetSource<typeof inboundMailMessages>,
+  /** A further condition the row must meet: what the caller read, still true. */
+  unchanged?: SQL
 ): Promise<boolean> {
   const rows = await getDb()
     .update(inboundMailMessages)
     .set({ ...values, updatedAt: sql`now()` })
-    .where(stillQueued(organizationId, id))
+    .where(and(stillQueued(organizationId, id), unchanged))
     .returning({ id: inboundMailMessages.id })
   return rows.length > 0
 }
@@ -265,7 +270,9 @@ export function touchDelivery(organizationId: string, id: string): Promise<boole
 
 /** Remember the folder the first filing created, for every later attempt. */
 export function recordDeliveryFolder(organizationId: string, id: string, folderId: string): Promise<boolean> {
-  return updateQueued(organizationId, id, { folderId })
+  // Only the first: a second job that made a folder of its own meanwhile
+  // loses here and stops before it files anything into it.
+  return updateQueued(organizationId, id, { folderId }, isNull(inboundMailMessages.folderId))
 }
 
 /** An attempt failed and the delivery waits for the next one: count it, and say why. */
@@ -275,7 +282,8 @@ export function recordFailedAttempt(
   attempts: number,
   lastError: string
 ): Promise<boolean> {
-  return updateQueued(organizationId, id, { attempts, lastError })
+  // Counted once: of two jobs that failed the same attempt, the second loses.
+  return updateQueued(organizationId, id, { attempts, lastError }, eq(inboundMailMessages.attempts, attempts - 1))
 }
 
 /** What a finished delivery keeps: counts and reason codes, no names, no subject. */
@@ -287,10 +295,19 @@ export interface DeliveryOutcome {
   lastError?: string | null
 }
 
+/**
+ * Staged objects of a terminal row, kept only so the staging backstop can
+ * retry their delete: the key is all it needs, and the file's name goes with
+ * the subject.
+ */
+function withoutNames(staged: readonly StagedAttachment[]): StagedAttachment[] {
+  return staged.map((object) => ({ ...object, filename: '' }))
+}
+
 function terminalValues(outcome: DeliveryOutcome) {
   return {
     subject: null,
-    staged: outcome.remaining,
+    staged: withoutNames(outcome.remaining),
     skipped: outcome.skipped.map(({ reason }) => ({ reason })),
     filedCount: outcome.filedCount,
     skippedCount: outcome.skipped.length,
@@ -325,10 +342,10 @@ export async function listStalledDeliveries(before: Date, limit: number): Promis
 }
 
 /** Rows are bookkeeping for thirty days, then gone (privacy note §6). */
-export const DELIVERY_RETENTION_DAYS = 30
+const DELIVERY_RETENTION_DAYS = 30
 
 /** Staged attachments older than this are deleted whatever became of the row. */
-export const STAGING_RETENTION_DAYS = 7
+const STAGING_RETENTION_DAYS = 7
 
 /** Delete delivery rows received more than `days` ago. Returns how many. */
 export async function deleteDeliveriesOlderThan(days: number = DELIVERY_RETENTION_DAYS): Promise<number> {
@@ -371,18 +388,28 @@ export async function findExpiredStaging(
  * applied.
  */
 export async function clearExpiredStaging(
-  row: Pick<InboundMailMessageRow, 'id' | 'status'>,
+  row: Pick<InboundMailMessageRow, 'id' | 'organizationId' | 'status' | 'filedCount' | 'skipped'>,
   remaining: StagedAttachment[]
 ): Promise<boolean> {
-  const fails = row.status === 'queued'
+  // A row that fails here is terminal like any other: the same values, so the
+  // subject AND the file names go (`terminalValues`), as the privacy notice says.
+  const values =
+    row.status === 'queued'
+      ? {
+          status: 'failed' as const,
+          ...terminalValues({ filedCount: row.filedCount, skipped: row.skipped, remaining, lastError: 'staging-expired' }),
+        }
+      : { staged: withoutNames(remaining) }
   const rows = await getDb()
     .update(inboundMailMessages)
-    .set({
-      staged: remaining,
-      ...(fails ? { status: 'failed' as const, subject: null, lastError: 'staging-expired' } : {}),
-      updatedAt: sql`now()`,
-    })
-    .where(and(eq(inboundMailMessages.id, row.id), eq(inboundMailMessages.status, row.status)))
+    .set({ ...values, updatedAt: sql`now()` })
+    .where(
+      and(
+        eq(inboundMailMessages.organizationId, row.organizationId),
+        eq(inboundMailMessages.id, row.id),
+        eq(inboundMailMessages.status, row.status)
+      )
+    )
     .returning({ id: inboundMailMessages.id })
   return rows.length > 0
 }

@@ -257,10 +257,41 @@ describe.skipIf(!url)('inbound mail tables against live Postgres', () => {
     it('takes over a row that was given up on, keeping its id and folder', async () => {
       const key = freshKey()
       const id = await queue(ORG_A, key)
-      await inA(() => repo.recordFailedAttempt(ORG_A, id!, 3, 'NotFoundError'))
+      await inA(() => repo.recordFailedAttempt(ORG_A, id!, 1, 'NotFoundError'))
       await inA(() => repo.markDeliveryFailed(ORG_A, id!, { filedCount: 0, skipped: [], remaining: [], lastError: 'x' }))
+      await context.withPlatformAccess('test: age the first receipt', () =>
+        db.execute(sql`update inbound_mail_messages set received_at = now() - interval '10 days' where id = ${id}`)
+      )
       expect(await queue(ORG_A, key, { subject: 'Nochmal' })).toBe(id)
       expect(await read(id!)).toMatchObject({ status: 'queued', attempts: 0, subject: 'Nochmal', last_error: null })
+      // A new receipt, so its fresh staging is not expired by the first one's clock.
+      const expired = await context.withPlatformAccess('test: expired staging', () => repo.findExpiredStaging(1000))
+      expect(expired.map((row) => row.id)).not.toContain(id)
+    })
+
+    it('records the first folder only, so a second job stops before it files into its own', async () => {
+      const folder = async (name: string) => {
+        const [row] = (await inA(() =>
+          db.execute(
+            sql`insert into project_folders (organization_id, project_id, name, path)
+                values (${ORG_A}, ${projectOf[ORG_A]}, ${name}, ${name}) returning id`
+          )
+        )) as unknown as { id: string }[]
+        return row.id
+      }
+      const id = await queue(ORG_A, freshKey())
+      const first = await folder(`Mail ${STAMP} a`)
+      expect(await inA(() => repo.recordDeliveryFolder(ORG_A, id!, first))).toBe(true)
+      const second = await folder(`Mail ${STAMP} b`)
+      expect(await inA(() => repo.recordDeliveryFolder(ORG_A, id!, second))).toBe(false)
+      expect((await read(id!)).folder_id).toBe(first)
+    })
+
+    it('counts one failed attempt once, however many jobs report it', async () => {
+      const id = await queue(ORG_A, freshKey())
+      expect(await inA(() => repo.recordFailedAttempt(ORG_A, id!, 1, 'a'))).toBe(true)
+      expect(await inA(() => repo.recordFailedAttempt(ORG_A, id!, 1, 'b'))).toBe(false)
+      expect(await read(id!)).toMatchObject({ attempts: 1, last_error: 'a' })
     })
 
     it('fences every write of a job on the row still being queued: a second job cannot overwrite the first', async () => {
@@ -287,8 +318,8 @@ describe.skipIf(!url)('inbound mail tables against live Postgres', () => {
 
     it('counts a failed attempt and says why, leaving the row queued', async () => {
       const id = await queue(ORG_A, freshKey())
-      expect(await inA(() => repo.recordFailedAttempt(ORG_A, id!, 3, 'NotFoundError:NOT_FOUND'))).toBe(true)
-      expect(await read(id!)).toMatchObject({ status: 'queued', attempts: 3, last_error: 'NotFoundError:NOT_FOUND' })
+      expect(await inA(() => repo.recordFailedAttempt(ORG_A, id!, 1, 'NotFoundError:NOT_FOUND'))).toBe(true)
+      expect(await read(id!)).toMatchObject({ status: 'queued', attempts: 1, last_error: 'NotFoundError:NOT_FOUND' })
     })
 
     it('lists a queued delivery without progress as stalled, and progress takes it off the list', async () => {
@@ -362,7 +393,15 @@ describe.skipIf(!url)('inbound mail tables against live Postgres', () => {
 
       const row = expired.find((candidate) => candidate.id === old)!
       expect(await context.withTenant({ organizationId: ORG_A }, () => repo.clearExpiredStaging(row, []))).toBe(true)
-      expect(await read(old!)).toMatchObject({ status: 'failed', staged: [], subject: null, last_error: 'staging-expired' })
+      expect(await read(old!)).toMatchObject({
+        status: 'failed',
+        staged: [],
+        subject: null,
+        last_error: 'staging-expired',
+        // Terminal like any other row: the skipped file's name goes too.
+        skipped: [{ reason: 'embedded' }],
+        skipped_count: 1,
+      })
 
       // A thirty-day-old row that still names staged objects is kept until they are gone.
       await context.withPlatformAccess('test: age the rows', () =>

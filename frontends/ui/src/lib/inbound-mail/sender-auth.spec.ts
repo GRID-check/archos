@@ -95,8 +95,12 @@ async function sign(raw: string, domain: string, spec: SignSpec = {}): Promise<s
 
 const bytes = (raw: string) => new Uint8Array(Buffer.from(raw))
 
-async function verdictOf(raw: string, txt: Record<string, string>, failing: string[] = []) {
-  return verifySender(bytes(raw), { projectToken: TOKEN, resolver: fakeDns(txt, failing) })
+/** A quarter of an hour after the test messages' Date: the clock the age check reads. */
+const SENT = new Date('2026-09-28T10:15:00+02:00')
+const SOON_AFTER = new Date(SENT.getTime() + 15 * 60 * 1000)
+
+async function verdictOf(raw: string, txt: Record<string, string>, failing: string[] = [], now = SOON_AFTER) {
+  return verifySender(bytes(raw), { projectToken: TOKEN, resolver: fakeDns(txt, failing), now })
 }
 
 describe('verifySender: what it admits', () => {
@@ -223,6 +227,48 @@ describe('verifySender: replay (A2, S2, L)', () => {
       verdict: 'fail',
       reason: 'dkim-headers',
     })
+  })
+})
+
+describe('verifySender: replaying a member\'s mail into the same project', () => {
+  const DAY = 24 * 60 * 60 * 1000
+
+  it('refuses a signature whose h= leaves Message-ID out: a replay could pass under a fresh one', async () => {
+    const raw = await sign(message(), 'buero-muster.at', { headerList: 'from:to:subject:date' })
+    expect(await verdictOf(raw, keyFor('buero-muster.at'))).toEqual({
+      verdict: 'fail',
+      reason: 'dkim-headers',
+    })
+  })
+
+  it('refuses a mail whose signed Date is more than 30 days old, after its dedupe record is gone', async () => {
+    const raw = await sign(message(), 'buero-muster.at')
+    const later = new Date(SENT.getTime() + 31 * DAY)
+    expect(await verdictOf(raw, keyFor('buero-muster.at'), [], later)).toEqual({
+      verdict: 'fail',
+      reason: 'dkim-stale',
+    })
+  })
+
+  it('refuses a signed Date more than a day in the future', async () => {
+    const raw = await sign(message(), 'buero-muster.at')
+    const earlier = new Date(SENT.getTime() - 2 * DAY)
+    expect(await verdictOf(raw, keyFor('buero-muster.at'), [], earlier)).toEqual({
+      verdict: 'fail',
+      reason: 'dkim-stale',
+    })
+  })
+
+  it('admits a mail that sat in a queue for days, inside the window', async () => {
+    const raw = await sign(message(), 'buero-muster.at')
+    const later = new Date(SENT.getTime() + 5 * DAY)
+    expect(await verdictOf(raw, keyFor('buero-muster.at'), [], later)).toMatchObject({ verdict: 'pass' })
+  })
+
+  it('does not judge a Date the signature leaves out: anyone could have written it', async () => {
+    const raw = await sign(message(), 'buero-muster.at', { headerList: 'from:to:subject:message-id' })
+    const later = new Date(SENT.getTime() + 90 * DAY)
+    expect(await verdictOf(raw, keyFor('buero-muster.at'), [], later)).toMatchObject({ verdict: 'pass' })
   })
 })
 

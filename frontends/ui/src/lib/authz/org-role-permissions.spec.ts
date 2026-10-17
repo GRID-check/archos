@@ -10,6 +10,7 @@
  * branch hard-denied instead of falling back). These are the properties the
  * module's header claims.
  */
+import { TransientAuthzError } from './errors'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
@@ -236,6 +237,13 @@ describe('tenantRolePermissions — a session built without a sign-in (D1)', () 
     listEnvironmentRoles.mockRejectedValue(new Error('workos down'))
     const held = await tenantRolePermissions('org_1', 'member')
     expect([...held].sort()).toEqual([...permissionsForOrgRole('member')].sort())
+  })
+
+  it('raises TransientAuthzError instead of the catalog when a strict caller asks', async () => {
+    listEnvironmentRoles.mockRejectedValue(new Error('workos down'))
+    await expect(tenantRolePermissions('org_1', 'member', { onError: 'throw' })).rejects.toBeInstanceOf(
+      TransientAuthzError
+    )
   })
 
   it('holds nothing for no role, without calling WorkOS', async () => {
