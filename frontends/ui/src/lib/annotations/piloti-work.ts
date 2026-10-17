@@ -13,7 +13,7 @@
  * | Newest wake | Shown as | For how long |
  * |---|---|---|
  * | `queued` | `queued` | until it starts or settles |
- * | `started` | `working` | until its turn ends |
+ * | `started` | `working` | until its turn ends, at most {@link WORKING_SHOWN_MS} |
  * | `failed`, `refused` | `failed`, with the class of why | {@link FAILED_SHOWN_MS} after it ended |
  * | `suppressed` | `held` | {@link HELD_SHOWN_MS} after it was recorded |
  * | `answered`, `stopped` | nothing: the answer is in the thread, or a person stopped it | |
@@ -30,6 +30,12 @@ import { listLatestWakes } from './wake-repository'
 export const FAILED_SHOWN_MS = 6 * 60 * 60 * 1000
 /** How long a wake a cap held says so: the person who asked is still looking. */
 export const HELD_SHOWN_MS = 10 * 60 * 1000
+/**
+ * How long a started wake may say Piloti is working. A turn whose process died
+ * before it reported its end leaves the wake `started`; past this the line goes
+ * rather than claiming work forever. Far above any turn's own deadline.
+ */
+export const WORKING_SHOWN_MS = 30 * 60 * 1000
 
 type WakeFields = Pick<
   PilotiWakeRow,
@@ -46,8 +52,11 @@ export function pilotiWorkOf(
   switch (wake.status) {
     case 'queued':
       return { ...base, state: 'queued', since: wake.createdAt.toISOString() }
-    case 'started':
-      return { ...base, state: 'working', since: (wake.settledAt ?? wake.createdAt).toISOString() }
+    case 'started': {
+      const since = wake.settledAt ?? wake.createdAt
+      if (now - since.getTime() > WORKING_SHOWN_MS) return null
+      return { ...base, state: 'working', since: since.toISOString() }
+    }
     case 'failed':
     case 'refused': {
       const endedAt = wake.endedAt ?? wake.settledAt ?? wake.createdAt

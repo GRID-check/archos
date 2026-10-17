@@ -49,6 +49,7 @@ that the person makes the change themselves (``calls.refusal_for``).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -210,8 +211,11 @@ async def run_look(
 
     async def body() -> list[dict] | str:
         target, signed = await _target(document)
-        await show_reading(target.body(), target.document_id, signed, page, region)
-        result = await look_at(target, signed, page=page, region=region, limits=limits)
+        # Telling the room and reading are independent: the glow costs the look no round trip.
+        _, result = await asyncio.gather(
+            show_reading(target.body(), target.document_id, signed, page, region),
+            look_at(target, signed, page=page, region=region, limits=limits),
+        )
         observe("look", {"page": page, "region": region is not None}, {"viewed": isinstance(result, list)})
         return result
 

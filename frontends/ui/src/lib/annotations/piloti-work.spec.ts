@@ -9,7 +9,7 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn(async () => true) }))
 vi.mock('./wake-repository', () => ({ listLatestWakes: vi.fn(async () => []) }))
 
-const { FAILED_SHOWN_MS, HELD_SHOWN_MS, pilotiWorkOf } = await import('./piloti-work')
+const { FAILED_SHOWN_MS, HELD_SHOWN_MS, WORKING_SHOWN_MS, pilotiWorkOf } = await import('./piloti-work')
 
 const NOW = Date.parse('2026-10-17T12:00:00.000Z')
 const at = (msAgo: number) => new Date(NOW - msAgo)
@@ -36,6 +36,10 @@ describe('pilotiWorkOf', () => {
       state: 'working',
       since: at(30_000).toISOString(),
     })
+  })
+
+  it('stops claiming work for a turn that never reported its end', () => {
+    expect(pilotiWorkOf(wake({ status: 'started', settledAt: at(WORKING_SHOWN_MS + 1) }), null, NOW)).toBeNull()
   })
 
   it('says nothing once it answered or a person stopped it: the thread holds the rest', () => {

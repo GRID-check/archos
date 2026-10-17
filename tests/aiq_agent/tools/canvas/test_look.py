@@ -75,8 +75,9 @@ async def test_the_subject_is_named_by_the_bff_when_the_turn_does_not_know_its_f
     result = await run_look(page=1)
 
     # The room hears what Piloti reads first; then the subject's name is read for the render.
-    assert [payload["op"] for payload, _ in calls] == ["look", "list"]
-    assert calls[0][0] == {"op": "look", "page": 1}
+    # The room hears what Piloti reads while the subject's name is read for the render.
+    assert sorted(payload["op"] for payload, _ in calls) == ["list", "look"]
+    assert {"op": "look", "page": 1} in [payload for payload, _ in calls]
     assert isinstance(result, list) and "Rendered page 1 of 'Grundriss_EG.pdf'" in result[0]["text"]
 
 
@@ -132,8 +133,7 @@ async def test_the_room_sees_the_box_piloti_reads(stored, monkeypatch, calls) ->
 
     await run_look(page=2, region=[0.1, 0.2, 0.3, 0.25])
 
-    look = calls[0][0]
-    assert look["op"] == "look"
+    [look] = [payload for payload, _ in calls if payload["op"] == "look"]
     assert (look["page"], look["x"], look["y"], look["w"], look["h"]) == (2, 0.1, 0.2, 0.3, 0.25)
 
 
