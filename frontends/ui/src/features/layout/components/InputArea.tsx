@@ -335,14 +335,17 @@ const FileChip: FC<{
   const isStored = file.status === 'stored'
   const isSuccess = file.status === 'success'
   const thumbnail = usePhotoThumbnail(file.file)
+  // A file refused because the document it replaces is held carries a
+  // sentence, not a verdict (ADR-0086): it is said as it is.
+  const heldSentence = isHeld && file.replacesHeld ? file.errorMessage : null
   const ingestFailure = useIngestFailureText(
-    (isFailed && failedWhileReading(file)) || isHeld ? file.errorMessage : null
+    (isFailed && failedWhileReading(file)) || (isHeld && !heldSentence) ? file.errorMessage : null
   )
   // Uploading and reading are both pending, but only one of them is an upload.
   const statusTitle = isPending
     ? t(file.status === 'ingesting' ? 'fileSourceCard.statusIngesting' : 'inputArea.fileUploadingStatus')
     : isHeld
-      ? (ingestFailure?.sentence ?? t('fileSourceCard.statusHeld'))
+      ? (heldSentence ?? ingestFailure?.sentence ?? t('fileSourceCard.statusHeld'))
       : isStored
         ? t('fileSourceCard.statusStored')
         : isFailed

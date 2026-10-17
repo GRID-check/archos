@@ -18,7 +18,8 @@ import { motion, motionQuick, springDrawer, useMotionToken } from '@/components/
 import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useLocale, useTranslations } from '@/i18n'
 import { IngestFailureNotice } from '@/features/documents/components/ingest-failure-notice'
-import { QuarantineFindings } from '@/features/documents/components/quarantine-findings'
+import { HeldUploadReason } from '@/features/documents/components/held-upload-reason'
+import type { TrackedFile } from '@/features/documents/types'
 import { formatBytes } from '@/lib/format'
 
 /**
@@ -51,6 +52,11 @@ export interface FileSourceCardProps {
    * „Details". Otherwise it is the upload's own message, shown as it is.
    */
   failedWhileReading?: boolean
+  /**
+   * The file was refused because the document it would replace is held
+   * (ADR-0086): `errorMessage` is then that sentence, not a verdict.
+   */
+  replacesHeld?: TrackedFile['replacesHeld']
   /** Hours after upload before the file may expire (0 = no expiry shown) */
   expirationIntervalHours?: number
   /**
@@ -204,6 +210,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
   status,
   errorMessage,
   failedWhileReading = false,
+  replacesHeld,
   expirationIntervalHours = 0,
   onDelete,
   onOpen,
@@ -312,7 +319,12 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
             same reasons the tray and the Files preview list, never the stored
             `quarantined:{…}` text behind a „Details“ disclosure. */}
         {status === 'held' && (
-          <QuarantineFindings errorMessage={errorMessage} className="mt-1" testId="file-source-card-held" />
+          <HeldUploadReason
+            errorMessage={errorMessage}
+            replacesHeld={replacesHeld}
+            className="mt-1"
+            testId="file-source-card-held"
+          />
         )}
       </div>
     </>
