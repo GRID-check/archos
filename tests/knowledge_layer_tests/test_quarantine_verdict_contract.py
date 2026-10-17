@@ -9,6 +9,7 @@ legacy ``quarantined:`` string is the same JSON, and the job status and the
 collection file list carry it as written.
 """
 
+import dataclasses
 import json
 from pathlib import Path
 
@@ -53,7 +54,19 @@ def test_the_fixture_covers_what_the_reader_must_survive():
     assert any(reason.get("pages_truncated") for reason in reasons)
     assert any(reason["kind"] not in {"term", "iban", "at_svnr", "credit_card"} for reason in reasons)
     assert {verdict["checked"] for verdict in verdicts} == {"full", "partial"}
+    assert any(verdict.get("after_transcription") for verdict in verdicts)
     assert len(SCREENED) >= 4
+
+
+def test_a_verdict_from_the_transcript_says_so_and_one_from_the_text_layer_does_not():
+    screen = SCREENED[0]["screen"]
+    from_text = _screened(screen)
+    from_transcript = dataclasses.replace(from_text, after_transcription=True)
+
+    assert "after_transcription" not in from_text.to_model().model_dump()
+    assert from_transcript.to_model().model_dump()["after_transcription"] is True
+    legacy = json.loads(quarantine_error(from_transcript)[len(QUARANTINED_PREFIX) :])
+    assert legacy["after_transcription"] is True
 
 
 @pytest.mark.parametrize("case", CASES, ids=[case["name"] for case in CASES])

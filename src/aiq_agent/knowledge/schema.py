@@ -240,7 +240,8 @@ class QuarantineVerdict(BaseModel):
     a reason, and the whole within two thousand characters of JSON, cutting
     pages before reasons. ``omitted`` says how many reasons it left out, so a
     short list is never read as the whole one; it is serialised only when it is
-    not zero, and ``checked`` always.
+    not zero, and ``checked`` always. ``after_transcription`` is serialised only
+    when true.
     """
 
     reasons: list[QuarantineReason] = Field(default_factory=list)
@@ -248,12 +249,21 @@ class QuarantineVerdict(BaseModel):
         ..., description="`partial` when some of the file's content went unscreened (pages without a text layer)."
     )
     omitted: int = Field(0, ge=0, description="Reasons found and not listed.")
+    after_transcription: bool = Field(
+        False,
+        description=(
+            "The match was in the vision model's transcript of the file's scanned pages: the vision model saw "
+            "those pages, and no later model call (summary, tags, embeddings) saw anything of the file."
+        ),
+    )
 
     @model_serializer(mode="wrap")
     def _compact(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data = handler(self)
         if not data.get("omitted"):
             data.pop("omitted", None)
+        if not data.get("after_transcription"):
+            data.pop("after_transcription", None)
         return data
 
 

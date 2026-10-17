@@ -136,6 +136,9 @@ class ScreeningVerdict:
 
     reasons: list[Reason] = field(default_factory=list)
     checked: Literal["full", "partial"] = "full"
+    #: The pages screened were the vision model's transcript of scanned pages:
+    #: that model saw them, no later model call did. Written only when true.
+    after_transcription: bool = False
 
     @property
     def matched(self) -> bool:
@@ -157,6 +160,7 @@ class ScreeningVerdict:
                 reasons=[reason.to_model() for reason in listed],
                 checked=self.checked,
                 omitted=len(self.reasons) - len(listed),
+                after_transcription=self.after_transcription,
             )
             if len(QUARANTINED_PREFIX) + len(_compact_json(model)) <= MAX_ERROR_CHARS or not listed:
                 return model
