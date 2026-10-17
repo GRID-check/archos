@@ -12,11 +12,21 @@
  * The roster lives in a ref and reaches React once per animation frame at most,
  * so a room of pointers does not re-render its surface a dozen times a second
  * per person.
+ *
+ * Once the channel closes (unmount, a disabled hook, another link), this tab's
+ * peer has said `gone`, and nothing more goes up under its `peerId`: a late
+ * send from a timer that outlived the component would put the peer back in
+ * everyone's roster for a lease, a ghost of a tab that left.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeSelf, UpstreamBase } from '@/lib/realtime/types'
-import { getRealtimeConnection, type ChannelStatus, type RealtimeConnection } from './connection'
+import {
+  getRealtimeConnection,
+  type ChannelPostOptions,
+  type ChannelStatus,
+  type RealtimeConnection,
+} from './connection'
 import { createRoster, type PeerEvent, type RosterEntry } from './presence'
 
 /** One channel's share of the stream, as a link delivers it. */
@@ -29,7 +39,7 @@ export type ChannelFrame =
 export interface ChannelLink<TUp extends UpstreamBase = UpstreamBase> {
   /** Open the channel. Returns the close. */
   connect(handlers: { onFrame: (frame: ChannelFrame) => void; onOpen: () => void; onDrop: () => void }): () => void
-  post(msg: TUp): void
+  post(msg: TUp, options?: ChannelPostOptions): void
 }
 
 /** The production link: the channel on the tab's shared connection. */
@@ -52,12 +62,16 @@ export function realtimeLink<TUp extends UpstreamBase>(
         },
       })
     },
-    post: (msg) => connection.send(ch, msg),
+    post: (msg, options) => connection.send(ch, msg, options),
   }
 }
 
 export interface SendOptions {
-  /** Send at most once per this many ms, always the latest message, and the last one for sure. */
+  /**
+   * Send at most once per this many ms, always the latest message, and the
+   * last one for sure. A throttled lane is motion: the connection sheds it
+   * while the server refuses the channel's motion. Unthrottled is a claim.
+   */
   throttleMs?: number
   /** Messages throttle per lane; a pointer must not wait behind a scroll. Default `default`. */
   lane?: string
@@ -130,6 +144,8 @@ export function useChannel<E extends PeerEvent, S = undefined>(
   handlers.current = { parse, onEvent }
   const lanes = useRef(new Map<string, ReturnType<typeof throttle<Message>>>())
   const roster = useRef<ReturnType<typeof createRoster<E, S>> | null>(null)
+  /** The link the channel is open on; null once it closed, undefined before it first opened. */
+  const openOn = useRef<ChannelLink | null | undefined>(undefined)
 
   const commit = useCallback(() => {
     if (frame.current !== null) return
@@ -158,6 +174,7 @@ export function useChannel<E extends PeerEvent, S = undefined>(
         })
       : null
     roster.current = list
+    openOn.current = link
     const lanesNow = lanes.current
 
     setStatus('connecting')
@@ -189,6 +206,8 @@ export function useChannel<E extends PeerEvent, S = undefined>(
       for (const lane of lanesNow.values()) lane.cancel()
       lanesNow.clear()
       list?.stop()
+      // After the `gone`: whatever is still on its way under this peer stays here.
+      openOn.current = null
       roster.current = null
       close()
       setPeers([])
@@ -206,7 +225,11 @@ export function useChannel<E extends PeerEvent, S = undefined>(
   const send = useCallback(
     (msg: Message, { throttleMs = 0, lane = 'default' }: SendOptions = {}) => {
       if (!active || !link) return
-      const deliver = (value: Message) => link.post({ ...value, peerId } as UpstreamBase)
+      const deliver = (value: Message) => {
+        // A send that outlived the channel (a component's timer, a stale callback) says nothing.
+        if (openOn.current !== undefined && openOn.current !== link) return
+        link.post({ ...value, peerId } as UpstreamBase, { motion: throttleMs > 0 })
+      }
       if (throttleMs <= 0) {
         deliver(msg)
         return

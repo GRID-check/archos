@@ -77,15 +77,17 @@ export function pilotiWorkOf(
 }
 
 /**
- * The newest wake of each mark of one document, by mark. Empty, never
- * failing the read it is part of, when the wakes cannot be read: the marks
- * still show, only without Piloti's line.
+ * The newest wake of each mark of one document, by mark; of `annotationId`
+ * alone when one is named (a read of one mark). Empty, never failing the read
+ * it is part of, when the wakes cannot be read: the marks still show, only
+ * without Piloti's line.
  */
 export async function latestWakesFor(
   organizationId: string,
-  documentId: string
+  documentId: string,
+  annotationId?: string
 ): Promise<ReadonlyMap<string, PilotiWakeRow>> {
-  const rows = await listLatestWakes(organizationId, documentId).catch((error: unknown) => {
+  const rows = await listLatestWakes(organizationId, documentId, annotationId).catch((error: unknown) => {
     console.error('[annotations] the wakes of a document could not be read:', error)
     return []
   })

@@ -19,14 +19,15 @@ import {
   type RoomTool,
   type RoomViewport,
 } from '@/lib/annotations/room-types'
-import type { ChannelStatus } from '@/features/realtime/connection'
+import type { ChannelPostOptions, ChannelStatus } from '@/features/realtime/connection'
 import { realtimeLink, useChannel, type ChannelLink } from '@/features/realtime/use-channel'
 
 /** How a room reaches the server: the tab's live connection, or a stand-in (the specs, the `/dev` preview). */
 export interface RoomTransport {
   /** Open the stream. Returns the close. */
   connect(handlers: { onFrame: (frame: RoomFrame) => void; onOpen: () => void; onDrop: () => void }): () => void
-  post(post: RoomPost): void
+  /** `motion`: a pointer or a scroll, which the connection sheds while the server refuses it. */
+  post(post: RoomPost, options?: ChannelPostOptions): void
 }
 
 /** The live channel key of a document's room. */
@@ -51,7 +52,7 @@ export function sseRoomTransport(documentId: string): RoomTransport {
           if (parsed.success) onFrame({ kind: 'event', event: parsed.data })
         },
       }),
-    post: (post) => link.post(post),
+    post: (post, options) => link.post(post, options),
   }
 }
 
@@ -179,7 +180,10 @@ export function useDocumentRoom(
 ) {
   const link = useMemo<ChannelLink>(() => {
     const room = transport ?? sseRoomTransport(documentId)
-    return { connect: (handlers) => room.connect(handlers), post: (msg) => room.post(msg as RoomPost) }
+    return {
+      connect: (handlers) => room.connect(handlers),
+      post: (msg, options) => room.post(msg as RoomPost, options),
+    }
   }, [transport, documentId])
   const listeners = useRef(new Set<(event: AnnotationsChanged) => void>())
   const pointer = useRef<{ cursor: RoomCursor | null; tool: RoomTool; draft: RoomDraft | null; chat: string | null }>({

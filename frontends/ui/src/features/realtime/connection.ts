@@ -17,6 +17,14 @@
  * nothing: a phone that locked kills the stream, and a retry it cannot see
  * through only climbs the ladder. When the page is back the stream reopens at
  * once, from the first rung, instead of waiting out the rung it was on.
+ *
+ * Up, a message is either motion (a pointer, a scroll: the throttled lanes of
+ * `useChannel`) or a claim (presence, a selection). The server spends them from
+ * separate budgets. When it refuses motion (429), the channel's motion pauses
+ * for the `Retry-After` instead of hammering on; claims go on regardless. Only
+ * a `gone` goes out as `keepalive`, so it still leaves while the page unloads:
+ * the browser bounds what keepalive requests may have in flight, and a stream
+ * of pointers in that quota could crowd the one message that must arrive.
  */
 
 import { browserPageLifecycle, isActive, type PageLifecycle } from '@/adapters/api/page-lifecycle'
@@ -41,11 +49,28 @@ export interface ChannelHandlers {
   onStatus?(status: ChannelStatus): void
 }
 
+/** How a message goes up. */
+export interface ChannelPostOptions {
+  /** Motion: shed while the server refuses the channel's motion, and the first thing a refusal pauses. */
+  motion?: boolean
+}
+
+/** What the send path answered, as far as backing off needs. */
+export interface PostOutcome {
+  status: number
+  /** The `Retry-After`, in ms; 0 when there is none. */
+  retryAfterMs: number
+}
+
 export interface RealtimeConnection {
   /** Join a channel. Returns the leave, which is idempotent. */
   join(ch: string, handlers: ChannelHandlers): () => void
-  /** Say something in a channel. Fire and forget: a refusal is dropped, the next message is on its way. */
-  send(ch: string, msg: unknown): void
+  /**
+   * Say something in a channel. Fire and forget: a refusal is dropped, the
+   * next message is on its way. Motion refused with a 429 pauses the channel's
+   * motion for the `Retry-After`.
+   */
+  send(ch: string, msg: unknown, options?: ChannelPostOptions): void
   /** The status of one channel now. */
   status(ch: string): ChannelStatus
   /** Close everything: for tests. */
@@ -61,7 +86,8 @@ interface EventSourceLike {
 
 export interface ConnectionOptions {
   createSource?: (url: string) => EventSourceLike
-  post?: (path: string, body: string) => void
+  /** Send one message. Its outcome, when it has one, is what the motion backoff reads. */
+  post?: (path: string, body: string, init: { keepalive: boolean }) => Promise<PostOutcome | undefined> | void
   /** How long a change of the channel set waits for more before reconnecting. */
   debounceMs?: number
   ladder?: RetryLadder
@@ -69,12 +95,27 @@ export interface ConnectionOptions {
   lifecycle?: PageLifecycle
 }
 
-const defaultPost = (path: string, body: string) => {
+/** The longest a refusal pauses motion, whatever the header says. */
+const MAX_MOTION_PAUSE_MS = 60_000
+/** The shortest: a refusal without a usable `Retry-After` still backs off a moment. */
+const MIN_MOTION_PAUSE_MS = 1_000
+
+const retryAfterMs = (header: string | null) => {
+  const seconds = Number(header)
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : 0
+}
+
+const defaultPost = (path: string, body: string, { keepalive }: { keepalive: boolean }) => {
   if (typeof fetch !== 'function') return
-  void fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(
+  return fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive }).then(
+    (response): PostOutcome => ({ status: response.status, retryAfterMs: retryAfterMs(response.headers.get('retry-after')) }),
     () => undefined
   )
 }
+
+/** A presence withdrawal: the one message that must leave even as the page unloads. */
+const isGone = (msg: unknown) =>
+  typeof msg === 'object' && msg !== null && (msg as { presence?: unknown }).presence === 'gone'
 
 const defaultSource = (url: string): EventSourceLike | null =>
   typeof EventSource === 'undefined' ? null : (new EventSource(url) as unknown as EventSourceLike)
@@ -95,6 +136,8 @@ export function createRealtimeConnection({
   let live = false
   let self: RealtimeSelf | null = null
   let debounce: ReturnType<typeof setTimeout> | null = null
+  /** Per channel, until when its motion is paused: the server refused it. */
+  const motionPausedUntil = new Map<string, number>()
 
   const wanted = () => [...joined.keys()].filter((ch) => !dropped.has(ch)).sort()
 
@@ -232,8 +275,15 @@ export function createRealtimeConnection({
         schedule()
       }
     },
-    send(ch, msg) {
-      post(REALTIME_SEND_PATH, JSON.stringify({ ch, msg }))
+    send(ch, msg, { motion = false } = {}) {
+      if (motion && (motionPausedUntil.get(ch) ?? 0) > Date.now()) return
+      const outcome = post(REALTIME_SEND_PATH, JSON.stringify({ ch, msg }), { keepalive: isGone(msg) })
+      if (!motion || !outcome) return
+      void outcome.then((result) => {
+        if (result?.status !== 429) return
+        const pause = Math.min(MAX_MOTION_PAUSE_MS, Math.max(MIN_MOTION_PAUSE_MS, result.retryAfterMs))
+        motionPausedUntil.set(ch, Date.now() + pause)
+      })
     },
     status,
     dispose() {
@@ -244,6 +294,7 @@ export function createRealtimeConnection({
       closeSource()
       joined.clear()
       dropped.clear()
+      motionPausedUntil.clear()
       carried = new Set()
     },
   }

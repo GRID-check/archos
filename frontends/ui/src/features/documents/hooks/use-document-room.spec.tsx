@@ -184,3 +184,19 @@ describe('useDocumentRoom', () => {
     expect(room.posts).toEqual([])
   })
 })
+
+describe('useDocumentRoom after it closed', () => {
+  it('sends nothing once the room is gone, so a line that lingers past the review raises no ghost', () => {
+    const room = scriptedRoom()
+    const { result, unmount } = renderHook(() => useDocumentRoom('doc_1', { enabled: true, transport: room.transport }))
+    const { sendChat } = result.current
+
+    unmount()
+    expect(room.posts.at(-1)).toMatchObject({ presence: 'gone' })
+    const said = room.posts.length
+
+    // `CursorChat`'s linger clears the line after the review closed.
+    sendChat(null)
+    expect(room.posts).toHaveLength(said)
+  })
+})

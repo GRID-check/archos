@@ -9,7 +9,8 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn(async () => true) }))
 vi.mock('./wake-repository', () => ({ listLatestWakes: vi.fn(async () => []) }))
 
-const { FAILED_SHOWN_MS, HELD_SHOWN_MS, WORKING_SHOWN_MS, pilotiWorkOf } = await import('./piloti-work')
+const { FAILED_SHOWN_MS, HELD_SHOWN_MS, WORKING_SHOWN_MS, latestWakesFor, pilotiWorkOf } = await import('./piloti-work')
+const { listLatestWakes } = await import('./wake-repository')
 
 const NOW = Date.parse('2026-10-17T12:00:00.000Z')
 const at = (msAgo: number) => new Date(NOW - msAgo)
@@ -58,5 +59,14 @@ describe('pilotiWorkOf', () => {
     const held = wake({ status: 'suppressed', reason: 'cap', settledAt: at(1_000), endedAt: at(1_000), createdAt: at(1_000) })
     expect(pilotiWorkOf(held, null, NOW)).toMatchObject({ state: 'held' })
     expect(pilotiWorkOf({ ...held, createdAt: at(HELD_SHOWN_MS + 1) }, null, NOW)).toBeNull()
+  })
+})
+
+describe('latestWakesFor', () => {
+  it('reads one mark’s wakes when it names the mark, and the whole document’s when it does not', async () => {
+    await latestWakesFor('org_1', 'doc_1', 'mark_1')
+    expect(listLatestWakes).toHaveBeenLastCalledWith('org_1', 'doc_1', 'mark_1')
+    await latestWakesFor('org_1', 'doc_1')
+    expect(listLatestWakes).toHaveBeenLastCalledWith('org_1', 'doc_1', undefined)
   })
 })

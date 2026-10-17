@@ -31,7 +31,7 @@ const session = {
 
 vi.mock('@/lib/auth/require-auth', () => ({ requireAuthorizedSession: vi.fn(async () => session) }))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
-vi.mock('@/lib/authz/project-membership', () => ({ canUserAccessProject: vi.fn() }))
+vi.mock('@/lib/authz/project-membership', () => ({ userHoldsProjectPermission: vi.fn(), resolveSubjectMembership: vi.fn() }))
 vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/folder-access')).openFolderAccessModule())
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn().mockResolvedValue(new Map()) }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
@@ -105,14 +105,20 @@ import {
   replyToAnnotation as replyAs,
   updateAnnotation as updateAs,
 } from '@/lib/annotations/service'
-import { countWakes, findLiveDelegationWake, insertWake, settleWake } from '@/lib/annotations/wake-repository'
+import {
+  countWakes,
+  findLiveDelegationWake,
+  insertWake,
+  listLatestWakes,
+  settleWake,
+} from '@/lib/annotations/wake-repository'
 import { delegationEventId, documentThreadConversationId, wakeTurnId } from '@/lib/annotations/wake-ids'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { expectRegistered } from '@/test-utils/audit'
 import type { DbTransaction } from '@/lib/db/executor'
 import type { Document, DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import { canUserAccessProject } from '@/lib/authz/project-membership'
+import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
@@ -645,7 +651,7 @@ describe('what a person’s decision leaves behind', () => {
  */
 describe('what a change or a reply tells people', () => {
   beforeEach(() => {
-    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    vi.mocked(userHoldsProjectPermission).mockResolvedValue(true)
   })
 
   it('tells the new Zuständige and settles the previous one’s row when a person reassigns the mark', async () => {
@@ -737,7 +743,7 @@ describe('what a change or a reply tells people', () => {
       mark: MARK,
       replyText: 'Ist bestellt.',
     })
-    vi.mocked(canUserAccessProject).mockImplementation(async (_session, _project, userId) => userId === 'user_2')
+    vi.mocked(userHoldsProjectPermission).mockImplementation(async (_session, _project, userId) => userId === 'user_2')
     await expect(input.mayOpen(['user_2', 'user_outside'])).resolves.toEqual(new Set(['user_2']))
   })
 
@@ -862,5 +868,17 @@ describe('the audit trail of a wake taken back', () => {
     expect(response.status).toBe(200)
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('piloti.wake.stopped'), expect.any(Error))
     warn.mockRestore()
+  })
+})
+
+describe('what a write reads back of Piloti’s work', () => {
+  it('reads the wakes of the mark it wrote, not of the whole document, while the list reads the document’s', async () => {
+    await updateAnnotation(DOC_ID, MARK_ID, { body: 'Neu gefasst' }, { run })
+    expect(listLatestWakes).toHaveBeenCalled()
+    for (const call of vi.mocked(listLatestWakes).mock.calls) expect(call).toEqual(['org_1', DOC_ID, MARK_ID])
+
+    vi.mocked(listLatestWakes).mockClear()
+    await listAnnotations(DOC_ID, run)
+    expect(listLatestWakes).toHaveBeenCalledWith('org_1', DOC_ID, undefined)
   })
 })

@@ -330,7 +330,7 @@ async function viewOf(session: AuthorizedSession, doc: Document, annotationId: s
   const [names, wakes, work] = await Promise.all([
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
-    latestWakesFor(session.organizationId, doc.id),
+    latestWakesFor(session.organizationId, doc.id, record.id),
   ])
   return toView(record, doc, session, true, names, wakes, work)
 }
@@ -844,7 +844,7 @@ export async function readAnnotation(
     mayWrite(session, doc.id),
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
-    latestWakesFor(session.organizationId, doc.id),
+    latestWakesFor(session.organizationId, doc.id, record.id),
   ])
   return toView(record, doc, session, writable, names, wakes, work)
 }

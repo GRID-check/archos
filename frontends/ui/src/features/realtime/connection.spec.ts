@@ -150,8 +150,49 @@ describe('the realtime connection', () => {
     connection.send('doc:a', { peerId: 'peer_abcdef12', presence: 'here' })
     expect(post).toHaveBeenCalledWith(
       '/api/realtime/send',
-      JSON.stringify({ ch: 'doc:a', msg: { peerId: 'peer_abcdef12', presence: 'here' } })
+      JSON.stringify({ ch: 'doc:a', msg: { peerId: 'peer_abcdef12', presence: 'here' } }),
+      { keepalive: false }
     )
+    connection.dispose()
+  })
+
+  it('sends only a `gone` as keepalive, so pointers never crowd the one message that must outlive the page', () => {
+    const post = vi.fn()
+    const connection = createRealtimeConnection({ createSource: (url) => new FakeSource(url), post })
+    connection.send('doc:a', { peerId: 'peer_abcdef12', cursor: { page: 1, x: 0.5, y: 0.5 } }, { motion: true })
+    connection.send('doc:a', { peerId: 'peer_abcdef12', presence: 'here' })
+    connection.send('doc:a', { peerId: 'peer_abcdef12', presence: 'gone' })
+    expect(post.mock.calls.map((call) => call[2])).toEqual([
+      { keepalive: false },
+      { keepalive: false },
+      { keepalive: true },
+    ])
+    connection.dispose()
+  })
+
+  it('pauses a channel’s motion for the Retry-After of a refusal, and never its claims', async () => {
+    let status = 429
+    const post = vi.fn(async () => ({ status, retryAfterMs: 5_000 }))
+    const connection = createRealtimeConnection({ createSource: (url) => new FakeSource(url), post })
+    const cursor = { peerId: 'peer_abcdef12', cursor: { page: 1, x: 0.5, y: 0.5 } }
+    const sent = () => post.mock.calls.length
+
+    connection.send('doc:a', cursor, { motion: true })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(sent()).toBe(1)
+
+    // Refused: the pointer waits; presence, a selection and another channel's motion do not.
+    status = 200
+    connection.send('doc:a', cursor, { motion: true })
+    expect(sent()).toBe(1)
+    connection.send('doc:a', { peerId: 'peer_abcdef12', presence: 'here' })
+    connection.send('doc:a', { peerId: 'peer_abcdef12', selected: 'ann_1' })
+    connection.send('doc:b', cursor, { motion: true })
+    expect(sent()).toBe(4)
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    connection.send('doc:a', cursor, { motion: true })
+    expect(sent()).toBe(5)
     connection.dispose()
   })
 })
