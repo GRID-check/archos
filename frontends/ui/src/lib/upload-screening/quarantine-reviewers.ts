@@ -30,7 +30,7 @@ import {
   type ScreeningFacts,
   type ShelfReader,
 } from '@/lib/documents/document-reader'
-import { NAME_TAKEN_DETAILS } from '@/lib/documents/name-taken'
+import { NAME_TAKEN_DETAILS, nameTakenMessage } from '@/lib/documents/name-taken'
 import { QUARANTINED_REPLACE_REASON } from './quarantine'
 
 type ReviewedDocument = Pick<Document, 'scope' | 'projectId' | 'folderId'>
@@ -118,5 +118,5 @@ export async function assertMayReplaceHeld(
       { reason: QUARANTINED_REPLACE_REASON, documentId: superseded.id, ownUpload: superseded.createdBy === session.userId }
     )
   }
-  throw new ConflictError(`A document named "${filename}" already exists here. Rename the file to upload it.`, NAME_TAKEN_DETAILS)
+  throw new ConflictError(nameTakenMessage(filename), NAME_TAKEN_DETAILS)
 }

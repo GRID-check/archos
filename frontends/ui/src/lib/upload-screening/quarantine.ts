@@ -149,6 +149,20 @@ export function quarantineVerdictOf(source: QuarantineSource): QuarantineVerdict
   return readQuarantineVerdict(rawVerdictOf(source))
 }
 
+/**
+ * The `files` sentence that explains a file held back by the content check,
+ * for every surface that says one (`QuarantineFindings`, the composer's chip).
+ * It claims no model saw the file only when that is true: a match in a scanned
+ * page's transcript was found after the vision model read the page
+ * (`after_transcription`). A verdict with nothing to list claims nothing.
+ */
+export function heldSentenceKey(
+  verdict: QuarantineVerdict | null | undefined
+): 'ingestFailure.quarantined' | 'ingestFailure.quarantinedAfterTranscription' | 'ingestFailure.quarantinedUnreadable' {
+  if (!verdict || (verdict.reasons.length === 0 && !verdict.omitted)) return 'ingestFailure.quarantinedUnreadable'
+  return verdict.after_transcription ? 'ingestFailure.quarantinedAfterTranscription' : 'ingestFailure.quarantined'
+}
+
 /** The kinds of reason an inbox notice words on its own (`collaboration.inbox.types.*.variants`). */
 export type QuarantineNoticeVariant = 'term' | 'iban' | 'at_svnr' | 'credit_card' | 'transcript'
 
@@ -169,12 +183,15 @@ export function quarantineNoticeVariant(verdict: QuarantineVerdict | null): Quar
  * What a reviewer's inbox notice about a held file carries: its name, which
  * the reviewer may open in the queue anyway, and its kind of reason. Never a
  * matched value or a sample.
+ *
+ * `variant` is always written, `null` when the verdict names no kind: a
+ * collapsed row merges payloads key by key (jsonb `||`), so a key left out
+ * would keep the previous file's reason under this file's name.
  */
 export function quarantineNoticePayload(
   doc: QuarantineSource & { filename: string }
-): { subject: string; variant?: QuarantineNoticeVariant } {
-  const variant = quarantineNoticeVariant(quarantineVerdictOf(doc))
-  return variant ? { subject: doc.filename, variant } : { subject: doc.filename }
+): { subject: string; variant: QuarantineNoticeVariant | null } {
+  return { subject: doc.filename, variant: quarantineNoticeVariant(quarantineVerdictOf(doc)) }
 }
 
 /**

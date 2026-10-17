@@ -7,6 +7,8 @@ import {
   explainQuarantineReason,
   findingsOf,
   firstFinding,
+  heldSentenceKey,
+  quarantineNoticePayload,
   quarantineReasonHead,
   quarantineVerdictOf,
   reportsQuarantine,
@@ -208,5 +210,42 @@ describe('where a finding is', () => {
     expect(firstFinding(parseQuarantine(stored))).toEqual({ page: 1, highlight: 'Lohnzettel' })
     expect(firstFinding(parseQuarantine('quarantined:{"reasons":[{"kind":"term","term":"Lohn"}]}'))).toBeNull()
     expect(firstFinding(null)).toBeNull()
+  })
+})
+
+describe('heldSentenceKey', () => {
+  const reason = { kind: 'term' as const, term: 'Lohnzettel', count: 1, pages: [1] }
+
+  it('claims no model saw the file only when no model did', () => {
+    expect(heldSentenceKey({ reasons: [reason] })).toBe('ingestFailure.quarantined')
+    expect(heldSentenceKey({ reasons: [reason], checked: 'partial', after_transcription: true })).toBe(
+      'ingestFailure.quarantinedAfterTranscription'
+    )
+  })
+
+  it('claims nothing about the content when there is nothing to list', () => {
+    expect(heldSentenceKey(null)).toBe('ingestFailure.quarantinedUnreadable')
+    expect(heldSentenceKey({ reasons: [] })).toBe('ingestFailure.quarantinedUnreadable')
+    expect(heldSentenceKey({ reasons: [], omitted: 2 })).toBe('ingestFailure.quarantined')
+  })
+})
+
+describe('quarantineNoticePayload', () => {
+  it('names the file and its kind of reason, never the value', () => {
+    const payload = quarantineNoticePayload({
+      filename: 'Lohnzettel.pdf',
+      quarantine: { reasons: [{ kind: 'iban', count: 1, sample: 'AT61 •••• •••• •••• 3201' }] },
+    })
+    expect(payload).toEqual({ subject: 'Lohnzettel.pdf', variant: 'iban' })
+  })
+
+  it('writes the variant even when the verdict names none, so a collapsed row keeps no earlier file’s reason', () => {
+    expect(quarantineNoticePayload({ filename: 'Altbestand.docx', quarantine: null })).toEqual({
+      subject: 'Altbestand.docx',
+      variant: null,
+    })
+    expect(
+      quarantineNoticePayload({ filename: 'Neu.pdf', quarantine: { reasons: [{ kind: 'passport', count: 1 }] } })
+    ).toEqual({ subject: 'Neu.pdf', variant: null })
   })
 })

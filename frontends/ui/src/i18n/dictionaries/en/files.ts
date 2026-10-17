@@ -394,7 +394,7 @@ export const files = {
     // Found in the text a vision model read off scanned pages (`after_transcription`):
     // that model saw those pages, no other did.
     quarantinedAfterTranscription:
-      'This file contains something your office marks as sensitive, found in the text of scanned pages. A vision model read those pages so they could be checked; nothing went further. An office or project admin reviews it and decides whether it stays or is deleted.',
+      'This file contains something your office marks as sensitive, found in the text of scanned pages. A vision model read those pages so they could be checked; no other model saw them. An office or project admin reviews it and decides whether it stays or is deleted.',
     // The reason is not stored or cannot be read: claim nothing the line above does not show.
     quarantinedUnreadable:
       'The content check held this file back. Its reason is not stored or cannot be read. While it is held back, Piloti shows it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',

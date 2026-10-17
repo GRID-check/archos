@@ -680,8 +680,9 @@ were said as failures.
 - **Every name stop is counted.** The server's repeat answers 422
   `UPLOAD_SCREENED` with the matches; the browser says it as it says its own
   stops (no failed row, no retry) and seals the batch with them in `excluded`,
-  by term and count (`POST …/seal` takes `excluded`). The mail import adds its
-  stops to its batch as it meets them (`recordJobUploadExclusions`). Both merge
+  by term and count (`POST …/seal` takes `excluded`). The mail import adds a
+  mail's stops to its batch once the mail is done (`recordNameStops`), after the
+  cursor moved past it, so a retried mail counts them once. Both merge
   into `upload_batches.excluded` in SQL, term by term. Names never travel.
 - **The server screens what the browser screened.** A chat attachment sends its
   origin path, and both shelves screen the whole normalised path

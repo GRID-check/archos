@@ -495,7 +495,7 @@ export const collaboration = {
             bodyMany: 'Latest: “{subject}”, with a card number. Review them: allow or delete.',
           },
           transcript: {
-            body: '“{subject}”: found in the text of scanned pages a vision model read; nothing went further. Allow or delete?',
+            body: '“{subject}”: found in the text of scanned pages a vision model read; no other model saw them. Allow or delete?',
             bodyMany: 'Latest: “{subject}”, found in the text of scanned pages. Review them: allow or delete.',
           },
         },

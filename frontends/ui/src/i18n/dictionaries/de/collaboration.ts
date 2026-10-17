@@ -333,7 +333,7 @@ export const collaboration: typeof en.collaboration = {
             bodyMany: 'Zuletzt „{subject}“, mit einer Kreditkartennummer. Prüfen Sie sie: zulassen oder löschen.',
           },
           transcript: {
-            body: '„{subject}“: gefunden im Text gescannter Seiten, die ein Bildmodell gelesen hat; weiter ging nichts davon. Zulassen oder löschen?',
+            body: '„{subject}“: gefunden im Text gescannter Seiten, die ein Bildmodell gelesen hat; kein anderes Modell hat sie gesehen. Zulassen oder löschen?',
             bodyMany: 'Zuletzt „{subject}“, gefunden im Text gescannter Seiten. Prüfen Sie sie: zulassen oder löschen.',
           },
         },

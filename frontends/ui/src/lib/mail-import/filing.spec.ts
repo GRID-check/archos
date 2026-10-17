@@ -58,6 +58,7 @@ import { ScreenedUploadError } from '@/lib/upload-screening/service'
 import { AttachmentUnreadableError, readArchiveAttachment, type ArchiveMail } from './archive-client'
 import {
   fileMail,
+  recordNameStops,
   filingContext,
   ImportMovedOnError,
   MailImportQuotaError,
@@ -290,11 +291,26 @@ describe('fileMail', () => {
       skipped: [{ mail: LEAF, file: 'Vertrag.pdf', reason: 'screened' }],
     })
     expect(uploadedNames()).toEqual([`${LEAF} – Vertrag.pdf`, `${LEAF} – Plan.pdf`, `${LEAF}.md`])
-    // The batch counts the stop by term, never by name, so the summary says
-    // what was not uploaded and why (ADR-0086).
-    expect(recordJobUploadExclusions).toHaveBeenCalledTimes(1)
+    // The stop travels with the mail: nothing is counted until the mail is
+    // done, so a retried mail does not count it twice.
+    expect(result.nameStops).toEqual([[{ term: 'Vertrag', segment: `${LEAF} – Vertrag.pdf`, kind: 'file' }]])
+    expect(recordJobUploadExclusions).not.toHaveBeenCalled()
+  })
+
+  it('counts a done mail’s name stops on the batch by term, never by name', async () => {
+    const ctx = await context()
+    await recordNameStops(ctx, {
+      folderName: LEAF,
+      filesFiled: 0,
+      filesSkipped: 2,
+      skipped: [],
+      nameStops: [
+        [{ term: 'Vertrag', segment: `${LEAF} – Vertrag.pdf`, kind: 'file' }],
+        [{ term: 'Vertrag', segment: `${LEAF} – Vertrag (2).pdf`, kind: 'file' }],
+      ],
+    })
     expect(recordJobUploadExclusions).toHaveBeenCalledWith('org_1', importBatchId('imp_1', 0), 'user_anna', [
-      { term: 'Vertrag', count: 1 },
+      { term: 'Vertrag', count: 2 },
     ])
     expect(JSON.stringify(vi.mocked(recordJobUploadExclusions).mock.calls)).not.toContain('Vertrag.pdf')
   })

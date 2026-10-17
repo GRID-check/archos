@@ -45,7 +45,7 @@ import { documentReadFamily } from './document-status'
 import { nextVersionNumber, recordUploadedVersionOrDiscard } from './lifecycle'
 import { resolveFassungOf, type FassungOfIgnoredReason } from './fassung-upload'
 import { documentNameKey } from './name-match'
-import { NAME_TAKEN_DETAILS } from './name-taken'
+import { NAME_TAKEN_DETAILS, nameTakenMessage } from './name-taken'
 import { normalizeOriginPath, sanitizeOriginPath } from './origin-path'
 import { resolveShelfFolderPath } from './folder-path'
 import { findLiveDocumentByFilename, findProjectCollectionsHoldingFilename } from './repository'
@@ -489,10 +489,7 @@ async function assertNameFreeElsewhereInProject(
 ): Promise<void> {
   const holders = await findProjectCollectionsHoldingFilename(organizationId, projectId, filename)
   if (holders.some((holder) => holder !== collectionName)) {
-    throw new ConflictError(
-      `A document named "${filename}" already exists elsewhere in this project. Rename the file, or upload it where that document is filed.`,
-      NAME_TAKEN_DETAILS,
-    )
+    throw new ConflictError(nameTakenMessage(filename), NAME_TAKEN_DETAILS)
   }
 }
 

@@ -21,6 +21,14 @@ export const NAME_TAKEN_REASON = 'name_taken'
 /** The details a taken-name 409 carries, and nothing else: no folder, no hint of why. */
 export const NAME_TAKEN_DETAILS = { reason: NAME_TAKEN_REASON } as const
 
+/**
+ * The `error` text of every taken-name 409, the same words for both causes, so
+ * the raw response tells them apart no better than its details do.
+ */
+export function nameTakenMessage(filename: string): string {
+  return `A document named "${filename}" already exists in this project. Rename the file to upload it.`
+}
+
 /** Whether a response body is a taken-name refusal (`{ error, code, details: { reason } }`). */
 export function isNameTakenBody(body: unknown): boolean {
   if (!body || typeof body !== 'object') return false

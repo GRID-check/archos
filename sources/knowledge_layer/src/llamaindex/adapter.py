@@ -3198,18 +3198,26 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         return True
 
     def _screen_transcribed(
-        self, job: IngestionJobStatus, file_index: int, rules: Any, text_pages: list[dict[str, Any]]
+        self,
+        job: IngestionJobStatus,
+        file_index: int,
+        rules: Any,
+        text_pages: list[dict[str, Any]],
+        *,
+        transcribed: bool,
     ) -> bool:
-        """Screen a PDF's pages once its scanned pages are transcribed into them; True when it was quarantined.
+        """Screen a PDF's pages once ``route_pdf_pages`` changed them; True when it was quarantined.
 
-        The whole document again, so a number split between a transcribed page
-        and a text-layer page is found too; the text-layer pages were clean, so
-        a match is in or across a transcript. Always ``partial``: the vision
-        model saw the scanned pages before this check could.
+        The whole document again, so a number split between a changed page and
+        a text-layer page is found too; the text-layer pages were clean, so a
+        match is in or across what changed: a transcript, or the text salvaged
+        from a garbled page once its glyph ids were stripped. ``transcribed``:
+        the vision model read scanned pages before this check could, and the
+        verdict says so (``after_transcription``). Always ``partial``.
         """
         body = [(page["page_number"], page.get("text") or "") for page in text_pages]
         return self._screen_or_quarantine(
-            job, file_index, rules, list(body), "partial", stream=body, after_transcription=True
+            job, file_index, rules, list(body), "partial", stream=body, after_transcription=transcribed
         )
 
     def _screen_pdf(
@@ -4928,7 +4936,6 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         )
                         if route_kwargs is None:
                             continue
-                        self._thumbnail_after_screen(thumbnail_upload_url, source_path)
                         page_routes = _transcription.route_pdf_pages(
                             source_path,
                             text_pages,
@@ -4946,9 +4953,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # What the vision model read off scanned pages is text
                         # too, screened before summaries, captions or embeddings
                         # see it. The model that transcribed it has: the verdict
-                        # says so (`after_transcription`).
-                        if page_routes.outcome.texts and self._screen_transcribed(job, i, screening_rules, text_pages):
+                        # says so (`after_transcription`). A garbled page nobody
+                        # transcribed keeps its salvaged text, which reads only
+                        # now that the glyph ids are gone: screened as well.
+                        changed = bool(page_routes.outcome.texts or page_routes.garbled_kept)
+                        if changed and self._screen_transcribed(
+                            job, i, screening_rules, text_pages, transcribed=bool(page_routes.outcome.texts)
+                        ):
                             continue
+                        self._thumbnail_after_screen(thumbnail_upload_url, source_path)
                         if page_routes.not_transcribed and not text_pages:
                             error = _transcription.SCAN_NEEDS_VLM
                             self._update_file_status(job, i, FileStatus.FAILED, error=error)

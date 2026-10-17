@@ -377,7 +377,7 @@ export const files: typeof en.files = {
     // Gefunden im Text, den das Bildmodell aus gescannten Seiten gelesen hat
     // (`after_transcription`): dieses Modell hat die Seiten gesehen, kein anderes.
     quarantinedAfterTranscription:
-      'Diese Datei enthält etwas, das Ihr Büro als sensibel eingestuft hat, gefunden im Text gescannter Seiten. Diese Seiten hat ein Bildmodell gelesen, damit sie geprüft werden konnten; weiter ging nichts davon. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
+      'Diese Datei enthält etwas, das Ihr Büro als sensibel eingestuft hat, gefunden im Text gescannter Seiten. Diese Seiten hat ein Bildmodell gelesen, damit sie geprüft werden konnten; kein anderes Modell hat sie gesehen. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
     // Der Grund ist nicht gespeichert oder nicht lesbar: nichts behaupten, was
     // die Zeile darüber nicht belegt.
     quarantinedUnreadable:

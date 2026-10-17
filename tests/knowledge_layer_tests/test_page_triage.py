@@ -637,6 +637,24 @@ class TestGarbledPdfIngestion:
         assert contents["2"] == TRANSCRIPT
         assert len(calls) == 1
 
+    def test_salvaged_text_of_an_untranscribed_garbled_page_is_screened(self, tmp_path, monkeypatch, indexed):
+        """Glyph ids hid the term from the first screen; once stripped it reads, and is screened before indexing."""
+        _credential(monkeypatch, api_key="")
+
+        def salvaging(pdf_path, text_pages, page_texts, **kwargs):
+            text_pages[-1] = {**text_pages[-1], "text": "Gehaltsabrechnung März 2026"}
+            return transcription.PageRoutes(garbled_kept=[text_pages[-1]["page_number"]])
+
+        monkeypatch.setattr(transcription, "route_pdf_pages", salvaging)
+        path = _write(tmp_path, "cad.pdf", _pdf([text_page(), cid_page()]))
+
+        status = _ingest(indexed, path, "cad.pdf", {"screening": {"content_terms": ["Gehaltsabrechnung"]}})
+
+        detail = status.file_details[0]
+        assert detail.screening == "quarantined"
+        assert detail.quarantine is not None and not detail.quarantine.after_transcription
+        assert indexed.docs() == []
+
     def test_without_a_key_the_garbage_is_dropped_and_counted(self, tmp_path, monkeypatch, indexed):
         _credential(monkeypatch, api_key="")
         path = _write(tmp_path, "cad.pdf", _pdf([text_page(), cid_page()]))
