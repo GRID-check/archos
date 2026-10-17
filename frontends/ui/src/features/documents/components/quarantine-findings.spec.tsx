@@ -45,6 +45,14 @@ describe('QuarantineFindings', () => {
     expect(screen.getByText(en.files.ingestFailure.quarantined)).toBeInTheDocument()
   })
 
+  it('does not claim no model saw a file caught in its scanned pages\' transcript', () => {
+    render(<QuarantineFindings verdict={{ ...verdict, checked: 'partial', after_transcription: true }} />)
+    expect(screen.getByTestId('quarantine-findings-sentence')).toHaveTextContent(
+      en.files.ingestFailure.quarantinedAfterTranscription
+    )
+    expect(screen.queryByText(en.files.ingestFailure.quarantined)).toBeNull()
+  })
+
   it('gives the explaining sentence when reasons are listed', () => {
     render(<QuarantineFindings verdict={verdict} />)
     expect(screen.getByText(en.files.ingestFailure.quarantined)).toBeInTheDocument()

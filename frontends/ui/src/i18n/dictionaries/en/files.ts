@@ -391,6 +391,10 @@ export const files = {
     deleted: 'The file was deleted while Piloti was reading it.',
     quarantined:
       'This file contains something your office marks as sensitive. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // Found in the text a vision model read off scanned pages (`after_transcription`):
+    // that model saw those pages, no other did.
+    quarantinedAfterTranscription:
+      'This file contains something your office marks as sensitive, found in the text of scanned pages. A vision model read those pages so they could be checked; nothing went further. An office or project admin reviews it and decides whether it stays or is deleted.',
     // The reason is not stored or cannot be read: claim nothing the line above does not show.
     quarantinedUnreadable:
       'The content check held this file back. Its reason is not stored or cannot be read. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
@@ -428,7 +432,8 @@ export const files = {
       '{count, plural, one {One more reason is not listed.} other {# more reasons are not listed.}}',
     nameInFile: 'File name contains “{term}”',
     nameInFolder: 'Folder “{segment}” contains “{term}”',
-    partial: 'Some pages had no text layer and were not checked.',
+    // Scanned pages are checked once read (ADR-0086, 2026-10-17): "not checked" was no longer true, "first" is.
+    partial: 'Not everything could be checked first: a vision model sees scanned pages, images and drawings before the check.',
     unchecked: 'The content could not be read without a model and was checked by name only.',
     // A content-check finding, the way a chat source is shown: the page, and on
     // it, marked, what the office listed as sensitive.

@@ -374,6 +374,10 @@ export const files: typeof en.files = {
     deleted: 'Die Datei wurde gelöscht, während Piloti sie las.',
     quarantined:
       'Diese Datei enthält etwas, das Ihr Büro als sensibel eingestuft hat. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
+    // Gefunden im Text, den das Bildmodell aus gescannten Seiten gelesen hat
+    // (`after_transcription`): dieses Modell hat die Seiten gesehen, kein anderes.
+    quarantinedAfterTranscription:
+      'Diese Datei enthält etwas, das Ihr Büro als sensibel eingestuft hat, gefunden im Text gescannter Seiten. Diese Seiten hat ein Bildmodell gelesen, damit sie geprüft werden konnten; weiter ging nichts davon. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
     // Der Grund ist nicht gespeichert oder nicht lesbar: nichts behaupten, was
     // die Zeile darüber nicht belegt.
     quarantinedUnreadable:
@@ -414,7 +418,9 @@ export const files: typeof en.files = {
       '{count, plural, one {Ein weiterer Grund wird nicht aufgeführt.} other {# weitere Gründe werden nicht aufgeführt.}}',
     nameInFile: 'Dateiname enthält „{term}“',
     nameInFolder: 'Ordner „{segment}“ enthält „{term}“',
-    partial: 'Einige Seiten hatten keine Textebene und wurden nicht geprüft.',
+    // Gescannte Seiten werden seit ADR-0086 (2026-10-17) nach dem Lesen geprüft:
+    // „nicht geprüft“ stimmte nicht mehr, „vorab“ schon.
+    partial: 'Nicht alles ließ sich vorab prüfen: Gescannte Seiten, Bilder und Zeichnungen sieht zuerst ein Bildmodell.',
     unchecked: 'Der Inhalt ließ sich ohne Modell nicht lesen und wurde nur am Namen geprüft.',
     // Eine Fundstelle der Inhaltsprüfung, wie eine Quelle im Chat: die Seite,
     // und darauf markiert, was das Büro als sensibel eingetragen hat.

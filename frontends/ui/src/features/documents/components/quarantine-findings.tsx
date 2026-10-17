@@ -47,6 +47,16 @@ export interface QuarantineFindingsProps {
   testId?: string
 }
 
+/**
+ * The sentence that explains holding back. It claims no model saw the file
+ * only when that is true: a match in a scanned page's transcript was found
+ * after the vision model read the page (`after_transcription`).
+ */
+function heldSentenceKey(verdict: QuarantineVerdict | null | undefined, reasonCount: number): string {
+  if (reasonCount === 0 && !verdict?.omitted) return 'ingestFailure.quarantinedUnreadable'
+  return verdict?.after_transcription ? 'ingestFailure.quarantinedAfterTranscription' : 'ingestFailure.quarantined'
+}
+
 const sameFinding = (a: QuarantineFinding | null | undefined, b: QuarantineFinding): boolean =>
   !!a && a.page === b.page && a.highlight === b.highlight
 
@@ -125,8 +135,8 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
         <p className="text-muted-foreground text-xs leading-snug">{t('screening.partial')}</p>
       )}
       {!withoutSentence && (
-        <p className="text-muted-foreground text-xs leading-snug">
-          {t(reasons.length > 0 || verdict?.omitted ? 'ingestFailure.quarantined' : 'ingestFailure.quarantinedUnreadable')}
+        <p className="text-muted-foreground text-xs leading-snug" data-testid={`${testId}-sentence`}>
+          {t(heldSentenceKey(verdict, reasons.length))}
         </p>
       )}
     </div>
