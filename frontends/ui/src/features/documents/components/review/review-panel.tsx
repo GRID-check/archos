@@ -2,7 +2,8 @@
 
 import { memo, useState, type JSX } from 'react'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { CheckCheck, ChevronDown, Clock, MessageCircle, MousePointerClick, Sparkles, UserRound } from 'lucide-react'
+import { CheckCheck, ChevronDown, Clock, GitCompare, History, MessageCircle, MousePointerClick, Sparkles, UserRound } from 'lucide-react'
+import NextLink from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CommentPin } from '@/components/ui/comment-pin'
 import { Spinner } from '@/components/ui/spinner'
@@ -10,7 +11,8 @@ import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange, localCalendarDay } from '@/lib/format'
 import { isLive, isOverdue, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
-import type { DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
+import type { CarriedGroup, DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
+import { compareFromReviewHref } from '../../lib/fassung-links'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
 import { markInk } from './review-page-layer'
@@ -151,6 +153,153 @@ function Pages({
   )
 }
 
+/** Carry marks on, one or all, and say so when not all of them went. */
+function useCarrying(review: DocumentReview) {
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const carry = async (marks: readonly AnnotationView[]) => {
+    setBusy(true)
+    setFailed(false)
+    const { failed: missed } = await review.carryAll(marks)
+    setFailed(missed > 0)
+    setBusy(false)
+  }
+  return { busy, failed, carry }
+}
+
+/**
+ * The open marks of this document listed and not drawn, because they were set
+ * on an earlier Fassung: how many, and „Alle übernehmen", which carries each
+ * the way its card's „Auf aktuelle Fassung übernehmen" does.
+ */
+function EarlierBar({ review }: { review: DocumentReview }): JSX.Element | null {
+  const t = useTranslations('files')
+  const { busy, failed, carry } = useCarrying(review)
+  const marks = review.annotations.filter(
+    (annotation) => !annotation.onCurrentFassung && annotation.status === 'open' && annotation.canEdit
+  )
+  if (marks.length === 0) return null
+  return (
+    <div className="bg-muted/40 mx-0.5 mb-2 space-y-1 rounded-xl px-2.5 py-2" data-testid="review-earlier-bar">
+      <div className="flex items-center gap-2">
+        <History className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+        <span className="text-foreground min-w-0 flex-1 text-xs font-medium">{t('review.earlierOpen', { count: marks.length })}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          disabled={busy}
+          data-testid="review-carry-all-earlier"
+          onClick={() => void carry(marks)}
+        >
+          {t('review.carryAll')}
+        </Button>
+      </div>
+      {failed && <p className="text-destructive text-[11px] leading-4">{t('review.carryFailed')}</p>}
+    </div>
+  )
+}
+
+/**
+ * The open marks of a document this one replaces (Index B, filed again as this
+ * one under another name), read-only, under „Aus Fassung B": each carried on
+ * as a linked mark of this document by „Übernehmen", or all of them at once;
+ * „Fassungen vergleichen" lays the two side by side first.
+ */
+function CarriedFrom({ review, group }: { review: DocumentReview; group: CarriedGroup }): JSX.Element {
+  const t = useTranslations('files')
+  const { locale } = useLocale()
+  const { busy, failed, carry } = useCarrying(review)
+  const carryable = group.annotations.filter((annotation) => annotation.canEdit && review.canAnnotate)
+  const compare =
+    typeof window === 'undefined' ? null : compareFromReviewHref(window.location, review.documentId, group.from.id)
+  return (
+    <section
+      data-testid="review-carried-group"
+      aria-label={t('review.carriedGroup', { name: group.from.filename })}
+      className="mx-0.5 mb-2 rounded-xl border"
+    >
+      <div className="space-y-1 px-2.5 pt-2 pb-1">
+        <div className="flex items-center gap-2">
+          <History className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+          <h3 className="text-foreground min-w-0 flex-1 truncate text-xs font-semibold">
+            {t('review.carriedGroup', { name: group.from.filename })}
+          </h3>
+          {carryable.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              disabled={busy}
+              data-testid="review-carry-all-from"
+              onClick={() => void carry(carryable)}
+            >
+              {t('review.carryAll')}
+            </Button>
+          )}
+        </div>
+        <p className="text-muted-foreground text-[11px] leading-4">{t('review.carriedGroupHint', { name: group.from.filename })}</p>
+        {compare && (
+          <NextLink
+            href={compare}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] underline underline-offset-2"
+            data-testid="review-compare-fassungen"
+          >
+            <GitCompare className="size-3" aria-hidden />
+            {t('review.compareFassungen')}
+          </NextLink>
+        )}
+      </div>
+      <ul className="space-y-0.5 px-0.5 pb-1">
+        {group.annotations.map((annotation) => (
+          <li key={annotation.id} className="flex gap-3 rounded-lg px-2.5 py-2" data-testid="review-carried-row">
+            <span className="pt-0.5">
+              <CommentPin as="span" number={annotation.number} color={markInk(annotation)} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground line-clamp-2 text-sm leading-5">
+                <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={review.me} clamped />
+              </span>
+              <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs">
+                <span className="whitespace-nowrap">{t(`annotations.kinds.${annotation.kind}`)}</span>
+                {t('review.page', { page: annotation.page })}
+                {annotation.assigneeName && (
+                  <span className="inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap">
+                    <UserRound className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">{annotation.assigneeName}</span>
+                  </span>
+                )}
+                {annotation.dueOn && (
+                  <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+                    <Clock className="size-3" aria-hidden />
+                    {formatDayRange(annotation.dueOn, annotation.dueOn, locale)}
+                  </span>
+                )}
+              </span>
+              {annotation.canEdit && review.canAnnotate && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-1.5 h-7 text-xs"
+                  disabled={busy}
+                  data-testid="review-carry-from"
+                  onClick={() => void carry([annotation])}
+                >
+                  {t('review.carry')}
+                </Button>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {failed && <p className="text-destructive px-2.5 pb-2 text-[11px] leading-4">{t('review.carryFailed')}</p>}
+    </section>
+  )
+}
+
 const FILTERS: ReviewFilter[] = ['open', 'closed']
 
 /**
@@ -263,57 +412,96 @@ export function ReviewPanel({
               {t('annotations.retry')}
             </Button>
           </div>
-        ) : listed.length === 0 ? (
-          <EmptyList review={review} />
         ) : (
           <>
-            {proposals.length > 0 && (
-              <section
-                data-testid="review-proposals"
-                className="border-foreground/25 mx-0.5 mb-2 rounded-xl border border-dashed"
-              >
-                <div className="flex items-center gap-2 px-2.5 py-2">
-                  <button
-                    type="button"
-                    aria-expanded={proposalsOpen}
-                    onClick={() => setProposalsOpen((open) => !open)}
-                    className="text-foreground flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold"
-                  >
-                    <Sparkles className="size-3.5" aria-hidden />
-                    {t('review.proposalsGroup', { count: proposals.length })}
-                    <ChevronDown
-                      className={cn('text-muted-foreground size-3.5 transition-transform duration-quick', !proposalsOpen && '-rotate-90')}
-                      aria-hidden
-                    />
-                  </button>
-                  {onWalkProposals && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      data-testid="review-walk-proposals"
-                      onClick={onWalkProposals}
-                    >
-                      {t('review.walkProposals')}
-                    </Button>
-                  )}
-                </div>
-                {proposalsOpen && (
-                  <div className="px-0.5 pb-1">
-                    <Pages marks={proposals} review={review} onOpen={onOpen} />
-                    <p className="text-muted-foreground px-2.5 pt-1 pb-1.5 text-[11px] leading-4" data-testid="review-proposals-legend">
-                      {t('review.proposalsLegend')}
-                    </p>
-                  </div>
-                )}
-              </section>
+            {filter === 'open' &&
+              review.carried.map((group) => <CarriedFrom key={group.from.id} review={review} group={group} />)}
+            {filter === 'open' && <EarlierBar review={review} />}
+            {listed.length === 0 ? (
+              <EmptyList review={review} />
+            ) : (
+              <ListedMarks
+                review={review}
+                proposals={proposals}
+                rest={rest}
+                proposalsOpen={proposalsOpen}
+                setProposalsOpen={setProposalsOpen}
+                onOpen={onOpen}
+                onWalkProposals={onWalkProposals}
+              />
             )}
-            <Pages marks={rest} review={review} onOpen={onOpen} />
           </>
         )}
       </div>
     </aside>
+  )
+}
+
+/** The list proper: Piloti's proposals as a group with one way through them, then the rest by page. */
+function ListedMarks({
+  review,
+  proposals,
+  rest,
+  proposalsOpen,
+  setProposalsOpen,
+  onOpen,
+  onWalkProposals,
+}: {
+  review: DocumentReview
+  proposals: readonly AnnotationView[]
+  rest: readonly AnnotationView[]
+  proposalsOpen: boolean
+  setProposalsOpen: (update: (open: boolean) => boolean) => void
+  onOpen: OpenMark
+  onWalkProposals?: () => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  return (
+    <>
+      {proposals.length > 0 && (
+        <section
+          data-testid="review-proposals"
+          className="border-foreground/25 mx-0.5 mb-2 rounded-xl border border-dashed"
+        >
+          <div className="flex items-center gap-2 px-2.5 py-2">
+            <button
+              type="button"
+              aria-expanded={proposalsOpen}
+              onClick={() => setProposalsOpen((open) => !open)}
+              className="text-foreground flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold"
+            >
+              <Sparkles className="size-3.5" aria-hidden />
+              {t('review.proposalsGroup', { count: proposals.length })}
+              <ChevronDown
+                className={cn('text-muted-foreground size-3.5 transition-transform duration-quick', !proposalsOpen && '-rotate-90')}
+                aria-hidden
+              />
+            </button>
+            {onWalkProposals && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                data-testid="review-walk-proposals"
+                onClick={onWalkProposals}
+              >
+                {t('review.walkProposals')}
+              </Button>
+            )}
+          </div>
+          {proposalsOpen && (
+            <div className="px-0.5 pb-1">
+              <Pages marks={proposals} review={review} onOpen={onOpen} />
+              <p className="text-muted-foreground px-2.5 pt-1 pb-1.5 text-[11px] leading-4" data-testid="review-proposals-legend">
+                {t('review.proposalsLegend')}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+      <Pages marks={rest} review={review} onOpen={onOpen} />
+    </>
   )
 }
 

@@ -1692,6 +1692,23 @@ export const files: typeof en.files = {
     linkCopied: 'Link kopiert',
     linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
     earlierFassung: 'Aus Fassung {number}. Auf diesem Blatt nicht eingezeichnet.',
+    // „Gilt weiter": eine offene Anmerkung geht mit der aktuellen Fassung weiter,
+    // an derselben Stelle, mit Nummer und Verlauf. Eine Anmerkung eines
+    // ersetzten Dokuments kommt als verknüpfte Anmerkung in das neue.
+    carry: 'Auf aktuelle Fassung übernehmen',
+    carryTo: 'In „{name}“ übernehmen',
+    carryAll: 'Alle übernehmen',
+    carryFailed: 'Nicht alle Anmerkungen konnten übernommen werden. Bitte noch einmal.',
+    compareFassungen: 'Fassungen vergleichen',
+    earlierOpen: 'Offen aus früheren Fassungen: {count}',
+    carriedGroup: 'Aus Fassung „{name}“',
+    carriedGroupHint:
+      'Gesetzt auf „{name}“, das dieses Dokument ersetzt. Übernehmen Sie, was weiter gilt: Die Anmerkung kommt mit ihrer Stelle hierher, ihr Verlauf bleibt dort.',
+    carriedFrom: 'Übernommen aus „{name}“, Anmerkung {number}',
+    carriedTo: 'Weiter in „{name}“ als Anmerkung {number}',
+    replacedBy: 'Ersetzt durch „{name}“',
+    replaces: 'Ersetzt „{name}“',
+    replacedNotice: 'Dieses Dokument ist durch „{name}“ ersetzt.',
     delete: 'Löschen',
     deleteConfirm: 'Anmerkung {number} löschen?',
     // Den eigenen Text einer Anmerkung ändern: wer neu erwähnt wird, erfährt es; wer schon erwähnt war, nicht noch einmal.

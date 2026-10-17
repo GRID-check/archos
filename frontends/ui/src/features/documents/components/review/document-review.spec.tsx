@@ -17,7 +17,7 @@ import { server } from '@/mocks/server'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import type { RoomFrame } from '@/lib/annotations/room-types'
 import type { AnnotationView } from '@/lib/annotations/types'
-import { useDocumentReview, type ReviewTool } from '../../hooks/use-document-review'
+import { useDocumentReview, type ReviewFassung, type ReviewTool } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
 import { DocumentReviewMode, TOOLS_INTRO_KEY } from './document-review'
 
@@ -90,13 +90,15 @@ function Host({
   popoutHref,
   initialTool,
   onOpenChange = () => {},
+  fassung = null,
 }: {
   popoutHref?: string | null
   initialTool?: ReviewTool
   onOpenChange?: (open: boolean) => void
+  fassung?: ReviewFassung | null
 }) {
   const [transport] = useState(room)
-  const review = useDocumentReview('doc_1', { enabled: true, transport })
+  const review = useDocumentReview('doc_1', { enabled: true, transport, fassung })
   return (
     <DocumentReviewMode
       open
@@ -121,6 +123,20 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('the header', () => {
+  it('says when another document replaces this one, and when this one replaces another', async () => {
+    serve([])
+    const replaced = render(
+      <Host fassung={{ replacedBy: { id: 'doc_c', filename: 'Grundriss Index C.pdf' }, replaces: [] }} />
+    )
+    expect(await screen.findByText(/Replaced by “Grundriss Index C\.pdf”/)).toBeInTheDocument()
+    replaced.unmount()
+
+    render(<Host fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }} />)
+    expect(await screen.findByText(/Replaces “Grundriss Index B\.pdf”/)).toBeInTheDocument()
+  })
 })
 
 describe('the tools', () => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { forwardRef, useId, useRef, useState, type JSX } from 'react'
+import NextLink from 'next/link'
 import {
   CalendarClock,
   Check,
@@ -48,6 +49,7 @@ import { answerAsBody } from '../../lib/piloti-answer-text'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
 import { AssignPopover } from '../assign-popover'
 import { Composer, type ComposerSend } from './composer'
+import { otherReviewHref } from '../../lib/fassung-links'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
 import type { CardSide } from './review-page-layer'
@@ -570,6 +572,85 @@ export function DraftCard({
   )
 }
 
+/**
+ * Where the mark stands among the document's Fassungen, as the card's first
+ * lines (the card is all the reader looks at): set on an earlier Fassung (listed,
+ * not drawn), or on a document another one replaced, each with „Auf aktuelle
+ * Fassung übernehmen" for whoever may edit an open mark; and where a carried
+ * mark came from or went on to, linked where the page can open that document.
+ */
+function FassungLines({
+  review,
+  annotation,
+  busy,
+  onCarry,
+}: {
+  review: DocumentReview
+  annotation: AnnotationView
+  busy: boolean
+  onCarry: () => void
+}): JSX.Element | null {
+  const t = useTranslations('files')
+  const replacedBy = review.fassung?.replacedBy ?? null
+  const carryable = annotation.canEdit && annotation.status === 'open'
+  const earlier = !annotation.onCurrentFassung
+  const where = typeof window === 'undefined' ? null : window.location
+  const linkTo = (link: { documentId: string; annotationId: string }) =>
+    where ? otherReviewHref(where, review.documentId, link) : null
+  const lines: JSX.Element[] = []
+  if (earlier || (replacedBy && carryable)) {
+    lines.push(
+      <div key="fassung" className="flex flex-col gap-1.5" data-testid="thread-earlier">
+        <p className="flex items-start gap-1.5">
+          <History className="mt-px size-3 shrink-0" aria-hidden />
+          {earlier
+            ? annotation.fassungNumber
+              ? t('review.earlierFassung', { number: annotation.fassungNumber })
+              : t('annotations.earlierFassungUnnumbered')
+            : t('review.replacedNotice', { name: replacedBy?.filename ?? '' })}
+        </p>
+        {carryable && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 self-start text-xs"
+            disabled={busy}
+            data-testid="thread-carry"
+            onClick={onCarry}
+          >
+            {replacedBy ? t('review.carryTo', { name: replacedBy.filename }) : t('review.carry')}
+          </Button>
+        )}
+      </div>
+    )
+  }
+  for (const [key, link, words] of [
+    ['from', annotation.carriedFrom, 'review.carriedFrom'],
+    ['to', annotation.carriedTo, 'review.carriedTo'],
+  ] as const) {
+    if (!link) continue
+    const text = t(words, { name: link.documentName, number: link.number })
+    const href = linkTo(link)
+    lines.push(
+      <p key={key} className="flex items-start gap-1.5" data-testid={`thread-carried-${key}`}>
+        <Link2 className="mt-px size-3 shrink-0" aria-hidden />
+        {href ? (
+          <NextLink href={href} className="hover:text-foreground underline underline-offset-2">
+            {text}
+          </NextLink>
+        ) : (
+          text
+        )}
+      </p>
+    )
+  }
+  if (lines.length === 0) return null
+  return (
+    <div className="text-muted-foreground bg-muted/40 space-y-1 border-b px-3 py-1.5 text-[11px] leading-4">{lines}</div>
+  )
+}
+
 /** One mark's thread: the finding, the conversation, the decision, and who is on it. */
 export function ThreadCard({
   review,
@@ -739,15 +820,7 @@ export function ThreadCard({
 
   return (
     <ReviewCard placement={placement} testId="review-thread" labelledBy={headerId}>
-      {!annotation.onCurrentFassung && (
-        // Said inside the card, as its first line: the card is all the reader looks at.
-        <p className="text-muted-foreground bg-muted/40 flex items-start gap-1.5 border-b px-3 py-1.5 text-[11px] leading-4" data-testid="thread-earlier">
-          <History className="mt-px size-3 shrink-0" aria-hidden />
-          {annotation.fassungNumber
-            ? t('review.earlierFassung', { number: annotation.fassungNumber })
-            : t('annotations.earlierFassungUnnumbered')}
-        </p>
-      )}
+      <FassungLines review={review} annotation={annotation} busy={busy} onCarry={() => void act(() => review.carry(annotation))} />
       {walk && proposed && (
         <div className="bg-muted/40 flex items-center gap-2 border-b py-1 pr-1.5 pl-3" data-testid="thread-walk">
           <span className="text-muted-foreground text-[11px] font-medium tabular-nums">

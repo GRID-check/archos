@@ -20,6 +20,7 @@ import {
   type MarkMention,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
+import type { FassungRef } from '@/lib/documents/fassung'
 import { useChatStore } from '@/features/chat'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '@/features/collaboration/hooks/use-undoable-archive'
@@ -82,6 +83,25 @@ function rebased(input: UpdateAnnotationRequest, held: HeldDecision): UpdateAnno
   return { ...rest, status, expectedStatus: expectedStatus === held.status ? held.expectedStatus : expectedStatus }
 }
 
+/**
+ * How the document stands among its Fassungen under other names, as the
+ * reader may see it (`FassungFacts`, `lib/documents/fassung.ts`): the document
+ * that replaces it, and the ones it replaces.
+ */
+export interface ReviewFassung {
+  replacedBy: FassungRef | null
+  replaces: readonly FassungRef[]
+}
+
+/** The open marks of a document this one replaces, listed read-only in its review to be carried on. */
+export interface CarriedGroup {
+  from: FassungRef
+  annotations: AnnotationView[]
+}
+
+/** How many replaced documents a review lists the open marks of: the direct predecessors, a few at most. */
+export const CARRY_GROUPS_MAX = 3
+
 /** A place picked on a page and not yet saved: a point, or a region dragged out. */
 export interface ReviewDraft {
   page: number
@@ -111,6 +131,7 @@ export function useDocumentReview(
     transport,
     piloti: pilotiOptions,
     viewerUserId,
+    fassung,
   }: {
     enabled: boolean
     transport?: RoomTransport
@@ -118,6 +139,8 @@ export function useDocumentReview(
     piloti?: Omit<UseCanvasAskOptions, 'documentId' | 'enabled'>
     /** The signed-in person as the page knows them (the shelf's `currentUserId`), for when the room is not up. */
     viewerUserId?: string | null
+    /** The documents it replaces and the one that replaces it, as the reader may see them. */
+    fassung?: ReviewFassung | null
   }
 ) {
   const room = useDocumentRoom(documentId, { enabled, transport })
@@ -156,6 +179,42 @@ export function useDocumentReview(
   /** Only what is on this reader's plate: assigned to them, or set by them. */
   const [mine, setMine] = useState(false)
   const [notice, setNotice] = useState<'conflict' | null>(null)
+  /**
+   * The open marks of the documents this one replaces, read through the same
+   * list as their own reviews (`GET …/annotations` of each), while nothing
+   * replaces this one: a mark is carried to the current Fassung, and that is
+   * here only while this document is it.
+   */
+  const [carried, setCarried] = useState<CarriedGroup[]>([])
+  // By value: a new array naming the same documents (every listing re-read) is not a change.
+  const sourcesKey = JSON.stringify(
+    fassung?.replacedBy
+      ? []
+      : (fassung?.replaces ?? []).slice(0, CARRY_GROUPS_MAX).map(({ id, filename }) => ({ id, filename }))
+  )
+  const sources = useMemo(() => JSON.parse(sourcesKey) as FassungRef[], [sourcesKey])
+  /** Which read of the replaced documents' marks may still land: the newest, for the document still shown. */
+  const carriedRead = useRef(0)
+  const fetchCarried = useCallback(async () => {
+    const ticket = ++carriedRead.current
+    const groups = await Promise.all(
+      sources.map(async (from) => {
+        const listed = await listAnnotations(from.id).catch(() => null)
+        const open = (listed?.annotations ?? []).filter((annotation) => annotation.status === 'open')
+        return { from, annotations: open }
+      })
+    )
+    if (carriedRead.current === ticket) setCarried(groups.filter((group) => group.annotations.length > 0))
+  }, [sources])
+  useEffect(() => {
+    if (!enabled) return
+    setCarried([])
+    void fetchCarried()
+    // Leaving the document (or closing the review) lets no read of its predecessors land.
+    return () => {
+      carriedRead.current += 1
+    }
+  }, [enabled, documentId, fetchCarried])
 
   /**
    * Which reads may still land. A read of one mark lands only if it is the
@@ -502,6 +561,45 @@ export function useDocumentReview(
     [documentId, guard, write, drop, undoDecision]
   )
 
+  /**
+   * „Auf aktuelle Fassung übernehmen": the mark goes on with the Fassung the
+   * document shows now, in place (`carryToCurrent`), or, for a mark of a
+   * document another one replaced, as a linked mark of that one. The status
+   * the card showed goes with it, so a mark a colleague closed meanwhile is the
+   * conflict notice. Both lists are read again: the mark moved between them.
+   */
+  const carry = useCallback(
+    async (annotation: Pick<AnnotationView, 'id' | 'documentId' | 'status'>) => {
+      const after = await guard(() =>
+        updateAnnotation(annotation.documentId, annotation.id, { carryToCurrent: true, expectedStatus: annotation.status }, write)
+      )
+      if (after.documentId === documentId) replace(after)
+      if (annotation.documentId !== documentId || after.documentId !== documentId) {
+        await Promise.all([fetchList().catch(() => undefined), fetchCarried()])
+      }
+      return after
+    },
+    [documentId, guard, write, replace, fetchList, fetchCarried]
+  )
+
+  /** „Alle offenen übernehmen": the same carry, one mark after the other; how many went, and how many did not. */
+  const carryAll = useCallback(
+    async (marks: ReadonlyArray<Pick<AnnotationView, 'id' | 'documentId' | 'status'>>) => {
+      let carriedOn = 0
+      let failed = 0
+      for (const annotation of marks) {
+        try {
+          await carry(annotation)
+          carriedOn += 1
+        } catch {
+          failed += 1
+        }
+      }
+      return { carried: carriedOn, failed }
+    },
+    [carry]
+  )
+
   const counts = useMemo(
     () => ({
       open: annotations.filter((annotation) => annotation.status === 'open').length,
@@ -586,6 +684,10 @@ export function useDocumentReview(
       remove,
       step,
       me,
+      fassung: fassung ?? null,
+      carried,
+      carry,
+      carryAll,
     }),
     [
       documentId,
@@ -617,6 +719,10 @@ export function useDocumentReview(
       reply,
       remove,
       step,
+      fassung,
+      carried,
+      carry,
+      carryAll,
     ]
   )
 }

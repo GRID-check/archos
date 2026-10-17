@@ -29,7 +29,7 @@ import type { AnnotationView } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
 import { createCanvasTurnClient, type CanvasTurnClientOptions } from '../../lib/canvas-turn-client'
-import { useDocumentReview } from '../../hooks/use-document-review'
+import { useDocumentReview, type ReviewFassung } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
 import { PilotiAnswerCard } from './piloti-answer-card'
 import { ReviewPageLayer } from './review-page-layer'
@@ -148,15 +148,18 @@ function Harness({
   onReady,
   piloti,
   canPickAssignee = false,
+  fassung = null,
 }: {
   transport: RoomTransport
   onReady?: (review: ReturnType<typeof useDocumentReview>) => void
   piloti?: ReturnType<typeof scriptedPiloti>
   canPickAssignee?: boolean
+  fassung?: ReviewFassung | null
 }) {
   const review = useDocumentReview('doc_1', {
     enabled: true,
     transport,
+    fassung,
     piloti: piloti ? { projectId: 'proj_1', fileName: 'Grundriss.pdf', createClient: piloti.createClient } : undefined,
   })
   useEffect(() => {
@@ -191,6 +194,10 @@ function Harness({
       <button type="button" onClick={() => review.setTool('ask')}>
         piloti tool
       </button>
+      {/* A mark of an earlier Fassung is not on the sheet: its thread opens on its own, as the review places it. */}
+      {selected && !selected.onCurrentFassung && (
+        <ThreadCard review={review} annotation={selected} placement="detached" canPickAssignee={canPickAssignee} />
+      )}
       <ReviewPanel review={review} onOpen={(annotation) => review.select(annotation.id)} />
     </>
   )
@@ -1368,5 +1375,174 @@ describe('closing the loop on a mark', () => {
       expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull()
       await userEvent.keyboard('{Escape}')
     }
+  })
+})
+
+describe('a mark goes on with the current Fassung', () => {
+  /** The marks of each document, as its own list answers them; what was patched, with the document it went to. */
+  function serveDocuments(lists: Record<string, AnnotationView[]>) {
+    const patched: Array<{ documentId: string; annotationId: string; change: Record<string, unknown> }> = []
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) =>
+        HttpResponse.json({ annotations: lists[String(params.id)] ?? [], canAnnotate: true, pilotiWakes: false })
+      ),
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ params, request }) => {
+        const change = (await request.json()) as Record<string, unknown>
+        const documentId = String(params.id)
+        const annotationId = String(params.annotationId)
+        patched.push({ documentId, annotationId, change })
+        const mark = (lists[documentId] ?? []).find((annotation) => annotation.id === annotationId) as AnnotationView
+        if (documentId === 'doc_1') {
+          // Under its own name the mark moves in place: same id, same number, now on the sheet.
+          const moved = { ...mark, onCurrentFassung: true, fassungNumber: 3 }
+          lists.doc_1 = lists.doc_1.map((annotation) => (annotation.id === annotationId ? moved : annotation))
+          return HttpResponse.json({ annotation: moved })
+        }
+        // From the replaced document: a linked mark of this one, the original closed.
+        const copy = view({
+          ...mark,
+          id: `${annotationId}_on_doc_1`,
+          documentId: 'doc_1',
+          number: 9,
+          carriedFrom: { annotationId, documentId, number: mark.number, documentName: 'Grundriss Index B.pdf' },
+        })
+        lists[documentId] = (lists[documentId] ?? []).map((annotation) =>
+          annotation.id === annotationId ? { ...annotation, status: 'resolved' } : annotation
+        )
+        lists.doc_1 = [...(lists.doc_1 ?? []), copy]
+        return HttpResponse.json({ annotation: copy })
+      })
+    )
+    return patched
+  }
+
+  it('carries a mark of an earlier Fassung from its card, keeping its number, and the card stops saying it is not drawn', async () => {
+    const patched = serveDocuments({ doc_1: [view({ id: 'ann_4', number: 4, onCurrentFassung: false, fassungNumber: 2 })] })
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('From revision 2. Not drawn on this sheet.')
+    await userEvent.click(within(thread).getByTestId('thread-carry'))
+
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { documentId: 'doc_1', annotationId: 'ann_4', change: { carryToCurrent: true, expectedStatus: 'open' } },
+      ])
+    )
+    await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-earlier')).toBeNull())
+    expect(screen.getByTestId('review-thread')).toHaveTextContent('#4')
+  })
+
+  it('offers no carry on a mark that is closed, or to a reader who may not edit it', async () => {
+    serveDocuments({
+      doc_1: [
+        view({ id: 'ann_closed', number: 1, onCurrentFassung: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+        view({ id: 'ann_ro', number: 2, onCurrentFassung: false, canEdit: false }),
+      ],
+    })
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    expect(within(await screen.findByTestId('review-thread')).queryByTestId('thread-carry')).toBeNull()
+    expect(screen.queryByTestId('review-earlier-bar')).toBeNull()
+  })
+
+  it('carries every open mark of earlier Fassungen at once from the list', async () => {
+    const patched = serveDocuments({
+      doc_1: [
+        view({ id: 'ann_1', number: 1, onCurrentFassung: false, fassungNumber: 1 }),
+        view({ id: 'ann_2', number: 2, onCurrentFassung: false, fassungNumber: 2 }),
+        view({ id: 'ann_3', number: 3 }),
+      ],
+    })
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const bar = await screen.findByTestId('review-earlier-bar')
+    expect(bar).toHaveTextContent('Open from earlier revisions: 2')
+    await userEvent.click(within(bar).getByTestId('review-carry-all-earlier'))
+
+    await waitFor(() => expect(patched.map((patch) => patch.annotationId)).toEqual(['ann_1', 'ann_2']))
+    await waitFor(() => expect(screen.queryByTestId('review-earlier-bar')).toBeNull())
+  })
+
+  it('lists the open marks of the document this one replaces, read-only, and carries one on as a mark of this one', async () => {
+    const patched = serveDocuments({
+      doc_1: [],
+      doc_b: [
+        view({ id: 'ann_b4', documentId: 'doc_b', number: 4, body: 'Brüstung unter 1,00 m' }),
+        view({ id: 'ann_b5', documentId: 'doc_b', number: 5, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+      ],
+    })
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+
+    const group = await screen.findByTestId('review-carried-group')
+    expect(group).toHaveTextContent('From revision “Grundriss Index B.pdf”')
+    expect(within(group).getAllByTestId('review-carried-row')).toHaveLength(1)
+    expect(within(group).getByTestId('review-carried-row')).toHaveTextContent('Brüstung unter 1,00 m')
+    // Read-only: a row there opens no thread here.
+    expect(within(group).queryByTestId('review-row')).toBeNull()
+
+    await userEvent.click(within(group).getByTestId('review-carry-from'))
+
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { documentId: 'doc_b', annotationId: 'ann_b4', change: { carryToCurrent: true, expectedStatus: 'open' } },
+      ])
+    )
+    await waitFor(() => expect(screen.queryByTestId('review-carried-group')).toBeNull())
+    expect(await screen.findByTestId('review-row')).toHaveTextContent('Brüstung unter 1,00 m')
+  })
+
+  it('lists nothing from a replaced document while another document replaces this one', async () => {
+    serveDocuments({ doc_1: [], doc_b: [view({ id: 'ann_b4', documentId: 'doc_b', number: 4 })] })
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{
+          replacedBy: { id: 'doc_d', filename: 'Grundriss Index D.pdf' },
+          replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }],
+        }}
+      />
+    )
+
+    await screen.findByTestId('review-empty')
+    expect(screen.queryByTestId('review-carried-group')).toBeNull()
+  })
+
+  it('offers to carry an open mark of a replaced document to the one that replaces it, and says where a carried mark came from', async () => {
+    serveDocuments({
+      doc_1: [
+        view({ id: 'ann_1', number: 1 }),
+        view({
+          id: 'ann_2',
+          number: 2,
+          status: 'resolved',
+          closedBy: 'user_me',
+          closedAt: '2026-10-02T08:00:00.000Z',
+          carriedTo: { annotationId: 'ann_c7', documentId: 'doc_c', number: 7, documentName: 'Grundriss Index C.pdf' },
+        }),
+      ],
+    })
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: { id: 'doc_c', filename: 'Grundriss Index C.pdf' }, replaces: [] }}
+      />
+    )
+
+    await userEvent.click((await screen.findAllByTestId('review-row'))[0])
+    const thread = await screen.findByTestId('review-thread')
+    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('This document was replaced by “Grundriss Index C.pdf”.')
+    expect(within(thread).getByTestId('thread-carry')).toHaveTextContent('Carry to “Grundriss Index C.pdf”')
+
+    await userEvent.click(screen.getByTestId('review-filter-closed'))
+    await userEvent.click(await screen.findByTestId('review-row'))
+    expect(await screen.findByTestId('thread-carried-to')).toHaveTextContent('Continues in “Grundriss Index C.pdf” as annotation 7')
   })
 })

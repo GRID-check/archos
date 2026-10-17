@@ -1043,6 +1043,12 @@ export function DocumentReviewMode({
             <DialogDescription className="text-muted-foreground truncate text-xs">
               {[
                 fassungLabel,
+                // Another document replaces this one, or this one replaces another: the header says so.
+                review.fassung?.replacedBy
+                  ? t('review.replacedBy', { name: review.fassung.replacedBy.filename })
+                  : review.fassung?.replaces[0]
+                    ? t('review.replaces', { name: review.fassung.replaces[0].filename })
+                    : null,
                 review.counts.open + review.counts.proposed > 0
                   ? t('annotations.openCount', { count: review.counts.open + review.counts.proposed })
                   : t('review.nothingOpen'),

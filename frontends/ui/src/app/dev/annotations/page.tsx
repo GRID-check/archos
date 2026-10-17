@@ -35,6 +35,11 @@
  *                                            date's ×, „Bearbeiten" in the menu (Miriam's mark)
  *   …&review=1&mark=ann-5                    answer Piloti's Rückfrage: the thread asks Piloti
  *   …&review=1&piloti=1, then J, E or ⌫      the decision's toast with „Rückgängig"
+ *   …&review=1&mark=ann-4                    a mark of Fassung 2: „Auf aktuelle Fassung übernehmen";
+ *                                            the list's „Offen aus früheren Fassungen" carries all
+ *   …&review=1                               „Aus Fassung „Grundriss_RG_Index-B.pdf““: the open marks of
+ *                                            the document this one replaces, each carried on as a
+ *                                            linked mark of this one; the header says „Ersetzt …"
  *
  * Not linked from anywhere and 404s outside development (`../layout.tsx`).
  */
@@ -137,7 +142,17 @@ const FILE: FileItem = {
   capture: null,
   versionCount: 3,
   assignees: [{ userId: 'u-1', name: 'Miriam Hofer', email: 'm.hofer@example.at', profilePictureUrl: null }],
+  // Index B, filed under another name and confirmed as the Fassung this one replaces.
+  fassung: {
+    supersededBy: null,
+    supersedes: [{ id: 'dev-doc-index-b', filename: 'Grundriss_RG_Index-B.pdf' }],
+    suggestion: null,
+    changeSummary: null,
+  },
 }
+
+/** The document this one replaces: its marks are listed in this one's review, to carry on. */
+const INDEX_B = { id: 'dev-doc-index-b', filename: 'Grundriss_RG_Index-B.pdf' }
 
 const ME = { userId: 'u-1', name: 'Miriam Hofer' }
 const ANNA = { userId: 'u-2', name: 'Anna Berger' }
@@ -289,6 +304,53 @@ let annotations: AnnotationView[] = [
   },
 ]
 let nextNumber = 6
+
+/** Index B's marks: two still open, one done. Carried on, each comes over as a linked mark of this document. */
+let indexB: AnnotationView[] = [
+  {
+    ...base,
+    documentId: INDEX_B.id,
+    id: 'ann-b2',
+    number: 2,
+    shape: 'point',
+    ...pt(500, 200),
+    kind: 'defect',
+    body: 'Technikraum: Lüftungsquerschnitt fehlt in der Legende.',
+    assigneeUserId: 'u-3',
+    assigneeName: JAKOB.name,
+    dueOn: '2026-10-24',
+    fassungNumber: 2,
+  },
+  {
+    ...base,
+    documentId: INDEX_B.id,
+    id: 'ann-b3',
+    number: 3,
+    shape: 'region',
+    ...region(330, 330, 450, 500),
+    kind: 'question',
+    body: 'Bad: ist die Vorwand bis zur Decke geführt?',
+    createdBy: 'u-2',
+    createdByName: ANNA.name,
+    canDelete: false,
+    fassungNumber: 2,
+  },
+  {
+    ...base,
+    documentId: INDEX_B.id,
+    id: 'ann-b1',
+    number: 1,
+    shape: 'point',
+    ...pt(120, 420),
+    kind: 'hint',
+    body: 'Raumhöhe Wohnen 1 ergänzt.',
+    status: 'resolved',
+    closedBy: 'u-1',
+    closedByName: ME.name,
+    closedAt: minutesAgo(400),
+    fassungNumber: 2,
+  },
+]
 
 const PILOTI_PROPOSALS: AnnotationView[] = [
   {
@@ -915,6 +977,35 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       const method = (init?.method ?? 'GET').toUpperCase()
       const body = () => JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
       if (url.endsWith('/api/realtime/send')) return new Response(null, { status: 204 })
+      // Index B, the document this one replaces: its list, and a mark of it carried on as a linked mark of this one.
+      if (url.endsWith(`/api/documents/${INDEX_B.id}/annotations`)) {
+        return json({ annotations: indexB, canAnnotate: true, pilotiWakes: WAKES })
+      }
+      const fromB = new RegExp(`/api/documents/${INDEX_B.id}/annotations/([^/?]+)$`).exec(url)
+      if (fromB && method === 'PATCH') {
+        const source = indexB.find((annotation) => annotation.id === fromB[1])
+        if (!source || source.status !== 'open') return json({ error: 'Conflict', code: 'CONFLICT' }, 409)
+        const now = new Date().toISOString()
+        const copy: AnnotationView = {
+          ...source,
+          id: `ann-${nextNumber}`,
+          documentId: FILE.id,
+          number: nextNumber,
+          fassungNumber: 3,
+          onCurrentFassung: true,
+          createdAt: now,
+          updatedAt: now,
+          carriedFrom: { annotationId: source.id, documentId: INDEX_B.id, number: source.number, documentName: INDEX_B.filename },
+        }
+        nextNumber += 1
+        indexB = indexB.map((annotation) =>
+          annotation.id === source.id
+            ? { ...annotation, status: 'resolved', closedBy: ME.userId, closedByName: ME.name, closedAt: now }
+            : annotation
+        )
+        annotations = [...annotations, copy]
+        return json({ annotation: copy })
+      }
       const replies = new RegExp(`/api/documents/${FILE.id}/annotations/([^/?]+)/replies$`).exec(url)
       if (replies) {
         const current = annotations.find((annotation) => annotation.id === replies[1])
@@ -946,8 +1037,18 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           annotations = annotations.filter((annotation) => annotation.id !== current.id)
           return new Response(null, { status: 204 })
         }
-        const { delegateToPiloti, ...change } = body() as Partial<AnnotationView> & { delegateToPiloti?: boolean }
+        const { delegateToPiloti, carryToCurrent, expectedStatus: _seen, ...change } = body() as Partial<AnnotationView> & {
+          delegateToPiloti?: boolean
+          carryToCurrent?: boolean
+          expectedStatus?: string
+        }
         const now = new Date().toISOString()
+        // „Auf aktuelle Fassung übernehmen": the same mark, its number and thread, now on Fassung 3 and drawn.
+        if (carryToCurrent) {
+          const carried = { ...current, fassungNumber: 3, onCurrentFassung: true, updatedAt: now }
+          annotations = annotations.map((annotation) => (annotation.id === carried.id ? carried : annotation))
+          return json({ annotation: carried })
+        }
         const delegation =
           delegateToPiloti === undefined
             ? {}

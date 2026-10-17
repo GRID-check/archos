@@ -6,7 +6,7 @@ import {
   isOfficeRenditionSource,
 } from '@/lib/documents/preview-types'
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { FileTextPage, isTextPageType } from './file-text-page'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
@@ -620,9 +620,16 @@ export function FilePreviewPane({
    * the focused review, so the tab is in the room once.
    */
   const reviewEnabled = pdfInWell && showMetadataPanel && !isHeld
+  // Where the document stands among its Fassungen under other names, as the
+  // reader may see them: the review says it, and lists the open marks of the
+  // documents this one replaces to carry them on.
+  const replacedBy = file.fassung?.supersededBy ?? null
+  const replaces = file.fassung?.supersedes
+  const reviewFassung = useMemo(() => ({ replacedBy, replaces: replaces ?? [] }), [replacedBy, replaces])
   const review = useDocumentReview(file.id, {
     enabled: reviewEnabled,
     viewerUserId,
+    fassung: reviewFassung,
     // Piloti on the canvas. Over the chat (the pane is its peek) a question is
     // a turn of the chat's own conversation, through its driver, so closing
     // the review finds it in the transcript; elsewhere it goes into the
