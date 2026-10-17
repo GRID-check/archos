@@ -181,6 +181,12 @@ project). The caller is omitted (`Assign to me` is a separate control). People
 who still need project access are absent: assigning them would be refused, and
 a collaborator cannot add them to the project.
 
+`?access=write` (a document only; 400 for anything else) lists who may change
+the document instead of who may open it (`mayWriteDocument`): the people an
+Anmerkung may be handed to, since its Zuständige answers and closes it. The
+annotations service checks the pick again. Without it, the list is also whom a
+mark may mention.
+
 This is **not** the share-invite list. `/api/organization/members` is also
 wrong here — that route is org-admin only.
 
@@ -325,7 +331,11 @@ archived again), `actionable`, `count`, `actorName`, `actorUserId`, `subject`,
 `related` (the second name a type shows, e.g. the newer document of a
 `document.new_fassung`), `excerpt`, `variant` (which wording of its type the
 row reads, a key segment: why Piloti could not work a mark, what a proposal
-changes), `href`, `resourceType`/`resourceId`/`anchorId`, and timestamps.
+changes), `answerIn` (where an open request on a mark may be answered: `row`,
+`review` for Piloti's Rückfrage while events do not wake Piloti, or null when
+the reader may not write the document; see
+[`document-annotations.md`](../architecture/document-annotations.md#what-the-person-hears)),
+`href`, `resourceType`/`resourceId`/`anchorId`, and timestamps.
 Rendering is driven entirely by `INBOX_TYPE_PRESENTATION` in
 `lib/inbox/types.ts`, so a new item type needs a registry entry and its
 translations — no new component (spec IB-6).

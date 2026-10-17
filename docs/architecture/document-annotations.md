@@ -98,6 +98,24 @@ held it).
 
 The UI and Piloti are equal clients of one service (ADR-0055).
 
+**Who may do what.** Every right is a permission on the document, asked through
+the shelf's rule (`getAccessibleDocument` for the session, and for other people
+`mayOpenDocument` / `mayWriteDocument` in `lib/documents/may-open.ts`), never a
+role name:
+
+| Who | May |
+|---|---|
+| whoever may open the document (`project:view` and read in its folder; on the Büroablage every member) | read the marks and their threads, export the Protokoll, be @mentioned and be told |
+| whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:archiv:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti; **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
+| the author (`createdBy`, a person's own mark) | reword it („Bearbeiten“ in the card's menu; the server lets any writer change a `body`, the card offers it to the author) and delete it (`mayDeleteMark`) |
+
+The Zuständige picker reads who may write
+(`GET /api/assignments/document/{id}/candidates?access=write`,
+`listAssignmentCandidates` with `access: 'write'`), offers the reader
+themselves („Mir zuweisen“), and the service checks the pick again on every
+write (422 `assignee-cannot-answer`; by name for Piloti, `resolveAssignee`). A
+mention asks less: whoever may open the document.
+
 ## The Prüfansicht
 
 `features/documents/components/review/` holds the canvas. `document-review.tsx`
@@ -117,10 +135,25 @@ Keys:
 |---|---|
 | V / C / R / P | select, point, box, ask Piloti about a box; C, R and P from the keyboard bring the crosshair (below) |
 | J / K | step through the marks the list shows, proposals first |
-| E | take a proposal over, or resolve an open mark |
-| ⌫ / Entf | dismiss a proposal |
+| E | take a proposal over, or resolve an open mark; a toast says so with „Rückgängig“ (below) |
+| ⌫ / Entf | dismiss a proposal, with the same toast |
 | / | cursor chat |
 | Esc | backs out one layer at a time (the dialog's own Escape: an open menu or sheet takes its own first) |
+
+**A key's decision waits a moment.** One key is easy to hit by mistake, so E
+and ⌫ do not write at once: the card and the list show the move, the toast
+(„Anmerkung 4 verworfen · Rückgängig“, `review.decided.*`) offers the way
+back, and the PATCH goes when the toast's five seconds are up
+(`DECISION_UNDO_MS`), the page is hidden or the review goes, with the status
+the mark had (`expectedStatus`). „Rückgängig“ lets go of it before anything
+was sent, so an undone slip leaves no inbox row, no audit event and no
+`piloti-decision` score; there is no inverse write, because taking a proposal
+over or dismissing it has none. The deferral is the inbox archive's own
+(`useUndoableArchive`); `review.decide` and `review.undoDecision` in
+`use-document-review.ts` hold the decision. A click on the card's own button
+is deliberate and writes at once; a change to a mark whose decision is still
+held (a click, a reply's status) lets the decision go and starts from where
+the mark really stands.
 
 **Without a mouse.** A mark tool taken up from the keyboard (its key, or its
 button with Enter) puts a crosshair at the middle of the reader's view on the
@@ -168,6 +201,17 @@ tab returns to view.
 the file preview, and the full-screen review. While the review is open the
 inline viewer is not mounted at all: one viewer draws the document at a time.
 Closing the review opens it again at the page the reader was on in the review.
+It knows who reads (`review.me`) from the room's welcome, else from the page
+(the shelf's `currentUserId`, passed as `viewerUserId`), else from the
+session's user id the app keeps (`useChatStore`'s `currentUserId`), so
+„Mir zugewiesen“, its counts and „Mir zuweisen“ work while the room is down.
+
+**The card's own facts.** The Zuständige chip and the date chip each carry a ×
+that clears them. The author's own mark has „Bearbeiten“ in the card's menu:
+the composer takes the mark's place with its text and whom it mentions
+(`initialBody`, `initialMentions`), so a name still standing stays mentioned
+and the server tells only whom the new text adds (`newlyMentioned`); Escape or
+„Abbrechen“ leaves it unchanged.
 
 **The review's address.** While the review is open the URL says so:
 `review=1`, `mark=<id>` for the selected mark and `tool=point|region` for a
@@ -196,9 +240,10 @@ gesture for gesture (`review/composer.tsx`): „@“ opens the chat's own picker
 it means (`features/collaboration/lib/mention-text.ts`), and what is sent is
 reconciled against the text at the last moment, so a name deleted while
 editing mentions nobody and a name typed by hand never did. The rows are the
-people who may open the document, read from the Zuständige picker's own list
+people who may open the document, read from the assignment candidates
 (`GET /api/assignments/document/{id}/candidates`, `listAssignmentCandidates`,
-`mayOpenDocument`), under „Können das Dokument öffnen“; a reply also offers
+`mayOpenDocument`; the Zuständige picker asks the narrower `access=write`
+list), under „Können das Dokument öffnen“; a reply also offers
 Piloti, and its spark writes the @Piloti mention too. A draft does not: setting
 a mark wakes nobody. A query that finds nobody says that only people who may
 open the document can be mentioned.
@@ -342,8 +387,8 @@ is still the one read (`expectedStatus`).
 
 **Who is assigned.** The model never sees a user id, so `update` takes the
 `assignee` as the person said it. The BFF resolves it against the
-organization's directory among those who can open the document
-(`resolveAssignee`): an exact name or address, then a first name or the start
+organization's directory among those who may write the document, as every
+Zuständige must (`resolveAssignee`, `mayWriteDocument`): an exact name or address, then a first name or the start
 of a name. None or several is a 422 naming the candidates, and the tool turns
 it into a question.
 
@@ -436,10 +481,15 @@ job's when it was refused or gave up before a turn answered, with the class of
 its reason (`reasonKind`, the inbox's `variant` below)
 (`frontends/ui/src/lib/annotations/wake-audit.ts`).
 
-**With the switch off** the reply answers `wake: 'off'` and the browser asks
-Piloti itself, as before, under the turn id a server wake of the same reply
-would use (`wakeTurnId(replyId)`), so the two could never both run. With it on
-the browser runs nothing, and the thread reads Piloti's work off the server.
+**With the switch off** the reply answers `wake: 'off'`, whichever rule met it
+(an @Piloti, or an answer to Piloti's own open Rückfrage with no @Piloti at
+all), and the thread card asks Piloti itself on exactly that answer, under the
+turn id a server wake of the same reply would use (`wakeTurnId(replyId)`), so
+the two could never both run. The server stays the authority: the card asks on
+`off` and on nothing else. With it on the browser runs nothing, and the thread
+reads Piloti's work off the server. The inbox has no Piloti to ask, so a
+Rückfrage answered from there would reach nobody: its row leads to the
+Prüfansicht instead (`answerIn: 'review'`, below).
 
 **Piloti's work is the server's to say** (`lib/annotations/piloti-work.ts`).
 Every mark's view carries `pilotiWork`, read off its newest wake, so everyone
@@ -546,8 +596,9 @@ person its turn acted for: on a wake, who woke it, who hears `piloti.work_done`
 instead. When Piloti follows up its own open Rückfrage, the Zuständige it asks
 has the `piloti.asks_you` row and no second one. Every recipient of a
 colleague's news must be able to open the document now, its folder included
-(`mayOpenDocument`, `frontends/ui/src/lib/documents/may-open.ts`), the same
-rule that decides who may be made Zuständige at all. The note Piloti writes
+(`mayOpenDocument`, `frontends/ui/src/lib/documents/may-open.ts`), the rule
+that decides who may be mentioned; who may be made Zuständige must also be
+able to write it (`mayWriteDocument`, above). The note Piloti writes
 with a change it made for the asker tells nobody: the change told whoever it
 concerns, exactly as the asker's own change would.
 
@@ -577,12 +628,28 @@ person's face with the type's glyph in its corner.
 The row acts on the mark (`anchor: 'mark'` on the type's entry in
 `INBOX_TYPE_PRESENTATION`, from which the server's `MARK_ANCHORED_INBOX_TYPES`
 is derived). „Zur Anmerkung“ opens the Prüfansicht at it and marks the row read.
-On an open `annotation.assigned_to_you`, `piloti.asks_you` or
-`annotation.mentioned`, „Antworten“ answers in the thread from the row, and an assigned mark also has „Erledigen“
-(`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved
-meanwhile is a `409`, not overwritten). Both go through the annotations' own
-client (`lib/annotations/client.ts`), the same writes the thread makes, so the
-settle rules above apply unchanged.
+The row offers only what the reader can do, and the server says what that is:
+every request on a mark (`annotation.assigned_to_you`, `piloti.asks_you`,
+`annotation.mentioned`) carries `answerIn` (`InboxItemView`, decided in
+`lib/inbox/service.ts` with `canWriteDocument`, once per document on the page):
+
+| `answerIn` | When | The row offers |
+|---|---|---|
+| `row` | the reader may write the document | „Antworten“, which answers in the thread from the row, and on an assigned mark „Erledigen“ (`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved meanwhile is a `409`, not overwritten) |
+| `review` | Piloti's Rückfrage while events do not wake Piloti (`piloti-wakes` off) | „In der Prüfansicht beantworten“ in place of „Zur Anmerkung“: the thread card asks Piloti with the answer, which a row cannot |
+| null | the reader may only read the document (a mention reaches readers too), or the row is no open request | „Zur Anmerkung“ alone |
+
+Both writes go through the annotations' own client (`lib/annotations/client.ts`),
+the same writes the thread makes, so the settle rules above apply unchanged,
+and the service checks the write again. An answer from the row that still
+comes back `wake: 'off'` (a Rückfrage reached through another row) says that
+Piloti reads it only once asked with @Piloti in the Prüfansicht.
+
+The notification offer the shell makes once as a toast
+(`features/notifications/components/inbox-push-offer.tsx`) names the newest
+request: a person („Anna hat Sie erwähnt …“, „Anna braucht Sie in Piloti …“),
+or for `piloti.asks_you` Piloti („Piloti hat eine Rückfrage an Sie …“), never
+„Jemand“ for Piloti's question.
 
 Opening a mark reads its news. When a mark stays selected in the review for
 `MARK_NEWS_SETTLE_MS` (`features/documents/hooks/use-document-review.ts`), the
