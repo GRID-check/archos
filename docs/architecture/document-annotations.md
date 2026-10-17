@@ -98,10 +98,18 @@ Keys:
 
 | Key | Does |
 |---|---|
-| V / C / R | select, point, box |
-| J / K | step through marks |
-| E | take a proposal over |
+| V / C / R / P | select, point, box, ask Piloti about a box |
+| J / K | step through the marks the list shows, proposals first |
+| E | take a proposal over, or resolve an open mark |
+| ⌫ | dismiss a proposal |
+| / | cursor chat |
 | Esc | backs out one layer at a time |
+
+A mark of an earlier Fassung is listed and never drawn; selected, its thread
+opens over the sheet. Status moves carry the status the card showed
+(`expectedStatus`), so a stale tab gets the conflict notice, never a blind
+change. The list is read again when the room returns after a drop and when the
+tab returns to view.
 
 `use-document-review.ts` is the state both surfaces share: the inline layer in
 the file preview, and the full-screen review.
@@ -109,7 +117,17 @@ the file preview, and the full-screen review.
 ## Live
 
 Each document has a room. In it, people see each other's presence, named
-cursors (spring-interpolated, about 80 ms apart) and viewports (followable).
+cursors (spring-interpolated, about 80 ms apart) and viewports (followable),
+the way a design tool shows its collaborators:
+
+| What | How it shows | Where |
+|---|---|---|
+| A colleague's pointer | the arrow in their colour, their name on a tag; after 8 s at rest it quiets and the tag folds away (`CURSOR_IDLE_MS`) | `review-page-layer.tsx`, `components/ui/live-cursor.tsx` |
+| Cursor chat | „/" (or the toolbar's bubble) opens a field at the reader's pointer; every key shows beside it for the room as typed; Enter keeps the line 4 s, Esc takes it away. A colleague's chat keeps their name above the words. Nothing is stored | `cursor-chat.tsx` |
+| The mark a colleague has open | a ring round the pin (an outline round a region) in their colour, with their first name; „Anna +1" for several; never the reader's own tabs, never Piloti | `peerSelections`, `PeerSelection` |
+| A box being dragged out | dashed in their colour, with their first name | `review-page-layer.tsx` |
+| A colleague on another page | a chip at the edge that leads to them („Lena · Seite 2"); a click jumps there; the face's tooltip names the page | `Elsewhere` in `document-review.tsx` |
+| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"); the box it reads glows while it reads it (`canvas__look` sends the `look` op: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
 
 A write sends an `annotations.changed` hint. A hint is a nudge to re-read, never
 the state itself, so a dropped hint costs a few seconds, not a wrong list. The
@@ -205,6 +223,18 @@ are accountable.
 3. The agent looks at a server-side crop of exactly that box, from `canvas__look` (or `view_knowledge_image`) with `region`. The crop is rendered from the screened Fassung, never from pixels the browser sends.
 4. The answer streams into a card beside the box and can be kept as a mark.
 
+A turn that ended is read by its outcome, never its phase alone
+(`statusOf` in `use-canvas-ask.ts`): a refusal or a full queue is `declined`
+(its words are the reason, never a mark to keep), a commissioned run is
+`handedOff` to the chat, a cancel from elsewhere is `stopped`, and an answer
+without words says Piloti worked on the document instead. A question whose
+server does not read its box or its thread target still goes; the canvas client
+says what it went without (`onDegraded`, `canvasDegradations`), the card says
+Piloti answered about the whole document, and a thread answer that never
+reached the thread is offered there to add by hand. Both fields travel only
+while `GRID_WIRE_V2_ADDITIVE_FIELDS` is on, its default: the hello then names
+them in `accepts`.
+
 Mentioning Piloti in a thread sends the same turn with `reply_in_thread`. The
 prompt tells the model it was asked in that thread, and the model answers there
 with `canvas__reply`: nothing is posted on its behalf. The turn runs without
@@ -274,9 +304,22 @@ its reason (`reasonKind`, the inbox's `variant` below)
 **With the switch off** the reply answers `wake: 'off'` and the browser asks
 Piloti itself, as before, under the turn id a server wake of the same reply
 would use (`wakeTurnId(replyId)`), so the two could never both run. With it on
-the browser runs nothing: the thread shows „Piloti antwortet …“ until Piloti's
-reply arrives through the room, or after two minutes a quiet „Piloti antwortet
-später“.
+the browser runs nothing, and the thread reads Piloti's work off the server.
+
+**Piloti's work is the server's to say** (`lib/annotations/piloti-work.ts`).
+Every mark's view carries `pilotiWork`, read off its newest wake, so everyone
+in the room reads the same line, after a reload too:
+
+| Newest wake | `pilotiWork.state` | The thread says |
+|---|---|---|
+| `queued` | `queued` | „Piloti ist dran · für Anna" |
+| `started` | `working` | „Piloti antwortet … · für Anna" (a delegation says it in its chip) |
+| `failed`, `refused`, for 6 h after it ended | `failed`, with `reasonKind` | why, by class (`workFailed.<class>`) |
+| `suppressed`, for 10 min | `held` | that too many requests held it |
+| `answered`, `stopped` | none | the answer is in the thread |
+
+Every transition of a wake (started, ended, held at claim) tells the room
+(`announcePilotiWork`), so the line moves without a reload.
 
 ### How a woken turn ends
 
@@ -512,6 +555,8 @@ nothing is traced to Langfuse.
 - Which Piloti reply a wake wrote is derived, not stored (`lib/annotations/wake-attribution.ts`): a wake of the same person on the same mark that began before the reply and had not ended before it. The thread shows it as „Geweckt durch …“ under the reply's byline.
 
 - The canvas runs its own small turn client next to the chat's turn driver in `use-websocket-chat.ts`. That driver should become one shared module that both use.
+- A box asked about on the canvas is still this tab's: its answer lives in the tab until kept, and a reload loses the card (the conversation keeps the answer). The next step is the primitive the thread now has: an ask as a server-side request on the document (a wake with an `asked` trigger), run headless, its state on the room, the tab attaching to its turn to stream it.
+- Over the chat, a canvas question whose server reads no box is not told so (`onDegraded` is the stand-alone canvas client's).
 - The Python side posts to internal routes through several near-identical helpers.
 - A change Piloti makes and its note are two writes in one request, not one transaction (`updateAnnotationForAsker`). Every refusal the service can foresee (rights, a stale status, a full thread) comes before the change; a database failure between the two writes would still leave the change without its note.
 - The change record is a third write, after the annotations service has committed the change and its note (`recordPilotiChanges`, `frontends/ui/src/lib/changes/service.ts`). The service offers no hook into its transaction, and a failed record is logged, not thrown: the change then lands without a row, so the card cannot undo it from the record.

@@ -242,6 +242,27 @@ async function askAboutABox(piloti: ReturnType<typeof scriptedPiloti>) {
 }
 
 describe('the review', () => {
+  it('walks the marks in the order the list shows them: proposals first, this Fassung only; K from nothing is the last', async () => {
+    serve([
+      view({ id: 'a', number: 1 }),
+      view({ id: 'b', number: 2 }),
+      view({ id: 'p', number: 3, authorKind: 'piloti', status: 'proposed' }),
+      view({ id: 'old', number: 4, onCurrentFassung: false }),
+    ])
+    let review: ReturnType<typeof useDocumentReview> | null = null
+    render(<Harness transport={scriptedRoom().transport} onReady={(next) => (review = next)} />)
+    await screen.findAllByTestId('review-pin')
+
+    const walked: Array<string | undefined> = []
+    for (let i = 0; i < 4; i += 1) act(() => void walked.push(review?.step(1)?.id))
+    expect(walked).toEqual(['p', 'a', 'b', 'p'])
+
+    act(() => review?.select(null))
+    let back: string | undefined
+    act(() => void (back = review?.step(-1)?.id))
+    expect(back).toBe('b')
+  })
+
   it('draws a point as a pin and a region as a box with its pin at the corner', async () => {
     serve([
       view({ id: 'a', number: 1 }),
