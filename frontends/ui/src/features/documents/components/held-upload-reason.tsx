@@ -5,7 +5,7 @@
  * session's uploads: the tray, the drop zone, the chat's file list.
  *
  * Two kinds of row are held. A file the content check held back carries its
- * verdict (`quarantined:{…}`), which reads as its findings. A file refused
+ * typed verdict (`quarantineVerdictOf`, ADR-0113), which reads as its findings. A file refused
  * because the document it would replace is held (`TrackedFile.replacesHeld`)
  * has no verdict of its own: its sentence says what it waits for. Handing that
  * row to the findings would claim the reason „is not stored", which is not what
@@ -13,13 +13,17 @@
  */
 
 import type { JSX } from 'react'
+import type { QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import { cn } from '@/lib/utils'
 import type { TrackedFile } from '../types'
 import { QuarantineFindings } from './quarantine-findings'
 
 export interface HeldUploadReasonProps {
-  errorMessage: string | null | undefined
+  /** The content check's verdict on this row's own file; null when it has none. */
+  verdict: QuarantineVerdict | null
   replacesHeld?: TrackedFile['replacesHeld']
+  /** The row's sentence for a `replacesHeld` row (`files.errors.quarantinedReplace`); unused otherwise. */
+  message?: string | null
   /** Leave out the findings' sentence that explains holding back, where the surface says it already. */
   withoutSentence?: boolean
   className?: string
@@ -27,8 +31,9 @@ export interface HeldUploadReasonProps {
 }
 
 export function HeldUploadReason({
-  errorMessage,
+  verdict,
   replacesHeld,
+  message,
   withoutSentence,
   className,
   testId,
@@ -36,13 +41,13 @@ export function HeldUploadReason({
   if (replacesHeld) {
     return (
       <p className={cn('text-muted-foreground text-xs leading-snug', className)} data-testid={`${testId}-replaces`}>
-        {errorMessage}
+        {message}
       </p>
     )
   }
   return (
     <QuarantineFindings
-      errorMessage={errorMessage}
+      verdict={verdict}
       withoutSentence={withoutSentence}
       className={className}
       testId={testId}

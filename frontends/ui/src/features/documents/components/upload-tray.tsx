@@ -18,7 +18,7 @@ import { IngestionStatusWord, ingestionMarkOfPhase } from './ingestion-atoms'
 import { IngestFailureNotice } from './ingest-failure-notice'
 import { HeldUploadReason } from './held-upload-reason'
 import { RequestReviewButton } from './request-review-button'
-import { parseQuarantine } from '@/lib/upload-screening/quarantine'
+import { quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { failedWhileReading } from '../lib/ingest-failure'
 import { Button } from '@/components/ui/button'
 import { AnimatePresence, iconSwapTransition, motion, motionBase, useMotionToken } from '@/components/motion'
@@ -539,6 +539,7 @@ function UploadRow({
   // or the one it would replace when this person uploaded that one too.
   const reviewableId =
     file.serverFileId ?? (file.replacesHeld?.ownUpload ? file.replacesHeld.documentId : null) ?? null
+  const heldVerdict = isHeldBack ? quarantineVerdictOf(file) : null
   const unchanged = file.unchanged === true && phase === 'ready'
   const canDismiss = (phase === 'canceled' || isFailed || isHeldBack) && onDismiss !== undefined
   const canRetry = isFailed && mayRetryUpload(file)
@@ -709,9 +710,10 @@ function UploadRow({
                   it replaces is held says that in its own sentence. */}
               {isHeldBack && (
                 <HeldUploadReason
-                  errorMessage={file.errorMessage}
+                  verdict={heldVerdict}
                   replacesHeld={file.replacesHeld}
-                  withoutSentence={(parseQuarantine(file.errorMessage)?.reasons.length ?? 0) > 0}
+                  message={file.errorMessage}
+                  withoutSentence={(heldVerdict?.reasons.length ?? 0) > 0}
                   testId="upload-row-held"
                 />
               )}

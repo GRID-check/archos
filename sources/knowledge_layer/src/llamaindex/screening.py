@@ -5,7 +5,8 @@ on detectors for identifiers that must not leave the building (IBAN, the Austria
 social-security number, a payment-card number). The ingest job runs this check on
 the text it extracted LOCALLY (pdfplumber, the office and text-format readers) and
 before its first model call (OCR, image captioning, VLM enrichment, summary and
-tags, embeddings). A match fails the file with a ``quarantined:`` reason and nothing
+tags, embeddings). A match fails the file, records why as a typed verdict
+(``ScreeningVerdict.to_model``, ``FileProgress.quarantine``, ADR-0113), and nothing
 of it is sent anywhere.
 
 Rule-based and local on purpose: the NVIDIA toolkits evaluated for this read English
@@ -22,6 +23,11 @@ Only checksum-valid matches count, so a document full of order numbers is not
 quarantined for looking like one. The verdict never carries a matched value: a
 detector reason holds a MASKED sample (``AT61 •••• •••• •••• 3201``), because the
 reason is stored on the job status and shown to people who may not see the value.
+
+The file's ``error_message`` still carries the same verdict as
+``quarantined:{json}`` (``quarantine_error``), for one release: a BFF that predates
+the typed field reads it from there. It is derived from the model, so the two
+never disagree, and nothing new may read it.
 """
 
 from __future__ import annotations
@@ -54,6 +60,8 @@ from aiq_agent.common.content_screen import valid_card
 from aiq_agent.common.content_screen import valid_iban
 from aiq_agent.common.page_text import running_furniture
 from aiq_agent.common.page_text import without_furniture
+from aiq_agent.knowledge.schema import QuarantineReason
+from aiq_agent.knowledge.schema import QuarantineVerdict
 
 __all__ = [
     "DETECTORS",
@@ -84,13 +92,14 @@ __all__ = [
     "valid_iban",
 ]
 
-#: What a quarantined file's ``error_message`` starts with; the JSON follows it.
+#: What a quarantined file's legacy ``error_message`` starts with; the JSON follows it.
 QUARANTINED_PREFIX = "quarantined:"
 
-#: What one reason and one error carry at most. A reviewer opens the document
+#: What one reason and one verdict carry at most. A reviewer opens the document
 #: at each listed page, so a reason lists every page it was found on up to
-#: ``MAX_REASON_PAGES``; past that, or where the error would outgrow
-#: ``MAX_ERROR_CHARS``, the reason says its list is cut (``pages_truncated``).
+#: ``MAX_REASON_PAGES``; past that, or where the verdict with its legacy prefix
+#: would outgrow ``MAX_ERROR_CHARS`` of JSON, the reason says its list is cut
+#: (``pages_truncated``).
 MAX_REASON_PAGES = 50
 MAX_REASONS = 10
 MAX_ERROR_CHARS = 2000
@@ -111,17 +120,19 @@ class Reason:
     #: ``pages`` is not every page it was found on; written only when true.
     pages_truncated: bool = False
 
+    def to_model(self) -> QuarantineReason:
+        """This reason as the job status stores it."""
+        return QuarantineReason(
+            kind=self.kind,
+            term=self.term,
+            count=self.count,
+            pages=list(self.pages),
+            pages_truncated=self.pages_truncated,
+            sample=self.sample,
+        )
+
     def as_json(self) -> dict[str, object]:
-        out: dict[str, object] = {"kind": self.kind}
-        if self.term is not None:
-            out["term"] = self.term
-        out["count"] = self.count
-        out["pages"] = self.pages
-        if self.pages_truncated:
-            out["pages_truncated"] = True
-        if self.sample is not None:
-            out["sample"] = self.sample
-        return out
+        return self.to_model().model_dump()
 
 
 @dataclass(frozen=True)
@@ -130,10 +141,35 @@ class ScreeningVerdict:
 
     reasons: list[Reason] = field(default_factory=list)
     checked: Literal["full", "partial"] = "full"
+    #: The pages screened were the vision model's transcript of scanned pages:
+    #: that model saw them, no later model call did. Written only when true.
+    after_transcription: bool = False
 
     @property
     def matched(self) -> bool:
         return bool(self.reasons)
+
+    def to_model(self) -> QuarantineVerdict:
+        """The verdict as the job status stores it: at most ten reasons, bounded as a whole.
+
+        Until its JSON, with the legacy prefix, fits ``MAX_ERROR_CHARS``, the
+        reason listing the most pages gives up its last one and says so
+        (``pages_truncated``), so every reason keeps at least its first page to
+        open the document at. Only when each lists one page are reasons dropped
+        from the end. ``omitted`` says how many reasons it left out, so a
+        reader is never shown a short list as the complete one.
+        """
+        listed = list(self.reasons[:MAX_REASONS])
+        while True:
+            model = QuarantineVerdict(
+                reasons=[reason.to_model() for reason in listed],
+                checked=self.checked,
+                omitted=len(self.reasons) - len(listed),
+                after_transcription=self.after_transcription,
+            )
+            if len(QUARANTINED_PREFIX) + len(_compact_json(model)) <= MAX_ERROR_CHARS or not listed:
+                return model
+            listed = _with_one_page_fewer(listed) or listed[:-1]
 
 
 @dataclass
@@ -252,29 +288,17 @@ def document_pages(documents: Iterable[object]) -> list[tuple[int | None, str]]:
 
 
 def quarantine_error(verdict: ScreeningVerdict) -> str:
-    """The file's ``error_message``: the prefix, then compact JSON of at most ten reasons.
+    """The file's legacy ``error_message``: the prefix, then compact JSON of ``verdict.to_model()``.
 
-    Until the whole string fits ``MAX_ERROR_CHARS``, the reason listing the most
-    pages gives up its last one and says so (``pages_truncated``), so every
-    reason keeps at least its first page to open the document at. Only when each
-    lists one page are reasons dropped from the end. The JSON is always whole,
-    and says how many reasons it left out (``omitted``), so a reader is never
-    shown a short list as the complete one.
+    Kept for one release beside ``FileProgress.quarantine`` (ADR-0113), for a
+    BFF that still reads the reason out of the string. Derived from the typed
+    verdict, so it holds the same reasons and the same bounds.
     """
-    reasons = list(verdict.reasons[:MAX_REASONS])
-    while True:
-        error = QUARANTINED_PREFIX + json.dumps(_payload(verdict, reasons), ensure_ascii=False, separators=(",", ":"))
-        if len(error) <= MAX_ERROR_CHARS or not reasons:
-            return error
-        reasons = _with_one_page_fewer(reasons) or reasons[:-1]
+    return QUARANTINED_PREFIX + _compact_json(verdict.to_model())
 
 
-def _payload(verdict: ScreeningVerdict, listed: list[Reason]) -> dict[str, object]:
-    payload: dict[str, object] = {"reasons": [reason.as_json() for reason in listed], "checked": verdict.checked}
-    omitted = len(verdict.reasons) - len(listed)
-    if omitted > 0:
-        payload["omitted"] = omitted
-    return payload
+def _compact_json(model: QuarantineVerdict) -> str:
+    return json.dumps(model.model_dump(), ensure_ascii=False, separators=(",", ":"))
 
 
 def _with_one_page_fewer(reasons: list[Reason]) -> list[Reason] | None:

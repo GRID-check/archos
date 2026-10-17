@@ -35,7 +35,7 @@ import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { quarantineReviewersOf } from '@/lib/upload-batches/settle'
-import { parseQuarantine, type QuarantineVerdict } from './quarantine'
+import { quarantineVerdictOf, type QuarantineVerdict } from './quarantine'
 import { mayReviewQuarantine } from './quarantine-reviewers'
 
 export { mayReviewQuarantine }
@@ -99,7 +99,7 @@ export async function releaseQuarantinedDocument(
     folderPath: await resolveDocumentFolderPath(doc, session.organizationId),
   })
 
-  const reasons = parseQuarantine(doc.errorMessage)?.reasons ?? []
+  const reasons = quarantineVerdictOf(doc)?.reasons ?? []
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
@@ -261,6 +261,6 @@ export async function listQuarantineQueue(session: AuthorizedSession): Promise<Q
     conversationId: row.conversationId,
     uploadedBy: row.createdBy,
     quarantinedAt: new Date(row.updatedAt).toISOString(),
-    verdict: parseQuarantine(row.errorMessage),
+    verdict: quarantineVerdictOf(row),
   }))
 }

@@ -526,6 +526,38 @@ class TestScannedPdfIngestion:
         }
         assert status.file_details[0].metadata == {"pages_transcribed": 2}
 
+    def test_a_match_in_the_transcript_holds_the_file_before_anything_indexes_it(
+        self, tmp_path, monkeypatch, indexed, no_drawing_vlm
+    ):
+        """The scan has no text layer to screen first; its transcript is screened before it is embedded."""
+        _credential(monkeypatch)
+        live, _calls = _fake_live()
+        monkeypatch.setattr(transcription, "_transcribe_live", live)
+        path = _write(tmp_path, "bescheid.pdf", scan_pdf(pages=2))
+
+        status = _ingest(indexed, path, "bescheid.pdf", {"screening": {"content_terms": ["Außenwand"]}})
+
+        detail = status.file_details[0]
+        assert detail.status.value == "failed"
+        assert detail.screening == "quarantined"
+        assert detail.quarantine is not None
+        assert detail.quarantine.after_transcription is True
+        assert detail.quarantine.checked == "partial"
+        assert [reason.term for reason in detail.quarantine.reasons] == ["Außenwand"]
+        assert indexed.docs() == []
+
+    def test_a_clean_transcript_indexes_as_partly_checked(self, tmp_path, monkeypatch, indexed, no_drawing_vlm):
+        _credential(monkeypatch)
+        live, _calls = _fake_live()
+        monkeypatch.setattr(transcription, "_transcribe_live", live)
+        path = _write(tmp_path, "bescheid.pdf", scan_pdf(pages=2))
+
+        status = _ingest(indexed, path, "bescheid.pdf", {"screening": {"content_terms": ["Gehaltsabrechnung"]}})
+
+        assert status.is_success, status.file_details[0].error_message
+        assert status.file_details[0].screening == "partial"
+        assert status.file_details[0].quarantine is None
+
     def test_pages_past_the_ocr_cap_are_counted(self, tmp_path, monkeypatch, indexed, no_drawing_vlm):
         _credential(monkeypatch)
         live, _calls = _fake_live()

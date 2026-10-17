@@ -2253,6 +2253,26 @@ describe('getDocumentStatus', () => {
     await expect(getDocumentStatus(session, 'doc-1')).resolves.toMatchObject({ scope: 'archiv' })
   })
 
+  // ADR-0113: a reader allowed to see a held row is told why as data, read
+  // from the stored verdict, and a row without one says null.
+  it('carries why a held document is held, as the stored verdict says', async () => {
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('quarantine', null)
+
+    vi.mocked(findDocumentInOrg).mockResolvedValue({
+      ...projectDoc,
+      status: 'quarantined',
+      screeningOutcome: 'quarantined',
+      createdBy: session.userId,
+      quarantine: { reasons: [{ kind: 'passport', count: 1, pages: [4] }], checked: 'full', omitted: 2 },
+    })
+
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('quarantine', {
+      reasons: [{ kind: 'other', count: 1, pages: [4] }],
+      checked: 'full',
+      omitted: 2,
+    })
+  })
+
   it('reports a null displayName rather than omitting the key', async () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({ ...projectDoc, displayName: null })
 

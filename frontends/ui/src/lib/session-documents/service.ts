@@ -60,6 +60,7 @@ import { listDocumentVersionObjects } from '@/lib/documents/version-repository'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { purgeCollectionChunks } from './cleanup'
 import { collectionFileRef } from '@/lib/documents/collection-file-ref'
+import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import {
   deleteSessionDocument as deleteSessionDocumentRow,
   findSessionDocument,
@@ -68,7 +69,16 @@ import {
 } from './repository'
 
 export interface SessionDocumentListResult {
-  documents: Array<Omit<DocumentListRow, 'projectId' | 'scope' | 'metadata' | 'createdBy' | 'screeningOutcome' | 'screenedHash'> & DocumentMetadata>
+  documents: Array<
+    Omit<
+      DocumentListRow,
+      'projectId' | 'scope' | 'metadata' | 'createdBy' | 'screeningOutcome' | 'screenedHash' | 'quarantine'
+    > &
+      DocumentMetadata & {
+        /** Why a held attachment is held (ADR-0113); only its uploader and the reviewers are listed it. */
+        quarantine: QuarantineVerdict | null
+      }
+  >
   collectionName: string
 }
 
@@ -95,7 +105,16 @@ export async function listSessionDocuments(
 
   return {
     documents: reconciled.map(
-      ({ metadata: _metadata, createdBy: _createdBy, projectId: _projectId, scope: _scope, screeningOutcome: _screening, screenedHash: _screened, ...row }) => row
+      ({
+        metadata: _metadata,
+        createdBy: _createdBy,
+        projectId: _projectId,
+        scope: _scope,
+        screeningOutcome: _screening,
+        screenedHash: _screened,
+        quarantine,
+        ...row
+      }) => ({ ...row, quarantine: quarantineVerdictOf({ quarantine, errorMessage: row.errorMessage }) })
     ),
     collectionName: sessionCollectionName(conversationId),
   }

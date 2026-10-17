@@ -20,6 +20,7 @@ import type { TrackedFile } from '../types'
 import { uploadPhase, type UploadPhase } from '../lib/upload-progress'
 import { HeldUploadReason } from './held-upload-reason'
 import { ingestionMarkOfPhase, IngestionStatusWord } from './ingestion-atoms'
+import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import { photoIntake, prepareSitePhotos } from '../lib/site-photo'
 import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '../'
 import type { Transition } from 'motion/react'
@@ -51,6 +52,8 @@ interface UploadedFile {
   phase: UploadPhase
   errorMessage?: string
   replacesHeld?: TrackedFile['replacesHeld']
+  /** Why a held file is held (`quarantineVerdictOf`), read once where the row is mirrored. */
+  verdict: QuarantineVerdict | null
 }
 
 /** In flight: the zone's one moving mark, since it has no header to carry the loop. */
@@ -121,6 +124,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
         phase: uploadPhase(tf),
         errorMessage: tf.errorMessage ?? undefined,
         replacesHeld: tf.replacesHeld,
+        verdict: tf.status === 'held' ? quarantineVerdictOf(tf) : null,
       }))
     setUploadValue(mapped)
   }, [collectionFiles])
@@ -236,8 +240,9 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
                     as its reasons, never as a red error line. */}
                 {item.phase === 'held' ? (
                   <HeldUploadReason
-                    errorMessage={item.errorMessage}
+                    verdict={item.verdict}
                     replacesHeld={item.replacesHeld}
+                    message={item.errorMessage}
                     testId="upload-zone-held"
                   />
                 ) : item.phase === 'failed' && item.errorMessage ? (
