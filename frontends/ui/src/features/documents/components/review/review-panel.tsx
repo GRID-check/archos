@@ -25,11 +25,14 @@ export type OpenMark = (annotation: AnnotationView, byKeyboard?: boolean) => voi
  */
 const Row = memo(function Row({
   annotation,
+  viewerId,
   selected,
   onHover,
   onOpen,
 }: {
   annotation: AnnotationView
+  /** The reader, so a mention of them stands out. */
+  viewerId: string | null
   selected: boolean
   onHover: (annotationId: string | null) => void
   onOpen: OpenMark
@@ -67,7 +70,7 @@ const Row = memo(function Row({
         </span>
         <span className="min-w-0 flex-1">
           <span className={cn('text-foreground line-clamp-2 text-sm leading-5', !isLive(annotation) && 'text-muted-foreground')}>
-            <MarkBody text={annotation.body} mentions={annotation.mentions} />
+            <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={viewerId} clamped />
           </span>
           {/* Items separated by space and their own icons, never a leading „·"
               when a line wraps; each item keeps to one line. */}
@@ -135,6 +138,7 @@ function Pages({
                 <Row
                   key={annotation.id}
                   annotation={annotation}
+                  viewerId={review.viewerId}
                   selected={annotation.id === review.selectedId}
                   onHover={review.hover}
                   onOpen={onOpen}

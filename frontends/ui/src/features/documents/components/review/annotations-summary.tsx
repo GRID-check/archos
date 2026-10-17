@@ -94,7 +94,7 @@ export function AnnotationsSummary({
               />
               <span className="min-w-0 flex-1">
                 <span className="text-foreground line-clamp-2 text-xs leading-5">
-                  <MarkBody text={annotation.body} mentions={annotation.mentions} />
+                  <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={review.viewerId} clamped />
                 </span>
                 {/* Not drawn on this Fassung's pages, so the row says where it was set, as the review's list does. */}
                 {!annotation.onCurrentFassung && (

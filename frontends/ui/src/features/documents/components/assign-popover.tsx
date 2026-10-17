@@ -11,7 +11,7 @@ import { SearchField } from '@/components/ui/search-field'
 import { Spinner } from '@/components/ui/spinner'
 import { useChatStore } from '@/features/chat'
 import { useTranslations } from '@/i18n'
-import { listAssignmentCandidates } from '@/lib/assignments/client'
+import { assignPerson, listAssignmentCandidates, releasePerson } from '@/lib/assignments/client'
 import type { FileAssignee } from './project-file-workspace'
 
 export function AssignPopover({
@@ -100,19 +100,12 @@ export function AssignPopover({
   const write = async (kind: 'assign' | 'unassign', targetUserId: string, name: string) => {
     setBusy(true)
     setFailedWrite(null)
-    const path = `/api/assignments/document/${encodeURIComponent(documentId)}`
     try {
-      const res =
+      onChanged(
         kind === 'assign'
-          ? await fetch(path, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: targetUserId }),
-            })
-          : await fetch(`${path}?userId=${encodeURIComponent(targetUserId)}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(`assignment ${res.status}`)
-      const body = (await res.json()) as { assignees?: FileAssignee[] }
-      onChanged(body.assignees ?? [])
+          ? await assignPerson('document', documentId, targetUserId)
+          : await releasePerson('document', documentId, targetUserId)
+      )
     } catch {
       setFailedWrite({ kind, userId: targetUserId, name })
     } finally {

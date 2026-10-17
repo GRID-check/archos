@@ -210,15 +210,24 @@ reply, never in a mark's own text. Where the organization has collaboration
 off (the gate the candidates route and the chat keep), a text mentions nobody
 but Piloti. A dropped mention
 is not stored, so its „@Name“ stays plain text, and the composer, comparing
-what it sent with what came back, says whom it did not tell („Nicht
-benachrichtigt, weil sie das Dokument nicht öffnen können: …“). A reply that
+what it sent with what came back, says whom it did not tell, without a reason
+it cannot know („Anna Berger wurde nicht benachrichtigt.“). It says the chat's
+words for a spent mention budget, and the bound before sending more than ten
+names. A list of people that failed to load says so in the picker, never as
+„nobody“, and the next „@“ asks again. A pick whose name was taken out of the
+text is dropped as the text changes, and when two picks share a name the
+newest wins (`reconcileMentions`), so a namesake taken back is never told. A
+reply that
 mentions Piloti addresses it, as `addressesPiloti` does. Mentions spend the
 chat's one budget (`enforceMentionBounds`, `MENTION_LIMIT`), @Piloti counted
 like a person as in the chat, before anything is written. A write that closes
 the mark tells nobody it mentions.
 
 A mention renders as the chat's chip (`MentionText`, through
-`review/mark-body.tsx`): the name, never the id, louder when it is the reader.
+`review/mark-body.tsx`): the name, never the id, louder when it is the reader
+(the review's `viewerId`: the room's word for this tab, else the signed-in
+person the chat knows). In a line clamp (the list, the peek, the summary) the
+text runs as one paragraph; the thread card keeps its line breaks.
 The thread card, the list, the inline peek and the summary draw it alike. Only
 a stored mention becomes a chip.
 

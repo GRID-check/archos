@@ -19,6 +19,7 @@ import {
   type MarkMention,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
+import { useChatStore } from '@/features/chat'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
 import { useDocumentRoom, type RoomTransport } from './use-document-room'
@@ -390,6 +391,10 @@ export function useDocumentReview(
   )
 
   const me = room.self?.userId ?? null
+  // Who reads: the room's word for this tab, else the signed-in person the
+  // chat knows, so a mention of the reader stands out before the room answers.
+  const sessionUserId = useChatStore((state) => state.currentUserId)
+  const viewerId = me ?? sessionUserId ?? null
   const listed = useMemo(
     () =>
       annotations.filter(
@@ -462,6 +467,7 @@ export function useDocumentReview(
       reply,
       remove,
       step,
+      viewerId,
     }),
     [
       documentId,
@@ -490,6 +496,7 @@ export function useDocumentReview(
       reply,
       remove,
       step,
+      viewerId,
     ]
   )
 }
