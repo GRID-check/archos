@@ -15,6 +15,20 @@ const mockDeleteConversation = vi.fn()
 const mockDeleteAllConversations = vi.fn()
 const mockUpdateConversationTitle = vi.fn()
 
+// The chat column is the attachment drop zone, which reads the accepted types.
+vi.mock('@/shared/context', () => ({
+  useAppConfig: () => ({
+    fileUpload: {
+      acceptedTypes: '.pdf',
+      acceptedMimeTypes: ['application/pdf'],
+      maxTotalSizeMB: 100,
+      maxFileSize: 100 * 1024 * 1024,
+      maxTotalSize: 100 * 1024 * 1024,
+      maxFileCount: 10,
+    },
+  }),
+}))
+
 // Mock the useSessionUrl hook (uses Next.js App Router hooks)
 vi.mock('@/hooks/use-session-url', () => ({
   useSessionUrl: vi.fn(() => ({

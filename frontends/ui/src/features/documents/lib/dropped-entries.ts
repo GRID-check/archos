@@ -25,7 +25,40 @@ export interface DroppedTree {
   files: DroppedFile[]
   /** A bound was reached, so this is not everything that was dropped. */
   truncated: boolean
+  /**
+   * Items dropped beside the tree that the entries API does not expose: an
+   * attachment dragged out of Outlook, a file another app offers only as data.
+   * Read as plain files, synchronously, from the drop itself.
+   */
+  loose: File[]
+  /** Files the browser listed and then could not read (a cloud-only file, a path too long). */
+  unreadable: number
+  /**
+   * The names of dropped FILES (not inside a folder) whose entry could not be
+   * read. The plain file list usually still has them: an Outlook attachment, a
+   * OneDrive file that is only in the cloud, a Windows path past 260 characters.
+   */
+  unreadableRoots: string[]
 }
+
+/** Everything a drop handed over, and what of it could not be taken. */
+export interface DroppedFiles {
+  files: File[]
+  /** A bound was reached: the drop held more than this. */
+  truncated: boolean
+  /** Files that were dropped and could not be read. */
+  unreadable: number
+}
+
+/**
+ * Folders that are never a person's work: a NAS's thumbnail cache, a version
+ * control store, an archiver's resource forks, a recycle bin. Each would count
+ * against {@link MAX_FILES} and then surface as unsupported files, or, for a
+ * Synology's thumbnails, upload as images.
+ */
+const SKIPPED_DIRECTORIES = new Set(['@eadir', '#recycle', '#snapshot', '.git', '.svn', '__macosx', '.dropbox.cache', '.trash', '.trashes', '$recycle.bin', 'node_modules'])
+
+const isSkippedDirectory = (name: string): boolean => SKIPPED_DIRECTORIES.has(name.toLowerCase())
 
 /** Bounds. Generous enough for a real Einreichung, finite enough to end. */
 const MAX_FILES = 2000
@@ -98,6 +131,7 @@ export async function readDroppedTree(dataTransfer: DataTransfer): Promise<Dropp
   // emptied when the drop event finishes, so an entry captured one tick later
   // is null and the whole drop reads as empty.
   const roots: FileSystemEntryLike[] = []
+  const loose: File[] = []
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]
     if (item?.kind !== 'file') continue
@@ -105,13 +139,22 @@ export async function readDroppedTree(dataTransfer: DataTransfer): Promise<Dropp
       item as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntryLike | null }
     ).webkitGetAsEntry
     const entry = getEntry?.call(item)
-    if (entry) roots.push(entry)
+    if (entry) {
+      roots.push(entry)
+      continue
+    }
+    // No entry, but a file all the same: an Outlook attachment or another
+    // app's virtual file. Lost from every drop that also carried a folder.
+    const file = item.getAsFile?.()
+    if (file) loose.push(file)
   }
   if (roots.length === 0) return null
 
   const startedAt = Date.now()
   const files: DroppedFile[] = []
   let truncated = false
+  let unreadable = 0
+  const unreadableRoots: string[] = []
 
   const queue: Array<{ entry: FileSystemEntryLike; path: string; depth: number }> = roots.map(
     (entry) => ({ entry, path: entry.name, depth: 0 })
@@ -129,10 +172,13 @@ export async function readDroppedTree(dataTransfer: DataTransfer): Promise<Dropp
       // A folder drop of one file still carries a path; a LOOSE file dropped
       // beside it does not, and must not be given a fabricated one.
       if (file) files.push({ file, relativePath: depth > 0 ? path : undefined })
+      else if (depth === 0) unreadableRoots.push(entry.name)
+      else unreadable += 1
       continue
     }
 
     if (entry.isDirectory) {
+      if (depth > 0 && isSkippedDirectory(entry.name)) continue
       if (depth >= MAX_DEPTH) {
         truncated = true
         continue
@@ -144,8 +190,35 @@ export async function readDroppedTree(dataTransfer: DataTransfer): Promise<Dropp
     }
   }
 
-  if (files.length === 0) return null
-  return { files, truncated }
+  // Entries existed, so this was read through them: an empty folder is an empty
+  // drop. Falling back to `dataTransfer.files` here handed the upload the
+  // folder ITSELF, as a file with no type, and it was refused as one.
+  return { files, truncated, loose, unreadable, unreadableRoots }
+}
+
+/**
+ * Everything a drop carries, files and folders alike, as plain `File`s with
+ * their paths stamped (see {@link asPathStampedFiles}).
+ *
+ * MUST be called synchronously from the drop event: both the file list and the
+ * entries are captured before the first await, because the browser empties
+ * the transfer the moment the event returns.
+ */
+export async function readDrop(dataTransfer: DataTransfer): Promise<DroppedFiles> {
+  const listed = Array.from(dataTransfer.files ?? [])
+  const tree = await readDroppedTree(dataTransfer)
+  // No entries API at all: the plain list is the whole drop, as it always was.
+  if (!tree) return { files: listed, truncated: false, unreadable: 0 }
+  // A dropped file its entry could not read is taken from the plain list,
+  // which the browser filled from the same drop and usually still has it.
+  const recovered: File[] = []
+  let unreadable = tree.unreadable
+  for (const name of tree.unreadableRoots) {
+    const file = listed.find((candidate) => candidate.name === name && !recovered.includes(candidate))
+    if (file) recovered.push(file)
+    else unreadable += 1
+  }
+  return { files: [...asPathStampedFiles(tree), ...tree.loose, ...recovered], truncated: tree.truncated, unreadable }
 }
 
 /**

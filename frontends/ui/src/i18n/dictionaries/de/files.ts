@@ -468,6 +468,13 @@ export const files: typeof en.files = {
     namePlaceholder: 'Ordnername',
     newFolderName: 'Name des neuen Ordners',
     creating: 'Ordner wird erstellt …',
+    /** Die Aktion im Toast nach einem Verschieben: Ein Zug, der danebenging, ist ein Klick, kein zweiter Zug. */
+    moveUndo: 'Rückgängig',
+    movedBack: '„{name}“ ist wieder in „{folder}“.',
+    moveRefusedReadOnly: 'Verschoben wurde nichts: Einen der beiden Ordner dürfen Sie nur lesen.',
+    moveRefusedGone: 'Verschoben wurde nichts: Diesen Ordner gibt es nicht mehr.',
+    /** Ein Ordner gleichen Namens liegt schon dort, wohin dieser käme: angelegt, umbenannt oder hingezogen. */
+    nameTaken: 'In „{parent}“ gibt es schon einen Ordner „{name}“.',
     allFiles: 'Alle Dateien',
     // Der Weg nach oben, benannt – die Brotkrumenleiste sagt, WO man ist, und
     // das ist eine Karte. Drei Ebenen tief ist der übergeordnete Ordner ein
@@ -639,6 +646,16 @@ export const files: typeof en.files = {
     tryAgain: 'Erneut versuchen',
     dropToUpload: 'Dateien hier ablegen, um sie in dieses Projekt hochzuladen',
     dropUnsupported: 'Einige Dateien haben einen nicht unterstützten Typ',
+    /** Über einer Ordnerkachel: Die Dateien landen in diesem Ordner, nicht im offenen. */
+    dropInto: 'In „{name}“ ablegen',
+    dropRefusedHere: 'Nur lesen: Hier können Sie keine Dateien ablegen.',
+    dropRefusedFolder: '„{name}“ dürfen Sie nur lesen: Dort können Sie nichts ablegen.',
+    /** Eine Ablage, während noch hochgeladen wird oder die Ordner noch laden: Sie wartet, statt zu verschwinden. */
+    dropQueued: 'Die abgelegten Dateien werden hochgeladen, sobald der laufende Upload fertig ist.',
+    dropTruncated:
+      'Der abgelegte Ordner war zu groß oder zu tief verschachtelt. Übernommen wurden {count, plural, one {# Datei} other {# Dateien}}; laden Sie den Rest in einem zweiten Schritt hoch.',
+    dropUnreadable:
+      '{count, plural, one {Eine abgelegte Datei konnte nicht gelesen werden} other {# abgelegte Dateien konnten nicht gelesen werden}} und {count, plural, one {wurde} other {wurden}} nicht hochgeladen. Speichern Sie sie zuerst lokal (etwa aus Outlook oder einem Cloud-Ordner).',
     view: {
       label: 'Ansicht',
       cards: 'Kacheln',

@@ -37,6 +37,7 @@ import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-sc
 import { describeScreenedOut } from '@/lib/upload-screening/quarantine'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { exclusionsByTerm, openUploadBatch, sealUploadBatch } from '@/features/documents/lib/upload-batch'
+import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
 import { documentRoleDefinition } from '@/lib/project-profile/document-roles'
 import type { DocumentRole } from '@/lib/project-profile/document-roles'
 import { useDocumentRoles } from '../lib/use-document-roles'
@@ -76,10 +77,9 @@ export function DocumentRoleField({
 }: DocumentRoleFieldProps) {
   const definition = documentRoleDefinition(role)
   const tFiles = useTranslations('files')
-  const tProjects = useTranslations('projects')
+  const tRole = useTranslations('projects.intake.documentRole')
   const { bindings, documents, refresh } = useDocumentRoles(projectId)
   const [busy, setBusy] = useState(false)
-  const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
@@ -99,9 +99,12 @@ export function DocumentRoleField({
    * nothing: the upload flow could leave a file uploaded and unbound while the
    * UI reported no failure at all.
    */
-  const run = useCallback((action: Promise<void>) => {
-    void action.catch(() => toast.error('Aktion fehlgeschlagen. Bitte erneut versuchen.'))
-  }, [])
+  const run = useCallback(
+    (action: Promise<void>) => {
+      void action.catch(() => toast.error(tRole('actionFailed')))
+    },
+    [tRole]
+  )
 
   const bind = useCallback(
     async (documentId: string, filename?: string) => {
@@ -124,7 +127,7 @@ export function DocumentRoleField({
         })
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as { error?: string } | null
-          toast.error(body?.error ?? 'Dokument konnte nicht zugeordnet werden.')
+          toast.error(body?.error ?? tRole('bindFailed'))
           // The upload may have succeeded even though the binding did not.
           // Returning without refreshing left the new file out of `documents`,
           // so this mounted field could not offer it for a retry.
@@ -136,14 +139,14 @@ export function DocumentRoleField({
         // returns it rather than swallowing the replacement.
         const body = (await response.json()) as { replaced?: RoleBinding[] }
         for (const previous of body.replaced ?? []) {
-          toast.info(`${documentLabel(previous)} ist nicht mehr ${definition.label}.`)
+          toast.info(tRole('replaced', { name: documentLabel(previous), role: definition.label }))
         }
         await refresh({ afterWrite: true })
       } finally {
         setBusy(false)
       }
     },
-    [definition.label, deferred, documents, projectId, refresh, role, scopeInstanceId]
+    [definition.label, deferred, documents, projectId, refresh, role, scopeInstanceId, tRole]
   )
 
   const unbind = useCallback(
@@ -155,7 +158,7 @@ export function DocumentRoleField({
           { method: 'DELETE' }
         )
         if (!response.ok) {
-          toast.error('Zuordnung konnte nicht entfernt werden.')
+          toast.error(tRole('unbindFailed'))
           return
         }
         await refresh()
@@ -163,7 +166,7 @@ export function DocumentRoleField({
         setBusy(false)
       }
     },
-    [projectId, refresh]
+    [projectId, refresh, tRole]
   )
 
   const uploadAndBind = useCallback(
@@ -217,7 +220,7 @@ export function DocumentRoleField({
             answered += 1
             if (!response.ok) {
               failed += 1
-              toast.error(`${file.name} konnte nicht hochgeladen werden.`)
+              toast.error(tRole('uploadFailed', { name: file.name }))
               continue
             }
             const body = (await response.json()) as { documentId?: string; unchanged?: boolean }
@@ -226,7 +229,7 @@ export function DocumentRoleField({
             // No id means the upload succeeded but we cannot name what to bind.
             // Say so rather than reporting a binding that does not exist.
             if (!documentId) {
-              toast.error(`${file.name} wurde abgelegt, aber nicht zugeordnet.`)
+              toast.error(tRole('uploadedUnbound', { name: file.name }))
               continue
             }
             await bind(documentId, file.name)
@@ -240,7 +243,7 @@ export function DocumentRoleField({
         setBusy(false)
       }
     },
-    [bind, projectId, tFiles]
+    [bind, projectId, tFiles, tRole]
   )
 
   // An upload for a building not saved yet binds when it answers; the wizard's
@@ -253,6 +256,28 @@ export function DocumentRoleField({
     },
     [deferred, run, uploadAndBind]
   )
+
+  // A slot that holds one document takes one file. Binding all of them made
+  // each replace the last, silently keeping only the final file; now the
+  // reader is told which one was taken. Refused while a write is in flight:
+  // the other controls are disabled, and two overlapping writes to a
+  // single-holder slot leave whichever finishes LAST as the holder.
+  const takeDrop = useCallback(
+    (dropped: File[]) => {
+      if (dropped.length === 0) return
+      if (definition.cardinality !== 'one' || dropped.length === 1) {
+        upload(dropped)
+        return
+      }
+      toast.info(tRole('dropOnlyOne', { name: dropped[0].name }))
+      upload([dropped[0]])
+    },
+    [definition.cardinality, tRole, upload]
+  )
+  const { isDragging, refusal, dragHandlers } = useFileDragDrop({
+    onDrop: (dropped) => takeDrop(dropped),
+    refusal: busy ? tRole('dropBusy') : null,
+  })
 
   const held = (deferred?.pending ?? []).filter(
     (bind) => bind.role === role && bind.scopeInstanceId === scopeInstanceId
@@ -272,10 +297,10 @@ export function DocumentRoleField({
       {bindings === null ? (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
-          Zuordnungen werden geladen …
+          {tRole('loading')}
         </div>
       ) : (
-        <ul className="flex flex-col gap-1.5" aria-label={`Zugeordnet als ${definition.label}`}>
+        <ul className="flex flex-col gap-1.5" aria-label={tRole('boundAria', { role: definition.label })}>
           {mine.map((binding) => (
             <li
               key={binding.id}
@@ -286,7 +311,7 @@ export function DocumentRoleField({
               <span className="min-w-0 flex-1 truncate">{documentLabel(binding)}</span>
               {binding.confidence === 'suggested' && (
                 <span className="text-muted-foreground shrink-0 rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px]">
-                  vorgeschlagen
+                  {tRole('suggested')}
                 </span>
               )}
               <Button
@@ -296,7 +321,7 @@ export function DocumentRoleField({
                 className="size-7 shrink-0"
                 disabled={busy}
                 onClick={() => run(unbind(binding.id))}
-                aria-label={`${documentLabel(binding)} nicht mehr als ${definition.label} führen`}
+                aria-label={tRole('unbindAria', { name: documentLabel(binding), role: definition.label })}
               >
                 <X className="size-3.5" aria-hidden />
               </Button>
@@ -309,7 +334,7 @@ export function DocumentRoleField({
             >
               <FileText className="text-muted-foreground size-4 shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 truncate">{bind.filename}</span>
-              <span className="text-muted-foreground shrink-0 text-xs">wird beim Speichern zugeordnet</span>
+              <span className="text-muted-foreground shrink-0 text-xs">{tRole('heldUntilSave')}</span>
               <Button
                 type="button"
                 variant="ghost"
@@ -317,7 +342,7 @@ export function DocumentRoleField({
                 className="size-7 shrink-0"
                 disabled={busy}
                 onClick={() => deferred?.onDiscard(bind)}
-                aria-label={`${bind.filename} nicht als ${definition.label} führen`}
+                aria-label={tRole('discardAria', { name: bind.filename, role: definition.label })}
               >
                 <X className="size-3.5" aria-hidden />
               </Button>
@@ -331,7 +356,7 @@ export function DocumentRoleField({
           <Select disabled={busy} value="" onValueChange={(value) => run(bind(value))}>
             <SelectTrigger className="h-9 max-w-xs pointer-coarse:h-11">
               <SelectValue
-                placeholder={full ? 'Anderes Dokument wählen …' : 'Vorhandenes Dokument wählen …'}
+                placeholder={full ? tRole('pickOther') : tRole('pickExisting')}
               />
             </SelectTrigger>
             <SelectContent>
@@ -369,7 +394,7 @@ export function DocumentRoleField({
           ) : (
             <Paperclip className="size-4" aria-hidden />
           )}
-          Datei hochladen
+          {tRole('upload')}
         </Button>
 
         {/* On site the document is often the wall in front of you: a photo, taken
@@ -399,7 +424,7 @@ export function DocumentRoleField({
           onClick={() => cameraRef.current?.click()}
         >
           <Camera className="size-4" aria-hidden />
-          {tProjects('intake.documentRole.takePhoto')}
+          {tRole('takePhoto')}
         </Button>
       </div>
 
@@ -407,33 +432,19 @@ export function DocumentRoleField({
           promise something the reader cannot do, and it took the place of the
           two buttons above. */}
       <div
-        onDragOver={(event) => {
-          event.preventDefault()
-          setDragging(true)
-        }}
-        onDragLeave={() => setDragging(false)}
-        aria-label={`Datei ablegen, um sie als ${definition.label} zu führen`}
-        onDrop={(event) => {
-          event.preventDefault()
-          setDragging(false)
-          // Ignored while a write is in flight: the other controls are disabled,
-          // but a drop bypassed them, and two overlapping writes to a
-          // single-holder slot leave whichever finishes LAST as the holder.
-          if (busy) return
-          const dropped = event.dataTransfer.files
-          if (!dropped?.length) return
-          // A slot that holds one document takes one file. Binding all of them
-          // made each replace the last, silently keeping only the final file.
-          const files = definition.cardinality === 'one' ? [dropped[0]] : Array.from(dropped)
-          upload(files)
-        }}
+        {...dragHandlers}
+        aria-label={tRole('dropAria', { role: definition.label })}
+        data-testid="document-role-drop"
+        data-dragging={isDragging || undefined}
         className={cn(
           'rounded-lg border border-dashed px-3 py-2 text-center text-xs transition-colors duration-quick ease-out motion-reduce:transition-none pointer-coarse:hidden',
-          dragging ? 'border-primary bg-primary/5 text-foreground' : 'text-muted-foreground'
+          isDragging && refusal && 'border-destructive bg-destructive/5 text-destructive',
+          isDragging && !refusal && 'border-primary bg-primary/5 text-foreground',
+          !isDragging && 'text-muted-foreground'
         )}
       >
         <Upload className="mr-1.5 inline size-3.5 align-[-2px]" aria-hidden />
-        Datei hierher ziehen
+        {refusal ?? (definition.cardinality === 'many' ? tRole('dropHereMany') : tRole('dropHereOne'))}
       </div>
     </div>
   )

@@ -4,7 +4,7 @@ import type { JSX } from 'react'
 import { useId, useRef } from 'react'
 import { FilePlus2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
+import { useFileDragDrop, type DropInfo } from '@/features/documents/hooks/use-file-drag-drop'
 import { DEFAULT_ACCEPTED_FILE_TYPES } from '@/features/documents/constants'
 import { withZipAccepted } from '@/features/documents/lib/zip-types'
 import { useTranslations } from '@/i18n'
@@ -25,7 +25,7 @@ export function DocumentHandIn({
 }: {
   /** The question this answers, for the choose button's name. */
   label: string
-  onFiles: (files: File[]) => void
+  onFiles: (files: File[], info?: DropInfo) => void
   disabled?: boolean
 }): JSX.Element {
   const t = useTranslations('projectIntake')

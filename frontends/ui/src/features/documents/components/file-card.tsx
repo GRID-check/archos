@@ -346,7 +346,7 @@ export const FileCard = memo(function FileCard({
       // Dragging is opt-in per surface: the Archiv has no folders to drop into,
       // and a card that lifts under the finger where nothing can receive it is
       // an affordance for a capability that is not there.
-      {...(draggable && !selection ? documentDragProps(file.id) : {})}
+      {...(draggable && !selection ? documentDragProps(file.id, file.folderId ?? null) : {})}
     >
       {selection && <SelectionMark checked={selection.checked} />}
       {actions && !selection && (

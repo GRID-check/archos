@@ -578,7 +578,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('posts each file to the documents endpoint, carrying the target folder', async () => {
     const { result } = renderUpload({ folderId: 'folder-9' })
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(2))
       await Promise.resolve()
@@ -595,10 +595,29 @@ describe('useFileUpload — durable document uploads', () => {
     expect(body.get('folderId')).toBe('folder-9')
   })
 
+  test('resolves with how many files the server took, so a caller never counts a refused one', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<number>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(2))
+      await Promise.resolve()
+    })
+    let taken = -1
+    await act(async () => {
+      xhr.requests[0].respond(200, uploadOk('doc-0'))
+      xhr.requests[1].respond(422, JSON.stringify({ error: 'Unsupported' }))
+      taken = await pending
+    })
+
+    expect(taken).toBe(1)
+    expect(await result.current.uploadFiles([])).toBe(0)
+  })
+
   test('tells PostHog how many files of which types were taken, never their names', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([
         new File(['x'], 'Einreichplan-Haus-Meier.pdf', { type: 'application/pdf' }),
@@ -624,7 +643,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('counts only the files the server took', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(2))
       await Promise.resolve()
@@ -643,7 +662,7 @@ describe('useFileUpload — durable document uploads', () => {
     const invoice = new File(['x'], 'Schlussrechnung 03.pdf', { type: 'application/pdf' })
     const plan = new File(['x'], 'Grundriss EG.pdf', { type: 'application/pdf' })
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([invoice, plan])
       await Promise.resolve()
@@ -683,7 +702,7 @@ describe('useFileUpload — durable document uploads', () => {
     const { result } = renderUpload()
     const scan = new File(['x'], '0042.pdf', { type: 'application/pdf' })
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([scan], { folderPathFor: () => 'Verwaltung/Honorare' })
       await Promise.resolve()
@@ -703,7 +722,7 @@ describe('useFileUpload — durable document uploads', () => {
     const { result } = renderUpload()
     const contract = new File(['x'], 'Architektenvertrag.pdf', { type: 'application/pdf' })
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([contract], { screeningReleased: (file) => file === contract })
       await Promise.resolve()
@@ -723,7 +742,7 @@ describe('useFileUpload — durable document uploads', () => {
     const filed = new File(['x'], 'EG_Grundriss_Index_C.pdf', { type: 'application/pdf' })
     const plain = new File(['x'], 'Baubeschreibung.pdf', { type: 'application/pdf' })
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([filed, plain], { fassungOf: (file) => (file === filed ? 'doc-older' : null) })
       await Promise.resolve()
@@ -773,7 +792,7 @@ describe('useFileUpload — durable document uploads', () => {
     const { result } = renderUpload({ folderId: 'folder-here' })
     const contract = new File(['x'], 'Architektenvertrag.pdf', { type: 'application/pdf' })
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([contract], {
         folderIdFor: () => 'folder-vertraege',
@@ -831,7 +850,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('carries the server’s „unchanged" answer onto the row, so it is not shown as a new upload', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -853,7 +872,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('sends several at once instead of one after another', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(6))
       await Promise.resolve()
@@ -878,7 +897,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('records the bytes the browser reports, not a stand-in value', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -913,7 +932,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('one refused file does not take the batch down with it', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(3))
       await Promise.resolve()
@@ -939,7 +958,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('a project closed while the tab was open is named in the reader’s language (ADR-0090)', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -961,7 +980,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('an upload that ran out of time says so in the dictionary, not in the transport’s English', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -981,7 +1000,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('a file refused because it would replace a quarantined one is not offered again (ADR-0086)', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -1016,7 +1035,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('any other conflict stays retryable', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -1034,7 +1053,7 @@ describe('useFileUpload — durable document uploads', () => {
     vi.useFakeTimers()
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -1059,7 +1078,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('cancelling aborts the transfer instead of letting it finish invisibly', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -1082,7 +1101,7 @@ describe('useFileUpload — durable document uploads', () => {
   test('cancelling everything aborts every request in flight', async () => {
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(3))
       await Promise.resolve()
@@ -1101,7 +1120,7 @@ describe('useFileUpload — durable document uploads', () => {
     mockClient.createCollection.mockResolvedValue({ name: 'proj-collection' })
     const { result } = renderUpload()
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -1148,7 +1167,7 @@ describe('useFileUpload — durable document uploads', () => {
       useFileUpload({ collectionName: 'archiv_org-1', archiv: true })
     )
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(makeFiles(1))
       await Promise.resolve()
@@ -1169,7 +1188,7 @@ describe('useFileUpload — durable document uploads', () => {
     const [file] = makeFiles(1)
     Object.defineProperty(file, 'webkitRelativePath', { value: 'Planung/EG/plan-0.pdf' })
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([file])
       await Promise.resolve()
@@ -1191,7 +1210,7 @@ describe('useFileUpload — durable document uploads', () => {
     )
     const files = makeFiles(2)
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(files, {
         folderIdFor: (file) => (file === files[0] ? 'folder-a' : null),
@@ -1241,7 +1260,7 @@ describe('useFileUpload — chat attachments', () => {
     renderHook(() => useFileUpload({ collectionName: CHAT, conversationProjectId: 'proj-7' }))
 
   async function upload(result: ReturnType<typeof renderChat>['result'], respond: () => void) {
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([makeFile()])
       await Promise.resolve()
@@ -1320,7 +1339,7 @@ describe('useFileUpload — chat attachments', () => {
     const onError = vi.fn()
     const { result } = renderHook(() => useFileUpload({ collectionName: CHAT, onError }))
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([makeFile()])
       await Promise.resolve()
@@ -1414,7 +1433,7 @@ describe('useFileUpload — upload batches', () => {
     const { result } = renderHook(() => useFileUpload({ collectionName: 'proj-collection', projectId: 'proj-1' }))
     const files = [pdf('EG.pdf'), pdf('OG.pdf'), pdf('Rechnung 7.pdf')]
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles(files, {
         excludedByScreening: [[{ term: 'Personal', segment: 'Personalakten', kind: 'folder' }]],
@@ -1449,7 +1468,7 @@ describe('useFileUpload — upload batches', () => {
     fetchMock.mockReset().mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({}) })
     const { result } = renderHook(() => useFileUpload({ collectionName: 'proj-collection', projectId: 'proj-1' }))
 
-    let pending!: Promise<void>
+    let pending!: Promise<number>
     await act(async () => {
       pending = result.current.uploadFiles([pdf('EG.pdf')])
       for (let i = 0; i < 6; i += 1) await Promise.resolve()
