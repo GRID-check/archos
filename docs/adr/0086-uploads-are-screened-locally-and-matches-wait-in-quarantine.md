@@ -626,6 +626,17 @@ file did not say whose rule held it.
 - **Not changed:** the name gate (`name-screen.ts`) does not read; a soft hyphen
   in a file name is part of it.
 
+## Amendment (2026-10-17): the reason is a typed verdict
+
+The verdict this record describes as `error_message` `quarantined:{json}` is now
+data: `FileProgress.quarantine` and `FileInfo.quarantine` on the job's side,
+`documents.quarantine` (migration 0148) on the BFF's, read by every surface
+through `quarantineVerdictOf`. The string is still written for one release and
+read only where the typed verdict is absent. A decision row and the
+`document.quarantined` event now record how many reasons the job left out
+(`reasonsOmitted`). The decision and its reasons:
+[ADR-0113](0113-a-held-files-reason-is-a-typed-verdict-stored-as-data.md).
+
 ## More Information
 
 * Evidence and the two NVIDIA evaluations: `plans/2026-10-01-upload-governance-worklog.md`.
