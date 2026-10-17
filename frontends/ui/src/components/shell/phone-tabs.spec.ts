@@ -183,4 +183,3 @@ describe('the Postfach looks like itself', () => {
     expect(projectSection('inbox')?.icon.displayName).toBe('Bell')
   })
 })
-

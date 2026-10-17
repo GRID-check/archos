@@ -1234,4 +1234,3 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 })
-

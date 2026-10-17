@@ -449,4 +449,3 @@ describe('InboxList — the archive', () => {
     expect(toastMock).not.toHaveBeenCalledWith('Archived', expect.anything())
   })
 })
-
