@@ -69,6 +69,7 @@ from aiq_agent.knowledge.schema import FileProgress
 from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
+from aiq_agent.knowledge.schema import QuarantineVerdict
 from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.schema import stable_file_id
 
@@ -2707,6 +2708,7 @@ def _file_info_from_job(job: IngestionJobStatus, detail: FileProgress) -> FileIn
         uploaded_at=job.submitted_at,
         ingested_at=job.completed_at if status == FileStatus.SUCCESS else None,
         error_message=error,
+        quarantine=detail.quarantine,
         metadata={"job_id": job.job_id},
     )
 
@@ -3104,13 +3106,26 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         # Persist outside the lock (DB I/O) so any replica can serve this status.
         self._persist(job)
 
-    def _record_screening(self, job: IngestionJobStatus, file_index: int, rules: Any, outcome: str) -> None:
-        """Put the upload screen's outcome on the file's status; nothing when the job is not screened."""
+    def _record_screening(
+        self,
+        job: IngestionJobStatus,
+        file_index: int,
+        rules: Any,
+        outcome: str,
+        quarantine: QuarantineVerdict | None = None,
+    ) -> None:
+        """Put the upload screen's outcome on the file's status; nothing when the job is not screened.
+
+        ``quarantine`` is the typed verdict a ``quarantined`` outcome carries
+        (ADR-0113); every other outcome clears it, so a file read again never
+        keeps an earlier run's reasons.
+        """
         if rules is None:
             return
         with self._lock:
             if file_index < len(job.file_details):
                 job.file_details[file_index].screening = outcome
+                job.file_details[file_index].quarantine = quarantine if outcome == "quarantined" else None
 
     def _record_unscreened_rasters(self, job: IngestionJobStatus, file_index: int) -> None:
         """A file the screen called ``clean`` is ``partial`` once embedded rasters go to the VLM.
@@ -3134,8 +3149,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     ) -> bool:
         """Screen one file's locally extracted ``pages``; True when it was quarantined.
 
-        A quarantined file is FAILED with ``quarantine_error``'s reason and must
-        go no further: nothing of it has reached a model yet, and nothing will.
+        A quarantined file is FAILED with its typed verdict on
+        ``FileProgress.quarantine`` (set before the status is persisted) and the
+        same verdict as the legacy ``quarantine_error`` text, and must go no
+        further: nothing of it has reached a model yet, and nothing will.
         The log line names reason kinds and counts, never a term, a value or
         the file name, which can itself say what the document is.
         """
@@ -3150,7 +3167,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         if not verdict.matched:
             self._record_screening(job, file_index, rules, "clean" if checked == "full" else "partial")
             return False
-        self._record_screening(job, file_index, rules, "quarantined")
+        self._record_screening(job, file_index, rules, "quarantined", verdict.to_model())
         self._update_file_status(job, file_index, FileStatus.FAILED, error=screening.quarantine_error(verdict))
         logger.info(
             "Quarantined file %d of job %s before any model call: %s (checked %s)",
