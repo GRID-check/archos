@@ -626,6 +626,31 @@ file did not say whose rule held it.
 - **Not changed:** the name gate (`name-screen.ts`) does not read; a soft hyphen
   in a file name is part of it.
 
+## Amendment (2026-10-17): one word per gate, and every stop counted
+
+The two gates had drifted into each other's words, and some of their stops
+were said as failures.
+
+- **One word each.** What the name gate (*Namensprüfung*) stops is „Nicht
+  hochgeladen"; „zurückgehalten" is the content gate's, and the Quarantäne is
+  the place a held file waits (CONTEXT.md).
+- **Every name stop is counted.** The server's repeat answers 422
+  `UPLOAD_SCREENED` with the matches; the browser says it as it says its own
+  stops (no failed row, no retry) and seals the batch with them in `excluded`,
+  by term and count (`POST …/seal` takes `excluded`). The mail import adds its
+  stops to its batch as it meets them (`recordJobUploadExclusions`). Both merge
+  into `upload_batches.excluded` in SQL, term by term. Names never travel.
+- **The server screens what the browser screened.** A chat attachment sends its
+  origin path, and both shelves screen the whole normalised path
+  (`normalizeOriginPath`); only the stored label is cut at 1024 characters.
+- **A re-upload onto a held file.** Its uploader and reviewers get
+  `details.reason = 'quarantined'` with the held document's `documentId` and
+  `ownUpload`; the upload row is held with it, not failed, and its uploader can
+  ask for the review there. Everyone else gets the taken-name 409 every
+  taken-name refusal carries (`details.reason = 'name_taken'`,
+  `lib/documents/name-taken.ts`), said as one sentence, so a hold they may not
+  know of stays invisible.
+
 ## More Information
 
 * Evidence and the two NVIDIA evaluations: `plans/2026-10-01-upload-governance-worklog.md`.
