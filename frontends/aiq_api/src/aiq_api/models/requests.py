@@ -42,8 +42,9 @@ class ScreeningPolicy(BaseModel):
 
     A match fails the file with an ``error_message`` starting ``quarantined:``
     (``knowledge_layer.llamaindex.screening``). Terms match case-, umlaut- and
-    whitespace-insensitively at a word start; the detectors count checksum-valid
-    matches only.
+    whitespace-insensitively at a word start, in the text as a person reads it
+    (invisible characters left out, a hyphen at a line break joined); the
+    detectors count checksum-valid matches only, a card only in a printed layout.
     """
 
     model_config = ConfigDict(extra="forbid")

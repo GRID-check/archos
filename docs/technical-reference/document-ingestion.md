@@ -233,7 +233,7 @@ For each file:
 
 ### Upload screening, before the first model call
 
-A job whose config carries `screening` (the organization's policy, sent by the BFF on `POST /v1/ingest`; see the [endpoint contract](../api/python-endpoints.md)) checks each file's locally extracted text against the office's terms and detectors (`sources/knowledge_layer/src/llamaindex/screening.py`) before any of it is sent to a model. A match fails the file with `error_message` `quarantined:{…}` and the loop moves to the next file; nothing of a quarantined file is transcribed, captioned, summarised or embedded. The job without a policy (the OIB corpus sync) runs exactly as before.
+A job whose config carries `screening` (the organization's policy, sent by the BFF on `POST /v1/ingest`; see the [endpoint contract](../api/python-endpoints.md)) checks each file's locally extracted text, read as a person reads it (invisible characters left out, a hyphen at a line break joined), against the office's terms and detectors (`sources/knowledge_layer/src/llamaindex/screening.py`) before any of it is sent to a model. A match fails the file with `error_message` `quarantined:{"reasons":[…],"checked":…}`, plus `"omitted":N` when the verdict leaves N reasons out, and the loop moves to the next file; nothing of a quarantined file is transcribed, captioned, summarised or embedded. The job without a policy (the OIB corpus sync) runs exactly as before.
 
 Where it sits, per file, against the five places ingestion sends content out:
 

@@ -262,6 +262,19 @@ describe('UploadSummaryDialog', () => {
       'href',
       `/app/projects/${FIXTURE_PROJECT_ID}/files`
     )
-    expect(screen.getByTestId('upload-summary-state')).toHaveTextContent(en.uploadBatches.summary.state.done)
+    // The settled fixture holds a file back: "everything has been read" would be untrue of it.
+    expect(screen.getByTestId('upload-summary-state')).toHaveTextContent(en.uploadBatches.summary.state.doneHeld)
+    // Settled is settled: no clock that reads as still working.
+    expect(screen.getByTestId('upload-summary-state').querySelector('svg')).toBeNull()
+  })
+
+  it('says everything has been read only when no file was held back', async () => {
+    const nothingHeld = {
+      ...SETTLED_SUMMARY,
+      documents: SETTLED_SUMMARY.documents.filter((document) => document.outcome !== 'quarantined'),
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(nothingHeld)))
+    render(<UploadSummaryDialog batchId={nothingHeld.id} standalone={false} />)
+    expect(await screen.findByTestId('upload-summary-state')).toHaveTextContent(en.uploadBatches.summary.state.done)
   })
 })

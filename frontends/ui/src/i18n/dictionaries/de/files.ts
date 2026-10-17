@@ -374,6 +374,10 @@ export const files: typeof en.files = {
     deleted: 'Die Datei wurde gelöscht, während Piloti sie las.',
     quarantined:
       'Diese Datei enthält etwas, das Ihr Büro als sensibel eingestuft hat. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
+    // Der Grund ist nicht gespeichert oder nicht lesbar: nichts behaupten, was
+    // die Zeile darüber nicht belegt.
+    quarantinedUnreadable:
+      'Die Inhaltsprüfung hat diese Datei zurückgehalten. Der Grund ist nicht gespeichert oder nicht lesbar. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
     unknown: 'Piloti konnte dieses Dokument nicht lesen, daher findet die Suche es nicht.',
     details: 'Details',
   },
@@ -385,6 +389,25 @@ export const files: typeof en.files = {
     reasonSvnr: 'Sozialversicherungsnummer {sample}',
     reasonCard: 'Kreditkartennummer {sample}',
     reasonPages: '{count, plural, one {Seite {pages}} other {Seiten {pages}}}',
+    // Tabellenblätter und Textdateien haben keine Seiten: der Treffer hat dann
+    // keinen Ort, den man aufschlagen könnte.
+    reasonNoPages: 'ohne Seitenangabe',
+    // Eine Regel, die dieser Stand der Anwendung nicht kennt (der Job kann
+    // eine neue Art von Treffer zuerst melden).
+    reasonOther: 'Eine Regel, die hier nicht näher beschrieben ist',
+    // Wie die Inhaltsprüfung zu dem Treffer kam: wer die Regel festgelegt hat,
+    // und was eine Zahl bestehen musste. So lässt sich eine echte Kontonummer
+    // von einer Auftragsnummer unterscheiden, die nur so aussieht.
+    basisTerm: 'Dieser Begriff steht auf der Liste, die Ihr Büro als sensibel eingestuft hat.',
+    basisIban:
+      'Die Zahl hat den Aufbau einer IBAN und ist rechnerisch gültig, also keine zufällige Ziffernfolge. Ihr Büro hat Kontonummern als sensibel eingestuft.',
+    basisSvnr:
+      'Die Zahl hat den Aufbau einer österreichischen Sozialversicherungsnummer und ist rechnerisch gültig. Ihr Büro hat sie als sensibel eingestuft.',
+    basisCard:
+      'Die Zahl hat den Aufbau einer Kartennummer und ist rechnerisch gültig. Ihr Büro hat Kartennummern als sensibel eingestuft.',
+    basisOther: 'Die Inhaltsprüfung hat eine Regel angewandt, die hier nicht näher beschrieben ist.',
+    omitted:
+      '{count, plural, one {Ein weiterer Grund wird nicht aufgeführt.} other {# weitere Gründe werden nicht aufgeführt.}}',
     nameInFile: 'Dateiname enthält „{term}“',
     nameInFolder: 'Ordner „{segment}“ enthält „{term}“',
     partial: 'Einige Seiten hatten keine Textebene und wurden nicht geprüft.',

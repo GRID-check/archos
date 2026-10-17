@@ -24,6 +24,7 @@ export const uploadBatches = {
       sending: 'The upload is still running.',
       reading: 'Piloti is still reading. This summary updates itself.',
       done: 'Everything has been read.',
+      doneHeld: 'Everything except the files held back has been read. Piloti shows them to no model.',
     },
     counts: {
       label: 'At a glance',
@@ -52,7 +53,6 @@ export const uploadBatches = {
       },
       empty: 'No file from this upload reached Piloti.',
       pages: '{count, plural, one {# page} other {# pages}}',
-      reasonsLabel: 'Why it is held back',
       openInFiles: 'Open in Files',
       openInArchiv: 'Open in Office filing',
       changedHint: 'A new revision of a document that was already here. The previous one stays readable under “Revisions and approval”.',

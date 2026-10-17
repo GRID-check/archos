@@ -391,6 +391,9 @@ export const files = {
     deleted: 'The file was deleted while Piloti was reading it.',
     quarantined:
       'This file contains something your office marks as sensitive. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // The reason is not stored or cannot be read: claim nothing the line above does not show.
+    quarantinedUnreadable:
+      'The content check held this file back. Its reason is not stored or cannot be read. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
     unknown: "Piloti couldn't read this document, so search can't find it.",
     details: 'Details',
   },
@@ -402,6 +405,23 @@ export const files = {
     reasonSvnr: 'Social security number {sample}',
     reasonCard: 'Card number {sample}',
     reasonPages: '{count, plural, one {page {pages}} other {pages {pages}}}',
+    // Spreadsheets and text files have no pages, so a finding has no place to open.
+    reasonNoPages: 'no page given',
+    // A rule this build does not know (the job may report a new kind of finding first).
+    reasonOther: 'A rule not described here',
+    // How the content check came to the finding: who set the rule, and what a
+    // number had to pass. It lets a reader tell a real account number from an
+    // order number that only looks like one.
+    basisTerm: 'This term is on the list your office marked as sensitive.',
+    basisIban:
+      'The number is laid out like an IBAN and its check digits are valid, so it is no random string of digits. Your office marked account numbers as sensitive.',
+    basisSvnr:
+      'The number is laid out like an Austrian social security number and its check digit is valid. Your office marked it as sensitive.',
+    basisCard:
+      'The number is laid out like a card number and its check digit is valid. Your office marked card numbers as sensitive.',
+    basisOther: 'The content check applied a rule not described here.',
+    omitted:
+      '{count, plural, one {One more reason is not listed.} other {# more reasons are not listed.}}',
     nameInFile: 'File name contains “{term}”',
     nameInFolder: 'Folder “{segment}” contains “{term}”',
     partial: 'Some pages had no text layer and were not checked.',

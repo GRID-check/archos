@@ -142,7 +142,8 @@ export function UploadSummaryMeta({
   const { locale } = useLocale()
   const place = summary.scope === 'project' ? (projectName ?? t('summary.place.project')) : t(`summary.place.${summary.scope}`)
   const href = placeHref(summary)
-  const state = !summary.sealedAt ? 'sending' : isSettling(summary) ? 'reading' : 'done'
+  const held = summary.documents.some((document) => document.outcome === 'quarantined')
+  const state = !summary.sealedAt ? 'sending' : isSettling(summary) ? 'reading' : held ? 'doneHeld' : 'done'
 
   return (
     <div className="space-y-1" data-testid="upload-summary-meta">
@@ -162,7 +163,8 @@ export function UploadSummaryMeta({
         <TimeAgo date={summary.createdAt} locale={locale} />
       </p>
       <p className="text-muted-foreground flex items-center gap-1.5 text-xs" data-testid="upload-summary-state">
-        {state !== 'done' && <Clock3 className="size-3.5 shrink-0" aria-hidden />}
+        {/* Only while something still moves: a settled upload that held files back is done too. */}
+        {(state === 'sending' || state === 'reading') && <Clock3 className="size-3.5 shrink-0" aria-hidden />}
         {t(`summary.state.${state}`)}
       </p>
     </div>

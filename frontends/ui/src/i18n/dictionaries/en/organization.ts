@@ -688,7 +688,7 @@ export const organization = {
     whereProjectUnknown: 'A project',
     whereArchiv: 'Office filing',
     whereSession: 'Chat attachment',
-    noReason: 'Reason could not be read',
+    noReason: 'No reason stored. Open the file to check it yourself.',
     unscreened: 'Not checked: the file could not be read to the end. It stays held back until someone reviews it.',
     open: 'View',
     openTitle: 'Open “{name}” where it is filed',
