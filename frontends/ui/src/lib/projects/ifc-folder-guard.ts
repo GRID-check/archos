@@ -28,9 +28,10 @@ import {
   projectHasCustomFolders,
 } from '@/lib/authz/folder-access-repository'
 import { isIfcFilename } from '@/lib/bim/types'
+import { IFC_IN_RESTRICTED_FOLDER } from './folder-bin-codes'
 
 /** `details.code` on every refusal here, for the surfaces that explain it. */
-export const IFC_IN_RESTRICTED_FOLDER = 'IFC_IN_RESTRICTED_FOLDER'
+export { IFC_IN_RESTRICTED_FOLDER }
 
 const WHY =
   'IFC models cannot be filed in a restricted folder yet: their building data is not partitioned by folder access, so everyone on the project could still query it.'

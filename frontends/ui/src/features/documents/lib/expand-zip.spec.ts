@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
+import { stampRelativePath } from './dropped-entries'
 import { MAX_ZIP_ENTRIES, expandZips } from './expand-zip'
 import { isZipArchive, withZipAccepted } from './zip-types'
 
@@ -56,6 +57,21 @@ describe('expandZips', () => {
     const { files } = await expandZips([zip])
 
     expect(files.map(pathOf)).toEqual(['Statik/a.pdf', 'Statik/sub/b.pdf'])
+  })
+
+  it('unpacks an archive that came inside a dropped folder beside the files it came with', async () => {
+    const nested = stampRelativePath(
+      zipFile('Statik.zip', { 'a.pdf': text('a') }),
+      'Projekt/Unterlagen/Statik.zip'
+    )
+    const wrapped = stampRelativePath(
+      zipFile('Plaene.zip', { 'Plaene/EG.pdf': text('eg') }),
+      'Projekt/Plaene.zip'
+    )
+
+    const { files } = await expandZips([nested, wrapped])
+
+    expect(files.map(pathOf)).toEqual(['Projekt/Unterlagen/Statik/a.pdf', 'Projekt/Plaene/EG.pdf'])
   })
 
   it('does not strip the root when the members merely start alike', async () => {

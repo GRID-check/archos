@@ -29,6 +29,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemMedia, I
 import { PageHeader } from '@/components/ui/page-header'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatCalendarDate } from '@/lib/format'
+import { FOLDER_NAME_TAKEN_REASON } from '@/lib/projects/folder-bin-codes'
 
 export interface FolderBinPanelProps {
   projectId: string
@@ -68,7 +69,7 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
     } catch (error) {
       const reason = error instanceof FolderBinRequestError ? error.reason : null
       toast.error(
-        reason === 'folder-name-taken'
+        reason === FOLDER_NAME_TAKEN_REASON
           ? t('bin.restoreNameTaken', { name: entry.name })
           : reason === 'folder-read-only'
             ? t('bin.restoreReadOnly')

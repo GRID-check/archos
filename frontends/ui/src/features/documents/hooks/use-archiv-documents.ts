@@ -13,7 +13,7 @@ interface UseArchivDocumentsOptions {
 }
 
 interface UseArchivDocumentsReturn {
-  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<void>
+  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<number>
   cancelUpload: () => void
   cancelFile: (fileId: string) => void
   dismissFiles: (fileIds: string[]) => void

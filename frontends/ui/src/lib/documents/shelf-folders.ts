@@ -670,15 +670,24 @@ export async function updateShelfFolder(
     return { ok: true, folder: toFolderRow(row) }
   }
 
-  const updated = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .update(projectFolders)
-      .set({ name, parentId: target.parentId, path, description: nextDescription, updatedAt: new Date() })
-      .where(folderOnShelf(shelf, organizationId, folder.id))
-      .returning()
-    await rewriteDescendantPaths(tx, shelf, organizationId, folder.path, path)
-    return row
-  })
+  let updated: FolderRecord
+  try {
+    updated = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(projectFolders)
+        .set({ name, parentId: target.parentId, path, description: nextDescription, updatedAt: new Date() })
+        .where(folderOnShelf(shelf, organizationId, folder.id))
+        .returning()
+      await rewriteDescendantPaths(tx, shelf, organizationId, folder.path, path)
+      return row
+    })
+  } catch (error) {
+    // A sibling already holds the name where the folder would land: renamed to
+    // it, or dragged next to it. The insert says so in words; so does this,
+    // instead of a 500 that read as „could not move" with no reason.
+    if (isUniqueViolation(error)) return { ok: false, error: FOLDER_NAME_TAKEN }
+    throw error
+  }
   publishShelfChanged(organizationId, shelf, { folders: true })
 
   await mirrorShelfFolderPathRewrite(shelf, organizationId, folder.path, path)

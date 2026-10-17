@@ -253,6 +253,26 @@ describe('FileBrowserPane — folder drill-down', () => {
     expect(screen.getByText('permit.pdf')).toBeInTheDocument()
   })
 
+  it('lifts no document out of a level the reader may only read; the server would refuse the move', () => {
+    const readOnly = folders.map((folder) => (folder.id === 'root-2' ? { ...folder, access: 'read' as const } : folder))
+    // The tile around each card is what lifts; folder tiles are not counted.
+    const liftingCards = (container: HTMLElement) =>
+      screen.getAllByTestId('file-card').filter((card) => card.closest('[draggable="true"]') && container.contains(card))
+
+    const readOnlyLevel = renderPane({
+      folderNav: { ...folderNav('root-2'), folders: readOnly },
+      onDropDocumentInFolder: vi.fn(),
+    })
+    expect(liftingCards(readOnlyLevel.container)).toHaveLength(0)
+    readOnlyLevel.unmount()
+
+    const writableLevel = renderPane({
+      folderNav: { ...folderNav('root-1'), folders: readOnly },
+      onDropDocumentInFolder: vi.fn(),
+    })
+    expect(liftingCards(writableLevel.container)).toHaveLength(files.length)
+  })
+
   it('renders no folder navigation without folderNav', () => {
     renderPane()
     expect(screen.queryByRole('navigation', { name: 'Folder path' })).not.toBeInTheDocument()

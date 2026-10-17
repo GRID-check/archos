@@ -198,7 +198,8 @@ export interface UploadFilesOptions {
 }
 
 interface UseFileUploadReturn {
-  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<void>
+  /** Resolves with how many files the server took; the rest say why on their own. */
+  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<number>
   cancelUpload: () => void
   /** Abort one in-flight file, leaving the rest of the batch running. */
   cancelFile: (fileId: string) => void
@@ -346,8 +347,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
   )
 
   const uploadFiles = useCallback(
-    async (files: File[], options?: UploadFilesOptions) => {
-      if (files.length === 0) return
+    async (files: File[], options?: UploadFilesOptions): Promise<number> => {
+      if (files.length === 0) return 0
 
       // See `UploadFilesOptions.collectionOverride`.
       const targetCollection = options?.collectionOverride ?? collectionName
@@ -355,7 +356,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         const uploadError = new Error('Collection name required for upload')
         setError(uploadError.message)
         onError?.(uploadError)
-        return
+        return 0
       }
 
       const validationResult = validateFileUpload(files, validationContext, fileUploadConfig, locale)
@@ -380,12 +381,12 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
 
       if (validationResult.batchErrors.length > 0) {
         setError(localizedSummary)
-        return
+        return 0
       }
 
       if (validationResult.validFiles.length === 0) {
         setError(imageVlmBlocked ? imageVlmMessage : localizedSummary)
-        return
+        return 0
       }
 
       /*
@@ -403,7 +404,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         policy = options?.screeningPolicy ?? (await loadUploadScreeningPolicy())
       } catch {
         setError(t('errors.screeningPolicyUnavailable'))
-        return
+        return 0
       }
       const screenedOut: Array<{ file: File; matches: NameMatch[] }> = []
       const validFiles = validationResult.validFiles.filter((file) => {
@@ -419,7 +420,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       const screenedMessage = describeScreenedOut(screenedOut, t)
       if (validFiles.length === 0) {
         setError(screenedMessage ?? localizedSummary)
-        return
+        return 0
       }
       setUploading(true)
 
@@ -480,6 +481,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       // the user dropped is accounted for from the first frame.
       for (const entry of entries) addTrackedFile(entry.tracked)
 
+      let taken = 0
       try {
         await ensureCollectionExists(targetCollection)
 
@@ -639,6 +641,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           })
         }
 
+        taken = results.filter((result) => result.status === 'fulfilled').length
         const firstFailure = results.find((result) => result.status === 'rejected')
         if (firstFailure && firstFailure.status === 'rejected') {
           const failedCount = results.filter((result) => result.status === 'rejected').length
@@ -656,7 +659,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             const storeFile = useDocumentsStore.getState().trackedFiles.find((f) => f.id === tracked.id)
             if (storeFile?.status === 'uploading') updateTrackedFile(tracked.id, { status: 'canceled' })
           }
-          return
+          return taken
         }
         const message = failureMessage(err, failureCopy)
         setError(message)
@@ -710,6 +713,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         }
         setUploading(false)
       }
+      return taken
     },
     [
       collectionName,
@@ -874,7 +878,10 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           fassungOf: (each) => intentOf(each)?.fassungOf,
         }
         try {
-          if (shelf !== 'session') return await uploadFiles(files, retryOptions)
+          if (shelf !== 'session') {
+            await uploadFiles(files, retryOptions)
+            return
+          }
           for (const each of files) await uploadFiles([each], retryOptions)
         } finally {
           for (const each of files) intents.delete(each)

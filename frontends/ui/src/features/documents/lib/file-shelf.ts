@@ -20,7 +20,7 @@ import type { TrackedFile } from '../types'
 
 /** What the shared workspace needs from whichever upload hook a shelf uses. */
 export interface ShelfUploadApi {
-  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<void>
+  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<number>
   isUploading: boolean
   trackedFiles: TrackedFile[]
   error: string | null
