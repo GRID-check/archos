@@ -73,7 +73,7 @@ Routes:
 | Route | Methods |
 |---|---|
 | `/api/documents/[id]/annotations` | GET, POST |
-| `/[annotationId]` | PATCH, DELETE |
+| `/[annotationId]` | GET (one mark as the caller sees it: what a room hint names), PATCH, DELETE |
 | `/[annotationId]/replies` | POST |
 | `/api/documents/[id]/thread` | POST: the caller's own thread about the document (below) |
 
