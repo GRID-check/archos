@@ -381,7 +381,7 @@ export const files: typeof en.files = {
     // Der Grund ist nicht gespeichert oder nicht lesbar: nichts behaupten, was
     // die Zeile darüber nicht belegt.
     quarantinedUnreadable:
-      'Die Inhaltsprüfung hat diese Datei zurückgehalten. Der Grund ist nicht gespeichert oder nicht lesbar. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
+      'Die Inhaltsprüfung hat diese Datei zurückgehalten. Der Grund ist nicht gespeichert oder nicht lesbar. Solange sie zurückgehalten ist, zeigt Piloti sie keinem Modell. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
     // Die Prüfregeln des Büros ließen sich nicht anwenden: die Datei wurde gar
     // nicht gelesen und wartet wie eine zurückgehaltene (ADR-0086).
     screening_unavailable:
