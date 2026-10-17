@@ -1,8 +1,8 @@
 ---
 features:
   - >
-    Each project can now have its own email address, under Documents & index
-    in the project settings, once it is switched on for your organization. Send
+    Each project can now have its own email address, shown in the project
+    settings once it is switched on for your organization. Send
     attachments to it and Piloti files them in a folder for that mail, lists
     anything it skipped in your inbox, and does not store the mail text.
   - >
