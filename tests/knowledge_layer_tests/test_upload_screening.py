@@ -17,6 +17,8 @@ from knowledge_layer.llamaindex.screening import ScreeningVerdict
 from knowledge_layer.llamaindex.screening import quarantine_error
 from knowledge_layer.llamaindex.screening import screen_pages
 
+from aiq_agent.common.content_screen import screening_config_unusable
+
 _IBAN_AT = "AT61 1904 3002 3457 3201"
 _IBAN_AT_COMPACT = "AT611904300234573201"
 _IBAN_DE = "DE89 3704 0044 0532 0130 00"
@@ -55,6 +57,19 @@ class TestFromConfig:
     def test_a_malformed_config_is_no_rules_and_a_warning(self, raw, caplog):
         assert ScreeningRules.from_config(raw) is None
         assert "Ignoring" in caplog.text
+
+    @pytest.mark.parametrize("raw", [None, {}, {"content_terms": [], "detectors": []}, {"detectors": None}])
+    def test_absent_or_empty_is_not_unusable(self, raw):
+        assert not screening_config_unusable(raw)
+
+    @pytest.mark.parametrize(
+        "raw", ["Gehalt", ["Gehalt"], {"content_terms": "Gehalt"}, {"content_terms": [1]}, {"detectors": ["passport"]}]
+    )
+    def test_present_but_inapplicable_is_unusable(self, raw):
+        assert screening_config_unusable(raw)
+
+    def test_a_policy_with_one_rule_this_build_knows_is_usable(self):
+        assert not screening_config_unusable({"detectors": ["iban", "passport"]})
 
     def test_terms_are_kept_as_written_and_detectors_in_report_order(self):
         rules = ScreeningRules.from_config(

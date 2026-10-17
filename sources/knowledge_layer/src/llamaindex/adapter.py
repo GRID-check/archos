@@ -580,6 +580,12 @@ FASSUNG_TIMEOUT_SECONDS = 45
 # summary reconciliation, which backfills a row for every successful file,
 # never writes one for a document that no longer exists.
 DOCUMENT_DELETED_DURING_INGEST = "document_deleted: the document was deleted while it was being ingested"
+#: The job carries the office's screening policy but it cannot be applied
+#: (``content_screen.screening_config_unusable``): the file is not read at all,
+#: so nothing of it reaches a model unchecked (ADR-0086, fail closed).
+SCREENING_UNAVAILABLE = (
+    "screening_unavailable: the screening policy in this job could not be applied; nothing of the file was read"
+)
 
 
 class _ClaimLost(Exception):  # noqa: N818 - a signal, not an error
@@ -4710,7 +4716,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             from knowledge_layer.llamaindex.screening import ScreeningRules
             from knowledge_layer.llamaindex.screening import document_pages
 
+            from aiq_agent.common.content_screen import screening_config_unusable
+
             screening_rules = ScreeningRules.from_config(config.get("screening"))
+            screening_unusable = screening_config_unusable(config.get("screening"))
 
             # Process each file, each under its own replacement lock (see
             # _find_previous_versions), released when the file is done.
@@ -4723,6 +4732,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 if self._deleted_while_indexing(config, collection_name):
                     self._update_file_status(job, i, FileStatus.FAILED, error=DOCUMENT_DELETED_DURING_INGEST)
                     logger.info("Skipped file %d of job %s: its document was deleted before it was read", i + 1, job_id)
+                    continue
+                if screening_unusable:
+                    self._update_file_status(job, i, FileStatus.FAILED, error=SCREENING_UNAVAILABLE)
+                    logger.warning("Held file %d of job %s: its screening policy could not be applied", i + 1, job_id)
                     continue
                 # The original first, and nothing else for it when that fails:
                 # its rendition is no use without the identity it carries.

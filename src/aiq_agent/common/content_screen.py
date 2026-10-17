@@ -429,6 +429,21 @@ class ScreeningRules:
 DETECTORS_ONLY: ScreeningRules = ScreeningRules(detectors=DETECTORS)
 
 
+def screening_config_unusable(raw: object) -> bool:
+    """Whether a job carries a screening policy that cannot be applied: malformed, or no rule this build knows.
+
+    :meth:`ScreeningRules.from_config` reads both as "not screened", which is
+    right for a chat message's fallback but wrong for an upload: the office
+    asked for its files to be checked, and a file read without the check would
+    reach a model. The ingest job fails such a file instead
+    (``screening_unavailable``), so it is held, not read. Absent or empty is not
+    unusable: that job is simply not screened (the OIB corpus sync).
+    """
+    if raw is None or (isinstance(raw, Mapping) and not raw.get("content_terms") and not raw.get("detectors")):
+        return False
+    return not is_screening_config(raw) or ScreeningRules.from_config(raw) is None
+
+
 def is_screening_config(raw: object) -> bool:
     """Whether ``raw`` has the ``{content_terms?, detectors?}`` shape: a mapping of string lists."""
     if not isinstance(raw, Mapping):

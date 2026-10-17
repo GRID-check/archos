@@ -394,6 +394,10 @@ export const files = {
     // The reason is not stored or cannot be read: claim nothing the line above does not show.
     quarantinedUnreadable:
       'The content check held this file back. Its reason is not stored or cannot be read. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // The office's screening rules could not be applied: the file was not read at
+    // all and waits like a held one (ADR-0086).
+    screening_unavailable:
+      "The check for sensitive data couldn't run, so Piloti didn't read this file or show it to any model. Read it again, or an office or project admin decides whether it stays.",
     unknown: "Piloti couldn't read this document, so search can't find it.",
     details: 'Details',
   },
