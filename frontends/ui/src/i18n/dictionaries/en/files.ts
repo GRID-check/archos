@@ -1783,6 +1783,8 @@ export const files = {
         fassungen: {
           current: 'current revision',
           all: 'all revisions',
+          // Closed ones too, of the current revision only: what is still open from earlier ones is in it anyway.
+          currentWithOpenFromEarlier: 'current revision, plus what is still open from earlier ones',
         },
         withProposals: 'with Piloti’s proposals',
         exportedAt: 'Exported on',

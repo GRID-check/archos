@@ -1736,6 +1736,8 @@ export const files: typeof en.files = {
         fassungen: {
           current: 'aktuelle Fassung',
           all: 'alle Fassungen',
+          // Auch Erledigtes, aber nur der aktuellen Fassung: was aus früheren noch offen ist, steht trotzdem drin.
+          currentWithOpenFromEarlier: 'aktuelle Fassung, dazu Offenes aus früheren Fassungen',
         },
         withProposals: 'mit Vorschlägen von Piloti',
         exportedAt: 'Exportiert am',

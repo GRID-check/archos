@@ -680,7 +680,22 @@ client or a consultant. „Protokoll exportieren" in the Prüfansicht's header
 `GET /api/documents/[id]/annotations/export?format=pdf|docx|md&scope=open|all&fassung=current|all&includeProposals=1`
 (`frontends/ui/src/lib/annotations/export.ts`; the query and the link in
 `export-request.ts`, shared by the route and the menu). The defaults are a PDF
-of the open marks on the current Fassung.
+of the open marks.
+
+**The Fassung narrows the record, never the work** (`selectMarks`). A mark
+still open is in every Protokoll whichever Fassung it was set on, and its entry
+names that Fassung: Index C arriving the day before the Jour fixe does not
+answer the marks on Index B, and a default that dropped them would drop exactly
+the points the meeting is for. `fassung=current` leaves out what was CLOSED on
+earlier Fassungen; `fassung=all` takes that in too. So the menu offers the
+Fassung only under „Auch erledigte“: with „Nur offene“ it would change
+nothing. This was chosen over defaulting the menu to „Alle Fassungen“ whenever
+an earlier Fassung has a live mark because it holds on every path (the bare
+link, a copied link, any other client of the route) rather than only in the
+menu, and it does not pull an earlier Fassung's closed marks into a Protokoll
+nobody asked them for. The cover says what is in it: „aktuelle Fassung“ only
+while nothing from an earlier one came along, else „alle Fassungen“ (open
+only) or „aktuelle Fassung, dazu Offenes aus früheren Fassungen“.
 
 **Who may have it.** Whoever may list the marks: the service reads the document
 with `getAccessibleDocument(…, 'read')` and the marks through `listAnnotations`,
