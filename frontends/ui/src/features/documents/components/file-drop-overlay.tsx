@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Ban, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isExternalFileDrag } from '../hooks/use-document-drag'
@@ -43,6 +43,14 @@ interface FileDropOverlayProps {
   unsupportedLabel: string
   /** The surface cannot take files right now, and why (`useFileDragDrop`'s `refusal`). Wins over both labels. */
   refusal?: string | null
+  /** A quieter line under the label: where the files go, or what is accepted. Not shown with a refusal. */
+  hint?: ReactNode
+  /**
+   * The surface is taller than the viewport (a page that scrolls): the label is
+   * kept in view instead of centred on the whole surface, where it sat below
+   * the fold and the reader saw a dashed edge with nothing in it.
+   */
+  followScroll?: boolean
   testId: string
 }
 
@@ -52,7 +60,15 @@ interface FileDropOverlayProps {
  * in the test id), so it lives here once. Callers gate rendering on their own
  * drag + permission state.
  */
-export function FileDropOverlay({ isUnsupported, uploadLabel, unsupportedLabel, refusal, testId }: FileDropOverlayProps) {
+export function FileDropOverlay({
+  isUnsupported,
+  uploadLabel,
+  unsupportedLabel,
+  refusal,
+  hint,
+  followScroll = false,
+  testId,
+}: FileDropOverlayProps) {
   const refused = Boolean(refusal)
   const negative = refused || isUnsupported
   const Icon = refused ? Ban : Upload
@@ -67,10 +83,18 @@ export function FileDropOverlay({ isUnsupported, uploadLabel, unsupportedLabel, 
       role="status"
       aria-live="polite"
     >
-      <Icon className={cn('size-6', negative ? 'text-destructive' : 'text-primary')} aria-hidden />
-      <p className={cn('text-sm font-medium', negative ? 'text-destructive' : 'text-primary')}>
-        {refusal ?? (isUnsupported ? unsupportedLabel : uploadLabel)}
-      </p>
+      {/* Sticky against the scroll container, both edges: centred while the
+          surface's middle is on screen, held inside the viewport while it is not. */}
+      <div
+        className={cn('flex flex-col items-center gap-2 px-4', followScroll && 'sticky top-[30dvh] bottom-[30dvh]')}
+        data-follow-scroll={followScroll ? '' : undefined}
+      >
+        <Icon className={cn('size-6', negative ? 'text-destructive' : 'text-primary')} aria-hidden />
+        <p className={cn('text-sm font-medium', negative ? 'text-destructive' : 'text-primary')}>
+          {refusal ?? (isUnsupported ? unsupportedLabel : uploadLabel)}
+        </p>
+        {!refused && hint}
+      </div>
     </div>
   )
 }

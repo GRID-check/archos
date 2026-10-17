@@ -240,6 +240,11 @@ export const research: typeof en.research = {
     uploadNotAvailable: 'Datei-Upload nicht verfügbar',
     attachFiles: 'Dateien anhängen',
     uploadDisabledBusy: 'Datei-Upload während aktiver Vorgänge deaktiviert',
+    // Über dem Chat, solange eine gezogene Datei gerade nicht angehängt werden kann.
+    dropRefusedReadOnly: 'Sie können diesen Chat lesen, aber keine Dateien hinzufügen.',
+    dropRefusedAnswering: 'Piloti antwortet gerade. Dateien können Sie anhängen, sobald die Antwort fertig ist.',
+    dropRefusedQuestion: 'Beantworten Sie zuerst die Rückfrage von Piloti, dann können Sie Dateien anhängen.',
+    dropRefusedUploading: 'Warten Sie, bis der laufende Upload abgeschlossen ist.',
     selectFiles: 'Dateien zum Hochladen auswählen',
     sendResponse: 'Antwort senden',
     sendMessage: 'Nachricht senden',

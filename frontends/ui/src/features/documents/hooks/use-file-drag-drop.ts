@@ -34,6 +34,17 @@
  * `refusal` keeps the overlay up with the reason in it and the cursor at
  * „no drop", and the drop never fires.
  *
+ * ## A portal is not the zone
+ *
+ * React bubbles a synthetic event along the COMPONENT tree, and a Radix dialog,
+ * popover or sheet is portalled out of the DOM but stays inside the component
+ * that opened it. So a file let go over a dialog opened from a project page
+ * reached the project's zone behind it and was sent to Dateien, and one let go
+ * over a dialog opened from the chat was attached to the conversation. An
+ * event whose target is not inside the zone's own element is not a drag over
+ * the zone: {@link outsideTheZone} leaves it alone, and the window guard gives
+ * it „no drop" unless the dialog has a zone of its own.
+ *
  * ## The overlay ends when the drag does
  *
  * The counter only hears enters and leaves that reach this zone. A drag that
@@ -48,6 +59,18 @@ import { checkDraggedFilesSupported } from '../validation'
 import { isExternalFileDrag } from './use-document-drag'
 import { useDragEnd } from './use-drag-end'
 import { readDrop } from '../lib/dropped-entries'
+
+/**
+ * Whether the event reached this zone from outside its element: from a portal
+ * (a dialog, a popover) that a component inside the zone rendered. Nodes only,
+ * so an event without a DOM target is taken as the zone's own.
+ */
+export function outsideTheZone(e: Pick<React.DragEvent, 'currentTarget' | 'target'>): boolean {
+  const zone = e.currentTarget
+  const target = e.target
+  if (!(zone instanceof Node) || !(target instanceof Node)) return false
+  return !zone.contains(target)
+}
 
 /** What a drop could not hand over, for the caller to say. */
 export interface DropInfo {
@@ -117,7 +140,7 @@ export function useFileDragDrop({
     (e: React.DragEvent) => {
       // Not an upload (a document or a folder being moved inside the page), or
       // not a target: left alone entirely, so what is under or around it decides.
-      if (disabled || !isExternalFileDrag(e.dataTransfer)) return
+      if (disabled || !isExternalFileDrag(e.dataTransfer) || outsideTheZone(e)) return
       e.preventDefault()
       e.stopPropagation()
 
@@ -136,7 +159,7 @@ export function useFileDragDrop({
     (e: React.DragEvent) => {
       // Paired with the enter above: a leave this hook never counted must not be
       // subtracted, or the counter goes negative and the overlay never clears.
-      if (disabled || !isExternalFileDrag(e.dataTransfer)) return
+      if (disabled || !isExternalFileDrag(e.dataTransfer) || outsideTheZone(e)) return
       e.preventDefault()
       e.stopPropagation()
       dragCounterRef.current = Math.max(0, dragCounterRef.current - 1)
@@ -154,7 +177,7 @@ export function useFileDragDrop({
       // `preventDefault` itself. Doing it here as well would make the whole
       // workspace a valid drop target for a move, so a document released between
       // two folder tiles would read as accepted and do nothing.
-      if (disabled || !isExternalFileDrag(e.dataTransfer)) return
+      if (disabled || !isExternalFileDrag(e.dataTransfer) || outsideTheZone(e)) return
       e.preventDefault()
       e.stopPropagation()
       // The cursor states the outcome: a copy onto the shelf, or no drop at all.
@@ -169,7 +192,7 @@ export function useFileDragDrop({
       // missed its folder is not this surface's to accept: the document stays
       // where it is, and `useWindowDragGuard` is what stops the browser doing
       // anything with the release.
-      if (disabled || !isExternalFileDrag(e.dataTransfer)) return
+      if (disabled || !isExternalFileDrag(e.dataTransfer) || outsideTheZone(e)) return
 
       e.preventDefault()
       e.stopPropagation()

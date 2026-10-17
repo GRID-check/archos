@@ -23,6 +23,23 @@ vi.mock('sonner', () => ({
 }))
 
 // The in-app PDF viewer pulls in an iframe/dialog we don't exercise here.
+// The dropzone is `useFileDragDrop`'s, which reads the app's upload config.
+vi.mock('@/shared/context', () => ({
+  useAppConfig: () => ({
+    fileUpload: {
+      acceptedTypes: '.pdf,.zip',
+      acceptedMimeTypes: ['application/pdf', 'application/zip'],
+      maxTotalSizeMB: 100,
+      maxFileSize: 100 * 1024 * 1024,
+      maxTotalSize: 100 * 1024 * 1024,
+      maxFileCount: 10,
+    },
+  }),
+}))
+
+/** A drag from the desktop: `Files` in `types` is what marks it as an upload. */
+const fromDesktop = (files: File[]) => ({ dataTransfer: { types: ['Files'], files, items: [] } })
+
 vi.mock('@/features/knowledge/components/pdf-viewer-dialog', () => ({
   PdfViewerDialog: () => <div data-testid="pdf-viewer" />,
 }))
@@ -398,7 +415,7 @@ describe('BaseKnowledge', () => {
     await user.click(screen.getByRole('button', { name: /Add documents/ }))
 
     const pdf = new File(['%PDF-1.4'], 'dropped.pdf', { type: 'application/pdf' })
-    fireEvent.drop(screen.getByTestId('knowledge-dropzone'), { dataTransfer: { files: [pdf] } })
+    fireEvent.drop(screen.getByTestId('knowledge-dropzone'), fromDesktop([pdf]))
 
     await waitFor(() => {
       expect(
@@ -926,6 +943,40 @@ describe('BaseKnowledge', () => {
     expect(zone).toHaveAttribute('type', 'button')
   })
 
+  test('every PDF and ZIP in a drop is added, one after another, and the rest is named', async () => {
+    const posted: string[] = []
+    let answer: (() => void) | null = null
+    const fetchSpy = vi.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/platform/knowledge/documents' && init?.method === 'POST') {
+        const file = (init.body as FormData).get('file') as File
+        posted.push(file.name)
+        return new Promise<Response>((resolve) => {
+          answer = () =>
+            resolve(jsonResponse({ status: 'pending', kind: 'file', fileName: file.name, members: null }))
+        })
+      }
+      return Promise.resolve(jsonResponse(STATUS))
+    })
+    vi.stubGlobal('fetch', fetchSpy as unknown as typeof fetch)
+    const user = userEvent.setup()
+
+    render(<BaseKnowledge />)
+    await screen.findByText('oib-richtlinie-2.pdf')
+    await user.click(screen.getByRole('button', { name: /Add documents/ }))
+
+    const files = [
+      new File(['%PDF-1.4'], 'a.pdf', { type: 'application/pdf' }),
+      new File(['x'], 'notes.txt', { type: 'text/plain' }),
+      new File(['PK'], 'b.zip', { type: 'application/zip' }),
+    ]
+    fireEvent.drop(screen.getByTestId('knowledge-dropzone'), fromDesktop(files))
+
+    await waitFor(() => expect(posted).toEqual(['a.pdf']))
+    expect(toast.warning).toHaveBeenCalledWith('1 file was left out: only PDF and ZIP files are added.')
+    answer!()
+    await waitFor(() => expect(posted).toEqual(['a.pdf', 'b.zip']))
+  })
+
   test('a drop while an upload is running is refused with a reason, not ignored', async () => {
     const fetchSpy = vi.fn((url: string, init?: RequestInit) => {
       if (url === '/api/platform/knowledge/documents' && init?.method === 'POST')
@@ -941,13 +992,16 @@ describe('BaseKnowledge', () => {
 
     const first = new File(['%PDF-1.4'], 'first.pdf', { type: 'application/pdf' })
     const second = new File(['%PDF-1.4'], 'second.pdf', { type: 'application/pdf' })
-    fireEvent.drop(screen.getByTestId('knowledge-dropzone'), { dataTransfer: { files: [first] } })
+    fireEvent.drop(screen.getByTestId('knowledge-dropzone'), fromDesktop([first]))
     await waitFor(() =>
       expect(requestsTo(fetchSpy, '/api/platform/knowledge/documents', 'POST')).toHaveLength(1)
     )
 
-    fireEvent.drop(screen.getByTestId('knowledge-dropzone'), { dataTransfer: { files: [second] } })
-    expect(toast.info).toHaveBeenCalledWith('Wait for the current upload or sync to finish.')
+    // Said while the file is over the zone, where the reader is looking.
+    fireEvent.dragEnter(screen.getByTestId('knowledge-dropzone'), fromDesktop([second]))
+    expect(screen.getByTestId('knowledge-dropzone')).toHaveTextContent('Wait for the current upload or sync to finish.')
+    fireEvent.drop(screen.getByTestId('knowledge-dropzone'), fromDesktop([second]))
+    await new Promise((resolve) => setTimeout(resolve, 0))
     expect(requestsTo(fetchSpy, '/api/platform/knowledge/documents', 'POST')).toHaveLength(1)
   })
 

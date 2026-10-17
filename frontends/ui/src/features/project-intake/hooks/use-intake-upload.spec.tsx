@@ -53,6 +53,13 @@ describe('useIntakeUpload', () => {
     result.current.send([])
     expect(handleUpload).not.toHaveBeenCalled()
     result.current.send([file])
-    expect(handleUpload).toHaveBeenCalledWith([file])
+    expect(handleUpload).toHaveBeenCalledWith([file], { info: undefined })
+  })
+
+  it('passes on what a drop could not read, even when it read nothing, so the reader is told', () => {
+    const { result } = renderHook(() => useIntakeUpload({ ...options, takeNewProjectDrop: false }))
+    const info = { truncated: false, unreadable: 2 }
+    result.current.send([], info)
+    expect(handleUpload).toHaveBeenCalledWith([], { info })
   })
 })

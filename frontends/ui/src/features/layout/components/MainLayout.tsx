@@ -24,6 +24,7 @@ import { SessionsPanel } from './SessionsPanel'
 import { ChatArea } from './ChatArea'
 import { ComposerScrim } from './ComposerScrim'
 import { InputArea } from './InputArea'
+import { ChatDropZone } from './chat-drop-zone'
 import { RightsLostPanel } from './RightsLostPanel'
 import { useChatStore, NoSourcesBanner } from '@/features/chat'
 import { useSessionUrl } from '@/hooks/use-session-url'
@@ -177,9 +178,11 @@ export const MainLayout: FC<MainLayoutProps> = ({
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
       {/* Main Content Area - using explicit widths instead of flex for smoother animation */}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        {/* Center Content: Chat + Input - Responsive to research panel */}
-        <div
-          className="relative flex min-w-0 flex-col overflow-hidden"
+        {/* Center Content: Chat + Input - Responsive to research panel. The
+            whole column is the drop target for attachments, toolbar and
+            transcript included, not only the composer card (`ChatDropZone`). */}
+        <ChatDropZone
+          className="flex min-w-0 flex-col overflow-hidden"
           style={{
             // Research shares the row 50/50, and this column yields half.
             //
@@ -303,7 +306,7 @@ export const MainLayout: FC<MainLayoutProps> = ({
               </motion.div>
             </>
           )}
-        </div>
+        </ChatDropZone>
       </div>
 
       {/* Overlay Panels - These slide over the content */}

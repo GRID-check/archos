@@ -22,6 +22,7 @@ import { useFolderTree } from '@/features/documents/hooks/use-folder-tree'
 import { useProjectDocuments } from '@/features/documents/hooks/use-project-documents'
 import { useShelfUpload } from '@/features/documents/hooks/use-shelf-upload'
 import { NEW_PROJECT_DROP_KEY, takeDroppedFiles } from '@/features/documents/lib/dropped-file-handover'
+import type { DropInfo } from '@/features/documents/hooks/use-file-drag-drop'
 import { projectEndpoints } from '@/features/documents/lib/file-shelf'
 import { createDocumentNameProbeClient } from '@/lib/documents/name-probe-client'
 
@@ -71,9 +72,10 @@ export function useIntakeUpload({ projectId, collectionName, takeNewProjectDrop,
     if (dropped.length > 0) handleUpload(dropped)
   }, [takeNewProjectDrop, foldersReady, handleUpload])
 
+  // What a drop could not read is told, as Dateien tells it (`handleUpload`).
   const send = useCallback(
-    (files: File[]) => {
-      if (files.length > 0) handleUpload(files)
+    (files: File[], info?: DropInfo) => {
+      if (files.length > 0 || info) handleUpload(files, { info })
     },
     [handleUpload]
   )
