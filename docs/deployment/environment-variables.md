@@ -635,11 +635,19 @@ Tune the per-project FGA authorization path (`lib/authz/projects.ts`), the WorkO
 
 ## Landing Site (web tier, Kubernetes/Pulumi-injected)
 
-The Astro landing service (`frontends/web`) carries no secrets; its
-deployment knobs are where sign-in hands off and whether PostHog web analytics
-loads (ADR-0100). One image serves every stack —
-the app host is resolved at request time, never baked into the prerendered
-HTML (a baked host is how prod once linked at the dev app).
+The Astro landing service (`frontends/web`) holds no app secrets. Its
+deployment knobs are where sign-in hands off, whether PostHog web analytics
+loads (ADR-0100), and the contact form's five variables. One image serves every
+stack — the app host is resolved at request time, never baked into the
+prerendered HTML (a baked host is how prod once linked at the dev app).
+
+On Kubernetes, Pulumi sets the five contact variables only when
+`grid-oib:contactAddress` is set (`deploy/pulumi/src/app/web.ts`):
+`CONTACT_FROM` from that key, `CONTACT_FORWARD_TO` from `contactForwardTo`,
+`CLOUDFLARE_ACCOUNT_ID` from the app zone's account, and the two secrets from
+`contactEmailToken` and `contactFormSecret` through the web tier's own Secret
+`web-contact`, never `grid-secrets`. Setup: `docs/deployment/kubernetes.md`
+§3d.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -647,3 +655,8 @@ HTML (a baked host is how prod once linked at the dev app).
 | `PUBLIC_SITE_URL` | No | `https://piloti.at` | Canonical site URL for OG/sitemap metadata, baked at build time (`astro.config.mjs`). Prod default on purpose: dev canonicalizing to prod is harmless — dev should not be indexed anyway. |
 | `PUBLIC_POSTHOG_HOST` | No | _(unset)_ | PostHog ingestion host (e.g. `https://eu.i.posthog.com`) for the landing site's web analytics. Read at request time by `/web-analytics.js`, never baked into the prerendered pages. Unset (or unset token): the script is empty and the browser contacts nobody. On Kubernetes, `grid-oib:posthogHost`. Web service. |
 | `PUBLIC_POSTHOG_PROJECT_TOKEN` | No | _(unset)_ | Public project token (`phc_…`), plain config. Same runtime read and fail-open behaviour as `PUBLIC_POSTHOG_HOST`. On Kubernetes, `grid-oib:posthogProjectToken`. Web service. |
+| `CONTACT_FORM_SECRET` | For the contact form | (unset — form answers 503) | **Secret.** HMAC key for the contact form's signed timestamp (`src/lib/contact.ts`): the form is refused under 3 s or over 24 h after it was handed out, or with a bad signature. Also keys the in-memory rate-limit map, so it never holds a raw IP. Any random string of 32+ bytes (`openssl rand -base64 32`); rotating it only invalidates forms open at that moment. Read at request time. Unset, or any of the three below unset, and `POST /api/kontakt` and `/kontakt/` answer 503 and show `kontakt@piloti.at` instead; the site still renders. |
+| `CLOUDFLARE_ACCOUNT_ID` | For the contact form | (unset — form answers 503) | Cloudflare account that sends the form's mail: `POST https://api.cloudflare.com/client/v4/accounts/{id}/email/sending/send`. The account's `piloti.at` zone must be onboarded for Email Sending (Cloudflare DNS required). |
+| `CLOUDFLARE_EMAIL_TOKEN` | For the contact form | (unset — form answers 503) | **Secret.** Cloudflare API token with permission to send email for that account (Bearer). Scope it to Email Sending only; it is not the Pulumi or DNS token. |
+| `CONTACT_FORWARD_TO` | For the contact form | (unset — form answers 503) | Comma-separated recipients of the form's mail: the founders' mailboxes. Each must be a **verified destination address** in the Cloudflare account (Email Routing), which is what keeps the send free on every plan; an unverified one needs Workers Paid. Invalid entries are dropped; none left counts as unset. |
+| `CONTACT_FROM` | No | `kontakt@piloti.at` | Sender of the form's mail (shown as "Piloti Kontaktformular"). Must be on a domain onboarded for Email Sending. The submitter's address goes into `reply_to`, so a founder's reply goes straight to them. |

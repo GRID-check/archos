@@ -20,6 +20,7 @@ bun run dev        # http://localhost:4321
 | `PUBLIC_SITE_URL` | `https://piloti.at` | Canonical site URL for OG/sitemap metadata (public). Baked at build. Prod default is deliberate: dev canonicalizing to prod is harmless — dev should not be indexed anyway. |
 | `PUBLIC_POSTHOG_HOST` / `PUBLIC_POSTHOG_PROJECT_TOKEN` | _(unset)_ | PostHog web analytics (page views, referrer and UTM, web vitals, heatmaps; no replay, no person profiles). Read at **runtime** by the `/web-analytics.js` route that every page loads; with either unset the route answers an empty script and the browser contacts nobody. Injected from `grid-oib:posthogHost` / `posthogProjectToken` by the Kubernetes deployment. The privacy policy in `src/i18n/ui.ts` describes exactly what this sends: change them together. |
 | `HOST` / `PORT`   | `0.0.0.0` / `4321`   | Node adapter listen address (runtime)              |
+| `CONTACT_FORM_SECRET`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_EMAIL_TOKEN`, `CONTACT_FORWARD_TO`, `CONTACT_FROM` | unset | The contact form (`src/lib/contact.ts`), read at **runtime**. Unset, the form answers 503 and shows `kontakt@piloti.at`; the site still builds and renders. What each needs: [`docs/deployment/environment-variables.md`](../../docs/deployment/environment-variables.md#landing-site-web-tier-kubernetespulumi-injected). | <!-- pragma: allowlist secret -->
 
 Only `PUBLIC_SITE_URL` is read at **build time** (it ends up in the prerendered
 HTML); the Docker build accepts it as a build arg (see `Dockerfile`).

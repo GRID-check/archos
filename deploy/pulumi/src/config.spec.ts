@@ -2,7 +2,12 @@ import { describe, it, expect } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { loadConfig } from "./config";
 import { baseStackConfig } from "./test-support/stack-config";
-import { APP_ZONE, APP_ZONE_ID, appZoneStackConfig } from "./test-support/app-zone-config";
+import {
+  appZoneStackConfig,
+  CONTACT_ZONE,
+  CONTACT_ZONE_ID,
+  contactStackConfig,
+} from "./test-support/contact-config";
 
 // `new pulumi.Config()` (config.ts:873) namespaces every key by the PROJECT
 // name, which the runtime reads from the mock context. Without this the keys
@@ -345,8 +350,8 @@ describe("project mail inbox", () => {
       loadWith({
         ...appZoneStackConfig(),
         ...mail,
-        "grid-oib:inboundMailDomain": APP_ZONE,
-        "grid-oib:inboundMailZoneId": APP_ZONE_ID,
+        "grid-oib:inboundMailDomain": CONTACT_ZONE,
+        "grid-oib:inboundMailZoneId": CONTACT_ZONE_ID,
       }),
     ).toBeNull();
   });
@@ -354,11 +359,11 @@ describe("project mail inbox", () => {
   it("takes the app zone when the domain is its apex and no zone is given", () => {
     const values = {
       ...appZoneStackConfig(),
-      "grid-oib:inboundMailDomain": APP_ZONE,
+      "grid-oib:inboundMailDomain": CONTACT_ZONE,
       "grid-oib:inboundMailToken": mail["grid-oib:inboundMailToken"],
     };
     expect(loadWith(values)).toBeNull();
-    expect(loadValues(values).inboundMail.zoneId).toBe(APP_ZONE_ID);
+    expect(loadValues(values).inboundMail.zoneId).toBe(CONTACT_ZONE_ID);
   });
 
   it.each([
@@ -370,13 +375,128 @@ describe("project mail inbox", () => {
     const error = loadWith({
       ...appZoneStackConfig(),
       ...mail,
-      "grid-oib:inboundMailDomain": APP_ZONE,
-      "grid-oib:inboundMailZoneId": APP_ZONE_ID,
+      "grid-oib:inboundMailDomain": CONTACT_ZONE,
+      "grid-oib:inboundMailZoneId": CONTACT_ZONE_ID,
       // The apex-serving stack must itself be the baseline; serve a subdomain
       // so that the only refusal left is the inbox's.
-      "grid-oib:baseDomain": `www2.${APP_ZONE}`,
+      "grid-oib:baseDomain": `www2.${CONTACT_ZONE}`,
       [key]: value,
     });
     expect(error?.message).toMatch(/inboundMailDomain on the app zone needs grid-oib:dnsEnabled/);
+  });
+});
+
+describe("contact address and form", () => {
+  const contact = contactStackConfig();
+
+  function resolved(values: Record<string, string>) {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...values });
+    return loadConfig().contact;
+  }
+
+  it("is off, and asks for nothing, while the address is unset", () => {
+    expect(loadWith({})).toBeNull();
+    expect(resolved({}).enabled).toBe(false);
+  });
+
+  it("loads with the address, its targets and both web secrets", () => {
+    expect(loadWith(contact)).toBeNull();
+    const c = resolved(contact);
+    expect(c.enabled).toBe(true);
+    expect(c.address).toBe("kontakt@example.test");
+    expect(c.zoneId).toBe(CONTACT_ZONE_ID);
+    expect(c.domain).toBe("example.test");
+  });
+
+  it("reads the targets as a comma-separated list, trimmed, lowercased and deduplicated", () => {
+    const c = resolved({
+      ...contact,
+      "grid-oib:contactForwardTo":
+        " Mail@Founder-One.example,,mail@founder-two.example, mail@founder-one.example ",
+    });
+    expect(c.forwardTo).toEqual(["mail@founder-one.example", "mail@founder-two.example"]);
+  });
+
+  it.each(["grid-oib:contactEmailToken", "grid-oib:contactFormSecret"])(
+    "refuses the address without %s",
+    (key) => {
+      expect(loadWith(contact, [key])?.message).toContain(key);
+    },
+  );
+
+  it("counts an empty secret as missing", () => {
+    expect(loadWith({ ...contact, "grid-oib:contactFormSecret": " " })?.message).toContain(
+      "grid-oib:contactFormSecret",
+    );
+  });
+
+  it("refuses the address without forward targets", () => {
+    expect(loadWith(contact, ["grid-oib:contactForwardTo"])?.message).toMatch(
+      /contactForwardTo is required/,
+    );
+    expect(loadWith({ ...contact, "grid-oib:contactForwardTo": " , " })?.message).toMatch(
+      /contactForwardTo is required/,
+    );
+  });
+
+  it.each([
+    ["kontakt@piloti.example", "another domain"],
+    ["kontakt@eingang.example.test", "a subdomain of the zone"],
+    ["example.test", "no local part"],
+    ["a@b@example.test", "two @"],
+  ])("refuses %s (%s)", (address) => {
+    expect(loadWith({ ...contact, "grid-oib:contactAddress": address })?.message).toMatch(
+      /must be an address on the app zone's apex/,
+    );
+  });
+
+  it.each([
+    ["kontakt@example.test", "the contact address itself, a loop"],
+    ["office@example.test", "another address on the routed apex, with no mailbox behind it"],
+    ["not-an-address", "no domain"],
+  ])("refuses %s as a forward target (%s)", (target) => {
+    expect(
+      loadWith({
+        ...contact,
+        "grid-oib:contactForwardTo": `mail@founder-one.example,${target}`,
+      })?.message,
+    ).toMatch(/each target must be a mailbox outside/);
+  });
+
+  it.each([
+    ["grid-oib:dnsZoneBaseline", "false"],
+    ["grid-oib:dnsEnabled", "false"],
+  ])("refuses the address unless this stack owns the app zone (%s=%s)", (key, value) => {
+    // Routing on the apex is zone-level, like _dmarc: two stacks both enabling
+    // it on one zone would each think they own it. The baseline flag is the
+    // one-owner-per-zone switch `stack-files.spec.ts` already checks.
+    const values = { ...contact, [key]: value };
+    // The apex-serving stack must itself be the baseline; serve a subdomain
+    // so that the only refusal left is the contact one.
+    values["grid-oib:baseDomain"] = "www2.example.test";
+    expect(loadWith(values)?.message).toMatch(/contactAddress needs grid-oib:dnsEnabled/);
+  });
+
+  it("accepts the project mail inbox on the same zone, the production setup", () => {
+    // Cloudflare matches the contact rule before the inbox's catch-all, and
+    // `installMailZones` enables routing on the shared zone once.
+    expect(
+      loadWith({
+        ...contact,
+        "grid-oib:inboundMailDomain": "example.test",
+        "grid-oib:inboundMailToken": "inbound-token", // pragma: allowlist secret
+      }),
+    ).toBeNull();
+  });
+
+  it("accepts the project mail inbox on a zone of its own", () => {
+    expect(
+      loadWith({
+        ...contact,
+        "grid-oib:inboundMailDomain": "post.example.org",
+        "grid-oib:inboundMailZoneId": "zone-mail-1",
+        "grid-oib:inboundMailToken": "inbound-token", // pragma: allowlist secret
+      }),
+    ).toBeNull();
   });
 });

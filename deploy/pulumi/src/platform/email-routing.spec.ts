@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { assertNoForeignMx } from "./email-routing";
+import { assertNoForeignMx, assertSingleDmarc } from "./email-routing";
 
 /**
- * The apex MX guard the inbox's Email Routing runs before creating anything
+ * The apex MX guard both Email Routing modules run before creating anything
  * (`email-routing.ts`). The refusal is tested on the function: under Pulumi's
  * mocks a failed guard surfaces only as an unhandled rejection from resource
- * registration. `inbound-mail.spec.ts` shows that the lookup is made and that
- * the resources are created when it passes.
+ * registration. The module specs (`inbound-mail.spec.ts`,
+ * `contact-mail.spec.ts`) show that the lookup is made and that the resources
+ * are created when it passes.
  */
 
 const DOMAIN = "post.example.test";
@@ -58,6 +59,34 @@ describe("the apex MX guard", () => {
       guard([
         mx("route1.mx.cloudflare.net", `cf-bounce.${DOMAIN}`),
         mx("feedback-smtp.eu-central-1.amazonses.com", `send.${DOMAIN}`),
+      ]),
+    ).not.toThrow();
+  });
+});
+
+describe("the single-DMARC guard", () => {
+  const txt = (content: string, name = `_dmarc.${DOMAIN}`) => ({ name, content });
+  const dmarc = (records: Array<{ name: string; content: string }>) => () =>
+    assertSingleDmarc(DOMAIN, ZONE_ID, records);
+
+  it("refuses two DMARC records, which make receivers apply none", () => {
+    // Pulumi's `dnsDmarc` and the one Email Sending onboarding adds.
+    expect(
+      dmarc([txt("v=DMARC1; p=quarantine; adkim=r; aspf=r;"), txt('"v=DMARC1; p=reject;"')]),
+    ).toThrow(/holds 2 DMARC records.*p=quarantine.*p=reject/);
+  });
+
+  it("allows one DMARC record, or none", () => {
+    expect(dmarc([txt("v=DMARC1; p=reject;")])).not.toThrow();
+    expect(dmarc([])).not.toThrow();
+  });
+
+  it("counts only v=DMARC1 records at _dmarc.<domain>", () => {
+    expect(
+      dmarc([
+        txt("v=DMARC1; p=reject;"),
+        txt("some-verification-token"),
+        txt("v=DMARC1; p=none;", `_dmarc.sub.${DOMAIN}`),
       ]),
     ).not.toThrow();
   });

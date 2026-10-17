@@ -1,20 +1,20 @@
 export const SITE_NAME = 'Piloti'
 /**
- * Where every enquiry goes. Piloti has no mailbox of its own yet, so mail
- * reaches two founders directly. `CONTACT_EMAIL` is the one address shown in
- * running text; `mailtoHref` addresses both, so a demo request cannot land in
- * one inbox while its owner is away.
+ * Where every enquiry goes: the one address the site shows, in running text,
+ * the Impressum, the footer and every mailto. Cloudflare Email Routing forwards
+ * it to the founders' mailboxes, so a demo request cannot land in one inbox
+ * while its owner is away. The contact form sends from it (`CONTACT_FROM`
+ * defaults to it) to the same mailboxes.
  */
-export const CONTACT_EMAILS = ['mail@jonathanuhlemann.de', 'mail@bigls.net'] as const
-export const CONTACT_EMAIL = CONTACT_EMAILS[0]
+export const CONTACT_EMAIL = 'kontakt@piloti.at'
 
 /**
- * A `mailto:` to every contact address, with an optional subject line and a
+ * A `mailto:` to the contact address, with an optional subject line and a
  * prefilled body: the few lines an office needs to write, so nobody faces an
- * empty mail to two strangers.
+ * empty mail to strangers.
  */
 export function mailtoHref(subject?: string, body?: string) {
-  const to = CONTACT_EMAILS.join(',')
+  const to = CONTACT_EMAIL
   const query = [subject && `subject=${encodeURIComponent(subject)}`, body && `body=${encodeURIComponent(body)}`]
     .filter(Boolean)
     .join('&')

@@ -96,6 +96,30 @@ describe("committed stack files", () => {
       expect(files.length, `zone ${zoneId} is claimed by ${files.join(", ")}`).toBeLessThanOrEqual(1);
     }
   });
+
+  it("keep every project-mail zone apart from OTHER stacks' contact addresses", () => {
+    // The inbox may share its own stack's contact zone (the production setup:
+    // both on the product apex, one `installMailZones`). `loadConfig` cannot
+    // see a dev stack pointing its inbox at the zone where prod routes
+    // kontakt@: that stack would enable routing a second time and take the
+    // zone's catch-all over.
+    const contactZones = new Map<string, string>();
+    for (const stack of stacks()) {
+      const zoneId = str(stack.config, "dnsZoneId");
+      if (str(stack.config, "contactAddress") === undefined || zoneId === undefined) continue;
+      contactZones.set(zoneId, stack.file);
+    }
+    for (const stack of stacks()) {
+      const zoneId = inboundZone(stack.config);
+      if (zoneId === undefined) continue;
+      const owner = contactZones.get(zoneId);
+      expect(
+        owner === undefined || owner === stack.file,
+        `${stack.file} puts the project mail inbox on zone ${zoneId}, where ${owner} routes ` +
+          "its contact address",
+      ).toBe(true);
+    }
+  });
 });
 
 describe("the prod image pin the deploy verifies", () => {

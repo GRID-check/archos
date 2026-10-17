@@ -70,9 +70,9 @@ async function install(values: Record<string, string>, mx: typeof MX_RECORDS = [
   pulumi.runtime.setAllConfig(values);
   const { loadConfig } = await import("../config");
   const { installInboundMail } = await import("./inbound-mail");
-  const { installInboundMailZone } = await import("./email-routing");
+  const { installMailZones } = await import("./email-routing");
   const cfg = loadConfig();
-  const result = installInboundMail(cfg, installInboundMailZone(cfg));
+  const result = installInboundMail(cfg, installMailZones(cfg).inbound);
   if (result) {
     await Promise.all(
       [result.script.id, result.zone.routing.id, result.catchAll.id].map(
@@ -191,10 +191,10 @@ describe("inbound mail on Cloudflare", () => {
     one("cloudflare:index/emailRoutingCatchAll:EmailRoutingCatchAll");
   });
 
-  it("uses a provider of its own, holding the configured token", async () => {
+  it("uses the zone's provider, holding the configured token", async () => {
     await install(mailConfig());
     const provider = RESOURCES.find(
-      (r) => r.type === "pulumi:providers:cloudflare" && r.name === "cloudflare-inbound-mail",
+      (r) => r.type === "pulumi:providers:cloudflare" && r.name === "cloudflare-mail-post-example-test",
     );
     expect(reveal(provider?.inputs.apiToken)).toEqual({ secret: true, value: "cf-token" }); // pragma: allowlist secret
   });
