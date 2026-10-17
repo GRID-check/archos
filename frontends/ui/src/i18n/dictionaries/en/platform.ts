@@ -1128,8 +1128,8 @@ export const platform = {
     loadError: 'The knowledge base could not be loaded.',
     retry: 'Try again',
     // Drag-and-drop upload zone.
-    dropTitle: 'Drop a PDF or ZIP here',
-    dropHint: 'or click to choose a file. A ZIP may hold many PDFs at once.',
+    dropTitle: 'Drop PDFs or ZIPs here',
+    dropHint: 'or click to choose files. A ZIP may hold many PDFs at once.',
     dropActive: 'Release to upload',
     // Background-processing banner + ZIP member summary.
     processing: 'Processing — this can take a minute…',
@@ -1181,6 +1181,7 @@ export const platform = {
       sonstiges: 'Other base document',
     },
     dropBusy: 'Wait for the current upload or sync to finish.',
+    dropSkipped: '{count, plural, one {# file was} other {# files were}} left out: only PDF and ZIP files are added.',
     indexingMissing: 'Did not arrive',
     missingTitle:
       '{count, plural, one {# document did} other {# documents did}} not reach the corpus',
