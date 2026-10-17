@@ -75,7 +75,9 @@ export interface TrackedFile {
    * - `held`: the content check (*Inhaltsprüfung*) held the file back
    *   (ADR-0086). Nothing failed and a re-upload is refused, so it is never
    *   retried; the reasons are in `errorMessage` as `quarantined:{…}`. A
-   *   reviewer lets it through (*zulassen*) or deletes it, elsewhere.
+   *   reviewer lets it through (*zulassen*) or deletes it, elsewhere. Also a
+   *   file refused because the document it replaces is held
+   *   ({@link TrackedFile.replacesHeld}): it waits on the same decision.
    * - `stored`: the bytes are kept and nothing was read, the document's
    *   `uploaded` / `stored` status. Not a success, because Piloti cannot cite
    *   it, and not a failure.
@@ -110,6 +112,16 @@ export interface TrackedFile {
    * {@link mayRetryUpload} is the rule every retry surface asks.
    */
   retryable?: false
+  /**
+   * Set on a `held` row whose OWN bytes were never stored: the server refused
+   * it because the document it would replace is held by the content check
+   * (ADR-0086, `QUARANTINED_REPLACE_REASON`), and this person may see that
+   * document. `errorMessage` is then the sentence that says so, not a verdict;
+   * `documentId` is the held document, and `ownUpload` whether this person
+   * uploaded it and so may ask the reviewers about it. Never `serverFileId`:
+   * this row is not that document, and removing the row must not delete it.
+   */
+  replacesHeld?: { documentId: string | null; ownUpload: boolean }
   /** Backend file_id once uploaded */
   serverFileId?: string
   /** Ingestion job ID */

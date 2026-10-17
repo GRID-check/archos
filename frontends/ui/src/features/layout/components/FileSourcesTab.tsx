@@ -393,6 +393,7 @@ export const FileSourcesTab: FC<FileSourcesTabProps> = ({ onDeleteFile }) => {
             status={mapToDisplayStatus(file.status)}
             errorMessage={file.errorMessage ?? undefined}
             failedWhileReading={failedWhileReading(file)}
+            replacesHeld={file.replacesHeld}
             expirationIntervalHours={fileUploadConfig.fileExpirationCheckIntervalHours}
             // A project document is deleted in the project's Files, where the
             // delete runs the legal-hold check and erases every version. This
