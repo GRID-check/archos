@@ -46,6 +46,7 @@ vi.mock('@/lib/annotations/wake-repository', () => ({
   insertWake: vi.fn(),
   findLiveDelegationWake: vi.fn(),
   settleWake: vi.fn(),
+  listLatestWakes: vi.fn(async () => []),
 }))
 // Only the write after the commit (`settleTakenBack`) opens a handle of its own.
 vi.mock('@/lib/db', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/db')>()), getDb: () => TX_DB }))

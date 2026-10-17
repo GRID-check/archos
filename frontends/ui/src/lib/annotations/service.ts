@@ -59,7 +59,7 @@ import {
 } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { canUserAccessProject } from '@/lib/authz/project-membership'
-import type { Document, DocumentAnnotationReplyRow } from '@/lib/db/schema'
+import type { Document, DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import {
@@ -83,6 +83,7 @@ import { auditMarkDecided } from './mark-audit'
 import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
 import { delegationEventId } from './wake-ids'
+import { latestWakesFor, pilotiWorkOf } from './piloti-work'
 import { wakeOfReply, wakeSpansFor, type WakeSpan } from './wake-attribution'
 import {
   auditDeletedWithMark,
@@ -188,8 +189,10 @@ function toView(
   session: AuthorizedSession,
   writable: boolean,
   names: Names,
-  wakes: readonly WakeSpan[] = []
+  wakes: readonly WakeSpan[] = [],
+  work: ReadonlyMap<string, PilotiWakeRow> = new Map()
 ): AnnotationView {
+  const wake = work.get(record.id)
   return {
     id: record.id,
     documentId: record.documentId,
@@ -225,6 +228,7 @@ function toView(
     delegatedByName: nameOf(names, record.delegatedBy),
     delegatedAt: record.delegatedAt ? record.delegatedAt.toISOString() : null,
     replies: record.replies.map((reply) => toReplyView(reply, names, wakes)),
+    pilotiWork: wake ? pilotiWorkOf(wake, nameOf(names, wake.actorUserId)) : null,
     canEdit: writable,
     canDelete: writable && mayDeleteMark(record, session.userId),
   }
@@ -319,11 +323,12 @@ async function requireWritableDocument(session: AuthorizedSession, documentId: s
 async function viewOf(session: AuthorizedSession, doc: Document, annotationId: string): Promise<AnnotationView> {
   const record = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!record) throw new NotFoundError()
-  const [names, wakes] = await Promise.all([
+  const [names, wakes, work] = await Promise.all([
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
+    latestWakesFor(session.organizationId, doc.id),
   ])
-  return toView(record, doc, session, true, names, wakes)
+  return toView(record, doc, session, true, names, wakes, work)
 }
 
 const limitReached = (error: unknown): never => {
@@ -368,8 +373,13 @@ export async function listAnnotations(session: AuthorizedSession, documentId: st
     mayWrite(session, doc.id),
     directoryNames(session.organizationId),
   ])
-  const wakes = await wakeSpansFor(session.organizationId, doc.id, records)
-  const annotations = records.map((record) => toView(record, doc, session, writable, names, wakes)).sort(compareAnnotations)
+  const [wakes, work] = await Promise.all([
+    wakeSpansFor(session.organizationId, doc.id, records),
+    latestWakesFor(session.organizationId, doc.id),
+  ])
+  const annotations = records
+    .map((record) => toView(record, doc, session, writable, names, wakes, work))
+    .sort(compareAnnotations)
   return { annotations, canAnnotate: writable, pilotiWakes: wakesEnabled(session) }
 }
 
@@ -728,12 +738,13 @@ export async function readAnnotation(
   const doc = await getAccessibleDocument(session, documentId, 'read')
   const record = annotatable(doc) ? await findDocumentAnnotation(session.organizationId, doc.id, annotationId) : null
   if (!record) throw new NotFoundError()
-  const [writable, names, wakes] = await Promise.all([
+  const [writable, names, wakes, work] = await Promise.all([
     mayWrite(session, doc.id),
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
+    latestWakesFor(session.organizationId, doc.id),
   ])
-  return toView(record, doc, session, writable, names, wakes)
+  return toView(record, doc, session, writable, names, wakes, work)
 }
 
 /** What Piloti may change on a mark for the asker: what a person's PATCH changes, the assignee by name. */

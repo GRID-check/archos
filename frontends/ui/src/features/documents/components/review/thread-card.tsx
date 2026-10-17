@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils'
 import { liveLine } from '@/features/chat/lib/turn-events'
 import type { FileAssignee } from '../../file-types'
 import { askRegionOf, stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
+import { answerAsBody } from '../../lib/piloti-answer-text'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
 import { AssignPopover } from '../assign-popover'
 import { usePilotiByline } from './piloti-attribution'
@@ -497,55 +498,108 @@ export function ReviewCard({ flip, children, testId }: { flip: boolean; children
 }
 
 /**
- * Piloti, brought into a thread: answering, or not able to, with a way to ask
- * again. A wake the server runs (ADR-0106) has no live steps here: it says
- * „antwortet …" until the reply arrives, then quietly „später", and a wake a
- * cap held says so once.
+ * Piloti, brought into a thread by a question this tab asked it itself (the
+ * organization lets no events wake it): answering, or not able to, with a way
+ * to ask again. An answer whose thread target never reached the server stays
+ * here, to be added to the thread by hand.
  */
 function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentReview }): JSX.Element {
   const t = useTranslations('files')
   const tChat = useTranslations('chat')
-  const failed = ask.status === 'failed'
-  const quiet = ask.status === 'later' || ask.status === 'held'
+  const [adopting, setAdopting] = useState(false)
   const line = liveLine(stepsOf(ask.view), tChat) ?? t('review.piloti.replying')
-  if (quiet) {
+  const close = (
+    <button
+      type="button"
+      className="text-muted-foreground hover:text-foreground ml-auto shrink-0 self-start rounded p-0.5"
+      aria-label={t('review.piloti.close')}
+      onClick={() => review.piloti.dismiss(ask.id)}
+    >
+      <X className="size-3" aria-hidden />
+    </button>
+  )
+  if (ask.status === 'answered' && ask.annotationId && ask.view?.text) {
+    const annotationId = ask.annotationId
+    const body = answerAsBody(ask.view.text)
     return (
-      <div className="flex items-center gap-2.5" data-testid="thread-piloti-later" role="status">
+      <div className="flex gap-2.5" data-testid="thread-piloti-unposted" role="status">
         <PilotiGlyph />
-        <span className="text-muted-foreground min-w-0 flex-1 text-xs">
-          {ask.status === 'held' ? t('review.piloti.wakeHeld') : t('review.piloti.replyLater')}
-        </span>
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground ml-auto rounded p-0.5"
-          aria-label={t('review.piloti.close')}
-          onClick={() => review.piloti.dismiss(ask.id)}
-        >
-          <X className="size-3" aria-hidden />
-        </button>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-muted-foreground text-[11px] leading-4">{t('review.piloti.degradedThread')}</p>
+          <p className="text-foreground text-sm leading-5 break-words whitespace-pre-line">{body}</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            disabled={adopting}
+            onClick={async () => {
+              setAdopting(true)
+              try {
+                await review.reply(annotationId, body)
+                review.piloti.dismiss(ask.id)
+              } finally {
+                setAdopting(false)
+              }
+            }}
+          >
+            {t('review.piloti.adoptReply')}
+          </Button>
+        </div>
+        {close}
       </div>
     )
   }
   return (
     <div className="flex items-center gap-2.5" data-testid="thread-piloti-pending" role="status">
-      <PilotiGlyph working={!failed} />
-      {failed ? (
+      <PilotiGlyph working={ask.status === 'thinking'} />
+      {ask.status === 'thinking' ? (
+        <ShimmerText className="min-w-0 flex-1 text-xs">{line}</ShimmerText>
+      ) : (
         <span className="flex min-w-0 flex-1 items-center gap-2 text-xs">
           <span className="text-muted-foreground">{t('review.piloti.replyFailed')}</span>
           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => review.piloti.retry(ask.id)}>
             {t('review.piloti.retry')}
           </Button>
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground ml-auto rounded p-0.5"
-            aria-label={t('review.piloti.close')}
-            onClick={() => review.piloti.dismiss(ask.id)}
-          >
-            <X className="size-3" aria-hidden />
-          </button>
+          {close}
         </span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Piloti at work in this thread as the SERVER knows it (`pilotiWork`, read off
+ * the mark's wake): the same line for everyone in the room, after a reload too.
+ * A delegation already says „Piloti arbeitet daran" in its chip, so only how it
+ * ended is said here.
+ */
+function PilotiWorkRow({ annotation }: { annotation: AnnotationView }): JSX.Element | null {
+  const t = useTranslations('files')
+  const work = annotation.pilotiWork
+  if (!work) return null
+  const delegated = work.trigger === 'assigned'
+  if (delegated && (work.state === 'queued' || work.state === 'working')) return null
+  const name = work.forName ?? t('review.someone')
+  if (work.state === 'failed') {
+    return (
+      <div className="flex items-start gap-2.5" data-testid="thread-piloti-work" data-state={work.state} role="status">
+        <PilotiGlyph />
+        <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-5">
+          {t(`review.piloti.workFailed.${work.reasonKind ?? 'error'}`, { name })}
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center gap-2.5" data-testid="thread-piloti-work" data-state={work.state} role="status">
+      <PilotiGlyph working={work.state !== 'held'} />
+      {work.state === 'held' ? (
+        <span className="text-muted-foreground min-w-0 flex-1 text-xs">{t('review.piloti.wakeHeld')}</span>
       ) : (
-        <ShimmerText className="min-w-0 flex-1 text-xs">{line}</ShimmerText>
+        <ShimmerText className="min-w-0 flex-1 text-xs">
+          {t(work.state === 'queued' ? 'review.piloti.workQueued' : 'review.piloti.replyingFor', { name })}
+        </ShimmerText>
       )}
     </div>
   )
@@ -628,45 +682,32 @@ export function ThreadCard({
   const live = isLive(annotation)
   const { piloti } = review
   const pilotiReplies = annotation.replies.filter((reply) => reply.authorKind === 'piloti').length
-  // Piloti was brought into this thread and has not answered in it yet.
+  // Piloti was brought into this thread by this tab and has not answered in it yet,
+  // or answered without the thread target reaching it (its answer is only here).
   const threadAsk = piloti.asks.find(
     (ask) =>
       ask.replyInThread &&
       ask.annotationId === annotation.id &&
       (ask.status === 'failed' ||
-        ask.status === 'held' ||
-        ((ask.status === 'thinking' || ask.status === 'later') && pilotiReplies <= ask.baseline))
+        ask.status === 'declined' ||
+        (ask.status === 'answered' && ask.degraded.includes('thread')) ||
+        (ask.status === 'thinking' && pilotiReplies <= ask.baseline))
   )
-  // A wake the server ran has answered: its waiting row goes.
-  const { asks: pilotiAsks, dismiss: dismissAsk } = piloti
-  useEffect(() => {
-    for (const ask of pilotiAsks) {
-      const waiting = ask.status === 'thinking' || ask.status === 'later'
-      if (ask.backend === 'server' && ask.annotationId === annotation.id && waiting && pilotiReplies > ask.baseline) {
-        dismissAsk(ask.id)
-      }
-    }
-  }, [pilotiAsks, dismissAsk, annotation.id, pilotiReplies])
 
   /**
    * The reply goes in as the person's own. With @Piloti it says so (a flag,
    * never the text), and the server answers whether it wakes Piloti itself
-   * (`queued`): then this tab waits for the reply. With the organization's
-   * switch off, this tab asks Piloti as before, under the turn id a server
-   * wake of the same reply would use, so the two can never both run.
+   * (`queued`, or `suppressed` when a cap held it): then the mark's own view
+   * says how Piloti's work stands (`pilotiWork`), for everyone. With the
+   * organization's switch off, this tab asks Piloti as before, under the turn
+   * id a server wake of the same reply would use, so the two never both run.
    */
   const sendReply = async (body: string, { piloti: mentioned }: { piloti: boolean }) => {
     const { wake, replyId } = await review.reply(annotation.id, body, { addressesPiloti: mentioned })
-    if (!mentioned) return
-    const waiting = { annotationId: annotation.id, region: askRegionOf(annotation), question: body.trim(), baseline: pilotiReplies }
-    if (wake === 'queued' || wake === 'suppressed') {
-      piloti.awaitWake({ ...waiting, outcome: wake })
-      return
-    }
-    if (!piloti.available) return
+    if (!mentioned || wake === 'queued' || wake === 'suppressed' || !piloti.available) return
     piloti.ask({
-      text: waiting.question,
-      region: waiting.region,
+      text: body.trim(),
+      region: askRegionOf(annotation),
       annotationId: annotation.id,
       replyInThread: true,
       baseline: pilotiReplies,
@@ -849,6 +890,7 @@ export function ThreadCard({
             woken={reply.wokenBy ? { trigger: reply.wokenBy, number: annotation.number } : null}
           />
         ))}
+        <PilotiWorkRow annotation={annotation} />
         {threadAsk && <PilotiThreadRow ask={threadAsk} review={review} />}
       </div>
 

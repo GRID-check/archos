@@ -553,7 +553,7 @@ describe('the review', () => {
     await waitFor(() => expect(screen.queryByTestId('thread-piloti-pending')).toBeNull())
   })
 
-  it('leaves an @Piloti reply to the server when it wakes Piloti, and waits for the reply in the thread', async () => {
+  it('leaves an @Piloti reply to the server when it wakes Piloti, and shows the work as the server knows it', async () => {
     const mark = view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25 })
     const asked: AnnotationView['replies'][number] = {
       id: 'r1',
@@ -569,7 +569,25 @@ describe('the review', () => {
     const posted = serveConversation()
     server.use(
       http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
-        HttpResponse.json({ annotation: { ...mark, replies: [asked] }, replyId: 'r1', wake: 'queued' }, { status: 201 })
+        HttpResponse.json(
+          {
+            annotation: {
+              ...mark,
+              replies: [asked],
+              pilotiWork: {
+                state: 'queued',
+                trigger: 'thread_mention',
+                forUserId: 'user_me',
+                forName: 'Miriam Hofer',
+                reasonKind: null,
+                since: '2026-10-01T09:00:00.000Z',
+              },
+            },
+            replyId: 'r1',
+            wake: 'queued',
+          },
+          { status: 201 }
+        )
       )
     )
     const piloti = scriptedPiloti()
@@ -583,8 +601,11 @@ describe('the review', () => {
     await userEvent.click(within(thread).getByTestId('thread-reply-mention-option'))
     await userEvent.type(box, 'Stimmt die Breite?{Enter}')
 
-    // „Piloti antwortet …“, and nothing runs in this tab: no thread, no socket, no question.
-    expect(await within(screen.getByTestId('review-thread')).findByTestId('thread-piloti-pending')).toBeInTheDocument()
+    // The mark's own view says Piloti is on it, for whom: the same line everyone in the room
+    // reads, after a reload too. Nothing runs in this tab: no thread, no socket, no question.
+    const work = await within(screen.getByTestId('review-thread')).findByTestId('thread-piloti-work')
+    expect(work).toHaveAttribute('data-state', 'queued')
+    expect(work).toHaveTextContent('Miriam Hofer')
     expect(piloti.questions()).toEqual([])
     expect(posted).toEqual([])
 
@@ -606,8 +627,34 @@ describe('the review', () => {
         actor: { peerId: null, userId: 'user_me', name: 'Piloti', kind: 'piloti' },
       },
     })
-    await waitFor(() => expect(screen.queryByTestId('thread-piloti-pending')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('thread-piloti-work')).toBeNull())
     expect(within(screen.getByTestId('review-thread')).getByText('1,20 m im Schnitt B-B.')).toBeInTheDocument()
+  })
+
+  it('says why a woken Piloti did not answer, from the mark as the server reads it', async () => {
+    serve(
+      [
+        view({
+          id: 'ann_1',
+          pilotiWork: {
+            state: 'failed',
+            trigger: 'thread_mention',
+            forUserId: 'user_me',
+            forName: 'Miriam Hofer',
+            reasonKind: 'budget',
+            since: '2026-10-01T09:00:00.000Z',
+          },
+        }),
+      ],
+      true,
+      true
+    )
+    render(<Harness transport={scriptedRoom().transport} piloti={scriptedPiloti()} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const work = await within(await screen.findByTestId('review-thread')).findByTestId('thread-piloti-work')
+    expect(work).toHaveAttribute('data-state', 'failed')
+    expect(work).toHaveTextContent(/budget/i)
   })
 
   it('delegates an open mark to Piloti from the thread, and shows for whom Piloti works it', async () => {
