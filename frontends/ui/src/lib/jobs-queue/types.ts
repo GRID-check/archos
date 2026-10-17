@@ -40,6 +40,9 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * `inbox_push` is one step that tells a person's devices about one inbox item
  * (Web Push, ADR-0112). It runs as the system and resolves the recipient itself,
  * today: it needs their current membership and role to judge what they may see.
+ * `annotation_due_reminders` walks one organization's marks whose Frist is near
+ * or past, a page per slice, as the system: it reminds each Zuständige of what
+ * they were handed, and asks per mark whether they may still open the document.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -60,6 +63,7 @@ export const BFF_JOB_KINDS = [
   'project_intake_read',
   'filing_review',
   'inbox_push',
+  'annotation_due_reminders',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -382,6 +386,43 @@ export const inboxPushPayloadSchema = z.object({
   stamp: z.string().min(1),
 })
 export type InboxPushJobPayload = z.infer<typeof inboxPushPayloadSchema>
+
+/** What a run of the daily Frist reminder did (`lib/annotations/due-reminders.ts`). */
+const dueReminderCountsSchema = z.object({
+  /** Marks looked at. */
+  checked: z.number().int().nonnegative(),
+  dueSoon: z.number().int().nonnegative(),
+  overdue: z.number().int().nonnegative(),
+  /** Already reminded of this way for this date. */
+  already: z.number().int().nonnegative(),
+  /** Their Zuständige may no longer open the document. */
+  unreachable: z.number().int().nonnegative(),
+  /** Could not be told now; the next run tells them. */
+  failed: z.number().int().nonnegative(),
+})
+export type DueReminderCounts = z.infer<typeof dueReminderCountsSchema>
+
+export const emptyDueReminderCounts = (): DueReminderCounts => ({
+  checked: 0,
+  dueSoon: 0,
+  overdue: 0,
+  already: 0,
+  unreachable: 0,
+  failed: 0,
+})
+
+/**
+ * `annotation_due_reminders`: remind the Zuständige of an organization's marks
+ * due on the office's `day` or the next, a page per slice from `cursor` (the
+ * last mark id handled, `null` first). Ids and counts only: the marks, their
+ * Zuständige and their right to open the document are read when it runs.
+ */
+export const annotationDueRemindersPayloadSchema = z.object({
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  cursor: z.string().uuid().nullable(),
+  counts: dueReminderCountsSchema,
+})
+export type AnnotationDueRemindersPayload = z.infer<typeof annotationDueRemindersPayloadSchema>
 
 /** What a one-step job is told about the attempt it is running. */
 export interface JobAttempt {

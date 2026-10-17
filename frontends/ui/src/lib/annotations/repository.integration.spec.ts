@@ -254,6 +254,101 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(after).toMatchObject({ versionId: null, fassungNumber: null })
   })
 
+  it('carries a mark to the current Fassung in place, once: compared against the Fassung it was read on', async () => {
+    const [row] = await insert(ids.document, [mark()], { versionId: ids.v2 })
+    const restored = await version(ids.document, 7, 'superseded')
+    await inOrg(ORG, () => db.execute(sql`update document_annotations set version_id = ${restored}::uuid where id = ${row.id}::uuid`))
+    const carry = () =>
+      inOrg(ORG, () =>
+        repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', { fassung: { from: restored, to: ids.v2 } })
+      )
+    expect(await carry()).toMatchObject({ versionId: ids.v2, number: row.number })
+    expect(await carry()).toBeNull()
+    expect((await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id)))?.fassungNumber).toBe(2)
+  })
+
+  it('carries a mark of a replaced document as a linked mark, closes the original, and refuses a second copy', async () => {
+    const replacing = await document(ids.project, `Index_C_${STAMP}.pdf`)
+    const [source] = await insert(ids.document, [mark({ assigneeUserId: USER, dueOn: '2026-10-24', body: 'Brüstung' })])
+    const carry = () =>
+      inOrg(ORG, () =>
+        repo.carryAnnotationToDocument({
+          organizationId: ORG,
+          source,
+          target: { documentId: replacing, versionId: null },
+          values: { mentions: [], assigneeUserId: USER },
+          closedBy: USER,
+        })
+      )
+
+    const copy = await carry()
+    expect(copy).toMatchObject({
+      documentId: replacing,
+      number: 1,
+      status: 'open',
+      body: 'Brüstung',
+      assigneeUserId: USER,
+      dueOn: '2026-10-24',
+      carriedFromId: source.id,
+    })
+    const original = await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, source.id))
+    expect(original).toMatchObject({ status: 'resolved', closedBy: USER })
+    expect(original?.carriedTo).toEqual({ annotationId: copy?.id, documentId: replacing, number: 1 })
+    const linked = await inOrg(ORG, () => repo.listDocumentAnnotations(ORG, replacing))
+    expect(linked[0]?.carriedFrom).toEqual({ annotationId: source.id, documentId: ids.document, number: source.number })
+
+    // Closed now: a second carry finds nothing to carry.
+    expect(await carry()).toBeNull()
+    // Open again, a second copy is refused by the index, whatever the service checked.
+    await inOrg(ORG, () =>
+      db.execute(sql`update document_annotations set status = 'open', closed_by = null, closed_at = null where id = ${source.id}::uuid`)
+    )
+    await expect(carry()).rejects.toBeInstanceOf(repo.AlreadyCarriedError)
+
+    // The original goes: the carried mark stands, without its link.
+    await inOrg(ORG, () => repo.deleteDocumentAnnotation(ORG, ids.document, source.id))
+    const orphan = await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, replacing, String(copy?.id)))
+    expect(orphan).toMatchObject({ carriedFromId: null, carriedFrom: null, status: 'open' })
+  })
+
+  it('finds the marks whose Frist is near or past for the daily reminder: open, with a Zuständige, by id', async () => {
+    const dated = await document(ids.project, `Frist_${STAMP}.pdf`)
+    const [soon, past, later, nobody, closed] = await insert(dated, [
+      mark({ assigneeUserId: USER, dueOn: '2026-10-18', body: 'morgen' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-10-01', body: 'vorbei' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-11-30', body: 'später' }),
+      mark({ assigneeUserId: null, dueOn: '2026-10-01', body: 'niemand' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-10-01', body: 'erledigt' }),
+    ])
+    await inOrg(ORG, () =>
+      repo.updateDocumentAnnotation(ORG, dated, closed.id, 'open', {
+        transition: { status: 'resolved', closedBy: USER, closedAt: new Date() },
+      })
+    )
+    const due = await import('./due-repository')
+
+    const page = await due.listDueMarksPage(ORG, '2026-10-18', null, 100)
+    const onDated = page.filter((row) => row.documentId === dated)
+    expect(onDated.map((row) => row.body).sort()).toEqual(['morgen', 'vorbei'])
+    expect(onDated.find((row) => row.id === soon.id)).toMatchObject({
+      assigneeUserId: USER,
+      dueOn: '2026-10-18',
+      number: soon.number,
+      document: { id: dated, scope: 'project', projectId: ids.project },
+    })
+    expect(page.map((row) => row.id)).toEqual([...page.map((row) => row.id)].sort())
+    expect(page.some((row) => [later.id, nobody.id, closed.id].includes(row.id))).toBe(false)
+
+    const after = await due.listDueMarksPage(ORG, '2026-10-18', [soon.id, past.id].sort()[0], 100)
+    expect(after.map((row) => row.id)).not.toContain([soon.id, past.id].sort()[0])
+
+    const organizations = await withPlatformAccess('test: the due sweep finds its organizations', () =>
+      due.listOrganizationsWithDueMarks('2026-10-18', 1000)
+    )
+    expect(organizations).toContain(ORG)
+    expect(organizations).not.toContain(OTHER_ORG)
+  })
+
   it('keeps a thread in order, touches the mark, and lets the thread go with its mark', async () => {
     const [row] = await insert(ids.document)
     for (const body of ['Erste', 'Zweite', 'Dritte']) {

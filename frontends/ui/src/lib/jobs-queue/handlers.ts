@@ -39,8 +39,10 @@ import { runPilotiWakeStop } from '@/lib/annotations/wake-stop-job'
 import { runIntakeReadSlice } from '@/lib/project-intake/service'
 import { runFilingReviewSlice } from '@/lib/filing/job'
 import { runInboxPush } from '@/lib/push/inbox-push-job'
+import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
 import { isLastAttempt } from './attempts'
 import {
+  annotationDueRemindersPayloadSchema,
   bimExtractPayloadSchema,
   fileResearchReportPayloadSchema,
   filingReviewPayloadSchema,
@@ -167,4 +169,5 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   inbox_push: systemHandler(inboxPushPayloadSchema, async (organizationId, payload, attempt) => {
     await runInboxPush(organizationId, payload, attempt)
   }),
+  annotation_due_reminders: systemSliceHandler(annotationDueRemindersPayloadSchema, runDueRemindersSlice),
 }

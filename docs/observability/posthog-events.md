@@ -66,6 +66,7 @@ scheduled run, and cannot be trusted to survive a redirect or to be unblocked.
 | `push_device_registered` | the person | `organization_id` | `lib/push/service.ts`, `registerDevice` (also on each refresh a browser makes) |
 | `push_device_removed` | the person | `organization_id` | `lib/push/service.ts`, `removeDevice` |
 | `push_notification_sent` | personless | `item_type`, `category`, `urgency`, `devices`, `delivered`, `gone`, `rejected`, `transient`, `organization_id` | `lib/push/inbox-push-job.ts`, once per job that reached the push services. `gone` devices were pruned |
+| `annotation_due_reminders_sent` | personless | `checked`, `due_soon`, `overdue`, `already` (reminded of before for that date), `unreachable` (the Zuständige may no longer open the document), `failed`, `organization_id` | `lib/annotations/due-reminders.ts`, `runDueRemindersSlice`, once per organization's daily job when its last page is done |
 
 `$exception` events from the server come from `@posthog/next`'s request-error
 capture, configured in `lib/analytics/request-error.ts` (see

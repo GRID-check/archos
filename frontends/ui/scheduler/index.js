@@ -29,7 +29,11 @@
  *      delete request, which the purger never sees (`sweepConversationTraces`);
  *   9. once a day, purges the download log past its retention: 12 months at
  *      most, less where an organization chose so, in bounded batches
- *      (`sweepDownloadLogRetention`; migration 0114).
+ *      (`sweepDownloadLogRetention`; migration 0114);
+ *  10. once a day, at 06:45 in Vienna (and on the first tick after a start),
+ *      POSTs the BFF's Frist reminder (`/api/internal/annotations/due-reminders`),
+ *      which queues one job per organization with marks due today, tomorrow
+ *      or past (`sweepAnnotationDue`; `lib/annotations/due-reminders.ts`).
  * See ADR-0046 and docs/architecture/agent-skills.md ("Scheduler worker").
  *
  * Environment:
@@ -140,6 +144,9 @@ function createStreaks(config) {
     // Daily, like the trace retention; its clock lives here for the same reason.
     downloadLog: createFailureStreak({ label: `${LOG} download log retention`, escalateAfter }),
     downloadLogClock: { nextRunAt: 0 },
+    // Daily at a set hour of the office's morning; its clock outlives the tick too.
+    annotationDue: createFailureStreak({ label: `${LOG} Frist reminder`, escalateAfter: 3 }),
+    annotationDueClock: { nextRunAt: 0 },
   }
 }
 
@@ -404,6 +411,42 @@ async function sweepDownloadLogRetention(sql, streak, clock, now = new Date(), p
   }
 }
 
+/** When the Frist reminder runs: before the office's day starts, so the inbox has it at the first look. */
+const ANNOTATION_DUE_CRON = '45 6 * * *'
+const OFFICE_TIME_ZONE = 'Europe/Vienna'
+/** After a failed post. Not the 30 s tick: the BFF is down or wrong, and a day's reminder can wait an hour. */
+const ANNOTATION_DUE_RETRY_MS = 60 * 60 * 1000
+
+/**
+ * The daily Frist reminder: POST {frontendUrl}/api/internal/annotations/due-reminders.
+ * The BFF queues one job per organization whose marks have a Zuständige and a
+ * Frist today, tomorrow or past; the job reminds each of them once per reminder
+ * and date. On the first tick after a start, then every day at 06:45 in
+ * Vienna: the BFF names each organization's job by the office's day, so a
+ * restart, or a second replica, queues nothing twice, and the job tells nobody
+ * twice. A failed post retries in an hour. Never throws; logs only what it
+ * queued or a failure. Returns the counts, or null when it did not run.
+ */
+async function sweepAnnotationDue(config, fetchImpl, streak, clock, now = new Date()) {
+  if (now.getTime() < clock.nextRunAt) return null
+  const counts = await postSweep(config, fetchImpl, streak, {
+    path: '/api/internal/annotations/due-reminders',
+    label: 'Frist reminder',
+  })
+  if (!counts) {
+    clock.nextRunAt = now.getTime() + ANNOTATION_DUE_RETRY_MS
+    return null
+  }
+  clock.nextRunAt = nextOccurrence(ANNOTATION_DUE_CRON, OFFICE_TIME_ZONE, now).getTime()
+  if (counts.queued > 0) {
+    console.log(
+      `${LOG} Frist reminder for ${counts.day}: ${counts.organizations} organization(s) with marks due, ` +
+        `${counts.queued} job(s) queued, ${counts.already} already queued`,
+    )
+  }
+  return counts
+}
+
 /**
  * POST one of the BFF's internal sweeps and read its counts.
  *
@@ -519,6 +562,7 @@ async function tick(sql, config, fetchImpl, streaks) {
   await sweepTraceRetention(config, fetchImpl, streaks.traceRetention, streaks.traceRetentionClock)
   await sweepConversationTraces(sql, config, fetchImpl, streaks.conversationTraces, streaks.conversationTracesClock)
   await sweepDownloadLogRetention(sql, streaks.downloadLog, streaks.downloadLogClock)
+  await sweepAnnotationDue(config, fetchImpl, streaks.annotationDue, streaks.annotationDueClock)
   return fired
 }
 
@@ -619,6 +663,7 @@ module.exports = {
   sweepTraceRetention,
   sweepConversationTraces,
   sweepDownloadLogRetention,
+  sweepAnnotationDue,
   tick,
   INTERNAL_TOKEN_HEADER,
 }

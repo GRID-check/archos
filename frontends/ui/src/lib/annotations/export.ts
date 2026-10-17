@@ -47,6 +47,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { documentDisplayName, splitDocumentName } from '@/lib/documents/display-name'
+import { calendarDayIn, OFFICE_TIME_ZONE } from '@/lib/format'
 import { listDocumentVersions } from '@/lib/documents/version-repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { BlocksDocument } from '@/lib/pdf/blocks-to-pdf'
@@ -59,9 +60,6 @@ import type { Translator } from '@/i18n/translate'
 import { listAnnotations } from './service'
 import { isOverdue, type AnnotationView } from './types'
 import type { AnnotationExportOptions } from './export-request'
-
-/** The office's day and clock. A server in UTC would date a late-evening export to the next morning. */
-const OFFICE_TIME_ZONE = 'Europe/Vienna'
 
 export const MARKDOWN_MEDIA_TYPE = 'text/markdown; charset=utf-8'
 
@@ -149,8 +147,7 @@ function formatters(locale: string, now: Date): Formatters {
     day: (isoDay) => day.format(new Date(`${isoDay}T00:00:00Z`)),
     date: (iso) => date.format(new Date(iso)),
     dateTime: (value) => dateTime.format(value),
-    // `en-CA` writes ISO calendar days.
-    today: new Intl.DateTimeFormat('en-CA', { timeZone: OFFICE_TIME_ZONE }).format(now),
+    today: calendarDayIn(OFFICE_TIME_ZONE, now),
   }
 }
 

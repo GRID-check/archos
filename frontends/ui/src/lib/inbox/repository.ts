@@ -152,6 +152,36 @@ export async function recipientsHoldingGroup(
 }
 
 /**
+ * The payload each of these recipients' rows carries under its group key, keyed
+ * `recipientUserId\ngroupKey` (as {@link findLiveInboxGroupKeys} keys them);
+ * a pair without a row is absent. For an emitter that tells something once per
+ * occurrence it can name (the daily reminder of a Frist stamps which reminder
+ * for which date its row carries): asking first leaves a row that already
+ * says it alone, read or not.
+ */
+export async function readGroupPayloads(
+  organizationId: string,
+  targets: readonly { recipientUserId: string; groupKey: string }[],
+): Promise<Map<string, Record<string, unknown>>> {
+  if (targets.length === 0) return new Map()
+  const rows = await getDb()
+    .select({ recipientUserId: inboxItems.recipientUserId, groupKey: inboxItems.groupKey, payload: inboxItems.payload })
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        or(
+          ...targets.map((target) =>
+            and(eq(inboxItems.recipientUserId, target.recipientUserId), eq(inboxItems.groupKey, target.groupKey)),
+          ),
+        ),
+      ),
+    )
+    .limit(targets.length)
+  return new Map(rows.map((row) => [`${row.recipientUserId}\n${row.groupKey}`, row.payload ?? {}]))
+}
+
+/**
  * Who still holds an unresolved item under this group key: for a review round,
  * the people it was sent to who have not seen it settled. Bounded, like every
  * list here; a round is opened for at most twenty named reviewers.
