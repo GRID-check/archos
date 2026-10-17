@@ -138,7 +138,7 @@ describe('InboxList — states', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'All' }))
     expect(screen.getByText('Your inbox is empty')).toBeInTheDocument()
     expect(
-      screen.getByText('Requests, answers and shared conversations appear here.'),
+      screen.getByText('When someone mentions you, assigns you an annotation or Piloti asks you something, it appears here.'),
     ).toBeInTheDocument()
     expect(screen.queryByText('Nothing needs you')).not.toBeInTheDocument()
   })

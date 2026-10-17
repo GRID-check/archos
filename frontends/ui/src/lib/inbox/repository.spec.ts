@@ -37,6 +37,7 @@ import {
   markInboxItemsRead,
   markResourceItemsRead,
   resolveOpenItemsAnchoredOn,
+  markItemsInertAnchoredOn,
   upsertInboxItem,
   upsertInboxItems,
 } from './repository'
@@ -259,6 +260,36 @@ describe('archiveInboxItemsOfType — retiring a condition that no longer holds'
     expect(sql).toContain('"anchor_id" is null or')
     expect(sql).toContain('"anchor_id" <> ')
     expect(params).toContain('90')
+  })
+})
+
+describe('markItemsInertAnchoredOn', () => {
+  beforeEach(() => {
+    captured.length = 0
+  })
+
+  it('turns every live item of the named types on one anchor inert, for everyone, and wipes what it quoted', async () => {
+    await markItemsInertAnchoredOn({
+      organizationId: 'org_1',
+      types: ['piloti.asks_you', 'annotation.activity'],
+      anchorId: 'ann_1',
+    })
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/^update "inbox_items" set /)
+    expect(sql).toContain('"inert_at" = $')
+    expect(sql).toContain('"payload" = $')
+    expect(sql).toContain('"organization_id" = $')
+    expect(sql).toContain('"type" in ($')
+    expect(sql).toContain('"anchor_id" = $')
+    expect(sql).toContain('"inert_at" is null')
+    expect(sql).not.toContain('"recipient_user_id" = $')
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'piloti.asks_you', 'annotation.activity', 'ann_1']))
+  })
+
+  it('touches nothing for an empty type list', async () => {
+    expect(await markItemsInertAnchoredOn({ organizationId: 'org_1', types: [], anchorId: 'ann_1' })).toEqual([])
+    expect(captured).toHaveLength(0)
   })
 })
 

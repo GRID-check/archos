@@ -28,6 +28,7 @@ vi.mock('./repository', () => ({
   markAllInboxItemsRead: vi.fn(),
   archiveInboxItem: vi.fn(),
   markResourceItemsRead: vi.fn(),
+  markItemsInertAnchoredOn: vi.fn(),
   markItemsInertForResource: vi.fn(),
   markItemsInertForSubjectRow: vi.fn(),
   resolveInboxItemsForTargets: vi.fn(),
@@ -58,6 +59,7 @@ import {
   upsertWaves,
   emitInboxItems,
   resolveInboxItemsAnchoredOn,
+  markInboxItemsInertAnchoredOn,
   archiveItem,
   getInboxSummary,
   listInbox,
@@ -131,6 +133,9 @@ const ALL_TYPES = [
   // A reading of a project's documents is ready for review (ADR-0111): setting
   // a project up is not a chat feature.
   'piloti.intake_ready',
+  // A colleague's work on an Anmerkung: marks are not a chat feature either.
+  'annotation.assigned_to_you',
+  'annotation.activity',
 ] as const satisfies readonly InboxItemType[]
 
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
@@ -166,6 +171,9 @@ const OPERATIONAL_TYPES = [
   // A reading of a project's documents is ready for review (ADR-0111): setting
   // a project up is not a chat feature.
   'piloti.intake_ready',
+  // A colleague's work on an Anmerkung: marks are not a chat feature either.
+  'annotation.assigned_to_you',
+  'annotation.activity',
 ] as const satisfies readonly InboxItemType[]
 
 const at = new Date('2026-07-29T10:00:00.000Z')
@@ -984,6 +992,20 @@ describe('resolveInboxItemsAnchoredOn', () => {
       await resolveInboxItemsAnchoredOn({ organizationId: 'org_1', types: ['piloti.asks_you'], anchorId: 'ann_1' }),
     ).toBe(0)
     expect(publishToUser).not.toHaveBeenCalled()
+  })
+})
+
+describe('markInboxItemsInertAnchoredOn', () => {
+  it('turns the rows inert through the repository and nudges each person whose badge moved', async () => {
+    vi.mocked(repository.markItemsInertAnchoredOn).mockResolvedValue(['user_a', 'user_b'])
+    vi.mocked(publishToUser).mockClear()
+
+    const input = { organizationId: 'org_1', types: ['annotation.activity'] as InboxItemType[], anchorId: 'ann_1' }
+    expect(await markInboxItemsInertAnchoredOn(input)).toBe(2)
+
+    expect(repository.markItemsInertAnchoredOn).toHaveBeenCalledWith(input)
+    expect(publishToUser).toHaveBeenCalledTimes(2)
+    expect(publishToUser).toHaveBeenCalledWith('user_b', { kind: 'inbox.changed', pending: -1 })
   })
 })
 

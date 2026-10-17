@@ -390,6 +390,22 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `piloti.work_done` | a woken turn ended `answered` | who mentioned, answered or delegated | no |
 | `piloti.work_failed` | a woken turn ended `failed`, or the wake job was refused or gave up before a turn answered (a delegation, a mention or an answer) | who delegated, mentioned or answered | no |
 | `piloti.asks_you` | Piloti set a Rückfrage, or replied on its own open one | the mark's Zuständige, else the person its turn acted for | yes |
+| `annotation.assigned_to_you` | a person made someone Zuständige of an open mark (setting it, changing it, or taking over Piloti's proposal that names one), or Piloti did for the person its turn acted for | the new Zuständige, unless they did it themselves | yes |
+| `annotation.activity` | a person or Piloti replied in the thread | the mark's participants, minus whoever acted | no |
+| `annotation.activity` | someone resolved, dismissed or reopened a mark | the mark's author, unless they did it | no |
+
+The participants are derived from the mark when something happens, never
+stored (`markParticipants`): its author (who set it, or for Piloti's mark who
+took it over or asked for it), its Zuständige, who delegated it to Piloti, and
+every person who replied. Whoever acted is left out, and for Piloti that is the
+person its turn acted for: on a wake, who woke it, who hears `piloti.work_done`
+instead. When Piloti follows up its own open Rückfrage, the Zuständige it asks
+has the `piloti.asks_you` row and no second one. Every recipient of a
+colleague's news must be able to open the document now, its folder included
+(`mayOpenDocument`, `frontends/ui/src/lib/documents/may-open.ts`), the same
+rule that decides who may be made Zuständige at all. The note Piloti writes
+with a change it made for the asker tells nobody: the change told whoever it
+concerns, exactly as the asker's own change would.
 
 Each row reads as a colleague's sentence: what Piloti did, to which mark in
 which document, and what the reader can do now. The payload carries the
@@ -401,6 +417,15 @@ what the mark says (Piloti's question for a Rückfrage):
 | `piloti.work_done` | „Piloti hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet“ | „Lesen Sie die Antwort im Verlauf der Anmerkung.“ |
 | `piloti.work_failed` | „Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten“ | why, and what to do (below) |
 | `piloti.asks_you` | „Piloti hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG““ | „Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.“ |
+| `annotation.assigned_to_you` | „Miriam hat Ihnen Anmerkung 4 in „Grundriss EG“ zugewiesen“; variant `piloti`: „Piloti hat Ihnen für Miriam Anmerkung 4 in „Grundriss EG“ zugewiesen“ | „Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.“ |
+| `annotation.activity`, variant `reply` | „Neue Antwort zu Anmerkung 4 in „Grundriss EG““, counted „3 neue Antworten zu Anmerkung 4 in „Grundriss EG““ | none: the newest reply is the excerpt |
+| `annotation.activity`, variants `resolved` / `dismissed` / `reopened` | „Miriam hat Anmerkung 4 in „Grundriss EG“ erledigt“ / „… verworfen“ / „… wieder geöffnet“ | none |
+
+`piloti.work_done` names what woke Piloti as its variant; a delegation's end
+(`assigned`) adds „Die Anmerkung liegt wieder bei Ihnen.“ Rows fold per mark
+and their payloads merge, so every row names its variant, and a replied-to
+mark is one counted row however busy its thread is (`titleRelatedMany` in
+`frontends/ui/src/lib/inbox/item-copy.ts`). Piloti's own rows wear its glyph.
 
 A failure says why. `onWakeEnded` classes the wake's stored reason with
 `wakeEndReasonKind` (`frontends/ui/src/lib/annotations/wake-end-reason.ts`) and
@@ -419,8 +444,12 @@ A stop makes no item, because the person stopped it; nor does a suppressed wake
 (the person's own act, a rule or a cap held it). A wake the job ends without an
 answer is told and handed back as a turn's end is (`wake-job.ts`), so a
 delegated mark never keeps reading „Piloti arbeitet daran“ after a refusal. A
-`piloti.asks_you` is resolved when the person answers it in the thread, and for
-everyone when the mark is resolved, dismissed or deleted.
+`piloti.asks_you` is resolved for everyone once any person answers in the
+thread, and with `annotation.assigned_to_you` for everyone when the mark is
+resolved or dismissed, by a person or by Piloti in their name. A Zuständige
+who is replaced, or removed, has their `annotation.assigned_to_you` resolved.
+Deleting a mark turns every row anchored on it inert, for everyone: none keeps a
+link to it or a quote from it.
 
 A proposal Piloti made (`piloti.proposal_waiting`, `lib/proposals/attention.ts`)
 is worded by what it changes, stored as its `variant`: a file operation by its

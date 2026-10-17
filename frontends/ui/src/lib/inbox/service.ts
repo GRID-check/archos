@@ -36,6 +36,7 @@ import {
   listInboxItems,
   markAllInboxItemsRead,
   markInboxItemsRead,
+  markItemsInertAnchoredOn,
   markItemsInertForResource,
   markItemsInertForSubjectRow,
   markResourceItemsRead,
@@ -207,6 +208,21 @@ export async function resolveInboxItemsAnchoredOn(input: {
   recipientUserId?: string
 }): Promise<number> {
   const recipients = await resolveOpenItemsAnchoredOn(input)
+  await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))
+  return recipients.length
+}
+
+/**
+ * Neutralise the items of these types anchored on a thing that is gone (a
+ * deleted mark), for everyone: no row keeps a link to it, or the text it
+ * quoted. Session-less, like the emitter.
+ */
+export async function markInboxItemsInertAnchoredOn(input: {
+  organizationId: string
+  types: readonly InboxItemType[]
+  anchorId: string
+}): Promise<number> {
+  const recipients = await markItemsInertAnchoredOn(input)
   await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))
   return recipients.length
 }

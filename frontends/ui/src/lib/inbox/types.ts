@@ -61,7 +61,9 @@ export interface InboxItemView {
    * Which wording of its type the row reads, where a type has more than one:
    * why Piloti could not work a mark (`piloti.work_failed`, the classes of
    * `lib/annotations/wake-end-reason.ts`), what a proposal changes
-   * (`piloti.proposal_waiting`). The renderer reads
+   * (`piloti.proposal_waiting`), whether Piloti assigned a mark for someone
+   * (`annotation.assigned_to_you`), whether a mark was replied to, closed or
+   * reopened (`annotation.activity`). The renderer reads
    * `inbox.types.<key>.variants.<variant>.<leaf>` before the type's own leaf,
    * so an unknown variant reads as the type's general wording. A key segment
    * (`[a-z][a-z_]*`), never copy; withheld with the payload when redacted.
@@ -97,6 +99,8 @@ export interface InboxTypePresentation {
     | 'megaphone'
     | 'shield-alert'
     | 'layers'
+    /** Piloti's own glyph (`components/ui/piloti-glyph.tsx`), for what Piloti did or asks. */
+    | 'piloti'
   /**
    * i18n key under `inbox.types.<key>.title` / `.body`, and the leaves the row
    * picks by what the item names (`titleRelated`, `bodyNoSubject`, …), first
@@ -144,11 +148,14 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'mail_import.completed': { icon: 'check-circle', i18nKey: 'mailImportCompleted', tone: 'info' },
   'mail_import.failed': { icon: 'alert-triangle', i18nKey: 'mailImportFailed', tone: 'warning' },
   'document.new_fassung': { icon: 'layers', i18nKey: 'documentNewFassung', tone: 'info' },
-  'piloti.work_done': { icon: 'check-circle', i18nKey: 'pilotiWorkDone', tone: 'info' },
-  'piloti.work_failed': { icon: 'alert-triangle', i18nKey: 'pilotiWorkFailed', tone: 'warning' },
-  'piloti.asks_you': { icon: 'message-square', i18nKey: 'pilotiAsksYou', tone: 'request' },
-  'piloti.proposal_waiting': { icon: 'layers', i18nKey: 'pilotiProposalWaiting', tone: 'request' },
-  'piloti.intake_ready': { icon: 'check-circle', i18nKey: 'pilotiIntakeReady', tone: 'request' },
+  // Piloti's rows wear its face, as its marks and replies do on the page.
+  'piloti.work_done': { icon: 'piloti', i18nKey: 'pilotiWorkDone', tone: 'info' },
+  'piloti.work_failed': { icon: 'piloti', i18nKey: 'pilotiWorkFailed', tone: 'warning' },
+  'piloti.asks_you': { icon: 'piloti', i18nKey: 'pilotiAsksYou', tone: 'request' },
+  'piloti.proposal_waiting': { icon: 'piloti', i18nKey: 'pilotiProposalWaiting', tone: 'request' },
+  'piloti.intake_ready': { icon: 'piloti', i18nKey: 'pilotiIntakeReady', tone: 'request' },
+  'annotation.assigned_to_you': { icon: 'user-plus', i18nKey: 'annotationAssigned', tone: 'request' },
+  'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info' },
 }
 
 /**

@@ -407,6 +407,39 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     email: IN_APP_ONLY,
     push: { category: 'requests', urgency: 'normal' },
   },
+  /*
+    A colleague made the reader responsible for an Anmerkung (ADR-0106).
+    Actionable: the mark waits on them until it is closed or handed on, and
+    the badge is what says so. Resolved when someone else becomes responsible
+    and for everyone when the mark is closed (`lib/annotations/attention.ts`).
+    `per-anchor` on the mark: assigning it twice is one row. A reminder by
+    mail after two hours unread: a mark handed to someone who never opens the
+    app would otherwise wait for good. Operational, like `piloti.asks_you`:
+    marks are not a chat feature.
+  */
+  'annotation.assigned_to_you': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 120 },
+    push: { category: 'requests', urgency: 'normal' },
+  },
+  /*
+    News on a mark the reader takes part in: a reply, or their mark closed or
+    reopened by someone else. `per-anchor` on the mark, so a busy thread is ONE
+    counted row per mark, as `conversation.activity` is one per chat.
+    Informational and in-app only, and pushed only to whoever turned activity
+    on: it is ambient, and mailing it would teach people to filter our mail.
+  */
+  'annotation.activity': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 30,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
+  },
 }
 
 /**
@@ -419,6 +452,8 @@ export const MARK_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = [
   'piloti.work_done',
   'piloti.work_failed',
   'piloti.asks_you',
+  'annotation.assigned_to_you',
+  'annotation.activity',
 ]
 
 /** The types anchored on a proposal: a deep link into a chat must not read that anchor as a message. */

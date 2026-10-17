@@ -58,7 +58,9 @@ import {
   INBOX_TYPE_PRESENTATION,
   UNKNOWN_TYPE_PRESENTATION,
   type InboxItemView,
+  type InboxTypePresentation,
 } from '@/lib/inbox/types'
+import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -89,8 +91,9 @@ import { compareFassungHref } from '@/features/documents/lib/fassung-compare-lin
  * The ONE place the registry's icon names become components. Keeping the map here
  * (rather than storing components in `lib/inbox/types.ts`) keeps the registry a
  * plain data module that the server half can import without pulling in React.
+ * `piloti` is not a Lucide icon but Piloti's own glyph, drawn below.
  */
-const ICONS: Record<(typeof INBOX_TYPE_PRESENTATION)[keyof typeof INBOX_TYPE_PRESENTATION]['icon'], LucideIcon> =
+const ICONS: Record<Exclude<InboxTypePresentation['icon'], 'piloti'>, LucideIcon> =
   {
     'at-sign': AtSign,
     'message-square': MessageSquare,
@@ -137,7 +140,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     route, not just its own row. One unknown row must cost one unremarkable row.
   */
   const presentation = INBOX_TYPE_PRESENTATION[item.type] ?? UNKNOWN_TYPE_PRESENTATION
-  const Icon = ICONS[presentation.icon]
+  const Icon = presentation.icon === 'piloti' ? null : ICONS[presentation.icon]
 
   /*
     „Besprechen", for a row whose target is a DOCUMENT.
@@ -345,18 +348,29 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
       >
         {/* Type icon. A live request carries the "needs attention" tint; colour
             never travels alone here — the icon and the title text say the same. */}
-        <ItemMedia
-          aria-hidden
-          className={cn(
-            'mt-0.5 rounded-full border',
-            needsAttention
-              ? 'border-transparent bg-warning-subtle text-warning'
-              : 'border-border bg-card text-muted-foreground',
-            inert && 'opacity-60',
-          )}
-        >
-          <Icon className="size-4" />
-        </ItemMedia>
+        {Icon ? (
+          <ItemMedia
+            aria-hidden
+            className={cn(
+              'mt-0.5 rounded-full border',
+              needsAttention
+                ? 'border-transparent bg-warning-subtle text-warning'
+                : 'border-border bg-card text-muted-foreground',
+              inert && 'opacity-60',
+            )}
+          >
+            <Icon className="size-4" />
+          </ItemMedia>
+        ) : (
+          // Piloti's rows wear its face. A live request keeps the tint as a ring,
+          // and the title still says what is asked: colour never travels alone.
+          <ItemMedia aria-hidden className={cn('mt-0.5', inert && 'opacity-60')}>
+            <PilotiGlyph
+              size="md"
+              className={cn(needsAttention && 'ring-2 ring-warning ring-offset-1 ring-offset-background')}
+            />
+          </ItemMedia>
+        )}
 
         <ItemContent className={cn(inert && 'opacity-70')}>
           <ItemTitle

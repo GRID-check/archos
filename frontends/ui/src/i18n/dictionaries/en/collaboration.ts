@@ -373,7 +373,8 @@ export const collaboration = {
       needsMeTitle: 'Nothing needs you',
       needsMeDescription: 'When a colleague asks for your input, it shows up here.',
       allTitle: 'Your inbox is empty',
-      allDescription: 'Requests, answers and shared conversations appear here.',
+      allDescription:
+        'When someone mentions you, assigns you an annotation or Piloti asks you something, it appears here.',
     },
     errors: {
       loadFailed: 'Your inbox could not be loaded.',
@@ -530,6 +531,10 @@ export const collaboration = {
         titleRelated: 'Piloti worked on annotation {related} in “{subject}” for you',
         titleRelatedNoSubject: 'Piloti worked on annotation {related} for you',
         body: 'Read the answer in the annotation’s thread.',
+        // The delegation ended: Piloti handed the annotation back.
+        variants: {
+          assigned: { body: 'The annotation is back with you.' },
+        },
       },
       // Piloti could not. `variants` say why, by the class of the wake's
       // stored reason (`lib/annotations/wake-end-reason.ts`), and what the
@@ -587,6 +592,53 @@ export const collaboration = {
         title: 'Piloti has read the documents of “{subject}”',
         titleRelated: 'Piloti has read the documents of “{subject}” – questions: {related}',
         body: 'Review the suggestions and confirm what is right.',
+      },
+      // A colleague made you responsible for an annotation, or Piloti did on
+      // their behalf (`variants.piloti`, where {actor} is the person Piloti
+      // worked for). {related} is the annotation's number, {subject} the
+      // document; the excerpt is what the annotation says.
+      annotationAssigned: {
+        title: '{actor} assigned you an annotation',
+        titleRelated: '{actor} assigned you annotation {related} in “{subject}”',
+        titleRelatedNoSubject: '{actor} assigned you annotation {related}',
+        body: 'You are responsible for it. Answer in the thread or resolve the annotation.',
+        variants: {
+          piloti: {
+            title: 'Piloti assigned you an annotation for {actor}',
+            titleRelated: 'Piloti assigned you annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoSubject: 'Piloti assigned you annotation {related} for {actor}',
+          },
+        },
+      },
+      // News on an annotation you take part in: one counted row per annotation,
+      // the newest reply as the excerpt. `variants` for your annotation that
+      // someone else resolved, dismissed or reopened; then the excerpt is what
+      // it says.
+      annotationActivity: {
+        title: 'New reply on an annotation',
+        titleRelated: 'New reply on annotation {related} in “{subject}”',
+        titleRelatedMany: '{count} new replies on annotation {related} in “{subject}”',
+        titleRelatedNone: 'Replies on annotation {related} in “{subject}”',
+        titleRelatedNoSubject: 'New reply on annotation {related}',
+        titleRelatedNoSubjectMany: '{count} new replies on annotation {related}',
+        titleRelatedNoSubjectNone: 'Replies on annotation {related}',
+        variants: {
+          resolved: {
+            title: '{actor} resolved an annotation',
+            titleRelated: '{actor} resolved annotation {related} in “{subject}”',
+            titleRelatedNoSubject: '{actor} resolved annotation {related}',
+          },
+          dismissed: {
+            title: '{actor} dismissed an annotation',
+            titleRelated: '{actor} dismissed annotation {related} in “{subject}”',
+            titleRelatedNoSubject: '{actor} dismissed annotation {related}',
+          },
+          reopened: {
+            title: '{actor} reopened an annotation',
+            titleRelated: '{actor} reopened annotation {related} in “{subject}”',
+            titleRelatedNoSubject: '{actor} reopened annotation {related}',
+          },
+        },
       },
       unknown: {
         title: 'Something happened',

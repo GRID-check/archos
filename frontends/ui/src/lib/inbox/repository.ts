@@ -487,6 +487,34 @@ export async function resolveOpenItemsAnchoredOn(input: {
 }
 
 /**
+ * Neutralise every item of these types anchored on one thing that is gone — a
+ * deleted mark — for everyone. Wipes the payload, as every inert write does: the
+ * quoted text was the mark's, and the mark no longer exists. Returns who held
+ * one, so the caller can nudge their badge.
+ */
+export async function markItemsInertAnchoredOn(input: {
+  organizationId: string
+  types: readonly InboxItemType[]
+  anchorId: string
+}): Promise<string[]> {
+  if (input.types.length === 0) return []
+  const db = getDb()
+  const rows = await db
+    .update(inboxItems)
+    .set({ inertAt: new Date(), payload: {} })
+    .where(
+      and(
+        eq(inboxItems.organizationId, input.organizationId),
+        inArray(inboxItems.type, [...input.types]),
+        eq(inboxItems.anchorId, input.anchorId),
+        isNull(inboxItems.inertAt),
+      ),
+    )
+    .returning({ recipientUserId: inboxItems.recipientUserId })
+  return [...new Set(rows.map((row) => row.recipientUserId))]
+}
+
+/**
  * Neutralise one person's items for a resource — called in the SAME operation
  * that revokes their access (spec IB-14). Snippets are wiped, not just hidden:
  * the payload is the copy of content they must no longer be able to read.

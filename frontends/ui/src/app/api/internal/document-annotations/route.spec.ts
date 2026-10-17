@@ -74,6 +74,10 @@ vi.mock('@/lib/annotations/attention', () => ({
   onPilotiWrote: vi.fn(async () => undefined),
   onMarkSettledByPerson: vi.fn(async () => undefined),
   onWakeEnded: vi.fn(async () => undefined),
+  onAssigneeChanged: vi.fn(async () => undefined),
+  onMarkReplied: vi.fn(async () => undefined),
+  onMarkMoved: vi.fn(async () => undefined),
+  onMarkDeleted: vi.fn(async () => undefined),
 }))
 
 import { requirePinnedSession, requireVerifiedContext } from '@/lib/api/internal-envelope'
@@ -101,7 +105,7 @@ import {
 import { canUserAccessProject } from '@/lib/authz/project-membership'
 import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { onPilotiWrote } from '@/lib/annotations/attention'
+import { onAssigneeChanged, onMarkMoved, onMarkReplied, onMarkSettledByPerson, onPilotiWrote } from '@/lib/annotations/attention'
 import { insertPilotiChanges } from '@/lib/changes/repository'
 import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
 import { expectRegistered } from '@/test-utils/audit'
@@ -599,6 +603,39 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
       noted: true,
     })
     expect(canUserAccessProject).toHaveBeenCalledWith(SESSION, 'proj_1', 'user_anna')
+  })
+
+  it('tells the new Zuständige as the asker’s own change would, saying Piloti did it for them, and the note tells nobody twice', async () => {
+    await post({ op: 'update', annotationId: MARK_ID, assignee: 'Anna Berger', note: 'Anna übernimmt.' })
+
+    await vi.waitFor(() => expect(onAssigneeChanged).toHaveBeenCalledTimes(1))
+    expect(onAssigneeChanged).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org_1',
+        documentId: DOC_ID,
+        annotationId: MARK_ID,
+        annotationNumber: 4,
+        actorUserId: 'user_1',
+        byPiloti: true,
+        previousAssigneeUserId: null,
+        assigneeUserId: 'user_anna',
+        open: true,
+      })
+    )
+    expect(insertAnnotationReply).toHaveBeenCalledTimes(1)
+    expect(onMarkReplied).not.toHaveBeenCalled()
+  })
+
+  it('settles the mark and tells its author when Piloti resolves it for the asker', async () => {
+    marks.set(MARK_ID, record({ createdBy: 'user_anna' }))
+
+    await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })
+
+    await vi.waitFor(() => expect(onMarkMoved).toHaveBeenCalledTimes(1))
+    expect(onMarkMoved).toHaveBeenCalledWith(
+      expect.objectContaining({ move: 'resolved', actorUserId: 'user_1', byPiloti: true, annotationId: MARK_ID })
+    )
+    expect(onMarkSettledByPerson).toHaveBeenCalledWith({ organizationId: 'org_1', annotationId: MARK_ID, closed: true })
   })
 
   it('asks back when a name means two people, and changes nothing', async () => {

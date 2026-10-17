@@ -74,11 +74,15 @@ export function inboxItemCopy(item: InboxItemView, t: Translator, dictionary: un
   // lost the first name (a document that could not be described) reads the
   // title written without it. A type that is a sentence about a person
   // (`{actor} hat …`) may say it without one when the actor is unknown, rather
-  // than „Jemand hat …".
+  // than „Jemand hat …". A counted type that names a second thing (replies
+  // to one mark) counts there too: `titleRelatedMany`, and `titleRelatedNone`
+  // for a row read since.
+  const related = (leaf: string) =>
+    item.count > 1 ? [`${leaf}Many`, leaf] : item.count === 0 ? [`${leaf}None`, leaf] : [leaf]
   const titleCandidates = withVariant(item.variant, [
     ...(item.actorName === null ? ['titleNoActor'] : []),
     ...(item.related !== null && !redacted
-      ? [...(item.subject === null ? ['titleRelatedNoSubject'] : []), 'titleRelated']
+      ? [...(item.subject === null ? related('titleRelatedNoSubject') : []), ...related('titleRelated')]
       : []),
     ...countedTitles,
   ])

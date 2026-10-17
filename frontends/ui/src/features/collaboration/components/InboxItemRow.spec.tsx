@@ -830,6 +830,21 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
     expect(screen.getByText(/Bitten Sie Piloti noch einmal darum oder bearbeiten Sie sie selbst/)).toBeInTheDocument()
   })
 
+  test('a delegation handed back says the mark is with the reader again', () => {
+    german(onMark({ variant: 'assigned' }))
+    expect(screen.getByText('Piloti hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet')).toBeInTheDocument()
+    expect(screen.getByText('Die Anmerkung liegt wieder bei Ihnen.')).toBeInTheDocument()
+  })
+
+  test('a Piloti row wears Piloti’s glyph, and a person’s row its type icon', () => {
+    const { unmount } = german(onMark())
+    expect(document.querySelector('[data-slot="piloti-glyph"]')).not.toBeNull()
+    unmount()
+
+    german(onMark({ type: 'annotation.activity', actorName: 'Anna Weber', variant: 'reply' }))
+    expect(document.querySelector('[data-slot="piloti-glyph"]')).toBeNull()
+  })
+
   test('a Rückfrage asks the reader, with the question below', () => {
     german(onMark({ type: 'piloti.asks_you', actionable: true, excerpt: 'Ist die Brüstungshöhe hier 1,00 m?' }))
     expect(screen.getByText('Piloti hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG“')).toBeInTheDocument()
@@ -869,5 +884,74 @@ describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
     expect(screen.getByText('Piloti konnte eine Anmerkung nicht bearbeiten')).toBeInTheDocument()
     // Not „Dieser Chat …": the row points at a mark in a document.
     expect(screen.getByText('Das ist für Sie nicht mehr verfügbar.')).toBeInTheDocument()
+  })
+})
+
+describe('InboxItemRow — a colleague’s work on a mark, in the reader’s words', () => {
+  const onMark = (overrides: Partial<InboxItemView> = {}) =>
+    item({
+      type: 'annotation.assigned_to_you',
+      state: 'unread',
+      actionable: true,
+      resourceType: 'document',
+      resourceId: 'doc-eg',
+      anchorId: 'mark-4',
+      actorName: 'Anna Weber',
+      actorUserId: 'u-anna',
+      href: '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4',
+      subject: 'Grundriss EG',
+      related: '4',
+      excerpt: 'Türbreite prüfen',
+      variant: 'person',
+      ...overrides,
+    })
+
+  const german = (row: InboxItemView) =>
+    renderPlain(
+      <I18nProvider initialLocale="de" fixedLocale>
+        <InboxItemRow item={row} />
+      </I18nProvider>,
+    )
+
+  test('being made responsible names who, which mark in which document, and what to do', () => {
+    german(onMark())
+    expect(screen.getByText('Anna Weber hat Ihnen Anmerkung 4 in „Grundriss EG“ zugewiesen')).toBeInTheDocument()
+    expect(
+      screen.getByText('Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.'),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Türbreite prüfen')
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
+  })
+
+  test('says Piloti did it for the colleague when Piloti assigned it', () => {
+    german(onMark({ variant: 'piloti' }))
+    expect(screen.getByText('Piloti hat Ihnen für Anna Weber Anmerkung 4 in „Grundriss EG“ zugewiesen')).toBeInTheDocument()
+  })
+
+  test('counts replies on one mark in one row, and reads a read row without „neu“', () => {
+    const reply = { type: 'annotation.activity' as const, actionable: false, variant: 'reply', excerpt: 'Ist bestellt.' }
+    const { unmount } = german(onMark({ ...reply, count: 1 }))
+    expect(screen.getByText('Neue Antwort zu Anmerkung 4 in „Grundriss EG“')).toBeInTheDocument()
+    unmount()
+
+    const many = german(onMark({ ...reply, count: 3 }))
+    expect(screen.getByText('3 neue Antworten zu Anmerkung 4 in „Grundriss EG“')).toBeInTheDocument()
+    many.unmount()
+
+    const noName = german(onMark({ ...reply, count: 3, subject: null }))
+    expect(screen.getByText('3 neue Antworten zu Anmerkung 4')).toBeInTheDocument()
+    noName.unmount()
+
+    german(onMark({ ...reply, state: 'read', count: 0 }))
+    expect(screen.getByText('Antworten zu Anmerkung 4 in „Grundriss EG“')).toBeInTheDocument()
+  })
+
+  test.each([
+    ['resolved', 'Anna Weber hat Anmerkung 4 in „Grundriss EG“ erledigt'],
+    ['dismissed', 'Anna Weber hat Anmerkung 4 in „Grundriss EG“ verworfen'],
+    ['reopened', 'Anna Weber hat Anmerkung 4 in „Grundriss EG“ wieder geöffnet'],
+  ] as const)('tells the author someone else %s their mark', (variant, title) => {
+    german(onMark({ type: 'annotation.activity', actionable: false, variant, count: 2 }))
+    expect(screen.getByText(title)).toBeInTheDocument()
   })
 })

@@ -253,7 +253,8 @@ export const collaboration: typeof en.collaboration = {
       needsMeDescription:
         'Wenn jemand Ihre Einschätzung braucht, erscheint die Anfrage hier.',
       allTitle: 'Ihr Postfach ist leer',
-      allDescription: 'Anfragen, Antworten und geteilte Chats erscheinen hier.',
+      allDescription:
+        'Wenn Sie jemand erwähnt, Ihnen eine Anmerkung zuweist oder Piloti Sie etwas fragt, erscheint es hier.',
     },
     errors: {
       loadFailed: 'Ihr Postfach konnte nicht geladen werden.',
@@ -367,6 +368,10 @@ export const collaboration: typeof en.collaboration = {
         titleRelated: 'Piloti hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',
         titleRelatedNoSubject: 'Piloti hat Anmerkung {related} für Sie bearbeitet',
         body: 'Lesen Sie die Antwort im Verlauf der Anmerkung.',
+        // Die Delegation ist zu Ende: Piloti hat die Anmerkung zurückgegeben.
+        variants: {
+          assigned: { body: 'Die Anmerkung liegt wieder bei Ihnen.' },
+        },
       },
       // Piloti konnte es nicht. `variants` sagen warum, nach der Klasse des
       // gespeicherten Grundes (`lib/annotations/wake-end-reason.ts`), und was
@@ -426,6 +431,53 @@ export const collaboration: typeof en.collaboration = {
         title: 'Piloti hat die Dokumente von „{subject}“ gelesen',
         titleRelated: 'Piloti hat die Dokumente von „{subject}“ gelesen – Rückfragen: {related}',
         body: 'Prüfen Sie die Vorschläge und bestätigen Sie, was stimmt.',
+      },
+      // Eine Kollegin hat Sie für eine Anmerkung zuständig gemacht, oder Piloti
+      // hat es für sie getan (`variants.piloti`, dann ist {actor} die Person,
+      // für die Piloti gearbeitet hat). {related} ist die Nummer der
+      // Anmerkung, {subject} das Dokument; der Auszug ist, was sie sagt.
+      annotationAssigned: {
+        title: '{actor} hat Ihnen eine Anmerkung zugewiesen',
+        titleRelated: '{actor} hat Ihnen Anmerkung {related} in „{subject}“ zugewiesen',
+        titleRelatedNoSubject: '{actor} hat Ihnen Anmerkung {related} zugewiesen',
+        body: 'Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.',
+        variants: {
+          piloti: {
+            title: 'Piloti hat Ihnen für {actor} eine Anmerkung zugewiesen',
+            titleRelated: 'Piloti hat Ihnen für {actor} Anmerkung {related} in „{subject}“ zugewiesen',
+            titleRelatedNoSubject: 'Piloti hat Ihnen für {actor} Anmerkung {related} zugewiesen',
+          },
+        },
+      },
+      // Neues an einer Anmerkung, an der Sie beteiligt sind: eine Zeile je
+      // Anmerkung, die mitzählt. Der Auszug ist die neueste Antwort.
+      // `variants` für Ihre Anmerkung, die jemand anderes erledigt, verworfen
+      // oder wieder geöffnet hat; dann ist der Auszug, was sie sagt.
+      annotationActivity: {
+        title: 'Neue Antwort zu einer Anmerkung',
+        titleRelated: 'Neue Antwort zu Anmerkung {related} in „{subject}“',
+        titleRelatedMany: '{count} neue Antworten zu Anmerkung {related} in „{subject}“',
+        titleRelatedNone: 'Antworten zu Anmerkung {related} in „{subject}“',
+        titleRelatedNoSubject: 'Neue Antwort zu Anmerkung {related}',
+        titleRelatedNoSubjectMany: '{count} neue Antworten zu Anmerkung {related}',
+        titleRelatedNoSubjectNone: 'Antworten zu Anmerkung {related}',
+        variants: {
+          resolved: {
+            title: '{actor} hat eine Anmerkung erledigt',
+            titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ erledigt',
+            titleRelatedNoSubject: '{actor} hat Anmerkung {related} erledigt',
+          },
+          dismissed: {
+            title: '{actor} hat eine Anmerkung verworfen',
+            titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ verworfen',
+            titleRelatedNoSubject: '{actor} hat Anmerkung {related} verworfen',
+          },
+          reopened: {
+            title: '{actor} hat eine Anmerkung wieder geöffnet',
+            titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ wieder geöffnet',
+            titleRelatedNoSubject: '{actor} hat Anmerkung {related} wieder geöffnet',
+          },
+        },
       },
       unknown: {
         title: 'Es gab Aktivität',
