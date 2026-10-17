@@ -20,7 +20,7 @@ import {
   unauthenticatedDefault,
   type KnownFeatureFlag,
 } from '@/lib/authz/feature-flags'
-import { TransientAuthzError } from '@/lib/authz/errors'
+import { TransientAuthzError, type AuthzLookupOptions } from '@/lib/authz/errors'
 
 const CACHE_TTL_MS = 30_000
 
@@ -59,16 +59,30 @@ export async function enabledFlagsForOrganization(organizationId: string): Promi
  * Whether `flag` is enabled for `organizationId`, for a caller without a
  * session. OFF when there is no organization, no WorkOS API key, or the lookup
  * fails; the fixed per-kind answer where nobody authenticates.
+ *
+ * With `onError: 'throw'`, a lookup that could not complete (no WorkOS key,
+ * network, plan) throws {@link TransientAuthzError} instead of answering OFF:
+ * for a caller to whom "off" is a permanent answer, "could not ask" has to be
+ * a retry.
  */
 export async function isOrgFeatureEnabled(
   flag: KnownFeatureFlag,
   organizationId: string | null | undefined,
+  options: AuthzLookupOptions = {},
 ): Promise<boolean> {
   if (!flagsFromWorkOS()) return unauthenticatedDefault(flag)
-  if (!organizationId || !process.env.WORKOS_API_KEY) return false
+  if (!organizationId) return false
+  const throwOnError = options.onError === 'throw'
+  if (!process.env.WORKOS_API_KEY) {
+    if (!throwOnError) return false
+    throw new TransientAuthzError('feature-flags', {
+      cause: new Error('WORKOS_API_KEY is not set; organization flags cannot be read'),
+    })
+  }
   try {
     return (await enabledSlugsForOrg(organizationId)).has(flag)
   } catch (error) {
+    if (throwOnError) throw new TransientAuthzError('feature-flags', { cause: error })
     console.warn(`[FeatureFlags] evaluation of "${flag}" failed; treating it as off`, error)
     return false
   }
@@ -176,25 +190,14 @@ export async function isTaskAutomationEnabledForOrg(
  * webhook and the filing job act for an organization, not a signed-in person.
  *
  * The same answer as `isProjectMailInboxEnabled` in `lib/authz/feature-flags`,
- * with one difference from {@link isOrgFeatureEnabled}: a lookup that could not
- * complete (no WorkOS key, network, plan) THROWS {@link TransientAuthzError}
- * instead of answering `false`. Here "off" is a permanent refusal to the
+ * except that a lookup that could not complete THROWS
+ * {@link TransientAuthzError}: here "off" is a permanent refusal to the
  * sender's server, so "could not ask" has to be a retry.
  */
 export async function isProjectMailInboxEnabledForOrg(
   organizationId: string | null | undefined,
 ): Promise<boolean> {
-  const flag = FEATURE_FLAGS.projectMailInbox
-  if (!flagsFromWorkOS()) return unauthenticatedDefault(flag)
-  if (!organizationId) return false
-  try {
-    if (!process.env.WORKOS_API_KEY) {
-      throw new Error('WORKOS_API_KEY is not set; organization flags cannot be read')
-    }
-    return (await enabledSlugsForOrg(organizationId)).has(flag)
-  } catch (error) {
-    throw new TransientAuthzError('feature-flags', { cause: error })
-  }
+  return isOrgFeatureEnabled(FEATURE_FLAGS.projectMailInbox, organizationId, { onError: 'throw' })
 }
 
 /** Test hook: clear a specific org's flag cache entry. */

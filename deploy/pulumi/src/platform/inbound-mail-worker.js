@@ -45,7 +45,8 @@
  *     revoked address, unverifiable or unauthorised sender, oversized mail, the
  *     inbox switched off for the organisation). `setReject(REJECT_TEXT)`.
  *   - Anything else throws, so the sender retries: 401/403/404/413 without the
- *     header, 409, 429, 5xx, 3xx, and network errors.
+ *     header, 409, 429, 5xx, 3xx, network errors, and a BFF that has not
+ *     answered within `BFF_TIMEOUT_MS`.
  *
  * A status alone never bounces. A rotated `INBOUND_MAIL_TOKEN` (403 from the
  * token check), a `BFF_URL` that points at the wrong host (404) or a proxy's
@@ -109,12 +110,19 @@ export const VERDICT_REJECT = "reject";
 export const RAW_SIZE_HEADER = "x-inbound-raw-size";
 
 /**
+ * How long the Worker waits for the BFF. A hung BFF then aborts the fetch,
+ * which throws like a network error, so the sender retries.
+ */
+export const BFF_TIMEOUT_MS = 120_000;
+
+/**
  * The one bounce text, identical for every refusal, so the bounce cannot be
  * used to tell an unknown address from an unauthorised sender or an oversized
  * message. ASCII on purpose ("fuer", not "für"): it travels as the SMTP reply
  * text, which is ASCII unless the sending server negotiated SMTPUTF8. The help
  * page tells the sender what to do instead; the privacy link is there because
- * a refused mail was still received and processed.
+ * a refused mail was still received and processed. Both URLs are
+ * `shared/public-site.json`'s (the spec checks).
  */
 export const REJECT_TEXT =
   "Diese Nachricht konnte nicht zugestellt werden: Die Adresse ist unbekannt, " +
@@ -181,8 +189,8 @@ export default {
       return;
     }
 
-    // A network error rejects here and propagates: Cloudflare answers the
-    // sending server with a temporary failure and it retries.
+    // A network error or the timeout rejects here and propagates: Cloudflare
+    // answers the sending server with a temporary failure and it retries.
     const response = await fetch(new URL(INBOUND_MAIL_PATH, env.BFF_URL), {
       method: "POST",
       headers: {
@@ -193,6 +201,7 @@ export default {
       },
       body: message.raw,
       redirect: "manual",
+      signal: AbortSignal.timeout(BFF_TIMEOUT_MS),
     });
 
     if (response.status >= 200 && response.status < 300) return;

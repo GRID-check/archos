@@ -119,7 +119,7 @@ describe("the project mail inbox webhook at the edge", () => {
 
   it("puts no request-body cap on the app route, which carries mail up to 25 MiB", () => {
     // `requestBuffer` would buffer and cap every body on the route; the mail
-    // webhook needs at least 26 MiB (`INBOUND_MAIL_MAX_BODY_BYTES`).
+    // webhook needs at least 26 MiB (Cloudflare's 25 MiB cap plus headroom).
     expect(policy("grid-app-timeouts")).not.toHaveProperty("requestBuffer");
   });
 });

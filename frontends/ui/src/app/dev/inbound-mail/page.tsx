@@ -25,19 +25,19 @@ const DOMAIN = 'piloti.at'
 const ADDRESSES: Record<string, InboundAddressResponse> = {
   'preview-rotate': {
     enabled: true,
-    address: `wohnbau-mariahilf.k7m2qx4hz9ab@${DOMAIN}`,
+    address: `wohnbau-mariahilf.k3m7q2xw4pab@${DOMAIN}`,
     canRotate: true,
   },
   'preview-member': {
     enabled: true,
-    address: `wohnbau-mariahilf.k7m2qx4hz9ab@${DOMAIN}`,
+    address: `wohnbau-mariahilf.k3m7q2xw4pab@${DOMAIN}`,
     canRotate: false,
   },
   // A long project slug, so a phone shows where the address wraps: before the
   // `@` and the dots, not in the middle of the token.
   'preview-long': {
     enabled: true,
-    address: `generalsanierung-schulzentrum-floridsdorf.k7m2qx4hz9ab@${DOMAIN}`,
+    address: `generalsanierung-schulzentrum-floridsdorf.k3m7q2xw4pab@${DOMAIN}`,
     canRotate: true,
   },
   'preview-disabled': { enabled: false, address: null, canRotate: false },

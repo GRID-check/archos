@@ -31,8 +31,8 @@ export type RotateInboundAddressResponse = z.infer<typeof rotateInboundAddressRe
 
 /**
  * The Worker ↔ webhook contract (`deploy/pulumi/src/platform/inbound-mail-worker.js`
- * holds the same three names; it is plain JS outside this package, so they are
- * restated there rather than imported).
+ * holds the same header names and verdict value; it is plain JS outside this
+ * package, so they are restated there rather than imported).
  *
  * The Worker bounces a mail ONLY when the answer is a 4xx carrying
  * `x-inbound-verdict: reject`. Every other answer, including a 4xx without it,

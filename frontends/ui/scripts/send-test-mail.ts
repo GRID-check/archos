@@ -3,13 +3,13 @@
  * would (ADR-0075): the raw bytes as the body, the envelope recipient in
  * `x-envelope-to`, the size in `x-inbound-raw-size`, and the Worker's own token.
  *
- *   Usage:
- *     GRID_INBOUND_MAIL_TOKEN=… npx tsx scripts/send-test-mail.ts \
+ *   Usage (from frontends/ui):
+ *     GRID_INBOUND_MAIL_TOKEN=… bun scripts/send-test-mail.ts \
  *       --to wohnbau.abcdefgh2345@piloti.at path/to/mail.eml
  *
  *   Options:
  *     --to <address>     envelope recipient (required): the project address
- *     --url <base>       BFF base URL (default: $BFF_URL or http://localhost:3000)
+ *     --url <base>       BFF base URL (default: http://localhost:3000)
  *
  * The BFF verifies the sender for real: an aligned, passing DKIM signature
  * that covers From, Subject and the To or Cc naming the project address. A
@@ -70,7 +70,7 @@ async function main(): Promise<void> {
   }
 
   const raw = await readFile(file)
-  const base = (values.url ?? process.env.BFF_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+  const base = (values.url ?? 'http://localhost:3000').replace(/\/$/, '')
 
   const response = await fetch(`${base}/api/internal/inbound-mail`, {
     method: 'POST',

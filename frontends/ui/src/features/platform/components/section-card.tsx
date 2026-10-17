@@ -17,16 +17,10 @@
  * content the reader is looking at stays put, the body is marked busy and a
  * small spinner sits in the header. Swapping a loaded list for skeletons on
  * every mutation throws the reader's place (and focus) away.
- *
- * Two materials, one contract. `plain` is the admin card the platform and
- * organization consoles use. `raised` is the product card
- * (`components/ui/raised-card.tsx`) that project Settings is built from: the
- * same header, body states and retry, on the tray-and-sheet material, as a
- * named region with an `h2`, because its sections are the page's outline.
  */
 
 import type { JSX } from 'react'
-import { type ReactNode, useId } from 'react'
+import { type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, type LucideIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -40,7 +34,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import { RaisedCard, RaisedCardBody } from '@/components/ui/raised-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
@@ -48,16 +41,17 @@ import { cn } from '@/lib/utils'
 
 export interface SectionCardProps {
   /**
-   * `plain` (the default): the admin console card. `raised`: the product card
-   * a project Settings section sits on, a region named by its `h2` title.
-   */
-  variant?: 'plain' | 'raised'
-  /**
    * What the card holds. Optional: a page whose only card would repeat the
    * page title right under it leaves this out, and the header collapses to
    * whatever is left (description, action) or disappears.
    */
   title?: string
+  /**
+   * Makes the title a heading of this level. A project Settings block passes 2,
+   * as `SettingsPanel` does: the section frame owns the page's `h1`. Left out,
+   * the title is plain text, as on the admin consoles.
+   */
+  headingLevel?: 2
   description?: string
   /** Header-right controls (filters, a primary action). Hidden while loading. */
   action?: ReactNode
@@ -93,8 +87,8 @@ export interface SectionCardProps {
 }
 
 export function SectionCard({
-  variant = 'plain',
   title,
+  headingLevel,
   description,
   action,
   error = false,
@@ -113,7 +107,6 @@ export function SectionCard({
   children,
 }: SectionCardProps): JSX.Element {
   const t = useTranslations('platform')
-  const titleId = useId()
   const busy = refreshing && !loading && !error
   const showAction = Boolean(action) && !loading && !error
   const hasHeader = Boolean(title || description || showAction || busy)
@@ -167,85 +160,48 @@ export function SectionCard({
         />
       )
     }
-    // A settings section stacks blocks (a field, a list), on one rhythm.
-    return variant === 'raised' ? <div className="space-y-5">{children}</div> : children
+    return children
   }
 
   const resolved = !error && !loading && !empty
-  const titleContent = (
-    <>
-      {title ? <span className="min-w-0 truncate">{title}</span> : null}
-      {busy ? (
-        <Spinner
-          size="xs"
-          label={t('refreshing')}
-          className="text-muted-foreground"
-          data-testid="section-refreshing"
-        />
-      ) : null}
-    </>
-  )
-
-  const header = hasHeader ? (
-    <CardHeader>
-      {title || busy ? (
-        variant === 'raised' ? (
-          <h2
-            id={titleId}
-            data-slot="card-title"
-            className="text-foreground flex min-w-0 items-center gap-2 text-sm font-semibold"
-          >
-            {titleContent}
-          </h2>
-        ) : (
-          <CardTitle className="flex min-w-0 items-center gap-2">{titleContent}</CardTitle>
-        )
-      ) : null}
-      {description ? (
-        <CardDescription className={variant === 'raised' ? 'max-w-2xl leading-relaxed' : undefined}>
-          {description}
-        </CardDescription>
-      ) : null}
-      {showAction ? <CardAction>{action}</CardAction> : null}
-    </CardHeader>
-  ) : null
-
-  const content = (
-    <CardContent
-      aria-busy={busy || loading || undefined}
-      className={cn(
-        resolved && 'animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none',
-        busy && 'duration-base opacity-70 transition-opacity'
-      )}
-    >
-      {body()}
-    </CardContent>
-  )
-
-  const footerRow =
-    footer && !loading && !error ? (
-      <CardFooter className="flex-wrap justify-between gap-3">{footer}</CardFooter>
-    ) : null
-
-  if (variant === 'raised') {
-    // The body's own padding is dropped so CardHeader and CardContent keep the
-    // plain card's `px-6` gutter: one header geometry in both materials.
-    return (
-      <RaisedCard role="region" aria-labelledby={title ? titleId : undefined} data-testid={testId}>
-        <RaisedCardBody className="flex flex-col gap-5 px-0 pt-6 pb-6">
-          {header}
-          {content}
-          {footerRow}
-        </RaisedCardBody>
-      </RaisedCard>
-    )
-  }
 
   return (
     <Card data-testid={testId}>
-      {header}
-      {content}
-      {footerRow}
+      {hasHeader ? (
+        <CardHeader>
+          {title || busy ? (
+            <CardTitle
+              className="flex min-w-0 items-center gap-2"
+              role={headingLevel ? 'heading' : undefined}
+              aria-level={headingLevel}
+            >
+              {title ? <span className="min-w-0 truncate">{title}</span> : null}
+              {busy ? (
+                <Spinner
+                  size="xs"
+                  label={t('refreshing')}
+                  className="text-muted-foreground"
+                  data-testid="section-refreshing"
+                />
+              ) : null}
+            </CardTitle>
+          ) : null}
+          {description ? <CardDescription>{description}</CardDescription> : null}
+          {showAction ? <CardAction>{action}</CardAction> : null}
+        </CardHeader>
+      ) : null}
+      <CardContent
+        aria-busy={busy || loading || undefined}
+        className={cn(
+          resolved && 'animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none',
+          busy && 'duration-base opacity-70 transition-opacity'
+        )}
+      >
+        {body()}
+      </CardContent>
+      {footer && !loading && !error ? (
+        <CardFooter className="flex-wrap justify-between gap-3">{footer}</CardFooter>
+      ) : null}
     </Card>
   )
 }

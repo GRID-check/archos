@@ -218,7 +218,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (read && url === `/api/projects/${PROJECT_ID}/inbound-address`) {
         return Response.json({
           enabled: true,
-          address: 'wohnbau-mariahilf.k7m2qx4hz9ab@piloti.at',
+          address: 'wohnbau-mariahilf.k3m7q2xw4pab@piloti.at',
           canRotate: true,
         })
       }

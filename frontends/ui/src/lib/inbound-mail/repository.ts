@@ -10,7 +10,7 @@
  */
 
 import 'server-only'
-import { and, eq, isNull, lt, sql, type SQL } from 'drizzle-orm'
+import { and, eq, isNull, lt, ne, sql, type SQL } from 'drizzle-orm'
 import type { PgUpdateSetSource } from 'drizzle-orm/pg-core'
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
@@ -317,6 +317,28 @@ function terminalValues(outcome: DeliveryOutcome) {
 
 export function markDeliveryFiled(organizationId: string, id: string, outcome: DeliveryOutcome): Promise<boolean> {
   return updateQueued(organizationId, id, { status: 'filed', ...terminalValues(outcome) })
+}
+
+/**
+ * What is left of a finished delivery's staging after the job deleted it: the
+ * keys the staging backstop still has to delete (`findExpiredStaging`). For a
+ * row that is no longer `queued` only; names were dropped when it finished.
+ */
+export async function recordStagingLeft(
+  organizationId: string,
+  id: string,
+  remaining: StagedAttachment[]
+): Promise<void> {
+  await getDb()
+    .update(inboundMailMessages)
+    .set({ staged: withoutNames(remaining), updatedAt: sql`now()` })
+    .where(
+      and(
+        eq(inboundMailMessages.organizationId, organizationId),
+        eq(inboundMailMessages.id, id),
+        ne(inboundMailMessages.status, 'queued')
+      )
+    )
 }
 
 export function markDeliveryFailed(organizationId: string, id: string, outcome: DeliveryOutcome): Promise<boolean> {

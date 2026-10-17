@@ -69,15 +69,18 @@ export function ProjectInboundMailCard({
   const canRotate = state.status === 'ready' && state.canRotate
 
   return (
+    // SectionCard rather than SettingsPanel, its siblings on this page: the same
+    // Card and h2 title, plus the loading, error and footer states this needs.
     <SectionCard
-      variant="raised"
       title={t('project.inboundMail.title')}
+      headingLevel={2}
       description={t('project.inboundMail.description')}
       loading={state.status === 'loading'}
       skeletonRows={2}
       error={state.status === 'error'}
       errorMessage={t('project.inboundMail.loadFailed')}
       onRetry={reload}
+      testId="project-inbound-mail-card"
       footer={
         <>
           <ExternalLink
@@ -95,23 +98,27 @@ export function ProjectInboundMailCard({
         </>
       }
     >
-      {state.status === 'ready' && (
-        <CopyField
-          value={state.address}
-          label={t('project.inboundMail.addressLabel')}
-          copyLabel={tCommon('actions.copy')}
-          copiedLabel={tCommon('states.copied')}
-          onCopyError={() => toast.error(tCommon('states.copyFailed'))}
-        />
-      )}
+      <div className="flex flex-col gap-5">
+        {state.status === 'ready' && (
+          <CopyField
+            value={state.address}
+            label={t('project.inboundMail.addressLabel')}
+            copyLabel={tCommon('actions.copy')}
+            copiedLabel={tCommon('states.copied')}
+            onCopyError={() => toast.error(tCommon('states.copyFailed'))}
+          />
+        )}
 
-      <IconList label={t('project.inboundMail.rulesLabel')}>
-        <IconListItem icon={Users}>{t('project.inboundMail.rules.members')}</IconListItem>
-        <IconListItem icon={ShieldCheck}>{t('project.inboundMail.rules.verified')}</IconListItem>
-        <IconListItem icon={AtSign}>{t('project.inboundMail.rules.addressing')}</IconListItem>
-        <IconListItem icon={Paperclip}>{t('project.inboundMail.rules.size')}</IconListItem>
-        <IconListItem icon={FileText}>{t('project.inboundMail.rules.attachmentsOnly')}</IconListItem>
-      </IconList>
+        <IconList label={t('project.inboundMail.rulesLabel')}>
+          <IconListItem icon={Users}>{t('project.inboundMail.rules.members')}</IconListItem>
+          <IconListItem icon={ShieldCheck}>{t('project.inboundMail.rules.verified')}</IconListItem>
+          <IconListItem icon={AtSign}>{t('project.inboundMail.rules.addressing')}</IconListItem>
+          <IconListItem icon={Paperclip}>{t('project.inboundMail.rules.size')}</IconListItem>
+          <IconListItem icon={FileText}>
+            {t('project.inboundMail.rules.attachmentsOnly')}
+          </IconListItem>
+        </IconList>
+      </div>
 
       {canRotate && (
         <ConfirmDialog

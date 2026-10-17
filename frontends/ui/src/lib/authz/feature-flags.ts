@@ -289,13 +289,6 @@ export function isProjectMailInboxEnabled(session: Pick<GridSession, 'featureFla
   return isFeatureEnabled(session, FEATURE_FLAGS.projectMailInbox)
 }
 
-/** Route guard for the project email address: stable-coded 403 when off, null when allowed. */
-export function requireProjectMailInboxEnabled(
-  session: Pick<GridSession, 'featureFlags'>
-): Response | null {
-  return requireFeature(session, FEATURE_FLAGS.projectMailInbox)
-}
-
 /** Whether events on Piloti's work wake a turn for this organization (ADR-0106). */
 export function isPilotiWakesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.pilotiWakes)

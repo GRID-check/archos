@@ -125,6 +125,13 @@ describe("inbound mail on Cloudflare", () => {
     expect(CALLS.map((c) => c.token)).toContain("cloudflare:index/getZone:getZone");
   });
 
+  it("switches Workers observability off explicitly", async () => {
+    // Workers Logs would keep a record of every delivery at Cloudflare.
+    await install(mailConfig());
+    const script = one("cloudflare:index/workersScript:WorkersScript");
+    expect(script.inputs.observability).toEqual({ enabled: false });
+  });
+
   it("keeps the Worker's route in step with the edge rate-limit bucket", async () => {
     // Two copies of one path: the Worker posts to INBOUND_MAIL_PATH, the edge
     // gives that path its own bucket. If they drift, mail lands in the shared

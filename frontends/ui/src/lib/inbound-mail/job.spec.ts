@@ -51,6 +51,7 @@ vi.mock('./repository', () => ({
   recordFailedAttempt: vi.fn(),
   markDeliveryFiled: vi.fn(),
   markDeliveryFailed: vi.fn(),
+  recordStagingLeft: vi.fn(),
   listStalledDeliveries: vi.fn(),
   findExpiredStaging: vi.fn(),
   clearExpiredStaging: vi.fn(),
@@ -83,6 +84,7 @@ import {
   listStalledDeliveries,
   markDeliveryFailed,
   markDeliveryFiled,
+  recordStagingLeft,
   recordDeliveryFolder,
   recordFailedAttempt,
   touchDelivery,
@@ -234,14 +236,19 @@ describe('filing one delivery', () => {
     expect(vi.mocked(fileBytes).mock.calls[0][1]).toBe('folder-new')
   })
 
-  it('deletes the staging, marks the row filed and tells the sender', async () => {
+  it('marks the row filed, then deletes the staging, and tells the sender', async () => {
     await run()
-    expect(deleteStagedObjects).toHaveBeenCalledWith('grid-documents', delivery().staged)
     expect(markDeliveryFiled).toHaveBeenCalledWith('org_A', ROW_ID, {
       filedCount: 2,
       skipped: [{ filename: 'image001.png', reason: 'embedded' }],
-      remaining: [],
+      // Kept until the delete below, so a crash in between leaves it to the backstop.
+      remaining: delivery().staged,
     })
+    expect(deleteStagedObjects).toHaveBeenCalledWith('grid-documents', delivery().staged)
+    expect(vi.mocked(markDeliveryFiled).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deleteStagedObjects).mock.invocationCallOrder[0]
+    )
+    expect(recordStagingLeft).toHaveBeenCalledWith('org_A', ROW_ID, [])
     expect(notifyFiled).toHaveBeenCalledWith(expect.objectContaining({ id: ROW_ID }), {
       filed: 2,
       skipped: [{ filename: 'image001.png', reason: 'embedded' }],
@@ -254,7 +261,14 @@ describe('filing one delivery', () => {
     const left = [delivery().staged[1]]
     vi.mocked(deleteStagedObjects).mockResolvedValue(left)
     await run()
-    expect(vi.mocked(markDeliveryFiled).mock.calls[0][2].remaining).toBe(left)
+    expect(recordStagingLeft).toHaveBeenCalledWith('org_A', ROW_ID, left)
+  })
+
+  it('stays filed when the staging delete fails: the backstop takes it, not a retry', async () => {
+    vi.mocked(deleteStagedObjects).mockRejectedValue(new Error('s3 down'))
+    expect(await run()).toBe('filed')
+    expect(notifyFiled).toHaveBeenCalled()
+    expect(recordFailedAttempt).not.toHaveBeenCalled()
   })
 
   it('files a mail with nothing staged without a folder, and still tells the sender', async () => {

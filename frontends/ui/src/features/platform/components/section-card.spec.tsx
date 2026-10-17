@@ -154,17 +154,14 @@ describe('SectionCard', () => {
     expect(screen.getByRole('button', { name: 'Add' })).toBeDefined()
   })
 
-  test('the raised variant is a region named by its h2', () => {
-    render(
-      <SectionCard variant="raised" title="Project email address" description="Send files here.">
-        <p>body</p>
-      </SectionCard>,
-    )
+  test('the title is a heading only when a level is given', () => {
+    const { rerender } = render(<SectionCard title="Project email address" />)
+    expect(screen.queryByRole('heading')).toBeNull()
 
-    const region = screen.getByRole('region', { name: 'Project email address' })
-    expect(region).toContainElement(screen.getByRole('heading', { level: 2, name: 'Project email address' }))
-    expect(region).toHaveTextContent('Send files here.')
-    expect(region).toHaveTextContent('body')
+    rerender(<SectionCard title="Project email address" headingLevel={2} />)
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Project email address' })
+    ).toBeDefined()
   })
 
   test('draws the footer after the body, and hides it while loading or failed', () => {

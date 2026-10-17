@@ -130,6 +130,17 @@ export function assertZoneApex(
 }
 
 /**
+ * The routing resource's options beyond the provider. Exported for the spec:
+ * Pulumi's mocks do not carry resource options.
+ */
+export const ROUTING_RESOURCE_OPTIONS = {
+  // Deleting it (unsetting `inboundMailDomain`, or a destroy) turns Email
+  // Routing off for the whole zone: its MX, SPF and DKIM go, and with them every
+  // company address's literal rule. Turning the inbox off must leave those be.
+  retainOnDelete: true,
+} as const satisfies pulumi.CustomResourceOptions;
+
+/**
  * Email Routing on the inbox's zone, or undefined while the inbox is off.
  * `loadConfig` has already refused a subdomain of the DNS zone and an inbox on
  * the app zone in a stack that does not own it; the zone lookup here refuses
@@ -156,7 +167,7 @@ export function installInboundMailZone(cfg: GridConfig): MailZone | undefined {
   const routing = new cloudflare.EmailRoutingDns(
     "inbound-mail-routing",
     { zoneId: checked.zoneId, name: mail.domain },
-    { provider },
+    { provider, ...ROUTING_RESOURCE_OPTIONS },
   );
 
   return {

@@ -135,8 +135,7 @@ export const settings = {
       addressLabel: 'Project email address',
       rulesLabel: 'What applies',
       rules: {
-        members:
-          'Project members who can edit documents can send to it, once the feature is switched on for the organization.',
+        members: 'Project members who can edit documents can send to it.',
         verified:
           'The sender’s domain must sign its mail with DKIM. Other mail is rejected.',
         addressing: 'Put the address in To or Cc. Mail that has it only in Bcc is rejected.',

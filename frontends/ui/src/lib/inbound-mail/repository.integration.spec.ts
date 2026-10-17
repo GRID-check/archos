@@ -287,6 +287,24 @@ describe.skipIf(!url)('inbound mail tables against live Postgres', () => {
       expect((await read(id!)).folder_id).toBe(first)
     })
 
+    it('keeps a filed row\'s staging keys until the delete, without the names, and records what is left', async () => {
+      const id = await queue(ORG_A, freshKey())
+      const row = await inA(() => repo.findDeliveryRow(ORG_A, id!))
+      expect(await inA(() => repo.markDeliveryFiled(ORG_A, id!, { filedCount: 1, skipped: [], remaining: row!.staged }))).toBe(true)
+      const kept = (await read(id!)).staged as { key: string; filename: string }[]
+      expect(kept.map((object) => object.key)).toEqual(row!.staged.map((object) => object.key))
+      expect(kept.every((object) => object.filename === '')).toBe(true)
+
+      await inA(() => repo.recordStagingLeft(ORG_A, id!, []))
+      expect(await read(id!)).toMatchObject({ status: 'filed', staged: [] })
+    })
+
+    it('leaves a queued row\'s staging alone when asked to record what is left', async () => {
+      const id = await queue(ORG_A, freshKey())
+      await inA(() => repo.recordStagingLeft(ORG_A, id!, []))
+      expect(((await read(id!)).staged as unknown[]).length).toBe(1)
+    })
+
     it('counts one failed attempt once, however many jobs report it', async () => {
       const id = await queue(ORG_A, freshKey())
       expect(await inA(() => repo.recordFailedAttempt(ORG_A, id!, 1, 'a'))).toBe(true)

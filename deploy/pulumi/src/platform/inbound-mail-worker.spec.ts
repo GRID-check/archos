@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import worker, {
+  BFF_TIMEOUT_MS,
   REJECT_TEXT,
   TOKEN_PATTERN,
   UNKNOWN_ADDRESS_TEXT,
@@ -8,6 +9,7 @@ import worker, {
 // An import, not `node:fs`: this spec is also checked against the Workers
 // runtime types (tsconfig.worker.json), which have no Node modules.
 import contract from "../../../../shared/inbound-address.json";
+import publicSite from "../../../../shared/public-site.json";
 
 /**
  * The Email Worker's whole job is a mapping: the BFF's answer to accept, reject
@@ -73,6 +75,7 @@ const REJECT = { "x-inbound-verdict": "reject" };
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("inbound mail worker: the request", () => {
@@ -201,6 +204,21 @@ describe("inbound mail worker: the verdict contract", () => {
     },
   );
 
+  it("gives up on a hung BFF after the timeout, and throws rather than rejects", async () => {
+    // The fetch carries the abort signal; a fetch it aborts rejects with it.
+    const fetchMock = stubFetch(() =>
+      Promise.reject(new DOMException("The operation timed out.", "TimeoutError")),
+    );
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const { message, setReject } = fakeMessage();
+
+    await expect(deliver(message)).rejects.toThrow("timed out");
+
+    expect(timeout).toHaveBeenCalledWith(BFF_TIMEOUT_MS);
+    expect(fetchMock.mock.calls[0][1]?.signal).toBe(timeout.mock.results[0].value);
+    expect(setReject).not.toHaveBeenCalled();
+  });
+
   it("throws on a network error", async () => {
     stubFetch(() => Promise.reject(new TypeError("network connection lost")));
     const { message, setReject } = fakeMessage();
@@ -210,12 +228,12 @@ describe("inbound mail worker: the verdict contract", () => {
 });
 
 describe("inbound mail worker: the bounce text", () => {
-  it("is the one agreed text, with the help and privacy links", () => {
-    expect(REJECT_TEXT).toBe(
-      "Diese Nachricht konnte nicht zugestellt werden: Die Adresse ist unbekannt, oder der " +
-        "Absender ist fuer dieses Projekt nicht berechtigt bzw. nicht verifizierbar. " +
-        "Hilfe: https://piloti.at/e-mail-eingang/ Datenschutz: https://piloti.at/datenschutz/",
-    );
+  it("links the help and privacy pages of shared/public-site.json", () => {
+    // The same file the UI's help link and the website's routes are held to,
+    // so a moved page fails here rather than in a sender's bounce.
+    const { origin, paths } = publicSite;
+    expect(REJECT_TEXT).toContain(`Hilfe: ${origin}${paths.mailInbox}`);
+    expect(REJECT_TEXT).toContain(`Datenschutz: ${origin}${paths.privacy}`);
   });
 
   it("is printable ASCII and under 300 characters, so it survives as an SMTP reply", () => {

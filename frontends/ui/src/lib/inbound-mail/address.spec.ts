@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest'
 import {
   formatInboundAddress,
   inboundMailDomain,
-  isToken,
   mintToken,
   parseInboundAddress,
   projectSlug,
@@ -84,7 +83,7 @@ describe('parseInboundAddress', () => {
 
 describe('mintToken', () => {
   it('is 12 characters of lowercase base32', () => {
-    for (let i = 0; i < 200; i += 1) expect(isToken(mintToken())).toBe(true)
+    for (let i = 0; i < 200; i += 1) expect(mintToken()).toMatch(TOKEN_PATTERN)
   })
 
   it('maps each random byte to one letter by its low five bits', () => {

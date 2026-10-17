@@ -82,9 +82,6 @@ import type { MailZone } from "./email-routing";
  *   - Zone · Zone · Read (`getZone`: the apex check and the account id)
  */
 
-/** Largest body the edge must pass to the BFF: Cloudflare's 25 MiB inbound cap plus headroom. */
-export const INBOUND_MAIL_MAX_BODY_BYTES = 26 * 1024 * 1024;
-
 /** Runtime semantics the Worker was written against; bump deliberately. */
 const COMPATIBILITY_DATE = "2026-09-01";
 
@@ -125,6 +122,9 @@ export function installInboundMail(cfg: GridConfig, zone: MailZone | undefined):
       mainModule: WORKER_FILE,
       content: readFileSync(join(__dirname, WORKER_FILE), "utf8"),
       compatibilityDate: COMPATIBILITY_DATE,
+      // Off, and said so: Workers Logs would keep a record of every delivery
+      // at Cloudflare, beyond the delivery log the privacy notice lists.
+      observability: { enabled: false },
       bindings: [
         { name: "BFF_URL", type: "plain_text", text: appOrigin },
         { name: "INBOUND_MAIL_TOKEN", type: "secret_text", text: mail.token },
