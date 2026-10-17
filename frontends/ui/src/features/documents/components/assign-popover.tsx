@@ -21,6 +21,8 @@ export function AssignPopover({
   onChanged,
   onPick,
   pickOnly = false,
+  access = 'read',
+  self,
   triggerLabel,
   trigger,
 }: {
@@ -30,6 +32,18 @@ export function AssignPopover({
   onChanged: (next: FileAssignee[]) => void
   onPick?: (person: FileAssignee) => void
   pickOnly?: boolean
+  /**
+   * Whom the list offers: who may open the document (a document's assignee),
+   * or `write`, who may change it (a mark's Zuständige, who must answer and
+   * close it). The server checks the pick again either way.
+   */
+  access?: 'read' | 'write'
+  /**
+   * The reader, picked by „Mir zuweisen" in `pickOnly` mode (a mark's
+   * Zuständige). Absent there, it is not offered: asking a colleague is not
+   * asking yourself.
+   */
+  self?: FileAssignee | null
   triggerLabel?: string
   /** Viewport-dressed trigger. Default is the Files ghost button. */
   trigger?: ReactElement
@@ -51,7 +65,7 @@ export function AssignPopover({
     let cancelled = false
     setLoading(true)
     setLoadError(false)
-    void listAssignmentCandidates('document', documentId)
+    void listAssignmentCandidates('document', documentId, { access })
       .then((candidates) => {
         if (cancelled) return
         setPeople(candidates)
@@ -69,7 +83,7 @@ export function AssignPopover({
     return () => {
       cancelled = true
     }
-  }, [open, documentId, attempt])
+  }, [open, documentId, attempt, access])
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -167,6 +181,21 @@ export function AssignPopover({
             className="w-full"
             disabled={busy}
             onClick={() => void write('assign', actorId, t('assignment.assignToMe'))}
+          >
+            {t('assignment.assignToMe')}
+          </Button>
+        )}
+        {pickOnly && onPick && self && !assignees.some((person) => person.userId === self.userId) && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            data-testid="assign-pick-self"
+            onClick={() => {
+              onPick(self)
+              setOpen(false)
+            }}
           >
             {t('assignment.assignToMe')}
           </Button>

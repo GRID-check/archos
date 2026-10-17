@@ -196,7 +196,7 @@ export function ReviewPanel({
 }): JSX.Element {
   const t = useTranslations('files')
   const { listed, filter, setFilter, load, mine, setMine } = review
-  const counts = tabCounts(review.annotations, { on: mine, me: review.room.self?.userId ?? null })
+  const counts = tabCounts(review.annotations, { on: mine, me: review.me })
   const [proposalsOpen, setProposalsOpen] = useState(true)
   const proposals = filter === 'open' ? listed.filter((annotation) => annotation.status === 'proposed') : []
   const rest = listed.filter((annotation) => !proposals.includes(annotation))

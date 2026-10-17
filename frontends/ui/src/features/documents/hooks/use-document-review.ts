@@ -15,11 +15,14 @@ import {
   isLive,
   type AnnotationKind,
   type AnnotationShape,
+  type AnnotationStatus,
   type AnnotationView,
   type MarkMention,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
+import { useChatStore } from '@/features/chat'
+import { ARCHIVE_UNDO_MS, useUndoableArchive } from '@/features/collaboration/hooks/use-undoable-archive'
 import { useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
 import { useDocumentRoom, type RoomTransport } from './use-document-room'
 
@@ -57,6 +60,28 @@ export function forgetMarkNewsReads(): void {
   markNewsReadAt.clear()
 }
 
+/** How long a decision taken by a key (E, ⌫) waits before it is sent: the toast's „Rückgängig" window. */
+export const DECISION_UNDO_MS = ARCHIVE_UNDO_MS
+
+/** A status move held back for the undo window: where the key moved the mark, and where it stands on the server. */
+interface HeldDecision {
+  status: 'open' | 'resolved' | 'dismissed'
+  expectedStatus: AnnotationStatus
+  /** Said when the move, once sent, is refused for any reason but a colleague's move (that is the conflict notice). */
+  onFailed?: () => void
+}
+
+/**
+ * A change asked while a decision on the same mark is held: the decision is
+ * let go, and the change is rebased onto where the mark really stands. Moving
+ * it back to that status is no change at all.
+ */
+function rebased(input: UpdateAnnotationRequest, held: HeldDecision): UpdateAnnotationRequest {
+  const { status, expectedStatus, ...rest } = input
+  if (status === undefined || status === held.expectedStatus) return rest
+  return { ...rest, status, expectedStatus: expectedStatus === held.status ? held.expectedStatus : expectedStatus }
+}
+
 /** A place picked on a page and not yet saved: a point, or a region dragged out. */
 export interface ReviewDraft {
   page: number
@@ -85,17 +110,29 @@ export function useDocumentReview(
     enabled,
     transport,
     piloti: pilotiOptions,
+    viewerUserId,
   }: {
     enabled: boolean
     transport?: RoomTransport
     /** Asking Piloti on the canvas; absent (or without a project) it is not offered. */
     piloti?: Omit<UseCanvasAskOptions, 'documentId' | 'enabled'>
+    /** The signed-in person as the page knows them (the shelf's `currentUserId`), for when the room is not up. */
+    viewerUserId?: string | null
   }
 ) {
   const room = useDocumentRoom(documentId, { enabled, transport })
   const canvas = useCanvasAsk({ ...pilotiOptions, documentId, enabled })
+  /**
+   * Who is reading: the room's own word once it has welcomed this tab, else
+   * the page's (`viewerUserId`), else the session's user id the app keeps
+   * (`useChatStore`'s `currentUserId`, set from `useAuth`). „Mir zugewiesen"
+   * and „Mir zuweisen" must not go blank while the room is down.
+   */
+  const sessionUserId = useChatStore((state) => state.currentUserId)
+  const me = room.self?.userId ?? viewerUserId ?? sessionUserId ?? null
   const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [annotations, setAnnotations] = useState<AnnotationView[]>([])
+  /** The marks as the server last answered; `annotations` below shows them with the held decisions. */
+  const [stored, setAnnotations] = useState<AnnotationView[]>([])
   const [canAnnotate, setCanAnnotate] = useState(false)
   /** The organization lets events wake Piloti: an @Piloti reply is the server's to answer, and a mark can be delegated. */
   const [pilotiWakes, setPilotiWakes] = useState(false)
@@ -333,13 +370,95 @@ export function useDocumentReview(
     [documentId, draft, guard, replace, write]
   )
 
+  /**
+   * Decisions taken by a key (E, ⌫), held back for {@link DECISION_UNDO_MS}
+   * before they are sent, through the inbox archive's own deferral
+   * (`useUndoableArchive`): „Rückgängig" in the toast lets go of one without
+   * touching the server, so an undone slip leaves no trace, no inbox row, no
+   * score. Shown at once, and sent when the window closes, the page is hidden
+   * or the review goes; with the status the mark had (`expectedStatus`), so a
+   * colleague's move meanwhile is the conflict notice, never overwritten.
+   */
+  const [held, setHeld] = useState<ReadonlyMap<string, HeldDecision>>(new Map())
+  const heldRef = useRef(held)
+  const storedRef = useRef(stored)
+  useEffect(() => {
+    heldRef.current = held
+    storedRef.current = stored
+  })
+  const letGo = useCallback((annotationId: string) => {
+    setHeld((current) => {
+      if (!current.has(annotationId)) return current
+      const next = new Map(current)
+      next.delete(annotationId)
+      return next
+    })
+  }, [])
+  const sendHeld = useCallback(
+    async (annotationId: string) => {
+      const decision = heldRef.current.get(annotationId)
+      if (!decision) return
+      try {
+        const { status, expectedStatus } = decision
+        replace(await guard(() => updateAnnotation(documentId, annotationId, { status, expectedStatus }, write)))
+      } catch (error) {
+        if (!(error instanceof AnnotationRequestError && error.status === 409)) decision.onFailed?.()
+      } finally {
+        letGo(annotationId)
+      }
+    },
+    [documentId, guard, replace, write, letGo]
+  )
+  const { request: holdBack, undo: releaseHold } = useUndoableArchive(sendHeld, DECISION_UNDO_MS)
+
+  /** Take a mark to `status` by a key, undoable for a moment. False when a decision on it is already held. */
+  const decide = useCallback(
+    (annotation: Pick<AnnotationView, 'id' | 'status'>, status: HeldDecision['status'], onFailed?: () => void) => {
+      if (heldRef.current.has(annotation.id)) return false
+      const decision: HeldDecision = { status, expectedStatus: annotation.status, onFailed }
+      heldRef.current = new Map(heldRef.current).set(annotation.id, decision)
+      setHeld(heldRef.current)
+      holdBack(annotation.id)
+      return true
+    },
+    [holdBack]
+  )
+  /** „Rückgängig": the held decision is let go, and nothing was sent. */
+  const undoDecision = useCallback(
+    (annotationId: string) => {
+      releaseHold(annotationId)
+      const next = new Map(heldRef.current)
+      next.delete(annotationId)
+      heldRef.current = next
+      letGo(annotationId)
+    },
+    [releaseHold, letGo]
+  )
+
   const update = useCallback(
-    async (annotationId: string, input: UpdateAnnotationRequest) => {
+    async (annotationId: string, change: UpdateAnnotationRequest) => {
+      const pending = heldRef.current.get(annotationId)
+      if (pending) undoDecision(annotationId)
+      const input = pending ? rebased(change, pending) : change
+      const unchanged = storedRef.current.find((annotation) => annotation.id === annotationId)
+      if (Object.keys(input).length === 0 && unchanged) return unchanged
       const updated = await guard(() => updateAnnotation(documentId, annotationId, input, write))
       replace(updated)
       return updated
     },
-    [documentId, guard, replace, write]
+    [documentId, guard, replace, write, undoDecision]
+  )
+
+  /** What the review shows: the server's marks, each held decision applied. */
+  const annotations = useMemo(
+    () =>
+      held.size === 0
+        ? stored
+        : stored.map((annotation) => {
+            const decision = held.get(annotation.id)
+            return decision ? { ...annotation, status: decision.status } : annotation
+          }),
+    [stored, held]
   )
 
   /**
@@ -374,10 +493,11 @@ export function useDocumentReview(
 
   const remove = useCallback(
     async (annotationId: string) => {
+      if (heldRef.current.has(annotationId)) undoDecision(annotationId)
       await guard(() => deleteAnnotation(documentId, annotationId, write))
       drop(annotationId)
     },
-    [documentId, guard, write, drop]
+    [documentId, guard, write, drop, undoDecision]
   )
 
   const counts = useMemo(
@@ -389,7 +509,6 @@ export function useDocumentReview(
     [annotations]
   )
 
-  const me = room.self?.userId ?? null
   const listed = useMemo(
     () =>
       annotations.filter(
@@ -459,9 +578,12 @@ export function useDocumentReview(
       dismissNotice,
       create,
       update,
+      decide,
+      undoDecision,
       reply,
       remove,
       step,
+      me,
     }),
     [
       documentId,
@@ -487,6 +609,9 @@ export function useDocumentReview(
       dismissNotice,
       create,
       update,
+      decide,
+      undoDecision,
+      me,
       reply,
       remove,
       step,

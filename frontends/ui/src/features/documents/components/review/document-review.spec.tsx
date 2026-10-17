@@ -25,6 +25,9 @@ vi.mock('@/features/chat', () => ({
   useChatStore: (selector: (state: { currentUserId: string }) => unknown) => selector({ currentUserId: 'user_me' }),
 }))
 
+const toastMock = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), dismiss: vi.fn() }))
+vi.mock('sonner', () => ({ toast: toastMock }))
+
 vi.mock('@/features/knowledge/components/pdf-document-view', () => ({
   PdfDocumentView: ({ pageOverlay, toolbarLead }: { pageOverlay?: (page: number) => ReactNode; toolbarLead?: ReactNode }) => (
     <div>
@@ -189,6 +192,80 @@ describe('going through the proposals', () => {
     await userEvent.click(within(thread).getByTestId('thread-walk-next'))
     expect(within(screen.getByTestId('review-thread')).getByText('Dritter Befund')).toBeInTheDocument()
     expect(screen.getByTestId('thread-walk')).toHaveTextContent('2/2')
+  })
+})
+
+/**
+ * E and ⌫ decide with one key, which is easy to hit by mistake: the decision
+ * shows at once, the toast names it with „Rückgängig", and it is sent only
+ * when the toast's window closes, with the status the mark had. Undone, it
+ * never reaches the server.
+ */
+describe('deciding by a key', () => {
+  type Toasted = [string, { action: { label: string; onClick: () => void }; duration: number }]
+  const lastToast = () => toastMock.mock.calls.at(-1) as Toasted
+
+  beforeEach(() => {
+    toastMock.mockClear()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const patches = () => {
+    const patched: unknown[] = []
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ request, params }) => {
+        const body = (await request.json()) as { status: AnnotationView['status'] }
+        patched.push(body)
+        return HttpResponse.json({ annotation: view({ id: String(params.annotationId), authorKind: 'piloti', status: body.status }) })
+      })
+    )
+    return patched
+  }
+
+  it('takes ⌫ on a proposal back with „Rückgängig": shown dismissed at once, nothing sent, the proposal back', async () => {
+    serve([view({ id: 'p1', number: 4, authorKind: 'piloti', status: 'proposed' })])
+    const patched = patches()
+    render(<Host />)
+    await screen.findByTestId('review-row')
+
+    fireEvent.keyDown(window, { key: 'j' })
+    await screen.findByTestId('review-thread')
+    fireEvent.keyDown(window, { key: 'Backspace' })
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalled())
+    const [message, options] = lastToast()
+    expect(message).toBe('Annotation 4 dismissed')
+    expect(options.action.label).toBe('Undo')
+    expect(screen.getByTestId('review-thread')).toHaveTextContent('Dismissed')
+
+    act(() => options.action.onClick())
+    await act(async () => {
+      vi.advanceTimersByTime(6_000)
+    })
+    expect(patched).toEqual([])
+    expect(screen.getByTestId('thread-accept')).toBeInTheDocument()
+  })
+
+  it('sends E on an open mark once the window closes, with the status the card showed', async () => {
+    serve([view({ id: 'ann_1', number: 2 })])
+    const patched = patches()
+    render(<Host />)
+    await screen.findByTestId('review-row')
+
+    fireEvent.keyDown(window, { key: 'j' })
+    await screen.findByTestId('review-thread')
+    fireEvent.keyDown(window, { key: 'e' })
+    await waitFor(() => expect(toastMock).toHaveBeenCalled())
+    expect(lastToast()[0]).toBe('Annotation 2 resolved')
+    expect(patched).toEqual([])
+
+    await act(async () => {
+      vi.advanceTimersByTime(6_000)
+    })
+    await waitFor(() => expect(patched).toEqual([{ status: 'resolved', expectedStatus: 'open' }]))
   })
 })
 

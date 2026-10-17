@@ -9,6 +9,7 @@ import {
   Link2,
   MessageSquareText,
   MoreHorizontal,
+  Pencil,
   RotateCcw,
   Scale,
   Sparkles,
@@ -179,21 +180,37 @@ const MetaChip = forwardRef<
   )
 })
 
-/** Who is on it and by when, editable while the reader may write. */
+/** The reader as the Zuständige picker offers them („Mir zuweisen"), or null while nobody knows who reads. */
+function useSelfAssignee(review: DocumentReview): FileAssignee | null {
+  const t = useTranslations('files')
+  if (!review.me) return null
+  const name = review.room.self?.userId === review.me ? review.room.self.name : null
+  return { userId: review.me, name: name || t('review.assigneeYou'), email: null, profilePictureUrl: null }
+}
+
+/**
+ * Who is on it and by when, editable while the reader may write. The
+ * Zuständige is picked among who may write the document (`access="write"`),
+ * since they must answer and close the mark; the reader may pick themselves.
+ */
 function ResponsibilityRow({
   documentId,
+  assigneeUserId,
   assigneeName,
   dueOn,
   editable,
   canPickAssignee,
+  self,
   onAssignee,
   onDueOn,
 }: {
   documentId: string
+  assigneeUserId: string | null
   assigneeName: string | null
   dueOn: string | null
   editable: boolean
   canPickAssignee: boolean
+  self: FileAssignee | null
   onAssignee: (person: FileAssignee | null) => void
   onDueOn: (day: string | null) => void
 }): JSX.Element | null {
@@ -207,8 +224,10 @@ function ResponsibilityRow({
       {canPickAssignee && editable ? (
         <AssignPopover
           documentId={documentId}
-          assignees={[]}
+          assignees={assigneeUserId ? [{ userId: assigneeUserId, name: assigneeName, email: null, profilePictureUrl: null }] : []}
           pickOnly
+          access="write"
+          self={self}
           onPick={onAssignee}
           onChanged={() => undefined}
           trigger={
@@ -239,10 +258,13 @@ function ResponsibilityRow({
       <span className="relative inline-flex">
         <MetaChip
           icon={CalendarClock}
+          data-testid="thread-due"
           set={dueOn !== null}
           tone={overdue ? 'urgent' : undefined}
           disabled={!editable}
           onClick={() => dateRef.current?.showPicker?.()}
+          onClear={editable && dueOn ? () => onDueOn(null) : undefined}
+          clearLabel={t('review.clearDue')}
         >
           {dueOn ? `${t('review.due')} ${day(dueOn, locale)}${overdue ? ` · ${t('review.overdue')}` : ''}` : t('review.setDue')}
         </MetaChip>
@@ -502,6 +524,7 @@ export function DraftCard({
   const [kind, setKind] = useState<AnnotationKind>('hint')
   const [assignee, setAssignee] = useState<FileAssignee | null>(null)
   const [dueOn, setDueOn] = useState<string | null>(null)
+  const self = useSelfAssignee(review)
   const { piloti } = review
   /** The draft's place handed to Piloti: asked at once with what was typed, or a card waiting for the question. */
   const askPiloti = piloti.available
@@ -530,10 +553,12 @@ export function DraftCard({
         />
         <ResponsibilityRow
           documentId={review.documentId}
+          assigneeUserId={assignee?.userId ?? null}
           assigneeName={assignee ? assignee.name || assignee.email || assignee.userId : null}
           dueOn={dueOn}
           editable
           canPickAssignee={canPickAssignee}
+          self={self}
           onAssignee={setAssignee}
           onDueOn={setDueOn}
         />
@@ -563,6 +588,9 @@ export function ThreadCard({
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  /** The author rewording their own mark: the composer in the mark's place, with its text and whom it mentions. */
+  const [editing, setEditing] = useState(false)
+  const self = useSelfAssignee(review)
   const headerId = useId()
   const KindIcon = KIND_ICONS[annotation.kind]
   const proposed = annotation.status === 'proposed'
@@ -587,9 +615,11 @@ export function ThreadCard({
    * @Piloti says the reply addresses Piloti. The server answers whether it
    * wakes Piloti itself (`queued`, or `suppressed` when a cap held it): then
    * the mark's own view says how Piloti's work stands (`pilotiWork`), for
-   * everyone. With the organization's switch off, this tab asks Piloti as
-   * before, under the turn id a server wake of the same reply would use, so
-   * the two never both run. Answers with the mentions the server kept.
+   * everyone. When a rule met the reply but the organization's switch is off
+   * (`wake: 'off'`: an @Piloti, or an answer to Piloti's own Rückfrage), this
+   * tab asks Piloti as before, under the turn id a server wake of the same
+   * reply would use, so the two never both run. Answers with the mentions the
+   * server kept.
    */
   const sendReply = async (body: string, { piloti: mentioned, mentions }: ComposerSend) => {
     const { annotation: after, wake, replyId } = await review.reply(annotation.id, body, {
@@ -597,7 +627,10 @@ export function ThreadCard({
       mentions,
     })
     const kept = after.replies.find((reply) => reply.id === replyId)?.mentions
-    if (!mentioned || wake === 'queued' || wake === 'suppressed' || !piloti.available) return kept
+    // `off` is the server saying a wake rule met this reply (an @Piloti, or an
+    // answer to Piloti's own open Rückfrage) and the switch is off: this tab
+    // asks. Anything else, the server already did what there was to do.
+    if (wake !== 'off' || !piloti.available) return kept
     piloti.ask({
       text: body.trim(),
       region: askRegionOf(annotation),
@@ -625,7 +658,32 @@ export function ThreadCard({
   const move = (status: 'open' | 'resolved' | 'dismissed') =>
     act(() => review.update(annotation.id, { status, expectedStatus: annotation.status }))
 
+  // Only the person who wrote it rewords a mark: Piloti's text stays Piloti's, a colleague's theirs.
+  const mayReword = annotation.canEdit && annotation.authorKind === 'person' && annotation.createdBy === review.me
+
+  /**
+   * The reworded text goes in with whom it mentions as the composer kept them:
+   * the ones already there stay while their name stands in the text, and the
+   * server tells only whom the new text adds (`newlyMentioned`).
+   */
+  const saveEdit = async (body: string, { mentions }: ComposerSend) => {
+    const after = await review.update(annotation.id, { body, mentions })
+    setEditing(false)
+    return after.mentions
+  }
+
   const menu: ActionMenuEntry[] = [
+    ...(mayReword
+      ? [
+          {
+            type: 'item' as const,
+            id: 'edit',
+            label: t('review.edit'),
+            icon: Pencil,
+            onSelect: () => setEditing(true),
+          },
+        ]
+      : []),
     ...ANNOTATION_KINDS.filter((kind) => kind !== annotation.kind && annotation.canEdit).map((kind) => ({
       type: 'item' as const,
       id: `kind-${kind}`,
@@ -798,15 +856,34 @@ export function ThreadCard({
       )}
 
       <div className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3">
-        <Message
-          authorKind={annotation.authorKind}
-          name={annotation.createdByName}
-          userId={annotation.createdBy}
-          at={annotation.createdAt}
-          body={annotation.body}
-          mentions={annotation.mentions}
-          proposal={proposed}
-        />
+        {editing && mayReword ? (
+          <div className="space-y-1.5" data-testid="thread-edit">
+            <Composer
+              autoFocus
+              testId="thread-edit-body"
+              placeholder={t('review.editLabel', { number: annotation.number })}
+              submitLabel={t('review.save')}
+              documentId={review.documentId}
+              initialBody={annotation.body}
+              initialMentions={annotation.mentions}
+              onSubmit={saveEdit}
+              onEscape={() => setEditing(false)}
+            />
+            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditing(false)}>
+              {t('review.editCancel')}
+            </Button>
+          </div>
+        ) : (
+          <Message
+            authorKind={annotation.authorKind}
+            name={annotation.createdByName}
+            userId={annotation.createdBy}
+            at={annotation.createdAt}
+            body={annotation.body}
+            mentions={annotation.mentions}
+            proposal={proposed}
+          />
+        )}
         {annotation.basis && (
           <p className="border-l-source-law/40 text-muted-foreground ml-8.5 flex items-center gap-1.5 border-l-2 pl-2 text-[11px]">
             <Scale className="size-3 shrink-0" aria-hidden />
@@ -863,10 +940,12 @@ export function ThreadCard({
       <div className="space-y-2 border-t px-3 py-2.5">
         <ResponsibilityRow
           documentId={review.documentId}
+          assigneeUserId={annotation.assigneeUserId}
           assigneeName={annotation.assigneeUserId ? (annotation.assigneeName ?? t('review.someone')) : null}
           dueOn={annotation.dueOn}
           editable={annotation.canEdit && live}
           canPickAssignee={canPickAssignee}
+          self={self}
           onAssignee={(person) => void act(() => review.update(annotation.id, { assigneeUserId: person?.userId ?? null }))}
           onDueOn={(dueOn) => void act(() => review.update(annotation.id, { dueOn }))}
         />

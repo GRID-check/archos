@@ -37,7 +37,7 @@ import type { AnnotationView } from '@/lib/annotations/types'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { cn } from '@/lib/utils'
 import { stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
-import type { DocumentReview as ReviewState, ReviewTool } from '../../hooks/use-document-review'
+import { DECISION_UNDO_MS, type DocumentReview as ReviewState, type ReviewTool } from '../../hooks/use-document-review'
 import { sameValue } from '@/lib/utils/same-value'
 import {
   useRoomPeers,
@@ -871,6 +871,23 @@ export function DocumentReviewMode({
     else close()
   }
 
+  /**
+   * A key's decision is a moment from the server (`review.decide`): the toast
+   * names it and offers „Rückgängig", which lets it go before it is sent, as
+   * the inbox's archive does. A key is easy to hit by mistake; a click on the
+   * card's own button is not, and goes at once.
+   */
+  const decideByKey = (current: AnnotationView, status: 'open' | 'resolved' | 'dismissed') => {
+    const held = review.decide(current, status, () => toast.error(t('review.actionFailed')))
+    if (!held) return
+    const said = status === 'open' ? 'accepted' : status
+    toast(t(`review.decided.${said}`, { number: current.number }), {
+      id: `review-decided-${current.id}`,
+      duration: DECISION_UNDO_MS,
+      action: { label: t('review.undo'), onClick: () => review.undoDecision(current.id) },
+    })
+  }
+
   // Letters pick tools and walk the marks. The handler reads this render's state
   // through a ref: the listener is attached once per opening, not on every change.
   const onKey = (event: KeyboardEvent) => {
@@ -899,21 +916,13 @@ export function DocumentReviewMode({
     } else if (key === 'e' && selectedId) {
       const current = annotations.find((annotation) => annotation.id === selectedId)
       if (!current?.canEdit) return
-      if (current.status === 'proposed' || current.status === 'open') {
-        void review
-          .update(current.id, {
-            status: current.status === 'proposed' ? 'open' : 'resolved',
-            expectedStatus: current.status,
-          })
-          .catch(() => toast.error(t('review.actionFailed')))
-      }
+      if (current.status === 'proposed') decideByKey(current, 'open')
+      else if (current.status === 'open') decideByKey(current, 'resolved')
     } else if ((key === 'backspace' || key === 'delete') && selectedId) {
       // ⌫ on „Verwerfen" says it: a proposal in hand is dismissed, nothing else is.
       const current = annotations.find((annotation) => annotation.id === selectedId)
       if (!current?.canEdit || current.status !== 'proposed') return
-      void review
-        .update(current.id, { status: 'dismissed', expectedStatus: 'proposed' })
-        .catch(() => toast.error(t('review.actionFailed')))
+      decideByKey(current, 'dismissed')
     } else return
     event.preventDefault()
   }

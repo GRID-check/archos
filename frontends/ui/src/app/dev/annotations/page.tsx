@@ -30,6 +30,11 @@
  *   …&review=1&mark=ann-1                    the review, open at Anmerkung 1
  *   …&review=1&piloti=1                      the review, while Piloti proposes
  *   …&review=1, then `p` and a box           ask Piloti about the box (any route)
+ *   …&review=1&mark=ann-1                    „Zuständig": who may write (Lena only reads,
+ *                                            so only „@" offers her), „Mir zuweisen", the
+ *                                            date's ×, „Bearbeiten" in the menu (Miriam's mark)
+ *   …&review=1&mark=ann-5                    answer Piloti's Rückfrage: the thread asks Piloti
+ *   …&review=1&piloti=1, then J, E or ⌫      the decision's toast with „Rückgängig"
  *
  * Not linked from anywhere and 404s outside development (`../layout.tsx`).
  */
@@ -265,8 +270,25 @@ let annotations: AnnotationView[] = [
     fassungNumber: 2,
     onCurrentFassung: false,
   },
+  {
+    ...base,
+    id: 'ann-5',
+    number: 5,
+    shape: 'point',
+    ...pt(640, 420),
+    // Piloti's Rückfrage, taken over by Miriam: an answer in its thread reaches
+    // Piloti even with wakes off (the thread asks it), without an @Piloti.
+    kind: 'question',
+    authorKind: 'piloti',
+    body: 'Gilt die Brüstungshöhe ab Fertigfußboden oder ab Rohdecke?',
+    acceptedBy: 'u-1',
+    acceptedByName: ME.name,
+    canDelete: false,
+    createdAt: minutesAgo(25),
+    updatedAt: minutesAgo(25),
+  },
 ]
-let nextNumber = 5
+let nextNumber = 6
 
 const PILOTI_PROPOSALS: AnnotationView[] = [
   {
@@ -906,7 +928,11 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         annotations = annotations.map((annotation) => (annotation.id === next.id ? next : annotation))
         // `?wakes=1`: the organization's switch is on, so the server answers an
         // @Piloti reply itself (ADR-0106); here, a moment later, through the room.
-        const wake = !added.addressesPiloti ? 'none' : WAKES ? 'queued' : 'off'
+        // The rule is the server's (`replyTrigger`): an @Piloti, or an answer to
+        // Piloti's own open Rückfrage. With the switch off it says `off`, and the
+        // thread asks Piloti itself (Anmerkung 5).
+        const answersPiloti = current.authorKind === 'piloti' && current.kind === 'question' && current.status !== 'resolved' && current.status !== 'dismissed'
+        const wake = !added.addressesPiloti && !answersPiloti ? 'none' : WAKES ? 'queued' : 'off'
         if (wake === 'queued') setTimeout(() => wakeReply(current.id), 4_000)
         return json({ annotation: next, replyId: added.id, wake }, 201)
       }
@@ -1021,13 +1047,15 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       }
       if (url.endsWith(`/api/documents/${FILE.id}/preview`)) return json({ url: `/api/documents/${FILE.id}/file` })
       if (/\/api\/documents\/.+\/visual-details$/.test(url)) return json({ details: [] })
-      if (/\/api\/assignments\/document\/.+\/candidates$/.test(url)) {
-        return json({
-          candidates: [
-            { userId: 'u-2', name: ANNA.name, email: 'a.berger@example.at', profilePictureUrl: null },
-            { userId: 'u-3', name: JAKOB.name, email: 'j.huber@example.at', profilePictureUrl: null },
-          ],
-        })
+      if (/\/api\/assignments\/document\/.+\/candidates(\?.*)?$/.test(url)) {
+        // Lena may open the document but not write it: she can be mentioned, and
+        // is not offered as a Zuständige (`?access=write`), who must answer the mark.
+        const writers = [
+          { userId: 'u-2', name: ANNA.name, email: 'a.berger@example.at', profilePictureUrl: null },
+          { userId: 'u-3', name: JAKOB.name, email: 'j.huber@example.at', profilePictureUrl: null },
+        ]
+        const reader = { userId: 'u-4', name: LENA.name, email: 'l.gruber@example.at', profilePictureUrl: null }
+        return json({ candidates: url.includes('access=write') ? writers : [...writers, reader] })
       }
       return real(input, init)
     }

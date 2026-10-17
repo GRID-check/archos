@@ -1733,6 +1733,18 @@ export const files = {
     earlierFassung: 'From revision {number}. Not drawn on this sheet.',
     delete: 'Delete',
     deleteConfirm: 'Delete annotation {number}?',
+    edit: 'Edit',
+    editLabel: 'Text of annotation {number}',
+    save: 'Save',
+    editCancel: 'Cancel',
+    assigneeYou: 'You',
+    clearDue: 'Remove due date',
+    decided: {
+      accepted: 'Annotation {number} taken over',
+      resolved: 'Annotation {number} resolved',
+      dismissed: 'Annotation {number} dismissed',
+    },
+    undo: 'Undo',
     filter: 'Show',
     filters: {
       open: 'Open',

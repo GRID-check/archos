@@ -15,7 +15,9 @@ export interface UndoableArchive {
 }
 
 /**
- * Archiving that can be taken back within a toast's lifetime.
+ * Archiving that can be taken back within a toast's lifetime. The review's
+ * decisions by a key (E, ⌫ on an Anmerkung) are held back the same way
+ * (`use-document-review.ts`): the write is any `(id) => Promise<void>`.
  *
  * The write itself is what waits: the row leaves the list at once (that is the
  * feedback), and the request is sent when the undo window closes. Undo inside

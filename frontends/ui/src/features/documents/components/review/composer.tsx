@@ -73,6 +73,8 @@ export function Composer({
   documentId,
   pickerSide = 'below',
   maxLength = MAX_ANNOTATION_BODY,
+  initialBody = '',
+  initialMentions,
   testId,
 }: {
   placeholder: string
@@ -88,16 +90,20 @@ export function Composer({
   /** Where the picker opens: under a box at the top of its card, over one at its foot. */
   pickerSide?: 'above' | 'below'
   maxLength?: number
+  /** The text to start from: a mark's own words, when its author rewords it. */
+  initialBody?: string
+  /** Whom `initialBody` mentions, as the server kept them: they stay mentioned while their name stands. */
+  initialMentions?: readonly MarkMention[]
   testId: string
 }): JSX.Element {
   const t = useTranslations('files')
   const tCollab = useTranslations('collaboration')
   const agentName = tCollab('mentions.picker.agentName')
-  const [body, setBody] = useState('')
+  const [body, setBody] = useState(initialBody)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   /** Whom the person picked, as the chat's composer records it: never read out of the text. */
-  const [picked, setPicked] = useState<DraftMention[]>([])
+  const [picked, setPicked] = useState<DraftMention[]>(() => [...(initialMentions ?? [])])
   const [query, setQuery] = useState<MentionQuery | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [requested, setRequested] = useState(false)
@@ -106,7 +112,8 @@ export function Composer({
   const [untold, setUntold] = useState<string[]>([])
   const ref = useRef<HTMLTextAreaElement | null>(null)
   const pickerRef = useRef<MentionPickerHandle>(null)
-  const pendingCaret = useRef<number | null>(null)
+  // Text to start from is edited from its end, as a reworded mark is.
+  const pendingCaret = useRef<number | null>(autoFocus && initialBody ? initialBody.length : null)
   const { people, loading } = useMentionablePeople(documentId ?? null, requested)
   const mentionsOn = Boolean(mentionPiloti || documentId)
 

@@ -147,10 +147,12 @@ function Harness({
   transport,
   onReady,
   piloti,
+  canPickAssignee = false,
 }: {
   transport: RoomTransport
   onReady?: (review: ReturnType<typeof useDocumentReview>) => void
   piloti?: ReturnType<typeof scriptedPiloti>
+  canPickAssignee?: boolean
 }) {
   const review = useDocumentReview('doc_1', {
     enabled: true,
@@ -172,9 +174,9 @@ function Harness({
             renderAsk={(ask, { placement }) => <PilotiAnswerCard review={review} ask={ask} placement={placement} />}
             renderThread={({ placement }) =>
               review.draft ? (
-                <DraftCard review={review} draft={review.draft} placement={placement} canPickAssignee={false} />
+                <DraftCard review={review} draft={review.draft} placement={placement} canPickAssignee={canPickAssignee} />
               ) : selected ? (
-                <ThreadCard review={review} annotation={selected} placement={placement} canPickAssignee={false} />
+                <ThreadCard review={review} annotation={selected} placement={placement} canPickAssignee={canPickAssignee} />
               ) : null
             }
           />
@@ -1062,5 +1064,178 @@ describe('mentioning a colleague on a mark', () => {
     // The list shows the new mark with the same chip.
     const row = await screen.findByTestId('review-row')
     expect(within(row).getByTestId('mention-chip')).toHaveTextContent('@Anna Berger')
+  })
+})
+
+/**
+ * The loop a mark runs through: whoever is made responsible can answer it, an
+ * answer to Piloti reaches Piloti, the reader can take a mark themselves, set
+ * and clear its date, find their own marks with the room down, and reword
+ * what they wrote.
+ */
+describe('closing the loop on a mark', () => {
+  const ANNA_MENTION = { targetId: 'user_anna', display: 'Anna Berger' }
+
+  /** The PATCHes the thread sends; each answers the mark as given, with the change applied. */
+  const servePatches = (mark: AnnotationView) => {
+    const patched: Array<Record<string, unknown>> = []
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ request }) => {
+        const change = (await request.json()) as Record<string, unknown>
+        patched.push(change)
+        return HttpResponse.json({ annotation: { ...mark, ...change } })
+      })
+    )
+    return patched
+  }
+
+  /** A room that never welcomes this tab: what the review knows of who reads comes from the page. */
+  const silentRoom = (): RoomTransport => ({
+    connect: ({ onOpen }) => {
+      onOpen()
+      return () => {}
+    },
+    post: () => {},
+  })
+
+  // With wakes off, an answer to Piloti's own Rückfrage met the thread_reply
+  // rule, and the server said so (`off`): this tab asks Piloti, though nobody
+  // wrote @Piloti. Without it the answer reached nobody.
+  it('asks Piloti itself when an answer to its open Rückfrage meets a rule the switch keeps off', async () => {
+    const question = view({ id: 'ann_1', kind: 'question', authorKind: 'piloti', acceptedBy: 'user_me', createdBy: 'user_me' })
+    serve([question])
+    serveConversation()
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
+        HttpResponse.json({ annotation: question, replyId: 'r7', wake: 'off' })
+      )
+    )
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const box = within(await screen.findByTestId('review-thread')).getByTestId('thread-reply')
+    await userEvent.type(box, 'Ab Fertigfußboden.{Enter}')
+
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+    expect(piloti.questions()[0]).toMatchObject({
+      message_id: wakeTurnId('r7'),
+      text: 'Ab Fertigfußboden.',
+      reply_in_thread: true,
+    })
+  })
+
+  it('asks Piloti nothing for a reply no rule met, or one the server already woke Piloti for', async () => {
+    serve([view({ id: 'ann_1' })])
+    serveConversation()
+    const wakes = ['none', 'queued']
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
+        HttpResponse.json({ annotation: view({ id: 'ann_1' }), replyId: 'r1', wake: wakes.shift() })
+      )
+    )
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const box = within(await screen.findByTestId('review-thread')).getByTestId('thread-reply')
+    await userEvent.type(box, 'Passt.{Enter}')
+    await waitFor(() => expect(wakes).toHaveLength(1))
+    await userEvent.type(box, 'Noch etwas.{Enter}')
+    await waitFor(() => expect(wakes).toHaveLength(0))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
+    expect(piloti.questions()).toHaveLength(0)
+  })
+
+  it('offers as Zuständige who may write the document, and „Assign to me" picks the reader', async () => {
+    const mark = view({ id: 'ann_1', createdBy: 'user_anna', createdByName: 'Anna Berger' })
+    serve([mark])
+    const asked: string[] = []
+    server.use(
+      http.get('/api/assignments/:type/:id/candidates', ({ request }) => {
+        asked.push(new URL(request.url).search)
+        return HttpResponse.json({
+          candidates: [{ userId: 'user_anna', name: 'Anna Berger', email: 'anna@buero.at', profilePictureUrl: null }],
+        })
+      })
+    )
+    const patched = servePatches(mark)
+    render(<Harness transport={scriptedRoom().transport} canPickAssignee />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    await userEvent.click(within(await screen.findByTestId('review-thread')).getByTestId('thread-assignee'))
+    await userEvent.click(await screen.findByTestId('assign-pick-self'))
+
+    await waitFor(() => expect(patched).toEqual([{ assigneeUserId: 'user_me' }]))
+    // The Zuständige must answer and close the mark: the list is of who may write it.
+    expect(asked).toEqual(['?access=write'])
+  })
+
+  it('clears a date from its chip, as the Zuständige chip clears its person', async () => {
+    const mark = view({ id: 'ann_1', dueOn: '2026-10-20' })
+    serve([mark])
+    const patched = servePatches(mark)
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'Remove due date' }))
+
+    await waitFor(() => expect(patched).toEqual([{ dueOn: null }]))
+  })
+
+  it('finds the reader’s own marks under „Mine" while the room has not welcomed the tab', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1, createdBy: 'user_anna', assigneeUserId: 'user_me', body: 'Mir zugewiesen' }),
+      view({ id: 'ann_2', number: 2, createdBy: 'user_anna', body: 'Nicht meins' }),
+    ])
+    render(<Harness transport={silentRoom()} />)
+    await waitFor(() => expect(screen.getAllByTestId('review-row')).toHaveLength(2))
+
+    await userEvent.click(screen.getByTestId('review-filter-mine'))
+
+    const rows = screen.getAllByTestId('review-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('Mir zugewiesen')
+    expect(screen.getByTestId('review-filter-open')).toHaveTextContent('1')
+  })
+
+  it('lets the author reword their mark: the composer starts from its text, keeps whom it mentions, and adds whom was picked', async () => {
+    const mark = view({ id: 'ann_1', body: '@Anna Berger Brüstung prüfen', mentions: [ANNA_MENTION] })
+    serve([mark])
+    const patched = servePatches(mark)
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+
+    const box = within(screen.getByTestId('review-thread')).getByTestId('thread-edit-body')
+    expect(box).toHaveValue('@Anna Berger Brüstung prüfen')
+    await userEvent.type(box, ' auf 1,00 m{Enter}')
+
+    await waitFor(() =>
+      expect(patched).toEqual([{ body: '@Anna Berger Brüstung prüfen auf 1,00 m', mentions: [ANNA_MENTION] }])
+    )
+    expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-edit')).toBeNull()
+  })
+
+  it('offers no rewording of someone else’s mark, nor of Piloti’s', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1, createdBy: 'user_anna', createdByName: 'Anna Berger' }),
+      view({ id: 'ann_2', number: 2, authorKind: 'piloti', status: 'proposed', x: 0.7 }),
+    ])
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    for (const index of [0, 1]) {
+      await waitFor(() => expect(screen.getAllByTestId('review-row')).toHaveLength(2))
+      await userEvent.click(screen.getAllByTestId('review-row')[index] as HTMLElement)
+      const thread = await screen.findByTestId('review-thread')
+      await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+      await screen.findAllByRole('menuitem')
+      expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull()
+      await userEvent.keyboard('{Escape}')
+    }
   })
 })

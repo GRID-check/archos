@@ -1690,6 +1690,21 @@ export const files: typeof en.files = {
     earlierFassung: 'Aus Fassung {number}. Auf diesem Blatt nicht eingezeichnet.',
     delete: 'Löschen',
     deleteConfirm: 'Anmerkung {number} löschen?',
+    // Den eigenen Text einer Anmerkung ändern: wer neu erwähnt wird, erfährt es; wer schon erwähnt war, nicht noch einmal.
+    edit: 'Bearbeiten',
+    editLabel: 'Text von Anmerkung {number}',
+    save: 'Speichern',
+    editCancel: 'Abbrechen',
+    // Die Zuständige ist die lesende Person selbst, solange ihr Name noch nicht da ist.
+    assigneeYou: 'Sie',
+    clearDue: 'Frist entfernen',
+    // E und Entf entscheiden mit einer Taste: ein Toast sagt, was geschah, und nimmt es zurück, bevor es gesendet ist.
+    decided: {
+      accepted: 'Anmerkung {number} übernommen',
+      resolved: 'Anmerkung {number} erledigt',
+      dismissed: 'Anmerkung {number} verworfen',
+    },
+    undo: 'Rückgängig',
     filter: 'Anzeigen',
     filters: {
       open: 'Offen',

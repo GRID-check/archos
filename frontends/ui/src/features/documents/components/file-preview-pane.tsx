@@ -622,6 +622,7 @@ export function FilePreviewPane({
   const reviewEnabled = pdfInWell && showMetadataPanel && !isHeld
   const review = useDocumentReview(file.id, {
     enabled: reviewEnabled,
+    viewerUserId,
     // Piloti on the canvas. Over the chat (the pane is its peek) a question is
     // a turn of the chat's own conversation, through its driver, so closing
     // the review finds it in the transcript; elsewhere it goes into the
