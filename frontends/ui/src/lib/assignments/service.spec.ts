@@ -26,7 +26,7 @@ vi.mock('@/lib/sharing/directory', () => ({
   unknownPerson: (userId: string) => ({ userId, email: null, name: userId, profilePictureUrl: null }),
 }))
 
-vi.mock('@/lib/authz/project-membership', () => ({
+vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8,
   userHoldsProjectPermission: vi.fn(),
   resolveSubjectMembership: vi.fn(),
   filterUsersWithProjectAccess: vi.fn(),

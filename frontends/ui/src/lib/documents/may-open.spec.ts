@@ -10,15 +10,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/project-membership', () => ({
-  resolveSubjectMembership: vi.fn(),
+  PERMISSION_CHECKS_AT_ONCE: 2,
   userHoldsProjectPermission: vi.fn(),
 }))
 vi.mock('@/lib/authz/folder-access', () => ({ filterUsersWhoMayReadFolder: vi.fn() }))
+vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
-import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
+import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
+import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import type { DirectoryPerson } from '@/lib/sharing/types'
 import { mayOpenDocument } from './may-open'
 
 const session = { userId: 'user_me', organizationId: 'org_1' } as Partial<AuthorizedSession> as AuthorizedSession
@@ -37,9 +40,8 @@ beforeEach(() => {
     async (_org, _project, folderId, userIds) =>
       new Set(folderId === 'fld_hr' ? userIds.filter((userId) => userId === 'user_hr') : userIds)
   )
-  vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) =>
-    userId === 'user_a' ? { organizationMembershipId: 'om_a', role: 'member' } : null
-  )
+  const member: DirectoryPerson = { userId: 'user_a', email: null, name: 'user_a', profilePictureUrl: null }
+  vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['user_a', member]]))
 })
 
 describe('mayOpenDocument', () => {
@@ -58,7 +60,9 @@ describe('mayOpenDocument', () => {
     const allowed = await mayOpenDocument(session, doc({ scope: 'archiv', projectId: null }), ['user_a', 'user_gone'])
 
     expect(allowed).toEqual(new Set(['user_a']))
-    expect(resolveSubjectMembership).toHaveBeenCalledWith('org_1', 'user_gone')
+    // One read of the organization's directory, never a lookup per person: a picker passes the whole directory in.
+    expect(loadOrganizationDirectory).toHaveBeenCalledTimes(1)
+    expect(loadOrganizationDirectory).toHaveBeenCalledWith('org_1')
     expect(userHoldsProjectPermission).not.toHaveBeenCalled()
   })
 
@@ -73,5 +77,21 @@ describe('mayOpenDocument', () => {
 
     expect(userHoldsProjectPermission).toHaveBeenCalledTimes(1)
     expect(userHoldsProjectPermission).toHaveBeenCalledWith({ organizationId: 'org_1' }, 'proj_1', 'user_a', 'project:view')
+  })
+
+  it('asks WorkOS about a handful of people at a time, so a whole directory is never one burst', async () => {
+    let running = 0
+    let most = 0
+    vi.mocked(userHoldsProjectPermission).mockImplementation(async () => {
+      running += 1
+      most = Math.max(most, running)
+      await Promise.resolve()
+      running -= 1
+      return true
+    })
+
+    const everyone = Array.from({ length: 9 }, (_, index) => `user_${index}`)
+    expect(await mayOpenDocument(session, doc({}), everyone)).toEqual(new Set(everyone))
+    expect(most).toBe(2)
   })
 })

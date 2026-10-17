@@ -20,8 +20,10 @@
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
-import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
+import { PERMISSION_CHECKS_AT_ONCE, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
+import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { inPool } from '@/lib/utils/in-pool'
 
 /** Which of `userIds` may open `doc` now. Fails closed per person, as every check under it does. */
 export async function mayOpenDocument(
@@ -33,17 +35,15 @@ export async function mayOpenDocument(
   if (people.length === 0) return new Set()
   const { organizationId } = tenant
   if (doc.scope === 'archiv') {
-    const members = await Promise.all(
-      people.map(async (userId) => ((await resolveSubjectMembership(organizationId, userId)) ? userId : null))
-    )
-    return new Set(members.filter((userId): userId is string => userId !== null))
+    // One cached read of the organization's directory, not a lookup per
+    // person: a picker passes the whole directory in.
+    const directory = await loadOrganizationDirectory(organizationId)
+    return new Set(people.filter((userId) => directory.has(userId)))
   }
   if (doc.scope !== 'project' || !doc.projectId) return new Set()
   const projectId = doc.projectId
-  const inProject = await Promise.all(
-    people.map(async (userId) =>
-      (await userHoldsProjectPermission({ organizationId }, projectId, userId, 'project:view')) ? userId : null
-    )
+  const inProject = await inPool(people, PERMISSION_CHECKS_AT_ONCE, async (userId) =>
+    (await userHoldsProjectPermission({ organizationId }, projectId, userId, 'project:view')) ? userId : null
   )
   return filterUsersWhoMayReadFolder(
     organizationId,

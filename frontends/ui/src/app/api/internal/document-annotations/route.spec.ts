@@ -62,7 +62,7 @@ vi.mock('@/lib/annotations/repository', async (original) => ({
   insertAnnotationReply: vi.fn(),
 }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
-vi.mock('@/lib/authz/project-membership', () => ({ userHoldsProjectPermission: vi.fn(), resolveSubjectMembership: vi.fn() }))
+vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8, userHoldsProjectPermission: vi.fn(), resolveSubjectMembership: vi.fn() }))
 vi.mock('@/lib/db/tenant-context', async (original) => ({
   ...(await original<typeof import('@/lib/db/tenant-context')>()),
   withTenant: (_scope: unknown, run: () => unknown) => run(),

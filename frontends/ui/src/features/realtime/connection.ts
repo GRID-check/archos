@@ -68,7 +68,8 @@ export interface RealtimeConnection {
   /**
    * Say something in a channel. Fire and forget: a refusal is dropped, the
    * next message is on its way. Motion refused with a 429 pauses the channel's
-   * motion for the `Retry-After`.
+   * motion for the `Retry-After`; the latest motion asked for meanwhile is sent
+   * once the pause ends, while the channel is still joined.
    */
   send(ch: string, msg: unknown, options?: ChannelPostOptions): void
   /** The status of one channel now. */
@@ -139,6 +140,14 @@ export function createRealtimeConnection({
   let debounce: ReturnType<typeof setTimeout> | null = null
   /** Per channel, until when its motion is paused: the server refused it. */
   const motionPausedUntil = new Map<string, number>()
+  /**
+   * Per channel, the latest motion asked for during its pause, and the timer
+   * that sends it when the pause ends. The last message of a burst is often the
+   * one that clears something (a pointer leaving the page, a finished box, a
+   * cursor-chat line going); dropped, the room keeps showing it.
+   */
+  const heldMotion = new Map<string, unknown>()
+  const heldTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
   const wanted = () => [...joined.keys()].filter((ch) => !dropped.has(ch)).sort()
 
@@ -253,6 +262,32 @@ export function createRealtimeConnection({
     },
   })
 
+  function send(ch: string, msg: unknown, { motion = false }: ChannelPostOptions = {}): void {
+    const pausedUntil = motionPausedUntil.get(ch) ?? 0
+    if (motion && pausedUntil > Date.now()) {
+      heldMotion.set(ch, msg)
+      if (!heldTimers.has(ch)) {
+        heldTimers.set(
+          ch,
+          setTimeout(() => {
+            heldTimers.delete(ch)
+            const held = heldMotion.get(ch)
+            heldMotion.delete(ch)
+            if (held !== undefined && joined.has(ch)) send(ch, held, { motion: true })
+          }, pausedUntil - Date.now())
+        )
+      }
+      return
+    }
+    const outcome = post(REALTIME_SEND_PATH, JSON.stringify({ ch, msg }), { keepalive: isGone(msg) })
+    if (!motion || !outcome) return
+    void outcome.then((result) => {
+      if (result?.status !== 429) return
+      const pause = Math.min(MAX_MOTION_PAUSE_MS, Math.max(MIN_MOTION_PAUSE_MS, result.retryAfterMs))
+      motionPausedUntil.set(ch, Date.now() + pause)
+    })
+  }
+
   return {
     join(ch, handlers) {
       let set = joined.get(ch)
@@ -276,16 +311,7 @@ export function createRealtimeConnection({
         schedule()
       }
     },
-    send(ch, msg, { motion = false } = {}) {
-      if (motion && (motionPausedUntil.get(ch) ?? 0) > Date.now()) return
-      const outcome = post(REALTIME_SEND_PATH, JSON.stringify({ ch, msg }), { keepalive: isGone(msg) })
-      if (!motion || !outcome) return
-      void outcome.then((result) => {
-        if (result?.status !== 429) return
-        const pause = Math.min(MAX_MOTION_PAUSE_MS, Math.max(MIN_MOTION_PAUSE_MS, result.retryAfterMs))
-        motionPausedUntil.set(ch, Date.now() + pause)
-      })
-    },
+    send,
     status,
     dispose() {
       stopListening()
@@ -296,6 +322,9 @@ export function createRealtimeConnection({
       joined.clear()
       dropped.clear()
       motionPausedUntil.clear()
+      for (const timer of heldTimers.values()) clearTimeout(timer)
+      heldTimers.clear()
+      heldMotion.clear()
       carried = new Set()
     },
   }
