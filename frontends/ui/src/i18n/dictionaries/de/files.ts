@@ -1460,6 +1460,9 @@ export const files: typeof en.files = {
     openInReview: 'In der Prüfansicht öffnen',
     loading: 'Anmerkungen werden geladen',
     readerCount: '{count, plural, one {# Anmerkung} other {# Anmerkungen}}',
+    // In Dateien neben dem Namen: was auf dem Dokument noch offen ist, über alle Fassungen.
+    listedOpen: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}',
+    listedOpenForYou: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}, {mine} für Sie',
   },
   // Die Prüfansicht: ein Dokument im Vollbild, die Anmerkungen darauf, die
   // Gespräche darunter, und wer gerade mit hinschaut.

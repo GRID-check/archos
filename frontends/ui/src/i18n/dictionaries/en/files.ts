@@ -1507,6 +1507,9 @@ export const files = {
     openInReview: 'Open in the review',
     loading: 'Loading annotations',
     readerCount: '{count, plural, one {# annotation} other {# annotations}}',
+    // In Files beside the name: what is still open on the document, on every revision.
+    listedOpen: '{count, plural, one {# open annotation} other {# open annotations}}',
+    listedOpenForYou: '{count, plural, one {# open annotation} other {# open annotations}}, {mine} for you',
   },
   // The review: a document full screen, the annotations on it, the threads
   // under them, and who is looking with you.

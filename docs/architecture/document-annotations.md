@@ -57,6 +57,23 @@ Every read ANDs `documentVisibleTo(reader)`, and the repository functions are
 registered in `lib/documents/document-visibility.spec.ts`. A held upload's
 marks are as invisible as the upload.
 
+**What a listing says about them.** Every listing row (`toListedDocuments`,
+`lib/documents/shelf-listing.ts`, so a project's Dateien, the Archiv and the
+by-name reads alike) carries `marks: { live, forYou }`: how many of the
+document's marks are live (`isLive`: open, and Piloti's proposals nobody
+decided on, on every Fassung) and how many of those are open with the reader as
+Zuständige, or `null` when none is live. `tallyLiveMarks`
+(`lib/annotations/repository.ts`) counts a whole page in ONE grouped query,
+bounded by the page's ids, that joins `documents` behind the listing's own
+`documentVisibleTo(reader)`. A proposal that names the reader is not theirs
+yet: only the person who takes it over makes it so. The count comes with the
+listing and is as fresh as its last read; it is not live. Dateien draws it as
+`OpenMarksChip` (`features/documents/components/open-marks-chip.tsx`), the
+kit's `Chip`, in a card's footer and beside the name in the list, labelled
+„3 offene Anmerkungen, 1 für Sie“. A press opens the review: the page's own URL
+with `doc` and `review=1` (`reviewHrefAt(…, { withDocument: true })`), which
+the shelf's `?doc=` sync and the pane already answer.
+
 ## The service and its API
 
 `frontends/ui/src/lib/annotations/`:
