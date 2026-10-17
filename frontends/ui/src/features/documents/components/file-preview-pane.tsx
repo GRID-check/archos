@@ -6,7 +6,7 @@ import {
   isOfficeRenditionSource,
 } from '@/lib/documents/preview-types'
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { FileTextPage, isTextPageType } from './file-text-page'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
@@ -735,6 +735,14 @@ export function FilePreviewPane({
       replaceParams(params, 'push')
     },
     [showReview, urlOpen, addressed, searchParams, file.id, replaceParams]
+  )
+  /** What the approve confirm names before the signature: the live marks, and the review to see them in. */
+  const openMarks = useMemo(
+    () =>
+      reviewEnabled && review.load === 'ready' && liveMarks > 0
+        ? { count: liveMarks, onOpen: () => openReview() }
+        : null,
+    [reviewEnabled, review.load, liveMarks, openReview]
   )
   // While open, the address follows the mark selected and the tool in hand.
   const linkTool: ReviewLinkTool | null = review.tool === 'point' || review.tool === 'region' ? review.tool : null
@@ -1786,6 +1794,7 @@ export function FilePreviewPane({
                     versionCount: summary.versionCount,
                   })
                 }
+                openMarks={openMarks}
                 className={cn(showIndexedHeading && 'mt-5')}
               />
             )}

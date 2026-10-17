@@ -153,6 +153,15 @@ export interface DocumentReviewControlsProps {
    * does (the rail's „Nächster Schritt: Veröffentlichung").
    */
   publishBare?: boolean
+  /**
+   * The document's live Anmerkungen, as the review the pane holds counts them
+   * (`isLive`, every Fassung), and the way into them. The approve confirm
+   * names them before the signature („4 offene Anmerkungen – trotzdem
+   * freigeben?") and links to the review. It informs, never blocks: whether
+   * an open point stands in the way of a release is the reviewer's call.
+   * Absent or 0 where nothing is open, or where the surface has no review.
+   */
+  openMarks?: { count: number; onOpen: () => void } | null
   className?: string
 }
 
@@ -166,6 +175,7 @@ export function DocumentReviewControls({
   actingName = null,
   fassungNumber,
   publishBare = false,
+  openMarks = null,
   className,
 }: DocumentReviewControlsProps): JSX.Element | null {
   const t = useTranslations('files')
@@ -458,6 +468,28 @@ export function DocumentReviewControls({
               ? t('lifecycle.approveConfirm.actingWithName', { name: actingName, date: today })
               : t('lifecycle.approveConfirm.actingDateOnly', { date: today })}
           </p>
+          {openMarks && openMarks.count > 0 && (
+            /* What is still open on the pages, said before the signature and
+               not after it: a release with open points is allowed, a release
+               that did not know about them is the mistake. */
+            <p
+              className="text-xs leading-snug"
+              role="note"
+              data-testid="document-review-approve-open-marks"
+            >
+              {t('lifecycle.approveConfirm.openMarks', { count: openMarks.count })}{' '}
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                data-testid="document-review-approve-open-marks-link"
+                onClick={openMarks.onOpen}
+              >
+                {t('annotations.openInReview')}
+              </Button>
+            </p>
+          )}
           <div className="flex items-start gap-2">
             <Checkbox
               id="document-review-approve-checkbox"

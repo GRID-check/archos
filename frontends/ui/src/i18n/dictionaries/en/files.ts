@@ -1317,6 +1317,8 @@ export const files = {
       actingWithName: 'Acting: {name} · {date}',
       actingDateOnly: 'Acting: {date}',
       checkbox: 'I approve this revision',
+      // Before the signature, never a block: approving with open points is allowed, missing them is not.
+      openMarks: '{count, plural, one {# open annotation} other {# open annotations}} – approve anyway?',
     },
     /**
      * Publication is its own act in its own section — never a sibling button

@@ -192,6 +192,15 @@ hover card („In der Prüfansicht öffnen", `inline-mark-peek.tsx`, a hovering
 pointer only: a tap on a pin opens the review as before). The pane header shows
 who is in the document with the review's own `Presence`, without following.
 
+**Before a Freigabe.** The approve confirm in the rail
+(`document-review-controls.tsx`, under „Freigabe und Fassungen“) names the
+live marks the pane's review holds, before the signature: „4 offene
+Anmerkungen – trotzdem freigeben?“, with „In der Prüfansicht öffnen“ beside it
+(`openMarks`, handed down from `file-preview-pane.tsx` through
+`DocumentFassungen`). It informs and never blocks: approving with open points
+is the reviewer's call, approving without knowing about them is the mistake.
+Only where the pane has a review (a PDF that is not held) and its list is read.
+
 ## Live
 
 Each document has a room. In it, people see each other's presence, named

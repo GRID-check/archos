@@ -443,6 +443,11 @@ beside them. The section opens itself when something is asked of you: a decision
 is yours to take, Piloti has a suggestion to answer, or the file is an older
 Fassung. Once you close it, it stays closed.
 
+When Anmerkungen are still open on the document, **Freigeben** says so before
+you sign: „4 offene Anmerkungen – trotzdem freigeben?“, with **In der
+Prüfansicht öffnen** beside it. It does not stop you: whether an open point
+stands in the way of a release is yours to decide.
+
 ### The timeline
 
 Open it and there is **one list, newest first, numbered „Fassung 3“, „Fassung

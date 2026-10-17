@@ -1280,6 +1280,8 @@ export const files: typeof en.files = {
       actingWithName: 'Handelnd: {name} · {date}',
       actingDateOnly: 'Handelnd: {date}',
       checkbox: 'Ich gebe diese Fassung frei',
+      // Vor der Unterschrift, nie als Sperre: offene Punkte freizugeben ist erlaubt, sie zu übersehen nicht.
+      openMarks: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}} – trotzdem freigeben?',
     },
     // Die Veröffentlichung ist ein eigener Akt im eigenen Abschnitt — nie ein
     // Knopf neben der Freigabe. Die Freigabe behauptet den Inhalt, die
