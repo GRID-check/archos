@@ -14,6 +14,14 @@
  * Anything else (a chat attachment) opens for nobody here, and nobody writes it
  * here: it has no team to act on it.
  *
+ * A held upload (ADR-0086, `hasPassedScreening`) opens, on top of that, only
+ * for its uploader and for the people who may review its quarantine
+ * (`isQuarantineReviewer`): until a verdict passes, the project does not know
+ * it exists, so nobody else may be put on the hook for it or told what a mark
+ * on it says, and a push or a mail must not carry its name. One rule for every
+ * caller: the Zuständige picker, an Anmerkung's mentions and its Postfach
+ * rows, a new Fassung's announcement.
+ *
  * Only the organization is read, so a detached announcement with no session
  * (`./fassung-notify`) asks the same question a request does.
  */
@@ -31,17 +39,42 @@ import {
 } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { hasPassedScreening } from './document-reader'
+import { isQuarantineReviewer } from './quarantine-reviewers'
 import { inPool } from '@/lib/utils/in-pool'
+
+/** What of a document decides who may open it: its shelf, its folder, and whether it is held and by whom. */
+export type OpenableDocument = Pick<
+  Document,
+  'scope' | 'projectId' | 'folderId' | 'createdBy' | 'status' | 'authoredBy' | 'screeningOutcome' | 'contentHash' | 'screenedHash'
+>
 
 /** Which of `userIds` may open `doc` now. Fails closed per person, as every check under it does. */
 export async function mayOpenDocument(
   tenant: Pick<AuthorizedSession, 'organizationId'>,
-  doc: Pick<Document, 'scope' | 'projectId' | 'folderId'>,
+  doc: OpenableDocument,
   userIds: readonly string[]
 ): Promise<Set<string>> {
-  const people = [...new Set(userIds)]
+  const asked = [...new Set(userIds)]
+  const people = hasPassedScreening(doc) ? asked : await heldFor(tenant.organizationId, doc, asked)
+  return mayOpenOnItsShelf(tenant.organizationId, doc, people)
+}
+
+/** Of these people, who may see a held document: its uploader and its quarantine's reviewers. */
+async function heldFor(organizationId: string, doc: OpenableDocument, userIds: readonly string[]): Promise<string[]> {
+  const verdicts = await inPool([...userIds], PERMISSION_CHECKS_AT_ONCE, async (userId) =>
+    userId === doc.createdBy || (await isQuarantineReviewer(organizationId, doc, userId)) ? userId : null
+  )
+  return verdicts.filter((userId): userId is string => userId !== null)
+}
+
+/** The shelf's and the folder's rule. */
+async function mayOpenOnItsShelf(
+  organizationId: string,
+  doc: OpenableDocument,
+  people: readonly string[]
+): Promise<Set<string>> {
   if (people.length === 0) return new Set()
-  const { organizationId } = tenant
   if (doc.scope === 'archiv') {
     // One cached read of the organization's directory, not a lookup per
     // person: a picker passes the whole directory in.
@@ -71,15 +104,19 @@ export async function mayOpenDocument(
  * On the Büroablage, whoever holds `org:archiv:manage` (`canManageArchiv`). In
  * a project, whoever holds `project:documents:write` or the older umbrella
  * `project:edit` on it (`DOCUMENT_WRITE_PERMISSIONS`, the ceiling) AND may
- * write in the folder it is filed in (ADR-0088). Permissions, never role
- * names; fails closed per person.
+ * write in the folder it is filed in (ADR-0088). A held upload is written, as
+ * it is opened, only by its uploader and its quarantine's reviewers
+ * ({@link mayOpenDocument}'s hold, the same rule `findDocumentForSession`
+ * applies before `getAccessibleDocument` asks the shelf). Permissions, never
+ * role names; fails closed per person.
  */
 export async function mayWriteDocument(
   tenant: Pick<AuthorizedSession, 'organizationId'>,
-  doc: Pick<Document, 'scope' | 'projectId' | 'folderId'>,
+  doc: OpenableDocument,
   userIds: readonly string[]
 ): Promise<Set<string>> {
-  const people = [...new Set(userIds)]
+  const asked = [...new Set(userIds)]
+  const people = hasPassedScreening(doc) ? asked : await heldFor(tenant.organizationId, doc, asked)
   if (people.length === 0) return new Set()
   const { organizationId } = tenant
   if (doc.scope === 'archiv') {

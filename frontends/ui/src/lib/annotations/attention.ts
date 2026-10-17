@@ -24,6 +24,7 @@ import 'server-only'
  * | Someone resolved, dismissed or reopened a mark | `annotation.activity`, variant `resolved` / `dismissed` / `reopened` | the mark's author, unless they did it |
  * | A person answered in the thread | resolves `piloti.asks_you`, for everyone, and their own `annotation.mentioned` | |
  * | The mark was resolved or dismissed | resolves everyone's `piloti.asks_you`, `annotation.assigned_to_you` and `annotation.mentioned` | |
+ * | A mention was taken out of the text, or its reply deleted, and nothing left on the mark names that person | their `annotation.mentioned` turns inert | |
  * | The mark was deleted | every row anchored on it turns inert, for everyone | |
  *
  * The author's `annotation.activity` row says `yours: true`: a reply or a move
@@ -400,4 +401,25 @@ export async function onMarkMentioned(
       actorUserId: input.actorUserId,
     })
   )
+}
+
+/**
+ * These people's mention on the mark is gone: the text that named them was
+ * changed or its reply deleted, and nothing left on the mark names them. Their
+ * `annotation.mentioned` turns inert, its quote wiped, as a deleted mark's
+ * rows do; nobody else's row is touched.
+ */
+export async function onMentionsWithdrawn(
+  input: Pick<MarkRef, 'organizationId' | 'annotationId'> & { userIds: readonly string[] }
+): Promise<void> {
+  await bestEffortInbox(`withdrawing mentions on mark ${input.annotationId}`, input.organizationId, async () => {
+    for (const recipientUserId of input.userIds) {
+      await markInboxItemsInertAnchoredOn({
+        organizationId: input.organizationId,
+        types: ['annotation.mentioned'],
+        anchorId: input.annotationId,
+        recipientUserId,
+      })
+    }
+  })
 }

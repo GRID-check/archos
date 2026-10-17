@@ -180,6 +180,13 @@ function scanOccurrences(text: string, displays: readonly string[]): Occurrence[
  * Returned in TEXT order — the order the reader sees — with at most as many
  * entries per display as were actually recorded, so an edited message can never
  * address more people than were picked.
+ *
+ * **When a display was picked more often than it still stands, the newest
+ * picks win.** Two colleagues can share a name: pick Anna Berger (Wien),
+ * delete the name, pick Anna Berger (Graz), and the text holds one „@Anna
+ * Berger" against two records. Matching the oldest record first sent the
+ * mention to the Anna the person had taken back. The text cannot say which
+ * token was deleted, and a deleted pick is older than the one that replaced it.
  */
 export function reconcileMentions(
   text: string,
@@ -187,10 +194,24 @@ export function reconcileMentions(
 ): DraftMention[] {
   if (mentions.length === 0) return []
 
-  const pool = mentions.map((mention) => ({ mention, used: false }))
+  const occurrences = scanOccurrences(text, mentions.map((mention) => mention.display))
+  const standing = new Map<string, number>()
+  for (const occurrence of occurrences) {
+    standing.set(occurrence.display, (standing.get(occurrence.display) ?? 0) + 1)
+  }
+  // Per display, only its newest picks, as many as still stand, in pick order.
+  const recorded = new Map<string, number>()
+  for (const mention of mentions) recorded.set(mention.display, (recorded.get(mention.display) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  const pool = mentions.map((mention) => {
+    const index = seen.get(mention.display) ?? 0
+    seen.set(mention.display, index + 1)
+    const stale = index < (recorded.get(mention.display) ?? 0) - (standing.get(mention.display) ?? 0)
+    return { mention, used: stale }
+  })
   const kept: DraftMention[] = []
 
-  for (const occurrence of scanOccurrences(text, mentions.map((mention) => mention.display))) {
+  for (const occurrence of occurrences) {
     const entry = pool.find((item) => !item.used && item.mention.display === occurrence.display)
     if (!entry) continue
     entry.used = true

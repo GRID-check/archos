@@ -93,6 +93,12 @@ export interface MentionPickerProps {
    * mentioned, so a name typed by hand that finds nobody says why.
    */
   noResultsHint?: string
+  /**
+   * One line over the list when the surface knows something the list cannot
+   * say itself: on an Anmerkung, that the people could not be loaded, so an
+   * empty list is not read as „nobody".
+   */
+  notice?: string
   className?: string
 }
 
@@ -257,6 +263,7 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
       onAriaChange,
       othersHeading,
       noResultsHint,
+      notice,
       className,
     },
     ref,
@@ -443,6 +450,11 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
           className,
         )}
       >
+        {notice && (
+          <p role="status" data-testid="mention-picker-notice" className="text-muted-foreground border-b px-3 py-2 text-xs">
+            {notice}
+          </p>
+        )}
         <Command
           shouldFilter={false}
           loop

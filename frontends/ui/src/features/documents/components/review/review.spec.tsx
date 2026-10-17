@@ -1023,8 +1023,9 @@ describe('mentioning a colleague on a mark', () => {
     await userEvent.click(await waitFor(() => pickerOption(thread, 'user_anna')))
     await userEvent.type(box, 'bitte{Enter}')
     await waitFor(() => expect(replies[1]).toEqual({ body: '@Anna Berger bitte', mentions: [ANNA_MENTION] }))
+    // Said without a reason it cannot know, and in the singular for one name.
     expect(await within(screen.getByTestId('review-thread')).findByTestId('thread-reply-untold')).toHaveTextContent(
-      'Anna Berger'
+      /^Anna Berger was not told\.$/
     )
   })
 
@@ -1064,6 +1065,136 @@ describe('mentioning a colleague on a mark', () => {
     // The list shows the new mark with the same chip.
     const row = await screen.findByTestId('review-row')
     expect(within(row).getByTestId('mention-chip')).toHaveTextContent('@Anna Berger')
+  })
+
+  /** A thread whose reply POSTs are recorded and answered with what was sent, kept as sent. */
+  const serveReplies = (respond?: (sent: { body: string; mentions?: AnnotationView['mentions'] }) => Response) => {
+    const sent: Array<{ body: string; mentions?: AnnotationView['mentions'] }> = []
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', async ({ request }) => {
+        const body = (await request.json()) as { body: string; mentions?: AnnotationView['mentions'] }
+        sent.push(body)
+        return (
+          respond?.(body) ??
+          HttpResponse.json({
+            annotation: view({ id: 'ann_1', replies: [replyView(body.body, body.mentions ?? [])] }),
+            replyId: 'r1',
+            wake: 'none',
+          })
+        )
+      })
+    )
+    return sent
+  }
+
+  const openThread = async () => {
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    return { thread, box: within(thread).getByTestId('thread-reply') }
+  }
+
+  it('sends the Anna picked last when a namesake was picked and taken back first', async () => {
+    serve([view({ id: 'ann_1' })])
+    const wien = { ...ANNA_PERSON, userId: 'user_wien' }
+    const graz = { ...ANNA_PERSON, userId: 'user_graz', email: 'anna@graz.at' }
+    server.use(http.get('/api/assignments/:type/:id/candidates', () => HttpResponse.json({ candidates: [wien, graz] })))
+    const sent = serveReplies()
+    render(<Harness transport={scriptedRoom().transport} />)
+    const { thread, box } = await openThread()
+
+    await userEvent.type(box, '@an')
+    await userEvent.click(await waitFor(() => pickerOption(thread, 'user_wien')))
+    await userEvent.clear(box)
+    await userEvent.type(box, '@an')
+    await userEvent.click(await waitFor(() => pickerOption(thread, 'user_graz')))
+    await userEvent.type(box, 'bitte{Enter}')
+
+    await waitFor(() =>
+      expect(sent).toEqual([{ body: '@Anna Berger bitte', mentions: [{ targetId: 'user_graz', display: 'Anna Berger' }] }])
+    )
+  })
+
+  it('says the chat’s words when the mention budget is spent, and the bound before sending too many names', async () => {
+    serve([view({ id: 'ann_1' })])
+    const many = Array.from({ length: 11 }, (_, index) => ({
+      userId: `user_${index}`,
+      name: `Person ${String.fromCharCode(65 + index)}`,
+      email: null,
+      profilePictureUrl: null,
+    }))
+    server.use(http.get('/api/assignments/:type/:id/candidates', () => HttpResponse.json({ candidates: many })))
+    const sent = serveReplies(() =>
+      HttpResponse.json(
+        { error: 'Too many mentions.', code: 'FORBIDDEN', details: { reason: 'mention-rate-limited' } },
+        { status: 403 }
+      )
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+    const { thread, box } = await openThread()
+
+    await userEvent.type(box, '@')
+    await userEvent.click(await waitFor(() => pickerOption(thread, 'user_0')))
+    await userEvent.type(box, 'bitte{Enter}')
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(await within(thread).findByText('Too many mentions. Please wait a few minutes.')).toBeInTheDocument()
+
+    await userEvent.clear(box)
+    for (const person of many) {
+      await userEvent.type(box, '@')
+      await userEvent.click(await waitFor(() => pickerOption(thread, person.userId)))
+    }
+    await userEvent.type(box, '{Enter}')
+    expect(await within(thread).findByText('Mention at most 10 people at once.')).toBeInTheDocument()
+    expect(sent).toHaveLength(1)
+  })
+
+  it('says the people could not be loaded, and asks again on the next „@"', async () => {
+    serve([view({ id: 'ann_1' })])
+    let asked = 0
+    server.use(
+      http.get('/api/assignments/:type/:id/candidates', () => {
+        asked += 1
+        return asked === 1
+          ? HttpResponse.json({ error: 'down' }, { status: 503 })
+          : HttpResponse.json({ candidates: [ANNA_PERSON] })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+    const { thread, box } = await openThread()
+
+    await userEvent.type(box, '@an')
+    expect(await within(thread).findByTestId('mention-picker-notice')).toHaveTextContent(
+      'Could not load the people. Type "@" again.'
+    )
+    await userEvent.type(box, ' @an')
+    await waitFor(() => pickerOption(thread, 'user_anna'))
+    expect(within(thread).queryByTestId('mention-picker-notice')).toBeNull()
+    expect(asked).toBe(2)
+  })
+
+  it('marks a mention of the reader as the room knows them, and keeps line breaks only in the thread', async () => {
+    const me = { targetId: 'user_room', display: 'Rita Raum' }
+    serve([view({ id: 'ann_1', body: '@Rita Raum bitte\nprüfen', mentions: [me] })])
+    // The room names this tab's person; the chat knows nobody here.
+    const transport: RoomTransport = {
+      connect({ onFrame, onOpen }) {
+        onOpen()
+        onFrame({ kind: 'welcome', self: { userId: 'user_room', name: 'Rita Raum', kind: 'person' } })
+        return () => {}
+      },
+      post: () => {},
+    }
+    render(<Harness transport={transport} />)
+
+    const row = await screen.findByTestId('review-row')
+    await waitFor(() => expect(within(row).getByTestId('mention-chip')).toHaveAttribute('data-mention-me', 'true'))
+    expect(within(row).getByTestId('mention-text')).toHaveClass('whitespace-normal')
+
+    await userEvent.click(row)
+    const thread = await screen.findByTestId('review-thread')
+    const text = within(thread).getByTestId('mention-text')
+    expect(text).toHaveClass('whitespace-pre-wrap')
+    expect(text).not.toHaveClass('whitespace-normal')
   })
 })
 

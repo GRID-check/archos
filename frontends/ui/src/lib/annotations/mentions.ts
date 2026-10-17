@@ -15,16 +15,20 @@ import 'server-only'
  *   crafted request cannot draw a chip that names somebody else;
  * - the person may open the document now (`mayOpenDocument`, the rule that
  *   decides who may be made Zuständige and who hears about a mark at all).
- *   Piloti is kept by its product name alone.
+ *   Piloti is kept by its product name alone, and only in a reply: a reply
+ *   addresses Piloti, a mark's own text wakes nobody.
+ * - the organization has collaboration on, the gate the candidates route and
+ *   the chat keep (`isCollaborationEnabled`); without it a text mentions
+ *   nobody but Piloti.
  *
  * What is dropped is simply not stored: its „@Name" stays plain text, and the
  * composer, comparing what it sent with what came back, says who was not told.
  */
 
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { PRODUCT_NAME } from '@/lib/brand'
-import type { Document } from '@/lib/db/schema'
-import { mayOpenDocument } from '@/lib/documents/may-open'
+import { mayOpenDocument, type OpenableDocument } from '@/lib/documents/may-open'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { reconcileMentions } from '@/features/collaboration/lib/mention-text'
@@ -44,16 +48,23 @@ export function standingMentions(text: string, mentions: readonly MarkMention[])
   })
 }
 
-/** The mentions of a write the server stores: standing in the text, named as the directory names them, able to open the document. */
+/**
+ * The mentions of a write the server stores: standing in the text, named as
+ * the directory names them, able to open the document. `piloti`: the write is
+ * a reply, where Piloti may be addressed.
+ */
 export async function keepMentions(
   session: AuthorizedSession,
-  doc: Pick<Document, 'scope' | 'projectId' | 'folderId'>,
+  doc: OpenableDocument,
   text: string,
-  submitted: readonly MarkMention[]
+  submitted: readonly MarkMention[],
+  { piloti }: { piloti: boolean }
 ): Promise<MarkMention[]> {
   const standing = standingMentions(text, submitted)
-  const people = standing.filter((mention) => mention.targetId !== AGENT_MENTION_ID)
-  if (people.length === 0) return standing.filter((mention) => mention.display === PRODUCT_NAME)
+  const isPiloti = (mention: MarkMention) => mention.targetId === AGENT_MENTION_ID
+  const keptPiloti = (mention: MarkMention) => piloti && mention.display === PRODUCT_NAME
+  const people = isCollaborationEnabled(session) ? standing.filter((mention) => !isPiloti(mention)) : []
+  if (people.length === 0) return standing.filter((mention) => isPiloti(mention) && keptPiloti(mention))
   const directory = await loadOrganizationDirectory(session.organizationId)
   const named = people.filter((mention) => directory.get(mention.targetId)?.name === mention.display)
   const mayOpen = await mayOpenDocument(
@@ -62,9 +73,7 @@ export async function keepMentions(
     named.map((mention) => mention.targetId)
   )
   return standing.filter((mention) =>
-    mention.targetId === AGENT_MENTION_ID
-      ? mention.display === PRODUCT_NAME
-      : named.includes(mention) && mayOpen.has(mention.targetId)
+    isPiloti(mention) ? keptPiloti(mention) : named.includes(mention) && mayOpen.has(mention.targetId)
   )
 }
 
@@ -91,3 +100,23 @@ export function newlyMentioned(
 /** Whether these mentions address Piloti: its chip, as the reply's `addresses_agent` records it. */
 export const mentionsPiloti = (mentions: readonly MarkMention[]): boolean =>
   mentions.some((mention) => mention.targetId === AGENT_MENTION_ID)
+
+/**
+ * The people `before` mentioned whom nothing on the mark mentions any more
+ * (`remaining`: the mark's text and every reply left, as they stand after the
+ * write). Their mention was answered by its own removal: its row goes inert.
+ * Pure.
+ */
+export function noLongerMentioned(
+  before: readonly MarkMention[],
+  remaining: ReadonlyArray<readonly MarkMention[]>
+): string[] {
+  const still = new Set(remaining.flat().map((mention) => mention.targetId))
+  return [
+    ...new Set(
+      before
+        .map((mention) => mention.targetId)
+        .filter((targetId) => targetId !== AGENT_MENTION_ID && !still.has(targetId))
+    ),
+  ]
+}

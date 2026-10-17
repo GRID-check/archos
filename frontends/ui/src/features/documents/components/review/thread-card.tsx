@@ -68,6 +68,7 @@ function Message({
   at,
   body,
   mentions,
+  viewerId,
   proposal,
   woken,
 }: {
@@ -78,6 +79,8 @@ function Message({
   body: string
   /** Whom it mentions, drawn as the chat's chips. */
   mentions?: readonly MarkMention[]
+  /** The reader, so a mention of them stands out. */
+  viewerId: string | null
   /** Piloti's finding nobody has taken over: it says so in its byline. */
   proposal?: boolean
   /** The reply was written by a turn an event woke, and where (`number` of the Anmerkung). */
@@ -120,7 +123,7 @@ function Message({
           </p>
         )}
         <p className="text-foreground mt-0.5 text-[13px] leading-5 break-words whitespace-pre-wrap">
-          <MarkBody text={body} mentions={mentions} />
+          <MarkBody text={body} mentions={mentions} viewerId={viewerId} />
         </p>
       </div>
     </div>
@@ -881,6 +884,7 @@ export function ThreadCard({
             at={annotation.createdAt}
             body={annotation.body}
             mentions={annotation.mentions}
+            viewerId={review.me}
             proposal={proposed}
           />
         )}
@@ -899,6 +903,7 @@ export function ThreadCard({
             at={reply.createdAt}
             body={reply.body}
             mentions={reply.mentions}
+            viewerId={review.me}
             woken={reply.wokenBy ? { trigger: reply.wokenBy, number: annotation.number } : null}
           />
         ))}

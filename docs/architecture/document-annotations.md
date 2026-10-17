@@ -114,7 +114,9 @@ The Zuständige picker reads who may write
 `listAssignmentCandidates` with `access: 'write'`), offers the reader
 themselves („Mir zuweisen“), and the service checks the pick again on every
 write (422 `assignee-cannot-answer`; by name for Piloti, `resolveAssignee`). A
-mention asks less: whoever may open the document.
+mention asks less: whoever may open the document. A held upload (ADR-0086)
+narrows both rows to its uploader and the people who may review its
+quarantine, as `findDocumentForSession` does for a session.
 
 ## The Prüfansicht
 
@@ -250,16 +252,29 @@ open the document can be mentioned.
 
 The server keeps a mention only while its token stands in the text, the name is
 the directory's, and the person may open the document
-(`lib/annotations/mentions.ts`); Piloti by its product name. A dropped mention
+(`lib/annotations/mentions.ts`); Piloti by its product name, and only in a
+reply, never in a mark's own text. Where the organization has collaboration
+off (the gate the candidates route and the chat keep), a text mentions nobody
+but Piloti. A dropped mention
 is not stored, so its „@Name“ stays plain text, and the composer, comparing
-what it sent with what came back, says whom it did not tell („Nicht
-benachrichtigt, weil sie das Dokument nicht öffnen können: …“). A reply that
+what it sent with what came back, says whom it did not tell, without a reason
+it cannot know („Anna Berger wurde nicht benachrichtigt.“). It says the chat's
+words for a spent mention budget, and the bound before sending more than ten
+names. A list of people that failed to load says so in the picker, never as
+„nobody“, and the next „@“ asks again. A pick whose name was taken out of the
+text is dropped as the text changes, and when two picks share a name the
+newest wins (`reconcileMentions`), so a namesake taken back is never told. A
+reply that
 mentions Piloti addresses it, as `addressesPiloti` does. Mentions spend the
-chat's budget (`enforceMentionBounds`, `MENTION_LIMIT`), before anything is
-written.
+chat's one budget (`enforceMentionBounds`, `MENTION_LIMIT`), @Piloti counted
+like a person as in the chat, before anything is written. A write that closes
+the mark tells nobody it mentions.
 
 A mention renders as the chat's chip (`MentionText`, through
-`review/mark-body.tsx`): the name, never the id, louder when it is the reader.
+`review/mark-body.tsx`): the name, never the id, louder when it is the reader
+(the review's `me`, below: the room's word for this tab, else the page's,
+else the signed-in person the chat knows). In a line clamp (the list, the peek, the summary) the
+text runs as one paragraph; the thread card keeps its line breaks.
 The thread card, the list, the inline peek and the summary draw it alike. Only
 a stored mention becomes a chip.
 
@@ -598,7 +613,10 @@ has the `piloti.asks_you` row and no second one. Every recipient of a
 colleague's news must be able to open the document now, its folder included
 (`mayOpenDocument`, `frontends/ui/src/lib/documents/may-open.ts`), the rule
 that decides who may be mentioned; who may be made Zuständige must also be
-able to write it (`mayWriteDocument`, above). The note Piloti writes
+able to write it (`mayWriteDocument`, above). A held upload (ADR-0086) opens
+and is written there only for its uploader and the people who may review its
+quarantine (`isQuarantineReviewer`), so nobody else is assigned, mentioned or
+told about a document they would find missing. The note Piloti writes
 with a change it made for the asker tells nobody: the change told whoever it
 concerns, exactly as the asker's own change would.
 
@@ -683,7 +701,10 @@ thread, and with `annotation.assigned_to_you` and `annotation.mentioned` for
 everyone when the mark is resolved or dismissed, by a person or by Piloti in
 their name. An `annotation.mentioned` is resolved for its reader when they
 answer in the thread: mentioning yourself tells nobody, and a colleague asked
-in the same breath has not answered. A Zuständige
+in the same breath has not answered. A mention taken back (a `body` that no
+longer names the person, or its reply deleted), with nothing else on the mark
+naming them, turns their `annotation.mentioned` inert, its quote wiped
+(`onMentionsWithdrawn`). A Zuständige
 who is replaced, or removed, has their `annotation.assigned_to_you` resolved.
 Deleting a mark turns every row anchored on it inert, for everyone: none keeps a
 link to it or a quote from it.

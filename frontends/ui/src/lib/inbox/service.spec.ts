@@ -1239,6 +1239,8 @@ describe('listInbox — where a request on a mark may be answered (answerIn)', (
       onMark({ id: 'writer' }),
       onMark({ id: 'reader', resourceId: 'doc_r', groupKey: 'g_r' }),
       onMark({ id: 'mentioned', type: 'annotation.mentioned', groupKey: 'g_m' }),
+      // A mention reaches whoever may open the document: a reader is told, and only opens the mark.
+      onMark({ id: 'mentionedReader', type: 'annotation.mentioned', resourceId: 'doc_r', groupKey: 'g_mr' }),
     ])
 
     const { items } = await listInbox(session)
@@ -1247,6 +1249,7 @@ describe('listInbox — where a request on a mark may be answered (answerIn)', (
       writer: 'row',
       reader: null,
       mentioned: 'row',
+      mentionedReader: null,
     })
     // Each document is asked once, however many rows name it.
     expect(vi.mocked(canWriteDocument).mock.calls.map(([, documentId]) => documentId).sort()).toEqual(['doc_r', 'doc_w'])

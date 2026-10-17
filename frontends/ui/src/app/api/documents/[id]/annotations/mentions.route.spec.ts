@@ -29,6 +29,11 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
+// Collaboration on, as an office that mentions people has it; one case switches it off.
+vi.mock('@/lib/authz/feature-flags', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/authz/feature-flags')>()),
+  isCollaborationEnabled: vi.fn(() => true),
+}))
 vi.mock('@/lib/documents/may-open', () => ({ mayOpenDocument: vi.fn(), mayWriteDocument: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({
   PERMISSION_CHECKS_AT_ONCE: 8,
@@ -60,7 +65,10 @@ vi.mock('@/lib/annotations/repository', () => ({
 }))
 
 import { createAnnotation, replyToAnnotation, updateAnnotation } from '@/lib/annotations/client'
+import { deleteReply } from '@/lib/annotations/service'
+import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import {
+  deleteAnnotationReply,
   findDocumentAnnotation,
   insertAnnotationReply,
   insertDocumentAnnotations,
@@ -72,7 +80,7 @@ import type { Document, DocumentAnnotationReplyRow, DocumentAnnotationRow } from
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import type { InboxEmission } from '@/lib/inbox/service'
-import { emitInboxItems, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
+import { emitInboxItems, markInboxItemsInertAnchoredOn, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
 import { enforceMentionBounds } from '@/lib/mentions/service'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 
@@ -169,6 +177,8 @@ const rowsOf = async (type: string) =>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(isCollaborationEnabled).mockReturnValue(true)
+  vi.mocked(deleteAnnotationReply).mockResolvedValue(true)
   vi.mocked(getAccessibleDocument).mockResolvedValue(DOC)
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(
     new Map(
@@ -385,5 +395,121 @@ describe('a mark whose text mentions colleagues', () => {
       status: 400,
     })
     expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+  })
+})
+
+describe('what a mention costs and where it counts', () => {
+  it('counts @Piloti against the chat’s one mention budget, like a person', async () => {
+    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti stimmt das?', mentions: [PILOTI] }, { run })
+    expect(enforceMentionBounds).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'user_me' }), 1)
+
+    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti @Anna Berger stimmt das?', mentions: [PILOTI, ANNA] }, { run })
+    expect(enforceMentionBounds).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'user_me' }), 2)
+  })
+
+  it('keeps no @Piloti in a mark’s own text: only a reply addresses Piloti, and setting a mark wakes nobody', async () => {
+    await createAnnotation(
+      'doc_1',
+      { page: 1, shape: 'point', x: 0.2, y: 0.2, kind: 'hint', body: '@Piloti @Anna Berger prüfen', mentions: [PILOTI, ANNA] },
+      { run }
+    )
+
+    expect(insertDocumentAnnotations).toHaveBeenCalledWith(
+      expect.objectContaining({ marks: [expect.objectContaining({ mentions: [ANNA] })] })
+    )
+    expect(enforceMentionBounds).toHaveBeenCalledWith(expect.anything(), 1)
+  })
+
+  it('mentions nobody but Piloti where the office has no collaboration, as the chat and the people picker do', async () => {
+    vi.mocked(isCollaborationEnabled).mockReturnValue(false)
+
+    await replyToAnnotation('doc_1', 'ann_1', { body: '@Piloti @Anna Berger bitte', mentions: [PILOTI, ANNA] }, { run })
+
+    expect(insertAnnotationReply).toHaveBeenCalledWith(expect.objectContaining({ mentions: [PILOTI] }), undefined)
+    expect(await rowsOf('annotation.mentioned')).toEqual([])
+  })
+})
+
+describe('a mention whose text is gone, or whose mark is closed', () => {
+  it('tells nobody new when the same write that adds a mention closes the mark', async () => {
+    await updateAnnotation(
+      'doc_1',
+      'ann_1',
+      { body: '@Anna Berger erledigt', mentions: [ANNA], status: 'resolved', expectedStatus: 'open' },
+      { run }
+    )
+
+    expect(updateDocumentAnnotation).toHaveBeenCalledWith(
+      'org_1',
+      'doc_1',
+      'ann_1',
+      'open',
+      expect.objectContaining({ mentions: [ANNA] }),
+      undefined
+    )
+    expect(await rowsOf('annotation.mentioned')).toEqual([])
+    expect(enforceMentionBounds).not.toHaveBeenCalled()
+  })
+
+  it('turns the row inert for whom an edit stops mentioning, unless a reply still names them', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({
+      ...MARK,
+      body: '@Anna Berger @Ben Gruber prüfen',
+      mentions: [ANNA, BEN],
+      replies: [
+        {
+          id: 'rep_ben',
+          organizationId: 'org_1',
+          annotationId: 'ann_1',
+          authorKind: 'person',
+          body: '@Ben Gruber auch du',
+          createdBy: 'user_me',
+          createdAt: new Date(),
+          addressesAgent: false,
+          mentions: [BEN],
+        },
+      ],
+    })
+
+    await updateAnnotation('doc_1', 'ann_1', { body: 'prüfen', mentions: [] }, { run })
+    await rows()
+
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledTimes(1)
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      types: ['annotation.mentioned'],
+      anchorId: 'ann_1',
+      recipientUserId: 'user_anna',
+    })
+  })
+
+  it('turns the row inert for whom a deleted reply mentioned, unless the mark still names them', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({
+      ...MARK,
+      body: '@Ben Gruber prüfen',
+      mentions: [BEN],
+      replies: [
+        {
+          id: 'rep_1',
+          organizationId: 'org_1',
+          annotationId: 'ann_1',
+          authorKind: 'person',
+          body: '@Anna Berger @Ben Gruber schaut mal',
+          createdBy: 'user_me',
+          createdAt: new Date(),
+          addressesAgent: false,
+          mentions: [ANNA, BEN],
+        },
+      ],
+    })
+    const session = { userId: 'user_me', organizationId: 'org_1', email: 'miriam@buero.at', name: 'Miriam Hofer' }
+
+    await deleteReply(session as unknown as Parameters<typeof deleteReply>[0], 'doc_1', 'ann_1', 'rep_1')
+    await rows()
+
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledTimes(1)
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith(
+      expect.objectContaining({ types: ['annotation.mentioned'], anchorId: 'ann_1', recipientUserId: 'user_anna' })
+    )
   })
 })

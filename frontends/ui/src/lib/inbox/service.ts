@@ -224,13 +224,15 @@ export async function resolveInboxItemsAnchoredOn(input: {
 
 /**
  * Neutralise the items of these types anchored on a thing that is gone (a
- * deleted mark), for everyone: no row keeps a link to it, or the text it
+ * deleted mark), for everyone, or for one recipient whose reason for the row
+ * is gone (a mention taken back): no row keeps a link to it, or the text it
  * quoted. Session-less, like the emitter.
  */
 export async function markInboxItemsInertAnchoredOn(input: {
   organizationId: string
   types: readonly InboxItemType[]
   anchorId: string
+  recipientUserId?: string
 }): Promise<number> {
   const recipients = await markItemsInertAnchoredOn(input)
   await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))

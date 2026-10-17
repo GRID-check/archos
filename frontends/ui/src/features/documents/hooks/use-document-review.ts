@@ -20,8 +20,8 @@ import {
   type MarkMention,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
-import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { useChatStore } from '@/features/chat'
+import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '@/features/collaboration/hooks/use-undoable-archive'
 import { useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
 import { useDocumentRoom, type RoomTransport } from './use-document-room'
@@ -126,7 +126,9 @@ export function useDocumentReview(
    * Who is reading: the room's own word once it has welcomed this tab, else
    * the page's (`viewerUserId`), else the session's user id the app keeps
    * (`useChatStore`'s `currentUserId`, set from `useAuth`). „Mir zugewiesen"
-   * and „Mir zuweisen" must not go blank while the room is down.
+   * and „Mir zuweisen" must not go blank while the room is down, and a
+   * mention of the reader stands out (`MarkBody`'s `viewerId`) before the room
+   * answers. The one answer to „who reads" in the review.
    */
   const sessionUserId = useChatStore((state) => state.currentUserId)
   const me = room.self?.userId ?? viewerUserId ?? sessionUserId ?? null

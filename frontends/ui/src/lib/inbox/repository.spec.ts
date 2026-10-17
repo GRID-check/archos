@@ -296,6 +296,20 @@ describe('markItemsInertAnchoredOn', () => {
     expect(params).toEqual(expect.arrayContaining(['org_1', 'piloti.asks_you', 'annotation.activity', 'ann_1']))
   })
 
+  it('turns one recipient’s items inert, and nobody else’s, when one is named', async () => {
+    await markItemsInertAnchoredOn({
+      organizationId: 'org_1',
+      types: ['annotation.mentioned'],
+      anchorId: 'ann_1',
+      recipientUserId: 'user_anna',
+    })
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toContain('"recipient_user_id" = $')
+    expect(sql).toContain('"payload" = $')
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'annotation.mentioned', 'ann_1', 'user_anna']))
+  })
+
   it('touches nothing for an empty type list', async () => {
     expect(await markItemsInertAnchoredOn({ organizationId: 'org_1', types: [], anchorId: 'ann_1' })).toEqual([])
     expect(captured).toHaveLength(0)

@@ -18,8 +18,10 @@ import {
   type MentionQuery,
 } from '@/features/collaboration/lib/mention-text'
 import { useTranslations } from '@/i18n'
+import { AnnotationRequestError } from '@/lib/annotations/client'
 import { MAX_ANNOTATION_BODY, type MarkMention } from '@/lib/annotations/types'
-import { AGENT_MENTION_ID, type MentionCandidate } from '@/lib/mentions/types'
+import { MAX_MENTIONS_PER_MESSAGE } from '@/lib/limits/catalog'
+import { AGENT_MENTION_ID, MENTION_ERROR_REASONS, type MentionCandidate } from '@/lib/mentions/types'
 import { cn } from '@/lib/utils'
 import { useMentionablePeople } from '../../hooks/use-mentionable-people'
 
@@ -101,12 +103,15 @@ export function Composer({
   const agentName = tCollab('mentions.picker.agentName')
   const [body, setBody] = useState(initialBody)
   const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
+  /** Why the last send did not go: the chat's words for a spent mention budget, the bound for too many names, else a plain failure. */
+  const [failed, setFailed] = useState<string | null>(null)
   /** Whom the person picked, as the chat's composer records it: never read out of the text. */
-  const [picked, setPicked] = useState<DraftMention[]>(() => [...(initialMentions ?? [])])
+  // A reworded mark starts with whom it mentions, pruned to the names that stand in its text.
+  const [picked, setPicked] = useState<DraftMention[]>(() => reconcileMentions(initialBody, [...(initialMentions ?? [])]))
   const [query, setQuery] = useState<MentionQuery | null>(null)
   const [dismissed, setDismissed] = useState(false)
-  const [requested, setRequested] = useState(false)
+  /** Counted up on each new „@", so a list that failed to load is asked for again. */
+  const [attempt, setAttempt] = useState(0)
   const [aria, setAria] = useState<MentionPickerAria>({ listboxId: null, activeOptionId: null })
   /** The names the server did not keep on the last send: they cannot open the document. */
   const [untold, setUntold] = useState<string[]>([])
@@ -114,7 +119,7 @@ export function Composer({
   const pickerRef = useRef<MentionPickerHandle>(null)
   // Text to start from is edited from its end, as a reworded mark is.
   const pendingCaret = useRef<number | null>(autoFocus && initialBody ? initialBody.length : null)
-  const { people, loading } = useMentionablePeople(documentId ?? null, requested)
+  const { people, loading, failed: peopleFailed } = useMentionablePeople(documentId ?? null, attempt)
   const mentionsOn = Boolean(mentionPiloti || documentId)
 
   useEffect(() => {
@@ -166,13 +171,18 @@ export function Composer({
   const syncQuery = (text: string, caret: number | null) => {
     if (!mentionsOn) return
     const next = caret === null ? null : findMentionQuery(text, caret)
+    // A fresh „@" (not one more letter after it) asks for the people again if
+    // the last read failed; a loaded list is not read twice.
+    if (next && (!query || query.start !== next.start)) setAttempt((count) => count + 1)
     setQuery(next)
-    if (next) setRequested(true)
-    else setDismissed(false)
+    if (!next) setDismissed(false)
   }
 
   const change = (text: string, caret: number | null) => {
     setBody(text)
+    // A name taken out of the text is a pick taken back: it can never decide
+    // whom a later namesake's token means (`reconcileMentions`).
+    setPicked((current) => reconcileMentions(text, current))
     setUntold([])
     syncQuery(text, caret)
   }
@@ -194,7 +204,9 @@ export function Composer({
   /** The spark: Piloti's mention written at the start, or taken out again. */
   const togglePiloti = () => {
     if (pilotiMentioned) {
-      setBody(withoutMention(body, picked, AGENT_MENTION_ID))
+      const text = withoutMention(body, picked, AGENT_MENTION_ID)
+      setBody(text)
+      setPicked((current) => reconcileMentions(text, current))
     } else {
       const token = `@${agentName} `
       pendingCaret.current = token.length + body.length
@@ -207,10 +219,15 @@ export function Composer({
   const submit = async () => {
     const text = body.trim()
     if (!text || busy) return
-    setBusy(true)
-    setFailed(false)
     const sent = reconcileMentions(text, picked)
     const mentions = [...new Map(sent.map((mention) => [mention.targetId, mention])).values()]
+    // The server's bound, said before the send rather than as a refusal after it.
+    if (mentions.length > MAX_MENTIONS_PER_MESSAGE) {
+      setFailed(t('review.mentions.tooMany', { max: MAX_MENTIONS_PER_MESSAGE }))
+      return
+    }
+    setBusy(true)
+    setFailed(null)
     try {
       const kept = await onSubmit(body, {
         piloti: sent.some((mention) => mention.targetId === AGENT_MENTION_ID),
@@ -228,8 +245,12 @@ export function Composer({
               .map((mention) => mention.display)
           : []
       )
-    } catch {
-      setFailed(true)
+    } catch (error) {
+      setFailed(
+        error instanceof AnnotationRequestError && error.reason === MENTION_ERROR_REASONS.rateLimited
+          ? tCollab('mentions.errors.rateLimited')
+          : t('review.sendFailed')
+      )
     } finally {
       setBusy(false)
     }
@@ -362,16 +383,19 @@ export function Composer({
             onAriaChange={setAria}
             othersHeading={t('review.mentions.othersHeading')}
             noResultsHint={t('review.mentions.noResultsHint')}
+            notice={peopleFailed ? t('review.mentions.peopleFailed') : undefined}
             className="max-h-64"
           />
         </div>
       )}
       {untold.length > 0 && (
         <p className="text-muted-foreground mt-1 text-[11px] leading-4" role="status" data-testid={`${testId}-untold`}>
-          {t('review.mentions.untold', { names: untold.join(', ') })}
+          {untold.length === 1
+            ? t('review.mentions.untoldOne', { name: untold[0] })
+            : t('review.mentions.untoldMany', { names: untold.join(', ') })}
         </p>
       )}
-      {failed && <FieldError className="mt-1">{t('review.sendFailed')}</FieldError>}
+      {failed && <FieldError className="mt-1">{failed}</FieldError>}
     </div>
   )
 }

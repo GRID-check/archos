@@ -1569,11 +1569,15 @@ export const files = {
     popout: 'Open in a new window',
     copyReviewLink: 'Copy link to the review',
     // Mentioning colleagues on an annotation or in its thread with "@", as in the chat.
-    // Only people who can open the document can be mentioned; anyone else is not told.
+    // Only people who can open the document can be mentioned. Whom the server did not keep is
+    // named without a reason: the folder may be why, or collaboration switched off.
     mentions: {
       othersHeading: 'Can open this document',
       noResultsHint: 'You can mention anyone who can open this document.',
-      untold: 'Not told, because they cannot open this document: {names}',
+      untoldOne: '{name} was not told.',
+      untoldMany: '{names} were not told.',
+      tooMany: 'Mention at most {max} people at once.',
+      peopleFailed: 'Could not load the people. Type "@" again.',
     },
     // Piloti on the canvas: a box asked about, the answer beside it, and Piloti in a thread.
     piloti: {
