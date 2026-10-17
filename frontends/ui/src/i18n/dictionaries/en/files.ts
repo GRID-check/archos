@@ -656,6 +656,14 @@ export const files = {
     tryAgain: 'Try again',
     dropToUpload: 'Drop files to upload to this project',
     dropUnsupported: 'Some files are not a supported type',
+    dropInto: 'Drop into “{name}”',
+    dropRefusedHere: 'Read only: you can’t drop files here.',
+    dropRefusedFolder: '“{name}” is read only: you can’t drop files there.',
+    dropQueued: 'The dropped files will upload as soon as the current upload has finished.',
+    dropTruncated:
+      'The dropped folder was too large or too deeply nested. {count, plural, one {# file was} other {# files were}} taken; upload the rest in a second step.',
+    dropUnreadable:
+      '{count, plural, one {One dropped file} other {# dropped files}} could not be read and {count, plural, one {was} other {were}} not uploaded. Save {count, plural, one {it} other {them}} locally first (from Outlook or a cloud folder, for example).',
     view: {
       label: 'View',
       cards: 'Cards',

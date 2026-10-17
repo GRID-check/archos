@@ -1750,8 +1750,11 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     ]
   )
 
+  // A drop attaches the way the picker does; what it could not hand over
+  // (`DropInfo`) is the shelves' concern, not an attachment's.
+  const attachDropped = useCallback((files: File[]) => void handleFilesSelected(files), [handleFilesSelected])
   const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
-    onDrop: handleFilesSelected,
+    onDrop: attachDropped,
     disabled: cannotContribute || isUploading || isBusy,
   })
 

@@ -212,6 +212,7 @@ vi.mock('@/features/documents', () => ({
   useFileDragDrop: vi.fn(() => ({
     isDragging: false,
     isUnsupportedDrag: false,
+    refusal: null,
     dragHandlers: {
       onDragEnter: vi.fn(),
       onDragLeave: vi.fn(),
@@ -350,6 +351,7 @@ describe('InputArea', () => {
     vi.mocked(useFileDragDrop).mockReturnValue({
       isDragging: false,
       isUnsupportedDrag: false,
+      refusal: null,
       dragHandlers: {
         onDragEnter: vi.fn(),
         onDragLeave: vi.fn(),
@@ -715,6 +717,7 @@ describe('InputArea', () => {
     vi.mocked(useFileDragDrop).mockReturnValue({
       isDragging: true,
       isUnsupportedDrag: false,
+      refusal: null,
       dragHandlers: {
         onDragEnter: vi.fn(),
         onDragLeave: vi.fn(),
@@ -737,6 +740,7 @@ describe('InputArea', () => {
     vi.mocked(useFileDragDrop).mockReturnValue({
       isDragging: true,
       isUnsupportedDrag: true,
+      refusal: null,
       dragHandlers: {
         onDragEnter: vi.fn(),
         onDragLeave: vi.fn(),
@@ -2454,7 +2458,7 @@ describe('InputArea', () => {
       render(<InputArea isAuthenticated={true} />)
       const { onDrop } = vi.mocked(useFileDragDrop).mock.calls[0][0]
       await act(async () => {
-        await onDrop([new File(['x'], 'plan.pdf', { type: 'application/pdf' })])
+        await onDrop([new File(['x'], 'plan.pdf', { type: 'application/pdf' })], { truncated: false, unreadable: 0 })
       })
 
       expect(order).toEqual(['ensureConversation', 'upload'])
@@ -2491,6 +2495,7 @@ describe('InputArea', () => {
       vi.mocked(useFileDragDrop).mockReturnValue({
         isDragging: true,
         isUnsupportedDrag: false,
+        refusal: null,
         dragHandlers: {
           onDragEnter: vi.fn(),
           onDragLeave: vi.fn(),
@@ -2511,6 +2516,7 @@ describe('InputArea', () => {
       vi.mocked(useFileDragDrop).mockReturnValue({
         isDragging: true,
         isUnsupportedDrag: true,
+        refusal: null,
         dragHandlers: {
           onDragEnter: vi.fn(),
           onDragLeave: vi.fn(),

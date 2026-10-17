@@ -214,7 +214,7 @@ describe('useFileDragDrop', () => {
       result.current.dragHandlers.onDrop(dropEvent)
     })
 
-    expect(onDrop).toHaveBeenCalledWith([file])
+    expect(onDrop).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 })
     expect(result.current.isDragging).toBe(false)
     expect(result.current.isUnsupportedDrag).toBe(false)
     expect(dropEvent.preventDefault).toHaveBeenCalled()
@@ -307,7 +307,7 @@ describe('useFileDragDrop', () => {
       result.current.dragHandlers.onDrop(dropEvent)
     })
 
-    expect(onDrop).toHaveBeenCalledWith(files)
+    expect(onDrop).toHaveBeenCalledWith(files, { truncated: false, unreadable: 0 })
     expect(onDrop).toHaveBeenCalledTimes(1)
   })
 })
@@ -419,6 +419,6 @@ describe('useFileDragDrop — a drop the entries API cannot read', () => {
       await new Promise((resolve) => setTimeout(resolve, 10))
     })
 
-    expect(onDrop).toHaveBeenCalledWith(files)
+    expect(onDrop).toHaveBeenCalledWith(files, { truncated: false, unreadable: 0 })
   })
 })

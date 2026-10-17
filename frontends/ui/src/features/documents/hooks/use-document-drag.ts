@@ -40,6 +40,8 @@
  */
 
 import { useCallback, useRef, useState } from 'react'
+import { readDrop } from '../lib/dropped-entries'
+import { useDragEnd } from './use-drag-end'
 
 /**
  * Our own drag types. Custom MIME types rather than `text/plain` so a paragraph
@@ -72,6 +74,42 @@ export function draggedFolderId(dataTransfer: DataTransfer | null): string | nul
   return carrier ? carrier.slice(prefix.length) : null
 }
 
+/*
+ * WHETHER A MOVE IS IN THE AIR.
+ *
+ * The workspace re-reads its level when the shelf changes (`useShelfLive`), and
+ * a re-read in the middle of a drag moves the tiles under the pointer: a
+ * document aimed at „Statik" lands in whatever slid into its place. So the
+ * re-read waits while a move is being dragged (`isInternalDragActive`).
+ *
+ * Ended by the source's `dragend`, by any drop or `dragend` the window hears,
+ * and, as the last resort for a source that unmounted mid-drag and so never
+ * fires `dragend`, by the next pointer movement: there is none during a drag.
+ */
+let internalDragActive = false
+
+const endInternalDrag = (): void => {
+  internalDragActive = false
+  window.removeEventListener('drop', endInternalDrag, true)
+  window.removeEventListener('dragend', endInternalDrag, true)
+  window.removeEventListener('pointermove', endInternalDrag, true)
+}
+
+const beginInternalDrag = (): void => {
+  internalDragActive = true
+  window.addEventListener('drop', endInternalDrag, true)
+  window.addEventListener('dragend', endInternalDrag, true)
+  // Armed a frame late: the pointer events that started the drag are still being delivered.
+  requestAnimationFrame(() => {
+    if (internalDragActive) window.addEventListener('pointermove', endInternalDrag, true)
+  })
+}
+
+/** Whether a document or a folder is being dragged inside the app right now. */
+export function isInternalDragActive(): boolean {
+  return internalDragActive
+}
+
 /** Props for a document being dragged. Spread onto a file card or list row. */
 export function documentDragProps(documentId: string) {
   return {
@@ -81,7 +119,9 @@ export function documentDragProps(documentId: string) {
       // `move` so the cursor states the outcome. A file goes to one folder; it
       // is not copied into a second one.
       event.dataTransfer.effectAllowed = 'move'
+      beginInternalDrag()
     },
+    onDragEnd: endInternalDrag,
   }
 }
 
@@ -99,8 +139,17 @@ export function folderDragProps(folderId: string) {
       // that starts inside one would otherwise be reported to it as an incoming
       // drag before it has left.
       event.stopPropagation()
+      beginInternalDrag()
     },
+    onDragEnd: endInternalDrag,
   }
+}
+
+/** Where files dragged in from the desktop would land, for the surface's overlay to name. */
+export interface FileDropAim {
+  folderId: string | null
+  /** The target refuses them, and why. */
+  refusal: string | null
 }
 
 interface UseFolderDropTargetOptions {
@@ -125,6 +174,20 @@ interface UseFolderDropTargetOptions {
   folderId: string | null
   /** A folder cannot receive what it already holds, nor can it receive itself. */
   disabled?: boolean
+  /**
+   * Files dragged in from the desktop and released on this folder: they go
+   * INTO it. Absent leaves such a drag to the surface around the target, which
+   * files it in the folder on screen.
+   *
+   * It used to be absent everywhere, so a PDF released on „Planung" landed
+   * beside Planung, in the folder the reader stood in, while the tile under the
+   * pointer never lit up.
+   */
+  onDropFiles?: (files: File[], info: { truncated: boolean; unreadable: number }, folderId: string | null) => void
+  /** This folder takes no files (it is read-only), and why. The drag shows „no drop" here. */
+  fileRefusal?: string | null
+  /** Told where desktop files would land while they hover this target, and `null` when they leave it. */
+  onFileAim?: (aim: FileDropAim | null) => void
 }
 
 /**
@@ -137,8 +200,19 @@ export function useFolderDropTarget({
   canAcceptFolder,
   folderId,
   disabled = false,
+  onDropFiles,
+  fileRefusal = null,
+  onFileAim,
 }: UseFolderDropTargetOptions) {
   const [isOver, setIsOver] = useState(false)
+  const aimRef = useRef(onFileAim)
+  aimRef.current = onFileAim
+  /**
+   * Whether this target answers desktop files at all: whenever it was given a
+   * place to put them. `disabled` is about moves (a folder cannot take what it
+   * holds); a read-only folder answers files with its `fileRefusal`.
+   */
+  const takesFiles = Boolean(onDropFiles)
   /**
    * `dragleave` fires when the pointer crosses from a tile onto its OWN
    * children — the button, the label, the count — and each one turned the
@@ -151,6 +225,13 @@ export function useFolderDropTarget({
    * absent entirely.
    */
   const insideRef = useRef(false)
+  // However the drag ends (a drop elsewhere, Esc, a release outside the
+  // window), the highlight goes with it.
+  useDragEnd(isOver, () => {
+    insideRef.current = false
+    setIsOver(false)
+    aimRef.current?.(null)
+  })
 
   const acceptedKind = useCallback(
     (event: React.DragEvent): 'document' | 'folder' | null => {
@@ -170,8 +251,21 @@ export function useFolderDropTarget({
 
   return {
     isOver,
+    /** The highlight is a refusal: desktop files over a folder that takes none. */
+    refusesFiles: isOver && Boolean(fileRefusal),
     dropProps: {
       onDragOver: (event: React.DragEvent) => {
+        if (takesFiles && isExternalFileDrag(event.dataTransfer)) {
+          // Claimed so the workspace around it does not file the drop in the
+          // folder on screen; enter and leave still reach its counter.
+          event.preventDefault()
+          event.stopPropagation()
+          event.dataTransfer.dropEffect = fileRefusal ? 'none' : 'copy'
+          if (!insideRef.current) aimRef.current?.({ folderId, refusal: fileRefusal })
+          insideRef.current = true
+          setIsOver(true)
+          return
+        }
         if (!acceptedKind(event)) return
         // Both, and in this order: without `preventDefault` the browser refuses
         // the drop, and without stopping propagation the workspace's own
@@ -185,8 +279,15 @@ export function useFolderDropTarget({
       onDragLeave: (event: React.DragEvent) => {
         // An upload drag is the workspace's: its enter reached the workspace's
         // counter through this tile, so its leave must too, or the counter
-        // never returns to zero and „Dateien hier ablegen" stays up.
-        if (isExternalFileDrag(event.dataTransfer)) return
+        // never returns to zero and „Dateien hier ablegen" stays up. Not stopped.
+        if (isExternalFileDrag(event.dataTransfer)) {
+          const next = event.relatedTarget
+          if (next instanceof Node && event.currentTarget.contains(next)) return
+          if (insideRef.current) aimRef.current?.(null)
+          insideRef.current = false
+          setIsOver(false)
+          return
+        }
         event.stopPropagation()
         const next = event.relatedTarget
         if (next instanceof Node && event.currentTarget.contains(next)) return
@@ -194,6 +295,19 @@ export function useFolderDropTarget({
         setIsOver(false)
       },
       onDrop: (event: React.DragEvent) => {
+        if (takesFiles && isExternalFileDrag(event.dataTransfer)) {
+          event.preventDefault()
+          event.stopPropagation()
+          insideRef.current = false
+          setIsOver(false)
+          aimRef.current?.(null)
+          if (fileRefusal || !onDropFiles) return
+          // Synchronously from the event: the browser empties the transfer when it returns.
+          void readDrop(event.dataTransfer).then(({ files, truncated, unreadable }) => {
+            if (files.length > 0 || truncated || unreadable > 0) onDropFiles(files, { truncated, unreadable }, folderId)
+          })
+          return
+        }
         const kind = acceptedKind(event)
         if (!kind) return
         event.preventDefault()

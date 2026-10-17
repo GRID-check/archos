@@ -639,6 +639,16 @@ export const files: typeof en.files = {
     tryAgain: 'Erneut versuchen',
     dropToUpload: 'Dateien hier ablegen, um sie in dieses Projekt hochzuladen',
     dropUnsupported: 'Einige Dateien haben einen nicht unterstützten Typ',
+    /** Über einer Ordnerkachel: Die Dateien landen in diesem Ordner, nicht im offenen. */
+    dropInto: 'In „{name}“ ablegen',
+    dropRefusedHere: 'Nur lesen: Hier können Sie keine Dateien ablegen.',
+    dropRefusedFolder: '„{name}“ ist nur lesbar: Dort können Sie keine Dateien ablegen.',
+    /** Eine Ablage, während noch hochgeladen wird oder die Ordner noch laden: Sie wartet, statt zu verschwinden. */
+    dropQueued: 'Die abgelegten Dateien werden hochgeladen, sobald der laufende Upload fertig ist.',
+    dropTruncated:
+      'Der abgelegte Ordner war zu groß oder zu tief verschachtelt. Übernommen wurden {count, plural, one {# Datei} other {# Dateien}}; laden Sie den Rest in einem zweiten Schritt hoch.',
+    dropUnreadable:
+      '{count, plural, one {Eine abgelegte Datei konnte nicht gelesen werden} other {# abgelegte Dateien konnten nicht gelesen werden}} und {count, plural, one {wurde} other {wurden}} nicht hochgeladen. Speichern Sie sie zuerst lokal (etwa aus Outlook oder einem Cloud-Ordner).',
     view: {
       label: 'Ansicht',
       cards: 'Kacheln',

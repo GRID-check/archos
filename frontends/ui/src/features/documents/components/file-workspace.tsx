@@ -35,7 +35,8 @@ import { useDocumentMoves } from '../hooks/use-document-moves'
 import { useDocumentSelection } from '../hooks/use-document-selection'
 import { usePhoneLayout } from '../hooks/use-phone-layout'
 import { UploadFab } from './upload-fab'
-import { useFileDragDrop } from '../hooks/use-file-drag-drop'
+import { useFileDragDrop, type DropInfo } from '../hooks/use-file-drag-drop'
+import { isInternalDragActive, type FileDropAim } from '../hooks/use-document-drag'
 import { useFileListing } from '../hooks/use-file-listing'
 import { useFileSearch } from '../hooks/use-file-search'
 import { useFolderParam } from '../hooks/use-folder-param'
@@ -376,7 +377,14 @@ export function FileWorkspace({
     },
     [reloadQuietly, loadFolders]
   )
-  useShelfLive(liveShelf, onShelfChanged, { holdWhile: isMoving })
+  /*
+   * Held while anything is being dragged, not only while a move is on the
+   * wire: a re-read in the middle of a drag moves the tiles under the
+   * pointer, and the document or file lands in whatever slid into place.
+   */
+  const fileDraggingRef = useRef(false)
+  const holdLive = useCallback(() => isMoving() || isInternalDragActive() || fileDraggingRef.current, [isMoving])
+  useShelfLive(liveShelf, onShelfChanged, { holdWhile: holdLive })
   // A move changes two folders' counts: the summary is read again after it.
   const moved = useCallback(
     (fileId: string, folderId: string | null) => {
@@ -396,10 +404,14 @@ export function FileWorkspace({
     shelf,
     upload,
     folders,
-    foldersReady: !tree.isLoading && !tree.error,
+    // Once the tree has answered (or failed to): a re-read later must not hold
+    // a drop back, and a failed read must not hold it forever. The folders are
+    // created get-or-create, so a plan made without them duplicates nothing.
+    foldersReady: !tree.isFirstLoad,
     selectedFolderId,
     loadFolders: tree.load,
     loadFiles: reloadFiles,
+    uploading: isUploading,
   })
   const { handleUpload } = shelfUpload
   const access = useFolderAccess(shelf, folders, tree.rootAccess)
@@ -542,13 +554,41 @@ export function FileWorkspace({
   /** The folder whose description is being written (migration 0145). */
   const [describingFolderId, setDescribingFolderId] = useState<string | null>(null)
 
-  // A level the reader may only read (ADR-0088) takes no dropped files. The
-  // server refuses either way; this keeps the surface from offering it.
-  const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
-    onDrop: handleUpload,
-    disabled: isUploading || !canManage || !writableHere,
+  // A level the reader may only read (ADR-0088) takes no dropped files, and
+  // says so while they are dragged over it rather than swallowing them. A drop
+  // while an upload runs is no longer refused: `useShelfUpload` queues it.
+  const onDroppedHere = useCallback(
+    (dropped: File[], info: DropInfo) => handleUpload(dropped, { info }),
+    [handleUpload]
+  )
+  const { isDragging, isUnsupportedDrag, refusal: dropRefusal, dragHandlers } = useFileDragDrop({
+    onDrop: onDroppedHere,
+    disabled: !canManage,
+    refusal: writableHere ? null : t('workspace.dropRefusedHere'),
     acceptZip: true,
   })
+  useEffect(() => {
+    fileDraggingRef.current = isDragging
+  }, [isDragging])
+  /** The folder tile or way up the desktop files hover, which the overlay names. */
+  const [fileAim, setFileAim] = useState<FileDropAim | null>(null)
+  useEffect(() => {
+    if (!isDragging) setFileAim(null)
+  }, [isDragging])
+  const dropFilesInFolder = useCallback(
+    (dropped: File[], info: DropInfo, folderId: string | null) => handleUpload(dropped, { folderId, info }),
+    [handleUpload]
+  )
+  const folderNameOf = (folderId: string | null): string =>
+    folderId === null ? t('folders.allFiles') : (folders.find((folder) => folder.id === folderId)?.name ?? '')
+  // Where the drop lands, named: the tile under the pointer, or the folder on
+  // screen. „In dieses Projekt" said nothing about which folder a drop in a
+  // search result, or three levels down, would land in.
+  const dropTargetLabel = fileAim
+    ? t('workspace.dropInto', { name: folderNameOf(fileAim.folderId) })
+    : selectedFolderId !== null && folderNameOf(selectedFolderId)
+      ? t('workspace.dropInto', { name: folderNameOf(selectedFolderId) })
+      : shelf.messages.dropToUpload
   useWindowDragGuard()
 
   // The status filter is the server's on a paged level; asking it again of
@@ -799,8 +839,9 @@ export function FileWorkspace({
       {canManage && isDragging && (
         <FileDropOverlay
           isUnsupported={isUnsupportedDrag}
-          uploadLabel={shelf.messages.dropToUpload}
+          uploadLabel={dropTargetLabel}
           unsupportedLabel={t('workspace.dropUnsupported')}
+          refusal={fileAim ? fileAim.refusal : dropRefusal}
           testId="workspace-drop-overlay"
         />
       )}
@@ -902,6 +943,8 @@ export function FileWorkspace({
               filterEmptyNotice={filterEmptyNotice}
               onDropDocumentInFolder={canManage ? dropInFolder : undefined}
               onDropFolderInFolder={canManage ? tree.move : undefined}
+              onDropFilesInFolder={canManage ? dropFilesInFolder : undefined}
+              onFileAim={setFileAim}
               onPickFiles={canManage ? () => pickFilesRef.current?.() : undefined}
               onPickFolder={canManage ? () => pickFolderRef.current?.() : undefined}
               cardExtras={shelf.cardExtras}

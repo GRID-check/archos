@@ -31,7 +31,7 @@ import { AnimatePresence, motion, motionQuick } from '@/components/motion'
 import { BackControl } from '@/components/shell/back-link'
 import { useTranslations } from '@/i18n'
 import { useLocale } from '@/i18n'
-import { folderDragProps, useFolderDropTarget } from '../hooks/use-document-drag'
+import { folderDragProps, useFolderDropTarget, type FileDropAim } from '../hooks/use-document-drag'
 import { cn } from '@/lib/utils'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
@@ -87,6 +87,9 @@ export function FolderBreadcrumbRow({
   onDropFolder,
   canAcceptFolder,
   readOnly = false,
+  onDropFiles,
+  onFileAim,
+  mayWriteAt,
 }: Pick<FolderNavProps, 'folders' | 'currentFolderId' | 'onNavigate'> & {
   /** Absent for a read-only viewer: the path is still walkable, nothing can be created. */
   onCreateFolder?: FolderNavProps['onCreateFolder']
@@ -108,20 +111,29 @@ export function FolderBreadcrumbRow({
    */
   onDropFolder?: (draggedFolderId: string, parentId: string | null) => void
   canAcceptFolder?: (draggedFolderId: string, targetFolderId: string | null) => boolean
+  /** Desktop files dropped on a way up land at that level. */
+  onDropFiles?: DropFilesInFolder
+  onFileAim?: (aim: FileDropAim | null) => void
+  /** Whether the reader may write at a level (ADR-0088); a level they may not is no target. Defaults to yes. */
+  mayWriteAt?: (folderId: string | null) => boolean
 }): JSX.Element {
   const t = useTranslations('files')
   const path = useMemo(() => folderPath(folders, currentFolderId), [folders, currentFolderId])
-  // The way OUT of a folder. Without it a file could be dragged deeper and
-  // never back, and the menu would be the only route for half the gesture.
-  const rootDrop = useFolderDropTarget({
-    folderId: null,
-    onDropDocument: onDropDocument ?? (() => {}),
-    onDropFolder,
-    canAcceptFolder,
-    // Only offered while there is somewhere to come back FROM. At the root the
-    // segment is a label, not a link, and it has nothing to receive.
-    disabled: (!onDropDocument && !onDropFolder) || currentFolderId === null,
-  })
+  /** Every way up is a drop target, offered while there is somewhere to come back FROM. */
+  const crumb = (folderId: string | null, label: string, children: ReactNode) => (
+    <CrumbDropTarget
+      folderId={folderId}
+      label={label}
+      writable={mayWriteAt?.(folderId) ?? true}
+      onDropDocument={onDropDocument}
+      onDropFolder={onDropFolder}
+      canAcceptFolder={canAcceptFolder}
+      onDropFiles={onDropFiles}
+      onFileAim={onFileAim}
+    >
+      {children}
+    </CrumbDropTarget>
+  )
 
   /**
    * Where "up one level" goes: the parent folder, or the root.
@@ -154,34 +166,36 @@ export function FolderBreadcrumbRow({
           up a level and leaving a page are one idea, and drawing them twice is
           how two lookalikes drift on the first token retune.
         */}
-        {currentFolderId !== null && (
-          <BackControl
-            label={t('folders.backTo', { name: parentLabel })}
-            onClick={() => onNavigate(parent?.id ?? null)}
-            className="shrink-0 pr-3"
-            testId="folder-back"
-          />
-        )}
+        {currentFolderId !== null &&
+          crumb(
+            parent?.id ?? null,
+            parentLabel,
+            <BackControl
+              label={t('folders.backTo', { name: parentLabel })}
+              onClick={() => onNavigate(parent?.id ?? null)}
+              className="shrink-0 pr-3"
+              testId="folder-back"
+            />
+          )}
       <Breadcrumb aria-label={t('folders.breadcrumb')} className="min-w-0">
         <BreadcrumbList className="flex-nowrap overflow-x-auto">
           <BreadcrumbItem>
             {currentFolderId === null ? (
               <BreadcrumbPage className="whitespace-nowrap font-medium">{t('folders.allFiles')}</BreadcrumbPage>
             ) : (
-              <BreadcrumbLink asChild>
-                <button
-                  type="button"
-                  onClick={() => onNavigate(null)}
-                  className={cn(
-                    'hover:text-foreground transition-colors rounded px-1',
-                    rootDrop.isOver && 'ring-ring bg-accent ring-2'
-                  )}
-                  data-drop-over={rootDrop.isOver ? '' : undefined}
-                  {...rootDrop.dropProps}
-                >
-                  {t('folders.allFiles')}
-                </button>
-              </BreadcrumbLink>
+              crumb(
+                null,
+                t('folders.allFiles'),
+                <BreadcrumbLink asChild>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate(null)}
+                    className="hover:text-foreground transition-colors rounded px-1"
+                  >
+                    {t('folders.allFiles')}
+                  </button>
+                </BreadcrumbLink>
+              )
             )}
           </BreadcrumbItem>
           <AnimatePresence initial={false}>
@@ -207,15 +221,19 @@ export function FolderBreadcrumbRow({
                     {index === path.length - 1 ? (
                       <BreadcrumbPage className="max-w-48 truncate font-medium">{folder.name}</BreadcrumbPage>
                     ) : (
-                      <BreadcrumbLink asChild>
-                        <button
-                          type="button"
-                          className="max-w-48 truncate hover:text-foreground transition-colors"
-                          onClick={() => onNavigate(folder.id)}
-                        >
-                          {folder.name}
-                        </button>
-                      </BreadcrumbLink>
+                      crumb(
+                        folder.id,
+                        folder.name,
+                        <BreadcrumbLink asChild>
+                          <button
+                            type="button"
+                            className="max-w-48 truncate hover:text-foreground transition-colors px-1"
+                            onClick={() => onNavigate(folder.id)}
+                          >
+                            {folder.name}
+                          </button>
+                        </BreadcrumbLink>
+                      )
                     )}
                   </motion.span>
                 </BreadcrumbItem>
@@ -340,6 +358,77 @@ interface FolderTileProps {
    * nothing can be dropped on the tile. The server refuses a write anyway.
    */
   readOnly?: boolean
+  /** Files from the desktop released on this folder go into it. Absent leaves them to the surface. */
+  onDropFiles?: DropFilesInFolder
+  /** Told where desktop files would land while they hover the tile. */
+  onFileAim?: (aim: FileDropAim | null) => void
+}
+
+/** Files dropped from the desktop into a folder; `null` is the shelf's top level. */
+export type DropFilesInFolder = (
+  files: File[],
+  info: { truncated: boolean; unreadable: number },
+  folderId: string | null
+) => void
+
+/** The ring a drop target wears: where it will land, or that it will not take it. */
+function dropRing(drop: { isOver: boolean; refusesFiles: boolean }, inset = false): string | false {
+  if (drop.refusesFiles) return cn('ring-destructive ring-2', inset && 'ring-inset')
+  return drop.isOver && cn('bg-accent ring-ring ring-2', inset && 'ring-inset')
+}
+
+/**
+ * One way up, as a drop target: a segment of the path, „Alle Dateien", or the
+ * back control. Dropping on it moves the document or folder to that level,
+ * and desktop files land there.
+ *
+ * Only „Alle Dateien" took a drop, so a document three levels down could go
+ * to the top or deeper, never one level up, and the back control, the biggest
+ * way up on screen, took nothing.
+ */
+function CrumbDropTarget({
+  folderId,
+  label,
+  writable,
+  onDropDocument,
+  onDropFolder,
+  canAcceptFolder,
+  onDropFiles,
+  onFileAim,
+  children,
+}: {
+  folderId: string | null
+  label: string
+  /** The reader may write at that level (ADR-0088): otherwise nothing lands there. */
+  writable: boolean
+  onDropDocument?: (documentId: string, folderId: string | null) => void
+  onDropFolder?: (draggedFolderId: string, parentId: string | null) => void
+  canAcceptFolder?: (draggedFolderId: string, targetFolderId: string | null) => boolean
+  onDropFiles?: DropFilesInFolder
+  onFileAim?: (aim: FileDropAim | null) => void
+  children: ReactNode
+}): JSX.Element {
+  const t = useTranslations('files')
+  const drop = useFolderDropTarget({
+    folderId,
+    onDropDocument: onDropDocument ?? (() => {}),
+    onDropFolder,
+    canAcceptFolder,
+    disabled: !writable || (!onDropDocument && !onDropFolder),
+    onDropFiles,
+    fileRefusal: writable ? null : t('workspace.dropRefusedFolder', { name: label }),
+    onFileAim,
+  })
+  return (
+    <span
+      className={cn('inline-flex rounded-md transition-colors', dropRing(drop))}
+      data-drop-over={drop.isOver ? '' : undefined}
+      data-testid={`crumb-drop-${folderId ?? 'root'}`}
+      {...drop.dropProps}
+    >
+      {children}
+    </span>
+  )
 }
 
 /**
@@ -505,6 +594,8 @@ export function FolderCard({
   editing: editingProp,
   onEditingChange,
   readOnly = false,
+  onDropFiles,
+  onFileAim,
 }: FolderTileProps): JSX.Element {
   const t = useTranslations('files')
   const { openLabel, lockLabel } = useFolderLabels(folder)
@@ -518,6 +609,9 @@ export function FolderCard({
     onDropFolder,
     canAcceptFolder,
     disabled: readOnly || (!onDropDocument && !onDropFolder),
+    onDropFiles,
+    fileRefusal: readOnly ? t('workspace.dropRefusedFolder', { name: folder.name }) : null,
+    onFileAim,
   })
 
   return (
@@ -528,7 +622,7 @@ export function FolderCard({
       // The grid spans it (`FOLDER_ROWS_ON_PHONE`, found by this mark).
       data-folder-tile=""
       // A drag has to say where it will land, or it is a guess with a cursor.
-      className={cn('group phone:bg-card phone:[contain-intrinsic-block-size:auto_56px]', drop.isOver && 'ring-ring bg-accent ring-2')}
+      className={cn('group phone:bg-card phone:[contain-intrinsic-block-size:auto_56px]', dropRing(drop))}
       data-testid={`folder-card-${folder.id}`}
       data-drop-over={drop.isOver ? '' : undefined}
       // Source as well as target: a folder is moved by dragging it onto
@@ -678,7 +772,10 @@ export function FolderRow({
   editing: editingProp,
   onEditingChange,
   readOnly = false,
+  onDropFiles,
+  onFileAim,
 }: FolderTileProps): JSX.Element {
+  const t = useTranslations('files')
   const { openLabel, lockLabel } = useFolderLabels(folder)
   const { locale } = useLocale()
   const [uncontrolledEditing, setUncontrolledEditing] = useState(false)
@@ -690,6 +787,9 @@ export function FolderRow({
     onDropFolder,
     canAcceptFolder,
     disabled: readOnly || (!onDropDocument && !onDropFolder),
+    onDropFiles,
+    fileRefusal: readOnly ? t('workspace.dropRefusedFolder', { name: folder.name }) : null,
+    onFileAim,
   })
 
   if (editing) {
@@ -740,7 +840,7 @@ export function FolderRow({
     <Item
       className={cn(
         'group w-full gap-2 px-3 py-2 text-sm',
-        drop.isOver && 'bg-accent ring-ring ring-2 ring-inset',
+        dropRing(drop, true),
       )}
       data-testid={`folder-row-${folder.id}`}
       data-drop-over={drop.isOver ? '' : undefined}

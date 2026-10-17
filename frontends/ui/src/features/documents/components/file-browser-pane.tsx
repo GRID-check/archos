@@ -39,7 +39,9 @@ import {
   FolderRow,
   FolderRowSkeleton,
   FOLDER_ROWS_ON_PHONE,
+  type DropFilesInFolder,
 } from './folder-navigation'
+import type { FileDropAim } from '../hooks/use-document-drag'
 import { AssignmentFaces } from './assignment-faces'
 
 /** Finder-style drill-down wiring — see `folder-navigation.tsx`. */
@@ -122,6 +124,14 @@ interface FileBrowserPaneProps {
    * folder drag off entirely, for the same reason as the document drag.
    */
   onDropFolderInFolder?: (draggedFolderId: string, parentId: string | null) => void
+  /**
+   * Files from the desktop released on a folder tile or a way up (a breadcrumb
+   * segment, „Zurück") go into THAT folder. Absent leaves every file drop to the
+   * surface around the pane, which files it in the folder on screen.
+   */
+  onDropFilesInFolder?: DropFilesInFolder
+  /** Told which folder desktop files would land in while they hover a target, for the overlay to name it. */
+  onFileAim?: (aim: FileDropAim | null) => void
   /** Upload control rendered inside the first-run empty state. */
   uploadControl?: ReactNode
   /** Dashed upload card rendered as the last tile of the grid (project corpus). */
@@ -309,6 +319,8 @@ export function FileBrowserPane({
   filterEmptyNotice,
   onDropDocumentInFolder,
   onDropFolderInFolder,
+  onDropFilesInFolder,
+  onFileAim,
   renderActions,
   cardExtras,
   wrapFile,
@@ -430,7 +442,9 @@ export function FileBrowserPane({
       cardExtras={cardExtras}
       renderActions={renderActions}
       wrapFile={wrapFile}
-      draggable={Boolean(onDropDocumentInFolder)}
+      // Moving a document out of a folder is a write there too (ADR-0088): in a
+      // read-only level a card that lifts would be refused by the server.
+      draggable={Boolean(onDropDocumentInFolder) && writableHere}
       selecting={picking && !extra.match}
       checked={selection?.selectedIds.has(file.id) === true}
       onToggle={toggleSelected}
@@ -449,6 +463,8 @@ export function FileBrowserPane({
       onDropDocument: onDropDocumentInFolder,
       onDropFolder: onDropFolderInFolder,
       canAcceptFolder,
+      onDropFiles: onDropFilesInFolder,
+      onFileAim,
       actions: folderNav ? (folderNav.readOnly ? <Fragment /> : <FolderActionsTrigger />) : undefined,
       editing: editingFolderId === folder.id,
       onEditingChange: (next: boolean) => setEditingFolderId(next ? folder.id : null),
@@ -684,6 +700,9 @@ export function FileBrowserPane({
           onDropDocument={onDropDocumentInFolder}
           onDropFolder={onDropFolderInFolder}
           canAcceptFolder={canAcceptFolder}
+          onDropFiles={onDropFilesInFolder}
+          onFileAim={onFileAim}
+          mayWriteAt={(folderId) => mayWriteAt(folderNav, folderId)}
           readOnly={!writableHere}
         >
           {selection?.onStart && !picking && orderedFiles.length > 0 && writableHere && (
@@ -948,7 +967,7 @@ export function FileBrowserPane({
                 wrapRow={wrapFileRow}
                 sort={sort}
                 onSortChange={onSortChange}
-                draggable={Boolean(onDropDocumentInFolder)}
+                draggable={Boolean(onDropDocumentInFolder) && writableHere}
                 selection={selection}
               />
             )}
