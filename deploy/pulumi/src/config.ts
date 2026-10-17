@@ -2427,20 +2427,6 @@ export function loadConfig(): GridConfig {
     // on a shared zone once, for both.
   }
 
-  // ── err2issue (ADR-0031): same availability = flag AND capability rule ─────
-  // Opt-in (default false) because turning it on starts writing to a GitHub
-  // repo — a side effect outside the cluster, unlike every other component
-  // here. The dependency on `observabilityEnabled` is structural, not stylistic:
-  // err2issue has no receiver of its own in this design, it is fed by the
-  // collector's logs pipeline, so without the collector it is a pod that can
-  // only ever sit idle.
-  const err2issueFlag = bool(cfg, "err2issueEnabled", false);
-  const err2issueGithubRepo = cfg.get("err2issueGithubRepo") ?? "";
-  const err2issueGithubToken = cfg.getSecret("err2issueGithubToken");
-  const missingErr2IssueDeps = [
-    err2issueGithubRepo === "" ? "err2issueGithubRepo" : undefined,
-    err2issueGithubToken === undefined ? "err2issueGithubToken" : undefined,
-    observabilityEnabled ? undefined : "observabilityEnabled (err2issue is fed by the collector)",
   // ── PostHog: on by default in every stack (ADR-0100) ───────────────────────
   // The frontend, the Python tiers and the collector all read this one pair.
   // The SDK tiers capture with host + token alone (they no-op without them).
