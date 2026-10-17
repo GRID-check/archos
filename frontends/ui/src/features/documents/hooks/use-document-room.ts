@@ -76,6 +76,8 @@ export interface RoomPeerState {
   peer: RoomPeer
   /** Where their pointer is on the pages; null when it is off them. */
   cursor: RoomCursor | null
+  /** When their pointer last moved, ms since the epoch: a pointer still for long reads as idle. */
+  movedAt: number | null
   tool: RoomTool
   viewport: RoomViewport | null
   /** The region they are dragging out, on their cursor's page; null when none. */
@@ -100,6 +102,7 @@ type PeerFields = Omit<RoomPeerState, 'peer' | 'expiresAt'>
 
 const NOBODY: PeerFields = {
   cursor: null,
+  movedAt: null,
   tool: 'select',
   viewport: null,
   draft: null,
@@ -120,6 +123,7 @@ export function reduceRoomPeer(state: PeerFields, event: RoomEvent): PeerFields 
       return {
         ...state,
         cursor: event.cursor,
+        movedAt: event.cursor ? Date.now() : state.movedAt,
         tool: event.tool ?? state.tool,
         draft: event.draft !== undefined ? event.draft : state.draft,
         chat: event.chat !== undefined ? event.chat || null : state.chat,

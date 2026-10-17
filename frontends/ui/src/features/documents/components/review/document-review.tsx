@@ -2,7 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import Link from 'next/link'
-import { MessageSquarePlus, MessagesSquare, MousePointer2, RotateCcw, Sparkles, SquareDashed, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  MessageCircle,
+  MessageSquarePlus,
+  MessagesSquare,
+  MousePointer2,
+  RotateCcw,
+  Sparkles,
+  SquareDashed,
+  X,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -24,6 +35,7 @@ import { cn } from '@/lib/utils'
 import { stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview as ReviewState, ReviewTool } from '../../hooks/use-document-review'
 import type { RoomPeerState } from '../../hooks/use-document-room'
+import { CursorChat } from './cursor-chat'
 import { PilotiAnswerCard } from './piloti-answer-card'
 import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
@@ -123,11 +135,83 @@ function Presence({
                 />
               </button>
             </TooltipTrigger>
-            <TooltipContent>{on ? t('review.unfollow', { name: state.peer.name }) : t('review.follow', { name: state.peer.name })}</TooltipContent>
+            <TooltipContent>
+              <span className="block">
+                {on ? t('review.unfollow', { name: state.peer.name }) : t('review.follow', { name: state.peer.name })}
+              </span>
+              {pageOf(state) && (
+                <span className="block opacity-80">{t('review.onPage', { name: state.peer.name, page: pageOf(state) ?? 1 })}</span>
+              )}
+            </TooltipContent>
           </Tooltip>
         )
       })}
     </div>
+  )
+}
+
+/** The page a person is on: where their pointer is, else where they are scrolled to. */
+const pageOf = (state: RoomPeerState): number | null => state.cursor?.page ?? state.viewport?.page ?? null
+
+/**
+ * The people on another page than this reader, at the edge of the sheet that
+ * leads to them, the way a design tool keeps a colleague's pointer at the
+ * edge of the canvas when it is off-screen: above for an earlier page, below
+ * for a later one. A chip jumps there; following stays the face's.
+ */
+function Elsewhere({
+  review,
+  page,
+  onJump,
+}: {
+  review: ReviewState
+  page: number | null
+  onJump: (state: RoomPeerState) => void
+}): JSX.Element | null {
+  const t = useTranslations('files')
+  if (page === null) return null
+  const away = people(review.room.peers).flatMap((state) => {
+    const at = pageOf(state)
+    return at !== null && at !== page ? [{ state, at }] : []
+  })
+  if (away.length === 0) return null
+  const edge = (above: boolean) => {
+    const here = away.filter(({ at }) => (above ? at < page : at > page))
+    if (here.length === 0) return null
+    return (
+      <div
+        className={cn(
+          'pointer-events-none absolute left-1/2 z-30 flex -translate-x-1/2 flex-wrap justify-center gap-1.5',
+          above ? 'top-3' : 'bottom-16 pointer-coarse:bottom-32'
+        )}
+        data-testid={above ? 'review-elsewhere-above' : 'review-elsewhere-below'}
+      >
+        {here.map(({ state, at }) => {
+          const Arrow = above ? ArrowUp : ArrowDown
+          return (
+            <button
+              key={state.peer.userId}
+              type="button"
+              data-testid="review-elsewhere"
+              aria-label={t('review.elsewhereJump', { name: state.peer.name, page: at })}
+              title={t('review.elsewhereJump', { name: state.peer.name, page: at })}
+              onClick={() => onJump(state)}
+              className="pointer-events-auto inline-flex items-center gap-1 rounded-full py-0.5 pr-2 pl-1.5 text-[11px] leading-4 font-medium text-white shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+              style={{ backgroundColor: identityInk(state.peer.userId) }}
+            >
+              <Arrow className="size-3" aria-hidden />
+              {t('review.elsewhere', { name: state.peer.name.split(/\s+/)[0] ?? state.peer.name, page: at })}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+  return (
+    <>
+      {edge(true)}
+      {edge(false)}
+    </>
   )
 }
 
@@ -258,6 +342,30 @@ export function DocumentReviewMode({
   const [focus, setFocus] = useState<{ page: number; y: number; key: string; instant?: boolean } | null>(null)
   const [following, setFollowing] = useState<string | null>(null)
   const { annotations, select, setTool, tool, selectedId, draft, setDraft, room, piloti } = review
+  /**
+   * The page this reader is on (the one crossing the middle of the view), for
+   * who is elsewhere. Null until the viewer first reports: it opens on page 1.
+   */
+  const [viewPage, setViewPage] = useState<number | null>(null)
+  const { sendViewport } = room
+  const onViewport = useCallback(
+    (viewport: { page: number; y: number }) => {
+      setViewPage(viewport.page)
+      sendViewport(viewport)
+    },
+    [sendViewport]
+  )
+  /** Cursor chat („/"): open, and where this reader's pointer last was, to open it there. */
+  const [chat, setChat] = useState<{ from: { x: number; y: number } | null } | null>(null)
+  const lastPointer = useRef<{ x: number; y: number } | null>(null)
+  const openChat = useCallback(() => setChat({ from: lastPointer.current }), [])
+  const jumpTo = useCallback((state: RoomPeerState) => {
+    const page = pageOf(state)
+    if (page === null) return
+    setFollowing(null)
+    const y = state.viewport?.page === page ? state.viewport.y : (state.cursor?.y ?? 0)
+    setFocus({ page, y, key: `jump:${state.peer.peerId}:${Date.now()}` })
+  }, [])
   const openAsk = piloti.asks.find((ask) => ask.id === piloti.openId) ?? null
   // From `lg` the list is a column beside the sheet; below it, a sheet from the
   // bottom edge behind a header button (a phone on its side is 852px, under `lg`).
@@ -336,7 +444,8 @@ export function DocumentReviewMode({
       }
       if (typing(event.target)) return
       const key = event.key.toLowerCase()
-      if (key === 'v') setTool('select')
+      if (key === '/') openChat()
+      else if (key === 'v') setTool('select')
       else if ((key === 'c' || key === 'r') && review.canAnnotate) setTool(key === 'c' ? 'point' : 'region')
       else if (key === 'p' && piloti.available) setTool('ask')
       else if (key === 'j' || key === 'k') {
@@ -353,11 +462,11 @@ export function DocumentReviewMode({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, listOpen, draft, openAsk, piloti, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring])
+  }, [open, listOpen, draft, openAsk, piloti, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring, openChat])
 
   /** The tools as a cluster of their own, the one in hand filled in ink: what the pointer will do is never a guess. */
   const offered = TOOLS.filter(({ tool: option }) => toolOffered(option, review))
-  const tools = offered.length > 1 ? (
+  const tools = (
     <div
       role="toolbar"
       aria-label={t('review.toolsLabel')}
@@ -391,8 +500,31 @@ export function DocumentReviewMode({
           </TooltipContent>
         </Tooltip>
       ))}
+      {/* Cursor chat: a word beside the pointer for everyone in the room, never stored. */}
+      <span aria-hidden className="bg-border mx-0.5 h-5 w-px pointer-coarse:hidden" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            data-testid="review-tool-chat"
+            aria-pressed={chat !== null}
+            aria-keyshortcuts="/"
+            aria-label={t('review.chatOpen')}
+            onClick={openChat}
+            className={cn(
+              'flex size-8 items-center justify-center rounded-lg transition-colors duration-quick ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/60 pointer-coarse:hidden [&_svg]:size-4',
+              chat ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <MessageCircle aria-hidden />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {t('review.chatOpen')} <Kbd className="ml-1">/</Kbd>
+        </TooltipContent>
+      </Tooltip>
     </div>
-  ) : null
+  )
 
   const walkProposals = useCallback(() => {
     const next = review.step(1, 'proposed')
@@ -485,7 +617,19 @@ export function DocumentReviewMode({
             className="relative min-w-0 flex-1"
             onWheelCapture={() => following && setFollowing(null)}
             onPointerDownCapture={() => following && setFollowing(null)}
+            onPointerMove={(event) => {
+              lastPointer.current = { x: event.clientX, y: event.clientY }
+            }}
           >
+            <Elsewhere review={review} page={viewPage ?? 1} onJump={jumpTo} />
+            {chat && (
+              <CursorChat
+                userId={room.self?.userId ?? null}
+                from={chat.from}
+                onChat={room.sendChat}
+                onClose={() => setChat(null)}
+              />
+            )}
             {followedState && (
               <>
                 <span
@@ -507,7 +651,7 @@ export function DocumentReviewMode({
               src={documentFileUrl(review.documentId)}
               title={documentName}
               focus={focus}
-              onViewport={room.sendViewport}
+              onViewport={onViewport}
               pageOverlay={(page) => (
                 <ReviewPageLayer
                   page={page}

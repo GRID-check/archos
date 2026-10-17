@@ -31,6 +31,7 @@ const PILOTI: RoomPeer = {
 const pilotiState = (overrides: Partial<RoomPeerState> = {}): RoomPeerState => ({
   peer: PILOTI,
   cursor: { page: 1, x: 0.4, y: 0.5 },
+  movedAt: null,
   tool: 'select',
   viewport: null,
   draft: null,
@@ -95,15 +96,21 @@ describe('Piloti’s cursor on the canvas', () => {
 
   it('keeps „for Anna" beside its pointer label and what it is doing, outside the part that truncates', () => {
     renderLayer([pilotiState({ label: 'Treppe' })])
-    expect(within(cursorTag()).getByText('Treppe')).toHaveClass('truncate')
+    // Its name always leads: a pointer saying „Treppe" is never taken for a colleague of that name.
+    expect(within(cursorTag()).getByText('Piloti · Treppe')).toHaveClass('truncate')
     expect(within(cursorTag()).getByTestId('piloti-cursor-for')).toHaveTextContent('· for Anna')
     expect(within(cursorTag()).getByTestId('piloti-cursor-for')).not.toHaveClass('truncate')
   })
 
   it('says it while it works, too', () => {
     renderLayer([pilotiState({ activity: { state: 'reading', box: null, label: 'sieht sich Seite 2 an' } })])
-    expect(within(cursorTag()).getByText('sieht sich Seite 2 an')).toBeInTheDocument()
+    expect(within(cursorTag()).getByText('Piloti · sieht sich Seite 2 an')).toBeInTheDocument()
     expect(within(cursorTag()).getByTestId('piloti-cursor-for')).toHaveTextContent('· for Anna')
+  })
+
+  it('says which page it reads when the room only knows the box it reads', () => {
+    renderLayer([pilotiState({ activity: { state: 'reading', box: { page: 2, x: 0, y: 0, w: 1, h: 1 }, label: null } })])
+    expect(within(cursorTag()).getByText('Piloti · reading page 2')).toBeInTheDocument()
   })
 
   it('names nobody when the server could not', () => {

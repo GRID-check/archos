@@ -13,22 +13,42 @@ import { cn } from '@/lib/utils'
  * `busy`: they are about to set a mark (a point or a region tool in hand), so
  * the tag says so with a glyph: the room sees a colleague take aim before the
  * mark lands, the way people round a table see a pen come down.
+ *
+ * `chat`: a line of cursor chat. The tag grows into a bubble that keeps the
+ * name above the words, so a room always knows who said „hier fehlt die
+ * Kote", and the words wrap rather than run off the sheet.
+ *
+ * `idle`: the pointer has not moved for a while. The arrow stays where it was,
+ * quieter, and the tag folds away, so a colleague who went for coffee does not
+ * keep a label over the drawing.
  */
 export function LiveCursor({
   color,
   label,
   icon,
   busy,
+  chat,
+  idle,
   className,
 }: {
   color: string
   label: string
   icon?: ReactNode
   busy?: ReactNode
+  chat?: string | null
+  idle?: boolean
   className?: string
 }): JSX.Element {
   return (
-    <span data-slot="live-cursor" className={cn('pointer-events-none absolute top-0 left-0 block', className)}>
+    <span
+      data-slot="live-cursor"
+      data-idle={idle || undefined}
+      className={cn(
+        'pointer-events-none absolute top-0 left-0 block transition-opacity duration-base ease-out motion-reduce:transition-none',
+        idle && 'opacity-55',
+        className
+      )}
+    >
       <svg
         aria-hidden
         width="18"
@@ -44,14 +64,32 @@ export function LiveCursor({
           strokeLinejoin="round"
         />
       </svg>
-      <span
-        className="absolute top-[15px] left-[12px] inline-flex max-w-44 items-center gap-1 rounded-full rounded-tl-sm px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md"
-        style={{ backgroundColor: color }}
-      >
-        {icon}
-        <span className="truncate">{label}</span>
-        {busy}
-      </span>
+      {chat ? (
+        <span
+          data-slot="live-cursor-chat"
+          className="absolute top-[15px] left-[12px] flex w-max max-w-60 flex-col rounded-2xl rounded-tl-sm px-2.5 py-1.5 text-white shadow-md"
+          style={{ backgroundColor: color }}
+        >
+          <span className="flex items-center gap-1 text-[10px] leading-3 font-medium opacity-85">
+            {icon}
+            <span className="truncate">{label}</span>
+          </span>
+          <span className="text-xs leading-4 font-medium break-words whitespace-pre-wrap">{chat}</span>
+        </span>
+      ) : (
+        <span
+          className={cn(
+            'absolute top-[15px] left-[12px] inline-flex max-w-44 items-center gap-1 rounded-full rounded-tl-sm px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md',
+            'origin-top-left transition-[opacity,transform] duration-base ease-out motion-reduce:transition-none',
+            idle && 'scale-90 opacity-0'
+          )}
+          style={{ backgroundColor: color }}
+        >
+          {icon}
+          <span className="truncate">{label}</span>
+          {busy}
+        </span>
+      )}
     </span>
   )
 }

@@ -473,6 +473,19 @@ export const internalAnnotationRequestSchema = z.discriminatedUnion('op', [
       label: z.string().trim().min(1).max(MAX_HIGHLIGHT_LABEL),
     })
     .strict(),
+  // What Piloti is reading, for everyone in the room: the page, or a box on it.
+  // Presence, not content: it says where Piloti looks, never what it found.
+  z
+    .object({
+      op: z.literal('look'),
+      ...internalOpBase,
+      page: z.number().int().min(1),
+      x: z.number().min(0).max(1).optional(),
+      y: z.number().min(0).max(1).optional(),
+      w: z.number().gt(0).max(1).optional(),
+      h: z.number().gt(0).max(1).optional(),
+    })
+    .strict(),
   z.object({ op: z.literal('leave'), ...internalOpBase }).strict(),
 ])
 export type InternalAnnotationRequest = z.input<typeof internalAnnotationRequestSchema>

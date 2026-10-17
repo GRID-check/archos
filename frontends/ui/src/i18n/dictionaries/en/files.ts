@@ -1590,6 +1590,13 @@ export const files = {
       failedConnection: 'The connection to Piloti broke off. What arrived is kept.',
       failedSession: 'Your session expired. Reload the page and ask again.',
     },
+    peerSelected: '{names} has this open',
+    chatOpen: 'Cursor chat',
+    chatPlaceholder: 'Say something …',
+    chatHint: 'Enter shows it a moment longer, Esc takes it away',
+    elsewhere: '{name} · page {page}',
+    elsewhereJump: 'Go to page {page}, where {name} is',
+    onPage: '{name} · page {page}',
     peerPoint: 'is placing an annotation',
     peerRegion: 'is marking a region',
     // Piloti says on the document whom it writes for (ADR-0105; EU AI Act Art. 50).

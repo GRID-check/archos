@@ -1543,6 +1543,13 @@ export const files: typeof en.files = {
       failedConnection: 'Die Verbindung zu Piloti ist abgebrochen. Was angekommen ist, bleibt.',
       failedSession: 'Ihre Sitzung ist abgelaufen. Laden Sie die Seite neu und fragen Sie noch einmal.',
     },
+    peerSelected: '{names} hat das offen',
+    chatOpen: 'Zeiger-Chat',
+    chatPlaceholder: 'Etwas sagen …',
+    chatHint: 'Enter zeigt es noch einen Moment, Esc nimmt es weg',
+    elsewhere: '{name} · Seite {page}',
+    elsewhereJump: 'Zu Seite {page}, wo {name} ist',
+    onPage: '{name} · Seite {page}',
     peerPoint: 'setzt eine Anmerkung',
     peerRegion: 'markiert einen Bereich',
     // Piloti nennt auf dem Dokument, für wen es schreibt (ADR-0105; EU AI Act Art. 50).

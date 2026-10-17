@@ -369,6 +369,18 @@ describe('POST /api/internal/document-annotations', () => {
       ])
     })
 
+    it('says what Piloti reads: a box on the page, clamped onto it, or the whole page', async () => {
+      await post({ op: 'look', page: 2, x: 0.7, y: 0.1, w: 0.5, h: 0.2 })
+      await post({ op: 'look', page: 3 })
+
+      expect(vi.mocked(publishAsAgent).mock.calls.map((call) => call[3])).toEqual([
+        { op: 'presence', state: 'here' },
+        { op: 'activity', state: 'reading', box: { page: 2, x: 0.7, y: 0.1, w: expect.closeTo(0.3), h: 0.2 } },
+        { op: 'presence', state: 'here' },
+        { op: 'activity', state: 'reading', box: { page: 3, x: 0, y: 0, w: 1, h: 1 } },
+      ])
+    })
+
     it('leaves: pointer off, activity cleared, presence gone', async () => {
       await post({ op: 'leave' })
 

@@ -89,6 +89,7 @@ from .marks import reply_body
 from .marks import update_payload
 from .policy import shared_write_refusal
 from .presence import note_presence
+from .presence import show_reading
 from .room import highlight_payload
 from .room import point_payload
 from .room import render_room
@@ -209,6 +210,7 @@ async def run_look(
 
     async def body() -> list[dict] | str:
         target, signed = await _target(document)
+        await show_reading(target.body(), target.document_id, signed, page, region)
         result = await look_at(target, signed, page=page, region=region, limits=limits)
         observe("look", {"page": page, "region": region is not None}, {"viewed": isinstance(result, list)})
         return result

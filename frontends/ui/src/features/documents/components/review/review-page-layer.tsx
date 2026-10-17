@@ -85,7 +85,7 @@ function PilotiCursor({ state }: { state: RoomPeerState }): JSX.Element {
   return (
     <LiveCursor
       color="var(--foreground)"
-      label={state.label || state.activity?.label || 'Piloti'}
+      label={pilotiCursorLabel(state, tPresence('piloti.reading', { page: state.activity?.box?.page ?? 1 }))}
       icon={<Sparkles className="size-3" aria-hidden />}
       busy={
         forShort ? (
@@ -101,6 +101,103 @@ function PilotiCursor({ state }: { state: RoomPeerState }): JSX.Element {
       }
       className="[&_path]:fill-foreground"
     />
+  )
+}
+
+/**
+ * The words on Piloti's tag: always its name first, so a pointer that says
+ * „Fluchtweg" is never mistaken for a colleague called that, then what it
+ * points at, or what it reads.
+ */
+export function pilotiCursorLabel(state: Pick<RoomPeerState, 'label' | 'activity'>, reading: string): string {
+  const doing = state.label || state.activity?.label || (state.activity?.state === 'reading' ? reading : null)
+  return doing ? `Piloti · ${doing}` : 'Piloti'
+}
+
+/** A clock that ticks while there is something to age (pointers going idle); still otherwise. */
+function useTick(active: boolean, everyMs: number): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!active) return
+    const timer = setInterval(() => setNow(Date.now()), everyMs)
+    return () => clearInterval(timer)
+  }, [active, everyMs])
+  return now
+}
+
+/** How long a pointer may rest before it reads as idle: its tag folds away, the arrow quiets. */
+export const CURSOR_IDLE_MS = 8_000
+
+/**
+ * The marks the others have open, by mark: one face per person (a person in
+ * two tabs is one), never this reader's own other tabs, never Piloti, which
+ * says what it does with its pointer instead.
+ */
+export function peerSelections(
+  peers: readonly RoomPeerState[],
+  selfUserId: string | null
+): Map<string, RoomPeerState[]> {
+  const byMark = new Map<string, RoomPeerState[]>()
+  for (const state of peers) {
+    if (!state.selected || isPilotiPeer(state) || state.peer.userId === selfUserId) continue
+    const here = byMark.get(state.selected) ?? []
+    if (!here.some((other) => other.peer.userId === state.peer.userId)) byMark.set(state.selected, [...here, state])
+  }
+  return byMark
+}
+
+/** A first name for a tag beside a mark: „Anna" for „Anna Berger", the local part of a bare address. */
+const firstName = (name: string): string => name.trim().split(/\s+/)[0]?.split('@')[0] || name
+
+/**
+ * Whose eyes are on a mark: the others who have it open, in their colour, the
+ * way a design tool outlines what a colleague selected. A ring round the pin
+ * (an outline round a region) and their first name beside it; „Anna +2" when
+ * several are on it.
+ */
+function PeerSelection({
+  annotation,
+  selectors,
+}: {
+  annotation: Pick<AnnotationView, 'shape' | 'x' | 'y' | 'w' | 'h'>
+  selectors: readonly RoomPeerState[]
+}): JSX.Element | null {
+  const t = useTranslations('files')
+  const first = selectors[0]
+  if (!first) return null
+  const ink = identityInk(first.peer.userId)
+  const names = selectors.map((state) => firstName(state.peer.name))
+  const tag = names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0]
+  const region = annotation.shape === 'region' && annotation.w && annotation.h ? annotation : null
+  return (
+    <>
+      {region ? (
+        <span
+          aria-hidden
+          data-testid="review-peer-selection"
+          className="pointer-events-none absolute z-20 rounded-[3px]"
+          style={{ ...box(region.x, region.y, region.w ?? 0, region.h ?? 0), outline: `2px solid ${ink}`, outlineOffset: 2 }}
+        />
+      ) : (
+        <span
+          aria-hidden
+          data-testid="review-peer-selection"
+          className="pointer-events-none absolute z-[9] size-8 -translate-x-1 -translate-y-7 rounded-full rounded-bl-none border-2"
+          style={{ ...at(annotation.x, annotation.y), borderColor: ink }}
+        />
+      )}
+      <span
+        className={cn(
+          'pointer-events-none absolute z-20 rounded-full px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-white shadow-sm',
+          region ? '-translate-y-[calc(100%+4px)]' : 'translate-x-8 -translate-y-6'
+        )}
+        style={{ ...at(annotation.x, annotation.y), backgroundColor: ink }}
+        title={t('review.peerSelected', { names: selectors.map((state) => state.peer.name).join(', ') })}
+        data-testid="review-peer-selection-tag"
+      >
+        {tag}
+      </span>
+    </>
   )
 }
 
@@ -276,6 +373,9 @@ export function ReviewPageLayer({
   const pointers = room.peers.filter((state): state is RoomPeerState & { cursor: NonNullable<RoomPeerState['cursor']> } =>
     Boolean(state.cursor && state.cursor.page === page)
   )
+  const selections = peerSelections(room.peers, room.self?.userId ?? null)
+  // Only people's pointers go idle: Piloti's moves when its tools do, and says what it does.
+  const now = useTick(pointers.some((state) => !isPilotiPeer(state)), 2_000)
 
   /**
    * On a touch screen a mark tool is an explicit MODE, and it gives the page
@@ -447,6 +547,7 @@ export function ReviewPageLayer({
                 title={pilotiLine}
                 onPointerEnter={() => review.hover(annotation.id)}
                 onPointerLeave={() => review.hover(null)}
+                data-peer-selected={selections.has(annotation.id) || undefined}
                 onClick={(event) => {
                   event.stopPropagation()
                   if (!focused) {
@@ -458,6 +559,9 @@ export function ReviewPageLayer({
                 }}
               />
             </span>
+            {selections.has(annotation.id) && (
+              <PeerSelection annotation={annotation} selectors={selections.get(annotation.id) ?? []} />
+            )}
           </div>
         )
       })}
@@ -566,16 +670,27 @@ export function ReviewPageLayer({
         </div>
       )}
 
-      {/* The boxes the others are drawing right now, in their colour. */}
+      {/* The boxes the others are drawing right now, in their colour, with whose they are. */}
       {pointers.map((state) =>
         state.draft && !isPilotiPeer(state) ? (
           <span
             key={`draft-${state.peer.peerId}`}
             data-testid="review-peer-draft"
             aria-hidden
-            className="pointer-events-none absolute rounded-[2px] border-[1.5px] border-dashed"
-            style={{ ...box(state.draft.x, state.draft.y, state.draft.w, state.draft.h), borderColor: identityInk(state.peer.userId) }}
-          />
+            className="pointer-events-none absolute z-20 rounded-[2px] border-[1.5px] border-dashed"
+            style={{
+              ...box(state.draft.x, state.draft.y, state.draft.w, state.draft.h),
+              borderColor: identityInk(state.peer.userId),
+              backgroundColor: `color-mix(in oklch, ${identityInk(state.peer.userId)} 6%, transparent)`,
+            }}
+          >
+            <span
+              className="absolute -top-px left-0 -translate-y-full rounded-t-[3px] px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-white"
+              style={{ backgroundColor: identityInk(state.peer.userId) }}
+            >
+              {firstName(state.peer.name)}
+            </span>
+          </span>
         ) : null
       )}
 
@@ -587,7 +702,9 @@ export function ReviewPageLayer({
             ) : (
             <LiveCursor
               color={identityInk(state.peer.userId)}
-              label={state.chat || state.peer.name}
+              label={state.peer.name}
+              chat={state.chat}
+              idle={!state.chat && state.movedAt !== null && now - state.movedAt > CURSOR_IDLE_MS}
               busy={
                 state.tool === 'region' ? (
                   <SquareDashed className="size-3" aria-label={t('review.peerRegion')} />

@@ -715,7 +715,7 @@ describe('the review', () => {
     })
 
     const sheet = screen.getByTestId('sheet')
-    expect(await within(sheet).findByText('Liest die Stiege', { selector: '[data-slot="live-cursor"] *' })).toBeInTheDocument()
+    expect(await within(sheet).findByText('Piloti · Liest die Stiege', { selector: '[data-slot="live-cursor"] *' })).toBeInTheDocument()
     const highlight = await within(sheet).findByTestId('piloti-highlight')
     expect(highlight.style.left).toBe('50%')
     restore()
