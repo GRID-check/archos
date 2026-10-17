@@ -206,7 +206,7 @@ function reviewOf(annotations: AnnotationView[]): DocumentReview {
 }
 
 const renderThread = (annotation: AnnotationView) =>
-  render(<ThreadCard review={reviewOf([annotation])} annotation={annotation} flip={false} canPickAssignee={false} />)
+  render(<ThreadCard review={reviewOf([annotation])} annotation={annotation} placement="right" canPickAssignee={false} />)
 
 describe('Piloti’s marks name the person they were set for', () => {
   it('on the pin’s tooltip and for a screen reader', () => {

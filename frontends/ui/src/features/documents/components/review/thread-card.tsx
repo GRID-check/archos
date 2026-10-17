@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState, type JSX, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useRef, useState, type JSX, type KeyboardEvent } from 'react'
 import {
   ArrowUp,
   CalendarClock,
   Check,
   CircleHelp,
+  History,
   Link2,
   MessageSquareText,
   MoreHorizontal,
@@ -47,6 +48,7 @@ import { answerAsBody } from '../../lib/piloti-answer-text'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
 import { AssignPopover } from '../assign-popover'
 import { usePilotiByline } from './piloti-attribution'
+import type { CardSide } from './review-page-layer'
 
 export const KIND_ICONS: Record<AnnotationKind, typeof TriangleAlert> = {
   hint: MessageSquareText,
@@ -96,11 +98,16 @@ function Message({
         />
       )}
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-1.5 text-xs">
-          <span className="text-foreground font-semibold" data-testid={authorKind === 'piloti' ? 'thread-byline' : undefined}>
+        {/* The name gives way, the time never wraps: „2 hours ago" on two lines reads as two facts. */}
+        <p className="flex min-w-0 items-baseline gap-1.5 text-xs">
+          <span
+            className="text-foreground min-w-0 truncate font-semibold"
+            data-testid={authorKind === 'piloti' ? 'thread-byline' : undefined}
+            title={authorKind === 'piloti' ? byline(name, { proposal }) : (name ?? undefined)}
+          >
             {authorKind === 'piloti' ? byline(name, { proposal }) : (name ?? t('review.someone'))}
           </span>
-          <TimeAgo date={at} locale={locale} className="text-muted-foreground" />
+          <TimeAgo date={at} locale={locale} className="text-muted-foreground shrink-0 whitespace-nowrap" />
         </p>
         {woken && (
           <p className="text-muted-foreground text-[11px] leading-4" title={wokenTitle} data-testid="thread-woken">
@@ -341,28 +348,58 @@ export function Composer({
   )
 }
 
-/** A chip for who is on it and by when: quiet until set, then the fact itself. */
-function MetaChip({
-  icon: Icon,
-  children,
-  tone,
-  ...props
-}: { icon: typeof UserRound; tone?: 'urgent'; children: React.ReactNode } & React.ComponentProps<'button'>) {
+/**
+ * A chip for who is on it and by when: quiet (dashed, muted) until set, then
+ * the fact itself in ink on a solid edge. `onClear` puts the way to unset it
+ * INSIDE the chip, so the × reads as part of the fact it removes.
+ */
+const MetaChip = forwardRef<
+  HTMLButtonElement,
+  {
+    icon: typeof UserRound
+    tone?: 'urgent'
+    set?: boolean
+    onClear?: () => void
+    clearLabel?: string
+    children: React.ReactNode
+  } & React.ComponentProps<'button'>
+>(function MetaChip({ icon: Icon, children, tone, set, onClear, clearLabel, ...props }, ref) {
   return (
-    <button
-      type="button"
+    <span
+      data-set={set || undefined}
       className={cn(
-        'border-border/80 text-muted-foreground hover:text-foreground hover:bg-accent/60 inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] font-medium transition-colors duration-quick ease-out disabled:pointer-events-none',
+        'border-border/80 text-muted-foreground inline-flex h-6 max-w-full items-center rounded-full border text-[11px] font-medium transition-colors duration-quick ease-out',
+        !set && 'border-dashed',
+        set && 'bg-secondary text-foreground border-transparent',
         // Overdue is ink and weight, not gold: gold is the Büroablage's colour.
-        tone === 'urgent' && 'text-foreground border-foreground/50 font-semibold'
+        tone === 'urgent' && 'text-foreground border-foreground/50 border-solid font-semibold'
       )}
-      {...props}
     >
-      <Icon className="size-3" aria-hidden />
-      {children}
-    </button>
+      <button
+        ref={ref}
+        type="button"
+        className={cn(
+          'hover:text-foreground inline-flex h-full min-w-0 items-center gap-1 rounded-full pl-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none',
+          onClear ? 'pr-1' : 'pr-2'
+        )}
+        {...props}
+      >
+        <Icon className="size-3 shrink-0" aria-hidden />
+        <span className="truncate">{children}</span>
+      </button>
+      {onClear && (
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground mr-1 inline-flex size-4 shrink-0 items-center justify-center rounded-full outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/60"
+          aria-label={clearLabel}
+          onClick={onClear}
+        >
+          <X className="size-3" aria-hidden />
+        </button>
+      )}
+    </span>
   )
-}
+})
 
 /** Who is on it and by when, editable while the reader may write. */
 function ResponsibilityRow({
@@ -397,31 +434,34 @@ function ResponsibilityRow({
           onPick={onAssignee}
           onChanged={() => undefined}
           trigger={
-            <MetaChip icon={UserRound} data-testid="thread-assignee">
+            <MetaChip
+              icon={UserRound}
+              data-testid="thread-assignee"
+              set={Boolean(assigneeName)}
+              onClear={assigneeName ? () => onAssignee(null) : undefined}
+              clearLabel={t('review.unassign')}
+            >
               {assigneeName ?? t('review.assign')}
             </MetaChip>
           }
         />
       ) : (
         assigneeName && (
-          <MetaChip icon={UserRound} disabled>
+          <MetaChip
+            icon={UserRound}
+            disabled={!editable}
+            set
+            onClear={editable ? () => onAssignee(null) : undefined}
+            clearLabel={t('review.unassign')}
+          >
             {assigneeName}
           </MetaChip>
         )
       )}
-      {assigneeName && editable && (
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground -ml-1 rounded p-0.5"
-          aria-label={t('review.unassign')}
-          onClick={() => onAssignee(null)}
-        >
-          <X className="size-3" aria-hidden />
-        </button>
-      )}
       <span className="relative inline-flex">
         <MetaChip
           icon={CalendarClock}
+          set={dueOn !== null}
           tone={overdue ? 'urgent' : undefined}
           disabled={!editable}
           onClick={() => dateRef.current?.showPicker?.()}
@@ -474,38 +514,58 @@ function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kin
   )
 }
 
-/** The card's frame: a floating sheet beside its mark, on the side with room. */
+/**
+ * Where a card is shown: beside or under its mark on the sheet
+ * ({@link CardSide}, decided by `placeCard`), `detached` from the sheet (a
+ * mark of an earlier Fassung, which is not drawn), or `docked` in the phone's
+ * bottom sheet, which is its frame.
+ */
+export type CardPlacement = CardSide | 'detached' | 'docked'
+
+const PLACEMENT_CLASSES: Record<Exclude<CardPlacement, 'docked'>, string> = {
+  right: 'absolute top-0 left-4 origin-top-left',
+  left: 'absolute top-0 right-4 origin-top-right',
+  below: 'absolute top-3 left-0 origin-top-left',
+  detached: 'relative origin-top',
+}
+
+/** The hairline from the mark's edge to its card: which mark this is about, without the card sitting on it. */
+const HAIRLINE_CLASSES: Partial<Record<CardPlacement, string>> = {
+  right: 'top-3.5 -left-4 h-px w-4',
+  left: 'top-3.5 -right-4 h-px w-4',
+  below: '-top-3 left-3.5 h-3 w-px',
+}
+
+/** The card's frame: a floating sheet beside its mark, on the side with room; or the content of the phone's sheet. */
 export function ReviewCard({
-  flip,
+  placement,
   children,
   testId,
-  detached,
 }: {
-  flip: boolean
+  placement: CardPlacement
   children: React.ReactNode
   testId: string
-  /** Not beside a mark on the sheet (a mark of an earlier Fassung): in the flow, without the hairline. */
-  detached?: boolean
 }) {
+  if (placement === 'docked') {
+    return (
+      <div data-testid={testId} data-placement="docked" className="text-popover-foreground w-full">
+        {children}
+      </div>
+    )
+  }
+  const hairline = HAIRLINE_CLASSES[placement]
   return (
     <div
       data-testid={testId}
+      data-placement={placement}
       role="dialog"
       className={cn(
         'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none w-[20rem] rounded-xl border shadow-xl',
-        detached ? 'relative origin-top' : 'absolute top-0',
-        !detached && (flip ? 'right-4 origin-top-right' : 'left-4 origin-top-left')
+        PLACEMENT_CLASSES[placement]
       )}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      {/* The hairline from the mark's edge to its card: which mark this is
-          about, without the card sitting on it. */}
-      {!detached && (
-        <span
-          aria-hidden
-          className={cn('bg-foreground/40 absolute top-3.5 h-px w-4', flip ? '-right-4' : '-left-4')}
-        />
-      )}
+      {hairline && <span aria-hidden className={cn('bg-foreground/40 absolute', hairline)} />}
       {children}
     </div>
   )
@@ -521,6 +581,7 @@ function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevi
   const t = useTranslations('files')
   const tChat = useTranslations('chat')
   const [adopting, setAdopting] = useState(false)
+  const [adoptFailed, setAdoptFailed] = useState(false)
   const line = liveLine(stepsOf(ask.view), tChat) ?? t('review.piloti.replying')
   const close = (
     <button
@@ -549,9 +610,13 @@ function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevi
             disabled={adopting}
             onClick={async () => {
               setAdopting(true)
+              setAdoptFailed(false)
               try {
                 await review.reply(annotationId, body)
                 review.piloti.dismiss(ask.id)
+              } catch {
+                // A full thread, a conflict or the network: the answer stays here to add again.
+                setAdoptFailed(true)
               } finally {
                 setAdopting(false)
               }
@@ -559,6 +624,7 @@ function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevi
           >
             {t('review.piloti.adoptReply')}
           </Button>
+          {adoptFailed && <FieldError>{t('review.actionFailed')}</FieldError>}
         </div>
         {close}
       </div>
@@ -623,12 +689,12 @@ function PilotiWorkRow({ annotation }: { annotation: AnnotationView }): JSX.Elem
 export function DraftCard({
   review,
   draft,
-  flip,
+  placement,
   canPickAssignee,
 }: {
   review: DocumentReview
   draft: ReviewDraft
-  flip: boolean
+  placement: CardPlacement
   canPickAssignee: boolean
 }): JSX.Element {
   const t = useTranslations('files')
@@ -645,7 +711,7 @@ export function DraftCard({
       }
     : undefined
   return (
-    <ReviewCard flip={flip} testId="review-draft">
+    <ReviewCard placement={placement} testId="review-draft">
       <div className="space-y-3 p-3">
         <KindPicker value={kind} onChange={setKind} />
         <Composer
@@ -677,18 +743,18 @@ export function DraftCard({
 export function ThreadCard({
   review,
   annotation,
-  flip,
+  placement,
   canPickAssignee,
   onCopyLink,
-  detached,
+  walk,
 }: {
   review: DocumentReview
   annotation: AnnotationView
-  flip: boolean
+  placement: CardPlacement
   canPickAssignee: boolean
   onCopyLink?: (annotation: AnnotationView) => void
-  /** Shown off the sheet (a mark of an earlier Fassung, which is not drawn). */
-  detached?: boolean
+  /** Going through Piloti's proposals: where this one stands among them, and the way to the next. */
+  walk?: { index: number; total: number; onNext: () => void } | null
 }): JSX.Element {
   const t = useTranslations('files')
   const [busy, setBusy] = useState(false)
@@ -800,8 +866,38 @@ export function ThreadCard({
   ]
 
   return (
-    <ReviewCard flip={flip} testId="review-thread" detached={detached}>
-      <div className="flex items-center gap-1.5 border-b px-3 py-2">
+    <ReviewCard placement={placement} testId="review-thread">
+      {!annotation.onCurrentFassung && (
+        // Said inside the card, as its first line: the card is all the reader looks at.
+        <p className="text-muted-foreground bg-muted/40 flex items-start gap-1.5 border-b px-3 py-1.5 text-[11px] leading-4" data-testid="thread-earlier">
+          <History className="mt-px size-3 shrink-0" aria-hidden />
+          {annotation.fassungNumber
+            ? t('review.earlierFassung', { number: annotation.fassungNumber })
+            : t('annotations.earlierFassungUnnumbered')}
+        </p>
+      )}
+      {walk && proposed && (
+        <div className="bg-muted/40 flex items-center gap-2 border-b py-1 pr-1.5 pl-3" data-testid="thread-walk">
+          <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
+            {t('review.walkPosition', { index: walk.index, total: walk.total })}
+          </span>
+          {walk.total > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-6 gap-1.5 px-2 text-xs"
+              aria-keyshortcuts="J"
+              data-testid="thread-walk-next"
+              onClick={walk.onNext}
+            >
+              {t('review.walkNext')}
+              <Kbd className="h-4 min-w-4 px-1 text-[10px]">J</Kbd>
+            </Button>
+          )}
+        </div>
+      )}
+      <div className={cn('flex items-center gap-1.5 border-b px-3 py-2', placement === 'docked' && 'pr-12')}>
         <KindIcon className="text-muted-foreground size-3.5" aria-hidden />
         <span className="text-foreground text-xs font-semibold">{t(`annotations.kinds.${annotation.kind}`)}</span>
         <span className="text-muted-foreground font-mono text-[11px]">#{annotation.number}</span>
@@ -862,16 +958,19 @@ export function ThreadCard({
               }
             />
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 [&_svg]:size-3.5"
-            aria-label={t('review.closeThread')}
-            onClick={() => review.select(null)}
-          >
-            <X aria-hidden />
-          </Button>
+          {/* Docked in the phone's sheet, the sheet's own × closes it. */}
+          {placement !== 'docked' && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 [&_svg]:size-3.5"
+              aria-label={t('review.closeThread')}
+              onClick={() => review.select(null)}
+            >
+              <X aria-hidden />
+            </Button>
+          )}
         </span>
       </div>
 
@@ -928,7 +1027,7 @@ export function ThreadCard({
               onClick={() => void move('dismissed')}
             >
               {t('review.dismiss')}
-              <Kbd className="ml-2">⌫</Kbd>
+              <Kbd className="ml-2 pointer-coarse:hidden">{t('review.dismissKey')}</Kbd>
             </Button>
             <Button
               type="button"
@@ -939,7 +1038,7 @@ export function ThreadCard({
               onClick={() => void move('open')}
             >
               {t('review.accept')}
-              <Kbd className="bg-background/15 text-background ml-2 border-transparent">E</Kbd>
+              <Kbd className="bg-background/15 text-background ml-2 border-transparent pointer-coarse:hidden">E</Kbd>
             </Button>
           </div>
         </div>

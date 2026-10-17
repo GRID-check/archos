@@ -1,18 +1,21 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useRef, useState, type JSX, type RefObject } from 'react'
 import Link from 'next/link'
 import {
   ArrowDown,
   ArrowUp,
-  MessageCircle,
+  ExternalLink,
+  Link2,
   MessageSquarePlus,
   MessagesSquare,
   MousePointer2,
   RotateCcw,
   Sparkles,
+  Speech,
   SquareDashed,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -21,6 +24,7 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { Button } from '@/components/ui/button'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { identityInk } from '@/components/ui/avatar-identity'
+import { FloatingNote, FloatingToolbar, ToolbarIconButton } from '@/components/ui/floating-toolbar'
 import { Kbd } from '@/components/ui/kbd'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
@@ -40,14 +44,126 @@ import { PilotiAnswerCard } from './piloti-answer-card'
 import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { ReviewExportMenu } from './review-export-menu'
-import { DraftCard, ThreadCard } from './thread-card'
+import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
 
-const TOOLS: Array<{ tool: ReviewTool; key: string; icon: typeof MousePointer2 }> = [
+/** A tool on the palette: the review's own, or the cursor chat, which sets nothing. */
+type PaletteTool = ReviewTool | 'chat'
+
+const TOOLS: Array<{ tool: PaletteTool; key: string; icon: LucideIcon }> = [
   { tool: 'select', key: 'V', icon: MousePointer2 },
   { tool: 'point', key: 'C', icon: MessageSquarePlus },
   { tool: 'region', key: 'R', icon: SquareDashed },
   { tool: 'ask', key: 'P', icon: Sparkles },
+  // A head speaking, not a bubble: the comment tool already is one, and this one keeps nothing.
+  { tool: 'chat', key: '/', icon: Speech },
 ]
+
+/** Where this browser keeps that it has seen the tools explained: the first review opens with them spelled out. */
+export const TOOLS_INTRO_KEY = 'piloti.review.toolsIntroSeen'
+
+/** Whether the tools were explained here before. Storage that cannot be read counts as seen: no intro on every open. */
+export function toolsIntroSeen(): boolean {
+  try {
+    return window.localStorage.getItem(TOOLS_INTRO_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+
+function rememberToolsIntro(): void {
+  try {
+    window.localStorage.setItem(TOOLS_INTRO_KEY, '1')
+  } catch {
+    // A private window: the intro shows again next time, which is harmless.
+  }
+}
+
+/** A phone, or a phone on its side: a card beside a mark has no room, so it comes up from the bottom edge. */
+const DOCKED_CARDS = '(max-width: 639px), (pointer: coarse) and (max-height: 500px)'
+
+/**
+ * Where a proposal stands in the walk through Piloti's proposals: its place
+ * among the proposals on this Fassung, in the order J and „Durchgehen" take
+ * them. Null for anything that is not one of them.
+ */
+export function walkPosition(
+  annotations: readonly Pick<AnnotationView, 'id' | 'status' | 'onCurrentFassung'>[],
+  id: string | null
+): { index: number; total: number } | null {
+  const walk = annotations.filter((annotation) => annotation.status === 'proposed' && annotation.onCurrentFassung)
+  const index = walk.findIndex((annotation) => annotation.id === id)
+  return index === -1 ? null : { index: index + 1, total: walk.length }
+}
+
+/**
+ * The tools, as one row of buttons for a pill. `icons`: glyphs with the name
+ * and key in a tooltip, in the viewer's own pill. `intro`: the first review a
+ * browser opens, every tool spelled out with its key, and a way to fold it.
+ * `touch`: a label under every glyph, since a finger has no tooltip and no keys.
+ */
+function ReviewTools({
+  review,
+  chatOpen,
+  onChat,
+  variant,
+  onFold,
+}: {
+  review: ReviewState
+  chatOpen: boolean
+  onChat: () => void
+  variant: 'icons' | 'intro' | 'touch'
+  onFold?: () => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  const offered = TOOLS.filter(({ tool }) => tool === 'chat' || toolOffered(tool, review))
+  return (
+    <div role="group" aria-label={t('review.toolsLabel')} data-testid="review-tools" data-variant={variant} className="flex items-center gap-0.5">
+      {offered.map(({ tool, key, icon: Icon }) => {
+        const pressed = tool === 'chat' ? chatOpen : review.tool === tool
+        const name = tool === 'chat' ? t('review.chatOpen') : t(`review.tools.${tool}`)
+        const button = (
+          <ToolbarIconButton
+            data-testid={`review-tool-${tool}`}
+            aria-pressed={pressed}
+            aria-keyshortcuts={key}
+            aria-label={name}
+            onClick={() => (tool === 'chat' ? onChat() : review.setTool(tool))}
+            className={cn(
+              // The tool in hand is filled in ink: what the pointer will do is never a guess.
+              'aria-pressed:bg-foreground aria-pressed:text-background aria-pressed:hover:text-background',
+              variant === 'intro' && 'w-auto gap-1.5 px-2 text-xs font-medium',
+              variant === 'touch' && 'h-12 w-14 flex-col gap-0.5 pointer-coarse:size-auto pointer-coarse:h-12 pointer-coarse:w-14'
+            )}
+          >
+            <Icon aria-hidden />
+            {variant === 'intro' && (
+              <>
+                {/* The short name: the pill also carries the viewer's own controls. */}
+                <span>{t(`review.toolsShort.${tool}`)}</span>
+                <Kbd className="h-4 min-w-4 px-1 text-[10px]">{key}</Kbd>
+              </>
+            )}
+            {variant === 'touch' && <span className="text-[10px] leading-3 font-medium">{t(`review.toolsShort.${tool}`)}</span>}
+          </ToolbarIconButton>
+        )
+        if (variant !== 'icons') return <span key={tool} className="contents">{button}</span>
+        return (
+          <Tooltip key={tool}>
+            <TooltipTrigger asChild>{button}</TooltipTrigger>
+            <TooltipContent side="top">
+              {name} <Kbd className="ml-1">{key}</Kbd>
+            </TooltipContent>
+          </Tooltip>
+        )
+      })}
+      {variant === 'intro' && onFold && (
+        <ToolbarIconButton aria-label={t('review.toolsIntroFold')} title={t('review.toolsIntroFold')} data-testid="review-tools-fold" onClick={onFold}>
+          <X aria-hidden />
+        </ToolbarIconButton>
+      )}
+    </div>
+  )
+}
 
 /** Which tools a reader has: marks need the right to set them; Piloti needs a project to ask in. */
 const toolOffered = (tool: ReviewTool, review: ReviewState): boolean =>
@@ -58,7 +174,7 @@ const typing = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 
 /** The people in the room, one face per person however many tabs they have open. Piloti is not one of them. */
-function people(peers: readonly RoomPeerState[]): RoomPeerState[] {
+export function people(peers: readonly RoomPeerState[]): RoomPeerState[] {
   const byUser = new Map<string, RoomPeerState>()
   for (const state of peers) {
     if (!isPilotiPeer(state) && !byUser.has(state.peer.userId)) byUser.set(state.peer.userId, state)
@@ -69,15 +185,17 @@ function people(peers: readonly RoomPeerState[]): RoomPeerState[] {
 /**
  * Who else is here, as faces in their colour. A face is also the way to follow
  * them: the view goes where theirs goes until the reader moves on their own.
+ * Without `onFollow` (the file preview's header) the faces only tell, and the
+ * caller says in words who they are.
  */
-function Presence({
+export function Presence({
   review,
-  following,
+  following = null,
   onFollow,
 }: {
   review: ReviewState
-  following: string | null
-  onFollow: (peerId: string | null) => void
+  following?: string | null
+  onFollow?: (peerId: string | null) => void
 }): JSX.Element | null {
   const t = useTranslations('files')
   const tPresence = useTranslations('presence')
@@ -89,6 +207,25 @@ function Presence({
   const forName = piloti?.peer.forName
   const onBehalf = forName ? tPresence('piloti.onBehalfOf', { name: forName }) : null
   if (others.length === 0 && !piloti) return null
+  if (!onFollow) {
+    return (
+      <span aria-hidden className="flex items-center -space-x-1" data-testid="review-presence">
+        {piloti && (
+          <span className="ring-background rounded-full ring-2">
+            <PilotiGlyph size="md" working={Boolean(piloti.activity)} label={onBehalf ?? 'Piloti'} />
+          </span>
+        )}
+        {others.map((state) => (
+          <PersonAvatar
+            key={state.peer.userId}
+            size="sm"
+            className="ring-background size-7 text-[10px] ring-2"
+            person={{ userId: state.peer.userId, name: state.peer.name, profilePictureUrl: null }}
+          />
+        ))}
+      </span>
+    )
+  }
   return (
     <div className="flex items-center -space-x-1" data-testid="review-presence">
       {piloti && (
@@ -153,65 +290,109 @@ function Presence({
 /** The page a person is on: where their pointer is, else where they are scrolled to. */
 const pageOf = (state: RoomPeerState): number | null => state.cursor?.page ?? state.viewport?.page ?? null
 
+/** Where a colleague is from this reader's view: in it, or past its top or bottom edge. */
+export type PeerSide = 'here' | 'above' | 'below'
+
 /**
- * The people on another page than this reader, at the edge of the sheet that
- * leads to them, the way a design tool keeps a colleague's pointer at the
- * edge of the canvas when it is off-screen: above for an earlier page, below
- * for a later one. A chip jumps there; following stays the face's.
+ * Where a colleague's point is from the reader's view. Measured where the
+ * page is laid out (`pageRect`, the view's `top`/`bottom`, all in the
+ * window): their point is on screen or past an edge, so a colleague on the
+ * next page whose pointer is in plain sight gets no chip. A page that is not
+ * laid out is told by its number against the reader's page.
+ */
+export function peerSide(
+  at: { page: number; y: number },
+  viewPage: number,
+  pageRect: { top: number; height: number } | null,
+  view: { top: number; bottom: number } | null
+): PeerSide {
+  if (pageRect && view && pageRect.height > 0) {
+    const y = pageRect.top + at.y * pageRect.height
+    return y < view.top ? 'above' : y > view.bottom ? 'below' : 'here'
+  }
+  return at.page < viewPage ? 'above' : at.page > viewPage ? 'below' : 'here'
+}
+
+/** Re-render on every scroll inside `ref`, once a frame at most: what is on screen moved. */
+function useScrollTick(ref: RefObject<HTMLElement | null>): void {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    let frame: number | null = null
+    const onScroll = () => {
+      if (frame === null)
+        frame = requestAnimationFrame(() => {
+          frame = null
+          setTick((tick) => tick + 1)
+        })
+    }
+    node.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    return () => {
+      node.removeEventListener('scroll', onScroll, { capture: true })
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
+  }, [ref])
+}
+
+/**
+ * The people out of this reader's view, at the edge of the sheet that leads
+ * to them, the way a design tool keeps a colleague's pointer at the edge of
+ * the canvas when it is off-screen. A chip jumps there; following stays the
+ * face's. `edge` is the one edge this instance draws.
  */
 function Elsewhere({
   review,
   page,
+  edge,
+  canvas,
   onJump,
 }: {
   review: ReviewState
-  page: number | null
+  page: number
+  edge: 'above' | 'below'
+  /** The canvas the pages are laid out in, to tell what is on screen. */
+  canvas: RefObject<HTMLElement | null>
   onJump: (state: RoomPeerState) => void
 }): JSX.Element | null {
   const t = useTranslations('files')
-  if (page === null) return null
-  const away = people(review.room.peers).flatMap((state) => {
+  useScrollTick(canvas)
+  const node = canvas.current
+  const view = node?.getBoundingClientRect() ?? null
+  const here = people(review.room.peers).flatMap((state) => {
     const at = pageOf(state)
-    return at !== null && at !== page ? [{ state, at }] : []
+    if (at === null) return []
+    const y = state.cursor?.page === at ? state.cursor.y : (state.viewport?.y ?? 0.5)
+    const layer = node?.querySelector<HTMLElement>(`[data-testid="review-layer-${at}"]`)
+    const side = peerSide({ page: at, y }, page, layer?.getBoundingClientRect() ?? null, view)
+    return side === edge ? [{ state, at }] : []
   })
-  if (away.length === 0) return null
-  const edge = (above: boolean) => {
-    const here = away.filter(({ at }) => (above ? at < page : at > page))
-    if (here.length === 0) return null
-    return (
-      <div
-        className={cn(
-          'pointer-events-none absolute left-1/2 z-30 flex -translate-x-1/2 flex-wrap justify-center gap-1.5',
-          above ? 'top-3' : 'bottom-16 pointer-coarse:bottom-32'
-        )}
-        data-testid={above ? 'review-elsewhere-above' : 'review-elsewhere-below'}
-      >
-        {here.map(({ state, at }) => {
-          const Arrow = above ? ArrowUp : ArrowDown
-          return (
-            <button
-              key={state.peer.userId}
-              type="button"
-              data-testid="review-elsewhere"
-              aria-label={t('review.elsewhereJump', { name: state.peer.name, page: at })}
-              title={t('review.elsewhereJump', { name: state.peer.name, page: at })}
-              onClick={() => onJump(state)}
-              className="pointer-events-auto inline-flex items-center gap-1 rounded-full py-0.5 pr-2 pl-1.5 text-[11px] leading-4 font-medium text-white shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-              style={{ backgroundColor: identityInk(state.peer.userId) }}
-            >
-              <Arrow className="size-3" aria-hidden />
-              {t('review.elsewhere', { name: state.peer.name.split(/\s+/)[0] ?? state.peer.name, page: at })}
-            </button>
-          )
-        })}
-      </div>
-    )
-  }
+  if (here.length === 0) return null
+  const Arrow = edge === 'above' ? ArrowUp : ArrowDown
   return (
-    <>
-      {edge(true)}
-      {edge(false)}
-    </>
+    <div
+      className={cn(
+        'pointer-events-none flex flex-wrap justify-center gap-1.5',
+        edge === 'below' && 'absolute bottom-16 left-1/2 z-30 -translate-x-1/2 pointer-coarse:bottom-36'
+      )}
+      data-testid={`review-elsewhere-${edge}`}
+    >
+      {here.map(({ state, at }) => (
+        <button
+          key={state.peer.userId}
+          type="button"
+          data-testid="review-elsewhere"
+          aria-label={t('review.elsewhereJump', { name: state.peer.name, page: at })}
+          title={t('review.elsewhereJump', { name: state.peer.name, page: at })}
+          onClick={() => onJump(state)}
+          className="pointer-events-auto inline-flex items-center gap-1 rounded-full py-0.5 pr-2 pl-1.5 text-[11px] leading-4 font-medium text-white shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+          style={{ backgroundColor: identityInk(state.peer.userId) }}
+        >
+          <Arrow className="size-3" aria-hidden />
+          {t('review.elsewhere', { name: state.peer.name.split(/\s+/)[0] ?? state.peer.name, page: at })}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -225,13 +406,13 @@ const documentReviewOf = (asks: readonly CanvasAsk[]): CanvasAsk | null =>
  * on the pages. The header says what it is doing, compactly, and where the
  * conversation is.
  */
-function PilotiReview({ review }: { review: ReviewState }): JSX.Element {
+function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => void }): JSX.Element {
   const t = useTranslations('files')
   const tChat = useTranslations('chat')
   const { piloti } = review
   const run = documentReviewOf(piloti.asks)
   if (!run) {
-    return (
+    const button = (
       <Button
         type="button"
         variant="outline"
@@ -246,24 +427,51 @@ function PilotiReview({ review }: { review: ReviewState }): JSX.Element {
         <span className="max-sm:sr-only">{t('review.reviewWithPiloti')}</span>
       </Button>
     )
+    if (!piloti.busy) return button
+    // A disabled button says why: a wrapper takes the pointer the button no longer does.
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex rounded-md" data-testid="review-with-piloti-busy">
+            {button}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{t('review.piloti.busyTooltip')}</TooltipContent>
+      </Tooltip>
+    )
   }
   const working = run.status === 'thinking'
+  const found = run.status === 'answered' ? review.counts.proposed : 0
   const line = working
     ? (liveLine(stepsOf(run.view), tChat) ?? t('review.piloti.reviewing'))
     : run.status === 'failed'
       ? t('review.piloti.reviewFailed')
-      : t('review.piloti.reviewDone')
+      : found > 0
+        ? t('review.piloti.reviewFound', { count: found })
+        : t('review.piloti.reviewDone')
   return (
     <div
       role="status"
       data-testid="review-piloti-status"
-      className="border-border/70 bg-muted/40 flex h-8 max-w-80 items-center gap-2 rounded-full border pr-1 pl-1"
+      className="border-border/70 bg-muted/40 flex h-8 max-w-[30rem] items-center gap-2 rounded-full border pr-1 pl-1"
     >
       <PilotiGlyph working={working} />
       {working ? (
         <ShimmerText className="min-w-0 flex-1 text-xs">{line}</ShimmerText>
       ) : (
         <span className="text-foreground min-w-0 flex-1 truncate text-xs font-medium">{line}</span>
+      )}
+      {found > 0 && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="h-6 shrink-0 rounded-full px-2.5 text-xs"
+          data-testid="review-piloti-walk"
+          onClick={onWalk}
+        >
+          {t('review.walkProposals')}
+        </Button>
       )}
       {piloti.conversationHref && (
         <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-xs">
@@ -327,6 +535,8 @@ export function DocumentReviewMode({
   fassungLabel,
   canPickAssignee,
   focusRequest,
+  popoutHref = null,
+  initialTool,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -337,6 +547,10 @@ export function DocumentReviewMode({
   canPickAssignee: boolean
   /** A mark to open at, when the review was entered from one. */
   focusRequest?: { annotationId: string; key: number } | null
+  /** The review on a page of its own: offered as a window of its own, and as a link to send. */
+  popoutHref?: string | null
+  /** A tool to have in hand once the review opens (entered by „Anmerken"). */
+  initialTool?: ReviewTool
 }): JSX.Element {
   const t = useTranslations('files')
   const [focus, setFocus] = useState<{ page: number; y: number; key: string; instant?: boolean } | null>(null)
@@ -355,10 +569,16 @@ export function DocumentReviewMode({
     },
     [sendViewport]
   )
-  /** Cursor chat („/"): open, and where this reader's pointer last was, to open it there. */
+  const canvasRef = useRef<HTMLDivElement | null>(null)
+  const touch = useMediaQuery('(pointer: coarse)')
+  /**
+   * Cursor chat („/"): open, and where this reader's pointer last was, to open
+   * it there. From the toolbar's button there is no pointer to open at (the
+   * hand is on the button): the bubble opens centred over the sheet.
+   */
   const [chat, setChat] = useState<{ from: { x: number; y: number } | null } | null>(null)
   const lastPointer = useRef<{ x: number; y: number } | null>(null)
-  const openChat = useCallback(() => setChat({ from: lastPointer.current }), [])
+  const openChat = useCallback((atPointer: boolean) => setChat({ from: atPointer ? lastPointer.current : null }), [])
   const jumpTo = useCallback((state: RoomPeerState) => {
     const page = pageOf(state)
     if (page === null) return
@@ -371,6 +591,37 @@ export function DocumentReviewMode({
   // bottom edge behind a header button (a phone on its side is 852px, under `lg`).
   const listBeside = useMediaQuery('(min-width: 1024px)')
   const [listOpen, setListOpen] = useState(false)
+  // On a phone a card beside its mark runs off the screen: it comes up from the bottom edge instead.
+  const docked = useMediaQuery(DOCKED_CARDS)
+
+  /**
+   * The tools spelled out, the first time a browser opens a review: every
+   * tool with its name and key. Folded after the first mark or by its ×.
+   */
+  const [intro, setIntro] = useState(false)
+  useEffect(() => {
+    if (open && !touch && !toolsIntroSeen()) setIntro(true)
+  }, [open, touch])
+  const foldIntro = useCallback(() => {
+    setIntro(false)
+    rememberToolsIntro()
+  }, [])
+  useEffect(() => {
+    if (intro && (draft || openAsk)) foldIntro()
+  }, [intro, draft, openAsk, foldIntro])
+
+  // Entered with a tool in hand: armed once per opening.
+  const armed = useRef(false)
+  useEffect(() => {
+    if (!open) {
+      armed.current = false
+      return
+    }
+    // Not before the reader's rights are known: the tools are offered once the list has said so.
+    if (armed.current || !initialTool || !toolOffered(initialTool, review)) return
+    armed.current = true
+    setTool(initialTool)
+  }, [open, initialTool, review, setTool])
 
   const bring = useCallback(
     (annotation: AnnotationView) => {
@@ -383,6 +634,31 @@ export function DocumentReviewMode({
     },
     [select, setDraft]
   )
+
+  /**
+   * Going through Piloti's proposals („Durchgehen"): the proposal in hand. A
+   * decision on it moves to the next one; choosing anything else ends the walk.
+   */
+  const [walking, setWalking] = useState<string | null>(null)
+  const walkProposals = useCallback(() => {
+    const next = review.step(1, 'proposed')
+    setWalking(next?.id ?? null)
+    if (next) bring(next)
+  }, [review, bring])
+  useEffect(() => {
+    if (!walking) return
+    if (selectedId !== walking) {
+      setWalking(null)
+      return
+    }
+    const current = annotations.find((annotation) => annotation.id === walking)
+    if (current?.status === 'proposed') return
+    // Taken over or dismissed: on to the next, or the walk is done.
+    const next = review.step(1, 'proposed')
+    setWalking(next?.id ?? null)
+    if (next) bring(next)
+  }, [walking, selectedId, annotations, review, bring])
+  const walk = walking ? walkPosition(annotations, walking) : null
 
   // Entered from a mark: open at it, once per request, as soon as the list holds it.
   const handled = useRef<number | null>(null)
@@ -424,30 +700,53 @@ export function DocumentReviewMode({
     onOpenChange(false)
   }, [onOpenChange, setDraft, setTool])
 
-  // Escape steps back one thing at a time; letters pick tools and walk the marks.
+  // A mark of an earlier Fassung is listed, never drawn: selected, its thread
+  // opens over the sheet instead of beside a pin that is not there.
+  const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentFassung) ?? null
+  const selected = annotations.find((annotation) => annotation.id === selectedId) ?? null
+  // The card a phone docks: Piloti's answer on a box, the draft, or the open thread.
+  const dockedAsk = openAsk && openAsk.region && !openAsk.replyInThread ? openAsk : null
+  const dockOpen = docked && Boolean(dockedAsk || draft || selected)
+  const closeCard = useCallback(() => {
+    if (dockedAsk) {
+      if (dockedAsk.status === 'thinking') piloti.open(null)
+      else piloti.dismiss(dockedAsk.id)
+    } else if (draft) setDraft(null)
+    else select(null)
+  }, [dockedAsk, piloti, draft, setDraft, select])
+
+  /**
+   * Escape steps back one thing at a time: Piloti's card, the draft, following,
+   * the tool, the open thread, and only then the review itself. It runs as the
+   * dialog's own Escape (Radix hears the key first, on the document, and only
+   * for the topmost layer: an open menu or sheet takes its own Escape). In a
+   * field it is the field's, unless there is a draft or a card to let go of.
+   */
+  const stepBack = (event: KeyboardEvent) => {
+    event.preventDefault()
+    if (typing(event.target) && !draft && !openAsk) return
+    if (openAsk) piloti.open(null)
+    else if (draft) setDraft(null)
+    else if (following) setFollowing(null)
+    else if (tool !== 'select') setTool('select')
+    else if (selectedId) select(null)
+    else close()
+  }
+
+  // Letters pick tools and walk the marks.
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
-      // The list's sheet is a layer of its own: its keys are its own.
-      if (listOpen) return
-      if (event.key === 'Escape') {
-        if (typing(event.target) && !draft && !openAsk) return
-        event.preventDefault()
-        if (openAsk) piloti.open(null)
-        else if (draft) setDraft(null)
-        else if (following) setFollowing(null)
-        else if (tool !== 'select') setTool('select')
-        else if (selectedId) select(null)
-        else close()
-        return
-      }
-      if (typing(event.target)) return
+      // The list's sheet, and a phone's card sheet, are layers of their own: their keys are their own.
+      if (listOpen || dockOpen) return
+      if (event.key === 'Escape' || typing(event.target)) return
       const key = event.key.toLowerCase()
-      if (key === '/') openChat()
+      if (key === '/') openChat(true)
       else if (key === 'v') setTool('select')
       else if ((key === 'c' || key === 'r') && review.canAnnotate) setTool(key === 'c' ? 'point' : 'region')
       else if (key === 'p' && piloti.available) setTool('ask')
+      else if (key === 'j' && walk) walkProposals()
       else if (key === 'j' || key === 'k') {
         const next = review.step(key === 'j' ? 1 : -1)
         if (next) bring(next)
@@ -474,104 +773,81 @@ export function DocumentReviewMode({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, listOpen, draft, openAsk, piloti, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring, openChat, t])
-
-  /** The tools as a cluster of their own, the one in hand filled in ink: what the pointer will do is never a guess. */
-  const offered = TOOLS.filter(({ tool: option }) => toolOffered(option, review))
-  const tools = (
-    <div
-      role="toolbar"
-      aria-label={t('review.toolsLabel')}
-      data-testid="review-tools"
-      // On a touch screen the tools sit centred ABOVE the viewer's own pill,
-      // at the thumb: left-aligned at the foot they lay over its page and zoom
-      // controls on a phone. Navigate (the pointer) is the first of them, so
-      // the mode the reader is in is always the filled one.
-      className="bg-popover/95 border-border/70 pointer-events-auto absolute bottom-4 left-4 z-30 flex items-center gap-0.5 rounded-xl border p-1 shadow-md backdrop-blur-md pointer-coarse:bottom-[4.75rem] pointer-coarse:left-1/2 pointer-coarse:-translate-x-1/2"
-    >
-      {offered.map(({ tool: option, key, icon: Icon }) => (
-        <Tooltip key={option}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              data-testid={`review-tool-${option}`}
-              aria-pressed={tool === option}
-              aria-keyshortcuts={key}
-              aria-label={t(`review.tools.${option}`)}
-              onClick={() => setTool(option)}
-              className={cn(
-                'flex size-8 items-center justify-center rounded-lg transition-colors duration-quick ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/60 pointer-coarse:size-11 [&_svg]:size-4',
-                tool === option ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-            >
-              <Icon aria-hidden />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            {t(`review.tools.${option}`)} <Kbd className="ml-1">{key}</Kbd>
-          </TooltipContent>
-        </Tooltip>
-      ))}
-      {/* Cursor chat: a word beside the pointer for everyone in the room, never stored. */}
-      <span aria-hidden className="bg-border mx-0.5 h-5 w-px pointer-coarse:hidden" />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            data-testid="review-tool-chat"
-            aria-pressed={chat !== null}
-            aria-keyshortcuts="/"
-            aria-label={t('review.chatOpen')}
-            onClick={openChat}
-            className={cn(
-              'flex size-8 items-center justify-center rounded-lg transition-colors duration-quick ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/60 pointer-coarse:hidden [&_svg]:size-4',
-              chat ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-            )}
-          >
-            <MessageCircle aria-hidden />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          {t('review.chatOpen')} <Kbd className="ml-1">/</Kbd>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  )
-
-  const walkProposals = useCallback(() => {
-    const next = review.step(1, 'proposed')
-    if (next) bring(next)
-  }, [review, bring])
+  }, [open, listOpen, dockOpen, piloti, selectedId, annotations, review, setTool, bring, openChat, walk, walkProposals, t])
 
   /** A link that opens the review at this mark, on the clipboard; a refusal says so. */
+  const copyText = useCallback(
+    (text: string) => {
+      if (!navigator.clipboard) {
+        toast.error(t('review.linkCopyFailed'))
+        return
+      }
+      void navigator.clipboard
+        .writeText(text)
+        .then(() => toast.success(t('review.linkCopied')))
+        .catch(() => toast.error(t('review.linkCopyFailed')))
+    },
+    [t]
+  )
   const copyLink = useCallback(
     (annotation: AnnotationView) => {
       const url = new URL(window.location.href)
       url.searchParams.set('doc', annotation.documentId)
       url.searchParams.set('review', '1')
       url.searchParams.set('mark', annotation.id)
-      if (!navigator.clipboard) {
-        toast.error(t('review.linkCopyFailed'))
-        return
-      }
-      void navigator.clipboard
-        .writeText(url.toString())
-        .then(() => toast.success(t('review.linkCopied')))
-        .catch(() => toast.error(t('review.linkCopyFailed')))
+      copyText(url.toString())
     },
-    [t]
+    [copyText]
   )
+  const popout = useCallback(() => {
+    if (popoutHref) window.open(popoutHref, '_blank', 'popup,width=1440,height=900')
+  }, [popoutHref])
 
   const followedState = following ? room.peers.find((state) => state.peer.peerId === following) : null
-  // A mark of an earlier Fassung is listed, never drawn: selected, its thread
-  // opens over the sheet instead of beside a pin that is not there.
-  const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentFassung) ?? null
+
+  /** The card for whatever is in hand, wherever it is shown. */
+  const threadCard = (placement: CardPlacement) => {
+    if (draft) return <DraftCard review={review} draft={draft} placement={placement} canPickAssignee={canPickAssignee} />
+    if (!selected) return null
+    return (
+      <ThreadCard
+        key={selected.id}
+        review={review}
+        annotation={selected}
+        placement={placement}
+        canPickAssignee={canPickAssignee}
+        onCopyLink={copyLink}
+        walk={walk && walking === selected.id ? { ...walk, onNext: walkProposals } : null}
+      />
+    )
+  }
+
+  // What the tool in hand does next, said once at the top of the canvas.
+  const toolHint =
+    tool !== 'select' && !draft && !openAsk ? t(`review.${touch ? 'toolHintTouch' : 'toolHint'}.${tool}`) : null
+
+  const toolsPalette = (variant: 'icons' | 'intro' | 'touch') => (
+    <ReviewTools
+      review={review}
+      chatOpen={chat !== null}
+      onChat={() => openChat(false)}
+      variant={variant}
+      onFold={foldIntro}
+    />
+  )
+  const exportMenu = annotations.length > 0 && (
+    <ReviewExportMenu
+      documentId={review.documentId}
+      hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
+      hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
+    />
+  )
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
       <DialogContent
         showCloseButton={false}
-        onEscapeKeyDown={(event) => event.preventDefault()}
+        onEscapeKeyDown={stepBack}
         // The sheet is what has focus to begin with, not the close button: a
         // ring on the X is the first thing an opened review would say.
         onOpenAutoFocus={(event) => event.preventDefault()}
@@ -619,6 +895,35 @@ export function DocumentReviewMode({
               </span>
             )}
             <Presence review={review} following={following} onFollow={setFollowing} />
+            {popoutHref && (
+              // A window of its own for a second screen, and the link to send: both quiet, beside the faces.
+              <span className="flex items-center max-sm:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={t('review.popout')}
+                  title={t('review.popout')}
+                  data-testid="review-popout"
+                  onClick={popout}
+                >
+                  <ExternalLink className="size-3.5" aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={t('review.copyReviewLink')}
+                  title={t('review.copyReviewLink')}
+                  data-testid="review-copy-link"
+                  onClick={() => copyText(new URL(popoutHref, window.location.href).toString())}
+                >
+                  <Link2 className="size-3.5" aria-hidden />
+                </Button>
+              </span>
+            )}
             {!listBeside && (
               <Button
                 type="button"
@@ -635,98 +940,93 @@ export function DocumentReviewMode({
                 <span className="font-mono tabular-nums">{review.counts.open + review.counts.proposed}</span>
               </Button>
             )}
-            {annotations.length > 0 && listBeside && (
-              <ReviewExportMenu
-                documentId={review.documentId}
-                hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
-                hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
-              />
-            )}
-            {piloti.available && review.canAnnotate && <PilotiReview review={review} />}
+            {listBeside && exportMenu}
+            {piloti.available && review.canAnnotate && <PilotiReview review={review} onWalk={walkProposals} />}
           </div>
         </header>
 
         <div className="flex min-h-0 flex-1">
           <div
+            ref={canvasRef}
             className="relative min-w-0 flex-1"
+            data-testid="review-canvas"
             onWheelCapture={() => following && setFollowing(null)}
             onPointerDownCapture={() => following && setFollowing(null)}
             onPointerMove={(event) => {
               lastPointer.current = { x: event.clientX, y: event.clientY }
             }}
           >
-            <Elsewhere review={review} page={viewPage ?? 1} onJump={jumpTo} />
-            {earlier && !openAsk && !draft && (
-              <div
-                className="absolute top-4 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-2"
-                data-testid="review-earlier-thread"
-              >
-                <p className="bg-popover/95 text-muted-foreground max-w-[20rem] rounded-lg border px-3 py-1.5 text-center text-[11px] leading-4 shadow-sm">
-                  {t('review.earlierFassung', { number: earlier.fassungNumber ?? '?' })}
-                </p>
-                <ThreadCard
-                  key={earlier.id}
-                  review={review}
-                  annotation={earlier}
-                  flip={false}
-                  detached
-                  canPickAssignee={canPickAssignee}
-                  onCopyLink={copyLink}
-                />
+            {/* What sits at the top of the canvas, one under the other: whom the
+                view follows, who is out of view above, what the tool in hand does. */}
+            <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-col items-center gap-1.5">
+              {followedState && (
+                <span
+                  className="rounded-full px-3 py-1 text-xs font-medium text-white shadow-md"
+                  style={{ backgroundColor: identityInk(followedState.peer.userId) }}
+                  role="status"
+                >
+                  {t('review.following', { name: followedState.peer.name })}
+                </span>
+              )}
+              <Elsewhere review={review} page={viewPage ?? 1} edge="above" canvas={canvasRef} onJump={jumpTo} />
+              {toolHint && (
+                <FloatingNote role="status" data-testid="review-tool-hint">
+                  {toolHint}
+                </FloatingNote>
+              )}
+            </div>
+            <Elsewhere review={review} page={viewPage ?? 1} edge="below" canvas={canvasRef} onJump={jumpTo} />
+            {earlier && !openAsk && !draft && !docked && (
+              <div className="absolute top-4 left-1/2 z-40 -translate-x-1/2" data-testid="review-earlier-thread">
+                {threadCard('detached')}
               </div>
             )}
             {chat && (
               <CursorChat
                 userId={room.self?.userId ?? null}
                 from={chat.from}
+                bounds={() => canvasRef.current?.getBoundingClientRect() ?? null}
+                // Above the viewer's pill and the chips of who is below, and on a
+                // touch screen above the tools over the pill too.
+                foot={touch ? 176 : 100}
                 onChat={room.sendChat}
                 onClose={() => setChat(null)}
               />
             )}
             {followedState && (
-              <>
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 z-30 border-[3px]"
-                  style={{ borderColor: identityInk(followedState.peer.userId) }}
-                />
-                <span
-                  className="absolute top-3 left-1/2 z-30 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-medium text-white shadow-md"
-                  style={{ backgroundColor: identityInk(followedState.peer.userId) }}
-                  role="status"
-                >
-                  {t('review.following', { name: followedState.peer.name })}
-                </span>
-              </>
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-30 border-[3px]"
+                style={{ borderColor: identityInk(followedState.peer.userId) }}
+              />
             )}
-            {tools}
+            {touch && (
+              // On a touch screen the tools sit centred ABOVE the viewer's own
+              // pill, at the thumb, each with its name under it.
+              <FloatingToolbar className="pointer-events-auto absolute bottom-[4.75rem] left-1/2 z-30 -translate-x-1/2">
+                {toolsPalette('touch')}
+              </FloatingToolbar>
+            )}
             <PdfDocumentView
               src={documentFileUrl(review.documentId)}
               title={documentName}
               focus={focus}
               onViewport={onViewport}
+              // With a pointer, the tools lead the viewer's own pill: one bar at the foot.
+              toolbarLead={touch ? undefined : toolsPalette(intro ? 'intro' : 'icons')}
               pageOverlay={(page) => (
                 <ReviewPageLayer
                   page={page}
                   review={review}
                   focused
-                  renderAsk={(ask, { flip }) => <PilotiAnswerCard key={ask.id} review={review} ask={ask} flip={flip} />}
-                  renderThread={({ flip }) => {
-                    if (draft && draft.page === page) {
-                      return <DraftCard review={review} draft={draft} flip={flip} canPickAssignee={canPickAssignee} />
-                    }
-                    const selected = annotations.find((annotation) => annotation.id === selectedId)
-                    return selected ? (
-                      <ThreadCard
-                        key={selected.id}
-                        review={review}
-                        annotation={selected}
-                        flip={flip}
-                        canPickAssignee={canPickAssignee}
-                        onCopyLink={copyLink}
-                      />
-                    ) : null
-                  }}
+                  renderAsk={
+                    docked ? undefined : (ask, { placement }) => <PilotiAnswerCard key={ask.id} review={review} ask={ask} placement={placement} />
+                  }
+                  renderThread={
+                    docked
+                      ? undefined
+                      : ({ placement }) => (draft && draft.page !== page ? null : threadCard(placement))
+                  }
                 />
               )}
               className="size-full"
@@ -734,6 +1034,28 @@ export function DocumentReviewMode({
           </div>
           <ReviewPanel review={review} onOpen={bring} onWalkProposals={walkProposals} />
         </div>
+        {docked && (
+          // Not modal: no veil over the drawing the card is about, and the page
+          // stays in reach (another pin, a pinch). Only its × and Escape close it.
+          <Sheet open={dockOpen} modal={false} onOpenChange={(next) => !next && closeCard()}>
+            <SheetContent
+              side="bottom"
+              closeLabel={t('review.closeThread')}
+              data-testid="review-card-sheet"
+              onInteractOutside={(event) => event.preventDefault()}
+              // The sheet is the card's frame: no second border inside it.
+              className="max-h-[75dvh] gap-0 rounded-t-2xl p-0 pb-[env(safe-area-inset-bottom)]"
+            >
+              <SheetTitle className="sr-only">{documentName}</SheetTitle>
+              <SheetDescription className="sr-only">{t('annotations.section')}</SheetDescription>
+              {dockedAsk ? (
+                <PilotiAnswerCard key={dockedAsk.id} review={review} ask={dockedAsk} placement="docked" />
+              ) : (
+                threadCard('docked')
+              )}
+            </SheetContent>
+          </Sheet>
+        )}
         {!listBeside && (
           <Sheet open={listOpen} onOpenChange={setListOpen}>
             <SheetContent
@@ -745,17 +1067,7 @@ export function DocumentReviewMode({
               <SheetHeader className="flex-row items-center gap-2 px-4 pt-4 pr-14 pb-0">
                 <SheetTitle className="text-base">{t('annotations.section')}</SheetTitle>
                 <SheetDescription className="sr-only">{documentName}</SheetDescription>
-                {annotations.length > 0 && (
-                  <div className="ml-auto">
-                    <ReviewExportMenu
-                      documentId={review.documentId}
-                      hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
-                      hasProposals={annotations.some(
-                        (annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy,
-                      )}
-                    />
-                  </div>
-                )}
+                {exportMenu && <div className="ml-auto">{exportMenu}</div>}
               </SheetHeader>
               <ReviewPanel
                 review={review}

@@ -19,8 +19,15 @@ import { cn } from '@/lib/utils'
  * Kote", and the words wrap rather than run off the sheet.
  *
  * `idle`: the pointer has not moved for a while. The arrow stays where it was,
- * quieter, and the tag folds away, so a colleague who went for coffee does not
- * keep a label over the drawing.
+ * quieter, and the tag folds down to a dot with their initial: a colleague who
+ * went for coffee does not keep a label over the drawing, and the arrow is
+ * still somebody's.
+ *
+ * `tag={false}`: the arrow alone, for a small view of the page (a preview),
+ * where a name and a bubble would cover the drawing they point at.
+ *
+ * On a touch screen the tags and bubbles are a step smaller: a phone's sheet
+ * is a third of a desktop's, and a full tag there covers a room.
  */
 export function LiveCursor({
   color,
@@ -29,6 +36,7 @@ export function LiveCursor({
   busy,
   chat,
   idle,
+  tag = true,
   className,
 }: {
   color: string
@@ -37,8 +45,11 @@ export function LiveCursor({
   busy?: ReactNode
   chat?: string | null
   idle?: boolean
+  /** Off: the arrow alone, no name tag and no chat bubble. */
+  tag?: boolean
   className?: string
 }): JSX.Element {
+  const initial = [...label.trim()][0]?.toLocaleUpperCase() ?? ''
   return (
     <span
       data-slot="live-cursor"
@@ -64,31 +75,45 @@ export function LiveCursor({
           strokeLinejoin="round"
         />
       </svg>
-      {chat ? (
+      {!tag ? null : chat ? (
         <span
           data-slot="live-cursor-chat"
-          className="absolute top-[15px] left-[12px] flex w-max max-w-60 flex-col rounded-2xl rounded-tl-sm px-2.5 py-1.5 text-white shadow-md"
+          className="absolute top-[15px] left-[12px] flex w-max max-w-60 flex-col rounded-2xl rounded-tl-sm px-2.5 py-1.5 text-white shadow-md pointer-coarse:max-w-44 pointer-coarse:px-2 pointer-coarse:py-1"
           style={{ backgroundColor: color }}
         >
           <span className="flex items-center gap-1 text-[10px] leading-3 font-medium opacity-85">
             {icon}
             <span className="truncate">{label}</span>
           </span>
-          <span className="text-xs leading-4 font-medium break-words whitespace-pre-wrap">{chat}</span>
+          <span className="text-xs leading-4 font-medium break-words whitespace-pre-wrap pointer-coarse:text-[11px]">{chat}</span>
         </span>
       ) : (
-        <span
-          className={cn(
-            'absolute top-[15px] left-[12px] inline-flex max-w-44 items-center gap-1 rounded-full rounded-tl-sm px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md',
-            'origin-top-left transition-[opacity,transform] duration-base ease-out motion-reduce:transition-none',
-            idle && 'scale-90 opacity-0'
+        <>
+          <span
+            data-slot="live-cursor-tag"
+            className={cn(
+              'absolute top-[15px] left-[12px] inline-flex max-w-44 items-center gap-1 rounded-full rounded-tl-sm px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md',
+              'pointer-coarse:max-w-36 pointer-coarse:px-1.5 pointer-coarse:text-[10px]',
+              'origin-top-left transition-[opacity,transform] duration-base ease-out motion-reduce:transition-none',
+              idle && 'scale-90 opacity-0'
+            )}
+            style={{ backgroundColor: color }}
+          >
+            {icon}
+            <span className="truncate">{label}</span>
+            {busy}
+          </span>
+          {idle && (
+            <span
+              data-slot="live-cursor-initial"
+              aria-hidden
+              className="animate-in fade-in-0 motion-reduce:animate-none absolute top-[14px] left-[11px] flex size-4 items-center justify-center rounded-full text-[9px] leading-none font-semibold text-white shadow-sm"
+              style={{ backgroundColor: color }}
+            >
+              {icon ?? initial}
+            </span>
           )}
-          style={{ backgroundColor: color }}
-        >
-          {icon}
-          <span className="truncate">{label}</span>
-          {busy}
-        </span>
+        </>
       )}
     </span>
   )

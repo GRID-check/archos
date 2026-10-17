@@ -91,8 +91,12 @@ The UI and Piloti are equal clients of one service (ADR-0055).
 is the document opened full screen:
 
 - marks drawn on the PDF pages (`review-page-layer.tsx`);
-- the open thread beside its mark (`thread-card.tsx`);
-- the list (`review-panel.tsx`), where Piloti's proposals lead the open marks as a group you can walk through.
+- the open thread beside its mark (`thread-card.tsx`), on the side a whole card fits in pixels, else under the mark (`placeCard`); on a phone in a sheet from the bottom edge;
+- the list (`review-panel.tsx`), where Piloti's proposals lead the open marks as a group you can walk through („Durchgehen": the card says „1/3", J or „Weiter" goes on, and taking one over or dismissing it moves to the next);
+- the tools, leading the viewer's own pill at the foot; on a touch screen a row of their own above it, each with its name. The first review a browser opens spells every tool out with its key (`TOOLS_INTRO_KEY`), folded after the first mark or by its ×. A tool in hand says what it does next at the top of the canvas.
+
+Everything drawn on the page is in `--paper-ink`, never `--foreground`: the
+page stays white in dark mode, and the theme's ink there is paper-white.
 
 Keys:
 
@@ -101,18 +105,37 @@ Keys:
 | V / C / R / P | select, point, box, ask Piloti about a box |
 | J / K | step through the marks the list shows, proposals first |
 | E | take a proposal over, or resolve an open mark |
-| ⌫ | dismiss a proposal |
+| ⌫ / Entf | dismiss a proposal |
 | / | cursor chat |
-| Esc | backs out one layer at a time |
+| Esc | backs out one layer at a time (the dialog's own Escape: an open menu or sheet takes its own first) |
 
 A mark of an earlier Fassung is listed and never drawn; selected, its thread
-opens over the sheet. Status moves carry the status the card showed
+opens over the sheet, saying so in its first line. Status moves carry the status the card showed
 (`expectedStatus`), so a stale tab gets the conflict notice, never a blind
 change. The list is read again when the room returns after a drop and when the
 tab returns to view.
 
 `use-document-review.ts` is the state both surfaces share: the inline layer in
 the file preview, and the full-screen review.
+
+**The review's address.** While the review is open the URL says so:
+`review=1`, `mark=<id>` for the selected mark and `tool=point|region` for a
+tool in hand (`features/documents/lib/open-review.ts` reads and writes them;
+the pane keeps them in step). Opening from the pane pushes, so Back closes the
+review; a new mark or tool replaces, so walking the marks is one entry; closing
+goes back, or takes them off when the review came in by a link. A reload stays
+in the review, and the Files reconciler (`use-preview-channel.ts`) drops them
+when a different document opens. The pane writes the address only where the URL
+names its document (Dateien's `doc`, or the chat's peek).
+
+**Ways in from the file preview.** The header's „Prüfansicht öffnen" (a PDF
+that carries marks opens full screen as the review, not as the enlarged
+viewer, which images keep); „Anmerken" in the viewer's pill and at the phone
+reader's thumb, which opens the review with the point tool armed (`tool=point`,
+`initialTool`); the rail's „Anmerken und prüfen" and „Dazukommen"; and a pin's
+hover card („In der Prüfansicht öffnen", `inline-mark-peek.tsx`, a hovering
+pointer only: a tap on a pin opens the review as before). The pane header shows
+who is in the document with the review's own `Presence`, without following.
 
 ## Live
 
@@ -122,12 +145,12 @@ the way a design tool shows its collaborators:
 
 | What | How it shows | Where |
 |---|---|---|
-| A colleague's pointer | the arrow in their colour, their name on a tag; after 8 s at rest it quiets and the tag folds away (`CURSOR_IDLE_MS`) | `review-page-layer.tsx`, `components/ui/live-cursor.tsx` |
-| Cursor chat | „/" (or the toolbar's bubble) opens a field at the reader's pointer; every key shows beside it for the room as typed; Enter keeps the line 4 s, Esc takes it away. A colleague's chat keeps their name above the words. Nothing is stored | `cursor-chat.tsx` |
-| The mark a colleague has open | a ring round the pin (an outline round a region) in their colour, with their first name; „Anna +1" for several; never the reader's own tabs, never Piloti | `peerSelections`, `PeerSelection` |
+| A colleague's pointer | the arrow in their colour, their name on a tag; after 8 s at rest it quiets and the tag folds down to a dot with their initial (`CURSOR_IDLE_MS`). In the file preview, the arrow alone: no tag, no chat, no name on a mark or a box being drawn | `review-page-layer.tsx`, `components/ui/live-cursor.tsx` |
+| Cursor chat | „/" opens a field at the reader's pointer, the toolbar's button centred above the toolbars, always inside the canvas; every key shows beside it for the room as typed; Enter keeps the line 4 s, Esc takes it away. A colleague's chat keeps their name above the words. Nothing is stored | `cursor-chat.tsx` |
+| The mark a colleague has open | a ring round the pin (an outline round a region) in their colour, with their first name at its top-right; „Anna +1" for several; a person whose own pointer is within 48 px of the mark is not named twice (`selectionTagged`); never the reader's own tabs, never Piloti | `peerSelections`, `PeerSelection` |
 | A box being dragged out | dashed in their colour, with their first name | `review-page-layer.tsx` |
-| A colleague on another page | a chip at the edge that leads to them („Lena · Seite 2"); a click jumps there; the face's tooltip names the page | `Elsewhere` in `document-review.tsx` |
-| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"); the box it reads glows while it reads it (`canvas__look` sends the `look` op: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
+| A colleague out of view | a chip at the edge that leads to them („Lena · Seite 2"), decided by whether their point is on screen (`peerSide`); a click jumps there; the face's tooltip names the page | `Elsewhere` in `document-review.tsx` |
+| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"), quieting once it is parked with nothing in hand (`pilotiResting`); the box it reads glows while it reads it (`canvas__look` sends the `look` op: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
 
 A write sends an `annotations.changed` hint. A hint is a nudge to re-read, never
 the state itself, so a dropped hint costs a few seconds, not a wrong list. The
@@ -135,6 +158,18 @@ tab that wrote ignores its own hint.
 
 The transport is the shared realtime channel layer; see ADR 0110 for why it is
 our own thin layer over Dragonfly rather than a library.
+
+What a tab sends is bounded per person and per document (`lib/realtime/send.ts`),
+from two budgets in `lib/limits/rules.js`. Motion, the pointer and the scroll,
+spends `ROOM_LIMIT`; a claim, presence and the selected mark, spends
+`ROOM_CLAIM_LIMIT`. A burst of motion can therefore never refuse the presence
+refresh that keeps a person in everyone's roster. When the server refuses motion
+(429), the tab pauses its pointer and scroll for that document for the
+`Retry-After` and keeps its claims going (`features/realtime/connection.ts`).
+Only the `gone` a tab says on leaving goes out as `keepalive`. Once a tab has
+left the room it sends nothing more under its peer, so a late send from a timer
+(the cursor chat's linger) cannot put it back in the roster as a ghost
+(`features/realtime/use-channel.ts`).
 
 ## Piloti on the canvas
 
@@ -493,14 +528,15 @@ an answer older than the record. Its actions:
    one a colleague just discarded.
 2. „Im Dokument zeigen" puts the document in the peek beside the chat (the
    preview store) and writes `review=1&mark=<id>` onto the chat's own URL with
-   `router.replace`. The pane opens the Prüfansicht at that mark and strips
-   both params. Closing the review leaves the document in the peek and the
+   `router.replace`. The pane opens the Prüfansicht at that mark and keeps
+   the params while it is open (below, „The review's address"). Closing the
+   review takes them off, and leaves the document in the peek and the
    conversation where it was. On the chat the link never carries `doc`,
    because there `doc` is the subject of an ask. A copied link
    (`doc=…&review=1&mark=…`) still works: the chat opens that document
-   beside it, leaves the composer alone, and drops `doc` once the pane has
-   taken the link. Off the chat the card goes to Dateien with all three
-   params.
+   beside it, leaves the composer alone, and drops `doc` once the review has
+   closed and taken `review` off. Off the chat the card goes to Dateien with
+   all three params.
 
 3. A change carries „Rückgängig“ while the record says it can be undone. The
    card reads its turn's rows from `GET /api/conversations/[id]/messages/[messageId]/changes`,

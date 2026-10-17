@@ -15,7 +15,7 @@ import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { answerAsBody, answerMarkdown } from '../../lib/piloti-answer-text'
 import { CANVAS_ASK_INTENTS, stepsOf, type CanvasAsk, type CanvasAskIntent } from '../../hooks/use-canvas-ask'
 import type { DocumentReview } from '../../hooks/use-document-review'
-import { Composer, ReviewCard } from './thread-card'
+import { Composer, ReviewCard, type CardPlacement } from './thread-card'
 
 /** The line a failed question says: by what broke, never the wire code itself. */
 export function failureKey(ask: Pick<CanvasAsk, 'error' | 'view'>): 'busy' | 'failedSession' | 'failedConnection' | 'failed' {
@@ -46,11 +46,11 @@ const kindFor = (intent: CanvasAskIntent | null) => (intent === 'question' ? 'qu
 export function PilotiAnswerCard({
   review,
   ask,
-  flip,
+  placement,
 }: {
   review: DocumentReview
   ask: CanvasAsk
-  flip: boolean
+  placement: CardPlacement
 }): JSX.Element {
   const t = useTranslations('files')
   const tChat = useTranslations('chat')
@@ -91,8 +91,8 @@ export function PilotiAnswerCard({
   }
 
   return (
-    <ReviewCard flip={flip} testId="piloti-card">
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+    <ReviewCard placement={placement} testId="piloti-card">
+      <div className={cn('flex items-center gap-2 border-b px-3 py-2', placement === 'docked' && 'pr-12')}>
         <PilotiGlyph working={working} />
         <span className="text-foreground text-xs font-semibold">Piloti</span>
         {ask.region && (
@@ -228,7 +228,9 @@ export function PilotiAnswerCard({
             )}
           </div>
           {!working && (
-            <div className="flex flex-wrap items-center gap-1.5 border-t px-3 py-2.5">
+            // One row, never two: the words are short enough for a 20rem card.
+            <div className="border-t px-3 py-2.5">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
               {RETRYABLE.has(ask.status) ? (
                 <Button type="button" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => piloti.retry(ask.id)}>
                   <RotateCcw className="size-3" aria-hidden />
@@ -259,7 +261,8 @@ export function PilotiAnswerCard({
                   </Link>
                 </Button>
               )}
-              {adoptFailed && <FieldError className="w-full">{t('review.actionFailed')}</FieldError>}
+              </div>
+              {adoptFailed && <FieldError className="mt-1.5">{t('review.actionFailed')}</FieldError>}
             </div>
           )}
         </>

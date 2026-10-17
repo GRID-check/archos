@@ -160,12 +160,12 @@ function Harness({
             page={1}
             review={review}
             focused
-            renderAsk={(ask, { flip }) => <PilotiAnswerCard review={review} ask={ask} flip={flip} />}
-            renderThread={({ flip }) =>
+            renderAsk={(ask, { placement }) => <PilotiAnswerCard review={review} ask={ask} placement={placement} />}
+            renderThread={({ placement }) =>
               review.draft ? (
-                <DraftCard review={review} draft={review.draft} flip={flip} canPickAssignee={false} />
+                <DraftCard review={review} draft={review.draft} placement={placement} canPickAssignee={false} />
               ) : selected ? (
-                <ThreadCard review={review} annotation={selected} flip={flip} canPickAssignee={false} />
+                <ThreadCard review={review} annotation={selected} placement={placement} canPickAssignee={false} />
               ) : null
             }
           />

@@ -14,8 +14,18 @@ import type { RoomPeer } from '@/lib/annotations/room-types'
 import type { AnnotationView } from '@/lib/annotations/types'
 import type { DocumentReview } from '../../hooks/use-document-review'
 import type { RoomPeerState } from '../../hooks/use-document-room'
-import { CURSOR_CHAT_LINGER_MS, CursorChat } from './cursor-chat'
-import { CURSOR_IDLE_MS, peerSelections, ReviewPageLayer } from './review-page-layer'
+import { CURSOR_CHAT_LINGER_MS, CursorChat, placeChat } from './cursor-chat'
+import { peerSide, walkPosition } from './document-review'
+import {
+  CURSOR_IDLE_MS,
+  PILOTI_REST_MS,
+  peerSelections,
+  pilotiResting,
+  placeCard,
+  ReviewPageLayer,
+  selectionTagged,
+} from './review-page-layer'
+import { tabCounts } from './review-panel'
 
 const ANNA: RoomPeer = { peerId: 'tab-anna', userId: 'user_anna', name: 'Anna Berger', kind: 'person' }
 const JAKOB: RoomPeer = { peerId: 'tab-jakob', userId: 'user_jakob', name: 'Jakob Huber', kind: 'person' }
@@ -77,11 +87,11 @@ function reviewWith(peers: RoomPeerState[], annotations: AnnotationView[] = []):
   return review as DocumentReview
 }
 
-const renderLayer = (peers: RoomPeerState[], annotations: AnnotationView[] = []) =>
+const renderLayer = (peers: RoomPeerState[], annotations: AnnotationView[] = [], focused = true) =>
   render(
     <div style={{ position: 'relative', width: 800, height: 600 }}>
       <div>
-        <ReviewPageLayer page={1} review={reviewWith(peers, annotations)} focused={false} />
+        <ReviewPageLayer page={1} review={reviewWith(peers, annotations)} focused={focused} />
       </div>
     </div>
   )
@@ -104,15 +114,43 @@ describe('a colleague’s pointer', () => {
     expect(within(bubble as HTMLElement).getByText('Hier fehlt die Kote')).toBeInTheDocument()
   })
 
-  it('goes quiet when it has rested a while, and its tag folds away', () => {
+  it('goes quiet when it has rested a while, and its tag folds down to a dot with their initial', () => {
     renderLayer([person(ANNA, { movedAt: Date.now() - CURSOR_IDLE_MS - 1 }), person(JAKOB)])
     const cursors = document.querySelectorAll<HTMLElement>('[data-slot="live-cursor"]')
     expect([...cursors].map((cursor) => cursor.dataset.idle ?? null)).toEqual(['true', null])
+    const dots = document.querySelectorAll<HTMLElement>('[data-slot="live-cursor-initial"]')
+    expect([...dots].map((dot) => dot.textContent)).toEqual(['A'])
+  })
+
+  it("parks Piloti's pointer once the answer is in and it has stopped moving, never while it works", () => {
+    const rested = { activity: null, movedAt: 1_000 }
+    const later = 1_000 + PILOTI_REST_MS + 1
+    expect(pilotiResting(rested, later, false)).toBe(true)
+    expect(pilotiResting(rested, later, true)).toBe(false)
+    expect(pilotiResting(rested, 1_000 + PILOTI_REST_MS - 1, false)).toBe(false)
+    expect(pilotiResting({ ...rested, activity: { state: 'reading', label: null, box: null } }, later, false)).toBe(false)
   })
 
   it('says whose box is being dragged out', () => {
     renderLayer([person(ANNA, { draft: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 } })])
     expect(within(screen.getByTestId('review-peer-draft')).getByText('Anna')).toBeInTheDocument()
+  })
+
+  it('is the arrow alone in the preview: no name, no words, no tag on a box or a mark over the drawing', () => {
+    renderLayer(
+      [
+        person(ANNA, { chat: 'Hier fehlt die Kote', selected: 'ann_1' }),
+        person(JAKOB, { draft: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 } }),
+      ],
+      [MARK],
+      false
+    )
+    expect(document.querySelectorAll('[data-slot="live-cursor"]')).toHaveLength(2)
+    expect(screen.queryByText('Anna Berger')).toBeNull()
+    expect(screen.queryByText('Hier fehlt die Kote')).toBeNull()
+    expect(within(screen.getByTestId('review-peer-draft')).queryByText('Jakob')).toBeNull()
+    expect(screen.getByTestId('review-peer-selection')).toBeInTheDocument()
+    expect(screen.queryByTestId('review-peer-selection-tag')).toBeNull()
   })
 })
 
@@ -144,7 +182,107 @@ describe('the marks the others have open', () => {
   })
 })
 
+describe('where a card goes', () => {
+  const page = { width: 800, height: 600 }
+
+  it('hangs beside the mark on the side a whole card fits, measured in pixels', () => {
+    expect(placeCard({ x: 0.2, y: 0.3, w: 0.1 }, page).placement).toBe('right')
+    expect(placeCard({ x: 0.7, y: 0.3, w: 0.1 }, page)).toEqual({ x: 0.7, y: 0.3, placement: 'left' })
+  })
+
+  it('goes under a mark that leaves no room on either side, its left edge kept on the page', () => {
+    // A corridor across the sheet: 5% on either side, which a share said was room enough.
+    expect(placeCard({ x: 0.05, y: 0.3, w: 0.9, h: 0.1 }, page)).toEqual({ x: 0.05, y: 0.4, placement: 'below' })
+    // On a narrow page the card starts where it still ends on the page.
+    const narrow = placeCard({ x: 0.6, y: 0.2, w: 0.1, h: 0.1 }, { width: 400, height: 600 })
+    expect(narrow.placement).toBe('below')
+    expect(narrow.x * 400 + 320).toBeLessThanOrEqual(400)
+  })
+})
+
+describe('whose name a selection tag still says', () => {
+  const region = { page: 1, x: 0.3, y: 0.3, w: 0.2, h: 0.1 }
+  const page = { width: 800, height: 600 }
+
+  it('leaves out a colleague whose own pointer, with its own tag, is beside the mark', () => {
+    const near = person(ANNA, { selected: 'ann_1', cursor: { page: 1, x: 0.52, y: 0.32 } })
+    const far = person(JAKOB, { selected: 'ann_1', cursor: { page: 1, x: 0.9, y: 0.9 } })
+    expect(selectionTagged([near, far], region, page).map((state) => state.peer.userId)).toEqual(['user_jakob'])
+  })
+
+  it('names everyone while the page is not measured, and a pointer on another page is not beside it', () => {
+    const near = person(ANNA, { selected: 'ann_1', cursor: { page: 1, x: 0.35, y: 0.35 } })
+    const elsewhere = person(JAKOB, { selected: 'ann_1', cursor: { page: 2, x: 0.35, y: 0.35 } })
+    expect(selectionTagged([near, elsewhere], region, { width: 0, height: 0 })).toHaveLength(2)
+    expect(selectionTagged([near, elsewhere], region, page).map((state) => state.peer.userId)).toEqual(['user_jakob'])
+  })
+})
+
+describe('who is out of view', () => {
+  it('says where a colleague is from where their point is laid out, not from page numbers', () => {
+    const view = { top: 100, bottom: 800 }
+    // Page 2 starts in view: a pointer high on it is on screen, no chip.
+    expect(peerSide({ page: 2, y: 0.1 }, 1, { top: 700, height: 1000 }, view)).toBe('here')
+    expect(peerSide({ page: 2, y: 0.5 }, 1, { top: 700, height: 1000 }, view)).toBe('below')
+    expect(peerSide({ page: 1, y: 0.05 }, 1, { top: -400, height: 1000 }, view)).toBe('above')
+  })
+
+  it('falls back to the page numbers for a page that is not laid out', () => {
+    expect(peerSide({ page: 3, y: 0.5 }, 1, null, null)).toBe('below')
+    expect(peerSide({ page: 1, y: 0.5 }, 2, null, null)).toBe('above')
+    expect(peerSide({ page: 2, y: 0.5 }, 2, null, null)).toBe('here')
+  })
+})
+
+describe('the list counts', () => {
+  const marks = [
+    { status: 'open', assigneeUserId: null, createdBy: 'user_me' },
+    { status: 'proposed', assigneeUserId: null, createdBy: 'user_anna' },
+    { status: 'open', assigneeUserId: 'user_me', createdBy: 'user_anna' },
+    { status: 'resolved', assigneeUserId: null, createdBy: 'user_anna' },
+  ] as const
+
+  it('counts what „Mine" leaves, so a tab never promises more than the list shows', () => {
+    expect(tabCounts(marks, { on: false, me: 'user_me' })).toEqual({ open: 3, closed: 1 })
+    expect(tabCounts(marks, { on: true, me: 'user_me' })).toEqual({ open: 2, closed: 0 })
+  })
+})
+
+describe('walking the proposals', () => {
+  it("says where a proposal stands among those on this Fassung, and nothing for anything else", () => {
+    const marks = [
+      { id: 'a', status: 'open', onCurrentFassung: true },
+      { id: 'p1', status: 'proposed', onCurrentFassung: true },
+      { id: 'old', status: 'proposed', onCurrentFassung: false },
+      { id: 'p2', status: 'proposed', onCurrentFassung: true },
+    ] as const
+    expect(walkPosition(marks, 'p2')).toEqual({ index: 2, total: 2 })
+    expect(walkPosition(marks, 'a')).toBeNull()
+  })
+})
+
 describe('cursor chat', () => {
+  const canvas = { left: 0, top: 50, width: 1000, height: 800 }
+  const size = { width: 240, height: 64 }
+
+  it('opens centred above the toolbars when there is no pointer to open at, inside the canvas', () => {
+    expect(placeChat(null, canvas, size, 72)).toEqual({ left: 380, top: 50 + 800 - 72 - 64 })
+  })
+
+  it('opens beside the pointer, and never past the canvas edge', () => {
+    expect(placeChat({ x: 100, y: 200 }, canvas, size, 72)).toEqual({ left: 114, top: 216 })
+    // The toolbar's own corner: the bubble would have opened under the window's edge.
+    expect(placeChat({ x: 40, y: 840 }, canvas, size, 72)).toEqual({ left: 54, top: 50 + 800 - 64 - 8 })
+    expect(placeChat({ x: 990, y: 100 }, canvas, size, 72).left).toBe(1000 - 240 - 8)
+  })
+
+  it('takes the keys without scrolling the review to the field', () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus')
+    render(<CursorChat userId="user_me" from={null} onChat={() => {}} onClose={() => {}} />)
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+    focus.mockRestore()
+  })
+
   it('types live into the room, and Enter lets the line linger before it clears', () => {
     vi.useFakeTimers()
     const said: Array<string | null> = []
