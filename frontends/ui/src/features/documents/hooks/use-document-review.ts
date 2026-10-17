@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AnnotationRequestError,
   createAnnotation,
@@ -116,6 +116,29 @@ export function useDocumentReview(
       if (timer) clearTimeout(timer)
     }
   }, [enabled, onAnnotationsChanged, peerId, fetchList])
+
+  // A hint is a nudge, and a dropped one must cost seconds, not a stale list: the
+  // list is read again when the room comes back after a drop, and when the tab
+  // comes back into view (a laptop woken from sleep heard nothing meanwhile).
+  const { status: roomStatus } = room
+  const wasLive = useRef(roomStatus === 'live')
+  const everLive = useRef(roomStatus === 'live')
+  useEffect(() => {
+    const live = roomStatus === 'live'
+    // Back after a drop, not the first connect: the first read is the mount's own.
+    const back = live && !wasLive.current && everLive.current
+    wasLive.current = live
+    everLive.current ||= live
+    if (enabled && back) void fetchList().catch(() => {})
+  }, [enabled, roomStatus, fetchList])
+  useEffect(() => {
+    if (!enabled || typeof document === 'undefined') return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void fetchList().catch(() => {})
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [enabled, fetchList])
 
   const replace = useCallback((next: AnnotationView) => {
     setAnnotations((current) =>
@@ -267,20 +290,30 @@ export function useDocumentReview(
     [annotations, filter, mine, me]
   )
 
-  /** Step to the next or previous live mark, in the order a review walks them. */
+  /**
+   * Step to the next or previous mark, in the order the list shows them: what
+   * the filter and „Mine" leave, Piloti's proposals first, as their group
+   * leads the list. Only marks on this Fassung, which are on the sheet. From
+   * nothing selected, J starts at the first and K at the last.
+   */
   const step = useCallback(
     (direction: 1 | -1, scope: 'live' | 'proposed' = 'live') => {
-      const live = annotations.filter(
-        (annotation) =>
-          annotation.onCurrentFassung && (scope === 'proposed' ? annotation.status === 'proposed' : isLive(annotation))
-      )
-      if (live.length === 0) return null
-      const index = live.findIndex((annotation) => annotation.id === selectedId)
-      const next = live[(index + direction + live.length) % live.length] ?? live[0]
+      const shown = scope === 'proposed' ? annotations.filter((annotation) => annotation.status === 'proposed') : listed
+      const walk = [
+        ...shown.filter((annotation) => annotation.status === 'proposed'),
+        ...shown.filter((annotation) => annotation.status !== 'proposed'),
+      ].filter((annotation) => annotation.onCurrentFassung)
+      if (walk.length === 0) return null
+      const index = walk.findIndex((annotation) => annotation.id === selectedId)
+      const next =
+        index === -1
+          ? walk[direction === 1 ? 0 : walk.length - 1]
+          : walk[(index + direction + walk.length) % walk.length]
+      if (!next) return null
       setSelectedId(next.id)
       return next
     },
-    [annotations, selectedId]
+    [annotations, listed, selectedId]
   )
 
   return {

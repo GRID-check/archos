@@ -1642,6 +1642,8 @@ export const files = {
     takeBackFromPiloti: 'Take back from Piloti',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
+    linkCopyFailed: 'The link could not be copied.',
+    earlierFassung: 'Set on revision {number}. Not drawn on this sheet, whose geometry may have moved.',
     delete: 'Delete',
     deleteConfirm: 'Delete annotation {number}?',
     filter: 'Show',

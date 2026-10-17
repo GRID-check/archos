@@ -324,7 +324,8 @@ describe('the review', () => {
 
     await userEvent.click(within(thread).getByTestId('thread-accept'))
 
-    await waitFor(() => expect(patched).toEqual([{ status: 'open' }]))
+    // The status the card showed goes with the move: a stale tab gets a 409, never a blind change.
+    await waitFor(() => expect(patched).toEqual([{ status: 'open', expectedStatus: 'proposed' }]))
     await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-accept')).toBeNull())
   })
 

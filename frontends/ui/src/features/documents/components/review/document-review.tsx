@@ -455,8 +455,20 @@ export function DocumentReviewMode({
         const current = annotations.find((annotation) => annotation.id === selectedId)
         if (!current?.canEdit) return
         if (current.status === 'proposed' || current.status === 'open') {
-          void review.update(current.id, { status: current.status === 'proposed' ? 'open' : 'resolved' }).catch(() => {})
+          void review
+            .update(current.id, {
+              status: current.status === 'proposed' ? 'open' : 'resolved',
+              expectedStatus: current.status,
+            })
+            .catch(() => toast.error(t('review.actionFailed')))
         }
+      } else if ((key === 'backspace' || key === 'delete') && selectedId) {
+        // ⌫ on „Verwerfen" says it: a proposal in hand is dismissed, nothing else is.
+        const current = annotations.find((annotation) => annotation.id === selectedId)
+        if (!current?.canEdit || current.status !== 'proposed') return
+        void review
+          .update(current.id, { status: 'dismissed', expectedStatus: 'proposed' })
+          .catch(() => toast.error(t('review.actionFailed')))
       } else return
       event.preventDefault()
     }
@@ -531,7 +543,29 @@ export function DocumentReviewMode({
     if (next) bring(next)
   }, [review, bring])
 
+  /** A link that opens the review at this mark, on the clipboard; a refusal says so. */
+  const copyLink = useCallback(
+    (annotation: AnnotationView) => {
+      const url = new URL(window.location.href)
+      url.searchParams.set('doc', annotation.documentId)
+      url.searchParams.set('review', '1')
+      url.searchParams.set('mark', annotation.id)
+      if (!navigator.clipboard) {
+        toast.error(t('review.linkCopyFailed'))
+        return
+      }
+      void navigator.clipboard
+        .writeText(url.toString())
+        .then(() => toast.success(t('review.linkCopied')))
+        .catch(() => toast.error(t('review.linkCopyFailed')))
+    },
+    [t]
+  )
+
   const followedState = following ? room.peers.find((state) => state.peer.peerId === following) : null
+  // A mark of an earlier Fassung is listed, never drawn: selected, its thread
+  // opens over the sheet instead of beside a pin that is not there.
+  const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentFassung) ?? null
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
@@ -622,6 +656,25 @@ export function DocumentReviewMode({
             }}
           >
             <Elsewhere review={review} page={viewPage ?? 1} onJump={jumpTo} />
+            {earlier && !openAsk && !draft && (
+              <div
+                className="absolute top-4 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-2"
+                data-testid="review-earlier-thread"
+              >
+                <p className="bg-popover/95 text-muted-foreground max-w-[20rem] rounded-lg border px-3 py-1.5 text-center text-[11px] leading-4 shadow-sm">
+                  {t('review.earlierFassung', { number: earlier.fassungNumber ?? '?' })}
+                </p>
+                <ThreadCard
+                  key={earlier.id}
+                  review={review}
+                  annotation={earlier}
+                  flip={false}
+                  detached
+                  canPickAssignee={canPickAssignee}
+                  onCopyLink={copyLink}
+                />
+              </div>
+            )}
             {chat && (
               <CursorChat
                 userId={room.self?.userId ?? null}
@@ -670,15 +723,7 @@ export function DocumentReviewMode({
                         annotation={selected}
                         flip={flip}
                         canPickAssignee={canPickAssignee}
-                        onCopyLink={(annotation) => {
-                          const url = new URL(window.location.href)
-                          url.searchParams.set('doc', annotation.documentId)
-                          url.searchParams.set('review', '1')
-                          url.searchParams.set('mark', annotation.id)
-                          void navigator.clipboard
-                            ?.writeText(url.toString())
-                            .then(() => toast.success(t('review.linkCopied')))
-                        }}
+                        onCopyLink={copyLink}
                       />
                     ) : null
                   }}

@@ -475,23 +475,37 @@ function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kin
 }
 
 /** The card's frame: a floating sheet beside its mark, on the side with room. */
-export function ReviewCard({ flip, children, testId }: { flip: boolean; children: React.ReactNode; testId: string }) {
+export function ReviewCard({
+  flip,
+  children,
+  testId,
+  detached,
+}: {
+  flip: boolean
+  children: React.ReactNode
+  testId: string
+  /** Not beside a mark on the sheet (a mark of an earlier Fassung): in the flow, without the hairline. */
+  detached?: boolean
+}) {
   return (
     <div
       data-testid={testId}
       role="dialog"
       className={cn(
-        'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none absolute top-0 w-[20rem] rounded-xl border shadow-xl',
-        flip ? 'right-4 origin-top-right' : 'left-4 origin-top-left'
+        'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none w-[20rem] rounded-xl border shadow-xl',
+        detached ? 'relative origin-top' : 'absolute top-0',
+        !detached && (flip ? 'right-4 origin-top-right' : 'left-4 origin-top-left')
       )}
       onPointerDown={(event) => event.stopPropagation()}
     >
       {/* The hairline from the mark's edge to its card: which mark this is
           about, without the card sitting on it. */}
-      <span
-        aria-hidden
-        className={cn('bg-foreground/40 absolute top-3.5 h-px w-4', flip ? '-right-4' : '-left-4')}
-      />
+      {!detached && (
+        <span
+          aria-hidden
+          className={cn('bg-foreground/40 absolute top-3.5 h-px w-4', flip ? '-right-4' : '-left-4')}
+        />
+      )}
       {children}
     </div>
   )
@@ -666,12 +680,15 @@ export function ThreadCard({
   flip,
   canPickAssignee,
   onCopyLink,
+  detached,
 }: {
   review: DocumentReview
   annotation: AnnotationView
   flip: boolean
   canPickAssignee: boolean
   onCopyLink?: (annotation: AnnotationView) => void
+  /** Shown off the sheet (a mark of an earlier Fassung, which is not drawn). */
+  detached?: boolean
 }): JSX.Element {
   const t = useTranslations('files')
   const [busy, setBusy] = useState(false)
@@ -726,7 +743,10 @@ export function ThreadCard({
       setBusy(false)
     }
   }
-  const move = (status: 'open' | 'resolved' | 'dismissed') => act(() => review.update(annotation.id, { status }))
+  // The status this card shows goes with the move: a tab that missed a colleague's
+  // move gets a 409 and the fresh list, never an act on a state it did not see.
+  const move = (status: 'open' | 'resolved' | 'dismissed') =>
+    act(() => review.update(annotation.id, { status, expectedStatus: annotation.status }))
 
   const menu: ActionMenuEntry[] = [
     ...ANNOTATION_KINDS.filter((kind) => kind !== annotation.kind && annotation.canEdit).map((kind) => ({
@@ -780,7 +800,7 @@ export function ThreadCard({
   ]
 
   return (
-    <ReviewCard flip={flip} testId="review-thread">
+    <ReviewCard flip={flip} testId="review-thread" detached={detached}>
       <div className="flex items-center gap-1.5 border-b px-3 py-2">
         <KindIcon className="text-muted-foreground size-3.5" aria-hidden />
         <span className="text-foreground text-xs font-semibold">{t(`annotations.kinds.${annotation.kind}`)}</span>
@@ -942,6 +962,10 @@ export function ThreadCard({
             submitLabel={t('review.send')}
             mentionPiloti={piloti.available}
             onSubmit={sendReply}
+            // Esc steps out of the field, keeping what is typed; the next Esc closes the thread.
+            onEscape={() => {
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+            }}
           />
         )}
         {failed && <FieldError>{t('review.actionFailed')}</FieldError>}

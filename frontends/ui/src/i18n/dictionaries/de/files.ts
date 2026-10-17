@@ -1595,6 +1595,8 @@ export const files: typeof en.files = {
     takeBackFromPiloti: 'Von Piloti zurücknehmen',
     copyLink: 'Link kopieren',
     linkCopied: 'Link kopiert',
+    linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
+    earlierFassung: 'Auf Fassung {number} gesetzt. Nicht auf diesem Blatt gezeichnet, dessen Geometrie sich verschoben haben kann.',
     delete: 'Löschen',
     deleteConfirm: 'Anmerkung {number} löschen?',
     filter: 'Anzeigen',
