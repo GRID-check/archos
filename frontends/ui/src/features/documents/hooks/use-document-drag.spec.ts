@@ -7,6 +7,7 @@ import {
   draggedFolderId,
   folderDragProps,
   isExternalFileDrag,
+  isInternalDragActive,
   useFolderDropTarget,
 } from './use-document-drag'
 
@@ -231,5 +232,120 @@ describe('useFolderDropTarget', () => {
       } as unknown as React.DragEvent),
     )
     expect(result.current.isOver).toBe(false)
+  })
+})
+
+describe('useFolderDropTarget — desktop files onto a folder', () => {
+  const plan = new File(['x'], 'Plan.pdf', { type: 'application/pdf' })
+  const fileTransfer = () =>
+    ({ types: ['Files'], files: [plan], items: [], dropEffect: 'none' }) as unknown as DataTransfer
+  const dragEvent = (dt: DataTransfer) =>
+    ({
+      dataTransfer: dt,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+      currentTarget: { contains: () => false },
+      relatedTarget: null,
+    }) as unknown as React.DragEvent
+
+  it('claims the drop for itself, so the files land in this folder and not the one on screen', async () => {
+    const onDropFiles = vi.fn()
+    const onFileAim = vi.fn()
+    const { result } = renderHook(() =>
+      useFolderDropTarget({ folderId: 'f1', onDropDocument: vi.fn(), onDropFiles, onFileAim })
+    )
+    const over = dragEvent(fileTransfer())
+
+    act(() => result.current.dropProps.onDragOver(over))
+    expect(over.preventDefault).toHaveBeenCalled()
+    expect(over.stopPropagation).toHaveBeenCalled()
+    expect(over.dataTransfer.dropEffect).toBe('copy')
+    expect(result.current.isOver).toBe(true)
+    expect(result.current.refusesFiles).toBe(false)
+    expect(onFileAim).toHaveBeenLastCalledWith({ folderId: 'f1', refusal: null })
+
+    await act(async () => {
+      result.current.dropProps.onDrop(dragEvent(fileTransfer()))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(onDropFiles).toHaveBeenCalledWith([plan], { truncated: false, unreadable: 0 }, 'f1')
+    expect(onFileAim).toHaveBeenLastCalledWith(null)
+    expect(result.current.isOver).toBe(false)
+  })
+
+  it('names the folder it is aimed at once per entry, not on every dragover', () => {
+    const onFileAim = vi.fn()
+    const { result } = renderHook(() =>
+      useFolderDropTarget({ folderId: 'f1', onDropDocument: vi.fn(), onDropFiles: vi.fn(), onFileAim })
+    )
+    act(() => {
+      result.current.dropProps.onDragOver(dragEvent(fileTransfer()))
+      result.current.dropProps.onDragOver(dragEvent(fileTransfer()))
+    })
+    expect(onFileAim).toHaveBeenCalledTimes(1)
+    act(() => result.current.dropProps.onDragLeave(dragEvent(fileTransfer())))
+    expect(onFileAim).toHaveBeenLastCalledWith(null)
+  })
+
+  it('a read-only folder says why and takes nothing', async () => {
+    const onDropFiles = vi.fn()
+    const onFileAim = vi.fn()
+    const { result } = renderHook(() =>
+      useFolderDropTarget({
+        folderId: 'f3',
+        onDropDocument: vi.fn(),
+        onDropFiles,
+        fileRefusal: 'Nur lesen',
+        onFileAim,
+      })
+    )
+    const over = dragEvent(fileTransfer())
+    act(() => result.current.dropProps.onDragOver(over))
+    expect(over.dataTransfer.dropEffect).toBe('none')
+    expect(result.current.refusesFiles).toBe(true)
+    expect(onFileAim).toHaveBeenLastCalledWith({ folderId: 'f3', refusal: 'Nur lesen' })
+
+    const drop = dragEvent(fileTransfer())
+    await act(async () => {
+      result.current.dropProps.onDrop(drop)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    // Claimed, so the level around it does not take the files in its stead.
+    expect(drop.preventDefault).toHaveBeenCalled()
+    expect(onDropFiles).not.toHaveBeenCalled()
+  })
+
+  it('clears its highlight however the drag ends', () => {
+    const { result } = renderHook(() =>
+      useFolderDropTarget({ folderId: 'f1', onDropDocument: vi.fn(), onDropFiles: vi.fn() })
+    )
+    act(() => result.current.dropProps.onDragOver(dragEvent(fileTransfer())))
+    expect(result.current.isOver).toBe(true)
+    act(() => {
+      window.dispatchEvent(new Event('dragend'))
+    })
+    expect(result.current.isOver).toBe(false)
+  })
+})
+
+describe('an internal drag in progress', () => {
+  // The live shelf holds its re-reads while a document is in the air: a re-read
+  // then re-renders the card under the pointer and the browser cancels the drag.
+  const start = () =>
+    documentDragProps('doc-1').onDragStart({
+      dataTransfer: { setData: vi.fn(), effectAllowed: 'all' },
+    } as unknown as React.DragEvent)
+
+  it('is known from the drag start until the drop, wherever it lands', () => {
+    start()
+    expect(isInternalDragActive()).toBe(true)
+    window.dispatchEvent(new Event('drop'))
+    expect(isInternalDragActive()).toBe(false)
+  })
+
+  it('ends on a cancelled drag too', () => {
+    start()
+    window.dispatchEvent(new Event('dragend'))
+    expect(isInternalDragActive()).toBe(false)
   })
 })

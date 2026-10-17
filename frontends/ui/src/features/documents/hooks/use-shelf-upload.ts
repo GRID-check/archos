@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
 import type { FolderItem } from '../file-types'
@@ -82,14 +82,10 @@ export function useShelfUpload({
   const ensureUrl = `${shelf.endpoints.folders}/ensure`
 
   /**
-   * The path of the folder the reader stands in, from the shelf root, or null
-   * at the root. The upload screening reads it (ADR-0086): a scan dropped into
-   * „Honorare" is screened as a fee document whatever its own name.
+   * A folder's path from the shelf root, or null at the root. The upload
+   * screening reads it (ADR-0086): a scan dropped into „Honorare" is screened
+   * as a fee document whatever its own name.
    */
-  const currentFolderPath = useMemo(
-    () => (selectedFolderId ? (folders.find((folder) => folder.id === selectedFolderId)?.path ?? null) : null),
-    [folders, selectedFolderId]
-  )
   const pathOf = useCallback(
     (folderId: string | null) => (folderId ? (folders.find((folder) => folder.id === folderId)?.path ?? null) : null),
     [folders]
@@ -340,8 +336,9 @@ export function useShelfUpload({
         const plannedByFile = new Map(selected.map((planned) => [planned.file, planned]))
         setOpen(false)
         if (moves.length > 0) await applyMoves(moves, byPath)
+        let uploaded = 0
         if (selected.length > 0) {
-          await uploadFiles(
+          uploaded = await uploadFiles(
             selected.map((planned) => planned.file),
             {
               folderIdFor: (file) => folderIdByFile.get(file) ?? null,
@@ -369,7 +366,11 @@ export function useShelfUpload({
         // only refreshes the listing when it actually uploaded something.
         await loadFolders()
         await loadFiles(true)
-        const counts = { uploaded: String(selected.length), skipped: String(settled.plan.counts.unchanged) }
+        // What the server took, not what the plan selected: a file the
+        // validator, the screening or the server refused says so in the upload
+        // banner, and a toast counting it as uploaded contradicted it.
+        if (uploaded === 0 && moves.length === 0) return
+        const counts = { uploaded: String(uploaded), skipped: String(settled.plan.counts.unchanged) }
         // A move-only apply uploads nothing, and „0 Dateien hochgeladen" alone
         // would read as a failed gesture over work that was actually done.
         toast.success(

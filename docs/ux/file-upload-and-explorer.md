@@ -810,6 +810,32 @@ Three decisions worth keeping:
   enforces and not in the chat, where an archive is not a document. `.ifczip`
   stays a model: the pattern needs the dot.
 
+### Drag and drop, start to end
+
+**Date:** 2026-10-17 · **Surfaces:** project Files workspace, org Büroablage, chat composer
+
+Two drags share one surface: desktop files (`Files` in `dataTransfer.types`)
+and a document or folder moved inside the page (our MIME types,
+`use-document-drag.ts`). `isExternalFileDrag` tells them apart, and every
+handler asks it first. What holds at each stage:
+
+| Stage | Rule | Where |
+|---|---|---|
+| Start | A document or folder lifts only where the reader may write (ADR-0088): moving it out of a read-only level is a write the server refuses | `file-browser-pane.tsx` (`writableHere`) |
+| While in the air | The live shelf holds its re-reads (`isInternalDragActive`, a file drag over the workspace): a re-read re-renders the card under the pointer and the browser cancels the drag | `file-workspace.tsx` (`holdWhile`) |
+| Over a target | A folder tile, row, „Alle Dateien“, the back control and every ancestor crumb take desktop files as well as moves; the overlay names the folder the files will land in (`FileDropAim`) | `useFolderDropTarget`, `CrumbDropTarget` |
+| Refused | A zone that is there but cannot take files says why (`refusal`): the overlay turns red with the reason, the cursor says „no drop", the drop is not delivered. A zone that is off (`disabled`) touches no event, so the drop falls through | `useFileDragDrop`, `FileDropOverlay` |
+| Nobody took it | The window guard gives a file drag „no drop" and stops the browser opening the file; it leaves every in-page drag alone, so text still drops into a field | `useWindowDragGuard` |
+| Drop | The files are read synchronously from the event (`readDrop`): folders through the entries API, loose items an entry cannot describe (an Outlook attachment), and a root file the entries API cannot open from the plain list. NAS and VCS metadata directories (`@eaDir`, `.git`, `#recycle`, …) are skipped; what could not be read, and a bound reached, are said | `lib/dropped-entries.ts` |
+| After the drop | The drop goes to the folder it was aimed at, read once into `base` so walking elsewhere while the plan dialog is open changes nothing. A drop while another is being planned, shown or uploaded, or before the folders are loaded, is queued and goes next; the reader is told | `useShelfUpload` |
+| A ZIP inside a dropped folder | Unpacks under that folder, beside the files it came with | `lib/expand-zip.ts` (`folderOf`) |
+| The report | The success toast counts what the server took (`uploadFiles` resolves with it), not what the plan selected | `useShelfUpload.applyFolderPlan` |
+| End, however it ends | A drop elsewhere, Escape, a release outside the window: `useDragEnd` hears it on the window in the capture phase, which no zone can stop, and clears every overlay and highlight | `hooks/use-drag-end.ts` |
+
+**Preview:** `/dev/projects/demo/files/drag` is the real workspace over an
+in-memory project with a read-only folder; every move and upload it is asked
+for lands in `window.__dndLog`.
+
 ### A big shelf: what loads when
 
 **Date:** 2026-10-12 · **Surfaces:** project Files workspace, org Büroablage

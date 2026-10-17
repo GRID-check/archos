@@ -37,7 +37,12 @@ const EXTENSION_TO_MIME: Record<string, string[]> = {
   '.xlsx': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
   '.html': ['text/html'],
   '.txt': ['text/plain'],
-  '.csv': ['text/csv'],
+  // Windows with Excel installed reports a `.csv` as Excel's type, through the
+  // picker and through a drag, so the drop overlay called a spreadsheet export
+  // unsupported while the drop went through. The type is also `.xls`'s: a
+  // dragged `.xls` now reads as welcome and is refused by name on the drop,
+  // which says more than a hover can.
+  '.csv': ['text/csv', 'application/vnd.ms-excel'],
   '.json': ['application/json'],
   '.png': ['image/png'],
   '.jpg': ['image/jpeg'],

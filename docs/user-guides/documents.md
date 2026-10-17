@@ -162,6 +162,16 @@ Dragging a file inside Piloti never starts an upload: a drag carrying files from
 your desktop and a drag carrying a document already here are different things to
 the browser, and only the first raises the upload overlay.
 
+Files from your desktop go where you drop them, too: onto a folder card or row
+to upload into that folder, onto „Alle Dateien“ or a folder in the breadcrumb to
+upload there, anywhere else in the file area to upload into the folder you are
+looking at. The overlay names the folder before you let go.
+
+A folder you may only read takes nothing: a file in it cannot be dragged out,
+and the overlay says „Nur lesen“ in red instead of offering a drop that the
+server would refuse. A second drop while an upload is still running waits its
+turn, and Piloti says that it will follow, rather than dropping it.
+
 ## Uploading a whole folder
 
 A büro onboarding a project moves a directory tree, not a hand-picked list. Two

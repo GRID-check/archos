@@ -422,3 +422,113 @@ describe('useFileDragDrop — a drop the entries API cannot read', () => {
     expect(onDrop).toHaveBeenCalledWith(files, { truncated: false, unreadable: 0 })
   })
 })
+
+/**
+ * A zone that is off, a zone that says no, and a drag that ends somewhere else:
+ * the three ways the files used to vanish or the overlay used to stay up.
+ */
+describe('useFileDragDrop — off, refused, and ended elsewhere', () => {
+  const pdf = () => [new File(['x'], 'Plan.pdf', { type: 'application/pdf' })]
+
+  test('a disabled zone claims nothing, so the drop falls through to what is around it', () => {
+    const onDrop = vi.fn()
+    const { result } = renderHook(() => useFileDragDrop({ onDrop, disabled: true }))
+    const enter = createMockDragEvent(pdf())
+    const over = createMockDragEvent(pdf())
+    const drop = createMockDragEvent(pdf())
+
+    act(() => {
+      result.current.dragHandlers.onDragEnter(enter)
+      result.current.dragHandlers.onDragOver(over)
+      result.current.dragHandlers.onDrop(drop)
+    })
+
+    for (const event of [enter, over, drop]) {
+      expect(event.preventDefault).not.toHaveBeenCalled()
+      expect(event.stopPropagation).not.toHaveBeenCalled()
+    }
+    expect(result.current.isDragging).toBe(false)
+    expect(onDrop).not.toHaveBeenCalled()
+  })
+
+  test('a refusing zone shows its reason, says „no drop" to the cursor, and delivers nothing', async () => {
+    const onDrop = vi.fn()
+    const { result } = renderHook(() => useFileDragDrop({ onDrop, refusal: 'Nur lesen' }))
+    expect(result.current.refusal).toBeNull()
+
+    const over = createMockDragEvent(pdf())
+    act(() => {
+      result.current.dragHandlers.onDragEnter(createMockDragEvent(pdf()))
+      result.current.dragHandlers.onDragOver(over)
+    })
+    expect(result.current.isDragging).toBe(true)
+    expect(result.current.refusal).toBe('Nur lesen')
+    expect(over.preventDefault).toHaveBeenCalled()
+    expect(over.dataTransfer.dropEffect).toBe('none')
+
+    const drop = createMockDragEvent(pdf())
+    await act(async () => {
+      result.current.dragHandlers.onDrop(drop)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(drop.preventDefault).toHaveBeenCalled()
+    expect(onDrop).not.toHaveBeenCalled()
+    expect(result.current.isDragging).toBe(false)
+  })
+
+  test('an accepting zone says „copy"', () => {
+    const { result } = renderHook(() => useFileDragDrop({ onDrop: vi.fn() }))
+    const over = createMockDragEvent(pdf())
+    act(() => result.current.dragHandlers.onDragOver(over))
+    expect(over.dataTransfer.dropEffect).toBe('copy')
+  })
+
+  test('the overlay clears when the drag ends on another zone, which stops the drop there', () => {
+    const { result } = renderHook(() => useFileDragDrop({ onDrop: vi.fn() }))
+    act(() => result.current.dragHandlers.onDragEnter(createMockDragEvent(pdf())))
+    expect(result.current.isDragging).toBe(true)
+
+    // A folder tile inside the zone claims the drop and stops it; the window
+    // still hears it first, in the capture phase.
+    const tile = document.createElement('div')
+    document.body.appendChild(tile)
+    tile.addEventListener('drop', (event) => event.stopPropagation())
+    act(() => {
+      tile.dispatchEvent(new Event('drop', { bubbles: true }))
+    })
+    expect(result.current.isDragging).toBe(false)
+    tile.remove()
+  })
+
+  test('the overlay clears when the drag is cancelled (Escape) or leaves the window', () => {
+    const { result } = renderHook(() => useFileDragDrop({ onDrop: vi.fn() }))
+    act(() => result.current.dragHandlers.onDragEnter(createMockDragEvent(pdf())))
+    act(() => {
+      window.dispatchEvent(new Event('dragend'))
+    })
+    expect(result.current.isDragging).toBe(false)
+
+    act(() => result.current.dragHandlers.onDragEnter(createMockDragEvent(pdf())))
+    expect(result.current.isDragging).toBe(true)
+    const leave = new MouseEvent('dragleave', { bubbles: true, clientX: 0, clientY: 200, relatedTarget: null })
+    act(() => {
+      document.body.dispatchEvent(leave)
+    })
+    expect(result.current.isDragging).toBe(false)
+  })
+
+  test('a leave from one child to another inside the window keeps the overlay', () => {
+    const { result } = renderHook(() => useFileDragDrop({ onDrop: vi.fn() }))
+    act(() => result.current.dragHandlers.onDragEnter(createMockDragEvent(pdf())))
+    const leave = new MouseEvent('dragleave', {
+      bubbles: true,
+      clientX: 200,
+      clientY: 200,
+      relatedTarget: document.body,
+    })
+    act(() => {
+      document.body.dispatchEvent(leave)
+    })
+    expect(result.current.isDragging).toBe(true)
+  })
+})
