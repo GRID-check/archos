@@ -30,17 +30,18 @@ describe.each([
       useFolderTree({ foldersUrl, files, selectedFolderId: null, onSelectFolder, reloadFiles })
     )
 
+  const record = async (request: Request) => {
+    const text = await request.text()
+    calls.push({
+      method: request.method,
+      path: new URL(request.url).pathname,
+      body: text ? JSON.parse(text) : null,
+    })
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     calls.length = 0
-    const record = async (request: Request) => {
-      const text = await request.text()
-      calls.push({
-        method: request.method,
-        path: new URL(request.url).pathname,
-        body: text ? JSON.parse(text) : null,
-      })
-    }
     server.use(
       http.get(foldersUrl, () => HttpResponse.json({ folders: FOLDERS })),
       http.post(foldersUrl, async ({ request }) => {
@@ -170,7 +171,10 @@ describe.each([
     })
 
     expect(calls[0]).toMatchObject({ method: 'PATCH', path: `${foldersUrl}/f-2`, body: { parentId: null } })
-    expect(toastSuccess).toHaveBeenCalledWith(expect.stringContaining('Statik'))
+    expect(toastSuccess).toHaveBeenCalledWith(
+      expect.stringContaining('Statik'),
+      expect.objectContaining({ action: expect.objectContaining({ onClick: expect.any(Function) }) })
+    )
   })
 
   it('puts a refused move back and says so', async () => {
@@ -184,6 +188,92 @@ describe.each([
 
     expect(result.current.folders.find((f) => f.id === 'f-2')?.parentId).toBe('f-1')
     expect(toastError).toHaveBeenCalled()
+  })
+
+  const taken = () =>
+    HttpResponse.json(
+      { error: 'A folder with this name already exists here.', code: 'BAD_REQUEST', details: { reason: 'folder-name-taken' } },
+      { status: 400 }
+    )
+
+  it('says which name is in the way when a folder is moved next to its namesake, and reads the tree again', async () => {
+    server.use(http.patch(`${foldersUrl}/:id`, taken))
+    const { result } = render()
+    await waitFor(() => expect(result.current.folders).toHaveLength(2))
+    const reads = vi.fn()
+    server.use(http.get(foldersUrl, () => (reads(), HttpResponse.json({ folders: FOLDERS }))))
+
+    await act(async () => {
+      await result.current.move('f-2', null)
+    })
+
+    expect(result.current.folders.find((f) => f.id === 'f-2')?.parentId).toBe('f-1')
+    expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/already has a folder named “Statik”/))
+    await waitFor(() => expect(reads).toHaveBeenCalled())
+  })
+
+  it('says a taken name by name on a create and on a rename too', async () => {
+    server.use(http.post(foldersUrl, taken), http.patch(`${foldersUrl}/:id`, taken))
+    const { result } = render()
+    await waitFor(() => expect(result.current.folders).toHaveLength(2))
+
+    await act(async () => {
+      await result.current.create('Statik', 'f-1')
+    })
+    expect(toastError).toHaveBeenLastCalledWith('“Planung” already has a folder named “Statik”.')
+    await act(async () => {
+      await result.current.rename('f-2', 'Bestand')
+    })
+    expect(toastError).toHaveBeenLastCalledWith('“Planung” already has a folder named “Bestand”.')
+  })
+
+  it('says a folder only readable is why, not „please try again"', async () => {
+    server.use(http.patch(`${foldersUrl}/:id`, () => HttpResponse.json({ error: 'Forbidden' }, { status: 403 })))
+    const { result } = render()
+    await waitFor(() => expect(result.current.folders).toHaveLength(2))
+
+    await act(async () => {
+      await result.current.move('f-2', null)
+    })
+    expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/may only read/))
+  })
+
+  it('offers the move back, and holds live re-reads while a move is on the wire', async () => {
+    let release: () => void = () => undefined
+    let tree = FOLDERS
+    server.use(
+      http.get(foldersUrl, () => HttpResponse.json({ folders: tree })),
+      http.patch(`${foldersUrl}/:id`, async ({ request }) => {
+        await record(request)
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
+        tree = [FOLDERS[0], { ...FOLDERS[1], parentId: null, path: 'Statik' }]
+        return HttpResponse.json({ folder: {} })
+      })
+    )
+    const { result } = render()
+    await waitFor(() => expect(result.current.folders).toHaveLength(2))
+
+    let moving: Promise<void> = Promise.resolve()
+    act(() => {
+      moving = result.current.move('f-2', null)
+    })
+    expect(result.current.isMoving()).toBe(true)
+    await waitFor(() => expect(calls).toHaveLength(1))
+    await act(async () => {
+      release()
+      await moving
+    })
+    expect(result.current.isMoving()).toBe(false)
+
+    const [, options] = toastSuccess.mock.lastCall as [string, { action: { onClick: () => void } }]
+    act(() => options.action.onClick())
+    await waitFor(() => expect(calls).toHaveLength(2))
+    expect(calls[1]).toMatchObject({ method: 'PATCH', path: `${foldersUrl}/f-2`, body: { parentId: 'f-1' } })
+    await act(async () => {
+      release()
+    })
   })
 
   it('asks before deleting, and says the documents are re-filed rather than deleted', async () => {

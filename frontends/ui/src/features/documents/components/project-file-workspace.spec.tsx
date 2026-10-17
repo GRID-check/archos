@@ -194,7 +194,7 @@ describe('ProjectFileWorkspace', () => {
     expect(screen.queryByRole('heading', { name: 'Test' })).toBeNull()
   })
 
-  it('offers no upload where the reader may only read (ADR-0088), and takes no dropped file there', () => {
+  it('offers no upload where the reader may only read (ADR-0088), and says so to a dropped file instead of taking it', async () => {
     renderWorkspace(
       <ProjectFileWorkspace
         projectId="proj-1"
@@ -206,7 +206,16 @@ describe('ProjectFileWorkspace', () => {
     )
     expect(screen.queryByTestId('project-upload-input')).toBeNull()
     const dataTransfer = makeDataTransfer([new File(['x'], 'plan.pdf', { type: 'application/pdf' })])
-    fireEvent.dragEnter(screen.getByTestId('workspace-dropzone'), { dataTransfer })
+    const zone = screen.getByTestId('workspace-dropzone')
+    fireEvent.dragEnter(zone, { dataTransfer })
+    // The overlay is a refusal with its reason, not „Dateien hier ablegen".
+    const overlay = screen.getByTestId('workspace-drop-overlay')
+    expect(overlay).toHaveAttribute('data-refused')
+    expect(overlay).toHaveTextContent(/read only/i)
+
+    fireEvent.drop(zone, { dataTransfer })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mockUploadFiles).not.toHaveBeenCalled()
     expect(screen.queryByTestId('workspace-drop-overlay')).toBeNull()
   })
 
@@ -1058,7 +1067,11 @@ describe('ProjectFileWorkspace — dragging a file into a folder', () => {
   it('says why when the server refuses an IFC model into a restricted folder (ADR-0087)', async () => {
     server.use(
       http.patch('/api/documents/:id/folder', () =>
-        HttpResponse.json({ error: 'IFC models cannot be filed in a restricted folder yet', code: 'CONFLICT' }, { status: 409 })
+        HttpResponse.json(
+          // As `assertIfcMayBeFiledIn` answers: the reason is the code, not the English.
+          { error: 'IFC models cannot be filed in a restricted folder yet', code: 'CONFLICT', details: { code: 'IFC_IN_RESTRICTED_FOLDER', models: 1 } },
+          { status: 409 },
+        )
       )
     )
     renderWorkspace(
@@ -1173,7 +1186,11 @@ describe('ProjectFileWorkspace — dragging a folder into a folder', () => {
   it('says why when the server refuses moving IFC models under a restriction (ADR-0087)', async () => {
     server.use(
       http.patch('/api/projects/:projectId/folders/:folderId', () =>
-        HttpResponse.json({ error: 'IFC models cannot be filed in a restricted folder yet', code: 'CONFLICT' }, { status: 409 })
+        HttpResponse.json(
+          // As `assertIfcMayBeFiledIn` answers: the reason is the code, not the English.
+          { error: 'IFC models cannot be filed in a restricted folder yet', code: 'CONFLICT', details: { code: 'IFC_IN_RESTRICTED_FOLDER', models: 1 } },
+          { status: 409 },
+        )
       )
     )
     renderWithFolders()

@@ -146,7 +146,8 @@ export function BaseKnowledge(): JSX.Element {
 
   const [uploadOpen, setUploadOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [lastUpload, setLastUpload] = useState<KnowledgeUploadResult | null>(null)
+  /** The results of the last batch, for the ZIP members it rejected. */
+  const [lastUploads, setLastUploads] = useState<KnowledgeUploadResult[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncConfirmOpen, setSyncConfirmOpen] = useState(false)
   const [isReingesting, setIsReingesting] = useState(false)
@@ -242,45 +243,73 @@ export function BaseKnowledge(): JSX.Element {
 
   const ingest = useIngestWatch(fetchStatus, applyStatus, files)
 
-  const handleUpload = useCallback(
-    (file: File) => {
-      setIsUploading(true)
-      setLastUpload(null)
+  /**
+   * Post one file to the corpus and say how it went. The names it queued, for
+   * the indexing watch, and its result; null when it was refused.
+   */
+  const uploadOne = useCallback(
+    async (file: File): Promise<{ names: string[]; result: KnowledgeUploadResult } | null> => {
       const form = new FormData()
       form.append('file', file)
-      fetch('/api/platform/knowledge/documents', { method: 'POST', body: form })
-        .then(async (r) => {
-          const body = (await r.json().catch(() => ({}))) as Partial<KnowledgeUploadResult> & {
-            error?: string
-          }
-          if (!r.ok || (body.status !== 'pending' && body.status !== 'success')) {
-            toast.error(body.error ?? t('knowledge.uploadFailed', { name: file.name }))
-            return
-          }
-          setLastUpload(body as KnowledgeUploadResult)
-          if (body.kind === 'zip') {
-            toast.success(
-              t('knowledge.zipQueued', {
-                accepted: body.accepted ?? 0,
-                rejected: body.rejected ?? 0,
-              })
-            )
-          } else {
-            toast.success(t('knowledge.uploadPending', { name: body.fileName ?? file.name }))
-          }
-          const names =
-            body.kind === 'zip'
-              ? (body.members ?? []).filter((m) => m.status === 'pending').map((m) => m.fileName)
-              : body.fileName
-                ? [body.fileName]
-                : []
-          await load()
-          ingest.watch(names)
-        })
-        .catch(() => toast.error(t('knowledge.uploadFailed', { name: file.name })))
-        .finally(() => setIsUploading(false))
+      try {
+        const r = await fetch('/api/platform/knowledge/documents', { method: 'POST', body: form })
+        const body = (await r.json().catch(() => ({}))) as Partial<KnowledgeUploadResult> & {
+          error?: string
+        }
+        if (!r.ok || (body.status !== 'pending' && body.status !== 'success')) {
+          toast.error(body.error ?? t('knowledge.uploadFailed', { name: file.name }))
+          return null
+        }
+        if (body.kind === 'zip') {
+          toast.success(
+            t('knowledge.zipQueued', {
+              accepted: body.accepted ?? 0,
+              rejected: body.rejected ?? 0,
+            })
+          )
+        } else {
+          toast.success(t('knowledge.uploadPending', { name: body.fileName ?? file.name }))
+        }
+        const names =
+          body.kind === 'zip'
+            ? (body.members ?? []).filter((m) => m.status === 'pending').map((m) => m.fileName)
+            : body.fileName
+              ? [body.fileName]
+              : []
+        return { names, result: body as KnowledgeUploadResult }
+      } catch {
+        toast.error(t('knowledge.uploadFailed', { name: file.name }))
+        return null
+      }
     },
-    [ingest, load, t]
+    [t]
+  )
+
+  // One request per file, one after another: the route takes a single file,
+  // and the panel stays busy until the whole batch has been handed over.
+  const handleUpload = useCallback(
+    async (batch: File[]) => {
+      if (batch.length === 0) return
+      setIsUploading(true)
+      setLastUploads([])
+      const names: string[] = []
+      const results: KnowledgeUploadResult[] = []
+      try {
+        for (const file of batch) {
+          const outcome = await uploadOne(file)
+          if (!outcome) continue
+          names.push(...outcome.names)
+          results.push(outcome.result)
+        }
+        setLastUploads(results)
+        if (results.length === 0) return
+        await load()
+        ingest.watch(names)
+      } finally {
+        setIsUploading(false)
+      }
+    },
+    [ingest, load, uploadOne]
   )
 
   const handleSync = useCallback(() => {
@@ -800,7 +829,7 @@ export function BaseKnowledge(): JSX.Element {
               open={uploadOpen}
               isUploading={isUploading}
               isBusy={isBusy}
-              onFile={handleUpload}
+              onFiles={(batch) => void handleUpload(batch)}
               items={ingest.items}
               timedOut={ingest.timedOut}
               onRearm={() => {
@@ -809,7 +838,7 @@ export function BaseKnowledge(): JSX.Element {
               }}
               missing={ingest.missing}
               onDismissMissing={ingest.dismissMissing}
-              lastUpload={lastUpload}
+              lastUploads={lastUploads}
             />
           ) : null}
 

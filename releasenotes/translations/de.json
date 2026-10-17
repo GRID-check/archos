@@ -236,6 +236,10 @@
     "de": "Eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, heißt nun auf ihrem Badge und in der Upload-Zusammenfassung „Zurückgehalten“ – genau wie im Upload-Bereich, in der Ordnerübersicht und im Chat."
   },
   {
+    "en": "A file the content check holds back now says why: whose rule it is, which pages it was found on, and how many further reasons did not fit. An upload that holds files back no longer says everything has been read.",
+    "de": "Eine Datei, die bei der Inhaltsprüfung zurückgehalten wird, zeigt jetzt den Grund dafür: von wem die Regel stammt, auf welchen Seiten sie gefunden wurde und wie viele weitere Gründe nicht angezeigt werden konnten. Bei einem Upload, bei dem Dateien zurückgehalten werden, wird nicht mehr angezeigt, dass alles gelesen wurde."
+  },
+  {
     "en": "A file uploaded during the conversation now opens from the answer's source right away. Files Piloti cannot display, such as Word documents or spreadsheets, can be downloaded from there.",
     "de": "Eine Datei, die während des Gesprächs hochgeladen wurde, öffnet sich jetzt sofort aus der Quelle der Antwort. Dateien, die Piloti nicht anzeigen kann, etwa Word-Dokumente oder Tabellen, lassen sich von dort herunterladen."
   },
@@ -330,6 +334,10 @@
   {
     "en": "A folder upload into a project with a restricted folder no longer refuses the subfolders of a folder it has just created.",
     "de": "Ein Ordner-Upload in ein Projekt mit einem eingeschränkten Ordner lehnt die Unterordner eines gerade erst angelegten Ordners nicht mehr ab."
+  },
+  {
+    "en": "A folder you may only read now says so when you drag files or documents over it, and its files can no longer be dragged out.",
+    "de": "Ein Ordner, für den Sie jetzt nur Leserechte haben, zeigt dies an, wenn Sie Dateien oder Dokumente darüber ziehen; Dateien lassen sich nicht mehr aus ihm herausziehen."
   },
   {
     "en": "A folder's own access list now names people instead of roles, each allowed to read or also to edit. Switch on \"Alle Projektmitglieder dürfen lesen\" when the whole project may read a folder and only some may change it.",
@@ -526,6 +534,10 @@
   {
     "en": "A search over your files or the Archiv that failed to run, for instance because it timed out, used to report \"no matches for …\", a statement about your own documents that Piloti had no way of making. Now it says the search failed and offers to run the same query again.",
     "de": "Eine Suche in Ihren Dateien oder im Archiv, die nicht laufen konnte, etwa weil die Zeit abgelaufen ist, meldete bisher „keine Treffer für …“. Das war eine Aussage über Ihre eigenen Dokumente, die Piloti gar nicht beurteilen konnte. Jetzt sagt Piloti, dass die Suche fehlgeschlagen ist, und bietet an, dieselbe Anfrage erneut auszuführen."
+  },
+  {
+    "en": "A second drop while an upload is still running now waits its turn instead of disappearing, and the drop area no longer stays on screen after a cancelled drag.",
+    "de": "Ein zweiter Drop wird jetzt eingereiht, wenn ein Upload noch läuft, statt zu verschwinden; nach einem abgebrochenen Drag bleibt der Drop-Bereich nicht mehr sichtbar."
   },
   {
     "en": "A section, a staircase, an escape route or a distance is drawn from the values Piloti reads, so the drawing and the numbers come from one source.",
@@ -1376,6 +1388,10 @@
     "de": "Dateien lassen sich jetzt per Drag & Drop in einen Ordner ziehen oder auf „Alle Dateien“ in der Pfadleiste, um sie wieder herauszuholen. Der Zielordner hebt sich hervor, solange Sie darüber sind."
   },
   {
+    "en": "Files dragged from your desktop onto a folder, or onto a folder in the path above the list, now upload into that folder, and the drop area names it before you let go.",
+    "de": "Dateien, die Sie vom Desktop auf einen Ordner oder auf einen Ordner im Pfad oberhalb der Liste ziehen, werden jetzt in diesen Ordner hochgeladen. Der Ablagebereich zeigt den Ordnernamen an, bevor Sie die Dateien loslassen."
+  },
+  {
     "en": "Files now open the way a folder does anywhere else: click a folder to step into it, and a path at the top (\"All Files › Brandschutz\") shows exactly where you are and lets you click back out to any level above. Folders show up as cards right beside your files, at every level, not just at the top.",
     "de": "Dateien lassen sich jetzt wie überall sonst in Ordnern öffnen: Klicken Sie auf einen Ordner, um ihn zu öffnen. Der Pfad oben („Alle Dateien › Brandschutz“) zeigt genau, wo Sie sich befinden, und ermöglicht Ihnen, zu jeder übergeordneten Ebene zurückzukehren. Ordner werden auf jeder Ebene direkt neben Ihren Dateien als Karten angezeigt, nicht nur ganz oben."
   },
@@ -1478,6 +1494,10 @@
   {
     "en": "Forecast and prediction-report skills no longer come along automatically with every deep research run. They sit on the Skills tab, for the tasks that need them.",
     "de": "Die Skills für Prognosen und Prognoseberichte kommen nicht mehr automatisch mit jeder Tiefenrecherche mit. Sie liegen im Skills-Tab, für die Aufgaben, die sie brauchen."
+  },
+  {
+    "en": "Hold a file or folder you are dragging over a folder for a moment and it opens, so you can move things into folders that are not on screen. Every move now offers to undo it.",
+    "de": "Halten Sie eine Datei oder einen Ordner beim Ziehen kurz über einen Ordner, damit er sich öffnet und Sie Elemente in nicht sichtbare Ordner verschieben können. Jede Verschiebung können Sie jetzt rückgängig machen."
   },
   {
     "en": "Hovering a file name shows where it comes from, its format, size and page count, its short description and whether Piloti has read it. Only names of documents you actually have become links.",
@@ -1666,6 +1686,10 @@
   {
     "en": "Mind maps show their topics without quotation marks, and on a phone only the outline appears instead of an unreadably small tree.",
     "de": "Mindmaps zeigen ihre Themen ohne Anführungszeichen, und auf dem Smartphone erscheint nur die Gliederung statt eines Baums, der zu klein zum Lesen ist."
+  },
+  {
+    "en": "Moving or renaming a folder to a name that is already taken there now says which name is in the way, instead of failing without a reason.",
+    "de": "Beim Verschieben oder Umbenennen eines Ordners wird jetzt angezeigt, welcher Name am Zielort bereits vergeben ist, statt dass der Vorgang ohne Begründung fehlschlägt."
   },
   {
     "en": "Naming a skill with a slash now simply writes its name into your message, and Piloti picks that skill from there. What reaches Piloti is exactly the text you sent.",
@@ -2518,6 +2542,10 @@
   {
     "en": "The compliance check now takes requirements only from the Richtlinien and evidence only from your own documents, including the office archive. A requirement can no longer count as documented just because the Richtlinie states it.",
     "de": "Die Konformitätsprüfung nimmt Anforderungen jetzt nur aus den Richtlinien und Nachweise nur aus Ihren eigenen Unterlagen, einschließlich des Büroarchivs. Eine Anforderung gilt nicht mehr als nachgewiesen, bloß weil die Richtlinie sie nennt."
+  },
+  {
+    "en": "The content check now finds numbers and terms that extracted text hides from it: split by a soft hyphen, an invisible character or a line break, or written straight against a label or beside an expiry date. Table cells are no longer read as one card number.",
+    "de": "Die Inhaltsprüfung erkennt jetzt Zahlen und Begriffe, die im extrahierten Text verborgen bleiben, weil sie durch einen bedingten Trennstrich, ein unsichtbares Zeichen oder einen Zeilenumbruch getrennt sind, direkt an eine Bezeichnung anschließen oder neben einem Ablaufdatum stehen. Tabellenzellen werden nicht mehr als eine einzige Kartennummer gelesen."
   },
   {
     "en": "The controls for zooming a cited PDF were laid out past the right-hand edge of a phone screen, where they could not be reached. They now wrap onto a second line when the screen is narrow.",

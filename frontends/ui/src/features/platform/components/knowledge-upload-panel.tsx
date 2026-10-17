@@ -8,11 +8,18 @@
  * picker without a hand-rolled key handler. While an upload or a sync is
  * running it is `aria-disabled` rather than `disabled`: a disabled button
  * swallows the drop, and a drop that silently does nothing is the bug this
- * replaced. Instead a drop while busy says why it was refused.
+ * replaced. Instead a drag while busy says why it will be refused.
+ *
+ * The drop is `useFileDragDrop`'s, like every other zone: a folder is read
+ * through, every PDF and ZIP in the drop is added (it took the first file and
+ * dropped the rest without a word), the highlight no longer flickers as the
+ * pointer crosses the zone's own text, and it ends however the drag ends. A
+ * file released beside the zone is stopped by the window guard instead of
+ * replacing the admin page with the PDF.
  */
 
 import type { JSX } from 'react'
-import { useRef, useState, type DragEvent } from 'react'
+import { useRef } from 'react'
 import { toast } from 'sonner'
 import { AlertCircle, RefreshCw, Upload } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -21,6 +28,8 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Spinner } from '@/components/ui/spinner'
+import { useWindowDragGuard } from '@/features/documents/components/file-drop-overlay'
+import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
 import { KnowledgeStateBadge } from '@/features/platform/components/knowledge-atoms'
 import type { WatchItem } from '@/features/platform/components/knowledge-ingest-watch'
 import { useTranslations } from '@/i18n'
@@ -33,47 +42,56 @@ export interface KnowledgeUploadPanelProps {
   isUploading: boolean
   /** An upload or a sync is running; a new file has to wait. */
   isBusy: boolean
-  onFile: (file: File) => void
+  /** The PDFs and ZIPs to add, in the order they were chosen or dropped. */
+  onFiles: (files: File[]) => void
   items: WatchItem[]
   timedOut: boolean
   onRearm: () => void
   missing: string[]
   onDismissMissing: () => void
-  lastUpload: KnowledgeUploadResult | null
+  /** The results of the last batch. */
+  lastUploads: readonly KnowledgeUploadResult[]
+}
+
+const CORPUS_TYPES = new Set(['application/pdf', 'application/zip', 'application/x-zip-compressed'])
+
+/** What the corpus takes: a PDF, or a ZIP of PDFs. */
+export function isCorpusFile(file: File): boolean {
+  return /\.(pdf|zip)$/i.test(file.name) || CORPUS_TYPES.has(file.type)
 }
 
 export function KnowledgeUploadPanel({
   open,
   isUploading,
   isBusy,
-  onFile,
+  onFiles,
   items,
   timedOut,
   onRearm,
   missing,
   onDismissMissing,
-  lastUpload,
+  lastUploads,
 }: KnowledgeUploadPanelProps): JSX.Element {
   const t = useTranslations('platform')
   const inputRef = useRef<HTMLInputElement>(null)
-  const [isDragActive, setIsDragActive] = useState(false)
 
   const done = items.filter((item) => item.phase !== 'working').length
-  const rejected =
-    lastUpload?.kind === 'zip'
-      ? (lastUpload.members ?? []).filter((m) => m.status === 'rejected')
-      : []
+  const rejected = lastUploads.flatMap((upload) =>
+    upload.kind === 'zip' ? (upload.members ?? []).filter((m) => m.status === 'rejected') : []
+  )
 
-  const onDrop = (event: DragEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    setIsDragActive(false)
-    if (isBusy) {
-      toast.info(t('knowledge.dropBusy'))
-      return
-    }
-    const file = event.dataTransfer.files?.[0]
-    if (file) onFile(file)
+  /** Hand on what the corpus takes, and say how many it left out. */
+  const take = (files: File[]) => {
+    const accepted = files.filter(isCorpusFile)
+    const skipped = files.length - accepted.length
+    if (skipped > 0) toast.warning(t('knowledge.dropSkipped', { count: skipped }))
+    if (accepted.length > 0) onFiles(accepted)
   }
+  const { isDragging, refusal, dragHandlers } = useFileDragDrop({
+    onDrop: (files) => take(files),
+    refusal: isBusy ? t('knowledge.dropBusy') : null,
+  })
+  useWindowDragGuard()
 
   return (
     <>
@@ -83,12 +101,13 @@ export function KnowledgeUploadPanel({
         ref={inputRef}
         type="file"
         accept=".pdf,.zip,application/zip,application/pdf"
+        multiple
         className="hidden"
         data-testid="knowledge-upload-input"
         onChange={(event) => {
-          const file = event.target.files?.[0]
+          const files = Array.from(event.target.files ?? [])
           event.target.value = ''
-          if (file) onFile(file)
+          take(files)
         }}
       />
 
@@ -104,18 +123,16 @@ export function KnowledgeUploadPanel({
             }
             inputRef.current?.click()
           }}
-          onDragOver={(event) => {
-            event.preventDefault()
-            if (!isBusy) setIsDragActive(true)
-          }}
-          onDragLeave={() => setIsDragActive(false)}
-          onDrop={onDrop}
+          {...dragHandlers}
+          data-dragging={isDragging || undefined}
           className={cn(
             'flex min-h-32 w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed px-4 py-6 text-center',
             'duration-quick transition-colors ease-out motion-reduce:transition-none',
             'animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none',
             'focus-visible:ring-ring/60 focus-visible:outline-none focus-visible:ring-2',
-            isDragActive ? 'border-foreground/40 bg-accent' : 'bg-muted/25 hover:bg-accent/50',
+            isDragging && refusal && 'border-destructive bg-destructive/5',
+            isDragging && !refusal && 'border-foreground/40 bg-accent',
+            !isDragging && 'bg-muted/25 hover:bg-accent/50',
             isBusy ? 'cursor-progress opacity-70' : 'cursor-pointer'
           )}
           data-testid="knowledge-dropzone"
@@ -126,11 +143,12 @@ export function KnowledgeUploadPanel({
             <Upload className="text-muted-foreground size-5" aria-hidden />
           )}
           <span className="text-foreground text-sm font-medium">
-            {isUploading
-              ? t('knowledge.uploading')
-              : isDragActive
-                ? t('knowledge.dropActive')
-                : t('knowledge.dropTitle')}
+            {refusal ??
+              (isUploading
+                ? t('knowledge.uploading')
+                : isDragging
+                  ? t('knowledge.dropActive')
+                  : t('knowledge.dropTitle'))}
           </span>
           <span id="knowledge-dropzone-hint" className="text-muted-foreground text-xs">
             {t('knowledge.dropHint')}

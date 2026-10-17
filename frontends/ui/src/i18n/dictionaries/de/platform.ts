@@ -1130,8 +1130,8 @@ export const platform: typeof en.platform = {
     deleteFailed: '{name} konnte nicht entfernt werden',
     loadError: 'Die Wissensbasis konnte nicht geladen werden.',
     retry: 'Erneut versuchen',
-    dropTitle: 'PDF oder ZIP hier ablegen',
-    dropHint: 'oder klicken, um eine Datei zu wählen. Ein ZIP kann viele PDFs auf einmal enthalten.',
+    dropTitle: 'PDFs oder ZIPs hier ablegen',
+    dropHint: 'oder klicken, um Dateien zu wählen. Ein ZIP kann viele PDFs auf einmal enthalten.',
     dropActive: 'Loslassen zum Hochladen',
     processing: 'Wird verarbeitet — das kann eine Minute dauern…',
     processingHint: 'Sie können weiterarbeiten; neue Dokumente erscheinen unten, sobald sie fertig sind. Warten ist sicher.',
@@ -1178,6 +1178,7 @@ export const platform: typeof en.platform = {
       sonstiges: 'Sonstiges Basisdokument',
     },
     dropBusy: 'Bitte warten, bis der laufende Upload oder Abgleich fertig ist.',
+    dropSkipped: '{count, plural, one {# Datei wurde} other {# Dateien wurden}} ausgelassen: Aufgenommen werden nur PDF- und ZIP-Dateien.',
     indexingMissing: 'Nicht angekommen',
     missingTitle:
       '{count, plural, one {# Dokument ist} other {# Dokumente sind}} nicht im Korpus angekommen',

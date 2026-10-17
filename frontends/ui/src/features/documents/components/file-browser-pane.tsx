@@ -39,7 +39,9 @@ import {
   FolderRow,
   FolderRowSkeleton,
   FOLDER_ROWS_ON_PHONE,
+  type DropFilesInFolder,
 } from './folder-navigation'
+import type { FileDropAim } from '../hooks/use-document-drag'
 import { AssignmentFaces } from './assignment-faces'
 
 /** Finder-style drill-down wiring — see `folder-navigation.tsx`. */
@@ -122,6 +124,14 @@ interface FileBrowserPaneProps {
    * folder drag off entirely, for the same reason as the document drag.
    */
   onDropFolderInFolder?: (draggedFolderId: string, parentId: string | null) => void
+  /**
+   * Files from the desktop released on a folder tile or a way up (a breadcrumb
+   * segment, „Zurück") go into THAT folder. Absent leaves every file drop to the
+   * surface around the pane, which files it in the folder on screen.
+   */
+  onDropFilesInFolder?: DropFilesInFolder
+  /** Told which folder desktop files would land in while they hover a target, for the overlay to name it. */
+  onFileAim?: (aim: FileDropAim | null) => void
   /** Upload control rendered inside the first-run empty state. */
   uploadControl?: ReactNode
   /** Dashed upload card rendered as the last tile of the grid (project corpus). */
@@ -309,6 +319,8 @@ export function FileBrowserPane({
   filterEmptyNotice,
   onDropDocumentInFolder,
   onDropFolderInFolder,
+  onDropFilesInFolder,
+  onFileAim,
   renderActions,
   cardExtras,
   wrapFile,
@@ -367,6 +379,13 @@ export function FileBrowserPane({
   // A level the reader may only read offers no upload and no new folder
   // (ADR-0088); a notice says why. The server refuses either way.
   const writableHere = mayWriteAt(folderNav, currentFolderId)
+  /**
+   * Whether a document card lifts. Moving it out is a write where it is
+   * (ADR-0088): in a read-only level the server would refuse it. And not while
+   * a search is in force: the folders and the path, every place it could be
+   * dropped, are hidden then, so a card that lifted had nowhere to go.
+   */
+  const liftable = Boolean(onDropDocumentInFolder) && writableHere && query.trim() === '' && !semantic.active
   const [createFolderIn, setCreateFolderIn] = useState<string | null | undefined>(undefined)
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
 
@@ -430,7 +449,7 @@ export function FileBrowserPane({
       cardExtras={cardExtras}
       renderActions={renderActions}
       wrapFile={wrapFile}
-      draggable={Boolean(onDropDocumentInFolder)}
+      draggable={liftable}
       selecting={picking && !extra.match}
       checked={selection?.selectedIds.has(file.id) === true}
       onToggle={toggleSelected}
@@ -449,6 +468,8 @@ export function FileBrowserPane({
       onDropDocument: onDropDocumentInFolder,
       onDropFolder: onDropFolderInFolder,
       canAcceptFolder,
+      onDropFiles: onDropFilesInFolder,
+      onFileAim,
       actions: folderNav ? (folderNav.readOnly ? <Fragment /> : <FolderActionsTrigger />) : undefined,
       editing: editingFolderId === folder.id,
       onEditingChange: (next: boolean) => setEditingFolderId(next ? folder.id : null),
@@ -460,7 +481,7 @@ export function FileBrowserPane({
       <FolderObjectMenu
         folder={folder}
         folders={folderNav.folders}
-        canAcceptMove={(target) => canAcceptFolder(folder.id, target)}
+        canAcceptMove={(target) => canMoveFolderTo(folder.id, target)}
         onOpen={() => folderNav.onNavigate(folder.id)}
         onNewInside={() => setCreateFolderIn(folder.id)}
         onRename={() => setEditingFolderId(folder.id)}
@@ -529,8 +550,6 @@ export function FileBrowserPane({
   const canAcceptFolder = useCallback(
     (draggedId: string, targetId: string | null): boolean => {
       if (draggedId === targetId) return false
-      // A move is a write into the target (ADR-0088): a read-only one never lights up.
-      if (!mayWriteAt(folderNav, targetId)) return false
       const all = folderNav?.folders ?? []
       const dragged = all.find((folder) => folder.id === draggedId)
       if (!dragged) return false
@@ -545,6 +564,15 @@ export function FileBrowserPane({
       return true
     },
     [folderNav]
+  )
+  /**
+   * What the menu's „Verschieben" may pick: where it may go, and where the
+   * reader may write (ADR-0088). A drag shows the second as a red, refusing
+   * target instead (the target's `refusal`), so the reader learns why.
+   */
+  const canMoveFolderTo = useCallback(
+    (draggedId: string, targetId: string | null) => canAcceptFolder(draggedId, targetId) && mayWriteAt(folderNav, targetId),
+    [canAcceptFolder, folderNav]
   )
 
   /** The folders directly inside the current level — the drill-down tiles. */
@@ -684,6 +712,9 @@ export function FileBrowserPane({
           onDropDocument={onDropDocumentInFolder}
           onDropFolder={onDropFolderInFolder}
           canAcceptFolder={canAcceptFolder}
+          onDropFiles={onDropFilesInFolder}
+          onFileAim={onFileAim}
+          mayWriteAt={(folderId) => mayWriteAt(folderNav, folderId)}
           readOnly={!writableHere}
         >
           {selection?.onStart && !picking && orderedFiles.length > 0 && writableHere && (
@@ -948,7 +979,7 @@ export function FileBrowserPane({
                 wrapRow={wrapFileRow}
                 sort={sort}
                 onSortChange={onSortChange}
-                draggable={Boolean(onDropDocumentInFolder)}
+                draggable={liftable}
                 selection={selection}
               />
             )}

@@ -71,6 +71,10 @@
               "de": "Wenn Piloti vorschlägt, Dokumente zu verschieben, umzubenennen, abzulegen oder zuzuweisen, sehen jetzt alle im Gespräch denselben Vorschlag und dieselbe Entscheidung: Sobald jemand ihn annimmt, wird er im Namen dieser Person und mit deren Berechtigungen ausgeführt. Die Karte zeigt, wer entschieden hat und was umgesetzt wurde."
             },
             {
+              "en": "Hold a file or folder you are dragging over a folder for a moment and it opens, so you can move things into folders that are not on screen. Every move now offers to undo it.",
+              "de": "Halten Sie eine Datei oder einen Ordner beim Ziehen kurz über einen Ordner, damit er sich öffnet und Sie Elemente in nicht sichtbare Ordner verschieben können. Jede Verschiebung können Sie jetzt rückgängig machen."
+            },
+            {
               "en": "The preview of a held file shows what the content check found and on which page, and opens the document at that page with the listed word marked.",
               "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
             },
@@ -184,6 +188,10 @@
               "de": "Große Ordner in den Dateien eines Projekts und im Archiv öffnen sich jetzt schneller und lassen sich flüssiger durchscrollen: Die ersten Dokumente werden sofort angezeigt, während die übrigen im Hintergrund laden, und Vorschauen werden geladen, sobald Sie zu ihnen scrollen."
             },
             {
+              "en": "Files dragged from your desktop onto a folder, or onto a folder in the path above the list, now upload into that folder, and the drop area names it before you let go.",
+              "de": "Dateien, die Sie vom Desktop auf einen Ordner oder auf einen Ordner im Pfad oberhalb der Liste ziehen, werden jetzt in diesen Ordner hochgeladen. Der Ablagebereich zeigt den Ordnernamen an, bevor Sie die Dateien loslassen."
+            },
+            {
               "en": "A file opened beside the chat now shows its format, page count and size under its name, and a PDF's page number and zoom float over its pages. You see what you are asking about before you ask.",
               "de": "Eine neben dem Chat geöffnete Datei zeigt jetzt unter ihrem Namen Format, Seitenanzahl und Größe an; bei PDFs werden Seitenzahl und Zoom über den Seiten eingeblendet. So sehen Sie, worauf sich Ihre Frage bezieht, bevor Sie sie stellen."
             },
@@ -198,6 +206,10 @@
             {
               "en": "Very large folders in the Büroablage and in a project's files now open right away, and more documents load as you scroll to the end. The folder counts and the folder overview still cover every document in the folder.",
               "de": "Sehr große Ordner in der Büroablage und in den Dateien eines Projekts öffnen jetzt sofort, weitere Dokumente werden geladen, während Sie bis zum Ende scrollen. Die Dokumentanzahl und die Ordnerübersicht beziehen sich weiterhin auf alle Dokumente im Ordner."
+            },
+            {
+              "en": "A file the content check holds back now says why: whose rule it is, which pages it was found on, and how many further reasons did not fit. An upload that holds files back no longer says everything has been read.",
+              "de": "Eine Datei, die bei der Inhaltsprüfung zurückgehalten wird, zeigt jetzt den Grund dafür: von wem die Regel stammt, auf welchen Seiten sie gefunden wurde und wie viele weitere Gründe nicht angezeigt werden konnten. Bei einem Upload, bei dem Dateien zurückgehalten werden, wird nicht mehr angezeigt, dass alles gelesen wurde."
             },
             {
               "en": "While files upload and Piloti reads them, every status now has its own symbol, so a document that is waiting, being read, held back for review or filed unread is told apart at a glance in the upload panel, on the cards and in the list. A document that could not be read is marked in a calmer red, and shortened file names always show where they were cut.",
@@ -309,6 +321,18 @@
               "de": "Ein von Piloti verfasster Bericht, den ein Kollege freigegeben und veröffentlicht hat, wird nun als Teil der Wissensbasis angezeigt und Sie können Piloti dazu wie zu jedem anderen Dokument befragen."
             },
             {
+              "en": "A second drop while an upload is still running now waits its turn instead of disappearing, and the drop area no longer stays on screen after a cancelled drag.",
+              "de": "Ein zweiter Drop wird jetzt eingereiht, wenn ein Upload noch läuft, statt zu verschwinden; nach einem abgebrochenen Drag bleibt der Drop-Bereich nicht mehr sichtbar."
+            },
+            {
+              "en": "A folder you may only read now says so when you drag files or documents over it, and its files can no longer be dragged out.",
+              "de": "Ein Ordner, für den Sie jetzt nur Leserechte haben, zeigt dies an, wenn Sie Dateien oder Dokumente darüber ziehen; Dateien lassen sich nicht mehr aus ihm herausziehen."
+            },
+            {
+              "en": "Moving or renaming a folder to a name that is already taken there now says which name is in the way, instead of failing without a reason.",
+              "de": "Beim Verschieben oder Umbenennen eines Ordners wird jetzt angezeigt, welcher Name am Zielort bereits vergeben ist, statt dass der Vorgang ohne Begründung fehlschlägt."
+            },
+            {
               "en": "A file that cannot be read for a lasting reason, such as an encrypted or empty PDF, is no longer read again on every „Erneut lesen“ or rescan, only once its bytes change or Piloti's reader improves. A failure of the moment, like a timeout, can still be retried right away.",
               "de": "Eine Datei, die aus einem dauerhaften Grund nicht gelesen werden kann, etwa ein verschlüsseltes oder leeres PDF, wird bei „Erneut lesen“ oder einem erneuten Scan nicht jedes Mal erneut gelesen, sondern erst, wenn sich ihre Bytes ändern oder sich die Lesefunktion von Piloti verbessert. Ein vorübergehender Fehler wie ein Timeout lässt sich weiterhin sofort erneut versuchen."
             },
@@ -327,6 +351,10 @@
             {
               "en": "PDFs with large blocks of display lettering, such as the legend on a structural engineering sheet, are now read instead of marked as failed. Read an affected document again to pick it up.",
               "de": "PDFs mit großen Textblöcken in Displayschrift, etwa der Legende auf einem Tragwerksplan, werden jetzt eingelesen statt als fehlgeschlagen markiert. Lesen Sie ein betroffenes Dokument erneut ein, damit es verarbeitet wird."
+            },
+            {
+              "en": "The content check now finds numbers and terms that extracted text hides from it: split by a soft hyphen, an invisible character or a line break, or written straight against a label or beside an expiry date. Table cells are no longer read as one card number.",
+              "de": "Die Inhaltsprüfung erkennt jetzt Zahlen und Begriffe, die im extrahierten Text verborgen bleiben, weil sie durch einen bedingten Trennstrich, ein unsichtbares Zeichen oder einen Zeilenumbruch getrennt sind, direkt an eine Bezeichnung anschließen oder neben einem Ablaufdatum stehen. Tabellenzellen werden nicht mehr als eine einzige Kartennummer gelesen."
             },
             {
               "en": "A file the content check held back is now called „Zurückgehalten“ on its badge and in the upload summary, the same word the upload panel, the folder overview and the chat use.",

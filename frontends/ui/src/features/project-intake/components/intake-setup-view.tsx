@@ -9,7 +9,7 @@ import {
   FileDropOverlay,
   useWindowDragGuard,
 } from '@/features/documents/components/file-drop-overlay'
-import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
+import { useFileDragDrop, type DropInfo } from '@/features/documents/hooks/use-file-drag-drop'
 import type { FilingFolderSuggestion } from '@/features/documents/lib/filing-suggestions'
 import { useTranslations } from '@/i18n'
 import type { IntakeDecision, IntakeView } from '@/lib/project-intake/types'
@@ -35,7 +35,7 @@ export interface IntakeSetupViewProps {
   /** Whether the project takes documents at all (a closed one does not). */
   canUpload: boolean
   uploading: boolean
-  onFiles: (files: File[]) => void
+  onFiles: (files: File[], info?: DropInfo) => void
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
   onReread: () => void | Promise<void>
   onComplete: () => Promise<boolean>
@@ -103,6 +103,8 @@ export function IntakeSetupView({
             isUnsupported={isUnsupportedDrag}
             uploadLabel={t('upload.dropOverlay')}
             unsupportedLabel={t('upload.unsupportedOverlay')}
+            // The page runs far below the fold once the review is drawn.
+            followScroll
             testId="intake-drop-overlay"
           />
         )}

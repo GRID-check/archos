@@ -4,7 +4,7 @@
  * browser (ADR-0086): a file the office's policy holds back is not sent, and
  * the reader is told which and why.
  */
-import { fireEvent, render, waitFor } from '@/test-utils'
+import { fireEvent, render, screen, waitFor } from '@/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
@@ -16,6 +16,20 @@ import {
 import { DocumentRoleField } from './document-role-field'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), info: vi.fn(), success: vi.fn() } }))
+
+// The drop zone is `useFileDragDrop`'s, which reads the app's upload config.
+vi.mock('@/shared/context', () => ({
+  useAppConfig: () => ({
+    fileUpload: {
+      acceptedTypes: '.pdf',
+      acceptedMimeTypes: ['application/pdf'],
+      maxTotalSizeMB: 100,
+      maxFileSize: 100 * 1024 * 1024,
+      maxTotalSize: 100 * 1024 * 1024,
+      maxFileCount: 10,
+    },
+  }),
+}))
 
 vi.mock('../lib/use-document-roles', () => ({
   useDocumentRoles: () => ({ bindings: [], documents: [], refresh: vi.fn(async () => undefined) }),
@@ -141,5 +155,47 @@ describe('DocumentRoleField upload', () => {
     fireEvent.change(input, { target: { files: [new File(['fee'], 'Honorarnote.pdf', { type: 'application/pdf' })] } })
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  describe('a file dropped on the slot', () => {
+    const fromDesktop = (files: File[]) => ({ dataTransfer: { types: ['Files'], files, items: [] } })
+
+    it('takes one into a slot that holds one, and says which', async () => {
+      const fetchSpy = vi.fn(async (url: string) => ({
+        ok: true,
+        status: 201,
+        json: async () => (url === '/api/documents/upload' ? { documentId: 'doc-1' } : { replaced: [] }),
+      }))
+      vi.stubGlobal('fetch', fetchSpy)
+      render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+
+      fireEvent.drop(
+        screen.getByTestId('document-role-drop'),
+        fromDesktop([
+          new File(['a'], 'Lageplan.pdf', { type: 'application/pdf' }),
+          new File(['b'], 'Lageplan-alt.pdf', { type: 'application/pdf' }),
+        ])
+      )
+
+      await waitFor(() =>
+        expect(toast.info).toHaveBeenCalledWith(
+          'This slot holds one document: Lageplan.pdf was taken, the other files were not.'
+        )
+      )
+      await waitFor(() => expect(fetchSpy.mock.calls.some(([url]) => url === '/api/documents/upload')).toBe(true))
+      expect(fetchSpy.mock.calls.filter(([url]) => url === '/api/documents/upload')).toHaveLength(1)
+    })
+
+    it('says, in the reader’s language, to wait while an upload is running', async () => {
+      vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+      const { container } = render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement
+      fireEvent.change(input, { target: { files: [new File(['a'], 'Lageplan.pdf', { type: 'application/pdf' })] } })
+      await waitFor(() => expect(screen.getByRole('button', { name: /Upload file/ })).toBeDisabled())
+
+      fireEvent.dragEnter(screen.getByTestId('document-role-drop'), fromDesktop([new File(['b'], 'B.pdf')]))
+
+      expect(screen.getByTestId('document-role-drop')).toHaveTextContent('Wait until the current upload is finished.')
+    })
   })
 })

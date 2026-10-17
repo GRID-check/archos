@@ -157,6 +157,13 @@ describe('PATCH and DELETE /api/archiv/folders/[folderId]', () => {
     expect(response.status).toBe(400)
   })
 
+  it('marks a taken name with its reason, so the browser can say which name is in the way', async () => {
+    vi.mocked(updateArchivFolder).mockResolvedValue({ ok: false, error: 'A folder with this name already exists here.' })
+    const response = await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { parentId: null }), item)
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ details: { reason: 'folder-name-taken' } })
+  })
+
   it('rejects an empty patch', async () => {
     const response = await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', {}), item)
 
