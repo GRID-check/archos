@@ -50,11 +50,18 @@ can be switched off.
 2. **On Piloti's own server, before any language model sees the file**, its text
    is read locally and checked against the content terms and number checks. A
    match ends there: the file is stored, read by no model, and waits in
-   quarantine. If the list cannot be read at that moment, the file is not read
-   at all; it is marked as failed and can be retried.
-3. A file whose text cannot be read locally (a scan, a PDF without a text
-   layer, a photo) is **checked by name only**. The summary says so, so nobody
-   takes „nothing found" for „nothing there".
+   quarantine. If the list cannot be read at that moment, or reaches the
+   server in a form it cannot apply, the file is not read at all; it waits
+   held back and can be read again, which applies the list afresh. A word
+   split once by a space or hyphen („Gehalts abrechnung") still counts, and
+   so does a number broken across a line or a page.
+3. **Scanned pages** of a PDF are checked once the vision model has read
+   them, before their text is summarised or indexed. A match there holds the
+   file back like any other, and the file says that the vision model read
+   those pages.
+4. A file whose text cannot be read at all (a photo, an image) is **checked
+   by name only**. The summary says so, so nobody takes „nothing found" for
+   „nothing there".
 
 What Piloti drops on its own: system files a folder carries along, such as
 `.DS_Store`, `Thumbs.db` and Office lock files (`~$Vertrag.docx`).
@@ -140,7 +147,9 @@ Quarantäne list. Zulassen needs permission to change files in the file's
 folder; without it the preview shows the findings only. The uploader sees
 **Prüfung anfragen** there instead.
 
-Reviewers get an inbox notice when files wait for them. It names no file. The
+Reviewers get an inbox notice when files wait for them. It names the latest
+file and what it was held back for (an IBAN, a term from the list), never the
+matched text; it reaches only people who may review that file. The
 audit log records both the quarantine, as Piloti's own decision, and the
 decision to allow it, with the terms and checks that matched but never the
 matched text.

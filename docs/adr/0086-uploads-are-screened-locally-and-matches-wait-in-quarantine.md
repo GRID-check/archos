@@ -654,6 +654,20 @@ held by a case in the shared fixture or a test beside the code.
 - **The name gate reads.** It leaves out the same invisible characters
   (`SCREENING_IGNORABLE`) from names, terms and exceptions. This supersedes the
   "Not changed" line above.
+- **A transcript is screened.** A scanned page reaches the vision model
+  unchecked, because nothing local can read it. Its transcript was then
+  summarised and embedded without a check. It is now screened as soon as it is
+  merged into the page text. A match holds the file with
+  `after_transcription: true` on the verdict (ADR-0113), and every surface
+  then says the vision model read those pages instead of "no model".
+- **An unusable policy fails closed.** A job whose policy is present but
+  cannot be applied (malformed, or naming no rule this build knows) was read
+  as "not screened". Each of its files now fails unread with
+  `screening_unavailable:`, category `configuration`, and waits held.
+- **The reviewers' notice names the file.** It names the newest held file
+  and the kind of reason (`quarantineNoticePayload`), never a value or a
+  sample. Each emission already went only to that file's cleared reviewers,
+  so the name was never a leak. The reason it was left out did not hold.
 
 ## Amendment (2026-10-17): one word per gate, and every stop counted
 
