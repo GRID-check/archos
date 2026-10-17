@@ -25,6 +25,13 @@
  *   (route, error name, message) gets a burst per window from PostHog's own
  *   `BucketedRateLimiter`; the rest are dropped, and the first drop leaves one
  *   console line so it is not invisible.
+ * - **A database outage is one issue per code, not one per page and query.**
+ *   Drizzle's `Failed query` message carries the whole SQL text, so every page
+ *   that rendered during a restart would mint its own issue, the way the
+ *   2026-09-25 restart filed nine (#733-#741) before the API wrapper collapsed
+ *   them. An unreachable database (`databaseUnavailableCode`) gets a fixed
+ *   `$exception_fingerprint`, the wrapper's `[db] database unavailable (<code>)`
+ *   as its issue name, and one rate-limit bucket per code.
  *
  * The package is pre-release (pinned to an exact version in `package.json`).
  * Its root export resolves `createOnRequestError` only under the `react-server`
@@ -42,6 +49,7 @@ import {
 } from '@posthog/next'
 
 import { isAuthzError } from '@/lib/auth-utils'
+import { databaseUnavailableCode } from '@/lib/db/errors'
 
 import { posthogServerSettings, serverSuperProperties } from './posthog-server'
 import { scrubServerEvent } from './scrub-server-event'
@@ -92,10 +100,19 @@ export const beforeCapture = (
   capture: OnRequestErrorBeforeCaptureContext
 ): Record<string, unknown> | false => {
   if (isAuthzError(capture.error)) return false
-  if (limiter.consumeRateLimit(fingerprintOf(capture))) return false
+  const unavailable = databaseUnavailableCode(capture.error)
+  const fingerprint = unavailable ? `database-unavailable|${unavailable}` : fingerprintOf(capture)
+  if (limiter.consumeRateLimit(fingerprint)) return false
   // The package's client is not ours to `register` on, so the super
   // properties every other server event carries travel per event here.
-  return { source: 'bff-on-request-error', ...serverSuperProperties() }
+  const properties = { source: 'bff-on-request-error', ...serverSuperProperties() }
+  if (!unavailable) return properties
+  return {
+    ...properties,
+    $exception_fingerprint: fingerprint,
+    $issue_name: `[db] database unavailable (${unavailable})`,
+    database_unavailable_code: unavailable,
+  }
 }
 
 /** What `createOnRequestError` is built with; `null` while PostHog is off. */

@@ -109,4 +109,43 @@ describe('request errors through @posthog/next', () => {
     expect(beforeCapture(capture(new Error('b')))).not.toBe(false)
     expect(beforeCapture(capture(new Error('a'), '/other'))).not.toBe(false)
   })
+
+  describe('a database outage', () => {
+    /** What drizzle throws while Postgres is unreachable: the query text, the socket's code on `cause`. */
+    const outage = (query: string, code = 'EHOSTUNREACH'): Error =>
+      new Error(`Failed query: ${query}\nparams: `, {
+        cause: Object.assign(new Error(`connect ${code} 10.0.0.1:5432`), { code }),
+      })
+
+    test('is one issue per code, whatever the route and the query', () => {
+      const projects = beforeCapture(capture(outage('select "id" from "projects"'), '/app/projects'))
+      const files = beforeCapture(capture(outage('select "id" from "documents"'), '/app/projects/[projectId]'))
+
+      expect(projects).toMatchObject({
+        $exception_fingerprint: 'database-unavailable|EHOSTUNREACH',
+        $issue_name: '[db] database unavailable (EHOSTUNREACH)',
+        database_unavailable_code: 'EHOSTUNREACH',
+      })
+      expect(files).toMatchObject({ $exception_fingerprint: 'database-unavailable|EHOSTUNREACH' })
+      expect(beforeCapture(capture(outage('select 1', '57P03')))).toMatchObject({
+        $exception_fingerprint: 'database-unavailable|57P03',
+      })
+    })
+
+    test('shares one burst per window across every route and query', () => {
+      const admitted = Array.from({ length: REQUEST_ERROR_BURST + 5 }, (_, i) =>
+        beforeCapture(capture(outage(`select ${i}`), `/route-${i}`))
+      ).filter((result) => result !== false)
+
+      expect(admitted).toHaveLength(REQUEST_ERROR_BURST)
+    })
+
+    test('a query that is wrong keeps the default grouping', () => {
+      const wrong = new Error('Failed query: select nope\nparams: ', {
+        cause: Object.assign(new Error('column "nope" does not exist'), { code: '42703' }),
+      })
+
+      expect(beforeCapture(capture(wrong))).not.toHaveProperty('$exception_fingerprint')
+    })
+  })
 })
