@@ -3131,8 +3131,12 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         rules: Any,
         pages: list[tuple[int | None, str]],
         checked: str,
+        stream: list[tuple[int, str]] | None = None,
     ) -> bool:
         """Screen one file's locally extracted ``pages``; True when it was quarantined.
+
+        ``stream`` is a PDF's text layer page by page, so a match split across a
+        page break is found too (``screening.screen_pages``).
 
         A quarantined file is FAILED with ``quarantine_error``'s reason and must
         go no further: nothing of it has reached a model yet, and nothing will.
@@ -3146,7 +3150,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         if not any(text.strip() for _page, text in pages):
             self._record_screening(job, file_index, rules, "unchecked")
             return False
-        verdict = screening.screen_pages(pages, rules, checked=checked)
+        verdict = screening.screen_pages(pages, rules, checked=checked, stream=stream or ())
         if not verdict.matched:
             self._record_screening(job, file_index, rules, "clean" if checked == "full" else "partial")
             return False
@@ -3206,9 +3210,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             or (captions_rasters and has_rasters)
             or lost_pages
         )
-        pages = [*sorted(page_texts.items()), *document_pages(companions), *document_pages(tables)]
+        body = sorted(page_texts.items())
+        pages = [*body, *document_pages(companions), *document_pages(tables)]
         checked = "partial" if unscreened else "full"
-        if self._screen_or_quarantine(job, file_index, rules, pages, checked):
+        if self._screen_or_quarantine(job, file_index, rules, pages, checked, stream=body):
             return None
         return {"triage": triage}
 

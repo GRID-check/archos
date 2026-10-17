@@ -626,6 +626,35 @@ file did not say whose rule held it.
 - **Not changed:** the name gate (`name-screen.ts`) does not read; a soft hyphen
   in a file name is part of it.
 
+## Amendment (2026-10-17): the gaps the first amendment left open
+
+The 2026-10-16 amendment listed what it did not catch. Each is closed here and
+held by a case in the shared fixture or a test beside the code.
+
+- **A capital after a line-break hyphen keeps the hyphen.** `Büro-` + line break
+  + `Honorar` reads `Büro-Honorar`, so `Honorar` starts a word again; the first
+  amendment's join had made it `BüroHonorar`.
+- **A digit before a term is a label.** `2024Honorar` and `Pos.3Honorar` match;
+  only a letter before a term makes it part of another word (`Ehrenhonorar`).
+- **A long term may be split once.** A single-word term of eight or more
+  characters still matches with one space or hyphen inside it, each part keeping
+  three (`Gehalts abrechnung`, `Gehalts-Abrechnung`). The name gate does the same
+  with `_` and `.` as well. Both use `splitTermEnd` (`upload-screening/reading.ts`).
+- **An IBAN in groups of two**, and **a card wrapped at one line end** in the
+  strict layout 4-4-4-4, are found.
+- **A card starts in a network's issuer range** (`_CARD_PREFIXES`), not just
+  with 2-6. Measured on synthetic tables, a row of four years, or two rows of
+  two, passed Luhn and the old start rule 7.5% of the time; it now never does,
+  because no card begins 2000-2199.
+- **A number split across a page break or a running footer** is found. The PDF
+  screen joins page bodies without the lines that repeat on most pages
+  (`aiq_agent.common.page_text`, the same furniture rule the section chunker
+  uses) and keeps a match only if it crosses a page boundary. It reports every
+  page the match touches.
+- **The name gate reads.** It leaves out the same invisible characters
+  (`SCREENING_IGNORABLE`) from names, terms and exceptions. This supersedes the
+  "Not changed" line above.
+
 ## More Information
 
 * Evidence and the two NVIDIA evaluations: `plans/2026-10-01-upload-governance-worklog.md`.

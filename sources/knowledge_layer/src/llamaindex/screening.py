@@ -27,7 +27,9 @@ reason is stored on the job status and shown to people who may not see the value
 from __future__ import annotations
 
 import json
+from bisect import bisect_right
 from collections.abc import Iterable
+from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
@@ -40,6 +42,7 @@ from aiq_agent.common.content_screen import MAX_TERMS
 from aiq_agent.common.content_screen import MIN_TERM_CHARS
 from aiq_agent.common.content_screen import Detector
 from aiq_agent.common.content_screen import ScreeningRules
+from aiq_agent.common.content_screen import Span
 from aiq_agent.common.content_screen import find_spans
 from aiq_agent.common.content_screen import fold
 from aiq_agent.common.content_screen import luhn_valid
@@ -49,6 +52,8 @@ from aiq_agent.common.content_screen import mask_iban
 from aiq_agent.common.content_screen import valid_at_svnr
 from aiq_agent.common.content_screen import valid_card
 from aiq_agent.common.content_screen import valid_iban
+from aiq_agent.common.page_text import running_furniture
+from aiq_agent.common.page_text import without_furniture
 
 __all__ = [
     "DETECTORS",
@@ -137,12 +142,11 @@ class _Tally:
     pages: set[int] = field(default_factory=set)
     sample: str | None = None
 
-    def add(self, hits: int, page: int | None, sample: str | None = None) -> None:
+    def add(self, hits: int, pages: Iterable[int | None], sample: str | None = None) -> None:
         if not hits:
             return
         self.count += hits
-        if page is not None:
-            self.pages.add(page)
+        self.pages.update(page for page in pages if page is not None)
         if self.sample is None:
             self.sample = sample
 
@@ -152,18 +156,27 @@ def screen_pages(
     rules: ScreeningRules,
     *,
     checked: Literal["full", "partial"] = "full",
+    stream: Sequence[tuple[int, str]] = (),
 ) -> ScreeningVerdict:
     """Screen ``(page number or None, text)`` pages against ``rules``. Pure.
 
     ``checked`` is passed through to the verdict: the caller knows whether the
     pages it handed over are all of the document's content.
+
+    ``stream`` is the document's body text page by page, in reading order (a
+    PDF's text layer). Each page is screened on its own above; the stream is
+    then read as one text, running headers and footers left out
+    (``aiq_agent.common.page_text``), and a match that runs from one page into
+    the next counts too, listed on every page it touches. A number split by a
+    page break and a „Seite 2 von 3“ is otherwise two halves nobody reads.
     """
     term_tallies = {term: _Tally() for term in rules.terms}
     detector_tallies = {name: _Tally() for name in rules.detectors}
-    for page, text in pages:
-        for span in find_spans(text, rules):
-            tally = term_tallies[span.term] if span.kind == "term" else detector_tallies[span.kind]
-            tally.add(1, page, span.sample)
+    found = [(span, (page,)) for page, text in pages for span in find_spans(text, rules)]
+    found += _spans_across_pages(stream, rules)
+    for span, span_pages in found:
+        tally = term_tallies[span.term] if span.kind == "term" else detector_tallies[span.kind]
+        tally.add(1, span_pages, span.sample)
     reasons = [
         Reason(
             kind="term",
@@ -187,6 +200,31 @@ def screen_pages(
         if tally.count
     ]
     return ScreeningVerdict(reasons=reasons, checked=checked)
+
+
+def _spans_across_pages(stream: Sequence[tuple[int, str]], rules: ScreeningRules) -> list[tuple[Span, tuple[int, ...]]]:
+    """The matches in ``stream`` read as one text that start on one page and end on a later one."""
+    if len(stream) < 2:
+        return []
+    page_lines = [text.split("\n") for _, text in stream]
+    furniture = running_furniture(page_lines)
+    bodies = ["\n".join(without_furniture(lines, furniture)) for lines in page_lines]
+    starts: list[int] = []
+    offset = 0
+    for body in bodies:
+        starts.append(offset)
+        offset += len(body) + 1
+    numbers = [page for page, _ in stream]
+
+    def page_index(position: int) -> int:
+        return bisect_right(starts, position) - 1
+
+    across: list[tuple[Span, tuple[int, ...]]] = []
+    for span in find_spans("\n".join(bodies), rules):
+        first, last = page_index(span.start), page_index(span.end - 1)
+        if first != last:
+            across.append((span, tuple(numbers[first : last + 1])))
+    return across
 
 
 def _page_list(pages: set[int]) -> list[int]:
