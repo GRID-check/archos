@@ -23,6 +23,7 @@
  */
 
 import { assertUploadNameAllowed, auditScreeningOverride } from '@/lib/upload-screening/service'
+import { normalizeOriginPath } from '@/lib/documents/origin-path'
 import { assertMayReplaceHeld, shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { acceptedUploadBatchId } from '@/lib/upload-batches/service'
 import 'server-only'
@@ -114,6 +115,12 @@ export interface UploadSessionDocumentInput {
   screeningRelease?: boolean
   /** See `UploadDocumentInput.uploadBatchId`. */
   uploadBatchId?: string | null
+  /**
+   * Where the file sat before it was dropped into the chat (a dropped folder's
+   * `webkitRelativePath`). Screened, never stored: the browser screened its
+   * folder names, so the server's repeat reads the same segments (ADR-0086).
+   */
+  originPath?: string | null
 }
 
 export interface UploadSessionDocumentResult {
@@ -156,10 +163,11 @@ export async function uploadSessionDocument(
   await createConversation(session, { id: conversationId, projectId: input.projectId ?? null })
 
   // The name gate's server-side repeat (ADR-0086), before a byte is stored.
-  // A chat attachment reaches the model as surely as a project file does.
+  // A chat attachment reaches the model as surely as a project file does, and
+  // the folders it was dropped from are screened as the browser screened them.
   const nameGate = await assertUploadNameAllowed(
     session.organizationId,
-    { filename: file.name },
+    { filename: file.name, originPath: normalizeOriginPath(input.originPath) },
     input.screeningRelease === true,
   )
   await assertUploadTypeAllowed(session, file.name)
