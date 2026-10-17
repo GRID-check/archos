@@ -10,6 +10,7 @@
  */
 
 import { getByPath, type Translator } from '@/i18n/translate'
+import { formatDayRange } from '@/lib/format'
 import { INBOX_TYPE_PRESENTATION, UNKNOWN_TYPE_PRESENTATION, type InboxItemView } from './types'
 
 /** Dictionary root for the item-type entries. */
@@ -59,8 +60,9 @@ export interface InboxItemCopy {
 /**
  * @param t a translator scoped to `collaboration`
  * @param dictionary the whole dictionary `t` reads, for the key probes
+ * @param locale the reader's locale, for a date the row names (a mark's, `{due}`)
  */
-export function inboxItemCopy(item: InboxItemView, t: Translator, dictionary: unknown): InboxItemCopy {
+export function inboxItemCopy(item: InboxItemView, t: Translator, dictionary: unknown, locale?: string): InboxItemCopy {
   const presentation = INBOX_TYPE_PRESENTATION[item.type] ?? UNKNOWN_TYPE_PRESENTATION
   // A REDACTED row — inert, or its target no longer reachable — carries no href
   // and no payload, because the server withholds the conversation title exactly
@@ -74,6 +76,11 @@ export function inboxItemCopy(item: InboxItemView, t: Translator, dictionary: un
     subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation'),
     related: item.related ?? '',
     count: item.count,
+    // A mark's date, on the reader's calendar as the review shows it, and a new
+    // Fassung's open marks: the words a row says by when, and how many to check.
+    due: item.dueOn ? formatDayRange(item.dueOn, item.dueOn, locale) : '',
+    marks: item.openMarks ?? 0,
+    fassung: item.marksFassung ?? '',
   }
 
   const countedTitles =
@@ -122,6 +129,8 @@ export function inboxItemCopy(item: InboxItemView, t: Translator, dictionary: un
     withVariant(item.variant, [
       ...(item.subject === null ? ['bodyNoSubject'] : []),
       ...(item.excerpt === null ? ['bodyNoExcerpt'] : []),
+      // A request with a date says by when (`annotation.assigned_to_you`).
+      ...(item.dueOn ? ['bodyDue'] : []),
       `body${resourceLeaf(item.resourceType)}`,
       'body',
     ]),

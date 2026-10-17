@@ -398,6 +398,15 @@ export const collaboration: typeof en.collaboration = {
         title: '{actor} hat eine neue Fassung von „{subject}“ hochgeladen',
         titleNoActor: 'Neue Fassung von „{subject}“',
         bodyNoExcerpt: 'Öffnen Sie die Fassung, um die Änderungen zu sehen.',
+        // Offene Anmerkungen, die die neue Fassung zurücklässt: {marks} wie
+        // viele, {fassung} auf welcher Fassung desselben Dokuments; `…_earlier`,
+        // wenn es mehrere Fassungen sind oder ein anderes Dokument ersetzt wurde.
+        variants: {
+          mark: { body: '1 offene Anmerkung aus Fassung {fassung} prüfen' },
+          marks: { body: '{marks} offene Anmerkungen aus Fassung {fassung} prüfen' },
+          mark_earlier: { body: '1 offene Anmerkung aus der vorigen Fassung prüfen' },
+          marks_earlier: { body: '{marks} offene Anmerkungen aus der vorigen Fassung prüfen' },
+        },
       },
       // Was Piloti an einer Anmerkung getan hat, für die Person, deren Handlung
       // es geweckt hat: wer die Anmerkung delegiert, Piloti darin erwähnt oder
@@ -489,11 +498,47 @@ export const collaboration: typeof en.collaboration = {
         titleRelated: '{actor} hat Ihnen Anmerkung {related} in „{subject}“ zugewiesen',
         titleRelatedNoSubject: '{actor} hat Ihnen Anmerkung {related} zugewiesen',
         body: 'Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.',
+        // Mit Frist: {due} ist das Datum der Anmerkung.
+        bodyDue: 'Sie sind dafür zuständig, bis {due}. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.',
+        // `due…`: jemand hat die Frist gesetzt, verschoben oder entfernt
+        // (`…_piloti`: Piloti für {actor}). `due_soon` / `overdue`: die tägliche
+        // Erinnerung, ohne {actor}, in derselben Zeile der Anmerkung.
         variants: {
           piloti: {
             title: 'Piloti hat Ihnen für {actor} eine Anmerkung zugewiesen',
             titleRelated: 'Piloti hat Ihnen für {actor} Anmerkung {related} in „{subject}“ zugewiesen',
             titleRelatedNoSubject: 'Piloti hat Ihnen für {actor} Anmerkung {related} zugewiesen',
+          },
+          due: {
+            title: '{actor} hat die Frist einer Anmerkung auf {due} gesetzt',
+            titleRelated: '{actor} hat die Frist von Anmerkung {related} in „{subject}“ auf {due} gesetzt',
+            titleRelatedNoSubject: '{actor} hat die Frist von Anmerkung {related} auf {due} gesetzt',
+          },
+          due_cleared: {
+            title: '{actor} hat die Frist einer Anmerkung entfernt',
+            titleRelated: '{actor} hat die Frist von Anmerkung {related} in „{subject}“ entfernt',
+            titleRelatedNoSubject: '{actor} hat die Frist von Anmerkung {related} entfernt',
+          },
+          due_piloti: {
+            title: 'Piloti hat für {actor} die Frist einer Anmerkung auf {due} gesetzt',
+            titleRelated: 'Piloti hat für {actor} die Frist von Anmerkung {related} in „{subject}“ auf {due} gesetzt',
+            titleRelatedNoSubject: 'Piloti hat für {actor} die Frist von Anmerkung {related} auf {due} gesetzt',
+          },
+          due_cleared_piloti: {
+            title: 'Piloti hat für {actor} die Frist einer Anmerkung entfernt',
+            titleRelated: 'Piloti hat für {actor} die Frist von Anmerkung {related} in „{subject}“ entfernt',
+            titleRelatedNoSubject: 'Piloti hat für {actor} die Frist von Anmerkung {related} entfernt',
+          },
+          due_soon: {
+            title: 'Eine Anmerkung ist am {due} fällig',
+            titleRelated: 'Anmerkung {related} in „{subject}“ ist am {due} fällig',
+            titleRelatedNoSubject: 'Anmerkung {related} ist am {due} fällig',
+          },
+          overdue: {
+            title: 'Eine Anmerkung war am {due} fällig',
+            titleRelated: 'Anmerkung {related} in „{subject}“ war am {due} fällig',
+            titleRelatedNoSubject: 'Anmerkung {related} war am {due} fällig',
+            bodyDue: 'Sie sind dafür zuständig, und die Frist ist abgelaufen. Antworten Sie im Verlauf, erledigen Sie die Anmerkung oder vereinbaren Sie eine neue Frist.',
           },
         },
       },

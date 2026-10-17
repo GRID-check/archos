@@ -95,6 +95,13 @@ export const documentAnnotations = pgTable(
      */
     delegatedBy: text('delegated_by'),
     delegatedAt: timestamp('delegated_at', { withTimezone: true }),
+    /**
+     * The mark this one was carried from, on the document this one's document
+     * replaced (migration 0150): Index B's mark, gone on with Index C. Once per
+     * source (`uniq_document_annotations_carried_from`); null when the source
+     * is gone.
+     */
+    carriedFromId: uuid('carried_from_id'),
   },
   (table) => ({
     documentFk: foreignKey({
@@ -107,7 +114,23 @@ export const documentAnnotations = pgTable(
       columns: [table.versionId],
       foreignColumns: [documentVersions.id],
     }).onDelete('set null'),
+    carriedFromFk: foreignKey({
+      name: 'document_annotations_carried_from_fkey',
+      columns: [table.carriedFromId],
+      foreignColumns: [table.id],
+    }).onDelete('set null'),
     numberUniq: uniqueIndex('uniq_document_annotations_number').on(table.documentId, table.number),
+    carriedOnce: uniqueIndex('uniq_document_annotations_carried_from')
+      .on(table.carriedFromId)
+      .where(sql`${table.carriedFromId} IS NOT NULL`),
+    /** The open marks with a Zuständige and a date, for the daily reminder (migration 0150). */
+    dueIdx: index('idx_document_annotations_due')
+      .on(table.dueOn)
+      .where(sql`${table.status} = 'open' AND ${table.assigneeUserId} IS NOT NULL AND ${table.dueOn} IS NOT NULL`),
+    carriedFromOther: check(
+      'document_annotations_carried_from_other',
+      sql`${table.carriedFromId} IS NULL OR ${table.carriedFromId} <> ${table.id}`
+    ),
     organizationIdx: index('idx_document_annotations_organization_id').on(table.organizationId),
     numberPositive: check('document_annotations_number_positive', sql`${table.number} >= 1`),
     pagePositive: check('document_annotations_page_positive', sql`${table.page} >= 1`),

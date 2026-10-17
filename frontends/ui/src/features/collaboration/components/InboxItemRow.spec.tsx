@@ -777,6 +777,24 @@ describe('InboxItemRow — a new Fassung (document.new_fassung)', () => {
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
+  test('says how many open marks the new Fassung leaves to check, and from which Fassung', () => {
+    const same = { related: null, resourceId: 'doc-a', anchorId: 'ver-3', excerpt: null }
+    const de = (row: InboxItemView) =>
+      renderPlain(
+        <I18nProvider initialLocale="de" fixedLocale>
+          <InboxItemRow item={row} />
+        </I18nProvider>,
+      )
+    const many = de(newFassung({ ...same, variant: 'marks', openMarks: 4, marksFassung: 2 }))
+    expect(screen.getByText('4 offene Anmerkungen aus Fassung 2 prüfen')).toBeInTheDocument()
+    many.unmount()
+
+    // Beside what changed, and from another document: „the previous Fassung".
+    de(newFassung({ variant: 'mark_earlier', openMarks: 1, marksFassung: null }))
+    expect(screen.getByText('1 offene Anmerkung aus der vorigen Fassung prüfen')).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Wand im EG verschoben.')
+  })
+
   test('says where the change is when there is no excerpt', () => {
     render(<InboxItemRow item={newFassung({ excerpt: null })} />)
     expect(screen.getByText('Open the revision to see what changed.')).toBeInTheDocument()
@@ -964,6 +982,33 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
   test('says Piloti did it for the colleague when Piloti assigned it', () => {
     german(onMark({ variant: 'piloti' }))
     expect(screen.getByText('Piloti hat Ihnen für Anna Weber Anmerkung 4 in „Grundriss EG“ zugewiesen')).toBeInTheDocument()
+  })
+
+  test('says by when the Zuständige is responsible, when the mark has a date', () => {
+    german(onMark({ dueOn: '2026-10-24' }))
+    expect(
+      screen.getByText('Sie sind dafür zuständig, bis 24. Okt. 2026. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.'),
+    ).toBeInTheDocument()
+  })
+
+  test.each([
+    ['due', '2026-10-31', 'Anna Weber hat die Frist von Anmerkung 4 in „Grundriss EG“ auf 31. Okt. 2026 gesetzt'],
+    ['due_cleared', null, 'Anna Weber hat die Frist von Anmerkung 4 in „Grundriss EG“ entfernt'],
+    ['due_piloti', '2026-10-31', 'Piloti hat für Anna Weber die Frist von Anmerkung 4 in „Grundriss EG“ auf 31. Okt. 2026 gesetzt'],
+  ] as const)('tells the Zuständige the date moved (%s)', (variant, dueOn, title) => {
+    german(onMark({ variant, dueOn }))
+    expect(screen.getByText(title)).toBeInTheDocument()
+  })
+
+  test('the daily reminder says the date is near, then that it has passed, in the same row', () => {
+    const reminder = { actorName: null, actorUserId: null, dueOn: '2026-10-18' }
+    const soon = german(onMark({ ...reminder, variant: 'due_soon' }))
+    expect(screen.getByText('Anmerkung 4 in „Grundriss EG“ ist am 18. Okt. 2026 fällig')).toBeInTheDocument()
+    soon.unmount()
+
+    german(onMark({ ...reminder, variant: 'overdue' }))
+    expect(screen.getByText('Anmerkung 4 in „Grundriss EG“ war am 18. Okt. 2026 fällig')).toBeInTheDocument()
+    expect(screen.getByText(/die Frist ist abgelaufen/)).toBeInTheDocument()
   })
 
   test('counts replies on one mark in one row, and reads a read row without „neu“', () => {

@@ -10,7 +10,9 @@
 
 import 'server-only'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { getDb } from '@/lib/db'
+import { isUniqueViolation } from '@/lib/db/errors'
 import type { DbTransaction } from '@/lib/db/executor'
 import {
   documentAnnotationReplies,
@@ -30,13 +32,55 @@ import {
   type MarkMention,
 } from './types'
 
-/** A row with the number of the Fassung it was set on, and its thread. */
+/** The other end of a carry (migration 0150): a mark on another document, by its id, its document and its number. */
+export interface CarryLink {
+  annotationId: string
+  documentId: string
+  number: number
+}
+
+/**
+ * A row with the number of the Fassung it was set on, its thread, and where it
+ * was carried from or to. The two links name a mark of ANOTHER document: the
+ * service shows them only to a reader who may open that document.
+ */
 export interface AnnotationRecord extends DocumentAnnotationRow {
   fassungNumber: number | null
   replies: DocumentAnnotationReplyRow[]
+  /** The replaced document's mark this one went on from; absent from a fake that predates carrying. */
+  carriedFrom?: CarryLink | null
+  /** The replacing document's mark this one went on as; absent from a fake that predates carrying. */
+  carriedTo?: CarryLink | null
 }
 
-const selection = { row: documentAnnotations, fassungNumber: documentVersions.versionNumber }
+/** The mark this one was carried from, and the one it was carried to (unique, so at most one). */
+const carriedSource = alias(documentAnnotations, 'carried_source')
+const carriedCopy = alias(documentAnnotations, 'carried_copy')
+
+const selection = {
+  row: documentAnnotations,
+  fassungNumber: documentVersions.versionNumber,
+  fromId: carriedSource.id,
+  fromDocumentId: carriedSource.documentId,
+  fromNumber: carriedSource.number,
+  toId: carriedCopy.id,
+  toDocumentId: carriedCopy.documentId,
+  toNumber: carriedCopy.number,
+}
+
+type SelectedRow = {
+  row: DocumentAnnotationRow
+  fassungNumber: number | null
+  fromId: string | null
+  fromDocumentId: string | null
+  fromNumber: number | null
+  toId: string | null
+  toDocumentId: string | null
+  toNumber: number | null
+}
+
+const linkOf = (id: string | null, documentId: string | null, number: number | null): CarryLink | null =>
+  id && documentId && number !== null ? { annotationId: id, documentId, number: Number(number) } : null
 
 /** The threads of these marks, oldest reply first, each bounded. */
 async function listReplies(organizationId: string, annotationIds: readonly string[]) {
@@ -64,20 +108,25 @@ async function listReplies(organizationId: string, annotationIds: readonly strin
   return byAnnotation
 }
 
-async function withThreads(
-  organizationId: string,
-  rows: { row: DocumentAnnotationRow; fassungNumber: number | null }[]
-): Promise<AnnotationRecord[]> {
+async function withThreads(organizationId: string, rows: SelectedRow[]): Promise<AnnotationRecord[]> {
   const threads = await listReplies(
     organizationId,
     rows.map(({ row }) => row.id)
   )
-  return rows.map(({ row, fassungNumber }) => ({
+  return rows.map(({ row, fassungNumber, ...links }) => ({
     ...row,
     fassungNumber: fassungNumber === null ? null : Number(fassungNumber),
     replies: threads.get(row.id) ?? [],
+    carriedFrom: linkOf(links.fromId, links.fromDocumentId, links.fromNumber),
+    carriedTo: linkOf(links.toId, links.toDocumentId, links.toNumber),
   }))
 }
+
+/** The joins every read of a mark makes: its Fassung's number, and both ends of a carry in the same organization. */
+const carryJoins = (organizationId: string) => ({
+  source: and(eq(carriedSource.id, documentAnnotations.carriedFromId), eq(carriedSource.organizationId, organizationId)),
+  copy: and(eq(carriedCopy.carriedFromId, documentAnnotations.id), eq(carriedCopy.organizationId, organizationId)),
+})
 
 /** Every Anmerkung on one document with its thread, by number. Bounded by {@link MAX_ANNOTATIONS_PER_DOCUMENT}. */
 export async function listDocumentAnnotations(
@@ -85,11 +134,14 @@ export async function listDocumentAnnotations(
   documentId: string
 ): Promise<AnnotationRecord[]> {
   const db = getDb()
+  const joins = carryJoins(organizationId)
   const rows = await withTenant({ organizationId }, () =>
     db
       .select(selection)
       .from(documentAnnotations)
       .leftJoin(documentVersions, eq(documentVersions.id, documentAnnotations.versionId))
+      .leftJoin(carriedSource, joins.source)
+      .leftJoin(carriedCopy, joins.copy)
       .where(
         and(
           eq(documentAnnotations.organizationId, organizationId),
@@ -109,11 +161,14 @@ export async function findDocumentAnnotation(
   annotationId: string
 ): Promise<AnnotationRecord | null> {
   const db = getDb()
+  const joins = carryJoins(organizationId)
   const rows = await withTenant({ organizationId }, () =>
     db
       .select(selection)
       .from(documentAnnotations)
       .leftJoin(documentVersions, eq(documentVersions.id, documentAnnotations.versionId))
+      .leftJoin(carriedSource, joins.source)
+      .leftJoin(carriedCopy, joins.copy)
       .where(
         and(
           eq(documentAnnotations.organizationId, organizationId),
@@ -218,6 +273,99 @@ export async function insertDocumentAnnotations(input: NewAnnotationsInput): Pro
   )
 }
 
+/** Thrown when the mark was carried already: the unique index on `carried_from_id` refused a second copy. */
+export class AlreadyCarriedError extends Error {}
+
+/**
+ * Carry one open mark of a replaced document onto the document that replaced
+ * it (migration 0150), in ONE transaction: the mark is set again on `target`,
+ * numbered there under the same per-document lock and cap as any new mark,
+ * with its place, its text, whom it mentions, its author, its Zuständige and
+ * its date, and `carried_from_id` pointing back; the source is closed
+ * (`resolved`, by `closedBy`), compared and swapped on `open`. Null when the
+ * source is no longer open (a colleague closed it first); a second carry of
+ * the same mark is refused by the unique index ({@link AlreadyCarriedError}).
+ * Both documents were read for writing by the service.
+ */
+export async function carryAnnotationToDocument(input: {
+  organizationId: string
+  source: DocumentAnnotationRow
+  target: { documentId: string; versionId: string | null }
+  values: Pick<NewAnnotationValues, 'mentions' | 'assigneeUserId'>
+  closedBy: string
+}): Promise<DocumentAnnotationRow | null> {
+  const { organizationId, source, target } = input
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .transaction(async (tx) => {
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtextextended(${`document_annotations:${target.documentId}`}, 0))`
+        )
+        const [current] = await tx
+          .select({
+            highest: sql<number | string | null>`max(${documentAnnotations.number})`,
+            count: sql<number | string>`count(*)`,
+          })
+          .from(documentAnnotations)
+          .where(
+            and(
+              eq(documentAnnotations.organizationId, organizationId),
+              eq(documentAnnotations.documentId, target.documentId)
+            )
+          )
+        if (Number(current?.count ?? 0) + 1 > MAX_ANNOTATIONS_PER_DOCUMENT) throw new AnnotationLimitReachedError()
+        const now = new Date()
+        const [closed] = await tx
+          .update(documentAnnotations)
+          .set({ status: 'resolved', closedBy: input.closedBy, closedAt: now, updatedAt: now })
+          .where(
+            and(
+              eq(documentAnnotations.organizationId, organizationId),
+              eq(documentAnnotations.documentId, source.documentId),
+              eq(documentAnnotations.id, source.id),
+              eq(documentAnnotations.status, 'open')
+            )
+          )
+          .returning({ id: documentAnnotations.id })
+        if (!closed) return null
+        const highest = current?.highest
+        const [row] = await tx
+          .insert(documentAnnotations)
+          .values({
+            organizationId,
+            documentId: target.documentId,
+            versionId: target.versionId,
+            number: highest === null || highest === undefined ? 1 : Number(highest) + 1,
+            page: source.page,
+            shape: source.shape,
+            x: source.x,
+            y: source.y,
+            w: source.w,
+            h: source.h,
+            kind: source.kind,
+            body: source.body,
+            mentions: input.values.mentions ?? [],
+            basis: source.basis,
+            authorKind: source.authorKind,
+            status: 'open',
+            assigneeUserId: input.values.assigneeUserId,
+            dueOn: source.dueOn,
+            createdBy: source.createdBy,
+            acceptedBy: source.acceptedBy,
+            acceptedAt: source.acceptedAt,
+            carriedFromId: source.id,
+          })
+          .returning()
+        return row
+      })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error, 'uniq_document_annotations_carried_from')) throw new AlreadyCarriedError()
+        throw error
+      })
+  )
+}
+
 export interface AnnotationChanges {
   kind?: AnnotationKind
   body?: string
@@ -236,6 +384,12 @@ export interface AnnotationChanges {
   }
   /** Piloti as the delegate (migration 0139): both set, or both cleared, as the CHECK holds. */
   delegation?: { delegatedBy: string; delegatedAt: Date } | { delegatedBy: null; delegatedAt: null }
+  /**
+   * The mark goes on with the document's current Fassung: `version_id` becomes
+   * `to`, compared and swapped against `from` (the Fassung it was read on), so
+   * two people carrying it at once move it once.
+   */
+  fassung?: { from: string | null; to: string | null }
 }
 
 /**
@@ -258,19 +412,26 @@ export async function updateDocumentAnnotation(
   /** Runs in the update's transaction when a row was changed. */
   afterUpdate?: InTransaction<DocumentAnnotationRow>
 ): Promise<DocumentAnnotationRow | null> {
-  const { transition, delegation, ...fields } = changes
+  const { transition, delegation, fassung, ...fields } = changes
   const db = getDb()
   return withTenant({ organizationId }, () =>
     db.transaction(async (tx) => {
       const [row] = await tx
         .update(documentAnnotations)
-        .set({ ...fields, ...(transition ?? {}), ...(delegation ?? {}), updatedAt: new Date() })
+        .set({
+          ...fields,
+          ...(transition ?? {}),
+          ...(delegation ?? {}),
+          ...(fassung ? { versionId: fassung.to } : {}),
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(documentAnnotations.organizationId, organizationId),
             eq(documentAnnotations.documentId, documentId),
             eq(documentAnnotations.id, annotationId),
-            eq(documentAnnotations.status, expectedStatus)
+            eq(documentAnnotations.status, expectedStatus),
+            ...(fassung ? [sql`${documentAnnotations.versionId} IS NOT DISTINCT FROM ${fassung.from}`] : [])
           )
         )
         .returning()

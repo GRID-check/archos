@@ -25,6 +25,9 @@ import {
   markAuthor,
   markParticipants,
   onAssigneeChanged,
+  onDueChanged,
+  onMarkDue,
+  remindedFor,
   onMarkDeleted,
   onMarkMentioned,
   onMarkMoved,
@@ -413,7 +416,7 @@ describe('markParticipants', () => {
 })
 
 describe('onAssigneeChanged', () => {
-  const act = { ...ref, actorUserId: 'user_anna', byPiloti: false, markText: 'Tür  T30\nfehlt', open: true }
+  const act = { ...ref, actorUserId: 'user_anna', byPiloti: false, markText: 'Tür  T30\nfehlt', open: true, dueOn: null }
 
   it('asks the new Zuständige, named by who did it, quoting the mark', async () => {
     await onAssigneeChanged({ ...act, previousAssigneeUserId: null, assigneeUserId: 'user_bob' })
@@ -426,9 +429,15 @@ describe('onAssigneeChanged', () => {
       anchorId: 'ann_1',
       actorUserId: 'user_anna',
       groupKey: 'annotation.assigned_to_you:document:doc_1:ann_1',
-      payload: { subject: 'Grundriss EG.pdf', related: '4', excerpt: 'Tür T30 fehlt', variant: 'person' },
+      payload: { subject: 'Grundriss EG.pdf', related: '4', excerpt: 'Tür T30 fehlt', variant: 'person', dueOn: null },
     })
     expect(resolveInboxItemsAnchoredOn).not.toHaveBeenCalled()
+  })
+
+  it('says by when, when the mark has a date', async () => {
+    await onAssigneeChanged({ ...act, dueOn: '2026-10-24', previousAssigneeUserId: null, assigneeUserId: 'user_bob' })
+
+    expect(emitted()).toMatchObject({ payload: { variant: 'person', dueOn: '2026-10-24' } })
   })
 
   it('says Piloti did it for the asker when Piloti changed the mark', async () => {
@@ -474,6 +483,59 @@ describe('onAssigneeChanged', () => {
     await expect(
       onAssigneeChanged({ ...act, previousAssigneeUserId: null, assigneeUserId: 'user_bob' }),
     ).resolves.toBeUndefined()
+  })
+})
+
+describe('onDueChanged', () => {
+  const act = { ...ref, actorUserId: 'user_anna', byPiloti: false, markText: 'Tür T30 fehlt', open: true }
+
+  it('tells the Zuständige the new date, in the row they have for the mark, named by who moved it', async () => {
+    await onDueChanged({ ...act, assigneeUserId: 'user_bob', dueOn: '2026-10-24' })
+
+    expect(emitted()).toMatchObject({
+      recipientUserId: 'user_bob',
+      type: 'annotation.assigned_to_you',
+      actorUserId: 'user_anna',
+      groupKey: 'annotation.assigned_to_you:document:doc_1:ann_1',
+      payload: { variant: 'due', dueOn: '2026-10-24', related: '4' },
+    })
+  })
+
+  it('says the date was cleared, and that Piloti did it for the person it worked for', async () => {
+    await onDueChanged({ ...act, byPiloti: true, assigneeUserId: 'user_bob', dueOn: null })
+
+    expect(emitted()).toMatchObject({ actorUserId: 'user_anna', payload: { variant: 'due_cleared_piloti', dueOn: null } })
+  })
+
+  it('tells nobody on a mark without a Zuständige, a closed mark, or the Zuständige’s own change', async () => {
+    await onDueChanged({ ...act, assigneeUserId: null, dueOn: '2026-10-24' })
+    await onDueChanged({ ...act, open: false, assigneeUserId: 'user_bob', dueOn: '2026-10-24' })
+    await onDueChanged({ ...act, actorUserId: 'user_bob', assigneeUserId: 'user_bob', dueOn: '2026-10-24' })
+
+    expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+})
+
+describe('onMarkDue', () => {
+  it('asks the Zuständige again, without an actor, stamped with which reminder for which date', async () => {
+    await onMarkDue({ ...ref, assigneeUserId: 'user_bob', dueOn: '2026-10-18', reminder: 'due_soon', markText: 'Tür T30 fehlt' })
+
+    expect(emitted()).toMatchObject({
+      recipientUserId: 'user_bob',
+      type: 'annotation.assigned_to_you',
+      actorUserId: null,
+      groupKey: 'annotation.assigned_to_you:document:doc_1:ann_1',
+      payload: { variant: 'due_soon', dueOn: '2026-10-18', reminder: 'due_soon:2026-10-18', excerpt: 'Tür T30 fehlt' },
+    })
+    expect(remindedFor('overdue', '2026-10-18')).toBe('overdue:2026-10-18')
+  })
+
+  it('throws when the inbox is down, so the job counts the mark it could not tell', async () => {
+    vi.mocked(emitInboxItems).mockRejectedValue(new Error('database down'))
+
+    await expect(
+      onMarkDue({ ...ref, assigneeUserId: 'user_bob', dueOn: '2026-10-18', reminder: 'overdue', markText: null })
+    ).rejects.toThrow('database down')
   })
 })
 

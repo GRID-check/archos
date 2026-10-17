@@ -444,6 +444,25 @@ describe('listInbox — projection', () => {
     expect(byId.get('gone')!.variant).toBeNull()
   })
 
+  it('carries a mark’s date and a new Fassung’s open marks only in their shape, and withholds them when redacted', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', resourceId: 'conv_ok', payload: { dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 } }),
+      row({ id: 'junk', resourceId: 'conv_ok', payload: { dueOn: '24.10.2026', openMarks: '4', marksFassung: 2.5 } }),
+      row({ id: 'gone', resourceId: 'conv_gone', payload: { dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    expect(byId.get('ok')).toMatchObject({ dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 })
+    expect(byId.get('junk')).toMatchObject({ dueOn: null, openMarks: null, marksFassung: null })
+    expect(byId.get('gone')).toMatchObject({ dueOn: null, openMarks: null, marksFassung: null })
+  })
+
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([row({ actorUserId: 'user_deactivated' })])
     vi.mocked(resolvePeople).mockResolvedValue(new Map())

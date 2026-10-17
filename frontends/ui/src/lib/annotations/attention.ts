@@ -19,6 +19,8 @@ import 'server-only'
  * | A person made someone the mark's Zuständige (setting it, changing it, or taking over Piloti's proposal that names one) | `annotation.assigned_to_you` | the new Zuständige, unless they did it themselves |
  * | Piloti did, for the person its turn acted for | `annotation.assigned_to_you`, variant `piloti` | the same |
  * | Someone else became responsible, or nobody | resolves the previous Zuständige's `annotation.assigned_to_you` | |
+ * | Someone set, moved or cleared the date of a mark that has a Zuständige | `annotation.assigned_to_you`, variant `due` / `due_cleared` (`…_piloti` when Piloti did it for a person), folded into their row for the mark | the Zuständige, unless they did it themselves |
+ * | The daily reminder (`./due-reminders.ts`): the date is today or tomorrow, or it has passed | `annotation.assigned_to_you`, variant `due_soon`, then `overdue`, folded into the same row, each once per date | the Zuständige |
  * | A person mentioned a colleague in a mark's text (setting it, or rewording it) or in a reply | `annotation.mentioned` | each person mentioned anew, minus whoever wrote it and minus a Zuständige the same write made responsible (who hears `annotation.assigned_to_you`) |
  * | A person or Piloti replied in the thread | `annotation.activity`, variant `reply` | the mark's participants ({@link markParticipants}), minus whoever acted (for Piloti, the person its turn acted for: on a wake, who woke it and hears `piloti.work_done`), minus who Piloti's open Rückfrage asks, minus whom the reply mentions (who hear `annotation.mentioned` instead) |
  * | Someone resolved, dismissed or reopened a mark | `annotation.activity`, variant `resolved` / `dismissed` / `reopened` | the mark's author, unless they did it |
@@ -42,7 +44,8 @@ import 'server-only'
  * is the document's, re-derived when the row is read. They carry the document's
  * name and the mark's number, so the row says which mark in which document; as
  * the excerpt, a Rückfrage carries Piloti's question, a reply what it says, and
- * everything else what the mark says. Rows fold per mark and their payloads
+ * everything else what the mark says. A row asking the Zuständige carries the
+ * mark's date (`dueOn`, null without one), so the row says by when. Rows fold per mark and their payloads
  * merge, so every row names its `variant`: a failed wake the class of its
  * reason (`./wake-end-reason.ts`), so the notice says why in words the person
  * can act on, never the stored reason itself.
@@ -100,6 +103,8 @@ interface MarkItem {
    * them (`InboxPushPolicy.yours`), not ambient activity.
    */
   author?: string | null
+  /** Facts the row's words need beyond the mark's (its date), merged into the payload as given; null clears. */
+  facts?: Record<string, string | number | null>
 }
 
 /** One item about a mark, addressed to each of these people. */
@@ -107,7 +112,7 @@ async function emitAboutMark(
   type: InboxItemType,
   ref: MarkRef,
   recipientUserIds: readonly string[],
-  { excerpt, variant = null, actorUserId = null, author = null }: MarkItem
+  { excerpt, variant = null, actorUserId = null, author = null, facts = {} }: MarkItem
 ): Promise<void> {
   if (recipientUserIds.length === 0) return
   const subject = await documentName(ref)
@@ -116,6 +121,7 @@ async function emitAboutMark(
     related: String(ref.annotationNumber),
     ...(excerpt ? { excerpt } : {}),
     ...(variant ? { variant } : {}),
+    ...facts,
   }
   await emitInboxItems(
     recipientUserIds.map((recipientUserId) => ({
@@ -312,7 +318,13 @@ export interface MarkAct extends MarkRef {
  * previous one is no longer asked.
  */
 export async function onAssigneeChanged(
-  input: MarkAct & { previousAssigneeUserId: string | null; assigneeUserId: string | null; open: boolean }
+  input: MarkAct & {
+    previousAssigneeUserId: string | null
+    assigneeUserId: string | null
+    open: boolean
+    /** The mark's date, so the row says by when; null when it has none. */
+    dueOn: string | null
+  }
 ): Promise<void> {
   const { previousAssigneeUserId: previous, assigneeUserId: assignee } = input
   await bestEffortInbox(`annotation.assigned_to_you for mark ${input.annotationId}`, input.organizationId, async () => {
@@ -329,9 +341,58 @@ export async function onAssigneeChanged(
       excerpt: excerptOf(input.markText),
       variant: input.byPiloti ? 'piloti' : 'person',
       actorUserId: input.actorUserId,
+      facts: { dueOn: input.dueOn },
     })
   })
 }
+
+/**
+ * The date of a mark that has a Zuständige was set, moved or cleared, and the
+ * Zuständige stayed: they are told, in the row they have for the mark (the
+ * shape of {@link onAssigneeChanged}, one row per mark), unless they changed it
+ * themselves or the mark is not open. A change that also hands the mark to
+ * someone new is that one's assignment, which carries the date.
+ */
+export async function onDueChanged(
+  input: MarkAct & { assigneeUserId: string | null; dueOn: string | null; open: boolean }
+): Promise<void> {
+  const assignee = input.assigneeUserId
+  if (!assignee || assignee === input.actorUserId || !input.open) return
+  const variant = `${input.dueOn ? 'due' : 'due_cleared'}${input.byPiloti ? '_piloti' : ''}`
+  await bestEffortInbox(`annotation.assigned_to_you (date) for mark ${input.annotationId}`, input.organizationId, () =>
+    emitAboutMark('annotation.assigned_to_you', input, [assignee], {
+      excerpt: excerptOf(input.markText),
+      variant,
+      actorUserId: input.actorUserId,
+      facts: { dueOn: input.dueOn },
+    })
+  )
+}
+
+/** What the daily reminder says about a date: it is near (today or tomorrow), or it has passed. */
+export type DueReminder = 'due_soon' | 'overdue'
+
+/**
+ * The daily reminder of a Zuständige's date (`./due-reminders.ts`): the
+ * Zuständige is asked again in the row they have for the mark, worded by how
+ * the date stands, the overdue reminder upgrading the earlier one. `reminder`
+ * records which reminder for which date the row last carried, so the job tells
+ * each once (`remindedFor`), and a moved date is reminded of anew. No actor:
+ * the calendar did it. Unlike the rest of this module it throws: the job counts
+ * what it could not tell, and the next day's run tells it.
+ */
+export async function onMarkDue(
+  input: MarkRef & { assigneeUserId: string; dueOn: string; reminder: DueReminder; markText: string | null }
+): Promise<void> {
+  await emitAboutMark('annotation.assigned_to_you', input, [input.assigneeUserId], {
+    excerpt: excerptOf(input.markText),
+    variant: input.reminder,
+    facts: { dueOn: input.dueOn, reminder: remindedFor(input.reminder, input.dueOn) },
+  })
+}
+
+/** The stamp a row carries once it reminded of `dueOn` this way: the job's idempotency key, per mark and recipient. */
+export const remindedFor = (reminder: DueReminder, dueOn: string): string => `${reminder}:${dueOn}`
 
 /**
  * Someone answered in a mark's thread: its participants hear it, as one

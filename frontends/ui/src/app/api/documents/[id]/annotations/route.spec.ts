@@ -157,6 +157,7 @@ const RECORD: AnnotationRecord = {
   closedAt: null,
   delegatedBy: null,
   delegatedAt: null,
+  carriedFromId: null,
   mentions: [],
   fassungNumber: 2,
   replies: [],

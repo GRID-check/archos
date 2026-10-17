@@ -76,6 +76,19 @@ export interface InboxItemView {
    */
   variant: string | null
   /**
+   * The date of the mark a Zuständige is asked about (`YYYY-MM-DD`), so the row
+   * says by when (`annotation.assigned_to_you`); null without one. Absent from
+   * a type that carries none. Withheld with the payload when redacted.
+   */
+  dueOn?: string | null
+  /**
+   * For a new Fassung: how many open marks it leaves to check, and the Fassung
+   * they sit on when it is one numbered Fassung of the same document
+   * (`lib/documents/fassung-notify.ts`). Absent, or null, otherwise.
+   */
+  openMarks?: number | null
+  marksFassung?: number | null
+  /**
    * Where the reader may answer the mark an open request is about (a mark's
    * Zuständige, Piloti's Rückfrage, a mention), as the server decides it: `row`
    * here in the inbox, `review` only in the Prüfansicht, or null when they may

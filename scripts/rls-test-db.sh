@@ -2019,3 +2019,46 @@ apply_in grid_mention 0149_annotation_mentions.sql
 apply_in grid_mention 0149_annotation_mentions.sql
 check_in grid_mention "SELECT string_agg(mentions::text, ',') FROM document_annotation_replies" "[]" "0149 re-applies, twice"
 echo "==> 0149 mentions and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0150: a mark carried on to the document that replaced its own, the
+# index the daily due reminder reads by, and the DOWN.
+#
+# On a database of its own, migrated to 0149. A mark written before carries
+# from nothing; a carried mark points back at its source, never at itself;
+# one source is carried once, whatever raced; deleting the source leaves the
+# carried mark standing without its link; the down drops the column and the
+# indexes and leaves both marks.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0150 carried marks and their down migration on grid_carry"
+migrate_until grid_carry 0149_annotation_mentions
+sql_in grid_carry <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000150', 'org_0150', 'Weitertragen 0150', 'user_1', 'proj_0150');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000150', 'org_0150', 'user_1', 'Index B.pdf', 'k/0150/b', 'proj_0150', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000150'),
+       ('d2d2d2d2-0000-4000-8000-000000000150', 'org_0150', 'user_1', 'Index C.pdf', 'k/0150/c', 'proj_0150', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000150');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, assignee_user_id, due_on)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000150', 'org_0150', 'd1d1d1d1-0000-4000-8000-000000000150', 4, 1, 'point', 0.5, 0.5, 'defect', 'Brüstung', 'person', 'open', 'user_1', 'user_2', '2026-10-24');
+SQL
+apply_in grid_carry 0150_annotation_carry_and_due.sql
+check_in grid_carry "SELECT coalesce(carried_from_id::text, 'null') FROM document_annotations" "null" "a mark written before 0150 carries from nothing"
+sql_in grid_carry <<'SQL'
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, carried_from_id)
+VALUES ('f2f2f2f2-0000-4000-8000-000000000150', 'org_0150', 'd2d2d2d2-0000-4000-8000-000000000150', 1, 1, 'point', 0.5, 0.5, 'defect', 'Brüstung', 'person', 'open', 'user_1', 'f1f1f1f1-0000-4000-8000-000000000150');
+SQL
+C150="INSERT INTO document_annotations (organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, carried_from_id) VALUES ('org_0150', 'd2d2d2d2-0000-4000-8000-000000000150'"
+refused_in grid_carry "$C150, 2, 1, 'point', 0.5, 0.5, 'defect', 'x', 'person', 'open', 'user_1', 'f1f1f1f1-0000-4000-8000-000000000150')" "uniq_document_annotations_carried_from" "a mark was carried twice"
+refused_in grid_carry "UPDATE document_annotations SET carried_from_id = id WHERE number = 1" "document_annotations_carried_from_other" "a mark was carried from itself"
+refused_in grid_carry "$C150, 3, 1, 'point', 0.5, 0.5, 'defect', 'x', 'person', 'open', 'user_1', 'f9f9f9f9-0000-4000-8000-000000000150')" "document_annotations_carried_from_fkey" "a mark was carried from a mark that does not exist"
+check_in grid_carry "SELECT count(*) FROM pg_indexes WHERE indexname = 'idx_document_annotations_due'" "1" "0150 builds the due index"
+sql_in grid_carry <<<"DELETE FROM document_annotations WHERE id = 'f1f1f1f1-0000-4000-8000-000000000150'"
+check_in grid_carry "SELECT number || ':' || coalesce(carried_from_id::text, 'null') FROM document_annotations" "1:null" "deleting the source leaves the carried mark without its link"
+apply_in grid_carry 0150_annotation_carry_and_due.down.sql
+check_in grid_carry "SELECT count(*) FROM information_schema.columns WHERE column_name = 'carried_from_id' AND table_name = 'document_annotations'" "0" "down dropped the column"
+check_in grid_carry "SELECT count(*) FROM pg_indexes WHERE indexname IN ('idx_document_annotations_due', 'uniq_document_annotations_carried_from')" "0" "down dropped both indexes"
+check_in grid_carry "SELECT count(*) FROM document_annotations" "1" "down left the marks"
+apply_in grid_carry 0150_annotation_carry_and_due.sql
+apply_in grid_carry 0150_annotation_carry_and_due.sql
+check_in grid_carry "SELECT coalesce(carried_from_id::text, 'null') FROM document_annotations" "null" "0150 re-applies, twice"
+echo "==> 0150 carried marks and down migration verified"

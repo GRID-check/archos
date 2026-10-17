@@ -456,6 +456,16 @@ function coerceVariant(value: unknown): string | null {
   return typeof value === 'string' && /^[a-z][a-z_]{0,31}$/.test(value) ? value : null
 }
 
+/** A payload's calendar day (`YYYY-MM-DD`, a mark's date); anything else is absent. */
+function coerceDay(value: unknown): string | null {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
+}
+
+/** A payload's count (how many open marks), a whole number from 1 to 10 000; anything else is absent. */
+function coerceCount(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10_000 ? value : null
+}
+
 /**
  * Re-derive, ONCE per distinct target in the page, whether the recipient can
  * still reach it (spec IB-13). This is the security core of the inbox read path:
@@ -656,6 +666,9 @@ function toItemView(
     related: access ? coerceText(payload.related, SUBJECT_MAX_LENGTH) : null,
     excerpt: access ? coerceText(payload.excerpt, EXCERPT_MAX_LENGTH) : null,
     variant: access ? coerceVariant(payload.variant) : null,
+    dueOn: access ? coerceDay(payload.dueOn) : null,
+    openMarks: access ? coerceCount(payload.openMarks) : null,
+    marksFassung: access ? coerceCount(payload.marksFassung) : null,
     answerIn: answerPlaceOf(row, access !== null, answers),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

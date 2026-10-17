@@ -191,10 +191,23 @@ export const updateAnnotationRequestSchema = z
      * person's act: Piloti never delegates to itself.
      */
     delegateToPiloti: z.boolean().optional(),
+    /**
+     * „Gilt weiter": carry this open mark onto the Fassung the document shows
+     * now, keeping its number, its thread and its place on the page (a
+     * position never changes). A mark of a document another one replaced goes
+     * to the replacing document as a linked mark (`carriedFrom`), and this one
+     * is closed with the link back (`carriedTo`). A move of its own: nothing
+     * else changes in the same request.
+     */
+    carryToCurrent: z.literal(true).optional(),
   })
   .strict()
   .refine(({ expectedStatus: _, ...changes }) => Object.keys(changes).length > 0, 'nothing to change')
   .refine(({ mentions, body }) => mentions === undefined || body !== undefined, 'mentions go with a body')
+  .refine(
+    ({ carryToCurrent, expectedStatus: _, ...changes }) => !carryToCurrent || Object.keys(changes).length === 0,
+    'carrying a mark to the current Fassung changes nothing else'
+  )
 export type UpdateAnnotationRequest = z.input<typeof updateAnnotationRequestSchema>
 
 export const createReplyRequestSchema = z
@@ -257,6 +270,19 @@ export const pilotiWorkViewSchema = z.object({
 })
 export type PilotiWorkView = z.infer<typeof pilotiWorkViewSchema>
 
+/**
+ * The other end of a carry (migration 0150): the mark of the replaced document
+ * this one went on from, or of the replacing document it went on as. Only when
+ * the reader may open that document; its name as people see it.
+ */
+export const carryLinkViewSchema = z.object({
+  annotationId: z.string(),
+  documentId: z.string(),
+  number: z.number().int(),
+  documentName: z.string(),
+})
+export type CarryLinkView = z.infer<typeof carryLinkViewSchema>
+
 export const annotationViewSchema = z.object({
   id: z.string(),
   documentId: z.string(),
@@ -307,6 +333,10 @@ export const annotationViewSchema = z.object({
   replies: z.array(annotationReplyViewSchema),
   /** Piloti at work on it, as the server knows it; null when it is not. Absent from a server that predates it. */
   pilotiWork: pilotiWorkViewSchema.nullable().optional(),
+  /** Where it went on from: the replaced document's mark, with its thread. Absent from a server that predates carrying. */
+  carriedFrom: carryLinkViewSchema.nullable().optional(),
+  /** Where it went on: the replacing document's mark. Absent from a server that predates carrying. */
+  carriedTo: carryLinkViewSchema.nullable().optional(),
   /** Whether THIS reader may change it: take it over, resolve it, reword it, assign it, reply. */
   canEdit: z.boolean(),
   /** Whether THIS reader may delete it: whoever set it, while they may still write here. */

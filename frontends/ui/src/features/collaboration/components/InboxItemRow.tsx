@@ -243,7 +243,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   // A REDACTED row carries no href and no payload (IB-13); `inboxItemCopy` words it.
   const redacted = !item.href
 
-  const { title, body } = inboxItemCopy(item, t, dictionary)
+  const { title, body } = inboxItemCopy(item, t, dictionary, locale)
   // The server's own fact: an archived row whose target went away reads
   // `state: 'inert'`, and must still be restored rather than archived again.
   const archived = item.archived

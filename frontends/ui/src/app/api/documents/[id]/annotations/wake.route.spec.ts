@@ -185,6 +185,7 @@ const MARK: AnnotationRecord = {
   closedAt: null,
   delegatedBy: null,
   delegatedAt: null,
+  carriedFromId: null,
   mentions: [],
   fassungNumber: null,
   replies: [],

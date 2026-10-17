@@ -556,6 +556,15 @@ export const collaboration = {
         title: '{actor} uploaded a new revision of “{subject}”',
         titleNoActor: 'New revision of “{subject}”',
         bodyNoExcerpt: 'Open the revision to see what changed.',
+        // Open annotations the new revision leaves behind: {marks} how many,
+        // {fassung} which revision of the same document; `…_earlier` when they
+        // sit on several, or another document was replaced.
+        variants: {
+          mark: { body: 'Check 1 open annotation from revision {fassung}' },
+          marks: { body: 'Check {marks} open annotations from revision {fassung}' },
+          mark_earlier: { body: 'Check 1 open annotation from the previous revision' },
+          marks_earlier: { body: 'Check {marks} open annotations from the previous revision' },
+        },
       },
       // What Piloti did on an Anmerkung, told to the person whose act woke it:
       // who delegated the mark, mentioned Piloti in it, or answered Piloti's
@@ -645,11 +654,47 @@ export const collaboration = {
         titleRelated: '{actor} assigned you annotation {related} in “{subject}”',
         titleRelatedNoSubject: '{actor} assigned you annotation {related}',
         body: 'You are responsible for it. Answer in the thread or resolve the annotation.',
+        // With a date: {due} is the annotation's date.
+        bodyDue: 'You are responsible for it, by {due}. Answer in the thread or resolve the annotation.',
+        // `due…`: someone set, moved or removed the date (`…_piloti`: Piloti for
+        // {actor}). `due_soon` / `overdue`: the daily reminder, without {actor},
+        // in the annotation's same row.
         variants: {
           piloti: {
             title: 'Piloti assigned you an annotation for {actor}',
             titleRelated: 'Piloti assigned you annotation {related} in “{subject}” for {actor}',
             titleRelatedNoSubject: 'Piloti assigned you annotation {related} for {actor}',
+          },
+          due: {
+            title: '{actor} set the date of an annotation to {due}',
+            titleRelated: '{actor} set the date of annotation {related} in “{subject}” to {due}',
+            titleRelatedNoSubject: '{actor} set the date of annotation {related} to {due}',
+          },
+          due_cleared: {
+            title: '{actor} removed the date of an annotation',
+            titleRelated: '{actor} removed the date of annotation {related} in “{subject}”',
+            titleRelatedNoSubject: '{actor} removed the date of annotation {related}',
+          },
+          due_piloti: {
+            title: 'Piloti set the date of an annotation to {due} for {actor}',
+            titleRelated: 'Piloti set the date of annotation {related} in “{subject}” to {due} for {actor}',
+            titleRelatedNoSubject: 'Piloti set the date of annotation {related} to {due} for {actor}',
+          },
+          due_cleared_piloti: {
+            title: 'Piloti removed the date of an annotation for {actor}',
+            titleRelated: 'Piloti removed the date of annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoSubject: 'Piloti removed the date of annotation {related} for {actor}',
+          },
+          due_soon: {
+            title: 'An annotation is due on {due}',
+            titleRelated: 'Annotation {related} in “{subject}” is due on {due}',
+            titleRelatedNoSubject: 'Annotation {related} is due on {due}',
+          },
+          overdue: {
+            title: 'An annotation was due on {due}',
+            titleRelated: 'Annotation {related} in “{subject}” was due on {due}',
+            titleRelatedNoSubject: 'Annotation {related} was due on {due}',
+            bodyDue: 'You are responsible for it, and the date has passed. Answer in the thread, resolve the annotation or agree on a new date.',
           },
         },
       },

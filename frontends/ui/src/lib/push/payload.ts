@@ -78,6 +78,6 @@ export function buildPushMessage(
     const t = createTranslator(dictionary, 'notifications')
     return { ...base, title: t('push.genericTitle'), body: null }
   }
-  const { title, body } = inboxItemCopy(item, createTranslator(dictionary, 'collaboration'), dictionary)
+  const { title, body } = inboxItemCopy(item, createTranslator(dictionary, 'collaboration'), dictionary, locale)
   return { ...base, title: clip(title, MAX_TITLE), body: body ? clip(body, MAX_BODY) : null }
 }

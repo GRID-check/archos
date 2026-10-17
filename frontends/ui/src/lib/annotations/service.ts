@@ -67,10 +67,14 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document, DocumentAnnotationReplyRow, DocumentAnnotationRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { canWriteDocument } from '@/lib/documents/can-write'
+import { documentDisplayName } from '@/lib/documents/display-name'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { replacingDocumentOf } from './carry'
 import {
+  AlreadyCarriedError,
   AnnotationLimitReachedError,
+  carryAnnotationToDocument,
   deleteAnnotationReply,
   deleteDocumentAnnotation,
   findDocumentAnnotation,
@@ -81,12 +85,14 @@ import {
   updateDocumentAnnotation,
   type AnnotationChanges,
   type AnnotationRecord,
+  type CarryLink,
   type NewAnnotationValues,
 } from './repository'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import {
   onAssigneeChanged,
+  onDueChanged,
   onMarkDeleted,
   onMarkMentioned,
   onMarkMoved,
@@ -128,6 +134,7 @@ import {
   type AnnotationReplyView,
   type AnnotationStatus,
   type AnnotationView,
+  type CarryLinkView,
   type CreateAnnotationRequest,
   type CreateReplyRequest,
   type InternalAnnotation,
@@ -196,7 +203,8 @@ function toView(
   writable: boolean,
   names: Names,
   wakes: readonly WakeSpan[] = [],
-  work: ReadonlyMap<string, PilotiWakeRow> = new Map()
+  work: ReadonlyMap<string, PilotiWakeRow> = new Map(),
+  linked: LinkedDocuments = new Map()
 ): AnnotationView {
   const wake = work.get(record.id)
   return {
@@ -236,9 +244,40 @@ function toView(
     delegatedAt: record.delegatedAt ? record.delegatedAt.toISOString() : null,
     replies: record.replies.map((reply) => toReplyView(reply, names, wakes)),
     pilotiWork: wake ? pilotiWorkOf(wake, nameOf(names, wake.actorUserId)) : null,
+    carriedFrom: linkView(record.carriedFrom, linked),
+    carriedTo: linkView(record.carriedTo, linked),
     canEdit: writable,
     canDelete: writable && mayDeleteMark(record, session.userId),
   }
+}
+
+/** The documents at the other end of the marks' carries that this reader may open, by id, with their names. */
+type LinkedDocuments = ReadonlyMap<string, string>
+
+const linkView = (link: CarryLink | null | undefined, linked: LinkedDocuments): CarryLinkView | null => {
+  const documentName = link ? linked.get(link.documentId) : undefined
+  return link && documentName !== undefined ? { ...link, documentName } : null
+}
+
+/**
+ * The documents a carry links these marks to that the reader may open, each
+ * asked once through the reader's own rule (`getAccessibleDocument`): a link
+ * into a folder closed to them, or to a held upload, is no link at all, its
+ * name included. Usually none, or the one document that replaced this one.
+ */
+async function linkedDocuments(session: AuthorizedSession, records: readonly AnnotationRecord[]): Promise<LinkedDocuments> {
+  const ids = new Set<string>()
+  for (const record of records) {
+    if (record.carriedFrom) ids.add(record.carriedFrom.documentId)
+    if (record.carriedTo) ids.add(record.carriedTo.documentId)
+  }
+  const names = await Promise.all(
+    [...ids].map(async (id) => {
+      const doc = await getAccessibleDocument(session, id, 'read').catch(() => null)
+      return doc ? ([id, documentDisplayName(doc)] as const) : null
+    })
+  )
+  return new Map(names.filter((entry): entry is readonly [string, string] => entry !== null))
 }
 
 /**
@@ -336,12 +375,13 @@ async function requireWritableDocument(session: AuthorizedSession, documentId: s
 async function viewOf(session: AuthorizedSession, doc: Document, annotationId: string): Promise<AnnotationView> {
   const record = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!record) throw new NotFoundError()
-  const [names, wakes, work] = await Promise.all([
+  const [names, wakes, work, linked] = await Promise.all([
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
     latestWakesFor(session.organizationId, doc.id, record.id),
+    linkedDocuments(session, [record]),
   ])
-  return toView(record, doc, session, true, names, wakes, work)
+  return toView(record, doc, session, true, names, wakes, work, linked)
 }
 
 const limitReached = (error: unknown): never => {
@@ -388,12 +428,13 @@ export async function listAnnotations(session: AuthorizedSession, documentId: st
     canWriteDocument(session, doc.id),
     directoryNames(session.organizationId),
   ])
-  const [wakes, work] = await Promise.all([
+  const [wakes, work, linked] = await Promise.all([
     wakeSpansFor(session.organizationId, doc.id, records),
     latestWakesFor(session.organizationId, doc.id),
+    linkedDocuments(session, records),
   ])
   const annotations = records
-    .map((record) => toView(record, doc, session, writable, names, wakes, work))
+    .map((record) => toView(record, doc, session, writable, names, wakes, work, linked))
     .sort(compareAnnotations)
   return { annotations, canAnnotate: writable, pilotiWakes: wakesEnabled(session) }
 }
@@ -598,7 +639,7 @@ const mayOpenOf =
     mayOpenDocument(session, doc, userIds)
 
 /** The mark as a change left it, for the people the change concerns. */
-type ChangedMark = Pick<DocumentAnnotationRow, 'id' | 'number' | 'body' | 'assigneeUserId' | 'status'>
+type ChangedMark = Pick<DocumentAnnotationRow, 'id' | 'number' | 'body' | 'assigneeUserId' | 'status' | 'dueOn'>
 
 /**
  * The mark's Zuständige changed, or a person took over Piloti's proposal that
@@ -621,6 +662,22 @@ function traceAssigned(
       previousAssigneeUserId: previous,
       assigneeUserId: mark.assigneeUserId,
       open: mark.status === 'open',
+      dueOn: mark.dueOn,
+    })
+  )
+}
+
+/** The date of a mark changed and its Zuständige did not: tell them (`onDueChanged`). */
+function traceRedated(session: AuthorizedSession, doc: Document, mark: ChangedMark, actor: AnnotationActor): void {
+  bestEffort('tell the Zuständige the date', () =>
+    onDueChanged({
+      ...markRefOf(session, doc, mark),
+      actorUserId: session.userId,
+      byPiloti: actor.kind === 'piloti',
+      markText: mark.body,
+      assigneeUserId: mark.assigneeUserId,
+      dueOn: mark.dueOn,
+      open: mark.status === 'open',
     })
   )
 }
@@ -628,8 +685,8 @@ function traceAssigned(
 /**
  * What a change tells people, once it committed, whoever made it (a person in
  * their PATCH, or Piloti for the asker through {@link updateAnnotationForAsker}):
- * a new Zuständige, a mark closed or reopened under its author, and a closed
- * mark settles what was asked on it.
+ * a new Zuständige, a new date to the Zuständige who stays, a mark closed or
+ * reopened under its author, and a closed mark settles what was asked on it.
  */
 function traceChange(
   session: AuthorizedSession,
@@ -642,6 +699,8 @@ function traceChange(
   const takenOver = existing.status === 'proposed' && after.status === 'open'
   if (reassigned || (takenOver && after.assigneeUserId)) {
     traceAssigned(session, doc, after, reassigned ? existing.assigneeUserId : null, actor)
+  } else if (after.dueOn !== existing.dueOn && after.assigneeUserId) {
+    traceRedated(session, doc, after, actor)
   }
   if (after.status === existing.status) return
   const closedAs = after.status === 'resolved' || after.status === 'dismissed' ? after.status : null
@@ -749,6 +808,7 @@ export async function updateAnnotation(
   const existing = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!existing) throw new NotFoundError()
   if (parsed.expectedStatus && parsed.expectedStatus !== existing.status) throw conflict()
+  if (parsed.carryToCurrent) return carryToCurrent(session, doc, existing, actor)
   if (parsed.assigneeUserId) await requireAssignable(session, doc, parsed.assigneeUserId)
   // A new body keeps whom it mentions: the ones picked with it, else the ones
   // stored whose token it still shows. Only the people it adds are told, and
@@ -831,6 +891,7 @@ export async function updateAnnotation(
       body: changes.body ?? existing.body,
       assigneeUserId: changes.assigneeUserId !== undefined ? changes.assigneeUserId : existing.assigneeUserId,
       status: changes.transition?.status ?? existing.status,
+      dueOn: changes.dueOn !== undefined ? changes.dueOn : existing.dueOn,
     },
     actor
   )
@@ -848,6 +909,97 @@ export async function updateAnnotation(
   traceWithdrawn(session, annotationId, withdrawn)
   const annotation = await viewOf(session, doc, annotationId)
   return delegating ? { annotation, wake: wakeOutcomeOf(enqueued.wake) } : { annotation }
+}
+
+/**
+ * „Gilt weiter": an open mark goes on with the Fassung the document shows now,
+ * at the place it was set (a position never changes under someone who read
+ * it; a mark that no longer fits is resolved and set again instead).
+ *
+ * Under the same name the mark moves in place: its `version_id` becomes the
+ * published version's, compared and swapped against the Fassung it was read
+ * on, so its number, its thread and every inbox row and wake anchored on it
+ * stay whole. Nobody is told: the new Fassung told the people working on its
+ * marks (`lib/documents/fassung-notify.ts`), and the room re-reads.
+ *
+ * When another document replaces this one, the mark goes on there instead
+ * ({@link carryAcross}).
+ */
+async function carryToCurrent(
+  session: AuthorizedSession,
+  doc: Document,
+  existing: AnnotationRecord,
+  actor: AnnotationActor
+): Promise<{ annotation: AnnotationView }> {
+  if (existing.status !== 'open') {
+    throw new UnprocessableError('Only an open Anmerkung goes on with the current Fassung.', {
+      field: 'carryToCurrent',
+      reason: 'not-open',
+    })
+  }
+  const replacing = await replacingDocumentOf(session, doc)
+  if (replacing) return carryAcross(session, doc, existing, replacing, actor)
+  const current = doc.publishedVersionId ?? null
+  if ((existing.versionId ?? null) === current) return { annotation: await viewOf(session, doc, existing.id) }
+  const updated = await updateDocumentAnnotation(session.organizationId, doc.id, existing.id, 'open', {
+    fassung: { from: existing.versionId ?? null, to: current },
+  })
+  // Closed, or carried by a colleague a moment ago: say so rather than guess.
+  if (!updated) throw conflict()
+  announce(session, doc.id, [existing.id], 'updated', actor)
+  return { annotation: await viewOf(session, doc, existing.id) }
+}
+
+/**
+ * The mark of a document another one replaced (Index B, filed again as Index
+ * C under another name) goes on as a mark of C: set there with its place, its
+ * text, its author, its Zuständige (while they may still answer on C) and its
+ * date, numbered on C and linked back (`carried_from_id`), while B's is closed
+ * in the same transaction (`carryAnnotationToDocument`).
+ *
+ * A linked copy and not a move, because a move would cut what hangs on the
+ * mark: B's number is what a Protokoll and a Jour fixe named, its thread is
+ * anchored on B in every inbox row, wake and change record that points at it,
+ * and C has numbers of its own. So B's thread stays readable where every link
+ * expects it, C's mark says where it came from, and B's says where it went.
+ * Closing B's mark settles what it asked of people (`traceSettled`); its
+ * Zuständige is asked again on C's (`annotation.assigned_to_you`), unless they
+ * carried it themselves. A mark Piloti works is taken back from Piloti first:
+ * its running turn writes on B.
+ */
+async function carryAcross(
+  session: AuthorizedSession,
+  doc: Document,
+  existing: AnnotationRecord,
+  replacing: Document,
+  actor: AnnotationActor
+): Promise<{ annotation: AnnotationView }> {
+  const target = await requireWritableDocument(session, replacing.id)
+  if (existing.delegatedBy) {
+    throw new UnprocessableError('Take the Anmerkung back from Piloti before it goes on with the new Fassung.', {
+      field: 'carryToCurrent',
+      reason: 'delegated',
+    })
+  }
+  const assignee =
+    existing.assigneeUserId && (await isAssignable(session, target, existing.assigneeUserId)) ? existing.assigneeUserId : null
+  const mentions = await keepMentions(session, target, existing.body, existing.mentions, { piloti: false })
+  const row = await carryAnnotationToDocument({
+    organizationId: session.organizationId,
+    source: existing,
+    target: { documentId: target.id, versionId: target.publishedVersionId ?? null },
+    values: { mentions, assigneeUserId: assignee },
+    closedBy: session.userId,
+  }).catch((error: unknown) => {
+    if (error instanceof AlreadyCarriedError) throw conflict()
+    return limitReached(error)
+  })
+  if (!row) throw conflict()
+  announce(session, doc.id, [existing.id], 'updated', actor)
+  announce(session, target.id, [row.id], 'created', actor)
+  traceSettled(session, existing.id, true)
+  if (row.assigneeUserId) traceAssigned(session, target, row, null, actor)
+  return { annotation: await viewOf(session, target, row.id) }
 }
 
 /** Who took a mark back from Piloti, for the wakes it stops (`./take-back`). */
@@ -934,13 +1086,14 @@ export async function readAnnotation(
   const doc = await getAccessibleDocument(session, documentId, 'read')
   const record = annotatable(doc) ? await findDocumentAnnotation(session.organizationId, doc.id, annotationId) : null
   if (!record) throw new NotFoundError()
-  const [writable, names, wakes, work] = await Promise.all([
+  const [writable, names, wakes, work, linked] = await Promise.all([
     canWriteDocument(session, doc.id),
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
     latestWakesFor(session.organizationId, doc.id, record.id),
+    linkedDocuments(session, [record]),
   ])
-  return toView(record, doc, session, writable, names, wakes, work)
+  return toView(record, doc, session, writable, names, wakes, work, linked)
 }
 
 /** What Piloti may change on a mark for the asker: what a person's PATCH changes, the assignee by name. */
