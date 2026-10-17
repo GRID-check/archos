@@ -35,7 +35,7 @@ describe('QuarantineFindings', () => {
   })
 
   it('claims nothing about the content when the reason cannot be read', () => {
-    render(<QuarantineFindings errorMessage="quarantined:{broken" />)
+    render(<QuarantineFindings verdict={null} />)
     expect(screen.getByText(en.files.ingestFailure.quarantinedUnreadable)).toBeInTheDocument()
     expect(screen.queryByText(en.files.ingestFailure.quarantined)).toBeNull()
   })

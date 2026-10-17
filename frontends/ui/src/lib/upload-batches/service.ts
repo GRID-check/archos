@@ -38,7 +38,7 @@ import { memberReader } from '@/lib/documents/document-reader'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { parseQuarantine, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
+import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import {
   countBatchDocumentsByStatus,
   findUploadBatch,
@@ -272,7 +272,7 @@ function toSummaryDocument(
     status: row.status,
     outcome: outcomeOf(row.status),
     screening: row.screeningOutcome,
-    quarantine: parseQuarantine(row.errorMessage),
+    quarantine: quarantineVerdictOf(row),
     // A quarantine verdict is shown as reasons, not as an error string.
     errorMessage: row.status === 'quarantined' ? null : row.errorMessage,
     summary: row.summary ?? null,

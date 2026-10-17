@@ -18,7 +18,7 @@ import { IngestionStatusWord, ingestionMarkOfPhase } from './ingestion-atoms'
 import { IngestFailureNotice } from './ingest-failure-notice'
 import { QuarantineFindings } from './quarantine-findings'
 import { RequestReviewButton } from './request-review-button'
-import { parseQuarantine } from '@/lib/upload-screening/quarantine'
+import { quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { failedWhileReading } from '../lib/ingest-failure'
 import { Button } from '@/components/ui/button'
 import { AnimatePresence, iconSwapTransition, motion, motionBase, useMotionToken } from '@/components/motion'
@@ -535,6 +535,7 @@ function UploadRow({
   // Held back by the content check (ADR-0086). Never retried: the server
   // refuses a re-upload onto it, and nothing went wrong to repeat.
   const isHeldBack = phase === 'held'
+  const heldVerdict = isHeldBack ? quarantineVerdictOf(file) : null
   const unchanged = file.unchanged === true && phase === 'ready'
   const canDismiss = (phase === 'canceled' || isFailed || isHeldBack) && onDismiss !== undefined
   const canRetry = isFailed && mayRetryUpload(file)
@@ -704,8 +705,8 @@ function UploadRow({
                   there are no reasons to list. */}
               {isHeldBack && (
                 <QuarantineFindings
-                  errorMessage={file.errorMessage}
-                  withoutSentence={(parseQuarantine(file.errorMessage)?.reasons.length ?? 0) > 0}
+                  verdict={heldVerdict}
+                  withoutSentence={(heldVerdict?.reasons.length ?? 0) > 0}
                   testId="upload-row-held"
                 />
               )}

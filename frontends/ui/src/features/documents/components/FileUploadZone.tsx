@@ -18,6 +18,7 @@ import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
 import type { TrackedFileStatus } from '../types'
 import { QuarantineFindings } from './quarantine-findings'
+import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import { photoIntake, prepareSitePhotos } from '../lib/site-photo'
 import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '../'
 import type { Transition } from 'motion/react'
@@ -48,6 +49,8 @@ interface UploadedFile {
   file: File
   status: UploadZoneStatus
   errorMessage?: string
+  /** Why a held file is held (`quarantineVerdictOf`), read once where the row is mirrored. */
+  verdict: QuarantineVerdict | null
 }
 
 /** A tracked file's status as the zone shows it, decided for every status there is. */
@@ -134,6 +137,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
         file: tf.file!,
         status: zoneStatusOf(tf.status),
         errorMessage: tf.errorMessage ?? undefined,
+        verdict: tf.status === 'held' ? quarantineVerdictOf(tf) : null,
       }))
     setUploadValue(mapped)
   }, [collectionFiles])
@@ -248,7 +252,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
                 {/* A held file's stored text is the verdict as JSON: it reads
                     as its reasons, never as a red error line. */}
                 {item.status === 'held' ? (
-                  <QuarantineFindings errorMessage={item.errorMessage} testId="upload-zone-held" />
+                  <QuarantineFindings verdict={item.verdict} testId="upload-zone-held" />
                 ) : item.status === 'error' && item.errorMessage ? (
                   <p className="text-xs text-destructive">{item.errorMessage}</p>
                 ) : null}

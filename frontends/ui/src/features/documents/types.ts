@@ -11,6 +11,7 @@ import type {
   IngestionJobStatus,
 } from '@/adapters/api/documents-schemas'
 import type { FileItem } from './components/project-file-workspace'
+import type { QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 
 // Re-export API types from schemas (single source of truth)
 export type {
@@ -74,7 +75,7 @@ export interface TrackedFile {
    * - `deleting` / `canceled`: client-only, transient.
    * - `held`: the content check (*Inhaltsprüfung*) held the file back
    *   (ADR-0086). Nothing failed and a re-upload is refused, so it is never
-   *   retried; the reasons are in `errorMessage` as `quarantined:{…}`. A
+   *   retried; the reasons are in `quarantine` (ADR-0113). A
    *   reviewer lets it through (*zulassen*) or deletes it, elsewhere.
    * - `stored`: the bytes are kept and nothing was read, the document's
    *   `uploaded` / `stored` status. Not a success, because Piloti cannot cite
@@ -103,6 +104,12 @@ export interface TrackedFile {
   uploadStartedAt?: number
   /** Error message if failed */
   errorMessage?: string | null
+  /**
+   * Why the content check held it back, when it did (ADR-0113): the job's
+   * typed verdict, or the document status read's. Read it through
+   * `quarantineVerdictOf`, which also covers a job from before the field.
+   */
+  quarantine?: QuarantineVerdict | null
   /**
    * `false` when sending the same bytes again cannot succeed: the server
    * refused the upload for a reason a retry meets again (a re-upload onto a
@@ -175,6 +182,7 @@ export function trackedFileToFileItem(file: TrackedFile): FileItem {
     folderId: null,
     createdAt: file.uploadedAt ?? new Date().toISOString(),
     errorMessage: file.errorMessage ?? null,
+    quarantine: file.quarantine ?? null,
     summary: null,
     pageCount: null,
     chunkCount: null,
