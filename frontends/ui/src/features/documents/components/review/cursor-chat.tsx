@@ -107,7 +107,7 @@ export function CursorChat({
         maxLength={CURSOR_CHAT_MAX}
         value={text}
         placeholder={t('review.chatPlaceholder')}
-        className="w-full rounded-md border-0 bg-transparent px-1 text-sm leading-5 font-medium text-white shadow-none placeholder:text-white/70"
+        className="w-full rounded-md border-0 bg-transparent px-1 text-sm leading-5 font-medium text-white shadow-none placeholder:text-white/70 pointer-coarse:text-base"
         // The app's focus outline stays (WCAG 2.4.11), in white on the bubble's colour, hugging the words.
         style={{ outlineColor: 'rgb(255 255 255 / 0.75)', outlineOffset: 1 }}
         onChange={(event) => {
