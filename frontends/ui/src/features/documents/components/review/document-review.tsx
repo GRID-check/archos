@@ -38,11 +38,19 @@ import { documentFileUrl } from '@/lib/documents/urls'
 import { cn } from '@/lib/utils'
 import { stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview as ReviewState, ReviewTool } from '../../hooks/use-document-review'
-import type { RoomPeerState } from '../../hooks/use-document-room'
+import { sameValue } from '@/lib/utils/same-value'
+import {
+  useRoomPeers,
+  useRoomSelector,
+  type DocumentRoom,
+  type RoomPeerState,
+} from '../../hooks/use-document-room'
 import { CursorChat } from './cursor-chat'
+import { keepTrigger, restoreFocus } from './focus-return'
 import { PilotiAnswerCard } from './piloti-answer-card'
 import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
-import { ReviewPanel } from './review-panel'
+import { ReviewPanel, type OpenMark } from './review-panel'
+import { ReviewAnnouncer } from './review-announcer'
 import { ReviewExportMenu } from './review-export-menu'
 import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
 
@@ -107,12 +115,15 @@ function ReviewTools({
   onChat,
   variant,
   onFold,
+  onAim,
 }: {
   review: ReviewState
   chatOpen: boolean
   onChat: () => void
   variant: 'icons' | 'intro' | 'touch'
   onFold?: () => void
+  /** A mark tool was taken up from the keyboard: the crosshair sets the place. */
+  onAim?: () => void
 }): JSX.Element {
   const t = useTranslations('files')
   const offered = TOOLS.filter(({ tool }) => tool === 'chat' || toolOffered(tool, review))
@@ -127,11 +138,18 @@ function ReviewTools({
             aria-pressed={pressed}
             aria-keyshortcuts={key}
             aria-label={name}
-            onClick={() => (tool === 'chat' ? onChat() : review.setTool(tool))}
+            onClick={(event) => {
+              if (tool === 'chat') return onChat()
+              review.setTool(tool)
+              // `detail` is 0 for a click the keyboard made (Enter, Space).
+              if (tool !== 'select' && event.detail === 0) onAim?.()
+            }}
             className={cn(
               // The tool in hand is filled in ink: what the pointer will do is never a guess.
               'aria-pressed:bg-foreground aria-pressed:text-background aria-pressed:hover:text-background',
-              variant === 'intro' && 'w-auto gap-1.5 px-2 text-xs font-medium',
+              // Spelled out where the stage is wide enough for the whole pill; under ~1000px of it the
+              // tools fold to their glyphs, still named for a screen reader (the viewer's container).
+              variant === 'intro' && 'w-auto gap-1.5 px-2 text-xs font-medium @max-5xl:w-7 @max-5xl:px-0',
               variant === 'touch' && 'h-12 w-14 flex-col gap-0.5 pointer-coarse:size-auto pointer-coarse:h-12 pointer-coarse:w-14'
             )}
           >
@@ -139,14 +157,16 @@ function ReviewTools({
             {variant === 'intro' && (
               <>
                 {/* The short name: the pill also carries the viewer's own controls. */}
-                <span>{t(`review.toolsShort.${tool}`)}</span>
-                <Kbd className="h-4 min-w-4 px-1 text-[10px]">{key}</Kbd>
+                <span className="@max-5xl:sr-only">{t(`review.toolsShort.${tool}`)}</span>
+                <Kbd className="h-4 min-w-4 px-1 text-[10px] @max-5xl:hidden">{key}</Kbd>
               </>
             )}
             {variant === 'touch' && <span className="text-[10px] leading-3 font-medium">{t(`review.toolsShort.${tool}`)}</span>}
           </ToolbarIconButton>
         )
-        if (variant !== 'icons') return <span key={tool} className="contents">{button}</span>
+        // A finger has no hover: its labels are under the glyphs. Spelled out, the
+        // tools keep the tooltip too, for when a narrow stage folds them to glyphs.
+        if (variant === 'touch') return <span key={tool} className="contents">{button}</span>
         return (
           <Tooltip key={tool}>
             <TooltipTrigger asChild>{button}</TooltipTrigger>
@@ -157,7 +177,13 @@ function ReviewTools({
         )
       })}
       {variant === 'intro' && onFold && (
-        <ToolbarIconButton aria-label={t('review.toolsIntroFold')} title={t('review.toolsIntroFold')} data-testid="review-tools-fold" onClick={onFold}>
+        <ToolbarIconButton
+          aria-label={t('review.toolsIntroFold')}
+          title={t('review.toolsIntroFold')}
+          data-testid="review-tools-fold"
+          className="@max-5xl:hidden"
+          onClick={onFold}
+        >
           <X aria-hidden />
         </ToolbarIconButton>
       )}
@@ -183,6 +209,37 @@ export function people(peers: readonly RoomPeerState[]): RoomPeerState[] {
 }
 
 /**
+ * Who is in the room, as the header tells it: the people, one per person, and
+ * the page each is on; and Piloti, what it is doing and for whom. Equal by
+ * value from one pointer frame to the next, so the faces, the header and the
+ * file preview that read it re-render when somebody comes, goes or turns a
+ * page, not when a pointer moves.
+ */
+export interface RoomCompany {
+  people: Array<{ peerId: string; userId: string; name: string; page: number | null }>
+  piloti: { forName: string | null; working: boolean; label: string | null } | null
+}
+
+export function roomCompanyOf(peers: readonly RoomPeerState[]): RoomCompany {
+  const piloti = peers.find(isPilotiPeer) ?? null
+  return {
+    people: people(peers).map((state) => ({
+      peerId: state.peer.peerId,
+      userId: state.peer.userId,
+      name: state.peer.name,
+      page: pageOf(state),
+    })),
+    piloti: piloti
+      ? { forName: piloti.peer.forName ?? null, working: Boolean(piloti.activity), label: piloti.activity?.label ?? null }
+      : null,
+  }
+}
+
+/** The room's company, re-rendering only when it changed: see {@link RoomCompany}. */
+export const useRoomCompany = (room: Pick<DocumentRoom, 'peers'>): RoomCompany =>
+  useRoomSelector(room, roomCompanyOf, sameValue)
+
+/**
  * Who else is here, as faces in their colour. A face is also the way to follow
  * them: the view goes where theirs goes until the reader moves on their own.
  * Without `onFollow` (the file preview's header) the faces only tell, and the
@@ -199,12 +256,11 @@ export function Presence({
 }): JSX.Element | null {
   const t = useTranslations('files')
   const tPresence = useTranslations('presence')
-  const others = people(review.room.peers)
+  const { people: others, piloti } = useRoomCompany(review.room)
   // Piloti in the room as itself: a peer the server publishes while it works on
   // the document, naming whose request it works on (ADR-0105). The full name
   // here, where there is room; the cursor tag carries the first name.
-  const piloti = review.room.peers.find(isPilotiPeer) ?? null
-  const forName = piloti?.peer.forName
+  const forName = piloti?.forName
   const onBehalf = forName ? tPresence('piloti.onBehalfOf', { name: forName }) : null
   if (others.length === 0 && !piloti) return null
   if (!onFollow) {
@@ -212,15 +268,15 @@ export function Presence({
       <span aria-hidden className="flex items-center -space-x-1" data-testid="review-presence">
         {piloti && (
           <span className="ring-background rounded-full ring-2">
-            <PilotiGlyph size="md" working={Boolean(piloti.activity)} label={onBehalf ?? 'Piloti'} />
+            <PilotiGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
           </span>
         )}
-        {others.map((state) => (
+        {others.map((person) => (
           <PersonAvatar
-            key={state.peer.userId}
+            key={person.userId}
             size="sm"
             className="ring-background size-7 text-[10px] ring-2"
-            person={{ userId: state.peer.userId, name: state.peer.name, profilePictureUrl: null }}
+            person={{ userId: person.userId, name: person.name, profilePictureUrl: null }}
           />
         ))}
       </span>
@@ -232,53 +288,51 @@ export function Presence({
         <Tooltip>
           <TooltipTrigger asChild>
             <span data-testid="review-presence-piloti" className="ring-background rounded-full ring-2">
-              <PilotiGlyph size="md" working={Boolean(piloti.activity)} label={onBehalf ?? 'Piloti'} />
+              <PilotiGlyph size="md" working={piloti.working} label={onBehalf ?? 'Piloti'} />
             </span>
           </TooltipTrigger>
           <TooltipContent>
             {onBehalf ? (
               <>
                 <span className="block">{onBehalf}</span>
-                {piloti.activity?.label && <span className="block opacity-80">{piloti.activity.label}</span>}
+                {piloti.label && <span className="block">{piloti.label}</span>}
               </>
             ) : (
-              piloti.activity?.label || t('review.pilotiWorking')
+              piloti.label || t('review.pilotiWorking')
             )}
           </TooltipContent>
         </Tooltip>
       )}
-      {others.map((state) => {
-        const on = following === state.peer.peerId
+      {others.map((person) => {
+        const on = following === person.peerId
         return (
-          <Tooltip key={state.peer.userId}>
+          <Tooltip key={person.userId}>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 data-testid="review-peer"
                 aria-pressed={on}
-                aria-label={on ? t('review.unfollow', { name: state.peer.name }) : t('review.follow', { name: state.peer.name })}
-                onClick={() => onFollow(on ? null : state.peer.peerId)}
+                aria-label={on ? t('review.unfollow', { name: person.name }) : t('review.follow', { name: person.name })}
+                onClick={() => onFollow(on ? null : person.peerId)}
                 className="relative rounded-full outline-none focus-visible:ring-2"
               >
                 <PersonAvatar
                   size="sm"
                   className="ring-background size-7 text-[10px] ring-2"
-                  person={{ userId: state.peer.userId, name: state.peer.name, profilePictureUrl: null }}
+                  person={{ userId: person.userId, name: person.name, profilePictureUrl: null }}
                 />
                 <span
                   aria-hidden
                   className={cn('absolute -inset-[3px] rounded-full border-2', on ? 'opacity-100' : 'opacity-0')}
-                  style={{ borderColor: identityInk(state.peer.userId) }}
+                  style={{ borderColor: identityInk(person.userId) }}
                 />
               </button>
             </TooltipTrigger>
             <TooltipContent>
               <span className="block">
-                {on ? t('review.unfollow', { name: state.peer.name }) : t('review.follow', { name: state.peer.name })}
+                {on ? t('review.unfollow', { name: person.name }) : t('review.follow', { name: person.name })}
               </span>
-              {pageOf(state) && (
-                <span className="block opacity-80">{t('review.onPage', { name: state.peer.name, page: pageOf(state) ?? 1 })}</span>
-              )}
+              {person.page && <span className="block">{t('review.onPage', { name: person.name, page: person.page })}</span>}
             </TooltipContent>
           </Tooltip>
         )
@@ -359,7 +413,9 @@ function Elsewhere({
   useScrollTick(canvas)
   const node = canvas.current
   const view = node?.getBoundingClientRect() ?? null
-  const here = people(review.room.peers).flatMap((state) => {
+  // Its own subscription: where people are moves with every pointer, and only these chips redraw for it.
+  const peers = useRoomPeers(review.room)
+  const here = people(peers).flatMap((state) => {
     const at = pageOf(state)
     if (at === null) return []
     const y = state.cursor?.page === at ? state.cursor.y : (state.viewport?.y ?? 0.5)
@@ -537,6 +593,7 @@ export function DocumentReviewMode({
   focusRequest,
   popoutHref = null,
   initialTool,
+  onPage,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -551,6 +608,8 @@ export function DocumentReviewMode({
   popoutHref?: string | null
   /** A tool to have in hand once the review opens (entered by „Anmerken"). */
   initialTool?: ReviewTool
+  /** The page the reader is on, as it changes: the file preview opens there again once the review closes. */
+  onPage?: (page: number) => void
 }): JSX.Element {
   const t = useTranslations('files')
   const [focus, setFocus] = useState<{ page: number; y: number; key: string; instant?: boolean } | null>(null)
@@ -561,13 +620,17 @@ export function DocumentReviewMode({
    * who is elsewhere. Null until the viewer first reports: it opens on page 1.
    */
   const [viewPage, setViewPage] = useState<number | null>(null)
+  /** Where the middle of the reader's view is, for the keyboard's crosshair to start there. */
+  const viewAt = useRef<{ page: number; y: number } | null>(null)
   const { sendViewport } = room
   const onViewport = useCallback(
     (viewport: { page: number; y: number }) => {
+      if (viewAt.current?.page !== viewport.page) onPage?.(viewport.page)
+      viewAt.current = viewport
       setViewPage(viewport.page)
       sendViewport(viewport)
     },
-    [sendViewport]
+    [sendViewport, onPage]
   )
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const touch = useMediaQuery('(pointer: coarse)')
@@ -636,6 +699,59 @@ export function DocumentReviewMode({
   )
 
   /**
+   * The focus, for a reader on the keyboard. A card opened by a key (J, K, Enter
+   * on a pin or a row) takes the focus itself: it is a dialog named by its
+   * header, so it is announced, and no Enter lands on „Erledigen" by accident.
+   * What had the focus is kept, and gets it back when the card closes (its ×,
+   * Escape). Each key's ask is counted, so a key that lands on the card already
+   * open is answered at once and leaves nothing behind for a later click. The
+   * keyboard's crosshair returns the focus the same way when the tool is put down.
+   */
+  const cardTrigger = useRef<HTMLElement | null>(null)
+  const [cardFocusAsked, setCardFocusAsked] = useState(0)
+  const cardFocusAnswered = useRef(0)
+  const focusNextCard = useCallback(() => {
+    cardTrigger.current = keepTrigger(cardTrigger.current)
+    setCardFocusAsked((asked) => asked + 1)
+  }, [])
+  const cardInHand = openAsk?.id ?? (draft ? 'draft' : selectedId)
+  useEffect(() => {
+    if (cardFocusAsked !== cardFocusAnswered.current) {
+      cardFocusAnswered.current = cardFocusAsked
+      if (!cardInHand) return
+      const frame = requestAnimationFrame(() => {
+        const card = document.querySelector<HTMLElement>('[data-review-card]')
+        if (card && !card.contains(document.activeElement)) card.focus({ preventScroll: true })
+      })
+      return () => cancelAnimationFrame(frame)
+    }
+    const trigger = cardTrigger.current
+    if (cardInHand || !trigger) return
+    cardTrigger.current = null
+    const frame = requestAnimationFrame(() => restoreFocus(trigger))
+    return () => cancelAnimationFrame(frame)
+  }, [cardInHand, cardFocusAsked])
+
+  /** The keyboard's crosshair: a mark tool taken up by a key sets its place with the arrows. */
+  const [aim, setAim] = useState<{ page: number; y: number; key: number } | null>(null)
+  const aimTrigger = useRef<HTMLElement | null>(null)
+  const startAim = useCallback(() => {
+    aimTrigger.current = keepTrigger(aimTrigger.current)
+    const at = viewAt.current
+    setAim({ page: at?.page ?? viewPage ?? 1, y: at?.y ?? 0.5, key: Date.now() })
+  }, [viewPage])
+  useEffect(() => {
+    if (tool !== 'select' || !aim) return
+    setAim(null)
+    // Put down, or the mark set and its card closed: the focus goes back to where the tool was taken up.
+    const trigger = aimTrigger.current
+    aimTrigger.current = null
+    if (!trigger) return
+    const frame = requestAnimationFrame(() => restoreFocus(trigger))
+    return () => cancelAnimationFrame(frame)
+  }, [tool, aim])
+
+  /**
    * Going through Piloti's proposals („Durchgehen"): the proposal in hand. A
    * decision on it moves to the next one; choosing anything else ends the walk.
    */
@@ -659,6 +775,14 @@ export function DocumentReviewMode({
     if (next) bring(next)
   }, [walking, selectedId, annotations, review, bring])
   const walk = walking ? walkPosition(annotations, walking) : null
+  /** A row of the list chosen: its mark brought into view, its card focused when a key chose it. */
+  const openFromList = useCallback<OpenMark>(
+    (annotation, byKeyboard) => {
+      if (byKeyboard) focusNextCard()
+      bring(annotation)
+    },
+    [bring, focusNextCard]
+  )
 
   // Entered from a mark: open at it, once per request, as soon as the list holds it.
   const handled = useRef<number | null>(null)
@@ -670,8 +794,21 @@ export function DocumentReviewMode({
     bring(target)
   }, [open, focusRequest, annotations, bring])
 
-  // Following: the view goes where theirs goes.
-  const followed = following ? room.peers.find((state) => state.peer.peerId === following) : null
+  // Following: the view goes where theirs goes. Read off the room by what it needs, so
+  // their pointer moving does not re-render the review; their view moving does.
+  const followed = useRoomSelector(
+    room,
+    useCallback(
+      (peers: readonly RoomPeerState[]) => {
+        const state = following ? peers.find((peer) => peer.peer.peerId === following) : undefined
+        return state
+          ? { peerId: state.peer.peerId, userId: state.peer.userId, name: state.peer.name, viewport: state.viewport }
+          : null
+      },
+      [following]
+    ),
+    sameValue
+  )
   useEffect(() => {
     if (!following) return
     if (!followed) {
@@ -687,11 +824,12 @@ export function DocumentReviewMode({
     })
   }, [following, followed])
 
+  const { notice, dismissNotice } = review
   useEffect(() => {
-    if (review.notice !== 'conflict') return
+    if (notice !== 'conflict') return
     toast.info(t('review.conflict'))
-    review.dismissNotice()
-  }, [review, t])
+    dismissNotice()
+  }, [notice, dismissNotice, t])
 
   const close = useCallback(() => {
     setFollowing(null)
@@ -733,47 +871,62 @@ export function DocumentReviewMode({
     else close()
   }
 
-  // Letters pick tools and walk the marks.
+  // Letters pick tools and walk the marks. The handler reads this render's state
+  // through a ref: the listener is attached once per opening, not on every change.
+  const onKey = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+    // The list's sheet, and a phone's card sheet, are layers of their own: their keys are their own.
+    if (listOpen || dockOpen) return
+    if (event.key === 'Escape' || typing(event.target)) return
+    const key = event.key.toLowerCase()
+    if (key === '/') openChat(true)
+    else if (key === 'v') setTool('select')
+    else if ((key === 'c' || key === 'r') && review.canAnnotate) {
+      setTool(key === 'c' ? 'point' : 'region')
+      startAim()
+    } else if (key === 'p' && piloti.available) {
+      setTool('ask')
+      startAim()
+    } else if (key === 'j' && walk) {
+      focusNextCard()
+      walkProposals()
+    } else if (key === 'j' || key === 'k') {
+      const next = review.step(key === 'j' ? 1 : -1)
+      if (next) {
+        focusNextCard()
+        bring(next)
+      }
+    } else if (key === 'e' && selectedId) {
+      const current = annotations.find((annotation) => annotation.id === selectedId)
+      if (!current?.canEdit) return
+      if (current.status === 'proposed' || current.status === 'open') {
+        void review
+          .update(current.id, {
+            status: current.status === 'proposed' ? 'open' : 'resolved',
+            expectedStatus: current.status,
+          })
+          .catch(() => toast.error(t('review.actionFailed')))
+      }
+    } else if ((key === 'backspace' || key === 'delete') && selectedId) {
+      // ⌫ on „Verwerfen" says it: a proposal in hand is dismissed, nothing else is.
+      const current = annotations.find((annotation) => annotation.id === selectedId)
+      if (!current?.canEdit || current.status !== 'proposed') return
+      void review
+        .update(current.id, { status: 'dismissed', expectedStatus: 'proposed' })
+        .catch(() => toast.error(t('review.actionFailed')))
+    } else return
+    event.preventDefault()
+  }
+  const onKeyRef = useRef(onKey)
+  useEffect(() => {
+    onKeyRef.current = onKey
+  })
   useEffect(() => {
     if (!open) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
-      // The list's sheet, and a phone's card sheet, are layers of their own: their keys are their own.
-      if (listOpen || dockOpen) return
-      if (event.key === 'Escape' || typing(event.target)) return
-      const key = event.key.toLowerCase()
-      if (key === '/') openChat(true)
-      else if (key === 'v') setTool('select')
-      else if ((key === 'c' || key === 'r') && review.canAnnotate) setTool(key === 'c' ? 'point' : 'region')
-      else if (key === 'p' && piloti.available) setTool('ask')
-      else if (key === 'j' && walk) walkProposals()
-      else if (key === 'j' || key === 'k') {
-        const next = review.step(key === 'j' ? 1 : -1)
-        if (next) bring(next)
-      } else if (key === 'e' && selectedId) {
-        const current = annotations.find((annotation) => annotation.id === selectedId)
-        if (!current?.canEdit) return
-        if (current.status === 'proposed' || current.status === 'open') {
-          void review
-            .update(current.id, {
-              status: current.status === 'proposed' ? 'open' : 'resolved',
-              expectedStatus: current.status,
-            })
-            .catch(() => toast.error(t('review.actionFailed')))
-        }
-      } else if ((key === 'backspace' || key === 'delete') && selectedId) {
-        // ⌫ on „Verwerfen" says it: a proposal in hand is dismissed, nothing else is.
-        const current = annotations.find((annotation) => annotation.id === selectedId)
-        if (!current?.canEdit || current.status !== 'proposed') return
-        void review
-          .update(current.id, { status: 'dismissed', expectedStatus: 'proposed' })
-          .catch(() => toast.error(t('review.actionFailed')))
-      } else return
-      event.preventDefault()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, listOpen, dockOpen, piloti, selectedId, annotations, review, setTool, bring, openChat, walk, walkProposals, t])
+    const listener = (event: KeyboardEvent) => onKeyRef.current(event)
+    window.addEventListener('keydown', listener)
+    return () => window.removeEventListener('keydown', listener)
+  }, [open])
 
   /** A link that opens the review at this mark, on the clipboard; a refusal says so. */
   const copyText = useCallback(
@@ -803,7 +956,7 @@ export function DocumentReviewMode({
     if (popoutHref) window.open(popoutHref, '_blank', 'popup,width=1440,height=900')
   }, [popoutHref])
 
-  const followedState = following ? room.peers.find((state) => state.peer.peerId === following) : null
+  const followedState = followed
 
   /** The card for whatever is in hand, wherever it is shown. */
   const threadCard = (placement: CardPlacement) => {
@@ -823,8 +976,13 @@ export function DocumentReviewMode({
   }
 
   // What the tool in hand does next, said once at the top of the canvas.
+  // With the keyboard's crosshair out, the keys that move and set it.
   const toolHint =
-    tool !== 'select' && !draft && !openAsk ? t(`review.${touch ? 'toolHintTouch' : 'toolHint'}.${tool}`) : null
+    tool !== 'select' && !draft && !openAsk
+      ? aim
+        ? t(`review.aim.hint.${tool}`)
+        : t(`review.${touch ? 'toolHintTouch' : 'toolHint'}.${tool}`)
+      : null
 
   const toolsPalette = (variant: 'icons' | 'intro' | 'touch') => (
     <ReviewTools
@@ -833,6 +991,7 @@ export function DocumentReviewMode({
       onChat={() => openChat(false)}
       variant={variant}
       onFold={foldIntro}
+      onAim={startAim}
     />
   )
   const exportMenu = annotations.length > 0 && (
@@ -962,15 +1121,16 @@ export function DocumentReviewMode({
               {followedState && (
                 <span
                   className="rounded-full px-3 py-1 text-xs font-medium text-white shadow-md"
-                  style={{ backgroundColor: identityInk(followedState.peer.userId) }}
+                  style={{ backgroundColor: identityInk(followedState.userId) }}
                   role="status"
                 >
-                  {t('review.following', { name: followedState.peer.name })}
+                  {t('review.following', { name: followedState.name })}
                 </span>
               )}
               <Elsewhere review={review} page={viewPage ?? 1} edge="above" canvas={canvasRef} onJump={jumpTo} />
               {toolHint && (
-                <FloatingNote role="status" data-testid="review-tool-hint">
+                // With the crosshair out its own label says the keys in words; the glyphs here would be read on top of it.
+                <FloatingNote role={aim ? undefined : 'status'} aria-hidden={aim ? true : undefined} data-testid="review-tool-hint">
                   {toolHint}
                 </FloatingNote>
               )}
@@ -997,7 +1157,7 @@ export function DocumentReviewMode({
               <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 z-30 border-[3px]"
-                style={{ borderColor: identityInk(followedState.peer.userId) }}
+                style={{ borderColor: identityInk(followedState.userId) }}
               />
             )}
             {touch && (
@@ -1019,6 +1179,8 @@ export function DocumentReviewMode({
                   page={page}
                   review={review}
                   focused
+                  onPinByKeyboard={focusNextCard}
+                  aim={aim && aim.page === page ? aim : null}
                   renderAsk={
                     docked ? undefined : (ask, { placement }) => <PilotiAnswerCard key={ask.id} review={review} ask={ask} placement={placement} />
                   }
@@ -1032,7 +1194,7 @@ export function DocumentReviewMode({
               className="size-full"
             />
           </div>
-          <ReviewPanel review={review} onOpen={bring} onWalkProposals={walkProposals} />
+          <ReviewPanel review={review} onOpen={openFromList} onWalkProposals={walkProposals} />
         </div>
         {docked && (
           // Not modal: no veil over the drawing the card is about, and the page
@@ -1073,9 +1235,9 @@ export function DocumentReviewMode({
                 review={review}
                 presentation="sheet"
                 // Choosing a mark shows it: the sheet steps aside for the page.
-                onOpen={(annotation) => {
+                onOpen={(annotation, byKeyboard) => {
                   setListOpen(false)
-                  bring(annotation)
+                  openFromList(annotation, byKeyboard)
                 }}
                 onWalkProposals={() => {
                   setListOpen(false)
@@ -1085,6 +1247,7 @@ export function DocumentReviewMode({
             </SheetContent>
           </Sheet>
         )}
+        <ReviewAnnouncer review={review} />
       </DialogContent>
     </Dialog>
   )

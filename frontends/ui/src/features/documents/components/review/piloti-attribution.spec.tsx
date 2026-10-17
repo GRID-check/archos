@@ -19,6 +19,7 @@ import type { RoomPeerState } from '../../hooks/use-document-room'
 import { pilotiForShort, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { ThreadCard } from './thread-card'
+import { fixedStore } from '@/features/realtime/use-channel'
 
 const PILOTI: RoomPeer = {
   peerId: 'piloti-conv_42',
@@ -46,7 +47,12 @@ const pilotiState = (overrides: Partial<RoomPeerState> = {}): RoomPeerState => (
 
 /** The review as far as the page layer reads it: no marks, no tool in hand, one room. */
 function reviewWith(peers: RoomPeerState[]): DocumentReview {
-  const room: Partial<DocumentReview['room']> = { peers, sendCursor: () => {}, sendDraft: () => {} }
+  const room: Partial<DocumentReview['room']> = {
+    peers: fixedStore(peers),
+    highlights: fixedStore([]),
+    sendCursor: () => {},
+    sendDraft: () => {},
+  }
   const piloti: Partial<DocumentReview['piloti']> = { asks: [], openId: null, compose: () => 'ask_1', open: () => {} }
   const review: Partial<DocumentReview> = {
     annotations: [],

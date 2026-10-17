@@ -25,6 +25,9 @@ import 'server-only'
  * | The mark was resolved or dismissed | resolves everyone's `piloti.asks_you` and `annotation.assigned_to_you` | |
  * | The mark was deleted | every row anchored on it turns inert, for everyone | |
  *
+ * The author's `annotation.activity` row says `yours: true`: a reply or a move
+ * on a mark they wrote answers them, and is pushed as a result, not as activity.
+ *
  * Every recipient of a person's news is asked whether they may open the
  * document now (`lib/documents/may-open.ts`, handed in as {@link MayOpen}):
  * someone who cannot read the folder is never told what a mark in it says.
@@ -88,6 +91,12 @@ interface MarkItem {
   /** Picks the row's wording, where its type has more than one. */
   variant?: string | null
   actorUserId?: string | null
+  /**
+   * Whose mark it is, when that matters to how the news reaches them: their
+   * row says `yours: true`, and the push policy then treats it as an answer to
+   * them (`InboxPushPolicy.yours`), not ambient activity.
+   */
+  author?: string | null
 }
 
 /** One item about a mark, addressed to each of these people. */
@@ -95,7 +104,7 @@ async function emitAboutMark(
   type: InboxItemType,
   ref: MarkRef,
   recipientUserIds: readonly string[],
-  { excerpt, variant = null, actorUserId = null }: MarkItem
+  { excerpt, variant = null, actorUserId = null, author = null }: MarkItem
 ): Promise<void> {
   if (recipientUserIds.length === 0) return
   const subject = await documentName(ref)
@@ -115,7 +124,7 @@ async function emitAboutMark(
       anchorId: ref.annotationId,
       actorUserId,
       groupKey: inboxGroupKey(type, 'document', ref.documentId, ref.annotationId),
-      payload,
+      payload: author !== null && recipientUserId === author ? { ...payload, yours: true } : payload,
     }))
   )
 }
@@ -320,6 +329,7 @@ export async function onMarkReplied(
       excerpt: excerptOf(input.replyText),
       variant: 'reply',
       actorUserId: input.byPiloti ? null : input.actorUserId,
+      author: markAuthor(input.mark),
     })
   })
 }
@@ -339,6 +349,7 @@ export async function onMarkMoved(
       excerpt: excerptOf(input.markText),
       variant: input.move,
       actorUserId: input.actorUserId,
+      author,
     })
   )
 }

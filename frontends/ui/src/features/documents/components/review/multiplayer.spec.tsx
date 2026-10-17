@@ -6,7 +6,8 @@
  * pointer that types live into the room and clears itself.
  */
 
-import { act, fireEvent } from '@testing-library/react'
+import { useState } from 'react'
+import { act, fireEvent, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@/test-utils'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
@@ -14,11 +15,14 @@ import type { RoomPeer } from '@/lib/annotations/room-types'
 import type { AnnotationView } from '@/lib/annotations/types'
 import type { DocumentReview } from '../../hooks/use-document-review'
 import type { RoomPeerState } from '../../hooks/use-document-room'
+import { LiveCursor } from '@/components/ui/live-cursor'
 import { CURSOR_CHAT_LINGER_MS, CursorChat, placeChat } from './cursor-chat'
 import { peerSide, walkPosition } from './document-review'
 import {
   CURSOR_IDLE_MS,
+  draftTagPlace,
   PILOTI_REST_MS,
+  useRestedFor,
   peerSelections,
   pilotiResting,
   placeCard,
@@ -26,6 +30,7 @@ import {
   selectionTagged,
 } from './review-page-layer'
 import { tabCounts } from './review-panel'
+import { fixedStore } from '@/features/realtime/use-channel'
 
 const ANNA: RoomPeer = { peerId: 'tab-anna', userId: 'user_anna', name: 'Anna Berger', kind: 'person' }
 const JAKOB: RoomPeer = { peerId: 'tab-jakob', userId: 'user_jakob', name: 'Jakob Huber', kind: 'person' }
@@ -65,7 +70,8 @@ const MARK = {
 
 function reviewWith(peers: RoomPeerState[], annotations: AnnotationView[] = []): DocumentReview {
   const room: Partial<DocumentReview['room']> = {
-    peers,
+    peers: fixedStore(peers),
+    highlights: fixedStore([]),
     self: { peerId: 'tab-me', userId: 'user_me', name: 'Miriam Hofer', kind: 'person' } as DocumentReview['room']['self'],
     sendCursor: () => {},
     sendDraft: () => {},
@@ -314,5 +320,94 @@ describe('cursor chat', () => {
     } finally {
       window.removeEventListener('keydown', outside)
     }
+  })
+})
+
+describe("a colleague's box being drawn", () => {
+  const page = { width: 390, height: 280 }
+  it('carries their name over its top-right corner while it is wider than the name', () => {
+    expect(draftTagPlace({ x: 0.2, y: 0.3, w: 0.4 }, 'Jakob', page)).toBe('above')
+    expect(draftTagPlace({ x: 0.2, y: 0.01, w: 0.4 }, 'Jakob', page)).toBe('inside')
+  })
+
+  it('puts the name beside a box narrower than it, so it never lies over what is left of it (a pin)', () => {
+    // 0.05 of a phone's 390px page is 20px: „Jakob" is wider.
+    expect(draftTagPlace({ x: 0.5, y: 0.3, w: 0.05 }, 'Jakob', page)).toBe('beside-right')
+    // At the page's right edge there is no room beside it: it goes to the left.
+    expect(draftTagPlace({ x: 0.9, y: 0.3, w: 0.05 }, 'Jakob', page)).toBe('beside-left')
+  })
+})
+
+describe('a pointer at rest', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('goes idle on a timer of its own: one render when it rests, not one a second', () => {
+    vi.useFakeTimers()
+    let renders = 0
+    const movedAt = Date.now()
+    const { result } = renderHook(() => {
+      renders += 1
+      return useRestedFor(movedAt, CURSOR_IDLE_MS)
+    })
+    expect(result.current).toBe(false)
+    act(() => vi.advanceTimersByTime(CURSOR_IDLE_MS + 30_000))
+    expect(result.current).toBe(true)
+    expect(renders).toBe(2)
+  })
+})
+
+describe('the cursor chat and the reader on the keyboard', () => {
+  function WithChat() {
+    const [open, setOpen] = useState(false)
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          say
+        </button>
+        {open && <CursorChat userId="user_me" from={null} onChat={() => {}} onClose={() => setOpen(false)} />}
+      </>
+    )
+  }
+
+  it('gives the focus back to what had it once the bubble goes', async () => {
+    render(<WithChat />)
+    const trigger = screen.getByRole('button', { name: 'say' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    const field = screen.getByTestId('cursor-chat-input')
+    expect(field).toHaveFocus()
+
+    fireEvent.keyDown(field, { key: 'Escape' })
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+    expect(screen.queryByTestId('cursor-chat')).toBeNull()
+    expect(trigger).toHaveFocus()
+  })
+
+  it('writes in solid white on the ink, the hierarchy in size and weight (translucent white fails 4.5:1)', () => {
+    render(
+      <>
+        <CursorChat userId="user_me" from={null} onChat={() => {}} onClose={() => {}} />
+        <LiveCursor color="oklch(0.52 0.16 176)" label="Anna Berger" chat="Hier fehlt die Kote" />
+      </>
+    )
+    const translucent = /(text-white|placeholder:text-white)\/\d+|opacity-\d+/
+    for (const node of screen.getByTestId('cursor-chat').querySelectorAll('*')) expect(node.getAttribute('class') ?? '').not.toMatch(translucent)
+    const bubble = document.querySelector('[data-slot="live-cursor-chat"]') as HTMLElement
+    for (const node of bubble.querySelectorAll('*')) expect(node.getAttribute('class') ?? '').not.toMatch(translucent)
+  })
+})
+
+describe('a pin in the file preview', () => {
+  it('says nothing of a card it does not open there, even for the mark the review last had open', () => {
+    render(
+      <div style={{ position: 'relative', width: 800, height: 600 }}>
+        <div>
+          <ReviewPageLayer page={1} review={{ ...reviewWith([], [MARK]), selectedId: MARK.id }} focused={false} />
+        </div>
+      </div>
+    )
+    expect(screen.getByTestId('review-pin')).not.toHaveAttribute('aria-expanded')
   })
 })

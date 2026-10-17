@@ -14,6 +14,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { act, fireEvent, render, screen, waitFor, within } from '@/test-utils'
 import { server } from '@/mocks/server'
+import { installLayoutObservers } from '@/test-utils/layout-observers'
 import type { RoomFrame } from '@/lib/annotations/room-types'
 import type { AnnotationView } from '@/lib/annotations/types'
 import { useDocumentReview, type ReviewTool } from '../../hooks/use-document-review'
@@ -249,5 +250,279 @@ describe('Escape', () => {
 
     await userEvent.keyboard('{Escape}')
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+})
+
+/** A room the test speaks in: what colleagues do arrives as frames. */
+function liveRoom() {
+  let deliver: ((frame: RoomFrame) => void) | null = null
+  const transport: RoomTransport = {
+    connect({ onFrame, onOpen }) {
+      deliver = onFrame
+      onOpen()
+      onFrame({ kind: 'welcome', self: { userId: 'user_me', name: 'Miriam Hofer', kind: 'person' } } as RoomFrame)
+      return () => {
+        deliver = null
+      }
+    },
+    post: () => {},
+  }
+  return { transport, send: (frame: RoomFrame) => act(() => deliver?.(frame)) }
+}
+
+const ANNA = { peerId: 'peer_anna_0001', userId: 'user_anna', name: 'Anna Berger', kind: 'person' as const }
+
+/** The pane's part: it holds the review and hands it on, and counts how often it is drawn. */
+function CountingHost({ transport, renders }: { transport: RoomTransport; renders: { count: number } }) {
+  renders.count += 1
+  const review = useDocumentReview('doc_1', { enabled: true, transport })
+  return (
+    <DocumentReviewMode open onOpenChange={() => {}} review={review} documentName="Grundriss.pdf" canPickAssignee={false} />
+  )
+}
+
+/** What the API was asked to set. */
+function servePosts(annotations: AnnotationView[]) {
+  const created: Array<Record<string, unknown>> = []
+  server.use(
+    http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations, canAnnotate: true, pilotiWakes: false })),
+    http.post('/api/documents/:id/annotations', async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>
+      created.push(body)
+      return HttpResponse.json({ annotation: view({ id: 'ann_new', number: 9, ...body }) }, { status: 201 })
+    })
+  )
+  return created
+}
+
+describe('a room of pointers', () => {
+  it('re-renders neither the host that holds the review nor the review while colleagues move', async () => {
+    const restore = installLayoutObservers({ frameWidth: 800 })
+    serve([view({ id: 'ann_1' })])
+    const room = liveRoom()
+    const renders = { count: 0 }
+    render(<CountingHost transport={room.transport} renders={renders} />)
+    await screen.findByTestId('review-row')
+    room.send({ kind: 'event', event: { kind: 'presence', peer: ANNA, state: 'here', ttlMs: 25_000 } } as RoomFrame)
+    room.send({ kind: 'event', event: { kind: 'cursor', peer: ANNA, cursor: { page: 1, x: 0.1, y: 0.5 } } } as RoomFrame)
+    await waitFor(() => expect(screen.getByTestId('review-company-1').textContent).toContain('Anna Berger'))
+    const settled = renders.count
+
+    for (let step = 2; step < 22; step += 1) {
+      room.send({ kind: 'event', event: { kind: 'cursor', peer: ANNA, cursor: { page: 1, x: step / 40, y: 0.5 } } } as RoomFrame)
+      await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
+    }
+
+    expect(renders.count).toBe(settled)
+    // The pointer itself still moved: its own layer drew it.
+    expect(screen.getByTestId('review-company-1')).toHaveAttribute('aria-hidden', 'true')
+    restore()
+  })
+
+  it('listens for its keys once per opening, not once per change', async () => {
+    serve([view({ id: 'ann_1', number: 1 }), view({ id: 'ann_2', number: 2, x: 0.6 })])
+    const added = vi.spyOn(window, 'addEventListener')
+    render(<Host />)
+    await screen.findAllByTestId('review-row')
+    const keydowns = () => added.mock.calls.filter(([type]) => type === 'keydown').length
+    const before = keydowns()
+
+    await userEvent.keyboard('j')
+    await userEvent.keyboard('j')
+    await userEvent.keyboard('k')
+    expect(await screen.findByTestId('review-thread')).toBeInTheDocument()
+
+    expect(keydowns()).toBe(before)
+  })
+})
+
+describe("the keyboard's crosshair", () => {
+  it('sets a point with the arrows and Enter, through the same draft a click makes', async () => {
+    const created = servePosts([])
+    render(<Host />)
+    await screen.findByTestId('review-empty')
+
+    await userEvent.keyboard('c')
+    const aim = await screen.findByRole('application', { name: /Choose a spot/ })
+    await waitFor(() => expect(aim).toHaveFocus())
+    expect(screen.getByTestId('review-tool-hint')).toHaveTextContent('Click or ↵ · Arrow keys · Esc')
+    // The crosshair's label says the keys in words; the glyph line is not read on top of it.
+    expect(screen.getByTestId('review-tool-hint')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByTestId('review-tool-hint')).not.toHaveAttribute('role')
+
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{Shift>}{ArrowDown}{/Shift}')
+    expect(aim).toHaveTextContent('Page 1, 53 % from the left, 55 % from the top')
+    await userEvent.keyboard('{Enter}')
+
+    const body = await screen.findByTestId('review-draft-body')
+    await waitFor(() => expect(body).toHaveFocus())
+    // The kinds: three buttons, the one in force pressed (a radio group would owe arrow keys).
+    expect(screen.queryByRole('radio')).toBeNull()
+    expect(screen.getByTestId('thread-kind-hint')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('thread-kind-defect')).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.keyboard('Kote fehlt{Enter}')
+    await waitFor(() => expect(created).toHaveLength(1))
+    expect(created[0]).toMatchObject({ page: 1, shape: 'point', x: 0.53, y: 0.55 })
+  })
+
+  it('draws a box: Enter holds a corner, the arrows draw it out, Enter sets it', async () => {
+    const created = servePosts([])
+    render(<Host />)
+    await screen.findByTestId('review-empty')
+
+    await userEvent.keyboard('r')
+    const aim = await screen.findByRole('application', { name: /Choose a region/ })
+    await waitFor(() => expect(aim).toHaveFocus())
+    await userEvent.keyboard('{Enter}{Shift>}{ArrowRight}{ArrowRight}{ArrowDown}{/Shift}')
+    expect(screen.getByTestId('review-aim-box')).toBeInTheDocument()
+    await userEvent.keyboard('{Enter}')
+
+    await userEvent.type(await screen.findByTestId('review-draft-body'), 'Stiege{Enter}')
+    await waitFor(() => expect(created).toHaveLength(1))
+    expect(created[0]).toMatchObject({ shape: 'region', x: 0.5, y: 0.5, w: 0.1, h: 0.05 })
+  })
+
+  it('takes a held Enter as one press: its repeats neither hold a corner nor set a point', async () => {
+    serve([])
+    render(<Host />)
+    await screen.findByTestId('review-empty')
+    await userEvent.keyboard('r')
+    const aim = await screen.findByRole('application', { name: /Choose a region/ })
+    fireEvent.keyDown(aim, { key: 'Enter', repeat: true })
+    expect(screen.queryByTestId('review-aim-box')).toBeNull()
+    fireEvent.keyDown(aim, { key: 'Enter' })
+    expect(screen.getByTestId('review-aim-box')).toBeInTheDocument()
+    fireEvent.keyDown(aim, { key: 'Enter', repeat: true })
+    expect(screen.queryByTestId('review-draft')).toBeNull()
+  })
+
+  it('is not there for a pointer: a tool picked by a click sets its place by a click', async () => {
+    serve([])
+    render(<Host />)
+    await screen.findByTestId('review-empty')
+    await userEvent.click(screen.getByTestId('review-tool-point'))
+    expect(screen.queryByTestId('review-aim')).toBeNull()
+  })
+})
+
+describe('the focus', () => {
+  it('goes into a card a key opened, and back to what had it when the card closes', async () => {
+    serve([view({ id: 'ann_1' })])
+    render(<Host />)
+    const trigger = await screen.findByTestId('review-filter-mine')
+    trigger.focus()
+
+    await userEvent.keyboard('j')
+    const card = await screen.findByTestId('review-thread')
+    await waitFor(() => expect(card).toHaveFocus())
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByTestId('review-thread')).toBeNull())
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('goes into the card of a pin opened with Enter', async () => {
+    serve([view({ id: 'ann_1' })])
+    render(<Host />)
+    const pin = await screen.findByTestId('review-pin')
+    pin.focus()
+    fireEvent.click(pin, { detail: 0 })
+    const card = await screen.findByTestId('review-thread')
+    await waitFor(() => expect(card).toHaveFocus())
+  })
+
+  it('takes the focus on the card itself, so the Enter after J resolves nothing by accident', async () => {
+    const patched: unknown[] = []
+    serve([view({ id: 'ann_1' })])
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ request }) => {
+        patched.push(await request.json())
+        return HttpResponse.json({ annotation: view({ id: 'ann_1', status: 'resolved' }) })
+      })
+    )
+    render(<Host />)
+    await screen.findByTestId('review-row')
+
+    await userEvent.keyboard('j')
+    const card = await screen.findByRole('dialog', { name: /Defect\s*#1/ })
+    await waitFor(() => expect(card).toHaveFocus())
+    await userEvent.keyboard('{Enter}')
+    await userEvent.keyboard(' ')
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+
+    expect(patched).toEqual([])
+    expect(screen.getByTestId('thread-resolve')).toBeInTheDocument()
+  })
+
+  it('answers a key that lands on the card already open at once, and leaves nothing for a later click to take', async () => {
+    serve([view({ id: 'ann_1', number: 1 }), view({ id: 'ann_2', number: 2, x: 0.7 })])
+    render(<Host />)
+    const rows = await screen.findAllByTestId('review-row')
+    // Enter on a row opens its card, then Enter on the same row again: the card is already open.
+    fireEvent.click(rows[0] as HTMLElement, { detail: 0 })
+    await waitFor(() => expect(screen.getByTestId('review-thread')).toHaveFocus())
+    fireEvent.click(rows[0] as HTMLElement, { detail: 0 })
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+
+    // Then a pointer opens another mark: the focus stays with the pin it clicked.
+    const pin = screen.getAllByTestId('review-pin').find((node) => node.getAttribute('aria-label')?.startsWith('Annotation 2'))
+    await userEvent.click(pin as HTMLElement)
+    await waitFor(() => expect(screen.getByRole('dialog', { name: /#2/ })).toBeInTheDocument())
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+    expect(screen.getByTestId('review-thread')).not.toHaveFocus()
+  })
+
+  it('stays where a pointer put it: a card opened by a click takes nothing', async () => {
+    serve([view({ id: 'ann_1' })])
+    render(<Host />)
+    await userEvent.click(await screen.findByTestId('review-pin'))
+    const card = await screen.findByTestId('review-thread')
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+    expect(card.contains(document.activeElement)).toBe(false)
+  })
+})
+
+describe('pins and cards to a screen reader', () => {
+  it('a pin says its state and opens a dialog; the card is named by its header', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1 }),
+      view({ id: 'ann_p', number: 2, x: 0.6, authorKind: 'piloti', status: 'proposed', createdByName: 'Miriam Hofer' }),
+    ])
+    render(<Host />)
+    const pins = await screen.findAllByTestId('review-pin')
+    const proposal = pins.find((pin) => pin.getAttribute('aria-label')?.startsWith('Annotation 2'))
+    expect(proposal?.getAttribute('aria-label')).toContain('proposal')
+    expect(proposal).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(proposal).toHaveAttribute('aria-expanded', 'false')
+    expect(proposal).not.toHaveAttribute('aria-pressed')
+
+    await userEvent.click(pins[0] as HTMLElement)
+    expect(await screen.findByRole('dialog', { name: /Defect\s*#1/ })).toBeInTheDocument()
+    expect(pins[0]).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('the list filter and the kinds are buttons that say which is on, not tabs or radios without arrow keys', async () => {
+    serve([view({ id: 'ann_1' })])
+    render(<Host />)
+    await screen.findByTestId('review-row')
+    expect(screen.queryByRole('tab')).toBeNull()
+    expect(screen.getByTestId('review-filter-open')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('review-filter-closed')).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
+describe('the tools spelled out, on a narrow stage', () => {
+  it('fold to their glyphs under ~1000px of stage, the names kept for a screen reader', async () => {
+    serve([])
+    render(<Host />)
+    const point = await screen.findByTestId('review-tool-point')
+    expect(screen.getByTestId('review-tools')).toHaveAttribute('data-variant', 'intro')
+    expect(point).toHaveAccessibleName('Comment')
+    expect(point.className).toMatch(/@max-5xl:w-7/)
+    const label = within(point).getByText((_, node) => node?.tagName === 'SPAN' && node.className.includes('@max-5xl:sr-only'))
+    expect(label).toBeInTheDocument()
+    // Folded, the glyph still says its name and key where a pointer finds it: the icons' tooltip.
+    await userEvent.hover(point)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(/Comment\s*C/)
   })
 })

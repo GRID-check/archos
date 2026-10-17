@@ -104,7 +104,7 @@ import { dropFileSubject } from '../lib/open-file-peek'
 import { useFilePreviewStore } from '../stores/file-preview-store'
 import { useDocumentReview } from '../hooks/use-document-review'
 import { AnnotationsSummary } from './review/annotations-summary'
-import { DocumentReviewMode, people, Presence } from './review/document-review'
+import { DocumentReviewMode, Presence, useRoomCompany } from './review/document-review'
 import { ReviewPageLayer } from './review/review-page-layer'
 import { InlineMarkPeek } from './inline-mark-peek'
 import {
@@ -636,6 +636,33 @@ export function FilePreviewPane({
   })
   const liveMarks = review.annotations.filter(isLive).length
   const [reviewOpen, setReviewOpen] = useState(false)
+  /**
+   * The inline viewer steps aside while the review is open, as it does for the
+   * enlarged dialog: the review is the document full screen, and a second
+   * viewer under it rasterised the same pages and redrew the same marks and
+   * pointers for nobody to see.
+   */
+  const inlineViewer = showInlinePdf && !reviewOpen
+  /**
+   * The page the reader was on in the review: once it closes, the inline
+   * viewer (mounted afresh) opens there, not at the first page.
+   */
+  const reviewPage = useRef<number | null>(null)
+  const onReviewPage = useCallback((page: number) => {
+    reviewPage.current = page
+  }, [])
+  const reviewWasOpen = useRef(false)
+  useEffect(() => {
+    const was = reviewWasOpen.current
+    reviewWasOpen.current = reviewOpen
+    if (reviewOpen) {
+      if (!was) reviewPage.current = null
+      return
+    }
+    const page = reviewPage.current
+    reviewPage.current = null
+    if (was && page !== null) setShownPage(page)
+  }, [reviewOpen])
   const [reviewFocus, setReviewFocus] = useState<{ annotationId: string; key: number } | null>(null)
   /** The tool the review opens with: the point, from „Anmerken". */
   const [reviewTool, setReviewTool] = useState<ReviewLinkTool | null>(null)
@@ -744,11 +771,9 @@ export function FilePreviewPane({
       ? new URL(reviewFilesHref(projectId, { documentId: file.id }), window.location.origin).toString()
       : undefined
   const { locale } = useLocale()
-  const roomPeople = people(review.room.peers)
-  const presenceNames = [
-    ...roomPeople.map((state) => state.peer.name),
-    ...(review.room.peers.some((state) => state.peer.kind === 'piloti') ? ['Piloti'] : []),
-  ]
+  // Who is here, read off the room by membership: a pointer moving does not re-render this pane.
+  const company = useRoomCompany(review.room)
+  const presenceNames = [...company.people.map((person) => person.name), ...(company.piloti ? ['Piloti'] : [])]
   const presenceSentence =
     presenceNames.length > 0
       ? t('annotations.peopleHere', {
@@ -1387,7 +1412,7 @@ export function FilePreviewPane({
                 // for an office file streams the rendition (ADR-0070). The
                 // preview route above still decides whether there is anything
                 // to show; this only decides how it is drawn.
-                showInlinePdf ? (
+                inlineViewer ? (
                   <PdfDocumentView
                     key={file.id}
                     src={documentFileUrl(file.id)}
@@ -1997,6 +2022,7 @@ export function FilePreviewPane({
           focusRequest={reviewFocus}
           popoutHref={popoutHref}
           initialTool={reviewTool ?? undefined}
+          onPage={onReviewPage}
         />
       )}
     </div>

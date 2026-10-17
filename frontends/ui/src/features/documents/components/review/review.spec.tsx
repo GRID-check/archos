@@ -19,7 +19,7 @@ import { act, useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { fireEvent, render, screen, waitFor, within } from '@/test-utils'
+import { fireEvent, render, renderHook, screen, waitFor, within } from '@/test-utils'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { server } from '@/mocks/server'
 import type { TurnSocket, TurnSocketOptions } from '@/adapters/api/turn-socket'
@@ -187,7 +187,14 @@ function Harness({
 
 const serve = (annotations: AnnotationView[], canAnnotate = true, pilotiWakes = false) =>
   server.use(
-    http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations, canAnnotate, pilotiWakes }))
+    http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations, canAnnotate, pilotiWakes })),
+    // One mark, as a room hint has it read again.
+    http.get('/api/documents/:id/annotations/:annotationId', ({ params }) => {
+      const found = annotations.find((annotation) => annotation.id === params.annotationId)
+      return found
+        ? HttpResponse.json({ annotation: found })
+        : HttpResponse.json({ error: 'Not found', code: 'NOT_FOUND' }, { status: 404 })
+    })
   )
 
 beforeEach(() => {
@@ -350,15 +357,17 @@ describe('the review', () => {
     await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-accept')).toBeNull())
   })
 
-  it('reads the list again when somebody else changed it, while pointers keep moving', async () => {
-    let calls = 0
+  it('reads again only the mark a hint names, not the list, while pointers keep moving', async () => {
+    let listed = 0
+    const read: string[] = []
     server.use(
       http.get('/api/documents/:id/annotations', () => {
-        calls += 1
-        return HttpResponse.json({
-          annotations: calls === 1 ? [] : [view({ id: 'theirs', body: 'Von Anna gesetzt' })],
-          canAnnotate: true,
-        })
+        listed += 1
+        return HttpResponse.json({ annotations: [], canAnnotate: true })
+      }),
+      http.get('/api/documents/:id/annotations/:annotationId', ({ params }) => {
+        read.push(String(params.annotationId))
+        return HttpResponse.json({ annotation: view({ id: 'theirs', body: 'Von Anna gesetzt' }) })
       })
     )
     const room = scriptedRoom()
@@ -369,13 +378,90 @@ describe('the review', () => {
       kind: 'event',
       event: { kind: 'annotations.changed', annotationIds: ['theirs'], change: 'created', actor: { ...ANNA } },
     })
-    // A pointer every 30ms for half a second: each one re-renders the review.
+    // A pointer every 30ms for half a second: none of them cancels the read.
     for (let index = 0; index < 16; index += 1) {
       room.send({ kind: 'event', event: { kind: 'cursor', peer: ANNA, cursor: { page: 1, x: index / 20, y: 0.5 } } })
       await act(() => new Promise((resolve) => setTimeout(resolve, 30)))
     }
 
     expect(await screen.findByText('Von Anna gesetzt')).toBeInTheDocument()
+    expect(read).toEqual(['theirs'])
+    expect(listed).toBe(1)
+  })
+
+  it('takes a mark a hint names off the list when it is not there any more for this reader', async () => {
+    serve([view({ id: 'gone', body: 'Wird gelöscht' })])
+    const room = scriptedRoom()
+    render(<Harness transport={room.transport} />)
+    expect(await screen.findByText('Wird gelöscht')).toBeInTheDocument()
+
+    serve([])
+    room.send({
+      kind: 'event',
+      event: { kind: 'annotations.changed', annotationIds: ['gone'], change: 'deleted', actor: { ...ANNA } },
+    })
+    await waitFor(() => expect(screen.queryByText('Wird gelöscht')).toBeNull())
+  })
+
+  it("never draws a mark of the document left behind: a re-read that answers after the switch lands nowhere", async () => {
+    let release: () => void = () => {}
+    server.use(
+      http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations: [], canAnnotate: true })),
+      http.get('/api/documents/:id/annotations/:annotationId', async () => {
+        await new Promise<void>((resolve) => (release = resolve))
+        return HttpResponse.json({ annotation: view({ id: 'theirs', documentId: 'doc_1', body: 'Auf Dokument A' }) })
+      })
+    )
+    const room = scriptedRoom()
+    const { result, rerender } = renderHook(({ id }) => useDocumentReview(id, { enabled: true, transport: room.transport }), {
+      initialProps: { id: 'doc_1' },
+    })
+    await waitFor(() => expect(result.current.load).toBe('ready'))
+    room.send({
+      kind: 'event',
+      event: { kind: 'annotations.changed', annotationIds: ['theirs'], change: 'created', actor: { ...ANNA } },
+    })
+    await act(() => new Promise((resolve) => setTimeout(resolve, 200)))
+
+    rerender({ id: 'doc_2' })
+    await waitFor(() => expect(result.current.load).toBe('ready'))
+    release()
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+
+    expect(result.current.annotations).toEqual([])
+  })
+
+  it('lets only the latest re-read of a mark land: an older answer cannot bring back a mark a newer one found gone', async () => {
+    const answers: Array<() => void> = []
+    let reads = 0
+    server.use(
+      http.get('/api/documents/:id/annotations', () =>
+        HttpResponse.json({ annotations: [view({ id: 'm', body: 'Wird gelöscht' })], canAnnotate: true })
+      ),
+      http.get('/api/documents/:id/annotations/:annotationId', async () => {
+        reads += 1
+        if (reads === 1) {
+          // The first read is slow, and answers with the mark as it was.
+          await new Promise<void>((resolve) => answers.push(resolve))
+          return HttpResponse.json({ annotation: view({ id: 'm', body: 'Wird gelöscht' }) })
+        }
+        return HttpResponse.json({ error: 'Not found', code: 'NOT_FOUND' }, { status: 404 })
+      })
+    )
+    const room = scriptedRoom()
+    const { result } = renderHook(() => useDocumentReview('doc_1', { enabled: true, transport: room.transport }))
+    await waitFor(() => expect(result.current.annotations).toHaveLength(1))
+    const hint = (change: 'updated' | 'deleted') =>
+      room.send({ kind: 'event', event: { kind: 'annotations.changed', annotationIds: ['m'], change, actor: { ...ANNA } } })
+
+    hint('updated')
+    await waitFor(() => expect(answers).toHaveLength(1))
+    hint('deleted')
+    await waitFor(() => expect(result.current.annotations).toEqual([]))
+
+    answers[0]?.()
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+    expect(result.current.annotations).toEqual([])
   })
 
   it("does not read again for this tab's own write, which it already holds", async () => {

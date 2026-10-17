@@ -81,11 +81,12 @@ export function LiveCursor({
           className="absolute top-[15px] left-[12px] flex w-max max-w-60 flex-col rounded-2xl rounded-tl-sm px-2.5 py-1.5 text-white shadow-md pointer-coarse:max-w-44 pointer-coarse:px-2 pointer-coarse:py-1"
           style={{ backgroundColor: color }}
         >
-          <span className="flex items-center gap-1 text-[10px] leading-3 font-medium opacity-85">
+          {/* Solid white, the name a size under the words: translucent white on their ink fails 4.5:1. */}
+          <span className="flex items-center gap-1 text-[10px] leading-3 font-normal">
             {icon}
             <span className="truncate">{label}</span>
           </span>
-          <span className="text-xs leading-4 font-medium break-words whitespace-pre-wrap pointer-coarse:text-[11px]">{chat}</span>
+          <span className="text-xs leading-4 font-semibold break-words whitespace-pre-wrap pointer-coarse:text-[11px]">{chat}</span>
         </span>
       ) : (
         <>

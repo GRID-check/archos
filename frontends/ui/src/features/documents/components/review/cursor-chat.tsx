@@ -5,6 +5,7 @@ import { identityInk } from '@/components/ui/avatar-identity'
 import { useTranslations } from '@/i18n'
 import { CURSOR_CHAT_MAX } from '@/lib/annotations/room-types'
 import { cn } from '@/lib/utils'
+import { restoreFocus } from './focus-return'
 
 /** How long a sent line stays beside the pointer after Enter, before it clears for everyone. */
 export const CURSOR_CHAT_LINGER_MS = 4_000
@@ -86,7 +87,10 @@ export function CursorChat({
     onChatRef.current = onChat
   })
   // „/" is the reader asking for this field: it takes the keys at once, and the last line's linger ends.
+  // What had the focus gets it back when the bubble goes (Enter, Esc), unless the reader moved it.
+  const before = useRef<Element | null>(null)
   useEffect(() => {
+    before.current = document.activeElement
     if (lingering) clearTimeout(lingering)
     lingering = null
     // Without the scroll: focusing a field the browser thinks is off-screen
@@ -115,6 +119,8 @@ export function CursorChat({
   useEffect(
     () => () => {
       if (!done.current) onChatRef.current(null)
+      const trigger = before.current
+      requestAnimationFrame(() => restoreFocus(trigger))
     },
     []
   )
@@ -157,7 +163,8 @@ export function CursorChat({
         maxLength={CURSOR_CHAT_MAX}
         value={text}
         placeholder={t('review.chatPlaceholder')}
-        className="w-full rounded-md border-0 bg-transparent px-1 text-sm leading-5 font-medium text-white shadow-none placeholder:text-white/70 pointer-coarse:text-base"
+        // Solid white throughout (translucent white on a mid ink fails 4.5:1): what is typed is bolder than the placeholder.
+        className="w-full rounded-md border-0 bg-transparent px-1 text-sm leading-5 font-semibold text-white shadow-none placeholder:font-normal placeholder:text-white pointer-coarse:text-base"
         // The app's focus outline stays (WCAG 2.4.11), in white on the bubble's colour, hugging the words.
         style={{ outlineColor: 'rgb(255 255 255 / 0.75)', outlineOffset: 1 }}
         onChange={(event) => {
@@ -176,7 +183,7 @@ export function CursorChat({
         }}
         onBlur={() => finish(true)}
       />
-      <p className="mt-0.5 text-[10px] leading-3 text-white/75">{t('review.chatHint')}</p>
+      <p className="mt-0.5 text-[10px] leading-3 text-white">{t('review.chatHint')}</p>
     </div>
   )
 }

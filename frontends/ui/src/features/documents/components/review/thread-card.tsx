@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useEffect, useRef, useState, type JSX, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useId, useRef, useState, type JSX, type KeyboardEvent } from 'react'
 import {
   ArrowUp,
   CalendarClock,
@@ -484,11 +484,14 @@ function ResponsibilityRow({
   )
 }
 
-/** The three kinds as one quiet segmented row. */
+/**
+ * The three kinds as one quiet segmented row: three buttons, the one in force
+ * pressed, each reached by Tab (a radio group would owe arrow keys).
+ */
 function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kind: AnnotationKind) => void }) {
   const t = useTranslations('files')
   return (
-    <div role="radiogroup" aria-label={t('annotations.kind')} className="bg-muted inline-flex rounded-md p-0.5">
+    <div role="group" aria-label={t('annotations.kind')} className="bg-muted inline-flex rounded-md p-0.5">
       {ANNOTATION_KINDS.map((kind) => {
         const Icon = KIND_ICONS[kind]
         const on = kind === value
@@ -496,8 +499,7 @@ function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kin
           <button
             key={kind}
             type="button"
-            role="radio"
-            aria-checked={on}
+            aria-pressed={on}
             data-testid={`thread-kind-${kind}`}
             onClick={() => onChange(kind)}
             className={cn(
@@ -536,19 +538,35 @@ const HAIRLINE_CLASSES: Partial<Record<CardPlacement, string>> = {
   below: '-top-3 left-3.5 h-3 w-px',
 }
 
-/** The card's frame: a floating sheet beside its mark, on the side with room; or the content of the phone's sheet. */
+/**
+ * The card's frame: a floating sheet beside its mark, on the side with room; or
+ * the content of the phone's sheet. A dialog named by its own header
+ * (`labelledBy`, the id of the line that says what it is about) or, where it
+ * has none, by `label`. `data-review-card` is how the review finds it, and it
+ * takes the focus itself (`tabIndex={-1}`) when the keyboard opened it.
+ */
 export function ReviewCard({
   placement,
   children,
   testId,
+  labelledBy,
+  label,
 }: {
   placement: CardPlacement
   children: React.ReactNode
   testId: string
+  labelledBy?: string
+  label?: string
 }) {
   if (placement === 'docked') {
     return (
-      <div data-testid={testId} data-placement="docked" className="text-popover-foreground w-full">
+      <div
+        data-testid={testId}
+        data-placement="docked"
+        data-review-card
+        tabIndex={-1}
+        className="text-popover-foreground w-full outline-none"
+      >
         {children}
       </div>
     )
@@ -558,8 +576,13 @@ export function ReviewCard({
     <div
       data-testid={testId}
       data-placement={placement}
+      data-review-card
       role="dialog"
+      tabIndex={-1}
+      aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : label}
       className={cn(
+        'focus-visible:ring-ring/60 outline-none focus-visible:ring-2',
         'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none w-[20rem] rounded-xl border shadow-xl',
         PLACEMENT_CLASSES[placement]
       )}
@@ -711,7 +734,7 @@ export function DraftCard({
       }
     : undefined
   return (
-    <ReviewCard placement={placement} testId="review-draft">
+    <ReviewCard placement={placement} testId="review-draft" label={t('review.draftCard')}>
       <div className="space-y-3 p-3">
         <KindPicker value={kind} onChange={setKind} />
         <Composer
@@ -760,6 +783,7 @@ export function ThreadCard({
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const headerId = useId()
   const KindIcon = KIND_ICONS[annotation.kind]
   const proposed = annotation.status === 'proposed'
   const live = isLive(annotation)
@@ -866,7 +890,7 @@ export function ThreadCard({
   ]
 
   return (
-    <ReviewCard placement={placement} testId="review-thread">
+    <ReviewCard placement={placement} testId="review-thread" labelledBy={headerId}>
       {!annotation.onCurrentFassung && (
         // Said inside the card, as its first line: the card is all the reader looks at.
         <p className="text-muted-foreground bg-muted/40 flex items-start gap-1.5 border-b px-3 py-1.5 text-[11px] leading-4" data-testid="thread-earlier">
@@ -899,18 +923,21 @@ export function ThreadCard({
       )}
       <div className={cn('flex items-center gap-1.5 border-b px-3 py-2', placement === 'docked' && 'pr-12')}>
         <KindIcon className="text-muted-foreground size-3.5" aria-hidden />
-        <span className="text-foreground text-xs font-semibold">{t(`annotations.kinds.${annotation.kind}`)}</span>
-        <span className="text-muted-foreground font-mono text-[11px]">#{annotation.number}</span>
-        {proposed && (
-          <span className="text-muted-foreground border-foreground/50 ml-1 rounded-full border border-dashed px-1.5 text-[10px] font-medium">
-            {t('review.proposal')}
-          </span>
-        )}
-        {!live && (
-          <span className="text-muted-foreground bg-muted ml-1 rounded-full px-1.5 text-[10px] font-medium">
-            {annotation.status === 'resolved' ? t('review.resolved') : t('review.dismissed')}
-          </span>
-        )}
+        {/* What the card is about, which names it as a dialog: the kind, the number, its state. */}
+        <span id={headerId} className="flex min-w-0 items-center gap-1.5">
+          <span className="text-foreground text-xs font-semibold">{t(`annotations.kinds.${annotation.kind}`)}</span>{' '}
+          <span className="text-muted-foreground font-mono text-[11px]">#{annotation.number}</span>
+          {proposed && (
+            <span className="text-muted-foreground border-foreground/50 ml-1 rounded-full border border-dashed px-1.5 text-[10px] font-medium">
+              {t('review.proposal')}
+            </span>
+          )}
+          {!live && (
+            <span className="text-muted-foreground bg-muted ml-1 rounded-full px-1.5 text-[10px] font-medium">
+              {annotation.status === 'resolved' ? t('review.resolved') : t('review.dismissed')}
+            </span>
+          )}
+        </span>
         <span className="ml-auto flex items-center">
           {annotation.canEdit && annotation.status === 'open' && (
             <Button

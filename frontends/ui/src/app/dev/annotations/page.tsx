@@ -896,6 +896,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (one) {
         const current = annotations.find((annotation) => annotation.id === one[1])
         if (!current) return json({ error: 'Not found', code: 'NOT_FOUND' }, 404)
+        // What a room hint names, read again on its own.
+        if (method === 'GET') return json({ annotation: current })
         if (method === 'DELETE') {
           annotations = annotations.filter((annotation) => annotation.id !== current.id)
           return new Response(null, { status: 204 })

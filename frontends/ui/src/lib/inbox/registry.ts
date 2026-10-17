@@ -15,6 +15,7 @@
 import { INBOX_ITEM_TYPES, type InboxItemType, type InboxTargetType } from '@/lib/db/schema'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import type { PushCategory, PushUrgency } from './push-categories'
+import { isMarkAnchored } from './types'
 
 /**
  * Which product gate a type lives behind.
@@ -108,6 +109,12 @@ export type InboxEmailDefault =
 export interface InboxPushPolicy {
   readonly category: PushCategory
   readonly urgency: PushUrgency
+  /**
+   * The category instead, when the item is about the recipient's OWN thing
+   * (its payload says `yours: true`): a reply on a mark they wrote answers
+   * them, the way `mention.answered` does, and is not ambient activity.
+   */
+  readonly yours?: PushCategory
 }
 
 const IN_APP_ONLY: InboxEmailDefault = { send: 'never' }
@@ -429,8 +436,10 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     News on a mark the reader takes part in: a reply, or their mark closed or
     reopened by someone else. `per-anchor` on the mark, so a busy thread is ONE
     counted row per mark, as `conversation.activity` is one per chat.
-    Informational and in-app only, and pushed only to whoever turned activity
-    on: it is ambient, and mailing it would teach people to filter our mail.
+    Informational and in-app only: mailing it would teach people to filter our
+    mail. Pushed as activity to the thread's other participants, who turned that
+    on; to the mark's AUTHOR (`yours`) it is an answer to what they wrote, as
+    `mention.answered` is, and is pushed as a result.
   */
   'annotation.activity': {
     actionable: false,
@@ -438,7 +447,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
-    push: { category: 'activity', urgency: 'low' },
+    push: { category: 'activity', urgency: 'low', yours: 'results' },
   },
 }
 
@@ -446,15 +455,10 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
  * The types whose `anchorId` is an Anmerkung (a mark) of the document they
  * point at. Their link opens the Prüfansicht at that mark; every other type
  * anchored on a document anchors on something else (a Fassung), and must not be
- * read as a mark.
+ * read as a mark. Derived from the client half (`anchor: 'mark'` in
+ * `INBOX_TYPE_PRESENTATION`), which the row reads without this module.
  */
-export const MARK_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = [
-  'piloti.work_done',
-  'piloti.work_failed',
-  'piloti.asks_you',
-  'annotation.assigned_to_you',
-  'annotation.activity',
-]
+export const MARK_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = INBOX_ITEM_TYPES.filter(isMarkAnchored)
 
 /** The types anchored on a proposal: a deep link into a chat must not read that anchor as a message. */
 export const PROPOSAL_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = ['piloti.proposal_waiting']

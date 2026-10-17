@@ -203,6 +203,23 @@ describe('into the review from the header', () => {
     )
   })
 
+  it('takes the inline viewer away while the review is open, and brings it back once it closes', async () => {
+    serve([mark()])
+    render(pane())
+    // The inline viewer: its pill, and the marks drawn over its page.
+    expect(await screen.findByTestId('inline-annotate')).toBeInTheDocument()
+    expect(await screen.findByTestId('review-layer-1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open review' }))
+    await screen.findByTestId('review-mode')
+    // Under the full-screen review, a second viewer drew the same pages for nobody.
+    expect(screen.queryByTestId('inline-annotate')).toBeNull()
+    expect(screen.queryByTestId('review-layer-1')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'close review' }))
+    expect(await screen.findByTestId('inline-annotate')).toBeInTheDocument()
+  })
+
   it('keeps the enlarged viewer for an image', async () => {
     serve([])
     render(pane({ file: { ...FILE, id: 'img-1', filename: 'diagram.png', contentType: 'image/png' } }))

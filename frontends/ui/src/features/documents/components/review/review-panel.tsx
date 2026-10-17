@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type JSX } from 'react'
+import { memo, useState, type JSX } from 'react'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { CheckCheck, ChevronDown, Clock, MessageCircle, MousePointerClick, Sparkles, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,23 +14,28 @@ import type { DocumentReview, ReviewFilter } from '../../hooks/use-document-revi
 import { usePilotiByline } from './piloti-attribution'
 import { markInk } from './review-page-layer'
 
+/** Open a mark from the list; `byKeyboard` when Enter or Space did it, so its card takes the focus. */
+export type OpenMark = (annotation: AnnotationView, byKeyboard?: boolean) => void
+
 /**
  * One mark in the list: its number (what people say aloud), what it says, and
- * one quiet line of who, how many answers, and by when.
+ * one quiet line of who, how many answers, and by when. Memoised on its mark:
+ * a list of five hundred redraws the row that changed.
  */
-function Row({
+const Row = memo(function Row({
   annotation,
-  review,
+  selected,
+  onHover,
   onOpen,
 }: {
   annotation: AnnotationView
-  review: DocumentReview
-  onOpen: (annotation: AnnotationView) => void
+  selected: boolean
+  onHover: (annotationId: string | null) => void
+  onOpen: OpenMark
 }): JSX.Element {
   const t = useTranslations('files')
   const { locale } = useLocale()
   const byline = usePilotiByline()
-  const selected = annotation.id === review.selectedId
   const overdue = isOverdue(annotation, localCalendarDay())
   const author =
     annotation.authorKind === 'piloti' ? byline(annotation.createdByName) : (annotation.createdByName ?? t('review.someone'))
@@ -40,9 +45,10 @@ function Row({
         type="button"
         data-testid="review-row"
         aria-current={selected || undefined}
-        onClick={() => onOpen(annotation)}
-        onPointerEnter={() => review.hover(annotation.id)}
-        onPointerLeave={() => review.hover(null)}
+        // `detail` is 0 for a click the keyboard made.
+        onClick={(event) => onOpen(annotation, event.detail === 0)}
+        onPointerEnter={() => onHover(annotation.id)}
+        onPointerLeave={() => onHover(null)}
         className={cn(
           'flex w-full gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-quick ease-out outline-none',
           'hover:bg-accent/60 focus-visible:ring-ring/60 focus-visible:ring-2',
@@ -97,7 +103,7 @@ function Row({
       </button>
     </li>
   )
-}
+})
 
 /** Marks grouped by page; the page heading only where there is more than one page to tell apart. */
 function Pages({
@@ -107,7 +113,7 @@ function Pages({
 }: {
   marks: readonly AnnotationView[]
   review: DocumentReview
-  onOpen: (annotation: AnnotationView) => void
+  onOpen: OpenMark
 }): JSX.Element {
   const t = useTranslations('files')
   const pages = [...new Set(marks.map((annotation) => annotation.page))]
@@ -125,7 +131,13 @@ function Pages({
             {marks
               .filter((annotation) => annotation.page === page)
               .map((annotation) => (
-                <Row key={annotation.id} annotation={annotation} review={review} onOpen={onOpen} />
+                <Row
+                  key={annotation.id}
+                  annotation={annotation}
+                  selected={annotation.id === review.selectedId}
+                  onHover={review.hover}
+                  onOpen={onOpen}
+                />
               ))}
           </ul>
         </section>
@@ -170,7 +182,7 @@ export function ReviewPanel({
   presentation = 'rail',
 }: {
   review: DocumentReview
-  onOpen: (annotation: AnnotationView) => void
+  onOpen: OpenMark
   /** Start going through Piloti's proposals one by one. */
   onWalkProposals?: () => void
   /**
@@ -198,15 +210,15 @@ export function ReviewPanel({
       )}
     >
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-        <div role="tablist" aria-label={t('review.filter')} className="bg-muted inline-flex rounded-lg p-0.5">
+        {/* Two buttons that say which is on, not a tab list: there is no tab panel, and Tab reaches each. */}
+        <div role="group" aria-label={t('review.filter')} className="bg-muted inline-flex rounded-lg p-0.5">
           {FILTERS.map((option) => {
             const count = counts[option]
             return (
               <button
                 key={option}
                 type="button"
-                role="tab"
-                aria-selected={filter === option}
+                aria-pressed={filter === option}
                 data-testid={`review-filter-${option}`}
                 onClick={() => setFilter(option)}
                 className={cn(

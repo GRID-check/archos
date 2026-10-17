@@ -1,6 +1,17 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties, type JSX, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type JSX,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { Crosshair, Sparkles, SquareDashed } from 'lucide-react'
 import { AnimatePresence, motion, motionBase, springGlide, useMotionToken } from '@/components/motion'
 import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
@@ -13,7 +24,14 @@ import { isLive, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import { askRegionOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview, ReviewDraft, ReviewTool } from '../../hooks/use-document-review'
-import type { RoomPeerState } from '../../hooks/use-document-room'
+import { sameItems, useStoreSelector } from '@/features/realtime/use-channel'
+import {
+  usePeersOnPage,
+  useRoomSelector,
+  type DocumentRoom,
+  type RoomPeerState,
+  type ShownHighlight,
+} from '../../hooks/use-document-room'
 import { usePilotiByline } from './piloti-attribution'
 
 /** A region smaller than this share of the page, in both directions, was a click: it becomes a point. */
@@ -30,34 +48,8 @@ const box = (x: number, y: number, w: number, h: number): CSSProperties => ({
   height: `${h * 100}%`,
 })
 
-/** How long a box Piloti pointed out stays on the page, unless it points out the next one first. */
-const HIGHLIGHT_MS = 6_000
-
 /** What the room is told the pointer is doing: asking Piloti is dragging out a region too. */
 const roomTool = (tool: ReviewTool) => (tool === 'ask' ? 'region' : tool)
-
-/** A box Piloti points out on a page, with what it says about it. */
-export interface PilotiHighlight {
-  page: number
-  x: number
-  y: number
-  w: number
-  h: number
-  label: string | null
-}
-
-/**
- * What Piloti points out, read off its peer: its latest highlight while it
- * lasts, else the region its activity says it is reading.
- */
-export function pilotiHighlightOf(state: RoomPeerState, now = Date.now()): PilotiHighlight | null {
-  if (state.peer.kind !== 'piloti') return null
-  if (state.highlight && state.highlight.expiresAt > now) {
-    return { ...state.highlight.box, label: state.highlight.label }
-  }
-  const box = state.activity?.box
-  return box ? { ...box, label: state.activity?.label ?? null } : null
-}
 
 /** Whether a peer is Piloti at work on the document. */
 export const isPilotiPeer = (state: RoomPeerState): boolean => state.peer.kind === 'piloti'
@@ -115,15 +107,19 @@ export function pilotiCursorLabel(state: Pick<RoomPeerState, 'label' | 'activity
   return doing ? `Piloti · ${doing}` : 'Piloti'
 }
 
-/** A clock that ticks while there is something to age (pointers going idle); still otherwise. */
-function useTick(active: boolean, everyMs: number): number {
+/**
+ * Whether a pointer has rested `ms` since it last moved: one timer per pointer,
+ * set for the moment it goes idle, so a room of pointers does not re-render
+ * the page every second to age them.
+ */
+export function useRestedFor(movedAt: number | null, ms: number): boolean {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    if (!active) return
-    const timer = setInterval(() => setNow(Date.now()), everyMs)
-    return () => clearInterval(timer)
-  }, [active, everyMs])
-  return now
+    if (movedAt === null) return
+    const timer = setTimeout(() => setNow(Date.now()), Math.max(0, movedAt + ms - Date.now()) + 1)
+    return () => clearTimeout(timer)
+  }, [movedAt, ms])
+  return movedAt !== null && now - movedAt > ms
 }
 
 /** How long a pointer may rest before it reads as idle: its tag folds away, the arrow quiets. */
@@ -301,64 +297,23 @@ function PeerSelection({
   )
 }
 
-/**
- * The boxes Piloti pointed out, each shown until it points out the next or
- * {@link HIGHLIGHT_MS} passes: a highlight is a gesture, not a mark.
- */
-function useHighlights(peers: readonly RoomPeerState[]): Array<PilotiHighlight & { key: string }> {
-  const [shown, setShown] = useState<Array<PilotiHighlight & { key: string; peerId: string }>>([])
-  const current = peers.flatMap((state) => {
-    const highlight = pilotiHighlightOf(state)
-    if (!highlight) return []
-    const key = `${state.peer.peerId}:${highlight.page}:${highlight.x}:${highlight.y}:${highlight.w}:${highlight.h}:${highlight.label ?? ''}`
-    return [{ ...highlight, key, peerId: state.peer.peerId }]
-  })
-  const signature = current.map((highlight) => highlight.key).join('|')
-  const latest = useRef(current)
-  latest.current = current
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
-  useEffect(() => {
-    const arrived = latest.current
-    if (arrived.length === 0) return
-    setShown((before) => [
-      ...before.filter((old) => !arrived.some((next) => next.peerId === old.peerId)),
-      ...arrived.filter((next) => !before.some((old) => old.key === next.key)),
-      ...before.filter((old) => arrived.some((next) => next.key === old.key)),
-    ])
-    for (const highlight of arrived) {
-      if (timers.current.has(highlight.key)) continue
-      timers.current.set(
-        highlight.key,
-        setTimeout(() => {
-          timers.current.delete(highlight.key)
-          setShown((before) => before.filter((old) => old.key !== highlight.key))
-        }, HIGHLIGHT_MS)
-      )
-    }
-  }, [signature])
-  useEffect(() => {
-    const pending = timers.current
-    return () => {
-      for (const timer of pending.values()) clearTimeout(timer)
-      pending.clear()
-    }
-  }, [])
-  return shown
-}
-
 /** Whose colour a mark wears: Piloti's ink, or the person who set it. */
 export function markInk(annotation: Pick<AnnotationView, 'authorKind' | 'createdBy'>): string {
   // Paper ink: a mark is drawn on the page, which stays white in dark mode.
   return annotation.authorKind === 'piloti' ? 'var(--paper-ink)' : identityInk(annotation.createdBy)
 }
 
+/**
+ * A share of the page, kept on it, to four decimals: a tenth of a millimetre
+ * on an A1 sheet, and no 0.30000000000000004 in a stored mark.
+ */
+const onPage = (value: number) => Math.round(Math.min(1, Math.max(0, value)) * 10_000) / 10_000
+
 /** The point on a page an event hit, as shares of the page, clamped onto it. */
 function pointIn(element: HTMLElement, event: { clientX: number; clientY: number }) {
   const rect = element.getBoundingClientRect()
   if (rect.width <= 0 || rect.height <= 0) return null
-  // Four decimals: a tenth of a millimetre on an A1 sheet, and no 0.30000000000000004 in a stored mark.
-  const clamp = (value: number) => Math.round(Math.min(1, Math.max(0, value)) * 10_000) / 10_000
-  return { x: clamp((event.clientX - rect.left) / rect.width), y: clamp((event.clientY - rect.top) / rect.height) }
+  return { x: onPage((event.clientX - rect.left) / rect.width), y: onPage((event.clientY - rect.top) / rect.height) }
 }
 
 /**
@@ -380,15 +335,418 @@ function GlidingCursor({
   const glide = useMotionToken(springGlide)
   return (
     <motion.span
-      // Above the cards (z-40): a pointer is where a colleague's hand is, and a
-      // card must not swallow it or cut its tag.
-      className="pointer-events-none absolute top-0 left-0 z-50"
+      className="pointer-events-none absolute top-0 left-0"
       initial={false}
       animate={{ x: x * size.width, y: y * size.height }}
       transition={glide}
     >
       {children}
     </motion.span>
+  )
+}
+
+/** A colleague's pointer, or Piloti's: quieting on its own timer once it rests. */
+const PeerPointer = memo(function PeerPointer({
+  state,
+  size,
+  focused,
+  pilotiThinking,
+}: {
+  state: RoomPeerState & { cursor: NonNullable<RoomPeerState['cursor']> }
+  size: { width: number; height: number }
+  focused: boolean
+  pilotiThinking: boolean
+}): JSX.Element {
+  const t = useTranslations('files')
+  const piloti = isPilotiPeer(state)
+  const rested = useRestedFor(state.movedAt, piloti ? PILOTI_REST_MS : CURSOR_IDLE_MS)
+  return (
+    <GlidingCursor x={state.cursor.x} y={state.cursor.y} size={size}>
+      {piloti ? (
+        // People's pointers go idle when they rest; Piloti's when it is parked with nothing in hand.
+        <PilotiCursor state={state} idle={rested && !pilotiThinking && !state.activity} />
+      ) : (
+        <LiveCursor
+          color={identityInk(state.peer.userId)}
+          label={state.peer.name}
+          // The preview shows where colleagues point, not their names and words over the drawing.
+          tag={focused}
+          chat={focused ? state.chat : null}
+          idle={!state.chat && rested}
+          busy={
+            state.tool === 'region' ? (
+              <SquareDashed className="size-3" aria-label={t('review.peerRegion')} />
+            ) : state.tool === 'point' ? (
+              <Crosshair className="size-3" aria-label={t('review.peerPoint')} />
+            ) : undefined
+          }
+        />
+      )}
+    </GlidingCursor>
+  )
+})
+
+/** About how wide a first-name tag is, in CSS pixels: 10px type, its padding. */
+const tagWidth = (name: string): number => name.length * 6 + 14
+
+/**
+ * Where a colleague's draft box carries their name: over its top-right corner
+ * (the top-left is where the region's pin will stand); inside it when the box
+ * touches the top of the page. A box narrower than the tag would push the tag
+ * out over its left side, onto whatever is beside it (another pin): there the
+ * tag goes to the box's outer side, beside its top-right corner, or its
+ * top-left corner when the page ends first.
+ */
+export function draftTagPlace(
+  draft: { x: number; y: number; w: number },
+  name: string,
+  page: { width: number; height: number }
+): 'above' | 'inside' | 'beside-right' | 'beside-left' {
+  if (page.width > 0 && draft.w * page.width < tagWidth(name)) {
+    return (draft.x + draft.w) * page.width + 4 + tagWidth(name) <= page.width ? 'beside-right' : 'beside-left'
+  }
+  return tagFitsAbove(draft.y, page.height) ? 'above' : 'inside'
+}
+
+const DRAFT_TAG_CLASSES: Record<ReturnType<typeof draftTagPlace>, string> = {
+  above: 'right-0 -top-px -translate-y-full rounded-t-[3px]',
+  inside: 'right-0 top-0 rounded-bl-[3px]',
+  'beside-right': 'left-full top-0 ml-1 rounded-[3px]',
+  'beside-left': 'right-full top-0 mr-1 rounded-[3px]',
+}
+
+/** The marks the others have open, compared by who has which: a pointer moving changes nothing here. */
+const selectionsKey = (selections: Map<string, RoomPeerState[]>): string =>
+  [...selections].map(([id, states]) => `${id}:${states.map((state) => state.peer.peerId).join(',')}`).join('|')
+
+function usePeerSelections(room: Pick<DocumentRoom, 'peers'>, selfUserId: string | null): Map<string, RoomPeerState[]> {
+  const select = useCallback((peers: readonly RoomPeerState[]) => peerSelections(peers, selfUserId), [selfUserId])
+  return useRoomSelector(room, select, (a, b) => selectionsKey(a) === selectionsKey(b))
+}
+
+/**
+ * The company on one page: the others' pointers, the boxes they are dragging
+ * out, and the marks they have open, ringed in their colour. Its own
+ * subscription to the room, by page: a pointer moving re-renders this layer
+ * of its page and nothing under it. Under the cards (z-30 against their
+ * z-40), so a colleague's pointer never covers the card the reader is in.
+ * Hidden from assistive technology: pointers are motion, not content.
+ */
+const PageCompany = memo(function PageCompany({
+  room,
+  page,
+  focused,
+  size,
+  marks,
+  selfUserId,
+  pilotiThinking,
+}: {
+  room: Pick<DocumentRoom, 'peers'>
+  page: number
+  focused: boolean
+  size: { width: number; height: number }
+  marks: readonly AnnotationView[]
+  selfUserId: string | null
+  pilotiThinking: boolean
+}): JSX.Element {
+  const here = usePeersOnPage(room, page)
+  const selections = usePeerSelections(room, selfUserId)
+  const pointers = here.filter((state): state is RoomPeerState & { cursor: NonNullable<RoomPeerState['cursor']> } =>
+    Boolean(state.cursor)
+  )
+  // A selector's pointer as it is now: on this page when it is among the pointers here, else elsewhere.
+  const now = (state: RoomPeerState): RoomPeerState =>
+    pointers.find((pointer) => pointer.peer.peerId === state.peer.peerId) ?? { ...state, cursor: null }
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-30" data-testid={`review-company-${page}`}>
+      {marks.map((annotation) => {
+        const selectors = selections.get(annotation.id)
+        if (!selectors) return null
+        return (
+          <PeerSelection
+            key={annotation.id}
+            annotation={annotation}
+            selectors={selectors}
+            // The preview rings the mark without the name: a tag there covers the drawing.
+            tagged={focused ? selectionTagged(selectors.map(now), annotation, size) : []}
+            pageHeight={size.height}
+          />
+        )
+      })}
+
+      {/* The boxes the others are drawing right now, in their colour, with whose they are. */}
+      {pointers.map((state) =>
+        state.draft && !isPilotiPeer(state) ? (
+          <span
+            key={`draft-${state.peer.peerId}`}
+            data-testid="review-peer-draft"
+            className="absolute rounded-[2px] border-[1.5px] border-dashed"
+            style={{
+              ...box(state.draft.x, state.draft.y, state.draft.w, state.draft.h),
+              borderColor: identityInk(state.peer.userId),
+              backgroundColor: `color-mix(in oklch, ${identityInk(state.peer.userId)} 6%, transparent)`,
+            }}
+          >
+            {focused && (
+              <span
+                data-testid="review-peer-draft-tag"
+                data-place={draftTagPlace(state.draft, firstName(state.peer.name), size)}
+                className={cn(
+                  'absolute px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-white',
+                  DRAFT_TAG_CLASSES[draftTagPlace(state.draft, firstName(state.peer.name), size)]
+                )}
+                style={{ backgroundColor: identityInk(state.peer.userId) }}
+              >
+                {firstName(state.peer.name)}
+              </span>
+            )}
+          </span>
+        ) : null
+      )}
+
+      {size.width > 0 &&
+        pointers.map((state) => (
+          <PeerPointer key={state.peer.peerId} state={state} size={size} focused={focused} pilotiThinking={pilotiThinking} />
+        ))}
+    </div>
+  )
+})
+
+/**
+ * The marks on one page, drawn: the regions and their pins. Memoised on what
+ * it draws, so the company moving over the page, or a card being typed in,
+ * never redraws five hundred pins.
+ */
+const PageMarks = memo(function PageMarks({
+  marks,
+  focused,
+  selectedId,
+  hoveredId,
+  selections,
+  onPin,
+  onHover,
+}: {
+  marks: readonly AnnotationView[]
+  /** The full review: a pin there opens its card beside it. In the preview it opens the review, and says nothing of a card. */
+  focused: boolean
+  selectedId: string | null
+  hoveredId: string | null
+  /** The marks the others have open, for the pin's state: see {@link peerSelections}. */
+  selections: Map<string, RoomPeerState[]>
+  onPin: (annotationId: string, byKeyboard: boolean) => void
+  onHover: (annotationId: string | null) => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  const byline = usePilotiByline()
+  return (
+    <>
+      {marks.map((annotation) => {
+        const active = annotation.id === selectedId || annotation.id === hoveredId
+        const ink = markInk(annotation)
+        const proposed = annotation.status === 'proposed'
+        // Piloti's mark says for whom it was set, as a tooltip and to a screen reader.
+        const pilotiLine =
+          annotation.authorKind === 'piloti' ? byline(annotation.createdByName, { proposal: proposed }) : undefined
+        const done = !isLive(annotation)
+        const openBy = selections.get(annotation.id)
+        return (
+          <div key={annotation.id} className={cn('contents', active && '[&>*]:z-20')}>
+            {annotation.shape === 'region' && annotation.w && annotation.h && (
+              // An outline, not a fill: the linework under a region is what it
+              // is about. A tint arrives only while the mark is in hand, and
+              // multiplies, so a dimension under it stays black.
+              <span
+                data-testid="review-region"
+                aria-hidden
+                // Multiply on the white page keeps the linework under a tint
+                // black; every ink here is dark (identity ink, paper ink), so
+                // the outline survives the blend in both themes.
+                className={cn(
+                  'absolute rounded-[2px] border-[1.5px] mix-blend-multiply transition-[background-color,opacity] duration-quick ease-out motion-reduce:transition-none',
+                  proposed && 'border-dashed',
+                  done && 'opacity-40'
+                )}
+                style={{
+                  ...box(annotation.x, annotation.y, annotation.w, annotation.h),
+                  borderColor: ink,
+                  backgroundColor: active ? `color-mix(in oklch, ${ink} 9%, transparent)` : 'transparent',
+                }}
+              />
+            )}
+            <span
+              className={cn('pointer-events-auto absolute z-10', COMMENT_PIN_ON_POINT)}
+              style={at(annotation.x, annotation.y)}
+            >
+              <CommentPin
+                data-testid="review-pin"
+                // 24px on the drawing, 44px under the finger: the pin must not
+                // hide the linework it marks, and must still be hit.
+                className="touch-target"
+                number={annotation.number}
+                color={ink}
+                proposed={proposed}
+                done={done}
+                active={annotation.id === selectedId}
+                aria-label={pinLabel(t, annotation, pilotiLine, openBy)}
+                // A pin opens its card, a dialog beside it: expanded while it is open.
+                aria-haspopup="dialog"
+                aria-expanded={focused ? annotation.id === selectedId : undefined}
+                title={pilotiLine}
+                onPointerEnter={() => onHover(annotation.id)}
+                onPointerLeave={() => onHover(null)}
+                data-peer-selected={openBy ? true : undefined}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  // `detail` is 0 for a click the keyboard made (Enter, Space): its card takes the focus.
+                  onPin(annotation.id, event.detail === 0)
+                }}
+              />
+            </span>
+          </div>
+        )
+      })}
+    </>
+  )
+})
+
+type Translate = ReturnType<typeof useTranslations>
+
+/**
+ * What a pin says to a screen reader: its number and kind, then its state in
+ * words the pin shows as a dash or a tick (Vorschlag, erledigt, verworfen),
+ * Piloti's byline, and who else has it open.
+ */
+export function pinLabel(
+  t: Translate,
+  annotation: Pick<AnnotationView, 'number' | 'kind' | 'status'>,
+  pilotiLine: string | undefined,
+  openBy: readonly RoomPeerState[] | undefined
+): string {
+  const state =
+    annotation.status === 'proposed'
+      ? t('review.pinState.proposed')
+      : annotation.status === 'resolved'
+        ? t('review.pinState.resolved')
+        : annotation.status === 'dismissed'
+          ? t('review.pinState.dismissed')
+          : null
+  return [
+    t('review.pinLabel', { number: annotation.number, kind: t(`annotations.kinds.${annotation.kind}`) }),
+    state,
+    pilotiLine,
+    openBy && openBy.length > 0
+      ? t('review.pinOpenBy', { names: openBy.map((other) => other.peer.name).join(', ') })
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/**
+ * Setting a point or a box without a mouse: a crosshair at the middle of the
+ * reader's view, that the arrow keys move a hundredth of the page at a time
+ * (with Shift a twentieth). For a point, Enter sets it there. For a box, Enter
+ * holds one corner, the arrows draw the box out from it, and Enter again sets
+ * it. Escape is the review's own: it puts the tool down. What it sets goes
+ * the way a click or a drag goes: the draft, or the question to Piloti.
+ */
+function KeyboardAim({
+  page,
+  tool,
+  startY,
+  onSet,
+}: {
+  page: number
+  tool: Exclude<ReviewTool, 'select'>
+  /** Where the middle of the reader's view is on this page, as a share of its height. */
+  startY: number
+  onSet: (draft: ReviewDraft) => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  const surface = useRef<HTMLDivElement | null>(null)
+  const marker = useRef<HTMLSpanElement | null>(null)
+  const [point, setPoint] = useState({ x: 0.5, y: onPage(startY) })
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => surface.current?.focus({ preventScroll: true }))
+    return () => cancelAnimationFrame(frame)
+  }, [])
+  useEffect(() => {
+    marker.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [point])
+  const STEPS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const direction = STEPS[event.key]
+    if (direction) {
+      event.preventDefault()
+      event.stopPropagation()
+      const step = event.shiftKey ? 0.05 : 0.01
+      setPoint((current) => ({ x: onPage(current.x + direction[0] * step), y: onPage(current.y + direction[1] * step) }))
+      return
+    }
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    event.stopPropagation()
+    // A held Enter is one press: its repeats would anchor a box and set it at once.
+    if (event.repeat) return
+    if (tool === 'point') {
+      onSet({ page, shape: 'point', x: point.x, y: point.y, w: null, h: null })
+      return
+    }
+    if (!anchor) {
+      setAnchor(point)
+      return
+    }
+    const w = onPage(Math.abs(point.x - anchor.x))
+    const h = onPage(Math.abs(point.y - anchor.y))
+    onSet(
+      w < MIN_REGION || h < MIN_REGION
+        ? { page, shape: 'point', x: anchor.x, y: anchor.y, w: null, h: null }
+        : { page, shape: 'region', x: Math.min(anchor.x, point.x), y: Math.min(anchor.y, point.y), w, h }
+    )
+  }
+  const percent = (value: number) => Math.round(value * 100)
+  return (
+    <div
+      ref={surface}
+      role="application"
+      tabIndex={-1}
+      aria-label={t(`review.aim.label.${tool}`)}
+      aria-describedby={`review-aim-where-${page}`}
+      data-testid="review-aim"
+      data-anchored={anchor ? true : undefined}
+      onKeyDown={onKeyDown}
+      className="focus-visible:ring-ring/60 pointer-events-none absolute inset-0 z-30 rounded-[2px] outline-none focus-visible:ring-2 focus-visible:ring-inset"
+    >
+      {anchor && (
+        <span
+          aria-hidden
+          data-testid="review-aim-box"
+          className="border-paper-ink absolute rounded-[2px] border-2 border-dashed"
+          style={{
+            ...box(Math.min(anchor.x, point.x), Math.min(anchor.y, point.y), Math.abs(point.x - anchor.x), Math.abs(point.y - anchor.y)),
+            backgroundColor: 'color-mix(in oklch, var(--paper-ink) 6%, transparent)',
+          }}
+        />
+      )}
+      <span
+        ref={marker}
+        aria-hidden
+        data-testid="review-aim-cross"
+        className="text-paper-ink absolute flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-current bg-white/40"
+        style={at(point.x, point.y)}
+      >
+        <Crosshair className="size-5" strokeWidth={2.25} />
+      </span>
+      <span id={`review-aim-where-${page}`} className="sr-only" aria-live="polite">
+        {anchor
+          ? t('review.aim.box', {
+              w: percent(Math.abs(point.x - anchor.x)),
+              h: percent(Math.abs(point.y - anchor.y)),
+            })
+          : t('review.aim.where', { page, x: percent(point.x), y: percent(point.y) })}
+      </span>
+    </div>
   )
 }
 
@@ -402,6 +760,10 @@ function GlidingCursor({
  * It also reports this reader's pointer to the room, from the page sheet it
  * sits in, so a colleague sees where on the drawing they are pointing.
  *
+ * It does not re-render when somebody's pointer moves: the company on the
+ * page is a layer of its own with its own subscription ({@link PageCompany}),
+ * and the marks are drawn by a memoised layer ({@link PageMarks}).
+ *
  * `focused`: the full review. Off, the inline preview: marks and company only,
  * no tools, and a click on a mark opens the review at it.
  */
@@ -410,6 +772,8 @@ export function ReviewPageLayer({
   review,
   focused,
   onOpenMark,
+  onPinByKeyboard,
+  aim,
   renderThread,
   renderAsk,
 }: {
@@ -418,13 +782,16 @@ export function ReviewPageLayer({
   focused: boolean
   /** The inline preview's way into the review: a mark was clicked. */
   onOpenMark?: (annotationId: string) => void
+  /** A pin was opened from the keyboard: its card takes the focus. */
+  onPinByKeyboard?: () => void
+  /** The keyboard's crosshair on this page, at this height of it; a new `key` starts it afresh. */
+  aim?: { y: number; key: number } | null
   /** The thread card for the selected mark or the draft, anchored here when it is on this page. */
   renderThread?: (anchor: CardAnchor) => JSX.Element | null
   /** Piloti's card for the question open on a box of this page. */
   renderAsk?: (ask: CanvasAsk, anchor: CardAnchor) => JSX.Element | null
 }): JSX.Element {
   const t = useTranslations('files')
-  const byline = usePilotiByline()
   const layerRef = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [drag, setDrag] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
@@ -436,16 +803,26 @@ export function ReviewPageLayer({
     start: null,
     cancelled: false,
   })
-  const { annotations, tool, draft, selectedId, hoveredId, room, filter, piloti } = review
+  const { annotations, tool, draft, selectedId, hoveredId, room, filter, piloti, select, setDraft, hover } = review
   const { sendCursor, sendDraft } = room
-  const highlights = useHighlights(room.peers).filter((highlight) => highlight.page === page)
+  const selfUserId = room.self?.userId ?? null
+  const highlights = useStoreSelector(
+    room.highlights,
+    useCallback((shown: readonly ShownHighlight[]) => shown.filter((highlight) => highlight.page === page), [page]),
+    sameItems
+  )
+  const selections = usePeerSelections(room, selfUserId)
 
   // The page's size, for the pointers' glide (in pixels, on transform).
   useEffect(() => {
     const node = layerRef.current
     if (!node || typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(([entry]) =>
-      setSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+      setSize((current) =>
+        current.width === entry.contentRect.width && current.height === entry.contentRect.height
+          ? current
+          : { width: entry.contentRect.width, height: entry.contentRect.height }
+      )
     )
     observer.observe(node)
     return () => observer.disconnect()
@@ -468,18 +845,30 @@ export function ReviewPageLayer({
     }
   }, [page, sendCursor, tool])
 
-  const visible = (annotation: AnnotationView) =>
-    annotation.page === page &&
-    annotation.onCurrentFassung &&
-    (isLive(annotation) || (focused && filter === 'closed') || annotation.id === selectedId)
-  const marks = annotations.filter(visible)
-  const pointers = room.peers.filter((state): state is RoomPeerState & { cursor: NonNullable<RoomPeerState['cursor']> } =>
-    Boolean(state.cursor && state.cursor.page === page)
+  const marks = useMemo(
+    () =>
+      annotations.filter(
+        (annotation) =>
+          annotation.page === page &&
+          annotation.onCurrentFassung &&
+          (isLive(annotation) || (focused && filter === 'closed') || annotation.id === selectedId)
+      ),
+    [annotations, page, focused, filter, selectedId]
   )
-  const selections = peerSelections(room.peers, room.self?.userId ?? null)
-  // People's pointers go idle when they rest; Piloti's when it is parked with nothing in hand.
-  const now = useTick(pointers.length > 0, 1_000)
   const pilotiThinking = piloti.asks.some((ask) => ask.status === 'thinking')
+  const onPin = useCallback(
+    (annotationId: string, byKeyboard: boolean) => {
+      if (!focused) {
+        onOpenMark?.(annotationId)
+        return
+      }
+      const opening = annotationId !== selectedId
+      if (opening && byKeyboard) onPinByKeyboard?.()
+      setDraft(null)
+      select(opening ? annotationId : null)
+    },
+    [focused, onOpenMark, onPinByKeyboard, selectedId, setDraft, select]
+  )
 
   /**
    * On a touch screen a mark tool is an explicit MODE, and it gives the page
@@ -528,6 +917,12 @@ export function ReviewPageLayer({
       h: Math.abs(point.y - drag.y0),
     })
   }
+  /** A place picked on the page, by a click, a drag or the keyboard's crosshair: the draft, or a question to Piloti. */
+  const place = (next: ReviewDraft) => {
+    // The Piloti tool: the box is a question, not a mark. A click asks about a small box around it.
+    if (tool === 'ask') piloti.compose(askRegionOf(next))
+    else review.setDraft(next)
+  }
   const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
     const press = pressRef.current
     press.pointers.delete(event.pointerId)
@@ -553,13 +948,11 @@ export function ReviewPageLayer({
     const h = Math.round(Math.abs(drag.y1 - drag.y0) * 10_000) / 10_000
     setDrag(null)
     sendDraft(null)
-    const next: ReviewDraft =
+    place(
       w < MIN_REGION || h < MIN_REGION
         ? { page, shape: 'point', x: drag.x0, y: drag.y0, w: null, h: null }
         : { page, shape: 'region', x, y, w, h }
-    // The Piloti tool: the box is a question, not a mark. A click asks about a small box around it.
-    if (tool === 'ask') piloti.compose(askRegionOf(next))
-    else review.setDraft(next)
+    )
     backToNavigate(event.pointerType)
   }
 
@@ -594,86 +987,15 @@ export function ReviewPageLayer({
         />
       )}
 
-      {marks.map((annotation) => {
-        const active = annotation.id === selectedId || annotation.id === hoveredId
-        const ink = markInk(annotation)
-        const proposed = annotation.status === 'proposed'
-        // Piloti's mark says for whom it was set, as a tooltip and to a screen reader.
-        const pilotiLine =
-          annotation.authorKind === 'piloti' ? byline(annotation.createdByName, { proposal: proposed }) : undefined
-        const done = !isLive(annotation)
-        return (
-          <div key={annotation.id} className={cn('contents', active && '[&>*]:z-20')}>
-            {annotation.shape === 'region' && annotation.w && annotation.h && (
-              // An outline, not a fill: the linework under a region is what it
-              // is about. A tint arrives only while the mark is in hand, and
-              // multiplies, so a dimension under it stays black.
-              <span
-                data-testid="review-region"
-                aria-hidden
-                // Multiply on the white page keeps the linework under a tint
-                // black; every ink here is dark (identity ink, paper ink), so
-                // the outline survives the blend in both themes.
-                className={cn(
-                  'absolute rounded-[2px] border-[1.5px] mix-blend-multiply transition-[background-color,opacity] duration-quick ease-out motion-reduce:transition-none',
-                  proposed && 'border-dashed',
-                  done && 'opacity-40'
-                )}
-                style={{
-                  ...box(annotation.x, annotation.y, annotation.w, annotation.h),
-                  borderColor: ink,
-                  backgroundColor: active ? `color-mix(in oklch, ${ink} 9%, transparent)` : 'transparent',
-                }}
-              />
-            )}
-            <span
-              className={cn('pointer-events-auto absolute z-10', COMMENT_PIN_ON_POINT)}
-              style={at(annotation.x, annotation.y)}
-            >
-              <CommentPin
-                data-testid="review-pin"
-                // 24px on the drawing, 44px under the finger: the pin must not
-                // hide the linework it marks, and must still be hit.
-                className="touch-target"
-                number={annotation.number}
-                color={ink}
-                proposed={proposed}
-                done={done}
-                active={annotation.id === selectedId}
-                aria-label={[
-                  t('review.pinLabel', { number: annotation.number, kind: t(`annotations.kinds.${annotation.kind}`) }),
-                  pilotiLine,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-                aria-pressed={annotation.id === selectedId}
-                title={pilotiLine}
-                onPointerEnter={() => review.hover(annotation.id)}
-                onPointerLeave={() => review.hover(null)}
-                data-peer-selected={selections.has(annotation.id) || undefined}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  if (!focused) {
-                    onOpenMark?.(annotation.id)
-                    return
-                  }
-                  review.setDraft(null)
-                  review.select(annotation.id === selectedId ? null : annotation.id)
-                }}
-              />
-            </span>
-            {selections.has(annotation.id) && (
-              <PeerSelection
-                annotation={annotation}
-                selectors={selections.get(annotation.id) ?? []}
-                // The preview rings the mark without the name: a tag there covers the drawing.
-                tagged={focused ? selectionTagged(selections.get(annotation.id) ?? [], annotation, size) : []}
-                pageHeight={size.height}
-              />
-            )}
-          </div>
-        )
-      })}
+      <PageMarks
+        marks={marks}
+        focused={focused}
+        selectedId={selectedId}
+        hoveredId={hoveredId}
+        selections={selections}
+        onPin={onPin}
+        onHover={hover}
+      />
 
       {drag && (
         <span
@@ -773,6 +1095,20 @@ export function ReviewPageLayer({
         ))}
       </AnimatePresence>
 
+      <PageCompany
+        room={room}
+        page={page}
+        focused={focused}
+        size={size}
+        marks={marks}
+        selfUserId={selfUserId}
+        pilotiThinking={pilotiThinking}
+      />
+
+      {focused && aim && tool !== 'select' && !draft && (
+        <KeyboardAim key={aim.key} page={page} tool={tool} startY={aim.y} onSet={place} />
+      )}
+
       {openAsk && askAnchor && renderAsk && (
         <div className="pointer-events-auto absolute z-40" style={at(askAnchor.x, askAnchor.y)} data-placement={askAnchor.placement}>
           {renderAsk(openAsk, askAnchor)}
@@ -788,61 +1124,6 @@ export function ReviewPageLayer({
           {renderThread(threadAnchor)}
         </div>
       )}
-
-      {/* The boxes the others are drawing right now, in their colour, with whose they are. */}
-      {pointers.map((state) =>
-        state.draft && !isPilotiPeer(state) ? (
-          <span
-            key={`draft-${state.peer.peerId}`}
-            data-testid="review-peer-draft"
-            aria-hidden
-            className="pointer-events-none absolute z-20 rounded-[2px] border-[1.5px] border-dashed"
-            style={{
-              ...box(state.draft.x, state.draft.y, state.draft.w, state.draft.h),
-              borderColor: identityInk(state.peer.userId),
-              backgroundColor: `color-mix(in oklch, ${identityInk(state.peer.userId)} 6%, transparent)`,
-            }}
-          >
-            {/* Top-right: the corner where the region's pin will stand stays clear. */}
-            {focused && (
-            <span
-              className={cn(
-                'absolute right-0 px-1.5 py-px text-[10px] leading-4 font-medium whitespace-nowrap text-white',
-                tagFitsAbove(state.draft.y, size.height) ? '-top-px -translate-y-full rounded-t-[3px]' : 'top-0 rounded-bl-[3px]'
-              )}
-              style={{ backgroundColor: identityInk(state.peer.userId) }}
-            >
-              {firstName(state.peer.name)}
-            </span>
-            )}
-          </span>
-        ) : null
-      )}
-
-      {size.width > 0 &&
-        pointers.map((state) => (
-          <GlidingCursor key={state.peer.peerId} x={state.cursor.x} y={state.cursor.y} size={size}>
-            {isPilotiPeer(state) ? (
-              <PilotiCursor state={state} idle={pilotiResting(state, now, pilotiThinking)} />
-            ) : (
-            <LiveCursor
-              color={identityInk(state.peer.userId)}
-              label={state.peer.name}
-              // The preview shows where colleagues point, not their names and words over the drawing.
-              tag={focused}
-              chat={focused ? state.chat : null}
-              idle={!state.chat && state.movedAt !== null && now - state.movedAt > CURSOR_IDLE_MS}
-              busy={
-                state.tool === 'region' ? (
-                  <SquareDashed className="size-3" aria-label={t('review.peerRegion')} />
-                ) : state.tool === 'point' ? (
-                  <Crosshair className="size-3" aria-label={t('review.peerPoint')} />
-                ) : undefined
-              }
-            />
-            )}
-          </GlidingCursor>
-        ))}
     </div>
   )
 }

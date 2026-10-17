@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type JSX } from 'react'
+import { useId, useState, type JSX } from 'react'
 import Link from 'next/link'
 import { MessageSquareShare, RotateCcw, Square, StickyNote, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -53,6 +53,7 @@ export function PilotiAnswerCard({
   placement: CardPlacement
 }): JSX.Element {
   const t = useTranslations('files')
+  const headerId = useId()
   const tChat = useTranslations('chat')
   const { piloti } = review
   const [adopting, setAdopting] = useState(false)
@@ -91,13 +92,15 @@ export function PilotiAnswerCard({
   }
 
   return (
-    <ReviewCard placement={placement} testId="piloti-card">
+    <ReviewCard placement={placement} testId="piloti-card" labelledBy={headerId}>
       <div className={cn('flex items-center gap-2 border-b px-3 py-2', placement === 'docked' && 'pr-12')}>
         <PilotiGlyph working={working} />
-        <span className="text-foreground text-xs font-semibold">Piloti</span>
-        {ask.region && (
-          <span className="text-muted-foreground text-[11px]">{t('review.piloti.regionLabel', { page: ask.region.page })}</span>
-        )}
+        <span id={headerId} className="flex min-w-0 items-center gap-2">
+          <span className="text-foreground text-xs font-semibold">Piloti</span>
+          {ask.region && (
+            <span className="text-muted-foreground text-[11px]">{t('review.piloti.regionLabel', { page: ask.region.page })}</span>
+          )}
+        </span>
         <span className="ml-auto flex items-center">
           {working && (
             <Button

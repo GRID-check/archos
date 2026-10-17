@@ -11,6 +11,7 @@ import { useTranslations } from '@/i18n'
 import { isLive } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import type { DocumentReview } from '../../hooks/use-document-review'
+import { useRoomSelector } from '../../hooks/use-document-room'
 import { markInk } from './review-page-layer'
 
 /** Live marks the rail shows before it sends the reader into the review for the rest. */
@@ -39,7 +40,10 @@ export function AnnotationsSummary({
 }): JSX.Element {
   const t = useTranslations('files')
   const live = review.annotations.filter(isLive)
-  const others = new Set(review.room.peers.filter((state) => state.peer.kind !== 'piloti').map((state) => state.peer.userId)).size
+  const others = useRoomSelector(
+    review.room,
+    (peers) => new Set(peers.filter((state) => state.peer.kind !== 'piloti').map((state) => state.peer.userId)).size
+  )
   const ready = review.load === 'ready'
   return (
     <InspectorSection

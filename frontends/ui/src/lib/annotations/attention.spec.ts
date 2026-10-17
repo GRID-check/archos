@@ -466,6 +466,14 @@ describe('onMarkReplied', () => {
     })
   })
 
+  it('says to the mark’s author alone that the reply is on their mark, so it reaches them as an answer', async () => {
+    await onMarkReplied({ ...reply, mark: thread, mayOpen: everyone })
+
+    const rows = vi.mocked(emitInboxItems).mock.calls[0][0]
+    const yours = Object.fromEntries(rows.map((row) => [row.recipientUserId, (row.payload as { yours?: boolean }).yours ?? false]))
+    expect(yours).toEqual({ user_author: true, user_zustaendig: false, user_delegator: false })
+  })
+
   it('tells nobody who may not open the document now', async () => {
     await onMarkReplied({ ...reply, mark: thread, mayOpen: allBut('user_delegator') })
 
@@ -504,7 +512,7 @@ describe('onMarkMoved', () => {
       recipientUserId: 'user_author',
       type: 'annotation.activity',
       actorUserId: 'user_bob',
-      payload: { related: '4', excerpt: 'Tür T30 fehlt', variant: moved },
+      payload: { related: '4', excerpt: 'Tür T30 fehlt', variant: moved, yours: true },
     })
   })
 

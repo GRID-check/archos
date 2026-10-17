@@ -102,12 +102,48 @@ Keys:
 
 | Key | Does |
 |---|---|
-| V / C / R / P | select, point, box, ask Piloti about a box |
+| V / C / R / P | select, point, box, ask Piloti about a box; C, R and P from the keyboard bring the crosshair (below) |
 | J / K | step through the marks the list shows, proposals first |
 | E | take a proposal over, or resolve an open mark |
 | ⌫ / Entf | dismiss a proposal |
 | / | cursor chat |
 | Esc | backs out one layer at a time (the dialog's own Escape: an open menu or sheet takes its own first) |
+
+**Without a mouse.** A mark tool taken up from the keyboard (its key, or its
+button with Enter) puts a crosshair at the middle of the reader's view on the
+page there (`KeyboardAim` in `review-page-layer.tsx`, `role="application"`
+with a label that says the keys). The arrows move it a hundredth of the page,
+with Shift a twentieth; Enter sets a point, or for a box holds the first
+corner, the arrows draw the box out and Enter sets it. What it sets goes the
+way a click goes: the draft card, or the question to Piloti. A held Enter is
+one press. Escape is the review's own Escape and puts the tool down. The hint
+at the top reads „Klicken oder ↵ · Pfeiltasten · Esc"; while the crosshair is
+out it is hidden from a screen reader, which hears the crosshair's label instead.
+
+**The focus.** A card a key opened (J, K, Enter on a pin or a row) takes the
+focus itself, not its first control, so the Enter after J does not land on
+„Erledigen"; whatever had the focus gets it back when the card closes (its ×,
+Escape), as it does when the crosshair or the cursor chat goes
+(`focus-return.ts`). A card opened by a click leaves the focus where it was.
+A card is a `dialog` named by its header („Mangel #4"); a pin says its state
+in words („Vorschlag", „erledigt"), who else has it open, and that it opens a
+dialog (`aria-haspopup`; `aria-expanded` in the review, not in the file
+preview, where a pin opens the review). The list's filter and a draft's
+kinds are buttons that say which is on (`aria-pressed`), each reached by Tab.
+Every control of the viewer's pill keeps its 28px target; a pill longer than
+its stage scrolls, and under about 1000px of stage the tools spelled out with
+their names fold to their glyphs, still named for a screen reader and with the
+glyphs' tooltip (name and key).
+
+**What a screen reader hears.** What the others do reaches it through one
+polite live region of its own, there from the moment the review opens
+(`review-announcer.tsx`), beside the review's few status lines (offline,
+Piloti's review in the header, the tool hint): what the others did to the marks,
+gathered for three seconds and said as one line („Piloti hat 3 Vorschläge
+gesetzt. Anna Berger: neue Anmerkung 7"), and „Piloti hat geantwortet" when a
+question this reader asked is answered. Never a pointer or who came and went,
+never this reader's own changes, in this tab or another. The same line twice
+is said twice. The pointers and their tags are hidden from it.
 
 A mark of an earlier Fassung is listed and never drawn; selected, its thread
 opens over the sheet, saying so in its first line. Status moves carry the status the card showed
@@ -116,7 +152,9 @@ change. The list is read again when the room returns after a drop and when the
 tab returns to view.
 
 `use-document-review.ts` is the state both surfaces share: the inline layer in
-the file preview, and the full-screen review.
+the file preview, and the full-screen review. While the review is open the
+inline viewer is not mounted at all: one viewer draws the document at a time.
+Closing the review opens it again at the page the reader was on in the review.
 
 **The review's address.** While the review is open the URL says so:
 `review=1`, `mark=<id>` for the selected mark and `tool=point|region` for a
@@ -145,16 +183,35 @@ the way a design tool shows its collaborators:
 
 | What | How it shows | Where |
 |---|---|---|
-| A colleague's pointer | the arrow in their colour, their name on a tag; after 8 s at rest it quiets and the tag folds down to a dot with their initial (`CURSOR_IDLE_MS`). In the file preview, the arrow alone: no tag, no chat, no name on a mark or a box being drawn | `review-page-layer.tsx`, `components/ui/live-cursor.tsx` |
+| A colleague's pointer | the arrow in their colour, their name on a tag; after 8 s at rest it quiets and the tag folds down to a dot with their initial (`CURSOR_IDLE_MS`, one timer per pointer). Under the open card, never over it. In the file preview, the arrow alone: no tag, no chat, no name on a mark or a box being drawn | `review-page-layer.tsx`, `components/ui/live-cursor.tsx` |
 | Cursor chat | „/" opens a field at the reader's pointer, the toolbar's button centred above the toolbars, always inside the canvas; every key shows beside it for the room as typed; Enter keeps the line 4 s, Esc takes it away. A colleague's chat keeps their name above the words. Nothing is stored | `cursor-chat.tsx` |
 | The mark a colleague has open | a ring round the pin (an outline round a region) in their colour, with their first name at its top-right; „Anna +1" for several; a person whose own pointer is within 48 px of the mark is not named twice (`selectionTagged`); never the reader's own tabs, never Piloti | `peerSelections`, `PeerSelection` |
-| A box being dragged out | dashed in their colour, with their first name | `review-page-layer.tsx` |
+| A box being dragged out | dashed in their colour, with their first name over its top-right corner; beside the box when the box is narrower than the name, so the name never lies over a pin next to it (`draftTagPlace`) | `review-page-layer.tsx` |
 | A colleague out of view | a chip at the edge that leads to them („Lena · Seite 2"), decided by whether their point is on screen (`peerSide`); a click jumps there; the face's tooltip names the page | `Elsewhere` in `document-review.tsx` |
 | Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"), quieting once it is parked with nothing in hand (`pilotiResting`); the box it reads glows while it reads it (`canvas__look` sends the `look` op: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
 
 A write sends an `annotations.changed` hint. A hint is a nudge to re-read, never
 the state itself, so a dropped hint costs a few seconds, not a wrong list. The
-tab that wrote ignores its own hint.
+tab that wrote ignores its own hint. The others read again only the marks the
+hint names, each through `GET …/annotations/{id}` (a 404 takes it off the
+list); a burst naming more than eight reads the list once. Only the latest read
+of a mark lands: an older answer cannot bring back a mark a newer one found
+gone, a list read asked since outranks it, and nothing lands once the pane
+shows another document. The whole list is
+read again when the room returns after a drop and when the tab returns to view.
+
+**What a pointer re-renders.** The roster is an external store
+(`useChannel`'s `roster`, read through `useSyncExternalStore`), and a peer that
+did not change keeps its object. Nothing that holds the review (the file
+preview, the review itself, its list) reads the roster in render: the faces and
+the header read who is here by membership and page (`useRoomCompany`), each
+page's company layer reads the peers on its page (`usePeersOnPage`), and the
+marks are a memoised layer of their own. A pointer moving redraws its pointer.
+Piloti's highlights are kept once per room (`createHighlightTracker`), not per
+page drawn.
+
+Everything a colleague's colour carries white words on (`identityInk`) is dark
+enough for 4.5:1 on every hue of the ring, and the words on it are solid white.
 
 The transport is the shared realtime channel layer; see ADR 0110 for why it is
 our own thin layer over Dragonfly rather than a library.
@@ -429,6 +486,11 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `annotation.activity` | a person or Piloti replied in the thread | the mark's participants, minus whoever acted | no |
 | `annotation.activity` | someone resolved, dismissed or reopened a mark | the mark's author, unless they did it | no |
 
+The author's `annotation.activity` row says `yours: true`: a reply or a move
+on a mark they wrote answers them, so it reaches their devices as a result
+(`InboxPushPolicy.yours`, on by default, like `mention.answered`), while the
+thread's other participants hear it as activity (off by default).
+
 The participants are derived from the mark when something happens, never
 stored (`markParticipants`): its author (who set it, or for Piloti's mark who
 took it over or asked for it), its Zuständige, who delegated it to Piloti, and
@@ -453,14 +515,36 @@ what the mark says (Piloti's question for a Rückfrage):
 | `piloti.work_failed` | „Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten“ | why, and what to do (below) |
 | `piloti.asks_you` | „Piloti hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG““ | „Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.“ |
 | `annotation.assigned_to_you` | „Miriam hat Ihnen Anmerkung 4 in „Grundriss EG“ zugewiesen“; variant `piloti`: „Piloti hat Ihnen für Miriam Anmerkung 4 in „Grundriss EG“ zugewiesen“ | „Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.“ |
-| `annotation.activity`, variant `reply` | „Neue Antwort zu Anmerkung 4 in „Grundriss EG““, counted „3 neue Antworten zu Anmerkung 4 in „Grundriss EG““ | none: the newest reply is the excerpt |
+| `annotation.activity`, variant `reply` | „Miriam hat zu Anmerkung 4 in „Grundriss EG“ geantwortet“, counted „3 neue Antworten zu Anmerkung 4 in „Grundriss EG“, zuletzt von Miriam“; Piloti's reply „Neue Antwort zu Anmerkung 4 in „Grundriss EG““ | none: the newest reply is the excerpt |
 | `annotation.activity`, variants `resolved` / `dismissed` / `reopened` | „Miriam hat Anmerkung 4 in „Grundriss EG“ erledigt“ / „… verworfen“ / „… wieder geöffnet“ | none |
 
 `piloti.work_done` names what woke Piloti as its variant; a delegation's end
 (`assigned`) adds „Die Anmerkung liegt wieder bei Ihnen.“ Rows fold per mark
 and their payloads merge, so every row names its variant, and a replied-to
 mark is one counted row however busy its thread is (`titleRelatedMany` in
-`frontends/ui/src/lib/inbox/item-copy.ts`). Piloti's own rows wear its glyph.
+`frontends/ui/src/lib/inbox/item-copy.ts`). Piloti's own rows wear its glyph,
+drawn as a line like every other row's; a row a person caused wears that
+person's face with the type's glyph in its corner.
+
+The row acts on the mark (`anchor: 'mark'` on the type's entry in
+`INBOX_TYPE_PRESENTATION`, from which the server's `MARK_ANCHORED_INBOX_TYPES`
+is derived). „Zur Anmerkung“ opens the Prüfansicht at it and marks the row read.
+On an open `annotation.assigned_to_you` or `piloti.asks_you`, „Antworten“
+answers in the thread from the row, and an assigned mark also has „Erledigen“
+(`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved
+meanwhile is a `409`, not overwritten). Both go through the annotations' own
+client (`lib/annotations/client.ts`), the same writes the thread makes, so the
+settle rules above apply unchanged.
+
+Opening a mark reads its news. When a mark stays selected in the review for
+`MARK_NEWS_SETTLE_MS` (`features/documents/hooks/use-document-review.ts`), the
+reader's informational items anchored on it are read through
+`POST /api/inbox/read { resourceType: 'document', resourceId, anchorId }`; a
+mark stepped past with J/K is not, and one mark is read at most once a minute
+from a tab. Requests stay open: seeing a mark is not answering it. A mark
+with no news changes nothing, so it nudges no open inbox. A tapped
+notification is read too: the service worker posts its item to the same route
+before it opens the mark.
 
 A failure says why. `onWakeEnded` classes the wake's stored reason with
 `wakeEndReasonKind` (`frontends/ui/src/lib/annotations/wake-end-reason.ts`) and

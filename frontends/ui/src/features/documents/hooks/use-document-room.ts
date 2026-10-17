@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CURSOR_CHAT_MAX,
   CURSOR_INTERVAL_MS,
@@ -20,7 +20,17 @@ import {
   type RoomViewport,
 } from '@/lib/annotations/room-types'
 import type { ChannelPostOptions, ChannelStatus } from '@/features/realtime/connection'
-import { realtimeLink, useChannel, type ChannelLink } from '@/features/realtime/use-channel'
+import type { RosterEntry } from '@/features/realtime/presence'
+import {
+  createSnapshotStore,
+  realtimeLink,
+  sameItems,
+  useChannel,
+  useSnapshot,
+  useStoreSelector,
+  type ChannelLink,
+  type SnapshotStore,
+} from '@/features/realtime/use-channel'
 
 /** How a room reaches the server: the tab's live connection, or a stand-in (the specs, the `/dev` preview). */
 export interface RoomTransport {
@@ -159,6 +169,113 @@ const parseRoomEvent = (value: unknown): RoomEvent | null => {
 
 type AnnotationsChanged = Extract<RoomEvent, { kind: 'annotations.changed' }>
 
+/** A box Piloti points out on a page, with what it says about it. */
+export interface PilotiHighlight {
+  page: number
+  x: number
+  y: number
+  w: number
+  h: number
+  label: string | null
+}
+
+/** How long a box Piloti pointed out stays on the page, unless it points out the next one first. */
+export const HIGHLIGHT_MS = 6_000
+
+/**
+ * What Piloti points out, read off its peer: its latest highlight while it
+ * lasts, else the region its activity says it is reading.
+ */
+export function pilotiHighlightOf(state: RoomPeerState, now = Date.now()): PilotiHighlight | null {
+  if (state.peer.kind !== 'piloti') return null
+  if (state.highlight && state.highlight.expiresAt > now) {
+    return { ...state.highlight.box, label: state.highlight.label }
+  }
+  const box = state.activity?.box
+  return box ? { ...box, label: state.activity?.label ?? null } : null
+}
+
+export type ShownHighlight = PilotiHighlight & { key: string; peerId: string }
+
+/**
+ * The boxes Piloti pointed out, each shown until it points out the next or
+ * {@link HIGHLIGHT_MS} passes: a highlight is a gesture, not a mark. Kept once
+ * per room, not per page drawn: one timer per box, however many pages and
+ * viewers show it.
+ */
+export function createHighlightTracker() {
+  const store = createSnapshotStore<readonly ShownHighlight[]>([])
+  const timers = new Map<string, ReturnType<typeof setTimeout>>()
+  let signature = ''
+  return {
+    store: store as SnapshotStore<readonly ShownHighlight[]>,
+    /** Read the peers again; only a different set of boxes changes anything. */
+    update(peers: readonly RoomPeerState[]) {
+      const arrived = peers.flatMap((state) => {
+        const highlight = pilotiHighlightOf(state)
+        if (!highlight) return []
+        const key = `${state.peer.peerId}:${highlight.page}:${highlight.x}:${highlight.y}:${highlight.w}:${highlight.h}:${highlight.label ?? ''}`
+        return [{ ...highlight, key, peerId: state.peer.peerId }]
+      })
+      const next = arrived.map((highlight) => highlight.key).join('|')
+      if (next === signature) return
+      signature = next
+      if (arrived.length === 0) return
+      const before = store.get()
+      store.set([
+        ...before.filter((old) => !arrived.some((fresh) => fresh.peerId === old.peerId)),
+        ...arrived.filter((fresh) => !before.some((old) => old.key === fresh.key)),
+        ...before.filter((old) => arrived.some((fresh) => fresh.key === old.key)),
+      ])
+      for (const highlight of arrived) {
+        if (timers.has(highlight.key)) continue
+        timers.set(
+          highlight.key,
+          setTimeout(() => {
+            timers.delete(highlight.key)
+            store.set(store.get().filter((old) => old.key !== highlight.key))
+          }, HIGHLIGHT_MS)
+        )
+      }
+    },
+    stop() {
+      for (const timer of timers.values()) clearTimeout(timer)
+      timers.clear()
+      signature = ''
+      store.set([])
+    },
+  }
+}
+
+/**
+ * The roster as the room reads it: each entry flattened into a
+ * {@link RoomPeerState}, and a peer that did not change keeps the object it
+ * had, so a selector over the peers of one page compares them by identity.
+ */
+export function roomPeersOf(
+  roster: SnapshotStore<readonly RosterEntry<PeerFields>[]>
+): SnapshotStore<readonly RoomPeerState[]> {
+  const flat = new WeakMap<RosterEntry<PeerFields>, RoomPeerState>()
+  let source: readonly RosterEntry<PeerFields>[] | null = null
+  let peers: readonly RoomPeerState[] = []
+  return {
+    get() {
+      const entries = roster.get()
+      if (entries === source) return peers
+      source = entries
+      peers = entries.map((entry) => {
+        const known = flat.get(entry)
+        if (known) return known
+        const state: RoomPeerState = { peer: entry.peer, expiresAt: entry.expiresAt, ...entry.state }
+        flat.set(entry, state)
+        return state
+      })
+      return peers
+    },
+    subscribe: roster.subscribe,
+  }
+}
+
 /**
  * This tab in a document's room: who else is looking, where their pointers
  * are and what they are dragging out, where they are scrolled to, what Piloti
@@ -207,10 +324,19 @@ export function useDocumentRoom(
   })
   const { send } = channel
 
-  const peers = useMemo<RoomPeerState[]>(
-    () => channel.peers.map(({ peer, expiresAt, state }) => ({ peer, expiresAt, ...state })),
-    [channel.peers]
-  )
+  const { roster } = channel
+  const peers = useMemo(() => roomPeersOf(roster), [roster])
+  // Piloti's highlights, once for the room: every page and both viewers read the same boxes.
+  const [highlights] = useState(createHighlightTracker)
+  useEffect(() => {
+    const update = () => highlights.update(peers.get())
+    update()
+    const unsubscribe = peers.subscribe(update)
+    return () => {
+      unsubscribe()
+      highlights.stop()
+    }
+  }, [peers, highlights])
 
   const { peerCount } = channel
   /** Whether a person besides this tab is here: Piloti reads the server's snapshot, not the pointer stream. */
@@ -297,18 +423,39 @@ export function useDocumentRoom(
     }
   }, [])
 
-  return {
-    peerId: channel.peerId,
-    status: channel.status,
-    self: channel.self,
-    peers,
-    sendCursor,
-    sendViewport,
-    sendDraft,
-    sendChat,
-    sendSelection,
-    onAnnotationsChanged,
-  }
+  const { peerId, status, self } = channel
+  return useMemo(
+    () => ({
+      peerId,
+      status,
+      self,
+      /** Who else is here, as a store: read it with {@link useRoomPeers} or {@link useRoomSelector}, never in the host's render. */
+      peers,
+      /** The boxes Piloti points out now; see {@link createHighlightTracker}. */
+      highlights: highlights.store,
+      sendCursor,
+      sendViewport,
+      sendDraft,
+      sendChat,
+      sendSelection,
+      onAnnotationsChanged,
+    }),
+    [peerId, status, self, peers, highlights, sendCursor, sendViewport, sendDraft, sendChat, sendSelection, onAnnotationsChanged]
+  )
 }
 
 export type DocumentRoom = ReturnType<typeof useDocumentRoom>
+
+/** Everyone in the room, re-rendering whenever anyone moves: for what draws pointers. */
+export const useRoomPeers = (room: Pick<DocumentRoom, 'peers'>): readonly RoomPeerState[] => useSnapshot(room.peers)
+
+/** What `select` reads of the room's peers, re-rendering only when that changed by `equal`. */
+export const useRoomSelector = <R,>(
+  room: Pick<DocumentRoom, 'peers'>,
+  select: (peers: readonly RoomPeerState[]) => R,
+  equal?: (a: R, b: R) => boolean
+): R => useStoreSelector(room.peers, select, equal)
+
+/** The peers whose pointer or box is on one page, compared by identity: a pointer on another page re-renders nothing here. */
+export const usePeersOnPage = (room: Pick<DocumentRoom, 'peers'>, page: number): readonly RoomPeerState[] =>
+  useStoreSelector(room.peers, (peers) => peers.filter((state) => state.cursor?.page === page), sameItems)

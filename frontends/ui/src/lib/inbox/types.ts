@@ -25,6 +25,12 @@ export interface InboxItemView {
   id: string
   type: InboxItemType
   state: InboxItemState
+  /**
+   * Whether the reader archived it. Its own fact, not a `state`: a row that is
+   * archived AND redacted reads `state: 'inert'` and must still be restored,
+   * never archived again.
+   */
+  archived: boolean
   /** True for items representing an outstanding request against the recipient. */
   actionable: boolean
   resourceType: InboxTargetType
@@ -73,10 +79,33 @@ export interface InboxItemView {
   updatedAt: string
 }
 
+/**
+ * The slices `GET /api/inbox?filter=` reads (`./repository`'s `InboxListFilter`):
+ * `requests` waits on the reader („Für mich“), `unread` is not opened yet
+ * („Ungelesen“), `all` is everything not archived, `archived` what was put
+ * away; `pending` is the badge's own set (unread or a request still open).
+ */
+export const INBOX_LIST_FILTERS = ['pending', 'requests', 'unread', 'all', 'archived'] as const
+export type InboxListFilter = (typeof INBOX_LIST_FILTERS)[number]
+
 /** `GET /api/inbox` */
 export interface InboxListResponse {
   items: InboxItemView[]
   /** Count of things needing attention — the badge number. */
+  pending: number
+  /** The numbers beside the filters: requests still open, and rows not opened yet. */
+  counts: { requests: number; unread: number }
+  /** Whether a further page exists behind `nextCursor`. */
+  hasMore: boolean
+  /** Pass as `?cursor=` to read the next page; null on the last one. */
+  nextCursor: string | null
+}
+
+/** Every inbox mutation answers with this: what it touched, and the badge after it. */
+export interface InboxMutationResult {
+  /** Rows the operation actually touched (0 is a legitimate no-op). */
+  affected: number
+  /** Recomputed badge count, so the caller needs no follow-up request. */
   pending: number
 }
 
@@ -114,6 +143,14 @@ export interface InboxTypePresentation {
    * but it is not an FYI either — something in their account needs attention.
    */
   readonly tone: 'request' | 'info' | 'warning'
+  /**
+   * What the item's `anchorId` is, where it is something the row can act on:
+   * `mark`, an Anmerkung of the document the item points at. The row then
+   * offers „Zur Anmerkung“ (and, for a request, answers in its thread), and
+   * the server registry derives `MARK_ANCHORED_INBOX_TYPES` from it, so the two
+   * halves cannot disagree about which types those are.
+   */
+  readonly anchor?: 'mark'
 }
 
 /**
@@ -149,13 +186,13 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'mail_import.failed': { icon: 'alert-triangle', i18nKey: 'mailImportFailed', tone: 'warning' },
   'document.new_fassung': { icon: 'layers', i18nKey: 'documentNewFassung', tone: 'info' },
   // Piloti's rows wear its face, as its marks and replies do on the page.
-  'piloti.work_done': { icon: 'piloti', i18nKey: 'pilotiWorkDone', tone: 'info' },
-  'piloti.work_failed': { icon: 'piloti', i18nKey: 'pilotiWorkFailed', tone: 'warning' },
-  'piloti.asks_you': { icon: 'piloti', i18nKey: 'pilotiAsksYou', tone: 'request' },
+  'piloti.work_done': { icon: 'piloti', i18nKey: 'pilotiWorkDone', tone: 'info', anchor: 'mark' },
+  'piloti.work_failed': { icon: 'piloti', i18nKey: 'pilotiWorkFailed', tone: 'warning', anchor: 'mark' },
+  'piloti.asks_you': { icon: 'piloti', i18nKey: 'pilotiAsksYou', tone: 'request', anchor: 'mark' },
   'piloti.proposal_waiting': { icon: 'piloti', i18nKey: 'pilotiProposalWaiting', tone: 'request' },
   'piloti.intake_ready': { icon: 'piloti', i18nKey: 'pilotiIntakeReady', tone: 'request' },
-  'annotation.assigned_to_you': { icon: 'user-plus', i18nKey: 'annotationAssigned', tone: 'request' },
-  'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info' },
+  'annotation.assigned_to_you': { icon: 'user-plus', i18nKey: 'annotationAssigned', tone: 'request', anchor: 'mark' },
+  'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info', anchor: 'mark' },
 }
 
 /**
@@ -175,4 +212,9 @@ export const UNKNOWN_TYPE_PRESENTATION: InboxTypePresentation = {
   icon: 'message-square',
   i18nKey: 'unknown',
   tone: 'info',
+}
+
+/** Whether an item's anchor is a mark of its document (`anchor: 'mark'` above). */
+export function isMarkAnchored(type: InboxItemType): boolean {
+  return INBOX_TYPE_PRESENTATION[type]?.anchor === 'mark'
 }
