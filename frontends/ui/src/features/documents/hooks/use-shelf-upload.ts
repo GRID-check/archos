@@ -15,7 +15,16 @@ export interface ShelfUploadOptions {
   shelf: Pick<FileShelf, 'probeNames' | 'probeFassungen' | 'handoverKey'> & { endpoints: Pick<ShelfEndpoints, 'folders'> }
   upload: Pick<ShelfUploadApi, 'uploadFiles'>
   folders: readonly FolderItem[]
+  /** The folders have loaded: what a drop handed over from another page waits for, to be planned against them. */
   foldersReady: boolean
+  /**
+   * The first read of the folders has answered, or failed. A drop made before
+   * waits that moment; a drop after a failed read goes ahead, planned without
+   * them (the server creates folders get-or-create and refuses a read-only one
+   * per file), rather than waiting for a tree that may never come.
+   * Defaults to `foldersReady`.
+   */
+  foldersSettled?: boolean
   selectedFolderId: string | null
   loadFolders: () => Promise<unknown>
   loadFiles: (quiet?: boolean) => Promise<unknown>
@@ -69,6 +78,7 @@ export function useShelfUpload({
   upload,
   folders,
   foldersReady,
+  foldersSettled = foldersReady,
   selectedFolderId,
   loadFolders,
   loadFiles,
@@ -170,12 +180,12 @@ export function useShelfUpload({
    *
    * Now a drop that comes while the shelf is busy waits in this queue, the
    * reader is told it will follow, and it goes when the shelf is free: no
-   * upload running, no plan being made or shown, the folders loaded.
+   * upload running, no plan being made or shown, the folders' first read answered.
    */
   const queue = useRef<QueuedDrop[]>([])
   const [queued, setQueued] = useState(0)
   const [proposing, setProposing] = useState(false)
-  const busy = proposing || decision.open || decision.pending || uploading || !foldersReady
+  const busy = proposing || decision.open || decision.pending || uploading || !foldersSettled
 
   const handleUpload = useCallback(
     (incoming: File[], target: UploadTarget = {}) => {
@@ -189,13 +199,13 @@ export function useShelfUpload({
         setQueued(queue.current.length)
         // Only when there is something to wait FOR: a page still loading its
         // folders is a moment, not an upload.
-        if (foldersReady) toast.info(t('workspace.dropQueued'))
+        if (foldersSettled) toast.info(t('workspace.dropQueued'))
         return
       }
       setProposing(true)
       void proposeDrop(drop).finally(() => setProposing(false))
     },
-    [busy, foldersReady, selectedFolderId, proposeDrop, t]
+    [busy, foldersSettled, selectedFolderId, proposeDrop, t]
   )
 
   // The next queued drop, the moment the shelf is free for it.

@@ -153,12 +153,13 @@ import {
 import { buildFolderPath } from './folders'
 import { findProjectInOrg } from './repository'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
+import { FOLDER_NAME_TAKEN_REASON } from './folder-bin-codes'
 
 /** The machine-readable reason a delete is refused because the folder holds content the person may not delete. */
 export const FOLDER_CONTENTS_PROTECTED_REASON = 'folder-contents-protected'
 
 /** The reason a restore is refused because a living sibling holds the folder's name. */
-export const FOLDER_NAME_TAKEN_REASON = 'folder-name-taken'
+export { FOLDER_NAME_TAKEN_REASON }
 
 const CHUNK_PURGE_TIMEOUT_MS = 15_000
 /** How many backend calls one bin operation has in flight at once. */

@@ -6,8 +6,9 @@
  * records the uploads, so a drag in a real browser does what it does in the
  * app and the result is on screen.
  *
- * The project: three folders at the top (Planung with Statik inside it, and
- * Behörde, which the reader may only read, ADR-0088), four documents at the
+ * The project: four folders at the top (Planung with Statik inside it,
+ * Behörde, which the reader may only read, ADR-0088, and a second Statik, so a
+ * move out of Planung meets its namesake), four documents at the
  * top, one in Planung and one in Behörde. Every move and upload request is
  * appended to `window.__dndLog`, so a script can say what reached the server.
  *
@@ -55,6 +56,7 @@ const initialStore = (): Store => ({
     { id: 'f1', name: 'Planung', parentId: null, path: 'Planung' },
     { id: 'f2', name: 'Statik', parentId: 'f1', path: 'Planung/Statik' },
     { id: 'f3', name: 'Behörde', parentId: null, path: 'Behörde', access: 'read' },
+    { id: 'f4', name: 'Statik', parentId: null, path: 'Statik' },
   ],
   docs: [
     doc('d1', 'Einreichplan_EG.pdf', null),
@@ -128,7 +130,13 @@ function useProjectFetch(store: React.RefObject<Store>): void {
       if (moveFolder && method === 'PATCH') {
         const body = JSON.parse(String(init?.body ?? '{}')) as { parentId?: string | null }
         const folder = state.folders.find((f) => f.id === moveFolder[1])
-        log({ kind: 'move-folder', id: moveFolder[1], to: body.parentId ?? null, status: folder ? 200 : 404 })
+        const to = body.parentId ?? null
+        // As the server answers: a read-only end is a 403, a namesake where it would land a 400 with its reason.
+        const status = !folder ? 404 : READ_ONLY.has(to ?? '') || READ_ONLY.has(folder.id) ? 403 : state.folders.some((f) => f.id !== folder.id && (f.parentId ?? null) === to && f.name === folder.name) ? 400 : 200
+        log({ kind: 'move-folder', id: moveFolder[1], to, status })
+        if (status === 404) return json({ error: 'Not found' }, 404)
+        if (status === 403) return json({ error: 'Forbidden', code: 'FORBIDDEN' }, 403)
+        if (status === 400) return json({ error: 'A folder with this name already exists here.', code: 'BAD_REQUEST', details: { reason: 'folder-name-taken' } }, 400)
         if (!folder) return json({ error: 'Not found' }, 404)
         folder.parentId = body.parentId ?? null
         const parent = state.folders.find((f) => f.id === folder.parentId)

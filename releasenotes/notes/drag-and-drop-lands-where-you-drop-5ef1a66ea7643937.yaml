@@ -1,4 +1,9 @@
 ---
+features:
+  - >
+    Hold a file or folder you are dragging over a folder for a moment and it
+    opens, so you can move things into folders that are not on screen. Every
+    move now offers to undo it.
 improvements:
   - >
     Files dragged from your desktop onto a folder, or onto a folder in the path
@@ -10,5 +15,8 @@ fixes:
     of disappearing, and the drop area no longer stays on screen after a
     cancelled drag.
   - >
-    A folder you may only read now says so when you drag files over it, and its
-    files can no longer be dragged out, instead of the move failing afterwards.
+    A folder you may only read now says so when you drag files or documents
+    over it, and its files can no longer be dragged out.
+  - >
+    Moving or renaming a folder to a name that is already taken there now says
+    which name is in the way, instead of failing without a reason.

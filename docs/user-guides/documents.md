@@ -153,10 +153,19 @@ Additional limits:
 
 ## Moving a file into a folder
 
-Drag it onto the folder — a card, a row, or „Alle Dateien“ in the breadcrumb to
-move it back to the top level. The folder lights up as the target while you are
-over it. „Verschieben“ in a file's overflow menu does the same thing and remains
-the way to move a file into a folder you are not currently looking at.
+Drag it onto the folder — a card, a row, or „Alle Dateien“ or any folder in the
+breadcrumb to move it up. The folder lights up as the target while you are over
+it. Folders move the same way.
+
+To reach a folder that is not on screen, hold the drag over a folder (or a
+folder in the breadcrumb) for a moment: it opens, and you can go on down, or let
+go anywhere in it. „Verschieben“ in the overflow menu does the same thing
+without a drag.
+
+Every move says where it went, with **Rückgängig** to put it back. When a move
+cannot happen, Piloti says why: a folder you may only read (it turns red while
+you hold something over it), a folder of the same name already there, or a
+folder someone has just deleted.
 
 Dragging a file inside Piloti never starts an upload: a drag carrying files from
 your desktop and a drag carrying a document already here are different things to

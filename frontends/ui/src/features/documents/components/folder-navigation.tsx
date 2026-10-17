@@ -130,6 +130,7 @@ export function FolderBreadcrumbRow({
       canAcceptFolder={canAcceptFolder}
       onDropFiles={onDropFiles}
       onFileAim={onFileAim}
+      onSpringOpen={() => onNavigate(folderId)}
     >
       {children}
     </CrumbDropTarget>
@@ -372,8 +373,8 @@ export type DropFilesInFolder = (
 ) => void
 
 /** The ring a drop target wears: where it will land, or that it will not take it. */
-function dropRing(drop: { isOver: boolean; refusesFiles: boolean }, inset = false): string | false {
-  if (drop.refusesFiles) return cn('ring-destructive ring-2', inset && 'ring-inset')
+function dropRing(drop: { isOver: boolean; refuses: boolean }, inset = false): string | false {
+  if (drop.refuses) return cn('ring-destructive ring-2', inset && 'ring-inset')
   return drop.isOver && cn('bg-accent ring-ring ring-2', inset && 'ring-inset')
 }
 
@@ -395,10 +396,13 @@ function CrumbDropTarget({
   canAcceptFolder,
   onDropFiles,
   onFileAim,
+  onSpringOpen,
   children,
 }: {
   folderId: string | null
   label: string
+  /** Held over, the drag walks up to that level. */
+  onSpringOpen?: () => void
   /** The reader may write at that level (ADR-0088): otherwise nothing lands there. */
   writable: boolean
   onDropDocument?: (documentId: string, folderId: string | null) => void
@@ -414,10 +418,11 @@ function CrumbDropTarget({
     onDropDocument: onDropDocument ?? (() => {}),
     onDropFolder,
     canAcceptFolder,
-    disabled: !writable || (!onDropDocument && !onDropFolder),
+    disabled: !onDropDocument && !onDropFolder,
     onDropFiles,
-    fileRefusal: writable ? null : t('workspace.dropRefusedFolder', { name: label }),
+    refusal: writable ? null : t('workspace.dropRefusedFolder', { name: label }),
     onFileAim,
+    onSpringOpen,
   })
   return (
     <span
@@ -608,10 +613,11 @@ export function FolderCard({
     onDropDocument: onDropDocument ?? (() => {}),
     onDropFolder,
     canAcceptFolder,
-    disabled: readOnly || (!onDropDocument && !onDropFolder),
+    disabled: !onDropDocument && !onDropFolder,
     onDropFiles,
-    fileRefusal: readOnly ? t('workspace.dropRefusedFolder', { name: folder.name }) : null,
+    refusal: readOnly ? t('workspace.dropRefusedFolder', { name: folder.name }) : null,
     onFileAim,
+    onSpringOpen: () => onOpen(folder.id),
   })
 
   return (
@@ -627,7 +633,7 @@ export function FolderCard({
       data-drop-over={drop.isOver ? '' : undefined}
       // Source as well as target: a folder is moved by dragging it onto
       // another, which is the same gesture that moves a document.
-      {...(onDropFolder && !readOnly && !editing ? folderDragProps(folder.id) : {})}
+      {...(onDropFolder && !readOnly && !editing ? folderDragProps(folder.id, folder.parentId ?? null) : {})}
       {...drop.dropProps}
     >
       <div
@@ -786,10 +792,11 @@ export function FolderRow({
     onDropDocument: onDropDocument ?? (() => {}),
     onDropFolder,
     canAcceptFolder,
-    disabled: readOnly || (!onDropDocument && !onDropFolder),
+    disabled: !onDropDocument && !onDropFolder,
     onDropFiles,
-    fileRefusal: readOnly ? t('workspace.dropRefusedFolder', { name: folder.name }) : null,
+    refusal: readOnly ? t('workspace.dropRefusedFolder', { name: folder.name }) : null,
     onFileAim,
+    onSpringOpen: () => onOpen(folder.id),
   })
 
   if (editing) {
@@ -844,7 +851,7 @@ export function FolderRow({
       )}
       data-testid={`folder-row-${folder.id}`}
       data-drop-over={drop.isOver ? '' : undefined}
-      {...(onDropFolder && !readOnly ? folderDragProps(folder.id) : {})}
+      {...(onDropFolder && !readOnly ? folderDragProps(folder.id, folder.parentId ?? null) : {})}
       {...drop.dropProps}
     >
       <button

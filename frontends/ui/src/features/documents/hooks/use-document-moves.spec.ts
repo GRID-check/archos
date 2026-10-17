@@ -131,3 +131,66 @@ describe('useDocumentMoves.moveMany', () => {
     expect(peak).toBeLessThanOrEqual(4)
   })
 })
+
+describe('useDocumentMoves.dropInFolder', () => {
+  const fetchMock = vi.fn()
+  const answer = (status: number, body: unknown = {}) => ({ ok: status < 400, status, json: async () => body })
+  beforeEach(() => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockReset()
+    vi.mocked(toast.success).mockReset()
+    vi.mocked(toast.error).mockReset()
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('moves at once, and the toast offers it back: one click puts it where it was, with no undo of its own', async () => {
+    fetchMock.mockResolvedValue(answer(200))
+    const { hook, rows } = harness([file('a', 'old')])
+
+    await act(async () => hook.result.current.dropInFolder('a', 'site'))
+    expect(rows()[0].folderId).toBe('site')
+    const [, options] = vi.mocked(toast.success).mock.lastCall as unknown as [string, { action: { onClick: () => void } }]
+
+    await act(async () => {
+      options.action.onClick()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/documents/a/folder',
+      expect.objectContaining({ body: JSON.stringify({ folderId: 'old' }) })
+    )
+    expect(rows()[0].folderId).toBe('old')
+    expect(vi.mocked(toast.success).mock.lastCall).toHaveLength(1)
+  })
+
+  it.each([
+    ['a folder only readable', answer(403, { code: 'FORBIDDEN' }), /may only read/],
+    ['an IFC model bound for a restricted folder', answer(409, { details: { code: 'IFC_IN_RESTRICTED_FOLDER' } }), /IFC/],
+    ['a folder deleted meanwhile', answer(404, { details: { reason: 'folder_deleted' } }), /no longer exists/],
+    ['a failure that states nothing', answer(500), /try again/],
+  ])('puts it back and says why for %s', async (_case, response, message) => {
+    fetchMock.mockResolvedValue(response)
+    const { hook, rows } = harness([file('a', 'old')])
+
+    await act(async () => hook.result.current.dropInFolder('a', 'site'))
+
+    expect(rows()[0].folderId).toBe('old')
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(message))
+  })
+
+  it('moves a document carried into a folder that opened under the drag, though the level on screen no longer lists it', async () => {
+    fetchMock.mockResolvedValue(answer(200))
+    let rows = [file('a', null), file('b', null)]
+    const setFiles = vi.fn((action: FileItem[] | ((prev: FileItem[]) => FileItem[])) => {
+      rows = typeof action === 'function' ? action(rows) : action
+    })
+    const hook = renderHook(({ list }) => useDocumentMoves(list, setFiles, []), { initialProps: { list: rows } })
+    // The folder opened: its own level is listed now.
+    hook.rerender({ list: [file('c', 'site')] })
+
+    await act(async () => hook.result.current.dropInFolder('a', 'site'))
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/a/folder', expect.anything())
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('a.jpg'), expect.anything())
+  })
+})

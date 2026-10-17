@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import {
   DOCUMENT_DRAG_TYPE,
@@ -8,6 +8,7 @@ import {
   folderDragProps,
   isExternalFileDrag,
   isInternalDragActive,
+  SPRING_OPEN_MS,
   useFolderDropTarget,
 } from './use-document-drag'
 
@@ -261,7 +262,7 @@ describe('useFolderDropTarget — desktop files onto a folder', () => {
     expect(over.stopPropagation).toHaveBeenCalled()
     expect(over.dataTransfer.dropEffect).toBe('copy')
     expect(result.current.isOver).toBe(true)
-    expect(result.current.refusesFiles).toBe(false)
+    expect(result.current.refuses).toBe(false)
     expect(onFileAim).toHaveBeenLastCalledWith({ folderId: 'f1', refusal: null })
 
     await act(async () => {
@@ -295,14 +296,14 @@ describe('useFolderDropTarget — desktop files onto a folder', () => {
         folderId: 'f3',
         onDropDocument: vi.fn(),
         onDropFiles,
-        fileRefusal: 'Nur lesen',
+        refusal: 'Nur lesen',
         onFileAim,
       })
     )
     const over = dragEvent(fileTransfer())
     act(() => result.current.dropProps.onDragOver(over))
     expect(over.dataTransfer.dropEffect).toBe('none')
-    expect(result.current.refusesFiles).toBe(true)
+    expect(result.current.refuses).toBe(true)
     expect(onFileAim).toHaveBeenLastCalledWith({ folderId: 'f3', refusal: 'Nur lesen' })
 
     const drop = dragEvent(fileTransfer())
@@ -336,16 +337,134 @@ describe('an internal drag in progress', () => {
       dataTransfer: { setData: vi.fn(), effectAllowed: 'all' },
     } as unknown as React.DragEvent)
 
-  it('is known from the drag start until the drop, wherever it lands', () => {
+  const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+  it('is known from the drag start until the drop, wherever it lands, and still while the drop is handled', async () => {
     start()
     expect(isInternalDragActive()).toBe(true)
-    window.dispatchEvent(new Event('drop'))
+    let duringDrop: boolean | null = null
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    target.addEventListener('drop', () => {
+      duringDrop = isInternalDragActive()
+    })
+    target.dispatchEvent(new Event('drop', { bubbles: true }))
+    expect(duringDrop).toBe(true)
+    await nextTask()
     expect(isInternalDragActive()).toBe(false)
+    target.remove()
   })
 
-  it('ends on a cancelled drag too', () => {
+  it('ends on a cancelled drag too', async () => {
     start()
     window.dispatchEvent(new Event('dragend'))
+    await nextTask()
     expect(isInternalDragActive()).toBe(false)
+  })
+})
+
+describe('useFolderDropTarget — carrying a move', () => {
+  const docTransfer = () =>
+    ({
+      types: [DOCUMENT_DRAG_TYPE],
+      getData: (type: string) => (type === DOCUMENT_DRAG_TYPE ? 'doc-1' : ''),
+      dropEffect: 'none',
+    }) as unknown as DataTransfer
+  const event = (dt: DataTransfer) =>
+    ({
+      dataTransfer: dt,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+      currentTarget: { contains: () => false },
+      relatedTarget: null,
+    }) as unknown as React.DragEvent
+  /** A document picked up in `from`, as a card's drag start records it. */
+  const pickUp = (from: string | null) =>
+    documentDragProps('doc-1', from).onDragStart({
+      dataTransfer: { setData: vi.fn(), effectAllowed: 'all' },
+    } as unknown as React.DragEvent)
+
+  // The drag ends a task after the window hears it (see `endAfterThisEvent`).
+  afterEach(async () => {
+    vi.useRealTimers()
+    window.dispatchEvent(new Event('dragend'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  it('opens a folder the drag is held over, and not one it only passes', () => {
+    vi.useFakeTimers()
+    const onSpringOpen = vi.fn()
+    const { result } = renderHook(() =>
+      useFolderDropTarget({ folderId: 'f1', onDropDocument: vi.fn(), onSpringOpen })
+    )
+
+    act(() => result.current.dropProps.onDragOver(event(docTransfer())))
+    act(() => vi.advanceTimersByTime(SPRING_OPEN_MS / 2))
+    act(() => result.current.dropProps.onDragLeave(event(docTransfer())))
+    act(() => vi.advanceTimersByTime(SPRING_OPEN_MS))
+    expect(onSpringOpen).not.toHaveBeenCalled()
+
+    act(() => result.current.dropProps.onDragOver(event(docTransfer())))
+    // Every dragover of a held drag: the clock is not restarted by them.
+    act(() => vi.advanceTimersByTime(SPRING_OPEN_MS / 2))
+    act(() => result.current.dropProps.onDragOver(event(docTransfer())))
+    act(() => vi.advanceTimersByTime(SPRING_OPEN_MS / 2))
+    expect(onSpringOpen).toHaveBeenCalledTimes(1)
+    expect(result.current.isOver).toBe(false)
+  })
+
+  it('does not open a folder for a folder dragged over itself or its own subtree', () => {
+    vi.useFakeTimers()
+    const onSpringOpen = vi.fn()
+    const { result } = renderHook(() =>
+      useFolderDropTarget({
+        folderId: 'child',
+        onDropDocument: vi.fn(),
+        onDropFolder: vi.fn(),
+        canAcceptFolder: () => false,
+        onSpringOpen,
+      })
+    )
+    act(() => result.current.dropProps.onDragOver(event(transfer([FOLDER_DRAG_TYPE, `${FOLDER_DRAG_TYPE}:parent`]))))
+    act(() => vi.advanceTimersByTime(SPRING_OPEN_MS * 2))
+    expect(onSpringOpen).not.toHaveBeenCalled()
+  })
+
+  it('refuses a move into a folder the reader may only read, visibly, and moves nothing', () => {
+    const onDropDocument = vi.fn()
+    const { result } = renderHook(() =>
+      useFolderDropTarget({ folderId: 'f3', onDropDocument, refusal: 'Nur lesen' })
+    )
+    const over = event(docTransfer())
+    act(() => result.current.dropProps.onDragOver(over))
+    // Claimed, so the cursor says „no drop" here and the level around does not take it.
+    expect(over.preventDefault).toHaveBeenCalled()
+    expect(over.dataTransfer.dropEffect).toBe('none')
+    expect(result.current.refuses).toBe(true)
+
+    act(() => result.current.dropProps.onDrop(event(docTransfer())))
+    expect(onDropDocument).not.toHaveBeenCalled()
+  })
+
+  it('as the level on screen, takes a document from elsewhere and not one already in it', () => {
+    const onDropDocument = vi.fn()
+    const { result } = renderHook(() =>
+      useFolderDropTarget({ folderId: 'f1', onDropDocument, onlyFromElsewhere: true })
+    )
+
+    pickUp('f1')
+    const own = event(docTransfer())
+    act(() => result.current.dropProps.onDragOver(own))
+    expect(own.preventDefault).not.toHaveBeenCalled()
+    act(() => result.current.dropProps.onDrop(event(docTransfer())))
+    expect(onDropDocument).not.toHaveBeenCalled()
+
+    pickUp(null)
+    const carried = event(docTransfer())
+    act(() => result.current.dropProps.onDragOver(carried))
+    expect(carried.preventDefault).toHaveBeenCalled()
+    expect(carried.dataTransfer.dropEffect).toBe('move')
+    act(() => result.current.dropProps.onDrop(event(docTransfer())))
+    expect(onDropDocument).toHaveBeenCalledWith('doc-1', 'f1')
   })
 })

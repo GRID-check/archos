@@ -488,6 +488,11 @@ export const files = {
     namePlaceholder: 'Folder name',
     newFolderName: 'New folder name',
     creating: 'Creating folder…',
+    moveUndo: 'Undo',
+    movedBack: '“{name}” is back in “{folder}”.',
+    moveRefusedReadOnly: 'Nothing was moved: you may only read one of the two folders.',
+    moveRefusedGone: 'Nothing was moved: that folder no longer exists.',
+    nameTaken: '“{parent}” already has a folder named “{name}”.',
     allFiles: 'All Files',
     // The way up, named. The breadcrumb says where you ARE, which is a map,
     // and three levels deep the parent is a truncated word mid-row.
@@ -658,7 +663,7 @@ export const files = {
     dropUnsupported: 'Some files are not a supported type',
     dropInto: 'Drop into “{name}”',
     dropRefusedHere: 'Read only: you can’t drop files here.',
-    dropRefusedFolder: '“{name}” is read only: you can’t drop files there.',
+    dropRefusedFolder: '“{name}” is read only: nothing can be dropped there.',
     dropQueued: 'The dropped files will upload as soon as the current upload has finished.',
     dropTruncated:
       'The dropped folder was too large or too deeply nested. {count, plural, one {# file was} other {# files were}} taken; upload the rest in a second step.',

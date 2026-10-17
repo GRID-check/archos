@@ -165,6 +165,15 @@ describe('useShelfUpload — no drop lost', () => {
   })
 })
 
+describe('useShelfUpload — a tree that did not load', () => {
+  it('sends a drop made after the folders failed to load, rather than holding it for a tree that may never come', async () => {
+    const { result, uploadFiles } = setup({ foldersReady: false, foldersSettled: true })
+    act(() => result.current.handleUpload([pdf('a.pdf')]))
+    await flush()
+    expect(uploadFiles).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('useShelfUpload — what a drop could not hand over', () => {
   it('warns when the drop held more than was taken, and when files could not be read', async () => {
     const { result, uploadFiles } = setup()
