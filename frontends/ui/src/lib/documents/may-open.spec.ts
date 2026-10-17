@@ -9,16 +9,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/lib/authz/project-membership', () => ({ canUserAccessProject: vi.fn() }))
+vi.mock('@/lib/authz/project-membership', () => ({
+  resolveSubjectMembership: vi.fn(),
+  userHoldsProjectPermission: vi.fn(),
+}))
 vi.mock('@/lib/authz/folder-access', () => ({ filterUsersWhoMayReadFolder: vi.fn() }))
-vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
-import { canUserAccessProject } from '@/lib/authz/project-membership'
+import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
-import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import type { DirectoryPerson } from '@/lib/sharing/types'
 import { mayOpenDocument } from './may-open'
 
 const session = { userId: 'user_me', organizationId: 'org_1' } as Partial<AuthorizedSession> as AuthorizedSession
@@ -30,15 +30,16 @@ const doc = (overrides: Partial<Document>): Pick<Document, 'scope' | 'projectId'
   ...overrides,
 })
 
-const member = (userId: string): DirectoryPerson => ({ userId, email: null, name: userId, profilePictureUrl: null })
-
 beforeEach(() => {
-  vi.mocked(canUserAccessProject).mockImplementation(async (_session, _project, userId) => userId !== 'user_outside')
+  vi.clearAllMocks()
+  vi.mocked(userHoldsProjectPermission).mockImplementation(async (_tenant, _project, userId) => userId !== 'user_outside')
   vi.mocked(filterUsersWhoMayReadFolder).mockImplementation(
     async (_org, _project, folderId, userIds) =>
       new Set(folderId === 'fld_hr' ? userIds.filter((userId) => userId === 'user_hr') : userIds)
   )
-  vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['user_a', member('user_a')]]))
+  vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) =>
+    userId === 'user_a' ? { organizationMembershipId: 'om_a', role: 'member' } : null
+  )
 })
 
 describe('mayOpenDocument', () => {
@@ -57,12 +58,20 @@ describe('mayOpenDocument', () => {
     const allowed = await mayOpenDocument(session, doc({ scope: 'archiv', projectId: null }), ['user_a', 'user_gone'])
 
     expect(allowed).toEqual(new Set(['user_a']))
-    expect(canUserAccessProject).not.toHaveBeenCalled()
+    expect(resolveSubjectMembership).toHaveBeenCalledWith('org_1', 'user_gone')
+    expect(userHoldsProjectPermission).not.toHaveBeenCalled()
   })
 
   it('opens a chat attachment for nobody, and asks nothing for nobody', async () => {
     expect(await mayOpenDocument(session, doc({ scope: 'session', projectId: null }), ['user_a'])).toEqual(new Set())
     expect(await mayOpenDocument(session, doc({}), [])).toEqual(new Set())
-    expect(canUserAccessProject).not.toHaveBeenCalled()
+    expect(userHoldsProjectPermission).not.toHaveBeenCalled()
+  })
+
+  it('asks the permission project:view in the organization, never a role, so a sweep with no session can ask too', async () => {
+    await mayOpenDocument({ organizationId: 'org_1' }, doc({}), ['user_a', 'user_a'])
+
+    expect(userHoldsProjectPermission).toHaveBeenCalledTimes(1)
+    expect(userHoldsProjectPermission).toHaveBeenCalledWith({ organizationId: 'org_1' }, 'proj_1', 'user_a', 'project:view')
   })
 })

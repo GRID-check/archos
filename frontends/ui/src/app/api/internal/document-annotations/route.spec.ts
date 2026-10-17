@@ -62,7 +62,7 @@ vi.mock('@/lib/annotations/repository', async (original) => ({
   insertAnnotationReply: vi.fn(),
 }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
-vi.mock('@/lib/authz/project-membership', () => ({ canUserAccessProject: vi.fn() }))
+vi.mock('@/lib/authz/project-membership', () => ({ userHoldsProjectPermission: vi.fn(), resolveSubjectMembership: vi.fn() }))
 vi.mock('@/lib/db/tenant-context', async (original) => ({
   ...(await original<typeof import('@/lib/db/tenant-context')>()),
   withTenant: (_scope: unknown, run: () => unknown) => run(),
@@ -102,7 +102,7 @@ import {
   type AnnotationRecord,
   type NewAnnotationsInput,
 } from '@/lib/annotations/repository'
-import { canUserAccessProject } from '@/lib/authz/project-membership'
+import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { onAssigneeChanged, onMarkMoved, onMarkReplied, onMarkSettledByPerson, onPilotiWrote } from '@/lib/annotations/attention'
@@ -529,7 +529,7 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
     marks = new Map([[MARK_ID, record()]])
     fakeRepository()
     vi.mocked(getAccessibleDocument).mockResolvedValue(DOC_ROW)
-    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    vi.mocked(userHoldsProjectPermission).mockResolvedValue(true)
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(
       new Map([
         ['user_1', { userId: 'user_1', email: 'martin@buero.at', name: 'Martin Huber', profilePictureUrl: null }],
@@ -602,7 +602,7 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
       after: { assigneeUserId: 'user_anna', assigneeName: 'Anna Berger', dueOn: '2026-10-20' },
       noted: true,
     })
-    expect(canUserAccessProject).toHaveBeenCalledWith(SESSION, 'proj_1', 'user_anna')
+    expect(userHoldsProjectPermission).toHaveBeenCalledWith({ organizationId: SESSION.organizationId }, 'proj_1', 'user_anna', 'project:view')
   })
 
   it('tells the new Zuständige as the asker’s own change would, saying Piloti did it for them, and the note tells nobody twice', async () => {
@@ -754,7 +754,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
     marks = new Map([[MARK_ID, record()]])
     fakeRepository()
     vi.mocked(getAccessibleDocument).mockResolvedValue(DOC_ROW)
-    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    vi.mocked(userHoldsProjectPermission).mockResolvedValue(true)
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(
       new Map([['user_anna', { userId: 'user_anna', email: 'anna@buero.at', name: 'Anna Berger', profilePictureUrl: null }]])
     )
@@ -960,7 +960,7 @@ describe('POST /api/internal/document-annotations — what a turn changed is in 
     marks = new Map([[MARK_ID, record()]])
     fakeRepository()
     vi.mocked(getAccessibleDocument).mockResolvedValue(DOC_ROW)
-    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    vi.mocked(userHoldsProjectPermission).mockResolvedValue(true)
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(
       new Map([['user_anna', { userId: 'user_anna', email: 'anna@buero.at', name: 'Anna Berger', profilePictureUrl: null }]])
     )
@@ -1082,7 +1082,7 @@ describe('POST /api/internal/document-annotations — an office that has Piloti 
     marks = new Map([[MARK_ID, record({ createdBy: 'user_1' })]])
     fakeRepository()
     vi.mocked(getAccessibleDocument).mockResolvedValue(DOC_ROW)
-    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    vi.mocked(userHoldsProjectPermission).mockResolvedValue(true)
     SESSION.featureFlags = []
   })
 

@@ -27,7 +27,8 @@ vi.mock('@/lib/sharing/directory', () => ({
 }))
 
 vi.mock('@/lib/authz/project-membership', () => ({
-  canUserAccessProject: vi.fn(),
+  userHoldsProjectPermission: vi.fn(),
+  resolveSubjectMembership: vi.fn(),
   filterUsersWithProjectAccess: vi.fn(),
 }))
 
@@ -63,7 +64,7 @@ import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
-import { canUserAccessProject, filterUsersWithProjectAccess } from '@/lib/authz/project-membership'
+import { filterUsersWithProjectAccess, resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document, ResourceRole } from '@/lib/db/schema'
 import { findDocumentForSession } from '@/lib/documents/access'
 import { requireResourceAccess, requireResourceWriteAccess } from '@/lib/sharing/access'
@@ -110,7 +111,7 @@ beforeEach(() => {
   )
   vi.mocked(filterUsersWithProjectAccess).mockResolvedValue(new Set(['user_anna', 'user_bob']))
   // Anna and Bob are in the project; Carol is not.
-  vi.mocked(canUserAccessProject).mockImplementation(async (_session, _project, userId) => userId !== 'user_carol')
+  vi.mocked(userHoldsProjectPermission).mockImplementation(async (_session, _project, userId) => userId !== 'user_carol')
   vi.mocked(findDocumentForSession).mockResolvedValue(projectDocument(null))
   vi.mocked(filterUsersWhoMayReadFolder).mockImplementation(async (_org, _project, _folder, userIds) => new Set(userIds))
 })
@@ -179,6 +180,8 @@ describe('listAssignmentCandidates', () => {
   it('lists the org directory when the resource has no project container', async () => {
     stubCallerRole('collaborator', null)
     vi.mocked(findDocumentForSession).mockResolvedValue({ id: 'doc_1', scope: 'archiv', projectId: null, folderId: null } as Partial<Document> as Document)
+    // Every person in the directory is a member; the Büroablage asks each membership, not a role.
+    vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
 
     const candidates = await listAssignmentCandidates(session, 'document', 'doc_1')
 
@@ -197,10 +200,10 @@ describe('listAssignmentCandidates', () => {
 })
 
 describe('addResourceAssignment — container check', () => {
-  it('asks canUserAccessProject with the caller session, not the subject id', async () => {
+  it('asks project:view of the subject, in the caller’s organization', async () => {
     await addResourceAssignment(session, 'document', 'doc_1', 'user_anna')
 
-    expect(canUserAccessProject).toHaveBeenCalledWith(session, 'proj_1', 'user_anna')
+    expect(userHoldsProjectPermission).toHaveBeenCalledWith({ organizationId: session.organizationId }, 'proj_1', 'user_anna', 'project:view')
   })
 
   it('refuses a project member who may not read the document’s folder, and writes nothing', async () => {

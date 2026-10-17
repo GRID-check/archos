@@ -107,10 +107,11 @@ const retryAfterMs = (header: string | null) => {
 
 const defaultPost = (path: string, body: string, { keepalive }: { keepalive: boolean }) => {
   if (typeof fetch !== 'function') return
-  return fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive }).then(
-    (response): PostOutcome => ({ status: response.status, retryAfterMs: retryAfterMs(response.headers.get('retry-after')) }),
-    () => undefined
-  )
+  // One catch after the read, not beside it: a throw while reading the answer
+  // is as much a lost post as a failed fetch, never an unhandled rejection.
+  return fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive })
+    .then((response): PostOutcome => ({ status: response.status, retryAfterMs: retryAfterMs(response.headers.get('retry-after')) }))
+    .catch(() => undefined)
 }
 
 /** A presence withdrawal: the one message that must leave even as the page unloads. */
