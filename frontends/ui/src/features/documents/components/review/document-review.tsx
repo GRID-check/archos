@@ -474,7 +474,7 @@ export function DocumentReviewMode({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, listOpen, draft, openAsk, piloti, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring, openChat])
+  }, [open, listOpen, draft, openAsk, piloti, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring, openChat, t])
 
   /** The tools as a cluster of their own, the one in hand filled in ink: what the pointer will do is never a guess. */
   const offered = TOOLS.filter(({ tool: option }) => toolOffered(option, review))

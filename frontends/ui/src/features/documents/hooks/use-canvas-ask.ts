@@ -303,7 +303,7 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
         clientPending.current = null
       })
     return clientPending.current
-  }, [onTurn])
+  }, [onTurn, setAsks])
 
   // A different document is a different conversation; leaving closes the socket.
   useEffect(() => {
