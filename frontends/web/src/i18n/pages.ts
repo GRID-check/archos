@@ -126,7 +126,7 @@ const de = {
   // as code.
   mailInbox: {
     heading: 'E-Mail-Eingang: Dateien per E-Mail ins Projekt',
-    lede: 'Jedes Projekt in Piloti hat eine eigene E-Mail-Adresse. Senden Sie Pläne, Bescheide oder Stellungnahmen als Anhang dorthin, und Piloti legt die Dateien im Projekt ab, als hätten Sie sie selbst hochgeladen. Aus Outlook speichern und wieder hineinziehen entfällt.',
+    lede: 'Jedes Projekt in Piloti hat eine eigene E-Mail-Adresse. Senden Sie Zeichnungen, Bescheide oder Stellungnahmen als Anhang dorthin, und Piloti legt die Dateien im Projekt ab, als hätten Sie sie selbst hochgeladen. Aus Outlook speichern und wieder hineinziehen entfällt.',
     address: {
       label: 'So sieht eine Projektadresse aus',
       example: 'wohnbau-hietzing.k3m7q2xw4pab@piloti.at',

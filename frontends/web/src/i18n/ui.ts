@@ -466,7 +466,7 @@ const de = {
     neu: 'Die Pilotbüros helfen mit, was als Nächstes kommt. Schreiben Sie uns, wenn Ihr Büro dabei sein soll.',
     rechenweg: 'Gemessen hat das noch niemand. Messen wir es in Ihrem Büro.',
     warum: 'Die beste Probe ist eine Frage aus Ihrem laufenden Projekt. Schicken Sie uns eine.',
-    mailInbox: 'Die Pläne kommen per E-Mail, die Fragen dazu beantwortet Piloti. Schicken Sie uns eine aus Ihrem laufenden Projekt.',
+    mailInbox: 'Die Unterlagen kommen per E-Mail, die Fragen dazu beantwortet Piloti. Schicken Sie uns eine aus Ihrem laufenden Projekt.',
   },
   chat: {
     fictional: 'Fiktives Beispiel',
