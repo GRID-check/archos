@@ -57,7 +57,6 @@
 
 import 'server-only'
 import {
-  ApiError,
   BadRequestError,
   ConflictError,
   ForbiddenError,
@@ -67,7 +66,8 @@ import {
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document, DocumentAnnotationReplyRow, DocumentAnnotationRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import { mayOpenDocument } from '@/lib/documents/may-open'
+import { canWriteDocument } from '@/lib/documents/can-write'
+import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import {
   AnnotationLimitReachedError,
@@ -160,21 +160,6 @@ const mayDeleteMark = (record: Pick<AnnotationRecord, 'authorKind' | 'createdBy'
 /** Whether the document sits on a shelf that carries Anmerkungen. */
 const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'archiv'
 
-/**
- * Whether this session may write on the document, as a boolean. A refusal of
- * the write (403) is an answer here, not an error: the reader still sees the
- * Anmerkungen, without the controls.
- */
-async function mayWrite(session: AuthorizedSession, documentId: string): Promise<boolean> {
-  try {
-    await getAccessibleDocument(session, documentId, 'write')
-    return true
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 403) return false
-    throw error
-  }
-}
-
 /** Display names by user id; empty when the directory cannot be read, which costs names and nothing else. */
 type Names = ReadonlyMap<string, { name: string }>
 
@@ -255,19 +240,28 @@ function toView(
   }
 }
 
-/** Whether this person could open the document, its folder included, which is what being assigned to it needs. */
+/**
+ * Whether this person may be a mark's Zuständige: they may write the
+ * document, its folder included (`mayWriteDocument`), because answering the
+ * mark and closing it are writes. Someone who could only read it would be on
+ * the hook for a mark they cannot answer. Mentioning asks less: whoever may
+ * open the document (`./mentions`).
+ */
 async function isAssignable(session: AuthorizedSession, doc: Document, userId: string): Promise<boolean> {
-  return (await mayOpenDocument(session, doc, [userId])).has(userId)
+  return (await mayWriteDocument(session, doc, [userId])).has(userId)
 }
 
 /**
- * Refuse an assignee who could not open the document: assigning is not access
- * (ADR-0059), so a person outside the project would be on the hook for a sheet
- * they cannot see.
+ * Refuse an assignee who could not answer the mark: assigning is not access
+ * (ADR-0059), so a person outside the project, or one who may only read the
+ * document, would be on the hook for a mark they cannot answer.
  */
 async function requireAssignable(session: AuthorizedSession, doc: Document, userId: string): Promise<void> {
   if (await isAssignable(session, doc, userId)) return
-  throw new UnprocessableError('The assignee cannot open this document.', { field: 'assigneeUserId' })
+  throw new UnprocessableError('The assignee cannot answer Anmerkungen on this document.', {
+    field: 'assigneeUserId',
+    reason: 'assignee-cannot-answer',
+  })
 }
 
 /** How many name matches an assignee lookup checks for access before it asks instead. */
@@ -277,8 +271,9 @@ const nameKey = (value: string | null | undefined) =>
   (value ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('de')
 
 /**
- * The one member a name or an e-mail address means, among those who can open
- * the document. Piloti has no roster and never sees a user id, so it passes
+ * The one member a name or an e-mail address means, among those who may be the
+ * mark's Zuständige ({@link isAssignable}: who may write the document). Piloti
+ * has no roster and never sees a user id, so it passes
  * the person as the asker said it („Anna"): an exact name or address first,
  * then a first name or the start of a name. None, or more than one, is a 422
  * naming the candidates, which the tool turns into a question.
@@ -294,11 +289,11 @@ export async function resolveAssignee(session: AuthorizedSession, doc: Document,
     return name.startsWith(key) || name.split(' ').includes(key)
   })
   const candidates = (exact.length > 0 ? exact : loose).slice(0, MAX_ASSIGNEE_CANDIDATES)
-  const mayOpen = await mayOpenDocument(session, doc, candidates.map((person) => person.userId))
-  const reachable = candidates.filter((person) => mayOpen.has(person.userId))
+  const mayAnswer = await mayWriteDocument(session, doc, candidates.map((person) => person.userId))
+  const reachable = candidates.filter((person) => mayAnswer.has(person.userId))
   if (reachable.length === 1) return reachable[0].userId
   if (reachable.length === 0) {
-    throw new UnprocessableError(`Nobody called „${query.trim()}" can open this document.`, {
+    throw new UnprocessableError(`Nobody called „${query.trim()}" can answer Anmerkungen on this document.`, {
       field: 'assignee',
       reason: 'assignee-unknown',
     })
@@ -389,7 +384,7 @@ export async function listAnnotations(session: AuthorizedSession, documentId: st
   if (!annotatable(doc)) return { annotations: [], canAnnotate: false, pilotiWakes: false }
   const [records, writable, names] = await Promise.all([
     listDocumentAnnotations(session.organizationId, doc.id),
-    mayWrite(session, doc.id),
+    canWriteDocument(session, doc.id),
     directoryNames(session.organizationId),
   ])
   const [wakes, work] = await Promise.all([
@@ -918,7 +913,7 @@ export async function readAnnotation(
   const record = annotatable(doc) ? await findDocumentAnnotation(session.organizationId, doc.id, annotationId) : null
   if (!record) throw new NotFoundError()
   const [writable, names, wakes, work] = await Promise.all([
-    mayWrite(session, doc.id),
+    canWriteDocument(session, doc.id),
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
     latestWakesFor(session.organizationId, doc.id, record.id),

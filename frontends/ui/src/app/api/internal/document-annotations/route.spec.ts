@@ -605,7 +605,23 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
       after: { assigneeUserId: 'user_anna', assigneeName: 'Anna Berger', dueOn: '2026-10-20' },
       noted: true,
     })
-    expect(userHoldsProjectPermission).toHaveBeenCalledWith({ organizationId: SESSION.organizationId }, 'proj_1', 'user_anna', 'project:view')
+    // A Zuständige must be able to answer the mark: asked as the document-write permission, never a role.
+    expect(userHoldsProjectPermission).toHaveBeenCalledWith(
+      { organizationId: SESSION.organizationId },
+      'proj_1',
+      'user_anna',
+      'project:documents:write'
+    )
+  })
+
+  it('does not assign by name someone who may only read the document: a 422 naming nobody', async () => {
+    vi.mocked(userHoldsProjectPermission).mockImplementation(async (_tenant, _project, _userId, permission) => permission === 'project:view')
+
+    const response = await post({ op: 'update', annotationId: MARK_ID, assignee: 'Anna Berger', note: 'Anna übernimmt.' })
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({ details: { reason: 'assignee-unknown' } })
+    expect(stored()).toMatchObject({ assigneeUserId: null })
   })
 
   it('tells the new Zuständige as the asker’s own change would, saying Piloti did it for them, and the note tells nobody twice', async () => {

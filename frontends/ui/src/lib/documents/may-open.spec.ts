@@ -12,17 +12,20 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/project-membership', () => ({
   PERMISSION_CHECKS_AT_ONCE: 2,
   userHoldsProjectPermission: vi.fn(),
+  resolveSubjectMembership: vi.fn(),
 }))
-vi.mock('@/lib/authz/folder-access', () => ({ filterUsersWhoMayReadFolder: vi.fn() }))
+vi.mock('@/lib/authz/folder-access', () => ({ filterUsersWhoMayReadFolder: vi.fn(), filterUsersWhoMayWriteFolder: vi.fn() }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
-import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
+import { filterUsersWhoMayReadFolder, filterUsersWhoMayWriteFolder } from '@/lib/authz/folder-access'
+import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
+import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import type { DirectoryPerson } from '@/lib/sharing/types'
-import { mayOpenDocument } from './may-open'
+import { mayOpenDocument, mayWriteDocument } from './may-open'
 
 const session = { userId: 'user_me', organizationId: 'org_1' } as Partial<AuthorizedSession> as AuthorizedSession
 
@@ -93,5 +96,67 @@ describe('mayOpenDocument', () => {
     const everyone = Array.from({ length: 9 }, (_, index) => `user_${index}`)
     expect(await mayOpenDocument(session, doc({}), everyone)).toEqual(new Set(everyone))
     expect(most).toBe(2)
+  })
+})
+
+/**
+ * Who could write one document: whom an Anmerkung may be handed to, since its
+ * Zuständige must answer and close it. Never a role name: a permission on the
+ * project and the folder's write, or on the Büroablage the curators' permission.
+ */
+describe('mayWriteDocument', () => {
+  beforeEach(() => {
+    // user_editor holds the narrow write permission, user_legacy only the older
+    // umbrella, user_reader may only view the project.
+    vi.mocked(userHoldsProjectPermission).mockImplementation(async (_tenant, _project, userId, permission) => {
+      if (permission === 'project:view') return userId !== 'user_outside'
+      if (permission === 'project:documents:write') return userId === 'user_editor'
+      if (permission === 'project:edit') return userId === 'user_legacy'
+      return false
+    })
+    vi.mocked(filterUsersWhoMayWriteFolder).mockImplementation(
+      async (_org, _project, folderId, userIds) =>
+        new Set(folderId === 'fld_ro' ? userIds.filter((userId) => userId === 'user_legacy') : userIds)
+    )
+  })
+
+  it('keeps whoever may write the project’s documents, by the narrow permission or the older umbrella, and leaves out a reader', async () => {
+    const allowed = await mayWriteDocument(session, doc({}), ['user_editor', 'user_legacy', 'user_reader', 'user_outside'])
+
+    expect(allowed).toEqual(new Set(['user_editor', 'user_legacy']))
+    expect(filterUsersWhoMayWriteFolder).toHaveBeenCalledWith('org_1', 'proj_1', null, ['user_editor', 'user_legacy'])
+  })
+
+  it('leaves out a writer of the project who may only read the folder the document is filed in', async () => {
+    const allowed = await mayWriteDocument(session, doc({ folderId: 'fld_ro' }), ['user_editor', 'user_legacy'])
+
+    expect(allowed).toEqual(new Set(['user_legacy']))
+  })
+
+  it('on the Büroablage keeps whoever holds org:archiv:manage, asked of their membership’s role, never its name', async () => {
+    vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) =>
+      userId === 'user_gone'
+        ? null
+        : { organizationMembershipId: `om_${userId}`, role: userId === 'user_curator' ? 'org-kuratorin' : 'member' }
+    )
+    vi.mocked(orgRoleHoldsPermission).mockImplementation(
+      async (role, permission) => role === 'org-kuratorin' && permission === 'org:archiv:manage'
+    )
+
+    const allowed = await mayWriteDocument(session, doc({ scope: 'archiv', projectId: null }), [
+      'user_curator',
+      'user_a',
+      'user_gone',
+    ])
+
+    expect(allowed).toEqual(new Set(['user_curator']))
+    expect(orgRoleHoldsPermission).toHaveBeenCalledWith('org-kuratorin', 'org:archiv:manage', 'org_1')
+    expect(userHoldsProjectPermission).not.toHaveBeenCalled()
+  })
+
+  it('lets nobody write a chat attachment here, and asks nothing for nobody', async () => {
+    expect(await mayWriteDocument(session, doc({ scope: 'session', projectId: null }), ['user_editor'])).toEqual(new Set())
+    expect(await mayWriteDocument(session, doc({}), [])).toEqual(new Set())
+    expect(userHoldsProjectPermission).not.toHaveBeenCalled()
   })
 })

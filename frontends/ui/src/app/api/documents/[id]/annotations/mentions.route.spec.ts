@@ -29,7 +29,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
-vi.mock('@/lib/documents/may-open', () => ({ mayOpenDocument: vi.fn() }))
+vi.mock('@/lib/documents/may-open', () => ({ mayOpenDocument: vi.fn(), mayWriteDocument: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({
   PERMISSION_CHECKS_AT_ONCE: 8,
   userHoldsProjectPermission: vi.fn(),
@@ -70,7 +70,7 @@ import {
 import type { MarkMention } from '@/lib/annotations/types'
 import type { Document, DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import { mayOpenDocument } from '@/lib/documents/may-open'
+import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import type { InboxEmission } from '@/lib/inbox/service'
 import { emitInboxItems, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
 import { enforceMentionBounds } from '@/lib/mentions/service'
@@ -179,6 +179,10 @@ beforeEach(() => {
     )
   )
   vi.mocked(mayOpenDocument).mockImplementation(
+    async (_tenant, _doc, userIds) => new Set(userIds.filter((userId) => userId !== FAR.targetId))
+  )
+  // Who may be a Zuständige: whoever may write the document (here, whoever may open it).
+  vi.mocked(mayWriteDocument).mockImplementation(
     async (_tenant, _doc, userIds) => new Set(userIds.filter((userId) => userId !== FAR.targetId))
   )
   vi.mocked(findDocumentAnnotation).mockResolvedValue(MARK)
