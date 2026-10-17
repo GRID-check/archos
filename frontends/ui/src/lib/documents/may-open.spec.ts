@@ -15,6 +15,7 @@ vi.mock('@/lib/authz/project-membership', () => ({
 }))
 vi.mock('@/lib/authz/folder-access', () => ({ filterUsersWhoMayReadFolder: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
+vi.mock('./quarantine-reviewers', () => ({ isQuarantineReviewer: vi.fn() }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
@@ -22,14 +23,22 @@ import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import type { DirectoryPerson } from '@/lib/sharing/types'
-import { mayOpenDocument } from './may-open'
+import { mayOpenDocument, type OpenableDocument } from './may-open'
+import { isQuarantineReviewer } from './quarantine-reviewers'
 
 const session = { userId: 'user_me', organizationId: 'org_1' } as Partial<AuthorizedSession> as AuthorizedSession
 
-const doc = (overrides: Partial<Document>): Pick<Document, 'scope' | 'projectId' | 'folderId'> => ({
+/** A person's upload whose bytes passed the office's screening, unless a test holds it. */
+const doc = (overrides: Partial<Document>): OpenableDocument => ({
   scope: 'project',
   projectId: 'proj_1',
   folderId: null,
+  createdBy: 'user_uploader',
+  status: 'completed',
+  authoredBy: 'user',
+  screeningOutcome: 'clean',
+  contentHash: 'h1',
+  screenedHash: 'h1',
   ...overrides,
 })
 
@@ -93,5 +102,64 @@ describe('mayOpenDocument', () => {
     const everyone = Array.from({ length: 9 }, (_, index) => `user_${index}`)
     expect(await mayOpenDocument(session, doc({}), everyone)).toEqual(new Set(everyone))
     expect(most).toBe(2)
+  })
+})
+
+/**
+ * A held upload (ADR-0086) exists only for its uploader and its quarantine's
+ * reviewers: nobody else may be made responsible for it, mentioned on it, or
+ * told what a mark on it says, however open its project or folder is.
+ */
+describe('mayOpenDocument on a held upload', () => {
+  beforeEach(() => {
+    vi.mocked(isQuarantineReviewer).mockImplementation(async (_org, _doc, userId) => userId === 'user_reviewer')
+  })
+
+  it.each([
+    ['quarantined', { status: 'quarantined', screeningOutcome: 'flagged' }],
+    ['still being read', { status: 'processing', screeningOutcome: null, screenedHash: null }],
+    ['bytes swapped after the verdict', { screenedHash: 'h0' }],
+  ] as const)('opens a %s upload for its uploader and its reviewers alone', async (_label, held) => {
+    const allowed = await mayOpenDocument(session, doc(held as Partial<Document>), [
+      'user_uploader',
+      'user_reviewer',
+      'user_a',
+    ])
+
+    expect(allowed).toEqual(new Set(['user_uploader', 'user_reviewer']))
+    expect(isQuarantineReviewer).toHaveBeenCalledWith('org_1', expect.objectContaining({ projectId: 'proj_1' }), 'user_a')
+  })
+
+  it('still asks the shelf and the folder of the uploader and the reviewers', async () => {
+    const allowed = await mayOpenDocument(session, doc({ status: 'quarantined', folderId: 'fld_hr' }), [
+      'user_uploader',
+      'user_reviewer',
+    ])
+
+    expect(allowed).toEqual(new Set())
+  })
+
+  it('holds a Büroablage upload the same way', async () => {
+    vi.mocked(loadOrganizationDirectory).mockResolvedValue(
+      new Map(
+        ['user_uploader', 'user_reviewer', 'user_a'].map((userId) => [
+          userId,
+          { userId, email: null, name: userId, profilePictureUrl: null },
+        ])
+      )
+    )
+    const allowed = await mayOpenDocument(session, doc({ scope: 'archiv', projectId: null, status: 'quarantined' }), [
+      'user_uploader',
+      'user_a',
+    ])
+
+    expect(allowed).toEqual(new Set(['user_uploader']))
+  })
+
+  it('asks nobody about the hold once the upload has passed, and never for Piloti’s own documents', async () => {
+    await mayOpenDocument(session, doc({}), ['user_a'])
+    await mayOpenDocument(session, doc({ authoredBy: 'agent', screeningOutcome: null, screenedHash: null }), ['user_a'])
+
+    expect(isQuarantineReviewer).not.toHaveBeenCalled()
   })
 })

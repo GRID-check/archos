@@ -547,7 +547,10 @@ instead. When Piloti follows up its own open Rückfrage, the Zuständige it asks
 has the `piloti.asks_you` row and no second one. Every recipient of a
 colleague's news must be able to open the document now, its folder included
 (`mayOpenDocument`, `frontends/ui/src/lib/documents/may-open.ts`), the same
-rule that decides who may be made Zuständige at all. The note Piloti writes
+rule that decides who may be made Zuständige or be mentioned at all. A held
+upload (ADR-0086) opens there only for its uploader and the people who may
+review its quarantine (`isQuarantineReviewer`), so nobody else is assigned,
+mentioned or told about a document they would find missing. The note Piloti writes
 with a change it made for the asker tells nobody: the change told whoever it
 concerns, exactly as the asker's own change would.
 

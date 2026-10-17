@@ -23,8 +23,7 @@ import 'server-only'
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { PRODUCT_NAME } from '@/lib/brand'
-import type { Document } from '@/lib/db/schema'
-import { mayOpenDocument } from '@/lib/documents/may-open'
+import { mayOpenDocument, type OpenableDocument } from '@/lib/documents/may-open'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { reconcileMentions } from '@/features/collaboration/lib/mention-text'
@@ -47,7 +46,7 @@ export function standingMentions(text: string, mentions: readonly MarkMention[])
 /** The mentions of a write the server stores: standing in the text, named as the directory names them, able to open the document. */
 export async function keepMentions(
   session: AuthorizedSession,
-  doc: Pick<Document, 'scope' | 'projectId' | 'folderId'>,
+  doc: OpenableDocument,
   text: string,
   submitted: readonly MarkMention[]
 ): Promise<MarkMention[]> {
