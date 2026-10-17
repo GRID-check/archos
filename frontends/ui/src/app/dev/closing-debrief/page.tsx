@@ -2,8 +2,9 @@
 
 /**
  * Dev preview for the closing debrief (docs/roadmap/office-experience.md, step
- * 3): the REAL `ProjectLifecycleCard`, whose close dialog („Ausmisten", ADR-0092) asks
- * with the REAL `ClosingDebrief` inside. Open it with „Projekt abschließen".
+ * 3): the REAL `ProjectLifecycleCard`, whose close dialog (ADR-0098) carries the
+ * REAL `ClosingDebrief` as its second step. Open it with „Projekt abschließen",
+ * then „Weiter". The card's other states: `/dev/project-lifecycle`.
  *
  *   - default             — a project admin who may write the memory: the Vorhaben
  *                           is a suggestion read from the documents (with its
@@ -21,7 +22,7 @@
  *                           nicht zu", not missing.
  *
  * A module-scope fetch shim (browser + dev only) answers the memory listing,
- * its two writes and the dialog's „Ausmisten" proposal (nothing to remove), so
+ * its two writes, the Steckbrief's „Wer war dabei" and the dialog's „Ausmisten" proposal (nothing to remove), so
  * confirming and recording are live; closing itself is refused, so the preview
  * stays open. Pinned to German, the product's primary
  * language (`docs/ux/visual-screenshots.md`).
@@ -31,6 +32,7 @@ import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 
 import { I18nProvider } from '@/i18n'
+import { answerSteckbrief } from '../_fixtures/steckbrief'
 import { ProjectLifecycleCard } from '@/features/projects/components/project-lifecycle-card'
 import { buildIntakeProfile, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
 import type { ProjectAssumption, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
@@ -120,6 +122,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     const real = window.fetch.bind(window)
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      // „Wer war dabei": the Steckbrief of every variant, editable in the preview.
+      const steckbrief = await answerSteckbrief(PROJECT, url, init)
+      if (steckbrief) return steckbrief
       if (url === `/api/projects/${EMPTY}/memory`) return Response.json({ items: [] })
       if (url === `/api/projects/${PROJECT}/memory` && init?.method === 'POST') {
         const body = JSON.parse(String(init.body)) as { content: string }
@@ -162,10 +167,17 @@ export default function ClosingDebriefDevPage(): JSX.Element {
         <ProjectLifecycleCard
           key={variant}
           projectId={variant === 'empty' ? EMPTY : PROJECT}
-          status="active"
-          closedAt={null}
+          lifecycle={{
+            status: 'active',
+            pausedAt: null,
+            closedAt: null,
+            closedOutcome: null,
+            endedOn: null,
+            startedOn: variant === 'empty' ? null : '2023-04',
+            suggestedEndedOn: null,
+            suggestedOutcome: null,
+          }}
           profile={variant === 'empty' ? null : variant === 'structure' ? STRUCTURE : PROFILE}
-          startedOn={variant === 'empty' ? null : '2023-04'}
           canWriteMemory={variant !== 'readonly'}
         />
       </main>

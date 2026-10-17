@@ -79,7 +79,19 @@ describe('QuarantineQueue', () => {
     expect(within(second).getByText(describeQuarantineReason(IBAN, tFiles))).toBeInTheDocument()
     // A partly checked scan says so; a verdict that could not be read says that.
     expect(within(second).getByText(en.files.screening.partial)).toBeInTheDocument()
-    expect(within(screen.getByTestId('quarantine-row-doc-3')).getByText('Reason could not be read')).toBeInTheDocument()
+    expect(within(screen.getByTestId('quarantine-row-doc-3')).getByText(en.organization.quarantine.noReason)).toBeInTheDocument()
+  })
+
+  it('says the findings through the same component as the preview, pages as text, and when the list is cut', async () => {
+    const cut: QuarantineReason = { kind: 'term', term: 'Lohnzettel', count: 80, pages: [1, 2], pages_truncated: true }
+    stubApi([{ ...ITEMS[0], verdict: { reasons: [cut], checked: 'full' } }])
+    render(<QuarantineQueue />)
+    const findings = await screen.findByTestId('quarantine-findings-doc-1')
+    expect(within(findings).getByText('“Lohnzettel” in the text · pages 1, 2, …')).toBeInTheDocument()
+    // The pages are buttons only where the document is open beside them.
+    expect(within(findings).queryByRole('button')).toBeNull()
+    // The queue does not explain holding back to the people who decide about it.
+    expect(within(findings).queryByText(en.files.ingestFailure.quarantined)).toBeNull()
   })
 
   it('says where each file was uploaded, by project name when it can', async () => {

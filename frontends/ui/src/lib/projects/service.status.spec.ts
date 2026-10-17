@@ -1,8 +1,10 @@
 /**
  * @vitest-environment node
  *
- * Closing and reopening a project (ADR-0090): who may, that it is audited both
- * ways, and that a second click writes nothing.
+ * The project lifecycle (ADR-0098, ADR-0090): which moves exist, who may make
+ * them, that each is audited under its own name, that closing names its outcome
+ * and an Abschluss that is neither in the future nor before the Beginn, and
+ * that a second click writes nothing.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -14,8 +16,15 @@ vi.mock('@/lib/authz/projects', () => ({
 }))
 
 const setProjectStatusInOrg = vi.fn()
+const findProjectInOrg = vi.fn()
 vi.mock('./repository', () => ({
   setProjectStatusInOrg: (...args: unknown[]) => setProjectStatusInOrg(...args),
+  findProjectInOrg: (...args: unknown[]) => findProjectInOrg(...args),
+}))
+
+const rearmOneShotsSkippedWhileParked = vi.fn(async () => 0)
+vi.mock('@/lib/tasks/repository', () => ({
+  rearmOneShotsSkippedWhileParked: (...args: unknown[]) => rearmOneShotsSkippedWhileParked(...(args as [])),
 }))
 
 const recordAuditEvent = vi.fn()
@@ -48,50 +57,134 @@ const session: AuthorizedSession = {
   featureFlags: null,
 }
 
+const NOW = new Date('2026-10-06T18:00:00Z')
+
 describe('setProjectStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     requireProjectAccess.mockResolvedValue({ role: 'project-admin', closed: false, readsBecauseClosed: false })
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', name: 'Seestadt D12', startedOn: '2023-04-01' }))
   })
 
-  it('closes: project:manage asked even though closing makes it read-only, stamped with who and when, audited', async () => {
-    const closedAt = new Date('2026-10-06T18:00:00Z')
+  it('closes: project:manage asked even though closing makes it read-only, with who, when, how and the Abschluss, audited', async () => {
     setProjectStatusInOrg.mockResolvedValue(
-      makeProject({ id: 'p1', name: 'Seestadt D12', status: 'closed', closedAt, closedBy: 'user_pl' })
+      makeProject({ id: 'p1', name: 'Seestadt D12', status: 'closed', closedAt: NOW, closedBy: 'user_pl', closedOutcome: 'completed' })
     )
 
-    const project = await setProjectStatus(session, 'p1', 'closed')
+    const project = await setProjectStatus(session, 'p1', { status: 'closed', outcome: 'completed', endedOn: '2026-09' }, undefined, NOW)
 
     expect(requireProjectAccess).toHaveBeenCalledWith(session, 'p1', 'project:manage', { evenWhenClosed: true })
-    expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', {
+    expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', 'active', {
       status: 'closed',
+      at: NOW,
       closedBy: 'user_pl',
-      at: expect.any(Date),
+      outcome: 'completed',
+      endedOn: '2026-09-01',
     })
     expect(project.status).toBe('closed')
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'project.closed', targetId: 'p1', metadata: { name: 'Seestadt D12' } })
+      expect.objectContaining({
+        action: 'project.closed',
+        targetId: 'p1',
+        metadata: { name: 'Seestadt D12', from: 'active', outcome: 'completed', endedOn: '2026-09' },
+      })
     )
   })
 
-  it('reopens, audited as such', async () => {
-    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', name: 'Seestadt D12' }))
+  it('closes a paused project too, and a project that was not realized says so', async () => {
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'paused', pausedAt: NOW }))
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed' }))
 
-    await setProjectStatus(session, 'p1', 'active')
+    await setProjectStatus(session, 'p1', { status: 'closed', outcome: 'cancelled', endedOn: '2026-10' }, undefined, NOW)
 
-    expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', { status: 'active' })
-    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ action: 'project.reopened' }))
+    expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', 'paused', expect.objectContaining({ outcome: 'cancelled' }))
   })
 
-  it('a project already in that state is a conflict, and writes no audit event', async () => {
+  it.each([
+    ['in the future', '2026-11', 'abschluss-in-future'],
+    ['before the Beginn', '2023-03', 'abschluss-before-beginn'],
+  ])('refuses an Abschluss %s, and writes nothing', async (_, endedOn, reason) => {
+    await expect(
+      setProjectStatus(session, 'p1', { status: 'closed', outcome: 'completed', endedOn: endedOn as '2026-11' }, undefined, NOW)
+    ).rejects.toMatchObject({ status: 400, details: { reason } })
+    expect(setProjectStatusInOrg).not.toHaveBeenCalled()
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('closes a project whose Beginn lies ahead in the Beginn\'s month: nothing earlier fits', async () => {
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', startedOn: '2027-03-01' }))
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed' }))
+
+    await setProjectStatus(session, 'p1', { status: 'closed', outcome: 'cancelled', endedOn: '2027-03' }, undefined, NOW)
+    expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', 'active', expect.objectContaining({ endedOn: '2027-03-01' }))
+
+    await expect(
+      setProjectStatus(session, 'p1', { status: 'closed', outcome: 'cancelled', endedOn: '2027-04' }, undefined, NOW)
+    ).rejects.toMatchObject({ status: 400, details: { reason: 'abschluss-in-future' } })
+  })
+
+  it('pauses with the moment, and resumes; each under its own name', async () => {
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', name: 'Seestadt D12', status: 'paused', pausedAt: NOW }))
+    await setProjectStatus(session, 'p1', { status: 'paused' }, undefined, NOW)
+    expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', 'active', { status: 'paused', at: NOW })
+    expect(recordAuditEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({ action: 'project.paused', metadata: { name: 'Seestadt D12', from: 'active' } })
+    )
+
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'paused', pausedAt: NOW }))
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1' }))
+    await setProjectStatus(session, 'p1', { status: 'active' })
+    expect(setProjectStatusInOrg).toHaveBeenLastCalledWith('p1', 'org_1', 'paused', { status: 'active' })
+    expect(recordAuditEvent).toHaveBeenLastCalledWith(expect.objectContaining({ action: 'project.resumed' }))
+    // Pausing re-armed nothing; resuming brings back the one-shots the pause retired.
+    expect(rearmOneShotsSkippedWhileParked).toHaveBeenCalledTimes(1)
+    expect(rearmOneShotsSkippedWhileParked).toHaveBeenCalledWith('p1', 'org_1')
+  })
+
+  it('reopens a closed project, audited as such', async () => {
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed', closedOutcome: 'completed' }))
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', name: 'Seestadt D12' }))
+
+    await setProjectStatus(session, 'p1', { status: 'active' })
+
+    expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', 'closed', { status: 'active' })
+    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ action: 'project.reopened' }))
+    expect(rearmOneShotsSkippedWhileParked).toHaveBeenCalledWith('p1', 'org_1')
+  })
+
+  it('a failure re-arming one-shots does not undo or fail a move that happened', async () => {
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'paused', pausedAt: NOW }))
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1' }))
+    rearmOneShotsSkippedWhileParked.mockRejectedValueOnce(new Error('db down'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await expect(setProjectStatus(session, 'p1', { status: 'active' })).resolves.toMatchObject({ id: 'p1' })
+    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ action: 'project.resumed' }))
+    quiet.mockRestore()
+  })
+
+  it.each([
+    ['closed', { status: 'paused' as const }],
+    ['closed', { status: 'closed' as const, outcome: 'completed' as const, endedOn: '2026-10' as const }],
+    ['active', { status: 'active' as const }],
+    ['paused', { status: 'paused' as const }],
+  ])('a move the lifecycle does not have, from %s, is a conflict and writes nothing', async (from, change) => {
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', status: from as 'active' }))
+
+    await expect(setProjectStatus(session, 'p1', change, undefined, NOW)).rejects.toMatchObject({
+      status: 409,
+      details: { reason: 'invalid-transition', from, to: change.status },
+    })
+    expect(setProjectStatusInOrg).not.toHaveBeenCalled()
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('a move that lost a race (the row moved meanwhile) is a conflict, and writes no audit event', async () => {
     setProjectStatusInOrg.mockResolvedValue(null)
 
-    await expect(setProjectStatus(session, 'p1', 'closed')).rejects.toMatchObject({
+    await expect(setProjectStatus(session, 'p1', { status: 'paused' }, undefined, NOW)).rejects.toMatchObject({
       status: 409,
-      details: { reason: 'already-closed' },
-    })
-    await expect(setProjectStatus(session, 'p1', 'active')).rejects.toMatchObject({
-      details: { reason: 'not-closed' },
+      details: { reason: 'invalid-transition' },
     })
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })
@@ -99,7 +192,7 @@ describe('setProjectStatus', () => {
   it('someone without project:manage changes nothing', async () => {
     requireProjectAccess.mockRejectedValue(new NotFoundError())
 
-    await expect(setProjectStatus(session, 'p1', 'closed')).rejects.toBeInstanceOf(NotFoundError)
+    await expect(setProjectStatus(session, 'p1', { status: 'paused' })).rejects.toBeInstanceOf(NotFoundError)
     expect(setProjectStatusInOrg).not.toHaveBeenCalled()
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })

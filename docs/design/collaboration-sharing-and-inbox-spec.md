@@ -46,8 +46,8 @@ may defer with a written reason; MAYs are explicitly optional.
 
 ## 1. Purpose & the product idea in one page
 
-Today Piloti is a **single-player tool**. One person asks the agent a question, the
-agent answers, and the conversation belongs — in every practical sense — to that
+Today Piloti is a **single-player tool**. One person works with the agent in their own chat, and the
+conversation belongs — in every practical sense — to that
 person's browser. Everything the product knows about "working together" is
 inherited from the fact that colleagues happen to be in the same organisation.
 
@@ -801,7 +801,11 @@ events can drive**.
   localised title and body templates (German **and** English); the target resource
   type (linking it to SH-7 for the deep link and reference rendering); the grouping
   key (IB-8); the default notification-channel preferences (IB-11); and its retention
-  period (IB-15).
+  period (IB-15). A type MAY word itself by a **variant** its emitter stores in the
+  payload as a key segment, never as copy: why Piloti could not work a mark, what a
+  proposal changes. The templates stay the registry's, under
+  `inbox.types.<key>.variants.<variant>`, and an unknown variant reads the type's
+  general template.
 
 - **IB-6 (MUST).** Introducing a new item type MUST require **no schema change and no
   new UI component** — a registry entry and translations. The generic renderer draws

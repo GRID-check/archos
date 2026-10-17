@@ -16,15 +16,18 @@
  * refuses rather than files. No access token: nothing on the filing path
  * forwards one, and a session that carried a fabricated one would be a
  * credential this module has no business minting.
+ *
+ * The person by name too (`resolvePerson`): a live session has the name from
+ * AuthKit, and a pinned one that left it null sent every unattended turn to the
+ * agent as nobody in particular.
  */
 
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { AuthzLookupOptions } from '@/lib/authz/errors'
-import { enforcementOn } from '@/lib/authz/feature-flags'
 import { tenantRolePermissions } from '@/lib/authz/org-role-permissions'
-import { resolveSubjectMembership } from '@/lib/authz/project-membership'
+import { resolveSubjectMembership, type lookupSubjectMembership } from '@/lib/authz/project-membership'
 import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
+import { resolvePerson } from './person'
 
 export interface PinnedRequester {
   userId: string
@@ -37,50 +40,69 @@ export interface PinnedRequester {
  * `null` when they are no longer a member of the organization.
  *
  * Permissions: what WorkOS says the requester's role holds, unioned with the
- * catalog, the same answer `hasPermission` gives a signed-in session. Reading
- * the catalog alone denied every custom role.
+ * catalog (`tenantRolePermissions`), the same answer `hasPermission` gives a
+ * signed-in session. Reading the catalog alone denied every custom role.
  *
- * Feature flags: under enforcement, EVERY flag enabled for the organization
- * (the JWT claim a live session carries is per user+org, and the org-level
- * answer is what the fleet-wide kill switch means); without enforcement the
- * gates read the environment and ignore the session, so `null` there is the
- * same thing a live session without the claim reports.
+ * Feature flags are resolved per organization (the JWT claim a live session
+ * carries is per user+org, and the org-level answer is what the fleet-wide
+ * kill switch means). Where nobody authenticates the gates ignore the claim, so
+ * the empty set `enabledFlagsForOrganization` answers without a WorkOS key is
+ * never read.
  *
  * EVERY flag the organization has, not the one the first caller needed. This
  * resolved only `agent-authored-documents`, and asked for it with the slug and
- * the organization swapped, so under enforcement every pinned session carried
+ * the organization swapped, so every pinned session carried
  * no flags at all. A scheduled report could then never file
  * (`isAgentAuthoredDocumentsEnabled` read the empty set), and the mail import
  * (ADR-0085), which files through the upload path's `image-upload` gate, would
- * have refused every picture. A flag lookup that fails throws, so the
- * background work retries instead of acting with none.
- *
- * A membership lookup that could not complete fails closed by default (no
- * membership reads as "left"). An unattended caller that can retry passes
- * `{ onError: 'throw' }` and gets a `TransientAuthzError` instead, so a blip
- * never reads as a definite no.
+ * have refused every picture.
  */
 export async function resolvePinnedRequesterSession(
   requester: PinnedRequester,
-  options: AuthzLookupOptions = {},
 ): Promise<AuthorizedSession | null> {
-  const { organizationId, userId } = requester
-  const membership = await resolveSubjectMembership(organizationId, userId, options)
+  const membership = await resolveSubjectMembership(requester.organizationId, requester.userId)
+  return sessionFor(requester, membership)
+}
+
+/**
+ * {@link resolvePinnedRequesterSession}, except that a membership lookup WorkOS
+ * did not answer throws instead of reading as "not a member". `null` here means
+ * WorkOS said so. For a caller that acts on "they left" in a way it cannot take
+ * back: the push job removes every device of a person who left, and one failed
+ * lookup must not erase them all (ADR-0112), and the project mail inbox must
+ * not bounce a colleague's mail as if they had left. The throw, a
+ * `TransientAuthzError`, lets the queue retry and the webhook answer 503.
+ */
+export async function resolvePinnedRequesterSessionStrict(
+  requester: PinnedRequester,
+): Promise<AuthorizedSession | null> {
+  const membership = await resolveSubjectMembership(requester.organizationId, requester.userId, {
+    onError: 'throw',
+  })
+  return sessionFor(requester, membership)
+}
+
+async function sessionFor(
+  requester: PinnedRequester,
+  membership: Awaited<ReturnType<typeof lookupSubjectMembership>>,
+): Promise<AuthorizedSession | null> {
   // No membership, or a membership without a role, is a person who holds
   // nothing here today; the caller refuses rather than guesses a role.
   if (!membership || !membership.role) return null
 
-  const [permissions, featureFlags] = await Promise.all([
-    tenantRolePermissions(organizationId, membership.role),
-    enforcementOn() ? enabledFlagsForOrganization(organizationId) : Promise.resolve(null),
+  const [featureFlags, person, permissions] = await Promise.all([
+    enabledFlagsForOrganization(requester.organizationId),
+    resolvePerson(requester.organizationId, requester.userId),
+    tenantRolePermissions(requester.organizationId, membership.role),
   ])
 
   return {
-    userId,
-    email: requester.email ?? '',
-    name: null,
+    userId: requester.userId,
+    email: requester.email ?? person.email ?? '',
+    name: person.name,
+    organizationName: person.organizationName,
     accessToken: '',
-    organizationId,
+    organizationId: requester.organizationId,
     organizationMembershipId: membership.organizationMembershipId,
     role: membership.role,
     permissions: [...permissions],

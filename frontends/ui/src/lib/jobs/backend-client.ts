@@ -47,6 +47,18 @@ export interface JobSubmitPayload {
    */
   output: 'chat' | 'deep-research'
   /**
+   * An agent of its own instead of the one the output kind decides. Only the
+   * project intake sends one (ADR-0111): its run writes values onto the
+   * profile, not a report. The backend validates it against its registry.
+   */
+  agent_type?: BackgroundAgentType
+  /**
+   * The job id to give the run, when the caller stores it before submitting:
+   * the intake claims its reading under this id, so the run's first call
+   * already finds itself current. The backend refuses a duplicate (409).
+   */
+  job_id?: string
+  /**
    * The conversation an `output: 'chat'` run should land in.
    *
    * THE SEAM, not the feature: nothing sets this yet. Creating that
@@ -92,6 +104,9 @@ export interface JobSubmitPayload {
    */
   priority?: JobPriority
 }
+
+/** The agents a background run may name instead of its output kind's (`aiq_api/registry.py`). */
+export type BackgroundAgentType = 'project_intake'
 
 /** The two priorities the research queue knows (`aiq_agent.common.claim_queue`). */
 export type JobPriority = 'interactive' | 'bulk'

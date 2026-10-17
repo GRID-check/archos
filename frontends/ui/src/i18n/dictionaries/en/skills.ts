@@ -114,6 +114,11 @@ export const skills = {
   },
 
   editor: {
+    /** Schließen mit ungespeicherten Eingaben: Escape, Tippen daneben, Abbrechen und das Kreuz fragen alle dasselbe. */
+    discardTitle: 'Discard your changes?',
+    discardBody: 'What you entered for this skill will be lost.',
+    discardConfirm: 'Discard',
+    discardKeep: 'Keep editing',
     /** The three questions the builder asks, in order. */
     steps: {
       label: 'Steps',
@@ -307,6 +312,8 @@ export const skills = {
       one: '1 skill used',
       other: '{count} skills used',
       title: 'Skills used for this answer',
+      descriptionMore: 'Show more',
+      descriptionLess: 'Show less',
       // States the mechanism plainly: the description is always in context, the
       // instructions were pulled in only because the skill was activated.
       explainer:

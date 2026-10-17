@@ -44,6 +44,7 @@ from typing_extensions import override
 
 from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
+from aiq_agent.observability import posthog_exceptions
 from aiq_agent.stages.delivery import register_stage_frame_sink
 from aiq_api.auth.middleware import AuthMiddleware
 from aiq_api.context_envelope import GridContextEnvelopeMiddleware
@@ -78,7 +79,9 @@ from .routes.dictation import add_dictation_routes
 from .routes.document_search import add_document_search_routes
 from .routes.documents import add_document_routes
 from .routes.drafts import add_draft_routes
+from .routes.fassung_compare import add_fassung_compare_routes
 from .routes.feedback_digest import add_feedback_digest_routes
+from .routes.filing_fit import add_filing_fit_routes
 from .routes.generate_conversation_title import add_generate_conversation_title_routes
 from .routes.generate_summary import add_generate_summary_routes
 from .routes.ingest import add_ingest_routes
@@ -318,9 +321,15 @@ def api_routers(llm_configs: Mapping[str, Any]) -> tuple[Callable[[APIRouter], N
     return (
         add_collection_routes,
         add_document_routes,
+        # What changed between two Fassungen of a page, marked on it and said in
+        # words: one vision call for the pair, cached (CONTEXT.md, „Fassung").
+        add_fassung_compare_routes,
         add_document_search_routes,
         add_generate_summary_routes,
         add_cleanup_proposal_routes,
+        # Where an upload belongs, judged once per batch from the folders'
+        # descriptions and what ingestion read; the BFF files the proposals.
+        add_filing_fit_routes,
         add_generate_conversation_title_routes,
         add_dictation_routes,
         add_consistency_check_routes,
@@ -486,6 +495,12 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         # i.e. from code that never mentioned a URL. Installed after the routes
         # so the host's own handlers are in place first.
         install_presigned_url_scrubbing()
+
+        # Caught-and-logged exceptions (`logger.exception` in the job worker, the
+        # runner, the chat socket) go to PostHog error tracking from one handler
+        # on the root logger (ADR-0100). Both roles, installed with the scrubbing
+        # above; idempotent, and a no-op while PostHog is not configured.
+        posthog_exceptions.install()
 
         # The workflow is built and every route registered: this replica serves
         # from here, and the meter provider exists to take the boot readings.

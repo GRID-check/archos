@@ -4,6 +4,6 @@
 # architect using Piloti, not for the reviewer of your diff.
 features:
   - >
-    After a thumbs-down you can now say what a good answer should have
+    After a thumbs-down, you can now say what a good answer should have
     contained, for example the value and the guideline it comes from. The
-    field is optional and is sent together with your note.
+    field is optional.

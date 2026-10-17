@@ -47,11 +47,11 @@ export const organization = {
     },
     screening: {
       title: 'Sensitive data',
-      subtitle: 'What your office wants no language model to see, and how Piloti recognises it.',
+      subtitle: 'What your office wants no language model to see, and how Piloti recognizes it.',
     },
     quarantine: {
       title: 'Quarantine',
-      subtitle: 'Files the content check held back. No model has read them. Whoever may review them releases or deletes them here.',
+      subtitle: 'Files the content check held back. No model has read them. Whoever may review them allows or deletes them here.',
     },
     downloads: {
       title: 'Download log',
@@ -137,6 +137,8 @@ export const organization = {
   },
   /** People & access: the member directory, the role catalog, the permission map. */
   access: {
+    /** Accessible name of the sub-tab strip when it is wider than the screen. */
+    tabsScrollable: 'Sections, scrolls sideways',
     people: {
       title: 'People',
       description: 'Everyone in the organization and the role they were given.',
@@ -330,6 +332,9 @@ export const organization = {
     saved: 'Instructions saved',
     clear: 'Clear',
     cleared: 'Instructions cleared',
+    clearConfirmTitle: 'Clear the instructions?',
+    clearConfirmBody:
+      'Piloti will then follow no standing instructions for your organization. You cannot restore the text.',
     saveError: 'Could not save the instructions. Please try again.',
     loadError: 'Could not load the instructions right now. Please refresh to try again.',
   },
@@ -405,6 +410,9 @@ export const organization = {
     saveErrorZdrUnavailable:
       'The zero-data-retention list could not be loaded, so the models could not be checked. Nothing was saved; try again shortly.',
     zdrTitle: 'Zero data retention',
+    /** Phone-only toggle on the long zero-data-retention paragraph. */
+    zdrHintMore: 'Show more',
+    zdrHintLess: 'Show less',
     zdrHint:
       'On by default. Every request Piloti sends to an AI model through OpenRouter for your organization goes only to endpoints that store neither prompts nor responses: chat and research answers, clarifying questions, reading documents on upload (drawing captions, OCR, embeddings, summaries, classification), search reranking, conversation titles and summaries, consistency checks and skill reviews. If the setting cannot be read, requests are restricted anyway, and only models with such an endpoint can be chosen. EU-hosted endpoints are preferred where a model has one. Not covered: web search queries go to the web search provider (Tavily), which is not a model provider.',
     zdrNotApplicable:
@@ -641,14 +649,14 @@ export const organization = {
       'Your office has not saved its own list yet. Until it does, Piloti checks with this one. Once you save, yours applies.',
     namesTitle: 'Before upload: file and folder names',
     namesHint:
-      'The browser checks names before it sends anything. A matching file is not sent unless the person uploading releases it on its own.',
+      'The browser checks names before it sends anything. A matching file is not sent unless the person uploading chooses “Upload anyway” for it.',
     nameTerms: 'Name terms',
     nameTermsHint: 'Matches inside words too: “Rechnung” finds “Schlussrechnung”.',
     nameExceptions: 'Exceptions',
     nameExceptionsHint: 'Words that contain a term but mean something else: “Berechnung” contains “Rechnung”.',
     contentTitle: 'After upload: content',
     contentHint:
-      'Piloti reads the text on its own server and checks it before any model sees it. Matches wait in quarantine until someone releases or deletes them. The same terms and numbers apply to chat messages: before sending, Piloti shows what it found and sends the message to the answering model only masked. A dictated message is first heard by an external speech model, which transcribes it.',
+      'Piloti reads the text on its own server and checks it before any model sees it. Matches wait in quarantine until someone reviews them and allows or deletes them. The same terms and numbers apply to chat messages: before sending, Piloti shows what it found and sends the message to the answering model only masked. A dictated message is first heard by an external speech model, which transcribes it.',
     contentTerms: 'Content terms',
     contentTermsHint: 'Matches words that start with the term: “Honorar” finds “Honorarnote”.',
     detectors: 'Detect numbers',
@@ -660,7 +668,7 @@ export const organization = {
     },
     limits:
       'The check sees words and numbers, not meaning. A fee agreement that contains none of your terms gets through. Piloti checks scanned pages and images without a text layer by name only.',
-    termPlaceholder: 'Type a term, press Enter',
+    termPlaceholder: 'Type a term',
     removeTerm: 'Remove “{term}”',
     emptyList: 'No terms',
     useSuggestion: 'Use suggestion',
@@ -675,22 +683,21 @@ export const organization = {
   quarantine: {
     listLabel: 'Files held back',
     empty: 'Nothing is waiting for review',
-    emptyHint: 'When the content check holds a file back, it appears here. You see the files you may release.',
+    emptyHint: 'When the content check holds a file back, it appears here. You see the files you may review.',
     whereProject: 'Project {name}',
     whereProjectUnknown: 'A project',
     whereArchiv: 'Office filing',
     whereSession: 'Chat attachment',
-    reasonsLabel: 'Reasons',
-    noReason: 'Reason could not be read',
-    unscreened: 'Not checked: the file could not be read to the end. It stays held back until someone releases it.',
+    noReason: 'No reason stored. Open the file to check it yourself.',
+    unscreened: 'Not checked: the file could not be read to the end. It stays held back until someone reviews it.',
     open: 'View',
     openTitle: 'Open “{name}” where it is filed',
-    release: 'Release',
-    releaseTitle: 'Release “{name}”?',
+    release: 'Allow',
+    releaseTitle: 'Allow “{name}”?',
     releaseDescription:
-      'Piloti then reads the file like any other upload: language models see its content, and search finds it. The release is logged under your name.',
-    released: '“{name}” is released and being read.',
-    releaseError: 'Could not release the file. Please try again.',
+      'Piloti then reads the file like any other upload: language models see its content, and search finds it. Your decision is logged under your name.',
+    released: '“{name}” is allowed and being read.',
+    releaseError: 'Could not allow the file. Please try again.',
     changed: 'Someone already acted on this file. The list is up to date now.',
     delete: 'Delete',
     deleteTitle: 'Delete “{name}”?',

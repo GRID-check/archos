@@ -34,13 +34,13 @@ export const tasks: typeof en.tasks = {
       'Legen Sie eine Aufgabe an — mit Rhythmus läuft sie von allein, ohne wartet sie auf Sie.',
   },
   filters: {
-    label: 'Tasks filtern',
+    label: 'Aufgaben filtern',
     all: 'Alle',
     active: 'Läuft',
     /** Fertig, und niemand hat gesagt, ob es taugt. Eine offene Schleife. */
     unreviewed: 'Ungeprüft',
     failed: 'Fehlgeschlagen',
-    showAll: 'Alle Tasks zeigen',
+    showAll: 'Alle Aufgaben zeigen',
   },
   buckets: {
     today: 'Heute',
@@ -51,6 +51,8 @@ export const tasks: typeof en.tasks = {
   card: {
     openAria: '„{title}“ öffnen',
     unreviewed: 'Noch nicht geprüft',
+    /** Das sichtbare Wort für den Punkt rechts oben: auf dem Telefon gibt es kein Hover. */
+    toReview: 'Zu prüfen',
   },
   result: {
     document: 'Dokument öffnen',
@@ -68,11 +70,11 @@ export const tasks: typeof en.tasks = {
     request: 'Auftrag',
     schedule: 'Zeitplan',
     prompt: 'Prompt',
-    /** Die Läufe eines Zeitplans — jeder davon ein Task, also heißt es so. */
-    runs: 'Tasks',
+    /** Die Läufe eines Zeitplans — jeder davon eine Aufgabe, also heißt es so. */
+    runs: 'Aufgaben',
     /** Macht aus einem Einmaligen eine stehende Aufgabe, vorausgefüllt. */
     promote: 'Als stehende Aufgabe speichern',
-    promoteHint: 'Öffnet den Aufgaben-Assistenten, dieser Auftrag ist schon eingetragen.',
+    promoteHint: 'Öffnet den Aufgaben-Assistenten mit diesem Auftrag. Gespeichert wird erst im letzten Schritt, dieser Lauf bleibt unverändert.',
     gone: 'Das gibt es nicht mehr — möglicherweise wurde es gelöscht.',
     /**
      * Ein Deep Link, der in diesem Projekt auf keine Zeile passt. Der Link zeigt
@@ -101,7 +103,7 @@ export const tasks: typeof en.tasks = {
       unreviewed: 'Alles Fertige ist geprüft',
       failed: 'Nichts ist fehlgeschlagen',
     },
-    errorTitle: 'Die Tasks konnten nicht geladen werden',
+    errorTitle: 'Die Aufgaben konnten nicht geladen werden',
     errorDescription: 'Der Rest des Projekts ist davon nicht betroffen. Versuchen Sie es gleich noch einmal.',
     retry: 'Erneut versuchen',
   },

@@ -127,7 +127,7 @@ export const ERROR_REGISTRY: Record<ErrorCode, ErrorMeta> = {
     status: 'warning',
     title: 'Response Interrupted',
     titleKey: 'errorRegistry.responseInterrupted.title',
-    defaultMessage: 'Your previous request was not completed. Please resend your message.',
+    defaultMessage: 'Piloti did not finish this answer, and the server has none. Please send the question again.',
     messageKey: 'errorRegistry.responseInterrupted.message',
   },
   // The server never acknowledged the question: no `RUN_STARTED`, no

@@ -127,7 +127,9 @@ memory only. Decisions are recorded at hand-out like passages, with their
 projects and restricted folders. The agent cites each project's matching
 decisions as one source, „Projektgedächtnis (‹Projekt›)", listed before the
 passages. A decision from a running project, or from a restricted folder,
-shuts the turn's doors as such a passage does.
+shuts the turn's doors as such a passage does. A brief is cited the same way,
+as one source „Projektdaten (‹Projekt›)" (2026-10-11: it had no citation key,
+so an answer citing the facts it read lost that citation to verification).
 
 **The catalog.** `POST /api/internal/turn-context` answers `referenceProjects`:
 up to 12 closed projects, most like the current one first, one line each with

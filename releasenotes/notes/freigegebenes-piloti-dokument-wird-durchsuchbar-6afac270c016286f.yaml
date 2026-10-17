@@ -1,18 +1,17 @@
 ---
 features:
   - >
-    A document Piloti wrote only becomes searchable once someone in your office
-    has approved and published it. Drafts, documents in review and rejected ones
-    stay out of the index.
+    A document Piloti wrote only becomes searchable once someone in your
+    office has approved and published it. Drafts, documents in review and
+    rejected ones stay out of search.
 improvements:
   - >
     An archived document no longer turns up as a source in answers, whoever
     wrote it. The file and its versions stay where they were; archiving is not
     deleting.
   - >
-    When a new version is published, the previous one leaves the index before
-    the new one enters it, so Piloti never answers out of a version that has
-    just been replaced. The older bytes stay in the version list and can still
+    Once a newer version is published, Piloti stops answering from the
+    replaced one. The older version stays in the version list and can still
     be opened.
 fixes:
   - >

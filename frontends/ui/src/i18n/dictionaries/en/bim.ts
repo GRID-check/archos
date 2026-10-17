@@ -123,6 +123,8 @@ export const bim = {
     none: 'Select an element to see its properties.',
     identity: 'Identity',
     globalId: 'GlobalId',
+    copyValue: 'Copy: {value}',
+    copied: 'Copied',
     ifcType: 'IFC type',
     predefinedType: 'Predefined type',
     typeName: 'Type name',
@@ -214,7 +216,7 @@ export const bim = {
       save: 'Save confirmation',
       cancel: 'Cancel',
       noteLabel: 'Why this is settled',
-      notePlaceholder: 'e.g. checked against the plan, agreed with the fire-safety consultant …',
+      notePlaceholder: 'e.g. checked against the drawing, agreed with the fire-safety consultant …',
     },
     card: {
       export: 'Open items as BCF',
@@ -421,6 +423,31 @@ export const bim = {
     loading: 'Loading model…',
     building: 'Putting the building together…',
     ready: 'The model is on screen',
+    /**
+     * The phone's tool bar. The name is ON the button here, because a finger
+     * has no tooltip: `tool.*` are the short captions under the glyphs, and
+     * the long names stay the accessible names. "Fit" is inside "Fit the
+     * whole model".
+     */
+    tool: {
+      fit: 'Fit',
+      more: 'More',
+    },
+    more: 'More tools',
+    sheet: {
+      expand: 'Show details',
+      collapse: 'Hide details',
+    },
+    download: {
+      of: '{loaded} of {total}',
+      cancel: 'Cancel',
+      restart: 'Load again',
+      cancelled: {
+        title: 'Loading cancelled',
+        description:
+          'The model was not fully loaded and nothing was saved on this device. You can load it again at any time, ideally with better reception.',
+      },
+    },
     rail: {
       show: 'Show panel',
       hide: 'Hide panel',
@@ -443,10 +470,12 @@ export const bim = {
     keyboardHint:
       'Arrow keys orbit, Shift with an arrow pans, plus and minus zoom, F fits the model. While measuring, Enter places a point and Escape cancels. Every element is also listed as text under Details.',
     xray: 'See through',
+    // The same answer without the name in front, for the row that already carries "See through".
+    xrayHint: 'Select an element or open a highlighted answer first',
     xrayNeedsTarget: 'See through — select an element or open a highlighted answer first',
     view: {
       iso: 'Free',
-      top: 'Plan',
+      top: 'Top view',
       north: 'North',
       south: 'South',
       east: 'East',
@@ -478,6 +507,9 @@ export const bim = {
       vertical: 'vertical',
       first: 'Click the first point',
       second: 'Click the second point — Esc cancels',
+      // With a finger: no "click", and no Esc key — the tool button itself cancels.
+      firstTouch: 'Tap the first point',
+      secondTouch: 'Tap the second point — Measure ends the measurement',
       clear: 'Clear measurements',
       count: '{count} measurements',
       countOne: '1 measurement',

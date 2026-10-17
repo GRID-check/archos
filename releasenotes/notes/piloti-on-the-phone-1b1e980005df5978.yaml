@@ -1,0 +1,40 @@
+---
+features:
+  - >
+    On a phone, Piloti now has a bar at the bottom of the screen with Frag
+    Piloti, Dateien, Übersicht and Postfach inside a project, and Projekte,
+    Büroablage and Postfach above one. Tapping the project name at the top
+    switches project from a sheet with the most recent projects first, and the
+    magnifier opens search.
+  - >
+    In Dateien on a phone you can select several files and move them in one
+    step, and moving a file opens a searchable list of folders.
+  - >
+    An answer can be passed on through the phone's own share sheet, and a past
+    chat can be renamed or deleted from its row by touch.
+improvements:
+  - >
+    Piloti is laid out for the phone throughout, upright and on its side:
+    questions and confirmations open as sheets from the bottom with the main
+    action within reach of the thumb, every sheet has a visible close button,
+    and buttons and rows are large enough to tap with a finger.
+  - >
+    On a phone the project list opens as a launcher with recent projects to
+    swipe through, search also finds a project by its address, municipality or
+    client, and the project wizard starts with its first question.
+  - >
+    File names keep their ending on a phone, so revision letters and drawing
+    numbers stay readable, and folders are listed as compact rows.
+  - >
+    Tapping a source number in an answer opens the passage in a sheet with a
+    button to open it at that place, long answers offer a list of their
+    sections, and charts and tables fit the width of the phone.
+  - >
+    The building model on a phone has labelled tools that fit on one bar, shows
+    a selected element in a sheet that can be pulled up, and shows how much of
+    the model has loaded, with a way to cancel and retry.
+fixes:
+  - >
+    On a phone, the schedule wizard's last step, the run history, the task
+    filters, the Büroablage header and several project and administration pages
+    no longer run off the edge of the screen.

@@ -8,8 +8,8 @@ fixes:
     Deep research answers are now marked as preliminary when the research time
     runs out, instead of reading like fully verified results.
   - >
-    Long research jobs no longer write stray or duplicate messages into the chat
-    when they are retried or time out in the background.
+    Long deep research runs no longer leave stray or duplicate messages in
+    the chat, even when they time out in the background.
 operators:
   - >
     Research jobs now refuse forged work orders when payload encryption is

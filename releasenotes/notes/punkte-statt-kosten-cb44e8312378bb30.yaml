@@ -8,8 +8,9 @@ features:
     The model picker shows roughly how many points a typical question costs on
     each model, so a cheap model can be told from an expensive one at a glance.
   - >
-    Organizations that use Piloti with their own provider key see tokens instead
-    of points, and can set their limits in tokens.
+    Organizations that use Piloti with their own provider key see their
+    usage in the provider's own units instead of points, and set their
+    limits in those units.
 upgrade:
   - >
     Existing budget limits were converted from euros to points. Check your

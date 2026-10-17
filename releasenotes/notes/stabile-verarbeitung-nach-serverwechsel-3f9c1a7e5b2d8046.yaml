@@ -1,0 +1,23 @@
+---
+fixes:
+  - >
+    After a short disruption on our side, documents that are being read now
+    carry on by themselves, and answers no longer stall while Piloti looks
+    something up in your files.
+incident:
+  - >
+    2026-10-11/12: after five node failures, ingestion stalled and the API hung
+    until restarted. Dead clients kept their database sessions and locks, Chroma
+    requests had no timeout, and an unreachable Chroma read as a missing
+    collection. Every wait is now bounded and dead sessions are dropped within
+    minutes.
+operators:
+  - >
+    Production runs three IPAX worker groups (Node, data, batch), labelled
+    k8s.at/node-group and managed only in the IPAX Control Center. The Pulumi
+    knobs nodeGroupApp, nodeGroupData and nodeGroupBatch pin aiq-agent, Chroma
+    and ingest-worker; the other tiers follow in a separate migration.
+  - >
+    This deploy restarts Chroma once, a short pause in retrieval, and rolls
+    ingest-worker; Postgres and PgBouncer only reload. New settings:
+    AIQ_CHROMA_HTTP_TIMEOUT_SECONDS and GRID_KEYED_LOCK_TIMEOUT_SECONDS.

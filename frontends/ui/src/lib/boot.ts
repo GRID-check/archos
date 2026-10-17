@@ -5,31 +5,29 @@
  *
  * A pilot said a feature did not work. Nobody could say which build the pilot
  * was running, and nobody could say whether that feature was even switched on
- * for them: `GRID_SKILLS_ENABLED`, `GRID_COLLABORATION_ENABLED` and
- * `GRID_ENFORCE_FEATURE_FLAGS` all default to `false`
- * (`deploy/compose/docker-compose.coolify.yaml`), so an organization can have
- * no inbox, no sharing, no mentions, no jobs and no skills — and the product
- * looks, from the outside, exactly like one where those things are broken.
- * Three of the four feedback items in
+ * for them: an organization can have no inbox, no sharing, no mentions, no
+ * jobs and no skills — and the product looks, from the outside, exactly like
+ * one where those things are broken. Three of the four feedback items in
  * `docs/audit/pilot-feedback-triage-2026-09.md` are indistinguishable from
  * "the flag was off".
  *
  * So: one line, first thing, on both services, naming the deployed commit and
- * the effective value of each gate. Plus `sha` on the health endpoints, so the
+ * where the flags come from. Plus `sha` on the health endpoints, so the
  * question can be answered about a RUNNING deployment without shell access to
  * read a log that has since rotated.
  *
- * ## Effective values, not raw env
+ * ## Where the flags come from, not what each one says
  *
- * Each field below is what the gate that reads it would actually decide, not
- * what the variable literally says — a boot line you have to re-derive is a
- * boot line nobody trusts. In particular `agentDocs` defaults **on** while the
- * other three default **off**, because
- * `agentAuthoredDocumentsEnvEnabled()` treats unset as enabled. The parsing
- * rules here are duplicated from `lib/authz/feature-flags` deliberately: this
- * module is imported by a health route and by nothing that has a session, so
- * it must not pull `next/server` or WorkOS in behind it. `bootFlags` is
- * therefore pinned against those gates by its own spec.
+ * The line used to carry four env gates (`skills`, `collaboration`,
+ * `enforceFlags`, `agentDocs`). Those are gone: every feature is a WorkOS flag
+ * per organization now (`lib/authz/feature-flags.ts`), so no process-wide value
+ * exists to print. What a process CAN say is where its answers come from —
+ * `flags=workos` wherever people sign in (`REQUIRE_AUTH=true`), `flags=defaults`
+ * in a deployment that authenticates nobody, where every rollout is on and
+ * every entitlement off. That is the first fork of any "the feature is not
+ * there" report. The rule is duplicated from `flagsFromWorkOS` deliberately:
+ * this module is imported by a health route and by nothing that has a session,
+ * so it must not pull `next/server` or WorkOS in behind it.
  *
  * ## The CommonJS twin
  *
@@ -41,37 +39,17 @@
  * the other fails a test instead of producing two different boot lines.
  */
 
-/** The four gates a pilot report has to be able to name. */
-export interface BootFlags {
-  skills: boolean
-  collaboration: boolean
-  enforceFlags: boolean
-  agentDocs: boolean
-}
+/** Where this process's feature-flag answers come from. */
+export type FlagSource = 'workos' | 'defaults'
 
 /** What every field of the boot line is about. */
 export interface BootFacts {
   sha: string
-  flags: BootFlags
+  flags: FlagSource
 }
 
 /** The value used when nothing stamped a commit into the image. */
 export const UNKNOWN_SHA = 'unknown'
-
-/** Env vars an opt-in gate reads: only the exact string `true` turns it on. */
-function optIn(raw: string | undefined): boolean {
-  return (raw ?? '').trim().toLowerCase() === 'true'
-}
-
-/**
- * Env vars a default-ON gate reads: unset means on, and only an explicit falsey
- * spelling turns it off. Same accepted spellings as
- * `agentAuthoredDocumentsEnvEnabled` / `ifcModelsEnvEnabled`.
- */
-function optOut(raw: string | undefined): boolean {
-  const value = (raw ?? '').trim().toLowerCase()
-  return value === '' || !['false', '0', 'no', 'off'].includes(value)
-}
 
 /**
  * The commit this image was built from, or {@link UNKNOWN_SHA}.
@@ -85,14 +63,13 @@ export function deployedSha(env: NodeJS.ProcessEnv = process.env): string {
   return sha === '' ? UNKNOWN_SHA : sha
 }
 
-/** The effective value of each of the four gates, for this process's env. */
-export function bootFlags(env: NodeJS.ProcessEnv = process.env): BootFlags {
-  return {
-    skills: optIn(env.GRID_SKILLS_ENABLED),
-    collaboration: optIn(env.GRID_COLLABORATION_ENABLED),
-    enforceFlags: optIn(env.GRID_ENFORCE_FEATURE_FLAGS),
-    agentDocs: optOut(env.GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED),
-  }
+/**
+ * `flagsFromWorkOS`, for this process's env: WorkOS wherever people sign in.
+ * The exact rule `isAuthRequired` applies — case-insensitive, NOT trimmed — so
+ * the line cannot claim WorkOS for a value the gate reads as anonymous.
+ */
+export function flagSource(env: NodeJS.ProcessEnv = process.env): FlagSource {
+  return (env.REQUIRE_AUTH ?? '').toLowerCase() === 'true' ? 'workos' : 'defaults'
 }
 
 /**
@@ -101,14 +78,10 @@ export function bootFlags(env: NodeJS.ProcessEnv = process.env): BootFlags {
  * pretty multi-line banner is not.
  */
 export function formatBootLine(facts: BootFacts): string {
-  const { sha, flags } = facts
-  return (
-    `[boot] sha=${sha} skills=${flags.skills} collaboration=${flags.collaboration}` +
-    ` enforceFlags=${flags.enforceFlags} agentDocs=${flags.agentDocs}`
-  )
+  return `[boot] sha=${facts.sha} flags=${facts.flags}`
 }
 
 /** {@link formatBootLine} for the current process. */
 export function bootLine(env: NodeJS.ProcessEnv = process.env): string {
-  return formatBootLine({ sha: deployedSha(env), flags: bootFlags(env) })
+  return formatBootLine({ sha: deployedSha(env), flags: flagSource(env) })
 }

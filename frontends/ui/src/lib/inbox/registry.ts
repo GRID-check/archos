@@ -15,6 +15,7 @@
 import { z } from 'zod'
 import { INBOX_ITEM_TYPES, type InboxItemType, type InboxTargetType } from '@/lib/db/schema'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
+import type { PushCategory, PushUrgency } from './push-categories'
 import type { SkipReason } from '@/lib/inbound-mail/types'
 
 /**
@@ -63,6 +64,11 @@ export interface InboxTypeDefinition {
    * {@link InboxEmailDefault} and `./delivery`.
    */
   readonly email: InboxEmailDefault
+  /**
+   * How the type reaches a person's phone or desktop as a system notification
+   * (ADR-0112). See {@link InboxPushPolicy} and `./push-policy`.
+   */
+  readonly push: InboxPushPolicy
 }
 
 /**
@@ -89,6 +95,23 @@ export type InboxEmailDefault =
   | { readonly send: 'never' }
   | { readonly send: 'if-unread'; readonly afterMinutes: number }
 
+/**
+ * How a type is pushed (ADR-0112). Not a yes or no: every type may reach a
+ * device the person turned notifications on for, and the person decides per
+ * `category` (`./push-categories`), whose default is on for what is addressed to
+ * them and off for ambient activity. `urgency` is what the push service is told
+ * about how soon the device should wake for it.
+ *
+ * Unlike the email policy, push has no delay: a notification is only worth
+ * sending while the item is unread, and the job that sends it checks that at
+ * the moment it runs (`lib/push/inbox-push-job.ts`), which is the same
+ * cancellation email gets from reading a row first.
+ */
+export interface InboxPushPolicy {
+  readonly category: PushCategory
+  readonly urgency: PushUrgency
+}
+
 const IN_APP_ONLY: InboxEmailDefault = { send: 'never' }
 
 export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> = {
@@ -100,6 +123,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'collaboration',
     email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
   },
   // "Your request was answered" — one per answered request.
   'mention.answered': {
@@ -108,6 +132,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'normal' },
   },
   // "You now have access" — one per resource; re-sharing should not stack.
   'conversation.shared_with_you': {
@@ -116,6 +141,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'access', urgency: 'normal' },
   },
   // Ambient thread activity — the type that MUST collapse, or the inbox is noise.
   'conversation.activity': {
@@ -124,6 +150,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
   },
   /*
     Storage pressure (ADR-0042). `per-anchor` rather than `collapse`, and the
@@ -142,6 +169,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 0 },
+    push: { category: 'office', urgency: 'normal' },
   },
   'document.assigned_to_you': {
     actionable: false,
@@ -149,6 +177,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'access', urgency: 'normal' },
   },
   /*
     A background run ended. `per-anchor` with the backend job id as the anchor:
@@ -165,6 +194,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
   },
   'job.failed': {
     actionable: false,
@@ -172,6 +202,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'results', urgency: 'normal' },
   },
   /*
     A run has a question for the person who asked for it (ADR-0062, `wartet`).
@@ -187,6 +218,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'requests', urgency: 'high' },
   },
   /*
     A version is waiting for a decision (ADR-0054). Actionable, because it IS an
@@ -208,6 +240,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'normal' },
   },
   /*
     A member sent product feedback (Platform → Feedback). Informational: the
@@ -230,6 +263,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
   },
   'mail_import.failed': {
     actionable: false,
@@ -237,6 +271,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'results', urgency: 'normal' },
   },
   'feedback.submitted': {
     actionable: false,
@@ -244,6 +279,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 90,
     gate: 'platform',
     email: { send: 'if-unread', afterMinutes: 0 },
+    push: { category: 'office', urgency: 'low' },
   },
   /*
     An upload of yours has been read (ADR-0086). `per-anchor` on the batch id:
@@ -256,6 +292,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
   },
   /*
     The content check held files back (ADR-0086). `collapse` per organization:
@@ -269,6 +306,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'office', urgency: 'normal' },
   },
   /*
     The uploader asks for a quarantined file to be released (ADR-0086).
@@ -282,6 +320,94 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'office', urgency: 'normal' },
+  },
+  /*
+    A newer Fassung of a document the recipient follows (ADR-0054, ADR-0099).
+    `per-anchor`: the anchor is the older document (a confirmed link) or the new
+    version (a same-name upload), so two Fassungen of one document are two rows
+    and confirming the same link twice folds into one. Informational: the
+    document opens from the row and nothing waits on the reader. Operational,
+    like `document.review_requested`: documents are not a chat feature, and an
+    office without collaboration still has uploaders to tell.
+  */
+  'document.new_fassung': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
+  },
+  /*
+    Piloti finished a turn on an Anmerkung for the person who woke it (ADR-0106).
+    `per-anchor` on the MARK: a second answer on the same mark folds into the
+    row it has, which is the row the reader is about to open. Informational: the
+    answer is in the thread, nothing waits on the reader. Operational, like
+    `document.review_requested`: marks are not a chat feature. Short retention:
+    it announces work that is already visible on the mark. A failure is the one
+    worth keeping and mailing, as `job.failed` is: the person delegated the mark
+    and may have left.
+  */
+  'piloti.work_done': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 30,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
+  },
+  'piloti.work_failed': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'results', urgency: 'normal' },
+  },
+  /*
+    Piloti asked a question and waits for a person. Actionable, because the
+    mark is stuck until someone answers and the badge is what shows it; resolved
+    by `onMarkSettledByPerson`, so it never sits there for good. `per-anchor` on
+    the mark: a follow-up question folds into the row, and a second mark is a
+    second row. Kept as long as a mention, for the same reason.
+  */
+  'piloti.asks_you': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
+  },
+  /*
+    A stored proposal waits for a decision (ADR-0105). Actionable until it is
+    applied or dismissed. In-app only: it is a suggestion Piloti made while the
+    person was working with it, not a request against them, so it does not earn
+    mail. `per-anchor` on the proposal.
+  */
+  'piloti.proposal_waiting': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'requests', urgency: 'normal' },
+  },
+  /*
+    A reading of the project's documents is ready for review (ADR-0111).
+    Actionable: the suggestions count for nothing until a person confirms them,
+    and the badge is what says so. `per-anchor` on the intake: the next reading
+    of the same project folds into the row. Resolved by `completeIntake`, for
+    everyone, so it never sits there for good.
+  */
+  'piloti.intake_ready': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'requests', urgency: 'normal' },
   },
   /*
     A mail the reader sent to a project's inbox address was filed (ADR-0075).
@@ -297,6 +423,8 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    // The outcome of what the reader did, as a finished mail import is.
+    push: { category: 'results', urgency: 'low' },
   },
   /*
     The inbox gave up on a mail the reader sent (every retry spent). Same frame
@@ -310,6 +438,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'normal' },
   },
 }
 
@@ -420,6 +549,21 @@ export function readInboxParams(
   const parsed = INBOX_PARAMS_SCHEMAS[type].safeParse(params)
   return parsed.success ? parsed.data : undefined
 }
+
+/**
+ * The types whose `anchorId` is an Anmerkung (a mark) of the document they
+ * point at. Their link opens the Prüfansicht at that mark; every other type
+ * anchored on a document anchors on something else (a Fassung), and must not be
+ * read as a mark.
+ */
+export const MARK_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = [
+  'piloti.work_done',
+  'piloti.work_failed',
+  'piloti.asks_you',
+]
+
+/** The types anchored on a proposal: a deep link into a chat must not read that anchor as a message. */
+export const PROPOSAL_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = ['piloti.proposal_waiting']
 
 /**
  * The permission that opens the platform lane of a reader's inbox.

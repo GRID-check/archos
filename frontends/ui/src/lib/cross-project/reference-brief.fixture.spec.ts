@@ -91,6 +91,8 @@ function asProject(office: FixtureOffice, fixture: FixtureProject): Project {
     profileDisplay: fixture.summary ? { title: fixture.name, summary: fixture.summary, keyFacts: [], missingInfo: [] } : null,
     profileUpdatedAt: null,
     status: fixture.status,
+    pausedAt: null,
+    closedOutcome: closed ? 'completed' : null,
     closedAt: closed ? new Date(`${fixture.endedOn ?? '2013-01-01'}T00:00:00Z`) : null,
     closedBy: closed ? 'user_precedent_eval' : null,
     startedOn: fixture.startedOn ?? null,

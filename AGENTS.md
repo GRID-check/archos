@@ -1,8 +1,11 @@
 # Grid Agent Contributor Guide
 
-Piloti is the workspace in which a planning office runs a building project: a Next.js UI and BFF
-(`frontends/ui`), a Python agent on the NeMo Agent Toolkit (`src/aiq_agent`),
-and a custom OIB knowledge source.
+Piloti is the workspace for architects: a planning office runs its work in it, every project and
+every process, and Piloti, the agent, is a colleague in that office. Building law is one capability
+among many. [`VISION.md`](VISION.md) says what the product is; read it before you describe Piloti
+anywhere. The code: a Next.js UI and BFF (`frontends/ui`), a Python agent on the NeMo Agent Toolkit
+(`src/aiq_agent`), and the knowledge layer that reads the office's documents and the legal corpus
+(`sources/knowledge_layer`).
 
 ## Setup
 
@@ -22,6 +25,7 @@ Node must already be on the PATH. Install lines:
 | Question | Go to |
 |---|---|
 | Where does X live in the code | [`docs/architecture/where-is-what.md`](docs/architecture/where-is-what.md) |
+| What is Piloti, and what is it not | [`VISION.md`](VISION.md) |
 | What does this word mean | [`CONTEXT.md`](CONTEXT.md) for the domain, [`docs/glossary.md`](docs/glossary.md) for the code |
 | Set up, branch, commit, get a PR merged | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Everything written down, by the question you arrived with | [`docs/README.md`](docs/README.md) |
@@ -135,8 +139,10 @@ ones that will fail your PR.
 |---|---|---|
 | Write a commit, or open **or rename** a PR | Conventional Commits — `feat` `fix` `docs` `refactor` `perf` `test` `ci` `build` `chore` `revert`. The **PR title** most of all: the repo squash-merges it, so the title is the commit that lands on `develop`. [`CONTRIBUTING.md`](CONTRIBUTING.md#commits-and-pr-titles) | The **Conventional PR title** job blocks the PR. A prose title is the one that keeps slipping through, because nothing local checks it |
 | Name anything in code | English only. German just in UI copy, answers, domain data | Review |
-| Add an environment variable | Add its row to [`docs/deployment/environment-variables.md`](docs/deployment/environment-variables.md) in the same change | Review |
-| Change what a customer can notice | `task release:note -- <slug>` | CI's **Repo checks** job (its release-note step) |
+| Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `tests/aiq_agent/test_product_framing.py` (agent prompts), `frontends/web/scripts/lint-claims.mjs` (the site); review elsewhere |
+| Describe what Piloti is, in a doc, a prompt or copy | Lead with the workspace for architects; building law is one capability, never the frame ([`VISION.md`](VISION.md)) | `tests/aiq_agent/test_product_framing.py` on the first-impression docs and every agent prompt; review elsewhere |
+| Add an environment variable | Add its row to [`docs/deployment/environment-variables.md`](docs/deployment/environment-variables.md) in the same change | The `env-docs` pre-commit hook (`scripts/check_env_docs.py`) for the queue-worker files; review elsewhere |
+| Change what a customer can notice | `task release:note -- <slug>` | The `release-notes` pre-commit hook (house rules), then CI's **Repo checks** job (its release-note step) |
 | Change what a customer can **see** | Capture it and attach it to the PR — `agent-browser` to shoot, `before-and-after` to publish. Commit no image files. [`docs/ux/visual-screenshots.md`](docs/ux/visual-screenshots.md) | Review |
 | Add or edit anything under `skills/` | Add a skill only for agent-specific procedure; anything a contributor needs too is a document ([the rule](docs/contributing/agent-skills.md#skill-or-document)). Commit the re-locked `apm.lock.yaml` with it — `task agents:audit` rewrites it for you. The deployment is gitignored, so nothing else in your diff shows the lockfile went stale | `task lint:repo` and CI's **Repo checks** job for the lockfile; review for the rule |
 | Change behaviour a doc describes | Update the doc in the same commit | Review. Stale docs are a bug, because an agent acts on them |
@@ -150,9 +156,10 @@ calls the same definitions but schedules them differently, so a local pass is
 strong evidence rather than a guarantee. `task verify:fast` skips two production
 builds, `fe:build` and `web:build`.
 
-Two gates sit outside `task verify` and are still required: `task db:test:rls`
-whenever you touch the tenant boundary, and `task pkg:test` whenever you touch
-`packages/`. CI runs both (the Frontend job and the packages job), so a PR cannot merge without them; they stay
+Three gates sit outside `task verify` and are still required: `task db:test:rls`
+whenever you touch the tenant boundary, `task be:test:postgres` whenever you touch
+a Python claim queue's SQL (the BFF queue's is covered by `db:test:rls`), and `task pkg:test` whenever you touch `packages/`. CI runs
+all three (the Frontend, Backend and packages jobs), so a PR cannot merge without them; they stay
 out of `verify` because each needs something a per-commit gate should not pay
 for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 

@@ -1,7 +1,12 @@
 /**
- * Document item API — rename a document (PATCH) and delete a project document
- * (DELETE). Thin handlers; authorization and all logic live in
- * `@/lib/documents/service`.
+ * Document item API — read one document as a listing row (GET), rename a
+ * document (PATCH) and delete a project document (DELETE). Thin handlers;
+ * authorization and all logic live in `@/lib/documents/service` and
+ * `@/lib/documents/listed-document`.
+ *
+ * GET is scope-aware like PATCH: a project document or an Archiv document, as
+ * the row its shelf's listing would carry (`toDocumentWireRows`), for a link to
+ * a document the paged Files level has not loaded (ADR-0102).
  *
  * PATCH is SCOPE-AWARE, like the sibling item routes (download/preview/status/
  * reingest/tags) under this `[id]` folder: it renames a project document and an
@@ -16,9 +21,24 @@
 import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { deleteDocument, renameDocument } from '@/lib/documents/service'
+import { getListedDocument } from '@/lib/documents/listed-document'
+import { toDocumentWireRows } from '@/lib/documents/list-projection'
 import { MAX_DOCUMENT_NAME_LENGTH } from '@/lib/documents/display-name'
 
 type Params = { id: string }
+
+export const GET = apiRoute<Params>(
+  async ({ session, params }) => {
+    const listed = await getListedDocument(session, params.id)
+    const [document] = await toDocumentWireRows(session.organizationId, [listed])
+    return { document }
+  },
+  {
+    authz: {
+      enforcedBy: 'getListedDocument -> getAccessibleDocument (project:view | any member of the Archiv organization)',
+    },
+  }
+)
 
 /**
  * `null` is a real value here, not an omission: it CLEARS the rename and

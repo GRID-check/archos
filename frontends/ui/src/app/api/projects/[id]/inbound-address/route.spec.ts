@@ -10,17 +10,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/lib/auth/require-auth', () => ({
-  requireAuthorizedSession: vi.fn().mockResolvedValue({
+const { SESSION } = vi.hoisted(() => ({
+  SESSION: {
     userId: 'user-1',
     organizationId: 'org-1',
     organizationMembershipId: 'om-1',
     email: 'anna@buero-a.at',
     role: 'member',
-    permissions: [],
-    featureFlags: [],
-  }),
+    permissions: [] as string[],
+    featureFlags: ['project-mail-inbox'] as string[] | null,
+  },
 }))
+vi.mock('@/lib/auth/require-auth', () => ({ requireAuthorizedSession: vi.fn() }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
 vi.mock('@/lib/projects/repository', () => ({
   findProjectInOrg: vi.fn().mockResolvedValue({ id: 'proj-1', name: 'Wohnbau Hietzing' }),
@@ -34,6 +35,8 @@ vi.mock('@/lib/inbound-mail/repository', () => ({
 }))
 
 import { NotFoundError } from '@/lib/api/errors'
+import { requireAuthorizedSession } from '@/lib/auth/require-auth'
+import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { InboundMailAddressRow } from '@/lib/db/schema'
 import {
@@ -60,6 +63,11 @@ const row = (token: string): InboundMailAddressRow => ({
   revokedBy: null,
 })
 
+/** The organization's `project-mail-inbox` flag is off: the session carries no claim for it. */
+function switchOff() {
+  vi.mocked(requireAuthorizedSession).mockResolvedValue({ ...SESSION, featureFlags: [] } as unknown as AuthorizedSession)
+}
+
 /** Grant exactly the permissions listed; anything else is the 404 a non-member gets. */
 function grant(held: string[], role: 'project-editor' | 'project-admin' = 'project-editor') {
   vi.mocked(requireProjectAccess).mockImplementation(async (_session, _project, permission) => {
@@ -73,8 +81,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   setLimitStore(createInProcessStore())
   vi.stubEnv('GRID_INBOUND_MAIL_DOMAIN', 'piloti-post.at')
-  vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', '')
-  vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', 'true')
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+  vi.mocked(requireAuthorizedSession).mockResolvedValue(SESSION as unknown as AuthorizedSession)
   vi.mocked(findActiveAddressForProject).mockResolvedValue(row('abcdefgh2345'))
   vi.mocked(insertAddress).mockImplementation(async (input) => ({ ok: true, row: row(input.token) }))
   vi.mocked(rotateAddress).mockImplementation(async (input) => ({ ok: true, row: row(input.token) }))
@@ -130,18 +138,16 @@ describe('GET /api/projects/[id]/inbound-address', () => {
 
   it('reports disabled, and mints nothing, while the organization switch is off', async () => {
     grant(['project:documents:write'])
-    vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', '')
+    switchOff()
     vi.mocked(findActiveAddressForProject).mockResolvedValue(null)
     const body = inboundAddressResponseSchema.parse(await (await GET(new Request(url), context)).json())
     expect(body).toEqual({ enabled: false, address: null, canRotate: false })
     expect(insertAddress).not.toHaveBeenCalled()
   })
 
-  it('reads the per-organization flag under enforcement', async () => {
+  it('is off where nobody signs in: an entitlement, whatever a session claims', async () => {
     grant(['project:documents:write'])
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
-    vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', 'true')
-    // The session carries no `project-mail-inbox` flag: off, whatever the env says.
+    vi.stubEnv('REQUIRE_AUTH', 'false')
     const body = inboundAddressResponseSchema.parse(await (await GET(new Request(url), context)).json())
     expect(body.enabled).toBe(false)
   })
@@ -170,7 +176,7 @@ describe('POST /api/projects/[id]/inbound-address/rotate', () => {
 
   it('is a 404 while the organization switch is off, and revokes nothing', async () => {
     grant(['project:manage'], 'project-admin')
-    vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', '')
+    switchOff()
     expect((await rotate()).status).toBe(404)
     expect(rotateAddress).not.toHaveBeenCalled()
   })

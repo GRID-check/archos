@@ -25,6 +25,8 @@ const FILE: FileItem = {
   chunkCount: null,
   contentTypes: null,
   tags: null,
+  topics: null,
+  capture: null,
 }
 
 describe('file-preview-store', () => {
@@ -118,6 +120,18 @@ describe('file-preview-store', () => {
     it('leaves the default alone when nothing is remembered', () => {
       expect(useFilePreviewStore.getState().restorePeekWidth()).toBeNull()
       expect(useFilePreviewStore.getState().peekWidth).toBe(320)
+    })
+
+    it('opens a phone on its side at 45% of its width, not 320px', () => {
+      const real = window.matchMedia
+      window.matchMedia = ((query: string) => ({ matches: query.includes('pointer: coarse') }) as MediaQueryList) as typeof window.matchMedia
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 852 })
+      try {
+        expect(useFilePreviewStore.getState().restorePeekWidth()).toBe(383)
+        expect(useFilePreviewStore.getState().peekWidth).toBe(383)
+      } finally {
+        window.matchMedia = real
+      }
     })
 
     it('lets the pane past the old 560px ceiling', () => {

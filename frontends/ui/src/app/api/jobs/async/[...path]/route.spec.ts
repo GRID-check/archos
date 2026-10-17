@@ -192,7 +192,7 @@ describe('/api/jobs/async/[...path] proxy — POST org model overrides', () => {
     organizationMembershipId: 'membership-1',
     role: 'member',
     permissions: [] as string[],
-    featureFlags: null,
+    featureFlags: ['deep-research'],
   }
 
   beforeEach(() => {
@@ -281,7 +281,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     organizationMembershipId: 'membership-1',
     role: 'member',
     permissions: [] as string[],
-    featureFlags: null,
+    featureFlags: ['deep-research'],
   }
 
   beforeEach(() => {
@@ -353,6 +353,8 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
       ],
       // The backend refuses an envelope without one as a grant (ADR-0084).
       issuedAt: expect.any(Number),
+      // Who the job is for, by name: what the agent's prompt calls the person.
+      requester: { name: 'Test User', email: 'user@grid.example', organizationName: null },
     })
   })
 
@@ -456,7 +458,7 @@ describe('/api/jobs/async/[...path] proxy — filing a commissioned report', () 
     organizationMembershipId: 'membership-1',
     role: 'member',
     permissions: ['project:documents:write'],
-    featureFlags: null,
+    featureFlags: ['deep-research'],
   }
 
   const reportResponse = (body: Record<string, unknown>) =>
@@ -824,7 +826,7 @@ describe('/api/jobs/async/[...path] proxy — every method carries the signed en
     organizationMembershipId: 'membership-1',
     role: 'member',
     permissions: [] as string[],
-    featureFlags: null,
+    featureFlags: ['deep-research'],
   }
 
   const sentHeaders = (call = 0): Record<string, string> =>

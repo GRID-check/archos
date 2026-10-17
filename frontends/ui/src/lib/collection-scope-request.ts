@@ -13,7 +13,6 @@ import {
   type ScopeContext,
   type ScopedCollection,
 } from '@/lib/collection-scope'
-import { FEATURE_FLAGS, isFeatureEnabled } from '@/lib/authz/feature-flags'
 import { archivCollectionName } from '@/lib/archiv/collection'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
 
@@ -119,7 +118,7 @@ export async function resolveActiveProjectId(
  * scope above, but it is not a conversation anybody checked, so it is never one
  * the BFF signs as reachable (`verifiedConversationId`, ADR-0084).
  */
-async function authorizeConversationScope(
+export async function authorizeConversationScope(
   session: AuthorizedSession,
   conversationId: string
 ): Promise<boolean> {
@@ -265,12 +264,10 @@ export async function buildCollectionScopeFromRequest(
     : undefined
 
   // Inject the org-wide Archiv collection for every authenticated request in an
-  // org that has the feature enabled — this is what makes the Archiv "shared
-  // across every project" (ADR-0024). Anonymous requests have no org, so none.
+  // org — this is what makes the Archiv "shared across every project"
+  // (ADR-0024). Anonymous requests have no org, so none.
   const archivCollection =
-    session?.organizationId && !anonymous && isFeatureEnabled(session, FEATURE_FLAGS.orgArchiv)
-      ? archivCollectionName(session.organizationId)
-      : undefined
+    session?.organizationId && !anonymous ? archivCollectionName(session.organizationId) : undefined
 
   // Every collection below is BUILT here, so its shelf is known here (ADR-0047:
   // the shelf travels as data). Nothing re-reads a name to recover it — the map

@@ -15,7 +15,7 @@ is fair game.
 
 ## 1. What the click dummy is
 
-A German-language, project-centric shell around one core surface ("Frag Piloti"):
+A German-language, project-centric workspace. The project shell's navigation holds Frag Piloti (chat), Workflows, Dateien, Archiv and Historie:
 
 - **Home = Projektübersicht** (no sidebar): project-card grid (name, address,
   Aktiv/Abgeschlossen chip, last activity, per-card settings) + a full-width
@@ -407,8 +407,9 @@ section and two tiles in the first cut and were taken out again: they did not
 answer a question a person opens the hub with. The briefing is edited in the
 intake wizard, linked from the hero.
 
-The Steckbrief (ADR-0091) and the close/reopen card (ADR-0090) sit in the grid
-as cells. Similar projects (ADR-0094) arrived as a rail entry of its own and
+The Steckbrief (ADR-0091, ADR-0101) is a tile like the others, a summary whose
+„Bearbeiten" opens its editor in a dialog; the close/reopen card (ADR-0090) sits
+in the grid as a cell. Similar projects (ADR-0094) arrived as a rail entry of its own and
 moved in here (2026-10-10): it is reference reading about this project, not a
 place to work, so it is a tile with the three most alike and a hub section with
 every one; `/referenzen` redirects to that section. Behind a tab strip, each section answers one question

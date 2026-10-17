@@ -28,6 +28,16 @@ export const collaboration = {
     /** Button in the chat toolbar. */
     action: 'Share',
     close: 'Close',
+    /** The link to the chat: it only opens for people who already have access. */
+    link: {
+      heading: 'Link',
+      share: 'Share link',
+      copy: 'Copy link',
+      copied: 'Link copied',
+      failed: 'The link could not be copied.',
+      hint: 'The link opens the chat only for people who have access. Anyone who does not yet is invited above.',
+      shareTitle: 'Chat in Piloti',
+    },
     visibilityHeading: 'Who can see this',
     /** Screen-reader text while the sharing state is being fetched. */
     loading: 'Loading sharing settings…',
@@ -337,6 +347,9 @@ export const collaboration = {
     },
     markAllRead: 'Mark all as read',
     archive: 'Archive',
+    undo: 'Undo',
+    /** The short form for a phone, where the long one breaks the row. */
+    markAllReadShort: 'All read',
     archived: 'Archived',
     /** Item states. */
     resolved: 'Answered',
@@ -345,10 +358,17 @@ export const collaboration = {
     /**
      * The BODY of a redacted row — a complete sentence, because the templated
      * "in {subject}" needs a real title and the placeholder read as nonsense inside
-     * it. Says the same thing the chip does, in the position the body occupies.
+     * it. Says the same thing the chip does, in the position the body occupies,
+     * for whatever the row points at: a chat, a document, a mark.
      */
-    bodyUnavailable: 'This conversation is no longer available to you.',
+    bodyUnavailable: 'This is no longer available to you.',
     inertHint: 'You no longer have access to this.',
+    /**
+     * The next move on a new revision filed under another name: see the two side
+     * by side. Opens the file preview with the comparison open.
+     */
+    compareFassungen: 'Compare revisions',
+    compareFassungenLabel: 'Compare the new and the older revision of “{subject}”',
     empty: {
       needsMeTitle: 'Nothing needs you',
       needsMeDescription: 'When a colleague asks for your input, it shows up here.',
@@ -427,7 +447,7 @@ export const collaboration = {
         body: 'from {subject} — open it to triage.',
       },
       storageQuotaWarning: {
-        title: 'Your organisation is running out of storage',
+        title: 'Your organization is running out of storage',
         body: '{subject} of the storage quota is in use. Once it is full, uploads will start failing — delete documents you no longer need, or ask whoever runs Piloti for you to raise the quota.',
       },
       /**
@@ -451,15 +471,17 @@ export const collaboration = {
         titleOne: '1 file is waiting in quarantine',
         titleMany: '{count} files are waiting in quarantine',
         titleNone: 'Files in quarantine',
-        body: 'No model has read them. Release or delete them.',
+        body: 'No model has read them. Review them: allow or delete.',
       },
       documentReleaseRequested: {
-        title: '{actor} asks you to release “{subject}”',
-        body: 'The file is in quarantine. Look at it, then release or delete it.',
+        title: '{actor} asks you to review “{subject}”',
+        body: 'The file is in quarantine. Look at it, then allow or delete it.',
       },
+      // The row lands on the run itself (its block in the thread, else the
+      // task), where the result and the reason are.
       jobCompleted: {
-        title: '"{subject}" is done',
-        body: 'Piloti ran the job. The result is in the project under Automation.',
+        title: 'Piloti finished “{subject}”',
+        body: 'Open it to see the result.',
       },
       // An Outlook archive was imported. {subject} is the archive's file name.
       mailImportCompleted: {
@@ -471,20 +493,100 @@ export const collaboration = {
         body: 'What was imported until then stays in the project. The import list under Files gives the reason.',
       },
       jobFailed: {
-        title: '"{subject}" failed',
-        body: 'The job could not be completed. The run history in the project names the reason.',
+        title: 'Piloti could not finish “{subject}”',
+        body: 'Open it to see what went wrong.',
       },
       // A run stopped to ask its requester something (ADR-0062, `wartet`). The
       // body says where the answer goes, because the run resumes nowhere else.
       jobWaiting: {
-        title: '"{subject}" is waiting for you',
-        body: 'Piloti has a question about this task. Answer it in the thread and the run carries on.',
+        title: 'Piloti has a question about “{subject}”',
+        body: 'Answer it in the thread and Piloti carries on.',
       },
-      // A version of a document is waiting for a decision (ADR-0054).
+      // A revision of a document is waiting for a decision (ADR-0054).
       // {subject} is the document, {actor} whoever submitted it.
       documentReviewRequested: {
         title: '{actor} asked you to review {subject}',
-        body: 'A new version is waiting for your approval.',
+        body: 'A new revision is waiting for your approval.',
+      },
+      // A newer revision (Fassung) of a document you follow, as a sentence about
+      // the person who uploaded it. {actor} is that person, {subject} the
+      // document you follow (without its extension). What changed is the
+      // excerpt below; only without one does `bodyNoExcerpt` say where to look.
+      // `titleNoActor` when nobody in particular did it.
+      documentNewFassung: {
+        title: '{actor} uploaded a new revision of “{subject}”',
+        titleNoActor: 'New revision of “{subject}”',
+        bodyNoExcerpt: 'Open the revision to see what changed.',
+      },
+      // What Piloti did on an Anmerkung, told to the person whose act woke it:
+      // who delegated the mark, mentioned Piloti in it, or answered Piloti's
+      // Rückfrage (ADR-0106). {related} is the mark's running number,
+      // {subject} the document; the excerpt below is what the mark says. No
+      // {actor}: that was Piloti. `titleRelatedNoSubject` when the document
+      // could not be named. Same words as the review view: annotation, thread,
+      // delegate.
+      pilotiWorkDone: {
+        title: 'Piloti worked on an annotation for you',
+        titleRelated: 'Piloti worked on annotation {related} in “{subject}” for you',
+        titleRelatedNoSubject: 'Piloti worked on annotation {related} for you',
+        body: 'Read the answer in the annotation’s thread.',
+      },
+      // Piloti could not. `variants` say why, by the class of the wake's
+      // stored reason (`lib/annotations/wake-end-reason.ts`), and what the
+      // person can do about it; `body` is for a row stored before the reason
+      // was kept.
+      pilotiWorkFailed: {
+        title: 'Piloti could not work on an annotation',
+        titleRelated: 'Piloti could not work on annotation {related} in “{subject}”',
+        titleRelatedNoSubject: 'Piloti could not work on annotation {related}',
+        body: 'Open the annotation: ask Piloti again or work on it yourself.',
+        variants: {
+          budget: {
+            body: 'The usage budget is used up. Whoever manages your organization can raise it under Organization → Usage & budgets; then ask Piloti again.',
+          },
+          busy: {
+            body: 'Piloti did not get to it in time because too much was going on. Ask Piloti again later.',
+          },
+          access: {
+            body: 'Piloti could not sign in on your behalf. Ask Piloti again, or work on the annotation yourself.',
+          },
+          error: {
+            body: 'The work broke off before there was an answer. Ask Piloti again, or work on the annotation yourself.',
+          },
+        },
+      },
+      // Piloti asked a question and waits for a person: the mark's assignee,
+      // or the person it worked for. The question is the excerpt below.
+      pilotiAsksYou: {
+        title: 'Piloti has a question for you on an annotation',
+        titleRelated: 'Piloti has a question for you on annotation {related} in “{subject}”',
+        titleRelatedNoSubject: 'Piloti has a question for you on annotation {related}',
+        body: 'Piloti is waiting for your answer. Reply in the annotation’s thread.',
+      },
+      // A proposal the server holds (ADR-0105), for the person Piloti made it
+      // for. `variants` name what it changes (a file operation by its verb,
+      // the rest by kind: `PROPOSAL_NOTICE_VARIANTS`); the excerpt below names
+      // the files, the note or the change. Words as on the card.
+      pilotiProposalWaiting: {
+        title: 'Piloti has a proposal for you',
+        body: 'The proposal is in the chat. Apply or dismiss it there; nothing changes until then.',
+        variants: {
+          move: { title: 'Piloti suggests a new place for files' },
+          rename: { title: 'Piloti suggests a rename' },
+          create_folder: { title: 'Piloti suggests a new folder' },
+          assign: { title: 'Piloti suggests an assignment' },
+          memory: { title: 'Piloti would like to remember a note' },
+          project_profile: { title: 'Piloti suggests a change to the project context' },
+        },
+      },
+      // Piloti read a project's documents and suggested values for its profile
+      // (ADR-0111). {subject} is the project's name, {related} the number of
+      // questions that decide the building class; absent when there are none,
+      // and `title` is read. Piloti's summary is the excerpt below.
+      pilotiIntakeReady: {
+        title: 'Piloti has read the documents of “{subject}”',
+        titleRelated: 'Piloti has read the documents of “{subject}” – questions: {related}',
+        body: 'Review the suggestions and confirm what is right.',
       },
       // The files of a mail sent to the project address were filed (ADR-0075).
       // {subject} is the mail's subject, {project} the project, {filed} and
@@ -531,7 +633,7 @@ export const collaboration = {
     unknownActor: 'Someone',
     untitledConversation: 'Untitled conversation',
     /**
-     * Triage of a version waiting for a decision, inline on the row: the three
+     * Triage of a revision waiting for a decision, inline on the row: the three
      * decisions without leaving the inbox. Approving carries the same minimum
      * ceremony as on the file (explicit confirmation, never one click); the
      * two refusals carry their words, as the transition table requires.
@@ -542,23 +644,23 @@ export const collaboration = {
       reject: 'Reject',
       changesLabel: 'What needs to change',
       reasonLabel: 'Reason for rejection',
-      approveConfirm: 'I release this version',
-      // The signature mirrors the file pane: which stand is released (the row
-      // names the document, the version number and when the round opened — the
-      // number is required, nothing is released without it) and who acts when.
+      approveConfirm: 'I approve this revision',
+      // The signature mirrors the file pane: which revision is approved (the row
+      // names the document, the revision number and when the round opened — the
+      // number is required, nothing is approved without it) and who acts when.
       // No viewer name is known here, so the acting line is always the
       // date-only form; who asked is already in the title.
-      approveStand: '{subject} · version {number} · as of {date}',
+      approveStand: '{subject} · revision {number} · as of {date}',
       approveActing: 'Acting: {date}',
-      standFailed: 'The current version could not be read — approval is blocked until it is.',
+      standFailed: 'The current revision could not be read — approval is blocked until it is.',
       retry: 'Try again',
       send: 'Send',
       cancel: 'Cancel',
       open: 'Open file',
       decided: 'Decision sent — refreshing.',
       failed: 'That did not go through. Nothing has changed.',
-      stale: 'This has moved on — the current version is in the file.',
-      reload: 'Open current version',
+      stale: 'Someone decided first. The current revision is in the file.',
+      reload: 'Open current revision',
     },
   },
 

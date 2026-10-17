@@ -15,3 +15,32 @@ describe('DocumentStatusBadge queue position', () => {
     expect(screen.queryByText(/ahead/)).toBeNull()
   })
 })
+
+describe('DocumentStatusBadge state', () => {
+  it('says the file is uploading while the bytes arrive, not that it is being read', () => {
+    render(<DocumentStatusBadge status="uploading" />)
+    const badge = screen.getByText('Uploading').closest('[data-slot="badge"]')
+    expect(badge).toHaveAttribute('data-variant', 'info')
+  })
+
+  it('keeps a failed read failed', () => {
+    render(<DocumentStatusBadge status="failed" />)
+    expect(screen.getByText('Failed').closest('[data-slot="badge"]')).toHaveAttribute('data-variant', 'destructive')
+  })
+
+  it('carries a glyph per state, so states that share a colour still look different', () => {
+    const { rerender, container } = render(<DocumentStatusBadge status="processing" />)
+    expect(container.querySelector('[data-mark="reading"]')).not.toBeNull()
+    rerender(<DocumentStatusBadge status="pending" queueAhead={2} />)
+    expect(container.querySelector('[data-mark="queued"]')).not.toBeNull()
+    rerender(<DocumentStatusBadge status="stored" />)
+    expect(container.querySelector('[data-mark="stored"]')).not.toBeNull()
+  })
+
+  it('draws a failed read in the tinted error, the material of every other status', () => {
+    render(<DocumentStatusBadge status="failed" />)
+    const badge = screen.getByText('Failed').closest('[data-slot="badge"]')
+    expect(badge).toHaveClass('bg-danger-subtle')
+    expect(badge).not.toHaveClass('bg-destructive')
+  })
+})

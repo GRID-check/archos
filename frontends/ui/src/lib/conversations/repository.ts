@@ -12,11 +12,12 @@
  */
 
 import 'server-only'
-import { and, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
 import { stripJsonNullBytes } from '@/lib/text/jsonb'
 import {
+  answerFeedback,
   conversationReads,
   conversationRestrictedFolders,
   conversationSourceProjects,
@@ -499,16 +500,48 @@ export async function recordConversationErased(
 }
 
 /**
- * Delete a conversation (messages cascade) and the record of the restricted
- * folders and other projects it drew on. Tenant isolation lives in the WHERE clause — deleting by
- * id alone would let any signed-in user delete another org's conversation by
- * guessing ids.
+ * Delete a conversation (messages cascade), the votes cast on its answers, and
+ * the record of the restricted folders and other projects it drew on. Tenant
+ * isolation lives in the WHERE clause — deleting by id alone would let any
+ * signed-in user delete another org's conversation by guessing ids.
+ *
+ * The votes go with the chat because they are its words: a down-vote's comment
+ * and expected answer quote the answer and often the question, and
+ * `answer_feedback` has no foreign key to reach it (a vote must not race a
+ * conversation row that the client creates asynchronously). Left behind they
+ * were erased from nowhere, in a table the platform team reads. A vote is found
+ * by the conversation it names, or by the message id of an answer the chat holds
+ * (a vote cast before the row existed may carry no conversation); the second
+ * lookup needs the messages, so the votes are deleted BEFORE the row cascades
+ * them away. A retry after the row is gone finds the first form again.
+ *
+ * What stays, on purpose: `message_restricted_use` marks (ids only, no text,
+ * and the runtime role may not delete one; ADR-0093) and
+ * `platform_lesson_reports` (anonymised canonical summary and a pseudonymous
+ * org hash; its `feedback_id` then points at nothing, exactly as after a
+ * retracted vote, which that table was built to survive).
  */
 export async function deleteConversationInOrg(conversationId: string, organizationId: string): Promise<void> {
   const db = getDb()
-  await db
-    .delete(conversations)
-    .where(and(eq(conversations.id, conversationId), eq(conversations.organizationId, organizationId)))
+  // One transaction for the two deletes that must stand or fall together: a
+  // legal-hold trigger (GLH01) can refuse the row, and the votes must not have
+  // been erased for a chat that stays.
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(answerFeedback)
+      .where(
+        and(
+          eq(answerFeedback.organizationId, organizationId),
+          or(
+            eq(answerFeedback.conversationId, conversationId),
+            sql`${answerFeedback.messageId} in (select ${messages.id}::text from ${messages} where ${messages.conversationId} = ${conversationId} and ${messages.organizationId} = ${organizationId})`
+          )
+        )
+      )
+    await tx
+      .delete(conversations)
+      .where(and(eq(conversations.id, conversationId), eq(conversations.organizationId, organizationId)))
+  })
   // The record has no foreign key (a first turn runs before the row exists),
   // so it goes here, after the row it describes.
   await db
@@ -528,6 +561,24 @@ export async function deleteConversationInOrg(conversationId: string, organizati
       ),
     )
 }
+
+/**
+ * The conversations whose cards and proposals a project-wide reader may be
+ * told about: none that drew on a restricted folder (ADR-0087), none that drew
+ * on another project still restricting its readers (ADR-0094; a project closed
+ * now is read by the whole office). A correlated predicate on the
+ * `conversations` row in scope.
+ *
+ * One definition for every block built from a conversation's own words
+ * (PROPOSAL_DECISIONS reads messages here and `proposed_changes` rows in
+ * `lib/projects/proposal-decision-rows.ts`), so the two paths cannot disagree
+ * about which conversation is private. A function, not a constant: a module
+ * that only imports this file must not touch the schema while it loads.
+ */
+export const conversationOpenToProjectReaders = (): SQL => sql`(
+  not exists (select 1 from ${conversationRestrictedFolders} r where r.organization_id = ${conversations.organizationId} and r.conversation_id = ${conversations.id})
+  and not exists (select 1 from ${conversationSourceProjects} p where p.organization_id = ${conversations.organizationId} and p.conversation_id = ${conversations.id} and not exists (select 1 from ${projects} c where c.id = p.project_id and c.organization_id = p.organization_id and c.status = 'closed' and c.deleted_at is null))
+)`
 
 /**
  * A conversation's messages, oldest first, bounded to the most recent `limit`.
@@ -572,14 +623,11 @@ export async function listRecentMessagesWithCardDecisions(
         eq(conversations.organizationId, organizationId),
         isNull(conversations.deletedAt),
         sql`${messages.metadata} ? 'cardInteractions'`,
-        // A conversation that drew on a restricted folder (ADR-0087) keeps its
-        // proposals to itself: the block is read into every member's digest,
-        // and a card's words can carry what a restricted folder said.
-        sql`not exists (select 1 from ${conversationRestrictedFolders} r where r.organization_id = ${conversations.organizationId} and r.conversation_id = ${conversations.id})`,
-        // Nor does one that drew on another project still restricting its
-        // readers (ADR-0094): its cards can restate what that project's
-        // documents said. A project closed now is read by the whole office.
-        sql`not exists (select 1 from ${conversationSourceProjects} p where p.organization_id = ${conversations.organizationId} and p.conversation_id = ${conversations.id} and not exists (select 1 from ${projects} c where c.id = p.project_id and c.organization_id = p.organization_id and c.status = 'closed' and c.deleted_at is null))`,
+        // Neither one that drew on a restricted folder (ADR-0087) nor on another
+        // project still restricting its readers (ADR-0094) keeps its proposals
+        // to the block: it is read into every member's digest, and a card's
+        // words can carry what those documents said.
+        conversationOpenToProjectReaders(),
       ),
     )
     .orderBy(desc(messages.createdAt), desc(messages.id))

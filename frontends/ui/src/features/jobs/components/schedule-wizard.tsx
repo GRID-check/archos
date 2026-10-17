@@ -741,13 +741,30 @@ function WizardNav({
   const last = step === 'review'
 
   return (
-    <div className="border-border flex items-center justify-between gap-2 border-t pt-4">
-      <Button type="button" variant="ghost" onClick={onBack}>
+    <div
+      data-testid="wizard-nav"
+      className={cn(
+        // Pinned to the foot of the scroll region: the prompt box is eight rows
+        // high, and with the keyboard up a footer that scrolls away leaves
+        // "Weiter" below the fold while the person is still typing. The review
+        // step has three buttons, which cannot share a 393px row, so there the
+        // phone stacks them (save on top, back last) and the page never grows
+        // sideways to reach "Speichern".
+        'border-border bg-background sticky bottom-0 z-10 flex items-center justify-between gap-2 border-t pb-3 pt-3',
+        last && 'max-sm:flex-col-reverse max-sm:items-stretch',
+      )}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={onBack}
+        className={cn(last && 'max-sm:justify-center')}
+      >
         <ArrowLeft className="size-4" aria-hidden />
         {stepIndex === 0 ? t('builder.cancel') : t('builder.back')}
       </Button>
       {last ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-sm:flex-col-reverse max-sm:items-stretch">
           {/* Secondary, and never the busy one: exactly one control shows the
               spinner so a reader is never asked which of two buttons is the
               one that is working. Both are disabled while it saves. */}

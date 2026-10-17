@@ -35,7 +35,7 @@ vi.mock('@/lib/documents/lifecycle', () => ({
 }))
 
 import { listDocumentsPage } from '@/lib/documents/service'
-import { encodeDocumentListCursor } from '@/lib/documents/list-cursor'
+import { encodeDocumentLevelCursor, encodeDocumentListCursor } from '@/lib/documents/list-cursor'
 import { GET } from './route'
 
 const call = (query: string) =>
@@ -90,5 +90,66 @@ describe('GET /api/documents', () => {
 
   it('refuses a cursor it did not write', async () => {
     expect((await call('?projectId=proj_1&cursor=not-a-cursor')).status).toBe(400)
+  })
+
+  // A folder level, page by page (ADR-0102): the Files workspace's read. The
+  // drain above stays what it was, because four other readers follow it.
+  describe('a level read', () => {
+    const FOLDER = '00000000-0000-4000-8000-0000000000f1'
+
+    it('passes no level for the drain', async () => {
+      await call('?projectId=proj_1')
+      expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).not.toHaveProperty('level')
+    })
+
+    it('passes the folder, order, search and families to the service', async () => {
+      await call(`?projectId=proj_1&folderId=${FOLDER}&sort=name&dir=desc&q=EG&state=failed,held&limit=50`)
+      expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).toMatchObject({
+        level: { folderId: FOLDER, sort: 'name', dir: 'desc', q: 'EG', states: ['failed', 'held'], limit: 50 },
+      })
+    })
+
+    it('reads the root for folderId=root', async () => {
+      await call('?projectId=proj_1&folderId=root')
+      expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).toMatchObject({ level: { folderId: null, limit: 100 } })
+    })
+
+    it('clamps the limit instead of refusing it', async () => {
+      await call('?projectId=proj_1&folderId=root&limit=100000')
+      expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).toMatchObject({ level: { limit: 500 } })
+      await call('?projectId=proj_1&folderId=root&limit=0')
+      expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).toMatchObject({ level: { limit: 1 } })
+    })
+
+    it.each([
+      ['a folder that is not one', '&folderId=inbox'],
+      ['an order it cannot sort by', '&sort=status'],
+      ['a family nobody declared', '&folderId=root&state=lost'],
+      ['a limit that is not a number', '&folderId=root&limit=many'],
+    ])('refuses %s with a 400', async (_label, query) => {
+      expect((await call(`?projectId=proj_1${query}`)).status).toBe(400)
+    })
+
+    it('refuses a cursor read under another order', async () => {
+      const cursor = encodeDocumentLevelCursor({
+        sort: 'name',
+        dir: 'asc',
+        value: 'plan.pdf',
+        id: '00000000-0000-4000-8000-000000000001',
+      })
+      expect((await call(`?projectId=proj_1&folderId=root&sort=size&cursor=${cursor}`)).status).toBe(400)
+    })
+
+    it('refuses a drain cursor on a level read, and a level cursor on the drain', async () => {
+      const drain = encodeDocumentListCursor({ createdAt: '2026-01-01T00:00:00.123456', id: '00000000-0000-4000-8000-000000000001' })
+      expect((await call(`?projectId=proj_1&folderId=root&cursor=${drain}`)).status).toBe(400)
+      const level = encodeDocumentLevelCursor({
+        sort: 'added',
+        dir: 'desc',
+        value: '2026-01-01T00:00:00.123456',
+        id: '00000000-0000-4000-8000-000000000001',
+      })
+      expect((await call(`?projectId=proj_1&cursor=${level}`)).status).toBe(400)
+    })
   })
 })

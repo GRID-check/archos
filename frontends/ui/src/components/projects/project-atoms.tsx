@@ -43,10 +43,12 @@
 
 import type { JSX } from 'react'
 import Link from 'next/link'
-import { Clock3, FileText, MessageSquare, Settings } from 'lucide-react'
+import { Clock3, FileText, LayoutDashboard, MessageSquare } from 'lucide-react'
 import { useMemo } from 'react'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { projectInitials } from '@/features/projects/lib/project-initials'
+import { projectNameTail } from '@/features/projects/lib/project-name'
 import type { Project } from '@/lib/db/schema'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import { useLocale, useTranslations } from '@/i18n'
@@ -55,7 +57,7 @@ import { cn } from '@/lib/utils'
 /**
  * The project name as the surface's primary link, stretched over the whole
  * nearest positioned ancestor. Anything else clickable on the surface must sit
- * above it (`relative z-10`) rather than inside it — see {@link ProjectSettingsLink}.
+ * above it (`relative z-10`) rather than inside it — see {@link ProjectOverviewLink}.
  */
 export function ProjectOpenLink({
   project,
@@ -70,15 +72,28 @@ export function ProjectOpenLink({
       href={`/app/projects/${project.id}/chat`}
       aria-label={t('card.open', { name: project.name })}
       className={cn(
+        // `block min-w-0`: the name is a one-line `MiddleTruncate`, and that can
+        // only shrink inside a box that is allowed to be narrower than its text.
+        //
         // Inset, not offset: the ring draws on the `::after` sheet covering the
         // whole card, and an offset ring would be sliced off by the card's own
         // `overflow-hidden` — this is the documented inset exception at the
         // documented `/60` alpha, not the old `/50` third recipe.
-        'after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring/60',
+        'block min-w-0 after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring/60',
         className,
       )}
     >
-      {project.name}
+      {/* Cut in the MIDDLE: what tells two projects of one office apart is the
+          end of the name ("… Neubau Gästetrakt"), the part an end ellipsis
+          throws away first, and on a phone that is most names. */}
+      {/* `whitespace-pre` on the two halves: each is its own flex item, and a
+          flex item drops the space at its edge, which is exactly where the cut
+          falls ("Wohnbau" + "Seestadt" would read "WohnbauSeestadt"). */}
+      <MiddleTruncate
+        text={project.name}
+        tail={projectNameTail(project.name)}
+        className="[&>span]:whitespace-pre"
+      />
     </Link>
   )
 }
@@ -122,6 +137,7 @@ export function ProjectActivity({
   project,
   activityAt,
   showLabel = true,
+  compact = false,
   className,
 }: {
   project: Pick<Project, 'profileUpdatedAt' | 'createdAt'>
@@ -129,6 +145,14 @@ export function ProjectActivity({
   activityAt?: string
   /** `false` renders the label for assistive tech only (dense surfaces). */
   showLabel?: boolean
+  /**
+   * The icon stays and the words go to assistive tech and the tooltip: for a
+   * card footer that also carries a link, where „Zuletzt hier gearbeitet“ plus
+   * the time plus the link is wider than a card on a phone. The icon still says
+   * whose clock this is (a speech bubble for the viewer's own, a clock for the
+   * project's).
+   */
+  compact?: boolean
   className?: string
 }): JSX.Element {
   const t = useTranslations('projects')
@@ -148,7 +172,7 @@ export function ProjectActivity({
       {showLabel ? (
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Icon className="size-3.5 shrink-0" aria-hidden />
-          {label}
+          <span className={cn(compact && 'sr-only')}>{label}</span>
         </span>
       ) : (
         <span className="sr-only">{label}</span>
@@ -177,31 +201,44 @@ export function ProjectDocCount({ count, className }: { count: number; className
 }
 
 /**
- * The settings shortcut. Layered ABOVE the stretched open-link rather than
- * nested inside it — two anchors, never one inside the other.
+ * The shortcut to the project's Übersicht, layered ABOVE the stretched open-link
+ * rather than nested inside it — two anchors, never one inside the other.
+ *
+ * The destination is the project's overview (`/settings`, titled „Übersicht“ in
+ * the project's own navigation): where it stands, its brief, its documents and
+ * the setup behind them. It used to wear a gear, which promised a settings
+ * form and hid the one page that answers „wo steht dieses Projekt“. The icon is
+ * the one the navigation gives that destination (`PROJECT_SETTINGS_SECTION`).
+ *
+ * 44px on a touch pointer: on a row it is the only control besides the
+ * stretched link covering everything else, and a neighbour sits beside it, so
+ * it grows rather than overhanging (`touch-target` would overlap the row's own
+ * link, and the later element in the DOM would win the tap).
  */
-export function ProjectSettingsLink({
+export function ProjectOverviewLink({
   project,
+  showLabel = false,
   className,
 }: {
   project: Pick<Project, 'id' | 'name'>
+  /** Spell the destination out beside the icon (the card has the room, a row does not). */
+  showLabel?: boolean
   className?: string
 }): JSX.Element {
   const t = useTranslations('projects')
   return (
     <Link
       href={`/app/projects/${project.id}/settings`}
-      aria-label={t('card.settingsAria', { name: project.name })}
+      aria-label={t('card.overviewAria', { name: project.name })}
       className={cn(
-        // p-2 around a 14px glyph is a 30px target — over WCAG 2.2's 24px floor
-        // with room to spare, which this one needs: on a row it is the only
-        // control besides the stretched link covering everything else.
-        'relative z-10 rounded-lg p-2 text-muted-foreground transition-colors duration-quick ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none motion-reduce:transition-none',
+        'relative z-10 inline-flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground transition-colors duration-quick ease-out hover:bg-accent hover:text-foreground focus-visible:outline-none motion-reduce:transition-none',
+        showLabel ? 'h-8 px-2.5 text-xs pointer-coarse:h-11 pointer-coarse:px-3' : 'size-8 pointer-coarse:size-11',
         FOCUS_RING,
         className,
       )}
     >
-      <Settings className="size-3.5" aria-hidden />
+      <LayoutDashboard className="size-3.5" aria-hidden />
+      {showLabel && <span>{t('card.overview')}</span>}
     </Link>
   )
 }

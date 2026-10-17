@@ -8,8 +8,8 @@ import logging
 
 import pytest
 import yaml
+from opentelemetry import metrics as otel_metrics
 
-from aiq_agent.observability import metrics as grid_metrics
 from aiq_agent.observability.otlp_logging_method import OtlpLoggingMethodConfig
 from aiq_agent.observability.otlp_logging_method import _logs_endpoint
 from aiq_agent.observability.otlp_logging_method import otlp_logging_method
@@ -31,30 +31,19 @@ async def test_missing_endpoint_yields_a_null_handler():
         assert isinstance(handler, logging.NullHandler)
 
 
-@pytest.fixture(autouse=True)
-def metrics_calls(monkeypatch):
-    """The metrics provider is global and set once per process: record the calls, never make them."""
-    calls: list[tuple] = []
-    monkeypatch.setattr(
-        grid_metrics, "install_meter_provider", lambda endpoint, **kw: calls.append(("install", endpoint))
-    )
-    return calls
+@pytest.mark.parametrize("endpoint", [None, "http://otel-collector:4318/v1/traces"])
+async def test_no_meter_provider_is_installed_with_or_without_an_endpoint(monkeypatch, endpoint):
+    # Metrics have no consumer (the collector carries no metrics pipeline), so
+    # the logging method exports logs and nothing else: a MeterProvider set here
+    # would batch readings to an endpoint that answers 404 on every interval.
+    # The global provider is set once per process: record the calls, never make them.
+    calls: list[object] = []
+    monkeypatch.setattr(otel_metrics, "set_meter_provider", calls.append)
 
-
-async def test_the_metrics_provider_is_installed_on_the_logs_endpoint(metrics_calls):
-    config = OtlpLoggingMethodConfig(endpoint="http://otel-collector:4318/v1/traces")
-
-    async with otlp_logging_method(config, None):
-        assert metrics_calls == [("install", "http://otel-collector:4318/v1/traces")]
-
-    assert metrics_calls == [("install", "http://otel-collector:4318/v1/traces")]
-
-
-async def test_without_an_endpoint_no_metrics_provider_is_asked_for(metrics_calls):
-    async with otlp_logging_method(OtlpLoggingMethodConfig(), None):
+    async with otlp_logging_method(OtlpLoggingMethodConfig(endpoint=endpoint), None):
         pass
 
-    assert metrics_calls == []
+    assert calls == []
 
 
 async def test_configured_endpoint_yields_an_otlp_handler():

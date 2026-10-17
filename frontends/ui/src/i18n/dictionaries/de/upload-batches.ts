@@ -3,7 +3,7 @@ import type { en } from '../en'
 /**
  * Was ein Upload gebracht hat, und alle Uploads eines Projekts (ADR-0086).
  *
- * Die Statuswörter („Zitierbar", „Wird gelesen", „In Quarantäne",
+ * Die Statuswörter („Zitierbar", „Wird gelesen", „Zurückgehalten",
  * „Fehlgeschlagen", „Abgelegt") stehen NICHT hier: Die Übersicht liest sie aus
  * `files.status.*`, damit eine Zahl und das Badge daneben einen Zustand nicht
  * zweimal verschieden benennen.
@@ -27,6 +27,7 @@ export const uploadBatches: typeof en.uploadBatches = {
       sending: 'Der Upload läuft noch.',
       reading: 'Piloti liest noch. Diese Übersicht aktualisiert sich von selbst.',
       done: 'Alles ist gelesen.',
+      doneHeld: 'Alles bis auf die zurückgehaltenen Dateien ist gelesen. Piloti zeigt sie keinem Modell.',
     },
     counts: {
       label: 'Auf einen Blick',
@@ -55,15 +56,14 @@ export const uploadBatches: typeof en.uploadBatches = {
       },
       empty: 'Keine Datei dieses Uploads ist bei Piloti angekommen.',
       pages: '{count, plural, one {# Seite} other {# Seiten}}',
-      reasonsLabel: 'Warum sie zurückgehalten wird',
       openInFiles: 'In Dateien öffnen',
       openInArchiv: 'In der Büroablage öffnen',
-      changedHint: 'Neue Fassung eines Dokuments, das schon hier lag. Die bisherige bleibt unter Versionen erhalten.',
+      changedHint: 'Neue Fassung eines Dokuments, das schon hier lag. Die bisherige bleibt unter „Fassungen und Freigabe“ lesbar.',
       protectedHint: 'Liegt in einem Ordner mit eigenem Zugriff. Wer ihn öffnen und ändern darf, zeigt das Schloss am Ordner.',
-      requestRelease: 'Freigabe anfragen',
-      releaseRequested: 'Freigabe angefragt',
-      releaseRequestedToast: 'Die Personen, die „{name}“ freigeben dürfen, sind benachrichtigt.',
-      releaseRequestNobody: 'Außer Ihnen darf niemand „{name}“ freigeben. Sie finden die Datei unter Organisation → Quarantäne.',
+      requestRelease: 'Prüfung anfragen',
+      releaseRequested: 'Prüfung angefragt',
+      releaseRequestedToast: 'Die Personen, die „{name}“ prüfen und zulassen dürfen, sind benachrichtigt.',
+      releaseRequestNobody: 'Außer Ihnen darf niemand „{name}“ prüfen. Sie finden die Datei unter Organisation → Quarantäne.',
       releaseRequestError: 'Die Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
     },
     notFound: {

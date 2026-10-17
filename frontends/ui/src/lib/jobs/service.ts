@@ -20,25 +20,17 @@ import 'server-only'
 // Explicit, not the `crypto` global: this module is server-only and the global
 // is not guaranteed in every Node/test environment the service is loaded in.
 import { randomUUID } from 'node:crypto'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { enforcementOn, requireSkillsEnabled } from '@/lib/authz/feature-flags'
+import { FEATURE_FLAGS, requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { isProjectClosed } from '@/lib/projects/project-status'
-import { getBudgetStatus } from '@/lib/budgets/service'
-import { getEffectiveModelOverrides } from '@/lib/model-config/service'
-import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
-import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
-import { resolveOrgInstructions } from '@/lib/org-instructions/service'
-import { computeCollectionScope } from '@/lib/collection-scope'
+import { isProjectClosed, runsOnSchedule, SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
 import type { PlanDocuments } from '@/lib/runs/plan-documents'
-import {
-  buildGridRequestContextWireHeaders,
-  encodeGridBudgetHeader,
-  type GridBudgetSnapshot,
-} from '@/lib/request-context'
-import { isMemoryReflectionEnabled, isOrgFeatureEnabled, SKILLS_FLAG } from '@/lib/workos/feature-flags'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { submitBackgroundRun } from './background-run'
+import { resolveRunContext } from './run-context'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type {
   DefinitionTrigger,
@@ -50,13 +42,7 @@ import type {
 import { resolveSkillSnapshot } from '@/lib/skills/service'
 import { snapshotOf, type SkillSnapshot } from '@/lib/skills/types'
 import { nextOccurrence, validateCron, validateDueAt, minIntervalMinutesFromEnv } from './schedule'
-import {
-  submitJob,
-  JobSubmitError,
-  JobSubmitSkippedError,
-  type JobPriority,
-  type JobSubmitPayload,
-} from './backend-client'
+import { JobSubmitError, JobSubmitSkippedError, type JobPriority } from './backend-client'
 import * as repository from '@/lib/tasks/repository'
 import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
 import { previousDecisionsBlock } from '@/lib/tasks/service'
@@ -592,74 +578,24 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     )
   }
   const { organizationId, projectId, userId } = spec
-  const [
-    budgetSnapshot,
-    modelOverrides,
-    collectionScope,
-    projectContext,
-    bundesland,
-    projectMemory,
-    memoryReflectionEnabled,
-    orgInstructions,
-  ] = await Promise.all([
-    resolveBudgetSnapshot(organizationId, userId, projectId),
-    getEffectiveModelOverrides(organizationId).catch(() => null),
-    buildProjectCollectionScope(projectId, organizationId),
-    loadProjectPromptView(projectId, organizationId).catch(() => null),
-    loadProjectBundesland(projectId, organizationId).catch(() => null),
-    buildProjectMemoryDigest(projectId, organizationId, { query: spec.prompt }).catch(() => null),
-    isMemoryReflectionEnabled(organizationId).catch(() => false),
-    // The organization's standing instruction block. A scheduled or delegated
-    // run is a turn like any other, so it carries the same preferences a chat
-    // turn does — a task that answered in a voice the office had asked against
-    // would be the whole point of the block, missed.
-    resolveOrgInstructions(organizationId),
-  ])
-  const budgetHeader = budgetSnapshot ? encodeGridBudgetHeader(budgetSnapshot) : null
+  const subject = { organizationId, projectId, userId }
+  const context = await resolveRunContext(subject, spec.prompt)
   const conversationId = spec.conversationId
 
-  const payload: JobSubmitPayload = {
-    input: spec.prompt,
+  const { jobId, queued } = await submitBackgroundRun({
+    subject,
+    ownerEmail: spec.ownerEmail,
+    prompt: spec.prompt,
     skills: spec.skillSnapshot ? [spec.skillSnapshot.name] : [],
     output: spec.output,
-    ...(conversationId ? { conversation_id: conversationId } : {}),
-    // The run this job is, so the worker folds its ledger onto the run's own
-    // message instead of narrating into the void (ADR-0062).
-    run_id: spec.runId,
-    ...(spec.clarifierResult ? { clarifier_result: spec.clarifierResult } : {}),
-    ...(spec.documents ? { documents: spec.documents } : {}),
-    data_sources: withAlwaysOnSources(spec.dataSources ?? null),
-    collection_scope: collectionScope,
-    project_context: projectContext,
-    project_memory: projectMemory,
-    memory_reflection_enabled: memoryReflectionEnabled,
-    organization_id: organizationId,
-    user_id: userId,
-    project_id: projectId,
-    owner_email: spec.ownerEmail,
-    budget_header: budgetHeader,
-    model_overrides: modelOverrides,
+    conversationId,
+    runId: spec.runId,
+    clarifierResult: spec.clarifierResult,
+    documents: spec.documents,
+    dataSources: withAlwaysOnSources(spec.dataSources ?? null),
     priority: spec.priority ?? 'interactive',
-  }
-
-  const contextHeaders = buildGridRequestContextWireHeaders(
-    {
-      organizationId,
-      userId,
-      projectId,
-      collectionScope,
-      projectContext,
-      projectMemory,
-      orgInstructions,
-      modelOverrides,
-      budget: budgetSnapshot,
-      bundesland,
-      memoryReflectionEnabled,
-    },
-    process.env.GRID_INTERNAL_API_TOKEN,
-  )
-
-  const { jobId, queued } = await submitJob(payload, contextHeaders)
+    context,
+  })
   const runMessageId = conversationId
     ? await mintRunMessage(conversationId, spec.runId, spec.title)
     : null
@@ -899,95 +835,67 @@ export async function loadJobForFire(jobId: string): Promise<TaskDefinition | nu
 }
 
 /**
- * The scheduler's gate: disabled definition → `disabled`; with WorkOS flag
- * enforcement the per-org `skills` flag is checked and a failure records a
- * `skipped` run (fail-closed); otherwise the run fires. `fireJob` itself never
- * throws for a skip.
+ * The scheduler's gate: disabled definition → `disabled`; the per-org `skills`
+ * flag is checked and anything short of a yes records a `skipped` run
+ * (fail-closed); otherwise the run fires. The scheduler container claims every
+ * due definition and leaves this decision here, per organization, so revoking
+ * an organization's flag pauses its schedules without a deploy. `fireJob`
+ * itself never throws for a skip.
  */
 export async function fireScheduledJob(
   definition: TaskDefinition,
 ): Promise<{
   fired: boolean
   jobId?: string
-  reason?: 'disabled' | 'feature-disabled' | 'project-closed' | 'skipped' | 'error'
+  reason?: 'disabled' | 'feature-disabled' | 'project-closed' | 'project-paused' | 'skipped' | 'error'
 }> {
   if (!definition.enabled) {
     return { fired: false, reason: 'disabled' }
   }
-  // A closed project runs no task (ADR-0090): it is read-only, and a run files
-  // into it. The schedule stays, visibly skipped, so a reopen resumes it.
-  if (isProjectClosed(await findProjectInOrg(definition.projectId, definition.organizationId))) {
+  // Only an active project runs its schedules (ADR-0098). A closed one is
+  // read-only and a run files into it (ADR-0090); a paused one was parked so
+  // that nothing runs and spends. The schedule stays, visibly skipped, so
+  // resuming or reopening resumes it: a recurring one at its next turn, a
+  // one-shot (which the claim retired) re-armed by the move back to active.
+  const project = await findProjectInOrg(definition.projectId, definition.organizationId)
+  if (project && !runsOnSchedule(project)) {
+    const closed = isProjectClosed(project)
     await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
       status: 'skipped',
       backendJobId: null,
-      error: 'Project is closed',
+      error: closed ? SCHEDULE_SKIPPED_BECAUSE.closed : SCHEDULE_SKIPPED_BECAUSE.paused,
       conversationId: null,
     })
-    return { fired: false, reason: 'project-closed' }
+    return { fired: false, reason: closed ? 'project-closed' : 'project-paused' }
   }
-  if (enforcementOn()) {
-    let flagOn = false
-    try {
-      flagOn = await isOrgFeatureEnabled(SKILLS_FLAG, definition.organizationId)
-    } catch {
-      flagOn = false
-    }
-    if (!flagOn) {
-      await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
-        status: 'skipped',
-        backendJobId: null,
-        error: 'Skills feature disabled for organization',
-        conversationId: null,
-      })
-      return { fired: false, reason: 'feature-disabled' }
-    }
+  if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.skills, definition.organizationId))) {
+    await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
+      status: 'skipped',
+      backendJobId: null,
+      error: 'Skills feature disabled for organization',
+      conversationId: null,
+    })
+    return { fired: false, reason: 'feature-disabled' }
   }
   const run = await fireJob(definition, 'schedule', 'scheduler')
-  if (isActiveTaskRunStatus(run.status)) return { fired: true, jobId: run.backendJobId ?? undefined }
-  return { fired: false, reason: run.status === 'skipped' ? 'skipped' : 'error' }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * The raw remaining-budget snapshot — identical values to the interactive
- * path's `x-grid-budget` header. Best-effort: a lookup failure must not block
- * the run.
- */
-async function resolveBudgetSnapshot(
-  organizationId: string,
-  userId: string,
-  projectId: string,
-): Promise<GridBudgetSnapshot | null> {
-  try {
-    const status = await getBudgetStatus(organizationId, userId, projectId)
-    return {
-      remainingOrgUsd: status.remainingOrgUsd,
-      remainingUserUsd: status.remainingUserUsd,
-      remainingProjectUsd: status.remainingProjectUsd,
-    }
-  } catch {
-    return null
+  if (isActiveTaskRunStatus(run.status)) {
+    // `job_run_started` (ADR-0100): the schedule fired and the backend took the
+    // run. Personless — nobody pressed anything, the scheduler did — and only
+    // for a run that is live: a skip is a `task_runs` row, not a start. The
+    // matching `job_run_finished` comes from `recordRunOutcome`, under the id
+    // `run_id` here, so the two join into one run's duration and result.
+    captureServer({
+      event: 'job_run_started',
+      distinctId: null,
+      organizationId: definition.organizationId,
+      properties: {
+        job_id: definition.id,
+        run_id: run.id,
+        trigger: 'schedule',
+        output: definition.kind === 'deep-research' ? 'deep-research' : 'chat',
+      },
+    })
+    return { fired: true, jobId: run.backendJobId ?? undefined }
   }
-}
-
-/**
- * The ordered collection scope for the project — exactly what
- * buildCollectionScopeFromRequest produces for a project. Resolved from the
- * project row (session-less path); falls back to the id-derived name if the
- * row is gone.
- */
-async function buildProjectCollectionScope(
-  projectId: string,
-  organizationId: string,
-): Promise<string[] | null> {
-  const project = await findProjectInOrg(projectId, organizationId)
-  const scope = computeCollectionScope(null, {
-    projectId,
-    projectCollectionName: project?.collectionName,
-    includeProject: true,
-  })
-  return scope.length > 0 ? scope : null
+  return { fired: false, reason: run.status === 'skipped' ? 'skipped' : 'error' }
 }

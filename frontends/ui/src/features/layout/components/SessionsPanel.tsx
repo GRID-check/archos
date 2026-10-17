@@ -12,8 +12,8 @@
  * it is for:
  *
  *   header       "Chat history · N chats" — the sheet names itself and its size.
- *   pinned block New chat, the search field, and (flag on) the All / Chats /
- *                Deep Research scope filter. All stay put while the list
+ *   pinned block New chat, the search field, and (in a project) the All /
+ *                Chats / Deep Research scope filter. All stay put while the list
  *                scrolls: a search field that scrolls away is unusable exactly
  *                when the list is long enough to need it. The search covers
  *                runs as well as chats — one query over the whole past — and
@@ -48,6 +48,7 @@ import {
   FlaskConical,
   Loader2,
   MessageSquare,
+  MoreHorizontal,
   Pencil,
   Plus,
   Search,
@@ -57,6 +58,12 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Item, ItemContent, ItemList, ItemMedia } from '@/components/ui/item'
@@ -125,15 +132,10 @@ interface SessionsPanelProps {
   /** Callback when a session is renamed */
   onRenameSession?: (sessionId: string, newTitle: string) => void
   /**
-   * FB-10: render the server-backed "Deep Research" section, the scope filter
-   * and per-session research label chips (gated by the
-   * `research-in-chat-history` flag, threaded from MainLayout). Default off so
-   * existing callers are unaffected.
-   */
-  showDeepResearchSection?: boolean
-  /**
    * Active project id — scopes the research-runs fetch (FB-10), which the job
    * proxy checks and signs, and builds the `?job=` deep links for its runs.
+   * The server-backed "Deep Research" section and its scope filter render only
+   * with one, since the runs belong to a project.
    */
   projectId?: string
 }
@@ -150,7 +152,6 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
   onDeleteSession,
   onDeleteAllSessions,
   onRenameSession,
-  showDeepResearchSection = false,
   projectId,
 }) {
   const t = useTranslations('research')
@@ -241,11 +242,11 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
       })
   }, [projectId])
 
-  // Fetch on panel open (flag on) — and again from the retry button below.
+  // Fetch on panel open — and again from the retry button below.
   useEffect(() => {
-    if (!isSessionsPanelOpen || !showDeepResearchSection || !projectId) return
+    if (!isSessionsPanelOpen || !projectId) return
     fetchDeepResearchRuns()
-  }, [isSessionsPanelOpen, showDeepResearchSection, projectId, fetchDeepResearchRuns])
+  }, [isSessionsPanelOpen, projectId, fetchDeepResearchRuns])
 
   const handleDeleteClick = useCallback((sessionId: string) => {
     setSessionToDelete(sessionId)
@@ -382,7 +383,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
     return runs.filter((run) => runLabel(run).toLowerCase().includes(query))
   }, [deepResearchRuns, trimmedQuery, runLabel])
 
-  const deepResearchEnabled = showDeepResearchSection && Boolean(projectId)
+  const deepResearchEnabled = Boolean(projectId)
   const researchScopeSelected = deepResearchEnabled && scopeFilter === 'research'
   const showChats = !deepResearchEnabled || scopeFilter !== 'research'
   const isResearchLoading = deepResearchRuns === null && !deepResearchError
@@ -450,7 +451,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
 
           <Button
             variant="outline"
-            className="h-9 w-full justify-start gap-2"
+            className="h-9 w-full justify-start gap-2 pointer-coarse:h-11"
             onClick={handleNewSession}
             disabled={isNavigationBlocked}
             aria-label={
@@ -693,7 +694,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="relative z-10 size-7"
+                              className="relative z-10 size-7 pointer-coarse:size-11"
                               onClick={() => handleStopRun(run)}
                               aria-label={t('sessionsPanel.stopResearch')}
                               title={t('sessionsPanel.stopResearchTitle')}
@@ -736,7 +737,6 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                         isSelected={selectedSessionId === session.id}
                         isBusy={isNavigationBlocked}
                         isSessionActive={isSessionBusy(session.id)}
-                        showResearchLabel={showDeepResearchSection}
                         // The day is already on the group heading, so the row carries
                         // the part it does not: the time. Except under "Today", where
                         // "12 minutes ago" is the more useful reading of recency.
@@ -782,7 +782,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
       </div>
 
       {/* ---- Footer: what "saved" means, and the bulk destroyer at the far end ---- */}
-      <div className="bg-background shrink-0 border-t px-4 py-3 md:px-8">
+      <div className="bg-background shrink-0 border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 md:px-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
           <p className="text-muted-foreground text-xs">{t('sessionsPanel.syncedNote')}</p>
           {/* Delete-all lives HERE, not above the list. It used to sit in the
@@ -793,7 +793,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
             <Button
               variant="ghost"
               size="sm"
-              className="text-destructive hover:text-destructive -ml-2 h-8 w-fit justify-start px-2"
+              className="text-destructive hover:text-destructive -ml-2 h-8 w-fit justify-start px-2 pointer-coarse:h-11"
               onClick={handleDeleteAllClick}
               disabled={anySessionBusy}
               aria-label={
@@ -859,8 +859,6 @@ interface SessionItemProps {
   isBusy?: boolean
   /** Per-session block: true when the socket is mid-turn in this session. */
   isSessionActive?: boolean
-  /** FB-10: show a "Deep Research" chip when this session carries research status. */
-  showResearchLabel?: boolean
   /** Relative ("3 hours ago") vs. clock time ("14:32") — see the call site. */
   showRelativeTime?: boolean
   onSelect?: (sessionId: string) => void
@@ -874,7 +872,6 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
     isSelected,
     isBusy = false,
     isSessionActive = false,
-    showResearchLabel = false,
     showRelativeTime = false,
     onSelect,
     onDelete,
@@ -903,8 +900,7 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
   // dates so a bad value never throws.
   const sessionDate = session.date instanceof Date ? session.date : new Date(session.date)
   const sessionIso = Number.isNaN(sessionDate.getTime()) ? '' : sessionDate.toISOString()
-  const showResearchChip =
-    showResearchLabel && (session.hasActiveDeepResearch || session.hasCompletedReport)
+  const showResearchChip = session.hasActiveDeepResearch || session.hasCompletedReport
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -920,14 +916,30 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
     }
   }, [isEditing, isBusy, onSelect, session.id])
 
+  const startRename = useCallback(() => {
+    setEditValue(session.title)
+    setIsEditing(true)
+  }, [session.title])
+
   const handleEditClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      setEditValue(session.title)
-      setIsEditing(true)
+      startRename()
     },
-    [session.title]
+    [startRename]
   )
+
+  // The row menu (touch) closes by handing focus back to its trigger, which is
+  // gone by then: the editor took the trigger's place. Take focus for the
+  // editor here, after the menu has let go of the page, instead of racing it.
+  const renameFromMenuRef = useRef(false)
+  const handleMenuCloseAutoFocus = useCallback((e: Event) => {
+    if (!renameFromMenuRef.current) return
+    renameFromMenuRef.current = false
+    e.preventDefault()
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
 
   const handleDeleteClick = useCallback(
     (e: React.MouseEvent) => {
@@ -1029,7 +1041,7 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onBlur={handleInputBlur}
-              className="h-8 min-w-0 flex-1 px-2.5"
+              className="h-8 min-w-0 flex-1 px-2.5 pointer-coarse:h-11"
               aria-label={t('sessionsPanel.editTitle')}
             />
           </div>
@@ -1058,12 +1070,17 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
               // Stretched over the whole row via the ::after overlay, the
               // inbox's pattern — so the row stays ONE control without nesting
               // the icon disc inside it.
-              className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-sm text-left outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+              className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-sm text-left outline-none pointer-coarse:mr-9 after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
             >
               {/* Two-line content block: title + persistent time on line 1, the
                   calm Deep Research badge on line 2. */}
               <span className="flex min-w-0 items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm" title={displayTitle}>
+                {/* Two lines on a phone: a chat is found by its name, and "Rettungswege
+                    Bürogeb…" names nothing. One truncated line on a pointer device. */}
+                <span
+                  className="min-w-0 flex-1 text-sm max-sm:line-clamp-2 max-sm:break-words sm:truncate"
+                  title={displayTitle}
+                >
                   {displayTitle}
                 </span>
                 {sessionIso && (
@@ -1090,6 +1107,58 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
           </>
         )}
 
+        {/* Touch has no hover, so rename and delete get a second way in: one
+            visible 44px menu at the row's trailing edge, present only on a
+            coarse pointer (the hover overlay below is the pointer's way). The
+            row's title keeps its full width minus that one door. */}
+        {!isEditing && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute inset-y-0 right-0 z-10 my-auto hidden size-11 pointer-coarse:inline-flex"
+                aria-label={t('sessionsPanel.rowActions', { title: displayTitle })}
+                data-testid="session-row-menu"
+              >
+                <MoreHorizontal className="size-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            {/* To the left of the door, over the row it belongs to: dropped below it, the
+                menu covered the next row's timestamp. */}
+            <DropdownMenuContent
+              side="left"
+              align="center"
+              onCloseAutoFocus={handleMenuCloseAutoFocus}
+            >
+              {!session.contentLocked && (
+                <DropdownMenuItem
+                  disabled={isBusy || isSessionActive}
+                  onSelect={() => {
+                    renameFromMenuRef.current = true
+                    startRename()
+                  }}
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                  {isBusy || isSessionActive
+                    ? t('sessionsPanel.cannotRenameBusy')
+                    : t('sessionsPanel.rename')}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={isBusy || isSessionActive}
+                onSelect={() => onDelete?.(session.id)}
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                {isBusy || isSessionActive
+                  ? t('sessionsPanel.cannotDeleteBusy')
+                  : t('sessionsPanel.deleteSession')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         {/* The actions OVERLAY the row on hover/focus instead of holding a
             permanent column that taxes every title's width. Overlaying is
             reflow-free (the row never resizes) and the resting row spends its
@@ -1100,7 +1169,7 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
         {showActions && (
           <div
             className={cn(
-              'absolute inset-y-0 right-2 z-10 flex items-center gap-1 pl-6 animate-in fade-in-0 duration-snap ease-out motion-reduce:animate-none',
+              'absolute inset-y-0 right-2 z-10 flex items-center gap-1 pl-6 pointer-coarse:hidden animate-in fade-in-0 duration-snap ease-out motion-reduce:animate-none',
               isSelected
                 ? '[background:linear-gradient(to_right,transparent,var(--accent)_1.5rem)]'
                 : '[background:linear-gradient(to_right,transparent,var(--muted)_1.5rem)]'

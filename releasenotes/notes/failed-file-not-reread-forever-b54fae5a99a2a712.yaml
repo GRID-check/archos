@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    A file that cannot be read for a lasting reason, such as an encrypted or
+    empty PDF, is no longer read again on every „Erneut lesen“ or rescan, only
+    once its bytes change or Piloti's reader improves. A failure of the moment,
+    like a timeout, can still be retried right away.

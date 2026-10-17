@@ -1,8 +1,8 @@
 ---
 features:
   - >
-    Ask for a diagram, a Schaubild or a Grafik and Piloti answers with a real
-    drawing, never with text art made of dashes and arrows.
+    Ask for a diagram, a Schaubild or a Grafik, and Piloti answers with a
+    real drawing instead of text art made of dashes and arrows.
   - >
     „Erstelle ein Dokument über …“ now starts a deep research whose finished
     report is filed in the project under Berichte. If you only want a thorough
@@ -12,5 +12,5 @@ features:
     real graphics in the report and in the downloaded PDF.
 fixes:
   - >
-    Diagrams in answers arrive intact. The source check could rewrite links and
-    indentation inside a drawing and break it.
+    Diagrams in answers now arrive intact. Before, a check of the sources
+    could change links and indentation inside a drawing and break it.

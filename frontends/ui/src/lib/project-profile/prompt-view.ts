@@ -1,10 +1,17 @@
 import { findProjectProfile, findProjectPromptView } from '@/lib/projects/repository'
 import { loadDocumentRolesPromptSection } from '@/lib/document-roles/prompt-loader'
+import { loadUnreadableDocumentsSection } from './unreadable-section'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { buildProjectBriefView } from './brief-view'
 import { isValidBundeslandToken } from './intake-definition'
 import { ProjectProfileSchema } from './types'
-import type { ProjectPrimitiveValue, ProjectProfile, ProjectProfileDisplay } from './types'
+import type {
+  ProjectAssumption,
+  ProjectFact,
+  ProjectPrimitiveValue,
+  ProjectProfile,
+  ProjectProfileDisplay,
+} from './types'
 
 // Re-exported so existing server-side importers (profile / patches routes, tests)
 // keep a single import surface; the engine itself now lives in the isomorphic
@@ -66,7 +73,14 @@ export async function loadProjectPromptView(
     return combined || null
   }
 
-  return getCached(promptViewCacheKey(projectId, organizationId), PROMPT_VIEW_CACHE_TTL_MS, build)
+  // The unreadable files ride beside the cached view, not inside it: a re-read
+  // changes them without touching anything that invalidates the cache, and
+  // the next turn must not be told about a failure „Alle erneut lesen" fixed.
+  const [view, unreadable] = await Promise.all([
+    getCached(promptViewCacheKey(projectId, organizationId), PROMPT_VIEW_CACHE_TTL_MS, build),
+    loadUnreadableDocumentsSection(projectId, organizationId),
+  ])
+  return [view, unreadable].filter(Boolean).join('\n\n') || null
 }
 
 export async function invalidateProjectPromptViewCache(
@@ -198,14 +212,76 @@ export function buildProjectPromptView(profile: ProjectProfile): string {
   if (assumptionKeys.length > 0) {
     sections.push([
       'assumptions:',
-      ...assumptionKeys.map(
-        (key) =>
-          `- ${formatPromptToken(key)}=${formatPromptValue(normalized.assumptions[key].value)}`
+      ...bounded(
+        assumptionKeys.map((key) => {
+          const assumption = normalized.assumptions[key]
+          return `- ${formatPromptToken(key)}=${formatPromptValue(assumption.value)}${provenanceSuffix(assumption.evidence)}`
+        })
       ),
     ])
   }
 
+  const contested = contestedLines(normalized)
+  if (contested.length > 0) sections.push(['contested:', ...bounded(contested)])
+
   return sections.map((section) => section.join('\n')).join('\n\n')
+}
+
+/**
+ * The most lines the `assumptions:` and `contested:` sections list each. The
+ * view rides every turn, so a reading that suggested hundreds of values must not
+ * grow it without end; the text says how many it left out.
+ */
+const MAX_VIEW_LINES = 60
+
+/** Longest file name the view carries; a name is a pointer, not content. */
+const MAX_VIEW_FILE_NAME_LENGTH = 120
+
+/** At most {@link MAX_VIEW_LINES} lines, then one line saying how many more there are. */
+function bounded(lines: string[]): string[] {
+  if (lines.length <= MAX_VIEW_LINES) return lines
+  return [...lines.slice(0, MAX_VIEW_LINES), `- … und ${lines.length - MAX_VIEW_LINES} weitere`]
+}
+
+/** `Datei, S. n`, or `Datei` when the document has no pages. Never a quote: a quote is document text, and the view is not the place for it. */
+function documentSource(evidence: ProjectFact['evidence']): string | null {
+  const document = evidence?.find((entry) => entry.kind === 'document')
+  if (document?.kind !== 'document') return null
+  const name = formatPromptToken(document.fileName.slice(0, MAX_VIEW_FILE_NAME_LENGTH))
+  return document.page === null ? name : `${name}, S. ${document.page}`
+}
+
+/**
+ * Where a suggestion came from, for an `assumptions:` line: the first document
+ * it was read in, or that it was derived from other values. Nothing when it has
+ * no evidence (a person's estimate, a profile from before the intake).
+ */
+function provenanceSuffix(evidence: ProjectAssumption['evidence']): string {
+  const source = documentSource(evidence)
+  if (source) return ` [Vorschlag: ${source}]`
+  return evidence?.some((entry) => entry.kind === 'derivation') ? ' [abgeleitet]' : ''
+}
+
+/**
+ * Keys that carry a different value found beside the one they hold, facts and
+ * assumptions alike: `- key: value | alternativ: v2 (Datei, S. n)`. The agent
+ * must not state either as settled; it asks, or names both.
+ */
+function contestedLines(profile: ProjectProfile): string[] {
+  const entries = [
+    ...Object.entries(profile.facts).map(([key, fact]) => ({ key, ...fact })),
+    ...Object.entries(profile.assumptions).map(([key, assumption]) => ({ key, ...assumption })),
+  ]
+  return entries
+    .filter((entry) => (entry.alternatives?.length ?? 0) > 0)
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((entry) => {
+      const alternatives = (entry.alternatives ?? []).map((alternative) => {
+        const source = documentSource(alternative.evidence)
+        return ` | alternativ: ${formatPromptValue(alternative.value)}${source ? ` (${source})` : ''}`
+      })
+      return `- ${formatPromptToken(entry.key)}: ${formatPromptValue(entry.value)}${alternatives.join('')}`
+    })
 }
 
 export function buildProjectProfileDisplay(

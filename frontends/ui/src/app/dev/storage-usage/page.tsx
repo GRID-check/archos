@@ -83,7 +83,7 @@ export default function StorageUsageDevPage(): JSX.Element {
   }
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8" data-testid="storage-usage-preview">
+    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-8" data-testid="storage-usage-preview">
       <div>
         <h1 className="text-lg font-semibold">Organization — Storage</h1>
         <p className="text-muted-foreground mt-1 text-sm">

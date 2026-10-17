@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, appPullPolicy, frontendImage } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -112,6 +113,7 @@ function internalSweepCronJob(
                   runAsUser: UID.frontend,
                   runAsGroup: UID.frontend,
                 },
+                ...onNodeGroup(cfg.nodeGroups.app),
                 containers: [
                   {
                     name: sweep.name,
@@ -186,6 +188,7 @@ export function installWorkers(
             // Room to finish the purge tick in flight (S3 deletes + DB writes)
             // rather than being SIGKILLed part-way through one.
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "purger",
@@ -204,12 +207,11 @@ export function installWorkers(
     { provider: w.provider, dependsOn: [secrets.secret, ...dependsOn] },
   );
 
-  // Created whatever `skillsEnabled` says. The container used to exit 0 when
-  // Agent Skills were off, which under a Deployment is a permanent
-  // CrashLoopBackOff, so it was only created with the feature on. It now also
-  // drives the run reconciler (`frontends/ui/src/lib/runs/reconcile.ts`), and
-  // runs exist without Agent Skills (an escalated chat question), so with the
-  // feature off it stays up as a reconcile-only worker and fires no schedules.
+  // Always created. It drives the run reconciler
+  // (`frontends/ui/src/lib/runs/reconcile.ts`) as well as the schedules, and
+  // runs exist without Agent Skills (an escalated chat question). Whether a
+  // schedule fires is the organization's `skills` WorkOS flag, checked by the
+  // BFF per fire, so there is no deployment switch here.
   const scheduler = new k8s.apps.v1.Deployment(
         "skill-scheduler",
         {
@@ -233,6 +235,7 @@ export function installWorkers(
                 securityContext: { runAsNonRoot: true, runAsUser: UID.frontend, runAsGroup: UID.frontend },
                 // Finish the claimed scheduler batch before exiting.
                 terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
+                ...onNodeGroup(cfg.nodeGroups.app),
                 containers: [
                   {
                     name: "skill-scheduler",

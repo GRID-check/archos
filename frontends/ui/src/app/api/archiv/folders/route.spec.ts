@@ -22,11 +22,6 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 
-vi.mock('@/lib/authz/feature-flags', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/authz/feature-flags')>()),
-  requireFeature: vi.fn().mockReturnValue(null),
-}))
-
 vi.mock('@/lib/archiv/folder-service', () => ({
   listArchivFolders: vi.fn(),
   createArchivFolder: vi.fn(),
@@ -36,7 +31,6 @@ vi.mock('@/lib/archiv/folder-service', () => ({
 }))
 
 import { ForbiddenError } from '@/lib/api/errors'
-import { requireFeature } from '@/lib/authz/feature-flags'
 import {
   createArchivFolder,
   deleteArchivFolder,
@@ -55,6 +49,7 @@ const folder = {
   parentId: null,
   name: 'Normen',
   path: 'Normen',
+  description: null,
   createdAt: new Date('2026-10-01T00:00:00Z'),
   updatedAt: new Date('2026-10-01T00:00:00Z'),
 }
@@ -70,7 +65,6 @@ const noParams = { params: Promise.resolve({}) }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(requireFeature).mockReturnValue(null)
 })
 
 describe('GET /api/archiv/folders', () => {
@@ -83,17 +77,6 @@ describe('GET /api/archiv/folders', () => {
     const body = await response.json()
     expect(body.folders).toHaveLength(1)
     expect(body.folders[0]).toMatchObject({ id: FOLDER_ID, projectId: null, parentId: null, path: 'Normen' })
-  })
-
-  it('is refused while the Archiv feature is off, without reading anything', async () => {
-    vi.mocked(requireFeature).mockReturnValue(
-      Response.json({ error: 'feature-disabled', feature: 'organization-archiv' }, { status: 403 }),
-    )
-
-    const response = await GET(new NextRequest('https://grid.test/api/archiv/folders'), noParams)
-
-    expect(response.status).toBe(403)
-    expect(listArchivFolders).not.toHaveBeenCalled()
   })
 })
 
@@ -151,6 +134,27 @@ describe('PATCH and DELETE /api/archiv/folders/[folderId]', () => {
       name: 'Neu',
       parentId: null,
     })
+  })
+
+  it('describes a folder on its own, and clears the description with null', async () => {
+    vi.mocked(updateArchivFolder).mockResolvedValue({ ok: true, folder: { ...folder, description: 'Gekaufte Normen' } })
+
+    const response = await PATCH(
+      json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: 'Gekaufte Normen' }),
+      item,
+    )
+    expect(response.status).toBe(200)
+    expect((await response.json()).folder.description).toBe('Gekaufte Normen')
+    expect(updateArchivFolder).toHaveBeenCalledWith(expect.anything(), { folderId: FOLDER_ID, description: 'Gekaufte Normen' })
+
+    await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: null }), item)
+    expect(updateArchivFolder).toHaveBeenLastCalledWith(expect.anything(), { folderId: FOLDER_ID, description: null })
+  })
+
+  it('refuses a service refusal of a description as a 400 in its words', async () => {
+    vi.mocked(updateArchivFolder).mockResolvedValue({ ok: false, error: 'A folder description may be at most 500 characters.' })
+    const response = await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: 'x'.repeat(600) }), item)
+    expect(response.status).toBe(400)
   })
 
   it('rejects an empty patch', async () => {

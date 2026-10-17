@@ -49,20 +49,17 @@ import {
   MonitorX,
   MoreHorizontal,
   PanelLeft,
-  RotateCcw,
   Ruler,
   Scissors,
   SlidersHorizontal,
   TriangleAlert,
   Undo2,
-  Video,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-is-mobile'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useLocale, useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { documentDisplayName } from '@/lib/documents/display-name'
@@ -89,7 +86,6 @@ import {
   stageModelLabel,
   stageModelMatched,
 } from '../lib/stage-model'
-import { BIM_CAMERA_VIEWS, type BimCameraView } from '../lib/viewer-camera'
 import { formatMetresIn } from '../lib/format-value'
 import { measurementText } from '../lib/measure-overlay'
 import { screenshotFilename } from '../lib/viewer-performance'
@@ -101,9 +97,12 @@ import {
   useProjectBimModels,
 } from '../hooks/use-bim-model'
 import { useModelViewport } from '../hooks/use-model-viewport'
-import { IfcViewerCanvasLazy, ModelViewportProgress } from './ifc-model-viewer'
+import { useStageLayout } from '../hooks/use-stage-layout'
+import { IfcViewerCanvasLazy, ModelViewportProgress, ViewerRetry } from './ifc-model-viewer'
 import { ModelInspector } from './model-inspector'
 import { ModelAdvancedSheet } from './model-advanced-sheet'
+import { PhoneMoreRows, PhoneTools, type PhoneSheet } from './stage-phone-chrome'
+import { StageViewMenu } from './stage-view-menu'
 import {
   ViewerDock,
   ViewerDockSeparator,
@@ -114,8 +113,10 @@ import {
   ViewerRail,
   ViewerRailItem,
   ViewerRailSection,
+  ViewerSheet,
   ViewerSlider,
   ViewerSurface,
+  type ViewerSheetSnap,
 } from './viewer'
 
 /** One shared empty array, so "no elements yet" has a stable identity. */
@@ -635,7 +636,27 @@ export function ModelStage({
   */
   const isMobile = useIsMobile()
   const [railChoice, setRailChoice] = useState<boolean | null>(null)
-  const railOpen = railChoice ?? !isMobile
+  /**
+   * The arrangement of chrome this glass gets — see `useStageLayout`.
+   *
+   * On a phone the rail does not exist: a 208 px card in the top-left corner
+   * ran straight into the 190 px file/close pill in the top-right (393 px of
+   * screen between them), and the selection card then covered the rest. Its two
+   * lists, models and levels, are a sheet behind the "Geschoße" tool instead.
+   */
+  const layout = useStageLayout()
+  const compact = layout !== 'desktop'
+  /** A finger rather than a mouse: the measuring hint says "tap", and there is no Esc key. */
+  const coarsePointer = useMediaQuery('(pointer: coarse)')
+  const railOpen = !compact && (railChoice ?? !isMobile)
+  /** Which tool sheet is up on a phone; the selection yields to it, not the reverse. */
+  const [phoneSheet, setPhoneSheet] = useState<PhoneSheet | null>(null)
+  /** The selection sheet opens as a peek — the building stays the subject. */
+  const [selectionSnap, setSelectionSnap] = useState<ViewerSheetSnap>('peek')
+  const togglePhoneSheet = useCallback(
+    (sheet: PhoneSheet) => setPhoneSheet((current) => (current === sheet ? null : sheet)),
+    []
+  )
   /**
    * The drawer is open exactly when the link says which tab.
    *
@@ -698,8 +719,11 @@ export function ModelStage({
   useEffect(() => {
     if (advancedOpen || !restoreAdvancedFocus.current) return
     restoreAdvancedFocus.current = false
-    advancedToggleRef.current?.focus()
-  }, [advancedOpen])
+    // On a phone the drawer was opened from "Mehr", whose row is gone by now;
+    // the building is the next best place for the reader to land.
+    if (advancedToggleRef.current) advancedToggleRef.current.focus()
+    else focusViewport()
+  }, [advancedOpen, focusViewport])
 
   const [copied, setCopied] = useState(false)
   useEffect(() => {
@@ -929,6 +953,221 @@ export function ModelStage({
     ? 1
     : 0) + (section && viewport.bounds ? 1 : 0)) as 0 | 1 | 2
 
+  /**
+   * The two lists the rail holds — which model, which level.
+   *
+   * One element, two homes: the desktop rail floats them on the canvas, and
+   * a phone shows the same rows in a sheet. Choosing a row on a phone also
+   * lowers the sheet, because the point of choosing a floor is to look at it.
+   */
+  const railSections = (
+    <>
+      {/*
+        A list of one is not a list. Most projects carry a single
+        model, and a "Modelle" heading over one row is a section that
+        exists to be looked past — the rail is half as tall without
+        it, and the reader loses nothing, because the model's name is
+        already the dialog's title.
+      */}
+      {(models ?? []).length > 1 && (
+      <ViewerRailSection label={t('stage.models')}>
+        {(models ?? []).map((candidate) => (
+          <ViewerRailItem
+            key={candidate.id}
+            // The name the document goes by, minus the extension.
+            // `?model=` still carries the FILE name, so a rename
+            // never breaks a link anyone has already sent.
+            label={stageModelLabel(documentDisplayName(candidate))}
+            icon={<Boxes aria-hidden="true" />}
+            meta={candidate.status === 'ready' ? undefined : t(`status.${candidate.status}`)}
+            selected={candidate.id === model?.id}
+            // A model that is still being read has no geometry to
+            // show. Selecting it would replace the building with a
+            // progress bar and no way back to the one on screen.
+            disabled={candidate.status !== 'ready'}
+            onClick={() => {
+              setPhoneSheet(null)
+              setView({
+                model: candidate.filename,
+                storey: undefined,
+                element: undefined,
+                highlights: undefined,
+                // See-through goes with them. It ghosts everything
+                // that is not highlighted or selected, so with both
+                // dropped the button becomes `active` (the URL still
+                // says `xray=1`) AND `disabled` — a mode the reader
+                // can be left in and cannot leave, which then ghosts
+                // the whole building the moment they click a wall.
+                xray: undefined,
+              })
+            }}
+          />
+        ))}
+      </ViewerRailSection>
+      )}
+
+      {levels.length > 0 && (
+        <ViewerRailSection label={t('stage.levels')}>
+          <ViewerRailItem
+            label={t('stage.allLevels')}
+            selected={storey === null}
+            onClick={() => {
+              setPhoneSheet(null)
+              setView({ storey: undefined })
+            }}
+          />
+          {levels.map((level) => (
+            <ViewerRailItem
+              key={level.name}
+              label={level.name}
+              meta={
+                level.elevation === null
+                  ? undefined
+                  : t('stage.elevation', { value: formatLevelElevation(level.elevation, locale) })
+              }
+              // The elevation is context, not identity: it must not
+              // become part of the row's spoken name.
+              ariaLabel={level.name}
+              selected={storeyKey(storey) === storeyKey(level.name)}
+              // The selection stays. `handleSelect` already keeps
+              // the filter and the selected element on the same
+              // level, so nothing here can become invisible — and
+              // "All levels" one row above did not drop it either,
+              // so the list behaved differently row by row.
+              onClick={() => {
+                setPhoneSheet(null)
+                setView({
+                  storey:
+                    storeyKey(storey) === storeyKey(level.name) ? undefined : level.name,
+                })
+              }}
+            />
+          ))}
+        </ViewerRailSection>
+      )}
+    </>
+  )
+
+  /**
+   * Nothing until the rows land, for the same reason the warning waits: a count
+   * is resolved against the element list, so rendering one early states
+   * "Aussenwände (0)" beside an answer that said 420. A legend that arrives a
+   * moment late is a legend; one that arrives wrong is a contradiction the
+   * reader has to resolve themselves.
+   */
+  const legendEntries =
+    elementsLoading || elementsError !== null
+      ? []
+      : viewport.highlights.map((highlight) => ({
+          status: highlight.status,
+          label: highlight.label,
+          count: highlight.expressIds.length,
+        }))
+
+  /**
+   * The selection card, in whichever container this glass has.
+   *
+   * One element built in one place: the desktop card, the phone's bottom sheet
+   * and the landscape panel show IDENTICAL content and differ only in the
+   * container, so a change to what the card says is made once.
+   */
+  const renderInspector = (placement?: 'bottom' | 'side'): JSX.Element => (
+    <ModelInspector
+      element={detail.data}
+      isLoading={detail.isLoading}
+      error={detail.error}
+      projectId={projectId}
+      modelFilename={model?.filename ?? null}
+      sheet={
+        placement
+          ? {
+              placement,
+              collapse: {
+                snap: selectionSnap,
+                onSnapChange: setSelectionSnap,
+                expandLabel: t('stage.sheet.expand'),
+                collapseLabel: t('stage.sheet.collapse'),
+              },
+            }
+          : undefined
+      }
+      onClose={() => {
+        setView({ element: undefined })
+        // Closing the card unmounts the button that closed it.
+        // Back to the building, which is where the selection came
+        // from — see `focusViewport`.
+        focusViewport()
+      }}
+      {...visibilityActions(viewport, () => setView({ element: undefined }), focusViewport, asOneStep)}
+    />
+  )
+
+  /**
+   * What is up from the bottom edge (or, sideways, at the right) on a phone.
+   *
+   * A tool sheet wins over the selection without clearing it: opening "Mehr"
+   * to take a picture must not forget which wall the reader had picked, and the
+   * selection sheet is back the moment the tool sheet is put down. The drawer
+   * wins over both — it is a full-screen place on a phone.
+   */
+  const sheetPlacement = layout === 'phone-landscape' ? 'side' : 'bottom'
+  const compactSheet: JSX.Element | null = !compact || advancedOpen
+    ? null
+    : phoneSheet === 'levels'
+      ? (
+          <ViewerSheet
+            placement={sheetPlacement}
+            title={levels.length > 0 ? t('stage.levels') : t('stage.models')}
+            closeLabel={t('stage.selection.close')}
+            onClose={() => setPhoneSheet(null)}
+            bodyClassName="p-0"
+          >
+            {railSections}
+          </ViewerSheet>
+        )
+      : phoneSheet === 'more'
+        ? (
+            <ViewerSheet
+              placement={sheetPlacement}
+              title={t('stage.more')}
+              closeLabel={t('stage.selection.close')}
+              onClose={() => setPhoneSheet(null)}
+              bodyClassName="p-0"
+            >
+              <PhoneMoreRows
+                ready={viewport.status.phase === 'ready'}
+                canUndo={history.length > 0}
+                onUndo={() => {
+                  goBack()
+                  setPhoneSheet(null)
+                }}
+                onCapture={() => {
+                  viewport.capture()
+                  setPhoneSheet(null)
+                }}
+                captureFailed={captureFailed}
+                xray={view.xray ?? false}
+                xrayHint={t('viewer.xrayHint')}
+                xrayDisabled={xrayNeedsTarget}
+                onToggleXray={() => setView({ xray: !(view.xray ?? false) })}
+                edited={viewport.visibility.edited}
+                onShowEverything={() => {
+                  viewport.visibility.showEverything()
+                  setPhoneSheet(null)
+                  focusViewport()
+                }}
+                advancedDisabled={!modelId}
+                onOpenAdvanced={() => {
+                  setPhoneSheet(null)
+                  setAdvancedOpen(true)
+                }}
+              />
+            </ViewerSheet>
+          )
+        : selectedGlobalId
+          ? renderInspector(sheetPlacement)
+          : null
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
@@ -954,11 +1193,24 @@ export function ModelStage({
             taps — and the Close/Copy pill under the sensor housing in one
             landscape rotation. Every absolutely-positioned child measures from
             the padding box, so padding here moves the dock, the rail, the
-            drawer and the close pill together. Only below `sm`: above it the
-            dialog is already inset by 3rem on every side.
+            drawer and the close pill together.
+
+            At EVERY width, not only below `sm`: an iPhone turned sideways is
+            852 px wide, past `sm`, and has the deepest inset of all — the
+            sensor housing takes ~59 px of that edge. On a desktop the insets
+            are 0, so it costs nothing there.
           */
-          'max-sm:pt-[env(safe-area-inset-top)] max-sm:pr-[env(safe-area-inset-right)] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:pl-[env(safe-area-inset-left)]',
-          'sm:h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-3rem)] sm:w-[calc(100vw-3rem)] sm:max-w-[calc(100vw-3rem)] sm:rounded-3xl'
+          'pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]',
+          layout === 'phone-landscape'
+            ? /*
+                A phone on its side used to get the desktop window, inset 24 px
+                inside a notch that takes 59. Edge to edge instead, the insets
+                above doing the rest, and the paper swapped for the canvas's
+                colour so the strips beside the notch read as more stage rather
+                than as a frame around it.
+              */
+              'bg-muted sm:h-[100dvh] sm:max-h-[100dvh] sm:w-full sm:max-w-full sm:rounded-none sm:border-0'
+            : 'sm:h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-3rem)] sm:w-[calc(100vw-3rem)] sm:max-w-[calc(100vw-3rem)] sm:rounded-3xl'
         )}
         showCloseButton={false}
         // Radix focuses the first focusable child on open, which here would be
@@ -990,6 +1242,10 @@ export function ModelStage({
             // top of a fifteen-control dialog, while closing with the button
             // put them back on the toolbar — one action, two behaviours.
             closeAdvanced()
+          } else if (phoneSheet !== null) {
+            // A tool sheet is put down before the selection behind it.
+            event.preventDefault()
+            setPhoneSheet(null)
           } else if (selectedGlobalId) {
             event.preventDefault()
             setView({ element: undefined })
@@ -1000,7 +1256,13 @@ export function ModelStage({
           {model ? t('stage.dialogLabel', { name: documentDisplayName(model) }) : t('title')}
         </DialogTitle>
 
-        <div className="bg-muted relative min-h-0 flex-1">
+        <div
+          className="group/stage bg-muted relative min-h-0 flex-1"
+          // A phone's bottom sheet covers the middle of the stage; the loading
+          // veil reads this to settle in the free strip above it, so its
+          // Abbrechen stays on screen and pressable.
+          data-sheet={layout === 'phone' && compactSheet ? 'open' : undefined}
+        >
           {/*
             The one thing the viewport says out loud.
 
@@ -1044,85 +1306,7 @@ export function ModelStage({
           {/* Rail — models and levels. */}
           {railOpen && railHasContent && (
             <div className="absolute top-3 left-3 z-20 flex max-h-[calc(100%-1.5rem)] sm:top-4 sm:left-4">
-              <ViewerRail>
-                {/*
-                  A list of one is not a list. Most projects carry a single
-                  model, and a "Modelle" heading over one row is a section that
-                  exists to be looked past — the rail is half as tall without
-                  it, and the reader loses nothing, because the model's name is
-                  already the dialog's title.
-                */}
-                {(models ?? []).length > 1 && (
-                <ViewerRailSection label={t('stage.models')}>
-                  {(models ?? []).map((candidate) => (
-                    <ViewerRailItem
-                      key={candidate.id}
-                      // The name the document goes by, minus the extension.
-                      // `?model=` still carries the FILE name, so a rename
-                      // never breaks a link anyone has already sent.
-                      label={stageModelLabel(documentDisplayName(candidate))}
-                      icon={<Boxes aria-hidden="true" />}
-                      meta={candidate.status === 'ready' ? undefined : t(`status.${candidate.status}`)}
-                      selected={candidate.id === model?.id}
-                      // A model that is still being read has no geometry to
-                      // show. Selecting it would replace the building with a
-                      // progress bar and no way back to the one on screen.
-                      disabled={candidate.status !== 'ready'}
-                      onClick={() =>
-                        setView({
-                          model: candidate.filename,
-                          storey: undefined,
-                          element: undefined,
-                          highlights: undefined,
-                          // See-through goes with them. It ghosts everything
-                          // that is not highlighted or selected, so with both
-                          // dropped the button becomes `active` (the URL still
-                          // says `xray=1`) AND `disabled` — a mode the reader
-                          // can be left in and cannot leave, which then ghosts
-                          // the whole building the moment they click a wall.
-                          xray: undefined,
-                        })
-                      }
-                    />
-                  ))}
-                </ViewerRailSection>
-                )}
-
-                {levels.length > 0 && (
-                  <ViewerRailSection label={t('stage.levels')}>
-                    <ViewerRailItem
-                      label={t('stage.allLevels')}
-                      selected={storey === null}
-                      onClick={() => setView({ storey: undefined })}
-                    />
-                    {levels.map((level) => (
-                      <ViewerRailItem
-                        key={level.name}
-                        label={level.name}
-                        meta={
-                          level.elevation === null
-                            ? undefined
-                            : t('stage.elevation', { value: formatLevelElevation(level.elevation, locale) })
-                        }
-                        // The elevation is context, not identity: it must not
-                        // become part of the row's spoken name.
-                        ariaLabel={level.name}
-                        selected={storeyKey(storey) === storeyKey(level.name)}
-                        // The selection stays. `handleSelect` already keeps
-                        // the filter and the selected element on the same
-                        // level, so nothing here can become invisible — and
-                        // "All levels" one row above did not drop it either,
-                        // so the list behaved differently row by row.
-                        onClick={() =>
-                          setView({
-                            storey:
-                              storeyKey(storey) === storeyKey(level.name) ? undefined : level.name,
-                          })
-                        }
-                      />
-                    ))}
-                  </ViewerRailSection>
-                )}
+              <ViewerRail>{railSections}
               </ViewerRail>
             </div>
           )}
@@ -1213,7 +1397,7 @@ export function ModelStage({
           </div>
 
           {/* Selection — and nothing at all until there is one. */}
-          {selectedGlobalId && (
+          {!compact && selectedGlobalId && (
             <div
               className={cn(
                 'absolute top-3 right-3 z-20 flex max-h-[calc(100%-1.5rem)] pt-12 sm:top-4 sm:right-4',
@@ -1226,27 +1410,19 @@ export function ModelStage({
                 advancedOpen && 'max-sm:hidden sm:right-[28rem]'
               )}
             >
-              <ModelInspector
-                element={detail.data}
-                isLoading={detail.isLoading}
-                error={detail.error}
-                projectId={projectId}
-                modelFilename={model?.filename ?? null}
-                onClose={() => {
-                  setView({ element: undefined })
-                  // Closing the card unmounts the button that closed it.
-                  // Back to the building, which is where the selection came
-                  // from — see `focusViewport`.
-                  focusViewport()
-                }}
-                {...visibilityActions(
-                  viewport,
-                  () => setView({ element: undefined }),
-                  focusViewport,
-                  asOneStep
-                )}
-              />
+              {renderInspector()}
             </div>
+          )}
+
+          {/*
+            A phone on its side has no height for a bottom sheet, so the same
+            sheet is a panel at the right edge, under the file/close pill. A
+            portrait phone's sheet is not here at all: it sits in the dock's
+            own column (`sheet` below), where it cannot overlap the cut slider
+            or the legend by arithmetic.
+          */}
+          {layout === 'phone-landscape' && compactSheet && (
+            <div className="absolute top-[4.75rem] right-3 bottom-3 z-20 flex">{compactSheet}</div>
           )}
 
           {/*
@@ -1293,36 +1469,24 @@ export function ModelStage({
           )}
 
           {/* What the colours mean, when something coloured them. */}
-          <ViewerLegend
-            className={cn(
-              'absolute left-3 z-20 sm:left-4',
-              /*
-                Pinned above the dock — including whatever the dock has stacked
-                on top of itself. At a fixed `bottom-20` the legend sat exactly
-                where the section slider lands: same `z-20`, legend painted
-                first, so the slider covered it. That is not an exotic state,
-                it is what a compliance deep link produces — highlights (so a
-                legend) plus a cut. Widths do not save it either; the slider is
-                `max-w-full` on a phone.
-              */
-              DOCK_ABOVE_OFFSET[dockAboveRows]
-            )}
-            // Nothing until the rows land, for the same reason the warning
-            // above waits: a count is resolved against the element list, so
-            // rendering one early states "Aussenwände (0)" beside an answer
-            // that said 420. A legend that arrives a moment late is a legend;
-            // one that arrives wrong is a contradiction the reader has to
-            // resolve themselves.
-            entries={
-              elementsLoading || elementsError !== null
-                ? []
-                : viewport.highlights.map((highlight) => ({
-                    status: highlight.status,
-                    label: highlight.label,
-                    count: highlight.expressIds.length,
-                  }))
-            }
-          />
+          {!compact && (
+            <ViewerLegend
+              className={cn(
+                'absolute left-3 z-20 sm:left-4',
+                /*
+                  Pinned above the dock — including whatever the dock has stacked
+                  on top of itself. At a fixed `bottom-20` the legend sat exactly
+                  where the section slider lands: same `z-20`, legend painted
+                  first, so the slider covered it. That is not an exotic state,
+                  it is what a compliance deep link produces — highlights (so a
+                  legend) plus a cut. Widths do not save it either; the slider is
+                  `max-w-full` on a phone.
+                */
+                DOCK_ABOVE_OFFSET[dockAboveRows]
+              )}
+              entries={legendEntries}
+            />
+          )}
 
           <ViewerDock
             // The drawer is `z-30` and right-anchored full height; the dock is
@@ -1338,7 +1502,10 @@ export function ModelStage({
             // presenting nine glyphs that cannot be pressed. Escape and the
             // drawer's own X are the ways back, and both restore focus here.
             className={cn(advancedOpen && 'max-sm:hidden sm:pr-[27rem]')}
+            layout={layout === 'phone' ? 'bar' : layout === 'phone-landscape' ? 'side' : 'floating'}
+            sheet={layout === 'phone' ? compactSheet : undefined}
             lead={
+              compact ? undefined : (
               <>
                 {/*
                   In the leading pill, beside Home, because both answer the
@@ -1362,9 +1529,17 @@ export function ModelStage({
                   disabled={viewport.status.phase !== 'ready'}
                 />
               </>
+              )
             }
             above={
               <>
+                {/*
+                  On a phone the legend is a row of the stack, not a corner
+                  card positioned against the dock's height by hand: the slider,
+                  the measuring strip and the sheet all appear and disappear,
+                  and a stack cannot overlap by arithmetic.
+                */}
+                {compact && <ViewerLegend className="self-start" entries={legendEntries} />}
                 {/*
                   What to click next, and a way out of the measurements once
                   they have been read. A measure tool with no running commentary
@@ -1385,8 +1560,12 @@ export function ModelStage({
                       <span className="text-muted-foreground text-xs">
                         {t(
                           viewport.measure.pending
-                            ? 'viewer.measure.second'
-                            : 'viewer.measure.first'
+                            ? coarsePointer
+                              ? 'viewer.measure.secondTouch'
+                              : 'viewer.measure.second'
+                            : coarsePointer
+                              ? 'viewer.measure.firstTouch'
+                              : 'viewer.measure.first'
                         )}
                       </span>
                     )}
@@ -1518,6 +1697,28 @@ export function ModelStage({
               </>
             }
           >
+            {compact ? (
+              <PhoneTools
+                placement={layout === 'phone-landscape' ? 'side' : 'bar'}
+                ready={viewport.status.phase === 'ready'}
+                onFit={viewport.fit}
+                cameraView={viewport.camera.view}
+                orthographic={viewport.camera.orthographic}
+                onViewChange={viewport.setView}
+                onOrthographicChange={viewport.setOrthographic}
+                sectionOn={section !== null}
+                onToggleSection={() =>
+                  viewport.setSection(section ? null : { atMetres: cutDefault, flipped: false })
+                }
+                measuring={viewport.measure.active}
+                onToggleMeasure={() => viewport.measure.setActive(!viewport.measure.active)}
+                hasLevels={railHasContent}
+                sheet={phoneSheet}
+                onToggleSheet={togglePhoneSheet}
+                edited={viewport.visibility.edited}
+              />
+            ) : (
+              <>
             <StageViewMenu
               view={viewport.camera.view}
               orthographic={viewport.camera.orthographic}
@@ -1569,6 +1770,8 @@ export function ModelStage({
               disabled={viewport.status.phase !== 'ready' || xrayNeedsTarget}
               onClick={() => setView({ xray: !(view.xray ?? false) })}
             />
+              </>
+            )}
           </ViewerDock>
 
           {/*
@@ -1627,17 +1830,6 @@ export function ModelStage({
   )
 }
 
-/** The one way forward every viewer failure now offers. */
-function StageRetry({ onClick }: { onClick: () => void }): JSX.Element {
-  const t = useTranslations('bim')
-  return (
-    <Button variant="outline" size="sm" onClick={onClick}>
-      <RotateCcw className="size-3.5" aria-hidden="true" />
-      {t('loadFailed.action')}
-    </Button>
-  )
-}
-
 /**
  * The canvas, or the honest sentence that replaces it.
  *
@@ -1692,7 +1884,7 @@ function StageCanvas({
         // for this button had sat unused in both dictionaries since it was
         // written. Closing and reopening the stage was the only escape, and
         // nothing on screen suggested it.
-        action={<StageRetry onClick={onRetry} />}
+        action={<ViewerRetry onClick={onRetry} />}
       />
     )
   }
@@ -1757,7 +1949,7 @@ function StageCanvas({
         // nothing to trigger it. A device loss (a driver reset, a laptop
         // waking) is the common way to land here, and it is entirely
         // recoverable.
-        action={<StageRetry onClick={source.reload} />}
+        action={<ViewerRetry onClick={source.reload} />}
       />
     )
   }
@@ -1771,131 +1963,35 @@ function StageCanvas({
         icon={MonitorX}
         title={t('viewer.unavailable.title')}
         description={t('viewer.unavailable.description')}
-        action={<StageRetry onClick={source.reload} />}
+        action={<ViewerRetry onClick={source.reload} />}
       />
     )
   }
   if (!viewport.canvasProps) {
     return <ModelViewportProgress phase="downloading" percent={null} />
   }
+  // The reader stopped the download. The canvas stays unmounted — the unmount
+  // is what aborts the request — and the way back is one press, not a reopen.
+  if (viewport.download.cancelled) {
+    return (
+      <ViewerNotice
+        icon={Boxes}
+        title={t('stage.download.cancelled.title')}
+        description={t('stage.download.cancelled.description')}
+        action={<ViewerRetry onClick={viewport.download.restart} label={t('stage.download.restart')} />}
+      />
+    )
+  }
 
   return (
     <>
       <IfcViewerCanvasLazy {...viewport.canvasProps} className="size-full" />
-      <ModelViewportProgress phase={viewport.status.phase} percent={viewport.status.percent} />
+      <ModelViewportProgress
+        phase={viewport.status.phase}
+        percent={viewport.status.percent}
+        bytes={viewport.status.bytes}
+        onCancel={viewport.download.cancel}
+      />
     </>
-  )
-}
-
-/**
- * Which way the building is facing.
- *
- * A menu rather than six buttons in the bar. The old toolbar spent six of its
- * nine slots on view names, which put the two controls anyone uses — the cut
- * and the see-through — at the end of a row of words. Folding the directions
- * into one control is what made room for the bar to be readable.
- *
- * The projection toggle lives in here too, at the bottom, because it only ever
- * matters in the sentence "…and draw it parallel so it measures" — which is a
- * thought you have while choosing a view, not on its own.
- */
-function StageViewMenu({
-  view,
-  orthographic,
-  onViewChange,
-  onOrthographicChange,
-  disabled,
-}: {
-  view: BimCameraView
-  orthographic: boolean
-  onViewChange: (view: BimCameraView) => void
-  onOrthographicChange: (orthographic: boolean) => void
-  disabled: boolean
-}): JSX.Element {
-  const t = useTranslations('bim')
-  /**
-   * Controlled so choosing a view CLOSES the menu.
-   *
-   * It did not, so picking "Grundriss" left an 11 rem popover sitting over the
-   * lower-left of the building the reader had just re-oriented to look at —
-   * and the one thing they wanted to see was behind it.
-   */
-  const [open, setOpen] = useState(false)
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      {/*
-        The trigger is the BUTTON, not a wrapper around it. A `<span>` in
-        between takes Radix's props — including the ones that make Enter open
-        the menu — and leaves the focused button inert, which is a control that
-        works with a mouse and not with a keyboard.
-      */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            {/*
-              The name of the active view, on the trigger. Section, Measure and
-              See-through all light up when they are on; this one looked
-              identical whether the reader was on the north elevation in
-              parallel projection or in the free perspective default, so the
-              only way to find out was to open the menu and read it. The
-              `adornment` prop exists for exactly this and had no caller.
-            */}
-            <ViewerIconButtonBase
-              label={t('stage.views')}
-              icon={Video}
-              disabled={disabled}
-              active={view !== 'iso'}
-              adornment={
-                view === 'iso' ? undefined : (
-                  <span className="text-xs font-medium">{t(`viewer.view.${view}`)}</span>
-                )
-              }
-            />
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={8}>
-          {t('stage.views')}
-        </TooltipContent>
-      </Tooltip>
-      <PopoverContent side="top" sideOffset={10} align="start" className="w-44 p-1.5">
-        <div className="grid gap-0.5" role="group" aria-label={t('stage.views')}>
-          {BIM_CAMERA_VIEWS.map((candidate) => (
-            <button
-              key={candidate}
-              type="button"
-              aria-pressed={view === candidate}
-              onClick={() => {
-                onViewChange(candidate)
-                setOpen(false)
-              }}
-              className={cn(
-                // `pointer-coarse:min-h-11`: these are raw buttons, so they
-                // never see the floor `Button` applies. ~30 px rows two pixels
-                // apart are the only route to a plan or an elevation.
-                'focus-visible:ring-ring/60 pointer-coarse:min-h-11 flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm font-medium outline-none transition-colors duration-quick ease-out focus-visible:ring-2',
-                view === candidate
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              {t(`viewer.view.${candidate}`)}
-              {view === candidate && <Check className="size-3.5" aria-hidden="true" />}
-            </button>
-          ))}
-        </div>
-        <div className="border-border mt-1.5 border-t pt-1.5">
-          <button
-            type="button"
-            aria-pressed={orthographic}
-            onClick={() => onOrthographicChange(!orthographic)}
-            className="focus-visible:ring-ring/60 text-muted-foreground hover:bg-muted hover:text-foreground pointer-coarse:min-h-11 flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm font-medium outline-none transition-colors duration-quick ease-out focus-visible:ring-2"
-          >
-            {t('viewer.projection.parallel')}
-            {orthographic && <Check className="size-3.5" aria-hidden="true" />}
-          </button>
-        </div>
-      </PopoverContent>
-    </Popover>
   )
 }

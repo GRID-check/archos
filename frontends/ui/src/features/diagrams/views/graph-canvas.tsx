@@ -89,9 +89,9 @@ const PAD = 8
 const LABEL_MAX_WIDTH = 160
 /** Border and `px-1.5` around the text, and border and `py-0.5` above and below it. */
 const LABEL_INSET = { x: 14, y: 6 }
-/** One character of 11px text, on average; one line of it at `leading-snug`. */
-const LABEL_CHAR_WIDTH = 6.4
-const LABEL_LINE_HEIGHT = 11 * 1.375
+/** One character of 12px text, on average; one line of it at `leading-snug`. 12px is the floor for text on a phone. */
+const LABEL_CHAR_WIDTH = 7
+const LABEL_LINE_HEIGHT = 12 * 1.375
 
 /**
  * Room dagre reserves for an edge label, before the label is measured: as wide
@@ -154,7 +154,7 @@ const RoutedEdge: FC<EdgeProps<Edge<RoutedEdgeData>>> = ({ id, data, markerEnd }
       {data.label && data.labelAt ? (
         <EdgeLabelRenderer>
           <div
-            className="border-border bg-card text-muted-foreground nodrag nopan pointer-events-none absolute max-w-[160px] rounded-md border px-1.5 py-0.5 text-center text-[11px] leading-snug break-words whitespace-pre-line"
+            className="border-border bg-card text-muted-foreground nodrag nopan pointer-events-none absolute max-w-[160px] rounded-md border px-1.5 py-0.5 text-center text-xs leading-snug break-words whitespace-pre-line"
             style={{ transform: `translate(-50%, -50%) translate(${data.labelAt.x}px, ${data.labelAt.y}px)` }}
           >
             {data.label}

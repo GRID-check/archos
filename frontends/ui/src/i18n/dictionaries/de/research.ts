@@ -18,8 +18,11 @@ export const research: typeof en.research = {
     scrollToLatest: 'Zum neuesten Beitrag springen',
     // Eine leise Zeile über der Eingabe, statt einer Fehlerkarte im Verlauf:
     // die Seite verbindet sich von selbst neu, die Lesenden müssen nichts tun.
+    // Gilt ohne Netz, bei gesperrtem Telefon und bei nicht erreichbarem
+    // Server: eine laufende Antwort geht dabei nicht verloren, sie wird
+    // fortgesetzt, sobald die Verbindung wieder steht.
     connection: {
-      lost: 'Verbindung unterbrochen · Piloti verbindet sich neu …',
+      lost: 'Verbindung unterbrochen · Piloti macht weiter, sobald sie wieder steht',
       restored: 'Wieder verbunden',
     },
     status: {
@@ -39,7 +42,7 @@ export const research: typeof en.research = {
     },
     loggedOutTitle: 'Piloti wird verfügbar, sobald Ihre Organisation verifiziert ist.',
     loggedOutBody:
-      'Melden Sie sich an, um den Projekt-Arbeitsbereich freizuschalten: Ihre Unterlagen, die Büroablage und den Vorschriftenkorpus.',
+      'Melden Sie sich an, um den Projekt-Arbeitsbereich zu öffnen: Unterlagen, Büroablage, Aufgaben und Recherche.',
     signInSso: 'Mit SSO anmelden',
     welcomeTitle: 'Wie kann Piloti bei Ihrem Projekt helfen?',
   },
@@ -172,6 +175,10 @@ export const research: typeof en.research = {
     statusIngesting: 'Wird gelesen',
     statusAvailable: 'Verfügbar',
     statusError: 'Fehler',
+    // Von der Inhaltsprüfung zurückgehalten (ADR-0086); nie „freigeben“.
+    statusHeld: 'Zurückgehalten',
+    // Gespeichert, nie gelesen: Piloti kann daraus nicht antworten, nichts ist fehlgeschlagen.
+    statusStored: 'Abgelegt',
     statusDeleting: 'Wird gelöscht...',
     expiryPending: 'Löschung ausstehend – erneut hochladen',
     expiresIn: 'Läuft in {minutes} Min. ab',
@@ -216,6 +223,12 @@ export const research: typeof en.research = {
     pleaseWait: 'Bitte warten...',
     typeAhead: 'Nächste Frage schon eingeben …',
     typeAheadHint: 'Senden ist möglich, sobald die Antwort fertig ist.',
+    // Während Piloti an der eigenen Frage arbeitet: Enter schickt den Text als
+    // Lenkung in die laufende Antwort, nicht als neue Frage.
+    steer: 'Piloti lenken …',
+    steerHint: 'Enter ergänzt die laufende Antwort; Piloti liest es vor dem nächsten Schritt.',
+    steerChip: 'lenkt',
+    steerSent: 'Ergänzung gesendet',
     messageNotSent: 'Nachricht nicht gesendet',
     messageNotSentDesc:
       'Beim Senden Ihrer Nachricht ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
@@ -299,6 +312,8 @@ export const research: typeof en.research = {
     yesterday: 'Gestern',
     editTitle: 'Chat-Titel bearbeiten',
     untitledSession: 'Chat ohne Titel',
+    /** Zeilenmenü am Touch-Gerät (kein Hover): Name der Schaltfläche. */
+    rowActions: 'Aktionen für „{title}“',
     renameDisabled: 'Chat umbenennen (deaktiviert)',
     rename: 'Chat umbenennen',
     cannotRenameBusy: 'Umbenennen nicht möglich, während Vorgänge laufen',

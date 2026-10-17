@@ -11,7 +11,7 @@ general:
         level: INFO
       otlp:
         # Ships runtime logs to the same OTLP collector as the traces below
-        # (Aspire dashboard "Strukturierte Protokolle", ADR-0029). The
+        # (which forwards WARN+ to PostHog Logs, ADR-0029). The
         # /v1/logs path is derived from the injected traces endpoint; no
         # endpoint == observability tier not deployed == no-op.
         _type: otelcollector_logs
@@ -355,6 +355,19 @@ llms:
     max_retries: 0
     request_timeout: 25
     reasoning_effort: none
+
+# The review canvas (src/aiq_agent/tools/canvas), one NAT function group: Piloti
+# works a document the way a person at the canvas does. `look` at a page or a
+# box on it, see who is in the `room`, `point` and `highlight` for everyone,
+# read the `marks`, propose a `mark` (a person takes it over), and, when the
+# person asks, set one open, `update` or `delete` one in their name; `reply` in
+# a thread. The model calls them `canvas__<tool>`. Each acts on a document the
+# model names, the one open on the canvas, or the conversation's subject; the
+# BFF checks it against the asker's access and the turn's signed scope, from
+# the signed envelope. Chat only, because only a turn carries an envelope.
+function_groups:
+  canvas:
+    _type: document_canvas
 
 functions:
   data_sources:
@@ -770,6 +783,8 @@ functions:
       - file_draft
       - create_task
       - project_lookup
+      # The `canvas` function group (below): nine tools, `canvas__look` …
+      - canvas
       - ifc_query
       - ifc_measure
       - ask_user
@@ -1081,6 +1096,27 @@ functions:
     # at a writable volume path or a Postgres DSN to enable resume-by-job_id.
     checkpoint_db: ${AIQ_DEEP_CHECKPOINT_DB:-}
 
+  # The Erfassungs-Agent (ADR-0111, docs/design/agentic-project-intake.md):
+  # Piloti sets a new project's profile up from its documents, as a background
+  # run on the research worker (agent type `project_intake`). It runs on the
+  # chat model's agent group (`research_llm`; the runner maps this type to
+  # AgentGroup.RESEARCH), so an organization's model choice for chat applies.
+  # Its own tools (intake_needs, record_values, finish_intake, read_document)
+  # are built by the agent; the list below is the shared reading tools, pinned
+  # because an empty list would inherit every data source, the web and RIS
+  # among them, and a profile value comes from the project's documents only.
+  project_intake_agent:
+    _type: project_intake_agent
+    llm: research_llm
+    tools:
+      - list_files
+      - knowledge_search
+      - read_passage
+    # The reading's budgets, stated to the model as information. The run ends
+    # itself before the BFF reconciles a reading older than 30 minutes.
+    max_tool_steps: 80
+    max_run_seconds: 1200
+
 workflow:
   _type: chat_deepresearcher_agent
   verbose: true
@@ -1108,18 +1144,15 @@ workflow:
   checkpoint_db: ${AIQ_CHECKPOINT_DB:-./checkpoints.db}
   # Enables the async post-answer memory-reflection stage (reuses the cheap
   # card_llm). This only makes the capability AVAILABLE; whether it runs is
-  # decided per TURN by the BFF (`GET /api/internal/stages`): the
-  # `memory-reflection` WorkOS flag when GRID_ENFORCE_FEATURE_FLAGS is on,
-  # otherwise GRID_MEMORY_REFLECTION_ENABLED, which defaults ON — so a
-  # non-WorkOS deployment DOES get the stage. (The previous claim here, "solely
-  # the WorkOS feature flag, no env-var fallback", contradicted
-  # `feature-flags.ts` and has been wrong since that fallback was added.)
+  # decided per TURN by the BFF (`GET /api/internal/stages`) from the
+  # `memory-reflection` WorkOS flag, with no env-var fallback. A deployment that
+  # signs nobody in (REQUIRE_AUTH not true) gets it, as every rollout flag is on
+  # there (`frontends/ui/src/lib/authz/feature-flags.ts`).
   memory_reflection_llm: card_llm
   # Enables the async post-answer follow-up-questions stage. As above, this only
   # makes the capability AVAILABLE; whether it runs is decided per TURN by the
-  # BFF (`GET /api/internal/stages`): the `post-answer-follow-ups` WorkOS flag
-  # when GRID_ENFORCE_FEATURE_FLAGS is on, otherwise
-  # GRID_STAGE_FOLLOW_UPS_ENABLED, which defaults ON.
+  # BFF (`GET /api/internal/stages`) from the `post-answer-follow-ups` WorkOS
+  # flag, the same way.
   # The stage delivers a `grid_stage_message` frame, rendered as a rail below
   # the answer card. It ran `silent` for one slice first, so its skip rate,
   # empty rate and true per-turn cost were measured before any reader saw a chip

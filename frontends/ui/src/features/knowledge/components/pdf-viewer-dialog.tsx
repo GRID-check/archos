@@ -20,9 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { InsetStage } from '@/components/ui/inset-stage'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { useTranslations } from '@/i18n'
 import { PdfDocumentView } from './pdf-document-view'
 import { RegionMarks } from './region-marks'
+import { PageSheet } from './pdf-viewer-atoms'
 import type { PageRegion } from '../lib/page-region'
 
 export interface PdfViewerDialogProps {
@@ -130,8 +133,19 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
         wide/landscape drawings (a small page over a large dark void). Setting the
         `sm:` width here is what actually lets it fill the viewport.
       */}
-      <DialogContent className="flex h-[90dvh] w-[95vw] max-w-[95vw] sm:max-w-[95vw] flex-col gap-3 p-4 sm:p-5">
-        <DialogHeader className="shrink-0 pr-8 text-left">
+      {/*
+        On a phone, upright or on its side, the document is the screen: the
+        same full-screen reader a file from Dateien opens in, edge to edge,
+        with the header compact under the status bar and the stage running
+        to the home indicator. A 90dvh card left a drawing a 345px column
+        with the dimmed page around it.
+      */}
+      <DialogContent
+        mobilePresentation="fullscreen"
+        data-testid="pdf-viewer-dialog"
+        className="flex h-[90dvh] w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] sm:max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] flex-col gap-3 p-4 sm:p-5 phone:h-dvh phone:max-h-dvh phone:w-screen phone:gap-0 phone:p-0"
+      >
+        <DialogHeader className="shrink-0 pr-8 text-left phone:gap-1 phone:pt-[max(0.75rem,env(safe-area-inset-top))] phone:pr-[calc(env(safe-area-inset-right)+3.75rem)] phone:pb-2 phone:pl-[max(1rem,env(safe-area-inset-left))]">
           {/* `flex-wrap`: the chip and the title hold the first line, the
               actions drop to a second one when the row cannot hold them all.
               Unwrapped, a phone header was chip + two copy buttons and nothing
@@ -139,10 +153,17 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
               under the close button. */}
           <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
             {headerChip}
-            <span className="min-w-0 flex-1 truncate">{title ?? fileName}</span>
+            {/* Cut in the middle, so an edition or a revision at the end of
+                the name (`…_Ausgabe_2023.pdf`) survives the narrow header. */}
+            <span className="flex min-w-0 flex-1">
+              <MiddleTruncate text={title ?? fileName} />
+            </span>
             {headerActions}
           </DialogTitle>
-          <DialogDescription className="flex items-center gap-3 text-xs">
+          {/* On a phone on its side every line above the document is a line
+              of the document lost, and this one (the source note and the
+              browser's own viewer) is the one the reader needs least there. */}
+          <DialogDescription className="flex items-center gap-3 text-xs phone:landscape:hidden">
             {t('viewer.description')}
             <a
               href={src}
@@ -155,15 +176,21 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
             </a>
           </DialogDescription>
         </DialogHeader>
-        {children}
+        {children && (
+          <div className="contents phone:block phone:shrink-0 phone:px-[max(0.75rem,env(safe-area-inset-left))] phone:pb-2">
+            {children}
+          </div>
+        )}
         {/* The frame and its aside share the dialog's remaining height. Without
             an aside this is a single flex child filling the row exactly as it
             did before, so every caller that passes none is unaffected. */}
-        <div className="flex min-h-0 flex-1 flex-col gap-3 md:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 md:flex-row phone:gap-0 phone:pb-[env(safe-area-inset-bottom)]">
           {aside}
           {open &&
             (isImage ? (
-              <div className="min-h-0 w-full flex-1 overflow-auto overscroll-contain rounded-lg border border-border bg-surface-sunken">
+              // The same stage a PDF lies on, so an enlarged image and an
+              // enlarged PDF are one surface with different things on it.
+              <InsetStage className="min-h-0 w-full flex-1 overflow-auto overscroll-contain p-3">
                 {/* The source streams at whatever size it happens to be, so
                     there is no intrinsic ratio to declare: 0/0 plus explicit
                     `w-auto h-auto` hands sizing back to CSS and keeps the image
@@ -173,7 +200,7 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
                 {/* `relative w-fit`: the wrapper shrinks to the image, so a
                     region's percentages are shares of the IMAGE, not of the
                     scroll frame around it. */}
-                <div className="relative mx-auto w-fit max-w-full">
+                <PageSheet className="mx-auto w-fit max-w-full">
                   <Image
                     src={src}
                     alt={title ?? fileName}
@@ -184,11 +211,12 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
                     className="block h-auto w-auto max-w-full"
                   />
                   {regions?.length ? <RegionMarks regions={regions} color={highlightColor} /> : null}
-                </div>
-              </div>
+                </PageSheet>
+              </InsetStage>
             ) : (
               <PdfDocumentView
                 src={baseSrc}
+                bleed
                 title={title ?? fileName}
                 page={page}
                 highlight={highlight}

@@ -27,6 +27,14 @@ class DeleteFilesRequest(BaseModel):
     """Request body for batch file deletion."""
 
     file_ids: list[str] = Field(..., description="List of file IDs to delete")
+    permanent: bool = Field(
+        False,
+        description=(
+            "True when nobody will undo this delete (an erase, a move to another collection): the Fassung facts "
+            "a person made on the files go with them. False (the default) keeps those facts for the files' "
+            "return after an archive, the folder bin or a publish."
+        ),
+    )
 
 
 class ScreeningPolicy(BaseModel):
@@ -34,8 +42,9 @@ class ScreeningPolicy(BaseModel):
 
     A match fails the file with an ``error_message`` starting ``quarantined:``
     (``knowledge_layer.llamaindex.screening``). Terms match case-, umlaut- and
-    whitespace-insensitively at a word start; the detectors count checksum-valid
-    matches only.
+    whitespace-insensitively at a word start, in the text as a person reads it
+    (invisible characters left out, a hyphen at a line break joined); the
+    detectors count checksum-valid matches only, a card only in a printed layout.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -134,6 +143,18 @@ class IngestRequest(BaseModel):
             "basename is not the name the document is known by: the chunk `file_name` metadata "
             "is the join key every chunk purge addresses, and a name derived from the key is a "
             "guess about a string the BFF already knows."
+        ),
+    )
+    fassung_of: str | None = Field(
+        None,
+        max_length=512,
+        description=(
+            "File name of the document in this collection that this file replaces, when a person chose "
+            "'als neue Fassung ablegen' in the upload dialog (CONTEXT.md, Fassung). Once the file has been "
+            "read, the ingest job writes the same confirmed link `PUT /v1/collections/{c}/fassung` writes, "
+            "with the change summary. The BFF checks that the person may change the older document; an "
+            "older file the collection does not hold, or a link that would close a loop, falls back to "
+            "the ordinary suggestion. Omit for every other upload."
         ),
     )
     authored_by: str | None = Field(

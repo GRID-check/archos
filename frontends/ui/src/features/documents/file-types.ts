@@ -1,4 +1,7 @@
 import type { DocumentAuthor } from '@/lib/db/schema'
+import type { FassungFacts } from '@/lib/documents/fassung'
+import type { PhotoCapture } from '@/lib/documents/photo-capture'
+import type { RevisionFacts } from '@/lib/documents/revision-facts'
 import type {
   DocumentLifecycle,
   DocumentVersionState,
@@ -9,6 +12,8 @@ export interface FolderItem {
   parentId: string | null
   name: string
   path: string
+  /** What belongs in it, in a person's words (migration 0145); null or absent when nobody described it. */
+  description?: string | null
   createdAt?: string
   updatedAt?: string
   /**
@@ -73,6 +78,24 @@ export interface FileItem {
   contentTypes: string[] | null
   /** Controlled ingestion-generated tags (document type + OIB discipline). */
   tags: string[] | null
+  /** Model-recognised keywords beside the controlled tags. A person may correct them. */
+  topics: string[] | null
+  /** EXIF facts of a photo. Coordinates are shown to people with access, never sent to a model. */
+  capture: PhotoCapture | null
+  /**
+   * Title-block facts read off the drawing during ingestion (Plannummer, Index,
+   * Datum, Maßstab, Planinhalt). Optional so a listing that did not read them
+   * says nothing; `null` is "read, and the sheet showed none".
+   */
+  revisionFacts?: RevisionFacts | null
+  /**
+   * Which documents this one replaces or is replaced by, Piloti's suggestion
+   * and what changed (CONTEXT.md, „Fassung"). Every reference is a document the
+   * reader may open; one they may not is not in it (`fassung-facts.ts`).
+   * Optional so a listing that did not read it says nothing; `null` is "read,
+   * and there is nothing".
+   */
+  fassung?: FassungFacts | null
   /**
    * How many of this office's uploads wait ahead of this one in the ingest
    * queue, or null when it is not waiting there (`DocumentMetadata.queueAhead`).
@@ -113,6 +136,15 @@ export interface FileItem {
    * the purge ran, for „Quelle gelöscht am …". Null for every other document.
    */
   sourceDeletedAt?: string | null
+  /**
+   * Whether reading the document again may come out differently
+   * (`lib/documents/retry-policy.ts`). False only for a FAILED file whose
+   * failure is lasting (empty, encrypted, unparseable) and whose bytes and
+   * reader have not changed since: „Alle erneut lesen“ leaves it out, and its
+   * „Erneut lesen“ says to upload a new version instead. Absent reads as true,
+   * which is what every listing served before the field meant.
+   */
+  retryable?: boolean
 }
 
 export interface FileAssignee {

@@ -24,7 +24,7 @@ import type { UploadHistoryEntry } from '@/adapters/api/upload-batches-client'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Item, ItemActions, ItemContent, ItemList, ItemTitle } from '@/components/ui/item'
+import { Item, ItemContent, ItemList, ItemTitle } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
@@ -40,19 +40,37 @@ function UploadHistoryRow({ entry, own }: { entry: UploadHistoryEntry; own: bool
   const pills = visibleTally(tallyHistoryEntry(entry))
 
   return (
-    <Item as="li" className="flex-wrap items-start hover:bg-transparent" data-testid={`upload-history-row-${entry.id}`}>
+    <Item as="li" className="items-start hover:bg-transparent" data-testid={`upload-history-row-${entry.id}`}>
       <ItemContent className="flex flex-col gap-2">
-        <ItemTitle className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 font-normal">
-          <TimeAgo date={entry.createdAt} locale={locale} className="text-foreground font-medium" />
-          <span aria-hidden>·</span>
-          <span>{t('history.files', { count: entry.expectedCount })}</span>
-          {(own || entry.createdByName) && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{own ? t('history.you') : entry.createdByName}</span>
-            </>
+        {/* The summary link sits on the title's own line, to its right. It used
+            to be a flex sibling of the content, and on a phone it took a third
+            of the row and squeezed the pills into a one-column stack six rows
+            tall; here the pills get the card's whole width and wrap. */}
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <ItemTitle className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 self-center font-normal whitespace-normal">
+            <TimeAgo date={entry.createdAt} locale={locale} className="text-foreground font-medium" />
+            <span aria-hidden>·</span>
+            <span>{t('history.files', { count: entry.expectedCount })}</span>
+            {(own || entry.createdByName) && (
+              <>
+                <span aria-hidden>·</span>
+                <span>{own ? t('history.you') : entry.createdByName}</span>
+              </>
+            )}
+          </ItemTitle>
+          {own && (
+            <Button asChild variant="ghost" size="sm" className="-my-1 -mr-2 shrink-0">
+              <Link
+                href={`/app/uploads/${encodeURIComponent(entry.id)}`}
+                aria-label={t('history.openLabel', { date: formatAbsoluteTime(entry.createdAt, locale) })}
+                data-testid={`upload-history-open-${entry.id}`}
+              >
+                {t('history.open')}
+                <ArrowUpRight className="size-3.5" aria-hidden />
+              </Link>
+            </Button>
           )}
-        </ItemTitle>
+        </div>
         <ul className="flex flex-wrap gap-1.5" aria-label={t('history.countsLabel')}>
           {pills.map(({ key, count }) => (
             <li key={key}>
@@ -61,20 +79,6 @@ function UploadHistoryRow({ entry, own }: { entry: UploadHistoryEntry; own: bool
           ))}
         </ul>
       </ItemContent>
-      {own && (
-        <ItemActions>
-          <Button asChild variant="ghost" size="sm">
-            <Link
-              href={`/app/uploads/${encodeURIComponent(entry.id)}`}
-              aria-label={t('history.openLabel', { date: formatAbsoluteTime(entry.createdAt, locale) })}
-              data-testid={`upload-history-open-${entry.id}`}
-            >
-              {t('history.open')}
-              <ArrowUpRight className="size-3.5" aria-hidden />
-            </Link>
-          </Button>
-        </ItemActions>
-      )}
     </Item>
   )
 }

@@ -6,7 +6,7 @@ features:
     delete. Only a project admin who may edit a folder can change who may read
     or edit it.
   - >
-    A folder holding subfolders you cannot read can only be moved by an
-    organization admin, and a demoted admin stops reaching every folder within a
-    minute. Review requests go only to people who may read the folder, and the
-    projects overview counts only the documents you may read.
+    A folder that holds subfolders you cannot read can only be moved by an
+    organization admin, and a demoted admin loses access to the folders shortly
+    after the change. Review requests go only to people who may read the folder,
+    and the projects overview counts only the documents you may read.

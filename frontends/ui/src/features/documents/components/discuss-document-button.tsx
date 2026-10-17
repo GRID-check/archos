@@ -1,7 +1,10 @@
 'use client'
 
 /**
- * „Besprechen" — the ONE control that opens a conversation about a document.
+ * „Mit Piloti besprechen" — the ONE control that opens a conversation with
+ * Piloti about a document. It was „Besprechen" for a while, which named the
+ * gesture and not the colleague it is with; beside „Kollegin fragen" a reader
+ * could not tell which of the two buttons talks to Piloti.
  *
  * ## Why it is one component and one label
  *
@@ -44,7 +47,7 @@
 
 import type { JSX } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageSquareText } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
@@ -105,7 +108,9 @@ export function DiscussDocumentButton({
         )
       }}
     >
-      {withIcon && <MessageSquareText className="size-4" aria-hidden />}
+      {/* Sparkles is Piloti's glyph across the rail („Von Piloti gelesen“), so
+          the button that talks to Piloti carries it too. */}
+      {withIcon && <Sparkles className="size-3.5" aria-hidden />}
       {t('assignment.discuss')}
     </Button>
   )

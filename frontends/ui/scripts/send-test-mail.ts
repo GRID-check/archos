@@ -17,8 +17,9 @@
  * a bug in this script. Save a real mail from your client ("Show original" /
  * "Als Datei speichern") that was sent To or Cc the project address to test
  * the happy path; its signature still verifies as long as nothing it signs was
- * edited. The organization's `project-mail-inbox` switch must be on
- * (`GRID_PROJECT_MAIL_INBOX_ENABLED=true` without flag enforcement).
+ * edited. The organization's `project-mail-inbox` WorkOS flag must be on, so
+ * run the app with `REQUIRE_AUTH=true` against the Staging WorkOS environment:
+ * the flag is an entitlement, off wherever nobody signs in.
  *
  * A 202 means the mail is queued, not filed: an `inbound_mail` job on the BFF's
  * job queue files it, so a `bff-jobs` runner must be up (`node workers/jobs/index.js`).

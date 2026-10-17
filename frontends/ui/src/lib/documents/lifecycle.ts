@@ -41,6 +41,8 @@
  * a name in a row's `effects` — never an `if` inside `publish`.
  */
 
+import { documentShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import 'server-only'
 import { ConflictError, ForbiddenError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -48,7 +50,7 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { filedInOf } from '@/lib/audit/document-names'
 import { publishToUsers } from '@/lib/events/bus'
-import { emitInboxItems, resolveInboxItemsFor } from '@/lib/inbox/service'
+import { emitInboxItems, openRecipientsOf, resolveInboxItemsFor } from '@/lib/inbox/service'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { resolvePeople } from '@/lib/sharing/directory'
@@ -66,6 +68,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { isAgentDocumentFilename } from './agent-namespace'
 import { collectionFileRef, purgeIngestedChunks } from './collection-file-ref'
 import { documentDisplayName } from './display-name'
+import { announceNewFassung } from './fassung-notify'
 import { findDocumentInOrg } from './repository'
 import { hasPassedScreening, internalRead } from '@/lib/documents/document-reader'
 import { resolveDocumentFolderPath } from './folder-path'
@@ -77,6 +80,7 @@ import {
   BACKEND_PURGE_TIMEOUT_MS,
   readVersionTextForTask,
   renderVersionBytes,
+  versionBytesReadableBy,
   writeVersionContent,
 } from './version-content'
 import type { AgentDocumentProvenance, DispatchDocumentResult, IngestPriority } from './service'
@@ -85,12 +89,13 @@ import {
   findDocumentVersionTransition,
   type DocumentVersionEffect,
   type DocumentVersionOp,
-  type DocumentVersionState,
+  type DocumentVersionListResponse,
   type DocumentVersionTransition,
   type DocumentVersionView,
 } from './lifecycle-types'
 import {
   compareAndSwapVersionState,
+  type ReviewRoundWrite,
   findDocumentVersion,
   listDocumentVersionSummaries,
   findOpenVersion,
@@ -440,7 +445,9 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
    * The slot was named before it did anything, and that is why the door could
    * be opened without moving a call site: "only a published version is ever
    * dispatched" is a property of the transition table — this effect appears on
-   * the `publish` row and nowhere else — rather than of somebody remembering
+   * the promoting review rows (`approve`, which publishes in one step since
+   * ADR-0104 rule 5, and `publish` for a version approved before that) and
+   * nowhere else — rather than of somebody remembering
    * where to put the dispatch. Do not call `dispatchDocument` from anywhere
    * else in this module.
    *
@@ -520,6 +527,29 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
       if (!(error instanceof AgentAuthoredDocumentNotIndexableError)) throw error
       console.warn(`[documents] ingest refused the published version ${version.id}`)
     }
+  },
+
+  /**
+   * A published version that replaces an earlier one is a new Fassung of the
+   * document: tell the people who follow it (`./fassung-notify`).
+   *
+   * `previous` is the version this transition superseded, so it is `null` for a
+   * document's first version, which is news to nobody. For a person's upload the
+   * document is still held here (its new bytes are screened after this runs) and
+   * the notifier says nothing; the settle hook calls it again once they pass.
+   * Detached because it asks the directory about each person, and the
+   * publisher's answer should not wait for that.
+   */
+  announceNewFassung: async ({ session, document, version, previous }) => {
+    if (!previous) return
+    void announceNewFassung({
+      organizationId: session.organizationId,
+      actorUserId: session.userId,
+      newerId: document.id,
+      olderId: document.id,
+      versionId: version.id,
+      previousUploaderIds: [previous.createdBy],
+    })
   },
 
   /**
@@ -823,12 +853,26 @@ async function assertReviewGuards(
 
 /** The columns a transition stamps, by the state it lands in. */
 function stampFor(
-  to: DocumentVersionState,
+  transition: Pick<DocumentVersionTransition, 'to' | 'op'>,
   session: AuthorizedSession,
   input: TransitionInput,
   now: Date,
 ): Record<string, unknown> {
   const comment = input.comment?.trim() || null
+  const { to } = transition
+  // „Freigeben" approves and publishes in one step (ADR-0104 rule 5): both
+  // stamps, one person, one moment.
+  if (transition.op === 'approve') {
+    return {
+      state: to,
+      reviewedBy: session.userId,
+      reviewedAt: now,
+      approvedBy: session.userId,
+      approvedAt: now,
+      reviewComment: comment,
+      ...(to === 'published' ? { publishedBy: session.userId, publishedAt: now } : {}),
+    }
+  }
   switch (to) {
     case 'in_review':
       return {
@@ -839,15 +883,6 @@ function stampFor(
         // one thing and the row another.
         submittedByActor: input.actingHuman === false ? ('agent' as const) : ('human' as const),
         submittedAt: now,
-      }
-    case 'approved':
-      return {
-        state: to,
-        reviewedBy: session.userId,
-        reviewedAt: now,
-        approvedBy: session.userId,
-        approvedAt: now,
-        reviewComment: comment,
       }
     case 'changes_requested':
     case 'rejected':
@@ -861,6 +896,36 @@ function stampFor(
       return { state: to, reviewComment: null, reviewedBy: null, reviewedAt: null }
     default:
       return { state: to }
+  }
+}
+
+/**
+ * What a transition writes to the version's review rounds (migration 0136,
+ * ADR-0104), beside the stamp {@link stampFor} writes on the version. Only the
+ * four review ops touch a round; publish, update and archive do not.
+ */
+function reviewRoundFor(
+  op: DocumentVersionOp,
+  session: AuthorizedSession,
+  input: TransitionInput,
+): ReviewRoundWrite | undefined {
+  const comment = input.comment?.trim() || null
+  switch (op) {
+    case 'submit':
+      return {
+        kind: 'open',
+        requestedBy: session.userId,
+        requestedByActor: input.actingHuman === false ? 'agent' : 'human',
+        reviewerUserIds: input.reviewerUserIds ?? [],
+      }
+    case 'approve':
+      return { kind: 'decide', outcome: 'approved', decidedBy: session.userId, comment }
+    case 'request_changes':
+      return { kind: 'decide', outcome: 'changes_requested', decidedBy: session.userId, comment }
+    case 'reject':
+      return { kind: 'decide', outcome: 'rejected', decidedBy: session.userId, comment }
+    default:
+      return undefined
   }
 }
 
@@ -925,7 +990,8 @@ export async function transitionDocumentVersion(
     selfReview: review.selfReview,
   }
 
-  const stamp = stampFor(transition.to, session, effectInput, new Date())
+  const stamp = stampFor(transition, session, effectInput, new Date())
+  const round = reviewRoundFor(transition.op, session, effectInput)
   // `promotes` rows go through the transaction that also supersedes the
   // previous published version and moves the item's pointer; see the flag.
   const promoted = transition.promotes
@@ -935,14 +1001,18 @@ export async function transitionDocumentVersion(
         session.organizationId,
         version.state,
         stamp,
+        round,
       )
     : null
   const swapped = transition.promotes
     ? (promoted?.version ?? null)
-    : await compareAndSwapVersionState(versionId, session.organizationId, version.state, stamp)
+    : await compareAndSwapVersionState(versionId, session.organizationId, version.state, stamp, round)
   if (!swapped) {
     throw new ConflictError('The version changed while you were deciding', { op })
   }
+  // The row's Freigabe state, its size and date (a promotion swaps the item's
+  // bytes) changed for everyone reading the shelf.
+  publishShelfChanged(session.organizationId, documentShelf(document))
 
   await runEffects({
     session,
@@ -1012,18 +1082,12 @@ export async function createDocumentVersion(
     contentHash: input.contentHash,
     createdBy: session.userId,
     originConversationId: input.originConversationId ?? null,
-    // A published version needs an approver, and for an upload the person who
-    // uploaded it IS the assertion — the CHECK is satisfied honestly rather
-    // than worked around. A draft carries none of this.
+    // An upload is published by the person who put it there, and approved by
+    // nobody: the person is the assertion, and an approver column filled with
+    // their name would record a review that never happened (migration 0137).
     ...(transition.to === 'published'
-      ? {
-          state: 'published' as const,
-          approvedBy: session.userId,
-          approvedAt: now,
-          publishedBy: session.userId,
-          publishedAt: now,
-        }
-      : { state: transition.to }),
+      ? { state: 'published' as const, origin: 'upload' as const, publishedBy: session.userId, publishedAt: now }
+      : { state: transition.to, origin: 'draft' as const }),
   }
 
   // A row born `published` cannot be INSERTED and then have its predecessor
@@ -1089,6 +1153,7 @@ export async function forkDraftVersion(
     contentType: document.contentType,
     fileSize: document.fileSize,
     contentHash: document.contentHash,
+    screenedHash: null,
   }
 
   const transition = findDocumentVersionTransition(null, 'create')
@@ -1100,11 +1165,17 @@ export async function forkDraftVersion(
     documentId,
     projectId: document.projectId,
     state: 'draft',
+    origin: 'draft',
     storageKey: source.storageKey,
     storageBucket: source.storageBucket,
     contentType: source.contentType,
     fileSize: source.fileSize,
     contentHash: source.contentHash,
+    // The verdict travels with the bytes it is bound to (migration 0131): it
+    // counts only while it equals `contentHash`, so the first edit of the draft
+    // leaves it behind, and a draft published unedited, which is not screened
+    // again (`ingestPublishedUpload`), keeps the verdict its bytes already have.
+    screenedHash: source.screenedHash,
     createdBy: session.userId,
   }).catch(async (error: unknown) => {
     // Two forks both passed the probe above, and the index refused the second
@@ -1220,7 +1291,7 @@ export async function replaceVersionContent(
     document,
     version,
     rendered,
-    stamp: stampFor(transition.to, session, {}, new Date()),
+    stamp: stampFor(transition, session, {}, new Date()),
   })
 
   await runEffects({
@@ -1357,20 +1428,51 @@ export function toDocumentVersionView(version: DocumentVersion): DocumentVersion
 export async function listDocumentVersionViews(
   session: AuthorizedSession,
   documentId: string,
-): Promise<{
-  documentId: string
-  lifecycle: 'active' | 'archived'
-  publishedVersionId: string | null
-  versions: DocumentVersionView[]
-}> {
+): Promise<DocumentVersionListResponse> {
   const document = await getAccessibleDocument(session, documentId, 'read')
-  const versions = await listDocumentVersions(documentId, session.organizationId)
+  const rows = await listDocumentVersions(documentId, session.organizationId)
+  // Whether `…/versions/{id}/file` and `/content` will hand this reader the
+  // bytes (ADR-0086), so the timeline offers Öffnen only where they will.
+  const readable = await versionBytesReadableBy(session, document, rows)
+  const versions = rows.map((version) => ({ ...toDocumentVersionView(version), bytesReadable: readable(version) }))
+  const reviewerUserIds = await openReviewRound(session.organizationId, documentId, versions)
+  const people = await resolvePeople(session.organizationId, [...new Set([...versionActors(versions), ...reviewerUserIds])])
   return {
     documentId,
     lifecycle: document.lifecycle,
     publishedVersionId: document.publishedVersionId,
-    versions: versions.map(toDocumentVersionView),
+    versions,
+    reviewerUserIds,
+    people: [...people.values()].map((person) => ({ userId: person.userId, name: person.name })),
   }
+}
+
+/**
+ * Who the newest version's review round is still waiting on. Only a version in
+ * review has an open round; the recipients are read off the round's own inbox
+ * items, because that is where the reviewers a submitter NAMED are recorded
+ * (the fallback chain in `./reviewers` would answer with who MIGHT be asked).
+ */
+async function openReviewRound(
+  organizationId: string,
+  documentId: string,
+  versions: readonly DocumentVersionView[],
+): Promise<string[]> {
+  const newest = versions.reduce<DocumentVersionView | null>(
+    (best, version) => (best === null || version.versionNumber > best.versionNumber ? version : best),
+    null,
+  )
+  if (newest?.state !== 'in_review') return []
+  return openRecipientsOf(organizationId, reviewGroupKey(documentId, newest.id))
+}
+
+/** Every user id the versions name as having done something to them. */
+function versionActors(versions: readonly DocumentVersionView[]): string[] {
+  return versions.flatMap((version) =>
+    [version.createdBy, version.submittedBy, version.reviewedBy, version.approvedBy, version.publishedBy].filter(
+      (id): id is string => typeof id === 'string' && id.length > 0,
+    ),
+  )
 }
 
 /**

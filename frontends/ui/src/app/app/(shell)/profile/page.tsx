@@ -10,7 +10,6 @@
 import type { JSX } from 'react'
 import { Building2, UserRound } from 'lucide-react'
 import { withPageSession } from '@/lib/auth/require-auth'
-import { FEATURE_FLAGS, isFeatureEnabled } from '@/lib/authz/feature-flags'
 import { BackLink, ShellContent } from '@/components/shell'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -20,6 +19,7 @@ import type { Translator } from '@/i18n'
 import { getOrgSettings, getOrganizationOverview } from '@/lib/organizations/service'
 import { ProfileControls } from './profile-controls'
 import { isAuthRequired } from '@/lib/auth/auth-required'
+import { postHogConfigFromEnv } from '@/lib/analytics/posthog-config'
 
 const KNOWN_ROLE_SLUGS = new Set(['org-platform-owner', 'admin', 'member'])
 
@@ -62,6 +62,10 @@ const resolveOrganizationName = async (organizationId: string): Promise<string> 
 export default async function ProfilePage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
     const t = await getTranslations('profile')
+
+    // `process.env` whole, so Next does not inline the build-time value (layout.tsx).
+    const posthog = postHogConfigFromEnv(process.env)
+    const analyticsAvailable = Boolean(posthog.host && posthog.projectToken)
 
     const displayName = session.name || session.email || t('account.noName')
     const initial = String(displayName).charAt(0).toUpperCase()
@@ -147,7 +151,10 @@ export default async function ProfilePage(): Promise<JSX.Element> {
           <ProfileControls
             authRequired={isAuthRequired()}
             email={session.email}
-            shortcutsAvailable={isFeatureEnabled(session, FEATURE_FLAGS.keyboardShortcuts)}
+            // The /app layout mounts the shortcuts for every session with an
+            // organization, so the toggle shows exactly where they exist.
+            shortcutsAvailable={Boolean(session.organizationId)}
+            analyticsAvailable={analyticsAvailable}
           />
         </div>
       </ShellContent>

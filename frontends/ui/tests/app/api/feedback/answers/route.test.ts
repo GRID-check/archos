@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
@@ -51,32 +51,6 @@ function postReq(body: unknown): Request {
 beforeEach(() => {
   vi.clearAllMocks()
   mockSession.mockResolvedValue({ ...session } as never)
-})
-
-afterEach(() => {
-  delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-})
-
-describe('feature gate (answer-feedback)', () => {
-  it('returns 403 feature-disabled when enforcement is on and the flag is not granted', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    mockSession.mockResolvedValue({ ...session, featureFlags: [] } as never)
-
-    const res = await POST(postReq({ messageId: 'msg_1', verdict: 'up' }))
-
-    expect(res.status).toBe(403)
-    expect(await res.json()).toEqual({ error: 'feature-disabled', feature: 'answer-feedback' })
-    expect(mockSubmit).not.toHaveBeenCalled()
-  })
-
-  it('passes when enforcement is on and the flag is granted', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    mockSession.mockResolvedValue({ ...session, featureFlags: ['answer-feedback'] } as never)
-    mockSubmit.mockResolvedValue({ messageId: 'msg_1', verdict: 'up', reason: null, comment: null, expectedAnswer: null })
-
-    const res = await POST(postReq({ messageId: 'msg_1', verdict: 'up' }))
-    expect(res.status).toBe(200)
-  })
 })
 
 describe('POST /api/feedback/answers', () => {

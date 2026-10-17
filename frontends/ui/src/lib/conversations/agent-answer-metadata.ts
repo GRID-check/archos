@@ -54,6 +54,7 @@
 import { CITATIONS_PAYLOAD_VERSION } from '@/features/chat/lib/citations'
 import type { WireCitationSource } from '@/features/chat/types'
 import { sanitizeProvenance, type MessageProvenance } from './message-provenance'
+import { toProjectStatus, type ProjectStatus } from '@/lib/projects/project-status'
 import { sanitizeAnswerMeta } from './message-answer-meta'
 import { sanitizeFindings } from './message-findings'
 
@@ -196,7 +197,7 @@ export type StoredCitationSource = Partial<
   /** Whether the answer cited this source, as opposed to merely retrieving it. */
   is_cited?: boolean
   /** The other project a cross-project lookup found it in (ADR-0094). */
-  project?: { id: string; name: string; status: 'active' | 'closed' }
+  project?: { id: string; name: string; status: ProjectStatus }
 }
 
 /** The versioned envelope the message row stores under `citations`. */
@@ -210,7 +211,7 @@ function storedProject(value: unknown): StoredCitationSource['project'] {
   if (!isRecord(value)) return undefined
   const id = text(value.id, MAX_IDENTIFIER)
   if (!id) return undefined
-  return { id, name: text(value.name, MAX_TEXT) ?? '', status: value.status === 'closed' ? 'closed' : 'active' }
+  return { id, name: text(value.name, MAX_TEXT) ?? '', status: toProjectStatus(value.status) }
 }
 
 /**

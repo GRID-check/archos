@@ -34,6 +34,11 @@
  * table would turn a status we have not met yet into a blank or a lie, and the
  * word itself is already the most accurate thing we can say about it.
  *
+ * Below `sm` the same members are a list of cards, not a four-column table that
+ * pans sideways with the role and status off-screen (the role catalog's
+ * `Item` atoms). Both are in the DOM and CSS picks one, so there is no
+ * hydration flash on a desktop.
+ *
  * `showManagement` exists for the `/dev` preview only: the widget needs a real
  * token endpoint, and a backend-free screenshot route has none.
  */
@@ -45,6 +50,7 @@ import { Users } from 'lucide-react'
 import '@radix-ui/themes/styles.css'
 
 import { Badge } from '@/components/ui/badge'
+import { Item, ItemList } from '@/components/ui/item'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -69,6 +75,26 @@ export interface PeopleDirectoryProps {
   showManagement?: boolean
 }
 
+/** A role slug as the reader should see it: the catalog's name over the slug, or the slug alone. */
+function RoleLabel({ slug }: { slug: string | null }): JSX.Element {
+  const t = useTranslations('organization')
+  if (!slug) return <span className="text-muted-foreground">{t('access.people.noRole')}</span>
+  const roleName = findRoleSpec(slug)?.name
+  return (
+    <div className="flex flex-col gap-0.5">
+      {/* Name above, slug below — and only the slug when the catalog has no
+          name for it, because printing the same string twice reads as a
+          rendering fault. */}
+      <span>{roleName ?? slug}</span>
+      {roleName ? <code className="text-muted-foreground font-mono text-xs">{slug}</code> : null}
+    </div>
+  )
+}
+
+function StatusBadge({ status }: { status: string }): JSX.Element {
+  return <Badge variant={status.toLowerCase() === 'active' ? 'success' : 'secondary'}>{status}</Badge>
+}
+
 export function PeopleDirectory({
   members,
   error = false,
@@ -90,7 +116,25 @@ export function PeopleDirectory({
         emptyTitle={t('access.people.empty')}
         testId="people-directory"
       >
-        <Table>
+        {/* Phone: one card per person. */}
+        <ItemList as="ul" className="sm:hidden" data-testid="people-cards">
+          {members.map((member) => (
+            <Item as="li" key={member.id} className="flex-col items-stretch gap-1.5 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 break-words font-medium">
+                  {member.name ?? <span className="text-muted-foreground font-normal">—</span>}
+                </p>
+                <StatusBadge status={member.status} />
+              </div>
+              <p className="text-muted-foreground min-w-0 break-all text-sm">{member.email}</p>
+              <div className="text-sm">
+                <RoleLabel slug={member.roleSlug} />
+              </div>
+            </Item>
+          ))}
+        </ItemList>
+
+        <Table className="max-sm:hidden">
           <TableHeader>
             <TableRow>
               <TableHead>{t('access.people.columnName')}</TableHead>
@@ -100,41 +144,20 @@ export function PeopleDirectory({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {members.map((member) => {
-              const roleName = member.roleSlug ? findRoleSpec(member.roleSlug)?.name : undefined
-              return (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">
-                    {member.name ?? <span className="text-muted-foreground font-normal">—</span>}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{member.email}</TableCell>
-                  <TableCell>
-                    {member.roleSlug ? (
-                      <div className="flex flex-col gap-0.5">
-                        {/* Name above, slug below — and only the slug when the
-                            catalog has no name for it, because printing the same
-                            string twice reads as a rendering fault. */}
-                        <span>{roleName ?? member.roleSlug}</span>
-                        {roleName ? (
-                          <code className="text-muted-foreground font-mono text-xs">
-                            {member.roleSlug}
-                          </code>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">{t('access.people.noRole')}</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={member.status.toLowerCase() === 'active' ? 'success' : 'secondary'}
-                    >
-                      {member.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
+            {members.map((member) => (
+              <TableRow key={member.id}>
+                <TableCell className="font-medium">
+                  {member.name ?? <span className="text-muted-foreground font-normal">—</span>}
+                </TableCell>
+                <TableCell className="text-muted-foreground">{member.email}</TableCell>
+                <TableCell>
+                  <RoleLabel slug={member.roleSlug} />
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={member.status} />
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </SectionCard>

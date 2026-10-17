@@ -26,7 +26,9 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command'
+import { DialogClose } from '@/components/ui/dialog'
 import { useLayoutStore } from '@/features/layout/store'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
 import { paletteSections } from './project-sections'
 import { ShortcutKeys } from './shortcut-keys'
@@ -43,12 +45,33 @@ export function projectIdFromPathname(pathname: string): string | null {
   return match ? match[1] : null
 }
 
-const PALETTE_ITEM_CLASS = 'transition-colors duration-snap ease-out motion-reduce:transition-none'
+// 44px rows under a finger: they stack with no gap, so the row grows rather
+// than borrowing a catchment from its neighbour.
+const PALETTE_ITEM_CLASS =
+  'transition-colors duration-snap ease-out motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:text-[15px]'
+
+/**
+ * On a phone the palette is the whole screen above the keyboard, the shape of
+ * a system search: a 44px field at the top, the results under it, and an
+ * explicit "Abbrechen", because a phone has no Escape key to close it with.
+ * `--visual-viewport-height` is published while the keyboard is up
+ * (`useVisualViewport`), so the last result sits on the keyboard's edge rather
+ * than behind it. Every rule is behind `max-md:` and marked important, so the
+ * desktop palette is untouched and the dialog atom's own phone defaults do not
+ * pull it back into a card.
+ */
+const PHONE_PALETTE_CLASS = [
+  'max-md:inset-x-0! max-md:top-0! max-md:bottom-auto! max-md:left-0! max-md:translate-x-0! max-md:translate-y-0!',
+  'max-md:h-[var(--visual-viewport-height,100dvh)]! max-md:max-h-none! max-md:w-full! max-md:max-w-none!',
+  'max-md:flex! max-md:flex-col max-md:rounded-none! max-md:border-0! max-md:pt-[env(safe-area-inset-top)]',
+  'max-md:data-[state=open]:zoom-in-100 max-md:data-[state=closed]:zoom-out-100',
+].join(' ')
 
 /** Leader jump keycaps — `g` then the destination's `shortcutKey` / jump target. */
 function JumpShortcut({ jumpKey }: { jumpKey: string }) {
   return (
-    <CommandShortcut>
+    // Keycaps say nothing to a finger; a hardware keyboard still has the keys.
+    <CommandShortcut className="pointer-coarse:hidden">
       <ShortcutKeys
         segments={[
           { kind: 'chord', caps: [LEADER_KEY.toUpperCase()] },
@@ -76,7 +99,7 @@ export interface CommandPaletteProps {
    * ADR-0046).
    */
   showSkills?: boolean
-  /** Whether the org-wide Archiv is reachable (`organization-archiv`, ADR-0024). */
+  /** Whether the org-wide Archiv is reachable (ADR-0024). */
   canAccessArchiv?: boolean
 }
 
@@ -100,6 +123,9 @@ export function CommandPalette({
   const tCommon = useTranslations('common')
 
   const projectId = projectIdFromPathname(pathname)
+  // The ↑ ↓ ↵ Esc legend is for a keyboard. Read off the primary pointer, so a
+  // touch tablet past `md` drops it as well as a phone does.
+  const finePointer = useMediaQuery('(pointer: fine)')
 
   // Lazy project list — fetched once, the first time the palette opens.
   const [projects, setProjects] = React.useState<PaletteProject[] | null>(null)
@@ -143,16 +169,32 @@ export function CommandPalette({
       onOpenChange={onOpenChange}
       title={t('title')}
       description={t('description')}
-      showHints
-      className="motion-reduce:animate-none"
+      showHints={finePointer}
+      className={`motion-reduce:animate-none ${PHONE_PALETTE_CLASS}`}
       hintLabels={{
         move: t('hints.move'),
         open: t('hints.open'),
         close: t('hints.close'),
       }}
     >
-      <CommandInput placeholder={t('placeholder')} />
-      <CommandList>
+      <div className="flex shrink-0 items-center md:contents max-md:border-b max-md:[&_[data-slot=command-input-wrapper]]:border-b-0 max-md:[&_[data-slot=command-input-wrapper]]:flex-1 max-md:[&_[data-slot=command-input-wrapper]]:h-14 max-md:[&_[data-slot=command-input-wrapper]]:bg-transparent!">
+        <CommandInput
+          placeholder={t('placeholder')}
+          // The wrapper's wash is this field's focus signal (and on a phone,
+          // the keyboard is); the global `:focus-visible` outline is unlayered
+          // and outranks a plain `outline-none`, so it drew a box inside the
+          // band the moment the palette opened.
+          className="pointer-coarse:text-base outline-none!"
+          enterKeyHint="go"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <DialogClose className="text-foreground hover:bg-accent focus-visible:ring-ring/60 mr-1 flex h-11 shrink-0 items-center rounded-lg px-3 text-[15px] font-medium outline-none transition-colors duration-quick ease-out focus-visible:ring-2 motion-reduce:transition-none md:hidden">
+          {tCommon('actions.cancel')}
+        </DialogClose>
+      </div>
+      <CommandList className="min-h-0 max-md:max-h-none max-md:flex-1 max-md:overscroll-contain">
         <CommandEmpty>{t('empty')}</CommandEmpty>
 
         {projects !== null && projects.length > 0 && (
@@ -200,7 +242,9 @@ export function CommandPalette({
           </>
         )}
 
-        <CommandSeparator />
+        {/* A rule between groups, not above the first one: with no project
+            list yet it doubled the field's own bottom edge. */}
+        {((projects !== null && projects.length > 0) || projectId) && <CommandSeparator />}
         <CommandGroup heading={t('groups.general')}>
           <CommandItem
             value={`new-project ${tNav('projectSwitcher.newProject')}`}

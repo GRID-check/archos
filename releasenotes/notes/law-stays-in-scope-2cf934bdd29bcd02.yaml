@@ -7,5 +7,5 @@ improvements:
 fixes:
   - >
     Building law now stays in the search when a question is about a specific
-    file. „Erfüllt dieser Grundriss die Fluchtweganforderungen?“ used to search
-    the plan and no Richtlinie.
+    file. „Erfüllt dieser Grundriss die Fluchtweganforderungen?“ used to
+    search the floor plan and no Richtlinie.

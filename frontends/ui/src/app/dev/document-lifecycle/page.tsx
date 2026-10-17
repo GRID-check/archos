@@ -45,7 +45,7 @@ import type { JSX } from 'react'
 import { use, useEffect, useRef } from 'react'
 import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
-import { DocumentLifecyclePanel } from '@/features/documents/components/document-lifecycle-panel'
+import { DocumentFassungen } from '@/features/documents/components/document-fassungen'
 import { DocumentLifecycleStand } from '@/features/documents/components/document-lifecycle-stand'
 import { DocumentVersionStateBadge } from '@/features/documents/components/document-version-badge'
 import type { DocumentLifecycleClient } from '@/lib/documents/lifecycle-client'
@@ -55,6 +55,7 @@ import type {
   DocumentVersionView,
 } from '@/lib/documents/lifecycle-types'
 import { DOCUMENT_VERSION_STATES } from '@/lib/documents/lifecycle-types'
+import type { FileItem } from '@/features/documents/file-types'
 
 const REVIEWER = 'user_reviewer'
 const AUTHOR = 'user_anna'
@@ -175,15 +176,38 @@ const PUBLISHED = fixtureClient({
 const NAMES: Record<string, string> = { [AUTHOR]: 'Anna Berger', [REVIEWER]: 'Markus Feld' }
 
 /** Every state on the same track, so the two that HALT are visible as halts. */
-const TRACK_STATES: readonly { state: DocumentVersionState; submittedBy?: string }[] = [
+const TRACK_STATES: readonly { state: DocumentVersionState }[] = [
   { state: 'draft' },
-  { state: 'in_review', submittedBy: AUTHOR },
+  { state: 'in_review' },
   { state: 'changes_requested' },
   { state: 'approved' },
   { state: 'published' },
   { state: 'rejected' },
   { state: 'superseded' },
 ]
+
+/** The listing row a pane would hand the section: only what it reads. */
+function devFile(id: string, filename: string, authoredBy: FileItem['authoredBy']): FileItem {
+  return {
+    id,
+    filename,
+    displayName: null,
+    fileSize: 18_400,
+    contentType: 'application/pdf',
+    status: 'ready',
+    folderId: null,
+    createdAt: '2026-09-02T07:30:00.000Z',
+    errorMessage: null,
+    summary: null,
+    pageCount: null,
+    chunkCount: null,
+    contentTypes: null,
+    tags: null,
+    topics: null,
+    capture: null,
+    authoredBy,
+  }
+}
 
 const REVIEWER_VIEWER = {
   permissions: ['project:view', 'project:edit', 'project:documents:write'] as const,
@@ -231,10 +255,9 @@ function ArchiveFixture(): JSX.Element {
         </p>
       </div>
       <div className="rounded-xl border p-4" data-preview-block="archive">
-        <DocumentLifecyclePanel
-          documentId="doc_0"
-          filename="Aktenvermerk Fluchtwege.pdf"
-          authoredBy="user"
+        <DocumentFassungen
+          file={devFile('doc_0', 'Aktenvermerk Fluchtwege.pdf', 'user')}
+            canManage
           viewer={REVIEWER_VIEWER}
           names={NAMES}
           client={UPLOADED}
@@ -273,8 +296,10 @@ const opened = new Set<string>()
 type DriveStep = {
   click: string
   settled: string
-  /** The result is a portal (a dialog), so it lands outside the block. */
+  /** The result is a portal (a dialog, a menu), so it lands outside the block. */
   portal?: true
+  /** The control itself is in a portal (an item of an open ⋯ menu). */
+  clickPortal?: true
 }
 
 const DRIVEN_BLOCKS: readonly (readonly [block: string, steps: readonly DriveStep[]])[] = [
@@ -283,17 +308,21 @@ const DRIVEN_BLOCKS: readonly (readonly [block: string, steps: readonly DriveSte
     'in-review',
     [{ click: 'document-lifecycle-request_changes', settled: 'document-review-comment' }],
   ],
+  // „Piloti überarbeiten lassen" sits behind the ⋯ beside „Änderungen anfordern".
   [
     'delegate',
-    [{ click: 'document-lifecycle-delegate_revision', settled: 'document-review-comment' }],
+    [
+      { click: 'document-review-more', settled: 'document-lifecycle-delegate_revision', portal: true },
+      { click: 'document-lifecycle-delegate_revision', settled: 'document-review-comment', clickPortal: true },
+    ],
   ],
   // Nothing outstanding here, so the section is shut and the shot has to open
   // it. That IS the behaviour under review: the history is behind one click.
-  ['published', [{ click: 'document-lifecycle-toggle', settled: 'document-version-row' }]],
+  ['published', [{ click: 'document-fassungen-toggle', settled: 'fassung-timeline-row' }]],
   [
     'archive',
     [
-      { click: 'document-lifecycle-toggle', settled: 'document-lifecycle-archive' },
+      { click: 'document-fassungen-toggle', settled: 'document-lifecycle-archive' },
       {
         click: 'document-lifecycle-archive',
         settled: 'document-archive-consequences',
@@ -323,7 +352,13 @@ function useDrivenBlocks(): void {
           opened.add(block)
           continue
         }
-        scope.querySelector<HTMLButtonElement>(`[data-testid="${pending.click}"]`)?.click()
+        const control = (pending.clickPortal ? document : scope).querySelector<HTMLElement>(
+          `[data-testid="${pending.click}"]`,
+        )
+        // A Radix menu trigger opens on pointerdown, not on click; a plain
+        // button ignores the pointerdown and takes the click.
+        control?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+        control?.click()
       }
       if (opened.size === DRIVEN_BLOCKS.length && timer.current) {
         clearInterval(timer.current)
@@ -341,7 +376,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 p-6" data-testid="document-lifecycle-preview">
       <div>
-        <h1 className="text-lg font-semibold">Freigabe und Fassungen</h1>
+        <h1 className="text-lg font-semibold">Fassungen und Freigabe</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Der Stand einer Datei, die Entscheidungen, die dieser Stand zulässt, und die
           Fassungsgeschichte darunter.
@@ -367,19 +402,18 @@ function DocumentLifecycleFixtures(): JSX.Element {
           „Abgelehnt“ nach der Prüfung —, sind rot und zusätzlich gestrichelt.
         </p>
         <div className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
-          {TRACK_STATES.map(({ state, submittedBy }) => (
+          {TRACK_STATES.map(({ state }) => (
             <DocumentLifecycleStand
               key={state}
-              version={{ state, submittedBy: submittedBy ?? null }}
+              version={{ state }}
               lifecycle="active"
-              nameOf={(userId) => (userId ? (NAMES[userId] ?? 'Jemand') : 'Jemand')}
+              live={state === 'in_review'}
             />
           ))}
           {/* Item-level, so it is not a stage: the whole track reads as history. */}
           <DocumentLifecycleStand
-            version={{ state: 'published', submittedBy: null }}
+            version={{ state: 'published' }}
             lifecycle="archived"
-            nameOf={() => 'Jemand'}
           />
         </div>
       </section>
@@ -394,10 +428,9 @@ function DocumentLifecycleFixtures(): JSX.Element {
           Satz — Fassungen, Entscheidungen und das Stilllegen liegen dahinter.
         </p>
         <div className="rounded-xl border p-4">
-          <DocumentLifecyclePanel
-            documentId="doc_0"
-            filename="Aktenvermerk Fluchtwege.pdf"
-            authoredBy="user"
+          <DocumentFassungen
+            file={devFile('doc_0', 'Aktenvermerk Fluchtwege.pdf', 'user')}
+            canManage
             viewer={REVIEWER_VIEWER}
             names={NAMES}
             client={UPLOADED}
@@ -408,9 +441,9 @@ function DocumentLifecycleFixtures(): JSX.Element {
       <section className="space-y-3">
         <h2 className="text-muted-foreground text-sm font-medium">Entwurf</h2>
         <div className="rounded-xl border p-4">
-          <DocumentLifecyclePanel
-            documentId="doc_1"
-            authoredBy="agent"
+          <DocumentFassungen
+            file={devFile('doc_1', 'Bericht.md', 'agent')}
+            canManage
             viewer={REVIEWER_VIEWER}
             names={NAMES}
             client={DRAFT}
@@ -421,9 +454,9 @@ function DocumentLifecycleFixtures(): JSX.Element {
       <section className="space-y-3">
         <h2 className="text-muted-foreground text-sm font-medium">In Prüfung</h2>
         <div className="rounded-xl border p-4" data-preview-block="in-review">
-          <DocumentLifecyclePanel
-            documentId="doc_2"
-            authoredBy="agent"
+          <DocumentFassungen
+            file={devFile('doc_2', 'Bericht.md', 'agent')}
+            canManage
             viewer={REVIEWER_VIEWER}
             names={NAMES}
             client={IN_REVIEW}
@@ -436,9 +469,9 @@ function DocumentLifecycleFixtures(): JSX.Element {
           Zurückgeben — und Piloti überarbeiten lassen
         </h2>
         <div className="rounded-xl border p-4" data-preview-block="delegate">
-          <DocumentLifecyclePanel
-            documentId="doc_4"
-            authoredBy="agent"
+          <DocumentFassungen
+            file={devFile('doc_4', 'Bericht.md', 'agent')}
+            canManage
             viewer={REVIEWER_VIEWER}
             names={NAMES}
             client={DELEGATED}
@@ -451,9 +484,9 @@ function DocumentLifecycleFixtures(): JSX.Element {
           Veröffentlicht — aufgeklappt
         </h2>
         <div className="rounded-xl border p-4" data-preview-block="published">
-          <DocumentLifecyclePanel
-            documentId="doc_3"
-            authoredBy="user"
+          <DocumentFassungen
+            file={devFile('doc_3', 'Bericht.md', 'user')}
+            canManage
             viewer={REVIEWER_VIEWER}
             names={NAMES}
             client={PUBLISHED}

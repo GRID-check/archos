@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { type ReactElement, type ReactNode } from 'react'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { strToU8, zipSync } from 'fflate'
@@ -82,9 +82,18 @@ vi.mock('sonner', () => ({
 }))
 
 // Force the mobile presentation so the preview renders as a full-screen dialog.
-vi.mock('@/hooks/use-is-mobile', () => ({
+// The rest of the module (the breakpoint queries) stays real.
+vi.mock('@/hooks/use-is-mobile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-is-mobile')>()),
   useIsMobile: () => true,
 }))
+
+/**
+ * Whether the page is drawn for a phone (`usePhoneLayout`, `useMoveInSheet`).
+ * Off for every test but the phone ones: the desk's header is the default.
+ */
+const media = vi.hoisted(() => ({ phone: false }))
+vi.mock('@/hooks/use-media-query', () => ({ useMediaQuery: () => media.phone }))
 
 vi.mock('@/features/bim/components/ifc-file-preview', () => ({
   IfcFilePreview: () => <div data-testid="ifc-file-preview" />,
@@ -152,6 +161,7 @@ beforeEach(() => {
           displayName: doc.displayName ?? null,
           fileSize: doc.fileSize,
           contentHash: doc.contentHash ?? null,
+          status: doc.status ?? 'completed',
           folderId: doc.folderId ?? null,
           authoredBy: doc.authoredBy ?? 'user',
           lifecycle: doc.lifecycle ?? 'active',
@@ -688,19 +698,19 @@ describe('ProjectFileWorkspace — a picked file the project already holds', () 
     fireEvent.change(input)
   }
 
-  it('asks „new version of X?" and uploads it on yes', async () => {
+  it('asks „new Fassung of X?" and uploads it on yes', async () => {
     renderWithCorpus()
     const revised = new File(['revised bytes'], 'EG.pdf', { type: 'application/pdf' })
     pick(revised)
 
     const dialog = await screen.findByTestId('folder-upload-dialog')
     await waitFor(() => expect(dialog).toHaveAttribute('data-kind', 'single-update'))
-    expect(within(dialog).getByText('Upload a new version of “EG.pdf”?')).toBeInTheDocument()
+    expect(within(dialog).getByText('New revision of “EG.pdf”?')).toBeInTheDocument()
     // Nothing leaves on the strength of the gesture alone.
     expect(mockUploadFiles).not.toHaveBeenCalled()
 
     const confirm = within(dialog).getByTestId('folder-upload-confirm')
-    expect(confirm).toHaveTextContent('Upload as new version')
+    expect(confirm).toHaveTextContent('File as a new revision')
     await userEvent.click(confirm)
 
     await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledTimes(1))
@@ -1195,7 +1205,8 @@ describe('ProjectFileWorkspace — dragging a folder into a folder', () => {
     // `Brandschutz` onto it would cut the subtree off from the tree.
     searchParams = new URLSearchParams('folder=f-a')
     renderWithFolders()
-    const target = screen.getByTestId('folder-card-f-a1')
+    // A nested level is read from the server: its tiles land with the first page.
+    const target = await screen.findByTestId('folder-card-f-a1')
 
     fireEvent.dragOver(target, { dataTransfer: folderDragTransfer('f-a') })
     expect(target).not.toHaveAttribute('data-drop-over')
@@ -1210,7 +1221,7 @@ describe('ProjectFileWorkspace — dragging a folder into a folder', () => {
 
     // „Alle Dateien" is the only way OUT: every other target nests one folder
     // inside another, so without it a folder goes deeper and never back.
-    const root = screen.getByRole('button', { name: 'All Files' })
+    const root = await screen.findByRole('button', { name: 'All Files' })
     fireEvent.dragOver(root, { dataTransfer: folderDragTransfer('f-a1') })
     fireEvent.drop(root, { dataTransfer: folderDragTransfer('f-a1') })
 
@@ -1312,8 +1323,9 @@ describe('ProjectFileWorkspace — saved tags survive reselect', () => {
     const user = userEvent.setup()
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
 
-    // Open doc-a and add a discipline tag via the inline add-tag input.
+    // Open doc-a, correct Piloti's reading, and add a discipline tag via the inline add-tag input.
     fireEvent.click(await findFileButton(/alpha\.txt/i))
+    await user.click(await screen.findByRole('button', { name: 'Correct' }))
     await user.type(await screen.findByRole('textbox', { name: /add tag/i }), 'Brandschutz{Enter}')
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Remove tag Brandschutz' })).toBeDefined()
@@ -1332,6 +1344,8 @@ describe('ProjectFileWorkspace — saved tags survive reselect', () => {
     fireEvent.click(await findFileButton(/alpha\.txt/i))
     await screen.findByRole('dialog')
 
+    // The reading is static again; open the editor to see what was saved.
+    await user.click(await screen.findByRole('button', { name: 'Correct' }))
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Remove tag Brandschutz' })).toBeDefined()
     )
@@ -1474,10 +1488,12 @@ describe('ProjectFileWorkspace — a settling document settles on screen', () =>
 
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
     await waitFor(() => expect(documentCalls).toBe(1))
+    expect(await screen.findByText('Reading')).toBeInTheDocument()
 
     await vi.advanceTimersByTimeAsync(4_100)
     await waitFor(() => expect(statusCalls).toBe(1))
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    // A citable document carries no badge on its card, so settling clears it.
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
     // Twenty pages of listing every four seconds was the cost of one PDF being
     // read; the poll never drains the listing again.
     expect(documentCalls).toBe(1)
@@ -1678,14 +1694,13 @@ describe('ProjectFileWorkspace — only the newest answer may win', () => {
     expect(onComplete).toBeTypeOf('function')
     onComplete?.()
     await waitFor(() => expect(documentCalls).toBe(2))
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
 
     // Now the stale poll answers. It is older than what is on screen, so it
     // must not commit.
     gate.release?.()
     await flushWithoutPolling()
 
-    expect(screen.getByText('Citable')).toBeInTheDocument()
     expect(screen.queryByText('Reading')).not.toBeInTheDocument()
 
     // …and it must not resurrect the poll either.
@@ -1761,35 +1776,6 @@ describe('ProjectFileWorkspace — an .ifc opens as a building', () => {
     expect(
       routerPush.mock.calls.some((call) => String(call[0]).includes('model=Haus-A.ifc'))
     ).toBe(false)
-  })
-
-  /**
-   * The flag exists so this can be flipped in production without a deploy, and
-   * the Archiv reads the same one — an `.ifc` that behaves one way in a project
-   * and another in the Archiv is the defect the whole change is about.
-   */
-  it('goes straight to the stage when preview-first is switched off', async () => {
-    renderWorkspace(
-      <ProjectFileWorkspace
-        projectId="proj-1"
-        projectName="Test"
-        collectionName="test-coll"
-        showModels
-        previewFirst={false}
-      />
-    )
-    fireEvent.click(await findFileButton(/Haus-A\.ifc/i))
-
-    // The name, not the id: `?model=` is resolved by file name so the link
-    // survives a re-ingestion and stays readable in a chat message.
-    //
-    // And PUSHED, not replaced: with `replace` the stage added no history
-    // entry, so the back button left the Files page entirely — discarding the
-    // camera, the cut, the selection, the hidden set and every measurement.
-    // On a phone, back is how anyone dismisses a full-screen overlay.
-    const href = routerPush.mock.calls.at(-1)?.[0] as string
-    expect(new URLSearchParams(href.split('?')[1]).get('model')).toBe('Haus-A.ifc')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('leaves every other file opening the preview dialog', async () => {
@@ -2079,6 +2065,12 @@ describe('ProjectFileWorkspace — the open file is on the URL', () => {
     vi.clearAllMocks()
     resetPreviewStore()
     searchParams = new URLSearchParams()
+    // The level is read from the server whenever the seed does not answer the
+    // request on screen; it holds the same one document.
+    server.use(
+      http.get('/api/projects/:projectId/folders', () => HttpResponse.json({ folders: [] })),
+      http.get('/api/documents', () => HttpResponse.json({ documents: [doc], nextCursor: null })),
+    )
   })
 
   afterEach(() => {
@@ -2237,15 +2229,16 @@ describe('ProjectFileWorkspace — the open file is on the URL', () => {
 })
 
 /**
- * A project larger than one page of the listing.
+ * A folder larger than one page (ADR-0102).
  *
- * `GET /api/documents` used to answer the newest 500 and stop, silently: the
- * oldest plans of a big project were not on screen, search and filters could
- * not find them, and a dropped folder labelled them „Neu". The listing is paged
- * now, and the workspace reads it to the end — or says, visibly, where it
- * stopped.
+ * `GET /api/documents` used to answer the newest 500 and stop, silently, and
+ * then the workspace drained the whole shelf before it could draw a folder: a
+ * Büroablage with 2 000 documents at its root waited for all of them. It now
+ * reads the level the reader stands on, a page at a time, and the next page
+ * when the reader reaches the end of the list. It never drains the shelf for
+ * the default view.
  */
-describe('ProjectFileWorkspace — a corpus larger than one page', () => {
+describe('ProjectFileWorkspace — a folder larger than one page', () => {
   const row = (id: string, filename: string): DocumentWireRow => ({
     id,
     filename,
@@ -2268,16 +2261,20 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
   const oldest = row('doc-old', 'EG.pdf')
 
   let cursors: Array<string | null>
+  let levels: Array<string | null>
 
   beforeEach(() => {
     vi.clearAllMocks()
     searchParams = new URLSearchParams()
     resetPreviewStore()
     cursors = []
+    levels = []
     server.use(
       http.get('/api/documents', ({ request }) => {
-        const cursor = new URL(request.url).searchParams.get('cursor')
+        const params = new URL(request.url).searchParams
+        const cursor = params.get('cursor')
         cursors.push(cursor)
+        levels.push(params.get('folderId'))
         return cursor === 'page-2'
           ? HttpResponse.json({ documents: [oldest], nextCursor: null })
           : HttpResponse.json({ documents: [newest], nextCursor: 'page-2' })
@@ -2286,16 +2283,55 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
     )
   })
 
-  it('follows the cursor until the last page, so the oldest document is there too', async () => {
+  it('reads the first page of the level, and the next one only when the reader reaches the end', async () => {
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
 
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+    // One level, its first page: nothing drains the shelf behind it.
+    expect(cursors).toEqual([null])
+    expect(levels).toEqual(['root'])
+    expect(screen.queryByText('EG.pdf')).not.toBeInTheDocument()
+    expect(screen.queryByText(/showing the newest/i)).not.toBeInTheDocument()
+
+    // The end of the list asks for the next page; the first stays.
+    fireEvent.click(await screen.findByTestId('load-more-button'))
     expect(await findFileButton(/EG\.pdf/)).toBeInTheDocument()
     expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
     expect(cursors).toEqual([null, 'page-2'])
-    expect(screen.queryByText(/showing the newest/i)).not.toBeInTheDocument()
+    // The last page says so: no way on is offered.
+    await waitFor(() => expect(screen.queryByTestId('load-more-button')).not.toBeInTheDocument())
   })
 
-  it('reads the rest after a first-page seed, and a dropped folder then knows the old file', async () => {
+  it('keeps the first page on screen while the next one is on its way', async () => {
+    let releaseSecondPage: () => void = () => undefined
+    const secondPageHeld = new Promise<void>((resolve) => {
+      releaseSecondPage = resolve
+    })
+    server.use(
+      http.get('/api/documents', async ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        cursors.push(cursor)
+        if (cursor !== 'page-2') return HttpResponse.json({ documents: [newest], nextCursor: 'page-2' })
+        await secondPageHeld
+        return HttpResponse.json({ documents: [oldest], nextCursor: null })
+      }),
+    )
+    renderWorkspace(
+      <ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" initialFolders={[]} />,
+    )
+
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+    fireEvent.click(await screen.findByTestId('load-more-button'))
+    await waitFor(() => expect(cursors).toEqual([null, 'page-2']))
+    expect(screen.queryByTestId('file-browser-skeleton')).not.toBeInTheDocument()
+    expect(screen.getByTestId('load-more')).toBeInTheDocument()
+
+    releaseSecondPage()
+    expect(await findFileButton(/EG\.pdf/)).toBeInTheDocument()
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+  })
+
+  it('continues a first-page seed from its cursor, and a dropped folder still knows the old file', async () => {
     probeShelf = [newest, oldest]
     renderWorkspace(
       <ProjectFileWorkspace
@@ -2303,15 +2339,21 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
         projectName="Test"
         collectionName="test-coll"
         initialFiles={[newest]}
-        initialFilesComplete={false}
+        initialNextCursor="page-2"
         initialFolders={[]}
       />,
     )
-    // The seed paints at once, without a skeleton over it …
+    // The seed paints at once, without a skeleton over it, and nothing is read
+    // until the reader asks for more.
     expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
     expect(screen.queryByTestId('file-browser-skeleton')).not.toBeInTheDocument()
-    // … and the page it did not carry arrives behind it.
+    expect(cursors).toEqual([])
+
+    // The page it did not carry is read from the server's cursor: the seeded
+    // first page is not asked for a second time.
+    fireEvent.click(await screen.findByTestId('load-more-button'))
     expect(await findFileButton(/EG\.pdf/)).toBeInTheDocument()
+    expect(cursors).toEqual(['page-2'])
 
     const file = new File(['x'.repeat(10)], 'EG.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'webkitRelativePath', { value: 'Wohnbau/EG.pdf', configurable: true })
@@ -2319,25 +2361,320 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
     Object.defineProperty(input, 'files', { value: [file], configurable: true })
     fireEvent.change(input)
 
-    // The U2 symptom: compared against the newest page alone, this said „Neu".
-    // The plan asks the server by name now; the shelf holds both.
+    // The U2 symptom: compared against the newest page alone, this said "Neu".
+    // The plan asks the server by name; the shelf holds both.
     const dialog = await screen.findByTestId('folder-upload-dialog')
     await waitFor(() => expect(within(dialog).getByTestId('folder-upload-count-update')).toHaveTextContent('1'))
     expect(within(dialog).getByTestId('folder-upload-count-new')).toHaveTextContent('0')
   })
 
-  it('stops at the page ceiling and says so, rather than pretending to be whole', async () => {
+  it('opens a document a link names that no loaded page holds, by its id', async () => {
+    server.use(
+      http.get('/api/documents/:id', ({ params }) =>
+        params.id === 'doc-old' ? HttpResponse.json({ document: oldest }) : new HttpResponse(null, { status: 404 }),
+      ),
+    )
+    searchParams = new URLSearchParams('doc=doc-old')
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFiles={[newest]}
+        initialNextCursor="page-2"
+        initialFolders={[]}
+      />,
+    )
+
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBe('doc-old'))
+    // Read on its own: the level was not drained to find it.
+    expect(cursors).toEqual([])
+  })
+
+  it('drains the shelf only for a filter the server cannot answer, and says where the drain stopped', async () => {
     let requests = 0
     server.use(
-      http.get('/api/documents', () => {
+      http.get('/api/documents', ({ request }) => {
+        // The level's own read carries a sort; the drain carries none.
+        if (new URL(request.url).searchParams.has('sort')) {
+          return HttpResponse.json({ documents: [newest], nextCursor: null })
+        }
         requests += 1
         return HttpResponse.json({ documents: [row(`doc-${requests}`, `plan-${requests}.pdf`)], nextCursor: `c${requests}` })
       }),
     )
-
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
+
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+    expect(requests).toBe(0)
+
+    // The status order is the browser's alone: it needs the whole shelf.
+    await userEvent.click(screen.getByTestId('file-filter-menu-trigger'))
+    await userEvent.click(await screen.findByRole('radio', { name: /^status$/i }))
 
     expect(await screen.findByText(/showing the newest 20 documents/i)).toBeInTheDocument()
     expect(requests).toBe(20)
+  })
+})
+
+describe('ProjectFileWorkspace — Fassungen', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchParams = new URLSearchParams()
+    resetPreviewStore()
+  })
+
+  const row = (id: string, filename: string, fassung: DocumentWireRow['fassung']): DocumentWireRow =>
+    ({
+      id,
+      filename,
+      displayName: null,
+      fileSize: 2048,
+      contentType: 'application/pdf',
+      status: 'ready',
+      folderId: null,
+      createdAt: '2026-06-14T09:00:00.000Z',
+      errorMessage: null,
+      summary: null,
+      pageCount: null,
+      chunkCount: null,
+      contentTypes: null,
+      tags: null,
+      assignees: [],
+      authoredBy: 'user',
+      fassung,
+    }) as DocumentWireRow
+
+  it('lists one entry for a document and opens its older Fassung by id from the preview', async () => {
+    const older = row('doc-v1', 'Gutachten_v1.pdf', {
+      supersededBy: { id: 'doc-v2', filename: 'Gutachten_v2.pdf' },
+      supersedes: [],
+      suggestion: null,
+      changeSummary: null,
+    })
+    const current = row('doc-v2', 'Gutachten_v2.pdf', {
+      supersededBy: null,
+      supersedes: [{ id: 'doc-v1', filename: 'Gutachten_v1.pdf' }],
+      suggestion: null,
+      changeSummary: null,
+      history: [{ id: 'doc-v1', filename: 'Gutachten_v1.pdf', createdAt: null, changeSummary: null }],
+    })
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFiles={[current, older]}
+        initialFolders={[]}
+      />,
+    )
+
+    expect(await findFileButton(/Gutachten_v2\.pdf/)).toBeInTheDocument()
+    expect(screen.queryByText('Gutachten_v1.pdf')).not.toBeInTheDocument()
+
+    fireEvent.click(await findFileButton(/Gutachten_v2\.pdf/))
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBe('doc-v2'))
+
+    act(() => useFilePreviewStore.getState().context.onOpenDocument?.('doc-v1'))
+    expect(useFilePreviewStore.getState().file?.id).toBe('doc-v1')
+  })
+
+  it('moves BOTH listing entries when the preview confirms a link', async () => {
+    const unlinked = { supersededBy: null, supersedes: [], suggestion: null, changeSummary: null }
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFiles={[
+          row('doc-new', 'Statik_Entwurf.pdf', unlinked),
+          row('doc-old', 'Tragwerk_Altstand.pdf', unlinked),
+        ]}
+        initialFolders={[]}
+      />,
+    )
+    expect(await findFileButton(/Tragwerk_Altstand\.pdf/)).toBeInTheDocument()
+
+    fireEvent.click(await findFileButton(/Statik_Entwurf\.pdf/))
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBe('doc-new'))
+
+    const { onFassungChanged } = useFilePreviewStore.getState().context
+    act(() => {
+      onFassungChanged?.('doc-new', {
+        ...unlinked,
+        supersedes: [{ id: 'doc-old', filename: 'Tragwerk_Altstand.pdf' }],
+      })
+      onFassungChanged?.('doc-old', {
+        ...unlinked,
+        supersededBy: { id: 'doc-new', filename: 'Statik_Entwurf.pdf' },
+      })
+    })
+
+    // The older document folds into the newer one's entry; the open one carries the link.
+    await waitFor(() => expect(screen.queryByText('Tragwerk_Altstand.pdf')).not.toBeInTheDocument())
+    expect(useFilePreviewStore.getState().file?.fassung?.supersedes).toEqual([
+      { id: 'doc-old', filename: 'Tragwerk_Altstand.pdf' },
+    ])
+  })
+})
+
+/**
+ * THE PHONE (iPhone, one hand, on site).
+ *
+ * Four rows of controls stood between the title and the first document, and
+ * Hochladen sat at the top of the screen, out of the thumb's reach. These pin
+ * the arrangement that replaced them, and the selection that makes moving five
+ * photos one gesture.
+ */
+describe('ProjectFileWorkspace — on a phone', () => {
+  const photo = (id: string, filename: string): DocumentWireRow => ({
+    id,
+    filename,
+    displayName: null,
+    fileSize: 4_000_000,
+    contentType: 'image/jpeg',
+    status: 'ready',
+    folderId: null,
+    createdAt: '2026-06-14T09:00:00.000Z',
+    errorMessage: null,
+    summary: null,
+    pageCount: null,
+    chunkCount: null,
+    contentTypes: null,
+    tags: null,
+    assignees: [],
+    authoredBy: 'user' as const,
+  })
+  const photos = [photo('p1', 'IMG_0001.jpg'), photo('p2', 'IMG_0002.jpg'), photo('p3', 'IMG_0003.jpg')]
+  const folders = [{ id: 'f-site', name: 'Baustelle', parentId: null, path: '/Baustelle' }]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchParams = new URLSearchParams()
+    resetPreviewStore()
+    media.phone = true
+    // The view is remembered per browser; one test turns it.
+    window.localStorage.clear()
+    server.use(http.get('/api/projects/:projectId/folders', () => HttpResponse.json({ folders })))
+  })
+  afterEach(() => {
+    media.phone = false
+    window.localStorage.clear()
+  })
+
+  const phoneWorkspace = (props: Partial<Parameters<typeof ProjectFileWorkspace>[0]> = {}) => (
+    <ProjectFileWorkspace
+      projectId="proj-1"
+      projectName="Test"
+      collectionName="test-coll"
+      initialFiles={photos}
+      initialFolders={folders}
+      {...props}
+    />
+  )
+
+  it('draws one row of controls: search and filter, the rest behind ⋯', () => {
+    renderWorkspace(phoneWorkspace())
+    const controls = screen.getByTestId('files-controls')
+    expect(within(controls).getByRole('textbox', { name: /search/i })).toBeInTheDocument()
+    expect(within(controls).getByTestId('file-filter-menu-trigger')).toBeInTheDocument()
+    expect(within(controls).getByTestId('files-more')).toBeInTheDocument()
+    // The view choice moved into the ⋯, and the upload out of the header.
+    expect(screen.queryByRole('radiogroup', { name: 'View' })).toBeNull()
+    expect(within(controls).queryByTestId('project-upload-input')).toBeNull()
+  })
+
+  it('puts the one upload control at the foot of the screen, under the thumb', () => {
+    renderWorkspace(phoneWorkspace())
+    const fab = screen.getByTestId('files-upload-fab')
+    expect(within(fab).getByTestId('project-upload-input')).toBeInTheDocument()
+    // One input for the header's job, not a copy of it.
+    expect(screen.getAllByTestId('project-upload-input')).toHaveLength(1)
+  })
+
+  it('offers the upload nowhere to a reader who may only read', () => {
+    renderWorkspace(phoneWorkspace({ initialRootAccess: 'read' }))
+    expect(screen.queryByTestId('files-upload-fab')).toBeNull()
+  })
+
+  it('keeps the desk’s row where there is room', () => {
+    media.phone = false
+    renderWorkspace(phoneWorkspace())
+    expect(screen.getByRole('radiogroup', { name: 'View' })).toBeInTheDocument()
+    expect(screen.queryByTestId('files-upload-fab')).toBeNull()
+    expect(screen.queryByTestId('files-more')).toBeNull()
+  })
+
+  it('moves the Outlook import behind ⋯ instead of a second header button', async () => {
+    const user = userEvent.setup()
+    renderWorkspace(phoneWorkspace({ mailImportEnabled: true, initialRootAccess: 'write' }))
+    expect(screen.queryByTestId('mail-import-trigger')).toBeNull()
+    await user.click(screen.getByTestId('files-more'))
+    expect(await screen.findByTestId('mail-import-trigger')).toBeInTheDocument()
+  })
+
+  it('turns the view with the ⋯ menu', async () => {
+    const user = userEvent.setup()
+    renderWorkspace(phoneWorkspace())
+    await user.click(screen.getByTestId('files-more'))
+    await user.click(await screen.findByTestId('files-view-list'))
+    expect(await screen.findByTestId('file-list-view')).toBeInTheDocument()
+  })
+
+  it('files several photos into a folder in one gesture, with one message', async () => {
+    const user = userEvent.setup()
+    const patched: Array<{ id: string; folderId: unknown }> = []
+    server.use(
+      http.patch('/api/documents/:id/folder', async ({ request, params }) => {
+        patched.push({ id: String(params.id), folderId: ((await request.json()) as { folderId: unknown }).folderId })
+        return HttpResponse.json({ ok: true })
+      })
+    )
+    renderWorkspace(phoneWorkspace())
+
+    // In through „Auswählen" on the row, then pick two more.
+    await user.click(await screen.findByTestId('selection-start'))
+    expect(screen.getByTestId('selection-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('selection-count')).toHaveTextContent('0 selected')
+    const cards = screen.getAllByTestId('file-card')
+    await user.click(cards[0]!)
+    await user.click(cards[1]!)
+    expect(screen.getByTestId('selection-count')).toHaveTextContent('2 selected')
+    // Picking opens no preview.
+    expect(useFilePreviewStore.getState().file).toBeNull()
+    // The upload steps aside for the bar.
+    expect(screen.queryByTestId('files-upload-fab')).toBeNull()
+
+    await user.click(screen.getByTestId('selection-move'))
+    await user.click(await screen.findByTestId('folder-picker-f-site'))
+
+    await waitFor(() => expect(patched).toHaveLength(2))
+    expect(patched.every((call) => call.folderId === 'f-site')).toBe(true)
+    expect(toastSuccess).toHaveBeenCalledTimes(1)
+    // The mode ends with the move.
+    await waitFor(() => expect(screen.queryByTestId('selection-bar')).toBeNull())
+  })
+
+  it('selects every document of the level with „Alle"', async () => {
+    const user = userEvent.setup()
+    renderWorkspace(phoneWorkspace())
+    await user.click(await screen.findByTestId('selection-start'))
+    await user.click(screen.getByTestId('selection-all'))
+    expect(screen.getByTestId('selection-count')).toHaveTextContent('3 selected')
+  })
+
+  it('ends the selection with „Fertig" and opens files again', async () => {
+    const user = userEvent.setup()
+    renderWorkspace(phoneWorkspace())
+    await user.click(await screen.findByTestId('selection-start'))
+    await user.click(screen.getByTestId('selection-done'))
+    expect(screen.queryByTestId('selection-bar')).toBeNull()
+    await user.click(screen.getAllByTestId('file-card')[0]!)
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBeDefined())
+  })
+
+  it('offers no selection where the reader may only read', () => {
+    renderWorkspace(phoneWorkspace({ initialRootAccess: 'read' }))
+    expect(screen.queryByTestId('selection-start')).toBeNull()
   })
 })

@@ -77,12 +77,11 @@ describe("the bff-jobs pool", () => {
   beforeAll(async () => {
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      // The pool logs under its own name only where the observability tier runs,
-      // and that tier needs its collector's credentials to count as deployed.
-      "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
-      "grid-oib:otelOidcIssuer": "https://grid.authkit.app",
-      "grid-oib:otelOidcClientId": "client_otel",
-      "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret
+      // The pool logs under its own name only where the collector runs, and the
+      // collector counts as deployed once something consumes it: PostHog logs here.
+      "grid-oib:posthogHost": "https://eu.i.posthog.com",
+      "grid-oib:posthogProjectToken": "phc_test_token", // pragma: allowlist secret
+      "grid-oib:posthogLogsEnabled": "true",
     });
     const { loadConfig } = await import("../config");
     const { installBffJobs } = await import("./bff-jobs");
@@ -155,6 +154,19 @@ describe("the bff-jobs pool", () => {
     // What the runner and the BFF in its pod cannot start without.
     const names = env.map((e) => e.name);
     expect(names).toEqual(expect.arrayContaining(["GRID_APP_DATABASE_URL", "GRID_INTERNAL_API_TOKEN"]));
+  });
+
+  it("carries the Web Push key pair and contact: this pool is the one that sends (ADR-0112)", async () => {
+    const names = env.map((e) => e.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "GRID_WEB_PUSH_VAPID_PUBLIC_KEY",
+        "GRID_WEB_PUSH_VAPID_PRIVATE_KEY",
+        "GRID_WEB_PUSH_SUBJECT",
+      ]),
+    );
+    const privateKey = env.find((e) => e.name === "GRID_WEB_PUSH_VAPID_PRIVATE_KEY");
+    expect(privateKey).toMatchObject({ valueFrom: { secretKeyRef: { key: "GRID_WEB_PUSH_VAPID_PRIVATE_KEY" } } });
   });
 
   it("names no variable twice, and logs under its own service name", async () => {

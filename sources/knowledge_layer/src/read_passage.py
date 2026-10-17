@@ -175,6 +175,8 @@ class PassageTarget:
     collection: str
     file_name: str
     shelf: str | None
+    #: The current Fassung of this document when a PERSON confirmed it replaced, else None.
+    current: str | None = None
 
 
 def _document_names(document: Any) -> list[str]:
@@ -262,9 +264,52 @@ async def _resolve_targets(entries: list[Any], document: str) -> list[PassageTar
                     collection=entry.collection,
                     file_name=str(getattr(candidate, "file_name", "")),
                     shelf=str(shelf) if shelf is not None else None,
+                    current=_current_fassung(candidate, docs),
                 )
             )
     return targets
+
+
+def _current_fassung(document: Any, documents: Sequence[Any]) -> str | None:
+    """The file that now stands for ``document`` once a person confirmed it replaced, else ``None``.
+
+    Follows ``superseded_by`` to the end of the chain (B was replaced by C, C by D: D), inside the
+    document's own collection and only through rows that still exist. A loop, which the store
+    refuses, stops where it closes.
+    """
+    by_name = {str(getattr(doc, "file_name", "")): doc for doc in documents}
+    seen = {str(getattr(document, "file_name", ""))}
+    current: str | None = None
+    next_name = getattr(document, "superseded_by", None)
+    while next_name and next_name in by_name and next_name not in seen:
+        current = next_name
+        seen.add(next_name)
+        next_name = getattr(by_name[next_name], "superseded_by", None)
+    return current
+
+
+def _older_fassung_notice(targets: Sequence[PassageTarget]) -> str:
+    """The one line that tells the model the document it opened is an older Fassung, and which one is current.
+
+    Rides the grounding block's notice slot, like „Ältere Fassungen ausgeblendet“ in the search, so
+    the block's hash still matches the bytes the model reads. A read of an older Fassung is allowed:
+    it is what „Index B“ and „die alte Fassung“ ask for. The line only keeps the answer from presenting it
+    as the document's current state. A file in a restricted collection nobody admitted is never named.
+    """
+    from aiq_agent.knowledge.restricted_use import may_name
+
+    older = {(target.file_name, target.current) for target in targets if target.current and may_name(target.collection)}
+    if not older:
+        return ""
+    return "".join(older_fassung_line(name, current) for name, current in sorted(older))
+
+
+def older_fassung_line(name: str, current: str) -> str:
+    """The notice line for one older Fassung a tool hands the model: which file replaced it, and what to say."""
+    return (
+        f"Ältere Fassung: {name} ist durch {current} ersetzt (bestätigt), aktuell ist {current}. "
+        "Sage in der Antwort, dass du die ältere Fassung liest.\n\n"
+    )
 
 
 def _coerce_page(page: Any) -> int | None:
@@ -907,7 +952,7 @@ def _unknown_document_message(document: str, known: int, suggestions: Sequence[s
             f"No document in scope is named {document!r}. No documents are readable this turn — "
             "the inventory is empty. Check the knowledge-base inventory (`surface_documents`) for "
             "what is filed, or call `knowledge_search` with the topic when you do not yet know "
-            "which document holds it. Do not invent a citation."
+            "which document holds it. Do not invent a citation. " + _NOT_READABLE_IS_NOT_ABSENT
         )
     else:
         base = (
@@ -916,7 +961,7 @@ def _unknown_document_message(document: str, known: int, suggestions: Sequence[s
             f"{known} document(s) are readable this turn. Take the name from a hit's `Source:` or "
             "`Citation:` line, or from the knowledge-base inventory, and call again — or call "
             "`knowledge_search` with the topic when you do not yet know which document holds it. "
-            "Do not invent a citation."
+            "Do not invent a citation. " + _NOT_READABLE_IS_NOT_ABSENT
         )
     if not shown:
         return base
@@ -928,6 +973,15 @@ def _unknown_document_message(document: str, known: int, suggestions: Sequence[s
     if remaining > 0:
         message += f"\n(+{remaining} more candidate(s) not shown — refine the name to narrow it down.)"
     return message
+
+
+#: Every refusal that a name is not readable says this, because the agent read
+#: "not readable" as "not there": a file whose read failed is in the project and
+#: in none of the lists a read builds (feld72, Jour fixe 2026-10-09).
+_NOT_READABLE_IS_NOT_ABSENT = (
+    "Not readable here is not the same as not in the project: a file whose read failed is listed under "
+    "`documents_unreadable:` in the project context — say it could not be read, never that it is missing."
+)
 
 
 def _no_passage_message(document: str, punkt: str | None, page: int | None) -> str:
@@ -1183,7 +1237,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
 
         chunks.sort(key=_punkt_sort_key)
         merged = _passage_result(chunks[:_MAX_PASSAGE_CHUNKS], query)
-        formatted = await asyncio.to_thread(_format_results, merged, query)
+        formatted = await asyncio.to_thread(_format_results, merged, query, notice=_older_fassung_notice(targets))
         logger.info("read_passage: %s returned %d chunk(s)", query, len(merged.chunks))
         return formatted
 
@@ -1206,7 +1260,11 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # returns, and a byte added afterwards costs this tool the structured
         # read on its most common call (ADR-0061).
         formatted = await asyncio.to_thread(
-            _format_results, _passage_result(passages, query), query, trailer=_gliederung_block(entries)
+            _format_results,
+            _passage_result(passages, query),
+            query,
+            notice=_older_fassung_notice(targets),
+            trailer=_gliederung_block(entries),
         )
         logger.info("read_passage: %s outlined %d Punkt(e)", query, len(entries))
         return formatted
@@ -1236,7 +1294,9 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         merged = _passage_result(sorted(fetched, key=_punkt_sort_key)[:_MAX_PASSAGE_CHUNKS], query)
         # The line that replaces the Gliederung rides the same trailer, and for
         # the same reason: the hash is over the whole text.
-        formatted = await asyncio.to_thread(_format_results, merged, query, trailer=_NO_PUNKTE_LINE)
+        formatted = await asyncio.to_thread(
+            _format_results, merged, query, notice=_older_fassung_notice(targets), trailer=_NO_PUNKTE_LINE
+        )
         logger.info("read_passage: %s outlined %d opening chunk(s)", query, len(merged.chunks))
         return formatted
 

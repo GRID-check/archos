@@ -12,6 +12,5 @@
 # Delete every section you do not need — an empty one fails the lint.
 fixes:
   - >
-    Visiting piloti.at now opens the Piloti website instead of sending you
-    to the test environment. Addresses starting with www lead to the same
-    page.
+    Visiting piloti.at now opens the Piloti website, and addresses starting
+    with www lead to the same page.

@@ -101,6 +101,8 @@ import type { Document } from '@/lib/db/schema'
 import { computePurgeAfter, folderGraceDays } from '@/lib/deletion/policy'
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { eraseProjectDocument } from '@/lib/documents/service'
+import { projectShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { deleteQueuedJob } from '@/lib/jobs-queue/repository'
 import {
@@ -187,7 +189,12 @@ export async function inPool<T, R>(items: readonly T[], limit: number, work: (it
   return results
 }
 
-/** Take one document's chunks out of retrieval; true when the backend confirmed (or it owns none). */
+/**
+ * Take one document's chunks out of retrieval; true when the backend confirmed
+ * (or it owns none). Reversible on purpose: a restore from the bin reads the
+ * document again and gets back the Fassung links a person made (ADR-0099). The
+ * bin's final purge erases through `eraseProjectDocument`, which is permanent.
+ */
 export function purgeChunksOf(doc: Document): Promise<boolean> {
   const ref = collectionFileRef(doc)
   return ref ? purgeIngestedChunks(getBackendUrl(), ref, CHUNK_PURGE_TIMEOUT_MS) : Promise.resolve(true)
@@ -341,6 +348,8 @@ export async function moveFolderToBin(
       return subtree
     })
   )
+  // Gone from the shelf for everyone looking at it, as of this commit.
+  publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
 
   // Out of retrieval at once. Every purge confirmed, or the bin entry is
   // undone and the request refused: never in the bin and still searchable.
@@ -400,7 +409,7 @@ async function unbinEntry(
   const at = new Date()
   const jobId = randomUUID()
   try {
-    return await withTenant({ organizationId }, () =>
+    const restored = await withTenant({ organizationId }, () =>
       db.transaction(async (tx) => {
         await takeBinLock(tx, project.id)
         if (!(await closeBinEntryRestored(tx, organizationId, root.id))) {
@@ -429,6 +438,8 @@ async function unbinEntry(
         return { restoredTo, folders: folderIds.length, documents }
       })
     )
+    publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
+    return restored
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
     throw new ConflictError('A folder with this name already exists there. Rename it, then restore again.', {

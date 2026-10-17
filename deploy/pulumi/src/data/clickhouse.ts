@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, pullPolicyFor } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -185,6 +186,7 @@ export function installClickHouse(
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.dataPlane).terminationGracePeriodSeconds,
             volumes: [{ name: "syslog-ttl", configMap: { name: syslogTtl.metadata.name } }],
+            ...onNodeGroup(cfg.nodeGroups.data),
             containers: [
               {
                 name: "clickhouse",

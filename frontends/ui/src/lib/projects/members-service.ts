@@ -12,7 +12,9 @@ import { recordAuditEvent } from '@/lib/audit/service'
 import { ConflictError, NotFoundError } from '@/lib/api/errors'
 import { revokeCollaborationForProjectMember } from '@/lib/collaboration/cleanup'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { dateToMonth, type Month } from './month'
 import { findProjectWorkosResourceId } from './repository'
+import { recordMemberLeft, recordMemberRejoined } from './steckbrief-service'
 
 /**
  * The project roles a member can be assigned, exactly as the catalog defines
@@ -217,9 +219,9 @@ export async function setProjectMemberRole(
   // target keeps them an admin, so it's always allowed.
   assertNotLastAdmin(assignments, organizationMembershipId, roleSlug === PROJECT_ADMIN_ROLE_SLUG)
 
+  const held = assignments.filter((assignment) => assignment.organizationMembershipId === organizationMembershipId)
   await Promise.all(
-    assignments
-      .filter((assignment) => assignment.organizationMembershipId === organizationMembershipId)
+    held
       .map((assignment) =>
         workos.authorization.removeRoleAssignment({
           organizationMembershipId,
@@ -235,6 +237,15 @@ export async function setProjectMemberRole(
       resourceTypeSlug: 'project',
       roleSlug,
     })
+  }
+
+  // The Steckbrief keeps who worked on the project (ADR-0091): someone taken
+  // off it stays on as a former member, someone put back is current again.
+  if (!roleSlug && held.length > 0) {
+    await keepDepartedMember(session, projectId, organizationMembershipId, earliestMonth(held))
+  } else if (roleSlug && held.length === 0) {
+    const userId = await userOfMembership(organizationMembershipId)
+    if (userId) await recordMemberRejoined(session, projectId, userId)
   }
 
   await recordAuditEvent({
@@ -287,19 +298,20 @@ export async function removeProjectRoleAssignment(
   // Grants are deliberately kept — they are inert while the container is
   // unreachable, so re-adding the person restores their previous sharing state.
   // Best-effort: an access-control change must not fail on notification bookkeeping.
-  try {
-    const membership = await workos.userManagement.getOrganizationMembership(
-      assignment.organizationMembershipId
-    )
-    if (membership?.userId) {
-      await revokeCollaborationForProjectMember(
-        session.organizationId,
-        projectId,
-        membership.userId
-      )
+  const userId = await userOfMembership(assignment.organizationMembershipId)
+  if (userId) {
+    try {
+      await revokeCollaborationForProjectMember(session.organizationId, projectId, userId)
+    } catch (error) {
+      console.warn('[members-service] collaboration cleanup after role removal failed:', error)
     }
-  } catch (error) {
-    console.warn('[members-service] collaboration cleanup after role removal failed:', error)
+    // Their last role on the project gone, the Steckbrief keeps them as a former member.
+    const sameMember = assignments.filter(
+      (other) => other.organizationMembershipId === assignment.organizationMembershipId
+    )
+    if (sameMember.every((other) => other.id === assignment.id)) {
+      await recordMemberLeft(session, projectId, { userId, since: earliestMonth(sameMember) })
+    }
   }
 
   await recordAuditEvent({
@@ -311,4 +323,31 @@ export async function removeProjectRoleAssignment(
     metadata: { organizationMembershipId: assignment.organizationMembershipId, roleSlug: 'none' },
     request,
   })
+}
+
+/** The month the earliest of these assignments was made: when the member joined. */
+function earliestMonth(assignments: ReadonlyArray<{ createdAt: string }>): Month | null {
+  const first = assignments.map((assignment) => assignment.createdAt).sort()[0]
+  return dateToMonth(first)
+}
+
+/** Null when WorkOS cannot say; the callers' follow-ups are best-effort. */
+async function userOfMembership(organizationMembershipId: string): Promise<string | null> {
+  try {
+    const membership = await getWorkOS().userManagement.getOrganizationMembership(organizationMembershipId)
+    return membership?.userId ?? null
+  } catch (error) {
+    console.warn('[members-service] membership lookup failed:', error)
+    return null
+  }
+}
+
+async function keepDepartedMember(
+  session: AuthorizedSession,
+  projectId: string,
+  organizationMembershipId: string,
+  since: Month | null
+): Promise<void> {
+  const userId = await userOfMembership(organizationMembershipId)
+  if (userId) await recordMemberLeft(session, projectId, { userId, since })
 }

@@ -1,5 +1,6 @@
 /**
- * Pure planning helpers for `provision-workos-environment.ts`.
+ * Pure planning helpers for `provision-workos-environment.ts` and
+ * `check-workos-flags.ts`.
  *
  * Kept free of I/O so the desired-vs-current decisions can be unit-tested
  * without a WorkOS connection — the same split the suite uses elsewhere
@@ -70,4 +71,28 @@ export function parseFlagTargets(raw: string | undefined): FlagTargetsParse {
     entries.push({ slug, orgIds })
   }
   return { ok: true, entries }
+}
+
+/** What the registry-vs-WorkOS flag check found. Every list sorted. */
+export interface FlagCheckPlan {
+  /** True exactly when every registry slug exists in the environment. */
+  ok: boolean
+  /** Registry slugs the environment has. */
+  present: string[]
+  /** Registry slugs the environment lacks: off for every organization there. */
+  missing: string[]
+  /** Slugs the environment has and no code reads: retired, delete by hand. */
+  unknown: string[]
+}
+
+/**
+ * The flag check's verdict. Only `missing` fails it: a flag WorkOS does not
+ * know is off for everybody, while an `unknown` one is a dashboard leftover
+ * that switches nothing and is a human's to delete.
+ */
+export function planFlagCheck(registry: readonly string[], environment: readonly string[]): FlagCheckPlan {
+  const { missing, extra } = diffSets(registry, environment)
+  const have = new Set(environment)
+  const present = [...new Set(registry)].filter((slug) => have.has(slug)).sort()
+  return { ok: missing.length === 0, present, missing, unknown: extra }
 }

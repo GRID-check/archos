@@ -33,6 +33,7 @@
 
 import { useState, type FC } from 'react'
 import { ChevronDown, Sparkles } from 'lucide-react'
+import { ClampedText } from '@/components/ui/clamped-text'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -143,9 +144,20 @@ export const SkillsUsedDisclosure: FC<SkillsUsedDisclosureProps> = ({
                   {/* Absent when the descriptions have not arrived yet, or when
                       the skill has since been deleted or renamed. The name alone
                       is still true, so the row stays rather than disappearing. */}
-                  <span className="text-muted-foreground line-clamp-2 min-h-[1.375rem] text-xs leading-snug">
-                    {known?.description ?? ''}
-                  </span>
+                  {known?.description ? (
+                    // A clamped line is a claim the skill does less than it does,
+                    // and a phone has no hover title to read the rest from.
+                    <ClampedText
+                      lines={2}
+                      moreLabel={t('composer.activated.descriptionMore')}
+                      lessLabel={t('composer.activated.descriptionLess')}
+                      className="text-muted-foreground text-xs leading-snug"
+                    >
+                      {known.description}
+                    </ClampedText>
+                  ) : (
+                    <span className="min-h-[1.375rem]" aria-hidden />
+                  )}
                 </li>
               )
             })}

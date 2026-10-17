@@ -41,8 +41,10 @@ export const makeProject = (overrides: Partial<Project> = {}): Project => ({
   profileDisplay: null,
   profileUpdatedAt: null,
   status: 'active',
+  pausedAt: null,
   closedAt: null,
   closedBy: null,
+  closedOutcome: null,
   startedOn: null,
   endedOn: null,
   deletedAt: null,
@@ -155,6 +157,12 @@ export const makeDocument = (overrides: Partial<Document> = {}): Document => ({
   screeningReleasedHash: null,
   screeningReleasedBy: null,
   screeningReleasedAt: null,
+  // Never failed, and never dispatched since migration 0134: what every row
+  // from before the columns carries, and what the retry rule reads as "retry".
+  ingestFailureCategory: null,
+  ingestRetryable: null,
+  ingestReaderVersion: null,
+  ingestAttempts: null,
   uploadBatchId: null,
   folderId: null,
   ...overrides,

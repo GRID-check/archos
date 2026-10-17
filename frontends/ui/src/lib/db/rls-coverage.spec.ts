@@ -122,6 +122,7 @@ const BOUNDARY_MIGRATIONS = [
   // its conversation drew on a restricted folder (ADR-0093). Keyed directly by
   // its organization; no foreign key, so the mark outlives the chat.
   '0124_message_restricted_use.sql',
+  '0136_document_version_reviews.sql',
   // Adds mail_imports (ADR-0085), an Outlook archive a member is filing into a
   // project. Keyed by the organization, secured like product_feedback; the
   // stale-upload sweep reads across tenants under the platform role.
@@ -135,10 +136,39 @@ const BOUNDARY_MIGRATIONS = [
   // tied to its project by a composite foreign key, the requirements to the
   // record.
   '0126_permit_records.sql',
+  // Adds document_fassung_announcements — which new Fassungen have been
+  // announced, so a re-read does not announce one again. Keyed directly by its
+  // organization; cascades with the newer document.
+  '0130_document_fassung_announcements.sql',
+  // Adds document_annotations and document_annotation_replies — marks people
+  // and Piloti set at a place on a page, and the thread under each (CONTEXT.md
+  // „Anmerkung"). Keyed by their organization AND the document's (the mark's,
+  // for a reply), so a row cannot be planted on another tenant's document.
+  '0138_document_annotations.sql',
+  // The record of each wake of Piloti on an Anmerkung (ADR-0106). Keyed by its
+  // organization AND the mark's.
+  '0139_piloti_wakes.sql',
+  // Adds proposed_changes — a workspace change Piloti proposes and a person
+  // applies (ADR-0105). Keyed by its organization AND the project's.
+  '0140_proposed_changes.sql',
+  // Adds piloti_changes — every change Piloti applied, with the turn that made
+  // it (ADR-0109). Keyed by its organization AND its document's.
+  '0142_piloti_changes.sql',
+  // Adds project_intakes — a project's reading of its own documents, one row
+  // per project (ADR-0111). Keyed by its organization AND the project's.
+  '0144_project_intakes.sql',
+  // Re-secures proposed_changes with a NULL arm for the project: a Büroablage
+  // proposal has no project to join, and is the organization's alone, as a
+  // Büroablage folder is (0102). No table is added or removed.
+  '0146_proposal_shelves.sql',
+  // Adds push_subscriptions — the devices a person turned inbox notifications
+  // on for (ADR-0112). Keyed directly by its organization; the endpoint is
+  // unique across tenants, so a device belongs to its last registrant.
+  '0147_push_subscriptions.sql',
   // Adds the project mail inbox (ADR-0075): inbound_mail_addresses and
   // inbound_mail_messages. Keyed by the organization, with the organization
   // inside every foreign key, secured exactly as `document_roles`.
-  '0129_inbound_mail.sql',
+  '0148_inbound_mail.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

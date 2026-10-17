@@ -157,6 +157,11 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
     folder_path = (request.folder_path or "").strip()
     if folder_path:
         config["folder_path"] = folder_path
+    # A person's choice at upload: this file replaces that one (CONTEXT.md,
+    # "Fassung"). The job writes the confirmed link once the file has been read.
+    fassung_of = (request.fassung_of or "").strip()
+    if fassung_of:
+        config["fassung_of"] = fassung_of
     # The org id, so the detached ingest thread resolves the tenant's BYOK
     # VLM credential and runtime model override.
     if organization_id:

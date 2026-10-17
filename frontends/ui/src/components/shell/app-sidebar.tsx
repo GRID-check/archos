@@ -25,7 +25,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronsLeft, ChevronsRight, Menu } from 'lucide-react'
+import { ChevronLeft, ChevronsLeft, ChevronsRight } from 'lucide-react'
 
 import { Logo } from '@/components/brand/logo'
 import { motion, springGlide } from '@/components/motion'
@@ -50,10 +50,22 @@ import { useLayoutStore } from '@/features/layout/store'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
 import { InboxBadge } from '@/features/collaboration/components'
 import { cn } from '@/lib/utils'
+import { ProjectPill } from './project-pill'
 import { ProjectSwitcher, type ProjectSwitcherProject } from './project-switcher'
 import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
 import { ConnectionPresenceIndicator } from './connection-presence-indicator'
-import { PROJECT_SETTINGS_SECTION, railGroups, type ProjectSection } from './project-sections'
+import {
+  PROJECT_SETTINGS_SECTION,
+  railGroups,
+  sectionHref,
+  sectionLinkHref,
+  type ProjectSection,
+} from './project-sections'
+import { phoneBackTarget } from './phone-tabs'
+import { useRecordRecentProject } from './recent-projects'
+import { useShellOverlays } from './shell-overlays'
+import { ShellSearchButton } from './shell-search-button'
+import { ConnectionBand } from './connection-band'
 import { sectionAnchor } from '@/features/onboarding/lib/product-tour'
 
 /**
@@ -107,9 +119,8 @@ export interface AppSidebarProps {
   /** Whether the current user is the platform owner (ADR-0016). */
   canManagePlatform?: boolean
   /**
-   * Whether the org-wide Archiv is reachable (any member, gated by the
-   * `organization-archiv` feature flag — ADR-0024). Also gates the Archiv
-   * nav item.
+   * Whether the org-wide Archiv is reachable (any member of an organization,
+   * ADR-0024). Also gates the Archiv nav item.
    */
   canAccessArchiv?: boolean
   /** Whether the IFC/BIM model page is enabled (`ifc-models`, ADR-0045). */
@@ -150,17 +161,6 @@ interface RailGroupModel {
   items: RailItemModel[]
 }
 
-function itemHref(item: ProjectSection, base: string): string {
-  return item.href ?? `${base}/${item.segment}`
-}
-
-function navLinkHref(item: ProjectSection, base: string): string {
-  const href = itemHref(item, base)
-  // "Frag Piloti" always opens a FRESH chat (new/empty draft), never the last
-  // thread the user left open. `?new=1` is consumed once by the chat client.
-  return item.key === 'chat' ? `${href}?new=1` : href
-}
-
 function sectionLabel(
   item: ProjectSection,
   t: (key: string) => string,
@@ -197,8 +197,8 @@ function AppSidebarFrame({
   const { state, isMobile } = useSidebar()
   const { pending: inboxPending } = useInboxBadge(canAccessInbox)
 
-  const storeOpen = useLayoutStore((s) => s.isMobileNavOpen)
-  const setStoreOpen = useLayoutStore((s) => s.setMobileNavOpen)
+  const projectSheetOpen = useShellOverlays((s) => s.projectSheetOpen)
+  const setProjectSheetOpen = useShellOverlays((s) => s.setProjectSheetOpen)
 
   const base = `/app/projects/${projectId}`
 
@@ -206,8 +206,11 @@ function AppSidebarFrame({
   // redundant there — hide it and let the chat toolbar host the nav opener.
   const isChatRoute = pathname === `${base}/chat` || pathname.startsWith(`${base}/chat/`)
   const iconRail = state === 'collapsed' && !isMobile
+  const activeProject = projects.find((project) => project.id === projectId)
+  const back = phoneBackTarget(pathname, projectId)
 
   useRecordProjectSection(projectId)
+  useRecordRecentProject(projectId)
 
   React.useEffect(() => {
     pruneProjectSections(projects.map((project) => project.id))
@@ -225,10 +228,10 @@ function AppSidebarFrame({
     label: t(`sectionGroups.${group.group}`),
     items: group.items.map((item) => ({
       key: item.key,
-      href: navLinkHref(item, base),
+      href: sectionLinkHref(item, base),
       icon: item.icon,
       label: sectionLabel(item, t, tCollaboration),
-      active: pathname.startsWith(itemHref(item, base)),
+      active: pathname.startsWith(sectionHref(item, base)),
       badgeCount: item.key === 'inbox' ? inboxPending : 0,
     })),
   }))
@@ -240,24 +243,7 @@ function AppSidebarFrame({
   const orgGroup = groups.find((g) => g.key === 'org')
   const workGroups = groups.filter((g) => g.key !== 'org')
 
-  const settingsHref = itemHref(PROJECT_SETTINGS_SECTION, base)
-  const activeItem =
-    groups.flatMap((group) => group.items).find((item) => item.active) ??
-    (pathname.startsWith(settingsHref)
-      ? {
-          key: 'settings',
-          label: sectionLabel(PROJECT_SETTINGS_SECTION, t, tCollaboration),
-        }
-      : undefined)
-
-  const openLabel =
-    inboxPending > 0
-      ? `${t('openNavigation')} — ${
-          inboxPending === 1
-            ? tCollaboration('inbox.badgeAriaOne')
-            : tCollaboration('inbox.badgeAria', { count: inboxPending })
-        }`
-      : t('openNavigation')
+  const settingsHref = sectionHref(PROJECT_SETTINGS_SECTION, base)
 
   const activePillId = railActivePillId(iconRail)
 
@@ -265,48 +251,46 @@ function AppSidebarFrame({
     <>
       <MobileNavSync pathname={pathname} />
 
-      {/* Slim mobile top bar. Hidden on chat: the toolbar hosts the hamburger. */}
+      {/* The phone's top band. Hidden on chat, whose toolbar is its own top
+          band. The project's name is the door to the switcher sheet; the
+          destinations live in the tab bar at the bottom (`PhoneTabBar`), and
+          "Mehr" there opens this rail as a drawer. */}
       <header
         data-scope="project"
         className={cn(
           // The app renders edge-to-edge (`viewportFit: 'cover'` in the root
           // viewport), so a bar pinned to the top of the screen has to say where
-          // the screen actually starts. `ChatToolbar` already does this; this bar
-          // is the same band on every other section and did not, which put the
-          // hamburger under the status bar on a home-screen install and under the
-          // notch in landscape. `min-h-14` rather than `h-14`, because the inset
-          // has to be able to make the bar taller instead of eating its contents.
-          'border-border bg-surface-sunken min-h-14 w-full shrink-0 items-center justify-between gap-2 border-b px-3 pt-[env(safe-area-inset-top)] md:hidden',
+          // the screen actually starts. `min-h-14` rather than `h-14`, because the
+          // inset has to be able to make the bar taller instead of eating its
+          // contents.
+          'border-border bg-surface-sunken w-full shrink-0 flex-col border-b pt-[env(safe-area-inset-top)] md:hidden',
           isChatRoute ? 'hidden' : 'flex'
         )}
       >
-        <div className="flex min-w-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setStoreOpen(true)}
-            aria-label={openLabel}
-            aria-expanded={storeOpen}
-            className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 relative flex size-11 shrink-0 items-center justify-center rounded-lg transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2"
-          >
-            <Menu className="size-5" aria-hidden />
-            <InboxBadge
-              pending={inboxPending}
-              className="absolute right-1 top-1 -translate-y-1/3 translate-x-1/3"
-            />
-          </button>
-          <Link
-            href="/app/projects"
-            aria-label={t('allProjects')}
-            className="text-foreground focus-visible:ring-ring/60 rounded-md text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
-          >
-            Piloti
-          </Link>
+        <div className="flex min-h-14 items-center gap-1 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
+          {back && (
+            <Link
+              href={back.href}
+              aria-label={t('backTo', { label: t(`sections.${back.sectionKey}`) })}
+              className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/60 flex size-11 shrink-0 items-center justify-center rounded-lg transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+            >
+              <ChevronLeft className="size-5" aria-hidden />
+            </Link>
+          )}
+          <ProjectPill
+            name={activeProject?.name ?? t('projectSwitcher.select')}
+            label={
+              activeProject
+                ? t('projectSwitcher.switchCurrent', { name: activeProject.name })
+                : t('projectSwitcher.select')
+            }
+            expanded={projectSheetOpen}
+            onOpen={() => setProjectSheetOpen(true)}
+            className={back ? undefined : 'ml-1'}
+          />
+          <ShellSearchButton className="ml-auto" />
         </div>
-        {activeItem && (
-          <span className="text-muted-foreground truncate text-sm font-medium">
-            {activeItem.label}
-          </span>
-        )}
+        {isMobile && <ConnectionBand />}
       </header>
 
       <Sidebar collapsible="icon" data-scope="project" aria-label={t('projectNavigation')}>
@@ -321,7 +305,9 @@ function AppSidebarFrame({
             avatar — silently. */}
         <SidebarHeader
           className={cn(
-            'shrink-0 gap-0 p-0 pt-[18px]',
+            // On a phone this is the top of a full-height drawer, under the
+            // status bar; the inset is 0 everywhere else, so 18px stands.
+            'shrink-0 gap-0 p-0 pt-[max(18px,env(safe-area-inset-top))]',
             // 14px, so a 36px tile centres at x=32 in the 64px rail — the same
             // axis as the brand mark, the presence dot and the avatar. A zero
             // inset left the icon column flush at x=0 (centre 18) while
@@ -335,7 +321,7 @@ function AppSidebarFrame({
             // pinned here so the nav below always starts at the same edge —
             // that 36px is the difference between "the contents changed" and
             // "the page jumped".
-            <div className="mt-[18px] flex h-9 items-center">
+            <div className="mt-[18px] flex h-9 items-center pointer-coarse:h-11">
               <ProjectSwitcher
                 projects={projects}
                 activeProjectId={projectId}
@@ -438,7 +424,9 @@ function AppSidebarFrame({
 
         <SidebarFooter
           className={cn(
-            'shrink-0 gap-0 p-0 pb-[14px] pt-2',
+            // The drawer runs to the bottom of the screen, where the home
+            // indicator sits over the user menu without the inset.
+            'shrink-0 gap-0 p-0 pb-[max(14px,env(safe-area-inset-bottom))] pt-2',
             iconRail ? 'overflow-hidden px-3.5' : 'px-3'
           )}
         >
@@ -582,7 +570,9 @@ function RailNavItem({
         isActive={active}
         tooltip={tooltip ? label : undefined}
         className={cn(
-          'h-9 gap-[11px] rounded-[10px] px-3 text-[13px]',
+          // 36px under a mouse; 44px under a finger, grown rather than given a
+          // catchment, because the rows sit 2px apart.
+          'h-9 gap-[11px] rounded-[10px] px-3 text-[13px] pointer-coarse:h-11',
           'group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center',
           // The active SURFACE now lives on the pill below, so every fill the
           // primitive would otherwise paint under it is turned off explicitly —

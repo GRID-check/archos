@@ -152,12 +152,11 @@ export const getFileUploadConfigFromEnv = (
   env: Record<string, string | undefined> = process.env,
   options: FileUploadConfigOptions = {}
 ): FileUploadConfig => {
-  // `imageUploadEnabled` defaults TRUE (flag fails open when enforcement is
-  // off); `vlmAvailable` defaults FALSE (fail-closed — a caller that doesn't
-  // supply the derived capability gets NO images, matching the base list). Real
-  // callers pass both resolved values. `ifcUploadEnabled` defaults TRUE for the
-  // same reason as the image FLAG: a flag fails open, a capability fails closed,
-  // and IFC has no capability.
+  // `imageUploadEnabled` and `ifcUploadEnabled` default TRUE, the answer both
+  // rollout flags give everywhere they are ON; `vlmAvailable` defaults FALSE
+  // (fail-closed — a caller that doesn't supply the derived capability gets NO
+  // images, matching the base list). Real callers pass all three resolved
+  // values, and IFC has no capability.
   const { imageUploadEnabled = true, vlmAvailable = false, ifcUploadEnabled = true } = options
   const rawAcceptedTypes = env.FILE_UPLOAD_ACCEPTED_TYPES || DEFAULT_ACCEPTED_TYPES
 

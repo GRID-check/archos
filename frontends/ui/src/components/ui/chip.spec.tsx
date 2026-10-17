@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { Chip, ChipCount } from './chip'
+import { Chip, ChipCount, ChipLabel } from './chip'
 
 describe('Chip', () => {
   it('renders children and the muted default variant', () => {
@@ -35,5 +35,17 @@ describe('Chip', () => {
   it('ChipCount renders the count', () => {
     render(<ChipCount>3</ChipCount>)
     expect(screen.getByText('3')).toBeInTheDocument()
+  })
+
+  it('never outgrows its row, and truncates a long label while the count stays whole', () => {
+    render(
+      <Chip title="Brandabschnittsbildung zwischen Tiefgarage und Stiegenhaus">
+        <ChipLabel>Brandabschnittsbildung zwischen Tiefgarage und Stiegenhaus</ChipLabel>
+        <ChipCount>3</ChipCount>
+      </Chip>
+    )
+    const label = screen.getByText('Brandabschnittsbildung zwischen Tiefgarage und Stiegenhaus')
+    expect(label).toHaveClass('truncate', 'min-w-0')
+    expect(label.parentElement).toHaveClass('max-w-full')
   })
 })

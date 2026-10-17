@@ -22,6 +22,12 @@ _POSTGRES = os.environ.get("AIQ_TEST_POSTGRES_URL")
 _TABLES = ("research_claims", "research_claim_turns", "other_claims", "other_claim_turns")
 
 
+def test_the_postgres_branch_ran_where_it_is_required():
+    """CI's ``task be:test:postgres`` sets the guard: there a missing database fails instead of skipping green."""
+    if os.environ.get("AIQ_TEST_POSTGRES_REQUIRED"):
+        assert _POSTGRES, "AIQ_TEST_POSTGRES_URL is unset while AIQ_TEST_POSTGRES_REQUIRED is set"
+
+
 @pytest.fixture(
     params=[
         "sqlite",
@@ -74,6 +80,38 @@ def test_a_queue_keeps_its_own_fairness_and_priority(url):
     # Lanes alternate (fewest running, then longest unserved); inside a lane, interactive first.
     assert [c.lane for c in claimed] == ["org-a", "org-b", "org-a"]
     assert [c.job_id for c in claimed if c.lane == "org-a"] == ["a-live", "a-bulk"]
+
+
+def _created_at(queue: claim_queue.ClaimQueue, url: str, job_id: str, at: str) -> None:
+    with queue._engine_for(url).begin() as conn:
+        conn.execute(text(f"UPDATE {queue.table} SET created_at = :at WHERE job_id = :id"), {"at": at, "id": job_id})
+
+
+# The next two scenarios are the lane order every claim shares: the same two run in
+# tests/knowledge_layer_tests/test_ingest_queue.py and in the BFF's
+# frontends/ui/src/lib/jobs-queue/queue.integration.spec.ts. Priority never picks the lane.
+
+
+def test_a_lane_is_ranked_by_its_oldest_job_not_its_best_priority(url):
+    queue = _queue(url)
+    queue.enqueue("a-bulk", "org-a", "p", "bulk")
+    queue.enqueue("b-live", "org-b", "p")
+    _created_at(queue, url, "a-bulk", "2026-09-30 10:00:00")
+    _created_at(queue, url, "b-live", "2026-09-30 10:00:01")
+
+    assert queue.claim_next("w1", **CLAIM).job_id == "a-bulk"
+
+
+def test_tied_lanes_are_served_by_name_past_the_lanes_one_claim_ranks(url):
+    queue = _queue(url)
+    lanes = [f"org-{c}" for c in "abcdef"]  # more than the four lanes ranked per claim
+    for n, lane in enumerate(reversed(lanes)):
+        queue.enqueue(f"j{n}", lane, "p")
+        _created_at(queue, url, f"j{n}", "2026-09-30 10:00:00")
+
+    claimed = [queue.claim_next(f"w{i}", **CLAIM).lane for i in range(len(lanes))]
+
+    assert claimed == lanes
 
 
 def test_release_and_dead_rows_work_on_any_table(url):

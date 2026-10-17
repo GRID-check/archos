@@ -72,6 +72,7 @@ from aiq_agent.knowledge.schema import JobState
 from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.schema import stable_file_id
 
+from . import fassungen
 from .pdfium_lock import detached_pil
 from .pdfium_lock import pdfium_lock
 
@@ -275,6 +276,44 @@ def _retrieval_dependency_error(cause: BaseException) -> RuntimeError:
     )
 
 
+# @environment_variable AIQ_CHROMA_HTTP_TIMEOUT_SECONDS
+# @category Knowledge Layer
+# @type float
+# @default 120
+# @required false
+# The longest one request to the shared Chroma server may take (connecting is
+# bounded at 5 s within it). chromadb's HTTP client sets no timeout of its own
+# (`httpx.Client(timeout=None)` in chromadb 1.5), so a request on a connection
+# to a Chroma pod whose node died, which sends neither FIN nor RST, never
+# returns, and every thread that makes one is lost to the process. Must exceed
+# the slowest legitimate call, a metadata scan of the largest collection.
+#: Fallback for :data:`AIQ_CHROMA_HTTP_TIMEOUT_SECONDS`.
+_CHROMA_HTTP_TIMEOUT_SECONDS = 120.0
+#: Upper bound on establishing the TCP connection, within the request timeout.
+_CHROMA_CONNECT_TIMEOUT_SECONDS = 5.0
+
+
+def _bound_chroma_http(client) -> None:
+    """Give a chromadb HTTP client's session a timeout; chromadb leaves it unbounded.
+
+    The session is private (``Client._server._session``, an ``httpx.Client``):
+    chromadb exposes connection-pool settings but no timeout. Reaching in is the
+    lesser evil. Unbounded, one dead Chroma pod drained the API's whole thread
+    pool on 2026-10-12: every ``asyncio.to_thread`` call that touched Chroma
+    blocked on a socket read that could not end, until the process was
+    restarted. ``test_chroma_http_timeout.py`` fails if a chromadb upgrade moves
+    the attribute, so the reach-in cannot go stale silently.
+    """
+    session = getattr(getattr(client, "_server", None), "_session", None)
+    if session is None:
+        logger.warning("chromadb client has no _server._session; Chroma requests stay unbounded")
+        return
+    import httpx
+
+    seconds = _env_float("AIQ_CHROMA_HTTP_TIMEOUT_SECONDS", _CHROMA_HTTP_TIMEOUT_SECONDS)
+    session.timeout = httpx.Timeout(seconds, connect=min(_CHROMA_CONNECT_TIMEOUT_SECONDS, seconds))
+
+
 def _make_chroma_client(persist_dir: str):
     """Return a ChromaDB client: shared HTTP server when configured, else embedded."""
     import chromadb
@@ -306,7 +345,9 @@ def _make_chroma_client(persist_dir: str):
         os.makedirs(persist_dir, exist_ok=True)
         return chromadb.PersistentClient(path=persist_dir, settings=settings)
 
-    return chromadb.HttpClient(host=host, port=port, ssl=ssl, settings=settings)
+    client = chromadb.HttpClient(host=host, port=port, ssl=ssl, settings=settings)
+    _bound_chroma_http(client)
+    return client
 
 
 # Image extraction settings - filters out small icons/logos
@@ -531,6 +572,8 @@ JOB_RETENTION_SECONDS = 3600  # 1 hour
 PERMIT_RECORD_TIMEOUT_SECONDS = 90
 #: Dropping a record is one internal call, no model: it must never hold up an ingest.
 PERMIT_RECORD_DROP_TIMEOUT_SECONDS = 5
+#: The bound on one file's Fassung step (a suggestion for a new name, a change line for a re-upload).
+FASSUNG_TIMEOUT_SECONDS = 45
 
 # The per-file error of an attempt whose document was deleted while it indexed
 # (see `document_presence`). FAILED rather than SUCCESS so the end-of-job
@@ -749,6 +792,10 @@ EMBED_EXCLUDED_METADATA_KEYS = (
     "stored_image_index",
     "drawing_type",
     "drawing_scale",
+    # A photo's camera facts (photo_facts.py): metadata to filter and show by,
+    # not words of what the photo depicts.
+    "captured_at",
+    "camera",
     # The v2 structured payload: multi-KB JSON for the detail view / later
     # re-mapping, plus per-sheet segment bookkeeping. Embedding any of it
     # would double the segment text's weight (drawing_data restates the chunk
@@ -803,6 +850,92 @@ def _apply_metadata_exclusions(document: Any) -> None:
             setattr(document, attribute, merged)
         except (AttributeError, ValueError):  # pragma: no cover - non-llama-index document
             logger.debug("Could not set %s on %r", attribute, type(document).__name__)
+
+
+#: Keys rendered into the header whatever its length: what users ask by, short by
+#: construction, and ``file_name`` is how a file's chunks are found and deleted.
+_ALWAYS_RENDERED_METADATA_KEYS = frozenset({"file_name", "page_label", "content_type", "doc_class"})
+
+
+def _rendered_metadata_tokens(document: Any) -> int:
+    """Tokens of the longer of the document's two metadata renderings, as the splitter counts them."""
+    from llama_index.core.schema import MetadataMode
+    from llama_index.core.utils import get_tokenizer
+
+    tokenizer = get_tokenizer()
+    return max(len(tokenizer(document.get_metadata_str(mode=mode))) for mode in (MetadataMode.EMBED, MetadataMode.LLM))
+
+
+def _fit_rendered_metadata(document: Any, limit: int) -> list[str]:
+    """Stop rendering the longest free-text keys until the metadata header fits ``limit`` tokens.
+
+    ``SentenceSplitter`` prepends the rendered metadata to every chunk and raises when it
+    alone exceeds the chunk size, which fails the whole file, not the one chunk. Keys
+    such as ``punkt_title``/``punkt_path`` carry text read out of the document, so their
+    length is the document's to choose. The value stays stored for display and
+    filtering; it only leaves the embedded header, and the chunk body already starts
+    with the same breadcrumb. Returns the keys dropped, for the caller to log.
+
+    The header can stay over ``limit`` when only ``_ALWAYS_RENDERED_METADATA_KEYS``
+    remain; the caller measures and reports that (``_stamp_chunk_metadata``).
+    """
+    if limit <= 0:
+        raise ValueError(f"Metadata token budget must be positive, got {limit}")
+    dropped: list[str] = []
+    while _rendered_metadata_tokens(document) > limit:
+        rendered = [
+            key
+            for key in document.metadata
+            if key not in _ALWAYS_RENDERED_METADATA_KEYS
+            and (key not in document.excluded_embed_metadata_keys or key not in document.excluded_llm_metadata_keys)
+        ]
+        if not rendered:
+            break
+        key = max(rendered, key=lambda name: len(str(document.metadata[name])))
+        for attribute in ("excluded_embed_metadata_keys", "excluded_llm_metadata_keys"):
+            excluded = getattr(document, attribute)
+            if key not in excluded:
+                excluded.append(key)
+        dropped.append(key)
+    return dropped
+
+
+def _stamp_chunk_metadata(
+    documents: list[Any], *, doc_class: Any, provenance: dict[str, Any], chunk_size: int, file_name: str
+) -> None:
+    """Stamp ``doc_class`` and provenance on a file's documents and fit each header to half of ``chunk_size``.
+
+    ``chunk_size`` is the one this job's splitter runs with (the job config's, which
+    ``_ingest_job`` also sets on ``Settings``), not the ingestor's default: budgeted
+    against a larger default, a header passes here and still fails the file in the
+    splitter. Logs once per file, not once per page: the keys left out of the header,
+    and a header still over budget with only the always-rendered keys left.
+    """
+    limit = chunk_size // 2
+    unrendered: set[str] = set()
+    longest = 0
+    for doc in documents:
+        doc.metadata["doc_class"] = doc_class
+        doc.metadata.update(provenance)
+        _apply_metadata_exclusions(doc)
+        unrendered.update(_fit_rendered_metadata(doc, limit))
+        longest = max(longest, _rendered_metadata_tokens(doc))
+    if unrendered:
+        logger.warning(
+            "Metadata too long to embed in %s; left out of the header: %s", file_name, ", ".join(sorted(unrendered))
+        )
+    if longest > limit:
+        # "tokens" here are tokenizer counts; the line logs a file name and integers only.
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
+        logger.warning(
+            "Metadata header of %s stays at %d tokens with only %s rendered, over its %d-token budget "
+            "(chunk size %d); past the chunk size the splitter fails the file",
+            file_name,
+            longest,
+            ", ".join(sorted(_ALWAYS_RENDERED_METADATA_KEYS)),
+            limit,
+            chunk_size,
+        )
 
 
 #: Collection-metadata keys recording which embedding produced a collection's vectors.
@@ -1630,12 +1763,18 @@ def _read_image_as_jpeg(file_path: str, file_name: str) -> tuple[bytes, int, int
     import io
 
     from PIL import Image
+    from PIL import ImageOps
 
     try:
         with open(file_path, "rb") as handle:
             raw = handle.read()
-        with Image.open(io.BytesIO(raw)) as pil_image:
-            pil_image.load()
+        with Image.open(io.BytesIO(raw)) as opened:
+            opened.load()
+            # A phone stores a portrait photo as landscape pixels plus an EXIF
+            # Orientation tag. Apply it before anything reads the size or the
+            # pixels, or the vision model reads the photo on its side and the
+            # recorded dimensions are swapped.
+            pil_image = ImageOps.exif_transpose(opened)
             width, height = pil_image.size
             rgb_image = pil_image.convert("RGB")
             rgb_image.thumbnail((VLM_MAX_IMAGE_DIM, VLM_MAX_IMAGE_DIM))
@@ -1715,8 +1854,14 @@ def analyze_visual(
     vlm_base_url: str = DEFAULT_VLM_BASE_URL,
     vlm_api_key: str | None = None,
     extract_charts: bool = True,
+    context: str | None = None,
 ) -> tuple[str, str, dict[str, Any]]:
     """Analyse ONE visual — the single entry point for every image source.
+
+    ``context`` is a sentence the model is told about the image that the pixels
+    do not show (a photo's capture date, read from its EXIF). It is part of the
+    cache key: the cache is keyed on pixels, and the same pixels taken on two
+    days are two captions.
 
     A rendered PDF page, a raster embedded in a PDF and an uploaded image file
     all arrive here. They used to be analysed by two different prompts: pages
@@ -1742,15 +1887,17 @@ def analyze_visual(
     from knowledge_layer.llamaindex import visual_analysis
     from knowledge_layer.llamaindex import visual_domains
 
+    context_key = f":ctx={hashlib.sha256(context.encode('utf-8')).hexdigest()[:16]}" if context else ""
     caption, fields = _processing._cached_vlm_call(
         image_bytes,
-        visual_analysis.cache_prompt_type(visual_domains.resolve_registry()),
+        visual_analysis.cache_prompt_type(visual_domains.resolve_registry()) + context_key,
         _analyze_drawing_page_with_vlm,
         image_bytes,
         vlm_model=vlm_model,
         vlm_base_url=vlm_base_url,
         vlm_api_key=vlm_api_key,
         model=vlm_model,
+        **({"context": context} if context else {}),
     )
     fields = fields if isinstance(fields, dict) else {}
 
@@ -1783,6 +1930,17 @@ def analyze_visual(
 #: Chunk-body prefix per content type. Kept as a map so every source spells the
 #: marker the same way — ``get_document_visual_details`` strips it back off.
 _VISUAL_PREFIXES = {"drawing": "DRAWING", "chart": "CHART", "image": "IMAGE"}
+_VISUAL_MARKER = re.compile(r"^\[(?:DRAWING|CHART|IMAGE) from page \d+\]\s*")
+
+
+def _strip_visual_marker(text: str) -> str:
+    """A visual chunk's body without its ``[IMAGE from page 1]`` marker.
+
+    The marker is for retrieval, which cites a page; a summary built from the
+    chunk is shown to people, who saw "[IMAGE from page 1] Foto der Baustelle…"
+    as the description of their photo.
+    """
+    return _VISUAL_MARKER.sub("", text, count=1)
 
 
 def visual_documents(
@@ -1849,8 +2007,13 @@ def _build_image_documents(
     vlm_base_url: str = DEFAULT_VLM_BASE_URL,
     extract_charts: bool = True,
     vlm_api_key: str | None = None,
+    photo: Any = None,
 ) -> list[Any] | None:
     """Standalone uploaded image → Documents, through the shared analyser.
+
+    ``photo`` is the image's :class:`~knowledge_layer.llamaindex.photo_facts.PhotoFacts`,
+    read from the ORIGINAL bytes before the re-encode drops EXIF. Its capture
+    date reaches the model and the chunks; its position reaches neither.
 
     Thin by design: decode, then the same :func:`analyze_visual` +
     :func:`visual_documents` every other source uses. Returns ``None`` when the
@@ -1871,10 +2034,17 @@ def _build_image_documents(
         vlm_base_url=vlm_base_url,
         vlm_api_key=vlm_api_key,
         extract_charts=extract_charts,
+        context=photo.model_context() if photo is not None else None,
     )
     if _processing.is_failed_caption(caption):
         logger.error("VLM analysis failed for standalone image %s: %s", file_name, caption[:120])
         return None
+
+    captured = {}
+    if photo is not None and photo.captured_at:
+        captured["captured_at"] = photo.captured_at
+    if photo is not None and photo.camera:
+        captured["camera"] = photo.camera
 
     return visual_documents(
         content_type,
@@ -1888,6 +2058,7 @@ def _build_image_documents(
             "image_format": image_format,
             "image_width": width,
             "image_height": height,
+            **captured,
         },
     )
 
@@ -2278,6 +2449,7 @@ def _analyze_drawing_page_with_vlm(
     vlm_model: str = DEFAULT_VLM_MODEL,
     vlm_base_url: str = DEFAULT_VLM_BASE_URL,
     vlm_api_key: str | None = None,
+    context: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """VLM-analyse a full rendered PDF page as a technical drawing (schema v2).
 
@@ -2319,7 +2491,7 @@ def _analyze_drawing_page_with_vlm(
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": visual_analysis.build_prompt(registry)},
+                        {"type": "text", "text": visual_analysis.build_prompt(registry, context=context)},
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
                     ],
                 }
@@ -2472,17 +2644,39 @@ class _PreviousVersion:
 
 
 def _read_human_set_fields(collection_name: str, found: dict[str, _PreviousVersion]) -> None:
-    """Copy what people set on each previous version's row onto its entry. Fail-open."""
+    """Copy what people set on each previous version's row onto its entry. Fail-open.
+
+    ``tags`` is carried only when a person chose them, as their JSON text: the
+    classifier's own tags are re-derived from the new bytes, as they should be.
+    ``superseded_by`` is always a person's confirmation, and ``revision_suggestion``
+    keeps a dismissal a person made.
+    """
     try:
         from aiq_agent.knowledge import get_document_display_titles
         from aiq_agent.knowledge import get_document_doc_classes
         from aiq_agent.knowledge import get_document_folder_paths
+        from aiq_agent.knowledge import get_document_person_tags
+        from aiq_agent.knowledge import get_document_person_topics
+        from aiq_agent.knowledge import get_document_revision_suggestions
+        from aiq_agent.knowledge import get_document_superseded_by
 
         stored_names = [stored for version in found.values() for stored in version.stored_names]
+        person_tags = {
+            stored: json.dumps(tags) for stored, tags in get_document_person_tags(collection_name, stored_names).items()
+        }
+        person_topics = {
+            stored: json.dumps(topics)
+            for stored, topics in get_document_person_topics(collection_name, stored_names).items()
+        }
         for name, values in (
             ("doc_class", get_document_doc_classes(collection_name, stored_names)),
             ("display_title", get_document_display_titles(collection_name, stored_names)),
             ("folder_path", get_document_folder_paths(collection_name, stored_names)),
+            ("tags", person_tags),
+            ("topics", person_topics),
+            # A person confirmed these (the link) or dismissed them (the suggestion).
+            ("superseded_by", get_document_superseded_by(collection_name, stored_names)),
+            ("revision_suggestion", get_document_revision_suggestions(collection_name, stored_names)),
         ):
             for stored, value in values.items():
                 version = found.get(_normalized_file_name(stored))
@@ -2871,13 +3065,22 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         status: FileStatus,
         chunks_created: int | None = None,
         error: str | None = None,
+        exc: BaseException | None = None,
     ) -> None:
         """Record a file's outcome on the job, then in the shared store.
 
         The job's ``file_details`` is the file's record: ``list_files`` and
         ``get_file_status`` in any process read it from the store, so a FAILED
         file's reason is written there with the status, not kept here.
+
+        A FAILED file also gets its failure category and whether the same bytes
+        may read on a retry (``ingest_failures.classify_failure``), from the
+        reason and, when the per-file catch had one, the exception ``exc``. One
+        place for every failure the adapter writes, so no call site can fail a
+        file without saying whether retrying it is worth anything.
         """
+        from aiq_agent.knowledge.ingest_failures import classify_failure
+
         with self._lock:
             if file_index < len(job.file_details):
                 file_detail = job.file_details[file_index]
@@ -2888,6 +3091,13 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     file_detail.chunks_created = chunks_created
                 elif status == FileStatus.FAILED and error:
                     file_detail.error_message = error
+                if status == FileStatus.FAILED:
+                    verdict = classify_failure(error, exc)
+                    file_detail.failure_category = verdict.category
+                    file_detail.retryable = verdict.retryable
+                else:
+                    file_detail.failure_category = None
+                    file_detail.retryable = None
 
             job.processed_files = file_index + 1
 
@@ -3500,14 +3710,21 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             return []
 
     def get_collection(self, name: str) -> CollectionInfo | None:
-        """Get metadata for a specific collection."""
+        """Metadata for one collection; None only when Chroma says the collection does not exist.
+
+        Any other failure (the server unreachable, a timeout, a transport error)
+        raises. Returned as None it read as "missing": during a Chroma outage
+        ``oib_sync`` took that for a wiped index and re-ingested the whole corpus.
+        """
         try:
             client = self._get_chroma_client()
 
             try:
                 collection = client.get_collection(name=name)
-            except Exception:
-                return None
+            except Exception as exc:
+                if _is_missing_collection(exc):
+                    return None
+                raise
 
             col_metadata = collection.metadata or {}
             description = col_metadata.get("description")
@@ -3541,7 +3758,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
         except Exception as e:
             logger.error(f"Failed to get collection {name}: {e}")
-            return None
+            raise
 
     # =========================================================================
     # File Management Implementation
@@ -3605,9 +3822,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         listed = next((f for f in self.list_files(collection_name) if f.file_id == file_id), None)
         return listed.file_name if listed is not None else file_id
 
-    def delete_file(self, file_id: str, collection_name: str) -> bool:
+    def delete_file(self, file_id: str, collection_name: str, *, permanent: bool = False) -> bool:
         """
         Delete a file and its chunks from a collection.
+
+        ``permanent`` is a delete nobody undoes (an erase, a move to another
+        collection). Without it the metadata row goes but the Fassung facts a
+        person made on it are kept for the file's return: an archive, the folder
+        bin and a publish purge and read the document again
+        (``DocumentMetadataStore.unregister``).
 
         This removes all chunks that have the matching file_name in metadata.
         Handles both exact file names and names with tmp prefix stripped.
@@ -3683,7 +3906,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
                     from aiq_agent.knowledge import unregister_summary
 
-                    unregister_summary(collection_name, file_name)
+                    unregister_summary(collection_name, file_name, permanent=permanent)
 
                     from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
@@ -3699,7 +3922,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             # Remove from centralized summary registry
             from aiq_agent.knowledge import unregister_summary
 
-            unregister_summary(collection_name, file_name)
+            unregister_summary(collection_name, file_name, permanent=permanent)
 
             # Drop the lexical mirror for this file, scoped to THIS collection: the
             # same file_name legitimately exists in the base corpus and in a project
@@ -3941,6 +4164,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
         import httpx
         from PIL import Image
+        from PIL import ImageOps
 
         # Longest-edge cap for the generated thumbnail (px).
         THUMBNAIL_MAX_DIM = 400
@@ -3963,6 +4187,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             try:
                 pil_image = Image.open(file_path)
                 pil_image.load()
+                # Upright, as the camera meant it (EXIF Orientation) — see
+                # `_read_image_as_jpeg`.
+                pil_image = ImageOps.exif_transpose(pil_image)
                 if pil_image.mode != "RGB":
                     pil_image = pil_image.convert("RGB")
             except Exception:
@@ -4104,7 +4331,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             get_chunk_text_store().delete_chunks(collection_name, previous.chunk_ids)
             for stored in previous.stored_names:
                 if stored != file_name:
-                    unregister_summary(collection_name, stored)
+                    # Permanent: this spelling never returns, and what a person set on
+                    # it was carried onto ``file_name`` (`_read_human_set_fields`).
+                    unregister_summary(collection_name, stored, permanent=True)
             logger.info(
                 "Replaced previous version(s): removed %d chunk(s) of %s from %s after re-ingest",
                 len(previous.chunk_ids),
@@ -4375,11 +4604,16 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         # to delete, whether or not it owns the caller's files.
         downloaded: list[str] = []
         try:
-            # Update job to processing
+            # Update job to processing, stamped with the reader that reads it:
+            # a file that fails `deterministic` here may read under a newer one
+            # (`knowledge_layer.reader_version`), and the BFF compares the two.
+            from knowledge_layer.reader_version import INGEST_READER_VERSION
+
             with self._lock:
                 job = self._jobs[job_id]
                 job.status = JobState.PROCESSING
                 job.started_at = datetime.utcnow()
+                job.reader_version = INGEST_READER_VERSION
             self._persist(job)
 
             # Initialize components
@@ -4393,7 +4627,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
             # Configure LlamaIndex settings
             Settings.embed_model = self._embed_model
-            Settings.chunk_size = config.get("chunk_size", self.chunk_size)
+            # Resolved once: the splitter runs with it, and the metadata header is
+            # budgeted against it (`_stamp_chunk_metadata`), never the default.
+            chunk_size = config.get("chunk_size", self.chunk_size)
+            Settings.chunk_size = chunk_size
             Settings.chunk_overlap = config.get("chunk_overlap", self.chunk_overlap)
 
             # Get multimodal settings from config or instance defaults
@@ -4674,6 +4911,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             logger.warning("Image ingestion skipped (VLM not configured): %s", file_name)
                             continue
 
+                        # From the ORIGINAL bytes: the re-encode below drops EXIF.
+                        from knowledge_layer.llamaindex.photo_facts import read_photo_facts
+
+                        photo = read_photo_facts(file_path)
                         image_docs = _build_image_documents(
                             file_path,
                             file_name,
@@ -4683,6 +4924,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             vlm_base_url=vlm_base_url,
                             vlm_api_key=vlm_api_key,
                             extract_charts=extract_charts,
+                            photo=photo,
                         )
                         if image_docs is None:
                             self._update_file_status(
@@ -4766,7 +5008,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # summary. Rendered visual/vector pages accumulate here.
                     summary_future = None
                     tags_future = None
+                    topics_future = None
                     doc_class_future = None
+                    photo = None
                     executor = None
                     drawing_pages: list[dict[str, Any]] = []
 
@@ -4933,7 +5177,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             llm_input = drawing_source or text_source
                         else:
                             llm_input = text_source
-                        executor = ThreadPoolExecutor(max_workers=3)
+                        executor = ThreadPoolExecutor(max_workers=4)
                         # In the job's context, so the summary and the tags
                         # land on its cost ledger (`_ingest_cost_scope`).
                         from aiq_agent.common.cost_tracking import submit_in_context
@@ -4948,6 +5192,19 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             file_name,
                             self.summary_llm,
                             organization_id=organization_id,
+                        )
+                        # The model's own topics beside the controlled tags, told the
+                        # project's existing ones first so its spellings hold.
+                        from aiq_agent.knowledge import get_topic_vocabulary
+                        from aiq_agent.knowledge.document_classification import suggest_topics
+
+                        topics_future = submit_in_context(
+                            executor,
+                            suggest_topics,
+                            llm_input,
+                            file_name,
+                            self.summary_llm,
+                            existing=get_topic_vocabulary(collection_name),
                         )
                         # A base-corpus file whose name gives no OIB hint lands in
                         # `sonstiges`; the decision model proposes a Dokumentart
@@ -4987,9 +5244,22 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         except Exception as e:
                             logger.warning("Tag classification failed for %s: %s", file_name, e)
 
+                    topics = _future_result(topics_future, "Topic suggestion", file_name)
+
                     # Clean up executor
                     if executor:
                         executor.shutdown(wait=False)
+
+                    # The vision model saw the pixels; the classifier only read
+                    # its caption. A photograph is a Foto whatever it shows.
+                    if is_image and text_documents:
+                        from aiq_agent.knowledge.document_classification import reconcile_image_tags
+
+                        tags = reconcile_image_tags(
+                            tags,
+                            content_type=text_documents[0].metadata.get("content_type"),
+                            segment_types=(doc.metadata.get("drawing_type") or "" for doc in text_documents),
+                        )
 
                     self._remember_permit(config, collection_name, file_name, tags, text_documents)
 
@@ -5002,7 +5272,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # Scrub any licence/watermark stamp out of the caption
                         # before it becomes the summary; if scrubbing empties it,
                         # leave summary as None rather than emit an empty summary.
-                        caption_text = _scrub_watermark_phrases(text_documents[0].get_content())
+                        caption_text = _scrub_watermark_phrases(_strip_visual_marker(text_documents[0].get_content()))
                         summary = caption_text[:500] or None
 
                     valid_documents = [
@@ -5034,10 +5304,13 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # row — and an empty dict for every human document leaves
                     # those chunks byte-for-byte unchanged.
                     provenance = _provenance_from_config(config)
-                    for doc in all_documents:
-                        doc.metadata["doc_class"] = doc_class
-                        doc.metadata.update(provenance)
-                        _apply_metadata_exclusions(doc)
+                    _stamp_chunk_metadata(
+                        all_documents,
+                        doc_class=doc_class,
+                        provenance=provenance,
+                        chunk_size=chunk_size,
+                        file_name=file_name,
+                    )
 
                     # The last moment a run that lost its claim can stop with
                     # nothing of this file written: the new owner indexes it.
@@ -5167,15 +5440,51 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         fallback_source = f"{first_text}\n{last_text}" if last_text else first_text
                         summary = fallback_summary_from_text(fallback_source)
 
+                    # A person's choice in the upload dialog (ADR-0099): this file replaces
+                    # that one. A job is one file; a name meant for it is never read for
+                    # another. The base corpus has no Fassungen: it replaces by its own hash
+                    # registry.
+                    confirmed_older = (config.get("fassung_of") or "").strip() or None
+                    if base_corpus or len(file_paths) != 1:
+                        confirmed_older = None
+                    # Whether the summary model reads Fassungen for this file: a suggestion,
+                    # a change line. The link a person chose never waits for it (below).
+                    fassung_model = bool(not base_corpus and self.generate_summary_enabled and self.summary_llm)
+
                     # Store summary + tags in FileInfo and centralized registry
                     if summary:
+                        # The rows as they are BEFORE the new summary overwrites this
+                        # name's: the previous summary is what a re-upload's change
+                        # line is told against, and the other rows are the candidates
+                        # a new name may be a newer Fassung of (`fassungen.py`).
+                        fassung_rows = (
+                            fassungen.read_rows(collection_name)
+                            if not base_corpus and self.generate_summary_enabled and self.summary_llm
+                            else []
+                        )
+                        summary_before = fassungen.previous_summary(
+                            fassung_rows, previous.stored_names if previous else ()
+                        )
                         # Register in centralized summary registry (backend-agnostic).
                         # Tags ride along in the same upsert (may be None).
                         from aiq_agent.knowledge import register_summary
                         from aiq_agent.knowledge import set_document_doc_class
                         from aiq_agent.knowledge import set_document_folder_path
 
-                        register_summary(collection_name, file_name, summary, tags=tags)
+                        register_summary(collection_name, file_name, summary, tags=tags, topics=topics)
+                        # The title block (Plankopf) the vision model read on the first drawing
+                        # page that has one: Plannummer, Index, Datum. Read from the same
+                        # analysis as the chunks, so it costs no further call. A re-upload
+                        # without one clears the old sheet's facts.
+                        revision_facts = fassungen.revision_facts_from_documents(all_documents)
+                        if revision_facts or previous is not None:
+                            from aiq_agent.knowledge import set_document_revision_facts
+
+                            set_document_revision_facts(collection_name, file_name, revision_facts)
+                        if photo is not None and not photo.empty:
+                            from aiq_agent.knowledge import set_document_capture
+
+                            set_document_capture(collection_name, file_name, photo.as_metadata())
 
                         # Persist the doc_class onto the freshly-created summary
                         # row, but never overwrite a human-set stored value —
@@ -5203,6 +5512,18 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         folder_path = folder_path or preserved.get("folder_path")
                         if folder_path:
                             set_document_folder_path(collection_name, file_name, folder_path)
+                        # Tags a person chose survive the re-read. The upsert above
+                        # already keeps them on a row of the same name; this
+                        # carries them from a row under another spelling, which
+                        # retiring the previous version removed.
+                        if "tags" in preserved:
+                            from aiq_agent.knowledge import set_document_tags_by_person
+
+                            set_document_tags_by_person(collection_name, file_name, json.loads(preserved["tags"]))
+                        if "topics" in preserved:
+                            from aiq_agent.knowledge import set_document_topics_by_person
+
+                            set_document_topics_by_person(collection_name, file_name, json.loads(preserved["topics"]))
                         if preserved.get("display_title"):
                             from aiq_agent.knowledge import set_document_display_title
 
@@ -5231,7 +5552,61 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
                             set_document_provenance(collection_name, file_name, provenance)
 
+                        # A person's confirmed link and a dismissed suggestion survive
+                        # the re-read, the way their tags do: the same-name row keeps
+                        # them by itself, this carries them from another spelling.
+                        carried_link, carried_suggestion = fassungen.carried_links(preserved)
+                        if carried_link:
+                            from aiq_agent.knowledge import set_document_superseded_by
+
+                            set_document_superseded_by(collection_name, file_name, carried_link)
+                        if carried_suggestion:
+                            from aiq_agent.knowledge import set_document_revision_suggestion
+
+                            set_document_revision_suggestion(collection_name, file_name, carried_suggestion)
+
+                        # Fassungen: a new name may be a newer state of another document
+                        # (a suggestion), a re-upload says what changed (ADR-0054). Bounded,
+                        # fail-open, and only on a shelf of user documents: the base corpus
+                        # replaces by its own hash registry.
+                        if fassung_model:
+                            self._bounded(
+                                "Fassung",
+                                file_name,
+                                FASSUNG_TIMEOUT_SECONDS,
+                                fassungen.record_fassungen,
+                                collection_name,
+                                file_name,
+                                replaced=previous is not None,
+                                rows=fassung_rows,
+                                previous=summary_before,
+                                summary=summary,
+                                doc_class=doc_class,
+                                tags=tags,
+                                llm=self.summary_llm,
+                                confirmed_older=confirmed_older,
+                                revision_facts=revision_facts,
+                            )
+
                         logger.info(f"  Summary generated ({len(summary)} chars)")
+
+                    # The link a person chose at upload is theirs, whatever the summary model
+                    # could do: written without a summary (the row it waits for may come from
+                    # the reconciliation backfill) and without the model (no change line).
+                    if confirmed_older and not (summary and fassung_model):
+                        self._bounded(
+                            "Fassung",
+                            file_name,
+                            FASSUNG_TIMEOUT_SECONDS,
+                            fassungen.confirm_fassung,
+                            collection_name,
+                            file_name,
+                            confirmed_older,
+                            summary=summary or "",
+                            doc_class=doc_class,
+                            tags=tags,
+                            llm=None,
+                        )
 
                     logger.info(f"Completed file {i + 1}/{len(file_paths)} ({chunks_created} chunks)")
 
@@ -5240,7 +5615,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     raise
                 except Exception as e:
                     logger.exception(f"Error processing file {file_path}")
-                    self._update_file_status(job, i, FileStatus.FAILED, error=str(e))
+                    self._update_file_status(job, i, FileStatus.FAILED, error=str(e), exc=e)
                     self._discard_partial_version(chroma_collection, collection_name, file_name, chunks_before)
                 finally:
                     # Still under the replacement lock: a quarantined re-upload
@@ -5277,6 +5652,30 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             successful_files = [f for f in job.file_details if f.status == FileStatus.SUCCESS]
 
             # Mark job as terminal based on per-file results
+            # Reconciliation backstop, BEFORE the job reads as terminal: a caller
+            # that waits for COMPLETED and then lists the collection must find
+            # every row (the BFF's settle does exactly that). Catch any document that ingested
+            # successfully (visible/searchable in Chroma) but whose summary row
+            # silently failed to register — e.g. both the LLM summary and tag
+            # classification calls failed. Runs at the end of every ingestion
+            # job inside the knowledge layer, so every caller (the Knowledge
+            # API, oib_sync, and any future caller)
+            # gets this for free without having to remember to call it. Scoped
+            # to THIS job's successful files: the unscoped mode's list_files
+            # reads every chunk metadata in the collection — O(collection) per
+            # single-file upload, painful on the large oib_knowledge corpus.
+            if successful_files:
+                try:
+                    from aiq_agent.knowledge.factory import reconcile_collection_summaries
+
+                    reconcile_collection_summaries(
+                        self,
+                        collection_name,
+                        file_names=[f.file_name for f in successful_files],
+                    )
+                except Exception as e:
+                    logger.warning("Reconciliation failed for collection %s: %s", collection_name, e)
+
             with self._lock:
                 if failed_files and not successful_files:
                     job.status = JobState.FAILED
@@ -5308,28 +5707,6 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             self._update_collection_timestamp(collection_name)
             # Invalidate any cached retrieval results for this collection.
             bump_collection_version(collection_name)
-
-            # Reconciliation backstop: catch any document that ingested
-            # successfully (visible/searchable in Chroma) but whose summary row
-            # silently failed to register — e.g. both the LLM summary and tag
-            # classification calls failed. Runs at the end of every ingestion
-            # job inside the knowledge layer, so every caller (the Knowledge
-            # API, oib_sync, and any future caller)
-            # gets this for free without having to remember to call it. Scoped
-            # to THIS job's successful files: the unscoped mode's list_files
-            # reads every chunk metadata in the collection — O(collection) per
-            # single-file upload, painful on the large oib_knowledge corpus.
-            if successful_files:
-                try:
-                    from aiq_agent.knowledge.factory import reconcile_collection_summaries
-
-                    reconcile_collection_summaries(
-                        self,
-                        collection_name,
-                        file_names=[f.file_name for f in successful_files],
-                    )
-                except Exception as e:
-                    logger.warning("Reconciliation failed for collection %s: %s", collection_name, e)
 
             logger.info(
                 f"LlamaIndex ingestion completed: {job_id} "

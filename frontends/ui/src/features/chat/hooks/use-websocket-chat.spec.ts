@@ -7,15 +7,16 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ClientMessage, WireEvent } from '@/adapters/api/wire-v2'
 import type { TurnSocketOptions, TurnSocketStatus } from '@/adapters/api/turn-socket'
-import { eventOf, wireEvents } from '@/test-utils/wire-v2-fixtures'
+import { eventOf, frameOf, wireEvents } from '@/test-utils/wire-v2-fixtures'
 
-const sockets = vi.hoisted(() => [] as Array<{ options: TurnSocketOptions; sent: unknown[]; open: boolean; connect: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn>; reconnect: ReturnType<typeof vi.fn> }>)
+const sockets = vi.hoisted(() => [] as Array<{ options: TurnSocketOptions; sent: unknown[]; open: boolean; offers: Set<string>; connect: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn>; reconnect: ReturnType<typeof vi.fn> }>)
 vi.mock('@/adapters/api/turn-socket', () => ({
   createTurnSocket: (options: TurnSocketOptions) => {
     const socket = {
       options,
       sent: [] as unknown[],
       open: false,
+      offers: new Set<string>(),
       connect: vi.fn(async () => {}),
       close: vi.fn(),
       reconnect: vi.fn(),
@@ -27,12 +28,16 @@ vi.mock('@/adapters/api/turn-socket', () => ({
       reconnect: socket.reconnect,
       send: (message: unknown) => {
         if (!socket.open) return false
+        if ((message as { type?: string }).type === 'steer' && !socket.offers.has('steer')) return false
         socket.sent.push(message)
         return true
       },
+      accepts: (entry: string) => socket.open && socket.offers.has(entry),
     }
   },
 }))
+const posthogSessionId = vi.hoisted(() => vi.fn((): string | null => null))
+vi.mock('@/lib/analytics/posthog', () => ({ getPosthogSessionId: posthogSessionId, capturePosthog: vi.fn() }))
 vi.mock('@/adapters/auth', () => ({
   useAuth: () => ({ user: { id: 'user-1', name: 'Max' }, authRequired: false, isLoading: false }),
 }))
@@ -73,6 +78,7 @@ const client = vi.hoisted(() => ({
 }))
 vi.mock('@/adapters/api/conversations-client', () => ({ conversationsClient: client }))
 
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { useChatStore } from '../store'
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
@@ -192,6 +198,32 @@ describe('a question', () => {
     const question = messages().find((message) => message.messageType === 'user')!
     expect(sentOf('user_message')[0]).toMatchObject({ reasoning_effort: 'xhigh' })
     expect(useChatStore.getState().turns[question.id]?.effort).toBe('xhigh')
+  })
+
+  it("sends the browser's PostHog session id with the turn, and leaves the key out while analytics is off", () => {
+    const { result } = open(conversationOf(CONVERSATION))
+
+    act(() => void result.current.sendMessage('Erste Frage'))
+    expect(sentOf('user_message')[0]).not.toHaveProperty('posthog_session_id')
+
+    posthogSessionId.mockReturnValueOnce('0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70')
+    act(() => void result.current.sendMessage('Zweite Frage'))
+    expect(sentOf('user_message')[1]).toMatchObject({ posthog_session_id: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70' })
+  })
+
+  it('tells PostHog a turn started, by its shape alone', () => {
+    const { result } = open(conversationOf(CONVERSATION))
+
+    act(() => void result.current.sendMessage('Wie lang darf der Fluchtweg sein?', { reasoningEffort: 'xhigh' }))
+
+    expect(capturePosthog).toHaveBeenCalledTimes(1)
+    expect(capturePosthog).toHaveBeenCalledWith('chat_message_sent', {
+      has_attachments: false,
+      effort: 'xhigh',
+      data_source_count: 1,
+    })
+    // The question is never an event property.
+    expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toContain('Fluchtweg')
   })
 
   it("does not make a file that is merely open in a peek the turn's focus", () => {
@@ -610,5 +642,226 @@ describe('nothing waits on silence', () => {
     expect(messages().some((message) => message.errorData?.errorCode === 'connection.server_incompatible')).toBe(true)
     expect(messages().some((message) => message.errorData?.errorCode === 'connection.failed')).toBe(false)
     expect(useChatStore.getState().isStreaming).toBe(false)
+  })
+})
+
+
+describe('steering the running turn', () => {
+  const steered = wireEvents('turn-steered.jsonl')
+  const STEERED_CONVERSATION = steered[0]!.conversation_id
+  const TURN = steered[0]!.turn_id
+  const started = steered.filter((event) => event.seq === 1)
+  const custom = (seq: number, name: string, value: Record<string, unknown>) =>
+    eventOf(frameOf(seq, { type: 'CUSTOM', name, value }, TURN)) as WireEvent
+  const finished = (seq: number, outcome = 'answered') =>
+    ({ ...eventOf(frameOf(seq, { type: 'RUN_FINISHED', outcome, result: { message_id: 'a', text: 'Fertig.' } }, TURN)), conversation_id: STEERED_CONVERSATION }) as WireEvent
+  const inConversation = (event: WireEvent) => ({ ...event, conversation_id: STEERED_CONVERSATION }) as WireEvent
+
+  const steering = () => {
+    const hook = openTurn(steered)
+    socket().offers.add('steer')
+    status('open')
+    deliver(started)
+    return hook
+  }
+
+  it('sends a note for the running turn when the server reads notes, and says so', () => {
+    const { result } = steering()
+    expect(result.current.canSteer).toBe(true)
+
+    let taken = false
+    act(() => void (taken = result.current.steer({ text: 'nicht die Tür, die Treppe' })))
+
+    expect(taken).toBe(true)
+    expect(sentOf('steer')).toEqual([
+      expect.objectContaining({ conversation_id: STEERED_CONVERSATION, turn_id: TURN, text: 'nicht die Tür, die Treppe' }),
+    ])
+    expect(sentOf('user_message')).toHaveLength(0)
+  })
+
+  it('offers nothing to a server that reads no notes: the text stays with the reader', () => {
+    const { result } = openTurn(steered)
+    deliver(started)
+
+    expect(result.current.canSteer).toBe(false)
+    let taken = true
+    act(() => void (taken = result.current.steer({ text: 'die Treppe' })))
+    expect(taken).toBe(false)
+    expect(sentOf('steer')).toEqual([])
+  })
+
+  it('asks a note the turn never read as the next question, once the turn has ended', async () => {
+    vi.useFakeTimers()
+    const { result } = steering()
+    act(() => void result.current.steer({ text: 'und das Podest?' }))
+    const [note] = sentOf('steer')
+    deliver([inConversation(custom(2, 'steer_received', { steer_id: note!.steer_id, text: 'und das Podest?' })), finished(3)])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1)))
+
+    expect(sentOf('user_message').at(-1)).toMatchObject({ text: 'und das Podest?' })
+    vi.useRealTimers()
+  })
+
+  it('asks nothing again for a note the turn read', async () => {
+    vi.useFakeTimers()
+    const { result } = steering()
+    act(() => void result.current.steer({ text: 'die Treppe' }))
+    const [note] = sentOf('steer')
+    deliver([
+      inConversation(custom(2, 'steer_received', { steer_id: note!.steer_id, text: 'die Treppe' })),
+      inConversation(custom(3, 'steer_applied', { steer_id: note!.steer_id, round: 2 })),
+      finished(4),
+    ])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1)))
+
+    expect(sentOf('user_message')).toHaveLength(0)
+    const view = useChatStore.getState().turns[TURN]!
+    expect(view.steers?.[String(note!.steer_id)]).toEqual({ text: 'die Treppe', round: 2 })
+    vi.useRealTimers()
+  })
+
+  it('drops an unread note when the asker stopped the turn', async () => {
+    vi.useFakeTimers()
+    const { result } = steering()
+    act(() => void result.current.steer({ text: 'die Treppe' }))
+    deliver([finished(2, 'cancelled')])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1)))
+
+    expect(sentOf('user_message')).toHaveLength(0)
+    vi.useRealTimers()
+  })
+
+  it('keeps the turn running when the server refuses a note, and asks the note once the turn ends', async () => {
+    vi.useFakeTimers()
+    const { result } = steering()
+    act(() => void result.current.steer({ text: 'die Treppe' }))
+    deliver([inConversation(eventOf({ ...frameOf(0, { type: 'CUSTOM', name: 'rejected', value: { of: 'steer', code: 'steer_limit' } }, TURN) }))])
+    expect(useChatStore.getState().turns[TURN]?.phase).toBe('running')
+
+    deliver([finished(2)])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1)))
+    expect(sentOf('user_message').at(-1)).toMatchObject({ text: 'die Treppe' })
+    vi.useRealTimers()
+  })
+})
+
+describe('a phone away: locked, offline, or a network that gave up', () => {
+  const TURN = answered[0]!.turn_id
+  const ANSWER_ID = answered[0]!.type === 'RUN_STARTED' ? answered[0]!.message_id : ''
+  /** Up to the card: the answer's first two sentences are on screen, the turn still runs. */
+  const halfway = answered.filter((event) => event.seq <= 15)
+  const answerRow = () => messages().find((message) => message.id === ANSWER_ID)
+  const lastError = () => messages().filter((message) => message.messageType === 'error').at(-1)
+  const notFound = () =>
+    eventOf({ v: 2, type: 'CUSTOM', name: 'rejected', conversation_id: CONVERSATION, turn_id: TURN, seq: 0, ts: 1, value: { of: 'attach', code: 'turn_not_found' } })
+  const serverRow = (id: string, role: 'user' | 'assistant', content: string) => ({
+    id,
+    conversationId: CONVERSATION,
+    role,
+    content,
+    metadata: { messageType: role === 'user' ? 'user' : 'agent_response' },
+    createdAt: '2026-09-25T09:01:00.000Z',
+  })
+  const setVisibility = (state: DocumentVisibilityState) =>
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state })
+
+  afterEach(() => {
+    setVisibility('visible')
+    client.listMessages.mockResolvedValue([])
+  })
+
+  it('keeps a running turn and its words when the socket gives up on the network, and attaches it again', async () => {
+    openTurn(answered)
+    deliver(halfway)
+    const shown = answerRow()?.content
+    expect(shown).toBeTruthy()
+
+    status('failed')
+    await vi.waitFor(() => expect(lastError()).toMatchObject({ errorData: { errorCode: 'connection.failed' } }))
+
+    expect(useChatStore.getState().turns[TURN]?.phase).toBe('running')
+    expect(answerRow()?.content).toBe(shown)
+    expect(client.listMessages).not.toHaveBeenCalled()
+    expect(socket().options.openTurns()).toEqual([{ turnId: TURN, lastSeq: 15 }])
+
+    // The socket that opens again attaches it; the rest of the answer folds on.
+    status('open')
+    deliver(answered.filter((event) => event.seq > 15))
+    expect(useChatStore.getState().turns[TURN]?.phase).not.toBe('running')
+    expect(messages().some((message) => message.errorData?.errorCode === 'agent.response_interrupted')).toBe(false)
+  })
+
+  it('keeps the words on screen while the server is asked, and puts the stored answer in their row', async () => {
+    client.listMessages.mockResolvedValue([
+      serverRow(TURN, 'user', 'Wie lang darf der Fluchtweg sein?'),
+      serverRow(ANSWER_ID, 'assistant', 'Die ganze Antwort, wie der Server sie gespeichert hat.'),
+    ])
+    openTurn(answered)
+    deliver(halfway)
+    const at = messages().findIndex((message) => message.id === ANSWER_ID)
+
+    deliver([notFound()])
+    // Not dropped before the server has answered.
+    expect(answerRow()?.content).toBeTruthy()
+
+    await vi.waitFor(() => expect(answerRow()?.content).toBe('Die ganze Antwort, wie der Server sie gespeichert hat.'))
+    expect(messages().findIndex((message) => message.id === ANSWER_ID)).toBe(at)
+    expect(useChatStore.getState().turns[TURN]).toBeUndefined()
+    expect(lastError()).toBeUndefined()
+  })
+
+  it('says the answer is lost only when the server confirms it has none, and keeps what was read, dimmed', async () => {
+    client.listMessages.mockResolvedValue([])
+    openTurn(answered)
+    deliver(halfway)
+    const shown = answerRow()?.content
+
+    deliver([notFound()])
+
+    await vi.waitFor(() => expect(lastError()).toMatchObject({ errorData: { errorCode: 'agent.response_interrupted' } }))
+    expect(answerRow()).toMatchObject({ content: shown, failed: true })
+    expect(answerRow()?.isStreaming).toBeUndefined()
+  })
+
+  it('counts no missed acknowledgement while the page is hidden', () => {
+    vi.useFakeTimers()
+    const { result } = open(conversationOf(CONVERSATION))
+    act(() => void result.current.sendMessage('Frage'))
+
+    setVisibility('hidden')
+    act(() => void vi.advanceTimersByTime(4 * ACK_TIMEOUT_MS))
+
+    expect(socket().reconnect).not.toHaveBeenCalled()
+    expect(useChatStore.getState().isLoading).toBe(true)
+    expect(lastError()).toBeUndefined()
+  })
+
+  it('counts no missed acknowledgement for a deadline that slept through a freeze', () => {
+    vi.useFakeTimers()
+    const { result } = open(conversationOf(CONVERSATION))
+    act(() => void result.current.sendMessage('Frage'))
+
+    vi.setSystemTime(Date.now() + 10 * 60_000)
+    act(() => void vi.advanceTimersByTime(ACK_TIMEOUT_MS))
+
+    expect(socket().reconnect).not.toHaveBeenCalled()
+    // Back for real: the deadline runs again from now, and counts.
+    act(() => void vi.advanceTimersByTime(ACK_TIMEOUT_MS))
+    expect(socket().reconnect).toHaveBeenCalledOnce()
+  })
+
+  it('says once, in the status dock, that the connection is down while offline, until a socket opens', () => {
+    openTurn(answered)
+    deliver(halfway)
+
+    status('offline')
+    status('offline')
+
+    const lostCards = () => messages().filter((message) => message.errorData?.errorCode === 'connection.lost')
+    expect(lostCards()).toHaveLength(1)
+    expect(useChatStore.getState().turns[TURN]?.phase).toBe('running')
+
+    status('open')
+    expect(lostCards()).toHaveLength(0)
   })
 })

@@ -8,18 +8,26 @@ the first queue on it (ADR-0076); ``aiq_api.jobs.queue``, the research queue,
 is the second. Each queue keeps its own table, payload and verdict; this module
 owns the algorithm.
 
-THE CLAIM IS FAIR, ACROSS THE WHOLE FLEET. A free worker takes the next job of
-the LANE (an organisation, or a platform lane) with the fewest jobs running
-anywhere; among equals, the lane served longest ago (the turns table); then the
-job's priority (``interactive`` before ``bulk``); then the oldest. So one
+THE CLAIM IS FAIR, ACROSS THE WHOLE FLEET. A free worker takes a job of the
+LANE (an organisation, or a platform lane) with the fewest jobs running
+anywhere; among equals, the lane served longest ago (the turns table, never
+served first); then the lane whose oldest runnable job is oldest; then the lane
+name, so a tie is the same on every database. Inside that lane it takes the
+best job by priority (``interactive`` before ``bulk``), then the oldest. So one
 organisation's thousand-document reindex takes every worker while it is alone,
 and the next organisation's upload takes the next worker that frees up,
-whatever the backlog ahead of it. PRIORITY decides inside a lane: an office's
-single upload goes before its own reindex, and never before another office.
+whatever the backlog ahead of it. PRIORITY decides inside a lane only: an
+office's single upload goes before its own reindex, and never before another
+office. The BFF's queue (``frontends/ui/workers/job-queue.js``) claims in the
+same order.
 
 The optional per-lane cap is hard: two claims racing past it both commit, then
 each checks again under a per-lane advisory lock, and a claim that finds the
 lane already holding its cap puts its job back (``_release_over_cap``).
+
+A claim still in flight (selected, not yet committed) is not counted as running, so a second
+claimer racing it can take the same lane's next job while a lane with nothing running waits. Only
+the per-lane cap bounds that. Only Postgres shows it; SQLite claims one at a time.
 
 A claim that cannot finish is given back, not lost:
 
@@ -34,9 +42,9 @@ Postgres ranks LANES in SQL (~43 ms p50 at 100 000 queued jobs across 2 000
 lanes, ADR-0076); SQLite, which backs single-process dev and tests, ranks the
 same order in Python.
 
-Measured through the OpenTelemetry API only (``grid.queue.*``). The
-``MeterProvider`` is wired in ``aiq_agent.observability.metrics``; without one
-every instrument is a no-op.
+Measured through the OpenTelemetry API only (``grid.queue.*``). Nothing installs
+a ``MeterProvider`` today (the Aspire dashboard was the only sink), so every
+instrument is a no-op until one is chosen; a test installs its own.
 """
 
 from __future__ import annotations
@@ -60,6 +68,7 @@ from sqlalchemy import inspect
 from sqlalchemy import text
 
 from aiq_agent.common.db_utils import lock_schema
+from aiq_agent.common.db_utils import present_indexes
 
 logger = logging.getLogger(__name__)
 
@@ -255,14 +264,21 @@ class ClaimQueue:
         for statement in statements:
             _execute_constant(conn, statement)
         self._add_missing_columns(conn, ts)
-        for statement in (
-            f"CREATE INDEX IF NOT EXISTS ix_{t}_status_created ON {t} (status, created_at)",
-            f"CREATE INDEX IF NOT EXISTS ix_{t}_status_lane_created ON {t} (status, lane, created_at)",
-            f"CREATE INDEX IF NOT EXISTS ix_{t}_lane_priority_created ON {t} (lane, priority, created_at)",
-            # Superseded by the priority index above; a second index is write cost for no read.
-            f"DROP INDEX IF EXISTS ix_{t}_lane_created",
+        # Only the MISSING indexes: ``CREATE INDEX IF NOT EXISTS`` takes the table's
+        # SHARE lock before it checks the name, so run on every start it blocked every
+        # heartbeat and claim, and behind one idle-in-transaction writer it wedged the
+        # whole queue (2026-10-11). On a current table this issues no DDL.
+        present = present_indexes(conn, t)
+        for name, columns in (
+            (f"ix_{t}_status_created", "status, created_at"),
+            (f"ix_{t}_status_lane_created", "status, lane, created_at"),
+            (f"ix_{t}_lane_priority_created", "lane, priority, created_at"),
         ):
-            _execute_constant(conn, statement)
+            if name not in present:
+                _execute_constant(conn, f"CREATE INDEX IF NOT EXISTS {name} ON {t} ({columns})")
+        # Superseded by the priority index above; a second index is write cost for no read.
+        if f"ix_{t}_lane_created" in present:
+            _execute_constant(conn, f"DROP INDEX IF EXISTS ix_{t}_lane_created")
 
     def _add_missing_columns(self, conn, ts: str) -> None:
         """Additive upgrade of a table created before lanes, priority and dead rows existed.
@@ -339,19 +355,19 @@ lanes AS (
     LEFT JOIN running r ON r.lane = w.lane
     LEFT JOIN {turns} t ON t.lane = w.lane
     WHERE (:cap = 0 OR COALESCE(r.n, 0) < :cap)
-    ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest
+    ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest, w.lane COLLATE "C"
     LIMIT {_PG_LANES_PER_CLAIM}
 ),
 candidate AS (
     SELECT pick.job_id FROM lanes
     CROSS JOIN LATERAL (
-        SELECT q.job_id, q.priority, q.created_at FROM {t} q
+        SELECT q.job_id FROM {t} q
         WHERE q.lane = lanes.lane AND {runnable}
-        ORDER BY q.priority, q.created_at
+        ORDER BY q.priority, q.created_at, q.job_id
         FOR UPDATE SKIP LOCKED
         LIMIT 1
     ) pick
-    ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, pick.priority, pick.created_at
+    ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, lanes.oldest, lanes.lane COLLATE "C"
     LIMIT 1
 ),
 claimed AS (
@@ -474,8 +490,9 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
             # Only module constants are interpolated; values are bound.
             # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
-                "SELECT job_id, lane, payload, attempts, priority, created_at FROM ("
-                "  SELECT job_id, lane, payload, attempts, priority, created_at, "
+                "SELECT job_id, lane, payload, attempts, priority, oldest FROM ("
+                "  SELECT job_id, lane, payload, attempts, priority, "
+                "         MIN(created_at) OVER (PARTITION BY lane) AS oldest, "
                 "         ROW_NUMBER() OVER (PARTITION BY lane ORDER BY priority, created_at, job_id) AS rn "
                 f"  FROM {t} "
                 "  WHERE status = :queued OR (status = :claimed AND attempts < :max_attempts AND heartbeat_at < :t)"
@@ -483,14 +500,9 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
             ),
             {**params, "t": threshold},
         ).all()
-        cap = params["cap"]
-        eligible = [r for r in rows if not cap or running.get(r[1], 0) < cap]
-        if not eligible:
+        best = _fairest_lane_head(rows, running, turns, params["cap"])
+        if best is None:
             return None
-        best = min(
-            eligible,
-            key=lambda r: (running.get(r[1], 0), turns.get(r[1]) is not None, turns.get(r[1]) or "", r[4], r[5], r[0]),
-        )
         stamp = now.strftime("%Y-%m-%d %H:%M:%S.%f")
         conn.execute(
             # Only module constants are interpolated; values are bound.
@@ -779,6 +791,22 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
 
 def _is_postgres(url: str) -> bool:
     return url.startswith("postgres")
+
+
+def _fairest_lane_head(rows, running: dict, turns: dict, cap: int):
+    """The head job of the lane the Postgres claim would pick, or None when every lane is at its cap.
+
+    ``rows`` is one ``(job_id, lane, payload, attempts, priority, oldest)`` per lane: that lane's
+    best job by priority, then age, and the lane's oldest runnable job. The lane order is the
+    Postgres one: fewest running, served longest ago (never served first), oldest job, name.
+    """
+    eligible = [r for r in rows if not cap or running.get(r[1], 0) < cap]
+    if not eligible:
+        return None
+    return min(
+        eligible,
+        key=lambda r: (running.get(r[1], 0), turns.get(r[1]) is not None, turns.get(r[1]) or "", r[5], r[1]),
+    )
 
 
 def _sqlite_threshold(seconds: int) -> str:

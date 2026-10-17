@@ -1,5 +1,6 @@
 ---
 fixes:
   - >
-    Under Belegt durch each source now appears exactly once, with its reference.
-    The same source could appear twice, once as a dead chip.
+    Under „Belegt durch“, each source now appears exactly once, with its
+    reference. Before, the same source could appear twice, once as a chip
+    that led nowhere.

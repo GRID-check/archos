@@ -13,9 +13,9 @@ vi.mock('@/lib/authz/projects', () => ({
   requireProjectAccess: vi.fn().mockResolvedValue({ role: 'project-admin' }),
 }))
 
-vi.mock('@/lib/authz/feature-flags', () => ({
+vi.mock('@/lib/authz/feature-flags', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/authz/feature-flags')>()),
   requireSkillsEnabled: vi.fn().mockReturnValue(null),
-  enforcementOn: vi.fn().mockReturnValue(false),
 }))
 
 vi.mock('@/lib/conversations/repository', () => ({
@@ -50,15 +50,18 @@ vi.mock('@/lib/collection-scope', () => ({
   computeCollectionScope: vi.fn(),
 }))
 
-vi.mock('@/lib/request-context', () => ({
+vi.mock('@/lib/request-context', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/request-context')>()),
   buildGridRequestContextWireHeaders: vi.fn(() => ({})),
   encodeGridBudgetHeader: vi.fn(() => 'budget-header'),
+}))
+vi.mock('@/lib/auth/person', () => ({
+  resolvePerson: vi.fn(async () => ({ name: null, email: null, organizationName: null })),
 }))
 
 vi.mock('@/lib/workos/feature-flags', () => ({
   isOrgFeatureEnabled: vi.fn(),
   isMemoryReflectionEnabled: vi.fn(async () => true),
-  SKILLS_FLAG: 'skills',
 }))
 
 vi.mock('@/lib/projects/memory-service', () => ({
@@ -87,13 +90,16 @@ vi.mock('@/lib/tasks/repository', () => ({
   findRunByBackendJobId: vi.fn(),
 }))
 
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
+
 vi.mock('./backend-client', async (importActual) => {
   const actual = await importActual<typeof import('./backend-client')>()
   return { ...actual, submitJob: vi.fn() }
 })
 
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { enforcementOn, requireSkillsEnabled } from '@/lib/authz/feature-flags'
+import { requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { computeCollectionScope } from '@/lib/collection-scope'
@@ -123,6 +129,8 @@ import {
   updateJob,
 } from './service'
 import { AGENT_RUN_INPUT_MAX_CHARS } from './types'
+import { getBudgetStatus } from '@/lib/budgets/service'
+import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
 
 const emptySkill = {} as SkillSnapshot
 const skillSnapshot: SkillSnapshot = {
@@ -209,8 +217,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-admin' } as never)
   vi.mocked(requireSkillsEnabled).mockReturnValue(null)
-  vi.mocked(enforcementOn).mockReturnValue(false)
-  vi.mocked(findProjectInOrg).mockResolvedValue({ collectionName: 'proj_x' } as never)
+  vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
+  vi.mocked(findProjectInOrg).mockResolvedValue({ collectionName: 'proj_x', status: 'active' } as never)
   vi.mocked(computeCollectionScope).mockReturnValue(['proj_x'])
   vi.mocked(getEffectiveModelOverrides).mockResolvedValue(null)
   vi.mocked(loadProjectPromptView).mockResolvedValue(null)
@@ -690,8 +698,7 @@ describe('fireScheduledJob', () => {
     expect(submitJob).not.toHaveBeenCalled()
   })
 
-  it('fails closed when the org feature flag is off under enforcement', async () => {
-    vi.mocked(enforcementOn).mockReturnValue(true)
+  it('fails closed when the org feature flag is off — the only schedules gate there is', async () => {
     vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
 
     const result = await fireScheduledJob(definitionRow())
@@ -712,10 +719,42 @@ describe('fireScheduledJob', () => {
     expect(vi.mocked(repository.insertRun).mock.calls[0][0]).toMatchObject({ status: 'skipped', error: 'Project is closed' })
   })
 
+  it('skips a schedule whose project is paused, and resumes nothing until it is active again (ADR-0098)', async () => {
+    vi.mocked(findProjectInOrg).mockResolvedValueOnce({ collectionName: 'proj_x', status: 'paused' } as never)
+
+    const result = await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
+
+    expect(result).toEqual({ fired: false, reason: 'project-paused' })
+    expect(submitJob).not.toHaveBeenCalled()
+    expect(vi.mocked(repository.insertRun).mock.calls[0][0]).toMatchObject({ status: 'skipped', error: 'Project is paused' })
+  })
+
   it('fires and reports the backend id', async () => {
     const result = await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
 
     expect(result).toEqual({ fired: true, jobId: 'backend-1' })
+  })
+
+  it('reports job_run_started to PostHog, personless, for a run the backend took', async () => {
+    await fireScheduledJob(definitionRow({ id: 'def-1', trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
+
+    const recorded = vi.mocked(repository.insertRun).mock.calls[0]?.[0]
+    expect(captureServer).toHaveBeenCalledTimes(1)
+    expect(captureServer).toHaveBeenCalledWith({
+      event: 'job_run_started',
+      distinctId: null,
+      organizationId: 'org_1',
+      properties: { job_id: 'def-1', run_id: recorded?.id, trigger: 'schedule', output: expect.any(String) },
+    })
+  })
+
+  it('reports no start for a skipped fire', async () => {
+    vi.mocked(findProjectInOrg).mockResolvedValueOnce({ collectionName: 'proj_x', status: 'closed' } as never)
+
+    await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
+    await fireScheduledJob(definitionRow({ enabled: false }))
+
+    expect(captureServer).not.toHaveBeenCalled()
   })
 
   it('counts a fire the backend queued as fired: a full queue is a wait, not a skip', async () => {
@@ -780,6 +819,43 @@ describe('submitAgentRun', () => {
     await expect(refusal).rejects.toBeInstanceOf(JobSubmitError)
     await expect(refusal).rejects.toThrow(`at most ${AGENT_RUN_INPUT_MAX_CHARS}`)
     expect(submitJob).not.toHaveBeenCalled()
+  })
+
+  it('signs an envelope the worker can act on as the requester: the thread and a fresh issuedAt (ADR-0108)', async () => {
+    const before = Date.now()
+    await submitAgentRun(spec)
+
+    const input = vi.mocked(buildGridRequestContextWireHeaders).mock.calls[0][0]
+    expect(input).toMatchObject({
+      organizationId: 'org_1',
+      userId: 'user_1',
+      projectId: 'proj_1',
+      conversationId: 's_conv',
+    })
+    // Without `issuedAt` the BFF refuses the envelope as an acting identity
+    // (`verifyGridRequestContextEnvelope`), and every person-acting tool with it.
+    expect(input.issuedAt).toBeGreaterThanOrEqual(before)
+    expect(input.issuedAt).toBeLessThanOrEqual(Date.now())
+  })
+
+  it('carries the token budgets too: an organization on its own key counts in tokens (ADR-0053)', async () => {
+    vi.mocked(getBudgetStatus).mockResolvedValueOnce({
+      remainingOrgUsd: null,
+      remainingUserUsd: null,
+      remainingProjectUsd: null,
+      remainingOrgTokens: 900_000,
+      remainingUserTokens: 40_000,
+      remainingProjectTokens: 120_000,
+    } as Awaited<ReturnType<typeof getBudgetStatus>>)
+    await submitAgentRun(spec)
+
+    // The agent reads a signed envelope's budget wholesale; without these the run has no token limit.
+    const input = vi.mocked(buildGridRequestContextWireHeaders).mock.calls[0][0]
+    expect(input.budget).toMatchObject({
+      remainingOrgTokens: 900_000,
+      remainingUserTokens: 40_000,
+      remainingProjectTokens: 120_000,
+    })
   })
 
   it('never searches a restricted folder: its report is filed for the whole project (ADR-0087)', async () => {

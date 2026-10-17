@@ -253,21 +253,22 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: deploy/pulumi/package-lock.json
+
+      # Bun installs; Node runs the Pulumi program (Pulumi.yaml `packagemanager: bun`, ADR-0103).
+      - uses: ./.github/actions/setup-bun
 
       - name: Install program deps
         working-directory: deploy/pulumi
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       # The CrossGuard policy pack is a separate Node program with its own deps.
       - name: Install policy-pack deps
         working-directory: deploy/pulumi/policy
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Typecheck (cluster-free gate)
         working-directory: deploy/pulumi
-        run: npx tsc --noEmit && (cd policy && npx tsc --noEmit)
+        run: bun run typecheck && bun run --cwd policy typecheck
 
       # Plan + two independent gates on the SAME plan `pulumi up` will apply
       # (the imageTag override is applied BEFORE previewing):
@@ -279,7 +280,7 @@ jobs:
       #      the preview here, before anything touches the cluster.
       # The CLI release of the SDK the lockfile pins, not `latest`: Pulumi
       # releases the two in lockstep, so the CLI moves only in a reviewed
-      # package-lock.json diff (Dependabot's, usually), and staging and prod run
+      # bun.lock diff (Dependabot's, usually), and staging and prod run
       # the same one. `latest` changed the CLI under a deploy nobody changed.
       - name: Install Pulumi
         working-directory: deploy/pulumi
@@ -317,6 +318,31 @@ jobs:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           GH_TOKEN: ${{ github.token }} # GHCR tag lookups
 
+      # The PostHog release of the backend image, whose id posthog-python sends
+      # as `$release_id` (POSTHOG_RELEASE_ID) so error tracking links each
+      # Python exception to it. Release `grid-agent` at the commit the backend
+      # image was built from, not the deployed commit: a re-deploy of the same
+      # image resolves the same release, and the pods do not roll for it. The
+      # action resolves nothing and outputs an empty id without the secret (a
+      # fork, a repository without PostHog), and a PostHog outage must not block
+      # a deploy. docs/contributing/ci.md#posthog-releases-and-source-maps
+      - name: Name the backend release
+        id: backend-release
+        run: |
+          tag="${BACKEND_IMAGE_REF##*:}"
+          echo "version=${tag#sha-}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve the backend's PostHog release
+        id: posthog-release
+        continue-on-error: true
+        uses: PostHog/resolve-release@52d3bea6f86a713545874057b7d4bfebb6b5f367 # v1.0.0
+        with:
+          api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          project-id: ${{ vars.POSTHOG_PROJECT_ID }}
+          host: ${{ vars.POSTHOG_CLI_HOST || 'https://eu.posthog.com' }}
+          release-name: grid-agent
+          release-version: ${{ steps.backend-release.outputs.version }}
+
       - name: Validate plan (CRD schemas + policy pack)
         working-directory: deploy/pulumi
         run: |
@@ -326,6 +352,7 @@ jobs:
           pulumi config set grid-oib:backendImage "$BACKEND_IMAGE_REF"
           pulumi config set grid-oib:frontendImage "$FRONTEND_IMAGE_REF"
           pulumi config set grid-oib:webImage "$WEB_IMAGE_REF"
+          [ -z "$POSTHOG_RELEASE_ID" ] || pulumi config set grid-oib:posthogReleaseId "$POSTHOG_RELEASE_ID"
           # `--json` puts the plan on stdout, but policy-pack violations are NOT
           # part of it — a mandatory CrossGuard failure shows up as a bare
           # "error: preview failed" with the reason nowhere in the JSON. On
@@ -341,6 +368,7 @@ jobs:
           node scripts/validate-crs.mjs .plan.json
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          POSTHOG_RELEASE_ID: ${{ steps.posthog-release.outputs.release-id }}
 
       # The apply runs on THIS runner, right after the gates, against the same
       # pinned image refs. Because the state backend is Pulumi Cloud, the update
@@ -357,9 +385,11 @@ jobs:
           pulumi config set grid-oib:backendImage "$BACKEND_IMAGE_REF"
           pulumi config set grid-oib:frontendImage "$FRONTEND_IMAGE_REF"
           pulumi config set grid-oib:webImage "$WEB_IMAGE_REF"
+          [ -z "$POSTHOG_RELEASE_ID" ] || pulumi config set grid-oib:posthogReleaseId "$POSTHOG_RELEASE_ID"
           pulumi up --yes
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          POSTHOG_RELEASE_ID: ${{ steps.posthog-release.outputs.release-id }}
 
       # Best effort: a missing output must not turn a finished deploy red.
       - name: Record what was deployed
@@ -383,6 +413,22 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+      # A PostHog annotation "deploy dev <sha>": when the cluster started running
+      # this commit, for error tracking and the self-driving inbox to date a
+      # regression by. Skipped without the secret (a fork, or a repository that
+      # has not set PostHog up), and best effort: a PostHog outage must not turn
+      # a finished deploy red. A bare re-deploy (no imageTag, no CI run) is
+      # marked with the triggering commit although each service resolves its own
+      # newest image; only a CI deploy or a rollback names the sha exactly.
+      # docs/contributing/ci.md#posthog-releases-and-source-maps
+      - name: Mark the deploy in PostHog
+        continue-on-error: true
+        run: deploy/pulumi/scripts/posthog-annotate.sh dev "$IMAGE_TAG"
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ vars.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST }}
 
   # Mirrors the staging job above (same runner, checkout action/version,
   # toolchain setup, working directories, secret mechanism, plan gates and
@@ -415,20 +461,21 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: deploy/pulumi/package-lock.json
+
+      # Bun installs; Node runs the Pulumi program (Pulumi.yaml `packagemanager: bun`, ADR-0103).
+      - uses: ./.github/actions/setup-bun
 
       - name: Install program deps
         working-directory: deploy/pulumi
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Install policy-pack deps
         working-directory: deploy/pulumi/policy
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Typecheck (cluster-free gate)
         working-directory: deploy/pulumi
-        run: npx tsc --noEmit && (cd policy && npx tsc --noEmit)
+        run: bun run typecheck && bun run --cwd policy typecheck
 
       # Prod consumes the tag its committed stack file pins, and nothing else
       # checked that tag was ever built: a promotion to a commit whose publish
@@ -502,3 +549,17 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+      # The same marker as staging's, with the tag the stack file pins (the
+      # promoted develop commit), not the merge commit of the promotion PR: the
+      # latter has no image and no release in PostHog.
+      - name: Mark the deploy in PostHog
+        continue-on-error: true
+        working-directory: deploy/pulumi
+        run: |
+          tag="$(sed -n 's/^  grid-oib:imageTag: *//p' Pulumi.prod.yaml | tr -d '"' | tr -d "'")"
+          ./scripts/posthog-annotate.sh prod "$tag"
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ vars.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST }}

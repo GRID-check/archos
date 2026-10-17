@@ -42,6 +42,8 @@ from aiq_agent.observability.turn_trace import current_trace_id_hex
 from aiq_agent.project_context import ORGANIZATION_ID_HEADER
 from aiq_agent.project_context import PROJECT_ID_HEADER
 from aiq_agent.project_context import PROJECT_MEMORY_HEADER
+from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from aiq_agent.project_context import USER_ID_HEADER
 from aiq_agent.project_context import compose_project_context
 
@@ -56,6 +58,7 @@ from .outcome_notify import notify_job_outcome
 from .phase_events import PHASE_DONE
 from .phase_events import PhaseProgressCallback
 from .phase_events import emit_phase_event
+from .run_envelope import envelope_headers_for_run
 from .run_ledger_fold import RunLedgerFold
 
 logger = logging.getLogger(__name__)
@@ -129,6 +132,13 @@ _OWNERSHIP_LOST_REASON = "queue claim reclaimed by another worker"
 #: `tests/aiq_agent/test_tool_context_contract.py`: a tool that needs a header
 #: the worker does not inject fails that test rather than every unattended run.
 WORKER_IDENTITY_HEADERS: tuple[str, ...] = (PROJECT_ID_HEADER, ORGANIZATION_ID_HEADER, USER_ID_HEADER)
+
+#: The signed request-context envelope, which the worker injects ONLY when the
+#: run carries one the BFF signed for its requester (ADR-0108,
+#: ``jobs/run_envelope.py``). Never built here: the worker echoes the bytes the
+#: BFF minted at submit, or the fresh ones it minted on renewal. A run without
+#: one injects neither header, and the tools that act as a person refuse.
+WORKER_ENVELOPE_HEADERS: tuple[str, ...] = (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER)
 
 
 def _identity_values(identity: dict) -> tuple[object, object, object]:
@@ -853,6 +863,18 @@ def _load_agent_class(agent_class_path: str) -> type:
     return getattr(module, class_name)
 
 
+# NAT function ``_type``s whose single ``llm`` runs on the tool-calling chat model's
+# group (``AgentGroup.RESEARCH``) rather than the deep-research default.
+_CHAT_MODEL_AGENT_TYPES = frozenset({"research_agent", "project_intake_agent"})
+
+# Agent types the completion-token budget cap guards: fan-out research and the
+# intake's long document-reading loop are the run-away-cost shapes it exists for.
+_BUDGET_GUARDED_AGENT_TYPES = frozenset({"deep_research_agent", "project_intake_agent"})
+
+# Profiling label per agent type; anything not listed keeps the historical label.
+_JOB_PROFILE_NAMES = {"project_intake_agent": "project_intake_job"}
+
+
 async def _create_llm_provider(builder: Any, fn_config: Any) -> tuple[Any, Any]:
     """Create a role-aware LLM provider from a NAT function config."""
     from aiq_agent.common import AgentGroup
@@ -888,7 +910,9 @@ async def _create_llm_provider(builder: Any, fn_config: Any) -> tuple[Any, Any]:
             if llm_ref not in llm_cache:
                 llm_cache[llm_ref] = await get_langchain_llm(builder, llm_ref)
             default_llm = llm_cache[llm_ref]
-            if getattr(fn_config, "type", None) == "research_agent":
+            # The intake agent is a tool-calling loop like the chat agent, not a
+            # planner/researcher/writer pipeline: it runs on the chat model's group.
+            if getattr(fn_config, "type", None) in _CHAT_MODEL_AGENT_TYPES:
                 default_group = AgentGroup.RESEARCH
 
     provider = LLMProvider()
@@ -925,6 +949,25 @@ def _inject_worker_headers(context_state: Any, headers: dict[str, str]) -> None:
     existing = dict(request_attrs.headers) if request_attrs and request_attrs.headers else {}
     request_attrs._request.headers = Headers(headers={**existing, **headers})
     context_state.metadata.set(request_attrs)
+
+
+def _run_user_info(user_info: dict | None, envelope_headers: dict[str, str] | None) -> dict | None:
+    """Who the run is for, by name: the submitted ``user_info``, else the run's signed envelope.
+
+    A run submitted from a chat carries the chat turn's ``user_info``. A
+    scheduled fire carries none, nobody being signed in, but its envelope does:
+    the BFF signs the requester into it at submit and at every renewal
+    (``requester``, ADR-0108). Read through the same verification and the same
+    rule as a chat turn (``turn.context.user_info_for``); an envelope that does
+    not verify names nobody.
+    """
+    if user_info is not None or not envelope_headers:
+        return user_info
+    from aiq_agent.project_context import GridRequestContext
+    from aiq_agent.turn.context import user_info_for
+
+    request = GridRequestContext.from_headers(envelope_headers, secret=os.environ.get("GRID_INTERNAL_API_TOKEN"))
+    return user_info_for(request)
 
 
 def _workflow_reflection_llm_ref(config: Any) -> str | None:
@@ -987,6 +1030,10 @@ async def run_agent_job(
     # The Unterlagen the reader named on the plan card (``plan_documents``
     # contract), sanitised here into the agent state and the run ledger.
     documents: dict | None = None,
+    # The requester's signed request-context envelope, ``{header, signature}``
+    # exactly as the BFF sent it with the submit (ADR-0108). Absent for a run
+    # nobody signed for, and for a job queued before it existed.
+    request_envelope: dict | None = None,
 ):
     """
     Run any registered agent as a research job, with cancellation support and telemetry.
@@ -1049,6 +1096,11 @@ async def run_agent_job(
             flush the run's ledger to the BFF. Without it the ledger is still
             folded and still streamed as ``run.ledger`` events, but nothing is
             written to the run's message.
+        request_envelope: Optional ``{header, signature}`` of the requester's
+            signed request-context envelope. Injected into the run's request
+            metadata (renewed first when it is past
+            ``run_envelope.RUN_ENVELOPE_RENEW_AFTER_MS``) so the tools that act
+            as a person echo it; dropped on any refusal or failure.
         claim_owner: Optional DB-queue claim owner (worker id) for the
             still-owner publish gate. ``None`` (unclaimed at submit) skips the
             ownership check and only the terminal verdict
@@ -1364,6 +1416,17 @@ async def run_agent_job(
             if _identity_headers:
                 _inject_worker_headers(context_state, _identity_headers)
 
+            # AS WHOM it acts (ADR-0108). The identity headers above say whose
+            # project this is; only the envelope the BFF signed lets a tool act
+            # as that person (file, delegate, look into another project). It is
+            # echoed, renewed by the BFF when stale, and never built here.
+            _envelope_headers = await envelope_headers_for_run(
+                request_envelope, run_id=run_id, job_id=job_id, identity=_identity
+            )
+            if _envelope_headers:
+                _inject_worker_headers(context_state, _envelope_headers)
+            user_info = _run_user_info(user_info, _envelope_headers)
+
             # WHAT the project already knows. The chat path fetches a live digest
             # per turn and falls back to the connection-time one only on failure
             # (piloti/conversation_register.py); the same discipline here, with the
@@ -1478,7 +1541,8 @@ async def run_agent_job(
                     # planner/researcher/writer subagent structure the phase
                     # detector understands, and long-running fan-out research is
                     # the run-away-cost shape the budget cap exists for.
-                    is_deep_research_job = getattr(fn_config, "type", None) == "deep_research_agent"
+                    fn_type = getattr(fn_config, "type", None)
+                    is_deep_research_job = fn_type == "deep_research_agent"
                     if is_deep_research_job:
                         callbacks.append(
                             PhaseProgressCallback(
@@ -1487,6 +1551,7 @@ async def run_agent_job(
                             )
                         )
 
+                    if fn_type in _BUDGET_GUARDED_AGENT_TYPES:
                         from aiq_agent.common import create_budget_guard_callback
 
                         budget_guard_callback = create_budget_guard_callback()
@@ -1521,7 +1586,7 @@ async def run_agent_job(
                     _usage = usage_context or {}
                     with (
                         track_agent_profile(
-                            agent_name="deep_research_job",
+                            agent_name=_JOB_PROFILE_NAMES.get(fn_type, "deep_research_job"),
                             job_id=job_id,
                             identity=_usage.get("identity") or {},
                         ),
@@ -1595,30 +1660,20 @@ async def run_agent_job(
                     # the thread turn and the notification waited) for up to the
                     # card timeout plus the reflection model's retries after the
                     # reader already had the report.
-                    cards_result, anatomy, follow_ups = await asyncio.gather(
-                        _generate_grid_cards(llm, input_text, report),
-                        # The report's anatomy (masthead) and its findings
-                        # (Befundmatrix), read off the finished report in one
-                        # structured call, and the follow-up questions the
-                        # report just made askable. Both post hoc, both
-                        # additive: a failure costs the reader a layer, never
-                        # the report.
-                        _extract_report_anatomy(llm, input_text, report),
-                        _propose_report_follow_ups(llm, query=input_text, report=report, organization_id=_job_org_id),
-                    )
-                    # Reflection reads the report WITH its findings, after the
-                    # extraction: a Befund with its value and status lands in
-                    # project memory as a fact, an open one as an open point,
-                    # instead of both being fished back out of the prose.
-                    await _run_deep_research_reflection(
+                    # An agent that declares ``produces_report = False`` writes to
+                    # objects, not a report: it gets none of the post-report passes.
+                    cards_result, anatomy, follow_ups = await _run_report_passes(
+                        produces_report=_produces_report(agent_cls),
+                        llm=llm,
+                        input_text=input_text,
+                        report=report,
+                        organization_id=_job_org_id,
                         builder=builder,
                         job_id=job_id,
                         # A scheduled job's submitter (the BFF) knows the flag but
                         # not the config's LLM ref; the worker has the config.
                         reflection_llm_ref=memory_reflection_llm or _workflow_reflection_llm_ref(config),
                         reflection_enabled=memory_reflection_enabled,
-                        query=input_text,
-                        report=_reflection_text(report, anatomy.findings),
                         usage_context=usage_context,
                         memory_digest=memory_digest,
                         org_credential=resolved_org_credential,
@@ -1908,6 +1963,19 @@ def _create_agent_instance(
     2. llm + tools pattern (simpler agents)
     """
     from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
+    from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
+
+    if isinstance(fn_config, ProjectIntakeAgentConfig):
+        # The reading's budgets are config, so a deployment moves them without a release.
+        return agent_cls(
+            llm_provider=llm_provider,
+            tools=tools,
+            verbose=verbose,
+            callbacks=callbacks,
+            max_tool_steps=fn_config.max_tool_steps,
+            max_run_seconds=fn_config.max_run_seconds,
+            job_id=job_id,
+        )
 
     if isinstance(fn_config, DeepResearchAgentConfig):
         return agent_cls(
@@ -2171,6 +2239,52 @@ def _merge_job_cards(emitted: list[dict[str, Any]], generated: list[Any] | None)
     """
     merged = [*emitted, *(generated or [])]
     return merged or None
+
+
+def _produces_report(agent_cls: type) -> bool:
+    """Whether the agent's job output is a report the post-report passes read.
+
+    Defaults to True: every agent before the project intake wrote one. An agent
+    that writes to objects instead declares ``produces_report = False``.
+    """
+    return bool(getattr(agent_cls, "produces_report", True))
+
+
+async def _run_report_passes(
+    *,
+    produces_report: bool,
+    llm: Any,
+    input_text: str,
+    report: str,
+    organization_id: str | None,
+    **reflection_kwargs: Any,
+) -> tuple[CardGenerationResult, ReportAnatomy, dict[str, Any] | None]:
+    """The model calls over a finished report: grid cards, anatomy, follow-ups, then reflection.
+
+    The first three are independent and best-effort, so they run together. The
+    reflection reads the report WITH its findings, after the extraction: a
+    Befund with its value and status lands in project memory as a fact, an open
+    one as an open point, instead of both being fished back out of the prose.
+    ``reflection_kwargs`` go to ``_run_deep_research_reflection`` unchanged.
+
+    A run with no report (``produces_report`` False) makes no model call here
+    and returns the empty result of each pass.
+    """
+    if not produces_report:
+        return CardGenerationResult(cards=None), ReportAnatomy(), None
+    cards_result, anatomy, follow_ups = await asyncio.gather(
+        _generate_grid_cards(llm, input_text, report),
+        # The report's anatomy (masthead) and its findings (Befundmatrix), read
+        # off the finished report in one structured call, and the follow-up
+        # questions the report just made askable. Both post hoc, both additive:
+        # a failure costs the reader a layer, never the report.
+        _extract_report_anatomy(llm, input_text, report),
+        _propose_report_follow_ups(llm, query=input_text, report=report, organization_id=organization_id),
+    )
+    await _run_deep_research_reflection(
+        query=input_text, report=_reflection_text(report, anatomy.findings), **reflection_kwargs
+    )
+    return cards_result, anatomy, follow_ups
 
 
 def _reflection_text(report: str, findings: dict[str, Any] | None) -> str:

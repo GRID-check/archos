@@ -59,6 +59,7 @@ const MATCH: DocumentNameMatch = {
   displayName: null,
   fileSize: 10,
   contentHash: null,
+  status: 'completed',
   folderId: null,
   authoredBy: 'user',
   lifecycle: 'archived',

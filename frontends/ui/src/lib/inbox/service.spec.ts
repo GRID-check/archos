@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/sharing/access', () => ({ resolveResourceAccess: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ resolvePeople: vi.fn() }))
 vi.mock('@/lib/sharing/registry', () => ({ describeResource: vi.fn() }))
+vi.mock('@/lib/push/enqueue', () => ({ enqueueInboxPushes: vi.fn().mockResolvedValue(0) }))
 vi.mock('@/lib/events/bus', () => ({ publishToUser: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
 vi.mock('@/lib/tasks/subject-access', () => ({ unreadableRunIds: vi.fn() }))
@@ -30,6 +31,7 @@ vi.mock('./repository', () => ({
   markItemsInertForResource: vi.fn(),
   markItemsInertForSubjectRow: vi.fn(),
   resolveInboxItemsForTargets: vi.fn(),
+  resolveOpenItemsAnchoredOn: vi.fn(),
   upsertInboxItems: vi.fn(),
 }))
 
@@ -44,6 +46,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboxItem, InboxItemType } from '@/lib/db/schema'
 import { getDb } from '@/lib/db'
 import { publishToUser } from '@/lib/events/bus'
+import { enqueueInboxPushes } from '@/lib/push/enqueue'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getPlatformOrganizationId, hasPlatformPermission } from '@/lib/authz/platform'
 import { resolveResourceAccess } from '@/lib/sharing/access'
@@ -53,6 +56,7 @@ import { unreadableRunIds } from '@/lib/tasks/subject-access'
 import * as repository from './repository'
 import {
   upsertWaves,
+  resolveInboxItemsAnchoredOn,
   archiveItem,
   emitInboxItems,
   type InboxEmission,
@@ -61,6 +65,7 @@ import {
   markAllRead,
   markRead,
   markResourceItemsReadFor,
+  viewInboxItemAs,
 } from './service'
 
 /**
@@ -75,6 +80,9 @@ import {
  * its states — see the `visibleInboxTypes` describe block — rather than
  * accidentally in whichever one the missing field happened to produce.
  */
+/** Whether the organization holds `collaboration`; a test switches it off. */
+let collaborationGranted = true
+
 function makeSession(overrides: Partial<AuthorizedSession> = {}): AuthorizedSession {
   return {
     userId: 'user_1',
@@ -85,7 +93,10 @@ function makeSession(overrides: Partial<AuthorizedSession> = {}): AuthorizedSess
     organizationMembershipId: 'om_1',
     role: 'admin',
     permissions: [],
-    featureFlags: null,
+    // Read at call time, so the shared `session` below follows the switch too.
+    get featureFlags() {
+      return collaborationGranted ? ['collaboration'] : []
+    },
     ...overrides,
   }
 }
@@ -109,6 +120,18 @@ const ALL_TYPES = [
   'document.release_requested',
   'mail_import.completed',
   'mail_import.failed',
+  // A newer Fassung of a document you follow (ADR-0054): documents are not a
+  // chat feature, and an office without collaboration still has uploaders.
+  'document.new_fassung',
+  // Piloti's work on marks and proposals (ADR-0105, ADR-0106): Anmerkungen are
+  // not a chat feature either.
+  'piloti.work_done',
+  'piloti.work_failed',
+  'piloti.asks_you',
+  'piloti.proposal_waiting',
+  // A reading of a project's documents is ready for review (ADR-0111): setting
+  // a project up is not a chat feature.
+  'piloti.intake_ready',
   'inbound_mail.filed',
   'inbound_mail.failed',
 ] as const satisfies readonly InboxItemType[]
@@ -134,6 +157,18 @@ const OPERATIONAL_TYPES = [
   // collaboration imports mail too.
   'mail_import.completed',
   'mail_import.failed',
+  // A newer Fassung of a document you follow (ADR-0054): documents are not a
+  // chat feature, and an office without collaboration still has uploaders.
+  'document.new_fassung',
+  // Piloti's work on marks and proposals (ADR-0105, ADR-0106): Anmerkungen are
+  // not a chat feature either.
+  'piloti.work_done',
+  'piloti.work_failed',
+  'piloti.asks_you',
+  'piloti.proposal_waiting',
+  // A reading of a project's documents is ready for review (ADR-0111): setting
+  // a project up is not a chat feature.
+  'piloti.intake_ready',
   // A mail the reader sent to a project address was filed (ADR-0075): the
   // inbox is the sender's only receipt, whether or not collaboration is on.
   'inbound_mail.filed',
@@ -179,10 +214,11 @@ const reachable = {
 
 beforeEach(() => {
   // Most of this file is about collaboration items, so the default world is a
-  // tenant that HAS collaboration. Flag enforcement is off in tests, so this env
-  // opt-in is what `isCollaborationEnabled` reads. The gate's other state is
-  // exercised explicitly rather than inherited from an unset variable.
-  vi.stubEnv('GRID_COLLABORATION_ENABLED', 'true')
+  // signed-in tenant that HAS collaboration: `isCollaborationEnabled` reads the
+  // session's claim. The gate's other state is exercised explicitly
+  // (`collaborationGranted = false`) rather than inherited from a missing field.
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+  collaborationGranted = true
   laneScopes.length = 0
   // Not platform staff unless a test says so: the platform lane stays shut.
   vi.mocked(hasPlatformPermission).mockResolvedValue(false)
@@ -339,6 +375,53 @@ describe('listInbox — projection', () => {
     expect(byId.get('padded')!.subject).toBe('spaced')
     expect(byId.get('padded')!.excerpt!.length).toBeLessThanOrEqual(501)
     expect(byId.get('empty')).toMatchObject({ subject: null, excerpt: null })
+  })
+
+  it('carries the second name of a row (a new Fassung\'s newer document) and withholds it with the rest of the payload', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: '  Grundriss B  ' } }),
+      row({ id: 'junk', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: 42 } }),
+      row({ id: 'inert', type: 'document.new_fassung', inertAt: at, payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+      row({ id: 'gone', type: 'document.new_fassung', resourceId: 'conv_gone', payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    // The row is a sentence about a person: who made the change comes from the
+    // directory by `actorUserId`, never from the payload.
+    expect(byId.get('ok')).toMatchObject({ subject: 'Grundriss A', related: 'Grundriss B', actorName: 'Anna Berger' })
+    expect(byId.get('junk')!.related).toBeNull()
+    // The newer document's name is content: a reader who lost the document sees neither.
+    expect(byId.get('inert')!.related).toBeNull()
+    expect(byId.get('gone')!.related).toBeNull()
+  })
+
+  it('carries which wording a row reads (why Piloti could not work a mark) only as a key segment, and withholds it when redacted', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', type: 'piloti.work_failed', resourceId: 'conv_ok', payload: { related: '4', variant: 'budget' } }),
+      row({ id: 'path', type: 'piloti.work_failed', resourceId: 'conv_ok', payload: { variant: 'budget.body' } }),
+      row({ id: 'junk', type: 'piloti.work_failed', resourceId: 'conv_ok', payload: { variant: 7 } }),
+      row({ id: 'inert', type: 'piloti.work_failed', inertAt: at, payload: { variant: 'budget' } }),
+      row({ id: 'gone', type: 'piloti.work_failed', resourceId: 'conv_gone', payload: { variant: 'budget' } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    expect(byId.get('ok')!.variant).toBe('budget')
+    expect(byId.get('path')!.variant).toBeNull()
+    expect(byId.get('junk')!.variant).toBeNull()
+    expect(byId.get('inert')!.variant).toBeNull()
+    expect(byId.get('gone')!.variant).toBeNull()
   })
 
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {
@@ -684,7 +767,7 @@ describe('mutations are scoped to the caller\'s own inbox', () => {
   // cannot omit it silently.
   it('narrows both mutations to the types the caller may see', async () => {
     // Collaboration off, the way the rest of this file does it.
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
     vi.mocked(repository.markInboxItemsRead).mockResolvedValue(0)
     vi.mocked(repository.archiveInboxItem).mockResolvedValue(false)
 
@@ -838,7 +921,7 @@ describe('the SQL predicates behind the filters', () => {
  */
 describe('visibleInboxTypes gate — the inbox is not collaboration-only', () => {
   it('a tenant WITHOUT collaboration still sees operational items', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
 
     await listInbox(makeSession())
 
@@ -851,7 +934,7 @@ describe('visibleInboxTypes gate — the inbox is not collaboration-only', () =>
   })
 
   it('a tenant WITHOUT collaboration gets a badge counted over the same set', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
 
     await getInboxSummary(makeSession())
 
@@ -871,7 +954,7 @@ describe('visibleInboxTypes gate — the inbox is not collaboration-only', () =>
   })
 
   it('"clear all" without collaboration cannot settle collaboration rows', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
     vi.mocked(repository.markAllInboxItemsRead).mockResolvedValue(1)
 
     await markAllRead(makeSession())
@@ -1018,5 +1101,102 @@ describe('emitInboxItems — repeated keys in one call', () => {
     }
     await emitInboxItems([emission, emission])
     expect(repository.upsertInboxItems).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('resolveInboxItemsAnchoredOn', () => {
+  it('resolves through the repository and nudges each person whose badge moved, once', async () => {
+    vi.mocked(repository.resolveOpenItemsAnchoredOn).mockResolvedValue(['user_a', 'user_b'])
+    vi.mocked(publishToUser).mockClear()
+
+    const input = { organizationId: 'org_1', types: ['piloti.asks_you'] as InboxItemType[], anchorId: 'ann_1' }
+    expect(await resolveInboxItemsAnchoredOn(input)).toBe(2)
+
+    expect(repository.resolveOpenItemsAnchoredOn).toHaveBeenCalledWith(input)
+    expect(publishToUser).toHaveBeenCalledTimes(2)
+    expect(publishToUser).toHaveBeenCalledWith('user_a', { kind: 'inbox.changed', pending: -1 })
+  })
+
+  it('nudges nobody when nothing was open', async () => {
+    vi.mocked(repository.resolveOpenItemsAnchoredOn).mockResolvedValue([])
+    vi.mocked(publishToUser).mockClear()
+
+    expect(
+      await resolveInboxItemsAnchoredOn({ organizationId: 'org_1', types: ['piloti.asks_you'], anchorId: 'ann_1' }),
+    ).toBe(0)
+    expect(publishToUser).not.toHaveBeenCalled()
+  })
+})
+
+describe('emitInboxItems — system notifications (ADR-0112)', () => {
+  const emission = {
+    organizationId: 'org_1',
+    recipientUserId: 'user_1',
+    type: 'mention.requested' as const,
+    resourceType: 'conversation' as const,
+    resourceId: 'conv_1',
+    anchorId: 'm1',
+    actorUserId: 'user_2',
+    groupKey: 'mention.requested:conversation:conv_1:m1',
+  }
+
+  it('hands the stored rows to the push queue, after they are stored', async () => {
+    const stored = row({ id: 'stored', type: 'mention.requested' })
+    vi.mocked(repository.upsertInboxItems).mockResolvedValue([stored])
+    vi.mocked(enqueueInboxPushes).mockClear()
+    await emitInboxItems([emission])
+    expect(enqueueInboxPushes).toHaveBeenCalledWith([stored])
+  })
+
+  it('does not queue a push for a notification about one’s own action', async () => {
+    vi.mocked(enqueueInboxPushes).mockClear()
+    await emitInboxItems([{ ...emission, actorUserId: 'user_1' }])
+    expect(enqueueInboxPushes).not.toHaveBeenCalled()
+  })
+})
+
+describe('viewInboxItemAs — the row as its recipient would be shown it', () => {
+  it('words a reachable item with its address', async () => {
+    const view = await viewInboxItemAs(session, row({ type: 'mention.requested', groupKey: 'g', anchorId: 'm1' }))
+    expect(view?.href).toBe('/app/projects/proj_1/chat?session=conv_1#message-m1')
+    expect(view?.actorName).toBe('Anna Berger')
+  })
+
+  it('answers null when the target is no longer reachable', async () => {
+    vi.mocked(resolveResourceAccess).mockRejectedValue(new NotFoundError())
+    expect(await viewInboxItemAs(session, row())).toBeNull()
+  })
+
+  it('answers null for an inert item', async () => {
+    expect(await viewInboxItemAs(session, row({ inertAt: at }))).toBeNull()
+  })
+
+  it('answers null for a type the recipient’s organization may not see', async () => {
+    collaborationGranted = false
+    expect(await viewInboxItemAs(session, row({ type: 'mention.requested' }))).toBeNull()
+  })
+
+  it('answers null for a run the recipient may not read', async () => {
+    vi.mocked(unreadableRunIds).mockResolvedValue(new Set(['run_1']))
+    const project = row({
+      type: 'job.completed',
+      resourceType: 'project',
+      resourceId: 'proj_1',
+      payload: { runId: 'run_1', subject: 'Auftrag' },
+    })
+    expect(await viewInboxItemAs(session, project)).toBeNull()
+  })
+
+  it('answers null for a platform item unless the recipient holds the platform permission', async () => {
+    const feedback = row({
+      organizationId: 'org_platform',
+      type: 'feedback.submitted',
+      resourceType: 'product_feedback',
+      resourceId: 'f1',
+    })
+    const platformSession = makeSession({ organizationId: 'org_platform' })
+    expect(await viewInboxItemAs(platformSession, feedback)).toBeNull()
+    vi.mocked(hasPlatformPermission).mockResolvedValue(true)
+    expect((await viewInboxItemAs(platformSession, feedback))?.href).toBe('/app/platform/feedback?report=f1')
   })
 })

@@ -15,7 +15,7 @@ import {
   type NewUploadBatch,
   type UploadBatch,
 } from '@/lib/db/schema'
-import { IN_FLIGHT_DOCUMENT_STATUSES } from '@/lib/documents/document-status'
+import { IN_FLIGHT_DOCUMENT_STATUSES, columnStatuses } from '@/lib/documents/document-status'
 import { CURSOR_TIMESTAMP_FORMAT, type DocumentListCursor } from '@/lib/documents/list-cursor'
 import { outsideHiddenFolders } from '@/lib/documents/repository'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
@@ -336,7 +336,7 @@ export async function listInFlightBatchDocuments(organizationId: string, batchId
         and(
           eq(documents.organizationId, organizationId),
           eq(documents.uploadBatchId, batchId),
-          inArray(documents.status, [...IN_FLIGHT_DOCUMENT_STATUSES])
+          inArray(documents.status, columnStatuses(IN_FLIGHT_DOCUMENT_STATUSES))
         )
       )
       .limit(UPLOAD_SUMMARY_DOCUMENT_LIMIT)

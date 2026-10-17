@@ -14,7 +14,6 @@
  * budget is per person and far below the default mutation budget.
  */
 
-import { after } from 'next/server'
 import 'server-only'
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
@@ -22,9 +21,10 @@ import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
-import { findOrganization } from '@/lib/organizations/repository'
+import { getOrganizationDisplayName } from '@/lib/organizations/service'
+import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
+import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
-import { fileProductFeedbackIssue } from './github'
 import {
   countProductFeedbackByStatus,
   getProductFeedback,
@@ -44,13 +44,33 @@ import {
 } from './types'
 
 /**
- * Store one report from the caller, announce it to the platform owners and,
- * for a bug, file it as a GitHub issue once the response has gone.
+ * The words that may leave for PostHog Support: the report masked against the
+ * office's policy, and only for a reporter who agreed to be contacted. The
+ * stored report stays as typed (platform owners triage it); this copy is the
+ * only one a third party receives, so a failure to mask answers `null` rather
+ * than the raw text.
+ */
+async function relayTextFor(
+  session: AuthorizedSession,
+  input: SubmitProductFeedbackInput
+): Promise<string | null> {
+  if (!input.allowContact) return null
+  try {
+    return (await maskChatText(session.organizationId, input.message)).text
+  } catch (error) {
+    console.error('[product-feedback] relay text not masked; no Support ticket for this report:', error)
+    return null
+  }
+}
+
+/**
+ * Store one report from the caller, announce it to the platform owners and
+ * hand back the masked text the browser may open a Support ticket with.
  *
- * Neither can fail the request (see `announceProductFeedback` and
- * `fileProductFeedbackIssue`): the stored report is the record, and the triage
- * page lists it whether or not anybody's inbox or the issue tracker heard
- * about it.
+ * The announcement cannot fail the request (see `announceProductFeedback`):
+ * the stored report is the record, and the triage page lists it whether or not
+ * anybody's inbox heard about it. There is no GitHub filing any more: the
+ * report's second home is the PostHog Support ticket the dialog opens.
  */
 export async function submitProductFeedback(
   session: AuthorizedSession,
@@ -68,18 +88,14 @@ export async function submitProductFeedback(
     allowContact: input.allowContact,
   })
 
-  const organization = await findOrganization(session.organizationId).catch(() => null)
-  await announceProductFeedback(report, organization?.displayName ?? null)
-  // After the response: the reporter's confirmation must not wait on GitHub,
-  // whose request is allowed ten seconds. `after` throws outside a Next request
-  // lifecycle (unit tests, a script), where waiting is the only way to file.
-  try {
-    after(() => fileProductFeedbackIssue(report))
-  } catch {
-    await fileProductFeedbackIssue(report)
-  }
+  await announceProductFeedback(report, await getOrganizationDisplayName(session.organizationId))
 
-  return { id: report.id, kind: report.kind, createdAt: report.createdAt.toISOString() }
+  return {
+    id: report.id,
+    kind: report.kind,
+    createdAt: report.createdAt.toISOString(),
+    relayText: await relayTextFor(session, input),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -108,6 +124,18 @@ function toReportView(row: ProductFeedbackRow): ProductFeedbackReportView {
     createdAt: new Date(row.createdAt).toISOString(),
     updatedAt: new Date(row.updatedAt).toISOString(),
   }
+}
+
+/**
+ * `rows` with every organization named. The repository's join names only the
+ * organizations with a local row, which exists once an organization saved a
+ * setting; the rest are resolved (WorkOS, cached) rather than shown as unknown.
+ */
+async function withOrganizationNames(rows: ProductFeedbackRow[]): Promise<ProductFeedbackRow[]> {
+  const names = await getOrganizationDisplayNames(
+    rows.filter((row) => !row.organizationName).map((row) => row.organizationId)
+  )
+  return rows.map((row) => ({ ...row, organizationName: row.organizationName ?? names.get(row.organizationId) ?? null }))
 }
 
 /** `<createdAt ISO>|<id>` — opaque to the client, validated here. */
@@ -142,7 +170,7 @@ export async function listProductFeedbackForPlatform(
     ])
     const last = rows.at(-1)
     return {
-      reports: rows.map(toReportView),
+      reports: (await withOrganizationNames(rows)).map(toReportView),
       counts,
       nextCursor: rows.length === PRODUCT_FEEDBACK_LIST_LIMIT && last ? encodeCursor(last) : null,
     }
@@ -157,7 +185,8 @@ export async function getProductFeedbackForPlatform(
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsView)
   const row = await withPlatformAccess('product feedback: one report', () => getProductFeedback(id))
   if (!row) throw new NotFoundError('Unknown feedback report.')
-  return toReportView(row)
+  const [named] = await withOrganizationNames([row])
+  return toReportView(named)
 }
 
 /** Move a report through triage, attributed to the caller. */
@@ -174,6 +203,7 @@ export async function triageProductFeedback(
     if (!updated) throw new NotFoundError('Unknown feedback report.')
     const row = await getProductFeedback(id)
     if (!row) throw new NotFoundError('Unknown feedback report.')
-    return toReportView(row)
+    const [named] = await withOrganizationNames([row])
+    return toReportView(named)
   })
 }

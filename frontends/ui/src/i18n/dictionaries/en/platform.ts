@@ -299,7 +299,7 @@ export const platform = {
       topicsHint: 'Comma-separated — the agent reaches for this entry on these subjects.',
       topicsPlaceholder: 'Fire safety, escape routes',
       aliases: 'Aliases',
-      aliasesHint: 'Comma-separated — alternative names the entry is also recognised under',
+      aliasesHint: 'Comma-separated — alternative names the entry is also recognized under',
       aliasesPlaceholder: 'OIB 2, Richtlinie 2',
       documentNumber: 'Document number (Dokumentnummer)',
       documentNumberHint:
@@ -567,6 +567,7 @@ export const platform = {
   },
   nav: {
     label: 'Platform sections',
+    scrollable: 'Platform sections, scrolls sideways',
     groups: {
       operate: 'Operate',
       quality: 'Quality',
@@ -1194,7 +1195,7 @@ export const platform = {
       'Per-conversation execution timeline — how long the agent spent on each step (graph node, LLM call, tool call), across every organization.',
     loadError: 'Could not load the profiler data.',
     retry: 'Retry',
-    search: 'Search by conversation or title…',
+    search: 'Search conversations…',
     empty: 'No profiled conversations in this period.',
     capped: 'Showing the {count} most recently active conversations.',
     listTitle: 'Conversations',

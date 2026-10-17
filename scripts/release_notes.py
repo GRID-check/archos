@@ -165,6 +165,124 @@ SEVERE_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+# Words a reader of the public changelog should not have to meet. The changelog is
+# written for an architect who uses Piloti, so a word goes here when that reader
+# cannot act on it. Four kinds are listed: the names of the services underneath
+# Piloti (databases, object storage, the tracing platform, the model gateway); the
+# interfaces and formats the services speak (API, webhook, JSON, schema); the
+# mechanics of shipping and running software (deploy, staging, pipeline, commit,
+# container); and the internals of search and the model (index, embedding, token,
+# prompt, cache), together with the switches and measurements an engineer reads
+# (feature flag, configuration, latency, trace). The words the Piloti screens
+# themselves show (Papierkorb, Quarantäne, Steckbrief, IFC and the rest) are product
+# terms, not jargon, and are deliberately not here. Matching ignores case and a
+# trailing s or es; a space in a term matches any space; a hyphen is a hyphen.
+# Spellings that differ only by case are listed once; the match ignores case anyway.
+PUBLIC_JARGON = (
+    "API",
+    "API key",
+    "SDK",
+    "endpoint",
+    "endpoints",
+    "webhook",
+    "JSON",
+    "YAML",
+    "schema",
+    "migration",
+    "migrations",
+    "backfill",
+    "Langfuse",
+    "KEDA",
+    "Kubernetes",
+    "Postgres",
+    "PostgreSQL",
+    "Redis",
+    "Dragonfly",
+    "SeaweedFS",
+    "S3",
+    "Dask",
+    "OpenRouter",
+    "NeMo",
+    "WebSocket",
+    "socket",
+    "container",
+    "pod",
+    "replica",
+    "cluster",
+    "deploy",
+    "deployed",
+    "deployment",
+    "deployments",
+    "staging",
+    "pipeline",
+    "CI",
+    "commit",
+    "branch",
+    "repository",
+    "regex",
+    "hash",
+    "cache",
+    "cached",
+    "index",
+    "indexed",
+    "indexing",
+    "reindex",
+    "re-index",
+    "re-indexed",
+    "re-indexing",
+    "embedding",
+    "embeddings",
+    "vector",
+    "token",
+    "tokens",
+    "prompt",
+    "prompts",
+    "worker",
+    "workers",
+    "queue",
+    "queued",
+    "config",
+    "configuration",
+    "environment variable",
+    "feature flag",
+    "flag",
+    "service",
+    "microservice",
+    "backend",
+    "frontend",
+    "rate limit",
+    "autoscaling",
+    "latency",
+    "telemetry",
+    "tracing",
+    "trace",
+    "traces",
+    "observability",
+    "metric",
+    "metrics",
+    "payload",
+    "parser",
+    "ingestion",
+    "Endpunkt",
+    "Endpunkte",
+    "Migrationen",
+    "gecacht",
+    "indexiert",
+    "indexieren",
+    "Indexierung",
+    "Re-Indexierung",
+    "Vektor",
+    "Warteschlange",
+    "Konfiguration",
+    "Umgebungsvariable",
+    "Feature-Flag",
+    "Replik",
+    "Latenz",
+    "Telemetrie",
+    "Metrik",
+    "Metriken",
+)
+
 # reStructuredText that reno tolerates and the changelog page would render as
 # literal punctuation: directives, comments, roles, literal markup, code fences.
 RST_PATTERNS = [
@@ -671,6 +789,50 @@ def _section_entries(section: str, body: Any, valid_sections: set[str]) -> tuple
     return body, None
 
 
+def _jargon_pattern(term: str) -> re.Pattern[str]:
+    """One term as a whole-word, case-insensitive pattern.
+
+    `(?<!\\w)` and `(?!\\w)` make a term a whole word, so `S3` does not match `S30`
+    and `API` does not match `Kapitel`. A hyphen is a literal character, so
+    `re-index` does not match `re index`. A space matches any run of whitespace. A
+    trailing `s` or `es` is allowed, so `APIs` and `indexes` count; a longer word
+    that merely starts with the term (`Tokenizer`) does not.
+    """
+    body = r"\s+".join(re.escape(part) for part in term.split(" "))
+    return re.compile(rf"(?<!\w){body}(?:e?s)?(?!\w)", re.IGNORECASE)
+
+
+# Longest first, so `feature-flag` claims its text before the bare `flag` can.
+_JARGON_PATTERNS = tuple(_jargon_pattern(term) for term in sorted(PUBLIC_JARGON, key=len, reverse=True))
+
+
+def jargon_hits(text: str) -> list[str]:
+    """The public-jargon words in `text`, as written, in reading order, each once."""
+    claimed: list[tuple[int, int]] = []
+    hits: list[tuple[int, str]] = []
+    for pattern in _JARGON_PATTERNS:
+        for match in pattern.finditer(text):
+            if any(match.start() < end and start < match.end() for start, end in claimed):
+                continue
+            claimed.append(match.span())
+            hits.append((match.start(), match.group(0)))
+    seen: set[str] = set()
+    words: list[str] = []
+    for _, word in sorted(hits):
+        if word.lower() not in seen:
+            seen.add(word.lower())
+            words.append(word)
+    return words
+
+
+def _jargon_issue(word: str) -> str:
+    return (
+        f'uses "{word}", a technical word a reader of the changelog cannot act on. Fix: say what '
+        "the reader sees or can do, in the words the Piloti screens use (Papierkorb, Archiv, "
+        "Steckbrief); leave out the name of the system and the mechanism behind it."
+    )
+
+
 def lint_text(
     entry: str,
     *,
@@ -703,6 +865,8 @@ def lint_text(
             "reads as a security or severe fix. Fix: move it to `security` (a vulnerability or hardening) "
             "or `incident` (data lost, a permission that did not hold); both are kept and never published."
         )
+    if public:
+        issues.extend(_jargon_issue(word) for word in jargon_hits(text))
     if len(text) < MIN_LENGTH:
         issues.append(f"too short ({len(text)} chars) to mean anything to a reader. Fix: say what changed for them.")
     if len(text) > max_length:

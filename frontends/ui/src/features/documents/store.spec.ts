@@ -473,6 +473,47 @@ describe('useDocumentsStore', () => {
       expect(updated.errorMessage).toBe('Parsing failed')
     })
 
+    test('reads a file the content check held back as held, not failed (ADR-0086)', () => {
+      const verdict = 'quarantined:{"reasons":[{"kind":"iban","sample":"AT61 •••• 1234"}],"checked":"full"}'
+      useDocumentsStore.setState({
+        trackedFiles: [
+          {
+            id: 'local-1',
+            fileName: 'Rechnung.pdf',
+            fileSize: 1024,
+            status: 'ingesting',
+            progress: 50,
+            serverFileId: 'server-file-1',
+            jobId: 'job-1',
+          },
+        ],
+      })
+
+      useDocumentsStore.getState().updateFilesFromJobStatus({
+        job_id: 'job-1',
+        status: 'completed',
+        submitted_at: '2024-01-01T00:00:00Z',
+        total_files: 1,
+        processed_files: 1,
+        collection_name: 'test-collection',
+        backend: 'milvus',
+        metadata: {},
+        file_details: [
+          {
+            file_id: 'server-file-1',
+            file_name: 'Rechnung.pdf',
+            status: 'failed',
+            progress_percent: 100,
+            error_message: verdict,
+          },
+        ],
+      })
+
+      const updated = useDocumentsStore.getState().trackedFiles[0]
+      expect(updated.status).toBe('held')
+      expect(updated.errorMessage).toBe(verdict)
+    })
+
     test('leaves unmatched files unchanged', () => {
       const trackedFile: TrackedFile = {
         id: 'local-1',
@@ -555,6 +596,55 @@ describe('useDocumentsStore', () => {
       expect(files[0].status).toBe('success')
       expect(files[1].id).toBe('server-2')
       expect(files[1].status).toBe('ingesting')
+    })
+
+    test('reads a listed attachment held back by the content check as held', () => {
+      const verdict = 'quarantined:{"reasons":[{"kind":"term","term":"Honorar"}]}'
+      useDocumentsStore.getState().setFilesFromServer('session-1', [
+        {
+          file_id: 'server-1',
+          file_name: 'Honorar.pdf',
+          collection_name: 'session-1',
+          status: 'failed',
+          chunk_count: 0,
+          error_message: verdict,
+          metadata: {},
+        },
+        {
+          file_id: 'server-2',
+          file_name: 'kaputt.pdf',
+          collection_name: 'session-1',
+          status: 'failed',
+          chunk_count: 0,
+          error_message: 'interrupted: restart',
+          metadata: {},
+        },
+      ])
+
+      const files = useDocumentsStore.getState().trackedFiles
+      expect(files.find((f) => f.id === 'server-1')?.status).toBe('held')
+      expect(files.find((f) => f.id === 'server-2')?.status).toBe('failed')
+    })
+
+    test('keeps a stored or held attachment at rest across a re-list, never available', () => {
+      // The chat's first-party listing says `stored` for an attachment nobody
+      // read and `held` for one the content check stopped. A re-list used to
+      // read both as `success`, so the chat counted them as sources.
+      const listed = (file_id: string, status: FileInfo['status']): FileInfo => ({
+        file_id,
+        file_name: `${file_id}.pdf`,
+        collection_name: 'session-1',
+        status,
+        chunk_count: 0,
+        metadata: {},
+      })
+      useDocumentsStore.getState().setFilesFromServer('session-1', [listed('stored-1', 'stored'), listed('held-1', 'held')])
+
+      const files = useDocumentsStore.getState().trackedFiles
+      expect(files.find((f) => f.id === 'stored-1')?.status).toBe('stored')
+      expect(files.find((f) => f.id === 'held-1')?.status).toBe('held')
+      // What NoSourcesBanner and the composer count as an available source.
+      expect(files.some((f) => f.status === 'success')).toBe(false)
     })
 
     test('preserves files from other collections', () => {

@@ -205,6 +205,25 @@ export async function patchProjectProfile(
 }
 
 /**
+ * Write a profile onto a project created a moment ago, with more of the same
+ * write in its transaction (the intake row, committed with the facts or not at
+ * all).
+ *
+ * No access check, on purpose: the caller created the project this second, and
+ * the FGA grant it made may not have reached the check yet, the reason
+ * `createProject` closes a new project through the repository too. Every other
+ * profile write goes through {@link patchProjectProfile} or
+ * {@link saveProjectProfile}, which ask.
+ */
+export async function seedProjectProfile(
+  project: ProjectProfileState & { id: string; organizationId: string },
+  profile: ProjectProfile,
+  inTransaction?: Parameters<typeof updateProjectProfileIfVersion>[4]
+): Promise<ProjectProfileState> {
+  return persistProfile(project.id, project.organizationId, profile, project, { inTransaction })
+}
+
+/**
  * Optimistic-concurrency write shared by save and patch: rebuild the derived
  * prompt/display views (preserving the async-generated summary), bump the
  * version, and refuse the write when a concurrent request got there first.

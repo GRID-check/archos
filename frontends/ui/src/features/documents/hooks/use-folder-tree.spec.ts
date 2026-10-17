@@ -66,11 +66,85 @@ describe.each([
     expect(result.current.error).toBe(false)
   })
 
+  it('re-reads behind the tree it already has: only the first read is a first load', async () => {
+    const { result } = render()
+    expect(result.current.isFirstLoad).toBe(true)
+    await waitFor(() => expect(result.current.folders).toEqual(FOLDERS))
+    expect(result.current.isFirstLoad).toBe(false)
+
+    // A rename or a move re-reads the tree; the tiles on screen stay there.
+    let reread: Promise<unknown> = Promise.resolve()
+    act(() => {
+      reread = result.current.load()
+    })
+    expect(result.current.isLoading).toBe(true)
+    expect(result.current.isFirstLoad).toBe(false)
+    expect(result.current.folders).toEqual(FOLDERS)
+    await act(async () => {
+      await reread
+    })
+    expect(result.current.isLoading).toBe(false)
+  })
+
   it('reports a failed read as an error with an empty tree', async () => {
     server.use(http.get(foldersUrl, () => HttpResponse.json({}, { status: 500 })))
     const { result } = render()
     await waitFor(() => expect(result.current.error).toBe(true))
     expect(result.current.folders).toEqual([])
+  })
+
+  it('keeps the tree it has when a re-read fails, instead of emptying it', async () => {
+    const { result } = render()
+    await waitFor(() => expect(result.current.folders).toEqual(FOLDERS))
+
+    server.use(http.get(foldersUrl, () => HttpResponse.json({}, { status: 503 })))
+    await act(async () => {
+      await result.current.load()
+    })
+
+    expect(result.current.folders).toEqual(FOLDERS)
+    expect(result.current.error).toBe(false)
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('lets only the newest of two crossing reads commit', async () => {
+    const { result } = render()
+    await waitFor(() => expect(result.current.folders).toEqual(FOLDERS))
+
+    // The first re-read is slow and answers with the tree before a folder was
+    // made; the second answers with the folder. The older answer lands last.
+    const NEU: FolderItem = { id: 'f-9', name: 'Neu', parentId: null, path: 'Neu' }
+    let releaseOld: () => void = () => undefined
+    const oldAnswered = new Promise<void>((resolve) => {
+      releaseOld = resolve
+    })
+    let reads = 0
+    server.use(
+      http.get(foldersUrl, async () => {
+        reads += 1
+        if (reads === 1) {
+          await oldAnswered
+          return HttpResponse.json({ folders: FOLDERS })
+        }
+        return HttpResponse.json({ folders: [...FOLDERS, NEU] })
+      })
+    )
+
+    let older: Promise<unknown> = Promise.resolve()
+    act(() => {
+      older = result.current.load()
+    })
+    await act(async () => {
+      await result.current.load()
+    })
+    expect(result.current.folders).toEqual([...FOLDERS, NEU])
+
+    releaseOld()
+    await act(async () => {
+      await older
+    })
+    expect(result.current.folders).toEqual([...FOLDERS, NEU])
+    expect(result.current.isLoading).toBe(false)
   })
 
   it('creates a folder under the shelf', async () => {

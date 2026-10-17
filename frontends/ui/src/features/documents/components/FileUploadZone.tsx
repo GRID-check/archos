@@ -9,13 +9,16 @@
 'use client'
 
 import { type ChangeEvent, type FC, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { CheckCircle2, FileText, Upload, XCircle } from 'lucide-react'
+import { CheckCircle2, FileText, ShieldAlert, Upload, XCircle } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatBytes } from '@/lib/format'
 import { useDocumentsStore } from '../store'
 import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
+import type { TrackedFileStatus } from '../types'
+import { QuarantineFindings } from './quarantine-findings'
+import { photoIntake, prepareSitePhotos } from '../lib/site-photo'
 import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '../'
 import type { Transition } from 'motion/react'
 import {
@@ -33,11 +36,38 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
+/**
+ * What a row shows. `held` (the content check held it back, ADR-0086) and
+ * `stored` (kept, not read) are at rest and neither green nor red; `canceled`
+ * is the user's own decision. Each used to fall to `uploading` and spin.
+ */
+type UploadZoneStatus = 'uploading' | 'success' | 'held' | 'stored' | 'canceled' | 'error'
+
 interface UploadedFile {
   id: string
   file: File
-  status: 'uploading' | 'success' | 'error'
+  status: UploadZoneStatus
   errorMessage?: string
+}
+
+/** A tracked file's status as the zone shows it, decided for every status there is. */
+function zoneStatusOf(status: TrackedFileStatus): UploadZoneStatus {
+  switch (status) {
+    case 'failed':
+      return 'error'
+    case 'success':
+      return 'success'
+    case 'held':
+      return 'held'
+    case 'stored':
+      return 'stored'
+    case 'canceled':
+      return 'canceled'
+    case 'uploading':
+    case 'ingesting':
+    case 'deleting':
+      return 'uploading'
+  }
 }
 
 interface FileUploadZoneProps {
@@ -102,12 +132,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
       .map((tf) => ({
         id: tf.id,
         file: tf.file!,
-        status:
-          tf.status === 'failed'
-            ? ('error' as const)
-            : tf.status === 'success'
-              ? ('success' as const)
-              : ('uploading' as const),
+        status: zoneStatusOf(tf.status),
         errorMessage: tf.errorMessage ?? undefined,
       }))
     setUploadValue(mapped)
@@ -115,13 +140,26 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
 
   const uploadDisabled = isUploading || isBusy
 
+  const tCapture = useTranslations('capture')
   const handleValueChange = useCallback(
-    (files: File[]) => {
-      if (files.length === 0) return
-      // Pass files to parent - validation happens in uploadFiles hook
-      onUpload?.(files)
+    (selected: File[]) => {
+      if (selected.length === 0) return
+      // A photo gets a name of its own before validation sees it: the name is
+      // the document's identity, and iOS calls a library or camera photo
+      // `image.jpg` (`site-photo.ts`). Validation happens in uploadFiles.
+      void prepareSitePhotos(selected, {
+        source: 'picker',
+        prefix: tCapture('photos.fileNamePrefix'),
+        taken: collectionFiles.map((file) => file.fileName),
+        imagesAccepted: photoIntake({ acceptedTypes }).available,
+      }).then(({ files, unconvertibleHeic }) => {
+        // An unconvertible HEIC goes on under its own name, for the hook's
+        // validation to report alongside every other refused file.
+        const rest = selected.filter((file) => unconvertibleHeic.includes(file.name))
+        if (files.length + rest.length > 0) onUpload?.([...files, ...rest])
+      })
     },
-    [onUpload]
+    [onUpload, tCapture, collectionFiles, acceptedTypes]
   )
 
   const handleInputChange = useCallback(
@@ -207,12 +245,27 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
               <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-foreground">{item.file.name}</p>
-                {item.errorMessage ? <p className="text-xs text-destructive">{item.errorMessage}</p> : null}
+                {/* A held file's stored text is the verdict as JSON: it reads
+                    as its reasons, never as a red error line. */}
+                {item.status === 'held' ? (
+                  <QuarantineFindings errorMessage={item.errorMessage} testId="upload-zone-held" />
+                ) : item.status === 'error' && item.errorMessage ? (
+                  <p className="text-xs text-destructive">{item.errorMessage}</p>
+                ) : null}
               </div>
               {item.status === 'uploading' ? (
                 <Spinner size="sm" className="shrink-0 text-muted-foreground" />
               ) : null}
               {item.status === 'success' ? <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden /> : null}
+              {item.status === 'held' ? (
+                <ShieldAlert className="size-4 shrink-0 text-warning" aria-label={t('uploads.row.held')} />
+              ) : null}
+              {item.status === 'stored' ? (
+                <CheckCircle2 className="size-4 shrink-0 text-muted-foreground" aria-label={t('uploads.row.stored')} />
+              ) : null}
+              {item.status === 'canceled' ? (
+                <XCircle className="size-4 shrink-0 text-muted-foreground" aria-label={t('uploads.row.canceled')} />
+              ) : null}
               {item.status === 'error' ? <XCircle className="size-4 shrink-0 text-destructive" aria-hidden /> : null}
             </motion.li>
           ))}

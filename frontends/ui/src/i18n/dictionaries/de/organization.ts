@@ -54,7 +54,7 @@ export const organization: typeof en.organization = {
     quarantine: {
       title: 'Quarantäne',
       subtitle:
-        'Dateien, die die Inhaltsprüfung zurückgehalten hat. Kein Modell hat sie gelesen. Wer sie prüfen darf, gibt sie hier frei oder löscht sie.',
+        'Dateien, die die Inhaltsprüfung zurückgehalten hat. Kein Modell hat sie gelesen. Wer sie prüfen darf, lässt sie hier zu oder löscht sie.',
     },
     downloads: {
       title: 'Download-Protokoll',
@@ -141,6 +141,8 @@ export const organization: typeof en.organization = {
   },
   /** Personen & Zugriff: Mitgliederverzeichnis, Rollenkatalog, Berechtigungsübersicht. */
   access: {
+    /** Accessible name of the sub-tab strip when it is wider than the screen. */
+    tabsScrollable: 'Bereiche, seitlich scrollbar',
     people: {
       title: 'Personen',
       description: 'Alle Mitglieder der Organisation und die Rolle, die ihnen zugewiesen wurde.',
@@ -335,6 +337,9 @@ export const organization: typeof en.organization = {
     saved: 'Anweisungen gespeichert',
     clear: 'Löschen',
     cleared: 'Anweisungen gelöscht',
+    clearConfirmTitle: 'Anweisungen löschen?',
+    clearConfirmBody:
+      'Piloti beachtet dann keine stehenden Anweisungen Ihrer Organisation mehr. Den Text können Sie nicht wiederherstellen.',
     saveError: 'Die Anweisungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.',
     loadError: 'Die Anweisungen konnten gerade nicht geladen werden. Bitte laden Sie die Seite neu.',
   },
@@ -409,6 +414,9 @@ export const organization: typeof en.organization = {
     saveErrorZdrUnavailable:
       'Die Zero-Data-Retention-Liste konnte nicht geladen werden; die Modelle ließen sich daher nicht prüfen. Es wurde nichts gespeichert – bitte versuchen Sie es gleich noch einmal.',
     zdrTitle: 'Zero Data Retention',
+    /** Phone-only toggle on the long zero-data-retention paragraph. */
+    zdrHintMore: 'Mehr anzeigen',
+    zdrHintLess: 'Weniger anzeigen',
     zdrHint:
       'Standardmäßig aktiv. Jede Anfrage, die Piloti für Ihre Organisation über OpenRouter an ein KI-Modell sendet, geht ausschließlich an Endpunkte, die weder Prompts noch Antworten speichern: Chat- und Rechercheantworten, Rückfragen, das Lesen von Dokumenten beim Hochladen (Beschreibungen von Zeichnungen, Texterkennung, Embeddings, Zusammenfassungen, Klassifizierung), das Reranking von Suchergebnissen, Titel und Zusammenfassungen von Unterhaltungen, Konsistenzprüfungen und Skill-Prüfungen. Kann die Einstellung nicht gelesen werden, gilt die Beschränkung trotzdem, und nur Modelle mit einem solchen Endpunkt sind auswählbar. Wo ein Modell in der EU betrieben wird, wird dieser Standort bevorzugt. Nicht erfasst: Websuchanfragen gehen an den Websuche-Anbieter (Tavily), der kein Modellanbieter ist.',
     zdrNotApplicable:
@@ -649,14 +657,14 @@ export const organization: typeof en.organization = {
       'Ihr Büro hat noch keine eigene Liste gespeichert. Bis dahin prüft Piloti mit dieser. Sobald Sie speichern, gilt Ihre.',
     namesTitle: 'Vor dem Hochladen: Datei- und Ordnernamen',
     namesHint:
-      'Der Browser prüft die Namen, bevor er etwas sendet. Eine passende Datei wird nicht gesendet, außer die Person, die hochlädt, gibt sie einzeln frei.',
+      'Der Browser prüft die Namen, bevor er etwas sendet. Eine passende Datei wird nicht gesendet, außer die Person, die hochlädt, wählt für sie „Trotzdem hochladen“.',
     nameTerms: 'Namensbegriffe',
     nameTermsHint: 'Trifft auch Wortteile: „Rechnung“ findet „Schlussrechnung“.',
     nameExceptions: 'Ausnahmen',
     nameExceptionsHint: 'Wörter, die einen Begriff enthalten, aber etwas anderes meinen: „Berechnung“ enthält „Rechnung“.',
     contentTitle: 'Nach dem Hochladen: Inhalt',
     contentHint:
-      'Piloti liest den Text auf dem eigenen Server und prüft ihn, bevor ein Modell ihn sieht. Treffer warten in der Quarantäne, bis jemand sie freigibt oder löscht. Dieselben Begriffe und Nummern gelten für Chat-Nachrichten: Piloti zeigt vor dem Senden, was es gefunden hat, und schickt die Nachricht nur maskiert an das Antwortmodell. Eine diktierte Nachricht hört vorher ein externes Sprachmodell, um sie zu transkribieren.',
+      'Piloti liest den Text auf dem eigenen Server und prüft ihn, bevor ein Modell ihn sieht. Treffer warten in der Quarantäne, bis jemand sie prüft und zulässt oder löscht. Dieselben Begriffe und Nummern gelten für Chat-Nachrichten: Piloti zeigt vor dem Senden, was es gefunden hat, und schickt die Nachricht nur maskiert an das Antwortmodell. Eine diktierte Nachricht hört vorher ein externes Sprachmodell, um sie zu transkribieren.',
     contentTerms: 'Inhaltsbegriffe',
     contentTermsHint: 'Trifft Wörter, die so beginnen: „Honorar“ findet „Honorarnote“.',
     detectors: 'Nummern erkennen',
@@ -668,7 +676,7 @@ export const organization: typeof en.organization = {
     },
     limits:
       'Die Prüfung sieht Wörter und Nummern, keine Bedeutung. Eine Honorarvereinbarung, die keinen Ihrer Begriffe enthält, kommt durch. Gescannte Seiten und Bilder ohne Textebene prüft Piloti nur am Namen.',
-    termPlaceholder: 'Begriff eingeben, Enter drücken',
+    termPlaceholder: 'Begriff eingeben',
     removeTerm: '„{term}“ entfernen',
     emptyList: 'Keine Begriffe',
     useSuggestion: 'Vorschlag übernehmen',
@@ -685,23 +693,22 @@ export const organization: typeof en.organization = {
     listLabel: 'Zurückgehaltene Dateien',
     empty: 'Nichts wartet auf Prüfung',
     emptyHint:
-      'Hält die Inhaltsprüfung eine Datei zurück, erscheint sie hier. Sie sehen die Dateien, die Sie freigeben dürfen.',
+      'Hält die Inhaltsprüfung eine Datei zurück, erscheint sie hier. Sie sehen die Dateien, die Sie prüfen dürfen.',
     whereProject: 'Projekt {name}',
     whereProjectUnknown: 'Ein Projekt',
     whereArchiv: 'Büroablage',
     whereSession: 'Chat-Anhang',
-    reasonsLabel: 'Gründe',
-    noReason: 'Grund nicht lesbar',
+    noReason: 'Kein Grund gespeichert. Öffnen Sie die Datei, um selbst zu prüfen.',
     unscreened:
-      'Nicht geprüft: Die Datei ließ sich nicht zu Ende lesen. Sie bleibt zurückgehalten, bis jemand sie freigibt.',
+      'Nicht geprüft: Die Datei ließ sich nicht zu Ende lesen. Sie bleibt zurückgehalten, bis jemand sie prüft.',
     open: 'Ansehen',
     openTitle: '„{name}“ dort öffnen, wo sie abgelegt ist',
-    release: 'Freigeben',
-    releaseTitle: '„{name}“ freigeben?',
+    release: 'Zulassen',
+    releaseTitle: '„{name}“ zulassen?',
     releaseDescription:
-      'Piloti liest die Datei dann wie jeden anderen Upload: Sprachmodelle sehen ihren Inhalt, und die Suche findet sie. Die Freigabe wird mit Ihrem Namen protokolliert.',
-    released: '„{name}“ ist freigegeben und wird gelesen.',
-    releaseError: 'Die Datei konnte nicht freigegeben werden. Bitte versuchen Sie es erneut.',
+      'Piloti liest die Datei dann wie jeden anderen Upload: Sprachmodelle sehen ihren Inhalt, und die Suche findet sie. Ihre Entscheidung wird mit Ihrem Namen protokolliert.',
+    released: '„{name}“ ist zugelassen und wird gelesen.',
+    releaseError: 'Die Datei konnte nicht zugelassen werden. Bitte versuchen Sie es erneut.',
     changed: 'Jemand hat diese Datei schon bearbeitet. Die Liste ist jetzt aktuell.',
     delete: 'Löschen',
     deleteTitle: '„{name}“ löschen?',

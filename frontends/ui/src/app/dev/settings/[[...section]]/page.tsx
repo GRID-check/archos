@@ -42,7 +42,7 @@ import { FIXTURE_PROJECT_ID, FIXTURE_USER_ID, HISTORY } from '../../_fixtures/up
 import { SIMILAR_PAGE } from '../../_fixtures/similar-projects'
 import { SimilarProjects } from '@/features/references/components/similar-projects'
 import { SimilarProjectsTile } from '@/features/projects/components/overview/similar-projects-tile'
-import type { SteckbriefView } from '@/lib/projects/steckbrief-types'
+import { answerSteckbrief, useDevSteckbrief } from '../../_fixtures/steckbrief'
 
 const PROJECT_ID = FIXTURE_PROJECT_ID
 
@@ -112,29 +112,19 @@ const ACTIVITY = {
   })),
 }
 
-const STECKBRIEF: SteckbriefView = {
-  address: 'Mariahilfer Straße 88, 1070 Wien',
-  startedOn: '2026-03',
-  endedOn: null,
-  people: [
-    {
-      id: 'person-1',
-      name: 'DI Maria Huber',
-      function: 'Statik',
-      company: 'Huber ZT GmbH',
-      startedOn: '2026-03',
-      endedOn: null,
-      account: null,
-    },
-  ],
-  canEdit: false,
-  canErase: false,
-}
-
 const OVERVIEW_DATA = {
   ...PROFILE_DATA,
   status: 'active' as const,
-  closedAt: null,
+  lifecycle: {
+    status: 'active' as const,
+    pausedAt: null,
+    closedAt: null,
+    closedOutcome: null,
+    endedOn: null,
+    startedOn: '2026-03' as const,
+    suggestedEndedOn: null,
+    suggestedOutcome: null,
+  },
   name: 'Wohnbau Mariahilf',
   collectionName: 'proj_demo',
   createdAt: '2026-03-01T09:00:00Z',
@@ -179,6 +169,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       // Reads of this fixture project only: a write, or another project's read,
       // reaches the real route, so the shim never swallows work it does not own.
       const read = (init?.method ?? (input instanceof Request ? input.method : 'GET')) === 'GET'
+      // The Steckbrief's reads and writes both: the fixture keeps the edits.
+      const steckbrief = await answerSteckbrief(PROJECT_ID, url, init)
+      if (steckbrief) return steckbrief
       if (read && url === `/api/projects/${PROJECT_ID}/uploads`)
         return Response.json({ uploads: HISTORY })
       if (read && url === `/api/projects/${PROJECT_ID}/members`) {
@@ -264,6 +257,7 @@ export default function SettingsDevPage({
   if (process.env.NODE_ENV !== 'development') notFound()
 
   const admin = search.get('as') !== 'viewer'
+  const steckbrief = useDevSteckbrief()
   const suffix = admin ? '' : '?as=viewer'
   const sections = visibleSettingsSections({ manageMembers: admin, manageBudget: admin })
   const current = (section?.[0] ?? 'overview') as ProjectSettingsSectionKey
@@ -302,7 +296,7 @@ export default function SettingsDevPage({
                 editProfile: admin,
                 manageMembers: admin,
               }}
-              steckbrief={STECKBRIEF}
+              steckbrief={{ ...steckbrief, canEdit: admin, canErase: admin }}
               similar={
                 <SimilarProjectsTile
                   page={SIMILAR_PAGE}

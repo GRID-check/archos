@@ -13,25 +13,42 @@
 import 'server-only'
 import { and, asc, count, desc, eq, inArray, isNull, lt, ne, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import type { DbExecutor } from '@/lib/db/executor'
+import type { DbExecutor, DbTransaction } from '@/lib/db/executor'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
-import { ARCHIV_SHELF, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
+import { ARCHIV_SHELF, documentShelf, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
+import { publishShelfChanged } from './shelf-live'
 import { documentAliasKey, documentNameKey, documentNameVariants } from './name-match'
 import { FILENAME_LOOKUP_MAX_NAMES } from './filename-lookup'
-import { CURSOR_TIMESTAMP_FORMAT, type DocumentListCursor } from './list-cursor'
+import {
+  CURSOR_TIMESTAMP_FORMAT,
+  type DocumentLevelCursor,
+  type DocumentLevelSort,
+  type DocumentListCursor,
+} from './list-cursor'
+import type { DocumentLevelQuery } from './list-query'
+import { DOCUMENT_READ_FAMILIES, declaredStatusesIn, type DocumentReadFamily, type DocumentStatus } from './document-status'
+import {
+  SHELF_SUMMARY_FAILED_LIMIT,
+  SHELF_SUMMARY_FOLDER_LIMIT,
+  type ShelfFolderTally,
+  type ShelfSummary,
+} from './shelf-summary-types'
 import {
   bffJobQueue,
   documentQuarantineDecisions,
   documents,
+  documentVersions,
   projectFolders,
   type Document,
   type DocumentAuthor,
   type DocumentLifecycle,
   type ResourceVisibility,
 } from '@/lib/db/schema'
-import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
+import type { DocumentScope, DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import { auditedQuarantineReasons, parseQuarantine } from '@/lib/upload-screening/quarantine'
 import { documentVisibleTo, heldAtRest, internalRead, SCREENED_ONLY, type DocumentReader } from './visibility'
+import { verdictPasses } from './document-reader'
+import { CURRENT_INGEST_READER_VERSION, type IngestFailureCategory, type IngestFailureFacts } from './retry-policy'
 
 /**
  * Hard cap on one page of a document listing (project and Archiv alike).
@@ -44,6 +61,13 @@ export const DOCUMENT_LIST_LIMIT = 500
 export interface DocumentListRow {
   id: string
   filename: string
+  /**
+   * The shelf the row is on (`documentShelf`). Read by the status
+   * reconciliation, which announces a settled row on its shelf's live channel;
+   * a listing row that did not carry it settled for nobody. Not on the wire.
+   */
+  projectId: string | null
+  scope: DocumentScope
   /** The rename, when there is one; NULL means "show `filename`" (0048). */
   displayName: string | null
   fileSize: number | null
@@ -114,6 +138,18 @@ export interface DocumentListRow {
   updatedAt: Date
   errorMessage: string | null
   metadata: unknown
+  /**
+   * Why the last read failed, and what read it (migration 0134). On the LIST
+   * row for one decision: whether the listing offers the document to „Alle
+   * erneut lesen“ (`canRetryRow`, `./retry-policy`), which needs `metadata` and
+   * `contentHash` beside them. Turned into `retryable` and dropped before the
+   * row leaves the BFF (`toListedDocuments`). Optional because rows built by
+   * other selects (and the specs' fixtures) predate them; absent reads as
+   * "not recorded", which the rule treats as retryable.
+   */
+  ingestFailureCategory?: IngestFailureCategory | null
+  ingestRetryable?: boolean | null
+  ingestReaderVersion?: string | null
 }
 
 /**
@@ -191,6 +227,8 @@ export function outsideHiddenFolders(hiddenFolderIds: readonly string[] | undefi
 export const documentListColumns = {
   id: documents.id,
   filename: documents.filename,
+  projectId: documents.projectId,
+  scope: documents.scope,
   displayName: documents.displayName,
   fileSize: documents.fileSize,
   contentType: documents.contentType,
@@ -209,6 +247,9 @@ export const documentListColumns = {
   updatedAt: documents.updatedAt,
   errorMessage: documents.errorMessage,
   metadata: documents.metadata,
+  ingestFailureCategory: documents.ingestFailureCategory,
+  ingestRetryable: documents.ingestRetryable,
+  ingestReaderVersion: documents.ingestReaderVersion,
 }
 
 /**
@@ -363,6 +404,302 @@ export function listProjectDocumentPage(
   return listDocumentPage(projectShelf(projectId), organizationId, options)
 }
 
+// --- A folder level, page by page (ADR-0102) ---------------------------------
+
+/** The filters every read of a shelf shares: what the listing's own WHERE takes. */
+export type ShelfReadFilters = Pick<ListProjectDocumentsOptions, 'authoredBy' | 'includeArchived' | 'hiddenFolderIds' | 'reader'>
+
+/** One page of a level read, and where the next one starts. */
+export interface DocumentLevelPage {
+  rows: DocumentListRow[]
+  /** The position after the last row, or `null` when this page is the last. */
+  nextCursor: DocumentLevelCursor | null
+}
+
+/**
+ * The sort key of a level order, as SQL. The cursor's value is read off the
+ * row by the same expression ({@link levelCursorValueColumn}) and compared
+ * against it ({@link afterDocumentLevelCursor}), so the three cannot disagree
+ * about where a row sits: a name case-folded by JavaScript and one case-folded
+ * by Postgres need not be the same string.
+ */
+function levelSortKey(sort: DocumentLevelSort): SQL {
+  switch (sort) {
+    case 'added':
+      return sql`${documents.createdAt}`
+    case 'name':
+      return sql`lower(coalesce(${documents.displayName}, ${documents.filename}))`
+    case 'size':
+      // An unknown size sorts as the smallest, never as NULL: a NULL key would
+      // need its own arm in every cursor comparison.
+      return sql`coalesce(${documents.fileSize}, -1)`
+  }
+}
+
+/** The sort key as text, for the cursor; `added` at microsecond precision in UTC, like the listing cursor. */
+function levelCursorValueColumn(sort: DocumentLevelSort): SQL<string> {
+  switch (sort) {
+    case 'added':
+      return cursorCreatedAtColumn
+    case 'name':
+      return sql<string>`lower(coalesce(${documents.displayName}, ${documents.filename}))`
+    case 'size':
+      return sql<string>`coalesce(${documents.fileSize}, -1)::text`
+  }
+}
+
+/** The cursor's text back as a value of the key's own type. */
+function levelCursorBound(cursor: DocumentLevelCursor): SQL {
+  switch (cursor.sort) {
+    case 'added':
+      return sql`(${cursor.value}::timestamp AT TIME ZONE 'UTC')`
+    case 'name':
+      return sql`${cursor.value}::text`
+    case 'size':
+      return sql`${cursor.value}::integer`
+  }
+}
+
+/**
+ * Rows strictly after `cursor` in its order: past the key in the cursor's
+ * direction, or on the same key with a greater id. The id breaks ties
+ * ascending in both directions, so `added DESC` is the drain's own
+ * `created_at DESC, id ASC` and the listing index serves it as it stands.
+ */
+export function afterDocumentLevelCursor(cursor: DocumentLevelCursor): SQL {
+  const key = levelSortKey(cursor.sort)
+  const bound = levelCursorBound(cursor)
+  const past = cursor.dir === 'asc' ? sql`${key} > ${bound}` : sql`${key} < ${bound}`
+  return sql`(${past} OR (${key} = ${bound} AND ${documents.id} > ${cursor.id}::uuid))`
+}
+
+/**
+ * Documents whose file name or rename contains `q`, case-insensitively, in
+ * either Unicode form (a name off a Mac is decomposed). `strpos` and not
+ * `LIKE`, so a `%` or `_` in what the reader typed is a character, not a
+ * wildcard. Nothing for an empty query.
+ */
+export function nameContains(q: string | undefined): SQL | undefined {
+  const needle = q?.trim() ?? ''
+  if (needle === '') return undefined
+  const variants = [...new Set([needle.normalize('NFC'), needle.normalize('NFD')])]
+  return or(
+    ...variants.flatMap((variant) => [
+      sql`strpos(lower(${documents.filename}), lower(${variant})) > 0`,
+      sql`strpos(lower(coalesce(${documents.displayName}, '')), lower(${variant})) > 0`,
+    ]),
+  )
+}
+
+/**
+ * Documents in one of `states`, by the family their status belongs to
+ * (`documentReadFamily`). `reading` is every status no other family declares,
+ * the unknown ones included, exactly as the browser reads them. Nothing when
+ * every family, or none, is asked for.
+ */
+export function readFamilyWhere(states: readonly DocumentReadFamily[] | undefined): SQL | undefined {
+  const wanted = [...new Set(states ?? [])]
+  if (wanted.length === 0 || wanted.length === DOCUMENT_READ_FAMILIES.length) return undefined
+  const lowered = sql`lower(${documents.status})`
+  const declaredElsewhere = DOCUMENT_READ_FAMILIES.filter((family) => family !== 'reading').flatMap(declaredStatusesIn)
+  return or(
+    ...wanted.map((family) =>
+      family === 'reading' ? notInArray(lowered, declaredElsewhere) : inArray(lowered, declaredStatusesIn(family)),
+    ),
+  )
+}
+
+/** The level's own predicates: its folder, the name search, the families, the cursor. */
+function levelWhere({ folderId, q, states, cursor }: DocumentLevelQuery): SQL[] {
+  const where: SQL[] = []
+  if (folderId !== undefined) where.push(folderId === null ? isNull(documents.folderId) : eq(documents.folderId, folderId))
+  const named = nameContains(q)
+  if (named) where.push(named)
+  const family = readFamilyWhere(states)
+  if (family) where.push(family)
+  if (cursor) where.push(afterDocumentLevelCursor(cursor))
+  return where
+}
+
+/**
+ * Split `limit + 1` fetched rows into the page and its next cursor (the probe
+ * row answers "is there more" without a COUNT), coercing at the boundary.
+ */
+export function readDocumentLevelPage(
+  fetched: Array<DocumentListRow & { cursorValue: string }>,
+  level: Pick<DocumentLevelQuery, 'sort' | 'dir'>,
+  limit: number,
+): DocumentLevelPage {
+  const bounded = boundListLimit(limit)
+  const hasMore = fetched.length > bounded
+  const page = hasMore ? fetched.slice(0, bounded) : fetched
+  const rows = page.map(({ cursorValue: _cursor, ...row }) => ({
+    ...row,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+  }))
+  const last = page.at(-1)
+  return {
+    rows,
+    nextCursor:
+      hasMore && last ? { sort: level.sort, dir: level.dir, value: String(last.cursorValue), id: last.id } : null,
+  }
+}
+
+/**
+ * One page of a folder LEVEL of a shelf, in the order the reader chose — what
+ * the Files workspace reads instead of draining the shelf (ADR-0102). The
+ * shelf, lifecycle, author, hidden-folder and hold predicates are the
+ * listing's own (`listingWhere`); the level adds its folder, the name search,
+ * the read-state families and the cursor.
+ *
+ * Bounded like every listing: `limit` is clamped to {@link DOCUMENT_LIST_LIMIT}
+ * and one probe row says whether there is more. The composite indexes of
+ * migration 0132 serve `added`; `name` and `size` sort the level's rows, which
+ * the same indexes narrow to the folder first.
+ */
+export async function listDocumentLevelPage(
+  shelf: DocumentShelf,
+  organizationId: string,
+  { level, ...filters }: ShelfReadFilters & { level: DocumentLevelQuery },
+): Promise<DocumentLevelPage> {
+  const db = getDb()
+  const bounded = boundListLimit(level.limit)
+  const key = levelSortKey(level.sort)
+  const fetched = await withTenant({ organizationId }, () =>
+    db
+      .select({ ...documentListColumns, cursorValue: levelCursorValueColumn(level.sort) })
+      .from(documents)
+      .where(and(listingWhere(shelf, organizationId, filters), ...levelWhere(level)))
+      .orderBy(level.dir === 'asc' ? asc(key) : desc(key), asc(documents.id))
+      .limit(bounded + 1),
+  )
+  return readDocumentLevelPage(fetched, level, bounded)
+}
+
+/**
+ * One document of a shelf as a listing row, for a deep link to a document the
+ * paged level has not loaded (`GET /api/documents/[id]`, ADR-0102). Archived
+ * documents are found when `includeArchived` says so; the hold and the
+ * hidden-folder rule are the listing's.
+ */
+export async function findShelfDocumentListRow(
+  shelf: DocumentShelf,
+  organizationId: string,
+  documentId: string,
+  filters: ShelfReadFilters,
+): Promise<DocumentListRow | null> {
+  const db = getDb()
+  const [row] = await withTenant({ organizationId }, () =>
+    db
+      .select(documentListColumns)
+      .from(documents)
+      .where(and(eq(documents.id, documentId), listingWhere(shelf, organizationId, filters)))
+      .limit(1),
+  )
+  return row ?? null
+}
+
+// --- What Postgres can say about a whole shelf (ADR-0102) --------------------
+
+/** `count(*)` of the rows in one read-state family, by the status vocabulary's own declaration. */
+function familyCount(family: Exclude<DocumentReadFamily, 'reading'>): SQL<number> {
+  return sql<number>`count(*) FILTER (WHERE ${inArray(sql`lower(${documents.status})`, declaredStatusesIn(family))})`
+}
+
+/** The ISO-8601 the browser compares `createdAt` with (`Date#toISOString`). */
+const ISO_MILLISECOND_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+
+/**
+ * Per folder of a shelf (`null` is the root), the documents filed directly in
+ * it, counted by read-state family, and the newest one's `created_at`: the
+ * folder tiles and the folder brief, folded up the tree by the browser
+ * (`foldTallies`). One aggregate over the listing's own WHERE, so it counts
+ * exactly the rows a listing would show this reader, and no backend call:
+ * the status is the stored one (rows still `pending` in Postgres are
+ * reconciled by the upload sweep, or when a page holding them is read).
+ *
+ * Bounded by the number of folders ({@link SHELF_SUMMARY_FOLDER_LIMIT}). The
+ * reading family is what is left of the total, so a status nobody declared is
+ * counted as being read, as the browser counts it.
+ */
+export async function summarizeShelfFolders(
+  shelf: DocumentShelf,
+  organizationId: string,
+  filters: ShelfReadFilters,
+): Promise<ShelfFolderTally[]> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({
+        folderId: documents.folderId,
+        total: sql<number>`count(*)`,
+        readable: familyCount('readable'),
+        failed: familyCount('failed'),
+        held: familyCount('held'),
+        unindexed: familyCount('unindexed'),
+        latest: sql<string | null>`to_char(max(${documents.createdAt}) AT TIME ZONE 'UTC', ${ISO_MILLISECOND_FORMAT})`,
+      })
+      .from(documents)
+      .where(listingWhere(shelf, organizationId, filters))
+      .groupBy(documents.folderId)
+      .limit(SHELF_SUMMARY_FOLDER_LIMIT),
+  )
+  // Coerced at the boundary: `count(*)` is a bigint, which the driver hands back as text.
+  return rows.map((row) => {
+    const total = Number(row.total)
+    const readable = Number(row.readable)
+    const failed = Number(row.failed)
+    const held = Number(row.held)
+    const unindexed = Number(row.unindexed)
+    return {
+      folderId: row.folderId,
+      total,
+      readable,
+      reading: Math.max(0, total - readable - failed - held - unindexed),
+      failed,
+      held,
+      unindexed,
+      latest: row.latest === null ? null : String(row.latest),
+    }
+  })
+}
+
+/**
+ * The failed documents of a shelf, newest first, at most
+ * {@link SHELF_SUMMARY_FAILED_LIMIT}: what „Alle erneut lesen“ sends back
+ * through ingestion. One probe row past the limit says whether it was cut.
+ *
+ * Only the ones reading again may change ({@link retryAllowedSql}): a file that
+ * failed for a lasting reason is counted in the tally and not sent back, so the
+ * button counts what it will send.
+ */
+export async function listShelfFailedDocuments(
+  shelf: DocumentShelf,
+  organizationId: string,
+  filters: ShelfReadFilters,
+): Promise<Pick<ShelfSummary, 'failed' | 'failedTruncated'>> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({ id: documents.id, folderId: documents.folderId })
+      .from(documents)
+      .where(
+        and(
+          listingWhere(shelf, organizationId, filters),
+          inArray(sql`lower(${documents.status})`, declaredStatusesIn('failed')),
+          retryAllowedSql(),
+        ),
+      )
+      .orderBy(desc(documents.createdAt), asc(documents.id))
+      .limit(SHELF_SUMMARY_FAILED_LIMIT + 1),
+  )
+  return {
+    failed: rows.slice(0, SHELF_SUMMARY_FAILED_LIMIT).map((row) => ({ id: row.id, folderId: row.folderId })),
+    failedTruncated: rows.length > SHELF_SUMMARY_FAILED_LIMIT,
+  }
+}
+
 /**
  * Rows whose filename is one of `filenames` — in either Unicode form, and
  * case-insensitively, because every reader of the answer (the citation
@@ -430,6 +767,82 @@ export function findProjectDocumentsByFilenames(
   return findDocumentsByFilenames(projectShelf(projectId), organizationId, filenames, options)
 }
 
+/** A document a Fassung link may point to, as the resolution needs it. */
+export interface FassungCounterpartRow {
+  id: string
+  filename: string
+  projectId: string | null
+  folderId: string | null
+  createdAt: Date | null
+}
+
+/**
+ * The documents of ONE collection named `filenames` that `reader` may see, for
+ * resolving a Fassung link's file names to documents (`fassung-facts.ts`).
+ *
+ * The link is stored by file name in the backend's index, which knows nothing
+ * of who may read what, so this is where a name becomes a document or stays a
+ * string nobody sees: held rows (`documentVisibleTo`, ADR-0086) and archived
+ * ones are not found. The folder rule (ADR-0087) is the caller's, from the
+ * project it reads each row's `projectId` for; a row's folder is returned for
+ * exactly that. Person-uploaded rows only: a machine-authored row owns no
+ * chunks of its own, so no link of the index can name it.
+ *
+ * Every name is looked up, in queries of at most {@link FILENAME_LOOKUP_MAX_NAMES}
+ * names each: a page of a few hundred documents references more names than one
+ * query carries, and a name left out was a link silently lost (the older
+ * Fassung shown as current, the count wrong).
+ */
+export async function findFassungCounterparts(
+  organizationId: string,
+  collectionName: string,
+  filenames: readonly string[],
+  reader: DocumentReader,
+): Promise<FassungCounterpartRow[]> {
+  const unique = [...new Set(filenames)]
+  const byId = new Map<string, FassungCounterpartRow>()
+  for (let start = 0; start < unique.length; start += FILENAME_LOOKUP_MAX_NAMES) {
+    const chunk = unique.slice(start, start + FILENAME_LOOKUP_MAX_NAMES)
+    for (const row of await findFassungCounterpartChunk(organizationId, collectionName, chunk, reader)) byId.set(row.id, row)
+  }
+  return [...byId.values()]
+}
+
+/** One bounded query of {@link findFassungCounterparts}: at most {@link FILENAME_LOOKUP_MAX_NAMES} names. */
+async function findFassungCounterpartChunk(
+  organizationId: string,
+  collectionName: string,
+  filenames: readonly string[],
+  reader: DocumentReader,
+): Promise<FassungCounterpartRow[]> {
+  const variants = [...new Set(filenames.flatMap(documentNameVariants))]
+  if (variants.length === 0) return []
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .select({
+        id: documents.id,
+        filename: documents.filename,
+        projectId: documents.projectId,
+        folderId: documents.folderId,
+        createdAt: documents.createdAt,
+      })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.organizationId, organizationId),
+          eq(documents.collectionName, collectionName),
+          inArray(documents.filename, variants),
+          eq(documents.authoredBy, 'user'),
+          eq(documents.lifecycle, 'active'),
+          documentVisibleTo(reader),
+        ),
+      )
+      .orderBy(asc(documents.id))
+      .limit(DOCUMENT_LIST_LIMIT),
+  )
+}
+
 /** One row of a name probe (`name-probe-types.ts` is its wire shape). */
 export interface DocumentNameMatchRow {
   id: string
@@ -437,6 +850,7 @@ export interface DocumentNameMatchRow {
   displayName: string | null
   fileSize: number | null
   contentHash: string | null
+  status: string
   folderId: string | null
   authoredBy: DocumentAuthor
   lifecycle: DocumentLifecycle
@@ -448,6 +862,7 @@ export const documentNameMatchColumns = {
   displayName: documents.displayName,
   fileSize: documents.fileSize,
   contentHash: documents.contentHash,
+  status: documents.status,
   folderId: documents.folderId,
   authoredBy: documents.authoredBy,
   lifecycle: documents.lifecycle,
@@ -605,6 +1020,45 @@ export async function listDocumentIdsForProject(
       .limit(limit),
   )
   return rows.map((row) => row.id)
+}
+
+/** The statuses a read ended in failure at — the `failed` family of `DOCUMENT_STATUS_FACTS`. */
+const READ_FAILED_STATUSES = ['failed'] as const
+
+/**
+ * The project's active documents whose read FAILED and that a model may name:
+ * screened ones only (ADR-0086, {@link SCREENED_ONLY}) and none in a folder the
+ * caller hides (ADR-0087). Newest first, bounded by `limit`.
+ *
+ * Read for the agent's `documents_unreadable:` block. Without it a file Piloti
+ * could not read was indistinguishable from one that does not exist: it has no
+ * summary row, so neither the inventory nor any tool lists it, and an answer
+ * called it missing.
+ */
+export async function listUnreadableProjectDocuments(
+  projectId: string,
+  organizationId: string,
+  hiddenFolderIds: readonly string[],
+  limit: number,
+): Promise<{ filename: string; displayName: string | null; folderId: string | null }[]> {
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .select({ filename: documents.filename, displayName: documents.displayName, folderId: documents.folderId })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.projectId, projectId),
+          eq(documents.organizationId, organizationId),
+          eq(documents.lifecycle, 'active'),
+          inArray(documents.status, [...READ_FAILED_STATUSES]),
+          ...outsideHiddenFolders(hiddenFolderIds),
+          documentVisibleTo(SCREENED_ONLY),
+        ),
+      )
+      .orderBy(desc(documents.createdAt))
+      .limit(limit),
+  )
 }
 
 /**
@@ -925,7 +1379,7 @@ export async function findStorageKeyByCollectionAndFilename(
   collectionName: string,
   filename: string,
   organizationId?: string,
-): Promise<{ storageKey: string; storageBucket: string | null; contentType: string | null } | null> {
+): Promise<{ id: string; storageKey: string; storageBucket: string | null; contentType: string | null } | null> {
   const db = getDb()
   const [row] = await withOptionalTenant(
     organizationId,
@@ -934,6 +1388,9 @@ export async function findStorageKeyByCollectionAndFilename(
     () =>
       db
         .select({
+          // The id lets a tool that resolved a file by name act on the
+          // document through the routes keyed by id (its Anmerkungen).
+          id: documents.id,
           storageKey: documents.storageKey,
           // The agent tier calls get_object directly (ADR-0039), so it needs
           // the bucket as well as the key — recomputing it there would be a
@@ -1145,12 +1602,40 @@ export async function setDocumentIngestJob(
       .set({
         status: 'pending',
         metadata: sql`jsonb_build_object('ingestJobId', ${ingestJobId}::text, 'ingestContentHash', ${documents.contentHash})`,
+        // A new attempt: the previous one's failure no longer describes the
+        // row, and the job's own verdict replaces it when it ends (migration
+        // 0134). The reader version stays until then: it is the last reader
+        // that read the row, which is still true.
+        ingestFailureCategory: null,
+        ingestRetryable: null,
+        ingestAttempts: sql`coalesce(${documents.ingestAttempts}, 0) + 1`,
         updatedAt: new Date(),
       })
       .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined))
       .returning({ id: documents.id }),
   )
   return moved.length > 0
+}
+
+/**
+ * Say that the row's bytes are deliberately not in the index: an archived
+ * document, whose chunks `archiveDocument` purged, and a re-upload onto one,
+ * which `dispatchDocument` does not send. `stored` is the status for "the bytes
+ * are here and nothing reads them", which is what the row now is; leaving it
+ * `completed` showed a document Piloti can no longer cite as „Zitierbar“.
+ *
+ * A held row keeps `quarantined`: the hold is what keeps it from every reader
+ * but its uploader and the reviewers (ADR-0086), and archiving it decides
+ * nothing about its content.
+ */
+export async function markDocumentNotIndexed(documentId: string, organizationId: string): Promise<void> {
+  const db = getDb()
+  await withTenant({ organizationId }, () =>
+    db
+      .update(documents)
+      .set({ status: 'stored', updatedAt: new Date() })
+      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined)),
+  )
 }
 
 /**
@@ -1294,6 +1779,12 @@ export async function listStuckProcessingDocuments(
  * document whose ingest dispatch never started would sit at 'uploaded' — which
  * the UI renders as a green "Ready" — forever (reconciliation only revisits
  * in-flight statuses, and there is no job id to reconcile against).
+ *
+ * A failure the BFF records itself (the dispatch did not start, the office
+ * conversion or the IFC parse failed) carries no backend category, so it
+ * clears the last one (migration 0134): a dispatch that never reached the
+ * backend says nothing about the bytes, and an earlier `deterministic` left
+ * standing would refuse the retry this failure deserves.
  */
 export async function markDocumentIngestFailed(
   documentId: string,
@@ -1301,12 +1792,17 @@ export async function markDocumentIngestFailed(
   errorMessage: string,
 ): Promise<void> {
   const db = getDb()
-  await withTenant({ organizationId }, () =>
+  const [row] = await withTenant({ organizationId }, () =>
     db
       .update(documents)
-      .set({ status: 'failed', errorMessage, updatedAt: new Date() })
-      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined)),
+      .set({ status: 'failed', errorMessage, ingestFailureCategory: null, ingestRetryable: null, updatedAt: new Date() })
+      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined))
+      .returning({ projectId: documents.projectId, scope: documents.scope }),
   )
+  // The one door every hard failure goes through (a dispatch refused, an IFC
+  // extraction that failed, a row stuck in processing): the badge turns red
+  // for everyone reading the shelf, not only for a tab that happens to poll it.
+  if (row) publishShelfChanged(organizationId, documentShelf(row))
 }
 
 /** Several folders' paths in one project, keyed by folder id; folders not in the project are absent. */
@@ -1430,6 +1926,42 @@ const sameDispatch = (jobId: string | null): SQL =>
 /** The digest the dispatch of the job being reconciled recorded, or the row's earlier one. */
 const screenedHashOfDispatch = sql<string | null>`coalesce(${documents.metadata} ->> 'ingestContentHash', ${documents.screenedHash})`
 
+/** The digest the dispatch of the job being reconciled recorded, and nothing else. */
+const dispatchedHash = sql<string | null>`${documents.metadata} ->> 'ingestContentHash'`
+
+/**
+ * A verdict recorded on the versions that hold the bytes it judged (migration
+ * 0131, ADR-0086): the one writer of `document_versions.screened_hash`, called
+ * only inside the transaction that records the item's verdict, so the item and
+ * its versions never disagree about the same bytes.
+ *
+ * `document_versions.screened_hash` is what keeps an earlier upload readable
+ * once a re-upload replaces it: the item's own `screened_hash` names the
+ * current bytes and is reset by the replace. A pass sets it on every version of
+ * this document holding `judgedHash`; a verdict that holds those bytes
+ * (a quarantine) clears it, so the latest verdict about the bytes is the one on
+ * record. No judged digest (a dispatch from before migration 0123 with nothing
+ * on the item either) records nothing, and those versions stay refused.
+ */
+async function recordVersionVerdict(
+  tx: DbTransaction,
+  documentId: string,
+  organizationId: string,
+  verdict: { judgedHash: string | null; passed: boolean },
+): Promise<void> {
+  if (!verdict.judgedHash) return
+  await tx
+    .update(documentVersions)
+    .set({ screenedHash: verdict.passed ? verdict.judgedHash : null })
+    .where(
+      and(
+        eq(documentVersions.documentId, documentId),
+        eq(documentVersions.organizationId, organizationId),
+        eq(documentVersions.contentHash, verdict.judgedHash),
+      ),
+    )
+}
+
 /**
  * Persist a reconciled ingestion status.
  *
@@ -1449,13 +1981,25 @@ const screenedHashOfDispatch = sql<string | null>`coalesce(${documents.metadata}
  * transaction records it in `document_quarantine_decisions`, keyed on the
  * dispatch, for the audit trail: a moved row and its decision exist together
  * or not at all, and one job is one decision.
+ *
+ * `failure` is what the job said about the file (migration 0134): its failure
+ * category, whether the same bytes may read again, and the reader that read
+ * it, written with the status they explain, so the retry rule never reads one
+ * outcome's category beside another outcome's status. Absent (a row going
+ * back to `pending`) leaves all three as they are.
  */
 export async function setDocumentReconciledStatus(
   documentId: string,
   organizationId: string,
-  resolution: { status: string; errorMessage: string | null; screeningOutcome?: DocumentScreeningOutcome },
+  resolution: {
+    status: DocumentStatus
+    errorMessage: string | null
+    screeningOutcome?: DocumentScreeningOutcome
+    failure?: IngestFailureFacts
+  },
   from: ReconciledFrom,
 ): Promise<boolean> {
+  const { failure } = resolution
   const db = getDb()
   return withTenant({ organizationId }, () =>
     db.transaction(async (tx) => {
@@ -1472,13 +2016,21 @@ export async function setDocumentReconciledStatus(
           // current one, which a version swap may have moved since. A job
           // dispatched before 0122 recorded none and keeps the backfilled value.
           ...(resolution.status === 'completed' ? { screenedHash: screenedHashOfDispatch } : {}),
+          ...(failure
+            ? {
+                ingestFailureCategory: failure.category,
+                ingestRetryable: failure.retryable,
+                ingestReaderVersion: failure.readerVersion,
+              }
+            : {}),
           updatedAt: new Date(),
         })
         .where(
           and(
             eq(documents.id, documentId),
             eq(documents.organizationId, organizationId),
-            eq(documents.status, from.status),
+            // The status the read saw, compared as text: a guard, never a write.
+            sql`${documents.status} = ${from.status}`,
             sameDispatch(from.jobId),
           ),
         )
@@ -1488,8 +2040,20 @@ export async function setDocumentReconciledStatus(
           folderId: documents.folderId,
           filename: documents.filename,
           createdBy: documents.createdBy,
+          status: documents.status,
+          screeningOutcome: documents.screeningOutcome,
+          screenedHash: documents.screenedHash,
+          dispatchedHash,
         })
       if (!moved) return false
+      // The versions holding the bytes this job judged take the same verdict
+      // (migration 0131). A read that ended without one (`failed`) says nothing.
+      if (resolution.status !== 'failed') {
+        await recordVersionVerdict(tx, documentId, organizationId, {
+          judgedHash: resolution.status === 'completed' ? moved.screenedHash : moved.dispatchedHash,
+          passed: resolution.status === 'completed' && verdictPasses(moved),
+        })
+      }
       if (resolution.status === 'quarantined') {
         const verdict = parseQuarantine(resolution.errorMessage)
         await tx
@@ -1527,33 +2091,42 @@ export async function markScreeningReleased(
   release: { contentHash: string; releasedBy: string; releasedAt: Date },
 ): Promise<boolean> {
   const db = getDb()
-  const updated = await withTenant({ organizationId }, () =>
-    db
-      .update(documents)
-      .set({
-        status: 'uploaded',
-        errorMessage: null,
-        screeningOutcome: 'released',
-        // The release is a verdict about these bytes (migration 0123).
-        screenedHash: release.contentHash,
-        screeningReleasedHash: release.contentHash,
-        screeningReleasedBy: release.releasedBy,
-        screeningReleasedAt: release.releasedAt,
-        updatedAt: release.releasedAt,
-      })
-      .where(
-        and(
-          eq(documents.id, documentId),
-          eq(documents.organizationId, organizationId),
-          // Held and at rest: a quarantine, or a file the gate never reached a
-          // verdict on (ADR-0086). A file in flight is the job's, not a reviewer's.
-          heldAtRest(),
-          eq(documents.contentHash, release.contentHash),
-        ),
-      )
-      .returning({ id: documents.id }),
+  return withTenant({ organizationId }, () =>
+    db.transaction(async (tx) => {
+      const updated = await tx
+        .update(documents)
+        .set({
+          status: 'uploaded',
+          errorMessage: null,
+          // The held verdict (`quarantined`, or a reading that failed) is the
+          // reviewer's to lift, and they lifted it (migration 0134).
+          ingestFailureCategory: null,
+          ingestRetryable: null,
+          screeningOutcome: 'released',
+          // The release is a verdict about these bytes (migration 0123).
+          screenedHash: release.contentHash,
+          screeningReleasedHash: release.contentHash,
+          screeningReleasedBy: release.releasedBy,
+          screeningReleasedAt: release.releasedAt,
+          updatedAt: release.releasedAt,
+        })
+        .where(
+          and(
+            eq(documents.id, documentId),
+            eq(documents.organizationId, organizationId),
+            // Held and at rest: a quarantine, or a file the gate never reached a
+            // verdict on (ADR-0086). A file in flight is the job's, not a reviewer's.
+            heldAtRest(),
+            eq(documents.contentHash, release.contentHash),
+          ),
+        )
+        .returning({ id: documents.id })
+      if (updated.length === 0) return false
+      // The versions holding the released bytes are released with them (migration 0131).
+      await recordVersionVerdict(tx, documentId, organizationId, { judgedHash: release.contentHash, passed: true })
+      return true
+    }),
   )
-  return updated.length > 0
 }
 
 /** Bound on one read of the quarantine queue. A queue longer than this is a policy problem, not a list. */
@@ -1603,8 +2176,56 @@ export async function listQuarantinedDocuments(
  * read. Bounded like every other list query; the rescan job re-dispatches each
  * id through `reingestDocument`, so access checks and status guards stay in one
  * place instead of being restated here.
+ *
+ * A failure the retry rule refuses ({@link retryAllowedSql}) is left out here,
+ * not skipped later: the walk never pays a request for a file that would fail
+ * the same way, and the audit's counts say what was actually sent back.
  */
-export const FAILED_INGEST_RESCAN_STATUSES = ['failed', 'error', 'uploaded'] as const
+export const FAILED_INGEST_RESCAN_STATUSES = ['failed', 'uploaded'] as const
+
+/**
+ * `canRetry` (`./retry-policy`) in SQL, for the queries that choose what a bulk
+ * retry sends: true unless the row is FAILED for a reason reading it again will
+ * not change. Kept beside the TypeScript rule rather than replacing it, because
+ * a single document's retry decides on the row it already holds and a walk
+ * must not fetch the rows it will not send; `retry-policy.spec.ts` states the
+ * rule and `retry-policy.integration.spec.ts` holds this SQL to it row by row.
+ *
+ *   - not in the failed family: the rule says nothing (`uploaded` rows of the
+ *     rescan pass);
+ *   - `deterministic`: refused unless the bytes changed since the dispatch
+ *     that failed (`ingestContentHash`, both sides known) or the deployed
+ *     reader is newer than the one that failed (dotted numbers compared as
+ *     integer arrays; a version missing or not dotted numbers counts as older,
+ *     as `isNewerReader` counts it);
+ *   - no category: refused only when the flag says `false`, so every row from
+ *     before migration 0134 passes;
+ *   - any other category: refused only for `quarantined`.
+ *
+ * Each branch is a non-null boolean, and the whole is `coalesce`d besides:
+ * `NOT NULL` in a WHERE drops the row, which would quietly withhold exactly the
+ * rows the rule means to keep.
+ */
+export function retryAllowedSql(): SQL {
+  const failedStatuses = sql.join(
+    declaredStatusesIn('failed').map((status) => sql`${status}`),
+    sql`, `,
+  )
+  const version = documents.ingestReaderVersion
+  const readerIsNewer = sql`CASE
+      WHEN ${version} IS NULL THEN true
+      WHEN ${version} ~ '^[0-9]+([.][0-9]+)*$'
+        THEN string_to_array(${version}, '.')::int[] < string_to_array(${CURRENT_INGEST_READER_VERSION}::text, '.')::int[]
+      ELSE ${version} <> ${CURRENT_INGEST_READER_VERSION}::text
+    END`
+  const bytesChanged = sql`(${dispatchedHash} IS NOT NULL AND ${documents.contentHash} IS NOT NULL AND ${documents.contentHash} <> ${dispatchedHash})`
+  const refused = sql`(lower(${documents.status}) IN (${failedStatuses}) AND CASE
+      WHEN ${documents.ingestFailureCategory} = 'deterministic' THEN NOT (${bytesChanged} OR ${readerIsNewer})
+      WHEN ${documents.ingestFailureCategory} IS NULL THEN coalesce(${documents.ingestRetryable}, true) = false
+      ELSE ${documents.ingestFailureCategory} = 'quarantined'
+    END)`
+  return sql`NOT coalesce(${refused}, false)`
+}
 
 /** Most ids one page of the failed-ingestion walk returns. */
 export const FAILED_INGEST_PAGE_LIMIT = 100
@@ -1645,6 +2266,7 @@ export async function listFailedDocumentPageInOrg(
         and(
           eq(documents.organizationId, organizationId),
           inArray(documents.status, [...FAILED_INGEST_RESCAN_STATUSES]),
+          retryAllowedSql(),
           ...(cursor ? [afterFailedWalkCursor(cursor)] : []),
         ),
       )

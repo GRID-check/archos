@@ -231,3 +231,27 @@ describe('the run itself, which is what the drawer is for', () => {
     expect(screen.queryByTestId('task-detail-run-failed')).not.toBeInTheDocument()
   })
 })
+
+describe('on a phone the way to the result is not buried under the run block', () => {
+  test('the result and thread buttons sit OUTSIDE the scrolling body', async () => {
+    drawer({ task: task({ filedDocumentId: 'doc-9', runMessageId: 'msg-1', conversationId: 'conv-1' }) })
+
+    const body = await screen.findByTestId('task-detail-body')
+    const actions = screen.getByTestId('task-detail-actions')
+
+    // The body scrolls; the actions are its sibling, so they never scroll away
+    // with three rounds of sources.
+    expect(body.className).toMatch(/overflow-y-auto/)
+    expect(body.contains(actions)).toBe(false)
+    expect(actions.contains(screen.getByTestId('task-detail-result'))).toBe(true)
+    expect(actions.contains(screen.getByTestId('task-detail-thread'))).toBe(true)
+  })
+
+  test('"Als stehende Aufgabe speichern" stays in the body, with a hint that says nothing is saved yet', () => {
+    drawer({ task: task({ filedDocumentId: 'doc-9' }) })
+
+    const body = screen.getByTestId('task-detail-body')
+    expect(body.contains(screen.getByTestId('task-detail-promote'))).toBe(true)
+    expect(screen.getByText(/nothing is saved until the last step/i)).toBeInTheDocument()
+  })
+})

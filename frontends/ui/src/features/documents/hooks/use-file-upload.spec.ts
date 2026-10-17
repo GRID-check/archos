@@ -1,6 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { en } from '@/i18n/dictionaries/en'
+import { capturePosthog } from '@/lib/analytics/posthog'
+
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 
 // Use vi.hoisted for mocks that need to be available before vi.mock
 const { mockClient, mockDocumentsStoreState, mockOrchestratorFns } = vi.hoisted(() => {
@@ -98,6 +101,12 @@ vi.mock('@/features/chat', () => {
   useChatStore.getState = () => mockChatState
   return { useChatStore }
 })
+
+const mockRequestReingest = vi.fn()
+vi.mock('../lib/reingest-request', () => ({
+  requestReingest: (documentId: string) => mockRequestReingest(documentId),
+}))
+vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() } }))
 
 vi.mock('../orchestrator', () => ({
   UploadOrchestrator: mockOrchestratorFns,
@@ -367,6 +376,50 @@ describe('useFileUpload', () => {
     })
   })
 
+  describe('retryFile on a file the server could not read', () => {
+    const readFailure = {
+      id: 'file-1',
+      fileName: 'plan.pdf',
+      collectionName: 'proj-1',
+      fileSize: 1000,
+      status: 'failed',
+      serverFileId: 'doc-1',
+      errorMessage: 'empty_document: nothing to read',
+      file: new File(['x'], 'plan.pdf'),
+    }
+
+    test('reads it again instead of sending the bytes again', async () => {
+      mockDocumentsStoreState.trackedFiles = [readFailure] as unknown[]
+      mockRequestReingest.mockResolvedValueOnce({ kind: 'started', status: 'pending' })
+      const { result } = renderHook(() => useFileUpload({ collectionName: 'proj-1', projectId: 'p1' }))
+
+      await act(async () => {
+        await result.current.retryFile('file-1')
+      })
+
+      expect(mockRequestReingest).toHaveBeenCalledWith('doc-1')
+      expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
+      expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
+        'file-1',
+        expect.objectContaining({ status: 'ingesting', errorMessage: null })
+      )
+      expect(mockOrchestratorFns.watchDocuments).toHaveBeenCalledWith(['file-1'])
+    })
+
+    test('takes the retry away when the server says the same bytes would fail again', async () => {
+      mockDocumentsStoreState.trackedFiles = [readFailure] as unknown[]
+      mockRequestReingest.mockResolvedValueOnce({ kind: 'unchanged' })
+      const { result } = renderHook(() => useFileUpload({ collectionName: 'proj-1', projectId: 'p1' }))
+
+      await act(async () => {
+        await result.current.retryFile('file-1')
+      })
+
+      expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith('file-1', { retryable: false })
+      expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
+    })
+  })
+
   describe('retryFile', () => {
     test('does nothing when file not found', async () => {
       mockDocumentsStoreState.trackedFiles = []
@@ -542,6 +595,49 @@ describe('useFileUpload — durable document uploads', () => {
     expect(body.get('folderId')).toBe('folder-9')
   })
 
+  test('tells PostHog how many files of which types were taken, never their names', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles([
+        new File(['x'], 'Einreichplan-Haus-Meier.pdf', { type: 'application/pdf' }),
+        new File(['x'], 'Statik.docx'),
+        new File(['x'], 'Deckblatt.pdf', { type: 'application/pdf' }),
+      ])
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests.forEach((request, i) => request.respond(200, uploadOk(`doc-${i}`)))
+      await pending
+    })
+
+    expect(capturePosthog).toHaveBeenCalledTimes(1)
+    expect(capturePosthog).toHaveBeenCalledWith('document_uploaded', {
+      count: 3,
+      types: 'docx,pdf',
+      shelf: 'project',
+    })
+    expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toMatch(/Meier|Einreichplan/)
+  })
+
+  test('counts only the files the server took', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(2))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0]!.respond(200, uploadOk('doc-0'))
+      xhr.requests[1]!.respond(500, JSON.stringify({ error: 'boom' }))
+      await pending
+    })
+
+    expect(capturePosthog).toHaveBeenCalledWith('document_uploaded', expect.objectContaining({ count: 1 }))
+  })
+
   test('does not send a file the office screens out, and says which and why', async () => {
     const { result } = renderUpload()
     const invoice = new File(['x'], 'Schlussrechnung 03.pdf', { type: 'application/pdf' })
@@ -620,6 +716,57 @@ describe('useFileUpload — durable document uploads', () => {
 
     expect(xhr.requests).toHaveLength(1)
     expect((xhr.last().body as FormData).get('screeningRelease')).toBe('name')
+  })
+
+  test('sends the document a file is filed as the new Fassung of, and only for that file (ADR-0099)', async () => {
+    const { result } = renderUpload()
+    const filed = new File(['x'], 'EG_Grundriss_Index_C.pdf', { type: 'application/pdf' })
+    const plain = new File(['x'], 'Baubeschreibung.pdf', { type: 'application/pdf' })
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles([filed, plain], { fassungOf: (file) => (file === filed ? 'doc-older' : null) })
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests.forEach((request, i) => request.respond(200, uploadOk(`doc-${i}`)))
+      await pending
+    })
+
+    const bodies = new Map(xhr.requests.map((request) => [(request.body as FormData).get('file'), request.body as FormData]))
+    expect(bodies.get(filed)?.get('fassungOf')).toBe('doc-older')
+    expect(bodies.get(plain)?.has('fassungOf')).toBe(false)
+  })
+
+  test('retries a file into the same Fassung it was filed as', async () => {
+    const filed = new File(['x'], 'EG_Grundriss_Index_C.pdf', { type: 'application/pdf' })
+    mockDocumentsStoreState.trackedFiles = [
+      {
+        id: 'failed-1',
+        file: filed,
+        fileName: filed.name,
+        fileSize: filed.size,
+        status: 'failed',
+        progress: 0,
+        collectionName: 'proj-collection',
+        uploadedAt: new Date().toISOString(),
+        uploadIntent: { folderId: null, folderPath: null, screeningReleased: false, fassungOf: 'doc-older' },
+      },
+    ]
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.retryFile('failed-1')
+      for (let i = 0; i < 5; i += 1) await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.last().respond(200, uploadOk('doc-1'))
+      await pending
+    })
+
+    expect((xhr.last().body as FormData).get('fassungOf')).toBe('doc-older')
   })
 
   test('records where each file went and what the reader released, for a retry to repeat', async () => {
@@ -809,6 +956,78 @@ describe('useFileUpload — durable document uploads', () => {
       'mock-uuid',
       expect.objectContaining({ status: 'failed', errorMessage: en.files.errors.projectClosed })
     )
+  })
+
+  test('an upload that ran out of time says so in the dictionary, not in the transport’s English', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(1))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0].timeOut()
+      await pending
+    })
+
+    expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
+      'mock-uuid',
+      expect.objectContaining({ status: 'failed', errorMessage: en.files.errors.uploadTimeout })
+    )
+    expect(en.files.errors.uploadTimeout).not.toMatch(/^Upload failed/)
+  })
+
+  test('a file refused because it would replace a quarantined one is not offered again (ADR-0086)', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(1))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0].respond(
+        409,
+        JSON.stringify({
+          error: '"plan-0.pdf" is waiting in quarantine.',
+          code: 'CONFLICT',
+          details: { reason: 'quarantined' },
+        })
+      )
+      await pending
+    })
+
+    // The row says why in the reader's language, and is marked as one a retry cannot fix.
+    const message = en.files.errors.quarantinedReplace.replace('{name}', 'plan-0.pdf')
+    expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed', errorMessage: message, retryable: false })
+    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(message)
+
+    // „Alle wiederholen“ calls retryFile for it: it sends nothing and keeps the row.
+    vi.mocked(mockDocumentsStoreState.removeTrackedFile).mockClear()
+    const { result: again } = renderUpload()
+    await act(async () => {
+      await again.current.retryFile('mock-uuid')
+    })
+    expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
+    expect(xhr.requests).toHaveLength(1)
+  })
+
+  test('any other conflict stays retryable', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(1))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0].respond(409, JSON.stringify({ error: 'A document named "plan-0.pdf" already exists here.' }))
+      await pending
+    })
+
+    expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed' })
+    expect(trackedById('mock-uuid')).not.toHaveProperty('retryable')
   })
 
   test('a rate-limited file waits out Retry-After and goes again instead of failing', async () => {

@@ -190,6 +190,11 @@ export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
   // would tell a Behörde that files are filed where this card only SUGGESTED
   // putting them. The same reasoning as the two proposals above it.
   file_operation_proposal: 'chrome',
+  // Piloti's marks and thread answers on a document. A proposed mark is a
+  // question to the office until somebody takes it over, and the answer lives in
+  // `metadata.cardInteractions` and on the canvas, neither of which the export
+  // reads; the marks themselves belong to the document's own Prüfansicht.
+  canvas_activity: 'chrome',
 
   // Read live from the project's model; exported as a title plus `liveCard`.
   ifc_viewer: 'live',

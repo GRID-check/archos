@@ -60,18 +60,54 @@ def end_turn_outcome(token: contextvars.Token[dict[str, Any] | None]) -> None:
     _TURN_OUTCOME.reset(token)
 
 
+#: Where :func:`record_turn_facts` keeps its facts inside the box, apart from the
+#: terminal's attributes, which :func:`_fill` replaces wholesale.
+_FACTS = "__turn_facts__"
+
+
 def current_turn_outcome() -> dict[str, Any] | None:
-    """The attributes recorded for this turn, or None when no turn bound a box or none finished."""
+    """The attributes recorded for this turn, or None when no turn bound a box or none finished.
+
+    The facts the workflow recorded (:func:`record_turn_facts`) ride as trace
+    metadata beside the terminal's.
+    """
     box = _TURN_OUTCOME.get()
-    return dict(box) if box else None
+    if not box:
+        return None
+    attributes = {key: value for key, value in box.items() if key != _FACTS}
+    facts = box.get(_FACTS) or {}
+    attributes.update({f"{METADATA_PREFIX}{key}": value for key, value in facts.items()})
+    return attributes or None
 
 
 def _fill(attributes: dict[str, Any]) -> None:
     box = _TURN_OUTCOME.get()
     if box is None:
         return
+    facts = box.get(_FACTS)
     box.clear()
     box.update(attributes)
+    if facts:
+        box[_FACTS] = facts
+
+
+def record_turn_facts(**facts: Any) -> None:
+    """Facts only the end of the workflow knows, onto the turn's root as trace metadata. Never raises.
+
+    The box is shared by reference with the socket's context, so a fact the
+    workflow records in its own copy of the context still reaches the root span;
+    the terminal, relayed after it, keeps it (:func:`_fill`). Outside a turn
+    nothing is bound and nothing is recorded. ``None`` values are left out.
+    """
+    try:
+        box = _TURN_OUTCOME.get()
+        if box is None:
+            return
+        stored = dict(box.get(_FACTS) or {})
+        stored.update({key: value for key, value in facts.items() if value is not None})
+        box[_FACTS] = stored
+    except Exception:
+        logger.debug("Failed to record a turn fact for its trace", exc_info=True)
 
 
 def record_turn_finished(body: Any) -> None:

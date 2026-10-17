@@ -4,11 +4,10 @@
  * (`/api/archiv/folders*`), because the two are the same routes (ADR-0078).
  *
  * What differs per shelf is passed in: the service call (which carries its own
- * authorization — `@/lib/projects/folder-service`, `@/lib/archiv/folder-service`)
- * and an optional feature gate (the Archiv is dark-launched behind
- * `organization-archiv`). What does not differ — the request schemas and their
- * limits, the mapping of a refused request to a 400, the response shapes — lives
- * here, so the browser can share one client and one row mapper.
+ * authorization — `@/lib/projects/folder-service`, `@/lib/archiv/folder-service`).
+ * What does not differ — the request schemas and their limits, the mapping of a
+ * refused request to a 400, the response shapes — lives here, so the browser can
+ * share one client and one row mapper.
  *
  * Handlers, not routes: each `route.ts` still calls `apiRoute` itself and
  * declares its own `authz`, which is what `authz-coverage.spec.ts` reads and
@@ -20,9 +19,6 @@ import { parseJsonBody, type ApiContext } from '@/lib/api/handler'
 import { BadRequestError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { DeleteFolderResult, FolderRow } from './shelf-folders'
-
-/** A feature gate: the refusing response, or `null` when the surface is on. */
-export type FolderRouteGate = (session: AuthorizedSession) => Response | null
 
 type Outcome<T> = ({ ok: true } & T) | { ok: false; error: string }
 
@@ -38,8 +34,14 @@ const updateFolderSchema = z
     // `.nullable().optional()` and not merely optional: absent and null mean
     // different things here.
     parentId: z.string().uuid().nullable().optional(),
+    /**
+     * What belongs in the folder (migration 0145). `null` or blank clears it.
+     * Bounded above the column's 500 so the service, which folds whitespace
+     * first, gives the refusal in words; this is only the untrusted edge.
+     */
+    description: z.string().max(2000).nullable().optional(),
   })
-  .refine((body) => body.name !== undefined || body.parentId !== undefined, {
+  .refine((body) => body.name !== undefined || body.parentId !== undefined || body.description !== undefined, {
     message: 'Nothing to update.',
   })
 
@@ -60,14 +62,6 @@ const ensureFoldersSchema = z.object({
   paths: z.array(z.string().min(1).max(4096)).max(300),
 })
 
-/** Run `handle` unless the shelf's feature gate refuses the caller. */
-function gated<P>(gate: FolderRouteGate | undefined, handle: (ctx: ApiContext<P>) => Promise<unknown>) {
-  return async (ctx: ApiContext<P>): Promise<unknown> => {
-    const refusal = gate?.(ctx.session)
-    return refusal ?? handle(ctx)
-  }
-}
-
 /** A service answer that is either its value or a message the caller's request earned. */
 function unwrap<T extends object>(outcome: Outcome<T>): T {
   if (!outcome.ok) throw new BadRequestError(outcome.error)
@@ -75,11 +69,8 @@ function unwrap<T extends object>(outcome: Outcome<T>): T {
 }
 
 /** `GET …/folders` → `{ folders }`. */
-export function listFoldersHandler<P>(
-  list: (params: P, session: AuthorizedSession) => Promise<FolderRow[]>,
-  gate?: FolderRouteGate,
-) {
-  return gated<P>(gate, async ({ session, params }) => ({ folders: await list(params, session) }))
+export function listFoldersHandler<P>(list: (params: P, session: AuthorizedSession) => Promise<FolderRow[]>) {
+  return async ({ session, params }: ApiContext<P>): Promise<unknown> => ({ folders: await list(params, session) })
 }
 
 /** `POST …/folders` `{ name, parentId? }` → `{ folder }`. */
@@ -89,35 +80,34 @@ export function createFolderHandler<P>(
     session: AuthorizedSession,
     input: { name: string; parentId: string | null },
   ) => Promise<Outcome<{ folder: FolderRow }>>,
-  gate?: FolderRouteGate,
 ) {
-  return gated<P>(gate, async ({ session, params, request }) => {
+  return async ({ session, params, request }: ApiContext<P>): Promise<unknown> => {
     const { name, parentId } = await parseJsonBody(request, createFolderSchema)
     const { folder } = unwrap(await create(params, session, { name, parentId: parentId ?? null }))
     return { folder }
-  })
+  }
 }
 
-/** `PATCH …/folders/[folderId]` `{ name?, parentId? }` → `{ folder }`. */
+/** `PATCH …/folders/[folderId]` `{ name?, parentId?, description? }` → `{ folder }`. */
 export function updateFolderHandler<P extends { folderId: string }>(
   update: (
     params: P,
     session: AuthorizedSession,
-    patch: { name?: string; parentId?: string | null },
+    patch: { name?: string; parentId?: string | null; description?: string | null },
     request: Request,
   ) => Promise<Outcome<{ folder: FolderRow }>>,
-  gate?: FolderRouteGate,
 ) {
-  return gated<P>(gate, async ({ session, params, request }) => {
+  return async ({ session, params, request }: ApiContext<P>): Promise<unknown> => {
     const body = await parseJsonBody(request, updateFolderSchema)
     const { folder } = unwrap(
       await update(params, session, {
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.parentId !== undefined ? { parentId: body.parentId } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
       }, request),
     )
     return { folder }
-  })
+  }
 }
 
 /**
@@ -133,9 +123,9 @@ export function updateFolderHandler<P extends { folderId: string }>(
  */
 export function deleteFolderHandler<P extends { folderId: string }>(
   remove: (params: P, session: AuthorizedSession, request: Request) => Promise<Outcome<{ result: DeleteFolderResult }>>,
-  gate?: FolderRouteGate,
 ) {
-  return gated<P>(gate, async ({ session, params, request }) => unwrap(await remove(params, session, request)).result)
+  return async ({ session, params, request }: ApiContext<P>): Promise<unknown> =>
+    unwrap(await remove(params, session, request)).result
 }
 
 /**
@@ -154,13 +144,12 @@ export function ensureFoldersHandler<P>(
     session: AuthorizedSession,
     input: { parentId: string | null; paths: string[] },
   ) => Promise<Outcome<{ folders: FolderRow[]; folderIdByPath: Record<string, string> }>>,
-  gate?: FolderRouteGate,
 ) {
-  return gated<P>(gate, async ({ session, params, request }) => {
+  return async ({ session, params, request }: ApiContext<P>): Promise<unknown> => {
     const { parentId, paths } = await parseJsonBody(request, ensureFoldersSchema)
     const { folders, folderIdByPath } = unwrap(
       await ensure(params, session, { parentId: parentId ?? null, paths }),
     )
     return { folders, folderIdByPath }
-  })
+  }
 }

@@ -1,0 +1,10 @@
+---
+improvements:
+  - >
+    On a phone a drawing now opens full screen, however you reach it, and zooms
+    deep enough to read the 2.5 mm lettering of an A1 plan, with pinch, double
+    tap and sharp lines at every zoom.
+  - >
+    Comparing two Fassungen on a phone opens with the swipe view and keeps the
+    list of changes in a sheet, and marks and their list work by touch without
+    getting in the way of moving around the drawing.

@@ -6,8 +6,8 @@ improvements:
     pinned to the bottom edge. As soon as you ask something, the input returns
     to the bottom and the answer gets the full height.
   - >
-    The empty chat no longer offers example questions or explains that answers
-    cite their sources, and the composer no longer states that a plain message
-    goes to Piloti. Mentioning a colleague works exactly as before, and the
-    composer still names the recipient whenever it is not Piloti — when you have
-    tagged someone, or when the chat is waiting on a person.
+    An empty chat no longer shows example questions or explains that answers
+    cite their sources, and the message field no longer says that a plain
+    message goes to Piloti. Mentioning a colleague works as before, and the
+    field still names the recipient whenever it is not Piloti, such as when you
+    have tagged someone or the chat is waiting for a person.

@@ -59,6 +59,9 @@
 import type { FileItem, FolderItem } from '../components/project-file-workspace'
 import { folderMatchKey, pathSegments } from '@/lib/projects/folders'
 import { documentAliasKey, documentNameKey } from '@/lib/documents/name-match'
+import { documentReadFamily } from '@/lib/documents/document-status'
+import type { FassungCandidateMatch } from '@/lib/documents/name-probe-types'
+import { findRevisionSeries, parseRevisionName } from '@/lib/documents/revision-series'
 import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-screen'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 
@@ -97,6 +100,47 @@ export type PlannedAction =
    */
   | 'excluded'
 
+/** A document a dropped file may be filed as the next Fassung of. */
+export interface FassungTarget {
+  /** The document's id; the upload sends the one the reader settled on. */
+  id: string
+  filename: string
+  /** What that document is called on screen (its rename, else its file name). */
+  name: string
+  /** How its own name reads („Index B · 02.07.2026"); empty when it has no index or date. */
+  label: string
+}
+
+/**
+ * A dropped file that continues a document already on the shelf: the offer „Als
+ * neue Fassung von X ablegen" (CONTEXT.md, „Fassung"; ADR-0099) and the
+ * person's answer to it.
+ */
+export interface PlannedFassung {
+  /** The current documents of its series, newest first. More than one is a choice for the reader. */
+  candidates: FassungTarget[]
+  /** The one the offer is about: the reader's pick among {@link candidates}, else the newest. */
+  of: FassungTarget
+  /** The file is newer than the newest candidate. A file that is not is listed, never ticked. */
+  newer: boolean
+  /**
+   * Whether the match needs no second look: one current document, the file is
+   * newer than it, and nothing else in this drop competes for it. Only then is
+   * the offer ticked at the start, and only then does it belong to the proposals
+   * that are decided together (`fassung-proposals.ts`).
+   */
+  unambiguous: boolean
+  /** The answer as it stands: the reader's tick, else {@link unambiguous}. */
+  chosen: boolean
+}
+
+/** What the reader has said about one file's offer: ticked or not, and which candidate. */
+export interface FassungChoice {
+  chosen?: boolean
+  /** The id of the candidate picked, when there is more than one. */
+  targetId?: string
+}
+
 export interface PlannedFile {
   file: File
   /** The path it had in the dropped tree — `Wohnbau Nord/03_Einreichung/EG.pdf`. */
@@ -106,6 +150,14 @@ export interface PlannedFile {
    * Empty means the level they are standing in.
    */
   targetPath: string
+  /**
+   * The existing folder whose access the file will have: the one it lands in,
+   * or, for a folder the upload still creates, the nearest existing folder
+   * above it (a new folder inherits its access). `null` is the shelf's root.
+   * Which collection the file is indexed into follows from it (ADR-0087), and
+   * the Fassung probe offers only documents of that collection.
+   */
+  landsInFolderId?: string | null
   action: PlannedAction
   /** The document this matched, for `update`, `unchanged` and `duplicate`. */
   existingId?: string
@@ -143,6 +195,12 @@ export interface PlannedFile {
   screening?: NameMatch[]
   /** The reader released this file from the name screening; its upload says so to the server. */
   screeningReleased?: true
+  /**
+   * The document this new file continues, when its name reads as the next
+   * Fassung of one on the shelf. Only a `new` file has one: a name the shelf
+   * already holds is a new version of that document (ADR-0054), not a Fassung.
+   */
+  fassungOf?: PlannedFassung
 }
 
 /** One document that is already correct but filed in the wrong place. */
@@ -226,7 +284,7 @@ export interface FolderUploadCounts {
  */
 export type PlanDocument = Pick<
   FileItem,
-  'id' | 'filename' | 'displayName' | 'fileSize' | 'contentHash' | 'folderId' | 'authoredBy'
+  'id' | 'filename' | 'displayName' | 'fileSize' | 'contentHash' | 'folderId' | 'authoredBy' | 'status'
 > & { lifecycle?: FileItem['lifecycle'] }
 
 export interface FolderUploadPlanInput {
@@ -248,6 +306,13 @@ export interface FolderUploadPlanInput {
    * hook and the server still are.
    */
   screening?: PlanScreening
+  /**
+   * What each dropped name continues on the shelf, by the name as dropped
+   * (`fassung-candidates.ts`). Absent means nothing is offered.
+   */
+  fassungOffers?: ReadonlyMap<string, FassungCandidateMatch>
+  /** The reader's answers to those offers, by file. A file without one takes the offer's default. */
+  fassungChoices?: ReadonlyMap<File, FassungChoice>
 }
 
 export interface PlanScreening {
@@ -434,14 +499,26 @@ export function buildFolderUploadPlan(input: FolderUploadPlanInput): FolderUploa
     return documentNameKey(shown) === documentNameKey(droppedName) ? undefined : shown
   }
 
+  /** The deepest existing folder on `targetPath`, or where the reader stands: see {@link PlannedFile.landsInFolderId}. */
+  const landsIn = (targetPath: string): string | null => {
+    const segments = targetPath ? targetPath.split('/') : []
+    for (let depth = segments.length; depth > 0; depth -= 1) {
+      const existing = existingByRelativePath.get(pathKey(segments.slice(0, depth).join('/')))
+      if (existing) return existing
+    }
+    return currentFolderId ?? null
+  }
+
   const hashCandidates: File[] = []
   const moves: PlannedMove[] = []
+  const contested = contestedOffers(admitted.map((entry) => entry.file), input.fassungOffers)
   const plannedFiles: PlannedFile[] = entries.map(({ file, path }) => {
     const matches = screened.get(file)
     if (matches && isExcluded(file)) {
-      return { file, originPath: path, targetPath: relativeDirectory(path), action: 'excluded', screening: matches }
+      const targetPath = relativeDirectory(path)
+      return { file, originPath: path, targetPath, landsInFolderId: landsIn(targetPath), action: 'excluded', screening: matches }
     }
-    const planned = planAdmitted(file, path)
+    const planned = withFassung(planAdmitted(file, path), input, contested)
     return matches ? { ...planned, screening: matches, screeningReleased: true } : planned
   })
 
@@ -462,7 +539,7 @@ export function buildFolderUploadPlan(input: FolderUploadPlanInput): FolderUploa
     const targetFolderId = targetPath
       ? (existingByRelativePath.get(pathKey(targetPath)) ?? null)
       : (currentFolderId ?? null)
-    const base: PlannedFile = { file, originPath: path, targetPath, action: 'new' }
+    const base: PlannedFile = { file, originPath: path, targetPath, landsInFolderId: landsIn(targetPath), action: 'new' }
     const nameKey = documentNameKey(file.name)
 
     if ((dropNameCounts.get(nameKey) ?? 0) > 1) {
@@ -491,7 +568,15 @@ export function buildFolderUploadPlan(input: FolderUploadPlanInput): FolderUploa
     const sameSize = existing.fileSize === file.size
     const storedDigest = existing.contentHash ?? null
 
-    if (sameSize && storedDigest) {
+    // Identical bytes are sent again when the stored copy failed to read or
+    // was never read: re-uploading is how a person retries it, and the server
+    // accepts it (`shelf-upload.ts`, `placeUpload`). A copy being read, or held
+    // by the content check, is left alone: sending it again would read it
+    // twice, or be refused as a replacement of a held file.
+    const family = documentReadFamily(existing.status)
+    const retries = family === 'failed' || family === 'unindexed'
+
+    if (sameSize && storedDigest && !retries) {
       const digest = digests?.get(file)
       if (digest === undefined) {
         // Not hashed yet — worth asking about, and an update until we know.
@@ -532,6 +617,63 @@ export function buildFolderUploadPlan(input: FolderUploadPlanInput): FolderUploa
     moves,
     counts: countPlan(plannedFiles, plannedFolders, true),
   }
+}
+
+/**
+ * The files of a drop that compete for one document: several continue the same
+ * one, and only the newest of them (by the revision order of their names) is
+ * the one a person would mean. Dropped together, Index B and Index C of a
+ * document the shelf holds as Index A are not both its successor. The others
+ * are still offered, unticked.
+ */
+function contestedOffers(
+  files: readonly File[],
+  offers: ReadonlyMap<string, FassungCandidateMatch> | undefined,
+): ReadonlySet<File> {
+  const contested = new Set<File>()
+  if (!offers) return contested
+  const byDocument = new Map<string, File[]>()
+  for (const file of files) {
+    const offer = offers.get(file.name)
+    if (offer) byDocument.set(offer.candidates[0].id, [...(byDocument.get(offer.candidates[0].id) ?? []), file])
+  }
+  for (const group of byDocument.values()) {
+    if (group.length < 2) continue
+    const newest = new Set(
+      findRevisionSeries(group.map((file) => ({ filename: file.name, file }))).map((series) => series.current.item.file),
+    )
+    for (const file of group) if (!newest.has(file)) contested.add(file)
+  }
+  return contested
+}
+
+/** A `new` file with the offer its name earned and the reader's answer to it; anything else untouched. */
+function withFassung(planned: PlannedFile, input: FolderUploadPlanInput, contested: ReadonlySet<File>): PlannedFile {
+  const offer = planned.action === 'new' ? input.fassungOffers?.get(planned.file.name) : undefined
+  if (!offer) return planned
+  const candidates: FassungTarget[] = offer.candidates.map((candidate) => ({
+    id: candidate.id,
+    filename: candidate.filename,
+    name: candidate.displayName ?? candidate.filename,
+    label: candidate.label,
+  }))
+  const unambiguous = offer.unambiguous && !contested.has(planned.file)
+  const choice = input.fassungChoices?.get(planned.file)
+  return {
+    ...planned,
+    fassungOf: {
+      candidates,
+      of: candidates.find((candidate) => candidate.id === choice?.targetId) ?? candidates[0],
+      newer: offer.newer,
+      unambiguous,
+      chosen: choice?.chosen ?? unambiguous,
+    },
+  }
+}
+
+/** Names that read as part of a revision series: the only ones worth asking the shelf about. */
+export function continuesASeries(name: string): boolean {
+  return parseRevisionName(name) !== null
 }
 
 /**
@@ -589,11 +731,15 @@ export function countPlan(
  * name (`duplicate`), two files claim one name (`collision`) — changes or
  * withholds something, and the reader is told before it happens.
  *
+ * A `new` file that continues a document on the shelf (`fassungOf`) asks too:
+ * filing it as that document's next Fassung is the reader's call (ADR-0099).
+ *
  * This is the rule for picked and dropped FILES. A folder always asks: its plan
  * also says which folders are made and matched, which no count here covers.
  */
 export function needsUploadDecision(plan: Pick<FolderUploadPlan, 'files'>): boolean {
-  return plan.files.some((file) => file.action !== 'new')
+  // A file that continues a document asks too: filing it as the next Fassung is the reader's call.
+  return plan.files.some((file) => file.action !== 'new' || file.fassungOf !== undefined)
 }
 
 /** The files a plan will actually send, given the reader's answer about updates. */
@@ -616,7 +762,8 @@ export function filesToUpload(
  * their name.
  */
 export function samePlanOutcome(a: FolderUploadPlan, b: FolderUploadPlan): boolean {
-  const fileKey = (planned: PlannedFile): string => `${planned.action}\u0000${planned.targetPath}`
+  const fileKey = (planned: PlannedFile): string =>
+    `${planned.action}\u0000${planned.targetPath}\u0000${planned.fassungOf?.of.id ?? ''}\u0000${planned.fassungOf?.chosen ?? ''}`
   return (
     a.files.length === b.files.length &&
     a.files.every((planned, index) => planned.file === b.files[index].file && fileKey(planned) === fileKey(b.files[index])) &&

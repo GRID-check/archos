@@ -36,6 +36,7 @@ export const settings: typeof en.settings = {
       summaryEmpty: 'Noch kein Briefing. Richten Sie eines ein, damit Piloti weiß, worum es in diesem Projekt geht, bevor es antwortet.',
       setUpBrief: 'Briefing einrichten',
       editBrief: 'Briefing bearbeiten',
+      openSetup: 'Projekterfassung öffnen',
       askPiloti: 'Piloti fragen',
       openFiles: 'Dateien öffnen',
       actions: 'Projektaktionen',

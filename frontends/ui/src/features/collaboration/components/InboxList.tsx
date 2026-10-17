@@ -25,10 +25,12 @@
 
 import type { JSX } from 'react'
 import { useState } from 'react'
-import { AlertCircle, CheckCircle2, Inbox as InboxIcon } from 'lucide-react'
+import { AlertCircle, CheckCheck, CheckCircle2, Inbox as InboxIcon } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { useTranslations } from '@/i18n'
 import { useInboxList } from '../hooks/use-inbox'
+import { ARCHIVE_UNDO_MS, useUndoableArchive } from '../hooks/use-undoable-archive'
 import type { InboxItemView } from '@/lib/inbox/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -39,6 +41,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AnimatePresence } from '@/components/motion'
 import { cn } from '@/lib/utils'
+import { NotificationPrompt } from '@/features/notifications/components/notification-prompt'
 import { InboxItemRow } from './InboxItemRow'
 
 type InboxFilter = 'needsMe' | 'all'
@@ -83,7 +86,19 @@ export function InboxList({
     archive,
   } = useInboxList(enabled, filter === 'needsMe')
 
-  const hasUnread = items.some((item) => item.state === 'unread')
+  const archiveLater = useUndoableArchive(archive)
+  // A row waiting out its undo window is already gone as far as the reader can
+  // tell; the server hears about it when the window closes.
+  const visibleItems = items.filter((item) => !archiveLater.pendingIds.has(item.id))
+  const hasUnread = visibleItems.some((item) => item.state === 'unread')
+
+  const onArchive = (itemId: string): void => {
+    archiveLater.request(itemId)
+    toast(t('inbox.archived'), {
+      duration: ARCHIVE_UNDO_MS,
+      action: { label: t('inbox.undo'), onClick: () => archiveLater.undo(itemId) },
+    })
+  }
 
   const onOpen = (item: InboxItemView) => {
     if (item.state === 'unread') void markRead([item.id])
@@ -94,7 +109,7 @@ export function InboxList({
       {/* ---- Filter + bulk action ---- */}
       {/* `min-h-8` holds the toolbar's line even if the filter wraps, so a
           count arriving cannot lift the list. */}
-      <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
+      <div className="flex min-h-8 items-center justify-between gap-3">
         <ToggleGroup
           type="single"
           variant="outline"
@@ -130,11 +145,18 @@ export function InboxList({
           variant="outline"
           size="sm"
           disabled={!hasUnread || mutating}
+          aria-label={t('inbox.markAllRead')}
           onClick={() => void markAllRead()}
         >
-          {t('inbox.markAllRead')}
+          <CheckCheck aria-hidden className="sm:hidden" />
+          <span className="sm:hidden">{t('inbox.markAllReadShort')}</span>
+          <span className="max-sm:hidden">{t('inbox.markAllRead')}</span>
         </Button>
       </div>
+
+      {/* Offered once, never forced (ADR-0112): shown only where this browser can
+          show notifications and has not been asked. */}
+      <NotificationPrompt />
 
       {/* A refused action — most often a row a second tab already archived. It
           belongs beside the list, not instead of it: replacing the rows with
@@ -188,7 +210,7 @@ export function InboxList({
               </Item>
             ))}
           </ItemList>
-        ) : items.length === 0 ? (
+        ) : visibleItems.length === 0 ? (
           <EmptyState
             icon={filter === 'needsMe' ? CheckCircle2 : InboxIcon}
             title={t(filter === 'needsMe' ? 'inbox.empty.needsMeTitle' : 'inbox.empty.allTitle')}
@@ -207,12 +229,12 @@ export function InboxList({
                 time for a flourish that only reads once. Motion here is reserved
                 for a change the user causes. */}
             <AnimatePresence initial={false} mode="popLayout">
-              {items.map((item) => (
+              {visibleItems.map((item) => (
                 <InboxItemRow
                   key={item.id}
                   item={item}
                   onOpen={onOpen}
-                  onArchive={(id) => void archive(id)}
+                  onArchive={onArchive}
                 />
               ))}
             </AnimatePresence>

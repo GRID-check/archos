@@ -620,9 +620,11 @@ export const POST = tenantSlotRoute(async function POST(
 
     // Deep research is flag-gated (expensive workflow). Only the submit
     // entry point is gated — cancel/stream on running jobs stay available.
-    // Anonymous mode (REQUIRE_AUTH=false) has no session to evaluate.
-    if (path[0] === 'submit' && session) {
-      const gated = requireFeature(session, FEATURE_FLAGS.deepResearch)
+    // Anonymous mode (REQUIRE_AUTH=false) has no session, and gets the fixed
+    // answer an entitlement has there — the one the agent's per-turn read
+    // (`isDeepResearchEnabledForOrg`) reaches too, so the two halves agree.
+    if (path[0] === 'submit') {
+      const gated = requireFeature(session ?? { featureFlags: null }, FEATURE_FLAGS.deepResearch)
       if (gated) return gated
     }
 

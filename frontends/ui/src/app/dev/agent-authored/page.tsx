@@ -79,6 +79,8 @@ function makeFile(id: string, filename: string, summary: string, extra: Partial<
     chunkCount: 48,
     contentTypes: ['text', 'table'],
     tags: null,
+    topics: null,
+    capture: null,
     assignees: [],
     authoredBy: 'user',
     ...extra,
@@ -162,21 +164,29 @@ function AgentAuthoredFixtures(): JSX.Element {
              it as a count, so the shot has to carry both. */}
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">Filtermenü</h2>
-        <div className="flex flex-wrap items-start gap-3 rounded-xl border p-4">
-          <FileFilterMenu
-            canCollaborate
-            filters={NO_FILE_FILTERS}
-            onFiltersChange={() => {}}
-            sort={DEFAULT_FILE_SORT}
-            onSortChange={() => {}}
-          />
-          <FileFilterMenu
-            canCollaborate
-            filters={{ ...NO_FILE_FILTERS, assignment: 'unassigned', agentAuthoredOnly: true }}
-            onFiltersChange={() => {}}
-            sort={DEFAULT_FILE_SORT}
-            onSortChange={() => {}}
-          />
+        {/* One button, shown in its two states. Each carries its own caption, so
+            the pair reads as a before and an after and not as a duplicated strip. */}
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-4 rounded-xl border p-4">
+          <figure className="flex flex-col gap-1.5">
+            <FileFilterMenu
+              canCollaborate
+              filters={NO_FILE_FILTERS}
+              onFiltersChange={() => {}}
+              sort={DEFAULT_FILE_SORT}
+              onSortChange={() => {}}
+            />
+            <figcaption className="text-muted-foreground text-xs">Keine Auswahl</figcaption>
+          </figure>
+          <figure className="flex flex-col gap-1.5">
+            <FileFilterMenu
+              canCollaborate
+              filters={{ ...NO_FILE_FILTERS, assignment: 'unassigned', agentAuthoredOnly: true }}
+              onFiltersChange={() => {}}
+              sort={DEFAULT_FILE_SORT}
+              onSortChange={() => {}}
+            />
+            <figcaption className="text-muted-foreground text-xs">Zwei Filter aktiv</figcaption>
+          </figure>
         </div>
       </section>
 

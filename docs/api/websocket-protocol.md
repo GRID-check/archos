@@ -35,9 +35,10 @@ ws://<host>/websocket?v=2&projectId=<uuid>&conversationId=<session_id>
   is said to it in its own dialect.
 - **The server speaks first: `hello`.** Once the version and the caller have
   passed, the first frame on every socket is
-  `{"v":2,"type":"CUSTOM","name":"hello","ts":…,"value":{"build":"<sha>","accepts":["cancel_turn.shown"]}}`
+  `{"v":2,"type":"CUSTOM","name":"hello","ts":…,"value":{"build":"<sha>","accepts":["cancel_turn.shown","user_message.posthog_session_id","user_message.focus_region","user_message.reply_in_thread","user_message.trigger","user_message.if_idle","steer"]}}`
   (`build` is `GRID_GIT_SHA`, or `unknown`, as `/health` has it). `accepts`
-  names the optional client fields this server reads, as `<type>.<field>`; the
+  names the optional client fields this server reads, as `<type>.<field>`, and
+  the one optional message type, `steer`, by its bare name; the
   client sends such a field only to a server whose hello names it (see
   "Client → server" below). Free strings: a hello naming one this
   page does not know is still a hello. `accepts`, like
@@ -98,7 +99,9 @@ The `server.js` gateway handles WebSocket upgrade requests:
 Alongside every individual `x-grid-*` header above, `server.js` now also sends
 `X-Grid-Request-Context` (base64url JSON consolidating all of them into one
 object, plus `bundesland` — a structured jurisdiction field with no
-individual-header equivalent) and `X-Grid-Request-Context-Sig` (hex
+individual-header equivalent — and `requester`, `{ name, email,
+organizationName }`: who `userId` is, which the agent's prompt names, signed
+from the session the envelope is minted for, live or pinned) and `X-Grid-Request-Context-Sig` (hex
 HMAC-SHA256 of the envelope's raw JSON, keyed on `GRID_INTERNAL_API_TOKEN`).
 Legacy HTTP/job callers keep the **dual-write transition**: individual headers
 and the envelope are still sent together. Authenticated WebSocket handshakes
@@ -198,7 +201,9 @@ defaults. No field is ever `null`.
 | `CUSTOM` `stage` | `{stage, status: ready \| empty \| failed, payload?}` | A post-answer stage ([`post-answer-stages.md`](../architecture/post-answer-stages.md) §4). The only events after `RUN_FINISHED`, on the same `seq`. |
 | `CUSTOM` `interaction_request` | `{interaction_id, input: text \| choice, text, options[{id,label}], placeholder?, expires_at}` | The turn waits for its asker. Only the asker is offered the controls. |
 | `CUSTOM` `interaction_resolved` | `{interaction_id, outcome: answered \| expired \| cancelled}` | Close the prompt, in every tab and for spectators. |
-| `CUSTOM` `rejected` | `{of, code, message?}`, `seq: 0` | A client message was refused (`auth_expired`, `conversation_mismatch`, `duplicate_turn`, `not_asker`, `no_pending_interaction`, `turn_not_found`, `invalid_message`). Out of band: never replayed, never ends a turn. `turn_not_found` is also the answer when the turn runs on another replica and the bus cannot reach it (an `attach` whose replay cannot be read, a Stop or answer that cannot be handed over): the socket stays open, and the client asks for the persisted answer. `of` is the refused message's `type`, or `unknown` for a frame that is not JSON or names a type this wire does not have: every client message gets an answer, never silence. |
+| `CUSTOM` `steer_received` | `{steer_id, text}` | A note the asker typed reached the running turn's inbox (`steer`, below). `text` is the note as the model will read it, masked. On the turn's own `seq`: replayed, seen by every reader. |
+| `CUSTOM` `steer_applied` | `{steer_id, round}` | The turn read the note: it is in the model request of decision `round` (from 1), and in every one after. A note with no `steer_applied` before the terminal was never read: the asker's client asks it as the next question (not after a Stop). |
+| `CUSTOM` `rejected` | `{of, code, message?}`, `seq: 0` | A client message was refused (`auth_expired`, `conversation_mismatch`, `duplicate_turn`, `not_asker`, `no_pending_interaction`, `turn_not_found`, `invalid_message`, `busy`, `steer_limit`). `busy` answers only a `user_message` with `if_idle` while another turn of the conversation runs; `steer_limit` a `steer` past the turn's five. A refused `steer` never ends or loses its turn. Out of band: never replayed, never ends a turn. `turn_not_found` is also the answer when the turn runs on another replica and the bus cannot reach it (an `attach` whose replay cannot be read, a Stop or answer that cannot be handed over): the socket stays open, and the client asks for the persisted answer. `of` is the refused message's `type`, or `unknown` for a frame that is not JSON or names a type this wire does not have: every client message gets an answer, never silence. |
 
 **Not events, on purpose:** there is no status event (a status line is a
 `status` step, persisted as one), no run hand-off event
@@ -319,7 +324,7 @@ ends, each pinned by a test in `frontends/aiq_api/tests/test_chat_socket.py`:
 
 ## Client → server
 
-Four messages, each with `v: 2` and `conversation_id`. Unknown fields are
+Five messages, each with `v: 2` and `conversation_id`. Unknown fields are
 refused (`rejected{invalid_message}`), and so is an unknown `type`
 (`rejected{of: unknown, code: invalid_message}`). The other direction is
 lenient: the client strips a field it does not know from a server frame, so a
@@ -331,10 +336,11 @@ refuse the whole message.
 
 | `type` | Fields | Notes |
 |---|---|---|
-| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?` | A question. The type name is what the gateway's turn limiter (`lib/limits/ws-frames.js`) counts. A second `user_message` for a turn already running or run, on any replica, is `rejected{duplicate_turn}` (the turn id is claimed on the bus for as long as the stream keeps it); a new one supersedes and cancels a stale turn, on whichever replica runs it, and starts only once the stale turn has stopped: the conversation's running marker (`conv:<id>:running`, ADR-0080) is held by the turn that runs, so two turns of one conversation never run at once. If the stale turn has not stopped within `GRID_CHAT_SUPERSEDE_WAIT_SECONDS`, the new question ends with a refused `RUN_FINISHED` ("still finishing the previous answer", with a retry hint) and nothing runs. With `GRID_CHAT_AFFINITY` off, a turn that can no longer renew its marker (Dragonfly unreachable from its replica for most of `GRID_CHAT_RUNNING_TTL_SECONDS`, or the marker gone) stops itself before a newer turn could take the marker and ends with a `cancelled` `RUN_FINISHED`; the partial answer is not persisted. |
+| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?` | A question. With `if_idle` (a turn an event woke, [below](#a-turn-an-event-woke-trigger--if_idle)) it never supersedes: a conversation with a running turn refuses it as `rejected{busy}`, before its id is claimed, so it may be sent again under the same id. The type name is what the gateway's turn limiter (`lib/limits/ws-frames.js`) counts. A second `user_message` for a turn already running or run, on any replica, is `rejected{duplicate_turn}` (the turn id is claimed on the bus for as long as the stream keeps it); a new one supersedes and cancels a stale turn, on whichever replica runs it, and starts only once the stale turn has stopped: the conversation's running marker (`conv:<id>:running`, ADR-0080) is held by the turn that runs, so two turns of one conversation never run at once. If the stale turn has not stopped within `GRID_CHAT_SUPERSEDE_WAIT_SECONDS`, the new question ends with a refused `RUN_FINISHED` ("still finishing the previous answer", with a retry hint) and nothing runs. With `GRID_CHAT_AFFINITY` off, a turn that can no longer renew its marker (Dragonfly unreachable from its replica for most of `GRID_CHAT_RUNNING_TTL_SECONDS`, or the marker gone) stops itself before a newer turn could take the marker and ends with a `cancelled` `RUN_FINISHED`; the partial answer is not persisted. |
 | `interaction_response` | `turn_id`, `interaction_id`, `answer: {text} \| {option_id}` | Exactly one answer, structurally. Only the person the prompt addressed may answer; anyone else gets `rejected{not_asker}`, and an answer with no prompt waiting `rejected{no_pending_interaction}`. |
 | `cancel_turn` | `turn_id`, `shown?: {seq, chars}` | Stop. Only the asker's verified subject (or an internal caller) may cancel; anyone else gets `rejected{not_asker}`. The server cancels the graph run, not just the socket. `shown` says how much was on screen (the first `chars` code points of the answer as folded through `seq`), and the stopped answer is cut to it; sent only when the hello accepts `cancel_turn.shown`. |
 | `attach` | `turn_id`, `after_seq` | Replay the turn from `after_seq + 1`, then continue live. Sent for every open turn after a reconnect, and with `after_seq: 0` after a reload. `rejected{turn_not_found}` when the stream holds nothing for the turn: ask for the persisted answer instead. |
+| `steer` | `turn_id`, `steer_id`, `text` (1–2000), `focus_region?` | A note for the running turn, typed while it works („nicht die Tür, die Treppe“). **Not a turn**: nothing is claimed, held or superseded, and the gateway's turn limiter does not count it. Sent only to a server whose hello lists `steer` in `accepts`. The text is masked like a question. Only the asker (or an internal caller) may steer: `rejected{not_asker}`. Idempotent on `steer_id`; at most five per turn (`rejected{steer_limit}`); `rejected{turn_not_found}` when no turn runs (on another replica it is relayed to the owner over the bus, `STEER`). Acknowledged with `steer_received`; read before the turn's next model decision, `steer_applied`. [Steering](#steering-a-running-turn-steer) has the rest. |
 
 ```json
 {"v":2,"type":"user_message","conversation_id":"s_1","message_id":"msg_1759000000000_3","text":"Wie lang darf der Fluchtweg in GK 4 sein?","data_sources":["knowledge_layer"]}
@@ -580,3 +586,154 @@ frames). On a terminal status the client disconnects; on unmount it disconnects.
 Each block holds its own subscription, keyed by run id — several live runs in one
 thread are the normal case. A refused read or a stream that never opens leaves the
 stored ledger on screen; a reload shows the same block either way.
+
+### The review canvas (`focus_region` / `reply_in_thread`)
+
+Two fields the review canvas sends, each only to a server whose hello lists it
+in `accepts` (`user_message.focus_region`, `user_message.reply_in_thread`); a
+key is omitted, never `null`, when there is nothing to say. An older server
+answers the question about the whole document and only in the chat, which is
+what it did before the canvas could ask.
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `focus_region` | `{page, x, y, w, h, annotation_id?}` | A box a person drew on a page of the document the question is about. `page` counts from 1; `x`, `y`, `w`, `h` are shares of the page **as shown** (its rotation applied), origin top left, the frame an Anmerkung's region uses: `0 ≤ x, y ≤ 1`, `0 < w, h ≤ 1`, `x + w ≤ 1` and `y + h ≤ 1` (a rounding slack of 1e-6 is allowed; the JSON Schema cannot state the sums, so the server's model does and refuses the message). `annotation_id` names the Anmerkung the box is the region of, when the question was asked in its thread. |
+| `reply_in_thread` | `boolean` | The question was asked in the thread of `focus_region.annotation_id`. Without an `annotation_id` it means nothing. |
+
+What the turn does with them (`turn/payload.py`, `agents/piloti/prompt.py`):
+the system prompt gains a „Fokusbereich“ section naming the document, page and
+box in words, and telling the model to look at exactly that crop
+(`canvas__look` with `region=[x, y, w, h]`) before it answers. With
+`reply_in_thread`, it is told it was asked in that mark's thread and to answer
+there with `canvas__reply`: nothing is posted on the model's behalf. Such a
+turn runs with no restricted folder in scope, because a thread is read by
+everyone who can open the document (`tools/canvas/policy.py`). The canvas also
+sends `focus_document_id`, which the canvas tools act on when the model names
+no document. Both fields are on the turn's trace as `turn_surface`
+([`langfuse.md`](../observability/langfuse.md)).
+
+Because `accepts` is itself withheld while `GRID_WIRE_V2_ADDITIVE_FIELDS` is
+off, a page sends neither field until that flag is on: the review canvas's
+region asks and thread replies need it on; with it off, a canvas question
+reaches Piloti without its box.
+
+### Steering a running turn (`steer`)
+
+What a person types while Piloti works on their own question goes into that
+turn, not into a new one (`common/steering.py`, the steering research of
+2026-10-13):
+
+- **The inbox.** The socket keeps one `SteerInbox` per running turn and binds
+  it into the workflow's context (`_drive`), as it binds the turn's outcome
+  box. `steer` puts the masked note into it and sends `steer_received`.
+- **Read at the next round.** At the top of every model decision the agent
+  node takes what arrived and splices each note into the model REQUEST as one
+  user message, after the messages that existed when it arrived, at that same
+  index in every later request (the prompt cache's prefix stays stable). It is
+  never written to the graph's `messages`: a human message there is a turn
+  boundary to `answer_pipeline.this_turn`. The note tells the model it was
+  typed during the work and outranks the question where they conflict. The
+  node sends `steer_applied{round}`.
+- **Writes chosen before the note are held.** When a note arrived after the
+  model chose a round's calls, the tools node does not run that round's
+  writes (`canvas__mark`, `canvas__reply`, `canvas__highlight`,
+  `canvas__point`, the canvas `update`/`delete`, `file_draft`,
+  `propose_file_change`): each is answered „Nicht ausgeführt: Die Person hat
+  inzwischen etwas ergänzt …“, its reads run, and the model decides again with
+  the note (`status:steered:N`). A call already in flight finishes first.
+- **A note the turn never read** (it arrived while the turn wrote its answer,
+  or was refused) is asked as the next question by the asker's client once the
+  terminal has arrived, unless the asker stopped the turn.
+- **Where it is typed.** The chat composer, while the asker's own turn runs
+  and the hello offers `steer`: the placeholder says „Piloti lenken …“, a small
+  „lenkt“ chip sits by the field, and Enter sends the note. The review
+  canvas: the working card takes a note, and a box drawn while Piloti works is
+  sent as the note's `focus_region`.
+
+Like every optional entry, `steer` is in `accepts` only while
+`GRID_WIRE_V2_ADDITIVE_FIELDS` is on; with it off, the composer keeps its
+type-ahead behaviour and the canvas says Piloti is busy.
+
+### A turn an event woke (`trigger` / `if_idle`)
+
+Two `user_message` fields a turn carries when no person typed it: the BFF's
+wake job (ADR-0105 draft, §3(b)) opens the socket as the person whose reply or
+mention is the event, and asks in their document thread. Each is sent only to
+a server whose hello lists it (`user_message.trigger`, `user_message.if_idle`).
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `trigger` | `{kind: thread_mention \| thread_reply \| assigned, event_id, annotation_id?}` | What woke the turn, the id of the reply or assignment, and the Anmerkung it happened on. The prompt gains a „Geweckt durch“ section: who acted (the turn's verified user), what happened, and to answer where it happened (`canvas__reply` in that Anmerkung's thread). On the trace as `turn_trigger`, `trigger_event_id` and the tag `trigger:<kind>`. |
+| `if_idle` | `boolean` | Run only if the conversation has no running turn. Never supersedes: `rejected{busy}` instead, decided before the turn id is claimed (and, on a race lost after the claim, with the claim given back), so the job retries under the same id. |
+
+**The contract the wake job builds on.**
+
+- **Upgrade.** `/websocket?v=2&conversationId=<document thread>`, through the
+  same gateway route a browser takes (affinity by conversation), with the
+  acting person's pinned session cookie or bearer token, and the signed
+  `X-Grid-Request-Context` envelope **including `conversationId`** (without it
+  the canvas tools have no subject). Add `X-AIQ-Mode: headless`: the caller is
+  then marked `headless` (and `skip_clarifier`), so the clarifier and its plan
+  approval are skipped and `ask_user` refuses without prompting; the model asks
+  in the thread instead of waiting thirty minutes on a socket nobody reads.
+- **Before sending,** read the hello: `accepts` must hold
+  `user_message.trigger` and `user_message.if_idle`. A server without them
+  (or `GRID_WIRE_V2_ADDITIVE_FIELDS` off) would supersede a typed turn; do not
+  send, retry later.
+- **The message.** `{"v":2,"type":"user_message","conversation_id":…,
+  "message_id":uuid5(<reply id>),"text":<the reply, masked server-side>,
+  "focus_document_id":…,"focus_region":{…,"annotation_id":<mark>},
+  "reply_in_thread":true,"trigger":{"kind":"thread_mention","event_id":<reply
+  id>,"annotation_id":<mark>},"if_idle":true}`.
+- **Outcomes.** `RUN_STARTED`: the turn runs; the job may detach, the turn
+  persists itself. `rejected{busy}`: another turn runs; retry with backoff
+  under the same `message_id`. `rejected{duplicate_turn}`: that id already ran
+  or runs; the wake is done. `rejected{invalid_message}`: a field the server
+  does not read; do not retry blindly. `RUN_FINISHED{refused}`: admission or
+  budget refused it; record it on the job. `auth_expired` /
+  `conversation_mismatch`: the session or envelope is wrong; fail the job.
+
+**The client that keeps it (the BFF's wake job, ADR-0106).**
+`lib/annotations/wake-job.ts` runs the `piloti_wake` job of the `bff-jobs`
+pool; `lib/turns/headless-turn.ts` is the socket client, the store-free
+`createTurnSocket` (`adapters/api/turn-socket.ts`) over Node's `ws`
+(`createWebSocket`), with `openTurns` empty so nothing is re-attached.
+
+- **Where it dials.** Straight to the chat role, picked as `server.js` picks it
+  (`lib/proxy/backend-target.js`: `BACKEND_CHAT_URL`, or with
+  `GRID_CHAT_AFFINITY` the conversation's pod), not through the gateway, which
+  resolves a browser's cookie. With no `authorization` header and a host on
+  the internal network the backend reads an internal caller, marked headless,
+  and takes who acts from the envelope.
+- **What it sends.** The headers `server.js` sends, built by the same
+  `turnContextHeaders` (`lib/turns/turn-headers.js`) from the same
+  `resolveTurnContext` (`lib/turns/turn-context.ts`), for the acting person's
+  pinned session and their own thread about the document, plus `x-aiq-mode:
+  headless`. The envelope carries `conversationId`. `message_id` is
+  `wakeTurnId(<event id>)`, `author_name` the person's directory name.
+- **When it sends.** Only once the hello names `user_message.trigger`,
+  `user_message.if_idle`, `user_message.focus_region` and
+  `user_message.reply_in_thread`; otherwise the job waits and asks again.
+- **What it does with the answer.** `RUN_STARTED`: it waits five seconds for
+  an early refusal, records `started` and closes. `busy`, or no server: the
+  slice answers `{done: false, notBefore}` and the runner gives the job back
+  without spending an attempt (15 s doubling to 5 min, twelve waits).
+  `duplicate_turn`: done. `RUN_FINISHED{refused}`: recorded `refused`.
+  `auth_expired` / `conversation_mismatch`: the job throws, the queue retries
+  with a fresh envelope, and the last attempt records `failed`. Each outcome
+  is on the `piloti_wakes` row and in the audit trail: one that started as
+  `piloti.wake.started`, one the job refused or gave up on as
+  `piloti.wake.ended`, one held before it was sent as `piloti.wake.suppressed`.
+
+### `user_message.posthog_session_id`
+
+The browser's PostHog session id (`posthog.get_session_id()`), sent per question
+while product analytics is configured, and only to a server whose hello lists
+`user_message.posthog_session_id` in `accepts`. The key is omitted, never `null`,
+when there is none. The server stamps it as trace metadata `$posthog_session_id`
+when `GRID_TRACE_IDENTITY_ATTRIBUTES` is on and the value is a UUIDv7, so
+Langfuse's PostHog export can put the turn on the session's replay
+([`langfuse.md`](../observability/langfuse.md#posthog-export)). A value that is
+not a UUIDv7 is dropped silently and the turn runs. Because `accepts` is itself
+withheld while `GRID_WIRE_V2_ADDITIVE_FIELDS` is off, the link flows only
+with that flag on.

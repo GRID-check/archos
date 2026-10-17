@@ -1,19 +1,18 @@
 ---
 improvements:
   - >
-    Answers in chat arrive sooner: Piloti now prepares its project memory,
-    feedback lessons and settings at the same time instead of one after another.
+    Answers in chat arrive sooner, because Piloti prepares what it needs for
+    the answer in parallel.
   - >
-    Choosing the passages for an answer is much faster, because a purpose-built
-    ranking model now replaces a language-model call that could take ten
-    seconds.
+    Choosing the passages for an answer is much faster. Before, this step
+    could take ten seconds.
   - >
-    Opening a project and starting a chat are faster because permissions are
-    briefly cached. A changed project role takes effect within thirty seconds.
+    Opening a project and starting a chat are faster, because your
+    permissions are remembered for a short while.
   - >
-    A deep research reports itself finished as soon as the report is ready, and
-    an answer that is revised after checking looks up its missing evidence in
-    parallel.
+    A deep research is marked finished as soon as the report is ready, and an
+    answer revised after checking looks up its missing evidence at the same
+    time.
 fixes:
   - >
     One chat loading its organization's settings no longer briefly holds up

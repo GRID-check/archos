@@ -35,8 +35,11 @@ const session = {
   email: 'anna@buero-a.at',
   role: 'member',
   permissions: [],
-  featureFlags: null,
+  featureFlags: ['project-mail-inbox'],
 } as unknown as AuthorizedSession
+
+/** The same person in an organization whose `project-mail-inbox` flag is off. */
+const switchedOff = { ...session, featureFlags: [] } as AuthorizedSession
 
 const row = (token: string): InboundMailAddressRow => ({
   id: `addr-${token}`,
@@ -53,8 +56,7 @@ const row = (token: string): InboundMailAddressRow => ({
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('GRID_INBOUND_MAIL_DOMAIN', 'piloti-post.at')
-  vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', '')
-  vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', 'true')
+  vi.stubEnv('REQUIRE_AUTH', 'true')
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
   vi.mocked(can).mockResolvedValue(false)
   vi.mocked(findProjectInOrg).mockResolvedValue({ id: 'project-a', name: 'Wohnbau' } as Project)
@@ -103,8 +105,7 @@ describe('getInboundAddress', () => {
     vi.stubEnv('GRID_INBOUND_MAIL_DOMAIN', '')
     expect(await getInboundAddress(session, 'project-a')).toEqual({ enabled: false, address: null, canRotate: false })
     vi.stubEnv('GRID_INBOUND_MAIL_DOMAIN', 'piloti-post.at')
-    vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', '')
-    expect(await getInboundAddress(session, 'project-a')).toEqual({ enabled: false, address: null, canRotate: false })
+    expect(await getInboundAddress(switchedOff, 'project-a')).toEqual({ enabled: false, address: null, canRotate: false })
     expect(insertAddress).not.toHaveBeenCalled()
   })
 
@@ -129,8 +130,7 @@ describe('rotateInboundAddress', () => {
   })
 
   it('is a 404 while the switch is off', async () => {
-    vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', '')
-    await expect(rotateInboundAddress(session, 'project-a')).rejects.toMatchObject({ status: 404 })
+    await expect(rotateInboundAddress(switchedOff, 'project-a')).rejects.toMatchObject({ status: 404 })
     expect(rotateAddress).not.toHaveBeenCalled()
   })
 })

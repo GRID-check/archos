@@ -16,7 +16,8 @@ import { BadRequestError, ForbiddenError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
-import { isOrgFeatureEnabled, WEB_SEARCH_FLAG } from '@/lib/workos/feature-flags'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
 import { defaultLocale, isLocale, type Locale } from '@/i18n/config'
 
@@ -200,16 +201,19 @@ export async function getOrganizationDisplayName(
   organizationId: string | null | undefined
 ): Promise<string | null> {
   if (!organizationId) return null
-  return getCached(orgNameCacheKey(organizationId), ORG_NAME_CACHE_TTL_MS, async () => {
-    try {
+  // Caught OUTSIDE `getCached`, as `lib/sharing/directory.ts` does: caught inside,
+  // one WorkOS timeout was cached as "no name" for five minutes and every
+  // platform surface labelled that organization by its id.
+  try {
+    return await getCached(orgNameCacheKey(organizationId), ORG_NAME_CACHE_TTL_MS, async () => {
       const { displayName } = await getOrgSettings(organizationId)
       if (displayName) return displayName
       const org = await getWorkOS().organizations.getOrganization(organizationId)
       return org.name || null
-    } catch {
-      return null
-    }
-  })
+    })
+  } catch {
+    return null
+  }
 }
 
 export interface OrgSettingsPatch {
@@ -332,11 +336,11 @@ const webSearchCacheKey = (organizationId: string): string => `websearch:${organ
  *
  *  - Tenant layer: `settings.webSearchEnabled` (default TRUE — web search is
  *    a core capability until an org admin turns it off).
- *  - Platform layer: the WorkOS `web-search` flag, participating only when
- *    `GRID_ENFORCE_FEATURE_FLAGS=true` (the flag must be provisioned first;
- *    see docs/deployment/workos-provisioning.md).
+ *  - Platform layer: the WorkOS `web-search` flag (a rollout, ON for every
+ *    organization; see docs/deployment/workos-provisioning.md).
  *
- * No org (anonymous deployments) = enabled.
+ * No org = enabled: an anonymous deployment, where web search is on as every
+ * rollout is (`lib/authz/feature-flags.ts`).
  */
 export async function isWebSearchEnabledForOrg(
   organizationId: string | null | undefined
@@ -345,11 +349,7 @@ export async function isWebSearchEnabledForOrg(
   return getCached(webSearchCacheKey(organizationId), WEB_SEARCH_CACHE_TTL_MS, async () => {
     const { settings } = await getOrgSettings(organizationId)
     if (settings.webSearchEnabled === false) return false
-    const enforceFlags = (process.env.GRID_ENFORCE_FEATURE_FLAGS ?? '').toLowerCase() === 'true'
-    if (enforceFlags) {
-      return isOrgFeatureEnabled(WEB_SEARCH_FLAG, organizationId, false)
-    }
-    return true
+    return isOrgFeatureEnabled(FEATURE_FLAGS.webSearch, organizationId)
   })
 }
 

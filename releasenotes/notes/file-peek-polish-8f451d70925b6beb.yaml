@@ -12,11 +12,11 @@ improvements:
     shut, a tab stays at the edge and brings the document back at the width you
     chose.
   - >
-    The file preview beside a chat now says when Piloti cannot use the document
-    yet: a file still being indexed, or one whose indexing failed, carries that
-    line under its name instead of looking like a file that is ready. It clears
-    itself when indexing finishes, and a failure links to the detail view.
+    The file preview beside a chat now says when Piloti cannot use a document
+    yet: a file still being prepared, or one whose preparation failed, carries
+    that note under its name instead of looking ready. The note clears itself
+    once preparation finishes, and a failure links to the detail view.
   - >
-    The preview now shows what Piloti made of the document, its indexed summary,
-    under the document itself. A file without an inline preview offers its
-    download instead.
+    The preview now shows the summary Piloti made of the document, under the
+    document itself. A file without an inline preview offers its download
+    instead.

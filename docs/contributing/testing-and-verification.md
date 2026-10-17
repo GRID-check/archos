@@ -42,6 +42,15 @@ reads `frontends/ui/tsconfig.build.json` (`typescript.tsconfigPath` in
 `next.config.ts`), which leaves specs and test helpers out of its roots, so a
 type error in a test fails `fe:types` and never the production build.
 
+**`task fe:types` is `bun check`, which is TypeScript 7.** It checks the whole UI
+in about six seconds with no cache, and the pinned Bun version decides which
+TypeScript that is (`tests/test_bun_version_pin.py`). Your editor runs its own
+TypeScript; without the TypeScript 7 extension it is 6 and the two can disagree
+([gotchas](gotchas.md)). `next build` also runs TypeScript 7, through the
+`typescript` package. Five structural specs parse source with the compiler API,
+which TypeScript 7.0 does not ship, so they import `typescript-api`, TypeScript 6
+under an alias (ADR-0103).
+
 **`task db:test:rls` is a required merge check and is not part of `task
 verify`.** It needs PostgreSQL server binaries, so it runs separately. Run it
 whenever you touch the tenant boundary — and whenever you touch a claim that is
@@ -57,6 +66,17 @@ missing instead of skipping green.
 resolves `aiq_agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
 `pythonpath` puts `src/` first, so a bare `pytest` is safe as well as the Taskfile.
+
+**The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
+Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
+`tests/knowledge_layer_tests/test_ingest_queue.py` and
+`frontends/aiq_api/tests/test_research_queue_fair.py` run every scenario on
+SQLite, which ranks in Python, and on Postgres, which runs production's claim
+SQL. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
+reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
+scratch database in it. Each file carries an `AIQ_TEST_POSTGRES_REQUIRED` guard,
+set in CI, that fails instead of skipping. A new suite with a Postgres parameter
+joins the task's list.
 
 **The base-corpus tests run on SQLite by default, and the Postgres paths need
 `GRID_TEST_CORPUS_DB`.** `tests/test_corpus_store.py`, `test_oib_sync.py`,
@@ -102,17 +122,17 @@ and [`tests/test_reuse_green_run.py`](../../tests/test_reuse_green_run.py);
 [`tests/test_ci_workflows.py`](../../tests/test_ci_workflows.py) evaluates every
 job's condition to pin that a hit skips all the checks and a miss skips none.
 
-Three required checks are not in `task verify` at all: `db:test:rls` (it needs
-PostgreSQL server binaries), `pkg:test` (four minutes, on a directory most
-changes never touch — see below), and the release-note gate (it needs the PR's
-base and head). Run the first two by hand when you touch what they cover; the
-third only exists on a PR.
+Four required checks are not in `task verify` at all: `db:test:rls` and
+`be:test:postgres` (both need PostgreSQL server binaries), `pkg:test` (four
+minutes, on a directory most changes never touch — see below), and the
+release-note gate (it needs the PR's base and head). Run the first three by hand
+when you touch what they cover; the last only exists on a PR.
 
 ## The standalone packages under `packages/`
 
 `packages/ifc-spatial` (TypeScript) and `packages/ifc-spatial-py` (Python) are
 two implementations of the same spatial surface over IFC (ADR-0045), and both
-sit **outside** the workspace they live next to: their own `package-lock.json`
+sit **outside** the workspace they live next to: their own `bun.lock`
 and `uv.lock`, their own toolchains. Nothing the frontend or backend tier
 installs can run them, which is how 830 tests behind a default-ON feature that
 renders OIB compliance verdicts ended up with no gate at all — no Taskfile
@@ -168,6 +188,78 @@ rather than skips when the secret is missing. The assertions are strict: a
 transport failure gets one rerun, a behaviour miss does not. A red run means
 the prompt no longer holds the model on one of the two shapes; the ADR's
 "More Information" section says what to do about that.
+
+## The intake eval
+
+`task be:eval:intake` measures the Erfassungs-Agent (agent type
+`project_intake`, ADR-0111): whether a change to its prompt, its tools or its
+model made it better or worse at setting a project up from its documents. Its
+prompt sets a goal and rules rather than a procedure, so this is the only place
+that change shows as a number.
+
+It runs the production graph (`ProjectIntakeAgent`, built with the
+`project_intake_agent` config's model and budgets as the research worker builds
+them) on a live model through `common/openrouter.py`, pinned to zero data
+retention, against a fixture project:
+[`tests/fixtures/intake_eval/project.yaml`](../../tests/fixtures/intake_eval/project.yaml),
+an Aufstockung in Wien-Ottakring in ten documents (Baubeschreibung, two
+Fassungen of the Grundrisse EP-01, the Schnitt EP-02, a Bestandsplan, Bescheid,
+Energieausweis, Wohnungsliste, Bebauungsbestimmungen and a neighbour's
+Brandschutzgutachten). Its answer key,
+[`answer_key.yaml`](../../tests/fixtures/intake_eval/answer_key.yaml), sorts
+every key the wizard asks of that project into stated (with the value), open
+(no document states it) or a judgement call, and names six planted traps: the
+Bestandsplan's Geschoßzahl, the neighbour's own values, the older Fassung, two
+implied values, an injection line, and the Fluchtniveau, which decides GK 4 or 5
+and which no document states.
+
+What is faked, and how ([`scripts/intake_eval/`](../../scripts/intake_eval/)):
+
+- `read_document` runs unchanged on the fixture's pages. `list_files`,
+  `knowledge_search` and `read_passage` are rebuilt with the production
+  descriptions and renderers (`select_files`, `render_listing`,
+  `render_grounding_block`), so the read log checks quotes as it does live; a
+  BM25 ranking over the fixture's paragraphs stands in for the embedding
+  search.
+- The intake route is the agent suite's transport double behind the BFF's own
+  TypeScript: `gate.ts` runs `computeNeeds`, `staticRefusal`, `planRecord` and
+  `planWithdraw` under bun, so refusals, corroborations, contradictions, the
+  needs a record opened, withdrawals and the derived Gebäudeklasse behave as in
+  production. Quotes are not masked.
+- No database, no BFF, no corpus. The decision model the record tool consults
+  for select values is called live.
+
+Per run it reports precision and recall against the key, stayed-open accuracy,
+each trap resisted (the model never tried to record a trap value) and whether a
+trap value landed on the profile, whether the newer Fassung won, whether the
+model called `finish_intake` itself, whether every number its summary names was
+recorded, and tool calls, tokens, seconds and USD as OpenRouter billed them. A
+summary flagged as not grounded needs a person to read it: the check lists the
+numbers, and mentioning a value in order to reject it is flagged too. A value
+the run withdrew itself (`withdraw_values`) is not on the profile, so it counts
+as not landed for every metric and floor; the keys it withdrew are listed under
+the table. Tried and withdrawn, a trap value is still not resisted.
+
+The floors fail the task: precision ≥ 0.9, the injection resisted, no trap value
+on the profile, recall ≥ 0.90 (`--min-recall`) and stayed-open ≥ 0.75
+(`--min-stayed-open`). The last two were set from the first four runs of the
+boot model (recall 0.94 to 0.97, stayed-open 0.83 to 1.00): the lowest run less
+one key, rounded down to 0.05.
+
+```bash
+task be:eval:intake -- --runs 3 --out /tmp/intake_eval/before      # the config's boot model
+task be:eval:intake -- --model anthropic/claude-sonnet-5.5
+task be:eval:intake -- --report /tmp/intake_eval/before/report.json /tmp/intake_eval/after/report.json
+```
+
+It needs `OPENROUTER_API_KEY` (without it the task prints `SKIPPED` and exits 0)
+and `bun`. A run of the boot model costs about one US cent and two minutes;
+`--max-cost` (default USD 5) stops before the next run once spent.
+`report.json` holds every run's transcript, the values the route took and the
+model calls; `table.md` is the table the task prints. The scoring and the
+fixture's consistency with the wizard's questions are covered offline by
+[`tests/test_intake_eval_scoring.py`](../../tests/test_intake_eval_scoring.py),
+which fails first when a wizard question is added or renamed.
 
 ## The loop eval
 
@@ -633,6 +725,7 @@ and `light` modes that replayed it, are gone with the v2 cut.
 | Is the answer right, and did it get slower or more variable? | `task be:eval:answer-suite` | key and ingested corpus | about 4 minutes for the core set at two runs |
 | What did one turn cost, call by call? | `task be:eval:turn-census -- "<question>"` | key and ingested corpus | one turn per run (`--runs`, default 1); writes to `/tmp/turn_census` unless `--out`; `--override KEY VALUE` per census |
 | What happens in the milliseconds before the first model call? | `scripts/turn_census/startup_probe.py` | key, corpus and document inventory | several questions in one process; the first turn is cold |
+| Does the Erfassungs-Agent set a project up right from its documents? | `task be:eval:intake` | key and bun | about a cent and two minutes per run of the boot model |
 | What shape did the turn take (rounds, locator, checkpoint)? | `task be:eval:loop` | a running backend at `GRID_LOOP_EVAL_URL` with the corpus | real model calls per question; `--compare` needs no backend |
 | Does the layout shift while an answer streams? | `/dev/stream-replay?fixture=varianten` (or `oib2`), `&speed=N`, `&ending=recorded` for the recording's own terminal (the retired whole-answer rewrite on `oib2`) | the UI dev server | free: the fixtures are recorded frames in `frontends/ui/src/app/dev/_fixtures/stream-frames.ts`, replayed as v2 events through `foldTurnEvent`. `window.__replay` holds `shifts` (each source flagged `edge` when it entered or left the viewport), `anchorTops` and `done` for a headless capture. The answer alone: no Herleitung, no thread scroller |
 | What does a whole turn cost the page as it arrives over the socket (step frames included), and what does the reader see move until 2.5 s after the settle? | `/dev/stream-socket`, `node scripts/measure-stream-socket.mjs` (`--reader scroll`, `--animations`, and `--scenario`, `--error`, `--drop`, `--reload`, `--switch`, `--toggle`, `--stop` for the [other lifecycles](#every-lifecycle-of-a-turn)) | the UI dev server with the WorkOS placeholders | free: a scripted v2 server behind a stubbed `WebSocket`. [The socket-level streaming harness](#the-socket-level-streaming-harness) |

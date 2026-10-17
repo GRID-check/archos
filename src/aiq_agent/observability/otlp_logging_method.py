@@ -6,7 +6,7 @@ from pydantic import Field
 
 from aiq_agent.common.log_redaction import PresignedUrlFilter
 from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
-from aiq_agent.observability import metrics as grid_metrics
+from aiq_agent.observability import posthog_exceptions
 from nat.cli.register_workflow import register_logging_method  # noqa: TID251
 from nat.data_models.logging import LoggingBaseConfig
 from nat.plugin_api import Builder
@@ -85,10 +85,12 @@ class _NatBuildFailureItemizationFilter(logging.Filter):
 
 
 class OtlpLoggingMethodConfig(LoggingBaseConfig, name="otelcollector_logs"):
-    """Ships runtime logs to the OTLP collector (Aspire dashboard, ADR-0029).
+    """Ships runtime logs to the OTLP collector (ADR-0029), which forwards them to PostHog and err2issue.
 
-    Also installs the process's metrics provider on the same endpoint
-    (``aiq_agent.observability.metrics``); a blank endpoint installs neither.
+    Logs only. No ``MeterProvider`` is installed anywhere: the ``grid.queue.*``,
+    ``grid.provider.*``, ``grid.http.*`` and ``grid.boot.*`` instruments measure
+    through the OpenTelemetry API and are no-ops until a sink is chosen for them
+    (the Aspire dashboard was their only one).
 
     `endpoint` is Optional because `${OTEL_EXPORTER_OTLP_ENDPOINT:-}`
     interpolates to None (not "") when the observability tier is not deployed.
@@ -103,6 +105,13 @@ class OtlpLoggingMethodConfig(LoggingBaseConfig, name="otelcollector_logs"):
 
 @register_logging_method(config_type=OtlpLoggingMethodConfig)
 async def otlp_logging_method(config: OtlpLoggingMethodConfig, _builder: Builder):
+    # PostHog error tracking (ADR-0100) does not depend on the collector, so it
+    # is installed before the no-endpoint early return below. This is the seam
+    # every NAT process passes (the agent and any worker running a workflow
+    # config); the API plugin installs the same handler for its own start-up
+    # path, and the install is idempotent. No-op while PostHog is off.
+    posthog_exceptions.install()
+
     # Blank endpoint == observability tier not deployed (same capability check
     # as the tracing exporter, ADR-0029): no-op so compose/local pay nothing.
     if not config.endpoint or not config.endpoint.strip():
@@ -139,12 +148,6 @@ async def otlp_logging_method(config: OtlpLoggingMethodConfig, _builder: Builder
     # host added) gets the same treatment, so the guarantee does not depend on
     # which sink a record happens to reach.
     install_presigned_url_scrubbing()
-
-    # Metrics go to the same collector through the same endpoint setting, so the
-    # one place that knows whether the observability tier exists decides both.
-    # Installed for the process, and deliberately not stopped below: see
-    # aiq_agent.observability.metrics.
-    grid_metrics.install_meter_provider(config.endpoint)
 
     yield handler
 

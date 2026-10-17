@@ -7,6 +7,13 @@
  * whether it is met. The prose under it is the audit trail. The list is the
  * backend's (`message-findings.ts`); this renders it and nothing else.
  *
+ * ON A PHONE the table is not a table. Four columns in a 320px column wrapped
+ * "Fundstelle" to five lines and the status off to a sideways scroll, the two
+ * cells a reader came for. Below 30rem of its OWN container (the answer column,
+ * not the viewport) each row becomes a card: the requirement as the title, the
+ * status right under it, then value and Fundstelle each under their column's
+ * name. One DOM, two layouts: the same rows, the same click, the same tests.
+ *
  * Colour never travels alone: every status carries its word, and the count
  * line above the table says the same in numbers. A row with a comment or a
  * reference opens on click; the `[N]` link jumps to the answer's own sources
@@ -70,7 +77,31 @@ export function droppedFrom(previous: Findings | undefined, current: Findings): 
     .filter((requirement) => !now.has(requirement))
 }
 
+/**
+ * The stacked form's classes. Every one is spelled out in full because Tailwind
+ * finds a class by scanning the source for it: a prefix concatenated at runtime
+ * would ship no CSS. The variant is a container query on the matrix's own width
+ * (`@container/matrix`), so a half-width desktop pane stacks as a phone does.
+ */
+const STACKED_CELL =
+  '@max-[30rem]/matrix:flex @max-[30rem]/matrix:items-baseline @max-[30rem]/matrix:gap-3 @max-[30rem]/matrix:py-0 @max-[30rem]/matrix:pr-0 @max-[30rem]/matrix:before:w-[30%] @max-[30rem]/matrix:before:shrink-0 @max-[30rem]/matrix:before:text-xs @max-[30rem]/matrix:before:text-muted-foreground @max-[30rem]/matrix:before:content-[attr(data-label)]'
+
 const OPEN_STATUSES: ReadonlySet<FindingStatus> = new Set(['offen', 'nicht_erfuellt'])
+
+const RequirementText: FC<{ finding: Finding; change: FindingChange }> = ({ finding, change }) => {
+  const t = useTranslations('chat')
+  return (
+    <span>
+      {finding.requirement}
+      {change !== 'same' && (
+        <Chip size="sm" variant="info" className="ml-1.5 align-middle" data-testid="finding-change">
+          {t(`findings.change.${change}`)}
+        </Chip>
+      )}
+      {finding.area && <span className="text-muted-foreground block text-xs font-normal">{finding.area}</span>}
+    </span>
+  )
+}
 
 const FindingRow: FC<{
   finding: Finding
@@ -94,57 +125,65 @@ const FindingRow: FC<{
       <tr
         className={cn(
           'border-border/60 border-t align-top',
+          '@max-[30rem]/matrix:flex @max-[30rem]/matrix:flex-col @max-[30rem]/matrix:gap-1.5 @max-[30rem]/matrix:rounded-xl @max-[30rem]/matrix:border @max-[30rem]/matrix:p-3',
           expandable && 'hover:bg-muted/40 cursor-pointer'
         )}
         onClick={expandable ? () => setOpen((value) => !value) : undefined}
         data-testid="finding-row"
         data-status={finding.status}
       >
-        <td className="text-foreground py-2 pr-3 text-sm">
+        <td className={cn('text-foreground py-2 pr-3 text-sm', '@max-[30rem]/matrix:p-0 @max-[30rem]/matrix:font-medium')}>
           <span className="flex items-start gap-1.5">
-            {expandable && (
-              <ChevronDown
-                className={cn(
-                  'text-muted-foreground mt-0.5 size-3.5 shrink-0 transition-transform duration-quick ease-out motion-reduce:transition-none',
-                  open && 'rotate-180'
-                )}
-                aria-hidden="true"
-              />
+            {expandable ? (
+              // A real control: the row's own click is a pointer convenience, and
+              // a row nobody could reach with a keyboard or a screen reader hid
+              // the comment that says WHY a requirement is met or not.
+              <button
+                type="button"
+                aria-expanded={open}
+                className="focus-visible:ring-ring/60 flex min-h-0 w-full items-start gap-1.5 rounded-xs text-left focus-visible:outline-none focus-visible:ring-2 pointer-coarse:min-h-11 pointer-coarse:items-center"
+              >
+                <ChevronDown
+                  className={cn(
+                    'text-muted-foreground mt-0.5 size-3.5 shrink-0 transition-transform duration-quick ease-out motion-reduce:transition-none pointer-coarse:mt-0',
+                    open && 'rotate-180'
+                  )}
+                  aria-hidden="true"
+                />
+                <RequirementText finding={finding} change={change} />
+              </button>
+            ) : (
+              <RequirementText finding={finding} change={change} />
             )}
-            <span>
-              {finding.requirement}
-              {change !== 'same' && (
-                <Chip
-                  size="sm"
-                  variant="info"
-                  className="ml-1.5 align-middle"
-                  data-testid="finding-change"
-                >
-                  {t(`findings.change.${change}`)}
-                </Chip>
-              )}
-              {finding.area && (
-                <span className="text-muted-foreground block text-xs">{finding.area}</span>
-              )}
-            </span>
           </span>
         </td>
-        <td className="text-foreground py-2 pr-3 text-sm tabular-nums">{finding.value ?? '–'}</td>
-        <td className="text-muted-foreground py-2 pr-3 text-xs">
-          {reference ?? '–'}
-          {anchorPrefix &&
-            finding.citations.map((number) => (
-              <a
-                key={number}
-                href={`#${anchorPrefix}${number}`}
-                className="text-brand ml-1 underline decoration-dotted underline-offset-2"
-                aria-label={t('answerSources.sourceNumber', { number })}
-              >
-                [{number}]
-              </a>
-            ))}
+        <td
+          data-label={t('findings.columns.value')}
+          className={cn('text-foreground py-2 pr-3 text-sm tabular-nums', STACKED_CELL, '@max-[30rem]/matrix:order-2')}
+        >
+          {finding.value ?? '–'}
         </td>
-        <td className="py-2 text-xs">
+        <td
+          data-label={t('findings.columns.reference')}
+          className={cn('text-muted-foreground py-2 pr-3 text-xs', STACKED_CELL, '@max-[30rem]/matrix:order-3')}
+        >
+          <span className="min-w-0">
+            {reference ?? '–'}
+            {anchorPrefix &&
+              finding.citations.map((number) => (
+                <a
+                  key={number}
+                  href={`#${anchorPrefix}${number}`}
+                  onClick={(event) => event.stopPropagation()}
+                  className="text-brand ml-1 inline-flex items-center justify-center underline decoration-dotted underline-offset-2 pointer-coarse:min-h-11 pointer-coarse:min-w-8"
+                  aria-label={t('answerSources.sourceNumber', { number })}
+                >
+                  [{number}]
+                </a>
+              ))}
+          </span>
+        </td>
+        <td className={cn('py-2 text-xs', '@max-[30rem]/matrix:order-1 @max-[30rem]/matrix:p-0')}>
           <span className="flex flex-wrap items-center gap-1">
             {finding.status && Icon && (
               <Chip size="sm" variant={STATUS_VARIANT[finding.status]}>
@@ -165,7 +204,7 @@ const FindingRow: FC<{
                   event.stopPropagation()
                   void onCommission?.(finding).then((ok) => setCommissioned(ok))
                 }}
-                className="rounded-xs text-brand focus-visible:ring-ring/60 underline decoration-dotted underline-offset-2 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2"
+                className="rounded-xs text-brand focus-visible:ring-ring/60 underline decoration-dotted underline-offset-2 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-2"
               >
                 {t('findings.clarify')}
               </button>
@@ -179,8 +218,8 @@ const FindingRow: FC<{
         </td>
       </tr>
       {open && finding.comment && (
-        <tr className="bg-muted/30" data-testid="finding-detail">
-          <td colSpan={4} className="text-muted-foreground px-3 py-2 text-sm">
+        <tr className={cn('bg-muted/30', '@max-[30rem]/matrix:block @max-[30rem]/matrix:-mt-1 @max-[30rem]/matrix:rounded-xl')} data-testid="finding-detail">
+          <td colSpan={4} className={cn('text-muted-foreground px-3 py-2 text-sm', '@max-[30rem]/matrix:block')}>
             {finding.comment}
           </td>
         </tr>
@@ -213,7 +252,7 @@ export const FindingsMatrix: FC<{
     .join(' · ')
   return (
     <section
-      className="flex flex-col gap-2"
+      className="@container/matrix flex flex-col gap-2"
       data-testid="findings-matrix"
       aria-label={label}
       data-judged={judged ? 'true' : 'false'}
@@ -223,8 +262,8 @@ export const FindingsMatrix: FC<{
         {judged && <span className="text-muted-foreground text-xs">{summary}</span>}
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left">
-          <thead>
+        <table className={cn('w-full border-collapse text-left', '@max-[30rem]/matrix:block')}>
+          <thead className={'@max-[30rem]/matrix:sr-only'}>
             <tr className="text-muted-foreground text-xs">
               <th className="pb-1 pr-3 font-medium">{t('findings.columns.requirement')}</th>
               <th className="pb-1 pr-3 font-medium">{t('findings.columns.value')}</th>
@@ -234,7 +273,7 @@ export const FindingsMatrix: FC<{
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={'@max-[30rem]/matrix:flex @max-[30rem]/matrix:flex-col @max-[30rem]/matrix:gap-2'}>
             {findings.items.map((finding, index) => (
               <FindingRow
                 key={`${index}-${finding.requirement}`}

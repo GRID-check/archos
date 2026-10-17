@@ -23,6 +23,8 @@ const row = (id: string, status: string): FileItem => ({
   chunkCount: null,
   contentTypes: null,
   tags: null,
+  topics: null,
+  capture: null,
 })
 
 const json = (body: unknown, status = 200) =>
@@ -113,5 +115,21 @@ describe('trackedPatchFromStatus', () => {
     expect(trackedPatchFromStatus('failed', 'Kaputt')).toEqual({ status: 'failed', errorMessage: 'Kaputt' })
     expect(trackedPatchFromStatus('processing')).toBeNull()
     expect(trackedPatchFromStatus('something-new')).toBeNull()
+  })
+
+  it('settles a quarantined document as held, with its verdict, never as citable', () => {
+    const verdict = 'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","pages":[2]}],"checked":"full"}'
+    expect(trackedPatchFromStatus('quarantined', verdict)).toEqual({ status: 'held', errorMessage: verdict })
+  })
+
+  it.each(['uploaded', 'stored'])('settles a never-read %s document as stored, never as citable', (status) => {
+    expect(trackedPatchFromStatus(status)).toEqual({ status: 'stored', progress: 100 })
+  })
+
+  it('settles every spelling of a failure as failed', () => {
+    expect(trackedPatchFromStatus('error', 'Kaputt')).toEqual({ status: 'failed', errorMessage: 'Kaputt' })
+    // No reason in the read: the patch leaves the row's own reason alone.
+    expect(trackedPatchFromStatus('quarantined')).toEqual({ status: 'held' })
+    expect(trackedPatchFromStatus('failed')).toEqual({ status: 'failed' })
   })
 })

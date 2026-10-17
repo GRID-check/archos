@@ -1,9 +1,9 @@
 ---
 fixes:
   - >
-    Uploading a file with the same name again, such as a corrected plan, now
-    replaces the existing one instead of creating a second copy that Piloti
-    could no longer find. Storage is no longer counted twice.
+    Uploading a file with the same name again, such as a corrected drawing,
+    now replaces the existing one instead of creating a second copy that
+    Piloti could no longer find. Storage is no longer counted twice for it.
   - >
     The replaced document keeps its identity: references from answers, the link
     in the chat and its folder stay intact.

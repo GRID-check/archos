@@ -69,8 +69,6 @@ describe('POST /api/internal/bim/source', () => {
     vi.clearAllMocks()
     process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-    delete process.env.GRID_IFC_MODELS_ENABLED
     vi.mocked(listBimModels).mockResolvedValue([NEW, OLD])
     vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
     vi.mocked(findDocumentInOrg).mockResolvedValue({
@@ -124,17 +122,7 @@ describe('POST /api/internal/bim/source', () => {
       // The same gate as the query route, evaluated the same way. A second tool
       // that answered after the flag was revoked would make withdrawing the
       // feature meaningless.
-      process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
       vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
-
-      const response = await post({ organizationId: 'org-1', projectId: PROJECT, modelName: 'V3' })
-
-      expect(response.status).toBe(403)
-      expect(getSignedUrl).not.toHaveBeenCalled()
-    })
-
-    it('refuses when the deployment withdrew the feature', async () => {
-      process.env.GRID_IFC_MODELS_ENABLED = 'false'
 
       const response = await post({ organizationId: 'org-1', projectId: PROJECT, modelName: 'V3' })
 

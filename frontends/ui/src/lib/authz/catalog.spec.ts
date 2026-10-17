@@ -160,6 +160,14 @@ describe('authorization catalog', () => {
     expect(unexposed).toEqual([])
   })
 
+  it('platform-tier role slugs carry the org- prefix WorkOS requires', () => {
+    // WorkOS rejects an organization-level role whose slug lacks `org-`
+    // ("Slug must be prefixed with 'org-'"). The catalog Job then fails, and
+    // with it every deploy. Caught here, before it reaches an environment.
+    const unprefixed = ROLES.filter((role) => role.tier === 'platform' && !role.slug.startsWith('org-'))
+    expect(unprefixed.map((role) => role.slug)).toEqual([])
+  })
+
   it('Admin holds the org-wide project bypass, so existing admins keep every project', () => {
     // The bypass moved from the role slug `admin` to the permission
     // `org:projects:administer`. `hasPermission`'s bounded implication reads
@@ -192,7 +200,7 @@ describe('authorization catalog', () => {
     // of holding the operator permission.
 
     it('the analyst role holds the observability permission and nothing else', () => {
-      const analyst = findRoleSpec('platform-observability-analyst')
+      const analyst = findRoleSpec('org-platform-observability-analyst')
       expect(analyst).toMatchObject({ tier: 'platform', scope: 'platform-org' })
       expect(analyst!.permissions).toEqual(['platform:observability:view'])
     })
@@ -210,7 +218,7 @@ describe('authorization catalog', () => {
       const holders = ROLES.filter((role) => role.permissions.includes('platform:observability:view'))
       expect(holders.map((role) => role.scope)).toEqual(holders.map(() => 'platform-org'))
       expect(holders.map((role) => role.slug).sort()).toEqual(
-        ['org-platform-owner', 'org-platform-support', 'platform-observability-analyst'].sort()
+        ['org-platform-owner', 'org-platform-support', 'org-platform-observability-analyst'].sort()
       )
     })
   })

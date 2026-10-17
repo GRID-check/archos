@@ -1,10 +1,9 @@
 ---
 improvements:
   - >
-    The research steps of an answer now cost less and wait less, because the
-    unchanging part of every request is cached at the model provider. The answer
+    The research steps behind an answer now cost less and wait less. The answer
     itself does not change.
 fixes:
   - >
-    Usage reports now list cached input tokens separately, so usage and cost no
-    longer look higher than they were.
+    Usage reports now show reused input separately, so usage and cost no longer
+    look higher than they were.

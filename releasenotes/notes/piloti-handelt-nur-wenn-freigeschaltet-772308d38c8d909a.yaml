@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    Your office decides whether Piloti may change annotations when you ask it
+    to. Until it is switched on for your organization, Piloti only proposes:
+    an annotation you ask for arrives as a suggestion you take over, and a
+    change or deletion is left for you to make in the document.

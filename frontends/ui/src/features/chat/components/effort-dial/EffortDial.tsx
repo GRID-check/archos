@@ -50,11 +50,9 @@ import {
 import {
   AnimatePresence,
   motion,
-  motionBase,
-  motionInstant,
-  motionQuick,
   springGlide,
 } from '@/components/motion'
+import { HeightArrival } from '@/components/motion/height-arrival'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -166,7 +164,6 @@ export const EffortDial: FC<EffortDialProps> = ({
     void loadOrgDefault()
   }, [])
 
-  const reducedMotion = useReducedMotionConfig()
   const { side, observeSide, resetSide } = useStickySide()
   const index = CHAT_EFFORTS.indexOf(effort)
   const label = t(`effortDial.levels.${effort}`)
@@ -283,20 +280,12 @@ export const EffortDial: FC<EffortDialProps> = ({
 
         <AnimatePresence initial={false}>
           {isMaximum && (
-            <motion.div
+            // The shared arrival primitive: the warning arrives below the reading
+            // point and takes its height on the app's tween, reduced motion in one
+            // frame. It stays last on a dial that opens above its chip.
+            <HeightArrival
               key="maximum-warning"
-              className="overflow-hidden group-data-[side=bottom]/effort:order-last"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{
-                height: 'auto',
-                opacity: 1,
-                transition: reducedMotion ? motionInstant : motionBase,
-              }}
-              exit={{
-                height: 0,
-                opacity: 0,
-                transition: reducedMotion ? motionInstant : motionQuick,
-              }}
+              className="group-data-[side=bottom]/effort:order-last"
             >
               <Alert
                 variant="warning"
@@ -308,7 +297,7 @@ export const EffortDial: FC<EffortDialProps> = ({
                   {t('effortDial.maximumWarning')}
                 </AlertDescription>
               </Alert>
-            </motion.div>
+            </HeightArrival>
           )}
         </AnimatePresence>
 

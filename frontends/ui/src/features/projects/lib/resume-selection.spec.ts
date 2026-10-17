@@ -97,3 +97,33 @@ describe('splitForResume', () => {
     expect(projectTouchedAt(project('a', { createdAt: 'nonsense' }))).toBe(0)
   })
 })
+
+describe('splitForResume with a railable rule (ADR-0098)', () => {
+  const parked = new Set(['paused', 'closed'])
+  const railable = (candidate: ResumeCandidate): boolean => !parked.has(candidate.id)
+
+  test('keeps a project off the rail that may not take a slot, however recent, and lists it below', () => {
+    const { resume, rest, basis } = splitForResume(
+      [project('paused'), project('closed'), project('a'), project('b')],
+      { paused: '2026-08-03T09:00:00Z', closed: '2026-08-02T09:00:00Z', a: '2026-08-01T09:00:00Z' },
+      RESUME_SLOTS,
+      railable
+    )
+    expect(resume.map((p) => p.id)).toEqual(['a', 'b'])
+    // The list keeps the same recency order, the viewer's own work first.
+    expect(rest.map((p) => p.id)).toEqual(['paused', 'closed'])
+    expect(basis).toBe('activity')
+  })
+
+  test('says "your projects", not "continue", when the only work was in projects off the rail', () => {
+    const { resume, basis } = splitForResume([project('paused'), project('a')], { paused: '2026-08-03T09:00:00Z' }, RESUME_SLOTS, railable)
+    expect(resume.map((p) => p.id)).toEqual(['a'])
+    expect(basis).toBe('fallback')
+  })
+
+  test('leaves the rail empty when nothing may take a slot', () => {
+    const { resume, rest } = splitForResume([project('paused'), project('closed')], {}, RESUME_SLOTS, railable)
+    expect(resume).toEqual([])
+    expect(rest).toHaveLength(2)
+  })
+})

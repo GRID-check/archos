@@ -45,6 +45,7 @@ vi.mock('./repository', () => ({
   setDocumentBackgroundJob: vi.fn().mockResolvedValue(undefined),
   markDocumentIngestFailed: vi.fn().mockResolvedValue(undefined),
   setDocumentIngestJob: vi.fn().mockResolvedValue(undefined),
+  markDocumentNotIndexed: vi.fn().mockResolvedValue(undefined),
   findDocumentInOrg: vi.fn(),
   findFolderPathInProject: vi.fn(),
   findStorageKeyByCollectionAndFilename: vi.fn(),
@@ -82,6 +83,7 @@ import {
   markDocumentProcessing,
   setDocumentBackgroundJob,
   setDocumentIngestJob,
+  markDocumentNotIndexed,
 } from './repository'
 import { makeDocument } from '@/test-utils/db-fixtures'
 import { internalRead } from '@/lib/documents/document-reader'
@@ -191,6 +193,22 @@ describe('dispatchDocument', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(runBimExtraction).not.toHaveBeenCalled()
     expect(markDocumentProcessing).not.toHaveBeenCalled()
+    expect(setDocumentIngestJob).not.toHaveBeenCalled()
+  })
+
+  /**
+   * An archived document answers nothing: archiving purged its chunks. A
+   * same-name re-upload still versions it, and dispatching those bytes put a
+   * document nobody sees in the listing back into the index.
+   */
+  it.each(['report.pdf', 'haus.ifc'])('reads nothing for an archived %s, and says so on the row', async (name) => {
+    vi.mocked(findDocumentInOrg).mockResolvedValue(makeDocument({ authoredBy: 'user', lifecycle: 'archived' }))
+
+    await expect(dispatchDocument(input(name))).resolves.toEqual({ jobId: null, status: 'stored' })
+
+    expect(markDocumentNotIndexed).toHaveBeenCalledWith('doc-1', 'org-1')
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(runBimExtraction).not.toHaveBeenCalled()
     expect(setDocumentIngestJob).not.toHaveBeenCalled()
   })
 
@@ -500,6 +518,21 @@ describe('the ingest dispatch sends the document folder path', () => {
     expect(body).not.toHaveProperty('approved_by')
   })
 
+  it('sends the older file’s name when the upload was filed as its new Fassung (ADR-0099)', async () => {
+    // The backend twin is `frontends/aiq_api/tests/test_ingest_fassung_of.py`: the same `fassung_of` key.
+    await dispatchDocument({ ...input('Grundriss_EG_Index_C.pdf'), fassungOf: 'Grundriss_EG_Index_B.pdf' })
+
+    expect(bodyOf(0).fassung_of).toBe('Grundriss_EG_Index_B.pdf')
+  })
+
+  it('sends no fassung_of at all for an upload nobody filed as a Fassung', async () => {
+    await dispatchDocument(input('plan.pdf'))
+    await dispatchDocument({ ...input('plan.pdf'), fassungOf: null })
+
+    expect(bodyOf(0)).not.toHaveProperty('fassung_of')
+    expect(bodyOf(1)).not.toHaveProperty('fassung_of')
+  })
+
   it('sends null for a document at the project root', async () => {
     // Explicitly null rather than omitted: the backend reads absent and null the
     // same way, and stating it keeps the body shape stable across shelves.
@@ -609,6 +642,19 @@ describe('an office file is converted, by a job, before it is ingested', () => {
       .mocked(getSignedUrl)
       .mock.calls.find(([, command]) => (command as { input: { Key: string } }).input.Key === RENDITION_KEY)
     expect(renditionRead?.[2]).toEqual({ expiresIn: 86_400 })
+  })
+
+  it('carries the Fassung a person chose through the conversion to the ingest (ADR-0099)', async () => {
+    await dispatchDocument({ ...input('Baubeschreibung.docx'), fassungOf: 'Baubeschreibung_Index_A.docx' })
+
+    expect(queuedJob()).toMatchObject({
+      kind: 'office_rendition',
+      payload: expect.objectContaining({ fassungOf: 'Baubeschreibung_Index_A.docx' }),
+    })
+    await runQueuedJob()
+    await ingested()
+
+    expect(bodyOf(0).fassung_of).toBe('Baubeschreibung_Index_A.docx')
   })
 
   it('keeps a workbook on its own extractor: preview_ref only', async () => {

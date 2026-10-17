@@ -61,18 +61,21 @@
 
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
-import ts from 'typescript'
+import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
 import { de } from '@/i18n/dictionaries/de'
 import { en } from '@/i18n/dictionaries/en'
 import { getByPath } from '@/i18n/translate'
 import {
+  DOCUMENT_STATUSES,
   DOCUMENT_STATUS_FACTS,
   IN_FLIGHT_DOCUMENT_STATUSES,
-  KNOWN_DOCUMENT_STATUSES,
+  columnStatuses,
   documentStatusFacts,
+  isDocumentStatus,
   isKnownDocumentStatus,
 } from './document-status'
+import { SURFACE_STATES, SURFACE_STATE_LABEL_KEYS, surfaceStateOf } from './surface-state'
 
 /**
  * The modules that WRITE `documents.status` — the documents domain and the two
@@ -143,6 +146,8 @@ const OPAQUE_STATUS_WRITES: Readonly<Record<string, string>> = {
   // Reads, not writes: a drizzle SELECT projection naming the column.
   'src/lib/documents/repository.ts: documents.status': 'a SELECT projection, not a write',
   'src/lib/session-documents/repository.ts: documents.status': 'a SELECT projection, not a write',
+  'src/lib/documents/name-probe-types.ts: z.string()':
+    "the name probe's wire schema, carrying the status the probe read to the upload planner; never a write",
   'src/lib/documents/placement-repository.ts: documents.status':
     "a SELECT and RETURNING projection, not a write; its one write is the literal 'processing'",
   // The reconciler's own plumbing: an HTTP status, a backend file state, and
@@ -166,6 +171,11 @@ const OPAQUE_STATUS_WRITES: Readonly<Record<string, string>> = {
   // The wire projection: the row's own status copied into the JSON the browser
   // reads. It writes a response body, never the column.
   'src/lib/documents/list-projection.ts: row.status': 'a row being serialized, not a write',
+  // The retry rule's refusal (migration 0134): the failed row's status echoed
+  // in the 409 payload, returned to the caller. Nothing is written.
+  'src/lib/documents/service.ts: failure.status': 'the refused row echoed in the 409, returned to the caller',
+  // The shelf listing handing a row to the retry rule (`canRetryRow`), a read.
+  'src/lib/documents/shelf-listing.ts: row.status': 'a row handed to the retry rule, not a write',
   // Shorthand `{ status }` in a service's RETURN value — the dispatcher's job
   // status on its way back to the caller. Shorthand is worth listing separately
   // from the rest: the name is all there is, so even the expression a reader
@@ -330,6 +340,16 @@ describe('every status a writer emits is declared', () => {
     ).toEqual([])
   })
 
+  it('writes only what the column may hold', () => {
+    // Stricter than "declared": the column's CHECK (migration 0135) refuses
+    // every value outside DOCUMENT_STATUSES, so a writer emitting one of the
+    // outside spellings the badge still renders would fail in production.
+    const refused = [...new Set(literals.filter((write) => !isDocumentStatus(write.value)))]
+      .map((write) => `${write.value}  (${write.where})`)
+      .sort()
+    expect(refused, 'documents.status allows only DOCUMENT_STATUSES (CHECK documents_status_known).').toEqual([])
+  })
+
   it('names every write it could not read', () => {
     // The honest half. A status handed a variable, a property, a call or an
     // interpolated template is unreadable by any scanner, so each one is listed
@@ -484,7 +504,7 @@ describe('uploaded is terminal and neutral', () => {
     // for documents no retrieval path could cite.
     expect(DOCUMENT_STATUS_FACTS.uploaded.variant).toBe('secondary')
     expect(DOCUMENT_STATUS_FACTS.uploaded.phase).toBe('terminal')
-    expect(DOCUMENT_STATUS_FACTS.uploaded.labelKey).toBe('status.stored')
+    expect(surfaceStateOf('uploaded')).toBe('stored')
     expect(IN_FLIGHT_DOCUMENT_STATUSES.has('uploaded')).toBe(false)
   })
 })
@@ -506,13 +526,35 @@ describe('the declaration answers about values, not about prototypes', () => {
   })
 })
 
-describe('every declared status has a label in both locales', () => {
-  // `documentStatusLabel` calls `t(facts.labelKey)` with a value from the data
-  // above, so the key never appears as a literal in a component and the
-  // key-coverage scanner cannot see it. This is that check, for this table.
-  it.each(KNOWN_DOCUMENT_STATUSES)('%s', (status) => {
-    const key = DOCUMENT_STATUS_FACTS[status].labelKey
+describe('every surface state has a label in both locales', () => {
+  // `surfaceStateLabel` builds the key from the state, so the key never
+  // appears as a literal in a component and the key-coverage scanner cannot
+  // see it. This is that check, for every state a declared status reaches.
+  it.each(SURFACE_STATES)('%s', (state) => {
+    const key = SURFACE_STATE_LABEL_KEYS[state]
     expect(typeof getByPath(en.files, key), `en.files.${key}`).toBe('string')
     expect(typeof getByPath(de.files, key), `de.files.${key}`).toBe('string')
+  })
+})
+
+describe('the column vocabulary (migration 0135)', () => {
+  it('renders every value the column may hold', () => {
+    for (const status of DOCUMENT_STATUSES) expect(isKnownDocumentStatus(status), status).toBe(true)
+  })
+
+  it('is the set the CHECK lists, in the migration and in the schema', () => {
+    // Three spellings of one set: this module, the migration's CHECK and the
+    // drizzle declaration. A value added to one and not the others either fails
+    // writes in production or lets an undeclared one in.
+    const migration = readFileSync(join(process.cwd(), 'drizzle/0135_document_status_closed.sql'), 'utf8')
+    const check = migration.match(/CHECK \("status" IN \(([^)]*)\)\)/)
+    expect(check, 'the CHECK in 0135').not.toBeNull()
+    const listed = [...(check?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((match) => match[1])
+    expect(listed.sort()).toEqual([...DOCUMENT_STATUSES].sort())
+  })
+
+  it('narrows an outside set to the column, for a SQL filter', () => {
+    expect(columnStatuses(IN_FLIGHT_DOCUMENT_STATUSES).sort()).toEqual(['pending', 'processing'])
+    expect(columnStatuses(['completed', 'ready', 'success'])).toEqual(['completed'])
   })
 })

@@ -125,6 +125,46 @@ export const INBOX_ITEM_TYPES = [
   'mail_import.completed',
   'mail_import.failed',
   /**
+   * Informational, operational tier: a newer Fassung of a document the
+   * recipient follows exists (CONTEXT.md „Fassung", ADR-0054, ADR-0099) —
+   * either a person confirmed that another document replaces it, or a new
+   * version was published under its name. Addressed to the people assigned to
+   * the OLDER document and to its uploader, never to the person who made the
+   * change, and only to those who may see the newer document. The row points at
+   * the NEWER document, so the read-time access check is the one that matters.
+   */
+  'document.new_fassung',
+  /**
+   * Informational, operational tier: a turn Piloti ran on an Anmerkung ended
+   * for the person whose act woke it (ADR-0106): the mark they delegated is
+   * done, or Piloti answered where they mentioned it. Anchored on the mark, so
+   * the row opens the Prüfansicht at it.
+   */
+  'piloti.work_done',
+  /** Informational, operational tier: Piloti could not finish a woken turn on an Anmerkung (a delegation, a mention or an answer to its question); a stopped turn tells nobody. */
+  'piloti.work_failed',
+  /**
+   * Actionable, operational tier: Piloti asked a question on an Anmerkung and
+   * waits for a person (ADR-0106): the mark's responsible person, else the
+   * person its turn acted for. Anchored on the mark. Resolved when that person
+   * answers in the thread, and for everyone when the mark is closed.
+   */
+  'piloti.asks_you',
+  /**
+   * Actionable, operational tier: a stored proposal waits for the person it was
+   * made for (ADR-0105). Anchored on the proposal; resolved when it is applied
+   * or dismissed, by whoever decides it.
+   */
+  'piloti.proposal_waiting',
+  /**
+   * Actionable, operational tier: a reading of the project's documents has
+   * finished and its suggestions wait for review (ADR-0111). Addressed to the
+   * person whose upload or click started it, pointing at the project and
+   * anchored on its intake, so a second reading folds into the same row.
+   * Resolved when somebody finishes the review.
+   */
+  'piloti.intake_ready',
+  /**
    * Informational, operational: the files of a mail the reader sent to a
    * project's inbox address were filed (ADR-0075). The inbox is the sender's
    * only feedback channel — Piloti sends no mail in v1 — so the row names how

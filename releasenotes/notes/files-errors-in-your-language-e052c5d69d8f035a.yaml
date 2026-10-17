@@ -1,14 +1,14 @@
 ---
 fixes:
   - >
-    Assigning someone to a file now says when it did not work, names the person
-    and offers to try again. A refused assignment used to change nothing on
-    screen, which read as success.
+    Assigning someone to a file now says when it did not work, names the
+    person and offers to try again. A refused assignment used to change
+    nothing on screen, which read as success.
   - >
-    The file list waits in the shape it will arrive in. Loading and searching
-    drew card placeholders even when you were in the detail view, so the list
-    appeared only after a flash of tiles that were never going to be there.
+    The file list keeps its final layout while it loads. Before, loading and
+    searching showed placeholder cards even in the detail view, so the list
+    appeared only after a flash of cards that were never going to be there.
   - >
-    Upload errors are now written in the language you use, as one sentence: too
-    large, wrong type, already added, or no room left. A rejected file used to
-    put an English clause into a German message.
+    Upload errors are now written in the language you use, as one sentence:
+    too large, wrong type, already added, or no room left. A rejected file
+    used to put an English clause into a German message.

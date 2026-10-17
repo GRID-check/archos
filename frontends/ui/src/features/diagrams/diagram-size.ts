@@ -16,6 +16,12 @@
  * sideways beyond that, inside the figure's `overflow-x-auto` frame.
  */
 
+/**
+ * The frame's own width around a drawing: `border` (1px a side) and `p-3`
+ * (12px a side) in `mermaid-diagram.tsx`. The two change together.
+ */
+export const FRAME_CHROME_PX = 26
+
 /** The smallest scale a diagram is shown at before it scrolls instead. */
 export const MIN_SCALE = 0.75
 
@@ -37,5 +43,13 @@ export function diagramFrameStyle(svg: string): { width: string; maxWidth: strin
   const width = viewBoxWidth(svg)
   if (width === null) return undefined
   const rounded = Math.ceil(width)
-  return { width: `${rounded}px`, maxWidth: `max(100%, ${Math.ceil(rounded * MIN_SCALE)}px)` }
+  return {
+    width: `${rounded}px`,
+    // The column is the FIGURE's width (`@container` on it), less the frame's
+    // own border and padding. A percentage here resolved against the scroller's
+    // inner box, which is `w-fit` and so as wide as the drawing: it never shrank
+    // anything, and a 360px chart in a 320px column was cut off at the edge
+    // instead of fitted.
+    maxWidth: `max(calc(100cqw - ${FRAME_CHROME_PX}px), ${Math.ceil(rounded * MIN_SCALE)}px)`,
+  }
 }

@@ -20,8 +20,10 @@ from jsonschema import Draft202012Validator
 from langchain_core.messages import ToolMessage
 
 from aiq_agent import project_context
+from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.citation_verification import _parse_knowledge_layer
 from aiq_agent.common.citation_verification import extract_sources_from_tool_result
+from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.knowledge import restricted_use
@@ -785,6 +787,49 @@ class TestFindAndBrief:
         assert "OIB" not in listing
         assert "OIB" not in read
         assert "Keine bestätigten Eckdaten." in read
+        assert extract_sources_from_tool_result("project_lookup", read) == []
+
+    # An answer that states a project's facts from its brief cited it, and the
+    # brief had no citation key: the verifier stripped the citation, and the
+    # reader was told a source had been removed as unverifiable from the one
+    # claim the office's own record backed.
+    async def test_a_brief_is_one_citable_source_and_an_answer_citing_it_keeps_the_citation(
+        self, monkeypatch, calls, turn, schema
+    ) -> None:
+        body = {
+            "project": _listed_project(status="active", period={"start": "2026-08-03", "end": None}),
+            "summary": "Zubau eines fünfgeschoßigen Wohngebäudes in Holzbauweise.",
+            "facts": "confirmed:\n- bauweise@bw1=holzbau",
+        }
+        _validator(schema, "CrossProjectBriefResponse").validate(body)
+        _answering(monkeypatch, calls, body)
+
+        result = await lookup.run_project_lookup("brief", project_id=OTHER)
+        sources = extract_sources_from_tool_result("project_lookup", result)
+        registry = SourceRegistry()
+        for source in sources:
+            registry.add(source)
+        answer = "Wohnbau Graz wird in Holzbauweise errichtet [1].\n\n## Quellen\n- [1] Projektdaten (Wohnbau Graz)\n"
+        verification = verify_citations(answer, registry)
+
+        assert [s.citation_key for s in sources] == ["Projektdaten (Wohnbau Graz)"]
+        assert (sources[0].project_id, sources[0].collection) == (OTHER, OTHER_COLLECTION)
+        assert "bauweise@bw1=holzbau" in result
+        assert "Zusammenfassung: Zubau" in result
+        assert "laufende andere Projekte" in result
+        assert verification.removed_citations == []
+        assert "[1]" in verification.verified_report
+
+    async def test_the_text_reader_reads_a_replayed_brief_back_as_the_record_does(
+        self, monkeypatch, calls, turn
+    ) -> None:
+        body = {"project": _listed_project(), "summary": None, "facts": "confirmed:\n- x=y"}
+        _answering(monkeypatch, calls, body)
+        result = await lookup.run_project_lookup("brief", project_id=OTHER)
+
+        replayed = _parse_knowledge_layer(result, "project_lookup")
+
+        assert [s.citation_key for s in replayed] == ["Projektdaten (Wohnbau Graz)"]
 
 
 class TestTheWire:

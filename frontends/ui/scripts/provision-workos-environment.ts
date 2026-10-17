@@ -46,8 +46,8 @@
 
 import { NotFoundException, WorkOS } from '@workos-inc/node'
 
-import { FEATURE_FLAGS } from '../src/lib/authz/feature-flags'
-import { diffSets, parseFlagTargets, splitList } from './provision-workos-env-plan'
+import { REGISTRY_FLAG_SLUGS } from '../src/lib/authz/feature-flags'
+import { diffSets, parseFlagTargets, planFlagCheck, splitList } from './provision-workos-env-plan'
 
 const PLATFORM_ORG_EXTERNAL_ID = process.env.GRID_PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
 const PLATFORM_ROLE_SLUG = 'org-platform-owner'
@@ -421,7 +421,7 @@ async function reconcileConnectApp(): Promise<void> {
     const created = await workos.connect.createApplication({
       name: appName,
       applicationType: 'oauth',
-      description: 'GRID observability stack (Aspire dashboard) sign-in.',
+      description: 'GRID platform surfaces (Langfuse) sign-in.',
       isFirstParty: true,
       usesPkce: false,
       redirectUris: uris.map((uri) => ({ uri })),
@@ -439,24 +439,20 @@ async function reconcileConnectApp(): Promise<void> {
 async function reconcileFlags(): Promise<void> {
   console.log('\nFeature flags')
 
-  const existingSlugs = new Set(
-    (await listAll((after) => workos.featureFlags.listFeatureFlags({ after }))).map((flag) => flag.slug)
+  const existing = (await listAll((after) => workos.featureFlags.listFeatureFlags({ after }))).map(
+    (flag) => flag.slug
   )
-  for (const slug of Object.values(FEATURE_FLAGS)) {
-    if (existingSlugs.has(slug)) {
-      note(`ok       ${slug}`)
-      continue
-    }
+  const existingSlugs = new Set(existing)
+  // The same verdict `task fe:provision:flags` reaches, from the same helper.
+  const plan = planFlagCheck(REGISTRY_FLAG_SLUGS, existing)
+  for (const slug of plan.present) note(`ok       ${slug}`)
+  for (const slug of plan.missing) {
     // No SDK binding for flag creation — reporting is all this script can do.
     manual.push(`create feature flag "${slug}" in the dashboard (creation has no SDK binding)`)
     drift.push(`feature flag missing in WorkOS: ${slug}`)
     note(`MISSING  ${slug} — MANUAL (dashboard-only creation)`)
   }
-  for (const slug of existingSlugs) {
-    if (!Object.values(FEATURE_FLAGS).includes(slug as (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS])) {
-      note(`UNKNOWN  ${slug} — in WorkOS, absent from the registry`)
-    }
-  }
+  for (const slug of plan.unknown) note(`UNKNOWN  ${slug} — in WorkOS, absent from the registry`)
 
   const targets = parseFlagTargets(process.env.WORKOS_FLAG_TARGETS_JSON)
   if (!targets.ok) {
@@ -534,6 +530,7 @@ async function main(): Promise<void> {
     'create FGA resource types organization/project/skill if absent (dashboard-only)',
     'toggle AuthKit "Allow sign-ups" OFF (dashboard-only)',
     'confirm multipleRolesEnabled matches environment policy (dashboard-only)',
+    'confirm the JWT template adds name, email and organization_name (dashboard-only; content in docs/deployment/workos-provisioning.md)',
     'arrange customer-managed KEK with WorkOS support (enterprise tenants only)',
     `verify the "${connectAppName()}" Connect application holds platform:organizations:view under Scopes`,
   )

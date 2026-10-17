@@ -1,6 +1,6 @@
-# Grid OIB — Kubernetes deployment (Pulumi)
+# Piloti — Kubernetes deployment (Pulumi)
 
-TypeScript Pulumi program that deploys the entire Grid OIB stack to a Kubernetes
+TypeScript Pulumi program that deploys the entire Piloti stack to a Kubernetes
 cluster: the `aiq-agent` backend, the Next.js frontend/BFF, the purger and
 skill-scheduler workers, plus CloudNativePG Postgres, a Dragonfly cache, and
 SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic Let's Encrypt TLS.
@@ -12,7 +12,7 @@ SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic L
 
 | Layer | Resources |
 |-------|-----------|
-| Platform | namespace `grid` (+ default-deny NetworkPolicies), cert-manager (Gateway-API) + Let's Encrypt `ClusterIssuer`, Envoy Gateway, observability (ADR-0029: `otel-collector` Deployment + Service + ConfigMap, `aspire-dashboard` Deployment + Service + HTTPRoute + Secret — only when `observabilityEnabled` **and** its config deps are set), Langfuse (ADR-0044: `langfuse-web` + `langfuse-worker` Deployments, `clickhouse` StatefulSet, a dedicated ingestion queue, HTTPRoute + SecurityPolicy — only when `langfuseEnabled` **and** its config deps are set; flag **on by default**), (metrics-server only on bare clusters) |
+| Platform | namespace `grid` (+ default-deny NetworkPolicies), cert-manager (Gateway-API) + Let's Encrypt `ClusterIssuer`, Envoy Gateway, observability (ADR-0029: `otel-collector` Deployment + Service + ConfigMap — only when `observabilityEnabled` **and** something consumes it: Langfuse or `posthogLogsEnabled`), Langfuse (ADR-0044: `langfuse-web` + `langfuse-worker` Deployments, `clickhouse` StatefulSet, a dedicated ingestion queue, HTTPRoute + SecurityPolicy — only when `langfuseEnabled` **and** its config deps are set; flag **on by default**), (metrics-server only on bare clusters) |
 | Data | CloudNativePG operator + `Cluster` (`aiq_jobs`, `aiq_checkpoints`, `grid_app`) with optional PITR backups to SeaweedFS (`ScheduledBackup`), Dragonfly, SeaweedFS (one StatefulSet under `seaweedfsTopology=single`; master + volume + filer StatefulSets, and a `seaweedfs_filer` CNPG database + role, under `split`) + bucket-init Job |
 | App | `aiq-agent` StatefulSet (no PVC; +PDB/spread in db mode), `frontend` Deployment + HPA + PDB, `agent-worker` Deployment + HPA + PDB (db mode), `purger`, `skill-scheduler`, a one-shot `drizzle-kit migrate` Job, a one-shot WorkOS audit-schema reconcile Job (when `requireAuth`) |
 | Edge | Gateway API (Envoy Gateway, HA: 2 replicas + PDB) + HTTPRoutes with cert-manager TLS for `app.<baseDomain>` and `s3.<baseDomain>` |
@@ -36,7 +36,7 @@ SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic L
 
 ```bash
 cd deploy/pulumi
-npm install
+bun install --frozen-lockfile
 pulumi stack init prod
 
 # Non-secret config is templated in Pulumi.prod.yaml — edit the placeholders
@@ -85,8 +85,7 @@ pulumi up
 ```
 
 Then point DNS for `app.<baseDomain>` and `s3.<baseDomain>` (plus
-`otel.<baseDomain>` when observability is on and `langfuse.<baseDomain>` when
-that tier is) at the Envoy Gateway external IP
+`langfuse.<baseDomain>` when that tier is on) at the Envoy Gateway external IP
 (`kubectl -n envoy-gateway-system get svc`), and once TLS issues, flip
 `useStagingIssuer` to `false` and `pulumi up` again.
 
@@ -126,7 +125,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **`storageClass`** | — | Provider class for every PVC: `premium` (3 replicas) / `standard` (2) / `single-replica` (1) |
 | **Ingress / TLS** | | |
 | **`baseDomain`** | — | Single source for every public host: `app.`/`s3.`/`otel.` subdomains derive from it, so a domain move is a one-key change. The **apex** itself is the landing site's host (frontends/web) |
-| `appDomain` / `s3Domain` / `otelDomain` / `webDomain` | derived from `baseDomain` | Optional per-host overrides (e.g. an S3 endpoint on a different zone); `webDomain` defaults to the bare `baseDomain` |
+| `appDomain` / `s3Domain` / `webDomain` | derived from `baseDomain` | Optional per-host overrides (e.g. an S3 endpoint on a different zone); `webDomain` defaults to the bare `baseDomain` |
 | **`letsEncryptEmail`** | — | ACME account email (placeholder rejected) |
 | `useStagingIssuer` | `true` | LE staging CA until DNS/TLS verified, then flip false |
 | `installMetricsServer` | `false` | Only for bare clusters; the provider ships metrics already |
@@ -161,11 +160,12 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `rateLimitStoreMaxmemory` | `256mb` | Counter-store dataset cap (floor 256mb — Dragonfly's per-thread boot minimum) |
 | `rateLimitStoreMemoryLimit` | `384Mi` | Counter-store pod memory limit; must exceed maxmemory |
 | `protectDataResources` | `true` | Pulumi `protect` on the CNPG Cluster + SeaweedFS/Chroma StatefulSets: refuses any delete/replace, so a stray rename or `pulumi destroy` fails loudly instead of destroying data. `false` on scratch stacks; lift one resource with `pulumi state unprotect <urn>` |
+| `nodeGroupApp` / `nodeGroupData` / `nodeGroupBatch` | unset (prod: `Node` / `data` / `batch`) | IPAX worker group, as the value of the node label `k8s.at/node-group` (case-sensitive), that the app tier (everything not below) / the stores / ingestion are pinned to by nodeSelector. Unset renders no nodeSelector. A data group also makes the Postgres anti-affinity and the PgBouncer spread required. The groups themselves are managed in the IPAX Control Center ([kubernetes.md §2b](../../docs/deployment/kubernetes.md#worker-groups-ipax)) |
 | **Postgres (CNPG)** | | |
 | `pgInstances` | `1` (prod template: 3) | 1 = single primary; 3 = HA with auto-failover |
 | `pgStorageSize` | `20Gi` | Per-instance volume (expandable via config — CNPG manages PVCs) |
 | `pgPoolerInstances` | `2` (dev: 1) | PgBouncers in the transaction pooler (`grid-pg-pooler-rw`, ADR-0083), spread across nodes with a PDB when more than 1 |
-| `pgPoolerPoolSize` | `12` | Server connections each PgBouncer opens per (database, role) pair. The plan fails when `pgPoolerInstances x (3 pooled pairs x this + 1)` plus the direct reserve passes `max_connections` (200): prod 74 + 82 = 156, a fresh stack with everything on 196 (`assertPgConnectionBudget`) |
+| `pgPoolerPoolSize` | `12` | Server connections each PgBouncer opens per (database, role) pair. The plan fails when `pgPoolerInstances x (3 pooled pairs x this + 1)` plus the direct reserve passes `max_connections` (200): prod 74 + 76 = 150, a fresh stack with everything on 196 (`assertPgConnectionBudget`) |
 | `pgPoolerImage` | digest-pinned `ghcr.io/cloudnative-pg/pgbouncer:1.26.0@sha256:…` | PgBouncer image, must be 1.21 or newer (prepared statements in transaction mode). Scanned by the trivy `image-scan` job; override only for a deliberate upgrade |
 | `legacyCorpusClaim` | unset (prod, dev: `data-aiq-agent-0`) | The pre-A2 backend data volume the one-shot `legacy-corpus-import` Job reads the base corpus from (ADR-0082 A2). Set only where that claim exists: a Job mounting a missing claim never schedules. Remove with the importer once it has run |
 | `pgAppUser` | `aiq` | Role owning all three databases |
@@ -240,8 +240,8 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `apiHpaCpuTargetPercent` | `70` | HPA target average CPU, as a percentage of requests (`apiRequestsCpu`) |
 | `apiRequestsCpu/Memory`, `apiLimitsCpu/Memory` | 500m / 1536Mi / 2 / 6Gi | Sizing |
 | **Ingestion tier, BFF pool and KEDA** (ADR-0076, ADR-0079) | | |
-| `ingestWorkerMinReplicas` / `ingestWorkerMaxReplicas` | 1 / 5 | KEDA bounds for the ingest tier, which scales on `ingest_job_queue` depth. The ceiling is held to the provider budget below: the deploy fails when it is more than 2x `vlmFleetConcurrency` |
-| `ingestWorkerRequestsCpu/Memory`, `ingestWorkerLimitsCpu/Memory` | 500m / 1536Mi / 2 / 6Gi | Sizing |
+| `ingestWorkerMinReplicas` / `ingestWorkerMaxReplicas` | 1 / 5 (prod 1 / 3) | KEDA bounds for the ingest tier, which scales on `ingest_job_queue` depth. The ceiling is held to the provider budget below: the deploy fails when it is more than 2x `vlmFleetConcurrency`. Prod is held lower by node memory: a worker holds 4-6 GB while it parses |
+| `ingestWorkerRequestsCpu/Memory`, `ingestWorkerLimitsCpu/Memory` | 500m / 4Gi / 2 / 6Gi (prod: 500m / 8Gi / 4 / 12Gi, on the batch group) | Sizing. The memory request is what a worker holds while it parses, so the scheduler cannot pack several onto one node |
 | `ingestWorkerConcurrency` / `ingestWorkerDrainSeconds` | 3 / 600 | Jobs per worker (also KEDA's jobs-per-replica target) / SIGTERM budget; the grace period is the drain plus 30 s |
 | `ingestMaxPerOrg` | `0` | Most ingest jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless) |
 | `bffJobsEnabled` | `true` | Run the `bff-jobs` pool. It runs project reindex, failed-ingestion rescan, IFC extraction, Office → PDF rendition and research-report filing, so with it off none of those runs |
@@ -271,39 +271,29 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `requireAuth` | `true` | WorkOS AuthKit enforcement |
 | **`workosClientId`** / 🔒 `workosApiKey` / 🔒 `workosCookiePassword` | — | WorkOS |
 | `platformOwnerEmails` / `platformOrgExternalId` | — / `grid-platform` | Platform tier |
-| `disableSelfServeOrgs` / `enforceFeatureFlags` | `false` / `false` | Tenancy toggles |
+| `disableSelfServeOrgs` | `false` | Tenancy toggle |
+| *(feature flags)* | — | No stack keys. Every feature is a WorkOS flag per organization (`frontends/ui/src/lib/authz/feature-flags.ts`), read from the WorkOS environment `requireAuth` signs in against. The retired keys `enforceFeatureFlags`, `skillsEnabled`, `collaborationEnabled`, `mailImportEnabled`, `agentAuthoredDocumentsEnabled`, `ifcModelsEnabled` and `memoryReflectionEnabled` are ignored |
 | `auditLogsEnabled` | `false` | WorkOS audit-log emission from the frontend (`GRID_AUDIT_LOGS_ENABLED`) — default OFF |
 | `byokSecretBackend` / 🔒 `byokLocalKek` | — | BYOK backends |
 | `allowAgentOrgMemory` | `false` | Org-memory write path |
 | 🔒 **`gridInternalApiToken`** / 🔒 **`gridAdminToken`** | — | Cross-service tokens |
-| **Agent Skills & Jobs** | | |
-| `skillsEnabled` | `false` | Agent Skills + the project Jobs that attach them (ADR-0046). Reaches the frontend and the scheduler as `GRID_SKILLS_ENABLED`; consulted only while `enforceFeatureFlags` is `false` (with enforcement on, the per-org `skills` WorkOS flag decides). With it off both tabs are invisible, every `/api/skills` and `/api/projects/[id]/jobs` route answers 403, and the `skill-scheduler` Deployment is not created at all |
+| **Agent Skills & Jobs** (the `skills` flag decides whether they exist) | | |
 | `skillMinIntervalMinutes` | `15` | Floor on how often a job may be scheduled to fire |
-| **Collaboration** (ADR-0032…0035) | | |
-| `collaborationEnabled` | `false` | Shared chats, `@`-mentions and the inbox. Reaches the frontend as `GRID_COLLABORATION_ENABLED`; consulted only while `enforceFeatureFlags` is `false` (with enforcement on, the per-org `collaboration` WorkOS flag decides). Default-deny — the feature changes who can see a conversation |
-| `mailImportEnabled` | `false` | The Outlook archive import (.pst/.ost) into a project's Dateien (ADR-0085). Reaches the frontend as `GRID_MAIL_IMPORT_ENABLED`; consulted only while `enforceFeatureFlags` is `false` (with enforcement on, the per-org `mail-import` WorkOS flag decides). Default-deny — an archive is the correspondence of everyone who wrote to the mailbox |
-| `agentAuthoredDocumentsEnabled` | `true` | Whether Piloti may file the documents it writes — a finished Recherchebericht, a drawn diagram — into a project. Reaches the frontend as `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`; consulted only while `enforceFeatureFlags` is `false` (with enforcement on, the per-org `agent-authored-documents` WorkOS flag decides). Defaults ON. This is the OPERATOR's lever; the tenant's is the `project:documents:generate` permission, and withdrawing that fleet-wide would mean editing the built-in project roles in WorkOS, which fails `provision:authz --check` |
-| `ifcModelsEnabled` | `true` | `.ifc` upload, the model workspace, the 3D viewer, the Prüfbuch and the agent's `ifc_query` tool (ADR-0045). Reaches the frontend as `GRID_IFC_MODELS_ENABLED`; consulted only while `enforceFeatureFlags` is `false` (with enforcement on, the per-org `ifc-models` WorkOS flag decides). Defaults ON; set `false` to withdraw the feature without enabling flag enforcement globally |
 | **Storage alerts** (ADR-0042) | | |
-| `storageAlertsEnabled` | `true` | Creates the hourly `storage-alerts` CronJob, which calls `POST /api/internal/storage/alerts`. Default-**on**, unlike the dark-launch gates above: the quota already refuses the upload that crosses it, so without the alert the first person to learn about the limit is whoever breaks mid-task. An org with no quota is skipped, so on a deployment that sets none the sweep emits nothing |
+| `storageAlertsEnabled` | `true` | Creates the hourly `storage-alerts` CronJob, which calls `POST /api/internal/storage/alerts`. Default-**on**: the quota already refuses the upload that crosses it, so without the alert the first person to learn about the limit is whoever breaks mid-task. An org with no quota is skipped, so on a deployment that sets none the sweep emits nothing |
 | `storageAlertThresholdPercent` | `80` | Share of quota at which an organization is warned. Reaches the frontend as `GRID_STORAGE_ALERT_THRESHOLD_PERCENT`. Escalation at 90% and 100% is automatic. **Rejected at load time** if outside `(0, 100]` — the BFF would clamp it back to 80, which is right at runtime and wrong at deploy time, where somebody is present to read the error |
 | `storageAlertSchedule` | `0 * * * *` | 5-field cron for the sweep. Hourly because the condition changes on the timescale of an ingest and a live alert suppresses re-emission, so a shorter period costs queries without telling anyone anything new |
 | **Vector maintenance** | | |
 | `vectorReconcileEnabled` | `true` | Creates the `vector-reconcile` CronJob, which calls `POST /api/internal/maintenance/reconcile-vectors`: the same sweep a platform owner can start from Platform → Vector maintenance — delete indexed chunks whose document row is gone, forget inventory (summary) rows whose chunks are gone. Default-**on**: the orphans it recovers are invisible in the product, so nobody knows to start the manual run |
 | `vectorReconcileSchedule` | `0 3 * * 0` | 5-field cron for the sweep. Weekly, Sunday 03:00 UTC: every collection is scanned each tick and the store is only written to when a past delete left something behind, so a tighter period costs scans without recovering anything sooner |
-| **Memory** | | |
-| `memoryReflectionEnabled` | `true` | Post-answer memory-reflection stage (the agent's cross-chat learning loop). Reaches the frontend as `GRID_MEMORY_REFLECTION_ENABLED`; consulted only while `enforceFeatureFlags` is `false` (with enforcement on, the per-org `memory-reflection` WorkOS flag decides). Default-on — reflection is a shipped core capability, not a dark-launched gate |
 | **Observability** (ADR-0029) | | |
-| `observabilityEnabled` | `true` | Feature flag for the tier. Deployed only when the flag is on **AND** the capability holds (`otelPrimaryApiKey`, `otelOidcIssuer`, `otelOidcClientId`, `otelOidcClientSecret` all set) — otherwise `preview` warns and nothing is provisioned, including the `https-otel` listener and the producers' OTLP env |
-| **`otelOidcIssuer`** | — | Issuer of the dashboard's dedicated WorkOS **Connect** application (the environment's AuthKit domain, `https://<tenant>.authkit.app`) |
+| `observabilityEnabled` | `true` | Feature flag for the OTel Collector. Deployed when the flag is on **AND** something consumes it: Langfuse or `posthogLogsEnabled`. With no consumer `preview` warns and nothing is provisioned, including the producers' OTLP env. The Aspire dashboard and err2issue it used to feed are retired; their keys (`otelPrimaryApiKey`, `otelDomain`, `dashboardImage`, `dashboardMaxLogCount`, `dashboardMaxTraceCount`, and every `err2issue*` and `feedbackIssues*` key) are ignored and can be deleted from the stack file |
+| **`otelOidcIssuer`** | — | Issuer of the platform WorkOS **Connect** application (the environment's AuthKit domain, `https://<tenant>.authkit.app`). Read by Langfuse alone now, which is deployed only when all three `otelOidc*` keys are set |
 | **`otelOidcClientId`** | — | Client id of that Connect application (confidential client) |
 | 🔒 `otelOidcClientSecret` | — | Its client secret. The Gateway SecurityPolicy exchanges the code with `client_secret_basic`, so a public/PKCE-only client cannot be used |
-| 🔒 `otelPrimaryApiKey` | — | OTLP ingestion key (`x-otlp-api-key`). Held by the **dashboard and collector only** — backend/worker/frontend send unauthenticated OTLP to the collector, so this key must never be copied into app secrets |
-| `dashboardImage` | digest-pinned `mcr.microsoft.com/dotnet/aspire-dashboard@sha256:…` (13.5.2) | Dashboard image; override only for a deliberate upgrade. The trivy `image-scan` job blocks on fixable HIGH/CRITICAL in the pin, so it fails when the pin goes stale |
 | `collectorImage` | digest-pinned `otel/opentelemetry-collector-contrib@sha256:…` (0.161.0) | OTel Collector image (single OTLP ingestion point); override only for a deliberate upgrade |
-| `dashboardMaxLogCount` / `dashboardMaxTraceCount` | `50000` / `50000` | In-memory ring-buffer limits |
 | **Langfuse** (ADR-0044) — durable LLM observability, self-hosted **free/OSS** build. No licence key is set anywhere; the visible cost is that data-retention policies are an Enterprise feature, so trace data never expires and `clickhouseStorageSize` is a number to watch (the server's own system logs self-clean after 14 days). Full operator guide: [`docs/deployment/kubernetes.md` §9b](../../docs/deployment/kubernetes.md) | | |
-| `langfuseEnabled` | `true` | Feature flag. Deployed only when the flag is on **AND** every 🔒 key below is set **AND** `observabilityEnabled` resolves true — Langfuse has no receiver of its own, the collector feeds it. Otherwise `preview` warns naming what is missing and nothing is provisioned (no workloads, no `https-langfuse` listener, no collector exporter, no identity attributes). Default-**on**, so setting the 🔒 keys is all a stack needs; set the flag to `false` to opt out of four workloads and a PVC that grows |
+| `langfuseEnabled` | `true` | Feature flag. Deployed only when the flag is on **AND** every 🔒 key below is set **AND** `observabilityEnabled` is not `false` **AND** the `otelOidc*` Connect application is set (its UI signs in against it) — Langfuse has no receiver of its own, the collector feeds it, and Langfuse is what brings the collector up on a stack with no dashboard. Otherwise `preview` warns naming what is missing and nothing is provisioned (no workloads, no `https-langfuse` listener, no collector exporter, no identity attributes). Default-**on**, so setting the 🔒 keys is all a stack needs; set the flag to `false` to opt out of four workloads and a PVC that grows |
 | `langfuseDomain` | `langfuse.<baseDomain>` | Public host. Register `https://<host>/oauth2/callback` as a redirect URI on the **same** WorkOS Connect application as `otelOidc*` — not a second one |
 | 🔒 `langfuseEncryptionKey` | — | `ENCRYPTION_KEY`. **64 HEX characters** — the only secret here that is not base64. `openssl rand -hex 32`. Rejected at load time otherwise, because Langfuse's own failure is a crash loop that never names the variable |
 | 🔒 `langfusePublicKey` / `langfuseSecretKey` | — | Project API keys, pre-seeded by headless init so the collector has a working ingestion credential in the same `pulumi up`. Prefixes `pk-lf-` / `sk-lf-` are validated at load time — Langfuse validates them too, later and less helpfully |
@@ -321,7 +311,6 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `langfuseWebImage` / `langfuseWorkerImage` | digest-pinned `ghcr.io/langfuse/langfuse{,-worker}@sha256:…` (4.56.0) | Two keys because upstream publishes two images — but they **must be the same version**, and digests are opaque so nothing can check it. Bump together. Both are scanned by the trivy `image-scan` job |
 | `clickhouseImage` | digest-pinned `clickhouse/clickhouse-server@sha256:…` (26.8 LTS) | Single-node analytical store. Langfuse v4 needs 25.12 or newer. `CLICKHOUSE_CLUSTER_ENABLED=false` makes the migrator emit plain `MergeTree`, so growing to a real cluster is a migration, not a replica count |
 | `clickhouseStorageSize` | `50Gi` | The trace store is the tier's unbounded resource — see the retention note above. The server's own system logs are TTL-bounded at 14 days (`system-log-ttl.xml` in `src/data/clickhouse.ts`) and cannot fill the disk the way `system.trace_log` did on dev in August 2026. Growing the PVC is a PVC patch (`volumeClaimTemplates` is immutable and `ignoreChanges`d) |
-| `langfuseV4WriteMode` | `dual` | Langfuse's v3 -> v4 migration (`LANGFUSE_MIGRATION_V4_WRITE_MODE`): `legacy`, `dual` or `events_only`, refused at load time otherwise, since Langfuse would read a typo as `events_only`. `events_only` is the one-way cutover; see kubernetes.md §9b, "Upgrading to Langfuse v4" |
 | `langfuseV4HistoricBackfill` | `false` | Rewrite historic traces into v4's tables. Needs about three times the current ClickHouse disk as headroom |
 | `langfuseQueueMaxmemory` / `langfuseQueueMemoryLimit` | `512mb` / `1Gi` | Ingestion-queue dataset cap and pod memory limit. Eviction is OFF, so "full" means ingestion stops (loudly) rather than oldest-drops (silently) |
 
@@ -380,7 +369,7 @@ src/platform/            provider, namespace, cert-manager, gateway (Envoy),
                          email-routing (the inbox's zone + apex MX guard),
                          metrics-server, scheduling (PDB/spread), rollout
                          (update strategy, drain, secret checksum)
-policy/                  CrossGuard policy pack (own package.json + npm ci)
+policy/                  CrossGuard policy pack (own package.json + bun.lock)
 src/data/                postgres (CNPG), dragonfly, seaweedfs
 src/app/                 config (Secret + env), migrations Job,
                          audit-schemas Job, backend, frontend (+HPA),

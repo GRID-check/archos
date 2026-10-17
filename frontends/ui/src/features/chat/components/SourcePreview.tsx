@@ -36,6 +36,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties, type FC, type ReactNode } from 'react'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { ChevronDown, ChevronUp, Download, ExternalLink, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -62,6 +63,7 @@ import {
   sourceSignalStyle,
 } from '@/features/layout/components/SourceSignalChip'
 import type { SourceTint } from '@/features/layout/lib/source-presets'
+import type { FassungRef } from '@/lib/documents/fassung'
 import { useChatStore } from '../store'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
@@ -123,11 +125,18 @@ onDocumentsChanged(resetSourcePreviewIndexCache)
 
 // The shelf is stated by the LIST the rows came from — the project document
 // route or the org Archiv route — not guessed from a collection id.
+interface ListedRow {
+  id: string
+  filename: string
+  contentType?: string | null
+  fassung?: { supersededBy?: FassungRef | null } | null
+}
+
 const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
   Array.isArray(rows)
     ? rows
         .filter(
-          (doc): doc is { id: string; filename: string; contentType?: string | null } =>
+          (doc): doc is ListedRow =>
             !!doc && typeof doc.id === 'string' && typeof doc.filename === 'string'
         )
         .map((doc) => ({
@@ -135,6 +144,9 @@ const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
           filename: doc.filename,
           contentType: doc.contentType ?? null,
           shelf,
+          // Only what the server resolved for THIS reader: a newer Fassung they
+          // may not open is not in the row, name and all.
+          supersededBy: doc.fassung?.supersededBy ?? null,
         }))
     : []
 
@@ -275,7 +287,10 @@ const useConversationId = (): string | null =>
 // dipped to 0.99, and both drew a third focus ring. Busy is `aria-busy`, never
 // `disabled` — see `DocumentPreviewChip`.
 const chipButtonClasses = cn(
-  'inline-flex h-6 max-w-full shrink-0 cursor-pointer items-center gap-1 truncate whitespace-nowrap pointer-coarse:h-11',
+  // Under a finger the chip may take two lines: the edition and the Fundstelle are
+  // what tells two chips of one Richtlinie apart, and they sit at the END of a
+  // title that a single truncated line cut off.
+  'inline-flex h-6 max-w-full shrink-0 cursor-pointer items-center gap-1 truncate whitespace-nowrap pointer-coarse:h-auto pointer-coarse:min-h-11 pointer-coarse:whitespace-normal pointer-coarse:py-1.5 pointer-coarse:text-left',
   'rounded-md border px-2.5 text-xs font-medium outline-none',
   '[&>svg]:size-3 [&>svg]:shrink-0 hover:brightness-95 dark:hover:brightness-125 aria-busy:cursor-progress',
   PRESSABLE,
@@ -323,7 +338,7 @@ const cardButtonClasses = cn(
 )
 
 const faceClasses = (variant: CitationVariant): string =>
-  variant === 'card' ? cardButtonClasses : cn(chipButtonClasses, 'max-w-56')
+  variant === 'card' ? cardButtonClasses : cn(chipButtonClasses, 'max-w-56 pointer-coarse:max-w-full')
 
 /**
  * The card face while nothing can be opened yet (the preview index is still
@@ -423,7 +438,7 @@ const CitationFace: FC<CitationFaceProps> = ({
         <CitationIndex index={index} />
         <LeadingIcon signal={signal} busy={busy} className="size-3 shrink-0" />
         {authority && <AuthorityTag>{authority}</AuthorityTag>}
-        <span className="truncate">{label}</span>
+        <span className="truncate pointer-coarse:line-clamp-2 pointer-coarse:whitespace-normal pointer-coarse:break-words">{label}</span>
       </>
     )
   }
@@ -1196,7 +1211,12 @@ const DocumentPreviewChip: FC<{
           fill. */}
       {citation && (
         <HoverPeekPanel peek={peek} className="w-80 p-3">
-          <CitationPeek citation={citation} snippet={target.snippet} onOpen={open} />
+          <CitationPeek
+            citation={citation}
+            snippet={target.snippet}
+            onOpen={open}
+            supersededBy={target.supersededBy}
+          />
         </HoverPeekPanel>
       )}
       {dialog}
@@ -1300,6 +1320,7 @@ const DownloadPreviewChip: FC<{
           snippet={target.snippet}
           onDownload={() => void download()}
           downloadPending={isDownloading}
+          supersededBy={target.supersededBy}
         />
       </HoverPeekPanel>
     </>
@@ -1594,6 +1615,14 @@ export interface SourcePreviewChipProps {
    * `full`; see {@link CitationDetail}.
    */
   detail?: CitationDetail
+  /**
+   * The project the cited file is looked up in, for a surface that is not the
+   * chat (the Projekterfassung cites the project's own documents and has no
+   * conversation to read it from). Unset, it is the chat's project.
+   */
+  projectId?: string | null
+  /** The chip's text where the document's name alone is not the point (name and page). Unset, the document's label. */
+  label?: string
 }
 
 /**
@@ -1621,8 +1650,11 @@ export const SourcePreviewChip: FC<SourcePreviewChipProps> = ({
   variant = 'chip',
   trailing,
   detail = 'full',
+  projectId: projectIdOverride,
+  label: labelOverride,
 }) => {
-  const projectId = useChatStore((s) => s.projectId)
+  const chatProjectId = useChatStore((s) => s.projectId)
+  const projectId = projectIdOverride === undefined ? chatProjectId : projectIdOverride
   const conversationId = useConversationId()
   const { document: doc, locus } = citation
   // Only a document with a filename and no outbound link can resolve to a
@@ -1652,7 +1684,7 @@ export const SourcePreviewChip: FC<SourcePreviewChipProps> = ({
       ? (asDownloadTarget(resolved) ?? resolved)
       : resolved
 
-  const label = citationLabel(doc)
+  const label = labelOverride ?? citationLabel(doc)
   const precedent = isPrecedent(doc, projectId)
   // A chip stands for a DOCUMENT, so it names every marker that document
   // carries — "2, 7", not an arbitrary one of them. A chip narrowed to a locus
@@ -1843,6 +1875,21 @@ export const SourceDocumentDialog: FC<{
     citation
   )
 
+  // The reader went from an answer to its evidence: counted once the viewer is
+  // actually showing, never for a dialog that mounted and closed because there
+  // was nothing to open. `verified` is a quote the server found word for word
+  // (`atQuote` keys its locus `…#quote`). Kinds and flags only: no name, no page.
+  const openedReportedRef = useRef(false)
+  const reportOpened = (viewer: 'document' | 'ris'): void => {
+    if (openedReportedRef.current) return
+    openedReportedRef.current = true
+    capturePosthog('citation_opened', {
+      source_kind: citation.document.kind,
+      verified: Boolean(citation.locus?.key.endsWith('#quote')),
+      viewer,
+    })
+  }
+
   // Open as soon as resolution succeeds; close the owner when the reader
   // dismisses the dialog, so the mount is tied to the viewing session. An
   // office citation opens its rendition here like any PDF; when there is none
@@ -1852,7 +1899,8 @@ export const SourceDocumentDialog: FC<{
   useEffect(() => {
     if (isDocument && !isOpen)
       void openPreview(citation.locus).then((outcome) => {
-        if (outcome !== 'opened') onClose()
+        if (outcome === 'opened') reportOpened('document')
+        else onClose()
       })
     // Opening is a one-shot per resolved target; re-running on every render
     // would reopen a dialog the reader just dismissed.
@@ -1876,6 +1924,12 @@ export const SourceDocumentDialog: FC<{
     // Nothing openable and the index has answered: there is no viewer to show.
     if (previewIndex && !isDocument) onClose()
   }, [previewIndex, isDocument, isRis, downloadTarget, isOpen, onClose])
+
+  useEffect(() => {
+    if (isRis) reportOpened('ris')
+    // One report per mounted dialog (the ref guards a re-run).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRis])
 
   // A RIS source opens its own reader — no stored-document index, no presign,
   // and no page: the reader marks the passage in the text instead.

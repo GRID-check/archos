@@ -74,7 +74,7 @@ export const PLATFORM_PERMISSIONS = {
    * at the edge, not in the app: the Envoy SecurityPolicy in front of Langfuse
    * admits it beside `organizationsView` (deploy/pulumi/src/platform/platform-oidc.ts,
    * `OBSERVABILITY_VIEW_PERMISSION`), and Langfuse's own roles take it from
-   * there. The Aspire dashboard does not accept it.
+   * there.
    */
   observabilityView: 'platform:observability:view',
 } as const

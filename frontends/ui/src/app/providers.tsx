@@ -25,7 +25,7 @@ import { AppConfigProvider, type AppConfig, useAppConfig } from '@/shared/contex
 import { useLayoutStore } from '@/features/layout'
 import { useChatStore } from '@/features/chat/store'
 import type { ThemeMode } from '@/features/layout'
-import { I18nProvider, type Locale } from '@/i18n'
+import { I18nProvider, useLocale, type Locale } from '@/i18n'
 import { THEME_COLOR } from './theme-boot'
 import { fetchUserPreferences, patchUserPreferences } from '@/lib/user-preferences/client'
 import { useAuth } from '@/adapters/auth'
@@ -34,6 +34,7 @@ import {
   identifyPosthog,
   initPosthogClient,
   isPosthogEnabled,
+  registerPosthogContext,
   resetPosthog,
 } from '@/lib/analytics/posthog'
 
@@ -55,16 +56,26 @@ const isThemeMode = (value: unknown): value is ThemeMode =>
  * restored its session on each page load; sign-out resets PostHog in the auth
  * action before AuthKit redirects. Everything no-ops while analytics is
  * unconfigured (fail-open).
+ *
+ * The identity is the WorkOS user id and nothing else: no email, no name
+ * (pending the owner's permission). The server-known session is handed to the
+ * SDK at init (`posthogIdentity`, PostHog `bootstrap`), so the first pageview is
+ * already the person. The organization (id and name), role and locale ride
+ * along as properties on every event, because group analytics is a paid add-on
+ * (`lib/analytics/posthog.ts`). The identify effect still runs once per load:
+ * it covers the case where the server could not build the bootstrap, and a
+ * switch of user within one page.
  */
 const PostHogIdentitySync = (): null => {
-  const { authRequired, isAuthenticated, user } = useAuth()
-  const { posthog: posthogConfig = DISABLED_POSTHOG_CONFIG } = useAppConfig()
+  const { authRequired, isAuthenticated, user, organizationId } = useAuth()
+  const { posthog: posthogConfig = DISABLED_POSTHOG_CONFIG, posthogIdentity } = useAppConfig()
+  const { locale } = useLocale()
   const previousDistinctId = useRef<string | null>(null)
   const distinctId = authRequired && isAuthenticated && user?.id ? user.id : null
 
   useEffect(() => {
-    initPosthogClient(posthogConfig.host, posthogConfig.projectToken)
-  }, [posthogConfig.host, posthogConfig.projectToken])
+    initPosthogClient(posthogConfig, posthogIdentity)
+  }, [posthogConfig, posthogIdentity])
 
   useEffect(() => {
     if (!distinctId) {
@@ -83,12 +94,25 @@ const PostHogIdentitySync = (): null => {
     if (!isPosthogEnabled() || previousDistinctId.current === distinctId) return
 
     if (previousDistinctId.current) resetPosthog()
-    identifyPosthog(distinctId, {
-      email: user?.email ?? undefined,
-      name: user?.name ?? undefined,
-    })
+    identifyPosthog(distinctId)
     previousDistinctId.current = distinctId
-  }, [distinctId, user?.email, user?.name])
+  }, [distinctId])
+
+  // After the identify effect above (same commit, declaration order), and again
+  // whenever the member switches organization or language without a new sign-in.
+  // The id is the live one from AuthKit; the name and role are the server's, and
+  // only valid for the organization the server saw, so a switched-to organization
+  // gets neither rather than the previous one's.
+  useEffect(() => {
+    if (!distinctId || !isPosthogEnabled()) return
+    const serverKnowsOrganization = posthogIdentity?.organizationId === organizationId
+    registerPosthogContext({
+      organizationId,
+      organizationName: serverKnowsOrganization ? posthogIdentity?.organizationName : null,
+      role: serverKnowsOrganization ? posthogIdentity?.role : null,
+      locale,
+    })
+  }, [distinctId, organizationId, posthogIdentity, locale])
 
   return null
 }

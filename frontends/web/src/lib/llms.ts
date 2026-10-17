@@ -15,12 +15,13 @@ import { SECTIONS, SECTION_IDS, landingPath, type Block, type LandingCopy } from
 const LOCALES = Object.keys(languages) as Locale[]
 
 type PageKey = keyof (typeof ui)['de']['seo']['pages']
-const PAGE_PATHS: [PageKey | 'home', string][] = [
+const PAGE_PATHS: [PageKey | 'home', string, string?][] = [
   ['home', '/'],
   ['blog', '/blog/'],
   ['journal', '/blog/journal/'],
   ['bautagebuch', '/blog/bautagebuch/'],
   ['changelog', '/changelog/'],
+  ['neu', '/neu/'],
   ['warum', '/warum-piloti/'],
   ['rechenweg', '/rechenweg/'],
   ['mailInbox', MAIL_INBOX_PATH],
@@ -33,9 +34,10 @@ const postUrl = (post: BlogPost, locale: Locale, site: URL | undefined) =>
   absoluteUrl(`${blogPath(locale)}${postSlug(post.id)}/`, site)
 
 function pageLinks(locale: Locale, site: URL | undefined) {
-  return PAGE_PATHS.map(([key, path]) => {
+  return PAGE_PATHS.map(([key, path, enPath]) => {
     const { title, description } = key === 'home' ? ui[locale].meta : ui[locale].seo.pages[key]
-    return `- [${title.split(' — ')[0]}](${absoluteUrl(localized(locale, path), site)}): ${description}`
+    const href = locale === 'en' && enPath ? enPath : localized(locale, path)
+    return `- [${title.split(' — ')[0]}](${absoluteUrl(href, site)}): ${description}`
   })
 }
 

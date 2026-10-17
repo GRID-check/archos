@@ -1,6 +1,6 @@
 # WorkOS Provisioning Runbook
 
-> What must exist in a WorkOS environment for GRID's authorization model
+> What must exist in a WorkOS environment for Piloti's authorization model
 > (ADR-0016, ADR-0038) to work, what is already provisioned where, and how to
 > replay it (e.g. into Production). The app degrades gracefully when pieces are
 > missing (bounded `admin` back-compat, break-glass env allowlist), but this
@@ -102,7 +102,7 @@ were also created by hand on 2026-10-10, with the catalog's names, descriptions
 and permission sets, so the deploy's catalog Job finds them already in place. In
 Staging the next deploy creates them. A read-only comparison of Production on
 2026-10-10 found that `--apply` there also adds `platform:observability:view` and
-the `platform-observability-analyst` role, adds that permission to
+the `org-platform-observability-analyst` role, adds that permission to
 `org-platform-owner` and `org-platform-support`, and removes nothing.
 [Rolling out folder roles](#rolling-out-folder-roles-adr-0097) has the order.
 
@@ -254,7 +254,7 @@ environment-scoped role holds a `platform:*` permission.
 | `folder-editor` | environment (Folder) | `folder:read`, `folder:write` |
 | `org-platform-owner` | **GRID Platform org only** | all `platform:*` + five `widgets:*` |
 | `org-platform-support` | **GRID Platform org only** | `platform:organizations:view`, `platform:usage:view`, `platform:settings:view`, `platform:observability:view` — every read, no `*:manage`. `platformApiRoute` requires the specific permission per route, which is what makes "read-only" true rather than described. |
-| `platform-observability-analyst` | **GRID Platform org only** | `platform:observability:view` only: opens Langfuse at the edge for business analysts and the Fachbereich, and no platform surface in the app (ADR-0089). The scope must be assigned to the Connect application before the stack that checks it is deployed, or every Langfuse login fails with `invalid_scope` |
+| `org-platform-observability-analyst` | **GRID Platform org only** | `platform:observability:view` only: opens Langfuse at the edge for business analysts and the Fachbereich, and no platform surface in the app (ADR-0089). The scope must be assigned to the Connect application before the stack that checks it is deployed, or every Langfuse login fails with `invalid_scope` |
 
 The two folder roles are assigned on one folder resource to one organization
 membership, by the folder's access dialog in a project's Files
@@ -302,8 +302,26 @@ nobody. The current gap in both environments, and what it costs users, is in
   `WORKOS_DESIRED_REDIRECT_URIS` for redirect URIs); extras are report-only
   unless `--apply --prune`.
 - Auth methods: password + Google + GitHub + Microsoft + Apple; email
-  verification required; MFA off. No JWT template (default claims carry
-  role/permissions per active org — exactly what the app reads).
+  verification required; MFA off.
+- **JWT template** (AuthKit → Sessions → JWT template; set 2026-10-15 in
+  Staging and Production). It adds three claims and keeps every default one
+  (`org_id`, `role`, `roles`, `permissions`, `feature_flags`, checked with a
+  preview against a real membership before saving):
+
+  ```json
+  {"name": "{{ user.first_name }} {{ user.last_name }}", "email": {{ user.email }}, "organization_name": {{ organization.name }}}
+  ```
+
+  The agent reads them off the verified token as the person's name, email and
+  office in the system prompt (`aiq_api.auth.jwt_validator`,
+  `aiq_agent.turn.context.user_info_from_principal`); without the template
+  the prompt has no name. A null `organization.name` drops its key, and an
+  unknown name renders as an empty string, which the agent reads as no name.
+  WorkOS has no public API for the template, so `provision:workos-env` cannot
+  check it: it lists it as a manual step. A turn with no signed-in person (a
+  scheduled task, a woken thread reply) has no token; it is named from the
+  signed request-context envelope's `requester` instead, which the BFF resolves
+  from WorkOS for the pinned session (`lib/auth/person.ts`).
 - **Sign-up: decided posture is INVITE-ONLY EVERYTHING** (platform owner
   decision, 2026-07-08). Two switches, one per layer:
   1. **WorkOS-native**: AuthKit → Authentication → *Allow sign-ups* **OFF**.
@@ -339,10 +357,65 @@ Broadly the trail covers: org creation/settings, budgets, model configuration
 (org versions, ZDR, fleet defaults), BYOK credentials, legal holds,
 break-glass platform access (lands in the GRID Platform org's trail, throttled
 to once per actor per hour), project lifecycle and role grants, document and
-Archiv uploads/deletes, and the sharing/ownership changes from ADR-0032.
+Archiv uploads/deletes, the sharing/ownership changes from ADR-0032, and what
+Piloti did in the office (below).
 Deliberately NOT audited: high-frequency content activity (memory items,
 profile edits, conversation messages, renames, user preferences) — it would
-drown the admin trail.
+drown the admin trail. A person's own edits of Anmerkungen are content
+activity; Piloti's are not, because a machine acting in a person's name is
+what an admin has to be able to account for, and neither is a person taking
+over or dismissing a mark Piloti proposed: that is a decision on Piloti's
+work (`piloti.mark.decided`).
+
+- **What Piloti did** (`piloti.*`, added 2026-10-14). Piloti acts in a
+  person's session as that person (ADR-0105, ADR-0108), so the trail names the
+  person and the action family names Piloti:
+
+  | Action | When | Actor | Targets | Metadata |
+  |---|---|---|---|---|
+  | `piloti.change.applied` | Piloti set, changed or deleted a mark, or answered in its thread, in the asker's name: one per `piloti_changes` row (`lib/changes/service.ts`) | the person the turn acted for | mark, document, project, conversation | `op` (create, update, delete, reply), `markNumber`, `markKind`, `status`, `fields` (names of the fields that moved), `messageId`, `changeId` |
+  | `piloti.change.undone` | a person undid one (`POST /api/piloti-changes/[id]/undo`) | who undid it | mark, document, conversation | `op`, `inverse`, `markNumber`, `onBehalfOf`, `messageId`, `changeId` |
+  | `piloti.proposal.created` | Piloti filed a proposed change, once per card (`lib/proposals/service.ts`) | the person Piloti acted for | proposal, project, conversation | `kind`, `operation`, `items`, `memoryScope`, `messageId` |
+  | `piloti.proposal.decided` | a person applied or dismissed it | the decider | proposal, project, conversation | `kind`, `decision` (applied, partially_applied, failed, dismissed), `operation`, `items`, `appliedItems`, `memoryScope`, `onBehalfOf`, `messageId` |
+  | `piloti.mark.decided` | a person took over (`open`) or dismissed a mark Piloti proposed, on the canvas: the per-mark buttons and the live card's batch send the same PATCH, so one per mark that left `proposed` (`lib/annotations/service.ts`); a colleague's earlier move (409) records nothing | the person who decided | mark, document, project | `decision` (taken_over, dismissed), `markNumber`, `markKind`, `onBehalfOf` (the person Piloti proposed it for) |
+  | `piloti.wake.started` | a wake's turn started (`lib/annotations/wake-job.ts`) | the person whose act woke Piloti | mark, document, project, their thread | `trigger`, `wakeId`, `markNumber`, `waits` |
+  | `piloti.wake.ended` | the wake ended, once: its turn ended (`lib/turns/outcome.ts`), or the wake job refused it or gave up before a turn answered (`lib/annotations/wake-job.ts`) | the same person | the same | `trigger`, `wakeId`, `outcome` (answered, stopped, failed; refused for the job's refusal), `turnOutcome` (what the socket reported; absent when the job ended it), `reason` (the stored reason, cut at 200), `reasonKind` (budget, busy, access, error: the class the person's inbox notice is worded by, `lib/annotations/wake-end-reason.ts`), `handedBack`, `markNumber` |
+  | `piloti.wake.stopped` | a person took the mark back, or deleted it, and that stopped a queued or running wake (`lib/annotations/take-back.ts`) | who took it back | the same | `trigger`, `wakeId`, `wakeStatus`, `wokenBy`, `by` (person, or piloti when Piloti closed the mark) |
+  | `piloti.wake.suppressed` | a wake was held before Piloti was asked: a cap, the switch off, the person's right to write gone, the mark or reply gone, the delegation taken back. Until 2026-10-14 a failed turn (`stage: 'turn'`) and a wake the job ended `refused` or `failed` were recorded here too; they are now `piloti.wake.ended` | the person whose act woke Piloti | mark | `documentId`, `trigger`, `status` (suppressed), `reason`, `stage` (enqueue, claim) |
+
+  *The actor model.* The actor is always a person, never Piloti: the actor is
+  the authorization principal (`AuditActorType` in `lib/audit/service.ts`, the
+  decision `document.generated` already took), and it is the field the viewer
+  and the export filter by. An agent actor would hide on whose behalf Piloti
+  acted in the one place an admin searches. So an admin finds everything Piloti
+  did with the action filter on `piloti.*`, and everything it did for one
+  person with that person's actor filter added. A wake's row keeps the
+  person's id and not their email, so the wake events look the email up in
+  the organization's directory before they go out (best effort: the id alone
+  when the directory does not know the person). The turn is the
+  `conversation` target and `messageId`, the answer whose Langfuse trace and
+  change card carry the same id. A `via: 'piloti'` key would only repeat the
+  action family.
+
+  *No content.* Ids, numbers, kinds, field names and counts only: never a word
+  of a mark, a reply, a note, a proposal or a document name, so none of these
+  actions needs `filedIn`. `schemas.spec.ts` refuses a `piloti.*` metadata key
+  that could carry text.
+
+  *Once per act.* Each is emitted after the write it records committed, by the
+  call whose compare-and-swap won (`recordAuditEventAfterCommit`, fire and
+  forget: a lost line is logged, the act is never failed or rolled back). A
+  repeated proposal card, an already-undone undo, a wake the job or the outcome
+  settled twice, a decision a colleague made first, and a change that moved
+  nothing emit nothing. Undoing a mark Piloti proposed dismisses it, so it is
+  both `piloti.change.undone` and `piloti.mark.decided`. A background run
+  (ADR-0108) reaches the same internal routes, so what Piloti changes in one
+  is recorded the same way; `task.*` records the run itself.
+
+  The deploy's schema Job registers the new actions; no new environment
+  variable. An environment reconciled by hand needs
+  `npm run provision:audit-schemas -- --apply` before this release, or WorkOS
+  rejects these events (and the trail silently lacks them).
 
 - **Schemas are reconciled on every deploy, on all three deployment paths.**
   Each runs `node scripts/provision-workos-audit-schemas.mjs --apply` from the
@@ -416,45 +489,60 @@ drown the admin trail.
 
 ### 6. Feature Flags (native WorkOS product)
 
-Premium/expensive features are gated behind **WorkOS Feature Flags**,
+Every feature switch is a **WorkOS Feature Flag**, per organization,
 delivered in the AuthKit JWT `feature_flags` claim (registry:
-`frontends/ui/src/lib/authz/feature-flags.ts`):
+`frontends/ui/src/lib/authz/feature-flags.ts`). There is one semantic: a flag is
+on exactly when WorkOS says so for the organization, and anything short of a
+yes — a stale token, a slug missing from WorkOS, a failed lookup, no
+organization — is off. There are no env switches and no enforcement toggle.
 
-| Flag slug | Gates |
-|---|---|
-| `runtime-model-config` | Runtime AI model configuration (org page card + all 4 API routes) |
-| `deep-research` | Deep-research runs, on all three paths that reach one: job submission (`POST /api/jobs/async/submit`), the commissioned run (`POST /api/internal/tasks`, op `research`), and — since the agent reads it per turn — whether a run is OFFERED at all, so the escalation and its plan-approval card never appear for a tenant without it. **OFF for all organizations in Production since 2026-09-18**; ON in Staging |
-| `byok-llm` | BYOK LLM credentials (ADR-0022): org page card, all `/api/organization/llm-credentials` routes, and the internal resolution endpoint (under enforcement) |
-| `web-search` | Platform-layer web-search gate (ADR-0022). Evaluated live per org at the WS upgrade (like `memory-reflection`), combined with the tenant's own `settings.webSearchEnabled` toggle |
-| `source-origin-badges` | Retired 2026-09 with the research side panel (its only reader was `ReportTab`). The flag still exists in WorkOS; nothing evaluates it |
-| `chat-confidence-chip` | Self-assessed confidence chip on shallow chat answers (FB-6). Server-computed in the chat route, prop-drilled to AgentResponse; off → no chip |
-| `files-metadata-panel` | Files preview ingestion-metadata block: summary/pages/passages/contents rows (FB-8). Server-computed in the files page, prop-drilled to FilePreviewPane; status/type/size rows are never gated |
-| `image-upload` | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`AIQ_VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
-| `research-in-chat-history` | Fold the Research runs tab into the chat-history panel as a "Deep Research" section (FB-10). Server-computed in the project layout (hide the `research` nav item) and the chat route (SessionsPanel section + `?session=` links into the run's own thread, ADR-0062 — a run that names no conversation gets no link); the `/research` route redirects to chat when on. Off → legacy Research tab + `ResearchRunsList` page remain |
-| `wizard-conflict-check` | End-of-wizard intake conflict check (FB-13). Server-computed in the intake page, prop-drilled to `ProjectIntakeWizard`. On Save: structured answers are checked deterministically on the client (instant), free-text answers by the LLM (`POST /api/projects/[id]/consistency-check` → backend `/v1/consistency-check`, skipped when there is no substantive free text); findings hold the save for "Trotzdem speichern" / "Überarbeiten". Off → the wizard saves exactly as before |
-| `organization-archiv` | Org-wide document Archiv (ADR-0024): `/app/archiv` page + user-menu entry, `/api/archiv/*` routes, and injection of the `archiv_<orgId>` collection into every project's retrieval scope. A standard flag — while `GRID_ENFORCE_FEATURE_FLAGS` is off it is available to all orgs (fail-open, like every flag); once enforcement is on, target the specific orgs that should have it. Uploads/deletes additionally require the `org:archiv:manage` permission (table §1) |
-| `answer-feedback` | Per-answer thumbs feedback (WS-7 of the click-dummy overhaul spec): the "War das hilfreich?" row under assistant answers (up / down → reason chips) and the `/api/feedback/answers` routes (`lib/feedback/*`, `answer_feedback` table). Server-computed in the chat route, prop-drilled to AgentResponse (same path as `chat-confidence-chip`). A standard fail-open flag. Created 2026-09-18 in **both** environments, **ON for all organizations** — not the default-off this row used to prescribe, because Production had been serving it via fail-open for two months and enforcement would otherwise have withdrawn it |
-| `skills` | Agent Skills and the project Jobs that attach them (ADR-0046): the project **Automation** section (its Tasks / Zeitplan / Skills tabs, its rail entry, its ⌘K entries and the `g j` jump), every `/api/skills` and `/api/projects/[id]/jobs` route, and the `skill-scheduler`'s start gate plus the session-less scheduled-fire path (`SKILLS_FLAG`, `lib/workos/feature-flags.ts`). Dark-launched and **not** fail-open — `isSkillsEnabled` is default-OFF in both directions, so without enforcement the deployment needs `GRID_SKILLS_ENABLED=true` (Pulumi `grid-oib:skillsEnabled`) instead. Created 2026-09-18, **OFF for all organizations in both environments** |
-| `task-automation` | Delegated TASKS and their schedules (ADR-0051/0054, `task_definitions` + `task_runs`): work a chat turn hands over instead of answering, plus the recurring `cadence` form the scheduler fires. Gates the agent's `create_task` tool — told to the model in its per-turn prompt block and refused at `POST /api/internal/tasks`, so a turn neither offers one nor creates one — and the session-bearing `/api/projects/[id]/tasks`. **Deliberately separate from `skills`**, which shipped with it and is not the same feature: a skill is an instruction the agent may follow inside a turn, a task is work that outlives the turn, costs the requester's budget and runs under their permissions. It is also the second door into `deep-research`, since a task's agent type may be `researcher` or `deep_researcher`. A standard fail-open flag, `deep-research` shape. Created 2026-09-18, **OFF for all organizations in both environments** |
-| `collaboration` | Shared chats, `@`-mentions with the agent hand-off, and the inbox (ADR-0032…0035): the inbox nav entry + page, the share surfaces, the mention picker, and every `/api/inbox/*`, `/api/sharing/*` and `/api/stream` route. **Not** fail-open — `isCollaborationEnabled` is default-OFF in both directions, because the feature changes who can READ a conversation; without enforcement the deployment needs `GRID_COLLABORATION_ENABLED=true`. The flag hides the surfaces, it does not revoke grants: a thread shared while it was on stays shared in the database after it goes off |
-| `mail-import` | The Outlook archive import into a project's Dateien (ADR-0085): the **Outlook-Archiv importieren** action and the routes that start and complete an import (`isMailImportEnabled`, `lib/authz/feature-flags.ts`). Dark-launched and **not** fail-open: without enforcement the deployment needs `GRID_MAIL_IMPORT_ENABLED=true` (Pulumi `grid-oib:mailImportEnabled`). **Not created yet in either environment**: create it OFF, then switch it on per organization once its Art. 28 notice covers imported correspondence |
-| `ifc-models` | IFC/BIM models (ADR-0045): the `.ifc` entry in the upload accept-list (client **and** the server-side allow-list), the model surfaces, every `/api/**/bim/*` route, and the agent's `ifc_query` tool via the internal service route. Default-ON via `GRID_IFC_MODELS_ENABLED` without enforcement. Worth knowing before enabling it for a customer: the feature renders OIB compliance verdicts, and `docs/roadmap/ifc-review-findings.md` lists the rules that still overstate |
-| `ifc-preview-first` | Whether a click on an `.ifc` opens the file PREVIEW first (on) or jumps straight to the full-screen model stage (off). Distinct from `ifc-models`, which decides whether the model surfaces exist at all; this one decides what a click does when they do. Read by both file surfaces — a project's Dateien and the org-wide Archiv — from one helper, so it can only ever move them together. Default-ON via `GRID_IFC_PREVIEW_FIRST` without enforcement |
-| `agent-authored-documents` | The ONE filing seam for documents Piloti writes — a finished Recherchebericht, a drawn diagram — into a project as `documents` rows (`lib/documents/generated.ts`, ADR-0047). Deliberately alongside the `project:documents:generate` permission, not instead of it: the permission is the TENANT's (per project, per role, set by the org's own admin), this flag is the OPERATOR's — the lever that stops filing for every producer and every tenant at once without editing a built-in role (which would then fail `provision:authz --check` in CI). Default-ON via `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED` without enforcement |
-| `keyboard-shortcuts` | Global keyboard shortcuts, the ⌘/Ctrl+K command palette and the shortcut cheatsheet. Org-level availability; each user can additionally switch shortcuts off in their profile settings, so the flag sets the ceiling rather than the state |
-| `project-knowledge-page` | The project-level knowledge-base transparency page (`/knowledge` route plus its ⌘K entry), showing the shared OIB corpus and the project's documents with their live index state. Launches dark: without enforcement it needs `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED=true`. The platform owner's base-knowledge manager is NOT gated by this. OFF for all organizations in both environments |
-| `project-mail-inbox` | The project email address (`lib/inbound-mail`): the address card and `/api/projects/[id]/inbound-address`, the inbound-mail webhook (a permanent refusal when off) and the drain. The webhook and the drain have no session and read the org-level half, `isProjectMailInboxEnabledForOrg` (`lib/workos/feature-flags.ts`), which answers a WorkOS failure with a retry rather than "off". Per ORGANIZATION and **default-OFF in both directions**, the `collaboration` shape: without enforcement the deployment needs `GRID_PROJECT_MAIL_INBOX_ENABLED=true`. Created 2026-10-01, **OFF for all organizations in both environments**; target an organization only after it has been told |
-| `memory-reflection` | The async post-answer memory-reflection stage, read per org and per turn by `POST_ANSWER_STAGE_FLAGS` (`lib/workos/feature-flags.ts`). In the registry since 2026-09-30 so provisioning checks it exists; ON for all organizations in both environments |
-| `post-answer-follow-ups` | The post-answer follow-up-questions stage, same reader. In the registry since 2026-09-30 for the same reason; ON for all organizations in both environments. Turning it off leaves an organization with no follow-up questions: the in-answer card it replaced is retired (ADR-0069) |
+The one exception is a deployment that signs nobody in (`REQUIRE_AUTH` not
+`true`: local dev, an anonymous compose stack). It has no claim to read, so
+each flag answers by its **kind** (`FLAG_KINDS` in the registry): a
+**rollout** — shipped to everybody, kept as a kill switch — is ON, an
+**entitlement** — granted per organization because it costs money or widens
+who reads what — is OFF. To exercise an entitlement locally, sign in against
+the Staging WorkOS environment.
 
-Rollout order (per environment): 1) create the flags in the WorkOS
-dashboard (Feature Flags — flag create/update events are covered by
-WorkOS's own event log), 2) target the organizations that should have them
-(dashboard, or `workos.featureFlags.addFlagTarget({ slug, targetId:
-'org_…' })`), 3) set `GRID_ENFORCE_FEATURE_FLAGS=true` in the deployment.
-While the env flag is `false` (default) nothing is gated, so existing
-deployments are unaffected. Once enforced, tokens minted before the rollout
-carry no `feature_flags` claim and fail closed — users pick the flags up at
+| Flag slug | Kind | Gates |
+|---|---|---|
+| `runtime-model-config` | entitlement | Runtime AI model configuration (org page card + all 4 API routes) |
+| `deep-research` | entitlement | Deep-research runs, on all three paths that reach one: job submission (`POST /api/jobs/async/submit`), the commissioned run (`POST /api/internal/tasks`, op `research`), and — since the agent reads it per turn — whether a run is OFFERED at all, so the escalation and its plan-approval card never appear for a tenant without it. **OFF for all organizations in Production since 2026-09-18**; ON in Staging |
+| `byok-llm` | entitlement | BYOK LLM credentials (ADR-0022): org page card, all `/api/organization/llm-credentials` routes, and the internal resolution endpoint |
+| `web-search` | rollout | Platform-layer web-search gate (ADR-0022). Evaluated live per org at the WS upgrade (like `memory-reflection`), combined with the tenant's own `settings.webSearchEnabled` toggle |
+| `image-upload` | rollout | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`AIQ_VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
+| `wizard-conflict-check` | rollout | End-of-wizard intake conflict check (FB-13). Server-computed in the intake page, prop-drilled to `ProjectIntakeWizard`. On Save: structured answers are checked deterministically on the client (instant), free-text answers by the LLM (`POST /api/projects/[id]/consistency-check` → backend `/v1/consistency-check`, skipped when there is no substantive free text); findings hold the save for "Trotzdem speichern" / "Überarbeiten". Off → the wizard saves exactly as before |
+| `skills` | entitlement | Agent Skills and the project Jobs that attach them (ADR-0046): the project **Automation** section (its Tasks / Zeitplan / Skills tabs, its rail entry, its ⌘K entries and the `g j` jump), every `/api/skills` and `/api/projects/[id]/jobs` route, and every scheduled fire (`fireScheduledJob` asks per organization and records a `skipped` run when it is off; the `skill-scheduler` itself has no gate). Created 2026-09-18, **OFF for all organizations in both environments** |
+| `task-automation` | entitlement | Delegated TASKS and their schedules (ADR-0051/0054, `task_definitions` + `task_runs`): work a chat turn hands over instead of answering, plus the recurring `cadence` form the scheduler fires. Gates the agent's `create_task` tool — told to the model in its per-turn prompt block and refused at `POST /api/internal/tasks`, so a turn neither offers one nor creates one — and the session-bearing `/api/projects/[id]/tasks`. **Deliberately separate from `skills`**, which shipped with it and is not the same feature: a skill is an instruction the agent may follow inside a turn, a task is work that outlives the turn, costs the requester's budget and runs under their permissions. It is also the second door into `deep-research`, since a task's agent type may be `researcher` or `deep_researcher`. Created 2026-09-18, **OFF for all organizations in both environments** |
+| `collaboration` | entitlement | Shared chats, `@`-mentions with the agent hand-off, and the inbox (ADR-0032…0035): the inbox nav entry + page, the share surfaces, the mention picker, and every `/api/inbox/*`, `/api/sharing/*` and `/api/stream` route. An entitlement because the feature changes who can READ a conversation. The flag hides the surfaces, it does not revoke grants: a thread shared while it was on stays shared in the database after it goes off |
+| `piloti-wakes` | entitlement | Events on Piloti's work wake a turn (ADR-0106): a reply that addresses Piloti in an Anmerkung's thread, a reply on Piloti's own open question, and a mark delegated to Piloti are answered by the server (the `piloti_wake` job) as the person who acted, with nobody's browser open. Read from the person's session when the reply or delegation is written, and from their pinned session when the job runs. Off: an @Piloti reply is asked by the browser that wrote it, as before, and „An Piloti delegieren" is not offered. An entitlement because a wake is a model call nobody typed. **Not created yet in either environment**: create it OFF, then switch it on per organization |
+| `piloti-acts` | entitlement | Piloti acts when asked (ADR-0105): sets a mark born open, changes one (resolve, reopen, dismiss, take over, assign, date, reword) or deletes one the person set, in the asker's name, through `POST /api/internal/document-annotations` (ops `create`, `update`, `delete`). Read from the asker's pinned session on that route (`isPilotiActsEnabled`, `lib/authz/feature-flags.ts`). Off: those ops are refused with a 403, code `PILOTI_ACTS_OFF`, `details.reason` `piloti-acts-off`, and Piloti proposes the mark instead or tells the person to make the change themselves; reads, the room, pointing, highlighting, thread replies and proposals are unaffected. An entitlement so an office starts with Piloti proposing only and switches acting on once it trusts it. **Not created yet in either environment**: create it OFF, then switch it on per organization; an organization that already relies on acting needs it targeted in the same release |
+| `mail-import` | entitlement | The Outlook archive import into a project's Dateien (ADR-0085): the **Outlook-Archiv importieren** action and the routes that start and complete an import (`isMailImportEnabled`, `lib/authz/feature-flags.ts`). **Not created yet in either environment**, so the import is off for everybody until it is: create it OFF, then switch it on per organization once its Art. 28 notice covers imported correspondence |
+| `project-mail-inbox` | entitlement | The project email address (`lib/inbound-mail`, ADR-0075): the address card and `/api/projects/[id]/inbound-address`, the inbound-mail webhook (a permanent refusal when off) and the filing job. The webhook and the job have no session and read `isProjectMailInboxEnabledForOrg` (`lib/workos/feature-flags.ts`), which answers a WorkOS failure with a retry rather than "off", because "off" bounces the sender's mail. An entitlement because mail from outside reaches a tenant's file system. Created 2026-10-01, **OFF for all organizations in both environments**; target an organization only after it has been told |
+| `ifc-models` | rollout | IFC/BIM models (ADR-0045): the `.ifc` entry in the upload accept-list (client **and** the server-side allow-list), the model surfaces, every `/api/**/bim/*` route, and the agent's `ifc_query` tool via the internal service route. Worth knowing before enabling it for a customer: the feature renders OIB compliance verdicts, and `docs/roadmap/ifc-review-findings.md` lists the rules that still overstate |
+| `agent-authored-documents` | rollout | The ONE filing seam for documents Piloti writes — a finished Recherchebericht, a drawn diagram — into a project as `documents` rows (`lib/documents/generated.ts`, ADR-0047). Deliberately alongside the `project:documents:generate` permission, not instead of it: the permission is the TENANT's (per project, per role, set by the org's own admin), this flag is the OPERATOR's — the lever that stops filing for every producer and every tenant at once without editing a built-in role (which would then fail `provision:authz --check` in CI) |
+| `project-knowledge-page` | rollout | The project-level knowledge-base transparency page (`/knowledge` route plus its ⌘K entry), showing the shared OIB corpus and the project's documents with their live index state. The platform owner's base-knowledge manager is NOT gated by this. OFF for all organizations in both environments |
+| `memory-reflection` | rollout | The post-answer memory-reflection stage, read per TURN by the agent tier (`GET /api/internal/stages`). ON for all organizations in both environments |
+| `post-answer-follow-ups` | rollout | The post-answer follow-up-questions stage, read the same way. ON for all organizations in both environments, and the only source of follow-up questions since the in-answer card was retired |
+
+**Retired flags (delete them from WorkOS in both environments).** Eight slugs
+exist in WorkOS and nothing in the code reads them any more: the seven finished
+UX rollouts `answer-feedback`, `chat-confidence-chip`, `files-metadata-panel`,
+`research-in-chat-history`, `keyboard-shortcuts`, `organization-archiv` and
+`ifc-preview-first` (ON for all organizations for about three months, so their
+features are simply on now: the Archiv for every member of an organization, the
+keyboard shortcuts for every session with one, the rest for everybody), and
+`source-origin-badges`, whose only reader went with the research side panel. A
+flag left in the dashboard after its code is gone reads like a switch and
+switches nothing.
+
+Rollout order (per environment): 1) create the flag in the WorkOS dashboard
+(Feature Flags — flag create/update events are covered by WorkOS's own event
+log), in BOTH environments and in the same change that adds the slug to the
+registry, 2) target the organizations that should have it (dashboard, or
+`workos.featureFlags.addFlagTarget({ slug, targetId: 'org_…' })`). `task
+fe:provision:flags` lists every registry slug missing from an environment
+(read-only, `WORKOS_API_KEY` of that environment). Tokens minted before a change carry the old claim — users pick it up at their
 next sign-in. ✅ All four flags exist in Staging AND Production
 (2026-07-13): `runtime-model-config` and `web-search` enabled for ALL
 organizations in both; `byok-llm` enabled for ALL in Staging, OFF in
@@ -486,34 +574,26 @@ structured-answer rules plus a free-text LLM check, with a "Trotzdem speichern"
 override) — flip it on in Production once the review is signed off and the
 free-text check has been smoke-tested against a configured LLM.
 
-#### Production enforces flags (since 2026-09-18)
+#### Flags are always enforced (since 2026-10)
 
-`grid-oib:enforceFeatureFlags` is **`true`** in BOTH environments. WorkOS is the
-control plane for features now: per organization, per flag, no redeploy.
+`GRID_ENFORCE_FEATURE_FLAGS` was switched on in both stacks on 2026-09-18 and
+then deleted, together with every env fallback that only mattered while it was
+off (`GRID_SKILLS_ENABLED`, `GRID_COLLABORATION_ENABLED`,
+`GRID_MAIL_IMPORT_ENABLED`, `GRID_IFC_MODELS_ENABLED`,
+`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED`,
+`GRID_MEMORY_REFLECTION_ENABLED`, `GRID_STAGE_FOLLOW_UPS_ENABLED`). With it on,
+every one of those was dead config in both stacks, and compose and local dev,
+which ran it off, rehearsed a different code path from the one that shipped.
+WorkOS is the control plane for features: per organization, per flag, no
+redeploy.
 
-Staging followed on the same day, and not as tidiness. With enforcement off
-there it rehearsed a different code path from the one Production runs:
-`isFeatureEnabled` fell open, the per-turn capability resolution never ran, and
-a registry flag missing from WorkOS was invisible until Production failed it
-closed. All 20 registry flags are ON for ALL organizations in Staging, so the
-flip was behaviour-preserving there except for `project-knowledge-page`, which
-had no env opt-in and is now visible — which is what that environment is for.
-
-Two things follow, and both bite the next person who adds a feature:
-
-1. **Every env gate with a WorkOS half is inert in Production.**
-   `isFeatureEnabled` no longer fails open, the dark-launch gates
-   (`isSkillsEnabled`, `isCollaborationEnabled`) stop reading
-   `GRID_SKILLS_ENABLED` / `GRID_COLLABORATION_ENABLED`, and the default-ON
-   gates (`isIfcModelsEnabled`, `isIfcPreviewFirstEnabled`,
-   `isAgentAuthoredDocumentsEnabled`) stop defaulting to ON. Changing one of
-   those variables in the Production stack changes nothing there.
-2. **A registry flag absent from WorkOS is off for everybody.** Nothing catches
-   this: the registry is TypeScript, the flags are remote state, and `task
-   verify` cannot see across the gap. Adding a slug to
-   `lib/authz/feature-flags.ts` without creating it in WorkOS ships a feature
-   that is dark in Production and reports nothing about why. **Create the flag
-   in both environments in the same change.**
+**A registry flag absent from WorkOS is off for everybody.** The registry is
+TypeScript and the flags are remote state, so `task verify` cannot see across
+the gap. `task fe:provision:flags` can: it lists the environment's flags
+read-only, fails on any registry slug missing there, and reports (without
+failing) flags no code reads. The weekly **WorkOS drift** workflow runs it
+against Staging; Production has no key in CI, so run it there by hand with the
+Production key. **Create the flag in both environments in the same change.**
 
 ##### What the flip changed, and what it deliberately did not
 
@@ -558,16 +638,9 @@ One WorkOS toggle, per organization or for all, effective at the reader's next
 sign-in (the claim rides the AuthKit JWT). No deploy. That is the point of
 enforcing.
 
-Two env keys stay `"true"` in the Production stack and are *not* leftovers:
-
-- `grid-oib:skillsEnabled` no longer decides whether the Automation section is
-  visible — the `skills` flag does — only whether the `skill-scheduler`
-  Deployment is created at all (`deploy/pulumi/src/app/workers.ts:206`).
-  Keeping it up means re-enabling Automation for one organization stays a
-  dashboard toggle instead of a redeploy, and the scheduler's own per-org flag
-  check keeps every schedule paused meanwhile.
-- `grid-oib:collaborationEnabled` is inert under enforcement, kept truthful in
-  case enforcement is ever lifted.
+There is no stack key to change alongside: the `skill-scheduler` always runs
+and the BFF skips a schedule whose organization lacks `skills`, so re-enabling
+Automation for one organization is the same single toggle.
 
 ##### How a withdrawn capability reaches the agent
 
@@ -600,9 +673,11 @@ Three things follow, and each has cost somebody an afternoon:
   fallback exists for a deployment with no worker, and running it on a
   capability refusal would do the very thing the route just refused.
 - **Every failure path leaves the capability ALLOWED** — an unreachable BFF, a
-  timeout, an older BFF that sends no `features`, a turn with no organization.
-  Withdrawal is a decision somebody made in WorkOS; it is never the shape of a
-  blip. The route behind it is what fails closed.
+  timeout, an older BFF that sends no `features`. Withdrawal is a decision
+  somebody made in WorkOS; it is never the shape of a blip. The route behind it
+  is what fails closed. A turn with no organization is not a failure: the BFF
+  answers it, and its answer is OFF (both are entitlements), the same verdict
+  the submit and task routes reach.
 
 ## Replay into a fresh environment
 
@@ -685,12 +760,12 @@ Three things follow, and each has cost somebody an afternoon:
 8. Feature flags (§6): CREATION stays a dashboard step —
    `provision:workos-env` lists every registry flag missing from WorkOS as
    MANUAL rather than attempting it. Create them, target the intended orgs
-   (`WORKOS_FLAG_TARGETS_JSON` + `--apply` reconciles targeting, ADDITIVELY),
-   then set `GRID_ENFORCE_FEATURE_FLAGS=true`.
+   (`WORKOS_FLAG_TARGETS_JSON` + `--apply` reconciles targeting, ADDITIVELY).
+   `task fe:provision:flags` then confirms every registry slug exists.
 9. BYOK (ADR-0022): WorkOS Vault needs no per-environment setup — objects
    are created lazily under each org's key context. Enterprise tenants
    wanting customer-managed KEKs (Vault BYOK: AWS KMS / Azure Key Vault /
-   GCP KMS) enable it per organization with WorkOS support; no Grid change
+   GCP KMS) enable it per organization with WorkOS support; no Piloti change
    is required.
 
 Still manual in every environment, summarized by every `provision:workos-env`

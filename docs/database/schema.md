@@ -31,18 +31,20 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `citation-events.ts` | `citation_events` |
 | `resource-shares.ts` | `resource_shares` |
 | `inbox.ts` | `inbox_items` |
+| `push-subscriptions.ts` | `push_subscriptions` |
 | `mention-requests.ts` | `mention_requests` |
 | `conversation-reads.ts` | `conversation_reads` |
 | `conversation-restricted-folders.ts` | `conversation_restricted_folders` |
 | `conversation-source-projects.ts` | `conversation_source_projects` |
 | `document-access-log.ts` | `document_access_log` (the download log) |
 | `document-quarantine-decisions.ts` | `document_quarantine_decisions` (the content gate's decisions owed to the audit trail) |
+| `document-fassung-announcements.ts` | `document_fassung_announcements` (which new Fassungen `document.new_fassung` has announced, once each) |
 | `project-memory.ts` | `project_memory` (documented in [`project-memory-design.md`](../architecture/project-memory-design.md); the restricted-memory column below; `evidence` (0127, `jsonb`, CHECK array or NULL): the file names and pages a source-grounded decision was read from, set by the closing extraction) |
 | `jobs.ts` | `skills`, `jobs`, `job_runs` — the last two LEGACY since 0086; they are not written or read after the cutover and migration 0087 drops them |
 | `tasks.ts` | `tasks` — LEGACY since 0086, same |
 | `task-model.ts` | `task_definitions`, `task_runs` — the collapsed model (migration 0086) |
 | `bff-job-queue.ts` | `bff_job_queue`, `bff_job_lane_turns` — the BFF's durable background work (migration 0104, ADR-0079) |
-| `inbound-mail.ts` | `inbound_mail_addresses`, `inbound_mail_messages` — the project mail inbox (migration 0129, ADR-0075) |
+| `inbound-mail.ts` | `inbound_mail_addresses`, `inbound_mail_messages` — the project mail inbox (migration 0148, ADR-0075) |
 
 ---
 
@@ -71,17 +73,19 @@ export const projects = pgTable('projects', {
 | `created_by` | `text` | NOT NULL | WorkOS user ID of creator |
 | `collection_name` | `text` | NOT NULL | Milvus collection name for this project's knowledge base |
 | `workos_resource_id` | `text` | UNIQUE | Optional WorkOS FGA resource ID |
-| `status` | `text` | NOT NULL, default `active`, CHECK `IN ('active','closed')` | ADR-0090, migration 0116. A closed project is read-only for files, folders, versions, the profile and project memory, and every organization member may read it |
+| `status` | `text` | NOT NULL, default `active`, CHECK `IN ('active','paused','closed')` | The lifecycle (ADR-0098, migrations 0116 and 0129). Paused: writable, members-only, schedules skipped. Closed (ADR-0090): read-only for files, folders, versions, the profile and project memory, and every organization member may read it. The moves are `PROJECT_TRANSITIONS` (`lib/projects/project-status.ts`) |
+| `paused_at` | `timestamptz` | set exactly when `status = 'paused'` | When it was paused (0129) |
 | `closed_at` | `timestamptz` | set exactly when `status = 'closed'` | When it was closed; cleared on reopen |
 | `closed_by` | `text` | set exactly when `status = 'closed'` | WorkOS user id of whoever closed it |
+| `closed_outcome` | `text` | NOT NULL when closed, `completed` or `cancelled` | How it ended: handed over, or not realized (0129). Kept across a reopen as the next close's suggestion, read only while closed |
 | `started_on` | `date` | first of a month, CHECK | Steckbrief Beginn (ADR-0091, migration 0117) |
-| `ended_on` | `date` | first of a month, not before `started_on` | Steckbrief Abschluss; closing fills it with the month of the close when unset |
+| `ended_on` | `date` | first of a month, not before `started_on`; NOT NULL when closed | Abschluss, named by closing (ADR-0098). Kept across a reopen as the next close's suggestion and read only while closed (`abschlussOf`) |
 | `deleted_at` | `timestamptz` | | Soft delete (ADR-0011) |
 | `created_at` | `timestamptz` | NOT NULL, `defaultNow()` | |
 
 **Indexes:** `projects_org_deleted_created_idx` on `(organization_id, deleted_at, created_at)` — tenant list queries (migration `0014`). `projects_org_status_idx` on `(organization_id, status) WHERE deleted_at IS NULL` (migration 0116).
 
-**Constraints (0115):** `projects_status_check`, and `projects_closed_state_check`: closed exactly when `closed_at` and `closed_by` are both set.
+**Constraints (0116, 0129):** `projects_status_check`; `projects_closed_state_check`: closed exactly when `closed_at` and `closed_by` are both set; `projects_paused_state_check`: paused exactly when `paused_at` is set; `projects_closed_outcome_check`: a closed project has a known `closed_outcome` and an `ended_on` (both kept across a reopen).
 
 **The closed-project guard (0116).** `grid_refuse_insert_into_closed_project()` runs `BEFORE INSERT` on `documents`, `project_folders`, `document_versions` and `project_memory`, and raises SQLSTATE `GPC01` when the row names a closed project. It reads the project row `FOR SHARE`, so a close and an insert serialize. Updates are not refused. The down migration refuses while any project is closed.
 
@@ -89,10 +93,12 @@ export const projects = pgTable('projects', {
 
 ## project_people (migration 0117, ADR-0091)
 
-Everyone who worked on a project, with or without a Piloti account: the Steckbrief's people.
-Personal data of people who mostly never gave it, so: name, function, company, months, an
-optional account link, and nothing else. Never read into the agent's prompt
-(`people-stay-out-of-the-prompt.spec.ts`).
+What the Steckbrief stores about the people on a project. The project's current members are
+not rows: they are read from WorkOS (ADR-0100), and a row with their `user_id` only adds their
+function, company and months. A member removed from the project gets a row then, as a former
+member; everyone without an account is a row added by hand. Personal data of people who mostly
+never gave it, so: name, function, company, months, a member's account, and nothing else. Never
+read into the agent's prompt (`people-stay-out-of-the-prompt.spec.ts`).
 
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
@@ -103,7 +109,7 @@ optional account link, and nothing else. Never read into the agent's prompt
 | `function` | `text` | ≤ 200 | Funktion: Projektleitung, Statik, Bauherr … |
 | `company` | `text` | ≤ 200 | Firma |
 | `started_on`, `ended_on` | `date` | first of a month; end not before start | von–bis |
-| `user_id` | `text` | | WorkOS user id of their Piloti account, when linked; checked to be an organization member on write |
+| `user_id` | `text` | | WorkOS user id of a member or former member; checked to be an organization member on write. One row per member: the service updates it rather than adding a second |
 | `created_by` | `text` | NOT NULL | |
 | `created_at`, `updated_at` | `timestamptz` | NOT NULL | |
 
@@ -186,7 +192,9 @@ export const messages = pgTable('messages', {
 — `{ "<cardType>-<index>": { decision, decidedAt } }`, `decision` from a closed
 union and `decidedAt` a UTC ISO instant (ADR-0030). It is why a settled
 `project_profile_patch` / `memory_proposal` cannot re-offer a button that would
-apply the same write twice. Unlike the other keys it is usually written *after*
+apply the same write twice, for a card without a `proposal_id`. A card that has
+one (ADR-0105) is decided on the `proposed_changes` row and writes nothing here;
+the row is also what Piloti reads back in `PROPOSAL_DECISIONS`. Unlike the other keys it is usually written *after*
 the insert, via `PATCH /api/conversations/{id}/messages/{messageId}` (merged per
 card key); it also rides the INSERT when a decision was already recorded
 locally, which is how a decision made before the row existed still reaches the
@@ -283,7 +291,7 @@ export const documents = pgTable('documents', {
 | `collection_name` | `text` | NOT NULL | The retrieval collection holding the document's chunks. For a project document it is the project's `collection_name`, **or, under a restricted folder, that folder's own collection** `<project collection>_r<12 hex of the folder id>` (ADR-0087). Which one is a function of the folder tree: `lib/projects/collection-placement.ts` moves rows when the tree changes: purge and re-point in the caller, the re-ingest by a bulk `placement_reingest` job. |
 | `file_size` | `integer` | | Size in bytes |
 | `content_type` | `text` | | MIME type |
-| `status` | `text` | NOT NULL, DEFAULT `'pending'` | `pending` → `processing` → `processed` / `error`, plus `stored` (migration `0063`). `stored` is TERMINAL and means "the bytes are here and indexing was deliberately skipped" — an agent-authored document, which is never dispatched to `/v1/ingest`. It must stay out of `IN_FLIGHT_STATUSES` in `lib/documents/reconcile-status`, or every read polls a backend that has never heard of the row and then overwrites its status from a file list that will never contain it. Plain `text` with no CHECK, so a new state is a TypeScript change. |
+| `status` | `text` | NOT NULL, DEFAULT `'uploaded'`, CHECK `documents_status_known` | **Migration `0135`** (ADR-0104): one of `uploaded` (bytes here, nothing dispatched), `pending` (an ingest job is queued), `processing` (the BFF works on it locally: IFC, Office rendition, placement re-read), `completed` (read; citable), `failed`, `quarantined` (the content check holds it, ADR-0086), `stored` (bytes here and deliberately not read: a Piloti document nobody published, an archived document). TERMINAL: `completed`, `failed`, `quarantined`, `stored`, `uploaded`; `stored` must stay out of the in-flight set the reconcile polls. Open `text` until 0135, which rewrote the legacy spellings (`ready`, `ingested`, `success`, `processed` → `completed`; `error` → `failed`). Vocabulary: `lib/documents/document-status.ts` — `DOCUMENT_STATUSES` |
 | `error_message` | `text` | | Error details if status is `error` |
 | `metadata` | `jsonb` | | Flexible metadata |
 | `screening_outcome` | `text` | CHECK `NULL` or `clean`/`partial`/`unchecked`/`quarantined`/`released` | **Migration `0109`, ADR-0086**: what the local content screening found before the first model call. `NULL` = not screened (a row older than the column, or one replaced since: a replacement resets it). `partial` = some pages had no text layer and were checked by name only; `unchecked` = no text could be read locally at all; `quarantined` = a term or detector matched and nothing went to a model. Written by reconciliation from the ingest job's `file_details[].screening`. |
@@ -334,9 +342,9 @@ threw the previous bytes away. That was versioning without the history. Now:
 
 | Who | What happens |
 |---|---|
-| a person uploads a file | version 1, `published`, born approved (`approved_by = published_by = created_by`) — the person who uploaded it IS the assertion, and no review round is invented |
+| a person uploads a file | version 1, `published`, `origin = 'upload'`, `published_by = created_by` and **no approver** (migration `0137`) — the person who uploaded it IS the assertion, and no review round is invented. Rows written before 0137 carried the uploader in `approved_by`; the migration cleared it |
 | a person re-uploads the same name | version N+1, `published`; version N becomes `superseded` and **keeps its object**, under the `v<n>/` storage prefix it was written to |
-| Piloti files a document | version 1, `draft`, which walks `draft → in_review → approved → published` and can be sent back with `changes_requested` or `rejected` |
+| Piloti files a document | version 1, `draft`, `origin = 'draft'`, which walks `draft → in_review → published` (approving publishes in one step, ADR-0104 rule 5) and can be sent back with `changes_requested` or `rejected`. A version still `approved` from before 0137 is published by `publish` |
 
 `documents.published_version_id` points at the live version and the item's
 `storage_key` / `storage_bucket` / `file_size` / `content_type` / `content_hash`
@@ -355,13 +363,30 @@ upload recording its version for a document deleted first,
 `submitted_by`/`_at`, `reviewed_by`/`_at`, `approved_by`/`_at`,
 `published_by`/`_at`, `review_comment`, `created_by`,
 `origin_conversation_id` (migration `0084`), `submitted_by_actor` (migration
-`0085`), `created_at`, `updated_at`.
+`0085`), `screened_hash` (migration `0131`), `created_at`, `updated_at`.
+
+**`screened_hash` (migration `0131`, ADR-0086):** the `content_hash` of this
+version's bytes when a screening verdict passed them, the version's own verdict
+that `documents.screened_hash` cannot keep once a re-upload replaces those
+bytes and resets it. It counts only while it equals `content_hash`
+(`versionBytesPassedScreening`), so a content write leaves it behind. One
+writer, `recordVersionVerdict` in `lib/documents/repository.ts`, in the
+transaction that records the item's verdict: the reconcile sets it on every
+version of the document holding the bytes a completed, passing job judged and
+clears it on a quarantine of those bytes; a reviewer's release sets it on the
+released bytes. A forked draft carries its source's value with the bytes it
+copies. Backfilled where the rows prove a pass about exactly those bytes: the
+item's passing verdict about them, or a standing release of them
+(`screening_released_hash`) that no current quarantine of the same bytes
+overrides. A version superseded before 0131 whose item verdict had already been
+reset stays NULL, and stays closed to members.
 
 **Constraints — the ratchet, not decoration:**
 
 - `document_versions_state_known` — `draft | in_review | changes_requested | approved | published | superseded | rejected`, generated from `DOCUMENT_VERSION_STATES` so the tuple and the CHECK cannot drift.
 - `document_versions_review_complete` — `(reviewed_by IS NULL) = (reviewed_at IS NULL)`. Copied from `tasks_review_complete` (migration `0075`): a decision is by somebody, at some time, or it is not a decision.
-- `document_versions_published_is_approved` — `state <> 'published' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL)`. **The publish door.** Only a published version is ever dispatched to the retrieval index, so this makes "indexed ⟹ approved by a person" a row invariant rather than a predicate in a fail-open retrieval path.
+- `document_versions_published_is_approved` — `state <> 'published' OR origin = 'upload' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL)` (migration `0137`). **The publish door.** Only a published version is ever dispatched to the retrieval index, so this makes "indexed ⟹ a person uploaded it or a person approved it" a row invariant rather than a predicate in a fail-open retrieval path.
+- `document_versions_origin_known` — `upload | draft` (migration `0137`, ADR-0104). How the version began: a person's upload, or a draft that is published only through an approval. Defaults to `draft`, the value that demands an approver, so a writer that names none is refused rather than publishing unreviewed bytes.
 - `document_versions_refusal_has_comment` — `state NOT IN ('changes_requested', 'rejected') OR review_comment IS NOT NULL`. A refusal with nothing in it is a decision the next attempt cannot act on.
 - `document_versions_submitted_by_actor_known` — `human | agent` (migration `0085`).
 
@@ -514,6 +539,33 @@ two shelves with no project. Listed in `rls-coverage.spec.ts`
 boundary, so it is deliberately not in that list.
 
 ---
+
+## document_version_reviews (migration 0136, ADR-0104)
+
+One review round on one version. A submit opens a round (`outcome = 'requested'`);
+an approval, a request for changes or a rejection decides it. Written in the
+transaction that swaps the version's `state` (`compareAndSwapVersionState`,
+`lib/documents/version-repository.ts`), so a round and the state it describes
+cannot disagree.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | `uuid` | PK | |
+| `organization_id` | `text` | NOT NULL | RLS: `organization_id = grid_current_org()` |
+| `document_id`, `version_id` | `uuid` | NOT NULL, FK `(version_id, document_id)` → `document_versions (id, document_id)` ON DELETE CASCADE | |
+| `requested_by`, `requested_by_actor` | `text` | NOT NULL; actor `human` \| `agent` | Who sent it, and whose hand |
+| `requested_at` | `timestamptz` | NOT NULL | |
+| `reviewer_user_ids` | `text[]` | NOT NULL, DEFAULT `'{}'` | Whom the round was sent to; empty means the project's editors |
+| `outcome` | `text` | `requested` \| `approved` \| `changes_requested` \| `rejected` | At most one `requested` per version (partial unique index) |
+| `decided_by`, `decided_at` | | Both NULL exactly while `requested` | |
+| `comment` | `text` | NOT NULL for `changes_requested` and `rejected` | |
+
+**Nothing reads it yet.** This is step 1 of ADR-0104's slice 4: the version's own
+approval columns stay authoritative until the readers move here. The backfill
+recovered the latest round of every version that was ever submitted; a person's
+upload, which was never submitted, has no round, because its approval was the
+synthetic one ADR-0104 stops recording.
+
 
 ## tasks (migration 0075, ADR-0051) — LEGACY since 0086
 
@@ -760,6 +812,28 @@ left alone.
 
 ---
 
+## push_subscriptions (migration 0147, ADR-0112)
+
+A browser a person turned inbox notifications on for. One row per browser
+installation; `endpoint` is the push service's address for it and is **unique
+across tenants**, so a device notifies exactly one person in one organization:
+the one who registered it last. Registering first removes another person's or
+organization's row for the endpoint (`claimEndpoint`, a platform-scope DELETE).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` | primary key |
+| `organization_id`, `user_id` | `text` | who the device notifies; the organization is the RLS predicate |
+| `endpoint` | `text` | https URL, at most 2048, host of DNS labels only (`push_subscriptions_endpoint_host`, the shape WHATWG `URL` and `url.parse` read alike); unique |
+| `p256dh`, `auth` | `text` | the subscription's encryption key and secret; with the endpoint, all a sender needs |
+| `device_label` | `text` | "Safari auf iPhone", from the user agent |
+| `created_at`, `last_success_at` | `timestamptz` | the last time the push service accepted a message |
+| `failure_count` | `integer` | consecutive failures; the device is dropped at five. A 404 or 410 drops it at once |
+
+Index `idx_push_subscriptions_person (organization_id, user_id)`. Secured by
+`organization_id = grid_current_org()`. A person keeps at most ten devices; the
+oldest go first.
+
 ## upload_batches (migration 0110, ADR-0086)
 
 One upload gesture, from the browser's first request to the moment everything
@@ -823,8 +897,8 @@ judged like a chat that drew on that folder; nothing of that is stored here.
 Repository: `lib/conversations/restricted-use-repository.ts`; proven against
 Postgres in `restricted-use.integration.spec.ts`; its CHECK and down in
 `scripts/rls-test-db.sh`. `listRecentMessagesWithCardDecisions` also reads it:
-a conversation with a row here keeps its card decisions out of the
-project-wide `PROPOSAL_DECISIONS` block.
+a conversation with a row here keeps its card decisions, and the
+`proposed_changes` it made, out of the project-wide `PROPOSAL_DECISIONS` block.
 
 A cross-project lookup (ADR-0094) may record a folder of ANOTHER project here;
 it is judged in the tree of the project it belongs to (through
@@ -969,7 +1043,7 @@ exists. The audit trail holds the event under its own retention.
 | `project_id` | `uuid` | | CHECK `(scope = 'project') = (project_id IS NOT NULL)` |
 | `folder_id` | `uuid` | | The folder the document was filed in when quarantined; NULL at a shelf's root. No FK. The event's `filedIn`: under a folder not every project member may read, the name is withheld (`nameWithheld`, ADR-0087) |
 | `filename` | `text` | NOT NULL, CHECK 1–500 characters | The name at the time |
-| `reasons` | `text` | NOT NULL, default `''` | Kinds and terms (`term:Lohnzettel,iban`), never a masked sample or text |
+| `reasons` | `text` | NOT NULL, default `''` | Kinds and terms (`term:Lohnzettel,iban`) of the reasons the verdict lists, never a masked sample or text |
 | `checked` | `text` | NOT NULL, default `''` | `full` or `partial` |
 | `uploaded_by` | `text` | NOT NULL | The document's `created_by` |
 | `audited_at` | `timestamptz` | | NULL while owed |
@@ -982,6 +1056,31 @@ platform role, which is the retention sweep. Proven against Postgres, the
 retention included, in `lib/upload-batches/upload-batches.integration.spec.ts`; constraints, guard,
 down and re-apply in `scripts/rls-test-db.sh`. The down drops the decisions
 not yet audited.
+
+---
+
+## document_fassung_announcements (migration 0130, ADR-0099)
+
+Which new Fassungen have been announced to the people who followed the older
+document (`document.new_fassung`, `lib/documents/fassung-notify.ts`). One row
+per Fassung: the newer document and the anchor its inbox item uses (the new
+version for a same-name Fassung, the older document for a confirmed link).
+`notifyNewFassung` inserts the row (`claimFassungAnnouncement`, ON CONFLICT DO
+NOTHING) after both documents read as screened and before any item is
+written, and writes only when its insert took the row; a failed announcement
+deletes it again (`releaseFassungAnnouncement`). The settle hook runs on every
+re-read, so without the row a person assigned since, or whose item had aged
+out, was told about the same Fassung again.
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `organization_id` | `text` | NOT NULL | RLS: `organization_id = grid_current_org()` |
+| `document_id` | `uuid` | PK with `anchor_id`, FK `documents(id)` ON DELETE CASCADE | The newer document |
+| `anchor_id` | `uuid` | PK with `document_id` | The inbox item's anchor. No FK: a version or another document, either of which may go first |
+| `announced_at` | `timestamptz` | NOT NULL, `now()` | |
+
+The down drops the table; the older build then deduplicates by the inbox rows
+recipients still hold, so a re-read can announce a Fassung once more.
 
 ---
 
@@ -1007,7 +1106,7 @@ audit trail.
 
 ---
 
-## inbound_mail_addresses / inbound_mail_messages (migration 0129, ADR-0075)
+## inbound_mail_addresses / inbound_mail_messages (migration 0148, ADR-0075)
 
 The project mail inbox. A member mails files to `<slug>.<token>@<GRID_INBOUND_MAIL_DOMAIN>`
 and the attachments are filed into the project as if that member had uploaded them
@@ -1143,7 +1242,8 @@ This PostgreSQL entrypoint script runs on first container startup and creates tw
 | `job_info` | NAT JobStore metadata | `job_id` (PK), `status`, `config_file`, `error`, `output_path`, `created_at`, `updated_at`, `expiry_seconds`, `is_expired` |
 | `job_access` | Who may reach a job: its owner, and callers whose signed scope matches its organization and project or conversation (ADR-0084) | `job_id` (PK), `owner_auth_type`, `owner_subject`, `owner_email`, `conversation_id`, `project_collection`, `organization_id`, `created_at` |
 | `job_events` | SSE streaming event persistence | `id` (serial PK), `job_id`, `event_type`, `event_data`, `created_at` |
-| `document_metadata` | Per-document metadata (was `summaries`) | `collection` + `filename` (composite PK), `summary`, `tags` (`TEXT`, JSON list; nullable), `doc_class` (`TEXT`; nullable), `display_title` (`TEXT`; nullable), `folder_path` (`TEXT`; nullable — the BFF's materialised `project_folders.path`, ADR-0049), `provenance` (`TEXT`, JSON object; nullable — who wrote a published Piloti document and who released it, ADR-0054; deleted with the chunks by `unregister_summary`) |
+| `document_metadata` | Per-document metadata (was `summaries`) | `collection` + `filename` (composite PK), `summary`, `tags` (`TEXT`, JSON list; nullable), `doc_class` (`TEXT`; nullable), `display_title` (`TEXT`; nullable), `folder_path` (`TEXT`; nullable — the BFF's materialised `project_folders.path`, ADR-0049), `provenance` (`TEXT`, JSON object; nullable — who wrote a published Piloti document and who released it, ADR-0054; deleted with the chunks by `unregister_summary`), `tags_set_by` (`TEXT`; nullable — `person` when a person chose the tags through the tag edit; ingest and the backfill then leave `tags` alone, and a re-ingest carries them to the new version), `topics` (`TEXT`, JSON list; nullable — open Themen the summary model recognised, or a person's; kept with the tags on the same `tags_set_by` marker), `capture` (`TEXT`, JSON object; nullable — what a camera wrote into a photo: `captured_at`, `latitude`, `longitude`, `camera`; the position is for the BFF and never rendered to a model), `superseded_by` (`TEXT`; nullable — on the OLDER document's row: the `filename` of the newer document in the same collection that a PERSON confirmed replaces it; written only by a person's confirmation (`PUT /v1/collections/{collection}/fassung` or `fassung_of` at upload, both through `link_fassung`), kept across a re-ingest; a purge that can be undone leaves it and it reads as nothing until the newer row is back, a permanent delete of the newer document clears it; search leaves the file out of the ranking unless a call names it), `revision_suggestion` (`TEXT`, JSON object; nullable — on the NEWER document's row: Piloti's suggestion that it is a newer Fassung of another, `{of, confidence, reason, basis: title_block\|name\|content, dismissed, dismissed_of}`; advice only, links and hides nothing; `dismissed_of` lists every file a person refused, kept across every write so none is suggested again), `change_summary` (`TEXT`; nullable — German bullet lines on what changed against the Fassung `change_basis` names) `change_basis` (`TEXT`; nullable — the `filename` compared against: the document's own name for its previous upload, another name for a confirmed Fassung) and `revision_facts` (`TEXT`, JSON object; nullable — what the title block (Plankopf) of the document's first drawing page that has one says, read by the vision model during ingestion in the same call as the drawing analysis: `document_number` (Plannummer, as printed), `revision` (the Index as printed, letter or number), `revision_date` (ISO `YYYY-MM-DD`), `scale`, `title` (Planinhalt) and `page` (1-based, where it was read); present keys only, never guessed; replaced by a re-upload, so a re-upload without a title block clears it; decoded through `aiq_agent.knowledge.title_block.normalise_revision_facts`). `supersedes` (the files a document replaces) is derived on read, never stored |
+| `document_fassung_retained` | The Fassung facts a person made, kept while a purge that can be undone has taken the `document_metadata` row away (archive, folder bin, a publish that re-reads) | `collection` + `filename` (composite PK), `superseded_by`, `revision_suggestion` (refusals only), `change_summary` + `change_basis` (only when the basis is another file). Written by `DocumentMetadataStore.unregister` without `permanent`; taken back and deleted by the next `register` of the name; a permanent delete removes it and clears `superseded_by` pointing at the file. Created by the store at init, like `document_metadata` |
 
 Indexes: `job_info(status)`, `job_info(created_at)`, `job_access(owner_auth_type, owner_subject)`, `job_events(job_id)`, `job_events(job_id, id)`, `document_metadata(collection)`.
 
@@ -1553,8 +1653,8 @@ the lookup by document the revision-thread triggers make.
 
 ## answer_feedback (migrations 0020, 0121, 0124)
 
-Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6; flag
-`answer-feedback`). One row per (user, assistant answer).
+Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6). One row per
+(user, assistant answer).
 
 - Columns: `organization_id` (denormalized, scopes every query in SQL),
   `project_id` (nullable, **cascade FK** to `projects` so a purged project
@@ -1593,8 +1693,13 @@ Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6; flag
   f.organization_id`, `lib/feedback/turn-join.ts`) and take the conversation
   from the persisted answer when one exists. The vote path stores the answer
   row's conversation when it can see one.
-- Not part of conversation erasure: deleting a conversation cascades its
-  `messages` but leaves its votes, `comment` and `expected_answer` included.
+- Part of conversation erasure, though no FK says so: `deleteConversationInOrg`
+  deletes the votes whose `conversation_id` is the chat's, or whose `message_id`
+  is one of its messages, in the same transaction as the conversation row
+  (`comment` and `expected_answer` quote the chat). Votes on a purged project
+  go through `project_id`'s cascade. `platform_lesson_reports.feedback_id` is
+  left pointing at nothing, as after a retracted vote: the report keeps only
+  the anonymised `canonical_summary`.
 - Indexes: `answer_feedback_org_conversation_idx`
   (`organization_id`,`conversation_id`) serves the per-conversation hydration
   list; `answer_feedback_org_project_idx` (`organization_id`,`project_id`);
@@ -1721,7 +1826,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_fassung` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |

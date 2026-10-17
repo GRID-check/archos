@@ -53,7 +53,7 @@ export const de: LegalContent = {
 
   privacy: {
     title: 'Datenschutzerklärung',
-    updated: '2026-09-30',
+    updated: '2026-10-17',
     intro:
       'Diese Erklärung informiert gemäß Verordnung (EU) 2016/679 (DSGVO) darüber, wie personenbezogene Daten bei der Nutzung von Piloti verarbeitet werden.',
     sections: [
@@ -73,6 +73,7 @@ export const de: LegalContent = {
           'Nutzungs- und Abrechnungsdaten: ein Nutzungsledger, das je KI-Anfrage das angeforderte und das tatsächlich antwortende KI-Modell, Token-Zahlen und Kosten erfasst, zugeordnet zu Organisation, Projekt und Nutzer.',
           'Audit-Daten: privilegierte administrative Aktionen (z. B. Modellkonfigurations-Änderungen, Budgetänderungen, Löschungen, Legal Holds) werden mit handelnder Person, Zeitstempel, IP-Adresse und User-Agent protokolliert.',
           'Technische Daten: Server-Logs, Session-Cookie (Authentifizierung), Cookie für die Spracheinstellung.',
+          'Nutzungs- und Gerätedaten (Produktanalyse): Ihre Nutzer-ID (die pseudonyme WorkOS-Kennung), die Kennung und der Name Ihrer Organisation sowie Ihre Rolle; aufgerufene Seiten, Klicks (ohne die Beschriftung der angeklickten Elemente) und Bedienereignisse (z. B. Frage gesendet, Dokument hochgeladen, Export); Browser-, Geräte- und Spracheinstellungen; Fehlermeldungen mit technischem Kontext; bei aufgezeichneten Sitzungen eine Wiedergabe Ihrer Bildschirmansicht, in der Texte und Eingaben maskiert sind und in der Bilder, die PDF-Ansicht und die IFC-Modellansicht nicht aufgezeichnet werden; Antworten auf Umfragen und Nachrichten an den Support, soweit Sie diese absenden. Ihre E-Mail-Adresse und Ihr Name werden nicht an die Produktanalyse übermittelt. Passwörter, API-Schlüssel und Zugangsdaten werden nie erfasst.',
         ],
       },
       {
@@ -83,12 +84,14 @@ export const de: LegalContent = {
           'Prüfen und Ablehnen von E-Mails an Projekt-E-Mail-Adressen, die keinem berechtigten Mitglied zugeordnet werden können; dafür sind wir selbst verantwortlich, und von einer abgelehnten E-Mail wird nichts gespeichert — Art. 6 Abs. 1 lit. f (berechtigtes Interesse an einem sicheren Betrieb).',
           'Nutzungsmessung und Budgetdurchsetzung — Art. 6 Abs. 1 lit. b und f.',
           'Erfüllung rechtlicher Pflichten (z. B. Aufbewahrung bei Legal Hold, Rechnungswesen) — Art. 6 Abs. 1 lit. c.',
+          'Produktverbesserung, Fehlerbehebung, Support und Umfragen (Produktanalyse, Sitzungsaufzeichnung, Fehlererfassung) — Art. 6 Abs. 1 lit. f (berechtigtes Interesse an einem stabilen, verständlichen Produkt). Zur Speicherung von Informationen im Endgerät siehe Abschnitt 7. Sie können dieser Verarbeitung jederzeit widersprechen (Abschnitte 7 und 8).',
         ],
       },
       {
         heading: '4. KI-Verarbeitung und Empfänger Ihrer Inhalte',
         paragraphs: [
           'Zur Erzeugung von Antworten werden Ihre Chat-Nachrichten, relevante Auszüge Ihrer hochgeladenen Dokumente und abgerufene Vorschriftenpassagen über das API-Gateway OpenRouter, Inc. (USA) an externe KI-Modellanbieter übermittelt. Aus Ihren Fragen abgeleitete Web-Recherche-Anfragen gehen an den Suchdienst Tavily. Identität und Anmeldung werden von WorkOS, Inc. (USA) abgewickelt. E-Mails an Projekt-E-Mail-Adressen nimmt Cloudflare, Inc. (USA) entgegen und leitet sie an Piloti weiter. Cloudflare speichert die Inhalte nicht, führt aber ein Zustellprotokoll mit Absender, Empfänger und Betreff für etwa 30 Tage.',
+          'Für Produktanalyse, Sitzungsaufzeichnung, Fehlererfassung, Umfragen und Support setzen wir PostHog ein (PostHog, Inc.; Datenspeicherung in der EU-Cloud, Frankfurt am Main). PostHog verarbeitet diese Daten in unserem Auftrag auf Grundlage eines Auftragsverarbeitungsvertrags (Art. 28 DSGVO). Zusätzlich übernimmt PostHog von unserem Tracing-System Langfuse Metadaten zu KI-Anfragen (Zeitpunkt, Modell, Dauer, Token-Zahlen, Kosten, Bezeichnung der Verarbeitungsschritte) und die Bewertungen, die Sie zu Antworten abgeben, einschließlich Ihres Kommentars. Chat-Nachrichten, Antworten und Dokumentinhalte gehören nicht dazu.',
         ],
         notice:
           'Wichtig: Welches KI-Modell — und damit welcher vorgelagerte Modellanbieter (z. B. DeepSeek, OpenAI, Anthropic, Google, Meta, Mistral und weitere im OpenRouter-Katalog gelistete Anbieter) — Ihre Anfragen verarbeitet, kann von den Administratorinnen und Administratoren Ihrer Organisation zur Laufzeit konfiguriert werden. Der gesamte KI-Verkehr läuft stets über OpenRouter und niemals über ein anderes Gateway; der tatsächliche nachgelagerte Anbieter — und damit der Ort dieser Verarbeitung (auch außerhalb der EU/des EWR möglich) — hängt jedoch vom Modell ab, das Ihre Organisation auswählt. Jede Modelländerung wird validiert, versioniert, der handelnden Administratorin bzw. dem Administrator zugeordnet und ist nachvollziehbar; das Modell, das eine Anfrage tatsächlich beantwortet hat, wird protokolliert. Die aktuelle Liste externer Dienste finden Sie auf der Seite „Subunternehmer".',
@@ -97,6 +100,7 @@ export const de: LegalContent = {
         heading: '5. Drittlandübermittlungen (Art. 44 ff DSGVO)',
         paragraphs: [
           'Mehrere Dienstleister haben ihren Sitz in den USA oder anderen Drittländern, und das von Ihrer Organisation gewählte KI-Modell kann außerhalb der EU/des EWR betrieben werden. Übermittlungen stützen sich auf Angemessenheitsbeschlüsse (einschließlich des EU-US Data Privacy Framework, soweit der Anbieter zertifiziert ist) und/oder Standardvertragsklauseln. Details je Anbieter finden Sie auf der Seite „Subunternehmer". Die Administratorinnen und Administratoren Ihrer Organisation können die wählbaren Modelle einschränken.',
+          'PostHog speichert Daten in der EU; als US-Konzern kann PostHog, Inc. aus den USA zugreifen. Grundlage sind das EU-US Data Privacy Framework und Standardvertragsklauseln. KI-Funktionen von PostHog laufen, falls aktiviert, bei US-Modellanbietern.',
         ],
       },
       {
@@ -104,13 +108,16 @@ export const de: LegalContent = {
         paragraphs: [
           'Projektinhalte werden in unserer Anwendungsdatenbank, im Objektspeicher (hochgeladene Dokumente) und in einem Vektorindex (Dokument-Embeddings) gespeichert — alles in eigener Infrastruktur betrieben. Beim Löschen eines Projekts wird es zunächst als gelöscht markiert und ist während einer Karenzfrist wiederherstellbar; danach entfernt eine automatisierte Bereinigung es dauerhaft aus allen Speichern (Datenbank, Objektspeicher, Vektorindex und zugehörige Berechtigungsdatensätze). Die Löschung kann durch einen Legal Hold (Einschränkung nach Art. 18 DSGVO) ausgesetzt werden, den die Compliance-Rolle Ihrer Organisation setzt; jedes Setzen und Aufheben wird im Audit-Trail protokolliert.',
           'Nutzungsledger- und Audit-Datensätze werden zu Rechenschafts- und Abrechnungszwecken so lange aufbewahrt, wie es der Vertrag der Organisation und gesetzliche Aufbewahrungsfristen erfordern.',
+          'Bei PostHog werden Produktanalyse-Ereignisse (einschließlich Fehlerberichten, Umfrageantworten und den aus Langfuse übernommenen KI-Metadaten) bis zu 12 Monate und Sitzungsaufzeichnungen bis zu 30 Tage gespeichert. Nachrichten an den Support bleiben bis zu ihrer Löschung durch uns erhalten. Auf Ihren Wunsch löschen wir die zu Ihrer Nutzer-ID bei PostHog gespeicherten Daten.',
           'Per E-Mail eingegangene Anhänge werden nach der Ablage aus dem Zwischenspeicher gelöscht, spätestens nach 7 Tagen. Der Eingangsdatensatz einer E-Mail wird nach 30 Tagen gelöscht; Betreff und Dateinamen entfernen wir schon, sobald die E-Mail abgelegt oder aufgegeben ist. Die Meldung an die absendende Person wird nach 30 Tagen gelöscht.',
         ],
       },
       {
         heading: '7. Cookies',
         paragraphs: [
-          'Piloti verwendet ausschließlich technisch notwendige Cookies: einen verschlüsselten Session-Cookie für die Anmeldung (WorkOS AuthKit) und einen Cookie für Ihre Spracheinstellung. Es werden keine Werbe- oder seitenübergreifenden Tracking-Cookies gesetzt. Da nur technisch notwendige Cookies zum Einsatz kommen, ist kein Cookie-Einwilligungsbanner erforderlich (§165 TKG 2021).',
+          'Piloti verwendet technisch notwendige Cookies: einen verschlüsselten Session-Cookie für die Anmeldung (WorkOS AuthKit) und einen Cookie für Ihre Spracheinstellung.',
+          'Zusätzlich speichert unsere Produktanalyse (PostHog) eine pseudonyme Kennung, die Sitzungs-ID und einige Einstellungen in einem Cookie und im lokalen Speicher Ihres Browsers (Schlüssel „ph_…“, konkret „ph_<Projekt-Token>_posthog“; das Cookie läuft nach 365 Tagen ab und gilt auch für die öffentliche Website von Piloti auf derselben Domain). Wird Ihnen eine Umfrage angezeigt, legt PostHog dafür weitere Einträge im lokalen Speicher an (Schlüssel „seenSurvey_…“ und „lastSeenSurveyDate“). Diese Speicherung ist nicht technisch notwendig; sie dient der Produktverbesserung. Werbe- oder seitenübergreifende Tracking-Cookies setzen wir nicht.',
+          `Sie können die Produktanalyse in den Einstellungen Ihres Profils abschalten oder ihr jederzeit unter ${EMAIL} widersprechen; sie erfasst dann nichts mehr, und die genannten Einträge werden nicht mehr fortgeschrieben.`,
         ],
       },
       {
@@ -250,7 +257,7 @@ export const de: LegalContent = {
 
   subprocessors: {
     title: 'Externe Dienste & Subunternehmer',
-    updated: '2026-09-30',
+    updated: '2026-10-17',
     intro:
       'Alle externen Dienste, die bei der Nutzung von Piloti Daten verarbeiten können, sowie die vom Betreiber selbst betriebene Infrastruktur. Diese Seite setzt die in der Datenschutzerklärung genannte Transparenzzusage um.',
     sections: [
@@ -265,6 +272,13 @@ export const de: LegalContent = {
               'Name, E-Mail, Organisationszugehörigkeit, Rollen, Anmeldeereignisse, Audit-Ereignisse (inkl. IP-Adresse)',
               'USA',
               'Ja',
+            ],
+            [
+              'PostHog, Inc.',
+              'Produktanalyse, Sitzungsaufzeichnung, Fehlererfassung, Umfragen, Support',
+              'Nutzer-ID (WorkOS), Organisations-ID und -Name, Rolle, Sprache, Seitenaufrufe, Bedienereignisse, Geräte- und Browserangaben, Fehlerberichte, maskierte Sitzungsaufzeichnungen, Umfrageantworten und Support-Nachrichten; KI-Metadaten und Antwort-Bewertungen aus Langfuse. Keine E-Mail-Adresse, kein Name',
+              'EU (Frankfurt); Konzern mit Sitz in den USA',
+              'Ja (Produktanalyse, Fehlererfassung); Sitzungsaufzeichnung nur stichprobenweise und nur falls aktiviert; abschaltbar in den Profil-Einstellungen',
             ],
             [
               'OpenRouter, Inc.',

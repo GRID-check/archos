@@ -9,9 +9,10 @@
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { PanelLeft } from 'lucide-react'
+import { PanelLeft, X } from 'lucide-react'
 
 import { useIsMobile } from '@/hooks/use-is-mobile'
+import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
@@ -19,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -239,13 +241,17 @@ function Sidebar({
   collapsible = 'offcanvas',
   className,
   children,
+  closeLabel,
   ...props
 }: React.ComponentProps<'div'> & {
   side?: 'left' | 'right'
   variant?: 'sidebar' | 'floating' | 'inset'
   collapsible?: 'offcanvas' | 'icon' | 'none'
+  /** The phone drawer's close button. Defaults to the shell's own „Navigation schließen". */
+  closeLabel?: string
 }): React.JSX.Element {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const tNav = useTranslations('nav')
 
   if (collapsible === 'none') {
     return (
@@ -267,7 +273,12 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className={cn(
-            'w-72 bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden sm:max-w-72',
+            // `p-0` takes over the sheet's padding, and with it the sheet's
+            // safe areas: the drawer's header and footer pad the top and the
+            // bottom themselves (`app-sidebar.tsx`), and the left edge is this
+            // one, where a phone on its side puts the Dynamic Island. The panel
+            // widens by the inset so the rail inside keeps its 18rem.
+            'w-[calc(18rem+env(safe-area-inset-left))] bg-sidebar p-0 pl-[env(safe-area-inset-left)] text-sidebar-foreground [&>button]:hidden sm:max-w-[calc(18rem+env(safe-area-inset-left))]',
             className,
           )}
           side={side}
@@ -277,6 +288,26 @@ function Sidebar({
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
+          {/* The drawer's visible way out (every overlay has one on a phone;
+              the scrim and the swipe are shortcuts nobody is told about). Its
+              own, not the sheet's: that one is a 32px glyph pinned to the
+              sheet's padding, which this drawer replaces. 44px, beside the
+              brand line at the top (`app-sidebar.tsx` pads the header to
+              `max(18px, the status bar)`; the brand's line is 28px, so the
+              button's centre is the line's centre). Not a direct child, so the
+              `[&>button]:hidden` above leaves it alone. */}
+          <div className="absolute right-2 top-[calc(max(18px,env(safe-area-inset-top))-8px)] z-10">
+            <SheetClose
+              data-slot="sidebar-close"
+              className={cn(
+                'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground duration-quick inline-flex size-11 items-center justify-center rounded-lg outline-none transition-colors ease-out motion-reduce:transition-none',
+                FOCUS_RING
+              )}
+            >
+              <X className="size-5" aria-hidden />
+              <span className="sr-only">{closeLabel ?? tNav('closeNavigation')}</span>
+            </SheetClose>
+          </div>
         </SheetContent>
       </Sheet>
     )
@@ -724,7 +755,7 @@ function SidebarGroupAction({
       data-sidebar="group-action"
       className={cn(
         'absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
-        'after:absolute after:-inset-2 md:after:hidden',
+        'after:absolute after:-inset-2 pointer-fine:after:hidden',
         'group-data-[collapsible=icon]:hidden',
         className,
       )}
@@ -852,13 +883,15 @@ function SidebarMenuAction({
       data-sidebar="menu-action"
       className={cn(
         'absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform peer-hover/menu-button:text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
-        'after:absolute after:-inset-2 md:after:hidden',
+        'after:absolute after:-inset-2 pointer-fine:after:hidden',
         'peer-data-[size=sm]/menu-button:top-1',
         'peer-data-[size=default]/menu-button:top-1.5',
         'peer-data-[size=lg]/menu-button:top-2.5',
         'group-data-[collapsible=icon]:hidden',
         showOnHover &&
-          'group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground data-[state=open]:opacity-100 md:opacity-0',
+          // Hidden at rest only where a hover can reveal it: a touch tablet is
+          // past `md` and has none.
+          'group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground data-[state=open]:opacity-100 md:opacity-0 pointer-coarse:opacity-100',
         className,
       )}
       {...props}

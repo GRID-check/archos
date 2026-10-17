@@ -1,33 +1,69 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react'
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertCircle, Archive, Boxes, FileText, LayoutGrid, List, RotateCcw, Trash2, X } from 'lucide-react'
-import Link from 'next/link'
+import { AlertCircle, Archive, Boxes, FileText, RotateCcw, X } from 'lucide-react'
 import { sourceBase } from '@/lib/ui/source-tint'
+import { cn } from '@/lib/utils'
+import type { ActionMenuEntry } from '@/components/ui/action-menu'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useLocale, useTranslations } from '@/i18n'
+import { createDocumentByNameClient } from '@/lib/documents/by-name-client'
 import { documentDisplayName } from '@/lib/documents/display-name'
+import { shelfSummaryUrl, type LevelPageRequest } from '@/lib/documents/level-client'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
+import type { LiveShelf } from '@/lib/documents/shelf-live-events'
+import { offeredForRetry } from '@/lib/documents/retry-policy'
 import { inferDocumentKind } from '../document-kind'
 import type { FileItem, FolderItem } from '../file-types'
 import { useDocParamSync, usePreviewChannel, type PreviewHandlers } from '../hooks/use-preview-channel'
 import { useDocumentMoves } from '../hooks/use-document-moves'
+import { useDocumentSelection } from '../hooks/use-document-selection'
+import { usePhoneLayout } from '../hooks/use-phone-layout'
+import { UploadFab } from './upload-fab'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
 import { useFileListing } from '../hooks/use-file-listing'
 import { useFileSearch } from '../hooks/use-file-search'
 import { useFolderParam } from '../hooks/use-folder-param'
 import { useFolderTree } from '../hooks/use-folder-tree'
 import { useIngestionCompleteToast } from '../hooks/use-ingestion-complete-toast'
+import { useLevelListing } from '../hooks/use-level-listing'
+import { useLinkedDocuments } from '../hooks/use-linked-documents'
 import { useModelStage } from '../hooks/use-model-stage'
 import { useSettleTrackedUploads } from '../hooks/use-settle-tracked-uploads'
+import { useShelfLive, type ShelfChange } from '../hooks/use-shelf-live'
+import { useShelfSummary } from '../hooks/use-shelf-summary'
 import { useShelfUpload } from '../hooks/use-shelf-upload'
 import { useViewPreference } from '../hooks/use-view-preference'
+import { useBriefCollapsed } from '../hooks/use-brief-collapsed'
+import { useBulkReingest } from '../hooks/use-bulk-reingest'
+import { useCompareParam } from '../hooks/use-compare-param'
+import { useMissingDocuments } from '../hooks/use-missing-documents'
+import { COMPARE_PARAM } from '../lib/fassung-compare-link'
+import {
+  buildFolderBrief,
+  buildFolderBriefFromSummary,
+  selectInBrief,
+  talliesFromSummary,
+  type BriefSelection,
+  type FolderBrief as FolderBriefData,
+} from '../lib/folder-knowledge'
 import type { DocumentWireRow } from '../lib/file-item'
+import { LEVEL_SEARCH_DEBOUNCE_MS, levelSortOf, readFamiliesOf, readsWholeShelf } from '../lib/level-view'
 import {
   NO_FILE_FILTERS,
   activeFilterCount,
@@ -37,7 +73,7 @@ import {
 } from '../lib/file-filters'
 import type { FileShelf, FolderAccessLevel } from '../lib/file-shelf'
 import { DEFAULT_FILE_SORT, type FileSort } from '../lib/file-sort'
-import { DocumentActionsTrigger, DocumentObjectMenu } from './document-actions'
+import { DocumentActionsTrigger, DocumentObjectMenu, useMoveInSheet } from './document-actions'
 import {
   DEFAULT_DOCUMENT_ACTIONS,
   READ_ONLY_DOCUMENT_ACTIONS,
@@ -47,8 +83,17 @@ import { FileBrowserPane } from './file-browser-pane'
 import { FileDropOverlay, useWindowDragGuard } from './file-drop-overlay'
 import { FileFilterMenu } from './file-filter-menu'
 import { FilePreviewDialog } from './file-preview-dialog'
-import { FileSearchField } from './file-search-bar'
+import { FolderBrief } from './folder-brief'
+import { FolderPickerSheet } from './folder-picker-sheet'
+import { SelectionBar } from './selection-bar'
+import { withoutOlderFassungen } from '../lib/fassung-chain'
+import { sortedFolderDestinations } from '../lib/folder-path-label'
+import { FilesHeaderControls } from './files-header-controls'
 import { FolderAccessDialog } from './folder-access-dialog'
+import { FolderDescriptionDialog } from './folder-description-dialog'
+import { FilingSuggestionsProvider } from './filing-suggestion'
+import { useFilingSuggestions } from '../hooks/use-filing-suggestions'
+import type { ProposalListQuery } from '@/lib/proposals/types'
 import { FolderUploadDialog } from './folder-upload-dialog'
 import { ProjectUppyUpload } from './project-uppy-upload'
 import { UploadTray } from './upload-tray'
@@ -72,18 +117,39 @@ export interface FileWorkspaceProps {
   /**
    * Where the shelf's controls (view, filter, search, upload) go, and what
    * frames them: a project's section header, the Archiv's identity row.
-   * `count` is null until the listing is in.
+   * `count` is the shelf's document count, null until it is known.
    */
   renderHeader: (controls: ReactNode, state: { count: number | null }) => ReactNode
   /**
-   * The folder tree and the corpus as the SERVER already read them, for the
-   * first paint. They seed state; everything after the first frame goes through
-   * the same loaders it always did. `initialFilesComplete` false means the seed
-   * is only the first page and the rest is read quietly right after.
+   * More entries for the phone header's ⋯, after the view choice and the
+   * Papierkorb: what a header carries as a button of its own on a wide screen
+   * (a project's Outlook import) and cannot afford a button for on 393px.
+   */
+  moreEntries?: readonly ActionMenuEntry[]
+  /**
+   * The folder tree and the first page of a folder level as the SERVER already
+   * read them, for the first paint (ADR-0102). `initialFiles` is the first
+   * page of the level `initialFolderId` names (null: the root) in the default
+   * order, newest first; `initialNextCursor` is where that level continues.
+   * They seed state once, and only while the reader still stands on that
+   * level; everything after goes through the same loaders.
    */
   initialFolders?: readonly FolderItem[]
   initialFiles?: readonly DocumentWireRow[]
-  initialFilesComplete?: boolean
+  initialNextCursor?: string | null
+  initialFolderId?: string | null
+}
+
+/** The ⋯ slot every card and row renders; the row's {@link DocumentObjectMenu} fills it. */
+const renderDocumentActions = (): ReactNode => <DocumentActionsTrigger />
+
+const NO_FILES: readonly FileItem[] = []
+const NO_FOLDERS: readonly FolderItem[] = []
+
+/** `first`, then every row of `second` it does not hold: one list for the lookups a link or a menu makes by id. */
+function mergeById(first: readonly FileItem[], second: readonly FileItem[]): FileItem[] {
+  const held = new Set(first.map((file) => file.id))
+  return [...first, ...second.filter((file) => !held.has(file.id))]
 }
 
 /**
@@ -101,13 +167,16 @@ export interface FileWorkspaceProps {
 export function FileWorkspace({
   shelf,
   renderHeader,
+  moreEntries,
   initialFolders,
   initialFiles,
-  initialFilesComplete = true,
+  initialNextCursor = null,
+  initialFolderId = null,
 }: FileWorkspaceProps) {
   const t = useTranslations('files')
   const { locale } = useLocale()
   const { canManage, canCollaborate } = shelf
+  const searchParams = useSearchParams()
 
   const [view, selectView] = useViewPreference()
   const [selectedFolderId, selectFolder] = useFolderParam()
@@ -121,39 +190,208 @@ export function FileWorkspace({
   // The query lives here rather than in the browser pane: the field sits in the
   // header beside the view toggles while the results are rendered below.
   const search = useFileSearch(shelf.endpoints)
+  // The name search is asked of the server once the reader stops typing; the
+  // pane narrows what it holds at every keystroke meanwhile.
+  const serverQuery = useDebouncedValue(search.query.trim(), LEVEL_SEARCH_DEBOUNCE_MS)
+
+  /*
+   * WHICH READ (ADR-0102). By default a folder LEVEL, page by page from the
+   * server: the order, the name search, the status filter and the two server
+   * filters are request parameters, and the folder tiles and the brief come
+   * from the shelf summary. The whole shelf is drained into the browser only
+   * for what the server cannot answer (`readsWholeShelf`: a kind, tag,
+   * assignment or „Freigabe ausstehend“ filter, the status order), and when
+   * the reader asks the brief for what Piloti put on the documents or opens
+   * one of its slices (`detailsWanted`).
+   */
+  const wholeShelf = readsWholeShelf(filters, sort, canCollaborate)
+  const [detailsWanted, setDetailsWanted] = useState(false)
+  const pagedView = !wholeShelf
 
   // „Von Piloti" and „auch archivierte" are asked of the SERVER (a partial
-  // index, and a default listing that does not contain them at all): the
-  // listing refetches on them instead of filtering what it has.
+  // index, and a default listing that does not contain them at all): every
+  // read refetches on them instead of filtering what it has.
   const listing = useFileListing({
     endpoints: shelf.endpoints,
     agentAuthoredOnly: filters.agentAuthoredOnly,
     includeArchived: filters.includeArchived,
-    initialFiles,
-    initialFilesComplete,
+    enabled: wholeShelf || detailsWanted,
   })
-  const { files, setFiles } = listing
-  const collectionName = shelf.collectionName ?? listing.collectionName
+  const shelfSummary = useShelfSummary({
+    url: shelfSummaryUrl(shelf.endpoints, {
+      agentAuthoredOnly: filters.agentAuthoredOnly,
+      includeArchived: filters.includeArchived,
+    }),
+  })
 
-  const upload = shelf.useUpload({
-    collectionName,
-    folderId: selectedFolderId ?? undefined,
-    onComplete: listing.reloadQuietly,
-  })
-  const { isUploading, error } = upload
+  /*
+   * Reloads reach the hooks below through refs, so the folder tree and the
+   * upload plan (built before them) hold one stable function for the life of
+   * the workspace.
+   */
+  const reloadFilesRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const reloadFiles = useCallback(() => reloadFilesRef.current(), [])
+  const documentCountRef = useRef<(folderId: string) => number>(() => 0)
+  const documentCountIn = useCallback((folderId: string) => documentCountRef.current(folderId), [])
 
   const tree = useFolderTree({
     foldersUrl: shelf.endpoints.folders,
     initialFolders,
     initialRootAccess: shelf.folderAccess?.initialRootAccess,
-    files,
+    files: listing.files,
+    documentCountIn,
     selectedFolderId,
     onSelectFolder: selectFolder,
-    reloadFiles: listing.load,
+    reloadFiles,
     binHref: shelf.bin?.href,
   })
   const { folders } = tree
+
+  // The level on screen. A failed folder read falls open to the whole shelf,
+  // paged, instead of hiding every filed document; a search spans the shelf.
+  const levelSort = levelSortOf(sort)
+  const searchingServer = serverQuery !== ''
+  const levelFolderId = searchingServer || tree.error ? undefined : selectedFolderId
+  const levelRequest = useMemo((): Omit<LevelPageRequest, 'limit'> | null => {
+    if (!pagedView || levelSort === null) return null
+    return {
+      list: shelf.endpoints.list,
+      listParams: shelf.endpoints.listParams,
+      folderId: levelFolderId,
+      sort: levelSort,
+      dir: sort.direction,
+      q: searchingServer ? serverQuery : undefined,
+      states: readFamiliesOf(filters.statuses),
+      agentAuthoredOnly: filters.agentAuthoredOnly,
+      includeArchived: filters.includeArchived,
+    }
+  }, [
+    pagedView,
+    levelSort,
+    sort.direction,
+    shelf.endpoints.list,
+    shelf.endpoints.listParams,
+    levelFolderId,
+    searchingServer,
+    serverQuery,
+    filters.statuses,
+    filters.agentAuthoredOnly,
+    filters.includeArchived,
+  ])
+  // The server's first page answers the level the URL named at load, in the
+  // default order with nothing filtered: exactly the first request, once.
+  const [levelSeed] = useState(() =>
+    initialFiles !== undefined && selectedFolderId === initialFolderId
+      ? { rows: initialFiles, nextCursor: initialNextCursor }
+      : undefined
+  )
+  const level = useLevelListing({
+    request: levelRequest,
+    resetKey: searchingServer ? 'search' : levelFolderId === undefined ? 'shelf' : `folder:${levelFolderId ?? 'root'}`,
+    initialPage: levelSeed,
+  })
+
+  // The rows the pane draws, and the setter that patches them.
+  const paneFiles = pagedView ? level.files : listing.files
+  const collectionName = shelf.collectionName ?? level.collectionName ?? listing.collectionName
+
+  // A link (`?doc=`, `?compare=`, the Archiv's `?model=`) to a document no
+  // loaded page holds is read on its own.
+  const byNameClient = useMemo(() => createDocumentByNameClient(), [])
+  const resolveArchivByName = useCallback((name: string) => byNameClient.archiv([name]), [byNameClient])
+  const loadedFiles = useMemo(
+    () => (listing.files.length === 0 ? level.files : mergeById(level.files, listing.files)),
+    [level.files, listing.files]
+  )
+  const linked = useLinkedDocuments({
+    known: loadedFiles,
+    ids: [searchParams?.get('doc'), searchParams?.get(COMPARE_PARAM)],
+    byName:
+      shelf.showModels && shelf.projectId === null
+        ? { name: searchParams?.get('model')?.trim() || null, resolve: resolveArchivByName }
+        : undefined,
+  })
+  const files = useMemo(
+    () => (linked.files.length === 0 ? loadedFiles : [...loadedFiles, ...linked.files]),
+    [loadedFiles, linked.files]
+  )
+
+  const { setFiles: setLevelFiles } = level
+  const { setFiles: setListingFiles } = listing
+  const { setFiles: setLinkedFiles } = linked
+  /** Patch a row wherever it is held: the level, the drained shelf, a linked document. */
+  const setFiles = useCallback<Dispatch<SetStateAction<FileItem[]>>>(
+    (action) => {
+      setLevelFiles(action)
+      setListingFiles(action)
+      setLinkedFiles(action)
+    },
+    [setLevelFiles, setListingFiles, setLinkedFiles]
+  )
+
+  const { reload: reloadLevel } = level
+  const { reload: reloadSummary } = shelfSummary
+  const { load: loadListing, reloadQuietly: reloadListingQuietly } = listing
+  /** Read everything on screen again, quietly: the level, the counts, and the drain when it is on. */
+  const reloadAll = useCallback(async () => {
+    await Promise.all([reloadLevel(true), reloadSummary(), loadListing(true)])
+  }, [reloadLevel, reloadSummary, loadListing])
+  // The upload's own settle signal, which asks often: each read replaces the
+  // one before it, and the drain coalesces its own.
+  const reloadQuietly = useCallback(() => {
+    void reloadLevel(true)
+    void reloadSummary()
+    reloadListingQuietly()
+  }, [reloadLevel, reloadSummary, reloadListingQuietly])
+  useEffect(() => {
+    reloadFilesRef.current = reloadAll
+  }, [reloadAll])
+
+
+  const upload = shelf.useUpload({
+    collectionName,
+    folderId: selectedFolderId ?? undefined,
+    onComplete: reloadQuietly,
+  })
+  const { isUploading, error } = upload
+
   const moves = useDocumentMoves(files, setFiles, folders)
+  const { moved: moveRow, dropInFolder: dropRowInFolder, moveMany, isMoving } = moves
+
+  // Changes made anywhere else (a colleague, Piloti, the chat beside this,
+  // another tab) arrive as a hint on the shelf's channel; what is on screen
+  // is read again, quietly and coalesced (`reloadQuietly`, the upload's own
+  // settle signal), and the folder tree when it moved too. Not while this
+  // tab's own moves are on the wire: their echoes would put rows back that
+  // are about to leave.
+  const liveShelf = useMemo<LiveShelf>(
+    () => (shelf.projectId ? { kind: 'project', projectId: shelf.projectId } : { kind: 'archiv' }),
+    [shelf.projectId]
+  )
+  const { load: loadFolders } = tree
+  const onShelfChanged = useCallback(
+    (change: ShelfChange) => {
+      reloadQuietly()
+      if (change.folders) void loadFolders()
+    },
+    [reloadQuietly, loadFolders]
+  )
+  useShelfLive(liveShelf, onShelfChanged, { holdWhile: isMoving })
+  // A move changes two folders' counts: the summary is read again after it.
+  const moved = useCallback(
+    (fileId: string, folderId: string | null) => {
+      moveRow(fileId, folderId)
+      void reloadSummary()
+    },
+    [moveRow, reloadSummary]
+  )
+  const dropInFolder = useCallback(
+    async (documentId: string, folderId: string | null) => {
+      await dropRowInFolder(documentId, folderId)
+      void reloadSummary()
+    },
+    [dropRowInFolder, reloadSummary]
+  )
   const shelfUpload = useShelfUpload({
     shelf,
     upload,
@@ -161,7 +399,7 @@ export function FileWorkspace({
     foldersReady: !tree.isLoading && !tree.error,
     selectedFolderId,
     loadFolders: tree.load,
-    loadFiles: listing.load,
+    loadFiles: reloadFiles,
   })
   const { handleUpload } = shelfUpload
   const access = useFolderAccess(shelf, folders, tree.rootAccess)
@@ -169,7 +407,7 @@ export function FileWorkspace({
 
   const patchFile = useCallback(
     (fileId: string, patch: Partial<FileItem>) =>
-      setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, ...patch } : f))),
+      setFiles((prev) => (prev.some((f) => f.id === fileId) ? prev.map((f) => (f.id === fileId ? { ...f, ...patch } : f)) : prev)),
     [setFiles]
   )
 
@@ -178,24 +416,49 @@ export function FileWorkspace({
    * returns, and the card, the list row and the preview header all read the
    * same `files` — they carry the change in the same frame the dialog closes.
    */
+  /*
+   * The preview opens ANOTHER document of this shelf by id (a Fassung in its
+   * timeline). The handler is part of `handlers`, which the preview channel
+   * takes, and the channel's `open` is built from `handlers`: so the handler
+   * reaches `files` and `open` through refs and the object stays one value.
+   */
+  const filesRef = useRef(files)
+  const openRef = useRef<(file: FileItem) => void>(() => undefined)
   const handlers = useMemo<PreviewHandlers>(
     () => ({
+      onOpenDocument: (id) => {
+        const file = filesRef.current.find((candidate) => candidate.id === id)
+        if (file) openRef.current(file)
+      },
+      // A link was confirmed or taken back: the section reports BOTH documents of it.
+      onFassungChanged: (id, fassung) => patchFile(id, { fassung }),
       // After a successful re-ingestion the document is back to 'pending'; the
       // dead-end failure UI clears and the badge flips to "Processing".
       onReingested: (id, status) => patchFile(id, { status, errorMessage: null }),
       // The pane is reused across files and re-seeds from the tags on switch.
-      onTagsUpdated: (id, tags) => patchFile(id, { tags }),
+      onTagsUpdated: (id, tags, topics) => patchFile(id, topics === undefined ? { tags } : { tags, topics }),
       // A Freigabe decision moved the document's state; the panel has just
       // re-read the version list, so both numbers are the server's own.
       onLifecycleChanged: (id, summary: { versionState: DocumentVersionState; versionCount: number }) =>
         patchFile(id, summary),
-      onDeleted: (id) => setFiles((prev) => prev.filter((f) => f.id !== id)),
+      onDeleted: (id) => {
+        setFiles((prev) => prev.filter((f) => f.id !== id))
+        void reloadSummary()
+      },
       onRenamed: (id, displayName) => patchFile(id, { displayName }),
     }),
-    [patchFile, setFiles]
+    [patchFile, setFiles, reloadSummary]
   )
 
   const channel = usePreviewChannel(shelf, files, handlers)
+  // `?compare=<older>` beside `?doc=`: the inbox's „Fassungen vergleichen“.
+  // It decides the older one is missing once every linked id is answered, or
+  // the whole drained listing is in.
+  const compareElement = useCompareParam(files, linked.settled || (!pagedView && listing.complete))
+  useEffect(() => {
+    filesRef.current = files
+    openRef.current = channel.open
+  })
   const stage = useModelStage(shelf.showModels, files)
 
   /**
@@ -203,25 +466,26 @@ export function FileWorkspace({
    * the reconciler below, because the preview can also be opened from a link and
    * shut by three controls this function never hears about.
    *
-   * An `.ifc` opens the way every other file opens — unless the flag says to go
-   * straight to the stage. Both shelves read the same flag, so they cannot
-   * answer this differently.
+   * An `.ifc` opens the way every other file opens: the preview first, with
+   * the stage one button away.
    */
   const handleSelectFile = useCallback(
     (id: string | null) => {
       if (id === null) return channel.close()
       const file = files.find((candidate) => candidate.id === id)
       if (!file) return
-      const goesToStage =
-        !shelf.previewFirst &&
-        shelf.showModels &&
-        inferDocumentKind({ filename: file.filename, contentType: file.contentType, tags: file.tags }) ===
-          'model'
-      if (goesToStage) return stage.openModel(file.filename)
       channel.open(file)
     },
-    [files, shelf.previewFirst, shelf.showModels, stage, channel]
+    [files, channel]
   )
+  // What the cards, rows and menus are handed: one function for the life of the
+  // workspace, reaching the current `files` through a ref, so a memoised card is
+  // not re-rendered because a poll changed some other row.
+  const selectFileRef = useRef(handleSelectFile)
+  useEffect(() => {
+    selectFileRef.current = handleSelectFile
+  }, [handleSelectFile])
+  const selectFile = useCallback((id: string | null) => selectFileRef.current(id), [])
   useDocParamSync({
     openId: channel.openId,
     files,
@@ -229,15 +493,16 @@ export function FileWorkspace({
     onUrlClose: channel.close,
   })
 
-  useCompletionToast(files, shelf)
+  useCompletionToast(paneFiles, shelf)
   useErrorToast(error)
 
-  // Refetch the corpus when an upload batch settles (covers non-orchestrated paths).
+  // Refetch what is on screen when an upload batch settles (covers
+  // non-orchestrated paths). Quietly, like `onComplete`: the grid is on screen.
   const wasUploading = useRef(false)
   useEffect(() => {
-    if (wasUploading.current && !isUploading) void listing.load()
+    if (wasUploading.current && !isUploading) reloadQuietly()
     wasUploading.current = isUploading
-  }, [isUploading, listing])
+  }, [isUploading, reloadQuietly])
 
   // This session's own uploads for this shelf's corpus, in every phase, so the
   // tray carries a batch from queued to its summary. `file` being present marks
@@ -248,7 +513,34 @@ export function FileWorkspace({
   )
   // Settles the tray rows no ingest job will — a detached extraction (`.ifc`, an
   // office file read from its PDF rendition).
-  useSettleTrackedUploads(files, activeUploads)
+  useSettleTrackedUploads(paneFiles, activeUploads)
+
+  // Piloti's filing suggestions for this shelf, on the file rows and the tray's
+  // rows. Asked again every few seconds while an upload is on screen: the
+  // judgement from the names runs as soon as the batch is sealed.
+  const filingQuery = useMemo<ProposalListQuery>(
+    () => (shelf.projectId ? { projectId: shelf.projectId } : { shelf: 'archiv' }),
+    [shelf.projectId]
+  )
+  const filing = useFilingSuggestions({ query: filingQuery, refreshKey: files.length, watching: activeUploads.length > 0 })
+  const { reload: reloadFiling } = filing
+  const onFilingSettled = useCallback(() => {
+    void reloadAll()
+    reloadFiling()
+  }, [reloadAll, reloadFiling])
+  // Where a document is now, for the before line of a suggestion's popover:
+  // its folder's path, '' at the top level, unknown for a row no page holds.
+  const folderPathOf = useMemo(() => {
+    const folderOf = new Map(files.map((file) => [file.id, file.folderId ?? null]))
+    const pathOf = new Map(folders.map((folder) => [folder.id, folder.path]))
+    return (documentId: string): string | undefined => {
+      const folderId = folderOf.get(documentId)
+      if (folderId === undefined) return undefined
+      return folderId === null ? '' : pathOf.get(folderId)
+    }
+  }, [files, folders])
+  /** The folder whose description is being written (migration 0145). */
+  const [describingFolderId, setDescribingFolderId] = useState<string | null>(null)
 
   // A level the reader may only read (ADR-0088) takes no dropped files. The
   // server refuses either way; this keeps the surface from offering it.
@@ -259,29 +551,138 @@ export function FileWorkspace({
   })
   useWindowDragGuard()
 
+  // The status filter is the server's on a paged level; asking it again of
+  // the rows that came back is the same answer, and keeps a row whose status
+  // changed since in step with the chip.
   const filteredFiles = useMemo(
-    () => applyFileFilters(files, filters, { canCollaborate, currentUserId: shelf.currentUserId }),
-    [files, filters, canCollaborate, shelf.currentUserId]
+    () => applyFileFilters(paneFiles, filters, { canCollaborate, currentUserId: shelf.currentUserId }),
+    [paneFiles, filters, canCollaborate, shelf.currentUserId]
   )
-  // A search escapes the folder, so it runs over the corpus.
+  // One entry per document: an older Fassung leaves the listing when its newer
+  // one is listed (`isOlderFassung`). Asked after the other filters, over what
+  // they kept, so an older one whose newer one a filter hid stays visible. On a
+  // paged level it is asked of the pages read so far: which document replaces
+  // which is a link in the backend's index, not a column the server could
+  // leave a row out by (ADR-0099, ADR-0102). The search runs on
+  // `filteredFiles` and applies the same rule to its own matches in the pane.
+  const listedFiles = useMemo(
+    () => withoutOlderFassungen(filteredFiles, filters.showOlderFassungen),
+    [filteredFiles, filters.showOlderFassungen]
+  )
+  // The rows of the level on screen. A paged level already is one, and the
+  // filter keeps a row moved out of it from lingering until the next read.
   const levelFiles = useMemo(
     () =>
       tree.error
-        ? filteredFiles
-        : filteredFiles.filter((file) => (file.folderId ?? null) === selectedFolderId),
-    [filteredFiles, selectedFolderId, tree.error]
+        ? listedFiles
+        : listedFiles.filter((file) => (file.folderId ?? null) === selectedFolderId),
+    [listedFiles, selectedFolderId, tree.error]
   )
-  const tagOptions = useMemo(() => tagOptionsOf(files, locale), [files, locale])
+  const tagOptions = useMemo(() => tagOptionsOf(paneFiles, locale), [paneFiles, locale])
+
+  // What the server counted for the whole shelf: the folder tiles, the header
+  // count, the brief and the delete confirmation read it on a paged level.
+  const summaryTallies = useMemo(
+    () => (shelfSummary.summary ? talliesFromSummary(shelfSummary.summary, folders) : null),
+    [shelfSummary.summary, folders]
+  )
+  const folderStats = useMemo(() => {
+    if (!pagedView || !summaryTallies) return undefined
+    const counts = new Map<string, number>()
+    for (const [id, tally] of summaryTallies.direct) {
+      if (id !== null) counts.set(id, tally.total)
+    }
+    for (const folder of folders) {
+      if (folder.parentId !== null) counts.set(folder.parentId, (counts.get(folder.parentId) ?? 0) + 1)
+    }
+    return { counts, tallies: summaryTallies.subtree }
+  }, [pagedView, summaryTallies, folders])
+  useEffect(() => {
+    documentCountRef.current = (folderId) =>
+      summaryTallies
+        ? (summaryTallies.direct.get(folderId)?.total ?? 0)
+        : files.filter((file) => file.folderId === folderId).length
+  })
+
+  // The brief: built from the drained shelf once it is in, else from the
+  // summary (counts only, `partial`), else, when the summary could not be
+  // read, from the rows loaded so far.
+  const corpusReady = (wholeShelf || detailsWanted) && listing.complete && !listing.isLoading && !listing.error
+  const briefFolders = tree.error ? NO_FOLDERS : folders
+  const briefData = useMemo((): FolderBriefData | null => {
+    if (corpusReady) return buildFolderBrief(listing.files, briefFolders, selectedFolderId)
+    if (shelfSummary.summary) return buildFolderBriefFromSummary(shelfSummary.summary, briefFolders, selectedFolderId)
+    if (shelfSummary.error) return buildFolderBrief(paneFiles, briefFolders, selectedFolderId)
+    return null
+  }, [corpusReady, listing.files, shelfSummary.summary, shelfSummary.error, paneFiles, briefFolders, selectedFolderId])
+  const requestDetails = useCallback(() => setDetailsWanted(true), [])
+  const briefSurface = useFolderBriefSurface({
+    shelf,
+    brief: briefData,
+    folders: briefFolders,
+    selectedFolderId,
+    onOpenFolder: selectFolder,
+    onReingested: handlers.onReingested,
+    onReadAgainDone: reloadSummary,
+    onRequestDetails: requestDetails,
+    detailsLoading: (wholeShelf || detailsWanted) && !corpusReady,
+    mayReadAgain: canManage && writableHere,
+  })
+
+  // Whether the level holds documents before the client-side filters: on a
+  // paged level the summary knows, the rows loaded so far do not.
+  const levelKey = tree.error ? null : selectedFolderId
+  const levelOccupied =
+    pagedView && summaryTallies
+      ? tree.error
+        ? summaryTallies.total > 0
+        : (summaryTallies.direct.get(levelKey)?.total ?? 0) > 0
+      : tree.error
+        ? paneFiles.length > 0
+        : paneFiles.some((file) => (file.folderId ?? null) === selectedFolderId)
   const filterEmptyNotice = useFilterEmptyNotice({
     filters,
     setFilters,
     canCollaborate,
     search,
     levelFiles,
-    files,
-    selectedFolderId,
-    foldersFailed: tree.error,
+    levelOccupied,
   })
+
+  const shelfCount = pagedView
+    ? (summaryTallies?.total ?? null)
+    : listing.isLoading || listing.error || !listing.complete
+      ? null
+      : listing.files.length
+  const listingError = pagedView ? level.error : listing.error
+  const retryListing = pagedView ? () => void level.reload(false) : () => void listing.load()
+
+  /*
+   * PICKING SEVERAL (phone first). „Auswählen" turns a press on a card or row
+   * into a pick and the foot of the listing into a bar: five site photos go to
+   * their folder in three taps instead of five trips through a menu. It is a
+   * mode of ONE level, so walking elsewhere, searching or opening a slice of
+   * the brief ends it.
+   */
+  const phone = usePhoneLayout()
+  const moveInSheet = useMoveInSheet()
+  const selection = useDocumentSelection()
+  const { exit: exitSelection, set: setSelection, start: startSelection } = selection
+  const [moveSheetOpen, setMoveSheetOpen] = useState(false)
+  const searchingNow = search.query.trim() !== '' || search.semantic.active
+  const sliceOpen = briefSurface.slice !== undefined
+  useEffect(() => {
+    exitSelection()
+  }, [selectedFolderId, searchingNow, sliceOpen, exitSelection])
+  const mayPick = canManage && writableHere
+  const pickable = useMemo(() => levelFiles.map((file) => file.id), [levelFiles])
+  const moveSelection = async (folderId: string | null, folderName: string): Promise<void> => {
+    setMoveSheetOpen(false)
+    const ids = [...selection.selectedIds]
+    exitSelection()
+    await moveMany(ids, folderId, folderName)
+    void reloadSummary()
+  }
 
   const pickFilesRef = useRef<(() => void) | null>(null)
   const pickFolderRef = useRef<(() => void) | null>(null)
@@ -297,81 +698,103 @@ export function FileWorkspace({
     ) : undefined
 
   const controls = (
-    <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2">
-      <ToggleGroup
-        type="single"
-        value={view}
-        onValueChange={(value) => {
-          if (value === 'cards' || value === 'list') selectView(value)
-        }}
-        segmented
-        size="icon-sm"
-        aria-label={t('workspace.view.label')}
-      >
-        <ToggleGroupItem value="cards" aria-label={t('workspace.view.cards')} title={t('workspace.view.cards')}>
-          <LayoutGrid />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="list" aria-label={t('workspace.view.list')} title={t('workspace.view.list')}>
-          <List />
-        </ToggleGroupItem>
-      </ToggleGroup>
-      {/* The Papierkorb: deleted folders, restorable until their purge (ADR-0088). */}
-      {shelf.bin && (
-        <Button asChild variant="ghost" size="icon" aria-label={t('workspace.openBin')} title={t('workspace.openBin')}>
-          <Link href={shelf.bin.href} data-testid="files-open-bin">
-            <Trash2 />
-          </Link>
-        </Button>
+    <FilesHeaderControls
+      phone={phone}
+      view={view}
+      onViewChange={selectView}
+      binHref={shelf.bin?.href}
+      renderFilter={(compact) => (
+        <FileFilterMenu
+          canCollaborate={canCollaborate}
+          filters={filters}
+          onFiltersChange={setFilters}
+          sort={sort}
+          onSortChange={setSort}
+          // A ranked result set orders itself; offering a column here would throw
+          // the ranking away without saying so.
+          sortDisabled={search.semantic.active}
+          tagOptions={tagOptions}
+          compact={compact}
+        />
       )}
-      <FileFilterMenu
-        canCollaborate={canCollaborate}
-        filters={filters}
-        onFiltersChange={setFilters}
-        sort={sort}
-        onSortChange={setSort}
-        // A ranked result set orders itself; offering a column here would throw
-        // the ranking away without saying so.
-        sortDisabled={search.semantic.active}
-        tagOptions={tagOptions}
-      />
-      {/* The corpus search, in the header with the other controls that act on
-          the listing. No run button: the field reads as the plain filter it
-          mostly is, and Enter commits the query to the semantic search. */}
-      <FileSearchField
-        className="w-full sm:w-64 lg:w-72"
-        value={search.query}
-        onChange={search.setQuery}
-        onSubmit={search.run}
-        onClear={search.clear}
-        placeholder={t('browser.searchPlaceholder')}
-        searchLabel={t('browser.searchLabel')}
-        resetLabel={t('browser.resetSearch')}
-      />
-      {/* The durable corpus is where a büro brings a whole tree in. */}
-      {uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}
-    </div>
+      // The corpus search, in the header with the other controls that act on the
+      // listing. No run button: the field reads as the plain filter it mostly is,
+      // and Enter commits the query to the semantic search.
+      search={{ value: search.query, onChange: search.setQuery, onSubmit: search.run, onClear: search.clear }}
+      // The durable corpus is where a büro brings a whole tree in. On a phone the
+      // same control floats at the foot of the screen instead (`uploadFab`).
+      upload={phone ? undefined : uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}
+      moreEntries={moreEntries}
+    />
   )
 
-  const objectMenu = (file: FileItem, node: ReactNode, asChild = false) => (
-    <DocumentObjectMenu
-      asChild={asChild}
-      document={file}
-      scope={shelf.documentScope}
-      canManage={canManage}
-      actions={access.documentActionsAt(file.folderId)}
-      folders={folders}
-      onOpen={() => handleSelectFile(file.id)}
-      onAsk={shelf.askAbout ? () => shelf.askAbout?.(file) : undefined}
-      onRenamed={handlers.onRenamed}
-      onDeleted={handlers.onDeleted}
-      onMoved={moves.moved}
-      onReingested={handlers.onReingested}
-    >
-      {node}
-    </DocumentObjectMenu>
+  /*
+   * The phone's Hochladen: the ONE upload control (a second instance would be a
+   * second hidden input and a second owner of the pick refs), moved from the
+   * header to the foot of the listing, in the thumb's reach. It is the same
+   * component, so whatever the uploader offers in its menu is here too. Hidden
+   * while picking: the selection bar owns the foot then. The workspace is the
+   * positioned ancestor, so the button rides above the phone's in-flow tab bar
+   * with no height to guess.
+   */
+  const inSheet = shelf.source === 'office'
+  const uploadFab =
+    phone && !selection.active ? uploader({ allowFolders: true, pickFilesRef, pickFolderRef }) : undefined
+
+  /*
+   * One menu per card and row, built lazily (`DocumentObjectMenu`) and handed
+   * only stable values, so the memoised tiles in the pane re-render when THEIR
+   * document changed and not when anything at all did. The move targets are
+   * labelled and sorted once per tree here, not once per row.
+   */
+  const folderDestinations = useMemo(() => sortedFolderDestinations(folders), [folders])
+  const { documentActionsAt } = access
+  const { askAbout, documentScope } = shelf
+  const objectMenu = useCallback(
+    (file: FileItem, node: ReactNode, asChild: boolean) => (
+      <DocumentObjectMenu
+        asChild={asChild}
+        document={file}
+        scope={documentScope}
+        canManage={canManage}
+        actions={documentActionsAt(file.folderId)}
+        destinations={folderDestinations}
+        onOpen={() => selectFile(file.id)}
+        onAsk={askAbout ? () => askAbout(file) : undefined}
+        onRenamed={handlers.onRenamed}
+        onDeleted={handlers.onDeleted}
+        onMoved={moved}
+        onReingested={handlers.onReingested}
+        onSelectMode={mayPick ? () => startSelection(file.id) : undefined}
+        moveInSheet={moveInSheet}
+      >
+        {node}
+      </DocumentObjectMenu>
+    ),
+    [
+      documentScope,
+      canManage,
+      documentActionsAt,
+      folderDestinations,
+      selectFile,
+      askAbout,
+      handlers,
+      moved,
+      mayPick,
+      startSelection,
+      moveInSheet,
+    ]
   )
+  const wrapFile = useCallback((file: FileItem, card: ReactNode) => objectMenu(file, card, false), [objectMenu])
+  const wrapFileRow = useCallback((file: FileItem, row: ReactNode) => objectMenu(file, row, true), [objectMenu])
 
   return (
+    <FilingSuggestionsProvider
+      byDocument={filing.byDocument}
+      byFolder={filing.byFolder}
+      onSettled={onFilingSettled}
+      folderPathOf={folderPathOf}
+    >
     <div className="relative flex h-full flex-col" {...(canManage ? dragHandlers : {})} data-testid="workspace-dropzone">
       {canManage && isDragging && (
         <FileDropOverlay
@@ -382,7 +805,9 @@ export function FileWorkspace({
         />
       )}
 
-      {renderHeader(controls, { count: listing.isLoading || listing.error ? null : files.length })}
+      {/* The count is a claim about the whole shelf: the summary's on a paged
+          level, the drained listing's once its last page is in. */}
+      {renderHeader(controls, { count: shelfCount })}
 
       {error && (
         <div className="border-b px-4 py-3 animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none">
@@ -421,25 +846,53 @@ export function FileWorkspace({
         )}
         {/* The drain hit its ceiling: say which documents are missing rather
             than let search, filters and the upload plan pretend to be whole. */}
-        {listing.truncated && (
+        {!pagedView && listing.truncated && (
           <div className="border-b px-4 py-2">
             <Alert>
               <AlertCircle className="size-4" />
-              <AlertDescription>{t('workspace.listTruncated', { count: files.length })}</AlertDescription>
+              <AlertDescription>{t('workspace.listTruncated', { count: listing.files.length })}</AlertDescription>
             </Alert>
           </div>
         )}
 
-        <div className="scroll-fade-bottom min-h-0 min-w-0 flex-1 overflow-y-auto">
-          {listing.error ? (
-            <PaneLoadError message={t('workspace.documentsLoadError')} onRetry={() => void listing.load()} />
+        {/* On a phone the Hochladen button floats over the foot of the list, so
+            the list ends the button's height plus its 1rem offset and a 1rem gap (6rem) above the screen's edge: the last
+            card is never under it. */}
+        <div
+          className={cn(
+            'scroll-fade-bottom min-h-0 min-w-0 flex-1 overflow-y-auto',
+            // The Archiv is a sheet over the shell: it reaches the screen's
+            // edge, so its list ends above the home indicator. A project's
+            // Dateien sits above the in-flow tab bar, which owns that inset.
+            inSheet && !uploadFab && 'pb-[env(safe-area-inset-bottom)]',
+            uploadFab && (inSheet ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : 'pb-24')
+          )}
+        >
+          {listingError ? (
+            <PaneLoadError message={t('workspace.documentsLoadError')} onRetry={retryListing} />
           ) : (
             <FileBrowserPane
               files={levelFiles}
               searchFiles={filteredFiles}
+              showOlderFassungen={filters.showOlderFassungen}
               selectedFileId={channel.openId}
-              onSelectFile={handleSelectFile}
-              isLoading={listing.isLoading || tree.isLoading}
+              onSelectFile={selectFile}
+              // A skeleton only while there is nothing to show: a reload of the
+              // listing or the tree keeps what is on screen until it lands.
+              isLoading={(pagedView ? level.isLoading : listing.isLoading) || tree.isFirstLoad}
+              {...(pagedView
+                ? {
+                    paging: {
+                      hasMore: level.hasMore,
+                      loading: level.isLoadingMore,
+                      failed: level.moreError,
+                      onLoadMore: level.loadMore,
+                    },
+                    folderStats,
+                    shelfEmpty: summaryTallies ? summaryTallies.total === 0 : undefined,
+                    searchMatchesNamesOnly: true,
+                  }
+                : {})}
               search={search}
               view={view}
               onViewChange={selectView}
@@ -447,14 +900,14 @@ export function FileWorkspace({
               onSortChange={setSort}
               showAssignment={canCollaborate}
               filterEmptyNotice={filterEmptyNotice}
-              onDropDocumentInFolder={canManage ? moves.dropInFolder : undefined}
+              onDropDocumentInFolder={canManage ? dropInFolder : undefined}
               onDropFolderInFolder={canManage ? tree.move : undefined}
               onPickFiles={canManage ? () => pickFilesRef.current?.() : undefined}
               onPickFolder={canManage ? () => pickFolderRef.current?.() : undefined}
               cardExtras={shelf.cardExtras}
-              wrapFile={(file, card) => objectMenu(file, card)}
-              wrapFileRow={(file, row) => objectMenu(file, row, true)}
-              renderActions={() => <DocumentActionsTrigger />}
+              wrapFile={wrapFile}
+              wrapFileRow={wrapFileRow}
+              renderActions={renderDocumentActions}
               {...(tree.error
                 ? {}
                 : {
@@ -466,6 +919,7 @@ export function FileWorkspace({
                       onRenameFolder: tree.rename,
                       onDeleteFolder: tree.remove,
                       readOnly: !canManage,
+                      onDescribeFolder: canManage ? setDescribingFolderId : undefined,
                       ...access.folderNav,
                     },
                   })}
@@ -475,10 +929,43 @@ export function FileWorkspace({
                 label: t('workspace.uploadDocuments'),
               })}
               uploadCard={uploader({ variant: 'dropcard' })}
+              brief={briefSurface.brief}
+              slice={briefSurface.slice}
+              selection={
+                mayPick
+                  ? {
+                      active: selection.active,
+                      selectedIds: selection.selectedIds,
+                      onToggle: selection.toggle,
+                      onStart: sliceOpen ? undefined : () => startSelection(),
+                    }
+                  : undefined
+              }
             />
           )}
         </div>
       </div>
+
+      {selection.active && (
+        <SelectionBar
+          count={selection.selectedIds.size}
+          total={pickable.length}
+          canMove={folderDestinations.length > 0}
+          onSelectAll={() => setSelection(pickable)}
+          onMove={() => setMoveSheetOpen(true)}
+          onDone={exitSelection}
+        />
+      )}
+      {uploadFab && <UploadFab inSheet={inSheet}>{uploadFab}</UploadFab>}
+      <FolderPickerSheet
+        open={moveSheetOpen}
+        onOpenChange={setMoveSheetOpen}
+        title={t('picker.titleMany', { count: selection.selectedIds.size })}
+        destinations={folderDestinations}
+        // A level's documents all stand in the folder the reader is in.
+        currentFolderId={tree.error ? undefined : selectedFolderId}
+        onPick={(folderId, folderName) => void moveSelection(folderId, folderName)}
+      />
 
       {/* „Wollen Sie aktualisieren?" — the plan a dropped folder opens, before
           anything moves. Rendered unconditionally so its own exit transition
@@ -494,6 +981,14 @@ export function FileWorkspace({
         pending={shelfUpload.decision.pending}
         kind={shelfUpload.decision.kind}
         onReleaseChange={shelfUpload.onReleaseChange}
+        onFassungChange={shelfUpload.onFassungChange}
+      />
+
+      {/* What belongs in a folder (migration 0145), on both shelves. */}
+      <FolderDescriptionDialog
+        folder={folders.find((folder) => folder.id === describingFolderId) ?? null}
+        onOpenChange={(next) => !next && setDescribingFolderId(null)}
+        onSave={tree.describe}
       />
 
       {/* Who may read and write a folder (ADR-0088), a project's only. Saving
@@ -507,7 +1002,7 @@ export function FileWorkspace({
           folder={folders.find((folder) => folder.id === access.editingFolderId) ?? null}
           onSaved={() => {
             void tree.load()
-            void listing.load(true)
+            void reloadAll()
           }}
         />
       )}
@@ -518,10 +1013,11 @@ export function FileWorkspace({
           canManage={canManage}
           scope={shelf.documentScope}
           onClose={channel.close}
-          showMetadataPanel={shelf.showMetadataPanel}
           showModels={shelf.showModels}
           onReingested={handlers.onReingested}
           onTagsUpdated={handlers.onTagsUpdated}
+          onOpenDocument={handlers.onOpenDocument}
+          onFassungChanged={handlers.onFassungChanged}
           onRenamed={handlers.onRenamed}
           onDeleted={handlers.onDeleted}
         />
@@ -544,8 +1040,121 @@ export function FileWorkspace({
           canCollaborate={canCollaborate}
         />
       )}
+
+      {compareElement}
     </div>
+    </FilingSuggestionsProvider>
   )
+}
+
+/**
+ * The folder brief and the slice of the subtree it opens, for the level the
+ * reader stands on.
+ *
+ * Built from the UNFILTERED shelf: the brief describes the folder, and a
+ * filter that hides half of it must not make Piloti appear to know half as
+ * much. The caller builds it (ADR-0102): from the drained shelf once it is in
+ * (`buildFolderBrief`, one entry per document, ADR-0099), else from the shelf
+ * summary (`buildFolderBriefFromSummary`, counts only and `partial`). A
+ * partial brief offers to load what Piloti put on the documents, and a slice
+ * it opens asks for the same, because a slice is drawn from the documents the
+ * brief counted: a chip that says „Grundriss 12“ opens twelve documents.
+ */
+function useFolderBriefSurface({
+  shelf,
+  brief,
+  folders,
+  selectedFolderId,
+  onOpenFolder,
+  onReingested,
+  onReadAgainDone,
+  onRequestDetails,
+  detailsLoading,
+  mayReadAgain,
+}: {
+  shelf: FileShelf
+  brief: FolderBriefData | null
+  folders: readonly FolderItem[]
+  selectedFolderId: string | null
+  onOpenFolder: (id: string | null) => void
+  onReingested: (id: string, status: string) => void
+  /** The counts changed: the summary is read again. */
+  onReadAgainDone: () => void
+  /** Read the whole shelf, for a partial brief's content facts and its slices. */
+  onRequestDetails: () => void
+  detailsLoading: boolean
+  mayReadAgain: boolean
+}) {
+  const t = useTranslations('files')
+  const [collapsed, setCollapsed] = useBriefCollapsed(usePhoneLayout())
+  const [selection, setSelection] = useState<{ folderId: string | null; selection: BriefSelection } | null>(null)
+  const bulk = useBulkReingest(onReingested)
+  const missing = useMissingDocuments(shelf.projectId)
+  const folderName = selectedFolderId
+    ? (folders.find((folder) => folder.id === selectedFolderId)?.name ?? null)
+    : null
+  const partial = brief?.partial === true
+
+  // A slice belongs to the folder it was opened in; walking elsewhere drops it.
+  const active = selection && selection.folderId === selectedFolderId ? selection.selection : null
+
+  const failedIds = brief?.attention.failed
+  const readAgain = useCallback(async () => {
+    // Only what reading again may change: a file that failed for a lasting
+    // reason is left out, as the button's count already says.
+    const ids = offeredForRetry(failedIds ?? []).map((file) => file.id)
+    const result = await bulk.run(ids)
+    const started = result.done - result.failed - (result.unchanged ?? 0)
+    if (started > 0) toast.success(t('brief.readAgainDone', { count: started }))
+    if (result.failed > 0) toast.error(t('brief.readAgainPartial', { count: result.failed }))
+    onReadAgainDone()
+  }, [failedIds, bulk, t, onReadAgainDone])
+
+  const sliceLabel = (current: BriefSelection): string => {
+    const what =
+      current.kind === 'tag'
+        ? current.tag
+        : current.kind === 'topic'
+          ? current.topic
+          : current.kind === 'state'
+            ? t(`brief.slice.${current.state}`)
+            : t(`brief.slice.${current.kind}`)
+    const where = folderName ? t('brief.sliceScopeFolder', { name: folderName }) : t('brief.sliceScopeRoot')
+    return `${what} · ${where}`
+  }
+
+  const select = (next: BriefSelection) => {
+    setSelection({ folderId: selectedFolderId, selection: next })
+    // The slice is drawn from the documents themselves, which a partial brief does not hold.
+    if (partial) onRequestDetails()
+  }
+
+  return {
+    brief: brief ? (
+      <FolderBrief
+        brief={brief}
+        folderName={folderName}
+        shelfKind={shelf.source}
+        onSelect={select}
+        onOpenFolder={onOpenFolder}
+        onReadAgain={mayReadAgain ? () => void readAgain() : undefined}
+        readAgainProgress={bulk.progress}
+        collapsed={collapsed}
+        onCollapsedChange={setCollapsed}
+        missing={missing}
+        onLoadDetails={partial ? onRequestDetails : undefined}
+        detailsLoading={detailsLoading}
+      />
+    ) : null,
+    slice: active
+      ? {
+          files: brief && !partial ? selectInBrief(brief, active) : NO_FILES,
+          loading: !brief || partial,
+          label: sliceLabel(active),
+          onClear: () => setSelection(null),
+        }
+      : undefined,
+  }
 }
 
 /**
@@ -645,18 +1254,18 @@ function useFilterEmptyNotice({
   canCollaborate,
   search,
   levelFiles,
-  files,
-  selectedFolderId,
-  foldersFailed,
+  levelOccupied,
 }: {
   filters: FileFilters
   setFilters: (next: FileFilters) => void
   canCollaborate: boolean
   search: ReturnType<typeof useFileSearch>
   levelFiles: readonly FileItem[]
-  files: readonly FileItem[]
-  selectedFolderId: string | null
-  foldersFailed: boolean
+  /**
+   * Whether the level holds documents before the browser's filters: the
+   * shelf summary's count on a paged level (ADR-0102), the drained rows else.
+   */
+  levelOccupied: boolean
 }) {
   const t = useTranslations('files')
   const { query } = search
@@ -669,9 +1278,6 @@ function useFilterEmptyNotice({
     if (query.trim() !== '' || semanticActive) return null
     if (levelFiles.length > 0) return null
     // An unfiltered-empty level is an empty folder, not a filter hiding anything.
-    const levelOccupied = foldersFailed
-      ? files.length > 0
-      : files.some((file) => (file.folderId ?? null) === selectedFolderId)
     if (!levelOccupied) return null
     if (filters.agentAuthoredOnly) {
       return { title: t('authorship.emptyTitle'), description: t('authorship.emptyDescription'), onClear: clear }
@@ -683,7 +1289,7 @@ function useFilterEmptyNotice({
     // Type, status and tag say what they mean on the chip; what the reader needs
     // is the fact that a filter, and not an empty folder, is why it is empty.
     return { title: t('filters.emptyTitle'), description: t('filters.emptyDescription'), onClear: clear }
-  }, [filters, setFilters, canCollaborate, t, query, semanticActive, levelFiles, files, selectedFolderId, foldersFailed])
+  }, [filters, setFilters, canCollaborate, t, query, semanticActive, levelFiles, levelOccupied])
 }
 
 /** Inline pane-level load failure with a retry affordance. */

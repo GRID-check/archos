@@ -15,14 +15,14 @@ const de = {
   meta: {
     title: 'KI für Architektur- und Planungsbüros in Österreich – Piloti',
     description:
-      'Piloti ist eine KI-Wissensplattform für Architektur- und Planungsbüros in Österreich: Antworten zu Baurecht, OIB-Richtlinien und Projektunterlagen, mit Quellen.',
+      'Piloti ist der Arbeitsbereich für Architektur- und Planungsbüros in Österreich: Projekte mit Unterlagen, Gebäudemodell, Aufträgen, Berichten und Bürowissen, dazu Baurecht mit einer Quelle zu jeder Antwort.',
   },
   // Every other page's <title> and meta description, and what the head needs
   // around them. Titles stay near 60 characters, descriptions near 155.
   seo: {
     pages: {
       blog: {
-        title: 'Blog: Baurecht, Planungspraxis und KI im Büro – Piloti',
+        title: 'Blog: Planungspraxis, Baurecht und KI im Büro – Piloti',
         description:
           'Das Journal für Architektur- und Planungsbüros und das Bautagebuch aus der Entwicklung: Baurecht in Österreich, OIB-Richtlinien und wie Piloti gebaut ist.',
       },
@@ -34,12 +34,17 @@ const de = {
       bautagebuch: {
         title: 'Bautagebuch: Notizen aus der Entwicklung – Piloti Blog',
         description:
-          'Wie Piloti gebaut ist und warum: Notizen aus der Entwicklung einer KI-Wissensplattform für Baurecht, Projektunterlagen und Bürowissen, geschrieben in Wien.',
+          'Wie Piloti gebaut ist und warum: Notizen aus der Entwicklung des Arbeitsbereichs für Architekturbüros, geschrieben in Wien.',
       },
       changelog: {
         title: 'Neuerungen: neue Funktionen und Verbesserungen – Piloti',
         description:
-          'Was sich in Piloti geändert hat: neue Funktionen, Verbesserungen und Fehlerbehebungen der KI-Wissensplattform für Architekturbüros, laufend aktualisiert.',
+          'Was sich in Piloti geändert hat: neue Funktionen, Verbesserungen und Fehlerbehebungen des Arbeitsbereichs für Architekturbüros, laufend aktualisiert.',
+      },
+      neu: {
+        title: 'Woche 41: fertige Projekte, Zugriffe, Fassungen – Piloti',
+        description:
+          'Woche 41 bei Piloti: Projekte abschließen und pausieren, frühere Projekte als Präzedenzfälle finden, Ordner nach Rollen freigeben, Fassungen vergleichen.',
       },
       rechenweg: {
         title: 'Rechenweg: So rechnet der Piloti-Wertrechner – Piloti',
@@ -54,7 +59,7 @@ const de = {
       datenschutz: {
         title: 'Datenschutzerklärung – Piloti',
         description:
-          'Wie die Piloti-Website mit Ihren Daten umgeht: keine Cookies, kein Tracking, welche Dienste beteiligt sind und welche Anbieter die Piloti-Anwendung nutzt.',
+          'Wie die Piloti-Website mit Ihren Daten umgeht: welche Reichweitenmessung wir einsetzen und was sie speichert, welche Dienste beteiligt sind und welche Anbieter die Piloti-Anwendung nutzt.',
       },
       mailInbox: {
         title: 'E-Mail-Eingang: Dateien per E-Mail ins Projekt – Piloti',
@@ -64,7 +69,7 @@ const de = {
       warum: {
         title: 'Warum Piloti: KI für Architekturbüros in Österreich',
         description:
-          'Warum nicht einfach ChatGPT? Piloti verbindet österreichisches Baurecht, Ihre Pläne und Ihr Bürowissen zu Antworten mit prüfbaren Quellen, bis in den Akt.',
+          'Warum nicht einfach ChatGPT? Piloti verbindet österreichisches Baurecht, Ihre Projektdateien und Ihr Bürowissen zu Antworten mit prüfbaren Quellen, bis in den Akt.',
       },
       notFound: {
         title: 'Seite nicht gefunden – Piloti',
@@ -77,7 +82,7 @@ const de = {
     and: 'und',
     rssTitle: 'Piloti Blog',
     rssDescription:
-      'Journal und Bautagebuch von Piloti: Baurecht, Planungspraxis und die Entwicklung einer KI-Wissensplattform für Architekturbüros.',
+      'Journal und Bautagebuch von Piloti: Planungspraxis, Baurecht und die Entwicklung des Arbeitsbereichs für Architekturbüros.',
     llmsPages: 'Seiten (Deutsch)',
     llmsPosts: 'Blog (Deutsch)',
     llmsFacts: 'Entwickelt in Wien von {founders}. Kontakt: {email}.',
@@ -91,11 +96,11 @@ const de = {
     items: [
       {
         q: 'Was ist Piloti?',
-        a: 'Piloti ist eine KI-Wissensplattform für Architektur- und Planungsbüros. Sie beantwortet Planungsfragen aus dem geltenden Baurecht, den Unterlagen Ihres Büros und Ihres Projekts und nennt zu jeder Antwort die Quellen. Es übernimmt auch Arbeit, die länger dauert als eine Antwort: Prüfberichte und Aktenvermerke im Projekt, offene Punkte und wiederkehrende Checks. Piloti ist ein Proof of Concept und wird derzeit mit ausgewählten Pilotbüros erprobt.',
+        a: 'Piloti ist der Arbeitsbereich für Architektur- und Planungsbüros. Büros führen darin ihre Projekte: Unterlagen, Gebäudemodell, Aufträge und Berichte, Teamarbeit und das Wissen früherer Projekte. Piloti arbeitet darin mit. Es liest die Unterlagen, übernimmt Arbeit wie Prüfberichte, Aktenvermerke, offene Punkte und wiederkehrende Checks und nennt zu jeder Antwort die Quellen, auch aus dem Baurecht. Piloti ist ein Proof of Concept und wird derzeit mit ausgewählten Pilotbüros erprobt.',
       },
       {
         q: 'Warum nicht einfach ChatGPT?',
-        a: 'ChatGPT beantwortet Fragen. Piloti beantwortet sie im Zusammenhang Ihres Projekts: aus den Landesbauordnungen im RIS, den OIB-Richtlinien, Ihren Plänen und dem Archiv Ihres Büros, mit einer Fundstelle bis auf Paragraf, Punkt oder Seite, die vor dem Anzeigen gegen den Quelltext geprüft wird. Fehlt eine Unterlage, etwa der Bebauungsplan, sagt Piloti das, statt zu antworten, als hätte es sie gelesen.',
+        a: 'ChatGPT beantwortet Fragen. Piloti beantwortet sie im Zusammenhang Ihres Projekts: aus den Landesbauordnungen im RIS, den OIB-Richtlinien, Ihren Projektdateien und dem Archiv Ihres Büros, mit einer Fundstelle bis auf Paragraf, Punkt oder Seite, die vor dem Anzeigen gegen den Quelltext geprüft wird. Fehlt eine Unterlage, etwa der Bebauungsplan, sagt Piloti das, statt zu antworten, als hätte es sie gelesen.',
       },
       {
         q: 'Für wen ist Piloti gedacht?',
@@ -111,7 +116,7 @@ const de = {
       },
       {
         q: 'Trainiert Piloti KI-Modelle mit meinen Daten?',
-        a: 'Nein. Wir trainieren keine Modelle mit Ihren Daten, und Pläne und Projektunterlagen bleiben Eigentum Ihres Büros. Dokumente und Antworten können Sie einzeln herunterladen.',
+        a: 'Nein. Wir trainieren keine Modelle mit Ihren Daten, und Dateien und Projektunterlagen bleiben Eigentum Ihres Büros. Dokumente und Antworten können Sie einzeln herunterladen.',
       },
       {
         q: 'Wo werden meine Daten verarbeitet?',
@@ -149,7 +154,7 @@ const de = {
     logoLabel: 'Piloti, Startseite',
     signIn: 'Anmelden',
     signInPending: 'Weiterleitung…',
-    cta: 'Frage mitbringen',
+    cta: 'Mit einem laufenden Projekt testen',
     why: 'Warum Piloti',
     compare: 'Vergleiche',
     langLabel: 'Sprache wählen',
@@ -172,7 +177,7 @@ const de = {
   },
   hero: {
     title: 'Planen. Statt suchen.',
-    sub: 'Baurecht, Büro- und Projektwissen. An einem Ort.',
+    sub: 'Projekte, Unterlagen, Aufträge und Baurecht. An einem Ort.',
     stage: 'Proof of Concept · Pilotphase mit ausgewählten Büros',
     ctaDemo: 'Mit einer echten Frage testen',
     ctaMore: 'Mehr erfahren',
@@ -181,8 +186,8 @@ const de = {
     problemA: 'Architekt:innen gestalten unsere Zukunft,',
     problemB: 'doch das Wissen dafür liegt verstreut.',
     solution:
-      'Piloti verknüpft Baurecht, Projektunterlagen und Bürowissen zu einer Wissensbasis.',
-    cardTagline: 'Die Stelle im Gesetz, der Plan von 2019, die Auflage vom Amt. In einer Antwort.',
+      'Piloti bringt Projekte, Unterlagen, Bürowissen und Baurecht an einem Ort zusammen, damit das Team darin arbeitet.',
+    cardTagline: 'Die Stelle im Gesetz, die Unterlage von 2019, die Auflage vom Amt. In einer Antwort.',
     tags: {
       norm: '▸ NORM',
       site: '▸ STANDORT',
@@ -215,7 +220,7 @@ const de = {
   // has them (the task line, the finding count, the review actions).
   arbeit: {
     title: 'Übergeben Sie Arbeit. Nicht nur Fragen.',
-    body: 'Ein Nachschlagewerk wartet, bis Sie fragen. Piloti nimmt Aufträge an: Es recherchiert in Plänen und Vorschriften, legt den Bericht ins Projekt, macht aus Befunden offene Punkte und prüft wieder, wenn Sie es wollen.',
+    body: 'Ein Nachschlagewerk wartet, bis Sie fragen. Piloti nimmt Aufträge an: Es recherchiert in Unterlagen und Vorschriften, legt den Bericht ins Projekt, macht aus Befunden offene Punkte und prüft wieder, wenn Sie es wollen.',
     label: 'Fiktives Projekt · jeder Schritt eine ausgelieferte Funktion',
     boardLabel: 'Eine Woche mit Piloti, fiktives Beispiel',
     close: 'Fristen, Befunde und Freigaben bleiben im Projekt, für das ganze Team sichtbar. Das ist der Unterschied zwischen einem Werkzeug, das antwortet, und einem, das mitarbeitet.',
@@ -231,7 +236,7 @@ const de = {
         when: 'Mo · Auftrag läuft',
         title: 'Einreichcheck · Wohnbau 1030',
         line: 'Recherchieren · 3\u00a0Runden · 9\u00a0Dokumente',
-        note: 'Liest Pläne, Bescheid und Bebauungsplan des Projekts und die geltenden Vorschriften. Sie fragen im selben Chat weiter.',
+        note: 'Liest Unterlagen, Bescheid und Bebauungsplan des Projekts und die geltenden Vorschriften. Sie fragen im selben Chat weiter.',
       },
       report: {
         when: 'Mo · Bericht im Projekt',
@@ -273,7 +278,7 @@ const de = {
     // database, so there is no card for one.
     cards: [
       { title: 'Regelwerke', body: 'Landes\u00adbau\u00adordnungen, OIB-Richtlinien, Normen\u00adverzeichnis' },
-      { title: 'Ihr Büro', body: 'Pläne, Unterlagen, Erfahrung aus vergangenen Projekten' },
+      { title: 'Ihr Büro', body: 'Dateien, Unterlagen, Erfahrung aus vergangenen Projekten' },
       { title: 'Ihr Projekt', body: 'Standort, Grundstück, Auflagen' },
       { title: 'Web-Recherche', body: 'Aktuelle Quellen, jede mit Link belegt' },
     ],
@@ -291,7 +296,7 @@ const de = {
       // the data goes, in the privacy policy's words and no further.
       data: [
         'Wir trainieren keine Modelle mit Ihren Daten.',
-        'Pläne und Projekte bleiben Eigentum Ihres Büros.',
+        'Dateien und Projekte bleiben Eigentum Ihres Büros.',
         'Dokumente und Antworten laden Sie einzeln herunter.',
         'Anmeldung über WorkOS (USA). KI-Anfragen laufen über OpenRouter (USA) an Modellanbieter, die auch außerhalb der EU sitzen können.',
       ],
@@ -404,7 +409,7 @@ const de = {
     listLabel: 'Die Gründer',
   },
   cta: {
-    title: 'Bringen Sie eine echte Frage mit.',
+    title: 'Bringen Sie ein echtes Projekt mit.',
     body: 'Schicken Sie uns eine Planungsfrage aus einem laufenden Projekt, gern mit den Unterlagen dazu. Wir zeigen Ihnen, wie Piloti sie beantwortet, mit Quellen, die Sie am Original prüfen. Passt es, planen Sie als Pilotbüro mit: früher Zugang, ein direkter Draht zu uns Gründern und Einfluss darauf, was wir als Nächstes bauen.',
     primary: 'Mit einer echten Frage testen',
     secondary: 'Gespräch anfragen',
@@ -414,7 +419,7 @@ const de = {
       { title: 'Wir zeigen die Antwort', body: 'Im Gespräch, mit Ihren Unterlagen und den Quellen, die Piloti dafür heranzieht.' },
       { title: 'Sie planen mit Piloti', body: 'Als Pilotbüro, mit Ihren Fragen aus dem Alltag, und Sie sagen uns, was fehlt.' },
     ],
-    subjectPilot: 'Planungsfrage für Piloti',
+    subjectPilot: 'Projektanfrage für Piloti',
     subjectCall: 'Gespräch',
     bodyPilot:
       'Guten Tag,\n\nhier ist eine Frage aus einem unserer Projekte.\n\nUnsere Frage:\nBundesland und Ort:\nGebäudeart (z.\u00a0B. Wohnbau, Schule, Bestand):\nBüro und Planer:innen im Team:\n\n',
@@ -425,6 +430,7 @@ const de = {
   invite: {
     blog: 'Wir entwickeln Piloti mit wenigen Pilotbüros. Soll Ihres dabei sein, schreiben Sie uns.',
     changelog: 'Was hier als Nächstes steht, bestimmen die Pilotbüros mit.',
+    neu: 'Die Pilotbüros helfen mit, was als Nächstes kommt. Schreiben Sie uns, wenn Ihr Büro dabei sein soll.',
     rechenweg: 'Gemessen hat das noch niemand. Messen wir es in Ihrem Büro.',
     warum: 'Die beste Probe ist eine Frage aus Ihrem laufenden Projekt. Schicken Sie uns eine.',
     mailInbox: 'Die Pläne kommen per E-Mail, die Fragen dazu beantwortet Piloti. Schicken Sie uns eine aus Ihrem laufenden Projekt.',
@@ -478,7 +484,7 @@ const de = {
     region: 'Entscheidungskette, fiktives Beispiel',
     leads: [
       'Sie fragen, wie Sie eine Kollegin fragen würden.',
-      'Piloti findet die Stellen, die gelten: im Baurecht und in Ihren Plänen.',
+      'Piloti findet die Stellen, die gelten: im Baurecht und in Ihren Unterlagen.',
       'Piloti zeigt die möglichen Wege und begründet sie. Sie wählen.',
       'Aus Ihrer Wahl werden die nächsten Schritte, bis in die Kostenschätzung.',
     ],
@@ -565,8 +571,27 @@ const de = {
     monthCount: '{count} Wochen',
     monthCountOne: '1 Woche',
   },
+  // The week 41 launch page (/neu). Its notes are not here: they come from
+  // src/data/changelog.json, resolved by src/components/launch/picks.ts.
+  launch: {
+    kicker: 'Woche 41, 5. bis 11. Oktober 2026',
+    heading: 'Der Arbeitsbereich für Architekturbüros macht fertige Projekte durchsuchbar.',
+    lede: 'Diese Woche kommen Werkzeuge dazu, um Projekte abzuschließen, aufzuräumen und zu pausieren, aus früheren Projekten zu lernen und pro Ordner festzulegen, wer ihn lesen oder bearbeiten darf. Hochgeladene Dateien prüft Piloti vorab auf die Begriffe und Nummern, die Ihr Büro festlegt, bevor ein KI-Modell sie liest. Jedes Dokument hält alle seine Fassungen in einem Eintrag fest.',
+    themes: {
+      projects: { label: 'Projekte', heading: 'Projekte abschließen und pausieren' },
+      knowledge: { label: 'Wissen', heading: 'Was frühere Projekte schon gelöst haben' },
+      access: { label: 'Zugriff', heading: 'Das Büro legt fest, wer welchen Ordner sieht' },
+      review: { label: 'Prüfung', heading: 'Sensible Daten zurückhalten, bevor sie gelesen oder gesendet werden' },
+      files: { label: 'Dateien', heading: 'Ein Dokument, alle seine Fassungen' },
+      chat: { label: 'Chat', heading: 'Ruhigere Antworten und mehr Kontrolle über den Aufwand' },
+    },
+    upgradeHeading: 'Hinweise zur Umstellung',
+    upgradeLede: 'Für Büros, die schon vor dieser Woche mit Piloti gearbeitet haben.',
+    changelogText: 'Die früheren Wochen und alle Fehlerbehebungen stehen im Changelog.',
+    changelogLink: 'Zum Changelog',
+  },
   notFound: {
-    heading: 'Diese Seite liegt nicht im Plan.',
+    heading: 'Diese Seite ist nicht vorgesehen.',
     body: 'Die gesuchte Seite existiert nicht oder wurde verschoben.',
     home: 'Zur Startseite',
     blog: 'Zum Blog',
@@ -597,7 +622,11 @@ const de = {
       sections: [
         {
           heading: 'Diese Website',
-          html: 'Die öffentlichen Seiten dieser Website setzen <strong>keine Cookies</strong> und verwenden <strong>keine Tracking- oder Analysewerkzeuge</strong>. Schriften und Skripte werden von unserem eigenen Server geladen; es werden keine Inhalte von Drittanbietern eingebunden.',
+          html: 'Die öffentlichen Seiten dieser Website messen wir mit PostHog (siehe nächster Abschnitt). Schriften und Skripte der Seiten selbst werden von unserem eigenen Server geladen; das Mess-Skript lädt PostHog nach, sonst werden keine Inhalte von Drittanbietern eingebunden. Wir setzen keine Werbe-Cookies und kein Tracking über mehrere Websites hinweg ein.',
+        },
+        {
+          heading: 'Reichweitenmessung mit PostHog',
+          html: 'Wir messen die Nutzung der öffentlichen Seiten mit PostHog (PostHog, Inc.; Rechenzentrum in Frankfurt am Main): Seitenaufrufe, Herkunft (Referrer, UTM-Parameter), Klicks, Ladezeiten (Web Vitals), Klick- und Scroll-Heatmaps, Browser- und Gerätetyp sowie den ungefähren Standort aus der IP-Adresse; die IP-Adresse selbst wird nicht gespeichert. Es entstehen keine Personenprofile, Sitzungen werden nicht aufgezeichnet und es werden keine Umfragen eingeblendet. Dafür legt PostHog ein Cookie und einen Eintrag im lokalen Speicher Ihres Browsers an (Schlüssel „ph_…“, konkret „ph_&lt;Projekt-Token&gt;_posthog“, mit einer zufälligen Kennung; Laufzeit 365&nbsp;Tage). Das Cookie gilt für die gesamte Domain, damit wir den Weg von dieser Website bis zur Anmeldung in der Piloti-Anwendung zusammenhängend auswerten können. Sendet Ihr Browser „Do Not Track“, messen wir nichts. Die Daten werden bis zu 12&nbsp;Monate gespeichert. PostHog verarbeitet sie in unserem Auftrag (Art.&nbsp;28 DSGVO); als US-Konzern kann PostHog, Inc. aus den USA zugreifen, Grundlage sind das EU-US Data Privacy Framework und Standardvertragsklauseln. Rechtsgrundlage ist unser berechtigtes Interesse, die Website zu verbessern (Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;f DSGVO); für die Speicherung auf Ihrem Gerät gilt §&nbsp;165 Abs.&nbsp;3 TKG 2021. Sie können der Messung jederzeit per E-Mail widersprechen.',
         },
         {
           heading: 'Hosting und Server-Logs',
@@ -613,7 +642,7 @@ const de = {
         },
         {
           heading: 'Anmeldung und Piloti-Anwendung',
-          html: 'Mit „Anmelden“ verlassen Sie diese Website und gelangen zur Piloti-Anwendung; dort gilt deren eigene Datenschutzerklärung. Kurz vorab: Die Anmeldung läuft über WorkOS, Inc. (USA). KI-Anfragen werden über OpenRouter, Inc. (USA) an Modellanbieter weitergeleitet, die ihren Sitz auch außerhalb der EU haben können. E-Mails an die E-Mail-Adresse eines Projekts nimmt Cloudflare, Inc. (USA) entgegen und reicht sie an die Anwendung weiter; lehnt die Anwendung eine solche E-Mail ab, verarbeiten wir sie nur, um sie abzulehnen, und speichern nichts davon (berechtigtes Interesse, Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;f DSGVO). Wir selbst trainieren keine KI-Modelle mit Ihren Daten.',
+          html: 'Mit „Anmelden“ verlassen Sie diese Website und gelangen zur Piloti-Anwendung; dort gilt deren eigene Datenschutzerklärung. Kurz vorab: Die Anmeldung läuft über WorkOS, Inc. (USA). KI-Anfragen werden über OpenRouter, Inc. (USA) an Modellanbieter weitergeleitet, die ihren Sitz auch außerhalb der EU haben können. Produktanalyse, Fehlererfassung, Umfragen und Support der Anwendung laufen über PostHog (Rechenzentrum in Frankfurt am Main). E-Mails an die E-Mail-Adresse eines Projekts nimmt Cloudflare, Inc. (USA) entgegen und reicht sie an die Anwendung weiter; lehnt die Anwendung eine solche E-Mail ab, verarbeiten wir sie nur, um sie abzulehnen, und speichern nichts davon (berechtigtes Interesse, Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;f DSGVO). Wir selbst trainieren keine KI-Modelle mit Ihren Daten.',
         },
         {
           heading: 'Redaktionsbereich',
@@ -667,12 +696,12 @@ const en: typeof de = {
   meta: {
     title: 'AI for architecture and planning firms in Austria – Piloti',
     description:
-      'Piloti is an AI knowledge platform for architecture and planning firms in Austria: answers on building law, OIB guidelines and project documents, with sources.',
+      'Piloti is the workspace for architecture and planning firms in Austria: projects with their documents and building model, tasks, reports and office knowledge, plus building law, with a source for every answer.',
   },
   seo: {
     pages: {
       blog: {
-        title: 'Blog: building law, planning practice and AI – Piloti',
+        title: 'Blog: planning practice, building law and AI – Piloti',
         description:
           'The Journal for architecture and planning offices and the build log from development: Austrian building law, OIB guidelines and how Piloti is built.',
       },
@@ -684,12 +713,17 @@ const en: typeof de = {
       bautagebuch: {
         title: 'Build log: notes from development – Piloti Blog',
         description:
-          'How Piloti is built, and why: notes from developing an AI knowledge platform for building law, project documents and office knowledge, written in Vienna.',
+          'How Piloti is built, and why: notes from developing the workspace for architecture and planning firms, written in Vienna.',
       },
       changelog: {
         title: 'What’s new: features and improvements – Piloti',
         description:
-          'What changed in Piloti: new features, improvements and fixes to the AI knowledge platform for architecture and planning firms, updated continuously.',
+          'What changed in Piloti: new features, improvements and fixes to the workspace for architecture and planning firms, updated continuously.',
+      },
+      neu: {
+        title: 'Week 41: finished projects, access, revisions – Piloti',
+        description:
+          'Week 41 at Piloti: close and pause projects, find earlier projects as precedents, set folder access by role and compare document revisions.',
       },
       rechenweg: {
         title: 'The maths behind the Piloti value calculator – Piloti',
@@ -704,7 +738,7 @@ const en: typeof de = {
       datenschutz: {
         title: 'Privacy policy – Piloti',
         description:
-          'How the Piloti website handles your data: no cookies, no tracking, which services are involved, and which providers the Piloti application relies on.',
+          'How the Piloti website handles your data: which audience measurement we use and what it stores, which services are involved, and which providers the Piloti application relies on.',
       },
       mailInbox: {
         title: 'Project mail inbox: send files to a project by email – Piloti',
@@ -727,7 +761,7 @@ const en: typeof de = {
     and: 'and',
     rssTitle: 'Piloti Blog',
     rssDescription:
-      'Piloti’s Journal and build log: building law, planning practice and the development of an AI knowledge platform for architecture firms.',
+      'Piloti’s Journal and build log: planning practice, building law and the development of the workspace for architecture firms.',
     llmsPages: 'Pages (English)',
     llmsPosts: 'Blog (English)',
     llmsFacts: 'Built in Vienna by {founders}. Contact: {email}.',
@@ -738,7 +772,7 @@ const en: typeof de = {
     items: [
       {
         q: 'What is Piloti?',
-        a: 'Piloti is an AI knowledge platform for architecture and planning firms. It answers planning questions from the building law in force and from your office and project documents, and names the sources for every answer. It also takes on work that takes longer than an answer: review reports and file notes in the project, open points and recurring checks. Piloti is a proof of concept, currently being trialled with a small number of pilot offices.',
+        a: 'Piloti is the workspace for architecture and planning firms. Offices run their projects in it: documents, the building model, tasks and reports, team work and what earlier projects taught them. Piloti works in them too. It reads the documents, takes on work such as review reports, file notes, open points and recurring checks, and names the sources for every answer, building law included. Piloti is a proof of concept, currently being trialled with a small number of pilot offices.',
       },
       {
         q: 'Why not just use ChatGPT?',
@@ -796,7 +830,7 @@ const en: typeof de = {
     logoLabel: 'Piloti, homepage',
     signIn: 'Sign in',
     signInPending: 'Redirecting…',
-    cta: 'Bring a question',
+    cta: 'Test it on a live project',
     why: 'Why Piloti',
     compare: 'Comparisons',
     langLabel: 'Choose language',
@@ -819,7 +853,7 @@ const en: typeof de = {
   },
   hero: {
     title: 'Plan more. Search less.',
-    sub: 'Building law, office and project knowledge. In one place.',
+    sub: 'Projects, documents, tasks and building law. In one place.',
     stage: 'Proof of concept · Pilot phase with selected offices',
     ctaDemo: 'Try it with a real question',
     ctaMore: 'Learn more',
@@ -828,7 +862,7 @@ const en: typeof de = {
     problemA: 'Architects shape our future,',
     problemB: 'yet the knowledge it takes is scattered.',
     solution:
-      'Piloti connects building law, project documents and office knowledge in one knowledge base.',
+      'Piloti brings projects, documents, office knowledge and building law together in one workspace.',
     cardTagline: 'The clause in the code, the drawing from 2019, the condition from the authority. In one answer.',
     tags: {
       norm: '▸ NORM',
@@ -913,7 +947,7 @@ const en: typeof de = {
     sourcesLabel: 'What Piloti draws on',
     cards: [
       { title: 'Regulations', body: 'State building codes, OIB guidelines, a register of standards' },
-      { title: 'Your office', body: 'Plans, documents, experience from past projects' },
+      { title: 'Your office', body: 'Files, documents, experience from past projects' },
       { title: 'Your project', body: 'Site, plot, official requirements' },
       { title: 'Web research', body: 'Current sources, each backed by a link' },
     ],
@@ -928,7 +962,7 @@ const en: typeof de = {
       dataHeading: 'With your data',
       data: [
         'We do not train models on your data.',
-        'Plans and projects remain the property of your office.',
+        'Files and projects remain the property of your office.',
         'You download documents and answers one by one.',
         'Sign-in through WorkOS (USA). AI requests go through OpenRouter (USA) to model providers that may be based outside the EU.',
       ],
@@ -1041,17 +1075,17 @@ const en: typeof de = {
     listLabel: 'The founders',
   },
   cta: {
-    title: 'Bring us a real question.',
-    body: 'Send us a planning question from a current project, with the documents if you like. We will show you how Piloti answers it, with sources you check against the original. If it fits, you plan with us as a pilot office: early access, a direct line to us founders and a say in what we build next.',
+    title: 'Bring us a real project.',
+    body: 'Send us a planning question from a current project, with the documents if you like. We will show you how Piloti answers it, with sources you check against the original. If it fits, you join us as a pilot office: early access, a direct line to us founders and a say in what we build next.',
     primary: 'Try it with a real question',
     secondary: 'Request a call',
     stepsLabel: 'What happens next',
     steps: [
       { title: 'You send a question', body: 'A real one from your project, with the location and building type. Documents if you like.' },
       { title: 'We show you the answer', body: 'In a call, with your documents and the sources Piloti draws on.' },
-      { title: 'You plan with Piloti', body: 'As a pilot office, on questions from your working day, and you tell us what is missing.' },
+      { title: 'You work with Piloti', body: 'As a pilot office, on questions from your working day, and you tell us what is missing.' },
     ],
-    subjectPilot: 'A planning question for Piloti',
+    subjectPilot: 'A project question for Piloti',
     subjectCall: 'Call',
     bodyPilot:
       'Hello,\n\nhere is a question from one of our projects.\n\nOur question:\nState and location:\nBuilding type (e.g. housing, school, existing building):\nOffice and planners on the team:\n\n',
@@ -1060,6 +1094,7 @@ const en: typeof de = {
   invite: {
     blog: 'We are building Piloti with a few pilot offices. If yours should be one of them, write to us.',
     changelog: 'The pilot offices help decide what comes next on this list.',
+    neu: 'The pilot offices help decide what comes next. Write to us if your office should be one of them.',
     rechenweg: 'Nobody has measured this yet. Let us measure it in your office.',
     warum: 'The best test is a question from your current project. Send us one.',
     mailInbox: 'The drawings arrive by email; Piloti answers the questions about them. Send us one from your current project.',
@@ -1188,8 +1223,27 @@ const en: typeof de = {
     monthCount: '{count} weeks',
     monthCountOne: '1 week',
   },
+  // The week 41 launch page (/en/neu). Its notes are not here: they come from
+  // src/data/changelog.json, resolved by src/components/launch/picks.ts.
+  launch: {
+    kicker: 'Week 41, 5 to 11 October 2026',
+    heading: 'The workspace for architects keeps finished projects searchable.',
+    lede: 'This week adds the tools to close, clear out and pause a project, to learn from earlier projects, and to decide per folder who may read or edit it. Piloti checks uploads for the terms and numbers your office sets before any AI model reads them. Every document keeps all its revisions in one entry.',
+    themes: {
+      projects: { label: 'Projects', heading: 'Close and pause projects' },
+      knowledge: { label: 'Knowledge', heading: 'What earlier projects already solved' },
+      access: { label: 'Access', heading: 'The office decides who sees which folder' },
+      review: { label: 'Review', heading: 'Hold back sensitive data before it is read or sent' },
+      files: { label: 'Files', heading: 'One document, all its revisions' },
+      chat: { label: 'Chat', heading: 'Calmer answers and more control over effort' },
+    },
+    upgradeHeading: 'Upgrade notes',
+    upgradeLede: 'For offices that were already working in Piloti before this week.',
+    changelogText: 'Earlier weeks and every fix are in the changelog.',
+    changelogLink: 'Read the changelog',
+  },
   notFound: {
-    heading: 'This page is not in the plan.',
+    heading: 'This page is not part of the site.',
     body: 'The page you are looking for does not exist or has been moved.',
     home: 'Back to the homepage',
     blog: 'Read the blog',
@@ -1220,7 +1274,11 @@ const en: typeof de = {
       sections: [
         {
           heading: 'This website',
-          html: 'The public pages of this website set <strong>no cookies</strong> and use <strong>no tracking or analytics tools</strong>. Fonts and scripts are served from our own server; no third-party content is embedded.',
+          html: 'We measure how the public pages of this website are used with PostHog (see the next section). Fonts and scripts of the pages themselves are served from our own server; the measurement script is loaded from PostHog, and no other third-party content is embedded. We use no advertising cookies and no tracking across several websites.',
+        },
+        {
+          heading: 'Audience measurement with PostHog',
+          html: 'We measure use of the public pages with PostHog (PostHog, Inc.; data centre in Frankfurt, Germany): page views, origin (referrer, UTM parameters), clicks, load times (web vitals), click and scroll heatmaps, browser and device type, and the approximate location derived from the IP address; the IP address itself is not stored. No person profiles are created, sessions are not recorded and no surveys are shown. For this, PostHog sets a cookie and an entry in your browser’s local storage (key “ph_…”, specifically “ph_&lt;project token&gt;_posthog”, holding a random identifier; lifetime 365&nbsp;days). The cookie applies to the whole domain so that we can follow the path from this website to sign-in in the Piloti application as one. If your browser sends “Do Not Track”, we measure nothing. The data is kept for up to 12&nbsp;months. PostHog processes it on our behalf (Art.&nbsp;28 GDPR); as a US group, PostHog, Inc. may access it from the US, based on the EU-US Data Privacy Framework and standard contractual clauses. The legal basis is our legitimate interest in improving the website (Art.&nbsp;6(1)(f) GDPR); for storage on your device, §&nbsp;165(3) TKG 2021 applies. You may object to the measurement at any time by email.',
         },
         {
           heading: 'Hosting and server logs',
@@ -1236,7 +1294,7 @@ const en: typeof de = {
         },
         {
           heading: 'Sign-in and the Piloti application',
-          html: '“Sign in” takes you from this website to the Piloti application, which has its own privacy policy. In short: sign-in is handled by WorkOS, Inc. (USA). AI requests are routed through OpenRouter, Inc. (USA) to model providers that may be based outside the EU. Mail sent to a project’s email address is received by Cloudflare, Inc. (USA) and passed on to the application; if the application refuses such a mail, we process it only to refuse it and store none of it (legitimate interest, Art. 6(1)(f) GDPR). We do not train AI models on your data.',
+          html: '“Sign in” takes you from this website to the Piloti application, which has its own privacy policy. In short: sign-in is handled by WorkOS, Inc. (USA). AI requests are routed through OpenRouter, Inc. (USA) to model providers that may be based outside the EU. Product analytics, error tracking, surveys and support in the application run through PostHog (data centre in Frankfurt, Germany). Mail sent to a project’s email address is received by Cloudflare, Inc. (USA) and passed on to the application; if the application refuses such a mail, we process it only to refuse it and store none of it (legitimate interest, Art. 6(1)(f) GDPR). We do not train AI models on your data.',
         },
         {
           heading: 'Editorial area',

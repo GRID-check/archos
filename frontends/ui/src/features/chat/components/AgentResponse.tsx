@@ -50,6 +50,7 @@ import { remarkFileReferences } from '@/features/layout/lib/file-reference-marke
 import { formatTime } from '@/shared/utils/format-time'
 import { formatDurationElapsed } from '@/lib/format'
 import { GridCardItem } from '@/features/grid-cards/components/GridCards'
+import { useDecidedProposals } from '@/features/grid-cards/decided-proposals'
 import {
   CALLOUT_SLOT_INDEX,
   hasPlacedCalloutMarker,
@@ -66,6 +67,7 @@ import type { CardInteractions } from '@/features/grid-cards/card-decision'
 import { useChatStore } from '../store'
 import { registerShownText, useAnswerRevealStore } from '../stores/answer-reveal-store'
 import { useAnswerFileReferences } from '../hooks/use-answer-file-references'
+import { handleNearestCitationTap } from '../hooks/use-nearest-citation-tap'
 import { usePacedText } from '../hooks/use-paced-text'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -86,6 +88,7 @@ import { MemoryNotedChip } from './MemoryNotedChip'
 import { turnMemoryItems, type TurnMemoryItem } from '../lib/turn-memory'
 import { answerMetaToAnatomy, summaryDuplicatesBody } from '../lib/answer-meta-cards'
 import { AnatomyBlock, AnatomyMasthead, mastheadShows } from './AnswerAnatomy'
+import { AnswerOutline } from './AnswerOutline'
 import { FindingsMatrix } from './FindingsMatrix'
 import type { AnswerKind, AnswerMeta } from '@/lib/conversations/message-answer-meta'
 import type { Finding, Findings } from '@/lib/conversations/message-findings'
@@ -320,24 +323,11 @@ export interface AgentResponseProps {
    */
   showReasoning?: boolean
   /**
-   * Whether the self-assessment ConfidenceChip renders (WorkOS
-   * `chat-confidence-chip` flag, FB-6). Defaults to true so the feature stays
-   * visible with flag enforcement off (fail-open) and existing callers/specs
-   * are unaffected.
-   */
-  showConfidenceChip?: boolean
-  /**
    * Client-side message identifier of this answer — keys the per-answer
    * thumbs feedback row (WS-7). No feedback row renders when absent (e.g.
    * legacy callers), so existing usages are unaffected.
    */
   messageId?: string
-  /**
-   * Whether the per-answer thumbs feedback row renders (WorkOS
-   * `answer-feedback` flag). Defaults to true (fail-open, matching the other
-   * flag props) — the row still requires a `messageId` to appear.
-   */
-  showAnswerFeedback?: boolean
   /**
    * Whether this answer is still streaming (C6). Drives the blinking caret at
    * the end of the answer body and the partial-markdown stabilizer in the
@@ -838,7 +828,7 @@ const AnswerDetails = memo(function AnswerDetails({
       <div className="flex min-h-6 flex-wrap items-center gap-2">
         {before}
         <CollapsibleTrigger
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 touch-target duration-quick flex items-center gap-1.5 self-start rounded-md text-xs leading-relaxed transition-colors ease-out focus-visible:outline-none focus-visible:ring-2"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 touch-target duration-quick pointer-coarse:self-center flex items-center gap-1.5 self-start rounded-md text-xs leading-relaxed transition-colors ease-out focus-visible:outline-none focus-visible:ring-2"
           aria-label={t(needsAttention ? 'answerDetails.triggerAriaAttention' : 'answerDetails.triggerAria')}
           data-testid="answer-details-trigger"
         >
@@ -936,9 +926,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   skillsActivated,
   skillsHidden,
   showReasoning = false,
-  showConfidenceChip = true,
   messageId,
-  showAnswerFeedback = true,
   isStreaming = false,
   routingDecision,
   readOnly = false,
@@ -1322,21 +1310,22 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // item — turn one's answer read „Piloti hat sich 5 gemerkt" after turn five.
   // The reflection stage now delivers a frame addressed to the turn it belongs
   // to, so the chip can finally be what it always claimed to be.
+  // A memory card with a `proposal_id` is decided on the server and writes no
+  // `cardInteractions`: its receipt tells the tab how it ended.
+  const decidedProposals = useDecidedProposals((state) => state.byId)
   const memoryItems = useMemo(
-    () => turnMemoryItems({ stages, cards, cardInteractions }),
-    [stages, cards, cardInteractions]
+    () => turnMemoryItems({ stages, cards, cardInteractions, decidedProposals }),
+    [stages, cards, cardInteractions, decidedProposals]
   )
 
-  // What the merged footer's meta row would actually hold. The flags alone are
-  // not the answer: `showConfidenceChip` is on by default but the chip renders
+  // What the merged footer's meta row would actually hold. The chip renders
   // nothing without a level, and the feedback row needs a `messageId` — gating
-  // the row on the flags let it mount as an empty band (bare spacer + its own
-  // gap) on a meta turn that has neither.
+  // the row on anything less let it mount as an empty band (bare spacer + its
+  // own gap) on a meta turn that has neither.
   const hasConfidence =
-    showConfidenceChip &&
-    (answerConfidence === 'low' || answerConfidence === 'medium' || answerConfidence === 'high')
+    answerConfidence === 'low' || answerConfidence === 'medium' || answerConfidence === 'high'
   // Rating somebody else's answer is not the reader's to do (readOnly).
-  const hasFeedback = !readOnly && showAnswerFeedback && Boolean(messageId)
+  const hasFeedback = !readOnly && Boolean(messageId)
   // The copy actions. A still-arriving answer cannot be copied — half a
   // Prüfvermerk is worse than none — and a cards-only turn has no markdown to
   // hand over, so it gets no button that copies ''. While the answer arrives
@@ -1507,6 +1496,13 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   )
   const previousBody = useRef(body)
   const bodyFade = useMotionToken(motionBase)
+  // The fade outlives the commit that started it: the reveal goes on growing
+  // the rewritten body, and every word re-runs the effect below. Stopping it
+  // there froze the answer greyed out, because a stopped animation keeps the
+  // value it reached (WAAPI commits it to the element). It is only ever
+  // finished, by the next rewrite or by unmounting, and finishing is full ink.
+  const bodyFadeControls = useRef<{ complete: () => void } | null>(null)
+  useLayoutEffect(() => () => bodyFadeControls.current?.complete(), [])
   useLayoutEffect(() => {
     const previous = previousBody.current.trimEnd()
     previousBody.current = body
@@ -1516,13 +1512,10 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     // and the whole answer blinked out and back as the button was pressed.
     if (stopped || failed) return
     if (!mountedLive || !previous || !body || body.startsWith(previous) || !proseRef.current) return
-    const controls = animate(proseRef.current, { opacity: [0, 1] }, bodyFade)
+    bodyFadeControls.current?.complete()
+    bodyFadeControls.current = animate(proseRef.current, { opacity: [0, 1] }, bodyFade)
     const frame = frameRef.current
-    const stopGlide = frame && frameHeight.current !== null ? glideFrameDown(frame, frameHeight.current) : undefined
-    return () => {
-      controls.stop()
-      stopGlide?.()
-    }
+    return frame && frameHeight.current !== null ? glideFrameDown(frame, frameHeight.current) : undefined
   }, [body, mountedLive, bodyFade, glideFrameDown, stopped, failed])
 
   // The retraction, on the elements that are already there (nothing remounts).
@@ -1709,6 +1702,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
           >
             <div
               ref={frameRef}
+              onClick={handleNearestCitationTap}
               className={cn(
                 'flex w-full flex-col gap-2 overflow-hidden break-words',
                 dimmed
@@ -1887,8 +1881,9 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
             one considered object with sections — not a card floating in a tray. */}
               <div
                 ref={frameRef}
+                onClick={handleNearestCitationTap}
                 className={cn(
-                  'bg-card flex flex-col gap-2 break-words px-[22px] pb-[17px] pt-[18px]',
+                  'bg-card flex flex-col gap-2 break-words px-4 pb-[17px] pt-[18px] sm:px-[22px]',
                   dimmed
                 )}
               >
@@ -1907,18 +1902,20 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
               its last word. Cards the answer placed with a marker are spliced
               into this body. */}
                 {retractionLine}
-                <CardSlotLiveProvider value={live}>
-                  <MarkdownSlotProvider render={renderCardSlot}>
-                    <div ref={proseRef} className={proseClass(ledeClass)}>
-                      <MarkdownRenderer
-                        content={body}
-                        isStreaming={live}
-                        remarkPlugins={markerPlugins}
-                        caret={live && !retracted && !writingSummary && <StreamingCaret fading={finishing} idle={paced.idle} veil />}
-                      />
-                    </div>
-                  </MarkdownSlotProvider>
-                </CardSlotLiveProvider>
+                <AnswerOutline markdown={body} scopeRef={proseRef} enabled={!live && !failed && !retracted}>
+                  <CardSlotLiveProvider value={live}>
+                    <MarkdownSlotProvider render={renderCardSlot}>
+                      <div ref={proseRef} className={proseClass(ledeClass)}>
+                        <MarkdownRenderer
+                          content={body}
+                          isStreaming={live}
+                          remarkPlugins={markerPlugins}
+                          caret={live && !retracted && !writingSummary && <StreamingCaret fading={finishing} idle={paced.idle} veil />}
+                        />
+                      </div>
+                    </MarkdownSlotProvider>
+                  </CardSlotLiveProvider>
+                </AnswerOutline>
 
                 {stoppedMarker}
                 {/* What arrives below the prose: never before it, since an answer
@@ -1945,7 +1942,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
               <HeightExpand open={!live || footerReserved} instant={live}>
                 <div
                   className={cn(
-                    'duration-base flex flex-col gap-2.5 border-t px-[22px] pb-[14px] pt-3 transition-opacity ease-out motion-reduce:transition-none',
+                    'duration-base flex flex-col gap-2.5 border-t px-4 pb-[14px] pt-3 transition-opacity sm:px-[22px] ease-out motion-reduce:transition-none',
                     live && mountedLive && 'invisible opacity-0'
                   )}
                   data-testid="answer-footer"

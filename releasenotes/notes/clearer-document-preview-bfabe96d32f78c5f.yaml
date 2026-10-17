@@ -1,0 +1,16 @@
+---
+improvements:
+  - >
+    An open document now shows what Piloti saw on each page, with the drawing
+    type and scale, right under its summary, and a click on an entry turns the
+    document to that page. Format, page count and size sit under the name, so
+    the side panel keeps only what Piloti read, the Fassungen and the pages.
+  - >
+    The button that starts a conversation about a document now reads „Mit
+    Piloti besprechen“, so it is clear it opens a chat with Piloti and not
+    with a colleague.
+fixes:
+  - >
+    In the side panel of an open document, labels and values line up again,
+    document types read as types instead of raw codes such as „floor_plan“,
+    and the stages of a Fassung are no longer cut off in German.

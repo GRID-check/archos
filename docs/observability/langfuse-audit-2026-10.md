@@ -43,7 +43,7 @@ then checked against the code before anything was changed.
 | Custom dashboards | yes | none | a recommended set in the [analyst guide](analyst-guide.md); built in the UI |
 | Metrics API v2 | yes (v4) | unused | unused; see open items |
 | Blob storage export | yes | batch export enabled in the deployment, no scheduled export | unchanged; see open items |
-| PostHog integration | yes | unused; PostHog runs in the browser separately | unused; see open items |
+| PostHog integration | yes | unused; PostHog runs in the browser separately | the way LLM traces and scores reach PostHog; UI-only, enabled by hand: [PostHog export](langfuse.md#posthog-export) |
 | Organization-level roles (Viewer, Member, Admin, Owner) | yes | no default: a first SSO login's membership was undefined | first login joins the project as VIEWER |
 | Project-level roles, audit logs, retention policies, server-side masking, SCIM | **Enterprise** | not used | not used; retention is our own 30-day job (ADR-0044 Amendment 4) |
 | Protected prompt labels | **Enterprise** | not used | not used |
@@ -110,10 +110,10 @@ needed.
    generation, source registry, the dynamic half) are not managed at all, and
    their generations are stamped with the platform prompt's identity (the known
    over-broadness in `langfuse_trace_attributes.py`).
-5. **The v4 `events_only` cutover.** The deployment writes `dual`. Langfuse
-   v4's native mode is `events_only`, and trace-level evaluators stop at the
-   cutover (the judges here are observation-level already). The cutover is
-   gated on a backup ([`kubernetes.md`](../deployment/kubernetes.md) § 9b).
+5. **The v4 `events_only` cutover.** Done: the deployment writes v4's events
+   table only. Trace-level evaluators stop at the cutover (the judges here are
+   observation-level already). Each stack's first deploy with it needs the
+   backup in [`kubernetes.md`](../deployment/kubernetes.md) § 9b.
 6. **Auxiliary calls have no session.** None of the six auxiliary request
    models carries a conversation id, so a title call does not group with its
    chat. Adding an optional `conversation_id` to the title request and sending

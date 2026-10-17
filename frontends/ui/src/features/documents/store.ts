@@ -25,7 +25,7 @@ const initialState: DocumentsState = {
   shownBannersForJobs: {},
 }
 
-import { mapBackendStatus } from './utils'
+import { trackedStatusOfJobFile } from './utils'
 
 export const useDocumentsStore = create<DocumentsStore>()(
   devtools(
@@ -233,7 +233,7 @@ export const useDocumentsStore = create<DocumentsStore>()(
 
               return {
                 ...file,
-                status: mapBackendStatus(jobFile.status),
+                status: trackedStatusOfJobFile(jobFile),
                 progress: jobFile.progress_percent,
                 errorMessage: jobFile.error_message,
                 serverFileId: jobFile.file_id,
@@ -311,7 +311,9 @@ export const useDocumentsStore = create<DocumentsStore>()(
                   id: file.file_id, // Use server ID as local ID
                   fileName: file.file_name,
                   fileSize: file.file_size || 0,
-                  status: file.status,
+                  // A held attachment is listed `failed` with the verdict as its
+                  // error; read it as held, as the job poll does.
+                  status: trackedStatusOfJobFile(file),
                   progress: file.status === 'success' ? 100 : 0,
                   errorMessage: file.error_message,
                   serverFileId: file.file_id,

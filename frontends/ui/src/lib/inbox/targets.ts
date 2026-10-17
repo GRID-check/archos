@@ -42,7 +42,11 @@ import { hasPlatformPermission } from '@/lib/authz/platform'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { resolveResourceAccess } from '@/lib/sharing/access'
 import { describeResource } from '@/lib/sharing/registry'
-import { PLATFORM_INBOX_PERMISSION } from './registry'
+import {
+  MARK_ANCHORED_INBOX_TYPES,
+  PLATFORM_INBOX_PERMISSION,
+  PROPOSAL_ANCHORED_INBOX_TYPES,
+} from './registry'
 import { findOwnUploadBatch } from '@/lib/upload-batches/service'
 
 /** Row-level context a deep link may use. */
@@ -120,6 +124,8 @@ const ORGANIZATION_DESTINATIONS: Partial<Record<InboxItemType, string>> = {
   'storage.quota_warning': '/app/organization/storage',
   'document.quarantined': '/app/organization/quarantine',
   'document.release_requested': '/app/organization/quarantine',
+  // A filing suggestion on the Büroablage waits on its file row there.
+  'piloti.proposal_waiting': '/app/archiv',
 }
 
 function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {
@@ -133,11 +139,19 @@ function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {
       // line is content: the row renders redacted, like a revoked one.
       if (access.contentLocked) return null
       return {
-        deepLink: (context) =>
-          describeResource(type).deepLink(resourceId, {
-            anchorId: context.anchorId ?? undefined,
+        deepLink: (context) => {
+          // An anchor means different things by type: a message of a chat, a
+          // mark of a document, a proposal or a Fassung. Only the first two are
+          // places the target can open at.
+          const anchor = context.anchorId ?? undefined
+          const onMark = MARK_ANCHORED_INBOX_TYPES.includes(context.itemType)
+          const onProposal = PROPOSAL_ANCHORED_INBOX_TYPES.includes(context.itemType)
+          return describeResource(type).deepLink(resourceId, {
+            anchorId: onMark || onProposal ? undefined : anchor,
+            markId: onMark ? anchor : undefined,
             projectId: access.container.projectId,
-          }),
+          })
+        },
       }
     },
   }
@@ -219,6 +233,11 @@ const projectTarget: InboxTargetDescriptor = {
           const anchor = context.anchorId?.trim()
           return filesDeepLink(resourceId, anchor && !anchor.startsWith('import:') ? anchor : null)
         }
+        // A proposal no chat made is a filing suggestion: it waits on its file
+        // row in the project's Dateien (`lib/filing`).
+        if (context.itemType === 'piloti.proposal_waiting') return `/app/projects/${resourceId}/files`
+        // A finished reading waits on the project's setup page, where it is reviewed (ADR-0111).
+        if (context.itemType === 'piloti.intake_ready') return `/app/projects/${resourceId}/setup`
         if (context.run) return runDeepLink(resourceId, context.run)
         const taskId = context.taskId?.trim() ? context.taskId.trim() : null
         if (taskId) {

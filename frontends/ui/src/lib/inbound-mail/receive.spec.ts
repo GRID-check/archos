@@ -33,7 +33,7 @@ vi.mock('@/lib/mail-import/naming', () => ({ mailFolderName: vi.fn(() => '2026-0
 vi.mock('./job', () => ({ enqueueDelivery: vi.fn(), INBOUND_MAIL_ROOT_FOLDER: 'E-Mail-Eingang' }))
 vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
-vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
+vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSessionStrict: vi.fn() }))
 vi.mock('@/lib/authz/folder-access', () => ({ requireFolderWrite: vi.fn() }))
 vi.mock('@/lib/projects/folder-service', () => ({ findRootProjectFolderByName: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ isProjectMailInboxEnabledForOrg: vi.fn() }))
@@ -53,7 +53,7 @@ vi.mock('./staging', async (importOriginal) => ({
 }))
 
 import { FileTooLargeError, ForbiddenError, NotFoundError, TooManyRequestsError } from '@/lib/api/errors'
-import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { TransientAuthzError } from '@/lib/authz/errors'
 import { requireFolderWrite } from '@/lib/authz/folder-access'
@@ -146,7 +146,7 @@ beforeEach(() => {
   vi.mocked(isProjectMailInboxEnabledForOrg).mockResolvedValue(true)
   vi.mocked(verifySender).mockResolvedValue({ verdict: 'pass', fromAddress: 'anna@buero-a.at', fromName: 'Anna Berger' })
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([[ANNA.userId, ANNA]]))
-  vi.mocked(resolvePinnedRequesterSession).mockImplementation(async (requester) =>
+  vi.mocked(resolvePinnedRequesterSessionStrict).mockImplementation(async (requester) =>
     sessionFor(requester.userId, requester.organizationId)
   )
   vi.mocked(findRootProjectFolderByName).mockResolvedValue(null)
@@ -313,7 +313,7 @@ describe('the reject verdict: permanent refusals only', () => {
     ['a declared size over the cap', () => undefined, 413, { headers: { 'x-inbound-raw-size': String(MAX_MESSAGE_BYTES + 1) } }],
     ['a sender verification fail', () => vi.mocked(verifySender).mockResolvedValue({ verdict: 'fail', reason: 'dkim' }), 403],
     ['a sender who is not a member', () => vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['x', { ...ANNA, userId: 'x', email: 'x@y.at' }]])), 403],
-    ['a member who left since the roster was cached', () => vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(null), 403],
+    ['a member who left since the roster was cached', () => vi.mocked(resolvePinnedRequesterSessionStrict).mockResolvedValue(null), 403],
     ['a member without document write', () => vi.mocked(requireFolderWrite).mockRejectedValue(new NotFoundError()), 403],
     ['a member whose folder role reads E-Mail-Eingang only (ADR-0097)', () => vi.mocked(requireFolderWrite).mockRejectedValue(new ForbiddenError()), 403],
     ['a closed project (ADR-0090)', () => vi.mocked(requireFolderWrite).mockRejectedValue(projectClosedError()), 403],
@@ -369,7 +369,7 @@ describe('retries: no verdict header, so the sending server tries again', () => 
     ['a switch that could not be read', () => vi.mocked(isProjectMailInboxEnabledForOrg).mockRejectedValue(new TransientAuthzError('feature-flags')), 503],
     ['an FGA check that could not complete', () => vi.mocked(requireFolderWrite).mockRejectedValue(new TransientAuthzError('fga-check')), 503],
     ['a folder-role lookup that could not complete', () => vi.mocked(requireFolderWrite).mockRejectedValue(new TransientAuthzError('folder-roles')), 503],
-    ['a membership lookup that could not complete', () => vi.mocked(resolvePinnedRequesterSession).mockRejectedValue(new TransientAuthzError('membership')), 503],
+    ['a membership lookup that could not complete', () => vi.mocked(resolvePinnedRequesterSessionStrict).mockRejectedValue(new TransientAuthzError('membership')), 503],
     ['a roster that could not be read', () => vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map()), 503],
     ['a spent budget', () => vi.mocked(enforceLimit).mockRejectedValue(new TooManyRequestsError({ allowed: false, rule: 'inbound-mail-address', remaining: 0, limit: 60, retryAfterSeconds: 60, degraded: false })), 429],
   ]
@@ -480,9 +480,8 @@ describe('the Chinese wall', () => {
     await receiveInboundMail(delivery().request)
     expect(scopes).toEqual(['platform', 'tenant:org_A'])
     expect(loadOrganizationDirectory).toHaveBeenCalledWith('org_A')
-    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith(
-      expect.objectContaining({ organizationId: 'org_A' }),
-      { onError: 'throw' }
+    expect(resolvePinnedRequesterSessionStrict).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org_A' })
     )
   })
 
@@ -518,8 +517,7 @@ describe('the Chinese wall', () => {
     expect(requireFolderWrite).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-anna', organizationId: 'org_A' }),
       'project-a',
-      [null],
-      { onError: 'throw' }
+      [null]
     )
   })
 

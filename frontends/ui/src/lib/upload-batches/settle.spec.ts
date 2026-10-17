@@ -10,6 +10,8 @@ vi.mock('./repository', () => ({
 vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn().mockResolvedValue(1) }))
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
 vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
+// What it announces is `fassung-notify.spec.ts`'s; here, settling hands over the documents that came to rest.
+vi.mock('@/lib/documents/fassung-notify', () => ({ announceSettledVersions: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({
   resolveSubjectMembership: vi.fn(),
@@ -21,15 +23,19 @@ vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleToMember: vi.fn().m
 vi.mock('@/lib/upload-screening/quarantine-audit', () => ({
   auditOwedQuarantines: vi.fn().mockResolvedValue(undefined),
 }))
+// Which projects get a reading is `project-intake/trigger.spec.ts`'s; here, settling hands the batches over.
+vi.mock('@/lib/project-intake/trigger', () => ({ queueIntakeReadsAfterUpload: vi.fn().mockResolvedValue([]) }))
 
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
 import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { UploadBatch } from '@/lib/db/schema'
+import { announceSettledVersions } from '@/lib/documents/fassung-notify'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { queueIntakeReadsAfterUpload } from '@/lib/project-intake/trigger'
 import { makeDocument, makeProject } from '@/test-utils/db-fixtures'
 import { batchIdsOfDocuments, completeSettledBatches, reopenCompletedBatches } from './repository'
 import { onDocumentsSettled, settleUploadBatches } from './settle'
@@ -115,6 +121,38 @@ describe('settleUploadBatches', () => {
   })
 })
 
+describe('settleUploadBatches — the intake reads what arrived (ADR-0111)', () => {
+  it('hands the completed batches to the intake trigger after the uploader was told', async () => {
+    const completed = [batch()]
+    vi.mocked(completeSettledBatches).mockResolvedValue(completed)
+
+    await settleUploadBatches('org-1', ['batch-1'])
+
+    expect(queueIntakeReadsAfterUpload).toHaveBeenCalledWith('org-1', completed)
+    expect(vi.mocked(emitInboxItems).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(queueIntakeReadsAfterUpload).mock.invocationCallOrder[0]
+    )
+  })
+
+  it('keeps the completion when the reading cannot be queued', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
+    vi.mocked(queueIntakeReadsAfterUpload).mockRejectedValue(new Error('queue down'))
+
+    await expect(settleUploadBatches('org-1', ['batch-1'])).resolves.toHaveLength(1)
+    expect(reopenCompletedBatches).not.toHaveBeenCalled()
+  })
+
+  it('queues nothing when no batch completed, nor when the uploader could not be told', async () => {
+    await settleUploadBatches('org-1', ['batch-1'])
+    vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
+    vi.mocked(emitInboxItems).mockRejectedValueOnce(new Error('inbox down'))
+    await expect(settleUploadBatches('org-1', ['batch-1'])).rejects.toThrow('inbox down')
+
+    expect(queueIntakeReadsAfterUpload).not.toHaveBeenCalled()
+  })
+})
+
 describe('onDocumentsSettled', () => {
   it('settles the batches the moved documents belong to', async () => {
     vi.mocked(batchIdsOfDocuments).mockResolvedValue(['batch-1'])
@@ -197,6 +235,24 @@ describe('onDocumentsSettled', () => {
       { id: 'doc-2', status: 'failed' },
     ])
     expect(auditOwedQuarantines).not.toHaveBeenCalled()
+  })
+
+  it('hands the documents that came to rest to the new-Fassung announcement, the quarantined ones left out', async () => {
+    await onDocumentsSettled('org-1', [
+      { id: 'doc-1', status: 'completed' },
+      { id: 'doc-q', status: 'quarantined' },
+      { id: 'doc-2', status: 'ready' },
+    ])
+    expect(announceSettledVersions).toHaveBeenCalledWith('org-1', ['doc-1', 'doc-2'])
+  })
+
+  it('does not fail the read when the announcement rejects', async () => {
+    vi.mocked(announceSettledVersions).mockRejectedValueOnce(new Error('directory down'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    await expect(onDocumentsSettled('org-1', [{ id: 'doc-1', status: 'completed' }])).resolves.toBeUndefined()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
   })
 
   it('never throws into the read that reconciled', async () => {

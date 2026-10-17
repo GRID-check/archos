@@ -13,6 +13,7 @@ import { documentActionEntries, reingestOffer, type DocumentActionLabels } from 
 const LABELS: DocumentActionLabels = {
   open: 'Open',
   ask: 'Ask about this',
+  select: 'Select',
   download: 'Download',
   rename: 'Rename…',
   move: 'Move to folder',
@@ -122,6 +123,29 @@ describe('documentActionEntries', () => {
     )
   })
 
+  it('lists the destinations a listing sorted once, in that order, marking where the file is', () => {
+    const brandschutz = { id: 'f1', name: 'Brandschutz', parentId: null }
+    const fluchtwege = { id: 'f2', name: 'Fluchtwege', parentId: 'f1' }
+    const entries = documentActionEntries({
+      document: { ...DOCUMENT, folderId: 'f2' },
+      labels: LABELS,
+      ...handlers,
+      destinations: [
+        { folder: brandschutz, label: 'Brandschutz' },
+        { folder: fluchtwege, label: 'Brandschutz / Fluchtwege' },
+      ],
+    })
+    const move = entries.find((entry) => entry.type === 'sub' && entry.id === 'move')
+    expect(move?.type).toBe('sub')
+    if (move?.type !== 'sub') return
+    expect(move.items.map((item) => (item.type === 'item' ? [item.label, item.disabled] : null))).toEqual([
+      ['All Files', false],
+      ['Brandschutz', false],
+      ['Brandschutz / Fluchtwege', true],
+    ])
+    expect(ids(DOCUMENT, { destinations: [] })).not.toContain('move')
+  })
+
   it('offers open and ask only when the surface can do them', () => {
     expect(ids(DOCUMENT, { onOpen: vi.fn(), onAsk: vi.fn() })).toEqual([
       'open',
@@ -140,5 +164,50 @@ describe('documentActionEntries', () => {
         { onCopyOriginPath: vi.fn() },
       ),
     ).toContain('copy-origin')
+  })
+})
+
+describe('documentActionEntries — picking several, and moving on a phone', () => {
+  const folders = [{ id: 'f-1', name: 'Baustelle', parentId: null }]
+
+  it('offers „Auswählen" only to a listing that can select, and only to someone who may manage', () => {
+    expect(ids(DOCUMENT)).not.toContain('select')
+    expect(ids(DOCUMENT, { onSelect: vi.fn() })).toContain('select')
+    expect(ids(DOCUMENT, { onSelect: vi.fn(), canManage: false })).not.toContain('select')
+  })
+
+  it('runs the listing’s select handler', () => {
+    const onSelect = vi.fn()
+    const entry = documentActionEntries({ document: DOCUMENT, labels: LABELS, ...handlers, onSelect }).find(
+      (e) => e.type === 'item' && e.id === 'select',
+    )
+    if (entry?.type !== 'item') throw new Error('no select entry')
+    entry.onSelect?.()
+    expect(onSelect).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the move SUBMENU on a desk', () => {
+    const entries = documentActionEntries({ document: DOCUMENT, labels: LABELS, ...handlers, folders })
+    expect(entries.find((e) => e.type !== 'separator' && e.type !== 'radio-group' && e.id === 'move')?.type).toBe('sub')
+  })
+
+  it('makes „Verschieben" one item that opens the folder sheet where a submenu has no room', () => {
+    const onPickMoveTarget = vi.fn()
+    const entries = documentActionEntries({
+      document: DOCUMENT,
+      labels: LABELS,
+      ...handlers,
+      folders,
+      onPickMoveTarget,
+    })
+    const move = entries.find((e) => e.type !== 'separator' && e.type !== 'radio-group' && e.id === 'move')
+    expect(move?.type).toBe('item')
+    if (move?.type === 'item') move.onSelect?.()
+    expect(onPickMoveTarget).toHaveBeenCalledTimes(1)
+    expect(handlers.onMove).not.toHaveBeenCalled()
+  })
+
+  it('offers no move at all without a folder to move to, sheet or not', () => {
+    expect(ids(DOCUMENT, { onPickMoveTarget: vi.fn(), folders: [] })).not.toContain('move')
   })
 })

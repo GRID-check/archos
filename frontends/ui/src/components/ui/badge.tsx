@@ -25,6 +25,13 @@ const badgeVariants = cva(
           'border-transparent bg-warning-subtle text-warning',
         info:
           'border-transparent bg-info-subtle text-info',
+        // The error in the tinted material its siblings above use (the same
+        // pair as Chip, Alert and EmptyState). `destructive` is the solid red
+        // plate, for an action-weight warning; a STATUS that says something
+        // failed is a fact in a row, and a solid plate made a four-day-old
+        // „Fehlgeschlagen" the loudest thing in the Files list.
+        danger:
+          'border-transparent bg-danger-subtle text-error',
       },
     },
     defaultVariants: {

@@ -185,7 +185,8 @@ export function MermaidDiagram({ source, isStreaming = false }: MermaidDiagramPr
     )
   } else {
     body = (
-      <figure data-testid="mermaid-diagram" data-state={state} aria-busy={svg ? undefined : true}>
+      // `@container`: the drawing is sized against THIS width (`diagram-size.ts`).
+      <figure className="@container" data-testid="mermaid-diagram" data-state={state} aria-busy={svg ? undefined : true}>
         {/* No background. The drawing is line and text; the paper under it is
           whatever surface it is lying on, which is the card — in both themes.
           A hairline frame is all it needs to read as a figure rather than as

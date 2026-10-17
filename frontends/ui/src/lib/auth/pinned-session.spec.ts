@@ -7,12 +7,14 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/project-membership', () => ({ resolveSubjectMembership: vi.fn() }))
 vi.mock('@/lib/authz/org-role-permissions', () => ({ tenantRolePermissions: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ enabledFlagsForOrganization: vi.fn() }))
+vi.mock('./person', () => ({ resolvePerson: vi.fn() }))
 
 import { TransientAuthzError } from '@/lib/authz/errors'
 import { tenantRolePermissions } from '@/lib/authz/org-role-permissions'
 import { resolveSubjectMembership } from '@/lib/authz/project-membership'
 import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
-import { resolvePinnedRequesterSession } from './pinned-session'
+import { resolvePerson } from './person'
+import { resolvePinnedRequesterSession, resolvePinnedRequesterSessionStrict } from './pinned-session'
 
 const requester = { userId: 'user_owner', email: 'owner@grid.test', organizationId: 'org_1' }
 
@@ -20,7 +22,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
   vi.mocked(tenantRolePermissions).mockResolvedValue(new Set(['project:view', 'custom:perm']))
-  vi.mocked(enabledFlagsForOrganization).mockResolvedValue(['agent-authored-documents', 'project-mail-inbox'])
+  vi.mocked(enabledFlagsForOrganization).mockResolvedValue([])
+  vi.mocked(resolvePerson).mockResolvedValue({ name: null, email: null, organizationName: null })
 })
 
 afterEach(() => {
@@ -31,7 +34,7 @@ describe('resolvePinnedRequesterSession', () => {
   it('builds the session the requester would have now, from their stored id alone', async () => {
     const session = await resolvePinnedRequesterSession(requester)
 
-    expect(resolveSubjectMembership).toHaveBeenCalledWith('org_1', 'user_owner', {})
+    expect(resolveSubjectMembership).toHaveBeenCalledWith('org_1', 'user_owner')
     expect(session).toMatchObject({
       userId: 'user_owner',
       email: 'owner@grid.test',
@@ -40,16 +43,30 @@ describe('resolvePinnedRequesterSession', () => {
       role: 'member',
       // No token: nothing on the filing path forwards one, and none is minted.
       accessToken: '',
-      featureFlags: null,
+      featureFlags: [],
     })
   })
 
   it('takes its permissions from what WorkOS says the role holds, with the catalog', async () => {
     const session = await resolvePinnedRequesterSession(requester)
 
-    // Organization first, role second: the twin of organizationRolePermissions.
+    // Never from the caller, and not from the catalog alone, which knows no
+    // custom role. Organization first, role second.
     expect(tenantRolePermissions).toHaveBeenCalledWith('org_1', 'member')
     expect(session?.permissions).toEqual(['project:view', 'custom:perm'])
+  })
+
+  it('knows the person by name, as a live session does, so an unattended turn is not addressed as nobody', async () => {
+    vi.mocked(resolvePerson).mockResolvedValueOnce({
+      name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord',
+    })
+
+    const session = await resolvePinnedRequesterSession({ ...requester, email: null })
+
+    expect(resolvePerson).toHaveBeenCalledWith('org_1', 'user_owner')
+    // The stored email stands where the row has one; WorkOS fills it where it does not.
+    expect(session).toMatchObject({ name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord' })
+    expect((await resolvePinnedRequesterSession(requester))?.email).toBe('owner@grid.test')
   })
 
   it('is nobody when the requester left the organization', async () => {
@@ -64,36 +81,38 @@ describe('resolvePinnedRequesterSession', () => {
     expect(await resolvePinnedRequesterSession(requester)).toBeNull()
   })
 
-  it("carries every flag of the requester's organization under enforcement, asked by that organization", async () => {
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+  it("carries every flag of the requester's organization, asked by that organization", async () => {
+    vi.mocked(enabledFlagsForOrganization).mockResolvedValueOnce(['agent-authored-documents', 'image-upload'])
 
     const session = await resolvePinnedRequesterSession(requester)
-    expect(session?.featureFlags).toEqual(['agent-authored-documents', 'project-mail-inbox'])
-    // The lookup that used to pass the slug as the organization (#787).
-    expect(enabledFlagsForOrganization).toHaveBeenCalledTimes(1)
+    expect(session?.featureFlags).toEqual(['agent-authored-documents', 'image-upload'])
+    // The lookup that used to pass the slug as the organization.
     expect(enabledFlagsForOrganization).toHaveBeenCalledWith(requester.organizationId)
   })
 
   it('lets a failed flag lookup throw, so the background work retries instead of acting with none', async () => {
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
     vi.mocked(enabledFlagsForOrganization).mockRejectedValueOnce(new Error('workos down'))
 
     await expect(resolvePinnedRequesterSession(requester)).rejects.toThrow('workos down')
   })
+})
 
-  it('hands the error mode to the membership lookup', async () => {
-    vi.mocked(resolveSubjectMembership).mockRejectedValueOnce(new TransientAuthzError('membership'))
-
-    await expect(resolvePinnedRequesterSession(requester, { onError: 'throw' })).rejects.toBeInstanceOf(
-      TransientAuthzError,
-    )
+describe('resolvePinnedRequesterSessionStrict', () => {
+  it('builds the same session for a member', async () => {
+    expect(await resolvePinnedRequesterSessionStrict(requester)).toMatchObject({ userId: 'user_owner', role: 'member' })
     expect(resolveSubjectMembership).toHaveBeenCalledWith('org_1', 'user_owner', { onError: 'throw' })
   })
 
-  it('carries no flags at all without enforcement, as a live session without the claim does', async () => {
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'false')
+  it('answers null only when WorkOS said the person is not a member', async () => {
+    vi.mocked(resolveSubjectMembership).mockResolvedValueOnce(null)
+    expect(await resolvePinnedRequesterSessionStrict(requester)).toBeNull()
+  })
 
-    expect((await resolvePinnedRequesterSession(requester))?.featureFlags).toBeNull()
+  it('throws when WorkOS could not be asked, so a caller does not act on "they left"', async () => {
+    // The lookup raises a TransientAuthzError in this mode: a 503 to a webhook,
+    // a retry to a job.
+    vi.mocked(resolveSubjectMembership).mockRejectedValueOnce(new TransientAuthzError('membership'))
+    await expect(resolvePinnedRequesterSessionStrict(requester)).rejects.toBeInstanceOf(TransientAuthzError)
     expect(enabledFlagsForOrganization).not.toHaveBeenCalled()
   })
 })

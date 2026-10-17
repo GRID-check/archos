@@ -56,6 +56,12 @@ export interface InboxItemView {
   /** Short context line — e.g. the conversation title. */
   subject: string | null
   /**
+   * The other thing the row names, where a type has two: for a new Fassung, the
+   * newer document's name beside the `subject` that was followed. Withheld with
+   * the rest of the payload when the item is inert, like `subject`.
+   */
+  related: string | null
+  /**
    * Extra values a type's copy names beyond `{subject}` and `{count}`, typed
    * per type by `INBOX_PARAMS_SCHEMAS` in `./registry` (the filed and skipped
    * counts of a mail, and the files it skipped, say). Withheld with the rest of
@@ -67,6 +73,16 @@ export interface InboxItemView {
    * because an inbox must never leak content whose access was revoked (IB-13).
    */
   excerpt: string | null
+  /**
+   * Which wording of its type the row reads, where a type has more than one:
+   * why Piloti could not work a mark (`piloti.work_failed`, the classes of
+   * `lib/annotations/wake-end-reason.ts`), what a proposal changes
+   * (`piloti.proposal_waiting`). The renderer reads
+   * `inbox.types.<key>.variants.<variant>.<leaf>` before the type's own leaf,
+   * so an unknown variant reads as the type's general wording. A key segment
+   * (`[a-z][a-z_]*`), never copy; withheld with the payload when redacted.
+   */
+  variant: string | null
   createdAt: string
   updatedAt: string
 }
@@ -97,7 +113,12 @@ export interface InboxTypePresentation {
     | 'megaphone'
     | 'mail'
     | 'shield-alert'
-  /** i18n key under `inbox.types.<key>.title` / `.body`. */
+    | 'layers'
+  /**
+   * i18n key under `inbox.types.<key>.title` / `.body`, and the leaves the row
+   * picks by what the item names (`titleRelated`, `bodyNoSubject`, …), first
+   * under `variants.<variant>` when the item carries one.
+   */
   readonly i18nKey: string
   /**
    * Tone hint, so an actionable request reads differently from an FYI.
@@ -139,6 +160,12 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'document.release_requested': { icon: 'shield-alert', i18nKey: 'documentReleaseRequested', tone: 'request' },
   'mail_import.completed': { icon: 'check-circle', i18nKey: 'mailImportCompleted', tone: 'info' },
   'mail_import.failed': { icon: 'alert-triangle', i18nKey: 'mailImportFailed', tone: 'warning' },
+  'document.new_fassung': { icon: 'layers', i18nKey: 'documentNewFassung', tone: 'info' },
+  'piloti.work_done': { icon: 'check-circle', i18nKey: 'pilotiWorkDone', tone: 'info' },
+  'piloti.work_failed': { icon: 'alert-triangle', i18nKey: 'pilotiWorkFailed', tone: 'warning' },
+  'piloti.asks_you': { icon: 'message-square', i18nKey: 'pilotiAsksYou', tone: 'request' },
+  'piloti.proposal_waiting': { icon: 'layers', i18nKey: 'pilotiProposalWaiting', tone: 'request' },
+  'piloti.intake_ready': { icon: 'check-circle', i18nKey: 'pilotiIntakeReady', tone: 'request' },
   'inbound_mail.filed': { icon: 'mail', i18nKey: 'inboundMailFiled', tone: 'info' },
   'inbound_mail.failed': { icon: 'alert-triangle', i18nKey: 'inboundMailFailed', tone: 'warning' },
 }

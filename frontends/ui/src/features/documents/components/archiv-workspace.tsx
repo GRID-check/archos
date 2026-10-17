@@ -18,14 +18,6 @@ interface ArchivWorkspaceProps {
   /** Whether an `.ifc` here can reach the model workspace (`ifc-models`). */
   showModels?: boolean
   /**
-   * Whether a click on an `.ifc` opens the preview first (`ifc-preview-first`).
-   * Threaded to BOTH file surfaces from their pages so it can only ever move
-   * them together.
-   */
-  previewFirst?: boolean
-  /** Gates the ingestion-metadata block, mirroring the project Files tab. */
-  showMetadataPanel?: boolean
-  /**
    * Controls appended at the end of the identity row, after the upload button.
    * The Archiv sheet slots its close control here so the workspace's own
    * header stays the sheet's ONE header instead of gaining a twin above it.
@@ -51,9 +43,7 @@ const OFFICE_TINT = sourceTint('office')
  */
 export function ArchivWorkspace({
   canManage,
-  showMetadataPanel = true,
   showModels = false,
-  previewFirst = true,
   trailingActions,
 }: ArchivWorkspaceProps) {
   const t = useTranslations('archiv')
@@ -103,15 +93,14 @@ export function ArchivWorkspace({
         onComplete,
       }),
     probeNames: probe.archiv,
+    probeFassungen: probe.archivFassungen,
     preview: { kind: 'dialog' },
     cardExtras,
     messages: {
       dropToUpload: t('workspace.dropToUpload'),
       ingestionComplete: (name) => t('toast.ingestionComplete', { name }),
     },
-    showMetadataPanel,
     showModels,
-    previewFirst,
   }
 
   return (
@@ -121,8 +110,13 @@ export function ArchivWorkspace({
         // Identity row — the gold Büroablage mark, the name of the store, and
         // how much is in it. The count sits with the title: it is a property of
         // the Archiv, and the one number a reader wants before they filter.
-        <div className="flex min-h-[4rem] flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-3.5">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-h-[4rem] flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3.5">
+          {/* Phone: the identity and the sheet's close share the first line (the
+              close is the thumb's way out, so it stays at the top right), and
+              the controls take the line under them at the full width, where
+              the search can be a field instead of a sliver. From `sm` the
+              three sit in one row, as they always did. */}
+          <div className="flex min-w-0 items-center gap-3 max-sm:flex-1 max-sm:basis-0">
             <span
               className="shadow-2xs flex size-9 shrink-0 items-center justify-center rounded-xl"
               style={OFFICE_TINT}
@@ -142,10 +136,17 @@ export function ArchivWorkspace({
               <p className="text-muted-foreground truncate text-xs">{t('subtitle')}</p>
             </div>
           </div>
-          <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2">
+          {/* `max-w-full` is what keeps this inside the card: the controls group
+              is `shrink-0`, so its flex basis is its whole single-line width
+              (627px with the search and the upload button), and only a max
+              width can cap a basis the item refuses to shrink below. */}
+          <div
+            className="flex min-w-0 max-w-full items-center justify-end gap-2 max-sm:order-3 max-sm:w-full sm:ml-auto [&>*]:max-w-full"
+            data-testid="archiv-controls"
+          >
             {controls}
-            {trailingActions}
           </div>
+          {trailingActions && <div className="flex shrink-0 items-center max-sm:order-2">{trailingActions}</div>}
         </div>
       )}
     />

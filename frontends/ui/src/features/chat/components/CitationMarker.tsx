@@ -20,12 +20,13 @@
 
 'use client'
 
-import { type FC, type ReactNode, useState } from 'react'
+import { type FC, type ReactNode, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { citationSnippet, type CitationRef } from '../lib/citations'
-import { useHoverPopover } from '@/hooks/use-hover-popover'
+import { useHoverPopover, type HoverPopover } from '@/hooks/use-hover-popover'
 import { useCitationScope } from './CitationScope'
 import { CitationPeek } from './CitationPeek'
 import { SourceDocumentDialog, useCitationDownload, useSourcePreviewIndex } from './SourcePreview'
@@ -33,6 +34,7 @@ import { citedFileName, resolveCitationTarget } from '../lib/citations/target'
 import { useChatStore } from '../store'
 import { PENDING_CITATION_ANCHOR_PREFIX } from '@/features/layout/lib/citation-markers'
 import { useAnswerLive } from './CardSlotArrival'
+import { useCoarsePointer } from '../hooks/use-coarse-pointer'
 
 /**
  * An in-page anchor that the answer recognises as one of its own citations.
@@ -46,6 +48,13 @@ export const CitationMarker: FC<{ href: string; fallback: ReactNode }> = ({ href
   const [openDocument, setOpenDocument] = useState<CitationRef | null>(null)
   const peek = useHoverPopover()
   const live = useAnswerLive()
+  // A finger has no hover and no room beside a 22px pill: the pinned peek is a
+  // bottom sheet there, with its own close and its open action as one button
+  // (see `CitationSheet`). The pointer axis, never a breakpoint (Touch rule).
+  const touch = useCoarsePointer()
+  // Closing the sheet hands focus back to the marker, and the marker's focus
+  // handler opens a peek: this is what tells it the focus is a return.
+  const returningFocus = useRef(false)
 
   // The plugin marks every unresolved `[N]` pending, live or not, so its list
   // keeps its identity when the answer settles (see `AgentResponse`). Whether
@@ -66,6 +75,14 @@ export const CitationMarker: FC<{ href: string; fallback: ReactNode }> = ({ href
         // capturing, so the popover state is a committed screenshot too.
         data-citation-marker={number}
         {...peek.triggerProps}
+        onFocus={() => {
+          // On a finger the marker's own press is what opens the sheet. Opening
+          // on focus as well put a modal over the marker between the press's
+          // focus and its click, and the click then closed what the focus had
+          // opened. (Engaged all the same, so the sheet is mounted for the press.)
+          if (touch || returningFocus.current) peek.triggerProps.onPointerDown()
+          else peek.triggerProps.onFocus()
+        }}
         onClick={() => {
           peek.triggerProps.onClick()
           // Marks the chip below, and does NOT scroll to it: the click also
@@ -121,9 +138,14 @@ export const CitationMarker: FC<{ href: string; fallback: ReactNode }> = ({ href
           // whichever one you press is the one that answers. Measured 22x26
           // rather than 44 — the floor is not reachable inline without stealing
           // a neighbour's taps, and this is the largest honest target the
-          // sentence has room for. Everything the desktop pill was tuned for
-          // (see the width note below) is untouched: none of this applies to a
-          // mouse.
+          // sentence has room for. The 26px IS the line box the marker sits in
+          // (the Touch rule's inline exception: grow to at least the line box),
+          // and what the pill cannot reach by size it reaches by resolution: a
+          // tap that lands on nothing pressable beside a marker is handed to
+          // the nearest marker within 12px (`handleNearestCitationTap`), so
+          // the thumb's catchment is ~46px wide while neighbours stay disjoint.
+          // Everything the desktop pill was tuned for (see the width note
+          // below) is untouched: none of this applies to a mouse.
           'pointer-coarse:min-h-[26px] pointer-coarse:justify-center pointer-coarse:px-[7px] pointer-coarse:text-[0.78em]',
           // `transform` joins the transition list and `active:scale-95` matches
           // the Button primitive exactly. A citation marker is one of the most
@@ -142,26 +164,97 @@ export const CitationMarker: FC<{ href: string; fallback: ReactNode }> = ({ href
         {number}
       </button>
       {/* Beside the marker, not around it, and mounted on first engagement:
-          see `HoverPeekPanel`. A read answer holds dozens of these. */}
-      <HoverPeekPanel peek={peek} className="w-80 p-3">
-        <ResolvedCitationPeek
-          citation={ref}
-          snippet={snippet}
-          onOpen={() => {
-            // The peek asked a question the document now answers in full;
-            // leaving it hanging over the dialog would be two views of one
-            // citation arguing for the same attention.
-            peek.dismiss()
-            setOpenDocument(ref)
-          }}
-        />
-      </HoverPeekPanel>
+          see `HoverPeekPanel`. A read answer holds dozens of these. On a touch
+          device the same content is the body of a bottom sheet instead. */}
+      {touch ? (
+        peek.engaged && (
+          <CitationSheet
+            peek={peek}
+            number={number}
+            onReturnFocus={() => {
+              returningFocus.current = true
+              peek.anchorRef.current?.focus({ preventScroll: true })
+              returningFocus.current = false
+            }}
+          >
+            <ResolvedCitationPeek
+              citation={ref}
+              snippet={snippet}
+              presentation="sheet"
+              onOpen={() => {
+                peek.dismiss()
+                setOpenDocument(ref)
+              }}
+            />
+          </CitationSheet>
+        )
+      ) : (
+        <HoverPeekPanel peek={peek} className="w-80 p-3">
+          <ResolvedCitationPeek
+            citation={ref}
+            snippet={snippet}
+            onOpen={() => {
+              // The peek asked a question the document now answers in full;
+              // leaving it hanging over the dialog would be two views of one
+              // citation arguing for the same attention.
+              peek.dismiss()
+              setOpenDocument(ref)
+            }}
+          />
+        </HoverPeekPanel>
+      )}
       {/* Mounted only once opened, so a page of markers costs no fetches. */}
       {/* The reference carries the page, so the dialog needs nothing else. */}
       {openDocument && (
         <SourceDocumentDialog citation={openDocument} onClose={() => setOpenDocument(null)} />
       )}
     </>
+  )
+}
+
+/**
+ * The pinned peek on a phone: a bottom sheet.
+ *
+ * The popover it replaces was anchored to a 22px pill in the middle of the
+ * sentence it explains — it covered that sentence, had no control to close it
+ * (only a tap elsewhere did) and was 320px of card in a 393px screen. A sheet
+ * comes from the thumb's edge, names the source it belongs to in its own title
+ * (the sentence is behind the scrim, so the number has to travel with it), has
+ * a 44px close, and keeps the open action where the thumb already is.
+ *
+ * Modal on purpose: it traps focus and locks the thread's scroll, so a swipe
+ * inside the passage never moves the page under it (Touch: nothing takes the
+ * page scroll). `peek` still owns open state, so the marker's own tap, Escape
+ * and an outside press close it exactly as they closed the popover.
+ */
+const CitationSheet: FC<{
+  peek: HoverPopover
+  number: number
+  onReturnFocus: () => void
+  children: ReactNode
+}> = ({ peek, number, onReturnFocus, children }) => {
+  const t = useTranslations('chat')
+  const tCommon = useTranslations('common')
+  return (
+    <Sheet open={peek.open} onOpenChange={peek.onOpenChange}>
+      <SheetContent
+        side="bottom"
+        closeLabel={tCommon('actions.close')}
+        onInteractOutside={peek.contentProps.onInteractOutside}
+        data-citation-sheet=""
+        className="max-h-[82dvh] gap-3 rounded-t-2xl px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          onReturnFocus()
+        }}
+      >
+        <SheetHeader className="pr-11">
+          <SheetTitle className="text-sm">{t('citationPeek.sheetTitle', { number })}</SheetTitle>
+          <SheetDescription className="sr-only">{t('citationPeek.sheetDescription')}</SheetDescription>
+        </SheetHeader>
+        {children}
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -218,7 +311,8 @@ const ResolvedCitationPeek: FC<{
   citation: CitationRef
   snippet?: string
   onOpen: () => void
-}> = ({ citation, snippet, onOpen }) => {
+  presentation?: 'popover' | 'sheet'
+}> = ({ citation, snippet, onOpen, presentation }) => {
   const projectId = useChatStore((s) => s.projectId)
   const conversationId = useChatStore((s) => s.currentConversation?.id ?? null)
   const url = citation.document.url
@@ -244,12 +338,14 @@ const ResolvedCitationPeek: FC<{
       citation={citation}
       snippet={snippet}
       url={url}
+      presentation={presentation}
       onOpen={openable ? onOpen : undefined}
       // A document with no in-app viewer is reachable, just not renderable —
       // the file is offered instead of the open, and the popover says which.
       onDownload={downloadTarget ? () => void download() : undefined}
       downloadPending={isDownloading}
       unavailable={!url && !resolving && !downloadTarget && !openable}
+      supersededBy={target.kind === 'document' || target.kind === 'download' ? target.supersededBy : undefined}
     />
   )
 }

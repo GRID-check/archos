@@ -38,6 +38,7 @@
 
 import type { GridCard } from '@/shared/cards/schemas'
 import { cardKey, type CardInteractions } from '@/features/grid-cards/card-decision'
+import type { DecidedProposals } from '@/features/grid-cards/decided-proposals'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 
 /**
@@ -73,6 +74,23 @@ export interface TurnMemoryItem {
  */
 const SAVED: ReadonlySet<string> = new Set(['savedOrg', 'savedProject'])
 
+/**
+ * Whether the reader's decision on this card wrote the note. A card with a
+ * `proposal_id` is decided on the server and only the proposal says how it
+ * ended (`applied`; a dismissed, failed or still open one wrote nothing, and a
+ * proposal not seen yet is not claimed). A card without one is an older answer
+ * the browser decided, and its decision is on the message.
+ */
+function wasRemembered(
+  card: Extract<GridCard, { type: 'memory_proposal' }>,
+  key: string,
+  cardInteractions: CardInteractions | undefined,
+  decidedProposals: DecidedProposals | undefined
+): boolean {
+  if (card.proposal_id) return decidedProposals?.[card.proposal_id]?.status === 'applied'
+  return SAVED.has(cardInteractions?.[key]?.decision ?? '')
+}
+
 interface TurnMemoryInput {
   /** Post-answer stage output on this message. */
   stages?: MessageStages
@@ -80,6 +98,12 @@ interface TurnMemoryInput {
   cards?: (GridCard | undefined)[]
   /** The reader's answer to each interactive card, keyed by `cardKey`. */
   cardInteractions?: CardInteractions
+  /**
+   * The proposed changes seen decided (ADR-0105). A memory card with a
+   * `proposal_id` is answered on the server and writes no `cardInteractions`,
+   * so its decision is read from here instead.
+   */
+  decidedProposals?: DecidedProposals
 }
 
 /**
@@ -90,7 +114,7 @@ interface TurnMemoryInput {
  * chip's popover is a list of what happened, so it reads in the order it
  * happened.
  */
-export function turnMemoryItems({ stages, cards, cardInteractions }: TurnMemoryInput): TurnMemoryItem[] {
+export function turnMemoryItems({ stages, cards, cardInteractions, decidedProposals }: TurnMemoryInput): TurnMemoryItem[] {
   const items: TurnMemoryItem[] = []
 
   for (const [index, card] of (cards ?? []).entries()) {
@@ -98,7 +122,7 @@ export function turnMemoryItems({ stages, cards, cardInteractions }: TurnMemoryI
     // positions): nothing to attribute a memory write to.
     if (!card || card.type !== 'memory_proposal') continue
     const key = cardKey(card, index)
-    if (!SAVED.has(cardInteractions?.[key]?.decision ?? '')) continue
+    if (!wasRemembered(card, key, cardInteractions, decidedProposals)) continue
     items.push({ id: key, kind: card.kind, content: card.content, provenance: 'inTurn' })
   }
 

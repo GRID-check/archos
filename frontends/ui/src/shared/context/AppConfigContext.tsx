@@ -11,7 +11,7 @@
 'use client'
 
 import { createContext, useContext, type ReactNode } from 'react'
-import type { PostHogConfig } from '@/lib/analytics/posthog'
+import type { PostHogConfig, PostHogIdentity } from '@/lib/analytics/posthog-config'
 
 /**
  * File upload configuration for validation limits
@@ -71,6 +71,13 @@ export interface AppConfig {
    * falls back to the disabled config.
    */
   posthog?: PostHogConfig
+  /**
+   * The signed-in person as the server knows them (PostHog `bootstrap` and the
+   * non-personal super properties). `null` or absent: signed out, analytics off
+   * or the lookup failed; the browser then identifies once AuthKit has restored
+   * its session.
+   */
+  posthogIdentity?: PostHogIdentity | null
 }
 
 const AppConfigContext = createContext<AppConfig | null>(null)

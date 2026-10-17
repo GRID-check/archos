@@ -1,10 +1,10 @@
 ---
 improvements:
   - >
-    Every file Piloti creates now says where it comes from: a line at the top
-    names Piloti and your office, and a footer on each page marks it as an
-    unapproved draft.
+    Documents Piloti creates now say where they come from: a header line
+    names Piloti and your office, and a footer marks them as an unapproved
+    draft.
   - >
     Each such document also states that Piloti wrote the content and that
-    professional responsibility lies with whoever approves it. The statement is
-    in the file and survives forwarding, printing and submitting.
+    the approving person reviews it. The statement stays in the file when it
+    is forwarded, printed or submitted.

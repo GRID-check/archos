@@ -24,7 +24,7 @@
  * written by triggers (migration 0124): on a message written into such a
  * conversation, on its first admission (every message it holds, every vote
  * naming it), and on a vote cast on either. They survive the chat's deletion
- * and cannot be lifted by the runtime role. The ids a vote's client sends can
+ * (which takes its votes with it) and cannot be lifted by the runtime role. The ids a vote's client sends can
  * only add a mark: a vote whose message id names no row, cast in a restricted
  * chat through the vote service itself, stays out.
  */
@@ -243,13 +243,15 @@ describe.skipIf(!url)('answer feedback from a restricted conversation, against P
   })
 
   /**
-   * Deleting the chat deletes its messages and its record. The votes have no
-   * foreign key and stay to be counted; their comments and expected answers
-   * still quote the folder. The marks have none either, and stay with them:
-   * the answer written after the admission, and the earlier answer, whose
-   * vote from before the admission was edited after it to quote the offer.
+   * Deleting the chat deletes its messages, its record and its votes: a vote's
+   * comment and expected answer quote the folder, and they are the chat's
+   * words. The votes have no foreign key, so the delete names them. The marks
+   * stay (ids only, no text; the runtime role cannot delete one) and keep the
+   * chat answering yes: the answer written after the admission, and the earlier
+   * answer, whose vote from before the admission was edited after it to quote
+   * the offer. A vote cast on either id after the deletion is held out again.
    */
-  it('keeps the votes out after the restricted conversation is deleted, the earlier answer\'s included', async () => {
+  it('erases the votes with the restricted conversation, keeps its marks, and holds a later vote on its answers out', async () => {
     await conversation(DELETED_CHAT)
     const firstQuestion = await message(DELETED_CHAT, 'user', 'Wie hoch ist die Attika?', 10)
     const earlier = await message(DELETED_CHAT, 'assistant', `Die Attika ist 0,90 m hoch ${STAMP}`, 9)
@@ -275,7 +277,7 @@ describe.skipIf(!url)('answer feedback from a restricted conversation, against P
             (select count(*)::int from answer_feedback where conversation_id = ${DELETED_CHAT}) as votes`)
       )
     )
-    expect(left).toEqual({ records: 0, messages: 0, votes: 2 })
+    expect(left).toEqual({ records: 0, messages: 0, votes: 0 })
     // Every message the conversation held at its admission, and the answer written after it.
     const marks = await marksIn(DELETED_CHAT)
     expect(marks).toHaveLength(4)
@@ -287,9 +289,14 @@ describe.skipIf(!url)('answer feedback from a restricted conversation, against P
       expect(JSON.stringify(exported)).not.toContain(quoted)
       expect(JSON.stringify(reports)).not.toContain(quoted)
     }
-    expect(health.totals.down).toBe(6)
-    expect(await scoredWithoutWords(answer)).toBe(true)
-    expect(await scoredWithoutWords(earlier)).toBe(true)
+    // The two votes went with the chat: the count is the earlier test's again.
+    expect(health.totals.down).toBe(4)
+
+    // The marks outlive the chat, so a vote on either answer cast now stays out.
+    await vote(answer, DELETED_CHAT, 'Spengler nach dem Löschen', COLLEAGUE)
+    await vote(earlier, DELETED_CHAT, 'Attika nach dem Löschen', COLLEAGUE)
+    expect(await scoredWithoutWords(answer, COLLEAGUE)).toBe(true)
+    expect(await scoredWithoutWords(earlier, COLLEAGUE)).toBe(true)
   })
 
   /**
@@ -298,7 +305,7 @@ describe.skipIf(!url)('answer feedback from a restricted conversation, against P
    * chat it was cast in: through the vote service itself, the way every vote
    * is written, it marks its own id, and the mark outlives the chat.
    */
-  it('keeps out a vote whose message id names no row, cast in a restricted chat, before and after the chat is deleted', async () => {
+  it('keeps out a vote whose message id names no row, cast in a restricted chat, and erases it with the chat', async () => {
     await conversation(PHANTOM_CHAT)
     await message(PHANTOM_CHAT, 'user', 'Was kostet der Spengler laut Angebot?', 3)
     await admit(PHANTOM_CHAT)
@@ -339,7 +346,13 @@ describe.skipIf(!url)('answer feedback from a restricted conversation, against P
     expect(JSON.stringify(after.turns)).not.toContain('SPENGLER-BBB')
     expect(JSON.stringify(after.exported)).not.toContain('SPENGLER-BBB')
     expect(JSON.stringify(after.reports)).not.toContain('SPENGLER-BBB')
-    expect(await scoredWithoutWords(phantom)).toBe(true)
+    // The vote had no message row to be found by: the conversation it named was enough.
+    const [left] = executeRows<{ votes: number }>(
+      await inOrg((executor) =>
+        executor.execute(sql`select count(*)::int as votes from answer_feedback where message_id = ${phantom}`)
+      )
+    )
+    expect(left.votes).toBe(0)
 
     // The chat and its record are gone; its marks keep it answering yes (sticky).
     const late = randomUUID()

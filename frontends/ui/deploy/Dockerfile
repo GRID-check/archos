@@ -80,7 +80,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Bun is the INSTALLER and script runner; Node stays the runtime. Copied from
+# Bun is the toolchain; Node stays the runtime (ADR-0103). Copied from
 # the official image rather than installed, so the layer is deterministic and
 # needs no network step.
 #
@@ -93,8 +93,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Tag choice: `-slim` (Debian bookworm, glibc — matches this node base), not
 # `-debian`. Bun does not publish a `-debian` alias for every release (1.3.11
 # has none), so that suffix breaks the build on an ordinary version bump.
-# Keep the version in lockstep with `.github/actions/setup-bun`.
-COPY --from=oven/bun:1.3.11-slim /usr/local/bin/bun /usr/local/bin/bun
+# The version is the one `.github/actions/setup-bun` pins;
+# `tests/test_bun_version_pin.py` fails when they differ.
+COPY --from=oven/bun:1.4.3-slim /usr/local/bin/bun /usr/local/bin/bun
 
 # =============================================================================
 # Stage 2: Dependencies
@@ -122,7 +123,33 @@ RUN rm -f .env .env.local .env.*.local .env.development .env.production 2>/dev/n
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN bun run build
+# Source maps for PostHog error tracking, uploaded from inside `next build` by
+# `@posthog/nextjs-config` (next.config.ts), only when this build can upload: a
+# project id AND the key mounted as a BuildKit secret (the CI push build passes
+# both; a fork, a pull request or a plain `docker build` passes neither and
+# builds exactly as before). The key is a mount, never a build arg (an arg is
+# written into the image history), exported only inside this RUN. The release
+# version is the commit being built, so GRID_GIT_SHA is declared here; a new
+# commit re-runs the build anyway, because an image whose inputs did not change
+# is re-tagged rather than rebuilt (docs/contributing/ci.md). The PostHog CLI's
+# npm package fetches its binary on first use, here; it is deleted right after,
+# because the production install below does not prune an existing node_modules
+# and would ship it. Last, every `.map` still in the served trees is deleted
+# (Turbopack emits some unasked) and the build fails if one survives or, when
+# it uploaded, if no chunk id was injected.
+ARG POSTHOG_PROJECT_ID=""
+ARG GRID_GIT_SHA=""
+
+RUN --mount=type=secret,id=posthog_cli_api_key,required=false \
+    if [ -n "$POSTHOG_PROJECT_ID" ] && [ -s /run/secrets/posthog_cli_api_key ]; then \
+      POSTHOG_CLI_API_KEY="$(cat /run/secrets/posthog_cli_api_key)"; export POSTHOG_CLI_API_KEY; \
+    fi; \
+    bun run build \
+    && rm -rf node_modules/@posthog/cli/node_modules/.bin_real \
+    && find .next/static .next/server -name '*.map' -type f -delete \
+    && if find .next/static .next/server -name '*.map' | grep -q .; then echo "error: a source map would ship" >&2; exit 1; fi \
+    && if [ -n "${POSTHOG_CLI_API_KEY:-}" ] && ! grep -rlq 'chunkId=' --include='*.js' .next/static; then \
+      echo "error: no PostHog chunk id was injected; no stack frame could be matched" >&2; exit 1; fi
 
 # The deploy-time WorkOS Jobs (deploy/pulumi/src/app/workos-authz-jobs.ts) run
 # TypeScript scripts, and the runner keeps neither bun nor tsx. Bundle each to
@@ -211,6 +238,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-upgrade-headers.
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-teardown.js ./src/lib/proxy/ws-teardown.js
 # And this one to pick which aiq-agent address a chat socket dials (ADR-0080).
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/backend-target.js ./src/lib/proxy/backend-target.js
+# And this one to build a chat turn's headers and signed envelope (ADR-0106).
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/turns/turn-headers.js ./src/lib/turns/turn-headers.js
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 

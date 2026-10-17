@@ -443,7 +443,12 @@ class BaseIngestor(ABC):
             name: Collection name.
 
         Returns:
-            CollectionInfo if found, None otherwise.
+            CollectionInfo if found, None when the store says the collection
+            does not exist.
+
+        Raises:
+            Exception: when the store cannot answer (unreachable, timed out).
+            That is not "missing", and a caller must not treat it as one.
         """
 
     # =========================================================================
@@ -473,13 +478,16 @@ class BaseIngestor(ABC):
         """
 
     @abstractmethod
-    def delete_file(self, file_id: str, collection_name: str) -> bool:
+    def delete_file(self, file_id: str, collection_name: str, *, permanent: bool = False) -> bool:
         """
         Delete a file and its chunks from a collection.
 
         Args:
             file_id: File identifier (can be filename or internal ID).
             collection_name: Collection containing the file.
+            permanent: A delete nobody undoes. Without it the Fassung facts a
+                person made on the file's metadata row are kept for the file's
+                return (``DocumentMetadataStore.unregister``).
 
         Returns:
             True if deleted successfully, False otherwise.
@@ -489,6 +497,8 @@ class BaseIngestor(ABC):
         self,
         file_ids: list[str],
         collection_name: str,
+        *,
+        permanent: bool = False,
     ) -> dict[str, Any]:
         """
         Delete multiple files from a collection (batch delete).
@@ -496,6 +506,7 @@ class BaseIngestor(ABC):
         Args:
             file_ids: List of file IDs to delete.
             collection_name: Collection containing the files.
+            permanent: Passed to :meth:`delete_file` for each file.
 
         Returns:
             Dict with 'successful' (list), 'failed' (list), 'total_deleted' (int).
@@ -505,7 +516,7 @@ class BaseIngestor(ABC):
 
         for file_id in file_ids:
             try:
-                if self.delete_file(file_id, collection_name):
+                if self.delete_file(file_id, collection_name, permanent=permanent):
                     successful.append(file_id)
                 else:
                     failed.append({"file_id": file_id, "error": "Not found or already deleted"})

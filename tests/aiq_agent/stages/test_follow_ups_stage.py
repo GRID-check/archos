@@ -117,7 +117,6 @@ class TestDeclaration:
     def test_it_runs_on_its_own_agent_group_and_flag(self):
         assert FOLLOW_UPS.agent_group is AgentGroup.FOLLOW_UPS
         assert FOLLOW_UPS.flag_slug == "post-answer-follow-ups"
-        assert FOLLOW_UPS.env_default == "GRID_STAGE_FOLLOW_UPS_ENABLED"
 
     def test_no_two_stages_share_an_agent_group(self):
         """The map a stage's model is resolved from is keyed by AgentGroup, and

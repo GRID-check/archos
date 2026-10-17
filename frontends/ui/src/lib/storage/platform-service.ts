@@ -18,10 +18,11 @@ import {
   type UploadLimitBounds,
 } from './upload-limit'
 import { findOrganizations, ORGANIZATION_PAGE_MAX } from '@/lib/organizations/repository'
+import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 
 export interface OrganizationStorageRow {
   organizationId: string
-  /** Display name when Grid knows one; the caller falls back to the id. */
+  /** The organization's name (local row, else WorkOS); null only when neither answers. */
   displayName: string | null
   usedBytes: number
   documents: number
@@ -70,7 +71,8 @@ export interface PlatformStorageOverview {
  * make it look unset.
  */
 export async function getPlatformStorageOverview(): Promise<PlatformStorageOverview> {
-  // Exactly two queries, both grouped or bounded, regardless of fleet size.
+  // Two queries, both grouped or bounded, regardless of fleet size, plus a
+  // cached name lookup for the organizations that have no local name.
   // This used to be two queries plus one `getStorageQuotaBytes` per row — a
   // settings read per tenant for a value `findOrganizations` had already
   // returned. The quota rule is a pure function of the settings bag
@@ -91,6 +93,9 @@ export async function getPlatformStorageOverview(): Promise<PlatformStorageOverv
   )
 
   const ids = new Set<string>([...usageByOrg.keys(), ...settingsById.keys()])
+  // A local row exists only once an organization saved a setting, so most have
+  // none: their names come from the resolver (WorkOS, cached), never as the id.
+  const resolved = await getOrganizationDisplayNames([...ids].filter((id) => !names.get(id)))
   const bounds = uploadLimitBounds()
 
   const rows = [...ids].map((organizationId): OrganizationStorageRow => {
@@ -100,7 +105,7 @@ export async function getPlatformStorageOverview(): Promise<PlatformStorageOverv
 
     return {
       organizationId,
-      displayName: names.get(organizationId) ?? null,
+      displayName: names.get(organizationId) ?? resolved.get(organizationId) ?? null,
       usedBytes: usage?.bytes ?? 0,
       documents: usage?.documents ?? 0,
       quotaBytes: effectiveQuotaFromSettings(settings),

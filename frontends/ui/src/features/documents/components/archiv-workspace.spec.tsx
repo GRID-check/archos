@@ -115,9 +115,38 @@ describe('ArchivWorkspace — library listing', () => {
     expect(screen.getAllByText('Document').length).toBeGreaterThan(0)
   })
 
+  // The count is the shelf's, counted by the server (ADR-0102): the listing on
+  // screen is one level's first page and could not say it.
   it('states how much the Archiv holds beside its title', async () => {
+    const folderTally = { readable: 2390, reading: 0, failed: 10, held: 0, unindexed: 0, latest: null }
+    server.use(
+      http.get('/api/archiv/documents/summary', () =>
+        HttpResponse.json({
+          folders: [{ folderId: null, total: 2400, ...folderTally }],
+          failed: [],
+          failedTruncated: false,
+        })
+      )
+    )
     render(<ArchivWorkspace canManage />)
-    expect(await screen.findByTestId('archiv-document-count')).toHaveTextContent('2')
+    expect(await screen.findByTestId('archiv-document-count')).toHaveTextContent('2400')
+  })
+
+  it('reads the root of the Archiv as a level, page by page, and never drains it', async () => {
+    const requests: URLSearchParams[] = []
+    server.use(
+      http.get('/api/archiv/documents', ({ request }) => {
+        requests.push(new URL(request.url).searchParams)
+        return HttpResponse.json({ documents: archivDocuments, nextCursor: null, collectionName: 'archiv_org-1', canManage: true })
+      })
+    )
+    render(<ArchivWorkspace canManage />)
+
+    expect(await screen.findByText('brandschutz-gutachten.pdf')).toBeInTheDocument()
+    expect(requests).toHaveLength(1)
+    expect(requests[0].get('folderId')).toBe('root')
+    expect(requests[0].get('sort')).toBe('added')
+    expect(requests[0].get('limit')).toBe('100')
   })
 
   // The category chips are the shared filter menu's „Kategorie" now, over the
@@ -140,8 +169,9 @@ describe('ArchivWorkspace — library listing', () => {
     expect(await screen.findByText(/documents couldn't be loaded/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
-  // Paged, not capped: the Archiv used to stop at its newest 500 without a word.
-  it('reads every page of the Archiv, following the cursor', async () => {
+  // A level is read page by page (ADR-0102): the next page is the reader's to
+  // ask for, never drained up front.
+  it('reads the next page of the level when the reader asks for it', async () => {
     const cursors: Array<string | null> = []
     server.use(
       http.get('/api/archiv/documents', ({ request }) => {
@@ -157,29 +187,10 @@ describe('ArchivWorkspace — library listing', () => {
     )
     render(<ArchivWorkspace canManage />)
 
+    expect(await screen.findByText('brandschutz-gutachten.pdf')).toBeInTheDocument()
+    fireEvent.click(await screen.findByTestId('load-more-button'))
     expect(await screen.findByText('fassadendetail.pdf')).toBeInTheDocument()
-    expect(screen.getByText('brandschutz-gutachten.pdf')).toBeInTheDocument()
     expect(cursors).toEqual([null, 'page-2'])
-    expect(screen.queryByText(/showing the newest/i)).not.toBeInTheDocument()
-  })
-
-  it('says where it stopped when the Archiv outruns the page ceiling', async () => {
-    let requests = 0
-    server.use(
-      http.get('/api/archiv/documents', () => {
-        requests += 1
-        return HttpResponse.json({
-          documents: [{ ...archivDocuments[0], id: `doc-${requests}`, filename: `plan-${requests}.pdf` }],
-          nextCursor: `c${requests}`,
-          collectionName: 'archiv_org-1',
-          canManage: true,
-        })
-      })
-    )
-    render(<ArchivWorkspace canManage />)
-
-    expect(await screen.findByText(/showing the newest 20 documents/i)).toBeInTheDocument()
-    expect(requests).toBe(20)
   })
 })
 
@@ -272,8 +283,9 @@ describe('ArchivWorkspace — a settling document settles on screen', () => {
 
     await vi.advanceTimersByTimeAsync(4_100)
     await waitFor(() => expect(statusCalls).toBe(1))
-    // The badge the user is actually looking at flips, without a reload.
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    // The badge the user is actually looking at clears, without a reload: a
+    // citable document carries no badge on its card.
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
     // The poll never drained the listing again.
     expect(documentCalls).toBe(1)
 
@@ -467,14 +479,13 @@ describe('ArchivWorkspace — only the newest answer may win', () => {
     expect(onComplete).toBeTypeOf('function')
     onComplete?.()
     await waitFor(() => expect(documentCalls).toBe(2))
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
 
     // Now the stale poll answers. It is older than what is on screen, so it
     // must not commit.
     gate.release?.()
     await flushWithoutPolling()
 
-    expect(screen.getByText('Citable')).toBeInTheDocument()
     expect(screen.queryByText('Reading')).not.toBeInTheDocument()
 
     // …and it must not resurrect the poll either.
@@ -609,6 +620,7 @@ describe('ArchivWorkspace — a file the Archiv already holds', () => {
               displayName: null,
               fileSize: 2048,
               contentHash: null,
+              status: 'completed',
               folderId: null,
               authoredBy: 'user',
               lifecycle: doc.lifecycle ?? 'active',
@@ -687,6 +699,66 @@ describe('ArchivWorkspace — a file the Archiv already holds', () => {
       )
     )
     expect(probed).toEqual([['brandschutz-gutachten.pdf']])
+  })
+
+  /*
+   * One file whose name continues a document under another name (ADR-0099):
+   * two named outcomes, and the answer reaches the upload. The second button
+   * changes the plan AND confirms, and the hook applies only a plan that matches
+   * the one the reader was shown, so the confirm has to wait for the plan to
+   * carry the answer; a same-tick confirm would refuse with „Die Vorschau hat
+   * sich geändert" or send the old tick.
+   */
+  describe('one file that continues a document', () => {
+    const OLDER = 'doc-older-b'
+    beforeEach(() => {
+      server.use(
+        http.post('/api/archiv/documents/fassung-candidates', async ({ request }) => {
+          const { names } = (await request.json()) as { names: string[] }
+          return HttpResponse.json({
+            candidates: names.map((name) => ({
+              name,
+              candidates: [{ id: OLDER, filename: 'Gutachten_Index_B.pdf', displayName: null, label: 'Index B' }],
+              newer: true,
+              unambiguous: true,
+            })),
+          })
+        })
+      )
+    })
+
+    const fassungOfSent = async (): Promise<string | null> => {
+      await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledTimes(1))
+      const [files, options] = mockUploadFiles.mock.calls[0] as [File[], { fassungOf: (file: File) => string | null }]
+      return options.fassungOf(files[0])
+    }
+
+    it('files it as the new Fassung with „Als neue Fassung ablegen"', async () => {
+      const user = userEvent.setup()
+      render(<ArchivWorkspace canManage />)
+      await screen.findByText('brandschutz-gutachten.pdf')
+
+      pick(new File(['c'], 'Gutachten_Index_C.pdf', { type: 'application/pdf' }))
+      const dialog = await screen.findByTestId('folder-upload-dialog')
+      await waitFor(() => expect(dialog).toHaveAttribute('data-kind', 'single-fassung'))
+      await user.click(within(dialog).getByTestId('folder-upload-sole-fassung'))
+
+      expect(await fassungOfSent()).toBe(OLDER)
+    })
+
+    it('uploads it as a document of its own with „Als eigenes Dokument hochladen"', async () => {
+      const user = userEvent.setup()
+      render(<ArchivWorkspace canManage />)
+      await screen.findByText('brandschutz-gutachten.pdf')
+
+      pick(new File(['c'], 'Gutachten_Index_C.pdf', { type: 'application/pdf' }))
+      const dialog = await screen.findByTestId('folder-upload-dialog')
+      await waitFor(() => expect(dialog).toHaveAttribute('data-kind', 'single-fassung'))
+      await user.click(within(dialog).getByTestId('folder-upload-sole-separate'))
+
+      expect(await fassungOfSent()).toBeNull()
+      expect(toastError).not.toHaveBeenCalled()
+    })
   })
 
   // Paged listing: the oldest Archiv document may not be loaded, and the upload

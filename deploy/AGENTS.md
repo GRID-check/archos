@@ -25,4 +25,4 @@ Coolify variant), Helm charts (`helm/`), and the Pulumi TypeScript program
 - [`docs/deployment/kubernetes.md`](../docs/deployment/kubernetes.md) §6.3 has
   the open scaling follow-ups; [`docs/deployment/docker-compose.md`](../docs/deployment/docker-compose.md)
   is the service reference.
-- ADR-0020 (Dragonfly), ADR-0029 (Aspire telemetry), ADR-0043 (SeaweedFS topology).
+- ADR-0020 (Dragonfly), ADR-0029 (the OTel collector; its Aspire dashboard is retired), ADR-0043 (SeaweedFS topology).

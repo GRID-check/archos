@@ -572,6 +572,7 @@ export const platform: typeof en.platform = {
   },
   nav: {
     label: 'Plattform-Bereiche',
+    scrollable: 'Plattform-Bereiche, seitlich scrollbar',
     groups: {
       operate: 'Betrieb',
       quality: 'Qualität',
@@ -1028,8 +1029,8 @@ export const platform: typeof en.platform = {
     organizations: 'Organisationen',
     projects: 'Projekte',
     costToday: 'Kosten heute',
-    costMonth: 'Kosten diesen Monat',
-    revenueMonth: 'Umsatz diesen Monat',
+    costMonth: 'Monatskosten',
+    revenueMonth: 'Monatsumsatz',
     marginHint: 'Rohmarge {margin}',
     ingestShare: 'davon Ingestion {amount}',
     dictationShare: 'davon Spracheingabe {amount}',
@@ -1191,7 +1192,7 @@ export const platform: typeof en.platform = {
       'Ausführungs-Zeitleiste pro Konversation — wie lange der Agent für jeden Schritt (Graph-Knoten, LLM-Aufruf, Tool-Aufruf) gebraucht hat, organisationsübergreifend.',
     loadError: 'Die Profiler-Daten konnten nicht geladen werden.',
     retry: 'Erneut versuchen',
-    search: 'Nach Konversation oder Titel suchen…',
+    search: 'Konversation suchen…',
     empty: 'Keine profilierten Konversationen in diesem Zeitraum.',
     capped: 'Zeigt die {count} zuletzt aktiven Konversationen.',
     listTitle: 'Konversationen',

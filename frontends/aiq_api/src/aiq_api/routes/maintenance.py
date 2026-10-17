@@ -266,7 +266,17 @@ def add_maintenance_routes(router: APIRouter) -> None:
             from aiq_agent.knowledge.factory import get_active_ingestor
 
             ingestor = get_active_ingestor()
-            if ingestor is not None and await asyncio.to_thread(ingestor.get_collection, body.collection_name):
+            try:
+                exists = ingestor is not None and await asyncio.to_thread(ingestor.get_collection, body.collection_name)
+            except Exception as e:
+                # The store cannot say whether the collection exists. Answering
+                # "not_found" here would tell the purger the project is gone while
+                # its vectors stay behind; a 503 makes it retry the whole purge.
+                logger.warning(
+                    "Purge of '%s' could not reach the vector store: %s", body.collection_name, type(e).__name__
+                )
+                raise HTTPException(status_code=503, detail="Vector store unavailable") from e
+            if exists:
                 collection_deleted = await asyncio.to_thread(ingestor.delete_collection, body.collection_name)
                 collection_status = "deleted" if collection_deleted else "failed"
             # delete_collection clears summaries too, but run it explicitly so a

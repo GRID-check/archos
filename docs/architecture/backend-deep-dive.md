@@ -56,10 +56,9 @@ Browser WebSocket
     the model's own clause). A commissioned report escalates immediately,
     without a retrieval first.
 
-    Note: Piloti doubles as the conversational assistant, so the UI
-    presents it neutrally as "Assistant" (getDisplayName in
-    intermediate-step-parser.ts), not "Research Agent" — a greeting is
-    not a research run.
+    Note: The answering agent is one surface of Piloti. The UI presents it
+    neutrally as "Assistant" (getDisplayName in intermediate-step-parser.ts),
+    not "Research Agent" — a greeting is not a research run.
   → the turn's wire bodies, stamped and sent by the chat socket (wire v2, ADR-0068)
       frontends/aiq_api/src/aiq_api/chat_socket.py
   → the UI's turn socket and fold (docs/api/websocket-protocol.md, "The client")
@@ -227,6 +226,15 @@ this **dual-write transition**. Authenticated WebSocket handshakes instead
 carry compact claims with `contextTransport: "bff"` and omit project context,
 memory and office instructions from both the individual headers and the
 signed envelope (ADR-0077).
+Every envelope also signs `requester` (`{ name, email, organizationName }`):
+who `userId` is, from the session it is minted for. A live session has it from
+AuthKit and the token's `organization_name` claim; a pinned one (a scheduled
+run, a woken thread) from WorkOS through `lib/auth/person.ts`. The agent names
+the person from the verified token while someone is signed in, else from this
+field (`turn.context.user_info_for`), so a turn nobody is signed in for is
+named too. A research job reads it the same way when its submit carried no
+`user_info` (`jobs/runner._run_user_info`): a scheduled fire is named from its
+run envelope, which the BFF re-signs at every renewal.
 `server.js` duplicates the same builder logic (with a pinning comment) since
 it is plain CommonJS and cannot import the TS module.
 
@@ -509,11 +517,18 @@ The agent keeps the brief current by emitting a `project_profile_patch` card
 Piloti's prompt has an explicit "Keeping the Project Brief
 current" policy, and the card model carries the canonical fact-key vocabulary
 (`PROFILE_FACT_VOCABULARY` in `cards/models.py`, mirroring the intake
-definition). The card only proposes: the user's Accept posts the JSON-Patch to
-`POST /api/projects/{id}/profile/patches`, which normalizes bare values into
-full fact objects (`source: 'user_confirmed'` — accepting IS the confirmation),
-applies them through the shared patch engine, and prunes unknowns the patch
-just answered. `GridCards` receives the chat store's `projectId` in both the
+definition). The card only proposes. At the end of the turn the patch is
+stored as a `project_profile` proposal (`register_envelope_card`,
+[`proposed-changes.md`](proposed-changes.md), ADR-0105) and the card carries its
+`proposal_id`; the user's Accept asks the server to apply it, in their session,
+through `patchProjectProfile`, the service behind
+`POST /api/projects/{id}/profile/patches`. That service normalizes bare values
+into full fact objects (`source: 'user_confirmed'` — accepting IS the
+confirmation), applies them through the shared patch engine, and prunes unknowns
+the patch just answered. The proposal records who decided and when, and every
+reader of the thread sees it. A card without a `proposal_id` (an older answer, or
+a run that could not store it) posts the patch to the same route from the
+browser, as before. `GridCards` receives the chat store's `projectId` in both the
 chat bubble and the run block's report (both `AgentResponse.tsx`), so
 Accept is live wherever the card renders.
 
@@ -675,9 +690,9 @@ is `includeShelvesForTurn` in `frontends/ui/src/features/layout/lib/retrieval-sc
 
 **A subject file never subtracts `base`.** A subject narrows which *documents*
 a turn reads, which is what #429 and #436 asked for; neither was about the
-building-code corpus. Dropping it made the product unable to answer its own
-central question — bind a plan, ask whether it meets the escape-route
-requirement, and retrieval held the plan and no OIB. The asymmetry that exposed
+building-code corpus. Dropping it left a turn about one document without the
+building-code corpus that must sit beside it — bind a document, ask whether it
+meets the escape-route requirement, and retrieval held that document and no OIB. The asymmetry that exposed
 it: the `project` PRESET kept `base` and the `project` SHELF did not, although a
 reader reaches for either to say the same thing. `law` is the one branch that
 still subtracts everything else, because there the reader asked for the law
@@ -943,10 +958,11 @@ Each segment becomes its **own chunk**: the rendered structured German text
 segment's scale. The full structured analysis rides on the chunk as
 `drawing_data` (JSON string, embed-excluded), so re-chunking or the detail
 view never needs the VLM again. The same descriptions
-are browsable by the user, second to the one-line summary: `get_document_visual_details`
+are browsable by the user, under the summary: `get_document_visual_details`
 reads the visual chunks back from Chroma — each item now carrying `segment`
-and the parsed `structured` payload — and the file-preview pane's collapsible
-**"Detailed information"** section lazy-loads them (`GET /api/documents/{id}/visual-details`
+and the parsed `structured` payload — and the file-preview pane's
+**„Auf den Seiten"** section loads them with any document that has visual
+content (`page-readings.tsx`; `GET /api/documents/{id}/visual-details`
 → `GET /v1/collections/{c}/documents/{f}/visual-details`). Drawing chunks carry
 `content_type: "drawing"` in metadata (mapped to `ContentType.DRAWING` at
 retrieval by `normalize`), giving them their own citation format

@@ -25,10 +25,14 @@ import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { fetchSemanticHits, joinHitsToFiles, type SearchedDocument } from '@/lib/documents/service'
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { ARCHIV_SHELF } from '@/lib/documents/shelf'
-import { toListedDocuments, toListedPage, type ListedDocument } from '@/lib/documents/shelf-listing'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
+import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from '@/lib/documents/shelf-listing'
 import { uploadToShelf, type ShelfUploadInput, type UploadDocumentResult } from '@/lib/documents/shelf-upload'
 import type { DocumentListCursor } from '@/lib/documents/list-cursor'
+import type { DocumentLevelQuery } from '@/lib/documents/list-query'
 import type { DocumentNameMatchRow } from '@/lib/documents/repository'
+import { fassungCandidatesOnShelf } from '@/lib/documents/fassung-candidates'
+import type { FassungCandidateMatch } from '@/lib/documents/name-probe-types'
 import { eraseDocumentObjectsOrKeepRow } from '@/lib/documents/object-cleanup'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
 import type { DocumentAuthor } from '@/lib/db/schema'
@@ -41,6 +45,7 @@ import {
   findArchivDocument,
   findArchivDocumentsByFilenames,
   findArchivDocumentsByNames,
+  listArchivDocumentLevel,
   listArchivDocuments as listArchivDocumentRows,
 } from './repository'
 
@@ -76,17 +81,36 @@ function archivReader(session: AuthorizedSession): Promise<ShelfReader> {
  */
 export async function listArchiv(
   session: AuthorizedSession,
-  options: { authoredBy?: DocumentAuthor; includeArchived?: boolean; cursor?: DocumentListCursor } = {},
+  options: {
+    authoredBy?: DocumentAuthor
+    includeArchived?: boolean
+    cursor?: DocumentListCursor
+    /** One folder level in the reader's order instead of the drain (ADR-0102), as `listDocumentsPage` takes it. */
+    level?: DocumentLevelQuery
+  } = {},
 ): Promise<ArchivListResult> {
   // A held file is listed for its uploader and the curators only (ADR-0086).
   const reader = await archivReader(session)
-  const page = await listArchivDocumentRows(session.organizationId, { ...options, reader })
+  const { level, ...listing } = options
+  const listed = level
+    ? await toListedLevelPage(
+        session,
+        await listArchivDocumentLevel(session.organizationId, {
+          authoredBy: listing.authoredBy,
+          includeArchived: listing.includeArchived,
+          reader,
+          level,
+        }),
+        reader,
+      )
+    : await toListedPage(session, await listArchivDocumentRows(session.organizationId, { ...listing, reader }), reader)
   return {
-    ...(await toListedPage(session, page, reader)),
+    ...listed,
     collectionName: archivCollectionName(session.organizationId),
     canManage: canManageArchiv(session),
   }
 }
+
 
 /**
  * Document-centric semantic search over the org's shared Archiv. Any org member
@@ -149,6 +173,18 @@ export async function probeArchivDocumentNames(
   return findArchivDocumentsByNames(session.organizationId, names, { reader: await archivReader(session) })
 }
 
+/**
+ * What the dropped names continue in the Archiv — the upload dialog's „Als neue
+ * Fassung von X ablegen" (`fassungCandidatesOnShelf`). Any org member may read,
+ * as with the name probe above.
+ */
+export async function probeArchivFassungCandidates(
+  session: AuthorizedSession,
+  names: readonly string[],
+): Promise<FassungCandidateMatch[]> {
+  return fassungCandidatesOnShelf(ARCHIV_SHELF, session.organizationId, names, { reader: await archivReader(session) })
+}
+
 export type UploadArchivDocumentResult = UploadDocumentResult
 
 /**
@@ -172,9 +208,10 @@ export function uploadArchivDocument(
     originPath = null,
     screeningRelease,
     uploadBatchId,
+    fassungOf,
   }: Omit<ShelfUploadInput, 'file' | 'folderId'> & { folderId?: string | null } = {},
 ): Promise<UploadArchivDocumentResult> {
-  return uploadToShelf(session, ARCHIV_SHELF, { file, folderId, originPath, screeningRelease, uploadBatchId }, request)
+  return uploadToShelf(session, ARCHIV_SHELF, { file, folderId, originPath, screeningRelease, uploadBatchId, fassungOf }, request)
 }
 
 /**
@@ -211,7 +248,8 @@ export async function deleteArchivDocument(
   // `null`: nothing of its own to purge. `false`: the backend did not confirm,
   // and the audit row says so — the platform vector reconcile is the sweep.
   const chunksPurged = purgeRef
-    ? await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS)
+    ? // Permanent: the document is gone, and its Fassung links with it (ADR-0099).
+      await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
     : null
 
   // Every version's objects and derivatives, or a 502 and the row stays — the
@@ -219,13 +257,14 @@ export async function deleteArchivDocument(
   await eraseDocumentObjectsOrKeepRow(doc, session.organizationId)
 
   await deleteArchivDocumentRow(documentId, session.organizationId)
+  publishShelfChanged(session.organizationId, ARCHIV_SHELF)
 
   // Once more, now that the row is gone: an ingest of this document that
   // asked `GET /api/internal/document-exists` before the row went saw it,
   // and kept chunks it inserted after the first purge (ADR-0054, correction
   // 18). Any check from here on reads „gone“ and discards its own. Logged
   // inside, never thrown: the row is gone, and the orphan sweep is the net.
-  if (purgeRef) await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS)
+  if (purgeRef) await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
 
   await recordAuditEvent({
     organizationId: session.organizationId,

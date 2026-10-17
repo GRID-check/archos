@@ -4,10 +4,9 @@ Langfuse groups observations into traces and then attributes those traces to a
 *session* and a *user*. Without those two identifiers a deployment's traces are
 a flat, anonymous list: you can see that a retrieval took 4s and cost €0.02,
 but not whose conversation it belonged to or what else happened in that
-conversation. Session/user attribution is most of what distinguishes Langfuse
-from the live span view the Aspire dashboard already provides, so wiring it is
-the difference between "traces reach Langfuse" and "the app is integrated with
-Langfuse".
+conversation. Session/user attribution is most of what makes Langfuse more than a flat
+span list, so wiring it is the difference between "traces reach Langfuse" and
+"the app is integrated with Langfuse".
 
 WHAT WE GET FOR FREE, and therefore do not do here. Verified against the
 installed NAT, not assumed:
@@ -59,12 +58,14 @@ gated to platform operators. Tagging every span with its tenant and what a tool
 did is a further step, and it should arrive with the product decision that
 needs it rather than by default. So availability follows the house rule —
 ``GRID_TRACE_IDENTITY_ATTRIBUTES`` is injected by the deployment only when the
-Langfuse tier is deployed. An Aspire-only stack is byte-identical to before.
+Langfuse tier is deployed. A stack without Langfuse is byte-identical to before.
 """
 
 import contextvars
 import logging
 import os
+import re
+from collections.abc import Sequence
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -160,6 +161,112 @@ def record_trace_metadata(**pairs: Any) -> None:
         _CONTRIBUTED.set({"metadata": metadata, "tags": tags})
     except Exception:
         logger.debug("Failed to record Langfuse trace metadata", exc_info=True)
+
+
+#: The trace metadata key Langfuse's PostHog integration reads: it exports
+#: ``trace.metadata.$posthog_session_id`` as the event's ``$session_id``, which
+#: is what puts a ``langfuse observation`` event on the browser session's replay
+#: (https://langfuse.com/integrations/analytics/posthog, "Metadata matching").
+POSTHOG_SESSION_METADATA_KEY = "$posthog_session_id"
+
+#: PostHog session ids are UUIDv7 (version nibble 7, RFC 9562 variant); the JS
+#: SDK's own docs require one when a session is bootstrapped. Anything else is
+#: not a session id and would only mislabel a trace.
+_UUID_V7 = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
+
+
+def posthog_session_id_or_none(value: Any) -> str | None:
+    """``value`` as a PostHog session id (lower-case UUIDv7), or ``None`` for anything else. Pure."""
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip().lower()
+    return candidate if _UUID_V7.fullmatch(candidate) else None
+
+
+def record_posthog_session(value: Any) -> bool:
+    """Link this turn's trace to the asker's PostHog session replay. Whether the id was recorded.
+
+    Identity-gated, decided from ``identity_attributes_enabled``'s own rule ("no
+    span names a person" unless the deployment opts in). A session id names no
+    one by itself, but on a trace it is a join key: the trace holds the turn's
+    question and answer, and the id opens that person's recording and, in
+    PostHog, their person profile. Handing Langfuse's operators that link is the
+    same step as handing them the user id, so it rides the same switch. It also
+    costs nothing real: with identity off the export's distinct id is
+    ``langfuse_unknown_user`` for every trace, so the replay link would have no
+    person to land on.
+
+    Best-effort like :func:`record_trace_metadata`; a value that is not a
+    UUIDv7 is dropped, never an error, because it came from a browser.
+    """
+    session_id = posthog_session_id_or_none(value)
+    if session_id is None or not identity_attributes_enabled():
+        return False
+    record_trace_metadata(**{POSTHOG_SESSION_METADATA_KEY: session_id})
+    return True
+
+
+#: Trace metadata keys of the platform-lessons experiment. Always recorded, with
+#: no identity switch: the arm is a function of the conversation id and a lesson
+#: id names a fleet-wide caution, so neither identifies a person.
+LESSONS_ARM_METADATA_KEY = "lessons_arm"
+LESSON_IDS_METADATA_KEY = "lesson_ids"
+
+
+def record_lessons(arm: str, lesson_ids: Sequence[str]) -> None:
+    """Put the turn's lessons arm and the lessons it carried on the trace.
+
+    ``lessons_arm`` is ``treated``, ``holdout`` or ``off``; ``lesson_ids`` is the
+    comma-joined ids of the lessons in the injected digest (a scalar, because
+    Langfuse stringifies a list and a PostHog property filter wants one text),
+    left out when there were none. With these two keys the holdout is a
+    breakdown on the exported ``langfuse observation`` events, without joining
+    back to the vote table: down-vote rate (the ``user-feedback`` score) by arm.
+    """
+    record_trace_metadata(
+        **{
+            LESSONS_ARM_METADATA_KEY: arm,
+            LESSON_IDS_METADATA_KEY: ",".join(lesson_ids) or None,
+        }
+    )
+
+
+#: Trace metadata key: where the question was asked (``chat``, ``review_canvas``,
+#: ``annotation_thread``), and the tag every canvas turn carries.
+TURN_SURFACE_METADATA_KEY = "turn_surface"
+REVIEW_CANVAS_TAG = "surface:review-canvas"
+
+
+def record_turn_surface(surface: str) -> None:
+    """Put where the question was asked on the turn's trace; a canvas turn is also tagged.
+
+    Both the review canvas and a thread on it carry ``surface:review-canvas``:
+    the tag finds every turn asked from a document, and ``turn_surface`` tells
+    the two apart. Labels only; recorded with no identity switch.
+    """
+    record_trace_metadata(**{TURN_SURFACE_METADATA_KEY: surface})
+    if surface != "chat":
+        add_trace_tag(REVIEW_CANVAS_TAG)
+
+
+#: Trace metadata keys for a turn an event woke (ADR-0105 draft): which kind of
+#: event, and its id (a reply or assignment id, never text). The tag is the
+#: kind, as a label: ``trigger:thread_mention``.
+TURN_TRIGGER_METADATA_KEY = "turn_trigger"
+TRIGGER_EVENT_METADATA_KEY = "trigger_event_id"
+
+
+def record_turn_trigger(trigger: Any) -> None:
+    """Put the event that woke the turn on its trace; a typed turn (``trigger`` None) records nothing.
+
+    ``trigger`` is a ``wire_v2.TurnTrigger``. Labels and an id only, recorded
+    with no identity switch: the id names a row the office already holds, not
+    a person.
+    """
+    if trigger is None:
+        return
+    record_trace_metadata(**{TURN_TRIGGER_METADATA_KEY: trigger.kind, TRIGGER_EVENT_METADATA_KEY: trigger.event_id})
+    add_trace_tag(f"trigger:{trigger.kind}")
 
 
 def add_trace_tag(tag: str) -> None:

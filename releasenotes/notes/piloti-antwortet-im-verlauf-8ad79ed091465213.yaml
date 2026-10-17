@@ -1,0 +1,8 @@
+---
+features:
+  - >
+    When you write @Piloti in an Anmerkung's thread or answer a question Piloti
+    asked there, Piloti answers in that thread even when nobody has the chat
+    open. You can also hand an open Anmerkung to Piloti („An Piloti
+    delegieren“): it stays assigned to its person, and Piloti works it for you
+    and hands it back with its reply.

@@ -1,0 +1,12 @@
+---
+improvements:
+  - >
+    A file the content check holds back now says why: whose rule it is, which
+    pages it was found on, and how many further reasons did not fit. An upload
+    that holds files back no longer says everything has been read.
+fixes:
+  - >
+    The content check now finds numbers and terms that extracted text hides
+    from it: split by a soft hyphen, an invisible character or a line break, or
+    written straight against a label or beside an expiry date. Table cells are
+    no longer read as one card number.

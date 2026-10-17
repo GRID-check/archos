@@ -1,9 +1,9 @@
 ---
 improvements:
   - >
-    When the AI provider is busy, answers to your questions now go ahead of
-    background work such as re-indexing a project, so a large upload no longer
-    slows the chat down.
+    When the AI is at capacity, answers to your questions now go ahead of
+    background work, such as a project's documents being processed again, so
+    a large upload slows the chat down less.
 operators:
   - >
     Model calls now pass one fleet-wide limiter that serves chat before research

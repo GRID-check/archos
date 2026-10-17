@@ -41,6 +41,7 @@ import time
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
 from aiq_agent.observability.boot_timing import BootClock
 
+from . import lease_policy
 from . import queue
 from .outcome_notify import notify_job_outcome_from_access
 from .runner import _purge_deep_checkpoint
@@ -77,11 +78,8 @@ def _replay_kwargs(payload: dict, worker_id: str) -> dict:
 
 
 def _int_env(name: str, default: int) -> int:
-    try:
-        val = int(os.environ.get(name, ""))
-        return val if val > 0 else default
-    except (TypeError, ValueError):
-        return default
+    """A positive int: unset, not a number, zero or negative is the default."""
+    return lease_policy.int_env(name, default, floor=1)
 
 
 # @environment_variable GRID_RESEARCH_DEAD_RETENTION_DAYS
@@ -92,7 +90,8 @@ def _int_env(name: str, default: int) -> int:
 # How long a dead research queue row (a job that failed every claim, or whose
 # payload could not be read) is kept as a trace before it is deleted.
 def _dead_retention_seconds() -> int:
-    return _int_env("GRID_RESEARCH_DEAD_RETENTION_DAYS", 14) * 86400
+    days = _int_env("GRID_RESEARCH_DEAD_RETENTION_DAYS", lease_policy.DEAD_RETENTION_DAYS)
+    return days * lease_policy.SECONDS_PER_DAY
 
 
 class ResearchWorker:
@@ -102,10 +101,10 @@ class ResearchWorker:
         self.concurrency = _int_env("GRID_RESEARCH_WORKERS", 1)
         self.poll_seconds = _int_env("GRID_RESEARCH_WORKER_POLL_SECONDS", 5)
         self.stale_seconds = _int_env("GRID_RESEARCH_WORKER_STALE_SECONDS", 90)
-        self.max_attempts = _int_env("GRID_RESEARCH_WORKER_MAX_ATTEMPTS", 3)
-        self.heartbeat_seconds = _int_env("GRID_RESEARCH_WORKER_HEARTBEAT_SECONDS", 30)
+        self.max_attempts = _int_env("GRID_RESEARCH_WORKER_MAX_ATTEMPTS", lease_policy.MAX_ATTEMPTS)
+        self.heartbeat_seconds = _int_env("GRID_RESEARCH_WORKER_HEARTBEAT_SECONDS", lease_policy.HEARTBEAT_SECONDS)
         # How long a stopping worker waits for the jobs it holds before it gives them back.
-        self.drain_seconds = _int_env("GRID_RESEARCH_WORKER_DRAIN_SECONDS", 600)
+        self.drain_seconds = _int_env("GRID_RESEARCH_WORKER_DRAIN_SECONDS", lease_policy.DRAIN_SECONDS)
         # One organization's concurrent jobs, fleet-wide: the claim's per-lane cap (0 = none).
         self.per_org_cap = max(0, queue.max_active_per_org())
         # Liveness marker file the k8s probe checks (the backend image has no
@@ -115,14 +114,8 @@ class ResearchWorker:
         self._running: set[asyncio.Task] = set()
         #: The claims this process holds, by job id, so a drain can give them back.
         self._held: dict[str, asyncio.Task] = {}
+        self._next_reap = 0.0
         self._next_purge = 0.0
-
-    def _touch_liveness(self) -> None:
-        try:
-            with open(self.liveness_file, "w") as fh:
-                fh.write("ok")
-        except OSError:
-            logger.warning("Could not write liveness file %s", self.liveness_file, exc_info=True)
 
     def request_stop(self) -> None:
         self._stop.set()
@@ -300,7 +293,12 @@ class ResearchWorker:
                 logger.exception("Failed to mark exhausted job %s FAILURE", job_id)
 
     async def run(self) -> None:
-        await asyncio.to_thread(queue.ensure_research_queue_table, self.db_url)
+        try:
+            await asyncio.to_thread(queue.ensure_research_queue_table, self.db_url)
+        except Exception:
+            # A schema lock that timed out (or a database not up yet) must not
+            # end the worker at start: every claim ensures the table again.
+            logger.warning("Research queue table not ensured at start; the claim loop retries", exc_info=True)
         # Depth, oldest age and dead rows are gauges this process reports for the fleet.
         queue.queue_for(self.db_url).observe()
         logger.info(
@@ -313,9 +311,9 @@ class ResearchWorker:
         )
         # Its first job's workflow build flushes this reading (boot_timing).
         BootClock("research-worker").ready()
-        self._touch_liveness()
+        lease_policy.touch_liveness(self.liveness_file)
         while not self._stop.is_set():
-            self._touch_liveness()
+            lease_policy.touch_liveness(self.liveness_file)
             self._running = {t for t in self._running if not t.done()}
             claimed_any = False
             while len(self._running) < self.concurrency:
@@ -344,14 +342,31 @@ class ResearchWorker:
                     continue
                 claimed_any = True
                 self._running.add(asyncio.create_task(self._run_claimed(claim)))
-            await self._fail_exhausted()
-            await self._purge_dead()
+            await self._maintain()
             if not claimed_any:
                 try:
                     await asyncio.wait_for(self._stop.wait(), timeout=self.poll_seconds)
                 except TimeoutError:
                     pass
         await self._drain()
+
+    async def _maintain(self) -> None:
+        """Reap exhausted claims once a heartbeat and purge dead rows hourly, not on every poll tick.
+
+        A claim goes stale over ``stale_seconds``, several heartbeats, so reaping
+        more often finds nothing new; it is the ingest worker's cadence
+        (``ingest_dispatch.QueueSource._maintain``). A failed reap is retried
+        next time: the poll loop must outlive a database blip, or its jobs go
+        undrained.
+        """
+        now = time.monotonic()
+        if now >= self._next_reap:
+            self._next_reap = now + self.heartbeat_seconds
+            try:
+                await self._fail_exhausted()
+            except Exception:
+                logger.exception("Reaping exhausted research claims failed; retrying in %ss", self.heartbeat_seconds)
+        await self._purge_dead()
 
     async def _purge_dead(self) -> None:
         """Delete dead rows past their retention, at most once an hour per process."""

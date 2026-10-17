@@ -284,6 +284,74 @@ describe('SessionsPanel', () => {
     expect(screen.getByRole('button', { name: /delete chat/i })).toBeInTheDocument()
   })
 
+  describe('a finger has no hover: rename and delete get a visible way in', () => {
+    // jsdom cannot evaluate `pointer: coarse`, so these hold the wiring: the menu
+    // is rendered on every row and is shown on a coarse pointer, and the hover
+    // overlay steps aside there (a tap leaves a sticky `mouseenter` behind).
+    test('every row carries a row menu that only a coarse pointer sees', () => {
+      render(<SessionsPanel sessions={mockSessions} />)
+
+      const menus = screen.getAllByTestId('session-row-menu')
+      expect(menus).toHaveLength(mockSessions.length)
+      for (const menu of menus) {
+        expect(menu.className).toContain('pointer-coarse:inline-flex')
+        expect(menu.className).toContain('hidden')
+        expect(menu.className).toContain('size-11')
+      }
+      expect(menus[0]).toHaveAccessibleName('Actions for "First Session"')
+    })
+
+    test('the hover overlay does not draw on a coarse pointer', async () => {
+      const user = userEvent.setup()
+      render(<SessionsPanel sessions={mockSessions} />)
+
+      await user.hover(screen.getByRole('button', { name: /chat: first session/i }))
+
+      const overlay = screen.getByRole('button', { name: /rename chat/i }).parentElement
+      expect(overlay?.className).toContain('pointer-coarse:hidden')
+    })
+
+    test('the menu renames: the row turns into its editor', async () => {
+      const user = userEvent.setup()
+      render(<SessionsPanel sessions={mockSessions} />)
+
+      await user.click(screen.getAllByTestId('session-row-menu')[0]!)
+      const item = await screen.findByRole('menuitem', { name: /rename chat/i })
+      await user.hover(item)
+      await user.click(item)
+
+      expect(await screen.findByRole('textbox', { name: /edit chat title/i })).toHaveValue(
+        'First Session'
+      )
+    })
+
+    test('the menu deletes through the same confirmation as the hover button', async () => {
+      const user = userEvent.setup()
+      render(<SessionsPanel sessions={mockSessions} />)
+
+      await user.click(screen.getAllByTestId('session-row-menu')[0]!)
+      const item = await screen.findByRole('menuitem', { name: /delete chat/i })
+      await user.hover(item)
+      await user.click(item)
+
+      expect(await screen.findByTestId('delete-modal')).toBeInTheDocument()
+    })
+
+    test('a chat the reader may no longer read offers delete, not rename, in the menu', async () => {
+      const user = userEvent.setup()
+      render(
+        <SessionsPanel
+          sessions={[{ id: 'session-locked', title: '', date: today, contentLocked: true }]}
+        />
+      )
+
+      await user.click(screen.getByTestId('session-row-menu'))
+
+      expect(await screen.findByRole('menuitem', { name: /delete chat/i })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /rename chat/i })).toBeNull()
+    })
+  })
+
   test('states in the footer where chats actually live: the workspace, not this browser', () => {
     render(<SessionsPanel sessions={mockSessions} />)
 
@@ -740,7 +808,6 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     render(
       <SessionsPanel
         sessions={sessions}
-        showDeepResearchSection
         projectId="p1"
         {...extra}
       />
@@ -759,12 +826,12 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     })
   })
 
-  test('does not render the section, the filter, or fetch runs when the flag is off', () => {
-    render(<SessionsPanel sessions={sessions} projectId="p1" />)
+  test('does not render the section, the filter, or fetch runs outside a project', () => {
+    render(<SessionsPanel sessions={sessions} />)
 
     expect(screen.queryByTestId('deep-research-section')).not.toBeInTheDocument()
     expect(screen.queryByRole('radiogroup', { name: /filter history/i })).not.toBeInTheDocument()
-    // Effect early-returns when showDeepResearchSection is false.
+    // The runs belong to a project, so the fetch effect early-returns without one.
     expect(mockListResearchRuns).not.toHaveBeenCalled()
   })
 
@@ -850,7 +917,6 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     render(
       <SessionsPanel
         sessions={[{ id: 'conv-1', title: 'Research chat', date: today, hasCompletedReport: true }]}
-        showDeepResearchSection
         projectId="p1"
       />
     )
@@ -956,7 +1022,7 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     })
 
     const { rerender } = render(
-      <SessionsPanel sessions={sessions} showDeepResearchSection projectId="p1" />
+      <SessionsPanel sessions={sessions} projectId="p1" />
     )
 
     expect(mockListResearchRuns).toHaveBeenCalledTimes(1)
@@ -964,11 +1030,11 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     // Close, then reopen — all while the fetch is still in flight.
     isPanelOpen = false
     rerender(
-      <SessionsPanel sessions={sessions} showDeepResearchSection projectId="p1" />
+      <SessionsPanel sessions={sessions} projectId="p1" />
     )
     isPanelOpen = true
     rerender(
-      <SessionsPanel sessions={sessions} showDeepResearchSection projectId="p1" />
+      <SessionsPanel sessions={sessions} projectId="p1" />
     )
 
     // Now the original fetch resolves; the result must land in the section.
@@ -1008,7 +1074,6 @@ describe('SessionsPanel - stopping a run from the history', () => {
     render(
       <SessionsPanel
         sessions={[{ ...idleSession, hasActiveDeepResearch: true }]}
-        showDeepResearchSection
       />
     )
     expect(screen.queryByRole('button', { name: /stop research/i })).not.toBeInTheDocument()
@@ -1031,7 +1096,6 @@ describe('SessionsPanel - stopping a run from the history', () => {
     render(
       <SessionsPanel
         sessions={[idleSession]}
-        showDeepResearchSection
         projectId="p1"
       />
     )
@@ -1067,7 +1131,6 @@ describe('SessionsPanel - stopping a run from the history', () => {
     render(
       <SessionsPanel
         sessions={[idleSession]}
-        showDeepResearchSection
         projectId="p1"
       />
     )
@@ -1094,7 +1157,6 @@ describe('SessionsPanel - stopping a run from the history', () => {
     render(
       <SessionsPanel
         sessions={[idleSession]}
-        showDeepResearchSection
         projectId="p1"
       />
     )

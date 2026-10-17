@@ -1,7 +1,6 @@
 ---
 fixes:
   - >
-    Reacting to an answer's cards no longer fails on answers whose stored
-    content carries invisible control characters from an imported document.
-    The update is saved as before, minus the one character the database
-    cannot hold.
+    Reacting to an answer's cards no longer fails when an imported document
+    has left invisible characters in the answer. The reaction is saved, and
+    only the offending character is left out.

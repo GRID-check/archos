@@ -1,11 +1,12 @@
 ---
 fixes:
   - >
-    Finished research reports are filed as PDF in the project again. Since
-    mid-September filing failed for every report, though the report stayed
-    readable in the chat.
+    Finished research reports are filed in the project as PDF again. Since
+    mid-September, filing failed for every report, although the report
+    stayed readable in the chat.
   - >
-    A brief outage now shows as a temporary problem with a request to try again,
-    and a task started during it is no longer shown as failed while it runs.
+    A short outage now shows as a temporary problem with a request to try
+    again. A task started during an outage no longer shows as failed while
+    it is still running.
   - >
     Thumbnails in Dateien keep loading in a tab that has been open for days.

@@ -1,12 +1,18 @@
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SubmitProductFeedbackRequest, SubmitProductFeedbackResult } from '@/lib/product-feedback/client'
+import { capturePosthog, sendPosthogSupportMessage } from '@/lib/analytics/posthog'
 import { FeedbackDialog } from './feedback-dialog'
+
+vi.mock('@/lib/analytics/posthog', () => ({
+  capturePosthog: vi.fn(),
+  sendPosthogSupportMessage: vi.fn(async () => true),
+}))
 
 const ok: SubmitProductFeedbackResult = {
   ok: true,
-  report: { id: 'r1', kind: 'bug', createdAt: '2026-09-29T08:00:00Z' },
+  report: { id: 'r1', kind: 'bug', createdAt: '2026-09-29T08:00:00Z', relayText: 'The upload stops at 99 percent.' },
 }
 
 function setup(result: SubmitProductFeedbackResult = ok) {
@@ -88,5 +94,108 @@ describe('FeedbackDialog', () => {
   test('says where a reply would go', () => {
     setup()
     expect(screen.getByText(/maria@buero\.test/)).toBeInTheDocument()
+  })
+
+  describe('PostHog', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    test('opens a Support ticket with the report id and the masked text the server returned', async () => {
+      const { user } = setup({
+        ok: true,
+        report: {
+          id: 'r7',
+          kind: 'idea',
+          createdAt: '2026-09-29T08:00:00Z',
+          relayText: 'Please add an export for [Honorar maskiert].',
+        },
+      })
+
+      await user.click(screen.getByRole('radio', { name: /Idea/ }))
+      await user.type(message(), 'Please add an export for the Honorar 48.000 EUR.')
+      await user.click(send())
+
+      await waitFor(() => expect(sendPosthogSupportMessage).toHaveBeenCalledTimes(1))
+      // The typed words never go: the ticket carries what the server masked.
+      expect(sendPosthogSupportMessage).toHaveBeenCalledWith(
+        '[idea] #r7 /\nPlease add an export for [Honorar maskiert].',
+      )
+      // The event carries the kind and never the words.
+      expect(capturePosthog).toHaveBeenCalledWith('product_feedback_submitted', { kind: 'idea' })
+    })
+
+    test('opens no ticket when the server returned no text to relay (contact not allowed)', async () => {
+      const { user } = setup({
+        ok: true,
+        report: { id: 'r8', kind: 'bug', createdAt: '2026-09-29T08:00:00Z', relayText: null },
+      })
+
+      await user.type(message(), 'The upload stops at 99 percent.')
+      await user.click(screen.getByRole('checkbox', { name: 'You may contact me about this' }))
+      await user.click(send())
+
+      expect(await screen.findByTestId('feedback-sent')).toBeInTheDocument()
+      expect(sendPosthogSupportMessage).not.toHaveBeenCalled()
+      expect(capturePosthog).toHaveBeenCalledWith('product_feedback_submitted', { kind: 'bug' })
+    })
+
+    test('does not involve PostHog when the report was not stored', async () => {
+      const { user } = setup({ ok: false, reason: 'failed' })
+
+      await user.type(message(), 'The upload stops at 99 percent.')
+      await user.click(send())
+
+      await screen.findByRole('alert')
+      expect(sendPosthogSupportMessage).not.toHaveBeenCalled()
+      expect(capturePosthog).not.toHaveBeenCalled()
+    })
+
+    test('still thanks the reporter when PostHog Support is unavailable', async () => {
+      vi.mocked(sendPosthogSupportMessage).mockResolvedValueOnce(false)
+      const { user } = setup()
+
+      await user.type(message(), 'The upload stops at 99 percent.')
+      await user.click(send())
+
+      expect(await screen.findByTestId('feedback-sent')).toBeInTheDocument()
+    })
+  })
+})
+
+describe('FeedbackDialog on a phone', () => {
+  const coarse = (matches: boolean): void => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) => ({
+        matches: matches && query === '(pointer: coarse)',
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        onchange: null,
+        dispatchEvent: () => false,
+      }),
+    )
+  }
+
+  test('does not raise the keyboard on open, so the kinds and the send button stay visible', () => {
+    coarse(true)
+    setup()
+    expect(message()).not.toHaveFocus()
+    vi.unstubAllGlobals()
+  })
+
+  test('with a mouse the message takes focus, as it always did', async () => {
+    coarse(false)
+    setup()
+    await waitFor(() => expect(message()).toHaveFocus())
+    vi.unstubAllGlobals()
+  })
+
+  test('the keyboard-shortcut hint is not painted where there is no keyboard', () => {
+    setup()
+    expect(document.getElementById(`${message().id}-hint`)?.className).toMatch(/pointer-coarse:hidden/)
   })
 })

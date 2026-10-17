@@ -18,8 +18,10 @@ export const research = {
     scrollToLatest: 'Scroll to latest',
     // A quiet line above the composer instead of an error card in the thread:
     // the page reconnects on its own, and the reader has nothing to do.
+    // Offline, a locked phone, or a server out of reach: a running answer is
+    // not lost, it carries on once the connection is back.
     connection: {
-      lost: 'Connection lost · Piloti is reconnecting …',
+      lost: 'Connection lost · Piloti carries on as soon as it is back',
       restored: 'Reconnected',
     },
     status: {
@@ -39,7 +41,7 @@ export const research = {
     },
     loggedOutTitle: 'Piloti opens after your organization is verified.',
     loggedOutBody:
-      'Sign in to unlock the project workspace: your files, Office filing, and the building-regulation corpus.',
+      'Sign in to open the project workspace: its files, Office filing, tasks and research.',
     signInSso: 'Sign in with SSO',
     welcomeTitle: 'How can Piloti help with your project?',
   },
@@ -163,6 +165,10 @@ export const research = {
     statusIngesting: 'Reading',
     statusAvailable: 'Available',
     statusError: 'Error',
+    // Held back by the content check (ADR-0086); never "released", that word is for a revision.
+    statusHeld: 'Held back',
+    // Kept, never read: Piloti cannot answer from it, nothing failed.
+    statusStored: 'Filed',
     statusDeleting: 'Deleting...',
     expiryPending: 'Deletion Pending - Reupload',
     expiresIn: 'Expires in {minutes} min',
@@ -213,6 +219,12 @@ export const research = {
     pleaseWait: 'Please wait...',
     typeAhead: 'Type your next question …',
     typeAheadHint: 'You can send once the answer is finished.',
+    // While Piloti works on the reader's own question: Enter sends the text
+    // into the running answer as steering, not as a new question.
+    steer: 'Steer Piloti …',
+    steerHint: 'Enter adds to the running answer; Piloti reads it before its next step.',
+    steerChip: 'steering',
+    steerSent: 'Note sent',
     messageNotSent: 'Message not sent',
     messageNotSentDesc: 'Something went wrong sending your message. Please try again.',
     unsupportedFileType: 'Unsupported file type',
@@ -294,6 +306,8 @@ export const research = {
     yesterday: 'Yesterday',
     editTitle: 'Edit chat title',
     untitledSession: 'Untitled chat',
+    /** Row menu on touch (no hover): the button's name. */
+    rowActions: 'Actions for "{title}"',
     renameDisabled: 'Rename chat (disabled)',
     rename: 'Rename chat',
     cannotRenameBusy: 'Cannot rename while operations are in progress',

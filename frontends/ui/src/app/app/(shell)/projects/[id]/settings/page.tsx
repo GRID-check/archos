@@ -6,13 +6,13 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getProjectUsage } from '@/lib/budgets/service'
+import { findProjectIntake } from '@/lib/project-intake/repository'
 import { getProjectActivity } from '@/lib/projects/activity'
 import { getProjectOverviewData } from '@/lib/projects/overview-query'
 import { projectOverviewReader } from '@/lib/projects/service'
 import { resolveProjectSettingsAccess } from '@/lib/projects/settings-access'
 import { getSteckbrief } from '@/lib/projects/steckbrief-service'
 import { getSimilarProjects } from '@/lib/references/service'
-import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { BentoCell } from '@/components/ui/bento'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProjectOverview } from '@/features/projects/components/overview/project-overview'
@@ -43,26 +43,19 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
     const { id } = await params
     await requireProjectAccess(session, id, 'project:view')
 
-    const [data, access, activity, steckbrief] = await Promise.all([
+    const [data, access, activity, steckbrief, intake] = await Promise.all([
       projectOverviewReader(session, id).then((reader) =>
         getProjectOverviewData(id, session.organizationId, reader)
       ),
       resolveProjectSettingsAccess(session, id),
       getProjectActivity(session, id),
       getSteckbrief(session, id),
+      // Piloti's reading, while its review is open (ADR-0111): the hero links to it.
+      findProjectIntake(session.organizationId, id),
     ])
     if (!data) notFound()
 
-    const [usage, accounts] = await Promise.all([
-      access.manageBudget ? getProjectUsage(session, id) : null,
-      // The organization's people, to link a Steckbrief person to their
-      // account; asked only of someone who may edit it. Names only, never e-mail.
-      steckbrief.canEdit
-        ? loadOrganizationDirectory(session.organizationId).then((directory) =>
-            [...directory.values()].map((person) => ({ userId: person.userId, name: person.name }))
-          )
-        : [],
-    ])
+    const usage = access.manageBudget ? await getProjectUsage(session, id) : null
 
     return (
       <ProjectOverview
@@ -70,7 +63,7 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
         activity={activity}
         usage={usage}
         steckbrief={steckbrief}
-        steckbriefAccounts={accounts}
+        setupOpen={intake !== null && intake.status !== 'completed'}
         similar={
           <Suspense
             fallback={

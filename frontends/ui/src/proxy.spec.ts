@@ -49,6 +49,7 @@ describe('AuthKit v4 proxy', () => {
       '/apple-icon.png',
       '/manifest.webmanifest',
       '/robots.txt',
+      '/sw.js',
       '/icons/icon-192.png',
       // by id, as the app reaches art: a literal /art/ path fails the riso check
       new URL(artImage('vignetten/bauplatz/empty').src, 'http://localhost').pathname,
@@ -56,6 +57,30 @@ describe('AuthKit v4 proxy', () => {
 
     for (const path of publicFiles) expect(matcher.test(path), path).toBe(false)
     expect(matcher.test('/app/projects')).toBe(true)
+  })
+
+  // Unescaped and unanchored, `sw.js` let any path starting `sw`, one character,
+  // `js` past the session; the same held for every file name in the list.
+  test('lets only the exact public file names past, not paths that start like them', async () => {
+    const { config } = await import('./proxy')
+    const matcher = new RegExp(`^${config.matcher[0]}$`)
+    for (const path of ['/sw.jsx', '/swxjs', '/sw.js/x', '/robots.txt.bak', '/favicon.ico/x', '/faviconxico', '/manifest.webmanifest/x']) {
+      expect(matcher.test(path), path).toBe(true)
+    }
+  })
+
+  // The SDK posts from signed-out pages and mid-expiry; AuthKit would answer a
+  // beacon with a redirect to the WorkOS login page and lose the event.
+  test('leaves the first-party PostHog relay outside the auth redirect', async () => {
+    const { config } = await import('./proxy')
+    const matcher = new RegExp(`^${config.matcher[0]}$`)
+
+    for (const path of ['/ingest/e/', '/ingest/s/', '/ingest/flags/', '/ingest/static/recorder.js', '/ingest/array/phc_x/config.js']) {
+      expect(matcher.test(path), path).toBe(false)
+    }
+    // Only the relay's prefix: a page that merely starts with the word is still guarded.
+    expect(matcher.test('/ingestion')).toBe(true)
+    expect(matcher.test('/app/ingest/x')).toBe(true)
   })
 
   test('delegates requests to the authkitMiddleware', async () => {

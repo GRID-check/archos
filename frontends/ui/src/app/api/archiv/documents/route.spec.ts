@@ -119,4 +119,20 @@ describe('GET /api/archiv/documents', () => {
   it('refuses includeArchived with any value but true', async () => {
     expect((await get('?includeArchived=1')).status).toBe(400)
   })
+
+  // The Archiv's root is where a Büroablage of two thousand documents sits
+  // (ADR-0102): the same level read a project's listing takes.
+  it('forwards a level read to the service', async () => {
+    await get('?folderId=root&sort=size&limit=25')
+
+    expect(listArchiv).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ level: { folderId: null, sort: 'size', dir: 'desc', limit: 25 } }),
+    )
+  })
+
+  it('refuses an unknown order', async () => {
+    expect((await get('?folderId=root&sort=status')).status).toBe(400)
+    expect(listArchiv).not.toHaveBeenCalled()
+  })
 })

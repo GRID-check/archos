@@ -68,7 +68,7 @@
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import ts from 'typescript'
+import ts from 'typescript-api'
 import { DOWNLOAD_LOG_KINDS, type DownloadLogKind } from './kinds'
 
 const SRC = join(process.cwd(), 'src')
@@ -91,6 +91,7 @@ const OBJECT_READERS: Record<string, Disposition> = {
   'lib/documents/service.ts::streamDocumentFile': { logged: ['pdf'] },
   'lib/documents/service.ts::getDocumentTextPreview': { logged: ['text'] },
   'lib/documents/version-content.ts::readVersionContent': { logged: ['version'] },
+  'lib/documents/version-content.ts::streamVersionFile': { logged: ['version'] },
   'lib/bim/model-service.ts::getModelSource': { logged: ['model'] },
   'lib/documents/service.ts::getDocumentThumbnail': {
     servesPerson: true,
@@ -153,6 +154,7 @@ const ROUTES: Record<string, RouteDisposition> = {
   'documents/[id]/file/route.ts': { via: 'streamDocumentFile' },
   'documents/[id]/text/route.ts': { via: 'getDocumentTextPreview' },
   'documents/[id]/versions/[versionId]/content/route.ts': { via: 'readVersionContent' },
+  'documents/[id]/versions/[versionId]/file/route.ts': { via: 'streamVersionFile' },
   'documents/[id]/versions/diff/route.ts': { via: 'readVersionContent' },
   'bim/models/[modelId]/source/route.ts': { via: 'getModelSource' },
   'documents/[id]/thumbnail/route.ts': { exempt: 'a thumbnail, see OBJECT_READERS.getDocumentThumbnail' },
@@ -163,8 +165,12 @@ const ROUTES: Record<string, RouteDisposition> = {
   'conversations/[id]/messages/[messageId]/export/route.ts': {
     exempt: 'renders one chat answer as a document; it is not a stored file, and the answer is the conversation’s own content.',
   },
+  'documents/[id]/annotations/export/route.ts': {
+    exempt: 'renders the document’s Anmerkungen and their threads as a Protokoll; none of the document’s bytes, and the audit event document.annotations.exported records it.',
+  },
   'conversations/[id]/live/route.ts': { exempt: 'server-sent events of a conversation.' },
   'stream/route.ts': { exempt: 'server-sent events.' },
+  'realtime/route.ts': { exempt: 'server-sent events of the live channels (lib/realtime): presence, pointers and change hints; no file bytes.' },
   'health/route.ts': { exempt: 'the health probe; no files.' },
   'v1/[...path]/route.ts': { exempt: 'proxy of the allowlisted JSON endpoints of the agent service (lib/proxy/v1-allowlist); no file bytes.' },
   'knowledge-base/documents/[fileName]/route.ts': { exempt: 'the platform’s shared knowledge base (norms), served from the agent service; not an organization’s document.' },

@@ -156,7 +156,7 @@ German, and explains each verdict.
   `POST /api/documents/{id}/quarantine/request-release`); they get a
   `document.release_requested` inbox row naming the file. The queue links each
   project and Büroablage file to where it is filed, so a reviewer looks before
-  deciding.
+  deciding, and since 2026-10-13 decides there too (see the amendment below).
 - **What is not screened.** Files with no local text (images, scanned pages,
   plans without a text layer) pass on the name gate alone, and the upload
   summary says the content was not checked. The product owner chose this over
@@ -487,13 +487,16 @@ window in which a file nobody had screened was everybody's.
   document opens no revision task. The two version reads return a VERSION's
   bytes, and the verdict on record is about the item's, so the check is bound to
   the bytes returned (`versionBytesPassedScreening`): a version holding bytes a
-  person uploaded (`published`, `superseded`) passes only while it holds exactly
-  the bytes the item's verdict judged. No version records a verdict of its own,
-  so a model reads no earlier upload of a person's document, including one that
-  was screened in its day; workflow text (a draft, a version in review) follows
-  the item. A person opening an earlier version (the version list, the diff) is
-  not narrowed this way: telling a screened earlier upload from one replaced
-  before its verdict needs a verdict per version, which is not recorded yet.
+  person uploaded (`published`, `superseded`) passes only while it holds bytes
+  a passing verdict judged. Since 2026-10-11 (migration 0131) each version
+  records its own verdict (`document_versions.screened_hash`), written in the
+  transaction that records the item's, by the reconcile and a release; a
+  version passes on its own verdict or on the item's when that is about the
+  same bytes. An earlier upload replaced before its verdict, after its reading
+  failed or while quarantined passes on neither. Workflow text (a draft, a
+  version in review) follows the item. A person opening an earlier version (the
+  version list, the diff) is held to the same rule (`mayReceiveVersionBytes`),
+  except the uploader and the reviewers, who may see what is held.
 * **A held document opens no review round.** Its uploader reaches the version
   workflow, because the hold lets them see their own file, and may fork and edit
   a draft. Submitting it (the transitions with `openReviewInbox`) answers `409`
@@ -564,6 +567,64 @@ window in which a file nobody had screened was everybody's.
   have to choose between it and the last screened version's.
 * Bad, because a held image is previewed unoptimized, full size, through the
   presigned URL: the optimizer's route serves screened files only.
+
+## Amendment (2026-10-13): review from the preview, at every finding
+
+Two changes to where and how a reviewer decides.
+
+- **The decision is in the preview too.** The held block of the Files and
+  Büroablage preview offers „Zulassen" and „Löschen" to a reviewer, under the
+  findings and beside the document opened at the first one; the Quarantäne list
+  keeps both. Which controls show is the server's answer,
+  `GET /api/documents/{id}/quarantine` (`quarantineReviewAccess`): a reviewer
+  (`mayReviewQuarantine`) who may also write the document's folder, as release
+  requires, decides; the uploader who may not decide gets „Prüfung anfragen";
+  anyone else gets neither. The two actions still check for themselves. The
+  queue and the preview render the findings through one component
+  (`QuarantineFindings`), so both say the same thing.
+- **Every page, up to fifty.** A reason listed at most ten pages, so a finding
+  on page twelve could not be opened. The job now lists up to 50 pages per
+  reason (`MAX_REASON_PAGES`). When the stored verdict would outgrow its 2000
+  characters, `quarantine_error` cuts the last page of the reason listing the
+  most, one at a time, so every reason keeps at least its first page, and drops
+  reasons from the end only after that. A reason whose list is cut, by the cap
+  or the budget, carries `pages_truncated: true`, and the UI ends its pages with
+  „…".
+
+## Amendment (2026-10-16): the text is read first, a card is found by its layout, a reason says why
+
+Measured against 105 adversarial inputs, the content screen missed what text
+extraction leaves in: a soft hyphen or zero-width character inside a number or
+term, a hyphen where a line was broken, a label glued to the number
+(`SV-Nr1237010180`), and a card beside a position or an expiry date. And a held
+file did not say whose rule held it.
+
+- **A reading before any rule.** `content_screen._read` (TypeScript `read`)
+  leaves out `IGNORABLE` characters and joins a hyphen that has a letter or
+  digit before it and, after ONE line break, a letter or digit. Every term and
+  detector runs on that reading; spans are given back in the original text. A
+  dash with a space before it and a hyphen before a blank line are left alone.
+  Where an invisible character was left out between digits it still counts as
+  a boundary for a number (two numbers printed against each other stay two),
+  and a card is tried cut there as well as joined. The reading's character sets are held by fixture cases, not by the fixture's
+  `unicode` tables.
+- **A number is cut off by a digit, not a letter.** IBAN and SV-Nr may have a
+  label against them; the fixed length and the checksum carry the precision.
+- **A card is found by its layout** (13-19 unbroken, 4-4-4-4 with a last group
+  of 1-4, 4-6-5, 4-6-4) among digit groups joined by spaces, `-` or `.`. A tab
+  ends a run (a table cell), and groups of four beside a card make it part of a
+  longer number, so a table gets no sliding window; measured on synthetic rows,
+  false alarms did not rise. The digits of a recognised IBAN are never also a
+  card or SV-Nr.
+- **A reason says why.** The verdict carries `omitted`, the number of reasons it
+  does not list, so a short list is never shown as the whole. The UI says under
+  each kind of reason how the check came to it (`explainQuarantineReason`), says
+  when a finding has no page, reads an unknown reason kind as `other` instead of
+  failing the parse, and says a reason is not stored rather than claiming
+  something about the content. The audit trail (`reasons`) records the listed
+  reasons only.
+- **Not changed:** the name gate (`name-screen.ts`) does not read; a soft hyphen
+  in a file name is part of it.
 
 ## More Information
 

@@ -17,18 +17,21 @@
 
 import { type FC } from 'react'
 import Link from 'next/link'
-import { Download, ExternalLink, FileSearch, FolderOpen, Link2 } from 'lucide-react'
+import { Download, ExternalLink, FileSearch, FolderOpen, History, Link2 } from 'lucide-react'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { PRESSABLE } from '@/components/ui/press'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
+import type { FassungRef } from '@/lib/documents/fassung'
 import { SourceSignalChip } from '@/features/layout/components/SourceSignalChip'
 import { documentPages, refPage, type CitationRef, type CitedDocument } from '../lib/citations'
 import { isPrecedent } from '../lib/precedent'
 import type { Shelf } from '../lib/source-kinds'
+import { useOpenCurrentFassung } from '../hooks/use-open-current-fassung'
 import { useChatStore } from '../store'
 import { CopySourceCitationButton } from './CopyCitation'
 import { CopyCitationLinkButton } from './CopyCitationLink'
@@ -62,6 +65,18 @@ interface CitationPeekProps {
   onDownload?: () => void
   /** The download is being presigned — the control says so rather than repeating. */
   downloadPending?: boolean
+  /**
+   * The newer document a person confirmed replaces the cited one — set only when
+   * the cited document IS an older Fassung and the reader may open the newer one.
+   * The peek says so in one line and opens the current Fassung.
+   */
+  supersededBy?: FassungRef | null
+  /**
+   * Where the peek is drawn. `popover` is the glance beside a marker; `sheet` is
+   * the same content as the body of the phone's bottom sheet, where the open
+   * action is the one primary button and the passage gets the room to be read.
+   */
+  presentation?: 'popover' | 'sheet'
 }
 
 /**
@@ -90,7 +105,7 @@ const BindingStatusChip: FC<{ status?: string }> = ({ status }) => {
   return (
     <span
       className={cn(
-        'rounded-full border px-1.5 py-0.5 text-[0.65rem] font-medium leading-none',
+        'rounded-full border px-1.5 py-0.5 text-[0.65rem] font-medium leading-none pointer-coarse:text-xs',
         BINDING_TONE[status]
       )}
     >
@@ -199,13 +214,31 @@ const DocumentHomeLink: FC<{ shelf?: Shelf; tint: CitedDocument['tint'] }> = ({
 /**
  * „An dieser Stelle öffnen": the document at the cited place, in the app.
  * One control for every surface that offers it (the peek, an excerpt's margin).
+ *
+ * `primary` is the one the phone's sheet shows: the reader who tapped a marker
+ * with a thumb wants exactly one thing next, and it is a full-width ink button,
+ * not a link among five.
  */
 export const CitationOpenButton: FC<{
   tint: CitedDocument['tint']
   onOpen: () => void
   className?: string
-}> = ({ tint, onOpen, className }) => {
+  primary?: boolean
+}> = ({ tint, onOpen, className, primary = false }) => {
   const t = useTranslations('chat')
+  if (primary) {
+    return (
+      <Button
+        type="button"
+        onClick={onOpen}
+        data-citation-open=""
+        className={cn('w-full gap-2', className)}
+      >
+        <FileSearch aria-hidden="true" className="size-4" />
+        {t('citationPeek.openAtPage')}
+      </Button>
+    )
+  }
   return (
     <button
       type="button"
@@ -259,6 +292,37 @@ export const PeekDownloadButton: FC<{
   )
 }
 
+/**
+ * „Ältere Fassung — aktuell: <Name>": the one line a citation of an older
+ * Fassung adds, and the way to the current one.
+ *
+ * A citation is a claim that this passage backs this sentence; when the passage
+ * stands in a Fassung a person has since replaced, the reader should know before
+ * relying on it. Muted, because the citation itself is still true of the file it
+ * names (an older Fassung is read on request); the name is the control.
+ */
+const OlderFassungLine: FC<{ current: FassungRef }> = ({ current }) => {
+  const t = useTranslations('chat')
+  const openCurrent = useOpenCurrentFassung()
+  return (
+    <p
+      data-citation-older-fassung=""
+      className="flex flex-wrap items-baseline gap-x-1 text-xs leading-relaxed text-muted-foreground"
+    >
+      <History aria-hidden="true" className="size-3.5 shrink-0 self-center" />
+      <span>{t('citationPeek.olderFassung')}</span>
+      <button
+        type="button"
+        onClick={() => void openCurrent(current)}
+        aria-label={t('citationPeek.openCurrentFassungAria', { name: current.filename })}
+        className={cn(PEEK_ACTION_CLASSES, 'break-all text-foreground underline')}
+      >
+        {current.filename}
+      </button>
+    </p>
+  )
+}
+
 export const CitationPeek: FC<CitationPeekProps> = ({
   citation,
   snippet,
@@ -267,14 +331,17 @@ export const CitationPeek: FC<CitationPeekProps> = ({
   unavailable,
   onDownload,
   downloadPending,
+  supersededBy,
+  presentation = 'popover',
 }) => {
   const t = useTranslations('chat')
   const projectId = useChatStore((s) => s.projectId)
   const { document: doc } = citation
   const tint = doc.tint
+  const sheet = presentation === 'sheet'
 
   return (
-    <div className="space-y-2">
+    <div className={sheet ? 'space-y-3' : 'space-y-2'} data-presentation={presentation}>
       {/* What kind of source this is — the answer to "can I rely on it?" */}
       <div className="flex flex-wrap items-center gap-1.5">
         <SourceSignalChip signal={tint}>
@@ -290,6 +357,8 @@ export const CitationPeek: FC<CitationPeekProps> = ({
         <p className="break-words text-sm font-medium text-foreground">{doc.title}</p>
         <LocusLine citation={citation} />
       </div>
+
+      {supersededBy && <OlderFassungLine current={supersededBy} />}
 
       {/* Does this actually bind me? The highest-value fact for a legal source. */}
       {doc.bindingNote && (
@@ -325,7 +394,12 @@ export const CitationPeek: FC<CitationPeekProps> = ({
           >
             {t('sourcePreview.citedPassage')}
           </SectionLabel>
-          <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+          <p
+            className={cn(
+              'mt-1 overflow-y-auto whitespace-pre-wrap leading-relaxed text-foreground',
+              sheet ? 'max-h-[38dvh] text-base' : 'max-h-32 text-sm'
+            )}
+          >
             {snippet}
           </p>
         </div>
@@ -342,16 +416,23 @@ export const CitationPeek: FC<CitationPeekProps> = ({
         </p>
       )}
 
+      {/* The one thing a thumb wants next, before the secondary actions. */}
+      {sheet && onOpen && <CitationOpenButton tint={tint} onOpen={onOpen} primary />}
+
+      {/* A source with nothing to open is said in a sentence, never as a row that
+          looks like a disabled control: it used to read „In Piloti nicht zu
+          öffnen" beside the copy buttons, a dead action on the one source the
+          reader tapped to check. */}
+      {unavailable && !onOpen && !onDownload && (
+        <p className="text-xs leading-relaxed text-muted-foreground" data-citation-unavailable="">
+          {t('citationPeek.notOpenable')}
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2">
-        {onOpen && <CitationOpenButton tint={tint} onOpen={onOpen} />}
+        {onOpen && !sheet && <CitationOpenButton tint={tint} onOpen={onOpen} />}
         {onDownload && !onOpen && (
           <PeekDownloadButton tint={tint} onDownload={onDownload} pending={downloadPending} />
-        )}
-        {unavailable && !onOpen && !onDownload && (
-          <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
-            <FileSearch aria-hidden="true" className="size-3.5" />
-            {t('citationPeek.notOpenable')}
-          </span>
         )}
         {url && (
           <a

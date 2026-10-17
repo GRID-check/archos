@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import Image from 'next/image'
+import { useSeenOnce } from '@/hooks/use-seen-once'
 import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { isOfficeRenditionSource } from '@/lib/documents/preview-types'
 import type { FileItem } from './project-file-workspace'
@@ -17,11 +18,17 @@ import { DocumentKindThumbnail } from './document-kind-thumbnail'
 import { AuthorshipLine } from './authorship-line'
 import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 import { DocumentVersionStateBadge } from './document-version-badge'
+import { FassungCount, OlderFassungBadge, isOlderFassungEntry } from './fassung-badge'
+import { fassungCount } from '../lib/fassung-chain'
 import { DocumentStatusBadge, isCitableStatus, isSettlingStatus } from './document-status'
 import { SemanticMatch } from './semantic-match'
 import { useIngestFailureText } from './ingest-failure-notice'
 import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
+import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
+import { HIGHLIGHT_OUTLINE } from '@/components/ui/highlight'
+import { Check } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FileName } from './file-name'
 
 /** Provenance tint per corpus, from the shared `--source-*` token family. */
 const SOURCE_TINT: Record<'projekt' | 'buero', CSSProperties> = {
@@ -117,8 +124,13 @@ function loadThumbnail(fileId: string, provisional = false): Promise<string | nu
  * GENUINE failure (5xx / network / broken image url) shows a distinct
  * "couldn't load" treatment. The route is scope-aware, so this serves both
  * project uploads and Büroablage documents by id.
+ *
+ * `visible` false holds the request (and the skeleton) until the card has been
+ * on screen: a folder of two thousand documents asked for two thousand
+ * thumbnails on open, nearly all for cards nobody had scrolled to. Absent
+ * means asked at once, for a surface that only ever shows a handful.
  */
-export function ThumbnailWithFallback({ file }: { file: FileItem }) {
+export function ThumbnailWithFallback({ file, visible = true }: { file: FileItem; visible?: boolean }) {
   const t = useTranslations('files')
   const kind = inferDocumentKind(file)
   // Office files too: ingest renders their `_thumb.jpg` from the PDF rendition
@@ -136,6 +148,8 @@ export function ThumbnailWithFallback({ file }: { file: FileItem }) {
       setState('none')
       return
     }
+    // Off screen so far: stay the skeleton, ask once the card is seen.
+    if (!visible) return
     let cancelled = false
     setState('loading')
     loadThumbnail(file.id, isSettlingStatus(file.status))
@@ -157,7 +171,7 @@ export function ThumbnailWithFallback({ file }: { file: FileItem }) {
     // `file.status` is a dependency, not noise: it is the signal that a document
     // which had no preview when the page loaded has finished being read, and so
     // the moment to ask the route again.
-  }, [file.id, canHaveThumbnail, file.status])
+  }, [file.id, canHaveThumbnail, file.status, visible])
 
   if (state === 'ready' && imgUrl) {
     return (
@@ -217,9 +231,6 @@ export interface FileCardProps {
   source?: 'projekt' | 'buero' | null
   /** Localized label for the provenance chip. */
   sourceLabel?: string
-  /** Hide the ingestion-status badge when the document is `ready` (noise in a
-   * discovery context where every surfaced document is already ingested). */
-  hideStatusWhenReady?: boolean
   /** Accessible label for the click action (defaults to the filename content). */
   ariaLabel?: string
   /** Dim + progress cursor while an action (e.g. opening) resolves. */
@@ -242,6 +253,33 @@ export interface FileCardProps {
    * cannot make — the Archiv, for one, has no folders at all.
    */
   draggable?: boolean
+  /**
+   * The listing is in selection mode: the card is picked or not, a press
+   * toggles it (the caller's `onSelect`), the ⋯ steps aside and nothing drags.
+   * Absent is the ordinary card.
+   */
+  selection?: { checked: boolean }
+}
+
+/**
+ * The tick on a card in selection mode, where the ⋯ was. Ink when picked, a
+ * hollow ring when not: shape and fill, never colour alone, and the card is the
+ * target, so the mark is not a control of its own (`pointer-events-none`).
+ */
+function SelectionMark({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'pointer-events-none absolute right-2 top-2 z-[1] flex size-6 items-center justify-center rounded-full border shadow-2xs transition-colors duration-quick ease-out motion-reduce:transition-none',
+        checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background/90'
+      )}
+      data-testid="file-card-check"
+      data-checked={checked ? '' : undefined}
+    >
+      {checked && <Check className="size-3.5" strokeWidth={3} />}
+    </span>
+  )
 }
 
 /**
@@ -251,8 +289,12 @@ export interface FileCardProps {
  * size · time, and a spring hover-lift. Shared by the Files browser and the chat
  * `document_grid` surfacing card. Chat passes {@link FileCardProps.hideFooter}
  * and no {@link FileCardProps.match} — ranking chrome stays in Files search.
+ *
+ * Memoised: the Files grid holds thousands of these and re-renders on every
+ * poll and selection. The thumbnail is asked for once the card has been on
+ * screen (`useSeenOnce`), not on mount.
  */
-export function FileCard({
+export const FileCard = memo(function FileCard({
   file,
   isSelected,
   onSelect,
@@ -260,7 +302,6 @@ export function FileCard({
   match,
   source,
   sourceLabel,
-  hideStatusWhenReady,
   ariaLabel,
   isBusy,
   footerLead,
@@ -268,6 +309,7 @@ export function FileCard({
   testId = 'file-card',
   actions,
   draggable = false,
+  selection,
 }: FileCardProps) {
   const t = useTranslations('files')
   const name = documentDisplayName(file)
@@ -277,30 +319,39 @@ export function FileCard({
   // The card is one click target, so it carries no disclosure: the sentence
   // shows, the stored text is the tooltip, and the preview pane has „Details".
   const failureReason = isFailed ? (failureText?.sentence ?? t('ingestFailure.unknown')) : undefined
-  const showStatus = !!file.status && !(hideStatusWhenReady && isCitableStatus(file.status))
+  // A badge only when the document is NOT simply citable — being read, failed,
+  // held, never indexed. „Zitierbar" is the normal state; on every card it was
+  // a status nobody browsing a folder was asking about. The list view's status
+  // column is where every document's state is spelled out.
+  const showStatus = !!file.status && !isCitableStatus(file.status)
   // The AI summary is the last thing ingestion produces, so a document that is
   // still being read has an empty description slot. Left blank it reads as a
   // card that failed to render; skeleton lines say the sentence is on its way —
   // the same promise the thumbnail well makes while its request is in flight.
   const isAwaitingSummary = !match && !isFailed && !file.summary && isSettlingStatus(file.status)
+  const [mediaRef, seen] = useSeenOnce<HTMLDivElement>()
+  // A filing decision in view would move this file: outlined, nothing else, so the tile keeps its size.
+  const lit = useFilingHighlighted(file.id)
 
   return (
     <GridTileShell
       interactive
       className={cn(
         'group/card',
-        isSelected && 'ring-2 ring-ring shadow-md',
+        (isSelected || selection?.checked) && 'ring-2 ring-ring shadow-md',
         isBusy && 'cursor-progress opacity-70',
-        !isSelected && 'hover:border-border/80'
+        !isSelected && 'hover:border-border/80',
+        lit && HIGHLIGHT_OUTLINE
       )}
       // Dragging is opt-in per surface: the Archiv has no folders to drop into,
       // and a card that lifts under the finger where nothing can receive it is
       // an affordance for a capability that is not there.
-      {...(draggable ? documentDragProps(file.id) : {})}
+      {...(draggable && !selection ? documentDragProps(file.id) : {})}
     >
-      {actions && (
+      {selection && <SelectionMark checked={selection.checked} />}
+      {actions && !selection && (
         <div
-          className="absolute right-1.5 top-1.5 z-[1] md:opacity-0 md:group-hover/card:opacity-100 group-focus-within/card:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-quick ease-out motion-reduce:transition-none"
+          className="absolute right-1.5 top-1.5 z-[1] pointer-coarse:opacity-100 md:opacity-0 md:group-hover/card:opacity-100 group-focus-within/card:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-quick ease-out motion-reduce:transition-none"
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
@@ -317,11 +368,12 @@ export function FileCard({
       <button
         type="button"
         onClick={onSelect}
-        aria-current={isSelected ? 'true' : undefined}
+        aria-current={isSelected && !selection ? 'true' : undefined}
+        aria-pressed={selection ? selection.checked : undefined}
         aria-label={ariaLabel}
         aria-busy={isBusy}
         data-testid={testId}
-        className="group relative flex h-full w-full min-w-0 flex-col overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="group relative flex w-full min-w-0 flex-1 flex-col overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         {/* Raised inner block — white surface, rounded bottom, soft divider shadow.
             `flex-1` because a grid row is only as tall as its tallest card and
@@ -332,21 +384,29 @@ export function FileCard({
             the white block instead puts every footer on the bottom edge, so the
             row reads as one strip whatever each card carries above it. */}
         <GridTileBody className={cn('flex-1 p-0', hideFooter && 'rounded-none')}>
-          <GridTileMedia className="h-[124px]">
-            <ThumbnailWithFallback file={file} />
+          <GridTileMedia ref={mediaRef} className="h-[124px]">
+            <ThumbnailWithFallback file={file} visible={seen} />
             {showStatus && (
               <DocumentStatusBadge
                 status={file.status}
                 queueAhead={file.queueAhead}
+                // At the foot of the thumbnail, not the head: the sketch drawn when
+                // there is no picture puts its title bar at the top, and a badge
+                // there read as part of the placeholder rather than as a status.
                 // The 80% alpha is load-bearing: this badge floats over a document
                 // thumbnail, and with `backdrop-blur-sm` it frosts the image
-                // underneath instead of hiding it.
-                className="absolute left-2 top-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm"
+                // underneath instead of hiding it. Every status's ink is its
+                // signal colour on a light ground, a failed read included
+                // (the badge's tinted `danger`), so the frost needs no repaint.
+                // Capped at the well's width less its insets: on a phone's
+                // two-column grid „Wartet · 3 Dateien davor" ran into the
+                // card's edge; now its word ends in an ellipsis instead.
+                className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm"
               />
             )}
           </GridTileMedia>
 
-          <div className="px-3.5 pb-3 pt-[11px]">
+          <div className="px-3.5 pb-3 pt-[11px] phone:px-2.5">
             <div className="flex items-center gap-2">
               {source && sourceLabel && (
                 <span
@@ -370,8 +430,9 @@ export function FileCard({
             {/* The name the document goes by. The format chip beside it still
                 comes from the FILE name, because that is what the bytes are —
                 a rename changes the label, never the format. */}
-            <p className="mt-[10px] truncate text-xs font-medium leading-[1.4] text-foreground" title={name}>
-              {name}
+            {/* Cut in the MIDDLE: the revision and the drawing number are the end of the name, and a finger has no tooltip to read the rest. */}
+            <p className="mt-[10px] min-w-0 text-xs font-medium leading-[1.4] text-foreground">
+              <FileName text={name} />
             </p>
             {/* A byline, directly under the name — who WROTE this. It is not in
                 the footer, because the footer is where the faces and the word
@@ -385,13 +446,29 @@ export function FileCard({
                 responsibility (ADR-0047's addendum, ADR-0054). Silent without a
                 history: one version distinguishes nothing, so the badge appears
                 only once a second version exists — even for a draft Piloti wrote. */}
-            {(file.versionCount ?? 0) > 1 && (
-              <DocumentVersionStateBadge
-                versionState={file.versionState}
-                versionCount={file.versionCount}
-                authoredBy={file.authoredBy}
-                className="mt-1"
-              />
+            {/* An older Fassung says that and only that: „Ersetzt" beside it
+                was the same fact twice, without saying by what. A current one
+                carries its approval state and, after it as quiet text rather
+                than a second badge, „3 Fassungen": the history is not a state.
+                On a 220px card the count beside the name cut the name in half,
+                so here it rides on this line; the list puts it by the name. */}
+            {isOlderFassungEntry(file) ? (
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <OlderFassungBadge file={file} />
+              </div>
+            ) : (
+              ((file.versionCount ?? 0) > 1 || fassungCount(file) > 1) && (
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  {(file.versionCount ?? 0) > 1 && (
+                    <DocumentVersionStateBadge
+                      versionState={file.versionState}
+                      versionCount={file.versionCount}
+                      authoredBy={file.authoredBy}
+                    />
+                  )}
+                  <FassungCount file={file} />
+                </div>
+              )
             )}
             {match ? (
               <SemanticMatch snippet={match.snippet} page={match.page} score={match.score} />
@@ -420,18 +497,39 @@ export function FileCard({
             )}
           </div>
         </GridTileBody>
-
-        {!hideFooter && (
-          <GridTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
-            {footerLead ?? <span className="flex-1" />}
-            <span className="shrink-0 tabular-nums">{formatBytes(file.fileSize, locale)}</span>
-            <span aria-hidden className="text-muted-foreground/40">
-              ·
-            </span>
-            <TimeAgo date={file.createdAt} locale={locale} className="shrink-0 tabular-nums" />
-          </GridTileFooter>
-        )}
       </button>
+      {/* The footer is the button's sibling, not its child: it carries
+          Piloti's filing chip, a button of its own, on the left, and a button
+          cannot hold a button. A click on the rest of it opens the file as the
+          card does; the keyboard opens it through the card's button.
+          Its height is the same with a chip or without one (the chip's margin
+          box is a line of text), so a row of tiles stays even when a
+          suggestion arrives or goes. On a narrow tile the chip's folder name
+          ellipsizes first, then the relative time drops; it never wraps. */}
+      {!hideFooter && (
+        <GridTileFooter
+          onClick={onSelect}
+          className="@container/foot group/foot cursor-pointer justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
+          data-testid="file-card-footer"
+        >
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <FilingSuggestionSlot documentId={file.id} className="min-w-[4.5rem]" />
+            {footerLead}
+          </span>
+          {/* On a 156px card the size and the age are about 125px, so the
+              phone's card keeps 10px of padding (the title's too) and a tighter
+              gap: the age used to run into the edge the title keeps clear. */}
+          <span className="flex shrink-0 items-center gap-1.5 phone:gap-1">
+            <span className="tabular-nums">{formatBytes(file.fileSize, locale)}</span>
+            <span className="flex items-center gap-1.5 phone:gap-1 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden">
+              <span aria-hidden className="text-muted-foreground/40">
+                ·
+              </span>
+              <TimeAgo date={file.createdAt} locale={locale} className="tabular-nums" />
+            </span>
+          </span>
+        </GridTileFooter>
+      )}
     </GridTileShell>
   )
-}
+})

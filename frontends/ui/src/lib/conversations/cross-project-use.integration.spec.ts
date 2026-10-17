@@ -164,8 +164,8 @@ describe.skipIf(!url)('cross-project use against Postgres (migration 0125)', () 
     inOrg(ORG, () =>
       db.execute(
         status === 'closed'
-          ? sql`update projects set status = 'closed', closed_at = now(), closed_by = ${OWNER} where id = ${projectId}::uuid`
-          : sql`update projects set status = 'active', closed_at = null, closed_by = null where id = ${projectId}::uuid`
+          ? sql`update projects set status = 'closed', closed_at = now(), closed_by = ${OWNER}, closed_outcome = 'completed', ended_on = coalesce(ended_on, greatest(date_trunc('month', now())::date, started_on)) where id = ${projectId}::uuid`
+          : sql`update projects set status = 'active', closed_at = null, closed_by = null, closed_outcome = null where id = ${projectId}::uuid`
       )
     )
   const marks = async (messageId: string) => {

@@ -120,11 +120,11 @@ export const SkillRawDocumentSection: FC<SkillRawDocumentSectionProps> = ({
         </Field>
         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3">
           {parsed.ok && (
-            <p role="status" className={cn('min-w-0 flex-1 text-xs', status.tone)}>
+            <p role="status" className={cn('min-w-0 flex-1 text-xs max-sm:basis-full', status.tone)}>
               {status.message}
             </p>
           )}
-          <div className="ml-auto flex shrink-0 gap-2">
+          <div className="ml-auto flex shrink-0 gap-2 max-sm:w-full max-sm:justify-end">
             <Button
               type="button"
               variant="ghost"

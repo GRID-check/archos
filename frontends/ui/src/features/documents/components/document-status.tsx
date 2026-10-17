@@ -16,9 +16,16 @@
 import { File, FileText, Image as ImageIcon, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { documentStatusFacts, type DocumentStatusVariant } from '@/lib/documents/document-status'
+import {
+  surfaceStateLabel,
+  surfaceStateOf,
+  surfaceStateVariant,
+  type SurfaceState,
+} from '@/lib/documents/surface-state'
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { IngestionGlyph } from './ingestion-atoms'
 
 /** Pick a lucide icon that reflects the file's type. */
 export function fileTypeIcon(contentType: string | null | undefined, filename?: string): LucideIcon {
@@ -39,10 +46,13 @@ export function fileTypeIcon(contentType: string | null | undefined, filename?: 
 /** Re-exported so the Files components keep one import for status questions. */
 export type StatusVariant = DocumentStatusVariant
 
+/**
+ * The badge colour, read off the state the badge names (`surfaceStateVariant`),
+ * so the colour and the word cannot disagree. An undeclared status is neutral
+ * rather than green: the honest rendering of "nobody has said what this means".
+ */
 export function documentStatusVariant(status: string | null | undefined): StatusVariant {
-  // An undeclared status is neutral rather than green: the honest rendering of
-  // "nobody has said what this means" is a grey badge with the raw word in it.
-  return documentStatusFacts(status)?.variant ?? 'secondary'
+  return surfaceStateVariant(surfaceStateOf(status))
 }
 
 /**
@@ -91,65 +101,56 @@ export function failedWithPreviousVersion(file: {
 }
 
 /**
- * The document has come to rest without ever being indexed — today, exactly
- * `stored`: an agent-authored report, deliberately never dispatched to
- * `/v1/ingest`. It is the case where "not citable yet" would be a lie, because
- * there is no "yet", and the Ask affordance has to say so instead of promising
- * a wait that never ends.
+ * This document is not in the knowledge base, and nothing is reading it there.
  *
- * An UNDECLARED status is not this: it also renders neutral, but what it means
- * is unknown, and "we never indexed it" is a claim only a declared value earns.
+ * Asked of the status alone, for a person's upload and Piloti's own document
+ * alike. Authorship used to override it ("nothing this product wrote is
+ * citable"), which was true until ADR-0054 let a person publish Piloti's
+ * document into the index. Since then the override showed a published,
+ * indexed report as „nicht in der Wissensbasis“. What keeps an unapproved
+ * machine document out is the dispatch guard (`dispatchDocument`, which reads
+ * the row and sends only the version a person published) and the database
+ * chain behind it, so `status` can only turn green for one a person approved.
  */
-/**
- * This document is not, and will never become, Projektwissen.
- *
- * Asks BOTH questions, and that is the whole point. Every not-citable
- * affordance used to derive from `status` alone, which was correct only while
- * `stored` implied "written by a machine" — a coincidence, not a rule. The
- * design's own lesson from this feature is that *provenance is the durable
- * fact*: `status` describes where a document is in a pipeline and can move,
- * while `authored_by` is what it IS and cannot.
- *
- * So a machine-authored row is never-indexed whatever its status says, and a
- * human row still answers on status alone, which is what keeps a genuinely
- * pending upload from being labelled as something it is not.
- */
-export function isNeverIndexed(file: {
-  status?: string | null
-  authoredBy?: string | null
-}): boolean {
-  if (file.authoredBy && file.authoredBy !== 'user') return true
+export function isNeverIndexed(file: { status?: string | null }): boolean {
   return isNeverIndexedStatus(file.status)
 }
 
 /**
- * Ask may open this document — the same claim the green badge makes.
- *
- * Machine-authored rows are excluded on authorship rather than on status, for
- * the reason above: nothing this product wrote is citable, and a status that
- * moved must not be able to say otherwise.
+ * Ask may open this document — the same claim the green badge makes, decided
+ * by the same status (see {@link isNeverIndexed} for why authorship no longer
+ * overrides it).
  */
-export function isCitable(file: {
-  status?: string | null
-  authoredBy?: string | null
-}): boolean {
-  if (file.authoredBy && file.authoredBy !== 'user') return false
+export function isCitable(file: { status?: string | null }): boolean {
   return isCitableStatus(file.status)
 }
 
+/**
+ * The document has come to rest outside the index: `stored` (a report Piloti
+ * wrote that nobody published, or an archived document whose chunks were
+ * purged) and `uploaded` (a row nothing was dispatched for). It is the case
+ * where "not citable yet" would be a lie, because there is no "yet", and the
+ * Ask affordance has to say so instead of promising a wait that never ends.
+ *
+ * An UNDECLARED status is not this: it also renders neutral, but what it means
+ * is unknown, and "we never indexed it" is a claim only a declared value earns.
+ */
 export function isNeverIndexedStatus(status: string | null | undefined): boolean {
   const facts = documentStatusFacts(status)
   return facts !== null && facts.variant === 'secondary' && facts.phase === 'terminal'
 }
 
-export function documentStatusLabel(status: string | null | undefined, t: Translator): string {
-  const labelKey = documentStatusFacts(status)?.labelKey
-  if (labelKey) return t(labelKey)
+function labelOfState(state: SurfaceState, status: string | null | undefined, t: Translator): string {
   // An undeclared value is drift, not vocabulary: it renders as the generic
   // unknown label — never the verbatim wire word — and is logged so the gap
   // gets closed in `document-status.ts` instead of leaking into the UI.
-  if (status) console.warn(`[document-status] Undeclared status "${status}", rendering as unknown`)
-  return t('status.unknown')
+  if (state === 'unknown' && status) console.warn(`[document-status] Undeclared status "${status}", rendering as unknown`)
+  return surfaceStateLabel(state, t)
+}
+
+/** The badge's word for a status. */
+export function documentStatusLabel(status: string | null | undefined, t: Translator): string {
+  return labelOfState(surfaceStateOf(status), status, t)
 }
 
 interface DocumentStatusBadgeProps {
@@ -171,11 +172,20 @@ interface DocumentStatusBadgeProps {
 
 export function DocumentStatusBadge({ status, className, title, queueAhead }: DocumentStatusBadgeProps) {
   const t = useTranslations('files')
+  // One state for the word, the colour and the glyph, so they cannot disagree.
+  const state = surfaceStateOf(status)
+  const variant = surfaceStateVariant(state)
   const waiting = queueAhead != null && queueAhead > 0 && documentStatusFacts(status)?.phase === 'in-flight'
-  const label = waiting ? t('status.queuedAhead', { count: queueAhead }) : documentStatusLabel(status, t)
+  const label = waiting ? t('status.queuedAhead', { count: queueAhead }) : labelOfState(state, status, t)
   return (
     <Badge
-      variant={documentStatusVariant(status)}
+      // A failed read is a fact in a row, so it takes the tinted error, the
+      // material of every other status; the solid red plate shouted over the
+      // documents beside it. `data-variant` keeps naming the status family.
+      variant={variant === 'destructive' ? 'danger' : variant}
+      // Lets a caller that repaints the ground (the card's frosted overlay)
+      // repaint the ink for the one variant whose ink is white.
+      data-variant={variant}
       className={cn('shrink-0', className)}
       // Defaults to the label itself, so a caller that has to constrain the
       // badge's width (the Files list column, where German "Wird hochgeladen" is
@@ -185,7 +195,14 @@ export function DocumentStatusBadge({ status, className, title, queueAhead }: Do
       // status's CONSEQUENCE, which is more than the word.
       title={title ?? label}
     >
-      {label}
+      {/* Icon + word + colour: the glyph is what tells „Wartet" from „Wird
+          gelesen" (one blue) and „Abgelegt" from „Unbekannt" (one grey). */}
+      <IngestionGlyph mark={waiting ? 'queued' : state} />
+      {/* The word gives way, the glyph never does. A caller that caps the
+          badge (the Files list's status column) gets an ellipsis at the end
+          of the word; the badge's own centring clipped „Wartet · 3 Dateien
+          davor" at both edges. */}
+      <span className="min-w-0 truncate">{label}</span>
     </Badge>
   )
 }

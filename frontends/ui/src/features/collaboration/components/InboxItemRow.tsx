@@ -42,6 +42,7 @@ import {
   Clock,
   EyeOff,
   HardDrive,
+  Layers,
   Mail,
   Megaphone,
   MessageSquare,
@@ -52,8 +53,8 @@ import {
 } from 'lucide-react'
 
 import { useI18n, useLocale, useTranslations } from '@/i18n'
-import { getByPath } from '@/i18n/translate'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
+import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import {
   INBOX_TYPE_PRESENTATION,
   UNKNOWN_TYPE_PRESENTATION,
@@ -83,6 +84,7 @@ import {
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
+import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
 import { InboundMailSkippedFiles } from './InboundMailSkippedFiles'
 
 /**
@@ -99,40 +101,11 @@ const ICONS: Record<(typeof INBOX_TYPE_PRESENTATION)[keyof typeof INBOX_TYPE_PRE
     'hard-drive': HardDrive,
     'alert-triangle': AlertTriangle,
     clock: Clock,
+    layers: Layers,
     megaphone: Megaphone,
     mail: Mail,
     'shield-alert': ShieldAlert,
   }
-
-/** The params a template can interpolate: strings and numbers, not lists. */
-function scalarParams(params: InboxItemView['params']): Record<string, string | number> {
-  if (!params) return {}
-  return Object.fromEntries(
-    Object.entries(params).filter(
-      (entry): entry is [string, string | number] =>
-        typeof entry[1] === 'string' || typeof entry[1] === 'number',
-    ),
-  )
-}
-
-/** Dictionary root for the item-type entries. */
-const TYPES_PATH = 'collaboration.inbox.types'
-
-/**
- * Pick the first title leaf a type ships from `candidates`. The older counted
- * types predate plural blocks (`i18n/translate.ts`) and ship
- * `titleOne`/`titleMany`; newer ones a single `title` that counts in the
- * template, and optionally `titleUntitled`/`titleWithheld`. Reading the dictionary
- * directly — rather than calling `t()` and sniffing the returned key — keeps a
- * type that legitimately has no `titleOne` from logging a missing-key warning on
- * every render.
- */
-function pickKey(dictionary: unknown, i18nKey: string, candidates: readonly string[]): string | null {
-  for (const leaf of candidates) {
-    if (typeof getByPath(dictionary, `${TYPES_PATH}.${i18nKey}.${leaf}`) === 'string') return leaf
-  }
-  return null
-}
 
 export interface InboxItemRowProps {
   item: InboxItemView
@@ -188,6 +161,25 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const documentProjectId =
     item.resourceType === 'document' ? projectIdFromDocumentHref(item.href) : null
 
+  /*
+    „Fassungen vergleichen", the next move on a new Fassung filed under another
+    name: BEHAVIOUR keyed on the type, like the review triage below. The row
+    then names two documents — the newer is the resource, the older the anchor
+    — and the link opens the newer one's preview with the comparison against
+    the older already open. A same-name version anchors on the version and
+    has nothing to lay side by side here; its row opens the document, whose
+    Fassungen section compares the text.
+  */
+  const compareHref =
+    item.type === 'document.new_fassung' &&
+    item.state !== 'inert' &&
+    item.resourceType === 'document' &&
+    item.related !== null &&
+    item.anchorId !== null &&
+    item.anchorId !== item.resourceId
+      ? compareFassungHref(item.href, item.anchorId)
+      : null
+
   const inert = item.state === 'inert'
   const unread = item.state === 'unread'
   const resolved = item.state === 'resolved'
@@ -201,59 +193,10 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const isWarning = presentation.tone === 'warning' && !inert
   const needsAttention = isRequest || isWarning
 
-  // A REDACTED row — inert, or its target no longer reachable — carries no href
-  // and no payload, because the server withholds the conversation title exactly
-  // as it withholds the quoted snippet (IB-13). Falling back to "Untitled
-  // conversation" there would misstate WHY the row is nameless: the thread has a
-  // title, this reader is simply no longer entitled to it.
+  // A REDACTED row carries no href and no payload (IB-13); `inboxItemCopy` words it.
   const redacted = !item.href
 
-  const vars = {
-    // A type's own values first, so the three shared names below always mean
-    // what every other type's copy means by them. Only the scalar ones: a list
-    // (a mail's skipped files) is drawn, not interpolated.
-    ...scalarParams(item.params),
-    actor: item.actorName ?? t('inbox.unknownActor'),
-    subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation'),
-    count: item.count,
-  }
-
-  // `count` is occurrences SINCE THE ROW WAS LAST READ, so 0 is the ordinary
-  // state of a read row — and picking `titleOne` for it made a group of
-  // twenty that had been read claim "1 new message". Three cases, not two.
-  const countLeaves =
-    item.count > 1 ? ['titleMany', 'title'] : item.count === 1 ? ['titleOne', 'title'] : ['titleNone', 'titleOne', 'title']
-  const titleLeaf =
-    pickKey(dictionary, presentation.i18nKey, [
-      // A type whose copy names its params may ship a title for a row whose
-      // params were withheld (redacted) or no longer parse, and one for a row
-      // with no subject, so neither renders a blank count or quotes a
-      // placeholder as if it were the subject („Nicht mehr verfügbar“).
-      ...(item.params === undefined ? ['titleWithheld'] : []),
-      ...(item.subject === null ? ['titleUntitled'] : []),
-      ...countLeaves,
-    ]) ?? 'title'
-  const title = t(`inbox.types.${presentation.i18nKey}.${titleLeaf}`, vars)
-  // A row whose payload names no subject (an upload to the Büroablage or a
-  // chat) reads the sentence written without one, where its type has it.
-  const bodyLeaf = pickKey(dictionary, presentation.i18nKey, item.subject === null ? ['bodyNoSubject', 'body'] : ['body'])
-  /*
-    A REDACTED row gets a complete sentence of its own rather than the templated
-    "in {subject}".
-
-    The template needs a real title to read as a phrase, and interpolating the
-    withheld-target placeholder into it produced German nonsense — "2 neue
-    Nachrichten in Nicht mehr verfügbar" — because one string was being asked to
-    work in two grammatical positions: standalone (`conversationShared`'s body is a
-    bare `{subject}`) and inside a preposition. The distinction the placeholder
-    exists to make is still made, and now it is a sentence: the thread HAS a name,
-    this reader is simply no longer entitled to it (IB-13).
-  */
-  const body = redacted
-    ? t('inbox.bodyUnavailable')
-    : bodyLeaf
-      ? t(`inbox.types.${presentation.i18nKey}.${bodyLeaf}`, vars)
-      : null
+  const { title, body } = inboxItemCopy(item, t, dictionary)
 
   /*
     Inline triage for a version waiting for a decision (ADR-0054): the three
@@ -385,7 +328,12 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     <Item
       asChild
       className={cn(
-        'relative items-start py-3.5',
+        'relative items-start py-3',
+        // The unread accent: a 3px bar down the row's edge, which survives glare
+        // and a thumb over the title where a 6px dot did not. The list clips
+        // (`overflow-hidden`), so it takes the card's corner.
+        unread &&
+          'before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-foreground before:content-[""]',
         inert && 'bg-muted hover:bg-muted',
       )}
     >
@@ -422,17 +370,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               unread ? 'font-semibold' : 'font-normal',
             )}
           >
-            {/* Unread marker — reserved always so marking read does not shove
-                the title. Opacity only; the row is also heavier, so this is
-                decoration. */}
-            <span
-              aria-hidden
-              className={cn(
-                'mt-[7px] size-1.5 shrink-0 rounded-full bg-foreground',
-                'transition-opacity duration-snap ease-out motion-reduce:transition-none',
-                unread ? 'opacity-100' : 'opacity-0',
-              )}
-            />
             {item.href && !inert ? (
               // Stretched link: the whole row is the target without nesting the
               // archive button inside the anchor (that button is lifted above the
@@ -480,8 +417,20 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             <InboundMailSkippedFiles params={item.params} />
           )}
 
+          {/* Three lines when it is the only body: then it is the news, and
+              on a phone two lines cut a change off mid-sentence. */}
           {item.excerpt && (
-            <p className="mt-1.5 line-clamp-2 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground">
+            <p
+              className={cn(
+                'mt-1 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground',
+                // Dense on a phone: three rows to a screen is a list nobody can
+                // triage. A row that asks something of the reader keeps its
+                // words; an FYI gets one line, and the item has the rest.
+                // As the ONLY body it is the news and keeps three lines.
+                body ? (item.actionable && !resolved && !inert ? 'line-clamp-2' : 'line-clamp-1') : 'line-clamp-3',
+              )}
+              data-testid="inbox-item-excerpt"
+            >
               {item.excerpt}
             </p>
           )}
@@ -717,7 +666,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             </div>
           )}
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             {/* `updatedAt`, which is what the list is ORDERED by. A grouped row
                 that just absorbed a new message sorts to the top, and showing its
                 `createdAt` put "5 days ago" at the head of the list. The title
@@ -748,6 +697,23 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 overlay across the whole card, and anything meant to be clickable
                 has to sit above it. Never on an inert row — its target is gone,
                 which is the same reason the title is not a link there. */}
+            {compareHref && (
+              <Button asChild size="sm" className="relative z-10">
+                <Link
+                  href={compareHref}
+                  aria-label={t('inbox.compareFassungenLabel', { subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation') })}
+                  onClick={(event) => {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+                    if (event.button !== 0) return
+                    onOpen?.(item)
+                  }}
+                  data-testid="inbox-compare-fassungen"
+                >
+                  <Layers aria-hidden />
+                  {t('inbox.compareFassungen')}
+                </Link>
+              </Button>
+            )}
             {documentProjectId && !inert && (
               <DiscussDocumentButton
                 projectId={documentProjectId}

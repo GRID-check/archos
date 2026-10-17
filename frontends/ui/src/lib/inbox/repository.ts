@@ -99,6 +99,84 @@ export async function upsertInboxItems(values: NewInboxItem[]): Promise<InboxIte
     .returning()
 }
 
+/**
+ * One item of a recipient's, by id, or null when it is not theirs or not there.
+ * For the push job, which re-reads the row at the moment it sends.
+ */
+export async function findInboxItemForRecipient(
+  organizationId: string,
+  recipientUserId: string,
+  itemId: string,
+): Promise<InboxItem | null> {
+  const [row] = await getDb()
+    .select()
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.id, itemId),
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.recipientUserId, recipientUserId),
+      ),
+    )
+    .limit(1)
+  return row ?? null
+}
+
+/**
+ * Which of these recipients already hold an item under this group key.
+ *
+ * For an emitter whose event can be seen twice (a settle hook that fires again
+ * on a re-read): {@link upsertInboxItems} folds a repeat into the row it has and
+ * marks it unread again, which for "tell them once" is the wrong half of
+ * idempotent. Asking first leaves a read row read.
+ */
+export async function recipientsHoldingGroup(
+  organizationId: string,
+  groupKey: string,
+  recipientUserIds: readonly string[],
+): Promise<Set<string>> {
+  if (recipientUserIds.length === 0) return new Set()
+  const db = getDb()
+  const rows = await db
+    .select({ recipientUserId: inboxItems.recipientUserId })
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.groupKey, groupKey),
+        inArray(inboxItems.recipientUserId, [...recipientUserIds]),
+      ),
+    )
+  return new Set(rows.map((row) => row.recipientUserId))
+}
+
+/**
+ * Who still holds an unresolved item under this group key: for a review round,
+ * the people it was sent to who have not seen it settled. Bounded, like every
+ * list here; a round is opened for at most twenty named reviewers.
+ */
+export async function openRecipientsOfGroup(
+  organizationId: string,
+  groupKey: string,
+  limit = 50,
+): Promise<string[]> {
+  const db = getDb()
+  const rows = await db
+    .select({ recipientUserId: inboxItems.recipientUserId })
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.groupKey, groupKey),
+        isNull(inboxItems.resolvedAt),
+        isNull(inboxItems.inertAt),
+      ),
+    )
+    .orderBy(inboxItems.createdAt)
+    .limit(limit)
+  return rows.map((row) => row.recipientUserId)
+}
+
 export interface ListInboxOptions {
   /** `true` = only things needing attention; `false`/omitted = everything unarchived. */
   pendingOnly?: boolean
@@ -372,6 +450,40 @@ export async function resolveInboxItemsForTargets(
     )
     .returning({ id: inboxItems.id })
   return rows.length
+}
+
+/**
+ * Resolve the open items of these types that are anchored on one thing — one
+ * mark, one proposal — for one recipient, or for everyone when none is named.
+ *
+ * For a settle event that knows its subject's id and not the resource the items
+ * point at (a mark is answered by an event that carries the mark, while the
+ * item's group key also names its document). Anchors are uuids, and the type
+ * list keeps another type's anchor out of reach. Returns who was resolved, so
+ * the caller can nudge their badge.
+ */
+export async function resolveOpenItemsAnchoredOn(input: {
+  organizationId: string
+  types: readonly InboxItemType[]
+  anchorId: string
+  recipientUserId?: string
+}): Promise<string[]> {
+  if (input.types.length === 0) return []
+  const db = getDb()
+  const rows = await db
+    .update(inboxItems)
+    .set({ resolvedAt: new Date() })
+    .where(
+      and(
+        eq(inboxItems.organizationId, input.organizationId),
+        inArray(inboxItems.type, [...input.types]),
+        eq(inboxItems.anchorId, input.anchorId),
+        isNull(inboxItems.resolvedAt),
+        input.recipientUserId ? eq(inboxItems.recipientUserId, input.recipientUserId) : undefined,
+      ),
+    )
+    .returning({ recipientUserId: inboxItems.recipientUserId })
+  return [...new Set(rows.map((row) => row.recipientUserId))]
 }
 
 /**

@@ -1,10 +1,11 @@
 ---
 fixes:
   - >
-    Assigning existing plans to a building under Projektgrundlagen no longer
-    fails with an internal error when the project brief has not been saved yet.
-    Plans for a building you have just added are shown as waiting and assigned
-    when you save, and removing a building also removes its plan assignments.
+    Assigning existing drawings to a building under Projektgrundlagen no
+    longer fails with an error when the project brief has not been saved
+    yet. Drawings for a building you have just added are shown as waiting
+    and assigned when you save, and removing a building also removes its
+    drawing assignments.
   - >
     Dragging files into Dateien now uploads them even when they come straight
     from an email or a cloud-synced folder, where the drop used to do nothing.
@@ -13,5 +14,5 @@ fixes:
     Dateien and uploads them there, where the browser used to open the file in
     place of Piloti.
   - >
-    A short overload at the language model provider no longer ends your
-    question with an error; Piloti waits a moment and tries again.
+    When the AI is briefly overloaded, Piloti no longer ends your question
+    with an error; it waits a moment and tries again.

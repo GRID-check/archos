@@ -4,7 +4,7 @@
  * Dev preview for the composer's addressee statement (ADR-0034 addendum) — the real
  * `AddresseeIndicator` in all three of its renderings, inside a mock composer that
  * reproduces the real one's geometry (same `max-w-3xl` column, same card surface,
- * same hairline-separated action row), so the line can be reviewed and screenshotted
+ * same action row under the textarea), so the line can be reviewed and screenshotted
  * without a backend.
  *
  * Why this surface needs its own evidence: the whole point of the indicator is that
@@ -38,7 +38,7 @@
 
 import type { JSX } from 'react'
 import { notFound } from 'next/navigation'
-import { ArrowUp, AtSign, ChevronDown, Layers, ZoomIn } from 'lucide-react'
+import { ArrowUp, AtSign, ChevronDown, Mic, Paperclip } from 'lucide-react'
 
 import { AddresseeIndicator } from '@/features/collaboration/components/AddresseeIndicator'
 import type { DraftMention } from '@/features/collaboration/lib/mention-text'
@@ -70,31 +70,37 @@ function MockComposer({
     <div className="bg-card relative flex flex-col rounded-xl px-4 py-2.5 shadow-sm">
       <p className="min-h-[40px] px-1.5 py-1 text-[14.5px] leading-[1.5] text-foreground">{text}</p>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
-        <span className="bg-card shadow-xs inline-flex h-8 items-center gap-[7px] rounded-lg border px-[11px]">
-          <span className="border-status-active flex size-[14px] shrink-0 items-center justify-center rounded-full border border-dashed">
-            <span className="bg-status-active size-[5px] rounded-full" />
+      {/* The real row's shape (InputArea): ONE line of controls that never
+          wraps, the scope chip giving way first, and the addressee statement
+          (`order-last basis-full` inside the indicator) on its own line below.
+          The Datengrundlage chip and the Deep Research pill left the real
+          composer, so they left this copy too. */}
+      <div className="mt-2 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex min-w-0 items-center gap-1.5 sm:contents">
+          <span className="bg-card shadow-xs inline-flex h-8 min-w-0 shrink items-center gap-[7px] rounded-lg border px-[11px] pointer-coarse:h-11">
+            <span className="border-status-active flex size-[14px] shrink-0 items-center justify-center rounded-full border border-dashed max-sm:hidden">
+              <span className="bg-status-active size-[5px] rounded-full" />
+            </span>
+            <span className="text-foreground/85 min-w-0 truncate text-[12.5px] font-medium">Wohnbau Nord</span>
+            <ChevronDown className="text-muted-foreground size-3 shrink-0 max-sm:hidden" aria-hidden />
           </span>
-          <span className="text-foreground/85 text-[12.5px] font-medium">Wohnbau Nord</span>
-          <ChevronDown className="text-muted-foreground size-3" aria-hidden />
-        </span>
-        <span className="bg-card text-muted-foreground shadow-xs inline-flex h-8 items-center gap-[7px] rounded-lg border px-[11px] text-[12.5px]">
-          <Layers className="size-3.5" aria-hidden />
-          Datengrundlage
-          <span className="bg-muted text-foreground/80 inline-flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10.5px] font-semibold tabular-nums">
-            8
+          <span className="ml-auto flex shrink-0 items-center gap-1">
+            <span className="text-muted-foreground inline-flex h-8 items-center px-1.5 text-xs font-semibold pointer-coarse:h-11">
+              Mittel
+            </span>
+            <span className="text-subtle inline-flex size-[34px] items-center justify-center pointer-coarse:size-11">
+              <Paperclip className="size-4" aria-hidden />
+            </span>
+            <span className="text-subtle inline-flex size-[34px] items-center justify-center pointer-coarse:size-11">
+              <Mic className="size-4" aria-hidden />
+            </span>
+            <span className="bg-primary text-primary-foreground inline-flex size-9 items-center justify-center rounded-lg shadow-md pointer-coarse:size-11">
+              <ArrowUp className="size-4" aria-hidden />
+            </span>
           </span>
-        </span>
-        <span className="bg-card text-muted-foreground shadow-xs inline-flex h-8 items-center gap-[7px] rounded-lg border px-3 text-[12.5px] font-medium">
-          <ZoomIn className="size-3.5" aria-hidden />
-          Deep Research
-        </span>
+        </div>
 
         {children}
-
-        <span className="bg-primary text-primary-foreground ml-auto inline-flex size-9 items-center justify-center rounded-lg shadow-md">
-          <ArrowUp className="size-4" aria-hidden />
-        </span>
       </div>
 
       {hint && (

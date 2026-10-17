@@ -1,8 +1,12 @@
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
-import { fireEvent, render, screen } from '@/test-utils'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@/test-utils'
 
 import type { InboxItemView } from '@/lib/inbox/types'
+
+// The undo toast is the contract; sonner is stubbed so its action can be pressed.
+const toastMock = vi.hoisted(() => vi.fn())
+vi.mock('sonner', () => ({ toast: toastMock }))
 
 // The data hooks are already built and tested; this spec is about the four states
 // the list can be in and the controls around them, so the hook is stubbed.
@@ -61,7 +65,9 @@ const ITEM: InboxItemView = {
   count: 1,
   href: '/app/projects/p1/chat?session=c1',
   subject: 'Atrium',
+  related: null,
   excerpt: null,
+  variant: null,
   createdAt: '2026-07-29T09:00:00Z',
   updatedAt: '2026-07-29T09:00:00Z',
 }
@@ -206,11 +212,53 @@ describe('InboxList — actions', () => {
     expect(markAllRead).toHaveBeenCalled()
   })
 
-  test('archiving a row calls through to the hook', () => {
-    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
-    render(<InboxList />)
-    fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
-    expect(archive).toHaveBeenCalledWith('i1')
+  describe('archiving', () => {
+    beforeEach(() => {
+      toastMock.mockClear()
+      vi.useFakeTimers()
+    })
+    afterEach(() => vi.useRealTimers())
+
+    test('hides the row at once and tells the server only when the undo window closes', () => {
+      useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+      render(<InboxList />)
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+
+      expect(screen.queryByTestId('inbox-item')).not.toBeInTheDocument()
+      expect(toastMock).toHaveBeenCalledWith(
+        'Archived',
+        expect.objectContaining({ action: expect.objectContaining({ label: 'Undo' }) }),
+      )
+      expect(archive).not.toHaveBeenCalled()
+
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+      expect(archive).toHaveBeenCalledWith('i1')
+    })
+
+    test('Undo brings the row back and sends nothing', () => {
+      useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+      render(<InboxList />)
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+
+      const options = toastMock.mock.calls[0][1] as { action: { onClick: () => void } }
+      act(() => options.action.onClick())
+      expect(screen.getByTestId('inbox-item')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(10000)
+      })
+      expect(archive).not.toHaveBeenCalled()
+    })
+
+    test('leaving the list sends an archive that is still waiting', () => {
+      useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+      const { unmount } = render(<InboxList />)
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+      unmount()
+      expect(archive).toHaveBeenCalledWith('i1')
+    })
   })
 
   test('opening an unread row marks just that item read', () => {

@@ -5,16 +5,14 @@ import { withPageSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { can } from '@/lib/authz/decide'
 import {
-  FEATURE_FLAGS,
   isCollaborationEnabled,
   isMailImportEnabled,
-  isFeatureEnabled,
   isIfcModelsEnabled,
-  isIfcPreviewFirstEnabled,
 } from '@/lib/authz/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { listProjectFolders, projectRootAccess } from '@/lib/projects/folder-service'
 import { listDocumentsPage } from '@/lib/documents/service'
+import { DOCUMENT_LEVEL_PAGE_SIZE } from '@/lib/documents/list-query'
 import { summarizeDocumentVersions } from '@/lib/documents/lifecycle'
 import { resolveDocumentLifecyclePermissions } from '@/lib/documents/lifecycle-permissions'
 import { toDocumentWireRow, toFolderWireRow } from '@/lib/documents/list-projection'
@@ -23,16 +21,26 @@ import { ProjectFileWorkspace } from '@/features/documents/components/project-fi
 
 interface FilesPageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
+
+/** A folder id as `?folder=` carries it; anything else is not a level the server can seed. */
+const FOLDER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('nav')
   return { title: t('sections.files') }
 }
 
-export default async function FilesPage({ params }: FilesPageProps): Promise<JSX.Element> {
+export default async function FilesPage({ params, searchParams }: FilesPageProps): Promise<JSX.Element> {
   return withPageSession(async (session) => {
     const { id } = await params
+    const { folder } = await searchParams
+    const folderParam = typeof folder === 'string' ? folder.trim() : ''
+    // The level the URL names, which the workspace opens on (`useFolderParam`).
+    // A `?folder=` that is no folder id seeds nothing: the workspace reads it.
+    const seedLevel = folderParam === '' || FOLDER_ID.test(folderParam)
+    const initialFolderId = folderParam === '' || !seedLevel ? null : folderParam
     await requireProjectAccess(session, id, 'project:view')
 
     const project = await findProjectInOrg(id, session.organizationId)
@@ -41,21 +49,12 @@ export default async function FilesPage({ params }: FilesPageProps): Promise<JSX
       notFound()
     }
 
-    // Org-level gate for the ingestion-metadata block (WorkOS `files-metadata-panel`).
-    // Fail-open when enforcement is off (isFeatureEnabled → true).
-    const showMetadataPanel = isFeatureEnabled(session, FEATURE_FLAGS.filesMetadataPanel)
-
     // The model viewer lives inside this page now (there is no `/model` route
     // any more — it redirects here). The org flag no longer hides a
     // destination; it decides whether the model surfaces exist at all for this
     // tenant, which is the honest behaviour for one whose BIM endpoints would
     // refuse the request anyway.
     const showModels = isIfcModelsEnabled(session)
-
-    // What a click on an `.ifc` DOES — preview first, or straight to the stage.
-    // Read here AND in the Archiv sheet from the same helper, because the whole
-    // point of the flag is that it moves both file surfaces together.
-    const previewFirst = isIfcPreviewFirstEnabled(session)
 
     /*
      * THE LISTING, READ HERE INSTEAD OF AFTER HYDRATION.
@@ -77,12 +76,18 @@ export default async function FilesPage({ params }: FilesPageProps): Promise<JSX
      * the document listing, and sequencing them here would rebuild in one tier
      * the waterfall this removes from the other.
      */
-    // The FIRST page only: the paint needs rows now, not the whole corpus. The
-    // workspace reads the remaining pages itself when `nextCursor` says there
-    // are any (`initialFilesComplete`).
+    // The FIRST page of the folder level the URL names, newest first, exactly
+    // as the workspace's own first request would read it (ADR-0102). The
+    // workspace reads further pages of the level when the reader scrolls to
+    // them, from this page's `nextCursor` (`initialNextCursor`); it never
+    // drains the shelf for the first paint.
     const [initialFolders, { documents: initialDocuments, nextCursor }] = await Promise.all([
       listProjectFolders(id, session),
-      listDocumentsPage(session, id),
+      seedLevel
+        ? listDocumentsPage(session, id, {
+            level: { folderId: initialFolderId, sort: 'added', dir: 'desc', limit: DOCUMENT_LEVEL_PAGE_SIZE },
+          })
+        : Promise.resolve<Awaited<ReturnType<typeof listDocumentsPage>>>({ documents: [], nextCursor: null }),
     ])
 
     /*
@@ -117,15 +122,16 @@ export default async function FilesPage({ params }: FilesPageProps): Promise<JSX
         initialFolders={initialFolders.map(toFolderWireRow)}
         canManageFolderAccess={canManageFolderAccess}
         initialRootAccess={initialRootAccess}
-        initialFiles={initialDocuments.map((row) =>
-          toDocumentWireRow(row, versionSummaries.get(row.id)),
-        )}
-        initialFilesComplete={nextCursor === null}
+        initialFiles={
+          seedLevel
+            ? initialDocuments.map((row) => toDocumentWireRow(row, versionSummaries.get(row.id)))
+            : undefined
+        }
+        initialNextCursor={nextCursor}
+        initialFolderId={initialFolderId}
         projectName={project.name}
         collectionName={project.collectionName}
-        showMetadataPanel={showMetadataPanel}
         showModels={showModels}
-        previewFirst={previewFirst}
         canCollaborate={isCollaborationEnabled(session)}
         currentUserId={session.userId}
         mailImportEnabled={isMailImportEnabled(session)}

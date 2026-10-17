@@ -8,8 +8,8 @@ admin and the `/api/keystatic` routes need a server).
 ## Quick start
 
 ```bash
-npm install
-npm run dev        # http://localhost:4321
+bun install --frozen-lockfile
+bun run dev        # http://localhost:4321
 ```
 
 ## Environment
@@ -18,12 +18,15 @@ npm run dev        # http://localhost:4321
 |-------------------|----------------------|----------------------------------------------------|
 | `PUBLIC_APP_URL`  | `https://app.piloti.at` | Base URL of the app. Read at **runtime** by the `/sign-in` endpoint, which 302s to `/?sign-in` there — the app's root bounces logged-out visitors back to this site, so the bare URL would be a loop. Injected per stack by the Kubernetes deployment; one image serves every host. |
 | `PUBLIC_SITE_URL` | `https://piloti.at` | Canonical site URL for OG/sitemap metadata (public). Baked at build. Prod default is deliberate: dev canonicalizing to prod is harmless — dev should not be indexed anyway. |
+| `PUBLIC_POSTHOG_HOST` / `PUBLIC_POSTHOG_PROJECT_TOKEN` | _(unset)_ | PostHog web analytics (page views, referrer and UTM, web vitals, heatmaps; no replay, no person profiles). Read at **runtime** by the `/web-analytics.js` route that every page loads; with either unset the route answers an empty script and the browser contacts nobody. Injected from `grid-oib:posthogHost` / `posthogProjectToken` by the Kubernetes deployment. The privacy policy in `src/i18n/ui.ts` describes exactly what this sends: change them together. |
 | `HOST` / `PORT`   | `0.0.0.0` / `4321`   | Node adapter listen address (runtime)              |
 
 Only `PUBLIC_SITE_URL` is read at **build time** (it ends up in the prerendered
 HTML); the Docker build accepts it as a build arg (see `Dockerfile`).
-`PUBLIC_APP_URL` must stay a runtime value — baking an app host into the
-static HTML is how the production landing page once linked at the dev app.
+`PUBLIC_APP_URL` and the `PUBLIC_POSTHOG_*` pair must stay runtime values —
+baking an app host into the static HTML is how the production landing page once
+linked at the dev app, and a token read in a layout is baked as `undefined`
+because the image builds with no env files.
 
 ## Blog
 
@@ -60,11 +63,11 @@ so a huge upload still costs image-layer size and build time even though no
 visitor downloads it — the content guard warns above 4 MB for that reason.
 
 Astro's cache is relocated to `frontends/web/.astro-cache` (`cacheDir` in
-`astro.config.mjs`) because the default `node_modules/.astro` is deleted by the
-`npm ci` in `task web:install`, which made every CI build reprocess every image
+`astro.config.mjs`) because the default `node_modules/.astro` was deleted by the
+`npm ci` `task web:install` used to run, which made every CI build reprocess every image
 from cold — 44s versus 19s warm on current content. CI's web job restores and
 saves it via `actions/cache`, and the web image build
-(`.github/actions/build-image`) restores it into the Docker build context, since a layer cache cannot help a `RUN npm run
+(`.github/actions/build-image`) restores it into the Docker build context, since a layer cache cannot help a `RUN bun run
 build` that `COPY . .` has already invalidated.
 
 ### Previewing a post
@@ -89,8 +92,8 @@ node dist/server/entry.mjs &              # background only the server
 until curl -sf http://localhost:4321/ >/dev/null; do sleep 1; done
 
 # playwright-core ships no browser of its own; pin it to match CI.
-npm i --no-save playwright-core@1.62.1
-npx playwright-core install chromium
+bun add --no-save playwright-core@1.62.1
+./node_modules/.bin/playwright-core install chromium
 
 node scripts/preview-shots.mjs ./preview-out http://localhost:4321 /blog/<slug>/
 ```

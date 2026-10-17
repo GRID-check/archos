@@ -14,8 +14,7 @@ Mechanics, each a decision:
 * **A private ``TracerProvider``, never the global one.** NAT, and whatever else
   in the process speaks the OpenTelemetry API, must not start exporting through
   this provider. Built lazily on the first call and kept for the life of the
-  process, like the meter provider (``observability.metrics``); the SDK flushes
-  it at interpreter exit.
+  process; the SDK flushes it at interpreter exit.
 * **The collector the rest already uses.** ``OTEL_EXPORTER_OTLP_ENDPOINT``, which
   Pulumi injects as the full ``/v1/traces`` URL; a bare collector URL gets the
   suffix. A blank endpoint builds nothing and every call is a no-op, the same
@@ -256,6 +255,22 @@ class GenerationRecorder:
 
     def __init__(self, span: Any | None) -> None:
         self._span = span
+
+    @property
+    def trace_id(self) -> str | None:
+        """The generation's trace id as Langfuse names it (32 hex digits), or ``None`` when tracing is off.
+
+        For a caller that hands the trace on, so a later decision about what this
+        call produced can be scored on it (``piloti-decision``).
+        """
+        if self._span is None:
+            return None
+        try:
+            trace_id = self._span.get_span_context().trace_id
+        except Exception:
+            logger.debug("direct_trace: could not read a generation's trace id", exc_info=True)
+            return None
+        return format(trace_id, "032x") if isinstance(trace_id, int) and trace_id else None
 
     def finish(self, response: Any) -> None:
         """Record the parsed chat-completion body. Never raises."""

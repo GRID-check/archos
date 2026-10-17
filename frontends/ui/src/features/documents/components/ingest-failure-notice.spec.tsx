@@ -10,7 +10,7 @@ describe('IngestFailureNotice', () => {
       'office_rendition_required: Word and presentation files are indexed from their PDF rendition, and none could be read (conversion disabled or failed, or the download failed)'
     render(<IngestFailureNotice errorMessage={raw} />)
 
-    expect(screen.getByText(/The PDF version of this file couldn't be created/)).toBeInTheDocument()
+    expect(screen.getByText(/The PDF preview of this file couldn't be created/)).toBeInTheDocument()
     expect(screen.queryByTestId('ingest-failure-raw')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'Details' }))

@@ -64,11 +64,11 @@ export const onboarding: typeof en.onboarding = {
       },
       createProjectJoined: {
         title: 'Ihre Projekte',
-        body: 'Projekte erscheinen hier, sobald Kolleginnen und Kollegen Sie hinzufügen. Sie können auch selbst eines anlegen: Ein Projekt umfasst ein Gebäude, seine Unterlagen, die Beteiligten und einen Chat, der aus OIB-Richtlinien und österreichischem Baurecht antwortet.',
+        body: 'Projekte erscheinen hier, sobald Kolleginnen und Kollegen Sie hinzufügen. Sie können auch selbst eines anlegen: Ein Projekt umfasst ein Gebäude, seine Unterlagen, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem Piloti arbeitet und jede Quelle belegt.',
       },
       createProject: {
         title: 'Alles beginnt mit einem Projekt',
-        body: 'Ein Projekt umfasst ein Gebäude: Pläne und Dokumente, die Beteiligten und einen Chat, der aus OIB-Richtlinien und österreichischem Baurecht antwortet — jede Quelle belegt. Eine kurze Einrichtung fragt nach dem Gebäude, danach zeigen wir Ihnen das Projekt.',
+        body: 'Ein Projekt umfasst ein Gebäude: seine Dokumente, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem Piloti mit Ihnen arbeitet. Jede Quelle ist belegt, ob Baurecht oder Ihre eigenen Unterlagen. Eine kurze Einrichtung fragt nach dem Gebäude, danach zeigen wir Ihnen das Projekt.',
       },
       archiv: {
         title: 'Büroablage',
@@ -92,6 +92,10 @@ export const onboarding: typeof en.onboarding = {
         palette: 'Zu allem springen',
         cheatsheet: 'Alle Tastenkürzel',
       },
+      searchPhone: {
+        title: 'Suchen und springen',
+        body: 'Die Lupe oben bringt Sie zu jedem Projekt, jedem Bereich und zur Büroablage. Ein paar Buchstaben genügen.',
+      },
       projectWelcome: {
         title: 'Ihr Projekt ist eingerichtet',
         body: 'Piloti kennt jetzt die Eckdaten dieses Gebäudes. Hier findet die Arbeit statt.',
@@ -101,22 +105,26 @@ export const onboarding: typeof en.onboarding = {
         body: 'Jedes Gebäude bekommt einen Raum wie diesen. Hier findet die Arbeit statt.',
       },
       projectChat: {
-        title: 'Frag Piloti',
-        body: 'Fragen Sie in Ihren Worten nach diesem Gebäude: Brandabschnitte, Fluchtwege, Barrierefreiheit, Energie. Die Antworten stützen sich auf Baurecht, OIB-Richtlinien und Ihre eigenen Unterlagen.',
+        title: 'Mit Piloti arbeiten',
+        body: 'Sprechen Sie in Ihren Worten mit Piloti über dieses Gebäude oder übergeben Sie ihm eine Aufgabe. Es arbeitet mit Ihren Dateien, der Büroablage und dem Baurecht und zitiert jede Quelle.',
       },
       projectFiles: {
         title: 'Dateien: die Unterlagen dieses Projekts',
-        body: 'Laden Sie Pläne, Gutachten und Schriftverkehr zu diesem Gebäude hoch. Sobald eine Datei gelesen ist, kann Piloti daraus zitieren, und zwar nur in diesem Projekt.',
+        body: 'Laden Sie Zeichnungen, Gutachten und Schriftverkehr zu diesem Gebäude hoch. Sobald eine Datei gelesen ist, kann Piloti daraus zitieren, und zwar nur in diesem Projekt.',
       },
       projectArchiv: {
         title: 'Büroablage: die Unterlagen Ihres Büros',
         body: 'Die Büroablage steht über Ihren Projekten, und jedes Projekt durchsucht sie automatisch mit. Sie ist anfangs leer: Administratoren legen Unterlagen ab, alle in der Organisation können sie lesen und zitieren.',
       },
+      projectArchivPhone: {
+        title: 'Büroablage: die Unterlagen Ihres Büros',
+        body: 'Die Büroablage steht über Ihren Projekten, und jedes Projekt durchsucht sie automatisch mit. Sie finden sie unter „Mehr“, mit allem, was nicht in der Leiste steht.',
+      },
       filesOrArchiv: {
         title: 'Dateien oder Büroablage?',
         body: 'Entscheidend ist, wem die Unterlage gehört.',
         filesTerm: 'Dateien — dieses Gebäude',
-        filesDetail: 'Seine Pläne, Gutachten, Schriftverkehr. Zitiert nur in diesem Projekt.',
+        filesDetail: 'Seine Zeichnungen, Gutachten, Schriftverkehr. Zitiert nur in diesem Projekt.',
         archivTerm: 'Büroablage — das Büro',
         archivDetail: 'Regeldetails, Leistungsbeschreibungen, Vorlagen, frühere Einreichungen, die sich wiederverwenden lassen. Zitiert in jedem Projekt.',
       },

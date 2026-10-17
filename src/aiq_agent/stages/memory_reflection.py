@@ -201,7 +201,6 @@ MEMORY_REFLECTION = register_stage(
         # Unchanged from the pre-stage wiring: this migration is not a
         # user-visible change, so the flag that governed it still does.
         flag_slug="memory-reflection",
-        env_default="GRID_MEMORY_REFLECTION_ENABLED",
         timeout_s=REFLECTION_TIMEOUT_S,
         gate=_gate,
         handler=_handler,

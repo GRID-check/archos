@@ -1,6 +1,6 @@
 ---
 features:
   - >
-    When Piloti searches more than once, the Herleitung now shows the
-    conclusion that caused the next fetch — what it knew, what it still
-    needed — instead of repeating the search query.
+    When Piloti searches more than once, the Herleitung now shows the conclusion
+    behind each new search: what it already knew and what it still needed,
+    instead of repeating the search query.

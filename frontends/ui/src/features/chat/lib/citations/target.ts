@@ -13,6 +13,7 @@
  * than opening a viewer that cannot render.
  */
 
+import type { FassungRef } from '@/lib/documents/fassung'
 import type { Shelf } from '../source-kinds'
 import { citedLoci, isHttpUrl, type CitationLocus, type CitedDocument } from './model'
 import { parseKbLocator, type KbCitationLocator } from './locator'
@@ -39,6 +40,12 @@ export interface StoredDocumentRef {
   contentType?: string | null
   /** The shelf this row was listed from (ADR-0047), when the caller tagged it. */
   shelf?: Shelf
+  /**
+   * The newer document a person confirmed replaces this one — the reader-visible
+   * `fassung.supersededBy` of the resolved listing row (CONTEXT.md, „Fassung"). Set
+   * means the row IS an older Fassung, and a citation of it says so.
+   */
+  supersededBy?: FassungRef | null
 }
 
 /**
@@ -105,6 +112,8 @@ export type CitationTarget =
       document:
         | { type: 'stored'; id: string; filename: string; contentType: string | null }
         | { type: 'base'; fileName: string }
+      /** Set when the cited document is an older Fassung: the one that replaces it. */
+      supersededBy?: FassungRef
     }
   | {
       /**
@@ -128,6 +137,8 @@ export type CitationTarget =
       /** Cited passage text when the locus carries one. */
       snippet?: string
       document: { type: 'stored'; id: string; filename: string; contentType: string | null }
+      /** Set when the cited document is an older Fassung: the one that replaces it. */
+      supersededBy?: FassungRef
     }
   | { kind: 'info'; title: string; snippet?: string }
 
@@ -164,6 +175,10 @@ const renditionPage = (filename: string, locus: CitationLocus | undefined): numb
     return page
   return 1
 }
+
+/** The key a target carries when its document is an older Fassung, and nothing otherwise. */
+const supersededByOf = (row: StoredDocumentRef): { supersededBy?: FassungRef } =>
+  row.supersededBy ? { supersededBy: row.supersededBy } : {}
 
 /** The document's filename + shelf, however it can be recovered. */
 const documentLocator = (doc: CitedDocument): KbCitationLocator | null => {
@@ -341,6 +356,7 @@ export const resolveCitationTarget = (
           filename: storedDoc.filename,
           contentType: storedDoc.contentType ?? null,
         },
+        ...supersededByOf(storedDoc),
       }
     }
     // The corpus is only the right answer for a citation that names the `base`
@@ -373,6 +389,7 @@ export const resolveCitationTarget = (
           filename: storedDoc.filename,
           contentType: storedDoc.contentType ?? null,
         },
+        ...supersededByOf(storedDoc),
       }
     }
   }

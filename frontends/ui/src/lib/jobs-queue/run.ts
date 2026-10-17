@@ -20,6 +20,12 @@ export interface JobSliceOutcome {
   done: boolean
   /** The state to save when it has not, which is what the next slice (on any worker) resumes from. */
   payload: object
+  /**
+   * Not done and waiting: the runner gives the claim back without spending an
+   * attempt, and the job is not claimed before this ISO time
+   * (`JobSliceResult.notBefore`).
+   */
+  notBefore?: string
 }
 
 export async function runJobSlice(jobId: string, worker: string): Promise<JobSliceOutcome> {
@@ -36,5 +42,8 @@ export async function runJobSlice(jobId: string, worker: string): Promise<JobSli
   const result = await withTenant({ organizationId: job.lane }, () =>
     JOB_HANDLERS[kind]({ organizationId: job.lane, payload: job.payload, attempts: job.attempts })
   )
+  if (!result.done && result.notBefore) {
+    return { done: false, payload: result.payload, notBefore: result.notBefore.toISOString() }
+  }
   return { done: result.done, payload: result.payload }
 }

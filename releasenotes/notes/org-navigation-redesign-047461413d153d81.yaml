@@ -1,9 +1,10 @@
 ---
 features:
   - >
-    Jobs and Skills now live together in one Automation section, as two tabs
-    instead of two separate places in the sidebar — Jobs leads, since a job is
-    the prompt this project runs on a timer, with Skills one click away.
+    Jobs and Skills now sit together in one Automation section, as two tabs
+    instead of two places in the sidebar. Jobs comes first, since a job is
+    the instruction this project runs on a timer, and Skills is one click
+    away.
   - >
     Files now open the way a folder does anywhere else: click a folder to step
     into it, and a path at the top ("All Files › Brandschutz") shows exactly

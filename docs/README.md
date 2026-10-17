@@ -1,7 +1,10 @@
 # Grid documentation
 
-Everything written down about this project, grouped by the question you arrived
-with. See the [root README](../README.md) for what Grid is, and
+Piloti is the workspace for architects: a planning office runs its work in it,
+and Piloti, the agent, is a colleague in that office. [`VISION.md`](../VISION.md)
+says what the product is and is not. This is everything written down about its
+code, grouped by the question you arrived with. See the
+[root README](../README.md) for the overview, and
 [CONTRIBUTING.md](../CONTRIBUTING.md) for how to set up and ship a change.
 
 ## New here? Read these five, in order
@@ -38,6 +41,7 @@ A word you do not know: the domain language is in
 | [`ux/`](ux/) | UX playbooks: visual evidence, file explorer, motion on the public site ([`ux/motion.md`](ux/motion.md)) | You are adding a user-visible component, or animating anything on the site |
 | [`product/`](product/) | Vision, positioning, long-form writing, the public site's audiences and keyword map ([`website-conversion-and-seo.md`](product/website-conversion-and-seo.md), the SEO/GEO audit [`seo-geo-audit-2026-09.md`](product/seo-geo-audit-2026-09.md)) | You want the why behind the roadmap, or you are writing for piloti.at |
 | [`roadmap/`](roadmap/) | Where this is going: the agentic workspace review, the artifact design of record, its product-perspective review, IFC, spatial reasoning, cross-project RAG; the continuous-improvement ledger ([`continuous-improvement-ledger.md`](roadmap/continuous-improvement-ledger.md)) is the loop's running state | You are scoping something that is not built yet |
+| [`roadmap/README.md`](roadmap/README.md) | Status of every roadmap doc: live, dated review, revised or superseded, with one line each | You want to know whether a roadmap doc still describes what Piloti is building |
 | [`observability/`](observability/) | **Langfuse is our observability platform and everything is observable in it** ([ADR-0089](adr/0089-langfuse-is-the-observability-platform-and-everything-is-observable.md)): the trace and score contract, the guide for analysts and the Fachbereich, the audit | You add a model call, a quality check or a surface, or you want to read how the product behaves |
 | [`audit/`](audit/) | Frozen run logs from past audit and feedback-triage loops | You are tracing where a finding or a spec's evidence came from |
 | [`compliance/`](compliance/) | Audits and external dependency review | You are answering a compliance question |
@@ -54,7 +58,7 @@ Start with [`system-overview.md`](architecture/system-overview.md), then
 | Patterns | [`patterns-in-use.md`](architecture/patterns-in-use.md) |
 | Whole system | [`system-overview.md`](architecture/system-overview.md), [`overview.md`](architecture/overview.md), [`backend-deep-dive.md`](architecture/backend-deep-dive.md) |
 | BFF and data | [`bff-service-architecture.md`](architecture/bff-service-architecture.md), [`grid-app-database.md`](architecture/grid-app-database.md), [`multitenancy-and-auth-spec.md`](architecture/multitenancy-and-auth-spec.md) |
-| Documents and projects | [`document-roles.md`](architecture/document-roles.md), [`piloti-filesystem-design.md`](architecture/piloti-filesystem-design.md) (exploration, superseded in scope — read its header first), [`2026-08-13-file-native-ownership-design.md`](superpowers/specs/2026-08-13-file-native-ownership-design.md), [`2026-08-20-agent-authored-documents-design.md`](superpowers/specs/2026-08-20-agent-authored-documents-design.md) (built, the design of record), [`user-guides/agent-authored-reports.md`](user-guides/agent-authored-reports.md) |
+| Documents and projects | [`document-roles.md`](architecture/document-roles.md), how a document keeps its Fassungen, from upload to answer: [`fassungen.md`](architecture/fassungen.md), marks on a document, the Prüfansicht, and what Piloti did on them (wakes, the change record, undo): [`document-annotations.md`](architecture/document-annotations.md), a change Piloti proposes and a person applies: [`proposed-changes.md`](architecture/proposed-changes.md), [`piloti-filesystem-design.md`](architecture/piloti-filesystem-design.md) (exploration, superseded in scope — read its header first), [`2026-08-13-file-native-ownership-design.md`](superpowers/specs/2026-08-13-file-native-ownership-design.md), [`2026-08-20-agent-authored-documents-design.md`](superpowers/specs/2026-08-20-agent-authored-documents-design.md) (built, the design of record), [`user-guides/agent-authored-reports.md`](user-guides/agent-authored-reports.md) |
 | Knowledge and retrieval | [`agent-document-provenance.md`](architecture/agent-document-provenance.md), [`rag-system-audit-2026-08.md`](architecture/rag-system-audit-2026-08.md), [`visual-ingestion.md`](architecture/visual-ingestion.md), [`visual-extraction-schema.md`](architecture/visual-extraction-schema.md), [`citation-system-audit-2026-07.md`](architecture/citation-system-audit-2026-07.md), [`quote-verification-calibration-2026-07.md`](architecture/quote-verification-calibration-2026-07.md). Why there is no meta-vs-research split any more: [ADR-0052](adr/0052-one-answering-agent-no-intent-router.md) |
 | Memory | [`project-memory-design.md`](architecture/project-memory-design.md), [`memory-system-audit-2026-07.md`](architecture/memory-system-audit-2026-07.md), [`memory-reflection-audit.md`](architecture/memory-reflection-audit.md), [`post-answer-stages.md`](architecture/post-answer-stages.md) |
 | Failure learning | [`platform-failure-learning.md`](architecture/platform-failure-learning.md), [`semantic-notes.md`](architecture/semantic-notes.md) |

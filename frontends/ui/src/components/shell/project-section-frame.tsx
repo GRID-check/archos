@@ -31,6 +31,7 @@ const PROJECT_SECTION_KEYS = [
   'settings',
   'knowledge',
   'intake',
+  'setup',
   'members',
   'model',
   'research',
@@ -48,6 +49,7 @@ const SUBTITLE_SECTIONS: ReadonlySet<ProjectChromeSection> = new Set([
   'knowledge',
   'settings',
   'intake',
+  'setup',
 ])
 
 const RETURN_TARGET_SECTIONS: ReadonlySet<ProjectChromeSection> = new Set(['members', 'model'])
@@ -118,7 +120,7 @@ export function ProjectSectionFrame({
   return (
     <ActionsContext.Provider value={setActions}>
       <div className="flex h-full min-h-0 flex-col">
-        <div className="shrink-0 border-b border-border bg-background px-4 py-4 md:px-8">
+        <div className="shrink-0 border-b border-border bg-background px-4 py-4 phone:py-2 md:px-8">
           <PageHeader title={sectionLabel} subtitle={sectionSubtitle} action={actions} />
         </div>
         <div className={cn('min-h-0 flex-1', fill ? 'overflow-hidden' : 'overflow-y-auto')}>{children}</div>

@@ -117,8 +117,8 @@ tasks:
       # runs) and the policy pack beside it. Installing only the policy pack
       # left a fresh clone failing `task verify` at `infra:types`, because the
       # program's own TypeScript and Vitest were never fetched.
-      - npm --prefix deploy/pulumi ci
-      - npm --prefix deploy/pulumi/policy ci
+      - bun install --frozen-lockfile --cwd deploy/pulumi
+      - bun install --frozen-lockfile --cwd deploy/pulumi/policy
       # packages/ used to be skipped here too, so `task pkg:test` on a fresh
       # clone failed at "vitest: not found" rather than at an assertion.
       - task: pkg:install
@@ -211,7 +211,7 @@ tasks:
     desc: Install UI dependencies
     dir: '{{.UI}}'
     cmds:
-      # Bun is the INSTALLER and script runner only — never the runtime. Do not
+      # Bun is the toolchain, never the runtime (ADR-0103). Do not
       # add `--bun`: it exports NODE_OPTIONS=--bun, and Turbopack's PostCSS step
       # spawns a real `node`, which rejects the flag and fails the build.
       - bun install --frozen-lockfile
@@ -228,7 +228,10 @@ tasks:
     desc: Typecheck the UI, specs included (next build checks production code only)
     dir: '{{.UI}}'
     cmds:
-      - bun run type-check
+      # `bun check`: TypeScript 7's checker, built into the pinned Bun (ADR-0103).
+      # Extra arguments reach it, so `-- src/lib/foo.ts` checks one file and its
+      # imports. No `.tsbuildinfo`: every run checks the whole project, in seconds.
+      - bun run type-check {{.CLI_ARGS}}
 
   fe:test:
     desc: Run the UI test suite
@@ -248,6 +251,19 @@ tasks:
       restricted runtime role (ADR-0041). Needs PostgreSQL server binaries.
     cmds:
       - bash scripts/rls-test-db.sh
+
+  be:test:postgres:
+    desc: >-
+      The claim-queue suites' Postgres branch (production's SQL) against a
+      throwaway cluster. Needs PostgreSQL server binaries.
+    cmds:
+      # Serial, not -n logical: every test drops and recreates the same tables
+      # in the one scratch database.
+      - >-
+        bash scripts/rls-test-db.sh --exec "{{.PY}}" -X faulthandler -m pytest -q
+        tests/aiq_agent/common/test_claim_queue.py
+        tests/knowledge_layer_tests/test_ingest_queue.py
+        frontends/aiq_api/tests/test_research_queue_fair.py
 
   fe:test:shard:
     desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/4 task fe:test:shard)'
@@ -304,6 +320,15 @@ tasks:
     cmds:
       - bun run provision:audit-schemas {{.CLI_ARGS}}
 
+  fe:provision:flags:
+    desc: 'Check every registry feature flag exists in WorkOS (read-only; needs WORKOS_API_KEY)'
+    # Read-only and with no --apply: flag creation has no SDK binding, so the
+    # fix is always a dashboard step. A registry slug WorkOS lacks is off for
+    # every organization, which is why a missing one fails the run.
+    dir: '{{.UI}}'
+    cmds:
+      - bun scripts/check-workos-flags.ts
+
   fe:provision:workos-env:
     desc: 'Check WorkOS environment identity drift (add `-- --apply` to reconcile)'
     dir: '{{.UI}}'
@@ -335,20 +360,20 @@ tasks:
     desc: Install web (landing site) dependencies
     dir: '{{.WEB}}'
     cmds:
-      # npm, not bun: the Astro toolchain ships its own lockfile and bundler.
-      - npm ci
+      # Bun installs (ADR-0103); Node still runs Astro, as the scripts' shebangs say.
+      - bun install --frozen-lockfile
 
   web:check:
     desc: Astro typecheck + content validation for the web service
     dir: '{{.WEB}}'
     cmds:
-      - npm run check
+      - bun run check
 
   web:build:
     desc: Production build of the web service
     dir: '{{.WEB}}'
     cmds:
-      - npm run build
+      - bun run build
 
   web:verify:
     desc: Everything CI runs for the web tier
@@ -366,8 +391,8 @@ tasks:
       PUBLIC_INCLUDE_DRAFTS: '1'
       PUBLIC_SITE_URL: '{{.PREVIEW_SITE_URL | default "http://localhost:4321"}}'
     cmds:
-      - npm ci
-      - npm run build
+      - bun install --frozen-lockfile
+      - bun run build
 
   # ── riso art (frontends/web/art/riso — procedural prints for the site) ──────
   # The raw commands are `node art/riso/<script>.mjs` in frontends/web; every
@@ -535,6 +560,19 @@ tasks:
       # so a regression fails.
       - '{{.PY}} scripts/decision_eval_holdout.py {{.CLI_ARGS}}'
 
+  be:eval:intake:
+    desc: 'Erfassungs-Agent eval — the real intake agent reads a fixture Wohnbau with planted traps; precision, recall, traps, cost (NEEDS OPENROUTER_API_KEY and bun; skips without the key; no backend)'
+    cmds:
+      # The agent graph as the research worker runs it, a live model through
+      # common/openrouter.py, the fixture behind the reading tools and the BFF's
+      # own needs/record logic under bun (scripts/intake_eval/gate.ts). Exit 1 =
+      # a run missed a floor. A run of the boot model costs about a cent.
+      #   task be:eval:intake -- --runs 3 --out /tmp/intake_eval/before
+      #   task be:eval:intake -- --model anthropic/claude-sonnet-5.5
+      #   task be:eval:intake -- --report /tmp/intake_eval/before/report.json
+      # docs/contributing/testing-and-verification.md, "The intake eval".
+      - '{{.PY}} -m scripts.intake_eval.run {{.CLI_ARGS}}'
+
   be:eval:turn-census:
     desc: 'Turn census — run a chat question through the real agent and count every model call, token and second it cost; writes to /tmp/turn_census unless --out, takes --override KEY VALUE (NEEDS OPENROUTER_API_KEY and the corpus ingested locally)'
     cmds:
@@ -623,8 +661,8 @@ tasks:
   infra:types:
     desc: Typecheck the Pulumi program and its policy pack
     cmds:
-      - npm --prefix deploy/pulumi run typecheck
-      - npm --prefix deploy/pulumi/policy run typecheck
+      - bun run --cwd deploy/pulumi typecheck
+      - bun run --cwd deploy/pulumi/policy typecheck
 
   infra:test:
     desc: Manifest tests for the Pulumi program (no cluster, no stack credentials)
@@ -635,19 +673,19 @@ tasks:
     # string-valued, all invisible to tsc. These run the program under
     # `pulumi.runtime.setMocks` and assert the resource inputs directly.
     cmds:
-      - npm --prefix deploy/pulumi test
+      - bun run --cwd deploy/pulumi test
 
   infra:preview:
     desc: 'Pulumi preview (needs stack credentials)'
     dir: deploy/pulumi
     cmds:
-      - npm run preview
+      - bun run preview
 
   # ── standalone packages (packages/) ─────────────────────────────────────────
   #
   # Two implementations of the same spatial surface over IFC (ADR-0045), each
   # OUTSIDE the workspace it sits next to: `ifc-spatial` has its own
-  # package-lock.json and is not in the UI's bun workspace; `ifc-spatial-py` has
+  # bun.lock and is not in the UI's bun workspace; `ifc-spatial-py` has
   # its own uv.lock and is not in the root uv workspace. That is why they get
   # their own tasks instead of riding `fe:*` or `be:*` — neither toolchain can
   # see them.
@@ -660,9 +698,9 @@ tasks:
   pkg:install:
     desc: Install the standalone packages' own toolchains (own lockfiles, outside every workspace)
     cmds:
-      # `ci`, not `install`: the lockfile is the contract here exactly as it is
+      # `--frozen-lockfile`: the lockfile is the contract here exactly as it is
       # for the UI and for deploy/pulumi.
-      - npm --prefix packages/ifc-spatial ci
+      - bun install --frozen-lockfile --cwd packages/ifc-spatial
       # The Python package builds its env on first `uv run`; syncing here means
       # `pkg:test:py` measures the suite rather than the download.
       - uv sync --project packages/ifc-spatial-py --all-extras
@@ -670,11 +708,11 @@ tasks:
   pkg:test:ts:
     desc: 'packages/ifc-spatial: tests + typecheck (own lockfile, ~10s)'
     cmds:
-      - npm --prefix packages/ifc-spatial test
+      - bun run --cwd packages/ifc-spatial test
       # `typecheck` runs BOTH tsconfigs — the source one and tsconfig.test.json.
       # A test file that no longer type-checks is how an operator contract
       # silently stops being asserted.
-      - npm --prefix packages/ifc-spatial run typecheck
+      - bun run --cwd packages/ifc-spatial typecheck
 
   pkg:test:py:
     desc: 'packages/ifc-spatial-py: pytest against its own uv.lock (636 tests, ~4 min)'

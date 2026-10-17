@@ -307,7 +307,7 @@ describe('ChatArea', () => {
     expect(
       screen.getByText(/piloti opens after your organization is verified/i)
     ).toBeInTheDocument()
-    expect(screen.getByText(/sign in to unlock the project workspace/i)).toBeInTheDocument()
+    expect(screen.getByText(/sign in to open the project workspace/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sign in with.*sso/i })).toBeInTheDocument()
   })
 
@@ -1356,6 +1356,40 @@ describe('ChatArea — the live Herleitung', () => {
     )
     render(<ChatArea isAuthenticated={true} />)
     expect(herleitung().isInterrupted).toBe(false)
+  })
+
+  // The network is not the turn: when the socket gives up on it, the words the
+  // reader had are kept while the server's stored copy is fetched, and the
+  // status dock (not a card, not a vanished answer) says the connection is down.
+  test('keeps a partial answer on screen while the stored copy is fetched after a lost connection', () => {
+    use(
+      turnState(
+        [
+          question(),
+          answer('Die Fluchtweglänge beträgt', { isStreaming: true }),
+          {
+            id: 'err-1',
+            role: 'assistant',
+            content: '',
+            messageType: 'error',
+            errorData: { errorCode: 'connection.failed' },
+          },
+        ],
+        false,
+        {
+          isRecoveryPending: true,
+          turns: { 'user-1': { ...initialTurnView('user-1', 'c1'), phase: 'running' } },
+        }
+      )
+    )
+    render(<ChatArea isAuthenticated={true} />)
+
+    expect(screen.getByText(/Die Fluchtweglänge beträgt/)).toBeInTheDocument()
+    // Not a lost turn: it has words, and the server is being asked for the rest.
+    expect(herleitung().isInterrupted).toBe(false)
+    expect(screen.getByTestId('thread-status-dock')).toHaveTextContent(
+      /connection lost.*carries on/i
+    )
   })
 
   test('a turn this client lost track of, with nothing after it, is interrupted', () => {

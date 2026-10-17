@@ -1,0 +1,6 @@
+---
+features:
+  - >
+    Ask Piloti what changed between two Fassungen of a document, such as two
+    states of a floor plan, and it answers page by page with the values that
+    changed and the date each Fassung carries.

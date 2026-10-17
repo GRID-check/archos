@@ -82,3 +82,26 @@ export function buildFolderPath(parentPath: string | null | undefined, name: str
 export function folderMatchKey(value: string): string {
   return normalizeFolderName(value).normalize('NFC').toLowerCase()
 }
+
+/** A folder path keyed for comparison segment by segment, with {@link folderMatchKey}; `''` is the shelf root. */
+export function folderPathKey(path: string | null | undefined): string {
+  return (path ?? '')
+    .split('/')
+    .map(folderMatchKey)
+    .filter((segment) => segment.length > 0)
+    .join('/')
+}
+
+/** Longest folder description; mirrors `project_folders_description_length` (migration 0145). */
+export const FOLDER_DESCRIPTION_MAX_LENGTH = 500
+
+/**
+ * A folder description as it is stored: whitespace folded, trimmed, and `null`
+ * for one that says nothing, so an emptied field clears the description rather
+ * than storing a blank the database refuses. Too long is the caller's refusal,
+ * not a silent cut: a person's sentence is not shortened behind their back.
+ */
+export function normalizeFolderDescription(value: string | null | undefined): string | null {
+  const text = (value ?? '').replace(/\s+/g, ' ').trim()
+  return text ? text : null
+}

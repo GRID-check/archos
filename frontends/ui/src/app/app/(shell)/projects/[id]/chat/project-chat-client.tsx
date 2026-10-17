@@ -11,6 +11,7 @@ import { fileItemFromStatus } from '@/features/documents/lib/document-question'
 import { isUuid } from '@/lib/ids'
 import { useCitationPeek } from '@/features/documents/hooks/use-citation-peek'
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
+import { REVIEW_PARAM, showDocumentBeside } from '@/features/documents/lib/open-review'
 
 export interface ProjectChatClientProps {
   projectId: string
@@ -22,24 +23,12 @@ export interface ProjectChatClientProps {
   canCollaborate?: boolean
   /** Whether the reader holds `project:chat` on this project. */
   canChatInProject?: boolean
-  /** Whether shallow answers show the confidence chip (WorkOS `chat-confidence-chip`). */
-  showConfidenceChip: boolean
-  /** Whether answers show the per-answer thumbs row (WorkOS `answer-feedback`, WS-7). */
-  showAnswerFeedback: boolean
-  /**
-   * Whether the sessions panel shows the Deep Research section and per-session
-   * research labels (WorkOS `research-in-chat-history`, FB-10).
-   */
-  showResearchInHistory: boolean
   /** Project name for the thread-header breadcrumb + composer scope chip. */
   projectName: string | null
 }
 
 const ProjectChatContent = ({
   projectId,
-  showConfidenceChip,
-  showAnswerFeedback,
-  showResearchInHistory,
   projectName,
   canCollaborate = false,
   canChatInProject = true,
@@ -225,10 +214,41 @@ const ProjectChatContent = ({
     }
   }, [isAuthenticated, runParam, sessionParam, projectId, pathname, router, searchParams])
 
+  // `?doc=<id>&review=1[&mark=<id>]` is a link INTO a document's review, the
+  // one „Link kopieren" on a thread writes. There `doc` is the review's
+  // address, not an ask's subject: the document opens beside the chat, the
+  // pane opens the review and strips `review` and `mark`, and then `doc` goes
+  // too, so a reload does not read it as an ask. The ref holds the address
+  // until it has left the URL, so the prefill below never takes it in between.
+  // (In-app moves, a chat card's „Im Dokument zeigen", open the peek
+  // themselves and write `review` and `mark` alone: `open-review.ts`.)
+  const reviewDoc =
+    searchParams?.get(REVIEW_PARAM) && docPrefill && isUuid(docPrefill) ? docPrefill : null
+  const reviewDocRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (reviewDoc) {
+      reviewDocRef.current = reviewDoc
+      void showDocumentBeside(reviewDoc, { projectId, projectName, canCollaborate })
+      return
+    }
+    const held = reviewDocRef.current
+    if (!held) return
+    if (docPrefill !== held || !pathname) {
+      reviewDocRef.current = null
+      return
+    }
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
+    params.delete('doc')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [reviewDoc, docPrefill, projectId, projectName, canCollaborate, pathname, router, searchParams])
+
   useEffect(() => {
     // Files, IFC walls and applicable standards all land here: one Ask Piloti
     // pipe (`setComposerPrefill`). `doc` is the optional subject of that ask,
-    // not a second chat.
+    // not a second chat — unless it is a review link's address (above).
+    if (reviewDoc || (docPrefill !== null && docPrefill === reviewDocRef.current)) return
     const token = `${askPrefill ?? ''}|${docPrefill ?? ''}|${filePrefill ?? ''}`
     if ((!askPrefill && !docPrefill) || consumedAskRef.current === token) return
     consumedAskRef.current = token
@@ -254,7 +274,7 @@ const ProjectChatContent = ({
       const query = params.toString()
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
     }
-  }, [askPrefill, docPrefill, filePrefill, searchParams, pathname, router, setComposerPrefill])
+  }, [askPrefill, docPrefill, filePrefill, reviewDoc, searchParams, pathname, router, setComposerPrefill])
 
   const composerSubject = useChatStore((s) => s.composerSubject)
   const subjectId = composerSubject?.resourceId ?? docPrefill
@@ -304,9 +324,6 @@ const ProjectChatContent = ({
     <MainLayout
       isAuthenticated={isAuthenticated}
       onSignIn={signIn}
-      showConfidenceChip={showConfidenceChip}
-      showAnswerFeedback={showAnswerFeedback}
-      showResearchInHistory={showResearchInHistory}
       projectName={projectName}
       canCollaborate={canCollaborate}
       canChatInProject={canChatInProject}
@@ -315,10 +332,9 @@ const ProjectChatContent = ({
 }
 
 /**
- * Client half of the project chat route. The server page computes the chat
- * feature flags and passes them here; they are prop-drilled to the
- * feature-flagged surfaces (AgentResponse confidence chip and feedback row,
- * the sessions panel's research section) via MainLayout.
+ * Client half of the project chat route. The server page resolves what needs
+ * the session (the collaboration gate, the reader's `project:chat` right) and
+ * passes it here; it reaches the chat surfaces via MainLayout.
  */
 export const ProjectChatClient = (props: ProjectChatClientProps): ReactNode => {
   return (

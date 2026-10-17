@@ -31,6 +31,7 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { useTranslations } from '@/i18n'
+import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 
 interface CredentialView {
   id: string
@@ -353,9 +354,16 @@ export const LlmCredentialsCard: FC = () => {
         )}
         <Field>
           <FieldLabel htmlFor="byok-api-key">{t('byok.apiKey')}</FieldLabel>
+          {/* The key itself. `ph-no-capture` keeps PostHog's autocapture off this
+              element and the recorder from drawing it; the data attribute is the
+              same promise for tooling that looks for it (the block selector in
+              `lib/analytics/posthog.ts` matches both). A password field is already
+              masked by the recorder, and this is the second lock, not the first. */}
           <Input
             id="byok-api-key"
             type="password"
+            className={REPLAY_BLOCK_CLASS}
+            data-ph-no-capture="true"
             autoComplete="off"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}

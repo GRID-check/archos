@@ -359,3 +359,24 @@ describe('the rail', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 })
+
+describe('the footer on a phone', () => {
+  test('is pinned to the foot of the scroll region, so "Weiter" is never below the fold while typing', () => {
+    wizard()
+    expect(screen.getByTestId('wizard-nav').className).toMatch(/\bsticky\b.*\bbottom-0\b/)
+  })
+
+  test('the review step stacks its three buttons instead of pushing the page sideways', async () => {
+    const { user } = wizard()
+    await user.type(screen.getByLabelText(/The request/), 'Brandschutz prüfen')
+    await user.click(next())
+    await user.click(next())
+
+    const nav = screen.getByTestId('wizard-nav')
+    expect(nav.className).toMatch(/max-sm:flex-col-reverse/)
+    // The save group stacks too, with the primary on top (reverse order).
+    expect(screen.getByTestId('wizard-save-and-run').parentElement?.className ?? '').toMatch(
+      /max-sm:flex-col-reverse/,
+    )
+  })
+})

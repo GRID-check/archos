@@ -149,6 +149,12 @@ export const DOCUMENT_VERSION_EFFECTS = [
    * that overrides the rule above.
    */
   'openRevisionTask',
+  /**
+   * Tell the people who follow this document that a newer Fassung of it is
+   * published (`./fassung-notify`). A no-op for a first version. Detached and
+   * logged: it never fails the transition.
+   */
+  'announceNewFassung',
 ] as const
 export type DocumentVersionEffect = (typeof DOCUMENT_VERSION_EFFECTS)[number]
 
@@ -263,9 +269,10 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
      *
      * `from: null` because the row being acted on is the NEW version; the
      * previous one is superseded by the same transaction (see `promotes`). Born
-     * `published` and born approved: a person put the file there in their own
-     * session, which is the assertion, and a review round nobody asked for is
-     * not what „Datei hochladen" means. No inbox item for the same reason.
+     * `published` with `origin = 'upload'` and no approver: a person put the
+     * file there in their own session, which is the assertion, and a review
+     * round nobody asked for is not what „Datei hochladen" means (ADR-0104
+     * rule 6). No inbox item for the same reason.
      */
     from: null,
     to: 'published',
@@ -275,7 +282,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: {},
     auditAction: 'document.version.published',
     promotes: true,
-    effects: ['audit', 'eventHint'],
+    effects: ['audit', 'eventHint', 'announceNewFassung'],
   },
   {
     from: null,
@@ -334,8 +341,16 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     effects: ['openReviewInbox', 'audit', 'eventHint'],
   },
   {
+    /**
+     * „Freigeben" is one step (ADR-0104 rule 5): it approves the version AND
+     * makes it the one Piloti answers from. ADR-0054 kept approve and publish
+     * apart for "approve on Tuesday, issue on Friday"; in practice an approved
+     * file Piloti did not use confused people, because „freigegeben" means
+     * usable. A version still `approved` from before is published by the row at
+     * the end of this table.
+     */
     from: 'in_review',
-    to: 'approved',
+    to: 'published',
     op: 'approve',
     actor: 'human',
     permission: ['project:edit'],
@@ -345,7 +360,8 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     // with the current STAND, never a signature on what the reviewer saw.
     requires: { notSubmitter: true, ifMatch: true },
     auditAction: 'document.version.approved',
-    effects: ['resolveReviewInbox', 'audit', 'eventHint'],
+    promotes: true,
+    effects: ['resolveReviewInbox', 'ingestPublished', 'audit', 'eventHint', 'announceNewFassung'],
   },
   {
     from: 'in_review',
@@ -368,6 +384,8 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     effects: ['resolveReviewInbox', 'audit', 'eventHint'],
   },
   {
+    // Only a version approved before approval became one step reaches this:
+    // nothing lands in `approved` any more (ADR-0104 rule 5).
     from: 'approved',
     to: 'published',
     op: 'publish',
@@ -376,7 +394,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: {},
     auditAction: 'document.version.published',
     promotes: true,
-    effects: ['ingestPublished', 'audit', 'eventHint'],
+    effects: ['ingestPublished', 'audit', 'eventHint', 'announceNewFassung'],
   },
 ] as const satisfies readonly DocumentVersionTransition[]
 
@@ -416,6 +434,20 @@ export const AGENT_REACHABLE_OPS: readonly DocumentVersionOp[] = DOCUMENT_VERSIO
  */
 export const DOCUMENT_SUBMIT_ACTORS = ['human', 'agent'] as const
 export type DocumentSubmitActor = (typeof DOCUMENT_SUBMIT_ACTORS)[number]
+
+/**
+ * How a version began (migration 0137, ADR-0104).
+ *
+ * - `upload` — a person put the bytes there (`upload`, born `published`). The
+ *   person is the assertion; nobody reviewed it unless somebody asked.
+ * - `draft`  — it began as a draft (`create`, a fork), Piloti's or a person's
+ *   revision, and becomes `published` only through an approval.
+ *
+ * `document_versions_published_is_approved` demands an approver of a published
+ * `draft` and of nothing else, so an upload carries no approval nobody gave.
+ */
+export const DOCUMENT_VERSION_ORIGINS = ['upload', 'draft'] as const
+export type DocumentVersionOrigin = (typeof DOCUMENT_VERSION_ORIGINS)[number]
 
 /** Whether a document is listed by default, or has left the working set. */
 export const DOCUMENT_LIFECYCLES = ['active', 'archived'] as const
@@ -639,6 +671,14 @@ export const documentVersionViewSchema = z.object({
   createdBy: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /**
+   * Whether THIS reader may open or download the version's bytes
+   * (`…/versions/{id}/file`, `/content`). False for an earlier upload whose bytes
+   * no screening verdict on record judged (ADR-0086), unless the reader is its
+   * uploader or a reviewer. Only the version list carries it; absent reads as
+   * readable, and the routes decide again either way.
+   */
+  bytesReadable: z.boolean().optional(),
 })
 
 export type DocumentVersionView = z.infer<typeof documentVersionViewSchema>
@@ -648,6 +688,19 @@ export const documentVersionListResponseSchema = z.object({
   lifecycle: z.enum(DOCUMENT_LIFECYCLES),
   publishedVersionId: z.string().nullable(),
   versions: z.array(documentVersionViewSchema),
+  /**
+   * Who the newest version's open review round was sent to (the recipients of
+   * its unresolved `document.review_requested` items). Empty when no round is
+   * open. The rail says „Nächster Schritt: Freigabe durch …" with these, rather
+   * than guessing from the assignees.
+   */
+  reviewerUserIds: z.array(z.string()).optional(),
+  /**
+   * Display names for the user ids this listing mentions (every act on every
+   * version, and the reviewers above), so the rail names a person instead of
+   * „jemandem". An id the directory cannot resolve is absent.
+   */
+  people: z.array(z.object({ userId: z.string(), name: z.string() })).optional(),
 })
 
 export type DocumentVersionListResponse = z.infer<typeof documentVersionListResponseSchema>

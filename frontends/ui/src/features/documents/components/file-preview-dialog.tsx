@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslations } from '@/i18n'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { documentDisplayName } from '@/lib/documents/display-name'
+import type { FassungFacts } from '@/lib/documents/fassung'
 import type { DocumentScope } from './document-actions'
 import type { FileItem } from './project-file-workspace'
 import { FilePreviewPane } from './file-preview-pane'
@@ -18,12 +19,15 @@ interface FilePreviewDialogProps {
   /** Which corpus this document belongs to — decides the file operations' route. */
   scope?: DocumentScope
   onReingested?: (fileId: string, status: string) => void
-  onTagsUpdated?: (fileId: string, tags: string[]) => void
+  onTagsUpdated?: (fileId: string, tags: string[], topics?: string[]) => void
+  /** The pane asks for another document of this shelf to be opened here. */
+  onOpenDocument?: (fileId: string) => void
+  /** A link was confirmed or taken back: the Fassung facts of one of the two documents, so the listing moves both cards. */
+  onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
   /** The document was renamed in the pane's header menu. */
   onRenamed?: (fileId: string, displayName: string | null) => void
   /** The document was deleted in the pane's header menu. */
   onDeleted?: (fileId: string) => void
-  showMetadataPanel?: boolean
   /** Whether an `.ifc` preview offers the model workspace (`ifc-models`). */
   showModels?: boolean
   canCollaborate?: boolean
@@ -63,9 +67,10 @@ export function FilePreviewDialog({
   scope = 'files',
   onReingested,
   onTagsUpdated,
+  onOpenDocument,
+  onFassungChanged,
   onRenamed,
   onDeleted,
-  showMetadataPanel,
   showModels,
   canCollaborate,
 }: FilePreviewDialogProps) {
@@ -103,12 +108,18 @@ export function FilePreviewDialog({
         <DialogContent
           // Definite height, not `max-h-full` — the pane needs a bounded panel
           // so its scroll chain (body + both columns) has something to bite
-          // against. Mobile: a full-screen sheet. Desktop: centred, capped.
+          // against. A phone, upright or on its side: the whole screen, in
+          // `dvh` so Safari's toolbars never cover its foot. Desktop: centred,
+          // capped.
           //
           // `sm:max-w-[960px]` MUST carry the `sm:` prefix: DialogContent's base
           // class ends in `sm:max-w-lg`, so a plain `max-w-*` loses to it at the
           // exact breakpoint where it matters (see pdf-viewer-dialog.tsx).
-          className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-[85vh] sm:max-h-[85vh] sm:max-w-[960px] sm:rounded-2xl"
+          className="flex h-dvh max-h-dvh w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-[85dvh] sm:max-h-[85dvh] sm:max-w-[960px] sm:rounded-2xl phone:inset-0 phone:h-dvh phone:max-h-dvh phone:max-w-none phone:translate-x-0 phone:translate-y-0 phone:rounded-none phone:border-0"
+          // The pane lays the phone out itself (the full-screen reader, safe
+          // areas included), on its side as well as upright: a sheet grafted
+          // onto it would be a second header and a second close.
+          mobilePresentation="none"
           // The pane draws its own close control in the header, beside the
           // actions it belongs with. A second floating X would be two controls
           // for one job.
@@ -153,9 +164,10 @@ export function FilePreviewDialog({
             onClose={onClose}
             onReingested={onReingested}
             onTagsUpdated={onTagsUpdated}
+            onOpenDocument={onOpenDocument}
+            onFassungChanged={onFassungChanged}
             onRenamed={onRenamed}
             onDeleted={onDeleted}
-            showMetadataPanel={showMetadataPanel}
             showModels={showModels}
             canCollaborate={canCollaborate}
           />

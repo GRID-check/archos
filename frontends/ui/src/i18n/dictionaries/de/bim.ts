@@ -120,6 +120,8 @@ export const bim: typeof en.bim = {
     none: 'Wählen Sie ein Bauteil, um seine Eigenschaften zu sehen.',
     identity: 'Identität',
     globalId: 'GlobalId',
+    copyValue: 'Kopieren: {value}',
+    copied: 'Kopiert',
     ifcType: 'IFC-Typ',
     predefinedType: 'Vordefinierter Typ',
     typeName: 'Bauteiltyp',
@@ -201,7 +203,7 @@ export const bim: typeof en.bim = {
       save: 'Bestätigung speichern',
       cancel: 'Abbrechen',
       noteLabel: 'Warum das geklärt ist',
-      notePlaceholder: 'z. B. anhand des Plans geprüft, mit dem Brandschutzplaner abgestimmt …',
+      notePlaceholder: 'z. B. anhand der Zeichnung geprüft, mit dem Brandschutzplaner abgestimmt …',
     },
     card: {
       export: 'Offene Punkte als BCF',
@@ -361,6 +363,31 @@ export const bim: typeof en.bim = {
     loading: 'Modell wird geladen…',
     building: 'Gebäude wird aufgebaut…',
     ready: 'Das Modell ist da',
+    /**
+     * Die Werkzeugleiste auf dem Telefon. Hier steht der Name AUF der Taste,
+     * weil ein Finger keinen Tooltip hat: `tool.*` sind die kurzen
+     * Beschriftungen unter den Symbolen, die langen Namen bleiben die
+     * Zugriffsnamen. „Einpassen“ steckt in „Ganzes Modell einpassen“.
+     */
+    tool: {
+      fit: 'Einpassen',
+      more: 'Mehr',
+    },
+    more: 'Weitere Werkzeuge',
+    sheet: {
+      expand: 'Details einblenden',
+      collapse: 'Details ausblenden',
+    },
+    download: {
+      of: '{loaded} von {total}',
+      cancel: 'Abbrechen',
+      restart: 'Erneut laden',
+      cancelled: {
+        title: 'Laden abgebrochen',
+        description:
+          'Das Modell wurde nicht vollständig geladen und nicht auf dem Gerät gespeichert. Sie können es jederzeit erneut laden, am besten mit besserem Empfang.',
+      },
+    },
     rail: {
       show: 'Leiste einblenden',
       hide: 'Leiste ausblenden',
@@ -380,6 +407,8 @@ export const bim: typeof en.bim = {
     keyboardHint:
       'Pfeiltasten drehen, Umschalt mit Pfeiltaste verschiebt, Plus und Minus zoomen, F passt das Modell ein. Beim Messen setzt Eingabe einen Punkt, Esc bricht ab. Alle Bauteile stehen zusätzlich als Liste unter „Details“.',
     xray: 'Durchsichtig',
+    // Dieselbe Auskunft ohne den Namen davor, für die Zeile, die „Durchsichtig“ schon trägt.
+    xrayHint: 'Zuerst ein Bauteil auswählen oder eine markierte Antwort öffnen',
     xrayNeedsTarget: 'Durchsichtig — zuerst ein Bauteil auswählen oder eine markierte Antwort öffnen',
     view: {
       iso: 'Frei',
@@ -415,6 +444,9 @@ export const bim: typeof en.bim = {
       vertical: 'vertikal',
       first: 'Ersten Punkt anklicken',
       second: 'Zweiten Punkt anklicken — Esc bricht ab',
+      // Mit dem Finger: kein „Klick“, und keine Esc-Taste — das Werkzeug selbst bricht ab.
+      firstTouch: 'Ersten Punkt antippen',
+      secondTouch: 'Zweiten Punkt antippen — Messen beendet die Messung',
       clear: 'Messungen löschen',
       count: '{count} Messungen',
       countOne: '1 Messung',

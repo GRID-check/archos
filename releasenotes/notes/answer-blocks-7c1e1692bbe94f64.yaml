@@ -1,7 +1,7 @@
 ---
 features:
   - >
-    Chat answers can now lay out requirement checks, procedure steps, option
-    comparisons and key figures as dedicated blocks, with each check row showing
-    whether the value meets its limit. Copying or exporting an answer keeps the
-    status the page shows.
+    Chat answers can now show requirement checks, procedure steps, option
+    comparisons and key figures as their own blocks. Each check shows
+    whether its value meets the limit, and copying or exporting an answer
+    keeps that status.

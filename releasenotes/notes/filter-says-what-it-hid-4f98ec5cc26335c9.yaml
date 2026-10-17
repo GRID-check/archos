@@ -1,8 +1,9 @@
 ---
 fixes:
   - >
-    When a filter in Dateien matches nothing, the list now names the filter and
-    offers the way back, instead of saying the project has no documents.
+    When a filter in Dateien matches nothing, the list now names the filter
+    and offers a way back to the full list, instead of saying the project
+    has no documents.
   - >
     An empty Von Piloti filter explains what it would show: research reports and
     diagrams Piloti filed, not the documents you uploaded.

@@ -365,7 +365,7 @@ describe('ChatThinking', () => {
       // … and the "answer lost" copy must NOT appear while we are still checking.
       expect(screen.queryByText('Interrupted')).not.toBeInTheDocument()
       expect(
-        screen.queryByText('Connection briefly lost — the answer was dropped. Please resend.')
+        screen.queryByText('This answer was not finished, and the server has none. Please send the question again.')
       ).not.toBeInTheDocument()
     })
 
@@ -383,7 +383,7 @@ describe('ChatThinking', () => {
 
       expect(header().getByText('Interrupted')).toBeInTheDocument()
       expect(
-        screen.getByText('Connection briefly lost — the answer was dropped. Please resend.')
+        screen.getByText('This answer was not finished, and the server has none. Please send the question again.')
       ).toBeInTheDocument()
       expect(screen.queryByText('Fetching the answer')).not.toBeInTheDocument()
     })

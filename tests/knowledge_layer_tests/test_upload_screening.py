@@ -129,7 +129,9 @@ class TestTerms:
         verdict = screen_pages(pages, rules)
 
         gehalt, lohn = verdict.reasons
-        assert (gehalt.term, gehalt.count, gehalt.pages) == ("Gehalt", 26, list(range(1, 11)))
+        # Every page, not the first ten: each is a place a reviewer opens the document at.
+        assert (gehalt.term, gehalt.count, gehalt.pages) == ("Gehalt", 26, list(range(1, 14)))
+        assert gehalt.pages_truncated is False
         assert (lohn.term, lohn.count, lohn.pages) == ("Lohn", 1, [])
         assert gehalt.sample is None
 
@@ -167,13 +169,24 @@ class TestIban:
         [
             "AT61 1904 3002 3457 3202",  # wrong check
             "AT62 1904 3002 3457 3201",  # wrong check digits
-            "XAT611904300234573201",  # inside a longer token
             "AT6119043002345732011",  # one character too many for AT
             "XX61 1904 3002 3457 3201",  # no registered country
         ],
     )
     def test_an_invalid_or_embedded_candidate_does_not(self, text):
         assert _kinds(text, _rules(detectors=["iban"])) == []
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "XAT611904300234573201",  # a label stands against it: the country and the check digits decide
+            "IBAN:AT611904300234573201BIC",  # and a letter may follow
+            "AT61 1904 3002 34\u00ad57 3201",  # a soft hyphen inside it is not part of it
+            "AT61 1904 3002 3457-\n3201",  # a hyphen at a line break is not part of it
+        ],
+    )
+    def test_a_printed_iban_with_extraction_noise_matches(self, text):
+        assert _kinds(text, _rules(detectors=["iban"])) == ["iban"]
 
     def test_the_sample_is_masked(self):
         [reason] = screen_pages([(3, f"IBAN {_IBAN_AT}")], _rules(detectors=["iban"])).reasons
@@ -246,11 +259,31 @@ class TestCreditCard:
             "1111 1111 1111 1117",  # no major network starts with 1
             "94111111111111111",  # inside a longer digit run
             "4111 1111 1111 1111 1111 1111",  # inside a longer separated run
-            "Auftrag 12 4111 1111 1111 1111",  # a number before it in the same run
             "411111111111",  # too short
         ],
     )
     def test_an_invalid_or_embedded_card_does_not(self, text):
+        assert _kinds(text, _rules(detectors=["credit_card"])) == []
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Auftrag 12 4111 1111 1111 1111",  # a number before it in the same run is not part of it
+            "Karte 1 4111 1111 1111 1111 12/27",  # nor is a position, or an expiry date after it
+            "4111 11\u200b11 1111 1111",  # an invisible character inside a group
+        ],
+    )
+    def test_a_card_next_to_other_numbers_matches(self, text):
+        assert _kinds(text, _rules(detectors=["credit_card"])) == ["credit_card"]
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "4111\t1111\t1111\t1111",  # table cells are not one number
+            "5050 2798 6487 2514 6623 2488",  # a table of four-digit numbers gets no sliding window
+        ],
+    )
+    def test_table_cells_are_not_a_card(self, text):
         assert _kinds(text, _rules(detectors=["credit_card"])) == []
 
     def test_an_iban_is_not_read_as_a_card(self):
@@ -279,6 +312,7 @@ class TestQuarantineError:
 
         payload = _payload(quarantine_error(verdict))
 
+        assert "omitted" not in payload  # nothing was left out
         assert payload == {
             "reasons": [
                 {"kind": "term", "term": "Gehaltsabrechnung", "count": 1, "pages": [2]},
@@ -308,6 +342,7 @@ class TestQuarantineError:
         text = " ".join(f"Begriff{n:02d}" for n in range(15))
         payload = _payload(quarantine_error(screen_pages([(1, text)], rules)))
         assert len(payload["reasons"]) == screening.MAX_REASONS
+        assert payload["omitted"] == 5  # a short list is never shown as the whole one
 
     def test_ten_reasons_of_in_bounds_terms_fit_whole(self):
         terms = [f"{n:02d}" + "ä" * 78 for n in range(10)]
@@ -328,11 +363,61 @@ class TestQuarantineError:
         assert len(error) <= screening.MAX_ERROR_CHARS
         payload = _payload(error)
         assert 0 < len(payload["reasons"]) < 10
+        assert payload["omitted"] == 10 - len(payload["reasons"])
         assert payload["checked"] == "full"
+
+    def test_pages_are_cut_from_the_widest_reason_first_and_every_reason_stays(self):
+        # Ten reasons on fifty pages each cannot all fit: pages give way before
+        # any reason does, the widest first, and each cut reason says so.
+        terms = [f"Begriff{n:02d}" + "x" * 30 for n in range(9)]
+        reasons = [Reason(kind="term", term=term, count=50, pages=list(range(1, 51))) for term in terms]
+        reasons.append(Reason(kind="iban", count=1, pages=[7], sample="AT61 •••• •••• •••• 3201"))
+        whole = json.dumps({"reasons": [reason.as_json() for reason in reasons]}, ensure_ascii=False)
+        assert len(whole) > screening.MAX_ERROR_CHARS  # the premise: it does not fit as it is
+        error = quarantine_error(ScreeningVerdict(reasons=reasons))
+
+        assert len(error) <= screening.MAX_ERROR_CHARS
+        payload = _payload(error)
+        assert [reason.get("term", reason["kind"]) for reason in payload["reasons"]] == [*terms, "iban"]
+        for reason in payload["reasons"][:9]:
+            assert reason["pages_truncated"] is True
+            assert reason["pages"] == list(range(1, len(reason["pages"]) + 1))
+            assert len(reason["pages"]) >= 1
+        # The narrow reason was never the widest, so it keeps its page and no mark.
+        assert payload["reasons"][9]["pages"] == [7]
+        assert "pages_truncated" not in payload["reasons"][9]
+        # Cut evenly: no reason lists more than one page beyond another.
+        widths = [len(reason["pages"]) for reason in payload["reasons"][:9]]
+        assert max(widths) - min(widths) <= 1
+
+    def test_a_verdict_that_fits_keeps_every_page_and_no_mark(self):
+        verdict = ScreeningVerdict(reasons=[Reason(kind="term", term="Gehalt", count=40, pages=list(range(1, 41)))])
+        [reason] = _payload(quarantine_error(verdict))["reasons"]
+        assert reason["pages"] == list(range(1, 41))
+        assert "pages_truncated" not in reason
 
     def test_the_log_summary_names_kinds_and_counts_only(self):
         verdict = screen_pages([(1, f"Gehaltsabrechnung {_IBAN_AT}")], _rules(["Gehaltsabrechnung"], ["iban"]))
         assert screening.log_summary(verdict) == "term=1, iban=1"
+
+
+class TestReasonPages:
+    def test_a_reason_lists_every_page_it_was_found_on_up_to_the_cap(self):
+        pages = [(page, "Gehaltsabrechnung") for page in range(1, screening.MAX_REASON_PAGES + 1)]
+        [reason] = screen_pages(pages, _rules(["Gehaltsabrechnung"])).reasons
+        assert reason.pages == list(range(1, screening.MAX_REASON_PAGES + 1))
+        assert reason.pages_truncated is False
+
+    def test_past_the_cap_it_lists_the_first_pages_and_says_the_list_is_cut(self):
+        pages = [(page, f"IBAN {_IBAN_AT}") for page in range(screening.MAX_REASON_PAGES + 5, 0, -1)]
+        [reason] = screen_pages(pages, _rules(detectors=["iban"])).reasons
+        assert reason.pages == list(range(1, screening.MAX_REASON_PAGES + 1))
+        assert reason.pages_truncated is True
+        assert reason.count == screening.MAX_REASON_PAGES + 5
+        assert reason.as_json()["pages_truncated"] is True
+
+    def test_the_cap_holds_more_than_the_ten_pages_it_used_to(self):
+        assert screening.MAX_REASON_PAGES >= 50
 
 
 class TestDocumentPages:

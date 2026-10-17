@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { AnswerFeedback } from './AnswerFeedback'
 import { __clearAnswerFeedbackCache } from '../hooks/use-answer-feedback'
 
@@ -12,12 +13,15 @@ vi.mock('../store', () => ({
   }),
 }))
 
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
+
 const okJson = (body: unknown): Response =>
   ({ ok: true, status: 200, json: async () => body }) as unknown as Response
 
 const mockFetch = vi.fn()
 
 beforeEach(() => {
+  vi.mocked(capturePosthog).mockClear()
   __clearAnswerFeedbackCache()
   mockFetch.mockReset()
   // Default: hydration finds nothing, writes succeed.
@@ -336,6 +340,53 @@ describe('AnswerFeedback', () => {
     })
   })
 
+  describe('PostHog', () => {
+    test('records the verdict and the reason chip, once per change, and never the words', async () => {
+      const user = userEvent.setup()
+      render(<AnswerFeedback messageId="msg_1" conversationId="conv_1" />)
+
+      await user.click(downThumb())
+      await waitFor(() =>
+        expect(capturePosthog).toHaveBeenCalledWith('answer_feedback_submitted', {
+          verdict: 'down',
+          reason: null,
+          // Joins the vote to its turn and to the Langfuse score for it.
+          message_id: 'msg_1',
+          conversation_id: 'conv_1',
+        }),
+      )
+
+      await user.click(screen.getByRole('radio', { name: 'Wrong source' }))
+      await waitFor(() =>
+        expect(capturePosthog).toHaveBeenCalledWith('answer_feedback_submitted', {
+          verdict: 'down',
+          reason: 'wrong_source',
+          message_id: 'msg_1',
+          conversation_id: 'conv_1',
+        }),
+      )
+
+      // The note saves the same vote again: no third event, and the words stay home.
+      await user.type(screen.getByLabelText('Anything else?'), 'Brüstungshöhe nicht gefunden.')
+      await user.click(screen.getByRole('button', { name: 'Send note' }))
+      await waitFor(() => expect(postCalls()).toHaveLength(3))
+      expect(capturePosthog).toHaveBeenCalledTimes(2)
+      expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toContain('Brüstungshöhe')
+    })
+
+    test('records nothing for a retraction or a rejected vote', async () => {
+      const user = userEvent.setup()
+      render(<AnswerFeedback messageId="msg_1" conversationId="conv_1" />)
+      await user.click(upThumb())
+      await waitFor(() => expect(capturePosthog).toHaveBeenCalledTimes(1))
+
+      vi.mocked(capturePosthog).mockClear()
+      await user.click(upThumb())
+      await waitFor(() => expect(deleteCalls()).toHaveLength(1))
+      expect(capturePosthog).not.toHaveBeenCalled()
+    })
+  })
+
   describe('persistence', () => {
     test('reverts the optimistic vote when the server rejects it', async () => {
       const user = userEvent.setup()
@@ -389,6 +440,19 @@ describe('AnswerFeedback', () => {
       await waitFor(() => expect(mockFetch).toHaveBeenCalled())
       const gets = mockFetch.mock.calls.filter(([url]) => String(url).includes('conversationId='))
       expect(gets).toHaveLength(1)
+    })
+  })
+
+  describe('touch', () => {
+    test('the thumbs sit beside each other, so each GROWS to 44px instead of borrowing a catchment', () => {
+      render(<AnswerFeedback messageId="msg_1" conversationId="conv_1" />)
+
+      for (const name of ['Mark this answer as helpful', 'Mark this answer as not helpful']) {
+        const thumb = screen.getByRole('button', { name })
+        expect(thumb).toHaveClass('pointer-coarse:size-11')
+        // An overhanging catchment would hand a tap on one thumb to the other.
+        expect(thumb.className).not.toMatch(/touch-target/)
+      }
     })
   })
 })

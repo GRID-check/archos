@@ -28,9 +28,10 @@ import { RisoPrint } from '@/components/brand/riso-print'
 import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
 import { EmptyState } from '@/components/ui/empty-state'
-import { PageHeader } from '@/components/ui/page-header'
+import { ItemList } from '@/components/ui/item'
 import { SearchField } from '@/components/ui/search-field'
 import { SectionLabel } from '@/components/ui/section-label'
+import { projectMatchesQuery } from '@/features/projects/lib/project-search'
 import { splitForResume } from '@/features/projects/lib/resume-selection'
 import {
   countByStatus,
@@ -80,6 +81,9 @@ function SectionHeading({ id, children, count }: { id: string; children: string;
   )
 }
 
+/** Only work in progress takes a rail slot; a paused or closed project keeps its place in the list (ADR-0098). */
+const isRailable = (project: Project): boolean => project.status === 'active'
+
 export function ProjectsGrid({
   projects,
   docCounts,
@@ -90,24 +94,31 @@ export function ProjectsGrid({
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>(() => defaultProjectStatusFilter(projects))
   const statusCounts = useMemo(() => countByStatus(projects), [projects])
-  // Offered only once there is something to tell apart: a list with no closed
-  // project needs no control that would only ever show one answer.
-  const showStatusFilter = statusCounts.closed > 0
+  // Offered only once there is something to tell apart: a list of active
+  // projects alone needs no control that would only ever show one answer. A
+  // segment with nothing in it is left out, except Aktiv and Alle.
+  const showStatusFilter = statusCounts.closed > 0 || statusCounts.paused > 0
+  const statusOptions = PROJECT_STATUS_FILTERS.filter(
+    (option) => option === 'active' || option === 'all' || statusCounts[option] > 0
+  )
+  // A segment that emptied (its last project moved) is gone, so it is no longer
+  // what the list shows either.
+  const activeFilter: ProjectStatusFilter = statusOptions.includes(statusFilter) ? statusFilter : 'all'
 
   const needle = query.trim().toLowerCase()
   const isSearching = needle.length > 0
 
   const filtered = useMemo(() => {
-    const inStatus = showStatusFilter ? filterProjectsByStatus(projects, statusFilter) : projects
+    const inStatus = showStatusFilter ? filterProjectsByStatus(projects, activeFilter) : projects
     if (!needle) return inStatus
-    return inStatus.filter((project) => project.name.toLowerCase().includes(needle))
-  }, [projects, needle, statusFilter, showStatusFilter])
+    return inStatus.filter((project) => projectMatchesQuery(project, needle))
+  }, [projects, needle, activeFilter, showStatusFilter])
   const emptyInStatus = showStatusFilter && !isSearching && filtered.length === 0
 
   // One helper serves both modes: zero rail slots turns the split into "order
   // everything by recency", which is exactly what a result list wants too.
   const { resume, rest, basis } = useMemo(
-    () => splitForResume(filtered, viewerActivity, isSearching ? 0 : undefined),
+    () => splitForResume(filtered, viewerActivity, isSearching ? 0 : undefined, isRailable),
     [filtered, viewerActivity, isSearching],
   )
 
@@ -124,36 +135,40 @@ export function ProjectsGrid({
 
   return (
     <div>
-      <PageHeader
-        className="min-h-9 sm:items-center"
-        title={t('list.heading')}
-        action={
-          <div className="flex w-full items-center gap-2.5 sm:w-auto">
-            {hasProjects && (
-              // The one search molecule — magnifier + input with the phone
-              // keyboard already told what Enter does. Its inner field is `h-9`
-              // on the canonical `rounded-xl` input, so the header keeps the
-              // height the hand-rolled `h-9` field had; `min-h-9` on the header
-              // below reserves it either way. No clear control: with none, the
-              // molecule renders no clear button, exactly like before.
-              <SearchField
-                value={query}
-                onChange={setQuery}
-                placeholder={t('list.searchPlaceholder')}
-                label={t('list.searchAria')}
-                className="w-full sm:w-64"
-              />
-            )}
-            {/* Primary near-black action — Button default variant consumes --primary. */}
-            <CreateProjectDialog defaultOpen={autoOpenCreate} tourAnchor={TOUR_ANCHORS.createProject} />
-          </div>
-        }
-      />
+      {/* Title and the one primary action share the first line at every width;
+          the search takes its own line below on a phone and sits left of the
+          action from `sm`. The page header primitive cannot say that (it stacks
+          title over action below `sm`, which is what clipped „Neues Projekt“
+          beside a full-width field), so this is a grid of three: title, search,
+          action, placed per breakpoint. The h1 is the ramp's page title. */}
+      <header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-x-2.5">
+        <h1 className="min-w-0 text-balance text-xl font-semibold tracking-tight">{t('list.heading')}</h1>
+        {hasProjects && (
+          // The one search molecule: magnifier + input with the phone keyboard
+          // already told what Enter does. It matches name, address, Gemeinde and
+          // client (`projectMatchesQuery`), which is what an architect on site
+          // remembers a project by. The reset control is for a thumb that has
+          // just typed a wrong word; 44px on touch.
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder={t('list.searchPlaceholder')}
+            label={t('list.searchAria')}
+            clearLabel={t('list.searchReset')}
+            inputClassName="pointer-coarse:pr-11"
+            className="col-span-2 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:w-64"
+          />
+        )}
+        {/* Primary near-black action — Button default variant consumes --primary. */}
+        <div className="col-start-2 row-start-1 sm:col-start-3">
+          <CreateProjectDialog defaultOpen={autoOpenCreate} tourAnchor={TOUR_ANCHORS.createProject} />
+        </div>
+      </header>
 
       {showStatusFilter && (
         <ToggleGroup
           type="single"
-          value={statusFilter}
+          value={activeFilter}
           onValueChange={(value) => {
             if (isProjectStatusFilter(value)) setStatusFilter(value)
           }}
@@ -163,7 +178,7 @@ export function ProjectsGrid({
           className="mt-5"
           data-testid="project-status-filter"
         >
-          {PROJECT_STATUS_FILTERS.map((option) => (
+          {statusOptions.map((option) => (
             <ToggleGroupItem key={option} value={option} data-testid={`project-status-filter-${option}`}>
               {t(`list.filter.${option}`)}
               <CountPill>{statusCounts[option]}</CountPill>
@@ -184,7 +199,7 @@ export function ProjectsGrid({
         ) : emptyInStatus ? (
           <EmptyState
             variant="bare"
-            title={statusFilter === 'closed' ? t('list.noneInFilter.closed') : t('list.noneInFilter.active')}
+            title={t(`list.noneInFilter.${activeFilter === 'all' ? 'active' : activeFilter}`)}
             description={t('list.noneInFilter.description')}
             action={
               <Button variant="outline" size="sm" onClick={() => setStatusFilter('all')}>
@@ -210,32 +225,54 @@ export function ProjectsGrid({
               <SectionHeading id="projects-results" count={rest.length}>
                 {t('list.results.heading')}
               </SectionHeading>
-              {/* `space-y-1`: the rows are full-border rounded pills now, so they
-                  take a 4px gap rather than touching and doubling the seam. */}
-              <ul className="-mx-3 space-y-1">{rest.map(renderRow)}</ul>
+              {/* One connected list: `ItemList` rounds only the outer corners and
+                  draws the hairlines between rows. `-mx-3` puts the row content on
+                  the heading's left edge. */}
+              <ItemList as="ul" className="-mx-3 bg-card">
+                {rest.map(renderRow)}
+              </ItemList>
             </section>
           )
         ) : (
           // `gap-8` is the documented gap between major sections; whitespace
           // does the separating, so neither heading needs a rule under it.
           <div className="flex flex-col gap-8 animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none">
-            <section aria-labelledby="projects-resume">
-              <SectionHeading id="projects-resume">
-                {basis === 'activity' ? t('list.resume.heading') : t('list.resume.fallbackHeading')}
-              </SectionHeading>
-              {/* The staple project card, unchanged — the rail is a selection
-                  and an ordering, not a new kind of card. */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-                {resume.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    docCount={docCounts[project.id] ?? 0}
-                    activityAt={viewerActivity[project.id]}
-                  />
-                ))}
-              </div>
-            </section>
+            {resume.length > 0 && (
+              <section aria-labelledby="projects-resume">
+                <SectionHeading id="projects-resume">
+                  {basis === 'activity' ? t('list.resume.heading') : t('list.resume.fallbackHeading')}
+                </SectionHeading>
+                {/* The staple project card, unchanged — the rail is a selection
+                    and an ordering, not a new kind of card. */}
+                {/* On a phone the rail is ONE row you swipe, not three cards
+                    stacked: stacked, they pushed the list below the first
+                    screen, and on site the question is "which of my two or three
+                    projects" and then "everything else". The next card peeks
+                    (84%) so the row says it scrolls. From `sm` on a tall screen it
+                    is the grid it always was; a phone on its side (852 x 393)
+                    keeps the row, because three cards stacked in two columns
+                    fill its whole height. The vertical padding is the room the card's
+                    shadow and lift need inside a scroll container, which clips
+                    on both axes. */}
+                <div
+                  data-testid="projects-resume-rail"
+                  className="scrollbar-hide -mx-4 -my-2 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 py-2 sm:[@media(min-height:32rem)]:m-0 sm:[@media(min-height:32rem)]:grid sm:[@media(min-height:32rem)]:grid-cols-2 sm:[@media(min-height:32rem)]:gap-6 sm:[@media(min-height:32rem)]:overflow-visible sm:[@media(min-height:32rem)]:p-0 lg:[@media(min-height:32rem)]:grid-cols-3"
+                >
+                  {resume.map((project) => (
+                    <div
+                      key={project.id}
+                      className="w-[84%] shrink-0 snap-start max-sm:only:w-full sm:w-72 sm:[@media(min-height:32rem)]:w-auto"
+                    >
+                      <ProjectCard
+                        project={project}
+                        docCount={docCounts[project.id] ?? 0}
+                        activityAt={viewerActivity[project.id]}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {rest.length > 0 && (
               <section aria-labelledby="projects-more">
@@ -243,9 +280,11 @@ export function ProjectsGrid({
                     MINUS the rail, so an "all" heading would sit above a count
                     that disagrees with the page. */}
                 <SectionHeading id="projects-more" count={rest.length}>
-                  {t('list.more.heading')}
+                  {resume.length > 0 ? t('list.more.heading') : t(`list.filter.${activeFilter}`)}
                 </SectionHeading>
-                <ul className="-mx-3 space-y-1">{rest.map(renderRow)}</ul>
+                <ItemList as="ul" className="-mx-3 bg-card">
+                  {rest.map(renderRow)}
+                </ItemList>
               </section>
             )}
           </div>

@@ -38,19 +38,52 @@ interface SubjectMembership {
 }
 
 /**
- * A user's membership in an organization, with its role.
+ * A user's membership in an organization, with its role, or `null` when WorkOS
+ * ANSWERED that there is none. A lookup that could not be answered throws.
+ *
+ * For a caller whose response to "not a member" cannot be undone (the push job
+ * removes the person's devices): a WorkOS hiccup must not read as having left.
+ * Callers that only need a fail-closed yes/no take {@link resolveSubjectMembership}.
  *
  * Cached under a key distinct from `membership:` (used by session resolution,
  * which stores only the id) so the two never clobber each other's shape.
+ * "Not a member" is cached for the short negative TTL; a thrown lookup is not
+ * cached at all, so the next request asks again.
+ */
+export async function lookupSubjectMembership(
+  organizationId: string,
+  userId: string
+): Promise<SubjectMembership | null> {
+  return getCached(
+    `membership-role:${organizationId}:${userId}`,
+    MEMBERSHIP_TTL_MS,
+    async () => {
+      const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
+        userId,
+        organizationId,
+        limit: 1,
+      })
+      const membership = memberships.data[0]
+      if (!membership) return null
+      return {
+        organizationMembershipId: membership.id,
+        role: membership.role?.slug ?? null,
+      } satisfies SubjectMembership
+    },
+    { negativeTtlMs: MEMBERSHIP_NEGATIVE_TTL_MS }
+  )
+}
+
+/**
+ * A user's membership in an organization, with its role; `null` when there is
+ * none OR when the lookup failed. Fail closed, for the sharing decisions and
+ * pickers, where "could not ask" must deny.
  *
- * "Not a member" (WorkOS answered, with nothing) is cached for the short
- * negative TTL. "Could not ask" is not cached at all: it is caught outside
- * `getCached`, so the next request asks again. Caught inside the loader, a
- * single failed lookup was stored as "not a member", and the colleague vanished
- * from every picker for the negative TTL.
+ * The failure is caught outside `getCached`, so it is never stored. Caught
+ * inside the loader, a single failed lookup was stored as "not a member", and
+ * the colleague vanished from every picker for the negative TTL.
  *
- * "Could not ask" answers `null` by default, the same as "not a member". An
- * unattended caller that can retry passes `{ onError: 'throw' }` and gets a
+ * An unattended caller that can retry passes `{ onError: 'throw' }` and gets a
  * {@link TransientAuthzError} instead, so a WorkOS blip is never read as a
  * definite "no".
  */
@@ -60,24 +93,7 @@ export async function resolveSubjectMembership(
   options: AuthzLookupOptions = {}
 ): Promise<SubjectMembership | null> {
   try {
-    return await getCached(
-      `membership-role:${organizationId}:${userId}`,
-      MEMBERSHIP_TTL_MS,
-      async () => {
-        const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
-          userId,
-          organizationId,
-          limit: 1,
-        })
-        const membership = memberships.data[0]
-        if (!membership) return null
-        return {
-          organizationMembershipId: membership.id,
-          role: membership.role?.slug ?? null,
-        } satisfies SubjectMembership
-      },
-      { negativeTtlMs: MEMBERSHIP_NEGATIVE_TTL_MS }
-    )
+    return await lookupSubjectMembership(organizationId, userId)
   } catch (error) {
     if (options.onError === 'throw') {
       throw new TransientAuthzError('membership', { cause: error })

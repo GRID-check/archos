@@ -23,7 +23,9 @@ import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CountPill } from '@/components/ui/count-pill'
+import { Item } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FileName } from './file-name'
 import { Spinner } from '@/components/ui/spinner'
 import { AnimatePresence, motion, motionQuick } from '@/components/motion'
 import { BackControl } from '@/components/shell/back-link'
@@ -34,6 +36,8 @@ import { cn } from '@/lib/utils'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
 import { FolderAccessMark, FolderReadOnlyBadge, useFolderOwnAccessLabel } from './folder-access-mark'
+import { FolderReadState } from './folder-read-state'
+import type { KnowledgeTally } from '../lib/folder-knowledge'
 import type { FolderItem } from './project-file-workspace'
 
 /**
@@ -128,7 +132,14 @@ export function FolderBreadcrumbRow({
   const parentLabel = parent ? parent.name : t('folders.allFiles')
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-card/50 px-4 py-2.5 backdrop-blur-sm">
+    <div
+      // On a phone the row PINS to the top of the list. It is the list's first
+      // child, so it used to scroll with the cards, and the moment the list
+      // overflowed the short screen under the fixed header a swipe left it
+      // half-hidden under the controls. Pinned, it is whole or gone, never cut.
+      className="flex shrink-0 items-center justify-between gap-2 border-b bg-card/50 px-4 py-2.5 backdrop-blur-sm phone:sticky phone:top-0 phone:z-10 phone:bg-background phone:py-1.5"
+      data-testid="folder-breadcrumb-row"
+    >
       <div className="flex min-w-0 items-center gap-2">
         {/*
           Up one level, as its own control rather than as a breadcrumb segment.
@@ -155,7 +166,7 @@ export function FolderBreadcrumbRow({
         <BreadcrumbList className="flex-nowrap overflow-x-auto">
           <BreadcrumbItem>
             {currentFolderId === null ? (
-              <BreadcrumbPage className="font-medium">{t('folders.allFiles')}</BreadcrumbPage>
+              <BreadcrumbPage className="whitespace-nowrap font-medium">{t('folders.allFiles')}</BreadcrumbPage>
             ) : (
               <BreadcrumbLink asChild>
                 <button
@@ -259,7 +270,8 @@ function NewFolderControl({
       <PopoverTrigger asChild>
         <Button type="button" variant="ghost" size="sm" className="gap-1.5">
           <FolderPlus className="size-4" aria-hidden />
-          {t('folders.newFolder')}
+          {/* A glyph on a phone: the path row has the width for where you are or for two words, and where you are wins. */}
+          <span className="phone:sr-only">{t('folders.newFolder')}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 p-2">
@@ -297,6 +309,11 @@ interface FolderTileProps {
   itemCount: number
   /** Most recent child's timestamp — the "last change" for this folder, like file cards show file time. */
   lastModified?: string | null
+  /**
+   * Where the folder's whole subtree stands with Piloti (`subtreeTallies`): a
+   * dot beside the name on a tile, the dot and its words on a list-view row.
+   */
+  knowledge?: KnowledgeTally
   onOpen: (id: string) => void
   onRenameFolder: FolderNavProps['onRenameFolder']
   onDeleteFolder: FolderNavProps['onDeleteFolder']
@@ -418,7 +435,7 @@ function FolderActionsMenu({
           type="button"
           aria-label={t('folders.actionsFor', { name: folder.name })}
           title={t('folders.actions')}
-          className="hover:bg-accent focus-visible:ring-ring flex size-7 shrink-0 items-center justify-center rounded-sm transition-opacity duration-snap ease-out focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 pointer-coarse:size-11 motion-reduce:transition-none md:opacity-0 md:group-hover:opacity-100 data-[state=open]:opacity-100"
+          className="hover:bg-accent focus-visible:ring-ring flex size-7 shrink-0 items-center justify-center rounded-sm transition-opacity duration-snap ease-out focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 pointer-coarse:size-11 pointer-coarse:opacity-100 motion-reduce:transition-none md:opacity-0 md:group-hover:opacity-100 data-[state=open]:opacity-100"
           data-testid={`folder-actions-${folder.id}`}
         >
           <MoreHorizontal className="size-3.5" aria-hidden />
@@ -443,6 +460,21 @@ function FolderActionsMenu({
 }
 
 /**
+ * Put on the grid that holds folder tiles: below `phone` each one spans the
+ * row, so folders read as a list ahead of the files. The CELL is whatever the
+ * context menu wraps the tile in, which this file does not own, so the grid
+ * finds it by the mark the tile carries.
+ */
+export const FOLDER_ROWS_ON_PHONE = 'phone:[&>*:has([data-folder-tile])]:col-span-full'
+
+/**
+ * The folder glyph's well: 124px of media on a card, a 44px square beside the
+ * name on a phone, where the tile is a row (see {@link FolderCard}).
+ */
+const FOLDER_WELL =
+  'flex h-[124px] items-center justify-center bg-muted/30 phone:size-10 phone:h-10 phone:shrink-0 phone:rounded-lg phone:border-0'
+
+/**
  * A folder as a grid tile — visually DISTINCT from {@link FileCard}.
  *
  * A file card shows the document itself: a page preview, a thumbnail, or the
@@ -462,6 +494,7 @@ export function FolderCard({
   folder,
   itemCount,
   lastModified,
+  knowledge,
   onOpen,
   onRenameFolder,
   onDeleteFolder,
@@ -490,17 +523,21 @@ export function FolderCard({
   return (
     <GridTileShell
       interactive
+      // On a phone a folder is a row across the grid, not a 166px tile: the
+      // first screen shows where the files are before it shows what holds them.
+      // The grid spans it (`FOLDER_ROWS_ON_PHONE`, found by this mark).
+      data-folder-tile=""
       // A drag has to say where it will land, or it is a guess with a cursor.
-      className={cn('group', drop.isOver && 'ring-ring bg-accent ring-2')}
+      className={cn('group phone:bg-card phone:[contain-intrinsic-block-size:auto_56px]', drop.isOver && 'ring-ring bg-accent ring-2')}
       data-testid={`folder-card-${folder.id}`}
       data-drop-over={drop.isOver ? '' : undefined}
       // Source as well as target: a folder is moved by dragging it onto
       // another, which is the same gesture that moves a document.
-      {...(onDropFolder && !readOnly ? folderDragProps(folder.id) : {})}
+      {...(onDropFolder && !readOnly && !editing ? folderDragProps(folder.id) : {})}
       {...drop.dropProps}
     >
       <div
-        className="absolute right-1.5 top-1.5 z-[1] md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-quick ease-out motion-reduce:transition-none"
+        className="absolute right-1.5 top-1.5 z-[1] phone:top-1/2 phone:-translate-y-1/2 pointer-coarse:opacity-100 md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-quick ease-out motion-reduce:transition-none"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
@@ -508,14 +545,22 @@ export function FolderCard({
           <FolderActionsMenu folder={folder} onStartRename={() => setEditing(true)} onDeleteFolder={onDeleteFolder} />
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => onOpen(folder.id)}
-        aria-label={openLabel}
-        className="flex h-full w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      {/*
+        THE NAME FIELD IS NEVER INSIDE THE OPEN BUTTON.
+
+        It was, and every click into the field to place the caret bubbled to
+        the button and opened the folder (#1055). An <input> inside a <button>
+        is invalid HTML besides. While renaming, the same body renders in a
+        plain wrapper and nothing on the tile opens the folder; the list row
+        swaps its whole content for the editor for the same reason.
+      */}
+      <FolderCardFrame
+        editing={editing}
+        onOpen={() => onOpen(folder.id)}
+        openLabel={openLabel}
       >
-        <GridTileBody className="flex-1 p-0">
-          <GridTileMedia className="flex h-[124px] items-center justify-center bg-muted/30">
+        <GridTileBody className="flex-1 p-0 phone:flex phone:items-center phone:gap-3 phone:bg-transparent phone:p-2 phone:shadow-none">
+          <GridTileMedia className={FOLDER_WELL}>
             {/*
               ONE GLYPH, AND NO SECOND MOTION FOR ONE GESTURE.
 
@@ -537,36 +582,79 @@ export function FolderCard({
               own `whileHover`), the cursor changes, and the label reads as a
               folder because a folder is drawn in the well.
             */}
-            <Folder className="size-10 text-muted-foreground/60" strokeWidth={1.4} aria-hidden />
+            <Folder className="size-10 text-muted-foreground/60 phone:size-5" strokeWidth={1.4} aria-hidden />
           </GridTileMedia>
-          <div className="px-3.5 pb-3 pt-[11px]">
+          <div className="px-3.5 pb-3 pt-[11px] phone:min-w-0 phone:flex-1 phone:p-0">
             {editing ? (
               <FolderNameEditor folder={folder} onRenameFolder={onRenameFolder} onDone={() => setEditing(false)} />
             ) : (
               <div className="flex min-w-0 items-center gap-1.5">
                 {lockLabel && <FolderAccessMark label={lockLabel} testId={`folder-lock-${folder.id}`} />}
-                <p className="truncate text-sm font-medium leading-tight text-foreground" title={folder.name}>
-                  {folder.name}
+                <p className="min-w-0 text-sm font-medium leading-tight text-foreground phone:text-[15px]">
+                  <FileName text={folder.name} />
                 </p>
                 {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
+                {/* The dot alone, after the name: what a folder holds at a
+                    glance, without a line of words on every tile. */}
+                <FolderReadState tally={knowledge} dotOnly className="ml-auto" />
               </div>
+            )}
+            {/* What belongs in it, in the folder owner's words: one quiet line,
+                whole on hover. */}
+            {!editing && folder.description && (
+              <p
+                className="mt-1 truncate text-xs leading-tight text-muted-foreground"
+                title={folder.description}
+                data-testid={`folder-description-${folder.id}`}
+              >
+                {folder.description}
+              </p>
             )}
           </div>
         </GridTileBody>
-        <GridTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
-          <span className="shrink-0 tabular-nums">{t('folders.items', { count: String(itemCount) })}</span>
-          {lastModified && (
-            <>
-              <span aria-hidden className="text-muted-foreground/40">
-                ·
+        {/* On a phone the count sits at the row's right, clear of the ⋯ (44px
+            on a coarse pointer), and the age stays in the detail view: the row
+            has the width for the name or for the date, and the name wins. */}
+        <GridTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:mt-0 phone:w-auto phone:shrink-0 phone:py-0 phone:pl-0 phone:pr-14">
+          <span className="min-w-0 truncate tabular-nums">
+            {t('folders.items', { count: itemCount })}
+            {lastModified && (
+              <span className="phone:hidden">
+                <span aria-hidden className="mx-1.5 text-muted-foreground/40">
+                  ·
+                </span>
+                <TimeAgo date={lastModified} locale={locale} className="tabular-nums" />
               </span>
-              <TimeAgo date={lastModified} locale={locale} className="shrink-0 tabular-nums" />
-            </>
-          )}
-          <span className="flex-1" />
+            )}
+          </span>
         </GridTileFooter>
-      </button>
+      </FolderCardFrame>
     </GridTileShell>
+  )
+}
+
+/** The tile's open button, or a plain box with the same layout while the name is being edited. */
+function FolderCardFrame({
+  editing,
+  onOpen,
+  openLabel,
+  children,
+}: {
+  editing: boolean
+  onOpen: () => void
+  openLabel: string
+  children: ReactNode
+}): JSX.Element {
+  if (editing) return <div className="flex h-full w-full flex-col text-left phone:flex-row phone:items-center">{children}</div>
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={openLabel}
+      className="flex h-full w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 phone:flex-row phone:items-center"
+    >
+      {children}
+    </button>
   )
 }
 
@@ -579,6 +667,7 @@ export function FolderRow({
   folder,
   itemCount,
   lastModified,
+  knowledge,
   onOpen,
   onRenameFolder,
   onDeleteFolder,
@@ -643,12 +732,15 @@ export function FolderRow({
    * motions for one navigation, compounding into a wobble. The level owns the
    * entrance; a row inside it is just content.
    */
+  // One row of the folder run, which `file-browser-pane` draws as an `ItemList`.
+  // The list clips the outer corners and draws the hairlines, so the row carries
+  // no radius, border or shadow of its own. A drop target is marked inside its
+  // box (`ring-inset`): an outer ring on the first or last row would be clipped.
   return (
-    <div
+    <Item
       className={cn(
-        'group border-border bg-muted/40 flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm',
-        'hover:bg-accent transition-[background-color,box-shadow] duration-quick ease-out hover:shadow-sm motion-reduce:transition-none',
-        drop.isOver && 'ring-ring bg-accent ring-2',
+        'group w-full gap-2 px-3 py-2 text-sm',
+        drop.isOver && 'bg-accent ring-ring ring-2 ring-inset',
       )}
       data-testid={`folder-row-${folder.id}`}
       data-drop-over={drop.isOver ? '' : undefined}
@@ -666,19 +758,30 @@ export function FolderRow({
         <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md">
           <Folder className="text-muted-foreground size-3.5" aria-hidden />
         </span>
-        <span className="text-foreground truncate font-medium">{folder.name}</span>
+        <FileName text={folder.name} className="text-foreground shrink font-medium" />
+        {folder.description && (
+          <span
+            className="text-muted-foreground hidden min-w-0 truncate text-xs sm:inline"
+            title={folder.description}
+            data-testid={`folder-description-${folder.id}`}
+          >
+            {folder.description}
+          </span>
+        )}
         {lockLabel && <FolderAccessMark label={lockLabel} testId={`folder-lock-${folder.id}`} />}
         {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
         {/* The kit's numeric pill, not a fourth hand-rolled one. */}
         <CountPill>{itemCount}</CountPill>
         {lastModified && (
           <>
-            <span aria-hidden className="text-muted-foreground/40 text-xs">
+            <span aria-hidden className="text-muted-foreground/40 text-xs phone:hidden">
               ·
             </span>
-            <TimeAgo date={lastModified} locale={locale} className="shrink-0 text-xs tabular-nums text-muted-foreground" />
+            <TimeAgo date={lastModified} locale={locale} className="shrink-0 text-xs tabular-nums text-muted-foreground phone:hidden" />
           </>
         )}
+        <span className="flex-1" />
+        <FolderReadState tally={knowledge} />
       </button>
       {actions ?? (
         <FolderActionsMenu
@@ -691,7 +794,7 @@ export function FolderRow({
         className="text-muted-foreground/40 group-hover:text-muted-foreground size-3.5 shrink-0 transition-colors duration-quick ease-out motion-reduce:transition-none"
         aria-hidden
       />
-    </div>
+    </Item>
   )
 }
 
@@ -713,16 +816,21 @@ export function FolderRow({
 /** A {@link FolderCard} before its name arrives. */
 export function FolderCardSkeleton(): JSX.Element {
   return (
-    <GridTileShell interactive={false} data-testid="folder-card-skeleton">
-      <GridTileBody className="flex-1 p-0">
-        <GridTileMedia className="flex h-[124px] items-center justify-center bg-muted/30">
-          <Folder className="size-10 text-muted-foreground/25" strokeWidth={1.4} aria-hidden />
+    <GridTileShell
+      interactive={false}
+      data-folder-tile=""
+      className="phone:flex-row phone:items-center phone:bg-card"
+      data-testid="folder-card-skeleton"
+    >
+      <GridTileBody className="flex-1 p-0 phone:flex phone:items-center phone:gap-3 phone:bg-transparent phone:p-2 phone:shadow-none">
+        <GridTileMedia className={FOLDER_WELL}>
+          <Folder className="size-10 text-muted-foreground/25 phone:size-5" strokeWidth={1.4} aria-hidden />
         </GridTileMedia>
-        <div className="px-3.5 pb-3 pt-[11px]">
+        <div className="px-3.5 pb-3 pt-[11px] phone:p-0">
           <Skeleton className="h-4 w-24" />
         </div>
       </GridTileBody>
-      <GridTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px]">
+      <GridTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px] phone:mt-0 phone:w-auto phone:py-0 phone:pl-0 phone:pr-4">
         <Skeleton className="h-3 w-12" />
       </GridTileFooter>
     </GridTileShell>
@@ -732,16 +840,13 @@ export function FolderCardSkeleton(): JSX.Element {
 /** A {@link FolderRow} before its name arrives. */
 export function FolderRowSkeleton(): JSX.Element {
   return (
-    <div
-      className="border-border bg-muted/40 flex w-full items-center gap-2 rounded-lg border px-3 py-2"
-      data-testid="folder-row-skeleton"
-    >
+    <Item className="w-full gap-2 px-3 py-2" data-testid="folder-row-skeleton">
       <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md">
         <Folder className="text-muted-foreground/40 size-3.5" aria-hidden />
       </span>
       <Skeleton className="h-3.5 w-40" />
       <Skeleton className="h-3.5 w-8 rounded-full" />
-    </div>
+    </Item>
   )
 }
 

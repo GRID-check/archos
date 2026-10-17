@@ -19,8 +19,8 @@
 # Delete every section you do not need — an empty one fails the lint.
 fixes:
   - >
-    Chats now connect reliably in projects with detailed profiles, and new
-    conversations can save and retrieve messages correctly.
+    Chats in projects with detailed profiles now connect reliably, and new
+    conversations save their messages and show them correctly.
 operators:
   - >
     Deploy the backend before the frontend when rolling out the new chat

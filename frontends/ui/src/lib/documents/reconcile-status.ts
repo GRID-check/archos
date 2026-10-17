@@ -12,13 +12,20 @@
  * wiped the in-memory job registry) and terminal states are written back.
  */
 
+import { announceIngestsFinished } from '@/lib/analytics/ingest-events'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { QUARANTINED_PREFIX } from '@/lib/upload-screening/quarantine'
 import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import type { DocumentAuthor } from '@/lib/db/schema'
 import { collectionFileRef, type CollectionFileRef } from './collection-file-ref'
 import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
+import { parseFassungNames, type FassungNames, type RawFassungFields } from './fassung'
+import { parsePhotoCapture, type PhotoCapture } from './photo-capture'
+import { parseRevisionFacts, type RevisionFacts } from './revision-facts'
 import { setDocumentReconciledStatus } from './repository'
+import { documentShelf } from './shelf'
+import { publishShelfChanged } from './shelf-live'
+import { parseIngestFailureCategory, type IngestFailureFacts } from './retry-policy'
 
 /**
  * DB statuses that mean "ingestion outcome not yet known".
@@ -135,6 +142,12 @@ export interface DocumentMetadata {
   contentTypes?: string[]
   /** Controlled ingestion-generated tags (document type + OIB discipline). */
   tags?: string[]
+  /** Model-recognised keywords ("Themen"), beside the controlled tags. */
+  topics?: string[]
+  /** EXIF facts of a photo (see {@link PhotoCapture}). */
+  capture?: PhotoCapture
+  /** Title-block facts read off the drawing (see {@link RevisionFacts}). */
+  revisionFacts?: RevisionFacts
   /**
    * How many of this organisation's uploads wait in the ingest queue ahead of
    * this one (ADR-0076), or null when the row is not waiting there. The lane's
@@ -153,7 +166,17 @@ interface TerminalResolution {
    * or screening off) has nothing to say, and must not erase a `released`.
    */
   screeningOutcome?: DocumentScreeningOutcome
+  /**
+   * Why the file failed and what read it (migration 0134), as the job said:
+   * the retry rule's input (`./retry-policy`). Every resolution this module
+   * builds carries it, all null when the backend said nothing; optional so a
+   * resolution built elsewhere (a spec, an older caller) writes none.
+   */
+  failure?: IngestFailureFacts
 }
+
+/** What a resolution says when the backend said nothing about the failure. */
+const NO_FAILURE_FACTS: IngestFailureFacts = { category: null, retryable: null, readerVersion: null }
 
 /**
  * What a re-checked `interrupted:` row may become: the backend's terminal
@@ -198,23 +221,49 @@ const fetchJson = async (url: string, init?: RequestInit): Promise<{ status: num
   }
 }
 
+/** One file of a job, as the batch status endpoint reports it (`FileProgress`). */
+interface BackendJobFile {
+  status?: string
+  error_message?: string | null
+  /** The content gate's per-file outcome (ADR-0086), null when the job carried no rules. */
+  screening?: string | null
+  /** Why it failed (`ingest_failures.py`), and whether the same bytes may read again; null unless FAILED. */
+  failure_category?: string | null
+  retryable?: boolean | null
+}
+
 interface BackendJobStatus {
   status?: string
   error_message?: string | null
   /** `queue_ahead`: the backend's count for a job still in the durable queue. */
   metadata?: { queue_ahead?: unknown } | null
-  /** `screening`: the content gate's per-file outcome (ADR-0086), null when the job carried no rules. */
-  file_details?: Array<{ status?: string; error_message?: string | null; screening?: string | null }>
+  /** The reader that ran the job (`INGEST_READER_VERSION`); null until a worker started it. */
+  reader_version?: string | null
+  file_details?: BackendJobFile[]
 }
+
+/**
+ * What a job said about one of its files' failure, for the row. A category
+ * this build does not know becomes null (the column's CHECK holds the known
+ * five), and the reader is the job's: one job, one reader.
+ */
+const failureFacts = (job: BackendJobStatus, file: BackendJobFile | undefined): IngestFailureFacts => ({
+  category: parseIngestFailureCategory(file?.failure_category),
+  retryable: typeof file?.retryable === 'boolean' ? file.retryable : null,
+  readerVersion: typeof job.reader_version === 'string' && job.reader_version.length > 0 ? job.reader_version : null,
+})
 
 /**
  * A failure the content gate reported is not a failure: the job stopped on
  * purpose, before any model call, and the row goes to quarantine (ADR-0086).
  */
-const failedOrQuarantined = (errorMessage: string | null): TerminalResolution =>
+const failedOrQuarantined = (
+  errorMessage: string | null,
+  failure: IngestFailureFacts = NO_FAILURE_FACTS
+): TerminalResolution =>
   errorMessage?.startsWith(QUARANTINED_PREFIX)
-    ? { status: 'quarantined', errorMessage, screeningOutcome: 'quarantined' }
-    : { status: 'failed', errorMessage }
+    ? { status: 'quarantined', errorMessage, screeningOutcome: 'quarantined', failure }
+    : { status: 'failed', errorMessage, failure }
 
 const SCREENING_OUTCOMES_FROM_JOB = new Set<DocumentScreeningOutcome>(['clean', 'partial', 'unchecked'])
 
@@ -224,7 +273,9 @@ const completedOutcome = (job: BackendJobStatus): TerminalResolution => {
   const outcome = SCREENING_OUTCOMES_FROM_JOB.has(reported as DocumentScreeningOutcome)
     ? (reported as DocumentScreeningOutcome)
     : undefined
-  return { status: 'completed', errorMessage: null, ...(outcome ? { screeningOutcome: outcome } : {}) }
+  // Read, so no failure; the reader is still worth keeping.
+  const failure = failureFacts(job, undefined)
+  return { status: 'completed', errorMessage: null, ...(outcome ? { screeningOutcome: outcome } : {}), failure }
 }
 
 /**
@@ -254,13 +305,24 @@ const resolveFromJobStatus = (job: BackendJobStatus | null | undefined): JobReso
     // failed; surface that as a failure rather than a false 'completed'.
     const failedFile = job.file_details?.find((f) => f.status === 'failed')
     if (failedFile && job.file_details?.length === 1) {
-      return { kind: 'terminal', resolution: failedOrQuarantined(failedFile.error_message ?? null) }
+      return {
+        kind: 'terminal',
+        resolution: failedOrQuarantined(failedFile.error_message ?? null, failureFacts(job, failedFile)),
+      }
     }
     return { kind: 'terminal', resolution: completedOutcome(job) }
   }
   if (job.status === 'failed') {
-    const errorMessage = job.error_message ?? job.file_details?.find((f) => f.error_message)?.error_message ?? null
-    return { kind: 'terminal', resolution: failedOrQuarantined(errorMessage) }
+    // The file's own reason first. When every file fails the adapter sets the
+    // job's message to a tally ("1/1 file(s) failed"), and taking that stored
+    // the tally instead of the cause and turned every quarantine verdict into
+    // an ordinary failure: no decision row, no reviewer, retried as broken.
+    // The job's message stays the answer when the run died before any file
+    // reported (an exception, `interrupted:`).
+    // The category comes from the same file as the reason, so the two agree.
+    const reportingFile = job.file_details?.find((f) => f.error_message)
+    const errorMessage = reportingFile?.error_message ?? job.error_message ?? null
+    return { kind: 'terminal', resolution: failedOrQuarantined(errorMessage, failureFacts(job, reportingFile)) }
   }
   const ahead = job.metadata?.queue_ahead
   return { kind: 'in_progress', queueAhead: typeof ahead === 'number' && ahead >= 0 ? ahead : null }
@@ -275,6 +337,17 @@ interface BackendFileEntry {
   page_count?: number
   content_types?: string[]
   tags?: string[] | null
+  topics?: string[] | null
+  capture?: unknown
+  revision_facts?: unknown
+  /**
+   * The Fassung links by FILE NAME, parsed. Deliberately not a
+   * {@link DocumentMetadata} field: that type is spread onto rows several
+   * callers hand to a browser, and a name here is a fact about a document the
+   * reader may not be allowed to see. It leaves this module only through
+   * {@link readFassungNames}, to the code that resolves it for a reader.
+   */
+  fassung?: FassungNames | null
 }
 
 /**
@@ -287,7 +360,7 @@ interface CollectionFiles {
   ambiguousNames: Set<string>
 }
 
-interface RawBackendFile {
+interface RawBackendFile extends RawFassungFields {
   file_name?: string
   status?: string
   error_message?: string | null
@@ -295,6 +368,11 @@ interface RawBackendFile {
   chunk_count?: number
   // Tags are a top-level FileInfo field (not inside the internal metadata jsonb).
   tags?: string[] | null
+  // Topics and capture are top-level too: the model's keywords and the photo's EXIF facts.
+  topics?: string[] | null
+  capture?: unknown
+  // The title-block facts read off the drawing during ingestion.
+  revision_facts?: unknown
   metadata?: { page_count?: number; content_types?: string[] } | null
 }
 
@@ -321,6 +399,10 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       page_count: file.metadata?.page_count,
       content_types: file.metadata?.content_types,
       tags: file.tags,
+      topics: file.topics,
+      capture: file.capture,
+      revision_facts: file.revision_facts,
+      fassung: parseFassungNames(file),
     })
   }
   return { byName, ambiguousNames }
@@ -401,6 +483,31 @@ export const clearCollectionFilesCache = (): void => {
 }
 
 /**
+ * What the backend says about a document's Fassungen, by file name, or `null`.
+ *
+ * Takes a {@link CollectionFileRef}, so a machine-authored row cannot reach it
+ * (the same gate as {@link extractMetadata}). Reads the short-TTL listing the
+ * metadata enrichment shares, so it costs no backend call in the steady state.
+ *
+ * The names are NOT safe to show: resolve them with `resolveFassungFacts` for a
+ * reader before anything leaves the BFF.
+ */
+export const readFassungNames = async (ref: CollectionFileRef): Promise<FassungNames | null> => {
+  const files = await loadCollectionFilesCached(ref.collectionName)
+  if (!files || files.ambiguousNames.has(ref.filename)) return null
+  return files.byName.get(ref.filename)?.fassung ?? null
+}
+
+/**
+ * Replace a collection's cached listing with a fresh one: the read right after
+ * a write to the backend (a confirmed Fassung link), which the TTL entry
+ * predates. Later reads within the TTL see the fresh listing too.
+ */
+export const refreshCollectionFiles = async (collectionName: string): Promise<void> => {
+  await loadCollectionFilesFresh(collectionName)
+}
+
+/**
  * Resolve an in-flight row's terminal status from the collection file list.
  *
  * Takes a {@link CollectionFileRef} rather than a filename, so it cannot be
@@ -419,7 +526,9 @@ const resolveFromCollection = (
 ): TerminalResolution | null => {
   const file = files?.byName.get(ref.filename)
   if (!file) return null
-  if (file.status === 'success') return { status: 'completed', errorMessage: null }
+  // The file list carries no failure category: what the row says about why is
+  // cleared rather than left from an earlier outcome.
+  if (file.status === 'success') return { status: 'completed', errorMessage: null, failure: NO_FAILURE_FACTS }
   if (file.status === 'failed' && attributableFailure(jobId)) return failedOrQuarantined(file.error_message ?? null)
   return null
 }
@@ -567,7 +676,34 @@ const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef):
   if (Array.isArray(file.tags) && file.tags.length > 0) {
     meta.tags = file.tags.filter((t): t is string => typeof t === 'string')
   }
+  if (Array.isArray(file.topics)) {
+    const topics = file.topics.filter((t): t is string => typeof t === 'string' && t.length > 0)
+    if (topics.length > 0) meta.topics = topics
+  }
+  const capture = parsePhotoCapture(file.capture)
+  if (capture) meta.capture = capture
+  const revisionFacts = parseRevisionFacts(file.revision_facts)
+  if (revisionFacts) meta.revisionFacts = revisionFacts
   return Object.keys(meta).length > 0 ? meta : null
+}
+
+/**
+ * One `shelf.changed` per shelf the settled rows are on. A row type that does
+ * not carry its shelf (`projectId`, `scope`) announces nothing; the listing
+ * and the per-document status read both carry it.
+ */
+function announceSettledShelves(
+  organizationId: string,
+  rows: readonly ReconcilableDocument[],
+  settledIds: ReadonlySet<string>
+): void {
+  const shelves = new Map<string, NonNullable<ReturnType<typeof documentShelf>>>()
+  for (const row of rows) {
+    if (!settledIds.has(row.id) || !('projectId' in row)) continue
+    const shelf = documentShelf(row as { projectId: string | null; scope?: string })
+    if (shelf) shelves.set(shelf.kind === 'project' ? shelf.projectId : 'archiv', shelf)
+  }
+  for (const shelf of shelves.values()) publishShelfChanged(organizationId, shelf)
 }
 
 /**
@@ -694,6 +830,10 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       organizationId,
       settled.map(([id, resolution]) => ({ id, status: resolution.status }))
     )
+    // The badge flipped for everyone reading the shelf, and a colleague's
+    // upload held until its screening passed is on their shelf from now on
+    // (ADR-0086): tell the workspaces open on it.
+    announceSettledShelves(organizationId, rows, new Set(settled.map(([id]) => id)))
   }
 
   // --- Metadata enrichment (all rows) ---
@@ -745,6 +885,29 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
     })
   )
 
+  // Tell PostHog which uploads came to rest, once the counts are in. The same
+  // rows `settled` names: the ones THIS read moved, so a concurrent read that
+  // lost the race announces nothing (`lib/analytics/ingest-events.ts`).
+  const rowsById = new Map(rows.map((row) => [row.id, row]))
+  announceIngestsFinished(
+    organizationId,
+    settled.flatMap(([id, resolution]) => {
+      const row = rowsById.get(id)
+      if (!row || resolution.status === 'pending') return []
+      const meta = metaByRow.get(id)
+      return [
+        {
+          filename: row.filename,
+          updatedAt: row.updatedAt,
+          status: resolution.status,
+          screening: 'screeningOutcome' in resolution ? resolution.screeningOutcome : undefined,
+          pageCount: meta?.pageCount,
+          chunkCount: meta?.chunkCount,
+        },
+      ]
+    })
+  )
+
   return rows.map((row) => {
     const resolution = resolutions.get(row.id)
     const meta = metaByRow.get(row.id) ?? {}
@@ -761,8 +924,26 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       resolution?.status === 'completed' && 'screenedHash' in row && dispatchedHash !== null
         ? { screenedHash: dispatchedHash }
         : {}
+    // And why it failed, as written (migration 0134), on a row that carries
+    // the columns: the listing decides `retryable` from the row it returns.
+    const failure = resolution && 'failure' in resolution ? resolution.failure : undefined
+    const explained =
+      failure && 'ingestFailureCategory' in row
+        ? {
+            ingestFailureCategory: failure.category,
+            ingestRetryable: failure.retryable,
+            ingestReaderVersion: failure.readerVersion,
+          }
+        : {}
     const base = resolution
-      ? { ...row, status: resolution.status, errorMessage: resolution.errorMessage, ...verdict, ...judged }
+      ? {
+          ...row,
+          status: resolution.status,
+          errorMessage: resolution.errorMessage,
+          ...verdict,
+          ...judged,
+          ...explained,
+        }
       : row
     return { ...base, ...meta, queueAhead: queueAheadByRow.get(row.id) ?? null }
   })

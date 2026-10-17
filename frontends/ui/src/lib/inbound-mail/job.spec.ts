@@ -17,7 +17,7 @@ vi.mock('@/lib/db/tenant-context', () => ({
   withTenant: vi.fn(async (_scope: unknown, fn: () => unknown) => await fn()),
   withPlatformAccess: vi.fn(async (_reason: string, fn: () => unknown) => await fn()),
 }))
-vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
+vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSessionStrict: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ isProjectMailInboxEnabledForOrg: vi.fn() }))
 vi.mock('@/lib/limits', async (importOriginal) => ({
@@ -58,7 +58,7 @@ vi.mock('./repository', () => ({
 }))
 
 import { ForbiddenError, NotFoundError, TooManyRequestsError } from '@/lib/api/errors'
-import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { TransientAuthzError } from '@/lib/authz/errors'
 import { requireFolderWrite } from '@/lib/authz/folder-access'
@@ -152,7 +152,7 @@ beforeEach(() => {
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(
     new Map([['user-anna', { userId: 'user-anna', email: 'anna@buero-a.at', name: 'Anna', profilePictureUrl: null }]])
   )
-  vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(anna)
+  vi.mocked(resolvePinnedRequesterSessionStrict).mockResolvedValue(anna)
   vi.mocked(findRootProjectFolderByName).mockResolvedValue(null)
   vi.mocked(getOrCreateProjectFolderByName).mockResolvedValue({ id: 'folder-root' } as never)
   vi.mocked(createFolderWithFreeName).mockResolvedValue({ id: 'folder-new', name: LEAF })
@@ -176,9 +176,8 @@ describe('filing one delivery', () => {
     expect(await run()).toBe('filed')
 
     expect(withTenant).toHaveBeenCalledWith({ organizationId: 'org_A', userId: 'user-anna' }, expect.any(Function))
-    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith(
-      { userId: 'user-anna', email: 'anna@buero-a.at', organizationId: 'org_A' },
-      { onError: 'throw' }
+    expect(resolvePinnedRequesterSessionStrict).toHaveBeenCalledWith(
+      { userId: 'user-anna', email: 'anna@buero-a.at', organizationId: 'org_A' }
     )
     const calls = vi.mocked(fileBytes).mock.calls
     // The mail's folder name first, as an imported mail's files are named.
@@ -364,7 +363,7 @@ describe('a failed attempt', () => {
   })
 
   it('retries when the sender is no longer a member', async () => {
-    vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(null)
+    vi.mocked(resolvePinnedRequesterSessionStrict).mockResolvedValue(null)
     expect(await run()).toBe('retried')
     expect(vi.mocked(recordFailedAttempt).mock.calls[0][3]).toBe('sender-not-member')
   })

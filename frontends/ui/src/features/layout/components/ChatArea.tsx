@@ -92,6 +92,7 @@ import { useShowReasoningSkills } from '@/lib/user-preferences/use-show-reasonin
 import { WELCOME_OFFSET_FALLBACK } from '../hooks/use-composer-metrics'
 import { isDisplayableMessage, isTransientConnectionError, selectThreadPhase } from '../lib/thread-phase'
 import { readThreadPosition, rememberThreadPosition, type ThreadPosition } from '../lib/thread-positions'
+import { TOOLBAR_CLEAR_PADDING, TOOLBAR_CLEAR_SCROLL_MARGIN } from '../lib/toolbar-clearance'
 
 /** How much of an answer the settle announcement reads out. */
 const GIST_MAX_CHARS = 120
@@ -200,18 +201,6 @@ interface ChatAreaProps {
   /** Callback when sign in is clicked */
   onSignIn?: () => void
   /**
-   * Whether the AgentResponse confidence chip renders (WorkOS
-   * `chat-confidence-chip` flag, FB-6). Defaults to true (fail-open) so
-   * existing callers/specs are unaffected.
-   */
-  showConfidenceChip?: boolean
-  /**
-   * Whether answers show the per-answer thumbs feedback row (WorkOS
-   * `answer-feedback` flag, WS-7). Defaults to true (fail-open) so existing
-   * callers/specs are unaffected.
-   */
-  showAnswerFeedback?: boolean
-  /**
    * Whether the collaboration surfaces are reachable for this org (ADR-0032…0035,
    * dark-launched behind the per-org `collaboration` flag).
    *
@@ -231,8 +220,6 @@ interface ChatAreaProps {
 export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
   isAuthenticated = false,
   onSignIn,
-  showConfidenceChip = true,
-  showAnswerFeedback = true,
   canCollaborate = false,
 }) {
   const {
@@ -1558,7 +1545,10 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                   // of that cross-fade); otherwise it is simply there.
                   initial={listArrivesFromSkeleton ? { opacity: 0 } : false}
                   animate={{ opacity: 1, transition: rowEnter }}
-                  className="mx-auto flex w-full max-w-5xl flex-col gap-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-20 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pt-14"
+                  className={cn(
+                    'mx-auto flex w-full max-w-5xl flex-col gap-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]',
+                    TOOLBAR_CLEAR_PADDING
+                  )}
                   style={{ paddingBottom: 'calc(var(--composer-h, 11rem) + 1.5rem)' }}
                 >
                   {/* The observed list holds the messages and nothing else. The
@@ -1708,7 +1698,8 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                             id={`message-${message.id}`}
                             data-chat-anchor={isAnchorTarget ? 'true' : undefined}
                             className={cn(
-                              'flex scroll-mt-20 flex-col gap-4 sm:scroll-mt-14',
+                              'flex flex-col gap-4',
+                              TOOLBAR_CLEAR_SCROLL_MARGIN,
                               // The arrival mark: says "this is the one" for a beat, then
                               // fades. A ring rather than a background, so it reads on the
                               // user bubble and the answer card alike. The transition is
@@ -1751,8 +1742,6 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                               onContinueRun={commissionRun ? continueRun : undefined}
                               onErrorDismiss={dismissErrorCard}
                               onErrorRetry={handleErrorRetry}
-                              showConfidenceChip={showConfidenceChip}
-                              showAnswerFeedback={showAnswerFeedback}
                               showReasoning={showReasoningSkills}
                               author={messageAuthorship?.author}
                               grouped={messageAuthorship?.grouped}
@@ -2049,11 +2038,13 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
         {/* Floating "scroll to latest" button — appears when the user has scrolled
           up and newer content is below. Pinned to the wrapper (not the scroll
           content) so it stays put while the thread scrolls behind it. Above the
-          status dock while it speaks. */}
+          status dock while it speaks. On a phone it sits at the trailing edge,
+          where a right thumb rests above the composer, 44px; centred it landed on
+          the middle of the last line being read. */}
         <AnimatePresence>
           {showScrollButton && (
             <motion.div
-              className="pointer-events-none absolute inset-x-0 z-10 flex justify-center"
+              className="pointer-events-none absolute inset-x-0 z-10 flex justify-center max-sm:justify-end max-sm:pl-[max(1rem,env(safe-area-inset-left))] max-sm:pr-[max(1rem,env(safe-area-inset-right))]"
               style={{
                 bottom: `calc(var(--composer-h, 11rem) + ${connectionNote || (shared && typists.length > 0) ? '2.25rem' : '1rem'})`,
               }}
@@ -2066,7 +2057,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                 type="button"
                 onClick={handleScrollToLatest}
                 aria-label={t('chatArea.scrollToLatest')}
-                className="bg-card text-muted-foreground hover:text-foreground duration-snap pointer-events-auto flex size-9 items-center justify-center rounded-lg border shadow-md transition-colors ease-out motion-reduce:transition-none"
+                className="bg-card text-muted-foreground hover:text-foreground duration-snap pointer-events-auto flex size-9 items-center justify-center rounded-lg border shadow-md pointer-coarse:size-11 transition-colors ease-out motion-reduce:transition-none"
               >
                 <ArrowDown className="size-4" aria-hidden="true" />
               </button>
@@ -2090,10 +2081,6 @@ interface MessageRendererProps {
   onErrorDismiss?: (messageId: string) => void
   /** Resend the last user message + dismiss this error card (retry affordance). */
   onErrorRetry?: (messageId: string) => void
-  /** Whether the AgentResponse confidence chip renders (feature-flagged). */
-  showConfidenceChip?: boolean
-  /** Whether the AgentResponse thumbs feedback row renders (feature-flagged). */
-  showAnswerFeedback?: boolean
   /** The reader's showReasoningSkills preference (fetched once by ChatArea). */
   showReasoning?: boolean
   /**
@@ -2121,8 +2108,6 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
   projectId,
   onErrorDismiss,
   onErrorRetry,
-  showConfidenceChip = true,
-  showAnswerFeedback = true,
   showReasoning = false,
   author,
   grouped,
@@ -2203,9 +2188,7 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
             skillsActivated={message.skillsActivated}
             skillsHidden={message.skillsHidden}
             showReasoning={showReasoning}
-            showConfidenceChip={showConfidenceChip}
             messageId={message.id}
-            showAnswerFeedback={showAnswerFeedback}
             isStreaming={message.isStreaming}
             stopped={message.stopped === true}
             // A turn that failed under a written answer: the words stay, marked
@@ -2327,8 +2310,6 @@ const areMessageRendererPropsEqual = (
   prev.previousFindings === next.previousFindings &&
   prev.onCommissionFinding === next.onCommissionFinding &&
   prev.onContinueRun === next.onContinueRun &&
-  prev.showConfidenceChip === next.showConfidenceChip &&
-  prev.showAnswerFeedback === next.showAnswerFeedback &&
   prev.showReasoning === next.showReasoning &&
   // Authorship is derived per render (from the roster + the reader), so compare
   // its fields rather than the object — otherwise every roster refresh would
@@ -2453,7 +2434,10 @@ const MessageListSkeleton: FC = () => {
   const t = useTranslations('research')
   return (
     <div
-      className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pt-20 sm:px-6 sm:pt-14"
+      className={cn(
+        'mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 sm:px-6',
+        TOOLBAR_CLEAR_PADDING
+      )}
       style={{ paddingBottom: 'calc(var(--composer-h, 11rem) + 1.5rem)' }}
       role="status"
       aria-label={t('chatArea.loading')}

@@ -19,10 +19,13 @@ import 'server-only'
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { isUuid } from '@/lib/ids'
+import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
 import { salvageProjectProfile } from '@/lib/project-profile/salvage'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
-import { deletionQueue, projects, type Project } from '@/lib/db/schema'
+import { deletionQueue, projectIntakes, projects, type Project } from '@/lib/db/schema'
+import type { GeocodeResult } from '@/lib/geocoding/types'
 import type { DbTransaction } from '@/lib/storage/repository'
+import type { ProjectOutcome, ProjectStatus } from './project-status'
 
 /** Hard cap for unpaginated org-wide lists. */
 export const PROJECT_LIST_LIMIT = 500
@@ -51,6 +54,11 @@ export async function listProjectsInOrg(
 /**
  * Load a project by id scoped to an organization. Soft-deleted rows are
  * excluded unless `includeDeleted` (restore flows).
+ *
+ * The profile is salvaged like {@link findProjectProfile}'s, for the reason
+ * given there: a never-saved project stores `{}`, and every caller of this
+ * function reads `profile.facts`. A profile nothing can be salvaged from reads
+ * as the empty one, so no caller has to guard it.
  */
 export async function findProjectInOrg(
   projectId: string,
@@ -67,7 +75,8 @@ export async function findProjectInOrg(
       .where(and(...conditions))
       .limit(1)
   )
-  return row ?? null
+  if (!row) return null
+  return { ...row, profile: salvageProjectProfile(row.profile).profile ?? emptyProjectProfile() }
 }
 
 /**
@@ -115,42 +124,57 @@ export async function findProjectTenancy(
   return row ?? null
 }
 
+/** A move of the lifecycle, as the repository writes it (ADR-0098). */
+export type ProjectStatusWrite =
+  | { status: 'active' }
+  | { status: 'paused'; at: Date }
+  | { status: 'closed'; at: Date; closedBy: string; outcome: ProjectOutcome; endedOn: string }
+
 /**
- * Close or reopen a project: the status, and when and by whom it was closed
- * (cleared on reopen). Closing also fills the Steckbrief's Abschluss with the
- * month of the close when nobody set one; a reopen leaves it as it is. Only a row in the other state changes, so two people
- * closing at once write once; null when nothing changed (already in that
- * state, deleted, or not in the organization).
+ * Move a project from `from` to another state, with that state's own columns:
+ * when it was paused, or when, by whom and how it closed and its Abschluss.
+ * Leaving a state clears its columns, except the outcome and the Abschluss,
+ * which a reopen keeps as the next close's suggestions. Only a row still in
+ * `from` changes, so two people moving it at once write once, and a close
+ * changes nothing when the Beginn moved past its Abschluss meanwhile; null when
+ * nothing changed (either race, deleted, or not in the organization).
  */
 export async function setProjectStatusInOrg(
   projectId: string,
   organizationId: string,
-  change: { status: 'closed'; closedBy: string; at: Date } | { status: 'active' }
+  from: ProjectStatus,
+  change: ProjectStatusWrite
 ): Promise<Project | null> {
   const db = getDb()
-  const closing = change.status === 'closed'
+  const cleared = { pausedAt: null, closedAt: null, closedBy: null }
+  const values =
+    change.status === 'closed'
+      ? {
+          ...cleared,
+          status: 'closed' as const,
+          closedAt: change.at,
+          closedBy: change.closedBy,
+          closedOutcome: change.outcome,
+          endedOn: change.endedOn,
+        }
+      : change.status === 'paused'
+        ? { ...cleared, status: 'paused' as const, pausedAt: change.at }
+        : { ...cleared, status: 'active' as const }
   const [row] = await withTenant({ organizationId }, () =>
     db
       .update(projects)
-      .set(
-        closing
-          ? {
-              status: 'closed',
-              closedAt: change.at,
-              closedBy: change.closedBy,
-              // The Steckbrief's Abschluss (ADR-0091): the month it was closed
-              // in, unless someone set one. GREATEST keeps it from landing
-              // before a Beginn set in the future.
-              endedOn: sql`COALESCE(${projects.endedOn}, GREATEST(date_trunc('month', ${change.at.toISOString()}::timestamptz)::date, ${projects.startedOn}))`,
-            }
-          : { status: 'active', closedAt: null, closedBy: null }
-      )
+      .set(values)
       .where(
         and(
           eq(projects.id, projectId),
           eq(projects.organizationId, organizationId),
           isNull(projects.deletedAt),
-          eq(projects.status, closing ? 'active' : 'closed')
+          eq(projects.status, from),
+          // A Steckbrief save that moved the Beginn past this Abschluss since
+          // the service checked it: a lost race (409), not a CHECK violation (500).
+          change.status === 'closed'
+            ? sql`(${projects.startedOn} IS NULL OR ${projects.startedOn} <= ${change.endedOn}::date)`
+            : undefined
         )
       )
       .returning()
@@ -163,12 +187,75 @@ export async function insertProject(values: {
   name: string
   createdBy: string
   collectionName: string
+  /** The Beginn, as stored: the first of its month. A past project created closed names it up front. */
+  startedOn?: string | null
 }): Promise<Project> {
   const db = getDb()
   const [row] = await withTenant({ organizationId: values.organizationId }, () =>
     db.insert(projects).values(values).returning()
   )
   return row
+}
+
+/**
+ * One transaction in the organization's tenant context, for a write that spans
+ * tables another repository owns (the intake row of a project being created).
+ */
+export async function inProjectTransaction<T>(
+  organizationId: string,
+  work: (tx: DbTransaction) => Promise<T>
+): Promise<T> {
+  const db = getDb()
+  return withTenant({ organizationId }, () => db.transaction(work))
+}
+
+/** A project's address as the same-address lookup compares it. */
+export interface ProjectAddressRow {
+  id: string
+  name: string
+  status: ProjectStatus
+  /** `standort_adresse` on the profile, as stored. */
+  address: string | null
+  /** The geocoder's hit kept with an intake, as stored. */
+  location: GeocodeResult | null
+}
+
+/**
+ * Every project of the organization that has an address on its profile or an
+ * intake location: what „An dieser Adresse gibt es schon ein Projekt" matches
+ * against. Bounded by {@link PROJECT_LIST_LIMIT}, the same cap as the list.
+ * The caller filters to what the person may open.
+ */
+export async function listProjectAddressesInOrg(organizationId: string): Promise<ProjectAddressRow[]> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        status: projects.status,
+        address: sql<string | null>`${projects.profile} #>> '{facts,standort_adresse,value}'`,
+        location: projectIntakes.location,
+      })
+      .from(projects)
+      .leftJoin(projectIntakes, eq(projectIntakes.projectId, projects.id))
+      .where(
+        and(
+          eq(projects.organizationId, organizationId),
+          isNull(projects.deletedAt),
+          sql`(${projects.profile} #>> '{facts,standort_adresse,value}' IS NOT NULL OR ${projectIntakes.location} IS NOT NULL)`
+        )
+      )
+      .orderBy(desc(projects.createdAt))
+      .limit(PROJECT_LIST_LIMIT)
+  )
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    status: row.status,
+    address: typeof row.address === 'string' ? row.address : null,
+    location: row.location ?? null,
+  }))
 }
 
 export async function setProjectWorkosResourceId(

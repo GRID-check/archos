@@ -16,7 +16,6 @@ import { useAuth } from '@/adapters/auth/use-auth'
 import { OrganizationSetup } from '@/features/onboarding/components/organization-setup'
 import { TOUR_START_URL } from '@/features/onboarding/lib/product-tour'
 import { useTranslations } from '@/i18n'
-import { capturePosthog } from '@/lib/analytics/posthog'
 
 /** The "you're in" beat before the hand-off. Long enough to read, no longer. */
 const HANDOFF_DELAY_MS = 1200
@@ -54,7 +53,7 @@ const OrganizationOnboardingPage = (): ReactNode => {
         throw new Error(t('errors.createFailed'))
       }
 
-      capturePosthog('organization_created')
+      // `organization_created` is sent by the route, which is where it is true.
       setCreatedName(name)
       // Straight to the projects home (no bounce through the home redirect),
       // with the tour queued for arrival.

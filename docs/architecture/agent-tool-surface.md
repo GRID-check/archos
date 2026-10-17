@@ -29,7 +29,7 @@ We apply the published guidance:
 
 Tool retrieval pays off on catalogs of
 hundreds or thousands of tools ([RAG-MCP][rag-mcp], [Less is More][less-more],
-[Gorilla/BFCL][bfcl]). Piloti binds 20, at OpenAI's line. Of a 33.4k-token research call,
+[Gorilla/BFCL][bfcl]). Piloti binds 28, past OpenAI's line of 20 since the canvas group (§2). Of a 33.4k-token research call,
 26.1k are a cached prefix, and tool execution is 1.3 s of a 31.3 s median turn
 ([turns audit](turns-per-answer-audit-2026-09.md),
 [turn latency](turn-latency-measured-2026-09.md) §2). Seconds follow rounds and
@@ -40,7 +40,10 @@ model to do next.
 
 ## 2. The surface today
 
-A project turn binds 20 tools, about 16.1k tokens. Tool schemas were 38 % of a
+A project turn binds 28 tools, about 17.3k tokens (the canvas group replaced
+the one `document_annotations` tool, 940 tokens, with seven, 1,625; parity with
+a person, 2026-10-13, added `canvas__update` and `canvas__delete` and `mark`'s
+`open`, +502, to nine and 2,127). Tool schemas were 38 % of a
 research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 
 | Tool | What it does | ~Tokens | Owner |
@@ -50,19 +53,20 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `knowledge_search` | Ranked search; `match="exact"` is Ctrl+F across the files | 1,300 | `sources/knowledge_layer/src/register.py` |
 | `ris_lookup` | Austrian law by citation | 760 | `sources/ris_adapter/src/lookup/tool.py` |
 | `read_passage` | Opens one Punkt, page or outline, ≤12 chunks | 730 | `sources/knowledge_layer/src/read_passage.py` |
-| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped | 600 | `sources/knowledge_layer/src/browse.py` |
+| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentarten (von Piloti zugeordnet): …`) and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `fassungen_of=<file name>` returns one document's chain of Fassungen instead, and with `compare_to=` what changed between two of them | 770 | `sources/knowledge_layer/src/browse.py` |
 | `surface_documents` | Shows a file or a 1–3 thumbnail choice | 510 | `src/aiq_agent/cards/surface_documents.py` |
 | `ask_user` | Blocking multiple-choice question | 490 | `src/aiq_agent/agents/piloti/ask_user.py` |
 | `remember` | Project memory capture | 420 | `src/aiq_agent/memory/register.py` |
 | `create_task` | Delegates work as a task | 400 | `src/aiq_agent/tools/tasks/register.py` |
 | `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `src/aiq_agent/tools/files/register.py` |
+| `canvas__look`, `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group: look at a page or a box on it, who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `src/aiq_agent/tools/canvas/register.py` |
 | `view_knowledge_image` | Shows a page or figure to the model | 300 | `sources/knowledge_layer/src/view_image.py` |
 | `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock) | 131 / 226 / 244 / 312 | `src/aiq_agent/tools/documents/tools.py` |
 | `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `src/aiq_agent/tools/documents/register.py` |
 | `use_skill` | Loads a skill body | 60 | `src/aiq_agent/skills/runtime.py` |
 | web search, advanced web search | Tavily | ~400 together | `sources/tavily_web_search/src/register.py` |
 
-The `ifc_*` pair is 8.65k of the 16.1k (the turns audit measured ~8.2k).
+The `ifc_*` pair is 8.65k of the 17.3k (the turns audit measured ~8.2k).
 
 ```mermaid
 flowchart LR
@@ -151,8 +155,8 @@ server's `dryRun` is ([servers][mcp-fs]).
 | Rename, move or delete a folder | `PATCH`/`DELETE /api/projects/[id]/folders/[folderId]` | Propose. Delete re-files the folder's documents first | S |
 | Retag | `PATCH /api/documents/[id]/tags` | Propose | S |
 | Revise any Markdown project document | `POST /api/documents/[id]/versions` | Build. Today only the conversation's subject (`src/aiq_agent/tools/documents/filing.py`) | M |
-| See version history, uploader, lifecycle state | `GET /api/documents/[id]/versions` | Add to `list_files` rows | S |
-| Compare versions | `GET /api/documents/[id]/versions/diff` | Build `compare_versions` (§5) | L |
+| See version history, uploader, lifecycle state | `GET /api/documents/[id]/versions` | Fassungen under other file names: done (`list_files(fassungen_of=…)`). Same-name versions and uploader: add to `list_files` rows | S |
+| Compare versions | `GET /api/documents/[id]/versions/diff` | Fassungen under other file names: done (`list_files(fassungen_of=…, compare_to=…)`, ADR-0104). Same-name versions once every Fassung stays indexed | M |
 | Share | `/api/sharing/[resourceType]/[resourceId]` | Person only | none |
 | Set Dokumentart | platform-only `/api/platform/knowledge/documents/[fileName]/doc-class` | Waits for a project route | n/a |
 | Delete a document | `DELETE /api/documents/[id]` | Never. Hard delete, one-way | none |
@@ -253,3 +257,98 @@ External:
 - AEC: [Autodesk AI][adsk], [AU2026](https://architosh.com/2026/09/au2026-autodesk-expands-forma-and-leverages-ai/), [Bluebeam Smart Overlay][bluebeam], [Procore](https://www.enr.com/articles/63042-procore-releases-new-ai-agients-after-datagrid-integration), [Procore Agent Builder](https://v2.support.procore.com/product-manuals/agent-builder-project), [Trunk Tools](https://trunktools.com/product/), [Document Crunch](https://www.documentcrunch.com/crunch-ai)
 - Research: [RAG-MCP][rag-mcp], [Less is More][less-more], [Trace-Free+](https://arxiv.org/abs/2602.20426), [CE-MCP security][ce-mcp], [BFCL][bfcl], [Li et al. 2024, RAG vs. long context][li-2024], [AEC layout benchmark][aec-layout], [ColPali](https://arxiv.org/abs/2407.01449), [Braschler & Ripplinger 2004][braschler], [Postgres dictionaries][pg-dict]
 - OpenRouter: [changelog](https://openrouter.ai/docs/changelog), [Responses](https://openrouter.ai/docs/api_reference/responses/overview), [reasoning](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens), [tool calling](https://openrouter.ai/docs/guides/features/tool-calling), [tool search][or-ts], [server tools](https://openrouter.ai/docs/guides/features/server-tools), [Responses tool calling][or-resp-tools], [PDF inputs][or-pdf], [ZDR][or-zdr], [in-region routing][or-irr], [prompt caching][or-cache], [router metadata][or-meta], [Auto Exacto](https://openrouter.ai/docs/guides/routing/auto-exacto), [Exacto](https://openrouter.ai/docs/guides/routing/model-variants/exacto), [embeddings](https://openrouter.ai/docs/api_reference/embeddings), [web search](https://openrouter.ai/docs/guides/features/server-tools/web-search), [response healing](https://openrouter.ai/docs/guides/features/plugins/response-healing)
+
+## What the agent knows about files it cannot read, and about folders
+
+Added 2026-10-10 (feld72 Jour fixe: answers called documents missing that had
+been uploaded and read).
+
+- **Unreadable is not absent.** Every agent view of a project's files is built
+  from the rows a successful read writes, so a file whose read failed was
+  invisible: no inventory row, no `list_files` line, no hit. The project
+  context now carries `documents_unreadable:` (built by the BFF,
+  `lib/project-profile/unreadable-section.ts`): the active files of the
+  project whose read failed, screened ones only (ADR-0086) and none in a
+  restricted folder (ADR-0087), at most 20. A failed read that never reached
+  the content screen stays unnamed, like any held upload.
+- **`documents_missing:` names unassigned roles, not absent files.** It is
+  recommended document roles minus bound ones, and a document read under
+  another name and never assigned is in it. `<project_record>` in
+  `piloti_static.md` now tells the agent to look (`list_files`,
+  `knowledge_search`) before calling a document missing, and that absence
+  from every list is never proof a file does not exist. The folder brief in
+  Dateien shows people the same list.
+- **`folder=` is a pre-filter on the ranked search.** The folder resolves to
+  the files filed in it or under it (`browse._files_by_collection`, the
+  exact mode's resolver), and only those are ranked. It used to filter the
+  shelf's top `3 × top_k`, so a folder whose passages ranked lower came back
+  empty while holding what was asked.
+- **Fassungen: marks in `list_files`, and older ones out of the ranking
+  (ADR-0099).** A row a PERSON confirmed as replaced reads `ersetzt durch <neuer>
+  (bestätigt)`; the newer one `ersetzt <älterer> (bestätigt)` and, when a change
+  line exists, `geändert: …` (at most 160 characters; `geändert (vorige Fassung):`
+  when it compares against the file's own previous upload). A confirmed mark beats
+  the reading of the names (`browse.confirmed_revision_marks`); an unconfirmed
+  series keeps `aktuelle` / `ältere Fassung … dem Namen nach`. The profile line
+  `Fassungen (bestätigt): n Datei(en) …` counts the confirmed ones and says an older
+  one stays readable with `file_name=`. The inventory block marks both sides of a
+  link the same way (`inventory._confirmed_revision_bit`), and says nothing about a
+  suggestion: a suggestion is advice to a person, not a fact.
+- **`knowledge_search` leaves out confirmed older Fassungen.** On the user shelves
+  (never the base corpus) the files with a `superseded_by` whose newer file still
+  has its row are read from `document_metadata` at search time
+  (`DocumentMetadataStore.get_superseded_files`) and sent as `file_name NOT IN`, so
+  a replaced file cannot outrank its replacement on similarity alone, and a link
+  made or lifted a minute ago applies to the next search. A call that names the file
+  (`file_name=`) hides nothing, and says nothing. When files were left out the result
+  opens with `Ältere Fassungen ausgeblendet: <Namen> — mit file_name=… gezielt
+  lesbar.` (five names, then „und n weitere“), through the notice slot so the
+  grounding block's hash still matches. `match="exact"` is a literal search and
+  reads older Fassungen too.
+- **`list_files(fassungen_of=…)` answers the history questions; no tool was added
+  (ADR-0099).** „Welche Fassungen gibt es von X?“ and „Was hat sich zwischen Index B
+  und C geändert?“ are one more mode of the browser, not a `compare_versions`
+  (§5 row 12 is the visual, byte-level one). The argument takes a file name (exact,
+  or all its words) and ignores every other filter; the answer is that document's
+  whole chain, newest first (`browse.render_fassungen`). Membership is the union of
+  three things, followed transitively and only inside the file's own collection: a
+  link a person confirmed (`superseded_by`), the same plan number in the Plankopf
+  (`revision_facts.document_number`), and the file name's series (the revision grammar
+  in `frontends/ui/src/lib/documents/revision-series.ts` and its Python twin
+  `sources/knowledge_layer/src/revision_series.py`, same extension; a bare first
+  state joins its indexed successors). Order:
+  a confirmed replacement always precedes what it replaced; the rest by the
+  Plankopf when every member's sheet states an Index or a date, else by the names.
+  Each line carries the Index and date its name reads, the `Plankopf:` label, who
+  vouches for its place (`bestätigt`, `laut Plankopf`, `dem Namen nach`), the upload
+  date and the change line, up to 700 characters (the listing row keeps 160), with
+  its basis: the change line sits on the NEWER file and says what it was compared
+  against, so „B → C“ is read off C's line. It reads the turn's rows and shelves
+  (`restrict_rows_to_turn`), so a shelf the turn did not ask for, a restricted
+  folder's collection and a held upload are not in it. A name that matches two
+  different documents asks for the exact name instead of choosing.
+- **`compare_to=` compares two Fassungen of that chain (ADR-0104), still without a
+  tool of its own.** `fassungen_of` names the newer one (or the document, meaning its
+  current Fassung) and `compare_to` the other, by file name or as „vorige“; the order
+  comes from the chain, not the arguments (`browse.resolve_compare`). The report is
+  read from what the index holds, with no model call (`knowledge/fassung_diff.py`):
+  the Plankopf's Index and Stand, pages aligned by their text so an inserted sheet
+  shifts nothing, values that moved inside a printed line („Fluchtweglänge 38 m →
+  42 m“), and from the drawing analysis the quantities and verbatim dimension strings
+  that changed. A model's prose description of a drawing is never compared, because
+  two readings of one sheet word it differently. The stored change line rides along
+  only when it was written against exactly that older file. Reading both files is
+  reported to the restricted-use admission (ADR-0088). Same-name uploads are not in
+  the index yet, so they compare once every Fassung stays indexed.
+- **`read_passage` reads an older Fassung on request and says it is one.** The read
+  is not refused (a question about Index B needs B); the first line of the result,
+  in the grounding block's notice slot like the search's „Ältere Fassungen
+  ausgeblendet“, reads `Ältere Fassung: <file> ist durch <current> ersetzt
+  (bestätigt), aktuell ist <current>.` `<current>` is the end of the confirmed
+  chain inside the file's collection (`read_passage._current_fassung`), and is not
+  named when that collection is a restricted folder this turn did not admit.
+- **The citation says it too (UI).** The by-name resolve a chip already makes
+  (`POST /api/documents/by-name`) returns the listing row with
+  `fassung.supersededBy`, resolved for the reader by `loadFassungFacts`. The peek
+  turns it into one line, „Ältere Fassung — aktuell: <Name>“, whose name opens the
+  current Fassung (`CitationPeek`, `use-open-current-fassung.ts`).

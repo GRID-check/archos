@@ -52,7 +52,7 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { ApiError, FileTooLargeError, ForbiddenError, NotFoundError, PayloadTooLargeError } from '@/lib/api/errors'
 import { errorResponse, readBoundedBody } from '@/lib/api/handler'
-import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import { TransientAuthzError } from '@/lib/authz/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireFolderWrite } from '@/lib/authz/folder-access'
@@ -375,9 +375,8 @@ async function authorizeSender(delivery: Delivery): Promise<AuthorizedSender> {
 
   const person = await findMemberByEmail(address.organizationId, verdict.fromAddress)
   if (!person) throw new InboundMailRefusal('refused-member')
-  const session = await resolvePinnedRequesterSession(
-    { userId: person.userId, email: person.email, organizationId: address.organizationId },
-    { onError: 'throw' }
+  const session = await resolvePinnedRequesterSessionStrict(
+    { userId: person.userId, email: person.email, organizationId: address.organizationId }
   )
   if (!session) throw new InboundMailRefusal('refused-member')
 

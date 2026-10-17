@@ -1,9 +1,9 @@
 ---
 improvements:
   - >
-    „Zitierbar" no longer appears on every file. A status shows only when it
-    changes what you can do next — a document still being read, one that failed,
-    or a report Piloti wrote and deliberately never indexed.
+    „Zitierbar“ no longer appears on every file. A status shows only when it
+    changes what you can do next: a document still being read, one that
+    failed, or a report Piloti wrote and deliberately kept out of search.
   - >
     The header of the file preview now holds only the name, the kind of document
     and the controls for the file. Who created it, who is responsible and

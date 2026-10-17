@@ -1,13 +1,15 @@
 ---
 fixes:
   - >
-    Searching your files keeps the view you chose, list or cards. In the list,
-    relevance is a sortable column and each row shows the passage that matched
+    Searching your files keeps the view you chose, list or cards. In the
+    list, you can sort by relevance, and each row shows the matching passage
     and its page.
   - >
-    Keyboard navigation in the file list keeps your place instead of jumping
-    back to the first row. Home and End jump to either end of the list.
+    When you move through the file list with the keyboard, your place is
+    kept instead of jumping back to the first row. Home and End jump to the
+    start and end of the list.
   - >
-    The upload panel no longer retires itself out from under you. A wholly
-    successful batch still clears after a few seconds, but the countdown holds
-    while your pointer is on the panel or your keyboard focus is inside it.
+    The upload panel no longer closes while you are still working in it. A
+    completely successful batch of uploads still clears after a few seconds,
+    but the countdown pauses while your pointer is on the panel or your
+    keyboard focus is inside it.

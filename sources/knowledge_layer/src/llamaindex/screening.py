@@ -30,6 +30,7 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import replace
 from typing import Literal
 
 from aiq_agent.common.content_screen import DETECTORS
@@ -81,8 +82,11 @@ __all__ = [
 #: What a quarantined file's ``error_message`` starts with; the JSON follows it.
 QUARANTINED_PREFIX = "quarantined:"
 
-#: What one reason and one error carry at most.
-MAX_REASON_PAGES = 10
+#: What one reason and one error carry at most. A reviewer opens the document
+#: at each listed page, so a reason lists every page it was found on up to
+#: ``MAX_REASON_PAGES``; past that, or where the error would outgrow
+#: ``MAX_ERROR_CHARS``, the reason says its list is cut (``pages_truncated``).
+MAX_REASON_PAGES = 50
 MAX_REASONS = 10
 MAX_ERROR_CHARS = 2000
 
@@ -99,6 +103,8 @@ class Reason:
     pages: list[int]
     term: str | None = None
     sample: str | None = None
+    #: ``pages`` is not every page it was found on; written only when true.
+    pages_truncated: bool = False
 
     def as_json(self) -> dict[str, object]:
         out: dict[str, object] = {"kind": self.kind}
@@ -106,6 +112,8 @@ class Reason:
             out["term"] = self.term
         out["count"] = self.count
         out["pages"] = self.pages
+        if self.pages_truncated:
+            out["pages_truncated"] = True
         if self.sample is not None:
             out["sample"] = self.sample
         return out
@@ -157,12 +165,24 @@ def screen_pages(
             tally = term_tallies[span.term] if span.kind == "term" else detector_tallies[span.kind]
             tally.add(1, page, span.sample)
     reasons = [
-        Reason(kind="term", term=term, count=tally.count, pages=_page_list(tally.pages))
+        Reason(
+            kind="term",
+            term=term,
+            count=tally.count,
+            pages=_page_list(tally.pages),
+            pages_truncated=len(tally.pages) > MAX_REASON_PAGES,
+        )
         for term, tally in term_tallies.items()
         if tally.count
     ]
     reasons += [
-        Reason(kind=name, count=tally.count, pages=_page_list(tally.pages), sample=tally.sample)
+        Reason(
+            kind=name,
+            count=tally.count,
+            pages=_page_list(tally.pages),
+            sample=tally.sample,
+            pages_truncated=len(tally.pages) > MAX_REASON_PAGES,
+        )
         for name, tally in detector_tallies.items()
         if tally.count
     ]
@@ -196,16 +216,38 @@ def document_pages(documents: Iterable[object]) -> list[tuple[int | None, str]]:
 def quarantine_error(verdict: ScreeningVerdict) -> str:
     """The file's ``error_message``: the prefix, then compact JSON of at most ten reasons.
 
-    Reasons are dropped from the end until the whole string fits
-    ``MAX_ERROR_CHARS``; the JSON is always whole.
+    Until the whole string fits ``MAX_ERROR_CHARS``, the reason listing the most
+    pages gives up its last one and says so (``pages_truncated``), so every
+    reason keeps at least its first page to open the document at. Only when each
+    lists one page are reasons dropped from the end. The JSON is always whole,
+    and says how many reasons it left out (``omitted``), so a reader is never
+    shown a short list as the complete one.
     """
-    reasons = [reason.as_json() for reason in verdict.reasons[:MAX_REASONS]]
+    reasons = list(verdict.reasons[:MAX_REASONS])
     while True:
-        payload = {"reasons": reasons, "checked": verdict.checked}
-        error = QUARANTINED_PREFIX + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        error = QUARANTINED_PREFIX + json.dumps(_payload(verdict, reasons), ensure_ascii=False, separators=(",", ":"))
         if len(error) <= MAX_ERROR_CHARS or not reasons:
             return error
-        reasons = reasons[:-1]
+        reasons = _with_one_page_fewer(reasons) or reasons[:-1]
+
+
+def _payload(verdict: ScreeningVerdict, listed: list[Reason]) -> dict[str, object]:
+    payload: dict[str, object] = {"reasons": [reason.as_json() for reason in listed], "checked": verdict.checked}
+    omitted = len(verdict.reasons) - len(listed)
+    if omitted > 0:
+        payload["omitted"] = omitted
+    return payload
+
+
+def _with_one_page_fewer(reasons: list[Reason]) -> list[Reason] | None:
+    """``reasons`` with the last page of the one listing the most cut, or ``None`` when none lists two."""
+    widest = max(range(len(reasons)), key=lambda index: len(reasons[index].pages))
+    pages = reasons[widest].pages
+    if len(pages) < 2:
+        return None
+    trimmed = list(reasons)
+    trimmed[widest] = replace(reasons[widest], pages=pages[:-1], pages_truncated=True)
+    return trimmed
 
 
 def log_summary(verdict: ScreeningVerdict) -> str:

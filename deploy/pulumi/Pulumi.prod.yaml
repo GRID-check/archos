@@ -193,6 +193,20 @@ config:
 
   # grid-oib:protectDataResources: "true"
 
+  # ── Worker groups (IPAX) ──
+  # Three groups, made and sized in the IPAX Control Center (not here). IPAX
+  # labels every node `k8s.at/node-group: <group name>`, case-sensitive:
+  #   Node   k8s1.gp.large  4 vCPU / 16 GB, autoscale 2-6: the app tier
+  #   data   k8s1.m.large   4 vCPU / 32 GB, fixed 4: the data stores
+  #   batch  k8s1.m.xlarge  8 vCPU / 64 GB, autoscale 2-4: ingestion
+  # A group cannot be tainted from the console, so these are nodeSelectors: they
+  # keep a tier on its group, not other pods off it. So every workload selects
+  # one: the stores on data, ingestion on batch, the rest on Node. A data group
+  # also makes the Postgres and PgBouncer spread required (kubernetes.md §2b).
+  grid-oib:nodeGroupApp: Node
+  grid-oib:nodeGroupData: data
+  grid-oib:nodeGroupBatch: batch
+
   # ── Postgres (CloudNativePG) ──
   grid-oib:pgInstances: "3" # HA: 1 primary + 2 streaming replicas
   grid-oib:pgStorageSize: 20Gi
@@ -291,8 +305,18 @@ config:
   # cluster-autoscaler adds nodes for Pending replicas up to the worker group's
 
   # max, so size that group for maxReplicas × the limits below.
+  # 3, not 5: five workers on three 16 GB nodes took the nodes down one after
+  # another (2026-10). The tier now runs on the batch group (nodeGroupBatch,
+  # 8 vCPU / 64 GB nodes). Raise it only with batch-node memory to match.
   grid-oib:ingestWorkerMinReplicas: "1"
-  grid-oib:ingestWorkerMaxReplicas: "5"
+  grid-oib:ingestWorkerMaxReplicas: "3"
+  # Big PDFs, three files at once, were OOMKilled at a 6Gi limit. Even all three
+  # workers at their 12Gi limit on one 64 GB batch node (36 GB) do not overcommit
+  # it, which is the failure the app nodes had.
+  grid-oib:ingestWorkerRequestsCpu: 500m
+  grid-oib:ingestWorkerRequestsMemory: 8Gi
+  grid-oib:ingestWorkerLimitsCpu: "4"
+  grid-oib:ingestWorkerLimitsMemory: 12Gi
   grid-oib:ingestWorkerConcurrency: "3"
   grid-oib:ingestWorkerDrainSeconds: "600"
   # Chat/web replicas. Safe at >1 via conversation affinity (the frontend WS
@@ -307,34 +331,6 @@ config:
 
   grid-oib:requireAuth: "true"
   grid-oib:workosClientId: client_01KEF0YGXCZ6QCJGGBWD7Z266J # pragma: allowlist secret (public OAuth client id)
-  # ON since 2026-09-18: WorkOS is this environment's control plane for
-  # features, per organization, without a redeploy. Two consequences, both
-  # deliberate — docs/deployment/workos-provisioning.md §6 has the detail.
-  #
-  #   - Every gate below that has a WorkOS half is now inert here.
-  #     `isFeatureEnabled` no longer fails open, and the dark-launch gates
-  #     (`isSkillsEnabled`, `isCollaborationEnabled`) and the default-ON gates
-  #     (`isIfcModelsEnabled`, `isAgentAuthoredDocumentsEnabled`) read the flag
-  #     rather than their env var.
-  #   - A registry flag ABSENT from WorkOS fails closed for every organization.
-  #     All 20 in `lib/authz/feature-flags.ts` exist there as of 2026-09-18, and
-  #     each is targeted to match what prod served before the flip, except the
-  #     four switched off on purpose: `deep-research`, `skills`, `task-automation`
-  #     and the already dark `project-knowledge-page`. Adding a flag to the registry without
-  #     creating it in WorkOS now ships a feature that is off everywhere and
-  #     says nothing about why.
-  grid-oib:enforceFeatureFlags: "true"
-  # Deliberately still "true" under enforcement. It no longer decides whether
-  # the Automation section is visible — the per-org `skills` flag does, and that
-  # is OFF for every organization — only whether the `skill-scheduler` fires
-  # schedules at all (it runs the run reconciler either way). Keeping it up means
-  # re-enabling Automation for one organization is a WorkOS toggle rather than a
-  # redeploy, and the scheduler's own per-org flag check keeps schedules paused
-  # meanwhile.
-  grid-oib:skillsEnabled: "true"
-  # Same shape: inert under enforcement, kept "true" so the env half stays
-  # truthful if enforcement is ever lifted. `collaboration` is ON for all orgs.
-  grid-oib:collaborationEnabled: "true"
   # ── Observability / OTel Collector + Aspire dashboard (ADR-0029) ──
 
   # Deployed only when grid-oib:observabilityEnabled (default true) AND every
@@ -427,6 +423,9 @@ config:
   grid-oib:langfuseInitUserEmail: matthias@bigls.net
   grid-oib:langfuseOrgId: grid
   grid-oib:langfuseProjectId: grid-oib
+  # ClickHouse PVC for Langfuse. Matches the program default (src/config.ts);
+  # pinned here so the prod size is visible. Live volume was grown 20Gi -> 50Gi.
+  grid-oib:clickhouseStorageSize: 50Gi
   grid-oib:otelOidcIssuer: https://prestigious-energy-03.authkit.app
   grid-oib:otelOidcClientId: client_01M0SKKRX0XAQ99AFZ31WNJ6XT # pragma: allowlist secret (public OAuth client id)
   # ── BFF background pool (ADR-0079) ──
@@ -457,8 +456,10 @@ config:
   # What the one OpenRouter key is asked to carry, written down here instead of
   # left to the backend image's defaults (these ARE those defaults). Vision calls
   # are held to vlmFleetConcurrency fleet-wide whatever the replica count, so the
-  # ingest tier's ceiling is sized against it: ingestWorkerMaxReplicas (5) x
-  # ingestWorkerConcurrency (3) x vlmBatchWorkers (4) = 60, within 2 x 32. The
+  # ingest tier's ceiling is sized against it: ingestWorkerMaxReplicas (3) x
+  # ingestWorkerConcurrency (3) x vlmBatchWorkers (4) = 36, within 2 x 32. Node
+  # memory, not this budget, holds it at 3 (see the ingestion tier above); the
+  # budget alone would allow 5. The
   # program refuses a stack past 2x (assertVlmPeakFitsCeiling), because replicas
   # beyond it only queue on the pool. It was 12 replicas (144), then 8 (96 against
   # a pool of 48), before this: a vision call also holds a slot in its model's own
@@ -476,10 +477,16 @@ config:
   # ── Postgres pooler (ADR-0083) ──
   # Two PgBouncers, spread across nodes, so a drain takes one. Budget against the
   # primary's max_connections of 200 (assertPgConnectionBudget): 2 x (3 pooled
-  # database/role pairs x pgPoolerPoolSize 12 + 1 auth session) = 74, plus 82 held
-  # for the direct connections (see POSTGRES_DIRECT_RESERVE) = 156, 44 to spare.
+  # database/role pairs x pgPoolerPoolSize 12 + 1 auth session) = 74, plus 76 held
+  # for the direct connections (see POSTGRES_DIRECT_RESERVE) = 150, 50 to spare.
   grid-oib:pgPoolerInstances: "2"
   # ── The api tier (ADR-0082 step B) ── every backend HTTP route but the chat
   # socket, behind the aiq-api Service (BACKEND_URL). Sized like the frontend.
   grid-oib:apiMinReplicas: "1"
   grid-oib:apiMaxReplicas: "3"
+  # ── PostHog (ADR-0100) ── product analytics, error tracking and Langfuse-fed
+  # events. The project token is public (it ships in every browser bundle), so
+  # it is plaintext, not ESC. Session replay is on, with all text masked.
+  grid-oib:posthogHost: https://eu.i.posthog.com
+  grid-oib:posthogProjectToken: phc_CVrz2Nt2hoJSmBQ9duYHDbWSjkdyQkQxKs7GHxDvg27X # pragma: allowlist secret (public project token)
+  grid-oib:posthogSessionReplay: "true"

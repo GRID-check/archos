@@ -49,8 +49,10 @@ import math
 import os
 import threading
 import time
+from collections.abc import AsyncIterator
 from collections.abc import Mapping
 from collections.abc import Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -358,11 +360,15 @@ def _context_organization_id() -> str | None:
 _shared_client: tuple[Any, Any] | None = None
 
 
-def _client(timeout: float, transport: Any) -> tuple[Any, bool]:
-    """The client for one call, and whether the caller must close it.
+@asynccontextmanager
+async def _client(timeout: float, transport: Any) -> AsyncIterator[Any]:
+    """The client for one call or one batch, closed after it when it is the caller's own.
 
-    A ``transport`` (tests) gets a throwaway client around it; everything
-    else shares the loop's keep-alive client.
+    A ``transport`` (tests, and the blocking wrappers' loop of their own) gets
+    one client around it for the whole call or batch, closed when it ends:
+    closing a client closes its transport, so a client per call of a batch
+    closed the transport under every other call in flight. Everything else
+    shares the loop's keep-alive client, which stays open.
     """
     import httpx
 
@@ -370,7 +376,9 @@ def _client(timeout: float, transport: Any) -> tuple[Any, bool]:
     # caller's task: a decision inside a chat turn is chat, one inside an ingest
     # job is that job's class.
     if transport is not None:
-        return limited_async_http_client(timeout=timeout, inner=transport), True
+        async with limited_async_http_client(timeout=timeout, inner=transport) as owned:
+            yield owned
+        return
     global _shared_client
     loop = asyncio.get_running_loop()
     if _shared_client is None or _shared_client[0] is not loop or _shared_client[1].is_closed:
@@ -381,7 +389,7 @@ def _client(timeout: float, transport: Any) -> tuple[Any, bool]:
                 limits=httpx.Limits(max_keepalive_connections=8, keepalive_expiry=60.0),
             ),
         )
-    return _shared_client[1], False
+    yield _shared_client[1]
 
 
 async def _post(
@@ -390,7 +398,7 @@ async def _post(
     questions: Mapping[str, Mapping[str, Any]],
     *,
     timeout: float,
-    transport: Any,
+    client: Any,
 ) -> _Outcome:
     import httpx
 
@@ -398,18 +406,13 @@ async def _post(
     # model is the platform's, and its one endpoint (TypeSafe) is ZDR.
     body = PLATFORM_FIXED.apply({"model": endpoint.model, "state": state, "questions": dict(questions)})
     started = time.monotonic()
-    client, owned = _client(timeout, transport)
     try:
-        try:
-            response = await client.post(
-                endpoint.url,
-                json=body,
-                timeout=timeout,
-                headers={"Authorization": f"Bearer {endpoint.api_key}", "Content-Type": "application/json"},
-            )
-        finally:
-            if owned:
-                await client.aclose()
+        response = await client.post(
+            endpoint.url,
+            json=body,
+            timeout=timeout,
+            headers={"Authorization": f"Bearer {endpoint.api_key}", "Content-Type": "application/json"},
+        )
     except httpx.TimeoutException:
         _record_failure()
         return _Outcome(skipped=SKIPPED_TIMEOUT)
@@ -550,7 +553,8 @@ async def decide(
     if endpoint is None:
         record_skipped(slot, skipped or SKIPPED_ERROR, questions=questions)
         return None
-    outcome = await _post(endpoint, state, questions, timeout=timeout, transport=transport)
+    async with _client(timeout, transport) as client:
+        outcome = await _post(endpoint, state, questions, timeout=timeout, client=client)
     if outcome.decision is None:
         record_skipped(slot, outcome.skipped or SKIPPED_ERROR, outcome.detail, questions=questions)
         return None
@@ -616,7 +620,12 @@ def decide_many_blocking(
     concurrency: int = DEFAULT_CONCURRENCY,
     organization_id: str | None = None,
 ) -> list[Decision | None]:
-    """:func:`decide_many` for synchronous code, as :func:`decide_blocking` is :func:`decide`'s."""
+    """:func:`decide_many` for synchronous code, as :func:`decide_blocking` is :func:`decide`'s.
+
+    The batch shares one client around its transport, closed once every call
+    of it has answered (``_client``): the record tool's select check and the
+    closed-project fingerprint verify call this with several states at once.
+    """
     import httpx
 
     def _run() -> list[Decision | None]:
@@ -669,13 +678,14 @@ async def decide_many(
         _observe(slot, questions, states=len(states), skipped=skipped)
         return [None] * len(states)
     gate = asyncio.Semaphore(max(1, concurrency))
-
-    async def _one(state: Any) -> _Outcome:
-        async with gate:
-            return await _post(endpoint, state, questions, timeout=timeout, transport=transport)
-
     started = time.monotonic()
-    outcomes = await asyncio.gather(*(_one(state) for state in states))
+    async with _client(timeout, transport) as client:
+
+        async def _one(state: Any) -> _Outcome:
+            async with gate:
+                return await _post(endpoint, state, questions, timeout=timeout, client=client)
+
+        outcomes = await asyncio.gather(*(_one(state) for state in states))
     decided = [outcome.decision for outcome in outcomes]
     made = [d for d in decided if d is not None]
     values: dict[str, Any] = {

@@ -12,7 +12,5 @@
 # Delete every section you do not need — an empty one fails the lint.
 fixes:
   - >
-    Choosing Anmelden on the Piloti website now leads to the sign-in page of
-    this environment again. Visitors on piloti.at were previously sent to the
-    separate development environment to log in, where their accounts are not
-    at home; signing in directly in the app was never affected.
+    Choosing the sign-in button on the Piloti website leads to the sign-in page
+    again.

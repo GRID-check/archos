@@ -49,7 +49,7 @@
 
 import 'server-only'
 import { createHash } from 'node:crypto'
-import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import { requireFolderWrite } from '@/lib/authz/folder-access'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboundMailMessageRow, MailImportSkipReason, SkippedAttachment, StagedAttachment } from '@/lib/db/schema'
@@ -279,9 +279,8 @@ async function fileDelivery(row: InboundMailMessageRow): Promise<Filing> {
 /** The sender as they are NOW: a member who left, or a lookup that failed, fails the attempt. */
 async function senderSession(row: InboundMailMessageRow): Promise<AuthorizedSession> {
   const person = (await loadOrganizationDirectory(row.organizationId)).get(row.senderUserId)
-  const session = await resolvePinnedRequesterSession(
-    { userId: row.senderUserId, email: person?.email ?? null, organizationId: row.organizationId },
-    { onError: 'throw' }
+  const session = await resolvePinnedRequesterSessionStrict(
+    { userId: row.senderUserId, email: person?.email ?? null, organizationId: row.organizationId }
   )
   if (!session) throw new AttemptFailure('sender-not-member')
   return session

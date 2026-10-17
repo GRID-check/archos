@@ -1,8 +1,8 @@
 ---
 features:
   - >
-    An open file now has its own address: the link can be shared, and Back
-    closes the preview instead of leaving Dateien.
+    An open file now has a link of its own that you can share, and Back closes
+    the preview instead of leaving Dateien.
 fixes:
   - >
     Clicking a file always opens it; clicking the file that was already open no

@@ -18,8 +18,18 @@ export const collaboration: typeof en.collaboration = {
     title: 'Teilen',
     action: 'Teilen',
     close: 'Schließen',
+    /** Der Link zum Chat: er öffnet nur für Personen, die ohnehin Zugriff haben. */
+    link: {
+      heading: 'Link',
+      share: 'Link teilen',
+      copy: 'Link kopieren',
+      copied: 'Link kopiert',
+      failed: 'Der Link konnte nicht kopiert werden.',
+      hint: 'Der Link öffnet den Chat nur für Personen, die Zugriff haben. Wer noch keinen hat, wird oben eingeladen.',
+      shareTitle: 'Chat in Piloti',
+    },
     visibilityHeading: 'Wer diesen Chat sehen kann',
-    loading: 'Freigabe-Einstellungen werden geladen…',
+    loading: 'Einstellungen zum Teilen werden geladen…',
     audienceHeading: 'Wer mitliest',
     visibility: {
       private: 'Nur ich',
@@ -87,7 +97,7 @@ export const collaboration: typeof en.collaboration = {
         'Diese Person ist noch kein Mitglied des Projekts. Fügen Sie sie zuerst dem Projekt hinzu.',
       organizationMembershipRequired: 'Diese Person ist kein Mitglied dieser Organisation.',
       rateLimited:
-        'Zu viele Änderungen an der Freigabe. Bitte warten Sie einige Minuten und versuchen Sie es dann erneut.',
+        'Zu viele Änderungen daran, wer diesen Chat sieht. Bitte warten Sie einige Minuten und versuchen Sie es dann erneut.',
       rosterFull:
         'Dieser Chat hat bereits die maximale Anzahl an Personen. Entziehen Sie zuerst jemandem den Zugriff.',
       restrictedContent:
@@ -108,7 +118,7 @@ export const collaboration: typeof en.collaboration = {
         'Sie dürfen nicht jedes andere Projekt öffnen, auf das sich dieser Chat stützt, und können ihn deshalb nicht übernehmen.',
       crossProjectContentProject:
         'Dieser Chat stützt sich auf Inhalte aus anderen Projekten und kann deshalb nicht für das ganze Projekt sichtbar gemacht werden. Teilen Sie ihn mit einzelnen Personen, die diese Projekte öffnen dürfen.',
-      loadFailed: 'Die Freigabe-Einstellungen konnten nicht geladen werden.',
+      loadFailed: 'Die Einstellungen zum Teilen konnten nicht geladen werden.',
       saveFailed: 'Die Änderung konnte nicht gespeichert werden.',
       tryAgain: 'Erneut versuchen',
       dismiss: 'Diese Meldung ausblenden',
@@ -225,11 +235,19 @@ export const collaboration: typeof en.collaboration = {
     },
     markAllRead: 'Alle als gelesen markieren',
     archive: 'Archivieren',
+    undo: 'Rückgängig',
+    /** Die kurze Form für ein Telefon, wo die lange die Zeile sprengt. */
+    markAllReadShort: 'Alle gelesen',
     archived: 'Archiviert',
     resolved: 'Beantwortet',
     inert: 'Nicht mehr verfügbar',
-    bodyUnavailable: 'Dieser Chat ist für Sie nicht mehr verfügbar.',
+    // Für jedes Ziel, auf das eine Zeile zeigt (Chat, Dokument, Anmerkung), nicht nur für Chats.
+    bodyUnavailable: 'Das ist für Sie nicht mehr verfügbar.',
     inertHint: 'Sie haben keinen Zugriff mehr darauf.',
+    // Die nächste Handlung bei einer neuen Fassung unter anderem Namen: die
+    // beiden nebeneinander sehen. Öffnet die Vorschau mit dem Vergleich.
+    compareFassungen: 'Fassungen vergleichen',
+    compareFassungenLabel: 'Neue und ältere Fassung von „{subject}“ vergleichen',
     empty: {
       needsMeTitle: 'Nichts zu tun',
       needsMeDescription:
@@ -290,40 +308,124 @@ export const collaboration: typeof en.collaboration = {
         titleOne: '1 Datei wartet in der Quarantäne',
         titleMany: '{count} Dateien warten in der Quarantäne',
         titleNone: 'Dateien in der Quarantäne',
-        body: 'Kein Modell hat sie gelesen. Geben Sie sie frei oder löschen Sie sie.',
+        body: 'Kein Modell hat sie gelesen. Prüfen Sie sie: zulassen oder löschen.',
       },
       // ADR-0086: wer eine Datei hochgeladen hat, die in der Quarantäne liegt,
-      // bittet um Freigabe. {subject} ist der Dateiname.
+      // bittet darum, sie zu prüfen. {subject} ist der Dateiname.
       documentReleaseRequested: {
-        title: '{actor} bittet um Freigabe von „{subject}"',
-        body: 'Die Datei liegt in der Quarantäne. Sehen Sie sie an und geben Sie sie frei oder löschen Sie sie.',
+        title: '{actor} bittet Sie, „{subject}“ zu prüfen',
+        body: 'Die Datei liegt in der Quarantäne. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.',
       },
+      // Die Zeile führt zum Lauf selbst (seinem Block im Verlauf, sonst der
+      // Aufgabe): dort stehen Ergebnis und Grund, nicht in einer „Laufhistorie“.
       jobCompleted: {
-        title: '„{subject}" ist fertig',
-        body: 'Piloti hat den Auftrag ausgeführt. Das Ergebnis liegt im Projekt unter Automatisierung.',
+        title: 'Piloti hat „{subject}“ erledigt',
+        body: 'Öffnen Sie den Eintrag, um das Ergebnis zu sehen.',
       },
       // Ein Outlook-Archiv ist importiert. {subject} ist der Dateiname des Archivs.
       mailImportCompleted: {
-        title: '„{subject}" ist importiert',
+        title: '„{subject}“ ist importiert',
         body: 'Piloti hat die E-Mails und ihre Anhänge im Projekt unter E-Mail-Import abgelegt.',
       },
       mailImportFailed: {
-        title: 'Der Import von „{subject}" wurde abgebrochen',
+        title: 'Der Import von „{subject}“ wurde abgebrochen',
         body: 'Was bis dahin importiert war, bleibt im Projekt. Die Importliste unter Dateien nennt den Grund.',
       },
       jobFailed: {
-        title: '„{subject}" ist fehlgeschlagen',
-        body: 'Der Auftrag konnte nicht abgeschlossen werden. Die Laufhistorie im Projekt nennt den Grund.',
+        title: 'Piloti konnte „{subject}“ nicht abschließen',
+        body: 'Öffnen Sie den Eintrag: Dort steht, woran es lag.',
       },
       jobWaiting: {
-        title: '„{subject}" wartet auf Sie',
-        body: 'Piloti hat eine Rückfrage zu diesem Auftrag. Antworten Sie im Verlauf, dann läuft er weiter.',
+        title: 'Piloti hat eine Rückfrage zu „{subject}“',
+        body: 'Antworten Sie im Verlauf, dann arbeitet Piloti weiter.',
       },
       // Eine Fassung eines Dokuments wartet auf eine Entscheidung (ADR-0054).
       // {subject} ist das Dokument, {actor} wer sie eingereicht hat.
       documentReviewRequested: {
         title: '{actor} bittet Sie um die Freigabe von {subject}',
         body: 'Eine neue Fassung wartet auf Ihre Freigabe.',
+      },
+      // Eine neuere Fassung eines Dokuments, dem Sie folgen: ein Satz über die
+      // Person, die sie hochgeladen hat. {actor} ist diese Person, {subject} das
+      // Dokument, dem Sie folgen (ohne Dateiendung). Was sich geändert hat,
+      // steht als Auszug darunter; nur ohne Auszug sagt `bodyNoExcerpt`, wo
+      // man es findet. `titleNoActor`, wenn niemand Bestimmtes es war.
+      documentNewFassung: {
+        title: '{actor} hat eine neue Fassung von „{subject}“ hochgeladen',
+        titleNoActor: 'Neue Fassung von „{subject}“',
+        bodyNoExcerpt: 'Öffnen Sie die Fassung, um die Änderungen zu sehen.',
+      },
+      // Was Piloti an einer Anmerkung getan hat, für die Person, deren Handlung
+      // es geweckt hat: wer die Anmerkung delegiert, Piloti darin erwähnt oder
+      // auf seine Rückfrage geantwortet hat (ADR-0106). {related} ist die
+      // laufende Nummer der Anmerkung, {subject} das Dokument; der Auszug
+      // darunter ist, was die Anmerkung sagt. Kein {actor}: das war Piloti.
+      // `titleRelatedNoSubject`, wenn das Dokument nicht zu benennen war.
+      // Dieselben Wörter wie in der Prüfansicht: Anmerkung, Verlauf, delegieren.
+      pilotiWorkDone: {
+        title: 'Piloti hat eine Anmerkung für Sie bearbeitet',
+        titleRelated: 'Piloti hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',
+        titleRelatedNoSubject: 'Piloti hat Anmerkung {related} für Sie bearbeitet',
+        body: 'Lesen Sie die Antwort im Verlauf der Anmerkung.',
+      },
+      // Piloti konnte es nicht. `variants` sagen warum, nach der Klasse des
+      // gespeicherten Grundes (`lib/annotations/wake-end-reason.ts`), und was
+      // die Person tun kann; `body` gilt für einen Eintrag von davor.
+      pilotiWorkFailed: {
+        title: 'Piloti konnte eine Anmerkung nicht bearbeiten',
+        titleRelated: 'Piloti konnte Anmerkung {related} in „{subject}“ nicht bearbeiten',
+        titleRelatedNoSubject: 'Piloti konnte Anmerkung {related} nicht bearbeiten',
+        body: 'Öffnen Sie die Anmerkung: Bitten Sie Piloti noch einmal darum oder bearbeiten Sie sie selbst.',
+        variants: {
+          budget: {
+            body: 'Das Nutzungsbudget ist aufgebraucht. Wer Ihre Organisation verwaltet, kann es unter Organisation → Nutzung & Budgets erhöhen; danach können Sie Piloti noch einmal darum bitten.',
+          },
+          busy: {
+            body: 'Piloti kam nicht rechtzeitig dazu, weil gerade zu viel zu tun war. Bitten Sie Piloti später noch einmal darum.',
+          },
+          access: {
+            body: 'Piloti konnte sich nicht in Ihrem Namen anmelden. Bitten Sie Piloti noch einmal darum oder bearbeiten Sie die Anmerkung selbst.',
+          },
+          error: {
+            body: 'Die Bearbeitung brach ab, bevor eine Antwort da war. Bitten Sie Piloti noch einmal darum oder bearbeiten Sie die Anmerkung selbst.',
+          },
+        },
+      },
+      // Piloti hat eine Rückfrage gestellt und wartet auf eine Person: die
+      // Zuständige der Anmerkung, sonst die, für die es gearbeitet hat. Die
+      // Frage steht als Auszug darunter.
+      pilotiAsksYou: {
+        title: 'Piloti hat eine Rückfrage an Sie',
+        titleRelated: 'Piloti hat eine Rückfrage an Sie zu Anmerkung {related} in „{subject}“',
+        titleRelatedNoSubject: 'Piloti hat eine Rückfrage an Sie zu Anmerkung {related}',
+        body: 'Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.',
+      },
+      // Ein Vorschlag, den der Server hält (ADR-0105), für die Person, für die
+      // Piloti ihn gemacht hat. `variants` nennen, was er ändert (eine
+      // Dateiänderung nach ihrem Verb, sonst nach Art:
+      // `PROPOSAL_NOTICE_VARIANTS`); der Auszug darunter nennt die Dateien, die
+      // Notiz oder die Änderung. Wörter wie auf der Karte.
+      pilotiProposalWaiting: {
+        title: 'Piloti hat einen Vorschlag für Sie',
+        body: 'Der Vorschlag steht im Chat. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.',
+        variants: {
+          move: { title: 'Piloti schlägt einen neuen Ablageort vor' },
+          rename: { title: 'Piloti schlägt eine Umbenennung vor' },
+          create_folder: { title: 'Piloti schlägt einen neuen Ordner vor' },
+          assign: { title: 'Piloti schlägt eine Zuweisung vor' },
+          memory: { title: 'Piloti möchte sich eine Notiz merken' },
+          project_profile: { title: 'Piloti schlägt eine Änderung am Projektkontext vor' },
+        },
+      },
+      // Piloti hat die Dokumente eines Projekts gelesen und Werte für das
+      // Projektprofil vorgeschlagen (ADR-0111). {subject} ist der Projektname,
+      // {related} die Zahl der Rückfragen, die die Gebäudeklasse entscheiden;
+      // ohne Rückfragen fehlt sie, dann gilt `title`. Was Piloti zusammengefasst
+      // hat, steht als Auszug darunter.
+      pilotiIntakeReady: {
+        title: 'Piloti hat die Dokumente von „{subject}“ gelesen',
+        titleRelated: 'Piloti hat die Dokumente von „{subject}“ gelesen – Rückfragen: {related}',
+        body: 'Prüfen Sie die Vorschläge und bestätigen Sie, was stimmt.',
       },
       // Die Dateien einer E-Mail an die Projektadresse sind abgelegt (ADR-0075).
       // {subject} ist der Betreff der E-Mail, {project} das Projekt, {filed}
@@ -375,12 +477,12 @@ export const collaboration: typeof en.collaboration = {
     // Begründung, wie die Übergangstabelle sie verlangt.
     review: {
       approve: 'Freigeben',
-      requestChanges: 'Änderung erbeten',
+      requestChanges: 'Änderungen anfordern',
       reject: 'Ablehnen',
       changesLabel: 'Was geändert werden soll',
       reasonLabel: 'Grund der Ablehnung',
-      approveConfirm: 'Ich gebe diesen Stand frei',
-      // Die Unterschrift wie an der Datei: welcher Stand freigegeben wird (das
+      approveConfirm: 'Ich gebe diese Fassung frei',
+      // Die Unterschrift wie an der Datei: welche Fassung freigegeben wird (das
       // Dokument, die Fassungsnummer und wann die Runde eröffnet wurde — die
       // Nummer ist Pflicht, ohne sie wird nicht freigegeben) und wer wann
       // handelt. Der Name der handelnden Person ist hier unbekannt, daher
@@ -388,14 +490,14 @@ export const collaboration: typeof en.collaboration = {
       approveStand: '{subject} · Fassung {number} · Stand vom {date}',
       approveActing: 'Handelnd: {date}',
       standFailed:
-        'Der aktuelle Stand konnte nicht gelesen werden — die Freigabe ist blockiert, bis er vorliegt.',
+        'Die aktuelle Fassung konnte nicht gelesen werden – die Freigabe ist blockiert, bis sie vorliegt.',
       retry: 'Erneut versuchen',
       send: 'Senden',
       cancel: 'Abbrechen',
       open: 'Datei öffnen',
-      decided: 'Entscheidung gesendet — wird aktualisiert.',
+      decided: 'Entscheidung gesendet – wird aktualisiert.',
       failed: 'Das hat nicht geklappt. Es hat sich nichts geändert.',
-      stale: 'Der Stand hat sich geändert — die aktuelle Fassung liegt in der Datei.',
+      stale: 'Jemand hat zuerst entschieden – die aktuelle Fassung liegt in der Datei.',
       reload: 'Aktuelle Fassung öffnen',
     },
   },

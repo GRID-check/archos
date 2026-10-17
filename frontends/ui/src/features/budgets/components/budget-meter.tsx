@@ -40,11 +40,13 @@ export const BudgetMeter: FC<{
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-2">
+      {/* Stacked on a phone: side by side, the title and a long reading wrap
+          against each other ("Dieser / Monat"). */}
+      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
         <p className="text-sm font-medium">{title}</p>
         {/* The direct label. Every meter states its own value, so the fill
             colour is a redundant cue and never the only carrier of state. */}
-        <p className="text-muted-foreground text-right text-xs tabular-nums">{reading}</p>
+        <p className="text-muted-foreground text-xs tabular-nums sm:text-right">{reading}</p>
       </div>
       <div
         className="bg-muted relative mt-1.5 h-2.5 w-full overflow-hidden rounded-[4px]"
@@ -69,7 +71,7 @@ export const BudgetMeter: FC<{
         )}
       </div>
       {over && (
-        <p className="text-destructive mt-1 flex items-center gap-1 text-xs">
+        <p className="text-destructive mt-1 flex items-center gap-1 text-sm">
           <AlertTriangle className="size-3" aria-hidden />
           {t('budgets.overLimit')}
         </p>

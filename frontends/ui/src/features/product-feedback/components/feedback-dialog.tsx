@@ -38,13 +38,16 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { useModifierLabel } from '@/components/shell/shortcut-keys'
 import { useTranslations } from '@/i18n'
+import { capturePosthog, sendPosthogSupportMessage } from '@/lib/analytics/posthog'
 import {
   captureFeedbackContext,
   submitProductFeedback,
+  supportTicketText,
   type SubmitProductFeedbackRequest,
   type SubmitProductFeedbackResult,
 } from '@/lib/product-feedback/client'
 import {
+  type SubmittedProductFeedbackView,
   PRODUCT_FEEDBACK_KINDS,
   PRODUCT_FEEDBACK_MESSAGE_MAX,
   PRODUCT_FEEDBACK_MESSAGE_MIN,
@@ -70,7 +73,34 @@ export interface FeedbackDialogProps {
   submit?: (request: SubmitProductFeedbackRequest) => Promise<SubmitProductFeedbackResult>
 }
 
+/**
+ * After the first-party record exists, tell PostHog too: the product event (the
+ * kind only, never the words) and, when the project has Support switched on, a
+ * new Support ticket so it lands in the same inbox as the replay it can link
+ * to. The ticket carries the report id and the SERVER's masked text
+ * (`relayText`), never what was typed: the office's „Sensible Daten" policy
+ * applies before words reach a third party (ADR-0086). The server answers
+ * `null` for a reporter who unticked "You may contact me" (a ticket is a thread
+ * that answers the reporter) or when it could not mask; then no ticket opens.
+ * Fire-and-forget by design: the Postgres record and the inbox fan-out stay the
+ * source of truth, and nothing here may delay or fail the thank-you. Both calls
+ * no-op while PostHog is off. No email or name is sent.
+ */
+function relayToPosthog(
+  report: SubmittedProductFeedbackView,
+  pagePath: string | null
+): void {
+  capturePosthog('product_feedback_submitted', { kind: report.kind })
+  if (report.relayText === null) return
+  void sendPosthogSupportMessage(supportTicketText(report.kind, report.id, pagePath, report.relayText))
+}
+
 type Phase = { kind: 'form' } | { kind: 'sending' } | { kind: 'sent' }
+
+/** Whether a finger drives the pointer; false where there is no `matchMedia` (SSR, tests). */
+function isCoarsePointer(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true
+}
 
 export function FeedbackDialog({
   open,
@@ -128,6 +158,7 @@ export function FeedbackDialog({
     })
     if (result.ok) {
       setPhase({ kind: 'sent' })
+      relayToPosthog(result.report, captured.pagePath)
       return
     }
     setPhase({ kind: 'form' })
@@ -159,6 +190,11 @@ export function FeedbackDialog({
         className="sm:max-w-[560px]"
         data-testid="feedback-dialog"
         onOpenAutoFocus={(event) => {
+          // On a phone, focusing the message opens the keyboard at once, and it
+          // covers the kind cards and the send button before the reporter has
+          // chosen anything. They tap the field when they are ready; Radix puts
+          // focus on the dialog's first control meanwhile.
+          if (isCoarsePointer()) return
           event.preventDefault()
           textareaRef.current?.focus()
         }}
@@ -223,7 +259,7 @@ export function FeedbackDialog({
                 disabled={sending}
                 aria-invalid={showLengthHint && tooShort}
                 aria-describedby={`${messageId}-hint`}
-                className="max-h-[40vh] min-h-32"
+                className="max-h-[40dvh] min-h-32"
                 data-testid="feedback-message"
               />
               {showLengthHint && tooShort ? (
@@ -231,7 +267,11 @@ export function FeedbackDialog({
                   {t('dialog.tooShort', { min: PRODUCT_FEEDBACK_MESSAGE_MIN })}
                 </FieldError>
               ) : (
-                <FieldDescription id={`${messageId}-hint`} className="flex items-center gap-1.5">
+                // A keyboard shortcut is noise on a device with no such keys.
+                <FieldDescription
+                  id={`${messageId}-hint`}
+                  className="pointer-coarse:hidden flex items-center gap-1.5"
+                >
                   <KbdGroup>
                     <Kbd>{mod}</Kbd>
                     <Kbd>↵</Kbd>
@@ -252,7 +292,7 @@ export function FeedbackDialog({
                 className="mt-0.5"
               />
               <div className="flex flex-col gap-0.5">
-                <Label htmlFor={contactId} className="text-sm font-normal">
+                <Label htmlFor={contactId} className="touch-target text-sm font-normal">
                   {t('dialog.allowContact')}
                 </Label>
                 {userEmail && allowContact && (

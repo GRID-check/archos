@@ -23,6 +23,12 @@ export interface FolderTreeOptions {
   initialRootAccess?: FolderAccessLevel
   /** What deleting a folder needs to name: how much is inside it. */
   files: readonly FileItem[]
+  /**
+   * How many documents are filed directly in a folder, when the caller knows
+   * it better than `files` (a paged level holds one folder's first pages, the
+   * shelf summary counts every folder, ADR-0102). Absent: counted in `files`.
+   */
+  documentCountIn?: (folderId: string) => number
   selectedFolderId: string | null
   onSelectFolder: (id: string | null) => void
   /** Re-read the documents after a change that moved some (a delete re-files them). */
@@ -52,6 +58,7 @@ export function useFolderTree({
   initialFolders,
   initialRootAccess = 'write',
   files,
+  documentCountIn,
   selectedFolderId,
   onSelectFolder,
   reloadFiles,
@@ -62,11 +69,27 @@ export function useFolderTree({
   const router = useRouter()
   const [folders, setFolders] = useState<FolderItem[]>(() => [...(initialFolders ?? [])])
   const [isLoading, setIsLoading] = useState(initialFolders === undefined)
+  /**
+   * Whether any read has answered yet (the seed counts). A rename or a move
+   * re-reads the tree; the tiles already on screen stay there while it does,
+   * so only a tree that was never read is a reason to draw a skeleton.
+   */
+  const [hasAnswer, setHasAnswer] = useState(initialFolders !== undefined)
   const [error, setError] = useState(false)
   /** What the reader may do at the root (ADR-0088); each folder carries its own `access`. */
   const [rootAccess, setRootAccess] = useState<FolderAccessLevel>(initialRootAccess)
 
+  /*
+   * Reads cross: a create re-reads, a rename right after it re-reads, and a
+   * live hint (`useShelfLive`) re-reads too. Only the newest read may commit,
+   * or an older answer landing last takes the folder just made off the screen.
+   * And a re-read that fails keeps the tree it had: emptying it made every
+   * folder vanish over one dropped request, and the next hint reads again.
+   */
+  const generation = useRef(0)
+  const answered = useRef(initialFolders !== undefined)
   const load = useCallback(() => {
+    const stamp = ++generation.current
     setIsLoading(true)
     setError(false)
     return fetch(foldersUrl)
@@ -75,14 +98,21 @@ export function useFolderTree({
         return response.json()
       })
       .then((data: { folders?: FolderItem[]; rootAccess?: FolderAccessLevel }) => {
+        if (stamp !== generation.current) return
         setFolders(data.folders ?? [])
         setRootAccess(data.rootAccess === 'read' ? 'read' : 'write')
+        answered.current = true
       })
       .catch(() => {
+        if (stamp !== generation.current || answered.current) return
         setFolders([])
         setError(true)
       })
-      .finally(() => setIsLoading(false))
+      .finally(() => {
+        if (stamp !== generation.current) return
+        setIsLoading(false)
+        setHasAnswer(true)
+      })
   }, [foldersUrl])
 
   // The seeded first render is already the answer: skip the mount load once.
@@ -139,6 +169,30 @@ export function useFolderTree({
   )
 
   /**
+   * Say what belongs in a folder (migration 0145); `null` clears it. Patched
+   * from the server's answer, since a description moves no path.
+   */
+  const describe = useCallback(
+    async (folderId: string, description: string | null) => {
+      const response = await fetch(`${foldersUrl}/${folderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description }),
+      })
+      if (!response.ok) {
+        toast.error(t('folders.description.saveError'))
+        return false
+      }
+      const data = (await response.json()) as { folder?: Partial<FolderItem> }
+      setFolders((prev) =>
+        prev.map((f) => (f.id === folderId ? { ...f, description: data.folder?.description ?? description } : f))
+      )
+      return true
+    },
+    [foldersUrl, t]
+  )
+
+  /**
    * A folder dragged onto another folder — or onto „Alle Dateien", the way back
    * out to the root. Optimistic on the PARENT (the tile moves in the frame the
    * finger let go) and then re-read for the paths. The pane refuses a move into
@@ -188,7 +242,7 @@ export function useFolderTree({
     async (folderId: string) => {
       const folder = folders.find((f) => f.id === folderId)
       if (!folder) return false
-      const inside = files.filter((f) => f.folderId === folderId).length
+      const inside = documentCountIn ? documentCountIn(folderId) : files.filter((f) => f.folderId === folderId).length
       const nested = folders.filter((f) => f.parentId === folderId).length
       const parent = folder.parentId
         ? (folders.find((f) => f.id === folder.parentId)?.name ?? t('folders.allFiles'))
@@ -242,8 +296,11 @@ export function useFolderTree({
       )
       return true
     },
-    [foldersUrl, binHref, t, locale, router, folders, files, selectedFolderId, onSelectFolder, load, reloadFiles]
+    [foldersUrl, binHref, t, locale, router, folders, files, documentCountIn, selectedFolderId, onSelectFolder, load, reloadFiles]
   )
 
-  return { folders, rootAccess, isLoading, error, load, create, rename, move, remove }
+  /** `isLoading` is any read in flight (the upload plan waits for it); this is only the first. */
+  const isFirstLoad = isLoading && !hasAnswer
+
+  return { folders, rootAccess, isLoading, isFirstLoad, error, load, create, rename, describe, move, remove }
 }

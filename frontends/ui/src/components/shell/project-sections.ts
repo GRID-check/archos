@@ -73,7 +73,7 @@ export type ProjectNavGroup = 'work' | 'org'
 export interface ProjectSectionFlags {
   /** Agent Skills page — feature-flagged, default off (ADR-0046). */
   showSkills?: boolean
-  /** Org-wide Archiv — `organization-archiv` flag (ADR-0024). */
+  /** Org-wide Archiv (ADR-0024). */
   canAccessArchiv?: boolean
   /** Project knowledge page — feature-flagged, default off. */
   showKnowledge?: boolean
@@ -250,6 +250,28 @@ export const PROJECT_SETTINGS_SECTION: ProjectSection = {
   inRail: true,
   inPalette: true,
   shortcutKey: 's',
+}
+
+/** Where a section lives, under a project base (`/app/projects/<id>`). */
+export function sectionHref(section: ProjectSection, base: string): string {
+  return section.href ?? `${base}/${section.segment}`
+}
+
+/**
+ * Where a link TO a section goes. The same as {@link sectionHref} except for
+ * "Frag Piloti", which always opens a fresh chat (an empty draft), never the
+ * last thread the reader left open; `?new=1` is consumed once by the chat
+ * client. Shared by the rail and the phone tab bar, so the two doors to the
+ * same place cannot disagree about where it is.
+ */
+export function sectionLinkHref(section: ProjectSection, base: string): string {
+  const href = sectionHref(section, base)
+  return section.key === 'chat' ? `${href}?new=1` : href
+}
+
+/** One project section by key, if it exists in the IA at all. */
+export function projectSection(key: ProjectSectionKey): ProjectSection | undefined {
+  return key === 'settings' ? PROJECT_SETTINGS_SECTION : PROJECT_SECTIONS.find((section) => section.key === key)
 }
 
 function isVisible(section: ProjectSection, flags: ProjectSectionFlags): boolean {

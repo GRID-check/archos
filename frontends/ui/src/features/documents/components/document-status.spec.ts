@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   documentStatusLabel,
   failedWithPreviousVersion,
+  isCitable,
   isCitableStatus,
   isFailedStatus,
+  isNeverIndexed,
   isSettlingStatus,
 } from './document-status'
 
@@ -44,6 +46,11 @@ describe('documentStatusLabel', () => {
     expect(documentStatusLabel(null, t)).toBe('status.unknown')
   })
 
+  it('says the bytes are still arriving while a file uploads', () => {
+    expect(documentStatusLabel('uploading', t)).toBe('status.uploading')
+    expect(documentStatusLabel('processing', t)).toBe('status.processing')
+  })
+
   it('never renders a verbatim wire word for an undeclared status', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
@@ -52,5 +59,27 @@ describe('documentStatusLabel', () => {
     } finally {
       warn.mockRestore()
     }
+  })
+})
+
+/*
+ * Since ADR-0054 a person may publish Piloti's document into the index, and
+ * the dispatch guard lets only that published version through. Its status is
+ * then the truth: an authorship override showed a published, indexed report as
+ * „nicht in der Wissensbasis“ and kept Ask from opening it.
+ */
+describe('whether a document is in the knowledge base', () => {
+  it.each(['user', 'agent'] as const)('follows the status for a document by %s', (authoredBy) => {
+    const indexed = { status: 'completed', authoredBy }
+    const stored = { status: 'stored', authoredBy }
+    expect(isCitable(indexed)).toBe(true)
+    expect(isNeverIndexed(indexed)).toBe(false)
+    expect(isCitable(stored)).toBe(false)
+    expect(isNeverIndexed(stored)).toBe(true)
+  })
+
+  it('reads a document still being read as neither', () => {
+    expect(isCitable({ status: 'pending' })).toBe(false)
+    expect(isNeverIndexed({ status: 'pending' })).toBe(false)
   })
 })

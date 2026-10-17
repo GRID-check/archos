@@ -256,10 +256,7 @@ function TurnWaterfall({ turn, locale }: { turn: TurnDto; locale: string }): JSX
                   {nameOf(node)}
                 </span>
                 {failed ? (
-                  <>
-                    <AlertTriangle className="text-error size-3.5 shrink-0" aria-hidden />
-                    <span className="sr-only">{failure}</span>
-                  </>
+                  <AlertTriangle className="text-error size-3.5 shrink-0" aria-hidden />
                 ) : null}
               </span>
               <span className="text-muted-foreground text-right tabular-nums sm:order-last">
@@ -277,11 +274,36 @@ function TurnWaterfall({ turn, locale }: { turn: TurnDto; locale: string }): JSX
                   style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }}
                 />
               </span>
+              {failure ? <SpanFailure text={failure} /> : null}
             </li>
           )
         })}
       </ul>
     </div>
+  )
+}
+
+/**
+ * Why a span failed, on the page. It was `sr-only` text plus the row's `title`,
+ * so a sighted reader on a phone, where `title` never shows, never saw the one
+ * thing they opened a failed turn for. Two lines until a tap opens the rest.
+ */
+function SpanFailure({ text }: { text: string }): JSX.Element {
+  const [open, setOpen] = useState(false)
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={() => setOpen((value) => !value)}
+      className={cn(
+        'text-error col-span-full text-left break-words sm:order-[10000]',
+        'pointer-coarse:py-3.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+        !open && 'line-clamp-2'
+      )}
+      data-testid="span-failure"
+    >
+      {text}
+    </button>
   )
 }
 

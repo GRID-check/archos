@@ -198,3 +198,32 @@ def test_a_turn_still_ends_only_on_the_terminals_old_tabs_know() -> None:
         "CUSTOM",
     }
     assert TERMINAL <= types
+
+
+class TestFocusRegion:
+    """The box on the review canvas: the JSON Schema cannot say x + w <= 1, so the model does."""
+
+    def _message(self, **region) -> dict:
+        box = {"page": 1, "x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2, **region}
+        return {
+            "v": 2,
+            "type": "user_message",
+            "conversation_id": "c",
+            "message_id": "m",
+            "text": "x",
+            "focus_region": box,
+        }
+
+    @pytest.mark.parametrize("overflow", [{"x": 0.9, "w": 0.2}, {"y": 0.85, "h": 0.2}])
+    def test_a_box_past_the_page_edge_is_refused(self, overflow) -> None:
+        with pytest.raises(ValidationError, match="reaches past the page"):
+            CLIENT_MESSAGE.validate_python(self._message(**overflow))
+
+    def test_a_box_flush_with_the_edge_survives_float_rounding(self) -> None:
+        message = CLIENT_MESSAGE.validate_python(self._message(x=0.3, w=0.7000000000000001))
+        assert message.focus_region.w == pytest.approx(0.7)
+
+    def test_both_fields_are_named_in_the_hello(self) -> None:
+        from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
+
+        assert {"user_message.focus_region", "user_message.reply_in_thread"} <= set(ACCEPTED_CLIENT_FIELDS)

@@ -411,7 +411,12 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
         ref={rootRef}
         data-testid="mention-picker"
         className={cn(
-          'bg-popover text-popover-foreground flex max-h-[320px] w-full flex-col overflow-hidden rounded-xl border shadow-lg',
+          // Capped by the room above the composer as well as by 320px: with the
+          // keyboard up a phone shows about 500px of shell, and a 320px panel
+          // over it hid the conversation the mention was about. Radix measures
+          // that room (`--radix-popover-content-available-height`); outside a
+          // popover the 320px stands alone.
+          'bg-popover text-popover-foreground flex max-h-[min(20rem,var(--radix-popover-content-available-height,20rem))] w-full flex-col overflow-hidden rounded-xl border shadow-lg',
           'animate-in fade-in-0 slide-in-from-bottom-1 duration-snap ease-out motion-reduce:animate-none',
           className,
         )}
@@ -430,7 +435,9 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
               it is outside this scroll region. */}
           <CommandList
             label={resultsAria}
-            className="scroll-fade-bottom max-h-none min-h-[10rem] flex-1 p-1.5"
+            // No minimum height: one matching name used to sit on 80px of
+            // empty list. The loading skeleton holds its own three rows.
+            className="scroll-fade-bottom max-h-none min-h-0 flex-1 p-1.5"
           >
             {loading ? (
               // Skeletons shaped like the real rows (avatar + two lines), never a
@@ -495,9 +502,10 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
         </Command>
 
         {/* Footer: outside the scroll container on purpose — the hint has to stay
-            visible while the list scrolls. */}
+            visible while the list scrolls. Not on a touch screen: those are
+            hardware keys, and the row it costs is a row of names. */}
         <div
-          className="flex shrink-0 items-center gap-2 border-t bg-muted px-3 py-2"
+          className="bg-muted pointer-coarse:hidden flex shrink-0 items-center gap-2 border-t px-3 py-2"
           aria-label={t('mentions.picker.keyboardHint')}
         >
           <AtSign className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />

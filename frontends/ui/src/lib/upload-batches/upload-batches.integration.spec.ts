@@ -116,8 +116,8 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
     expect(await repo.sealUploadBatch(ORG, BATCH, USER, { unchanged: 1, failed: 0 }, new Date())).toBe(false)
     expect(await repo.completeSettledBatches(ORG, [BATCH], new Date())).toEqual([])
 
-    const quarantine = { status: 'quarantined', errorMessage: 'quarantined:{}' }
-    const seen = { status: 'pending', jobId: null }
+    const quarantine = { status: 'quarantined' as const, errorMessage: 'quarantined:{}' }
+    const seen = { status: 'pending' as const, jobId: null }
     expect(await documentsRepo.setDocumentReconciledStatus(reading, ORG, quarantine, seen)).toBe(true)
     // A second read that saw the same `pending` lost the race: it moves
     // nothing, so it settles nothing and the quarantine is audited once.
@@ -132,10 +132,10 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
 
   it('settles a quarantine only on the dispatch it resolved, and records one decision per dispatch', async () => {
     const verdict = 'quarantined:' + JSON.stringify({ reasons: [{ kind: 'term', term: 'Lohnzettel' }], checked: 'full' })
-    const quarantine = { status: 'quarantined', errorMessage: verdict, screeningOutcome: 'quarantined' as const }
+    const quarantine = { status: 'quarantined' as const, errorMessage: verdict, screeningOutcome: 'quarantined' as const }
     const id = await insertDocument('lohn.pdf', 'pending', { jobId: 'job-1' })
     const settle = (jobId: string) =>
-      documentsRepo.setDocumentReconciledStatus(id, ORG, quarantine, { status: 'pending', jobId })
+      documentsRepo.setDocumentReconciledStatus(id, ORG, quarantine, { status: 'pending' as const, jobId })
     const decisions = async () =>
       Array.from(
         await inTenant(ORG, () =>
@@ -185,8 +185,8 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
   it('keeps a decision owed until it is marked audited, once, and never rewritten', async () => {
     const verdict = 'quarantined:' + JSON.stringify({ reasons: [{ kind: 'iban' }] })
     const id = await insertDocument('konto.pdf', 'pending', { jobId: 'job-owed' })
-    const resolution = { status: 'quarantined', errorMessage: verdict }
-    await documentsRepo.setDocumentReconciledStatus(id, ORG, resolution, { status: 'pending', jobId: 'job-owed' })
+    const resolution = { status: 'quarantined' as const, errorMessage: verdict }
+    await documentsRepo.setDocumentReconciledStatus(id, ORG, resolution, { status: 'pending' as const, jobId: 'job-owed' })
 
     const [owed] = await decisionsRepo.listOwedQuarantineDecisions(ORG, [id])
     expect(owed).toMatchObject({ documentId: id, jobId: 'job-owed', reasons: 'iban', auditedAt: null })
@@ -330,7 +330,7 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
 
     const row = await documentsRepo.findDocumentInOrg(id, ORG, internalRead('ingest'))
     expect(row).toMatchObject({
-      status: 'uploaded',
+      status: 'uploaded' as const,
       screeningOutcome: 'released',
       screeningReleasedHash: 'sha256:seen',
       screeningReleasedBy: 'reviewer',
@@ -385,8 +385,8 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
     const folderId = String(Array.from(folders)[0]?.id)
     const id = await insertDocument('gehalt.pdf', 'pending', { jobId: 'job-f', folderId })
 
-    const quarantine = { status: 'quarantined', errorMessage: 'quarantined:{}' }
-    expect(await documentsRepo.setDocumentReconciledStatus(id, ORG, quarantine, { status: 'pending', jobId: 'job-f' })).toBe(true)
+    const quarantine = { status: 'quarantined' as const, errorMessage: 'quarantined:{}' }
+    expect(await documentsRepo.setDocumentReconciledStatus(id, ORG, quarantine, { status: 'pending' as const, jobId: 'job-f' })).toBe(true)
 
     const rows = await inTenant(ORG, () =>
       db.execute<{ folder_id: string | null }>(sql`
