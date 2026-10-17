@@ -365,12 +365,14 @@ export const collaboration = {
     /** A row about an annotation: go there, and for a request answer or resolve it right here. */
     mark: {
       open: 'Go to annotation',
+      answerInReview: 'Answer in the review',
       reply: 'Reply',
       replyLabel: 'Your reply to annotation {related}',
       replyLabelNoNumber: 'Your reply to the annotation',
       send: 'Send',
       cancel: 'Cancel',
       sent: 'Reply sent.',
+      sentPilotiNotAsked: 'Reply sent. Piloti reads it only once you ask it with @Piloti in the review.',
       resolve: 'Resolve',
       resolved: 'Marked as resolved.',
       conflict: 'Someone changed the annotation first. Open it to see where it stands.',

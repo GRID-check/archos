@@ -27,6 +27,7 @@ function item(overrides: Partial<InboxItemView> = {}): InboxItemView {
     related: null,
     excerpt: 'Ist die Brandwand hier nach EN 1366 geprüft? (vertraulicher Auszug)',
     variant: null,
+    answerIn: null,
     createdAt: '2026-10-15T10:00:00.000Z',
     updatedAt: '2026-10-15T10:00:00.000Z',
     ...overrides,

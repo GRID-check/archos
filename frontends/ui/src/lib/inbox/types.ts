@@ -75,9 +75,23 @@ export interface InboxItemView {
    * (`[a-z][a-z_]*`), never copy; withheld with the payload when redacted.
    */
   variant: string | null
+  /**
+   * Where the reader may answer the mark an open request is about (a mark's
+   * Zuständige, Piloti's Rückfrage, a mention), as the server decides it: `row`
+   * here in the inbox, `review` only in the Prüfansicht, or null when they may
+   * not (they cannot write the document, or the row is no request on a mark).
+   * `review` is Piloti's Rückfrage while events do not wake Piloti
+   * (`piloti-wakes` off): an answer reaches Piloti only when the Prüfansicht
+   * asks it, so the row links there instead of answering. The row offers only
+   * what this says; the annotations' service checks every write again.
+   */
+  answerIn: InboxAnswerPlace | null
   createdAt: string
   updatedAt: string
 }
+
+/** Where a request on a mark may be answered: {@link InboxItemView.answerIn}. */
+export type InboxAnswerPlace = 'row' | 'review'
 
 /**
  * The slices `GET /api/inbox?filter=` reads (`./repository`'s `InboxListFilter`):

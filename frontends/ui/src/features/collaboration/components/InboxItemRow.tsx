@@ -18,8 +18,9 @@
  * list re-reads on the `inbox.changed` nudge. Nothing persists on a chat
  * message, so `useCardDecision` does not apply here. A row about a mark (its
  * presentation says `anchor: 'mark'`) opens at the mark, and a request on one
- * (assigned to the reader, or Piloti's question) is answered or resolved right
- * here, through the annotations' own client: the same writes the thread makes.
+ * (assigned to the reader, Piloti's question, a mention) is answered or
+ * resolved right here, through the annotations' own client: the same writes
+ * the thread makes, and only where the server's `answerIn` says the reader may.
  *
  * The row answers **who / what / where / when without being opened** (IB-20):
  * the title carries the actor, the body the subject, the excerpt the actual
@@ -127,9 +128,6 @@ export interface InboxMarkClient {
 }
 
 const MARK_CLIENT: InboxMarkClient = { reply: replyToAnnotation, update: updateAnnotation }
-
-/** The types whose row answers a mark here: the reader is responsible for it, Piloti asked them, or a colleague mentioned them. */
-const MARK_REQUEST_TYPES: ReadonlySet<string> = new Set(['annotation.assigned_to_you', 'piloti.asks_you', 'annotation.mentioned'])
 
 /** Only a plain primary click counts as "opened"; see the title link. */
 function isPlainClick(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }): boolean {
@@ -258,23 +256,32 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   */
   const markRow =
     isMarkAnchored(item.type) && !inert && !redacted && item.resourceType === 'document' && item.anchorId !== null
-  const markOpen = markRow && MARK_REQUEST_TYPES.has(item.type) && item.actionable && !resolved && !archived
-  const canResolveMark = markOpen && item.type === 'annotation.assigned_to_you'
+  /*
+    A request on a mark is answered where the server says it may be
+    (`answerIn`): here in the row, only in the Prüfansicht (Piloti's Rückfrage
+    while events do not wake Piloti: the review asks Piloti itself), or not at
+    all (the reader may only read the document). Never guessed here.
+  */
+  const markOpen = markRow && item.answerIn !== null && item.actionable && !resolved && !archived
+  const answerHere = markOpen && item.answerIn === 'row'
+  const answerInReview = markOpen && item.answerIn === 'review'
+  const canResolveMark = answerHere && item.type === 'annotation.assigned_to_you'
   const [replying, setReplying] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [markBusy, setMarkBusy] = useState(false)
-  const [markOutcome, setMarkOutcome] = useState<'sent' | 'resolved' | 'conflict' | 'failed' | null>(null)
+  const [markOutcome, setMarkOutcome] = useState<'sent' | 'sentPilotiNotAsked' | 'resolved' | 'conflict' | 'failed' | null>(null)
 
   const sendReply = async (): Promise<void> => {
     const words = replyText.trim()
-    if (!markOpen || !item.anchorId || words === '' || markBusy) return
+    if (!answerHere || !item.anchorId || words === '' || markBusy) return
     setMarkBusy(true)
     setMarkOutcome(null)
     try {
-      await markClient.reply(item.resourceId, item.anchorId, { body: words })
+      const { wake } = await markClient.reply(item.resourceId, item.anchorId, { body: words })
       setReplying(false)
       setReplyText('')
-      setMarkOutcome('sent')
+      // `off`: the answer met a wake rule but nothing wakes Piloti here; the row says how to ask it.
+      setMarkOutcome(wake === 'off' ? 'sentPilotiNotAsked' : 'sent')
       // Answered from here is read here: the thread has the reply.
       onOpen?.(item)
     } catch {
@@ -884,11 +891,11 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                   }}
                   data-testid="inbox-open-mark"
                 >
-                  {t('inbox.mark.open')}
+                  {t(answerInReview ? 'inbox.mark.answerInReview' : 'inbox.mark.open')}
                 </Link>
               </Button>
             )}
-            {markOpen && !replying && markOutcome !== 'resolved' && (
+            {answerHere && !replying && markOutcome !== 'resolved' && (
               <Button
                 type="button"
                 size="sm"
@@ -929,7 +936,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             )}
           </div>
 
-          {markOpen && replying && (
+          {answerHere && replying && (
             <div className="relative z-10 mt-2 space-y-2 rounded-lg border p-2" data-testid="inbox-mark-reply-form">
               <label htmlFor={`inbox-mark-reply-${item.id}`} className="text-muted-foreground block text-xs">
                 {item.related ? t('inbox.mark.replyLabel', { related: item.related }) : t('inbox.mark.replyLabelNoNumber')}

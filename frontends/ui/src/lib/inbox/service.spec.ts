@@ -44,8 +44,10 @@ vi.mock('./repository', () => ({
 // render the real repository's WHERE clause with drizzle's dialect. `@/lib/db` is
 // mocked so no connection is ever opened.
 vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
+vi.mock('@/lib/documents/can-write', () => ({ canWriteDocument: vi.fn() }))
 
 import { PgDialect } from 'drizzle-orm/pg-core'
+import { canWriteDocument } from '@/lib/documents/can-write'
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboxItem, InboxItemType } from '@/lib/db/schema'
@@ -1207,5 +1209,68 @@ describe('viewInboxItemAs — the row as its recipient would be shown it', () =>
     expect(await viewInboxItemAs(platformSession, feedback)).toBeNull()
     vi.mocked(hasPlatformPermission).mockResolvedValue(true)
     expect((await viewInboxItemAs(platformSession, feedback))?.href).toBe('/app/platform/feedback?report=f1')
+  })
+})
+
+/**
+ * A request on a mark says where it may be answered, decided on the server:
+ * answering and closing a mark are writes, so a reader who may only read the
+ * document is offered neither; and Piloti's Rückfrage while events do not wake
+ * Piloti is answered in the Prüfansicht, which asks Piloti itself.
+ */
+describe('listInbox — where a request on a mark may be answered (answerIn)', () => {
+  const onMark = (overrides: Partial<InboxItem>) =>
+    row({
+      type: 'annotation.assigned_to_you',
+      resourceType: 'document',
+      resourceId: 'doc_w',
+      anchorId: 'ann_1',
+      actionable: true,
+      groupKey: 'annotation.assigned_to_you:document:doc_w:ann_1',
+      ...overrides,
+    })
+
+  beforeEach(() => {
+    vi.mocked(canWriteDocument).mockImplementation(async (_session, documentId) => documentId === 'doc_w')
+  })
+
+  it('offers the row to a reader who may write the document, and nothing to one who may only read it', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      onMark({ id: 'writer' }),
+      onMark({ id: 'reader', resourceId: 'doc_r', groupKey: 'g_r' }),
+      onMark({ id: 'mentioned', type: 'annotation.mentioned', groupKey: 'g_m' }),
+    ])
+
+    const { items } = await listInbox(session)
+
+    expect(Object.fromEntries(items.map((item) => [item.id, item.answerIn]))).toEqual({
+      writer: 'row',
+      reader: null,
+      mentioned: 'row',
+    })
+    // Each document is asked once, however many rows name it.
+    expect(vi.mocked(canWriteDocument).mock.calls.map(([, documentId]) => documentId).sort()).toEqual(['doc_r', 'doc_w'])
+  })
+
+  it('sends Piloti’s Rückfrage to the Prüfansicht while events do not wake Piloti, and keeps it in the row when they do', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([onMark({ id: 'asks', type: 'piloti.asks_you' })])
+
+    expect((await listInbox(session)).items[0]!.answerIn).toBe('review')
+
+    const wakes = makeSession({ featureFlags: ['collaboration', 'piloti-wakes'] })
+    expect((await listInbox(wakes)).items[0]!.answerIn).toBe('row')
+  })
+
+  it('asks nothing for a row that is no request on a mark, and offers nothing on an unreachable one', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'chat' }),
+      onMark({ id: 'fyi', type: 'annotation.activity', actionable: false, groupKey: 'g_a' }),
+      onMark({ id: 'gone', inertAt: at, groupKey: 'g_g' }),
+    ])
+
+    const { items } = await listInbox(session)
+
+    expect(items.map((item) => item.answerIn)).toEqual([null, null, null])
+    expect(canWriteDocument).not.toHaveBeenCalled()
   })
 })

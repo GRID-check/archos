@@ -14,7 +14,8 @@
 import 'server-only'
 import { BadRequestError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
-import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
+import { isCollaborationEnabled, isPilotiWakesEnabled } from '@/lib/authz/feature-flags'
+import { canWriteDocument } from '@/lib/documents/can-write'
 import { getPlatformOrganizationId, hasPlatformPermission } from '@/lib/authz/platform'
 import { withTenant } from '@/lib/db/tenant-context'
 import { publishToUser } from '@/lib/events/bus'
@@ -57,13 +58,15 @@ import {
   platformInboxTypes,
   visibleInboxTypes,
 } from './registry'
-import type {
-  InboxItemState,
-  InboxItemView,
-  InboxListFilter,
-  InboxListResponse,
-  InboxMutationResult,
-  InboxSummaryResponse,
+import {
+  isMarkAnchored,
+  type InboxAnswerPlace,
+  type InboxItemState,
+  type InboxItemView,
+  type InboxListFilter,
+  type InboxListResponse,
+  type InboxMutationResult,
+  type InboxSummaryResponse,
 } from './types'
 
 /**
@@ -547,6 +550,51 @@ async function rowsWithUnreadableRuns(session: AuthorizedSession, rows: readonly
  * the half that also covers a missed transition, a narrowed visibility, or a lost
  * project membership, none of which touch the stored row.
  */
+/** Whether a row is a request about a mark, which the reader answers in its thread. */
+const asksAboutMark = (row: InboxItem): boolean =>
+  row.actionable && row.resourceType === 'document' && row.anchorId !== null && !row.inertAt && isMarkAnchored(row.type)
+
+/** What decides where a request on a mark may be answered: the documents the reader may write, and the wake switch. */
+interface MarkAnswers {
+  writable: ReadonlySet<string>
+  wakesOn: boolean
+}
+
+/**
+ * The documents among the page's requests on a mark that the reader may write
+ * now, each asked once (`canWriteDocument`). Answering a mark and closing it
+ * are writes, so a row on a document the reader may only read offers neither.
+ * A probe that fails counts as no: the row still opens the mark.
+ */
+async function markAnswersFor(
+  session: AuthorizedSession,
+  rows: readonly InboxItem[],
+  targets: Map<string, InboxTargetAccess | null>,
+): Promise<MarkAnswers> {
+  const documentIds = new Set(
+    rows
+      .filter((row) => asksAboutMark(row) && targets.get(targetKey(row.resourceType, row.resourceId)))
+      .map((row) => row.resourceId),
+  )
+  const verdicts = await Promise.all(
+    [...documentIds].map(async (documentId) => [documentId, await canWriteDocument(session, documentId).catch(() => false)] as const),
+  )
+  return {
+    writable: new Set(verdicts.filter(([, writable]) => writable).map(([documentId]) => documentId)),
+    wakesOn: isPilotiWakesEnabled(session),
+  }
+}
+
+/**
+ * Where this row's request may be answered (`InboxItemView.answerIn`). Piloti's
+ * Rückfrage while events do not wake Piloti is answered in the Prüfansicht,
+ * which asks Piloti itself; an answer from the row would reach nobody.
+ */
+function answerPlaceOf(row: InboxItem, reachable: boolean, answers: MarkAnswers): InboxAnswerPlace | null {
+  if (!reachable || !asksAboutMark(row) || !answers.writable.has(row.resourceId)) return null
+  return row.type === 'piloti.asks_you' && !answers.wakesOn ? 'review' : 'row'
+}
+
 /** A payload string that says something, trimmed; anything else is absent. */
 function nonEmpty(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
@@ -557,6 +605,7 @@ function toItemView(
   targets: Map<string, InboxTargetAccess | null>,
   actorNames: Map<string, string>,
   withheld: ReadonlySet<string>,
+  answers: MarkAnswers,
 ): InboxItemView {
   const access =
     row.inertAt || withheld.has(row.id) ? null : (targets.get(targetKey(row.resourceType, row.resourceId)) ?? null)
@@ -605,6 +654,7 @@ function toItemView(
     related: access ? coerceText(payload.related, SUBJECT_MAX_LENGTH) : null,
     excerpt: access ? coerceText(payload.excerpt, EXCERPT_MAX_LENGTH) : null,
     variant: access ? coerceVariant(payload.variant) : null,
+    answerIn: answerPlaceOf(row, access !== null, answers),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -661,9 +711,10 @@ export async function listInbox(
   ])
 
   const actorNames = new Map([...people].map(([userId, person]) => [userId, person.name]))
+  const answers = await markAnswersFor(session, rows, targets)
 
   return {
-    items: rows.map((row) => toItemView(row, targets, actorNames, withheld)),
+    items: rows.map((row) => toItemView(row, targets, actorNames, withheld, answers)),
     pending,
     counts,
     hasMore,
@@ -709,7 +760,7 @@ export async function viewInboxItemAs(session: AuthorizedSession, row: InboxItem
     resolvePeople(session.organizationId, row.actorUserId ? [row.actorUserId] : []),
   ])
   const actorNames = new Map([...people].map(([userId, person]) => [userId, person.name]))
-  const view = toItemView(row, targets, actorNames, withheld)
+  const view = toItemView(row, targets, actorNames, withheld, await markAnswersFor(session, [row], targets))
   return view.href ? view : null
 }
 

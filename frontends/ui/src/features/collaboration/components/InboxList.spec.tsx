@@ -79,6 +79,7 @@ const ITEM: InboxItemView = {
   related: null,
   excerpt: null,
   variant: null,
+  answerIn: null,
   createdAt: '2026-07-29T09:00:00Z',
   updatedAt: '2026-07-29T09:00:00Z',
 }

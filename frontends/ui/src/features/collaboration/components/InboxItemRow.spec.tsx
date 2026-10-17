@@ -36,6 +36,7 @@ const base: InboxItemView = {
   related: null,
   excerpt: 'Ist die Annahme richtig?',
   variant: null,
+  answerIn: null,
   // Deliberately DIFFERENT moments: the row is timed by `updatedAt`, and while
   // the two matched here every assertion about which one the <time> carries was
   // true of both.
@@ -1023,6 +1024,8 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
       related: '4',
       excerpt: 'Türbreite prüfen',
       variant: null,
+      // The server's word: this reader may write the document, so they answer from the row.
+      answerIn: 'row',
       ...overrides,
     })
 
@@ -1081,6 +1084,41 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     render(<InboxItemRow item={markRow({ type: 'piloti.asks_you', actorName: null, actorUserId: null })} markClient={client()} />)
     expect(screen.getByTestId('inbox-mark-reply')).toBeInTheDocument()
     expect(screen.queryByTestId('inbox-mark-resolve')).not.toBeInTheDocument()
+  })
+
+  // The row offers only what the reader can do: one who may only read the
+  // document cannot answer or close the mark, so the row just opens it.
+  test('offers neither answering nor resolving when the server says the reader may not answer the mark', () => {
+    render(<InboxItemRow item={markRow({ answerIn: null })} markClient={client()} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('Go to annotation')
+    expect(screen.queryByTestId('inbox-mark-reply')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('inbox-mark-resolve')).not.toBeInTheDocument()
+  })
+
+  // With events not waking Piloti, an answer from the row would reach nobody:
+  // the Prüfansicht asks Piloti itself, so the row leads there.
+  test('leads Piloti’s question to the review when the answer must be asked from there, and claims no answer here', () => {
+    render(
+      <InboxItemRow
+        item={markRow({ type: 'piloti.asks_you', actorName: null, actorUserId: null, answerIn: 'review' })}
+        markClient={client()}
+      />,
+    )
+    const open = screen.getByTestId('inbox-open-mark')
+    expect(open).toHaveTextContent('Answer in the review')
+    expect(open).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
+    expect(screen.queryByTestId('inbox-mark-reply')).not.toBeInTheDocument()
+  })
+
+  test('says how to reach Piloti when an answer sent from the row met a wake rule nothing acts on', async () => {
+    const marks = client({ reply: vi.fn(async () => ({ wake: 'off' }) as never) })
+    render(<InboxItemRow item={markRow()} markClient={marks} />)
+    fireEvent.click(screen.getByTestId('inbox-mark-reply'))
+    fireEvent.change(screen.getByLabelText('Your reply to annotation 4'), { target: { value: 'Ist bestellt.' } })
+    fireEvent.click(screen.getByTestId('inbox-mark-reply-send'))
+    await waitFor(() =>
+      expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Piloti reads it only once you ask it with @Piloti in the review.'),
+    )
   })
 
   test('news on a mark only opens it: nothing waits on the reader there', () => {

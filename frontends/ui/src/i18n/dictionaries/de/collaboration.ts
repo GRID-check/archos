@@ -255,12 +255,15 @@ export const collaboration: typeof en.collaboration = {
     // antworten oder erledigen, wie im Verlauf der Anmerkung.
     mark: {
       open: 'Zur Anmerkung',
+      // Eine Rückfrage von Piloti, solange Ereignisse Piloti nicht wecken: Erst die Prüfansicht fragt Piloti mit der Antwort.
+      answerInReview: 'In der Prüfansicht beantworten',
       reply: 'Antworten',
       replyLabel: 'Ihre Antwort auf Anmerkung {related}',
       replyLabelNoNumber: 'Ihre Antwort auf die Anmerkung',
       send: 'Senden',
       cancel: 'Abbrechen',
       sent: 'Antwort gesendet.',
+      sentPilotiNotAsked: 'Antwort gesendet. Piloti liest sie erst, wenn Sie es in der Prüfansicht mit @Piloti fragen.',
       resolve: 'Erledigen',
       resolved: 'Als erledigt markiert.',
       conflict: 'Jemand hat die Anmerkung zuerst geändert. Öffnen Sie sie, um den aktuellen Stand zu sehen.',
