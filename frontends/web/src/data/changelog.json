@@ -200,6 +200,10 @@
               "de": "Sehr große Ordner in der Büroablage und in den Dateien eines Projekts öffnen jetzt sofort, weitere Dokumente werden geladen, während Sie bis zum Ende scrollen. Die Dokumentanzahl und die Ordnerübersicht beziehen sich weiterhin auf alle Dokumente im Ordner."
             },
             {
+              "en": "A file the content check holds back now says why: whose rule it is, which pages it was found on, and how many further reasons did not fit. An upload that holds files back no longer says everything has been read.",
+              "de": "Eine Datei, die bei der Inhaltsprüfung zurückgehalten wird, zeigt jetzt den Grund dafür: von wem die Regel stammt, auf welchen Seiten sie gefunden wurde und wie viele weitere Gründe nicht angezeigt werden konnten. Bei einem Upload, bei dem Dateien zurückgehalten werden, wird nicht mehr angezeigt, dass alles gelesen wurde."
+            },
+            {
               "en": "While files upload and Piloti reads them, every status now has its own symbol, so a document that is waiting, being read, held back for review or filed unread is told apart at a glance in the upload panel, on the cards and in the list. A document that could not be read is marked in a calmer red, and shortened file names always show where they were cut.",
               "de": "Während Dateien hochgeladen werden und Piloti sie einliest, hat jetzt jeder Status ein eigenes Symbol. So lassen sich wartende, gerade eingelesene, zur Prüfung zurückgestellte oder ungelesen abgelegte Dokumente im Upload-Panel, auf den Karten und in der Liste auf einen Blick unterscheiden. Dokumente, die nicht gelesen werden konnten, sind in einem dezenteren Rot markiert, und gekürzte Dateinamen zeigen immer an, wo sie gekürzt wurden."
             },
@@ -327,6 +331,10 @@
             {
               "en": "PDFs with large blocks of display lettering, such as the legend on a structural engineering sheet, are now read instead of marked as failed. Read an affected document again to pick it up.",
               "de": "PDFs mit großen Textblöcken in Displayschrift, etwa der Legende auf einem Tragwerksplan, werden jetzt eingelesen statt als fehlgeschlagen markiert. Lesen Sie ein betroffenes Dokument erneut ein, damit es verarbeitet wird."
+            },
+            {
+              "en": "The content check now finds numbers and terms that extracted text hides from it: split by a soft hyphen, an invisible character or a line break, or written straight against a label or beside an expiry date. Table cells are no longer read as one card number.",
+              "de": "Die Inhaltsprüfung erkennt jetzt Zahlen und Begriffe, die im extrahierten Text verborgen bleiben, weil sie durch einen bedingten Trennstrich, ein unsichtbares Zeichen oder einen Zeilenumbruch getrennt sind, direkt an eine Bezeichnung anschließen oder neben einem Ablaufdatum stehen. Tabellenzellen werden nicht mehr als eine einzige Kartennummer gelesen."
             },
             {
               "en": "A file the content check held back is now called „Zurückgehalten“ on its badge and in the upload summary, the same word the upload panel, the folder overview and the chat use.",

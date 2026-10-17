@@ -236,6 +236,10 @@
     "de": "Eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, heißt nun auf ihrem Badge und in der Upload-Zusammenfassung „Zurückgehalten“ – genau wie im Upload-Bereich, in der Ordnerübersicht und im Chat."
   },
   {
+    "en": "A file the content check holds back now says why: whose rule it is, which pages it was found on, and how many further reasons did not fit. An upload that holds files back no longer says everything has been read.",
+    "de": "Eine Datei, die bei der Inhaltsprüfung zurückgehalten wird, zeigt jetzt den Grund dafür: von wem die Regel stammt, auf welchen Seiten sie gefunden wurde und wie viele weitere Gründe nicht angezeigt werden konnten. Bei einem Upload, bei dem Dateien zurückgehalten werden, wird nicht mehr angezeigt, dass alles gelesen wurde."
+  },
+  {
     "en": "A file uploaded during the conversation now opens from the answer's source right away. Files Piloti cannot display, such as Word documents or spreadsheets, can be downloaded from there.",
     "de": "Eine Datei, die während des Gesprächs hochgeladen wurde, öffnet sich jetzt sofort aus der Quelle der Antwort. Dateien, die Piloti nicht anzeigen kann, etwa Word-Dokumente oder Tabellen, lassen sich von dort herunterladen."
   },
@@ -2518,6 +2522,10 @@
   {
     "en": "The compliance check now takes requirements only from the Richtlinien and evidence only from your own documents, including the office archive. A requirement can no longer count as documented just because the Richtlinie states it.",
     "de": "Die Konformitätsprüfung nimmt Anforderungen jetzt nur aus den Richtlinien und Nachweise nur aus Ihren eigenen Unterlagen, einschließlich des Büroarchivs. Eine Anforderung gilt nicht mehr als nachgewiesen, bloß weil die Richtlinie sie nennt."
+  },
+  {
+    "en": "The content check now finds numbers and terms that extracted text hides from it: split by a soft hyphen, an invisible character or a line break, or written straight against a label or beside an expiry date. Table cells are no longer read as one card number.",
+    "de": "Die Inhaltsprüfung erkennt jetzt Zahlen und Begriffe, die im extrahierten Text verborgen bleiben, weil sie durch einen bedingten Trennstrich, ein unsichtbares Zeichen oder einen Zeilenumbruch getrennt sind, direkt an eine Bezeichnung anschließen oder neben einem Ablaufdatum stehen. Tabellenzellen werden nicht mehr als eine einzige Kartennummer gelesen."
   },
   {
     "en": "The controls for zooming a cited PDF were laid out past the right-hand edge of a phone screen, where they could not be reached. They now wrap onto a second line when the screen is narrow.",
