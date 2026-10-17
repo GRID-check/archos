@@ -58,12 +58,6 @@ export function isExternalFileDrag(dataTransfer: DataTransfer | null): boolean {
   return dragTypes(dataTransfer).includes('Files')
 }
 
-/** True when a drag was started inside the app — a document or a folder. */
-export function isInternalDrag(dataTransfer: DataTransfer | null): boolean {
-  const types = dragTypes(dataTransfer)
-  return types.includes(DOCUMENT_DRAG_TYPE) || types.includes(FOLDER_DRAG_TYPE)
-}
-
 /**
  * The folder being dragged, readable DURING a drag — see the module header for
  * why this comes off the type list rather than out of `getData`.
