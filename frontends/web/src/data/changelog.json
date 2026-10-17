@@ -71,6 +71,10 @@
               "de": "Wenn Piloti vorschlägt, Dokumente zu verschieben, umzubenennen, abzulegen oder zuzuweisen, sehen jetzt alle im Gespräch denselben Vorschlag und dieselbe Entscheidung: Sobald jemand ihn annimmt, wird er im Namen dieser Person und mit deren Berechtigungen ausgeführt. Die Karte zeigt, wer entschieden hat und was umgesetzt wurde."
             },
             {
+              "en": "Hold a file or folder you are dragging over a folder for a moment and it opens, so you can move things into folders that are not on screen. Every move now offers to undo it.",
+              "de": "Halten Sie eine Datei oder einen Ordner beim Ziehen kurz über einen Ordner, damit er sich öffnet und Sie Elemente in nicht sichtbare Ordner verschieben können. Jede Verschiebung können Sie jetzt rückgängig machen."
+            },
+            {
               "en": "The preview of a held file shows what the content check found and on which page, and opens the document at that page with the listed word marked.",
               "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
             },
@@ -182,6 +186,10 @@
             {
               "en": "Large folders in a project's files and in the Archiv now open and scroll faster: the first documents appear right away while the rest load behind them, and previews load as you scroll to them.",
               "de": "Große Ordner in den Dateien eines Projekts und im Archiv öffnen sich jetzt schneller und lassen sich flüssiger durchscrollen: Die ersten Dokumente werden sofort angezeigt, während die übrigen im Hintergrund laden, und Vorschauen werden geladen, sobald Sie zu ihnen scrollen."
+            },
+            {
+              "en": "Files dragged from your desktop onto a folder, or onto a folder in the path above the list, now upload into that folder, and the drop area names it before you let go.",
+              "de": "Dateien, die Sie vom Desktop auf einen Ordner oder auf einen Ordner im Pfad oberhalb der Liste ziehen, werden jetzt in diesen Ordner hochgeladen. Der Ablagebereich zeigt den Ordnernamen an, bevor Sie die Dateien loslassen."
             },
             {
               "en": "A file opened beside the chat now shows its format, page count and size under its name, and a PDF's page number and zoom float over its pages. You see what you are asking about before you ask.",
@@ -311,6 +319,18 @@
             {
               "en": "A report Piloti wrote that a colleague approved and published is now shown as part of the knowledge base, and Piloti can be asked about it like any other document.",
               "de": "Ein von Piloti verfasster Bericht, den ein Kollege freigegeben und veröffentlicht hat, wird nun als Teil der Wissensbasis angezeigt und Sie können Piloti dazu wie zu jedem anderen Dokument befragen."
+            },
+            {
+              "en": "A second drop while an upload is still running now waits its turn instead of disappearing, and the drop area no longer stays on screen after a cancelled drag.",
+              "de": "Ein zweiter Drop wird jetzt eingereiht, wenn ein Upload noch läuft, statt zu verschwinden; nach einem abgebrochenen Drag bleibt der Drop-Bereich nicht mehr sichtbar."
+            },
+            {
+              "en": "A folder you may only read now says so when you drag files or documents over it, and its files can no longer be dragged out.",
+              "de": "Ein Ordner, für den Sie jetzt nur Leserechte haben, zeigt dies an, wenn Sie Dateien oder Dokumente darüber ziehen; Dateien lassen sich nicht mehr aus ihm herausziehen."
+            },
+            {
+              "en": "Moving or renaming a folder to a name that is already taken there now says which name is in the way, instead of failing without a reason.",
+              "de": "Beim Verschieben oder Umbenennen eines Ordners wird jetzt angezeigt, welcher Name am Zielort bereits vergeben ist, statt dass der Vorgang ohne Begründung fehlschlägt."
             },
             {
               "en": "A file that cannot be read for a lasting reason, such as an encrypted or empty PDF, is no longer read again on every „Erneut lesen“ or rescan, only once its bytes change or Piloti's reader improves. A failure of the moment, like a timeout, can still be retried right away.",
