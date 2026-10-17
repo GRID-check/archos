@@ -115,8 +115,8 @@ describe("the contact address on Cloudflare", () => {
     // Named by address, not by position: reordering the list must not
     // replace (and so re-verify) an address that did not change.
     expect(addresses.map((a) => a.name)).toEqual([
-      "contact-mail-destination-mail-founder-one-example",
-      "contact-mail-destination-mail-founder-two-example",
+      expect.stringMatching(/^contact-mail-destination-mail-founder-one-example-[0-9a-f]{8}$/),
+      expect.stringMatching(/^contact-mail-destination-mail-founder-two-example-[0-9a-f]{8}$/),
     ]);
   });
 
@@ -218,5 +218,13 @@ describe("the contact zone check", () => {
     expect(() => assertZoneApex(KEY, CONTACT_ZONE, CONTACT_ZONE_ID, "other.example")).toThrow(
       /grid-oib:contactAddress route mail on .* but zone zone-app-1 is "other.example"/,
     );
+  });
+});
+
+describe("destination address names", () => {
+  it("are distinct for addresses whose slugs meet, and stable for one address", async () => {
+    const { addressResourceName } = await import("./contact-mail");
+    expect(addressResourceName("a.b@example.org")).not.toBe(addressResourceName("a-b@example.org"));
+    expect(addressResourceName("a.b@example.org")).toBe(addressResourceName("a.b@example.org"));
   });
 });

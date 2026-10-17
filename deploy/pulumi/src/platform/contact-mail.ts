@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import * as cloudflare from "@pulumi/cloudflare";
 import type * as pulumi from "@pulumi/pulumi";
 import type { GridConfig } from "../config";
@@ -47,17 +48,21 @@ import type { MailZone } from "./email-routing";
  * ## Email Sending onboarding is a dashboard step, and must not break DMARC
  *
  * The form sends from `contactAddress` through Cloudflare's Email Service,
- * which requires the domain to be onboarded for Email Sending. The provider
- * (@pulumi/cloudflare 6.19) has no resource for that, so it is a one-time
- * dashboard step (docs/deployment/kubernetes.md §3d). It adds records on
+ * which requires the domain to be onboarded for Email Sending. That stays a
+ * one-time dashboard step (docs/deployment/kubernetes.md §3d). The provider
+ * (@pulumi/cloudflare 6.21) has `EmailSendingSubdomain`, with
+ * `previewEnabled`, but onboarding adds its own `_dmarc` record and whether
+ * the resource accepts the zone apex is not verified, so this program checks
+ * the onboarding rather than owning it. Onboarding adds records on
  * `cf-bounce.<apex>` (MX, SPF, DKIM at `cf-bounce._domainkey`), which neither
  * the MX guard (apex only) nor the routing resources touch, and a `_dmarc`
  * record (`v=DMARC1; p=reject;`), which would sit beside `dnsDmarc`'s. The
  * preview refuses a zone with two (`assertSingleDmarc`, run by
  * `installMailZones` on the contact zone). Its "Email preview" keeps SENT
  * messages for about seven days and is on by default: it must be switched
- * off, since form messages are personal data. Neither is in the API this
- * program can reach.
+ * off, since form messages are personal data. The preview refuses the sender
+ * domain while it is on (`assertNoSendingPreview`, from
+ * `getEmailSendingSubdomains`); a domain not onboarded yet passes.
  *
  * ## Cloudflare API token scopes (the stack's `cloudflareApiToken`)
  *
@@ -67,6 +72,8 @@ import type { MailZone } from "./email-routing";
  *   - Zone · DNS · Edit (routing adds and locks its MX and SPF records; the
  *     MX guard reads them)
  *   - Zone · Zone · Read (`getZone`: the apex check and the account id)
+ *   - Email Sending read on the zone (`getEmailSendingSubdomains`: the Email
+ *     preview guard). Cloudflare's permission list does not name it yet.
  *
  * The web pods never hold this token. They get `contactEmailToken`, a token of
  * its own with Account · Email Sending · Edit and nothing else.
@@ -80,9 +87,15 @@ export interface ContactMail {
   accountId: pulumi.Output<string>;
 }
 
-/** A Pulumi name for a destination address, stable across reorderings of the list. */
-function addressResourceName(address: string): string {
-  return `contact-mail-destination-${address.replace(/[^a-z0-9]+/g, "-")}`;
+/**
+ * A Pulumi name for a destination address, stable across reorderings of the
+ * list. The slug alone would give `a.b@x` and `a-b@x` the same name, which
+ * fails the preview with a duplicate URN, so a short hash of the address
+ * follows it.
+ */
+export function addressResourceName(address: string): string {
+  const hash = createHash("sha256").update(address).digest("hex").slice(0, 8);
+  return `contact-mail-destination-${address.replace(/[^a-z0-9]+/g, "-")}-${hash}`;
 }
 
 /**

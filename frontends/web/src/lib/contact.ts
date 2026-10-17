@@ -130,15 +130,17 @@ export function checkToken(token: string | null, secret: string, now = Date.now(
 
 /**
  * A fixed window per client, in this process's memory. The key is an HMAC of
- * the IP, so the map never holds an address; it forgets a key when its window
- * ends. Per pod: two replicas allow twice the budget, which is still a bound.
+ * the IP, so the map never holds an address, and every call drops the keys
+ * whose window has ended: none is counted past its ten minutes, as the privacy
+ * notice says, and none stays in memory past the next call after that. The map
+ * holds one entry per client that sent in the last window, so the sweep is
+ * small. Per pod: two replicas allow twice the budget, which is
+ * still a bound.
  */
 export function createRateLimiter(max: number = RATE_LIMIT.max, windowMs: number = RATE_LIMIT.windowMs) {
   const windows = new Map<string, { count: number; resetAt: number }>()
-  return (key: string, now = Date.now()) => {
-    if (windows.size > 10_000) {
-      for (const [k, w] of windows) if (w.resetAt <= now) windows.delete(k)
-    }
+  const allow = (key: string, now = Date.now()) => {
+    for (const [k, w] of windows) if (w.resetAt <= now) windows.delete(k)
     const w = windows.get(key)
     if (!w || w.resetAt <= now) {
       windows.set(key, { count: 1, resetAt: now + windowMs })
@@ -147,20 +149,38 @@ export function createRateLimiter(max: number = RATE_LIMIT.max, windowMs: number
     w.count += 1
     return w.count <= max
   }
+  /** How many clients it remembers now; for the spec. */
+  allow.size = () => windows.size
+  return allow
 }
 
 const defaultLimiter = createRateLimiter()
 
 /**
- * The visitor's address. Behind the gateway, the socket is Envoy's, and Astro
- * ignores `X-Forwarded-For` unless `security.allowedDomains` is set. Envoy
- * appends the address it accepted the connection from as the LAST entry
- * (`clientIPDetection` in deploy/pulumi/src/platform/gateway.ts); earlier
- * entries are whatever the client sent, so the last one is the one to trust.
+ * The visitor's address, as Envoy decides it. Behind the gateway the socket is
+ * Envoy's. Envoy appends the address it accepted the connection from as the
+ * LAST `X-Forwarded-For` entry, and with `numTrustedHops: N`
+ * (`clientIPDetection` in deploy/pulumi/src/platform/gateway.ts, stack key
+ * `xffNumTrustedHops`) it takes the client to be the entry N places before
+ * that, the one a trusted proxy in front of it wrote. `trustedHops` is the
+ * same N (`CLIENT_IP_TRUSTED_HOPS`, set from that key), so this limiter and the
+ * edge's buckets count the same client. Entries further left are whatever the
+ * client sent and are never read.
  */
-export function clientIp(headers: Headers, socketAddress: string | undefined) {
-  const last = headers.get('x-forwarded-for')?.split(',').at(-1)?.trim()
-  return last || socketAddress || 'unknown'
+export function clientIp(
+  headers: Headers,
+  socketAddress: string | undefined,
+  trustedHops = trustedHopsFrom(process.env.CLIENT_IP_TRUSTED_HOPS)
+) {
+  const entries = (headers.get('x-forwarded-for') ?? '').split(',').map((entry) => entry.trim())
+  const chosen = entries.length > trustedHops ? entries[entries.length - 1 - trustedHops] : undefined
+  return chosen || socketAddress || 'unknown'
+}
+
+/** A non-negative whole number of hops; anything else is 0, Envoy's default. */
+export function trustedHopsFrom(raw: string | undefined): number {
+  const hops = Number(raw?.trim() || '0')
+  return Number.isInteger(hops) && hops >= 0 ? hops : 0
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────

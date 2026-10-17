@@ -2620,7 +2620,8 @@ export function loadConfig(): GridConfig {
         // A person sends the form once; ten a minute from one address is
         // already a script. The form's own per-IP limit (5 per 10 minutes, in
         // memory per pod) is the finer one; this bounds the flood before it
-        // reaches a pod at all.
+        // reaches a pod at all, once `shadowMode` is off. Until then it only
+        // counts, like every rule here.
         webContact: num(cfg, "rateLimitWebContact", 10),
       },
       storeMaxmemory: cfg.get("rateLimitStoreMaxmemory") ?? "256mb",

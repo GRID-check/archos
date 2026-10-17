@@ -45,7 +45,8 @@ provider for DNS, and a Worker can hand the raw message to our own webhook
 without any storage in between. Project addresses live on the product's own
 domain, `piloti.at` (amended 2026-10-01, see
 [the amendment](#amendment-2026-10-01-project-addresses-on-pilotiat)), whose
-apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
+apex also carries the company address `kontakt@piloti.at` through Email
+Routing (ADR-0113).
 
 * **Transport.** The zone's catch-all routes every address on
   `GRID_INBOUND_MAIL_DOMAIN` that no literal rule claims to one Worker.
@@ -159,7 +160,8 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   supported), and every project gets a new address by rotation.
 * Bad, because every new named company address on `piloti.at` needs its own
   literal Email Routing rule, `postmaster@` and `abuse@` among them. Without
-  one the Worker refuses it as unknown.
+  one the Worker refuses it as unknown. `kontakt@` gets its rule from Pulumi
+  (ADR-0113); the others are made in the dashboard.
 * Bad, because Cloudflare becomes a sub-processor for mail content in transit,
   under the EU-US Data Privacy Framework, and processes it in the nearest data
   centre with no EU guarantee. A customer that requires EU-only processing
@@ -176,7 +178,10 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   for the domain, a colleague with send-as rights. The project address is no
   secret; it travels in To and Cc. Each filed file is recorded as that
   member's upload (`channel: inbound-mail`), and rotating the address ends
-  it.
+  it. `piloti.at` has such a provider itself once the contact form is on
+  (ADR-0113): Cloudflare Email Sending signs for the domain, and on Workers
+  Paid the form's token can send to any recipient, so it can file as any
+  member whose sign-in address is on `piloti.at`.
 * Bad, because a signed mail whose signature does not cover Date can be sent
   into its project again once its delivery row is gone, after 30 days. It
   files the same attachments a second time, as the original sender.
@@ -237,17 +242,31 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   anywhere but `*.mx.cloudflare.net`. `deploy/pulumi/src/config.spec.ts`: the
   zone id defaults to `dnsZoneId` when `inboundMailDomain` equals
   `dnsZoneName`, and an inbox on the app zone requires `dnsEnabled` and
-  `dnsZoneBaseline`. `deploy/pulumi/index-inbound-mail-apex.spec.ts`: an inbox
-  on the app apex enables Email Routing once, on that zone, and points its
-  catch-all at the stack's Worker. `deploy/pulumi/index.spec.ts`: nothing
-  is created when the domain is unset. `index-inbound-mail.spec.ts`: no edge
-  buffer limit caps the body. `stack-files.spec.ts`: one stack per inbound
-  zone.
-* Nothing enforces that Cloudflare's "Email preview" stays off should
-  `piloti.at` ever be onboarded for Email Sending. Cloudflare describes it as
-  covering messages sent while it is on; it does not describe it as covering
-  mail received through Email Routing. It is a dashboard setting. The deploy
-  guide says so; review is the only gate.
+  `dnsZoneBaseline`. `deploy/pulumi/index-inbound-mail-apex.spec.ts`: the
+  whole program with the inbox alone on the app apex enables Email Routing
+  once, on that zone, points its catch-all at the stack's Worker, and gives
+  the inbox's credentials to the frontend and nothing of them to the web
+  pods. `deploy/pulumi/index-contact-mail.spec.ts`: with the contact address
+  on the same apex, the program enables Email Routing once, with one
+  provider, and puts the contact rule and the catch-all, pointed at the
+  stack's Worker, side by side on that zone.
+  `deploy/pulumi/src/platform/mail-zones.spec.ts`: one enablement per zone,
+  shared when both features are on one apex, separate for an inbox on a zone
+  of its own; the inbox's earlier provider and routing names stay pinned as
+  aliases, so a stack that ran the inbox alone first replaces nothing.
+  `email-routing.spec.ts`: the enablement is `retainOnDelete`.
+  `deploy/pulumi/index.spec.ts`: nothing is created when the domain is unset.
+  `index-inbound-mail.spec.ts`: no edge buffer limit caps the body.
+  `stack-files.spec.ts`: one stack per inbound zone, and no inbox on the zone
+  where another stack routes its contact address.
+* Cloudflare's "Email preview" must stay off for `piloti.at`, which is
+  onboarded for Email Sending once the contact form is on (ADR-0113).
+  Cloudflare describes it as covering messages sent while it is on, which are
+  the form's; it does not describe it as covering mail received through
+  Email Routing. It is a dashboard setting. With the contact address set,
+  every `pulumi preview` refuses the zone while it is on
+  (`assertNoSendingPreview`, ADR-0113); between deploys nothing watches it,
+  and an inbox without the contact address does not check it at all.
 * Nothing enforces the two launch gates (`DKIM-Signature` in `message.raw`, a
   thrown Worker as an SMTP 4xx). They are manual steps in
   `docs/deployment/kubernetes.md` §3c.
@@ -312,15 +331,23 @@ domain, the apex of a Cloudflare zone of its own (example `piloti-post.at`).
 Two facts forced that: Email Routing's catch-all exists only on a zone apex,
 and a catch-all on the company domain would have taken all company mail. The
 product owner decided on 2026-10-01 to put the addresses on `piloti.at`
-instead, as described above. What makes that safe: `piloti.at` already runs
-Email Routing for `kontakt@piloti.at`, literal rules win over the catch-all,
-and the Worker refuses every address that is not project-shaped. The apex MX
-guard is unchanged, and `piloti.at`'s MX already points only at Cloudflare.
+instead, as described above. What makes that safe: company addresses on
+`piloti.at`, `kontakt@piloti.at` first among them (ADR-0113), get literal
+rules, which Cloudflare matches before the catch-all, and the Worker refuses
+every address that is not project-shaped. The apex MX guard is unchanged:
+`pulumi preview` refuses an apex whose mail goes anywhere but Cloudflare.
+`piloti.at` had no MX on 2026-10-17, so whichever of the two features deploys
+first enables routing there.
 
-In Pulumi, when the inbox and the contact address are on the same zone, one
-module owns that zone's Email Routing (the provider, the zone and MX guards,
-the `EmailRoutingDns` enablement), and the contact rule and the inbox's
-catch-all and Worker hang off it. `inboundMailZoneId` may be omitted when
+In Pulumi, one function owns each zone's Email Routing (the provider, the
+zone and MX guards, the `EmailRoutingDns` enablement): `installMailZones` in
+`deploy/pulumi/src/platform/email-routing.ts`. When the inbox and the contact
+address are on the same apex, it enables routing once for both, and the
+contact rule and the inbox's catch-all and Worker hang off that one zone.
+The provider and the enablement carry the names the inbox gave them when it
+owned the zone alone (`cloudflare-inbound-mail`, `inbound-mail-routing`) as
+Pulumi aliases, so a stack that ran the inbox first renames them in state
+rather than replacing them. `inboundMailZoneId` may be omitted when
 `inboundMailDomain` equals `dnsZoneName`. The earlier refusal of the contact
 address and the inbox on one zone is gone.
 

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { assertNoForeignMx, assertSingleDmarc, ROUTING_RESOURCE_OPTIONS } from "./email-routing";
+import { assertNoForeignMx, assertNoSendingPreview, assertSingleDmarc, ROUTING_RESOURCE_OPTIONS } from "./email-routing";
 
 /**
  * The apex MX guard both Email Routing modules run before creating anything
@@ -103,5 +103,20 @@ describe("Email Routing on the zone", () => {
     expect(readFileSync(join(__dirname, "email-routing.ts"), "utf8")).toMatch(
       /new cloudflare\.EmailRoutingDns\([^;]*\{ provider, \.\.\.ROUTING_RESOURCE_OPTIONS[ ,}]/,
     );
+  });
+});
+
+describe("the Email Sending preview guard", () => {
+  const preview = (domains: Array<{ name: string; previewEnabled: boolean }>) => () =>
+    assertNoSendingPreview(DOMAIN, ZONE_ID, domains);
+
+  it("refuses the sender domain while its preview keeps the form's messages", () => {
+    expect(preview([{ name: DOMAIN, previewEnabled: true }])).toThrow(/Email preview is on/);
+  });
+
+  it("passes it off, not onboarded yet, or on another domain of the zone", () => {
+    expect(preview([{ name: DOMAIN, previewEnabled: false }])).not.toThrow();
+    expect(preview([])).not.toThrow();
+    expect(preview([{ name: `news.${DOMAIN}`, previewEnabled: true }])).not.toThrow();
   });
 });

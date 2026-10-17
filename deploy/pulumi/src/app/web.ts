@@ -36,9 +36,10 @@ export const WEB_CONTACT_SECRET_NAME = "web-contact"; // pragma: allowlist secre
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
 /**
- * The contact form's env (`frontends/web/src/lib/contact.ts` reads the five):
- * where it sends from and to, the account it sends through, and, from the web
- * tier's own Secret, the Email Sending token and the form's HMAC key.
+ * The contact form's env (`frontends/web/src/lib/contact.ts` reads all six):
+ * where it sends from and to, the account it sends through, from the web
+ * tier's own Secret the Email Sending token and the form's HMAC key, and the
+ * gateway's trusted hops for its per-IP limit.
  */
 function contactEnv(cfg: GridConfig, accountId: pulumi.Input<string>): EnvVar[] {
   const fromSecret = (name: string): EnvVar => ({
@@ -51,6 +52,9 @@ function contactEnv(cfg: GridConfig, accountId: pulumi.Input<string>): EnvVar[] 
     { name: "CLOUDFLARE_ACCOUNT_ID", value: accountId },
     fromSecret("CLOUDFLARE_EMAIL_TOKEN"),
     fromSecret("CONTACT_FORM_SECRET"),
+    // The form's per-IP limit picks the client out of X-Forwarded-For the way
+    // the gateway does (`clientIPDetection`), so both count the same visitor.
+    { name: "CLIENT_IP_TRUSTED_HOPS", value: String(cfg.ingress.xffNumTrustedHops) },
   ];
 }
 
@@ -133,10 +137,11 @@ export function installWeb(
                 imagePullPolicy: appPullPolicy(cfg, webImage(cfg)),
                 securityContext: hardenedContainerSecurityContext(),
                 // No `command`: the image's CMD (`node runtime/server.mjs`, the
-                // Astro node adapter behind a Cache-Control step) is the one
-                // source for how the site starts, so an image and this program
-                // can never disagree about an entry file the other lacks. The
-                // server reads HOST/PORT from the env below.
+                // Astro node adapter behind its Cache-Control and forwarded-
+                // scheme steps) is the one source for how the site starts, so
+                // an image and this program can never disagree about an entry
+                // file the other lacks. The server reads HOST/PORT from the
+                // env below.
                 ports: [{ containerPort: PORT.web, name: "http" }],
                 env: [
                   { name: "HOST", value: "0.0.0.0" },

@@ -47,6 +47,7 @@ const CONTACT_NAMES = [
   "CLOUDFLARE_ACCOUNT_ID",
   "CLOUDFLARE_EMAIL_TOKEN",
   "CONTACT_FORM_SECRET",
+  "CLIENT_IP_TRUSTED_HOPS",
 ];
 
 async function installWith(values: Record<string, string>, accountId?: string) {
@@ -103,6 +104,8 @@ describe("the web tier with the contact address", () => {
     const { env } = await installWith(contactStackConfig(), "account-1");
     const byName = new Map(env.map((e) => [e.name, e]));
     expect(byName.get("CONTACT_FROM")?.value).toBe("kontakt@example.test");
+    // The gateway's client-IP rule, so the form's limiter counts the same visitor.
+    expect(byName.get("CLIENT_IP_TRUSTED_HOPS")?.value).toBe("0");
     expect(byName.get("CONTACT_FORWARD_TO")?.value).toBe(
       "mail@founder-one.example,mail@founder-two.example",
     );

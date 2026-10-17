@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "../test-support/stack-config";
@@ -69,6 +71,10 @@ const routing = () =>
   );
 const providers = () =>
   RESOURCES.filter((r) => r.type === "pulumi:providers:cloudflare").map((r) => r.name);
+const sendingLookups = () =>
+  CALLS.filter((c) => c.token === "cloudflare:index/getEmailSendingSubdomains:getEmailSendingSubdomains").map(
+    (c) => c.inputs.zoneId,
+  );
 const dmarcLookups = () =>
   CALLS.filter(
     (c) => c.token === "cloudflare:index/getDnsRecords:getDnsRecords" && c.inputs.type === "TXT",
@@ -92,6 +98,8 @@ describe("Email Routing per zone", () => {
     expect(providers()).toEqual([`cloudflare-mail-${CONTACT_ZONE.replace(/[^a-z0-9]+/g, "-")}`]);
     // The contact form's sender domain is checked for a second _dmarc record.
     expect(dmarcLookups()).toEqual([CONTACT_ZONE_ID]);
+    // And for an Email preview left on by the form's onboarding.
+    expect(sendingLookups()).toEqual([CONTACT_ZONE_ID]);
   });
 
   it("gives an inbox on a zone of its own its own enablement and provider", async () => {
@@ -111,6 +119,8 @@ describe("Email Routing per zone", () => {
     expect(providers()).toHaveLength(2);
     // Only the contact zone sends mail, so only it has a _dmarc to watch.
     expect(dmarcLookups()).toEqual([CONTACT_ZONE_ID]);
+    // And for an Email preview left on by the form's onboarding.
+    expect(sendingLookups()).toEqual([CONTACT_ZONE_ID]);
   });
 
   it("routes the inbox alone, without the contact address", async () => {
@@ -123,5 +133,16 @@ describe("Email Routing per zone", () => {
     expect(result.contact).toBeUndefined();
     expect(routing()).toEqual([[INBOX_ZONE_ID, INBOX_DOMAIN]]);
     expect(dmarcLookups()).toEqual([]);
+    expect(sendingLookups()).toEqual([]);
+  });
+});
+
+describe("a stack deployed with the inbox alone, then given the contact address", () => {
+  it("keeps the inbox's provider and routing by alias, so nothing is replaced", () => {
+    // Resource options do not reach the mocks; the names are pinned in the source.
+    const source = readFileSync(join(__dirname, "email-routing.ts"), "utf8");
+    expect(source).toMatch(/provider: "cloudflare-inbound-mail", routing: "inbound-mail-routing"/);
+    expect(source).toMatch(/alias\(INBOX_ZONE_ALIASES\.provider\)/);
+    expect(source).toMatch(/alias\(INBOX_ZONE_ALIASES\.routing\)/);
   });
 });

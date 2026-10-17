@@ -93,6 +93,11 @@ async function send(form: HTMLFormElement, endpoint: string) {
   for (const [key, value] of new FormData(form)) body.append(key, String(value))
   try {
     const res = await fetch(endpoint, { method: 'POST', headers: { Accept: 'application/json' }, body })
+    // Envoy answers its own 429 (the edge bucket) as plain text, not as the
+    // site's JSON: still the rate limit, not a failure to send.
+    if (!(res.headers.get('content-type') ?? '').includes('json')) {
+      return { outcome: res.status === 429 ? 'rate_limited' : 'network' }
+    }
     return (await res.json()) as { outcome?: string; fields?: Record<string, string> }
   } catch {
     return { outcome: 'network' }

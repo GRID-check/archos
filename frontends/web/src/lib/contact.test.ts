@@ -7,6 +7,7 @@ import {
   handleContact,
   issueToken,
   MAX_AGE_MS,
+  trustedHopsFrom,
   type Deps,
 } from './contact.ts'
 
@@ -170,6 +171,27 @@ test('the signature is checked in constant shape and ages are bounded', () => {
 
 test('the client address is the entry the gateway appended, not one the client sent', () => {
   const headers = new Headers({ 'x-forwarded-for': '6.6.6.6, 203.0.113.7' })
-  assert.equal(clientIp(headers, '10.0.0.5'), '203.0.113.7')
-  assert.equal(clientIp(new Headers(), '10.0.0.5'), '10.0.0.5')
+  assert.equal(clientIp(headers, '10.0.0.5', 0), '203.0.113.7')
+  assert.equal(clientIp(new Headers(), '10.0.0.5', 0), '10.0.0.5')
+})
+
+test('behind a trusted proxy the client is the entry that proxy wrote, as Envoy decides it', () => {
+  // A CDN in front writes the visitor; Envoy appends the CDN's address.
+  const headers = new Headers({ 'x-forwarded-for': '6.6.6.6, 198.51.100.4, 203.0.113.9' })
+  assert.equal(clientIp(headers, '10.0.0.5', 1), '198.51.100.4')
+  // Fewer entries than hops: the socket, never an entry the client wrote.
+  assert.equal(clientIp(new Headers({ 'x-forwarded-for': '203.0.113.9' }), '10.0.0.5', 1), '10.0.0.5')
+  assert.equal(trustedHopsFrom('2'), 2)
+  for (const raw of [undefined, '', '-1', '1.5', 'x']) assert.equal(trustedHopsFrom(raw), 0)
+})
+
+test('the limiter forgets a client when its window ends, without waiting for a full map', () => {
+  const limiter = createRateLimiter(5, 1_000)
+  limiter('a', 0)
+  limiter('b', 500)
+  assert.equal(limiter.size(), 2)
+  limiter('c', 1_200)
+  assert.equal(limiter.size(), 2) // `a` is gone; `b` and `c` remain
+  limiter('c', 2_000)
+  assert.equal(limiter.size(), 1)
 })

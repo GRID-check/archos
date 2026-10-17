@@ -156,12 +156,17 @@ docker run -p 4321:4321 -e PUBLIC_APP_URL=https://app.dev.piloti.at grid-oib-web
 ```
 
 The container runs `node runtime/server.mjs` (`npm start`), not the adapter's
-`dist/server/entry.mjs`. It is the same handler behind one step that sets
-Cache-Control on static files: `/_astro/*` immutable for a year, `/fonts/*` and
-`/art/*` fresh for a week plus a day of stale-while-revalidate, HTML left at the
-adapter's `max-age=0` so every view revalidates. Why this is not done in Envoy
-is at the top of `runtime/server.mjs`. Compression is not the server's job:
-Envoy Gateway compresses at the edge
+`dist/server/entry.mjs`. It is the same handler behind two steps. The first
+sets Cache-Control on static files: `/_astro/*` immutable for a year, `/fonts/*`
+and `/art/*` fresh for a week plus a day of stale-while-revalidate, HTML left at
+the adapter's `max-age=0` so every view revalidates. Why this is not done in
+Envoy is at the top of `runtime/server.mjs`. The second
+(`runtime/forwarded-proto.mjs`) marks each request with the scheme from Envoy's
+`X-Forwarded-Proto`. Envoy terminates TLS and talks plain HTTP to the pod, so
+without it Astro builds every request as `http://` and its origin check
+(`security.checkOrigin`) refuses every form POST whose `Origin` is `https://`
+with `403 Cross-site POST form submissions are forbidden`. Compression is not
+the server's job: Envoy Gateway compresses at the edge
 ([`docs/deployment/kubernetes.md`](../../docs/deployment/kubernetes.md) §7).
 
 Files under `public/fonts` and `public/art` are not content-hashed. Replace a font

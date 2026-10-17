@@ -330,7 +330,11 @@ export function installHttpRoutes(
     // sends a mail to the founders, so the flood to bound is mail, not load.
     // On every stack, configured or not, because the endpoint is in the image
     // either way; unconfigured it answers 503, which is no reason to let a
-    // script hammer it.
+    // script hammer it. Like every edge bucket it ships in shadow mode
+    // (`rateLimitShadowMode`, default true): it counts and emits telemetry but
+    // refuses nothing until shadow mode is switched off. Until then the limit
+    // that holds is the site's own per-pod one (`createRateLimiter` in
+    // frontends/web/src/lib/contact.ts).
     ...edgeRateLimit(cfg, [
       ...perClientRules(cfg, cfg.rateLimit.limits.web),
       ...perClientRules(cfg, cfg.rateLimit.limits.webContact, {

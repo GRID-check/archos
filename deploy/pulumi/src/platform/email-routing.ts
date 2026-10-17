@@ -111,6 +111,34 @@ export function assertSingleDmarc(
   );
 }
 
+/** The parts of an Email Sending domain the preview guard reads. */
+export interface SendingDomain {
+  name: string;
+  previewEnabled: boolean;
+}
+
+/**
+ * Refuse a sender domain whose Email Sending "preview" is on. Cloudflare keeps
+ * every message sent while it is on, content included, for about seven days,
+ * and those are the contact form's: personal data the privacy notice says is
+ * not stored on our side. It is on by default for a domain onboarded since
+ * 2026-07-02, and onboarding is a dashboard step, so the plan checks what the
+ * dashboard left. A domain not onboarded yet passes: nothing is sent from it.
+ */
+export function assertNoSendingPreview(
+  domain: string,
+  zoneId: string,
+  sendingDomains: readonly SendingDomain[],
+): void {
+  const previewing = sendingDomains.find((d) => normalizeHost(d.name) === domain && d.previewEnabled);
+  if (!previewing) return;
+  throw new Error(
+    `Email preview is on for "${domain}" (zone ${zoneId}): Cloudflare keeps every message the ` +
+      "contact form sends, content included, for about seven days. Switch it off in the " +
+      "dashboard (Compute → Email Service → Email Sending → the domain → Email preview).",
+  );
+}
+
 /** What the zone lookups yield once every guard has passed. */
 export interface CheckedZone {
   /** The account that owns the zone: where Workers and destination addresses live. */
@@ -239,8 +267,10 @@ function installMailZone(args: {
       assertZoneApex(args.configKeys, args.domain, args.zoneId, zoneName),
   });
   // The contact form's sender domain is onboarded for Email Sending by hand
-  // (no provider resource), and that onboarding adds a `_dmarc` record of its
-  // own. Refuse a zone left with two (`assertSingleDmarc`).
+  // (contact-mail.ts says why the program does not own it), and that
+  // onboarding adds a `_dmarc` record of its own and turns Email preview on.
+  // Refuse a zone left with two DMARC records (`assertSingleDmarc`) or with
+  // the preview on (`assertNoSendingPreview`).
   const guarded = args.checkDmarc
     ? pulumi
         .all([
@@ -249,9 +279,11 @@ function installMailZone(args: {
             { zoneId: args.zoneId, type: "TXT", name: { exact: `_dmarc.${args.domain}` } },
             opts,
           ),
+          cloudflare.getEmailSendingSubdomainsOutput({ zoneId: args.zoneId }, opts),
         ])
-        .apply(([zone, records]) => {
+        .apply(([zone, records, sending]) => {
           assertSingleDmarc(args.domain, args.zoneId, records.results);
+          assertNoSendingPreview(args.domain, args.zoneId, sending.results ?? []);
           return zone;
         })
     : checked;
