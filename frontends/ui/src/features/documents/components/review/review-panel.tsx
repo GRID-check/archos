@@ -11,6 +11,7 @@ import { formatDayRange, localCalendarDay } from '@/lib/format'
 import { isLive, isOverdue, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import type { DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
+import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
 import { markInk } from './review-page-layer'
 
@@ -66,7 +67,7 @@ const Row = memo(function Row({
         </span>
         <span className="min-w-0 flex-1">
           <span className={cn('text-foreground line-clamp-2 text-sm leading-5', !isLive(annotation) && 'text-muted-foreground')}>
-            {annotation.body}
+            <MarkBody text={annotation.body} mentions={annotation.mentions} />
           </span>
           {/* Items separated by space and their own icons, never a leading „·"
               when a line wraps; each item keeps to one line. */}

@@ -178,6 +178,13 @@ export const INBOX_ITEM_TYPES = [
    * mark; the people are derived when it happens, never stored.
    */
   'annotation.activity',
+  /**
+   * Actionable, operational tier: a colleague @mentioned the recipient in an
+   * Anmerkung's text or in its thread, with the chat's own „@" picker. Anchored
+   * on the mark. Resolved when the recipient answers in the thread, and for
+   * everyone when the mark is closed; made inert when it is deleted.
+   */
+  'annotation.mentioned',
 ] as const
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number]
 

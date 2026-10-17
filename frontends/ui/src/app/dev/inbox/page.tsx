@@ -389,6 +389,28 @@ const ITEMS: InboxItemView[] = [
     createdAt: ago(7),
     updatedAt: ago(7),
   },
+  // A colleague @mentioned the reader in a mark's thread, with the chat's
+  // picker: the row opens at the mark, and the reader can answer from here.
+  {
+    id: 'i-mark-mentioned',
+    type: 'annotation.mentioned',
+    state: 'unread',
+    archived: false,
+    actionable: true,
+    resourceType: 'document',
+    resourceId: 'd-eg-c',
+    anchorId: 'mark-11',
+    actorName: 'Jakob Huber',
+    actorUserId: 'u-jakob',
+    count: 1,
+    href: '/app/projects/p1/files?doc=d-eg-c&review=1&mark=mark-11',
+    subject: 'Grundriss EG',
+    related: '11',
+    excerpt: '@Miriam Hofer passt die Brüstungshöhe im Zimmer 1 zur Einreichung?',
+    variant: null,
+    createdAt: ago(3),
+    updatedAt: ago(3),
+  },
   // Two replies on a mark the reader wrote, the newest by Markus.
   {
     id: 'i-mark-activity',

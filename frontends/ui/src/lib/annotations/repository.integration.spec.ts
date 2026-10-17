@@ -274,6 +274,39 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(Number(Array.from(left)[0]?.n)).toBe(0)
   })
 
+  it('keeps whom a mark and a reply mention, changes them with the body, and refuses more than one message may name', async () => {
+    const anna = { targetId: 'user_anna', display: 'Anna Berger' }
+    const ben = { targetId: 'user_ben', display: 'Ben Gruber' }
+    const [row] = await insert(ids.document, [mark({ body: '@Anna Berger prüfen', mentions: [anna] })])
+    expect(row.mentions).toEqual([anna])
+    const [plain] = await insert(ids.document)
+    expect(plain.mentions).toEqual([])
+
+    await inOrg(ORG, () =>
+      repo.insertAnnotationReply({
+        organizationId: ORG,
+        annotationId: row.id,
+        authorKind: 'person',
+        body: '@Ben Gruber auch?',
+        createdBy: USER,
+        mentions: [ben],
+      })
+    )
+    await inOrg(ORG, () =>
+      repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', { body: '@Ben Gruber prüfen', mentions: [ben] })
+    )
+    const found = await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id))
+    expect(found?.mentions).toEqual([ben])
+    expect(found?.replies.map((reply) => reply.mentions)).toEqual([[ben]])
+
+    const eleven = Array.from({ length: 11 }, (_, index) => ({ targetId: `user_${index}`, display: `P${index}` }))
+    await expect(
+      inOrg(ORG, () =>
+        repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', { body: 'zu viele', mentions: eleven })
+      )
+    ).rejects.toThrow()
+  })
+
   it('deletes one reply alone, and only while its body is what the caller read', async () => {
     const [row] = await insert(ids.document)
     const [other] = await insert(ids.document)

@@ -1508,13 +1508,19 @@ export const files: typeof en.files = {
     },
     popout: 'In neuem Fenster öffnen',
     copyReviewLink: 'Link zur Prüfansicht kopieren',
+    // Kolleginnen in einer Anmerkung oder ihrem Verlauf mit „@“ erwähnen, wie im Chat.
+    // Erwähnen kann man nur, wer das Dokument öffnen kann; wer es nicht kann, wird nicht benachrichtigt.
+    mentions: {
+      othersHeading: 'Können das Dokument öffnen',
+      noResultsHint: 'Erwähnen können Sie alle, die dieses Dokument öffnen können.',
+      untold: 'Nicht benachrichtigt, weil sie das Dokument nicht öffnen können: {names}',
+    },
     // Piloti in der Prüfansicht: ein Ausschnitt, nach dem gefragt wird, die Antwort daneben, und Piloti im Verlauf.
     piloti: {
       conversationTitle: '{name} · Prüfansicht',
       ask: 'Piloti fragen',
       mention: 'Piloti erwähnen',
       mentionHint: 'Piloti antwortet in diesem Verlauf',
-      mentionRemove: 'Erwähnung entfernen',
       replying: 'Piloti antwortet …',
       replyFailed: 'Piloti konnte nicht antworten.',
       replyingFor: 'Piloti antwortet … · für {name}',

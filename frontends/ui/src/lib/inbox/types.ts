@@ -193,6 +193,8 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'piloti.intake_ready': { icon: 'piloti', i18nKey: 'pilotiIntakeReady', tone: 'request' },
   'annotation.assigned_to_you': { icon: 'user-plus', i18nKey: 'annotationAssigned', tone: 'request', anchor: 'mark' },
   'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info', anchor: 'mark' },
+  // The chat mention's glyph: one sign for „someone asked you", wherever it was.
+  'annotation.mentioned': { icon: 'at-sign', i18nKey: 'annotationMentioned', tone: 'request', anchor: 'mark' },
 }
 
 /**

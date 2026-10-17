@@ -128,8 +128,8 @@ export interface InboxMarkClient {
 
 const MARK_CLIENT: InboxMarkClient = { reply: replyToAnnotation, update: updateAnnotation }
 
-/** The types whose row answers a mark here: the reader is responsible for it, or Piloti asked them. */
-const MARK_REQUEST_TYPES: ReadonlySet<string> = new Set(['annotation.assigned_to_you', 'piloti.asks_you'])
+/** The types whose row answers a mark here: the reader is responsible for it, Piloti asked them, or a colleague mentioned them. */
+const MARK_REQUEST_TYPES: ReadonlySet<string> = new Set(['annotation.assigned_to_you', 'piloti.asks_you', 'annotation.mentioned'])
 
 /** Only a plain primary click counts as "opened"; see the title link. */
 function isPlainClick(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }): boolean {

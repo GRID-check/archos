@@ -27,6 +27,7 @@ import {
   type AnnotationKind,
   type AnnotationShape,
   type AnnotationStatus,
+  type MarkMention,
 } from './types'
 
 /** A row with the number of the Fassung it was set on, and its thread. */
@@ -135,6 +136,8 @@ export interface NewAnnotationValues {
   h: number | null
   kind: AnnotationKind
   body: string
+  /** Whom `body` mentions, as the service kept them (`./mentions.ts`); none when absent. */
+  mentions?: MarkMention[]
   basis: string | null
   assigneeUserId: string | null
   dueOn: string | null
@@ -218,6 +221,8 @@ export async function insertDocumentAnnotations(input: NewAnnotationsInput): Pro
 export interface AnnotationChanges {
   kind?: AnnotationKind
   body?: string
+  /** Whom the new body mentions; changes only with the body. */
+  mentions?: MarkMention[]
   basis?: string | null
   assigneeUserId?: string | null
   dueOn?: string | null
@@ -326,6 +331,8 @@ export async function insertAnnotationReply(
     body: string
     createdBy: string
     addressesAgent?: boolean
+    /** Whom the reply mentions, as the service kept them (`./mentions.ts`). */
+    mentions?: MarkMention[]
   },
   afterInsert?: InTransaction<DocumentAnnotationReplyRow>
 ): Promise<DocumentAnnotationReplyRow> {

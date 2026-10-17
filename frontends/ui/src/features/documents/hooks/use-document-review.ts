@@ -16,6 +16,7 @@ import {
   type AnnotationKind,
   type AnnotationShape,
   type AnnotationView,
+  type MarkMention,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
@@ -308,11 +309,20 @@ export function useDocumentReview(
   /** Set a mark at the draft, or at `place` (an answer of Piloti's taken over at its box). */
   const create = useCallback(
     async (
-      content: { kind: AnnotationKind; body: string; assigneeUserId?: string | null; dueOn?: string | null },
+      content: {
+        kind: AnnotationKind
+        body: string
+        mentions?: MarkMention[]
+        assigneeUserId?: string | null
+        dueOn?: string | null
+      },
       place: ReviewDraft | null = draft
     ) => {
       if (!place) return null
-      const created = await guard(() => createAnnotation(documentId, { ...place, ...content }, write))
+      const { mentions, ...fields } = content
+      const created = await guard(() =>
+        createAnnotation(documentId, { ...place, ...fields, ...(mentions && mentions.length > 0 ? { mentions } : {}) }, write)
+      )
       replace(created)
       setDraft(null)
       setToolState('select')
@@ -333,17 +343,26 @@ export function useDocumentReview(
   )
 
   /**
-   * Answer in a thread. `addressesPiloti` is the composer's @Piloti chip; the
-   * answer says whether the server wakes Piloti for it (`wake`), and the
-   * reply's id, which a tab that asks Piloti itself turns into the turn id.
+   * Answer in a thread. `addressesPiloti` is the composer's @Piloti mention,
+   * `mentions` whom the person picked in its „@" picker; the answer says
+   * whether the server wakes Piloti for it (`wake`), and the reply's id, which
+   * a tab that asks Piloti itself turns into the turn id.
    */
   const reply = useCallback(
-    async (annotationId: string, body: string, options: { addressesPiloti?: boolean } = {}) => {
+    async (
+      annotationId: string,
+      body: string,
+      options: { addressesPiloti?: boolean; mentions?: MarkMention[] } = {}
+    ) => {
       const result = await guard(() =>
         replyToAnnotation(
           documentId,
           annotationId,
-          { body, ...(options.addressesPiloti ? { addressesPiloti: true } : {}) },
+          {
+            body,
+            ...(options.addressesPiloti ? { addressesPiloti: true } : {}),
+            ...(options.mentions && options.mentions.length > 0 ? { mentions: options.mentions } : {}),
+          },
           write
         )
       )

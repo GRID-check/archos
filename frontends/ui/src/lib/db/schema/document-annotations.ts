@@ -7,12 +7,15 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
+import { MAX_MENTIONS_PER_MESSAGE } from '@/lib/limits/catalog'
 import {
   ANNOTATION_AUTHORS,
   ANNOTATION_KINDS,
@@ -24,6 +27,7 @@ import {
   type AnnotationKind,
   type AnnotationShape,
   type AnnotationStatus,
+  type MarkMention,
   type PilotiWakeStatus,
   type PilotiWakeTrigger,
 } from '@/lib/annotations/types'
@@ -31,6 +35,15 @@ import { documentVersions } from './document-versions'
 import { documents } from './documents'
 
 const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${value}'`).join(', '))
+
+/**
+ * Whom a text mentions (migration 0149): an array, and no longer than one
+ * message may mention (`MAX_MENTIONS_PER_MESSAGE`). `CASE`, because Postgres
+ * does not promise to read an `AND` left to right, and the length of a scalar
+ * is an error, not a refusal.
+ */
+const mentionsBounded = (column: AnyPgColumn) =>
+  sql`CASE WHEN jsonb_typeof(${column}) = 'array' THEN jsonb_array_length(${column}) <= ${sql.raw(String(MAX_MENTIONS_PER_MESSAGE))} ELSE false END`
 
 /**
  * `document_annotations` — a mark set at a place on a page of a document, a
@@ -60,6 +73,8 @@ export const documentAnnotations = pgTable(
     h: doublePrecision('h'),
     kind: text('kind').$type<AnnotationKind>().notNull(),
     body: text('body').notNull(),
+    /** Whom `body` mentions, as the server kept them (migration 0149, `lib/annotations/mentions.ts`). */
+    mentions: jsonb('mentions').$type<MarkMention[]>().notNull().default([]),
     basis: text('basis'),
     authorKind: text('author_kind').$type<AnnotationAuthor>().notNull(),
     status: text('status').$type<AnnotationStatus>().notNull(),
@@ -137,6 +152,7 @@ export const documentAnnotations = pgTable(
       'document_annotations_delegated_while_open',
       sql`${table.delegatedBy} IS NULL OR ${table.status} = 'open'`
     ),
+    mentionsBounded: check('document_annotations_mentions_bounded', mentionsBounded(table.mentions)),
   })
 )
 
@@ -156,6 +172,8 @@ export const documentAnnotationReplies = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     /** The reply addresses Piloti: the composer's mention chip, never a match on the text (migration 0139). */
     addressesAgent: boolean('addresses_agent').notNull().default(false),
+    /** Whom the reply mentions, as the server kept them (migration 0149, `lib/annotations/mentions.ts`). */
+    mentions: jsonb('mentions').$type<MarkMention[]>().notNull().default([]),
   },
   (table) => ({
     annotationFk: foreignKey({
@@ -173,6 +191,7 @@ export const documentAnnotationReplies = pgTable(
       'document_annotation_replies_body_length',
       sql`char_length(btrim(${table.body})) BETWEEN 1 AND 2000`
     ),
+    mentionsBounded: check('document_annotation_replies_mentions_bounded', mentionsBounded(table.mentions)),
   })
 )
 

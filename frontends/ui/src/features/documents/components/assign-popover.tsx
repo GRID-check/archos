@@ -11,6 +11,7 @@ import { SearchField } from '@/components/ui/search-field'
 import { Spinner } from '@/components/ui/spinner'
 import { useChatStore } from '@/features/chat'
 import { useTranslations } from '@/i18n'
+import { listAssignmentCandidates } from '@/lib/assignments/client'
 import type { FileAssignee } from './project-file-workspace'
 
 export function AssignPopover({
@@ -50,14 +51,10 @@ export function AssignPopover({
     let cancelled = false
     setLoading(true)
     setLoadError(false)
-    void fetch(`/api/assignments/document/${encodeURIComponent(documentId)}/candidates`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`candidates ${res.status}`)
-        return res.json() as Promise<{ candidates?: FileAssignee[] }>
-      })
-      .then((body) => {
+    void listAssignmentCandidates('document', documentId)
+      .then((candidates) => {
         if (cancelled) return
-        setPeople(body.candidates ?? [])
+        setPeople(candidates)
       })
       .catch(() => {
         // A failed load must not pose as "nobody in this project".

@@ -996,6 +996,14 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
     german(onMark({ type: 'annotation.activity', actionable: false, variant, count: 2 }))
     expect(screen.getByText(title)).toBeInTheDocument()
   })
+
+  test('being mentioned names who, which mark in which document, and quotes what they wrote', () => {
+    german(onMark({ type: 'annotation.mentioned', variant: null, excerpt: '@Miriam Hofer bitte die Breite prüfen' }))
+    expect(screen.getByText('Anna Weber hat Sie in Anmerkung 4 in „Grundriss EG“ erwähnt')).toBeInTheDocument()
+    expect(screen.getByText('Antworten Sie im Verlauf der Anmerkung.')).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('@Miriam Hofer bitte die Breite prüfen')
+    expect(screen.getByTestId('inbox-item-link')).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
+  })
 })
 
 describe('InboxItemRow — a row about a mark acts on the mark', () => {
@@ -1045,6 +1053,16 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     await waitFor(() => expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Reply sent.'))
     expect(marks.reply).toHaveBeenCalledWith('doc-eg', 'mark-4', { body: 'Ist bestellt.' })
     expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  test('answers a mention in the mark’s thread from the row, and offers no resolving: being asked is not being responsible', async () => {
+    const marks = client()
+    render(<InboxItemRow item={markRow({ type: 'annotation.mentioned' })} markClient={marks} />)
+    expect(screen.queryByTestId('inbox-mark-resolve')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('inbox-mark-reply'))
+    fireEvent.change(screen.getByLabelText('Your reply to annotation 4'), { target: { value: 'Passt.' } })
+    fireEvent.click(screen.getByTestId('inbox-mark-reply-send'))
+    await waitFor(() => expect(marks.reply).toHaveBeenCalledWith('doc-eg', 'mark-4', { body: 'Passt.' }))
   })
 
   test('resolves an assigned mark only if it is still open, and says so when someone moved it first', async () => {
@@ -1234,4 +1252,3 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 })
-

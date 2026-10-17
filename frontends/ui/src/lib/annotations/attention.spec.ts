@@ -26,6 +26,7 @@ import {
   markParticipants,
   onAssigneeChanged,
   onMarkDeleted,
+  onMarkMentioned,
   onMarkMoved,
   onMarkReplied,
   onMarkSettledByPerson,
@@ -295,16 +296,29 @@ describe('onMarkSettledByPerson', () => {
     expect(input).not.toHaveProperty('recipientUserId')
   })
 
-  it('resolves the Rückfrage and the Zuständige’s row for everyone once the mark is closed', async () => {
-    await onMarkSettledByPerson({ ...settle, closed: true })
+  it('resolves the Rückfrage, the Zuständige’s row and every mention for everyone once the mark is closed', async () => {
+    await onMarkSettledByPerson({ ...settle, closed: true, answeredBy: null })
 
+    expect(resolveInboxItemsAnchoredOn).toHaveBeenCalledTimes(1)
     const [input] = vi.mocked(resolveInboxItemsAnchoredOn).mock.calls[0]
     expect(input).toEqual({
       organizationId: 'org_1',
-      types: ['piloti.asks_you', 'annotation.assigned_to_you'],
+      types: ['piloti.asks_you', 'annotation.assigned_to_you', 'annotation.mentioned'],
       anchorId: 'ann_1',
     })
     expect(input).not.toHaveProperty('recipientUserId')
+  })
+
+  it('settles the answering person’s own mention, and nobody else’s: a colleague asked in the same breath has not answered', async () => {
+    await onMarkSettledByPerson({ ...settle, closed: false, answeredBy: 'user_anna' })
+
+    expect(resolveInboxItemsAnchoredOn).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(resolveInboxItemsAnchoredOn).mock.calls[1][0]).toEqual({
+      organizationId: 'org_1',
+      types: ['annotation.mentioned'],
+      anchorId: 'ann_1',
+      recipientUserId: 'user_anna',
+    })
   })
 
   it('never throws into the write that settled it', async () => {
@@ -372,6 +386,24 @@ describe('markParticipants', () => {
     })
 
     expect(markParticipants(mark)).toEqual(['user_author', 'user_zustaendig', 'user_delegator', 'user_replier'])
+  })
+
+  it('counts everyone the mark or a reply mentions as taking part, never Piloti', () => {
+    const mark = people({
+      mentions: [{ targetId: 'user_named', display: 'Nina' }],
+      replies: [
+        {
+          authorKind: 'person',
+          createdBy: 'user_replier',
+          mentions: [
+            { targetId: 'agent:piloti', display: 'Piloti' },
+            { targetId: 'user_asked', display: 'Anna' },
+          ],
+        },
+      ],
+    })
+
+    expect(markParticipants(mark)).toEqual(['user_author', 'user_replier', 'user_named', 'user_asked'])
   })
 
   it('takes the person who took Piloti’s mark over as its author, and nobody for an untaken proposal', () => {
@@ -499,6 +531,53 @@ describe('onMarkReplied', () => {
     await onMarkReplied({ ...reply, actorUserId: 'user_author', mark: people(), mayOpen: everyone })
 
     expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+
+  it('leaves out whom the reply mentions: they hear the mention, one row for one reply', async () => {
+    await onMarkReplied({ ...reply, mark: thread, mayOpen: everyone, mentioned: ['user_author'] })
+
+    expect(recipients()).toEqual(['user_zustaendig', 'user_delegator'])
+  })
+})
+
+describe('onMarkMentioned', () => {
+  const said = {
+    ...ref,
+    actorUserId: 'user_writer',
+    byPiloti: false,
+    markText: 'Tür T30 fehlt',
+    text: '@Anna Berger   bitte\nprüfen',
+  }
+
+  it('asks each person mentioned, at the mark, named by who wrote it, quoting the text', async () => {
+    await onMarkMentioned({ ...said, mentioned: ['user_anna', 'user_ben'], mayOpen: everyone })
+
+    expect(recipients()).toEqual(['user_anna', 'user_ben'])
+    expect(vi.mocked(emitInboxItems).mock.calls[0][0][0]).toMatchObject({
+      type: 'annotation.mentioned',
+      resourceType: 'document',
+      resourceId: 'doc_1',
+      anchorId: 'ann_1',
+      actorUserId: 'user_writer',
+      groupKey: 'annotation.mentioned:document:doc_1:ann_1',
+      payload: { subject: 'Grundriss EG.pdf', related: '4', excerpt: '@Anna Berger bitte prüfen' },
+    })
+  })
+
+  it('tells nobody who wrote it, or who may not open the document now', async () => {
+    await onMarkMentioned({ ...said, mentioned: ['user_writer', 'user_anna', 'user_ben'], mayOpen: allBut('user_ben') })
+
+    expect(recipients()).toEqual(['user_anna'])
+  })
+
+  it('writes nothing when nobody is left to tell', async () => {
+    await onMarkMentioned({ ...said, mentioned: ['user_writer'], mayOpen: everyone })
+
+    expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+
+  it('anchors on the mark, so the row opens the Prüfansicht there and a deleted mark turns it inert', () => {
+    expect(MARK_ANCHORED_INBOX_TYPES).toContain('annotation.mentioned')
   })
 })
 

@@ -180,7 +180,13 @@ const base = {
   canDelete: true,
 }
 
-const reply = (annotationId: string, by: { userId: string; name: string }, minutes: number, body: string): AnnotationReplyView => ({
+const reply = (
+  annotationId: string,
+  by: { userId: string; name: string },
+  minutes: number,
+  body: string,
+  mentions: AnnotationReplyView['mentions'] = []
+): AnnotationReplyView => ({
   id: `${annotationId}-r${minutes}`,
   annotationId,
   authorKind: 'person',
@@ -189,7 +195,11 @@ const reply = (annotationId: string, by: { userId: string; name: string }, minut
   createdByName: by.name,
   createdAt: minutesAgo(minutes),
   addressesPiloti: false,
+  mentions,
 })
+
+/** A colleague as the „@" picker writes them into a text: the chat's mention. */
+const mention = (person: { userId: string; name: string }) => ({ targetId: person.userId, display: person.name })
 
 let annotations: AnnotationView[] = [
   {
@@ -204,8 +214,11 @@ let annotations: AnnotationView[] = [
     assigneeName: ANNA.name,
     dueOn: '2026-10-10',
     replies: [
-      reply('ann-1', ANNA, 95, 'Kommt mit Index D. Gilt das auch für die Tür vom Bad?'),
-      reply('ann-1', ME, 80, 'Nein, Bad geht nicht in den Gang. Nur Wohnen 1 und 2.'),
+      reply('ann-1', ANNA, 95, '@Miriam Hofer Kommt mit Index D. Gilt das auch für die Tür vom Bad?', [mention(ME)]),
+      // A colleague mentioned with the chat's „@" picker: the chip, and Jakob told in his Postfach.
+      reply('ann-1', ME, 80, 'Nein, Bad geht nicht in den Gang. Nur Wohnen 1 und 2. @Jakob Huber, bitte in Index D nachziehen.', [
+        mention(JAKOB),
+      ]),
     ],
   },
   {
@@ -233,7 +246,9 @@ let annotations: AnnotationView[] = [
     shape: 'point',
     ...pt(380, 440),
     kind: 'hint',
-    body: 'Bad: Lüftung über Dach, Schacht im Technikraum.',
+    // A mark whose text mentions a colleague: the chip in the list, the peek and the thread.
+    body: 'Bad: Lüftung über Dach, Schacht im Technikraum. @Anna Berger, passt das zur Haustechnik?',
+    mentions: [mention(ANNA)],
     status: 'resolved',
     closedBy: 'u-2',
     closedByName: ANNA.name,
@@ -883,7 +898,10 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const current = annotations.find((annotation) => annotation.id === replies[1])
         if (!current) return json({ error: 'Not found', code: 'NOT_FOUND' }, 404)
         const input = body()
-        const added = { ...reply(current.id, ME, 0, String(input.body).trim()), addressesPiloti: input.addressesPiloti === true }
+        const added = {
+          ...reply(current.id, ME, 0, String(input.body).trim(), (input.mentions as AnnotationReplyView['mentions']) ?? []),
+          addressesPiloti: input.addressesPiloti === true,
+        }
         const next = { ...current, replies: [...current.replies, added], updatedAt: new Date().toISOString() }
         annotations = annotations.map((annotation) => (annotation.id === next.id ? next : annotation))
         // `?wakes=1`: the organization's switch is on, so the server answers an
@@ -932,10 +950,14 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       }
       if (url.endsWith(`/api/documents/${FILE.id}/annotations`)) {
         if (method === 'POST') {
-          const input = body() as Pick<AnnotationView, 'page' | 'shape' | 'x' | 'y' | 'w' | 'h' | 'kind' | 'body' | 'assigneeUserId' | 'dueOn'>
+          const input = body() as Pick<
+            AnnotationView,
+            'page' | 'shape' | 'x' | 'y' | 'w' | 'h' | 'kind' | 'body' | 'mentions' | 'assigneeUserId' | 'dueOn'
+          >
           const created: AnnotationView = {
             ...base,
             ...input,
+            mentions: input.mentions ?? [],
             w: input.w ?? null,
             h: input.h ?? null,
             body: input.body.trim(),

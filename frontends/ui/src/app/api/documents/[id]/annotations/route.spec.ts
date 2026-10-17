@@ -157,6 +157,7 @@ const RECORD: AnnotationRecord = {
   closedAt: null,
   delegatedBy: null,
   delegatedAt: null,
+  mentions: [],
   fassungNumber: 2,
   replies: [],
 }
@@ -194,6 +195,7 @@ beforeEach(() => {
     createdBy: 'user_1',
     createdAt: new Date(),
     addressesAgent: false,
+    mentions: [],
   })
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(
     new Map([
@@ -545,6 +547,7 @@ describe('deleteReply (the service; undo is its caller)', () => {
     createdBy: 'user_1',
     createdAt: new Date('2026-10-01T08:00:00Z'),
     addressesAgent: false,
+    mentions: [],
     ...patch,
   })
   const withReplies = (...replies: AnnotationRecord['replies']) =>
@@ -608,6 +611,7 @@ describe('POST /api/documents/[id]/annotations/[annotationId]/replies', () => {
         body: 'Ist im Index D drin.',
         createdBy: 'user_1',
         addressesAgent: false,
+        mentions: [],
       },
       // A reply on a person's mark that does not address Piloti wakes nothing.
       undefined

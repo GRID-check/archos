@@ -41,6 +41,13 @@ Piloti“):
 | `document_annotations.delegated_by`, `delegated_at` | Piloti is the delegate, working the mark for this person | both or neither (`…_delegation_complete`); only on an open mark (`…_delegated_while_open`) |
 | `piloti_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to: `queued`, then `started` and its final word, `answered`, `stopped` or `failed` (a turn that ran), or `suppressed` and `refused` (no turn ran) | a reason exactly for `suppressed`, `refused` and `failed`; `settled_at` exactly when it left `queued`; `ended_at` exactly when it reached its final word (migration `0141_wake_ends.sql`); RLS on the org and the mark's org |
 
+Migration `0149_annotation_mentions.sql` adds whom a text mentions (below,
+„Mentioning a colleague“):
+
+| Where | Holds | CHECK |
+|---|---|---|
+| `document_annotations.mentions`, `document_annotation_replies.mentions` | whom the mark's text or the reply mentions, as the server kept them: the chat's mention shape, `[{targetId, display}]` | an array of at most ten (`MAX_MENTIONS_PER_MESSAGE`; `…_mentions_bounded`); default `[]` |
+
 Migration `0142_piloti_changes.sql` adds the change record: every change Piloti
 applied to a mark or a thread, with the turn that made it. The chat card reads
 it, and undo runs from it (below, „In the chat“). Each change is also one
@@ -76,6 +83,12 @@ Routes:
 | `/[annotationId]` | GET (one mark as the caller sees it: what a room hint names), PATCH, DELETE |
 | `/[annotationId]/replies` | POST |
 | `/api/documents/[id]/thread` | POST: the caller's own thread about the document (below) |
+
+A mark's create (POST), a PATCH that carries a `body`, and a reply take
+`mentions`: whom the person picked in the composer's „@“ picker, as
+`[{targetId, display}]` (a user id, or `agent:piloti`). A PATCH sends them only
+with a `body` (400 otherwise). Every view carries the `mentions` the server
+kept, on the mark and on each reply. See „Mentioning a colleague“ below.
 
 The list answers `pilotiWakes`, whether the organization lets events wake
 Piloti. A reply answers `{annotation, replyId, wake}` and a PATCH that
@@ -174,6 +187,36 @@ reader's thumb, which opens the review with the point tool armed (`tool=point`,
 hover card („In der Prüfansicht öffnen", `inline-mark-peek.tsx`, a hovering
 pointer only: a tap on a pin opens the review as before). The pane header shows
 who is in the document with the review's own `Presence`, without following.
+
+### Mentioning a colleague
+
+The draft card and a thread's reply box are the chat's composer for mentions,
+gesture for gesture (`review/composer.tsx`): „@“ opens the chat's own picker
+(`MentionPicker`), a pick writes „@Anna Berger“ into the text and records whom
+it means (`features/collaboration/lib/mention-text.ts`), and what is sent is
+reconciled against the text at the last moment, so a name deleted while
+editing mentions nobody and a name typed by hand never did. The rows are the
+people who may open the document, read from the Zuständige picker's own list
+(`GET /api/assignments/document/{id}/candidates`, `listAssignmentCandidates`,
+`mayOpenDocument`), under „Können das Dokument öffnen“; a reply also offers
+Piloti, and its spark writes the @Piloti mention too. A draft does not: setting
+a mark wakes nobody. A query that finds nobody says that only people who may
+open the document can be mentioned.
+
+The server keeps a mention only while its token stands in the text, the name is
+the directory's, and the person may open the document
+(`lib/annotations/mentions.ts`); Piloti by its product name. A dropped mention
+is not stored, so its „@Name“ stays plain text, and the composer, comparing
+what it sent with what came back, says whom it did not tell („Nicht
+benachrichtigt, weil sie das Dokument nicht öffnen können: …“). A reply that
+mentions Piloti addresses it, as `addressesPiloti` does. Mentions spend the
+chat's budget (`enforceMentionBounds`, `MENTION_LIMIT`), before anything is
+written.
+
+A mention renders as the chat's chip (`MentionText`, through
+`review/mark-body.tsx`): the name, never the id, louder when it is the reader.
+The thread card, the list, the inline peek and the summary draw it alike. Only
+a stored mention becomes a chip.
 
 ## Live
 
@@ -347,7 +390,7 @@ events wake it, and only these, by a rule people can read (ADR-0036):
 
 | Event | Wakes Piloti when | Trigger |
 |---|---|---|
-| A person's reply in a mark's thread | it addresses Piloti (the composer's chip, stored as `addresses_agent`) | `thread_mention` |
+| A person's reply in a mark's thread | it addresses Piloti (the composer's @Piloti mention, stored as `addresses_agent`) | `thread_mention` |
 | A person's reply in a mark's thread | the mark is Piloti's own `question`, still proposed or open | `thread_reply` |
 | A person makes Piloti the delegate on an open mark | always | `assigned` |
 | A person takes over or dismisses Piloti's mark | never | |
@@ -483,18 +526,22 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `piloti.work_failed` | a woken turn ended `failed`, or the wake job was refused or gave up before a turn answered (a delegation, a mention or an answer) | who delegated, mentioned or answered | no |
 | `piloti.asks_you` | Piloti set a Rückfrage, or replied on its own open one | the mark's Zuständige, else the person its turn acted for | yes |
 | `annotation.assigned_to_you` | a person made someone Zuständige of an open mark (setting it, changing it, or taking over Piloti's proposal that names one), or Piloti did for the person its turn acted for | the new Zuständige, unless they did it themselves | yes |
-| `annotation.activity` | a person or Piloti replied in the thread | the mark's participants, minus whoever acted | no |
+| `annotation.mentioned` | a person @mentioned someone in a mark's text (setting it, or a `body` that adds them) or in a reply | each person mentioned anew who may open the document, minus whoever wrote it, minus a Zuständige the same write made responsible (who has `annotation.assigned_to_you`) | yes |
+| `annotation.activity` | a person or Piloti replied in the thread | the mark's participants, minus whoever acted, minus whom the reply mentions (one row for one reply: the mention) | no |
 | `annotation.activity` | someone resolved, dismissed or reopened a mark | the mark's author, unless they did it | no |
 
 The author's `annotation.activity` row says `yours: true`: a reply or a move
 on a mark they wrote answers them, so it reaches their devices as a result
 (`InboxPushPolicy.yours`, on by default, like `mention.answered`), while the
-thread's other participants hear it as activity (off by default).
+thread's other participants hear it as activity (off by default). An
+`annotation.mentioned` is pushed and mailed as the chat's `mention.requested`
+is (requests, an hour unread): one rule for one gesture.
 
 The participants are derived from the mark when something happens, never
-stored (`markParticipants`): its author (who set it, or for Piloti's mark who
-took it over or asked for it), its Zuständige, who delegated it to Piloti, and
-every person who replied. Whoever acted is left out, and for Piloti that is the
+stored as a list (`markParticipants`): its author (who set it, or for Piloti's
+mark who took it over or asked for it), its Zuständige, who delegated it to
+Piloti, every person who replied, and every person the mark's text or a reply
+mentions (being asked into a thread is taking part in it). Whoever acted is left out, and for Piloti that is the
 person its turn acted for: on a wake, who woke it, who hears `piloti.work_done`
 instead. When Piloti follows up its own open Rückfrage, the Zuständige it asks
 has the `piloti.asks_you` row and no second one. Every recipient of a
@@ -515,6 +562,7 @@ what the mark says (Piloti's question for a Rückfrage):
 | `piloti.work_failed` | „Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten“ | why, and what to do (below) |
 | `piloti.asks_you` | „Piloti hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG““ | „Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.“ |
 | `annotation.assigned_to_you` | „Miriam hat Ihnen Anmerkung 4 in „Grundriss EG“ zugewiesen“; variant `piloti`: „Piloti hat Ihnen für Miriam Anmerkung 4 in „Grundriss EG“ zugewiesen“ | „Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.“ |
+| `annotation.mentioned` | „Miriam hat Sie in Anmerkung 4 in „Grundriss EG“ erwähnt“ | „Antworten Sie im Verlauf der Anmerkung.“; the excerpt is the text that mentions them |
 | `annotation.activity`, variant `reply` | „Miriam hat zu Anmerkung 4 in „Grundriss EG“ geantwortet“, counted „3 neue Antworten zu Anmerkung 4 in „Grundriss EG“, zuletzt von Miriam“; Piloti's reply „Neue Antwort zu Anmerkung 4 in „Grundriss EG““ | none: the newest reply is the excerpt |
 | `annotation.activity`, variants `resolved` / `dismissed` / `reopened` | „Miriam hat Anmerkung 4 in „Grundriss EG“ erledigt“ / „… verworfen“ / „… wieder geöffnet“ | none |
 
@@ -529,8 +577,8 @@ person's face with the type's glyph in its corner.
 The row acts on the mark (`anchor: 'mark'` on the type's entry in
 `INBOX_TYPE_PRESENTATION`, from which the server's `MARK_ANCHORED_INBOX_TYPES`
 is derived). „Zur Anmerkung“ opens the Prüfansicht at it and marks the row read.
-On an open `annotation.assigned_to_you` or `piloti.asks_you`, „Antworten“
-answers in the thread from the row, and an assigned mark also has „Erledigen“
+On an open `annotation.assigned_to_you`, `piloti.asks_you` or
+`annotation.mentioned`, „Antworten“ answers in the thread from the row, and an assigned mark also has „Erledigen“
 (`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved
 meanwhile is a `409`, not overwritten). Both go through the annotations' own
 client (`lib/annotations/client.ts`), the same writes the thread makes, so the
@@ -564,8 +612,11 @@ A stop makes no item, because the person stopped it; nor does a suppressed wake
 answer is told and handed back as a turn's end is (`wake-job.ts`), so a
 delegated mark never keeps reading „Piloti arbeitet daran“ after a refusal. A
 `piloti.asks_you` is resolved for everyone once any person answers in the
-thread, and with `annotation.assigned_to_you` for everyone when the mark is
-resolved or dismissed, by a person or by Piloti in their name. A Zuständige
+thread, and with `annotation.assigned_to_you` and `annotation.mentioned` for
+everyone when the mark is resolved or dismissed, by a person or by Piloti in
+their name. An `annotation.mentioned` is resolved for its reader when they
+answer in the thread: mentioning yourself tells nobody, and a colleague asked
+in the same breath has not answered. A Zuständige
 who is replaced, or removed, has their `annotation.assigned_to_you` resolved.
 Deleting a mark turns every row anchored on it inert, for everyone: none keeps a
 link to it or a quote from it.

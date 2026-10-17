@@ -146,6 +146,7 @@ const ALL_TYPES = [
   // A colleague's work on an Anmerkung: marks are not a chat feature either.
   'annotation.assigned_to_you',
   'annotation.activity',
+  'annotation.mentioned',
 ] as const satisfies readonly InboxItemType[]
 
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
@@ -184,6 +185,7 @@ const OPERATIONAL_TYPES = [
   // A colleague's work on an Anmerkung: marks are not a chat feature either.
   'annotation.assigned_to_you',
   'annotation.activity',
+  'annotation.mentioned',
 ] as const satisfies readonly InboxItemType[]
 
 const at = new Date('2026-07-29T10:00:00.000Z')

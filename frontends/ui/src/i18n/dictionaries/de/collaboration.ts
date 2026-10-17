@@ -531,6 +531,16 @@ export const collaboration: typeof en.collaboration = {
           },
         },
       },
+      // Eine Kollegin hat Sie in einer Anmerkung oder ihrem Verlauf mit „@“
+      // erwähnt, wie im Chat. {actor} ist sie, {related} die Nummer der
+      // Anmerkung, {subject} das Dokument; der Auszug ist der Text, in dem
+      // sie Sie erwähnt.
+      annotationMentioned: {
+        title: '{actor} hat Sie in einer Anmerkung erwähnt',
+        titleRelated: '{actor} hat Sie in Anmerkung {related} in „{subject}“ erwähnt',
+        titleRelatedNoSubject: '{actor} hat Sie in Anmerkung {related} erwähnt',
+        body: 'Antworten Sie im Verlauf der Anmerkung.',
+      },
       unknown: {
         title: 'Es gab Aktivität',
         body: 'in {subject}',

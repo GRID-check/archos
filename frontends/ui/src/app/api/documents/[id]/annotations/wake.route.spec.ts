@@ -185,6 +185,7 @@ const MARK: AnnotationRecord = {
   closedAt: null,
   delegatedBy: null,
   delegatedAt: null,
+  mentions: [],
   fassungNumber: null,
   replies: [],
 }
@@ -215,6 +216,7 @@ beforeEach(() => {
       createdAt: new Date(),
       ...input,
       addressesAgent: input.addressesAgent ?? false,
+      mentions: input.mentions ?? [],
     }
     await afterInsert?.(TX, row)
     return row
@@ -549,6 +551,7 @@ describe('what a person’s decision leaves behind', () => {
       organizationId: 'org_1',
       annotationId: MARK_ID,
       closed: false,
+      answeredBy: 'user_1',
     })
   })
 

@@ -1044,6 +1044,13 @@
       "when": 1792454400034,
       "tag": "0148_piloti_wakes_document_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1792454400035,
+      "tag": "0149_annotation_mentions",
+      "breakpoints": true
     }
   ]
 }

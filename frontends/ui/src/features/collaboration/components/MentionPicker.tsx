@@ -81,6 +81,18 @@ export interface MentionPickerProps {
   loading?: boolean
   onSelect: (candidate: MentionCandidate) => void
   onAriaChange?: (aria: MentionPickerAria) => void
+  /**
+   * The heading over everyone who is not a participant, where „Weitere im
+   * Projekt" is not what they are: on an Anmerkung, the people who may open
+   * the document.
+   */
+  othersHeading?: string
+  /**
+   * The line under „Keine Treffer", where the surface has a rule worth saying:
+   * on an Anmerkung, that only people who may open the document can be
+   * mentioned, so a name typed by hand that finds nobody says why.
+   */
+  noResultsHint?: string
   className?: string
 }
 
@@ -236,7 +248,17 @@ function CandidateAvatar({
 
 export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>(
   function MentionPicker(
-    { query, candidates, canInvite, loading = false, onSelect, onAriaChange, className },
+    {
+      query,
+      candidates,
+      canInvite,
+      loading = false,
+      onSelect,
+      onAriaChange,
+      othersHeading,
+      noResultsHint,
+      className,
+    },
     ref,
   ) {
     const t = useTranslations('collaboration')
@@ -464,8 +486,8 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
                       : t('mentions.picker.empty')}
                   </p>
                   {query && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t('mentions.picker.placeholder')}
+                    <p className="mt-1 text-xs text-muted-foreground" data-testid="mention-no-results-hint">
+                      {noResultsHint ?? t('mentions.picker.placeholder')}
                     </p>
                   )}
                 </CommandEmpty>
@@ -490,7 +512,7 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
 
                 {groups.others.length > 0 && (
                   <CommandGroup
-                    heading={t('mentions.picker.othersHeading')}
+                    heading={othersHeading ?? t('mentions.picker.othersHeading')}
                     className="p-0 [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[10.5px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground"
                   >
                     {groups.others.map(renderRow)}

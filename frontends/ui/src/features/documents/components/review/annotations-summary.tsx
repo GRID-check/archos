@@ -12,6 +12,7 @@ import { isLive } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import type { DocumentReview } from '../../hooks/use-document-review'
 import { useRoomSelector } from '../../hooks/use-document-room'
+import { MarkBody } from './mark-body'
 import { markInk } from './review-page-layer'
 
 /** Live marks the rail shows before it sends the reader into the review for the rest. */
@@ -92,7 +93,9 @@ export function AnnotationsSummary({
                 proposed={annotation.status === 'proposed'}
               />
               <span className="min-w-0 flex-1">
-                <span className="text-foreground line-clamp-2 text-xs leading-5">{annotation.body}</span>
+                <span className="text-foreground line-clamp-2 text-xs leading-5">
+                  <MarkBody text={annotation.body} mentions={annotation.mentions} />
+                </span>
                 {/* Not drawn on this Fassung's pages, so the row says where it was set, as the review's list does. */}
                 {!annotation.onCurrentFassung && (
                   <span

@@ -1981,3 +1981,41 @@ apply_in grid_pshelf 0146_proposal_shelves.sql
 apply_in grid_pshelf 0146_proposal_shelves.sql
 check_in grid_pshelf "SELECT count(*) FROM proposed_changes" "1" "0146 re-applies, twice"
 echo "==> 0146 proposal shelves and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0149: whom an Anmerkung or a reply mentions, the CHECKs, and the
+# DOWN.
+#
+# On a database of its own, migrated to 0148. Every mark and reply written
+# before mentions nobody; a mention list is an array of at most ten, on both
+# tables; the down drops both columns and leaves the marks and their threads.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0149 mentions on marks and replies and their down migration on grid_mention"
+migrate_until grid_mention 0148_piloti_wakes_document_idx
+sql_in grid_mention <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000149', 'org_0149', 'Erwähnen 0149', 'user_1', 'proj_0149');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000149', 'org_0149', 'user_1', 'a.pdf', 'k/0149/a', 'proj_0149', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000149');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000149', 'org_0149', 'd1d1d1d1-0000-4000-8000-000000000149', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
+INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by)
+VALUES ('org_0149', 'f1f1f1f1-0000-4000-8000-000000000149', 'person', 'Vor 0149 geschrieben', 'user_2');
+SQL
+apply_in grid_mention 0149_annotation_mentions.sql
+check_in grid_mention "SELECT (SELECT string_agg(mentions::text, ',') FROM document_annotations) || '|' || (SELECT string_agg(mentions::text, ',') FROM document_annotation_replies)" "[]|[]" "a mark and a reply written before 0149 mention nobody"
+sql_in grid_mention <<<"UPDATE document_annotations SET mentions = '[{\"targetId\":\"user_2\",\"display\":\"Anna Berger\"}]' WHERE number = 1"
+sql_in grid_mention <<<"UPDATE document_annotation_replies SET mentions = '[{\"targetId\":\"agent:piloti\",\"display\":\"Piloti\"}]'"
+check_in grid_mention "SELECT mentions->0->>'display' FROM document_annotations WHERE number = 1" "Anna Berger" "a mark keeps whom it mentions"
+refused_in grid_mention "UPDATE document_annotations SET mentions = '{\"targetId\":\"user_2\"}' WHERE number = 1" "document_annotations_mentions_bounded" "a mark's mentions that are not an array were accepted"
+refused_in grid_mention "UPDATE document_annotations SET mentions = (SELECT jsonb_agg(jsonb_build_object('targetId', 'user_' || n, 'display', 'P' || n)) FROM generate_series(1, 11) AS n) WHERE number = 1" "document_annotations_mentions_bounded" "a mark mentioning eleven people was accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = '\"user_2\"'" "document_annotation_replies_mentions_bounded" "a reply's mentions that are not an array were accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = (SELECT jsonb_agg(jsonb_build_object('targetId', 'user_' || n, 'display', 'P' || n)) FROM generate_series(1, 11) AS n)" "document_annotation_replies_mentions_bounded" "a reply mentioning eleven people was accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = NULL" "null value" "a reply without a mention list was accepted"
+apply_in grid_mention 0149_annotation_mentions.down.sql
+check_in grid_mention "SELECT count(*) FROM information_schema.columns WHERE column_name = 'mentions' AND table_name IN ('document_annotations', 'document_annotation_replies')" "0" "down dropped both columns"
+check_in grid_mention "SELECT (SELECT count(*) FROM document_annotations) || ':' || (SELECT count(*) FROM document_annotation_replies)" "1:1" "down left the marks and their threads"
+apply_in grid_mention 0149_annotation_mentions.sql
+apply_in grid_mention 0149_annotation_mentions.sql
+check_in grid_mention "SELECT string_agg(mentions::text, ',') FROM document_annotation_replies" "[]" "0149 re-applies, twice"
+echo "==> 0149 mentions and down migration verified"

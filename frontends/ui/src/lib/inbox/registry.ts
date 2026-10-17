@@ -449,6 +449,24 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     email: IN_APP_ONLY,
     push: { category: 'activity', urgency: 'low', yours: 'results' },
   },
+  /*
+    A colleague @mentioned the reader on an Anmerkung: the chat's
+    `mention.requested`, on a mark. Actionable, as a mention in the chat is: a
+    person asked the reader something, and the badge is what shows it until
+    they answer in the thread or the mark is closed
+    (`lib/annotations/attention.ts`). `per-anchor` on the mark: being mentioned
+    twice on one mark is one row. Mailed and pushed as the chat's mention is,
+    so a person learns one rule for both. Operational, like the other marks'
+    types: marks are not a chat feature.
+  */
+  'annotation.mentioned': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
+  },
 }
 
 /**

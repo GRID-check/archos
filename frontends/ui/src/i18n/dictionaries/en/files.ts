@@ -1555,13 +1555,19 @@ export const files = {
     },
     popout: 'Open in a new window',
     copyReviewLink: 'Copy link to the review',
+    // Mentioning colleagues on an annotation or in its thread with "@", as in the chat.
+    // Only people who can open the document can be mentioned; anyone else is not told.
+    mentions: {
+      othersHeading: 'Can open this document',
+      noResultsHint: 'You can mention anyone who can open this document.',
+      untold: 'Not told, because they cannot open this document: {names}',
+    },
     // Piloti on the canvas: a box asked about, the answer beside it, and Piloti in a thread.
     piloti: {
       conversationTitle: '{name} · Review',
       ask: 'Ask Piloti',
       mention: 'Mention Piloti',
       mentionHint: 'Piloti answers in this thread',
-      mentionRemove: 'Remove mention',
       replying: 'Piloti is answering …',
       replyFailed: 'Piloti could not answer.',
       replyingFor: 'Piloti is answering … · for {name}',
