@@ -32,8 +32,10 @@ been told that mail is received through Cloudflare. Ask your administrator.
 
 ## Who can send
 
-Only members of the organization who may add documents to that project:
-people with `project:documents:write` or `project:edit` on it. Once the
+Only active members of the organization who may add documents to that
+project: people with `project:documents:write` or `project:edit` on it, from
+any of their roles. A member whose account is deactivated, or whose
+invitation is still open, cannot send. Once the
 project has a folder **E-Mail-Eingang** with its own access list, the sender
 must also be allowed to write into that folder: its folder roles decide, as
 they do for an upload into it. A closed project accepts no mail. Piloti checks
@@ -47,7 +49,13 @@ yet. Forward their mail yourself.
 Put the project address in **To** or **Cc**. A mail that has it only in
 **Bcc** is refused: Piloti accepts a mail only when your mail server's
 signature covers a recipient line that names the project, so that a mail you
-sent to somebody else cannot be re-sent into a project.
+sent to somebody else cannot be re-sent into a project. For the same reason a
+mail whose signed date is more than 30 days old is refused.
+
+Piloti checks that your mail domain signed the mail, not which mailbox wrote
+it. So anyone who can send as somebody else in your domain (a shared scanner,
+a mail relay or a colleague with send-as rights) can file into a project
+whose address they know, under that person's name.
 
 Do not put the project address in a mail to people outside your office. It
 would end up in their address books and in every reply-all. They cannot file
@@ -77,7 +85,8 @@ to people who have no use for it.
 - **A notification in your Piloti inbox** says how many files were filed and
   lists the ones that were not, each with its reason. If the files could not
   be filed at all, the notification says so; upload them in the app instead.
-- If a mail server delivers the same mail twice, Piloti files it once.
+- If a mail server delivers the same mail twice within 30 days, Piloti files
+  it once.
 
 ### What is not filed, and why
 
@@ -127,6 +136,8 @@ addresses exist or who is a member. The reason is one of these:
 | The project is closed | Ask whoever may reopen it, or file the documents in another project |
 | You sent from a different address than your Piloti account | Send from the address you sign in with |
 | The project address was only in Bcc | Put it in To or Cc |
+| The mail is dated more than 30 days back, for example an old mail sent again | Forward it as a new mail |
+| Your membership is deactivated, or your invitation is still open | Ask your administrator |
 | Your mail domain does not sign with DKIM | See below |
 
 A mail can also come back with a shorter text:
@@ -179,8 +190,10 @@ If the address has reached people who should not have it, a project admin
 The old address stops working at once, and mail to it bounces. Give the new
 address to everyone who sends files to the project.
 
-A leaked address on its own lets nobody file anything, because the sender must
-still be a verified member. A new address mainly stops the bounces.
+A leaked address on its own lets nobody outside your mail domain file
+anything, because the mail must be signed by a member's domain. A new address
+stops the bounces, and it stops anyone inside your domain who should not be
+filing into the project.
 
 ## What is kept
 

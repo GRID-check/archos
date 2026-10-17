@@ -1,8 +1,9 @@
 ---
 features:
   - >
-    Each project can now have its own email address, under Documents & index
-    in the project settings, once it is switched on for your organization. Send
+    Each project can now have its own email address, shown in the project
+    settings, in the documents section, once it is switched on for your
+    organization. Send
     attachments to it and Piloti files them in a folder for that mail, lists
     anything it skipped in your inbox, and does not store the mail text.
   - >
@@ -19,7 +20,8 @@ operators:
     until you enable the WorkOS flag project-mail-inbox for it, after giving
     the notice its contract requires.
   - >
-    Before the first organization, prove on staging that the DKIM-Signature
-    header reaches the Worker intact and that a failing Worker makes the
-    sending server retry instead of bouncing. Keep Email preview off for the
-    app zone, which the contact form onboards for sending.
+    Before the first customer organization, prove on production, with an
+    internal test organization as the only target of the flag, that the
+    DKIM-Signature header reaches the Worker intact and that a throwing Worker
+    makes the sending server retry instead of bouncing. Staging cannot host the
+    inbox, because only the stack that owns the domain's zone may.

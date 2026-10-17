@@ -84,10 +84,12 @@ import {
   markDeliveryFiled,
   recordDeliveryFolder,
   recordFailedAttempt,
+  recordStagingLeft,
   touchDelivery,
   type DeliveryOutcome,
 } from './repository'
-import { deleteStagedObjects, errorName, readStagedObject } from './staging'
+import { errorName } from './error-name'
+import { deleteStagedObjects, readStagedObject } from './staging'
 import type { SkipReason } from './types'
 
 /** The top-level folder every mail is filed under. */
@@ -108,7 +110,7 @@ export const BACKOFF_MINUTES = [1, 5, 30, 60, 180, 360, 720] as const
 const HOLD_MINUTES = 60
 
 /** A queued delivery without progress for this long is checked for a live job. */
-export const STALLED_DELIVERY_MINUTES = 15
+const STALLED_DELIVERY_MINUTES = 15
 
 /** Rows one sweep looks at, per part. */
 const SWEEP_BATCH = 20
@@ -182,11 +184,25 @@ async function attemptDelivery(row: InboundMailMessageRow): Promise<Verdict> {
     return 'held'
   }
   const filing = await fileDelivery(row)
-  const remaining = await deleteStagedObjects(row.stagingBucket, row.staged)
-  const outcome: DeliveryOutcome = { filedCount: filing.filed, skipped: filing.skipped, remaining }
+  // Filed first, staging kept: a row still `queued` with its staging deleted
+  // would fail every retry at reading it and end as „failed" for a mail whose
+  // files are all in the folder. The staging goes after, and what a delete
+  // leaves the backstop finds on the finished row.
+  const outcome: DeliveryOutcome = { filedCount: filing.filed, skipped: filing.skipped, remaining: row.staged }
   if (!(await markDeliveryFiled(row.organizationId, row.id, outcome))) throw new DeliveryMovedOnError()
+  await releaseStaging(row)
   await notifyFiled(row, filing)
   return 'filed'
+}
+
+/** Delete a filed delivery's staging now. Never fails the filed mail: the backstop retries what is left. */
+async function releaseStaging(row: InboundMailMessageRow): Promise<void> {
+  try {
+    const left = await deleteStagedObjects(row.stagingBucket, row.staged)
+    await recordStagingLeft(row.organizationId, row.id, left)
+  } catch (error) {
+    console.warn(`[inbound-mail] staging of row=${row.id} left for the backstop error=${errorName(error)}`)
+  }
 }
 
 /**
@@ -235,7 +251,7 @@ function logAttempt(row: InboundMailMessageRow, verdict: Verdict, detail: string
   if (verdict === 'filed' || verdict === 'held' || verdict === 'gone') {
     // The operator trail (D-7): one INFO line per delivery, which the container
     // log collector keeps. WARN would file every accepted mail as a problem.
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console -- the per-delivery INFO line is the operator trail
     console.info(line)
   } else if (verdict === 'failed') console.error(line)
   else console.warn(line)

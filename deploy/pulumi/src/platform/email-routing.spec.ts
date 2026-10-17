@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { assertNoForeignMx, assertSingleDmarc } from "./email-routing";
+import { assertNoForeignMx, assertSingleDmarc, ROUTING_RESOURCE_OPTIONS } from "./email-routing";
 
 /**
  * The apex MX guard both Email Routing modules run before creating anything
@@ -89,5 +91,17 @@ describe("the single-DMARC guard", () => {
         txt("v=DMARC1; p=none;", `_dmarc.sub.${DOMAIN}`),
       ]),
     ).not.toThrow();
+  });
+});
+
+describe("Email Routing on the zone", () => {
+  it("is left on when the inbox is switched off or the stack destroyed", () => {
+    // Deleting the routing resource switches Email Routing off for the whole
+    // zone, and every company address on the domain stops receiving mail.
+    expect(ROUTING_RESOURCE_OPTIONS.retainOnDelete).toBe(true);
+    // A resource option, which the mocks do not carry: check it is applied.
+    expect(readFileSync(join(__dirname, "email-routing.ts"), "utf8")).toMatch(
+      /new cloudflare\.EmailRoutingDns\([^;]*\{ provider, \.\.\.ROUTING_RESOURCE_OPTIONS[ ,}]/,
+    );
   });
 });

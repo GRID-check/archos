@@ -7,12 +7,13 @@
  * every response is parsed against it here: a body that does not match is an
  * error state, never an `undefined` address rendered into the copy field.
  *
- * `hidden` folds three answers into one because the section draws the same
- * thing for all of them, which is nothing: the deployment has no inbound mail
- * domain (`enabled: false`), the caller may not see the address (`address:
- * null`), or the route refused (404/403, the caller lacks document write
- * access). The page already gates on that permission, so the last one only
- * happens when a grant changed since the page rendered.
+ * `hidden` folds the answers the section draws nothing for into one:
+ * `enabled: false`, which the service answers when the deployment has no
+ * inbound mail domain or the organization's `project-mail-inbox` flag is off
+ * (always with `address: null`), and a refusal from the route (404/403, the
+ * caller lacks document write access). The page already gates on that
+ * permission, so a refusal only happens when a grant changed since the page
+ * rendered.
  */
 
 import { useCallback, useEffect, useState } from 'react'

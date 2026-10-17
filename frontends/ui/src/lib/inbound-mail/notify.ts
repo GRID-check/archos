@@ -19,7 +19,7 @@ import {
 import { emitInboxItems, type InboxEmission } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { truncateGraphemes } from '@/lib/text/graphemes'
-import { errorName } from './staging'
+import { errorName } from './error-name'
 import type { SkipReason } from './types'
 
 type NotifiedRow = Pick<

@@ -63,9 +63,9 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   `kontakt@`, `info@` with no rule, a spammer's guess) is refused by the
   Worker itself with `Unbekannte Adresse: Diese Nachricht wurde nicht
   zugestellt. / Unknown address: this message was not delivered.`, without
-  calling the BFF. That is the answer such an address got before the
-  catch-all existed, when Cloudflare refused it, and it keeps spam off the
-  webhook and its edge rate-limit bucket. Everything else stays in the BFF.
+  calling the BFF. It is a permanent refusal (5xx) with our own text, not
+  Cloudflare's, and it keeps spam off the webhook and its edge rate-limit
+  bucket. Everything else stays in the BFF.
 * **The verdict contract.** For a project-shaped address, the Worker bounces a
   mail only when the BFF answers a 4xx carrying `x-inbound-verdict: reject`,
   and the BFF sets that header only on a permanent refusal: an unknown or
@@ -73,7 +73,8 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   organization's switch off, a sender that fails verification, is not a member
   or may not write documents, or a message over 26 MiB. A 2xx accepts. Every
   other answer (401, 403, 404 or 5xx without the header, 409, 429, a redirect,
-  a network error) makes the Worker throw, so Cloudflare answers the sending
+  a network error, no answer within the Worker's 120 s fetch timeout) makes
+  the Worker throw, so Cloudflare answers the sending
   server with a temporary failure and it retries. A status alone never bounces:
   a rotated Worker token or a misrouted `BFF_URL` delays mail, it does not lose
   it.
@@ -81,9 +82,11 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   base32 token resolves; the slug is decoration.
 * **Accept, then file from the job queue.** The webhook resolves the token in one
   `withPlatformAccess` lookup before reading the body, then works inside
-  `withTenant`. It checks the switch, verifies the sender, looks them up in the
-  target organization only, requires `project:documents:write` or
-  `project:edit` on that project and, once the project has an
+  `withTenant`. It checks the switch, verifies the sender, looks them up among
+  the target organization's active members only (a deactivated,
+  deprovisioned or pending membership is refused), requires
+  `project:documents:write` or `project:edit` on that project, from the union
+  of all the sender's roles, and, once the project has an
   `E-Mail-Eingang` folder, write on it by the sender's folder roles (the same
   `requireFolderWrite` every write into a folder passes, ADR-0097; a closed
   project refuses it, ADR-0090), selects the attachments in memory, stages them in
@@ -100,16 +103,27 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   row still being `queued`. A failed attempt counts on the row and hands the
   delivery to a fresh job after a backoff; after eight the row is `failed` and
   the sender told. A project closed while the mail waited fails it at once. The background-work sweep gives a queued delivery whose job
-  is gone a new one. Staging lives at most 7 days and rows 30.
+  is gone a new one. Staging lives at most 7 days and rows 30, so the dedupe
+  on (address, delivery key) holds for 30 days.
+  A mail opens no upload batch. Its receipt is the sender's `inbound_mail.filed`
+  row, so the steps a batch starts when it settles do not run for mailed files:
+  the „Was ist angekommen?" summary, the filing review and the Projekterfassung
+  reading (ADR-0111). Screening and quarantine (ADR-0086) apply as to any upload,
+  because they sit in `uploadDocument`. The next upload, or a click, starts the
+  reading.
 * **Sender trust is DKIM only.** Cloudflare does not give a Worker its SPF, DKIM
   or DMARC verdicts
   ([workerd#6740](https://github.com/cloudflare/workerd/issues/6740), open
   since 2026-05-07), so the BFF decides from the raw bytes. A mail is authentic
   only when one DKIM signature on it verifies (`mailauth`), is aligned with the
-  single From domain, has no `l=` tag, signs From, Subject and To or Cc, and
-  signs a To or Cc that names this project's address. That last rule stops a
-  signed mail from being replayed into another project, and it refuses a Bcc.
-  There is no rule admitting a domain for its DMARC policy: "the domain
+  single From domain, has no `l=` tag, signs From, Subject, Message-ID and To
+  or Cc, and signs a To or Cc that names this project's address. That last
+  rule stops a signed mail from being replayed into another project, and it
+  refuses a Bcc. When the signature also covers Date, a mail dated more than
+  30 days back, or more than a day in the future, is refused as a replay:
+  past 30 days its delivery row, and with it the dedupe, is gone. DKIM proves
+  which domain signed a mail, not which mailbox wrote it, so this trust is
+  per domain (Consequences). There is no rule admitting a domain for its DMARC policy: "the domain
   publishes `p=reject`, so Cloudflare already enforced it" admitted unsigned
   spoofs whenever the policy was not enforced and whenever someone posted to
   the webhook past Cloudflare. A DNS failure is a `temperror` and a retry,
@@ -132,9 +146,10 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   turn into a bounce.
 * Good, because it costs nothing on the free Workers plan, and $5 a month on
   the paid plan if the handler outgrows the free CPU limit.
-* Good, because a leaked address alone files nothing: the sender must be a
-  verified member with write access, and the signed To or Cc must name the
-  address.
+* Good, because a leaked address alone files nothing for someone outside the
+  members' mail domains: the mail must carry a valid signature of an active
+  member's domain over a From naming that member, the member must have write
+  access, and the signed To or Cc must name the address.
 * Good, because the addresses are on Piloti's own domain, which customers
   already know, and mail to addresses that are not project-shaped is refused
   at Cloudflare without reaching the cluster.
@@ -143,8 +158,8 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   move to a domain of its own at that point (the separate-zone setup is still
   supported), and every project gets a new address by rotation.
 * Bad, because every new named company address on `piloti.at` needs its own
-  literal Email Routing rule. Without one the Worker refuses it as unknown.
-  That was already true before the catch-all: Cloudflare refused it.
+  literal Email Routing rule, `postmaster@` and `abuse@` among them. Without
+  one the Worker refuses it as unknown.
 * Bad, because Cloudflare becomes a sub-processor for mail content in transit,
   under the EU-US Data Privacy Framework, and processes it in the nearest data
   centre with no EU guarantee. A customer that requires EU-only processing
@@ -153,6 +168,18 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   their DMARC policy says. That includes Microsoft 365 and Google Workspace
   domains without custom DKIM. Their admins must enable it, or the member
   uploads by hand.
+* Bad, because sender trust is per domain, not per mailbox. DKIM proves that
+  the member's domain signed the mail, not which mailbox wrote it. Anyone who
+  can make that domain sign a From of their choosing can file as any member
+  of the domain into a project whose address they know: a shared relay or
+  connector, a scan-to-mail device, an email service provider holding a key
+  for the domain, a colleague with send-as rights. The project address is no
+  secret; it travels in To and Cc. Each filed file is recorded as that
+  member's upload (`channel: inbound-mail`), and rotating the address ends
+  it.
+* Bad, because a signed mail whose signature does not cover Date can be sent
+  into its project again once its delivery row is gone, after 30 days. It
+  files the same attachments a second time, as the original sender.
 * Bad, because a Bcc to the project address bounces; members must put it in To
   or Cc.
 * Bad, because the sender learns of success only in the app. v1 sends no mail,
@@ -164,7 +191,8 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
 * Bad, because two runtime facts the design relies on cannot be proven from the
   repository: that `DKIM-Signature` survives into the Worker's `message.raw`,
   and that a thrown Worker becomes an SMTP 4xx. Both are launch gates in the
-  deploy guide.
+  deploy guide, run on prod against an internal test organization, because
+  only the stack that owns the `piloti.at` zone may host the inbox there.
 * Neutral, because the DSGVO review is
   [`inbound-mail-review-2026-09.md`](../compliance/inbound-mail-review-2026-09.md),
   with the Datenschutzberater sign-off still open.
@@ -182,8 +210,8 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   fence on `queued`, the stalled-delivery listing, retention, tenant
   isolation against PostgreSQL).
 * The unit specs beside the code: `sender-auth.spec.ts` (DKIM-only trust,
-  alignment, `l=`, signed headers, the signed recipient, duplicate headers,
-  `temperror`), `mime.spec.ts` (which parts are files, the skip reasons, the
+  alignment, `l=`, signed headers including Message-ID, the signed recipient,
+  a stale or future signed Date, duplicate headers, `temperror`), `mime.spec.ts` (which parts are files, the skip reasons, the
   delivery key), `receive.spec.ts` and
   `frontends/ui/src/app/api/internal/inbound-mail/route.spec.ts` (the order of
   work, the verdict header on exactly the permanent refusals), `job.spec.ts`
@@ -209,15 +237,14 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0113).
   anywhere but `*.mx.cloudflare.net`. `deploy/pulumi/src/config.spec.ts`: the
   zone id defaults to `dnsZoneId` when `inboundMailDomain` equals
   `dnsZoneName`, and an inbox on the app zone requires `dnsEnabled` and
-  `dnsZoneBaseline`, like the contact address.
-  `deploy/pulumi/src/platform/mail-zones.spec.ts`: the contact address and an
-  inbox on the app apex share one zone's Email Routing, and an inbox on a zone
-  of its own gets its own. `index-inbound-mail.spec.ts`:
-  nothing is created when the domain is unset, and no edge buffer limit caps
-  the body. `stack-files.spec.ts`: one stack per inbound zone.
-* Nothing enforces that Cloudflare's "Email preview" stays off for
-  `piloti.at`. It is an Email Sending setting, and `piloti.at` is onboarded
-  for sending for the contact form (ADR-0113). Cloudflare describes it as
+  `dnsZoneBaseline`. `deploy/pulumi/index-inbound-mail-apex.spec.ts`: an inbox
+  on the app apex enables Email Routing once, on that zone, and points its
+  catch-all at the stack's Worker. `deploy/pulumi/index.spec.ts`: nothing
+  is created when the domain is unset. `index-inbound-mail.spec.ts`: no edge
+  buffer limit caps the body. `stack-files.spec.ts`: one stack per inbound
+  zone.
+* Nothing enforces that Cloudflare's "Email preview" stays off should
+  `piloti.at` ever be onboarded for Email Sending. Cloudflare describes it as
   covering messages sent while it is on; it does not describe it as covering
   mail received through Email Routing. It is a dashboard setting. The deploy
   guide says so; review is the only gate.

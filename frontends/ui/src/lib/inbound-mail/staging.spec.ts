@@ -9,7 +9,7 @@ vi.mock('@/lib/s3', () => ({ s3Client: { send: (cmd: unknown) => send(cmd) }, bu
 vi.mock('@/lib/storage/bucket', () => ({ ensureTenantBucketChecked: vi.fn(async () => 'grid-org-a') }))
 
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
-import { deleteStagedObjects, errorName, stageAttachments, stagingPrefix } from './staging'
+import { deleteStagedObjects, stageAttachments, stagingPrefix } from './staging'
 import type { SelectedAttachment } from './types'
 
 const attachment = (filename: string): SelectedAttachment => ({
@@ -63,15 +63,5 @@ describe('deleteStagedObjects', () => {
       .mockRejectedValueOnce(Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' }))
       .mockRejectedValueOnce(Object.assign(new Error('InternalError'), { $metadata: { httpStatusCode: 500 } }))
     expect(await deleteStagedObjects('grid-org-a', [a, b, c])).toEqual([c])
-  })
-})
-
-describe('errorName', () => {
-  it('names the class and code, never the message', () => {
-    const drizzle = Object.assign(new Error('Failed query: … params: anna@buero-a.at'), {
-      cause: Object.assign(new Error('duplicate key'), { code: '23505' }),
-    })
-    expect(errorName(drizzle)).toBe('Error:23505')
-    expect(errorName('x')).toBe('string')
   })
 })

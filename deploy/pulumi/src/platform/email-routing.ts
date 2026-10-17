@@ -188,6 +188,27 @@ export function assertZoneApex(
   );
 }
 
+/**
+ * The routing resource's options beyond the provider. Exported for the spec:
+ * Pulumi's mocks do not carry resource options.
+ */
+export const ROUTING_RESOURCE_OPTIONS = {
+  // Deleting it (unsetting the inbox or the contact address, or a destroy)
+  // turns Email Routing off for the whole zone: its MX, SPF and DKIM go, and
+  // with them every company address's literal rule. Neither feature turning off
+  // may do that to the other, or to addresses set up by hand.
+  retainOnDelete: true,
+} as const satisfies pulumi.CustomResourceOptions;
+
+/**
+ * The names the project mail inbox gave its zone's provider and routing when it
+ * owned them alone (before the contact address shared the zone). Aliased on
+ * the zone that hosts the inbox, so a stack deployed with the inbox alone
+ * renames them in state instead of replacing the provider, and with it the
+ * Worker and the catch-all.
+ */
+const INBOX_ZONE_ALIASES = { provider: "cloudflare-inbound-mail", routing: "inbound-mail-routing" } as const;
+
 function installMailZone(args: {
   configKeys: string;
   zoneId: string;
@@ -195,11 +216,18 @@ function installMailZone(args: {
   apiToken: pulumi.Output<string>;
   /** Whether the contact address's sender domain lives here: its `_dmarc` is then checked. */
   checkDmarc: boolean;
+  /** Whether the project mail inbox routes on this zone (see `INBOX_ZONE_ALIASES`). */
+  hostsInbox: boolean;
 }): MailZone {
   const key = zoneKey(args.domain);
+  const alias = (name: string) => (args.hostsInbox ? { aliases: [{ name }] } : {});
   // A provider per zone rather than the DNS module's: that one exists only
   // inside `installDns`, and an inbox zone of its own need not be the DNS zone.
-  const provider = new cloudflare.Provider(`cloudflare-mail-${key}`, { apiToken: args.apiToken });
+  const provider = new cloudflare.Provider(
+    `cloudflare-mail-${key}`,
+    { apiToken: args.apiToken },
+    alias(INBOX_ZONE_ALIASES.provider),
+  );
   const opts = { provider };
 
   const checked = checkedRoutingZone({
@@ -234,7 +262,7 @@ function installMailZone(args: {
   const routing = new cloudflare.EmailRoutingDns(
     `mail-routing-${key}`,
     { zoneId, name: args.domain },
-    opts,
+    { provider, ...ROUTING_RESOURCE_OPTIONS, ...alias(INBOX_ZONE_ALIASES.routing) },
   );
 
   return { provider, domain: args.domain, zoneId, accountId: guarded.accountId, routing };
@@ -261,6 +289,7 @@ export function installMailZones(cfg: GridConfig): MailZones {
         domain: contact.domain,
         apiToken: contact.apiToken,
         checkDmarc: true,
+        hostsInbox: shared,
       })
     : undefined;
   if (shared) return { contact: contactZone, inbound: contactZone };
@@ -272,6 +301,7 @@ export function installMailZones(cfg: GridConfig): MailZones {
         domain: inbound.domain,
         apiToken: inbound.apiToken,
         checkDmarc: false,
+        hostsInbox: true,
       })
     : undefined;
   return { contact: contactZone, inbound: inboundZone };

@@ -102,11 +102,14 @@ describe('getInboundAddress', () => {
   })
 
   it('is disabled, and mints nothing, without a domain or with the switch off', async () => {
+    vi.mocked(can).mockResolvedValue(true)
     vi.stubEnv('GRID_INBOUND_MAIL_DOMAIN', '')
     expect(await getInboundAddress(session, 'project-a')).toEqual({ enabled: false, address: null, canRotate: false })
     vi.stubEnv('GRID_INBOUND_MAIL_DOMAIN', 'piloti-post.at')
     expect(await getInboundAddress(switchedOff, 'project-a')).toEqual({ enabled: false, address: null, canRotate: false })
     expect(insertAddress).not.toHaveBeenCalled()
+    // Nothing to rotate, so no FGA round trip either.
+    expect(can).not.toHaveBeenCalled()
   })
 
   it('refuses a caller without write access before anything else', async () => {

@@ -62,7 +62,7 @@ import { enforceLimit, INBOUND_MAIL_ADDRESS_LIMIT, INBOUND_MAIL_ORG_LIMIT } from
 import { mailFolderName } from '@/lib/mail-import/naming'
 import { findRootProjectFolderByName } from '@/lib/projects/folder-service'
 import { isProjectClosedError } from '@/lib/projects/project-status'
-import { loadOrganizationDirectory, type DirectoryPerson } from '@/lib/sharing/directory'
+import { findOrganizationMemberByEmail, loadOrganizationDirectory, type DirectoryPerson } from '@/lib/sharing/directory'
 import { assertFileSizeAllowed } from '@/lib/storage/upload-limit'
 import { isProjectMailInboxEnabledForOrg } from '@/lib/workos/feature-flags'
 import { asciiLower, inboundMailDomain, parseInboundAddress } from './address'
@@ -76,20 +76,21 @@ import { enqueueDelivery, INBOUND_MAIL_ROOT_FOLDER } from './job'
 import { deliveryKey, parseMail } from './mime'
 import { findActiveAddressByToken, findDelivery, queueDelivery, type ResolvedAddress } from './repository'
 import { verifySender } from './sender-auth'
-import { deleteStagedObjects, errorName, stageAttachments } from './staging'
+import { errorName } from './error-name'
+import { deleteStagedObjects, stageAttachments } from './staging'
 import type { ParsedMail, SelectedAttachment } from './types'
 
 /** Envoy's and the Worker's ceiling on one message, in raw bytes. */
 export const MAX_MESSAGE_BYTES = 26 * 1024 * 1024
 
 /** A mail may carry at most this many files; the rest are skipped as `limit`. */
-export const MAX_FILES_PER_MAIL = 100
+const MAX_FILES_PER_MAIL = 100
 
 /** A message at least this big parses under {@link MAX_CONCURRENT_LARGE_PARSES}. */
-export const LARGE_MESSAGE_BYTES = 1024 * 1024
+const LARGE_MESSAGE_BYTES = 1024 * 1024
 
 /** Large parses one BFF process runs at once; one more is a 503 and a retry. */
-export const MAX_CONCURRENT_LARGE_PARSES = 2
+const MAX_CONCURRENT_LARGE_PARSES = 2
 
 /** Skipped parts that keep their name on the row; the rest keep only a reason. */
 const MAX_NAMED_SKIPS = 100
@@ -114,7 +115,7 @@ type Outcome = 'accepted' | 'duplicate' | RefusalOutcome | `retry-${string}`
  * verdict. Three texts for seven reasons, so the answer enumerates nothing a
  * stranger could learn from (an address switched off reads as unknown).
  */
-export class InboundMailRefusal extends ApiError {
+class InboundMailRefusal extends ApiError {
   constructor(readonly outcome: RefusalOutcome) {
     const [status, code, message] = REFUSALS[outcome]
     super(status, code, message)
@@ -215,7 +216,7 @@ function logDelivery(trail: Trail, ms: number): void {
   if (trail.outcome === 'accepted' || trail.outcome === 'duplicate') {
     // The operator trail (D-7): one INFO line per delivery, which the container
     // log collector keeps. WARN would file every accepted mail as a problem.
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console -- the per-delivery INFO line is the operator trail
     console.info(line)
   } else if (trail.outcome.startsWith('refused-')) console.warn(line)
   else console.error(line)
@@ -231,7 +232,7 @@ interface Accepted {
 }
 
 /** Step 1. A domain that is unset or not ours is our fault, so it is a retry. */
-export function tokenForRecipient(envelopeTo: string | null): string {
+function tokenForRecipient(envelopeTo: string | null): string {
   const domain = inboundMailDomain()
   const parsed = domain && envelopeTo ? parseInboundAddress(envelopeTo, domain) : { kind: 'foreign' as const }
   if (parsed.kind === 'token') return parsed.token
@@ -402,7 +403,14 @@ async function findMemberByEmail(organizationId: string, email: string): Promise
   for (const person of directory.values()) {
     if (person.email && asciiLower(person.email.trim()) === wanted) return person
   }
-  return null
+  // The roster is cached for five minutes, so a colleague invited since then
+  // is not in it. "Not a member" bounces the mail for good, so ask WorkOS for
+  // this one address before saying it.
+  try {
+    return await findOrganizationMemberByEmail(organizationId, wanted)
+  } catch {
+    throw retry('directory', 503, 'DIRECTORY_UNAVAILABLE', 'The member directory could not be read. Try again later.')
+  }
 }
 
 /**

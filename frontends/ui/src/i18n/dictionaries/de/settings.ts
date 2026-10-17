@@ -139,8 +139,7 @@ export const settings: typeof en.settings = {
       addressLabel: 'Projektadresse',
       rulesLabel: 'Was gilt',
       rules: {
-        members:
-          'Senden können Projektmitglieder, die Dokumente bearbeiten dürfen, sobald der E-Mail-Eingang für die Organisation eingeschaltet ist.',
+        members: 'Senden können Projektmitglieder, die Dokumente bearbeiten dürfen.',
         verified:
           'Die Domain des Absenders muss ihre E-Mails mit DKIM signieren. Andere E-Mails werden abgelehnt.',
         addressing: 'Die Adresse gehört in An oder Cc. Steht sie nur in Bcc, wird die E-Mail abgelehnt.',

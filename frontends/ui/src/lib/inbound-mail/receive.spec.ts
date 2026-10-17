@@ -32,7 +32,7 @@ vi.mock('./mime', () => ({ parseMail: vi.fn(), deliveryKey: vi.fn() }))
 vi.mock('@/lib/mail-import/naming', () => ({ mailFolderName: vi.fn(() => '2026-09-30 10.15 – Anna Berger') }))
 vi.mock('./job', () => ({ enqueueDelivery: vi.fn(), INBOUND_MAIL_ROOT_FOLDER: 'E-Mail-Eingang' }))
 vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn() }))
-vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
+vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn(), findOrganizationMemberByEmail: vi.fn() }))
 vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSessionStrict: vi.fn() }))
 vi.mock('@/lib/authz/folder-access', () => ({ requireFolderWrite: vi.fn() }))
 vi.mock('@/lib/projects/folder-service', () => ({ findRootProjectFolderByName: vi.fn() }))
@@ -60,7 +60,7 @@ import { requireFolderWrite } from '@/lib/authz/folder-access'
 import { findRootProjectFolderByName } from '@/lib/projects/folder-service'
 import { projectClosedError } from '@/lib/projects/project-status'
 import { enforceLimit } from '@/lib/limits'
-import { loadOrganizationDirectory, type DirectoryPerson } from '@/lib/sharing/directory'
+import { findOrganizationMemberByEmail, loadOrganizationDirectory, type DirectoryPerson } from '@/lib/sharing/directory'
 import { assertFileSizeAllowed } from '@/lib/storage/upload-limit'
 import { isProjectMailInboxEnabledForOrg } from '@/lib/workos/feature-flags'
 import { enqueueDelivery } from './job'
@@ -146,6 +146,7 @@ beforeEach(() => {
   vi.mocked(isProjectMailInboxEnabledForOrg).mockResolvedValue(true)
   vi.mocked(verifySender).mockResolvedValue({ verdict: 'pass', fromAddress: 'anna@buero-a.at', fromName: 'Anna Berger' })
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([[ANNA.userId, ANNA]]))
+  vi.mocked(findOrganizationMemberByEmail).mockResolvedValue(null)
   vi.mocked(resolvePinnedRequesterSessionStrict).mockImplementation(async (requester) =>
     sessionFor(requester.userId, requester.organizationId)
   )
@@ -360,6 +361,21 @@ describe('the reject verdict: permanent refusals only', () => {
   })
 })
 
+describe('a member invited since the roster was cached', () => {
+  it('is found by asking WorkOS for the one address, and the mail is accepted', async () => {
+    vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['x', { ...ANNA, userId: 'x', email: 'x@y.at' }]]))
+    vi.mocked(findOrganizationMemberByEmail).mockResolvedValue(ANNA)
+
+    expect((await receiveInboundMail(delivery().request)).status).toBe(202)
+    expect(findOrganizationMemberByEmail).toHaveBeenCalledWith('org_A', 'anna@buero-a.at')
+  })
+
+  it('is not asked about when the cached roster already knows the sender', async () => {
+    expect((await receiveInboundMail(delivery().request)).status).toBe(202)
+    expect(findOrganizationMemberByEmail).not.toHaveBeenCalled()
+  })
+})
+
 describe('retries: no verdict header, so the sending server tries again', () => {
   const retries: [string, () => void, number, Parameters<typeof delivery>[0]?][] = [
     ['a foreign domain (routing is misconfigured)', () => undefined, 503, { to: 'wohnbau.abcdefgh2345@example.com' }],
@@ -371,6 +387,14 @@ describe('retries: no verdict header, so the sending server tries again', () => 
     ['a folder-role lookup that could not complete', () => vi.mocked(requireFolderWrite).mockRejectedValue(new TransientAuthzError('folder-roles')), 503],
     ['a membership lookup that could not complete', () => vi.mocked(resolvePinnedRequesterSessionStrict).mockRejectedValue(new TransientAuthzError('membership')), 503],
     ['a roster that could not be read', () => vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map()), 503],
+    [
+      'a sender missing from the cached roster whom WorkOS could not be asked about',
+      () => {
+        vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map([['x', { ...ANNA, userId: 'x', email: 'x@y.at' }]]))
+        vi.mocked(findOrganizationMemberByEmail).mockRejectedValue(new Error('workos 503'))
+      },
+      503,
+    ],
     ['a spent budget', () => vi.mocked(enforceLimit).mockRejectedValue(new TooManyRequestsError({ allowed: false, rule: 'inbound-mail-address', remaining: 0, limit: 60, retryAfterSeconds: 60, degraded: false })), 429],
   ]
   for (const [label, arrange, status, options] of retries) {
@@ -517,7 +541,8 @@ describe('the Chinese wall', () => {
     expect(requireFolderWrite).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-anna', organizationId: 'org_A' }),
       'project-a',
-      [null]
+      [null],
+      { onError: 'throw' }
     )
   })
 

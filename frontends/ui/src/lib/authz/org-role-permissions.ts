@@ -36,6 +36,7 @@
 import 'server-only'
 import { getCached } from '@/lib/cache'
 import { getWorkOS } from '@/lib/workos/client'
+import { TransientAuthzError, type AuthzLookupOptions } from './errors'
 import { permissionsForOrgRole, permissionsForPlatformRole } from './permissions'
 
 /**
@@ -175,7 +176,8 @@ export async function organizationRolePermissions(
  */
 export async function tenantRolePermissions(
   organizationId: string,
-  roleSlug: string | null | undefined
+  roleSlug: string | null | undefined,
+  options: AuthzLookupOptions = {}
 ): Promise<ReadonlySet<string>> {
   if (!roleSlug) return new Set()
   const catalog = permissionsForOrgRole(roleSlug)
@@ -185,6 +187,9 @@ export async function tenantRolePermissions(
       (await organizationRolePermissionMap(organizationId))[roleSlug]
     if (held) return new Set([...held, ...catalog])
   } catch (error) {
+    // The catalog knows no custom role, so for a caller that turns "no" into
+    // something final (a bounced mail) a failed lookup is a retry, not a no.
+    if (options.onError === 'throw') throw new TransientAuthzError('role-permissions', { cause: error })
     console.warn(`[authz] tenant role lookup failed for ${roleSlug}:`, error)
   }
   return catalog

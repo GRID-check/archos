@@ -17,23 +17,15 @@
 import type { JSX } from 'react'
 import { useTranslations } from '@/i18n'
 import type { InboundMailFiledParams } from '@/lib/inbox/types'
+import type { collaboration } from '@/i18n/dictionaries/en/collaboration'
 import type { SkipReason } from '@/lib/inbound-mail/types'
 
-/** Dictionary leaf per reason; exhaustive, so a new reason fails `tsc` here. */
-const REASON_KEYS: Record<SkipReason, string> = {
-  embedded: 'embedded',
-  tnef: 'tnef',
-  signature: 'signature',
-  encrypted: 'encrypted',
-  calendar: 'calendar',
-  empty: 'empty',
-  'unknown-type': 'unknownType',
-  limit: 'limit',
-  type: 'type',
-  size: 'size',
-  screened: 'screened',
-  quota: 'quota',
-}
+/** The reason labels the dictionary has: a `SkipReason` without one fails `tsc` below. */
+type ReasonLabel = keyof (typeof collaboration)['inbox']['types']['inboundMailFiled']['reasons']
+
+/** Dictionary leaf per reason: the reason itself, camel-cased where it has a hyphen. */
+const reasonKey = (reason: SkipReason): ReasonLabel =>
+  reason === 'unknown-type' ? 'unknownType' : reason
 
 const KEY = 'inbox.types.inboundMailFiled'
 
@@ -60,7 +52,7 @@ export function InboundMailSkippedFiles({
                 <span className="text-foreground/80 min-w-0 truncate font-medium" title={file.name}>
                   {file.name}
                 </span>
-                <span className="shrink-0">– {t(`${KEY}.reasons.${REASON_KEYS[file.reason]}`)}</span>
+                <span className="shrink-0">– {t(`${KEY}.reasons.${reasonKey(file.reason)}`)}</span>
               </li>
             ))}
             {more > 0 && <li>{t(`${KEY}.more`, { count: more })}</li>}

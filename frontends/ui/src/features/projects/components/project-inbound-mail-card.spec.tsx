@@ -13,7 +13,7 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 
-const ADDRESS = 'wohnbau-mariahilf.k7m2qx4hz9ab@piloti-post.at'
+const ADDRESS = 'wohnbau-mariahilf.k3m7q2xw4pab@piloti-post.at'
 const ROTATED = 'wohnbau-mariahilf.p3v6wn2cjt5d@piloti-post.at'
 
 const json = (status: number, body: unknown): Response =>
@@ -68,8 +68,11 @@ describe('ProjectInboundMailCard', () => {
     expect(field).toHaveTextContent(ADDRESS)
     expect(fetchSpy).toHaveBeenCalledWith('/api/projects/proj-1/inbound-address')
 
-    const region = screen.getByRole('region', { name: 'Project email address' })
-    const rules = within(region).getByRole('list', { name: 'What applies' })
+    const card = screen.getByTestId('project-inbound-mail-card')
+    expect(
+      within(card).getByRole('heading', { level: 2, name: 'Project email address' })
+    ).toBeInTheDocument()
+    const rules = within(card).getByRole('list', { name: 'What applies' })
     expect(within(rules).getAllByRole('listitem')).toHaveLength(5)
     expect(rules).toHaveTextContent('18 MB')
     expect(rules).toHaveTextContent('100 files')
@@ -83,14 +86,14 @@ describe('ProjectInboundMailCard', () => {
     stubRoutes(ready(true))
     render(<ProjectInboundMailCard projectId="proj-1" />)
 
-    const region = await screen.findByRole('region', { name: 'Project email address' })
-    await within(region).findByRole('group', { name: 'Project email address' })
+    const card = await screen.findByTestId('project-inbound-mail-card')
+    await within(card).findByRole('group', { name: 'Project email address' })
     const order = [
-      within(region).getByText(ADDRESS),
-      within(region).getByRole('button', { name: 'Copy' }),
-      within(region).getByRole('list', { name: 'What applies' }),
-      within(region).getByRole('link', { name: /How it works/ }),
-      within(region).getByRole('button', { name: 'Generate new address' }),
+      within(card).getByText(ADDRESS),
+      within(card).getByRole('button', { name: 'Copy' }),
+      within(card).getByRole('list', { name: 'What applies' }),
+      within(card).getByRole('link', { name: /How it works/ }),
+      within(card).getByRole('button', { name: 'Generate new address' }),
     ]
     for (let i = 1; i < order.length; i += 1) {
       expect(

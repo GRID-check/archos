@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "./src/test-support/stack-config";
-import { INBOUND_MAIL_MAX_BODY_BYTES } from "./src/platform/inbound-mail";
 
 /**
  * The whole program with the project mail inbox turned on.
@@ -121,12 +120,12 @@ describe("the program constructs with the project mail inbox on", () => {
     // buffers (a request-buffer policy, an ext-auth body). A mail cut off
     // there is a bare 413 with no `x-inbound-verdict`, which the Worker
     // retries: the sender's server tries again for days and the mail never
-    // arrives. Adding one means clearing INBOUND_MAIL_MAX_BODY_BYTES (26 MiB)
-    // and updating this.
+    // arrives. A limit added here has to pass at least 26 MiB: Cloudflare's
+    // 25 MiB inbound cap plus the headroom the BFF allows (`MAX_MESSAGE_BYTES`
+    // in `lib/inbound-mail/receive.ts`). Update this when you add one.
     const ctp = RESOURCES.find((r) => r.inputs.kind === "ClientTrafficPolicy");
     expect(ctp).toBeDefined();
     const spec = ctp?.inputs.spec as { connection?: { bufferLimit?: string } };
     expect(spec.connection?.bufferLimit).toBeUndefined();
-    expect(INBOUND_MAIL_MAX_BODY_BYTES).toBe(26 * 1024 * 1024);
   });
 });

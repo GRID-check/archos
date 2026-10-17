@@ -96,14 +96,11 @@ export function parseInboundAddress(recipient: string, domain: string): Recipien
   return TOKEN_PATTERN.test(token) ? { kind: 'token', token } : { kind: 'malformed' }
 }
 
-/** Whether a string is a well-formed token (the database CHECK, restated). */
-export function isToken(value: string): boolean {
-  return TOKEN_PATTERN.test(value)
-}
-
 /**
- * The deployment's inbound mail domain, or `null` when the feature is off.
- * `GRID_INBOUND_MAIL_DOMAIN`, e.g. `piloti.at`.
+ * The deployment's inbound mail domain (`GRID_INBOUND_MAIL_DOMAIN`, e.g.
+ * `piloti.at`), or `null` when the deployment has none. That is the
+ * deployment's half of the switch; the organization's half is the
+ * `project-mail-inbox` flag.
  */
 export function inboundMailDomain(env: Readonly<Record<string, string | undefined>> = process.env): string | null {
   const domain = env.GRID_INBOUND_MAIL_DOMAIN?.trim().toLowerCase()

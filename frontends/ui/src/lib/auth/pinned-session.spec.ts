@@ -20,7 +20,7 @@ const requester = { userId: 'user_owner', email: 'owner@grid.test', organization
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
+  vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member', roles: ['member'] })
   vi.mocked(tenantRolePermissions).mockResolvedValue(new Set(['project:view', 'custom:perm']))
   vi.mocked(enabledFlagsForOrganization).mockResolvedValue([])
   vi.mocked(resolvePerson).mockResolvedValue({ name: null, email: null, organizationName: null })
@@ -52,7 +52,7 @@ describe('resolvePinnedRequesterSession', () => {
 
     // Never from the caller, and not from the catalog alone, which knows no
     // custom role. Organization first, role second.
-    expect(tenantRolePermissions).toHaveBeenCalledWith('org_1', 'member')
+    expect(tenantRolePermissions).toHaveBeenCalledWith('org_1', 'member', {})
     expect(session?.permissions).toEqual(['project:view', 'custom:perm'])
   })
 
@@ -76,7 +76,7 @@ describe('resolvePinnedRequesterSession', () => {
   })
 
   it('is nobody when the membership carries no role to derive permissions from', async () => {
-    vi.mocked(resolveSubjectMembership).mockResolvedValueOnce({ organizationMembershipId: 'om_1', role: null })
+    vi.mocked(resolveSubjectMembership).mockResolvedValueOnce({ organizationMembershipId: 'om_1', role: null, roles: [] })
 
     expect(await resolvePinnedRequesterSession(requester)).toBeNull()
   })
@@ -97,7 +97,32 @@ describe('resolvePinnedRequesterSession', () => {
   })
 })
 
+describe('permissions across several roles', () => {
+  it('holds what every role of the membership holds, as a signed-in claim does', async () => {
+    vi.mocked(resolveSubjectMembership).mockResolvedValueOnce({
+      organizationMembershipId: 'om_1',
+      role: 'member',
+      roles: ['member', 'project-lead'],
+    })
+    vi.mocked(tenantRolePermissions).mockImplementation(async (_org, role) =>
+      new Set(role === 'member' ? ['project:view'] : ['org:projects:administer'])
+    )
+
+    const session = await resolvePinnedRequesterSession(requester)
+
+    expect(session?.role).toBe('member')
+    expect(new Set(session?.permissions)).toEqual(new Set(['project:view', 'org:projects:administer']))
+  })
+})
+
 describe('resolvePinnedRequesterSessionStrict', () => {
+  it('asks for every role strictly too, so a role lookup that broke is a retry, not the catalog', async () => {
+    vi.mocked(tenantRolePermissions).mockRejectedValueOnce(new TransientAuthzError('role-permissions'))
+
+    await expect(resolvePinnedRequesterSessionStrict(requester)).rejects.toBeInstanceOf(TransientAuthzError)
+    expect(tenantRolePermissions).toHaveBeenCalledWith('org_1', 'member', { onError: 'throw' })
+  })
+
   it('builds the same session for a member', async () => {
     expect(await resolvePinnedRequesterSessionStrict(requester)).toMatchObject({ userId: 'user_owner', role: 'member' })
     expect(resolveSubjectMembership).toHaveBeenCalledWith('org_1', 'user_owner', { onError: 'throw' })

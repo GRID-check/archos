@@ -38,11 +38,11 @@ export async function getInboundAddress(
   projectId: string
 ): Promise<InboundAddressResponse> {
   await requireProjectAccess(session, projectId, ['project:documents:write', 'project:edit'])
+  const domain = inboundMailDomain()
+  if (!domain || !isProjectMailInboxEnabled(session)) return { enabled: false, address: null, canRotate: false }
   // The permission rotation checks, asked through the decision point rather
   // than read off a role name: a custom role holding it can rotate.
   const canRotate = await can(session, 'project:manage', { type: 'project', id: projectId })
-  const domain = inboundMailDomain()
-  if (!domain || !isProjectMailInboxEnabled(session)) return { enabled: false, address: null, canRotate }
 
   const row =
     (await findActiveAddressForProject(session.organizationId, projectId)) ??

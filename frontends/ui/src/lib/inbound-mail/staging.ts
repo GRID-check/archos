@@ -18,6 +18,7 @@ import { UpstreamError } from '@/lib/api/errors'
 import type { StagedAttachment } from '@/lib/db/schema'
 import { bucketAdminS3Client, s3Client } from '@/lib/s3'
 import { ensureTenantBucketChecked } from '@/lib/storage/bucket'
+import { errorName } from './error-name'
 import type { SelectedAttachment } from './types'
 
 /** The prefix one delivery's staged objects share. */
@@ -106,11 +107,4 @@ async function deleteOne(bucket: string, key: string): Promise<boolean> {
   } catch (error) {
     return isAlreadyGone(error)
   }
-}
-
-/** An error's class name for a log line: never its message, which may carry data. */
-export function errorName(error: unknown): string {
-  if (!(error instanceof Error)) return typeof error
-  const code = (error.cause as { code?: unknown } | undefined)?.code ?? (error as { code?: unknown }).code
-  return typeof code === 'string' ? `${error.name}:${code}` : error.name
 }

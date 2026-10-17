@@ -16,7 +16,6 @@ import {
   isProjectMailInboxEnabled,
   isSkillsEnabled,
   requireFeature,
-  requireProjectMailInboxEnabled,
   requireSkillsEnabled,
   type KnownFeatureFlag,
 } from './feature-flags'
@@ -169,15 +168,10 @@ describe('project-mail-inbox, an entitlement', () => {
     expect(isProjectMailInboxEnabled({ featureFlags: [FEATURE_FLAGS.projectMailInbox] })).toBe(false)
   })
 
-  it('follows the per-org claim where people sign in', async () => {
+  it('follows the per-org claim where people sign in', () => {
     vi.stubEnv('REQUIRE_AUTH', 'true')
     expect(isProjectMailInboxEnabled({ featureFlags: [FEATURE_FLAGS.projectMailInbox] })).toBe(true)
     expect(isProjectMailInboxEnabled({ featureFlags: [] })).toBe(false)
     expect(isProjectMailInboxEnabled({ featureFlags: null })).toBe(false)
-
-    const gated = requireProjectMailInboxEnabled({ featureFlags: [] })
-    expect(gated?.status).toBe(403)
-    expect(await gated?.json()).toEqual({ error: 'feature-disabled', feature: 'project-mail-inbox' })
-    expect(requireProjectMailInboxEnabled({ featureFlags: [FEATURE_FLAGS.projectMailInbox] })).toBeNull()
   })
 })
