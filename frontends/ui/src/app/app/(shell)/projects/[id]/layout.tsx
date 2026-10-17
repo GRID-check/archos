@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findProjectInOrg } from '@/lib/projects/repository'
+import { projectRootAccess } from '@/lib/projects/folder-service'
 import { NavigationTrailLabel, ProjectSectionFrame } from '@/components/shell'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { FilePreviewBridge } from '@/features/documents/components/file-preview-host'
@@ -82,7 +83,16 @@ export default async function ProjectLayout({
     // Soft-deleted projects are gone for everyone — including org admins, who
     // bypass the per-project check inside requireProjectAccess. `findProjectInOrg`
     // excludes them by default, so a missing row IS the soft-deleted case.
-    const current = await findProjectInOrg(id, session.organizationId)
+    // Beside it, what the reader may do at the project's root (ADR-0088), where
+    // a file dropped on any page is filed. An outage refuses the drop rather
+    // than failing every page of the project, and is logged.
+    const [current, rootAccess] = await Promise.all([
+      findProjectInOrg(id, session.organizationId),
+      projectRootAccess(session, id).catch((error: unknown): 'read' => {
+        console.error('[projects] could not ask the root access for the project drop:', error)
+        return 'read'
+      }),
+    ])
     if (!current) notFound()
     // Whether the banner of a paused or closed project offers the way out of
     // it; an active project has no banner, so asks nothing.
@@ -119,8 +129,9 @@ export default async function ProjectLayout({
           <ProjectStatusBanner />
           <FilePreviewBridge>
             {/* A file dropped on any page of the project lands in its Dateien;
-                a closed project takes none. */}
-            <ProjectFileDrop projectId={id} disabled={current.status === 'closed'}>
+                a closed project takes none, and a reader who may only read at
+                its root is told so. */}
+            <ProjectFileDrop projectId={id} disabled={current.status === 'closed'} rootAccess={rootAccess}>
               <ProjectSectionFrame projectId={id} projectName={current.name}>
                 {children}
               </ProjectSectionFrame>
