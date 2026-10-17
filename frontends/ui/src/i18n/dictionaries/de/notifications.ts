@@ -88,6 +88,8 @@ export const notifications: typeof en.notifications = {
     mentioned: '{actor} hat Sie erwähnt. Möchten Sie auf diesem Gerät benachrichtigt werden?',
     actor: '{actor} braucht Sie in Piloti. Möchten Sie auf diesem Gerät benachrichtigt werden?',
     someone: 'Jemand braucht Sie in Piloti. Möchten Sie auf diesem Gerät benachrichtigt werden?',
+    // Die neueste Anfrage ist eine Rückfrage von Piloti: Piloti fragt, nicht „jemand“.
+    piloti: 'Piloti hat eine Rückfrage an Sie. Möchten Sie auf diesem Gerät benachrichtigt werden?',
     turnOn: 'Einschalten',
     notNow: 'Nicht jetzt',
   },
