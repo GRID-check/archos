@@ -42,6 +42,7 @@ vi.mock('@/lib/upload-batches/service', () => ({
     const batch = batchStore.get(id)
     if (batch) batch.sealed = true
   }),
+  recordJobUploadExclusions: vi.fn(async () => {}),
 }))
 
 import { BadRequestError, ConflictError, FileTooLargeError, ForbiddenError, InsufficientStorageError } from '@/lib/api/errors'
@@ -64,7 +65,7 @@ import {
   type FilingContext,
 } from './filing'
 import { markInflight } from './repository'
-import { openUploadBatch, sealJobUploadBatch } from '@/lib/upload-batches/service'
+import { openUploadBatch, recordJobUploadExclusions, sealJobUploadBatch } from '@/lib/upload-batches/service'
 import { importBatchId, type ImportBatch } from './upload-batch'
 
 const session = { userId: 'user_anna', organizationId: 'org_1' } as AuthorizedSession
@@ -289,6 +290,19 @@ describe('fileMail', () => {
       skipped: [{ mail: LEAF, file: 'Vertrag.pdf', reason: 'screened' }],
     })
     expect(uploadedNames()).toEqual([`${LEAF} – Vertrag.pdf`, `${LEAF} – Plan.pdf`, `${LEAF}.md`])
+    // The batch counts the stop by term, never by name, so the summary says
+    // what was not uploaded and why (ADR-0086).
+    expect(recordJobUploadExclusions).toHaveBeenCalledTimes(1)
+    expect(recordJobUploadExclusions).toHaveBeenCalledWith('org_1', importBatchId('imp_1', 0), 'user_anna', [
+      { term: 'Vertrag', count: 1 },
+    ])
+    expect(JSON.stringify(vi.mocked(recordJobUploadExclusions).mock.calls)).not.toContain('Vertrag.pdf')
+  })
+
+  it('records nothing on the batch for a refusal that is not the name check', async () => {
+    vi.mocked(uploadDocument).mockRejectedValueOnce(new BadRequestError('type'))
+    await fileMail(await context(), mail)
+    expect(recordJobUploadExclusions).not.toHaveBeenCalled()
   })
 
   it('never releases a screened name on the person’s behalf', async () => {

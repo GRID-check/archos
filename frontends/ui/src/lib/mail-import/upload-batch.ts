@@ -78,6 +78,8 @@ export async function openImportBatch(session: AuthorizedSession, row: MailImpor
     conversationId: null,
     // Unknown until the import ends; the seal announces what was filed.
     expectedCount: 0,
+    // Nothing stopped yet: each file the name check stops is added as it is
+    // met (`recordJobUploadExclusions`, from `./filing`).
     excluded: [],
   })
   return { id: found.id, generation: found.generation, documents: 0 }

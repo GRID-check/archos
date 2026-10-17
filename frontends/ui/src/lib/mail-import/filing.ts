@@ -8,7 +8,8 @@
  * upload is skipped and named, never forced in. That includes the office's
  * name screening (ADR-0086): the import never passes `screeningRelease`,
  * because releasing a screened file is a person's decision about that file and
- * a job cannot make it on their behalf.
+ * a job cannot make it on their behalf. What the name check stops is counted
+ * on the import's upload batch by term, as a browser upload's stops are.
  *
  * **Retry-safe by construction.** The job may die anywhere in here and run the
  * same mail again. The mail's folder is recorded (`markInflight`) the moment it
@@ -47,6 +48,8 @@ import { projectShelf } from '@/lib/documents/shelf'
 import { FOLDER_NAME_TAKEN } from '@/lib/documents/shelf-folders'
 import { createProjectFolder, ensureProjectFolderPaths } from '@/lib/projects/folder-service'
 import { ScreenedUploadError } from '@/lib/upload-screening/service'
+import { exclusionsByTerm } from '@/lib/upload-screening/name-stop'
+import { recordJobUploadExclusions } from '@/lib/upload-batches/service'
 import {
   AttachmentTooLargeError,
   AttachmentUnreadableError,
@@ -327,6 +330,13 @@ async function fileBytes(
     if (!uploaded.unchanged) context.uploadBatch.documents += 1
   } catch (error) {
     if (error instanceof InsufficientStorageError) throw new MailImportQuotaError()
+    // Stopped by the name check: counted on the batch by term, never by name,
+    // so the upload summary says what was not uploaded and why, as a dropped
+    // folder's does (ADR-0086). The import's own skip list names the file.
+    if (error instanceof ScreenedUploadError) {
+      const { organizationId, userId } = context.mailImport
+      await recordJobUploadExclusions(organizationId, context.uploadBatch.id, userId, exclusionsByTerm([error.matches]))
+    }
     const reason = refusalReason(error)
     if (reason) return { filed: false, reason }
     throw error
