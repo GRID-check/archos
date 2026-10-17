@@ -439,7 +439,7 @@ describe('DocumentFassungen — shut at rest, open when it is the reader’s tur
   it('names what is still open on the pages in the approve confirm, with the way into the review', async () => {
     const user = userEvent.setup()
     const onOpen = vi.fn()
-    renderSection({ viewer: reviewer, client: clientOf([reviewed(1, 'in_review')]), openMarks: { count: 4, onOpen } })
+    renderSection({ viewer: reviewer, client: clientOf([reviewed(1, 'in_review')]), openMarks: { status: 'counted', count: 4, onOpen } })
 
     await user.click(await screen.findByRole('button', { name: 'Freigeben' }))
     expect(screen.getByTestId('document-review-approve-open-marks')).toHaveTextContent(

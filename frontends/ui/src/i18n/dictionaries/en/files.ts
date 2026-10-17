@@ -1319,6 +1319,8 @@ export const files = {
       checkbox: 'I approve this revision',
       // Before the signature, never a block: approving with open points is allowed, missing them is not.
       openMarks: '{count, plural, one {# open annotation} other {# open annotations}} – approve anyway?',
+      openMarksLoading: 'Still reading the open annotations …',
+      openMarksUnavailable: 'Could not read whether any annotations are open.',
     },
     /**
      * Publication is its own act in its own section — never a sibling button
@@ -1512,6 +1514,7 @@ export const files = {
     // In Files beside the name: what is still open on the document, on every revision.
     listedOpen: '{count, plural, one {# open annotation} other {# open annotations}}',
     listedOpenForYou: '{count, plural, one {# open annotation} other {# open annotations}}, {mine} for you',
+    listedOpenIn: '{marks} in “{name}”',
   },
   // The review: a document full screen, the annotations on it, the threads
   // under them, and who is looking with you.

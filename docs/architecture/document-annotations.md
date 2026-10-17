@@ -199,7 +199,10 @@ Anmerkungen – trotzdem freigeben?“, with „In der Prüfansicht öffnen“ b
 (`openMarks`, handed down from `file-preview-pane.tsx` through
 `DocumentFassungen`). It informs and never blocks: approving with open points
 is the reviewer's call, approving without knowing about them is the mistake.
-Only where the pane has a review (a PDF that is not held) and its list is read.
+Only where the pane has a review (a PDF that is not held). A count the review
+has not read yet says „Offene Anmerkungen werden noch gelesen …“, and one it
+could not read says so and links to the review (`OpenMarksAtApproval`): an
+unknown count never reads as none. A known zero says nothing.
 
 ## Live
 

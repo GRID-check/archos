@@ -288,7 +288,7 @@ function ArchiveFixture(): JSX.Element {
 const opened = new Set<string>()
 
 /** Four marks still open on the pages; the link would open the review, here it says so. */
-const OPEN_MARKS = { count: 4, onOpen: () => window.alert('Prüfansicht öffnen') }
+const OPEN_MARKS = { status: 'counted', count: 4, onOpen: () => window.alert('Prüfansicht öffnen') } as const
 
 /**
  * What each block presses, and the DOM it presses until.

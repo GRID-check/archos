@@ -523,8 +523,12 @@ export const FileCard = memo(function FileCard({
           <span className="flex shrink-0 items-center gap-1.5 phone:gap-1">
             {/* What is still open on its pages, and the way into them: the
                 review opens from here without opening the card first. */}
-            <OpenMarksChip file={file} />
-            <span className="tabular-nums">{formatBytes(file.fileSize, locale)}</span>
+            <OpenMarksChip file={file} name={name} />
+            {/* With the chip in, a narrow tile drops the size too: the
+                filing chip's minimum, the marks and the size do not fit 156px. */}
+            <span className="tabular-nums group-has-[[data-slot=open-marks]]/foot:@max-[14rem]/foot:hidden">
+              {formatBytes(file.fileSize, locale)}
+            </span>
             <span className="flex items-center gap-1.5 phone:gap-1 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden group-has-[[data-slot=open-marks]]/foot:@max-[14rem]/foot:hidden">
               <span aria-hidden className="text-muted-foreground/40">
                 ·

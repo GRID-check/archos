@@ -52,7 +52,7 @@ describe('the open Anmerkungen on a file card', () => {
     const user = userEvent.setup()
     render(<FileCard file={doc({ marks: { live: 3, forYou: 1 } })} isSelected={false} onSelect={onSelect} locale="en" />)
 
-    const chip = screen.getByRole('button', { name: '3 open annotations, 1 for you' })
+    const chip = screen.getByRole('button', { name: '3 open annotations, 1 for you in “Grundriss_EG.pdf”' })
     await user.click(chip)
 
     expect(push).toHaveBeenCalledWith('/app/projects/proj-1/files?folder=f-1&doc=doc-1&review=1', { scroll: false })
@@ -61,7 +61,19 @@ describe('the open Anmerkungen on a file card', () => {
 
   it('names the count alone when none is the reader’s, and one in the singular', () => {
     render(<FileCard file={doc({ marks: { live: 1, forYou: 0 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
-    expect(screen.getByRole('button', { name: '1 open annotation' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '1 open annotation in “Grundriss_EG.pdf”' })).toBeInTheDocument()
+  })
+
+  it('names the document it opens, so two rows with the same count are told apart', () => {
+    render(
+      <FileListView
+        files={[doc({ marks: { live: 2, forYou: 0 } }), doc({ id: 'doc-2', filename: 'Schnitt_AA.pdf', marks: { live: 2, forYou: 0 } })]}
+        selectedFileId={null}
+        onSelectFile={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: '2 open annotations in “Grundriss_EG.pdf”' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '2 open annotations in “Schnitt_AA.pdf”' })).toBeInTheDocument()
   })
 
   it('shows nothing where nothing is open', () => {
@@ -78,7 +90,7 @@ describe('the open Anmerkungen on a list row', () => {
     const user = userEvent.setup()
     render(<FileListView files={[doc({ marks: { live: 4, forYou: 0 } })]} selectedFileId={null} onSelectFile={onSelectFile} />)
 
-    const chip = screen.getByRole('button', { name: '4 open annotations' })
+    const chip = screen.getByRole('button', { name: '4 open annotations in “Grundriss_EG.pdf”' })
     await user.click(chip)
     chip.focus()
     await user.keyboard('{Enter}')

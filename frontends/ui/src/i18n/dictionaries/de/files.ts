@@ -1282,6 +1282,8 @@ export const files: typeof en.files = {
       checkbox: 'Ich gebe diese Fassung frei',
       // Vor der Unterschrift, nie als Sperre: offene Punkte freizugeben ist erlaubt, sie zu übersehen nicht.
       openMarks: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}} – trotzdem freigeben?',
+      openMarksLoading: 'Offene Anmerkungen werden noch gelesen …',
+      openMarksUnavailable: 'Ob Anmerkungen offen sind, ließ sich gerade nicht lesen.',
     },
     // Die Veröffentlichung ist ein eigener Akt im eigenen Abschnitt — nie ein
     // Knopf neben der Freigabe. Die Freigabe behauptet den Inhalt, die
@@ -1465,6 +1467,7 @@ export const files: typeof en.files = {
     // In Dateien neben dem Namen: was auf dem Dokument noch offen ist, über alle Fassungen.
     listedOpen: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}',
     listedOpenForYou: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}, {mine} für Sie',
+    listedOpenIn: '{marks} in „{name}“',
   },
   // Die Prüfansicht: ein Dokument im Vollbild, die Anmerkungen darauf, die
   // Gespräche darunter, und wer gerade mit hinschaut.

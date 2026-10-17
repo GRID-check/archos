@@ -37,18 +37,29 @@ const keep = (event: SyntheticEvent) => event.stopPropagation()
  * `review=1` (`reviewHrefAt`), which the shelf's `?doc=` sync and the preview
  * pane already answer, so this adds no second way in.
  */
-export function OpenMarksChip({ file, className }: { file: OpenMarksSubject; className?: string }): JSX.Element | null {
+export function OpenMarksChip({
+  file,
+  name,
+  className,
+}: {
+  file: OpenMarksSubject
+  /** The document's name as the row shows it: a screen reader moving by buttons hears which document each one opens. */
+  name: string
+  className?: string
+}): JSX.Element | null {
   if (!file.marks || file.marks.live <= 0) return null
-  return <OpenMarksButton documentId={file.id} marks={file.marks} className={className} />
+  return <OpenMarksButton documentId={file.id} name={name} marks={file.marks} className={className} />
 }
 
 /** Its own component so `useRouter` runs only for a row that has something open. */
 function OpenMarksButton({
   documentId,
+  name,
   marks,
   className,
 }: {
   documentId: string
+  name: string
   marks: MarkTally
   className?: string
 }): JSX.Element {
@@ -61,7 +72,7 @@ function OpenMarksButton({
         type="button"
         data-slot="open-marks"
         data-testid="open-marks"
-        aria-label={label}
+        aria-label={t('annotations.listedOpenIn', { marks: label, name })}
         title={label}
         onPointerDown={keep}
         onKeyDown={keep}

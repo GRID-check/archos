@@ -159,11 +159,22 @@ export interface DocumentReviewControlsProps {
    * names them before the signature („4 offene Anmerkungen – trotzdem
    * freigeben?") and links to the review. It informs, never blocks: whether
    * an open point stands in the way of a release is the reviewer's call.
-   * Absent or 0 where nothing is open, or where the surface has no review.
+   * Absent, or counted at 0, where nothing is open or the surface has no
+   * review. A count the review has not read yet, or could not read, says so
+   * rather than saying nothing: silence would read as „nothing open".
    */
-  openMarks?: { count: number; onOpen: () => void } | null
+  openMarks?: OpenMarksAtApproval | null
   className?: string
 }
+
+/**
+ * What the approve confirm knows of the document's open Anmerkungen: counted,
+ * still being read, or unreadable. Only a known count of 0 is silent.
+ */
+export type OpenMarksAtApproval =
+  | { status: 'counted'; count: number; onOpen: () => void }
+  | { status: 'loading' }
+  | { status: 'unavailable'; onOpen: () => void }
 
 export function DocumentReviewControls({
   version,
@@ -468,7 +479,7 @@ export function DocumentReviewControls({
               ? t('lifecycle.approveConfirm.actingWithName', { name: actingName, date: today })
               : t('lifecycle.approveConfirm.actingDateOnly', { date: today })}
           </p>
-          {openMarks && openMarks.count > 0 && (
+          {openMarks && (openMarks.status !== 'counted' || openMarks.count > 0) && (
             /* What is still open on the pages, said before the signature and
                not after it: a release with open points is allowed, a release
                that did not know about them is the mistake. */
@@ -476,18 +487,28 @@ export function DocumentReviewControls({
               className="text-xs leading-snug"
               role="note"
               data-testid="document-review-approve-open-marks"
+              data-status={openMarks.status}
             >
-              {t('lifecycle.approveConfirm.openMarks', { count: openMarks.count })}{' '}
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs"
-                data-testid="document-review-approve-open-marks-link"
-                onClick={openMarks.onOpen}
-              >
-                {t('annotations.openInReview')}
-              </Button>
+              {openMarks.status === 'counted'
+                ? t('lifecycle.approveConfirm.openMarks', { count: openMarks.count })
+                : openMarks.status === 'loading'
+                  ? t('lifecycle.approveConfirm.openMarksLoading')
+                  : t('lifecycle.approveConfirm.openMarksUnavailable')}
+              {openMarks.status !== 'loading' && (
+                <>
+                  {' '}
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    data-testid="document-review-approve-open-marks-link"
+                    onClick={openMarks.onOpen}
+                  >
+                    {t('annotations.openInReview')}
+                  </Button>
+                </>
+              )}
             </p>
           )}
           <div className="flex items-start gap-2">

@@ -420,7 +420,7 @@ const FileListRowItem = memo(function FileListRowItem({
               <FileName text={documentDisplayName(file)} />
               <FassungCount file={file} />
               {/* What is still open on its pages; a press opens the review, not the row. */}
-              <OpenMarksChip file={file} className="self-center" />
+              <OpenMarksChip file={file} name={documentDisplayName(file)} className="self-center" />
               {/* Where Piloti would file it: the same chip as on the card,
                   right after the name, so the row keeps its one height. */}
               <FilingSuggestionSlot documentId={file.id} className="max-w-[45%] shrink-0 self-center" />

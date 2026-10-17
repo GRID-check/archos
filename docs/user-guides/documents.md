@@ -445,8 +445,10 @@ Fassung. Once you close it, it stays closed.
 
 When Anmerkungen are still open on the document, **Freigeben** says so before
 you sign: „4 offene Anmerkungen – trotzdem freigeben?“, with **In der
-Prüfansicht öffnen** beside it. It does not stop you: whether an open point
-stands in the way of a release is yours to decide.
+Prüfansicht öffnen** beside it. If the Anmerkungen are still loading, or
+could not be read, it says that instead, so silence always means nothing is
+open. It does not stop you: whether an open point stands in the way of a
+release is yours to decide.
 
 ### The timeline
 
