@@ -149,6 +149,34 @@ export function quarantineVerdictOf(source: QuarantineSource): QuarantineVerdict
   return readQuarantineVerdict(rawVerdictOf(source))
 }
 
+/** The kinds of reason an inbox notice words on its own (`collaboration.inbox.types.*.variants`). */
+export type QuarantineNoticeVariant = 'term' | 'iban' | 'at_svnr' | 'credit_card' | 'transcript'
+
+/**
+ * Which wording a reviewer's notice about a held file reads: `transcript` when
+ * the vision model saw the pages the match was found in (so the notice claims
+ * no unread file), else the kind of the first reason. `null` when the verdict
+ * says nothing a notice can name, and the notice reads its general sentence.
+ */
+export function quarantineNoticeVariant(verdict: QuarantineVerdict | null): QuarantineNoticeVariant | null {
+  if (!verdict) return null
+  if (verdict.after_transcription) return 'transcript'
+  const kind = verdict.reasons[0]?.kind
+  return kind === undefined || kind === 'other' ? null : kind
+}
+
+/**
+ * What a reviewer's inbox notice about a held file carries: its name, which
+ * the reviewer may open in the queue anyway, and its kind of reason. Never a
+ * matched value or a sample.
+ */
+export function quarantineNoticePayload(
+  doc: QuarantineSource & { filename: string }
+): { subject: string; variant?: QuarantineNoticeVariant } {
+  const variant = quarantineNoticeVariant(quarantineVerdictOf(doc))
+  return variant ? { subject: doc.filename, variant } : { subject: doc.filename }
+}
+
 /**
  * The verdict to store in `documents.quarantine`, from what a job reported:
  * validated, unknown keys dropped, every kind kept. `null` when there is none
