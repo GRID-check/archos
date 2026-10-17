@@ -83,6 +83,7 @@ export function folderNameOf(files: readonly File[]): string | null {
 
 export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFormProps): JSX.Element {
   const t = useTranslations('projects')
+  const tFiles = useTranslations('files')
   const [thisMonth] = useState(() => currentMonth())
   const [serverError, setServerError] = useState<string | null>(null)
   const [serverAbschluss, setServerAbschluss] = useState<AbschlussProblem>(null)
@@ -120,6 +121,10 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
     onSubmit: async ({ value }) => {
       setServerError(null)
       setServerAbschluss(null)
+      // Only a project Piloti sets up has a setup page to take a drop: one held
+      // for a project the person fills in would wait for the NEXT project
+      // Piloti reads, and be filed there.
+      if (value.setup === 'self') forgetDrop()
       created.current = true
       const result = await createProject({}, toFormData(value))
       if (!result?.error) {
@@ -145,6 +150,11 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
     },
     []
   )
+  /** Let go of a held drop, and of the note that names it. */
+  function forgetDrop(): void {
+    discardDroppedFiles(NEW_PROJECT_DROP_KEY)
+    setDropped(null)
+  }
 
   const values = useStore(form.store, (state) => state.values)
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
@@ -179,7 +189,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
         <FileDropOverlay
           isUnsupported={isUnsupportedDrag}
           uploadLabel={t('form.drop.overlay')}
-          unsupportedLabel={t('form.drop.overlay')}
+          unsupportedLabel={tFiles('workspace.dropUnsupported')}
           testId="create-project-drop-overlay"
         />
       )}
@@ -307,7 +317,12 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
               <FieldLabel id="create-project-setup-label">{t('form.setup.label')}</FieldLabel>
               <ChoiceCardGroup
                 value={field.state.value}
-                onValueChange={(next) => field.handleChange(next === 'self' ? 'self' : 'piloti')}
+                onValueChange={(next) => {
+                  // Filling it in oneself asks for no reading, so a held folder
+                  // is let go of here, where the reader sees its note go.
+                  if (next === 'self') forgetDrop()
+                  field.handleChange(next === 'self' ? 'self' : 'piloti')
+                }}
                 aria-labelledby="create-project-setup-label"
                 disabled={isSubmitting}
                 className="sm:grid-cols-2"
@@ -332,10 +347,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
         {dropped && (
           <DroppedFolderNote
             dropped={dropped}
-            onRemove={() => {
-              discardDroppedFiles(NEW_PROJECT_DROP_KEY)
-              setDropped(null)
-            }}
+            onRemove={forgetDrop}
           />
         )}
         {!dropped && piloti && (
