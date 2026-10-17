@@ -235,6 +235,11 @@ export const research = {
     uploadNotAvailable: 'File upload not available',
     attachFiles: 'Attach files',
     uploadDisabledBusy: 'File upload disabled during active operations',
+    // Said over the chat while a dragged file cannot be attached right now.
+    dropRefusedReadOnly: 'You can read this chat but not add files to it.',
+    dropRefusedAnswering: 'Piloti is answering. Attach files once the answer is complete.',
+    dropRefusedQuestion: 'Answer Piloti’s question first, then attach files.',
+    dropRefusedUploading: 'Wait until the current upload is finished.',
     selectFiles: 'Select files to upload',
     sendResponse: 'Send response',
     sendMessage: 'Send message',

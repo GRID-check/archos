@@ -4,6 +4,7 @@ import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { toast } from 'sonner'
 import type { ComposerPrefill, ComposerSubject } from '@/features/chat/types'
 import { InputArea } from './InputArea'
+import { ChatDropZone } from './chat-drop-zone'
 import { emptyRunLedger, setRunStatus } from '@/lib/runs/run-ledger'
 
 // Transient send failures surface as toasts; spy on them rather than render them.
@@ -726,14 +727,14 @@ describe('InputArea', () => {
       },
     })
 
-    const { container } = render(<InputArea isAuthenticated={true} />)
+    // The zone is the chat panel the composer sits in, not the composer card.
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={true} />
+      </ChatDropZone>
+    )
 
-    expect(screen.getByText('Drop files to upload')).toBeInTheDocument()
-    // Tailwind v4 preflight resets border-width to 0, so the dashed
-    // drop-target ring needs an explicit border-width class alongside
-    // border-color/border-style to render at all (regression coverage).
-    const composer = container.querySelector('.border-brand.border-dashed')
-    expect(composer).toHaveClass('border-2')
+    expect(screen.getByTestId('chat-drop-overlay')).toHaveTextContent('Drop files to upload')
   })
 
   test('shows error drag overlay for unsupported files', () => {
@@ -749,11 +750,51 @@ describe('InputArea', () => {
       },
     })
 
-    const { container } = render(<InputArea isAuthenticated={true} />)
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={true} />
+      </ChatDropZone>
+    )
 
-    expect(screen.getByText('Unsupported file type')).toBeInTheDocument()
-    const composer = container.querySelector('.border-error.border-dashed')
-    expect(composer).toHaveClass('border-2')
+    expect(screen.getByTestId('chat-drop-overlay')).toHaveTextContent('Unsupported file type')
+  })
+
+  /** What the panel's drop zone was last configured with. */
+  const lastDropZone = () => vi.mocked(useFileDragDrop).mock.calls.at(-1)?.[0]
+
+  test('offers the chat panel its attach path while the reader may attach', () => {
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={true} />
+      </ChatDropZone>
+    )
+
+    expect(lastDropZone()).toMatchObject({ disabled: false, refusal: null })
+  })
+
+  test('says why a drop is refused while Piloti answers, instead of letting it vanish', () => {
+    mockIsStreaming = true
+    vi.mocked(useIsCurrentSessionBusy).mockReturnValue(true)
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={true} />
+      </ChatDropZone>
+    )
+
+    expect(lastDropZone()).toMatchObject({
+      disabled: false,
+      refusal: 'Piloti is answering. Attach files once the answer is complete.',
+    })
+  })
+
+  test('is no drop target for a reader who is not signed in', () => {
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={false} />
+      </ChatDropZone>
+    )
+
+    expect(lastDropZone()).toMatchObject({ disabled: true })
   })
 
   test('disables input when isBusy is true (session has active operations)', () => {
@@ -2455,8 +2496,12 @@ describe('InputArea', () => {
         order.push('upload')
       })
 
-      render(<InputArea isAuthenticated={true} />)
-      const { onDrop } = vi.mocked(useFileDragDrop).mock.calls[0][0]
+      render(
+        <ChatDropZone>
+          <InputArea isAuthenticated={true} />
+        </ChatDropZone>
+      )
+      const { onDrop } = vi.mocked(useFileDragDrop).mock.calls.at(-1)![0]
       await act(async () => {
         await onDrop([new File(['x'], 'plan.pdf', { type: 'application/pdf' })], { truncated: false, unreadable: 0 })
       })
@@ -2504,10 +2549,15 @@ describe('InputArea', () => {
         },
       })
 
-      render(<InputArea isAuthenticated={true} />)
+      render(
+        <ChatDropZone>
+          <InputArea isAuthenticated={true} />
+        </ChatDropZone>
+      )
 
-      expect(screen.getByText('Drop files to upload')).toBeInTheDocument()
-      expect(screen.getByTestId('upload-destination')).toHaveTextContent(DESTINATION)
+      const overlay = screen.getByTestId('chat-drop-overlay')
+      expect(overlay).toHaveTextContent('Drop files to upload')
+      expect(within(overlay).getByTestId('upload-destination')).toHaveTextContent(DESTINATION)
     })
 
     test('says nothing about a destination for a file it will refuse', () => {
@@ -2525,9 +2575,13 @@ describe('InputArea', () => {
         },
       })
 
-      render(<InputArea isAuthenticated={true} />)
+      render(
+        <ChatDropZone>
+          <InputArea isAuthenticated={true} />
+        </ChatDropZone>
+      )
 
-      expect(screen.getByText('Unsupported file type')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-drop-overlay')).toHaveTextContent('Unsupported file type')
       expect(screen.queryByTestId('upload-destination')).not.toBeInTheDocument()
     })
   })
