@@ -205,13 +205,17 @@ open the document can be mentioned.
 
 The server keeps a mention only while its token stands in the text, the name is
 the directory's, and the person may open the document
-(`lib/annotations/mentions.ts`); Piloti by its product name. A dropped mention
+(`lib/annotations/mentions.ts`); Piloti by its product name, and only in a
+reply, never in a mark's own text. Where the organization has collaboration
+off (the gate the candidates route and the chat keep), a text mentions nobody
+but Piloti. A dropped mention
 is not stored, so its „@Name“ stays plain text, and the composer, comparing
 what it sent with what came back, says whom it did not tell („Nicht
 benachrichtigt, weil sie das Dokument nicht öffnen können: …“). A reply that
 mentions Piloti addresses it, as `addressesPiloti` does. Mentions spend the
-chat's budget (`enforceMentionBounds`, `MENTION_LIMIT`), before anything is
-written.
+chat's one budget (`enforceMentionBounds`, `MENTION_LIMIT`), @Piloti counted
+like a person as in the chat, before anything is written. A write that closes
+the mark tells nobody it mentions.
 
 A mention renders as the chat's chip (`MentionText`, through
 `review/mark-body.tsx`): the name, never the id, louder when it is the reader.
@@ -619,7 +623,10 @@ thread, and with `annotation.assigned_to_you` and `annotation.mentioned` for
 everyone when the mark is resolved or dismissed, by a person or by Piloti in
 their name. An `annotation.mentioned` is resolved for its reader when they
 answer in the thread: mentioning yourself tells nobody, and a colleague asked
-in the same breath has not answered. A Zuständige
+in the same breath has not answered. A mention taken back (a `body` that no
+longer names the person, or its reply deleted), with nothing else on the mark
+naming them, turns their `annotation.mentioned` inert, its quote wiped
+(`onMentionsWithdrawn`). A Zuständige
 who is replaced, or removed, has their `annotation.assigned_to_you` resolved.
 Deleting a mark turns every row anchored on it inert, for everyone: none keeps a
 link to it or a quote from it.

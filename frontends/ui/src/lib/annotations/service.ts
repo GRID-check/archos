@@ -90,13 +90,14 @@ import {
   onMarkDeleted,
   onMarkMentioned,
   onMarkMoved,
+  onMentionsWithdrawn,
   onMarkReplied,
   onMarkSettledByPerson,
   type MarkRef,
   type MayOpen,
 } from './attention'
 import { auditMarkDecided } from './mark-audit'
-import { keepMentions, mentionsPiloti, newlyMentioned } from './mentions'
+import { keepMentions, mentionsPiloti, newlyMentioned, noLongerMentioned } from './mentions'
 import { enforceMentionBounds } from '@/lib/mentions/service'
 import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
@@ -412,8 +413,8 @@ export async function createAnnotation(
   const parsed = createAnnotationRequestSchema.parse(input)
   const doc = await requireWritableDocument(session, documentId)
   if (parsed.assigneeUserId) await requireAssignable(session, doc, parsed.assigneeUserId)
-  const mentions = await keepMentions(session, doc, parsed.body, parsed.mentions ?? [])
-  const mentioned = await spendMentions(session, newlyMentioned(mentions, [], session.userId))
+  const mentions = await keepMentions(session, doc, parsed.body, parsed.mentions ?? [], { piloti: false })
+  const mentioned = await spendMentions(session, newlyMentioned(mentions, [], session.userId), false)
   const [row] = await insertDocumentAnnotations({
     organizationId: session.organizationId,
     documentId: doc.id,
@@ -537,11 +538,25 @@ function traceSettled(session: AuthorizedSession, annotationId: string, closed: 
 /**
  * The people a write mentions anew, after the mention budget the chat spends
  * (`enforceMentionBounds`): refused before anything is written, so a refused
- * write leaves no mark and tells nobody.
+ * write leaves no mark and tells nobody. @Piloti (`piloti`) counts like a
+ * person, as it does in the chat: one budget for one gesture.
  */
-async function spendMentions(session: AuthorizedSession, mentioned: string[]): Promise<string[]> {
-  if (mentioned.length > 0) await enforceMentionBounds(session, mentioned.length)
+async function spendMentions(session: AuthorizedSession, mentioned: string[], piloti: boolean): Promise<string[]> {
+  const count = mentioned.length + (piloti ? 1 : 0)
+  if (count > 0) await enforceMentionBounds(session, count)
   return mentioned
+}
+
+/**
+ * The people a write stopped mentioning, whom nothing left on the mark
+ * mentions: their `annotation.mentioned` goes inert, so no row keeps asking
+ * about, or quoting, a text that no longer names them.
+ */
+function traceWithdrawn(session: AuthorizedSession, annotationId: string, withdrawn: readonly string[]): void {
+  if (withdrawn.length === 0) return
+  bestEffort('withdraw the mentions taken out', () =>
+    onMentionsWithdrawn({ organizationId: session.organizationId, annotationId, userIds: withdrawn })
+  )
 }
 
 /**
@@ -741,12 +756,18 @@ export async function updateAnnotation(
   if (parsed.expectedStatus && parsed.expectedStatus !== existing.status) throw conflict()
   if (parsed.assigneeUserId) await requireAssignable(session, doc, parsed.assigneeUserId)
   // A new body keeps whom it mentions: the ones picked with it, else the ones
-  // stored whose token it still shows. Only the people it adds are told.
+  // stored whose token it still shows. Only the people it adds are told, and
+  // nobody when the same write closes the mark: a closed mark asks nobody.
   const mentions =
     parsed.body === undefined
       ? undefined
-      : await keepMentions(session, doc, parsed.body, parsed.mentions ?? existing.mentions)
-  const mentioned = mentions ? await spendMentions(session, newlyMentioned(mentions, existing.mentions, session.userId)) : []
+      : await keepMentions(session, doc, parsed.body, parsed.mentions ?? existing.mentions, { piloti: false })
+  const closes = parsed.status === 'resolved' || parsed.status === 'dismissed'
+  const mentioned =
+    mentions && !closes ? await spendMentions(session, newlyMentioned(mentions, existing.mentions, session.userId), false) : []
+  const withdrawn = mentions
+    ? noLongerMentioned(existing.mentions, [mentions, ...existing.replies.map((reply) => reply.mentions)])
+    : []
 
   const now = new Date()
   const changes: AnnotationChanges = {
@@ -829,6 +850,7 @@ export async function updateAnnotation(
     changes.body ?? existing.body,
     changes.assigneeUserId !== undefined && changes.assigneeUserId !== existing.assigneeUserId ? changes.assigneeUserId : null
   )
+  traceWithdrawn(session, annotationId, withdrawn)
   const annotation = await viewOf(session, doc, annotationId)
   return delegating ? { annotation, wake: wakeOutcomeOf(enqueued.wake) } : { annotation }
 }
@@ -1050,8 +1072,8 @@ async function postReply(
   const existing = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!existing) throw new NotFoundError()
   // Piloti mentions nobody: only a person's reply carries what they picked.
-  const mentions = actor.kind === 'person' ? await keepMentions(session, doc, body, picked ?? []) : []
-  const mentioned = await spendMentions(session, newlyMentioned(mentions, [], session.userId))
+  const mentions = actor.kind === 'person' ? await keepMentions(session, doc, body, picked ?? [], { piloti: true }) : []
+  const mentioned = await spendMentions(session, newlyMentioned(mentions, [], session.userId), mentionsPiloti(mentions))
   const addresses = actor.kind === 'person' && (Boolean(addressesPiloti) || mentionsPiloti(mentions))
   const trigger = replyTrigger(existing, { authorKind: actor.kind, addressesPiloti: addresses })
   const enabled = trigger !== null && wakesEnabled(session)
@@ -1117,6 +1139,12 @@ export async function deleteReply(
   const gone = await deleteAnnotationReply(session.organizationId, annotationId, replyId, options.expectedBody)
   if (!gone) throw conflict()
   announce(session, doc.id, [annotationId], 'updated', actor)
+  const left = existing.replies.filter((candidate) => candidate.id !== replyId)
+  traceWithdrawn(
+    session,
+    annotationId,
+    noLongerMentioned(reply.mentions, [existing.mentions, ...left.map((candidate) => candidate.mentions)])
+  )
   return null
 }
 
