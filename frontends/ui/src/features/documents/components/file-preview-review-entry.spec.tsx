@@ -277,7 +277,10 @@ describe('the review keeps its address', () => {
     const back = '/app/projects/proj-1/files/open-points?assignee=me'
     nav.params = new URLSearchParams(`doc=doc-1&review=1&mark=ann-1&back=${encodeURIComponent(back)}`)
     render(pane())
-    fireEvent.click(await screen.findByRole('button', { name: 'close review' }))
+    // At the link's mark, its list read, as a reader is before they close: the address has settled.
+    expect((await screen.findByTestId('review-mode')).dataset.focus).toBe('ann-1')
+    await waitFor(() => expect(screen.getAllByTestId('annotations-summary-row')).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'close review' }))
     expect(nav.back).not.toHaveBeenCalled()
     expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
   })
