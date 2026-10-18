@@ -69,8 +69,12 @@ bounded by the page's ids, that joins `documents` behind the listing's own
 yet: only the person who takes it over makes it so. The count comes with the
 listing and is as fresh as its last read; it is not live. Dateien draws it as
 `OpenMarksChip` (`features/documents/components/open-marks-chip.tsx`), the
-kit's `Chip`, in a card's footer and beside the name in the list, labelled
-„3 offene Anmerkungen, 1 für Sie“. A press opens the review: the page's own URL
+kit's `Chip`, beside the name in the list and on a card's footer, on its own
+line under the size and the date (never in their place). It says it in words,
+„4 offen · 2 für Sie“ (`openMarksShortLabel`), not as bare numbers; the kit's
+`Tooltip` and the button's name carry the whole sentence, „4 offene
+Anmerkungen, 2 für Sie“ (`openMarksLabel`, the name adding „in „Grundriss
+EG““). A press opens the review: the page's own URL
 with `doc` and `review=1` (`reviewHrefAt(…, { withDocument: true })`), which
 the shelf's `?doc=` sync and the pane already answer.
 

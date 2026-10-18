@@ -1544,6 +1544,9 @@ export const files = {
     listedOpen: '{count, plural, one {# open annotation} other {# open annotations}}',
     listedOpenForYou: '{count, plural, one {# open annotation} other {# open annotations}}, {mine} for you',
     listedOpenIn: '{marks} in “{name}”',
+    // What the chip itself says, short enough for a card; the tooltip carries the whole sentence.
+    listedOpenShort: '{count} open',
+    listedOpenShortForYou: '{count} open · {mine} for you',
   },
   // The review: a document full screen, the annotations on it, the threads
   // under them, and who is looking with you.

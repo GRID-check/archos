@@ -1,9 +1,9 @@
 ---
 features:
   - >
-    Dateien now shows which documents still have open Anmerkungen: a small
-    count on the card and beside the name in the list, with how many of them
-    are yours, such as „3 offene Anmerkungen, 1 für Sie“. Pressing it opens the
+    Dateien now says which documents still have open Anmerkungen, and how many
+    of them are yours, in words: „4 offen · 2 für Sie“ under the size and date
+    on the card, and beside the name in the list. Pressing it opens the
     document in the Prüfansicht.
   - >
     Freigeben now names the Anmerkungen still open on the document before you

@@ -1503,6 +1503,9 @@ export const files: typeof en.files = {
     listedOpen: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}',
     listedOpenForYou: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}, {mine} für Sie',
     listedOpenIn: '{marks} in „{name}“',
+    // Was der Chip selbst sagt, kurz genug für eine Karte; der Tooltip trägt den ganzen Satz.
+    listedOpenShort: '{count} offen',
+    listedOpenShortForYou: '{count} offen · {mine} für Sie',
   },
   // Die Prüfansicht: ein Dokument im Vollbild, die Anmerkungen darauf, die
   // Gespräche darunter, und wer gerade mit hinschaut.
