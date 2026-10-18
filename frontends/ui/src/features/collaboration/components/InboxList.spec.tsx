@@ -15,6 +15,14 @@ vi.mock('../hooks/use-inbox', () => ({
   useInboxBadge: vi.fn(),
 }))
 
+/** The page's address, played by the test: the Postfach's own, with whatever query it carries. */
+const page = vi.hoisted(() => ({ pathname: '/app/inbox', search: '' }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => page.pathname,
+  useSearchParams: () => new URLSearchParams(page.search),
+}))
+
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>
@@ -114,6 +122,33 @@ describe('InboxList — filters', () => {
     const all = screen.getByRole('radio', { name: 'All' })
     expect(all).toHaveAttribute('data-state', 'on')
     expect(all).toHaveAttribute('aria-checked', 'true')
+  })
+
+  test('keeps the filter in the address without a server render, so a review closed from a row comes back to it', () => {
+    const replaceState = vi.spyOn(window.history, 'replaceState')
+    page.search = 'tab=x'
+    try {
+      render(<InboxList />)
+      fireEvent.click(screen.getByRole('radio', { name: 'Unread' }))
+      expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x&filter=unread')
+      // „Needs me“ is the default, and the address does not say it.
+      fireEvent.click(screen.getByRole('radio', { name: /Needs me/ }))
+      expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x')
+    } finally {
+      page.search = ''
+      replaceState.mockRestore()
+    }
+  })
+
+  test('opens on the filter the address names, as the reader left it', () => {
+    page.search = 'filter=archived'
+    try {
+      render(<InboxList />)
+      expect(useInboxListMock).toHaveBeenCalledWith(true, 'archived')
+      expect(screen.getByRole('radio', { name: 'Archived' })).toHaveAttribute('aria-checked', 'true')
+    } finally {
+      page.search = ''
+    }
   })
 
   test('passes the disabled flag through, so a gated org issues no request', () => {

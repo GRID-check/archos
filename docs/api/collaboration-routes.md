@@ -308,6 +308,10 @@ id, on the bare column the list index covers). `filter` picks the slice
 | `archived` | only archived rows | „Archiviert“ |
 | `pending` | the badge's own set: unread, or a request still open | — |
 
+The Postfach keeps the filter it shows in its page's address (`/app/inbox?filter=unread|all|archived`;
+„Für mich“, the default, is not written; `InboxList`), replaced with `history.replaceState` on a
+change, so a row's link into the review carries it as `back` and closing the review comes back to it.
+
 `counts` are the numbers beside the first two
 filters. `hasMore` says a further page exists; pass `nextCursor` back as
 `?cursor=` to read it. A cursor is opaque and written by the server; one it did

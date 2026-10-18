@@ -273,7 +273,8 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     isMarkAnchored(item.type) && !inert && !redacted && item.resourceType === 'document' && item.anchorId !== null
   /*
     The mark opens in Dateien, at the review: closing it comes back here, to
-    the Postfach as the reader left it (`back`), not to the bare document.
+    the Postfach as the reader left it (`back`: this address, which carries
+    the list's filter, `InboxList`), not to the bare document.
   */
   const pathname = usePathname()
   const searchParams = useSearchParams()

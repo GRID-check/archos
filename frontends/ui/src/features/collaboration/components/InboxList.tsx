@@ -29,10 +29,18 @@
  * The four filters are four questions: „Für mich“ is what waits on the reader
  * (an open request), „Ungelesen“ what they have not opened, „Alle“ everything,
  * and „Archiviert“ what they put away, which can come back from there.
+ *
+ * The filter is in the page's address (`filter=unread|all|archived`; „Für
+ * mich“, the default, is not written), as Offene Punkte keeps its own: a row
+ * that opens a mark carries this address as `back`, so closing the review
+ * comes back to the filter the reader left, and a reload keeps it. A change
+ * replaces the address with `history.replaceState`, which Next's router
+ * follows (`useSearchParams` reads it) without asking the server again.
  */
 
 import type { JSX } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { AlertCircle, Archive, Bell, CheckCheck, CheckCircle2, MailOpen } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -71,6 +79,27 @@ function isInboxFilter(value: string): value is InboxFilter {
   return (FILTERS as readonly string[]).includes(value)
 }
 
+/** The page's address parameter that holds the filter. */
+const FILTER_PARAM = 'filter'
+
+/** The filter the page's address names; anything else is `fallback`. */
+function filterOf(params: Pick<URLSearchParams, 'get'> | null, fallback: InboxFilter): InboxFilter {
+  const named = params?.get(FILTER_PARAM)
+  return named && isInboxFilter(named) ? named : fallback
+}
+
+/**
+ * This page's address with `filter` on it, leaving out the default („Für mich“)
+ * and keeping every other param: what a row's link carries as `back`.
+ */
+function hrefOf(pathname: string, current: string, filter: InboxFilter): string {
+  const params = new URLSearchParams(current)
+  if (filter === 'needsMe') params.delete(FILTER_PARAM)
+  else params.set(FILTER_PARAM, filter)
+  const query = params.toString()
+  return query ? `${pathname}?${query}` : pathname
+}
+
 /** Whether a key press belongs to whatever has focus rather than to the list. */
 function typingInto(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -86,10 +115,10 @@ export interface InboxListProps {
    */
   enabled?: boolean
   /**
-   * Which filter the list opens on. Defaults to `needsMe` — the inbox exists to
-   * answer "what needs me?" — but an entry point that means "show me everything
-   * that happened" can seed the other one. Seed only: the user's clicks own it
-   * from then on.
+   * Which filter the list opens on when the page's address names none. Defaults
+   * to `needsMe` — the inbox exists to answer "what needs me?" — but an entry
+   * point that means "show me everything that happened" can seed the other one.
+   * Seed only: the address, and the user's clicks, own it from then on.
    */
   initialFilter?: InboxFilter
   /** The reader: a quoted mention of them is drawn louder, as the thread draws it. */
@@ -104,7 +133,15 @@ export function InboxList({
   className,
 }: InboxListProps): JSX.Element {
   const t = useTranslations('collaboration')
-  const [filter, setFilter] = useState<InboxFilter>(initialFilter)
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [filter, setFilter] = useState<InboxFilter>(() => filterOf(searchParams, initialFilter))
+  /** A filter changes the list and the address, so a review opened from a row comes back to it. */
+  const choose = (next: InboxFilter): void => {
+    setFilter(next)
+    setFocusedId(null)
+    if (pathname) window.history.replaceState(null, '', hrefOf(pathname, searchParams?.toString() ?? '', next))
+  }
 
   const {
     items,
@@ -243,10 +280,7 @@ export function InboxList({
           onValueChange={(value) => {
             // type=single can emit "" when the pressed item is clicked again;
             // the inbox always has a filter, so ignore a clear.
-            if (isInboxFilter(value)) {
-              setFilter(value)
-              setFocusedId(null)
-            }
+            if (isInboxFilter(value)) choose(value)
           }}
           aria-label={t('inbox.filters.ariaLabel')}
         >

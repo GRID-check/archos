@@ -12,15 +12,16 @@
  * Jour fixe's two questions, whose points are mine and what is due; the
  * Protokoll carries what the filters show.
  *
- * The filters are in the page's address (`assignee=me`, `due=…`), and every
- * link into a review carries that address as `back`: closing the review
- * returns here, to the same selection, rather than leaving the reader in
- * Dateien. The list is read again when the page comes back (`useProjectMarks`).
+ * The filters are in the page's address (`assignee=me`, `due=…`, replaced
+ * without a server render), and every link into a review carries that
+ * address as `back`: closing the review returns here, to the same selection,
+ * rather than leaving the reader in Dateien. The list is read again when the
+ * page comes back (`useProjectMarks`).
  */
 
 import { useState, type JSX } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { AlertTriangle, ArrowLeft, CheckCheck, FileText, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -99,18 +100,21 @@ export interface OpenPointsPanelProps {
 
 export function OpenPointsPanel({ projectId, currentUserId, initial, filing = null }: OpenPointsPanelProps): JSX.Element {
   const t = useTranslations('files')
-  const router = useRouter()
   const pathname = usePathname() ?? `/app/projects/${projectId}/files/open-points`
   const searchParams = useSearchParams()
   const [assignee, setAssigneeState] = useState<AssigneeChoice>(() => choicesOf(searchParams).assignee)
   const [due, setDueState] = useState<DueChoice>(() => choicesOf(searchParams).due)
   const current = searchParams?.toString() ?? ''
   const here = hrefOf(pathname, current, assignee, due)
-  /** A filter changes the list and the address, so Back from a review comes back to it. */
+  /**
+   * A filter changes the list and the address, so Back from a review comes back to it. The
+   * address is replaced with `history.replaceState`, which Next's router follows (`useSearchParams`
+   * reads it) without rendering the page on the server again: the list reads itself.
+   */
   const choose = (next: { assignee: AssigneeChoice; due: DueChoice }) => {
     setAssigneeState(next.assignee)
     setDueState(next.due)
-    router.replace(hrefOf(pathname, current, next.assignee, next.due), { scroll: false })
+    window.history.replaceState(null, '', hrefOf(pathname, current, next.assignee, next.due))
   }
   const filters = filtersOf(assignee, due)
   const list = useProjectMarks(projectId, filters, { page: initial, filters: OPEN_POINTS_DEFAULT_FILTERS })

@@ -137,6 +137,7 @@ describe('OpenPointsPanel', () => {
 
   it('keeps the filters in the address, so a review closed from a row comes back to them', async () => {
     nav.params = new URLSearchParams('assignee=me')
+    const replaceState = vi.spyOn(window.history, 'replaceState')
     fetchMock.mockImplementation(async () => answer(PAGE))
     const user = userEvent.setup()
     show()
@@ -144,10 +145,13 @@ describe('OpenPointsPanel', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/projects/proj_1/annotations?assignee=me', { method: 'GET' })
 
     await user.click(screen.getByTestId('open-points-due-overdue'))
-    expect(nav.replace).toHaveBeenLastCalledWith(`${HERE}?assignee=me&due=overdue`, { scroll: false })
+    // The history entry is replaced in place: no navigation, so no server render of the page.
+    expect(replaceState).toHaveBeenLastCalledWith(null, '', `${HERE}?assignee=me&due=overdue`)
+    expect(nav.replace).not.toHaveBeenCalled()
     await vi.waitFor(() =>
       expect(backOf(screen.getAllByTestId('open-point-row')[0].getAttribute('href'))).toBe(`${HERE}?assignee=me&due=overdue`)
     )
+    replaceState.mockRestore()
   })
 
   it('names each row by its number and state for a screen reader, as the review list does', () => {

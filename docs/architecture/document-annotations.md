@@ -382,8 +382,14 @@ review; a new mark or tool replaces, so walking the marks is one entry; closing
 goes back, or takes them off when the review came in by a link. A link from
 another page of the app (an Offene Punkte row, a Postfach row) carries `back`,
 that page's own address with its filters (`reviewFilesHref(…, { back })`,
-`withReviewBack`), and closing a review the pane did not push replaces the entry
-with it, so the reader lands where they left rather than in Dateien. `back` is
+`withReviewBack`), and closing a review the pane did not push goes there, so the
+reader lands where they left rather than in Dateien. When that page is the
+entry one step back in this tab (the tab's return trail says so,
+`backReaches` in `lib/navigation/return-trail.ts`, compared by path since the
+trail keeps no query), closing is `router.back()`: a replace left the
+Postfach in history twice, and its sheet, whose close is Back, came back
+after the first. Otherwise (a new tab, a shared link) the entry is replaced
+with `back`. `back` is
 only ever a path of this app (`appReturnPath`, `lib/utils/same-origin-path.ts`:
 no scheme, no other origin, no `//`, no backslash or control character, under
 `/app/`); anything else is dropped as if it were absent. A reload stays
@@ -1443,7 +1449,10 @@ closing the review returns here (above, „The review's address“). Each
 document's heading has „Prüfansicht öffnen“ for the whole review. The filters
 are „Zuständig: Alle | Für Sie“ (`isForReader`, the review's word) and „Frist: Alle | Überfällig | Bald“, kept in the
 page's address (`assignee=me`, `due=overdue|soon`); a change replaces the
-address and reads the first page again through the typed client
+address with `window.history.replaceState`, which Next's App Router follows
+(`useSearchParams` reads it, an `ACTION_RESTORE` with no server request),
+where `router.replace` rendered the page on the server again for a filter
+click, and reads the first page again through the typed client
 (`listProjectAnnotations` in `client.ts`), and a later page is read at the foot
 of the list (`LoadMore`). The server reads the first page for the first paint.
 The list is read again, quietly, on mount (Back from a review restores the page

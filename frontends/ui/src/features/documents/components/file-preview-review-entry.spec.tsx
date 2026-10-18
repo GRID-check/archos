@@ -285,6 +285,29 @@ describe('the review keeps its address', () => {
     expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
   })
 
+  it('goes Back to the page a link came from when it is the entry one step back, so it is in history once', async () => {
+    serve([mark()])
+    const back = '/app/inbox?filter=unread'
+    // The tab came from the Postfach: its trail says so, and there is an entry behind this one.
+    window.sessionStorage.setItem(
+      'grid.return-trail',
+      JSON.stringify([{ path: '/app/projects/proj-1/chat' }, { path: '/app/inbox' }, { path: '/app/projects/proj-1/files' }])
+    )
+    window.history.pushState(null, '', window.location.href)
+    try {
+      nav.params = new URLSearchParams(`doc=doc-1&review=1&mark=ann-1&back=${encodeURIComponent(back)}`)
+      render(pane())
+      expect((await screen.findByTestId('review-mode')).dataset.focus).toBe('ann-1')
+      await waitFor(() => expect(screen.getAllByTestId('annotations-summary-row')).toHaveLength(1))
+      nav.replace.mockReset()
+      fireEvent.click(screen.getByRole('button', { name: 'close review' }))
+      expect(nav.back).toHaveBeenCalledTimes(1)
+      expect(nav.replace).not.toHaveBeenCalled()
+    } finally {
+      window.sessionStorage.removeItem('grid.return-trail')
+    }
+  })
+
   it('never follows a return path out of the app', async () => {
     serve([])
     nav.params = new URLSearchParams(`doc=doc-1&review=1&back=${encodeURIComponent('https://evil.example/app/x')}`)
