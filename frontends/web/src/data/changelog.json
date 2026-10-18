@@ -71,8 +71,44 @@
               "de": "Bitten Sie Piloti, eine Anmerkung festzulegen, als erledigt zu markieren, wieder zu öffnen, zuzuweisen, zu datieren oder zu löschen. Piloti führt die Änderungen in Ihrem Namen und mit Ihren Rechten aus, hinterlässt eine kurze Notiz im Thread der Anmerkung und listet im Chat jede Änderung mit der Möglichkeit auf, sie rückgängig zu machen."
             },
             {
+              "en": "In the review of a new revision, Piloti can check which annotations still open from an earlier revision look fixed now, and answers in each one's thread; closing them stays yours.",
+              "de": "Bei der Prüfung einer neuen Revision kann Piloti erkennen, welche noch offenen Anmerkungen aus einer früheren Revision inzwischen behoben wirken, und in den jeweiligen Threads antworten; schließen können Sie sie weiterhin selbst."
+            },
+            {
+              "en": "The exported annotation minutes can be filed straight into the project, next to the document they are about, and filing them again the same day adds a new revision.",
+              "de": "Die exportierten Anmerkungsprotokolle können direkt im Projekt neben dem Dokument abgelegt werden, auf das sie sich beziehen. Werden sie am selben Tag erneut abgelegt, entsteht eine neue Revision."
+            },
+            {
+              "en": "An open annotation from an earlier revision can now be carried over to the current one from its card, or all of them at once from the list, keeping its number, its place and its thread.",
+              "de": "Eine offene Anmerkung aus einer früheren Revision lässt sich jetzt über ihre Karte in die aktuelle Revision übernehmen – oder alle auf einmal über die Liste. Nummer, Position und Kommentarverlauf bleiben dabei erhalten."
+            },
+            {
+              "en": "When a document replaces another under a new name, its review lists the open annotations of the replaced one so you can carry them over or compare the two revisions first. Both reviews say which document replaces which.",
+              "de": "Wenn ein Dokument ein anderes unter neuem Namen ersetzt, werden in seinem Review die offenen Anmerkungen des ersetzten Dokuments angezeigt, damit Sie diese übernehmen oder zuerst die beiden Revisionen vergleichen können. Beide Reviews zeigen, welches Dokument welches ersetzt."
+            },
+            {
+              "en": "Whoever is responsible for an annotation now sees its due date in their inbox, hears when someone moves it, and is reminded the day before it is due and once it is overdue.",
+              "de": "Wer für eine Annotation verantwortlich ist, sieht jetzt das Fälligkeitsdatum im Posteingang, erhält eine Benachrichtigung, wenn jemand sie verschiebt, und wird am Tag vor der Fälligkeit sowie einmal nach Ablauf daran erinnert."
+            },
+            {
+              "en": "A new revision now also tells everyone working on the open annotations it leaves behind, and says how many are left to check.",
+              "de": "Eine neue Revision informiert jetzt auch alle, die an den offenen Anmerkungen arbeiten, die sie hinterlässt, und zeigt an, wie viele noch zu prüfen sind."
+            },
+            {
               "en": "In the Prüfansicht you now see which Anmerkung a colleague has open, whose box is being drawn and who is on another page, and „/“ puts a few words beside your pointer for everyone looking. Working on a drawing together feels like sitting at one table, and when Piloti reads a part of the sheet, that part lights up.",
               "de": "In der Prüfansicht sehen Sie jetzt, welche Anmerkung ein Kollege geöffnet hat, wer gerade einen Rahmen zeichnet und wer auf einer anderen Seite arbeitet. Mit „/“ erscheinen ein paar Wörter neben Ihrem Cursor, die alle sehen. Gemeinsam an einer Zeichnung zu arbeiten fühlt sich an, als säßen Sie an einem Tisch, und wenn Piloti einen Teil des Plans liest, wird dieser hervorgehoben."
+            },
+            {
+              "en": "New annotations on a document now reach the people responsible for it and the person who uploaded it, as one inbox entry per document and per person who set them, such as „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“. Annotations Piloti sets for someone count the same way, and Piloti's proposals only once someone takes them over.",
+              "de": "Neue Anmerkungen in einem Dokument erreichen jetzt die dafür Verantwortlichen und die Person, die es hochgeladen hat – als ein Eintrag im Posteingang pro Dokument und pro Person, die die Anmerkungen gesetzt hat, zum Beispiel „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“. Anmerkungen, die Piloti für jemanden setzt, zählen genauso; Vorschläge von Piloti erst, wenn jemand sie übernimmt."
+            },
+            {
+              "en": "You can take an Anmerkung yourself with „Mir zuweisen“ in its „Zuständig“ list, clear its date with the × on the date, and fix the wording of an Anmerkung you wrote with „Bearbeiten“ in its menu. Whoever it mentions stays mentioned, and only people you add are told.",
+              "de": "Sie können sich eine Anmerkung selbst über „Mir zuweisen“ in der Liste „Zuständig“ zuweisen, ihr Datum über das × beim Datum entfernen und den Wortlaut einer von Ihnen verfassten Anmerkung über „Bearbeiten“ im Menü ändern. Bereits erwähnte Personen bleiben erwähnt; nur Personen, die Sie hinzufügen, werden benachrichtigt."
+            },
+            {
+              "en": "E and Entf in the Prüfansicht now show what they did, „Anmerkung 4 verworfen“, with „Rückgängig“, which takes it back before anyone else sees it.",
+              "de": "E und Entf zeigen in der Prüfansicht jetzt an, was sie bewirkt haben: „Anmerkung 4 verworfen“ mit „Rückgängig“, sodass Sie die Aktion zurücknehmen können, bevor sie jemand anderes sieht."
             },
             {
               "en": "Ask Piloti what changed between two Fassungen of a document, such as two states of a floor plan, and it answers page by page with the values that changed and the date each Fassung carries.",
@@ -109,6 +145,14 @@
             {
               "en": "Freigeben now names the Anmerkungen still open on the document before you sign, such as „4 offene Anmerkungen – trotzdem freigeben?“, with a link to the Prüfansicht. It does not stop the Freigabe.",
               "de": "Beim Freigeben werden jetzt die noch offenen Anmerkungen zum Dokument angezeigt, bevor Sie unterschreiben, z. B. „4 offene Anmerkungen – trotzdem freigeben?“, mit einem Link zur Prüfansicht. Die Freigabe wird dadurch nicht verhindert."
+            },
+            {
+              "en": "Offene Punkte in Dateien lists every open Anmerkung of the project on one page, grouped by document and filtered to yours or to what is overdue or due this week. Each row opens the Prüfansicht at the mark, and the list exports as one Protokoll for the Jour fixe.",
+              "de": "Offene Punkte in Dateien zeigt alle offenen Anmerkungen des Projekts auf einer Seite, nach Dokument gruppiert und gefiltert nach Ihren Anmerkungen oder nach überfälligen bzw. diese Woche fälligen Punkten. Jede Zeile öffnet die Prüfansicht an der markierten Stelle, und die Liste lässt sich als ein Protokoll für den Jour fixe exportieren."
+            },
+            {
+              "en": "Offene Punkte can now file its Protokoll in the project: „Im Projekt ablegen“ in „Protokoll exportieren“ saves it as „Offene Punkte – <Projekt> – <Datum>“ in the project's top folder, with the filters you set. It is not offered while a listed point is on a document not everyone in the project may open, and the menu says why.",
+              "de": "Für Offene Punkte können Sie das Protokoll jetzt im Projekt ablegen: „Im Projekt ablegen“ unter „Protokoll exportieren“ speichert es mit den eingestellten Filtern als „Offene Punkte – <Projekt> – <Datum>“ im obersten Projektordner. Die Option wird nicht angeboten, wenn ein aufgeführter Punkt auf einem Dokument liegt, das nicht alle im Projekt öffnen dürfen; im Menü wird der Grund angezeigt."
             },
             {
               "en": "The chat card shows each annotation as it stands now, and each change Piloti made to one, including an annotation it set for you and a reply it wrote for you, can be undone from there while nobody has changed it or answered in its thread since.",
@@ -195,6 +239,14 @@
               "de": "Sie können eine zurückgehaltene Datei jetzt direkt in der Vorschau auf der Seite freigeben oder löschen, auf der die Inhaltsprüfung sie gefunden hat. Alle Seiten mit einem Fund werden aufgelistet, nicht nur die ersten zehn."
             },
             {
+              "en": "You can now edit or delete your own reply in an Anmerkung's thread while the Anmerkung is open and Piloti has not answered it yet. The Postfach follows: it quotes the new words, and a deleted reply leaves the thread's other news and the colleagues the Anmerkung still asks untouched.",
+              "de": "Sie können jetzt Ihre eigene Antwort im Thread einer Anmerkung bearbeiten oder löschen, solange die Anmerkung offen ist und Piloti noch nicht darauf geantwortet hat. Das Postfach zieht nach: Es zitiert den neuen Wortlaut, und eine gelöschte Antwort lässt die übrigen Nachrichten im Thread sowie die Kolleginnen und Kollegen, an die sich die Anmerkung weiterhin richtet, unberührt."
+            },
+            {
+              "en": "In the review, open annotations from an earlier revision now show as hollow pins where they stood, so you can see where one lands before carrying it on, and a dot marks every thread with replies you have not read yet.",
+              "de": "Im Review werden offene Anmerkungen aus einer früheren Revision nun an ihrer ursprünglichen Position als nicht ausgefüllte Pins angezeigt, damit Sie sehen, wo sie landen, bevor Sie sie übertragen; ein Punkt kennzeichnet jeden Thread mit ungelesenen Antworten."
+            },
+            {
               "en": "The notice that files wait in quarantine now names the latest file and what it was held back for, such as an IBAN or a term from your office's list.",
               "de": "Der Hinweis, dass Dateien in Quarantäne warten, nennt jetzt die neueste Datei und den Grund für die Zurückhaltung, etwa eine IBAN oder einen Begriff aus der Liste Ihres Büros."
             },
@@ -219,6 +271,22 @@
         {
           "key": "improvements",
           "notes": [
+            {
+              "en": "Several annotations reaching you at once, such as the morning's due date reminders or a batch handed over to you, now arrive as one notification on your devices that says how many are due and how many are overdue.",
+              "de": "Mehrere Anmerkungen, die Sie gleichzeitig erreichen, etwa die morgendlichen Fälligkeitserinnerungen oder ein an Sie übergebener Stapel, werden auf Ihren Geräten nun in einer einzigen Benachrichtigung zusammengefasst, die angibt, wie viele fällig und wie viele überfällig sind."
+            },
+            {
+              "en": "Your own annotation can no longer be deleted once a colleague has answered in it or it has been carried over to another document. Its menu says why and offers to resolve it instead, so their answers and the numbering in the minutes stay intact.",
+              "de": "Ihre eigene Anmerkung lässt sich nicht mehr löschen, sobald eine Kollegin oder ein Kollege darauf geantwortet hat oder sie in ein anderes Dokument übernommen wurde. Im Menü erfahren Sie den Grund und können sie stattdessen als erledigt markieren, damit Antworten und Nummerierung im Protokoll erhalten bleiben."
+            },
+            {
+              "en": "Resolving an annotation from your inbox can now be taken back with „Rückgängig“ for a few seconds, before anything is saved.",
+              "de": "Sie können das Auflösen einer Annotation aus Ihrem Posteingang jetzt einige Sekunden lang mit „Rückgängig“ zurücknehmen, bevor etwas gespeichert wird."
+            },
+            {
+              "en": "In the review, J and K now also step to the open annotations of an earlier revision, and a screen reader hears each listed annotation's number and state, there and in Offene Punkte.",
+              "de": "Im Review springen J und K jetzt auch zu den offenen Annotationen einer früheren Revision. Ein Screenreader liest dort und unter Offene Punkte Nummer und Status jeder aufgelisteten Annotation vor."
+            },
             {
               "en": "Approving a revision now also makes it the one Piloti answers from. There is no separate publish step any more: an approved document is ready to use.",
               "de": "Mit der Freigabe einer Revision wird diese nun auch zur Grundlage für die Antworten von Piloti. Einen separaten Veröffentlichungsschritt gibt es nicht mehr: Ein freigegebenes Dokument ist sofort einsatzbereit."
@@ -346,6 +414,14 @@
             {
               "en": "Closing the Prüfansicht keeps your place: the preview opens at the page you were reading, and the review stays smooth with many colleagues and hundreds of Anmerkungen.",
               "de": "Beim Schließen der Prüfansicht bleibt Ihre Position erhalten: Die Vorschau öffnet sich auf der zuletzt gelesenen Seite, und die Prüfung läuft auch mit vielen Kolleginnen und Kollegen und Hunderten von Anmerkungen reibungslos weiter."
+            },
+            {
+              "en": "Answering an Anmerkung from the Postfach now works like the thread: Enter sends, „@“ mentions a colleague, and @Piloti asks Piloti where your office lets Piloti answer in threads.",
+              "de": "Das Beantworten einer Anmerkung aus dem Postfach funktioniert jetzt wie im Thread: Enter sendet, „@“ erwähnt Kolleginnen und Kollegen, und @Piloti fragt Piloti dort, wo Ihr Büro Piloti in Threads antworten lässt."
+            },
+            {
+              "en": "\"For you\" in the review now lists exactly the annotations you are responsible for, the same ones the count in Files names, and carrying all annotations on to the current revision is much faster.",
+              "de": "„Für Sie“ im Review zeigt jetzt genau die Anmerkungen an, für die Sie zuständig sind – dieselben, die auch der Zähler unter „Dateien“ ausweist. Außerdem lassen sich alle Anmerkungen jetzt viel schneller in die aktuelle Revision übernehmen."
             }
           ]
         },
@@ -355,6 +431,42 @@
             {
               "en": "When you draw a box and ask Piloti about it, Piloti answers about that box again, and an @Piloti question in an Anmerkung is answered in its thread. Everyone sees in the thread when Piloti is working on it, also after reloading, and the thread says why when Piloti could not answer.",
               "de": "Wenn Sie ein Rechteck zeichnen und Piloti dazu befragen, antwortet Piloti wieder zu diesem Rechteck. Eine Frage mit @Piloti in einer Anmerkung wird im zugehörigen Thread beantwortet. Alle sehen im Thread, wenn Piloti daran arbeitet – auch nach dem Neuladen. Kann Piloti nicht antworten, steht im Thread, warum."
+            },
+            {
+              "en": "When a colleague answers or closes many of your Anmerkungen at once, your devices get one notification that counts them, such as „15 Neuigkeiten zu Anmerkungen“, instead of one per Anmerkung. The Postfach still lists each.",
+              "de": "Wenn jemand aus Ihrem Team viele Ihrer Anmerkungen auf einmal beantwortet oder schließt, erhalten Ihre Geräte eine zusammenfassende Benachrichtigung, etwa „15 Neuigkeiten zu Anmerkungen“, statt einer Benachrichtigung pro Anmerkung. Im Postfach werden weiterhin alle einzeln angezeigt."
+            },
+            {
+              "en": "„Zuständig“ offers only people who can change the document, so whoever is made responsible for an Anmerkung can answer it and close it. You can still mention anyone who can open the document.",
+              "de": "„Zuständig“ zeigt nur Personen an, die das Dokument bearbeiten können. Wer für eine Anmerkung zuständig gemacht wird, kann darauf antworten und sie schließen. Sie können weiterhin alle Personen erwähnen, die das Dokument öffnen können."
+            },
+            {
+              "en": "Your answer to a question Piloti asked in an Anmerkung now reaches Piloti, and it answers in the thread. In the Postfach such a question leads to the Prüfansicht to be answered there, and a row offers „Antworten“ and „Erledigen“ only when you can do that.",
+              "de": "Piloti erhält Ihre Antwort auf eine in einer Anmerkung gestellte Frage und antwortet im Thread. Im Postfach führt eine solche Frage zur Prüfansicht, wo Sie sie beantworten können; eine Zeile zeigt „Antworten“ und „Erledigen“ nur an, wenn diese Aktionen für Sie verfügbar sind."
+            },
+            {
+              "en": "„Mir zugewiesen“ in the Prüfansicht finds your Anmerkungen also while the connection to your colleagues is down.",
+              "de": "Unter „Mir zugewiesen“ finden Sie in der Prüfansicht Ihre Anmerkungen auch dann, wenn die Verbindung zu Ihren Kolleginnen und Kollegen unterbrochen ist."
+            },
+            {
+              "en": "When Piloti's question is what waits on you, the offer to notify you on this device says Piloti asked, not that someone needs you.",
+              "de": "Wenn Piloti Sie fragt, was auf Sie wartet, lautet das Angebot, Sie auf diesem Gerät zu benachrichtigen: „Piloti hat gefragt“ statt „Jemand braucht Sie“."
+            },
+            {
+              "en": "Writing in an annotation's thread or answering it from your inbox no longer zooms the page in on an iPhone or iPad. Sending, saving or cancelling puts the keyboard focus back on the button you started from.",
+              "de": "Wenn Sie in einem Anmerkungs-Thread schreiben oder aus Ihrem Posteingang darauf antworten, wird die Seite auf iPhone oder iPad nicht mehr vergrößert. Nach dem Senden, Speichern oder Abbrechen springt der Tastaturfokus zurück zum Button, von dem Sie gestartet sind."
+            },
+            {
+              "en": "Offene Punkte now says „Für Sie“ as the review does, and a reply whose edit failed now says it could not be saved rather than sent.",
+              "de": "Offene Punkte zeigt jetzt wie die Prüfung „Für Sie“ an, und bei einer Antwort, deren Bearbeitung fehlgeschlagen ist, wird nun angezeigt, dass sie nicht gespeichert statt gesendet werden konnte."
+            },
+            {
+              "en": "After you work through annotations in the review, the count beside the document in Files shows what is still open, and closing a review you opened from the inbox or from open points takes you back there with your filter, in a single Back step.",
+              "de": "Wenn Sie die Anmerkungen im Review bearbeiten, zeigt die Zahl neben dem Dokument unter „Dateien“ an, was noch offen ist. Schließen Sie ein Review, das Sie über den Posteingang oder die offenen Punkte geöffnet haben, gelangen Sie mit Ihrem Filter in einem einzigen Schritt zurück."
+            },
+            {
+              "en": "A copied annotation link now opens only that annotation, and new annotations a colleague sets while you have the document open in the review no longer stay unread in your inbox.",
+              "de": "Ein kopierter Link zu einer Anmerkung öffnet jetzt nur noch diese Anmerkung. Neue Anmerkungen, die Kolleg:innen hinzufügen, während Sie das Dokument in der Prüfung geöffnet haben, bleiben nicht mehr ungelesen in Ihrem Posteingang."
             },
             {
               "en": "When you upload a new revision of a file, the document now says that Piloti still answers from the previous revision until the new one has been read, and keeps saying so if reading it fails. Before, it claimed the new revision answered as soon as it was uploaded.",
@@ -441,6 +553,14 @@
               "de": "In der „@“-Liste stehen jetzt zuerst die Personen, deren Name mit Ihrer Eingabe beginnt, und mit Enter erwähnen Sie die erste davon. Bei „@Le“ wurden bisher Kolleginnen und Kollegen, deren E-Mail-Adresse „le“ enthält, oben angezeigt, und mit Enter erwähnten Sie dann eine dieser Personen statt Lena."
             },
             {
+              "en": "A Postfach entry such as „Anna hat 15 Anmerkungen gesetzt“ no longer puts an unread dot on just the newest of those Anmerkungen in the Prüfansicht. It counts as read once you open the document's Prüfansicht.",
+              "de": "Ein Postfach-Eintrag wie „Anna hat 15 Anmerkungen gesetzt“ zeigt in der Prüfansicht nicht mehr nur bei der neuesten dieser Anmerkungen einen Ungelesen-Punkt. Er gilt als gelesen, sobald Sie die Prüfansicht des Dokuments öffnen."
+            },
+            {
+              "en": "„offen“ now counts the same everywhere: Piloti's proposals that nobody has taken over are no longer counted as open in Dateien, in the Prüfansicht or before a Freigabe. They are named on their own, „2 offen · 12 Vorschläge“, so the number matches Offene Punkte and the Protokoll.",
+              "de": "„Offen“ wird jetzt überall gleich gezählt: Vorschläge von Piloti, die niemand übernommen hat, werden in Dateien, in der Prüfansicht oder vor einer Freigabe nicht mehr als offen gezählt. Sie werden separat ausgewiesen: „2 offen · 12 Vorschläge“, damit die Zahl mit „Offene Punkte“ und dem Protokoll übereinstimmt."
+            },
+            {
               "en": "After a new Fassung arrives, the Protokoll still lists every Anmerkung that is open on an earlier Fassung, and each entry says which Fassung it was set on. Before, the default Protokoll left them out, so a Jour fixe run from it missed exactly those points.",
               "de": "Nach Eingang einer neuen Fassung führt das Protokoll weiterhin alle Anmerkungen auf, die in einer früheren Fassung noch offen sind, und gibt bei jedem Eintrag an, in welcher Fassung die Anmerkung erfasst wurde. Bisher ließ das Standard-Protokoll sie aus, sodass bei einem darauf basierenden Jour fixe genau diese Punkte fehlten."
             },
@@ -471,6 +591,10 @@
             {
               "en": "The project setup asks for the Bundesland right away, before a country is chosen, and hides it only when the project is outside Austria.",
               "de": "Bei der Projekteinrichtung wird sofort nach dem Bundesland gefragt, noch bevor ein Land ausgewählt wurde, und das Feld wird nur bei Projekten außerhalb Österreichs ausgeblendet."
+            },
+            {
+              "en": "Closing an Anmerkung you opened from Offene Punkte or the Postfach takes you back there, with your filters as you set them, instead of leaving you in Dateien. Offene Punkte then shows the marks you closed as closed.",
+              "de": "Wenn Sie eine Anmerkung schließen, die Sie über „Offene Punkte“ oder das „Postfach“ geöffnet haben, gelangen Sie mit Ihren gesetzten Filtern dorthin zurück, statt in „Dateien“ zu landen. In „Offene Punkte“ werden die von Ihnen geschlossenen Markierungen anschließend als geschlossen angezeigt."
             },
             {
               "en": "When the content check holds a file back for more reasons than it lists, the audit log now records how many it left out. A shortened list of reasons no longer reads as the complete one.",
