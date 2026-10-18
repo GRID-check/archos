@@ -82,12 +82,14 @@ marks are as invisible as the upload.
 
 **What a listing says about them.** Every listing row (`toListedDocuments`,
 `lib/documents/shelf-listing.ts`, so a project's Dateien, the Archiv and the
-by-name reads alike) carries `marks: { live, forYou }`: how many of the
-document's marks are live (`isLive`: open, and Piloti's proposals nobody
-decided on, on every Fassung) and how many of those are open with the reader as
-Zuständige (`isForReader` over the live ones, `lib/annotations/types.ts`: the
-review's „Für Sie“ filter is the same predicate, so its Offen count is this
-number), or `null` when none is live. `tallyLiveMarks`
+by-name reads alike) carries `marks: { open, proposed, forYou }`: how many of
+the document's marks are open, how many are Piloti's proposals nobody decided
+on (both live, `isLive`, on every Fassung, and counted apart: „offen“ means the
+office's own open marks wherever it is said, as Offene Punkte, the Protokoll
+and the Postfach say it), and how many of the open ones have the reader as
+Zuständige (`isForReader`, `lib/annotations/types.ts`: the review's „Für Sie“
+filter is the same predicate, so its Offen count is this number), or `null`
+when none is live. `tallyLiveMarks`
 (`lib/annotations/repository.ts`) counts a whole page in ONE grouped query,
 bounded by the page's ids, that joins `documents` behind the listing's own
 `documentVisibleTo(reader)`. A proposal that names the reader is not theirs
@@ -96,10 +98,14 @@ listing and is as fresh as its last read; it is not live. Dateien draws it as
 `OpenMarksChip` (`features/documents/components/open-marks-chip.tsx`), the
 kit's `Chip`, beside the name in the list and on a card's footer, on its own
 line under the size and the date (never in their place). It says it in words,
-„4 offen · 2 für Sie“ (`openMarksShortLabel`), not as bare numbers; the kit's
-`Tooltip` and the button's name carry the whole sentence, „4 offene
-Anmerkungen, 2 für Sie“ (`openMarksLabel`, the name adding „in „Grundriss
-EG““). A press opens the review: the page's own URL
+„4 offen · 2 für Sie · 12 Vorschläge“ (`openMarksShortLabel`, each part only
+when it has any), not as bare numbers; the kit's `Tooltip` and the button's
+name carry the whole sentence, „4 offene Anmerkungen, 2 für Sie und 12
+Vorschläge von Piloti“ (`openMarksLabel`, the name adding „in „Grundriss
+EG““). The review says the same in its header and the rail's count
+(„2 offen · 12 Vorschläge“), its Offen tab counts the open marks and adds the
+proposals it lists under them („Offen 2 · 12 Vorschläge“, `tabCounts`), and the
+approve confirm names both (below). A press opens the review: the page's own URL
 with `doc` and `review=1` (`reviewHrefAt(…, { withDocument: true })`), which
 the shelf's `?doc=` sync and the pane already answer.
 
@@ -593,8 +599,9 @@ a stored mention becomes a chip.
 
 **Before a Freigabe.** The approve confirm in the rail
 (`document-review-controls.tsx`, under „Freigabe und Fassungen“) names the
-live marks the pane's review holds, before the signature: „4 offene
-Anmerkungen – trotzdem freigeben?“, with „In der Prüfansicht öffnen“ beside it
+live marks the pane's review holds, before the signature, Piloti's untaken
+proposals apart from the open ones as the chip tells them: „2 offene
+Anmerkungen und 12 Vorschläge von Piloti – trotzdem freigeben?“, with „In der Prüfansicht öffnen“ beside it
 as a link in the sentence (`openMarks`, handed down from `file-preview-pane.tsx`
 through `DocumentFassungen`; drawn as `Button variant="inline"`, underlined at
 rest, because `link` is ink like the sentence around it and underlines only on

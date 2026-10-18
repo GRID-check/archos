@@ -496,12 +496,15 @@ export function isGhostMark(
 
 /**
  * What a listing row says about a document's Anmerkungen, for the reader it
- * was read for: how many are live ({@link isLive}, on every Fassung), and how
- * many of those are the reader's ({@link isForReader}: open, with the reader
- * as Zuständige).
+ * was read for, on every Fassung: how many are open, how many are Piloti's
+ * proposals nobody decided on (live, {@link isLive}, but not yet the office's:
+ * counted apart, so „offen“ means the same here as in Offene Punkte, the
+ * Protokoll and the Postfach), and how many of the open ones are the reader's
+ * ({@link isForReader}: open, with the reader as Zuständige).
  */
 export interface MarkTally {
-  live: number
+  open: number
+  proposed: number
   forYou: number
 }
 

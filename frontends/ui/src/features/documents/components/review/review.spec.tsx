@@ -1465,6 +1465,19 @@ describe('closing the loop on a mark', () => {
     await waitFor(() => expect(patched).toEqual([{ dueOn: null }]))
   })
 
+  it('counts Piloti’s untaken proposals apart on the Open tab, as Dateien’s chip does', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1, body: 'Offen' }),
+      view({ id: 'p1', number: 2, authorKind: 'piloti', status: 'proposed' }),
+      view({ id: 'p2', number: 3, authorKind: 'piloti', status: 'proposed' }),
+    ])
+    render(<Harness transport={silentRoom()} />)
+    await waitFor(() => expect(screen.getAllByTestId('review-row')).toHaveLength(3))
+
+    expect(screen.getByTestId('review-filter-open')).toHaveTextContent(/^Open1· 2 proposals$/)
+    expect(screen.getByTestId('review-filter-open-proposed')).toHaveTextContent('2 proposals')
+  })
+
   it('finds the reader’s marks under „For you" while the room has not welcomed the tab, and not what they only set', async () => {
     serve([
       view({ id: 'ann_1', number: 1, createdBy: 'user_anna', assigneeUserId: 'user_me', body: 'Mir zugewiesen' }),

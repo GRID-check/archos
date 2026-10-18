@@ -92,7 +92,7 @@ Files render as cards in a responsive grid. Each card shows:
 - the file name and, when ingestion generated one, a one-line **AI description**
 - a tinted **extension chip** (PDF, DOCX, …), the file size and a relative upload time
 - an **ingestion status badge** only while the document is not yet citable (Processing / Failed / held back) — failed cards show the failure reason inline. A citable document carries no badge on its card; the list view's status column names every state, „Zitierbar“ included
-- what is **still open on its pages**, when anything is: a small chip under the size and date that says how many Anmerkungen are open (Piloti's proposals nobody has decided on included, from every Fassung) and how many of those are yours, „4 offen · 2 für Sie“. Pointing at it shows the whole sentence, „4 offene Anmerkungen, 2 für Sie“. Pressing it opens the document in the Prüfansicht. The list view shows the same beside the name
+- what is **still open on its pages**, when anything is: a small chip under the size and date that says how many Anmerkungen are open (from every Fassung), how many of those are yours, and how many of Piloti's proposals nobody has decided on yet, „2 offen · 1 für Sie · 12 Vorschläge“. A proposal is not counted as open until someone takes it over, as in Offene Punkte and the Protokoll. Pointing at it shows the whole sentence, „2 offene Anmerkungen, 1 für Sie und 12 Vorschläge von Piloti“. Pressing it opens the document in the Prüfansicht. The list view shows the same beside the name
 
 The last tile of the grid is a dashed **upload card** listing the actually accepted file types and the size limit; drag-and-drop anywhere on the workspace also works. A file dropped on another project page, such as Settings or Members, opens Files and is uploaded there; the chat, the research page and the intake keep their own drop targets.
 
@@ -491,7 +491,8 @@ is yours to take, Piloti has a suggestion to answer, or the file is an older
 Fassung. Once you close it, it stays closed.
 
 When Anmerkungen are still open on the document, **Freigeben** says so before
-you sign: „4 offene Anmerkungen – trotzdem freigeben?“, with **In der
+you sign, and Piloti's proposals nobody took over apart from them: „2 offene
+Anmerkungen und 12 Vorschläge von Piloti – trotzdem freigeben?“, with **In der
 Prüfansicht öffnen** beside it. If the Anmerkungen are still loading, or
 could not be read, it says that instead, so silence always means nothing is
 open. It does not stop you: whether an open point stands in the way of a

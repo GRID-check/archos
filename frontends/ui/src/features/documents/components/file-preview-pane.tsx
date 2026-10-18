@@ -752,16 +752,18 @@ export function FilePreviewPane({
     [showReview, urlOpen, addressed, searchParams, file.id, replaceParams]
   )
   /**
-   * What the approve confirm names before the signature: the live marks, and
-   * the review to see them in. Until the review has read them, or when it
+   * What the approve confirm names before the signature: the open marks and
+   * Piloti's untaken proposals, told apart, and the review to see them in. Until the review has read them, or when it
    * could not, the confirm says so: an unknown count is not a zero.
    */
   const openMarks = useMemo((): OpenMarksAtApproval | null => {
     if (!reviewEnabled) return null
     const onOpen = () => openReview()
-    if (review.load === 'ready') return { status: 'counted', count: liveMarks, onOpen }
+    if (review.load === 'ready') {
+      return { status: 'counted', open: review.counts.open, proposed: review.counts.proposed, onOpen }
+    }
     return review.load === 'loading' ? { status: 'loading' } : { status: 'unavailable', onOpen }
-  }, [reviewEnabled, review.load, liveMarks, openReview])
+  }, [reviewEnabled, review.load, review.counts.open, review.counts.proposed, openReview])
   // While open, the address follows the mark selected and the tool in hand.
   const linkTool: ReviewLinkTool | null = review.tool === 'point' || review.tool === 'region' ? review.tool : null
   useEffect(() => {

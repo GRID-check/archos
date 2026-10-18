@@ -376,16 +376,20 @@ const FILTERS: ReviewFilter[] = ['open', 'closed']
 /**
  * The counts on the Offen / Erledigt tabs, over what the list would show:
  * with „Für Sie" on, only the reader's marks ({@link isForReader}), the same
- * marks the list holds, so a tab never promises six and shows two. Its Offen
- * count is the number Dateien's chip says „für Sie".
+ * marks the list holds, so a tab never promises six and shows two. The Offen
+ * tab lists Piloti's untaken proposals too, and counts them apart, as
+ * Dateien's chip does („2 offen · 12 Vorschläge"): `open` is the office's own
+ * open marks, `proposed` the proposals. With „Für Sie" on its `open` is the
+ * number the chip says „für Sie".
  */
 export function tabCounts(
   annotations: readonly Pick<AnnotationView, 'status' | 'assigneeUserId'>[],
   mine: { on: boolean; me: string | null }
-): Record<ReviewFilter, number> {
+): Record<ReviewFilter | 'proposed', number> {
   const shown = mine.on ? annotations.filter((annotation) => isForReader(annotation, mine.me)) : annotations
   return {
-    open: shown.filter((annotation) => isLive(annotation)).length,
+    open: shown.filter((annotation) => annotation.status === 'open').length,
+    proposed: shown.filter((annotation) => annotation.status === 'proposed').length,
     closed: shown.filter((annotation) => !isLive(annotation)).length,
   }
 }
@@ -453,6 +457,11 @@ export function ReviewPanel({
               >
                 {t(`review.filters.${option}`)}
                 <span className="text-muted-foreground font-mono tabular-nums">{count}</span>
+                {option === 'open' && counts.proposed > 0 && (
+                  <span className="text-muted-foreground" data-testid="review-filter-open-proposed">
+                    · {t('annotations.listedProposedShort', { count: counts.proposed })}
+                  </span>
+                )}
               </button>
             )
           })}

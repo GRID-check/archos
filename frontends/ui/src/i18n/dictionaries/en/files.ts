@@ -1347,7 +1347,8 @@ export const files = {
       actingDateOnly: 'Acting: {date}',
       checkbox: 'I approve this revision',
       // Before the signature, never a block: approving with open points is allowed, missing them is not.
-      openMarks: '{count, plural, one {# open annotation} other {# open annotations}} – approve anyway?',
+      // {marks}: “2 open annotations and 12 proposals from Piloti”, as the chip in Files says it.
+      openMarks: '{marks} – approve anyway?',
       openMarksLoading: 'Still reading the open annotations …',
       openMarksUnavailable: 'Could not read whether any annotations are open.',
     },
@@ -1512,7 +1513,6 @@ export const files = {
   // to be done there (CONTEXT.md „Anmerkung“).
   annotations: {
     section: 'Annotations',
-    openCount: '{count} open',
     kind: 'Kind',
     kinds: {
       hint: 'Note',
@@ -1547,6 +1547,8 @@ export const files = {
     // What the chip itself says, short enough for a card; the tooltip carries the whole sentence.
     listedOpenShort: '{count} open',
     listedOpenShortForYou: '{count} open · {mine} for you',
+    // Piloti's proposals nobody took over: counted apart from “open”, as Offene Punkte and the minutes count them.
+    listedProposedShort: '{count, plural, one {# proposal} other {# proposals}}',
   },
   // Open points: the open annotations of every document of a project, for the site meeting.
   openPoints: {

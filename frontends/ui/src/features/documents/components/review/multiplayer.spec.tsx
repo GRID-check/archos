@@ -253,9 +253,10 @@ describe('the list counts', () => {
   ] as const
 
   it('counts what „For you" leaves, so a tab never promises more than the list shows', () => {
-    expect(tabCounts(marks, { on: false, me: 'user_me' })).toEqual({ open: 4, closed: 2 })
+    // Piloti's proposals are listed under Offen but counted apart from the office's own open marks.
+    expect(tabCounts(marks, { on: false, me: 'user_me' })).toEqual({ open: 2, proposed: 2, closed: 2 })
     // What the reader set is not theirs: only what they are Zuständige of, as Dateien counts „für Sie".
-    expect(tabCounts(marks, { on: true, me: 'user_me' })).toEqual({ open: 1, closed: 1 })
+    expect(tabCounts(marks, { on: true, me: 'user_me' })).toEqual({ open: 1, proposed: 0, closed: 1 })
   })
 })
 

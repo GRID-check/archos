@@ -59,14 +59,14 @@ beforeEach(() => {
 describe('toListedDocuments: the open Anmerkungen on each row', () => {
   it('counts the whole page in one call, for the reader the rows were read with', async () => {
     const reader = memberReader('user-anna')
-    vi.mocked(tallyLiveMarks).mockResolvedValueOnce(new Map([['doc-1', { live: 3, forYou: 1 }]]))
+    vi.mocked(tallyLiveMarks).mockResolvedValueOnce(new Map([['doc-1', { open: 2, proposed: 1, forYou: 1 }]]))
 
     const listed = await toListedDocuments(session, [row('doc-1'), row('doc-2')], reader)
 
     expect(tallyLiveMarks).toHaveBeenCalledTimes(1)
     expect(tallyLiveMarks).toHaveBeenCalledWith('org-1', ['doc-1', 'doc-2'], reader, 'user-anna')
     expect(listed.map((document) => [document.id, document.marks])).toEqual([
-      ['doc-1', { live: 3, forYou: 1 }],
+      ['doc-1', { open: 2, proposed: 1, forYou: 1 }],
       ['doc-2', null],
     ])
   })

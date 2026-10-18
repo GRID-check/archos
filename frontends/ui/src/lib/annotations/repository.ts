@@ -162,8 +162,10 @@ export async function listDocumentAnnotations(
 
 /**
  * The live Anmerkungen of each of these documents, counted in ONE grouped
- * query for a listing page: how many are open or proposed, and how many of
- * those are open with `readerUserId` as Zuständige. That second number is the
+ * query for a listing page: how many are open, how many are Piloti's proposals
+ * nobody decided on (told apart, because a proposal is not yet the office's
+ * work), and how many of the open ones have `readerUserId` as Zuständige. That
+ * third number is the
  * review's „Für Sie“ (`isForReader` over the live marks) in SQL: keep the two
  * equal, `repository.integration.spec.ts` asks both the same cases. Every
  * Fassung counts: a mark set on an earlier one is still work until somebody
@@ -185,7 +187,8 @@ export async function tallyLiveMarks(
     db
       .select({
         documentId: documentAnnotations.documentId,
-        live: sql<number | string>`count(*)`,
+        open: sql<number | string>`count(*) filter (where ${documentAnnotations.status} = 'open')`,
+        proposed: sql<number | string>`count(*) filter (where ${documentAnnotations.status} = 'proposed')`,
         forYou: sql<number | string>`count(*) filter (where ${documentAnnotations.status} = 'open' and ${documentAnnotations.assigneeUserId} = ${readerUserId})`,
       })
       .from(documentAnnotations)
@@ -203,7 +206,12 @@ export async function tallyLiveMarks(
       .limit(documentIds.length)
   )
   // `count(*)` is a bigint, which the driver hands over as a string.
-  return new Map(rows.map((row) => [row.documentId, { live: Number(row.live), forYou: Number(row.forYou) }]))
+  return new Map(
+    rows.map((row) => [
+      row.documentId,
+      { open: Number(row.open), proposed: Number(row.proposed), forYou: Number(row.forYou) },
+    ])
+  )
 }
 
 /** One Anmerkung of one document with its thread, or null. */

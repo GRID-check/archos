@@ -1316,7 +1316,8 @@ export const files: typeof en.files = {
       actingDateOnly: 'Handelnd: {date}',
       checkbox: 'Ich gebe diese Fassung frei',
       // Vor der Unterschrift, nie als Sperre: offene Punkte freizugeben ist erlaubt, sie zu übersehen nicht.
-      openMarks: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}} – trotzdem freigeben?',
+      // {marks}: „2 offene Anmerkungen und 12 Vorschläge von Piloti“, wie der Chip in Dateien.
+      openMarks: '{marks} – trotzdem freigeben?',
       openMarksLoading: 'Offene Anmerkungen werden noch gelesen …',
       openMarksUnavailable: 'Ob Anmerkungen offen sind, ließ sich gerade nicht lesen.',
     },
@@ -1471,7 +1472,6 @@ export const files: typeof en.files = {
   // Bereich, mit dem, was dort zu tun ist (CONTEXT.md „Anmerkung“).
   annotations: {
     section: 'Anmerkungen',
-    openCount: '{count} offen',
     kind: 'Art',
     kinds: {
       hint: 'Hinweis',
@@ -1506,6 +1506,8 @@ export const files: typeof en.files = {
     // Was der Chip selbst sagt, kurz genug für eine Karte; der Tooltip trägt den ganzen Satz.
     listedOpenShort: '{count} offen',
     listedOpenShortForYou: '{count} offen · {mine} für Sie',
+    // Pilotis Vorschläge, die niemand übernommen hat: getrennt von „offen“, wie in Offene Punkte und im Protokoll.
+    listedProposedShort: '{count, plural, one {# Vorschlag} other {# Vorschläge}}',
   },
   // Offene Punkte: die offenen Anmerkungen aller Dokumente eines Projekts, für den Jour fixe.
   openPoints: {

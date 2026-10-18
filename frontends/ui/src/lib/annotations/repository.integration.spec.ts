@@ -545,14 +545,15 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     const tally = (reader: Parameters<typeof repo.tallyLiveMarks>[2], organizationId = ORG) =>
       inOrg(organizationId, () => repo.tallyLiveMarks(organizationId, [clean, held, ids.second], reader, USER))
 
-    // Two open and one proposal are live; only the open one assigned to USER is theirs (the proposal naming them is not yet).
+    // Two open and one proposal are live, counted apart; only the open one assigned to USER is theirs (the proposal naming them is not yet).
     const member = await tally(memberReader(USER))
-    expect(member.get(clean)).toEqual({ live: 3, forYou: 1 })
+    expect(member.get(clean)).toEqual({ open: 2, proposed: 1, forYou: 1 })
     expect(member.has(held)).toBe(false)
-    expect(member.get(ids.second)?.live).toBeGreaterThan(0)
+    const second = member.get(ids.second)
+    expect((second?.open ?? 0) + (second?.proposed ?? 0)).toBeGreaterThan(0)
     // The uploader and the reviewers see the held upload's marks, as they see the upload.
-    expect((await tally(memberReader(UPLOADER))).get(held)).toEqual({ live: 1, forYou: 1 })
-    expect((await tally(REVIEWER_READER)).get(held)).toEqual({ live: 1, forYou: 1 })
+    expect((await tally(memberReader(UPLOADER))).get(held)).toEqual({ open: 1, proposed: 0, forYou: 1 })
+    expect((await tally(REVIEWER_READER)).get(held)).toEqual({ open: 1, proposed: 0, forYou: 1 })
     expect(await inOrg(OTHER_ORG, () => repo.tallyLiveMarks(OTHER_ORG, [clean, held], memberReader(USER), USER))).toEqual(
       new Map()
     )

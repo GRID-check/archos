@@ -55,6 +55,7 @@ import { ReviewExportMenu } from './review-export-menu'
 import type { ProtocolFilingTarget } from '../../lib/protocol-filing'
 import { useCheckFixed } from './check-fixed'
 import { ReviewToaster, reviewToast } from './review-toaster'
+import { hasLiveMarks, openMarksShortLabel } from '../open-marks-chip'
 import { covers, ReviewStageContext, STAGE_FOOT, STAGE_HEAD, type StageBounds } from './review-stage'
 import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
 
@@ -1092,9 +1093,8 @@ export function DocumentReviewMode({
                   : review.fassung?.replaces[0]
                     ? t('review.replaces', { name: review.fassung.replaces[0].filename })
                     : null,
-                review.counts.open + review.counts.proposed > 0
-                  ? t('annotations.openCount', { count: review.counts.open + review.counts.proposed })
-                  : t('review.nothingOpen'),
+                // „2 offen · 12 Vorschläge": Piloti's untaken proposals are not counted as open, as in Dateien.
+                hasLiveMarks(review.counts) ? openMarksShortLabel(t, review.counts) : t('review.nothingOpen'),
               ]
                 .filter(Boolean)
                 .join(' · ')}
