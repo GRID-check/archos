@@ -290,6 +290,18 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # coverage sticky comment
+    # A real Qdrant for every Python suite (ADR-0115): it is the only vector
+    # store, and the behaviour under test (German BM25, fusion, strict mode,
+    # group_by) is the server's, so a mock would only test the mock. Same
+    # version as production. Job-wide, so a suite that gains a store test
+    # cannot run it against nothing.
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
+    env:
+      AIQ_QDRANT_TEST_URL: http://localhost:6333
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -305,6 +317,9 @@ jobs:
         run: task be:test:api:ci
       - name: sources/ package suites
         run: task be:test:sources
+      - name: Chroma exporter and the one-time migration, end to end
+        run: task be:test:migration
+
       # The suites above run each claim queue on SQLite only: their Postgres
       # parameter skips without AIQ_TEST_POSTGRES_URL, and production runs the
       # Postgres SQL. ubuntu-latest ships the server binaries; the RLS script

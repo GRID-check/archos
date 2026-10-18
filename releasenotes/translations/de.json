@@ -936,6 +936,10 @@
     "de": "Fragen Sie Piloti, was sich zwischen zwei Fassungen eines Dokuments geändert hat, etwa zwischen zwei Planständen eines Grundrisses. Piloti antwortet Seite für Seite mit den geänderten Werten und dem Datum der jeweiligen Fassung."
   },
   {
+    "en": "Ask about a kind of project, such as \"our residential new builds\" or \"Gebäudeklasse 4 in Tirol\", and Piloti looks only at the office's projects whose brief records those facts, still listing the ones most like yours first. It says when projects were left out because their brief does not record a fact, so a gap does not read as \"we never did that\".",
+    "de": "Fragen Sie nach einer Projektart, etwa „unsere Wohnungsneubauten“ oder „Gebäudeklasse 4 in Tirol“: Piloti berücksichtigt nur Projekte Ihres Büros, in deren Projektbrief diese Angaben festgehalten sind, und zeigt weiterhin die ähnlichsten zuerst an. Piloti weist darauf hin, wenn Projekte ausgeschlossen wurden, weil im Projektbrief eine Angabe fehlt – damit eine Lücke nicht den Eindruck erweckt, Sie hätten so etwas noch nie gemacht."
+  },
+  {
     "en": "Ask about the building model in a project that has none, and Piloti now says so at once and answers the rest of your question.",
     "de": "Fragen Sie nach dem Gebäudemodell in einem Projekt ohne Modell, sagt Piloti das jetzt sofort und beantwortet den Rest Ihrer Frage."
   },
@@ -1050,6 +1054,10 @@
   {
     "en": "Choosing the sign-in button on the Piloti website leads to the sign-in page again.",
     "de": "Wer auf der Piloti-Website die Anmeldung startet, landet wieder auf der Anmeldeseite."
+  },
+  {
+    "en": "Click a passage to open its document at that spot; only documents you may open are listed.",
+    "de": "Klicken Sie auf eine Textstelle, um das zugehörige Dokument an dieser Stelle zu öffnen; aufgelistet werden nur Dokumente, die Sie öffnen dürfen."
   },
   {
     "en": "Clicking a file always opens it; clicking the file that was already open no longer closes it.",
@@ -2650,6 +2658,10 @@
   {
     "en": "The detail view shows where the file sat inside the folder you uploaded, and one click copies that path.",
     "de": "Die Detailansicht zeigt, wo die Datei im hochgeladenen Ordner lag, und ein Klick kopiert diesen Pfad."
+  },
+  {
+    "en": "The document viewer can now tell you whether your office has dealt with a passage before: \"Im Büro nachsehen\" on a cited or selected passage answers in one line, such as \"In 3 Projekten und der Büroablage gefunden\", and lists the passages project by project, each as a quotation with its document, Fassung and page.",
+    "de": "Der Dokumenten-Viewer kann Ihnen jetzt sagen, ob Ihr Büro eine Passage schon einmal bearbeitet hat: „Im Büro nachsehen“ bei einer zitierten oder ausgewählten Passage liefert eine einzeilige Antwort, etwa „In 3 Projekten und der Büroablage gefunden“, und listet die Passagen projektweise auf, jeweils als Zitat mit Dokument, Fassung und Seite."
   },
   {
     "en": "The dots in the effort slider no longer seem to slide along with the handle. They now stay in place and grow denser as you turn the effort up.",

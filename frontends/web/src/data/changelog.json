@@ -47,6 +47,14 @@
               "de": "Wenn Sie eine Datei hochladen, die in einen anderen Ordner gehört, schlägt Piloti diesen Ordner mit einem kleinen Chip auf der Datei vor. Über eine Leiste oberhalb des Ordners können Sie mehrere Dateien gemeinsam in einen Ordner verschieben. Es wird nichts verschoben, bevor Sie bestätigen. Der Vorschlag zeigt zuerst an, wohin die Dateien verschoben werden und warum."
             },
             {
+              "en": "The document viewer can now tell you whether your office has dealt with a passage before: \"Im Büro nachsehen\" on a cited or selected passage answers in one line, such as \"In 3 Projekten und der Büroablage gefunden\", and lists the passages project by project, each as a quotation with its document, Fassung and page.",
+              "de": "Der Dokumenten-Viewer kann Ihnen jetzt sagen, ob Ihr Büro eine Passage schon einmal bearbeitet hat: „Im Büro nachsehen“ bei einer zitierten oder ausgewählten Passage liefert eine einzeilige Antwort, etwa „In 3 Projekten und der Büroablage gefunden“, und listet die Passagen projektweise auf, jeweils als Zitat mit Dokument, Fassung und Seite."
+            },
+            {
+              "en": "Click a passage to open its document at that spot; only documents you may open are listed.",
+              "de": "Klicken Sie auf eine Textstelle, um das zugehörige Dokument an dieser Stelle zu öffnen; aufgelistet werden nur Dokumente, die Sie öffnen dürfen."
+            },
+            {
               "en": "Export a document's annotations from the review as minutes for a site meeting or the client, as PDF, Word or Markdown: each one by number, with its page, status, who is responsible, the due date and its thread. Choose open ones or all, and add Piloti's unreviewed proposals under their own heading if you want them.",
               "de": "Exportieren Sie die Anmerkungen eines Dokuments aus der Prüfung als Protokoll für eine Baustellenbesprechung oder den Auftraggeber – als PDF, Word oder Markdown: nummeriert, jeweils mit Seite, Status, Zuständigkeit, Fälligkeitsdatum und Thread. Wählen Sie offene Anmerkungen oder alle aus und fügen Sie bei Bedarf Piloti’s ungeprüfte Vorschläge unter einer eigenen Überschrift hinzu."
             },
@@ -173,6 +181,10 @@
             {
               "en": "The address field in the new project dialog suggests Austrian addresses as you type and fills in the Bundesland.",
               "de": "Das Adressfeld im Dialog für ein neues Projekt schlägt während der Eingabe österreichische Adressen vor und füllt das Bundesland automatisch aus."
+            },
+            {
+              "en": "Ask about a kind of project, such as \"our residential new builds\" or \"Gebäudeklasse 4 in Tirol\", and Piloti looks only at the office's projects whose brief records those facts, still listing the ones most like yours first. It says when projects were left out because their brief does not record a fact, so a gap does not read as \"we never did that\".",
+              "de": "Fragen Sie nach einer Projektart, etwa „unsere Wohnungsneubauten“ oder „Gebäudeklasse 4 in Tirol“: Piloti berücksichtigt nur Projekte Ihres Büros, in deren Projektbrief diese Angaben festgehalten sind, und zeigt weiterhin die ähnlichsten zuerst an. Piloti weist darauf hin, wenn Projekte ausgeschlossen wurden, weil im Projektbrief eine Angabe fehlt – damit eine Lücke nicht den Eindruck erweckt, Sie hätten so etwas noch nie gemacht."
             },
             {
               "en": "The Prüfansicht works without a mouse: choose the comment, area or Piloti tool with its key and a crosshair appears, which the arrow keys move and Enter sets. Marks can be placed and asked about from the keyboard alone.",
