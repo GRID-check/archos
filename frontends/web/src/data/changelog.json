@@ -549,6 +549,10 @@
               "de": "In einer schmalen Dateienliste, etwa neben dem Chat, werden Dateinamen nicht mehr vom Status überlagert und lange Namen nicht mehr mitten in einem Buchstaben abgeschnitten: Die Liste zeigt weniger Spalten an und hält das Ende jedes Namens lesbar."
             },
             {
+              "en": "Large plan sets with many drawings now upload and become searchable instead of failing partway through, and documents with a lot of pages are handled without the system running short of memory.",
+              "de": "Große Plansätze mit vielen Zeichnungen lassen sich jetzt hochladen und werden durchsuchbar, ohne dass der Upload mittendrin abbricht. Auch umfangreiche Dokumente werden verarbeitet, ohne dass dem System der Arbeitsspeicher ausgeht."
+            },
+            {
               "en": "In the „@“ list, the people whose name starts with what you typed now come first, and Enter mentions the first of them. Typing „@Le“ used to keep colleagues whose e-mail address contains „le“ at the top, and Enter then mentioned one of them instead of Lena.",
               "de": "In der „@“-Liste stehen jetzt zuerst die Personen, deren Name mit Ihrer Eingabe beginnt, und mit Enter erwähnen Sie die erste davon. Bei „@Le“ wurden bisher Kolleginnen und Kollegen, deren E-Mail-Adresse „le“ enthält, oben angezeigt, und mit Enter erwähnten Sie dann eine dieser Personen statt Lena."
             },

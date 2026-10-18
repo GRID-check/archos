@@ -1756,6 +1756,10 @@
     "de": "Große Ordner in den Dateien eines Projekts und im Archiv öffnen sich jetzt schneller und lassen sich flüssiger durchscrollen: Die ersten Dokumente werden sofort angezeigt, während die übrigen im Hintergrund laden, und Vorschauen werden geladen, sobald Sie zu ihnen scrollen."
   },
   {
+    "en": "Large plan sets with many drawings now upload and become searchable instead of failing partway through, and documents with a lot of pages are handled without the system running short of memory.",
+    "de": "Große Plansätze mit vielen Zeichnungen lassen sich jetzt hochladen und werden durchsuchbar, ohne dass der Upload mittendrin abbricht. Auch umfangreiche Dokumente werden verarbeitet, ohne dass dem System der Arbeitsspeicher ausgeht."
+  },
+  {
     "en": "Laws in the RIS reader are now shown in full. Before, the Bauordnung für Wien was cut short, so § 108 could not be read.",
     "de": "Gesetze im RIS-Leser werden jetzt vollständig angezeigt. Früher wurde die Bauordnung für Wien abgeschnitten, sodass § 108 nicht zu lesen war."
   },
