@@ -242,6 +242,23 @@ describe('moving and renaming an Archiv folder', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it('says a sibling of the same name is in the way, when a folder is dragged next to it or renamed to it', async () => {
+    const fake = fakeDb([
+      [folder('f-1', 'EN', 'Normen/EN', 'f-n')],
+      [folder('f-2', 'Bauordnung', 'Bauordnung')],
+    ])
+    fake.db.transaction = async () => {
+      throw Object.assign(new Error('duplicate key'), { code: '23505' })
+    }
+    vi.mocked(getDb).mockReturnValue(asDb(fake.db))
+
+    await expect(updateShelfFolder(session, ARCHIV_SHELF, { folderId: 'f-1', parentId: 'f-2' })).resolves.toEqual({
+      ok: false,
+      error: 'A folder with this name already exists here.',
+    })
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it('does not find a folder of another shelf or tenant', async () => {
     vi.mocked(getDb).mockReturnValue(asDb(fakeDb([[]]).db))
 

@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@/test-utils'
 import { ProjectFileDrop, routesDropToFiles } from './project-file-drop'
@@ -37,7 +38,7 @@ describe('routesDropToFiles', () => {
   })
 
   it('leaves the sections that answer a drop themselves', () => {
-    for (const section of ['chat', 'files', 'intake', 'research', 'setup']) {
+    for (const section of ['chat', 'files', 'intake', 'setup']) {
       expect(routesDropToFiles(`/app/projects/p1/${section}`, 'p1')).toBe(false)
     }
   })
@@ -93,6 +94,39 @@ describe('ProjectFileDrop', () => {
     fireEvent.dragEnter(screen.getByText('Einstellungen'), { dataTransfer: fileTransfer([plan]) })
 
     expect(screen.getByTestId('project-drop-overlay')).toBeInTheDocument()
+  })
+
+  it('says no to a reader who may only read at the root, and sends nothing to Dateien', async () => {
+    render(
+      <ProjectFileDrop projectId="p1" rootAccess="read">
+        <p>Einstellungen</p>
+      </ProjectFileDrop>
+    )
+
+    fireEvent.dragEnter(screen.getByText('Einstellungen'), { dataTransfer: fileTransfer([plan]) })
+    expect(screen.getByTestId('project-drop-overlay')).toHaveTextContent('Read only: you can’t drop files here.')
+    fireEvent.drop(screen.getByText('Einstellungen'), { dataTransfer: fileTransfer([plan]) })
+
+    await Promise.resolve()
+    expect(nav.push).not.toHaveBeenCalled()
+    expect(takeDroppedFiles('p1')).toEqual([])
+  })
+
+  it('leaves a dialog opened from the page alone: React bubbles its drop through the portal', async () => {
+    render(
+      <ProjectFileDrop projectId="p1">
+        <p>Einstellungen</p>
+        {createPortal(<p>Dialog</p>, document.body)}
+      </ProjectFileDrop>
+    )
+
+    fireEvent.dragEnter(screen.getByText('Dialog'), { dataTransfer: fileTransfer([plan]) })
+    expect(screen.queryByTestId('project-drop-overlay')).toBeNull()
+    fireEvent.drop(screen.getByText('Dialog'), { dataTransfer: fileTransfer([plan]) })
+
+    await Promise.resolve()
+    expect(nav.push).not.toHaveBeenCalled()
+    expect(takeDroppedFiles('p1')).toEqual([])
   })
 
   it('leaves the chat its own drop', async () => {

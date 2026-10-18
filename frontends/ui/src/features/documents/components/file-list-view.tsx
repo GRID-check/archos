@@ -381,7 +381,7 @@ const FileListRowItem = memo(function FileListRowItem({
     <TableRow
       data-file-row
       data-testid="file-list-row"
-      {...(draggable ? documentDragProps(file.id) : {})}
+      {...(draggable ? documentDragProps(file.id, file.folderId ?? null) : {})}
       data-state={isSelected || checked ? 'selected' : undefined}
       // Roving tabindex: one stop for the whole list, then arrows.
       tabIndex={isTabStop ? 0 : -1}

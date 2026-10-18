@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
 import type { FolderItem } from '../file-types'
@@ -15,10 +15,35 @@ export interface ShelfUploadOptions {
   shelf: Pick<FileShelf, 'probeNames' | 'probeFassungen' | 'handoverKey'> & { endpoints: Pick<ShelfEndpoints, 'folders'> }
   upload: Pick<ShelfUploadApi, 'uploadFiles'>
   folders: readonly FolderItem[]
+  /** The folders have loaded: what a drop handed over from another page waits for, to be planned against them. */
   foldersReady: boolean
+  /**
+   * The first read of the folders has answered, or failed. A drop made before
+   * waits that moment; a drop after a failed read goes ahead, planned without
+   * them (the server creates folders get-or-create and refuses a read-only one
+   * per file), rather than waiting for a tree that may never come.
+   * Defaults to `foldersReady`.
+   */
+  foldersSettled?: boolean
   selectedFolderId: string | null
   loadFolders: () => Promise<unknown>
   loadFiles: (quiet?: boolean) => Promise<unknown>
+  /** An upload is running (this shelf's or another's): a new drop waits for it rather than racing it. */
+  uploading?: boolean
+}
+
+/** Where an upload lands, and what a drop could not hand over. */
+export interface UploadTarget {
+  /** The folder the files land in; absent is the folder on screen, `null` the top level. */
+  folderId?: string | null
+  /** What the drop could not read (`useFileDragDrop`'s `DropInfo`), for the reader to be told. */
+  info?: { truncated: boolean; unreadable: number }
+}
+
+/** One drop waiting for the shelf to be ready for it. */
+interface QueuedDrop {
+  files: File[]
+  folderId: string | null
 }
 
 /*
@@ -53,9 +78,11 @@ export function useShelfUpload({
   upload,
   folders,
   foldersReady,
+  foldersSettled = foldersReady,
   selectedFolderId,
   loadFolders,
   loadFiles,
+  uploading = false,
 }: ShelfUploadOptions) {
   const t = useTranslations('files')
   const decision = useUploadDecision()
@@ -65,14 +92,24 @@ export function useShelfUpload({
   const ensureUrl = `${shelf.endpoints.folders}/ensure`
 
   /**
-   * The path of the folder the reader stands in, from the shelf root, or null
-   * at the root. The upload screening reads it (ADR-0086): a scan dropped into
-   * „Honorare" is screened as a fee document whatever its own name.
+   * A folder's path from the shelf root, or null at the root. The upload
+   * screening reads it (ADR-0086): a scan dropped into „Honorare" is screened
+   * as a fee document whatever its own name.
    */
-  const currentFolderPath = useMemo(
-    () => (selectedFolderId ? (folders.find((folder) => folder.id === selectedFolderId)?.path ?? null) : null),
-    [folders, selectedFolderId]
+  const pathOf = useCallback(
+    (folderId: string | null) => (folderId ? (folders.find((folder) => folder.id === folderId)?.path ?? null) : null),
+    [folders]
   )
+
+  /**
+   * The folder the upload in progress lands in, and its path: where the reader
+   * stood when they dropped, or the folder they dropped ON. Everything after
+   * the drop (the folders a tree creates, where it lands, the moves of a
+   * re-sync, the screening's path) reads this, never `selectedFolderId`: the
+   * reader may have walked elsewhere while the plan dialog was open, and a drop
+   * on the „Planung" tile was never meant for the folder on screen.
+   */
+  const base = useRef<{ folderId: string | null; path: string | null }>({ folderId: null, path: null })
 
   /**
    * A ZIP is unpacked first and then goes through exactly what a dropped folder
@@ -95,9 +132,16 @@ export function useShelfUpload({
     [t]
   )
 
-  const handleUpload = useCallback(
-    (incoming: File[]) => {
-      unpackArchives(incoming)
+  /**
+   * Plan one drop (or pick) and send it, against the folder it was meant for.
+   * Resolves when it has gone straight to the upload or the plan dialog has
+   * opened for it.
+   */
+  const proposeDrop = useCallback(
+    (drop: QueuedDrop): Promise<void> => {
+      const target = { folderId: drop.folderId, path: pathOf(drop.folderId) }
+      base.current = target
+      return unpackArchives(drop.files)
         .then((files) => {
           if (files.length === 0) return undefined
           return propose(
@@ -106,22 +150,73 @@ export function useShelfUpload({
               documents: probeNames,
               fassungOffers: probeFassungen,
               folders,
-              currentFolderId: selectedFolderId,
-              screeningBasePath: currentFolderPath,
+              currentFolderId: target.folderId,
+              screeningBasePath: target.path,
             },
-            (direct) => void uploadFiles(direct, { folderPathFor: () => currentFolderPath })
+            (direct) =>
+              void uploadFiles(direct, { folderIdFor: () => target.folderId, folderPathFor: () => target.path })
           )
         })
-        .catch((error: unknown) =>
+        .catch((error: unknown) => {
           toast.error(
             error instanceof UploadScreeningPolicyUnavailableError
               ? t('errors.screeningPolicyUnavailable')
               : t('folderUpload.compareError')
           )
-        )
+        })
     },
-    [unpackArchives, propose, probeNames, probeFassungen, uploadFiles, folders, selectedFolderId, currentFolderPath, t]
+    [unpackArchives, propose, probeNames, probeFassungen, uploadFiles, folders, pathOf, t]
   )
+
+  /*
+   * ONE DROP AT A TIME, AND NONE LOST.
+   *
+   * A drop used to be refused while anything was uploading (the zone simply
+   * went dead, and the files with it, without a word), and a second drop made
+   * while the first was still being compared with the shelf replaced the
+   * first, which then never went. A drop before the folders were loaded was
+   * planned against no folders at all: every folder of a dropped tree counted
+   * as new, and a read-only folder took files the server then refused.
+   *
+   * Now a drop that comes while the shelf is busy waits in this queue, the
+   * reader is told it will follow, and it goes when the shelf is free: no
+   * upload running, no plan being made or shown, the folders' first read answered.
+   */
+  const queue = useRef<QueuedDrop[]>([])
+  const [queued, setQueued] = useState(0)
+  const [proposing, setProposing] = useState(false)
+  const busy = proposing || decision.open || decision.pending || uploading || !foldersSettled
+
+  const handleUpload = useCallback(
+    (incoming: File[], target: UploadTarget = {}) => {
+      const { info } = target
+      if (info?.truncated) toast.warning(t('workspace.dropTruncated', { count: incoming.length }))
+      if (info && info.unreadable > 0) toast.warning(t('workspace.dropUnreadable', { count: info.unreadable }))
+      if (incoming.length === 0) return
+      const drop: QueuedDrop = { files: incoming, folderId: target.folderId === undefined ? selectedFolderId : target.folderId }
+      if (busy || queue.current.length > 0) {
+        queue.current.push(drop)
+        setQueued(queue.current.length)
+        // Only when there is something to wait FOR: a page still loading its
+        // folders is a moment, not an upload.
+        if (foldersSettled) toast.info(t('workspace.dropQueued'))
+        return
+      }
+      setProposing(true)
+      void proposeDrop(drop).finally(() => setProposing(false))
+    },
+    [busy, foldersSettled, selectedFolderId, proposeDrop, t]
+  )
+
+  // The next queued drop, the moment the shelf is free for it.
+  useEffect(() => {
+    if (busy || queued === 0) return
+    const next = queue.current.shift()
+    setQueued(queue.current.length)
+    if (!next) return
+    setProposing(true)
+    void proposeDrop(next).finally(() => setProposing(false))
+  }, [busy, queued, proposeDrop])
 
   /** A release asks the name probe about the file; when it cannot, the file stays held back and the reader is told. */
   const onReleaseChange = useCallback(
@@ -148,7 +243,7 @@ export function useShelfUpload({
         const res = await fetch(ensureUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parentId: selectedFolderId, paths }),
+          body: JSON.stringify({ parentId: base.current.folderId, paths }),
         })
         if (!res.ok) throw new Error(`Folders failed (${res.status})`)
         const data = (await res.json()) as { folderIdByPath?: Record<string, string> }
@@ -162,7 +257,7 @@ export function useShelfUpload({
         return null
       }
     },
-    [ensureUrl, selectedFolderId, setPending, t]
+    [ensureUrl, setPending, t]
   )
 
   /**
@@ -182,12 +277,12 @@ export function useShelfUpload({
             // Through the SAME map the uploads resolve through, and only now:
             // the folder may have been created a moment ago.
             body: JSON.stringify({
-              folderId: move.targetPath ? (byPath[move.targetPath] ?? selectedFolderId) : selectedFolderId,
+              folderId: move.targetPath ? (byPath[move.targetPath] ?? base.current.folderId) : base.current.folderId,
             }),
           })
         )
       ),
-    [selectedFolderId]
+    []
   )
 
   /**
@@ -238,11 +333,12 @@ export function useShelfUpload({
       try {
         // Per file rather than per batch — that is the point of reproducing the
         // tree. A file at the top of the drop belongs where the reader stands.
+        const { folderId: baseFolderId, path: basePath } = base.current
         const folderIdByFile = new Map<File, string | null>()
         for (const planned of selected) {
           folderIdByFile.set(
             planned.file,
-            planned.targetPath ? (byPath[planned.targetPath] ?? selectedFolderId) : selectedFolderId
+            planned.targetPath ? (byPath[planned.targetPath] ?? baseFolderId) : baseFolderId
           )
         }
         // What the server screens each file against: the folder it lands in
@@ -250,14 +346,15 @@ export function useShelfUpload({
         const plannedByFile = new Map(selected.map((planned) => [planned.file, planned]))
         setOpen(false)
         if (moves.length > 0) await applyMoves(moves, byPath)
+        let uploaded = 0
         if (selected.length > 0) {
-          await uploadFiles(
+          uploaded = await uploadFiles(
             selected.map((planned) => planned.file),
             {
               folderIdFor: (file) => folderIdByFile.get(file) ?? null,
               folderPathFor: (file) => {
                 const target = plannedByFile.get(file)?.targetPath ?? ''
-                return [currentFolderPath, target].filter(Boolean).join('/') || null
+                return [basePath, target].filter(Boolean).join('/') || null
               },
               screeningReleased: (file) => plannedByFile.get(file)?.screeningReleased === true,
               // The reader's tick on „Als neue Fassung von X ablegen" (ADR-0099): the older
@@ -279,7 +376,11 @@ export function useShelfUpload({
         // only refreshes the listing when it actually uploaded something.
         await loadFolders()
         await loadFiles(true)
-        const counts = { uploaded: String(selected.length), skipped: String(settled.plan.counts.unchanged) }
+        // What the server took, not what the plan selected: a file the
+        // validator, the screening or the server refused says so in the upload
+        // banner, and a toast counting it as uploaded contradicted it.
+        if (uploaded === 0 && moves.length === 0) return
+        const counts = { uploaded: String(uploaded), skipped: String(settled.plan.counts.unchanged) }
         // A move-only apply uploads nothing, and „0 Dateien hochgeladen" alone
         // would read as a failed gesture over work that was actually done.
         toast.success(
@@ -295,8 +396,6 @@ export function useShelfUpload({
     },
     [
       plan,
-      selectedFolderId,
-      currentFolderPath,
       uploadFiles,
       loadFolders,
       loadFiles,

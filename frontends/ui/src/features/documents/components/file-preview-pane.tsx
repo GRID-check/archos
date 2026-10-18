@@ -30,7 +30,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { firstFinding, parseQuarantine, type QuarantineFinding } from '@/lib/upload-screening/quarantine'
+import { firstFinding, quarantineVerdictOf, type QuarantineFinding } from '@/lib/upload-screening/quarantine'
 import { ApiRequestError } from '@/adapters/api/api-error'
 import {
   getQuarantineReviewAccess,
@@ -436,11 +436,14 @@ export function FilePreviewPane({
    * reviewers can open a held file, and both are meant to see why.
    */
   const isHeld = file.status === 'quarantined'
-  const heldErrorMessage = isHeld ? file.errorMessage : null
+  const heldVerdict = useMemo(
+    () => (isHeld ? quarantineVerdictOf({ quarantine: file.quarantine, errorMessage: file.errorMessage }) : null),
+    [isHeld, file.quarantine, file.errorMessage]
+  )
   const [shownFinding, setShownFinding] = useState<QuarantineFinding | null>(null)
   useEffect(() => {
-    setShownFinding(firstFinding(parseQuarantine(heldErrorMessage)))
-  }, [file.id, heldErrorMessage])
+    setShownFinding(firstFinding(heldVerdict))
+  }, [file.id, heldVerdict])
   const Icon = fileTypeIcon(file.contentType, file.filename)
   const fileFacts = useFileFacts(file)
   const responsibleNames = (file.assignees ?? [])
@@ -1934,7 +1937,7 @@ export function FilePreviewPane({
                   <div className="min-w-0 space-y-2">
                     <p className="text-warning text-sm font-medium">{t('preview.heldTitle')}</p>
                     <QuarantineFindings
-                      errorMessage={file.errorMessage}
+                      verdict={heldVerdict}
                       // A page to jump to only where the well is the PDF viewer.
                       onShowFinding={
                         shownType === 'application/pdf'

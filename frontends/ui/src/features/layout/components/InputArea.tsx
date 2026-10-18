@@ -35,7 +35,6 @@ import {
   Eye,
   FileText,
   Loader2,
-  Paperclip,
   RotateCw,
   ShieldAlert,
   Square,
@@ -64,6 +63,7 @@ import { OtherProjectsNotice } from '@/features/chat/components/OtherProjectsNot
 import { useRestrictingOtherProjects } from '@/features/chat/hooks/use-restricting-other-projects'
 import { useChatScreening } from '@/features/chat/hooks/use-chat-screening'
 import type { MaskedText } from '@/lib/upload-screening/content-screen'
+import { heldSentenceKey, quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { composerCapabilities } from '@/features/collaboration/lib/composer-capabilities'
 import { resolveAddressee, sendMessageOptions } from '@/features/collaboration/lib/composer-routing'
 import { EffortDial } from '@/features/chat/components/effort-dial'
@@ -73,6 +73,8 @@ import { computePresetSourceIds } from '../lib/source-presets'
 // import { SourceBasisPicker, SourceBasisTrigger } from './source-basis'
 import { FileSourcesTab } from './FileSourcesTab'
 import { UploadDestinationNote } from './UploadDestination'
+import { useChatDropTarget } from './chat-drop-zone'
+import { composerDropRefusal } from '../lib/composer-drop-refusal'
 import { useAppConfig } from '@/shared/context'
 import { useLocale, useTranslations } from '@/i18n'
 import {
@@ -84,7 +86,7 @@ import {
 } from '@/features/dictation'
 import { photoIntake, prepareSitePhotos } from '@/features/documents/lib/site-photo'
 import { ComposerAttach, type AttachSource } from './ComposerAttach'
-import { useFileUpload, useFileDragDrop } from '@/features/documents'
+import { useFileUpload } from '@/features/documents'
 import type { TrackedFile } from '@/features/documents'
 import { trackedFileToFileItem } from '@/features/documents/types'
 import { FilePreviewDialog } from '@/features/documents/components/file-preview-dialog'
@@ -335,14 +337,22 @@ const FileChip: FC<{
   const isStored = file.status === 'stored'
   const isSuccess = file.status === 'success'
   const thumbnail = usePhotoThumbnail(file.file)
-  const ingestFailure = useIngestFailureText(
-    (isFailed && failedWhileReading(file)) || isHeld ? file.errorMessage : null
-  )
+  // A file refused because the document it replaces is held carries a
+  // sentence, not a verdict (ADR-0086): it is said as it is.
+  // A file the content check held says why from its verdict, with the same
+  // sentence the findings use (`heldSentenceKey`), never from its message.
+  const tFiles = useTranslations('files')
+  const heldSentence = isHeld
+    ? file.replacesHeld
+      ? file.errorMessage
+      : tFiles(heldSentenceKey(quarantineVerdictOf(file)))
+    : null
+  const ingestFailure = useIngestFailureText(isFailed && failedWhileReading(file) ? file.errorMessage : null)
   // Uploading and reading are both pending, but only one of them is an upload.
   const statusTitle = isPending
     ? t(file.status === 'ingesting' ? 'fileSourceCard.statusIngesting' : 'inputArea.fileUploadingStatus')
     : isHeld
-      ? (ingestFailure?.sentence ?? t('fileSourceCard.statusHeld'))
+      ? (heldSentence || t('fileSourceCard.statusHeld'))
       : isStored
         ? t('fileSourceCard.statusStored')
         : isFailed
@@ -1750,10 +1760,23 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     ]
   )
 
-  const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
-    onDrop: handleFilesSelected,
-    disabled: cannotContribute || isUploading || isBusy,
+  // A drop attaches the way the picker does; what it could not hand over
+  // (`DropInfo`) is the shelves' concern, not an attachment's. The zone is the
+  // whole chat panel (`ChatDropZone`), and while attaching is closed it says
+  // why rather than letting the drop vanish.
+  const attachDropped = useCallback((files: File[]) => void handleFilesSelected(files), [handleFilesSelected])
+  const dropRefusal = composerDropRefusal({
+    canContribute: !cannotContribute,
+    isStreaming,
+    awaitsAnswer: isResponseMode,
+    isUploading,
+    knowledgeLayerAvailable,
   })
+  useChatDropTarget(
+    isAuthenticated
+      ? { attach: attachDropped, refusal: dropRefusal ? t(`inputArea.${dropRefusal}`) : null }
+      : null
+  )
 
   // Paste-to-attach: route any files on the clipboard (e.g. a pasted image or
   // a copied document) through the same upload path. Text pastes are left to
@@ -1945,54 +1968,9 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
               // every mousedown, which reads as the surface flinching away from the
               // click rather than as a control acknowledging a press.
               'bg-card/90 backdrop-blur-md supports-[backdrop-filter]:bg-card/85 focus-within:ring-ring/40 duration-quick relative flex flex-col rounded-xl border border-input px-3 py-2.5 sm:px-4 shadow-md transition-[box-shadow,border-color] ease-out focus-within:ring-2',
-              isDisabledByAuth && 'opacity-60',
-              isDragging && isUnsupportedDrag
-                ? 'border-error border-2 border-dashed'
-                : isDragging
-                  ? 'border-brand border-2 border-dashed'
-                  : ''
+              isDisabledByAuth && 'opacity-60'
             )}
-            {...dragHandlers}
           >
-            {/* Drag overlay */}
-            {isDragging && (
-              // 90%, not an opaque fill: a drop scrim has to dim what is underneath
-              // without erasing it, so the reader can still see what they are
-              // dropping onto ("a scrim built from --background at near-full
-              // opacity" is the failure the tokens file documents).
-              <div className="bg-background/90 absolute inset-0 z-10 flex items-center justify-center rounded-xl">
-                <div className="flex flex-col items-center gap-2">
-                  {isUnsupportedDrag ? (
-                    <XCircle className="text-error size-8" aria-hidden="true" />
-                  ) : (
-                    <Paperclip className="text-brand size-8" aria-hidden="true" />
-                  )}
-                  <span
-                    className={cn(
-                      'text-sm font-semibold',
-                      isUnsupportedDrag ? 'text-error' : 'text-brand'
-                    )}
-                  >
-                    {isUnsupportedDrag
-                      ? t('inputArea.unsupportedFileType')
-                      : t('inputArea.dropToUpload')}
-                  </span>
-                  {isUnsupportedDrag ? (
-                    <span className="text-muted-foreground text-xs">
-                      {t('inputArea.accepts', { types: fileUploadConfig.acceptedTypes })}
-                    </span>
-                  ) : (
-                    /* WHERE the drop lands, in the sources panel's own words. The
-                   overlay used to state the accepted types and nothing else, so
-                   the one moment the user is deciding to hand over a file was
-                   also the one moment the app said nothing about which shelf it
-                   would go on — while the panel, one click away, both asked and
-                   answered that question. */
-                    <UploadDestinationNote target="session" />
-                  )}
-                </div>
-              </div>
-            )}
             <ComposerSubjectBar
               subject={composerSubject}
               projectId={projectId}

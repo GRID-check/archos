@@ -1,4 +1,4 @@
--- 0148: read a document's wakes by the document, not by the organization.
+-- 0149: read a document's wakes by the document, not by the organization.
 --
 -- `listLatestWakes` (the newest wake of each mark on one document, read for
 -- every list of a document's Anmerkungen and after every write to one) and

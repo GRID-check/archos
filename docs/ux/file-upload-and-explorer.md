@@ -74,8 +74,9 @@ retry would meet the same 409 until somebody deletes or releases that file, so
 held row from being retried.
 
 Every path that settles a row agrees on these. The ingest job poll reads a
-`failed` file whose error starts `quarantined:` as held
-(`trackedStatusOfJobFile` in `features/documents/utils.ts`); a status read maps
+`failed` file that carries a `quarantine` verdict (or, from a job before the
+field, an error starting `quarantined:`) as held (`trackedStatusOfJobFile` in
+`features/documents/utils.ts`, through `reportsQuarantine`); a status read maps
 by the status's read family (`trackedPatchFromStatus`), so a `quarantined`
 document is held and an `uploaded` one stored; the upload response's
 `uploaded` is stored unless the answer is *unchanged*. The chat says the same:
@@ -809,6 +810,36 @@ Three decisions worth keeping:
   (`withZipAccepted`, `acceptZip`), not through the accept-list the server
   enforces and not in the chat, where an archive is not a document. `.ifczip`
   stays a model: the pattern needs the dot.
+
+### Drag and drop, start to end
+
+**Date:** 2026-10-17 · **Surfaces:** project Files workspace, org Büroablage, chat composer
+
+Two drags share one surface: desktop files (`Files` in `dataTransfer.types`)
+and a document or folder moved inside the page (our MIME types,
+`use-document-drag.ts`). `isExternalFileDrag` tells them apart, and every
+handler asks it first. What holds at each stage:
+
+| Stage | Rule | Where |
+|---|---|---|
+| Start | A document or folder lifts only where the reader may write (ADR-0088): moving it out of a read-only level is a write the server refuses. Not while a search is in force: the folders and the path are hidden then, so a card that lifted had nowhere to go. The drag records what it carries and where from (`internalDragSource`) | `file-browser-pane.tsx` (`liftable`), `documentDragProps`, `folderDragProps` |
+| While in the air | The live shelf holds its re-reads (`isInternalDragActive`, a file drag over the workspace): a re-read re-renders the card under the pointer and the browser cancels the drag | `file-workspace.tsx` (`holdWhile`) |
+| Over a target | A folder tile, row, „Alle Dateien“, the back control and every ancestor crumb take desktop files as well as moves; the overlay names the folder the files will land in (`FileDropAim`) | `useFolderDropTarget`, `CrumbDropTarget` |
+| Held over a folder | After `SPRING_OPEN_MS` the folder opens, as in Finder, so a document, a folder or a desktop file can be carried down into a folder that is not on screen, or up through a crumb. Not for a folder over its own subtree | `useFolderDropTarget` (`onSpringOpen`) |
+| Over the level's background | The level on screen takes a document or folder that is not already in it (`onlyFromElsewhere`): where a held drag opened a folder, the release lands there. On its own level a release between two tiles is still no move | `file-workspace.tsx` (`levelDrop`) |
+| Refused | A zone that is there but cannot take files says why (`refusal`): the overlay turns red with the reason, the cursor says „no drop", the drop is not delivered. A read-only folder or crumb refuses a moved document or folder the same way, with a red ring, instead of letting the drop fall through. A zone that is off (`disabled`) touches no event, so the drop falls through | `useFileDragDrop`, `FileDropOverlay`, `useFolderDropTarget` (`refusal`) |
+| Nobody took it | The window guard gives a file drag „no drop" and stops the browser opening the file; it leaves every in-page drag alone, so text still drops into a field | `useWindowDragGuard` |
+| Drop | The files are read synchronously from the event (`readDrop`): folders through the entries API, loose items an entry cannot describe (an Outlook attachment), and a root file the entries API cannot open from the plain list. NAS and VCS metadata directories (`@eaDir`, `.git`, `#recycle`, …) are skipped; what could not be read, and a bound reached, are said | `lib/dropped-entries.ts` |
+| After the drop | The drop goes to the folder it was aimed at, read once into `base` so walking elsewhere while the plan dialog is open changes nothing. A drop while another is being planned, shown or uploaded, or before the folders are loaded, is queued and goes next; the reader is told | `useShelfUpload` |
+| A ZIP inside a dropped folder | Unpacks under that folder, beside the files it came with | `lib/expand-zip.ts` (`folderOf`) |
+| The report | The success toast counts what the server took (`uploadFiles` resolves with it), not what the plan selected | `useShelfUpload.applyFolderPlan` |
+| A move is answered | Optimistic, and the toast offers it back („Rückgängig", the same move the other way, with no undo of its own). A refusal is said by its reason, read from the answer's status and `details` and never its English (`lib/move-refusal.ts`): only readable (403), a namesake where a folder would land (`folder-name-taken`, which a rename and a create now say too, instead of a 500), an IFC model bound for a restricted folder, a folder deleted meanwhile. Live re-reads wait while a folder move is on the wire, as they do for documents | `useDocumentMoves`, `useFolderTree`, `lib/documents/folder-route-handlers.ts` |
+| End, however it ends | A drop elsewhere, Escape, a release outside the window: `useDragEnd` hears it on the window in the capture phase, which no zone can stop, and clears every overlay and highlight | `hooks/use-drag-end.ts` |
+
+**Preview:** `/dev/projects/demo/files/drag` is the real workspace over an
+in-memory project with a read-only folder and two folders named „Statik";
+every move and upload it is asked for lands in `window.__dndLog`, and its
+server refuses as the real one does (403, the taken name).
 
 ### A big shelf: what loads when
 

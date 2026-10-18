@@ -445,4 +445,3 @@ describe('countInboxFilters', () => {
     expect(sql).toContain('"archived_at" is null')
   })
 })
-

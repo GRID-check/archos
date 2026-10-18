@@ -20,6 +20,7 @@ import { loadFassungFacts } from './fassung-facts'
 import type { DocumentLevelPage, DocumentListPage, DocumentListRow } from './repository'
 import { keepReadable, type ListingReader, type ShelfReader } from './document-reader'
 import { canRetryRow } from './retry-policy'
+import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 
 /**
  * One row of a document listing.
@@ -42,6 +43,7 @@ export type ListedDocument = Omit<
   | 'ingestFailureCategory'
   | 'ingestRetryable'
   | 'ingestReaderVersion'
+  | 'quarantine'
 > &
   DocumentMetadata & {
     assignees: AssignedPerson[]
@@ -72,6 +74,11 @@ export type ListedDocument = Omit<
      * documents that carry open work.
      */
     marks?: MarkTally | null
+    /**
+     * Why the content check held it (ADR-0113), read for this build from the
+     * stored verdict (`quarantineVerdictOf`); null on every row it did not hold.
+     */
+    quarantine: QuarantineVerdict | null
   }
 
 /** The purge's mark on a filed report, when it carries a real date. */
@@ -121,9 +128,11 @@ export async function toListedDocuments(
       ingestFailureCategory,
       ingestRetryable,
       ingestReaderVersion,
+      quarantine,
       ...row
     }) => ({
       ...row,
+      quarantine: quarantineVerdictOf({ quarantine, errorMessage: row.errorMessage }),
       // Decided here, from the reconciled row, while `metadata` still says
       // which bytes the last dispatch sent; only the answer leaves.
       retryable: canRetryRow({
