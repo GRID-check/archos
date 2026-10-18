@@ -24,12 +24,16 @@ export function keepTrigger(current: HTMLElement | null): HTMLElement | null {
     : current
 }
 
-/** Give the focus back to `trigger` when it was lost with what closed: on nothing, or on the review itself. */
+/** Whether the focus was lost with what held it: it is on nothing, or on the review itself. */
+export function focusLost(): boolean {
+  const active = document.activeElement
+  return !active || active === document.body || (active instanceof HTMLElement && active.dataset.testid === 'document-review')
+}
+
+/** Give the focus back to `trigger` when it was lost with what closed ({@link focusLost}). */
 export function restoreFocus(trigger: Element | null): void {
   if (!(trigger instanceof HTMLElement) || !trigger.isConnected) return
-  const active = document.activeElement
-  const lost = !active || active === document.body || (active instanceof HTMLElement && active.dataset.testid === 'document-review')
-  if (lost) trigger.focus({ preventScroll: true })
+  if (focusLost()) trigger.focus({ preventScroll: true })
 }
 
 /**

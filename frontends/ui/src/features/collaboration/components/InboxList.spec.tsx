@@ -448,6 +448,59 @@ describe('InboxList — keyboard triage', () => {
   })
 })
 
+describe('InboxList — the focus when a refresh drops its row', () => {
+  const SECOND: InboxItemView = { ...ITEM, id: 'i2', actorName: 'Markus Hofer', actorUserId: 'u-markus' }
+  const THIRD: InboxItemView = { ...ITEM, id: 'i3', actorName: 'Lena Berger', actorUserId: 'u-lena' }
+  const rowOf = (id: string) => document.querySelector<HTMLElement>(`[data-item-id="${id}"]`)
+  /** The row's own control holds the focus, as the outcome line does after „Erledigen“. */
+  const focusIn = (id: string) => {
+    const control = rowOf(id)?.querySelector<HTMLElement>('a, button') ?? rowOf(id)
+    act(() => control?.focus())
+    expect(rowOf(id)).toContainElement(document.activeElement as HTMLElement)
+  }
+
+  test('goes to the row now at its place, when the re-read under „For me“ no longer lists it', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND, THIRD], pending: 3 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    // The mark was resolved: the next read of open requests leaves its row out.
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, THIRD], pending: 2 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i3')))
+    expect(rowOf('i3')).toHaveAttribute('data-focused', 'true')
+  })
+
+  test('goes to the row before it when it was the last', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND], pending: 2 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i1')))
+  })
+
+  test('goes to the list when no row is left', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i1')
+    useInboxListMock.mockReturnValue(result({ items: [], pending: 0 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(screen.getByTestId('inbox-list')).toHaveFocus())
+  })
+
+  test('leaves the focus where the reader put it since', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND], pending: 2 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    const filter = screen.getByRole('radio', { name: /All/ })
+    act(() => filter.focus())
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    rerender(<InboxList />)
+    await act(async () => {})
+    expect(filter).toHaveFocus()
+  })
+})
+
 describe('InboxList — the archive', () => {
   beforeEach(() => {
     toastMock.mockClear()

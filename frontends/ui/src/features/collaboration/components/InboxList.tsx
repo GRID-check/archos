@@ -38,7 +38,7 @@
  * follows (`useSearchParams` reads it) without asking the server again.
  */
 
-import type { JSX } from 'react'
+import type { FocusEvent, JSX } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { AlertCircle, Archive, Bell, CheckCheck, CheckCircle2, MailOpen } from 'lucide-react'
@@ -59,6 +59,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AnimatePresence } from '@/components/motion'
 import { cn } from '@/lib/utils'
 import { NotificationPrompt } from '@/features/notifications/components/notification-prompt'
+import { focusLost, restoreFocus } from '@/features/documents/components/review/focus-return'
 import { InboxItemRow } from './InboxItemRow'
 
 type InboxFilter = 'needsMe' | 'unread' | 'all' | 'archived'
@@ -210,6 +211,38 @@ export function InboxList({
     row?.scrollIntoView?.({ block: 'nearest' })
   }, [])
 
+  // ---- The focus stays on the list when its row leaves ----
+  // A row can leave with the focus in it without a key pressed here: a refresh
+  // drops it (under „Für mich“ a mark resolved from its row is no open request,
+  // and the re-read after the undo window takes the row with its outcome line).
+  // The focus would fall to the page. It goes to the row now at that place, or
+  // to the list when none is left. A row on its way out (its exit animation)
+  // still holds the focus, so that counts as lost too.
+  const listRef = useRef<HTMLDivElement>(null)
+  const heldRowId = useRef<string | null>(null)
+  const shownIds = useRef<string[]>([])
+  useEffect(() => {
+    const previous = shownIds.current
+    shownIds.current = visibleItems.map((item) => item.id)
+    const held = heldRowId.current
+    if (!held || shownIds.current.includes(held)) return
+    heldRowId.current = null
+    const active = document.activeElement
+    const inLeavingRow = active instanceof Element && active.closest('[data-item-id]')?.getAttribute('data-item-id') === held
+    if (!inLeavingRow && !focusLost()) return
+    const next = visibleItems[Math.min(Math.max(previous.indexOf(held), 0), visibleItems.length - 1)]
+    if (next) focusRow(next.id)
+    else restoreFocus(listRef.current)
+  }, [visibleItems, focusRow])
+  /** Which row the focus is in, so its leaving can hand the focus on. */
+  const trackFocus = (event: FocusEvent<HTMLDivElement>): void => {
+    heldRowId.current = event.target.closest('[data-item-id]')?.getAttribute('data-item-id') ?? null
+  }
+  const dropFocus = (event: FocusEvent<HTMLDivElement>): void => {
+    // Only when the reader takes it elsewhere: a row unmounting blurs to nothing.
+    if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) heldRowId.current = null
+  }
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const root = rootRef.current
@@ -264,7 +297,7 @@ export function InboxList({
   const emptyKey = filter
 
   return (
-    <div ref={rootRef} className={cn('space-y-4', className)}>
+    <div ref={rootRef} className={cn('space-y-4', className)} onFocus={trackFocus} onBlur={dropFocus}>
       {/* ---- Filter + bulk action ---- */}
       {/* `min-h-8` holds the toolbar's line even if the filter wraps, so a
           count arriving cannot lift the list. */}
@@ -342,7 +375,8 @@ export function InboxList({
           container: announcing the container meant a screen reader read the whole
           inbox — every row, title, body, excerpt and timestamp — on the first
           skeleton→rows swap, on every filter change and after every archive. */}
-      <div data-testid="inbox-list">
+      {/* Focusable from code only: where the focus goes when the last row leaves with it. */}
+      <div ref={listRef} data-testid="inbox-list" tabIndex={-1} className="outline-none">
         {error ? (
           <Alert variant="destructive">
             <AlertCircle />
