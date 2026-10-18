@@ -57,6 +57,13 @@ another document keeps, and an index over the rows the daily Frist reminder rang
 | `document_annotations.carried_from_id` | the mark of the replaced document this one was carried on from; `ON DELETE SET NULL` | never the mark itself (`…_carried_from_other`); unique where set (`uniq_document_annotations_carried_from`): one source is carried once, whatever raced |
 | `idx_document_annotations_due` | open marks with a Zuständige and a date, by the date (partial) | |
 
+Migration `0152_annotation_reply_edits.sql` adds when a reply was reworded
+(below, „A reply its author takes back or rewords“):
+
+| Where | Holds | CHECK |
+|---|---|---|
+| `document_annotation_replies.edited_at` | when its author last changed its text, by the database's clock (`now()` in the edit's UPDATE); null for one never changed | never before `created_at` (`…_edited_after_created`) |
+
 Migration `0142_piloti_changes.sql` adds the change record: every change Piloti
 applied to a mark or a thread, with the turn that made it. The chat card reads
 it, and undo runs from it (below, „In the chat“). Each change is also one
@@ -113,6 +120,7 @@ Routes:
 | `/api/documents/[id]/annotations` | GET, POST |
 | `/[annotationId]` | GET (one mark as the caller sees it: what a room hint names), PATCH, DELETE |
 | `/[annotationId]/replies` | POST |
+| `/[annotationId]/replies/[replyId]` | PATCH (its author rewords it: `{body, mentions?}`, answers `{annotation}`), DELETE (its author takes it back, 204) |
 | `/api/documents/[id]/thread` | POST: the caller's own thread about the document (below) |
 | `/api/projects/[id]/annotations` | GET: a project's Offene Punkte, the live marks of all its documents (below, „Offene Punkte“) |
 | `/api/projects/[id]/annotations/export` | GET: their Protokoll |
@@ -159,6 +167,7 @@ role name:
 | whoever may open the document (`project:view` and read in its folder; on the Büroablage every member) | read the marks and their threads, export the Protokoll, be @mentioned and be told |
 | whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:archiv:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti, carry an open mark to the current Fassung (to a replacing document only with the right to write that one too); **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
 | the author (`createdBy`, a person's own mark) | reword it („Bearbeiten“ in the card's menu; the server lets any writer change a `body`, the card offers it to the author) and delete it (`mayDeleteMark`), while nothing but its author and Piloti stands on it (below) |
+| the author of a reply (a person's own, `created_by`), who may still write the document | reword it and delete it, while the mark is live and Piloti has not taken the reply up (below); never a colleague's reply, never Piloti's (a note Piloti posted for them goes by the chat card's undo) |
 
 **What a delete would take with it.** Deleting a mark takes its thread along,
 turns every inbox row anchored on it inert, leaves a hole in the numbering a
@@ -310,6 +319,61 @@ hover card („In der Prüfansicht öffnen", `inline-mark-peek.tsx`, a hovering
 pointer only: a tap on a pin opens the review as before). The pane header shows
 who is in the document with the review's own `Presence`, without following.
 
+### A reply its author takes back or rewords
+
+A reply in a thread can be wrong: a typo, a wrong name after „@“, an answer
+on the wrong mark. Its author has „Bearbeiten“ and „Löschen“ in the reply's
+own menu (`ReplyEntry` in `thread-card.tsx`): the composer takes the reply's
+place with its words and whom it mentions, as a mark is reworded, and a delete
+is confirmed, as a mark's is (`ConfirmDialog`). An edited reply says
+„bearbeitet“ beside its time (`editedAt`). Both go through
+`PATCH`/`DELETE …/replies/{replyId}` (`editReply` and `deleteOwnReply` in
+`lib/annotations/service.ts`, the typed client's `editReply` and
+`deleteReply`), and tell the room, which re-reads.
+
+The server refuses, and the menu is not offered:
+
+- anyone's reply but one's own person reply (403): a colleague's words stay
+  theirs, and a note Piloti posted for the person goes by the chat card's undo
+  (`deleteReply`, a compare-and-swap on what Piloti wrote);
+- a reply on a closed mark (422, `details.reason` `mark-closed`): a resolved or
+  dismissed mark's thread is the record;
+- a reply Piloti has taken up (409, `piloti-took-it-up`): it was for Piloti
+  (its @Piloti, or an answer on Piloti's own Rückfrage) and Piloti wrote in the
+  thread after it, or its wake (`wakeTurnId(replyId)`, enqueued in the reply's
+  own transaction) is queued, running, answered or stopped. A wake a cap held,
+  or one refused or failed before it answered, took nothing up. With wakes off
+  the browser asked Piloti itself, and only Piloti's answer in the thread says
+  so: a delete in the moment between the ask and the answer goes through, and
+  Piloti answers a reply that is gone. The card reads the same facts
+  (`pilotiRepliedSince`, `pilotiWork` for the reply's author) to keep from
+  offering what the server would refuse, and the refusal says so in the card,
+  not as a colleague's move.
+
+The write is a compare-and-swap on the words the service read
+(`updateAnnotationReply`, `deleteAnnotationReply` with the body), so an edit
+or a delete that raced another is a 409.
+
+**An edit never wakes Piloti.** The wake was the posting's event, decided once
+(`replyTrigger`), and whether the reply addressed Piloti (`addresses_agent`)
+stays what it was. So an @Piloti is kept only when the reply already had one;
+one added in an edit is not stored and stays plain text. The edit's composer
+offers no @Piloti, and where Piloti could be asked it says that an edited reply
+does not reach Piloti and to ask in a new reply.
+
+**What an edit tells, and a delete takes back.** An edit keeps whom it mentions
+as a new text does (`keepMentions`): the people it adds are told
+(`annotation.mentioned`, quoting the new words), and the people it drops whom
+nothing else on the mark names have their row turn inert
+(`onMentionsWithdrawn`). The thread hears nothing new: an edit is not a reply.
+Rows already written keep the words they quoted. A delete takes back what the
+reply told: every `annotation.activity` and `annotation.mentioned` row that
+still quotes it goes inert, found by the `replyId` a reply's rows carry
+(`onReplyDeleted`; a later reply or move writing over the row names its own,
+or none, so that row stays), and so does the mention of whoever nothing left
+on the mark names. A folded „3 neue Antworten“ row whose newest reply is the
+deleted one goes with it. A `piloti.asks_you` the reply settled stays settled.
+
 ### A mark goes on with a new Fassung
 
 A mark is set on one Fassung, because a position is true of the sheet somebody
@@ -454,7 +518,8 @@ names. A list of people that failed to load says so in the picker, never as
 text is dropped as the text changes, and when two picks share a name the
 newest wins (`reconcileMentions`), so a namesake taken back is never told. A
 reply that
-mentions Piloti addresses it, as `addressesPiloti` does. Mentions spend the
+mentions Piloti addresses it, as `addressesPiloti` does; an edit of a reply
+keeps an @Piloti only where it stood, and wakes nobody (above). Mentions spend the
 chat's one budget (`enforceMentionBounds`, `MENTION_LIMIT`), @Piloti counted
 like a person as in the chat, before anything is written. A write that closes
 the mark tells nobody it mentions.
@@ -657,6 +722,7 @@ events wake it, and only these, by a rule people can read (ADR-0036):
 | A person's reply in a mark's thread | the mark is Piloti's own `question`, still proposed or open | `thread_reply` |
 | A person makes Piloti the delegate on an open mark | always | `assigned` |
 | A person takes over or dismisses Piloti's mark | never | |
+| A person rewords or deletes their reply | never: the wake was the posting's (above, „A reply its author takes back or rewords“) | |
 
 `lib/annotations/wake.ts` decides; the service enqueues the wake **in the
 write's own transaction** (`insertAnnotationReply` / `updateDocumentAnnotation`
@@ -951,7 +1017,8 @@ answer in the thread: mentioning yourself tells nobody, and a colleague asked
 in the same breath has not answered. A mention taken back (a `body` that no
 longer names the person, or its reply deleted), with nothing else on the mark
 naming them, turns their `annotation.mentioned` inert, its quote wiped
-(`onMentionsWithdrawn`). A Zuständige
+(`onMentionsWithdrawn`). A deleted reply turns every row still quoting it
+inert, for everyone (`onReplyDeleted`, above). A Zuständige
 who is replaced, or removed, has their `annotation.assigned_to_you` resolved.
 Deleting a mark turns every row anchored on it inert, for everyone: none keeps a
 link to it or a quote from it.

@@ -8,8 +8,10 @@
  * read-only folder and a held upload refuse exactly as they refuse a rename).
  * Deleting one is for the person who set it: a mark somebody else is working
  * from does not vanish under them, it is resolved. A mark Piloti set for its
- * asker counts as theirs ({@link mayDeleteMark}), and a reply is deleted by
- * the person it was posted for ({@link deleteReply}).
+ * asker counts as theirs ({@link mayDeleteMark}). A person's own reply is
+ * reworded or deleted by them while the mark is live and Piloti has not taken
+ * it up ({@link editReply}, {@link deleteOwnReply}); a reply Piloti posted for
+ * a person is deleted by that person's undo ({@link deleteReply}).
  *
  * Piloti works through the same functions with the asker's pinned session
  * (`/api/internal/document-annotations`), so it may do exactly what the asker
@@ -83,6 +85,7 @@ import {
   insertDocumentAnnotations,
   listDocumentAnnotations,
   ReplyLimitReachedError,
+  updateAnnotationReply,
   updateDocumentAnnotation,
   type AnnotationChanges,
   type AnnotationRecord,
@@ -101,6 +104,7 @@ import {
   onMarkReplied,
   onMarkSettledByPerson,
   onMarksSet,
+  onReplyDeleted,
   type MarkRef,
   type MarksSetBy,
   type SetMark,
@@ -111,7 +115,8 @@ import { keepMentions, mentionsPiloti, newlyMentioned, noLongerMentioned } from 
 import { enforceMentionBounds } from '@/lib/mentions/service'
 import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
-import { delegationEventId } from './wake-ids'
+import { delegationEventId, wakeTurnId } from './wake-ids'
+import { findWake } from './wake-repository'
 import { latestWakesFor, pilotiWorkOf } from './piloti-work'
 import { wakeOfReply, wakeSpansFor, type WakeSpan } from './wake-attribution'
 import {
@@ -131,7 +136,13 @@ import {
   MAX_ANNOTATIONS_PER_DOCUMENT,
   MAX_PROPOSALS_PER_CALL,
   MAX_REPLIES_PER_ANNOTATION,
+  pilotiRepliedSince,
+  REPLY_MARK_CLOSED_REASON,
+  REPLY_TAKEN_UP_REASON,
+  replyIsForPiloti,
+  isLive,
   updateAnnotationRequestSchema,
+  updateReplyRequestSchema,
   type AnnotationAuthor,
   type AnnotationDeleteRefusal,
   type AnnotationListResponse,
@@ -147,6 +158,7 @@ import {
   type MarkMention,
   type PilotiWakeTrigger,
   type UpdateAnnotationRequest,
+  type UpdateReplyRequest,
   type WakeOutcome,
 } from './types'
 
@@ -220,6 +232,7 @@ function toReplyView(
     addressesPiloti: reply.addressesAgent,
     wokenBy: wakeOfReply(reply, wakes),
     mentions: reply.mentions,
+    editedAt: reply.editedAt ? reply.editedAt.toISOString() : null,
   }
 }
 
@@ -739,7 +752,8 @@ function traceMentioned(
   mentioned: readonly string[],
   text: string,
   mentions: readonly MarkMention[],
-  assignedNow: string | null = null
+  assignedNow: string | null = null,
+  replyId: string | null = null
 ): void {
   const told = mentioned.filter((userId) => userId !== assignedNow)
   if (told.length === 0) return
@@ -752,6 +766,7 @@ function traceMentioned(
       mentioned: told,
       text,
       mentions,
+      replyId,
       mayOpen: mayOpenOf(session, doc),
     })
   )
@@ -1361,7 +1376,7 @@ export async function replyToAnnotation(
   actor: AnnotationActor = PERSON
 ): Promise<{ annotation: AnnotationView; replyId: string; wake: WakeOutcome }> {
   const { doc, existing, reply, wake, mentioned } = await postReply(session, documentId, annotationId, input, actor)
-  traceMentioned(session, doc, existing, mentioned, reply.body, reply.mentions)
+  traceMentioned(session, doc, existing, mentioned, reply.body, reply.mentions, null, reply.id)
   bestEffort('tell the thread', () =>
     onMarkReplied({
       ...markRefOf(session, doc, existing),
@@ -1370,6 +1385,7 @@ export async function replyToAnnotation(
       markText: existing.body,
       mark: existing,
       replyText: reply.body,
+      replyId: reply.id,
       replyMentions: reply.mentions,
       mayOpen: mayOpenOf(session, doc),
       mentioned,
@@ -1439,11 +1455,11 @@ async function postReply(
 }
 
 /**
- * Delete one reply from a thread: the person it was posted for may, whether
- * they wrote it or Piloti did in their name (`created_by` is the session the
- * reply was posted in, for both). Nobody else's thread entry vanishes under
- * them. `expectedBody` is a compare-and-swap for undo: a reply that says
- * something else now is a 409, never deleted. Tells the room, which re-reads.
+ * Delete one reply Piloti posted in a thread for a person, as that person's
+ * undo of it (`lib/changes/undo.ts`): `created_by` is the session the reply
+ * was posted in, so only the person it was posted for may. `expectedBody` is a
+ * compare-and-swap: a reply that says something else now is a 409, never
+ * deleted. A person's own reply goes through {@link deleteOwnReply}.
  */
 export async function deleteReply(
   session: AuthorizedSession,
@@ -1461,15 +1477,145 @@ export async function deleteReply(
     throw new ForbiddenError('Only the person an answer was written for can delete it.')
   }
   if (options.expectedBody !== undefined && options.expectedBody !== reply.body) throw conflict()
-  const gone = await deleteAnnotationReply(session.organizationId, annotationId, replyId, options.expectedBody)
+  await removeReply(session, doc, existing, reply, options.expectedBody, actor)
+  return null
+}
+
+/**
+ * Delete the reply, tell the room, and take back what it told people: every
+ * inbox row still quoting it goes inert (`onReplyDeleted`), and so does the
+ * mention of anyone nothing left on the mark names (`traceWithdrawn`).
+ */
+async function removeReply(
+  session: AuthorizedSession,
+  doc: Document,
+  existing: AnnotationRecord,
+  reply: DocumentAnnotationReplyRow,
+  expectedBody: string | undefined,
+  actor: AnnotationActor
+): Promise<void> {
+  const gone = await deleteAnnotationReply(session.organizationId, existing.id, reply.id, expectedBody)
   if (!gone) throw conflict()
-  announce(session, doc.id, [annotationId], 'updated', actor)
-  const left = existing.replies.filter((candidate) => candidate.id !== replyId)
+  announce(session, doc.id, [existing.id], 'updated', actor)
+  bestEffort('clear the deleted reply’s rows', () =>
+    onReplyDeleted({ organizationId: session.organizationId, annotationId: existing.id, replyId: reply.id })
+  )
+  const left = existing.replies.filter((candidate) => candidate.id !== reply.id)
   traceWithdrawn(
     session,
-    annotationId,
+    existing.id,
     noLongerMentioned(reply.mentions, [existing.mentions, ...left.map((candidate) => candidate.mentions)])
   )
+}
+
+/** Wakes that took a reply up: queued, running, or run to an answer or a stop (`listAnsweringWakes`' set). */
+const TAKEN_UP_WAKES: ReadonlySet<PilotiWakeRow['status']> = new Set(['queued', 'started', 'answered', 'stopped'])
+
+/**
+ * Whether Piloti has taken a reply up, so its words are no longer its
+ * author's alone to change: the reply was for Piloti ({@link replyIsForPiloti})
+ * and Piloti wrote in the thread after it, or the server's wake of it
+ * (`wakeTurnId(reply.id)`, enqueued in the reply's own transaction) is queued,
+ * running or ran. A wake a cap held, or one refused or failed before it
+ * answered, took nothing up. With wakes off the browser asked Piloti, and only
+ * Piloti's answer in the thread says so.
+ */
+async function pilotiTookUp(
+  session: AuthorizedSession,
+  mark: AnnotationRecord,
+  reply: DocumentAnnotationReplyRow
+): Promise<boolean> {
+  if (!replyIsForPiloti(mark, { authorKind: reply.authorKind, addressesPiloti: reply.addressesAgent })) return false
+  if (pilotiRepliedSince(mark.replies, reply)) return true
+  const wake = await findWake(session.organizationId, wakeTurnId(reply.id))
+  return wake !== null && TAKEN_UP_WAKES.has(wake.status)
+}
+
+/**
+ * The person's own reply, as its author may still change it, or the refusal:
+ * 404 when it is not there, 403 for anyone's but their own (Piloti's replies
+ * included: a note Piloti posted for them goes by undo), 422 on a closed mark
+ * (its thread is the record), 409 once Piloti took it up.
+ */
+async function ownReplyOf(
+  session: AuthorizedSession,
+  documentId: string,
+  annotationId: string,
+  replyId: string
+): Promise<{ doc: Document; existing: AnnotationRecord; reply: DocumentAnnotationReplyRow }> {
+  const doc = await requireWritableDocument(session, documentId)
+  const existing = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
+  const reply = existing?.replies.find((candidate) => candidate.id === replyId)
+  if (!existing || !reply) throw new NotFoundError()
+  if (reply.authorKind !== 'person' || reply.createdBy !== session.userId) {
+    throw new ForbiddenError('Only the person who wrote an answer can change it.')
+  }
+  if (!isLive(existing)) {
+    throw new UnprocessableError('The Anmerkung is closed: its thread stays as it was.', {
+      reason: REPLY_MARK_CLOSED_REASON,
+    })
+  }
+  if (await pilotiTookUp(session, existing, reply)) {
+    throw new ConflictError('Piloti has taken this answer up: it stays as it was. Write a new one.', {
+      reason: REPLY_TAKEN_UP_REASON,
+    })
+  }
+  return { doc, existing, reply }
+}
+
+/**
+ * Its author rewords their own reply ({@link ownReplyOf} says when they may).
+ * Whom it mentions is kept as a new text's is (`keepMentions`): the people it
+ * adds are told (`annotation.mentioned`), and the people it drops whom nothing
+ * else on the mark names have their row turn inert. The thread hears nothing
+ * new: an edit is not a reply.
+ *
+ * An edit never wakes Piloti: the wake was the posting's event, decided once.
+ * So an @Piloti is kept only when the reply already had it; one added in an
+ * edit is not stored, and stays plain text (the composer offers none while
+ * editing). Whether the reply addressed Piloti (`addresses_agent`) stays what it was.
+ */
+export async function editReply(
+  session: AuthorizedSession,
+  documentId: string,
+  annotationId: string,
+  replyId: string,
+  input: UpdateReplyRequest,
+  actor: AnnotationActor = PERSON
+): Promise<{ annotation: AnnotationView }> {
+  const { body, mentions: picked } = updateReplyRequestSchema.parse(input)
+  const { doc, existing, reply } = await ownReplyOf(session, documentId, annotationId, replyId)
+  const mentions = await keepMentions(session, doc, body, picked ?? reply.mentions, {
+    piloti: mentionsPiloti(reply.mentions),
+  })
+  const mentioned = await spendMentions(session, newlyMentioned(mentions, reply.mentions, session.userId), false)
+  const others = existing.replies.filter((candidate) => candidate.id !== reply.id)
+  const withdrawn = noLongerMentioned(reply.mentions, [mentions, existing.mentions, ...others.map((other) => other.mentions)])
+  const updated = await updateAnnotationReply(session.organizationId, existing.id, reply.id, reply.body, {
+    body,
+    mentions,
+  })
+  // Deleted or reworded in another tab a moment ago: say so rather than guess.
+  if (!updated) throw conflict()
+  announce(session, doc.id, [existing.id], 'updated', actor)
+  traceMentioned(session, doc, existing, mentioned, updated.body, updated.mentions, null, updated.id)
+  traceWithdrawn(session, existing.id, withdrawn)
+  return { annotation: await viewOf(session, doc, existing.id) }
+}
+
+/**
+ * Its author deletes their own reply ({@link ownReplyOf} says when they may),
+ * and what it told people goes with it ({@link removeReply}).
+ */
+export async function deleteOwnReply(
+  session: AuthorizedSession,
+  documentId: string,
+  annotationId: string,
+  replyId: string,
+  actor: AnnotationActor = PERSON
+): Promise<null> {
+  const { doc, existing, reply } = await ownReplyOf(session, documentId, annotationId, replyId)
+  await removeReply(session, doc, existing, reply, reply.body, actor)
   return null
 }
 

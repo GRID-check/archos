@@ -63,6 +63,9 @@ function withoutMention(text: string, mentions: readonly DraftMention[], targetI
  * mention too); `documentId` offers everyone who may open that document. The
  * server keeps a mention only for someone who may open it; `onSubmit` answers
  * with the mentions it kept, and the box says whom it did not tell.
+ *
+ * One box for every place a person writes into a thread: the thread's reply,
+ * the draft, and the author rewording a mark or a reply.
  */
 export function Composer({
   placeholder,
@@ -77,6 +80,7 @@ export function Composer({
   maxLength = MAX_ANNOTATION_BODY,
   initialBody = '',
   initialMentions,
+  describeFailure,
   testId,
 }: {
   placeholder: string
@@ -96,6 +100,13 @@ export function Composer({
   initialBody?: string
   /** Whom `initialBody` mentions, as the server kept them: they stay mentioned while their name stands. */
   initialMentions?: readonly MarkMention[]
+  /**
+   * The caller's words for a send `onSubmit` threw on, where it has them (a
+   * reply Piloti took up meanwhile); null
+   * leaves the box's own: the chat's words for a spent mention budget, else
+   * that it was not sent. The text stays either way.
+   */
+  describeFailure?: (error: unknown) => string | null
   testId: string
 }): JSX.Element {
   const t = useTranslations('files')
@@ -246,10 +257,11 @@ export function Composer({
           : []
       )
     } catch (error) {
+      const rateLimited = error instanceof AnnotationRequestError && error.reason === MENTION_ERROR_REASONS.rateLimited
       setFailed(
-        error instanceof AnnotationRequestError && error.reason === MENTION_ERROR_REASONS.rateLimited
+        rateLimited
           ? tCollab('mentions.errors.rateLimited')
-          : t('review.sendFailed')
+          : (describeFailure?.(error) ?? t('review.sendFailed'))
       )
     } finally {
       setBusy(false)

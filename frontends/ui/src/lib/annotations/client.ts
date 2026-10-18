@@ -29,6 +29,7 @@ import {
   type CreateReplyRequest,
   type ReplyResponse,
   type UpdateAnnotationRequest,
+  type UpdateReplyRequest,
 } from './types'
 
 /** How a request is made: `fetch` in a browser, the real handler in a route spec. */
@@ -148,6 +149,39 @@ export function replyToAnnotation(
 ): Promise<ReplyResponse> {
   return request(run, `${annotationPath(documentId, annotationId)}/replies`, json('POST', input, peerId), (value) =>
     replyResponseSchema.parse(value)
+  )
+}
+
+const replyPath = (documentId: string, annotationId: string, replyId: string) =>
+  `${annotationPath(documentId, annotationId)}/replies/${encodeURIComponent(replyId)}`
+
+/**
+ * Reword one's own reply: the mark with its thread as it now stands. Refused
+ * 409 with `REPLY_TAKEN_UP_REASON` once Piloti took the reply up, and 422 with
+ * `REPLY_MARK_CLOSED_REASON` on a closed mark. Never wakes Piloti.
+ */
+export function editReply(
+  documentId: string,
+  annotationId: string,
+  replyId: string,
+  input: UpdateReplyRequest,
+  { peerId, run = defaultFetch }: WriteOptions = {}
+): Promise<AnnotationView> {
+  return request(run, replyPath(documentId, annotationId, replyId), json('PATCH', input, peerId), one)
+}
+
+/** Delete one's own reply, refused as {@link editReply} is. */
+export function deleteReply(
+  documentId: string,
+  annotationId: string,
+  replyId: string,
+  { peerId, run = defaultFetch }: WriteOptions = {}
+): Promise<void> {
+  return request(
+    run,
+    replyPath(documentId, annotationId, replyId),
+    { method: 'DELETE', headers: peerId ? { [ROOM_PEER_HEADER]: peerId } : {} },
+    () => undefined
   )
 }
 

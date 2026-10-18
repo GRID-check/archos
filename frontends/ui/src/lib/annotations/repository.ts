@@ -611,3 +611,37 @@ export async function deleteAnnotationReply(
   )
   return rows.length > 0
 }
+
+/**
+ * Change what one reply says and whom it mentions (migration 0152): a
+ * compare-and-swap on the words the service read, so an edit that raced
+ * another edit, or a delete, changes nothing. `edited_at` is the database's
+ * clock, the clock `created_at` was set by
+ * (`document_annotation_replies_edited_after_created`). The row as it now
+ * stands, or null when nothing matched. The service read the Anmerkung's
+ * document for writing first.
+ */
+export async function updateAnnotationReply(
+  organizationId: string,
+  annotationId: string,
+  replyId: string,
+  expectedBody: string,
+  changes: { body: string; mentions: MarkMention[] }
+): Promise<DocumentAnnotationReplyRow | null> {
+  const db = getDb()
+  const [row] = await withTenant({ organizationId }, () =>
+    db
+      .update(documentAnnotationReplies)
+      .set({ body: changes.body, mentions: changes.mentions, editedAt: sql`now()` })
+      .where(
+        and(
+          eq(documentAnnotationReplies.organizationId, organizationId),
+          eq(documentAnnotationReplies.annotationId, annotationId),
+          eq(documentAnnotationReplies.id, replyId),
+          eq(documentAnnotationReplies.body, expectedBody)
+        )
+      )
+      .returning()
+  )
+  return row ?? null
+}

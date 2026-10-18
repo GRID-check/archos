@@ -218,6 +218,7 @@ beforeEach(() => {
       ...input,
       addressesAgent: input.addressesAgent ?? false,
       mentions: input.mentions ?? [],
+      editedAt: null,
     }
     await afterInsert?.(TX, row)
     return row

@@ -749,13 +749,16 @@ export async function resolveOpenItemsAnchoredOn(input: {
  * deleted mark — for everyone, or for one recipient when one is named (a
  * mention taken back), the shape of {@link resolveOpenItemsAnchoredOn}. Wipes
  * the payload, as every inert write does: the quoted text is gone. Returns who
- * held one, so the caller can nudge their badge.
+ * held one, so the caller can nudge their badge. `payloadHas` narrows it to the
+ * rows whose payload carries these facts (a deleted reply's rows, by its
+ * `replyId`): JSON containment, so a row that names another reply, or none, stays.
  */
 export async function markItemsInertAnchoredOn(input: {
   organizationId: string
   types: readonly InboxItemType[]
   anchorId: string
   recipientUserId?: string
+  payloadHas?: Record<string, string>
 }): Promise<string[]> {
   if (input.types.length === 0) return []
   const db = getDb()
@@ -769,6 +772,7 @@ export async function markItemsInertAnchoredOn(input: {
         eq(inboxItems.anchorId, input.anchorId),
         isNull(inboxItems.inertAt),
         input.recipientUserId ? eq(inboxItems.recipientUserId, input.recipientUserId) : undefined,
+        input.payloadHas ? sql`${inboxItems.payload} @> ${JSON.stringify(input.payloadHas)}::jsonb` : undefined,
       ),
     )
     .returning({ recipientUserId: inboxItems.recipientUserId })

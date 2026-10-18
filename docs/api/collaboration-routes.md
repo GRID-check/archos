@@ -337,7 +337,10 @@ marks it leaves to check and the Fassung they sit on), `answerIn` (where an open
 `review` for Piloti's Rückfrage while events do not wake Piloti, or null when
 the reader may not write the document; see
 [`document-annotations.md`](../architecture/document-annotations.md#what-the-person-hears)),
-`href`, `resourceType`/`resourceId`/`anchorId`, and timestamps.
+`href`, `resourceType`/`resourceId`/`anchorId`, and timestamps. A row a
+reply in a mark's thread wrote (`annotation.activity`, `annotation.mentioned`)
+names that reply in its payload (`replyId`), and goes inert when its author
+deletes the reply (`DELETE /api/documents/{id}/annotations/{annotationId}/replies/{replyId}`).
 Rendering is driven entirely by `INBOX_TYPE_PRESENTATION` in
 `lib/inbox/types.ts`, so a new item type needs a registry entry and its
 translations — no new component (spec IB-6).

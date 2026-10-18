@@ -1825,6 +1825,16 @@ export const files: typeof en.files = {
     editLabel: 'Text von Anmerkung {number}',
     save: 'Speichern',
     editCancel: 'Abbrechen',
+    // Die eigene Antwort im Verlauf ändern oder löschen, solange die Anmerkung offen ist und Piloti sie nicht aufgenommen hat.
+    replyMore: 'Weitere Aktionen zu Ihrer Antwort',
+    replyEditLabel: 'Ihre Antwort',
+    // Eine Bearbeitung ist kein neues Ereignis: Piloti wird davon nicht geweckt, auch nicht durch ein neues @Piloti.
+    replyEditNoWake: 'Eine bearbeitete Antwort erreicht Piloti nicht. Fragen Sie Piloti mit einer neuen Antwort.',
+    replyDeleteConfirm: 'Ihre Antwort löschen?',
+    replyDeleteHint: 'Wer darin erwähnt wurde, sieht den Hinweis darauf nicht mehr.',
+    replyTakenUp: 'Piloti hat diese Antwort schon aufgenommen. Sie bleibt, wie sie ist; schreiben Sie eine neue.',
+    // Neben der Zeit einer Antwort, die ihre Verfasserin geändert hat.
+    edited: 'bearbeitet',
     // Die Zuständige ist die lesende Person selbst, solange ihr Name noch nicht da ist.
     assigneeYou: 'Sie',
     clearDue: 'Frist entfernen',

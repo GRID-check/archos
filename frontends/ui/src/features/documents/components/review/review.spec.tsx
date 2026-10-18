@@ -1511,6 +1511,132 @@ describe('closing the loop on a mark', () => {
   })
 })
 
+describe('one’s own reply in the thread', () => {
+  const ANNA_MENTION = { targetId: 'user_anna', display: 'Anna Berger' }
+  const reply = (overrides: Partial<AnnotationView['replies'][number]> = {}): AnnotationView['replies'][number] => ({
+    id: 'rep_1',
+    annotationId: 'ann_1',
+    authorKind: 'person',
+    body: '@Anna Berger bitte prüfen',
+    createdBy: 'user_me',
+    createdByName: 'Miriam Hofer',
+    createdAt: '2026-10-01T09:00:00.000Z',
+    addressesPiloti: false,
+    mentions: [ANNA_MENTION],
+    editedAt: null,
+    ...overrides,
+  })
+
+  const openThread = async () => {
+    await userEvent.click(await screen.findByTestId('review-row'))
+    return screen.findByTestId('review-thread')
+  }
+
+  it('lets its author reword it in the thread’s composer, keeping whom it mentions, and says it was edited', async () => {
+    const mark = view({ id: 'ann_1', replies: [reply()] })
+    serve([mark])
+    const patched: Array<{ path: string; body: unknown }> = []
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId/replies/:replyId', async ({ request, params }) => {
+        const body = (await request.json()) as { body: string; mentions: unknown }
+        patched.push({ path: String(params.replyId), body })
+        return HttpResponse.json({
+          annotation: { ...mark, replies: [reply({ body: body.body, editedAt: '2026-10-01T09:05:00.000Z' })] },
+        })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const thread = await openThread()
+    await userEvent.click(within(thread).getByTestId('thread-reply-more'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+    const box = within(screen.getByTestId('review-thread')).getByTestId('thread-reply-edit-body')
+    expect(box).toHaveValue('@Anna Berger bitte prüfen')
+    await userEvent.type(box, ' bis Freitag{Enter}')
+
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { path: 'rep_1', body: { body: '@Anna Berger bitte prüfen bis Freitag', mentions: [ANNA_MENTION] } },
+      ])
+    )
+    const after = screen.getByTestId('review-thread')
+    expect(within(after).queryByTestId('thread-reply-edit')).toBeNull()
+    expect(within(after).getByTestId('thread-edited')).toHaveTextContent('edited')
+  })
+
+  it('deletes it after asking, and the thread shows it gone', async () => {
+    serve([view({ id: 'ann_1', replies: [reply()] })])
+    const deleted: string[] = []
+    server.use(
+      http.delete('/api/documents/:id/annotations/:annotationId/replies/:replyId', ({ params }) => {
+        deleted.push(String(params.replyId))
+        return new HttpResponse(null, { status: 204 })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const thread = await openThread()
+    await userEvent.click(within(thread).getByTestId('thread-reply-more'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(deleted).toEqual(['rep_1']))
+    await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-reply-entry')).toBeNull())
+  })
+
+  it('says Piloti took it up when the server refuses the change, without the colleague’s-move notice', async () => {
+    serve([view({ id: 'ann_1', replies: [reply()] })])
+    server.use(
+      http.delete('/api/documents/:id/annotations/:annotationId/replies/:replyId', () =>
+        HttpResponse.json(
+          { error: 'Taken up', code: 'CONFLICT', details: { reason: 'piloti-took-it-up' } },
+          { status: 409 }
+        )
+      )
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const thread = await openThread()
+    await userEvent.click(within(thread).getByTestId('thread-reply-more'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+
+    expect(
+      await within(screen.getByTestId('review-thread')).findByText(
+        'Piloti has already taken this reply up. It stays as it is; write a new one.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('offers no change of a colleague’s reply, of Piloti’s, on a closed mark, or of one Piloti answered', async () => {
+    const forPiloti = reply({ body: '@Piloti stimmt das?', mentions: [], addressesPiloti: true })
+    const answer = reply({
+      id: 'rep_2',
+      authorKind: 'piloti',
+      body: 'Ja.',
+      mentions: [],
+      createdAt: '2026-10-01T09:01:00.000Z',
+    })
+    for (const mark of [
+      view({ id: 'ann_1', replies: [reply({ createdBy: 'user_anna', createdByName: 'Anna Berger' })] }),
+      view({ id: 'ann_1', replies: [reply({ authorKind: 'piloti', mentions: [] })] }),
+      view({ id: 'ann_1', status: 'resolved', replies: [reply()] }),
+      view({ id: 'ann_1', replies: [forPiloti, answer] }),
+    ]) {
+      serve([mark])
+      let review: ReturnType<typeof useDocumentReview> | null = null
+      const { unmount } = render(<Harness transport={scriptedRoom().transport} onReady={(next) => (review = next)} />)
+      // A closed mark is not on the open list: it is opened as a link to it opens it.
+      await waitFor(() => expect(review?.load).toBe('ready'))
+      act(() => review?.select('ann_1'))
+      const thread = await screen.findByTestId('review-thread')
+      expect(within(thread).getAllByTestId('thread-reply-entry').length).toBeGreaterThan(0)
+      expect(within(thread).queryByTestId('thread-reply-more')).toBeNull()
+      unmount()
+    }
+  })
+})
+
 describe('a mark goes on with the current Fassung', () => {
   /** Where the server says this reader's carry lands: this document, in place or as a linked mark. */
   const HERE = { documentId: 'doc_1', documentName: 'Grundriss EG.pdf' }

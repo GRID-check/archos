@@ -268,9 +268,13 @@ let annotations: AnnotationView[] = [
     replies: [
       reply('ann-1', ANNA, 95, '@Miriam Hofer Kommt mit Index D. Gilt das auch für die Tür vom Bad?', [mention(ME)]),
       // A colleague mentioned with the chat's „@" picker: the chip, and Jakob told in his Postfach.
-      reply('ann-1', ME, 80, 'Nein, Bad geht nicht in den Gang. Nur Wohnen 1 und 2. @Jakob Huber, bitte in Index D nachziehen.', [
-        mention(JAKOB),
-      ]),
+      // Reworded by its author a moment later: „bearbeitet" beside its time, and its menu offers both again.
+      {
+        ...reply('ann-1', ME, 80, 'Nein, Bad geht nicht in den Gang. Nur Wohnen 1 und 2. @Jakob Huber, bitte in Index D nachziehen.', [
+          mention(JAKOB),
+        ]),
+        editedAt: minutesAgo(78),
+      },
     ],
   },
   {
@@ -1155,6 +1159,37 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const entry = known ? { ...known, versions: known.versions + 1 } : { id: `dev-protokoll-${filed.size + 1}`, versions: 1 }
         filed.set(file.name, entry)
         return json({ documentId: entry.id, jobId: null, status: 'pending', filename: file.name }, 201)
+        }
+      // One's own reply, reworded or deleted: refused as the server refuses it (a colleague's, Piloti's, a closed mark's).
+      const ownReply = new RegExp(`/api/documents/${FILE.id}/annotations/([^/?]+)/replies/([^/?]+)$`).exec(url)
+      if (ownReply) {
+        const current = annotations.find((annotation) => annotation.id === ownReply[1])
+        const target = current?.replies.find((candidate) => candidate.id === ownReply[2])
+        if (!current || !target) return json({ error: 'Not found', code: 'NOT_FOUND' }, 404)
+        if (target.authorKind !== 'person' || target.createdBy !== ME.userId) {
+          return json({ error: 'Only the person who wrote an answer can change it.', code: 'FORBIDDEN' }, 403)
+        }
+        if (current.status === 'resolved' || current.status === 'dismissed') {
+          return json({ error: 'Closed', code: 'UNPROCESSABLE', details: { reason: 'mark-closed' } }, 422)
+        }
+        const rest = current.replies.filter((candidate) => candidate.id !== target.id)
+        if (method === 'DELETE') {
+          annotations = annotations.map((annotation) => (annotation.id === current.id ? { ...current, replies: rest } : annotation))
+          return new Response(null, { status: 204 })
+        }
+        const input = body()
+        const edited: AnnotationReplyView = {
+          ...target,
+          body: String(input.body).trim(),
+          // An edit keeps an @Piloti only where the reply had one: it never wakes Piloti.
+          mentions: ((input.mentions as AnnotationReplyView['mentions']) ?? target.mentions ?? []).filter(
+            (one) => one.targetId !== 'agent:piloti' || (target.mentions ?? []).some((had) => had.targetId === 'agent:piloti')
+          ),
+          editedAt: new Date().toISOString(),
+        }
+        const next = { ...current, replies: current.replies.map((candidate) => (candidate.id === target.id ? edited : candidate)) }
+        annotations = annotations.map((annotation) => (annotation.id === next.id ? next : annotation))
+        return json({ annotation: next })
       }
       const replies = new RegExp(`/api/documents/${FILE.id}/annotations/([^/?]+)/replies$`).exec(url)
       if (replies) {

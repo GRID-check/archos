@@ -1855,6 +1855,13 @@ export const files = {
     editLabel: 'Text of annotation {number}',
     save: 'Save',
     editCancel: 'Cancel',
+    replyMore: 'More for your reply',
+    replyEditLabel: 'Your reply',
+    replyEditNoWake: 'An edited reply does not reach Piloti. Ask Piloti in a new reply.',
+    replyDeleteConfirm: 'Delete your reply?',
+    replyDeleteHint: 'People it mentioned no longer see the notice about it.',
+    replyTakenUp: 'Piloti has already taken this reply up. It stays as it is; write a new one.',
+    edited: 'edited',
     assigneeYou: 'You',
     clearDue: 'Remove due date',
     decided: {

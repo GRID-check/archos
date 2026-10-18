@@ -227,6 +227,20 @@ export const createReplyRequestSchema = z
   .strict()
 export type CreateReplyRequest = z.input<typeof createReplyRequestSchema>
 
+/**
+ * `PATCH …/replies/{replyId}`: its author rewords their reply. Whom the new
+ * words mention, as the composer kept them; absent, the ones stored whose
+ * name still stands. No `addressesPiloti`: an edit never wakes Piloti, and
+ * whether the reply addressed it stays what it was when it was posted.
+ */
+export const updateReplyRequestSchema = z
+  .object({
+    body: text(MAX_ANNOTATION_BODY),
+    mentions: markMentionsSchema.optional(),
+  })
+  .strict()
+export type UpdateReplyRequest = z.input<typeof updateReplyRequestSchema>
+
 export const annotationReplyViewSchema = z.object({
   id: z.string(),
   annotationId: z.string(),
@@ -245,6 +259,8 @@ export const annotationReplyViewSchema = z.object({
   wokenBy: z.enum(PILOTI_WAKE_TRIGGERS).nullable().optional(),
   /** Whom it mentions, as the server kept them; absent from a server that predates mentions. */
   mentions: z.array(markMentionSchema).optional(),
+  /** When its author last reworded it, or null; absent from a server that predates editing (migration 0152). */
+  editedAt: z.string().nullable().optional(),
 })
 export type AnnotationReplyView = z.infer<typeof annotationReplyViewSchema>
 
@@ -411,6 +427,30 @@ export type ReplyResponse = z.infer<typeof replyResponseSchema>
 
 /** `POST /api/documents/{id}/thread`: the caller's own thread about the document (ADR-0106). */
 export const documentThreadResponseSchema = z.object({ conversationId: z.string().min(1) })
+
+/**
+ * The `details.reason` of a 409 on a reply its author may no longer change:
+ * Piloti took it up (it is working on it, or answered after it).
+ */
+export const REPLY_TAKEN_UP_REASON = 'piloti-took-it-up'
+/** The `details.reason` of a 422 on a reply of a mark that is closed: its thread is the record. */
+export const REPLY_MARK_CLOSED_REASON = 'mark-closed'
+
+/** Whether a reply was for Piloti: its @Piloti, or an answer on Piloti's own Rückfrage. Pure. */
+export const replyIsForPiloti = (
+  mark: { authorKind: AnnotationAuthor; kind: AnnotationKind },
+  reply: { authorKind: AnnotationAuthor; addressesPiloti: boolean }
+): boolean =>
+  reply.authorKind === 'person' && (reply.addressesPiloti || (mark.authorKind === 'piloti' && mark.kind === 'question'))
+
+/** Whether Piloti wrote in the thread after this reply. Pure; `createdAt` as stored or as the view says it. */
+export const pilotiRepliedSince = (
+  replies: ReadonlyArray<{ authorKind: AnnotationAuthor; createdAt: Date | string }>,
+  reply: { createdAt: Date | string }
+): boolean => {
+  const at = new Date(reply.createdAt).getTime()
+  return replies.some((other) => other.authorKind === 'piloti' && new Date(other.createdAt).getTime() > at)
+}
 
 /** The statuses that still ask something of somebody: open, and Piloti's proposals nobody has decided on. */
 export const LIVE_ANNOTATION_STATUSES = ['open', 'proposed'] as const satisfies readonly AnnotationStatus[]

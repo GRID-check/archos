@@ -200,6 +200,7 @@ beforeEach(() => {
     createdAt: new Date(),
     addressesAgent: false,
     mentions: [],
+  editedAt: null,
   })
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(
     new Map([
@@ -508,6 +509,7 @@ describe('DELETE /api/documents/[id]/annotations/[annotationId]', () => {
       createdAt: new Date('2026-10-02T08:00:00Z'),
       addressesAgent: false,
       mentions: [],
+      editedAt: null,
       ...patch,
     })
     const LINK = { annotationId: 'ann_x', documentId: 'doc_2', number: 7 }
@@ -603,6 +605,7 @@ describe('deleteReply (the service; undo is its caller)', () => {
     createdAt: new Date('2026-10-01T08:00:00Z'),
     addressesAgent: false,
     mentions: [],
+    editedAt: null,
     ...patch,
   })
   const withReplies = (...replies: AnnotationRecord['replies']) =>

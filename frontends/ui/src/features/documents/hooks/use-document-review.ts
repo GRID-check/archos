@@ -5,6 +5,8 @@ import {
   AnnotationRequestError,
   createAnnotation,
   deleteAnnotation,
+  deleteReply,
+  editReply as editReplyRequest,
   getAnnotation,
   listAnnotations,
   replyToAnnotation,
@@ -13,6 +15,7 @@ import {
 import {
   compareAnnotations,
   isLive,
+  REPLY_TAKEN_UP_REASON,
   type AnnotationKind,
   type AnnotationShape,
   type AnnotationStatus,
@@ -367,14 +370,17 @@ export function useDocumentReview(
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [enabled, fetchList])
 
-  /** A write a colleague beat: say so, and show what they did. */
+  /**
+   * A write a colleague beat: say so, and show what they did. A reply Piloti
+   * took up is no colleague's move: the card that tried says that itself.
+   */
   const guard = useCallback(
     async <T,>(act: () => Promise<T>): Promise<T> => {
       try {
         return await act()
       } catch (error) {
         if (error instanceof AnnotationRequestError && error.status === 409) {
-          setNotice('conflict')
+          if (error.reason !== REPLY_TAKEN_UP_REASON) setNotice('conflict')
           void fetchList().catch(() => {})
         }
         throw error
@@ -601,6 +607,35 @@ export function useDocumentReview(
     [documentId, guard, replace, write]
   )
 
+  /**
+   * Reword one's own reply, with whom it mentions as the composer kept them.
+   * Never wakes Piloti. A reply Piloti took up meanwhile is refused (409,
+   * `REPLY_TAKEN_UP_REASON`) and the list is read again.
+   */
+  const editReply = useCallback(
+    async (annotationId: string, replyId: string, body: string, mentions: MarkMention[]) => {
+      const updated = await guard(() => editReplyRequest(documentId, annotationId, replyId, { body, mentions }, write))
+      replace(updated)
+      return updated
+    },
+    [documentId, guard, replace, write]
+  )
+
+  /** Delete one's own reply, refused as {@link editReply} is; the thread shows it gone at once. */
+  const removeReply = useCallback(
+    async (annotationId: string, replyId: string) => {
+      await guard(() => deleteReply(documentId, annotationId, replyId, write))
+      setAnnotations((current) =>
+        current.map((annotation) =>
+          annotation.id === annotationId
+            ? { ...annotation, replies: annotation.replies.filter((reply) => reply.id !== replyId) }
+            : annotation
+        )
+      )
+    },
+    [documentId, guard, write]
+  )
+
   const remove = useCallback(
     async (annotationId: string) => {
       if (holdOn(annotationId)) undoDecision(annotationId)
@@ -750,6 +785,8 @@ export function useDocumentReview(
       decide,
       undoDecision,
       reply,
+      editReply,
+      removeReply,
       remove,
       step,
       me,
@@ -788,6 +825,8 @@ export function useDocumentReview(
       undoDecision,
       me,
       reply,
+      editReply,
+      removeReply,
       remove,
       step,
       fassung,

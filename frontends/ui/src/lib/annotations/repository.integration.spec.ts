@@ -22,7 +22,8 @@
  *   - a thread comes back in order and goes with its mark;
  *   - one reply is deleted alone, and only while it still says what the caller
  *     read (undo's compare-and-swap); another mark's reply with the same id is
- *     not touched;
+ *     not touched; a reply is reworded the same way, its edit stamped by the
+ *     database's clock (migration 0152);
  *   - another organization reads none of them and cannot plant one on this
  *     organization's document;
  *   - a wake of Piloti (migration 0139, ADR-0106) is recorded and queued in
@@ -467,6 +468,38 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(await bodies(row.id)).toEqual(['Bleibt'])
     expect(await bodies(other.id)).toEqual(['Anderswo'])
     expect(keep.id).not.toBe(gone.id)
+  })
+
+  it('rewords one reply only while it says what the caller read, stamping the edit by the database clock', async () => {
+    const [row] = await insert(ids.document)
+    const reply = await inOrg(ORG, () =>
+      repo.insertAnnotationReply({ organizationId: ORG, annotationId: row.id, authorKind: 'person', body: 'Vorher', createdBy: USER })
+    )
+    expect(reply.editedAt).toBeNull()
+    const mentions = [{ targetId: 'user_anna', display: 'Anna Berger' }]
+
+    // The words moved since the caller read them: nothing changes.
+    expect(
+      await inOrg(ORG, () => repo.updateAnnotationReply(ORG, row.id, reply.id, 'Anders', { body: 'Nachher', mentions }))
+    ).toBeNull()
+    // Another organization finds nothing.
+    expect(
+      await inOrg(OTHER_ORG, () => repo.updateAnnotationReply(OTHER_ORG, row.id, reply.id, 'Vorher', { body: 'Nachher', mentions }))
+    ).toBeNull()
+
+    const edited = await inOrg(ORG, () =>
+      repo.updateAnnotationReply(ORG, row.id, reply.id, 'Vorher', { body: 'Nachher', mentions })
+    )
+    expect(edited).toMatchObject({ body: 'Nachher', mentions })
+    expect(edited?.editedAt).toBeInstanceOf(Date)
+    expect(edited!.editedAt!.getTime()).toBeGreaterThanOrEqual(reply.createdAt.getTime())
+    // A second edit from the same reading finds nothing: the first one won.
+    expect(
+      await inOrg(ORG, () => repo.updateAnnotationReply(ORG, row.id, reply.id, 'Vorher', { body: 'Zweite', mentions: [] }))
+    ).toBeNull()
+    const [stored] = (await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id)))?.replies ?? []
+    expect(stored).toMatchObject({ body: 'Nachher', mentions })
+    expect(stored?.editedAt).toBeInstanceOf(Date)
   })
 
   it('shows another organization none of them, and refuses one planted on this document', async () => {

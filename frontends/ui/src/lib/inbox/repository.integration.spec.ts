@@ -87,3 +87,61 @@ describe.skipIf(!url)('inbox paging against Postgres', () => {
     expect(keys).toEqual(sorted)
   })
 })
+
+describe.skipIf(!url)('a deleted reply’s rows against Postgres', () => {
+  const ANCHOR = '00000000-0000-4000-8000-0000000000aa'
+  let repo: typeof import('./repository')
+  let withTenant: typeof import('@/lib/db/tenant-context').withTenant
+  let withPlatformAccess: typeof import('@/lib/db/tenant-context').withPlatformAccess
+  let db: ReturnType<typeof import('@/lib/db').getDb>
+  const REPLY_ORG = `${ORG}_reply`
+
+  const asMe = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: REPLY_ORG, userId: ME }, run)
+
+  beforeAll(async () => {
+    process.env.GRID_APP_DATABASE_URL = url
+    const context = await import('@/lib/db/tenant-context')
+    withTenant = context.withTenant
+    withPlatformAccess = context.withPlatformAccess
+    db = (await import('@/lib/db')).getDb()
+    repo = await import('./repository')
+    await asMe(async () => {
+      for (const [index, payload] of [{ replyId: 'r1', excerpt: 'Eins' }, { replyId: 'r2' }, { replyId: null }, {}].entries()) {
+        await db.execute(sql`
+          insert into inbox_items (organization_id, recipient_user_id, type, resource_type, resource_id,
+                                   anchor_id, group_key, actionable, payload)
+          values (${REPLY_ORG}, ${ME}, 'annotation.activity', 'document', 'doc-1', ${ANCHOR},
+                  ${`annotation.activity:document:doc-1:${index}`}, false, ${JSON.stringify(payload)}::jsonb)`)
+      }
+    })
+  })
+
+  afterAll(async () => {
+    await withPlatformAccess('inbox reply spec cleanup', () =>
+      db.execute(sql`DELETE FROM inbox_items WHERE organization_id = ${REPLY_ORG}`)
+    )
+  })
+
+  it('turns inert only the rows that name the reply, and wipes their quote', async () => {
+    const told = await asMe(() =>
+      repo.markItemsInertAnchoredOn({
+        organizationId: REPLY_ORG,
+        types: ['annotation.activity'],
+        anchorId: ANCHOR,
+        payloadHas: { replyId: 'r1' },
+      })
+    )
+    expect(told).toEqual([ME])
+    const rows = await asMe(() =>
+      db.execute<{ group_key: string; inert: boolean; payload: Record<string, unknown> }>(sql`
+        select group_key, inert_at is not null as inert, payload from inbox_items
+        where organization_id = ${REPLY_ORG} order by group_key`)
+    )
+    expect(Array.from(rows).map((row) => [row.group_key.slice(-1), row.inert, row.payload])).toEqual([
+      ['0', true, {}],
+      ['1', false, { replyId: 'r2' }],
+      ['2', false, { replyId: null }],
+      ['3', false, {}],
+    ])
+  })
+})

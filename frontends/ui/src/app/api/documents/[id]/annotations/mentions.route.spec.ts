@@ -318,6 +318,7 @@ describe('a reply that mentions colleagues', () => {
             createdAt: new Date(),
             addressesAgent: false,
             mentions: [ANNA],
+            editedAt: null,
           },
         ],
       })
@@ -502,6 +503,7 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
           createdAt: new Date(),
           addressesAgent: false,
           mentions: [BEN],
+          editedAt: null,
         },
       ],
     })
@@ -534,6 +536,7 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
           createdAt: new Date(),
           addressesAgent: false,
           mentions: [ANNA, BEN],
+          editedAt: null,
         },
       ],
     })
@@ -542,7 +545,14 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
     await deleteReply(session as unknown as Parameters<typeof deleteReply>[0], 'doc_1', 'ann_1', 'rep_1')
     await rows()
 
-    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledTimes(1)
+    // The rows the reply wrote, by its id, and Anna's mention, which nothing left names.
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledTimes(2)
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      types: ['annotation.activity', 'annotation.mentioned'],
+      anchorId: 'ann_1',
+      payloadHas: { replyId: 'rep_1' },
+    })
     expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith(
       expect.objectContaining({ types: ['annotation.mentioned'], anchorId: 'ann_1', recipientUserId: 'user_anna' })
     )

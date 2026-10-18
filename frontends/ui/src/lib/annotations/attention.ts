@@ -28,6 +28,7 @@ import 'server-only'
  * | A person answered in the thread | resolves `piloti.asks_you`, for everyone, and their own `annotation.mentioned` | |
  * | The mark was resolved or dismissed | resolves everyone's `piloti.asks_you`, `annotation.assigned_to_you` and `annotation.mentioned` | |
  * | A mention was taken out of the text, or its reply deleted, and nothing left on the mark names that person | their `annotation.mentioned` turns inert | |
+ * | A reply was deleted | every `annotation.activity` and `annotation.mentioned` row still quoting it (its `replyId`) turns inert | |
  * | The mark was deleted | every row anchored on it turns inert, for everyone | |
  *
  * The author's `annotation.activity` row says `yours: true`: a reply or a move
@@ -49,7 +50,10 @@ import 'server-only'
  * mark's date (`dueOn`, null without one), so the row says by when. Rows fold per mark and their payloads
  * merge, so every row names its `variant`: a failed wake the class of its
  * reason (`./wake-end-reason.ts`), so the notice says why in words the person
- * can act on, never the stored reason itself.
+ * can act on, never the stored reason itself. A row a reply wrote
+ * (`annotation.activity`, `annotation.mentioned`) names it as `replyId`, and
+ * every other write to those rows clears it, so deleting the reply finds the
+ * rows that still quote it and nothing else ({@link onReplyDeleted}).
  */
 
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
@@ -428,6 +432,8 @@ export async function onMarkReplied(
   input: MarkAct & {
     mark: MarkPeople & Pick<AnnotationRecord, 'kind' | 'status'>
     replyText: string
+    /** The reply, so the row it writes can be found again if it is deleted. */
+    replyId?: string | null
     mayOpen: MayOpen
     mentioned?: readonly string[]
     /** Whom the reply mentions, as the server kept them. */
@@ -444,6 +450,7 @@ export async function onMarkReplied(
       variant: 'reply',
       actorUserId: input.byPiloti ? null : input.actorUserId,
       author: markAuthor(input.mark),
+      facts: { replyId: input.replyId ?? null },
     })
   })
 }
@@ -544,6 +551,8 @@ export async function onMarkMoved(
       variant: input.move,
       actorUserId: input.actorUserId,
       author,
+      // The row folds per mark: it quotes the move now, no longer a reply.
+      facts: { replyId: null },
     })
   )
 }
@@ -561,6 +570,8 @@ export async function onMarkMentioned(
     text: string
     /** Whom `text` mentions, as the server kept them: the row draws them as chips. */
     mentions: readonly MarkMention[]
+    /** The reply `text` is, or absent for the mark's own text. */
+    replyId?: string | null
     mayOpen: MayOpen
   }
 ): Promise<void> {
@@ -571,6 +582,28 @@ export async function onMarkMentioned(
       excerpt: excerptOf(input.text),
       mentions: input.mentions,
       actorUserId: input.actorUserId,
+      facts: { replyId: input.replyId ?? null },
+    })
+  )
+}
+
+/**
+ * A reply was deleted: every row that still quotes it (`annotation.activity`
+ * for the thread, `annotation.mentioned` for whom it mentioned, found by the
+ * `replyId` they carry) turns inert, its quote wiped, as a deleted mark's
+ * rows do. A row a later reply or move wrote over names that one and stays.
+ * Rows written before they carried a `replyId` are found only through
+ * {@link onMentionsWithdrawn}.
+ */
+export async function onReplyDeleted(
+  input: Pick<MarkRef, 'organizationId' | 'annotationId'> & { replyId: string }
+): Promise<void> {
+  await bestEffortInbox(`clearing deleted reply ${input.replyId}`, input.organizationId, () =>
+    markInboxItemsInertAnchoredOn({
+      organizationId: input.organizationId,
+      types: ['annotation.activity', 'annotation.mentioned'],
+      anchorId: input.annotationId,
+      payloadHas: { replyId: input.replyId },
     })
   )
 }

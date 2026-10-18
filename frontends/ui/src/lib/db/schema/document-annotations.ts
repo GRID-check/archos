@@ -197,6 +197,8 @@ export const documentAnnotationReplies = pgTable(
     addressesAgent: boolean('addresses_agent').notNull().default(false),
     /** Whom the reply mentions, as the server kept them (migration 0150, `lib/annotations/mentions.ts`). */
     mentions: jsonb('mentions').$type<MarkMention[]>().notNull().default([]),
+    /** When its author last changed its text, by the database's clock; null for one never changed (migration 0152). */
+    editedAt: timestamp('edited_at', { withTimezone: true }),
   },
   (table) => ({
     annotationFk: foreignKey({
@@ -215,6 +217,10 @@ export const documentAnnotationReplies = pgTable(
       sql`char_length(btrim(${table.body})) BETWEEN 1 AND 2000`
     ),
     mentionsBounded: check('document_annotation_replies_mentions_bounded', mentionsBounded(table.mentions)),
+    editedAfterCreated: check(
+      'document_annotation_replies_edited_after_created',
+      sql`${table.editedAt} IS NULL OR ${table.editedAt} >= ${table.createdAt}`
+    ),
   })
 )
 
