@@ -331,8 +331,9 @@ closed, Piloti's finished work (the informational inbox items opening a mark
 reads). One bounded read per document through the inbox's typed client
 (`unreadMarks`, `GET /api/inbox/unread-anchors`, the same rows
 `markAnchorItemsRead` reads), said in words to a screen reader („ungelesen“).
-Opening the thread reads it (`readMarkNews`, held back once a minute unless the
-dot says there is news) and the dot goes. The set is read again on the tab's
+Opening a thread with a dot reads it (`readMarkNews`) and the dot goes; a
+thread without one writes nothing, since most marks a reader opens have no
+news. The set is read again on the tab's
 `inbox.changed` nudge, which goes out once the row is written; the room's hint
 goes out before the thread's notification is, so reading on the hint would race
 it. News that reaches a thread the reader has open is read as it arrives.
@@ -1106,9 +1107,10 @@ Opening a mark reads its news. When a mark stays selected in the review for
 `MARK_NEWS_SETTLE_MS` (`features/documents/hooks/use-document-review.ts`), the
 reader's informational items anchored on it are read through
 `POST /api/inbox/read { resourceType: 'document', resourceId, anchorId }`; a
-mark stepped past with J/K is not, and one mark is read at most once a minute
-from a tab. Requests stay open: seeing a mark is not answering it. A mark
-with no news changes nothing, so it nudges no open inbox. A tapped
+mark stepped past with J/K is not, and only a mark whose dot says it has news
+is read (`unread.has(id)`): a mark without one sends nothing. Requests stay
+open: seeing a mark is not answering it. A read that found nothing changes
+nothing, so it nudges no open inbox. A tapped
 notification is read too: the service worker posts its item to the same route
 before it opens the mark. The rows about new marks on the document are read
 when its review opens (`marksSet: true` on the same route), not with the mark

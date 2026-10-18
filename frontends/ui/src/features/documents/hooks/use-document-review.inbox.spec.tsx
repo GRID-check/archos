@@ -1,8 +1,8 @@
 /**
  * Opening a mark in the review reads its news in the inbox: the reader's
  * informational items anchored on that mark, through the inbox's own client.
- * A mark only stepped past (J/K) does not count, and one mark is not read
- * twice in a minute from the same tab.
+ * A mark only stepped past (J/K) does not count, and a mark without news (no
+ * dot) writes nothing.
  *
  * And the review knows which marks have news before they are opened (their
  * dot): one read per document, again when the inbox changes.
@@ -14,13 +14,7 @@ import { server } from '@/mocks/server'
 import type { CollaborationEvent } from '@/lib/events/types'
 import type { InboxClient } from '@/lib/inbox/client'
 import type { RoomTransport } from './use-document-room'
-import {
-  forgetMarkNewsReads,
-  MARK_NEWS_SETTLE_MS,
-  readMarkNews,
-  UNREAD_READ_DELAY_MS,
-  useDocumentReview,
-} from './use-document-review'
+import { MARK_NEWS_SETTLE_MS, UNREAD_READ_DELAY_MS, useDocumentReview } from './use-document-review'
 
 /** The tab's live channel, played by the test: what reaches every listener. */
 const hub = vi.hoisted(() => ({ listeners: new Set<(event: CollaborationEvent) => void>() }))
@@ -49,9 +43,9 @@ let reads: unknown[] = []
 
 beforeEach(() => {
   reads = []
-  forgetMarkNewsReads()
   server.use(
     http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations: [], canAnnotate: true, pilotiWakes: false })),
+    http.get('/api/inbox/unread-anchors', () => HttpResponse.json({ anchorIds: ['mark-1', 'mark-2'] })),
     http.post('/api/inbox/read', async ({ request }) => {
       reads.push(await request.json())
       return HttpResponse.json({ affected: 1, pending: 0 })
@@ -64,6 +58,7 @@ describe('opening a mark reads its news', () => {
   it('reads the news about the mark that stays open, and not about one stepped past', async () => {
     const { result } = renderHook(() => useDocumentReview('doc-1', { enabled: true, transport }))
     await waitFor(() => expect(result.current.load).toBe('ready'))
+    await waitFor(() => expect(result.current.unread.size).toBe(2))
 
     act(() => result.current.select('mark-1'))
     act(() => result.current.select('mark-2'))
@@ -73,20 +68,14 @@ describe('opening a mark reads its news', () => {
     })
   })
 
-  it('reads one mark once a minute from this tab, and tries again after a failure', async () => {
-    const markMarkRead = vi.fn<InboxClient['markMarkRead']>(async () => ({ affected: 0, pending: 0 }))
-    const client = { markMarkRead } as Partial<InboxClient> as InboxClient
+  it('writes nothing for a mark without news: its dot is what says there is something to read', async () => {
+    const { result } = renderHook(() => useDocumentReview('doc-1', { enabled: true, transport }))
+    await waitFor(() => expect(result.current.unread.size).toBe(2))
 
-    readMarkNews('doc-1', 'mark-4', client)
-    readMarkNews('doc-1', 'mark-4', client)
-    expect(markMarkRead).toHaveBeenCalledTimes(1)
+    act(() => result.current.select('mark-3'))
 
-    markMarkRead.mockRejectedValueOnce(new Error('offline'))
-    readMarkNews('doc-1', 'mark-5', client)
-    await Promise.resolve()
-    await Promise.resolve()
-    readMarkNews('doc-1', 'mark-5', client)
-    expect(markMarkRead).toHaveBeenCalledTimes(3)
+    await new Promise((resolve) => setTimeout(resolve, MARK_NEWS_SETTLE_MS * 2))
+    expect(reads).toEqual([])
   })
 })
 
@@ -105,12 +94,10 @@ describe('which marks have news', () => {
     expect(inbox.unreadMarks).toHaveBeenCalledTimes(1)
     expect(inbox.unreadMarks).toHaveBeenCalledWith('doc-1')
 
-    // Read once a minute ago from this tab: the dot says there is news, so it is read again.
-    readMarkNews('doc-1', 'mark-1', inbox.client)
     act(() => result.current.select('mark-1'))
 
     await waitFor(() => expect([...result.current.unread]).toEqual(['mark-3']), { timeout: MARK_NEWS_SETTLE_MS * 4 })
-    expect(inbox.markMarkRead).toHaveBeenCalledTimes(2)
+    expect(inbox.markMarkRead).toHaveBeenCalledTimes(1)
     expect(inbox.markMarkRead).toHaveBeenLastCalledWith({ documentId: 'doc-1', annotationId: 'mark-1' })
   })
 
@@ -119,13 +106,15 @@ describe('which marks have news', () => {
     const { result } = renderHook(() => useDocumentReview('doc-1', { enabled: true, transport, inbox: inbox.client }))
     await waitFor(() => expect(inbox.unreadMarks).toHaveBeenCalledTimes(1))
     act(() => result.current.select('mark-2'))
-    await waitFor(() => expect(inbox.markMarkRead).toHaveBeenCalledTimes(1), { timeout: MARK_NEWS_SETTLE_MS * 4 })
+    // No news on it yet: nothing to read.
+    await new Promise((resolve) => setTimeout(resolve, MARK_NEWS_SETTLE_MS * 2))
+    expect(inbox.markMarkRead).not.toHaveBeenCalled()
 
     // A colleague answers in the thread the reader has open: the inbox changes, three nudges in a row.
     for (let index = 0; index < 3; index += 1) publish({ kind: 'inbox.changed', pending: -1 })
 
     await waitFor(() => expect(inbox.unreadMarks).toHaveBeenCalledTimes(2), { timeout: UNREAD_READ_DELAY_MS * 4 })
-    await waitFor(() => expect(inbox.markMarkRead).toHaveBeenCalledTimes(2), { timeout: MARK_NEWS_SETTLE_MS * 4 })
+    await waitFor(() => expect(inbox.markMarkRead).toHaveBeenCalledTimes(1), { timeout: MARK_NEWS_SETTLE_MS * 4 })
     expect(result.current.unread.has('mark-2')).toBe(false)
     expect(inbox.unreadMarks).toHaveBeenCalledTimes(2)
   })

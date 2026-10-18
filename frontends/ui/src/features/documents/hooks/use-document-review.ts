@@ -43,36 +43,19 @@ export const HINT_READ_ONE_BY_ONE = 8
 
 /** How long a mark must stay open before opening it counts as reading its news: J/K past it does not. */
 export const MARK_NEWS_SETTLE_MS = 400
-/** How soon the same mark's news is read again in this tab: once a minute is enough for a busy thread. */
-const MARK_NEWS_AGAIN_MS = 60_000
-/** When this tab last read each mark's news (`documentId:annotationId`). Per tab, per session. */
-const markNewsReadAt = new Map<string, number>()
 
 /**
  * Opening a mark is reading its news: the reader's informational inbox items
  * anchored on it (a reply, the mark closed, Piloti's finished work) are read,
  * through the inbox's own client (`POST /api/inbox/read` with the anchor), so
  * the inbox stops calling news the reader has just seen. Requests stay open:
- * seeing a mark is not answering it. Best effort; a miss costs an unread row.
- * `known`: the review knows there is news (its dot), so the once-a-minute
- * spacing does not hold it back.
+ * seeing a mark is not answering it. Called only for a mark whose dot says it
+ * has news (the review's `unread`, the same rows): most marks a reader opens
+ * have none, and a write for each was a request for nothing. Best effort; a
+ * miss costs an unread row, whose dot the next read of `unread` brings back.
  */
-export function readMarkNews(
-  documentId: string,
-  annotationId: string,
-  client: InboxClient = inboxClient,
-  { known = false }: { known?: boolean } = {}
-): void {
-  const key = `${documentId}:${annotationId}`
-  const last = markNewsReadAt.get(key)
-  if (!known && last !== undefined && Date.now() - last < MARK_NEWS_AGAIN_MS) return
-  markNewsReadAt.set(key, Date.now())
-  void client.markMarkRead({ documentId, annotationId }).catch(() => markNewsReadAt.delete(key))
-}
-
-/** For the specs: forget what this tab has read. */
-export function forgetMarkNewsReads(): void {
-  markNewsReadAt.clear()
+export function readMarkNews(documentId: string, annotationId: string, client: InboxClient = inboxClient): void {
+  void client.markMarkRead({ documentId, annotationId }).catch(() => undefined)
 }
 
 /** How long the review waits after the inbox changed before it reads which marks have news: one read for a burst. */
@@ -247,20 +230,20 @@ export function useDocumentReview(
     onRefresh: () => void fetchUnread(),
   })
 
-  // A mark that stays open has been read, and so has its news in the inbox:
-  // its dot goes at once, and news that arrives while it is open is read too.
+  // A mark with news that stays open has been read, and so has its news in the
+  // inbox: its dot goes at once, and news that arrives while it is open is read
+  // too (the inbox's nudge reads `unread` again, which brings the dot back first).
+  // A mark without a dot has nothing to read, and writes nothing.
   const selectedHasNews = selectedId !== null && unread.has(selectedId)
   useEffect(() => {
-    if (!enabled || !selectedId) return
+    if (!enabled || !selectedId || !selectedHasNews) return
     const timer = setTimeout(() => {
-      if (selectedHasNews) {
-        setUnread((current) => {
-          const next = new Set(current)
-          next.delete(selectedId)
-          return next
-        })
-      }
-      readMarkNews(documentId, selectedId, inbox, { known: selectedHasNews })
+      setUnread((current) => {
+        const next = new Set(current)
+        next.delete(selectedId)
+        return next
+      })
+      readMarkNews(documentId, selectedId, inbox)
     }, MARK_NEWS_SETTLE_MS)
     return () => clearTimeout(timer)
   }, [enabled, documentId, selectedId, selectedHasNews, inbox])
