@@ -118,7 +118,10 @@ Vorschläge von Piloti“ (`openMarksLabel`, the name adding „in „Grundriss
 EG““). The review says the same in its header and the rail's count
 („2 offen · 12 Vorschläge“), its Offen tab counts the open marks and adds the
 proposals it lists under them („Offen 2 · 12 Vorschläge“, `tabCounts`), and the
-approve confirm names both (below). A press opens the review: the page's own URL
+approve confirm names both (below). On a phone, where the list opens from a
+button in the review's header, the button shows the open count and its name
+says the whole sentence („Anmerkungen: 2 offene Anmerkungen und 12 Vorschläge
+von Piloti“, `review.listOpen` over `openMarksLabel`). A press opens the review: the page's own URL
 with `doc` and `review=1` (`reviewHrefAt(…, { withDocument: true })`), which
 the shelf's `?doc=` sync and the pane already answer.
 
@@ -353,11 +356,16 @@ it. News that reaches a thread the reader has open is read as it arrives.
 A row about new marks („Anna hat 15 Anmerkungen gesetzt“, below) anchors on
 the newest mark only so its link opens there: its news is the document's, so
 it puts no dot on that one pin (`listUnreadAnchors` and `markAnchorItemsRead`
-leave out rows folded on `MARKS_SET_GROUP_ANCHOR`), and it is read when the
-review of the document opens (`readMarksSetNews` in the review's open effect,
-`markMarksSetRead`, `POST /api/inbox/read { resourceType: 'document',
-resourceId, marksSet: true }`, which narrows `markResourceItemsRead` to those
-rows in the types the reader may see).
+leave out rows folded on `MARKS_SET_GROUP_ANCHOR`), and it is read while the
+review of the document is open: when it opens, and on each `inbox.changed`
+nudge while it stays open, so fifteen marks a colleague sets while the reader
+looks at the document are read as they arrive (`watchMarksSetNews` in
+`use-document-review.ts`, called by the review's open effect and let go when
+it closes; `markMarksSetRead`, `POST /api/inbox/read { resourceType:
+'document', resourceId, marksSet: true }`, which narrows
+`markResourceItemsRead` to those rows in the types the reader may see). It
+cannot loop: a read that finds nothing unread (`affected: 0`) sends no
+nudge (`markMarksSetReadFor`).
 
 **The card's own facts.** The Zuständige chip and the date chip each carry a ×
 that clears them. The author's own mark has „Bearbeiten“ in the card's menu:
@@ -380,7 +388,11 @@ only ever a path of this app (`appReturnPath`, `lib/utils/same-origin-path.ts`:
 no scheme, no other origin, no `//`, no backslash or control character, under
 `/app/`); anything else is dropped as if it were absent. A reload stays
 in the review, and the Files reconciler (`use-preview-channel.ts`) drops them
-when a different document opens. The pane writes the address only where the URL
+when a different document opens. A mark's „Link kopieren“ is the mark's own
+address, not this tab's: the document on its shelf at the review (the pop-out
+link, `reviewFilesHref`), else this page, with `clearReviewParams` first and
+then `doc`, `review` and `mark`, so neither the tool in hand nor `back` (the
+page this reader came from) goes to whoever opens it. The pane writes the address only where the URL
 names its document (Dateien's `doc`, or the chat's peek).
 
 **Ways in from the file preview.** The header's „Prüfansicht öffnen" (a PDF

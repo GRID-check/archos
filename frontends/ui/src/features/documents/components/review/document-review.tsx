@@ -32,7 +32,7 @@ import { ShimmerText } from '@/components/ui/shimmer-text'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
 import { liveLine } from '@/features/chat/lib/turn-events'
-import { useTranslations } from '@/i18n'
+import { useLocale, useTranslations } from '@/i18n'
 import { isGhostMark, type AnnotationView } from '@/lib/annotations/types'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { cn } from '@/lib/utils'
@@ -55,7 +55,8 @@ import { ReviewExportMenu } from './review-export-menu'
 import type { ProtocolFilingTarget } from '../../lib/protocol-filing'
 import { useCheckFixed } from './check-fixed'
 import { ReviewToaster, reviewToast } from './review-toaster'
-import { hasLiveMarks, openMarksShortLabel } from '../open-marks-chip'
+import { hasLiveMarks, openMarksLabel, openMarksShortLabel } from '../open-marks-chip'
+import { clearReviewParams, setReviewParams } from '../../lib/open-review'
 import { covers, ReviewStageContext, STAGE_FOOT, STAGE_HEAD, type StageBounds } from './review-stage'
 import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
 
@@ -637,6 +638,7 @@ export function DocumentReviewMode({
   protocolFiling?: ProtocolFilingTarget | null
 }): JSX.Element {
   const t = useTranslations('files')
+  const { locale } = useLocale()
   const [focus, setFocus] = useState<{ page: number; y: number; key: string; instant?: boolean } | null>(null)
   const [following, setFollowing] = useState<string | null>(null)
   const { annotations, select, setTool, tool, selectedId, draft, setDraft, room, piloti } = review
@@ -705,11 +707,10 @@ export function DocumentReviewMode({
     if (intro && (draft || openAsk)) foldIntro()
   }, [intro, draft, openAsk, foldIntro])
 
-  // The review is open: the document's rows about new marks are read, which no pin's dot carries.
-  const { readMarksSetNews } = review
-  useEffect(() => {
-    if (open) readMarksSetNews()
-  }, [open, readMarksSetNews])
+  // The review is open: the document's rows about new marks are read, which no pin's dot carries,
+  // and so are those that arrive while it stays open.
+  const { watchMarksSetNews } = review
+  useEffect(() => (open ? watchMarksSetNews() : undefined), [open, watchMarksSetNews])
 
   // Entered with a tool in hand: armed once per opening.
   const armed = useRef(false)
@@ -994,15 +995,19 @@ export function DocumentReviewMode({
     },
     [t]
   )
+  /**
+   * The mark's own link: the document on its shelf at the review (`popoutHref`), else this page,
+   * with `doc`, `review` and `mark` and nothing of this tab's way through it: neither the tool in
+   * hand nor `back`, the page this reader came from, which is not the recipient's.
+   */
   const copyLink = useCallback(
     (annotation: AnnotationView) => {
-      const url = new URL(window.location.href)
-      url.searchParams.set('doc', annotation.documentId)
-      url.searchParams.set('review', '1')
-      url.searchParams.set('mark', annotation.id)
+      const url = new URL(popoutHref ?? window.location.href, window.location.href)
+      clearReviewParams(url.searchParams)
+      setReviewParams(url.searchParams, { documentId: annotation.documentId, annotationId: annotation.id }, { withDocument: true })
       copyText(url.toString())
     },
-    [copyText]
+    [copyText, popoutHref]
   )
   const popout = useCallback(() => {
     if (popoutHref) window.open(popoutHref, '_blank', 'popup,width=1440,height=900')
@@ -1155,12 +1160,16 @@ export function DocumentReviewMode({
                 className="h-8 gap-1.5 pointer-coarse:h-11"
                 aria-haspopup="dialog"
                 aria-expanded={listOpen}
-                aria-label={t('annotations.section')}
+                // „Anmerkungen: 3 offene Anmerkungen und 12 Vorschläge von Piloti“: the chip's sentence.
+                aria-label={t('review.listOpen', {
+                  marks: hasLiveMarks(review.counts) ? openMarksLabel(t, locale, review.counts) : t('review.nothingOpen'),
+                })}
                 data-testid="review-list-open"
                 onClick={() => setListOpen(true)}
               >
                 <MessagesSquare className="size-3.5" aria-hidden />
-                <span className="font-mono tabular-nums">{review.counts.open + review.counts.proposed}</span>
+                {/* The open marks, as „offen“ counts them everywhere: Piloti's proposals are not the office's yet. */}
+                <span className="font-mono tabular-nums">{review.counts.open}</span>
               </Button>
             )}
             {listBeside && exportMenu}

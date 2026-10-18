@@ -1572,6 +1572,8 @@ export const files: typeof en.files = {
     othersHere: '{count, plural, one {# weitere Person sieht sich das gerade an} other {# weitere Personen sehen sich das gerade an}}',
     close: 'Prüfansicht schließen',
     nothingOpen: 'Nichts offen',
+    // Der Knopf zur Liste auf dem Telefon zeigt die offenen; sein Name sagt den ganzen Satz des Chips.
+    listOpen: 'Anmerkungen: {marks}',
     fassung: 'Fassung {number}',
     offline: 'Verbindung unterbrochen',
     toolsLabel: 'Werkzeuge',

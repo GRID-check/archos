@@ -229,14 +229,29 @@ export function useDocumentReview(
     },
     []
   )
+  /**
+   * Whether the review is in front of the reader ({@link watchMarksSetNews}):
+   * then a change in the inbox also reads the rows about new marks, which no
+   * dot carries (`readMarksSetNews`). It cannot loop: a read that finds
+   * nothing unread (`affected: 0`) sends no `inbox.changed`
+   * (`markMarksSetReadFor`).
+   */
+  const marksSetWatched = useRef(false)
+  const readMarksSetNews = useCallback(() => {
+    void inbox.markMarksSetRead(documentId).catch(() => undefined)
+  }, [documentId, inbox])
+  const readInbox = useCallback(() => {
+    void fetchUnread()
+    if (marksSetWatched.current) readMarksSetNews()
+  }, [fetchUnread, readMarksSetNews])
   useLiveEvents({
     enabled,
     onEvent: (event) => {
       if (event.kind !== 'inbox.changed') return
       if (unreadTimer.current) clearTimeout(unreadTimer.current)
-      unreadTimer.current = setTimeout(() => void fetchUnread(), UNREAD_READ_DELAY_MS)
+      unreadTimer.current = setTimeout(readInbox, UNREAD_READ_DELAY_MS)
     },
-    onRefresh: () => void fetchUnread(),
+    onRefresh: readInbox,
   })
 
   // A mark with news that stays open has been read, and so has its news in the
@@ -258,14 +273,20 @@ export function useDocumentReview(
   }, [enabled, documentId, selectedId, selectedHasNews, inbox])
   /**
    * The review of this document is open in front of the reader: its rows
-   * about new marks are read („Anna hat 15 Anmerkungen gesetzt“). They fold
-   * per document and anchor on the newest mark only for their link, so no
-   * pin's dot carries them (`listUnreadAnchors`), and seeing the review is
-   * seeing the marks they tell about. Best effort; a miss leaves the row unread.
+   * about new marks are read („Anna hat 15 Anmerkungen gesetzt“), now and on
+   * every change in the inbox until the returned function is called (the
+   * review closes, or the document changes). They fold per document and anchor
+   * on the newest mark only for their link, so no pin's dot carries them
+   * (`listUnreadAnchors`), and seeing the review is seeing the marks they tell
+   * about. Best effort; a miss leaves the row unread.
    */
-  const readMarksSetNews = useCallback(() => {
-    void inbox.markMarksSetRead(documentId).catch(() => undefined)
-  }, [documentId, inbox])
+  const watchMarksSetNews = useCallback(() => {
+    marksSetWatched.current = true
+    readMarksSetNews()
+    return () => {
+      marksSetWatched.current = false
+    }
+  }, [readMarksSetNews])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [filter, setFilter] = useState<ReviewFilter>('open')
   /** „Für Sie“: only the marks that are this reader's ({@link isForReader}), the same ones Dateien counts „für Sie“. */
@@ -904,7 +925,7 @@ export function useDocumentReview(
       carryAll,
       resolveCarried,
       unread,
-      readMarksSetNews,
+      watchMarksSetNews,
     }),
     [
       documentId,
@@ -945,7 +966,7 @@ export function useDocumentReview(
       carryAll,
       resolveCarried,
       unread,
-      readMarksSetNews,
+      watchMarksSetNews,
     ]
   )
 }

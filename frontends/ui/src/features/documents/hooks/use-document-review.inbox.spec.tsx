@@ -119,3 +119,32 @@ describe('which marks have news', () => {
     expect(inbox.unreadMarks).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('the news about new marks, while the review is open', () => {
+  const marksSetReads = () => reads.filter((body) => (body as { marksSet?: boolean }).marksSet === true)
+
+  it('reads it on opening, again on each change in the inbox while open, and no more once closed', async () => {
+    const { result } = renderHook(() => useDocumentReview('doc-1', { enabled: true, transport }))
+    await waitFor(() => expect(result.current.load).toBe('ready'))
+    // A change in the inbox while the review is closed reads no news about new marks.
+    publish({ kind: 'inbox.changed', pending: 1 })
+    await new Promise((resolve) => setTimeout(resolve, UNREAD_READ_DELAY_MS * 2))
+    expect(marksSetReads()).toEqual([])
+
+    let stop = () => {}
+    act(() => {
+      stop = result.current.watchMarksSetNews()
+    })
+    await waitFor(() => expect(marksSetReads()).toHaveLength(1))
+    expect(marksSetReads()[0]).toEqual({ resourceType: 'document', resourceId: 'doc-1', marksSet: true })
+
+    // Anna sets fifteen marks while the reader looks at the document: its row arrives, and is read.
+    publish({ kind: 'inbox.changed', pending: 1 })
+    await waitFor(() => expect(marksSetReads()).toHaveLength(2), { timeout: UNREAD_READ_DELAY_MS * 4 })
+
+    act(() => stop())
+    publish({ kind: 'inbox.changed', pending: 1 })
+    await new Promise((resolve) => setTimeout(resolve, UNREAD_READ_DELAY_MS * 2))
+    expect(marksSetReads()).toHaveLength(2)
+  })
+})

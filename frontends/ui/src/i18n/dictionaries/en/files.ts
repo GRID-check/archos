@@ -1613,6 +1613,8 @@ export const files = {
     othersHere: '{count, plural, one {# other person is looking at this now} other {# other people are looking at this now}}',
     close: 'Close review',
     nothingOpen: 'Nothing open',
+    /** The list button on a phone shows the open count; its name says the chip's whole sentence. */
+    listOpen: 'Annotations: {marks}',
     fassung: 'Revision {number}',
     offline: 'Connection interrupted',
     toolsLabel: 'Tools',
