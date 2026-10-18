@@ -29,7 +29,7 @@ import type { AnnotationView } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
 import { createCanvasTurnClient, type CanvasTurnClientOptions } from '../../lib/canvas-turn-client'
-import { useDocumentReview, type ReviewFassung } from '../../hooks/use-document-review'
+import { CARRY_AT_ONCE, useDocumentReview, type ReviewFassung } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
 import { useCheckFixed } from './check-fixed'
 import { PilotiAnswerCard } from './piloti-answer-card'
@@ -1438,14 +1438,17 @@ describe('closing the loop on a mark', () => {
     await waitFor(() => expect(patched).toEqual([{ dueOn: null }]))
   })
 
-  it('finds the reader’s own marks under „Mine" while the room has not welcomed the tab', async () => {
+  it('finds the reader’s marks under „For you" while the room has not welcomed the tab, and not what they only set', async () => {
     serve([
       view({ id: 'ann_1', number: 1, createdBy: 'user_anna', assigneeUserId: 'user_me', body: 'Mir zugewiesen' }),
       view({ id: 'ann_2', number: 2, createdBy: 'user_anna', body: 'Nicht meins' }),
+      // Set by the reader for a colleague: the colleague's, as Dateien counts it.
+      view({ id: 'ann_3', number: 3, createdBy: 'user_me', assigneeUserId: 'user_anna', body: 'Für Anna' }),
     ])
     render(<Harness transport={silentRoom()} />)
-    await waitFor(() => expect(screen.getAllByTestId('review-row')).toHaveLength(2))
+    await waitFor(() => expect(screen.getAllByTestId('review-row')).toHaveLength(3))
 
+    expect(screen.getByTestId('review-filter-mine')).toHaveTextContent('For you')
     await userEvent.click(screen.getByTestId('review-filter-mine'))
 
     const rows = screen.getAllByTestId('review-row')
@@ -1742,6 +1745,95 @@ describe('a mark goes on with the current Fassung', () => {
     await waitFor(() => expect(screen.queryByTestId('review-earlier-bar')).toBeNull())
   })
 
+  /**
+   * Thirty marks, the PATCHes counted, how many are in flight at once, and
+   * every list read after the first: „Alle übernehmen" reads each list once.
+   */
+  function serveThirty({ from, failing = new Set<string>() }: { from: 'doc_1' | 'doc_b'; failing?: ReadonlySet<string> }) {
+    const marks = Array.from({ length: 30 }, (_, index) =>
+      view({
+        id: `ann_${index + 1}`,
+        documentId: from,
+        number: index + 1,
+        onCurrentFassung: from === 'doc_b',
+        fassungNumber: 2,
+        carryTarget: HERE,
+      })
+    )
+    const counts = { patches: 0, inFlight: 0, mostInFlight: 0, reads: { doc_1: 0, doc_b: 0 } as Record<string, number> }
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) => {
+        const id = String(params.id)
+        counts.reads[id] = (counts.reads[id] ?? 0) + 1
+        return HttpResponse.json({ annotations: id === from ? marks : [], canAnnotate: true, pilotiWakes: false })
+      }),
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ params }) => {
+        counts.patches += 1
+        counts.inFlight += 1
+        counts.mostInFlight = Math.max(counts.mostInFlight, counts.inFlight)
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        counts.inFlight -= 1
+        const annotationId = String(params.annotationId)
+        if (failing.has(annotationId)) return HttpResponse.json({ error: 'Unavailable', code: 'UNAVAILABLE' }, { status: 503 })
+        const index = marks.findIndex((mark) => mark.id === annotationId)
+        const mark = marks[index] as AnnotationView
+        if (from === 'doc_1') {
+          marks[index] = { ...mark, onCurrentFassung: true, fassungNumber: 3, carryTarget: null }
+          return HttpResponse.json({ annotation: marks[index] })
+        }
+        marks[index] = { ...mark, status: 'resolved', carryTarget: null }
+        return HttpResponse.json({ annotation: view({ ...mark, id: `${annotationId}_on_doc_1`, documentId: 'doc_1', carryTarget: null }) })
+      })
+    )
+    return counts
+  }
+
+  it('carries thirty marks of an earlier Fassung with four PATCHes at a time, and reads no list again', async () => {
+    const counts = serveThirty({ from: 'doc_1' })
+    render(<Harness transport={scriptedRoom().transport} />)
+    const bar = await screen.findByTestId('review-earlier-bar')
+    const readsBefore = { ...counts.reads }
+
+    await userEvent.click(within(bar).getByTestId('review-carry-all-earlier'))
+
+    await waitFor(() => expect(screen.queryByTestId('review-earlier-bar')).toBeNull())
+    expect(counts.patches).toBe(30)
+    expect(counts.mostInFlight).toBe(CARRY_AT_ONCE)
+    // Moved in place: each PATCH answers the mark as it now stands.
+    expect(counts.reads).toEqual(readsBefore)
+  })
+
+  it('carries thirty marks of the replaced document and reads each list once after the last', async () => {
+    const counts = serveThirty({ from: 'doc_b' })
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+    const group = await screen.findByTestId('review-carried-group')
+    const readsBefore = { ...counts.reads }
+
+    await userEvent.click(within(group).getByTestId('review-carry-all-from'))
+
+    await waitFor(() => expect(screen.queryByTestId('review-carried-group')).toBeNull())
+    expect(counts.patches).toBe(30)
+    expect(counts.mostInFlight).toBeLessThanOrEqual(CARRY_AT_ONCE)
+    expect(counts.reads).toEqual({ doc_1: (readsBefore.doc_1 ?? 0) + 1, doc_b: (readsBefore.doc_b ?? 0) + 1 })
+  })
+
+  it('says when not all of them went, and carries the rest', async () => {
+    const counts = serveThirty({ from: 'doc_1', failing: new Set(['ann_7', 'ann_19']) })
+    render(<Harness transport={scriptedRoom().transport} />)
+    const bar = await screen.findByTestId('review-earlier-bar')
+
+    await userEvent.click(within(bar).getByTestId('review-carry-all-earlier'))
+
+    expect(await within(bar).findByText('Not every annotation could be carried on. Please try again.')).toBeInTheDocument()
+    expect(counts.patches).toBe(30)
+    expect(bar).toHaveTextContent('Open from earlier revisions: 2')
+  })
+
   it('lists the open marks of the document this one replaces, read-only, and carries one on as a mark of this one', async () => {
     const patched = serveDocuments({
       doc_1: [],
@@ -1989,5 +2081,94 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
       ])
     )
     await waitFor(() => expect(within(screen.getByTestId('review-carried-group')).getAllByTestId('review-carried-row')).toHaveLength(1))
+  })
+})
+
+describe('a mark of an earlier Fassung on the sheet', () => {
+  const HERE = { documentId: 'doc_1', documentName: 'Grundriss EG.pdf' }
+
+  it('draws an open one hollow where it stood, named by its Fassung, and opens its card to carry it on', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1 }),
+      view({ id: 'ann_4', number: 4, x: 0.6, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
+      // Closed on an earlier Fassung: nothing left to carry, nothing drawn.
+      view({ id: 'ann_5', number: 5, onCurrentFassung: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+    ])
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const ghost = await within(screen.getByTestId('sheet')).findByTestId('review-ghost-pin')
+    expect(within(screen.getByTestId('sheet')).getAllByTestId('review-ghost-pin')).toHaveLength(1)
+    expect(ghost).toHaveTextContent('4')
+    expect(ghost).toHaveAttribute('data-ghost', 'true')
+    expect(ghost.getAttribute('aria-label')).toBe('Annotation 4: Defect · from revision 2')
+    // Its own pin, never one of this sheet's.
+    expect(within(screen.getByTestId('sheet')).getAllByTestId('review-pin')).toHaveLength(1)
+
+    await userEvent.click(ghost)
+
+    const thread = await screen.findByTestId('review-thread')
+    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('From revision 2.')
+    expect(within(thread).getByTestId('thread-carry')).toBeInTheDocument()
+  })
+
+  it('draws no ghost under „Resolved", nor a mark of the document this one replaces', async () => {
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) =>
+        HttpResponse.json({
+          annotations:
+            params.id === 'doc_b'
+              ? [view({ id: 'ann_b4', documentId: 'doc_b', number: 4, onCurrentFassung: false, carryTarget: HERE })]
+              : [view({ id: 'ann_4', number: 4, onCurrentFassung: false, carryTarget: HERE })],
+          canAnnotate: true,
+          pilotiWakes: false,
+        })
+      )
+    )
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+    await screen.findByTestId('review-carried-group')
+    // Only this document's own: Index B's sheet is another drawing.
+    expect(within(screen.getByTestId('sheet')).getAllByTestId('review-ghost-pin')).toHaveLength(1)
+
+    await userEvent.click(screen.getByTestId('review-filter-closed'))
+
+    expect(within(screen.getByTestId('sheet')).queryByTestId('review-ghost-pin')).toBeNull()
+  })
+})
+
+describe('a thread with news the reader has not read', () => {
+  it('wears a dot on its pin and its row, said in words, until the reader opens it', async () => {
+    serve([view({ id: 'ann_1', number: 1 }), view({ id: 'ann_2', number: 2, x: 0.6 })])
+    const reads: unknown[] = []
+    server.use(
+      http.get('/api/inbox/unread-anchors', ({ request }) => {
+        const query = new URL(request.url).searchParams
+        expect(Object.fromEntries(query)).toEqual({ resourceType: 'document', resourceId: 'doc_1' })
+        return HttpResponse.json({ anchorIds: reads.length > 0 ? [] : ['ann_2'] })
+      }),
+      http.post('/api/inbox/read', async ({ request }) => {
+        reads.push(await request.json())
+        return HttpResponse.json({ affected: 1, pending: 0 })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const pins = await within(screen.getByTestId('sheet')).findAllByTestId('review-pin')
+    await waitFor(() => expect(pins[1]).toHaveAttribute('data-unread', 'true'))
+    expect(pins[0]).not.toHaveAttribute('data-unread')
+    expect(pins[1]?.getAttribute('aria-label')).toBe('Annotation 2: Defect · unread')
+    const rows = screen.getAllByTestId('review-row')
+    expect(rows[1]).toHaveTextContent('unread')
+    expect(rows[1]?.querySelector('[data-slot="comment-pin-unread"]')).not.toBeNull()
+    expect(rows[0]?.querySelector('[data-slot="comment-pin-unread"]')).toBeNull()
+
+    await userEvent.click(rows[1] as HTMLElement)
+
+    await waitFor(() => expect(reads).toEqual([{ resourceType: 'document', resourceId: 'doc_1', anchorId: 'ann_2' }]))
+    expect(screen.getAllByTestId('review-row')[1]?.querySelector('[data-slot="comment-pin-unread"]')).toBeNull()
   })
 })

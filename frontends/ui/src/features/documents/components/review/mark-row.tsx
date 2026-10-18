@@ -33,12 +33,15 @@ export function MarkRowContent({
   annotation,
   viewerId,
   showPage = false,
+  unread = false,
 }: {
   annotation: AnnotationView
   /** The reader, so a mention of them stands out. */
   viewerId: string | null
   /** Name the page in the quiet line: where nothing around the row says which page it is on. */
   showPage?: boolean
+  /** News on it the reader has not read (`DocumentReview.unread`): a dot on the pin, and words for a screen reader. */
+  unread?: boolean
 }): JSX.Element {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -55,7 +58,9 @@ export function MarkRowContent({
           color={markInk(annotation)}
           proposed={annotation.status === 'proposed'}
           done={!isLive(annotation)}
+          unread={unread}
         />
+        {unread && <span className="sr-only">{t('review.pinState.unread')}</span>}
       </span>
       <span className="min-w-0 flex-1">
         <span className={cn('text-foreground line-clamp-2 text-sm leading-5', !isLive(annotation) && 'text-muted-foreground')}>

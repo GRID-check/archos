@@ -48,7 +48,7 @@ import {
 import { CursorChat } from './cursor-chat'
 import { keepTrigger, restoreFocus } from './focus-return'
 import { PilotiAnswerCard } from './piloti-answer-card'
-import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
+import { isGhostMark, isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel, type OpenMark } from './review-panel'
 import { ReviewAnnouncer } from './review-announcer'
 import { ReviewExportMenu } from './review-export-menu'
@@ -719,11 +719,12 @@ export function DocumentReviewMode({
       setFollowing(null)
       setDraft(null)
       select(annotation.id)
-      if (annotation.onCurrentFassung) {
+      // A ghost (an open mark of an earlier Fassung) is drawn where it stood: the view goes there too.
+      if (annotation.onCurrentFassung || isGhostMark(annotation, review.documentId)) {
         setFocus({ page: annotation.page, y: annotation.y + (annotation.h ?? 0) / 2, key: `${annotation.id}:${Date.now()}` })
       }
     },
-    [select, setDraft]
+    [select, setDraft, review.documentId]
   )
 
   /**
@@ -866,8 +867,9 @@ export function DocumentReviewMode({
     onOpenChange(false)
   }, [onOpenChange, setDraft, setTool])
 
-  // A mark of an earlier Fassung is listed, never drawn: selected, its thread
-  // opens over the sheet instead of beside a pin that is not there.
+  // A mark of an earlier Fassung is not drawn as a mark of this sheet (an open
+  // one is a ghost, where it stood on its own): selected, its thread opens over
+  // the sheet, never beside a place the current drawing may not have.
   const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentFassung) ?? null
   const selected = annotations.find((annotation) => annotation.id === selectedId) ?? null
   // The card a phone docks: Piloti's answer on a box, the draft, or the open thread.

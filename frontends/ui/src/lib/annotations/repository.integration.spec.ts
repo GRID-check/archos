@@ -558,6 +558,45 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     )
   })
 
+  it('counts „für Sie“ as the review’s predicate says, case for case', async () => {
+    const { memberReader } = await import('@/lib/documents/visibility')
+    const { isForReader, isLive } = await import('./types')
+    const { FOR_READER_CASES } = await import('@/test-utils/marks-for-reader')
+    const COLLEAGUE = `${USER}_colleague`
+    const person = (who: 'reader' | 'colleague') => (who === 'reader' ? USER : COLLEAGUE)
+    // One document per case, so the tally speaks for each on its own.
+    const placed: Array<{ given: (typeof FOR_READER_CASES)[number]; documentId: string }> = []
+    for (const [index, given] of FOR_READER_CASES.entries()) {
+      const documentId = await document(ids.project, `FuerSie_${index}.pdf`)
+      const [row] = await insert(documentId, [mark({ assigneeUserId: given.assignee ? person(given.assignee) : null })], {
+        authorKind: given.authorKind,
+        createdBy: person(given.setBy),
+        // Piloti's mark is the office's only once somebody took it over.
+        ...(given.authorKind === 'piloti' && given.status !== 'proposed' ? { acceptedBy: COLLEAGUE } : {}),
+      })
+      if (given.status === 'resolved' || given.status === 'dismissed') {
+        await inOrg(ORG, () =>
+          repo.updateDocumentAnnotation(ORG, documentId, row.id, 'open', {
+            transition: { status: given.status, closedBy: USER, closedAt: new Date() },
+          })
+        )
+      }
+      placed.push({ given, documentId })
+    }
+
+    const tally = await inOrg(ORG, () =>
+      repo.tallyLiveMarks(ORG, placed.map((entry) => entry.documentId), memberReader(USER), USER)
+    )
+    for (const { given, documentId } of placed) {
+      const [stored] = await inOrg(ORG, () => repo.listDocumentAnnotations(ORG, documentId))
+      if (!stored) throw new Error(`no mark stored for „${given.name}“`)
+      expect(stored.status, given.name).toBe(given.status)
+      expect(isForReader(stored, USER), given.name).toBe(given.forReader)
+      expect(isLive(stored) && isForReader(stored, USER), given.name).toBe(given.counted)
+      expect(tally.get(documentId)?.forYou ?? 0, given.name).toBe(given.counted ? 1 : 0)
+    }
+  })
+
   describe('waking Piloti (migration 0139)', () => {
     const count = async (query: ReturnType<typeof sql>) =>
       Number(Array.from(await inOrg(ORG, () => db.execute<{ n: number }>(query)))[0]?.n)

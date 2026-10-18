@@ -163,8 +163,11 @@ export async function listDocumentAnnotations(
 /**
  * The live Anmerkungen of each of these documents, counted in ONE grouped
  * query for a listing page: how many are open or proposed, and how many of
- * those are open with `readerUserId` as Zuständige. Every Fassung counts: a
- * mark set on an earlier one is still work until somebody closes it.
+ * those are open with `readerUserId` as Zuständige. That second number is the
+ * review's „Für Sie“ (`isForReader` over the live marks) in SQL: keep the two
+ * equal, `repository.integration.spec.ts` asks both the same cases. Every
+ * Fassung counts: a mark set on an earlier one is still work until somebody
+ * closes it.
  *
  * The documents are joined and narrowed by the reader the listing was read
  * with (`documentVisibleTo`), so a held upload's marks are not counted for

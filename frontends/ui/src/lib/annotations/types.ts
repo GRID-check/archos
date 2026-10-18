@@ -460,9 +460,30 @@ export const isLive = (annotation: Pick<AnnotationView, 'status'>): boolean =>
   (LIVE_ANNOTATION_STATUSES as readonly AnnotationStatus[]).includes(annotation.status)
 
 /**
+ * Whether a mark is the reader's: they are its Zuständige, and it is the
+ * office's, not a proposal of Piloti's nobody took over yet (a proposal that
+ * names them becomes theirs when somebody takes it over). Who set it does not
+ * count: a mark a person set for a colleague is the colleague's.
+ *
+ * The one answer to „für Sie“: the review's filter of that name lists the
+ * marks it holds, and the live ones among them ({@link isLive}, so open) are
+ * the number Dateien's chip says („4 offen · 2 für Sie“). The server counts
+ * that number in SQL (`tallyLiveMarks`, `status = 'open' and assignee_user_id
+ * = reader`); `repository.integration.spec.ts` holds the two to the same cases
+ * (`@/test-utils/marks-for-reader`).
+ */
+export function isForReader(
+  annotation: Pick<AnnotationView, 'status' | 'assigneeUserId'>,
+  readerUserId: string | null
+): boolean {
+  return readerUserId !== null && annotation.status !== 'proposed' && annotation.assigneeUserId === readerUserId
+}
+
+/**
  * What a listing row says about a document's Anmerkungen, for the reader it
  * was read for: how many are live ({@link isLive}, on every Fassung), and how
- * many of those are open with the reader as Zuständige.
+ * many of those are the reader's ({@link isForReader}: open, with the reader
+ * as Zuständige).
  */
 export interface MarkTally {
   live: number

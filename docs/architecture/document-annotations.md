@@ -85,7 +85,9 @@ marks are as invisible as the upload.
 by-name reads alike) carries `marks: { live, forYou }`: how many of the
 document's marks are live (`isLive`: open, and Piloti's proposals nobody
 decided on, on every Fassung) and how many of those are open with the reader as
-Zuständige, or `null` when none is live. `tallyLiveMarks`
+Zuständige (`isForReader` over the live ones, `lib/annotations/types.ts`: the
+review's „Für Sie“ filter is the same predicate, so its Offen count is this
+number), or `null` when none is live. `tallyLiveMarks`
 (`lib/annotations/repository.ts`) counts a whole page in ONE grouped query,
 bounded by the page's ids, that joins `documents` behind the listing's own
 `documentVisibleTo(reader)`. A proposal that names the reader is not theirs
@@ -277,9 +279,18 @@ question this reader asked is answered. Never a pointer or who came and went,
 never this reader's own changes, in this tab or another. The same line twice
 is said twice. The pointers and their tags are hidden from it.
 
-A mark of an earlier Fassung is listed and never drawn; selected, its thread
-opens over the sheet, saying so in its first line, and an open one offers to go
-on with the current Fassung (below). Status moves carry the status the card showed
+A mark of an earlier Fassung is never drawn as a mark of this sheet. An OPEN one
+of this same document is drawn as a **ghost** in the review, under „Offen“:
+where it stood on its own Fassung, a hollow pin with a dotted ring (a box
+dotted too, `CommentPin`'s `ghost`), under this sheet's own marks, and named
+„Anmerkung 4: Mangel · aus Fassung 2“ for a screen reader (`isGhostMark`,
+`review-page-layer.tsx`). The reader sees where it would land before carrying
+it, rather than carrying it to find out. A mark of a replaced document (Index B
+under another name) is never a ghost here: its sheet is another drawing, and its
+place may mean nothing on this one. Selected, from its ghost or its row, its
+thread opens over the sheet (not beside the ghost, whose place the current
+drawing may not have), saying so in its first line, and an open one offers to go
+on with the current Fassung (below); the view goes to where its ghost stands. Status moves carry the status the card showed
 (`expectedStatus`), so a stale tab gets the conflict notice, never a blind
 change. The list is read again when the room returns after a drop and when the
 tab returns to view.
@@ -291,7 +302,29 @@ Closing the review opens it again at the page the reader was on in the review.
 It knows who reads (`review.me`) from the room's welcome, else from the page
 (the shelf's `currentUserId`, passed as `viewerUserId`), else from the
 session's user id the app keeps (`useChatStore`'s `currentUserId`), so
-„Mir zugewiesen“, its counts and „Mir zuweisen“ work while the room is down.
+„Für Sie“, its counts and „Mir zuweisen“ work while the room is down.
+
+**„Für Sie“** is one predicate on both surfaces (`isForReader`,
+`lib/annotations/types.ts`): the marks the reader is Zuständige of, and that are
+the office's (Piloti's proposal naming them is not theirs until somebody takes
+it over). Who set a mark does not count: a mark set for a colleague is the
+colleague's. The list's filter shows those under Offen and Erledigt alike, and
+its Offen count is the number Dateien's chip says, „4 offen · 2 für Sie“, which
+the server counts in SQL (`tallyLiveMarks`). The words are the chip's, and
+`repository.integration.spec.ts` holds the SQL to the predicate on the cases
+of `@/test-utils/marks-for-reader`.
+
+**A thread with news.** A pin and its row wear a dot when the reader's
+Postfach holds news anchored on the mark they have not read: a reply, the mark
+closed, Piloti's finished work (the informational inbox items opening a mark
+reads). One bounded read per document through the inbox's typed client
+(`unreadMarks`, `GET /api/inbox/unread-anchors`, the same rows
+`markAnchorItemsRead` reads), said in words to a screen reader („ungelesen“).
+Opening the thread reads it (`readMarkNews`, held back once a minute unless the
+dot says there is news) and the dot goes. The set is read again on the tab's
+`inbox.changed` nudge, which goes out once the row is written; the room's hint
+goes out before the thread's notification is, so reading on the hint would race
+it. News that reaches a thread the reader has open is read as it arrives.
 
 **The card's own facts.** The Zuständige chip and the date chip each carry a ×
 that clears them. The author's own mark has „Bearbeiten“ in the card's menu:
@@ -378,7 +411,7 @@ deleted one goes with it. A `piloti.asks_you` the reply settled stays settled.
 
 A mark is set on one Fassung, because a position is true of the sheet somebody
 looked at. When the document gets a new Fassung, its open marks stay open and
-are listed, not drawn, and the people working on them are told how many to
+are listed and drawn only as ghosts (above), and the people working on them are told how many to
 check (`document.new_fassung`, [`fassungen.md`](fassungen.md#notifications)).
 A mark that still holds goes on with the new Fassung: „Auf aktuelle Fassung
 übernehmen“ in its card's first line, for whoever may edit an open mark
@@ -393,7 +426,9 @@ longer fits is resolved and set again instead.
   inbox row, wake and change record anchored on it stay whole, and it is drawn
   again. Nobody is told: the new Fassung already told them, and the room
   re-reads. The list's „Offen aus früheren Fassungen: 4 · Alle übernehmen“
-  carries each the same way, one PATCH per mark.
+  carries each the same way, one PATCH per mark, four at a time
+  (`CARRY_AT_ONCE`, `inPool`); a mark moved in place takes its PATCH's
+  answer, and nothing is read again.
 - **Under another name** (Index B confirmed as replaced by Index C, `supersededBy`
   in `lib/documents/fassung.ts`; through a chain, its end, read only through
   documents the carrier may open, `lib/annotations/carry.ts`: a link the shelf
@@ -436,7 +471,10 @@ The review shows both sides. C's review lists B's open marks read-only under
 `useDocumentReview`'s `carried`, the direct predecessors from the file's
 `fassung` facts, at most three), each with „Auf aktuelle Fassung übernehmen“
 where it has a `carryTarget` (labelled for a screen reader with its number,
-„Anmerkung 4 auf aktuelle Fassung übernehmen“), „Alle übernehmen“ for several,
+„Anmerkung 4 auf aktuelle Fassung übernehmen“), „Alle übernehmen“ for several
+(the same PATCHes, four at a time, and this list and B's read ONCE after the
+last, not after each: thirty marks are thirty PATCHes and two reads; a mark
+that did not go leaves „Nicht alle Anmerkungen konnten übernommen werden“),
 and „Fassungen vergleichen“, the comparison the inbox row opens
 (`compareFassungHref`). A list of B that could not be read stays as its group,
 saying so, with „Erneut versuchen“ (`retryCarried`). In B's review an open
@@ -1348,7 +1386,7 @@ it, and the project is not closed (`protocolFiling`, `file-preview-pane.tsx`).
 
 ## Known debts
 
-- „Fassungen vergleichen“ compares two documents (`fassung-compare-service.ts`); two versions under the same name have no visual comparison yet, so a mark of an earlier Fassung of the same document is carried without one.
+- „Fassungen vergleichen“ compares two documents (`fassung-compare-service.ts`); two versions under the same name have no visual comparison yet, so a mark of an earlier Fassung of the same document is carried with only its ghost pin to show where it stood.
 - A mark carried on to a replacing document starts a new thread there; the old one is read on the replaced document, by the link in the card. The two are not one timeline.
 
 - The chat-hosted canvas (the review open over the chat) still asks an @Piloti reply in the chat's conversation, under the chat's own message id, when wakes are off; only the standalone canvas uses the reply's turn id.

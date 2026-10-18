@@ -297,6 +297,20 @@ function PeerSelection({
   )
 }
 
+/**
+ * Whether a mark is drawn as a ghost: still open, and set on an earlier
+ * Fassung of THIS document, so it is drawn hollow where it stood on that
+ * sheet, for the reader to see where it would land before carrying it on. A
+ * mark of another document (a replaced one) is never drawn here: its sheet
+ * is another drawing, and its place may mean nothing on this one.
+ */
+export function isGhostMark(
+  annotation: Pick<AnnotationView, 'documentId' | 'onCurrentFassung' | 'status'>,
+  documentId: string
+): boolean {
+  return annotation.documentId === documentId && !annotation.onCurrentFassung && annotation.status === 'open'
+}
+
 /** Whose colour a mark wears: Piloti's ink, or the person who set it. */
 export function markInk(annotation: Pick<AnnotationView, 'authorKind' | 'createdBy'>): string {
   // Paper ink: a mark is drawn on the page, which stays white in dark mode.
@@ -519,6 +533,8 @@ const PageCompany = memo(function PageCompany({
  */
 const PageMarks = memo(function PageMarks({
   marks,
+  ghost = false,
+  unread,
   focused,
   selectedId,
   hoveredId,
@@ -527,6 +543,10 @@ const PageMarks = memo(function PageMarks({
   onHover,
 }: {
   marks: readonly AnnotationView[]
+  /** Marks of an earlier Fassung ({@link isGhostMark}): hollow pins, dotted boxes, named by their Fassung. */
+  ghost?: boolean
+  /** The marks whose thread has news this reader has not opened: a dot on the pin. */
+  unread: ReadonlySet<string>
   /** The full review: a pin there opens its card beside it. In the preview it opens the review, and says nothing of a card. */
   focused: boolean
   selectedId: string | null
@@ -564,7 +584,8 @@ const PageMarks = memo(function PageMarks({
                 className={cn(
                   'absolute rounded-[2px] border-[1.5px] mix-blend-multiply transition-[background-color,opacity] duration-quick ease-out motion-reduce:transition-none',
                   proposed && 'border-dashed',
-                  done && 'opacity-40'
+                  done && 'opacity-40',
+                  ghost && 'border-dotted opacity-60'
                 )}
                 style={{
                   ...box(annotation.x, annotation.y, annotation.w, annotation.h),
@@ -578,7 +599,7 @@ const PageMarks = memo(function PageMarks({
               style={at(annotation.x, annotation.y)}
             >
               <CommentPin
-                data-testid="review-pin"
+                data-testid={ghost ? 'review-ghost-pin' : 'review-pin'}
                 // 24px on the drawing, 44px under the finger: the pin must not
                 // hide the linework it marks, and must still be hit.
                 className="touch-target"
@@ -586,8 +607,13 @@ const PageMarks = memo(function PageMarks({
                 color={ink}
                 proposed={proposed}
                 done={done}
+                ghost={ghost}
+                unread={unread.has(annotation.id) && annotation.id !== selectedId}
                 active={annotation.id === selectedId}
-                aria-label={pinLabel(t, annotation, pilotiLine, openBy)}
+                aria-label={pinLabel(t, annotation, pilotiLine, openBy, {
+                  ghost,
+                  unread: unread.has(annotation.id) && annotation.id !== selectedId,
+                })}
                 // A pin opens its card, a dialog beside it: expanded while it is open.
                 aria-haspopup="dialog"
                 aria-expanded={focused ? annotation.id === selectedId : undefined}
@@ -612,15 +638,17 @@ const PageMarks = memo(function PageMarks({
 type Translate = ReturnType<typeof useTranslations>
 
 /**
- * What a pin says to a screen reader: its number and kind, then its state in
- * words the pin shows as a dash or a tick (Vorschlag, erledigt, verworfen),
- * Piloti's byline, and who else has it open.
+ * What a pin says to a screen reader: its number and kind, the Fassung a
+ * ghost was set on („aus Fassung 2“), then its state in words the pin shows as
+ * a dash or a tick (Vorschlag, erledigt, verworfen), unread news its dot
+ * shows, Piloti's byline, and who else has it open.
  */
 export function pinLabel(
   t: Translate,
-  annotation: Pick<AnnotationView, 'number' | 'kind' | 'status'>,
+  annotation: Pick<AnnotationView, 'number' | 'kind' | 'status' | 'fassungNumber'>,
   pilotiLine: string | undefined,
-  openBy: readonly RoomPeerState[] | undefined
+  openBy: readonly RoomPeerState[] | undefined,
+  { ghost = false, unread = false }: { ghost?: boolean; unread?: boolean } = {}
 ): string {
   const state =
     annotation.status === 'proposed'
@@ -630,9 +658,16 @@ export function pinLabel(
         : annotation.status === 'dismissed'
           ? t('review.pinState.dismissed')
           : null
+  const earlier = !ghost
+    ? null
+    : annotation.fassungNumber
+      ? t('review.pinState.ghost', { number: annotation.fassungNumber })
+      : t('review.pinState.ghostUnnumbered')
   return [
     t('review.pinLabel', { number: annotation.number, kind: t(`annotations.kinds.${annotation.kind}`) }),
+    earlier,
     state,
+    unread ? t('review.pinState.unread') : null,
     pilotiLine,
     openBy && openBy.length > 0
       ? t('review.pinOpenBy', { names: openBy.map((other) => other.peer.name).join(', ') })
@@ -803,7 +838,7 @@ export function ReviewPageLayer({
     start: null,
     cancelled: false,
   })
-  const { annotations, tool, draft, selectedId, hoveredId, room, filter, piloti, select, setDraft, hover } = review
+  const { annotations, tool, draft, selectedId, hoveredId, room, filter, piloti, select, setDraft, hover, unread } = review
   const { sendCursor, sendDraft } = room
   const selfUserId = room.self?.userId ?? null
   const highlights = useStoreSelector(
@@ -854,6 +889,15 @@ export function ReviewPageLayer({
           (isLive(annotation) || (focused && filter === 'closed') || annotation.id === selectedId)
       ),
     [annotations, page, focused, filter, selectedId]
+  )
+  // Open marks of an earlier Fassung of this document, where they stood on it:
+  // in the review, under „Offen", for the reader deciding whether to carry them on.
+  const ghosts = useMemo(
+    () =>
+      focused && filter === 'open'
+        ? annotations.filter((annotation) => annotation.page === page && isGhostMark(annotation, review.documentId))
+        : [],
+    [annotations, page, focused, filter, review.documentId]
   )
   const pilotiThinking = piloti.asks.some((ask) => ask.status === 'thinking')
   const onPin = useCallback(
@@ -988,7 +1032,19 @@ export function ReviewPageLayer({
       )}
 
       <PageMarks
+        marks={ghosts}
+        ghost
+        unread={unread}
+        focused={focused}
+        selectedId={selectedId}
+        hoveredId={hoveredId}
+        selections={selections}
+        onPin={onPin}
+        onHover={hover}
+      />
+      <PageMarks
         marks={marks}
+        unread={unread}
         focused={focused}
         selectedId={selectedId}
         hoveredId={hoveredId}

@@ -9,7 +9,7 @@ import { CommentPin } from '@/components/ui/comment-pin'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange } from '@/lib/format'
-import { isLive, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
+import { isForReader, isLive, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
 import type { FassungRef } from '@/lib/documents/fassung'
 import { cn } from '@/lib/utils'
 import type { CarriedGroup, DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
@@ -74,6 +74,7 @@ const Row = memo(function Row({
   annotation,
   viewerId,
   selected,
+  unread,
   onHover,
   onOpen,
 }: {
@@ -81,6 +82,8 @@ const Row = memo(function Row({
   /** The reader, so a mention of them stands out. */
   viewerId: string | null
   selected: boolean
+  /** Its thread has news the reader has not opened: the pin's dot, and said in words. */
+  unread: boolean
   onHover: (annotationId: string | null) => void
   onOpen: OpenMark
 }): JSX.Element {
@@ -96,7 +99,7 @@ const Row = memo(function Row({
         onPointerLeave={() => onHover(null)}
         className={markRowClassName(selected)}
       >
-        <MarkRowContent annotation={annotation} viewerId={viewerId} />
+        <MarkRowContent annotation={annotation} viewerId={viewerId} unread={unread} />
       </button>
     </li>
   )
@@ -133,6 +136,7 @@ function Pages({
                   annotation={annotation}
                   viewerId={review.me}
                   selected={annotation.id === review.selectedId}
+                  unread={review.unread.has(annotation.id) && annotation.id !== review.selectedId}
                   onHover={review.hover}
                   onOpen={onOpen}
                 />
@@ -370,18 +374,15 @@ const FILTERS: ReviewFilter[] = ['open', 'closed']
 
 /**
  * The counts on the Offen / Erledigt tabs, over what the list would show:
- * with „Mir zugewiesen" on, only the marks assigned to or set by the reader,
- * the same marks the list holds, so a tab never promises six and shows two.
+ * with „Für Sie" on, only the reader's marks ({@link isForReader}), the same
+ * marks the list holds, so a tab never promises six and shows two. Its Offen
+ * count is the number Dateien's chip says „für Sie".
  */
 export function tabCounts(
-  annotations: readonly Pick<AnnotationView, 'status' | 'assigneeUserId' | 'createdBy'>[],
+  annotations: readonly Pick<AnnotationView, 'status' | 'assigneeUserId'>[],
   mine: { on: boolean; me: string | null }
 ): Record<ReviewFilter, number> {
-  const shown = mine.on
-    ? annotations.filter(
-        (annotation) => mine.me !== null && (annotation.assigneeUserId === mine.me || annotation.createdBy === mine.me)
-      )
-    : annotations
+  const shown = mine.on ? annotations.filter((annotation) => isForReader(annotation, mine.me)) : annotations
   return {
     open: shown.filter((annotation) => isLive(annotation)).length,
     closed: shown.filter((annotation) => !isLive(annotation)).length,

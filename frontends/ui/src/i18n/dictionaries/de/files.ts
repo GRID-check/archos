@@ -1716,6 +1716,11 @@ export const files: typeof en.files = {
       proposed: 'Vorschlag',
       resolved: 'erledigt',
       dismissed: 'verworfen',
+      // Eine offene Anmerkung einer früheren Fassung, hohl gezeichnet, wo sie auf jener stand.
+      ghost: 'aus Fassung {number}',
+      ghostUnnumbered: 'aus einer früheren Fassung',
+      // Der Verlauf hat Neues, das die lesende Person noch nicht geöffnet hat (der Punkt am Pin).
+      unread: 'ungelesen',
     },
     pinOpenBy: 'offen bei {names}',
     draftCard: 'Neue Anmerkung',
@@ -1850,7 +1855,8 @@ export const files: typeof en.files = {
       open: 'Offen',
       closed: 'Erledigt',
     },
-    mine: 'Mir zugewiesen',
+    // Dieselben Wörter wie der Chip in Dateien („4 offen · 2 für Sie“): die Anmerkungen, für die Sie zuständig sind.
+    mine: 'Für Sie',
     proposalsGroup: '{count, plural, one {# Vorschlag von Piloti} other {# Vorschläge von Piloti}}',
     walkProposals: 'Durchgehen',
     walkPosition: '{index}/{total}',
@@ -1863,7 +1869,7 @@ export const files: typeof en.files = {
       readOnlyTitle: 'Noch keine Anmerkungen',
       readOnlyBody: 'Hier hat noch niemand etwas angemerkt.',
       mineTitle: 'Nichts für Sie',
-      mineBody: 'Ihnen ist hier nichts zugewiesen, und Sie haben nichts Offenes gesetzt.',
+      mineBody: 'Für keine Anmerkung hier sind Sie zuständig.',
       doneTitle: 'Alles erledigt',
       doneBody: 'Auf diesem Dokument ist nichts mehr offen.',
       openTitle: 'Nichts offen',

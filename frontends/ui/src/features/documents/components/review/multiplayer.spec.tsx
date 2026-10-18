@@ -89,6 +89,7 @@ function reviewWith(peers: RoomPeerState[], annotations: AnnotationView[] = []):
     select: () => {},
     setDraft: () => {},
     hover: () => {},
+    unread: new Set(),
   }
   return review as DocumentReview
 }
@@ -246,11 +247,15 @@ describe('the list counts', () => {
     { status: 'proposed', assigneeUserId: null, createdBy: 'user_anna' },
     { status: 'open', assigneeUserId: 'user_me', createdBy: 'user_anna' },
     { status: 'resolved', assigneeUserId: null, createdBy: 'user_anna' },
+    { status: 'resolved', assigneeUserId: 'user_me', createdBy: 'user_anna' },
+    // Piloti's proposal naming the reader is not theirs until somebody takes it over.
+    { status: 'proposed', assigneeUserId: 'user_me', createdBy: 'user_me' },
   ] as const
 
-  it('counts what „Mine" leaves, so a tab never promises more than the list shows', () => {
-    expect(tabCounts(marks, { on: false, me: 'user_me' })).toEqual({ open: 3, closed: 1 })
-    expect(tabCounts(marks, { on: true, me: 'user_me' })).toEqual({ open: 2, closed: 0 })
+  it('counts what „For you" leaves, so a tab never promises more than the list shows', () => {
+    expect(tabCounts(marks, { on: false, me: 'user_me' })).toEqual({ open: 4, closed: 2 })
+    // What the reader set is not theirs: only what they are Zuständige of, as Dateien counts „für Sie".
+    expect(tabCounts(marks, { on: true, me: 'user_me' })).toEqual({ open: 1, closed: 1 })
   })
 })
 

@@ -39,6 +39,14 @@
  *   …&review=1&piloti=1, then J, E or ⌫      the decision's toast with „Rückgängig"
  *   …&review=1&mark=ann-4                    a mark of Fassung 2: „Auf aktuelle Fassung übernehmen";
  *                                            the list's „Offen aus früheren Fassungen" carries all
+ *   …&review=1                               the open marks of Fassung 2 (4, a point, and 6, a box)
+ *                                            drawn hollow and dotted where they stood: ghost pins,
+ *                                            „aus Fassung 2" to a screen reader; a press opens the card
+ *   …&review=1                               a dot on Anmerkung 1's pin and row: Anna's reply is
+ *                                            unread in Miriam's Postfach (`/api/inbox/unread-anchors`);
+ *                                            opening the thread reads it, and the dot goes
+ *   …&review=1, „Für Sie"                   the marks Miriam is Zuständige of (Anmerkung 5, not the
+ *                                            ones she only set), the words Dateien's chip says
  *   …&review=1                               „Aus Fassung „Grundriss_RG_Index-B.pdf““: the open marks of
  *                                            the document this one replaces, each carried on as a
  *                                            linked mark of this one; the header says „Ersetzt …"
@@ -324,6 +332,21 @@ let annotations: AnnotationView[] = [
   },
   {
     ...base,
+    id: 'ann-6',
+    number: 6,
+    shape: 'region',
+    ...region(50, 270, 190, 320),
+    kind: 'question',
+    body: 'Gangbreite vor Zimmer 1: reicht 1,20 m nach dem Umbau der Wand?',
+    createdBy: 'u-2',
+    createdByName: ANNA.name,
+    canDelete: false,
+    fassungNumber: 2,
+    onCurrentFassung: false,
+    carryTarget: CARRY_HERE,
+  },
+  {
+    ...base,
     id: 'ann-5',
     number: 5,
     shape: 'point',
@@ -335,12 +358,17 @@ let annotations: AnnotationView[] = [
     body: 'Gilt die Brüstungshöhe ab Fertigfußboden oder ab Rohdecke?',
     acceptedBy: 'u-1',
     acceptedByName: ME.name,
+    assigneeUserId: 'u-1',
+    assigneeName: ME.name,
     canDelete: false,
     createdAt: minutesAgo(25),
     updatedAt: minutesAgo(25),
   },
 ]
-let nextNumber = 6
+let nextNumber = 7
+
+/** The marks whose news is unread in Miriam's Postfach: Anna's reply in Anmerkung 1. Opening the thread reads it. */
+let unreadMarks = ['ann-1']
 
 /** Index B's marks: two still open, one done. Carried on, each comes over as a linked mark of this document. */
 let indexB: AnnotationView[] = [
@@ -1105,6 +1133,14 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       const method = (init?.method ?? 'GET').toUpperCase()
       const body = () => JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
       if (url.endsWith('/api/realtime/send')) return new Response(null, { status: 204 })
+      // The Postfach, as far as the review reads it: which marks have unread news, and reading one.
+      if (url.includes('/api/inbox/unread-anchors')) return json({ anchorIds: unreadMarks })
+      if (method === 'POST' && url.endsWith('/api/inbox/read')) {
+        const anchor = body().anchorId
+        const affected = unreadMarks.includes(String(anchor)) ? 1 : 0
+        unreadMarks = unreadMarks.filter((id) => id !== anchor)
+        return json({ affected, pending: 0 })
+      }
       // Index B, the document this one replaces: its list, and a mark of it carried on as a linked mark of this one.
       if (url.endsWith(`/api/documents/${INDEX_B.id}/annotations`)) {
         if (Date.now() < CARRIED_FAILS_UNTIL) return json({ error: 'Unavailable', code: 'UNAVAILABLE' }, 503)

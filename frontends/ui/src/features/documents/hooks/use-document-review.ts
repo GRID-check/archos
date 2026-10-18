@@ -14,6 +14,7 @@ import {
 } from '@/lib/annotations/client'
 import {
   compareAnnotations,
+  isForReader,
   isLive,
   REPLY_TAKEN_UP_REASON,
   type AnnotationKind,
@@ -24,9 +25,11 @@ import {
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
 import type { FassungRef } from '@/lib/documents/fassung'
+import { inPool } from '@/lib/utils/in-pool'
 import { useChatStore } from '@/features/chat'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '@/features/collaboration/hooks/use-undoable-archive'
+import { useLiveEvents } from '@/features/collaboration/hooks/use-live-events'
 import { useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
 import { useDocumentRoom, type RoomTransport } from './use-document-room'
 
@@ -50,11 +53,18 @@ const markNewsReadAt = new Map<string, number>()
  * through the inbox's own client (`POST /api/inbox/read` with the anchor), so
  * the inbox stops calling news the reader has just seen. Requests stay open:
  * seeing a mark is not answering it. Best effort; a miss costs an unread row.
+ * `known`: the review knows there is news (its dot), so the once-a-minute
+ * spacing does not hold it back.
  */
-export function readMarkNews(documentId: string, annotationId: string, client: InboxClient = inboxClient): void {
+export function readMarkNews(
+  documentId: string,
+  annotationId: string,
+  client: InboxClient = inboxClient,
+  { known = false }: { known?: boolean } = {}
+): void {
   const key = `${documentId}:${annotationId}`
   const last = markNewsReadAt.get(key)
-  if (last !== undefined && Date.now() - last < MARK_NEWS_AGAIN_MS) return
+  if (!known && last !== undefined && Date.now() - last < MARK_NEWS_AGAIN_MS) return
   markNewsReadAt.set(key, Date.now())
   void client.markMarkRead({ documentId, annotationId }).catch(() => markNewsReadAt.delete(key))
 }
@@ -63,6 +73,11 @@ export function readMarkNews(documentId: string, annotationId: string, client: I
 export function forgetMarkNewsReads(): void {
   markNewsReadAt.clear()
 }
+
+/** How long the review waits after the inbox changed before it reads which marks have news: one read for a burst. */
+export const UNREAD_READ_DELAY_MS = 250
+
+const NO_MARKS: ReadonlySet<string> = new Set()
 
 /** How long a decision taken by a key (E, ⌫) waits before it is sent: the toast's „Rückgängig" window. */
 export const DECISION_UNDO_MS = ARCHIVE_UNDO_MS
@@ -112,6 +127,9 @@ export interface CarriedGroup {
 /** How many replaced documents a review lists the open marks of: the direct predecessors, a few at most. */
 export const CARRY_GROUPS_MAX = 3
 
+/** How many carries „Alle übernehmen" has in flight at once: quick for thirty marks, gentle on the server. */
+export const CARRY_AT_ONCE = 4
+
 /** A place picked on a page and not yet saved: a point, or a region dragged out. */
 export interface ReviewDraft {
   page: number
@@ -142,9 +160,12 @@ export function useDocumentReview(
     piloti: pilotiOptions,
     viewerUserId,
     fassung,
+    inbox = inboxClient,
   }: {
     enabled: boolean
     transport?: RoomTransport
+    /** The inbox's typed client: which marks have unread news, and reading it. A spec passes its own. */
+    inbox?: InboxClient
     /** Asking Piloti on the canvas; absent (or without a project) it is not offered. */
     piloti?: Omit<UseCanvasAskOptions, 'documentId' | 'enabled'>
     /** The signed-in person as the page knows them (the shelf's `currentUserId`), for when the room is not up. */
@@ -158,7 +179,7 @@ export function useDocumentReview(
   /**
    * Who is reading: the room's own word once it has welcomed this tab, else
    * the page's (`viewerUserId`), else the session's user id the app keeps
-   * (`useChatStore`'s `currentUserId`, set from `useAuth`). „Mir zugewiesen"
+   * (`useChatStore`'s `currentUserId`, set from `useAuth`). „Für Sie"
    * and „Mir zuweisen" must not go blank while the room is down, and a
    * mention of the reader stands out (`MarkBody`'s `viewerId`) before the room
    * answers. The one answer to „who reads" in the review.
@@ -178,15 +199,73 @@ export function useDocumentReview(
   // Which mark this reader has open, for the room: Piloti resolves „diese Anmerkung“ by it.
   const { sendSelection } = room
   useEffect(() => sendSelection(selectedId), [selectedId, sendSelection])
-  // A mark that stays open has been read, and so has its news in the inbox.
+
+  /**
+   * The marks whose thread has news this reader has not read: the inbox's
+   * informational items anchored on them, unread (`GET /api/inbox/unread-anchors`,
+   * one bounded read for the document). A dot on the pin and the row. Read
+   * again when the inbox changes (the `inbox.changed` nudge on the tab's live
+   * channel, sent once the row is written; the room's hint goes out before
+   * it, so reading on the hint would race the row), when the tab returns to
+   * view, and on the slow poll while the channel is down (`useLiveEvents`).
+   */
+  const [unread, setUnread] = useState<ReadonlySet<string>>(NO_MARKS)
+  const unreadRead = useRef({ documentId, ticket: 0 })
+  unreadRead.current.documentId = documentId
+  const fetchUnread = useCallback(async () => {
+    const ticket = ++unreadRead.current.ticket
+    const ids = await inbox.unreadMarks(documentId).catch(() => null)
+    // Only the newest read, for the document still shown; a failed read keeps the dots there are.
+    if (!ids || unreadRead.current.ticket !== ticket || unreadRead.current.documentId !== documentId) return
+    setUnread(new Set(ids))
+  }, [documentId, inbox])
+  useEffect(() => {
+    if (!enabled) return
+    const asked = unreadRead.current
+    setUnread(NO_MARKS)
+    void fetchUnread()
+    // Leaving the document (or closing the review) lets no read of its dots land.
+    return () => {
+      asked.ticket += 1
+    }
+  }, [enabled, fetchUnread])
+  const unreadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (unreadTimer.current) clearTimeout(unreadTimer.current)
+    },
+    []
+  )
+  useLiveEvents({
+    enabled,
+    onEvent: (event) => {
+      if (event.kind !== 'inbox.changed') return
+      if (unreadTimer.current) clearTimeout(unreadTimer.current)
+      unreadTimer.current = setTimeout(() => void fetchUnread(), UNREAD_READ_DELAY_MS)
+    },
+    onRefresh: () => void fetchUnread(),
+  })
+
+  // A mark that stays open has been read, and so has its news in the inbox:
+  // its dot goes at once, and news that arrives while it is open is read too.
+  const selectedHasNews = selectedId !== null && unread.has(selectedId)
   useEffect(() => {
     if (!enabled || !selectedId) return
-    const timer = setTimeout(() => readMarkNews(documentId, selectedId), MARK_NEWS_SETTLE_MS)
+    const timer = setTimeout(() => {
+      if (selectedHasNews) {
+        setUnread((current) => {
+          const next = new Set(current)
+          next.delete(selectedId)
+          return next
+        })
+      }
+      readMarkNews(documentId, selectedId, inbox, { known: selectedHasNews })
+    }, MARK_NEWS_SETTLE_MS)
     return () => clearTimeout(timer)
-  }, [enabled, documentId, selectedId])
+  }, [enabled, documentId, selectedId, selectedHasNews, inbox])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [filter, setFilter] = useState<ReviewFilter>('open')
-  /** Only what is on this reader's plate: assigned to them, or set by them. */
+  /** „Für Sie“: only the marks that are this reader's ({@link isForReader}), the same ones Dateien counts „für Sie“. */
   const [mine, setMine] = useState(false)
   const [notice, setNotice] = useState<'conflict' | null>(null)
   /**
@@ -686,22 +765,44 @@ export function useDocumentReview(
     [guard, write, fetchCarried]
   )
 
-  /** „Alle offenen übernehmen": the same carry, one mark after the other; how many went, and how many did not. */
+
+  /**
+   * „Alle übernehmen": the same PATCH as {@link carry} for each mark, at most
+   * {@link CARRY_AT_ONCE} at a time, and the lists read ONCE after the last:
+   * thirty marks are thirty PATCHes and, when any crossed documents or a
+   * colleague beat one, one read of this list and one of each replaced
+   * document's, not two to four reads per mark. A mark carried in place takes
+   * the PATCH's answer and needs no read. How many went, and how many did not.
+   */
   const carryAll = useCallback(
     async (marks: ReadonlyArray<Pick<AnnotationView, 'id' | 'documentId' | 'status'>>) => {
-      let carriedOn = 0
-      let failed = 0
-      for (const annotation of marks) {
+      const outcomes = await inPool(marks, CARRY_AT_ONCE, async (annotation) => {
         try {
-          await carry(annotation)
-          carriedOn += 1
-        } catch {
-          failed += 1
+          const after = await updateAnnotation(
+            annotation.documentId,
+            annotation.id,
+            { carryToCurrent: true, expectedStatus: annotation.status },
+            write
+          )
+          return { annotation, after, error: null }
+        } catch (error) {
+          return { annotation, after: null, error }
         }
+      })
+      let crossed = false
+      let conflict = false
+      for (const { annotation, after, error } of outcomes) {
+        if (error instanceof AnnotationRequestError && error.status === 409) conflict = true
+        if (!after) continue
+        if (after.documentId === documentId) replace(after)
+        if (annotation.documentId !== documentId || after.documentId !== documentId) crossed = true
       }
-      return { carried: carriedOn, failed }
+      if (conflict) setNotice('conflict')
+      if (crossed || conflict) await Promise.all([fetchList().catch(() => undefined), fetchCarried()])
+      const failed = outcomes.filter((outcome) => outcome.after === null).length
+      return { carried: outcomes.length - failed, failed }
     },
-    [carry]
+    [documentId, write, replace, fetchList, fetchCarried]
   )
 
   const counts = useMemo(
@@ -718,7 +819,7 @@ export function useDocumentReview(
       annotations.filter(
         (annotation) =>
           (filter === 'open' ? isLive(annotation) : !isLive(annotation)) &&
-          (!mine || (me !== null && (annotation.assigneeUserId === me || annotation.createdBy === me)))
+          (!mine || isForReader(annotation, me))
       ),
     [annotations, filter, mine, me]
   )
@@ -796,6 +897,7 @@ export function useDocumentReview(
       carry,
       carryAll,
       resolveCarried,
+      unread,
     }),
     [
       documentId,
@@ -835,6 +937,7 @@ export function useDocumentReview(
       carry,
       carryAll,
       resolveCarried,
+      unread,
     ]
   )
 }
