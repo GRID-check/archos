@@ -282,7 +282,9 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   // Sent or let go, the answer box goes and „Antworten“ comes back: the focus goes with it.
   const replyButtonRef = useFocusBackOnClose<HTMLButtonElement>(answerHere && replying && item.anchorId !== null)
   const [markBusy, setMarkBusy] = useState(false)
-  const [markOutcome, setMarkOutcome] = useState<'sent' | 'sentPilotiNotAsked' | 'resolved' | 'conflict' | 'failed' | null>(null)
+  const [markOutcome, setMarkOutcome] = useState<
+    'sent' | 'sentPilotiNotAsked' | 'resolved' | 'reopened' | 'conflict' | 'failed' | null
+  >(null)
   /** Whom the last answer named and the server did not keep: they cannot open the document, so nobody told them. */
   const [untold, setUntold] = useState<string[]>([])
 
@@ -320,21 +322,44 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     }
   }
 
-  const resolveMark = async (): Promise<void> => {
-    if (!canResolveMark || !item.anchorId || markBusy) return
+  /*
+    A status move on the mark, from the status the row knows it in
+    (`expectedStatus`): a mark somebody moved meanwhile is a 409, never
+    overwritten from a copy of it, and the row says so.
+  */
+  const moveMark = async (
+    move: { status: 'resolved'; expectedStatus: 'open' } | { status: 'open'; expectedStatus: 'resolved' },
+    outcome: 'resolved' | 'reopened',
+  ): Promise<void> => {
+    if (!item.anchorId || markBusy) return
     setMarkBusy(true)
-    setMarkOutcome(null)
     try {
-      // `expectedStatus`: a mark somebody reopened or dismissed meanwhile is a
-      // 409, never overwritten from a copy of it.
-      await markClient.update(item.resourceId, item.anchorId, { status: 'resolved', expectedStatus: 'open' })
-      setMarkOutcome('resolved')
+      await markClient.update(item.resourceId, item.anchorId, move)
+      setMarkOutcome(outcome)
     } catch (error) {
       setMarkOutcome(error instanceof AnnotationRequestError && error.status === 409 ? 'conflict' : 'failed')
     } finally {
       setMarkBusy(false)
     }
   }
+
+  const resolveMark = async (): Promise<void> => {
+    if (!canResolveMark || markBusy) return
+    setMarkOutcome(null)
+    await moveMark({ status: 'resolved', expectedStatus: 'open' }, 'resolved')
+  }
+
+  /*
+    „Rückgängig“ beside „Als erledigt markiert.“: one tap on „Erledigen“
+    wrote, so taking it back is the inverse write, from the status this row
+    set. Offered only while the outcome line still says this row resolved it,
+    which stays until the answer comes, so the focus has somewhere to go.
+  */
+  const reopenMark = (): Promise<void> => moveMark({ status: 'open', expectedStatus: 'resolved' }, 'reopened')
+  // „Erledigen“ goes when it lands and „Rückgängig“ takes its place, and back
+  // again: the focus follows the control that took the place of the pressed one.
+  const undoRef = useFocusBackOnClose<HTMLButtonElement>(markOutcome !== 'resolved')
+  const resolveRef = useFocusBackOnClose<HTMLButtonElement>(markOutcome === 'resolved')
 
   // The row's own menu: read state, archive (the only archive control on a
   // phone, where an icon column cost the text its width) and restore.
@@ -951,6 +976,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             )}
             {canResolveMark && !replying && markOutcome !== 'resolved' && (
               <Button
+                ref={resolveRef}
                 type="button"
                 size="sm"
                 variant="outline"
@@ -1011,6 +1037,22 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               data-testid="inbox-mark-outcome"
             >
               {t(`inbox.mark.${markOutcome}`)}
+              {markOutcome === 'resolved' && item.anchorId && (
+                <>
+                  {' '}
+                  <Button
+                    ref={undoRef}
+                    type="button"
+                    variant="inline"
+                    className="relative z-10"
+                    disabled={markBusy}
+                    data-testid="inbox-mark-undo"
+                    onClick={() => void reopenMark()}
+                  >
+                    {t('inbox.undo')}
+                  </Button>
+                </>
+              )}
               {markOutcome !== 'failed' && markOutcome !== 'conflict' && untold.length > 0 && (
                 <>
                   {' '}

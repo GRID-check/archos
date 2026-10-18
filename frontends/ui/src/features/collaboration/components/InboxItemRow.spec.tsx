@@ -1171,6 +1171,38 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     expect(marks.update).toHaveBeenCalledWith('doc-eg', 'mark-4', { status: 'resolved', expectedStatus: 'open' })
   })
 
+  test('takes „Resolve“ back from the outcome line, from the status it set, and the focus follows the control', async () => {
+    const marks = client()
+    const user = userEvent.setup()
+    render(<InboxItemRow item={markRow()} markClient={marks} />)
+    screen.getByTestId('inbox-mark-resolve').focus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByTestId('inbox-mark-outcome')).toHaveTextContent('Marked as resolved. Undo')
+    expect(screen.getByTestId('inbox-mark-undo')).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Open again.'))
+    expect(marks.update).toHaveBeenNthCalledWith(1, 'doc-eg', 'mark-4', { status: 'resolved', expectedStatus: 'open' })
+    expect(marks.update).toHaveBeenNthCalledWith(2, 'doc-eg', 'mark-4', { status: 'open', expectedStatus: 'resolved' })
+    expect(screen.queryByTestId('inbox-mark-undo')).not.toBeInTheDocument()
+    expect(screen.getByTestId('inbox-mark-resolve')).toHaveFocus()
+  })
+
+  test('says so in the row’s own words when the mark was moved before „Undo“ reached it', async () => {
+    const update = vi
+      .fn<InboxMarkClient['update']>()
+      .mockResolvedValueOnce({} as never)
+      .mockRejectedValueOnce(new AnnotationRequestError(409, 'CONFLICT', 'moved'))
+    render(<InboxItemRow item={markRow()} markClient={client({ update })} />)
+    fireEvent.click(screen.getByTestId('inbox-mark-resolve'))
+    fireEvent.click(await screen.findByTestId('inbox-mark-undo'))
+
+    await waitFor(() => expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent(/Someone changed the annotation first/))
+    expect(screen.getByTestId('inbox-mark-outcome')).toHaveAttribute('role', 'alert')
+    expect(screen.queryByTestId('inbox-mark-undo')).not.toBeInTheDocument()
+  })
+
   test('answers Piloti’s question, but does not resolve the mark for it', () => {
     render(<InboxItemRow item={markRow({ type: 'piloti.asks_you', actorName: null, actorUserId: null })} markClient={client()} />)
     expect(screen.getByTestId('inbox-mark-reply')).toBeInTheDocument()
