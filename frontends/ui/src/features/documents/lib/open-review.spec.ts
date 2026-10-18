@@ -22,6 +22,7 @@ import {
   reviewFilesHref,
   reviewHrefAt,
   showDocumentBeside,
+  withReviewBack,
 } from './open-review'
 
 const DOC = '00000000-0000-4000-8000-0000000000d1'
@@ -87,6 +88,7 @@ describe('the review in the url', () => {
       open: true,
       annotationId: 'ann-7',
       tool: 'point',
+      back: null,
     })
   })
 
@@ -108,11 +110,44 @@ describe('the review in the url', () => {
   })
 
   it('takes the review off and leaves the document open', () => {
-    const params = clearReviewParams(new URLSearchParams(`doc=${DOC}&review=1&mark=ann-2&tool=point&session=s1`))
+    const params = clearReviewParams(
+      new URLSearchParams(`doc=${DOC}&review=1&mark=ann-2&tool=point&back=%2Fapp%2Finbox&session=s1`)
+    )
     expect(params.toString()).toBe(`doc=${DOC}&session=s1`)
     expect(hrefWithParams('/app/projects/p1/chat', clearReviewParams(new URLSearchParams('review=1')))).toBe(
       '/app/projects/p1/chat'
     )
+  })
+})
+
+describe('back to the page the link came from', () => {
+  const OPEN_POINTS = '/app/projects/p1/files/open-points?assignee=me&due=overdue'
+
+  it('carries the page it came from, with its filters, on the Dateien link', () => {
+    const href = reviewFilesHref('p1', { documentId: DOC, annotationId: 'ann-7' }, { back: OPEN_POINTS })
+    const params = new URL(href, 'https://piloti.test').searchParams
+    expect(params.get('mark')).toBe('ann-7')
+    expect(readReviewParams(params).back).toBe(OPEN_POINTS)
+  })
+
+  it('drops a return path that is not a page of this app', () => {
+    for (const back of ['https://evil.example/app/x', '//evil.example', 'javascript:alert(1)', '/api/inbox']) {
+      expect(reviewFilesHref('p1', { documentId: DOC }, { back })).toBe(`/app/projects/p1/files?doc=${DOC}&review=1`)
+    }
+  })
+
+  it('reads back only with the review, and never one a hand-made link points elsewhere', () => {
+    expect(readReviewParams(new URLSearchParams('back=%2Fapp%2Finbox')).back).toBeNull()
+    expect(readReviewParams(new URLSearchParams('review=1&back=%2F%2Fevil.example')).back).toBeNull()
+    expect(readReviewParams(new URLSearchParams('review=1&back=https%3A%2F%2Fevil.example')).back).toBeNull()
+  })
+
+  it('puts back on a review link built elsewhere (a Postfach row), and leaves any other link alone', () => {
+    expect(withReviewBack(`/app/projects/p1/files?doc=${DOC}&review=1&mark=ann-7`, '/app/inbox?filter=unread')).toBe(
+      `/app/projects/p1/files?doc=${DOC}&review=1&mark=ann-7&back=%2Fapp%2Finbox%3Ffilter%3Dunread`
+    )
+    expect(withReviewBack(`/app/projects/p1/files?doc=${DOC}`, '/app/inbox')).toBe(`/app/projects/p1/files?doc=${DOC}`)
+    expect(withReviewBack(`/app/archiv?doc=${DOC}&review=1`, null)).toBe(`/app/archiv?doc=${DOC}&review=1`)
   })
 })
 

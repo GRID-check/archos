@@ -129,8 +129,14 @@ _Avoid_: „freigeben“ for a held upload (see **Zurückgehalten**) or for shar
 **Anmerkung** (annotation):
 A mark someone sets on one page of one Fassung: a point or a drawn box (*Bereich*)
 with what it says, a running number („Nummer 4“, what a Jour fixe and a
-Protokoll name), optionally a person responsible and a date, and a thread of
-answers. It is *offen*, *erledigt* or *verworfen*. Piloti's own findings are
+Protokoll name), optionally a person responsible (*Zuständige*, someone who
+may change the document, because they answer the mark and close it) and a
+date (its *Frist*, of which the Zuständige is reminded when it is near and
+when it has passed), and a thread of answers. It is *offen*, *erledigt* or *verworfen*.
+An open mark that still holds on a new Fassung is carried over to it
+(*auf die aktuelle Fassung übernehmen*), at its place, with its number and its
+thread; when another document replaces its own, it goes on there as a linked
+mark, and the old one is closed with the link. Piloti's own findings are
 *Vorschläge* until a person takes them over (*übernehmen*); only then are they
 the office's. A mark the person asked Piloti to set is open at once, in that
 person's name, and when asked Piloti changes or deletes marks as the person

@@ -1,7 +1,8 @@
 /**
  * The typed client for the inbox API (ADR-0035, ADR-0055): the paths, the verbs
  * and the response shapes, written once. The inbox list and badge, the review
- * (opening a mark reads its news) and the notification offer all call this,
+ * (which marks have unread news, and opening a mark reads it) and the
+ * notification offer all call this,
  * and the route spec drives the real handlers through it, so no consumer can
  * disagree with another about what `POST /api/inbox/read` expects.
  *
@@ -42,6 +43,7 @@ export class InboxRequestError extends Error {
 }
 
 const mutationResultSchema = z.object({ affected: z.number(), pending: z.number() })
+const unreadAnchorsSchema = z.object({ anchorIds: z.array(z.string()) })
 const summarySchema = z.object({ pending: z.number() })
 /**
  * The page's envelope is checked; its rows are the server's `InboxItemView`s,
@@ -82,6 +84,10 @@ export interface InboxClient {
   markAllRead(): Promise<InboxMutationResult>
   /** The informational items anchored on one mark: what opening it in the review reads. */
   markMarkRead(mark: MarkRef): Promise<InboxMutationResult>
+  /** The rows about new marks on a document („15 Anmerkungen gesetzt“): what opening its review reads. */
+  markMarksSetRead(documentId: string): Promise<InboxMutationResult>
+  /** The marks of one document whose news the reader has not read: the review's dots. */
+  unreadMarks(documentId: string): Promise<string[]>
   markUnread(itemIds: readonly string[]): Promise<InboxMutationResult>
   archive(itemId: string): Promise<InboxMutationResult>
   unarchive(itemId: string): Promise<InboxMutationResult>
@@ -120,6 +126,12 @@ export function createInboxClient(request: InboxFetch = defaultFetch): InboxClie
         post({ resourceType: 'document', resourceId: documentId, anchorId: annotationId }),
         mutationResultSchema
       ),
+    markMarksSetRead: (documentId) =>
+      call(INBOX_READ_PATH, post({ resourceType: 'document', resourceId: documentId, marksSet: true }), mutationResultSchema),
+    unreadMarks: async (documentId) => {
+      const params = new URLSearchParams({ resourceType: 'document', resourceId: documentId })
+      return (await call(`${BASE}/unread-anchors?${params.toString()}`, undefined, unreadAnchorsSchema)).anchorIds
+    },
     markUnread: (itemIds) => call(`${BASE}/unread`, post({ itemIds }), mutationResultSchema),
     archive: (itemId) => call(itemPath(itemId), { method: 'POST' }, mutationResultSchema),
     unarchive: (itemId) => call(itemPath(itemId), { method: 'DELETE' }, mutationResultSchema),

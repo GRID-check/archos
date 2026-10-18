@@ -15,7 +15,10 @@ export interface UndoableArchive {
 }
 
 /**
- * Archiving that can be taken back within a toast's lifetime.
+ * Archiving that can be taken back within a toast's lifetime. The review's
+ * decisions by a key (E, ⌫ on an Anmerkung) and „Erledigen“ on a Postfach
+ * row (`InboxItemRow.tsx`) are held back the same way: the write is any
+ * `(id) => Promise<void>`, and catches its own failure.
  *
  * The write itself is what waits: the row leaves the list at once (that is the
  * feedback), and the request is sent when the undo window closes. Undo inside

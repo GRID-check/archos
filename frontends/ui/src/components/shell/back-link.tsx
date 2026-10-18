@@ -38,7 +38,7 @@ import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
 import { describeAppPath } from '@/lib/navigation/describe-path'
-import { previousVisit, readTrail, type TrailEntry } from '@/lib/navigation/return-trail'
+import { backReaches, previousVisit, readTrail, type TrailEntry } from '@/lib/navigation/return-trail'
 
 export interface BackLinkProps {
   /** Where to go when the tab has no trail (direct link, new tab, reload of a first page). */
@@ -99,9 +99,7 @@ export function BackLink({ fallbackHref, fallbackLabel, className }: BackLinkPro
     // history.back() is only safe when the trail's destination is the page
     // one step behind. Skipping a settings tab means the href is two or more
     // history entries away — follow the link instead of landing on Models.
-    const trail = readTrail()
-    const immediate = trail.length >= 2 ? trail[trail.length - 2] : null
-    if (immediate && immediate.path !== previous.path) return
+    if (!pathname || !backReaches(readTrail(), pathname, previous.path)) return
     event.preventDefault()
     router.back()
   }

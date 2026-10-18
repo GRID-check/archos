@@ -1,6 +1,7 @@
 'use client'
 
 import { forwardRef, useId, useRef, useState, type JSX } from 'react'
+import NextLink from 'next/link'
 import {
   CalendarClock,
   Check,
@@ -9,6 +10,7 @@ import {
   Link2,
   MessageSquareText,
   MoreHorizontal,
+  Pencil,
   RotateCcw,
   Scale,
   Sparkles,
@@ -30,10 +32,16 @@ import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange, localCalendarDay } from '@/lib/format'
+import { AnnotationRequestError } from '@/lib/annotations/client'
 import {
   ANNOTATION_KINDS,
+  isGhostMark,
   isLive,
+  pilotiRepliedSince,
+  REPLY_TAKEN_UP_REASON,
+  replyIsForPiloti,
   type AnnotationKind,
+  type AnnotationReplyView,
   type AnnotationView,
   type MarkMention,
   type PilotiWakeTrigger,
@@ -48,9 +56,11 @@ import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-revie
 import { useFollowEnd } from '../../hooks/use-follow-end'
 import { AssignPopover } from '../assign-popover'
 import { Composer, type ComposerSend } from './composer'
+import { otherReviewHref } from '../../lib/fassung-links'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
 import type { CardSide } from './review-page-layer'
+import { useFocusBackOnClose } from './focus-return'
 import { useCardFit } from './review-stage'
 
 export const KIND_ICONS: Record<AnnotationKind, typeof TriangleAlert> = {
@@ -72,6 +82,8 @@ function Message({
   viewerId,
   proposal,
   woken,
+  editedAt,
+  actions,
 }: {
   authorKind: 'person' | 'piloti'
   name: string | null
@@ -86,6 +98,10 @@ function Message({
   proposal?: boolean
   /** The reply was written by a turn an event woke, and where (`number` of the Anmerkung). */
   woken?: { trigger: PilotiWakeTrigger; number: number } | null
+  /** Its author reworded it then: the byline says „bearbeitet“. */
+  editedAt?: string | null
+  /** What its author may do with it (`ReplyActions`), at the end of the byline. */
+  actions?: React.ReactNode
 }): JSX.Element {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -117,6 +133,16 @@ function Message({
             {authorKind === 'piloti' ? byline(name, { proposal }) : (name ?? t('review.someone'))}
           </span>
           <TimeAgo date={at} locale={locale} className="text-muted-foreground shrink-0 whitespace-nowrap" />
+          {editedAt && (
+            <span
+              className="text-muted-foreground shrink-0 whitespace-nowrap"
+              title={new Date(editedAt).toLocaleString(locale)}
+              data-testid="thread-edited"
+            >
+              · {t('review.edited')}
+            </span>
+          )}
+          {actions && <span className="-my-1 ml-auto shrink-0">{actions}</span>}
         </p>
         {woken && (
           <p className="text-muted-foreground text-[11px] leading-4" title={wokenTitle} data-testid="thread-woken">
@@ -184,21 +210,37 @@ const MetaChip = forwardRef<
   )
 })
 
-/** Who is on it and by when, editable while the reader may write. */
+/** The reader as the Zuständige picker offers them („Mir zuweisen"), or null while nobody knows who reads. */
+function useSelfAssignee(review: DocumentReview): FileAssignee | null {
+  const t = useTranslations('files')
+  if (!review.me) return null
+  const name = review.room.self?.userId === review.me ? review.room.self.name : null
+  return { userId: review.me, name: name || t('review.assigneeYou'), email: null, profilePictureUrl: null }
+}
+
+/**
+ * Who is on it and by when, editable while the reader may write. The
+ * Zuständige is picked among who may write the document (`access="write"`),
+ * since they must answer and close the mark; the reader may pick themselves.
+ */
 function ResponsibilityRow({
   documentId,
+  assigneeUserId,
   assigneeName,
   dueOn,
   editable,
   canPickAssignee,
+  self,
   onAssignee,
   onDueOn,
 }: {
   documentId: string
+  assigneeUserId: string | null
   assigneeName: string | null
   dueOn: string | null
   editable: boolean
   canPickAssignee: boolean
+  self: FileAssignee | null
   onAssignee: (person: FileAssignee | null) => void
   onDueOn: (day: string | null) => void
 }): JSX.Element | null {
@@ -212,8 +254,10 @@ function ResponsibilityRow({
       {canPickAssignee && editable ? (
         <AssignPopover
           documentId={documentId}
-          assignees={[]}
+          assignees={assigneeUserId ? [{ userId: assigneeUserId, name: assigneeName, email: null, profilePictureUrl: null }] : []}
           pickOnly
+          access="write"
+          self={self}
           onPick={onAssignee}
           onChanged={() => undefined}
           trigger={
@@ -244,10 +288,13 @@ function ResponsibilityRow({
       <span className="relative inline-flex">
         <MetaChip
           icon={CalendarClock}
+          data-testid="thread-due"
           set={dueOn !== null}
           tone={overdue ? 'urgent' : undefined}
           disabled={!editable}
           onClick={() => dateRef.current?.showPicker?.()}
+          onClear={editable && dueOn ? () => onDueOn(null) : undefined}
+          clearLabel={t('review.clearDue')}
         >
           {dueOn ? `${t('review.due')} ${day(dueOn, locale)}${overdue ? ` · ${t('review.overdue')}` : ''}` : t('review.setDue')}
         </MetaChip>
@@ -516,6 +563,7 @@ export function DraftCard({
   const [kind, setKind] = useState<AnnotationKind>('hint')
   const [assignee, setAssignee] = useState<FileAssignee | null>(null)
   const [dueOn, setDueOn] = useState<string | null>(null)
+  const self = useSelfAssignee(review)
   const { piloti } = review
   /** The draft's place handed to Piloti: asked at once with what was typed, or a card waiting for the question. */
   const askPiloti = piloti.available
@@ -544,15 +592,259 @@ export function DraftCard({
         />
         <ResponsibilityRow
           documentId={review.documentId}
+          assigneeUserId={assignee?.userId ?? null}
           assigneeName={assignee ? assignee.name || assignee.email || assignee.userId : null}
           dueOn={dueOn}
           editable
           canPickAssignee={canPickAssignee}
+          self={self}
           onAssignee={setAssignee}
           onDueOn={setDueOn}
         />
       </div>
     </ReviewCard>
+  )
+}
+
+/**
+ * Where the mark stands among the document's Fassungen, as the card's first
+ * lines (the card is all the reader looks at): set on an earlier Fassung (listed,
+ * not drawn), or on a document another one replaced, each with „Auf aktuelle
+ * Fassung übernehmen" where the server says this reader's carry goes through
+ * (`carryTarget`), named by the document it lands on: the end of the chain of
+ * replacements, not the direct successor the notice names; and where a carried
+ * mark came from or went on to, linked where the page can open that document.
+ */
+function FassungLines({
+  review,
+  annotation,
+  busy,
+  onCarry,
+}: {
+  review: DocumentReview
+  annotation: AnnotationView
+  busy: boolean
+  onCarry: () => void
+}): JSX.Element | null {
+  const t = useTranslations('files')
+  const replacedBy = review.fassung?.replacedBy ?? null
+  const target = annotation.carryTarget ?? null
+  const earlier = !annotation.onCurrentFassung
+  const where = typeof window === 'undefined' ? null : window.location
+  const linkTo = (link: { documentId: string; annotationId: string }) =>
+    where ? otherReviewHref(where, review.documentId, link) : null
+  const lines: JSX.Element[] = []
+  if (earlier || (replacedBy && target)) {
+    lines.push(
+      <div key="fassung" className="flex flex-col gap-1.5" data-testid="thread-earlier">
+        <p className="flex items-start gap-1.5">
+          <History className="mt-px size-3 shrink-0" aria-hidden />
+          {earlier
+            ? annotation.fassungNumber
+              ? // An open one is drawn as a ghost where it stood; a closed one is not drawn.
+                t(isGhostMark(annotation, review.documentId) ? 'review.earlierFassungGhost' : 'review.earlierFassung', {
+                  number: annotation.fassungNumber,
+                })
+              : t('annotations.earlierFassungUnnumbered')
+            : t('review.replacedNotice', { name: replacedBy?.filename ?? '' })}
+        </p>
+        {target && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 self-start text-xs"
+            disabled={busy}
+            data-testid="thread-carry"
+            onClick={onCarry}
+          >
+            {target.documentId === annotation.documentId
+              ? t('review.carry')
+              : t('review.carryTo', { name: target.documentName })}
+          </Button>
+        )}
+      </div>
+    )
+  }
+  for (const [key, link, words] of [
+    ['from', annotation.carriedFrom, 'review.carriedFrom'],
+    ['to', annotation.carriedTo, 'review.carriedTo'],
+  ] as const) {
+    if (!link) continue
+    const text = t(words, { name: link.documentName, number: link.number })
+    const href = linkTo(link)
+    lines.push(
+      <p key={key} className="flex items-start gap-1.5" data-testid={`thread-carried-${key}`}>
+        <Link2 className="mt-px size-3 shrink-0" aria-hidden />
+        {href ? (
+          // Replaces, as walking the marks does: closing the review it opens then steps back out in one go.
+          <NextLink href={href} replace className="hover:text-foreground underline underline-offset-2">
+            {text}
+          </NextLink>
+        ) : (
+          text
+        )}
+      </p>
+    )
+  }
+  if (lines.length === 0) return null
+  return (
+    <div className="text-muted-foreground bg-muted/40 space-y-1 border-b px-3 py-1.5 text-[11px] leading-4">{lines}</div>
+  )
+}
+
+/**
+ * Whether Piloti took this reply up, as far as the card can tell: it was for
+ * Piloti, and Piloti answered after it, works for its author now, or this tab
+ * is asking it in the thread (`asking`: wakes off, so the browser asked, and
+ * only Piloti's answer would tell the server). The server decides with the
+ * reply's own wake (`editReply`) and lets a change through in the moment
+ * before a browser ask's answer lands; the card keeps the author from
+ * changing what Piloti is reading.
+ */
+function takenUpByPiloti(annotation: AnnotationView, reply: AnnotationReplyView, asking: boolean): boolean {
+  if (!replyIsForPiloti(annotation, reply)) return false
+  if (asking || pilotiRepliedSince(annotation.replies, reply)) return true
+  const work = annotation.pilotiWork
+  return Boolean(
+    work && (work.state === 'queued' || work.state === 'working') && work.trigger !== 'assigned' && work.forUserId === reply.createdBy
+  )
+}
+
+/** Whether this tab's own ask of Piloti, answering in this mark's thread, is still thinking. */
+const pilotiAskingIn = (review: DocumentReview, annotationId: string): boolean =>
+  review.piloti.asks.some((ask) => ask.replyInThread && ask.annotationId === annotationId && ask.status === 'thinking')
+
+/**
+ * One reply in the thread. Its author may reword it („Bearbeiten“: the
+ * composer in its place, with its words and whom it mentions, as a mark is
+ * reworded) or delete it (confirmed, as a mark is), while the mark is live
+ * and Piloti has not taken it up. An edit never wakes Piloti, so the composer
+ * offers no @Piloti and says so where Piloti could be asked.
+ */
+function ReplyEntry({
+  review,
+  annotation,
+  reply,
+}: {
+  review: DocumentReview
+  annotation: AnnotationView
+  reply: AnnotationReplyView
+}): JSX.Element {
+  const t = useTranslations('files')
+  const [editing, setEditing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
+  const mayChange =
+    annotation.canEdit &&
+    isLive(annotation) &&
+    reply.authorKind === 'person' &&
+    reply.createdBy === review.me &&
+    !takenUpByPiloti(annotation, reply, pilotiAskingIn(review, annotation.id))
+  // Saved or let go, the box goes and the reply's ⋯ comes back: the focus goes with it.
+  const moreRef = useFocusBackOnClose<HTMLButtonElement>(editing && mayChange)
+  const failureOf = (error: unknown) =>
+    error instanceof AnnotationRequestError && error.reason === REPLY_TAKEN_UP_REASON ? t('review.replyTakenUp') : null
+
+  const save = async (body: string, { mentions }: ComposerSend) => {
+    const after = await review.editReply(annotation.id, reply.id, body, mentions)
+    setEditing(false)
+    return after.replies.find((candidate) => candidate.id === reply.id)?.mentions
+  }
+
+  const remove = async () => {
+    setFailed(null)
+    try {
+      await review.removeReply(annotation.id, reply.id)
+    } catch (error) {
+      setFailed(failureOf(error) ?? t('review.actionFailed'))
+    }
+  }
+
+  if (editing && mayChange) {
+    return (
+      <div className="space-y-1.5" data-testid="thread-reply-edit">
+        <Composer
+          autoFocus
+          testId="thread-reply-edit-body"
+          placeholder={t('review.replyEditLabel')}
+          submitLabel={t('review.save')}
+          documentId={review.documentId}
+          initialBody={reply.body}
+          initialMentions={reply.mentions}
+          // A rewording is saved, not sent: its failure says so.
+          describeFailure={(error) => failureOf(error) ?? t('review.saveFailed')}
+          onSubmit={save}
+          onEscape={() => setEditing(false)}
+        />
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditing(false)}>
+            {t('review.editCancel')}
+          </Button>
+          {(review.piloti.available || review.pilotiWakes) && (
+            <p className="text-muted-foreground text-[11px] leading-4">{t('review.replyEditNoWake')}</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const actions: ActionMenuEntry[] = [
+    { type: 'item', id: 'edit', label: t('review.edit'), icon: Pencil, onSelect: () => setEditing(true) },
+    {
+      type: 'item',
+      id: 'delete',
+      label: t('review.delete'),
+      icon: Trash2,
+      variant: 'destructive',
+      onSelect: () => setConfirmDelete(true),
+    },
+  ]
+  return (
+    <div data-testid="thread-reply-entry">
+      <Message
+        authorKind={reply.authorKind}
+        name={reply.createdByName}
+        userId={reply.createdBy}
+        at={reply.createdAt}
+        body={reply.body}
+        mentions={reply.mentions}
+        viewerId={review.me}
+        woken={reply.wokenBy ? { trigger: reply.wokenBy, number: annotation.number } : null}
+        editedAt={reply.editedAt}
+        actions={
+          mayChange ? (
+            <ActionMenu
+              mode="dropdown"
+              entries={actions}
+              trigger={
+                <Button
+                  ref={moreRef}
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 [&_svg]:size-3.5"
+                  aria-label={t('review.replyMore')}
+                  data-testid="thread-reply-more"
+                >
+                  <MoreHorizontal aria-hidden />
+                </Button>
+              }
+            />
+          ) : null
+        }
+      />
+      {failed && <FieldError className="mt-1 ml-8.5">{failed}</FieldError>}
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={t('review.replyDeleteConfirm')}
+        description={t('review.replyDeleteHint')}
+        confirmLabel={t('review.delete')}
+        cancelLabel={t('annotations.cancel')}
+        onConfirm={remove}
+      />
+    </div>
   )
 }
 
@@ -577,6 +869,9 @@ export function ThreadCard({
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  /** The author rewording their own mark: the composer in the mark's place, with its text and whom it mentions. */
+  const [editing, setEditing] = useState(false)
+  const self = useSelfAssignee(review)
   const headerId = useId()
   const KindIcon = KIND_ICONS[annotation.kind]
   const proposed = annotation.status === 'proposed'
@@ -605,9 +900,11 @@ export function ThreadCard({
    * @Piloti says the reply addresses Piloti. The server answers whether it
    * wakes Piloti itself (`queued`, or `suppressed` when a cap held it): then
    * the mark's own view says how Piloti's work stands (`pilotiWork`), for
-   * everyone. With the organization's switch off, this tab asks Piloti as
-   * before, under the turn id a server wake of the same reply would use, so
-   * the two never both run. Answers with the mentions the server kept.
+   * everyone. When a rule met the reply but the organization's switch is off
+   * (`wake: 'off'`: an @Piloti, or an answer to Piloti's own Rückfrage), this
+   * tab asks Piloti as before, under the turn id a server wake of the same
+   * reply would use, so the two never both run. Answers with the mentions the
+   * server kept.
    */
   const sendReply = async (body: string, { piloti: mentioned, mentions }: ComposerSend) => {
     // Sent into the thread: what follows it (the reply, Piloti at work, its answer) comes into view.
@@ -617,7 +914,10 @@ export function ThreadCard({
       mentions,
     })
     const kept = after.replies.find((reply) => reply.id === replyId)?.mentions
-    if (!mentioned || wake === 'queued' || wake === 'suppressed' || !piloti.available) return kept
+    // `off` is the server saying a wake rule met this reply (an @Piloti, or an
+    // answer to Piloti's own open Rückfrage) and the switch is off: this tab
+    // asks. Anything else, the server already did what there was to do.
+    if (wake !== 'off' || !piloti.available) return kept
     piloti.ask({
       text: body.trim(),
       region: askRegionOf(annotation),
@@ -645,7 +945,34 @@ export function ThreadCard({
   const move = (status: 'open' | 'resolved' | 'dismissed') =>
     act(() => review.update(annotation.id, { status, expectedStatus: annotation.status }))
 
+  // Only the person who wrote it rewords a mark: Piloti's text stays Piloti's, a colleague's theirs.
+  const mayReword = annotation.canEdit && annotation.authorKind === 'person' && annotation.createdBy === review.me
+  // The mark's own rewording, saved or let go: the focus back to the card's ⋯ it was opened from.
+  const menuRef = useFocusBackOnClose<HTMLButtonElement>(editing && mayReword)
+
+  /**
+   * The reworded text goes in with whom it mentions as the composer kept them:
+   * the ones already there stay while their name stands in the text, and the
+   * server tells only whom the new text adds (`newlyMentioned`).
+   */
+  const saveEdit = async (body: string, { mentions }: ComposerSend) => {
+    const after = await review.update(annotation.id, { body, mentions })
+    setEditing(false)
+    return after.mentions
+  }
+
   const menu: ActionMenuEntry[] = [
+    ...(mayReword
+      ? [
+          {
+            type: 'item' as const,
+            id: 'edit',
+            label: t('review.edit'),
+            icon: Pencil,
+            onSelect: () => setEditing(true),
+          },
+        ]
+      : []),
     ...ANNOTATION_KINDS.filter((kind) => kind !== annotation.kind && annotation.canEdit).map((kind) => ({
       type: 'item' as const,
       id: `kind-${kind}`,
@@ -694,19 +1021,40 @@ export function ThreadCard({
           },
         ]
       : []),
+    // The author's own mark that a colleague's answer or a carry keeps: the
+    // delete stays in view, withheld, with why, and resolving is offered in
+    // its place while the mark is open (the server's rule, `deleteRefusalOf`).
+    ...(!annotation.canDelete && annotation.deleteRefused
+      ? [
+          { type: 'separator' as const },
+          ...(annotation.canEdit && annotation.status === 'open'
+            ? [
+                {
+                  type: 'item' as const,
+                  id: 'resolve-instead',
+                  label: t('review.resolveInstead'),
+                  icon: Check,
+                  testId: 'thread-resolve-instead',
+                  onSelect: () => void move('resolved'),
+                },
+              ]
+            : []),
+          {
+            type: 'item' as const,
+            id: 'delete',
+            label: t('review.delete'),
+            hint: t(`review.deleteRefused.${annotation.deleteRefused}`),
+            icon: Trash2,
+            disabled: true,
+            testId: 'thread-delete-refused',
+          },
+        ]
+      : []),
   ]
 
   return (
     <ReviewCard placement={placement} testId="review-thread" labelledBy={headerId}>
-      {!annotation.onCurrentFassung && (
-        // Said inside the card, as its first line: the card is all the reader looks at.
-        <p className="text-muted-foreground bg-muted/40 flex items-start gap-1.5 border-b px-3 py-1.5 text-[11px] leading-4" data-testid="thread-earlier">
-          <History className="mt-px size-3 shrink-0" aria-hidden />
-          {annotation.fassungNumber
-            ? t('review.earlierFassung', { number: annotation.fassungNumber })
-            : t('annotations.earlierFassungUnnumbered')}
-        </p>
-      )}
+      <FassungLines review={review} annotation={annotation} busy={busy} onCarry={() => void act(() => review.carry(annotation))} />
       {walk && proposed && (
         <div className="bg-muted/40 flex items-center gap-2 border-b py-1 pr-1.5 pl-3" data-testid="thread-walk">
           <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
@@ -781,6 +1129,7 @@ export function ThreadCard({
               entries={menu}
               trigger={
                 <Button
+                  ref={menuRef}
                   type="button"
                   variant="ghost"
                   size="icon"
@@ -823,16 +1172,36 @@ export function ThreadCard({
         data-testid="thread-messages"
         className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3"
       >
-        <Message
-          authorKind={annotation.authorKind}
-          name={annotation.createdByName}
-          userId={annotation.createdBy}
-          at={annotation.createdAt}
-          body={annotation.body}
-          mentions={annotation.mentions}
-          viewerId={review.viewerId}
-          proposal={proposed}
-        />
+        {editing && mayReword ? (
+          <div className="space-y-1.5" data-testid="thread-edit">
+            <Composer
+              autoFocus
+              testId="thread-edit-body"
+              placeholder={t('review.editLabel', { number: annotation.number })}
+              submitLabel={t('review.save')}
+              documentId={review.documentId}
+              initialBody={annotation.body}
+              initialMentions={annotation.mentions}
+              describeFailure={() => t('review.saveFailed')}
+              onSubmit={saveEdit}
+              onEscape={() => setEditing(false)}
+            />
+            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditing(false)}>
+              {t('review.editCancel')}
+            </Button>
+          </div>
+        ) : (
+          <Message
+            authorKind={annotation.authorKind}
+            name={annotation.createdByName}
+            userId={annotation.createdBy}
+            at={annotation.createdAt}
+            body={annotation.body}
+            mentions={annotation.mentions}
+            viewerId={review.me}
+            proposal={proposed}
+          />
+        )}
         {annotation.basis && (
           <p className="border-l-source-law/40 text-muted-foreground ml-8.5 flex items-center gap-1.5 border-l-2 pl-2 text-[11px]">
             <Scale className="size-3 shrink-0" aria-hidden />
@@ -840,17 +1209,7 @@ export function ThreadCard({
           </p>
         )}
         {annotation.replies.map((reply) => (
-          <Message
-            key={reply.id}
-            authorKind={reply.authorKind}
-            name={reply.createdByName}
-            userId={reply.createdBy}
-            at={reply.createdAt}
-            body={reply.body}
-            mentions={reply.mentions}
-            viewerId={review.viewerId}
-            woken={reply.wokenBy ? { trigger: reply.wokenBy, number: annotation.number } : null}
-          />
+          <ReplyEntry key={reply.id} review={review} annotation={annotation} reply={reply} />
         ))}
         <PilotiWorkRow annotation={annotation} />
         {threadAsk && <PilotiThreadRow ask={threadAsk} review={review} />}
@@ -890,10 +1249,12 @@ export function ThreadCard({
       <div className="space-y-2 border-t px-3 py-2.5">
         <ResponsibilityRow
           documentId={review.documentId}
+          assigneeUserId={annotation.assigneeUserId}
           assigneeName={annotation.assigneeUserId ? (annotation.assigneeName ?? t('review.someone')) : null}
           dueOn={annotation.dueOn}
           editable={annotation.canEdit && live}
           canPickAssignee={canPickAssignee}
+          self={self}
           onAssignee={(person) => void act(() => review.update(annotation.id, { assigneeUserId: person?.userId ?? null }))}
           onDueOn={(dueOn) => void act(() => review.update(annotation.id, { dueOn }))}
         />

@@ -21,6 +21,8 @@ export function AssignPopover({
   onChanged,
   onPick,
   pickOnly = false,
+  access = 'read',
+  self,
   triggerLabel,
   trigger,
 }: {
@@ -30,11 +32,26 @@ export function AssignPopover({
   onChanged: (next: FileAssignee[]) => void
   onPick?: (person: FileAssignee) => void
   pickOnly?: boolean
+  /**
+   * Whom the list offers: who may open the document (a document's assignee),
+   * or `write`, who may change it (a mark's Zuständige, who must answer and
+   * close it). The server checks the pick again either way.
+   */
+  access?: 'read' | 'write'
+  /**
+   * The reader, picked by „Mir zuweisen" in `pickOnly` mode (a mark's
+   * Zuständige). Absent there, it is not offered: asking a colleague is not
+   * asking yourself.
+   */
+  self?: FileAssignee | null
   triggerLabel?: string
   /** Viewport-dressed trigger. Default is the Files ghost button. */
   trigger?: ReactElement
 }) {
   const t = useTranslations('files')
+  // The people search says what it searches, in the words every people search
+  // of the app uses (the project's members), not the ask dialog's „An“.
+  const tPeople = useTranslations('members')
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,7 +68,7 @@ export function AssignPopover({
     let cancelled = false
     setLoading(true)
     setLoadError(false)
-    void listAssignmentCandidates('document', documentId)
+    void listAssignmentCandidates('document', documentId, { access })
       .then((candidates) => {
         if (cancelled) return
         setPeople(candidates)
@@ -69,7 +86,7 @@ export function AssignPopover({
     return () => {
       cancelled = true
     }
-  }, [open, documentId, attempt])
+  }, [open, documentId, attempt, access])
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -164,6 +181,21 @@ export function AssignPopover({
             {t('assignment.assignToMe')}
           </Button>
         )}
+        {pickOnly && onPick && self && !assignees.some((person) => person.userId === self.userId) && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            data-testid="assign-pick-self"
+            onClick={() => {
+              onPick(self)
+              setOpen(false)
+            }}
+          >
+            {t('assignment.assignToMe')}
+          </Button>
+        )}
         {failedWrite && (
           <div className="space-y-1.5" data-testid="assign-write-error">
             <FieldError>
@@ -188,14 +220,16 @@ export function AssignPopover({
           value={query}
           onChange={setQuery}
           onClear={() => setQuery('')}
-          placeholder={t('assignment.to')}
-          label={t('assignment.to')}
+          placeholder={tPeople('invite.searchPlaceholder')}
+          label={tPeople('invite.searchPlaceholder')}
           clearLabel={t('browser.clearSearch')}
           inputClassName="h-8"
         />
-        <ScrollArea className="h-52 min-h-52">
+        {/* As tall as its people, up to a list of about eight, then it scrolls:
+            two names must not open a mostly empty box over the thread. */}
+        <ScrollArea className="max-h-52">
           {loading && people.length === 0 ? (
-            <div className="flex h-full min-h-52 items-center justify-center py-6">
+            <div className="flex items-center justify-center py-6">
               <Spinner size="sm" label={t('assignment.loadingPeople')} />
             </div>
           ) : loadError ? (

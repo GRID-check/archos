@@ -1,0 +1,10 @@
+---
+features:
+  - >
+    In the review of a new revision, Piloti can check which annotations still
+    open from an earlier revision look fixed now, and answers in each one's
+    thread; closing them stays yours.
+  - >
+    The exported annotation minutes can be filed straight into the project,
+    next to the document they are about, and filing them again the same day
+    adds a new revision.

@@ -14,6 +14,7 @@ import type { DocumentReview } from '../../hooks/use-document-review'
 import { useRoomSelector } from '../../hooks/use-document-room'
 import { MarkBody } from './mark-body'
 import { markInk } from './review-page-layer'
+import { hasLiveMarks, openMarksShortLabel } from '../open-marks-chip'
 
 /** Live marks the rail shows before it sends the reader into the review for the rest. */
 const PREVIEWED = 3
@@ -51,7 +52,8 @@ export function AnnotationsSummary({
       label={t('annotations.section')}
       icon={MessageSquareText}
       action={
-        ready && live.length > 0 ? <CountPill>{t('annotations.openCount', { count: live.length })}</CountPill> : undefined
+        // „2 offen · 12 Vorschläge": Piloti's untaken proposals are not counted as open, as in Dateien.
+        ready && hasLiveMarks(review.counts) ? <CountPill>{openMarksShortLabel(t, review.counts)}</CountPill> : undefined
       }
       className={className}
       data-testid="annotations-summary"
@@ -94,7 +96,7 @@ export function AnnotationsSummary({
               />
               <span className="min-w-0 flex-1">
                 <span className="text-foreground line-clamp-2 text-xs leading-5">
-                  <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={review.viewerId} clamped />
+                  <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={review.me} clamped />
                 </span>
                 {/* Not drawn on this Fassung's pages, so the row says where it was set, as the review's list does. */}
                 {!annotation.onCurrentFassung && (

@@ -34,7 +34,7 @@ vi.mock('@/lib/authz/feature-flags', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authz/feature-flags')>()),
   isCollaborationEnabled: vi.fn(() => true),
 }))
-vi.mock('@/lib/documents/may-open', () => ({ mayOpenDocument: vi.fn() }))
+vi.mock('@/lib/documents/may-open', () => ({ mayOpenDocument: vi.fn(), mayWriteDocument: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({
   PERMISSION_CHECKS_AT_ONCE: 8,
   userHoldsProjectPermission: vi.fn(),
@@ -51,7 +51,10 @@ vi.mock('@/lib/inbox/service', () => ({
   emitInboxItems: vi.fn().mockResolvedValue(1),
   resolveInboxItemsAnchoredOn: vi.fn().mockResolvedValue(1),
   markInboxItemsInertAnchoredOn: vi.fn().mockResolvedValue(1),
+  retractInboxOccurrenceAnchoredOn: vi.fn().mockResolvedValue(1),
+  rewriteInboxPayloadsAnchoredOn: vi.fn().mockResolvedValue(1),
 }))
+vi.mock('@/lib/assignments/repository', () => ({ listAssignmentsForResources: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/lib/annotations/repository', () => ({
   AnnotationLimitReachedError: class AnnotationLimitReachedError extends Error {},
   ReplyLimitReachedError: class ReplyLimitReachedError extends Error {},
@@ -66,6 +69,7 @@ vi.mock('@/lib/annotations/repository', () => ({
 
 import { createAnnotation, replyToAnnotation, updateAnnotation } from '@/lib/annotations/client'
 import { deleteReply } from '@/lib/annotations/service'
+import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import {
   deleteAnnotationReply,
@@ -78,9 +82,14 @@ import {
 import type { MarkMention } from '@/lib/annotations/types'
 import type { Document, DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import { mayOpenDocument } from '@/lib/documents/may-open'
+import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import type { InboxEmission } from '@/lib/inbox/service'
-import { emitInboxItems, markInboxItemsInertAnchoredOn, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
+import {
+  emitInboxItems,
+  markInboxItemsInertAnchoredOn,
+  resolveInboxItemsAnchoredOn,
+  retractInboxOccurrenceAnchoredOn,
+} from '@/lib/inbox/service'
 import { enforceMentionBounds } from '@/lib/mentions/service'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 
@@ -162,6 +171,7 @@ const MARK: AnnotationRecord = {
   closedAt: null,
   delegatedBy: null,
   delegatedAt: null,
+  carriedFromId: null,
   fassungNumber: 2,
   replies: [],
 }
@@ -189,6 +199,10 @@ beforeEach(() => {
     )
   )
   vi.mocked(mayOpenDocument).mockImplementation(
+    async (_tenant, _doc, userIds) => new Set(userIds.filter((userId) => userId !== FAR.targetId))
+  )
+  // Who may be a Zuständige: whoever may write the document (here, whoever may open it).
+  vi.mocked(mayWriteDocument).mockImplementation(
     async (_tenant, _doc, userIds) => new Set(userIds.filter((userId) => userId !== FAR.targetId))
   )
   vi.mocked(findDocumentAnnotation).mockResolvedValue(MARK)
@@ -311,6 +325,7 @@ describe('a reply that mentions colleagues', () => {
             createdAt: new Date(),
             addressesAgent: false,
             mentions: [ANNA],
+            editedAt: null,
           },
         ],
       })
@@ -343,6 +358,38 @@ describe('a mark whose text mentions colleagues', () => {
     )
     expect(await rowsOf('annotation.mentioned')).toEqual(['user_anna'])
     expect(await rowsOf('annotation.assigned_to_you')).toEqual(['user_ben'])
+  })
+
+  it('tells the document’s Verantwortliche and its uploader about a new mark, but not whom it already tells, nor the setter', async () => {
+    vi.mocked(getAccessibleDocument).mockResolvedValue({ ...DOC, createdBy: 'user_up' } as Document)
+    vi.mocked(listAssignmentsForResources).mockResolvedValue(
+      ['user_lead', 'user_anna', 'user_ben', 'user_me', 'user_far'].map((subjectUserId) => ({
+        resourceType: 'document' as const,
+        resourceId: 'doc_1',
+        subjectUserId,
+        assignedBy: 'user_x',
+        createdAt: new Date(),
+      }))
+    )
+    await createAnnotation(
+      'doc_1',
+      {
+        page: 1,
+        shape: 'point',
+        x: 0.2,
+        y: 0.2,
+        kind: 'defect',
+        body: '@Anna Berger Brüstung zu niedrig',
+        mentions: [ANNA],
+        assigneeUserId: 'user_ben',
+      },
+      { run }
+    )
+
+    // Anna is mentioned, Ben made Zuständige, Miriam set it, Fritz may not open the folder.
+    expect(await rowsOf('annotation.activity')).toEqual(['user_lead', 'user_up'])
+    const [row] = (await rows()).filter((emission) => emission.type === 'annotation.activity')
+    expect(row).toMatchObject({ anchorId: 'ann_new', actorUserId: 'user_me', payload: expect.objectContaining({ variant: 'created', related: '5' }) })
   })
 
   it('tells only whom an edit adds, and uses the picked list supplied with the edit', async () => {
@@ -463,6 +510,7 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
           createdAt: new Date(),
           addressesAgent: false,
           mentions: [BEN],
+          editedAt: null,
         },
       ],
     })
@@ -495,6 +543,7 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
           createdAt: new Date(),
           addressesAgent: false,
           mentions: [ANNA, BEN],
+          editedAt: null,
         },
       ],
     })
@@ -503,9 +552,22 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
     await deleteReply(session as unknown as Parameters<typeof deleteReply>[0], 'doc_1', 'ann_1', 'rep_1')
     await rows()
 
+    // Anna's mention goes, which nothing left names; Ben's stays, because the mark still asks him.
     expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledTimes(1)
     expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith(
       expect.objectContaining({ types: ['annotation.mentioned'], anchorId: 'ann_1', recipientUserId: 'user_anna' })
+    )
+    // Every other row the reply wrote, by its id, counts it no more and quotes nothing: Ben's request still asks.
+    expect(retractInboxOccurrenceAnchoredOn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        types: ['annotation.mentioned'],
+        anchorId: 'ann_1',
+        payloadHas: { replyId: 'rep_1' },
+        inertWhenSpent: false,
+      })
+    )
+    expect(retractInboxOccurrenceAnchoredOn).toHaveBeenCalledWith(
+      expect.objectContaining({ types: ['annotation.activity'], payloadHas: { replyId: 'rep_1' }, inertWhenSpent: true })
     )
   })
 })

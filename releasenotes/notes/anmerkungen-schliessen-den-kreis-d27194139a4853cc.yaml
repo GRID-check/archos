@@ -1,0 +1,27 @@
+---
+features:
+  - >
+    You can take an Anmerkung yourself with „Mir zuweisen“ in its „Zuständig“
+    list, clear its date with the × on the date, and fix the wording of an
+    Anmerkung you wrote with „Bearbeiten“ in its menu. Whoever it mentions stays
+    mentioned, and only people you add are told.
+  - >
+    E and Entf in the Prüfansicht now show what they did, „Anmerkung 4
+    verworfen“, with „Rückgängig“, which takes it back before anyone else sees
+    it.
+fixes:
+  - >
+    „Zuständig“ offers only people who can change the document, so whoever is
+    made responsible for an Anmerkung can answer it and close it. You can still
+    mention anyone who can open the document.
+  - >
+    Your answer to a question Piloti asked in an Anmerkung now reaches Piloti,
+    and it answers in the thread. In the Postfach such a question leads to the
+    Prüfansicht to be answered there, and a row offers „Antworten“ and
+    „Erledigen“ only when you can do that.
+  - >
+    „Mir zugewiesen“ in the Prüfansicht finds your Anmerkungen also while the
+    connection to your colleagues is down.
+  - >
+    When Piloti's question is what waits on you, the offer to notify you on
+    this device says Piloti asked, not that someone needs you.

@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    In the review, open annotations from an earlier revision now show as hollow
+    pins where they stood, so you can see where one lands before carrying it on,
+    and a dot marks every thread with replies you have not read yet.
+improvements:
+  - >
+    "For you" in the review now lists exactly the annotations you are
+    responsible for, the same ones the count in Files names, and carrying all
+    annotations on to the current revision is much faster.

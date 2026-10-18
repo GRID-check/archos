@@ -85,6 +85,7 @@ export const notifications = {
     mentioned: '{actor} mentioned you. Do you want to be notified on this device?',
     actor: '{actor} needs you in Piloti. Do you want to be notified on this device?',
     someone: 'Someone needs you in Piloti. Do you want to be notified on this device?',
+    piloti: 'Piloti has a question for you. Do you want to be notified on this device?',
     turnOn: 'Turn on',
     notNow: 'Not now',
   },

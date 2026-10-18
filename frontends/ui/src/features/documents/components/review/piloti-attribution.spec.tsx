@@ -66,6 +66,7 @@ function reviewWith(peers: RoomPeerState[]): DocumentReview {
     select: () => {},
     setDraft: () => {},
     hover: () => {},
+    unread: new Set(),
   }
   return review as DocumentReview
 }
@@ -207,6 +208,8 @@ function reviewOf(annotations: AnnotationView[]): DocumentReview {
     select: () => {},
     setFilter: () => {},
     setMine: () => {},
+    fassung: null,
+    carried: [],
   }
   return review as DocumentReview
 }

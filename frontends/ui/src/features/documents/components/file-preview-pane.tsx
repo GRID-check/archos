@@ -101,6 +101,7 @@ import type {
 } from '@/lib/documents/lifecycle-types'
 import { AssignPopover } from './assign-popover'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { backLandsOn } from '@/lib/navigation/history-step'
 import { askAboutFile } from '../lib/ask-about-file'
 import { DiscussDocumentButton } from './discuss-document-button'
 import { dropFileSubject } from '../lib/open-file-peek'
@@ -108,6 +109,7 @@ import { useFilePreviewStore } from '../stores/file-preview-store'
 import { useDocumentReview } from '../hooks/use-document-review'
 import { AnnotationsSummary } from './review/annotations-summary'
 import { DocumentReviewMode, Presence, useRoomCompany } from './review/document-review'
+import { tabCounts } from './review/review-panel'
 import { ReviewPageLayer } from './review/review-page-layer'
 import { InlineMarkPeek } from './inline-mark-peek'
 import {
@@ -118,7 +120,7 @@ import {
   setReviewParams,
   type ReviewLinkTool,
 } from '../lib/open-review'
-import { isLive } from '@/lib/annotations/types'
+import { isLive, type MarkTally } from '@/lib/annotations/types'
 import { CountPill } from '@/components/ui/count-pill'
 import { ToolbarTextButton } from '@/components/ui/floating-toolbar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -185,6 +187,13 @@ interface FilePreviewPaneProps {
     fileId: string,
     summary: { versionState: DocumentVersionState; versionCount: number },
   ) => void
+  /**
+   * The review read the marks, or the reader changed them: the listing's tally
+   * for this document, as the server counts it (`tallyLiveMarks`), `null` when
+   * none is live. Dateien's chip is read with the listing and would otherwise
+   * say „5 offen“ after the reader closed all five here.
+   */
+  onMarksChanged?: (fileId: string, marks: MarkTally | null) => void
   /** Modal on Files; peek/expanded once this file is the chat subject. */
   presentation?: 'modal' | 'peek' | 'expanded'
   onAssigneesChanged?: (assignees: FileItem['assignees']) => void
@@ -231,6 +240,7 @@ export function FilePreviewPane({
   lifecyclePermissions,
   viewerUserId,
   onLifecycleChanged,
+  onMarksChanged,
   scope = 'files',
   onClose,
   onReingested,
@@ -626,8 +636,16 @@ export function FilePreviewPane({
    * the focused review, so the tab is in the room once.
    */
   const reviewEnabled = pdfInWell && showMetadataPanel && !isHeld
+  // Where the document stands among its Fassungen under other names, as the
+  // reader may see them: the review says it, and lists the open marks of the
+  // documents this one replaces to carry them on.
+  const replacedBy = file.fassung?.supersededBy ?? null
+  const replaces = file.fassung?.supersedes
+  const reviewFassung = useMemo(() => ({ replacedBy, replaces: replaces ?? [] }), [replacedBy, replaces])
   const review = useDocumentReview(file.id, {
     enabled: reviewEnabled,
+    viewerUserId,
+    fassung: reviewFassung,
     // Piloti on the canvas. Over the chat (the pane is its peek) a question is
     // a turn of the chat's own conversation, through its driver, so closing
     // the review finds it in the transcript; elsewhere it goes into the
@@ -641,6 +659,31 @@ export function FilePreviewPane({
     },
   })
   const liveMarks = review.annotations.filter(isLive).length
+  /**
+   * The row behind the pane says what the review says: once the list is read,
+   * and whenever a decision changes it, the tally goes to the listing in the
+   * shape the server sends (`marks`, `null` with nothing live). „für Sie“ is
+   * the review's own „Für Sie“ count (`tabCounts`, `isForReader`). Only a
+   * tally the row does not already hold is sent.
+   */
+  const marksForYou = useMemo(
+    () => tabCounts(review.annotations, { on: true, me: review.me }).open,
+    [review.annotations, review.me]
+  )
+  const shownMarks = file.marks ?? null
+  useEffect(() => {
+    if (!reviewEnabled || review.load !== 'ready' || !onMarksChanged) return
+    const { open, proposed } = review.counts
+    const tally: MarkTally | null = open + proposed > 0 ? { open, proposed, forYou: marksForYou } : null
+    const same =
+      tally === null
+        ? shownMarks === null
+        : shownMarks !== null &&
+          shownMarks.open === tally.open &&
+          shownMarks.proposed === tally.proposed &&
+          shownMarks.forYou === tally.forYou
+    if (!same) onMarksChanged(file.id, tally)
+  }, [reviewEnabled, review.load, review.counts, marksForYou, shownMarks, onMarksChanged, file.id])
   const [reviewOpen, setReviewOpen] = useState(false)
   /**
    * The inline viewer steps aside while the review is open, as it does for the
@@ -692,6 +735,9 @@ export function FilePreviewPane({
    * (`lib/open-review.ts`). A reload stays in it, Back leaves it, and a
    * bookmark or a copied link comes back to it. Opening from here pushes, so
    * Back closes; what follows replaces, so walking the marks is one entry.
+   * A link this pane did not push is taken off on closing, or, when it came
+   * from another page and says so (`back`: Offene Punkte, the Postfach),
+   * closing returns there.
    *
    * In the chat the pane is the peek, and `doc` there means „a new chat about
    * this file" (`project-chat-client.tsx`): the review of the peeked document
@@ -743,16 +789,18 @@ export function FilePreviewPane({
     [showReview, urlOpen, addressed, searchParams, file.id, replaceParams]
   )
   /**
-   * What the approve confirm names before the signature: the live marks, and
-   * the review to see them in. Until the review has read them, or when it
+   * What the approve confirm names before the signature: the open marks and
+   * Piloti's untaken proposals, told apart, and the review to see them in. Until the review has read them, or when it
    * could not, the confirm says so: an unknown count is not a zero.
    */
   const openMarks = useMemo((): OpenMarksAtApproval | null => {
     if (!reviewEnabled) return null
     const onOpen = () => openReview()
-    if (review.load === 'ready') return { status: 'counted', count: liveMarks, onOpen }
+    if (review.load === 'ready') {
+      return { status: 'counted', open: review.counts.open, proposed: review.counts.proposed, onOpen }
+    }
     return review.load === 'loading' ? { status: 'loading' } : { status: 'unavailable', onOpen }
-  }, [reviewEnabled, review.load, liveMarks, openReview])
+  }, [reviewEnabled, review.load, review.counts.open, review.counts.proposed, openReview])
   // While open, the address follows the mark selected and the tool in hand.
   const linkTool: ReviewLinkTool | null = review.tool === 'point' || review.tool === 'region' ? review.tool : null
   useEffect(() => {
@@ -778,9 +826,19 @@ export function FilePreviewPane({
         router.back()
         return
       }
+      // A link from another page (Offene Punkte, the Postfach) says where it came from: closing goes there.
+      // When that page, query and all, is the entry one step back in this tab (`backLandsOn`, read off
+      // the tab's own history), Back is the way: a replace would leave the page in history twice, and a
+      // sheet over it closes with Back. Otherwise (a new tab, a shared link, a review reached from
+      // another review, no Navigation API) the entry behind is not that page, and this one is replaced.
+      if (reviewLink.back) {
+        if (backLandsOn(reviewLink.back)) router.back()
+        else router.replace(reviewLink.back, { scroll: false })
+        return
+      }
       replaceParams(clearReviewParams(new URLSearchParams(searchParams?.toString() ?? '')))
     },
-    [openReview, urlOpen, router, replaceParams, searchParams]
+    [openReview, urlOpen, router, replaceParams, searchParams, reviewLink.back]
   )
   /** The review on its own, in a tab of its own: the document on its shelf, at the review. */
   const popoutHref =
@@ -2062,6 +2120,11 @@ export function FilePreviewPane({
           popoutHref={popoutHref}
           initialTool={reviewTool ?? undefined}
           onPage={onReviewPage}
+          // The Protokoll filed as a document: a project's file, in its own folder. Who may file there
+          // (write in that folder) the review knows, and decides (`canAnnotate`).
+          protocolFiling={
+            projectId && scope !== 'archiv' && !closedProjectName ? { projectId, folderId: file.folderId } : null
+          }
         />
       )}
     </div>

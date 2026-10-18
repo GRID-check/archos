@@ -16,11 +16,14 @@
  *   - the Fassung a mark was set on comes back by number, and a discarded
  *     version leaves the mark standing;
  *   - a status move is compare-and-swap: the second of two moves from the same
- *     state finds nothing to move;
+ *     state finds nothing to move; a carry to a replacing document closes the
+ *     source only while it is open and not delegated to Piloti;
+ *   - the daily reminder reads only marks whose Frist is inside its window;
  *   - a thread comes back in order and goes with its mark;
  *   - one reply is deleted alone, and only while it still says what the caller
  *     read (undo's compare-and-swap); another mark's reply with the same id is
- *     not touched;
+ *     not touched; a reply is reworded the same way, its edit stamped by the
+ *     database's clock (migration 0152);
  *   - another organization reads none of them and cannot plant one on this
  *     organization's document;
  *   - a wake of Piloti (migration 0139, ADR-0106) is recorded and queued in
@@ -254,6 +257,138 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(after).toMatchObject({ versionId: null, fassungNumber: null })
   })
 
+  it('carries a mark to the current Fassung in place, once: compared against the Fassung it was read on', async () => {
+    const [row] = await insert(ids.document, [mark()], { versionId: ids.v2 })
+    const restored = await version(ids.document, 7, 'superseded')
+    await inOrg(ORG, () => db.execute(sql`update document_annotations set version_id = ${restored}::uuid where id = ${row.id}::uuid`))
+    const carry = () =>
+      inOrg(ORG, () =>
+        repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', { fassung: { from: restored, to: ids.v2 } })
+      )
+    expect(await carry()).toMatchObject({ versionId: ids.v2, number: row.number })
+    expect(await carry()).toBeNull()
+    expect((await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id)))?.fassungNumber).toBe(2)
+  })
+
+  it('carries a mark of a replaced document as a linked mark, closes the original, and refuses a second copy', async () => {
+    const replacing = await document(ids.project, `Index_C_${STAMP}.pdf`)
+    const [source] = await insert(ids.document, [mark({ assigneeUserId: USER, dueOn: '2026-10-24', body: 'Brüstung' })])
+    const carry = () =>
+      inOrg(ORG, () =>
+        repo.carryAnnotationToDocument({
+          organizationId: ORG,
+          source,
+          target: { documentId: replacing, versionId: null },
+          values: { mentions: [], assigneeUserId: USER },
+          closedBy: USER,
+        })
+      )
+
+    const copy = await carry()
+    expect(copy).toMatchObject({
+      documentId: replacing,
+      number: 1,
+      status: 'open',
+      body: 'Brüstung',
+      assigneeUserId: USER,
+      dueOn: '2026-10-24',
+      carriedFromId: source.id,
+    })
+    const original = await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, source.id))
+    expect(original).toMatchObject({ status: 'resolved', closedBy: USER })
+    expect(original?.carriedTo).toEqual({ annotationId: copy?.id, documentId: replacing, number: 1 })
+    const linked = await inOrg(ORG, () => repo.listDocumentAnnotations(ORG, replacing))
+    expect(linked[0]?.carriedFrom).toEqual({ annotationId: source.id, documentId: ids.document, number: source.number })
+
+    // Closed now: a second carry finds nothing to carry.
+    expect(await carry()).toBeNull()
+    // Open again, a second copy is refused by the index, whatever the service checked.
+    await inOrg(ORG, () =>
+      db.execute(sql`update document_annotations set status = 'open', closed_by = null, closed_at = null where id = ${source.id}::uuid`)
+    )
+    await expect(carry()).rejects.toBeInstanceOf(repo.AlreadyCarriedError)
+
+    // The original goes: the carried mark stands, without its link.
+    await inOrg(ORG, () => repo.deleteDocumentAnnotation(ORG, ids.document, source.id))
+    const orphan = await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, replacing, String(copy?.id)))
+    expect(orphan).toMatchObject({ carriedFromId: null, carriedFrom: null, status: 'open' })
+  })
+
+  it('carries no mark delegated to Piloti after the service read it: the close finds nothing, and nothing is set on the target', async () => {
+    const replacing = await document(ids.project, `Index_D_${STAMP}.pdf`)
+    // Read open and undelegated by the service; delegated a moment later.
+    const [source] = await insert(ids.document, [mark({ body: 'Geländer' })])
+    await inOrg(ORG, () =>
+      repo.updateDocumentAnnotation(ORG, ids.document, source.id, 'open', {
+        delegation: { delegatedBy: USER, delegatedAt: new Date() },
+      })
+    )
+
+    const carried = await inOrg(ORG, () =>
+      repo.carryAnnotationToDocument({
+        organizationId: ORG,
+        source,
+        target: { documentId: replacing, versionId: null },
+        values: { mentions: [], assigneeUserId: null },
+        closedBy: USER,
+      })
+    )
+
+    expect(carried).toBeNull()
+    expect(await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, source.id))).toMatchObject({
+      status: 'open',
+      delegatedBy: USER,
+    })
+    expect(await inOrg(ORG, () => repo.listDocumentAnnotations(ORG, replacing))).toEqual([])
+  })
+
+  it('finds the marks whose Frist is near or recently past for the daily reminder: open, with a Zuständige, by id', async () => {
+    const dated = await document(ids.project, `Frist_${STAMP}.pdf`)
+    const [soon, past, later, nobody, closed, stale] = await insert(dated, [
+      mark({ assigneeUserId: USER, dueOn: '2026-10-18', body: 'morgen' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-10-10', body: 'vorbei' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-11-30', body: 'später' }),
+      mark({ assigneeUserId: null, dueOn: '2026-10-12', body: 'niemand' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-10-12', body: 'erledigt' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-10-09', body: 'längst vorbei' }),
+    ])
+    const window = { from: '2026-10-10', through: '2026-10-18' }
+    await inOrg(ORG, () =>
+      repo.updateDocumentAnnotation(ORG, dated, closed.id, 'open', {
+        transition: { status: 'resolved', closedBy: USER, closedAt: new Date() },
+      })
+    )
+    const due = await import('./due-repository')
+
+    const page = await due.listDueMarksPage(ORG, window, null, 100)
+    const onDated = page.filter((row) => row.documentId === dated)
+    expect(onDated.map((row) => row.body).sort()).toEqual(['morgen', 'vorbei'])
+    expect(onDated.find((row) => row.id === soon.id)).toMatchObject({
+      assigneeUserId: USER,
+      dueOn: '2026-10-18',
+      number: soon.number,
+      document: { id: dated, scope: 'project', projectId: ids.project },
+    })
+    expect(page.map((row) => row.id)).toEqual([...page.map((row) => row.id)].sort())
+    // Neither a later Frist, nor one before the window: a first run does not remind of everything that ever passed.
+    expect(page.some((row) => [later.id, nobody.id, closed.id, stale.id].includes(row.id))).toBe(false)
+
+    const after = await due.listDueMarksPage(ORG, window, [soon.id, past.id].sort()[0], 100)
+    expect(after.map((row) => row.id)).not.toContain([soon.id, past.id].sort()[0])
+
+    const organizations = await withPlatformAccess('test: the due sweep finds its organizations', () =>
+      due.listOrganizationsWithDueMarks(window, '2026-10-17', 1000)
+    )
+    expect(organizations).toContain(ORG)
+    expect(organizations).not.toContain(OTHER_ORG)
+    expect(new Set(organizations).size).toBe(organizations.length)
+    // The window bounds discovery from below too: on a day after all of this office's Fristen, it is not found.
+    const laterWindow = await withPlatformAccess('test: the due sweep skips stale marks', () =>
+      due.listOrganizationsWithDueMarks({ from: '2026-12-01', through: '2026-12-02' }, '2026-12-01', 1000)
+    )
+    expect(laterWindow).not.toContain(ORG)
+  })
+
   it('keeps a thread in order, touches the mark, and lets the thread go with its mark', async () => {
     const [row] = await insert(ids.document)
     for (const body of ['Erste', 'Zweite', 'Dritte']) {
@@ -335,6 +470,38 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(keep.id).not.toBe(gone.id)
   })
 
+  it('rewords one reply only while it says what the caller read, stamping the edit by the database clock', async () => {
+    const [row] = await insert(ids.document)
+    const reply = await inOrg(ORG, () =>
+      repo.insertAnnotationReply({ organizationId: ORG, annotationId: row.id, authorKind: 'person', body: 'Vorher', createdBy: USER })
+    )
+    expect(reply.editedAt).toBeNull()
+    const mentions = [{ targetId: 'user_anna', display: 'Anna Berger' }]
+
+    // The words moved since the caller read them: nothing changes.
+    expect(
+      await inOrg(ORG, () => repo.updateAnnotationReply(ORG, row.id, reply.id, 'Anders', { body: 'Nachher', mentions }))
+    ).toBeNull()
+    // Another organization finds nothing.
+    expect(
+      await inOrg(OTHER_ORG, () => repo.updateAnnotationReply(OTHER_ORG, row.id, reply.id, 'Vorher', { body: 'Nachher', mentions }))
+    ).toBeNull()
+
+    const edited = await inOrg(ORG, () =>
+      repo.updateAnnotationReply(ORG, row.id, reply.id, 'Vorher', { body: 'Nachher', mentions })
+    )
+    expect(edited).toMatchObject({ body: 'Nachher', mentions })
+    expect(edited?.editedAt).toBeInstanceOf(Date)
+    expect(edited!.editedAt!.getTime()).toBeGreaterThanOrEqual(reply.createdAt.getTime())
+    // A second edit from the same reading finds nothing: the first one won.
+    expect(
+      await inOrg(ORG, () => repo.updateAnnotationReply(ORG, row.id, reply.id, 'Vorher', { body: 'Zweite', mentions: [] }))
+    ).toBeNull()
+    const [stored] = (await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id)))?.replies ?? []
+    expect(stored).toMatchObject({ body: 'Nachher', mentions })
+    expect(stored?.editedAt).toBeInstanceOf(Date)
+  })
+
   it('shows another organization none of them, and refuses one planted on this document', async () => {
     expect(await inOrg(OTHER_ORG, () => repo.listDocumentAnnotations(OTHER_ORG, ids.document))).toEqual([])
     const leaked = await inOrg(OTHER_ORG, () =>
@@ -378,17 +545,57 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     const tally = (reader: Parameters<typeof repo.tallyLiveMarks>[2], organizationId = ORG) =>
       inOrg(organizationId, () => repo.tallyLiveMarks(organizationId, [clean, held, ids.second], reader, USER))
 
-    // Two open and one proposal are live; only the open one assigned to USER is theirs (the proposal naming them is not yet).
+    // Two open and one proposal are live, counted apart; only the open one assigned to USER is theirs (the proposal naming them is not yet).
     const member = await tally(memberReader(USER))
-    expect(member.get(clean)).toEqual({ live: 3, forYou: 1 })
+    expect(member.get(clean)).toEqual({ open: 2, proposed: 1, forYou: 1 })
     expect(member.has(held)).toBe(false)
-    expect(member.get(ids.second)?.live).toBeGreaterThan(0)
+    const second = member.get(ids.second)
+    expect((second?.open ?? 0) + (second?.proposed ?? 0)).toBeGreaterThan(0)
     // The uploader and the reviewers see the held upload's marks, as they see the upload.
-    expect((await tally(memberReader(UPLOADER))).get(held)).toEqual({ live: 1, forYou: 1 })
-    expect((await tally(REVIEWER_READER)).get(held)).toEqual({ live: 1, forYou: 1 })
+    expect((await tally(memberReader(UPLOADER))).get(held)).toEqual({ open: 1, proposed: 0, forYou: 1 })
+    expect((await tally(REVIEWER_READER)).get(held)).toEqual({ open: 1, proposed: 0, forYou: 1 })
     expect(await inOrg(OTHER_ORG, () => repo.tallyLiveMarks(OTHER_ORG, [clean, held], memberReader(USER), USER))).toEqual(
       new Map()
     )
+  })
+
+  it('counts „für Sie“ as the review’s predicate says, case for case', async () => {
+    const { memberReader } = await import('@/lib/documents/visibility')
+    const { isForReader, isLive } = await import('./types')
+    const { FOR_READER_CASES } = await import('@/test-utils/marks-for-reader')
+    const COLLEAGUE = `${USER}_colleague`
+    const person = (who: 'reader' | 'colleague') => (who === 'reader' ? USER : COLLEAGUE)
+    // One document per case, so the tally speaks for each on its own.
+    const placed: Array<{ given: (typeof FOR_READER_CASES)[number]; documentId: string }> = []
+    for (const [index, given] of FOR_READER_CASES.entries()) {
+      const documentId = await document(ids.project, `FuerSie_${index}.pdf`)
+      const [row] = await insert(documentId, [mark({ assigneeUserId: given.assignee ? person(given.assignee) : null })], {
+        authorKind: given.authorKind,
+        createdBy: person(given.setBy),
+        // Piloti's mark is the office's only once somebody took it over.
+        ...(given.authorKind === 'piloti' && given.status !== 'proposed' ? { acceptedBy: COLLEAGUE } : {}),
+      })
+      if (given.status === 'resolved' || given.status === 'dismissed') {
+        await inOrg(ORG, () =>
+          repo.updateDocumentAnnotation(ORG, documentId, row.id, 'open', {
+            transition: { status: given.status, closedBy: USER, closedAt: new Date() },
+          })
+        )
+      }
+      placed.push({ given, documentId })
+    }
+
+    const tally = await inOrg(ORG, () =>
+      repo.tallyLiveMarks(ORG, placed.map((entry) => entry.documentId), memberReader(USER), USER)
+    )
+    for (const { given, documentId } of placed) {
+      const [stored] = await inOrg(ORG, () => repo.listDocumentAnnotations(ORG, documentId))
+      if (!stored) throw new Error(`no mark stored for „${given.name}“`)
+      expect(stored.status, given.name).toBe(given.status)
+      expect(isForReader(stored, USER), given.name).toBe(given.forReader)
+      expect(isLive(stored) && isForReader(stored, USER), given.name).toBe(given.counted)
+      expect(tally.get(documentId)?.forYou ?? 0, given.name).toBe(given.counted ? 1 : 0)
+    }
   })
 
   describe('waking Piloti (migration 0139)', () => {

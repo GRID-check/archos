@@ -999,7 +999,10 @@ prod takes this release:
 - **Three data nodes** with 4 CPU / 16Gi free on each (`qdrantCpu`,
   `qdrantMemory`, request = limit): with `nodeGroupData` set, the peers'
   anti-affinity is required, one per node, so a third peer without a third
-  node stays Pending and the deploy fails on it.
+  node stays Pending and the deploy fails on it. A group that has just come up
+  serves pods before the CSI plugin registers on the new nodes, so its first
+  two or three minutes show attach errors on PVCs that are `Bound` throughout
+  ([gotchas](../contributing/gotchas.md)): wait, and do not delete anything.
 - **The three Qdrant keys in ESC** (`grid-oib/prod`): `qdrantApiKey`,
   `qdrantReadOnlyApiKey`, `qdrantS3SecretKey`, each its own value (the
   `esc env set` lines in the header of `Pulumi.prod.yaml`).
@@ -1012,6 +1015,16 @@ prod takes this release:
   to delete it:
   `pulumi state unprotect 'urn:pulumi:prod::grid-oib::kubernetes:apps/v1:StatefulSet::chroma'`.
   This lifts it from the StatefulSet only; the claim was never Pulumi's.
+- **Lift the protection from the SeaweedFS StatefulSet as well.** The
+  `grid-qdrant` identity changes the rendered `s3.json`, so the plan re-creates
+  `seaweedfs-s3-config` and, with it, the StatefulSet that mounts it. With
+  `protectDataResources` on, the plan stops there, before it applies anything:
+  `pulumi state unprotect 'urn:pulumi:prod::grid-oib::kubernetes:apps/v1:StatefulSet::seaweedfs'`.
+  The replacement is `deleteBeforeReplace` and the claim policy is `Retain`, so
+  `data-seaweedfs-0` keeps its data and binds again, but object storage is down
+  for the minute or two the pod takes to return. Staging will not show you this
+  one: `Pulumi.dev.yaml` sets `protectDataResources: false`, so the replacement
+  goes through there unnoticed. See [gotchas](../contributing/gotchas.md).
 - **Alerting connected**: see [Alerts](#health-at-a-glance). Nothing
   evaluates `qdrant.rules.yaml` on staging, and prod must not run a store
   every office depends on with no one told when a peer is down.

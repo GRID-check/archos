@@ -60,18 +60,19 @@ export function annotationExportHref(documentId: string, options: AnnotationExpo
   return `/api/documents/${encodeURIComponent(documentId)}/annotations/export?${query.toString()}`
 }
 
+/** Each format's file extension. */
+const EXTENSIONS: Record<AnnotationExportFormat, string> = { pdf: 'pdf', docx: 'docx', md: 'md' }
+
+/** Characters no file name on a person's disk may carry. */
+const UNSAFE_IN_FILE_NAME = /[\\/:*?"<>|\r\n]+/g
+
+/** A file name's stem without what a file system refuses, each run of it a space. */
+export const safeFileStem = (stem: string): string => stem.replace(UNSAFE_IN_FILE_NAME, ' ').trim()
+
 /**
- * The file name a `Content-Disposition` carries: the UTF-8 `filename*` first
- * (it keeps „Fassung" and the dashes), then the ASCII fallback, then `fallback`.
+ * A Protokoll's file name: its {@link safeFileStem} and the format's
+ * extension. One rule for the name the export routes send and the name the
+ * Prüfansicht files a Protokoll under.
  */
-export function fileNameFromDisposition(header: string | null, fallback: string): string {
-  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header ?? '')?.[1]
-  if (encoded) {
-    try {
-      return decodeURIComponent(encoded)
-    } catch {
-      // A malformed escape: the plain name below still names the file.
-    }
-  }
-  return /filename="([^"]+)"/i.exec(header ?? '')?.[1] ?? fallback
-}
+export const protocolFileNameOf = (stem: string, format: AnnotationExportFormat): string =>
+  `${safeFileStem(stem)}.${EXTENSIONS[format]}`

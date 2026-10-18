@@ -55,6 +55,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useLocale, useTranslations } from '@/i18n'
+import { hasLiveMarks, openMarksLabel } from './open-marks-chip'
 import { formatAbsoluteTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
@@ -155,9 +156,10 @@ export interface DocumentReviewControlsProps {
   publishBare?: boolean
   /**
    * The document's live Anmerkungen, as the review the pane holds counts them
-   * (`isLive`, every Fassung), and the way into them. The approve confirm
-   * names them before the signature („4 offene Anmerkungen – trotzdem
-   * freigeben?") and links to the review. It informs, never blocks: whether
+   * (every Fassung): the open ones and Piloti's untaken proposals told apart,
+   * and the way into them. The approve confirm names them before the signature
+   * („2 offene Anmerkungen und 12 Vorschläge von Piloti – trotzdem
+   * freigeben?", the chip's words in Dateien) and links to the review. It informs, never blocks: whether
    * an open point stands in the way of a release is the reviewer's call.
    * Absent, or counted at 0, where nothing is open or the surface has no
    * review. A count the review has not read yet, or could not read, says so
@@ -172,7 +174,7 @@ export interface DocumentReviewControlsProps {
  * still being read, or unreadable. Only a known count of 0 is silent.
  */
 export type OpenMarksAtApproval =
-  | { status: 'counted'; count: number; onOpen: () => void }
+  | { status: 'counted'; open: number; proposed: number; onOpen: () => void }
   | { status: 'loading' }
   | { status: 'unavailable'; onOpen: () => void }
 
@@ -479,7 +481,7 @@ export function DocumentReviewControls({
               ? t('lifecycle.approveConfirm.actingWithName', { name: actingName, date: today })
               : t('lifecycle.approveConfirm.actingDateOnly', { date: today })}
           </p>
-          {openMarks && (openMarks.status !== 'counted' || openMarks.count > 0) && (
+          {openMarks && (openMarks.status !== 'counted' || hasLiveMarks(openMarks)) && (
             /* What is still open on the pages, said before the signature and
                not after it: a release with open points is allowed, a release
                that did not know about them is the mistake. */
@@ -490,7 +492,7 @@ export function DocumentReviewControls({
               data-status={openMarks.status}
             >
               {openMarks.status === 'counted'
-                ? t('lifecycle.approveConfirm.openMarks', { count: openMarks.count })
+                ? t('lifecycle.approveConfirm.openMarks', { marks: openMarksLabel(t, locale, openMarks) })
                 : openMarks.status === 'loading'
                   ? t('lifecycle.approveConfirm.openMarksLoading')
                   : t('lifecycle.approveConfirm.openMarksUnavailable')}

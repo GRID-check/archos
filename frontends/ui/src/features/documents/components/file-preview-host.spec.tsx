@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useFilePreviewStore } from '../stores/file-preview-store'
 import type { FileItem } from './project-file-workspace'
 
-const pane = vi.hoisted(() => ({ mounts: 0 }))
+const pane = vi.hoisted(() => ({ mounts: 0, props: {} as Record<string, unknown> }))
 const nav = vi.hoisted(() => ({ pathname: '/app/projects/p1/files' }))
 const mobile = vi.hoisted(() => ({ is: false }))
 
@@ -19,7 +19,8 @@ vi.mock('@/hooks/use-is-mobile', () => ({
 vi.mock('./file-preview-pane', async () => {
   const React = await import('react')
   return {
-    FilePreviewPane: function FilePreviewPaneMock() {
+    FilePreviewPane: function FilePreviewPaneMock(props: Record<string, unknown>) {
+      pane.props = props
       React.useEffect(() => {
         pane.mounts += 1
       }, [])
@@ -78,6 +79,18 @@ describe('FilePreviewHost', () => {
       peekWidth: 320,
       context: {},
     })
+  })
+
+  it('hands the review’s tally of the marks to the open file and to the listing behind it', () => {
+    const onMarksChanged = vi.fn()
+    useFilePreviewStore.getState().open(FILE, 'modal', { projectId: 'p1', onMarksChanged })
+    render(<FilePreviewHost />)
+
+    const tally = { open: 0, proposed: 1, forYou: 0 }
+    act(() => (pane.props.onMarksChanged as (id: string, marks: typeof tally) => void)('doc-1', tally))
+
+    expect(useFilePreviewStore.getState().file?.marks).toEqual(tally)
+    expect(onMarksChanged).toHaveBeenCalledWith('doc-1', tally)
   })
 
   it('keeps the pane mounted (parked) when Ask flips to peek while still on Files', () => {

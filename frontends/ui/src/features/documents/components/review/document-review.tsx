@@ -32,12 +32,12 @@ import { ShimmerText } from '@/components/ui/shimmer-text'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
 import { liveLine } from '@/features/chat/lib/turn-events'
-import { useTranslations } from '@/i18n'
-import type { AnnotationView } from '@/lib/annotations/types'
+import { useLocale, useTranslations } from '@/i18n'
+import { isGhostMark, type AnnotationView } from '@/lib/annotations/types'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { cn } from '@/lib/utils'
 import { stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
-import type { DocumentReview as ReviewState, ReviewTool } from '../../hooks/use-document-review'
+import { DECISION_UNDO_MS, type DocumentReview as ReviewState, type ReviewTool } from '../../hooks/use-document-review'
 import { sameValue } from '@/lib/utils/same-value'
 import {
   useRoomPeers,
@@ -52,6 +52,11 @@ import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel, type OpenMark } from './review-panel'
 import { ReviewAnnouncer } from './review-announcer'
 import { ReviewExportMenu } from './review-export-menu'
+import type { ProtocolFilingTarget } from '../../lib/protocol-filing'
+import { useCheckFixed } from './check-fixed'
+import { ReviewToaster, reviewToast } from './review-toaster'
+import { hasLiveMarks, openMarksLabel, openMarksShortLabel } from '../open-marks-chip'
+import { clearReviewParams, setReviewParams } from '../../lib/open-review'
 import { covers, ReviewStageContext, STAGE_FOOT, STAGE_HEAD, type StageBounds } from './review-stage'
 import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
 
@@ -510,14 +515,16 @@ function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => v
     )
   }
   const working = run.status === 'thinking'
-  const found = run.status === 'answered' ? review.counts.proposed : 0
+  // A check of what is fixed answers in the threads: it finds no proposals to walk.
+  const checking = run.checkFixed !== null
+  const found = run.status === 'answered' && !checking ? review.counts.proposed : 0
   const line = working
-    ? (liveLine(stepsOf(run.view), tChat) ?? t('review.piloti.reviewing'))
+    ? (liveLine(stepsOf(run.view), tChat) ?? t(checking ? 'review.piloti.checkingFixed' : 'review.piloti.reviewing'))
     : run.status === 'failed'
       ? t('review.piloti.reviewFailed')
       : found > 0
         ? t('review.piloti.reviewFound', { count: found })
-        : t('review.piloti.reviewDone')
+        : t(checking ? 'review.piloti.checkFixedDone' : 'review.piloti.reviewDone')
   return (
     <div
       role="status"
@@ -607,6 +614,7 @@ export function DocumentReviewMode({
   popoutHref = null,
   initialTool,
   onPage,
+  protocolFiling = null,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -623,8 +631,14 @@ export function DocumentReviewMode({
   initialTool?: ReviewTool
   /** The page the reader is on, as it changes: the file preview opens there again once the review closes. */
   onPage?: (page: number) => void
+  /**
+   * Where „Protokoll exportieren" may file the Protokoll as a document; null where it has no place (not a
+   * project's, archived, a closed project). Offered only to a reader who may write the document's folder.
+   */
+  protocolFiling?: ProtocolFilingTarget | null
 }): JSX.Element {
   const t = useTranslations('files')
+  const { locale } = useLocale()
   const [focus, setFocus] = useState<{ page: number; y: number; key: string; instant?: boolean } | null>(null)
   const [following, setFollowing] = useState<string | null>(null)
   const { annotations, select, setTool, tool, selectedId, draft, setDraft, room, piloti } = review
@@ -647,7 +661,7 @@ export function DocumentReviewMode({
   )
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const touch = useMediaQuery('(pointer: coarse)')
-  /** What the toolbars and the chips below take of the canvas's foot. */
+  /** What the toolbars and the chips below take of the canvas's foot, kept free for the cursor chat and the review's toasts. */
   const foot = touch ? STAGE_FOOT.touch : STAGE_FOOT.pointer
   /** The canvas less its head and foot: where a card on the sheet keeps. */
   const stage = useCallback<StageBounds>(() => {
@@ -693,6 +707,11 @@ export function DocumentReviewMode({
     if (intro && (draft || openAsk)) foldIntro()
   }, [intro, draft, openAsk, foldIntro])
 
+  // The review is open: the document's rows about new marks are read, which no pin's dot carries,
+  // and so are those that arrive while it stays open.
+  const { watchMarksSetNews } = review
+  useEffect(() => (open ? watchMarksSetNews() : undefined), [open, watchMarksSetNews])
+
   // Entered with a tool in hand: armed once per opening.
   const armed = useRef(false)
   useEffect(() => {
@@ -711,11 +730,12 @@ export function DocumentReviewMode({
       setFollowing(null)
       setDraft(null)
       select(annotation.id)
-      if (annotation.onCurrentFassung) {
+      // A ghost (an open mark of an earlier Fassung) is drawn where it stood: the view goes there too.
+      if (annotation.onCurrentFassung || isGhostMark(annotation, review.documentId)) {
         setFocus({ page: annotation.page, y: annotation.y + (annotation.h ?? 0) / 2, key: `${annotation.id}:${Date.now()}` })
       }
     },
-    [select, setDraft]
+    [select, setDraft, review.documentId]
   )
 
   /**
@@ -847,7 +867,7 @@ export function DocumentReviewMode({
   const { notice, dismissNotice } = review
   useEffect(() => {
     if (notice !== 'conflict') return
-    toast.info(t('review.conflict'))
+    toast.info(t('review.conflict'), reviewToast())
     dismissNotice()
   }, [notice, dismissNotice, t])
 
@@ -858,8 +878,9 @@ export function DocumentReviewMode({
     onOpenChange(false)
   }, [onOpenChange, setDraft, setTool])
 
-  // A mark of an earlier Fassung is listed, never drawn: selected, its thread
-  // opens over the sheet instead of beside a pin that is not there.
+  // A mark of an earlier Fassung is not drawn as a mark of this sheet (an open
+  // one is a ghost, where it stood on its own): selected, its thread opens over
+  // the sheet, never beside a place the current drawing may not have.
   const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentFassung) ?? null
   const selected = annotations.find((annotation) => annotation.id === selectedId) ?? null
   // The card a phone docks: Piloti's answer on a box, the draft, or the open thread.
@@ -891,6 +912,26 @@ export function DocumentReviewMode({
     else close()
   }
 
+  /**
+   * A key's decision is a moment from the server (`review.decide`): the toast
+   * names it and offers „Rückgängig", which lets it go before it is sent, as
+   * the inbox's archive does. A key is easy to hit by mistake; a click on the
+   * card's own button is not, and goes at once.
+   */
+  const decideByKey = (current: AnnotationView, status: 'open' | 'resolved' | 'dismissed') => {
+    const held = review.decide(current, status, () => toast.error(t('review.actionFailed'), reviewToast()))
+    if (!held) return
+    const said = status === 'open' ? 'accepted' : status
+    toast(
+      t(`review.decided.${said}`, { number: current.number }),
+      reviewToast({
+        id: `review-decided-${current.id}`,
+        duration: DECISION_UNDO_MS,
+        action: { label: t('review.undo'), onClick: () => review.undoDecision(current.id) },
+      }),
+    )
+  }
+
   // Letters pick tools and walk the marks. The handler reads this render's state
   // through a ref: the listener is attached once per opening, not on every change.
   const onKey = (event: KeyboardEvent) => {
@@ -919,21 +960,13 @@ export function DocumentReviewMode({
     } else if (key === 'e' && selectedId) {
       const current = annotations.find((annotation) => annotation.id === selectedId)
       if (!current?.canEdit) return
-      if (current.status === 'proposed' || current.status === 'open') {
-        void review
-          .update(current.id, {
-            status: current.status === 'proposed' ? 'open' : 'resolved',
-            expectedStatus: current.status,
-          })
-          .catch(() => toast.error(t('review.actionFailed')))
-      }
+      if (current.status === 'proposed') decideByKey(current, 'open')
+      else if (current.status === 'open') decideByKey(current, 'resolved')
     } else if ((key === 'backspace' || key === 'delete') && selectedId) {
       // ⌫ on „Verwerfen" says it: a proposal in hand is dismissed, nothing else is.
       const current = annotations.find((annotation) => annotation.id === selectedId)
       if (!current?.canEdit || current.status !== 'proposed') return
-      void review
-        .update(current.id, { status: 'dismissed', expectedStatus: 'proposed' })
-        .catch(() => toast.error(t('review.actionFailed')))
+      decideByKey(current, 'dismissed')
     } else return
     event.preventDefault()
   }
@@ -952,25 +985,29 @@ export function DocumentReviewMode({
   const copyText = useCallback(
     (text: string) => {
       if (!navigator.clipboard) {
-        toast.error(t('review.linkCopyFailed'))
+        toast.error(t('review.linkCopyFailed'), reviewToast())
         return
       }
       void navigator.clipboard
         .writeText(text)
-        .then(() => toast.success(t('review.linkCopied')))
-        .catch(() => toast.error(t('review.linkCopyFailed')))
+        .then(() => toast.success(t('review.linkCopied'), reviewToast()))
+        .catch(() => toast.error(t('review.linkCopyFailed'), reviewToast()))
     },
     [t]
   )
+  /**
+   * The mark's own link: the document on its shelf at the review (`popoutHref`), else this page,
+   * with `doc`, `review` and `mark` and nothing of this tab's way through it: neither the tool in
+   * hand nor `back`, the page this reader came from, which is not the recipient's.
+   */
   const copyLink = useCallback(
     (annotation: AnnotationView) => {
-      const url = new URL(window.location.href)
-      url.searchParams.set('doc', annotation.documentId)
-      url.searchParams.set('review', '1')
-      url.searchParams.set('mark', annotation.id)
+      const url = new URL(popoutHref ?? window.location.href, window.location.href)
+      clearReviewParams(url.searchParams)
+      setReviewParams(url.searchParams, { documentId: annotation.documentId, annotationId: annotation.id }, { withDocument: true })
       copyText(url.toString())
     },
-    [copyText]
+    [copyText, popoutHref]
   )
   const popout = useCallback(() => {
     if (popoutHref) window.open(popoutHref, '_blank', 'popup,width=1440,height=900')
@@ -1019,8 +1056,12 @@ export function DocumentReviewMode({
       documentId={review.documentId}
       hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
       hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
+      // Filing is an upload into the document's folder: offered to whoever may write there, which is
+      // what `canAnnotate` says (the document's write, folder included, ADR-0088). The upload checks again.
+      filing={protocolFiling && review.canAnnotate ? { target: protocolFiling, documentName } : null}
     />
   )
+  const checkFixed = useCheckFixed(review, { documentName, fassungLabel: fassungLabel ?? null })
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
@@ -1057,9 +1098,14 @@ export function DocumentReviewMode({
             <DialogDescription className="text-muted-foreground text-xs sm:truncate">
               {[
                 fassungLabel,
-                review.counts.open + review.counts.proposed > 0
-                  ? t('annotations.openCount', { count: review.counts.open + review.counts.proposed })
-                  : t('review.nothingOpen'),
+                // Another document replaces this one, or this one replaces another: the header says so.
+                review.fassung?.replacedBy
+                  ? t('review.replacedBy', { name: review.fassung.replacedBy.filename })
+                  : review.fassung?.replaces[0]
+                    ? t('review.replaces', { name: review.fassung.replaces[0].filename })
+                    : null,
+                // „2 offen · 12 Vorschläge": Piloti's untaken proposals are not counted as open, as in Dateien.
+                hasLiveMarks(review.counts) ? openMarksShortLabel(t, review.counts) : t('review.nothingOpen'),
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -1114,12 +1160,16 @@ export function DocumentReviewMode({
                 className="h-8 gap-1.5 pointer-coarse:h-11"
                 aria-haspopup="dialog"
                 aria-expanded={listOpen}
-                aria-label={t('annotations.section')}
+                // „Anmerkungen: 3 offene Anmerkungen und 12 Vorschläge von Piloti“: the chip's sentence.
+                aria-label={t('review.listOpen', {
+                  marks: hasLiveMarks(review.counts) ? openMarksLabel(t, locale, review.counts) : t('review.nothingOpen'),
+                })}
                 data-testid="review-list-open"
                 onClick={() => setListOpen(true)}
               >
                 <MessagesSquare className="size-3.5" aria-hidden />
-                <span className="font-mono tabular-nums">{review.counts.open + review.counts.proposed}</span>
+                {/* The open marks, as „offen“ counts them everywhere: Piloti's proposals are not the office's yet. */}
+                <span className="font-mono tabular-nums">{review.counts.open}</span>
               </Button>
             )}
             {listBeside && exportMenu}
@@ -1217,8 +1267,9 @@ export function DocumentReviewMode({
                 )}
                 className="size-full"
               />
+              <ReviewToaster foot={foot} />
             </div>
-            <ReviewPanel review={review} onOpen={openFromList} onWalkProposals={walkProposals} />
+            <ReviewPanel review={review} onOpen={openFromList} onWalkProposals={walkProposals} onCheckFixed={checkFixed} />
           </div>
         </ReviewStageContext.Provider>
         {docked && (
@@ -1268,6 +1319,7 @@ export function DocumentReviewMode({
                   setListOpen(false)
                   walkProposals()
                 }}
+                onCheckFixed={checkFixed}
               />
             </SheetContent>
           </Sheet>

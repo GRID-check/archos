@@ -56,6 +56,13 @@ DELETE_FORBIDDEN = (
     "diesem Dokument etwas ändern darf. Sag es ihr so; erledigen (`update` mit `status` `resolved`) geht, wenn sie "
     "es möchte."
 )
+#: The BFF's ``details.reason`` values for a mark its author may no longer delete (``deleteRefusalOf``).
+DELETE_KEPT_REASONS = frozenset({"mark-discussed", "mark-carried"})
+DELETE_KEPT = (
+    "Nicht gelöscht: Andere haben im Verlauf dieser Anmerkung geantwortet, oder sie wurde zwischen Dokumenten "
+    "übernommen. Sie bleibt, damit ihr Verlauf und ihre Nummer erhalten bleiben. Sag es der Person so; erledigen "
+    "(`update` mit `status` `resolved`) geht, wenn sie es möchte."
+)
 ASSIGNEE_UNCLEAR = (
     "Unklar, wer gemeint ist ({detail}). Frage die Person, wen sie meint, und nimm dann den vollen Namen; nichts "
     "wurde geändert."
@@ -108,6 +115,8 @@ def refusal_for(exc: CanvasRequestError, operation: str) -> Refused:
         return Refused(PROPOSE_ONLY_MARK if operation == "create" else PROPOSE_ONLY_CHANGE, "piloti_acts_off")
     if exc.reason in ("assignee-unknown", "assignee-ambiguous"):
         return Refused(ASSIGNEE_UNCLEAR.format(detail=exc), "assignee_unclear")
+    if exc.reason in DELETE_KEPT_REASONS:
+        return Refused(DELETE_KEPT, "delete_kept")
     if exc.status == 403:
         return Refused(DELETE_FORBIDDEN if operation == "delete" else FORBIDDEN, "forbidden")
     if exc.status == 404:

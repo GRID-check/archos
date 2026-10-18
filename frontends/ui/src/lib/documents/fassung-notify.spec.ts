@@ -6,6 +6,7 @@ import type { Document, DocumentVersion } from '@/lib/db/schema'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/assignments/repository', () => ({ listAssignmentsForResources: vi.fn() }))
+vi.mock('@/lib/annotations/repository', () => ({ listDocumentAnnotations: vi.fn(), findDocumentAnnotation: vi.fn() }))
 vi.mock('@/lib/authz/folder-access', () => ({ filterUsersWhoMayReadFolder: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({
   PERMISSION_CHECKS_AT_ONCE: 8,
@@ -22,6 +23,7 @@ vi.mock('./fassung-announcement-repository', () => ({
   releaseFassungAnnouncement: vi.fn(),
 }))
 
+import { listDocumentAnnotations, type AnnotationRecord } from '@/lib/annotations/repository'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
 import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
@@ -38,6 +40,7 @@ import {
   fassungRowNames,
   firstSummaryLine,
   notifyNewFassung,
+  openMarksFacts,
 } from './fassung-notify'
 import { readFassungNames, refreshCollectionFiles } from './reconcile-status'
 import { findDocumentInOrg, findFassungCounterparts } from './repository'
@@ -89,7 +92,27 @@ const link = {
   olderId: 'doc-a',
 } as const
 
+/** An open mark on the followed document, with the people its thread names. */
+const openMark = (fields: Partial<AnnotationRecord>): AnnotationRecord =>
+  ({
+    id: 'ann-1',
+    documentId: 'doc-a',
+    versionId: 'v1',
+    fassungNumber: 1,
+    status: 'open',
+    authorKind: 'person',
+    createdBy: 'author',
+    acceptedBy: null,
+    assigneeUserId: null,
+    delegatedBy: null,
+    mentions: [],
+    replies: [],
+    ...fields,
+  }) as AnnotationRecord
+
 beforeEach(() => {
+  vi.mocked(listDocumentAnnotations).mockReset()
+  vi.mocked(listDocumentAnnotations).mockResolvedValue([])
   vi.mocked(emitInboxItems).mockReset()
   vi.mocked(emitInboxItems).mockResolvedValue(0)
   vi.mocked(findDocumentInOrg).mockReset()
@@ -339,6 +362,88 @@ describe('notifyNewFassung — a confirmed link', () => {
 
     expect(await notifyNewFassung(link)).toBe(0)
     expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+})
+
+describe('openMarksFacts', () => {
+  it('counts the open marks, and names their Fassung when they all sit on one of the same document', () => {
+    expect(openMarksFacts([{ fassungNumber: 2 }, { fassungNumber: 2 }], { sameDocument: true })).toEqual({
+      variant: 'marks',
+      openMarks: 2,
+      marksFassung: 2,
+    })
+    expect(openMarksFacts([{ fassungNumber: 2 }], { sameDocument: true })).toMatchObject({ variant: 'mark', marksFassung: 2 })
+  })
+
+  it('says „the previous Fassung" for marks on several, or on another document', () => {
+    expect(openMarksFacts([{ fassungNumber: 1 }, { fassungNumber: 2 }], { sameDocument: true })).toMatchObject({
+      variant: 'marks_earlier',
+      marksFassung: null,
+    })
+    expect(openMarksFacts([{ fassungNumber: 3 }], { sameDocument: false })).toMatchObject({
+      variant: 'mark_earlier',
+      marksFassung: null,
+    })
+    expect(openMarksFacts([], { sameDocument: true })).toBeNull()
+  })
+})
+
+describe('notifyNewFassung — the people working on its marks', () => {
+  const sameName = {
+    organizationId: 'org-1',
+    actorUserId: 'editor',
+    newerId: 'doc-a',
+    olderId: 'doc-a',
+    versionId: 'v3',
+  } as const
+
+  it('tells everyone working on an open mark the new Fassung leaves behind, and how many to check', async () => {
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([
+      openMark({ id: 'm1', assigneeUserId: 'zustaendig', fassungNumber: 2, versionId: 'v2' }),
+      openMark({
+        id: 'm2',
+        replies: [{ authorKind: 'person', createdBy: 'replier' }] as AnnotationRecord['replies'],
+        fassungNumber: 2,
+        versionId: 'v2',
+      }),
+      // Set on the new Fassung already, or closed: nothing to check.
+      openMark({ id: 'm3', createdBy: 'fresh', versionId: 'v3', fassungNumber: 3 }),
+      openMark({ id: 'm4', createdBy: 'closer', status: 'resolved', versionId: 'v2' }),
+    ])
+
+    await notifyNewFassung(sameName)
+
+    const items = emitted()
+    expect(items.map((item) => item.recipientUserId).sort()).toEqual(['author', 'replier', 'uploader', 'zustaendig'])
+    expect(items[0].payload).toMatchObject({ variant: 'marks', openMarks: 2, marksFassung: 2 })
+    expect(listDocumentAnnotations).toHaveBeenCalledWith('org-1', 'doc-a')
+  })
+
+  it('asks every one of them whether they may open the document, and leaves the actor out', async () => {
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([openMark({ createdBy: 'editor', assigneeUserId: 'outsider', versionId: 'v2' })])
+    vi.mocked(userHoldsProjectPermission).mockImplementation(async (_org, _project, userId) => userId !== 'outsider')
+
+    await notifyNewFassung(sameName)
+
+    expect(emitted().map((item) => item.recipientUserId)).toEqual(['uploader'])
+  })
+
+  it('counts every open mark of a document another one replaced, as from the previous Fassung', async () => {
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([openMark({ createdBy: 'author', fassungNumber: 4 })])
+
+    await notifyNewFassung(link)
+
+    expect(emitted().find((item) => item.recipientUserId === 'author')?.payload).toMatchObject({
+      variant: 'mark_earlier',
+      openMarks: 1,
+      marksFassung: null,
+    })
+  })
+
+  it('says nothing about marks when none are open', async () => {
+    await notifyNewFassung(sameName)
+
+    expect(emitted()[0].payload).not.toHaveProperty('openMarks')
   })
 })
 

@@ -41,8 +41,13 @@ describe('the assignments client', () => {
   it('reads the candidates beside them', async () => {
     const { run, calls } = recorder({ candidates: [ANNA] })
 
-    expect(await listAssignmentCandidates('document', 'doc_1', run)).toEqual([ANNA])
-    expect(calls[0].path).toBe('/api/assignments/document/doc_1/candidates')
+    expect(await listAssignmentCandidates('document', 'doc_1', {}, run)).toEqual([ANNA])
+    // A mark's Zuständige must answer it: the picker asks who may write the document.
+    expect(await listAssignmentCandidates('document', 'doc_1', { access: 'write' }, run)).toEqual([ANNA])
+    expect(calls.map((call) => call.path)).toEqual([
+      '/api/assignments/document/doc_1/candidates',
+      '/api/assignments/document/doc_1/candidates?access=write',
+    ])
   })
 
   it('throws on a refusal: a failed read is not „nobody is assigned"', async () => {
@@ -50,7 +55,7 @@ describe('the assignments client', () => {
 
     await expect(listAssignees('document', 'doc_1', run)).rejects.toThrow()
     await expect(assignPerson('document', 'doc_1', 'user_anna', run)).rejects.toThrow()
-    await expect(listAssignmentCandidates('document', 'doc_1', run)).rejects.toThrow()
+    await expect(listAssignmentCandidates('document', 'doc_1', {}, run)).rejects.toThrow()
   })
 })
 

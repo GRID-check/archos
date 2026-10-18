@@ -97,7 +97,7 @@ config:
   # dynamically from the merge commit — prod merge shas never have GHCR images;
 
   # only develop tips do.
-  grid-oib:imageTag: sha-4acc113bce127bce77fe8e4eb0728df09fb94382
+  grid-oib:imageTag: sha-c37419acf015dff40148c81a6b097949035810d6
   # ── Storage (provider CSI, NVMe/TCP) ──
 
   # Classes offered by the provider (see `kubectl get storageclass`):
@@ -271,20 +271,17 @@ config:
 
   # come from the ESC environment (`qdrantApiKey`, `qdrantReadOnlyApiKey`,
 
-  # `qdrantS3SecretKey`). The retired Chroma's volume stays as `data-chroma-0`
+  # `qdrantS3SecretKey`). The migration off Chroma ran on production on
 
-  # until `chromaMigration` has copied it (docs/deployment/qdrant-runbook.md).
+  # 2026-10-18 (#1079): 11 collections, 52,280 chunks, 0 failed or out of step.
 
-  # The promotion that brings the release without Chroma MUST set
+  # Do NOT set `grid-oib:chromaMigration` again: a second Job's import finds the
 
-  # `grid-oib:chromaMigration: "true"` here, after the runbook's "Production
+  # mark the first one left and refuses (exit 2), which fails the deploy. The
 
-  # prerequisites" (scratch-stack rehearsal at 3 peers, three data nodes, the
+  # retired Chroma's volume stays as `data-chroma-0`, the only way back, until it
 
-  # ESC keys, `pulumi state unprotect` of the chroma StatefulSet, alerting).
-
-  # Without it the deploy removes Chroma and copies nothing.
-  grid-oib:chromaMigration: "true"
+  # is deleted a few days later (docs/deployment/qdrant-runbook.md).
   # ── Agent (backend) — vertical scaling levers ──
 
   grid-oib:backendRequestsCpu: "1"

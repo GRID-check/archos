@@ -37,6 +37,7 @@ import {
   computeFolderAccess,
   effectiveFolderLevel,
   filterUsersWhoMayReadFolder,
+  filterUsersWhoMayWriteFolder,
   folderTree,
   getProjectFolderAccess,
   getRestrictedFolderIds,
@@ -532,6 +533,18 @@ describe('the session loaders', () => {
 
     expect([...readers].sort()).toEqual(['admin', 'bh', 'gf'])
     expect(listProjectFolderTree).toHaveBeenCalledTimes(1)
+  })
+
+  it('filterUsersWhoMayWriteFolder: keeps who writes there, leaves out who only reads it, as requireFolderWrite does', async () => {
+    vi.mocked(projectHasCustomOrBinnedFolders).mockResolvedValue(true)
+    vi.mocked(listProjectFolderTree).mockResolvedValue(TREE)
+    const rolesOf: Record<string, string[] | null> = { gf: ['member'], bh: ['member'], member: ['member'], admin: ['admin'], down: null }
+    vi.mocked(resolveMembershipRoles).mockImplementation(async (_org, userId) => rolesOf[userId])
+
+    const writers = await filterUsersWhoMayWriteFolder('org-1', 'proj-1', F.vertraege, ['gf', 'bh', 'member', 'admin', 'down'])
+
+    expect([...writers].sort()).toEqual(['admin', 'gf'])
+    expect([...(await filterUsersWhoMayWriteFolder('org-1', 'proj-1', null, ['bh']))]).toEqual(['bh'])
   })
 
   it('filterUsersWhoMayReadFolder: asks nobody for the root or a project with no own list', async () => {
