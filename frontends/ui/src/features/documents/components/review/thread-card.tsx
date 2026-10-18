@@ -45,11 +45,13 @@ import type { FileAssignee } from '../../file-types'
 import { askRegionOf, stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import { answerAsBody } from '../../lib/piloti-answer-text'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
+import { useFollowEnd } from '../../hooks/use-follow-end'
 import { AssignPopover } from '../assign-popover'
 import { Composer, type ComposerSend } from './composer'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
 import type { CardSide } from './review-page-layer'
+import { useCardFit } from './review-stage'
 
 export const KIND_ICONS: Record<AnnotationKind, typeof TriangleAlert> = {
   hint: MessageSquareText,
@@ -305,17 +307,18 @@ function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kin
  */
 export type CardPlacement = CardSide | 'detached' | 'docked'
 
+// Beside its mark a card moves up by `--card-shift` to keep out of the stage's foot (`useCardFit`).
 const PLACEMENT_CLASSES: Record<Exclude<CardPlacement, 'docked'>, string> = {
-  right: 'absolute top-0 left-4 origin-top-left',
-  left: 'absolute top-0 right-4 origin-top-right',
+  right: 'absolute top-[calc(var(--card-shift,0px)*-1)] left-4 origin-top-left',
+  left: 'absolute top-[calc(var(--card-shift,0px)*-1)] right-4 origin-top-right',
   below: 'absolute top-3 left-0 origin-top-left',
   detached: 'relative origin-top',
 }
 
 /** The hairline from the mark's edge to its card: which mark this is about, without the card sitting on it. */
 const HAIRLINE_CLASSES: Partial<Record<CardPlacement, string>> = {
-  right: 'top-3.5 -left-4 h-px w-4',
-  left: 'top-3.5 -right-4 h-px w-4',
+  right: 'top-[calc(0.875rem+var(--card-shift,0px))] -left-4 h-px w-4',
+  left: 'top-[calc(0.875rem+var(--card-shift,0px))] -right-4 h-px w-4',
   below: '-top-3 left-3.5 h-3 w-px',
 }
 
@@ -325,6 +328,10 @@ const HAIRLINE_CLASSES: Partial<Record<CardPlacement, string>> = {
  * (`labelledBy`, the id of the line that says what it is about) or, where it
  * has none, by `label`. `data-review-card` is how the review finds it, and it
  * takes the focus itself (`tabIndex={-1}`) when the keyboard opened it.
+ *
+ * On the sheet it keeps inside the review's free stage (`useCardFit`): never
+ * under the toolbars or the chips at the canvas's foot. A column, so what has
+ * to give is the part that scrolls (the thread), never the reply field.
  */
 export function ReviewCard({
   placement,
@@ -339,6 +346,8 @@ export function ReviewCard({
   labelledBy?: string
   label?: string
 }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  useCardFit(ref, placement === 'docked' ? null : placement)
   if (placement === 'docked') {
     return (
       <div
@@ -355,6 +364,7 @@ export function ReviewCard({
   const hairline = HAIRLINE_CLASSES[placement]
   return (
     <div
+      ref={ref}
       data-testid={testId}
       data-placement={placement}
       data-review-card
@@ -365,6 +375,7 @@ export function ReviewCard({
       className={cn(
         'focus-visible:ring-ring/60 outline-none focus-visible:ring-2',
         'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none w-[20rem] rounded-xl border shadow-xl',
+        'flex max-h-(--card-max-height) flex-col',
         PLACEMENT_CLASSES[placement]
       )}
       onPointerDown={(event) => event.stopPropagation()}
@@ -583,6 +594,10 @@ export function ThreadCard({
         (ask.status === 'answered' && ask.degraded.includes('thread')) ||
         (ask.status === 'thinking' && pilotiReplies <= ask.baseline))
   )
+  // What lands at the end of the thread: a reply, Piloti's work line, its answer. Kept in view for a reader at the end.
+  const thread = useFollowEnd<HTMLDivElement>(
+    `${annotation.replies.length}:${annotation.pilotiWork?.state ?? ''}:${threadAsk?.id ?? ''}:${threadAsk?.status ?? ''}`
+  )
 
   /**
    * The reply goes in as the person's own, with whom it mentions as picked
@@ -595,6 +610,8 @@ export function ThreadCard({
    * the two never both run. Answers with the mentions the server kept.
    */
   const sendReply = async (body: string, { piloti: mentioned, mentions }: ComposerSend) => {
+    // Sent into the thread: what follows it (the reply, Piloti at work, its answer) comes into view.
+    thread.follow()
     const { annotation: after, wake, replyId } = await review.reply(annotation.id, body, {
       addressesPiloti: mentioned,
       mentions,
@@ -800,7 +817,12 @@ export function ThreadCard({
         </div>
       )}
 
-      <div className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3">
+      <div
+        ref={thread.ref}
+        onScroll={thread.onScroll}
+        data-testid="thread-messages"
+        className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3"
+      >
         <Message
           authorKind={annotation.authorKind}
           name={annotation.createdByName}

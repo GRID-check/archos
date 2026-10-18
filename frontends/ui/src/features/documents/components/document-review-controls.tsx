@@ -499,9 +499,7 @@ export function DocumentReviewControls({
                   {' '}
                   <Button
                     type="button"
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-xs"
+                    variant="inline"
                     data-testid="document-review-approve-open-marks-link"
                     onClick={openMarks.onOpen}
                   >

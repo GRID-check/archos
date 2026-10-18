@@ -204,6 +204,19 @@ const reply = (
 /** A colleague as the „@" picker writes them into a text: the chat's mention. */
 const mention = (person: { userId: string; name: string }) => ({ targetId: person.userId, display: person.name })
 
+/**
+ * Piloti's reply, as the service gives it: written in the session of the
+ * person who asked, so `createdBy` is that person and the byline reads
+ * „Piloti · für Miriam Hofer" (`usePilotiByline`). Never `createdByName:
+ * 'Piloti'`, which no directory holds and which drew „Piloti · für Piloti".
+ */
+const pilotiReply = (
+  annotationId: string,
+  asker: { userId: string; name: string },
+  id: string,
+  body: string
+): AnnotationReplyView => ({ ...reply(annotationId, asker, 0, body), id, authorKind: 'piloti' })
+
 let annotations: AnnotationView[] = [
   {
     ...base,
@@ -332,12 +345,12 @@ const WAKES = typeof window !== 'undefined' && new URLSearchParams(window.locati
 
 /** The server's wake, answered: Piloti's reply arrives through the room, as it would from the job. */
 const wakeReply = (annotationId: string) => {
-  const answer: AnnotationReplyView = {
-    ...reply(annotationId, ME, 0, 'Im Schnitt B-B sind 1,20 m zwischen den Wangen kotiert; die Statik rechnet mit 1,10 m.'),
-    id: `${annotationId}-wake-${Date.now()}`,
-    authorKind: 'piloti',
-    createdByName: 'Piloti',
-  }
+  const answer = pilotiReply(
+    annotationId,
+    ME,
+    `${annotationId}-wake-${Date.now()}`,
+    'Im Schnitt B-B sind 1,20 m zwischen den Wangen kotiert; die Statik rechnet mit 1,10 m.'
+  )
   annotations = annotations.map((one) => (one.id === annotationId ? { ...one, replies: [...one.replies, answer] } : one))
   broadcast({
     kind: 'annotations.changed',
@@ -663,12 +676,7 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
       () => {
         emit(turn, { type: 'STEP_FINISHED', step: writing })
         if (thread) {
-          const answer: AnnotationReplyView = {
-            ...reply(thread.id, ME, 0, text),
-            id: `${thread.id}-${turn.messageId}`,
-            authorKind: 'piloti',
-            createdByName: 'Piloti',
-          }
+          const answer = pilotiReply(thread.id, ME, `${thread.id}-${turn.messageId}`, text)
           annotations = annotations.map((one) => (one.id === thread.id ? { ...one, replies: [...one.replies, answer] } : one))
           broadcast({
             kind: 'annotations.changed',
@@ -901,8 +909,11 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const current = annotations.find((annotation) => annotation.id === replies[1])
         if (!current) return json({ error: 'Not found', code: 'NOT_FOUND' }, 404)
         const input = body()
+        // An id of its own per reply, as the server's: the wake's turn id is made from it, and a
+        // second „@Piloti" in one thread under the first one's id was refused as the same turn.
         const added = {
           ...reply(current.id, ME, 0, String(input.body).trim(), (input.mentions as AnnotationReplyView['mentions']) ?? []),
+          id: `${current.id}-posted-${Date.now()}`,
           addressesPiloti: input.addressesPiloti === true,
         }
         const next = { ...current, replies: [...current.replies, added], updatedAt: new Date().toISOString() }
