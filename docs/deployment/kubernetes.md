@@ -1840,7 +1840,13 @@ Removing a protected resource from the program fails the `up` the same way.
 The release that replaced Chroma with Qdrant deletes the `chroma`
 StatefulSet, so on a stack with this on, unprotect it first (the runbook's
 "Migrating from Chroma on Kubernetes"); its claim `data-chroma-0` was never a
-Pulumi resource and stays.
+Pulumi resource and stays. The same release also replaces the **SeaweedFS**
+StatefulSet: the `grid-qdrant` identity changes the rendered `s3.json`, so the
+plan re-creates the Secret and the StatefulSet that mounts it. Unprotect that
+one too
+(`pulumi state unprotect 'urn:pulumi:prod::grid-oib::kubernetes:apps/v1:StatefulSet::seaweedfs'`)
+or the plan stops there. Its claim is `Retain` as well, so only the pod is
+re-created: object storage is down for the minute or two it takes to come back.
 
 Pulumi refuses to delete or replace a protected resource, so a stray rename, an
 accidental immutable-field change, or a `pulumi destroy` fails loudly with the

@@ -1012,6 +1012,16 @@ prod takes this release:
   to delete it:
   `pulumi state unprotect 'urn:pulumi:prod::grid-oib::kubernetes:apps/v1:StatefulSet::chroma'`.
   This lifts it from the StatefulSet only; the claim was never Pulumi's.
+- **Lift the protection from the SeaweedFS StatefulSet as well.** The
+  `grid-qdrant` identity changes the rendered `s3.json`, so the plan re-creates
+  `seaweedfs-s3-config` and, with it, the StatefulSet that mounts it. With
+  `protectDataResources` on, the plan stops there, before it applies anything:
+  `pulumi state unprotect 'urn:pulumi:prod::grid-oib::kubernetes:apps/v1:StatefulSet::seaweedfs'`.
+  The replacement is `deleteBeforeReplace` and the claim policy is `Retain`, so
+  `data-seaweedfs-0` keeps its data and binds again, but object storage is down
+  for the minute or two the pod takes to return. Staging will not show you this
+  one: `Pulumi.dev.yaml` sets `protectDataResources: false`, so the replacement
+  goes through there unnoticed. See [gotchas](../contributing/gotchas.md).
 - **Alerting connected**: see [Alerts](#health-at-a-glance). Nothing
   evaluates `qdrant.rules.yaml` on staging, and prod must not run a store
   every office depends on with no one told when a peer is down.
