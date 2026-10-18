@@ -47,6 +47,7 @@ from dataclasses import field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from typing import NamedTuple
 
 from aiq_agent.common.cost_tracking import USAGE_ROLE_EMBEDDING
 from aiq_agent.common.cost_tracking import USAGE_ROLE_INGEST_VISION
@@ -2667,6 +2668,23 @@ def _from_epoch(seconds: int | None) -> datetime | None:
     return datetime.fromtimestamp(seconds, UTC) if seconds is not None else None
 
 
+class _PdfScreen(NamedTuple):
+    """A PDF the upload screen let through: its routing and how much of it was screened.
+
+    ``triage`` is the page triage ``route_pdf_pages`` runs on, measured once here
+    (``None`` when the PDF could not be measured). ``checked`` is ``partial`` when
+    some content reaches a model unscreened. ``routing()`` is what ``route_pdf_pages``
+    takes: no ``triage`` key when there is none, so it measures the PDF itself,
+    exactly as the old empty dict did.
+    """
+
+    triage: Any = None
+    checked: str = "full"
+
+    def routing(self) -> dict[str, Any]:
+        return {} if self.triage is None else {"triage": self.triage}
+
+
 @register_ingestor("llamaindex")
 class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     """
@@ -3155,26 +3173,27 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         companions: list[Any],
         *,
         captions_rasters: bool,
-        tables: list[Any],
-    ) -> dict[str, Any] | None:
-        """Screen a PDF's text layer, its rendition's companions and its ``tables`` before any page reaches a model.
+    ) -> _PdfScreen | None:
+        """Screen a PDF's text layer and its rendition's companions before any page reaches a model.
 
-        ``tables`` are the table pass's Documents: that pass opens the PDF on
-        its own and reads pages the text pass lost, so they are screened as
-        what they are, the text that will be embedded.
+        The text layer is screened FIRST, before the table pass: a file the
+        screen holds never pays for its tables. The table pass's own Documents
+        are screened straight after it reads them (``_screen_tables``), still
+        before any model call, so a page the text pass lost can carry a match in
+        its table alone.
 
-        Returns what ``route_pdf_pages`` takes from it, the page triage measured
-        here so the PDF is measured once, or ``None`` when the file was
-        quarantined. ``checked`` is ``partial`` when the triage sends a page to
-        transcription or drawing analysis, or cannot measure the PDF, or when
-        ``captions_rasters`` (the VLM will caption embedded images) and a page
-        carries one: that content reaches a model without having been screened,
-        which the product accepts for content that cannot be read locally. A
-        page the text pass could not read (``failed_pages``) makes it
+        Returns the routing and the ``checked`` verdict for ``route_pdf_pages``,
+        the page triage measured here so the PDF is measured once, or ``None``
+        when the file was quarantined. ``checked`` is ``partial`` when the triage
+        sends a page to transcription or drawing analysis, or cannot measure the
+        PDF, or when ``captions_rasters`` (the VLM will caption embedded images)
+        and a page carries one: that content reaches a model without having been
+        screened, which the product accepts for content that cannot be read
+        locally. A page the text pass could not read (``failed_pages``) makes it
         ``partial`` too: its text was never read, so never screened.
         """
         if rules is None:
-            return {}
+            return _PdfScreen()
         from knowledge_layer.llamaindex import page_triage
         from knowledge_layer.llamaindex.screening import document_pages
 
@@ -3191,11 +3210,37 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             or lost_pages
         )
         body = sorted(page_texts.items())
-        pages = [*body, *document_pages(companions), *document_pages(tables)]
         checked = "partial" if unscreened else "full"
+        pages = [*body, *document_pages(companions)]
         if self._screen_or_quarantine(job, file_index, rules, pages, checked, stream=body):
             return None
-        return {"triage": triage}
+        return _PdfScreen(triage, checked)
+
+    def _screen_tables(
+        self,
+        job: IngestionJobStatus,
+        file_index: int,
+        rules: Any,
+        table_documents: list[Any],
+        checked: str,
+    ) -> bool:
+        """Screen the table pass's Documents; True when the file was quarantined.
+
+        The table pass runs only after ``_screen_pdf`` passed the text layer, so
+        a file about to be held never paid for it. The tables are still screened
+        before any model call reads them: a page the text pass lost is read by
+        the table pass alone, and a term only its table carries must hold the
+        file. Additive to the text screen's verdict, so the rules see the same
+        text they saw before the two were split.
+        """
+        if rules is None:
+            return False
+        from knowledge_layer.llamaindex.screening import document_pages
+
+        pages = document_pages(table_documents)
+        if not any(text.strip() for _page, text in pages):
+            return False
+        return self._screen_or_quarantine(job, file_index, rules, pages, checked)
 
     def _record_failed_pages(self, job: IngestionJobStatus, file_index: int, text_pages: list) -> None:
         """Put the pages a PDF read lost, below the failure threshold, on the file's result."""
@@ -4584,7 +4629,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # What the PDF export dropped from the original (pptx
                     # speaker notes), read before the screen so it is screened too.
                     companions: list[Any] = []
-                    # The PDF's uncaptioned tables, likewise read before the screen.
+                    # The PDF's uncaptioned tables. Read only once the text
+                    # layer has passed the screen below: a held file keeps them.
                     tables: list[dict[str, Any]] = []
                     table_documents: list[Any] = []
                     if is_pdf:
@@ -4597,6 +4643,22 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         self._record_failed_pages(job, i, text_pages)
                         if rendition:
                             companions = _rendition_companions(file_path, file_name, file_size)
+                        # The upload screen: the last step before a page of
+                        # this file can reach a model (transcription, below).
+                        # The text layer and the companions are screened BEFORE
+                        # the table pass, so a file the screen holds never pays
+                        # for its tables (measured: 125 s of a 133-page PDF).
+                        screen = self._screen_pdf(
+                            job,
+                            i,
+                            screening_rules,
+                            source_path,
+                            text_pages,
+                            companions,
+                            captions_rasters=bool(vlm_api_key) and (extract_images or extract_charts),
+                        )
+                        if screen is None:
+                            continue
                         if extract_tables:
                             from knowledge_layer.llamaindex.section_chunking import uncaptioned_table_documents
 
@@ -4607,20 +4669,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 for table in tables
                                 for document in uncaptioned_table_documents(table, file_name, file_size)
                             ]
-                        # The upload screen: the last step before a page of
-                        # this file can reach a model (transcription, below).
-                        route_kwargs = self._screen_pdf(
-                            job,
-                            i,
-                            screening_rules,
-                            source_path,
-                            text_pages,
-                            companions,
-                            captions_rasters=bool(vlm_api_key) and (extract_images or extract_charts),
-                            tables=table_documents,
-                        )
-                        if route_kwargs is None:
-                            continue
+                            # The tables are text that will be embedded, so they
+                            # are screened too, still before any model call.
+                            if self._screen_tables(job, i, screening_rules, table_documents, screen.checked):
+                                continue
                         page_routes = _transcription.route_pdf_pages(
                             source_path,
                             text_pages,
@@ -4632,7 +4684,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             min_paths=VISUAL_PAGE_MIN_PATHS,
                             max_ocr_pages=MAX_OCR_PAGES,
                             max_dim=PAGE_RENDER_MAX_DIM,
-                            **route_kwargs,
+                            **screen.routing(),
                         )
                         self._record_file_counts(job, i, **page_routes.counts())
                         # What the vision model read off scanned pages is text
