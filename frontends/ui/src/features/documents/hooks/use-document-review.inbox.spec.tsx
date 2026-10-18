@@ -16,6 +16,13 @@ import type { InboxClient } from '@/lib/inbox/client'
 import type { RoomTransport } from './use-document-room'
 import { MARK_NEWS_SETTLE_MS, UNREAD_READ_DELAY_MS, useDocumentReview } from './use-document-review'
 
+/**
+ * How long a wait for a debounced read may take. The debounces are real timers, and under the full
+ * suite's load a few of their periods is not enough; `waitFor` returns as soon as it holds, so a
+ * generous bound costs nothing when the machine is idle.
+ */
+const SETTLED = { timeout: 5_000 }
+
 /** The tab's live channel, played by the test: what reaches every listener. */
 const hub = vi.hoisted(() => ({ listeners: new Set<(event: CollaborationEvent) => void>() }))
 vi.mock('@/features/collaboration/lib/event-hub', () => ({
@@ -64,7 +71,7 @@ describe('opening a mark reads its news', () => {
     act(() => result.current.select('mark-2'))
 
     await waitFor(() => expect(reads).toEqual([{ resourceType: 'document', resourceId: 'doc-1', anchorId: 'mark-2' }]), {
-      timeout: MARK_NEWS_SETTLE_MS * 4,
+      timeout: SETTLED.timeout,
     })
   })
 
@@ -96,7 +103,7 @@ describe('which marks have news', () => {
 
     act(() => result.current.select('mark-1'))
 
-    await waitFor(() => expect([...result.current.unread]).toEqual(['mark-3']), { timeout: MARK_NEWS_SETTLE_MS * 4 })
+    await waitFor(() => expect([...result.current.unread]).toEqual(['mark-3']), SETTLED)
     expect(inbox.markMarkRead).toHaveBeenCalledTimes(1)
     expect(inbox.markMarkRead).toHaveBeenLastCalledWith({ documentId: 'doc-1', annotationId: 'mark-1' })
   })
@@ -113,8 +120,8 @@ describe('which marks have news', () => {
     // A colleague answers in the thread the reader has open: the inbox changes, three nudges in a row.
     for (let index = 0; index < 3; index += 1) publish({ kind: 'inbox.changed', pending: -1 })
 
-    await waitFor(() => expect(inbox.unreadMarks).toHaveBeenCalledTimes(2), { timeout: UNREAD_READ_DELAY_MS * 4 })
-    await waitFor(() => expect(inbox.markMarkRead).toHaveBeenCalledTimes(1), { timeout: MARK_NEWS_SETTLE_MS * 4 })
+    await waitFor(() => expect(inbox.unreadMarks).toHaveBeenCalledTimes(2), SETTLED)
+    await waitFor(() => expect(inbox.markMarkRead).toHaveBeenCalledTimes(1), SETTLED)
     expect(result.current.unread.has('mark-2')).toBe(false)
     expect(inbox.unreadMarks).toHaveBeenCalledTimes(2)
   })
@@ -140,7 +147,7 @@ describe('the news about new marks, while the review is open', () => {
 
     // Anna sets fifteen marks while the reader looks at the document: its row arrives, and is read.
     publish({ kind: 'inbox.changed', pending: 1 })
-    await waitFor(() => expect(marksSetReads()).toHaveLength(2), { timeout: UNREAD_READ_DELAY_MS * 4 })
+    await waitFor(() => expect(marksSetReads()).toHaveLength(2), SETTLED)
 
     act(() => stop())
     publish({ kind: 'inbox.changed', pending: 1 })
