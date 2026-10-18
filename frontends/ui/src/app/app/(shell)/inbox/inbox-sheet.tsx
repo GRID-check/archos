@@ -49,7 +49,7 @@ export async function InboxSheet({ standalone }: { standalone: boolean }): Promi
         {/* The sheet reaches the screen's edge, so the last row ends above the home
             indicator instead of under it. */}
         <div className="mx-auto w-full max-w-3xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 md:px-8">
-          <InboxList />
+          <InboxList viewerId={session.userId} />
         </div>
       </RoutePageSheet>
     )

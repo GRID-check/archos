@@ -77,6 +77,15 @@ describe('insertMention', () => {
 })
 
 describe('reconcileMentions — structured, never re-derived (MN-3)', () => {
+  test('sends the newest pick when a name was picked, deleted and picked again for a namesake', () => {
+    const wien = { targetId: 'user_wien', display: 'Anna Berger' }
+    const graz = { targetId: 'user_graz', display: 'Anna Berger' }
+
+    expect(reconcileMentions('@Anna Berger passt das?', [wien, graz])).toEqual([graz])
+    // Both still standing: both kept, in the order they were picked.
+    expect(reconcileMentions('@Anna Berger und @Anna Berger', [wien, graz])).toEqual([wien, graz])
+  })
+
   test('keeps a mention whose token still stands in the text', () => {
     expect(reconcileMentions('@Anna passt das?', [anna])).toEqual([anna])
   })

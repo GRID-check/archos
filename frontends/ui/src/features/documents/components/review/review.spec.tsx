@@ -19,7 +19,7 @@ import { act, useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { fireEvent, render, screen, waitFor, within } from '@/test-utils'
+import { fireEvent, render, renderHook, screen, waitFor, within } from '@/test-utils'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { server } from '@/mocks/server'
 import type { TurnSocket, TurnSocketOptions } from '@/adapters/api/turn-socket'
@@ -77,6 +77,15 @@ const view = (overrides: Partial<AnnotationView>): AnnotationView => ({
   canDelete: true,
   ...overrides,
 })
+
+/** The „@" picker's row for one person (or Piloti), as the chat's picker draws it. */
+const pickerOption = (scope: HTMLElement, targetId: string): HTMLElement => {
+  const row = within(scope)
+    .getAllByTestId('mention-option')
+    .find((option) => option.getAttribute('data-target-id') === targetId)
+  if (!row) throw new Error(`no picker row for ${targetId}`)
+  return row
+}
 
 /** A room the test plays: frames go to the hook, posts are recorded. */
 function scriptedRoom() {
@@ -160,12 +169,12 @@ function Harness({
             page={1}
             review={review}
             focused
-            renderAsk={(ask, { flip }) => <PilotiAnswerCard review={review} ask={ask} flip={flip} />}
-            renderThread={({ flip }) =>
+            renderAsk={(ask, { placement }) => <PilotiAnswerCard review={review} ask={ask} placement={placement} />}
+            renderThread={({ placement }) =>
               review.draft ? (
-                <DraftCard review={review} draft={review.draft} flip={flip} canPickAssignee={false} />
+                <DraftCard review={review} draft={review.draft} placement={placement} canPickAssignee={false} />
               ) : selected ? (
-                <ThreadCard review={review} annotation={selected} flip={flip} canPickAssignee={false} />
+                <ThreadCard review={review} annotation={selected} placement={placement} canPickAssignee={false} />
               ) : null
             }
           />
@@ -187,7 +196,14 @@ function Harness({
 
 const serve = (annotations: AnnotationView[], canAnnotate = true, pilotiWakes = false) =>
   server.use(
-    http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations, canAnnotate, pilotiWakes }))
+    http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations, canAnnotate, pilotiWakes })),
+    // One mark, as a room hint has it read again.
+    http.get('/api/documents/:id/annotations/:annotationId', ({ params }) => {
+      const found = annotations.find((annotation) => annotation.id === params.annotationId)
+      return found
+        ? HttpResponse.json({ annotation: found })
+        : HttpResponse.json({ error: 'Not found', code: 'NOT_FOUND' }, { status: 404 })
+    })
   )
 
 beforeEach(() => {
@@ -242,6 +258,27 @@ async function askAboutABox(piloti: ReturnType<typeof scriptedPiloti>) {
 }
 
 describe('the review', () => {
+  it('walks the marks in the order the list shows them: proposals first, this Fassung only; K from nothing is the last', async () => {
+    serve([
+      view({ id: 'a', number: 1 }),
+      view({ id: 'b', number: 2 }),
+      view({ id: 'p', number: 3, authorKind: 'piloti', status: 'proposed' }),
+      view({ id: 'old', number: 4, onCurrentFassung: false }),
+    ])
+    let review: ReturnType<typeof useDocumentReview> | null = null
+    render(<Harness transport={scriptedRoom().transport} onReady={(next) => (review = next)} />)
+    await screen.findAllByTestId('review-pin')
+
+    const walked: Array<string | undefined> = []
+    for (let i = 0; i < 4; i += 1) act(() => void walked.push(review?.step(1)?.id))
+    expect(walked).toEqual(['p', 'a', 'b', 'p'])
+
+    act(() => review?.select(null))
+    let back: string | undefined
+    act(() => void (back = review?.step(-1)?.id))
+    expect(back).toBe('b')
+  })
+
   it('draws a point as a pin and a region as a box with its pin at the corner', async () => {
     serve([
       view({ id: 'a', number: 1 }),
@@ -324,19 +361,22 @@ describe('the review', () => {
 
     await userEvent.click(within(thread).getByTestId('thread-accept'))
 
-    await waitFor(() => expect(patched).toEqual([{ status: 'open' }]))
+    // The status the card showed goes with the move: a stale tab gets a 409, never a blind change.
+    await waitFor(() => expect(patched).toEqual([{ status: 'open', expectedStatus: 'proposed' }]))
     await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-accept')).toBeNull())
   })
 
-  it('reads the list again when somebody else changed it, while pointers keep moving', async () => {
-    let calls = 0
+  it('reads again only the mark a hint names, not the list, while pointers keep moving', async () => {
+    let listed = 0
+    const read: string[] = []
     server.use(
       http.get('/api/documents/:id/annotations', () => {
-        calls += 1
-        return HttpResponse.json({
-          annotations: calls === 1 ? [] : [view({ id: 'theirs', body: 'Von Anna gesetzt' })],
-          canAnnotate: true,
-        })
+        listed += 1
+        return HttpResponse.json({ annotations: [], canAnnotate: true })
+      }),
+      http.get('/api/documents/:id/annotations/:annotationId', ({ params }) => {
+        read.push(String(params.annotationId))
+        return HttpResponse.json({ annotation: view({ id: 'theirs', body: 'Von Anna gesetzt' }) })
       })
     )
     const room = scriptedRoom()
@@ -347,13 +387,90 @@ describe('the review', () => {
       kind: 'event',
       event: { kind: 'annotations.changed', annotationIds: ['theirs'], change: 'created', actor: { ...ANNA } },
     })
-    // A pointer every 30ms for half a second: each one re-renders the review.
+    // A pointer every 30ms for half a second: none of them cancels the read.
     for (let index = 0; index < 16; index += 1) {
       room.send({ kind: 'event', event: { kind: 'cursor', peer: ANNA, cursor: { page: 1, x: index / 20, y: 0.5 } } })
       await act(() => new Promise((resolve) => setTimeout(resolve, 30)))
     }
 
     expect(await screen.findByText('Von Anna gesetzt')).toBeInTheDocument()
+    expect(read).toEqual(['theirs'])
+    expect(listed).toBe(1)
+  })
+
+  it('takes a mark a hint names off the list when it is not there any more for this reader', async () => {
+    serve([view({ id: 'gone', body: 'Wird gelöscht' })])
+    const room = scriptedRoom()
+    render(<Harness transport={room.transport} />)
+    expect(await screen.findByText('Wird gelöscht')).toBeInTheDocument()
+
+    serve([])
+    room.send({
+      kind: 'event',
+      event: { kind: 'annotations.changed', annotationIds: ['gone'], change: 'deleted', actor: { ...ANNA } },
+    })
+    await waitFor(() => expect(screen.queryByText('Wird gelöscht')).toBeNull())
+  })
+
+  it("never draws a mark of the document left behind: a re-read that answers after the switch lands nowhere", async () => {
+    let release: () => void = () => {}
+    server.use(
+      http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations: [], canAnnotate: true })),
+      http.get('/api/documents/:id/annotations/:annotationId', async () => {
+        await new Promise<void>((resolve) => (release = resolve))
+        return HttpResponse.json({ annotation: view({ id: 'theirs', documentId: 'doc_1', body: 'Auf Dokument A' }) })
+      })
+    )
+    const room = scriptedRoom()
+    const { result, rerender } = renderHook(({ id }) => useDocumentReview(id, { enabled: true, transport: room.transport }), {
+      initialProps: { id: 'doc_1' },
+    })
+    await waitFor(() => expect(result.current.load).toBe('ready'))
+    room.send({
+      kind: 'event',
+      event: { kind: 'annotations.changed', annotationIds: ['theirs'], change: 'created', actor: { ...ANNA } },
+    })
+    await act(() => new Promise((resolve) => setTimeout(resolve, 200)))
+
+    rerender({ id: 'doc_2' })
+    await waitFor(() => expect(result.current.load).toBe('ready'))
+    release()
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+
+    expect(result.current.annotations).toEqual([])
+  })
+
+  it('lets only the latest re-read of a mark land: an older answer cannot bring back a mark a newer one found gone', async () => {
+    const answers: Array<() => void> = []
+    let reads = 0
+    server.use(
+      http.get('/api/documents/:id/annotations', () =>
+        HttpResponse.json({ annotations: [view({ id: 'm', body: 'Wird gelöscht' })], canAnnotate: true })
+      ),
+      http.get('/api/documents/:id/annotations/:annotationId', async () => {
+        reads += 1
+        if (reads === 1) {
+          // The first read is slow, and answers with the mark as it was.
+          await new Promise<void>((resolve) => answers.push(resolve))
+          return HttpResponse.json({ annotation: view({ id: 'm', body: 'Wird gelöscht' }) })
+        }
+        return HttpResponse.json({ error: 'Not found', code: 'NOT_FOUND' }, { status: 404 })
+      })
+    )
+    const room = scriptedRoom()
+    const { result } = renderHook(() => useDocumentReview('doc_1', { enabled: true, transport: room.transport }))
+    await waitFor(() => expect(result.current.annotations).toHaveLength(1))
+    const hint = (change: 'updated' | 'deleted') =>
+      room.send({ kind: 'event', event: { kind: 'annotations.changed', annotationIds: ['m'], change, actor: { ...ANNA } } })
+
+    hint('updated')
+    await waitFor(() => expect(answers).toHaveLength(1))
+    hint('deleted')
+    await waitFor(() => expect(result.current.annotations).toEqual([]))
+
+    answers[0]?.()
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+    expect(result.current.annotations).toEqual([])
   })
 
   it("does not read again for this tab's own write, which it already holds", async () => {
@@ -528,19 +645,28 @@ describe('the review', () => {
     await userEvent.click(await screen.findByTestId('review-row'))
     const thread = await screen.findByTestId('review-thread')
     const box = within(thread).getByTestId('thread-reply')
+    // The chat's own picker, gesture for gesture: „@" opens it, a pick writes the name.
     await userEvent.type(box, '@pil')
-    await userEvent.click(within(thread).getByTestId('thread-reply-mention-option'))
-    expect(within(thread).getByTestId('thread-reply-mention-chip')).toHaveTextContent('@Piloti')
+    await userEvent.click(pickerOption(thread, 'agent:piloti'))
+    expect(box).toHaveValue('@Piloti ')
     await userEvent.type(box, 'Stimmt die Breite?{Enter}')
 
-    // The mention is a flag on the reply, never read from its text.
-    await waitFor(() => expect(replies).toEqual([{ body: 'Stimmt die Breite?', addressesPiloti: true }]))
+    // The mention is what was picked, sent beside the text and never read out of it.
+    await waitFor(() =>
+      expect(replies).toEqual([
+        {
+          body: '@Piloti Stimmt die Breite?',
+          addressesPiloti: true,
+          mentions: [{ targetId: 'agent:piloti', display: 'Piloti' }],
+        },
+      ])
+    )
     await waitFor(() => expect(piloti.questions()).toHaveLength(1))
     expect(piloti.questions()[0]).toMatchObject({
       // The id a server wake of the same reply would use: the two can never both run.
       message_id: wakeTurnId('r1'),
       conversation_id: 's_thread_doc_1',
-      text: 'Stimmt die Breite?',
+      text: '@Piloti Stimmt die Breite?',
       reply_in_thread: true,
       focus_region: { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.25, annotation_id: 'ann_1' },
     })
@@ -553,7 +679,7 @@ describe('the review', () => {
     await waitFor(() => expect(screen.queryByTestId('thread-piloti-pending')).toBeNull())
   })
 
-  it('leaves an @Piloti reply to the server when it wakes Piloti, and waits for the reply in the thread', async () => {
+  it('leaves an @Piloti reply to the server when it wakes Piloti, and shows the work as the server knows it', async () => {
     const mark = view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25 })
     const asked: AnnotationView['replies'][number] = {
       id: 'r1',
@@ -569,7 +695,25 @@ describe('the review', () => {
     const posted = serveConversation()
     server.use(
       http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
-        HttpResponse.json({ annotation: { ...mark, replies: [asked] }, replyId: 'r1', wake: 'queued' }, { status: 201 })
+        HttpResponse.json(
+          {
+            annotation: {
+              ...mark,
+              replies: [asked],
+              pilotiWork: {
+                state: 'queued',
+                trigger: 'thread_mention',
+                forUserId: 'user_me',
+                forName: 'Miriam Hofer',
+                reasonKind: null,
+                since: '2026-10-01T09:00:00.000Z',
+              },
+            },
+            replyId: 'r1',
+            wake: 'queued',
+          },
+          { status: 201 }
+        )
       )
     )
     const piloti = scriptedPiloti()
@@ -580,11 +724,14 @@ describe('the review', () => {
     const thread = await screen.findByTestId('review-thread')
     const box = within(thread).getByTestId('thread-reply')
     await userEvent.type(box, '@pil')
-    await userEvent.click(within(thread).getByTestId('thread-reply-mention-option'))
+    await userEvent.click(pickerOption(thread, 'agent:piloti'))
     await userEvent.type(box, 'Stimmt die Breite?{Enter}')
 
-    // „Piloti antwortet …“, and nothing runs in this tab: no thread, no socket, no question.
-    expect(await within(screen.getByTestId('review-thread')).findByTestId('thread-piloti-pending')).toBeInTheDocument()
+    // The mark's own view says Piloti is on it, for whom: the same line everyone in the room
+    // reads, after a reload too. Nothing runs in this tab: no thread, no socket, no question.
+    const work = await within(screen.getByTestId('review-thread')).findByTestId('thread-piloti-work')
+    expect(work).toHaveAttribute('data-state', 'queued')
+    expect(work).toHaveTextContent('Miriam Hofer')
     expect(piloti.questions()).toEqual([])
     expect(posted).toEqual([])
 
@@ -606,8 +753,34 @@ describe('the review', () => {
         actor: { peerId: null, userId: 'user_me', name: 'Piloti', kind: 'piloti' },
       },
     })
-    await waitFor(() => expect(screen.queryByTestId('thread-piloti-pending')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('thread-piloti-work')).toBeNull())
     expect(within(screen.getByTestId('review-thread')).getByText('1,20 m im Schnitt B-B.')).toBeInTheDocument()
+  })
+
+  it('says why a woken Piloti did not answer, from the mark as the server reads it', async () => {
+    serve(
+      [
+        view({
+          id: 'ann_1',
+          pilotiWork: {
+            state: 'failed',
+            trigger: 'thread_mention',
+            forUserId: 'user_me',
+            forName: 'Miriam Hofer',
+            reasonKind: 'budget',
+            since: '2026-10-01T09:00:00.000Z',
+          },
+        }),
+      ],
+      true,
+      true
+    )
+    render(<Harness transport={scriptedRoom().transport} piloti={scriptedPiloti()} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const work = await within(await screen.findByTestId('review-thread')).findByTestId('thread-piloti-work')
+    expect(work).toHaveAttribute('data-state', 'failed')
+    expect(work).toHaveTextContent(/budget/i)
   })
 
   it('delegates an open mark to Piloti from the thread, and shows for whom Piloti works it', async () => {
@@ -668,7 +841,7 @@ describe('the review', () => {
     })
 
     const sheet = screen.getByTestId('sheet')
-    expect(await within(sheet).findByText('Liest die Stiege', { selector: '[data-slot="live-cursor"] *' })).toBeInTheDocument()
+    expect(await within(sheet).findByText('Piloti · Liest die Stiege', { selector: '[data-slot="live-cursor"] *' })).toBeInTheDocument()
     const highlight = await within(sheet).findByTestId('piloti-highlight')
     expect(highlight.style.left).toBe('50%')
     restore()
@@ -739,5 +912,315 @@ describe('marking on a touch screen', () => {
     render(<Harness transport={scriptedRoom().transport} />)
     const [pin] = await within(screen.getByTestId('sheet')).findAllByTestId('review-pin')
     expect(pin).toHaveClass('touch-target')
+  })
+})
+
+/**
+ * Mentioning a colleague on a mark, the way the chat does: „@" opens the chat's
+ * own picker, its rows are the people who may open the document (the Zuständige
+ * picker's list), a pick writes the name and sends whom it means beside the
+ * text, and the mark shows the mention as the chat's chip.
+ */
+describe('mentioning a colleague on a mark', () => {
+  const ANNA_PERSON = { userId: 'user_anna', name: 'Anna Berger', email: 'anna@buero.at', profilePictureUrl: null }
+  const ANNA_MENTION = { targetId: 'user_anna', display: 'Anna Berger' }
+
+  /** Who may open the document, as the Zuständige picker reads it; the paths asked are recorded. */
+  const serveCandidates = () => {
+    const asked: string[] = []
+    server.use(
+      http.get('/api/assignments/:type/:id/candidates', ({ request }) => {
+        asked.push(new URL(request.url).pathname)
+        return HttpResponse.json({ candidates: [ANNA_PERSON] })
+      })
+    )
+    return asked
+  }
+
+  const replyView = (body: string, mentions: AnnotationView['replies'][number]['mentions']) => ({
+    id: 'r1',
+    annotationId: 'ann_1',
+    authorKind: 'person' as const,
+    body,
+    createdBy: 'user_me',
+    createdByName: 'Miriam Hofer',
+    createdAt: '2026-10-01T09:00:00.000Z',
+    addressesPiloti: false,
+    mentions,
+  })
+
+  it('offers who may open the document, sends whom was picked, and shows the chip in the thread', async () => {
+    serve([view({ id: 'ann_1' })])
+    const asked = serveCandidates()
+    const replies: unknown[] = []
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', async ({ request }) => {
+        const sent = (await request.json()) as { body: string }
+        replies.push(sent)
+        return HttpResponse.json({
+          annotation: view({ id: 'ann_1', replies: [replyView(sent.body, [ANNA_MENTION])] }),
+          replyId: 'r1',
+          wake: 'none',
+        })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    const box = within(thread).getByTestId('thread-reply')
+    await userEvent.type(box, '@an')
+    await userEvent.click(await waitFor(() => pickerOption(thread, 'user_anna')))
+    expect(box).toHaveValue('@Anna Berger ')
+    await userEvent.type(box, 'bitte die Breite prüfen{Enter}')
+
+    expect(asked).toEqual(['/api/assignments/document/doc_1/candidates'])
+    await waitFor(() =>
+      expect(replies).toEqual([{ body: '@Anna Berger bitte die Breite prüfen', mentions: [ANNA_MENTION] }])
+    )
+    // The name, drawn as the chat's chip, never the id.
+    const chip = await within(screen.getByTestId('review-thread')).findByTestId('mention-chip')
+    expect(chip).toHaveTextContent('@Anna Berger')
+    expect(chip).toHaveAttribute('data-mention-target', 'user_anna')
+    expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-reply-untold')).toBeNull()
+  })
+
+  it('sends nobody for a name typed by hand, and says whom the server did not tell', async () => {
+    serve([view({ id: 'ann_1' })])
+    serveCandidates()
+    const replies: Array<{ body: string; mentions?: unknown }> = []
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', async ({ request }) => {
+        const sent = (await request.json()) as { body: string; mentions?: unknown }
+        replies.push(sent)
+        // Anna lost the folder between the pick and the send: the server keeps nobody.
+        return HttpResponse.json({
+          annotation: view({ id: 'ann_1', replies: [replyView(sent.body, [])] }),
+          replyId: 'r1',
+          wake: 'none',
+        })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    const box = within(thread).getByTestId('thread-reply')
+
+    // Typed by hand, never picked: text, not a mention, and the picker says who can be.
+    await userEvent.type(box, '@Max')
+    expect(await within(thread).findByTestId('mention-no-results-hint')).toHaveTextContent(
+      'You can mention anyone who can open this document.'
+    )
+    await userEvent.type(box, ' schau mal{Enter}')
+    await waitFor(() => expect(replies).toEqual([{ body: '@Max schau mal' }]))
+    expect(within(screen.getByTestId('review-thread')).queryByTestId('mention-chip')).toBeNull()
+
+    // Picked, and dropped by the server: the box says so.
+    await userEvent.type(box, '@an')
+    await userEvent.click(await waitFor(() => pickerOption(thread, 'user_anna')))
+    await userEvent.type(box, 'bitte{Enter}')
+    await waitFor(() => expect(replies[1]).toEqual({ body: '@Anna Berger bitte', mentions: [ANNA_MENTION] }))
+    // Said without a reason it cannot know, and in the singular for one name.
+    expect(await within(screen.getByTestId('review-thread')).findByTestId('thread-reply-untold')).toHaveTextContent(
+      /^Anna Berger was not told\.$/
+    )
+  })
+
+  it('mentions a colleague in a new mark, and offers no Piloti there: setting a mark wakes nobody', async () => {
+    serve([])
+    serveCandidates()
+    const posted: unknown[] = []
+    server.use(
+      http.post('/api/documents/:id/annotations', async ({ request }) => {
+        posted.push(await request.json())
+        return HttpResponse.json(
+          { annotation: view({ id: 'new', body: '@Anna Berger Brüstung prüfen', mentions: [ANNA_MENTION] }) },
+          { status: 201 }
+        )
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+    await screen.findByTestId('review-empty')
+    await userEvent.click(screen.getByRole('button', { name: 'region tool' }))
+    const capture = captureSurface()
+    fireEvent.pointerDown(capture, { button: 0, clientX: 80, clientY: 120, pointerId: 1 })
+    fireEvent.pointerMove(capture, { clientX: 320, clientY: 300, pointerId: 1 })
+    fireEvent.pointerUp(capture, { clientX: 320, clientY: 300, pointerId: 1 })
+
+    const draft = await screen.findByTestId('review-draft')
+    const box = within(draft).getByTestId('review-draft-body')
+    await userEvent.type(box, '@')
+    await waitFor(() => pickerOption(draft, 'user_anna'))
+    expect(within(draft).getAllByTestId('mention-option').map((row) => row.getAttribute('data-target-id'))).toEqual([
+      'user_anna',
+    ])
+    await userEvent.click(pickerOption(draft, 'user_anna'))
+    await userEvent.type(box, 'Brüstung prüfen{Enter}')
+
+    await waitFor(() => expect(posted).toHaveLength(1))
+    expect(posted[0]).toMatchObject({ body: '@Anna Berger Brüstung prüfen', mentions: [ANNA_MENTION] })
+    // The list shows the new mark with the same chip.
+    const row = await screen.findByTestId('review-row')
+    expect(within(row).getByTestId('mention-chip')).toHaveTextContent('@Anna Berger')
+  })
+
+  /** A thread whose reply POSTs are recorded and answered with what was sent, kept as sent. */
+  const serveReplies = (respond?: (sent: { body: string; mentions?: AnnotationView['mentions'] }) => Response) => {
+    const sent: Array<{ body: string; mentions?: AnnotationView['mentions'] }> = []
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', async ({ request }) => {
+        const body = (await request.json()) as { body: string; mentions?: AnnotationView['mentions'] }
+        sent.push(body)
+        return (
+          respond?.(body) ??
+          HttpResponse.json({
+            annotation: view({ id: 'ann_1', replies: [replyView(body.body, body.mentions ?? [])] }),
+            replyId: 'r1',
+            wake: 'none',
+          })
+        )
+      })
+    )
+    return sent
+  }
+
+  const openThread = async () => {
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    return { thread, box: within(thread).getByTestId('thread-reply') }
+  }
+
+  it('sends the Anna picked last when a namesake was picked and taken back first', async () => {
+    serve([view({ id: 'ann_1' })])
+    const wien = { ...ANNA_PERSON, userId: 'user_wien' }
+    const graz = { ...ANNA_PERSON, userId: 'user_graz', email: 'anna@graz.at' }
+    server.use(http.get('/api/assignments/:type/:id/candidates', () => HttpResponse.json({ candidates: [wien, graz] })))
+    const sent = serveReplies()
+    render(<Harness transport={scriptedRoom().transport} />)
+    const { thread, box } = await openThread()
+
+    await userEvent.type(box, '@an')
+    await userEvent.click(await waitFor(() => pickerOption(thread, 'user_wien')))
+    await userEvent.clear(box)
+    await userEvent.type(box, '@an')
+    await userEvent.click(await waitFor(() => pickerOption(thread, 'user_graz')))
+    await userEvent.type(box, 'bitte{Enter}')
+
+    await waitFor(() =>
+      expect(sent).toEqual([{ body: '@Anna Berger bitte', mentions: [{ targetId: 'user_graz', display: 'Anna Berger' }] }])
+    )
+  })
+
+  it('↵ after „@Le" mentions Lena, the name typed, not a colleague whose address matches', async () => {
+    serve([view({ id: 'ann_1' })])
+    const anna = { ...ANNA_PERSON, email: 'anna@lehner-architekten.at' }
+    const jakob = { userId: 'user_jakob', name: 'Jakob Huber', email: 'jakob.huber@lechner.at', profilePictureUrl: null }
+    const lena = { userId: 'user_lena', name: 'Lena Fuchs', email: 'lena@buero.at', profilePictureUrl: null }
+    server.use(
+      http.get('/api/assignments/:type/:id/candidates', () => HttpResponse.json({ candidates: [anna, jakob, lena] }))
+    )
+    const sent = serveReplies()
+    render(<Harness transport={scriptedRoom().transport} />)
+    const { thread, box } = await openThread()
+
+    await userEvent.type(box, '@Le')
+    await waitFor(() =>
+      expect(within(thread).getAllByTestId('mention-option').map((row) => row.getAttribute('data-target-id'))).toEqual([
+        'user_lena',
+        'user_anna',
+        'user_jakob',
+      ])
+    )
+    await userEvent.type(box, '{Enter}')
+    expect(box).toHaveValue('@Lena Fuchs ')
+    await userEvent.type(box, 'bitte{Enter}')
+
+    await waitFor(() =>
+      expect(sent).toEqual([{ body: '@Lena Fuchs bitte', mentions: [{ targetId: 'user_lena', display: 'Lena Fuchs' }] }])
+    )
+  })
+
+  it('says the chat’s words when the mention budget is spent, and the bound before sending too many names', async () => {
+    serve([view({ id: 'ann_1' })])
+    const many = Array.from({ length: 11 }, (_, index) => ({
+      userId: `user_${index}`,
+      name: `Person ${String.fromCharCode(65 + index)}`,
+      email: null,
+      profilePictureUrl: null,
+    }))
+    server.use(http.get('/api/assignments/:type/:id/candidates', () => HttpResponse.json({ candidates: many })))
+    const sent = serveReplies(() =>
+      HttpResponse.json(
+        { error: 'Too many mentions.', code: 'FORBIDDEN', details: { reason: 'mention-rate-limited' } },
+        { status: 403 }
+      )
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+    const { thread, box } = await openThread()
+
+    await userEvent.type(box, '@')
+    await userEvent.click(await waitFor(() => pickerOption(thread, 'user_0')))
+    await userEvent.type(box, 'bitte{Enter}')
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(await within(thread).findByText('Too many mentions. Please wait a few minutes.')).toBeInTheDocument()
+
+    await userEvent.clear(box)
+    for (const person of many) {
+      await userEvent.type(box, '@')
+      await userEvent.click(await waitFor(() => pickerOption(thread, person.userId)))
+    }
+    await userEvent.type(box, '{Enter}')
+    expect(await within(thread).findByText('Mention at most 10 people at once.')).toBeInTheDocument()
+    expect(sent).toHaveLength(1)
+  })
+
+  it('says the people could not be loaded, and asks again on the next „@"', async () => {
+    serve([view({ id: 'ann_1' })])
+    let asked = 0
+    server.use(
+      http.get('/api/assignments/:type/:id/candidates', () => {
+        asked += 1
+        return asked === 1
+          ? HttpResponse.json({ error: 'down' }, { status: 503 })
+          : HttpResponse.json({ candidates: [ANNA_PERSON] })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+    const { thread, box } = await openThread()
+
+    await userEvent.type(box, '@an')
+    expect(await within(thread).findByTestId('mention-picker-notice')).toHaveTextContent(
+      'Could not load the people. Type "@" again.'
+    )
+    await userEvent.type(box, ' @an')
+    await waitFor(() => pickerOption(thread, 'user_anna'))
+    expect(within(thread).queryByTestId('mention-picker-notice')).toBeNull()
+    expect(asked).toBe(2)
+  })
+
+  it('marks a mention of the reader as the room knows them, and keeps line breaks only in the thread', async () => {
+    const me = { targetId: 'user_room', display: 'Rita Raum' }
+    serve([view({ id: 'ann_1', body: '@Rita Raum bitte\nprüfen', mentions: [me] })])
+    // The room names this tab's person; the chat knows nobody here.
+    const transport: RoomTransport = {
+      connect({ onFrame, onOpen }) {
+        onOpen()
+        onFrame({ kind: 'welcome', self: { userId: 'user_room', name: 'Rita Raum', kind: 'person' } })
+        return () => {}
+      },
+      post: () => {},
+    }
+    render(<Harness transport={transport} />)
+
+    const row = await screen.findByTestId('review-row')
+    await waitFor(() => expect(within(row).getByTestId('mention-chip')).toHaveAttribute('data-mention-me', 'true'))
+    expect(within(row).getByTestId('mention-text')).toHaveClass('whitespace-normal')
+
+    await userEvent.click(row)
+    const thread = await screen.findByTestId('review-thread')
+    const text = within(thread).getByTestId('mention-text')
+    expect(text).toHaveClass('whitespace-pre-wrap')
+    expect(text).not.toHaveClass('whitespace-normal')
   })
 })

@@ -23,14 +23,11 @@
  * Imports nothing from reconciliation, which imports this.
  */
 
-import { isFolderVisibleToMember } from '@/lib/authz/folder-access'
 import 'server-only'
-import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
-import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
-import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document, UploadBatch } from '@/lib/db/schema'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { internalRead } from '@/lib/documents/document-reader'
+import { isQuarantineReviewer } from '@/lib/documents/quarantine-reviewers'
 import { announceSettledVersions } from '@/lib/documents/fassung-notify'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, type InboxEmission } from '@/lib/inbox/service'
@@ -142,7 +139,8 @@ async function completionEmission(batch: UploadBatch): Promise<InboxEmission> {
  * Who may release or delete this quarantined document: the organization's
  * admins, the project's admins, and for the Büroablage its curators — the
  * same rule `mayReviewQuarantine` applies to a session, asked here about each
- * member of the organization because there is no session to ask.
+ * member of the organization because there is no session to ask
+ * (`isQuarantineReviewer`).
  *
  * Bounded by the directory's first page, as the storage alert is, and for the
  * same reason (`lib/storage/alerts.ts`): the reviewers are a small set.
@@ -150,20 +148,9 @@ async function completionEmission(batch: UploadBatch): Promise<InboxEmission> {
 export async function quarantineReviewersOf(organizationId: string, document: Document): Promise<string[]> {
   const directory = await loadOrganizationDirectory(organizationId)
   const verdicts = await Promise.all(
-    [...directory.keys()].map(async (userId) => {
-      const membership = await resolveSubjectMembership(organizationId, userId)
-      if (!membership) return null
-      if (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.projectsAdminister, organizationId)) return userId
-      if (document.scope === 'archiv') {
-        return (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.archivManage, organizationId)) ? userId : null
-      }
-      if (document.scope !== 'project' || !document.projectId) return null
-      const manages = await userHoldsProjectPermission({ organizationId }, document.projectId, userId, 'project:manage')
-      if (!manages) return null
-      // Nor a project admin the document's folder is hidden from (ADR-0087).
-      const cleared = await isFolderVisibleToMember(organizationId, document.projectId, document.folderId, userId)
-      return cleared ? userId : null
-    })
+    [...directory.keys()].map(async (userId) =>
+      (await isQuarantineReviewer(organizationId, document, userId)) ? userId : null
+    )
   )
   return verdicts.filter((userId): userId is string => userId !== null)
 }

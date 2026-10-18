@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState, type JSX, type KeyboardEvent } from 'react'
+import { forwardRef, useId, useRef, useState, type JSX } from 'react'
 import {
-  ArrowUp,
   CalendarClock,
   Check,
   CircleHelp,
+  History,
   Link2,
   MessageSquareText,
   MoreHorizontal,
@@ -33,9 +33,9 @@ import { formatDayRange, localCalendarDay } from '@/lib/format'
 import {
   ANNOTATION_KINDS,
   isLive,
-  MAX_ANNOTATION_BODY,
   type AnnotationKind,
   type AnnotationView,
+  type MarkMention,
   type PilotiWakeTrigger,
 } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
@@ -43,9 +43,15 @@ import { cn } from '@/lib/utils'
 import { liveLine } from '@/features/chat/lib/turn-events'
 import type { FileAssignee } from '../../file-types'
 import { askRegionOf, stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
+import { answerAsBody } from '../../lib/piloti-answer-text'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
+import { useFollowEnd } from '../../hooks/use-follow-end'
 import { AssignPopover } from '../assign-popover'
+import { Composer, type ComposerSend } from './composer'
+import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
+import type { CardSide } from './review-page-layer'
+import { useCardFit } from './review-stage'
 
 export const KIND_ICONS: Record<AnnotationKind, typeof TriangleAlert> = {
   hint: MessageSquareText,
@@ -62,6 +68,8 @@ function Message({
   userId,
   at,
   body,
+  mentions,
+  viewerId,
   proposal,
   woken,
 }: {
@@ -70,6 +78,10 @@ function Message({
   userId: string
   at: string
   body: string
+  /** Whom it mentions, drawn as the chat's chips. */
+  mentions?: readonly MarkMention[]
+  /** The reader, so a mention of them stands out. */
+  viewerId: string | null
   /** Piloti's finding nobody has taken over: it says so in its byline. */
   proposal?: boolean
   /** The reply was written by a turn an event woke, and where (`number` of the Anmerkung). */
@@ -95,273 +107,82 @@ function Message({
         />
       )}
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-1.5 text-xs">
-          <span className="text-foreground font-semibold" data-testid={authorKind === 'piloti' ? 'thread-byline' : undefined}>
+        {/* The name gives way, the time never wraps: „2 hours ago" on two lines reads as two facts. */}
+        <p className="flex min-w-0 items-baseline gap-1.5 text-xs">
+          <span
+            className="text-foreground min-w-0 truncate font-semibold"
+            data-testid={authorKind === 'piloti' ? 'thread-byline' : undefined}
+            title={authorKind === 'piloti' ? byline(name, { proposal }) : (name ?? undefined)}
+          >
             {authorKind === 'piloti' ? byline(name, { proposal }) : (name ?? t('review.someone'))}
           </span>
-          <TimeAgo date={at} locale={locale} className="text-muted-foreground" />
+          <TimeAgo date={at} locale={locale} className="text-muted-foreground shrink-0 whitespace-nowrap" />
         </p>
         {woken && (
           <p className="text-muted-foreground text-[11px] leading-4" title={wokenTitle} data-testid="thread-woken">
             {t(`review.attribution.woken.${woken.trigger}`)}
           </p>
         )}
-        <p className="text-foreground mt-0.5 text-[13px] leading-5 break-words whitespace-pre-wrap">{body}</p>
+        <p className="text-foreground mt-0.5 text-[13px] leading-5 break-words whitespace-pre-wrap">
+          <MarkBody text={body} mentions={mentions} viewerId={viewerId} />
+        </p>
       </div>
     </div>
   )
-}
-
-/** Whether the text before the caret ends in an „@" word that could still become „@Piloti". */
-function mentionQuery(text: string, caret: number): { start: number } | null {
-  const before = text.slice(0, caret)
-  const at = before.lastIndexOf('@')
-  if (at < 0 || (at > 0 && !/\s/.test(before[at - 1]))) return null
-  const query = before.slice(at + 1)
-  return /^\p{L}*$/u.test(query) && 'piloti'.startsWith(query.toLowerCase()) ? { start: at } : null
 }
 
 /**
- * The reply box and the draft box: Enter sends, Shift+Enter breaks the line,
- * Escape lets go.
- *
- * `onAskPiloti`: a second way out, the text handed to Piloti instead
- * (⌘/Ctrl+Enter, or the spark beside Send). `mentionPiloti`: Piloti can be
- * brought into the thread. Typing „@" offers it, and taking the offer (or the
- * spark) puts a chip in the box: the mention is that chip, a fact the box
- * holds, never a pattern read out of the text.
+ * A chip for who is on it and by when: quiet (dashed, muted) until set, then
+ * the fact itself in ink on a solid edge. `onClear` puts the way to unset it
+ * INSIDE the chip, so the × reads as part of the fact it removes.
  */
-export function Composer({
-  placeholder,
-  submitLabel,
-  autoFocus,
-  onSubmit,
-  onEscape,
-  onAskPiloti,
-  mentionPiloti,
-  maxLength = MAX_ANNOTATION_BODY,
-  testId,
-}: {
-  placeholder: string
-  submitLabel: string
-  autoFocus?: boolean
-  onSubmit: (body: string, options: { piloti: boolean }) => Promise<unknown>
-  onEscape?: () => void
-  onAskPiloti?: (body: string) => void
-  mentionPiloti?: boolean
-  maxLength?: number
-  testId: string
-}): JSX.Element {
-  const t = useTranslations('files')
-  const [body, setBody] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
-  const [mentioned, setMentioned] = useState(false)
-  const [suggest, setSuggest] = useState<{ start: number } | null>(null)
-  const ref = useRef<HTMLTextAreaElement | null>(null)
-
-  useEffect(() => {
-    if (autoFocus) ref.current?.focus()
-  }, [autoFocus])
-
-  // Grow with the text, up to a handful of lines, then scroll.
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    node.style.height = '0px'
-    node.style.height = `${Math.min(node.scrollHeight, 144)}px`
-  }, [body])
-
-  const submit = async () => {
-    if (!body.trim() || busy) return
-    setBusy(true)
-    setFailed(false)
-    try {
-      await onSubmit(body, { piloti: mentioned })
-      setBody('')
-      setMentioned(false)
-    } catch {
-      setFailed(true)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  /** Take the „@…" offer: the typed word goes, the chip comes. */
-  const takeMention = () => {
-    const node = ref.current
-    if (suggest && node) {
-      const caret = node.selectionStart ?? body.length
-      setBody(body.slice(0, suggest.start) + body.slice(caret))
-    }
-    setSuggest(null)
-    setMentioned(true)
-    node?.focus()
-  }
-
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.nativeEvent.isComposing) return
-    if (suggest && (event.key === 'Enter' || event.key === 'Tab')) {
-      event.preventDefault()
-      takeMention()
-      return
-    }
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && onAskPiloti) {
-      event.preventDefault()
-      onAskPiloti(body.trim())
-      return
-    }
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      void submit()
-    }
-    if (event.key === 'Escape') {
-      if (suggest) {
-        event.stopPropagation()
-        setSuggest(null)
-        return
-      }
-      if (onEscape) {
-        event.stopPropagation()
-        onEscape()
-      }
-    }
-  }
-
-  const pilotiButton = onAskPiloti ? (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="size-6 shrink-0 rounded-full [&_svg]:size-3.5"
-      aria-label={t('review.piloti.ask')}
-      title={`${t('review.piloti.ask')} (⌘↵)`}
-      data-testid={`${testId}-piloti`}
-      onClick={() => onAskPiloti(body.trim())}
-    >
-      <Sparkles aria-hidden />
-    </Button>
-  ) : mentionPiloti ? (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className={cn('size-6 shrink-0 rounded-full [&_svg]:size-3.5', mentioned && 'bg-accent text-foreground')}
-      aria-label={t('review.piloti.mention')}
-      aria-pressed={mentioned}
-      title={t('review.piloti.mentionHint')}
-      data-testid={`${testId}-mention`}
-      onClick={() => setMentioned((on) => !on)}
-    >
-      <Sparkles aria-hidden />
-    </Button>
-  ) : null
-
+const MetaChip = forwardRef<
+  HTMLButtonElement,
+  {
+    icon: typeof UserRound
+    tone?: 'urgent'
+    set?: boolean
+    onClear?: () => void
+    clearLabel?: string
+    children: React.ReactNode
+  } & React.ComponentProps<'button'>
+>(function MetaChip({ icon: Icon, children, tone, set, onClear, clearLabel, ...props }, ref) {
   return (
-    <div className="relative">
-      <div className="bg-input-background focus-within:border-foreground/40 rounded-lg border px-2.5 py-1.5 transition-colors duration-quick ease-out">
-        {mentioned && (
-          <Chip size="sm" variant="secondary" className="mb-1 gap-1 pr-1" data-testid={`${testId}-mention-chip`}>
-            <Sparkles aria-hidden />
-            @Piloti
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground rounded-sm"
-              aria-label={t('review.piloti.mentionRemove')}
-              onClick={() => setMentioned(false)}
-            >
-              <X className="size-3" aria-hidden />
-            </button>
-          </Chip>
-        )}
-        <div className="flex items-end gap-1.5">
-          <textarea
-            ref={ref}
-            data-testid={testId}
-            aria-label={placeholder}
-            aria-autocomplete={mentionPiloti ? 'list' : undefined}
-            rows={1}
-            value={body}
-            maxLength={maxLength}
-            placeholder={placeholder}
-            onChange={(event) => {
-              setBody(event.target.value)
-              if (mentionPiloti && !mentioned) {
-                setSuggest(mentionQuery(event.target.value, event.target.selectionStart ?? event.target.value.length))
-              }
-            }}
-            onBlur={() => setSuggest(null)}
-            onKeyDown={onKeyDown}
-            className="placeholder:text-muted-foreground min-h-6 flex-1 resize-none border-0 bg-transparent py-0.5 text-[13px] leading-5 shadow-none outline-none! ring-0 focus-visible:ring-0"
-          />
-          {pilotiButton}
-          <Button
-            type="button"
-            size="icon"
-            className="size-6 shrink-0 rounded-full [&_svg]:size-3.5"
-            disabled={!body.trim() || busy}
-            aria-label={submitLabel}
-            title={`${submitLabel} (Enter)`}
-            data-testid={`${testId}-send`}
-            onClick={() => void submit()}
-          >
-            <ArrowUp aria-hidden />
-          </Button>
-        </div>
-      </div>
-      {suggest && (
-        <div
-          role="listbox"
-          aria-label={t('review.piloti.mention')}
-          className="bg-popover border-border/70 absolute top-full left-0 z-10 mt-1 w-56 rounded-lg border p-1 shadow-md"
-        >
-          <button
-            type="button"
-            role="option"
-            aria-selected
-            data-testid={`${testId}-mention-option`}
-            // Before the textarea's blur closes the offer.
-            onPointerDown={(event) => {
-              event.preventDefault()
-              takeMention()
-            }}
-            className="bg-accent flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left"
-          >
-            <PilotiGlyph size="xs" />
-            <span className="min-w-0">
-              <span className="text-foreground block text-xs font-semibold">Piloti</span>
-              <span className="text-muted-foreground block text-[11px] leading-4">{t('review.piloti.mentionHint')}</span>
-            </span>
-          </button>
-        </div>
-      )}
-      {failed && <FieldError className="mt-1">{t('review.sendFailed')}</FieldError>}
-    </div>
-  )
-}
-
-/** A chip for who is on it and by when: quiet until set, then the fact itself. */
-function MetaChip({
-  icon: Icon,
-  children,
-  tone,
-  ...props
-}: { icon: typeof UserRound; tone?: 'urgent'; children: React.ReactNode } & React.ComponentProps<'button'>) {
-  return (
-    <button
-      type="button"
+    <span
+      data-set={set || undefined}
       className={cn(
-        'border-border/80 text-muted-foreground hover:text-foreground hover:bg-accent/60 inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] font-medium transition-colors duration-quick ease-out disabled:pointer-events-none',
+        'border-border/80 text-muted-foreground inline-flex h-6 max-w-full items-center rounded-full border text-[11px] font-medium transition-colors duration-quick ease-out',
+        !set && 'border-dashed',
+        set && 'bg-secondary text-foreground border-transparent',
         // Overdue is ink and weight, not gold: gold is the Büroablage's colour.
-        tone === 'urgent' && 'text-foreground border-foreground/50 font-semibold'
+        tone === 'urgent' && 'text-foreground border-foreground/50 border-solid font-semibold'
       )}
-      {...props}
     >
-      <Icon className="size-3" aria-hidden />
-      {children}
-    </button>
+      <button
+        ref={ref}
+        type="button"
+        className={cn(
+          'hover:text-foreground inline-flex h-full min-w-0 items-center gap-1 rounded-full pl-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none',
+          onClear ? 'pr-1' : 'pr-2'
+        )}
+        {...props}
+      >
+        <Icon className="size-3 shrink-0" aria-hidden />
+        <span className="truncate">{children}</span>
+      </button>
+      {onClear && (
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground mr-1 inline-flex size-4 shrink-0 items-center justify-center rounded-full outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/60"
+          aria-label={clearLabel}
+          onClick={onClear}
+        >
+          <X className="size-3" aria-hidden />
+        </button>
+      )}
+    </span>
   )
-}
+})
 
 /** Who is on it and by when, editable while the reader may write. */
 function ResponsibilityRow({
@@ -396,31 +217,34 @@ function ResponsibilityRow({
           onPick={onAssignee}
           onChanged={() => undefined}
           trigger={
-            <MetaChip icon={UserRound} data-testid="thread-assignee">
+            <MetaChip
+              icon={UserRound}
+              data-testid="thread-assignee"
+              set={Boolean(assigneeName)}
+              onClear={assigneeName ? () => onAssignee(null) : undefined}
+              clearLabel={t('review.unassign')}
+            >
               {assigneeName ?? t('review.assign')}
             </MetaChip>
           }
         />
       ) : (
         assigneeName && (
-          <MetaChip icon={UserRound} disabled>
+          <MetaChip
+            icon={UserRound}
+            disabled={!editable}
+            set
+            onClear={editable ? () => onAssignee(null) : undefined}
+            clearLabel={t('review.unassign')}
+          >
             {assigneeName}
           </MetaChip>
         )
       )}
-      {assigneeName && editable && (
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground -ml-1 rounded p-0.5"
-          aria-label={t('review.unassign')}
-          onClick={() => onAssignee(null)}
-        >
-          <X className="size-3" aria-hidden />
-        </button>
-      )}
       <span className="relative inline-flex">
         <MetaChip
           icon={CalendarClock}
+          set={dueOn !== null}
           tone={overdue ? 'urgent' : undefined}
           disabled={!editable}
           onClick={() => dateRef.current?.showPicker?.()}
@@ -443,11 +267,14 @@ function ResponsibilityRow({
   )
 }
 
-/** The three kinds as one quiet segmented row. */
+/**
+ * The three kinds as one quiet segmented row: three buttons, the one in force
+ * pressed, each reached by Tab (a radio group would owe arrow keys).
+ */
 function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kind: AnnotationKind) => void }) {
   const t = useTranslations('files')
   return (
-    <div role="radiogroup" aria-label={t('annotations.kind')} className="bg-muted inline-flex rounded-md p-0.5">
+    <div role="group" aria-label={t('annotations.kind')} className="bg-muted inline-flex rounded-md p-0.5">
       {ANNOTATION_KINDS.map((kind) => {
         const Icon = KIND_ICONS[kind]
         const on = kind === value
@@ -455,8 +282,7 @@ function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kin
           <button
             key={kind}
             type="button"
-            role="radio"
-            aria-checked={on}
+            aria-pressed={on}
             data-testid={`thread-kind-${kind}`}
             onClick={() => onChange(kind)}
             className={cn(
@@ -473,79 +299,202 @@ function KindPicker({ value, onChange }: { value: AnnotationKind; onChange: (kin
   )
 }
 
-/** The card's frame: a floating sheet beside its mark, on the side with room. */
-export function ReviewCard({ flip, children, testId }: { flip: boolean; children: React.ReactNode; testId: string }) {
+/**
+ * Where a card is shown: beside or under its mark on the sheet
+ * ({@link CardSide}, decided by `placeCard`), `detached` from the sheet (a
+ * mark of an earlier Fassung, which is not drawn), or `docked` in the phone's
+ * bottom sheet, which is its frame.
+ */
+export type CardPlacement = CardSide | 'detached' | 'docked'
+
+// Beside its mark a card moves up by `--card-shift` to keep out of the stage's foot (`useCardFit`).
+const PLACEMENT_CLASSES: Record<Exclude<CardPlacement, 'docked'>, string> = {
+  right: 'absolute top-[calc(var(--card-shift,0px)*-1)] left-4 origin-top-left',
+  left: 'absolute top-[calc(var(--card-shift,0px)*-1)] right-4 origin-top-right',
+  below: 'absolute top-3 left-0 origin-top-left',
+  detached: 'relative origin-top',
+}
+
+/** The hairline from the mark's edge to its card: which mark this is about, without the card sitting on it. */
+const HAIRLINE_CLASSES: Partial<Record<CardPlacement, string>> = {
+  right: 'top-[calc(0.875rem+var(--card-shift,0px))] -left-4 h-px w-4',
+  left: 'top-[calc(0.875rem+var(--card-shift,0px))] -right-4 h-px w-4',
+  below: '-top-3 left-3.5 h-3 w-px',
+}
+
+/**
+ * The card's frame: a floating sheet beside its mark, on the side with room; or
+ * the content of the phone's sheet. A dialog named by its own header
+ * (`labelledBy`, the id of the line that says what it is about) or, where it
+ * has none, by `label`. `data-review-card` is how the review finds it, and it
+ * takes the focus itself (`tabIndex={-1}`) when the keyboard opened it.
+ *
+ * On the sheet it keeps inside the review's free stage (`useCardFit`): never
+ * under the toolbars or the chips at the canvas's foot. A column, so what has
+ * to give is the part that scrolls (the thread), never the reply field.
+ */
+export function ReviewCard({
+  placement,
+  children,
+  testId,
+  labelledBy,
+  label,
+}: {
+  placement: CardPlacement
+  children: React.ReactNode
+  testId: string
+  labelledBy?: string
+  label?: string
+}) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  useCardFit(ref, placement === 'docked' ? null : placement)
+  if (placement === 'docked') {
+    return (
+      <div
+        data-testid={testId}
+        data-placement="docked"
+        data-review-card
+        tabIndex={-1}
+        className="text-popover-foreground w-full outline-none"
+      >
+        {children}
+      </div>
+    )
+  }
+  const hairline = HAIRLINE_CLASSES[placement]
   return (
     <div
+      ref={ref}
       data-testid={testId}
+      data-placement={placement}
+      data-review-card
       role="dialog"
+      tabIndex={-1}
+      aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : label}
       className={cn(
-        'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none absolute top-0 w-[20rem] rounded-xl border shadow-xl',
-        flip ? 'right-4 origin-top-right' : 'left-4 origin-top-left'
+        'focus-visible:ring-ring/60 outline-none focus-visible:ring-2',
+        'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none w-[20rem] rounded-xl border shadow-xl',
+        'flex max-h-(--card-max-height) flex-col',
+        PLACEMENT_CLASSES[placement]
       )}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      {/* The hairline from the mark's edge to its card: which mark this is
-          about, without the card sitting on it. */}
-      <span
-        aria-hidden
-        className={cn('bg-foreground/40 absolute top-3.5 h-px w-4', flip ? '-right-4' : '-left-4')}
-      />
+      {hairline && <span aria-hidden className={cn('bg-foreground/40 absolute', hairline)} />}
       {children}
     </div>
   )
 }
 
 /**
- * Piloti, brought into a thread: answering, or not able to, with a way to ask
- * again. A wake the server runs (ADR-0106) has no live steps here: it says
- * „antwortet …" until the reply arrives, then quietly „später", and a wake a
- * cap held says so once.
+ * Piloti, brought into a thread by a question this tab asked it itself (the
+ * organization lets no events wake it): answering, or not able to, with a way
+ * to ask again. An answer whose thread target never reached the server stays
+ * here, to be added to the thread by hand.
  */
 function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentReview }): JSX.Element {
   const t = useTranslations('files')
   const tChat = useTranslations('chat')
-  const failed = ask.status === 'failed'
-  const quiet = ask.status === 'later' || ask.status === 'held'
+  const [adopting, setAdopting] = useState(false)
+  const [adoptFailed, setAdoptFailed] = useState(false)
   const line = liveLine(stepsOf(ask.view), tChat) ?? t('review.piloti.replying')
-  if (quiet) {
+  const close = (
+    <button
+      type="button"
+      className="text-muted-foreground hover:text-foreground ml-auto shrink-0 self-start rounded p-0.5"
+      aria-label={t('review.piloti.close')}
+      onClick={() => review.piloti.dismiss(ask.id)}
+    >
+      <X className="size-3" aria-hidden />
+    </button>
+  )
+  if (ask.status === 'answered' && ask.annotationId && ask.view?.text) {
+    const annotationId = ask.annotationId
+    const body = answerAsBody(ask.view.text)
     return (
-      <div className="flex items-center gap-2.5" data-testid="thread-piloti-later" role="status">
+      <div className="flex gap-2.5" data-testid="thread-piloti-unposted" role="status">
         <PilotiGlyph />
-        <span className="text-muted-foreground min-w-0 flex-1 text-xs">
-          {ask.status === 'held' ? t('review.piloti.wakeHeld') : t('review.piloti.replyLater')}
-        </span>
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground ml-auto rounded p-0.5"
-          aria-label={t('review.piloti.close')}
-          onClick={() => review.piloti.dismiss(ask.id)}
-        >
-          <X className="size-3" aria-hidden />
-        </button>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-muted-foreground text-[11px] leading-4">{t('review.piloti.degradedThread')}</p>
+          <p className="text-foreground text-sm leading-5 break-words whitespace-pre-line">{body}</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            disabled={adopting}
+            onClick={async () => {
+              setAdopting(true)
+              setAdoptFailed(false)
+              try {
+                await review.reply(annotationId, body)
+                review.piloti.dismiss(ask.id)
+              } catch {
+                // A full thread, a conflict or the network: the answer stays here to add again.
+                setAdoptFailed(true)
+              } finally {
+                setAdopting(false)
+              }
+            }}
+          >
+            {t('review.piloti.adoptReply')}
+          </Button>
+          {adoptFailed && <FieldError>{t('review.actionFailed')}</FieldError>}
+        </div>
+        {close}
       </div>
     )
   }
   return (
     <div className="flex items-center gap-2.5" data-testid="thread-piloti-pending" role="status">
-      <PilotiGlyph working={!failed} />
-      {failed ? (
+      <PilotiGlyph working={ask.status === 'thinking'} />
+      {ask.status === 'thinking' ? (
+        <ShimmerText className="min-w-0 flex-1 text-xs">{line}</ShimmerText>
+      ) : (
         <span className="flex min-w-0 flex-1 items-center gap-2 text-xs">
           <span className="text-muted-foreground">{t('review.piloti.replyFailed')}</span>
           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => review.piloti.retry(ask.id)}>
             {t('review.piloti.retry')}
           </Button>
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground ml-auto rounded p-0.5"
-            aria-label={t('review.piloti.close')}
-            onClick={() => review.piloti.dismiss(ask.id)}
-          >
-            <X className="size-3" aria-hidden />
-          </button>
+          {close}
         </span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Piloti at work in this thread as the SERVER knows it (`pilotiWork`, read off
+ * the mark's wake): the same line for everyone in the room, after a reload too.
+ * A delegation already says „Piloti arbeitet daran" in its chip, so only how it
+ * ended is said here.
+ */
+function PilotiWorkRow({ annotation }: { annotation: AnnotationView }): JSX.Element | null {
+  const t = useTranslations('files')
+  const work = annotation.pilotiWork
+  if (!work) return null
+  const delegated = work.trigger === 'assigned'
+  if (delegated && (work.state === 'queued' || work.state === 'working')) return null
+  const name = work.forName ?? t('review.someone')
+  if (work.state === 'failed') {
+    return (
+      <div className="flex items-start gap-2.5" data-testid="thread-piloti-work" data-state={work.state} role="status">
+        <PilotiGlyph />
+        <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-5">
+          {t(`review.piloti.workFailed.${work.reasonKind ?? 'error'}`, { name })}
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center gap-2.5" data-testid="thread-piloti-work" data-state={work.state} role="status">
+      <PilotiGlyph working={work.state !== 'held'} />
+      {work.state === 'held' ? (
+        <span className="text-muted-foreground min-w-0 flex-1 text-xs">{t('review.piloti.wakeHeld')}</span>
       ) : (
-        <ShimmerText className="min-w-0 flex-1 text-xs">{line}</ShimmerText>
+        <ShimmerText className="min-w-0 flex-1 text-xs">
+          {t(work.state === 'queued' ? 'review.piloti.workQueued' : 'review.piloti.replyingFor', { name })}
+        </ShimmerText>
       )}
     </div>
   )
@@ -555,12 +504,12 @@ function PilotiThreadRow({ ask, review }: { ask: CanvasAsk; review: DocumentRevi
 export function DraftCard({
   review,
   draft,
-  flip,
+  placement,
   canPickAssignee,
 }: {
   review: DocumentReview
   draft: ReviewDraft
-  flip: boolean
+  placement: CardPlacement
   canPickAssignee: boolean
 }): JSX.Element {
   const t = useTranslations('files')
@@ -577,7 +526,7 @@ export function DraftCard({
       }
     : undefined
   return (
-    <ReviewCard flip={flip} testId="review-draft">
+    <ReviewCard placement={placement} testId="review-draft" label={t('review.draftCard')}>
       <div className="space-y-3 p-3">
         <KindPicker value={kind} onChange={setKind} />
         <Composer
@@ -587,9 +536,11 @@ export function DraftCard({
           submitLabel={t('review.set')}
           onEscape={() => review.setDraft(null)}
           onAskPiloti={askPiloti}
-          onSubmit={(body) =>
-            review.create({ kind, body, assigneeUserId: assignee?.userId ?? null, dueOn })
-          }
+          documentId={review.documentId}
+          onSubmit={async (body, { mentions }) => {
+            const created = await review.create({ kind, body, mentions, assigneeUserId: assignee?.userId ?? null, dueOn })
+            return created?.mentions
+          }}
         />
         <ResponsibilityRow
           documentId={review.documentId}
@@ -609,69 +560,73 @@ export function DraftCard({
 export function ThreadCard({
   review,
   annotation,
-  flip,
+  placement,
   canPickAssignee,
   onCopyLink,
+  walk,
 }: {
   review: DocumentReview
   annotation: AnnotationView
-  flip: boolean
+  placement: CardPlacement
   canPickAssignee: boolean
   onCopyLink?: (annotation: AnnotationView) => void
+  /** Going through Piloti's proposals: where this one stands among them, and the way to the next. */
+  walk?: { index: number; total: number; onNext: () => void } | null
 }): JSX.Element {
   const t = useTranslations('files')
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const headerId = useId()
   const KindIcon = KIND_ICONS[annotation.kind]
   const proposed = annotation.status === 'proposed'
   const live = isLive(annotation)
   const { piloti } = review
   const pilotiReplies = annotation.replies.filter((reply) => reply.authorKind === 'piloti').length
-  // Piloti was brought into this thread and has not answered in it yet.
+  // Piloti was brought into this thread by this tab and has not answered in it yet,
+  // or answered without the thread target reaching it (its answer is only here).
   const threadAsk = piloti.asks.find(
     (ask) =>
       ask.replyInThread &&
       ask.annotationId === annotation.id &&
       (ask.status === 'failed' ||
-        ask.status === 'held' ||
-        ((ask.status === 'thinking' || ask.status === 'later') && pilotiReplies <= ask.baseline))
+        ask.status === 'declined' ||
+        (ask.status === 'answered' && ask.degraded.includes('thread')) ||
+        (ask.status === 'thinking' && pilotiReplies <= ask.baseline))
   )
-  // A wake the server ran has answered: its waiting row goes.
-  const { asks: pilotiAsks, dismiss: dismissAsk } = piloti
-  useEffect(() => {
-    for (const ask of pilotiAsks) {
-      const waiting = ask.status === 'thinking' || ask.status === 'later'
-      if (ask.backend === 'server' && ask.annotationId === annotation.id && waiting && pilotiReplies > ask.baseline) {
-        dismissAsk(ask.id)
-      }
-    }
-  }, [pilotiAsks, dismissAsk, annotation.id, pilotiReplies])
+  // What lands at the end of the thread: a reply, Piloti's work line, its answer. Kept in view for a reader at the end.
+  const thread = useFollowEnd<HTMLDivElement>(
+    `${annotation.replies.length}:${annotation.pilotiWork?.state ?? ''}:${threadAsk?.id ?? ''}:${threadAsk?.status ?? ''}`
+  )
 
   /**
-   * The reply goes in as the person's own. With @Piloti it says so (a flag,
-   * never the text), and the server answers whether it wakes Piloti itself
-   * (`queued`): then this tab waits for the reply. With the organization's
-   * switch off, this tab asks Piloti as before, under the turn id a server
-   * wake of the same reply would use, so the two can never both run.
+   * The reply goes in as the person's own, with whom it mentions as picked
+   * (never read out of the text): colleagues are told by the server, and
+   * @Piloti says the reply addresses Piloti. The server answers whether it
+   * wakes Piloti itself (`queued`, or `suppressed` when a cap held it): then
+   * the mark's own view says how Piloti's work stands (`pilotiWork`), for
+   * everyone. With the organization's switch off, this tab asks Piloti as
+   * before, under the turn id a server wake of the same reply would use, so
+   * the two never both run. Answers with the mentions the server kept.
    */
-  const sendReply = async (body: string, { piloti: mentioned }: { piloti: boolean }) => {
-    const { wake, replyId } = await review.reply(annotation.id, body, { addressesPiloti: mentioned })
-    if (!mentioned) return
-    const waiting = { annotationId: annotation.id, region: askRegionOf(annotation), question: body.trim(), baseline: pilotiReplies }
-    if (wake === 'queued' || wake === 'suppressed') {
-      piloti.awaitWake({ ...waiting, outcome: wake })
-      return
-    }
-    if (!piloti.available) return
+  const sendReply = async (body: string, { piloti: mentioned, mentions }: ComposerSend) => {
+    // Sent into the thread: what follows it (the reply, Piloti at work, its answer) comes into view.
+    thread.follow()
+    const { annotation: after, wake, replyId } = await review.reply(annotation.id, body, {
+      addressesPiloti: mentioned,
+      mentions,
+    })
+    const kept = after.replies.find((reply) => reply.id === replyId)?.mentions
+    if (!mentioned || wake === 'queued' || wake === 'suppressed' || !piloti.available) return kept
     piloti.ask({
-      text: waiting.question,
-      region: waiting.region,
+      text: body.trim(),
+      region: askRegionOf(annotation),
       annotationId: annotation.id,
       replyInThread: true,
       baseline: pilotiReplies,
       ...(replyId ? { turnId: wakeTurnId(replyId) } : {}),
     })
+    return kept
   }
 
   const act = async (run: () => Promise<unknown>) => {
@@ -685,7 +640,10 @@ export function ThreadCard({
       setBusy(false)
     }
   }
-  const move = (status: 'open' | 'resolved' | 'dismissed') => act(() => review.update(annotation.id, { status }))
+  // The status this card shows goes with the move: a tab that missed a colleague's
+  // move gets a 409 and the fresh list, never an act on a state it did not see.
+  const move = (status: 'open' | 'resolved' | 'dismissed') =>
+    act(() => review.update(annotation.id, { status, expectedStatus: annotation.status }))
 
   const menu: ActionMenuEntry[] = [
     ...ANNOTATION_KINDS.filter((kind) => kind !== annotation.kind && annotation.canEdit).map((kind) => ({
@@ -739,21 +697,54 @@ export function ThreadCard({
   ]
 
   return (
-    <ReviewCard flip={flip} testId="review-thread">
-      <div className="flex items-center gap-1.5 border-b px-3 py-2">
+    <ReviewCard placement={placement} testId="review-thread" labelledBy={headerId}>
+      {!annotation.onCurrentFassung && (
+        // Said inside the card, as its first line: the card is all the reader looks at.
+        <p className="text-muted-foreground bg-muted/40 flex items-start gap-1.5 border-b px-3 py-1.5 text-[11px] leading-4" data-testid="thread-earlier">
+          <History className="mt-px size-3 shrink-0" aria-hidden />
+          {annotation.fassungNumber
+            ? t('review.earlierFassung', { number: annotation.fassungNumber })
+            : t('annotations.earlierFassungUnnumbered')}
+        </p>
+      )}
+      {walk && proposed && (
+        <div className="bg-muted/40 flex items-center gap-2 border-b py-1 pr-1.5 pl-3" data-testid="thread-walk">
+          <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
+            {t('review.walkPosition', { index: walk.index, total: walk.total })}
+          </span>
+          {walk.total > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-6 gap-1.5 px-2 text-xs"
+              aria-keyshortcuts="J"
+              data-testid="thread-walk-next"
+              onClick={walk.onNext}
+            >
+              {t('review.walkNext')}
+              <Kbd className="h-4 min-w-4 px-1 text-[10px]">J</Kbd>
+            </Button>
+          )}
+        </div>
+      )}
+      <div className={cn('flex items-center gap-1.5 border-b px-3 py-2', placement === 'docked' && 'pr-12')}>
         <KindIcon className="text-muted-foreground size-3.5" aria-hidden />
-        <span className="text-foreground text-xs font-semibold">{t(`annotations.kinds.${annotation.kind}`)}</span>
-        <span className="text-muted-foreground font-mono text-[11px]">#{annotation.number}</span>
-        {proposed && (
-          <span className="text-muted-foreground border-foreground/50 ml-1 rounded-full border border-dashed px-1.5 text-[10px] font-medium">
-            {t('review.proposal')}
-          </span>
-        )}
-        {!live && (
-          <span className="text-muted-foreground bg-muted ml-1 rounded-full px-1.5 text-[10px] font-medium">
-            {annotation.status === 'resolved' ? t('review.resolved') : t('review.dismissed')}
-          </span>
-        )}
+        {/* What the card is about, which names it as a dialog: the kind, the number, its state. */}
+        <span id={headerId} className="flex min-w-0 items-center gap-1.5">
+          <span className="text-foreground text-xs font-semibold">{t(`annotations.kinds.${annotation.kind}`)}</span>{' '}
+          <span className="text-muted-foreground font-mono text-[11px]">#{annotation.number}</span>
+          {proposed && (
+            <span className="text-muted-foreground border-foreground/50 ml-1 rounded-full border border-dashed px-1.5 text-[10px] font-medium">
+              {t('review.proposal')}
+            </span>
+          )}
+          {!live && (
+            <span className="text-muted-foreground bg-muted ml-1 rounded-full px-1.5 text-[10px] font-medium">
+              {annotation.status === 'resolved' ? t('review.resolved') : t('review.dismissed')}
+            </span>
+          )}
+        </span>
         <span className="ml-auto flex items-center">
           {annotation.canEdit && annotation.status === 'open' && (
             <Button
@@ -801,16 +792,19 @@ export function ThreadCard({
               }
             />
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 [&_svg]:size-3.5"
-            aria-label={t('review.closeThread')}
-            onClick={() => review.select(null)}
-          >
-            <X aria-hidden />
-          </Button>
+          {/* Docked in the phone's sheet, the sheet's own × closes it. */}
+          {placement !== 'docked' && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 [&_svg]:size-3.5"
+              aria-label={t('review.closeThread')}
+              onClick={() => review.select(null)}
+            >
+              <X aria-hidden />
+            </Button>
+          )}
         </span>
       </div>
 
@@ -823,13 +817,20 @@ export function ThreadCard({
         </div>
       )}
 
-      <div className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3">
+      <div
+        ref={thread.ref}
+        onScroll={thread.onScroll}
+        data-testid="thread-messages"
+        className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3"
+      >
         <Message
           authorKind={annotation.authorKind}
           name={annotation.createdByName}
           userId={annotation.createdBy}
           at={annotation.createdAt}
           body={annotation.body}
+          mentions={annotation.mentions}
+          viewerId={review.viewerId}
           proposal={proposed}
         />
         {annotation.basis && (
@@ -846,9 +847,12 @@ export function ThreadCard({
             userId={reply.createdBy}
             at={reply.createdAt}
             body={reply.body}
+            mentions={reply.mentions}
+            viewerId={review.viewerId}
             woken={reply.wokenBy ? { trigger: reply.wokenBy, number: annotation.number } : null}
           />
         ))}
+        <PilotiWorkRow annotation={annotation} />
         {threadAsk && <PilotiThreadRow ask={threadAsk} review={review} />}
       </div>
 
@@ -866,7 +870,7 @@ export function ThreadCard({
               onClick={() => void move('dismissed')}
             >
               {t('review.dismiss')}
-              <Kbd className="ml-2">⌫</Kbd>
+              <Kbd className="ml-2 pointer-coarse:hidden">{t('review.dismissKey')}</Kbd>
             </Button>
             <Button
               type="button"
@@ -877,7 +881,7 @@ export function ThreadCard({
               onClick={() => void move('open')}
             >
               {t('review.accept')}
-              <Kbd className="bg-background/15 text-background ml-2 border-transparent">E</Kbd>
+              <Kbd className="bg-background/15 text-background ml-2 border-transparent pointer-coarse:hidden">E</Kbd>
             </Button>
           </div>
         </div>
@@ -899,7 +903,13 @@ export function ThreadCard({
             placeholder={t('review.replyPlaceholder')}
             submitLabel={t('review.send')}
             mentionPiloti={piloti.available}
+            documentId={review.documentId}
+            pickerSide="above"
             onSubmit={sendReply}
+            // Esc steps out of the field, keeping what is typed; the next Esc closes the thread.
+            onEscape={() => {
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+            }}
           />
         )}
         {failed && <FieldError>{t('review.actionFailed')}</FieldError>}

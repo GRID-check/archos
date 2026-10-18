@@ -11,6 +11,8 @@
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { listAssignmentsWithoutAccessCheck, type AssignedPerson } from '@/lib/assignments/service'
+import { tallyLiveMarks } from '@/lib/annotations/repository'
+import type { MarkTally } from '@/lib/annotations/types'
 import { encodeDocumentLevelCursor, encodeDocumentListCursor } from './list-cursor'
 import { reconcileDocumentStatuses, type DocumentMetadata } from './reconcile-status'
 import type { FassungFacts } from './fassung'
@@ -66,6 +68,13 @@ export type ListedDocument = Omit<
      */
     sourceDeletedAt?: string | null
     /**
+     * The document's live Anmerkungen for THIS reader (`tallyLiveMarks`): open
+     * and proposed on every Fassung, and how many of them are the reader's.
+     * Null when there is none, so a folder scanned at a glance shows only the
+     * documents that carry open work.
+     */
+    marks?: MarkTally | null
+    /**
      * Why the content check held it (ADR-0113), read for this build from the
      * stored verdict (`quarantineVerdictOf`); null on every row it did not hold.
      */
@@ -98,7 +107,16 @@ export async function toListedDocuments(
   // by the same rule, after the verdict (ADR-0086).
   const reconciled = keepReadable(await reconcileDocumentStatuses(rows, session.organizationId), reader)
 
-  const fassung = await loadFassungFacts(session, reconciled, reader)
+  // Both keyed by the rows the reader may see, each one query for the page.
+  const [fassung, marks] = await Promise.all([
+    loadFassungFacts(session, reconciled, reader),
+    tallyLiveMarks(
+      session.organizationId,
+      reconciled.map((row) => row.id),
+      reader,
+      session.userId,
+    ),
+  ])
   const listed = reconciled.map(
     ({
       metadata,
@@ -127,6 +145,7 @@ export async function toListedDocuments(
       }),
       sourceDeletedAt: sourceDeletedAtOf(metadata),
       fassung: fassung.get(row.id) ?? null,
+      marks: marks.get(row.id) ?? null,
     })
   )
 

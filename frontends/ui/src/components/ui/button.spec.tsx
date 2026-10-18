@@ -65,3 +65,24 @@ describe('Button loading', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('Button inline', () => {
+  // `link` is ink like the sentence around it and underlines only on hover, so
+  // „In der Prüfansicht öffnen" inside the approve confirm read as more text.
+  it('is underlined at rest, and takes the sentence’s size and line whatever size it is given', () => {
+    render(
+      <p>
+        4 offene Anmerkungen – trotzdem freigeben?{' '}
+        <Button variant="inline" size="sm">
+          In der Prüfansicht öffnen
+        </Button>
+      </p>
+    )
+    const button = screen.getByRole('button', { name: 'In der Prüfansicht öffnen' })
+    const classes = button.className.split(/\s+/)
+    expect(classes).toContain('underline')
+    expect(classes).not.toContain('hover:underline')
+    expect(classes).toEqual(expect.arrayContaining(['h-auto', 'p-0', 'text-[length:inherit]']))
+    for (const sized of ['h-8', 'px-3.5', 'text-xs', 'pointer-coarse:h-11']) expect(classes).not.toContain(sized)
+  })
+})

@@ -30,12 +30,13 @@ export type AnnotationFetch = (path: string, init?: RequestInit) => Promise<Resp
 
 const defaultFetch: AnnotationFetch = (path, init) => fetch(path, init)
 
-/** A request the API refused, with its status and the body's own code. */
+/** A request the API refused, with its status, the body's own code, and its `details.reason` where it names one. */
 export class AnnotationRequestError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
-    message: string
+    message: string,
+    readonly reason: string | null = null
   ) {
     super(message)
     this.name = 'AnnotationRequestError'
@@ -51,11 +52,13 @@ async function request<T>(
   const response = await run(path, init)
   const body: unknown = response.status === 204 ? null : await response.json().catch(() => null)
   if (!response.ok) {
-    const error = (body ?? {}) as { error?: string; code?: string }
+    const error = (body ?? {}) as { error?: string; code?: string; details?: { reason?: unknown } }
+    const reason = typeof error.details?.reason === 'string' ? error.details.reason : null
     throw new AnnotationRequestError(
       response.status,
       error.code ?? 'UNKNOWN',
-      error.error ?? `Request failed with ${response.status}`
+      error.error ?? `Request failed with ${response.status}`,
+      reason
     )
   }
   return parse(body)
@@ -87,6 +90,15 @@ export function listAnnotations(
   return request(run, annotationsPath(documentId), { method: 'GET' }, (value) =>
     annotationListResponseSchema.parse(value)
   )
+}
+
+/** One Anmerkung as this reader sees it: what a room hint names is read again, not the whole list. */
+export function getAnnotation(
+  documentId: string,
+  annotationId: string,
+  run: AnnotationFetch = defaultFetch
+): Promise<AnnotationView> {
+  return request(run, annotationPath(documentId, annotationId), { method: 'GET' }, one)
 }
 
 export function createAnnotation(

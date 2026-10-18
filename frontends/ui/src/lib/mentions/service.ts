@@ -324,8 +324,12 @@ export async function applyMessageMentions(
  * `@Piloti` counts against the budget like a person. It is an abuse bound, not
  * accounting (see `@/lib/sharing/rate-limit`), and erring toward more limiting is
  * the deliberate direction.
+ *
+ * Exported because a mention on an Anmerkung (`@/lib/annotations/mentions`) is
+ * the same gesture and spends the same budget: one person cannot escape the
+ * bound by moving from the chat to a document.
  */
-async function enforceMentionBounds(session: AuthorizedSession, count: number): Promise<void> {
+export async function enforceMentionBounds(session: AuthorizedSession, count: number): Promise<void> {
   if (count > MAX_MENTIONS_PER_MESSAGE) {
     throw new MentionRateLimitedError(
       `A message may mention at most ${MAX_MENTIONS_PER_MESSAGE} people.`,
