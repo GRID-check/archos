@@ -84,7 +84,7 @@ describe('ReviewExportMenu', () => {
     const user = await open()
     await user.click(await screen.findByRole('menuitem', { name: 'PDF' }))
 
-    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too long for a PDF. Export them as Word or Markdown.'))
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too long for a PDF. Export them as Word or Markdown.', {}))
     expect(startBrowserDownload).not.toHaveBeenCalled()
   })
 })

@@ -71,4 +71,28 @@ function Toaster({ ...props }: ToasterProps) {
   )
 }
 
-export { Toaster }
+/**
+ * The toaster of a full-screen modal layer (the Prüfansicht), mounted INSIDE it
+ * and centred at the foot of the box it sits in, `foot` pixels up.
+ *
+ * The app's toaster sits top-right of the viewport, outside every dialog. Over a
+ * modal layer that is wrong twice: the corner is where the layer keeps its own
+ * controls, and a modal Radix dialog takes pointer events from everything
+ * outside it, so a toast's action there cannot be clicked at all (nor reached
+ * by Tab, which the dialog keeps inside). A toast shown with `toasterId: id`
+ * lands here instead; every other toast still goes to the app's.
+ *
+ * The wrapper is the anchor: `contain: layout` makes it the containing block of
+ * sonner's `position: fixed` list, so `bottom-center` means the middle of the
+ * box this is placed in, not of the viewport. It has no height, so it covers
+ * nothing; the toasts themselves overflow it upwards.
+ */
+function LayerToaster({ id, foot, ...props }: ToasterProps & { id: string; foot: number }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 h-0 [contain:layout] [&_[data-sonner-toast]]:pointer-events-auto">
+      <Toaster id={id} position="bottom-center" offset={{ bottom: foot }} mobileOffset={{ bottom: foot }} {...props} />
+    </div>
+  )
+}
+
+export { LayerToaster, Toaster }

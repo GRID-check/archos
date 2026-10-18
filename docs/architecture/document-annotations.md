@@ -164,7 +164,13 @@ and ⌫ do not write at once: the card and the list show the move, the toast
 („Anmerkung 4 verworfen · Rückgängig“, `review.decided.*`) offers the way
 back, and the PATCH goes when the toast's five seconds are up
 (`DECISION_UNDO_MS`), the page is hidden or the review goes, with the status
-the mark had (`expectedStatus`). „Rückgängig“ lets go of it before anything
+the mark had (`expectedStatus`). The review's toasts are its own
+(`review-toaster.tsx`, `LayerToaster` in `components/ui/sonner.tsx`): mounted
+inside the review's dialog, centred at the foot of the canvas above the
+viewer's pill, where the cursor chat stops too. The app's toaster, top right
+and outside the modal dialog, covered „Protokoll exportieren“, „Piloti prüfen
+lassen“ and the list's filter, and its „Rückgängig“ could not be clicked. A
+toast raised after the review closed goes to the app's. „Rückgängig“ lets go of it before anything
 was sent, so an undone slip leaves no inbox row, no audit event and no
 `piloti-decision` score; there is no inverse write, because taking a proposal
 over or dismissing it has none. The deferral is the inbox archive's own

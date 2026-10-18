@@ -27,6 +27,7 @@ import {
   type AnnotationExportFormat,
   type AnnotationExportScope,
 } from '@/lib/annotations/export-request'
+import { reviewToast } from './review-toaster'
 
 /** Choosing an option keeps the menu open: the choice is made before the download, not instead of it. */
 const keepOpen = (event: Event) => event.preventDefault()
@@ -72,7 +73,10 @@ export function ReviewExportMenu({
       } as const
       const response = await fetch(annotationExportHref(documentId, options))
       if (!response.ok) {
-        toast.error(response.status === 422 && format === 'pdf' ? t('review.export.tooLongForPdf') : t('review.export.failed'))
+        toast.error(
+          response.status === 422 && format === 'pdf' ? t('review.export.tooLongForPdf') : t('review.export.failed'),
+          reviewToast(),
+        )
         return
       }
       const url = URL.createObjectURL(await response.blob())
@@ -83,7 +87,7 @@ export function ReviewExportMenu({
         window.setTimeout(() => URL.revokeObjectURL(url), 1000)
       }
     } catch {
-      toast.error(t('review.export.failed'))
+      toast.error(t('review.export.failed'), reviewToast())
     } finally {
       setBusy(false)
     }

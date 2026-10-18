@@ -52,6 +52,7 @@ import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel, type OpenMark } from './review-panel'
 import { ReviewAnnouncer } from './review-announcer'
 import { ReviewExportMenu } from './review-export-menu'
+import { ReviewToaster, reviewToast } from './review-toaster'
 import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
 
 /** A tool on the palette: the review's own, or the cursor chat, which sets nothing. */
@@ -634,6 +635,10 @@ export function DocumentReviewMode({
   )
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const touch = useMediaQuery('(pointer: coarse)')
+  // The canvas's foot, kept free for the cursor chat and the review's toasts:
+  // above the viewer's pill and the chips of who is below, and on a touch
+  // screen above the tools over the pill too.
+  const foot = touch ? 176 : 100
   /**
    * Cursor chat („/"): open, and where this reader's pointer last was, to open
    * it there. From the toolbar's button there is no pointer to open at (the
@@ -827,7 +832,7 @@ export function DocumentReviewMode({
   const { notice, dismissNotice } = review
   useEffect(() => {
     if (notice !== 'conflict') return
-    toast.info(t('review.conflict'))
+    toast.info(t('review.conflict'), reviewToast())
     dismissNotice()
   }, [notice, dismissNotice, t])
 
@@ -878,14 +883,17 @@ export function DocumentReviewMode({
    * card's own button is not, and goes at once.
    */
   const decideByKey = (current: AnnotationView, status: 'open' | 'resolved' | 'dismissed') => {
-    const held = review.decide(current, status, () => toast.error(t('review.actionFailed')))
+    const held = review.decide(current, status, () => toast.error(t('review.actionFailed'), reviewToast()))
     if (!held) return
     const said = status === 'open' ? 'accepted' : status
-    toast(t(`review.decided.${said}`, { number: current.number }), {
-      id: `review-decided-${current.id}`,
-      duration: DECISION_UNDO_MS,
-      action: { label: t('review.undo'), onClick: () => review.undoDecision(current.id) },
-    })
+    toast(
+      t(`review.decided.${said}`, { number: current.number }),
+      reviewToast({
+        id: `review-decided-${current.id}`,
+        duration: DECISION_UNDO_MS,
+        action: { label: t('review.undo'), onClick: () => review.undoDecision(current.id) },
+      }),
+    )
   }
 
   // Letters pick tools and walk the marks. The handler reads this render's state
@@ -941,13 +949,13 @@ export function DocumentReviewMode({
   const copyText = useCallback(
     (text: string) => {
       if (!navigator.clipboard) {
-        toast.error(t('review.linkCopyFailed'))
+        toast.error(t('review.linkCopyFailed'), reviewToast())
         return
       }
       void navigator.clipboard
         .writeText(text)
-        .then(() => toast.success(t('review.linkCopied')))
-        .catch(() => toast.error(t('review.linkCopyFailed')))
+        .then(() => toast.success(t('review.linkCopied'), reviewToast()))
+        .catch(() => toast.error(t('review.linkCopyFailed'), reviewToast()))
     },
     [t]
   )
@@ -1155,9 +1163,7 @@ export function DocumentReviewMode({
                 userId={room.self?.userId ?? null}
                 from={chat.from}
                 bounds={() => canvasRef.current?.getBoundingClientRect() ?? null}
-                // Above the viewer's pill and the chips of who is below, and on a
-                // touch screen above the tools over the pill too.
-                foot={touch ? 176 : 100}
+                foot={foot}
                 onChat={room.sendChat}
                 onClose={() => setChat(null)}
               />
@@ -1202,6 +1208,7 @@ export function DocumentReviewMode({
               )}
               className="size-full"
             />
+            <ReviewToaster foot={foot} />
           </div>
           <ReviewPanel review={review} onOpen={openFromList} onWalkProposals={walkProposals} />
         </div>
