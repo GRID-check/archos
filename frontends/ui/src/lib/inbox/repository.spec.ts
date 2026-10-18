@@ -38,6 +38,7 @@ import {
   markInboxItemsUnread,
   unarchiveInboxItem,
   findLiveInboxGroupKeys,
+  listStillDueOfType,
   markAllInboxItemsRead,
   markInboxItemsRead,
   markResourceItemsRead,
@@ -457,5 +458,21 @@ describe('countInboxFilters', () => {
     expect(sql).toContain('count(*) filter (where')
     expect(sql.match(/count\(\*\) filter/g)).toHaveLength(2)
     expect(sql).toContain('"archived_at" is null')
+  })
+})
+
+describe('listStillDueOfType — the rows a folded notification tells', () => {
+  it('asks for one person’s rows of one type that are still news, in the window, newest first and bounded', async () => {
+    const from = new Date('2026-10-18T04:35:00.000Z')
+    const to = new Date('2026-10-18T04:45:05.000Z')
+    await listStillDueOfType('org_1', 'user_me', 'annotation.assigned_to_you', { from, to }, 51)
+
+    const { sql, params } = onlyQuery()
+    for (const column of ['organization_id', 'recipient_user_id', 'type']) expect(sql).toContain(`"inbox_items"."${column}" = $`)
+    for (const state of ['read_at', 'archived_at', 'resolved_at', 'inert_at']) expect(sql).toContain(`"inbox_items"."${state}" is null`)
+    expect(sql).toContain('"inbox_items"."updated_at" >= $')
+    expect(sql).toContain('"inbox_items"."updated_at" <= $')
+    expect(sql).toMatch(/order by "inbox_items"."updated_at" desc limit \$\d+/)
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'user_me', 'annotation.assigned_to_you', 51]))
   })
 })

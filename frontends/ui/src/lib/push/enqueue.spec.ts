@@ -58,6 +58,11 @@ describe('queueing a push at the inbox write path', () => {
     expect(vi.mocked(enqueueJob).mock.calls[0][0].notBefore).toEqual(new Date(NOW.getTime() + BURST_HOLD_MS))
   })
 
+  it('holds even the first row of a type that folds across rows, so its burst is there before anything is told', async () => {
+    await enqueueInboxPushes([row({ type: 'annotation.assigned_to_you', count: 1 })], NOW)
+    expect(vi.mocked(enqueueJob).mock.calls[0][0].notBefore).toEqual(new Date(NOW.getTime() + BURST_HOLD_MS))
+  })
+
   it('queues nothing in a deployment without keys, and does not even look for devices', async () => {
     vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', '')
     vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', '')

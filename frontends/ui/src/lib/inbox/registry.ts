@@ -115,6 +115,23 @@ export interface InboxPushPolicy {
    * them, the way `mention.answered` does, and is not ambient activity.
    */
   readonly yours?: PushCategory
+  /**
+   * Fold a burst of this type's rows for ONE person into one notification,
+   * across resources: the morning's due reminders, fifteen marks carried on to
+   * a new document, a mark handed over after another. See {@link InboxPushFold}.
+   */
+  readonly fold?: InboxPushFold
+}
+
+/**
+ * How a burst of one type's rows for one person is counted in the one
+ * notification that tells them all (`lib/push/fold.ts`): each row's `variant`
+ * is counted under a part of the line („3 heute oder morgen fällig, 1
+ * überfällig“), worded by `pushFold.parts.<part>` in the type's copy. A
+ * variant not listed is counted under `other`.
+ */
+export interface InboxPushFold {
+  readonly parts: Readonly<Record<string, string>>
 }
 
 const IN_APP_ONLY: InboxEmailDefault = { send: 'never' }
@@ -430,7 +447,23 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 120 },
-    push: { category: 'requests', urgency: 'normal' },
+    // A day's reminders and a bulk hand-over are one notification, not one per mark.
+    push: {
+      category: 'requests',
+      urgency: 'normal',
+      fold: {
+        parts: {
+          overdue: 'overdue',
+          due_soon: 'due_soon',
+          person: 'assigned',
+          piloti: 'assigned',
+          due: 'redated',
+          due_piloti: 'redated',
+          due_cleared: 'redated',
+          due_cleared_piloti: 'redated',
+        },
+      },
+    },
   },
   /*
     News on a mark the reader takes part in: a reply, or their mark closed or

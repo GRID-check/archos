@@ -16,10 +16,11 @@
 import { createHash } from 'node:crypto'
 import { getDictionary } from '@/i18n/dictionaries'
 import type { Locale } from '@/i18n/config'
-import { createTranslator } from '@/i18n/translate'
+import { createTranslator, getByPath } from '@/i18n/translate'
 import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import type { PushPreferences } from '@/lib/inbox/push-categories'
-import type { InboxItemView } from '@/lib/inbox/types'
+import type { InboxPushFold } from '@/lib/inbox/registry'
+import { INBOX_TYPE_PRESENTATION, UNKNOWN_TYPE_PRESENTATION, type InboxItemView } from '@/lib/inbox/types'
 
 export const PUSH_PAYLOAD_VERSION = 1
 const MAX_TITLE = 120
@@ -56,6 +57,52 @@ function clip(text: string, max: number): string {
 /** Only a path on this origin may be a notification's destination. */
 export function isSameOriginPath(value: string): boolean {
   return value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')
+}
+
+/** Where a notification about several items lands: the inbox, which lists them all. */
+export const INBOX_PATH = '/app/inbox'
+
+/**
+ * Word a burst of one type's items for one person as ONE notification
+ * (`./fold.ts`): the count in the title, and how many of each part in the
+ * line under it („4 Anmerkungen für Sie“ / „3 heute oder morgen fällig, 1
+ * überfällig“), from the type's `pushFold` copy and its push policy's parts.
+ * It opens the inbox, and names no item, so a tap marks none of them read.
+ * Null when the type has no words for it: each item is then told on its own.
+ *
+ * `items` are views the recipient's own session produced (`viewInboxItemAs`),
+ * newest first; only those with an address count.
+ */
+export function buildFoldedPushMessage(
+  items: readonly InboxItemView[],
+  fold: InboxPushFold,
+  preferences: PushPreferences,
+  locale: Locale
+): PushMessage | null {
+  const told = items.filter((item) => item.href && isSameOriginPath(item.href))
+  const type = told[0]?.type
+  if (!type || told.length < 2) return null
+  const dictionary = getDictionary(locale)
+  const base = { version: PUSH_PAYLOAD_VERSION, url: INBOX_PATH, tag: pushTagFor(`fold:${type}`), itemId: '' } as const
+  if (!preferences.showContent) {
+    return { ...base, title: createTranslator(dictionary, 'notifications')('push.genericTitle'), body: null }
+  }
+  const presentation = INBOX_TYPE_PRESENTATION[type] ?? UNKNOWN_TYPE_PRESENTATION
+  const root = `inbox.types.${presentation.i18nKey}.pushFold`
+  const t = createTranslator(dictionary, 'collaboration')
+  const words = getByPath(dictionary, `collaboration.${root}`) as { parts?: Record<string, unknown> } | undefined
+  if (!words?.parts) return null
+  const counts = new Map<string, number>()
+  for (const item of told) {
+    const part = (item.variant && fold.parts[item.variant]) || 'other'
+    counts.set(part, (counts.get(part) ?? 0) + 1)
+  }
+  // In the order the copy lists the parts, so the most pressing comes first.
+  const line = Object.keys(words.parts)
+    .filter((part) => counts.has(part))
+    .map((part) => t(`${root}.parts.${part}`, { count: counts.get(part) ?? 0 }))
+    .join(', ')
+  return { ...base, title: clip(t(`${root}.title`, { count: told.length }), MAX_TITLE), body: clip(line, MAX_BODY) }
 }
 
 /**

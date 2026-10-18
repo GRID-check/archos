@@ -688,6 +688,19 @@ export const collaboration = {
       // worked for). {related} is the annotation's number, {subject} the
       // document; the excerpt is what the annotation says.
       annotationAssigned: {
+        // One notification for many rows at once (the morning's reminders, a
+        // hand-over in one go): the count in the title, how many of what
+        // under it, the most pressing first.
+        pushFold: {
+          title: '{count, plural, one {# annotation} other {# annotations}} for you',
+          parts: {
+            overdue: '{count} overdue',
+            due_soon: '{count} due today or tomorrow',
+            assigned: '{count} assigned',
+            redated: '{count, plural, one {# with a new due date} other {# with new due dates}}',
+            other: '{count} more',
+          },
+        },
         title: '{actor} assigned you an annotation',
         titleRelated: '{actor} assigned you annotation {related} in “{subject}”',
         titleRelatedNoSubject: '{actor} assigned you annotation {related}',

@@ -12,7 +12,7 @@
  */
 
 import 'server-only'
-import { and, desc, eq, getTableColumns, inArray, isNotNull, isNull, lt, ne, notExists, or, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, lt, lte, ne, notExists, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import {
   conversations,
@@ -125,6 +125,39 @@ export async function findInboxItemForRecipient(
     )
     .limit(1)
   return row ?? null
+}
+
+/**
+ * A person's rows of one type that are still news (unread, and not archived,
+ * resolved or inert), last touched between `from` and `to`, newest first and
+ * at most `limit`. For the push job's fold (`lib/push/fold.ts`): which rows of
+ * a burst one notification tells about.
+ */
+export async function listStillDueOfType(
+  organizationId: string,
+  recipientUserId: string,
+  type: InboxItemType,
+  window: { from: Date; to: Date },
+  limit: number,
+): Promise<InboxItem[]> {
+  return getDb()
+    .select()
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.recipientUserId, recipientUserId),
+        eq(inboxItems.type, type),
+        isNull(inboxItems.readAt),
+        isNull(inboxItems.archivedAt),
+        isNull(inboxItems.resolvedAt),
+        isNull(inboxItems.inertAt),
+        gte(inboxItems.updatedAt, window.from),
+        lte(inboxItems.updatedAt, window.to),
+      ),
+    )
+    .orderBy(desc(inboxItems.updatedAt))
+    .limit(limit)
 }
 
 /**

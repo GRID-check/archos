@@ -533,6 +533,19 @@ export const collaboration: typeof en.collaboration = {
       // für die Piloti gearbeitet hat). {related} ist die Nummer der
       // Anmerkung, {subject} das Dokument; der Auszug ist, was sie sagt.
       annotationAssigned: {
+        // Eine Benachrichtigung für viele Zeilen auf einmal (die Erinnerungen
+        // des Morgens, eine Übergabe in einem Zug): die Zahl im Titel, darunter
+        // wie viele wovon, das Dringendste zuerst.
+        pushFold: {
+          title: '{count, plural, one {# Anmerkung} other {# Anmerkungen}} für Sie',
+          parts: {
+            overdue: '{count} überfällig',
+            due_soon: '{count} heute oder morgen fällig',
+            assigned: '{count} zugewiesen',
+            redated: '{count, plural, one {# mit neuer Frist} other {# mit neuen Fristen}}',
+            other: '{count} weitere',
+          },
+        },
         title: '{actor} hat Ihnen eine Anmerkung zugewiesen',
         titleRelated: '{actor} hat Ihnen Anmerkung {related} in „{subject}“ zugewiesen',
         titleRelatedNoSubject: '{actor} hat Ihnen Anmerkung {related} zugewiesen',

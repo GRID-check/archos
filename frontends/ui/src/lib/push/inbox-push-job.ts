@@ -18,10 +18,14 @@
  *      and only the job carrying the row's latest stamp sends, so twenty
  *      messages are one notification;
  *   4. the person's categories include its type;
- *   5. the person could see it in the inbox right now (`viewInboxItemAs`), the
- *      same re-authorization the list does. Not visible, nothing is sent: never
- *      a vaguer notification in its place;
- *   6. the payload says what the person's lock-screen choice allows.
+ *   5. for a type that folds across rows (`fold` in its push policy), no newer
+ *      row of the person's burst of that type arrived within the hold: the
+ *      newest row's job tells the whole burst in one counted notification
+ *      (`./fold.ts`), so the morning's due reminders are one notification;
+ *   6. the person could see it in the inbox right now (`viewInboxItemAs`), the
+ *      same re-authorization the list does, each row of a burst on its own.
+ *      Not visible, nothing is sent: never a vaguer notification in its place;
+ *   7. the payload says what the person's lock-screen choice allows.
  *
  * ## Failure
  *
@@ -44,7 +48,12 @@ import { viewInboxItemAs } from '@/lib/inbox/service'
 import type { JobAttempt } from '@/lib/jobs-queue/types'
 import { findUserPreferences } from '@/lib/user-preferences/repository'
 import { webPushConfig } from './config'
-import { buildPushMessage, pushTagFor } from './payload'
+import type { AuthorizedSession } from '@/lib/auth/types'
+import type { InboxItem } from '@/lib/db/schema'
+import type { PushPreferences } from '@/lib/inbox/push-categories'
+import type { InboxItemView } from '@/lib/inbox/types'
+import { readBurst } from './fold'
+import { buildFoldedPushMessage, buildPushMessage } from './payload'
 import {
   deleteAllSubscriptionsOf,
   deleteSubscriptionById,
@@ -104,6 +113,29 @@ async function settle(
   if (failures !== null && failures >= MAX_CONSECUTIVE_FAILURES) await deleteSubscriptionById(id)
 }
 
+/**
+ * The rows of a burst the person wants and may see right now, as their own
+ * session reads them (`viewInboxItemAs`): newest first, the job's own row
+ * included when it still qualifies. Rule 5 holds per row: a row they may no
+ * longer see is not counted, never worded more vaguely.
+ */
+async function visibleViews(
+  session: AuthorizedSession,
+  rows: readonly InboxItem[],
+  preferences: PushPreferences
+): Promise<InboxItemView[]> {
+  const views = await Promise.all(
+    rows.map(async (candidate, index) =>
+      index === 0 || (isPushStillDue(candidate) && isPushWanted(candidate.type, preferences, candidate.payload))
+        ? viewInboxItemAs(session, candidate)
+        : null
+    )
+  )
+  return views.filter((view): view is InboxItemView => view !== null)
+}
+
+const burstKeyOf = (burst: readonly InboxItem[], id: string) => burst.find((candidate) => candidate.id === id)?.groupKey
+
 export async function runInboxPush(
   organizationId: string,
   payload: InboxPushPayload,
@@ -130,15 +162,23 @@ export async function runInboxPush(
   const preferences = resolvePushPreferences(prefs?.pushNotifications)
   if (!isPushWanted(row.type, preferences, row.payload)) return { sent: false, reason: 'category-off' }
 
-  const view = await viewInboxItemAs(session, row)
+  const policy = pushPolicyFor(row.type)
+  const burst = policy?.fold ? await readBurst(row) : []
+  // A newer row of the same burst arrived within the hold: its job tells them all.
+  if (burst === 'later') return { sent: false, reason: 'folded' }
+
+  const views = await visibleViews(session, [row, ...burst], preferences)
+  const view = views.find((candidate) => candidate.id === row.id) ?? views[0]
   if (!view) return { sent: false, reason: 'not-visible' }
-  const message = buildPushMessage(view, row.groupKey, preferences, localeOf(prefs))
+  const locale = localeOf(prefs)
+  const message =
+    (policy?.fold && views.length > 1 ? buildFoldedPushMessage(views, policy.fold, preferences, locale) : null) ??
+    buildPushMessage(view, view.id === row.id ? row.groupKey : (burstKeyOf(burst, view.id) ?? row.groupKey), preferences, locale)
   if (!message) return { sent: false, reason: 'no-address' }
 
   const devices = await listSubscriptions(organizationId, userId)
   if (devices.length === 0) return { sent: false, reason: 'no-devices' }
 
-  const policy = pushPolicyFor(row.type)
   const urgency = policy?.urgency ?? 'normal'
   const body = JSON.stringify(message)
   const send = sender ?? createWebPushSender(config)
@@ -148,7 +188,8 @@ export async function runInboxPush(
       const outcome = await send.send(device, body, {
         ttlSeconds: PUSH_TTL_SECONDS[urgency],
         urgency,
-        topic: pushTagFor(row.groupKey),
+        // The notification's own tag: its group's, or the burst's for a folded one.
+        topic: message.tag,
       })
       await settle(device.id, outcome, attempt, tally)
     })
@@ -161,7 +202,15 @@ export async function runInboxPush(
     event: 'push_notification_sent',
     distinctId: null,
     organizationId,
-    properties: { item_type: row.type, category: pushCategoryOf(row.type, row.payload), urgency, devices: devices.length, ...tally },
+    properties: {
+      item_type: row.type,
+      category: pushCategoryOf(row.type, row.payload),
+      urgency,
+      devices: devices.length,
+      // How many inbox rows this one notification told about: more than 1 for a folded burst.
+      items: message.itemId ? 1 : views.length,
+      ...tally,
+    },
   })
   if (tally.transient > 0 && !attempt.last) {
     throw new Error(`[push] ${tally.transient} of ${devices.length} devices could not be reached; trying again`)

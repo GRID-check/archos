@@ -816,6 +816,21 @@ in the Postfach, and reaches the devices a person turned notifications on for
 (`lib/inbox/delivery.ts`, ADR-0035): today nothing about a mark is mailed.
 Those policies take effect the day the sender ships.
 
+**Many rows at once are one notification.** A row folds its own occurrences
+(twenty replies on one mark are one row and one push). Some news comes as one
+row per mark instead: the morning's Frist reminders, „Alle übernehmen“ handing
+every mark over again on the replacing document, a person handing out marks
+one after another. `annotation.assigned_to_you` therefore folds its pushes per
+person across marks (`fold` in its push policy, `lib/push/fold.ts`): every
+job of it waits `BURST_HOLD_MS` (5 s), a burst is the person's unread rows of
+the type each within 5 s of the next, and only the newest row's job sends,
+one counted notification for the rows the person may still see: „4
+Anmerkungen für Sie“ over „1 überfällig, 3 heute oder morgen fällig“
+(`buildFoldedPushMessage`, `collaboration.inbox.types.annotationAssigned.pushFold`;
+each variant counted under a part, `fold.parts` in the registry). It opens the
+Postfach, which lists them, and names no item; a burst of one is told in its
+row's own words. The inbox rows stay one per mark.
+
 The participants are derived from the mark when something happens, never
 stored as a list (`markParticipants`): its author (who set it, or for Piloti's
 mark who took it over or asked for it), its Zuständige, who delegated it to
@@ -957,8 +972,9 @@ seven days (`overdue`), in the row they already have for the mark: `annotation.a
 per mark, so the overdue reminder upgrades the earlier one and is never a
 second row. Same type and same push policy as being handed the mark
 (requests): it is the same request, coming due. It reaches the inbox and the
-devices with notifications on; the type's mail after two hours unread waits
-for the ADR-0035 sender, like every other mail (above).
+devices with notifications on, one notification per person for the morning's
+reminders however many marks are due (above); the type's mail after two hours
+unread waits for the ADR-0035 sender, like every other mail.
 
 - **When.** The job scheduler's daily clock (`scheduler/index.js`,
   `sweepAnnotationDue`) posts `POST /api/internal/annotations/due-reminders` at
