@@ -106,6 +106,7 @@ import { DiscussDocumentButton } from '@/features/documents/components/discuss-d
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
 import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
+import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
 import { MentionText } from './MentionText'
 
 /**
@@ -278,6 +279,8 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const answerInReview = markOpen && item.answerIn === 'review'
   const canResolveMark = answerHere && item.type === 'annotation.assigned_to_you'
   const [replying, setReplying] = useState(false)
+  // Sent or let go, the answer box goes and „Antworten“ comes back: the focus goes with it.
+  const replyButtonRef = useFocusBackOnClose<HTMLButtonElement>(answerHere && replying && item.anchorId !== null)
   const [markBusy, setMarkBusy] = useState(false)
   const [markOutcome, setMarkOutcome] = useState<'sent' | 'sentPilotiNotAsked' | 'resolved' | 'conflict' | 'failed' | null>(null)
   /** Whom the last answer named and the server did not keep: they cannot open the document, so nobody told them. */
@@ -931,6 +934,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             )}
             {answerHere && !replying && markOutcome !== 'resolved' && (
               <Button
+                ref={replyButtonRef}
                 type="button"
                 size="sm"
                 variant="outline"

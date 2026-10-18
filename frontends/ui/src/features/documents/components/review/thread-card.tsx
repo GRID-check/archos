@@ -60,6 +60,7 @@ import { otherReviewHref } from '../../lib/fassung-links'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
 import type { CardSide } from './review-page-layer'
+import { useFocusBackOnClose } from './focus-return'
 import { useCardFit } from './review-stage'
 
 export const KIND_ICONS: Record<AnnotationKind, typeof TriangleAlert> = {
@@ -739,6 +740,8 @@ function ReplyEntry({
     reply.authorKind === 'person' &&
     reply.createdBy === review.me &&
     !takenUpByPiloti(annotation, reply, pilotiAskingIn(review, annotation.id))
+  // Saved or let go, the box goes and the reply's ⋯ comes back: the focus goes with it.
+  const moreRef = useFocusBackOnClose<HTMLButtonElement>(editing && mayChange)
   const failureOf = (error: unknown) =>
     error instanceof AnnotationRequestError && error.reason === REPLY_TAKEN_UP_REASON ? t('review.replyTakenUp') : null
 
@@ -814,6 +817,7 @@ function ReplyEntry({
               entries={actions}
               trigger={
                 <Button
+                  ref={moreRef}
                   type="button"
                   variant="ghost"
                   size="icon"
@@ -941,6 +945,8 @@ export function ThreadCard({
 
   // Only the person who wrote it rewords a mark: Piloti's text stays Piloti's, a colleague's theirs.
   const mayReword = annotation.canEdit && annotation.authorKind === 'person' && annotation.createdBy === review.me
+  // The mark's own rewording, saved or let go: the focus back to the card's ⋯ it was opened from.
+  const menuRef = useFocusBackOnClose<HTMLButtonElement>(editing && mayReword)
 
   /**
    * The reworded text goes in with whom it mentions as the composer kept them:
@@ -1121,6 +1127,7 @@ export function ThreadCard({
               entries={menu}
               trigger={
                 <Button
+                  ref={menuRef}
                   type="button"
                   variant="ghost"
                   size="icon"

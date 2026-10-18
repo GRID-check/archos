@@ -259,6 +259,9 @@ focus itself, not its first control, so the Enter after J does not land on
 „Erledigen"; whatever had the focus gets it back when the card closes (its ×,
 Escape), as it does when the crosshair or the cursor chat goes
 (`focus-return.ts`). A card opened by a click leaves the focus where it was.
+A composer that took a control's place, rewording a mark or a reply, gives
+the focus back to the ⋯ it was opened from when it is saved or let go
+(`useFocusBackOnClose`), never to the page.
 A card is a `dialog` named by its header („Mangel #4"); a pin says its state
 in words („Vorschlag", „erledigt"), who else has it open, and that it opens a
 dialog (`aria-haspopup`; `aria-expanded` in the review, not in the file
@@ -1048,7 +1051,8 @@ Escape lets go, „@“ offers whoever may open the document, and the spark writ
 the thread). The reply carries whom it mentions and the @Piloti flag, so a
 colleague asked from the Postfach is told as from the thread. Sent, the row
 says so and names whom the server did not keep; a failure keeps the words in
-the box and says the row's own failure.
+the box and says the row's own failure. Sent or let go, the box gives the focus
+back to „Antworten“ (`useFocusBackOnClose`, `review/focus-return.ts`).
 
 Both writes go through the annotations' own client (`lib/annotations/client.ts`),
 the same writes the thread makes, so the settle rules above apply unchanged,

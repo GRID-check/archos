@@ -1228,6 +1228,26 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     expect(screen.queryByTestId('inbox-mark-reply-form')).not.toBeInTheDocument()
   })
 
+  test('gives the focus back to „Reply“ when the answer box is sent or let go, never to the page', async () => {
+    const marks = client()
+    const user = userEvent.setup()
+    render(<InboxItemRow item={markRow()} markClient={marks} />)
+
+    await user.click(screen.getByTestId('inbox-mark-reply'))
+    expect(screen.getByLabelText('Your reply to annotation 4')).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(screen.getByTestId('inbox-mark-reply')).toHaveFocus()
+
+    await user.click(screen.getByTestId('inbox-mark-reply'))
+    await user.click(screen.getByTestId('inbox-mark-reply-cancel'))
+    expect(screen.getByTestId('inbox-mark-reply')).toHaveFocus()
+
+    await user.click(screen.getByTestId('inbox-mark-reply'))
+    await user.type(screen.getByLabelText('Your reply to annotation 4'), 'Ist bestellt.{Enter}')
+    expect(await screen.findByTestId('inbox-mark-outcome')).toHaveTextContent('Reply sent.')
+    expect(screen.getByTestId('inbox-mark-reply')).toHaveFocus()
+  })
+
   test('mentions a colleague who may open the document, with whom it picked, and says whom the server did not tell', async () => {
     candidates()
     const marks = client({ reply: vi.fn(async () => answered('none')) })

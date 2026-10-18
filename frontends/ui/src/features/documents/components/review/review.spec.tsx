@@ -1503,6 +1503,8 @@ describe('closing the loop on a mark', () => {
       expect(patched).toEqual([{ body: '@Anna Berger Brüstung prüfen auf 1,00 m', mentions: [ANNA_MENTION] }])
     )
     expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-edit')).toBeNull()
+    // Saved, the box goes: the focus goes back to the menu it came from, not to the page.
+    expect(within(screen.getByTestId('review-thread')).getByRole('button', { name: 'More' })).toHaveFocus()
   })
 
   it('offers no rewording of someone else’s mark, nor of Piloti’s', async () => {
@@ -1592,6 +1594,36 @@ describe('one’s own reply in the thread', () => {
     const after = screen.getByTestId('review-thread')
     expect(within(after).queryByTestId('thread-reply-edit')).toBeNull()
     expect(within(after).getByTestId('thread-edited')).toHaveTextContent('edited')
+  })
+
+  it('gives the focus back to the reply’s ⋯ when the edit is saved or let go, never to the page', async () => {
+    const mark = view({ id: 'ann_1', replies: [reply()] })
+    serve([mark])
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId/replies/:replyId', async ({ request }) => {
+        const body = (await request.json()) as { body: string }
+        return HttpResponse.json({ annotation: { ...mark, replies: [reply({ body: body.body, editedAt: '2026-10-01T09:05:00.000Z' })] } })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+    const thread = await openThread()
+    const edit = async () => {
+      await userEvent.click(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-more'))
+      await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+      return within(screen.getByTestId('review-thread')).getByTestId('thread-reply-edit-body')
+    }
+
+    expect(await edit()).toHaveFocus()
+    await userEvent.keyboard('{Escape}')
+    expect(within(thread).getByTestId('thread-reply-more')).toHaveFocus()
+
+    await edit()
+    await userEvent.click(within(screen.getByTestId('review-thread')).getByRole('button', { name: 'Cancel' }))
+    expect(within(thread).getByTestId('thread-reply-more')).toHaveFocus()
+
+    await userEvent.type(await edit(), ' bis Freitag{Enter}')
+    await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-reply-edit')).toBeNull())
+    expect(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-more')).toHaveFocus()
   })
 
   it('deletes it after asking, and the thread shows it gone', async () => {

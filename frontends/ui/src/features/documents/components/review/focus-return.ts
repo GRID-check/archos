@@ -1,5 +1,8 @@
+import { useEffect, useRef, type RefObject } from 'react'
+
 /**
- * Where the focus goes back to in the review, for a reader on the keyboard:
+ * Where the focus goes back to in the review (and on a Postfach row, which
+ * answers a mark with the review's own composer), for a reader on the keyboard:
  * a card, the crosshair or the cursor chat took it from something, and gives
  * it back there when it closes, unless the reader has put it somewhere else
  * meanwhile. (`shared/hooks/use-panel-focus.ts` does this for a panel that
@@ -27,4 +30,22 @@ export function restoreFocus(trigger: Element | null): void {
   const active = document.activeElement
   const lost = !active || active === document.body || (active instanceof HTMLElement && active.dataset.testid === 'document-review')
   if (lost) trigger.focus({ preventScroll: true })
+}
+
+/**
+ * The focus back to the control that opened an editor in place, when that
+ * editor closes (sent, saved, „Abbrechen“, Escape): a reply's rewording in its
+ * thread, the answer box on a Postfach row. The editor took the control's
+ * place, so its field goes with it and the focus would fall to the page.
+ * `open` is whether the editor is out; the ref goes on the control („Antworten“,
+ * the reply's ⋯), which is drawn again where the editor stood.
+ */
+export function useFocusBackOnClose<T extends HTMLElement>(open: boolean): RefObject<T | null> {
+  const control = useRef<T | null>(null)
+  const wasOpen = useRef(open)
+  useEffect(() => {
+    if (wasOpen.current && !open) restoreFocus(control.current)
+    wasOpen.current = open
+  }, [open])
+  return control
 }
