@@ -11,6 +11,8 @@ import { useCallback, useMemo } from 'react'
 import { useAuth as useAuthKit, useAccessToken } from '@workos-inc/authkit-nextjs/components'
 import { useAppConfig } from '@/shared/context'
 import { resetPosthog } from '@/lib/analytics/posthog'
+import { forgetThisDevice } from '@/lib/push/browser'
+import { pushClient } from '@/lib/push/client'
 import type { AuthContext } from './types'
 
 /**
@@ -58,6 +60,11 @@ export const useAuth = (): AuthContext => {
   const handleSignOut = useCallback(async (): Promise<void> => {
     if (!authRequired) return
     resetPosthog()
+    // A shared computer must not keep showing this person's inbox to the next
+    // one (Web Push, ADR-0112). The browser unsubscribes and closes what is on
+    // screen first; the server's row is removed while the session still lets
+    // the request through, bounded so signing out never waits on the network.
+    await forgetThisDevice(pushClient, { serverWithinMs: 1500 })
     await authKitSignOut({ returnTo: '/' })
   }, [authRequired, authKitSignOut])
 

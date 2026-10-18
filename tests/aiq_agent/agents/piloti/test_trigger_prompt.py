@@ -6,16 +6,22 @@ to answer where it happened (``canvas__reply`` in the Anmerkung's thread) and
 not to wait for an answer, because nobody watches the turn.
 """
 
+import base64
+import hashlib
+import hmac
+import json
+
 from langchain_core.messages import HumanMessage
 
-from aiq_agent.agents.piloti import conversation_register
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.agents.piloti.prompt import render_system_prompt
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 from aiq_agent.agents.piloti.prompt import trigger_block
 from aiq_agent.common.wire_v2 import TurnTrigger
 from aiq_agent.common.wire_v2 import UserMessage
-from aiq_agent.turn.payload import TurnInputs
+from aiq_agent.project_context import GridRequestContext
+from aiq_agent.turn import context as turn_context
+from aiq_agent.turn.context import user_info_for
 from aiq_agent.turn.payload import extract_turn_inputs
 
 HEADING = "## Geweckt durch"
@@ -73,13 +79,23 @@ def test_the_wake_jobs_author_name_reaches_the_turn_inputs():
     assert extract_turn_inputs(UserMessage(conversation_id="c", message_id="m", text="?")).author_name is None
 
 
-def test_a_woken_turn_without_a_principal_names_the_person_from_the_message(monkeypatch):
-    monkeypatch.setattr(conversation_register, "user_info_from_principal", lambda: None)
-    inputs = TurnInputs("?", None, None, None, trigger=MENTION, author_name="Anna Weber")
+def _signed_request(payload: dict) -> GridRequestContext:
+    raw = json.dumps(payload)
+    header = base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
+    signature = hmac.new(b"trigger-secret", raw.encode(), hashlib.sha256).hexdigest()
+    request = GridRequestContext.from_envelope(header, signature, "trigger-secret")
+    assert request is not None
+    return request
 
-    user_info = conversation_register._turn_user_info(inputs)
+
+def test_a_woken_turn_names_the_person_from_the_signed_envelope(monkeypatch):
+    """No principal on a woken turn: the wake job's envelope says who, from the pinned session."""
+    monkeypatch.setattr(turn_context, "get_current_principal", lambda: None)
+    request = _signed_request({"userId": "user_1", "requester": {"name": "Anna Weber", "email": "anna@example.at"}})
+
     block = trigger_block(
-        ResearchAgentState(messages=[HumanMessage(content="?")], user_info=user_info, trigger=MENTION), []
+        ResearchAgentState(messages=[HumanMessage(content="?")], user_info=user_info_for(request), trigger=MENTION),
+        [],
     )
 
     assert "Anna Weber hat dich im Verlauf einer Anmerkung erwähnt" in block
@@ -87,27 +103,11 @@ def test_a_woken_turn_without_a_principal_names_the_person_from_the_message(monk
 
 
 def test_without_any_name_the_block_still_says_eine_person(monkeypatch):
-    monkeypatch.setattr(conversation_register, "user_info_from_principal", lambda: None)
-    inputs = TurnInputs("?", None, None, None, trigger=MENTION)
+    monkeypatch.setattr(turn_context, "get_current_principal", lambda: None)
 
     block = trigger_block(
-        ResearchAgentState(
-            messages=[HumanMessage(content="?")],
-            user_info=conversation_register._turn_user_info(inputs),
-            trigger=MENTION,
-        ),
+        ResearchAgentState(messages=[HumanMessage(content="?")], user_info=user_info_for(None), trigger=MENTION),
         [],
     )
 
     assert "Eine Person hat dich im Verlauf einer Anmerkung erwähnt" in block
-
-
-def test_the_principal_wins_and_a_typed_turn_never_takes_the_message_name(monkeypatch):
-    principal = {"name": "Ben Huber", "email": "ben@example.at"}
-    monkeypatch.setattr(conversation_register, "user_info_from_principal", lambda: principal)
-    woken = TurnInputs("?", None, None, None, trigger=MENTION, author_name="Anna Weber")
-    assert conversation_register._turn_user_info(woken) == principal
-
-    monkeypatch.setattr(conversation_register, "user_info_from_principal", lambda: None)
-    typed = TurnInputs("?", None, None, None, author_name="Anna Weber")
-    assert conversation_register._turn_user_info(typed) is None

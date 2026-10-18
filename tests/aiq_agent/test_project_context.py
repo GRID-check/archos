@@ -35,6 +35,8 @@ _INPUT_FIELD_MAP = {
     "conversationId": "conversation_id",
     "issuedAt": "issued_at",
     "contextTransport": "context_transport",
+    # Who `userId` is, by name: envelope-only, signed from the BFF's session.
+    "requester": "requester",
 }
 
 

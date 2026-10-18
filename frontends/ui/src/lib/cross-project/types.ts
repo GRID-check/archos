@@ -16,7 +16,7 @@ import { PROJECT_STATUSES, type ProjectStatus } from '@/lib/projects/project-sta
 
 /**
  * How many projects one search call covers. The backend ranks every collection
- * of the page in ONE query (ADR-0114), so a project costs no search of its own,
+ * of the page in ONE query (ADR-0116), so a project costs no search of its own,
  * only the authorization and row lookups each of its hits needs. A wider scope
  * pages with `offset`.
  */

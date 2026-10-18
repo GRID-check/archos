@@ -59,7 +59,7 @@ function OperationRow({
       <div className="flex items-baseline gap-x-1.5">
         <RowStatus result={result} />
         <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
-          <span className="min-w-0 truncate font-medium" title={subject}>
+          <span className="min-w-0 font-medium [overflow-wrap:anywhere]">
             {subject}
           </span>
           {from ? (
@@ -71,7 +71,7 @@ function OperationRow({
               →
             </span>
           )}
-          <span className="text-muted-foreground min-w-0 truncate" title={target}>
+          <span className="text-muted-foreground min-w-0 [overflow-wrap:anywhere]">
             {target}
           </span>
           {result && !result.ok && (
@@ -83,7 +83,7 @@ function OperationRow({
       </div>
       {/* Why this one, under its row and clear of the status slot (size-3.5 + gap-1.5). */}
       {item.reason && (
-        <p className="text-muted-foreground ml-5 min-w-0 truncate" title={item.reason} data-testid="file-operation-row-reason">
+        <p className="text-muted-foreground ml-5 min-w-0 [overflow-wrap:anywhere]" data-testid="file-operation-row-reason">
           {item.reason}
         </p>
       )}
@@ -105,7 +105,7 @@ function NewFolderNote({ folder }: { folder: FileOperationNewFolder }) {
           <FolderPlus aria-hidden />
           {t('cards.fileOperationProposal.newFolder')}
         </Chip>
-        <span className="min-w-0 truncate font-medium" title={folder.path}>
+        <span className="min-w-0 font-medium [overflow-wrap:anywhere]">
           {folder.path}
         </span>
       </div>

@@ -104,7 +104,7 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
     }
   });
 
-  // ADR-0113: Qdrant is the only store, started by a plain `up`.
+  // ADR-0115: Qdrant is the only store, started by a plain `up`.
   it("runs Qdrant by default and no Chroma, nor anything that picks between the two", () => {
     const services = compose(file).services;
     expect(services.qdrant.profiles).toBeUndefined();

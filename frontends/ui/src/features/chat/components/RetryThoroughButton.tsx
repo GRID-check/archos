@@ -101,7 +101,7 @@ export const RetryThoroughButton: FC<RetryThoroughButtonProps> = ({ messageId, c
       disabled={busy}
       aria-label={t('retryThorough.aria')}
       className={cn(
-        'h-6 gap-1 px-1.5 text-[11px] font-normal text-muted-foreground/80 hover:text-foreground',
+        'h-6 gap-1 px-1.5 text-xs font-normal pointer-coarse:h-11 pointer-coarse:px-3 text-muted-foreground/80 hover:text-foreground',
         arrives && 'animate-in fade-in-0 duration-quick ease-entrance motion-reduce:animate-none'
       )}
     >

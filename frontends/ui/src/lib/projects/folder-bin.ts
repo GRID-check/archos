@@ -101,6 +101,8 @@ import type { Document } from '@/lib/db/schema'
 import { computePurgeAfter, folderGraceDays } from '@/lib/deletion/policy'
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { eraseProjectDocument } from '@/lib/documents/service'
+import { projectShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { deleteQueuedJob } from '@/lib/jobs-queue/repository'
 import {
@@ -151,12 +153,14 @@ import {
 import { buildFolderPath } from './folders'
 import { findProjectInOrg } from './repository'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
+import { inPool } from '@/lib/utils/in-pool'
+import { FOLDER_NAME_TAKEN_REASON } from './folder-bin-codes'
 
 /** The machine-readable reason a delete is refused because the folder holds content the person may not delete. */
 export const FOLDER_CONTENTS_PROTECTED_REASON = 'folder-contents-protected'
 
 /** The reason a restore is refused because a living sibling holds the folder's name. */
-export const FOLDER_NAME_TAKEN_REASON = 'folder-name-taken'
+export { FOLDER_NAME_TAKEN_REASON }
 
 const CHUNK_PURGE_TIMEOUT_MS = 15_000
 /** How many backend calls one bin operation has in flight at once. */
@@ -172,20 +176,6 @@ const ERASE_CONCURRENCY = 4
  * only a second purge of the same chunks, which is idempotent.
  */
 export const BIN_PURGE_TAKEOVER_MS = 2 * 60_000
-
-/** Run `work` over `items`, at most `limit` at a time, in order of the results. */
-export async function inPool<T, R>(items: readonly T[], limit: number, work: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length)
-  let next = 0
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const index = next++
-      results[index] = await work(items[index])
-    }
-  })
-  await Promise.all(workers)
-  return results
-}
 
 /**
  * Take one document's chunks out of retrieval; true when the backend confirmed
@@ -346,6 +336,8 @@ export async function moveFolderToBin(
       return subtree
     })
   )
+  // Gone from the shelf for everyone looking at it, as of this commit.
+  publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
 
   // Out of retrieval at once. Every purge confirmed, or the bin entry is
   // undone and the request refused: never in the bin and still searchable.
@@ -405,7 +397,7 @@ async function unbinEntry(
   const at = new Date()
   const jobId = randomUUID()
   try {
-    return await withTenant({ organizationId }, () =>
+    const restored = await withTenant({ organizationId }, () =>
       db.transaction(async (tx) => {
         await takeBinLock(tx, project.id)
         if (!(await closeBinEntryRestored(tx, organizationId, root.id))) {
@@ -434,6 +426,8 @@ async function unbinEntry(
         return { restoredTo, folders: folderIds.length, documents }
       })
     )
+    publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
+    return restored
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
     throw new ConflictError('A folder with this name already exists there. Rename it, then restore again.', {

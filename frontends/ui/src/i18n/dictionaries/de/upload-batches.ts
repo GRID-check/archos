@@ -27,6 +27,7 @@ export const uploadBatches: typeof en.uploadBatches = {
       sending: 'Der Upload läuft noch.',
       reading: 'Piloti liest noch. Diese Übersicht aktualisiert sich von selbst.',
       done: 'Alles ist gelesen.',
+      doneHeld: 'Alles bis auf die zurückgehaltenen Dateien ist gelesen. Piloti zeigt sie keinem Modell.',
     },
     counts: {
       label: 'Auf einen Blick',
@@ -42,9 +43,11 @@ export const uploadBatches: typeof en.uploadBatches = {
     },
     excluded: {
       title: 'Nicht hochgeladen',
+      // Von der Namensprüfung gestoppt: im Browser (die Datei verließ den
+      // Rechner nie), beim Server oder im E-Mail-Import (gespeichert wurde nichts).
       description:
-        'Diese Dateien haben Ihren Rechner nie verlassen. Ihr Büro stuft diese Begriffe in Datei- und Ordnernamen als sensibel ein.',
-      listLabel: 'Zurückgehaltene Dateien nach Begriff',
+        'Die Namensprüfung hat diese Dateien nicht hochgeladen, gespeichert wurde nichts davon. Ihr Büro stuft diese Begriffe in Datei- und Ordnernamen als sensibel ein.',
+      listLabel: 'Nicht hochgeladene Dateien nach Begriff',
     },
     files: {
       title: 'Dateien',
@@ -55,7 +58,6 @@ export const uploadBatches: typeof en.uploadBatches = {
       },
       empty: 'Keine Datei dieses Uploads ist bei Piloti angekommen.',
       pages: '{count, plural, one {# Seite} other {# Seiten}}',
-      reasonsLabel: 'Warum sie zurückgehalten wird',
       openInFiles: 'In Dateien öffnen',
       openInArchiv: 'In der Büroablage öffnen',
       changedHint: 'Neue Fassung eines Dokuments, das schon hier lag. Die bisherige bleibt unter „Fassungen und Freigabe“ lesbar.',

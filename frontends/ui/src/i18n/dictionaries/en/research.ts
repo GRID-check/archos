@@ -18,8 +18,10 @@ export const research = {
     scrollToLatest: 'Scroll to latest',
     // A quiet line above the composer instead of an error card in the thread:
     // the page reconnects on its own, and the reader has nothing to do.
+    // Offline, a locked phone, or a server out of reach: a running answer is
+    // not lost, it carries on once the connection is back.
     connection: {
-      lost: 'Connection lost · Piloti is reconnecting …',
+      lost: 'Connection lost · Piloti carries on as soon as it is back',
       restored: 'Reconnected',
     },
     status: {
@@ -233,6 +235,11 @@ export const research = {
     uploadNotAvailable: 'File upload not available',
     attachFiles: 'Attach files',
     uploadDisabledBusy: 'File upload disabled during active operations',
+    // Said over the chat while a dragged file cannot be attached right now.
+    dropRefusedReadOnly: 'You can read this chat but not add files to it.',
+    dropRefusedAnswering: 'Piloti is answering. Attach files once the answer is complete.',
+    dropRefusedQuestion: 'Answer Piloti’s question first, then attach files.',
+    dropRefusedUploading: 'Wait until the current upload is finished.',
     selectFiles: 'Select files to upload',
     sendResponse: 'Send response',
     sendMessage: 'Send message',
@@ -304,6 +311,8 @@ export const research = {
     yesterday: 'Yesterday',
     editTitle: 'Edit chat title',
     untitledSession: 'Untitled chat',
+    /** Row menu on touch (no hover): the button's name. */
+    rowActions: 'Actions for "{title}"',
     renameDisabled: 'Rename chat (disabled)',
     rename: 'Rename chat',
     cannotRenameBusy: 'Cannot rename while operations are in progress',

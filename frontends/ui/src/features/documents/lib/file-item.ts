@@ -12,6 +12,7 @@
  */
 
 import { documentStatusFacts } from '@/lib/documents/document-status'
+import { sameValue } from '@/lib/utils/same-value'
 import type { FileAssignee, FileItem } from '../components/project-file-workspace'
 
 /**
@@ -28,6 +29,7 @@ type OptionalWireField =
   | 'displayName'
   | 'folderId'
   | 'errorMessage'
+  | 'quarantine'
   | 'summary'
   | 'pageCount'
   | 'chunkCount'
@@ -44,6 +46,7 @@ type OptionalWireField =
   | 'versionCount'
   | 'lifecycle'
   | 'sourceDeletedAt'
+  | 'marks'
 
 /** Normalize one wire row into the shape every file surface reads. */
 export function toFileItem(row: DocumentWireRow): FileItem {
@@ -59,6 +62,7 @@ export function toFileItem(row: DocumentWireRow): FileItem {
     contentHash: row.contentHash ?? null,
     createdAt: row.createdAt,
     errorMessage: row.errorMessage ?? null,
+    quarantine: row.quarantine ?? null,
     summary: row.summary ?? null,
     pageCount: row.pageCount ?? null,
     chunkCount: row.chunkCount ?? null,
@@ -80,6 +84,7 @@ export function toFileItem(row: DocumentWireRow): FileItem {
     // what every listing but the „Archiviert" one is.
     lifecycle: row.lifecycle ?? 'active',
     sourceDeletedAt: row.sourceDeletedAt ?? null,
+    marks: row.marks ?? null,
     retryable: row.retryable ?? true,
   }
 }
@@ -110,14 +115,8 @@ const TRAILING_METADATA: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>([
   'revisionFacts',
 ])
 
-function sameValue(a: unknown, b: unknown): boolean {
-  if (Object.is(a, b)) return true
-  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
-  return JSON.stringify(a) === JSON.stringify(b)
-}
-
 /** What a stale in-flight read would take back along with the status. */
-const REGRESSION_FIELDS: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>(['status', 'errorMessage'])
+const REGRESSION_FIELDS: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>(['status', 'errorMessage', 'quarantine'])
 
 /**
  * A read that would move a TERMINAL row back to an in-flight status, without a

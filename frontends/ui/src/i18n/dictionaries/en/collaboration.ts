@@ -28,6 +28,16 @@ export const collaboration = {
     /** Button in the chat toolbar. */
     action: 'Share',
     close: 'Close',
+    /** The link to the chat: it only opens for people who already have access. */
+    link: {
+      heading: 'Link',
+      share: 'Share link',
+      copy: 'Copy link',
+      copied: 'Link copied',
+      failed: 'The link could not be copied.',
+      hint: 'The link opens the chat only for people who have access. Anyone who does not yet is invited above.',
+      shareTitle: 'Chat in Piloti',
+    },
     visibilityHeading: 'Who can see this',
     /** Screen-reader text while the sharing state is being fetched. */
     loading: 'Loading sharing settings…',
@@ -330,14 +340,42 @@ export const collaboration = {
       '{count, plural, one {# item needs} other {# items need}} your attention',
     badgeAriaOne: '1 item needs your attention',
     subtitle: 'Requests and updates from your team.',
+    /** "Needs me" is what waits on you (an open request); "Unread" what you have not opened. */
     filters: {
       needsMe: 'Needs me',
+      unread: 'Unread',
       all: 'All',
+      archived: 'Archived',
       ariaLabel: 'Filter inbox',
     },
     markAllRead: 'Mark all as read',
     archive: 'Archive',
+    undo: 'Undo',
+    /** The short form for a phone, where the long one breaks the row. */
+    markAllReadShort: 'All read',
     archived: 'Archived',
+    unarchive: 'Restore',
+    unarchived: 'Restored',
+    markRead: 'Mark as read',
+    markUnread: 'Mark as unread',
+    moreActions: 'More actions',
+    loadMore: 'Load older items',
+    loadingMore: 'Loading older items …',
+    loadMoreFailed: 'Older items could not be loaded.',
+    /** A row about an annotation: go there, and for a request answer or resolve it right here. */
+    mark: {
+      open: 'Go to annotation',
+      reply: 'Reply',
+      replyLabel: 'Your reply to annotation {related}',
+      replyLabelNoNumber: 'Your reply to the annotation',
+      send: 'Send',
+      cancel: 'Cancel',
+      sent: 'Reply sent.',
+      resolve: 'Resolve',
+      resolved: 'Marked as resolved.',
+      conflict: 'Someone changed the annotation first. Open it to see where it stands.',
+      failed: 'That did not work. Nothing has changed.',
+    },
     /** Item states. */
     resolved: 'Answered',
     /** An item whose target the recipient can no longer reach (spec IB-13). */
@@ -349,7 +387,6 @@ export const collaboration = {
      * for whatever the row points at: a chat, a document, a mark.
      */
     bodyUnavailable: 'This is no longer available to you.',
-    inertHint: 'You no longer have access to this.',
     /**
      * The next move on a new revision filed under another name: see the two side
      * by side. Opens the file preview with the comparison open.
@@ -358,9 +395,14 @@ export const collaboration = {
     compareFassungenLabel: 'Compare the new and the older revision of “{subject}”',
     empty: {
       needsMeTitle: 'Nothing needs you',
-      needsMeDescription: 'When a colleague asks for your input, it shows up here.',
+      needsMeDescription:
+        'When someone mentions you, assigns you an annotation or Piloti asks you something, it appears here.',
+      unreadTitle: 'All caught up',
+      unreadDescription: 'What is new stays here until you open it.',
       allTitle: 'Your inbox is empty',
-      allDescription: 'Requests, answers and shared conversations appear here.',
+      allDescription: 'News from your team and from Piloti appears here.',
+      archivedTitle: 'Nothing archived',
+      archivedDescription: 'What you archive, you find here again.',
     },
     errors: {
       loadFailed: 'Your inbox could not be loaded.',
@@ -382,8 +424,11 @@ export const collaboration = {
      * and `body` here — that plus a registry entry is the whole cost (spec IB-6).
      */
     types: {
+      /** `titleResolved` once the question is answered: the row is history then. */
       mentionRequested: {
         title: '{actor} asked for your input',
+        titleResolved: '{actor}’s question has been answered',
+        titleResolvedNoActor: 'The question has been answered',
         body: 'in {subject}',
       },
       /**
@@ -394,22 +439,27 @@ export const collaboration = {
        */
       mentionAnswered: {
         title: '{actor} replied',
+        titleNoActor: 'Your question was answered',
         body: 'in {subject}',
       },
       conversationShared: {
         title: '{actor} shared a conversation with you',
         body: '{subject}',
       },
+      /** Who wrote is in the title, and the chat too, so there is no second line. */
       conversationActivity: {
-        titleOne: '1 new message',
-        titleMany: '{count} new messages',
+        titleOne: '{actor} wrote in “{subject}”',
+        titleOneNoActor: 'New message in “{subject}”',
+        titleMany: '{count} new messages in “{subject}”, latest from {actor}',
+        titleManyNoActor: '{count} new messages in “{subject}”',
         /**
          * Read, with nothing new since — the counter has been spent. So it must
          * not say "new": this row is history, and a group of twenty the reader
          * has just been through was announcing fresh mail at them.
          */
-        titleNone: 'Messages',
-        body: 'in {subject}',
+        titleNone: 'Messages in “{subject}”',
+        /** The chat is no longer available to the reader: no name to put in quotes. */
+        titleRedacted: 'Messages in a chat',
       },
       /**
        * The operational alert (ADR-0042). No `{actor}`: it is system-generated,
@@ -454,15 +504,50 @@ export const collaboration = {
         bodyNoSubject: 'Open the summary to see what arrived.',
       },
       // ADR-0086: the content check held files back.
+      // {subject} is the newest held file; the variant says what it was held
+      // for (never the value found). `transcript`: a vision model read the
+      // scanned pages it was found in, so no "no model" claim there.
       documentQuarantined: {
         titleOne: '1 file is waiting in quarantine',
         titleMany: '{count} files are waiting in quarantine',
         titleNone: 'Files in quarantine',
-        body: 'No model has read them. Review them: allow or delete.',
+        body: '“{subject}”: no model has read it. Review it: allow or delete.',
+        bodyMany: 'Latest: “{subject}”. Review them in quarantine: allow or delete.',
+        bodyNoSubject: 'No model has read them. Review them: allow or delete.',
+        variants: {
+          term: {
+            body: '“{subject}” contains a term from your office’s list of sensitive data. No model has read it. Allow or delete?',
+            bodyMany: 'Latest: “{subject}”, with a term from the list of sensitive data. Review them: allow or delete.',
+          },
+          iban: {
+            body: '“{subject}” contains an IBAN. No model has read it. Allow or delete?',
+            bodyMany: 'Latest: “{subject}”, with an IBAN. Review them: allow or delete.',
+          },
+          at_svnr: {
+            body: '“{subject}” contains a social security number. No model has read it. Allow or delete?',
+            bodyMany: 'Latest: “{subject}”, with a social security number. Review them: allow or delete.',
+          },
+          credit_card: {
+            body: '“{subject}” contains a card number. No model has read it. Allow or delete?',
+            bodyMany: 'Latest: “{subject}”, with a card number. Review them: allow or delete.',
+          },
+          transcript: {
+            body: '“{subject}”: found in the text of scanned pages a vision model read; no other model saw them. Allow or delete?',
+            bodyMany: 'Latest: “{subject}”, found in the text of scanned pages. Review them: allow or delete.',
+          },
+        },
       },
       documentReleaseRequested: {
         title: '{actor} asks you to review “{subject}”',
         body: 'The file is in quarantine. Look at it, then allow or delete it.',
+        // What the file was held for, as for documentQuarantined.
+        variants: {
+          term: { body: 'It contains a term from the list of sensitive data. Look at it, then allow or delete it.' },
+          iban: { body: 'It contains an IBAN. Look at it, then allow or delete it.' },
+          at_svnr: { body: 'It contains a social security number. Look at it, then allow or delete it.' },
+          credit_card: { body: 'It contains a card number. Look at it, then allow or delete it.' },
+          transcript: { body: 'Found in the text of scanned pages a vision model read. Look at it, then allow or delete it.' },
+        },
       },
       // The row lands on the run itself (its block in the thread, else the
       // task), where the result and the reason are.
@@ -517,6 +602,10 @@ export const collaboration = {
         titleRelated: 'Piloti worked on annotation {related} in “{subject}” for you',
         titleRelatedNoSubject: 'Piloti worked on annotation {related} for you',
         body: 'Read the answer in the annotation’s thread.',
+        // The delegation ended: Piloti handed the annotation back.
+        variants: {
+          assigned: { body: 'The annotation is back with you.' },
+        },
       },
       // Piloti could not. `variants` say why, by the class of the wake's
       // stored reason (`lib/annotations/wake-end-reason.ts`), and what the
@@ -556,7 +645,12 @@ export const collaboration = {
       // the files, the note or the change. Words as on the card.
       pilotiProposalWaiting: {
         title: 'Piloti has a proposal for you',
+        // Where the proposal waits, by what the row points at: the chat it came
+        // from, else the file under Files (`bodyProject`) or in the office
+        // filing (`bodyOrganization`).
         body: 'The proposal is in the chat. Apply or dismiss it there; nothing changes until then.',
+        bodyProject: 'The proposal waits on the file under Files. Apply or dismiss it there; nothing changes until then.',
+        bodyOrganization: 'The proposal waits on the file in the office filing. Apply or dismiss it there; nothing changes until then.',
         variants: {
           move: { title: 'Piloti suggests a new place for files' },
           rename: { title: 'Piloti suggests a rename' },
@@ -574,6 +668,68 @@ export const collaboration = {
         title: 'Piloti has read the documents of “{subject}”',
         titleRelated: 'Piloti has read the documents of “{subject}” – questions: {related}',
         body: 'Review the suggestions and confirm what is right.',
+      },
+      // A colleague made you responsible for an annotation, or Piloti did on
+      // their behalf (`variants.piloti`, where {actor} is the person Piloti
+      // worked for). {related} is the annotation's number, {subject} the
+      // document; the excerpt is what the annotation says.
+      annotationAssigned: {
+        title: '{actor} assigned you an annotation',
+        titleRelated: '{actor} assigned you annotation {related} in “{subject}”',
+        titleRelatedNoSubject: '{actor} assigned you annotation {related}',
+        body: 'You are responsible for it. Answer in the thread or resolve the annotation.',
+        variants: {
+          piloti: {
+            title: 'Piloti assigned you an annotation for {actor}',
+            titleRelated: 'Piloti assigned you annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoSubject: 'Piloti assigned you annotation {related} for {actor}',
+          },
+        },
+      },
+      // News on an annotation you take part in: one counted row per annotation,
+      // the newest reply as the excerpt. `variants` for your annotation that
+      // someone else resolved, dismissed or reopened; then the excerpt is what
+      // it says.
+      // Who replied is in the title; `…NoActor` when it was Piloti or nobody in particular.
+      annotationActivity: {
+        title: '{actor} replied on an annotation',
+        titleNoActor: 'New reply on an annotation',
+        titleRelated: '{actor} replied on annotation {related} in “{subject}”',
+        titleRelatedNoActor: 'New reply on annotation {related} in “{subject}”',
+        titleRelatedMany: '{count} new replies on annotation {related} in “{subject}”, latest from {actor}',
+        titleRelatedManyNoActor: '{count} new replies on annotation {related} in “{subject}”',
+        titleRelatedNone: 'Replies on annotation {related} in “{subject}”',
+        titleRelatedNoSubject: '{actor} replied on annotation {related}',
+        titleRelatedNoSubjectNoActor: 'New reply on annotation {related}',
+        titleRelatedNoSubjectMany: '{count} new replies on annotation {related}, latest from {actor}',
+        titleRelatedNoSubjectManyNoActor: '{count} new replies on annotation {related}',
+        titleRelatedNoSubjectNone: 'Replies on annotation {related}',
+        variants: {
+          resolved: {
+            title: '{actor} resolved an annotation',
+            titleRelated: '{actor} resolved annotation {related} in “{subject}”',
+            titleRelatedNoSubject: '{actor} resolved annotation {related}',
+          },
+          dismissed: {
+            title: '{actor} dismissed an annotation',
+            titleRelated: '{actor} dismissed annotation {related} in “{subject}”',
+            titleRelatedNoSubject: '{actor} dismissed annotation {related}',
+          },
+          reopened: {
+            title: '{actor} reopened an annotation',
+            titleRelated: '{actor} reopened annotation {related} in “{subject}”',
+            titleRelatedNoSubject: '{actor} reopened annotation {related}',
+          },
+        },
+      },
+      // A colleague @mentioned you on an annotation or in its thread, as in
+      // the chat. {actor} is them, {related} the annotation's number,
+      // {subject} the document; the excerpt is the text that mentions you.
+      annotationMentioned: {
+        title: '{actor} mentioned you in an annotation',
+        titleRelated: '{actor} mentioned you in annotation {related} in “{subject}”',
+        titleRelatedNoSubject: '{actor} mentioned you in annotation {related}',
+        body: 'Answer in the annotation’s thread.',
       },
       unknown: {
         title: 'Something happened',

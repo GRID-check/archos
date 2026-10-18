@@ -99,8 +99,8 @@ const StorageMeter: FC<{ usedBytes: number; quotaBytes: number | null }> = ({
         )}
       </div>
       {over && (
-        <p className="text-destructive mt-1 flex items-center gap-1 text-xs">
-          <AlertTriangle className="size-3" aria-hidden />
+        <p className="text-destructive mt-1 flex items-center gap-1 text-sm">
+          <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
           {t('storage.overQuota')}
         </p>
       )}

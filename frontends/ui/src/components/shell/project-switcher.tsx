@@ -12,9 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useLayoutStore } from '@/features/layout/store'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
 import type { ProjectStatus } from '@/lib/projects/project-status'
 import { cn } from '@/lib/utils'
+import { useShellOverlays } from './shell-overlays'
 
 export interface ProjectSwitcherProject {
   id: string
@@ -44,7 +47,7 @@ export interface ProjectSwitcherProps {
  * (`--status-active`) for the active project, quiet ink otherwise. The color
  * always travels with the project label beside it, never alone.
  */
-function StatusDot({ active }: { active?: boolean }) {
+export function ProjectStatusDot({ active }: { active?: boolean }) {
   const color = active ? 'var(--status-active)' : 'var(--muted-foreground)'
   return (
     <span
@@ -57,6 +60,13 @@ function StatusDot({ active }: { active?: boolean }) {
   )
 }
 
+const TRIGGER_CLASS = cn(
+  'flex h-9 w-full items-center gap-2.5 rounded-[10px] border border-border bg-card px-3 text-left shadow-xs pointer-coarse:h-11',
+  'transition-[color,background-color,border-color,box-shadow,transform] duration-quick ease-out',
+  'hover:bg-accent active:scale-[0.98] motion-reduce:transition-none',
+  'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+)
+
 export function ProjectSwitcher({ projects, activeProjectId, collapsed }: ProjectSwitcherProps) {
   const router = useRouter()
   const t = useTranslations('nav')
@@ -64,40 +74,62 @@ export function ProjectSwitcher({ projects, activeProjectId, collapsed }: Projec
   const active = projects.find((p) => p.id === activeProjectId)
   const offered = switchableProjects(projects, activeProjectId)
   const [open, setOpen] = React.useState(false)
+  const isMobile = useIsMobile()
+  const setDrawerOpen = useLayoutStore((s) => s.setMobileNavOpen)
+  const setSheetOpen = useShellOverlays((s) => s.setProjectSheetOpen)
+
+  const triggerLabel = active
+    ? t('projectSwitcher.switchCurrent', { name: active.name })
+    : t('projectSwitcher.select')
+  const triggerBody = (
+    <>
+      <ProjectStatusDot active={Boolean(active)} />
+      {!collapsed && (
+        <>
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+            {active?.name ?? t('projectSwitcher.select')}
+          </span>
+          <span
+            className={cn(
+              'flex size-3.5 shrink-0 transition-transform duration-quick ease-out motion-reduce:transition-none',
+              open && 'rotate-180',
+            )}
+            aria-hidden
+          >
+            <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
+          </span>
+        </>
+      )}
+    </>
+  )
+
+  // In the phone drawer the switcher is the sheet, not a dropdown: a 240px
+  // menu of 32px rows hanging off the top of a drawer is the stretch the sheet
+  // exists to remove. The drawer steps aside so one overlay stands at a time.
+  if (isMobile) {
+    return (
+      <button
+        type="button"
+        className={cn(TRIGGER_CLASS, collapsed && 'w-10 justify-center px-0')}
+        aria-label={triggerLabel}
+        aria-haspopup="dialog"
+        onClick={() => {
+          setDrawerOpen(false)
+          setSheetOpen(true)
+        }}
+      >
+        {triggerBody}
+      </button>
+    )
+  }
 
   return (
     <DropdownMenu onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        className={cn(
-          'flex h-9 w-full items-center gap-2.5 rounded-[10px] border border-border bg-card px-3 text-left shadow-xs',
-          'transition-[color,background-color,border-color,box-shadow,transform] duration-quick ease-out',
-          'hover:bg-accent active:scale-[0.98] motion-reduce:transition-none',
-          'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
-          collapsed && 'w-10 justify-center px-0',
-        )}
-        aria-label={
-          active
-            ? t('projectSwitcher.switchCurrent', { name: active.name })
-            : t('projectSwitcher.select')
-        }
+        className={cn(TRIGGER_CLASS, collapsed && 'w-10 justify-center px-0')}
+        aria-label={triggerLabel}
       >
-        <StatusDot active={Boolean(active)} />
-        {!collapsed && (
-          <>
-            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
-              {active?.name ?? t('projectSwitcher.select')}
-            </span>
-            <span
-              className={cn(
-                'flex size-3.5 shrink-0 transition-transform duration-quick ease-out motion-reduce:transition-none',
-                open && 'rotate-180',
-              )}
-              aria-hidden
-            >
-              <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
-            </span>
-          </>
-        )}
+        {triggerBody}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="bottom" className="w-60 motion-reduce:animate-none">
         <DropdownMenuLabel className="text-[10.5px] font-semibold tracking-[0.05em] text-muted-foreground uppercase">
@@ -114,7 +146,7 @@ export function ProjectSwitcher({ projects, activeProjectId, collapsed }: Projec
               onSelect={() => router.push(`/app/projects/${project.id}/chat`)}
               className="gap-2.5 pr-1.5"
             >
-              <StatusDot active={isCurrent} />
+              <ProjectStatusDot active={isCurrent} />
               <span
                 className={cn(
                   'min-w-0 flex-1 truncate text-[13px]',

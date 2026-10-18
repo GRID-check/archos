@@ -77,6 +77,18 @@ run_pg "'$PGBIN/pg_ctl' -D '$PGDATA' -o '-p $PORT -k $WORKDIR' -l '$PGDATA/serve
 export PGOPTIONS="-c client_min_messages=warning"
 PSQL="$PGBIN/psql -h $WORKDIR -p $PORT -U postgres"
 
+# `--exec <command…>`: the same throwaway cluster, without the migration chain or
+# the suites below, for the Python suites whose Postgres branch would otherwise
+# skip (`task be:test:postgres`). They create and drop their own tables, so they
+# get an empty scratch database as the superuser, in AIQ_TEST_POSTGRES_URL.
+if [ "${1:-}" = "--exec" ]; then
+  shift
+  $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE aiq_queues;"
+  echo "==> running: $*"
+  AIQ_TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
+  exit 0
+fi
+
 # Reproduce the DEPLOYMENT topology, not a convenient one. Migrations run as a
 # plain non-superuser database owner with no CREATEROLE and no BYPASSRLS —
 # exactly what CloudNativePG hands the app. Running this chain as `postgres`
@@ -110,7 +122,7 @@ done
 # cosine query — and a mocked drizzle handle cannot disagree with the fixture
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
-echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, restricted-feedback, revision-subject, the hold on a document, permit-record and Anmerkungen suites as grid_app_rw"
+echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging and Anmerkungen suites as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
@@ -144,6 +156,8 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/proposals/repository.integration.spec.ts \
     src/lib/project-intake/repository.integration.spec.ts \
     src/lib/changes/repository.integration.spec.ts \
+    src/lib/push/repository.integration.spec.ts \
+    src/lib/inbox/repository.integration.spec.ts \
     src/lib/project-experience/readable-files.integration.spec.ts \
     src/lib/projects/memory-evidence.integration.spec.ts \
     src/lib/download-log/download-log.integration.spec.ts \
@@ -164,13 +178,15 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
 $MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
 
 # The job-queue suites claim from ONE table, whichever lane a job is in, so run
-# in parallel they claim each other's seeded jobs. One file at a time.
-echo "==> running the job-queue suites one file at a time as grid_app_rw"
+# in parallel they claim each other's seeded jobs. One file at a time. The
+# scheduler's due-scan is the same shape over task_definitions, every tenant's.
+echo "==> running the job-queue and scheduler-claim suites one file at a time as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
     src/lib/jobs-queue/queue.integration.spec.ts \
     src/lib/jobs-queue/repository.integration.spec.ts \
-    workers/jobs/runner.integration.spec.mjs
+    workers/jobs/runner.integration.spec.mjs \
+    scheduler/db.integration.spec.mjs
 
 # ---------------------------------------------------------------------------
 # Migration 0086: the backfill, asserted per row shape, and its DOWN migration.
@@ -1966,3 +1982,89 @@ apply_in grid_pshelf 0146_proposal_shelves.sql
 apply_in grid_pshelf 0146_proposal_shelves.sql
 check_in grid_pshelf "SELECT count(*) FROM proposed_changes" "1" "0146 re-applies, twice"
 echo "==> 0146 proposal shelves and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0148: a held document's reason as a typed verdict (ADR-0113), and
+# its DOWN. The backfill converts each quarantined row's `quarantined:` message
+# row by row and leaves a row whose message does not parse NULL without
+# stopping; the CHECKs hold the column to an object with a `reasons` array and
+# to quarantined rows, so the release that ends a quarantine must clear it; a
+# decision records how many reasons the job left out.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0148 quarantine verdict, its backfill and the down migration on grid_qverdict"
+migrate_until grid_qverdict 0147_push_subscriptions
+sql_in grid_qverdict <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000148', 'org_0148', 'Verdict 0148', 'user_1', 'proj_0148');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id, content_hash, screening_outcome, error_message) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'lohn.pdf', 'k/0148/lohn', 'proj_0148', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:lohn', 'quarantined',
+   'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","count":2,"pages":[1,3]},{"kind":"iban","count":1,"pages":[2],"sample":"AT61 •••• •••• •••• 3201"}],"checked":"full","omitted":3}'),
+  ('d2d2d2d2-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'kaputt.pdf', 'k/0148/kaputt', 'proj_0148', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:kaputt', 'quarantined',
+   'quarantined:{not json'),
+  ('d3d3d3d3-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'form.pdf', 'k/0148/form', 'proj_0148', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:form', 'quarantined',
+   'quarantined:{"reasons":"none"}'),
+  ('d4d4d4d4-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'plan.pdf', 'k/0148/plan', 'proj_0148', 'failed', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:plan', NULL,
+   'quarantined:{"reasons":[],"checked":"full"}'),
+  ('d5d5d5d5-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'brief.pdf', 'k/0148/brief', 'proj_0148', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:brief', 'quarantined',
+   NULL);
+INSERT INTO document_quarantine_decisions (id, organization_id, document_id, job_id, scope, project_id, filename, reasons, uploaded_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000148', 'org_0148', 'd1d1d1d1-0000-4000-8000-000000000148', 'job-0148', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'lohn.pdf', 'term:Lohnzettel,iban', 'user_1');
+SQL
+apply_in grid_qverdict 0148_document_quarantine_verdict.sql
+check_in grid_qverdict "SELECT quarantine->'reasons'->0->>'term' || ',' || (quarantine->>'omitted') || ',' || (quarantine->'reasons'->1->>'sample') FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000148'" "Lohnzettel,3,AT61 •••• •••• •••• 3201" "the backfill stores a quarantined row's verdict as data"
+check_in grid_qverdict "SELECT string_agg(filename, ',' ORDER BY filename) FROM documents WHERE organization_id = 'org_0148' AND quarantine IS NULL" "brief.pdf,form.pdf,kaputt.pdf,plan.pdf" "a message that is not JSON, a verdict of the wrong shape, a row that is not held and one with no message stay NULL"
+check_in grid_qverdict "SELECT count(*) FROM documents WHERE organization_id = 'org_0148' AND error_message LIKE 'quarantined:%'" "4" "the backfill leaves every message for the builds that still read it"
+check_in grid_qverdict "SELECT reasons_omitted FROM document_quarantine_decisions WHERE id = 'f1f1f1f1-0000-4000-8000-000000000148'" "0" "an existing decision left nothing out that it knew of"
+refused_in grid_qverdict "UPDATE documents SET quarantine = '[]'::jsonb WHERE id = 'd5d5d5d5-0000-4000-8000-000000000148';" "documents_quarantine_shape_check" "a verdict that is not an object was accepted"
+refused_in grid_qverdict "UPDATE documents SET quarantine = '{\"checked\":\"full\"}'::jsonb WHERE id = 'd5d5d5d5-0000-4000-8000-000000000148';" "documents_quarantine_shape_check" "a verdict without reasons was accepted"
+refused_in grid_qverdict "UPDATE documents SET quarantine = '{\"reasons\":[]}'::jsonb WHERE id = 'd4d4d4d4-0000-4000-8000-000000000148';" "documents_quarantine_held_check" "a verdict on a row that is not quarantined was accepted"
+refused_in grid_qverdict "UPDATE documents SET status = 'uploaded', screening_outcome = 'released', screening_released_hash = 'sha256:lohn', screening_released_by = 'user_2', screening_released_at = now() WHERE id = 'd1d1d1d1-0000-4000-8000-000000000148';" "documents_quarantine_held_check" "a release that keeps the verdict was accepted"
+sql_in grid_qverdict <<<"UPDATE documents SET status = 'uploaded', error_message = NULL, quarantine = NULL, screening_outcome = 'released', screening_released_hash = 'sha256:lohn', screening_released_by = 'user_2', screening_released_at = now() WHERE id = 'd1d1d1d1-0000-4000-8000-000000000148';"
+check_in grid_qverdict "SELECT status FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000148'" "uploaded" "the release that clears the verdict passes the hold"
+refused_in grid_qverdict "INSERT INTO document_quarantine_decisions (organization_id, document_id, job_id, scope, filename, uploaded_by, reasons_omitted) VALUES ('org_0148', gen_random_uuid(), 'job-x', 'archiv', 'x.pdf', 'u', -1);" "document_quarantine_decisions_reasons_omitted_check" "a negative count of left-out reasons was accepted"
+apply_in grid_qverdict 0148_document_quarantine_verdict.sql
+check_in grid_qverdict "SELECT count(*) FROM documents WHERE organization_id = 'org_0148' AND quarantine IS NOT NULL" "0" "0148 re-applies and backfills no released row"
+apply_in grid_qverdict 0148_document_quarantine_verdict.down.sql
+check_in grid_qverdict "SELECT count(*) FROM information_schema.columns WHERE (table_name = 'documents' AND column_name = 'quarantine') OR (table_name = 'document_quarantine_decisions' AND column_name = 'reasons_omitted')" "0" "down dropped both columns"
+apply_in grid_qverdict 0148_document_quarantine_verdict.sql
+apply_in grid_qverdict 0148_document_quarantine_verdict.sql
+check_in grid_qverdict "SELECT count(*) FROM pg_constraint WHERE conname IN ('documents_quarantine_shape_check', 'documents_quarantine_held_check', 'document_quarantine_decisions_reasons_omitted_check')" "3" "0148 re-applies, twice"
+echo "==> 0148 quarantine verdict and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0150: whom an Anmerkung or a reply mentions, the CHECKs, and the
+# DOWN.
+#
+# On a database of its own, migrated to 0149. Every mark and reply written
+# before mentions nobody; a mention list is an array of at most ten, on both
+# tables; the down drops both columns and leaves the marks and their threads.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0150 mentions on marks and replies and their down migration on grid_mention"
+migrate_until grid_mention 0149_piloti_wakes_document_idx
+sql_in grid_mention <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000150', 'org_0150', 'Erwähnen 0150', 'user_1', 'proj_0150');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000150', 'org_0150', 'user_1', 'a.pdf', 'k/0150/a', 'proj_0150', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000150');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000150', 'org_0150', 'd1d1d1d1-0000-4000-8000-000000000150', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
+INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by)
+VALUES ('org_0150', 'f1f1f1f1-0000-4000-8000-000000000150', 'person', 'Vor 0150 geschrieben', 'user_2');
+SQL
+apply_in grid_mention 0150_annotation_mentions.sql
+check_in grid_mention "SELECT (SELECT string_agg(mentions::text, ',') FROM document_annotations) || '|' || (SELECT string_agg(mentions::text, ',') FROM document_annotation_replies)" "[]|[]" "a mark and a reply written before 0150 mention nobody"
+sql_in grid_mention <<<"UPDATE document_annotations SET mentions = '[{\"targetId\":\"user_2\",\"display\":\"Anna Berger\"}]' WHERE number = 1"
+sql_in grid_mention <<<"UPDATE document_annotation_replies SET mentions = '[{\"targetId\":\"agent:piloti\",\"display\":\"Piloti\"}]'"
+check_in grid_mention "SELECT mentions->0->>'display' FROM document_annotations WHERE number = 1" "Anna Berger" "a mark keeps whom it mentions"
+refused_in grid_mention "UPDATE document_annotations SET mentions = '{\"targetId\":\"user_2\"}' WHERE number = 1" "document_annotations_mentions_bounded" "a mark's mentions that are not an array were accepted"
+refused_in grid_mention "UPDATE document_annotations SET mentions = (SELECT jsonb_agg(jsonb_build_object('targetId', 'user_' || n, 'display', 'P' || n)) FROM generate_series(1, 11) AS n) WHERE number = 1" "document_annotations_mentions_bounded" "a mark mentioning eleven people was accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = '\"user_2\"'" "document_annotation_replies_mentions_bounded" "a reply's mentions that are not an array were accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = (SELECT jsonb_agg(jsonb_build_object('targetId', 'user_' || n, 'display', 'P' || n)) FROM generate_series(1, 11) AS n)" "document_annotation_replies_mentions_bounded" "a reply mentioning eleven people was accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = NULL" "null value" "a reply without a mention list was accepted"
+apply_in grid_mention 0150_annotation_mentions.down.sql
+check_in grid_mention "SELECT count(*) FROM information_schema.columns WHERE column_name = 'mentions' AND table_name IN ('document_annotations', 'document_annotation_replies')" "0" "down dropped both columns"
+check_in grid_mention "SELECT (SELECT count(*) FROM document_annotations) || ':' || (SELECT count(*) FROM document_annotation_replies)" "1:1" "down left the marks and their threads"
+apply_in grid_mention 0150_annotation_mentions.sql
+apply_in grid_mention 0150_annotation_mentions.sql
+check_in grid_mention "SELECT string_agg(mentions::text, ',') FROM document_annotation_replies" "[]" "0150 re-applies, twice"
+echo "==> 0150 mentions and down migration verified"

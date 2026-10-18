@@ -8,7 +8,7 @@ vi.mock('@/lib/workos/client', () => ({
   getWorkOS: () => ({ userManagement: { listOrganizationMemberships } }),
 }))
 
-import { resolveSubjectMembership } from './project-membership'
+import { lookupSubjectMembership, resolveSubjectMembership } from './project-membership'
 import { setCacheStore } from '@/lib/cache'
 import { MapCacheStore } from '@/test-utils/cache-store'
 
@@ -46,5 +46,16 @@ describe('resolveSubjectMembership', () => {
     await resolveSubjectMembership('org_1', 'u-stranger')
 
     expect(listOrganizationMemberships).toHaveBeenCalledTimes(1)
+  })
+
+  // The push job removes every device of a person who left; "could not ask"
+  // must reach it as a failure, not as "not a member".
+  it('lets a caller that cannot undo "not a member" tell a failed lookup from an answered one', async () => {
+    listOrganizationMemberships.mockRejectedValueOnce(new Error('workos 503'))
+    await expect(lookupSubjectMembership('org_1', 'u-anna')).rejects.toThrow('workos 503')
+    expect(store.map.size).toBe(0)
+
+    listOrganizationMemberships.mockResolvedValueOnce({ data: [] })
+    await expect(lookupSubjectMembership('org_1', 'u-gone')).resolves.toBeNull()
   })
 })

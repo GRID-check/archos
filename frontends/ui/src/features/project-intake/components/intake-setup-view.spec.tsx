@@ -366,7 +366,8 @@ describe('IntakeSetupView', () => {
         dataTransfer: { types: ['Files'], files: [file], items: [] },
       })
 
-      return vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file]))
+      // With what the drop could not read, for the upload to tell.
+      return vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
     })
 
     it('confirms and dismisses one suggestion', async () => {
@@ -445,6 +446,16 @@ describe('IntakeSetupView', () => {
       expect(screen.queryByTestId('intake-open')).toBeNull()
     })
 
+    it('stays on screen on a phone once nothing is open, and never floats while something is', () => {
+      setup({ ...INTAKE_READY, contradictions: [], questions: [] })
+      expect(screen.getByTestId('intake-complete')).toHaveClass('max-sm:sticky', 'max-sm:bottom-0')
+    })
+
+    it('does not float over the work that is still to do', () => {
+      setup(INTAKE_READY)
+      expect(screen.getByTestId('intake-complete')).not.toHaveClass('max-sm:sticky')
+    })
+
     it('is a secondary button and says what is still open while a contradiction or Rückfrage waits', () => {
       setup(INTAKE_READY)
 
@@ -496,7 +507,20 @@ describe('IntakeSetupView', () => {
 
       fireEvent.drop(screen.getByTestId('intake-setup'), { dataTransfer: { types: ['Files'], files: [file], items: [] } })
 
-      await vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file]))
+      await vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
+    })
+
+    it('keeps the overlay’s label in view on a page that scrolls', () => {
+      setup(INTAKE_READY)
+      const file = new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })
+
+      fireEvent.dragEnter(screen.getByTestId('intake-setup'), {
+        dataTransfer: { types: ['Files'], files: [file], items: [] },
+      })
+
+      // Centred on the whole page, the label sat below the fold of a long review.
+      const overlay = screen.getByTestId('intake-drop-overlay')
+      expect(overlay.querySelector('[data-follow-scroll]')).toHaveClass('sticky')
     })
 
     it('takes no drop on a finished setup', () => {

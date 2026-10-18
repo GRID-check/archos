@@ -29,6 +29,7 @@ import { type FC, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslations } from '@/i18n'
@@ -42,10 +43,12 @@ interface OrgInstructionsFormProps {
 
 export const OrgInstructionsForm: FC<OrgInstructionsFormProps> = ({ initialInstructions }) => {
   const t = useTranslations('organization')
+  const tCommon = useTranslations('common')
 
   const [text, setText] = useState(initialInstructions ?? '')
   const [baseline, setBaseline] = useState(initialInstructions ?? '')
   const [saving, setSaving] = useState(false)
+  const [confirmingClear, setConfirmingClear] = useState(false)
 
   const remaining = ORG_INSTRUCTIONS_MAX_CHARS - text.length
   const overCap = remaining < 0
@@ -108,8 +111,16 @@ export const OrgInstructionsForm: FC<OrgInstructionsFormProps> = ({ initialInstr
         </p>
       </Field>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => void submit(text)} disabled={saving || overCap || !isDirty}>
+      {/* Save is the thumb's button: full width on a phone. Clearing sits apart
+          from it, below on a phone and at the far end on a desktop, and asks
+          first: it is a one-tap write of an empty instruction, and next to Save
+          a one-handed tap lands on it as easily as on its neighbour. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <Button
+          className="max-sm:w-full"
+          onClick={() => void submit(text)}
+          disabled={saving || overCap || !isDirty}
+        >
           {saving ? t('instructions.saving') : t('instructions.save')}
         </Button>
         {/* Clearing is its own act, not "save an empty box": the box is often
@@ -118,12 +129,26 @@ export const OrgInstructionsForm: FC<OrgInstructionsFormProps> = ({ initialInstr
             wipes the instruction. */}
         <Button
           variant="ghost"
-          onClick={() => void submit('')}
+          className="text-destructive hover:bg-danger-subtle hover:text-destructive max-sm:w-full sm:ml-auto"
+          onClick={() => setConfirmingClear(true)}
           disabled={saving || (text === '' && baseline === '')}
         >
           {t('instructions.clear')}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={confirmingClear}
+        onOpenChange={setConfirmingClear}
+        title={t('instructions.clearConfirmTitle')}
+        description={t('instructions.clearConfirmBody')}
+        confirmLabel={t('instructions.clear')}
+        cancelLabel={tCommon('actions.cancel')}
+        onConfirm={async () => {
+          await submit('')
+          setConfirmingClear(false)
+        }}
+      />
     </FieldGroup>
   )
 }

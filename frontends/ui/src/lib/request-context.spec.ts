@@ -497,7 +497,7 @@ describe('server.js mints the same envelope payload this module does', () => {
     )
 
   it('carries every field, in the same key order — the signature is over the bytes', () => {
-    expect(serverFields()).toEqual([...canonicalFields(), 'contextTransport'])
+    expect(serverFields()).toEqual([...canonicalFields(), 'contextTransport', 'requester'])
   })
 
   it('signs the conversation and the mint time, which is what makes it a credential', () => {

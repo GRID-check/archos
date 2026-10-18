@@ -11,6 +11,9 @@
  *
  * The quarantine queue and the Files preview say it through this, so a reviewer
  * reads the same findings where they decide and where they look.
+ *
+ * It takes the verdict, read by the caller through `quarantineVerdictOf`
+ * (ADR-0113), never a stored message: no surface hands it text to parse.
  */
 
 import type { FC } from 'react'
@@ -20,19 +23,18 @@ import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import {
   describeQuarantineReason,
+  explainQuarantineReason,
   findingsOf,
+  heldSentenceKey,
   MORE_PAGES_MARK,
-  parseQuarantine,
   quarantineReasonHead,
   type QuarantineFinding,
   type QuarantineVerdict,
 } from '@/lib/upload-screening/quarantine'
 
 export interface QuarantineFindingsProps {
-  /** The stored verdict, `quarantined:{…}`. Anything else renders the sentence alone. */
-  errorMessage?: string | null
-  /** The verdict already read (the quarantine queue's rows carry it parsed). Wins over `errorMessage`. */
-  verdict?: QuarantineVerdict | null
+  /** Why it is held (`quarantineVerdictOf`). Null renders the sentence alone. */
+  verdict: QuarantineVerdict | null
   /**
    * Open the document at a finding. Given, each page is a button; left unset
    * (a surface that cannot show the document), the pages are stated as text.
@@ -50,8 +52,7 @@ const sameFinding = (a: QuarantineFinding | null | undefined, b: QuarantineFindi
   !!a && a.page === b.page && a.highlight === b.highlight
 
 export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
-  errorMessage,
-  verdict: givenVerdict,
+  verdict,
   onShowFinding,
   shownFinding,
   withoutSentence = false,
@@ -59,8 +60,12 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
   testId = 'quarantine-findings',
 }) => {
   const t = useTranslations('files')
-  const verdict = givenVerdict !== undefined ? givenVerdict : parseQuarantine(errorMessage)
   const reasons = verdict?.reasons ?? []
+  // How the check came to each reason is said as text after the last reason of
+  // its kind (the job lists a kind's reasons together), never only in a tooltip:
+  // a chip is no focus target and a touch has no hover. Five terms share one
+  // sentence rather than repeating it, and it does not split their chips.
+  const explainedAt = new Set(reasons.map((reason) => reasons.findLastIndex((other) => other.kind === reason.kind)))
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)} data-testid={testId}>
@@ -70,7 +75,7 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
             const findings = onShowFinding ? findingsOf(reason) : []
             return (
               <li key={`${index}-${reason.kind}-${reason.term ?? ''}`} className="flex flex-wrap items-center gap-1">
-                <Chip variant="warning" size="sm" title={describeQuarantineReason(reason, t)}>
+                <Chip variant="warning" size="sm">
                   <ShieldAlert aria-hidden />
                   <ChipLabel>{findings.length > 0 ? quarantineReasonHead(reason, t) : describeQuarantineReason(reason, t)}</ChipLabel>
                 </Chip>
@@ -102,16 +107,28 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
                     <span className="sr-only">{t('screening.morePages')}</span>
                   </span>
                 )}
+                {explainedAt.has(index) && (
+                  <p className="text-muted-foreground w-full text-xs leading-snug" data-testid={`${testId}-basis`}>
+                    {explainQuarantineReason(reason, t)}
+                  </p>
+                )}
               </li>
             )
           })}
         </ul>
       )}
+      {verdict?.omitted ? (
+        <p className="text-muted-foreground text-xs leading-snug" data-testid={`${testId}-omitted`}>
+          {t('screening.omitted', { count: verdict.omitted })}
+        </p>
+      ) : null}
       {verdict?.checked === 'partial' && (
         <p className="text-muted-foreground text-xs leading-snug">{t('screening.partial')}</p>
       )}
       {!withoutSentence && (
-        <p className="text-muted-foreground text-xs leading-snug">{t('ingestFailure.quarantined')}</p>
+        <p className="text-muted-foreground text-xs leading-snug" data-testid={`${testId}-sentence`}>
+          {t(heldSentenceKey(verdict))}
+        </p>
       )}
     </div>
   )

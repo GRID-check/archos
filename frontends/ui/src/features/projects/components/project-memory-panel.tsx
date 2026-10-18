@@ -312,9 +312,13 @@ export function ProjectMemoryPanel({
   const confirmingDeleteItem = items?.find((it) => it.id === confirmingDeleteId) ?? null
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
-        <div>
+    // `min-w-0`: the panel sits in a grid cell on the settings page, and a grid
+    // item's automatic minimum is its widest unbreakable line. A restricted
+    // note's badge or a long path in a note's text was enough to push the whole
+    // page 97px past a phone's edge.
+    <section className="min-w-0 space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-56">
           <h2 className="text-foreground text-sm font-semibold">{t('memory.heading')}</h2>
           <p className="text-muted-foreground mt-1 text-sm">{t('memory.description')}</p>
         </div>
@@ -465,7 +469,11 @@ export function ProjectMemoryPanel({
                 const busy = busyId === item.id
                 const isEditing = editingId === item.id
                 return (
-                  <Item key={item.id} className="group items-start">
+                  // A phone stacks the note over its actions. Beside the text,
+                  // four 44px buttons left the note about 130px, a column of
+                  // one word per line; beneath it the note has the full width
+                  // and the buttons keep their size.
+                  <Item key={item.id} className="group flex-col items-stretch gap-1 sm:flex-row sm:items-start sm:gap-3">
                     <ItemContent>
                       {isEditing ? (
                         <div className="space-y-2">
@@ -569,7 +577,7 @@ export function ProjectMemoryPanel({
                     </ItemContent>
 
                     {!isEditing && !readOnly && (
-                      <ItemActions className="duration-quick pointer-coarse:opacity-100 gap-1 opacity-0 transition-opacity ease-out focus-within:opacity-100 group-hover:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
+                      <ItemActions className="duration-quick pointer-coarse:opacity-100 -mr-2 gap-1 opacity-0 max-sm:justify-end sm:mr-0 transition-opacity ease-out focus-within:opacity-100 group-hover:opacity-100 motion-reduce:opacity-100 motion-reduce:transition-none">
                         <Button
                           variant="ghost"
                           size="icon"

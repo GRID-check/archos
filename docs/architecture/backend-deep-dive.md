@@ -13,7 +13,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
-  scheduler/worker; every chunk lives in Qdrant (ADR-0113). Runs the LangGraph workflow and the
+  scheduler/worker; every chunk lives in Qdrant (ADR-0115). Runs the LangGraph workflow and the
   async deep-research jobs.
 - **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`frontends/ui/server.js`).
 - **dragonfly** — Redis-protocol shared cache (ADR-0020): read-through caches
@@ -226,6 +226,15 @@ this **dual-write transition**. Authenticated WebSocket handshakes instead
 carry compact claims with `contextTransport: "bff"` and omit project context,
 memory and office instructions from both the individual headers and the
 signed envelope (ADR-0077).
+Every envelope also signs `requester` (`{ name, email, organizationName }`):
+who `userId` is, from the session it is minted for. A live session has it from
+AuthKit and the token's `organization_name` claim; a pinned one (a scheduled
+run, a woken thread) from WorkOS through `lib/auth/person.ts`. The agent names
+the person from the verified token while someone is signed in, else from this
+field (`turn.context.user_info_for`), so a turn nobody is signed in for is
+named too. A research job reads it the same way when its submit carried no
+`user_info` (`jobs/runner._run_user_info`): a scheduled fire is named from its
+run envelope, which the BFF re-signs at every renewal.
 `server.js` duplicates the same builder logic (with a pinning comment) since
 it is plain CommonJS and cannot import the TS module.
 

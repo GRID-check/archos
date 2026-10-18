@@ -48,6 +48,7 @@ from aiq_api.jobs.run_envelope import parse_renewal
 from aiq_api.jobs.run_envelope import refusal_reason
 from aiq_api.jobs.runner import WORKER_ENVELOPE_HEADERS
 from aiq_api.jobs.runner import _inject_worker_headers
+from aiq_api.jobs.runner import _run_user_info
 from aiq_api.jobs.runner import run_agent_job
 
 from .test_job_submit_data_sources import submit_app  # noqa: F401 - the public submit route, built once
@@ -72,6 +73,7 @@ def _sign(
     scope: list[dict[str, str]] | None = SCOPE,
     secret: str = SECRET,
     marker: str = "submit",
+    requester: dict[str, str] | None = None,
 ) -> dict[str, str]:
     """What the BFF puts on the wire (the test plays the BFF; nothing under test signs)."""
     payload: dict[str, Any] = {"organizationId": organization_id, "userId": user_id, "projectId": "proj-1"}
@@ -79,6 +81,8 @@ def _sign(
         payload["collectionScope"] = scope
     payload["issuedAt"] = _now_ms() if issued_at is None else issued_at
     payload["marker"] = marker
+    if requester is not None:
+        payload["requester"] = requester
     raw = json.dumps(payload)
     return {
         REQUEST_CONTEXT_ENVELOPE_HEADER: base64.urlsafe_b64encode(raw.encode()).decode().rstrip("="),
@@ -566,3 +570,24 @@ class TestNothingIsSignedInPython:
         stale = _sign(issued_at=_now_ms() - 2 * HOUR_MS)
         injected = await envelope_headers_for_run(_carried(stale), run_id="run-1", job_id="job-1")
         assert set(injected.values()) == {fresh["header"], fresh["signature"]}
+
+
+class TestTheRunKnowsWhoItIsFor:
+    """A scheduled fire submits no ``user_info``: the run's signed envelope names the person."""
+
+    ANNA = {"name": "Anna Weber", "email": "anna@example.at", "organizationName": "Atelier Nord"}
+
+    def test_a_run_without_user_info_is_named_from_its_envelope(self):
+        assert _run_user_info(None, _sign(requester=self.ANNA)) == {
+            "name": "Anna Weber",
+            "email": "anna@example.at",
+            "office": "Atelier Nord",
+        }
+
+    def test_the_user_info_a_chat_submitted_stands(self):
+        submitted = {"name": "Ben Huber", "email": "ben@example.at"}
+        assert _run_user_info(submitted, _sign(requester=self.ANNA)) is submitted
+
+    def test_an_envelope_that_does_not_verify_names_nobody(self):
+        assert _run_user_info(None, _sign(requester=self.ANNA, secret="another-secret")) is None
+        assert _run_user_info(None, None) is None

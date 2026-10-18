@@ -5,7 +5,7 @@ This package provides NAT tool registrations for knowledge retrieval that can be
 across multiple applications.
 
 Backend: llamaindex (LlamaIndex readers and chunking, vectors in Qdrant,
-ADR-0113), the one production backend (ADR-0072). The retriever/ingestor factory stays pluggable so tests can
+ADR-0115), the one production backend (ADR-0072). The retriever/ingestor factory stays pluggable so tests can
 register fakes.
 
 Note: NAT tool registrations require NAT to be installed.

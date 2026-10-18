@@ -357,6 +357,48 @@ export function pointerDragged(
 }
 
 /**
+ * How far a press may wander and still be a tap, by what is pressing.
+ *
+ * Two pixels is a mouse button held by a hand resting on a desk. A fingertip
+ * is a 40 px blob that rolls as it lands and lifts, and it moves more than two
+ * pixels doing nothing at all — so on glass a tap on a wall was read as the
+ * start of an orbit, `moved` went true, and the element under the finger was
+ * never selected. The one gesture that opens the inspector failed at random.
+ * Ten px is what native touch toolkits use (iOS's own tap slop is of that
+ * order), and it is still far below the travel of a deliberate drag.
+ */
+export function dragSlopFor(pointerType: string): number {
+  if (pointerType === 'touch') return 10
+  if (pointerType === 'pen') return 6
+  return 2
+}
+
+/** Two taps this close in time are a double-tap. */
+export const DOUBLE_TAP_MS = 320
+/** …and this close together, in CSS pixels, so two different elements are not. */
+export const DOUBLE_TAP_DISTANCE_PX = 28
+
+/**
+ * Whether a tap lands on the heels of the previous one.
+ *
+ * `dblclick` is the desktop route to "frame what I pointed at", and iOS Safari
+ * fires it unreliably on a `touch-action: none` canvas — so the one navigation
+ * gesture every 3D tool shares had no touch route at all. Recognising the
+ * pair ourselves makes it deterministic, and pure arithmetic keeps it testable
+ * without a GPU.
+ */
+export function isDoubleTap(
+  previous: { at: number; x: number; y: number } | null,
+  current: { at: number; x: number; y: number }
+): boolean {
+  if (!previous) return false
+  return (
+    current.at - previous.at <= DOUBLE_TAP_MS &&
+    Math.hypot(current.x - previous.x, current.y - previous.y) <= DOUBLE_TAP_DISTANCE_PX
+  )
+}
+
+/**
  * One keypress, as a camera move.
  *
  * The viewport is a `<canvas>`: to a keyboard it is a picture with no controls
@@ -430,6 +472,18 @@ export function boundsCentre(box: {
 }
 
 /**
+ * Where a download stands in bytes, for a readout that names the size.
+ *
+ * `total` is 0 when the transfer declares none. A percentage says how far, a
+ * size says how much — and on a weak connection "37 von 120 MB" is what lets
+ * someone decide to wait or to cancel, where "31 %" does not.
+ */
+export interface DownloadBytes {
+  loaded: number
+  total: number
+}
+
+/**
  * Read a response body to completion, reporting real progress as it arrives.
  *
  * `response.arrayBuffer()` returns the same bytes in the same time, but it
@@ -445,7 +499,7 @@ export function boundsCentre(box: {
  */
 export async function downloadWithProgress(
   response: { headers: { get(name: string): string | null }; body: unknown; arrayBuffer(): Promise<ArrayBuffer> },
-  onProgress: (percent: number | null) => void
+  onProgress: (percent: number | null, bytes: DownloadBytes) => void
 ): Promise<Uint8Array> {
   const body = response.body as {
     getReader?: () => { read(): Promise<{ done: boolean; value?: Uint8Array }> }
@@ -455,7 +509,7 @@ export async function downloadWithProgress(
   // the buffered read rather than failing the load for want of a progress bar.
   if (!reader) {
     const buffered = new Uint8Array(await response.arrayBuffer())
-    onProgress(null)
+    onProgress(null, { loaded: buffered.length, total: 0 })
     return buffered
   }
 
@@ -520,7 +574,7 @@ export async function downloadWithProgress(
     const percent = total > 0 ? Math.min(100, Math.round((received / total) * 100)) : -2
     if (percent === reported) continue
     reported = percent
-    onProgress(percent === -2 ? null : percent)
+    onProgress(percent === -2 ? null : percent, { loaded: received, total })
   }
 
   // Shorter than declared — a truncated transfer, or metadata written for a

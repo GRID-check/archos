@@ -99,7 +99,7 @@ import {
 } from '../lib/fassung-timeline'
 import { requestFassungLink } from '../lib/fassung-request'
 import { DocumentArchiveAction } from './document-archive-action'
-import { DocumentReviewControls } from './document-review-controls'
+import { DocumentReviewControls, type DocumentReviewControlsProps } from './document-review-controls'
 import { DocumentVersionDiff } from './document-version-diff'
 import { DocumentVersionStateBadge } from './document-version-badge'
 import { useFassungCompare, type SourceLoader } from './fassung-compare'
@@ -129,6 +129,8 @@ export interface DocumentFassungenProps {
   onOpenDocument?: (fileId: string) => void
   /** The document's editorial state changed here, so the listing behind the pane can move its badge. */
   onLifecycleChanged?: (summary: DocumentLifecycleSummary) => void
+  /** The document's live Anmerkungen and the way into them, for the approve confirm (`DocumentReviewControls`). */
+  openMarks?: DocumentReviewControlsProps['openMarks']
   className?: string
 }
 
@@ -170,6 +172,7 @@ export function DocumentFassungen({
   onFassungChanged,
   onOpenDocument,
   onLifecycleChanged,
+  openMarks,
   className,
 }: DocumentFassungenProps): JSX.Element | null {
   const t = useTranslations('files')
@@ -489,6 +492,11 @@ export function DocumentFassungen({
       </RowAction>
     ) : null
 
+  // The Fassung before this one, compared in ONE tap from its row: the on-site
+  // question is „what changed since the last one", and the ⋯ menu made it
+  // three taps and a guess at where the comparison lives.
+  const previousKey = rows.find((candidate) => candidate.kind === 'linked')?.key ?? null
+
   const renderLinkedRow = (row: LinkedRow, index: number): JSX.Element => {
     const { entry } = row
     const menu: ActionMenuEntry[] = [compareEntry({ id: entry.id, filename: entry.filename }, { id: file.id, filename: file.filename })]
@@ -515,7 +523,21 @@ export function DocumentFassungen({
         changeHint={row.key === firstChangeKey ? t('preview.fassung.changeHint') : null}
         last={index === rows.length - 1}
         dataset={{ kind: 'linked', id: entry.id, number: String(row.number) }}
-        action={openAction(entry.id)}
+        action={
+          row.key === previousKey ? (
+            <>
+              <RowAction
+                onClick={() => openFassungCompare({ id: entry.id, filename: entry.filename }, { id: file.id, filename: file.filename })}
+                data-testid="fassung-compare-previous"
+              >
+                {t('preview.fassung.compare')}
+              </RowAction>
+              {openAction(entry.id)}
+            </>
+          ) : (
+            openAction(entry.id)
+          )
+        }
         menu={menu}
         menuLabel={t('preview.fassung.rail.rowMenu', { number: row.number })}
       >
@@ -626,6 +648,7 @@ export function DocumentFassungen({
                 reviewers={reviewers}
                 fassungNumber={standing.number ?? undefined}
                 publishBare
+                openMarks={openMarks}
                 // The signature line of the approve confirm: the viewer's own
                 // name where the surface knows one, else the moment alone.
                 actingName={viewer.userId ? (assigneeNames.get(viewer.userId) ?? listedNames.get(viewer.userId) ?? null) : null}

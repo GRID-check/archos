@@ -31,6 +31,7 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `citation-events.ts` | `citation_events` |
 | `resource-shares.ts` | `resource_shares` |
 | `inbox.ts` | `inbox_items` |
+| `push-subscriptions.ts` | `push_subscriptions` |
 | `mention-requests.ts` | `mention_requests` |
 | `conversation-reads.ts` | `conversation_reads` |
 | `conversation-restricted-folders.ts` | `conversation_restricted_folders` |
@@ -290,7 +291,8 @@ export const documents = pgTable('documents', {
 | `file_size` | `integer` | | Size in bytes |
 | `content_type` | `text` | | MIME type |
 | `status` | `text` | NOT NULL, DEFAULT `'uploaded'`, CHECK `documents_status_known` | **Migration `0135`** (ADR-0104): one of `uploaded` (bytes here, nothing dispatched), `pending` (an ingest job is queued), `processing` (the BFF works on it locally: IFC, Office rendition, placement re-read), `completed` (read; citable), `failed`, `quarantined` (the content check holds it, ADR-0086), `stored` (bytes here and deliberately not read: a Piloti document nobody published, an archived document). TERMINAL: `completed`, `failed`, `quarantined`, `stored`, `uploaded`; `stored` must stay out of the in-flight set the reconcile polls. Open `text` until 0135, which rewrote the legacy spellings (`ready`, `ingested`, `success`, `processed` → `completed`; `error` → `failed`). Vocabulary: `lib/documents/document-status.ts` — `DOCUMENT_STATUSES` |
-| `error_message` | `text` | | Error details if status is `error` |
+| `error_message` | `text` | | Error details if status is `failed`. A `quarantined` row still carries the job's legacy `quarantined:{json}` text for one release; nothing reads it but `quarantineVerdictOf`, and only where `quarantine` is NULL |
+| `quarantine` | `jsonb` | CHECK `documents_quarantine_shape_check` (NULL, or an object with a `reasons` array), CHECK `documents_quarantine_held_check` (NULL unless `status = 'quarantined'`) | **Migration `0148`, ADR-0113**: why the content check held the row, as the ingest job's typed verdict (`{reasons:[{kind, term?, count, pages, pages_truncated?, sample?}], checked, omitted?, after_transcription?}`; kinds kept as the job wrote them). Written by `setDocumentReconciledStatus` with the `quarantined` status, cleared by `markScreeningReleased`. Read through `quarantineVerdictOf` (`lib/upload-screening/quarantine.ts`), and shown only to whoever may see the held row. The migration backfilled it row by row from `error_message`; a row whose message did not parse stays NULL and is read from the message. The down drops it (lossless for older builds, which read `error_message`) |
 | `metadata` | `jsonb` | | Flexible metadata |
 | `screening_outcome` | `text` | CHECK `NULL` or `clean`/`partial`/`unchecked`/`quarantined`/`released` | **Migration `0109`, ADR-0086**: what the local content screening found before the first model call. `NULL` = not screened (a row older than the column, or one replaced since: a replacement resets it). `partial` = some pages had no text layer and were checked by name only; `unchecked` = no text could be read locally at all; `quarantined` = a term or detector matched and nothing went to a model. Written by reconciliation from the ingest job's `file_details[].screening`. |
 | `screened_hash` | `text` | | **Migration `0123`, ADR-0086**: the `content_hash` of the bytes `screening_outcome` judged (or, with screening off, the completed read covered). Recorded by the dispatch beside its job id (`metadata.ingestContentHash`), written by reconciliation with the verdict and by a release. A person's upload passes the hold only while it equals `content_hash`, so bytes swapped in after a verdict are held until their own screen. Backfilled to `content_hash` for every person's upload; NULL for Piloti's documents, which are never held. |
@@ -810,6 +812,28 @@ left alone.
 
 ---
 
+## push_subscriptions (migration 0147, ADR-0112)
+
+A browser a person turned inbox notifications on for. One row per browser
+installation; `endpoint` is the push service's address for it and is **unique
+across tenants**, so a device notifies exactly one person in one organization:
+the one who registered it last. Registering first removes another person's or
+organization's row for the endpoint (`claimEndpoint`, a platform-scope DELETE).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` | primary key |
+| `organization_id`, `user_id` | `text` | who the device notifies; the organization is the RLS predicate |
+| `endpoint` | `text` | https URL, at most 2048, host of DNS labels only (`push_subscriptions_endpoint_host`, the shape WHATWG `URL` and `url.parse` read alike); unique |
+| `p256dh`, `auth` | `text` | the subscription's encryption key and secret; with the endpoint, all a sender needs |
+| `device_label` | `text` | "Safari auf iPhone", from the user agent |
+| `created_at`, `last_success_at` | `timestamptz` | the last time the push service accepted a message |
+| `failure_count` | `integer` | consecutive failures; the device is dropped at five. A 404 or 410 drops it at once |
+
+Index `idx_push_subscriptions_person (organization_id, user_id)`. Secured by
+`organization_id = grid_current_org()`. A person keeps at most ten devices; the
+oldest go first.
+
 ## upload_batches (migration 0110, ADR-0086)
 
 One upload gesture, from the browser's first request to the moment everything
@@ -1019,7 +1043,8 @@ exists. The audit trail holds the event under its own retention.
 | `project_id` | `uuid` | | CHECK `(scope = 'project') = (project_id IS NOT NULL)` |
 | `folder_id` | `uuid` | | The folder the document was filed in when quarantined; NULL at a shelf's root. No FK. The event's `filedIn`: under a folder not every project member may read, the name is withheld (`nameWithheld`, ADR-0087) |
 | `filename` | `text` | NOT NULL, CHECK 1–500 characters | The name at the time |
-| `reasons` | `text` | NOT NULL, default `''` | Kinds and terms (`term:Lohnzettel,iban`), never a masked sample or text |
+| `reasons` | `text` | NOT NULL, default `''` | Kinds and terms (`term:Lohnzettel,iban`) of the reasons the verdict lists, never a masked sample or text; a kind this build does not know is recorded by its name. Cut at 200 characters, ending `,…` when cut |
+| `reasons_omitted` | `integer` | NOT NULL, default `0`, CHECK `>= 0` | **Migration `0148`**: how many reasons the job found and left out of its verdict (more than ten, or too long to store whole). Not zero: `reasons` is a partial list. Sent as `reasonsOmitted` |
 | `checked` | `text` | NOT NULL, default `''` | `full` or `partial` |
 | `uploaded_by` | `text` | NOT NULL | The document's `created_by` |
 | `audited_at` | `timestamptz` | | NULL while owed |
@@ -1744,7 +1769,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_fassung` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_fassung` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |

@@ -61,7 +61,9 @@ export function ModeSwitch({ mode, onMode }: { mode: CompareMode; onMode: (mode:
         const Icon = MODE_ICONS[entry]
         return (
           <ToggleGroupItem key={entry} value={entry} data-testid={`mode-${entry}`} aria-keyshortcuts={String(index + 1)}>
-            <Icon aria-hidden className="max-sm:hidden" />
+            {/* Words on a phone, on its side too, where the three icons cost
+                the toolbar its single row. */}
+            <Icon aria-hidden className="max-sm:hidden phone:hidden" />
             <span className="max-sm:text-xs">{t(MODE_LABEL_KEYS[entry])}</span>
             <Kbd className="max-xl:hidden pointer-coarse:hidden" aria-hidden>
               {index + 1}

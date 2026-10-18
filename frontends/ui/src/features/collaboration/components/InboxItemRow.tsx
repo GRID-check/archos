@@ -10,17 +10,22 @@
  * new notification type is a registry entry plus two strings, never a new
  * component.
  *
- * The ONE exception below is BEHAVIOUR, not looks: a version waiting for a
+ * The exceptions below are BEHAVIOUR, not looks. A version waiting for a
  * decision carries its three decisions inline, so triage happens here instead
  * of forcing a round-trip through Files. It keys on the actionable document
  * type alone, renders through the same atoms, and resolves server-side — the
  * decision settles the round for every reviewer (`resolveReviewInbox`) and the
  * list re-reads on the `inbox.changed` nudge. Nothing persists on a chat
- * message, so `useCardDecision` does not apply here.
+ * message, so `useCardDecision` does not apply here. A row about a mark (its
+ * presentation says `anchor: 'mark'`) opens at the mark, and a request on one
+ * (assigned to the reader, or Piloti's question) is answered or resolved right
+ * here, through the annotations' own client: the same writes the thread makes.
  *
  * The row answers **who / what / where / when without being opened** (IB-20):
  * the title carries the actor, the body the subject, the excerpt the actual
  * question, and the timestamp the when (relative, with the exact moment on hover).
+ * A row a person caused wears their face, with the type's glyph in its corner;
+ * Piloti's rows wear Piloti's.
  *
  * Two behaviours here are security-visible rather than cosmetic:
  *   - An **inert** item (its target was unshared, deleted or purged — IB-13/IB-14)
@@ -37,14 +42,18 @@ import { forwardRef, useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   Archive,
+  ArchiveRestore,
   AtSign,
   CheckCircle2,
   Clock,
   EyeOff,
   HardDrive,
   Layers,
+  Mail,
+  MailOpen,
   Megaphone,
   MessageSquare,
+  MoreHorizontal,
   ShieldAlert,
   UserPlus,
   type LucideIcon,
@@ -52,13 +61,19 @@ import {
 } from 'lucide-react'
 
 import { useI18n, useLocale, useTranslations } from '@/i18n'
-import { getByPath } from '@/i18n/translate'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
+import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import {
   INBOX_TYPE_PRESENTATION,
+  isMarkAnchored,
   UNKNOWN_TYPE_PRESENTATION,
   type InboxItemView,
+  type InboxTypePresentation,
 } from '@/lib/inbox/types'
+import { AnnotationRequestError, replyToAnnotation, updateAnnotation } from '@/lib/annotations/client'
+import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
+import { PersonAvatar } from '@/components/ui/avatar-stack'
+import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -84,13 +99,15 @@ import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
+import { MentionText } from './MentionText'
 
 /**
  * The ONE place the registry's icon names become components. Keeping the map here
  * (rather than storing components in `lib/inbox/types.ts`) keeps the registry a
  * plain data module that the server half can import without pulling in React.
+ * `piloti` is not a Lucide icon but Piloti's own glyph, drawn below.
  */
-const ICONS: Record<(typeof INBOX_TYPE_PRESENTATION)[keyof typeof INBOX_TYPE_PRESENTATION]['icon'], LucideIcon> =
+const ICONS: Record<Exclude<InboxTypePresentation['icon'], 'piloti'>, LucideIcon> =
   {
     'at-sign': AtSign,
     'message-square': MessageSquare,
@@ -104,39 +121,40 @@ const ICONS: Record<(typeof INBOX_TYPE_PRESENTATION)[keyof typeof INBOX_TYPE_PRE
     'shield-alert': ShieldAlert,
   }
 
-/** Dictionary root for the item-type entries. */
-const TYPES_PATH = 'collaboration.inbox.types'
-
-/**
- * Pick the counted title key by hand, because this i18n layer interpolates but
- * has no plural rules (see the dictionary header): counted types ship
- * `titleOne`/`titleMany`, uncounted ones a single `title`. Reading the dictionary
- * directly — rather than calling `t()` and sniffing the returned key — keeps a
- * type that legitimately has no `titleOne` from logging a missing-key warning on
- * every render.
- */
-function pickKey(dictionary: unknown, i18nKey: string, candidates: readonly string[]): string | null {
-  for (const leaf of candidates) {
-    if (typeof getByPath(dictionary, `${TYPES_PATH}.${i18nKey}.${leaf}`) === 'string') return leaf
-  }
-  return null
+/** The two writes a mark row makes, through the annotations' own client. Injected by the specs. */
+export interface InboxMarkClient {
+  reply: typeof replyToAnnotation
+  update: typeof updateAnnotation
 }
 
-/**
- * The leaves a row tries, its variant's first: a type worded per variant (why
- * Piloti could not work a mark, what a proposal changes) keeps them under
- * `variants.<variant>`, and a variant it has no words for reads the type's own.
- */
-function withVariant(variant: string | null, leaves: readonly string[]): string[] {
-  return variant ? [...leaves.map((leaf) => `variants.${variant}.${leaf}`), ...leaves] : [...leaves]
+const MARK_CLIENT: InboxMarkClient = { reply: replyToAnnotation, update: updateAnnotation }
+
+/** The types whose row answers a mark here: the reader is responsible for it, Piloti asked them, or a colleague mentioned them. */
+const MARK_REQUEST_TYPES: ReadonlySet<string> = new Set(['annotation.assigned_to_you', 'piloti.asks_you', 'annotation.mentioned'])
+
+/** Only a plain primary click counts as "opened"; see the title link. */
+function isPlainClick(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }): boolean {
+  return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) && event.button === 0
 }
 
 export interface InboxItemRowProps {
   item: InboxItemView
   /** Called when the row's link is followed, so the list can mark it read. */
   onOpen?: (item: InboxItemView) => void
-  /** Called by the archive button. Omit to hide the control. */
+  /** Called by the archive button and the menu entry. Omit to hide both. */
   onArchive?: (itemId: string) => void
+  /** Takes an archived row back („Wiederherstellen“). Offered only on an archived row. */
+  onUnarchive?: (itemId: string) => void
+  /** „Als gelesen markieren“ in the row's menu, for an unread row. */
+  onMarkRead?: (itemId: string) => void
+  /** „Als ungelesen markieren“ in the row's menu, for a read row. */
+  onMarkUnread?: (itemId: string) => void
+  /** The row the list's keyboard is on (j/k): drawn with a ring, and the one Enter opens. */
+  focused?: boolean
+  /** The reader, so the excerpt's mention of them is drawn louder, as the thread draws it. */
+  viewerId?: string | null
+  /** Answering or resolving a mark from the row. Injected by the specs. */
+  markClient?: InboxMarkClient
   /**
    * Runs an inline review decision. Injected by the specs; the browser gets
    * the real typed client. Narrowed to the three decisions a reviewer may
@@ -149,7 +167,18 @@ export interface InboxItemRowProps {
 }
 
 export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(function InboxItemRow(
-  { item, onOpen, onArchive, reviewClient = documentLifecycleClient },
+  {
+    item,
+    onOpen,
+    onArchive,
+    onUnarchive,
+    onMarkRead,
+    onMarkUnread,
+    focused = false,
+    viewerId = null,
+    reviewClient = documentLifecycleClient,
+    markClient = MARK_CLIENT,
+  },
   ref,
 ): JSX.Element {
   const t = useTranslations('collaboration')
@@ -164,7 +193,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     route, not just its own row. One unknown row must cost one unremarkable row.
   */
   const presentation = INBOX_TYPE_PRESENTATION[item.type] ?? UNKNOWN_TYPE_PRESENTATION
-  const Icon = ICONS[presentation.icon]
+  const Icon = presentation.icon === 'piloti' ? null : ICONS[presentation.icon]
 
   /*
     „Besprechen", for a row whose target is a DOCUMENT.
@@ -217,70 +246,86 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const isWarning = presentation.tone === 'warning' && !inert
   const needsAttention = isRequest || isWarning
 
-  // A REDACTED row — inert, or its target no longer reachable — carries no href
-  // and no payload, because the server withholds the conversation title exactly
-  // as it withholds the quoted snippet (IB-13). Falling back to "Untitled
-  // conversation" there would misstate WHY the row is nameless: the thread has a
-  // title, this reader is simply no longer entitled to it.
+  // A REDACTED row carries no href and no payload (IB-13); `inboxItemCopy` words it.
   const redacted = !item.href
 
-  const vars = {
-    actor: item.actorName ?? t('inbox.unknownActor'),
-    subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation'),
-    related: item.related ?? '',
-    count: item.count,
+  const { title, body } = inboxItemCopy(item, t, dictionary)
+  // The server's own fact: an archived row whose target went away reads
+  // `state: 'inert'`, and must still be restored rather than archived again.
+  const archived = item.archived
+
+  /*
+    A row about a mark (`anchor: 'mark'`): its next move is the mark itself,
+    not a chat about the whole document, so „Zur Anmerkung“ leads and „Mit
+    Piloti besprechen“ is not offered. The row's resource is the document and
+    its anchor the mark, which is all the annotations' client needs.
+  */
+  const markRow =
+    isMarkAnchored(item.type) && !inert && !redacted && item.resourceType === 'document' && item.anchorId !== null
+  const markOpen = markRow && MARK_REQUEST_TYPES.has(item.type) && item.actionable && !resolved && !archived
+  const canResolveMark = markOpen && item.type === 'annotation.assigned_to_you'
+  const [replying, setReplying] = useState(false)
+  const [replyText, setReplyText] = useState('')
+  const [markBusy, setMarkBusy] = useState(false)
+  const [markOutcome, setMarkOutcome] = useState<'sent' | 'resolved' | 'conflict' | 'failed' | null>(null)
+
+  const sendReply = async (): Promise<void> => {
+    const words = replyText.trim()
+    if (!markOpen || !item.anchorId || words === '' || markBusy) return
+    setMarkBusy(true)
+    setMarkOutcome(null)
+    try {
+      await markClient.reply(item.resourceId, item.anchorId, { body: words })
+      setReplying(false)
+      setReplyText('')
+      setMarkOutcome('sent')
+      // Answered from here is read here: the thread has the reply.
+      onOpen?.(item)
+    } catch {
+      setMarkOutcome('failed')
+    } finally {
+      setMarkBusy(false)
+    }
   }
 
-  const countedTitles =
-    // `count` is occurrences SINCE THE ROW WAS LAST READ, so 0 is the ordinary
-    // state of a read row — and picking `titleOne` for it made a group of
-    // twenty that had been read claim "1 new message". Three cases, not two.
-    item.count > 1 ? ['titleMany', 'title'] : item.count === 1 ? ['titleOne', 'title'] : ['titleNone', 'titleOne', 'title']
-  // A row that names a second thing reads the title written for two names,
-  // where its type has one, and the plain title otherwise; one whose payload
-  // lost the first name (a document that could not be described) reads the
-  // title written without it. A type that is a sentence about a person
-  // (`{actor} hat …`) may say it without one when the actor is unknown, rather
-  // than „Jemand hat …".
-  const titleCandidates = withVariant(item.variant, [
-    ...(item.actorName === null ? ['titleNoActor'] : []),
-    ...(item.related !== null && !redacted
-      ? [...(item.subject === null ? ['titleRelatedNoSubject'] : []), 'titleRelated']
-      : []),
-    ...countedTitles,
-  ])
-  const titleLeaf = pickKey(dictionary, presentation.i18nKey, titleCandidates) ?? 'title'
-  const title = t(`inbox.types.${presentation.i18nKey}.${titleLeaf}`, vars)
-  // A row whose payload names no subject (an upload to the Büroablage or a
-  // chat) reads the sentence written without one, where its type has it. A
-  // type whose excerpt IS the news (a new Fassung's „what changed") writes its
-  // body only for the row without one, as `bodyNoExcerpt`: a sentence above
-  // the excerpt saying „open it to see what changed" repeated it.
-  const bodyLeaf = pickKey(
-    dictionary,
-    presentation.i18nKey,
-    withVariant(item.variant, [
-      ...(item.subject === null ? ['bodyNoSubject'] : []),
-      ...(item.excerpt === null ? ['bodyNoExcerpt'] : []),
-      'body',
-    ]),
-  )
-  /*
-    A REDACTED row gets a complete sentence of its own rather than the templated
-    "in {subject}".
+  const resolveMark = async (): Promise<void> => {
+    if (!canResolveMark || !item.anchorId || markBusy) return
+    setMarkBusy(true)
+    setMarkOutcome(null)
+    try {
+      // `expectedStatus`: a mark somebody reopened or dismissed meanwhile is a
+      // 409, never overwritten from a copy of it.
+      await markClient.update(item.resourceId, item.anchorId, { status: 'resolved', expectedStatus: 'open' })
+      setMarkOutcome('resolved')
+    } catch (error) {
+      setMarkOutcome(error instanceof AnnotationRequestError && error.status === 409 ? 'conflict' : 'failed')
+    } finally {
+      setMarkBusy(false)
+    }
+  }
 
-    The template needs a real title to read as a phrase, and interpolating the
-    withheld-target placeholder into it produced German nonsense — "2 neue
-    Nachrichten in Nicht mehr verfügbar" — because one string was being asked to
-    work in two grammatical positions: standalone (`conversationShared`'s body is a
-    bare `{subject}`) and inside a preposition. The distinction the placeholder
-    exists to make is still made, and now it is a sentence: the thread HAS a name,
-    this reader is simply no longer entitled to it (IB-13).
-  */
-  const body = redacted
-    ? t('inbox.bodyUnavailable')
-    : bodyLeaf
-      ? t(`inbox.types.${presentation.i18nKey}.${bodyLeaf}`, vars)
+  // The row's own menu: read state, archive (the only archive control on a
+  // phone, where an icon column cost the text its width) and restore.
+  const menuEntries: ActionMenuEntry[] = [
+    ...(item.state === 'unread' && onMarkRead
+      ? [{ type: 'item' as const, id: 'read', label: t('inbox.markRead'), icon: MailOpen, onSelect: () => onMarkRead(item.id), testId: 'inbox-mark-read' }]
+      : []),
+    ...(item.state === 'read' && onMarkUnread
+      ? [{ type: 'item' as const, id: 'unread', label: t('inbox.markUnread'), icon: Mail, onSelect: () => onMarkUnread(item.id), testId: 'inbox-mark-unread' }]
+      : []),
+    ...(archived && onUnarchive
+      ? [{ type: 'item' as const, id: 'unarchive', label: t('inbox.unarchive'), icon: ArchiveRestore, onSelect: () => onUnarchive(item.id), testId: 'inbox-unarchive' }]
+      : []),
+    ...(!archived && onArchive
+      ? [{ type: 'item' as const, id: 'archive', label: t('inbox.archive'), icon: Archive, onSelect: () => onArchive(item.id), testId: 'inbox-archive-menu' }]
+      : []),
+  ]
+
+  // Who caused it, when a person did: their face, with the type's glyph in the
+  // corner. Piloti's rows keep Piloti's face; a system row keeps its glyph.
+  const actorFace =
+    presentation.icon !== 'piloti' && item.actorUserId && item.actorName
+      ? { userId: item.actorUserId, name: item.actorName }
       : null
 
   /*
@@ -413,8 +458,16 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     <Item
       asChild
       className={cn(
-        'relative items-start py-3.5',
+        'relative items-start py-3',
+        // The unread accent: a 3px bar down the row's edge, which survives glare
+        // and a thumb over the title where a 6px dot did not. The list clips
+        // (`overflow-hidden`), so it takes the card's corner.
+        unread &&
+          'before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-foreground before:content-[""]',
         inert && 'bg-muted hover:bg-muted',
+        // The keyboard's row (j/k): a ring inside the card and the hover tint,
+        // so it reads in both themes without a colour of its own.
+        focused && 'bg-accent/40 ring-2 ring-inset ring-ring',
       )}
     >
       <motion.li
@@ -423,25 +476,58 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
         exit={{ opacity: 0, x: 12 }}
         transition={motionQuick}
         data-testid="inbox-item"
+        data-item-id={item.id}
         data-state={item.state}
         data-type={item.type}
+        data-focused={focused || undefined}
+        tabIndex={-1}
       >
         {/* Type icon. A live request carries the "needs attention" tint; colour
             never travels alone here — the icon and the title text say the same. */}
-        <ItemMedia
-          aria-hidden
-          className={cn(
-            'mt-0.5 rounded-full border',
-            needsAttention
-              ? 'border-transparent bg-warning-subtle text-warning'
-              : 'border-border bg-card text-muted-foreground',
-            inert && 'opacity-60',
-          )}
-        >
-          <Icon className="size-4" />
-        </ItemMedia>
+        {actorFace ? (
+          <ItemMedia aria-hidden className={cn('relative mt-0.5', inert && 'opacity-90')}>
+            <PersonAvatar person={actorFace} size="md" />
+            {Icon && (
+              <span
+                data-testid="inbox-item-type-badge"
+                className={cn(
+                  'absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full border',
+                  needsAttention
+                    ? 'border-transparent bg-warning-subtle text-warning'
+                    : 'border-border bg-card text-muted-foreground',
+                )}
+              >
+                <Icon className="size-2.5" />
+              </span>
+            )}
+          </ItemMedia>
+        ) : Icon ? (
+          <ItemMedia
+            aria-hidden
+            className={cn(
+              'mt-0.5 rounded-full border',
+              needsAttention
+                ? 'border-transparent bg-warning-subtle text-warning'
+                : 'border-border bg-card text-muted-foreground',
+              inert && 'opacity-90',
+            )}
+          >
+            <Icon className="size-4" />
+          </ItemMedia>
+        ) : (
+          // Piloti's rows wear its face, drawn as a line like every other row's
+          // glyph; a live request keeps the tint, and the title still says what
+          // is asked: colour never travels alone.
+          <ItemMedia aria-hidden className={cn('mt-0.5', inert && 'opacity-90')}>
+            <PilotiGlyph
+              size="lg"
+              tone="outline"
+              className={cn(needsAttention && 'border-transparent bg-warning-subtle text-warning')}
+            />
+          </ItemMedia>
+        )}
 
-        <ItemContent className={cn(inert && 'opacity-70')}>
+        <ItemContent className={cn(inert && 'opacity-90')}>
           <ItemTitle
             className={cn(
               // overflow-visible: `truncate` on ItemTitle would clip the
@@ -450,17 +536,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               unread ? 'font-semibold' : 'font-normal',
             )}
           >
-            {/* Unread marker — reserved always so marking read does not shove
-                the title. Opacity only; the row is also heavier, so this is
-                decoration. */}
-            <span
-              aria-hidden
-              className={cn(
-                'mt-[7px] size-1.5 shrink-0 rounded-full bg-foreground',
-                'transition-opacity duration-snap ease-out motion-reduce:transition-none',
-                unread ? 'opacity-100' : 'opacity-0',
-              )}
-            />
             {item.href && !inert ? (
               // Stretched link: the whole row is the target without nesting the
               // archive button inside the anchor (that button is lifted above the
@@ -473,16 +548,17 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 // three and, under the "needs me" filter, delete them from under
                 // the cursor while the user was still clicking.
                 onClick={(event) => {
-                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-                  if (event.button !== 0) return
-                  onOpen?.(item)
+                  if (isPlainClick(event)) onOpen?.(item)
                 }}
                 onAuxClick={(event) => event.stopPropagation()}
+                data-testid="inbox-item-link"
                 className={cn(
                   'min-w-0 rounded-sm leading-snug outline-none',
                   'after:absolute after:inset-0 after:content-[""]',
                   'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50',
-                  unread ? 'font-semibold text-foreground' : 'text-foreground',
+                  // A read row steps back in dark mode, where weight alone did
+                  // not tell the two apart.
+                  unread ? 'font-semibold text-foreground' : 'text-foreground dark:text-muted-foreground',
                 )}
               >
                 {title}
@@ -491,7 +567,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               <span
                 className={cn(
                   'min-w-0 leading-snug',
-                  unread ? 'font-semibold text-foreground' : 'text-foreground',
+                  unread ? 'font-semibold text-foreground' : 'text-foreground dark:text-muted-foreground',
                 )}
               >
                 {title}
@@ -499,19 +575,33 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             )}
           </ItemTitle>
 
-          {body && <ItemDescription className="mt-0.5">{body}</ItemDescription>}
+          {/* Two lines, not one: the body is where a row says what to do, and one
+              truncated line cut that sentence off in its middle. */}
+          {body && <ItemDescription className="mt-0.5 line-clamp-2 whitespace-normal">{body}</ItemDescription>}
 
           {/* Three lines when it is the only body: then it is the news, and
               on a phone two lines cut a change off mid-sentence. */}
           {item.excerpt && (
             <p
               className={cn(
-                'mt-1.5 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground',
-                body ? 'line-clamp-2' : 'line-clamp-3',
+                'mt-1 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground',
+                // Dense on a phone: three rows to a screen is a list nobody can
+                // triage. A row that asks something of the reader keeps its
+                // words; an FYI gets one line, and the item has the rest.
+                // As the ONLY body it is the news and keeps three lines.
+                body ? (item.actionable && !resolved && !inert ? 'line-clamp-2' : 'line-clamp-1') : 'line-clamp-3',
               )}
               data-testid="inbox-item-excerpt"
             >
-              {item.excerpt}
+              {/* The quote's mentions as the thread's chips (`MentionText`):
+                  only the ones the server kept, so a name typed by hand stays
+                  text. One paragraph, as in any clamp. */}
+              <MentionText
+                content={item.excerpt}
+                mentions={item.mentions}
+                currentUserId={viewerId}
+                className="whitespace-normal"
+              />
             </p>
           )}
 
@@ -578,13 +668,16 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                     {t('inbox.review.reject')}
                   </Button>
                   {item.href && (
-                    <a
+                    <Link
                       href={item.href}
                       className="text-primary text-xs font-medium hover:underline"
                       data-testid="inbox-review-open"
+                      onClick={(event) => {
+                        if (isPlainClick(event)) onOpen?.(item)
+                      }}
                     >
                       {t('inbox.review.open')}
-                    </a>
+                    </Link>
                   )}
                 </div>
               ) : reviewing === 'approve' ? (
@@ -728,13 +821,16 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 <p className="mt-1.5 text-xs" data-testid="inbox-review-stale">
                   <span className="text-error">{t('inbox.review.stale')}</span>{' '}
                   {item.href && (
-                    <a
+                    <Link
                       href={item.href}
                       className="text-primary font-medium hover:underline"
                       data-testid="inbox-review-reload"
+                      onClick={(event) => {
+                        if (isPlainClick(event)) onOpen?.(item)
+                      }}
                     >
                       {t('inbox.review.reload')}
-                    </a>
+                    </Link>
                   )}
                 </p>
               )}
@@ -746,7 +842,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             </div>
           )}
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             {/* `updatedAt`, which is what the list is ORDERED by. A grouped row
                 that just absorbed a new message sorts to the top, and showing its
                 `createdAt` put "5 days ago" at the head of the list. The title
@@ -764,14 +860,13 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 {t('inbox.resolved')}
               </Badge>
             )}
+            {/* The badge is the one place a redacted row says so; the body
+                already says it in a sentence. */}
             {inert && (
-              <>
-                <Badge variant="secondary" className="gap-1">
-                  <EyeOff aria-hidden />
-                  {t('inbox.inert')}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{t('inbox.inertHint')}</span>
-              </>
+              <Badge variant="secondary" className="gap-1">
+                <EyeOff aria-hidden />
+                {t('inbox.inert')}
+              </Badge>
             )}
             {/* z-10, like the archive control: the row's stretched link paints an
                 overlay across the whole card, and anything meant to be clickable
@@ -781,11 +876,9 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               <Button asChild size="sm" className="relative z-10">
                 <Link
                   href={compareHref}
-                  aria-label={t('inbox.compareFassungenLabel', { subject: vars.subject })}
+                  aria-label={t('inbox.compareFassungenLabel', { subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation') })}
                   onClick={(event) => {
-                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-                    if (event.button !== 0) return
-                    onOpen?.(item)
+                    if (isPlainClick(event)) onOpen?.(item)
                   }}
                   data-testid="inbox-compare-fassungen"
                 >
@@ -794,32 +887,152 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 </Link>
               </Button>
             )}
-            {documentProjectId && !inert && (
+            {markRow && item.href && (
+              <Button asChild size="sm" variant={markOpen ? 'default' : 'outline'} className="relative z-10 h-8">
+                <Link
+                  href={item.href}
+                  onClick={(event) => {
+                    if (isPlainClick(event)) onOpen?.(item)
+                  }}
+                  data-testid="inbox-open-mark"
+                >
+                  {t('inbox.mark.open')}
+                </Link>
+              </Button>
+            )}
+            {markOpen && !replying && markOutcome !== 'resolved' && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="relative z-10 h-8"
+                disabled={markBusy}
+                data-testid="inbox-mark-reply"
+                onClick={() => {
+                  setMarkOutcome(null)
+                  setReplying(true)
+                }}
+              >
+                {t('inbox.mark.reply')}
+              </Button>
+            )}
+            {canResolveMark && !replying && markOutcome !== 'resolved' && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="relative z-10 h-8"
+                disabled={markBusy}
+                data-testid="inbox-mark-resolve"
+                onClick={() => void resolveMark()}
+              >
+                {t('inbox.mark.resolve')}
+              </Button>
+            )}
+            {documentProjectId && !inert && !markRow && (
               <DiscussDocumentButton
                 projectId={documentProjectId}
                 documentId={item.resourceId}
                 variant="outline"
-                withIcon
+                iconOnlyOnPhone
+                onNavigate={() => onOpen?.(item)}
                 className="relative z-10"
               />
             )}
           </div>
+
+          {markOpen && replying && (
+            <div className="relative z-10 mt-2 space-y-2 rounded-lg border p-2" data-testid="inbox-mark-reply-form">
+              <label htmlFor={`inbox-mark-reply-${item.id}`} className="text-muted-foreground block text-xs">
+                {item.related ? t('inbox.mark.replyLabel', { related: item.related }) : t('inbox.mark.replyLabelNoNumber')}
+              </label>
+              <Textarea
+                id={`inbox-mark-reply-${item.id}`}
+                value={replyText}
+                autoFocus
+                rows={2}
+                onChange={(event) => setReplyText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault()
+                    void sendReply()
+                  }
+                }}
+              />
+              <div className="flex items-center justify-end gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    setReplying(false)
+                    setReplyText('')
+                  }}
+                >
+                  {t('inbox.mark.cancel')}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={replyText.trim() === '' || markBusy}
+                  data-testid="inbox-mark-reply-send"
+                  onClick={() => void sendReply()}
+                >
+                  {t('inbox.mark.send')}
+                </Button>
+              </div>
+            </div>
+          )}
+          {markOutcome && (
+            <p
+              role={markOutcome === 'failed' || markOutcome === 'conflict' ? 'alert' : 'status'}
+              className={cn(
+                'mt-1.5 text-xs',
+                markOutcome === 'failed' || markOutcome === 'conflict' ? 'text-error' : 'text-muted-foreground',
+              )}
+              data-testid="inbox-mark-outcome"
+            >
+              {t(`inbox.mark.${markOutcome}`)}
+            </p>
+          )}
         </ItemContent>
 
-        {onArchive && (
-          <ItemActions>
-            {/* z-10 keeps this above the stretched link's overlay so it stays
-                clickable; it is a sibling of the anchor, never a child. */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="relative z-10 mt-0.5 text-muted-foreground"
-              aria-label={t('inbox.archive')}
-              onClick={() => onArchive(item.id)}
-            >
-              <Archive className="size-4" aria-hidden />
-            </Button>
+        {(menuEntries.length > 0 || (onArchive && !archived)) && (
+          <ItemActions className="gap-0.5">
+            {/* z-10 keeps these above the stretched link's overlay so they stay
+                clickable; they are siblings of the anchor, never children. The
+                archive icon is a desktop affordance: on a phone its column cost
+                the title its width, and the menu carries archiving there. */}
+            {onArchive && !archived && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="relative z-10 mt-0.5 text-muted-foreground max-sm:hidden"
+                aria-label={t('inbox.archive')}
+                onClick={() => onArchive(item.id)}
+              >
+                <Archive className="size-4" aria-hidden />
+              </Button>
+            )}
+            <ActionMenu
+              mode="dropdown"
+              entries={menuEntries}
+              trigger={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="relative z-10 mt-0.5 text-muted-foreground"
+                  aria-label={t('inbox.moreActions')}
+                  data-testid="inbox-item-menu"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden />
+                </Button>
+              }
+            />
           </ItemActions>
         )}
       </motion.li>

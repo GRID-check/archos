@@ -53,8 +53,8 @@
  * schedules without a deploy, and nothing here can disagree with it.
  */
 
+const { createSql } = require('../workers/app-database')
 const {
-  createSql,
   claimDue,
   pruneOldRuns,
   findConversationsAwaitingTraceErasure,

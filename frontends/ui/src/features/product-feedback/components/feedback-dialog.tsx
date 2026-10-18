@@ -97,6 +97,11 @@ function relayToPosthog(
 
 type Phase = { kind: 'form' } | { kind: 'sending' } | { kind: 'sent' }
 
+/** Whether a finger drives the pointer; false where there is no `matchMedia` (SSR, tests). */
+function isCoarsePointer(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true
+}
+
 export function FeedbackDialog({
   open,
   onOpenChange,
@@ -185,6 +190,11 @@ export function FeedbackDialog({
         className="sm:max-w-[560px]"
         data-testid="feedback-dialog"
         onOpenAutoFocus={(event) => {
+          // On a phone, focusing the message opens the keyboard at once, and it
+          // covers the kind cards and the send button before the reporter has
+          // chosen anything. They tap the field when they are ready; Radix puts
+          // focus on the dialog's first control meanwhile.
+          if (isCoarsePointer()) return
           event.preventDefault()
           textareaRef.current?.focus()
         }}
@@ -249,7 +259,7 @@ export function FeedbackDialog({
                 disabled={sending}
                 aria-invalid={showLengthHint && tooShort}
                 aria-describedby={`${messageId}-hint`}
-                className="max-h-[40vh] min-h-32"
+                className="max-h-[40dvh] min-h-32"
                 data-testid="feedback-message"
               />
               {showLengthHint && tooShort ? (
@@ -257,7 +267,11 @@ export function FeedbackDialog({
                   {t('dialog.tooShort', { min: PRODUCT_FEEDBACK_MESSAGE_MIN })}
                 </FieldError>
               ) : (
-                <FieldDescription id={`${messageId}-hint`} className="flex items-center gap-1.5">
+                // A keyboard shortcut is noise on a device with no such keys.
+                <FieldDescription
+                  id={`${messageId}-hint`}
+                  className="pointer-coarse:hidden flex items-center gap-1.5"
+                >
                   <KbdGroup>
                     <Kbd>{mod}</Kbd>
                     <Kbd>↵</Kbd>
@@ -278,7 +292,7 @@ export function FeedbackDialog({
                 className="mt-0.5"
               />
               <div className="flex flex-col gap-0.5">
-                <Label htmlFor={contactId} className="text-sm font-normal">
+                <Label htmlFor={contactId} className="touch-target text-sm font-normal">
                   {t('dialog.allowContact')}
                 </Label>
                 {userEmail && allowContact && (

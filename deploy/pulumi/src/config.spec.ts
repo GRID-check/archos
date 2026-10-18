@@ -92,7 +92,7 @@ describe("tenant bucket prefix", () => {
   });
 });
 
-describe("the retired Chroma tier and vector switch (ADR-0113)", () => {
+describe("the retired Chroma tier and vector switch (ADR-0115)", () => {
   // Each would read as a setting: `qdrantEnabled: false` as "no Qdrant",
   // `vectorBackend: chroma` as "reads stay on Chroma". Neither is true, so the
   // plan names the key instead of deploying past it.
@@ -138,7 +138,7 @@ describe("the Chroma migration Job's knobs", () => {
   });
 });
 
-describe("Qdrant (ADR-0113)", () => {
+describe("Qdrant (ADR-0115)", () => {
   it("defaults the cluster to the design's shape", () => {
     pulumi.runtime.setAllConfig(baseStackConfig());
     const cfg = loadConfig();

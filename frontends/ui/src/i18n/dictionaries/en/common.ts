@@ -56,6 +56,7 @@ export const common = {
     taskOpen: 'open',
     scrollTable: 'Table, scrolls sideways',
     scrollDiagram: 'Diagram, scrolls sideways',
+    outlineOpen: 'Open sections',
     valueBar: '{value}, limit {limit}, {verdict}',
     limitKept: 'met',
     limitMissed: 'not met',

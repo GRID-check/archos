@@ -245,6 +245,7 @@ export const PlatformOverview: FC = () => {
             formatValue={(value) => usd(value, locale)}
             requestsLabel={(count) => t('trend.requests', { count })}
             emptyLabel={t('trend.empty')}
+            label={t('trend.title')}
           />
         </SectionCard>
 

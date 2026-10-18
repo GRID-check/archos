@@ -108,7 +108,7 @@ services:
       SEAWEED_SECRET_KEY: ${SEAWEED_READONLY_SECRET_KEY:?set it in deploy/.env — see the SeaweedFS section of deploy/.env.example}
       SEAWEED_BUCKET: ${SEAWEED_BUCKET:-grid-documents}
       # Every role talks to ONE Qdrant over HTTP (the `qdrant` service below,
-      # ADR-0113): the chat and api roles read and write the same collections,
+      # ADR-0115): the chat and api roles read and write the same collections,
       # and the ingest worker writes what they read. The backend keeps no files:
       # the base corpus is in SeaweedFS and a table (ADR-0082), its cache is under
       # /tmp. An installation that ran Chroma moves its vectors over once:
@@ -334,7 +334,7 @@ services:
     restart: "no"
 
   qdrant:
-    # The vector store (ADR-0113), the single-node mirror of
+    # The vector store (ADR-0115), the single-node mirror of
     # deploy/pulumi/src/data/qdrant.ts. No published port: only the backend
     # roles on aiq-network reach it, which is why it runs without an API key
     # here (Pulumi sets one).
@@ -650,6 +650,13 @@ services:
       - NEXT_PUBLIC_POSTHOG_SESSION_REPLAY=${NEXT_PUBLIC_POSTHOG_SESSION_REPLAY:-true}
       - NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE=${NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE:-1}
       - NEXT_PUBLIC_POSTHOG_PROXY=${NEXT_PUBLIC_POSTHOG_PROXY:-true}
+      # Web Push for the inbox (ADR-0112). All three or none; unset means the
+      # feature is off. Generate the pair with `npx web-push generate-vapid-keys
+      # --json` in frontends/ui. The bff-jobs service shares this list and is
+      # the one that sends.
+      - GRID_WEB_PUSH_VAPID_PUBLIC_KEY=${GRID_WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      - GRID_WEB_PUSH_VAPID_PRIVATE_KEY=${GRID_WEB_PUSH_VAPID_PRIVATE_KEY:-}
+      - GRID_WEB_PUSH_SUBJECT=${GRID_WEB_PUSH_SUBJECT:-}
       # BYOK LLM credentials (ADR-0022): secret backend for tenant API keys.
       # Default: WorkOS Vault when WORKOS_API_KEY is set, else local AES-GCM
       # under GRID_BYOK_LOCAL_KEK (32 bytes, base64).
@@ -1351,7 +1358,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  # No `chroma_data` any more (ADR-0113). An installation that ran Chroma still
+  # No `chroma_data` any more (ADR-0115). An installation that ran Chroma still
   # has the volume (`compose_chroma_data` with the default project name):
   # undeclared, `docker compose down -v` cannot remove it, and the migration
   # reads it. Delete it by hand once the vectors are in Qdrant.

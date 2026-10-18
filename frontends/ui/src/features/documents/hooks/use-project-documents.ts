@@ -27,7 +27,7 @@ interface UseProjectDocumentsReturn {
    * {@link UploadFilesOptions}. A plain batch passes nothing and lands in the
    * folder this hook was given.
    */
-  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<void>
+  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<number>
   cancelUpload: () => void
   cancelFile: (fileId: string) => void
   dismissFiles: (fileIds: string[]) => void

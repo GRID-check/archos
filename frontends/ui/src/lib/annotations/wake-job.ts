@@ -43,7 +43,6 @@ import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import type { JobAttempt, JobSliceResult, PilotiWakePayload } from '@/lib/jobs-queue/types'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
-import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { chatSocketUrl, runHeadlessTurn, type HeadlessUserMessage } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
@@ -54,6 +53,7 @@ import { regionAround } from './types'
 import { auditSuppressedWake, capReached, wakesEnabled } from './wake'
 import { auditWakeEnded, auditWakeStarted, type AuditedWake } from './wake-audit'
 import { delegationEventId } from './wake-ids'
+import { announcePilotiWork } from './piloti-work'
 import { findWake, handBackDelegation, settleWake } from './wake-repository'
 
 /** The hello entries a server must name before a wake is sent: without `if_idle` it would supersede. */
@@ -246,6 +246,7 @@ export async function runPilotiWake(
   // Nothing to tell: the person's own act, a rule or a cap held it.
   const end = async (status: 'suppressed', reason: string): Promise<Result> => {
     if (await settleWake(organizationId, payload.wakeId, { status, reason })) {
+      void announcePilotiWork(wake)
       auditSuppressedWake({
         organizationId,
         actor: payload.actor,
@@ -275,6 +276,7 @@ export async function runPilotiWake(
   // the settle that moved it from `queued` goes on: a turn that already reported its end adds nothing.
   const fail = async (status: 'refused' | 'failed', reason: string): Promise<Result> => {
     if (await settleWake(organizationId, payload.wakeId, { status, reason })) {
+      void announcePilotiWork(wake)
       await afterEndWithoutAnswer({ organizationId, payload, doc, mark, status, reason })
     }
     return done
@@ -304,8 +306,8 @@ export async function runPilotiWake(
   const text = questionOf(payload, mark)?.trim()
   if (!text) return end('suppressed', 'the reply is gone')
 
-  const directory = await loadOrganizationDirectory(organizationId).catch(() => new Map<string, { name: string }>())
-  const authorName = directory.get(session.userId)?.name ?? null
+  // The pinned session knows the person by name (`resolvePerson`), as a live one does.
+  const authorName = session.name
   let conversationId: string
   try {
     conversationId = await ensureDocumentThread(session, doc)
@@ -344,6 +346,7 @@ export async function runPilotiWake(
       // Only the settle that moved it from `queued`: a second run of the job, or
       // a turn that already reported its end, adds no line.
       if (await settleWake(organizationId, payload.wakeId, { status: 'started' })) {
+        void announcePilotiWork(wake)
         auditWakeStarted(auditedWake(organizationId, payload, doc, mark), payload.waits)
       }
       return done

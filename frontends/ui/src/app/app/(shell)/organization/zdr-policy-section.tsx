@@ -26,6 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
 import type { ZdrBlockedGroup, ZdrCoverage } from '@/lib/model-config/zdr-coverage'
 import { isKnownProvider } from './llm-credentials-card'
@@ -49,6 +50,7 @@ export const ZdrPolicySection: FC<{
   const [saving, setSaving] = useState(false)
   const [disableOpen, setDisableOpen] = useState(false)
   const [acknowledged, setAcknowledged] = useState(false)
+  const [hintOpen, setHintOpen] = useState(false)
 
   const apply = async (enabled: boolean): Promise<void> => {
     setSaving(true)
@@ -118,11 +120,22 @@ export const ZdrPolicySection: FC<{
           <ShieldCheck className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0">
             <FieldLabel htmlFor="zdr-only-toggle">{t('models.zdrTitle')}</FieldLabel>
-            <FieldDescription className="mt-0.5">
+            {/* The legal paragraph is long: beside a switch on a phone it was
+                about 25 lines, and the state the admin came for sat above a
+                wall of text. Three lines and a toggle there; whole from `sm`. */}
+            <FieldDescription className={cn('mt-0.5', !hintOpen && 'max-sm:line-clamp-3')}>
               {zdrApplicable
                 ? t('models.zdrHint')
                 : t('models.zdrNotApplicable', { provider: providerLabel(provider) })}
             </FieldDescription>
+            <button
+              type="button"
+              aria-expanded={hintOpen}
+              onClick={() => setHintOpen((open) => !open)}
+              className="text-muted-foreground hover:text-foreground pointer-coarse:min-h-11 -ml-1 rounded-sm px-1 text-xs underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none sm:hidden"
+            >
+              {hintOpen ? t('models.zdrHintLess') : t('models.zdrHintMore')}
+            </button>
           </div>
         </div>
         <Switch

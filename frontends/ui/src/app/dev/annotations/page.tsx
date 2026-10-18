@@ -30,6 +30,9 @@
  *   …&review=1&mark=ann-1                    the review, open at Anmerkung 1
  *   …&review=1&piloti=1                      the review, while Piloti proposes
  *   …&review=1, then `p` and a box           ask Piloti about the box (any route)
+ *   …&review=1, „Protokoll exportieren"      the export menu: the Fassung choice only under
+ *                                            „Auch erledigte", since „Nur offene" carries the
+ *                                            mark still open from Fassung 2 either way
  *
  * Not linked from anywhere and 404s outside development (`../layout.tsx`).
  */
@@ -101,12 +104,15 @@ const buildSheet = (): Uint8Array<ArrayBuffer> => {
   const content = sheetContent()
   return assemblePdf([
     '<</Type/Catalog/Pages 2 0 R>>',
-    '<</Type/Pages/Kids[3 0 R]/Count 1>>',
+    // Two sheets of the same drawing: a colleague on the second shows at the edge of the first.
+    '<</Type/Pages/Kids[3 0 R 7 0 R]/Count 2>>',
     `<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${SHEET_WIDTH} ${SHEET_HEIGHT}]` +
       '/Resources<</Font<</F1 5 0 R/F2 6 0 R>>>>/Contents 4 0 R>>',
     `<</Length ${content.length}>>\nstream\n${content}endstream`,
     '<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>',
     '<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>',
+    `<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${SHEET_WIDTH} ${SHEET_HEIGHT}]` +
+      '/Resources<</Font<</F1 5 0 R/F2 6 0 R>>>>/Contents 4 0 R>>',
   ])
 }
 
@@ -121,7 +127,7 @@ const FILE: FileItem = {
   createdAt: '2026-10-01T09:00:00Z',
   errorMessage: null,
   summary: 'Grundriss des Regelgeschosses im Maßstab 1:100 mit Gang, fünf Räumen, Bad, Technik und Stiege.',
-  pageCount: 1,
+  pageCount: 2,
   chunkCount: 3,
   contentTypes: ['drawing', 'text'],
   tags: ['Grundriss'],
@@ -134,7 +140,8 @@ const FILE: FileItem = {
 const ME = { userId: 'u-1', name: 'Miriam Hofer' }
 const ANNA = { userId: 'u-2', name: 'Anna Berger' }
 const JAKOB = { userId: 'u-3', name: 'Jakob Huber' }
-const NAMES: Record<string, string> = { 'u-1': ME.name, 'u-2': ANNA.name, 'u-3': JAKOB.name }
+const LENA = { userId: 'u-4', name: 'Lena Gruber' }
+const NAMES: Record<string, string> = { 'u-1': ME.name, 'u-2': ANNA.name, 'u-3': JAKOB.name, 'u-4': LENA.name }
 
 /** A point on the sheet in PDF points (bottom-left origin), as a share of the page (top-left). */
 const pt = (x: number, y: number) => ({ x: +(x / SHEET_WIDTH).toFixed(4), y: +(1 - y / SHEET_HEIGHT).toFixed(4) })
@@ -176,7 +183,13 @@ const base = {
   canDelete: true,
 }
 
-const reply = (annotationId: string, by: { userId: string; name: string }, minutes: number, body: string): AnnotationReplyView => ({
+const reply = (
+  annotationId: string,
+  by: { userId: string; name: string },
+  minutes: number,
+  body: string,
+  mentions: AnnotationReplyView['mentions'] = []
+): AnnotationReplyView => ({
   id: `${annotationId}-r${minutes}`,
   annotationId,
   authorKind: 'person',
@@ -185,7 +198,24 @@ const reply = (annotationId: string, by: { userId: string; name: string }, minut
   createdByName: by.name,
   createdAt: minutesAgo(minutes),
   addressesPiloti: false,
+  mentions,
 })
+
+/** A colleague as the „@" picker writes them into a text: the chat's mention. */
+const mention = (person: { userId: string; name: string }) => ({ targetId: person.userId, display: person.name })
+
+/**
+ * Piloti's reply, as the service gives it: written in the session of the
+ * person who asked, so `createdBy` is that person and the byline reads
+ * „Piloti · für Miriam Hofer" (`usePilotiByline`). Never `createdByName:
+ * 'Piloti'`, which no directory holds and which drew „Piloti · für Piloti".
+ */
+const pilotiReply = (
+  annotationId: string,
+  asker: { userId: string; name: string },
+  id: string,
+  body: string
+): AnnotationReplyView => ({ ...reply(annotationId, asker, 0, body), id, authorKind: 'piloti' })
 
 let annotations: AnnotationView[] = [
   {
@@ -200,8 +230,11 @@ let annotations: AnnotationView[] = [
     assigneeName: ANNA.name,
     dueOn: '2026-10-10',
     replies: [
-      reply('ann-1', ANNA, 95, 'Kommt mit Index D. Gilt das auch für die Tür vom Bad?'),
-      reply('ann-1', ME, 80, 'Nein, Bad geht nicht in den Gang. Nur Wohnen 1 und 2.'),
+      reply('ann-1', ANNA, 95, '@Miriam Hofer Kommt mit Index D. Gilt das auch für die Tür vom Bad?', [mention(ME)]),
+      // A colleague mentioned with the chat's „@" picker: the chip, and Jakob told in his Postfach.
+      reply('ann-1', ME, 80, 'Nein, Bad geht nicht in den Gang. Nur Wohnen 1 und 2. @Jakob Huber, bitte in Index D nachziehen.', [
+        mention(JAKOB),
+      ]),
     ],
   },
   {
@@ -229,7 +262,9 @@ let annotations: AnnotationView[] = [
     shape: 'point',
     ...pt(380, 440),
     kind: 'hint',
-    body: 'Bad: Lüftung über Dach, Schacht im Technikraum.',
+    // A mark whose text mentions a colleague: the chip in the list, the peek and the thread.
+    body: 'Bad: Lüftung über Dach, Schacht im Technikraum. @Anna Berger, passt das zur Haustechnik?',
+    mentions: [mention(ANNA)],
     status: 'resolved',
     closedBy: 'u-2',
     closedByName: ANNA.name,
@@ -301,6 +336,7 @@ const broadcast = (event: RoomEvent) => sources.forEach((listener) => listener({
 const peer = (who: { userId: string; name: string }, peerId: string): RoomPeer => ({ ...who, peerId, kind: 'person' })
 const annaPeer = peer(ANNA, 'peer-anna-0001')
 const jakobPeer = peer(JAKOB, 'peer-jakob-001')
+const lenaPeer = peer(LENA, 'peer-lena-0001')
 /** Piloti in the room, as `publishAsAgent` names it: on behalf of the person who asked. */
 const pilotiPeer: RoomPeer = { peerId: 'piloti-dev-conv', userId: ME.userId, name: 'Piloti', kind: 'piloti' }
 
@@ -309,12 +345,12 @@ const WAKES = typeof window !== 'undefined' && new URLSearchParams(window.locati
 
 /** The server's wake, answered: Piloti's reply arrives through the room, as it would from the job. */
 const wakeReply = (annotationId: string) => {
-  const answer: AnnotationReplyView = {
-    ...reply(annotationId, ME, 0, 'Im Schnitt B-B sind 1,20 m zwischen den Wangen kotiert; die Statik rechnet mit 1,10 m.'),
-    id: `${annotationId}-wake-${Date.now()}`,
-    authorKind: 'piloti',
-    createdByName: 'Piloti',
-  }
+  const answer = pilotiReply(
+    annotationId,
+    ME,
+    `${annotationId}-wake-${Date.now()}`,
+    'Im Schnitt B-B sind 1,20 m zwischen den Wangen kotiert; die Statik rechnet mit 1,10 m.'
+  )
   annotations = annotations.map((one) => (one.id === annotationId ? { ...one, replies: [...one.replies, answer] } : one))
   broadcast({
     kind: 'annotations.changed',
@@ -351,10 +387,16 @@ function startRoom(withPiloti: boolean) {
   if (started) return
   started = true
   const t0 = performance.now()
-  for (const who of [annaPeer, jakobPeer]) broadcast({ kind: 'presence', peer: who, state: 'here', ttlMs: 25_000 })
+  const everyone = [annaPeer, jakobPeer, lenaPeer]
+  for (const who of everyone) broadcast({ kind: 'presence', peer: who, state: 'here', ttlMs: 25_000 })
   setInterval(() => {
-    for (const who of [annaPeer, jakobPeer]) broadcast({ kind: 'presence', peer: who, state: 'here', ttlMs: 25_000 })
+    for (const who of everyone) broadcast({ kind: 'presence', peer: who, state: 'here', ttlMs: 25_000 })
   }, 8_000)
+  // Anna has Anmerkung 1 open: the others see it ringed in her colour, with her name.
+  broadcast({ kind: 'viewport', peer: annaPeer, viewport: { page: 1, y: 0.45 }, selected: 'ann-1' })
+  // Lena reads the second sheet, still: an edge chip says where she is, and her pointer rests.
+  broadcast({ kind: 'viewport', peer: lenaPeer, viewport: { page: 2, y: 0.4 } })
+  broadcast({ kind: 'cursor', peer: lenaPeer, tool: 'select', cursor: { page: 2, x: 0.42, y: 0.38 } })
   setInterval(() => {
     const s = (performance.now() - t0) / 1000
     // Anna walks the corridor, pausing at the doors, and now and then says so beside her pointer.
@@ -634,12 +676,7 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
       () => {
         emit(turn, { type: 'STEP_FINISHED', step: writing })
         if (thread) {
-          const answer: AnnotationReplyView = {
-            ...reply(thread.id, ME, 0, text),
-            id: `${thread.id}-${turn.messageId}`,
-            authorKind: 'piloti',
-            createdByName: 'Piloti',
-          }
+          const answer = pilotiReply(thread.id, ME, `${thread.id}-${turn.messageId}`, text)
           annotations = annotations.map((one) => (one.id === thread.id ? { ...one, replies: [...one.replies, answer] } : one))
           broadcast({
             kind: 'annotations.changed',
@@ -872,7 +909,13 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const current = annotations.find((annotation) => annotation.id === replies[1])
         if (!current) return json({ error: 'Not found', code: 'NOT_FOUND' }, 404)
         const input = body()
-        const added = { ...reply(current.id, ME, 0, String(input.body).trim()), addressesPiloti: input.addressesPiloti === true }
+        // An id of its own per reply, as the server's: the wake's turn id is made from it, and a
+        // second „@Piloti" in one thread under the first one's id was refused as the same turn.
+        const added = {
+          ...reply(current.id, ME, 0, String(input.body).trim(), (input.mentions as AnnotationReplyView['mentions']) ?? []),
+          id: `${current.id}-posted-${Date.now()}`,
+          addressesPiloti: input.addressesPiloti === true,
+        }
         const next = { ...current, replies: [...current.replies, added], updatedAt: new Date().toISOString() }
         annotations = annotations.map((annotation) => (annotation.id === next.id ? next : annotation))
         // `?wakes=1`: the organization's switch is on, so the server answers an
@@ -885,6 +928,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (one) {
         const current = annotations.find((annotation) => annotation.id === one[1])
         if (!current) return json({ error: 'Not found', code: 'NOT_FOUND' }, 404)
+        // What a room hint names, read again on its own.
+        if (method === 'GET') return json({ annotation: current })
         if (method === 'DELETE') {
           annotations = annotations.filter((annotation) => annotation.id !== current.id)
           return new Response(null, { status: 204 })
@@ -919,10 +964,14 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       }
       if (url.endsWith(`/api/documents/${FILE.id}/annotations`)) {
         if (method === 'POST') {
-          const input = body() as Pick<AnnotationView, 'page' | 'shape' | 'x' | 'y' | 'w' | 'h' | 'kind' | 'body' | 'assigneeUserId' | 'dueOn'>
+          const input = body() as Pick<
+            AnnotationView,
+            'page' | 'shape' | 'x' | 'y' | 'w' | 'h' | 'kind' | 'body' | 'mentions' | 'assigneeUserId' | 'dueOn'
+          >
           const created: AnnotationView = {
             ...base,
             ...input,
+            mentions: input.mentions ?? [],
             w: input.w ?? null,
             h: input.h ?? null,
             body: input.body.trim(),
@@ -1003,7 +1052,7 @@ export default function AnnotationsPreview(): JSX.Element {
   // The geometry `file-preview-host` gives the pane (see `/dev/file-preview?variant=review`).
   return (
     <main className="bg-muted/40 flex min-h-dvh items-center justify-center">
-      <div className="bg-popover text-popover-foreground h-[85vh] w-[min(1100px,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-lg">
+      <div className="bg-popover text-popover-foreground h-[85dvh] w-[min(1100px,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-lg phone:fixed phone:inset-0 phone:h-dvh phone:w-full phone:rounded-none phone:border-0">
         <FilePreviewPane
           file={FILE}
           projectId="proj-demo"

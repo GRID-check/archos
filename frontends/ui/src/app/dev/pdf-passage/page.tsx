@@ -530,7 +530,7 @@ export default function PdfPassagePreviewPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-background p-6">
+    <div className="min-h-dvh bg-background p-6 phone:p-4">
       {/* Freezing the pulse is what makes this capturable. A negative delay
           starts the animation part-way through and `paused` holds it there, so
           the left pane is always the same frame of the swell.
@@ -557,12 +557,15 @@ export default function PdfPassagePreviewPage() {
         umbrochen und im Zitat ohne Trennstrich zitiert.
       </p>
 
-      <div className="flex gap-4">
+      {/* Stacked on a phone: two passages side by side at 393px were two
+          165px columns of unreadable page, with the zoom controls pushed off
+          the screen. Each pane is a phone's worth of height, one under the other. */}
+      <div className="flex flex-col gap-4 sm:flex-row">
         {(['arriving', 'resting'] as const).map((state) => (
           <div
             key={state}
             data-passage-state={state}
-            className="flex h-[760px] min-w-0 flex-1 flex-col rounded-lg border border-border bg-card p-3"
+            className="flex h-[760px] min-w-0 flex-1 flex-col rounded-lg border border-border bg-card p-3 phone:h-[75dvh] phone:p-2"
           >
             <p className="mb-2 shrink-0 text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground">
               {state === 'arriving' ? 'Beim Öffnen' : 'Danach'}

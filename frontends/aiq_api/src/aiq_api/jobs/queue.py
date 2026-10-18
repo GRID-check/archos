@@ -38,7 +38,6 @@ finish stays, as dead.
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from typing import Any
 
@@ -48,6 +47,7 @@ from aiq_agent.common.claim_queue import QUEUED
 from aiq_agent.common.claim_queue import ClaimQueue
 from aiq_agent.knowledge.ingest_scheduler import lane_of
 
+from . import lease_policy
 from . import payload_crypto
 
 logger = logging.getLogger(__name__)
@@ -126,21 +126,14 @@ _MAX_QUEUED_PER_ORG_ENV = "GRID_MAX_QUEUED_JOBS_PER_ORG"
 _DEFAULT_MAX_QUEUED_PER_ORG = 50
 
 
-def _int_env(name: str, default: int) -> int:
-    try:
-        return int(os.environ.get(name, ""))
-    except (TypeError, ValueError):
-        return default
-
-
 def max_active_per_org() -> int:
     """Research jobs an organization may run at once; 0 or less is no cap."""
-    return _int_env(_MAX_ACTIVE_PER_ORG_ENV, _DEFAULT_MAX_ACTIVE_PER_ORG)
+    return lease_policy.int_env(_MAX_ACTIVE_PER_ORG_ENV, _DEFAULT_MAX_ACTIVE_PER_ORG)
 
 
 def max_queued_per_org() -> int:
     """Research jobs an organization may have waiting; 0 or less is no bound."""
-    return _int_env(_MAX_QUEUED_PER_ORG_ENV, _DEFAULT_MAX_QUEUED_PER_ORG)
+    return lease_policy.int_env(_MAX_QUEUED_PER_ORG_ENV, _DEFAULT_MAX_QUEUED_PER_ORG)
 
 
 def lane_for(organization_id: str | None) -> str:

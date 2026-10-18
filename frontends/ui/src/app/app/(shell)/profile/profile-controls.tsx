@@ -26,6 +26,7 @@ import { useAuth } from '@/adapters/auth/use-auth'
 import { useLayoutStore } from '@/features/layout/store'
 import type { ThemeMode } from '@/features/layout/types'
 import { useTranslations, useLocale, locales, type Locale } from '@/i18n'
+import { NotificationSettings } from '@/features/notifications/components/notification-settings'
 import { AccountWidgets } from './account-widgets'
 import { ShortcutSettings } from './shortcut-settings'
 import { UsageAnalyticsSettings } from './usage-analytics-settings'
@@ -135,6 +136,10 @@ export const ProfileControls: FC<ProfileControlsProps> = ({
         </CardContent>
       </Card>
 
+      {/* System notifications for the inbox (ADR-0112); draws nothing where the
+          deployment has no keys. */}
+      <NotificationSettings />
+
       {/* Reasoning trace (Herleitung) — technical steps are a per-user opt-in */}
       <Card>
         <CardHeader>
@@ -163,7 +168,14 @@ export const ProfileControls: FC<ProfileControlsProps> = ({
       </Card>
 
       {/* Keyboard shortcuts (an organization is the outer gate; toggle is per-user) */}
-      {shortcutsAvailable && <ShortcutSettings />}
+      {/* Shown only where a keyboard can be: on a phone the card toggles
+          shortcuts nothing there can press. `any-pointer-fine` keeps it on an
+          iPad with a trackpad or keyboard, which a plain coarse check would not. */}
+      {shortcutsAvailable && (
+        <div className="hidden any-pointer-fine:block">
+          <ShortcutSettings />
+        </div>
+      )}
 
       {/* Usage analytics: a per-browser opt-out of the PostHog storage and traffic */}
       <UsageAnalyticsSettings available={analyticsAvailable} />

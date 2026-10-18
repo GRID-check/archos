@@ -203,6 +203,35 @@ describe('CreateProjectForm', () => {
     expect(action).not.toHaveBeenCalled()
   })
 
+  describe('on a phone', () => {
+    const pointer = (kind: 'coarse' | 'fine'): void => {
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: query === `(pointer: ${kind})`,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }))
+    }
+    afterEach(() => vi.unstubAllGlobals())
+
+    test('the name field is not focused on open: that would put the keyboard over the form', () => {
+      pointer('coarse')
+      render(<CreateProjectForm />)
+      expect(screen.getByLabelText('Project name')).not.toHaveFocus()
+    })
+
+    test('a mouse still starts in the name field', () => {
+      pointer('fine')
+      render(<CreateProjectForm />)
+      expect(screen.getByLabelText('Project name')).toHaveFocus()
+    })
+
+    test('the drag-a-folder hint, which a touch screen cannot act on, is hidden there', () => {
+      render(<CreateProjectForm />)
+      expect(screen.getByTestId('create-project-drop-hint')).toHaveClass('pointer-coarse:hidden')
+    })
+  })
+
   describe('Piloti sets it up', () => {
     test('a chosen address is sent as the location, with „Worum geht es?"', async () => {
       search.mockResolvedValue({ enabled: true, results: [hauptstrasse, moedling] } satisfies GeocodeResponse)
@@ -422,6 +451,34 @@ describe('CreateProjectForm', () => {
       first.unmount()
 
       expect(takeDroppedFiles('new-project')).toEqual([])
+    })
+
+    test('choosing to fill it in oneself lets go of the held folder: it would be filed in the next project', async () => {
+      const user = userEvent.setup()
+      const first = render(<CreateProjectForm />)
+      dropFiles(screen.getByTestId('create-project-drop'), [withPath(new File(['a'], 'a.pdf'), 'Ordner/a.pdf')])
+      await screen.findByTestId('create-project-dropped')
+
+      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
+      expect(screen.queryByTestId('create-project-dropped')).toBeNull()
+      expect(takeDroppedFiles('new-project')).toEqual([])
+
+      // And nothing is held for the setup page after the project is created.
+      await user.click(submit())
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      first.unmount()
+      expect(takeDroppedFiles('new-project')).toEqual([])
+    })
+
+    test('a file dragged over the dialog that it cannot take says so', () => {
+      render(<CreateProjectForm />)
+      const program = new File(['x'], 'Setup.exe', { type: 'application/x-msdownload' })
+
+      fireEvent.dragEnter(screen.getByTestId('create-project-drop'), {
+        dataTransfer: { types: ['Files'], files: [program], items: [{ kind: 'file', type: program.type }] },
+      })
+
+      expect(screen.getByTestId('create-project-drop-overlay')).toHaveTextContent('Some files are not a supported type')
     })
 
     test('the held files survive the form that created the project: the setup page takes them', async () => {

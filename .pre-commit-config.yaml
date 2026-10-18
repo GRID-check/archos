@@ -142,6 +142,16 @@ repos:
         pass_filenames: false
         files: ^docs/architecture/where-is-what\.md$|^scripts/check_doc_paths\.py$
 
+      - id: env-docs
+        name: the queue workers' environment variables have a row in the env reference
+        # AGENTS.md asks for a row per variable; nothing else checks it, and an
+        # operator tuning a worker otherwise finds the knob only in its source.
+        # Scoped to the queue-worker files (SCOPE in the script).
+        entry: python3 scripts/check_env_docs.py
+        language: system
+        pass_filenames: false
+        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^frontends/aiq_api/src/aiq_api/jobs/.*\.py$|^src/aiq_agent/knowledge/ingest_.*\.py$|^frontends/ui/(workers|purger|scheduler)/.*\.js$|^frontends/ui/src/lib/(jobs-queue|mail-import)/.*\.ts$
+
       - id: validate-skills
         name: skill bundles are well-formed
         # The script existed and nothing ran it — not pre-commit, not the

@@ -8,6 +8,7 @@ import { isProjectClosedBody } from '@/lib/projects/project-status'
 import { formatCalendarDate } from '@/lib/format'
 import type { FileItem, FolderItem } from '../file-types'
 import type { FolderAccessLevel } from '../lib/file-shelf'
+import { refusalOf, shelfRefusalOf, throwUnlessOk } from '../lib/move-refusal'
 
 export interface FolderTreeOptions {
   /** The shelf's folder collection (`/api/projects/{id}/folders`, `/api/archiv/folders`). */
@@ -79,7 +80,17 @@ export function useFolderTree({
   /** What the reader may do at the root (ADR-0088); each folder carries its own `access`. */
   const [rootAccess, setRootAccess] = useState<FolderAccessLevel>(initialRootAccess)
 
+  /*
+   * Reads cross: a create re-reads, a rename right after it re-reads, and a
+   * live hint (`useShelfLive`) re-reads too. Only the newest read may commit,
+   * or an older answer landing last takes the folder just made off the screen.
+   * And a re-read that fails keeps the tree it had: emptying it made every
+   * folder vanish over one dropped request, and the next hint reads again.
+   */
+  const generation = useRef(0)
+  const answered = useRef(initialFolders !== undefined)
   const load = useCallback(() => {
+    const stamp = ++generation.current
     setIsLoading(true)
     setError(false)
     return fetch(foldersUrl)
@@ -88,14 +99,18 @@ export function useFolderTree({
         return response.json()
       })
       .then((data: { folders?: FolderItem[]; rootAccess?: FolderAccessLevel }) => {
+        if (stamp !== generation.current) return
         setFolders(data.folders ?? [])
         setRootAccess(data.rootAccess === 'read' ? 'read' : 'write')
+        answered.current = true
       })
       .catch(() => {
+        if (stamp !== generation.current || answered.current) return
         setFolders([])
         setError(true)
       })
       .finally(() => {
+        if (stamp !== generation.current) return
         setIsLoading(false)
         setHasAnswer(true)
       })
@@ -125,14 +140,18 @@ export function useFolderTree({
         body: JSON.stringify({ name, parentId }),
       })
       if (!response.ok) {
-        toast.error(t('workspace.createFolderError'))
+        toast.error(
+          (await shelfRefusalOf(response)) === 'nameTaken'
+            ? t('folders.nameTaken', { name, parent: parentName(parentId ?? null) })
+            : t('workspace.createFolderError')
+        )
         return false
       }
       const data = await response.json()
       setFolders((prev) => [...prev, data.folder])
       return true
     },
-    [foldersUrl, t]
+    [foldersUrl, parentName, t]
   )
 
   const rename = useCallback(
@@ -143,7 +162,12 @@ export function useFolderTree({
         body: JSON.stringify({ name }),
       })
       if (!response.ok) {
-        toast.error(t('workspace.renameFolderError'))
+        const parentId = folders.find((folder) => folder.id === folderId)?.parentId ?? null
+        toast.error(
+          (await shelfRefusalOf(response)) === 'nameTaken'
+            ? t('folders.nameTaken', { name, parent: parentName(parentId) })
+            : t('workspace.renameFolderError')
+        )
         return false
       }
       const data = await response.json()
@@ -151,7 +175,7 @@ export function useFolderTree({
       setFolders((prev) => prev.map((f) => (f.id === folderId ? { ...f, ...data.folder } : f)))
       return true
     },
-    [foldersUrl, t, load]
+    [foldersUrl, folders, parentName, t, load]
   )
 
   /**
@@ -178,15 +202,23 @@ export function useFolderTree({
     [foldersUrl, t]
   )
 
+  /** Folder moves of this tab still on the wire; a live re-read waits for them, as for documents. */
+  const inFlight = useRef(0)
+  const isMoving = useCallback(() => inFlight.current > 0, [])
+  /** The undo is the same move back, and offers no undo of its own. */
+  const undo = useRef<(folderId: string, parentId: string | null) => Promise<void>>(async () => {})
+
   /**
-   * A folder dragged onto another folder — or onto „Alle Dateien", the way back
-   * out to the root. Optimistic on the PARENT (the tile moves in the frame the
-   * finger let go) and then re-read for the paths. The pane refuses a move into
-   * a folder's own subtree before the drop, so the failure this puts back is a
-   * network one.
+   * A folder dragged onto another folder (or onto a way up in the path), or
+   * moved from its menu. Optimistic on the PARENT (the tile moves in the frame
+   * the finger let go) and then re-read for the paths. The pane refuses a move
+   * into a folder's own subtree before the drop; what the server still refuses
+   * (a sibling of the same name there, a folder only readable, an IFC model
+   * bound for a restricted folder, a folder deleted meanwhile) is said by name,
+   * and the toast of a move that went through offers it back.
    */
   const move = useCallback(
-    async (draggedFolderId: string, parentId: string | null) => {
+    async (draggedFolderId: string, parentId: string | null, { undoable = true }: { undoable?: boolean } = {}) => {
       const folder = folders.find((candidate) => candidate.id === draggedFolderId)
       if (!folder || (folder.parentId ?? null) === parentId) return
       const previousParentId = folder.parentId ?? null
@@ -194,26 +226,48 @@ export function useFolderTree({
         setFolders((prev) => prev.map((f) => (f.id === draggedFolderId ? { ...f, parentId: next } : f)))
 
       setParent(parentId)
+      inFlight.current += 1
       try {
-        const response = await fetch(`${foldersUrl}/${draggedFolderId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parentId }),
-        })
-        if (!response.ok) throw new Error(`Move failed (${response.status})`, { cause: response.status })
+        await throwUnlessOk(
+          await fetch(`${foldersUrl}/${draggedFolderId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parentId }),
+          })
+        )
         await load()
-        toast.success(t('folders.movedFolder', { name: folder.name, parent: parentName(parentId) }))
+        const done = { name: folder.name, parent: parentName(parentId) }
+        if (!undoable) {
+          toast.success(t('folders.movedBack', { name: folder.name, folder: parentName(parentId) }))
+          return
+        }
+        toast.success(t('folders.movedFolder', done), {
+          action: { label: t('folders.moveUndo'), onClick: () => void undo.current(draggedFolderId, previousParentId) },
+        })
       } catch (error) {
         setParent(previousParentId)
-        // 409: the folder holds an IFC model and the destination is restricted
-        // (ADR-0087). Retrying cannot help, so say why.
+        const refusal = refusalOf(error)
         toast.error(
-          error instanceof Error && error.cause === 409 ? t('folders.access.ifcRefused') : t('folders.moveFolderError')
+          refusal === 'nameTaken'
+            ? t('folders.nameTaken', { name: folder.name, parent: parentName(parentId) })
+            : refusal === 'ifcRestricted'
+              ? t('folders.access.ifcRefused')
+              : refusal === 'readOnly'
+                ? t('folders.moveRefusedReadOnly')
+                : refusal === 'gone'
+                  ? t('folders.moveRefusedGone')
+                  : t('folders.moveFolderError')
         )
+        // Someone else's change is why it failed (a folder gone, a name taken
+        // meanwhile): the tree on screen is behind, so read it again.
+        if (refusal === 'gone' || refusal === 'nameTaken') void load()
+      } finally {
+        inFlight.current -= 1
       }
     },
     [folders, foldersUrl, load, parentName, t]
   )
+  undo.current = (folderId, parentId) => move(folderId, parentId, { undoable: false })
 
   /**
    * NAME WHAT HAPPENS TO THE WORK. A folder is a label somebody put on a set of
@@ -288,5 +342,5 @@ export function useFolderTree({
   /** `isLoading` is any read in flight (the upload plan waits for it); this is only the first. */
   const isFirstLoad = isLoading && !hasAnswer
 
-  return { folders, rootAccess, isLoading, isFirstLoad, error, load, create, rename, describe, move, remove }
+  return { folders, rootAccess, isLoading, isFirstLoad, error, load, create, rename, describe, move, remove, isMoving }
 }

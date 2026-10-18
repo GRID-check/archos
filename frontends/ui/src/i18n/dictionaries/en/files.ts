@@ -42,6 +42,8 @@ export const files = {
       // backend in bursts, so any bar drawn from it stalls and then jumps.
       processing: 'Reading. There is no time estimate, so you can keep working.',
       elapsed: '{time} so far',
+      // The browser reports no connection while bytes should be moving.
+      offline: 'No connection, waiting. Please keep this page open.',
       settled: '{total} transferred',
     },
     row: {
@@ -63,6 +65,7 @@ export const files = {
       cancelAll: 'Cancel all',
       cancel: 'Cancel upload of {name}',
       retryAll: 'Retry failed',
+      retryFile: 'Try again',
       dismiss: 'Dismiss {name}',
       dismissAll: 'Dismiss',
     },
@@ -388,6 +391,17 @@ export const files = {
     deleted: 'The file was deleted while Piloti was reading it.',
     quarantined:
       'This file contains something your office marks as sensitive. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // Found in the text a vision model read off scanned pages (`after_transcription`):
+    // that model saw those pages, no other did.
+    quarantinedAfterTranscription:
+      'This file contains something your office marks as sensitive, found in the text of scanned pages. A vision model read those pages so they could be checked; no other model saw them. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // The reason is not stored or cannot be read: claim nothing the line above does not show.
+    quarantinedUnreadable:
+      'The content check held this file back. Its reason is not stored or cannot be read. While it is held back, Piloti shows it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // The office's screening rules could not be applied: the file was not read at
+    // all and waits like a held one (ADR-0086).
+    screening_unavailable:
+      "The check for sensitive data couldn't run, so Piloti didn't read this file or show it to any model. Read it again, or an office or project admin decides whether it stays.",
     unknown: "Piloti couldn't read this document, so search can't find it.",
     details: 'Details',
   },
@@ -399,9 +413,27 @@ export const files = {
     reasonSvnr: 'Social security number {sample}',
     reasonCard: 'Card number {sample}',
     reasonPages: '{count, plural, one {page {pages}} other {pages {pages}}}',
+    // Spreadsheets and text files have no pages, so a finding has no place to open.
+    reasonNoPages: 'no page given',
+    // A rule this build does not know (the job may report a new kind of finding first).
+    reasonOther: 'A rule not described here',
+    // How the content check came to the finding: who set the rule, and what a
+    // number had to pass. It lets a reader tell a real account number from an
+    // order number that only looks like one.
+    basisTerm: 'This term is on the list your office marked as sensitive.',
+    basisIban:
+      'The number is laid out like an IBAN and its check digits are valid, so it is no random string of digits. Your office marked account numbers as sensitive.',
+    basisSvnr:
+      'The number is laid out like an Austrian social security number and its check digit is valid. Your office marked it as sensitive.',
+    basisCard:
+      'The number is laid out like a card number and its check digit is valid. Your office marked card numbers as sensitive.',
+    basisOther: 'The content check applied a rule not described here.',
+    omitted:
+      '{count, plural, one {One more reason is not listed.} other {# more reasons are not listed.}}',
     nameInFile: 'File name contains “{term}”',
     nameInFolder: 'Folder “{segment}” contains “{term}”',
-    partial: 'Some pages had no text layer and were not checked.',
+    // Scanned pages are checked once read (ADR-0086, 2026-10-17): "not checked" was no longer true, "first" is.
+    partial: 'Not everything could be checked first: a vision model sees scanned pages, images and drawings before the check.',
     unchecked: 'The content could not be read without a model and was checked by name only.',
     // A content-check finding, the way a chat source is shown: the page, and on
     // it, marked, what the office listed as sensitive.
@@ -416,7 +448,7 @@ export const files = {
     noDocumentsTitle: 'No documents yet',
     noDocumentsDescription:
       'Upload your project’s documents: drawings, official notices, expert reports. Piloti reads them and cites them instead of answering from generic guidance.',
-    searchPlaceholder: 'Search files...',
+    searchPlaceholder: 'Search…',
     searchLabel: 'Search files',
     noMatch: 'No files match “{query}”',
     noMatchDescription:
@@ -465,6 +497,11 @@ export const files = {
     namePlaceholder: 'Folder name',
     newFolderName: 'New folder name',
     creating: 'Creating folder…',
+    moveUndo: 'Undo',
+    movedBack: '“{name}” is back in “{folder}”.',
+    moveRefusedReadOnly: 'Nothing was moved: you may only read one of the two folders.',
+    moveRefusedGone: 'Nothing was moved: that folder no longer exists.',
+    nameTaken: '“{parent}” already has a folder named “{name}”.',
     allFiles: 'All Files',
     // The way up, named. The breadcrumb says where you ARE, which is a map,
     // and three levels deep the parent is a truncated word mid-row.
@@ -607,6 +644,7 @@ export const files = {
     retry: 'Try again',
   },
   workspace: {
+    more: 'More',
     renameFolderError: 'The folder could not be renamed. Please try again.',
     deleteFolderError: 'The folder could not be deleted. Please try again.',
     deleteFolderConfirm: 'Delete the folder “{name}”?',
@@ -632,6 +670,14 @@ export const files = {
     tryAgain: 'Try again',
     dropToUpload: 'Drop files to upload to this project',
     dropUnsupported: 'Some files are not a supported type',
+    dropInto: 'Drop into “{name}”',
+    dropRefusedHere: 'Read only: you can’t drop files here.',
+    dropRefusedFolder: '“{name}” is read only: nothing can be dropped there.',
+    dropQueued: 'The dropped files will upload as soon as the current upload has finished.',
+    dropTruncated:
+      'The dropped folder was too large or too deeply nested. {count, plural, one {# file was} other {# files were}} taken; upload the rest in a second step.',
+    dropUnreadable:
+      '{count, plural, one {One dropped file} other {# dropped files}} could not be read and {count, plural, one {was} other {were}} not uploaded. Save {count, plural, one {it} other {them}} locally first (from Outlook or a cloud folder, for example).',
     view: {
       label: 'View',
       cards: 'Cards',
@@ -639,6 +685,26 @@ export const files = {
     },
   },
   // Explorer detail view — column headings for the sortable listing.
+  selection: {
+    start: 'Select',
+    done: 'Done',
+    all: 'All',
+    move: 'Move',
+    column: 'Selected',
+    count: '{count} selected',
+    moved: '{count, plural, one {# file moved to “{folder}”.} other {# files moved to “{folder}”.}}',
+    moveFailed: '{count, plural, one {# file could not be moved.} other {# files could not be moved.}} Please try again.',
+  },
+  picker: {
+    titleOne: 'Move “{name}” to …',
+    titleMany: '{count, plural, one {Move # file to …} other {Move # files to …}}',
+    description: 'Choose the folder the files are moved to.',
+    search: 'Search folders',
+    list: 'Folders',
+    empty: 'No folder matches “{query}”.',
+    here: 'Here',
+    close: 'Close',
+  },
   list: {
     columns: {
       relevance: 'Relevance',
@@ -672,6 +738,7 @@ export const files = {
     download: 'Download',
     open: 'Open',
     ask: 'Ask about this',
+    select: 'Select',
     copyOriginPath: 'Copy origin path',
     rename: 'Rename…',
     delete: 'Delete…',
@@ -783,11 +850,11 @@ export const files = {
     collisions: '{count} files share a name with another file in this upload',
     collisionsExplain:
       'A project holds one document per filename, so these are not uploaded. Rename them and drop them again.',
-    // Held back by the office's name screening (ADR-0086): the files do not
-    // leave this computer unless someone releases one of them.
-    excluded: '{count, plural, one {# file stays on your computer} other {# files stay on your computer}}',
+    // Not uploaded by the name check (ADR-0086): the files do not leave this
+    // computer unless someone uploads one anyway. "Held back" is the content check's.
+    excluded: '{count, plural, one {# file not uploaded} other {# files not uploaded}}',
     excludedExplain:
-      'Your office marks these terms as sensitive, so these files are not uploaded. If one of them belongs in Piloti after all, tick it.',
+      'Your office marks these terms as sensitive, so these files are not uploaded: they do not leave your computer. If one of them belongs in Piloti after all, tick it.',
     releaseFile: 'Upload anyway',
     // Files that come in as a new revision of a document already here: by the
     // same name (ADR-0054) or by a name series under another name (ADR-0099).
@@ -821,7 +888,7 @@ export const files = {
       collision: 'Conflict',
       duplicate: 'Already here',
       skipped: 'Skipped',
-      excluded: 'Excluded',
+      excluded: 'Not uploaded',
     },
     confirm: '{count, plural, one {Upload # file} other {Upload # files}}',
     // The same, when some of them come in as a new revision: the button moves with the boxes.
@@ -852,6 +919,8 @@ export const files = {
       'An archive holds the correspondence of everyone who wrote to this mailbox. Import what the project needs, not a whole mailbox.',
     choose: 'Choose archive…',
     maxSize: 'Up to {size}.',
+    // Touch only: an archive this size is best sent from a desk, on a steady line.
+    desktopHint: 'Large archives are best sent from a desk. If the connection drops, pick the same file again and it carries on from there.',
     notAnArchive: '“{name}” is not an Outlook archive (.pst or .ost).',
     tooLarge: '“{name}” is larger than {size}.',
     sending: 'Sending {sent} of {total}…',
@@ -920,7 +989,7 @@ export const files = {
       type: 'file type not accepted',
       size: 'too large',
       unreadable: 'damaged in the archive',
-      screened: 'held back by the office’s name screening',
+      screened: 'not uploaded by the name check',
       access: 'folder is read-only',
       name_taken: 'name already used in the project',
     },
@@ -933,8 +1002,15 @@ export const files = {
   },
   errors: {
     projectClosed: 'This project is closed and read-only. Whoever manages it can reopen it from the notice at the top or in the Overview.',
-    // Held back by the office's name screening (ADR-0086) on a path with no
-    // upload dialog, such as a chat attachment.
+    // The transport's messages are English and for logs; the person on site reads
+    // these. A failure with no answer (network, stall, time) can be retried, and
+    // the row offers it.
+    uploadFailed: 'The upload failed.',
+    uploadNetwork: 'No connection while uploading. Please try again.',
+    uploadStalled: 'The connection stopped sending, so the upload was stopped.',
+    uploadTimeout: 'The upload took too long.',
+    // Not uploaded by the name check (ADR-0086): on a path with no upload
+    // dialog, such as a chat attachment, or by the server's repeat of it.
     screenedOut: '{count} file(s) not uploaded because your office marks them as sensitive: {files}',
     screenedOutFile: '“{name}” ({reason})',
     // The office's list could not be read: without it nothing is sent, not
@@ -956,8 +1032,15 @@ export const files = {
     someUploadsFailed:
       '{failed} of {total} documents could not be uploaded. First reason: {reason}',
     uploadingSkipped: 'Uploading {uploading} {fileLabel}, skipped {skipped} ({summary})',
+    // The file this upload would replace is held back by the content check
+    // (ADR-0086). The state is "held back", the place "quarantine".
     quarantinedReplace:
-      '“{name}” would replace a file waiting in quarantine. Delete that file or have it allowed through, then upload the new one.',
+      '“{name}” would replace a file that is held back and waits in quarantine for review. Once someone allows it through or deletes it, you can upload the new one.',
+    // Another document holds the name. No place and no reason on purpose: it may
+    // be one this person may not see.
+    nameTaken: 'Another document already has the name “{name}”. Rename the file and upload it again.',
+    // Somebody filed or deleted the same file while this one was uploading.
+    uploadChangedMeanwhile: 'Something changed here while the file was uploading. Please try again.',
     cannotRetryServerFile: 'Cannot retry server-loaded files. Please upload the file again.',
     imageVlmUnavailable:
       'Images cannot be uploaded here: this deployment has no image recognition set up.',
@@ -1263,6 +1346,10 @@ export const files = {
       actingWithName: 'Acting: {name} · {date}',
       actingDateOnly: 'Acting: {date}',
       checkbox: 'I approve this revision',
+      // Before the signature, never a block: approving with open points is allowed, missing them is not.
+      openMarks: '{count, plural, one {# open annotation} other {# open annotations}} – approve anyway?',
+      openMarksLoading: 'Still reading the open annotations …',
+      openMarksUnavailable: 'Could not read whether any annotations are open.',
     },
     /**
      * Publication is its own act in its own section — never a sibling button
@@ -1439,6 +1526,27 @@ export const files = {
       'Set before the current revision arrived. The place may have moved, so it is not drawn.',
     loadError: 'Annotations could not be loaded.',
     retry: 'Try again',
+    // The ways into the review from the preview, and what it shows inline.
+    openReview: 'Open review',
+    openReviewHint: 'Full screen with annotations',
+    annotate: 'Annotate',
+    annotateHint: 'Put an annotation on the page',
+    workOn: 'Annotate and review',
+    workOnAll: 'See and review all {count}',
+    empty: 'Put annotations right on pages and areas – for yourself, with colleagues or with Piloti.',
+    joinIn: 'Join',
+    peopleHere: '{count, plural, one {{names} is in this document right now} other {{names} are in this document right now}}',
+    replies: '{count, plural, one {# reply} other {# replies}}',
+    openInReview: 'Open in the review',
+    loading: 'Loading annotations',
+    readerCount: '{count, plural, one {# annotation} other {# annotations}}',
+    // In Files beside the name: what is still open on the document, on every revision.
+    listedOpen: '{count, plural, one {# open annotation} other {# open annotations}}',
+    listedOpenForYou: '{count, plural, one {# open annotation} other {# open annotations}}, {mine} for you',
+    listedOpenIn: '{marks} in “{name}”',
+    // What the chip itself says, short enough for a card; the tooltip carries the whole sentence.
+    listedOpenShort: '{count} open',
+    listedOpenShortForYou: '{count} open · {mine} for you',
   },
   // The review: a document full screen, the annotations on it, the threads
   // under them, and who is looking with you.
@@ -1461,9 +1569,42 @@ export const files = {
       'Go through this document and set what you find as annotations at the places they concern, looking at each page first: defects, questions for the consultants and notes. Cite the clause when a finding rests on a standard.',
     tools: {
       select: 'Select',
-      point: 'Annotation',
-      region: 'Mark a region',
+      point: 'Comment',
+      region: 'Comment on area',
       ask: 'Ask Piloti',
+    },
+    // Under each tool on a touch screen: one word that fits under 56px.
+    toolsShort: {
+      select: 'Select',
+      point: 'Comment',
+      region: 'Area',
+      ask: 'Piloti',
+      chat: 'Say',
+    },
+    toolsIntroFold: 'Hide labels',
+    // What the tool in hand does next, at the top of the canvas.
+    toolHint: {
+      point: 'Click the place · Esc cancels',
+      region: 'Drag a frame around the detail · Esc cancels',
+      ask: 'Drag a frame around the detail to ask Piloti about · Esc cancels',
+    },
+    toolHintTouch: {
+      point: 'Tap the place',
+      region: 'Drag a frame around the detail with one finger',
+      ask: 'Drag a frame around the detail to ask Piloti about, with one finger',
+    },
+    popout: 'Open in a new window',
+    copyReviewLink: 'Copy link to the review',
+    // Mentioning colleagues on an annotation or in its thread with "@", as in the chat.
+    // Only people who can open the document can be mentioned. Whom the server did not keep is
+    // named without a reason: the folder may be why, or collaboration switched off.
+    mentions: {
+      othersHeading: 'Can open this document',
+      noResultsHint: 'You can mention anyone who can open this document.',
+      untoldOne: '{name} was not told.',
+      untoldMany: '{names} were not told.',
+      tooMany: 'Mention at most {max} people at once.',
+      peopleFailed: 'Could not load the people. Type "@" again.',
     },
     // Piloti on the canvas: a box asked about, the answer beside it, and Piloti in a thread.
     piloti: {
@@ -1471,10 +1612,17 @@ export const files = {
       ask: 'Ask Piloti',
       mention: 'Mention Piloti',
       mentionHint: 'Piloti answers in this thread',
-      mentionRemove: 'Remove mention',
       replying: 'Piloti is answering …',
       replyFailed: 'Piloti could not answer.',
-      replyLater: 'Piloti will answer later',
+      replyingFor: 'Piloti is answering … · for {name}',
+      workQueued: 'Piloti is on it · for {name}',
+      // Why a woken Piloti did not answer, by the class of the stored reason (`wakeEndReasonKind`).
+      workFailed: {
+        budget: 'Piloti could not answer: the usage budget is used up. Whoever manages the organization can raise it.',
+        busy: 'Piloti did not get to it in time. Ask again later.',
+        access: 'Piloti could not sign in for {name}. Ask again.',
+        error: 'Piloti broke off before it had an answer. Ask again, or work on it yourself.',
+      },
       wakeHeld: 'Piloti is not answering here right now: too many requests in a short time.',
       delegateChip: 'Piloti is working on it · for {name}',
       retry: 'Ask again',
@@ -1513,13 +1661,30 @@ export const files = {
       source: 'Source',
       adopt: 'Keep as annotation',
       adoptReply: 'Add to the thread',
-      continueInChat: 'Continue in chat',
+      continueInChat: 'Open in chat',
       reopen: "Open Piloti's answer",
       reviewing: 'Piloti is reviewing the document …',
       reviewDone: 'Piloti is done',
+      reviewFound: '{count, plural, one {Piloti found # point} other {Piloti found # points}}',
+      busyTooltip: 'Piloti is answering your question',
       reviewFailed: 'Review failed',
       openConversation: 'Conversation',
+      declined: 'Piloti did not take this on. The reason is above.',
+      handedOff: 'Piloti is researching this in depth. The result arrives in the chat.',
+      stopped: 'This answer was stopped.',
+      empty: 'Piloti answered by working on the document, not in words.',
+      degradedRegion: 'Piloti could not see the marked detail and answered about the whole document.',
+      degradedThread: 'This answer did not reach the thread. You can add it yourself.',
+      failedConnection: 'The connection to Piloti broke off. What arrived is kept.',
+      failedSession: 'Your session expired. Reload the page and ask again.',
     },
+    peerSelected: '{names} has this open',
+    chatOpen: 'Say something quickly',
+    chatPlaceholder: 'Say something …',
+    chatHint: 'Everyone sees it as you type · Esc clears',
+    elsewhere: '{name} · page {page}',
+    elsewhereJump: 'Go to page {page}, where {name} is',
+    onPage: '{name} · page {page}',
     peerPoint: 'is placing an annotation',
     peerRegion: 'is marking a region',
     // Piloti says on the document whom it writes for (ADR-0105; EU AI Act Art. 50).
@@ -1535,8 +1700,37 @@ export const files = {
       wokenTitleNameless: 'Woken in annotation {number}',
     },
     pinLabel: 'Annotation {number}: {kind}',
+    pinState: {
+      proposed: 'proposal',
+      resolved: 'resolved',
+      dismissed: 'dismissed',
+    },
+    pinOpenBy: 'open for {names}',
+    draftCard: 'New annotation',
+    aim: {
+      label: {
+        point: 'Choose a spot. Arrow keys move the crosshair, with Shift in larger steps. Enter places the point, Escape cancels.',
+        region: 'Choose a region. Arrow keys move the crosshair. Enter holds the first corner, the arrow keys draw the box out, Enter places it. Escape cancels.',
+        ask: 'Choose a region for Piloti. Arrow keys move the crosshair. Enter holds the first corner, the arrow keys draw the box out, Enter asks Piloti about it. Escape cancels.',
+      },
+      hint: {
+        point: 'Click or ↵ · Arrow keys · Esc',
+        region: 'Drag or ↵ · Arrow keys · ↵ · Esc',
+        ask: 'Drag or ↵ · Arrow keys · ↵ · Esc',
+      },
+      where: 'Page {page}, {x} % from the left, {y} % from the top',
+      box: 'Box {w} % wide, {h} % high',
+    },
+    announce: {
+      pilotiProposed: 'Piloti set {count, plural, one {a proposal} other {# proposals}}',
+      created: '{name}: {count, plural, one {new annotation {numbers}} other {# new annotations}}',
+      replied: '{name}: {count, plural, one {new reply on annotation {numbers}} other {new replies on annotations {numbers}}}',
+      updated: '{name} changed {count, plural, one {annotation {numbers}} other {annotations {numbers}}}',
+      deleted: '{name} deleted {count, plural, one {annotation {numbers}} other {annotations {numbers}}}',
+      pilotiAnswered: 'Piloti answered',
+    },
     page: 'Page {page}',
-    draftPlaceholder: 'What is here? Enter places it',
+    draftPlaceholder: 'Write an annotation … (Enter to save)',
     set: 'Place',
     replyPlaceholder: 'Reply …',
     send: 'Send',
@@ -1550,9 +1744,10 @@ export const files = {
     setDue: 'Due date',
     overdue: 'overdue',
     proposal: 'Proposal',
-    proposalHint: 'Proposed by Piloti. It counts once someone takes it over.',
-    accept: 'Take over',
+    proposalHint: 'Accept it to count it among the open annotations.',
+    accept: 'Accept',
     dismiss: 'Dismiss',
+    dismissKey: 'Del',
     resolve: 'Resolve',
     reopen: 'Reopen',
     resolved: 'Resolved',
@@ -1565,6 +1760,8 @@ export const files = {
     takeBackFromPiloti: 'Take back from Piloti',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
+    linkCopyFailed: 'The link could not be copied.',
+    earlierFassung: 'From revision {number}. Not drawn on this sheet.',
     delete: 'Delete',
     deleteConfirm: 'Delete annotation {number}?',
     filter: 'Show',
@@ -1575,9 +1772,13 @@ export const files = {
     mine: 'Mine',
     proposalsGroup: '{count, plural, one {# proposal from Piloti} other {# proposals from Piloti}}',
     walkProposals: 'Go through',
+    walkPosition: '{index}/{total}',
+    walkNext: 'Next',
+    proposalsLegend: 'Dashed = proposed by Piloti, not accepted yet',
     empty: {
       noneTitle: 'No annotations yet',
       noneBody: 'Press C and click the place it is about, or R and drag out a region.',
+      noneBodyTouch: 'Tap ‘Comment’, then the place.',
       readOnlyTitle: 'No annotations yet',
       readOnlyBody: 'Nobody has annotated anything here yet.',
       mineTitle: 'Nothing for you',
@@ -1595,8 +1796,8 @@ export const files = {
       button: 'Export minutes',
       scopeLabel: 'Which annotations',
       scopes: {
-        open: 'Open ones',
-        all: 'All, resolved ones too',
+        open: 'Open only',
+        all: 'Resolved ones too',
       },
       fassungLabel: 'Revision',
       fassungen: {
@@ -1629,6 +1830,8 @@ export const files = {
         fassungen: {
           current: 'current revision',
           all: 'all revisions',
+          // Closed ones too, of the current revision only: what is still open from earlier ones is in it anyway.
+          currentWithOpenFromEarlier: 'current revision, plus what is still open from earlier ones',
         },
         withProposals: 'with Piloti’s proposals',
         exportedAt: 'Exported on',

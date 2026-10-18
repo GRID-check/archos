@@ -224,7 +224,7 @@ export const SlashCommandPicker = forwardRef<SlashCommandPickerHandle, SlashComm
               tall the panel could not show a whole one at its bottom edge, and a
               menu you scan is worse for a ragged edge than for a clamp. The full
               text is one selection away, on the chip. */}
-          <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+          <span className="line-clamp-2 text-xs leading-snug text-muted-foreground pointer-coarse:text-sm">
             {skill.description}
           </span>
         </div>
@@ -295,7 +295,9 @@ export const SlashCommandPicker = forwardRef<SlashCommandPickerHandle, SlashComm
 
         {/* Outside the scroll region, so the hint stays put while the list moves. */}
         <div
-          className="flex shrink-0 items-center gap-2 border-t bg-muted px-3 py-2"
+          // Arrow keys, Return and Escape do not exist on a phone: the row is
+          // permanent noise there, so it is a fine-pointer hint only.
+          className="flex shrink-0 items-center gap-2 border-t bg-muted px-3 py-2 pointer-coarse:hidden"
           aria-label={t('composer.picker.keyboardHint')}
         >
           <Slash className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />

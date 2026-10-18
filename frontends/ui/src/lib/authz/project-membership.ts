@@ -25,6 +25,7 @@ import { orgRoleHoldsPermission } from './org-role-permissions'
 import { ORG_PERMISSIONS, type ProjectPermission } from './permissions'
 import { findProjectTenancy } from '@/lib/projects/repository'
 import { CLOSED_PROJECT_KEEPS, CLOSED_PROJECT_OPEN_TO_ORGANIZATION, isProjectClosed } from '@/lib/projects/project-status'
+import { inPool } from '@/lib/utils/in-pool'
 
 /** Matches the membership cache TTL in `@/lib/auth/session`. */
 const MEMBERSHIP_TTL_MS = 10 * 60 * 1000
@@ -37,40 +38,57 @@ interface SubjectMembership {
 }
 
 /**
- * A user's membership in an organization, with its role.
+ * A user's membership in an organization, with its role, or `null` when WorkOS
+ * ANSWERED that there is none. A lookup that could not be answered throws.
+ *
+ * For a caller whose response to "not a member" cannot be undone (the push job
+ * removes the person's devices): a WorkOS hiccup must not read as having left.
+ * Callers that only need a fail-closed yes/no take {@link resolveSubjectMembership}.
  *
  * Cached under a key distinct from `membership:` (used by session resolution,
  * which stores only the id) so the two never clobber each other's shape.
+ * "Not a member" is cached for the short negative TTL; a thrown lookup is not
+ * cached at all, so the next request asks again.
+ */
+export async function lookupSubjectMembership(
+  organizationId: string,
+  userId: string
+): Promise<SubjectMembership | null> {
+  return getCached(
+    `membership-role:${organizationId}:${userId}`,
+    MEMBERSHIP_TTL_MS,
+    async () => {
+      const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
+        userId,
+        organizationId,
+        limit: 1,
+      })
+      const membership = memberships.data[0]
+      if (!membership) return null
+      return {
+        organizationMembershipId: membership.id,
+        role: membership.role?.slug ?? null,
+      } satisfies SubjectMembership
+    },
+    { negativeTtlMs: MEMBERSHIP_NEGATIVE_TTL_MS }
+  )
+}
+
+/**
+ * A user's membership in an organization, with its role; `null` when there is
+ * none OR when the lookup failed. Fail closed, for the sharing decisions and
+ * pickers, where "could not ask" must deny.
  *
- * "Not a member" (WorkOS answered, with nothing) is cached for the short
- * negative TTL. "Could not ask" is not cached at all: it is caught outside
- * `getCached`, so the next request asks again. Caught inside the loader, a
- * single failed lookup was stored as "not a member", and the colleague vanished
- * from every picker for the negative TTL.
+ * The failure is caught outside `getCached`, so it is never stored. Caught
+ * inside the loader, a single failed lookup was stored as "not a member", and
+ * the colleague vanished from every picker for the negative TTL.
  */
 export async function resolveSubjectMembership(
   organizationId: string,
   userId: string
 ): Promise<SubjectMembership | null> {
   try {
-    return await getCached(
-      `membership-role:${organizationId}:${userId}`,
-      MEMBERSHIP_TTL_MS,
-      async () => {
-        const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
-          userId,
-          organizationId,
-          limit: 1,
-        })
-        const membership = memberships.data[0]
-        if (!membership) return null
-        return {
-          organizationMembershipId: membership.id,
-          role: membership.role?.slug ?? null,
-        } satisfies SubjectMembership
-      },
-      { negativeTtlMs: MEMBERSHIP_NEGATIVE_TTL_MS }
-    )
+    return await lookupSubjectMembership(organizationId, userId)
   } catch (error) {
     // Fail closed, and uncached: an unanswered lookup is not a membership.
     console.warn(`[project-membership] lookup failed for ${userId}:`, error)
@@ -184,6 +202,14 @@ export async function filterUsersWithProjectAccess(
 }
 
 /**
+ * How many people's permissions are asked of WorkOS at once. A list of
+ * candidates can be a whole organization's directory; all at once is a burst
+ * WorkOS throttles, and a throttled check fails closed, so eligible people
+ * would silently go missing from a picker or a notice.
+ */
+export const PERMISSION_CHECKS_AT_ONCE = 8
+
+/**
  * The same filter, for a permission that is not `project:view`.
  *
  * The reviewer picker needs `project:edit`: being able to OPEN a project does
@@ -197,11 +223,9 @@ export async function filterUsersWithProjectPermission(
   candidateUserIds: readonly string[],
   permission: ProjectPermission
 ): Promise<Set<string>> {
-  const results = await Promise.all(
-    candidateUserIds.map(async (userId) => ({
-      userId,
-      allowed: await userHoldsProjectPermission(session, projectId, userId, permission),
-    }))
-  )
+  const results = await inPool(candidateUserIds, PERMISSION_CHECKS_AT_ONCE, async (userId) => ({
+    userId,
+    allowed: await userHoldsProjectPermission(session, projectId, userId, permission),
+  }))
   return new Set(results.filter((result) => result.allowed).map((result) => result.userId))
 }

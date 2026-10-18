@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ShimmerText } from '@/components/ui/shimmer-text'
-import { AlertCircle, Check, ChevronDown, RotateCcw, ShieldAlert, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
+import { AlertCircle, Check, ChevronDown, RotateCcw, ShieldAlert, WifiOff, X } from 'lucide-react'
 import { mayRetryUpload, type TrackedFile } from '../types'
 import {
   isDeterminate,
@@ -13,11 +13,12 @@ import {
   type UploadPhase,
 } from '../lib/upload-progress'
 import { useElapsedSeconds, useTransferRate } from '../hooks/use-transfer-rate'
-import { extChipTint, fileExtensionLabel } from '../document-kind'
+import { FileExtChip } from './file-ext-chip'
+import { IngestionStatusWord, ingestionMarkOfPhase } from './ingestion-atoms'
 import { IngestFailureNotice } from './ingest-failure-notice'
-import { QuarantineFindings } from './quarantine-findings'
+import { HeldUploadReason } from './held-upload-reason'
 import { RequestReviewButton } from './request-review-button'
-import { parseQuarantine } from '@/lib/upload-screening/quarantine'
+import { quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { failedWhileReading } from '../lib/ingest-failure'
 import { Button } from '@/components/ui/button'
 import { AnimatePresence, iconSwapTransition, motion, motionBase, useMotionToken } from '@/components/motion'
@@ -83,6 +84,31 @@ const VISIBLE_PHASES = new Set<UploadPhase>([
  */
 const SUCCESS_LINGER_MS = 6_000
 
+/** Characters of a file name kept whole at its end: `_Rev_C_Freigabe.pdf`. */
+const ROW_NAME_TAIL = 20
+
+/**
+ * Whether the browser believes it has a connection. `navigator.onLine` is only
+ * a belief (a captive portal reads as online), but its one confident answer is
+ * the useful one: `false` means the radio is off or out of range, and a tray
+ * that says „Wird hochgeladen" over a dead link is the lie this exists to end.
+ * The server snapshot is online, so the first paint never flashes the notice.
+ */
+function subscribeOnline(onChange: () => void): () => void {
+  window.addEventListener('online', onChange)
+  window.addEventListener('offline', onChange)
+  return () => {
+    window.removeEventListener('online', onChange)
+    window.removeEventListener('offline', onChange)
+  }
+}
+const readOnline = (): boolean => navigator.onLine
+const serverOnline = (): boolean => true
+
+function useOnline(): boolean {
+  return useSyncExternalStore(subscribeOnline, readOnline, serverOnline)
+}
+
 export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }: UploadTrayProps) {
   // Height and opacity are not covered by MotionConfig's reduced motion.
   const foldTransition = useMotionToken(motionBase)
@@ -100,6 +126,9 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
   )
 
   const isTransferring = summary.stage === 'transferring'
+  const isOnline = useOnline()
+  // Offline only matters while bytes are meant to be moving.
+  const isWaitingForNetwork = isTransferring && !isOnline
   const { bytesPerSecond, etaSeconds } = useTransferRate(summary.uploadedBytes, summary.remainingBytes, isTransferring)
 
   // When the batch stopped moving bytes and handed over to the backend — the
@@ -174,7 +203,9 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
     (isTransferring && onCancelAll !== undefined) ||
     (summary.isSettled && retryAll !== null) ||
     (summary.isSettled && dismissAll !== undefined)
-  const detail = trayDetail(summary, { bytesPerSecond, etaSeconds, processingElapsed, locale, t })
+  const detail = isWaitingForNetwork
+    ? t('uploads.detail.offline')
+    : trayDetail(summary, { bytesPerSecond, etaSeconds, processingElapsed, locale, t })
 
   // The tray arrives and leaves as a fold, not a snap: it sits above the
   // listing, and a panel that appears or retires in one frame throws every row
@@ -210,7 +241,7 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
           size. The summary now holds a readable floor and the actions drop to a
           second line when they no longer fit beside it. */}
       <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-        <TrayGlyph summary={summary} />
+        <TrayGlyph summary={summary} offline={isWaitingForNetwork} />
 
         <button
           type="button"
@@ -231,14 +262,20 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
           <p aria-live="polite" className="truncate text-sm font-medium leading-tight text-foreground">
             {headline}
           </p>
-          <p aria-hidden className="truncate text-xs leading-tight text-muted-foreground tabular-nums">
+          {/* Two lines, not one: on a phone the sentence that says why nothing
+              is moving („Wird gelesen…", „Keine Verbindung…") is the part that
+              was being cut off. */}
+          <p aria-hidden className="line-clamp-2 text-xs leading-snug text-muted-foreground tabular-nums">
             {detail}
           </p>
         </button>
 
         {/* On a phone the actions take a line of their own under the
             headline, and the expander stays beside the headline it folds:
-            wrapped in DOM order, it used to land alone on a third line. */}
+            wrapped in DOM order, it used to land alone on a third line. Even
+            one action goes down: „Alle abbrechen" beside the headline's
+            160px floor and the expander does not fit 390px, and the
+            expander is what wrapped. */}
         {hasHeaderActions && (
           <div className="order-3 flex basis-full items-center justify-end gap-2 sm:order-2 sm:basis-auto">
           {isTransferring && onCancelAll && (
@@ -339,7 +376,7 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
  * bytes move; a rotating arc while the backend reads, which is a shape that
  * cannot be mistaken for a position.
  */
-function TrayGlyph({ summary }: { summary: TransferSummary }) {
+function TrayGlyph({ summary, offline }: { summary: TransferSummary; offline: boolean }) {
   const radius = 8
   const circumference = 2 * Math.PI * radius
 
@@ -358,8 +395,11 @@ function TrayGlyph({ summary }: { summary: TransferSummary }) {
         data-tone={hasFailure ? 'destructive' : hasHeld ? 'warning' : 'success'}
         className={cn(
           'flex size-5 shrink-0 items-center justify-center rounded-full',
+          // The mark lands rather than appears: a short rise from the ring's
+          // size, so "done" is something that happened. Still under reduced motion.
+          'animate-in zoom-in-75 fade-in-0 duration-base ease-entrance motion-reduce:animate-none',
           hasFailure
-            ? 'bg-destructive/10 text-destructive'
+            ? 'bg-danger-subtle text-error'
             : hasHeld
               ? 'bg-warning-subtle text-warning'
               : 'bg-success-subtle text-success'
@@ -372,6 +412,19 @@ function TrayGlyph({ summary }: { summary: TransferSummary }) {
         ) : (
           <Check className="size-3.5" />
         )}
+      </span>
+    )
+  }
+
+  if (offline) {
+    return (
+      <span
+        aria-hidden
+        data-testid="upload-tray-glyph"
+        data-tone="offline"
+        className="flex size-5 shrink-0 items-center justify-center rounded-full bg-warning-subtle text-warning"
+      >
+        <WifiOff className="size-3.5" />
       </span>
     )
   }
@@ -476,14 +529,21 @@ function UploadRow({
 
   const phase = uploadPhase(file)
   const percent = uploadPercent(file)
-  const ext = fileExtensionLabel(file.fileName)
+  const mark = ingestionMarkOfPhase(phase)
   const canCancel = (phase === 'uploading' || phase === 'queued') && onCancel !== undefined
   const isFailed = phase === 'failed'
   // Held back by the content check (ADR-0086). Never retried: the server
   // refuses a re-upload onto it, and nothing went wrong to repeat.
   const isHeldBack = phase === 'held'
+  // The held document the uploader may ask the reviewers about: this row's own,
+  // or the one it would replace when this person uploaded that one too.
+  const reviewableId =
+    file.serverFileId ?? (file.replacesHeld?.ownUpload ? file.replacesHeld.documentId : null) ?? null
+  const heldVerdict = isHeldBack ? quarantineVerdictOf(file) : null
   const unchanged = file.unchanged === true && phase === 'ready'
   const canDismiss = (phase === 'canceled' || isFailed || isHeldBack) && onDismiss !== undefined
+  const canRetry = isFailed && mayRetryUpload(file)
+  const showsSizeInline = phase === 'uploading' || phase === 'queued'
   // A line of the tray's filing bar would move this file.
   const lit = useFilingHighlighted(file.serverFileId)
 
@@ -510,24 +570,19 @@ function UploadRow({
           losing a button does not shove its neighbours sideways, and a German
           status word („Zurückgehalten“, „Fehlgeschlagen“) is never cut. */}
       <div className="flex h-12 items-center gap-2.5 px-4 sm:h-10">
-        {/* Same extension chip the file cards and the preview header use, so a
-            document looks like itself from the second it is dropped. */}
-        <span
-          aria-hidden
-          // 8.5px is load-bearing and stays — a four-letter extension has to fit
-          // inside a 24px square; see file-list-view.
-          className="flex size-6 shrink-0 items-center justify-center rounded-sm text-[8.5px] font-bold uppercase leading-none"
-          style={extChipTint(ext)}
-        >
-          {ext || '—'}
-        </span>
+        {/* The extension tile the Files list draws, so a document looks like
+            itself from the second it is dropped. */}
+        <FileExtChip filename={file.fileName} size="xs" fallback="—" />
 
         {/* On a phone the status word sits under the name, so the name keeps
             the width; from `sm` up they share the line in fixed columns. */}
         <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2.5">
         <div className="flex min-w-0 items-center gap-2 sm:flex-1">
-          <p className="min-w-0 truncate text-xs text-foreground" title={file.fileName}>
-            {file.fileName}
+          {/* The name loses its middle, never its end: the revision and the
+              extension are what tell two Fassungen of one drawing apart, and
+              a phone shows about 25 characters of it. */}
+          <p className="min-w-0 text-xs text-foreground" data-testid="upload-row-name">
+            <MiddleTruncate text={file.fileName} tail={ROW_NAME_TAIL} />
           </p>
           {/* Where Piloti would file it, while the person is still at the
               upload: the chip, as on the card, on the row's one line. */}
@@ -542,28 +597,44 @@ function UploadRow({
           {formatBytes(file.fileSize, locale)}
         </span>
 
+        {/* Glyph, word and ink from one table (`ingestion-atoms`): waiting,
+            sending, reading, filed and cancelled all write in muted ink, and
+            the glyph is what tells them apart at a glance. No shimmer on a
+            reading row: the header's sweep is the batch's one loop, and a
+            shimmer per row made a batch of twelve twelve loops. */}
         <span
           className={cn(
             // The server's „unchanged" answer is a sentence, not a status word,
-            // so it may take more than the column.
-            unchanged ? 'sm:min-w-24' : 'sm:w-24',
-            'shrink-0 whitespace-nowrap text-[11px] font-medium tabular-nums sm:text-right sm:text-xs',
-            phase === 'ready' && !unchanged && 'text-success',
-            isFailed && 'text-destructive',
-            isHeldBack && 'text-warning',
-            (unchanged || (phase !== 'ready' && !isFailed && !isHeldBack)) && 'text-muted-foreground'
+            // so it may take more than the column. The column holds the
+            // longest status word („Zurückgehalten") beside its glyph.
+            unchanged ? 'sm:min-w-28' : 'sm:w-28',
+            'flex shrink-0 items-center text-xs font-medium tabular-nums sm:justify-end'
           )}
           data-testid={unchanged ? 'upload-row-unchanged' : undefined}
         >
-          <ShimmerText active={phase === 'processing'}>
+          <IngestionStatusWord mark={mark} quiet={unchanged}>
             {unchanged ? t('uploads.row.unchanged') : phaseLabel(phase, percent, t)}
-          </ShimmerText>
+          </IngestionStatusWord>
+          {/* The size column is off on a phone, so a file that is still moving
+              carries its size here: „42 % · 4,8 MB" says how much is left. */}
+          {showsSizeInline && (
+            <span className="whitespace-pre font-normal text-muted-foreground sm:hidden"> · {formatBytes(file.fileSize, locale)}</span>
+          )}
         </span>
         </div>
 
-        <span className="flex w-[52px] shrink-0 items-center justify-end gap-1 pointer-coarse:w-[92px]">
-          {isFailed && mayRetryUpload(file) && (
-            <RowAction label={tc('actions.retry')} onClick={() => onRetry(file.id)} icon={RotateCcw} />
+        {/* On a finger the row has ONE action. A failed row's retry is the
+            labelled button under its reason (below), not a second icon beside
+            the dismiss: two 44px icons in a 393px row left the name no room,
+            and a bare arrow says less than „Erneut versuchen". */}
+        <span className="flex w-[52px] shrink-0 items-center justify-end gap-1 pointer-coarse:w-11">
+          {canRetry && (
+            <RowAction
+              label={tc('actions.retry')}
+              onClick={() => onRetry(file.id)}
+              icon={RotateCcw}
+              className="pointer-coarse:hidden"
+            />
           )}
           {canCancel && (
             <RowAction
@@ -592,7 +663,7 @@ function UploadRow({
       )}
 
       <AnimatePresence initial={false}>
-        {(isFailed && file.errorMessage) || isHeldBack ? (
+        {(isFailed && (file.errorMessage || canRetry)) || isHeldBack ? (
           // eslint-disable-next-line grid/motion-vocabulary -- the reason folds open under its own row when the file settles; instant under reduced motion
           <motion.div
             key="reason"
@@ -610,31 +681,49 @@ function UploadRow({
               {isFailed && file.errorMessage && failedWhileReading(file) ? (
                 <IngestFailureNotice
                   errorMessage={file.errorMessage}
-                  sentenceClassName="leading-snug text-destructive"
+                  sentenceClassName="leading-snug text-error"
                   testId="upload-row-failure"
                 />
               ) : isFailed && file.errorMessage ? (
-                <p className="text-xs leading-snug text-destructive">{file.errorMessage}</p>
+                <p className="text-xs leading-snug text-error">{file.errorMessage}</p>
               ) : null}
+
+              {/* Only where there is no hover and no room for a bare icon. */}
+              {canRetry && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 hidden gap-1.5 pointer-coarse:inline-flex"
+                  onClick={() => onRetry(file.id)}
+                  data-testid="upload-row-retry"
+                >
+                  <RotateCcw className="size-3.5" aria-hidden />
+                  {t('uploads.actions.retryFile')}
+                </Button>
+              )}
 
               {/* Why it was held, as the Files preview and the upload summary
                   say it. No page buttons: the tray cannot show the document.
                   The sentence that explains holding back stands in only when
-                  there are no reasons to list. */}
+                  there are no reasons to list. A row refused because the file
+                  it replaces is held says that in its own sentence. */}
               {isHeldBack && (
-                <QuarantineFindings
-                  errorMessage={file.errorMessage}
-                  withoutSentence={(parseQuarantine(file.errorMessage)?.reasons.length ?? 0) > 0}
+                <HeldUploadReason
+                  verdict={heldVerdict}
+                  replacesHeld={file.replacesHeld}
+                  message={file.errorMessage}
+                  withoutSentence={(heldVerdict?.reasons.length ?? 0) > 0}
                   testId="upload-row-held"
                 />
               )}
               {/* The one thing the uploader can do about a held file, where
-                  they first learn of it. The tray only carries this session's
-                  own uploads, and the server accepts the request from the
-                  uploader alone, so it is always theirs to send. */}
-              {isHeldBack && file.serverFileId && (
+                  they first learn of it: this session's own upload, or the
+                  held file this one would replace when they uploaded it too.
+                  The server accepts the request from the uploader alone. */}
+              {isHeldBack && reviewableId && (
                 <RequestReviewButton
-                  documentId={file.serverFileId}
+                  documentId={reviewableId}
                   name={file.fileName}
                   className="mt-2 h-7 px-2 text-xs"
                   testId="upload-row-request-review"
@@ -652,10 +741,12 @@ function RowAction({
   label,
   onClick,
   icon: Icon,
+  className,
 }: {
   label: string
   onClick: () => void
   icon: typeof X
+  className?: string
 }) {
   return (
     <button
@@ -663,7 +754,10 @@ function RowAction({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:size-11"
+      className={cn(
+        'flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:size-11',
+        className
+      )}
     >
       <Icon className="size-3.5" aria-hidden />
     </button>

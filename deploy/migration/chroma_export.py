@@ -5,7 +5,7 @@
 # ///
 """Export every Chroma collection, vectors included, to the neutral format ``piloti-vectors/1``.
 
-The one place Chroma code still runs (ADR-0113). The product no longer
+The one place Chroma code still runs (ADR-0115). The product no longer
 depends on ``chromadb``: this script carries its own pin (the inline metadata
 above, which must match the Chroma server that wrote the data) and runs in a
 throwaway environment, never in the backend image. The importer

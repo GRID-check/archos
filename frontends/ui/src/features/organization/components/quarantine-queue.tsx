@@ -242,7 +242,7 @@ const QuarantineRow: FC<{
         )}
         {!hasReasons && (
           // A sentence, not a label: it wraps instead of truncating on a phone.
-          <ItemDescription className={item.held === 'unscreened' ? 'whitespace-normal' : undefined}>
+          <ItemDescription className="whitespace-normal">
             {item.held === 'unscreened' ? t('quarantine.unscreened') : t('quarantine.noReason')}
           </ItemDescription>
         )}

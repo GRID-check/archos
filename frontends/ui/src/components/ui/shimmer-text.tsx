@@ -13,14 +13,16 @@ import { cn } from '@/lib/utils'
  * repaint and nothing else may animate its opacity. The copy is generated
  * content (`attr(data-text)`) inside an `aria-hidden` window: the text is in
  * the DOM, and read, once. Font size and weight come from
- * `className` or the parent, so both copies are set alike.
+ * `className` or the parent, so both copies are set alike. The window travels
+ * half its width past the text's end, so the label clips it: unclipped, a
+ * scroll area the label sits in (a review thread) grew a sideways scrollbar.
  */
 export const ShimmerText: FC<{ children: string; active?: boolean; className?: string }> = ({
   children,
   active = true,
   className,
 }) => (
-  <span className={cn('relative inline-block max-w-full align-top', className)}>
+  <span className={cn('relative inline-block max-w-full overflow-hidden align-top', className)}>
     <span className={cn('block truncate', active && 'text-muted-foreground motion-reduce:text-inherit')}>
       {children}
     </span>

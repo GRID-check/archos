@@ -1,6 +1,6 @@
 """The physical shape of the Qdrant store: collections, vectors, payload indexes.
 
-Two collections by data shape, not one per scope (ADR-0114):
+Two collections by data shape, not one per scope (ADR-0116):
 
 * ``corpus`` holds the shared legal corpus (``oib_knowledge`` and any other
   collection without a tenant prefix). Every office reads it.

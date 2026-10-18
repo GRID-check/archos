@@ -106,16 +106,16 @@ export interface AnswerFeedbackProps {
 }
 
 /**
- * The thumbs. 24px glyph, `touch-target` for the finger's 44px, muted at rest
- * and full-contrast on hover/focus — a footnote that does not compete with the
- * answer above it.
+ * The thumbs. 24px glyph, muted at rest and full-contrast on hover/focus — a
+ * footnote that does not compete with the answer above it. On a finger they
+ * grow to 44px rather than borrow a catchment: the two thumbs sit 4px apart,
+ * and overlapping catchments hand a tap on one to the other.
  */
 const thumbBase = cn(
-  'inline-flex size-6 items-center justify-center rounded-md',
+  'inline-flex size-6 items-center justify-center rounded-md pointer-coarse:size-11',
   'text-muted-foreground/70',
   PRESSABLE,
   'hover:bg-accent hover:text-foreground',
-  'touch-target',
   FOCUS_RING
 )
 
@@ -224,7 +224,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
         <span
           aria-hidden={verdict !== null || undefined}
           className={cn(
-            'text-muted-foreground/80 group-hover/feedback:text-muted-foreground col-start-1 row-start-1 text-[11px]',
+            'text-muted-foreground/80 group-hover/feedback:text-muted-foreground col-start-1 row-start-1 text-xs',
             'duration-quick transition-[color,opacity] ease-out motion-reduce:transition-none',
             verdict !== null && 'opacity-0'
           )}
@@ -237,7 +237,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
           role="status"
           tabIndex={-1}
           className={cn(
-            'text-muted-foreground col-start-1 row-start-1 flex items-center gap-1 text-[11px] outline-none',
+            'text-muted-foreground col-start-1 row-start-1 flex items-center gap-1 text-xs outline-none',
             'duration-quick transition-opacity ease-out motion-reduce:transition-none',
             verdict === null && 'opacity-0'
           )}
@@ -271,7 +271,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
           aria-label={t('feedback.helpfulAria')}
           className={cn(thumbBase, verdict === 'up' && thumbSelected)}
         >
-          <ThumbsUp className="size-3.5" aria-hidden="true" />
+          <ThumbsUp className="size-3.5 pointer-coarse:size-4" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -280,7 +280,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
           aria-label={t('feedback.notHelpfulAria')}
           className={cn(thumbBase, verdict === 'down' && thumbSelected)}
         >
-          <ThumbsDown className="size-3.5" aria-hidden="true" />
+          <ThumbsDown className="size-3.5 pointer-coarse:size-4" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -297,7 +297,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
       {verdict === 'down' && (
         <HeightArrival key="reasons" className="w-full">
           <div className="flex max-w-md flex-col gap-2 text-xs">
-            <p id={promptId} className="text-muted-foreground text-[11px]">
+            <p id={promptId} className="text-muted-foreground text-xs">
               {t('feedback.reasonPrompt')}
             </p>
             {/* Exclusive choice, structurally: Radix renders a radiogroup with
@@ -317,7 +317,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
                   value={key}
                   // Selected is the SAME language as the selected thumb: ink fill,
                   // no chroma, unmistakable at a glance in a row of four.
-                  className="data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:shadow-2xs h-7 px-2.5 text-xs data-[state=on]:border-transparent"
+                  className="data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:shadow-2xs h-7 px-2.5 text-xs data-[state=on]:border-transparent pointer-coarse:h-11"
                 >
                   {t(`feedback.reasons.${key}`)}
                 </ToggleGroupItem>
@@ -331,7 +331,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
                     <Field className="gap-1.5">
                       <FieldLabel
                         htmlFor={commentId}
-                        className="text-muted-foreground text-[11px] font-normal"
+                        className="text-muted-foreground text-xs font-normal"
                       >
                         {t('feedback.commentLabel')}
                       </FieldLabel>
@@ -352,7 +352,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
                       />
                       <FieldLabel
                         htmlFor={expectedId}
-                        className="text-muted-foreground text-[11px] font-normal"
+                        className="text-muted-foreground text-xs font-normal"
                       >
                         {t('feedback.expectedLabel')}
                       </FieldLabel>
@@ -369,7 +369,7 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
                       <Button
                         type="submit"
                         size="sm"
-                        className="h-7 w-fit px-3 text-xs disabled:opacity-40"
+                        className="h-7 w-fit px-3 text-xs disabled:opacity-40 pointer-coarse:h-11"
                         disabled={comment.trim() === '' && expected.trim() === ''}
                       >
                         {t('feedback.commentSubmit')}

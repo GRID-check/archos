@@ -9,7 +9,7 @@ import { edgeLabelBox, GraphCanvas, type GraphSpec } from './graph-canvas'
 
 describe('an edge label', () => {
   it('is as wide as its text on one line', () => {
-    expect(edgeLabelBox('ja')).toEqual({ width: Math.ceil(2 * 6.4 + 14), height: 22 })
+    expect(edgeLabelBox('ja')).toEqual({ width: Math.ceil(2 * 7 + 14), height: 23 })
   })
 
   it('wraps at the cap and is one line taller for each line it wraps to', () => {
@@ -17,15 +17,15 @@ describe('an edge label', () => {
     const box = edgeLabelBox(long)
     expect(box.width).toBe(160)
     // Three lines of ~22 characters: „nach Vorlage des", „vollständigen", „Brandschutzkonzepts".
-    expect(box.height).toBe(Math.ceil(3 * 11 * 1.375 + 6))
+    expect(box.height).toBe(Math.ceil(3 * 12 * 1.375 + 6))
   })
 
   it('counts a line break the label carries', () => {
-    expect(edgeLabelBox('ja\nnein').height).toBe(edgeLabelBox('ja').height + Math.ceil(11 * 1.375) - 1)
+    expect(edgeLabelBox('ja\nnein').height).toBe(edgeLabelBox('ja').height + Math.ceil(12 * 1.375) - 1)
   })
 
   it('runs a word too long for one line over the lines it fills', () => {
-    expect(edgeLabelBox('x'.repeat(50)).height).toBe(Math.ceil(3 * 11 * 1.375 + 6))
+    expect(edgeLabelBox('x'.repeat(50)).height).toBe(Math.ceil(3 * 12 * 1.375 + 6))
   })
 })
 

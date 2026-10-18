@@ -92,6 +92,7 @@ Files render as cards in a responsive grid. Each card shows:
 - the file name and, when ingestion generated one, a one-line **AI description**
 - a tinted **extension chip** (PDF, DOCX, …), the file size and a relative upload time
 - an **ingestion status badge** only while the document is not yet citable (Processing / Failed / held back) — failed cards show the failure reason inline. A citable document carries no badge on its card; the list view's status column names every state, „Zitierbar“ included
+- what is **still open on its pages**, when anything is: a small chip under the size and date that says how many Anmerkungen are open (Piloti's proposals nobody has decided on included, from every Fassung) and how many of those are yours, „4 offen · 2 für Sie“. Pointing at it shows the whole sentence, „4 offene Anmerkungen, 2 für Sie“. Pressing it opens the document in the Prüfansicht. The list view shows the same beside the name
 
 The last tile of the grid is a dashed **upload card** listing the actually accepted file types and the size limit; drag-and-drop anywhere on the workspace also works. A file dropped on another project page, such as Settings or Members, opens Files and is uploaded there; the chat, the research page and the intake keep their own drop targets.
 
@@ -153,14 +154,33 @@ Additional limits:
 
 ## Moving a file into a folder
 
-Drag it onto the folder — a card, a row, or „Alle Dateien“ in the breadcrumb to
-move it back to the top level. The folder lights up as the target while you are
-over it. „Verschieben“ in a file's overflow menu does the same thing and remains
-the way to move a file into a folder you are not currently looking at.
+Drag it onto the folder — a card, a row, or „Alle Dateien“ or any folder in the
+breadcrumb to move it up. The folder lights up as the target while you are over
+it. Folders move the same way.
+
+To reach a folder that is not on screen, hold the drag over a folder (or a
+folder in the breadcrumb) for a moment: it opens, and you can go on down, or let
+go anywhere in it. „Verschieben“ in the overflow menu does the same thing
+without a drag.
+
+Every move says where it went, with **Rückgängig** to put it back. When a move
+cannot happen, Piloti says why: a folder you may only read (it turns red while
+you hold something over it), a folder of the same name already there, or a
+folder someone has just deleted.
 
 Dragging a file inside Piloti never starts an upload: a drag carrying files from
 your desktop and a drag carrying a document already here are different things to
 the browser, and only the first raises the upload overlay.
+
+Files from your desktop go where you drop them, too: onto a folder card or row
+to upload into that folder, onto „Alle Dateien“ or a folder in the breadcrumb to
+upload there, anywhere else in the file area to upload into the folder you are
+looking at. The overlay names the folder before you let go.
+
+A folder you may only read takes nothing: a file in it cannot be dragged out,
+and the overlay says „Nur lesen“ in red instead of offering a drop that the
+server would refuse. A second drop while an upload is still running waits its
+turn, and Piloti says that it will follow, rather than dropping it.
 
 ## Uploading a whole folder
 
@@ -441,6 +461,13 @@ the header; **Piloti überarbeiten lassen** and **Ablehnen** are behind the ⋯
 beside them. The section opens itself when something is asked of you: a decision
 is yours to take, Piloti has a suggestion to answer, or the file is an older
 Fassung. Once you close it, it stays closed.
+
+When Anmerkungen are still open on the document, **Freigeben** says so before
+you sign: „4 offene Anmerkungen – trotzdem freigeben?“, with **In der
+Prüfansicht öffnen** beside it. If the Anmerkungen are still loading, or
+could not be read, it says that instead, so silence always means nothing is
+open. It does not stop you: whether an open point stands in the way of a
+release is yours to decide.
 
 ### The timeline
 

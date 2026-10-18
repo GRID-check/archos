@@ -13,7 +13,7 @@ vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
 // What it announces is `fassung-notify.spec.ts`'s; here, settling hands over the documents that came to rest.
 vi.mock('@/lib/documents/fassung-notify', () => ({ announceSettledVersions: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
-vi.mock('@/lib/authz/project-membership', () => ({
+vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8,
   resolveSubjectMembership: vi.fn(),
   userHoldsProjectPermission: vi.fn(),
 }))
@@ -161,7 +161,15 @@ describe('onDocumentsSettled', () => {
   })
 
   it("tells a quarantined project document's reviewers: org admins and that project's admins, nobody else", async () => {
-    vi.mocked(findDocumentInOrg).mockResolvedValue(makeDocument({ id: 'doc-q', projectId: 'proj-1', createdBy: 'uploader' }))
+    vi.mocked(findDocumentInOrg).mockResolvedValue(
+      makeDocument({
+        id: 'doc-q',
+        projectId: 'proj-1',
+        createdBy: 'uploader',
+        filename: 'Lohnzettel_März.pdf',
+        quarantine: { reasons: [{ kind: 'iban', count: 1, pages: [2], sample: 'AT61 •••• •••• •••• 3201' }] },
+      })
+    )
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(
       new Map([
         ['admin', person('admin')],
@@ -186,8 +194,10 @@ describe('onDocumentsSettled', () => {
       resourceId: 'org-1',
       groupKey: 'document.quarantined:organization:org-1',
     })
-    // The row names no file: a badge must not leak another project's file names.
-    expect(JSON.stringify(emitted)).not.toContain('doc-q')
+    // The row names the file and the kind of reason, never the value found. Only
+    // this file's reviewers get it, so it names nothing they could not open.
+    expect(emitted[0]?.payload).toEqual({ subject: 'Lohnzettel_März.pdf', variant: 'iban' })
+    expect(JSON.stringify(emitted)).not.toContain('3201')
   })
 
   it('leaves out a project admin the quarantined document\'s folder is hidden from (ADR-0087)', async () => {

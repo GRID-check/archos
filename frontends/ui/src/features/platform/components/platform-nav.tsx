@@ -16,7 +16,6 @@
  */
 
 import type { JSX } from 'react'
-import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -34,6 +33,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react'
+import { SectionStrip, type SectionNavItem } from '@/components/shell/section-nav'
 import { cn } from '@/lib/utils'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
@@ -112,46 +112,24 @@ const LINK_BASE =
 export function PlatformNav(): JSX.Element {
   const pathname = usePathname()
   const t = useTranslations('platform')
-  const stripRef = useRef<HTMLUListElement>(null)
-
-  // On a phone the strip scrolls; the section you are on can start off-screen
-  // (Maintenance is twelfth). Bring it into view whenever the route changes.
-  useEffect(() => {
-    const active = stripRef.current?.querySelector<HTMLElement>('[aria-current="page"]')
-    active?.scrollIntoView?.({ block: 'nearest', inline: 'center' })
-  }, [pathname])
+  const stripItems: SectionNavItem[] = PLATFORM_SECTIONS.map(({ key, href, icon }) => ({
+    key,
+    href,
+    icon,
+    label: t(`nav.${key}`),
+  }))
 
   return (
     <nav aria-label={t('nav.label')} data-testid="platform-nav">
-      {/* Mobile / tablet: one scrolling strip. Wide content scrolls in its own
-          container so the page body never scrolls horizontally. */}
-      <ul
-        ref={stripRef}
-        className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-2 [scrollbar-width:none] lg:hidden"
-      >
-        {PLATFORM_SECTIONS.map(({ key, href, icon: Icon }) => {
-          const active = isActive(pathname, href)
-          return (
-            <li key={key} className="shrink-0">
-              <Link
-                href={href}
-                replace
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  LINK_BASE,
-                  'pointer-coarse:min-h-11 gap-1.5 px-3 py-1.5',
-                  active
-                    ? 'bg-secondary text-secondary-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                )}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                {t(`nav.${key}`)}
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+      {/* Mobile / tablet: the same strip the other tiers use (edge fade, 44px
+          entries, the current section brought into view). */}
+      <SectionStrip
+        label={t('nav.scrollable')}
+        items={stripItems}
+        pillId="platform-nav-pill"
+        isActive={(href) => isActive(pathname, href)}
+        className="lg:hidden"
+      />
 
       {/* Desktop: a sticky rail beside the content, grouped. */}
       <div className="hidden lg:sticky lg:top-24 lg:flex lg:flex-col lg:gap-5">

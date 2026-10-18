@@ -17,13 +17,18 @@ import { PopoverContent } from './popover'
  * that wants an answer first.
  */
 
-/** The panel: card surface, one hairline, no shadow, its lines inset by 6px. */
+/**
+ * The panel: card surface, one hairline, no shadow, its lines inset by 6px.
+ * `grid-cols-1` is `minmax(0, 1fr)`: without it the implicit `auto` column
+ * grows to its widest unbreakable line, and a long file name pushed the panel
+ * past a phone's edge.
+ */
 export function SuggestionPanel({ className, ...props }: HTMLAttributes<HTMLDivElement>): JSX.Element {
   return (
     <div
       role="group"
       data-slot="suggestion-panel"
-      className={cn('bg-card grid gap-0.5 rounded-xl border p-1.5', className)}
+      className={cn('bg-card grid grid-cols-1 gap-0.5 rounded-xl border p-1.5', className)}
       {...props}
     />
   )
@@ -158,7 +163,7 @@ export const SuggestionPopoverContent = forwardRef<
       ref={ref}
       align={align}
       collisionPadding={16}
-      className={cn('grid w-72 max-w-[calc(100vw-2rem)] gap-2.5 p-3 text-xs', className)}
+      className={cn('grid w-72 max-w-[calc(100vw-2rem)] grid-cols-1 gap-2.5 p-3 text-xs', className)}
       onClick={stop}
       onPointerDown={stop}
       onKeyDown={stop}

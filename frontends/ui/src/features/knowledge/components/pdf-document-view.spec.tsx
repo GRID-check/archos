@@ -672,6 +672,16 @@ describe('PdfDocumentView', () => {
       expect(await screen.findByText('75%')).toBeTruthy()
     })
 
+    it('walks the zoom past 4x, where the old ceiling stopped a reader of plans', async () => {
+      threePages()
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      await waitFor(() => expect(pageField().value).toBe('1'))
+      const frame = screen.getByTestId('pdf-scroll')
+      for (let press = 0; press < 9; press += 1) fireEvent.keyDown(frame, { key: '+' })
+      expect(await screen.findByText('800%')).toBeTruthy()
+      expect(screen.getByLabelText('Zoom in')).toBeDisabled()
+    })
+
     it('fits the whole page on request, and says it is doing so', async () => {
       threePages()
       render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
@@ -775,5 +785,93 @@ describe('pointOnPage', () => {
 
   it('has no point on a page with no size yet', () => {
     expect(pointOnPage(1, { ...rect, width: 0 }, 60, 45)).toBeNull()
+  })
+})
+
+describe('PdfDocumentView touch gestures', () => {
+  /** Fingers on the glass, the shape `TouchEvent.touches` has. */
+  const fingers = (...points: Array<[number, number]>) =>
+    points.map(([clientX, clientY], identifier) => ({ identifier, clientX, clientY }))
+
+  it('shows a pinch as a transform while the fingers move, and lays the zoom out once, on release', async () => {
+    state.pages = [{ items: [] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
+    const frame = screen.getByTestId('pdf-scroll')
+    const content = frame.querySelector<HTMLElement>('[data-page]')!.parentElement!
+
+    fireEvent.touchStart(frame, { touches: fingers([100, 100], [200, 100]) })
+    fireEvent.touchMove(frame, { touches: fingers([50, 100], [250, 100]) })
+    // Live: the stack is scaled on the compositor, and nothing is laid out.
+    expect(content.style.transform).toContain('scale(2)')
+    expect(screen.getByText('100%')).toBeTruthy()
+
+    fireEvent.touchEnd(frame, { touches: fingers([50, 100]) })
+    fireEvent.touchEnd(frame, { touches: [] })
+    expect(await screen.findByText('200%')).toBeTruthy()
+    // Whatever the layout could not show exactly settles back to rest.
+    await waitFor(() => expect(content.style.transform).toBe(''))
+  })
+
+  it('does not read a pinch whose fingers landed one after the other as a two-finger tap', async () => {
+    state.pages = [{ items: [] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
+    const frame = screen.getByTestId('pdf-scroll')
+    // As a phone delivers it: one finger, then the second, then the spread.
+    fireEvent.touchStart(frame, { touches: fingers([100, 100]) })
+    fireEvent.touchStart(frame, { touches: fingers([100, 100], [200, 100]) })
+    fireEvent.touchMove(frame, { touches: fingers([50, 100], [250, 100]) })
+    fireEvent.touchEnd(frame, { touches: fingers([50, 100]) })
+    fireEvent.touchEnd(frame, { touches: [] })
+    expect(await screen.findByText('200%')).toBeTruthy()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.getByText('200%')).toBeTruthy()
+  })
+
+  it('zooms in one step on a double tap, and back to the fit from the ceiling', async () => {
+    state.pages = [{ items: [] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
+    const frame = screen.getByTestId('pdf-scroll')
+    const page = frame.querySelector<HTMLElement>('[data-page]')!
+    const tap = () => {
+      fireEvent.touchStart(page, { touches: fingers([120, 140]) })
+      fireEvent.touchEnd(page, { touches: [] })
+    }
+    tap()
+    tap()
+    expect(await screen.findByText('250%')).toBeTruthy()
+  })
+
+  it('leaves a tap on a control to the control', async () => {
+    state.pages = [{ items: [] }]
+    render(
+      <PdfDocumentView
+        src="/api/doc.pdf"
+        title="doc.pdf"
+        pageOverlay={() => (
+          <button type="button" className="pointer-events-auto">
+            Anmerkung 1
+          </button>
+        )}
+      />,
+    )
+    const pin = await screen.findByRole('button', { name: 'Anmerkung 1' })
+    for (let tap = 0; tap < 2; tap += 1) {
+      fireEvent.touchStart(pin, { touches: fingers([120, 140]) })
+      fireEvent.touchEnd(pin, { touches: [] })
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(screen.getByText('100%')).toBeTruthy()
+  })
+
+  it('keeps the drawing from painting over its own controls', async () => {
+    state.pages = [{ items: [] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
+    // The page overlay (peer cursors, pins) is z-20 inside the frame; the
+    // frame is its own stacking context, under the toolbar.
+    expect(screen.getByTestId('pdf-scroll')).toHaveClass('isolate')
   })
 })

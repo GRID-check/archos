@@ -74,7 +74,8 @@ import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { reconcileDocumentStatuses, describeBackendIngestState, extractIngestJobId } from './reconcile-status'
 import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
 import { loadFassungFacts } from './fassung-facts'
-import { projectShelf } from './shelf'
+import { documentShelf, projectShelf } from './shelf'
+import { publishShelfChanged } from './shelf-live'
 import type { DocumentLevelQuery } from './list-query'
 import { uploadToShelf, type UploadDocumentResult } from './shelf-upload'
 import { resolveDocumentFolderPath } from './folder-path'
@@ -128,6 +129,7 @@ import {
 import { findDocumentForSession, getAccessibleDocument } from './access'
 import { hasPassedScreening, internalRead, SCREENED_ONLY } from './document-reader'
 import { maySeeHeld, shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
+import { quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { recordDocumentAccess } from '@/lib/download-log/service'
 import { findOpenVersion, listDocumentVersionSummaries } from './version-repository'
 import { eraseDocumentObjectsOrKeepRow } from './object-cleanup'
@@ -756,14 +758,14 @@ export async function fetchSemanticHits(
 
 /**
  * One ranking across many collections, from the backend's grouped search
- * (`POST /v1/collections/search`, ADR-0114): every collection named is ranked
+ * (`POST /v1/collections/search`, ADR-0116): every collection named is ranked
  * in ONE query, and the documents come back in that ranking's order across
  * collections (at most `filesPerCollection` from any one), each hit carrying
  * its position as `rank`. Scores from separate searches are not comparable;
  * this order is. `options` narrow the search and lift similar projects inside
  * the same query.
  *
- * Qdrant is the only store (ADR-0113), so there is nothing to fall back to: a
+ * Qdrant is the only store (ADR-0115), so there is nothing to fall back to: a
  * backend that refuses, cannot be reached or answers something unreadable is
  * an {@link UpstreamError}, never an empty result a caller would read as
  * "nothing found". The envelope is signed for exactly these collections, every
@@ -2404,6 +2406,7 @@ export async function renameDocument(
   }
 
   await setDocumentDisplayName(documentId, session.organizationId, displayName)
+  publishShelfChanged(session.organizationId, documentShelf(doc))
 
   // Mirror the name onto the backend's metadata row so citation chips follow
   // the rename immediately, with no re-ingest (the retrieval layer prefers a
@@ -2503,6 +2506,7 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
   ])
 
   await deleteProjectDocument(doc.id, organizationId, projectId)
+  publishShelfChanged(organizationId, projectShelf(projectId))
 
   // Once more, now that the row is gone: an ingest of this document that
   // asked `GET /api/internal/document-exists` before the row went saw it,
@@ -3151,6 +3155,9 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     contentType: reconciled.contentType,
     collectionName: reconciled.collectionName,
     errorMessage: reconciled.errorMessage,
+    // Why a held file is held, as data (ADR-0113). Only a reader who may see
+    // the held row gets this far (the check above).
+    quarantine: quarantineVerdictOf(reconciled),
     createdAt: reconciled.createdAt,
     updatedAt: reconciled.updatedAt,
     // Read-only document metadata merged from the backend collection listing.

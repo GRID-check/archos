@@ -35,7 +35,6 @@ import {
   Eye,
   FileText,
   Loader2,
-  Paperclip,
   RotateCw,
   ShieldAlert,
   Square,
@@ -64,6 +63,7 @@ import { OtherProjectsNotice } from '@/features/chat/components/OtherProjectsNot
 import { useRestrictingOtherProjects } from '@/features/chat/hooks/use-restricting-other-projects'
 import { useChatScreening } from '@/features/chat/hooks/use-chat-screening'
 import type { MaskedText } from '@/lib/upload-screening/content-screen'
+import { heldSentenceKey, quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { composerCapabilities } from '@/features/collaboration/lib/composer-capabilities'
 import { resolveAddressee, sendMessageOptions } from '@/features/collaboration/lib/composer-routing'
 import { EffortDial } from '@/features/chat/components/effort-dial'
@@ -73,10 +73,20 @@ import { computePresetSourceIds } from '../lib/source-presets'
 // import { SourceBasisPicker, SourceBasisTrigger } from './source-basis'
 import { FileSourcesTab } from './FileSourcesTab'
 import { UploadDestinationNote } from './UploadDestination'
+import { useChatDropTarget } from './chat-drop-zone'
+import { composerDropRefusal } from '../lib/composer-drop-refusal'
 import { useAppConfig } from '@/shared/context'
 import { useLocale, useTranslations } from '@/i18n'
-import { DictationButton, insertTranscript, type ComposerCaret } from '@/features/dictation'
-import { useFileUpload, useFileDragDrop } from '@/features/documents'
+import {
+  DictationButton,
+  LiveDictationStrip,
+  createDictationChannel,
+  insertTranscript,
+  type ComposerCaret,
+} from '@/features/dictation'
+import { photoIntake, prepareSitePhotos } from '@/features/documents/lib/site-photo'
+import { ComposerAttach, type AttachSource } from './ComposerAttach'
+import { useFileUpload } from '@/features/documents'
 import type { TrackedFile } from '@/features/documents'
 import { trackedFileToFileItem } from '@/features/documents/types'
 import { FilePreviewDialog } from '@/features/documents/components/file-preview-dialog'
@@ -262,6 +272,35 @@ const FIELD_SIZING_CONTENT =
   CSS.supports('field-sizing', 'content')
 
 /**
+ * The photo itself, small, on its chip: a site photo is recognised by what it
+ * shows, never by `Foto 2026-10-15 14-32-05.jpg`. Only for a file this tab
+ * picked (a listed file has no bytes here), and only for an image type.
+ */
+function usePhotoThumbnail(file: File | undefined): ReactNode {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!file || !file.type.startsWith('image/') || typeof URL.createObjectURL !== 'function') {
+      setUrl(null)
+      return
+    }
+    const next = URL.createObjectURL(file)
+    setUrl(next)
+    return () => URL.revokeObjectURL(next)
+  }, [file])
+  if (!url) return null
+  return (
+    // oxlint-disable-next-line nextjs/no-img-element -- a blob: URL of a file in this tab; the optimizer cannot fetch it
+    <img
+      src={url}
+      alt=""
+      aria-hidden="true"
+      data-testid="file-chip-thumbnail"
+      className="pointer-coarse:size-8 size-5 shrink-0 rounded-[4px] object-cover"
+    />
+  )
+}
+
+/**
  * Inline removable file chip shown above the composer textarea. Live status:
  * spinner while uploading/ingesting, green check on success, red on failure
  * (failed chips also offer a retry), a warning shield on a file the content
@@ -297,14 +336,23 @@ const FileChip: FC<{
   // Kept and never read: the chat cannot answer from it, so no green check.
   const isStored = file.status === 'stored'
   const isSuccess = file.status === 'success'
-  const ingestFailure = useIngestFailureText(
-    (isFailed && failedWhileReading(file)) || isHeld ? file.errorMessage : null
-  )
+  const thumbnail = usePhotoThumbnail(file.file)
+  // A file refused because the document it replaces is held carries a
+  // sentence, not a verdict (ADR-0086): it is said as it is.
+  // A file the content check held says why from its verdict, with the same
+  // sentence the findings use (`heldSentenceKey`), never from its message.
+  const tFiles = useTranslations('files')
+  const heldSentence = isHeld
+    ? file.replacesHeld
+      ? file.errorMessage
+      : tFiles(heldSentenceKey(quarantineVerdictOf(file)))
+    : null
+  const ingestFailure = useIngestFailureText(isFailed && failedWhileReading(file) ? file.errorMessage : null)
   // Uploading and reading are both pending, but only one of them is an upload.
   const statusTitle = isPending
     ? t(file.status === 'ingesting' ? 'fileSourceCard.statusIngesting' : 'inputArea.fileUploadingStatus')
     : isHeld
-      ? (ingestFailure?.sentence ?? t('fileSourceCard.statusHeld'))
+      ? (heldSentence || t('fileSourceCard.statusHeld'))
       : isStored
         ? t('fileSourceCard.statusStored')
         : isFailed
@@ -363,11 +411,13 @@ const FileChip: FC<{
           className="text-foreground/85 focus-visible:ring-ring/50 pointer-coarse:min-h-11 flex min-w-0 flex-1 items-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2"
         >
           {statusIcon}
+          {thumbnail}
           <span className="min-w-0 truncate">{file.fileName}</span>
         </button>
       ) : (
         <span className="flex min-w-0 flex-1 items-center gap-1.5">
           {statusIcon}
+          {thumbnail}
           <span className="text-foreground/85 min-w-0 truncate">{file.fileName}</span>
         </span>
       )}
@@ -456,7 +506,15 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
   // one), and the inline error a failed dictation shows. A failure never
   // touches `message`.
   const dictationCaretRef = useRef<ComposerCaret | null>(null)
-  const [dictationError, setDictationError] = useState<string | null>(null)
+  /**
+   * One quiet line above the control row for what the composer has to say
+   * about capture: a dictation that failed, a microphone that cannot be used
+   * (said on a press, because a touch screen has no hover), a HEIC photo this
+   * browser could not convert. Upload failures keep their own alert.
+   */
+  const [composerNote, setComposerNote] = useState<{ text: string; tone: 'error' | 'info' } | null>(
+    null
+  )
   const rememberDictationCaret = useCallback((e: { currentTarget: HTMLTextAreaElement }) => {
     dictationCaretRef.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd }
   }, [])
@@ -495,9 +553,6 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
   // the mobile "N Dateien verwalten" text entry, so it is controlled (not
   // trigger-bound) and one dialog instance serves both breakpoints.
   const [manageFilesOpen, setManageFilesOpen] = useState(false)
-
-  // File input ref for attachment button
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Textarea ref for the autosize effect
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -1167,12 +1222,19 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     (transcript: string) => {
       const inserted = insertTranscript(message, transcript, dictationCaretRef.current)
       if (!inserted) return
-      setDictationError(null)
+      setComposerNote(null)
       dictationCaretRef.current = { start: inserted.caret, end: inserted.caret }
       replaceComposerText(inserted.value, inserted.caret)
     },
     [message, replaceComposerText]
   )
+
+  // The microphone's state reaches the recording strip through a channel, not
+  // through this component: a recording publishes a level every 60ms, and the
+  // whole composer re-rendering at that rate is the jank a strip must not cost.
+  const dictationChannel = useMemo(() => createDictationChannel(), [])
+  const reportDictationError = useCallback((text: string) => setComposerNote({ text, tone: 'error' }), [])
+  const explainDictation = useCallback((reason: string) => setComposerNote({ text: reason, tone: 'info' }), [])
 
   // Restore the caret after a mention insertion rewrote the text.
   useEffect(() => {
@@ -1640,14 +1702,31 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     [handleValueChange, message, mentionQuery, tCollab]
   )
 
-  // Handle attach button click
-  const handleAttachClick = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
+  // Photos are accepted only where Piloti can read them (`image-upload` flag
+  // AND a vision model); the attach menu says which of the two is missing.
+  const photos = photoIntake(fileUploadConfig)
+  const tCapture = useTranslations('capture')
 
   const handleFilesSelected = useCallback(
-    async (files: File[]) => {
-      if (files.length === 0 || cannotContribute || isUploading || isBusy) return
+    async (selected: File[], source: AttachSource = 'picker') => {
+      if (selected.length === 0 || cannotContribute || isUploading || isBusy) return
+
+      // A photo gets a name of its own before anything else sees it: the name
+      // is the document's identity, and iOS calls every capture `image.jpg`,
+      // so the second photo would replace the first (`site-photo.ts`).
+      const { files, unconvertibleHeic } = await prepareSitePhotos(selected, {
+        source,
+        prefix: tCapture('photos.fileNamePrefix'),
+        taken: sessionFiles.map((file) => file.fileName),
+        imagesAccepted: photos.available,
+      })
+      if (unconvertibleHeic.length > 0) {
+        setComposerNote({
+          text: tCapture('photos.heicUnconvertible', { name: unconvertibleHeic.join(', ') }),
+          tone: 'error',
+        })
+      }
+      if (files.length === 0) return
 
       const sessionId = ensureSession()
       if (!sessionId) {
@@ -1668,22 +1747,35 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
       // first upload in a fresh session would otherwise abort.
       await uploadFiles(files, { collectionOverride: sessionId })
     },
-    [ensureSession, ensureConversationExists, uploadFiles, cannotContribute, isUploading, isBusy]
+    [
+      ensureSession,
+      ensureConversationExists,
+      uploadFiles,
+      cannotContribute,
+      isUploading,
+      isBusy,
+      sessionFiles,
+      photos.available,
+      tCapture,
+    ]
   )
 
-  const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
-    onDrop: handleFilesSelected,
-    disabled: cannotContribute || isUploading || isBusy,
+  // A drop attaches the way the picker does; what it could not hand over
+  // (`DropInfo`) is the shelves' concern, not an attachment's. The zone is the
+  // whole chat panel (`ChatDropZone`), and while attaching is closed it says
+  // why rather than letting the drop vanish.
+  const attachDropped = useCallback((files: File[]) => void handleFilesSelected(files), [handleFilesSelected])
+  const dropRefusal = composerDropRefusal({
+    canContribute: !cannotContribute,
+    isStreaming,
+    awaitsAnswer: isResponseMode,
+    isUploading,
+    knowledgeLayerAvailable,
   })
-
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files || [])
-      await handleFilesSelected(files)
-      // Reset input so same file can be selected again
-      e.target.value = ''
-    },
-    [handleFilesSelected]
+  useChatDropTarget(
+    isAuthenticated
+      ? { attach: attachDropped, refusal: dropRefusal ? t(`inputArea.${dropRefusal}`) : null }
+      : null
   )
 
   // Paste-to-attach: route any files on the clipboard (e.g. a pasted image or
@@ -1694,7 +1786,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
       const files = Array.from(e.clipboardData?.files ?? [])
       if (files.length === 0) return
       e.preventDefault()
-      handleFilesSelected(files)
+      void handleFilesSelected(files)
     },
     [handleFilesSelected]
   )
@@ -1819,9 +1911,17 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     // `viewportFit: 'cover'`, so on a landscape iPhone the notch and the
     // rounded corner sit inside the viewport, and a plain px-4 put the
     // composer's edge (and the send button) under them.
+    //
+    // The bottom floor is the inset the SHELL says is still uncovered
+    // (`--shell-inset-bottom`, AppShellChrome): zero while the phone tab bar
+    // stands below the composer (the bar clears the home indicator) and while
+    // the keyboard is up (it covers the indicator), the real inset otherwise.
+    // Padding for an indicator something else already clears was 34px of dead
+    // paper between the composer and the bar, or between it and the keyboard.
+    // Outside the shell (a preview) the variable is unset and the inset applies.
     <div
       ref={composerRootRef}
-      className="mx-auto flex w-full max-w-4xl flex-col pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pt-4 sm:pb-4"
+      className="mx-auto flex w-full max-w-4xl flex-col pb-[max(0.75rem,var(--shell-inset-bottom,env(safe-area-inset-bottom)))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 sm:pb-4 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pt-4"
     >
       {/* The mention picker is anchored to the composer CARD and opens above it,
           spanning its full width — the Slack/Linear placement. Caret-pixel tracking
@@ -1867,55 +1967,10 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
               // in the textarea shrank the whole composer — text, chips and all — on
               // every mousedown, which reads as the surface flinching away from the
               // click rather than as a control acknowledging a press.
-              'bg-card/90 backdrop-blur-md supports-[backdrop-filter]:bg-card/85 focus-within:ring-ring/40 duration-quick relative flex flex-col rounded-xl border border-input px-4 py-2.5 shadow-md transition-[box-shadow,border-color] ease-out focus-within:ring-2',
-              isDisabledByAuth && 'opacity-60',
-              isDragging && isUnsupportedDrag
-                ? 'border-error border-2 border-dashed'
-                : isDragging
-                  ? 'border-brand border-2 border-dashed'
-                  : ''
+              'bg-card/90 backdrop-blur-md supports-[backdrop-filter]:bg-card/85 focus-within:ring-ring/40 duration-quick relative flex flex-col rounded-xl border border-input px-3 py-2.5 sm:px-4 shadow-md transition-[box-shadow,border-color] ease-out focus-within:ring-2',
+              isDisabledByAuth && 'opacity-60'
             )}
-            {...dragHandlers}
           >
-            {/* Drag overlay */}
-            {isDragging && (
-              // 90%, not an opaque fill: a drop scrim has to dim what is underneath
-              // without erasing it, so the reader can still see what they are
-              // dropping onto ("a scrim built from --background at near-full
-              // opacity" is the failure the tokens file documents).
-              <div className="bg-background/90 absolute inset-0 z-10 flex items-center justify-center rounded-xl">
-                <div className="flex flex-col items-center gap-2">
-                  {isUnsupportedDrag ? (
-                    <XCircle className="text-error size-8" aria-hidden="true" />
-                  ) : (
-                    <Paperclip className="text-brand size-8" aria-hidden="true" />
-                  )}
-                  <span
-                    className={cn(
-                      'text-sm font-semibold',
-                      isUnsupportedDrag ? 'text-error' : 'text-brand'
-                    )}
-                  >
-                    {isUnsupportedDrag
-                      ? t('inputArea.unsupportedFileType')
-                      : t('inputArea.dropToUpload')}
-                  </span>
-                  {isUnsupportedDrag ? (
-                    <span className="text-muted-foreground text-xs">
-                      {t('inputArea.accepts', { types: fileUploadConfig.acceptedTypes })}
-                    </span>
-                  ) : (
-                    /* WHERE the drop lands, in the sources panel's own words. The
-                   overlay used to state the accepted types and nothing else, so
-                   the one moment the user is deciding to hand over a file was
-                   also the one moment the app said nothing about which shelf it
-                   would go on — while the panel, one click away, both asked and
-                   answered that question. */
-                    <UploadDestinationNote target="session" />
-                  )}
-                </div>
-              </div>
-            )}
             <ComposerSubjectBar
               subject={composerSubject}
               projectId={projectId}
@@ -1948,7 +2003,11 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                 // overflowing chip dissolves instead of hard-clipping — and the fade
                 // quietly signals there is more to scroll. The mask self-hides when
                 // the chips don't reach the edge (nothing there to fade).
-                className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [-webkit-mask-image:linear-gradient(to_right,black_calc(100%_-_24px),transparent)] [mask-image:linear-gradient(to_right,black_calc(100%_-_24px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                // `relative` makes the strip the containing block of the chips'
+                // `sr-only` status labels. Absolutely positioned, they belonged
+                // to the card instead, escaped this scroll box at the chips'
+                // off-screen positions, and widened the PAGE by 133px on a phone.
+                className="relative mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [-webkit-mask-image:linear-gradient(to_right,black_calc(100%_-_24px),transparent)] [mask-image:linear-gradient(to_right,black_calc(100%_-_24px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 aria-label={t('inputArea.manageFiles')}
               >
                 {sessionFiles.map((file) => (
@@ -2137,9 +2196,9 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
               )}
             </AnimatePresence>
 
-            {/* Upload and dictation errors: one inline slot, the upload's first. */}
+            {/* Upload failures: the composer's one alert. */}
             <AnimatePresence initial={false}>
-              {(uploadError || dictationError) && (
+              {uploadError && (
                 <motion.div
                   key="upload-error"
                   initial={{ opacity: 0, y: 8 }}
@@ -2149,15 +2208,12 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                 >
                   <Alert variant="destructive" className="mt-2">
                     <AlertDescription className="flex w-full items-start justify-between gap-2">
-                      <span>{uploadError || dictationError}</span>
+                      <span>{uploadError}</span>
                       <button
                         type="button"
-                        onClick={() => {
-                          clearError()
-                          setDictationError(null)
-                        }}
+                        onClick={clearError}
                         aria-label={t('dismissError')}
-                        className="focus-visible:ring-ring/60 duration-quick shrink-0 rounded-md p-1 opacity-70 transition-opacity ease-out hover:opacity-100 focus-visible:outline-none focus-visible:ring-2"
+                        className="focus-visible:ring-ring/60 duration-quick pointer-coarse:-m-2.5 pointer-coarse:size-11 inline-flex shrink-0 items-center justify-center rounded-md p-1 opacity-70 transition-opacity ease-out hover:opacity-100 focus-visible:outline-none focus-visible:ring-2"
                       >
                         <X className="size-4" aria-hidden="true" />
                       </button>
@@ -2167,75 +2223,147 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
               )}
             </AnimatePresence>
 
+            {/* A recording at the width of the card, on a touch screen: the
+            level, the time against the limit, and the whole bar as Stop. */}
+            <LiveDictationStrip channel={dictationChannel} locale={locale} />
+
+            {/* What capture has to say: one line above the controls, never a
+            block that pushes them down. A failed dictation is an alert; the
+            reason a microphone cannot be used is a status, said on a press. */}
+            <AnimatePresence initial={false}>
+              {composerNote && (
+                <motion.p
+                  key="composer-note"
+                  role={composerNote.tone === 'error' ? 'alert' : 'status'}
+                  data-testid="composer-note"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 2 }}
+                  transition={motionEntrance}
+                  className={cn(
+                    'mt-2 flex items-center gap-1 text-xs leading-snug',
+                    composerNote.tone === 'error' ? 'text-destructive' : 'text-muted-foreground'
+                  )}
+                >
+                  <span className="min-w-0 flex-1">{composerNote.text}</span>
+                  <button
+                    type="button"
+                    onClick={() => setComposerNote(null)}
+                    aria-label={tCapture('dictation.dismiss')}
+                    className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 pointer-coarse:size-11 inline-flex size-6 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2"
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                  </button>
+                </motion.p>
+              )}
+            </AnimatePresence>
+
             {/* Bottom control row, spaced from the textarea, no rule between.
             Order per the click dummy: scope · Datengrundlage · Deep-Research,
             then attach + send pushed right. */}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {/* Scope chip — current project; cross-project is honestly disabled.
+            {/* On a phone: the hold (when there is one), then ONE row of controls
+            that never wraps (the scope chip gives way, truncating the project
+            name, so Send cannot be orphaned on a line of its own), then the
+            addressee line. From `sm` the two wrappers dissolve (`contents`) and
+            the pieces sit in one wrapping row as they always have: scope, the
+            statements, the buttons pushed right. */}
+            <div className="mt-2 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+              {/* The hold, said out loud. Without it the message simply
+                  vanishes from the composer and nothing arrives — which reads
+                  as a dropped send, the one impression a held message must not
+                  give. The way out is offered beside it: a reader who does not
+                  want to wait for the file can ask now and get the answer they
+                  would have got before this existed. */}
+              {heldForUpload !== null && (
+                <span
+                  className="text-muted-foreground flex items-center gap-1.5 text-xs sm:order-2"
+                  data-testid="composer-held-for-upload"
+                  role="status"
+                >
+                  <Loader2
+                    className="size-3.5 animate-spin motion-reduce:animate-none"
+                    aria-hidden
+                  />
+                  {t('inputArea.heldForUpload')}
+                  <button
+                    type="button"
+                    onClick={sendHeldNow}
+                    className="text-foreground touch-target font-medium underline-offset-2 hover:underline"
+                  >
+                    {t('inputArea.heldForUploadSendNow')}
+                  </button>
+                </span>
+              )}
+
+              <div className="flex min-w-0 items-center gap-1.5 sm:contents">
+                {/* Scope chip — current project; cross-project is honestly disabled.
               Dashed status-active dot + label + chevron (dummy composer). */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  {/* The primitive, not a hand-rolled `<button>`: the outline/sm
+                <Popover>
+                  <PopoverTrigger asChild>
+                    {/* The primitive, not a hand-rolled `<button>`: the outline/sm
                   variant IS this chip's geometry, and it ships the press
                   response with its `motion-reduce` escape for free. Matches
                   `SourceBasisTrigger` beside it. */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={cannotContribute}
-                    aria-label={tChat('composer.scopeAria', { project: scopeLabel })}
-                    title={tChat('composer.scopeAria', { project: scopeLabel })}
-                    className="min-w-0"
-                  >
-                    <span className="border-status-active flex size-3.5 shrink-0 items-center justify-center rounded-full border border-dashed">
-                      {/* 5px: the dot has to sit INSIDE a 14px dashed ring with a
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={cannotContribute}
+                      aria-label={tChat('composer.scopeAria', { project: scopeLabel })}
+                      title={tChat('composer.scopeAria', { project: scopeLabel })}
+                      className="min-w-0 shrink max-sm:gap-1.5 max-sm:px-2.5 sm:order-1"
+                    >
+                      <span className="border-status-active flex size-3.5 shrink-0 items-center justify-center rounded-full border border-dashed max-sm:hidden">
+                        {/* 5px: the dot has to sit INSIDE a 14px dashed ring with a
                       visible gap on every side, and the 6px token step closes it. */}
-                      <span className="bg-status-active size-[5px] rounded-full" />
-                    </span>
-                    <span className="text-foreground/85 hidden max-w-44 truncate sm:inline">
-                      {scopeLabel}
-                    </span>
-                    <ChevronDown
-                      className="text-muted-foreground size-3 shrink-0"
-                      aria-hidden="true"
-                    />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-64 p-1.5">
-                  <div
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm"
-                    aria-current="true"
-                  >
-                    <Check className="text-foreground size-3.5 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 flex-1 truncate font-medium">{scopeLabel}</span>
-                    <span className="text-muted-foreground shrink-0 text-xs">
-                      {tChat('composer.scopeCurrent')}
-                    </span>
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {/* span wrapper: disabled elements don't emit hover events */}
-                      <span className="block" tabIndex={0}>
-                        <button
-                          type="button"
-                          disabled
-                          aria-disabled="true"
-                          className="text-muted-foreground flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-2.5 py-2 text-sm opacity-60"
-                        >
-                          <span className="size-3.5 shrink-0" aria-hidden="true" />
-                          <span className="truncate">{tChat('composer.scopeAll')}</span>
-                        </button>
+                        <span className="bg-status-active size-[5px] rounded-full" />
                       </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-60">
-                      {tChat('composer.scopeAllSoon')}
-                    </TooltipContent>
-                  </Tooltip>
-                </PopoverContent>
-              </Popover>
+                      {/* Named on a phone too: which project Piloti searches is
+                    the first doubt an answer raises, and a bare dot answers
+                    nothing. It truncates before anything else in the row. */}
+                      <span className="text-foreground/85 min-w-0 max-w-44 truncate">
+                        {scopeLabel}
+                      </span>
+                      <ChevronDown
+                        className="text-muted-foreground size-3 shrink-0 max-sm:hidden"
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" className="w-64 p-1.5">
+                    <div
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm"
+                      aria-current="true"
+                    >
+                      <Check className="text-foreground size-3.5 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate font-medium">{scopeLabel}</span>
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {tChat('composer.scopeCurrent')}
+                      </span>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {/* span wrapper: disabled elements don't emit hover events */}
+                        <span className="block" tabIndex={0}>
+                          <button
+                            type="button"
+                            disabled
+                            aria-disabled="true"
+                            className="text-muted-foreground flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-2.5 py-2 text-sm opacity-60"
+                          >
+                            <span className="size-3.5 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{tChat('composer.scopeAll')}</span>
+                          </button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-60">
+                        {tChat('composer.scopeAllSoon')}
+                      </TooltipContent>
+                    </Tooltip>
+                  </PopoverContent>
+                </Popover>
 
-              {/* Datenbasis — the one control for WHERE Piloti may look.
+                {/* Datenbasis — the one control for WHERE Piloti may look.
               WITHHELD for now (product decision, 2026-08): the picker is
               commented out rather than deleted so it can return. While it is
               hidden, every turn goes out with the fetch default — every
@@ -2265,35 +2393,177 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                 </PopoverContent>
               </Popover> */}
 
+                {/* Right Actions: manage-files, effort, attach, dictation, send —
+              pushed right. Dictation sits beside Send, where the thumb ends up. */}
+                <div className="ml-auto flex shrink-0 items-center gap-1 sm:order-3">
+                  {/* Manage files — opens a Dialog hosting the full FileSourcesTab
+                (browse, upload zone, per-file delete). Replaces the old
+                right-panel toggle. Shown only when files exist. */}
+                  {attachedFilesCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      // Redundant with the inline file chips (status + retry + remove)
+                      // on a narrow composer — hidden on mobile so the action row
+                      // stays one clean line; the FileSourcesTab dialog it opens
+                      // (browse + upload zone) remains available on wider viewports.
+                      // Mobile reaches the same dialog via the "manage" text entry
+                      // under the chip strip.
+                      className="text-muted-foreground pointer-coarse:h-11 hidden h-8 rounded-lg px-2.5 sm:inline-flex"
+                      disabled={cannotContribute || !knowledgeLayerAvailable}
+                      onClick={() => setManageFilesOpen(true)}
+                      aria-label={t('inputArea.manageFilesCount', { count: attachedFilesCount })}
+                      title={
+                        knowledgeLayerAvailable
+                          ? t('inputArea.manageFiles')
+                          : t('inputArea.uploadNotAvailable')
+                      }
+                    >
+                      <FileText className="size-3" aria-hidden="true" />
+                      <span className="text-xs font-semibold">{attachedFilesCount}</span>
+                    </Button>
+                  )}
+
+                  {/* How hard Piloti thinks, for this chat. A HITL response is
+                    not a question, so the dial has nothing to say there. It is
+                    hidden rather than unmounted: it keeps its box, so the
+                    buttons to its right do not shift when a prompt arrives. */}
+                  {/* On a phone both chevrons go (here and on the scope chip):
+                      the row is 294px, and the room they took is what lets
+                      the project's name show at all. Both still open. */}
+                  <EffortDial
+                    className="max-sm:px-1.5 max-sm:[&>svg]:hidden"
+                    conversationId={currentConversationId}
+                    disabled={cannotContribute}
+                    hidden={isResponseMode}
+                    focusOnHide={textareaRef}
+                  />
+
+                  {/* Attach: the file picker with a mouse; on a touch screen a menu
+                    that opens the camera, the photo library or the documents. */}
+                  <ComposerAttach
+                    acceptedTypes={fileUploadConfig.acceptedTypes}
+                    photos={photos}
+                    disabled={cannotContribute || isUploading || isBusy || !knowledgeLayerAvailable}
+                    title={
+                      isBusy
+                        ? t('inputArea.uploadDisabledBusy')
+                        : !knowledgeLayerAvailable
+                          ? t('inputArea.uploadNotAvailable')
+                          : t('inputArea.selectFiles')
+                    }
+                    onFiles={(files, source) => void handleFilesSelected(files, source)}
+                  />
+
+                  {/* Voice dictation, beside Send: the most used one-handed action
+                    after sending, where the thumb already is. */}
+                  <DictationButton
+                    locale={locale}
+                    disabled={cannotContribute || draftLocked}
+                    onTranscript={handleTranscript}
+                    onError={reportDictationError}
+                    onExplain={explainDictation}
+                    channel={dictationChannel}
+                  />
+
+                  {/* Send and Stop are ONE control whose glyph morphs. They used to be
+                two buttons swapped by a ternary, so the press target vanished
+                under the pointer the moment a turn started, keyboard focus was
+                dropped with it, and the loading state between them was the
+                literal text "...". Now the button stays put (Fitts: the
+                target the reader just hit is still there, and still focused),
+                only its job changes, and the glyph says which job: arrow to
+                send, square to stop. The square appears as soon as the turn
+                exists in the store, which is when the send is accepted, and the
+                arrow comes back the moment Stop is pressed, because
+                `stopStreaming` settles the turn locally rather than waiting for
+                the server's cancel. The spinner is only the residual case of a
+                turn loading with no stop to offer (a HITL answer in flight).
+                isResponseMode always shows send, so a HITL answer can be
+                submitted mid-turn. */}
+                  <Button
+                    size="icon"
+                    className={cn(
+                      // Ink, in both states. The armed button used to fill
+                      // with `accent-pop`, to mark readiness — but the
+                      // disabled/armed pair already reads as readiness
+                      // (the control goes from muted to solid and becomes
+                      // pressable), so the colour was carrying a distinction
+                      // the contrast had already made, in a hue this product
+                      // uses elsewhere to mean provenance.
+                      //
+                      // The press is the Button atom's CSS dip, taken to 0.96
+                      // because this is the screen's primary action. The atom
+                      // runs it on `--motion-snap` with an ease-out, which IS
+                      // `springPress` (ζ = 1, no overshoot, settled in ~126ms;
+                      // see button.tsx), and flattens it under reduced motion.
+                      // Not motion's `whileTap`: that injects tabindex="0", and
+                      // the old `motion.div` wrapper using it dipped to 0.94 ON
+                      // TOP of the atom's own dip, then had to undo the tab stop.
+                      //
+                      // `relative`: popLayout pops the leaving glyph out to
+                      // `position: absolute`, and it must stay centred in this
+                      // box while the new one arrives.
+                      'relative size-9 rounded-lg shadow-md active:scale-[0.96]'
+                    )}
+                    // `isStreaming` is the LOCAL store's turn flag and a viewer
+                    // never starts a local turn, so the stop gate is belt and
+                    // braces rather than a demonstrated hole — but cancelling
+                    // somebody else's turn is the most consequential thing on
+                    // this row, and it was the one control here with no gate.
+                    disabled={showStop ? cannotContribute : !message.trim() || disabled}
+                    onClick={handleSendControlClick}
+                    onKeyDown={handleSendControlKeyDown}
+                    aria-busy={!showStop && isLoading ? true : undefined}
+                    aria-label={
+                      showStop
+                        ? t('inputArea.stopStreaming')
+                        : isResponseMode
+                          ? t('inputArea.sendResponse')
+                          : t('inputArea.sendMessage')
+                    }
+                    aria-keyshortcuts={showStop ? 'Escape' : undefined}
+                    title={
+                      showStop
+                        ? t('inputArea.stopStreamingTitle')
+                        : pendingCount > 0
+                          ? t('inputArea.sendWhilePending')
+                          : t('inputArea.sendQuery')
+                    }
+                  >
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.span
+                        key={sendGlyph}
+                        data-glyph={sendGlyph}
+                        className="inline-flex"
+                        // An icon swap: ≤ 16px of scale travel, so springSnap's
+                        // tick of overshoot lands inside the pixel budget. The
+                        // opacity is a tween (opacity never springs), and the
+                        // leaving glyph accelerates away on motionQuickExit.
+                        // Under reduced motion both are motionInstant: the
+                        // glyph simply changes.
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1, transition: glyphEnter }}
+                        exit={{ opacity: 0, scale: 0.6, transition: glyphExit }}
+                      >
+                        {sendGlyph === 'stop' ? (
+                          <Square className="size-3.5 fill-current" aria-hidden="true" />
+                        ) : sendGlyph === 'sending' ? (
+                          <Spinner size="xs" aria-hidden="true" />
+                        ) : (
+                          <ArrowUp className="size-4" aria-hidden="true" />
+                        )}
+                      </motion.span>
+                    </AnimatePresence>
+                  </Button>
+                </div>
+              </div>
+
               {/* Who this message goes to — ALWAYS, whenever collaboration exists at
               all. The point of it being unconditional: if it only appeared in the
               unusual case, "Piloti is next" would remain something the user has to
               infer from an absence. Borderless on purpose — it is a statement
               standing among buttons, and must not read as one. */}
-              {/* The hold, said out loud. Without it the message simply
-                  vanishes from the composer and nothing arrives — which reads
-                  as a dropped send, the one impression a held message must not
-                  give. The way out is offered beside it: a reader who does not
-                  want to wait for the file can ask now and get the answer they
-                  would have got before this existed. */}
-              {heldForUpload !== null && (
-                <span
-                  className="text-muted-foreground flex items-center gap-1.5 text-xs"
-                  data-testid="composer-held-for-upload"
-                  role="status"
-                >
-                  <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
-                  {t('inputArea.heldForUpload')}
-                  <button
-                    type="button"
-                    onClick={sendHeldNow}
-                    className="text-foreground font-medium underline-offset-2 hover:underline"
-                  >
-                    {t('inputArea.heldForUploadSendNow')}
-                  </button>
-                </span>
-              )}
-
               {canCollaborate && (
                 <AddresseeIndicator
                   mentions={activeMentions}
@@ -2313,177 +2583,6 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                   onMentionSomeone={cannotContribute ? undefined : handleMentionSomeone}
                 />
               )}
-
-              {/* Right Actions: manage-files, attach, submit — pushed right */}
-              <div className="ml-auto flex items-center gap-1">
-                {/* Manage files — opens a Dialog hosting the full FileSourcesTab
-                (browse, upload zone, per-file delete). Replaces the old
-                right-panel toggle. Shown only when files exist. */}
-                {attachedFilesCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    // Redundant with the inline file chips (status + retry + remove)
-                    // on a narrow composer — hidden on mobile so the action row
-                    // stays one clean line; the FileSourcesTab dialog it opens
-                    // (browse + upload zone) remains available on wider viewports.
-                    // Mobile reaches the same dialog via the "manage" text entry
-                    // under the chip strip.
-                    className="text-muted-foreground pointer-coarse:h-11 hidden h-8 rounded-lg px-2.5 sm:inline-flex"
-                    disabled={cannotContribute || !knowledgeLayerAvailable}
-                    onClick={() => setManageFilesOpen(true)}
-                    aria-label={t('inputArea.manageFilesCount', { count: attachedFilesCount })}
-                    title={
-                      knowledgeLayerAvailable
-                        ? t('inputArea.manageFiles')
-                        : t('inputArea.uploadNotAvailable')
-                    }
-                  >
-                    <FileText className="size-3" aria-hidden="true" />
-                    <span className="text-xs font-semibold">{attachedFilesCount}</span>
-                  </Button>
-                )}
-
-                {/* Hidden file input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept={fileUploadConfig.acceptedTypes}
-                  className="hidden"
-                  tabIndex={-1}
-                  onChange={handleFileChange}
-                />
-
-                {/* How hard Piloti thinks, for this chat. A HITL response is
-                    not a question, so the dial has nothing to say there. It is
-                    hidden rather than unmounted: it keeps its box, so the
-                    buttons to its right do not shift when a prompt arrives. */}
-                <EffortDial
-                  conversationId={currentConversationId}
-                  disabled={cannotContribute}
-                  hidden={isResponseMode}
-                  focusOnHide={textareaRef}
-                />
-
-                {/* Voice dictation */}
-                <DictationButton
-                  locale={locale}
-                  disabled={cannotContribute || draftLocked}
-                  onTranscript={handleTranscript}
-                  onError={setDictationError}
-                />
-
-                {/* Attach files */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-subtle size-[34px] rounded-lg"
-                  onClick={handleAttachClick}
-                  disabled={cannotContribute || isUploading || isBusy || !knowledgeLayerAvailable}
-                  aria-label={t('inputArea.attachFiles')}
-                  title={
-                    isBusy
-                      ? t('inputArea.uploadDisabledBusy')
-                      : !knowledgeLayerAvailable
-                        ? t('inputArea.uploadNotAvailable')
-                        : t('inputArea.selectFiles')
-                  }
-                >
-                  <Paperclip className="size-4" aria-hidden="true" />
-                </Button>
-
-                {/* Send and Stop are ONE control whose glyph morphs. They used to be
-                two buttons swapped by a ternary, so the press target vanished
-                under the pointer the moment a turn started, keyboard focus was
-                dropped with it, and the loading state between them was the
-                literal text "...". Now the button stays put (Fitts: the
-                target the reader just hit is still there, and still focused),
-                only its job changes, and the glyph says which job: arrow to
-                send, square to stop. The square appears as soon as the turn
-                exists in the store, which is when the send is accepted, and the
-                arrow comes back the moment Stop is pressed, because
-                `stopStreaming` settles the turn locally rather than waiting for
-                the server's cancel. The spinner is only the residual case of a
-                turn loading with no stop to offer (a HITL answer in flight).
-                isResponseMode always shows send, so a HITL answer can be
-                submitted mid-turn. */}
-                <Button
-                  size="icon"
-                  className={cn(
-                    // Ink, in both states. The armed button used to fill
-                    // with `accent-pop`, to mark readiness — but the
-                    // disabled/armed pair already reads as readiness
-                    // (the control goes from muted to solid and becomes
-                    // pressable), so the colour was carrying a distinction
-                    // the contrast had already made, in a hue this product
-                    // uses elsewhere to mean provenance.
-                    //
-                    // The press is the Button atom's CSS dip, taken to 0.96
-                    // because this is the screen's primary action. The atom
-                    // runs it on `--motion-snap` with an ease-out, which IS
-                    // `springPress` (ζ = 1, no overshoot, settled in ~126ms;
-                    // see button.tsx), and flattens it under reduced motion.
-                    // Not motion's `whileTap`: that injects tabindex="0", and
-                    // the old `motion.div` wrapper using it dipped to 0.94 ON
-                    // TOP of the atom's own dip, then had to undo the tab stop.
-                    //
-                    // `relative`: popLayout pops the leaving glyph out to
-                    // `position: absolute`, and it must stay centred in this
-                    // box while the new one arrives.
-                    'relative size-9 rounded-lg shadow-md active:scale-[0.96]'
-                  )}
-                  // `isStreaming` is the LOCAL store's turn flag and a viewer
-                  // never starts a local turn, so the stop gate is belt and
-                  // braces rather than a demonstrated hole — but cancelling
-                  // somebody else's turn is the most consequential thing on
-                  // this row, and it was the one control here with no gate.
-                  disabled={showStop ? cannotContribute : !message.trim() || disabled}
-                  onClick={handleSendControlClick}
-                  onKeyDown={handleSendControlKeyDown}
-                  aria-busy={!showStop && isLoading ? true : undefined}
-                  aria-label={
-                    showStop
-                      ? t('inputArea.stopStreaming')
-                      : isResponseMode
-                        ? t('inputArea.sendResponse')
-                        : t('inputArea.sendMessage')
-                  }
-                  aria-keyshortcuts={showStop ? 'Escape' : undefined}
-                  title={
-                    showStop
-                      ? t('inputArea.stopStreamingTitle')
-                      : pendingCount > 0
-                        ? t('inputArea.sendWhilePending')
-                        : t('inputArea.sendQuery')
-                  }
-                >
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    <motion.span
-                      key={sendGlyph}
-                      data-glyph={sendGlyph}
-                      className="inline-flex"
-                      // An icon swap: ≤ 16px of scale travel, so springSnap's
-                      // tick of overshoot lands inside the pixel budget. The
-                      // opacity is a tween (opacity never springs), and the
-                      // leaving glyph accelerates away on motionQuickExit.
-                      // Under reduced motion both are motionInstant: the
-                      // glyph simply changes.
-                      initial={{ opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: 1, scale: 1, transition: glyphEnter }}
-                      exit={{ opacity: 0, scale: 0.6, transition: glyphExit }}
-                    >
-                      {sendGlyph === 'stop' ? (
-                        <Square className="size-3.5 fill-current" aria-hidden="true" />
-                      ) : sendGlyph === 'sending' ? (
-                        <Spinner size="xs" aria-hidden="true" />
-                      ) : (
-                        <ArrowUp className="size-4" aria-hidden="true" />
-                      )}
-                    </motion.span>
-                  </AnimatePresence>
-                </Button>
-              </div>
             </div>
 
             {/* Single hint slot: the first applicable helper line, announced
@@ -2504,6 +2603,15 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => event.preventDefault()}
           onFocusOutside={(event) => event.preventDefault()}
+          // A tap on a row must not take the focus from the textarea. Focus
+          // moves on the press, before the row's click; once the field has
+          // blurred, iOS drops the keyboard, and the caret restored after the
+          // insertion (an effect, not a gesture) cannot raise it again. The
+          // reader picked a name and lost the keyboard they were typing on.
+          // Cancelling the press keeps the focus where it is; the click still
+          // arrives, and scrolling the list is a touch-action, not a press.
+          onPointerDown={(event) => event.preventDefault()}
+          onMouseDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => {
             // Clicking inside the composer (e.g. moving the caret) is not
             // "clicking away" — only a click outside it dismisses the picker.

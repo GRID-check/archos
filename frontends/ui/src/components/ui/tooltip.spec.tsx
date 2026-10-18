@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@/test-utils'
+import { act, fireEvent, render, screen } from '@/test-utils'
 
-import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip'
+import { Toggletip, Tooltip, TooltipContent, TooltipTrigger } from './tooltip'
 
 /** jsdom counts every focus as keyboard focus; the pointer case has to be stated. */
 function focusVisible(visible: boolean) {
@@ -54,5 +54,79 @@ describe('Tooltip', () => {
     fireEvent.focus(screen.getByRole('button', { name: 'Hilfe' }))
 
     expect(onFocus).toHaveBeenCalledOnce()
+  })
+})
+
+/** A tap: the press, then the click a touch screen sends after it. */
+function tap(element: Element, pointerType: 'touch' | 'mouse' = 'touch') {
+  fireEvent.pointerDown(element, { pointerType, button: 0, pointerId: 1 })
+  fireEvent.pointerUp(element, { pointerType, button: 0, pointerId: 1 })
+  fireEvent.click(element)
+}
+
+function renderToggletip() {
+  render(
+    <>
+      <Toggletip>
+        <TooltipTrigger asChild>
+          <button type="button">Was heißt das?</button>
+        </TooltipTrigger>
+        <TooltipContent>Die Gebäudeklasse richtet sich nach der Höhe.</TooltipContent>
+      </Toggletip>
+      <p>Anderswo</p>
+    </>
+  )
+  return screen.getByRole('button', { name: 'Was heißt das?' })
+}
+
+describe('Tooltip under a finger', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('does not open on a tap: a label for a pointer carries nothing a finger needs', () => {
+    focusVisible(false)
+    tap(renderTooltip())
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+})
+
+describe('Toggletip', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('opens on a tap, so a phone reaches what it explains', () => {
+    focusVisible(false)
+    tap(renderToggletip())
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Die Gebäudeklasse')
+  })
+
+  it('closes on a second tap', () => {
+    focusVisible(false)
+    const trigger = renderToggletip()
+    tap(trigger)
+    tap(trigger)
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('closes on a tap anywhere else', async () => {
+    focusVisible(false)
+    tap(renderToggletip())
+    // Radix starts listening for outside presses one task after the layer mounts.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    tap(screen.getByText('Anderswo'))
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('keeps the tooltip’s mouse behaviour: a click does not pin it open', () => {
+    focusVisible(false)
+    tap(renderToggletip(), 'mouse')
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 })

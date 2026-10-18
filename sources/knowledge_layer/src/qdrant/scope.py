@@ -1,4 +1,4 @@
-"""The one place a Qdrant read filter is built (ADR-0114).
+"""The one place a Qdrant read filter is built (ADR-0116).
 
 Collections stopped being the boundary between scopes, so something else has
 to be. :func:`scope_filter` is it: every read in the knowledge layer asks it

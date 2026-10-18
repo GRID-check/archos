@@ -382,11 +382,11 @@ const BLOCKS: readonly Block[] = [
 
 function Frame({ block }: { block: Block }): JSX.Element {
   return (
-    <section className="flex w-[280px] flex-col gap-2" data-preview-block={block.id}>
+    <section className="flex w-[280px] flex-col gap-2 phone:w-full" data-preview-block={block.id}>
       <h2 className="text-foreground text-sm font-medium">{block.title}</h2>
       <p className="text-muted-foreground text-xs">{block.note}</p>
       {/* The rail itself: 280px, p-4, the sunken surface, no card border. */}
-      <div className="bg-surface-sunken w-[280px] p-4" data-preview-rail>
+      <div className="bg-surface-sunken w-[280px] p-4 phone:w-full" data-preview-rail>
         {block.render()}
       </div>
     </section>

@@ -436,6 +436,19 @@ describe('DocumentFassungen — shut at rest, open when it is the reader’s tur
     expect(await screen.findByRole('button', { name: 'Freigeben' })).toBeInTheDocument()
   })
 
+  it('names what is still open on the pages in the approve confirm, with the way into the review', async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    renderSection({ viewer: reviewer, client: clientOf([reviewed(1, 'in_review')]), openMarks: { status: 'counted', count: 4, onOpen } })
+
+    await user.click(await screen.findByRole('button', { name: 'Freigeben' }))
+    expect(screen.getByTestId('document-review-approve-open-marks')).toHaveTextContent(
+      '4 offene Anmerkungen – trotzdem freigeben?'
+    )
+    await user.click(screen.getByRole('button', { name: 'In der Prüfansicht öffnen' }))
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
   it('stays shut for a reader nothing is expected of, and still says what it waits for', async () => {
     renderSection({ viewer: viewOnly, client: clientOf([reviewed(1, 'in_review')]) })
 
@@ -550,6 +563,17 @@ describe('DocumentFassungen — one numbered timeline', () => {
     expect(screen.getByTestId('fassung-header-label')).toHaveTextContent('Fassung 4')
   })
 
+  it('compares with the previous Fassung in one tap from its row, not only from its ⋯', async () => {
+    compareOpened.mockClear()
+    await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: linked }), canManage: true })
+    const rows = await screen.findAllByTestId('fassung-timeline-row')
+    // Only the Fassung directly before this one carries it.
+    expect(screen.getAllByTestId('fassung-compare-previous')).toHaveLength(1)
+    await userEvent.click(within(rows[1]).getByTestId('fassung-compare-previous'))
+    expect(compareOpened).toHaveBeenCalledTimes(1)
+    expect(compareOpened.mock.calls[0]?.[1]).toMatchObject({ filename: 'EG_Index_C_2026-08-14.pdf' })
+  })
+
   it('tags rows with their index, says „aktuell" only on the one Piloti answers from, and never „Ersetzt"', async () => {
     await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: linked }), canManage: true })
 
@@ -584,9 +608,9 @@ describe('DocumentFassungen — one numbered timeline', () => {
 
     const row = (await screen.findAllByTestId('fassung-timeline-row'))[1]
     const name = within(row).getByTitle(long)
-    // The tail is kept whole; only the head ellipsizes.
+    // The tail is kept whole while there is room; the head ellipsizes first.
     expect(name.lastElementChild).toHaveTextContent('Index-C_2026-06-30.pdf')
-    expect(name.lastElementChild?.className).toContain('shrink-0')
+    expect(name.lastElementChild).toHaveAttribute('data-part', 'tail')
   })
 
   it('says each date once, on the act line, with the person', async () => {

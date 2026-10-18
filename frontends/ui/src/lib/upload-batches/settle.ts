@@ -23,14 +23,11 @@
  * Imports nothing from reconciliation, which imports this.
  */
 
-import { isFolderVisibleToMember } from '@/lib/authz/folder-access'
 import 'server-only'
-import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
-import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
-import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { Document, UploadBatch } from '@/lib/db/schema'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { internalRead } from '@/lib/documents/document-reader'
+import { isQuarantineReviewer } from '@/lib/documents/quarantine-reviewers'
 import { announceSettledVersions } from '@/lib/documents/fassung-notify'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, type InboxEmission } from '@/lib/inbox/service'
@@ -38,6 +35,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { queueIntakeReadsAfterUpload } from '@/lib/project-intake/trigger'
 import { queueFilingReviewsAfterSettle } from '@/lib/filing/trigger'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { quarantineNoticePayload } from '@/lib/upload-screening/quarantine'
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { batchIdsOfDocuments, completeSettledBatches, reopenCompletedBatches } from './repository'
 
@@ -141,7 +139,8 @@ async function completionEmission(batch: UploadBatch): Promise<InboxEmission> {
  * Who may release or delete this quarantined document: the organization's
  * admins, the project's admins, and for the Büroablage its curators — the
  * same rule `mayReviewQuarantine` applies to a session, asked here about each
- * member of the organization because there is no session to ask.
+ * member of the organization because there is no session to ask
+ * (`isQuarantineReviewer`).
  *
  * Bounded by the directory's first page, as the storage alert is, and for the
  * same reason (`lib/storage/alerts.ts`): the reviewers are a small set.
@@ -149,20 +148,9 @@ async function completionEmission(batch: UploadBatch): Promise<InboxEmission> {
 export async function quarantineReviewersOf(organizationId: string, document: Document): Promise<string[]> {
   const directory = await loadOrganizationDirectory(organizationId)
   const verdicts = await Promise.all(
-    [...directory.keys()].map(async (userId) => {
-      const membership = await resolveSubjectMembership(organizationId, userId)
-      if (!membership) return null
-      if (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.projectsAdminister, organizationId)) return userId
-      if (document.scope === 'archiv') {
-        return (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.archivManage, organizationId)) ? userId : null
-      }
-      if (document.scope !== 'project' || !document.projectId) return null
-      const manages = await userHoldsProjectPermission({ organizationId }, document.projectId, userId, 'project:manage')
-      if (!manages) return null
-      // Nor a project admin the document's folder is hidden from (ADR-0087).
-      const cleared = await isFolderVisibleToMember(organizationId, document.projectId, document.folderId, userId)
-      return cleared ? userId : null
-    })
+    [...directory.keys()].map(async (userId) =>
+      (await isQuarantineReviewer(organizationId, document, userId)) ? userId : null
+    )
   )
   return verdicts.filter((userId): userId is string => userId !== null)
 }
@@ -184,9 +172,12 @@ async function onQuarantined(organizationId: string, documentIds: readonly strin
 /**
  * Tell the reviewers that files wait for them. One collapsed row per reviewer
  * and organization, counted, pointing at the quarantine queue — which is where
- * each file and its reasons are, for the people allowed to see them. The row
- * names no file: a reviewer of one project must not learn another project's
- * file names from a badge.
+ * each file and its reasons are. The row names the newest file and the kind of
+ * reason it was held for (`quarantineNoticeVariant`), never a matched value.
+ * Each emission goes only to the reviewers of that file, cleared for its
+ * project and its folder (`quarantineReviewersOf`), so a row only ever names a
+ * file its reader could open in the queue anyway; a reviewer of one project
+ * learns nothing of another's.
  */
 async function notifyQuarantineReviewers(organizationId: string, documents: readonly Document[]): Promise<void> {
   const emissions: InboxEmission[] = []
@@ -200,6 +191,7 @@ async function notifyQuarantineReviewers(organizationId: string, documents: read
         resourceId: organizationId,
         actorUserId: document.createdBy,
         groupKey: inboxGroupKey('document.quarantined', 'organization', organizationId),
+        payload: quarantineNoticePayload(document),
       })
     }
   }

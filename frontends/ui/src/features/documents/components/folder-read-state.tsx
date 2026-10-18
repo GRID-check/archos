@@ -33,7 +33,7 @@ export const READ_MARK_KEY: Record<ReadMark['state'], string> = {
  *
  * `dotOnly` is the tile's form: the swatch alone, its words on hover and for a
  * screen reader. The colour is enough to browse by; spelled out on every tile
- * the state was louder than browsing needs. The list view's row keeps the words.
+ * the state was louder than browsing needs. The list view's row keeps the words, except on a phone, where the row has the room for the name and the swatch.
  */
 export function FolderReadState({
   tally,
@@ -59,7 +59,7 @@ export function FolderReadState({
     >
       <ToneSwatch tone={READ_MARK_TONE[mark.state]} />
       {/* Truncates rather than pushing its row: the swatch stays, the words give way. */}
-      <span className={dotOnly ? 'sr-only' : 'min-w-0 truncate'}>{words}</span>
+      <span className={dotOnly ? 'sr-only' : 'min-w-0 truncate phone:sr-only'}>{words}</span>
     </span>
   )
 }

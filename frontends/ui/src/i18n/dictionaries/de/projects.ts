@@ -7,8 +7,9 @@ export const projects: typeof en.projects = {
     description:
       'Jedes Bauprojekt in einem Arbeitsbereich: Dokumente, Mitglieder, Aufgaben, Recherche und Chat, mit Büroablage und Baurecht zur Hand.',
     loading: 'Projekte werden geladen…',
-    searchPlaceholder: 'Projekte durchsuchen…',
-    searchAria: 'Projekte nach Namen durchsuchen',
+    searchPlaceholder: 'Name, Ort oder Bauherr…',
+    searchAria: 'Projekte nach Name, Adresse oder Bauherr durchsuchen',
+    searchReset: 'Suche zurücksetzen',
     resume: {
       heading: 'Weitermachen',
       fallbackHeading: 'Ihre Projekte',
@@ -21,7 +22,7 @@ export const projects: typeof en.projects = {
     },
     noMatch: {
       title: 'Keine passenden Projekte',
-      description: 'Kein Projektname entspricht Ihrer Suche.',
+      description: 'Weder Name noch Adresse oder Bauherr entspricht Ihrer Suche.',
       clear: 'Suche löschen',
     },
     empty: {
@@ -308,7 +309,8 @@ export const projects: typeof en.projects = {
     documents: 'Dokumente',
     docLabel: '{count} {unit}',
     open: '{name} öffnen',
-    settingsAria: 'Einstellungen für {name} öffnen',
+    overview: 'Übersicht',
+    overviewAria: 'Übersicht von {name} öffnen',
   },
   archivCard: {
     title: 'Büroablage',
@@ -475,7 +477,7 @@ export const projects: typeof en.projects = {
     },
     tryAgain: 'Erneut versuchen',
     conflictReload: 'Aktualisieren',
-    draftSaved: 'Entwurf gespeichert',
+    draftSaved: 'Entwurf auf diesem Gerät gespeichert',
     salvage: {
       partial:
         'Teile des bestehenden Projekt-Briefings konnten nicht geladen werden und werden beim Speichern ersetzt.',
@@ -488,6 +490,30 @@ export const projects: typeof en.projects = {
       'Etwa 2 Minuten. Mit diesem Briefing arbeitet Piloti auf Ihr Gebäude zugeschnitten und zeigt, welche OIB-Richtlinien gelten.',
     moduleNav: 'Module',
     moduleNavAria: 'Wizard-Module',
+    documentRole: {
+      takePhoto: 'Foto aufnehmen',
+      loading: 'Zuordnungen werden geladen …',
+      boundAria: 'Zugeordnet als {role}',
+      suggested: 'vorgeschlagen',
+      unbindAria: '{name} nicht mehr als {role} führen',
+      heldUntilSave: 'wird beim Speichern zugeordnet',
+      discardAria: '{name} nicht als {role} führen',
+      pickOther: 'Anderes Dokument wählen …',
+      pickExisting: 'Vorhandenes Dokument wählen …',
+      upload: 'Datei hochladen',
+      dropHereOne: 'Datei hierher ziehen',
+      dropHereMany: 'Dateien hierher ziehen',
+      dropAria: 'Datei ablegen, um sie als {role} zu führen',
+      dropBusy: 'Warten Sie, bis der laufende Upload abgeschlossen ist.',
+      dropOnlyOne: 'Hier wird ein Dokument geführt: {name} wurde übernommen, die übrigen Dateien nicht.',
+      actionFailed: 'Aktion fehlgeschlagen. Bitte erneut versuchen.',
+      bindFailed: 'Dokument konnte nicht zugeordnet werden.',
+      unbindFailed: 'Zuordnung konnte nicht entfernt werden.',
+      replaced: '{name} ist nicht mehr {role}.',
+      uploadFailed: '{name} konnte nicht hochgeladen werden.',
+      uploadedUnbound: '{name} wurde abgelegt, aber nicht zugeordnet.',
+    },
+    modulePickerAria: 'Modul {module}, {title}. Alle Module anzeigen',
     schnellstart: 'Schnellstart',
     schnellstartOn:
       'Nur Kernfragen. Alles Übrige wird als „offen“ übernommen und in der Zusammenfassung als offener Punkt gelistet.',

@@ -4,19 +4,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/lib/authz/project-membership', () => ({ resolveSubjectMembership: vi.fn() }))
+vi.mock('@/lib/authz/project-membership', () => ({ resolveSubjectMembership: vi.fn(), lookupSubjectMembership: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ enabledFlagsForOrganization: vi.fn() }))
+vi.mock('./person', () => ({ resolvePerson: vi.fn() }))
 
-import { resolveSubjectMembership } from '@/lib/authz/project-membership'
+import { lookupSubjectMembership, resolveSubjectMembership } from '@/lib/authz/project-membership'
 import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
-import { resolvePinnedRequesterSession } from './pinned-session'
+import { resolvePerson } from './person'
+import { resolvePinnedRequesterSession, resolvePinnedRequesterSessionStrict } from './pinned-session'
 
 const requester = { userId: 'user_owner', email: 'owner@grid.test', organizationId: 'org_1' }
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
+  vi.mocked(lookupSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
   vi.mocked(enabledFlagsForOrganization).mockResolvedValue([])
+  vi.mocked(resolvePerson).mockResolvedValue({ name: null, email: null, organizationName: null })
 })
 
 afterEach(() => {
@@ -40,6 +44,19 @@ describe('resolvePinnedRequesterSession', () => {
     })
     // Permissions come from the catalog for the role, never from the caller.
     expect(Array.isArray(session?.permissions)).toBe(true)
+  })
+
+  it('knows the person by name, as a live session does, so an unattended turn is not addressed as nobody', async () => {
+    vi.mocked(resolvePerson).mockResolvedValueOnce({
+      name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord',
+    })
+
+    const session = await resolvePinnedRequesterSession({ ...requester, email: null })
+
+    expect(resolvePerson).toHaveBeenCalledWith('org_1', 'user_owner')
+    // The stored email stands where the row has one; WorkOS fills it where it does not.
+    expect(session).toMatchObject({ name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord' })
+    expect((await resolvePinnedRequesterSession(requester))?.email).toBe('owner@grid.test')
   })
 
   it('is nobody when the requester left the organization', async () => {
@@ -67,5 +84,22 @@ describe('resolvePinnedRequesterSession', () => {
     vi.mocked(enabledFlagsForOrganization).mockRejectedValueOnce(new Error('workos down'))
 
     await expect(resolvePinnedRequesterSession(requester)).rejects.toThrow('workos down')
+  })
+})
+
+describe('resolvePinnedRequesterSessionStrict', () => {
+  it('builds the same session for a member', async () => {
+    expect(await resolvePinnedRequesterSessionStrict(requester)).toMatchObject({ userId: 'user_owner', role: 'member' })
+    expect(lookupSubjectMembership).toHaveBeenCalledWith('org_1', 'user_owner')
+  })
+
+  it('answers null only when WorkOS said the person is not a member', async () => {
+    vi.mocked(lookupSubjectMembership).mockResolvedValueOnce(null)
+    expect(await resolvePinnedRequesterSessionStrict(requester)).toBeNull()
+  })
+
+  it('throws when WorkOS could not be asked, so a caller does not act on "they left"', async () => {
+    vi.mocked(lookupSubjectMembership).mockRejectedValueOnce(new Error('workos 503'))
+    await expect(resolvePinnedRequesterSessionStrict(requester)).rejects.toThrow('workos 503')
   })
 })

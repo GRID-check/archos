@@ -11,7 +11,7 @@
  */
 
 import type { JSX } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AlertTriangle, Boxes, CheckCircle2, Info, Layers3, Ruler, XCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ import { useLocale, useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { formatMeasure, formatPropertyValue } from '../lib/format-value'
 import type { BimModelSummary } from '@/lib/bim/types'
+import { CopyableValue } from './copyable-value'
 import type { BimHealth } from '@/lib/bim/validate'
 import {
   flattenSpatialTree,
@@ -98,9 +99,14 @@ export function IfcModelOverview({ summary, filename }: IfcModelOverviewProps): 
         {facts.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 border-b py-1 last:border-b-0">
             <dt className="text-muted-foreground">{label}</dt>
-            <dd className="truncate text-right font-medium" title={value}>
-              {value}
-            </dd>
+            {/*
+              Wraps, where it used to truncate behind a `title`. A `title` is a
+              hover, and a phone has none: a long author, an application name or
+              a file description ended in an ellipsis that nothing could expand.
+              `min-w-0 break-words` lets a flex child shrink and break a long
+              unbroken token instead of pushing the row wider than the screen.
+            */}
+            <dd className="min-w-0 text-right font-medium break-words">{value}</dd>
           </div>
         ))}
       </dl>
@@ -205,7 +211,7 @@ export function IfcModelHealthPanel({
                   <button
                     type="button"
                     onClick={() => onShowElements(issue.sampleGlobalIds)}
-                    className="shrink-0 rounded-md px-2 py-0.5 text-xs underline-offset-2 transition-colors duration-quick ease-out hover:underline"
+                    className="shrink-0 rounded-md px-2 py-0.5 text-xs underline-offset-2 transition-colors duration-quick ease-out hover:underline pointer-coarse:min-h-11"
                   >
                     {/*
                       `health.showElements`, not `compliance.showInModel`. The
@@ -585,9 +591,10 @@ export function IfcPropertyPanel({ element, isLoading, error }: IfcPropertyPanel
     )
   }
 
-  const identity: Array<[string, string]> = [
+  const identity: Array<[string, ReactNode]> = [
     [t('properties.ifcType'), element.ifcType],
-    [t('properties.globalId'), element.globalId],
+    // Wrapped and tap-to-copy: see `CopyableValue`.
+    [t('properties.globalId'), <CopyableValue key="gid" value={element.globalId} className="font-mono" />],
     [t('properties.predefinedType'), element.predefinedType ?? '—'],
     [t('properties.typeName'), element.typeName ?? '—'],
     [t('properties.tag'), element.tag ?? '—'],
@@ -603,10 +610,8 @@ export function IfcPropertyPanel({ element, isLoading, error }: IfcPropertyPanel
         <dl className="space-y-0.5">
           {identity.map(([label, value]) => (
             <div key={label} className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd className="truncate text-right font-medium" title={value}>
-                {value}
-              </dd>
+              <dt className="text-muted-foreground shrink-0">{label}</dt>
+              <dd className="min-w-0 text-right font-medium break-words">{value}</dd>
             </div>
           ))}
         </dl>

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyStateDisc } from '@/components/ui/empty-state'
 import { useTranslations } from '@/i18n'
+import { cn } from '@/lib/utils'
 import type { ClosingIntent, IntakeView } from '@/lib/project-intake/types'
 
 /** `2019-03` as the office writes a month: `03/2019`. */
@@ -107,22 +108,36 @@ function CompleteAction({
 
   return (
     <div
-      className="border-border bg-card flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+      className={cn(
+        'border-border bg-card flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between',
+        // Ready and nothing open: finishing is the next thing to do, so on a
+        // phone it stays on screen instead of waiting after the review, the
+        // filing and the derivations. It scrolls into its own place at the
+        // end. The bottom padding follows the shell's published inset (the
+        // phone tab bar, standing under this page, owns the home indicator's),
+        // and falls back to the device's own. While something is open it is a secondary button and does not
+        // float over the work that is still to do.
+        primary &&
+          'max-sm:sticky max-sm:bottom-0 max-sm:z-20 max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:bg-background/90 max-sm:px-4 max-sm:pb-[max(0.75rem,var(--shell-inset-bottom,env(safe-area-inset-bottom)))] max-sm:pt-3 max-sm:backdrop-blur-md',
+      )}
       data-testid="intake-complete"
       data-primary={primary || undefined}
     >
-      <div className="max-w-prose space-y-1 text-sm">
+      <div className={cn('max-w-prose space-y-1 text-sm', primary && 'max-sm:hidden')}>
         {open.length > 0 && (
           <p className="text-foreground" data-testid="intake-open">
             {t('complete.hintOpen', { open: open.join(', ') })}
           </p>
         )}
+        {/* What finishing does is spelled out again in the confirmation, so the
+            floating bar spares the phone the paragraph (the block above is
+            hidden there while the bar floats). */}
         <p className="text-muted-foreground">{closing ? <ClosingHint closing={closing} /> : t('complete.hint')}</p>
       </div>
       <BusyButton
         type="button"
         variant={primary ? 'default' : 'secondary'}
-        className="sm:shrink-0"
+        className="max-sm:w-full sm:shrink-0"
         blocked={busy}
         busyLabel={t('busy.complete')}
         onClick={() => setAsking(true)}

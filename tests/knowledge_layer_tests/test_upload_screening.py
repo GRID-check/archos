@@ -17,6 +17,8 @@ from knowledge_layer.llamaindex.screening import ScreeningVerdict
 from knowledge_layer.llamaindex.screening import quarantine_error
 from knowledge_layer.llamaindex.screening import screen_pages
 
+from aiq_agent.common.content_screen import screening_config_unusable
+
 _IBAN_AT = "AT61 1904 3002 3457 3201"
 _IBAN_AT_COMPACT = "AT611904300234573201"
 _IBAN_DE = "DE89 3704 0044 0532 0130 00"
@@ -55,6 +57,19 @@ class TestFromConfig:
     def test_a_malformed_config_is_no_rules_and_a_warning(self, raw, caplog):
         assert ScreeningRules.from_config(raw) is None
         assert "Ignoring" in caplog.text
+
+    @pytest.mark.parametrize("raw", [None, {}, {"content_terms": [], "detectors": []}, {"detectors": None}])
+    def test_absent_or_empty_is_not_unusable(self, raw):
+        assert not screening_config_unusable(raw)
+
+    @pytest.mark.parametrize(
+        "raw", ["Gehalt", ["Gehalt"], {"content_terms": "Gehalt"}, {"content_terms": [1]}, {"detectors": ["passport"]}]
+    )
+    def test_present_but_inapplicable_is_unusable(self, raw):
+        assert screening_config_unusable(raw)
+
+    def test_a_policy_with_one_rule_this_build_knows_is_usable(self):
+        assert not screening_config_unusable({"detectors": ["iban", "passport"]})
 
     def test_terms_are_kept_as_written_and_detectors_in_report_order(self):
         rules = ScreeningRules.from_config(
@@ -108,9 +123,29 @@ class TestTerms:
     def test_a_term_matches_at_a_word_start_and_may_run_on(self, text):
         assert _kinds(text, _rules(["Honorar"])) == ["term"]
 
-    @pytest.mark.parametrize("text", ["Ehrenhonorar", "Pauschalhonorar", "2Honorar"])
+    @pytest.mark.parametrize("text", ["Ehrenhonorar", "Pauschalhonorar"])
     def test_a_term_inside_a_word_does_not_match(self, text):
         assert _kinds(text, _rules(["Honorar"])) == []
+
+    @pytest.mark.parametrize("text", ["2Honorar", "2024Honorar", "Pos.3Honorar"])
+    def test_a_number_glued_to_a_term_is_a_label_not_a_compound(self, text):
+        assert _kinds(text, _rules(["Honorar"])) == ["term"]
+
+    @pytest.mark.parametrize("text", ["Gehalts-abrechnung", "Gehalts abrechnung", "Gehalts\u2011abrechnung"])
+    def test_a_long_term_split_once_by_a_space_or_hyphen_matches(self, text):
+        assert _kinds(text, _rules(["Gehaltsabrechnung"])) == ["term"]
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Ge-haltsabrechnung",  # a part shorter than three characters
+            "Gehalts - abrechnung",  # a dash, not a hyphen
+            "Gehalts-ab-rechnung",  # split twice
+            "Hono rar",  # a term shorter than eight characters is never split
+        ],
+    )
+    def test_a_split_that_is_not_one_term_does_not_match(self, text):
+        assert _kinds(text, _rules(["Gehaltsabrechnung", "Honorar"])) == []
 
     def test_a_multi_word_term_matches_across_any_whitespace(self):
         rules = _rules(["streng vertraulich"])
@@ -169,13 +204,24 @@ class TestIban:
         [
             "AT61 1904 3002 3457 3202",  # wrong check
             "AT62 1904 3002 3457 3201",  # wrong check digits
-            "XAT611904300234573201",  # inside a longer token
             "AT6119043002345732011",  # one character too many for AT
             "XX61 1904 3002 3457 3201",  # no registered country
         ],
     )
     def test_an_invalid_or_embedded_candidate_does_not(self, text):
         assert _kinds(text, _rules(detectors=["iban"])) == []
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "XAT611904300234573201",  # a label stands against it: the country and the check digits decide
+            "IBAN:AT611904300234573201BIC",  # and a letter may follow
+            "AT61 1904 3002 34\u00ad57 3201",  # a soft hyphen inside it is not part of it
+            "AT61 1904 3002 3457-\n3201",  # a hyphen at a line break is not part of it
+        ],
+    )
+    def test_a_printed_iban_with_extraction_noise_matches(self, text):
+        assert _kinds(text, _rules(detectors=["iban"])) == ["iban"]
 
     def test_the_sample_is_masked(self):
         [reason] = screen_pages([(3, f"IBAN {_IBAN_AT}")], _rules(detectors=["iban"])).reasons
@@ -248,11 +294,31 @@ class TestCreditCard:
             "1111 1111 1111 1117",  # no major network starts with 1
             "94111111111111111",  # inside a longer digit run
             "4111 1111 1111 1111 1111 1111",  # inside a longer separated run
-            "Auftrag 12 4111 1111 1111 1111",  # a number before it in the same run
             "411111111111",  # too short
         ],
     )
     def test_an_invalid_or_embedded_card_does_not(self, text):
+        assert _kinds(text, _rules(detectors=["credit_card"])) == []
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Auftrag 12 4111 1111 1111 1111",  # a number before it in the same run is not part of it
+            "Karte 1 4111 1111 1111 1111 12/27",  # nor is a position, or an expiry date after it
+            "4111 11\u200b11 1111 1111",  # an invisible character inside a group
+        ],
+    )
+    def test_a_card_next_to_other_numbers_matches(self, text):
+        assert _kinds(text, _rules(detectors=["credit_card"])) == ["credit_card"]
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "4111\t1111\t1111\t1111",  # table cells are not one number
+            "5050 2798 6487 2514 6623 2488",  # a table of four-digit numbers gets no sliding window
+        ],
+    )
+    def test_table_cells_are_not_a_card(self, text):
         assert _kinds(text, _rules(detectors=["credit_card"])) == []
 
     def test_an_iban_is_not_read_as_a_card(self):
@@ -281,6 +347,7 @@ class TestQuarantineError:
 
         payload = _payload(quarantine_error(verdict))
 
+        assert "omitted" not in payload  # nothing was left out
         assert payload == {
             "reasons": [
                 {"kind": "term", "term": "Gehaltsabrechnung", "count": 1, "pages": [2]},
@@ -310,6 +377,7 @@ class TestQuarantineError:
         text = " ".join(f"Begriff{n:02d}" for n in range(15))
         payload = _payload(quarantine_error(screen_pages([(1, text)], rules)))
         assert len(payload["reasons"]) == screening.MAX_REASONS
+        assert payload["omitted"] == 5  # a short list is never shown as the whole one
 
     def test_ten_reasons_of_in_bounds_terms_fit_whole(self):
         terms = [f"{n:02d}" + "ä" * 78 for n in range(10)]
@@ -330,6 +398,7 @@ class TestQuarantineError:
         assert len(error) <= screening.MAX_ERROR_CHARS
         payload = _payload(error)
         assert 0 < len(payload["reasons"]) < 10
+        assert payload["omitted"] == 10 - len(payload["reasons"])
         assert payload["checked"] == "full"
 
     def test_pages_are_cut_from_the_widest_reason_first_and_every_reason_stays(self):
@@ -395,3 +464,42 @@ class TestDocumentPages:
 
         pages = screening.document_pages([Doc("3", "a"), Doc(4, "b"), Doc("Tabelle1", "c"), Doc(None, "d")])
         assert pages == [(3, "a"), (4, "b"), (None, "c"), (None, "d")]
+
+
+# =============================================================================
+# A match split across a page break
+# =============================================================================
+
+
+def _paged(*bodies: str, footer: str = "Seite {n} von {total}") -> list[tuple[int, str]]:
+    total = len(bodies)
+    return [(n, f"Projekt Wohnbau Nord\n{body}\n{footer.format(n=n, total=total)}") for n, body in enumerate(bodies, 1)]
+
+
+class TestAcrossPages:
+    def test_an_iban_split_by_a_page_footer_is_found_on_both_pages(self):
+        stream = _paged("Bitte überweisen an DE89 3704 0044", "0532 0130 00 bis Monatsende.", "Danke.")
+        verdict = screen_pages(stream, _rules(detectors=["iban"]), stream=stream)
+        [reason] = verdict.reasons
+        assert (reason.kind, reason.count, reason.pages) == ("iban", 1, [1, 2])
+
+    def test_a_term_hyphenated_across_a_page_break_is_found(self):
+        stream = _paged("Anbei die Gehalts-", "abrechnung für März.", "Ende.")
+        verdict = screen_pages(stream, _rules(["Gehaltsabrechnung"]), stream=stream)
+        assert [(reason.term, reason.pages) for reason in verdict.reasons] == [("Gehaltsabrechnung", [1, 2])]
+
+    def test_a_match_inside_one_page_is_counted_once(self):
+        stream = _paged(f"IBAN {_IBAN_AT}", "nichts", "nichts")
+        [reason] = screen_pages(stream, _rules(detectors=["iban"]), stream=stream).reasons
+        assert (reason.count, reason.pages) == (1, [1])
+
+    def test_two_pages_join_without_furniture_to_go_by(self):
+        # Fewer than three pages give no repetition, so nothing is taken for
+        # furniture; a plain split across the break is still read whole.
+        stream = [(1, "Konto DE89 3704 0044"), (2, "0532 0130 00")]
+        [reason] = screen_pages(stream, _rules(detectors=["iban"]), stream=stream).reasons
+        assert reason.pages == [1, 2]
+
+    def test_without_a_stream_pages_are_screened_one_by_one(self):
+        stream = _paged("Bitte überweisen an DE89 3704 0044", "0532 0130 00 bis Monatsende.", "Danke.")
+        assert screen_pages(stream, _rules(detectors=["iban"])).reasons == []

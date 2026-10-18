@@ -442,4 +442,17 @@ describe('AnswerFeedback', () => {
       expect(gets).toHaveLength(1)
     })
   })
+
+  describe('touch', () => {
+    test('the thumbs sit beside each other, so each GROWS to 44px instead of borrowing a catchment', () => {
+      render(<AnswerFeedback messageId="msg_1" conversationId="conv_1" />)
+
+      for (const name of ['Mark this answer as helpful', 'Mark this answer as not helpful']) {
+        const thumb = screen.getByRole('button', { name })
+        expect(thumb).toHaveClass('pointer-coarse:size-11')
+        // An overhanging catchment would hand a tap on one thumb to the other.
+        expect(thumb.className).not.toMatch(/touch-target/)
+      }
+    })
+  })
 })

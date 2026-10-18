@@ -51,7 +51,7 @@ export const organization = {
     },
     quarantine: {
       title: 'Quarantine',
-      subtitle: 'Files the content check held back. No model has read them. Whoever may review them allows or deletes them here.',
+      subtitle: 'Files the content check held back. While they wait here, Piloti shows them to no model. Whoever may review them allows or deletes them here.',
     },
     downloads: {
       title: 'Download log',
@@ -137,6 +137,8 @@ export const organization = {
   },
   /** People & access: the member directory, the role catalog, the permission map. */
   access: {
+    /** Accessible name of the sub-tab strip when it is wider than the screen. */
+    tabsScrollable: 'Sections, scrolls sideways',
     people: {
       title: 'People',
       description: 'Everyone in the organization and the role they were given.',
@@ -330,6 +332,9 @@ export const organization = {
     saved: 'Instructions saved',
     clear: 'Clear',
     cleared: 'Instructions cleared',
+    clearConfirmTitle: 'Clear the instructions?',
+    clearConfirmBody:
+      'Piloti will then follow no standing instructions for your organization. You cannot restore the text.',
     saveError: 'Could not save the instructions. Please try again.',
     loadError: 'Could not load the instructions right now. Please refresh to try again.',
   },
@@ -405,6 +410,9 @@ export const organization = {
     saveErrorZdrUnavailable:
       'The zero-data-retention list could not be loaded, so the models could not be checked. Nothing was saved; try again shortly.',
     zdrTitle: 'Zero data retention',
+    /** Phone-only toggle on the long zero-data-retention paragraph. */
+    zdrHintMore: 'Show more',
+    zdrHintLess: 'Show less',
     zdrHint:
       'On by default. Every request Piloti sends to an AI model through OpenRouter for your organization goes only to endpoints that store neither prompts nor responses: chat and research answers, clarifying questions, reading documents on upload (drawing captions, OCR, embeddings, summaries, classification), search reranking, conversation titles and summaries, consistency checks and skill reviews. If the setting cannot be read, requests are restricted anyway, and only models with such an endpoint can be chosen. EU-hosted endpoints are preferred where a model has one. Not covered: web search queries go to the web search provider (Tavily), which is not a model provider.',
     zdrNotApplicable:
@@ -633,7 +641,7 @@ export const organization = {
   screening: {
     title: 'Screening list',
     description:
-      'Piloti checks every upload against these lists, and chat messages against the content terms and numbers. No model reads what matches.',
+      'Piloti checks every upload against these lists, and chat messages against the content terms and numbers. What matches goes to no model after that, until someone allows it.',
     enabled: 'Screen uploads and chat',
     enabledHint: 'When off, Piloti checks nothing. Your lists stay saved.',
     suggestedTitle: 'Piloti’s suggestion applies',
@@ -660,7 +668,7 @@ export const organization = {
     },
     limits:
       'The check sees words and numbers, not meaning. A fee agreement that contains none of your terms gets through. Piloti checks scanned pages and images without a text layer by name only.',
-    termPlaceholder: 'Type a term, press Enter',
+    termPlaceholder: 'Type a term',
     removeTerm: 'Remove “{term}”',
     emptyList: 'No terms',
     useSuggestion: 'Use suggestion',
@@ -680,7 +688,7 @@ export const organization = {
     whereProjectUnknown: 'A project',
     whereArchiv: 'Office filing',
     whereSession: 'Chat attachment',
-    noReason: 'Reason could not be read',
+    noReason: 'No reason stored. Open the file to check it yourself.',
     unscreened: 'Not checked: the file could not be read to the end. It stays held back until someone reviews it.',
     open: 'View',
     openTitle: 'Open “{name}” where it is filed',

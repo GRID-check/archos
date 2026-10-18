@@ -112,6 +112,8 @@ export const chat: typeof en.chat = {
     notIndexed:
       'Abgelegt, nicht gelesen. Sie können die Datei öffnen, aber Piloti zitiert sie nicht.',
     failed: 'Lesen fehlgeschlagen. Piloti kann diese Datei nicht zitieren.',
+    // Von der Inhaltsprüfung zurückgehalten (ADR-0086): nie „freigeben“.
+    held: 'Zurückgehalten: Die Inhaltsprüfung hält diese Datei von Piloti fern. Piloti zitiert sie erst, wenn jemand sie zulässt.',
   },
   composer: {
     /** Shown when the reader holds project:view but not project:chat. */
@@ -347,12 +349,26 @@ export const chat: typeof en.chat = {
     untitledSource: 'Quelle ohne Titel',
     downloadDocx: 'Als Word-Dokument herunterladen',
     downloadFailed: 'Das Word-Dokument konnte nicht erstellt werden.',
+    // Systemdialog „Teilen“ am Telefon: Beschriftung und Titel der geteilten Nachricht.
+    share: 'Antwort teilen',
+    shareTitle: 'Antwort von Piloti',
+  },
+  // Die Abschnittsliste einer langen Antwort (Bericht): auf dem Telefon der Weg zu
+  // einem Abschnitt, ohne bis nach oben zu scrollen.
+  outline: {
+    label: 'Abschnitte',
+    count: '{count, plural, one {# Abschnitt} other {# Abschnitte}}',
+    close: 'Schließen',
+    title: 'Abschnitte',
+    description: 'Zu einem Abschnitt dieser Antwort springen.',
   },
   // Der Zitat-Peek: was diese Fundstelle IST, bevor man sie öffnet.
   citationPeek: {
     wholeDocument: 'Gesamtes Dokument',
     openAtPage: 'An dieser Stelle öffnen',
-    notOpenable: 'In Piloti nicht zu öffnen',
+    notOpenable: 'Zu dieser Quelle liegt in Piloti keine Datei vor.',
+    sheetTitle: 'Quelle {number}',
+    sheetDescription: 'Die Fundstelle im Wortlaut und der Weg ins Dokument.',
     // Das Dokument IST da — nur sein Format kann Piloti nicht zeichnen. Ohne
     // diesen Satz las sich das Fehlen der Öffnen-Schaltfläche als „die Datei
     // ist weg", und genau das wurde gemeldet.
@@ -440,6 +456,11 @@ export const chat: typeof en.chat = {
       tipp: 'Tipp',
       more: 'Mehr dazu',
       less: 'Weniger',
+    },
+    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
+    clamp: {
+      more: 'Mehr anzeigen',
+      less: 'Weniger anzeigen',
     },
     calculation: {
       eyebrow: 'Rechenweg',
@@ -1077,10 +1098,11 @@ export const chat: typeof en.chat = {
       skillSelection: 'Skill-Auswahl',
     },
     interrupted: 'Unterbrochen',
-    // Kompakter Inline-Hinweis auf einer unterbrochenen Antwort: eine stille
-    // Wiederverbindung kann eine laufende Antwort verwerfen (Protokoll-
-    // Robustheit, Punkt 4). Statt nur des stummen „Unterbrochen“-Chips.
-    interruptedNotice: 'Verbindung kurz unterbrochen — Antwort ging verloren. Bitte erneut senden.',
+    // Kompakter Inline-Hinweis auf einer unterbrochenen Antwort, statt nur des
+    // stummen „Unterbrochen“-Chips. Erst, wenn der Server bestätigt hat, dass er
+    // keine Antwort hat und der Zug nicht mehr läuft: vorher ist sie nicht
+    // verloren, nur unterwegs. Die Verbindung ist dann nicht die Ursache.
+    interruptedNotice: 'Diese Antwort wurde nicht fertig, und auf dem Server liegt keine. Bitte die Frage erneut senden.',
     // Vorübergehender „Wird geprüft“-Zustand (FIX 3): angezeigt, solange der
     // Wiederherstellungs-Abruf nach einer Wiederverbindung läuft, damit ein
     // Zug, der nur unterbrochen AUSSIEHT, nicht sofort den „verloren“-Hinweis
@@ -1299,10 +1321,11 @@ export const chat: typeof en.chat = {
       title: 'Antwort fehlgeschlagen',
       message: 'Beim Erstellen einer Antwort ist beim Assistenten ein Fehler aufgetreten.',
     },
+    // Erst, wenn der Server bestätigt hat, dass er keine Antwort hat.
     responseInterrupted: {
       title: 'Antwort unterbrochen',
       message:
-        'Ihre vorherige Anfrage wurde nicht abgeschlossen. Bitte senden Sie Ihre Nachricht erneut.',
+        'Piloti hat diese Antwort nicht abgeschlossen, und auf dem Server liegt keine. Bitte senden Sie die Frage erneut.',
     },
     noResponse: {
       title: 'Keine Rückmeldung',

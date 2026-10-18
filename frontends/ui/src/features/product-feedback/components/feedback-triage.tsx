@@ -437,7 +437,7 @@ function ReportRow({
         {report.reporter.email ? (
           <a
             href={`mailto:${report.reporter.email}`}
-            className="text-primary inline-flex items-center gap-1 hover:underline"
+            className="text-primary pointer-coarse:min-h-11 inline-flex items-center gap-1 hover:underline"
           >
             <Mail className="size-3.5" aria-hidden />
             {t('platform.contact')}
@@ -452,7 +452,7 @@ function ReportRow({
 
       {(report.context.userAgent || report.context.viewport) && (
         <Collapsible>
-          <CollapsibleTrigger className="text-muted-foreground hover:text-foreground group inline-flex items-center gap-1 text-xs">
+          <CollapsibleTrigger className="text-muted-foreground hover:text-foreground pointer-coarse:min-h-11 group inline-flex items-center gap-1 text-xs">
             {t('platform.details')}
             <ChevronDown
               aria-hidden

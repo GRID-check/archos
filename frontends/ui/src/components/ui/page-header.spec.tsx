@@ -74,4 +74,21 @@ describe('PageHeader', () => {
     render(<PageHeader title="History" />)
     expect(screen.getByRole('heading', { level: 1 }).className).toContain('text-xl')
   })
+
+  /**
+   * RATCHET: the phone header is one compact line. The description cost two
+   * lines of a 393px screen on every tab (Dateien measured about a third of the
+   * height in chrome before the first document), so it is hidden below the
+   * `phone` breakpoint and the title steps down. Desktop keeps both.
+   */
+  it('hides the description and compacts the title on a phone, and only there', () => {
+    render(<PageHeader title="Files" subtitle="The documents of this project." />)
+    const subtitle = screen.getByText('The documents of this project.')
+    expect(subtitle.className.split(/\s+/)).toContain('phone:hidden')
+    // Not hidden unconditionally, which would take it from the desktop too.
+    expect(subtitle.className.split(/\s+/)).not.toContain('hidden')
+    const title = screen.getByRole('heading', { level: 1 })
+    expect(title.className).toContain('text-xl')
+    expect(title.className).toContain('phone:text-base')
+  })
 })

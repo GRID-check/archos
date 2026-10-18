@@ -28,7 +28,7 @@ dependencies = [
 llamaindex = [
     "llama-index>=0.14.23",
     "llama-index-embeddings-nvidia>=0.1.0",
-    # The vector store (ADR-0113), reached directly rather than through
+    # The vector store (ADR-0115), reached directly rather than through
     # llama-index-vector-stores-qdrant, which uses none of the Query API
     # (prefetch, server fusion, group_by, server-side BM25).
     "qdrant-client>=1.19.1,<2",

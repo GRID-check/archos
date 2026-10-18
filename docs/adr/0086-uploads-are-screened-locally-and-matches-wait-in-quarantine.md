@@ -591,6 +591,121 @@ Two changes to where and how a reviewer decides.
   or the budget, carries `pages_truncated: true`, and the UI ends its pages with
   „…".
 
+## Amendment (2026-10-16): the text is read first, a card is found by its layout, a reason says why
+
+Measured against 105 adversarial inputs, the content screen missed what text
+extraction leaves in: a soft hyphen or zero-width character inside a number or
+term, a hyphen where a line was broken, a label glued to the number
+(`SV-Nr1237010180`), and a card beside a position or an expiry date. And a held
+file did not say whose rule held it.
+
+- **A reading before any rule.** `content_screen._read` (TypeScript `read`)
+  leaves out `IGNORABLE` characters and joins a hyphen that has a letter or
+  digit before it and, after ONE line break, a letter or digit. Every term and
+  detector runs on that reading; spans are given back in the original text. A
+  dash with a space before it and a hyphen before a blank line are left alone.
+  Where an invisible character was left out between digits it still counts as
+  a boundary for a number (two numbers printed against each other stay two),
+  and a card is tried cut there as well as joined. The reading's character sets are held by fixture cases, not by the fixture's
+  `unicode` tables.
+- **A number is cut off by a digit, not a letter.** IBAN and SV-Nr may have a
+  label against them; the fixed length and the checksum carry the precision.
+- **A card is found by its layout** (13-19 unbroken, 4-4-4-4 with a last group
+  of 1-4, 4-6-5, 4-6-4) among digit groups joined by spaces, `-` or `.`. A tab
+  ends a run (a table cell), and groups of four beside a card make it part of a
+  longer number, so a table gets no sliding window; measured on synthetic rows,
+  false alarms did not rise. The digits of a recognised IBAN are never also a
+  card or SV-Nr.
+- **A reason says why.** The verdict carries `omitted`, the number of reasons it
+  does not list, so a short list is never shown as the whole. The UI says under
+  each kind of reason how the check came to it (`explainQuarantineReason`), says
+  when a finding has no page, reads an unknown reason kind as `other` instead of
+  failing the parse, and says a reason is not stored rather than claiming
+  something about the content. The audit trail (`reasons`) records the listed
+  reasons only.
+- **Not changed:** the name gate (`name-screen.ts`) does not read; a soft hyphen
+  in a file name is part of it.
+
+## Amendment (2026-10-17): the gaps the first amendment left open
+
+The 2026-10-16 amendment listed what it did not catch. Each is closed here and
+held by a case in the shared fixture or a test beside the code.
+
+- **A capital after a line-break hyphen keeps the hyphen.** `Büro-` + line break
+  + `Honorar` reads `Büro-Honorar`, so `Honorar` starts a word again; the first
+  amendment's join had made it `BüroHonorar`.
+- **A digit before a term is a label.** `2024Honorar` and `Pos.3Honorar` match;
+  only a letter before a term makes it part of another word (`Ehrenhonorar`).
+- **A long term may be split once.** A single-word term of eight or more
+  characters still matches with one space or hyphen inside it, each part keeping
+  three (`Gehalts abrechnung`, `Gehalts-Abrechnung`). The name gate does the same
+  with `_` and `.` as well. Both use `splitTermEnd` (`upload-screening/reading.ts`).
+- **An IBAN in groups of two**, and **a card wrapped at one line end** in the
+  strict layout 4-4-4-4, are found.
+- **A card starts in a network's issuer range** (`_CARD_PREFIXES`), not just
+  with 2-6. Measured on synthetic tables, a row of four years, or two rows of
+  two, passed Luhn and the old start rule 7.5% of the time; it now never does,
+  because no card begins 2000-2199.
+- **A number split across a page break or a running footer** is found. The PDF
+  screen joins page bodies without the lines that repeat on most pages
+  (`aiq_agent.common.page_text`, the same furniture rule the section chunker
+  uses) and keeps a match only if it crosses a page boundary. It reports every
+  page the match touches.
+- **The name gate reads.** It leaves out the same invisible characters
+  (`SCREENING_IGNORABLE`) from names, terms and exceptions. This supersedes the
+  "Not changed" line above.
+- **A transcript is screened.** A scanned page reaches the vision model
+  unchecked, because nothing local can read it. Its transcript was then
+  summarised and embedded without a check. It is now screened as soon as it is
+  merged into the page text. A match holds the file with
+  `after_transcription: true` on the verdict (ADR-0113), and every surface
+  then says the vision model read those pages instead of "no model".
+- **An unusable policy fails closed.** A job whose policy is present but
+  cannot be applied (malformed, or naming no rule this build knows) was read
+  as "not screened". Each of its files now fails unread with
+  `screening_unavailable:`, category `configuration`, and waits held.
+- **The reviewers' notice names the file.** It names the newest held file
+  and the kind of reason (`quarantineNoticePayload`), never a value or a
+  sample. Each emission already went only to that file's cleared reviewers,
+  so the name was never a leak. The reason it was left out did not hold.
+
+## Amendment (2026-10-17): one word per gate, and every stop counted
+
+The two gates had drifted into each other's words, and some of their stops
+were said as failures.
+
+- **One word each.** What the name gate (*Namensprüfung*) stops is „Nicht
+  hochgeladen"; „zurückgehalten" is the content gate's, and the Quarantäne is
+  the place a held file waits (CONTEXT.md).
+- **Every name stop is counted.** The server's repeat answers 422
+  `UPLOAD_SCREENED` with the matches; the browser says it as it says its own
+  stops (no failed row, no retry) and seals the batch with them in `excluded`,
+  by term and count (`POST …/seal` takes `excluded`). The mail import adds a
+  mail's stops to its batch once the mail is done (`recordNameStops`), after the
+  cursor moved past it, so a retried mail counts them once. Both merge
+  into `upload_batches.excluded` in SQL, term by term. Names never travel.
+- **The server screens what the browser screened.** A chat attachment sends its
+  origin path, and both shelves screen the whole normalised path
+  (`normalizeOriginPath`); only the stored label is cut at 1024 characters.
+- **A re-upload onto a held file.** Its uploader and reviewers get
+  `details.reason = 'quarantined'` with the held document's `documentId` and
+  `ownUpload`; the upload row is held with it, not failed, and its uploader can
+  ask for the review there. Everyone else gets the taken-name 409 every
+  taken-name refusal carries (`details.reason = 'name_taken'`,
+  `lib/documents/name-taken.ts`), said as one sentence, so a hold they may not
+  know of stays invisible.
+
+## Amendment (2026-10-17): the reason is a typed verdict
+
+The verdict this record describes as `error_message` `quarantined:{json}` is now
+data: `FileProgress.quarantine` and `FileInfo.quarantine` on the job's side,
+`documents.quarantine` (migration 0148) on the BFF's, read by every surface
+through `quarantineVerdictOf`. The string is still written for one release and
+read only where the typed verdict is absent. A decision row and the
+`document.quarantined` event now record how many reasons the job left out
+(`reasonsOmitted`). The decision and its reasons:
+[ADR-0113](0113-a-held-files-reason-is-a-typed-verdict-stored-as-data.md).
+
 ## More Information
 
 * Evidence and the two NVIDIA evaluations: `plans/2026-10-01-upload-governance-worklog.md`.

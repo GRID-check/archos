@@ -37,7 +37,7 @@ import { LANGFUSE, QDRANT } from "../constants";
  * | `grid-backend-read` | aiq-agent tier (ADR-0039) | `Read` on document buckets ONLY. |
  * | `grid-tenant-admin` | provisioning + purge paths | `Admin` on the tenant bucket PREFIX and nothing else. |
  * | `grid-langfuse` | Langfuse (ADR-0044) | object CRUD on the Langfuse bucket only. |
- * | `grid-qdrant` | Qdrant (ADR-0113) | object CRUD on the snapshot bucket only. |
+ * | `grid-qdrant` | Qdrant (ADR-0115) | object CRUD on the snapshot bucket only. |
  *
  * The split between `grid` and `grid-tenant-admin` is the point: SeaweedFS
  * cannot express "may create a bucket but not delete one" — `Admin:<bucket>`
@@ -112,7 +112,7 @@ export function s3IdentityCatalog({
    */
   langfuseBucket?: string;
   /**
-   * The Qdrant snapshot bucket (ADR-0113), when that tier is deployed. Withheld
+   * The Qdrant snapshot bucket (ADR-0115), when that tier is deployed. Withheld
    * from `grid` like the Langfuse bucket: a snapshot is a full copy of every
    * office's chunk text and vectors, and the BFF has no reason to read one.
    */

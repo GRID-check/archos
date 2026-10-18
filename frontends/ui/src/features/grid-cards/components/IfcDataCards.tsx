@@ -144,8 +144,12 @@ function CardShell({
 }): JSX.Element {
   return (
     <section className="rounded-lg border bg-card p-5" aria-label={title}>
-      <header className="mb-3 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
+      {/* `flex-wrap`: the compliance card carries two actions, and beside the
+          title they pushed the header 104px past a phone's edge. Wrapped, they
+          take a line of their own under the title and stay beside it where
+          there is room. */}
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div className="flex min-w-0 items-center gap-2">
           <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
@@ -215,6 +219,9 @@ function NoModel({
  * Netto-Grundfläche computed over part of a building with none of the
  * warning the model page refuses to show the same number without.
  */
+/** A text link in a dense table is 18px tall; under a finger it grows to the 44px floor. */
+const TOUCH_LINK = 'pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:items-center'
+
 const pickSchedule = (payload: Record<string, unknown>) =>
   payload.schedule
     ? {
@@ -370,7 +377,7 @@ export function IfcScheduleCard({
                               storey: entry.storeyName,
                               element: room.globalId,
                             })}
-                            className="underline-offset-2 hover:underline"
+                            className={`underline-offset-2 hover:underline ${TOUCH_LINK}`}
                           >
                             {room.name}
                           </Link>
@@ -645,7 +652,7 @@ export function IfcComplianceCard({
       icon={ShieldCheck}
       action={
         model && projectId ? (
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {bcfHref && (
               <Button asChild size="sm" variant="ghost">
                 <a href={bcfHref} download>
@@ -784,7 +791,7 @@ function DiffGroup({
                       element: entry.globalId,
                       highlights: [{ status, globalIds: [entry.globalId] }],
                     })}
-                    className="underline-offset-2 hover:underline"
+                    className={`underline-offset-2 hover:underline ${TOUCH_LINK}`}
                   >
                     {caption}
                   </Link>

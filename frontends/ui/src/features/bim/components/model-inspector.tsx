@@ -38,7 +38,14 @@ import { elementQuestionHref } from '../lib/element-question'
 import { formatPropertyValue } from '../lib/format-value'
 import { humaniseIfcType } from '../lib/stage-model'
 import type { BimElementDetail } from '../hooks/use-bim-model'
-import { ViewerField, ViewerFieldGroup, ViewerPanel } from './viewer'
+import { CopyableValue } from './copyable-value'
+import {
+  ViewerField,
+  ViewerFieldGroup,
+  ViewerPanel,
+  ViewerSheet,
+  type ViewerSheetCollapse,
+} from './viewer'
 
 export interface ModelInspectorProps {
   element: BimElementDetail | null
@@ -77,6 +84,16 @@ export interface ModelInspectorProps {
    * building away is the press that brings it back.
    */
   isolated?: boolean
+  /**
+   * Draw as a phone sheet instead of the desktop card.
+   *
+   * `bottom` is a portrait phone: a sheet with a peek size, so the card the
+   * click asked for never takes the building away. `side` is a phone on its
+   * side, where the same content is a narrow panel. Absent is the desktop card.
+   * The content is identical in all three — only the container changes, which
+   * is why this is a prop on the inspector and not a second inspector.
+   */
+  sheet?: { placement: 'bottom' | 'side'; collapse: ViewerSheetCollapse }
   className?: string
 }
 
@@ -90,6 +107,7 @@ export function ModelInspector({
   onHide,
   onIsolate,
   isolated = false,
+  sheet,
   className,
 }: ModelInspectorProps): JSX.Element {
   const t = useTranslations('bim')
@@ -109,24 +127,19 @@ export function ModelInspector({
    * Bauteil" — inside a card that only exists because something IS selected.
    */
   const missing = !isLoading && !error && !element
-  const title = element?.name?.trim()
-    || (element ? humaniseIfcType(element.ifcType) : t(missing ? 'element.notFound' : 'stage.selection.loading'))
+  const title =
+    element?.name?.trim() ||
+    (element
+      ? humaniseIfcType(element.ifcType)
+      : t(missing ? 'element.notFound' : 'stage.selection.loading'))
 
   const subtitle = element
     ? [humaniseIfcType(element.ifcType), element.storeyName].filter(Boolean).join(' · ')
     : undefined
 
-  return (
-    <ViewerPanel
-      title={title}
-      subtitle={subtitle}
-      closeLabel={t('stage.selection.close')}
-      onClose={onClose}
-      className={className}
-      footer={
-        element && (
-          <div className="space-y-1">
-            {/*
+  const footer = element && (
+    <div className="space-y-1">
+      {/*
               Two verbs, and they are different verbs: hiding takes THIS out
               of the way, isolating takes everything else. Side by side
               because the reader is choosing between them, not working down a
@@ -138,56 +151,56 @@ export function ModelInspector({
               exactly where they were, so its button has two states and has to
               show which one it is in. Same filled ink as the dock's toggles.
             */}
-            {(onHide || onIsolate) && (
-              <div className="flex gap-1">
-                {onIsolate && (
-                  <Button
-                    aria-pressed={isolated}
-                    variant={isolated ? 'default' : 'ghost'}
-                    size="sm"
-                    className="flex-1 justify-start gap-2"
-                    onClick={onIsolate}
-                  >
-                    <Scan className="size-4" aria-hidden="true" />
-                    {t('stage.selection.isolate')}
-                  </Button>
-                )}
-                {onHide && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 justify-start gap-2"
-                    onClick={onHide}
-                  >
-                    <EyeOff className="size-4" aria-hidden="true" />
-                    {t('stage.selection.hide')}
-                  </Button>
-                )}
-              </div>
-            )}
-          {projectId && (
-          <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-2">
-            <Link
-              href={elementQuestionHref(
-                projectId,
-                {
-                  globalId: element.globalId,
-                  ifcType: element.ifcType,
-                  name: element.name,
-                  storeyName: element.storeyName,
-                },
-                { modelFilename }
-              )}
+      {(onHide || onIsolate) && (
+        <div className="flex gap-1">
+          {onIsolate && (
+            <Button
+              aria-pressed={isolated}
+              variant={isolated ? 'default' : 'ghost'}
+              size="sm"
+              className="flex-1 justify-start gap-2"
+              onClick={onIsolate}
             >
-              <MessageSquarePlus className="size-4" aria-hidden="true" />
-              {t('stage.selection.ask')}
-            </Link>
-          </Button>
+              <Scan className="size-4" aria-hidden="true" />
+              {t('stage.selection.isolate')}
+            </Button>
           )}
-          </div>
-        )
-      }
-    >
+          {onHide && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1 justify-start gap-2"
+              onClick={onHide}
+            >
+              <EyeOff className="size-4" aria-hidden="true" />
+              {t('stage.selection.hide')}
+            </Button>
+          )}
+        </div>
+      )}
+      {projectId && (
+        <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-2">
+          <Link
+            href={elementQuestionHref(
+              projectId,
+              {
+                globalId: element.globalId,
+                ifcType: element.ifcType,
+                name: element.name,
+                storeyName: element.storeyName,
+              },
+              { modelFilename }
+            )}
+          >
+            <MessageSquarePlus className="size-4" aria-hidden="true" />
+            {t('stage.selection.ask')}
+          </Link>
+        </Button>
+      )}
+    </div>
+  )
+  const body = (
+    <>
       {error && <p className="text-destructive text-xs">{t('properties.loadFailed')}</p>}
 
       {!error && !element && (
@@ -200,7 +213,9 @@ export function ModelInspector({
       {element && (
         <>
           <ViewerFieldGroup label={t('stage.selection.about')}>
-            <ViewerField label={t('properties.ifcType')}>{humaniseIfcType(element.ifcType)}</ViewerField>
+            <ViewerField label={t('properties.ifcType')}>
+              {humaniseIfcType(element.ifcType)}
+            </ViewerField>
             {element.storeyName && (
               <ViewerField label={t('properties.storey')}>{element.storeyName}</ViewerField>
             )}
@@ -230,9 +245,42 @@ export function ModelInspector({
             </ViewerFieldGroup>
           ))}
 
-          <ModelInspectorDetails element={element} locale={locale} label={t('stage.selection.technical')} />
+          <ModelInspectorDetails
+            element={element}
+            locale={locale}
+            label={t('stage.selection.technical')}
+          />
         </>
       )}
+    </>
+  )
+
+  if (sheet) {
+    return (
+      <ViewerSheet
+        placement={sheet.placement}
+        collapse={sheet.collapse}
+        title={title}
+        subtitle={subtitle}
+        closeLabel={t('stage.selection.close')}
+        onClose={onClose}
+        className={className}
+        footer={footer}
+      >
+        {body}
+      </ViewerSheet>
+    )
+  }
+  return (
+    <ViewerPanel
+      title={title}
+      subtitle={subtitle}
+      closeLabel={t('stage.selection.close')}
+      onClose={onClose}
+      className={className}
+      footer={footer}
+    >
+      {body}
     </ViewerPanel>
   )
 }
@@ -270,17 +318,26 @@ function ModelInspectorDetails({
         `<summary>`'s display has a history of costing it its toggle in Safari,
         and padding needs no display change at all.
       */}
-      <summary className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 marker:content-none pointer-coarse:min-h-11 pointer-coarse:py-3.5 cursor-pointer rounded text-xs font-semibold tracking-wide outline-none transition-colors duration-quick ease-out focus-visible:ring-2">
+      <summary className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 pointer-coarse:min-h-11 pointer-coarse:py-3.5 duration-quick cursor-pointer rounded text-xs font-semibold tracking-wide outline-none transition-colors ease-out marker:content-none focus-visible:ring-2">
         {label}
       </summary>
 
       <div className="mt-2">
         <ViewerFieldGroup label={t('properties.identity')}>
           <ViewerField label={t('properties.globalId')}>
-            <span className="font-mono text-xs break-all">{element.globalId}</span>
+            {/*
+              Wrapped AND copyable. At 393 px a 22-character id used to end in
+              an ellipsis whose full text lived in a `title`, which a finger
+              cannot raise. The id is what an architect pastes into a BCF topic
+              or a mail to the structural engineer, so the useful act is a tap
+              that copies it, not a longer label.
+            */}
+            <CopyableValue value={element.globalId} className="font-mono" />
           </ViewerField>
           {element.predefinedType && (
-            <ViewerField label={t('properties.predefinedType')}>{element.predefinedType}</ViewerField>
+            <ViewerField label={t('properties.predefinedType')}>
+              {element.predefinedType}
+            </ViewerField>
           )}
           {element.typeName && (
             <ViewerField label={t('properties.typeName')}>{element.typeName}</ViewerField>
@@ -294,7 +351,8 @@ function ModelInspectorDetails({
                 key={`${classification.system}-${classification.identification}`}
                 label={classification.system ?? '—'}
               >
-                {[classification.identification, classification.name].filter(Boolean).join(' ') || '—'}
+                {[classification.identification, classification.name].filter(Boolean).join(' ') ||
+                  '—'}
               </ViewerField>
             ))}
           </ViewerFieldGroup>

@@ -67,6 +67,7 @@ import type { CardInteractions } from '@/features/grid-cards/card-decision'
 import { useChatStore } from '../store'
 import { registerShownText, useAnswerRevealStore } from '../stores/answer-reveal-store'
 import { useAnswerFileReferences } from '../hooks/use-answer-file-references'
+import { handleNearestCitationTap } from '../hooks/use-nearest-citation-tap'
 import { usePacedText } from '../hooks/use-paced-text'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -87,6 +88,7 @@ import { MemoryNotedChip } from './MemoryNotedChip'
 import { turnMemoryItems, type TurnMemoryItem } from '../lib/turn-memory'
 import { answerMetaToAnatomy, summaryDuplicatesBody } from '../lib/answer-meta-cards'
 import { AnatomyBlock, AnatomyMasthead, mastheadShows } from './AnswerAnatomy'
+import { AnswerOutline } from './AnswerOutline'
 import { FindingsMatrix } from './FindingsMatrix'
 import type { AnswerKind, AnswerMeta } from '@/lib/conversations/message-answer-meta'
 import type { Finding, Findings } from '@/lib/conversations/message-findings'
@@ -826,7 +828,7 @@ const AnswerDetails = memo(function AnswerDetails({
       <div className="flex min-h-6 flex-wrap items-center gap-2">
         {before}
         <CollapsibleTrigger
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 touch-target duration-quick flex items-center gap-1.5 self-start rounded-md text-xs leading-relaxed transition-colors ease-out focus-visible:outline-none focus-visible:ring-2"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 touch-target duration-quick pointer-coarse:self-center flex items-center gap-1.5 self-start rounded-md text-xs leading-relaxed transition-colors ease-out focus-visible:outline-none focus-visible:ring-2"
           aria-label={t(needsAttention ? 'answerDetails.triggerAriaAttention' : 'answerDetails.triggerAria')}
           data-testid="answer-details-trigger"
         >
@@ -1700,6 +1702,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
           >
             <div
               ref={frameRef}
+              onClick={handleNearestCitationTap}
               className={cn(
                 'flex w-full flex-col gap-2 overflow-hidden break-words',
                 dimmed
@@ -1878,8 +1881,9 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
             one considered object with sections — not a card floating in a tray. */}
               <div
                 ref={frameRef}
+                onClick={handleNearestCitationTap}
                 className={cn(
-                  'bg-card flex flex-col gap-2 break-words px-[22px] pb-[17px] pt-[18px]',
+                  'bg-card flex flex-col gap-2 break-words px-4 pb-[17px] pt-[18px] sm:px-[22px]',
                   dimmed
                 )}
               >
@@ -1898,18 +1902,20 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
               its last word. Cards the answer placed with a marker are spliced
               into this body. */}
                 {retractionLine}
-                <CardSlotLiveProvider value={live}>
-                  <MarkdownSlotProvider render={renderCardSlot}>
-                    <div ref={proseRef} className={proseClass(ledeClass)}>
-                      <MarkdownRenderer
-                        content={body}
-                        isStreaming={live}
-                        remarkPlugins={markerPlugins}
-                        caret={live && !retracted && !writingSummary && <StreamingCaret fading={finishing} idle={paced.idle} veil />}
-                      />
-                    </div>
-                  </MarkdownSlotProvider>
-                </CardSlotLiveProvider>
+                <AnswerOutline markdown={body} scopeRef={proseRef} enabled={!live && !failed && !retracted}>
+                  <CardSlotLiveProvider value={live}>
+                    <MarkdownSlotProvider render={renderCardSlot}>
+                      <div ref={proseRef} className={proseClass(ledeClass)}>
+                        <MarkdownRenderer
+                          content={body}
+                          isStreaming={live}
+                          remarkPlugins={markerPlugins}
+                          caret={live && !retracted && !writingSummary && <StreamingCaret fading={finishing} idle={paced.idle} veil />}
+                        />
+                      </div>
+                    </MarkdownSlotProvider>
+                  </CardSlotLiveProvider>
+                </AnswerOutline>
 
                 {stoppedMarker}
                 {/* What arrives below the prose: never before it, since an answer
@@ -1936,7 +1942,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
               <HeightExpand open={!live || footerReserved} instant={live}>
                 <div
                   className={cn(
-                    'duration-base flex flex-col gap-2.5 border-t px-[22px] pb-[14px] pt-3 transition-opacity ease-out motion-reduce:transition-none',
+                    'duration-base flex flex-col gap-2.5 border-t px-4 pb-[14px] pt-3 transition-opacity sm:px-[22px] ease-out motion-reduce:transition-none',
                     live && mountedLive && 'invisible opacity-0'
                   )}
                   data-testid="answer-footer"

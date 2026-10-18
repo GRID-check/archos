@@ -40,7 +40,7 @@ const KEY = {
 const CURL_UID = 100;
 
 /**
- * Self-hosted Qdrant 1.19 (ADR-0113), the stack's one vector store.
+ * Self-hosted Qdrant 1.19 (ADR-0115), the stack's one vector store.
  *
  * A raw StatefulSet, with `qdrant-helm` 1.19.2 as the oracle
  * for everything Qdrant-specific: the cluster bootstrap, `Parallel` pod

@@ -17,7 +17,8 @@
  *   watchdog finds silent on {@link SILENT_DROPS_BEFORE_GIVING_UP} sockets in
  *   a row, with nothing folded in between, is ended too. Nothing waits on
  *   silence: a spinner that cannot end is the one failure this file exists to
- *   rule out.
+ *   rule out. A deadline that ran while the page was hidden or offline (a
+ *   locked phone) measured the page, not the server, and starts again.
  * - **Folding.** An answer delta waits for the next {@link DELTA_FLUSH_MS}
  *   flush; any other event flushes at once, so a step, a card or the terminal
  *   is never held behind prose.
@@ -34,10 +35,18 @@
  *   ended, unless the asker stopped the turn.
  * - **Ending.** Stop is `cancel_turn`; the partial answer stays, marked
  *   stopped, and the cancel says how much of it was on screen (`shown`), so
- *   the row the server stores is that text too. A turn the stream no longer holds, or a socket that gave up, asks
- *   the server for the finished answer before any banner. Close code 4426, or
- *   a frame this bundle cannot read, is a reload notice; a server that never
- *   says hello is `connection.server_incompatible`.
+ *   the row the server stores is that text too. A turn the stream no longer
+ *   holds asks the server for the finished answer before anything else, and
+ *   the words already on screen stay there while it does
+ *   ({@link endInterruptedTurn}). Close code 4426, or a frame this bundle
+ *   cannot read, is a reload notice; a server that never says hello is
+ *   `connection.server_incompatible`.
+ * - **The network is not the turn.** A socket that is offline, or that gave up
+ *   on a network that does not answer, ends no turn: the server runs and
+ *   stores it whether or not anyone listens, so the turn keeps its words and
+ *   its cursor, and the socket that reopens (the page back, the network back,
+ *   the recovery poll) attaches it from its last seq. The status dock says
+ *   meanwhile that the connection is down and that Piloti carries on.
  *
  * A deep-research run is a message in the thread (ADR-0062); its block follows
  * the run's own stream (`features/runs/hooks/use-run-ledger.ts`).
@@ -51,11 +60,14 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslations } from '@/i18n'
 import { useAuth } from '@/adapters/auth'
 import { createTurnSocket, type OpenTurn } from '@/adapters/api/turn-socket'
+import { browserPageLifecycle, isActive, sleptThrough } from '@/adapters/api/page-lifecycle'
 import type { ClientMessage, ShownAnswer, WireEvent } from '@/adapters/api/wire-v2'
 import { checkBackendHealthCached, invalidateHealthCache } from '@/shared/hooks/use-backend-health'
 import { useThreadSharing } from '@/shared/collaboration/thread-sharing'
 import type { AddresseeSet } from '@/lib/mentions/types'
 import { useChatStore } from '../store'
+import { mapServerMessagesToChatMessages } from '../lib/server-message-mapper'
+import { isTransientConnectionError } from '@/features/layout/lib/thread-phase'
 import { registerStopStreamingHandler, runningTurnIn } from '../stores/messages-store'
 import { useConnectionRecovery } from './use-connection-recovery'
 import { useEffortStore } from '../stores/effort-store'
@@ -274,8 +286,14 @@ interface DriverHooks {
   refreshAuth: () => Promise<void>
   /** The socket opened or closed; `steerOffered`: its server reads `steer` (the hello named it). */
   onConnected: (connected: boolean, steerOffered: boolean) => void
-  /** The socket gave up reconnecting: say why, if the reason can be found. */
-  onGaveUp: () => void
+  /**
+   * The socket gave up reconnecting: say why, if the reason can be found.
+   * `network` when it was the connection (the turns wait for it to come back),
+   * `other` when waiting will not help (a budget, an expired session).
+   */
+  onGaveUp: () => Promise<'network' | 'other'>
+  /** The browser is offline: the status dock says so until a socket opens. */
+  onOffline: () => void
   /** The job queue refused the turn: a warning the reader can act on. */
   onQueueFull: (text: string, retryAfterSeconds: number | null) => void
 }
@@ -325,20 +343,95 @@ const store = () => useChatStore.getState()
 const openVersionState = (state: DocumentVersionState | null | undefined): UserMessage['focus_version_state'] =>
   state === 'draft' || state === 'in_review' || state === 'changes_requested' ? state : null
 
+/** Turns being ended by {@link endInterruptedTurn}: neither attached again nor ended twice. */
+const ending = new Set<string>()
+
+/** The answer the turn has drawn so far, when it has drawn any words. */
+const partialAnswerOf = (view: TurnView): ChatMessage | undefined => {
+  if (!view.messageId) return undefined
+  const { currentConversation, conversations } = store()
+  const owner =
+    currentConversation?.id === view.conversationId
+      ? currentConversation
+      : conversations.find((conversation) => conversation.id === view.conversationId)
+  return owner?.messages.find(
+    (message) => message.id === view.messageId && message.isStreaming && message.content.trim().length > 0
+  )
+}
+
 /**
- * End a turn this page cannot continue, but ask the server first: the backend
- * finishes and persists a turn whether or not anyone is listening, so the
- * answer may be waiting there. Only when it is not does the banner go up.
+ * The answer the server stored for this turn, under the id its `RUN_STARTED`
+ * named (`turnAnswerId`): null when it holds none, undefined when it could not
+ * be asked.
  */
-const endInterruptedTurn = (view: TurnView): void => {
+const storedAnswerOf = async (view: TurnView): Promise<ChatMessage | null | undefined> => {
+  if (!view.messageId) return null
+  try {
+    const { conversationsClient } = await import('@/adapters/api/conversations-client')
+    const rows = await conversationsClient.listMessages(view.conversationId)
+    const answer = mapServerMessagesToChatMessages(rows).find(
+      (message) => message.id === view.messageId && message.role === 'assistant'
+    )
+    return answer ?? null
+  } catch {
+    return undefined
+  }
+}
+
+/** The turn's question is still the newest one in its thread: an answer put back lands under it. */
+const isNewestQuestion = (view: TurnView): boolean => {
+  const conversation = store().currentConversation
+  if (conversation?.id !== view.conversationId) return false
+  return conversation.messages.findLast((message) => message.messageType === 'user')?.id === view.turnId
+}
+
+/**
+ * Ask the server for the answer while waiting on it shows the calm „Antwort
+ * wird geholt", and only when it confirms it has none say so. `partial` is
+ * what the reader had read: put back, dimmed, above the card, rather than
+ * taken away with the turn.
+ */
+const awaitLostTurn = (view: TurnView, partial?: ChatMessage): void => {
   store().dropTurn(view.turnId)
   void store()
     ._awaitServerAnswer(view.conversationId, view.turnId)
     .then((outcome) => {
-      if (outcome === 'nothing' && store().currentConversation?.id === view.conversationId) {
-        store().addErrorCard('agent.response_interrupted')
+      if (outcome !== 'nothing' || store().currentConversation?.id !== view.conversationId) return
+      if (partial && isNewestQuestion(view)) {
+        store().adoptRunMessage(view.conversationId, { ...partial, isStreaming: undefined, failed: true })
       }
+      store().addErrorCard('agent.response_interrupted')
     })
+    .finally(() => ending.delete(view.turnId))
+}
+
+/**
+ * End a turn this page cannot continue, but ask the server first: the backend
+ * finishes and persists a turn whether or not anyone is listening, so the
+ * answer may be waiting there. The words already on screen stay while it is
+ * asked: the stored answer replaces them in their row, in one frame. Only a
+ * server that has no answer and no turn still running earns the banner.
+ */
+const endInterruptedTurn = (view: TurnView): void => {
+  if (ending.has(view.turnId)) return
+  ending.add(view.turnId)
+  const partial = partialAnswerOf(view)
+  if (!partial) return awaitLostTurn(view)
+  void storedAnswerOf(view).then((answer) => {
+    const now = store().turns[view.turnId]
+    // Folded on meanwhile (a socket that reopened attached it after all), or
+    // ended by something else: it is not this call's to end.
+    // The server could not be asked either (the network went with the
+    // socket): the turn stays as it is, and the next socket attaches it.
+    if (!now || now.lastSeq !== view.lastSeq || now.phase !== 'running' || answer === undefined) {
+      ending.delete(view.turnId)
+      return
+    }
+    if (!answer) return awaitLostTurn(view, partial)
+    store().adoptRunMessage(view.conversationId, answer)
+    store().dropTurn(view.turnId)
+    ending.delete(view.turnId)
+  })
 }
 
 /**
@@ -383,10 +476,14 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   const keyOf = (message: ClientMessage): string =>
     `${message.type}:${'turn_id' in message ? message.turn_id : message.message_id}`
 
+  /** Whether the page can see an attempt through: a deadline that ran while it could not measured nothing. */
+  const lifecycle = browserPageLifecycle()
+
   const openTurns = (): OpenTurn[] => {
     const now = Date.now()
     return Object.values(store().turns).flatMap((view): OpenTurn[] => {
       if (view.conversationId !== conversationId || unacknowledged.has(view.turnId)) return []
+      if (ending.has(view.turnId)) return []
       if (view.phase === 'running') return [{ turnId: view.turnId, lastSeq: view.lastSeq }]
       const finished = finishedAt.get(view.turnId)
       const stagesPending =
@@ -410,12 +507,17 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   /** A fresh deadline for a question the server has not answered yet. */
   const awaitAck = (turnId: string): void => {
     clearTimeout(ackDeadlines.get(turnId))
-    ackDeadlines.set(turnId, setTimeout(() => missedAck(turnId), ACK_TIMEOUT_MS))
+    const armedAt = Date.now()
+    ackDeadlines.set(turnId, setTimeout(() => missedAck(turnId, armedAt), ACK_TIMEOUT_MS))
   }
 
-  function missedAck(turnId: string): void {
+  function missedAck(turnId: string, armedAt: number): void {
     ackDeadlines.delete(turnId)
     if (!unacknowledged.has(turnId)) return
+    // Hidden, offline, or frozen under the deadline (a locked phone fires it
+    // late, on its return): the server was never given the chance. The
+    // question goes out on the socket that opens when the page is back.
+    if (!isActive(lifecycle) || sleptThrough(armedAt, ACK_TIMEOUT_MS)) return awaitAck(turnId)
     const misses = (ackMisses.get(turnId) ?? 0) + 1
     if (misses >= ACK_MISSES_BEFORE_GIVING_UP) {
       forget(turnId)
@@ -434,6 +536,7 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
 
   /** The watchdog found these turns silent on this socket: one more strike each, and the last ends the turn. */
   const silent = (turnIds: readonly string[]): void => {
+    flush()
     for (const turnId of turnIds) {
       const drops = (silentDrops.get(turnId) ?? 0) + 1
       silentDrops.set(turnId, drops)
@@ -455,6 +558,7 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
       socketOpen = status === 'open'
       hooks.onConnected(socketOpen, socketOpen && socket.accepts('steer'))
       if (status === 'open') opened()
+      else if (status === 'offline') hooks.onOffline()
       else if (status === 'failed' || status === 'incompatible' || status === 'outdated') gaveUp(status)
     },
   })
@@ -476,13 +580,25 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   const runningTurns = (): TurnView[] =>
     Object.values(store().turns).filter((view) => view.conversationId === conversationId && view.phase === 'running')
 
-  const gaveUp = (status: 'failed' | 'incompatible' | 'outdated'): void => {
+  /** Nothing this socket carries will reach a server: stop waiting on it, and ask for each answer instead. */
+  const endEverything = (): void => {
+    flush()
     for (const turnId of [...unacknowledged.keys()]) forget(turnId)
     waiting.length = 0
+    for (const view of runningTurns()) endInterruptedTurn(view)
+  }
+
+  const gaveUp = (status: 'failed' | 'incompatible' | 'outdated'): void => {
     if (status === 'outdated') store().addErrorCard('connection.client_outdated')
     else if (status === 'incompatible') store().addErrorCard('connection.server_incompatible')
-    else hooks.onGaveUp()
-    for (const view of runningTurns()) endInterruptedTurn(view)
+    if (status !== 'failed') return endEverything()
+    // The network: every turn stays as it is, its question unanswered or its
+    // answer half drawn, and is attached when a socket opens again. Ending it
+    // here asked a server this page could not reach, and told the reader
+    // their answer was lost while the server was writing it.
+    void hooks.onGaveUp().then((cause) => {
+      if (cause === 'other' && !socketOpen) endEverything()
+    })
   }
 
   /**
@@ -538,6 +654,8 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
 
   /** The stream holds nothing of this turn: ask the server for its answer, or forget a finished one. */
   const lost = (turnId: string): void => {
+    // What arrived for it is on screen first: those are the words kept while the server is asked.
+    flush()
     forget(turnId)
     const view = store().turns[turnId]
     if (view?.phase === 'running') endInterruptedTurn(view)
@@ -559,7 +677,9 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
           authExpired = 0
           store().addErrorCard('auth.session_expired')
           forget(turnId)
-          if (view?.phase === 'running') store().dropTurn(turnId)
+          // What was drawn stays, dimmed: the server cannot be asked for the
+          // rest until the reader signs in again.
+          if (view?.phase === 'running') store().failTurn(turnId)
           return
         }
         // The socket's token expired under it. A reconnect refreshes it, and
@@ -906,7 +1026,14 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       setIsConnected(connected)
       setSteerOffered(offered)
     },
-    onGaveUp: () => void explainConnectionFailure(),
+    onGaveUp: () => explainConnectionFailure(),
+    onOffline: () => {
+      // Said once, by the status dock: a transient connection error is not a
+      // card in the thread (`isTransientConnectionError`), and the socket that
+      // opens again dismisses it.
+      if (useChatStore.getState().currentConversation?.messages.some(isTransientConnectionError)) return
+      addErrorCard('connection.lost')
+    },
     onQueueFull: (text, retryAfter) => {
       // One sentence saying when to resend, in the reader's language. The
       // server's own text is English on one path and carries its own „try
@@ -931,18 +1058,23 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
    * "down" from a session that drifted.
    */
   const budgetCheckedRef = useRef(false)
-  const explainConnectionFailure = async (): Promise<void> => {
+  const explainConnectionFailure = async (): Promise<'network' | 'other'> => {
     const conversationId = useChatStore.getState().currentConversation?.id
     const stillHere = () => useChatStore.getState().currentConversation?.id === conversationId
     if (!budgetCheckedRef.current) {
       budgetCheckedRef.current = true
       const budgetMessage = await discoverBudgetFailureMessage(tChat)
-      if (!stillHere()) return
-      if (budgetMessage) return addErrorCard('budget.exhausted', budgetMessage)
+      if (!stillHere()) return 'network'
+      if (budgetMessage) {
+        addErrorCard('budget.exhausted', budgetMessage)
+        return 'other'
+      }
     }
     const backendUp = await checkBackendHealthCached()
-    if (!stillHere()) return
-    addErrorCard(backendUp && isSessionExpired ? 'auth.session_expired' : 'connection.failed')
+    if (!stillHere()) return 'network'
+    const expired = backendUp && isSessionExpired
+    addErrorCard(expired ? 'auth.session_expired' : 'connection.failed')
+    return expired ? 'other' : 'network'
   }
 
   /** This conversation's driver, created (and connected) when it has none. */
@@ -956,6 +1088,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       refreshAuth: () => hooksRef.current.refreshAuth(),
       onConnected: (connected, offered) => hooksRef.current.onConnected(connected, offered),
       onGaveUp: () => hooksRef.current.onGaveUp(),
+      onOffline: () => hooksRef.current.onOffline(),
       onQueueFull: (text, retryAfter) => hooksRef.current.onQueueFull(text, retryAfter),
     })
     driverRef.current = driver

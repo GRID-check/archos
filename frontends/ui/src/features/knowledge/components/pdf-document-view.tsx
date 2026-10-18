@@ -42,7 +42,7 @@ import {
   type JSX,
   type ReactNode,
 } from 'react'
-import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
+import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist'
 import { AlertTriangle, Check, ExternalLink, LockKeyhole, Quote, RotateCcw, TextSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -54,6 +54,7 @@ import { cn } from '@/lib/utils'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { useTranslations } from '@/i18n'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { SIMILAR_PASSAGE_TEXT_MIN } from '@/lib/similar-passages/types'
 import {
   documentParameters,
@@ -76,14 +77,27 @@ import {
   type PassageIndex,
 } from '../lib/passage-highlight'
 import {
+  anchoredTransform,
   clampPage,
   clampZoom,
   fitWidth,
+  maxZoomFor,
   stepZoom,
   viewerKeyAction,
   type FitMode,
 } from '../lib/pdf-zoom'
-import { useZoomGestures } from '../lib/use-zoom-gestures'
+import {
+  detailCovers,
+  detailPlan,
+  devicePixelRatioOf,
+  maxCanvasPixels,
+  rasterFor,
+  sameRaster,
+  visiblePart,
+  type Box,
+} from '../lib/pdf-raster'
+import { ContentTransform } from '../lib/content-transform'
+import { useZoomGestures, type ZoomCommit } from '../lib/use-zoom-gestures'
 import { PageSheet } from './pdf-viewer-atoms'
 import { PdfThumbnailRail } from './pdf-thumbnail-rail'
 import { PdfControls, PdfSearchBar } from './pdf-viewer-toolbar'
@@ -148,6 +162,13 @@ export interface PdfDocumentViewProps {
    * a stage. Everything else — the sheets, the pill, the rail — is the same.
    */
   ground?: 'stage' | 'host'
+  /**
+   * The stage runs to the screen's edges on a phone: the full-screen reader
+   * (Files, the chat's file pill, a citation) lays the document edge to edge,
+   * with the pages kept clear of the Dynamic Island and the home indicator by
+   * the frame's safe-area padding rather than by a card's margin.
+   */
+  bleed?: boolean
   /**
    * What the caller lays over one page: marks it keeps itself (a document's
    * Anmerkungen), positioned in PERCENT of the page as `RegionMarks` are, so
@@ -253,6 +274,13 @@ const PLACEHOLDER_PAGE_ASPECT = Math.SQRT2
 const GUTTER = 24
 
 /**
+ * The same on a touch screen, whose scrollbars overlay the content and take no
+ * room: only the shadow's. Twenty-four pixels of a 393px phone is six percent
+ * of a drawing's width spent on a scrollbar that is not there.
+ */
+const TOUCH_GUTTER = 8
+
+/**
  * How far outside the viewport a page rasterises, and how far past it a page
  * keeps its bitmap. One band for both directions gives the eviction enough
  * hysteresis that an ordinary scroll does not thrash it.
@@ -262,8 +290,12 @@ const PRERENDER_MARGIN = '150% 0px'
 /** Where a located passage comes to rest in the frame — high, but with lead-in. */
 const PASSAGE_SCROLL_OFFSET = 0.28
 
-/** Cap on device-pixel oversampling; past 2× the memory buys nothing visible. */
-const MAX_PIXEL_RATIO = 2
+/**
+ * How long the view has to stand still before the pages on screen draw their
+ * sharp detail. Long enough that a flick's momentum is over, short enough that
+ * the reader who stopped to read does not wait for it.
+ */
+const DETAIL_SETTLE_MS = 120
 
 /**
  * The band, as a share of the frame, that decides which page the reader is ON.
@@ -318,16 +350,60 @@ interface SearchHit {
   rects: HighlightRect[]
 }
 
-/** Where a zoom started, so the point under the pointer stays under it. */
+/**
+ * Where a zoom is anchored, so the point under the fingers stays under them.
+ *
+ * Held as a share of the PAGE it is on, not as a point of the page stack: the
+ * gaps between pages do not grow with the zoom, so a stack point scaled by the
+ * zoom ratio drifts by a gap per page above it, and on page 40 of a Bescheid
+ * that was a screen and a half.
+ */
 interface ZoomAnchor {
   /** The point in the frame's visible box. */
   x: number
   y: number
-  /** The same point in the page stack, before the zoom. */
+  /** The page it is on, and where on that page, as shares; null off every page. */
+  page: number | null
+  fx: number
+  fy: number
+  /** The same point in the page stack, before the zoom, for when it is on no page. */
   contentX: number
   contentY: number
   ratio: number
+  /** The zoom on screen when it was asked for, so the change can be played rather than cut. */
+  shown: number
 }
+
+/** A view-moved signal: the pages on screen subscribe, the frame publishes. No React state per scroll. */
+interface ViewSignal {
+  subscribe: (listener: () => void) => () => void
+  emit: () => void
+}
+
+const createViewSignal = (): ViewSignal => {
+  const listeners = new Set<() => void>()
+  return {
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    emit: () => listeners.forEach((listener) => listener()),
+  }
+}
+
+/** The canvas budget of this device (`pdf-raster.ts`): a phone's, or a desktop's. */
+const canvasBudget = (): number =>
+  maxCanvasPixels(typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(pointer: coarse)').matches
+    : false)
+
+const screenRatio = (): number => devicePixelRatioOf(typeof window === 'undefined' ? 1 : window.devicePixelRatio)
+
+/** Whether the reader asked for less motion; a zoom then cuts instead of gliding. */
+const prefersReducedMotion = (): boolean =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 type LoadState = 'loading' | 'ready' | 'failed' | 'locked' | 'wrong-password'
 
@@ -346,6 +422,35 @@ const scrollBehavior = (smooth: boolean): ScrollBehavior => {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
 }
 
+/**
+ * Which page a point of the page stack is on, and where on it, as shares of
+ * the page. The page whose rows hold the point, or else the nearest one; the
+ * horizontal share is left unclamped, so a point beside a narrow page stays
+ * beside it.
+ */
+export function pageShare(
+  pages: ReadonlyMap<number, HTMLElement>,
+  x: number,
+  y: number,
+): { page: number | null; fx: number; fy: number } {
+  let best: { page: number; node: HTMLElement; distance: number } | null = null
+  for (const [page, node] of pages) {
+    if (node.offsetHeight <= 0 || node.offsetWidth <= 0) continue
+    const top = node.offsetTop
+    const bottom = top + node.offsetHeight
+    const distance = y < top ? top - y : y > bottom ? y - bottom : 0
+    if (!best || distance < best.distance) best = { page, node, distance }
+    if (distance === 0) break
+  }
+  if (!best) return { page: null, fx: 0, fy: 0 }
+  const { node } = best
+  return {
+    page: best.page,
+    fx: (x - node.offsetLeft) / node.offsetWidth,
+    fy: Math.min(1, Math.max(0, (y - node.offsetTop) / node.offsetHeight)),
+  }
+}
+
 export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   src,
   title,
@@ -357,6 +462,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   onFindSimilar,
   onLoadError,
   ground = 'stage',
+  bleed = false,
   pageOverlay,
   toolbarLead,
   focus,
@@ -364,6 +470,8 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   className,
 }) => {
   const t = useTranslations('knowledge')
+  const coarse = useMediaQuery('(pointer: coarse)')
+  const gutter = coarse ? TOUCH_GUTTER : GUTTER
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
   const [loadState, setLoadState] = useState<LoadState>('loading')
   // Bumped by "try again", which re-runs the load with everything else equal.
@@ -371,11 +479,19 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   const [password, setPassword] = useState<string | null>(null)
   const [frame, setFrame] = useState({ width: 0, height: 0 })
   const [zoom, setZoom] = useState(1)
-  const [fit, setFit] = useState<FitMode>('width')
+  // The reader's own choice of fit, once they have made one. Until then a
+  // sheet that is wider than tall (a plan) is fitted WHOLE, and a page that is
+  // taller than wide (a Bescheid) by its width: a plan fitted by its width on a
+  // phone on its side showed its top third, and a Bescheid fitted whole is
+  // a column of unreadable lines.
+  const [chosenFit, setFit] = useState<FitMode | null>(null)
   const [railOpen, setRailOpen] = useState(true)
   const [hit, setHit] = useState<PassageHit | null>(null)
   // Page 1's shape, used to reserve room for pages that have not rasterised.
   const [defaultAspect, setDefaultAspect] = useState<number | null>(null)
+  // Page 1's width in PDF points: what tells an A1 plan from a Bescheid, and
+  // so how deep the zoom may go (`maxZoomFor`).
+  const [firstPageWidth, setFirstPageWidth] = useState<number | null>(null)
   // Bumped to replay the arrival animation — a CSS animation only runs on
   // mount, so re-pinging means remounting the marks.
   const [ping, setPing] = useState(0)
@@ -425,6 +541,10 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   // the steps in between.
   const zoomRef = useRef(1)
   const anchorRef = useRef<ZoomAnchor | null>(null)
+  // The one writer of the stack's transform while a zoom is live or settling.
+  const [stackTransform] = useState(() => new ContentTransform())
+  // The pages on screen redraw their sharp detail when this fires.
+  const [viewSignal] = useState(createViewSignal)
   const currentPageRef = useRef(1)
   currentPageRef.current = currentPage
 
@@ -482,6 +602,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
         if (cancelled) return
         const base = first.getViewport({ scale: 1 })
         setDefaultAspect(base.height / base.width)
+        setFirstPageWidth(base.width)
       })
       .catch(() => {})
     return () => {
@@ -509,68 +630,187 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
     return () => observer.disconnect()
   }, [doc])
 
+  const fit: FitMode = chosenFit ?? (defaultAspect !== null && defaultAspect < 1 ? 'page' : 'width')
   const baseWidth = fitWidth({
     mode: fit,
     frameWidth: frame.width,
     frameHeight: frame.height,
     aspect: defaultAspect ?? PLACEHOLDER_PAGE_ASPECT,
-    gutter: GUTTER,
+    gutter,
     verticalPadding: FIT_PAGE_PADDING,
   })
-  const targetWidth = frame.width > GUTTER ? baseWidth * zoom : 0
+  const targetWidth = frame.width > gutter ? baseWidth * zoom : 0
+  // How deep this document may go: twice its print size, never under 8x.
+  const maxZoom = maxZoomFor({ pageWidth: firstPageWidth, fitWidth: baseWidth })
+  const maxZoomRef = useRef(maxZoom)
+  maxZoomRef.current = maxZoom
+
+  const setContentNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      contentRef.current = node
+      stackTransform.attach(node)
+    },
+    [stackTransform],
+  )
 
   /**
-   * Zoom to `next`, keeping the point at (`clientX`, `clientY`) where it is —
-   * the pointer for a pinch or a wheel, the middle of the frame for a button
-   * or a key. Zooming about the top-left corner instead throws the reader off
-   * the line they were reading on every step.
+   * Put the anchored point back under the fingers in the new layout, and play
+   * whatever the layout cannot show exactly (a pinch held past the ceiling, a
+   * scroll at the frame's edge, a double tap's whole zoom) as a settle from
+   * what was on screen to what is laid out.
    */
-  const zoomTo = useCallback((next: number, clientX?: number, clientY?: number) => {
-    const target = clampZoom(next)
-    const drawn = zoomRef.current
-    if (Math.abs(target - drawn) < 1e-4) return
-    const frameNode = scrollRef.current
-    const content = contentRef.current
-    if (frameNode && content) {
-      const box = frameNode.getBoundingClientRect()
-      const stack = content.getBoundingClientRect()
-      const x = (clientX ?? box.left + box.width / 2) - box.left
-      const y = (clientY ?? box.top + box.height / 2) - box.top
-      const pending = anchorRef.current
-      anchorRef.current = {
-        x,
-        y,
-        // A pinch fires again before the last step has been laid out; anchor
-        // to where the first step was going, not to a stale measurement.
-        contentX: pending ? pending.contentX : x - (stack.left - box.left),
-        contentY: pending ? pending.contentY : y - (stack.top - box.top),
-        ratio: (pending ? pending.ratio : 1) * (target / drawn),
-      }
-    }
-    zoomRef.current = target
-    setZoom(target)
-  }, [])
-
-  useLayoutEffect(() => {
+  const applyAnchor = useCallback(() => {
     const anchor = anchorRef.current
     const frameNode = scrollRef.current
     const content = contentRef.current
-    if (!anchor || !frameNode || !content) return
+    if (!anchor || !frameNode || !content) {
+      stackTransform.release()
+      return
+    }
     anchorRef.current = null
+    stackTransform.clear()
     const box = frameNode.getBoundingClientRect()
-    const stack = content.getBoundingClientRect()
-    const stackTop = stack.top - box.top + frameNode.scrollTop
-    const stackLeft = stack.left - box.left + frameNode.scrollLeft
-    frameNode.scrollTop = stackTop + anchor.contentY * anchor.ratio - anchor.y
-    frameNode.scrollLeft = stackLeft + anchor.contentX * anchor.ratio - anchor.x
-  }, [targetWidth])
+    const before = content.getBoundingClientRect()
+    const pageNode = anchor.page === null ? undefined : pageRefs.current.get(anchor.page)
+    const point = pageNode
+      ? {
+          x: pageNode.offsetLeft + anchor.fx * pageNode.offsetWidth,
+          y: pageNode.offsetTop + anchor.fy * pageNode.offsetHeight,
+        }
+      : { x: anchor.contentX * anchor.ratio, y: anchor.contentY * anchor.ratio }
+    frameNode.scrollTop = before.top - box.top + frameNode.scrollTop + point.y - anchor.y
+    frameNode.scrollLeft = before.left - box.left + frameNode.scrollLeft + point.x - anchor.x
+    const after = content.getBoundingClientRect()
+    stackTransform.settle(
+      anchoredTransform({
+        scale: anchor.shown / zoomRef.current,
+        point,
+        origin: { x: after.left, y: after.top },
+        at: { x: box.left + anchor.x, y: box.top + anchor.y },
+      }),
+      { animate: !prefersReducedMotion() },
+    )
+  }, [stackTransform])
 
-  const fitAgain = useCallback(() => {
-    zoomRef.current = 1
-    setZoom(1)
-  }, [])
+  /**
+   * Lay out the zoom a gesture, a button or a key asked for, keeping the
+   * anchored point where it is on screen.
+   *
+   * The gesture has already SHOWN its zoom as a transform (see
+   * `ContentTransform`); this makes it layout, once, and the layout effect
+   * below puts the scroll where the transform had the page. Zooming about the
+   * top-left corner instead throws the reader off the line they were reading
+   * on every step.
+   */
+  const commitZoom = useCallback(
+    (commit: ZoomCommit) => {
+      const frameNode = scrollRef.current
+      const target = clampZoom(commit.target, maxZoomRef.current)
+      const drawn = zoomRef.current
+      if (frameNode) {
+        const box = frameNode.getBoundingClientRect()
+        const pending = anchorRef.current
+        // A second ask before the first was laid out (a key held down) builds
+        // on where the first was going, not on a stale measurement.
+        anchorRef.current = pending
+          ? { ...pending, x: commit.clientX - box.left, y: commit.clientY - box.top, ratio: pending.ratio * (target / drawn) }
+          : {
+              x: commit.clientX - box.left,
+              y: commit.clientY - box.top,
+              ...pageShare(pageRefs.current, commit.contentX, commit.contentY),
+              contentX: commit.contentX,
+              contentY: commit.contentY,
+              ratio: target / drawn,
+              shown: commit.shown,
+            }
+      }
+      if (Math.abs(target - drawn) < 1e-4) {
+        // Nothing to lay out (a two-finger pan, a pinch that came back to
+        // where it started): the transform still has to come off.
+        applyAnchor()
+        return
+      }
+      zoomRef.current = target
+      setZoom(target)
+    },
+    [applyAnchor],
+  )
 
-  useZoomGestures(scrollRef, { enabled: Boolean(doc), zoom, onZoom: zoomTo })
+  useLayoutEffect(() => {
+    applyAnchor()
+  }, [targetWidth, applyAnchor])
+
+  /** Zoom from a button or a key: about the middle of the frame, or the given point, played as a settle. */
+  const zoomTo = useCallback(
+    (next: number, clientX?: number, clientY?: number) => {
+      const frameNode = scrollRef.current
+      const content = contentRef.current
+      if (!frameNode || !content) {
+        zoomRef.current = clampZoom(next, maxZoomRef.current)
+        setZoom(zoomRef.current)
+        return
+      }
+      stackTransform.finish()
+      const box = frameNode.getBoundingClientRect()
+      const stack = content.getBoundingClientRect()
+      const x = clientX ?? box.left + frameNode.clientWidth / 2
+      const y = clientY ?? box.top + frameNode.clientHeight / 2
+      commitZoom({
+        target: next,
+        shown: zoomRef.current,
+        clientX: x,
+        clientY: y,
+        contentX: x - stack.left,
+        contentY: y - stack.top,
+      })
+    },
+    [commitZoom, stackTransform],
+  )
+
+  const fitAgain = useCallback(() => zoomTo(1), [zoomTo])
+
+  useZoomGestures(scrollRef, {
+    enabled: Boolean(doc),
+    contentRef,
+    transform: stackTransform,
+    zoom,
+    maxZoom,
+    onCommit: commitZoom,
+  })
+
+  /**
+   * Tell the pages on screen the view has come to rest: after a scroll has
+   * stopped, and after a zoom has settled. That is when each one decides
+   * whether it needs a sharp detail of the part the reader is looking at.
+   */
+  useEffect(() => {
+    const frameNode = scrollRef.current
+    if (!frameNode || !doc) return
+    let timer: number | null = null
+    const schedule = (): void => {
+      if (timer !== null) window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        timer = null
+        if (!stackTransform.active) viewSignal.emit()
+      }, DETAIL_SETTLE_MS)
+    }
+    frameNode.addEventListener('scroll', schedule, { passive: true })
+    const stopRest = stackTransform.onRest(schedule)
+    return () => {
+      if (timer !== null) window.clearTimeout(timer)
+      frameNode.removeEventListener('scroll', schedule)
+      stopRest()
+    }
+  }, [doc, stackTransform, viewSignal])
+
+  // A new zoom or frame size is a new view too, once its layout has landed.
+  useEffect(() => {
+    if (!doc || targetWidth <= 0) return
+    const timer = window.setTimeout(() => {
+      if (!stackTransform.active) viewSignal.emit()
+    }, DETAIL_SETTLE_MS + RERASTER_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [doc, targetWidth, stackTransform, viewSignal])
 
   const registerPage = useCallback((number: number, node: HTMLDivElement | null) => {
     if (node) pageRefs.current.set(number, node)
@@ -1026,7 +1266,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
       event.preventDefault()
       if (action.kind === 'search') return openSearch()
       if (action.kind === 'fit') return fitAgain()
-      if (action.kind === 'zoom') return zoomTo(stepZoom(zoomRef.current, action.direction))
+      if (action.kind === 'zoom') return zoomTo(stepZoom(zoomRef.current, action.direction, maxZoomRef.current))
       const to = {
         next: currentPageRef.current + 1,
         previous: currentPageRef.current - 1,
@@ -1100,7 +1340,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
       className={cn('@container flex min-h-0 min-w-0 flex-1 flex-col', REPLAY_BLOCK_CLASS, className)}
       onKeyDown={onKeyDown}
     >
-      <Ground className="flex min-h-0 flex-1 flex-row">
+      <Ground className={cn('flex min-h-0 flex-1 flex-row', bleed && 'phone:rounded-none phone:border-0')}>
         {/* A rail of one thumbnail is a 150px column that says „1". */}
         {doc && railOpen && doc.numPages > 1 && (
           <PdfThumbnailRail
@@ -1109,7 +1349,10 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
             currentPage={currentPage}
             defaultAspect={defaultAspect}
             onSelect={goToPage}
-            className="@max-3xl:hidden"
+            // Not on a phone, not even on its side: 150px of an 852px-wide,
+            // 393px-high screen is a column of thumbnails standing where the
+            // drawing should be, and the page field turns the pages.
+            className="@max-3xl:hidden phone:hidden"
           />
         )}
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -1124,13 +1367,20 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
             tabIndex={0}
             role="group"
             aria-label={title}
-            className="min-h-0 w-full flex-1 touch-pan-x touch-pan-y overflow-auto overscroll-contain px-3 pt-4 pb-16 outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset"
+            className={cn(
+              // A column flex, so a sheet shorter than the frame sits in its
+              // middle (`my-auto` below) rather than at its top over an empty
+              // stage, and still scrolls from its top edge once it is taller.
+              'isolate flex min-h-0 w-full flex-1 flex-col touch-pan-x touch-pan-y overflow-auto overscroll-contain px-3 pt-4 pb-16 outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset',
+              bleed &&
+                'phone:pt-2 phone:pr-[max(0.25rem,env(safe-area-inset-right))] phone:pl-[max(0.25rem,env(safe-area-inset-left))]',
+            )}
           >
             {/* PAGE-SHAPED while it loads: the same sheet a page is drawn on,
                 at the width the first page will take and the ISO 216 proportion
                 most documents here have, so the document arrives INTO it. */}
             {!doc && (
-              <div className="flex flex-col items-center">
+              <div className="my-auto flex flex-col items-center">
                 <PageSheet
                   data-testid="pdf-page-placeholder"
                   className="flex w-full justify-center pt-16"
@@ -1151,7 +1401,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
                 zoomed past the frame, the stack is as wide as its widest page and
                 scrolls sideways from its left edge instead of being clipped on
                 both. */}
-            <div ref={contentRef} className="relative mx-auto flex w-fit min-w-full flex-col items-center gap-3">
+            <div ref={setContentNode} className="relative mx-auto my-auto flex w-fit min-w-full shrink-0 flex-col items-center gap-3">
               {quote && (quoteFormat || onFindSimilar) && (
                 <QuoteBar
                   selection={quote}
@@ -1185,6 +1435,9 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
                     onMiss={handleMiss}
                     onBase={registerWidth}
                     registerRef={registerPage}
+                    frameRef={scrollRef}
+                    viewSignal={viewSignal}
+                    moving={stackTransform}
                   />
                 ))}
             </div>
@@ -1228,16 +1481,20 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
               onPage={goToPage}
               onRevealPassage={revealCited}
               zoom={zoom}
+              maxZoom={maxZoom}
               fit={fit}
-              onZoomStep={(direction) => zoomTo(stepZoom(zoomRef.current, direction))}
+              onZoomStep={(direction) => zoomTo(stepZoom(zoomRef.current, direction, maxZoomRef.current))}
               onResetZoom={fitAgain}
               onToggleFit={() => {
-                setFit((current) => (current === 'width' ? 'page' : 'width'))
-                fitAgain()
+                setFit(fit === 'width' ? 'page' : 'width')
+                stackTransform.finish()
+                zoomRef.current = 1
+                setZoom(1)
               }}
               searchOpen={searchOpen}
               onToggleSearch={() => (searchOpen ? closeSearch() : openSearch())}
               railOpen={railOpen}
+              hasRail={doc ? doc.numPages > 1 : false}
               onToggleRail={() => setRailOpen((open) => !open)}
               lead={toolbarLead}
             />
@@ -1457,6 +1714,12 @@ interface PdfPageCanvasProps {
   /** The page's unscaled width, once known. */
   onBase: (page: number, width: number) => void
   registerRef: (page: number, node: HTMLDivElement | null) => void
+  /** The viewer's scroll frame: what "on screen" is measured against. */
+  frameRef: { readonly current: HTMLElement | null }
+  /** Fires when the view comes to rest: the moment to draw a sharp detail. */
+  viewSignal: ViewSignal
+  /** Whether the stack is mid-gesture or settling; nothing is measured then. */
+  moving: { readonly active: boolean }
 }
 
 /**
@@ -1486,9 +1749,14 @@ const PdfPageCanvas: FC<PdfPageCanvasProps> = ({
   onMiss,
   onBase,
   registerRef,
+  frameRef,
+  viewSignal,
+  moving,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  // Where the sharp detail canvas is hung, and what the one on show covers.
+  const detailHostRef = useRef<HTMLDivElement | null>(null)
   const textLayerRef = useRef<HTMLDivElement | null>(null)
   const [near, setNear] = useState(false)
   // The page proxy currently held open, so eviction can release its caches.
@@ -1559,12 +1827,20 @@ const PdfPageCanvas: FC<PdfPageCanvasProps> = ({
       if (!canvas) return
 
       // Rasterise at device resolution and let CSS size it back down, or the
-      // page is soft on exactly the retina screens people read plans on.
-      const ratio = Math.min(
-        typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1,
-        MAX_PIXEL_RATIO,
-      )
-      const viewport = pdfPage.getViewport({ scale: (targetWidth / unscaled.width) * ratio })
+      // page is soft on exactly the retina screens people read plans on — but
+      // never past the canvas budget: iOS draws NOTHING for a canvas over its
+      // limit, so a deep zoom on an A1 sheet used to go blank. Past the budget
+      // the base is softer and the detail canvas below draws the part on
+      // screen sharp. A capped base keeps its pixel count as the zoom grows,
+      // so it is not re-drawn for a zoom it would look the same at.
+      const raster = rasterFor({
+        width: targetWidth,
+        height: (targetWidth * unscaled.height) / unscaled.width,
+        dpr: screenRatio(),
+        maxPixels: canvasBudget(),
+      })
+      if (canvas.width > 0 && sameRaster(canvas, raster)) return
+      const viewport = pdfPage.getViewport({ scale: (targetWidth / unscaled.width) * raster.ratio })
       canvas.width = Math.floor(viewport.width)
       canvas.height = Math.floor(viewport.height)
       const task = pdfPage.render({ canvas, viewport })
@@ -1593,6 +1869,132 @@ const PdfPageCanvas: FC<PdfPageCanvasProps> = ({
       cancelRender?.()
     }
   }, [doc, pageNumber, targetWidth, near])
+
+  /**
+   * The sharp detail: the part of the page on screen, drawn at device
+   * resolution into a canvas of its own, whenever the base is softer than the
+   * screen (`detailPlan`). Hung in PERCENT of the page, so through the next
+   * zoom it stays where it belongs, stretched, until the view rests again and
+   * a new one replaces it. Asked for only when the view rests (`viewSignal`),
+   * never per scroll frame; kept while the screen stays inside its margin.
+   */
+  useEffect(() => {
+    const host = detailHostRef.current
+    if (!host) return
+    let drawn: { region: Box; pageWidth: number } | null = null
+    const drop = (): void => {
+      for (const child of Array.from(host.children)) {
+        if (child instanceof HTMLCanvasElement) {
+          // Zeroed, not just removed: iOS frees a canvas's memory when its
+          // size goes to zero, and only lazily when it is collected.
+          child.width = 0
+          child.height = 0
+        }
+      }
+      host.replaceChildren()
+      drawn = null
+    }
+    if (!near || targetWidth <= 0 || !base) {
+      drop()
+      return
+    }
+    let cancelled = false
+    let task: RenderTask | null = null
+    let pending: HTMLCanvasElement | null = null
+    const pageHeight = (targetWidth * base.height) / base.width
+
+    const update = (): void => {
+      const node = containerRef.current
+      const frameNode = frameRef.current
+      if (cancelled || !node || !frameNode || moving.active) return
+      const pageBox = node.getBoundingClientRect()
+      const frameBox = frameNode.getBoundingClientRect()
+      const visible = visiblePart(
+        { x: pageBox.left, y: pageBox.top, width: pageBox.width, height: pageBox.height },
+        { x: frameBox.left, y: frameBox.top, width: frameNode.clientWidth, height: frameNode.clientHeight },
+      )
+      const dpr = screenRatio()
+      const maxPixels = canvasBudget()
+      const plan = detailPlan({
+        page: { width: targetWidth, height: pageHeight },
+        // In layout pixels: the box is measured on screen, the page laid out
+        // at `targetWidth`; the two agree whenever nothing is transformed.
+        visible,
+        base: rasterFor({ width: targetWidth, height: pageHeight, dpr, maxPixels }),
+        dpr,
+        maxPixels,
+      })
+      if (!plan) {
+        task?.cancel()
+        drop()
+        return
+      }
+      if (drawn && detailCovers({ drawn: drawn.region, drawnWidth: drawn.pageWidth, pageWidth: targetWidth, visible })) return
+      task?.cancel()
+      if (pending) {
+        pending.width = 0
+        pending.height = 0
+      }
+      const { region, raster } = plan
+      const canvas = document.createElement('canvas')
+      pending = canvas
+      canvas.width = raster.width
+      canvas.height = raster.height
+      canvas.setAttribute('aria-hidden', 'true')
+      canvas.dataset.testid = 'pdf-page-detail'
+      Object.assign(canvas.style, {
+        position: 'absolute',
+        left: `${(region.x / targetWidth) * 100}%`,
+        top: `${(region.y / pageHeight) * 100}%`,
+        width: `${(region.width / targetWidth) * 100}%`,
+        height: `${(region.height / pageHeight) * 100}%`,
+      })
+      void doc
+        .getPage(pageNumber)
+        .then(async (pdfPage) => {
+          if (cancelled || pending !== canvas) return
+          const viewport = pdfPage.getViewport({
+            scale: (targetWidth / base.width) * raster.ratio,
+            offsetX: -region.x * raster.ratio,
+            offsetY: -region.y * raster.ratio,
+          })
+          const started = typeof performance === 'undefined' ? 0 : performance.now()
+          task = pdfPage.render({ canvas, viewport })
+          await task.promise
+          if (cancelled || pending !== canvas) return
+          pending = null
+          drop()
+          host.appendChild(canvas)
+          drawn = { region, pageWidth: targetWidth }
+          if (process.env.NODE_ENV === 'development') {
+            const elapsed = typeof performance === 'undefined' ? 0 : performance.now() - started
+            console.debug(
+              `[pdf] page ${pageNumber} detail ${raster.width}x${raster.height} (${(
+                (raster.width * raster.height) /
+                1e6
+              ).toFixed(1)} MP) in ${Math.round(elapsed)} ms`,
+            )
+          }
+        })
+        .catch(() => {
+          // A cancelled render rejects; that is a newer view taking over.
+          if (pending === canvas) pending = null
+          canvas.width = 0
+          canvas.height = 0
+        })
+    }
+
+    const unsubscribe = viewSignal.subscribe(update)
+    return () => {
+      cancelled = true
+      unsubscribe()
+      task?.cancel()
+      if (pending) {
+        pending.width = 0
+        pending.height = 0
+      }
+    }
+  }, [doc, pageNumber, near, targetWidth, base, frameRef, viewSignal, moving])
 
   /**
    * Find the cited passage. Deliberately NOT keyed on `targetWidth`.
@@ -1691,6 +2093,9 @@ const PdfPageCanvas: FC<PdfPageCanvasProps> = ({
       style={{ width: targetWidth || undefined, height }}
     >
       <canvas ref={canvasRef} aria-hidden className="block h-full w-full" />
+      {/* The sharp part, over the base it sharpens and under the text layer,
+          so a selection and the marks still sit on top of it. */}
+      <div ref={detailHostRef} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" />
       {/* The page's text, transparent and positioned over its own glyphs. It
           carries no pixels — its whole job is that a drag selects the sentence,
           Cmd-C copies it, a screen reader reads it and the search finds it,

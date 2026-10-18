@@ -18,6 +18,8 @@
  * is data.
  */
 
+import { documentShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
@@ -372,6 +374,8 @@ export async function writeVersionContent(input: WriteVersionContentInput): Prom
   if (outcome.previousKeyOrphaned) {
     await discardObject(resolveDocumentBucket(version.storageBucket), version.storageKey)
   }
+  // New bytes under the version: the row's size and date move with them.
+  publishShelfChanged(organizationId, documentShelf(document))
   return outcome.version
 }
 
@@ -708,6 +712,8 @@ export async function archiveDocument(
     ])
   }
   await setDocumentLifecycle(documentId, session.organizationId, 'archived')
+  // Out of the default listing for everyone, not only for the tab that archived it.
+  publishShelfChanged(session.organizationId, documentShelf(document))
   // „Archiviert" is a statement that the file has left the working set, and a
   // file that keeps answering questions has not left it. The chunks therefore
   // go, for a human upload as much as for a Piloti document — this docstring

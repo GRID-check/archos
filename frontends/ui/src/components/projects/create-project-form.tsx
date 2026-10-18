@@ -83,6 +83,7 @@ export function folderNameOf(files: readonly File[]): string | null {
 
 export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFormProps): JSX.Element {
   const t = useTranslations('projects')
+  const tFiles = useTranslations('files')
   const [thisMonth] = useState(() => currentMonth())
   const [serverError, setServerError] = useState<string | null>(null)
   const [serverAbschluss, setServerAbschluss] = useState<AbschlussProblem>(null)
@@ -90,6 +91,15 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   // A drop is held for the setup page only while the dialog may still create the
   // project; closing it any other way discards the files.
   const created = useRef(false)
+  // Focusing the name opens the soft keyboard the moment the dialog appears, on
+  // top of the fields and the action. Only a fine pointer is taken to be at a
+  // keyboard already; where the media query cannot be asked (an old engine, a
+  // test renderer) the desktop behaviour stays.
+  const [focusNameOnOpen] = useState(() =>
+    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
+      ? true
+      : window.matchMedia('(pointer: fine)').matches,
+  )
 
   // On the name field, not the form: a form-level validator re-runs when the
   // Stand changes, and the blur of choosing a card would flag an untouched,
@@ -111,6 +121,10 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
     onSubmit: async ({ value }) => {
       setServerError(null)
       setServerAbschluss(null)
+      // Only a project Piloti sets up has a setup page to take a drop: one held
+      // for a project the person fills in would wait for the NEXT project
+      // Piloti reads, and be filed there.
+      if (value.setup === 'self') forgetDrop()
       created.current = true
       const result = await createProject({}, toFormData(value))
       if (!result?.error) {
@@ -136,6 +150,11 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
     },
     []
   )
+  /** Let go of a held drop, and of the note that names it. */
+  function forgetDrop(): void {
+    discardDroppedFiles(NEW_PROJECT_DROP_KEY)
+    setDropped(null)
+  }
 
   const values = useStore(form.store, (state) => state.values)
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
@@ -170,7 +189,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
         <FileDropOverlay
           isUnsupported={isUnsupportedDrag}
           uploadLabel={t('form.drop.overlay')}
-          unsupportedLabel={t('form.drop.overlay')}
+          unsupportedLabel={tFiles('workspace.dropUnsupported')}
           testId="create-project-drop-overlay"
         />
       )}
@@ -188,7 +207,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
             <field.TextField
               label={t('form.nameLabel')}
               placeholder={t('form.namePlaceholder')}
-              autoFocus
+              autoFocus={focusNameOnOpen}
               autoComplete="off"
               disabled={isSubmitting}
             />
@@ -298,7 +317,12 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
               <FieldLabel id="create-project-setup-label">{t('form.setup.label')}</FieldLabel>
               <ChoiceCardGroup
                 value={field.state.value}
-                onValueChange={(next) => field.handleChange(next === 'self' ? 'self' : 'piloti')}
+                onValueChange={(next) => {
+                  // Filling it in oneself asks for no reading, so a held folder
+                  // is let go of here, where the reader sees its note go.
+                  if (next === 'self') forgetDrop()
+                  field.handleChange(next === 'self' ? 'self' : 'piloti')
+                }}
                 aria-labelledby="create-project-setup-label"
                 disabled={isSubmitting}
                 className="sm:grid-cols-2"
@@ -323,14 +347,13 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
         {dropped && (
           <DroppedFolderNote
             dropped={dropped}
-            onRemove={() => {
-              discardDroppedFiles(NEW_PROJECT_DROP_KEY)
-              setDropped(null)
-            }}
+            onRemove={forgetDrop}
           />
         )}
         {!dropped && piloti && (
-          <p className="text-muted-foreground text-xs" data-testid="create-project-drop-hint">
+          // Dragging a folder onto the window is a desktop gesture; on a touch
+          // device the line describes something the reader cannot do.
+          <p className="text-muted-foreground text-xs pointer-coarse:hidden" data-testid="create-project-drop-hint">
             {t('form.drop.hint')}
           </p>
         )}
@@ -341,7 +364,11 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
           </Alert>
         )}
 
-        <DialogFooter className="pt-1">
+        {/* On a phone `DialogContent` pins the footer to the bottom edge while
+            the fields scroll: the form is longer than the viewport once Piloti
+            sets it up. Cancel and the action share one row (the action takes
+            the width) so the bar costs one button's height. */}
+        <DialogFooter className="pt-1 phone:pt-3 max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:[&>:last-child]:flex-1">
           {onCancel && (
             <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
               {t('form.cancel')}
@@ -482,7 +509,7 @@ function PeriodFields({
     problem === 'beforeStart' ? t('form.closed.endedOnBeforeStart') : problem ? t(`lifecycle.closeDialog.endedOn.${problem}`) : null
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 sm:gap-4">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
       <Field>
         <FieldLabel htmlFor="create-project-started-on">
           {t('form.closed.startedOn')}

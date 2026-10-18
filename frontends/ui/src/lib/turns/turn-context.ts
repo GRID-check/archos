@@ -34,6 +34,7 @@ import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { getBudgetStatus } from '@/lib/budgets/service'
 import { announceBudgetBlocked } from '@/lib/budgets/budget-events'
 import type { ScopedCollection } from '@/lib/collection-scope'
+import { requesterOf, type GridRequester } from '@/lib/request-context'
 
 /** Run a best-effort lookup: its failure is logged and read as "absent". */
 async function bestEffort<T>(what: string, load: () => Promise<T>): Promise<T | null> {
@@ -82,6 +83,8 @@ export interface TurnContext {
   projectContext?: string
   projectMemory?: string
   orgInstructions?: string
+  /** Who `userId` is, by name: signed into the envelope (`requesterOf`). */
+  requester?: GridRequester
 }
 
 /** The person's (or the organization's, or the project's) LLM budget is spent: no turn starts. */
@@ -136,6 +139,8 @@ export async function resolveTurnContext(
     context.organizationId = session.organizationId
     context.userId = session.userId
     context.accessToken = session.accessToken
+    const requester = requesterOf(session)
+    if (requester) context.requester = requester
   }
 
   const organizationId = session?.organizationId

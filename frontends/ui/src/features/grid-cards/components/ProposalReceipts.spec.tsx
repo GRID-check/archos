@@ -221,6 +221,22 @@ describe('memory proposal with a proposal_id', () => {
     expect(setCardDecision).not.toHaveBeenCalled()
   })
 
+  it('lists „Apply“ before the project-only way in and before „Discard“, full width on a phone', async () => {
+    serve(memoryProposal())
+    render(memoryCard)
+
+    const apply = await screen.findByRole('button', { name: 'Apply' })
+    const project = screen.getByRole('button', { name: 'Remember in the project only' })
+    const discard = screen.getByRole('button', { name: 'Discard' })
+    const follows = (a: HTMLElement, b: HTMLElement) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(apply, project)).toBe(true)
+    expect(follows(project, discard)).toBe(true)
+    for (const button of [apply, project, discard]) {
+      expect(button).toHaveClass('max-sm:w-full', 'max-sm:h-11')
+    }
+  })
+
   it('offers no project-only action for a note that is already the project’s', async () => {
     serve(
       memoryProposal({

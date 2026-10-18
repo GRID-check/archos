@@ -1,4 +1,4 @@
-"""Every delete the adapter makes, against a real Qdrant (ADR-0113).
+"""Every delete the adapter makes, against a real Qdrant (ADR-0115).
 
 Qdrant is the one store, so a delete is one delete: it took what it names or
 it raised, and the caller's retry starts over. What these pin, per operation:

@@ -86,6 +86,9 @@ class Principal(BaseModel):
     sub: str
     email: str | None = None
     name: str | None = None
+    #: The active organization's name, from the WorkOS JWT template's
+    #: ``organization_name`` claim (docs/deployment/workos-provisioning.md).
+    organization_name: str | None = None
 
 
 def decode_unverified_jwt_payload(token: str) -> dict:
@@ -215,6 +218,7 @@ def get_current_principal() -> Principal | None:
         sub=str(sub),
         email=current_user.get("email"),
         name=current_user.get("name"),
+        organization_name=current_user.get("organization_name"),
     )
 
 

@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Item, ItemActions, ItemContent, ItemList } from '@/components/ui/item'
+import { Item, ItemActions, ItemList } from '@/components/ui/item'
 import { SectionLabel } from '@/components/ui/section-label'
 import { SectionCard } from '@/features/platform/components/section-card'
 import { useTranslations } from '@/i18n'
@@ -197,29 +197,32 @@ const RoleRow: FC<{ role: OrganizationRole; compact?: boolean; actions?: ReactNo
   const t = useTranslations('organization')
   const permissions = role.permissions ?? []
   return (
-    <Item as="li" className="items-start" data-testid={`role-row-${role.slug}`}>
-      <ItemContent className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+    // Name and actions share the top line; the description and the permissions
+    // run the full card width under it. Beside two icon buttons they used to
+    // wrap in half a phone's width.
+    <Item as="li" className="flex-col items-stretch gap-1.5" data-testid={`role-row-${role.slug}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <h4 className="text-sm font-medium">{role.name}</h4>
-          <code className="text-muted-foreground font-mono text-xs">{role.slug}</code>
+          <code className="text-muted-foreground font-mono text-xs break-all">{role.slug}</code>
         </div>
-        {role.description && <p className="text-muted-foreground text-sm">{role.description}</p>}
-        {role.permissions !== undefined &&
-          (compact || permissions.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
-              {t('customRoles.permissionCount', { count: permissions.length })}
-            </p>
-          ) : (
-            <ul className="mt-1 flex flex-wrap gap-1" aria-label={t('customRoles.editor.permissions')}>
-              {permissions.map((slug) => (
-                <li key={slug}>
-                  <Badge variant="secondary">{permissionLabel(t, slug).name}</Badge>
-                </li>
-              ))}
-            </ul>
-          ))}
-      </ItemContent>
-      {actions && <ItemActions>{actions}</ItemActions>}
+        {actions && <ItemActions className="-my-2 -mr-2 gap-0">{actions}</ItemActions>}
+      </div>
+      {role.description && <p className="text-muted-foreground text-sm">{role.description}</p>}
+      {role.permissions !== undefined &&
+        (compact || permissions.length === 0 ? (
+          <p className="text-muted-foreground text-xs">
+            {t('customRoles.permissionCount', { count: permissions.length })}
+          </p>
+        ) : (
+          <ul className="mt-1 flex flex-wrap gap-1" aria-label={t('customRoles.editor.permissions')}>
+            {permissions.map((slug) => (
+              <li key={slug}>
+                <Badge variant="secondary">{permissionLabel(t, slug).name}</Badge>
+              </li>
+            ))}
+          </ul>
+        ))}
     </Item>
   )
 }

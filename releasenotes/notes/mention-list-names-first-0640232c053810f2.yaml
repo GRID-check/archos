@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    In the „@“ list, the people whose name starts with what you typed now come
+    first, and Enter mentions the first of them. Typing „@Le“ used to keep
+    colleagues whose e-mail address contains „le“ at the top, and Enter then
+    mentioned one of them instead of Lena.

@@ -292,7 +292,7 @@ class BaseRetriever(ABC):
     ) -> list[tuple[str, list[Chunk]]]:
         """One ranking over many collections, grouped per collection, best group first.
 
-        What cross-project search needs (ADR-0094, ADR-0114): every reachable
+        What cross-project search needs (ADR-0094, ADR-0116): every reachable
         project ranked in ONE query, so scores never have to be compared
         across separate indexes. Only a backend with a shared index can answer
         it; the default raises ``NotImplementedError``.

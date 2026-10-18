@@ -18,6 +18,16 @@ export const collaboration: typeof en.collaboration = {
     title: 'Teilen',
     action: 'Teilen',
     close: 'Schließen',
+    /** Der Link zum Chat: er öffnet nur für Personen, die ohnehin Zugriff haben. */
+    link: {
+      heading: 'Link',
+      share: 'Link teilen',
+      copy: 'Link kopieren',
+      copied: 'Link kopiert',
+      failed: 'Der Link konnte nicht kopiert werden.',
+      hint: 'Der Link öffnet den Chat nur für Personen, die Zugriff haben. Wer noch keinen hat, wird oben eingeladen.',
+      shareTitle: 'Chat in Piloti',
+    },
     visibilityHeading: 'Wer diesen Chat sehen kann',
     loading: 'Einstellungen zum Teilen werden geladen…',
     audienceHeading: 'Wer mitliest',
@@ -218,19 +228,48 @@ export const collaboration: typeof en.collaboration = {
       '{count, plural, one {# Eintrag braucht} other {# Einträge brauchen}} Ihre Aufmerksamkeit',
     badgeAriaOne: '1 Eintrag braucht Ihre Aufmerksamkeit',
     subtitle: 'Anfragen und Neuigkeiten aus Ihrem Team.',
+    // „Für mich“ ist, was auf Sie wartet (eine offene Anfrage); „Ungelesen“,
+    // was Sie noch nicht geöffnet haben. Zwei Fragen, zwei Filter.
     filters: {
       needsMe: 'Für mich',
+      unread: 'Ungelesen',
       all: 'Alle',
+      archived: 'Archiviert',
       ariaLabel: 'Postfach filtern',
     },
     markAllRead: 'Alle als gelesen markieren',
     archive: 'Archivieren',
+    undo: 'Rückgängig',
+    /** Die kurze Form für ein Telefon, wo die lange die Zeile sprengt. */
+    markAllReadShort: 'Alle gelesen',
     archived: 'Archiviert',
+    unarchive: 'Wiederherstellen',
+    unarchived: 'Wiederhergestellt',
+    markRead: 'Als gelesen markieren',
+    markUnread: 'Als ungelesen markieren',
+    moreActions: 'Weitere Aktionen',
+    loadMore: 'Ältere Einträge laden',
+    loadingMore: 'Ältere Einträge werden geladen …',
+    loadMoreFailed: 'Ältere Einträge konnten nicht geladen werden.',
+    // Die Zeile zu einer Anmerkung: dorthin, und für eine Anfrage gleich hier
+    // antworten oder erledigen, wie im Verlauf der Anmerkung.
+    mark: {
+      open: 'Zur Anmerkung',
+      reply: 'Antworten',
+      replyLabel: 'Ihre Antwort auf Anmerkung {related}',
+      replyLabelNoNumber: 'Ihre Antwort auf die Anmerkung',
+      send: 'Senden',
+      cancel: 'Abbrechen',
+      sent: 'Antwort gesendet.',
+      resolve: 'Erledigen',
+      resolved: 'Als erledigt markiert.',
+      conflict: 'Jemand hat die Anmerkung zuerst geändert. Öffnen Sie sie, um den aktuellen Stand zu sehen.',
+      failed: 'Das hat nicht geklappt. Es hat sich nichts geändert.',
+    },
     resolved: 'Beantwortet',
     inert: 'Nicht mehr verfügbar',
     // Für jedes Ziel, auf das eine Zeile zeigt (Chat, Dokument, Anmerkung), nicht nur für Chats.
     bodyUnavailable: 'Das ist für Sie nicht mehr verfügbar.',
-    inertHint: 'Sie haben keinen Zugriff mehr darauf.',
     // Die nächste Handlung bei einer neuen Fassung unter anderem Namen: die
     // beiden nebeneinander sehen. Öffnet die Vorschau mit dem Vergleich.
     compareFassungen: 'Fassungen vergleichen',
@@ -238,9 +277,13 @@ export const collaboration: typeof en.collaboration = {
     empty: {
       needsMeTitle: 'Nichts zu tun',
       needsMeDescription:
-        'Wenn jemand Ihre Einschätzung braucht, erscheint die Anfrage hier.',
+        'Wenn jemand Sie erwähnt, Ihnen eine Anmerkung zuweist oder Piloti Sie etwas fragt, erscheint es hier.',
+      unreadTitle: 'Alles gelesen',
+      unreadDescription: 'Was neu ist, steht hier, bis Sie es öffnen.',
       allTitle: 'Ihr Postfach ist leer',
-      allDescription: 'Anfragen, Antworten und geteilte Chats erscheinen hier.',
+      allDescription: 'Neuigkeiten aus Ihrem Team und von Piloti erscheinen hier.',
+      archivedTitle: 'Nichts archiviert',
+      archivedDescription: 'Was Sie archivieren, finden Sie hier wieder.',
     },
     errors: {
       loadFailed: 'Ihr Postfach konnte nicht geladen werden.',
@@ -248,23 +291,34 @@ export const collaboration: typeof en.collaboration = {
       tryAgain: 'Erneut versuchen',
     },
     types: {
+      // `titleResolved`, sobald die Frage beantwortet ist: dann ist die Zeile
+      // Geschichte, und der Titel sagt das, statt weiter zu bitten. „Die Frage
+      // von {actor}“ statt eines Genitivs, der bei „Hans“ oder „Markus“ bricht.
       mentionRequested: {
         title: '{actor} hat um Ihre Einschätzung gebeten',
+        titleResolved: 'Die Frage von {actor} ist beantwortet',
+        titleResolvedNoActor: 'Die Frage ist beantwortet',
         body: 'in {subject}',
       },
       mentionAnswered: {
         title: '{actor} hat geantwortet',
+        titleNoActor: 'Ihre Frage wurde beantwortet',
         body: 'in {subject}',
       },
       conversationShared: {
         title: '{actor} hat einen Chat mit Ihnen geteilt',
         body: '{subject}',
       },
+      // Wer geschrieben hat, steht im Titel; der Chat auch, daher keine
+      // zweite Zeile. `…NoActor`, wenn niemand Bestimmtes es war;
+      // `titleRedacted`, wenn der Chat für Sie nicht mehr verfügbar ist.
       conversationActivity: {
-        titleOne: '1 neue Nachricht',
-        titleMany: '{count} neue Nachrichten',
-        titleNone: 'Nachrichten',
-        body: 'in {subject}',
+        titleOne: '{actor} hat in „{subject}“ geschrieben',
+        titleOneNoActor: 'Neue Nachricht in „{subject}“',
+        titleMany: '{count} neue Nachrichten in „{subject}“, zuletzt von {actor}',
+        titleManyNoActor: '{count} neue Nachrichten in „{subject}“',
+        titleNone: 'Nachrichten in „{subject}“',
+        titleRedacted: 'Nachrichten in einem Chat',
       },
       // Platform tier: a member sent product feedback. {subject} is the
       // organization it came from; the excerpt below the title is the message.
@@ -290,18 +344,54 @@ export const collaboration: typeof en.collaboration = {
         body: '{subject}: Öffnen Sie die Übersicht, um zu sehen, was angekommen ist.',
         bodyNoSubject: 'Öffnen Sie die Übersicht, um zu sehen, was angekommen ist.',
       },
-      // ADR-0086: die Inhaltsprüfung hat Dateien zurückgehalten.
+      // ADR-0086: die Inhaltsprüfung hat Dateien zurückgehalten. {subject} ist
+      // die neueste davon; die Variante sagt, wofür sie zurückgehalten wurde
+      // (nie den gefundenen Wert). `transcript`: gefunden im Text gescannter
+      // Seiten, die ein Bildmodell gelesen hat – dort darf kein „kein Modell“
+      // stehen. bodyNoSubject liest eine Zeile von vor dieser Fassung.
       documentQuarantined: {
         titleOne: '1 Datei wartet in der Quarantäne',
         titleMany: '{count} Dateien warten in der Quarantäne',
         titleNone: 'Dateien in der Quarantäne',
-        body: 'Kein Modell hat sie gelesen. Prüfen Sie sie: zulassen oder löschen.',
+        body: '„{subject}“: Kein Modell hat sie gelesen. Prüfen Sie sie: zulassen oder löschen.',
+        bodyMany: 'Zuletzt „{subject}“. Prüfen Sie sie in der Quarantäne: zulassen oder löschen.',
+        bodyNoSubject: 'Kein Modell hat sie gelesen. Prüfen Sie sie: zulassen oder löschen.',
+        variants: {
+          term: {
+            body: '„{subject}“ enthält einen Begriff aus der Liste sensibler Daten Ihres Büros. Kein Modell hat sie gelesen. Zulassen oder löschen?',
+            bodyMany: 'Zuletzt „{subject}“, mit einem Begriff aus der Liste sensibler Daten. Prüfen Sie sie: zulassen oder löschen.',
+          },
+          iban: {
+            body: '„{subject}“ enthält eine IBAN. Kein Modell hat sie gelesen. Zulassen oder löschen?',
+            bodyMany: 'Zuletzt „{subject}“, mit einer IBAN. Prüfen Sie sie: zulassen oder löschen.',
+          },
+          at_svnr: {
+            body: '„{subject}“ enthält eine Sozialversicherungsnummer. Kein Modell hat sie gelesen. Zulassen oder löschen?',
+            bodyMany: 'Zuletzt „{subject}“, mit einer Sozialversicherungsnummer. Prüfen Sie sie: zulassen oder löschen.',
+          },
+          credit_card: {
+            body: '„{subject}“ enthält eine Kreditkartennummer. Kein Modell hat sie gelesen. Zulassen oder löschen?',
+            bodyMany: 'Zuletzt „{subject}“, mit einer Kreditkartennummer. Prüfen Sie sie: zulassen oder löschen.',
+          },
+          transcript: {
+            body: '„{subject}“: gefunden im Text gescannter Seiten, die ein Bildmodell gelesen hat; kein anderes Modell hat sie gesehen. Zulassen oder löschen?',
+            bodyMany: 'Zuletzt „{subject}“, gefunden im Text gescannter Seiten. Prüfen Sie sie: zulassen oder löschen.',
+          },
+        },
       },
       // ADR-0086: wer eine Datei hochgeladen hat, die in der Quarantäne liegt,
       // bittet darum, sie zu prüfen. {subject} ist der Dateiname.
       documentReleaseRequested: {
         title: '{actor} bittet Sie, „{subject}“ zu prüfen',
         body: 'Die Datei liegt in der Quarantäne. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.',
+        // Wofür die Datei zurückgehalten wurde, wie bei documentQuarantined.
+        variants: {
+          term: { body: 'Sie enthält einen Begriff aus der Liste sensibler Daten. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.' },
+          iban: { body: 'Sie enthält eine IBAN. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.' },
+          at_svnr: { body: 'Sie enthält eine Sozialversicherungsnummer. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.' },
+          credit_card: { body: 'Sie enthält eine Kreditkartennummer. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.' },
+          transcript: { body: 'Gefunden im Text gescannter Seiten, die ein Bildmodell gelesen hat. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.' },
+        },
       },
       // Die Zeile führt zum Lauf selbst (seinem Block im Verlauf, sonst der
       // Aufgabe): dort stehen Ergebnis und Grund, nicht in einer „Laufhistorie“.
@@ -354,6 +444,10 @@ export const collaboration: typeof en.collaboration = {
         titleRelated: 'Piloti hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',
         titleRelatedNoSubject: 'Piloti hat Anmerkung {related} für Sie bearbeitet',
         body: 'Lesen Sie die Antwort im Verlauf der Anmerkung.',
+        // Die Delegation ist zu Ende: Piloti hat die Anmerkung zurückgegeben.
+        variants: {
+          assigned: { body: 'Die Anmerkung liegt wieder bei Ihnen.' },
+        },
       },
       // Piloti konnte es nicht. `variants` sagen warum, nach der Klasse des
       // gespeicherten Grundes (`lib/annotations/wake-end-reason.ts`), und was
@@ -394,7 +488,12 @@ export const collaboration: typeof en.collaboration = {
       // Notiz oder die Änderung. Wörter wie auf der Karte.
       pilotiProposalWaiting: {
         title: 'Piloti hat einen Vorschlag für Sie',
+        // Wo der Vorschlag steht, nach dem, worauf die Zeile zeigt: der Chat,
+        // in dem er entstand, sonst die Datei unter Dateien (`bodyProject`)
+        // oder in der Büroablage (`bodyOrganization`).
         body: 'Der Vorschlag steht im Chat. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.',
+        bodyProject: 'Der Vorschlag steht bei der Datei unter Dateien. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.',
+        bodyOrganization: 'Der Vorschlag steht bei der Datei in der Büroablage. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.',
         variants: {
           move: { title: 'Piloti schlägt einen neuen Ablageort vor' },
           rename: { title: 'Piloti schlägt eine Umbenennung vor' },
@@ -413,6 +512,70 @@ export const collaboration: typeof en.collaboration = {
         title: 'Piloti hat die Dokumente von „{subject}“ gelesen',
         titleRelated: 'Piloti hat die Dokumente von „{subject}“ gelesen – Rückfragen: {related}',
         body: 'Prüfen Sie die Vorschläge und bestätigen Sie, was stimmt.',
+      },
+      // Eine Kollegin hat Sie für eine Anmerkung zuständig gemacht, oder Piloti
+      // hat es für sie getan (`variants.piloti`, dann ist {actor} die Person,
+      // für die Piloti gearbeitet hat). {related} ist die Nummer der
+      // Anmerkung, {subject} das Dokument; der Auszug ist, was sie sagt.
+      annotationAssigned: {
+        title: '{actor} hat Ihnen eine Anmerkung zugewiesen',
+        titleRelated: '{actor} hat Ihnen Anmerkung {related} in „{subject}“ zugewiesen',
+        titleRelatedNoSubject: '{actor} hat Ihnen Anmerkung {related} zugewiesen',
+        body: 'Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.',
+        variants: {
+          piloti: {
+            title: 'Piloti hat Ihnen für {actor} eine Anmerkung zugewiesen',
+            titleRelated: 'Piloti hat Ihnen für {actor} Anmerkung {related} in „{subject}“ zugewiesen',
+            titleRelatedNoSubject: 'Piloti hat Ihnen für {actor} Anmerkung {related} zugewiesen',
+          },
+        },
+      },
+      // Neues an einer Anmerkung, an der Sie beteiligt sind: eine Zeile je
+      // Anmerkung, die mitzählt. Der Auszug ist die neueste Antwort.
+      // `variants` für Ihre Anmerkung, die jemand anderes erledigt, verworfen
+      // oder wieder geöffnet hat; dann ist der Auszug, was sie sagt.
+      // Wer geantwortet hat, steht im Titel; `…NoActor`, wenn es Piloti war
+      // oder niemand Bestimmtes.
+      annotationActivity: {
+        title: '{actor} hat zu einer Anmerkung geantwortet',
+        titleNoActor: 'Neue Antwort zu einer Anmerkung',
+        titleRelated: '{actor} hat zu Anmerkung {related} in „{subject}“ geantwortet',
+        titleRelatedNoActor: 'Neue Antwort zu Anmerkung {related} in „{subject}“',
+        titleRelatedMany: '{count} neue Antworten zu Anmerkung {related} in „{subject}“, zuletzt von {actor}',
+        titleRelatedManyNoActor: '{count} neue Antworten zu Anmerkung {related} in „{subject}“',
+        titleRelatedNone: 'Antworten zu Anmerkung {related} in „{subject}“',
+        titleRelatedNoSubject: '{actor} hat zu Anmerkung {related} geantwortet',
+        titleRelatedNoSubjectNoActor: 'Neue Antwort zu Anmerkung {related}',
+        titleRelatedNoSubjectMany: '{count} neue Antworten zu Anmerkung {related}, zuletzt von {actor}',
+        titleRelatedNoSubjectManyNoActor: '{count} neue Antworten zu Anmerkung {related}',
+        titleRelatedNoSubjectNone: 'Antworten zu Anmerkung {related}',
+        variants: {
+          resolved: {
+            title: '{actor} hat eine Anmerkung erledigt',
+            titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ erledigt',
+            titleRelatedNoSubject: '{actor} hat Anmerkung {related} erledigt',
+          },
+          dismissed: {
+            title: '{actor} hat eine Anmerkung verworfen',
+            titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ verworfen',
+            titleRelatedNoSubject: '{actor} hat Anmerkung {related} verworfen',
+          },
+          reopened: {
+            title: '{actor} hat eine Anmerkung wieder geöffnet',
+            titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ wieder geöffnet',
+            titleRelatedNoSubject: '{actor} hat Anmerkung {related} wieder geöffnet',
+          },
+        },
+      },
+      // Eine Kollegin hat Sie in einer Anmerkung oder ihrem Verlauf mit „@“
+      // erwähnt, wie im Chat. {actor} ist sie, {related} die Nummer der
+      // Anmerkung, {subject} das Dokument; der Auszug ist der Text, in dem
+      // sie Sie erwähnt.
+      annotationMentioned: {
+        title: '{actor} hat Sie in einer Anmerkung erwähnt',
+        titleRelated: '{actor} hat Sie in Anmerkung {related} in „{subject}“ erwähnt',
+        titleRelatedNoSubject: '{actor} hat Sie in Anmerkung {related} erwähnt',
+        body: 'Antworten Sie im Verlauf der Anmerkung.',
       },
       unknown: {
         title: 'Es gab Aktivität',

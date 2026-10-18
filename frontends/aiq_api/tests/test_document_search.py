@@ -351,7 +351,7 @@ async def test_search_anonymous_mode_no_scope_allowed(app, monkeypatch):
     assert [h["file_name"] for h in res.json()["hits"]] == ["plan.pdf"]
 
 
-# --- One search across many collections (ADR-0094, ADR-0114) -----------------
+# --- One search across many collections (ADR-0094, ADR-0116) -----------------
 
 
 def _grouped_retriever(groups: list[tuple[str, list[Chunk]]]) -> MagicMock:

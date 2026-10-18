@@ -252,6 +252,19 @@ tasks:
     cmds:
       - bash scripts/rls-test-db.sh
 
+  be:test:postgres:
+    desc: >-
+      The claim-queue suites' Postgres branch (production's SQL) against a
+      throwaway cluster. Needs PostgreSQL server binaries.
+    cmds:
+      # Serial, not -n logical: every test drops and recreates the same tables
+      # in the one scratch database.
+      - >-
+        bash scripts/rls-test-db.sh --exec "{{.PY}}" -X faulthandler -m pytest -q
+        tests/aiq_agent/common/test_claim_queue.py
+        tests/knowledge_layer_tests/test_ingest_queue.py
+        frontends/aiq_api/tests/test_research_queue_fair.py
+
   fe:test:shard:
     desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/4 task fe:test:shard)'
     dir: '{{.UI}}'
@@ -448,7 +461,7 @@ tasks:
   be:test:migration:
     desc: The Chroma exporter and the whole move (exporter, importer, Qdrant), in a throwaway chromadb environment
     cmds:
-      # chromadb is not a dependency of this repo (ADR-0113): the exporter's own
+      # chromadb is not a dependency of this repo (ADR-0115): the exporter's own
       # PEP 723 pin decides the environment, and pytest's testpaths never reach
       # deploy/, so no other task imports chromadb. The end-to-end test runs the
       # importer in .venv and needs AIQ_QDRANT_TEST_URL (skipped locally without it).
@@ -536,7 +549,7 @@ tasks:
       # Embeds the corpus once with the production model through make_embed_model
       # (cached under .cache/qdrant_parity, about $0.12 cold), writes it into Qdrant
       # through ingestion's write_chunks and reads it through the production
-      # retriever. Chroma is gone (ADR-0113): its numbers from the gate run are the
+      # retriever. Chroma is gone (ADR-0115): its numbers from the gate run are the
       # fixed reference (qdrant_parity/baseline.py). `-- --embedder hashed` runs it
       # keyless as a wiring check only; `-- --variants all` adds the ranking sweep;
       # `-- --qdrant-url URL` points at another server (default $AIQ_QDRANT_TEST_URL

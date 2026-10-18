@@ -165,6 +165,11 @@ const ToggleGroupItem = React.forwardRef<
         // so no consumer needs a relative wrapper of its own.
         context.segmented &&
           'relative isolate data-[state=on]:bg-transparent data-[state=on]:shadow-none',
+        // Never squeezed: a row of segments that runs out of room scrolls
+        // (the segmented tray is `overflow-x-auto`) or wraps (the plain
+        // group), and a segment that shrank instead cut its own label and
+        // its 44px floor on a phone. A caller that wants it to give way says so.
+        'shrink-0',
         className
       )}
       {...props}

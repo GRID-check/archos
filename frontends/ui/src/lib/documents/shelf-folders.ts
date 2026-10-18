@@ -42,6 +42,7 @@ import {
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireShelfRead, requireShelfWrite } from './shelf-authz'
 import { shelfCollectionName } from './shelf-collection'
+import { publishShelfChanged } from './shelf-live'
 import { shelfDocumentWhere, shelfOwner, shelfFolderWhere, type ArchivShelf, type DocumentShelf } from './shelf'
 import { escapeLikePattern } from '@/lib/text/like-pattern'
 
@@ -199,6 +200,9 @@ async function insertFolderRow(
       .insert(projectFolders)
       .values({ ...shelfOwner(shelf, organizationId), ...folder })
       .returning()
+    // Every new folder comes through here, never inside a transaction: a
+    // person's, a folder upload's, one Piloti files into.
+    publishShelfChanged(organizationId, shelf, { folders: true })
     return { row }
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
@@ -662,18 +666,29 @@ export async function updateShelfFolder(
       .set({ description: nextDescription, updatedAt: new Date() })
       .where(folderOnShelf(shelf, organizationId, folder.id))
       .returning()
+    publishShelfChanged(organizationId, shelf, { folders: true })
     return { ok: true, folder: toFolderRow(row) }
   }
 
-  const updated = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .update(projectFolders)
-      .set({ name, parentId: target.parentId, path, description: nextDescription, updatedAt: new Date() })
-      .where(folderOnShelf(shelf, organizationId, folder.id))
-      .returning()
-    await rewriteDescendantPaths(tx, shelf, organizationId, folder.path, path)
-    return row
-  })
+  let updated: FolderRecord
+  try {
+    updated = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(projectFolders)
+        .set({ name, parentId: target.parentId, path, description: nextDescription, updatedAt: new Date() })
+        .where(folderOnShelf(shelf, organizationId, folder.id))
+        .returning()
+      await rewriteDescendantPaths(tx, shelf, organizationId, folder.path, path)
+      return row
+    })
+  } catch (error) {
+    // A sibling already holds the name where the folder would land: renamed to
+    // it, or dragged next to it. The insert says so in words; so does this,
+    // instead of a 500 that read as „could not move" with no reason.
+    if (isUniqueViolation(error)) return { ok: false, error: FOLDER_NAME_TAKEN }
+    throw error
+  }
+  publishShelfChanged(organizationId, shelf, { folders: true })
 
   await mirrorShelfFolderPathRewrite(shelf, organizationId, folder.path, path)
 
@@ -742,6 +757,7 @@ export async function deleteShelfFolder(
 
     return { documentsMoved: moved.length, foldersMoved: children.length }
   })
+  publishShelfChanged(organizationId, shelf, { folders: true })
 
   // The whole subtree collapsed into this folder's parent, which is a prefix
   // rewrite from the folder's path to the parent's (empty at the shelf root) —

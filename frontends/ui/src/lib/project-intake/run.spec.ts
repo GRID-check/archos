@@ -41,6 +41,7 @@ const CONTEXT: RunContext = {
   projectMemory: 'Memory digest',
   memoryReflectionEnabled: true,
   orgInstructions: null,
+  requester: null,
 }
 
 const input = {

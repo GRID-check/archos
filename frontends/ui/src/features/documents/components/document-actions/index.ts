@@ -9,6 +9,7 @@
 
 export {
   DocumentActionsMenu,
+  useMoveInSheet,
   type DocumentActionKind,
   type DocumentActionsMenuProps,
 } from './document-actions-menu'

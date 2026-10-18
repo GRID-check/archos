@@ -4,7 +4,7 @@
  * Provisions the whole stack against a provider-supplied kubeconfig:
  *   platform  → cert-manager (+ Let's Encrypt issuer), Envoy Gateway, metrics-server
  *   data      → CloudNativePG Postgres (3 DBs), Dragonfly cache, SeaweedFS (S3),
- *               Qdrant (the vector store, ADR-0113)
+ *               Qdrant (the vector store, ADR-0115)
  *   app       → aiq-agent (StatefulSet, the chat role), aiq-api (Deployment +
  *               HPA, the api role), frontend (Deployment + HPA), purger, skill-scheduler, gotenberg (office
  *               → PDF), a migration Job, a WorkOS audit-schema reconcile Job and,
@@ -98,7 +98,7 @@ const extraBuckets = [
   // the init Job creates it — but withheld from the general-purpose `grid` S3
   // identity in `s3IdentityCatalog`; Langfuse reaches it as `grid-langfuse`.
   ...(cfg.langfuse.enabled ? [LANGFUSE.bucket] : []),
-  // Qdrant's shard snapshots (ADR-0113), reached only as `grid-qdrant`.
+  // Qdrant's shard snapshots (ADR-0115), reached only as `grid-qdrant`.
   QDRANT.snapshotBucket,
 ];
 const filerNeedsPostgres =
@@ -176,7 +176,7 @@ const langfuseQueue = cfg.langfuse.enabled
 const rateLimitStore = cfg.rateLimit.enabled
   ? installRateLimitStore(cfg, provider, namespace)
   : undefined;
-// The vector store (ADR-0113). Its snapshot CronJob waits on the bucket it
+// The vector store (ADR-0115). Its snapshot CronJob waits on the bucket it
 // uploads into. Chroma is gone from this program: on the deploy that removes it,
 // `chromaMigration` (below) copies it over before Pulumi deletes the server, and
 // its claim `data-chroma-0` is kept (`whenDeleted: Retain`) as the way back.
@@ -236,7 +236,7 @@ if (cfg.auth.requireAuth) {
 // the tiers below only because the Chroma migration waits on two of them.
 const workers = installWorkers(wiring, cfg, secrets, [migrations]);
 
-// The retired Chroma store, carried into Qdrant once (ADR-0113), on the deploy
+// The retired Chroma store, carried into Qdrant once (ADR-0115), on the deploy
 // that removes Chroma. The Job exports from the Chroma server the previous
 // release still runs (Pulumi deletes what this program dropped last, and only
 // on a deploy that succeeded), and Pulumi awaits it. Every tier that reads or
@@ -447,7 +447,7 @@ if (cfg.observability.enabled) {
       ...(langfuse ? [langfuse.webService] : []),
     ],
     langfuse ? langfuse.secret.metadata.name : undefined,
-    // Every Qdrant peer's metrics port (ADR-0113): the collector's one
+    // Every Qdrant peer's metrics port (ADR-0115): the collector's one
     // metrics pipeline, re-exposed on :8889 for whatever reads metrics.
     qdrant.metricsTargets,
   );

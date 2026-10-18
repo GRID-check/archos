@@ -92,6 +92,10 @@ export const onboarding: typeof en.onboarding = {
         palette: 'Zu allem springen',
         cheatsheet: 'Alle Tastenkürzel',
       },
+      searchPhone: {
+        title: 'Suchen und springen',
+        body: 'Die Lupe oben bringt Sie zu jedem Projekt, jedem Bereich und zur Büroablage. Ein paar Buchstaben genügen.',
+      },
       projectWelcome: {
         title: 'Ihr Projekt ist eingerichtet',
         body: 'Piloti kennt jetzt die Eckdaten dieses Gebäudes. Hier findet die Arbeit statt.',
@@ -111,6 +115,10 @@ export const onboarding: typeof en.onboarding = {
       projectArchiv: {
         title: 'Büroablage: die Unterlagen Ihres Büros',
         body: 'Die Büroablage steht über Ihren Projekten, und jedes Projekt durchsucht sie automatisch mit. Sie ist anfangs leer: Administratoren legen Unterlagen ab, alle in der Organisation können sie lesen und zitieren.',
+      },
+      projectArchivPhone: {
+        title: 'Büroablage: die Unterlagen Ihres Büros',
+        body: 'Die Büroablage steht über Ihren Projekten, und jedes Projekt durchsucht sie automatisch mit. Sie finden sie unter „Mehr“, mit allem, was nicht in der Leiste steht.',
       },
       filesOrArchiv: {
         title: 'Dateien oder Büroablage?',

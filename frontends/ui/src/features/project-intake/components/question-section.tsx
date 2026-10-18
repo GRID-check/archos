@@ -13,6 +13,7 @@ import { usePressed } from '../hooks/use-pressed'
 import { questionOfNeed } from '../lib/display'
 import { DocumentHandIn } from './document-hand-in'
 import { IntakeSection } from './intake-atoms'
+import type { DropInfo } from '@/features/documents/hooks/use-file-drag-drop'
 
 /**
  * Rückfragen: the decisive needs no document has answered. Each is the
@@ -31,7 +32,7 @@ export function QuestionSection({
   canDecide: boolean
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
-  onFiles: (files: File[]) => void
+  onFiles: (files: File[], info?: DropInfo) => void
 }): JSX.Element | null {
   const t = useTranslations('projectIntake')
   if (questions.length === 0) return null
@@ -64,7 +65,7 @@ function QuestionCard({
   canDecide: boolean
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
-  onFiles: (files: File[]) => void
+  onFiles: (files: File[], info?: DropInfo) => void
 }): JSX.Element {
   const t = useTranslations('projectIntake')
   const question = useMemo(() => questionOfNeed(need), [need])

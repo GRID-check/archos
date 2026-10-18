@@ -98,7 +98,7 @@ flowchart TB
 
 Two distinct knowledge systems:
 
-- **Retrieval (RAG)** — the OIB corpus, uploaded documents, and chat attachments, embedded in Qdrant and searched **on demand**, scoped per request via `X-Grid-Collection-Scope`, which compiles to one payload filter (ADR-0114).
+- **Retrieval (RAG)** — the OIB corpus, uploaded documents, and chat attachments, embedded in Qdrant and searched **on demand**, scoped per request via `X-Grid-Collection-Scope`, which compiles to one payload filter (ADR-0116).
 - **Memory & context** — the intake profile and agent-curated project/org memory, **injected into every turn** as base64url-encoded headers. Memory is written only through a token-guarded internal BFF endpoint, keeping `grid_app` single-writer.
 
 See [`docs/architecture/backend-deep-dive.md`](docs/architecture/backend-deep-dive.md) and [`docs/architecture/project-memory-design.md`](docs/architecture/project-memory-design.md).

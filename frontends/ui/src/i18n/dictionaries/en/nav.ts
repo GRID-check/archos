@@ -88,6 +88,36 @@ export const nav = {
     viewAllProjects: 'View all projects',
     newProject: 'New project',
   },
+  /** The phone's bottom tab bar (`components/shell/phone-tab-bar.tsx`). */
+  tabBar: {
+    label: 'Main navigation',
+    /** Opens the sheet with the destinations the bar does not carry. */
+    more: 'More',
+    /** The sheet behind "More" (`components/shell/phone-more-sheet.tsx`). */
+    moreSheet: {
+      title: 'More',
+      description: 'More areas and your account.',
+      close: 'Close',
+      places: 'Areas',
+      account: 'Account',
+    },
+  },
+  search: {
+    /** The touch door into the command palette, in both headers. */
+    open: 'Search and jump',
+  },
+  /** The project switcher as a bottom sheet on a phone. */
+  projectSheet: {
+    description: 'The projects you opened last come first, then every running project.',
+    close: 'Close',
+    searchLabel: 'Search projects',
+    searchPlaceholder: 'Search projects',
+    clearSearch: 'Clear search',
+    recent: 'Recently opened',
+    others: 'Other projects',
+    matches: 'Matching projects',
+    noMatch: 'No running project has that name.',
+  },
   userMenu: {
     label: 'User menu for {name}',
     defaultUser: 'Default User',

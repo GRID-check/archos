@@ -28,7 +28,11 @@ export function FilingSection({
   if (entries.length === 0) return null
   return (
     <IntakeSection label={t('filing.heading')} description={t('filing.description')} testId="intake-filing">
-      <FilingBar entries={entries} onSettled={onSettled} showNames />
+      {/* `grid-cols-1`: the panel is a grid, and its implicit `auto` column grows
+          to the widest file name in its lines (the detail line truncates, but
+          only inside a column that is allowed to be narrower than it), which
+          pushed the whole page 27px past a phone's edge. */}
+      <FilingBar entries={entries} onSettled={onSettled} showNames className="grid-cols-1" />
     </IntakeSection>
   )
 }

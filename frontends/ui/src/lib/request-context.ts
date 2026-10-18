@@ -184,6 +184,40 @@ export interface GridRequestContextInput {
   issuedAt?: number | null
   /** WebSocket-only: prompt blocks are fetched from the BFF on each turn. */
   contextTransport?: 'bff'
+  /**
+   * → envelope payload field `requester` ONLY: who `userId` is, by name, so
+   * the agent can address the person (its prompt's `User:` and `Office:`
+   * lines). Envelope-only like `conversationId`: a name the agent shows the
+   * reader comes from the signed bytes, never from a header a caller chose.
+   *
+   * Taken from the session the envelope is minted for (`requesterOf`). A live
+   * session has it from AuthKit and the token's `organization_name` claim; a
+   * pinned one (a scheduled run, a woken thread, nobody signed in) from
+   * WorkOS when it is resolved (`resolvePerson`). Every mint reads it afresh,
+   * so a rename reaches the next turn or the next envelope renewal. Omitted
+   * when nothing in it is known.
+   */
+  requester?: GridRequester | null
+}
+
+/** The person an envelope acts as, as WorkOS knows them. Each field null when unknown. */
+export interface GridRequester {
+  name: string | null
+  email: string | null
+  /** The office: the organization's display name. */
+  organizationName: string | null
+}
+
+/** The envelope's `requester` for a session, or null when it names nobody. */
+export function requesterOf(
+  session: { name?: string | null; email?: string | null; organizationName?: string | null } | null | undefined,
+): GridRequester | null {
+  const requester = {
+    name: session?.name?.trim() || null,
+    email: session?.email?.trim() || null,
+    organizationName: session?.organizationName?.trim() || null,
+  }
+  return requester.name || requester.email || requester.organizationName ? requester : null
 }
 
 /** Canonical header names, exact casing as sent on the wire. */
@@ -402,6 +436,12 @@ export function buildGridRequestContextEnvelopePayload(input: GridRequestContext
   // Appended last so legacy HTTP/job envelopes remain byte-identical.
   if (input.contextTransport) {
     payload.contextTransport = input.contextTransport
+  }
+  // LAST, after `contextTransport`, for the reason every field since
+  // `memoryReflectionEnabled` was appended: earlier fixture cases stay byte-identical.
+  const requester = requesterOf(input.requester)
+  if (requester) {
+    payload.requester = requester
   }
 
   return payload

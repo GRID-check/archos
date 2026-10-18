@@ -165,6 +165,77 @@ describe('UploadTray', () => {
     })
   })
 
+  describe('on a phone', () => {
+    it('cuts a long name in the middle so its revision and extension survive', () => {
+      const name = '2026-06-14_Lageplan_Baufeld_Nord_Rev_C_Freigabe.pdf'
+      renderTray([tracked({ fileName: name, uploadStartedAt: 1, bytesUploaded: 10 })])
+
+      const label = within(screen.getByTestId('upload-row-name'))
+      // The end is a span of its own that never shrinks; the head is the part CSS ellipsizes.
+      // Both are drawn for the eye; the whole name is read once.
+      const [head, tail] = Array.from(label.getByTitle(name).querySelectorAll('[aria-hidden="true"]'))
+      expect(tail.textContent).toMatch(/Rev_C_Freigabe\.pdf$/)
+      expect(head.textContent).toMatch(/^2026-06-14_Lageplan/)
+      expect(label.getByText(name)).toHaveClass('sr-only')
+    })
+
+    it('puts a labelled retry under a failed file, where a finger can find it', async () => {
+      const onRetry = vi.fn()
+      const user = userEvent.setup()
+      renderTray([tracked({ status: 'failed', errorMessage: 'Connection lost' })], { onRetry })
+
+      await user.click(screen.getByTestId('upload-row-retry'))
+      expect(onRetry).toHaveBeenCalledWith('f1')
+      expect(screen.getByTestId('upload-row-retry')).toHaveTextContent('Try again')
+    })
+
+    it('shows the labelled retry even when the failure came without a reason', () => {
+      renderTray([tracked({ status: 'failed' })])
+      expect(screen.getByTestId('upload-row-retry')).toBeDefined()
+    })
+
+    it('offers no labelled retry for a failure a retry would only repeat', () => {
+      renderTray([tracked({ status: 'failed', errorMessage: 'refused', retryable: false })])
+      expect(screen.queryByTestId('upload-row-retry')).toBeNull()
+    })
+
+    it('carries the size on the status line of a file that is still moving', () => {
+      renderTray([tracked({ fileSize: 4_800_000, uploadStartedAt: 1, bytesUploaded: 1_200_000 })])
+      expect(screen.getByTestId('upload-row')).toHaveTextContent(/25%\s*·\s*4[.,]8 MB/)
+    })
+  })
+
+  describe('without a connection', () => {
+    const setOnline = (value: boolean) => {
+      Object.defineProperty(window.navigator, 'onLine', { value, configurable: true })
+    }
+    afterEach(() => setOnline(true))
+
+    it('says so instead of claiming progress, and recovers when the link returns', () => {
+      renderTray([tracked({ uploadStartedAt: 1, bytesUploaded: 1_000_000 })])
+      expect(screen.queryByText(/no connection/i)).toBeNull()
+
+      act(() => {
+        setOnline(false)
+        window.dispatchEvent(new Event('offline'))
+      })
+      expect(screen.getByText(/no connection/i)).toBeDefined()
+      expect(screen.getByTestId('upload-tray-glyph')).toHaveAttribute('data-tone', 'offline')
+
+      act(() => {
+        setOnline(true)
+        window.dispatchEvent(new Event('online'))
+      })
+      expect(screen.queryByText(/no connection/i)).toBeNull()
+    })
+
+    it('stays quiet when nothing is being sent', () => {
+      setOnline(false)
+      renderTray([tracked({ status: 'success' })])
+      expect(screen.queryByText(/no connection/i)).toBeNull()
+    })
+  })
+
   describe('getting out of the way', () => {
     beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -299,6 +370,41 @@ describe('UploadTray', () => {
     it('offers no „Retry failed" when nothing but a held file is left', () => {
       renderTray([held(), tracked({ id: 'ok', fileName: 'ok.pdf', status: 'success' })])
       expect(screen.queryByRole('button', { name: 'Retry failed' })).toBeNull()
+    })
+
+    describe('a file refused because the document it would replace is held', () => {
+      const SENTENCE =
+        '“Lohnzettel_03.pdf” would replace a file that is held back and waits in quarantine for review. Once someone allows it through or deletes it, you can upload the new one.'
+      const replacing = (ownUpload: boolean) =>
+        held({
+          serverFileId: undefined,
+          errorMessage: SENTENCE,
+          retryable: false,
+          replacesHeld: { documentId: 'doc-earlier', ownUpload },
+        })
+
+      it('says its own sentence, not that a reason was not stored', () => {
+        renderTray([replacing(true)])
+
+        const row = screen.getByTestId('upload-row')
+        expect(row).toHaveAttribute('data-phase', 'held')
+        expect(screen.getByTestId('upload-row-held-replaces')).toHaveTextContent(SENTENCE)
+        expect(within(row).queryByText(/not stored or cannot be read/)).toBeNull()
+        expect(within(row).queryByText('Failed')).toBeNull()
+      })
+
+      it('lets the uploader of the held file ask for its review from the row', async () => {
+        const user = userEvent.setup()
+        renderTray([replacing(true)])
+
+        await user.click(screen.getByTestId('upload-row-request-review'))
+        expect(requestQuarantineRelease).toHaveBeenCalledWith('doc-earlier')
+      })
+
+      it('offers no request to someone who did not upload the held file (a reviewer decides it)', () => {
+        renderTray([replacing(false)])
+        expect(screen.queryByTestId('upload-row-request-review')).toBeNull()
+      })
     })
 
     it('can be dismissed from the tray', async () => {

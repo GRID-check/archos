@@ -71,7 +71,7 @@ export default function ZdrPolicyDevPage(): JSX.Element {
   ]
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-8 p-8" data-testid="zdr-policy-preview">
+    <main className="mx-auto flex max-w-3xl flex-col gap-8 p-4 sm:p-8" data-testid="zdr-policy-preview">
       <h1 className="text-lg font-semibold">Organization — Zero data retention</h1>
       {states.map((state) => (
         <section key={state.title} className="flex flex-col gap-3">

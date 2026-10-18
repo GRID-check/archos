@@ -38,13 +38,15 @@ import { assertMayReplaceHeld } from '@/lib/upload-screening/quarantine-reviewer
 import { recordAuditEvent } from '@/lib/audit/service'
 import { assertWithinStorageQuota } from '@/lib/storage/service'
 import { admitOrDiscard, admitReplacementOrDiscard } from '@/lib/storage/admission'
+import { publishShelfChanged } from './shelf-live'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { contentDigest } from './content-digest'
 import { documentReadFamily } from './document-status'
 import { nextVersionNumber, recordUploadedVersionOrDiscard } from './lifecycle'
 import { resolveFassungOf, type FassungOfIgnoredReason } from './fassung-upload'
 import { documentNameKey } from './name-match'
-import { sanitizeOriginPath } from './origin-path'
+import { NAME_TAKEN_DETAILS, nameTakenMessage } from './name-taken'
+import { normalizeOriginPath, sanitizeOriginPath } from './origin-path'
 import { resolveShelfFolderPath } from './folder-path'
 import { findLiveDocumentByFilename, findProjectCollectionsHoldingFilename } from './repository'
 import { retryRacedUpload } from './unique-conflicts'
@@ -320,6 +322,9 @@ async function admitRow(
       createdBy: session.userId,
       uploadBatchId: input.uploadBatchId,
     })
+    // A new row announces itself when it is admitted (`lib/storage`); a
+    // replacement keeps its row, so the shelf is told here.
+    publishShelfChanged(session.organizationId, input.shelf)
     return
   }
   // A `LiveFilenameTakenError` out of here is the lost first-upload race: the
@@ -387,10 +392,12 @@ async function prepareUpload(
     }
   }
   const originPath = sanitizeOriginPath(input.originPath)
-  // The name gate's server-side repeat (ADR-0086), before a byte is stored.
+  // The name gate's server-side repeat (ADR-0086), before a byte is stored. It
+  // reads the whole path, not the stored label: a folder past the label's cut
+  // would pass a screening that read only what is kept.
   const nameGate = await assertUploadNameAllowed(
     session.organizationId,
-    { filename: file.name, originPath, folderPath },
+    { filename: file.name, originPath: normalizeOriginPath(input.originPath), folderPath },
     input.screeningRelease === true,
   )
   const uploadBatchId = await acceptedUploadBatchId(session, input.uploadBatchId, shelfOwner(shelf, session.organizationId))
@@ -471,7 +478,8 @@ async function projectFolderGate(
  * (ADR-0087). A re-upload into the collection that already holds the name
  * replaces it, as before; the same name filed under a different restriction is
  * refused, because replacing it would move it across the boundary unseen. The
- * message names no folder: the other one may be one this person cannot see.
+ * message names no folder: the other one may be one this person cannot see,
+ * and its details are every taken-name refusal's (`NAME_TAKEN_REASON`).
  */
 async function assertNameFreeElsewhereInProject(
   organizationId: string,
@@ -481,9 +489,7 @@ async function assertNameFreeElsewhereInProject(
 ): Promise<void> {
   const holders = await findProjectCollectionsHoldingFilename(organizationId, projectId, filename)
   if (holders.some((holder) => holder !== collectionName)) {
-    throw new ConflictError(
-      `A document named "${filename}" already exists elsewhere in this project. Rename the file, or upload it where that document is filed.`,
-    )
+    throw new ConflictError(nameTakenMessage(filename), NAME_TAKEN_DETAILS)
   }
 }
 

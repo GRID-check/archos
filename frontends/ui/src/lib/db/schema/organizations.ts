@@ -12,8 +12,10 @@ import { jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
  *   - attach future org-scoped data via the `settings` jsonb without a schema
  *     change each time.
  *
- * Rows are created lazily (upserted) the first time an org's settings are read
- * or written — we never need a backfill.
+ * Rows are created lazily (upserted) the first time an org's settings are
+ * WRITTEN; a read creates none. Most organizations therefore have no row, so a
+ * name is never read from here alone: `getOrganizationDisplayName(s)` falls back
+ * to WorkOS.
  */
 export const organizations = pgTable('organizations', {
   /** WorkOS organization id (e.g. `org_...`). */

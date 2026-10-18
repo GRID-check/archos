@@ -1,4 +1,4 @@
-"""Only ``knowledge_layer/qdrant/`` talks to Qdrant, and nothing talks to Chroma (ADR-0113, ADR-0114).
+"""Only ``knowledge_layer/qdrant/`` talks to Qdrant, and nothing talks to Chroma (ADR-0115, ADR-0116).
 
 The scope filter is the boundary between offices' documents. It holds by
 construction only while every read goes through ``knowledge_layer.qdrant``,

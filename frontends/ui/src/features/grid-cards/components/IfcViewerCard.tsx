@@ -219,6 +219,9 @@ export function IfcViewerCard({
       ) : (
         <IfcModelViewer
           sourceUrl={source.data}
+          // A failed load asks for a fresh presigned URL; restarting the
+          // download against the one that just failed would fail the same way.
+          onRetry={source.reload}
           elements={elements ?? []}
           // Not until the rows are in. A group resolves to express ids against
           // that list, so passing highlights early paints a legend of "(0)"

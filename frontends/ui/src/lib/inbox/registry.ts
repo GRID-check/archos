@@ -14,6 +14,8 @@
 
 import { INBOX_ITEM_TYPES, type InboxItemType, type InboxTargetType } from '@/lib/db/schema'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
+import type { PushCategory, PushUrgency } from './push-categories'
+import { isMarkAnchored } from './types'
 
 /**
  * Which product gate a type lives behind.
@@ -61,6 +63,11 @@ export interface InboxTypeDefinition {
    * {@link InboxEmailDefault} and `./delivery`.
    */
   readonly email: InboxEmailDefault
+  /**
+   * How the type reaches a person's phone or desktop as a system notification
+   * (ADR-0112). See {@link InboxPushPolicy} and `./push-policy`.
+   */
+  readonly push: InboxPushPolicy
 }
 
 /**
@@ -87,6 +94,29 @@ export type InboxEmailDefault =
   | { readonly send: 'never' }
   | { readonly send: 'if-unread'; readonly afterMinutes: number }
 
+/**
+ * How a type is pushed (ADR-0112). Not a yes or no: every type may reach a
+ * device the person turned notifications on for, and the person decides per
+ * `category` (`./push-categories`), whose default is on for what is addressed to
+ * them and off for ambient activity. `urgency` is what the push service is told
+ * about how soon the device should wake for it.
+ *
+ * Unlike the email policy, push has no delay: a notification is only worth
+ * sending while the item is unread, and the job that sends it checks that at
+ * the moment it runs (`lib/push/inbox-push-job.ts`), which is the same
+ * cancellation email gets from reading a row first.
+ */
+export interface InboxPushPolicy {
+  readonly category: PushCategory
+  readonly urgency: PushUrgency
+  /**
+   * The category instead, when the item is about the recipient's OWN thing
+   * (its payload says `yours: true`): a reply on a mark they wrote answers
+   * them, the way `mention.answered` does, and is not ambient activity.
+   */
+  readonly yours?: PushCategory
+}
+
 const IN_APP_ONLY: InboxEmailDefault = { send: 'never' }
 
 export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> = {
@@ -98,6 +128,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'collaboration',
     email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
   },
   // "Your request was answered" — one per answered request.
   'mention.answered': {
@@ -106,6 +137,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'normal' },
   },
   // "You now have access" — one per resource; re-sharing should not stack.
   'conversation.shared_with_you': {
@@ -114,6 +146,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'access', urgency: 'normal' },
   },
   // Ambient thread activity — the type that MUST collapse, or the inbox is noise.
   'conversation.activity': {
@@ -122,6 +155,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
   },
   /*
     Storage pressure (ADR-0042). `per-anchor` rather than `collapse`, and the
@@ -140,6 +174,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 0 },
+    push: { category: 'office', urgency: 'normal' },
   },
   'document.assigned_to_you': {
     actionable: false,
@@ -147,6 +182,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'access', urgency: 'normal' },
   },
   /*
     A background run ended. `per-anchor` with the backend job id as the anchor:
@@ -163,6 +199,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
   },
   'job.failed': {
     actionable: false,
@@ -170,6 +207,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'results', urgency: 'normal' },
   },
   /*
     A run has a question for the person who asked for it (ADR-0062, `wartet`).
@@ -185,6 +223,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'requests', urgency: 'high' },
   },
   /*
     A version is waiting for a decision (ADR-0054). Actionable, because it IS an
@@ -206,6 +245,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'normal' },
   },
   /*
     A member sent product feedback (Platform → Feedback). Informational: the
@@ -228,6 +268,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
   },
   'mail_import.failed': {
     actionable: false,
@@ -235,6 +276,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'results', urgency: 'normal' },
   },
   'feedback.submitted': {
     actionable: false,
@@ -242,6 +284,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 90,
     gate: 'platform',
     email: { send: 'if-unread', afterMinutes: 0 },
+    push: { category: 'office', urgency: 'low' },
   },
   /*
     An upload of yours has been read (ADR-0086). `per-anchor` on the batch id:
@@ -254,6 +297,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
   },
   /*
     The content check held files back (ADR-0086). `collapse` per organization:
@@ -267,6 +311,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'office', urgency: 'normal' },
   },
   /*
     The uploader asks for a quarantined file to be released (ADR-0086).
@@ -280,6 +325,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'office', urgency: 'normal' },
   },
   /*
     A newer Fassung of a document the recipient follows (ADR-0054, ADR-0099).
@@ -296,6 +342,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
   },
   /*
     Piloti finished a turn on an Anmerkung for the person who woke it (ADR-0106).
@@ -313,6 +360,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
   },
   'piloti.work_failed': {
     actionable: false,
@@ -320,6 +368,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'results', urgency: 'normal' },
   },
   /*
     Piloti asked a question and waits for a person. Actionable, because the
@@ -334,6 +383,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
   },
   /*
     A stored proposal waits for a decision (ADR-0105). Actionable until it is
@@ -347,6 +397,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'requests', urgency: 'normal' },
   },
   /*
     A reading of the project's documents is ready for review (ADR-0111).
@@ -361,6 +412,60 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'requests', urgency: 'normal' },
+  },
+  /*
+    A colleague made the reader responsible for an Anmerkung (ADR-0106).
+    Actionable: the mark waits on them until it is closed or handed on, and
+    the badge is what says so. Resolved when someone else becomes responsible
+    and for everyone when the mark is closed (`lib/annotations/attention.ts`).
+    `per-anchor` on the mark: assigning it twice is one row. A reminder by
+    mail after two hours unread: a mark handed to someone who never opens the
+    app would otherwise wait for good. Operational, like `piloti.asks_you`:
+    marks are not a chat feature.
+  */
+  'annotation.assigned_to_you': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 120 },
+    push: { category: 'requests', urgency: 'normal' },
+  },
+  /*
+    News on a mark the reader takes part in: a reply, or their mark closed or
+    reopened by someone else. `per-anchor` on the mark, so a busy thread is ONE
+    counted row per mark, as `conversation.activity` is one per chat.
+    Informational and in-app only: mailing it would teach people to filter our
+    mail. Pushed as activity to the thread's other participants, who turned that
+    on; to the mark's AUTHOR (`yours`) it is an answer to what they wrote, as
+    `mention.answered` is, and is pushed as a result.
+  */
+  'annotation.activity': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 30,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low', yours: 'results' },
+  },
+  /*
+    A colleague @mentioned the reader on an Anmerkung: the chat's
+    `mention.requested`, on a mark. Actionable, as a mention in the chat is: a
+    person asked the reader something, and the badge is what shows it until
+    they answer in the thread or the mark is closed
+    (`lib/annotations/attention.ts`). `per-anchor` on the mark: being mentioned
+    twice on one mark is one row. Mailed and pushed as the chat's mention is,
+    so a person learns one rule for both. Operational, like the other marks'
+    types: marks are not a chat feature.
+  */
+  'annotation.mentioned': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
   },
 }
 
@@ -368,13 +473,10 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
  * The types whose `anchorId` is an Anmerkung (a mark) of the document they
  * point at. Their link opens the Prüfansicht at that mark; every other type
  * anchored on a document anchors on something else (a Fassung), and must not be
- * read as a mark.
+ * read as a mark. Derived from the client half (`anchor: 'mark'` in
+ * `INBOX_TYPE_PRESENTATION`), which the row reads without this module.
  */
-export const MARK_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = [
-  'piloti.work_done',
-  'piloti.work_failed',
-  'piloti.asks_you',
-]
+export const MARK_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = INBOX_ITEM_TYPES.filter(isMarkAnchored)
 
 /** The types anchored on a proposal: a deep link into a chat must not read that anchor as a message. */
 export const PROPOSAL_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = ['piloti.proposal_waiting']

@@ -28,6 +28,7 @@ import { onboarding } from './onboarding'
 import { organization } from './organization'
 import { platform } from './platform'
 import { presence } from './presence'
+import { capture } from './capture'
 import { shortcuts } from './shortcuts'
 import { legal } from './legal'
 import { answerExport } from './answer-export'
@@ -37,11 +38,13 @@ import { feedbackExport } from './feedback-export'
 import { uploadBatches } from './upload-batches'
 import { references } from './references'
 import { projectIntake } from './project-intake'
+import { notifications } from './notifications'
 
 export const en = {
   common,
   nav,
   presence,
+  capture,
   profile,
   shortcuts,
   settings,
@@ -70,4 +73,5 @@ export const en = {
   uploadBatches,
   references,
   projectIntake,
+  notifications,
 } as const

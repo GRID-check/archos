@@ -13,7 +13,7 @@ GRID has no working deletion story. Today:
 - Session/conversation deletion leaks LangGraph checkpoints.
 - There is no organization offboarding at all.
 
-Enterprise customers (~40 target orgs) require reliable data deletion (GDPR Art. 17 / security questionnaires). Deletion must span five stores that cannot be updated atomically: `grid_app` Postgres, `aiq_jobs` Postgres, `aiq_checkpoints` Postgres, SeaweedFS, the vector store (Chroma then, Qdrant since ADR-0113), plus WorkOS (FGA resources / orgs).
+Enterprise customers (~40 target orgs) require reliable data deletion (GDPR Art. 17 / security questionnaires). Deletion must span five stores that cannot be updated atomically: `grid_app` Postgres, `aiq_jobs` Postgres, `aiq_checkpoints` Postgres, SeaweedFS, the vector store (Chroma then, Qdrant since ADR-0115), plus WorkOS (FGA resources / orgs).
 
 ## Design principles
 

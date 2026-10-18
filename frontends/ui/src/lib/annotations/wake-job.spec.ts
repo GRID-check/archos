@@ -79,7 +79,8 @@ const PAYLOAD: PilotiWakePayload = {
 const SESSION: AuthorizedSession = {
   userId: 'user_anna',
   email: 'anna@example.at',
-  name: null,
+  // The pinned session knows the person by name (`resolvePerson`).
+  name: 'Anna Berger',
   accessToken: '',
   organizationId: 'org_1',
   organizationMembershipId: 'om_1',

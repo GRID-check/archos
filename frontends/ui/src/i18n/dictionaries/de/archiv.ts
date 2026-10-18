@@ -48,6 +48,7 @@ export const archiv = {
     download: 'Herunterladen',
     open: 'Öffnen',
     ask: 'Danach fragen',
+    select: 'Auswählen',
     copyOriginPath: 'Herkunftspfad kopieren',
     moved: '„{name}“ nach {folder} verschoben',
     moveError: 'Das Dokument konnte nicht verschoben werden. Bitte versuchen Sie es erneut.',

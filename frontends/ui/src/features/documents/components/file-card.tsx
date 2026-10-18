@@ -26,7 +26,10 @@ import { useIngestFailureText } from './ingest-failure-notice'
 import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
 import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
 import { HIGHLIGHT_OUTLINE } from '@/components/ui/highlight'
+import { Check } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FileName } from './file-name'
+import { OpenMarksChip } from './open-marks-chip'
 
 /** Provenance tint per corpus, from the shared `--source-*` token family. */
 const SOURCE_TINT: Record<'projekt' | 'buero', CSSProperties> = {
@@ -251,6 +254,33 @@ export interface FileCardProps {
    * cannot make — the Archiv, for one, has no folders at all.
    */
   draggable?: boolean
+  /**
+   * The listing is in selection mode: the card is picked or not, a press
+   * toggles it (the caller's `onSelect`), the ⋯ steps aside and nothing drags.
+   * Absent is the ordinary card.
+   */
+  selection?: { checked: boolean }
+}
+
+/**
+ * The tick on a card in selection mode, where the ⋯ was. Ink when picked, a
+ * hollow ring when not: shape and fill, never colour alone, and the card is the
+ * target, so the mark is not a control of its own (`pointer-events-none`).
+ */
+function SelectionMark({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'pointer-events-none absolute right-2 top-2 z-[1] flex size-6 items-center justify-center rounded-full border shadow-2xs transition-colors duration-quick ease-out motion-reduce:transition-none',
+        checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background/90'
+      )}
+      data-testid="file-card-check"
+      data-checked={checked ? '' : undefined}
+    >
+      {checked && <Check className="size-3.5" strokeWidth={3} />}
+    </span>
+  )
 }
 
 /**
@@ -280,6 +310,7 @@ export const FileCard = memo(function FileCard({
   testId = 'file-card',
   actions,
   draggable = false,
+  selection,
 }: FileCardProps) {
   const t = useTranslations('files')
   const name = documentDisplayName(file)
@@ -308,7 +339,7 @@ export const FileCard = memo(function FileCard({
       interactive
       className={cn(
         'group/card',
-        isSelected && 'ring-2 ring-ring shadow-md',
+        (isSelected || selection?.checked) && 'ring-2 ring-ring shadow-md',
         isBusy && 'cursor-progress opacity-70',
         !isSelected && 'hover:border-border/80',
         lit && HIGHLIGHT_OUTLINE
@@ -316,11 +347,12 @@ export const FileCard = memo(function FileCard({
       // Dragging is opt-in per surface: the Archiv has no folders to drop into,
       // and a card that lifts under the finger where nothing can receive it is
       // an affordance for a capability that is not there.
-      {...(draggable ? documentDragProps(file.id) : {})}
+      {...(draggable && !selection ? documentDragProps(file.id, file.folderId ?? null) : {})}
     >
-      {actions && (
+      {selection && <SelectionMark checked={selection.checked} />}
+      {actions && !selection && (
         <div
-          className="absolute right-1.5 top-1.5 z-[1] md:opacity-0 md:group-hover/card:opacity-100 group-focus-within/card:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-quick ease-out motion-reduce:transition-none"
+          className="absolute right-1.5 top-1.5 z-[1] pointer-coarse:opacity-100 md:opacity-0 md:group-hover/card:opacity-100 group-focus-within/card:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-quick ease-out motion-reduce:transition-none"
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
@@ -337,7 +369,8 @@ export const FileCard = memo(function FileCard({
       <button
         type="button"
         onClick={onSelect}
-        aria-current={isSelected ? 'true' : undefined}
+        aria-current={isSelected && !selection ? 'true' : undefined}
+        aria-pressed={selection ? selection.checked : undefined}
         aria-label={ariaLabel}
         aria-busy={isBusy}
         data-testid={testId}
@@ -358,18 +391,23 @@ export const FileCard = memo(function FileCard({
               <DocumentStatusBadge
                 status={file.status}
                 queueAhead={file.queueAhead}
+                // At the foot of the thumbnail, not the head: the sketch drawn when
+                // there is no picture puts its title bar at the top, and a badge
+                // there read as part of the placeholder rather than as a status.
                 // The 80% alpha is load-bearing: this badge floats over a document
                 // thumbnail, and with `backdrop-blur-sm` it frosts the image
-                // underneath instead of hiding it.
-                // `bg-background/80` is a light ground, and the destructive
-                // variant's ink is white: „Fehlgeschlagen" was white on paper,
-                // invisible. Its ink becomes the error red on this ground.
-                className="absolute left-2 top-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm data-[variant=destructive]:text-error"
+                // underneath instead of hiding it. Every status's ink is its
+                // signal colour on a light ground, a failed read included
+                // (the badge's tinted `danger`), so the frost needs no repaint.
+                // Capped at the well's width less its insets: on a phone's
+                // two-column grid „Wartet · 3 Dateien davor" ran into the
+                // card's edge; now its word ends in an ellipsis instead.
+                className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm"
               />
             )}
           </GridTileMedia>
 
-          <div className="px-3.5 pb-3 pt-[11px]">
+          <div className="px-3.5 pb-3 pt-[11px] phone:px-2.5">
             <div className="flex items-center gap-2">
               {source && sourceLabel && (
                 <span
@@ -393,8 +431,9 @@ export const FileCard = memo(function FileCard({
             {/* The name the document goes by. The format chip beside it still
                 comes from the FILE name, because that is what the bytes are —
                 a rename changes the label, never the format. */}
-            <p className="mt-[10px] truncate text-xs font-medium leading-[1.4] text-foreground" title={name}>
-              {name}
+            {/* Cut in the MIDDLE: the revision and the drawing number are the end of the name, and a finger has no tooltip to read the rest. */}
+            <p className="mt-[10px] min-w-0 text-xs font-medium leading-[1.4] text-foreground">
+              <FileName text={name} />
             </p>
             {/* A byline, directly under the name — who WROTE this. It is not in
                 the footer, because the footer is where the faces and the word
@@ -467,25 +506,39 @@ export const FileCard = memo(function FileCard({
           Its height is the same with a chip or without one (the chip's margin
           box is a line of text), so a row of tiles stays even when a
           suggestion arrives or goes. On a narrow tile the chip's folder name
-          ellipsizes first, then the relative time drops; it never wraps. */}
+          ellipsizes first, then the relative time drops; it never wraps.
+          What is still open on the pages is the one thing that takes a second
+          line, under the size and the age and never in their place: „4 offen ·
+          2 für Sie" and „vor 4 Monaten" do not share a 220px tile, and a
+          count without its words had to be learnt. It is a property of the
+          document rather than a suggestion that comes and goes, so a row of
+          tiles is uneven only where a document has open work. */}
       {!hideFooter && (
         <GridTileFooter
           onClick={onSelect}
-          className="@container/foot group/foot cursor-pointer justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80"
+          className="@container/foot group/foot cursor-pointer flex-wrap justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
           data-testid="file-card-footer"
         >
           <span className="flex min-w-0 flex-1 items-center gap-1.5">
             <FilingSuggestionSlot documentId={file.id} className="min-w-[4.5rem]" />
             {footerLead}
           </span>
-          <span className="flex shrink-0 items-center gap-1.5">
+          {/* On a 156px card the size and the age are about 125px, so the
+              phone's card keeps 10px of padding (the title's too) and a tighter
+              gap: the age used to run into the edge the title keeps clear. */}
+          <span className="flex shrink-0 items-center gap-1.5 phone:gap-1">
             <span className="tabular-nums">{formatBytes(file.fileSize, locale)}</span>
-            <span className="flex items-center gap-1.5 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden">
+            <span className="flex items-center gap-1.5 phone:gap-1 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden">
               <span aria-hidden className="text-muted-foreground/40">
                 ·
               </span>
               <TimeAgo date={file.createdAt} locale={locale} className="tabular-nums" />
             </span>
+          </span>
+          {/* Its own line (`basis-full`), and none at all when nothing is open:
+              the review opens from here without opening the card first. */}
+          <span className="flex basis-full empty:hidden">
+            <OpenMarksChip file={file} name={name} />
           </span>
         </GridTileFooter>
       )}

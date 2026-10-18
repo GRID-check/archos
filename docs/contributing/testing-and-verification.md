@@ -68,6 +68,17 @@ resolves `aiq_agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
 `pythonpath` puts `src/` first, so a bare `pytest` is safe as well as the Taskfile.
 
+**The claim queues are tested on Postgres by `task be:test:postgres`, in CI's
+Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
+`tests/knowledge_layer_tests/test_ingest_queue.py` and
+`frontends/aiq_api/tests/test_research_queue_fair.py` run every scenario on
+SQLite, which ranks in Python, and on Postgres, which runs production's claim
+SQL. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
+reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
+scratch database in it. Each file carries an `AIQ_TEST_POSTGRES_REQUIRED` guard,
+set in CI, that fails instead of skipping. A new suite with a Postgres parameter
+joins the task's list.
+
 **The base-corpus tests run on SQLite by default, and the Postgres paths need
 `GRID_TEST_CORPUS_DB`.** `tests/test_corpus_store.py`, `test_oib_sync.py`,
 `test_oib_status.py` and `frontends/aiq_api/tests/test_oib_documents_routes.py`
@@ -112,11 +123,11 @@ and [`tests/test_reuse_green_run.py`](../../tests/test_reuse_green_run.py);
 [`tests/test_ci_workflows.py`](../../tests/test_ci_workflows.py) evaluates every
 job's condition to pin that a hit skips all the checks and a miss skips none.
 
-Three required checks are not in `task verify` at all: `db:test:rls` (it needs
-PostgreSQL server binaries), `pkg:test` (four minutes, on a directory most
-changes never touch — see below), and the release-note gate (it needs the PR's
-base and head). Run the first two by hand when you touch what they cover; the
-third only exists on a PR.
+Four required checks are not in `task verify` at all: `db:test:rls` and
+`be:test:postgres` (both need PostgreSQL server binaries), `pkg:test` (four
+minutes, on a directory most changes never touch — see below), and the
+release-note gate (it needs the PR's base and head). Run the first three by hand
+when you touch what they cover; the last only exists on a PR.
 
 ## The standalone packages under `packages/`
 

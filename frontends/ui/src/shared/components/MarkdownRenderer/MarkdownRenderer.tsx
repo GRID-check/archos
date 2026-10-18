@@ -1,6 +1,6 @@
 'use client'
 
-import { Circle, CircleCheck } from 'lucide-react'
+import { Circle, CircleCheck, TableOfContents } from 'lucide-react'
 import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { type FC, type ReactNode, createContext, memo, useContext, useMemo, useState } from 'react'
 import { useTranslations } from '@/i18n'
@@ -19,6 +19,8 @@ import { scrollToAnchor, useInPageAnchorRenderer } from './anchor-context'
 import { MARKDOWN_SLOT_TAG, useMarkdownSlotRenderer } from './slot-context'
 import { isInternalHref, useInternalLinkRenderer } from './internal-link-context'
 import { markdownHeadings } from './headings'
+import { useOpenOutline } from './outline-context'
+import { rehypeBindWords } from './bind-words'
 import {
   type MarkdownBlock,
   rehypeBlockSeparator,
@@ -110,7 +112,7 @@ import { MarkdownCaret, STREAMING_CARET_TAG, StreamingCaretProvider, rehypeStrea
  * `\includegraphics` are refused.
  */
 const KATEX_OPTIONS = { throwOnError: false, maxSize: 20, maxExpand: 200 }
-const REHYPE_PLUGINS: PluggableList = [[rehypeKatex, KATEX_OPTIONS], rehypeTableShape, rehypeDirectiveShape]
+const REHYPE_PLUGINS: PluggableList = [[rehypeKatex, KATEX_OPTIONS], rehypeTableShape, rehypeDirectiveShape, rehypeBindWords]
 /**
  * The last block of a text still arriving: its last table row may be
  * half-written (`table-shape.ts`, `directive-shape.ts`).
@@ -119,6 +121,7 @@ const REHYPE_PLUGINS_OPEN: PluggableList = [
   [rehypeKatex, KATEX_OPTIONS],
   [rehypeTableShape, { openTail: true }],
   [rehypeDirectiveShape, { openTail: true }],
+  rehypeBindWords,
 ]
 
 /**
@@ -478,12 +481,33 @@ function MarkdownH2({ children, node, id: givenId, className: givenClass }: Head
   // `sr-only` class; both are kept, so its label stays out of the
   // page and the back-references resolve.
   const derived = useHeadingId(node, children)
+  const openOutline = useOpenOutline()
+  const t = useTranslations('common')
   return (
     <h2
       id={givenId ?? derived}
       className={`mb-3 mt-8 block scroll-mt-4 text-lg font-semibold tracking-tight text-foreground hyphens-manual${givenClass ? ` ${givenClass}` : ''}`}
     >
-      {children}
+      {openOutline ? (
+        // A long answer's way back to its section list, at every section: the
+        // reader who followed a citation into the middle of a report does not
+        // scroll to the top to find the next one. Touch only (a mouse has the
+        // scrollbar and the find bar); 44px, its own row-height beside the text.
+        <span className="flex items-start justify-between gap-2">
+          <span className="min-w-0">{children}</span>
+          <button
+            type="button"
+            onClick={openOutline}
+            data-testid="outline-heading-button"
+            aria-label={t('markdown.outlineOpen')}
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 -my-2.5 hidden size-11 shrink-0 items-center justify-center rounded-md outline-none focus-visible:ring-2 pointer-coarse:inline-flex print:hidden"
+          >
+            <TableOfContents className="size-4" aria-hidden />
+          </button>
+        </span>
+      ) : (
+        children
+      )}
     </h2>
   )
 }

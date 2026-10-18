@@ -1,5 +1,5 @@
 ---
-status: superseded by ADR-0113
+status: superseded by ADR-0115
 date: 2026-10-13
 decision-makers: Grid engineering, product owner
 consulted:

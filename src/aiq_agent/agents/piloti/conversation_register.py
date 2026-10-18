@@ -72,7 +72,7 @@ from aiq_agent.turn.context import load_turn_context
 from aiq_agent.turn.context import settle_restriction
 from aiq_agent.turn.context import thread_id_for_turn
 from aiq_agent.turn.context import turn_identity
-from aiq_agent.turn.context import user_info_from_principal
+from aiq_agent.turn.context import user_info_for
 from aiq_agent.turn.dispatch import build_run_commissioner
 from aiq_agent.turn.inventory import Inventory
 from aiq_agent.turn.inventory import load_inventory
@@ -250,26 +250,20 @@ async def _build_agent(config: ChatDeepResearcherConfig, builder: Builder) -> Co
     )
 
 
-def _turn_user_info(inputs: TurnInputs) -> dict[str, Any] | None:
-    """The caller for the prompt: the signed-in principal, else the person who woke this turn.
-
-    A woken turn runs for an internal caller, which has no principal; the wake
-    job stamps the person's name on the message, and the „Geweckt durch“ block
-    names them instead of „Eine Person“. Only a woken turn takes the name from
-    the message: a typed turn trusts the principal alone.
-    """
-    principal = user_info_from_principal()
-    if principal or inputs.trigger is None or not inputs.author_name:
-        return principal
-    return {"name": inputs.author_name, "email": None}
-
-
 def _turn_state(
-    inputs: TurnInputs, context: TurnContext, inventory: Inventory, header_scope, *, skip_clarifier: bool
+    inputs: TurnInputs,
+    context: TurnContext,
+    inventory: Inventory,
+    header_scope,
+    *,
+    request: GridRequestContext,
+    skip_clarifier: bool,
 ) -> ConversationState:
     return ConversationState(
         messages=[HumanMessage(content=inputs.query_text)],
-        user_info=_turn_user_info(inputs),
+        # The token while someone is signed in, else the signed envelope: a
+        # woken thread or a scheduled run is named as well as a typed turn.
+        user_info=user_info_for(request),
         data_sources=inputs.data_sources,
         available_documents=inventory.available_documents,
         in_flight_documents=inventory.in_flight_documents,
@@ -455,7 +449,7 @@ async def _prepare_turn(
     set_turn_documents(inventory.all_documents or inventory.available_documents)
     set_norm_families(inventory.norm_families)
     set_inventory_drops(inventory.inventory_drops)
-    state = _turn_state(inputs, context, inventory, header_scope, skip_clarifier=skip_clarifier)
+    state = _turn_state(inputs, context, inventory, header_scope, request=request, skip_clarifier=skip_clarifier)
     yield _Turn(agent, state, session_registry, context, inputs, request, runtime, shown_notes)
 
 

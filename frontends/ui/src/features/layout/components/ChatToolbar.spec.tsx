@@ -1,8 +1,9 @@
-import { act, render, screen } from '@/test-utils'
+import { act, render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import type { ResourceSharingState } from '@/lib/sharing/types'
 import { ChatToolbar } from './ChatToolbar'
+import { useShellOverlays } from '@/components/shell/shell-overlays'
 import type { ChatMessage } from '@/features/chat/types'
 import { emptyRunLedger, setRunStatus } from '@/lib/runs/run-ledger'
 import {
@@ -39,25 +40,15 @@ vi.mock('@/features/collaboration/hooks/use-sharing', () => ({
   useShareCandidates: () => ({ candidates: [], loading: false, error: false, reload: vi.fn() }),
 }))
 
-// The inbox badge in the mobile nav button rides the shared event channel, which
-// jsdom has no EventSource for — and this spec is about the toolbar, not about
-// inbox delivery. Stubbed so nothing opens a connection.
-let mockInboxPending = 0
-
-vi.mock('@/features/collaboration/hooks/use-inbox', () => ({
-  useInboxBadge: () => ({ pending: mockInboxPending, connected: true, refresh: vi.fn() }),
-}))
-
-// Mock the layout store. The toolbar reads exactly two things off it — the
-// sessions overlay and the mobile nav drawer. It held a third, the research
-// panel, until a run became a message in its own thread (ADR-0062).
+// Mock the layout store. The toolbar reads one thing off it — the sessions
+// overlay. It held the mobile nav drawer too (the hamburger, now the phone tab
+// bar's "Mehr") and the research panel until a run became a message in its own
+// thread (ADR-0062).
 const mockToggleSessionsPanel = vi.fn()
-const mockSetMobileNavOpen = vi.fn()
 
 function getLayoutState() {
   return {
     toggleSessionsPanel: mockToggleSessionsPanel,
-    setMobileNavOpen: mockSetMobileNavOpen,
   }
 }
 
@@ -66,6 +57,14 @@ vi.mock('../store', () => ({
     const state = getLayoutState()
     return selector ? selector(state) : state
   }),
+}))
+
+// The phone shell's connection line asks `useIsMobile`; the context row itself is
+// CSS (`md:hidden`), so jsdom renders it either way.
+let mockIsMobile = false
+vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => mockIsMobile }))
+vi.mock('@/shared/hooks/use-connection-presence', () => ({
+  useConnectionPresence: () => 'connected',
 }))
 
 let mockIsAuthenticated = true
@@ -143,7 +142,6 @@ describe('ChatToolbar', () => {
     mockIsDeepResearchStreaming = false
     mockCurrentSessionId = 'session-1'
     mockSharingState = null
-    mockInboxPending = 0
   })
 
   describe('research status', () => {
@@ -159,7 +157,7 @@ describe('ChatToolbar', () => {
       // states, and there is nothing left for it to act WITH — a run is read in
       // the thread that commissioned it (ADR-0062), so the menu holds no way out
       // to a side panel.
-      const running = screen.getByTestId('research-running')
+      const running = screen.getAllByTestId('research-running')[0]!
       expect(running).toBeInTheDocument()
       expect(running.querySelector('button')).toBeNull()
 
@@ -182,9 +180,113 @@ describe('ChatToolbar', () => {
 
       render(<ChatToolbar />)
 
-      // With no rename and no sharing there is nothing occasional to disclose,
-      // so the trigger itself is gone. Research used to keep it alive on its own.
-      expect(screen.queryByTestId('thread-menu')).not.toBeInTheDocument()
+      // With no rename and no sharing there is nothing occasional to disclose on
+      // a desktop, so the trigger is gone there. It stays for a phone, where it
+      // holds New chat, because the phone's right pill is that one square.
+      expect(screen.getByTestId('thread-menu')).toHaveClass('sm:hidden')
+    })
+
+    test('a thread with something to disclose keeps the menu on every width', () => {
+      render(<ChatToolbar sessionTitle="My Session" />)
+
+      expect(screen.getByTestId('thread-menu')).not.toHaveClass('sm:hidden')
+    })
+  })
+
+  describe('thread row on a phone', () => {
+    test('New chat is the first entry of the ⋯ menu there, and still a button in the open on a desktop', async () => {
+      const user = userEvent.setup()
+      const onNewSession = vi.fn()
+      render(<ChatToolbar sessionTitle="My Session" onNewSession={onNewSession} />)
+
+      expect(screen.getByRole('button', { name: 'Create new session' })).toHaveClass('max-sm:hidden')
+      await openThreadMenu(user)
+      const item = screen.getByTestId('new-chat-menu-item')
+      expect(item).toHaveClass('sm:hidden')
+      await user.hover(item)
+      await user.click(item)
+
+      expect(onNewSession).toHaveBeenCalledTimes(1)
+    })
+
+    test('a chat that has not started names its history door, so the glyph is not a mystery', () => {
+      render(<ChatToolbar isChatStarted={false} />)
+
+      expect(within(screen.getByRole('button', { name: 'Chat history' })).getByText('Chat history')).toHaveClass('sm:hidden')
+    })
+  })
+
+  describe('thread row on a phone — a run and a rule together', () => {
+    test('the title hyphenates at syllables, and the chip steps aside for the spinner', () => {
+      mockIsDeepResearchStreaming = true
+      mockSharingState = { ...SHARED_STATE, visibility: 'project' }
+
+      render(
+        <ChatToolbar sessionTitle="Brandschutzkonzept" conversationId="session-1" isCollaborationEnabled />
+      )
+
+      expect(screen.getByText('Brandschutzkonzept')).toHaveClass('hyphens-auto', 'break-words')
+      const phone = document.querySelector('[data-status-surface="phone"]')
+      expect(phone?.querySelector('[data-testid="research-running"]')).not.toBeNull()
+      expect(phone?.querySelector('[data-testid="access-chip"]')).toBeNull()
+      // The desktop pill still states the rule.
+      expect(document.querySelector('[data-status-surface="desktop"] [data-testid="access-chip"]')).not.toBeNull()
+    })
+  })
+
+  describe('phone context row', () => {
+    beforeEach(() => {
+      useShellOverlays.setState({ paletteOpen: false, projectSheetOpen: false })
+      mockIsMobile = false
+    })
+
+    test('names the project and opens the switcher sheet — the chat route has no phone header', async () => {
+      const user = userEvent.setup()
+      render(<ChatToolbar sessionTitle="My Session" projectName="Wohnbau Favoriten" />)
+
+      const row = screen.getByTestId('chat-project-context')
+      const pill = within(row).getByTestId('project-pill')
+      expect(pill).toHaveTextContent('Wohnbau Favoriten')
+      await user.click(pill)
+
+      expect(useShellOverlays.getState().projectSheetOpen).toBe(true)
+    })
+
+    test('carries the search that opens the command palette', async () => {
+      const user = userEvent.setup()
+      render(<ChatToolbar sessionTitle="My Session" projectName="Wohnbau Favoriten" />)
+
+      await user.click(within(screen.getByTestId('chat-project-context')).getByTestId('shell-search'))
+
+      expect(useShellOverlays.getState().paletteOpen).toBe(true)
+    })
+
+    test('is there on a chat that has not started, where the reader most needs a way out', () => {
+      render(<ChatToolbar projectName="Wohnbau Favoriten" isChatStarted={false} />)
+
+      expect(screen.getByTestId('project-pill')).toBeInTheDocument()
+      expect(screen.getByTestId('shell-search')).toBeInTheDocument()
+    })
+
+    test('the connection line is mounted on the phone shell only', () => {
+      const { unmount } = render(<ChatToolbar projectName="Wohnbau Favoriten" />)
+      expect(document.querySelector('[data-slot="connection-band"]')).toBeNull()
+      unmount()
+
+      mockIsMobile = true
+      render(<ChatToolbar projectName="Wohnbau Favoriten" />)
+      expect(document.querySelector('[data-slot="connection-band"]')).not.toBeNull()
+    })
+
+    test('reports its height so the transcript can start below it', () => {
+      const onHeightChange = vi.fn()
+      const rect = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockReturnValue({ height: 163 } as DOMRect)
+      render(<ChatToolbar projectName="Wohnbau Favoriten" onHeightChange={onHeightChange} />)
+      rect.mockRestore()
+
+      expect(onHeightChange).toHaveBeenCalledWith(163)
     })
   })
 
@@ -200,14 +302,12 @@ describe('ChatToolbar', () => {
 
       // The quiet navigation affordances stay available on the empty start screen.
       expect(screen.getByRole('button', { name: 'Chat history' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Open navigation' })).toBeInTheDocument()
 
       // The actions + thread identity are withheld until a chat starts.
       expect(screen.queryByTestId('thread-menu')).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'Create new session' })
       ).not.toBeInTheDocument()
-      expect(screen.queryByText('Wohnbau Favoriten')).not.toBeInTheDocument()
       expect(screen.queryByText('My Session')).not.toBeInTheDocument()
     })
 
@@ -263,15 +363,70 @@ describe('ChatToolbar', () => {
     })
   })
 
-  describe('mobile navigation opener', () => {
-    test('opens the global nav drawer (the way back out of chat on mobile)', async () => {
-      const user = userEvent.setup()
+  describe('phone layout', () => {
+    // The thread's name is what the row is for. At 393px it was cut to eight
+    // characters, because a hamburger (now the tab bar's "Mehr"), the history
+    // door, the title and two actions shared 361px under a 64% cap.
+    test('has no hamburger: the phone tab bar owns the drawer', () => {
+      render(<ChatToolbar sessionTitle="Fluchtwegbreiten Treppenhaus 2" />)
 
-      render(<ChatToolbar />)
+      expect(screen.queryByRole('button', { name: 'Open navigation' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Chat history' })).toBeInTheDocument()
+    })
 
-      await user.click(screen.getByRole('button', { name: 'Open navigation' }))
+    test('the title takes the leftover width and may use two lines', () => {
+      render(<ChatToolbar sessionTitle="Fluchtwegbreiten Treppenhaus 2" />)
 
-      expect(mockSetMobileNavOpen).toHaveBeenCalledWith(true)
+      const title = screen.getByText('Fluchtwegbreiten Treppenhaus 2')
+      expect(title.className).toContain('line-clamp-2')
+      // No percentage cap on the pill that holds it.
+      expect(title.closest('div[class*="max-sm:flex-1"]')).not.toBeNull()
+      expect(title.closest('div[class*="max-w-[64%]"]')).toBeNull()
+    })
+
+    test('a running research is on the phone too, at the end of the title row, not behind `hidden sm:flex`', () => {
+      mockIsDeepResearchStreaming = true
+
+      render(<ChatToolbar sessionTitle="Brandschutz" />)
+
+      const phone = document.querySelector('[data-status-surface="phone"]')
+      expect(phone).not.toBeNull()
+      expect(phone).toHaveTextContent('Researching')
+      // Shown below `sm`, gone at `sm` where the right pill carries it.
+      expect(phone?.className).toContain('sm:hidden')
+      expect(phone?.className).not.toContain('hidden sm:')
+    })
+
+    test('a running research with no title yet still has its status line', () => {
+      mockIsDeepResearchStreaming = true
+
+      render(<ChatToolbar sessionTitle="" />)
+
+      expect(document.querySelector('[data-status-surface="phone"]')).not.toBeNull()
+    })
+
+    test('who can read the thread is on the phone too', () => {
+      mockSharingState = { ...SHARED_STATE, visibility: 'project' }
+
+      render(
+        <ChatToolbar
+          sessionTitle="My Session"
+          isCollaborationEnabled
+          conversationId="session-1"
+          currentUserId="u-me"
+        />,
+      )
+
+      const phone = document.querySelector('[data-status-surface="phone"]')
+      expect(phone?.querySelector('[data-testid="access-chip"]')).not.toBeNull()
+    })
+
+    test('New chat is a 44px square on a phone, like the menu beside it', () => {
+      render(<ChatToolbar sessionTitle="My Session" />)
+
+      expect(screen.getByRole('button', { name: 'Create new session' }).className).toContain(
+        'size-11',
+      )
     })
   })
 
@@ -282,11 +437,12 @@ describe('ChatToolbar', () => {
       expect(screen.getByText('My Session')).toBeInTheDocument()
     })
 
-    test('does not repeat the project name — the scope chip, rail and URL already carry it', () => {
+    test('does not repeat the project name in the breadcrumb — the context row above it carries it', () => {
       render(<ChatToolbar sessionTitle="My Session" projectName="Wohnbau Favoriten" />)
 
-      expect(screen.queryByText('Wohnbau Favoriten')).not.toBeInTheDocument()
-      expect(screen.getByText('My Session')).toBeInTheDocument()
+      const breadcrumb = screen.getByRole('navigation')
+      expect(within(breadcrumb).queryByText('Wohnbau Favoriten')).not.toBeInTheDocument()
+      expect(within(breadcrumb).getByText('My Session')).toBeInTheDocument()
     })
 
     test('clicking the title opens the editor — the shortcut, alongside the menu', async () => {
@@ -472,7 +628,7 @@ describe('ChatToolbar — sharing surfaces', () => {
       />,
     )
 
-    expect(screen.getByTestId('participant-strip')).toBeInTheDocument()
+    expect(screen.getAllByTestId('participant-strip').length).toBeGreaterThan(0)
     // The chip would read "Shared with 1" — the same sentence the two faces
     // already are, and the widest element in a row that has to hold the thread's
     // own title. Under `private` the roster IS the audience, so the faces say it.
@@ -493,7 +649,9 @@ describe('ChatToolbar — sharing surfaces', () => {
     // The header's rule: information is not clickable, controls look like
     // controls. An avatar stack that silently opened a dialog was the clearest
     // case of the two being mixed — and it made sharing's ONE door into three.
-    expect(screen.getByTestId('participant-strip').tagName).not.toBe('BUTTON')
+    for (const strip of screen.getAllByTestId('participant-strip')) {
+      expect(strip.tagName).not.toBe('BUTTON')
+    }
   })
 
   test('a blanket rule REPLACES the faces — the rule is the audience, not the roster', () => {
@@ -507,7 +665,7 @@ describe('ChatToolbar — sharing surfaces', () => {
       />,
     )
 
-    expect(screen.getByTestId('access-chip')).toHaveTextContent('Project')
+    expect(screen.getAllByTestId('access-chip')[0]).toHaveTextContent('Project')
     // Not both. Under a blanket rule the roster is not a summary of the audience
     // but a partial sample of it — two faces beside "Projekt" read as "these two
     // can see it" when the truth is "everyone in the project can". The named

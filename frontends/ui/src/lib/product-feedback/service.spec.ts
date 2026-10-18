@@ -10,7 +10,8 @@ vi.mock('@/lib/authz/platform', () => ({
 vi.mock('@/lib/db/tenant-context', () => ({
   withPlatformAccess: vi.fn(async (_reason: string, fn: () => unknown) => await fn()),
 }))
-vi.mock('@/lib/organizations/repository', () => ({ findOrganization: vi.fn() }))
+vi.mock('@/lib/organizations/service', () => ({ getOrganizationDisplayName: vi.fn() }))
+vi.mock('@/lib/organizations/display-names', () => ({ getOrganizationDisplayNames: vi.fn() }))
 vi.mock('./announce', () => ({ announceProductFeedback: vi.fn() }))
 vi.mock('@/lib/upload-screening/service', () => ({ maskChatText: vi.fn() }))
 vi.mock('./repository', () => ({
@@ -25,7 +26,8 @@ vi.mock('./repository', () => ({
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
-import { findOrganization } from '@/lib/organizations/repository'
+import { getOrganizationDisplayName } from '@/lib/organizations/service'
+import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
 import * as repository from './repository'
@@ -78,7 +80,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requirePlatformPermission).mockResolvedValue(undefined)
   vi.mocked(repository.insertProductFeedback).mockResolvedValue(stored())
-  vi.mocked(findOrganization).mockResolvedValue({ displayName: 'Büro Nord' } as never)
+  vi.mocked(getOrganizationDisplayName).mockResolvedValue('Büro Nord')
+  vi.mocked(getOrganizationDisplayNames).mockResolvedValue(new Map())
   vi.mocked(announceProductFeedback).mockResolvedValue({ status: 'announced', recipients: 2 })
   vi.mocked(maskChatText).mockImplementation(async (_organizationId, text) => ({ text }) as never)
   vi.mocked(repository.countProductFeedbackByStatus).mockResolvedValue({
@@ -154,8 +157,8 @@ describe('submitProductFeedback', () => {
     expect(repository.insertProductFeedback).toHaveBeenCalledTimes(1)
   })
 
-  it('still announces when the organization row cannot be read', async () => {
-    vi.mocked(findOrganization).mockRejectedValue(new Error('boom'))
+  it('still announces when the organization name cannot be resolved', async () => {
+    vi.mocked(getOrganizationDisplayName).mockResolvedValue(null)
 
     await submitProductFeedback(session, input)
 
@@ -207,6 +210,23 @@ describe('the triage view', () => {
     const view = await getProductFeedbackForPlatform(session, stored().id)
 
     expect(view.reporter).toEqual({ userId: 'user_reporter', name: 'Maria Huber', email: null })
+  })
+})
+
+describe('organization names', () => {
+  it('names an organization without a local row through the resolver, never as unknown', async () => {
+    const unnamed = stored({ organizationId: 'org_prod', organizationName: null } as never)
+    vi.mocked(repository.listProductFeedback).mockResolvedValue([unnamed, stored()])
+    vi.mocked(repository.getProductFeedback).mockResolvedValue(unnamed)
+    vi.mocked(getOrganizationDisplayNames).mockResolvedValue(new Map([['org_prod', 'feld72 Architekten']]))
+
+    const list = await listProductFeedbackForPlatform(session, {})
+    const one = await getProductFeedbackForPlatform(session, unnamed.id)
+
+    expect(list.reports.map((report) => report.organizationName)).toEqual(['feld72 Architekten', 'Büro Nord'])
+    expect(one.organizationName).toBe('feld72 Architekten')
+    // Only the organizations the local join could not name are resolved.
+    expect(getOrganizationDisplayNames).toHaveBeenCalledWith(['org_prod'])
   })
 })
 

@@ -3,7 +3,7 @@
 **Date:** 2026-08-11
 **Status:** Implemented
 **Surfaces:** project Files workspace, org Büroablage (the same workspace, see the last section), chat-session uploads
-**Preview:** `/dev/upload-tray`
+**Preview:** `/dev/upload-tray` (one batch, drop to settled); `/dev/ingestion-states` (every state side by side: badge, card, list row, tray row)
 
 ## The complaint
 
@@ -74,8 +74,9 @@ retry would meet the same 409 until somebody deletes or releases that file, so
 held row from being retried.
 
 Every path that settles a row agrees on these. The ingest job poll reads a
-`failed` file whose error starts `quarantined:` as held
-(`trackedStatusOfJobFile` in `features/documents/utils.ts`); a status read maps
+`failed` file that carries a `quarantine` verdict (or, from a job before the
+field, an error starting `quarantined:`) as held (`trackedStatusOfJobFile` in
+`features/documents/utils.ts`, through `reportsQuarantine`); a status read maps
 by the status's read family (`trackedPatchFromStatus`), so a `quarantined`
 document is held and an `uploaded` one stored; the upload response's
 `uploaded` is stored unless the answer is *unchanged*. The chat says the same:
@@ -98,6 +99,48 @@ of nine look stalled at zero.
 The batch bar tracks **bytes, not file count**. A typical batch is one 150 MB IFC
 model and a dozen 200 KB PDFs; a count-based bar leaps to 92% and then appears to
 hang for a minute — the same lie in a different costume.
+
+### Every state has a glyph
+
+**Preview:** `/dev/ingestion-states`
+
+The badge on a card and in the list, and the status word on a tray row, used
+to be a coloured word. Several states share a colour, so they were told apart
+only by reading: „Wartet · 3 Dateien davor" and „Wird gelesen" were the same
+blue pill, and „Wartet", „Abgebrochen" and „Abgelegt" the same grey word in the
+tray. Each state now carries its glyph from one table
+(`features/documents/components/ingestion-atoms.tsx`): a clock for waiting,
+an arrow for sending, a page being read, a check for citable, the content
+check's shield for held, an alert for failed, an open ring for filed unread, a
+question mark for unknown, and a struck circle for cancelled. Icon, word and
+colour come from the same state, as the design language asks of every signal.
+
+- **No glyph moves.** A shelf that just took a batch has a dozen documents
+  being read; a dozen spinners is texture, not a signal. The tray's header is
+  the batch's one loop: the reading rows no longer shimmer as well.
+- **A failed read is the tinted red** (`Badge` `danger`), the material of every
+  other status, not the solid plate, which made an old failure the loudest
+  thing in the list. The card's frost no longer repaints its ink.
+- **In the list the word gives way, the glyph never does.** The status column
+  is 156px once the list is 28rem wide (104px narrower), and a word that does
+  not fit ends in an ellipsis with the full word in its `title`; the badge's
+  centring used to clip it at both edges.
+- **The columns step out by the list's width, not the screen's**
+  (`@container/filelist`). Freigabe and Größe join at 48rem, Hinzugefügt at
+  56rem, Seiten at 64rem, each where the name keeps about 220px beside them.
+  With viewport breakpoints, the list beside the chat on a desktop kept every
+  column in half a screen, the name column collapsed to nothing and the status
+  badges sat on top of the cut names.
+- **The extension tile is one component.** The tray row and the list row draw
+  `FileExtChip` at `size="xs"`; each used to hand-roll the 24px tile.
+- **A cut name always shows the cut, and never a hard edge.** `MiddleTruncate`
+  lets the head give way first, all the way; only then does the tail, at its
+  START, behind a leading „…" (`…schoss.pdf`), so the extension and the index
+  survive. The tail used to be `shrink-0`: in a column narrower than it, the
+  name was sliced at the cell's edge mid-letter („W.Gesamtmc"), and before
+  that the head squeezed to a letter read „EDachgeschoss.pdf" for
+  „Einreichplan_10_Dachgeschoss.pdf". `/dev/ingestion-states` („Files list,
+  narrow") shows the list at 560px and 340px.
 
 ## What changed in the transport
 
@@ -600,7 +643,7 @@ Preview: `/dev/fassungen` (nine states at the rail's real 248px, `?locale=en`), 
 **Looking at two Fassungen together** (`fassung-compare/`, „Fassungen
 vergleichen“). A full-screen dialog with three views: *Nebeneinander* (two
 sheets that scroll and zoom as one; stacked on a phone, each fitted to half the
-height), *Überlagert* (older inked cyan, newer orange, multiplied, so unchanged
+height, which is why a phone opens in *Wischen* instead), *Überlagert* (older inked cyan, newer orange, multiplied, so unchanged
 lines go dark and changes keep a colour; the colour key, with the computed
 swatch for „unverändert“, and the fader sit in a bar under the sheet, only in
 this view) and *Wischen* (a draggable divider in a fixed near-black ink with a
@@ -611,8 +654,11 @@ out. Keys: ← → and Page Up / Down turn the page, Home and End go to the ends
 2 3 switch the view, Esc closes; the dialog opens with focus on the view
 switch, reads the keys through its description and gives focus back to the
 control that opened it. Zoom says „Einpassen“ when the whole sheet fits and a
-percentage of that fit otherwise (up to 800 %); Ctrl or Cmd + wheel and a
-two-finger pinch zoom at the pointer, dragging pans. File names are cut in the
+percentage of that fit otherwise (up to 1600 %, so an A1 sheet's 2.5 mm
+lettering reads on a phone); Ctrl or Cmd + wheel and a two-finger pinch zoom at
+the pointer, dragging pans. Past the canvas budget (`pdf-raster.ts`) a page is
+drawn soft and the part on screen sharp once the frame rests; a zoom repaints
+off-screen, so the sheet never blanks mid-pinch. File names are cut in the
 middle (`MiddleTruncate`, `lib/text/middle-truncate.ts`) from where the two
 names first differ, so the index survives. Both pages are drawn at one scale
 in a shared box; when the page counts differ the dialog says so. „Seite N mit
@@ -622,6 +668,9 @@ keeps page 1's boxes. The boxes are numbered outlines in the mark ink (dashed
 in the overlay) on the newer sheet, and the list beside it (under it below
 1024 px) groups them by page, with Piloti's sentence under its box's label when
 the counts pair, and the caveat that dimensions are checked in the document.
+Below 1024 px the list is a bottom sheet behind an „Änderungen“ button with the
+count; choosing a change closes it and shows the box. On a phone, upright or on
+its side, the dialog fills the screen and clears the safe areas.
 Boxes and rows are one selection: hovering or focusing either lights both (a
 tooltip names the box), clicking a row turns to its page and scrolls its box
 into view. A refusal names the remedy and offers a retry where one can help
@@ -666,6 +715,7 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 | Explorer detail view | `src/features/documents/components/file-list-view.tsx` |
 | The shared document card (grid anatomy, thumbnail loading) | `src/features/documents/components/file-card.tsx` |
 | Status semantics + the settling predicate both the poll and the card read | `src/features/documents/components/document-status.tsx` |
+| A state's glyph and ink, for the badge and the tray row | `src/features/documents/components/ingestion-atoms.tsx` |
 | Orchestration (validation, fan-out, cancel, polling hand-off) | `src/features/documents/hooks/use-file-upload.ts` |
 
 The logic is in plain modules with their own fast specs rather than inside the
@@ -760,6 +810,36 @@ Three decisions worth keeping:
   (`withZipAccepted`, `acceptZip`), not through the accept-list the server
   enforces and not in the chat, where an archive is not a document. `.ifczip`
   stays a model: the pattern needs the dot.
+
+### Drag and drop, start to end
+
+**Date:** 2026-10-17 · **Surfaces:** project Files workspace, org Büroablage, chat composer
+
+Two drags share one surface: desktop files (`Files` in `dataTransfer.types`)
+and a document or folder moved inside the page (our MIME types,
+`use-document-drag.ts`). `isExternalFileDrag` tells them apart, and every
+handler asks it first. What holds at each stage:
+
+| Stage | Rule | Where |
+|---|---|---|
+| Start | A document or folder lifts only where the reader may write (ADR-0088): moving it out of a read-only level is a write the server refuses. Not while a search is in force: the folders and the path are hidden then, so a card that lifted had nowhere to go. The drag records what it carries and where from (`internalDragSource`) | `file-browser-pane.tsx` (`liftable`), `documentDragProps`, `folderDragProps` |
+| While in the air | The live shelf holds its re-reads (`isInternalDragActive`, a file drag over the workspace): a re-read re-renders the card under the pointer and the browser cancels the drag | `file-workspace.tsx` (`holdWhile`) |
+| Over a target | A folder tile, row, „Alle Dateien“, the back control and every ancestor crumb take desktop files as well as moves; the overlay names the folder the files will land in (`FileDropAim`) | `useFolderDropTarget`, `CrumbDropTarget` |
+| Held over a folder | After `SPRING_OPEN_MS` the folder opens, as in Finder, so a document, a folder or a desktop file can be carried down into a folder that is not on screen, or up through a crumb. Not for a folder over its own subtree | `useFolderDropTarget` (`onSpringOpen`) |
+| Over the level's background | The level on screen takes a document or folder that is not already in it (`onlyFromElsewhere`): where a held drag opened a folder, the release lands there. On its own level a release between two tiles is still no move | `file-workspace.tsx` (`levelDrop`) |
+| Refused | A zone that is there but cannot take files says why (`refusal`): the overlay turns red with the reason, the cursor says „no drop", the drop is not delivered. A read-only folder or crumb refuses a moved document or folder the same way, with a red ring, instead of letting the drop fall through. A zone that is off (`disabled`) touches no event, so the drop falls through | `useFileDragDrop`, `FileDropOverlay`, `useFolderDropTarget` (`refusal`) |
+| Nobody took it | The window guard gives a file drag „no drop" and stops the browser opening the file; it leaves every in-page drag alone, so text still drops into a field | `useWindowDragGuard` |
+| Drop | The files are read synchronously from the event (`readDrop`): folders through the entries API, loose items an entry cannot describe (an Outlook attachment), and a root file the entries API cannot open from the plain list. NAS and VCS metadata directories (`@eaDir`, `.git`, `#recycle`, …) are skipped; what could not be read, and a bound reached, are said | `lib/dropped-entries.ts` |
+| After the drop | The drop goes to the folder it was aimed at, read once into `base` so walking elsewhere while the plan dialog is open changes nothing. A drop while another is being planned, shown or uploaded, or before the folders are loaded, is queued and goes next; the reader is told | `useShelfUpload` |
+| A ZIP inside a dropped folder | Unpacks under that folder, beside the files it came with | `lib/expand-zip.ts` (`folderOf`) |
+| The report | The success toast counts what the server took (`uploadFiles` resolves with it), not what the plan selected | `useShelfUpload.applyFolderPlan` |
+| A move is answered | Optimistic, and the toast offers it back („Rückgängig", the same move the other way, with no undo of its own). A refusal is said by its reason, read from the answer's status and `details` and never its English (`lib/move-refusal.ts`): only readable (403), a namesake where a folder would land (`folder-name-taken`, which a rename and a create now say too, instead of a 500), an IFC model bound for a restricted folder, a folder deleted meanwhile. Live re-reads wait while a folder move is on the wire, as they do for documents | `useDocumentMoves`, `useFolderTree`, `lib/documents/folder-route-handlers.ts` |
+| End, however it ends | A drop elsewhere, Escape, a release outside the window: `useDragEnd` hears it on the window in the capture phase, which no zone can stop, and clears every overlay and highlight | `hooks/use-drag-end.ts` |
+
+**Preview:** `/dev/projects/demo/files/drag` is the real workspace over an
+in-memory project with a read-only folder and two folders named „Statik";
+every move and upload it is asked for lands in `window.__dndLog`, and its
+server refuses as the real one does (403, the taken name).
 
 ### A big shelf: what loads when
 
@@ -871,6 +951,26 @@ never drains the shelf for the default view.
   (as many rows as are on screen, up to 500, swapped in whole) and the summary.
   A move or delete patches the loaded rows at once and re-reads the summary, so
   the tiles' counts follow.
+- **Changes made elsewhere arrive live.** The workspace joins its shelf's live
+  channel (`shelf:project-<id>` or `shelf:archiv`, ADR-0110) through
+  `useShelfLive`. The server says `shelf.changed` after every write to the
+  shelf: a new or replaced document (a person's, a mail import, one Piloti
+  filed), a rename, a delete, a move, a folder made, renamed, moved, binned,
+  restored or given new access, an upload released from screening, and an
+  ingestion that finished, failed or was quarantined. The hint carries no data;
+  the workspace re-reads the level, the summary and, when `folders` is set, the
+  folder tree, quietly, through the coalesced `reloadQuietly`, and not while the
+  tab's own moves are on the wire. A burst of hints is one re-read, 400 ms plus up
+  to 600 ms of jitter later (`useLiveHints`, shared by every hint channel). When the channel
+  comes up (first, after a dropped connection, after a phone wakes) everything
+  is read once more, so a hint missed while offline is not lost.
+  `lib/documents/shelf-live.spec.ts` fails a module that writes `documents` or
+  `project_folders` without announcing it, unless it is listed with the module
+  that does.
+- **Folder reads cross safely.** Only the newest read of the folder tree
+  commits, and a re-read that fails keeps the tree on screen; before, an older
+  answer landing last took a just-made folder off the screen, and one failed
+  request emptied the whole tree.
 
 Still open: a virtualised grid and list, and the kind/tag filters and the
 brief's content facts on the server once the backend's tags are mirrored into

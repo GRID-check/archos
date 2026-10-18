@@ -54,7 +54,7 @@ export const organization: typeof en.organization = {
     quarantine: {
       title: 'Quarantäne',
       subtitle:
-        'Dateien, die die Inhaltsprüfung zurückgehalten hat. Kein Modell hat sie gelesen. Wer sie prüfen darf, lässt sie hier zu oder löscht sie.',
+        'Dateien, die die Inhaltsprüfung zurückgehalten hat. Solange sie hier liegen, zeigt Piloti sie keinem Modell. Wer sie prüfen darf, lässt sie hier zu oder löscht sie.',
     },
     downloads: {
       title: 'Download-Protokoll',
@@ -141,6 +141,8 @@ export const organization: typeof en.organization = {
   },
   /** Personen & Zugriff: Mitgliederverzeichnis, Rollenkatalog, Berechtigungsübersicht. */
   access: {
+    /** Accessible name of the sub-tab strip when it is wider than the screen. */
+    tabsScrollable: 'Bereiche, seitlich scrollbar',
     people: {
       title: 'Personen',
       description: 'Alle Mitglieder der Organisation und die Rolle, die ihnen zugewiesen wurde.',
@@ -335,6 +337,9 @@ export const organization: typeof en.organization = {
     saved: 'Anweisungen gespeichert',
     clear: 'Löschen',
     cleared: 'Anweisungen gelöscht',
+    clearConfirmTitle: 'Anweisungen löschen?',
+    clearConfirmBody:
+      'Piloti beachtet dann keine stehenden Anweisungen Ihrer Organisation mehr. Den Text können Sie nicht wiederherstellen.',
     saveError: 'Die Anweisungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.',
     loadError: 'Die Anweisungen konnten gerade nicht geladen werden. Bitte laden Sie die Seite neu.',
   },
@@ -409,6 +414,9 @@ export const organization: typeof en.organization = {
     saveErrorZdrUnavailable:
       'Die Zero-Data-Retention-Liste konnte nicht geladen werden; die Modelle ließen sich daher nicht prüfen. Es wurde nichts gespeichert – bitte versuchen Sie es gleich noch einmal.',
     zdrTitle: 'Zero Data Retention',
+    /** Phone-only toggle on the long zero-data-retention paragraph. */
+    zdrHintMore: 'Mehr anzeigen',
+    zdrHintLess: 'Weniger anzeigen',
     zdrHint:
       'Standardmäßig aktiv. Jede Anfrage, die Piloti für Ihre Organisation über OpenRouter an ein KI-Modell sendet, geht ausschließlich an Endpunkte, die weder Prompts noch Antworten speichern: Chat- und Rechercheantworten, Rückfragen, das Lesen von Dokumenten beim Hochladen (Beschreibungen von Zeichnungen, Texterkennung, Embeddings, Zusammenfassungen, Klassifizierung), das Reranking von Suchergebnissen, Titel und Zusammenfassungen von Unterhaltungen, Konsistenzprüfungen und Skill-Prüfungen. Kann die Einstellung nicht gelesen werden, gilt die Beschränkung trotzdem, und nur Modelle mit einem solchen Endpunkt sind auswählbar. Wo ein Modell in der EU betrieben wird, wird dieser Standort bevorzugt. Nicht erfasst: Websuchanfragen gehen an den Websuche-Anbieter (Tavily), der kein Modellanbieter ist.',
     zdrNotApplicable:
@@ -641,7 +649,7 @@ export const organization: typeof en.organization = {
   screening: {
     title: 'Prüfliste',
     description:
-      'Piloti prüft jeden Upload gegen diese Listen, Chat-Nachrichten gegen die Inhaltsbegriffe und Nummern. Was anschlägt, liest kein Modell.',
+      'Piloti prüft jeden Upload gegen diese Listen, Chat-Nachrichten gegen die Inhaltsbegriffe und Nummern. Was anschlägt, zeigt Piloti keinem Modell mehr, bis es jemand zulässt.',
     enabled: 'Uploads und Chat prüfen',
     enabledHint: 'Ausgeschaltet prüft Piloti nichts. Ihre Listen bleiben gespeichert.',
     suggestedTitle: 'Es gilt der Vorschlag von Piloti',
@@ -668,7 +676,7 @@ export const organization: typeof en.organization = {
     },
     limits:
       'Die Prüfung sieht Wörter und Nummern, keine Bedeutung. Eine Honorarvereinbarung, die keinen Ihrer Begriffe enthält, kommt durch. Gescannte Seiten und Bilder ohne Textebene prüft Piloti nur am Namen.',
-    termPlaceholder: 'Begriff eingeben, Enter drücken',
+    termPlaceholder: 'Begriff eingeben',
     removeTerm: '„{term}“ entfernen',
     emptyList: 'Keine Begriffe',
     useSuggestion: 'Vorschlag übernehmen',
@@ -690,7 +698,7 @@ export const organization: typeof en.organization = {
     whereProjectUnknown: 'Ein Projekt',
     whereArchiv: 'Büroablage',
     whereSession: 'Chat-Anhang',
-    noReason: 'Grund nicht lesbar',
+    noReason: 'Kein Grund gespeichert. Öffnen Sie die Datei, um selbst zu prüfen.',
     unscreened:
       'Nicht geprüft: Die Datei ließ sich nicht zu Ende lesen. Sie bleibt zurückgehalten, bis jemand sie prüft.',
     open: 'Ansehen',

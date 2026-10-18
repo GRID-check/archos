@@ -394,7 +394,7 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 16-17. Qdrant (ADR-0113), withheld from rule 2. Every office's chunk text
+  // 16-17. Qdrant (ADR-0115), withheld from rule 2. Every office's chunk text
   //     and vectors sit behind one API key that six workloads carry, and its p2p
   //     port moves shards and Raft state between peers: no other pod has any
   //     reason to open either. 16 admits the vector callers to the client ports;

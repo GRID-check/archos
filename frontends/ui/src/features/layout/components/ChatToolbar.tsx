@@ -10,7 +10,6 @@ import {
   useState,
 } from 'react'
 import {
-  Menu,
   MessageSquareText,
   MoreHorizontal,
   PencilLine,
@@ -23,8 +22,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Spinner } from '@/components/ui/spinner'
@@ -32,16 +29,16 @@ import { useAuth } from '@/adapters/auth'
 import { useChatStore } from '@/features/chat'
 import { useConversationOnServer } from '@/features/chat/lib/conversation-on-server'
 import { hasLiveRun } from '@/features/chat/lib/session-activity'
-import { AccessChip, namedAudienceCount } from '@/features/collaboration/components/AccessChip'
-import { InboxBadge } from '@/features/collaboration/components/InboxBadge'
+import { AccessChip } from '@/features/collaboration/components/AccessChip'
 import { ParticipantStrip } from '@/features/collaboration/components/ParticipantStrip'
 import { ShareDialog } from '@/features/collaboration/components/ShareDialog'
-import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
 import { useSharing } from '@/features/collaboration/hooks/use-sharing'
-import { SectionLabel } from '@/components/ui/section-label'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import type { ResourceSharingState } from '@/lib/sharing/types'
+import { useHeaderHeight } from '../hooks/use-header-height'
 import { useLayoutStore } from '../store'
+import { ChatProjectContext } from './ChatProjectContext'
 
 /**
  * How long after opening the editor from the menu a blur is treated as the menu
@@ -53,11 +50,11 @@ const MENU_FOCUS_GUARD_MS = 250
 interface ChatToolbarProps {
   sessionTitle?: string
   /**
-   * Accepted and unused: the project is named by the composer's scope chip,
-   * the rail and the URL, so the toolbar no longer repeats it. The prop stays
-   * so callers and specs need no change while this ruling settles.
+   * The active project. Named on a phone only, in the context row above the
+   * pills (the chat route has no phone header to carry it); on a desktop the
+   * composer's scope chip, the rail and the URL name it, so the pills do not.
    */
-  projectName?: string
+  projectName?: string | null
   onNewSession?: () => void
   isNewSessionDisabled?: boolean
   /**
@@ -83,24 +80,31 @@ interface ChatToolbarProps {
   isCollaborationEnabled?: boolean
   /** The signed-in user, so the roster can mark "you" and Leave knows its target. */
   currentUserId?: string | null
+  /**
+   * Called with the toolbar's height whenever it changes. The toolbar floats over
+   * the transcript, so whoever lays the transcript out needs to know how far down
+   * it ends (see `toolbar-clearance.ts`).
+   */
+  onHeightChange?: (heightPx: number) => void
 }
 
 export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
   sessionTitle = '',
+  projectName = null,
   onNewSession,
   isNewSessionDisabled = false,
   isChatStarted = true,
   conversationId = null,
   isCollaborationEnabled = false,
   currentUserId = null,
+  onHeightChange,
 }) {
   const { isAuthenticated } = useAuth()
+  const headerRef = useHeaderHeight(onHeightChange)
   const t = useTranslations('research')
   const tChat = useTranslations('chat')
-  const tNav = useTranslations('nav')
   const tCollab = useTranslations('collaboration')
   const toggleSessionsPanel = useLayoutStore((s) => s.toggleSessionsPanel)
-  const openMobileNav = useLayoutStore((s) => s.setMobileNavOpen)
   // A run going in THIS thread, read off its stored ledger (ADR-0062).
   const isDeepResearchStreaming = useChatStore((s) =>
     hasLiveRun(s.currentConversation?.messages ?? [])
@@ -132,11 +136,6 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
   // A failed load must not make Share vanish silently — the dialog renders its
   // own retry alert, so the menu item stays reachable while `loadError` is set.
   const canShare = Boolean(sharingState || (isSharingReachable && sharing.loadError))
-  // The chat route hides the global mobile top bar, so this hamburger is where a
-  // phone user learns that somebody needs them — the badge belongs on it for the
-  // same reason it sits on the rail hamburger everywhere else.
-  const { pending: inboxPending } = useInboxBadge(isCollaborationEnabled && isAuthenticated)
-
   // Inline title editing state (Enter commits / Escape cancels / blur commits).
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState(sessionTitle)
@@ -178,11 +177,10 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
 
   // Does the status group have anything to say? A solo private thread has neither
   // form to show — with nothing running, the group would be a bare separator.
-  const hasStatus = Boolean(
-    isDeepResearchStreaming ||
-      showAccessChip ||
-      (showFaces && (sharingState?.entries.length ?? 0) > 1),
+  const hasPeople = Boolean(
+    showAccessChip || (showFaces && (sharingState?.entries.length ?? 0) > 1),
   )
+  const hasStatus = Boolean(isDeepResearchStreaming || hasPeople)
 
   const startEditingTitle = useCallback(() => {
     if (!canRename) return
@@ -262,13 +260,6 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
     if (isAuthenticated) toggleSessionsPanel()
   }, [toggleSessionsPanel, isAuthenticated])
 
-  // Opens the global navigation drawer (AppSidebar). On mobile the chat route
-  // hides the standalone top bar, so this is the way back out to projects,
-  // files, settings, etc.
-  const handleNavClick = useCallback(() => {
-    openMobileNav(true)
-  }, [openMobileNav])
-
   const handleNewSessionClick = useCallback(() => {
     if (!isAuthenticated || isNewSessionDisabled) return
     onNewSession?.()
@@ -297,14 +288,21 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
     // The other half of the crowding was duplicate doors. This header does not
     // own the research report: a run is read in the thread that commissioned
     // it, in its run block (ADR-0062), so there is no report toggle here.
-    <header className="pointer-events-none absolute inset-x-0 top-0 z-20 min-h-12 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-6">
+    <header ref={headerRef} className="pointer-events-none absolute inset-x-0 top-0 z-20 min-h-12 pb-2 max-md:landscape:flex max-md:landscape:items-start max-md:landscape:gap-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
+      {/* Phone shell: where the reader is, and search, above the pills. On a phone
+          on its side there is width for it beside them, so it stands left of the
+          row there instead of taking a line of 393px. */}
+      <ChatProjectContext
+        projectName={projectName}
+        className="mx-auto mb-1 w-full max-w-5xl max-md:landscape:mx-0 max-md:landscape:mb-0 max-md:landscape:w-auto max-md:landscape:max-w-[16rem] max-md:landscape:shrink-0"
+      />
       {/* The SAME wide column as the message list and composer (max-w-5xl,
           mx-auto), so the pills stay aligned with the chat window's edges. */}
-      <div className="mx-auto flex w-full max-w-5xl items-start justify-between gap-3">
+      <div className="mx-auto flex w-full max-w-5xl items-start justify-between gap-3 max-sm:items-stretch max-md:landscape:mx-0 max-md:landscape:min-w-0 max-md:landscape:flex-1">
       {/* LEFT pill: orientation only — the single history door + the current
-          session title/rename, always visible (mobile included). Capped at ~64%
-          of the row on mobile so a long title truncates inside the pill instead
-          of growing under the right-hand actions pill.
+          session title/rename, always visible (mobile included). On a phone it
+          takes whatever width the right pill leaves, and the title may run to
+          two lines inside it rather than being cut to a stub.
           min-h-12 (44px controls) on touch, min-h-8 (28px controls) on a
           pointer device, so the pill never collapses when the breadcrumb is
           hidden on an empty chat. */}
@@ -327,49 +325,37 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
           their frame; the row goes quiet on both sides. */}
       <div
         className={cn(
-          'pointer-events-auto flex min-h-12 min-w-0 max-w-[64%] items-center gap-0.5 rounded-lg p-0.5 sm:min-h-8 sm:max-w-none',
+          // Phone: the pill takes every pixel the right pill leaves, so the title
+          // is what the row is made of. It was capped at 64% and shared with a
+          // hamburger the tab bar's "Mehr" now replaces; at 393px that left room
+          // for eight characters.
+          'pointer-events-auto flex min-h-12 min-w-0 items-center gap-0.5 rounded-lg p-0.5 max-sm:flex-1 sm:min-h-8',
           isChatStarted &&
             'border border-base bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50'
         )}
       >
-        {/* Global navigation opener — mobile only. The chat route hides the
-            standalone top bar, so this hamburger is the way back out to
-            projects / files / settings (opens the same AppSidebar drawer). */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative size-11 shrink-0 rounded-md sm:size-7 md:hidden"
-          onClick={handleNavClick}
-          aria-label={
-            inboxPending > 0
-              ? `${tNav('openNavigation')} — ${
-                  inboxPending === 1
-                    ? tCollab('inbox.badgeAriaOne')
-                    : tCollab('inbox.badgeAria', { count: inboxPending })
-                }`
-              : tNav('openNavigation')
-          }
-          title={tNav('openNavigation')}
-        >
-          <Menu className="size-4" aria-hidden="true" />
-          <InboxBadge
-            pending={inboxPending}
-            className="absolute top-0.5 right-0.5 translate-x-1/3 -translate-y-1/3"
-          />
-        </Button>
-
         {/* Sessions / history overlay — the one clear door to past sessions
             (the rail keeps its routed History; this doesn't duplicate it). */}
         <Button
           variant="ghost"
-          size="icon"
-          className="size-11 shrink-0 rounded-md sm:size-7"
+          size={isChatStarted ? 'icon' : 'default'}
+          className={cn(
+            'shrink-0 rounded-md sm:size-7',
+            // On a chat that has not started there is no title beside the icon,
+            // and a lone glyph under the project pill is a mystery: it says what
+            // it opens, on a phone, where there is no hover to say it. The default
+            // size, because `icon`'s square width cannot be overridden by a class.
+            isChatStarted ? 'size-11' : 'h-11 gap-1.5 px-3 sm:px-0 sm:py-0'
+          )}
           onClick={handleMenuClick}
           disabled={!isAuthenticated}
           aria-label={t('chatToolbar.toggleSessions')}
           title={!isAuthenticated ? t('chatToolbar.signInToView') : t('chatToolbar.toggleSessions')}
         >
           <MessageSquareText className="size-4" aria-hidden="true" />
+          {!isChatStarted && (
+            <span className="text-sm font-medium sm:hidden">{t('chatToolbar.toggleSessions')}</span>
+          )}
         </Button>
 
         {/* The session title (click-to-rename) — shown once a chat has started
@@ -378,11 +364,12 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
             screen calm. The PROJECT name is deliberately absent: the composer's
             scope chip, the rail and the URL all name it already, so here it was
             a fourth copy paying rent in the row's scarcest space. */}
-        {isChatStarted && sessionTitle && (
+        {isChatStarted && (sessionTitle || hasStatus) && (
           <nav
-            className="flex min-w-0 items-center gap-1.5 pl-1 pr-1.5 text-sm"
+            className="flex min-w-0 flex-1 flex-col justify-center pl-1 pr-1.5 text-sm sm:flex-none sm:flex-row sm:items-center sm:gap-1.5"
             aria-label={tChat('breadcrumb.ariaLabel')}
           >
+              <div className="flex min-w-0 flex-1 items-center gap-2 sm:contents">
               {sessionTitle ? (
                 isEditingTitle ? (
                   <input
@@ -427,12 +414,33 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
                     disabled={!canRename}
                     aria-label={tChat('breadcrumb.renameAria')}
                     title={canRename ? tChat('breadcrumb.renameAria') : sessionTitle}
-                    className="max-w-[420px] truncate rounded-md px-1 py-0.5 pointer-coarse:py-3 text-left text-sm font-medium text-foreground transition-colors duration-quick ease-out motion-reduce:transition-none enabled:cursor-text enabled:hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    className="flex min-h-9 min-w-0 max-w-[420px] flex-1 items-center rounded-md px-1 py-0.5 text-left text-sm font-medium leading-snug text-foreground transition-colors duration-quick ease-out motion-reduce:transition-none enabled:cursor-text enabled:hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:min-h-11 sm:flex-none"
                   >
-                    {sessionTitle}
+                    {/* Two lines on a phone, one on a pointer device. A name is the
+                        first thing a reader checks in a thread; it is never cut to a
+                        stub to make room for chrome. */}
+                    {/* `hyphens-auto` (the page is `lang="de"`): a German compound breaks at a
+                        syllable, never mid-word. */}
+                    <span className="line-clamp-2 hyphens-auto break-words sm:line-clamp-1">{sessionTitle}</span>
                   </button>
                 )
               ) : null}
+              {/* Phone only: what is true of the thread, at the end of the title's
+                  own row: who can read it (a small stack of faces, or the rule as
+                  a chip) and a spinner while a run is going. The title keeps the
+                  width and the pill stays one line of orientation; below `sm`
+                  there is no room beside the actions for it. */}
+              {hasStatus && (
+                <ThreadStatus
+                  surface="phone"
+                  sharingState={sharingState}
+                  currentUserId={currentUserId}
+                  isResearching={isDeepResearchStreaming}
+                  researchingLabel={t('chatToolbar.researching')}
+                  className="flex shrink-0 items-center gap-1.5 pr-0.5 sm:hidden"
+                />
+              )}
+              </div>
           </nav>
         )}
 
@@ -470,8 +478,8 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
             ParticipantStrip already applies to itself: no collaboration furniture
             where nothing is being collaborated on.
 
-            Desktop-only, the sharing marks: a phone's width belongs to the
-            thread's name, and the menu below carries sharing there.
+            Desktop-only HERE: a phone's width belongs to the thread's name, so
+            below `sm` the same status is the line under the name (the left pill).
 
             The group renders only when it has something to SAY — a hairline with
             nothing in front of it is the same empty claim as the button that
@@ -491,40 +499,14 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
             transition={motionQuick}
             className="hidden items-center gap-1 pl-1 pr-1.5 sm:flex"
           >
-            {/* No `onOpen`: the strip is deliberately inert here. Sharing has ONE
-                door in this header and it is the menu item, so the faces can be
-                read as what they are. */}
-            {showFaces && sharingState && (
-              <ParticipantStrip entries={sharingState.entries} currentUserId={currentUserId} />
-            )}
-            {showAccessChip && sharingState && (
-              <AccessChip visibility={sharingState.visibility} />
-            )}
-            {/* Live research is status too, and the one piece of it worth carrying
-                in the header: the thread's own banner scrolls away, and this is
-                then the only persistent "still working" signal. It states, it does
-                not act, and there is nothing here to act WITH — a run is read in
-                the thread it was commissioned from (ADR-0062). Independent of
-                sharing: a solo thread researches just as often as a shared one. */}
-            <AnimatePresence initial={false}>
-              {isDeepResearchStreaming && (
-                <motion.span
-                  key="running"
-                  // Opacity only — a width tween is layout motion and shoves
-                  // the New-chat control. The reserved min-h-12 on the pill
-                  // keeps the row from collapsing when this leaves.
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={motionQuick}
-                  className="inline-flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-sm text-muted-foreground"
-                  data-testid="research-running"
-                >
-                  <Spinner size="sm" label={t('chatToolbar.researching')} />
-                  <span className="hidden lg:inline">{t('chatToolbar.researching')}</span>
-                </motion.span>
-              )}
-            </AnimatePresence>
+            <ThreadStatus
+              surface="desktop"
+              sharingState={sharingState}
+              currentUserId={currentUserId}
+              isResearching={isDeepResearchStreaming}
+              researchingLabel={t('chatToolbar.researching')}
+              className="contents"
+            />
             <div aria-hidden="true" className="ml-1 h-4 w-px bg-border" />
           </motion.div>
         )}
@@ -535,7 +517,9 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
         <Button
           variant="ghost"
           size="sm"
-          className="h-11 gap-1.5 rounded-md px-3 sm:h-7 sm:px-2"
+          // On a phone it is the first entry of the ⋯ menu: the right pill is one
+          // 44px square, and the title keeps the rest of the row.
+          className="size-11 gap-1.5 rounded-md px-0 max-sm:hidden sm:h-7 sm:w-auto sm:px-2"
           onClick={handleNewSessionClick}
           disabled={!isAuthenticated || isNewSessionDisabled}
           aria-label={t('chatToolbar.createNewSession')}
@@ -559,9 +543,9 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
             drawer holding the rest, so the pill reads as three plain groups
             instead of a run of controls. Drawn only with the menu it precedes —
             a divider with nothing after it is a promise of something missing. */}
-        {(canRename || canShare) && (
+        {(canRename || canShare || isAuthenticated) && (
           <>
-          <div aria-hidden="true" className="mx-1 h-4 w-px bg-border" />
+          <div aria-hidden="true" className="mx-1 h-4 w-px bg-border max-sm:hidden" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -572,7 +556,12 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
                 // so any control that opts out of this pair makes one pill taller
                 // than the other and the row stops lining up.
                 size="sm"
-                className="size-11 rounded-md px-0 sm:size-7"
+                className={cn(
+                  'size-11 rounded-md px-0 sm:size-7',
+                  // Nothing to disclose on a desktop (New chat is in the open there):
+                  // the trigger is the phone's alone.
+                  !(canRename || canShare) && 'sm:hidden'
+                )}
                 aria-label={t('chatToolbar.moreActions')}
                 title={t('chatToolbar.moreActions')}
                 data-testid="thread-menu"
@@ -581,23 +570,17 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {/* The audience, restated for phones: below `sm` the status marks in
-                  the header are hidden (the width belongs to the thread's name),
-                  and a menu that offers "Teilen" without ever saying WHO can read
-                  the thread leaves the one question sharing exists to answer
-                  unanswerable without opening the dialog. */}
-              {sharingState && (
-                <div className="px-2 py-1.5 sm:hidden">
-                  <DropdownMenuLabel className="p-0 pb-1">
-                    <SectionLabel>{tCollab('sharing.audienceHeading')}</SectionLabel>
-                  </DropdownMenuLabel>
-                  <AccessChip
-                    visibility={sharingState.visibility}
-                    sharedWith={namedAudienceCount(sharingState.entries, currentUserId)}
-                  />
-                </div>
-              )}
-              {sharingState && <DropdownMenuSeparator className="sm:hidden" />}
+              {/* New chat, on a phone only: a desktop keeps it in the open. */}
+              <DropdownMenuItem
+                onSelect={handleNewSessionClick}
+                disabled={!isAuthenticated || isNewSessionDisabled}
+                className="sm:hidden"
+                data-testid="new-chat-menu-item"
+              >
+                <SquarePen className="size-4" aria-hidden="true" />
+                {t('chatToolbar.newChat')}
+              </DropdownMenuItem>
+
               {/* Rename — the discoverable path to the same inline editor the
                   title's own click opens. The click stays as the shortcut; this is
                   how anyone finds out it exists. */}
@@ -648,3 +631,77 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
     </header>
   )
 })
+
+interface ThreadStatusProps {
+  /** Which of the two placements this copy is, for tests and for the eye reading the DOM. */
+  surface: 'phone' | 'desktop'
+  sharingState: ResourceSharingState | null
+  currentUserId: string | null
+  isResearching: boolean
+  researchingLabel: string
+  className?: string
+}
+
+/**
+ * What is TRUE about the thread: who can read it, and whether a run is in
+ * flight. One component, two placements — the right pill's status group at
+ * `sm` and up, a line under the title below it — so the phone says exactly what
+ * the desktop says and the two cannot drift. Information only: nothing here is
+ * ever clickable (see the header's rule).
+ */
+const ThreadStatus: FC<ThreadStatusProps> = ({
+  surface,
+  sharingState,
+  currentUserId,
+  isResearching,
+  researchingLabel,
+  className,
+}) => {
+  const showFaces = sharingState?.visibility === 'private'
+  const showAccessChip = Boolean(sharingState && sharingState.visibility !== 'private')
+  return (
+    <div className={className} data-status-surface={surface}>
+      {/* No `onOpen`: the strip is deliberately inert here. Sharing has ONE door
+          in this header and it is the menu item, so the faces can be read as
+          what they are. */}
+      {showFaces && sharingState && (
+        <ParticipantStrip
+          entries={sharingState.entries}
+          currentUserId={currentUserId}
+          maxVisible={surface === 'phone' ? 2 : undefined}
+        />
+      )}
+      {/* On a phone, while a run is going the spinner is the news and the rule
+          steps aside, so the title keeps the width (the sharing surface still
+          states it). */}
+      {showAccessChip && sharingState && !(surface === 'phone' && isResearching) && (
+        <AccessChip visibility={sharingState.visibility} />
+      )}
+      {/* Live research is status too, and the one piece of it worth carrying in
+          the header: the thread's own banner scrolls away, and this is then the
+          only persistent "still working" signal. It states, it does not act
+          (a run is read in the thread it was commissioned from, ADR-0062).
+          Independent of sharing: a solo thread researches just as often. */}
+      <AnimatePresence initial={false}>
+        {isResearching && (
+          <motion.span
+            key="running"
+            // Opacity only — a width tween is layout motion and shoves the
+            // New-chat control.
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={motionQuick}
+            className="inline-flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-sm text-muted-foreground"
+            data-testid="research-running"
+          >
+            <Spinner size="sm" label={researchingLabel} />
+            <span className={surface === 'phone' ? 'sr-only' : 'hidden lg:inline'}>
+              {researchingLabel}
+            </span>
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}

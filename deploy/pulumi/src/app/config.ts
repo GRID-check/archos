@@ -17,7 +17,7 @@ export interface AppWiring {
   seaweedPublicEndpoint: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
-  /** The Qdrant cluster's client URL (ADR-0113): the one vector store, so there is no embedded one. */
+  /** The Qdrant cluster's client URL (ADR-0115): the one vector store, so there is no embedded one. */
   qdrantUrl: pulumi.Output<string>;
   /** Every DSN states its route (`via`), pooled or direct: see `PgRoute` in `data/postgres.ts`. */
   dsn: Postgres["dsn"];
@@ -154,6 +154,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     GRID_ADMIN_TOKEN: cfg.internal.adminToken,
     GRID_CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
     GRID_JOB_PAYLOAD_KEK: cfg.internal.jobPayloadKek,
+    GRID_WEB_PUSH_VAPID_PRIVATE_KEY: cfg.webPush.privateKey,
     WORKOS_API_KEY: cfg.auth.workosApiKey,
     WORKOS_COOKIE_PASSWORD: cfg.auth.workosCookiePassword,
     GRID_BYOK_LOCAL_KEK: cfg.auth.byokLocalKek,
@@ -196,7 +197,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
       as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
     }),
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
-    // The read-write key (ADR-0113): the ingest tier writes, and the backend
+    // The read-write key (ADR-0115): the ingest tier writes, and the backend
     // tiers share one env.
     AIQ_QDRANT_API_KEY: cfg.qdrant.apiKey,
   };
@@ -416,7 +417,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
 }
 
 /**
- * The shared Qdrant cluster (ADR-0113), the backend's one vector store. There
+ * The shared Qdrant cluster (ADR-0115), the backend's one vector store. There
  * is no embedded store to fall back to: it would live on a disk the pod loses
  * at every restart.
  */
@@ -555,6 +556,12 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // and samples at this rate (frontends/ui/src/lib/analytics/posthog-config.ts).
     { name: "NEXT_PUBLIC_POSTHOG_SESSION_REPLAY", value: cfg.posthog.sessionReplay ? "true" : "false" },
     { name: "NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE", value: cfg.posthog.replaySampleRate },
+    // Web Push for the inbox (ADR-0112). Empty = off. The bff-jobs pool inherits
+    // these (`bffJobsEnv`) and is the one that sends; the frontend serves the
+    // public key to the browser.
+    { name: "GRID_WEB_PUSH_VAPID_PUBLIC_KEY", value: cfg.webPush.publicKey },
+    sref("GRID_WEB_PUSH_VAPID_PRIVATE_KEY"),
+    { name: "GRID_WEB_PUSH_SUBJECT", value: cfg.webPush.subject },
     // BYOK.
     { name: "GRID_BYOK_SECRET_BACKEND", value: cfg.auth.byokSecretBackend },
     sref("GRID_BYOK_LOCAL_KEK"),

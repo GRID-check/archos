@@ -1,4 +1,4 @@
-"""Load a ``piloti-vectors/1`` export into Qdrant, without re-embedding (ADR-0113).
+"""Load a ``piloti-vectors/1`` export into Qdrant, without re-embedding (ADR-0115).
 
 The second half of the move off Chroma: ``deploy/migration/chroma_export.py``
 wrote the export beside Chroma, and this reads it with nothing of Chroma

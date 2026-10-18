@@ -39,7 +39,7 @@ export type QdrantLowMemoryMode = (typeof QDRANT_LOW_MEMORY_MODES)[number];
 
 /**
  * Stack keys of the retired Chroma tier and of the Chroma-to-Qdrant switch
- * (ADR-0113). Qdrant is the only vector store, always deployed, so each of
+ * (ADR-0115). Qdrant is the only vector store, always deployed, so each of
  * these either does nothing or asks for a store this program no longer runs;
  * `loadConfig` refuses a stack that still sets one, rather than leave it to
  * read as a setting.
@@ -594,7 +594,7 @@ export interface GridConfig {
   };
 
   /**
-   * Self-hosted Qdrant (ADR-0113), the only vector store, always deployed.
+   * Self-hosted Qdrant (ADR-0115), the only vector store, always deployed.
    * `docs/architecture/qdrant-retrieval-design.md` §9 is the reasoning behind
    * every default here; `data/qdrant.ts` is the manifest.
    */
@@ -1171,6 +1171,19 @@ export interface GridConfig {
     jobPayloadKek: pulumi.Output<string>;
   };
 
+  /**
+   * Web Push for the inbox (ADR-0112). All three empty = the feature is off.
+   * Generate the pair with `npx web-push generate-vapid-keys --json` and set
+   * `pulumi config set grid-oib:webPushVapidPublicKey`, `--secret
+   * grid-oib:webPushVapidPrivateKey` and `grid-oib:webPushSubject`
+   * (`mailto:` or `https:`). The public key is public by design.
+   */
+  webPush: {
+    publicKey: string;
+    privateKey: pulumi.Output<string>;
+    subject: string;
+  };
+
   skills: {
     /**
      * Floor on how often a job may be scheduled to fire, in minutes. Reaches
@@ -1540,7 +1553,7 @@ function refuseRetiredVectorKeys(cfg: pulumi.Config): void {
   if (set.length === 0) return;
   throw new Error(
     `${set.map((k) => `grid-oib:${k}`).join(", ")} ${set.length === 1 ? "is" : "are"} retired: Qdrant is ` +
-      "the only vector store and always deployed, and Chroma is gone (ADR-0113). Remove " +
+      "the only vector store and always deployed, and Chroma is gone (ADR-0115). Remove " +
       `${set.length === 1 ? "it" : "them"} with \`pulumi config rm\`. To move the old Chroma data, see ` +
       '`chromaMigration` (docs/deployment/qdrant-runbook.md, "Migrating from Chroma on Kubernetes").',
   );
@@ -1556,7 +1569,7 @@ function chromaMigrationConfig(cfg: pulumi.Config): GridConfig["chromaMigration"
 }
 
 /**
- * The Qdrant tier (ADR-0113), validated together because each refusal below
+ * The Qdrant tier (ADR-0115), validated together because each refusal below
  * would otherwise deploy cleanly and be wrong.
  */
 function qdrantConfig(
@@ -2948,6 +2961,12 @@ export function loadConfig(): GridConfig {
       adminToken: cfg.requireSecret("gridAdminToken"),
       corpusExportToken: cfg.getSecret("gridCorpusExportToken") ?? pulumi.output(""),
       jobPayloadKek: jobPayloadKek ?? pulumi.output(""),
+    },
+
+    webPush: {
+      publicKey: cfg.get("webPushVapidPublicKey") ?? "",
+      privateKey: cfg.getSecret("webPushVapidPrivateKey") ?? pulumi.output(""),
+      subject: cfg.get("webPushSubject") ?? "",
     },
 
     skills: {

@@ -24,10 +24,11 @@ describe('legibleLabelSize', () => {
     expect(legibleLabelSize(9, 0.8) * 0.8).toBeCloseTo(MIN_LABEL_PX)
   })
 
-  it('caps the growth at 1.6×, even when the minimum is not reached', () => {
-    expect(MAX_LABEL_GROWTH).toBe(1.6)
-    // 8 units at 0.5 would need 20 units to read at 10px; it gets 12.8.
-    expect(legibleLabelSize(8, 0.5)).toBeCloseTo(8 * MAX_LABEL_GROWTH)
+  it('caps the growth at 2×, even when the minimum is not reached', () => {
+    expect(MAX_LABEL_GROWTH).toBe(2)
+    // 8 units at 0.4 would need 25 units to read at 10px; it gets 16.
+
+    expect(legibleLabelSize(8, 0.4)).toBeCloseTo(8 * MAX_LABEL_GROWTH)
   })
 })
 
@@ -48,13 +49,46 @@ describe('SvgLabel on a SchematicCanvas', () => {
   }
 
   it('draws the label larger on a narrow canvas and scales its halo with it', () => {
-    // 500 units in 350px: scale 0.7, so 8 units would be 5.6px; capped at 12.8.
+    // 500 units in 350px: scale 0.7, so 8 units would be 5.6px; it is drawn
+    // at 10 / 0.7 units, which is the 10px floor, inside the 2× cap.
     const { size, halo } = drawnAt(350)
-    expect(size).toBeCloseTo(8 * MAX_LABEL_GROWTH)
+    expect(size).toBeCloseTo(MIN_LABEL_PX / 0.7)
     expect(halo).toBeCloseTo((3 * size) / 8)
   })
 
   it('draws the authored size on a canvas wide enough to read it', () => {
     expect(drawnAt(1000).size).toBe(8)
+  })
+})
+
+describe('SchematicCanvas label declutter', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  const rectOf = (left: number, top: number, width: number, height = 12): DOMRect =>
+    ({ left, top, width, height, right: left + width, bottom: top + height }) as DOMRect
+
+  it('nudges a label that overprints another, and one cut by the edge', () => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this instanceof SVGSVGElement) return rectOf(0, 0, 350, 200)
+      const label = this.textContent
+      if (label === 'GK4-Grenze') return rectOf(150, 40, 70)
+      if (label === '+11 m') return rectOf(150, 44, 40)
+      if (label === 'Ungünstigster Punkt') return rectOf(-12, 120, 90)
+      return rectOf(0, 0, 0, 0)
+    })
+    const { container } = render(
+      <SchematicCanvas viewW={500} viewH={200} label="Schnitt">
+        <SvgLabel x={0} y={0}>GK4-Grenze</SvgLabel>
+        <SvgLabel x={0} y={5}>+11 m</SvgLabel>
+        <SvgLabel x={0} y={50}>Ungünstigster Punkt</SvgLabel>
+      </SchematicCanvas>
+    )
+    const [grenze, hoehe, start] = Array.from(container.querySelectorAll('text'))
+
+    // Scale 0.7: a 12px push back to viewBox units is 12 / 0.7 or more.
+    expect(grenze.hasAttribute('dy')).toBe(false)
+    expect(Number(hoehe.getAttribute('dy'))).toBeGreaterThan(0)
+    // 12px cut off at the left edge (minus the 2px margin) slides back by 14px.
+    expect(Number(start.getAttribute('dx'))).toBeCloseTo((12 + 2) / 0.7)
   })
 })
