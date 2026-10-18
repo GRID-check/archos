@@ -137,7 +137,7 @@ def write_pdf(path: Path, pages: list[list[PdfLine]]) -> Path:
 # reproduces that profile on demand, deterministically and in seconds.
 # ---------------------------------------------------------------------------
 
-#: One drawing's raster: 3000 x 2200 px (about 25 MiB once decoded, ~6 MiB on disk).
+#: One drawing's raster: 3000 x 2200 px (about 20 MB, 19 MiB, once decoded; ~6 MB on disk).
 PLAN_SET_RASTER_PX: tuple[int, int] = (3000, 2200)
 
 #: A raster below ``MIN_IMAGE_WIDTH_PX``/``MIN_IMAGE_HEIGHT_PX``, the icon filter.

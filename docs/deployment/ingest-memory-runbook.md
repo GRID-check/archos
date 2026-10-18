@@ -156,8 +156,8 @@ normal.
 ## 5. What the lab measures, before and after
 
 These numbers come from the real generated plan set (16 rasters at 3000×2200 px,
-about 90 MB on disk) extracted through the production entry point with the real
-`pypdfium2`, on one machine:
+about 20 MB of pixels each, about 95 MB on disk) extracted through the production
+entry point with the real `pypdfium2`, on one machine:
 
 | Measurement | Pre-fix | Fixed |
 |---|---|---|
