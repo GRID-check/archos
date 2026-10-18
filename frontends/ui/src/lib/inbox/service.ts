@@ -37,6 +37,7 @@ import {
   countPendingInboxItems,
   INBOX_LIST_LIMIT,
   listInboxItems,
+  listUnreadAnchors,
   markAllInboxItemsRead,
   markAnchorItemsRead,
   markInboxItemsRead,
@@ -965,4 +966,28 @@ export async function markAnchorItemsReadFor(
   // nudge would make every open inbox of theirs re-read for nothing.
   if (affected === 0) return { affected, pending: await countPendingAcross(session, lanes) }
   return publishPending(session, lanes, affected)
+}
+
+/**
+ * The anchors inside one resource whose news the caller has not read: for a
+ * document, the marks the review draws a dot on. The counterpart of
+ * {@link markAnchorItemsReadFor}, which reading a mark's thread calls, over the
+ * same rows (`listUnreadAnchors`). No access check, for the same reason: only
+ * the caller's own rows, in the types their lanes may see, and an anchor id
+ * says nothing their inbox did not already say.
+ */
+export async function unreadAnchorsFor(
+  session: AuthorizedSession,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+): Promise<{ anchorIds: string[] }> {
+  const lanes = await lanesFor(session)
+  const perLane = await Promise.all(
+    lanes.map((lane) =>
+      inLane(session, lane, () =>
+        listUnreadAnchors(lane.organizationId, session.userId, resourceType, resourceId, lane.types),
+      ),
+    ),
+  )
+  return { anchorIds: [...new Set(perLane.flat())] }
 }

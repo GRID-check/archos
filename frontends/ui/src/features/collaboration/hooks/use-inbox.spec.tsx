@@ -31,6 +31,7 @@ function client(pages: Record<string, InboxListResponse>): InboxClient {
     markRead: vi.fn(ok),
     markAllRead: vi.fn(ok),
     markMarkRead: vi.fn(ok),
+    unreadMarks: vi.fn(async () => []),
     markUnread: vi.fn(ok),
     archive: vi.fn(ok),
     unarchive: vi.fn(ok),

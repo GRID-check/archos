@@ -286,8 +286,8 @@ asked in it (spec IB-9).
 ## Inbox
 
 Every route below has one typed client, `frontends/ui/src/lib/inbox/client.ts`
-(ADR-0055): the inbox list and badge, the review (opening a mark reads its
-news) and the shell's notification offer call it, and `app/api/inbox/routes.spec.ts`
+(ADR-0055): the inbox list and badge, the review (which marks have unread
+news, and opening a mark reads it) and the shell's notification offer call it, and `app/api/inbox/routes.spec.ts`
 drives the real handlers through it. The service worker posts a tapped
 notification's item to `POST /api/inbox/read` itself (`public/sw.js` cannot
 import), and the same spec holds its path to the client's.
@@ -383,6 +383,15 @@ Scoped to the caller, so ids belonging to someone else cannot be poked (they
 simply match nothing — telling you an item is not yours would confirm it
 exists). Returns `{ affected, pending }`: rows actually touched (`0` is a
 legitimate no-op) and the recomputed badge, so no follow-up read is needed.
+
+### `GET /api/inbox/unread-anchors?resourceType=document&resourceId=…`
+
+`{ anchorIds: string[] }`: the marks of one document whose news the caller has
+not read, the review's dots. The same rows `POST /api/inbox/read`'s anchor form
+reads (the caller's own, informational, unread, in the types they may see),
+less what they archived or what was redacted. One query on
+`idx_inbox_items_target`, at most `UNREAD_ANCHORS_LIMIT` (500, a document's
+most marks). Only `document` is an anchored resource; anything else is a `400`.
 
 ### `POST /api/inbox/unread`
 

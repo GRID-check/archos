@@ -145,3 +145,67 @@ describe.skipIf(!url)('a deleted reply’s rows against Postgres', () => {
     ])
   })
 })
+
+/**
+ * The review's dots (`listUnreadAnchors`) are the rows opening a mark reads
+ * (`markAnchorItemsRead`): the recipient's own, informational, unread news
+ * anchored on a mark of THIS document, less what they archived or what was
+ * redacted. Read, the dot is gone.
+ */
+describe.skipIf(!url)('unread anchors of a document against Postgres', () => {
+  const ORG_ANCHORS = `org_inbox_anchors_${Date.now()}`
+  let repo: typeof import('./repository')
+  let withTenant: typeof import('@/lib/db/tenant-context').withTenant
+  let withPlatformAccess: typeof import('@/lib/db/tenant-context').withPlatformAccess
+  let db: ReturnType<typeof import('@/lib/db').getDb>
+  const asMe = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: ORG_ANCHORS, userId: ME }, run)
+
+  beforeAll(async () => {
+    process.env.GRID_APP_DATABASE_URL = url
+    const context = await import('@/lib/db/tenant-context')
+    withTenant = context.withTenant
+    withPlatformAccess = context.withPlatformAccess
+    db = (await import('@/lib/db')).getDb()
+    repo = await import('./repository')
+    const rows: Array<{ recipient: string; resource: string; anchor: string | null; actionable: boolean; extra: string }> = [
+      { recipient: ME, resource: 'doc-1', anchor: 'mark-news', actionable: false, extra: '' },
+      // Two rows on one mark are one dot.
+      { recipient: ME, resource: 'doc-1', anchor: 'mark-news', actionable: false, extra: '' },
+      { recipient: ME, resource: 'doc-1', anchor: 'mark-read', actionable: false, extra: 'read' },
+      { recipient: ME, resource: 'doc-1', anchor: 'mark-request', actionable: true, extra: '' },
+      { recipient: ME, resource: 'doc-1', anchor: 'mark-archived', actionable: false, extra: 'archived' },
+      { recipient: ME, resource: 'doc-1', anchor: 'mark-redacted', actionable: false, extra: 'inert' },
+      { recipient: ME, resource: 'doc-1', anchor: null, actionable: false, extra: '' },
+      { recipient: ME, resource: 'doc-2', anchor: 'mark-elsewhere', actionable: false, extra: '' },
+      { recipient: 'user_someone_else', resource: 'doc-1', anchor: 'mark-theirs', actionable: false, extra: '' },
+    ]
+    await asMe(async () => {
+      for (const [index, row] of rows.entries()) {
+        await db.execute(sql`
+          insert into inbox_items (organization_id, recipient_user_id, type, resource_type, resource_id, anchor_id,
+                                   group_key, actionable, read_at, archived_at, inert_at)
+          values (${ORG_ANCHORS}, ${row.recipient}, 'annotation.activity', 'document', ${row.resource}, ${row.anchor},
+                  ${`annotation.activity:document:${ORG_ANCHORS}-${index}`}, ${row.actionable},
+                  ${row.extra === 'read' ? sql`now()` : sql`null`}, ${row.extra === 'archived' ? sql`now()` : sql`null`},
+                  ${row.extra === 'inert' ? sql`now()` : sql`null`})`)
+      }
+    })
+  })
+
+  afterAll(async () => {
+    await withPlatformAccess('inbox anchors spec cleanup', () =>
+      db.execute(sql`DELETE FROM inbox_items WHERE organization_id = ${ORG_ANCHORS}`)
+    )
+  })
+
+  it('names each mark with unread news once, and none once its news is read', async () => {
+    const unread = () =>
+      asMe(() => repo.listUnreadAnchors(ORG_ANCHORS, ME, 'document', 'doc-1', repo.EVERY_INBOX_TYPE))
+    expect(await unread()).toEqual(['mark-news'])
+    // A reader who may not see the type sees no dot for it.
+    expect(await asMe(() => repo.listUnreadAnchors(ORG_ANCHORS, ME, 'document', 'doc-1', []))).toEqual([])
+
+    expect(await asMe(() => repo.markAnchorItemsRead(ORG_ANCHORS, ME, 'document', 'doc-1', 'mark-news', repo.EVERY_INBOX_TYPE))).toBe(2)
+    expect(await unread()).toEqual([])
+  })
+})

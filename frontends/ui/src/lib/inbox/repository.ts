@@ -658,6 +658,49 @@ export async function markAnchorItemsRead(
 }
 
 /**
+ * How many anchors one read of {@link listUnreadAnchors} returns at most: a
+ * document holds at most this many marks (`MAX_ANNOTATIONS_PER_DOCUMENT`).
+ */
+export const UNREAD_ANCHORS_LIMIT = 500
+
+/**
+ * The anchors inside one resource that hold news the recipient has not read:
+ * exactly the rows {@link markAnchorItemsRead} would read for each (their own,
+ * informational, unread, in the types they may see), less what they archived
+ * or what was redacted, which the inbox no longer shows as news either. For a
+ * document, the marks whose thread the review shows a dot on. One query on
+ * `idx_inbox_items_target`, bounded by {@link UNREAD_ANCHORS_LIMIT}.
+ */
+export async function listUnreadAnchors(
+  organizationId: string,
+  recipientUserId: string,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+  types: InboxTypeScope,
+): Promise<string[]> {
+  const db = getDb()
+  const rows = await db
+    .selectDistinct({ anchorId: inboxItems.anchorId })
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.recipientUserId, recipientUserId),
+        eq(inboxItems.resourceType, resourceType),
+        eq(inboxItems.resourceId, resourceId),
+        isNotNull(inboxItems.anchorId),
+        eq(inboxItems.actionable, false),
+        isNull(inboxItems.readAt),
+        isNull(inboxItems.archivedAt),
+        isNull(inboxItems.inertAt),
+        typeFilter(types),
+      ),
+    )
+    .limit(UNREAD_ANCHORS_LIMIT)
+  return rows.flatMap((row) => (row.anchorId ? [row.anchorId] : []))
+}
+
+/**
  * One item to settle, addressed the only way that is unambiguous: the group it
  * belongs to AND WHOSE it is.
  *
