@@ -2047,6 +2047,12 @@ export function FilePreviewPane({
           popoutHref={popoutHref}
           initialTool={reviewTool ?? undefined}
           onPage={onReviewPage}
+          // The Protokoll filed as a document: a project's file, in its own folder, by someone who may file there.
+          protocolFiling={
+            projectId && scope !== 'archiv' && canManage && !closedProjectName
+              ? { projectId, folderId: file.folderId }
+              : null
+          }
         />
       )}
     </div>

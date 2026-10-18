@@ -221,6 +221,21 @@ export function useDocumentReview(
   }, [sources])
   /** Read the replaced documents' marks again, after a group could not be read. */
   const retryCarried = useCallback(() => void fetchCarried(), [fetchCarried])
+  /**
+   * Piloti's answers to a check of a replaced document's marks land in THAT
+   * document's threads, whose room this review is not in: once such a check
+   * ends, its marks are read again, so each row shows what Piloti found.
+   */
+  const checking = useRef(new Set<string>())
+  useEffect(() => {
+    let ended = false
+    for (const ask of canvas.asks) {
+      if (!ask.checkFixed || ask.checkFixed.documentId === documentId) continue
+      if (ask.status === 'thinking') checking.current.add(ask.id)
+      else if (checking.current.delete(ask.id)) ended = true
+    }
+    if (ended) void fetchCarried()
+  }, [canvas.asks, documentId, fetchCarried])
   useEffect(() => {
     if (!enabled) return
     setCarried([])
@@ -616,6 +631,26 @@ export function useDocumentReview(
     [documentId, guard, write, replace, fetchList, fetchCarried]
   )
 
+  /**
+   * „Erledigen" on a mark of a replaced document, listed here read-only: what
+   * Piloti's check found fixed, closed by the person where it was set, with
+   * the status the row showed. Its list is read again, whatever the answer:
+   * the mark leaves it, or shows where a colleague took it.
+   */
+  const resolveCarried = useCallback(
+    async (annotation: Pick<AnnotationView, 'id' | 'documentId' | 'status'>) => {
+      try {
+        return await guard(() =>
+          updateAnnotation(annotation.documentId, annotation.id, { status: 'resolved', expectedStatus: annotation.status }, write)
+        )
+      } finally {
+        // A colleague's move first is the conflict notice; either way the row shows where the mark stands.
+        await fetchCarried()
+      }
+    },
+    [guard, write, fetchCarried]
+  )
+
   /** „Alle offenen übernehmen": the same carry, one mark after the other; how many went, and how many did not. */
   const carryAll = useCallback(
     async (marks: ReadonlyArray<Pick<AnnotationView, 'id' | 'documentId' | 'status'>>) => {
@@ -723,6 +758,7 @@ export function useDocumentReview(
       retryCarried,
       carry,
       carryAll,
+      resolveCarried,
     }),
     [
       documentId,
@@ -759,6 +795,7 @@ export function useDocumentReview(
       retryCarried,
       carry,
       carryAll,
+      resolveCarried,
     ]
   )
 }

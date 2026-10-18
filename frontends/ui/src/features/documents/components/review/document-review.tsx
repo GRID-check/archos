@@ -52,6 +52,8 @@ import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel, type OpenMark } from './review-panel'
 import { ReviewAnnouncer } from './review-announcer'
 import { ReviewExportMenu } from './review-export-menu'
+import type { ProtocolFilingTarget } from '../../lib/protocol-filing'
+import { useCheckFixed } from './check-fixed'
 import { ReviewToaster, reviewToast } from './review-toaster'
 import { covers, ReviewStageContext, STAGE_FOOT, STAGE_HEAD, type StageBounds } from './review-stage'
 import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
@@ -511,14 +513,16 @@ function PilotiReview({ review, onWalk }: { review: ReviewState; onWalk: () => v
     )
   }
   const working = run.status === 'thinking'
-  const found = run.status === 'answered' ? review.counts.proposed : 0
+  // A check of what is fixed answers in the threads: it finds no proposals to walk.
+  const checking = run.checkFixed !== null
+  const found = run.status === 'answered' && !checking ? review.counts.proposed : 0
   const line = working
-    ? (liveLine(stepsOf(run.view), tChat) ?? t('review.piloti.reviewing'))
+    ? (liveLine(stepsOf(run.view), tChat) ?? t(checking ? 'review.piloti.checkingFixed' : 'review.piloti.reviewing'))
     : run.status === 'failed'
       ? t('review.piloti.reviewFailed')
       : found > 0
         ? t('review.piloti.reviewFound', { count: found })
-        : t('review.piloti.reviewDone')
+        : t(checking ? 'review.piloti.checkFixedDone' : 'review.piloti.reviewDone')
   return (
     <div
       role="status"
@@ -608,6 +612,7 @@ export function DocumentReviewMode({
   popoutHref = null,
   initialTool,
   onPage,
+  protocolFiling = null,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -624,6 +629,8 @@ export function DocumentReviewMode({
   initialTool?: ReviewTool
   /** The page the reader is on, as it changes: the file preview opens there again once the review closes. */
   onPage?: (page: number) => void
+  /** Where „Protokoll exportieren" may file the Protokoll as a document; null where the reader may not. */
+  protocolFiling?: ProtocolFilingTarget | null
 }): JSX.Element {
   const t = useTranslations('files')
   const [focus, setFocus] = useState<{ page: number; y: number; key: string; instant?: boolean } | null>(null)
@@ -1032,8 +1039,10 @@ export function DocumentReviewMode({
       documentId={review.documentId}
       hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
       hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
+      filing={protocolFiling ? { target: protocolFiling, documentName } : null}
     />
   )
+  const checkFixed = useCheckFixed(review, { documentName, fassungLabel: fassungLabel ?? null })
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
@@ -1238,7 +1247,7 @@ export function DocumentReviewMode({
               />
               <ReviewToaster foot={foot} />
             </div>
-            <ReviewPanel review={review} onOpen={openFromList} onWalkProposals={walkProposals} />
+            <ReviewPanel review={review} onOpen={openFromList} onWalkProposals={walkProposals} onCheckFixed={checkFixed} />
           </div>
         </ReviewStageContext.Provider>
         {docked && (
@@ -1288,6 +1297,7 @@ export function DocumentReviewMode({
                   setListOpen(false)
                   walkProposals()
                 }}
+                onCheckFixed={checkFixed}
               />
             </SheetContent>
           </Sheet>

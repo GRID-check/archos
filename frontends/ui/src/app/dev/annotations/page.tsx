@@ -44,7 +44,13 @@
  *                                            it says so, and „Erneut versuchen" reads it again
  *   …&review=1, „Protokoll exportieren"      the export menu: the Fassung choice only under
  *                                            „Auch erledigte", since „Nur offene" carries the
- *                                            mark still open from Fassung 2 either way
+ *                                            mark still open from Fassung 2 either way; „Im
+ *                                            Projekt ablegen" files it (a fake upload door: a
+ *                                            second filing is a new Fassung of the first)
+ *   …&review=1, „Piloti prüfen lassen, was   under „Offen aus früheren Fassungen" or „Aus Fassung
+ *   behoben ist"                             „Grundriss_RG_Index-B.pdf"": Piloti answers in each
+ *                                            mark's thread („In … behoben: …" / „Weiterhin offen: …");
+ *                                            Index B's rows then show the answer, and „Erledigen"
  *
  * Not linked from anywhere and 404s outside development (`../layout.tsx`).
  */
@@ -57,7 +63,7 @@ import type { FileItem } from '@/features/documents/components/project-file-work
 import type { RoomEvent, RoomPeer } from '@/lib/annotations/room-types'
 import type { RealtimeFrame } from '@/lib/realtime/types'
 import type { AnnotationReplyView, AnnotationView } from '@/lib/annotations/types'
-import { assemblePdf, pdfString } from '../_fixtures/sample-pdf'
+import { assemblePdf, buildPdf, pdfString } from '../_fixtures/sample-pdf'
 
 const SHEET_WIDTH = 842
 const SHEET_HEIGHT = 595
@@ -837,6 +843,90 @@ const reviewDocument = (turn: ScriptedTurn) => {
   ])
 }
 
+/** What Piloti finds when asked what is fixed, per mark: the one the dev sheet makes plausible. */
+const FIXED_VERDICTS: Record<string, string> = {
+  'ann-4': 'Weiterhin offen: Die Brüstung in Zimmer 1 ist in Fassung 3 weiter mit 0,90 m kotiert.',
+  'ann-b2': 'In Grundriss_RG_Index-C behoben: Die Legende nennt jetzt den Lüftungsquerschnitt des Technikraums (0,04 m²).',
+  'ann-b3': 'Weiterhin offen: Im Bad ist die Vorwand nur bis 1,20 m dargestellt; ein Schnitt dazu fehlt.',
+}
+
+/**
+ * „Piloti prüfen lassen, was behoben ist": it reads the marks, looks at the
+ * page, and answers in each mark's thread, changing no status. On Index B's
+ * marks when the question names Index B, else on this document's marks of an
+ * earlier Fassung. This document's room hears its replies; Index B's do not
+ * reach it, and its group is read again when the turn ends.
+ */
+const checkFixed = (turn: ScriptedTurn, question: string) => {
+  const onIndexB = question.includes(INDEX_B.filename)
+  const read = { id: 'step-read', kind: 'status', slot: 'annotations', key: 'status.action.annotationsRead' } as const
+  const replyStep = { id: 'step-reply', kind: 'status', slot: 'annotations', key: 'status.action.annotationsReply' } as const
+  const answer = (one: AnnotationView): AnnotationView => {
+    const verdict = FIXED_VERDICTS[one.id] ?? 'Weiterhin offen: An der Stelle hat sich in dieser Fassung nichts geändert.'
+    return { ...one, replies: [...one.replies, pilotiReply(one.id, ME, `${one.id}-check-${turn.messageId}`, verdict)] }
+  }
+  const text = 'Ich habe die Anmerkungen an der Stelle in der aktuellen Fassung angesehen und in jedem Verlauf geantwortet. Erledigen müssen Sie sie selbst.'
+  play(turn, [
+    [
+      150,
+      () => {
+        emit(turn, { type: 'RUN_STARTED', message_id: turn.messageId })
+        emit(turn, { type: 'STEP_STARTED', step: read })
+        broadcast({ kind: 'presence', peer: pilotiPeer, state: 'here', ttlMs: 25_000 })
+        broadcast({ kind: 'activity', peer: pilotiPeer, state: 'reading', box: { page: 1, x: 0, y: 0, w: 1, h: 1 }, label: 'prüft, was behoben ist' })
+      },
+    ],
+    [
+      900,
+      () => {
+        emit(turn, { type: 'STEP_FINISHED', step: read })
+        emit(turn, { type: 'STEP_STARTED', step: replyStep })
+      },
+    ],
+    [
+      900,
+      () => {
+        if (onIndexB) {
+          indexB = indexB.map((one) => (one.status === 'open' ? answer(one) : one))
+        } else {
+          const checked = annotations.filter((one) => !one.onCurrentFassung && one.status === 'open')
+          annotations = annotations.map((one) => (checked.includes(one) ? answer(one) : one))
+          broadcast({
+            kind: 'annotations.changed',
+            annotationIds: checked.map((one) => one.id),
+            change: 'replied',
+            actor: { peerId: null, userId: ME.userId, name: 'Piloti', kind: 'piloti' },
+          })
+        }
+        emit(turn, { type: 'STEP_FINISHED', step: replyStep })
+        emit(turn, { type: 'STEP_STARTED', step: synthesis })
+      },
+    ],
+    ...streamAnswer(turn, text),
+    [
+      0,
+      () => {
+        emit(turn, { type: 'STEP_FINISHED', step: synthesis })
+        finish(turn, text, [])
+      },
+    ],
+  ])
+}
+
+/** The Protokoll the fake export answers: one page that says what it is. */
+const protocolPdf = () =>
+  buildPdf([
+    [
+      ['Anmerkungen – Grundriss_RG_Index-C', 16, true],
+      ['Fassung 3 von 3 · Wohnbau Nord — Linz', 10, false],
+      ['Nr. 1 · Seite 1 · Mangel · offen', 10, true],
+      ['Tür von Wohnen 2 in den Fluchtweg ohne Angabe der Feuerwiderstandsklasse.', 10, false],
+    ],
+  ])
+
+/** What the fake upload door filed, by name: the same name again is a new Fassung of that document. */
+const filed = new Map<string, { id: string; versions: number }>()
+
 /** A Stop: what is left of the script is dropped, and the turn ends cancelled with what it had written. */
 const stopTurn = (turn: ScriptedTurn) => {
   if (turn.timer) clearTimeout(turn.timer)
@@ -962,7 +1052,9 @@ class FakeTurnSocket {
     }
     turns.set(turnId, turn)
     const box = focusOf(message.focus_region)
+    const text = stringOf(message.text) ?? ''
     if (box) answerAboutBox(turn, box, message.reply_in_thread === true)
+    else if (/behoben|fixed/.test(text)) checkFixed(turn, text)
     else reviewDocument(turn)
   }
 
@@ -1014,6 +1106,12 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const source = indexB.find((annotation) => annotation.id === fromB[1])
         if (!source || source.status !== 'open') return json({ error: 'Conflict', code: 'CONFLICT' }, 409)
         const now = new Date().toISOString()
+        // „Erledigen" on a row of Index B: closed there, where it was set.
+        if (body().status === 'resolved') {
+          const closed: AnnotationView = { ...source, status: 'resolved', closedBy: ME.userId, closedByName: ME.name, closedAt: now, carryTarget: null }
+          indexB = indexB.map((annotation) => (annotation.id === closed.id ? closed : annotation))
+          return json({ annotation: closed })
+        }
         const copy: AnnotationView = {
           ...source,
           id: `ann-${nextNumber}`,
@@ -1034,6 +1132,24 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         )
         annotations = [...annotations, copy]
         return json({ annotation: copy })
+      }
+      // „Protokoll exportieren" and „Im Projekt ablegen": the export, then the project's upload door.
+      if (url.startsWith(`/api/documents/${FILE.id}/annotations/export?`)) {
+        const format = new URL(url, window.location.href).searchParams.get('format') ?? 'pdf'
+        const name = `Anmerkungen – Grundriss_RG_Index-C – Fassung 3.${format}`
+        return new Response(format === 'pdf' ? protocolPdf() : '# Anmerkungen – Grundriss_RG_Index-C\n', {
+          headers: {
+            'Content-Type': format === 'pdf' ? 'application/pdf' : 'text/markdown',
+            'Content-Disposition': `attachment; filename="protokoll.${format}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+          },
+        })
+      }
+      if (method === 'POST' && url.endsWith('/api/documents/upload')) {
+        const file = (init?.body as FormData).get('file') as File
+        const known = filed.get(file.name)
+        const entry = known ? { ...known, versions: known.versions + 1 } : { id: `dev-protokoll-${filed.size + 1}`, versions: 1 }
+        filed.set(file.name, entry)
+        return json({ documentId: entry.id, jobId: null, status: 'pending', filename: file.name }, 201)
       }
       const replies = new RegExp(`/api/documents/${FILE.id}/annotations/([^/?]+)/replies$`).exec(url)
       if (replies) {

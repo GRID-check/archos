@@ -359,6 +359,38 @@ mark's card says „Dieses Dokument ist durch „C“ ersetzt.“ and offers
 „In „D“ übernehmen“, D being its `carryTarget`. The header says
 „Ersetzt durch „C““ or „Ersetzt „B““ beside the Fassung.
 
+**Piloti prüfen lassen, was behoben ist.** Under both groups (the earlier
+Fassungen' bar and „Aus Fassung „B““) the review offers to have Piloti check
+which of those open marks look fixed now (`review/check-fixed.ts`,
+`useCheckFixed`). It is the review's own whole-document ask, the one the
+header's „Piloti prüfen lassen“ runs (`review.piloti.ask` with no region,
+`use-canvas-ask.ts`), with the question written for that group: the marks by
+number, the Fassung they are checked against („Fassung 3“, or for B's marks C's
+name), and how to answer. One turn for the group, in the person's thread about
+the document (or the chat's conversation over the chat), so it streams into the
+header line, is one turn at a time with every other ask, and can be stopped. The
+ask carries `checkFixed` (`{documentId, annotationIds}`), which the header reads
+to say „Piloti prüft, was behoben ist …“ / „Piloti hat in den Verläufen
+geantwortet“ instead of counting proposals, and the group to say it is running.
+Not the wake path: nothing happened on a mark that a rule could name, and a wake
+per mark would be N turns, each spending the per-mark and per-person caps, for
+one question.
+
+Piloti answers in each mark's thread with `canvas__reply`, „In Fassung 3
+behoben: …“ or „Weiterhin offen: …“, naming B for B's marks (`document`, a file
+name from the turn's inventory). It changes no status: the question says so,
+and the `canvas` tools' descriptions hold it on every path, `piloti-acts` on or
+off (`update`: a request to check what is fixed asks for no change; `reply`: the
+verdict's form, and no status change; `tests/aiq_agent/tools/canvas/test_parity.py`).
+Closing stays the person's: „Erledigt“ in the mark's thread, or for B's marks
+„Erledigen“ on the row in C's review (`resolveCarried`, a PATCH to B's mark
+with the status the row showed). B's threads are in B's room, which C's review
+does not hear, so the group is read again when the check's turn ends, and each
+row shows Piloti's newest answer when it is Piloti's. Only on request: an upload
+never starts it. Observable as any canvas ask: the turn's trace, with one
+`canvas__reply` observation (and its `canvas.reply` step) per mark; the question
+is the trace's input. No model call is added.
+
 A carry is a person's edit of a mark, content activity like every other, so it
 is not in the admin audit trail
 ([`workos-provisioning.md`](../deployment/workos-provisioning.md#5-audit-logs-native-workos-product));
@@ -1149,6 +1181,32 @@ than cut. The download goes the document Protokoll's way
 too). Each export is the audit event `project.annotations.exported`, with the
 filters and the counts and never a name or a word of the marks. Nothing calls
 a model, so nothing is traced to Langfuse.
+
+**Filed as a document.** „Im Projekt ablegen“ in the same menu files the export,
+with the menu's choices, into the project (`features/documents/lib/protocol-filing.ts`).
+It composes two existing doors in the browser and adds none (ADR-0055): the
+export above, then the project's upload, `POST /api/documents/upload`
+(`uploadDocument`), the door every person's file goes through, so the
+person's rights, the folder's access per role, name screening, the quota, the
+ingest and the `document.uploaded` audit event all apply as to any upload. Not the chat
+draft card's „Ins Projekt ablegen“ (`POST /api/conversations/{id}/draft/file`):
+that door files a text Piloti wrote in a conversation's working directory
+through `fileGeneratedDocument`, which marks the bytes as machine-written and
+keeps them out of the index. A Protokoll is the person's record of the office's
+marks; filed through the upload it is theirs, and it is read like any other
+file. The file goes into the folder of the document it is about: a Protokoll of
+a document in a restricted folder quotes what only that folder's readers may
+read. Its name is „Protokoll – <document's name without extension> – <the
+office's day, YYYY-MM-DD>“ (`protocolFilingStem`, Europe/Vienna); a PDF, or
+Word when the export refuses the PDF as too long. A second filing on the same
+day carries the same name into the same folder, and the upload door makes it the
+next Fassung of the first (ADR-0054's same-name re-upload); the same bytes again
+are `unchanged` and write nothing. A name another document holds under another
+restriction is the upload's `name_taken` 409, said as such. The toast says
+which („Abgelegt als …“, „Als neue Fassung von … abgelegt“, „liegt schon so im
+Projekt“) and opens the filed document in Dateien (`documentFilesHref`). Offered
+where the document is a project's (not the Büroablage), the reader may manage
+it, and the project is not closed (`protocolFiling`, `file-preview-pane.tsx`).
 
 ## Known debts
 

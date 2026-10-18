@@ -529,6 +529,32 @@ People assigned to the older document, and whoever uploaded it, get a note in th
 inbox when a newer Fassung is linked or uploaded under the same name, if they
 may open the newer one (see „The inbox“ in the chat guide).
 
+### Anmerkungen from an earlier Fassung, and the Protokoll
+
+In the Prüfansicht of the current Fassung, the list keeps what is still open
+from before: „Offen aus früheren Fassungen“ for marks set on an earlier upload
+under the same name, and „Aus Fassung „…““ for marks of the document this one
+replaces. Each can be carried on to the current Fassung, one by one or all at
+once.
+
+**Piloti prüfen lassen, was behoben ist** sits under both. Piloti reads those
+marks, looks at the same place in the current Fassung, and answers in each
+mark's thread: „In Fassung 3 behoben: …“ or „Weiterhin offen: …“, with what it
+saw. It only answers; it never closes a mark. You decide: **Erledigt** in the
+mark's thread, or, for a mark of the replaced document, **Erledigen** on its row,
+where Piloti's answer is shown too. Piloti checks only when you ask, never on its
+own when a new Fassung arrives. The question and Piloti's summary stay in your
+conversation about the document (**Gespräch** in the header).
+
+**Protokoll exportieren** in the header downloads the Anmerkungen as PDF, Word
+or Markdown. **Im Projekt ablegen** in the same menu files it as a document of
+the project instead, with the choices you made (open only, or resolved ones
+too), named „Protokoll – Grundriss EG – 2026-10-18.pdf“ and put in the folder of
+the document it is about, so it is as restricted as that document. The notice
+that says so has **Öffnen**. Filing it again on the same day makes a new Fassung
+of that Protokoll rather than a second file. A Protokoll too long for a PDF is
+filed as Word.
+
 ### The approval process
 
 For a file you uploaded there is none: your upload is published the moment it

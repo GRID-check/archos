@@ -31,6 +31,7 @@ import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
 import { createCanvasTurnClient, type CanvasTurnClientOptions } from '../../lib/canvas-turn-client'
 import { useDocumentReview, type ReviewFassung } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
+import { useCheckFixed } from './check-fixed'
 import { PilotiAnswerCard } from './piloti-answer-card'
 import { ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
@@ -162,6 +163,8 @@ function Harness({
     fassung,
     piloti: piloti ? { projectId: 'proj_1', fileName: 'Grundriss.pdf', createClient: piloti.createClient } : undefined,
   })
+  // As the review wires it: „Piloti prüfen lassen, was behoben ist" under the earlier Fassungen' marks.
+  const checkFixed = useCheckFixed(review, { documentName: 'Grundriss Index C.pdf', fassungLabel: 'Revision 3' })
   useEffect(() => {
     onReady?.(review)
   })
@@ -198,7 +201,7 @@ function Harness({
       {selected && !selected.onCurrentFassung && (
         <ThreadCard review={review} annotation={selected} placement="detached" canPickAssignee={canPickAssignee} />
       )}
-      <ReviewPanel review={review} onOpen={(annotation) => review.select(annotation.id)} />
+      <ReviewPanel review={review} onOpen={(annotation) => review.select(annotation.id)} onCheckFixed={checkFixed} />
     </>
   )
 }
@@ -1713,5 +1716,135 @@ describe('a mark goes on with the current Fassung', () => {
     await userEvent.click(screen.getByTestId('review-filter-closed'))
     await userEvent.click(await screen.findByTestId('review-row'))
     expect(await screen.findByTestId('thread-carried-to')).toHaveTextContent('Continues in “Grundriss Index C.pdf” as annotation 7')
+  })
+})
+
+describe('Piloti checks what is fixed in the current Fassung', () => {
+  const HERE = { documentId: 'doc_1', documentName: 'Grundriss Index C.pdf' }
+
+  /** Each document's list as its own read answers it, and every PATCH, with the document it went to. */
+  function serveLists(lists: Record<string, AnnotationView[]>) {
+    const patched: Array<{ documentId: string; annotationId: string; change: Record<string, unknown> }> = []
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) =>
+        HttpResponse.json({ annotations: lists[String(params.id)] ?? [], canAnnotate: true, pilotiWakes: false })
+      ),
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ params, request }) => {
+        const change = (await request.json()) as Record<string, unknown>
+        const documentId = String(params.id)
+        const annotationId = String(params.annotationId)
+        patched.push({ documentId, annotationId, change })
+        const mark = (lists[documentId] ?? []).find((annotation) => annotation.id === annotationId) as AnnotationView
+        const after = { ...mark, status: 'resolved' as const, closedBy: 'user_me', closedAt: '2026-10-18T09:00:00.000Z', carryTarget: null }
+        lists[documentId] = (lists[documentId] ?? []).map((annotation) => (annotation.id === annotationId ? after : annotation))
+        return HttpResponse.json({ annotation: after })
+      })
+    )
+    return patched
+  }
+
+  it('asks Piloti, from the earlier Fassungen’ bar, to answer in each mark’s thread whether it is fixed, and changes nothing itself', async () => {
+    const patched = serveLists({
+      doc_1: [
+        view({ id: 'ann_2', number: 2, onCurrentFassung: false, fassungNumber: 1, carryTarget: HERE }),
+        view({ id: 'ann_1', number: 1, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
+        view({ id: 'ann_3', number: 3 }),
+      ],
+    })
+    serveConversation()
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    const bar = await screen.findByTestId('review-earlier-bar')
+    await userEvent.click(within(bar).getByRole('button', { name: 'Have Piloti check what is fixed' }))
+
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+    const question = piloti.questions()[0]
+    expect(question.text).toContain('open annotations 1 and 2 from an earlier revision are fixed in Revision 3')
+    expect(question.text).toContain('“Fixed in Revision 3:” or “Still open:”')
+    expect(question.text).toContain('Do not resolve or otherwise change any annotation')
+    // The whole document, as the review's own Piloti review asks: no box, no single thread.
+    expect(question).toMatchObject({ focus_document_id: 'doc_1' })
+    expect(question.focus_region ?? null).toBeNull()
+    expect(question).not.toHaveProperty('reply_in_thread')
+    expect(within(bar).getByTestId('review-check-fixed-earlier')).toHaveTextContent('Piloti is checking what is fixed …')
+    expect(within(bar).getByTestId('review-check-fixed-earlier')).toBeDisabled()
+
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: 'Erledigt.' } })
+    await waitFor(() => expect(within(bar).getByTestId('review-check-fixed-earlier')).toBeEnabled())
+    expect(within(bar).getByTestId('review-check-fixed-earlier')).toHaveTextContent('Have Piloti check what is fixed')
+    // Closing a mark stays the person's: the check wrote nothing.
+    expect(patched).toEqual([])
+  })
+
+  it('offers no check where Piloti cannot be asked', async () => {
+    serveLists({ doc_1: [view({ id: 'ann_1', number: 1, onCurrentFassung: false, carryTarget: HERE })] })
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const bar = await screen.findByTestId('review-earlier-bar')
+    expect(within(bar).queryByTestId('review-check-fixed-earlier')).toBeNull()
+  })
+
+  it('checks the replaced document’s marks, shows Piloti’s answer on each row, and lets the person resolve one there', async () => {
+    const lists: Record<string, AnnotationView[]> = {
+      doc_1: [],
+      doc_b: [
+        view({ id: 'ann_b4', documentId: 'doc_b', number: 4, body: 'Brüstung unter 1,00 m', carryTarget: HERE }),
+        view({ id: 'ann_b5', documentId: 'doc_b', number: 5, body: 'Lüftung fehlt in der Legende', carryTarget: HERE }),
+      ],
+    }
+    const patched = serveLists(lists)
+    serveConversation()
+    const piloti = scriptedPiloti()
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        piloti={piloti}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+
+    const group = await screen.findByTestId('review-carried-group')
+    await userEvent.click(within(group).getByTestId('review-check-fixed-from'))
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+    expect(piloti.questions()[0].text).toContain(
+      'open annotations 4 and 5 on “Grundriss Index B.pdf” are fixed in this document, “Grundriss Index C”'
+    )
+    expect(piloti.questions()[0].text).toContain('answer in its thread on “Grundriss Index B.pdf”')
+
+    // Piloti answers in B's threads, which this review's room does not hear: the group is read again once the turn ends.
+    const verdict = (annotationId: string, body: string) => ({
+      id: `${annotationId}-piloti`,
+      annotationId,
+      authorKind: 'piloti' as const,
+      body,
+      createdBy: 'user_me',
+      createdByName: 'Miriam Hofer',
+      createdAt: '2026-10-18T09:00:00.000Z',
+      addressesPiloti: false,
+      mentions: [],
+    })
+    lists.doc_b = lists.doc_b.map((annotation) =>
+      annotation.id === 'ann_b4'
+        ? { ...annotation, replies: [verdict('ann_b4', 'In Grundriss Index C behoben: Brüstung jetzt mit 1,00 m kotiert.')] }
+        : { ...annotation, replies: [verdict('ann_b5', 'Weiterhin offen: Die Legende nennt keinen Lüftungsquerschnitt.')] }
+    )
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: 'Geprüft.' } })
+
+    const verdicts = await within(group).findAllByTestId('review-carried-verdict')
+    expect(verdicts.map((line) => line.textContent)).toEqual([
+      'Piloti’s answer: In Grundriss Index C behoben: Brüstung jetzt mit 1,00 m kotiert.',
+      'Piloti’s answer: Weiterhin offen: Die Legende nennt keinen Lüftungsquerschnitt.',
+    ])
+
+    await userEvent.click(within(group).getByRole('button', { name: 'Resolve annotation 4 on “Grundriss Index B.pdf”' }))
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { documentId: 'doc_b', annotationId: 'ann_b4', change: { status: 'resolved', expectedStatus: 'open' } },
+      ])
+    )
+    await waitFor(() => expect(within(screen.getByTestId('review-carried-group')).getAllByTestId('review-carried-row')).toHaveLength(1))
   })
 })

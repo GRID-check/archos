@@ -157,7 +157,8 @@ DESCRIPTIONS = {
         "`body`; `-` leert `assignee`/`due_on`. `note` (Pflicht): ein Satz, was du getan hast, z. B. „Erledigt: "
         "Lichte Breite im Schnitt B-B mit 1,25 m kotiert.“; steht als Antwort von Piloti im Verlauf. Nenne in "
         "der Antwort die Nummer. Lässt das Büro Piloti nur vorschlagen, wird es abgelehnt: dann ändert die Person es "
-        f"selbst. {_DOCUMENT}"
+        "selbst. Die Bitte zu prüfen, ob etwas behoben ist, verlangt keine Änderung: Dann antwortest du mit `reply`, "
+        f"erledigen tut die Person. {_DOCUMENT}"
     ),
     "delete": (
         "Löscht die Anmerkung `annotation` (Nummer oder id) samt Verlauf, endgültig. Nur auf ausdrückliche Bitte, "
@@ -168,6 +169,9 @@ DESCRIPTIONS = {
         "Schreibt `body` als Antwort von Piloti in den Verlauf der Anmerkung `annotation` (ihre id oder Nummer). "
         "Alle, die das Dokument öffnen, lesen sie sofort: kurz, für sich verständlich, ohne Quellenmarken wie "
         "[1], höchstens 2000 Zeichen. Nimm es, wenn du im Verlauf gefragt wurdest oder darum gebeten wirst. "
+        "Sollst du prüfen, ob Anmerkungen einer früheren Fassung in der aktuellen behoben sind: je Anmerkung eine "
+        "Antwort, die mit „In <Fassung> behoben:“ oder „Weiterhin offen:“ beginnt und sagt, woran du es an der "
+        "Stelle siehst; vorher mit `look` hinsehen. Den Status änderst du dabei nicht. "
         f"{_DOCUMENT}"
     ),
 }

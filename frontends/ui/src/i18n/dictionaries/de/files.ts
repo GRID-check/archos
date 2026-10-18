@@ -1677,6 +1677,9 @@ export const files: typeof en.files = {
       reviewFound: '{count, plural, one {Piloti hat # Punkt gefunden} other {Piloti hat # Punkte gefunden}}',
       busyTooltip: 'Piloti beantwortet gerade Ihre Frage',
       reviewFailed: 'Prüfung fehlgeschlagen',
+      // „Was behoben ist“: Piloti antwortet im Verlauf jeder Anmerkung, nicht in einer Liste.
+      checkingFixed: 'Piloti prüft, was behoben ist …',
+      checkFixedDone: 'Piloti hat in den Verläufen geantwortet',
       openConversation: 'Gespräch',
       declined: 'Piloti hat das nicht übernommen. Den Grund lesen Sie oben.',
       handedOff: 'Piloti recherchiert das ausführlich. Das Ergebnis kommt im Chat.',
@@ -1791,6 +1794,24 @@ export const files: typeof en.files = {
     replacedBy: 'Ersetzt durch „{name}“',
     replaces: 'Ersetzt „{name}“',
     replacedNotice: 'Dieses Dokument ist durch „{name}“ ersetzt.',
+    // Piloti prüfen lassen, ob die offenen Anmerkungen einer früheren Fassung in
+    // der aktuellen behoben sind. Piloti antwortet im Verlauf jeder Anmerkung und
+    // ändert keinen Status: Erledigen bleibt bei der Person. Die Frage geht so,
+    // wie sie hier steht, an Piloti und steht im Gespräch.
+    checkFixed: {
+      action: 'Piloti prüfen lassen, was behoben ist',
+      running: 'Piloti prüft, was behoben ist …',
+      currentFassung: 'der aktuellen Fassung',
+      seed:
+        'Prüfen, ob {count, plural, one {die offene Anmerkung {numbers}} other {die offenen Anmerkungen {numbers}}} aus einer früheren Fassung in {current} behoben {count, plural, one {ist} other {sind}}. Je Anmerkung lesen, die Stelle in diesem Dokument ansehen und im Verlauf der Anmerkung antworten, beginnend mit „In {current} behoben:“ oder „Weiterhin offen:“, und in einem Satz sagen, woran das zu sehen ist. Keine Anmerkung erledigen oder sonst ändern: Das entscheiden wir selbst.',
+      seedFrom:
+        'Prüfen, ob {count, plural, one {die offene Anmerkung {numbers}} other {die offenen Anmerkungen {numbers}}} auf „{from}“ in diesem Dokument, „{current}“, behoben {count, plural, one {ist} other {sind}}. Je Anmerkung auf „{from}“ lesen, die Stelle hier ansehen und im Verlauf der Anmerkung auf „{from}“ antworten, beginnend mit „In {current} behoben:“ oder „Weiterhin offen:“, und in einem Satz sagen, woran das zu sehen ist. Keine Anmerkung erledigen oder sonst ändern: Das entscheiden wir selbst.',
+      // Was Piloti zu einer Anmerkung des ersetzten Dokuments geantwortet hat, in ihrer Zeile.
+      verdict: 'Antwort von Piloti',
+      resolve: 'Erledigen',
+      resolveMark: 'Anmerkung {number} auf „{name}“ erledigen',
+      resolveFailed: 'Die Anmerkung konnte nicht erledigt werden. Bitte noch einmal.',
+    },
     delete: 'Löschen',
     deleteConfirm: 'Anmerkung {number} löschen?',
     // Den eigenen Text einer Anmerkung ändern: wer neu erwähnt wird, erfährt es; wer schon erwähnt war, nicht noch einmal.
@@ -1857,6 +1878,18 @@ export const files: typeof en.files = {
       },
       failed: 'Das Protokoll konnte nicht exportiert werden.',
       tooLongForPdf: 'Zu umfangreich für ein PDF. Bitte als Word oder Markdown exportieren.',
+      // Das Protokoll als Dokument im Projekt, im Ordner des Dokuments: über die
+      // Hochladetür der Dateien, wie ein Mensch es ablegt. Derselbe Name am
+      // selben Tag wird eine neue Fassung des ersten.
+      fileInto: 'Im Projekt ablegen',
+      filing: 'Wird abgelegt …',
+      fileName: 'Protokoll – {name} – {date}',
+      filed: 'Abgelegt als „{name}“',
+      filedAgain: 'Als neue Fassung von „{name}“ abgelegt',
+      filedUnchanged: '„{name}“ liegt schon so im Projekt.',
+      openFiled: 'Öffnen',
+      fileFailed: 'Das Protokoll konnte nicht abgelegt werden.',
+      fileNameTaken: 'Ein anderes Dokument im Projekt heißt schon „{name}“. Das Protokoll wurde nicht abgelegt.',
       document: {
         title: 'Anmerkungen – {name}',
         fileName: 'Anmerkungen – {name}',

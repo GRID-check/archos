@@ -10,6 +10,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange } from '@/lib/format'
 import { isLive, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
+import type { FassungRef } from '@/lib/documents/fassung'
 import { cn } from '@/lib/utils'
 import type { CarriedGroup, DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
 import { compareFromReviewHref } from '../../lib/fassung-links'
@@ -19,6 +20,50 @@ import { markInk } from './review-page-layer'
 
 /** Open a mark from the list; `byKeyboard` when Enter or Space did it, so its card takes the focus. */
 export type OpenMark = (annotation: AnnotationView, byKeyboard?: boolean) => void
+
+/**
+ * Have Piloti check which of these open marks of an earlier Fassung look fixed
+ * now: of this document (`from` null), or of the document `from` it replaces.
+ */
+export type CheckFixed = (marks: readonly AnnotationView[], from: FassungRef | null) => void
+
+/**
+ * „Piloti prüfen lassen, was behoben ist" under a group of marks set on an
+ * earlier Fassung: the review's own Piloti ask, scoped to these marks. Busy
+ * while Piloti works on anything here (one turn at a time), and says so while
+ * it checks this group.
+ */
+function CheckFixedButton({
+  review,
+  marks,
+  from,
+  onCheckFixed,
+}: {
+  review: DocumentReview
+  marks: readonly AnnotationView[]
+  from: FassungRef | null
+  onCheckFixed: CheckFixed
+}): JSX.Element {
+  const t = useTranslations('files')
+  const target = from?.id ?? review.documentId
+  const running = review.piloti.asks.some(
+    (ask) => ask.status === 'thinking' && ask.checkFixed?.documentId === target
+  )
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-6 gap-1 px-2 text-xs"
+      disabled={review.piloti.busy}
+      data-testid={from ? 'review-check-fixed-from' : 'review-check-fixed-earlier'}
+      onClick={() => onCheckFixed(marks, from)}
+    >
+      {running ? <Spinner size="sm" /> : <Sparkles className="size-3" aria-hidden />}
+      {running ? t('review.checkFixed.running') : t('review.checkFixed.action')}
+    </Button>
+  )
+}
 
 /**
  * One mark in the list, a button that opens it (`MarkRowContent` says what it
@@ -118,7 +163,7 @@ function useCarrying(review: DocumentReview) {
  * on an earlier Fassung: how many, and „Alle übernehmen", which carries each
  * the way its card's „Auf aktuelle Fassung übernehmen" does.
  */
-function EarlierBar({ review }: { review: DocumentReview }): JSX.Element | null {
+function EarlierBar({ review, onCheckFixed }: { review: DocumentReview; onCheckFixed?: CheckFixed }): JSX.Element | null {
   const t = useTranslations('files')
   const { busy, failed, carry } = useCarrying(review)
   const marks = review.annotations.filter((annotation) => !annotation.onCurrentFassung && annotation.carryTarget)
@@ -140,6 +185,7 @@ function EarlierBar({ review }: { review: DocumentReview }): JSX.Element | null 
           {t('review.carryAll')}
         </Button>
       </div>
+      {onCheckFixed && <CheckFixedButton review={review} marks={marks} from={null} onCheckFixed={onCheckFixed} />}
       {failed && <p className="text-destructive text-[11px] leading-4">{t('review.carryFailed')}</p>}
     </div>
   )
@@ -153,10 +199,23 @@ function EarlierBar({ review }: { review: DocumentReview }): JSX.Element | null 
  * lands; „Fassungen vergleichen" lays the two side by side first. A list that
  * could not be read says so, with a retry.
  */
-function CarriedFrom({ review, group }: { review: DocumentReview; group: CarriedGroup }): JSX.Element {
+function CarriedFrom({
+  review,
+  group,
+  onCheckFixed,
+}: {
+  review: DocumentReview
+  group: CarriedGroup
+  onCheckFixed?: CheckFixed
+}): JSX.Element {
   const t = useTranslations('files')
   const { locale } = useLocale()
   const { busy, failed, carry } = useCarrying(review)
+  const [resolveFailed, setResolveFailed] = useState(false)
+  const resolve = async (annotation: AnnotationView) => {
+    setResolveFailed(false)
+    await review.resolveCarried(annotation).catch(() => setResolveFailed(true))
+  }
   const carryable = group.annotations.filter((annotation) => annotation.carryTarget)
   /** The button's words: „Übernehmen" when it lands here, else the document it lands on; the row's mark for a screen reader. */
   const carryWords = (annotation: AnnotationView, target: CarryTargetView) =>
@@ -195,6 +254,9 @@ function CarriedFrom({ review, group }: { review: DocumentReview; group: Carried
           )}
         </div>
         <p className="text-muted-foreground text-[11px] leading-4">{t('review.carriedGroupHint', { name: group.from.filename })}</p>
+        {onCheckFixed && carryable.length > 0 && (
+          <CheckFixedButton review={review} marks={carryable} from={group.from} onCheckFixed={onCheckFixed} />
+        )}
         {compare && (
           <NextLink
             href={compare}
@@ -242,26 +304,65 @@ function CarriedFrom({ review, group }: { review: DocumentReview; group: Carried
                   </span>
                 )}
               </span>
+              <PilotiVerdict annotation={annotation} viewerId={review.me} />
               {annotation.carryTarget && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-1.5 h-7 text-xs"
-                  disabled={busy}
-                  data-testid="review-carry-from"
-                  aria-label={carryWords(annotation, annotation.carryTarget).aria}
-                  onClick={() => void carry([annotation])}
-                >
-                  {carryWords(annotation, annotation.carryTarget).label}
-                </Button>
+                <span className="mt-1.5 flex flex-wrap gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={busy}
+                    data-testid="review-carry-from"
+                    aria-label={carryWords(annotation, annotation.carryTarget).aria}
+                    onClick={() => void carry([annotation])}
+                  >
+                    {carryWords(annotation, annotation.carryTarget).label}
+                  </Button>
+                  {/* Fixed in this document: closed where it was set, by the person, never by Piloti. */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={busy}
+                    data-testid="review-resolve-from"
+                    aria-label={t('review.checkFixed.resolveMark', { number: annotation.number, name: group.from.filename })}
+                    onClick={() => void resolve(annotation)}
+                  >
+                    {t('review.checkFixed.resolve')}
+                  </Button>
+                </span>
               )}
             </span>
           </li>
         ))}
       </ul>
       {failed && <p className="text-destructive px-2.5 pb-2 text-[11px] leading-4">{t('review.carryFailed')}</p>}
+      {resolveFailed && (
+        <p className="text-destructive px-2.5 pb-2 text-[11px] leading-4">{t('review.checkFixed.resolveFailed')}</p>
+      )}
     </section>
+  )
+}
+
+/**
+ * What Piloti last said in a mark's thread, when its newest answer is Piloti's:
+ * on a row of a replaced document, whose thread this review does not open,
+ * it is how the person reads a check of what is fixed („In … behoben: …").
+ */
+function PilotiVerdict({ annotation, viewerId }: { annotation: AnnotationView; viewerId: string | null }): JSX.Element | null {
+  const t = useTranslations('files')
+  const newest = annotation.replies.at(-1)
+  if (newest?.authorKind !== 'piloti') return null
+  return (
+    <span className="text-muted-foreground mt-1 flex gap-1 text-xs leading-4" data-testid="review-carried-verdict">
+      <Sparkles className="mt-0.5 size-3 shrink-0" aria-hidden />
+      <span className="line-clamp-3 min-w-0">
+        <span className="sr-only">{t('review.checkFixed.verdict')}: </span>
+        <MarkBody text={newest.body} mentions={newest.mentions} viewerId={viewerId} clamped />
+      </span>
+    </span>
   )
 }
 
@@ -298,12 +399,15 @@ export function ReviewPanel({
   review,
   onOpen,
   onWalkProposals,
+  onCheckFixed,
   presentation = 'rail',
 }: {
   review: DocumentReview
   onOpen: OpenMark
   /** Start going through Piloti's proposals one by one. */
   onWalkProposals?: () => void
+  /** Have Piloti check what of the earlier Fassungen' open marks is fixed; absent where Piloti cannot be asked. */
+  onCheckFixed?: CheckFixed
   /**
    * `rail`: the column beside the sheet, from `lg`. `sheet`: the same list in
    * a sheet from the bottom edge, which is how a phone (and a phone on its
@@ -380,8 +484,10 @@ export function ReviewPanel({
         ) : (
           <>
             {filter === 'open' &&
-              review.carried.map((group) => <CarriedFrom key={group.from.id} review={review} group={group} />)}
-            {filter === 'open' && <EarlierBar review={review} />}
+              review.carried.map((group) => (
+                <CarriedFrom key={group.from.id} review={review} group={group} onCheckFixed={onCheckFixed} />
+              ))}
+            {filter === 'open' && <EarlierBar review={review} onCheckFixed={onCheckFixed} />}
             {listed.length === 0 ? (
               <EmptyList review={review} />
             ) : (

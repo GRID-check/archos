@@ -66,6 +66,17 @@ export type CanvasAskStatus =
  */
 export type CanvasAskBackend = 'chat' | 'canvas'
 
+/**
+ * What a check „was behoben ist" asks about: open marks set on an earlier
+ * Fassung, of this document or of one it replaces (`documentId`). Piloti
+ * answers in each mark's thread whether the point looks resolved now, and
+ * changes no status: closing a mark stays the person's.
+ */
+export interface CheckFixedScope {
+  documentId: string
+  annotationIds: readonly string[]
+}
+
 /** One question to Piloti on the canvas, from the box being drawn to the answer. */
 export interface CanvasAsk {
   id: string
@@ -93,6 +104,8 @@ export interface CanvasAsk {
    * stays here instead of arriving as a reply).
    */
   degraded: CanvasDegradation[]
+  /** A whole-document ask that checks what is fixed, and of which marks; null for any other. */
+  checkFixed: CheckFixedScope | null
 }
 
 export interface CanvasAskInput {
@@ -111,6 +124,8 @@ export interface CanvasAskInput {
    * the same reply would use, so the two can never both run.
    */
   turnId?: string
+  /** The question checks these marks of an earlier Fassung (see {@link CheckFixedScope}). */
+  checkFixed?: CheckFixedScope | null
 }
 
 export interface UseCanvasAskOptions {
@@ -177,6 +192,7 @@ const blankAsk = (id: string): CanvasAsk => ({
   baseline: 0,
   effort: null,
   degraded: [],
+  checkFixed: null,
 })
 
 /**
@@ -432,6 +448,7 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
         status: 'thinking',
         baseline: input.baseline ?? 0,
         effort: input.effort ?? null,
+        checkFixed: input.checkFixed ?? null,
       }
       setAsks((current) => [...current.filter((existing) => existing.id !== input.id), entry])
       // The card follows its question; a thread reply and a whole-document review have none.
@@ -497,6 +514,7 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
         intent: entry.intent,
         baseline: entry.baseline,
         effort: entry.effort,
+        checkFixed: entry.checkFixed,
       })
     },
     [ask]
