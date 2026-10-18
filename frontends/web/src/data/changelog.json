@@ -147,6 +147,10 @@
               "de": "Sie können eine zurückgehaltene Datei jetzt direkt in der Vorschau auf der Seite freigeben oder löschen, auf der die Inhaltsprüfung sie gefunden hat. Alle Seiten mit einem Fund werden aufgelistet, nicht nur die ersten zehn."
             },
             {
+              "en": "The notice that files wait in quarantine now names the latest file and what it was held back for, such as an IBAN or a term from your office's list.",
+              "de": "Der Hinweis, dass Dateien in Quarantäne warten, nennt jetzt die neueste Datei und den Grund für die Zurückhaltung, etwa eine IBAN oder einen Begriff aus der Liste Ihres Büros."
+            },
+            {
               "en": "On a phone, the paperclip in the chat now offers \"Foto aufnehmen\", which opens the camera directly, and \"Aus Mediathek\", and says that what you add stays in this chat; the upload menu under Dateien offers the same two entries.",
               "de": "Auf dem Smartphone bietet die Büroklammer im Chat jetzt „Foto aufnehmen“, wodurch sich direkt die Kamera öffnet, und „Aus Mediathek“. Außerdem weist sie darauf hin, dass Hinzugefügtes in diesem Chat bleibt. Das Upload-Menü unter Dateien bietet dieselben zwei Einträge."
             },
@@ -389,8 +393,28 @@
               "de": "Bei der Projekteinrichtung wird sofort nach dem Bundesland gefragt, noch bevor ein Land ausgewählt wurde, und das Feld wird nur bei Projekten außerhalb Österreichs ausgeblendet."
             },
             {
+              "en": "When the content check holds a file back for more reasons than it lists, the audit log now records how many it left out. A shortened list of reasons no longer reads as the complete one.",
+              "de": "Wenn die Inhaltsprüfung eine Datei aus mehr Gründen zurückhält, als sie auflistet, hält das Audit-Log nun fest, wie viele Gründe ausgelassen wurden. Eine gekürzte Liste der Gründe erscheint dadurch nicht mehr vollständig."
+            },
+            {
               "en": "A file opened beside the chat now appears when your system is set to reduce motion. Before, the file panel stayed closed for those readers.",
               "de": "Eine neben dem Chat geöffnete Datei wird jetzt auch angezeigt, wenn Sie in Ihrem System „Bewegung reduzieren“ aktiviert haben. Bisher blieb der Dateibereich für Nutzer mit dieser Einstellung geschlossen."
+            },
+            {
+              "en": "The content check now finds a term whose word is split once by a space or hyphen, an IBAN printed in pairs, a card number wrapped onto a second line, and a number split across a page break. A table of years is no longer mistaken for a card number.",
+              "de": "Die Inhaltsprüfung erkennt jetzt einen Begriff, dessen Wort einmal durch ein Leerzeichen oder einen Bindestrich getrennt ist, eine paarweise gedruckte IBAN, eine auf eine zweite Zeile umbrochene Kartennummer und eine Zahl, die über einen Seitenumbruch hinweg getrennt ist. Eine Tabelle mit Jahreszahlen wird nicht mehr fälschlich als Kartennummer erkannt."
+            },
+            {
+              "en": "A file named with a split term („Gehalts-Abrechnung“) or with invisible characters is now stopped by the name check too.",
+              "de": "Eine Datei mit einem durch Bindestrich getrennten Begriff („Gehalts-Abrechnung“) oder unsichtbaren Zeichen im Namen wird jetzt ebenfalls von der Namensprüfung blockiert."
+            },
+            {
+              "en": "Scanned pages are now checked once the vision model has read them, before anything else uses their text. A file held back for what was found there says that the vision model read those pages.",
+              "de": "Gescannte Seiten werden jetzt geprüft, sobald das Vision-Modell sie gelesen hat und bevor etwas anderes ihren Text verwendet. Bei einer Datei, die aufgrund der darin gefundenen Inhalte zurückgehalten wird, steht nun, dass das Vision-Modell diese Seiten gelesen hat."
+            },
+            {
+              "en": "When your office's screening rules cannot be applied to an upload, its files are now held unread instead of being read unchecked. Reading them again applies the rules afresh.",
+              "de": "Wenn die Prüfvorgaben Ihres Büros auf einen Upload nicht angewendet werden können, werden dessen Dateien nun ungelesen zurückgehalten, statt ungeprüft eingelesen zu werden. Beim erneuten Einlesen werden die Vorgaben erneut angewendet."
             },
             {
               "en": "Picking a name from the @ list on a phone no longer closes the keyboard. The composer shows the project's name on a phone and keeps its buttons on one row.",
@@ -423,6 +447,30 @@
             {
               "en": "A file Piloti could not start reading now says exactly that, instead of blaming a restart that never happened.",
               "de": "Wenn Piloti das Lesen einer Datei nicht starten konnte, wird jetzt genau das angezeigt, statt fälschlich einen Neustart als Ursache anzugeben, der nie stattgefunden hat."
+            },
+            {
+              "en": "Uploading a new file over one that is held back for its content no longer shows as a failed upload. The new file is shown as held back too, says that it waits for the file it would replace, and its uploader can ask for that file's review right there.",
+              "de": "Das Hochladen einer neuen Datei über eine Datei, die aufgrund ihres Inhalts zurückgehalten wird, wird nicht mehr als fehlgeschlagener Upload angezeigt. Die neue Datei wird ebenfalls als zurückgehalten angezeigt, mit dem Hinweis, dass sie auf die Datei wartet, die sie ersetzen soll. Die Person, die sie hochgeladen hat, kann direkt dort eine Überprüfung der zu ersetzenden Datei anfordern."
+            },
+            {
+              "en": "A file whose name another document already has is now explained in your language instead of an English server message, and is not offered for a retry that would fail the same way.",
+              "de": "Wenn eine Datei denselben Namen wie ein anderes Dokument hat, wird der Fehler nun in Ihrer Sprache statt mit einer englischen Servermeldung angezeigt. Ein erneuter Upload wird nicht angeboten, da er aus demselben Grund fehlschlagen würde."
+            },
+            {
+              "en": "A file that the server's own name check stops is now shown as not uploaded, with the term that stopped it, instead of as a failed upload. The upload summary counts it under \"Not uploaded\", and so does an e-mail import.",
+              "de": "Eine Datei, die an der servereigenen Namensprüfung scheitert, wird nun mit dem auslösenden Begriff als nicht hochgeladen statt als fehlgeschlagener Upload angezeigt. Die Upload-Zusammenfassung zählt sie unter „Nicht hochgeladen“, ebenso ein E-Mail-Import."
+            },
+            {
+              "en": "Folder names of a folder dropped into a chat, and folder names far down a long path, are now checked against your office's list on the server too.",
+              "de": "Ordnernamen eines in einen Chat gezogenen Ordners und von Ordnern weit unten in einem langen Pfad werden jetzt ebenfalls mit der Liste Ihres Büros auf dem Server abgeglichen."
+            },
+            {
+              "en": "Hovering a file named in an answer now says when it is held back, and that Piloti cites it only once someone allows it through.",
+              "de": "Wenn Sie mit dem Mauszeiger über eine in einer Antwort genannte Datei fahren, wird jetzt angezeigt, wenn sie zurückgehalten wird, und dass Piloti sie erst zitiert, nachdem jemand sie freigegeben hat."
+            },
+            {
+              "en": "Files the name check stops are now called \"Not uploaded\" everywhere. \"Held back\" means only a file the content check holds in quarantine.",
+              "de": "Dateien, deren Upload durch die Namensprüfung gestoppt wird, werden jetzt überall als „Nicht hochgeladen“ bezeichnet. „Zurückgehalten“ bezeichnet nur Dateien, die von der Inhaltsprüfung unter Quarantäne gestellt werden."
             }
           ]
         }

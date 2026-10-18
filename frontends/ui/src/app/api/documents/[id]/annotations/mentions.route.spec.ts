@@ -350,7 +350,7 @@ describe('a mark whose text mentions colleagues', () => {
     expect(await rowsOf('annotation.assigned_to_you')).toEqual(['user_ben'])
   })
 
-  it('tells only whom an edit adds, and keeps the stored mentions the new text still names', async () => {
+  it('tells only whom an edit adds, and uses the picked list supplied with the edit', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, body: '@Ben Gruber Brüstung', mentions: [BEN] })
 
     await updateAnnotation(

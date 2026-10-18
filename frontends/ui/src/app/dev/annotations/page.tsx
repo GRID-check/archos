@@ -40,6 +40,9 @@
  *   …&review=1                               „Aus Fassung „Grundriss_RG_Index-B.pdf““: the open marks of
  *                                            the document this one replaces, each carried on as a
  *                                            linked mark of this one; the header says „Ersetzt …"
+ *   …&review=1, „Protokoll exportieren"      the export menu: the Fassung choice only under
+ *                                            „Auch erledigte", since „Nur offene" carries the
+ *                                            mark still open from Fassung 2 either way
  *
  * Not linked from anywhere and 404s outside development (`../layout.tsx`).
  */

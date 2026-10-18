@@ -41,7 +41,7 @@ Piloti“):
 | `document_annotations.delegated_by`, `delegated_at` | Piloti is the delegate, working the mark for this person | both or neither (`…_delegation_complete`); only on an open mark (`…_delegated_while_open`) |
 | `piloti_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to: `queued`, then `started` and its final word, `answered`, `stopped` or `failed` (a turn that ran), or `suppressed` and `refused` (no turn ran) | a reason exactly for `suppressed`, `refused` and `failed`; `settled_at` exactly when it left `queued`; `ended_at` exactly when it reached its final word (migration `0141_wake_ends.sql`); RLS on the org and the mark's org |
 
-Migration `0149_annotation_mentions.sql` adds whom a text mentions (below,
+Migration `0150_annotation_mentions.sql` adds whom a text mentions (below,
 „Mentioning a colleague“):
 
 | Where | Holds | CHECK |
@@ -72,6 +72,23 @@ conflicting move returns 409, and the canvas re-reads.
 Every read ANDs `documentVisibleTo(reader)`, and the repository functions are
 registered in `lib/documents/document-visibility.spec.ts`. A held upload's
 marks are as invisible as the upload.
+
+**What a listing says about them.** Every listing row (`toListedDocuments`,
+`lib/documents/shelf-listing.ts`, so a project's Dateien, the Archiv and the
+by-name reads alike) carries `marks: { live, forYou }`: how many of the
+document's marks are live (`isLive`: open, and Piloti's proposals nobody
+decided on, on every Fassung) and how many of those are open with the reader as
+Zuständige, or `null` when none is live. `tallyLiveMarks`
+(`lib/annotations/repository.ts`) counts a whole page in ONE grouped query,
+bounded by the page's ids, that joins `documents` behind the listing's own
+`documentVisibleTo(reader)`. A proposal that names the reader is not theirs
+yet: only the person who takes it over makes it so. The count comes with the
+listing and is as fresh as its last read; it is not live. Dateien draws it as
+`OpenMarksChip` (`features/documents/components/open-marks-chip.tsx`), the
+kit's `Chip`, in a card's footer and beside the name in the list, labelled
+„3 offene Anmerkungen, 1 für Sie“. A press opens the review: the page's own URL
+with `doc` and `review=1` (`reviewHrefAt(…, { withDocument: true })`), which
+the shelf's `?doc=` sync and the pane already answer.
 
 ## The service and its API
 
@@ -175,7 +192,11 @@ over or dismissing it has none. The deferral is the inbox archive's own
 `use-document-review.ts` hold the decision. A click on the card's own button
 is deliberate and writes at once; a change to a mark whose decision is still
 held (a click, a reply's status) lets the decision go and starts from where
-the mark really stands.
+the mark really stands. Once its PATCH has gone out, a decision is no longer
+held: the card shows it until the answer comes, and a change or „Rückgängig“
+meanwhile goes to the server as it is (a status moved under it is the usual
+conflict notice). A decision is sent to the document it was taken on, and its
+answer is dropped if the pane has moved to another document.
 
 **Without a mouse.** A mark tool taken up from the keyboard (its key, or its
 button with Enter) puts a crosshair at the middle of the reader's view on the
@@ -353,6 +374,18 @@ else the signed-in person the chat knows). In a line clamp (the list, the peek, 
 text runs as one paragraph; the thread card keeps its line breaks.
 The thread card, the list, the inline peek and the summary draw it alike. Only
 a stored mention becomes a chip.
+
+**Before a Freigabe.** The approve confirm in the rail
+(`document-review-controls.tsx`, under „Freigabe und Fassungen“) names the
+live marks the pane's review holds, before the signature: „4 offene
+Anmerkungen – trotzdem freigeben?“, with „In der Prüfansicht öffnen“ beside it
+(`openMarks`, handed down from `file-preview-pane.tsx` through
+`DocumentFassungen`). It informs and never blocks: approving with open points
+is the reviewer's call, approving without knowing about them is the mistake.
+Only where the pane has a review (a PDF that is not held). A count the review
+has not read yet says „Offene Anmerkungen werden noch gelesen …“, and one it
+could not read says so and links to the review (`OpenMarksAtApproval`): an
+unknown count never reads as none. A known zero says nothing.
 
 ## Live
 
@@ -922,7 +955,22 @@ client or a consultant. „Protokoll exportieren" in the Prüfansicht's header
 `GET /api/documents/[id]/annotations/export?format=pdf|docx|md&scope=open|all&fassung=current|all&includeProposals=1`
 (`frontends/ui/src/lib/annotations/export.ts`; the query and the link in
 `export-request.ts`, shared by the route and the menu). The defaults are a PDF
-of the open marks on the current Fassung.
+of the open marks.
+
+**The Fassung narrows the record, never the work** (`selectMarks`). A mark
+still open is in every Protokoll whichever Fassung it was set on, and its entry
+names that Fassung: Index C arriving the day before the Jour fixe does not
+answer the marks on Index B, and a default that dropped them would drop exactly
+the points the meeting is for. `fassung=current` leaves out what was CLOSED on
+earlier Fassungen; `fassung=all` takes that in too. So the menu offers the
+Fassung only under „Auch erledigte“: with „Nur offene“ it would change
+nothing. This was chosen over defaulting the menu to „Alle Fassungen“ whenever
+an earlier Fassung has a live mark because it holds on every path (the bare
+link, a copied link, any other client of the route) rather than only in the
+menu, and it does not pull an earlier Fassung's closed marks into a Protokoll
+nobody asked them for. The cover says what is in it: „aktuelle Fassung“ only
+while nothing from an earlier one came along, else „alle Fassungen“ (open
+only) or „aktuelle Fassung, dazu Offenes aus früheren Fassungen“.
 
 **Who may have it.** Whoever may list the marks: the service reads the document
 with `getAccessibleDocument(…, 'read')` and the marks through `listAnnotations`,

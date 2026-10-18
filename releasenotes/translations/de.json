@@ -208,6 +208,10 @@
     "de": "Eine Datei wird auch gefunden, wenn die Antwort ihren Namen anders groß schreibt oder wenn sie als Beilage in diesem Chat hochgeladen wurde."
   },
   {
+    "en": "A file named with a split term („Gehalts-Abrechnung“) or with invisible characters is now stopped by the name check too.",
+    "de": "Eine Datei mit einem durch Bindestrich getrennten Begriff („Gehalts-Abrechnung“) oder unsichtbaren Zeichen im Namen wird jetzt ebenfalls von der Namensprüfung blockiert."
+  },
+  {
     "en": "A file opened beside the chat now appears when your system is set to reduce motion. Before, the file panel stayed closed for those readers.",
     "de": "Eine neben dem Chat geöffnete Datei wird jetzt auch angezeigt, wenn Sie in Ihrem System „Bewegung reduzieren“ aktiviert haben. Bisher blieb der Dateibereich für Nutzer mit dieser Einstellung geschlossen."
   },
@@ -226,6 +230,10 @@
   {
     "en": "A file that matches an existing document under a different spelling is held back and shown next to that document, instead of becoming a second document. The dialog also names both the old and the new name of a document renamed in Piloti.",
     "de": "Eine Datei, die einem vorhandenen Dokument unter anderer Schreibweise entspricht, wird zurückgehalten und neben diesem Dokument angezeigt, statt ein zweites Dokument zu werden. Der Dialog nennt außerdem den alten und den neuen Namen eines in Piloti umbenannten Dokuments."
+  },
+  {
+    "en": "A file that the server's own name check stops is now shown as not uploaded, with the term that stopped it, instead of as a failed upload. The upload summary counts it under \"Not uploaded\", and so does an e-mail import.",
+    "de": "Eine Datei, die an der servereigenen Namensprüfung scheitert, wird nun mit dem auslösenden Begriff als nicht hochgeladen statt als fehlgeschlagener Upload angezeigt. Die Upload-Zusammenfassung zählt sie unter „Nicht hochgeladen“, ebenso ein E-Mail-Import."
   },
   {
     "en": "A file that was still waiting to be read during an interruption is now read afterwards instead of showing as failed.",
@@ -250,6 +258,10 @@
   {
     "en": "A file waiting to be read shows how many of your office's uploads are ahead of it, for example \"Waiting · 3 files ahead\".",
     "de": "Eine Datei, die auf das Lesen wartet, zeigt, wie viele Uploads Ihres Büros vor ihr liegen, zum Beispiel „Wartet · 3 Dateien davor“."
+  },
+  {
+    "en": "A file whose name another document already has is now explained in your language instead of an English server message, and is not offered for a retry that would fail the same way.",
+    "de": "Wenn eine Datei denselben Namen wie ein anderes Dokument hat, wird der Fehler nun in Ihrer Sprache statt mit einer englischen Servermeldung angezeigt. Ein erneuter Upload wird nicht angeboten, da er aus demselben Grund fehlschlagen würde."
   },
   {
     "en": "A file whose name mentions an OIB-Richtlinie, such as your own commentary on it, is no longer shown as one source together with the Richtlinie.",
@@ -1400,6 +1412,10 @@
     "de": "Dateien eines abgeschlossenen Projekts sind überall, wo sie erscheinen, als solche gekennzeichnet, und die Projektliste kann aktive, abgeschlossene oder alle Projekte zeigen."
   },
   {
+    "en": "Files the name check stops are now called \"Not uploaded\" everywhere. \"Held back\" means only a file the content check holds in quarantine.",
+    "de": "Dateien, deren Upload durch die Namensprüfung gestoppt wird, werden jetzt überall als „Nicht hochgeladen“ bezeichnet. „Zurückgehalten“ bezeichnet nur Dateien, die von der Inhaltsprüfung unter Quarantäne gestellt werden."
+  },
+  {
     "en": "Files the name rules hold back stay on this computer, and the upload dialog lists each one with its reason, so a single file, such as a Bauvertrag in a folder called “Verträge”, can be released with one tick. Piloti checks the content of an upload on its own servers before any AI model reads it, and no model reads a file held in quarantine until someone releases it.",
     "de": "Dateien, die die Namensregeln zurückhalten, bleiben auf diesem Computer, und der Upload-Dialog zeigt jede mit ihrem Grund, sodass sich eine einzelne Datei, etwa ein Bauvertrag im Ordner „Verträge“, mit einem Häkchen freigeben lässt. Piloti prüft den Inhalt eines Uploads auf den eigenen Servern, bevor ein KI-Modell ihn liest, und kein Modell liest eine Datei in Quarantäne, bis sie jemand freigibt."
   },
@@ -1434,6 +1450,10 @@
   {
     "en": "Finishing a new task now offers \"Create and run now\", so you can see the first result immediately instead of waiting for the next scheduled time to find out whether the request says what you meant.",
     "de": "Beim Abschließen einer neuen Aufgabe gibt es jetzt die Option „Jetzt erstellen und ausführen“. So sehen Sie sofort das erste Ergebnis, statt bis zum nächsten geplanten Zeitpunkt zu warten und erst dann zu prüfen, ob die Anfrage Ihrer Vorstellung entspricht."
+  },
+  {
+    "en": "Folder names of a folder dropped into a chat, and folder names far down a long path, are now checked against your office's list on the server too.",
+    "de": "Ordnernamen eines in einen Chat gezogenen Ordners und von Ordnern weit unten in einem langen Pfad werden jetzt ebenfalls mit der Liste Ihres Büros auf dem Server abgeglichen."
   },
   {
     "en": "Folder tiles in the file browser now show how many items they hold and when they last changed, matching the file tiles beside them. The project sidebar keeps Archiv and your inbox pinned at the bottom, so the project work above them stays uncluttered.",
@@ -1502,6 +1522,10 @@
   {
     "en": "Hovering a file name shows where it comes from, its format, size and page count, its short description and whether Piloti has read it. Only names of documents you actually have become links.",
     "de": "Beim Überfahren zeigt ein Dateiname Herkunft, Format, Größe und Seitenzahl, die Kurzbeschreibung und ob Piloti das Dokument gelesen hat. Verlinkt werden nur Namen von Dokumenten, die Sie tatsächlich haben."
+  },
+  {
+    "en": "Hovering a file named in an answer now says when it is held back, and that Piloti cites it only once someone allows it through.",
+    "de": "Wenn Sie mit dem Mauszeiger über eine in einer Antwort genannte Datei fahren, wird jetzt angezeigt, wenn sie zurückgehalten wird, und dass Piloti sie erst zitiert, nachdem jemand sie freigegeben hat."
   },
   {
     "en": "IFC models, Word and presentation files and finished research reports now survive an interruption, and none of them stays at “Reading” any more. A large folder of office files no longer slows other offices down, and a report whose PDF failed is tried again instead of being lost.",
@@ -2232,6 +2256,10 @@
     "de": "Der Rechtsklick im Bereich Dateien eines Projekts funktioniert wie im Finder und im Explorer: Eine Datei, ein Ordner und die leere Liste öffnen jeweils ein eigenes Menü. Die Schaltfläche ⋯ an einer Datei oder einem Ordner bietet dieselben Aktionen, sodass das Menü auch dann erreichbar bleibt, wenn Sie nie mit der rechten Maustaste klicken."
   },
   {
+    "en": "Scanned pages are now checked once the vision model has read them, before anything else uses their text. A file held back for what was found there says that the vision model read those pages.",
+    "de": "Gescannte Seiten werden jetzt geprüft, sobald das Vision-Modell sie gelesen hat und bevor etwas anderes ihren Text verwendet. Bei einer Datei, die aufgrund der darin gefundenen Inhalte zurückgehalten wird, steht nun, dass das Vision-Modell diese Seiten gelesen hat."
+  },
+  {
     "en": "Schedule cards now show the request in its own words, not the skill it uses, and you can delete a schedule again.",
     "de": "Karten von Zeitplänen zeigen jetzt den Auftrag mit eigenen Worten statt des verwendeten Skills, und Sie können einen Zeitplan wieder löschen."
   },
@@ -2544,6 +2572,10 @@
     "de": "Die Konformitätsprüfung nimmt Anforderungen jetzt nur aus den Richtlinien und Nachweise nur aus Ihren eigenen Unterlagen, einschließlich des Büroarchivs. Eine Anforderung gilt nicht mehr als nachgewiesen, bloß weil die Richtlinie sie nennt."
   },
   {
+    "en": "The content check now finds a term whose word is split once by a space or hyphen, an IBAN printed in pairs, a card number wrapped onto a second line, and a number split across a page break. A table of years is no longer mistaken for a card number.",
+    "de": "Die Inhaltsprüfung erkennt jetzt einen Begriff, dessen Wort einmal durch ein Leerzeichen oder einen Bindestrich getrennt ist, eine paarweise gedruckte IBAN, eine auf eine zweite Zeile umbrochene Kartennummer und eine Zahl, die über einen Seitenumbruch hinweg getrennt ist. Eine Tabelle mit Jahreszahlen wird nicht mehr fälschlich als Kartennummer erkannt."
+  },
+  {
     "en": "The content check now finds numbers and terms that extracted text hides from it: split by a soft hyphen, an invisible character or a line break, or written straight against a label or beside an expiry date. Table cells are no longer read as one card number.",
     "de": "Die Inhaltsprüfung erkennt jetzt Zahlen und Begriffe, die im extrahierten Text verborgen bleiben, weil sie durch einen bedingten Trennstrich, ein unsichtbares Zeichen oder einen Zeilenumbruch getrennt sind, direkt an eine Bezeichnung anschließen oder neben einem Ablaufdatum stehen. Tabellenzellen werden nicht mehr als eine einzige Kartennummer gelesen."
   },
@@ -2702,6 +2734,10 @@
   {
     "en": "The note on what Piloti is working on no longer flickers and is readable on a phone again.",
     "de": "Der Hinweis, woran Piloti gerade arbeitet, flackert nicht mehr und ist auf dem Telefon wieder lesbar."
+  },
+  {
+    "en": "The notice that files wait in quarantine now names the latest file and what it was held back for, such as an IBAN or a term from your office's list.",
+    "de": "Der Hinweis, dass Dateien in Quarantäne warten, nennt jetzt die neueste Datei und den Grund für die Zurückhaltung, etwa eine IBAN oder einen Begriff aus der Liste Ihres Büros."
   },
   {
     "en": "The notice under the message box now shows which other projects restrict a chat right now. It used to keep showing a project after it was closed, and missed a closed project's restricted folder.",
@@ -2968,6 +3004,10 @@
     "de": "Das Hochladen eines großen Ordners ins Archiv oder in ein Projekt hält Ihre Chats nicht mehr eine Minute lang vom Speichern der Antworten ab. Ein großer Upload verlangsamt sich jetzt an der Grenze, statt Dateien scheitern zu lassen, und „Retry all“ schickt die fehlgeschlagenen Dateien nur wenige auf einmal statt alle gleichzeitig."
   },
   {
+    "en": "Uploading a new file over one that is held back for its content no longer shows as a failed upload. The new file is shown as held back too, says that it waits for the file it would replace, and its uploader can ask for that file's review right there.",
+    "de": "Das Hochladen einer neuen Datei über eine Datei, die aufgrund ihres Inhalts zurückgehalten wird, wird nicht mehr als fehlgeschlagener Upload angezeigt. Die neue Datei wird ebenfalls als zurückgehalten angezeigt, mit dem Hinweis, dass sie auf die Datei wartet, die sie ersetzen soll. Die Person, die sie hochgeladen hat, kann direkt dort eine Überprüfung der zu ersetzenden Datei anfordern."
+  },
+  {
     "en": "Uploading the same file twice no longer reads it again when nothing has changed.",
     "de": "Wird dieselbe Datei zweimal hochgeladen, wird sie nicht erneut gelesen, wenn sich nichts geändert hat."
   },
@@ -3160,6 +3200,10 @@
     "de": "Wenn die Suche in den Bauvorschriften keine Antwort auf Ihre Frage findet, teilt Piloti Ihnen jetzt mit, dass keine passende Textstelle gefunden wurde, statt anhand lose verwandter Texte zu antworten."
   },
   {
+    "en": "When the content check holds a file back for more reasons than it lists, the audit log now records how many it left out. A shortened list of reasons no longer reads as the complete one.",
+    "de": "Wenn die Inhaltsprüfung eine Datei aus mehr Gründen zurückhält, als sie auflistet, hält das Audit-Log nun fest, wie viele Gründe ausgelassen wurden. Eine gekürzte Liste der Gründe erscheint dadurch nicht mehr vollständig."
+  },
+  {
     "en": "When the office's past projects hold nothing comparable, Piloti now says so. It used to answer that the search was unavailable and ask you to try again.",
     "de": "Wenn die bisherigen Projekte des Büros nichts Vergleichbares enthalten, sagt Piloti das jetzt. Bisher meldet es, dass die Suche nicht verfügbar ist, und bittet Sie, es erneut zu versuchen."
   },
@@ -3242,6 +3286,10 @@
   {
     "en": "When your office checks chat messages for sensitive data, Piloti now says plainly that a dictated message is first transcribed by an external provider. Only that text is checked before it is sent.",
     "de": "Wenn Ihr Büro Chat-Nachrichten auf sensible Daten prüft, sagt Piloti jetzt ausdrücklich, dass eine diktierte Nachricht zuerst von einem externen Anbieter transkribiert wird. Vor dem Senden wird nur dieser Text geprüft."
+  },
+  {
+    "en": "When your office's screening rules cannot be applied to an upload, its files are now held unread instead of being read unchecked. Reading them again applies the rules afresh.",
+    "de": "Wenn die Prüfvorgaben Ihres Büros auf einen Upload nicht angewendet werden können, werden dessen Dateien nun ungelesen zurückgehalten, statt ungeprüft eingelesen zu werden. Beim erneuten Einlesen werden die Vorgaben erneut angewendet."
   },
   {
     "en": "Where a text does not show a structure well, Piloti draws its own diagram, such as for a branching procedure, for who hands what to whom, or for a construction schedule from the project documents. You can file the drawing in the project.",

@@ -130,7 +130,7 @@ const checkPlace = (value: PlaceInput, context: z.RefinementCtx) => {
  * „@" picker (a user id, or Piloti's `AGENT_MENTION_ID`) and the name the
  * text shows for them, without the „@". The chat's own mention shape
  * (`DraftMention`, `features/collaboration/lib/mention-text.ts`), stored on
- * the row (migration 0149) and rendered with the chat's chip. The server keeps
+ * the row (migration 0150) and rendered with the chat's chip. The server keeps
  * one only while its token still stands in the text, the name is the one the
  * directory has, and the person may open the document (`./mentions.ts`): a
  * client list is never taken on trust.
@@ -378,9 +378,22 @@ export type ReplyResponse = z.infer<typeof replyResponseSchema>
 /** `POST /api/documents/{id}/thread`: the caller's own thread about the document (ADR-0106). */
 export const documentThreadResponseSchema = z.object({ conversationId: z.string().min(1) })
 
+/** The statuses that still ask something of somebody: open, and Piloti's proposals nobody has decided on. */
+export const LIVE_ANNOTATION_STATUSES = ['open', 'proposed'] as const satisfies readonly AnnotationStatus[]
+
 /** Whether an Anmerkung still asks something of somebody. */
 export const isLive = (annotation: Pick<AnnotationView, 'status'>): boolean =>
-  annotation.status === 'open' || annotation.status === 'proposed'
+  (LIVE_ANNOTATION_STATUSES as readonly AnnotationStatus[]).includes(annotation.status)
+
+/**
+ * What a listing row says about a document's Anmerkungen, for the reader it
+ * was read for: how many are live ({@link isLive}, on every Fassung), and how
+ * many of those are open with the reader as Zuständige.
+ */
+export interface MarkTally {
+  live: number
+  forYou: number
+}
 
 /** Live ones first, then by page and number: the order a review walks them in. */
 export function compareAnnotations(a: AnnotationView, b: AnnotationView): number {

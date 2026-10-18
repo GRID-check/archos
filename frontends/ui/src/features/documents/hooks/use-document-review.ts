@@ -66,6 +66,8 @@ export const DECISION_UNDO_MS = ARCHIVE_UNDO_MS
 
 /** A status move held back for the undo window: where the key moved the mark, and where it stands on the server. */
 interface HeldDecision {
+  /** The document the key was pressed on: the decision is sent there even if the pane has moved on. */
+  documentId: string
   status: 'open' | 'resolved' | 'dismissed'
   expectedStatus: AnnotationStatus
   /** Said when the move, once sent, is refused for any reason but a colleague's move (that is the conflict notice). */
@@ -455,20 +457,37 @@ export function useDocumentReview(
       return next
     })
   }, [])
+  /**
+   * Held decisions whose write has started. They are still shown until the
+   * answer comes, but no longer anything „Rückgängig", a change or a delete
+   * can take back: those go to the server as they are, and a status the
+   * write moved meanwhile is the usual conflict notice.
+   */
+  const sending = useRef(new Set<string>())
+  const holdOn = useCallback(
+    (annotationId: string) => (sending.current.has(annotationId) ? undefined : heldRef.current.get(annotationId)),
+    []
+  )
   const sendHeld = useCallback(
     async (annotationId: string) => {
-      const decision = heldRef.current.get(annotationId)
+      const decision = holdOn(annotationId)
       if (!decision) return
+      sending.current.add(annotationId)
       try {
         const { status, expectedStatus } = decision
-        replace(await guard(() => updateAnnotation(documentId, annotationId, { status, expectedStatus }, write)))
+        const updated = await guard(() =>
+          updateAnnotation(decision.documentId, annotationId, { status, expectedStatus }, write)
+        )
+        // A pane that moved to another document meanwhile shows that one: the answer lands nowhere.
+        if (reads.current.documentId === decision.documentId) replace(updated)
       } catch (error) {
         if (!(error instanceof AnnotationRequestError && error.status === 409)) decision.onFailed?.()
       } finally {
+        sending.current.delete(annotationId)
         letGo(annotationId)
       }
     },
-    [documentId, guard, replace, write, letGo]
+    [holdOn, guard, replace, write, letGo]
   )
   const { request: holdBack, undo: releaseHold } = useUndoableArchive(sendHeld, DECISION_UNDO_MS)
 
@@ -476,17 +495,19 @@ export function useDocumentReview(
   const decide = useCallback(
     (annotation: Pick<AnnotationView, 'id' | 'status'>, status: HeldDecision['status'], onFailed?: () => void) => {
       if (heldRef.current.has(annotation.id)) return false
-      const decision: HeldDecision = { status, expectedStatus: annotation.status, onFailed }
+      const decision: HeldDecision = { documentId, status, expectedStatus: annotation.status, onFailed }
       heldRef.current = new Map(heldRef.current).set(annotation.id, decision)
       setHeld(heldRef.current)
       holdBack(annotation.id)
       return true
     },
-    [holdBack]
+    [documentId, holdBack]
   )
   /** „Rückgängig": the held decision is let go, and nothing was sent. */
   const undoDecision = useCallback(
     (annotationId: string) => {
+      // Already on its way: nothing is left to take back.
+      if (sending.current.has(annotationId)) return
       releaseHold(annotationId)
       const next = new Map(heldRef.current)
       next.delete(annotationId)
@@ -498,7 +519,7 @@ export function useDocumentReview(
 
   const update = useCallback(
     async (annotationId: string, change: UpdateAnnotationRequest) => {
-      const pending = heldRef.current.get(annotationId)
+      const pending = holdOn(annotationId)
       if (pending) undoDecision(annotationId)
       const input = pending ? rebased(change, pending) : change
       const unchanged = storedRef.current.find((annotation) => annotation.id === annotationId)
@@ -507,7 +528,7 @@ export function useDocumentReview(
       replace(updated)
       return updated
     },
-    [documentId, guard, replace, write, undoDecision]
+    [documentId, guard, replace, write, holdOn, undoDecision]
   )
 
   /** What the review shows: the server's marks, each held decision applied. */
@@ -554,11 +575,11 @@ export function useDocumentReview(
 
   const remove = useCallback(
     async (annotationId: string) => {
-      if (heldRef.current.has(annotationId)) undoDecision(annotationId)
+      if (holdOn(annotationId)) undoDecision(annotationId)
       await guard(() => deleteAnnotation(documentId, annotationId, write))
       drop(annotationId)
     },
-    [documentId, guard, write, drop, undoDecision]
+    [documentId, guard, write, drop, holdOn, undoDecision]
   )
 
   /**
