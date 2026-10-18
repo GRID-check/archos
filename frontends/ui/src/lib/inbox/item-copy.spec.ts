@@ -25,6 +25,7 @@ function quarantined(overrides: Partial<InboxItemView> = {}): InboxItemView {
     subject: 'Lohnzettel_März.pdf',
     related: null,
     excerpt: null,
+    mentions: [],
     variant: 'iban',
     answerIn: null,
     createdAt: '2026-10-17T10:00:00.000Z',

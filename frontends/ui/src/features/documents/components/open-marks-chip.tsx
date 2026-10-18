@@ -2,8 +2,9 @@
 
 import type { JSX, SyntheticEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageSquareText, UserRound } from 'lucide-react'
+import { MessageSquareText } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n/translate'
 import type { MarkTally } from '@/lib/annotations/types'
@@ -23,6 +24,13 @@ export function openMarksLabel(t: Translator, marks: MarkTally): string {
     : t('annotations.listedOpen', { count: marks.live })
 }
 
+/** What the chip says in its own words, short enough for a card: „4 offen · 2 für Sie". */
+export function openMarksShortLabel(t: Translator, marks: MarkTally): string {
+  return marks.forYou > 0
+    ? t('annotations.listedOpenShortForYou', { count: marks.live, mine: marks.forYou })
+    : t('annotations.listedOpenShort', { count: marks.live })
+}
+
 /** A click or a key on the chip is the chip's: the row or card around it opens the file, not the review. */
 const keep = (event: SyntheticEvent) => event.stopPropagation()
 
@@ -32,6 +40,10 @@ const keep = (event: SyntheticEvent) => event.stopPropagation()
  * 1 für Sie"), counted by the server with the listing (`tallyLiveMarks`).
  * Nothing when nothing is open, so a folder scanned at a glance shows only the
  * documents with work on them.
+ *
+ * It says so in words („4 offen · 2 für Sie"), not in a bubble and a person
+ * beside two bare numbers: a count without its noun has to be learnt. The
+ * tooltip carries the whole sentence for a pointer; a finger reads the words.
  *
  * A press opens the document's Prüfansicht: the page's own URL with `doc` and
  * `review=1` (`reviewHrefAt`), which the shelf's `?doc=` sync and the preview
@@ -67,29 +79,27 @@ function OpenMarksButton({
   const router = useRouter()
   const label = openMarksLabel(t, marks)
   return (
-    <Chip asChild interactive size="sm" variant="muted" className={cn('gap-1 tabular-nums', className)}>
-      <button
-        type="button"
-        data-slot="open-marks"
-        data-testid="open-marks"
-        aria-label={t('annotations.listedOpenIn', { marks: label, name })}
-        title={label}
-        onPointerDown={keep}
-        onKeyDown={keep}
-        onClick={(event) => {
-          keep(event)
-          router.push(reviewHrefAt(window.location, { documentId }, { withDocument: true }), { scroll: false })
-        }}
-      >
-        <MessageSquareText aria-hidden />
-        <span>{marks.live}</span>
-        {marks.forYou > 0 && (
-          <>
-            <UserRound aria-hidden className="ml-0.5" />
-            <span>{marks.forYou}</span>
-          </>
-        )}
-      </button>
-    </Chip>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Chip asChild interactive size="sm" variant="muted" className={cn('tabular-nums', className)}>
+          <button
+            type="button"
+            data-slot="open-marks"
+            data-testid="open-marks"
+            aria-label={t('annotations.listedOpenIn', { marks: label, name })}
+            onPointerDown={keep}
+            onKeyDown={keep}
+            onClick={(event) => {
+              keep(event)
+              router.push(reviewHrefAt(window.location, { documentId }, { withDocument: true }), { scroll: false })
+            }}
+          >
+            <MessageSquareText aria-hidden />
+            <span>{openMarksShortLabel(t, marks)}</span>
+          </button>
+        </Chip>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
   )
 }

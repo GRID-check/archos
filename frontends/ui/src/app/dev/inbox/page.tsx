@@ -41,6 +41,9 @@ import type { InboxItemView } from '@/lib/inbox/types'
 // Relative to now, so „vor 4 Minuten“ reads as it would in the product rather
 // than every row claiming months.
 const now = Date.now()
+/** The reader the fixtures are addressed to: Miriam Hofer. */
+const VIEWER_ID = 'u-miriam'
+
 const ago = (minutes: number): string => new Date(now - minutes * 60_000).toISOString()
 
 const ITEMS: InboxItemView[] = [
@@ -62,6 +65,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Architekturbüro Nord',
     related: null,
     excerpt: 'Beim Hochladen eines 80-MB-Plans bleibt der Fortschritt bei 99 % stehen, auch nach 10 Minuten.',
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(4),
@@ -84,6 +88,7 @@ const ITEMS: InboxItemView[] = [
     related: null,
     excerpt:
       'Ist die Annahme richtig, dass das Atrium als eigener Brandabschnitt geführt wird? Dann bräuchten wir die Entrauchung im Kern.',
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(18),
@@ -105,6 +110,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Fluchtwegbreiten Bauteil Nord',
     related: null,
     excerpt: 'Die 1,20 m halten wir ein, aber der Treppenlauf im Kern B ist noch offen.',
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(52),
@@ -126,6 +132,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Stellplatznachweis Wohnbau Nord',
     related: null,
     excerpt: null,
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(320),
@@ -147,6 +154,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Barrierefreiheit Zugang Ost',
     related: null,
     excerpt: 'Passt so – die Rampe bleibt bei 6 %.',
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(1_500),
@@ -168,6 +176,7 @@ const ITEMS: InboxItemView[] = [
     subject: null,
     related: null,
     excerpt: null,
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(2_600),
@@ -202,6 +211,7 @@ const ITEMS: InboxItemView[] = [
     subject: '82%',
     related: null,
     excerpt: null,
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(140),
@@ -231,6 +241,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Abstandsflächen Bauteil Süd',
     related: null,
     excerpt: null,
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(2_900),
@@ -262,6 +273,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Brandschutzkonzept Bauteil West',
     related: null,
     excerpt: null,
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(3_400),
@@ -284,6 +296,7 @@ const ITEMS: InboxItemView[] = [
     subject: null,
     related: null,
     excerpt: null,
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(4_100),
@@ -310,6 +323,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Grundriss EG Index B',
     related: 'Grundriss EG Index C',
     excerpt: 'Die Tür zum Technikraum wurde verschoben, die Wandstärke im Kern von 25 auf 30 cm erhöht.',
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(9),
@@ -334,6 +348,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Lohnzettel_März_2026.pdf',
     related: null,
     excerpt: null,
+    mentions: [],
     variant: 'iban',
     answerIn: null,
     createdAt: ago(11),
@@ -355,6 +370,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Scan_Bauakt_1987.pdf',
     related: null,
     excerpt: null,
+    mentions: [],
     variant: 'transcript',
     answerIn: null,
     createdAt: ago(13),
@@ -379,6 +395,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Grundriss EG',
     related: '4',
     excerpt: 'Türbreite zum Technikraum prüfen',
+    mentions: [],
     variant: 'budget',
     answerIn: null,
     createdAt: ago(3),
@@ -400,6 +417,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Schnitt A-A',
     related: '7',
     excerpt: 'Gilt für die Brüstung die Höhe ab Fertigfußboden oder ab Rohdecke?',
+    mentions: [],
     variant: null,
     // Events do not wake Piloti (the default): the answer goes in the Prüfansicht, which asks Piloti.
     answerIn: 'review',
@@ -422,6 +440,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Grundriss EG',
     related: '2',
     excerpt: 'Fluchtweglänge im Kern B nachweisen',
+    mentions: [],
     variant: null,
     answerIn: null,
     createdAt: ago(40),
@@ -445,6 +464,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Grundriss EG',
     related: '9',
     excerpt: 'Brandschutztür T30 zum Stiegenhaus fehlt in der Legende.',
+    mentions: [],
     variant: null,
     answerIn: 'row',
     createdAt: ago(7),
@@ -468,6 +488,8 @@ const ITEMS: InboxItemView[] = [
     subject: 'Grundriss EG',
     related: '11',
     excerpt: '@Miriam Hofer passt die Brüstungshöhe im Zimmer 1 zur Einreichung?',
+    // Drawn as the thread's chip, louder: Miriam is the reader here.
+    mentions: [{ targetId: VIEWER_ID, display: 'Miriam Hofer' }],
     variant: null,
     answerIn: 'row',
     createdAt: ago(3),
@@ -490,6 +512,7 @@ const ITEMS: InboxItemView[] = [
     subject: 'Schnitt A-A',
     related: '3',
     excerpt: 'Passt, die Brüstung ist mit 1,00 m ab FFB eingetragen.',
+    mentions: [],
     variant: 'reply',
     answerIn: null,
     createdAt: ago(30),
@@ -512,6 +535,7 @@ const ITEMS: InboxItemView[] = [
     subject: null,
     related: null,
     excerpt: 'Grundriss EG.pdf, Schnitt A-A.pdf +3',
+    mentions: [],
     variant: 'move',
     answerIn: null,
     createdAt: ago(12),
@@ -618,7 +642,7 @@ export default function InboxDevPage(): JSX.Element {
         </div>
 
         {/* One list, so a single screenshot carries every row treatment. */}
-        {ready && <InboxList initialFilter={empty ? 'needsMe' : 'all'} />}
+        {ready && <InboxList initialFilter={empty ? 'needsMe' : 'all'} viewerId={VIEWER_ID} />}
 
         {!empty && (
           <section className="space-y-3">

@@ -13,6 +13,7 @@
 
 import 'server-only'
 import { BadRequestError, NotFoundError } from '@/lib/api/errors'
+import { markMentionsSchema, type MarkMention } from '@/lib/annotations/types'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
 import { isCollaborationEnabled, isPilotiWakesEnabled } from '@/lib/authz/feature-flags'
 import { canWriteDocument } from '@/lib/documents/can-write'
@@ -448,6 +449,16 @@ const SUBJECT_MAX_LENGTH = 200
 const EXCERPT_MAX_LENGTH = 500
 
 /**
+ * The excerpt's mentions, as the bounded mention schema reads them; anything
+ * else (an older row without them, a payload nobody should trust) is none, and
+ * the row then quotes plain text.
+ */
+function coerceMentions(value: unknown): MarkMention[] {
+  const parsed = markMentionsSchema.safeParse(value)
+  return parsed.success ? parsed.data : []
+}
+
+/**
  * A payload's `variant` is a segment of a dictionary path the row reads
  * (`InboxItemView.variant`), so only a short lower-case token passes; anything
  * else is absent and the row reads its type's general wording.
@@ -655,6 +666,7 @@ function toItemView(
     subject: access ? coerceText(payload.subject, SUBJECT_MAX_LENGTH) : null,
     related: access ? coerceText(payload.related, SUBJECT_MAX_LENGTH) : null,
     excerpt: access ? coerceText(payload.excerpt, EXCERPT_MAX_LENGTH) : null,
+    mentions: access ? coerceMentions(payload.mentions) : [],
     variant: access ? coerceVariant(payload.variant) : null,
     answerIn: answerPlaceOf(row, access !== null, answers),
     createdAt: row.createdAt.toISOString(),

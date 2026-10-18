@@ -128,8 +128,9 @@ const FILES: FileItem[] = [
     folderId: 'f-statik',
     marks: { live: 1, forYou: 0 },
   }),
-  // What is still open on its pages, beside the size: four live Anmerkungen
-  // (every Fassung), two of them for the reader. A press opens the review.
+  // What is still open on its pages, under the size and the date: four live
+  // Anmerkungen (every Fassung), two of them for the reader, „4 offen · 2 für
+  // Sie". A press opens the review.
   makeFile('p10', 'Einreichplan_Grundriss_EG_Index-C.pdf', 'Einreichplan Grundriss Erdgeschoss, Index C.', {
     fileSize: 1_900_000,
     marks: { live: 4, forYou: 2 },

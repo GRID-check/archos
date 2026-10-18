@@ -112,6 +112,8 @@ export interface MentionCandidateGroups {
   visible: MentionCandidate[]
   /** The candidates a keypress can actually land on. */
   selectable: MentionCandidate[]
+  /** Index into `selectable` of the best match, the row selected as the query changes. */
+  preselected: number
 }
 
 /** cmdk compares item values verbatim, so a stable per-candidate key is enough. */
@@ -147,21 +149,61 @@ function fold(value: string): string {
   return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase()
 }
 
-function matches(candidate: MentionCandidate, query: string, agentLabel: string): boolean {
-  if (!query) return true
-  const needle = fold(query)
-  const haystacks = [
-    candidate.person.name,
-    candidate.person.email ?? '',
-    candidate.isAgent ? agentLabel : '',
-  ]
-  return haystacks.some((value) => fold(value).includes(needle))
+/**
+ * How well a candidate answers the query, best first. A name part that starts
+ * with the query beats the query inside a name, and both beat an e-mail-only
+ * match: `@Le` is someone reaching for Lena, not for Anna whose address happens
+ * to read `…@lehner-architekten.at`. Typing an address still finds its person,
+ * which is how two namesakes are told apart, but below every name it matches.
+ */
+const RANK = { nameStart: 0, inName: 1, emailOnly: 2 } as const
+type Rank = (typeof RANK)[keyof typeof RANK]
+
+/** Whether a folded name has a word (a name part) beginning at `index`. */
+function isWordStart(folded: string, index: number): boolean {
+  return index === 0 || !/[\p{L}\p{N}]/u.test(folded[index - 1] ?? '')
 }
 
 /**
- * Filter and group candidates: the assistant first, then the people already in
- * the conversation, then everyone else in the project. The server's order inside
- * each group is preserved — it knows about recency, this component does not.
+ * Where the needle sits in a folded name: at the start of a name part where it
+ * can, else its first occurrence, else -1. The ranking and the emphasis read
+ * the same position, so the fragment drawn bold is the one that ranked the row.
+ */
+function nameMatchIndex(folded: string, needle: string): number {
+  let first = -1
+  for (let at = folded.indexOf(needle); at >= 0; at = folded.indexOf(needle, at + 1)) {
+    if (isWordStart(folded, at)) return at
+    if (first < 0) first = at
+  }
+  return first
+}
+
+function rankOf(candidate: MentionCandidate, query: string, agentLabel: string): Rank | null {
+  if (!query) return RANK.nameStart
+  const needle = fold(query)
+  const names = candidate.isAgent ? [candidate.person.name, agentLabel] : [candidate.person.name]
+  let best: Rank | null = null
+  for (const name of names) {
+    const folded = fold(name)
+    const at = nameMatchIndex(folded, needle)
+    if (at < 0) continue
+    const rank = isWordStart(folded, at) ? RANK.nameStart : RANK.inName
+    if (best === null || rank < best) best = rank
+  }
+  if (best !== null) return best
+  return fold(candidate.person.email ?? '').includes(needle) ? RANK.emailOnly : null
+}
+
+/**
+ * Filter, rank and group candidates: the assistant first, then the people
+ * already in the conversation, then everyone else in the project. Inside each
+ * group the better match leads (`RANK`); among equal matches the server's order
+ * stands, since it knows about recency and this component does not.
+ *
+ * `preselected` is the row `↵` takes before any arrow key: the first selectable
+ * row of the best rank anywhere in the list. Usually the first row; but a
+ * participant whose e-mail matches sits above a colleague whose NAME matches,
+ * and `↵` must not mention the one the reader did not type.
  */
 export function filterMentionCandidates(
   candidates: readonly MentionCandidate[],
@@ -169,18 +211,25 @@ export function filterMentionCandidates(
   canInvite: boolean,
   agentLabel: string,
 ): MentionCandidateGroups {
-  const hits = candidates.filter((candidate) => matches(candidate, query, agentLabel))
+  const ranked = candidates.flatMap((candidate) => {
+    const rank = rankOf(candidate, query, agentLabel)
+    return rank === null ? [] : [{ candidate, rank }]
+  })
+  // `sort` is stable, so equal ranks keep the server's order.
+  ranked.sort((a, b) => a.rank - b.rank)
+  const rankOfHit = new Map(ranked.map(({ candidate, rank }) => [candidate, rank]))
+  const hits = ranked.map(({ candidate }) => candidate)
   const agent = hits.filter((candidate) => candidate.isAgent)
   const participants = hits.filter((candidate) => !candidate.isAgent && candidate.isParticipant)
   const others = hits.filter((candidate) => !candidate.isAgent && !candidate.isParticipant)
   const visible = [...agent, ...participants, ...others]
-  return {
-    agent,
-    participants,
-    others,
-    visible,
-    selectable: visible.filter((candidate) => !isBlocked(candidate, canInvite)),
-  }
+  const selectable = visible.filter((candidate) => !isBlocked(candidate, canInvite))
+  const best = ranked.find(({ candidate }) => !isBlocked(candidate, canInvite))?.rank
+  const preselected = Math.max(
+    0,
+    selectable.findIndex((candidate) => rankOfHit.get(candidate) === best),
+  )
+  return { agent, participants, others, visible, selectable, preselected }
 }
 
 /**
@@ -194,7 +243,7 @@ function HighlightedName({ name, query }: { name: string; query: string }): JSX.
   // character by character and keep a map back to the source offsets.
   const { folded, offsets } = foldWithOffsets(name)
   const needle = fold(query)
-  const at = needle ? folded.indexOf(needle) : -1
+  const at = needle ? nameMatchIndex(folded, needle) : -1
   if (at < 0) return <>{name}</>
   const from = offsets[at]
   const to = offsets[at + needle.length]
@@ -278,36 +327,50 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
     )
     const { selectable } = groups
 
-    const [activeIndex, setActiveIndex] = useState(0)
     const rootRef = useRef<HTMLDivElement>(null)
 
-    // Reset to the top whenever the result SET changes (a new query, freshly
-    // loaded candidates) — but never merely because the component re-rendered,
-    // which would fight the user's arrow keys.
-    const selectableKey = selectable.map((candidate) => candidate.targetId).join('|')
-    useEffect(() => {
-      setActiveIndex(0)
-    }, [selectableKey])
+    /*
+      The selection belongs to one query and one result set. A new query (a
+      letter more, a letter less) or freshly loaded candidates put it back on the
+      best match; a re-render alone never does, or it would fight the arrow keys.
+      Keyed on the query too, not on the result set alone: „@L" and „@Le" can
+      find the same people, and the row a reader arrowed to for „@L" is not the
+      best match for „@Le". Derived during render rather than reset in an
+      effect, so no render shows the previous query's selection.
+    */
+    const selectionKey = `${query}\u0000${selectable.map((candidate) => candidate.targetId).join('|')}`
+    const { preselected } = groups
+    const [selection, setSelection] = useState({ key: selectionKey, index: preselected })
+    const activeIndex = selection.key === selectionKey ? selection.index : preselected
+    const select = useCallback(
+      (index: number) => setSelection({ key: selectionKey, index }),
+      [selectionKey],
+    )
+    const move = useCallback(
+      (delta: number) => {
+        const count = selectable.length
+        if (count === 0) return
+        setSelection((current) => {
+          const from = current.key === selectionKey ? current.index : preselected
+          return { key: selectionKey, index: (((from + delta) % count) + count) % count }
+        })
+      },
+      [preselected, selectable.length, selectionKey],
+    )
 
     const active = selectable[Math.min(activeIndex, Math.max(selectable.length - 1, 0))]
 
     useImperativeHandle(
       ref,
       () => ({
-        move: (delta: number) => {
-          if (selectable.length === 0) return
-          setActiveIndex((current) => {
-            const next = (current + delta) % selectable.length
-            return next < 0 ? next + selectable.length : next
-          })
-        },
+        move,
         selectActive: () => {
           if (!active) return false
           onSelect(active)
           return true
         },
       }),
-      [active, onSelect, selectable.length],
+      [active, move, onSelect],
     )
 
     // Hover moves the selection, so mouse and keyboard can never disagree about
@@ -315,9 +378,9 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
     const handleValueChange = useCallback(
       (value: string) => {
         const index = selectable.findIndex((candidate) => optionValue(candidate) === value)
-        if (index >= 0) setActiveIndex(index)
+        if (index >= 0) select(index)
       },
-      [selectable],
+      [select, selectable],
     )
 
     /*
