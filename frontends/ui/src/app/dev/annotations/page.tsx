@@ -35,6 +35,9 @@
  *                                            date's ×, „Bearbeiten" in the menu (Miriam's mark)
  *   …&review=1&mark=ann-5                    answer Piloti's Rückfrage: the thread asks Piloti
  *   …&review=1&piloti=1, then J, E or ⌫      the decision's toast with „Rückgängig"
+ *   …&review=1, „Protokoll exportieren"      the export menu: the Fassung choice only under
+ *                                            „Auch erledigte", since „Nur offene" carries the
+ *                                            mark still open from Fassung 2 either way
  *
  * Not linked from anywhere and 404s outside development (`../layout.tsx`).
  */

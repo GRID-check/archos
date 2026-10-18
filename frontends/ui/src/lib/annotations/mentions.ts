@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * Whom an Anmerkung's text or a reply in its thread mentions, as the server
- * keeps it (migration 0149).
+ * keeps it (migration 0150).
  *
  * The composer sends what the person PICKED in the chat's „@" picker:
  * `{ targetId, display }`, the chat's own mention shape. Nothing here takes

@@ -37,7 +37,7 @@ import { documents } from './documents'
 const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${value}'`).join(', '))
 
 /**
- * Whom a text mentions (migration 0149): an array, and no longer than one
+ * Whom a text mentions (migration 0150): an array, and no longer than one
  * message may mention (`MAX_MENTIONS_PER_MESSAGE`). `CASE`, because Postgres
  * does not promise to read an `AND` left to right, and the length of a scalar
  * is an error, not a refusal.
@@ -73,7 +73,7 @@ export const documentAnnotations = pgTable(
     h: doublePrecision('h'),
     kind: text('kind').$type<AnnotationKind>().notNull(),
     body: text('body').notNull(),
-    /** Whom `body` mentions, as the server kept them (migration 0149, `lib/annotations/mentions.ts`). */
+    /** Whom `body` mentions, as the server kept them (migration 0150, `lib/annotations/mentions.ts`). */
     mentions: jsonb('mentions').$type<MarkMention[]>().notNull().default([]),
     basis: text('basis'),
     authorKind: text('author_kind').$type<AnnotationAuthor>().notNull(),
@@ -172,7 +172,7 @@ export const documentAnnotationReplies = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     /** The reply addresses Piloti: the composer's mention chip, never a match on the text (migration 0139). */
     addressesAgent: boolean('addresses_agent').notNull().default(false),
-    /** Whom the reply mentions, as the server kept them (migration 0149, `lib/annotations/mentions.ts`). */
+    /** Whom the reply mentions, as the server kept them (migration 0150, `lib/annotations/mentions.ts`). */
     mentions: jsonb('mentions').$type<MarkMention[]>().notNull().default([]),
   },
   (table) => ({
@@ -231,7 +231,7 @@ export const pilotiWakes = pgTable(
       foreignColumns: [documentAnnotations.id],
     }).onDelete('cascade'),
     annotationIdx: index('idx_piloti_wakes_annotation_created').on(table.annotationId, table.createdAt),
-    /** A document's wakes, the newest of each mark first (0148): `listLatestWakes`, `listAnsweringWakes`. */
+    /** A document's wakes, the newest of each mark first (0149): `listLatestWakes`, `listAnsweringWakes`. */
     documentIdx: index('idx_piloti_wakes_document_annotation_created').on(
       table.documentId,
       table.annotationId,
