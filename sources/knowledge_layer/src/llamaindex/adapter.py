@@ -927,6 +927,11 @@ def _get_vlm_api_key() -> str:
 # =============================================================================
 
 
+# PDFium C API constant: FPDF_PAGEOBJ_IMAGE = 3
+# Not always exposed as a Python attribute in pypdfium2 v5
+_PAGEOBJ_IMAGE = 3
+
+
 def _extract_images_from_pdf(
     pdf_path: str,
     min_width: int = MIN_IMAGE_WIDTH_PX,
@@ -948,69 +953,231 @@ def _extract_images_from_pdf(
     Returns:
         List of dicts with 'image_bytes', 'page_number', 'image_index', 'format'.
     """
+    records, _ = _extract_image_records(
+        pdf_path, min_width=min_width, min_height=min_height, skip_pages=skip_pages, max_images=None
+    )
+    return records
+
+
+def _extract_image_records(
+    pdf_path: str,
+    *,
+    min_width: int,
+    min_height: int,
+    skip_pages: set[int] | frozenset[int],
+    max_images: int | None,
+) -> tuple[list[dict[str, Any]], int]:
+    """Embedded rasters worth analysing, and how many the cap left out.
+
+    Two passes, because only the second one costs memory. The first reads every
+    image object's pixel size from metadata, decoding nothing, and applies the
+    cap there -- so an image-heavy document decodes only the rasters it will
+    actually analyse. The second decodes those, one at a time: pypdfium2 cannot
+    downscale an embedded image on decode, so each raster's full-resolution
+    bitmap exists for one image, is downscaled from a zero-copy view, and is
+    freed before the next. Peak memory is flat in the number of rasters and in
+    the length of the document, which is what keeps an ingest pod inside its
+    limit instead of being OOM-killed by a plan set.
+
+    The same raster embedded repeatedly is captioned and indexed once: the
+    content hash still dedupes the records, after the cap.
+    """
     try:
         import pypdfium2 as pdfium
     except ImportError:
         logger.warning("pypdfium2 not installed. Install with: pip install pypdfium2")
-        return []
+        return [], 0
 
-    images = []
-    # Content-hash dedupe: the same raster embedded repeatedly (a logo on every
-    # page, a reused plan) is captioned and indexed ONCE. The VLM cache already
-    # dedupes the API call; this dedupes the duplicate indexed chunks.
+    records: list[dict[str, Any]] = []
+    over_cap = 0
     seen_hashes: set[str] = set()
     try:
-        # PDFium work holds the process-wide lock one page at a time
-        # (`pdfium_lock`); downscaling and JPEG encoding run after it.
         with pdfium_lock():
             doc = pdfium.PdfDocument(pdf_path)
             page_count = len(doc)
         try:
+            candidates: list[dict[str, Any]] = []
             for page_num in range(page_count):
                 if page_num + 1 in skip_pages:
                     continue
-                for img_idx, pil_image, width, height in _page_rasters(doc, page_num, min_width, min_height):
-                    record = _raster_record(pil_image, page_num + 1, img_idx, (width, height), seen_hashes)
-                    if record is not None:
-                        images.append(record)
+                candidates.extend(_image_candidates(doc, page_num, min_width, min_height))
+            if max_images is None:
+                kept = candidates
+            else:
+                kept, over_cap = cap_images(candidates, max_images)
+            _log_memory(f"rasters:start kept={len(kept)} over_cap={over_cap}")
+            for page_number, page_candidates in _candidates_by_page(kept):
+                records.extend(_decode_page_candidates(doc, page_number, page_candidates, seen_hashes))
+            _log_memory(f"rasters:done kept={len(kept)}")
         finally:
             with pdfium_lock():
                 doc.close()
-        logger.info(f"Extracted {len(images)} images from {pdf_path}")
+        logger.info(
+            "Extracted %d images from %s (%d candidates, %d over cap)",
+            len(records),
+            pdf_path,
+            len(candidates),
+            over_cap,
+        )
 
     except Exception as e:
         logger.error(f"Error extracting images from PDF: {e}")
 
-    return images
+    return records, over_cap
 
 
-def _page_rasters(doc: Any, page_num: int, min_width: int, min_height: int) -> list[tuple[int, Any, int, int]]:
-    """``(image_index, pil_image, width, height)`` for one page's rasters at least the minimum size.
+def _image_candidates(doc: Any, page_num: int, min_width: int, min_height: int) -> list[dict[str, Any]]:
+    """One page's image objects that clear the size filter, as metadata records.
 
-    Holds the PDFium lock for the page; the images own their pixels, so they
-    leave it. ``image_index`` counts every image object, kept or not.
+    ``image_index`` counts every image object on the page, kept or not. No pixels
+    are touched here: ``_image_pixel_size`` asks the library for the size, which
+    is what lets the cap run before a single raster is allocated.
     """
-    # PDFium C API constant: FPDF_PAGEOBJ_IMAGE = 3
-    # Not always exposed as a Python attribute in pypdfium2 v5
-    PAGEOBJ_IMAGE = 3
-
-    rasters: list[tuple[int, Any, int, int]] = []
+    candidates: list[dict[str, Any]] = []
     with pdfium_lock():
         page = doc[page_num]
         try:
-            image_objects = [obj for obj in page.get_objects() if obj.type == PAGEOBJ_IMAGE]
-            for img_idx, obj in enumerate(image_objects):
+            for img_idx, obj in enumerate(_image_objects(page)):
                 try:
-                    bitmap = obj.get_bitmap()
-                    width, height = bitmap.width, bitmap.height
-                    # Filter small images (likely icons/logos)
-                    if width >= min_width and height >= min_height:
-                        rasters.append((img_idx, detached_pil(bitmap), width, height))
+                    width, height = _image_pixel_size(obj)
                 except Exception as e:
-                    logger.debug(f"Could not extract image {img_idx} from page {page_num}: {e}")
+                    logger.debug(f"Could not size image {img_idx} on page {page_num}: {e}")
+                    continue
+                # Filter small images (likely icons/logos)
+                if width >= min_width and height >= min_height:
+                    candidates.append(
+                        {"page_number": page_num + 1, "image_index": img_idx, "width": width, "height": height}
+                    )
         finally:
             page.close()
-    return rasters
+    return candidates
+
+
+def _close_bitmap(bitmap: Any) -> None:
+    """Close a bitmap this module opened; a test double standing in for one may have no ``close``."""
+    close = getattr(bitmap, "close", None)
+    if close is not None:
+        close()
+
+
+def _image_pixel_size(obj: Any) -> tuple[int, int]:
+    """An image object's pixel size, read from metadata wherever the library offers it.
+
+    ``PdfImage.get_px_size`` returns the dimensions without decoding a pixel --
+    the whole point of the two-pass extraction, since a decode allocates the
+    full-resolution raster. An image (or a library) that cannot answer costs one
+    decode, exactly as every image used to.
+    """
+    get_px_size = getattr(obj, "get_px_size", None)
+    if get_px_size is not None:
+        try:
+            width, height = get_px_size()
+            return int(width), int(height)
+        except Exception as e:  # noqa: BLE001 - any metadata failure falls back to a decode
+            logger.debug(f"Image metadata unreadable ({e}); decoding it to size it")
+    bitmap = obj.get_bitmap()
+    try:
+        return bitmap.width, bitmap.height
+    finally:
+        _close_bitmap(bitmap)
+
+
+def _image_objects(page: Any) -> list[Any]:
+    """The page's image XObjects, in the order ``image_index`` counts them."""
+    return [obj for obj in page.get_objects() if obj.type == _PAGEOBJ_IMAGE]
+
+
+def _candidates_by_page(candidates: list[dict[str, Any]]) -> list[tuple[int, list[dict[str, Any]]]]:
+    """Candidates grouped by 1-based page, pages in order."""
+    grouped: dict[int, list[dict[str, Any]]] = {}
+    for candidate in candidates:
+        grouped.setdefault(candidate["page_number"], []).append(candidate)
+    return sorted(grouped.items())
+
+
+def _decode_page_candidates(
+    doc: Any, page_number: int, candidates: list[dict[str, Any]], seen_hashes: set[str]
+) -> list[dict[str, Any]]:
+    """One page's capped rasters as JPEG records, decoded one at a time.
+
+    The lock is taken per raster and released before the JPEG is encoded, so a
+    full-resolution bitmap lives for the shortest possible window and the other
+    documents on the pod are not held behind it.
+    """
+    records: list[dict[str, Any]] = []
+    with pdfium_lock():
+        page = doc[page_number - 1]
+    try:
+        with pdfium_lock():
+            objects = _image_objects(page)
+        for candidate in candidates:
+            try:
+                with pdfium_lock():
+                    image = _downscaled_raster(objects[candidate["image_index"]])
+            except Exception as e:
+                logger.debug(f"Could not extract image {candidate['image_index']} from page {page_number}: {e}")
+                continue
+            record = _raster_record(
+                image,
+                page_number,
+                candidate["image_index"],
+                (candidate["width"], candidate["height"]),
+                seen_hashes,
+            )
+            if record is not None:
+                records.append(record)
+    finally:
+        with pdfium_lock():
+            page.close()
+    return records
+
+
+def _downscaled_raster(obj: Any) -> Any:
+    """An image object as a PIL image whose longest edge is at most ``VLM_MAX_IMAGE_DIM``.
+
+    Runs under the PDFium lock and returns an image that owns its pixels.
+    ``PdfBitmap.to_pil`` is a view over the bitmap's buffer, so the downscale
+    allocates only the bounded result; an image already within bounds is
+    detached explicitly. Either way the full-resolution bitmap is closed before
+    this returns, and with it the pixels.
+    """
+    bitmap = obj.get_bitmap()
+    try:
+        image = bitmap.to_pil()
+        size = image.size
+        image.thumbnail((VLM_MAX_IMAGE_DIM, VLM_MAX_IMAGE_DIM))
+        if image.size == size:
+            # thumbnail() left the view in place; detach it from the bitmap buffer
+            image = image.copy()
+        return image
+    finally:
+        _close_bitmap(bitmap)
+
+
+def _rss_mib() -> float | None:
+    """This process's resident set size in MiB, or None where that is not readable."""
+    try:
+        with open("/proc/self/statm", encoding="ascii") as statm:
+            resident_pages = int(statm.read().split()[1])
+        page_size = os.sysconf("SC_PAGE_SIZE")
+    except (OSError, ValueError, IndexError, AttributeError):
+        # Not Linux (no procfs, no os.sysconf): the line is simply not emitted.
+        return None
+    return resident_pages * page_size / (1024 * 1024)
+
+
+def _log_memory(stage: str) -> None:
+    """One line per ingest phase: the phase, and what the process is holding.
+
+    The worker's memory used to grow with the document -- every embedded raster
+    decoded to full resolution and kept until the file ended -- and pods were
+    OOM-killed at the visual-analysis phase. These lines are how a bound is
+    proved rather than assumed, and what a regression gets measured against.
+    """
+    rss = _rss_mib()
+    if rss is None:
+        return
+    logger.info("[ingest-mem] %s rss=%.0fMiB", stage, rss)
 
 
 def _raster_record(
@@ -1042,8 +1209,15 @@ def _raster_record(
     }
 
 
-def _render_first_pdf_page(pdf_path: str, *, scale: float) -> Any:
-    """Page 1 of ``pdf_path`` as a PIL image that owns its pixels, rendered under the PDFium lock."""
+def _render_first_pdf_page(pdf_path: str, *, scale: float, max_dim: int = PAGE_RENDER_MAX_DIM) -> Any:
+    """Page 1 of ``pdf_path`` as a PIL image that owns its pixels, rendered under the PDFium lock.
+
+    ``scale`` is an upper bound, not the render scale: the long edge is clamped
+    to ``max_dim``. The caller makes a 400 px thumbnail of this, and a fixed
+    scale of 2 renders an A0 sheet at ~6740 px -- ~100 MB of pixels, copied a
+    second time to leave the lock -- to throw nearly all of it away. Ordinary
+    sheets are far under the clamp and render exactly as before.
+    """
     import pypdfium2 as pdfium
 
     with pdfium_lock():
@@ -1051,7 +1225,10 @@ def _render_first_pdf_page(pdf_path: str, *, scale: float) -> Any:
         try:
             page = pdf[0]
             try:
-                return detached_pil(page.render(scale=scale))
+                width_pt, height_pt = page.get_size()
+                longest_pt = max(width_pt, height_pt) or 1.0
+                render_scale = min(scale, max_dim / longest_pt)
+                return detached_pil(page.render(scale=render_scale))
             finally:
                 page.close()
         finally:
@@ -1086,17 +1263,22 @@ def _embedded_images_for_analysis(
     """
     if not enabled:
         return [], 0
-    images = _extract_images_from_pdf(pdf_path, skip_pages=rendered_pages)
-    kept, over_cap = cap_images(images, MAX_IMAGES_PER_DOCUMENT)
+    images, over_cap = _extract_image_records(
+        pdf_path,
+        min_width=MIN_IMAGE_WIDTH_PX,
+        min_height=MIN_IMAGE_HEIGHT_PX,
+        skip_pages=rendered_pages,
+        max_images=MAX_IMAGES_PER_DOCUMENT,
+    )
     if over_cap:
         logger.warning(
             "%s holds %d embedded images; analysing the %d largest, %d not indexed",
             pdf_path,
+            len(images) + over_cap,
             len(images),
-            len(kept),
             over_cap,
         )
-    return kept, over_cap
+    return images, over_cap
 
 
 def indexed_visual_type(content_type: str, *, extract_images: bool, extract_charts: bool) -> str | None:
@@ -4301,6 +4483,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 # write starts and again once the file is in.
                 attempted: list[str] | None = None
                 file_name = original_filenames[i] if i < len(original_filenames) else Path(file_path).name
+                file_started = time.monotonic()
+                _log_memory(f"file:start {file_name}")
                 # The PDF rendition the BFF made of a Word or presentation
                 # original (ADR-0071), when it sent one: every byte the PDF
                 # pipeline reads comes from `source_path`, while identity —
@@ -4932,6 +5116,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
                     self._update_file_status(job, i, FileStatus.SUCCESS, chunks_created=chunks_created)
                     attempted = None
+                    _log_memory(f"file:written {file_name} elapsed={time.monotonic() - file_started:.0f}s")
 
                     # The new version is in the vector store: only now does the
                     # one it replaces go. A second file of the same normalized
