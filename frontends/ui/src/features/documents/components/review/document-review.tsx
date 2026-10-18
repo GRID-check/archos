@@ -1033,7 +1033,7 @@ export function DocumentReviewMode({
         className="bg-background inset-0 top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:max-w-none"
         data-testid="document-review"
       >
-        <header className="flex min-h-13 shrink-0 items-center gap-3 border-b px-3 pt-[env(safe-area-inset-top)] pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] max-sm:gap-2">
+        <header className="flex min-h-13 shrink-0 items-center gap-3 border-b px-3 pt-[env(safe-area-inset-top)] pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] max-sm:flex-wrap max-sm:gap-x-2 max-sm:gap-y-0">
           <Button
             type="button"
             variant="ghost"
@@ -1045,13 +1045,16 @@ export function DocumentReviewMode({
           >
             <X className="size-4" aria-hidden />
           </Button>
-          <div className="min-w-0 flex-1">
-            {/* Cut in the middle: a phone's header leaves the name ~140px, and
-                the index at its end is what says which Fassung is under review. */}
+          {/* On a phone the name has a row of its own, under the close and the
+              faces: beside them it kept ~40px, „G…_Index-C.pdf". Cut in the
+              middle where even the row is short: the index at its end is what
+              says which Fassung is under review. The line under it wraps there
+              rather than lose the count. */}
+          <div className="min-w-0 flex-1 max-sm:order-last max-sm:basis-full max-sm:pb-2">
             <DialogTitle className="text-foreground flex text-sm font-semibold">
               <MiddleTruncate text={documentName} tail={12} />
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground truncate text-xs">
+            <DialogDescription className="text-muted-foreground text-xs sm:truncate">
               {[
                 fassungLabel,
                 review.counts.open + review.counts.proposed > 0
