@@ -369,7 +369,7 @@ index `idx_inbox_items_pending`.
 
 ### `POST /api/inbox/read`
 
-Exactly one of three bodies; anything else (`{}`, two shapes at once) is a `400`:
+Exactly one of four bodies; anything else (`{}`, two shapes at once) is a `400`:
 
 - `{ itemIds: string[] }` — the rows the reader opened. Uuids, capped at
   `INBOX_LIST_LIMIT`, because a mark-read request can only ever be about rows
@@ -377,7 +377,13 @@ Exactly one of three bodies; anything else (`{}`, two shapes at once) is a `400`
 - `{ all: true }` — „Alle als gelesen markieren“, in the types the caller may see.
 - `{ resourceType: 'document', resourceId, anchorId }` — the reader opened one
   mark in the review: their informational items anchored on it are read
-  (`markAnchorItemsRead`); requests stay open, as for a whole resource.
+  (`markAnchorItemsRead`); requests stay open, as for a whole resource. A row
+  anchored there only for its link („15 Anmerkungen gesetzt“, folded on
+  `MARKS_SET_GROUP_ANCHOR`) is not the mark's news and is left alone.
+- `{ resourceType: 'document', resourceId, marksSet: true }` — the reader
+  opened the document's review: their rows about new marks on it are read
+  (`markMarksSetReadFor`, `markResourceItemsRead` narrowed to rows folded on
+  `MARKS_SET_GROUP_ANCHOR`, in the types they may see).
 
 Scoped to the caller, so ids belonging to someone else cannot be poked (they
 simply match nothing — telling you an item is not yours would confirm it
@@ -389,7 +395,8 @@ legitimate no-op) and the recomputed badge, so no follow-up read is needed.
 `{ anchorIds: string[] }`: the marks of one document whose news the caller has
 not read, the review's dots. The same rows `POST /api/inbox/read`'s anchor form
 reads (the caller's own, informational, unread, in the types they may see),
-less what they archived or what was redacted. One query on
+less what they archived or what was redacted, and less the rows about new
+marks, which anchor on the newest mark only for their link. One query on
 `idx_inbox_items_target`, at most `UNREAD_ANCHORS_LIMIT` (500, a document's
 most marks). Only `document` is an anchored resource; anything else is a `400`.
 
