@@ -49,6 +49,9 @@ export function AssignPopover({
   trigger?: ReactElement
 }) {
   const t = useTranslations('files')
+  // The people search says what it searches, in the words every people search
+  // of the app uses (the project's members), not the ask dialog's „An“.
+  const tPeople = useTranslations('members')
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
@@ -217,14 +220,16 @@ export function AssignPopover({
           value={query}
           onChange={setQuery}
           onClear={() => setQuery('')}
-          placeholder={t('assignment.to')}
-          label={t('assignment.to')}
+          placeholder={tPeople('invite.searchPlaceholder')}
+          label={tPeople('invite.searchPlaceholder')}
           clearLabel={t('browser.clearSearch')}
           inputClassName="h-8"
         />
-        <ScrollArea className="h-52 min-h-52">
+        {/* As tall as its people, up to a list of about eight, then it scrolls:
+            two names must not open a mostly empty box over the thread. */}
+        <ScrollArea className="max-h-52">
           {loading && people.length === 0 ? (
-            <div className="flex h-full min-h-52 items-center justify-center py-6">
+            <div className="flex items-center justify-center py-6">
               <Spinner size="sm" label={t('assignment.loadingPeople')} />
             </div>
           ) : loadError ? (

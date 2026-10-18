@@ -135,4 +135,22 @@ describe('AssignPopover', () => {
     expect(await screen.findByText('Bob Klein')).toBeInTheDocument()
     await waitFor(() => expect(calls).toBe(2))
   })
+  // The review's Zuständige picker read „An“ (the ask dialog's „To“) and kept
+  // a fixed 13rem list, so two names opened a mostly empty box over the thread.
+  it('says what its search looks through, and is as tall as its people', async () => {
+    server.use(
+      http.get('/api/assignments/document/:id/candidates', () =>
+        HttpResponse.json({ candidates: [person('user_anna', 'Anna Weber'), person('user_ben', 'Ben Huber')] }),
+      ),
+    )
+
+    render(<AssignPopover documentId="doc_1" assignees={[]} onChanged={() => undefined} />)
+    await openPopover()
+
+    const search = screen.getByRole('textbox', { name: 'Search by name or email' })
+    expect(search).toHaveAttribute('placeholder', 'Search by name or email')
+    const list = (await screen.findByText('Anna Weber')).closest('[data-slot="scroll-area"]')
+    expect(list).toHaveClass('max-h-52')
+    expect(list).not.toHaveClass('h-52')
+  })
 })
