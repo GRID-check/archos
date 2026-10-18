@@ -970,6 +970,16 @@ every request on a mark (`annotation.assigned_to_you`, `piloti.asks_you`,
 | `review` | Piloti's Rückfrage while events do not wake Piloti (`piloti-wakes` off) | „In der Prüfansicht beantworten“ in place of „Zur Anmerkung“: the thread card asks Piloti with the answer, which a row cannot |
 | null | the reader may only read the document (a mention reaches readers too), or the row is no open request | „Zur Anmerkung“ alone |
 
+„Antworten“ opens the thread's own composer (`Composer`, `review/composer.tsx`)
+in the row, gesture for gesture: Enter sends, Shift+Enter breaks the line,
+Escape lets go, „@“ offers whoever may open the document, and the spark writes
+@Piloti where the row says events wake Piloti (`pilotiWakes` on the item,
+`answerIn: 'row'` and the `piloti-wakes` switch on: the server answers it, as in
+the thread). The reply carries whom it mentions and the @Piloti flag, so a
+colleague asked from the Postfach is told as from the thread. Sent, the row
+says so and names whom the server did not keep; a failure keeps the words in
+the box and says the row's own failure.
+
 Both writes go through the annotations' own client (`lib/annotations/client.ts`),
 the same writes the thread makes, so the settle rules above apply unchanged,
 and the service checks the write again. An answer from the row that still

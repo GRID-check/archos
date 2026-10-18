@@ -1323,6 +1323,25 @@ describe('listInbox — where a request on a mark may be answered (answerIn)', (
     expect((await listInbox(wakes)).items[0]!.answerIn).toBe('row')
   })
 
+  it('lets an answer from the row address Piloti only where events wake it, and only where the row answers', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      onMark({ id: 'writer' }),
+      onMark({ id: 'reader', resourceId: 'doc_r', groupKey: 'g_r' }),
+    ])
+
+    const off = await listInbox(session)
+    expect(off.items.map((item) => [item.id, item.pilotiWakes])).toEqual([
+      ['writer', false],
+      ['reader', false],
+    ])
+
+    const on = await listInbox(makeSession({ featureFlags: ['collaboration', 'piloti-wakes'] }))
+    expect(on.items.map((item) => [item.id, item.pilotiWakes])).toEqual([
+      ['writer', true],
+      ['reader', false],
+    ])
+  })
+
   it('asks nothing for a row that is no request on a mark, and offers nothing on an unreachable one', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([
       row({ id: 'chat' }),

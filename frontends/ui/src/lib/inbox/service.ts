@@ -658,6 +658,7 @@ function toItemView(
   const messageId = nonEmpty(payload.runMessageId)
   const run: RunMessageRef | null =
     conversationId && runId && messageId ? { conversationId, runId, messageId } : null
+  const answerIn = answerPlaceOf(row, access !== null, answers)
 
   return {
     id: row.id,
@@ -691,7 +692,8 @@ function toItemView(
     dueOn: access ? coerceDay(payload.dueOn) : null,
     openMarks: access ? coerceCount(payload.openMarks) : null,
     marksFassung: access ? coerceCount(payload.marksFassung) : null,
-    answerIn: answerPlaceOf(row, access !== null, answers),
+    answerIn,
+    pilotiWakes: answerIn === 'row' && answers.wakesOn,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }

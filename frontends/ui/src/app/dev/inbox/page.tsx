@@ -37,6 +37,7 @@ import { Bell } from 'lucide-react'
 import { I18nProvider } from '@/i18n'
 import { InboxBadge, InboxList } from '@/features/collaboration/components'
 import type { InboxItemView } from '@/lib/inbox/types'
+import type { AnnotationReplyView, AnnotationView } from '@/lib/annotations/types'
 
 // Relative to now, so „vor 4 Minuten“ reads as it would in the product rather
 // than every row claiming months.
@@ -593,6 +594,8 @@ const ITEMS: InboxItemView[] = [
     mentions: [{ targetId: VIEWER_ID, display: 'Miriam Hofer' }],
     variant: null,
     answerIn: 'row',
+    // Events wake Piloti in this office: „Antworten" opens the thread's composer with @Piloti beside Send.
+    pilotiWakes: true,
     createdAt: ago(3),
     updatedAt: ago(3),
   },
@@ -719,6 +722,13 @@ const PAGE = 12
 const isEmptyVariant = (): boolean =>
   typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('variant') === 'empty'
 
+/** Who may open the fixtures' documents: the rows the reply composer's „@" picker offers. */
+const MENTIONABLE = [
+  { userId: 'u-anna', name: 'Anna Weber', email: 'anna@buero.at', profilePictureUrl: null },
+  { userId: 'u-jakob', name: 'Jakob Huber', email: 'jakob@buero.at', profilePictureUrl: null },
+  { userId: 'u-markus', name: 'Markus Lehner', email: 'markus@buero.at', profilePictureUrl: null },
+]
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const w = window as unknown as { __inboxShim?: boolean }
   if (!w.__inboxShim) {
@@ -746,6 +756,33 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const items = rows.slice(start, start + PAGE)
         const hasMore = start + PAGE < rows.length
         return Response.json({ items, pending: PENDING.length, counts, hasMore, nextCursor: hasMore ? String(start + PAGE) : null })
+      }
+      // „Antworten" from a mark's row: the thread's composer asks who may open
+      // the document for its „@" picker, and sends through the reply route.
+      if (/^\/api\/assignments\/document\/[^/]+\/candidates/.test(url)) {
+        return Response.json({ candidates: MENTIONABLE })
+      }
+      const reply = /^\/api\/documents\/[^/]+\/annotations\/([^/]+)\/replies$/.exec(url)
+      if (reply && init?.method === 'POST') {
+        const sent = JSON.parse(String(init.body ?? '{}')) as Pick<AnnotationReplyView, 'body' | 'mentions' | 'addressesPiloti'>
+        const replyId = `reply-${Date.now()}`
+        const now = new Date().toISOString()
+        // The mark as the reply route answers it, its thread holding the new reply with whom it kept.
+        const annotation: AnnotationView = {
+          id: reply[1], documentId: 'd-eg-c', number: 11, page: 1, shape: 'point', x: 0.4, y: 0.4, w: null, h: null,
+          kind: 'question', body: 'Fluchtwegbreite im Gang nachweisen.', mentions: [], basis: null, authorKind: 'person',
+          status: 'open', assigneeUserId: VIEWER_ID, assigneeName: 'Miriam Hofer', dueOn: null, fassungNumber: 3,
+          onCurrentFassung: true, createdBy: 'u-jakob', createdByName: 'Jakob Huber', createdAt: now, updatedAt: now,
+          acceptedBy: null, acceptedByName: null, closedBy: null, closedByName: null, closedAt: null,
+          delegatedBy: null, delegatedByName: null, delegatedAt: null, canEdit: true, canDelete: false,
+          replies: [{
+            id: replyId, annotationId: reply[1], authorKind: 'person', body: sent.body, createdBy: VIEWER_ID,
+            createdByName: 'Miriam Hofer', createdAt: now, addressesPiloti: sent.addressesPiloti === true,
+            mentions: sent.mentions ?? [], editedAt: null,
+          }],
+        }
+        const wake = sent.addressesPiloti ? 'queued' : 'none'
+        return Response.json({ annotation, replyId, wake }, { status: 201 })
       }
       // The live channel is deliberately absent here: the list must render fully
       // from the plain fetch (spec RT-3/RT-4), which is what a screenshot proves.

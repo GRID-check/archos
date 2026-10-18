@@ -21,6 +21,9 @@
  * (assigned to the reader, Piloti's question, a mention) is answered or
  * resolved right here, through the annotations' own client: the same writes
  * the thread makes, and only where the server's `answerIn` says the reader may.
+ * The answer is written in the thread's own composer (`Composer`): Enter sends,
+ * „@" mentions whoever may open the document, and @Piloti is offered where
+ * events wake Piloti (`pilotiWakes`), as the thread offers it.
  *
  * The row answers **who / what / where / when without being opened** (IB-20):
  * the title carries the actor, the body the subject, the excerpt the actual
@@ -72,6 +75,8 @@ import {
   type InboxTypePresentation,
 } from '@/lib/inbox/types'
 import { AnnotationRequestError, replyToAnnotation, updateAnnotation } from '@/lib/annotations/client'
+import type { MarkMention } from '@/lib/annotations/types'
+import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
@@ -100,6 +105,7 @@ import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
+import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
 import { MentionText } from './MentionText'
 
 /**
@@ -180,6 +186,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   ref,
 ): JSX.Element {
   const t = useTranslations('collaboration')
+  const tFiles = useTranslations('files')
   const { dictionary } = useI18n()
   const { locale } = useLocale()
 
@@ -271,25 +278,40 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const answerInReview = markOpen && item.answerIn === 'review'
   const canResolveMark = answerHere && item.type === 'annotation.assigned_to_you'
   const [replying, setReplying] = useState(false)
-  const [replyText, setReplyText] = useState('')
   const [markBusy, setMarkBusy] = useState(false)
   const [markOutcome, setMarkOutcome] = useState<'sent' | 'sentPilotiNotAsked' | 'resolved' | 'conflict' | 'failed' | null>(null)
+  /** Whom the last answer named and the server did not keep: they cannot open the document, so nobody told them. */
+  const [untold, setUntold] = useState<string[]>([])
 
-  const sendReply = async (): Promise<void> => {
-    const words = replyText.trim()
-    if (!answerHere || !item.anchorId || words === '' || markBusy) return
+  /*
+    The answer goes in as the thread's would, with whom it mentions as picked
+    and @Piloti as its flag. A failure throws back into the composer, which
+    keeps the text and says the row's own words for it (`describeFailure`).
+    Answers with the mentions the server kept.
+  */
+  const sendReply = async (body: string, { piloti, mentions }: ComposerSend): Promise<readonly MarkMention[] | void> => {
+    if (!answerHere || !item.anchorId) return
     setMarkBusy(true)
     setMarkOutcome(null)
     try {
-      const { wake } = await markClient.reply(item.resourceId, item.anchorId, { body: words })
+      const { annotation, replyId, wake } = await markClient.reply(item.resourceId, item.anchorId, {
+        body: body.trim(),
+        ...(piloti ? { addressesPiloti: true } : {}),
+        ...(mentions.length > 0 ? { mentions } : {}),
+      })
+      const kept = annotation.replies.find((reply) => reply.id === replyId)?.mentions ?? []
+      const keptIds = new Set(kept.map((mention) => mention.targetId))
+      setUntold(
+        mentions
+          .filter((mention) => mention.targetId !== AGENT_MENTION_ID && !keptIds.has(mention.targetId))
+          .map((mention) => mention.display),
+      )
       setReplying(false)
-      setReplyText('')
       // `off`: the answer met a wake rule but nothing wakes Piloti here; the row says how to ask it.
       setMarkOutcome(wake === 'off' ? 'sentPilotiNotAsked' : 'sent')
       // Answered from here is read here: the thread has the reply.
       onOpen?.(item)
-    } catch {
-      setMarkOutcome('failed')
+      return kept
     } finally {
       setMarkBusy(false)
     }
@@ -948,48 +970,31 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             )}
           </div>
 
-          {answerHere && replying && (
-            <div className="relative z-10 mt-2 space-y-2 rounded-lg border p-2" data-testid="inbox-mark-reply-form">
-              <label htmlFor={`inbox-mark-reply-${item.id}`} className="text-muted-foreground block text-xs">
-                {item.related ? t('inbox.mark.replyLabel', { related: item.related }) : t('inbox.mark.replyLabelNoNumber')}
-              </label>
-              <Textarea
-                id={`inbox-mark-reply-${item.id}`}
-                value={replyText}
+          {answerHere && replying && item.anchorId && (
+            <div className="relative z-10 mt-2 space-y-1.5" data-testid="inbox-mark-reply-form">
+              <Composer
                 autoFocus
-                rows={2}
-                onChange={(event) => setReplyText(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                    event.preventDefault()
-                    void sendReply()
-                  }
-                }}
+                testId="inbox-mark-reply-box"
+                placeholder={
+                  item.related ? t('inbox.mark.replyLabel', { related: item.related }) : t('inbox.mark.replyLabelNoNumber')
+                }
+                submitLabel={t('inbox.mark.send')}
+                documentId={item.resourceId}
+                mentionPiloti={item.pilotiWakes === true}
+                describeFailure={() => t('inbox.mark.failed')}
+                onSubmit={sendReply}
+                onEscape={() => setReplying(false)}
               />
-              <div className="flex items-center justify-end gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    setReplying(false)
-                    setReplyText('')
-                  }}
-                >
-                  {t('inbox.mark.cancel')}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-7 text-xs"
-                  disabled={replyText.trim() === '' || markBusy}
-                  data-testid="inbox-mark-reply-send"
-                  onClick={() => void sendReply()}
-                >
-                  {t('inbox.mark.send')}
-                </Button>
-              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                data-testid="inbox-mark-reply-cancel"
+                onClick={() => setReplying(false)}
+              >
+                {t('inbox.mark.cancel')}
+              </Button>
             </div>
           )}
           {markOutcome && (
@@ -1002,6 +1007,14 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               data-testid="inbox-mark-outcome"
             >
               {t(`inbox.mark.${markOutcome}`)}
+              {markOutcome !== 'failed' && markOutcome !== 'conflict' && untold.length > 0 && (
+                <>
+                  {' '}
+                  {untold.length === 1
+                    ? tFiles('review.mentions.untoldOne', { name: untold[0] })
+                    : tFiles('review.mentions.untoldMany', { names: untold.join(', ') })}
+                </>
+              )}
             </p>
           )}
         </ItemContent>

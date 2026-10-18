@@ -65,7 +65,8 @@ function withoutMention(text: string, mentions: readonly DraftMention[], targetI
  * with the mentions it kept, and the box says whom it did not tell.
  *
  * One box for every place a person writes into a thread: the thread's reply,
- * the draft, and the author rewording a mark or a reply.
+ * the draft, the author rewording a mark or a reply, and the answer from a
+ * Postfach row (`features/collaboration/components/InboxItemRow.tsx`).
  */
 export function Composer({
   placeholder,
@@ -102,7 +103,7 @@ export function Composer({
   initialMentions?: readonly MarkMention[]
   /**
    * The caller's words for a send `onSubmit` threw on, where it has them (a
-   * reply Piloti took up meanwhile); null
+   * reply Piloti took up meanwhile, the Postfach row's own failure); null
    * leaves the box's own: the chat's words for a spent mention budget, else
    * that it was not sent. The text stays either way.
    */
