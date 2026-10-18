@@ -282,7 +282,6 @@ config:
   # retired Chroma's volume stays as `data-chroma-0`, the only way back, until it
 
   # is deleted a few days later (docs/deployment/qdrant-runbook.md).
-  grid-oib:chromaMigration: "true"
   # ── Agent (backend) — vertical scaling levers ──
 
   grid-oib:backendRequestsCpu: "1"
