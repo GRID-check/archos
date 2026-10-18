@@ -420,8 +420,8 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     the badge is what says so. Resolved when someone else becomes responsible
     and for everyone when the mark is closed (`lib/annotations/attention.ts`).
     `per-anchor` on the mark: assigning it twice is one row. A reminder by
-    mail after two hours unread: a mark handed to someone who never opens the
-    app would otherwise wait for good. Operational, like `piloti.asks_you`:
+    mail after two hours unread, once a sender exists (`./delivery`): a mark
+    handed to someone who never opens the app would otherwise wait for good. Operational, like `piloti.asks_you`:
     marks are not a chat feature.
   */
   'annotation.assigned_to_you': {
@@ -455,8 +455,8 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     person asked the reader something, and the badge is what shows it until
     they answer in the thread or the mark is closed
     (`lib/annotations/attention.ts`). `per-anchor` on the mark: being mentioned
-    twice on one mark is one row. Mailed and pushed as the chat's mention is,
-    so a person learns one rule for both. Operational, like the other marks'
+    twice on one mark is one row. Pushed as the chat's mention is, and mailed
+    as it is once a sender exists, so a person learns one rule for both. Operational, like the other marks'
     types: marks are not a chat feature.
   */
   'annotation.mentioned': {

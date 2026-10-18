@@ -804,8 +804,16 @@ The author's `annotation.activity` row says `yours: true`: a reply or a move
 on a mark they wrote answers them, so it reaches their devices as a result
 (`InboxPushPolicy.yours`, on by default, like `mention.answered`), while the
 thread's other participants hear it as activity (off by default). An
-`annotation.mentioned` is pushed and mailed as the chat's `mention.requested`
-is (requests, an hour unread): one rule for one gesture.
+`annotation.mentioned` is pushed as the chat's `mention.requested` is
+(requests): one rule for one gesture.
+
+**Where it reaches them: the inbox and web push, not mail.** Every item lands
+in the Postfach, and reaches the devices a person turned notifications on for
+(ADR-0112, by category). The registry also states each type's mail policy
+(`annotation.mentioned` and `piloti.asks_you` an hour unread,
+`annotation.assigned_to_you` two hours), but no sender exists yet
+(`lib/inbox/delivery.ts`, ADR-0035): today nothing about a mark is mailed.
+Those policies take effect the day the sender ships.
 
 The participants are derived from the mark when something happens, never
 stored as a list (`markParticipants`): its author (who set it, or for Piloti's
@@ -935,13 +943,15 @@ Once a day the Zuständige of every open mark whose Frist is today or tomorrow
 is reminded (`due_soon`), and of every mark whose Frist passed in the last
 seven days (`overdue`), in the row they already have for the mark: `annotation.assigned_to_you`, folded
 per mark, so the overdue reminder upgrades the earlier one and is never a
-second row. Same type, same push and mail policy as being handed the mark
-(requests, a mail after two hours unread): it is the same request, coming due.
+second row. Same type and same push policy as being handed the mark
+(requests): it is the same request, coming due. It reaches the inbox and the
+devices with notifications on; the type's mail after two hours unread waits
+for the ADR-0035 sender, like every other mail (above).
 
 - **When.** The job scheduler's daily clock (`scheduler/index.js`,
   `sweepAnnotationDue`) posts `POST /api/internal/annotations/due-reminders` at
   06:45 in Vienna. A start before 06:45 waits for it: a restart at 01:00 would
-  otherwise push and mail at 01:00, and its stamps would silence the 06:45
+  otherwise push at 01:00, and its stamps would silence the 06:45
   run. A start later in the day catches that day's run up on its first tick.
   A failed post retries in an hour, but never past the office's midnight: a
   retry that would fall on the next day waits for its 06:45 instead.
