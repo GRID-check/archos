@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   readConfig,
   createStreaks,
@@ -13,6 +13,7 @@ import {
   sweepTraceRetention,
   sweepConversationTraces,
   sweepDownloadLogRetention,
+  sweepAnnotationDue,
   tick,
   INTERNAL_TOKEN_HEADER,
 } from './index.js'
@@ -347,6 +348,10 @@ describe('tick', () => {
 
   it('a failed claim still leaves the reconciler its turn', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    // 10:00 in Vienna, after the Frist reminder's hour: its first tick catches the day's run up.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-17T08:00:00Z'))
+    onTestFinished(() => vi.useRealTimers())
     const sql = { begin: vi.fn().mockRejectedValue(new Error('db down')) }
     const fetchImpl = reconciled()
 
@@ -358,6 +363,8 @@ describe('tick', () => {
       'http://frontend:3000/api/internal/maintenance/reconcile-background-work',
       'http://frontend:3000/api/internal/upload-batches/sweep',
       'http://frontend:3000/api/internal/folder-placement/sweep',
+      // The daily Frist reminder catches up on the first tick of a start after 06:45.
+      'http://frontend:3000/api/internal/annotations/due-reminders',
     ])
   })
 
@@ -394,6 +401,74 @@ describe('tick', () => {
     await tick({ begin: vi.fn().mockRejectedValue(bad) }, base, reconciled(), streaksWithoutDownloadLog())
     expect(error).toHaveBeenCalledTimes(1)
     expect(error.mock.calls[0][0]).toContain('claim transaction failed')
+  })
+})
+
+describe('sweepAnnotationDue (the daily Frist reminder)', () => {
+  const config = { frontendUrl: 'http://frontend:3000', internalToken: 't', pollMs: 30000 }
+  const answered = (counts) => vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(counts) })
+  const counts = { day: '2026-10-17', organizations: 2, queued: 2, already: 0 }
+
+  it('catches up at once on a start after 06:45 in Vienna, then not again before 06:45 the next morning', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { annotationDue, annotationDueClock } = createStreaks(config)
+    const fetchImpl = answered(counts)
+    // 17 Oct 2026, 10:00 in Vienna (UTC+2).
+    const now = new Date('2026-10-17T08:00:00Z')
+
+    expect(await sweepAnnotationDue(config, fetchImpl, annotationDue, annotationDueClock, now)).toEqual(counts)
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://frontend:3000/api/internal/annotations/due-reminders',
+      expect.objectContaining({ method: 'POST', headers: { 'x-grid-internal-token': 't' } }),
+    )
+    expect(new Date(annotationDueClock.nextRunAt).toISOString()).toBe('2026-10-18T04:45:00.000Z')
+
+    expect(await sweepAnnotationDue(config, fetchImpl, annotationDue, annotationDueClock, new Date('2026-10-18T04:44:00Z'))).toBeNull()
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    await sweepAnnotationDue(config, fetchImpl, annotationDue, annotationDueClock, new Date('2026-10-18T04:45:00Z'))
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries a failed post in an hour, not on the next tick', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { annotationDue, annotationDueClock } = createStreaks(config)
+    const now = new Date('2026-10-17T08:00:00Z')
+    const down = vi.fn().mockResolvedValue({ ok: false, status: 503, headers: new Headers(), text: () => Promise.resolve('') })
+
+    expect(await sweepAnnotationDue(config, down, annotationDue, annotationDueClock, now)).toBeNull()
+    expect(annotationDueClock.nextRunAt).toBe(now.getTime() + 60 * 60 * 1000)
+  })
+
+  it('never retries past the office’s midnight: a post failing late at night waits for the next 06:45', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { annotationDue, annotationDueClock } = createStreaks(config)
+    // 17 Oct 2026, 23:30 in Vienna: an hour later is already the 18th.
+    const late = new Date('2026-10-17T21:30:00Z')
+    annotationDueClock.nextRunAt = late.getTime()
+    const down = vi.fn().mockResolvedValue({ ok: false, status: 503, headers: new Headers(), text: () => Promise.resolve('') })
+
+    expect(await sweepAnnotationDue(config, down, annotationDue, annotationDueClock, late)).toBeNull()
+    expect(new Date(annotationDueClock.nextRunAt).toISOString()).toBe('2026-10-18T04:45:00.000Z')
+  })
+
+  it('waits for 06:45 on a start before it: a restart at night sends no push or mail at night', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { annotationDue, annotationDueClock } = createStreaks(config)
+    const fetchImpl = answered(counts)
+    // 17 Oct 2026, 01:00 in Vienna (UTC+2).
+    const night = new Date('2026-10-16T23:00:00Z')
+
+    expect(await sweepAnnotationDue(config, fetchImpl, annotationDue, annotationDueClock, night)).toBeNull()
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(new Date(annotationDueClock.nextRunAt).toISOString()).toBe('2026-10-17T04:45:00.000Z')
+
+    expect(await sweepAnnotationDue(config, fetchImpl, annotationDue, annotationDueClock, new Date('2026-10-17T04:44:30Z'))).toBeNull()
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(await sweepAnnotationDue(config, fetchImpl, annotationDue, annotationDueClock, new Date('2026-10-17T04:45:00Z'))).toEqual(counts)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(new Date(annotationDueClock.nextRunAt).toISOString()).toBe('2026-10-18T04:45:00.000Z')
   })
 })
 

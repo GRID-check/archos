@@ -126,14 +126,15 @@ const FILES: FileItem[] = [
   makeFile('p5', 'Statik_Positionsplan.pdf', 'Positionsplan der Tragstruktur mit Lastannahmen.', {
     fileSize: 2_900_000,
     folderId: 'f-statik',
-    marks: { live: 1, forYou: 0 },
+    marks: { open: 1, proposed: 0, forYou: 0 },
   }),
-  // What is still open on its pages, under the size and the date: four live
-  // Anmerkungen (every Fassung), two of them for the reader, „4 offen · 2 für
-  // Sie". A press opens the review.
+  // What is still open on its pages, under the size and the date: four open
+  // Anmerkungen (every Fassung), two of them for the reader, and three of
+  // Piloti's proposals nobody took over, „4 offen · 2 für Sie · 3 Vorschläge".
+  // A press opens the review.
   makeFile('p10', 'Einreichplan_Grundriss_EG_Index-C.pdf', 'Einreichplan Grundriss Erdgeschoss, Index C.', {
     fileSize: 1_900_000,
-    marks: { live: 4, forYou: 2 },
+    marks: { open: 4, proposed: 3, forYou: 2 },
   }),
   makeFile('p6', 'Energieausweis.pdf', 'Energieausweis mit Heizwärmebedarf und Effizienzklasse.', {
     status: 'processing',

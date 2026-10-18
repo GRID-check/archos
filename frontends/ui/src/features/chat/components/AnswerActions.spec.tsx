@@ -15,14 +15,13 @@ import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { capturePosthog } from '@/lib/analytics/posthog'
-import { startBrowserDownload } from '@/lib/browser-download'
+import { captureDownloads } from '@/test-utils/downloads'
 import { AnswerActions } from './AnswerActions'
 import { buildCitationModel } from '../lib/citations'
 
 const toastError = vi.hoisted(() => vi.fn())
 vi.mock('sonner', () => ({ toast: { error: toastError } }))
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
-vi.mock('@/lib/browser-download', () => ({ startBrowserDownload: vi.fn() }))
 
 const documents = buildCitationModel({
   citations: [
@@ -160,6 +159,7 @@ describe('AnswerActions', () => {
           headers: new Headers({ 'content-disposition': 'attachment; filename="Fluchtweg-Frage.docx"' }),
         }))
       )
+      const downloads = captureDownloads()
       const user = userEvent.setup()
       renderExportable()
 
@@ -168,7 +168,7 @@ describe('AnswerActions', () => {
       await waitFor(() =>
         expect(capturePosthog).toHaveBeenCalledWith('report_exported', { kind: 'answer', format: 'docx' })
       )
-      expect(startBrowserDownload).toHaveBeenCalledWith('blob:export', 'Fluchtweg-Frage.docx')
+      expect(downloads).toEqual([{ href: 'blob:export', download: 'Fluchtweg-Frage.docx' }])
       expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toContain('Fluchtweg')
     })
 

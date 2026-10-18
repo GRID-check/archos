@@ -86,9 +86,42 @@ export interface InboxItemView {
    * (`[a-z][a-z_]*`), never copy; withheld with the payload when redacted.
    */
   variant: string | null
+  /**
+   * The date of the mark a Zuständige is asked about (`YYYY-MM-DD`), so the row
+   * says by when (`annotation.assigned_to_you`); null without one. Absent from
+   * a type that carries none. Withheld with the payload when redacted.
+   */
+  dueOn?: string | null
+  /**
+   * For a new Fassung: how many open marks it leaves to check, and the Fassung
+   * they sit on when it is one numbered Fassung of the same document
+   * (`lib/documents/fassung-notify.ts`). Absent, or null, otherwise.
+   */
+  openMarks?: number | null
+  marksFassung?: number | null
+  /**
+   * Where the reader may answer the mark an open request is about (a mark's
+   * Zuständige, Piloti's Rückfrage, a mention), as the server decides it: `row`
+   * here in the inbox, `review` only in the Prüfansicht, or null when they may
+   * not (they cannot write the document, or the row is no request on a mark).
+   * `review` is Piloti's Rückfrage while events do not wake Piloti
+   * (`piloti-wakes` off): an answer reaches Piloti only when the Prüfansicht
+   * asks it, so the row links there instead of answering. The row offers only
+   * what this says; the annotations' service checks every write again.
+   */
+  answerIn: InboxAnswerPlace | null
+  /**
+   * An answer from the row may address Piloti (its @Piloti): events wake
+   * Piloti in the organization (`piloti-wakes`), so the server answers it, as
+   * it does in the thread. Only where `answerIn` is `row`; absent is false.
+   */
+  pilotiWakes?: boolean
   createdAt: string
   updatedAt: string
 }
+
+/** Where a request on a mark may be answered: {@link InboxItemView.answerIn}. */
+export type InboxAnswerPlace = 'row' | 'review'
 
 /**
  * The slices `GET /api/inbox?filter=` reads (`./repository`'s `InboxListFilter`):

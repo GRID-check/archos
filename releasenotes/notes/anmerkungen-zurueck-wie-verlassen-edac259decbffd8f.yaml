@@ -1,0 +1,11 @@
+---
+fixes:
+  - >
+    After you work through annotations in the review, the count beside the
+    document in Files shows what is still open, and closing a review you opened
+    from the inbox or from open points takes you back there with your filter,
+    in a single Back step.
+  - >
+    A copied annotation link now opens only that annotation, and new
+    annotations a colleague sets while you have the document open in the review
+    no longer stay unread in your inbox.

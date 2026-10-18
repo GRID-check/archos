@@ -155,7 +155,7 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
 
   // --- Anmerkungen: keyed by a document the caller already read -------------
   'lib/annotations/repository.ts#listDocumentAnnotations|documentAnnotations':
-    'The Anmerkungen of a document the service read through `getAccessibleDocument` first.',
+    "The Anmerkungen of a document the service read through `getAccessibleDocument` first. The two ends of a carry it joins name another document's mark by id and number only, and the service shows them to a reader who may open that document (`linkedDocuments`).",
   'lib/annotations/repository.ts#listDocumentAnnotations|documentVersions':
     'The Fassung number each Anmerkung was set on, of that same document.',
   'lib/annotations/repository.ts#findDocumentAnnotation|documentAnnotations':
@@ -164,6 +164,8 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     'The Fassung number it was set on, of that same document.',
   'lib/annotations/repository.ts#insertDocumentAnnotations|documentAnnotations':
     "The next number and the count, under the insert's lock, for a document the service read for writing.",
+  'lib/annotations/repository.ts#carryAnnotationToDocument|documentAnnotations':
+    "Carrying a mark (migration 0151): the next number and the count of the replacing document, the close of the replaced one's mark and the linked copy. The service read both documents for writing first (`getAccessibleDocument`, the replacing one found through `loadFassungFacts` for the reader).",
   'lib/annotations/repository.ts#listReplies|documentAnnotationReplies':
     'The threads of Anmerkungen just read from a document the service read first.',
   'lib/annotations/repository.ts#insertAnnotationReply|documentAnnotationReplies':

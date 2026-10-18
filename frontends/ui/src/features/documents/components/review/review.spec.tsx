@@ -29,8 +29,9 @@ import type { AnnotationView } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
 import { createCanvasTurnClient, type CanvasTurnClientOptions } from '../../lib/canvas-turn-client'
-import { useDocumentReview } from '../../hooks/use-document-review'
+import { CARRY_AT_ONCE, useDocumentReview, type ReviewFassung } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
+import { useCheckFixed } from './check-fixed'
 import { PilotiAnswerCard } from './piloti-answer-card'
 import { ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
@@ -147,16 +148,23 @@ function Harness({
   transport,
   onReady,
   piloti,
+  canPickAssignee = false,
+  fassung = null,
 }: {
   transport: RoomTransport
   onReady?: (review: ReturnType<typeof useDocumentReview>) => void
   piloti?: ReturnType<typeof scriptedPiloti>
+  canPickAssignee?: boolean
+  fassung?: ReviewFassung | null
 }) {
   const review = useDocumentReview('doc_1', {
     enabled: true,
     transport,
+    fassung,
     piloti: piloti ? { projectId: 'proj_1', fileName: 'Grundriss.pdf', createClient: piloti.createClient } : undefined,
   })
+  // As the review wires it: „Piloti prüfen lassen, was behoben ist" under the earlier Fassungen' marks.
+  const checkFixed = useCheckFixed(review, { documentName: 'Grundriss Index C.pdf', fassungLabel: 'Revision 3' })
   useEffect(() => {
     onReady?.(review)
   })
@@ -172,9 +180,9 @@ function Harness({
             renderAsk={(ask, { placement }) => <PilotiAnswerCard review={review} ask={ask} placement={placement} />}
             renderThread={({ placement }) =>
               review.draft ? (
-                <DraftCard review={review} draft={review.draft} placement={placement} canPickAssignee={false} />
+                <DraftCard review={review} draft={review.draft} placement={placement} canPickAssignee={canPickAssignee} />
               ) : selected ? (
-                <ThreadCard review={review} annotation={selected} placement={placement} canPickAssignee={false} />
+                <ThreadCard review={review} annotation={selected} placement={placement} canPickAssignee={canPickAssignee} />
               ) : null
             }
           />
@@ -189,7 +197,11 @@ function Harness({
       <button type="button" onClick={() => review.setTool('ask')}>
         piloti tool
       </button>
-      <ReviewPanel review={review} onOpen={(annotation) => review.select(annotation.id)} />
+      {/* A mark of an earlier Fassung is not on the sheet: its thread opens on its own, as the review places it. */}
+      {selected && !selected.onCurrentFassung && (
+        <ThreadCard review={review} annotation={selected} placement="detached" canPickAssignee={canPickAssignee} />
+      )}
+      <ReviewPanel review={review} onOpen={(annotation) => review.select(annotation.id)} onCheckFixed={checkFixed} />
     </>
   )
 }
@@ -258,25 +270,52 @@ async function askAboutABox(piloti: ReturnType<typeof scriptedPiloti>) {
 }
 
 describe('the review', () => {
-  it('walks the marks in the order the list shows them: proposals first, this Fassung only; K from nothing is the last', async () => {
+  it('walks the marks the sheet draws in the order the list shows them: proposals first, ghosts too; K from nothing is the last', async () => {
     serve([
       view({ id: 'a', number: 1 }),
       view({ id: 'b', number: 2 }),
       view({ id: 'p', number: 3, authorKind: 'piloti', status: 'proposed' }),
-      view({ id: 'old', number: 4, onCurrentFassung: false }),
+      // Open on an earlier Fassung of this document: a ghost, drawn and listed under Offen.
+      view({ id: 'ghost', number: 4, onCurrentFassung: false }),
+      // Closed on an earlier Fassung: listed under Erledigt, not drawn.
+      view({ id: 'gone', number: 5, onCurrentFassung: false, status: 'resolved' }),
+      view({ id: 'done', number: 6, status: 'resolved' }),
     ])
     let review: ReturnType<typeof useDocumentReview> | null = null
     render(<Harness transport={scriptedRoom().transport} onReady={(next) => (review = next)} />)
     await screen.findAllByTestId('review-pin')
 
     const walked: Array<string | undefined> = []
-    for (let i = 0; i < 4; i += 1) act(() => void walked.push(review?.step(1)?.id))
-    expect(walked).toEqual(['p', 'a', 'b', 'p'])
+    for (let i = 0; i < 5; i += 1) act(() => void walked.push(review?.step(1)?.id))
+    expect(walked).toEqual(['p', 'a', 'b', 'ghost', 'p'])
 
     act(() => review?.select(null))
     let back: string | undefined
     act(() => void (back = review?.step(-1)?.id))
-    expect(back).toBe('b')
+    expect(back).toBe('ghost')
+
+    await userEvent.click(screen.getByTestId('review-filter-closed'))
+    act(() => review?.select(null))
+    const closed: Array<string | undefined> = []
+    for (let i = 0; i < 2; i += 1) act(() => void closed.push(review?.step(1)?.id))
+    expect(closed).toEqual(['done', 'done'])
+  })
+
+  it('says each row’s number and state to a screen reader, the pin being drawn for the eye only', async () => {
+    serve([
+      view({ id: 'a', number: 1 }),
+      view({ id: 'p', number: 3, authorKind: 'piloti', status: 'proposed', kind: 'question' }),
+      view({ id: 'r', number: 2, status: 'resolved' }),
+    ])
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const rows = await screen.findAllByTestId('review-row')
+    expect(rows.map((row) => row.querySelector('[data-slot="comment-pin"]')?.getAttribute('aria-hidden'))).toEqual(['true', 'true'])
+    expect(rows[0]).toHaveAccessibleName(/^Annotation 3: Question · proposal\. /)
+    expect(rows[1]).toHaveAccessibleName(/^Annotation 1: Defect\. Tür ohne Feuerwiderstandsklasse/)
+
+    await userEvent.click(screen.getByTestId('review-filter-closed'))
+    expect(screen.getByTestId('review-row')).toHaveAccessibleName(/^Annotation 2: Defect · resolved\. /)
   })
 
   it('draws a point as a pin and a region as a box with its pin at the corner', async () => {
@@ -438,6 +477,90 @@ describe('the review', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
 
     expect(result.current.annotations).toEqual([])
+  })
+
+  it('sends a decision held by a key to the document it was taken on, even after the pane moved on', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const patchedOn: string[] = []
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) =>
+        HttpResponse.json({
+          annotations: params.id === 'doc_1' ? [view({ id: 'm', documentId: 'doc_1' })] : [],
+          canAnnotate: true,
+        })
+      ),
+      http.patch('/api/documents/:id/annotations/:annotationId', ({ params }) => {
+        patchedOn.push(String(params.id))
+        return HttpResponse.json({ annotation: view({ id: 'm', documentId: String(params.id), status: 'resolved' }) })
+      })
+    )
+    try {
+      const room = scriptedRoom()
+      const { result, rerender } = renderHook(
+        ({ id }) => useDocumentReview(id, { enabled: true, transport: room.transport }),
+        { initialProps: { id: 'doc_1' } }
+      )
+      await waitFor(() => expect(result.current.annotations).toHaveLength(1))
+      act(() => {
+        result.current.decide(result.current.annotations[0], 'resolved')
+      })
+
+      rerender({ id: 'doc_2' })
+      await waitFor(() => expect(result.current.load).toBe('ready'))
+      await act(async () => {
+        vi.advanceTimersByTime(6_000)
+      })
+
+      await waitFor(() => expect(patchedOn).toEqual(['doc_1']))
+      expect(result.current.annotations.map((annotation) => annotation.id)).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('sends a change asked while a held decision is on its way, rather than taking back a write already sent', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const sent: Array<{ status?: string; expectedStatus?: string }> = []
+    let answerFirst: () => void = () => {}
+    server.use(
+      http.get('/api/documents/:id/annotations', () =>
+        HttpResponse.json({ annotations: [view({ id: 'm' })], canAnnotate: true })
+      ),
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ request }) => {
+        const body = (await request.json()) as { status?: string; expectedStatus?: string }
+        sent.push(body)
+        if (sent.length === 1) await new Promise<void>((resolve) => (answerFirst = resolve))
+        return HttpResponse.json({ annotation: view({ id: 'm', status: (body.status ?? 'open') as AnnotationView['status'] }) })
+      })
+    )
+    try {
+      const room = scriptedRoom()
+      const { result } = renderHook(() => useDocumentReview('doc_1', { enabled: true, transport: room.transport }))
+      await waitFor(() => expect(result.current.annotations).toHaveLength(1))
+      act(() => {
+        result.current.decide(result.current.annotations[0], 'resolved')
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(6_000)
+      })
+      await waitFor(() => expect(sent).toHaveLength(1))
+
+      // „Wieder öffnen" while the resolve is in flight goes to the server, not into the void.
+      let reopened: Promise<unknown> = Promise.resolve()
+      act(() => {
+        reopened = result.current.update('m', { status: 'open', expectedStatus: 'resolved' })
+      })
+      answerFirst()
+      await act(async () => {
+        await reopened
+      })
+      expect(sent).toEqual([
+        { status: 'resolved', expectedStatus: 'open' },
+        { status: 'open', expectedStatus: 'resolved' },
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('lets only the latest re-read of a mark land: an older answer cannot bring back a mark a newer one found gone', async () => {
@@ -1222,5 +1345,956 @@ describe('mentioning a colleague on a mark', () => {
     const text = within(thread).getByTestId('mention-text')
     expect(text).toHaveClass('whitespace-pre-wrap')
     expect(text).not.toHaveClass('whitespace-normal')
+  })
+})
+
+/**
+ * The loop a mark runs through: whoever is made responsible can answer it, an
+ * answer to Piloti reaches Piloti, the reader can take a mark themselves, set
+ * and clear its date, find their own marks with the room down, and reword
+ * what they wrote.
+ */
+describe('closing the loop on a mark', () => {
+  const ANNA_MENTION = { targetId: 'user_anna', display: 'Anna Berger' }
+
+  /** The PATCHes the thread sends; each answers the mark as given, with the change applied. */
+  const servePatches = (mark: AnnotationView) => {
+    const patched: Array<Record<string, unknown>> = []
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ request }) => {
+        const change = (await request.json()) as Record<string, unknown>
+        patched.push(change)
+        return HttpResponse.json({ annotation: { ...mark, ...change } })
+      })
+    )
+    return patched
+  }
+
+  /** A room that never welcomes this tab: what the review knows of who reads comes from the page. */
+  const silentRoom = (): RoomTransport => ({
+    connect: ({ onOpen }) => {
+      onOpen()
+      return () => {}
+    },
+    post: () => {},
+  })
+
+  // With wakes off, an answer to Piloti's own Rückfrage met the thread_reply
+  // rule, and the server said so (`off`): this tab asks Piloti, though nobody
+  // wrote @Piloti. Without it the answer reached nobody.
+  it('asks Piloti itself when an answer to its open Rückfrage meets a rule the switch keeps off', async () => {
+    const question = view({ id: 'ann_1', kind: 'question', authorKind: 'piloti', acceptedBy: 'user_me', createdBy: 'user_me' })
+    serve([question])
+    serveConversation()
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
+        HttpResponse.json({ annotation: question, replyId: 'r7', wake: 'off' })
+      )
+    )
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const box = within(await screen.findByTestId('review-thread')).getByTestId('thread-reply')
+    await userEvent.type(box, 'Ab Fertigfußboden.{Enter}')
+
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+    expect(piloti.questions()[0]).toMatchObject({
+      message_id: wakeTurnId('r7'),
+      text: 'Ab Fertigfußboden.',
+      reply_in_thread: true,
+    })
+  })
+
+  it('asks Piloti nothing for a reply no rule met, or one the server already woke Piloti for', async () => {
+    serve([view({ id: 'ann_1' })])
+    serveConversation()
+    const wakes = ['none', 'queued']
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
+        HttpResponse.json({ annotation: view({ id: 'ann_1' }), replyId: 'r1', wake: wakes.shift() })
+      )
+    )
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const box = within(await screen.findByTestId('review-thread')).getByTestId('thread-reply')
+    await userEvent.type(box, 'Passt.{Enter}')
+    await waitFor(() => expect(wakes).toHaveLength(1))
+    await userEvent.type(box, 'Noch etwas.{Enter}')
+    await waitFor(() => expect(wakes).toHaveLength(0))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
+    expect(piloti.questions()).toHaveLength(0)
+  })
+
+  it('offers as Zuständige who may write the document, and „Assign to me" picks the reader', async () => {
+    const mark = view({ id: 'ann_1', createdBy: 'user_anna', createdByName: 'Anna Berger' })
+    serve([mark])
+    const asked: string[] = []
+    server.use(
+      http.get('/api/assignments/:type/:id/candidates', ({ request }) => {
+        asked.push(new URL(request.url).search)
+        return HttpResponse.json({
+          candidates: [{ userId: 'user_anna', name: 'Anna Berger', email: 'anna@buero.at', profilePictureUrl: null }],
+        })
+      })
+    )
+    const patched = servePatches(mark)
+    render(<Harness transport={scriptedRoom().transport} canPickAssignee />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    await userEvent.click(within(await screen.findByTestId('review-thread')).getByTestId('thread-assignee'))
+    await userEvent.click(await screen.findByTestId('assign-pick-self'))
+
+    await waitFor(() => expect(patched).toEqual([{ assigneeUserId: 'user_me' }]))
+    // The Zuständige must answer and close the mark: the list is of who may write it.
+    expect(asked).toEqual(['?access=write'])
+  })
+
+  it('clears a date from its chip, as the Zuständige chip clears its person', async () => {
+    const mark = view({ id: 'ann_1', dueOn: '2026-10-20' })
+    serve([mark])
+    const patched = servePatches(mark)
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'Remove due date' }))
+
+    await waitFor(() => expect(patched).toEqual([{ dueOn: null }]))
+  })
+
+  it('counts Piloti’s untaken proposals apart on the Open tab, as Dateien’s chip does', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1, body: 'Offen' }),
+      view({ id: 'p1', number: 2, authorKind: 'piloti', status: 'proposed' }),
+      view({ id: 'p2', number: 3, authorKind: 'piloti', status: 'proposed' }),
+    ])
+    render(<Harness transport={silentRoom()} />)
+    await waitFor(() => expect(screen.getAllByTestId('review-row')).toHaveLength(3))
+
+    expect(screen.getByTestId('review-filter-open')).toHaveTextContent(/^Open1· 2 proposals$/)
+    expect(screen.getByTestId('review-filter-open-proposed')).toHaveTextContent('2 proposals')
+  })
+
+  it('finds the reader’s marks under „For you" while the room has not welcomed the tab, and not what they only set', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1, createdBy: 'user_anna', assigneeUserId: 'user_me', body: 'Mir zugewiesen' }),
+      view({ id: 'ann_2', number: 2, createdBy: 'user_anna', body: 'Nicht meins' }),
+      // Set by the reader for a colleague: the colleague's, as Dateien counts it.
+      view({ id: 'ann_3', number: 3, createdBy: 'user_me', assigneeUserId: 'user_anna', body: 'Für Anna' }),
+    ])
+    render(<Harness transport={silentRoom()} />)
+    await waitFor(() => expect(screen.getAllByTestId('review-row')).toHaveLength(3))
+
+    expect(screen.getByTestId('review-filter-mine')).toHaveTextContent('For you')
+    await userEvent.click(screen.getByTestId('review-filter-mine'))
+
+    const rows = screen.getAllByTestId('review-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('Mir zugewiesen')
+    expect(screen.getByTestId('review-filter-open')).toHaveTextContent('1')
+  })
+
+  it('lets the author reword their mark: the composer starts from its text, keeps whom it mentions, and adds whom was picked', async () => {
+    const mark = view({ id: 'ann_1', body: '@Anna Berger Brüstung prüfen', mentions: [ANNA_MENTION] })
+    serve([mark])
+    const patched = servePatches(mark)
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+
+    const box = within(screen.getByTestId('review-thread')).getByTestId('thread-edit-body')
+    expect(box).toHaveValue('@Anna Berger Brüstung prüfen')
+    await userEvent.type(box, ' auf 1,00 m{Enter}')
+
+    await waitFor(() =>
+      expect(patched).toEqual([{ body: '@Anna Berger Brüstung prüfen auf 1,00 m', mentions: [ANNA_MENTION] }])
+    )
+    expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-edit')).toBeNull()
+    // Saved, the box goes: the focus goes back to the menu it came from, not to the page.
+    expect(within(screen.getByTestId('review-thread')).getByRole('button', { name: 'More' })).toHaveFocus()
+  })
+
+  it('offers no rewording of someone else’s mark, nor of Piloti’s', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1, createdBy: 'user_anna', createdByName: 'Anna Berger' }),
+      view({ id: 'ann_2', number: 2, authorKind: 'piloti', status: 'proposed', x: 0.7 }),
+    ])
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    for (const index of [0, 1]) {
+      await waitFor(() => expect(screen.getAllByTestId('review-row')).toHaveLength(2))
+      await userEvent.click(screen.getAllByTestId('review-row')[index] as HTMLElement)
+      const thread = await screen.findByTestId('review-thread')
+      await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+      await screen.findAllByRole('menuitem')
+      expect(screen.queryByRole('menuitem', { name: 'Edit' })).toBeNull()
+      await userEvent.keyboard('{Escape}')
+    }
+  })
+
+  it('withholds deleting the author’s own mark a colleague answered in, says why, and offers resolving instead', async () => {
+    const mark = view({ id: 'ann_1', canDelete: false, deleteRefused: 'discussed' })
+    serve([mark])
+    const patched = servePatches(mark)
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+    const withheld = await screen.findByTestId('thread-delete-refused')
+    expect(withheld).toHaveAttribute('aria-disabled', 'true')
+    expect(withheld).toHaveTextContent('Others have answered in its thread. Resolve the annotation instead.')
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Resolve instead' }))
+    await waitFor(() => expect(patched).toEqual([{ status: 'resolved', expectedStatus: 'open' }]))
+  })
+})
+
+describe('one’s own reply in the thread', () => {
+  const ANNA_MENTION = { targetId: 'user_anna', display: 'Anna Berger' }
+  const reply = (overrides: Partial<AnnotationView['replies'][number]> = {}): AnnotationView['replies'][number] => ({
+    id: 'rep_1',
+    annotationId: 'ann_1',
+    authorKind: 'person',
+    body: '@Anna Berger bitte prüfen',
+    createdBy: 'user_me',
+    createdByName: 'Miriam Hofer',
+    createdAt: '2026-10-01T09:00:00.000Z',
+    addressesPiloti: false,
+    mentions: [ANNA_MENTION],
+    editedAt: null,
+    ...overrides,
+  })
+
+  const openThread = async () => {
+    await userEvent.click(await screen.findByTestId('review-row'))
+    return screen.findByTestId('review-thread')
+  }
+
+  it('lets its author reword it in the thread’s composer, keeping whom it mentions, and says it was edited', async () => {
+    const mark = view({ id: 'ann_1', replies: [reply()] })
+    serve([mark])
+    const patched: Array<{ path: string; body: unknown }> = []
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId/replies/:replyId', async ({ request, params }) => {
+        const body = (await request.json()) as { body: string; mentions: unknown }
+        patched.push({ path: String(params.replyId), body })
+        return HttpResponse.json({
+          annotation: { ...mark, replies: [reply({ body: body.body, editedAt: '2026-10-01T09:05:00.000Z' })] },
+        })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const thread = await openThread()
+    await userEvent.click(within(thread).getByTestId('thread-reply-more'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+    const box = within(screen.getByTestId('review-thread')).getByTestId('thread-reply-edit-body')
+    expect(box).toHaveValue('@Anna Berger bitte prüfen')
+    await userEvent.type(box, ' bis Freitag{Enter}')
+
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { path: 'rep_1', body: { body: '@Anna Berger bitte prüfen bis Freitag', mentions: [ANNA_MENTION] } },
+      ])
+    )
+    const after = screen.getByTestId('review-thread')
+    expect(within(after).queryByTestId('thread-reply-edit')).toBeNull()
+    expect(within(after).getByTestId('thread-edited')).toHaveTextContent('edited')
+  })
+
+  it('gives the focus back to the reply’s ⋯ when the edit is saved or let go, never to the page', async () => {
+    const mark = view({ id: 'ann_1', replies: [reply()] })
+    serve([mark])
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId/replies/:replyId', async ({ request }) => {
+        const body = (await request.json()) as { body: string }
+        return HttpResponse.json({ annotation: { ...mark, replies: [reply({ body: body.body, editedAt: '2026-10-01T09:05:00.000Z' })] } })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+    const thread = await openThread()
+    const edit = async () => {
+      await userEvent.click(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-more'))
+      await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+      return within(screen.getByTestId('review-thread')).getByTestId('thread-reply-edit-body')
+    }
+
+    expect(await edit()).toHaveFocus()
+    await userEvent.keyboard('{Escape}')
+    expect(within(thread).getByTestId('thread-reply-more')).toHaveFocus()
+
+    await edit()
+    await userEvent.click(within(screen.getByTestId('review-thread')).getByRole('button', { name: 'Cancel' }))
+    expect(within(thread).getByTestId('thread-reply-more')).toHaveFocus()
+
+    await userEvent.type(await edit(), ' bis Freitag{Enter}')
+    await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-reply-edit')).toBeNull())
+    expect(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-more')).toHaveFocus()
+  })
+
+  it('says a rewording that failed was not saved, and keeps the words', async () => {
+    serve([view({ id: 'ann_1', replies: [reply()] })])
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId/replies/:replyId', () =>
+        HttpResponse.json({ error: 'down', code: 'INTERNAL' }, { status: 500 })
+      )
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const thread = await openThread()
+    await userEvent.click(within(thread).getByTestId('thread-reply-more'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+    await userEvent.type(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-edit-body'), ' bis Freitag{Enter}')
+
+    const edit = within(screen.getByTestId('review-thread')).getByTestId('thread-reply-edit')
+    expect(await within(edit).findByText('Could not be saved. Your text is still here.')).toBeInTheDocument()
+    expect(within(edit).getByTestId('thread-reply-edit-body')).toHaveValue('@Anna Berger bitte prüfen bis Freitag')
+  })
+
+  it('deletes it after asking, and the thread shows it gone', async () => {
+    serve([view({ id: 'ann_1', replies: [reply()] })])
+    const deleted: string[] = []
+    server.use(
+      http.delete('/api/documents/:id/annotations/:annotationId/replies/:replyId', ({ params }) => {
+        deleted.push(String(params.replyId))
+        return new HttpResponse(null, { status: 204 })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const thread = await openThread()
+    await userEvent.click(within(thread).getByTestId('thread-reply-more'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(deleted).toEqual(['rep_1']))
+    await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-reply-entry')).toBeNull())
+  })
+
+  it('says Piloti took it up when the server refuses the change, without the colleague’s-move notice', async () => {
+    serve([view({ id: 'ann_1', replies: [reply()] })])
+    server.use(
+      http.delete('/api/documents/:id/annotations/:annotationId/replies/:replyId', () =>
+        HttpResponse.json(
+          { error: 'Taken up', code: 'CONFLICT', details: { reason: 'piloti-took-it-up' } },
+          { status: 409 }
+        )
+      )
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const thread = await openThread()
+    await userEvent.click(within(thread).getByTestId('thread-reply-more'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+
+    expect(
+      await within(screen.getByTestId('review-thread')).findByText(
+        'Piloti has already taken this reply up. It stays as it is; write a new one.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('offers no change of an @Piloti reply while this tab’s own ask of Piloti about it is thinking (wakes off)', async () => {
+    const asked = reply({ id: 'r1', body: '@Piloti Stimmt die Breite?', mentions: [], addressesPiloti: true })
+    serve([view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25 })])
+    serveConversation()
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
+        HttpResponse.json({
+          annotation: view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25, replies: [asked] }),
+          replyId: 'r1',
+          wake: 'off',
+        })
+      )
+    )
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    const thread = await openThread()
+    const box = within(thread).getByTestId('thread-reply')
+    await userEvent.type(box, '@pil')
+    await userEvent.click(pickerOption(thread, 'agent:piloti'))
+    await userEvent.type(box, 'Stimmt die Breite?{Enter}')
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+
+    // Piloti is reading it in this tab: the server would let a delete through, and Piloti would answer a reply that is gone.
+    const asking = screen.getByTestId('review-thread')
+    expect(within(asking).getByTestId('thread-piloti-pending')).toBeInTheDocument()
+    expect(within(asking).getAllByTestId('thread-reply-entry')).toHaveLength(1)
+    expect(within(asking).queryByTestId('thread-reply-more')).toBeNull()
+
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'RUN_ERROR', code: 'workflow_error', message: 'The connection closed.', details: null })
+    // Piloti broke off without answering: nothing took the reply up, so it is its author's again.
+    await waitFor(() => expect(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-more')).toBeInTheDocument())
+  })
+
+  it('offers no change of a colleague’s reply, of Piloti’s, on a closed mark, or of one Piloti answered', async () => {
+    const forPiloti = reply({ body: '@Piloti stimmt das?', mentions: [], addressesPiloti: true })
+    const answer = reply({
+      id: 'rep_2',
+      authorKind: 'piloti',
+      body: 'Ja.',
+      mentions: [],
+      createdAt: '2026-10-01T09:01:00.000Z',
+    })
+    for (const mark of [
+      view({ id: 'ann_1', replies: [reply({ createdBy: 'user_anna', createdByName: 'Anna Berger' })] }),
+      view({ id: 'ann_1', replies: [reply({ authorKind: 'piloti', mentions: [] })] }),
+      view({ id: 'ann_1', status: 'resolved', replies: [reply()] }),
+      view({ id: 'ann_1', replies: [forPiloti, answer] }),
+    ]) {
+      serve([mark])
+      let review: ReturnType<typeof useDocumentReview> | null = null
+      const { unmount } = render(<Harness transport={scriptedRoom().transport} onReady={(next) => (review = next)} />)
+      // A closed mark is not on the open list: it is opened as a link to it opens it.
+      await waitFor(() => expect(review?.load).toBe('ready'))
+      act(() => review?.select('ann_1'))
+      const thread = await screen.findByTestId('review-thread')
+      expect(within(thread).getAllByTestId('thread-reply-entry').length).toBeGreaterThan(0)
+      expect(within(thread).queryByTestId('thread-reply-more')).toBeNull()
+      unmount()
+    }
+  })
+})
+
+describe('a mark goes on with the current Fassung', () => {
+  /** Where the server says this reader's carry lands: this document, in place or as a linked mark. */
+  const HERE = { documentId: 'doc_1', documentName: 'Grundriss EG.pdf' }
+
+  /** The marks of each document, as its own list answers them; what was patched, with the document it went to. */
+  function serveDocuments(lists: Record<string, AnnotationView[]>, { failingReads = {} }: { failingReads?: Record<string, number> } = {}) {
+    const patched: Array<{ documentId: string; annotationId: string; change: Record<string, unknown> }> = []
+    const failing = { ...failingReads }
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) => {
+        const id = String(params.id)
+        if ((failing[id] ?? 0) > 0) {
+          failing[id] -= 1
+          return HttpResponse.json({ error: 'Unavailable', code: 'UNAVAILABLE' }, { status: 503 })
+        }
+        return HttpResponse.json({ annotations: lists[id] ?? [], canAnnotate: true, pilotiWakes: false })
+      }),
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ params, request }) => {
+        const change = (await request.json()) as Record<string, unknown>
+        const documentId = String(params.id)
+        const annotationId = String(params.annotationId)
+        patched.push({ documentId, annotationId, change })
+        const mark = (lists[documentId] ?? []).find((annotation) => annotation.id === annotationId) as AnnotationView
+        if (documentId === 'doc_1') {
+          // Under its own name the mark moves in place: same id, same number, now on the sheet.
+          const moved = { ...mark, onCurrentFassung: true, fassungNumber: 3, carryTarget: null }
+          lists.doc_1 = lists.doc_1.map((annotation) => (annotation.id === annotationId ? moved : annotation))
+          return HttpResponse.json({ annotation: moved })
+        }
+        // From the replaced document: a linked mark of this one, the original closed.
+        const copy = view({
+          ...mark,
+          id: `${annotationId}_on_doc_1`,
+          documentId: 'doc_1',
+          number: 9,
+          carriedFrom: { annotationId, documentId, number: mark.number, documentName: 'Grundriss Index B.pdf' },
+          carryTarget: null,
+        })
+        lists[documentId] = (lists[documentId] ?? []).map((annotation) =>
+          annotation.id === annotationId ? { ...annotation, status: 'resolved', carryTarget: null } : annotation
+        )
+        lists.doc_1 = [...(lists.doc_1 ?? []), copy]
+        return HttpResponse.json({ annotation: copy })
+      })
+    )
+    return patched
+  }
+
+  it('carries a mark of an earlier Fassung from its card, keeping its number, and the card stops saying it is not drawn', async () => {
+    const patched = serveDocuments({
+      doc_1: [view({ id: 'ann_4', number: 4, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE })],
+    })
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('From revision 2. The hollow pin shows where it stood there.')
+    await userEvent.click(within(thread).getByTestId('thread-carry'))
+
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { documentId: 'doc_1', annotationId: 'ann_4', change: { carryToCurrent: true, expectedStatus: 'open' } },
+      ])
+    )
+    await waitFor(() => expect(within(screen.getByTestId('review-thread')).queryByTestId('thread-earlier')).toBeNull())
+    expect(screen.getByTestId('review-thread')).toHaveTextContent('#4')
+  })
+
+  it('offers no carry the server says this reader’s carry would not go through: closed, read-only, or refused', async () => {
+    serveDocuments({
+      doc_1: [
+        view({ id: 'ann_closed', number: 1, onCurrentFassung: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+        view({ id: 'ann_ro', number: 2, onCurrentFassung: false, canEdit: false }),
+        // Open and editable, and still no carry: the server named no target (a replacing document this reader may not write).
+        view({ id: 'ann_refused', number: 3, onCurrentFassung: false, carryTarget: null }),
+      ],
+    })
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    for (const index of [0, 1]) {
+      await waitFor(() => expect(screen.getAllByTestId('review-row').length).toBeGreaterThan(index))
+      await userEvent.click(screen.getAllByTestId('review-row')[index] as HTMLElement)
+      expect(within(await screen.findByTestId('review-thread')).queryByTestId('thread-carry')).toBeNull()
+    }
+    expect(screen.queryByTestId('review-earlier-bar')).toBeNull()
+  })
+
+  it('carries every open mark of earlier Fassungen at once from the list', async () => {
+    const patched = serveDocuments({
+      doc_1: [
+        view({ id: 'ann_1', number: 1, onCurrentFassung: false, fassungNumber: 1, carryTarget: HERE }),
+        view({ id: 'ann_2', number: 2, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
+        view({ id: 'ann_3', number: 3 }),
+      ],
+    })
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const bar = await screen.findByTestId('review-earlier-bar')
+    expect(bar).toHaveTextContent('Open from earlier revisions: 2')
+    await userEvent.click(within(bar).getByTestId('review-carry-all-earlier'))
+
+    await waitFor(() => expect(patched.map((patch) => patch.annotationId)).toEqual(['ann_1', 'ann_2']))
+    await waitFor(() => expect(screen.queryByTestId('review-earlier-bar')).toBeNull())
+  })
+
+  /**
+   * Thirty marks, the PATCHes counted, how many are in flight at once, and
+   * every list read after the first: „Alle übernehmen" reads each list once.
+   */
+  function serveThirty({ from, failing = new Set<string>() }: { from: 'doc_1' | 'doc_b'; failing?: ReadonlySet<string> }) {
+    const marks = Array.from({ length: 30 }, (_, index) =>
+      view({
+        id: `ann_${index + 1}`,
+        documentId: from,
+        number: index + 1,
+        onCurrentFassung: from === 'doc_b',
+        fassungNumber: 2,
+        carryTarget: HERE,
+      })
+    )
+    const counts = { patches: 0, inFlight: 0, mostInFlight: 0, reads: { doc_1: 0, doc_b: 0 } as Record<string, number> }
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) => {
+        const id = String(params.id)
+        counts.reads[id] = (counts.reads[id] ?? 0) + 1
+        return HttpResponse.json({ annotations: id === from ? marks : [], canAnnotate: true, pilotiWakes: false })
+      }),
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ params }) => {
+        counts.patches += 1
+        counts.inFlight += 1
+        counts.mostInFlight = Math.max(counts.mostInFlight, counts.inFlight)
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        counts.inFlight -= 1
+        const annotationId = String(params.annotationId)
+        if (failing.has(annotationId)) return HttpResponse.json({ error: 'Unavailable', code: 'UNAVAILABLE' }, { status: 503 })
+        const index = marks.findIndex((mark) => mark.id === annotationId)
+        const mark = marks[index] as AnnotationView
+        if (from === 'doc_1') {
+          marks[index] = { ...mark, onCurrentFassung: true, fassungNumber: 3, carryTarget: null }
+          return HttpResponse.json({ annotation: marks[index] })
+        }
+        marks[index] = { ...mark, status: 'resolved', carryTarget: null }
+        return HttpResponse.json({ annotation: view({ ...mark, id: `${annotationId}_on_doc_1`, documentId: 'doc_1', carryTarget: null }) })
+      })
+    )
+    return counts
+  }
+
+  it('carries thirty marks of an earlier Fassung with four PATCHes at a time, and reads no list again', async () => {
+    const counts = serveThirty({ from: 'doc_1' })
+    render(<Harness transport={scriptedRoom().transport} />)
+    const bar = await screen.findByTestId('review-earlier-bar')
+    const readsBefore = { ...counts.reads }
+
+    await userEvent.click(within(bar).getByTestId('review-carry-all-earlier'))
+
+    await waitFor(() => expect(screen.queryByTestId('review-earlier-bar')).toBeNull())
+    expect(counts.patches).toBe(30)
+    expect(counts.mostInFlight).toBe(CARRY_AT_ONCE)
+    // Moved in place: each PATCH answers the mark as it now stands.
+    expect(counts.reads).toEqual(readsBefore)
+  })
+
+  it('carries thirty marks of the replaced document and reads each list once after the last', async () => {
+    const counts = serveThirty({ from: 'doc_b' })
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+    const group = await screen.findByTestId('review-carried-group')
+    const readsBefore = { ...counts.reads }
+
+    await userEvent.click(within(group).getByTestId('review-carry-all-from'))
+
+    await waitFor(() => expect(screen.queryByTestId('review-carried-group')).toBeNull())
+    expect(counts.patches).toBe(30)
+    expect(counts.mostInFlight).toBeLessThanOrEqual(CARRY_AT_ONCE)
+    expect(counts.reads).toEqual({ doc_1: (readsBefore.doc_1 ?? 0) + 1, doc_b: (readsBefore.doc_b ?? 0) + 1 })
+  })
+
+  it('says when not all of them went, and carries the rest', async () => {
+    const counts = serveThirty({ from: 'doc_1', failing: new Set(['ann_7', 'ann_19']) })
+    render(<Harness transport={scriptedRoom().transport} />)
+    const bar = await screen.findByTestId('review-earlier-bar')
+
+    await userEvent.click(within(bar).getByTestId('review-carry-all-earlier'))
+
+    expect(await within(bar).findByText('Not every annotation could be carried on. Please try again.')).toBeInTheDocument()
+    expect(counts.patches).toBe(30)
+    expect(bar).toHaveTextContent('Open from earlier revisions: 2')
+  })
+
+  it('lists the open marks of the document this one replaces, read-only, and carries one on as a mark of this one', async () => {
+    const patched = serveDocuments({
+      doc_1: [],
+      doc_b: [
+        view({ id: 'ann_b4', documentId: 'doc_b', number: 4, body: 'Brüstung unter 1,00 m', carryTarget: HERE }),
+        view({ id: 'ann_b5', documentId: 'doc_b', number: 5, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+        // Piloti works it: listed, and not offered, since the server would refuse it.
+        view({
+          id: 'ann_b6',
+          documentId: 'doc_b',
+          number: 6,
+          body: 'Geländerhöhe prüfen',
+          delegatedBy: 'user_me',
+          delegatedAt: '2026-10-02T08:00:00.000Z',
+          carryTarget: null,
+        }),
+      ],
+    })
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+
+    const group = await screen.findByTestId('review-carried-group')
+    expect(group).toHaveTextContent('From revision “Grundriss Index B.pdf”')
+    const rows = within(group).getAllByTestId('review-carried-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('Brüstung unter 1,00 m')
+    expect(within(rows[1] as HTMLElement).queryByTestId('review-carry-from')).toBeNull()
+    expect(within(group).queryByTestId('review-carry-all-from')).toBeNull()
+    // Read-only: a row there opens no thread here.
+    expect(within(group).queryByTestId('review-row')).toBeNull()
+
+    // Each row's button names its mark for a screen reader.
+    await userEvent.click(within(group).getByRole('button', { name: 'Carry annotation 4 to the current revision' }))
+
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { documentId: 'doc_b', annotationId: 'ann_b4', change: { carryToCurrent: true, expectedStatus: 'open' } },
+      ])
+    )
+    await waitFor(() => expect(within(screen.getByTestId('review-carried-group')).getAllByTestId('review-carried-row')).toHaveLength(1))
+    expect(await screen.findByTestId('review-row')).toHaveTextContent('Brüstung unter 1,00 m')
+  })
+
+  it('says when the replaced document’s marks could not be read, and reads them again on retry', async () => {
+    serveDocuments(
+      { doc_1: [], doc_b: [view({ id: 'ann_b4', documentId: 'doc_b', number: 4, body: 'Brüstung unter 1,00 m', carryTarget: HERE })] },
+      { failingReads: { doc_b: 1 } }
+    )
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+
+    const group = await screen.findByTestId('review-carried-group')
+    expect(within(group).getByTestId('review-carried-error')).toHaveTextContent(
+      'The annotations from “Grundriss Index B.pdf” could not be loaded.'
+    )
+    expect(within(group).queryByTestId('review-carried-row')).toBeNull()
+
+    await userEvent.click(within(group).getByRole('button', { name: 'Try again' }))
+
+    expect(await within(group).findByTestId('review-carried-row')).toHaveTextContent('Brüstung unter 1,00 m')
+    expect(within(group).queryByTestId('review-carried-error')).toBeNull()
+  })
+
+  it('lists nothing from a replaced document while another document replaces this one', async () => {
+    serveDocuments({ doc_1: [], doc_b: [view({ id: 'ann_b4', documentId: 'doc_b', number: 4 })] })
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{
+          replacedBy: { id: 'doc_d', filename: 'Grundriss Index D.pdf' },
+          replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }],
+        }}
+      />
+    )
+
+    await screen.findByTestId('review-empty')
+    expect(screen.queryByTestId('review-carried-group')).toBeNull()
+  })
+
+  it('offers to carry an open mark of a replaced document to where the carry lands, and says where a carried mark came from', async () => {
+    serveDocuments({
+      doc_1: [
+        // C was replaced by D in turn: the carry lands at the end of the chain, and the button says so.
+        view({ id: 'ann_1', number: 1, carryTarget: { documentId: 'doc_d', documentName: 'Grundriss Index D.pdf' } }),
+        view({
+          id: 'ann_2',
+          number: 2,
+          status: 'resolved',
+          closedBy: 'user_me',
+          closedAt: '2026-10-02T08:00:00.000Z',
+          carriedTo: { annotationId: 'ann_c7', documentId: 'doc_c', number: 7, documentName: 'Grundriss Index C.pdf' },
+        }),
+      ],
+    })
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: { id: 'doc_c', filename: 'Grundriss Index C.pdf' }, replaces: [] }}
+      />
+    )
+
+    await userEvent.click((await screen.findAllByTestId('review-row'))[0])
+    const thread = await screen.findByTestId('review-thread')
+    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('This document was replaced by “Grundriss Index C.pdf”.')
+    expect(within(thread).getByTestId('thread-carry')).toHaveTextContent('Carry to “Grundriss Index D.pdf”')
+
+    await userEvent.click(screen.getByTestId('review-filter-closed'))
+    await userEvent.click(await screen.findByTestId('review-row'))
+    expect(await screen.findByTestId('thread-carried-to')).toHaveTextContent('Continues in “Grundriss Index C.pdf” as annotation 7')
+  })
+})
+
+describe('Piloti checks what is fixed in the current Fassung', () => {
+  const HERE = { documentId: 'doc_1', documentName: 'Grundriss Index C.pdf' }
+
+  /** Each document's list as its own read answers it, and every PATCH, with the document it went to. */
+  function serveLists(lists: Record<string, AnnotationView[]>) {
+    const patched: Array<{ documentId: string; annotationId: string; change: Record<string, unknown> }> = []
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) =>
+        HttpResponse.json({ annotations: lists[String(params.id)] ?? [], canAnnotate: true, pilotiWakes: false })
+      ),
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ params, request }) => {
+        const change = (await request.json()) as Record<string, unknown>
+        const documentId = String(params.id)
+        const annotationId = String(params.annotationId)
+        patched.push({ documentId, annotationId, change })
+        const mark = (lists[documentId] ?? []).find((annotation) => annotation.id === annotationId) as AnnotationView
+        const after = { ...mark, status: 'resolved' as const, closedBy: 'user_me', closedAt: '2026-10-18T09:00:00.000Z', carryTarget: null }
+        lists[documentId] = (lists[documentId] ?? []).map((annotation) => (annotation.id === annotationId ? after : annotation))
+        return HttpResponse.json({ annotation: after })
+      })
+    )
+    return patched
+  }
+
+  it('asks Piloti, from the earlier Fassungen’ bar, to answer in each mark’s thread whether it is fixed, and changes nothing itself', async () => {
+    const patched = serveLists({
+      doc_1: [
+        view({ id: 'ann_2', number: 2, onCurrentFassung: false, fassungNumber: 1, carryTarget: HERE }),
+        view({ id: 'ann_1', number: 1, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
+        view({ id: 'ann_3', number: 3 }),
+      ],
+    })
+    serveConversation()
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    const bar = await screen.findByTestId('review-earlier-bar')
+    await userEvent.click(within(bar).getByRole('button', { name: 'Have Piloti check what is fixed' }))
+
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+    const question = piloti.questions()[0]
+    expect(question.text).toContain('open annotations 1 and 2 from an earlier revision are fixed in Revision 3')
+    expect(question.text).toContain('“Fixed in Revision 3:” or “Still open:”')
+    expect(question.text).toContain('Do not resolve or otherwise change any annotation')
+    // The whole document, as the review's own Piloti review asks: no box, no single thread.
+    expect(question).toMatchObject({ focus_document_id: 'doc_1' })
+    expect(question.focus_region ?? null).toBeNull()
+    expect(question).not.toHaveProperty('reply_in_thread')
+    expect(within(bar).getByTestId('review-check-fixed-earlier')).toHaveTextContent('Piloti is checking what is fixed …')
+    expect(within(bar).getByTestId('review-check-fixed-earlier')).toBeDisabled()
+
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: 'Erledigt.' } })
+    await waitFor(() => expect(within(bar).getByTestId('review-check-fixed-earlier')).toBeEnabled())
+    expect(within(bar).getByTestId('review-check-fixed-earlier')).toHaveTextContent('Have Piloti check what is fixed')
+    // Closing a mark stays the person's: the check wrote nothing.
+    expect(patched).toEqual([])
+  })
+
+  it('offers no check where Piloti cannot be asked', async () => {
+    serveLists({ doc_1: [view({ id: 'ann_1', number: 1, onCurrentFassung: false, carryTarget: HERE })] })
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const bar = await screen.findByTestId('review-earlier-bar')
+    expect(within(bar).queryByTestId('review-check-fixed-earlier')).toBeNull()
+  })
+
+  it('checks the replaced document’s marks, shows Piloti’s answer on each row, and lets the person resolve one there', async () => {
+    const lists: Record<string, AnnotationView[]> = {
+      doc_1: [],
+      doc_b: [
+        view({ id: 'ann_b4', documentId: 'doc_b', number: 4, body: 'Brüstung unter 1,00 m', carryTarget: HERE }),
+        view({ id: 'ann_b5', documentId: 'doc_b', number: 5, body: 'Lüftung fehlt in der Legende', carryTarget: HERE }),
+      ],
+    }
+    const patched = serveLists(lists)
+    serveConversation()
+    const piloti = scriptedPiloti()
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        piloti={piloti}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+
+    const group = await screen.findByTestId('review-carried-group')
+    await userEvent.click(within(group).getByTestId('review-check-fixed-from'))
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+    expect(piloti.questions()[0].text).toContain(
+      'open annotations 4 and 5 on “Grundriss Index B.pdf” are fixed in this document, “Grundriss Index C”'
+    )
+    expect(piloti.questions()[0].text).toContain('answer in its thread on “Grundriss Index B.pdf”')
+
+    // Piloti answers in B's threads, which this review's room does not hear: the group is read again once the turn ends.
+    const verdict = (annotationId: string, body: string) => ({
+      id: `${annotationId}-piloti`,
+      annotationId,
+      authorKind: 'piloti' as const,
+      body,
+      createdBy: 'user_me',
+      createdByName: 'Miriam Hofer',
+      createdAt: '2026-10-18T09:00:00.000Z',
+      addressesPiloti: false,
+      mentions: [],
+    })
+    lists.doc_b = lists.doc_b.map((annotation) =>
+      annotation.id === 'ann_b4'
+        ? { ...annotation, replies: [verdict('ann_b4', 'In Grundriss Index C behoben: Brüstung jetzt mit 1,00 m kotiert.')] }
+        : { ...annotation, replies: [verdict('ann_b5', 'Weiterhin offen: Die Legende nennt keinen Lüftungsquerschnitt.')] }
+    )
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: 'Geprüft.' } })
+
+    const verdicts = await within(group).findAllByTestId('review-carried-verdict')
+    expect(verdicts.map((line) => line.textContent)).toEqual([
+      'Piloti’s answer: In Grundriss Index C behoben: Brüstung jetzt mit 1,00 m kotiert.',
+      'Piloti’s answer: Weiterhin offen: Die Legende nennt keinen Lüftungsquerschnitt.',
+    ])
+
+    await userEvent.click(within(group).getByRole('button', { name: 'Resolve annotation 4 on “Grundriss Index B.pdf”' }))
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { documentId: 'doc_b', annotationId: 'ann_b4', change: { status: 'resolved', expectedStatus: 'open' } },
+      ])
+    )
+    await waitFor(() => expect(within(screen.getByTestId('review-carried-group')).getAllByTestId('review-carried-row')).toHaveLength(1))
+  })
+})
+
+describe('a mark of an earlier Fassung on the sheet', () => {
+  const HERE = { documentId: 'doc_1', documentName: 'Grundriss EG.pdf' }
+
+  it('draws an open one hollow where it stood, named by its Fassung, and opens its card to carry it on', async () => {
+    serve([
+      view({ id: 'ann_1', number: 1 }),
+      view({ id: 'ann_4', number: 4, x: 0.6, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
+      // Closed on an earlier Fassung: nothing left to carry, nothing drawn.
+      view({ id: 'ann_5', number: 5, onCurrentFassung: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+    ])
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const ghost = await within(screen.getByTestId('sheet')).findByTestId('review-ghost-pin')
+    expect(within(screen.getByTestId('sheet')).getAllByTestId('review-ghost-pin')).toHaveLength(1)
+    expect(ghost).toHaveTextContent('4')
+    expect(ghost).toHaveAttribute('data-ghost', 'true')
+    expect(ghost.getAttribute('aria-label')).toBe('Annotation 4: Defect · from revision 2')
+    // Its own pin, never one of this sheet's.
+    expect(within(screen.getByTestId('sheet')).getAllByTestId('review-pin')).toHaveLength(1)
+
+    await userEvent.click(ghost)
+
+    const thread = await screen.findByTestId('review-thread')
+    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('From revision 2.')
+    expect(within(thread).getByTestId('thread-carry')).toBeInTheDocument()
+  })
+
+  it('draws no ghost under „Resolved", nor a mark of the document this one replaces', async () => {
+    server.use(
+      http.get('/api/documents/:id/annotations', ({ params }) =>
+        HttpResponse.json({
+          annotations:
+            params.id === 'doc_b'
+              ? [view({ id: 'ann_b4', documentId: 'doc_b', number: 4, onCurrentFassung: false, carryTarget: HERE })]
+              : [view({ id: 'ann_4', number: 4, onCurrentFassung: false, carryTarget: HERE })],
+          canAnnotate: true,
+          pilotiWakes: false,
+        })
+      )
+    )
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+    await screen.findByTestId('review-carried-group')
+    // Only this document's own: Index B's sheet is another drawing.
+    expect(within(screen.getByTestId('sheet')).getAllByTestId('review-ghost-pin')).toHaveLength(1)
+
+    await userEvent.click(screen.getByTestId('review-filter-closed'))
+
+    expect(within(screen.getByTestId('sheet')).queryByTestId('review-ghost-pin')).toBeNull()
+  })
+})
+
+describe('a thread with news the reader has not read', () => {
+  it('wears a dot on its pin and its row, said in words, until the reader opens it', async () => {
+    serve([view({ id: 'ann_1', number: 1 }), view({ id: 'ann_2', number: 2, x: 0.6 })])
+    const reads: unknown[] = []
+    server.use(
+      http.get('/api/inbox/unread-anchors', ({ request }) => {
+        const query = new URL(request.url).searchParams
+        expect(Object.fromEntries(query)).toEqual({ resourceType: 'document', resourceId: 'doc_1' })
+        return HttpResponse.json({ anchorIds: reads.length > 0 ? [] : ['ann_2'] })
+      }),
+      http.post('/api/inbox/read', async ({ request }) => {
+        reads.push(await request.json())
+        return HttpResponse.json({ affected: 1, pending: 0 })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const pins = await within(screen.getByTestId('sheet')).findAllByTestId('review-pin')
+    await waitFor(() => expect(pins[1]).toHaveAttribute('data-unread', 'true'))
+    expect(pins[0]).not.toHaveAttribute('data-unread')
+    expect(pins[1]?.getAttribute('aria-label')).toBe('Annotation 2: Defect · unread')
+    const rows = screen.getAllByTestId('review-row')
+    expect(rows[1]).toHaveTextContent('unread')
+    expect(rows[1]?.querySelector('[data-slot="comment-pin-unread"]')).not.toBeNull()
+    expect(rows[0]?.querySelector('[data-slot="comment-pin-unread"]')).toBeNull()
+
+    await userEvent.click(rows[1] as HTMLElement)
+
+    await waitFor(() => expect(reads).toEqual([{ resourceType: 'document', resourceId: 'doc_1', anchorId: 'ann_2' }]))
+    expect(screen.getAllByTestId('review-row')[1]?.querySelector('[data-slot="comment-pin-unread"]')).toBeNull()
   })
 })

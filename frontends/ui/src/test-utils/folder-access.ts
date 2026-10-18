@@ -24,6 +24,7 @@ type FolderAccessModule = Pick<
   | 'isFolderVisibleTo'
   | 'isFolderVisibleToClearance'
   | 'filterUsersWhoMayReadFolder'
+  | 'filterUsersWhoMayWriteFolder'
   | 'isFolderVisibleToMember'
   | 'loadCustomFolderTree'
   | 'placementCollectionFor'
@@ -64,6 +65,9 @@ export function openFolderAccessModule(): FolderAccessModule & typeof rule {
     isFolderVisibleTo: vi.fn(async () => true),
     isFolderVisibleToClearance: vi.fn(async () => true),
     filterUsersWhoMayReadFolder: vi.fn(
+      async (_org: string, _project: string, _folder: string | null, userIds: readonly string[]) => new Set(userIds)
+    ),
+    filterUsersWhoMayWriteFolder: vi.fn(
       async (_org: string, _project: string, _folder: string | null, userIds: readonly string[]) => new Set(userIds)
     ),
     isFolderVisibleToMember: vi.fn(async () => true),

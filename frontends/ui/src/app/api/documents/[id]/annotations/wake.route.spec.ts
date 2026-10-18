@@ -119,7 +119,7 @@ import type { DbTransaction } from '@/lib/db/executor'
 import type { Document, DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
-import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
+import { filterUsersWhoMayWriteFolder } from '@/lib/authz/folder-access'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 
@@ -185,6 +185,7 @@ const MARK: AnnotationRecord = {
   closedAt: null,
   delegatedBy: null,
   delegatedAt: null,
+  carriedFromId: null,
   mentions: [],
   fassungNumber: null,
   replies: [],
@@ -217,6 +218,7 @@ beforeEach(() => {
       ...input,
       addressesAgent: input.addressesAgent ?? false,
       mentions: input.mentions ?? [],
+      editedAt: null,
     }
     await afterInsert?.(TX, row)
     return row
@@ -673,19 +675,41 @@ describe('what a change or a reply tells people', () => {
       previousAssigneeUserId: 'user_2',
       assigneeUserId: 'user_3',
       open: true,
+      dueOn: null,
     })
   })
 
-  it('refuses a Zuständige who is in the project but may not read the folder the document is filed in', async () => {
+  it('refuses a Zuständige who is in the project but may not write in the folder the document is filed in', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue({ ...DOC, folderId: 'fld_hr' })
-    vi.mocked(filterUsersWhoMayReadFolder).mockResolvedValueOnce(new Set())
+    vi.mocked(filterUsersWhoMayWriteFolder).mockResolvedValueOnce(new Set())
 
     await expect(updateAnnotation(DOC_ID, MARK_ID, { assigneeUserId: 'user_3' }, { run })).rejects.toMatchObject({
       status: 422,
     })
 
-    expect(filterUsersWhoMayReadFolder).toHaveBeenCalledWith('org_1', 'proj_1', 'fld_hr', ['user_3'])
+    expect(filterUsersWhoMayWriteFolder).toHaveBeenCalledWith('org_1', 'proj_1', 'fld_hr', ['user_3'])
     expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+    expect(onAssigneeChanged).not.toHaveBeenCalled()
+  })
+
+  // A Zuständige must be able to answer the mark and close it, which are writes:
+  // a reader of the document would be on the hook for a mark they cannot answer.
+  it('refuses a Zuständige who may open the document but not write it, on setting a mark and on changing one', async () => {
+    vi.mocked(userHoldsProjectPermission).mockImplementation(async (_tenant, _project, _userId, permission) => permission === 'project:view')
+    const place = { page: 1, shape: 'point' as const, x: 0.1, y: 0.1, kind: 'defect' as const, body: 'Fluchtweg' }
+
+    await expect(updateAnnotation(DOC_ID, MARK_ID, { assigneeUserId: 'user_3' }, { run })).rejects.toMatchObject({
+      status: 422,
+    })
+    await expect(createAs(session as unknown as AuthorizedSession, DOC_ID, { ...place, assigneeUserId: 'user_3' })).rejects.toMatchObject({
+      status: 422,
+    })
+
+    // Asked as permissions on the project, never a role: the narrow one, then the older umbrella.
+    expect(userHoldsProjectPermission).toHaveBeenCalledWith({ organizationId: 'org_1' }, 'proj_1', 'user_3', 'project:documents:write')
+    expect(userHoldsProjectPermission).toHaveBeenCalledWith({ organizationId: 'org_1' }, 'proj_1', 'user_3', 'project:edit')
+    expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+    expect(insertDocumentAnnotations).not.toHaveBeenCalled()
     expect(onAssigneeChanged).not.toHaveBeenCalled()
   })
 

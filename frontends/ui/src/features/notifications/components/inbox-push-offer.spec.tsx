@@ -16,6 +16,7 @@ vi.mock('@/features/collaboration/hooks/use-inbox', () => ({
 const push = vi.hoisted(() => ({ current: null as null | Record<string, unknown> }))
 vi.mock('../hooks/use-push-notifications', () => ({ usePushNotifications: () => push.current }))
 
+import { I18nProvider } from '@/i18n'
 import type { InboxClient } from '@/lib/inbox/client'
 import type { InboxItemView } from '@/lib/inbox/types'
 import { pushFixture } from './fixtures'
@@ -77,9 +78,33 @@ describe('InboxPushOffer', () => {
 
   test('without a person to name, says someone needs them', async () => {
     badge.pending = 1
-    render(<InboxPushOffer enabled client={client({ actorName: null, type: 'piloti.asks_you' })} />)
+    render(<InboxPushOffer enabled client={client({ actorName: null, type: 'annotation.assigned_to_you' })} />)
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith('Someone needs you in Piloti. Do you want to be notified on this device?', expect.anything())
+    )
+  })
+
+  // Piloti's Rückfrage is Piloti's: „someone needs you" hid who was asking.
+  test('when Piloti asked, says Piloti has a question, never that someone needs them', async () => {
+    badge.pending = 1
+    render(<InboxPushOffer enabled client={client({ actorName: null, type: 'piloti.asks_you' })} />)
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith('Piloti has a question for you. Do you want to be notified on this device?', expect.anything())
+    )
+  })
+
+  test('says Piloti asked in German too', async () => {
+    badge.pending = 1
+    render(
+      <I18nProvider initialLocale="de" fixedLocale>
+        <InboxPushOffer enabled client={client({ actorName: null, type: 'piloti.asks_you' })} />
+      </I18nProvider>
+    )
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        'Piloti hat eine Rückfrage an Sie. Möchten Sie auf diesem Gerät benachrichtigt werden?',
+        expect.anything()
+      )
     )
   })
 

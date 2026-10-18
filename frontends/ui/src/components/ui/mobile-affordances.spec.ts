@@ -206,7 +206,35 @@ describe('no text field invites the iOS zoom', () => {
    * `type="checkbox"`, `type="radio"`, and anything `sr-only`/`hidden`. A file
    * input's font size is the label's problem, not the keyboard's.
    */
-  const TYPED_TAG = /<(input|textarea)\b[\s\S]*?(?:\/>|>)/g
+  /**
+   * Every hand-written `<input>` / `<textarea>` opening tag, whole.
+   *
+   * A tag ends at the first `>` that is neither inside a `{…}` expression nor
+   * inside a quoted attribute. The regex this replaced stopped at the first `>`
+   * of any kind, and the first one in a field with a handler is the arrow of
+   * `onChange={(event) => …}`: everything after it, the className included,
+   * was never read. The thread's composer (`text-[13px]`, no floor) zoomed
+   * every iPhone that answered in a thread for exactly that reason.
+   */
+  const fieldTags = (source: string): string[] => {
+    const tags: string[] = []
+    for (const match of source.matchAll(/<(?:input|textarea)\b/g)) {
+      let depth = 0
+      let quote: string | null = null
+      let i = match.index + match[0].length
+      for (; i < source.length; i += 1) {
+        const c = source[i]
+        if (quote) {
+          if (c === quote) quote = null
+        } else if (c === '"' || c === "'" || c === '`') quote = c
+        else if (c === '{') depth += 1
+        else if (c === '}') depth -= 1
+        else if (c === '>' && depth === 0) break
+      }
+      tags.push(source.slice(match.index, i + 1))
+    }
+    return tags
+  }
   const EXEMPT_TYPE = /type=(?:"|')(?:file|range|checkbox|radio|hidden)(?:"|')|type=\{'(?:file|range)'\}/
   const VISUALLY_GONE = /className=(?:"|')(?:[^"']*\s)?(?:sr-only|hidden)(?:\s[^"']*)?(?:"|')/
 
@@ -215,11 +243,12 @@ describe('no text field invites the iOS zoom', () => {
     for (const file of SOURCE_FILES) {
       if (file.endsWith('.spec.tsx') || file.endsWith('.test.tsx')) continue
       const source = readCode(file)
-      for (const match of source.matchAll(TYPED_TAG)) {
-        const tag = match[0]
+      for (const tag of fieldTags(source)) {
         if (EXEMPT_TYPE.test(tag) || VISUALLY_GONE.test(tag)) continue
         // Under 16px…
-        if (!/\btext-(?:xs|sm|\[1[0-5](?:\.\d+)?px\])\b/.test(tag)) continue
+        // `(?![\w-])`, not `\b`: after `]` a word boundary needs a word
+        // character next, so `text-[13px] leading-5` never matched.
+        if (!/\btext-(?:xs|sm|\[1[0-5](?:\.\d+)?px\])(?![\w-])/.test(tag)) continue
         // …unless the field also raises itself back to 16px on a coarse pointer.
         if (/\bpointer-coarse:text-base\b/.test(tag)) continue
         offenders.push(`${relative(file)}: ${tag.slice(0, 90).replace(/\s+/g, ' ')}`)
@@ -242,12 +271,11 @@ describe('no text field invites the iOS zoom', () => {
    */
   it('never rebuilds the floor out of a viewport breakpoint', () => {
     const offenders: string[] = []
-    const BREAKPOINT_SHRINK = /\b(?:sm|md|lg|xl|2xl):text-(?:xs|sm|\[1[0-5](?:\.\d+)?px\])\b/g
+    const BREAKPOINT_SHRINK = /\b(?:sm|md|lg|xl|2xl):text-(?:xs|sm|\[1[0-5](?:\.\d+)?px\])(?![\w-])/g
     for (const file of SOURCE_FILES) {
       if (file.endsWith('.spec.tsx') || file.endsWith('.test.tsx')) continue
       const source = readCode(file)
-      for (const match of source.matchAll(TYPED_TAG)) {
-        const tag = match[0]
+      for (const tag of fieldTags(source)) {
         if (EXEMPT_TYPE.test(tag) || VISUALLY_GONE.test(tag)) continue
         for (const shrink of tag.match(BREAKPOINT_SHRINK) ?? []) {
           offenders.push(`${relative(file)}: ${shrink}`)

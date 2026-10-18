@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    When a colleague answers or closes many of your Anmerkungen at once, your
+    devices get one notification that counts them, such as „15 Neuigkeiten zu
+    Anmerkungen“, instead of one per Anmerkung. The Postfach still lists each.
