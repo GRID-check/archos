@@ -46,6 +46,7 @@ import type { FileAssignee } from '../../file-types'
 import { askRegionOf, stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import { answerAsBody } from '../../lib/piloti-answer-text'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
+import { useFollowEnd } from '../../hooks/use-follow-end'
 import { AssignPopover } from '../assign-popover'
 import { usePilotiByline } from './piloti-attribution'
 import type { CardSide } from './review-page-layer'
@@ -810,6 +811,10 @@ export function ThreadCard({
         (ask.status === 'answered' && ask.degraded.includes('thread')) ||
         (ask.status === 'thinking' && pilotiReplies <= ask.baseline))
   )
+  // What lands at the end of the thread: a reply, Piloti's work line, its answer. Kept in view for a reader at the end.
+  const thread = useFollowEnd<HTMLDivElement>(
+    `${annotation.replies.length}:${annotation.pilotiWork?.state ?? ''}:${threadAsk?.id ?? ''}:${threadAsk?.status ?? ''}`
+  )
 
   /**
    * The reply goes in as the person's own. With @Piloti it says so (a flag,
@@ -820,6 +825,8 @@ export function ThreadCard({
    * id a server wake of the same reply would use, so the two never both run.
    */
   const sendReply = async (body: string, { piloti: mentioned }: { piloti: boolean }) => {
+    // Sent into the thread: what follows it (the reply, Piloti at work, its answer) comes into view.
+    thread.follow()
     const { wake, replyId } = await review.reply(annotation.id, body, { addressesPiloti: mentioned })
     if (!mentioned || wake === 'queued' || wake === 'suppressed' || !piloti.available) return
     piloti.ask({
@@ -1020,7 +1027,12 @@ export function ThreadCard({
         </div>
       )}
 
-      <div className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3">
+      <div
+        ref={thread.ref}
+        onScroll={thread.onScroll}
+        data-testid="thread-messages"
+        className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3"
+      >
         <Message
           authorKind={annotation.authorKind}
           name={annotation.createdByName}
