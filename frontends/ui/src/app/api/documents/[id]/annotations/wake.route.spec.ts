@@ -674,6 +674,7 @@ describe('what a change or a reply tells people', () => {
       previousAssigneeUserId: 'user_2',
       assigneeUserId: 'user_3',
       open: true,
+      dueOn: null,
     })
   })
 
