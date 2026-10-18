@@ -308,7 +308,9 @@ longer fits is resolved and set again instead.
   carries each the same way, one PATCH per mark.
 - **Under another name** (Index B confirmed as replaced by Index C, `supersededBy`
   in `lib/documents/fassung.ts`; through a chain, its end, read only through
-  documents the carrier may open, `lib/annotations/carry.ts`) the mark cannot
+  documents the carrier may open, `lib/annotations/carry.ts`: a link the shelf
+  shows into a document the carrier cannot open, a closed folder, ends the walk
+  at the last one they can) the mark cannot
   move. B's number is what a Protokoll and a Jour fixe named; its thread is
   anchored on B in every inbox row (`resourceId` and the group key both name B),
   wake and change record that points at it; and C has numbers of its own.
@@ -885,7 +887,8 @@ second row. Same type, same push and mail policy as being handed the mark
   06:45 in Vienna. A start before 06:45 waits for it: a restart at 01:00 would
   otherwise push and mail at 01:00, and its stamps would silence the 06:45
   run. A start later in the day catches that day's run up on its first tick.
-  A failed post retries in an hour.
+  A failed post retries in an hour, but never past the office's midnight: a
+  retry that would fall on the next day waits for its 06:45 instead.
 - **Where it runs.** The route (`enqueueDueReminders`,
   `lib/annotations/due-reminders.ts`) finds the organizations with marks due
   (one grouped read under the platform scope, `listOrganizationsWithDueMarks`)
@@ -896,7 +899,9 @@ second row. Same type, same push and mail policy as being handed the mark
   restart, a second replica) adds nothing while that job is queued, running or
   dead. A finished job's row is deleted (migration 0104), so a post after it
   queues the day's job again, and the stamps (below) make that run tell nobody
-  twice. Discovery takes at most 1000 organizations
+  twice. When an organization's job cannot be queued (not a duplicate), the
+  others are still queued and the route then fails, so the scheduler retries;
+  what is already queued counts as `already`. Discovery takes at most 1000 organizations
   (`DUE_REMINDER_MAX_ORGANIZATIONS`), in an order that turns over with the day
   (a hash of the organization and the day), so the ones over the cap are a
   different set each day rather than the same tail for good; reaching the cap

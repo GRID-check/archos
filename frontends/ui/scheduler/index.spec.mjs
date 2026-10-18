@@ -440,6 +440,19 @@ describe('sweepAnnotationDue (the daily Frist reminder)', () => {
     expect(annotationDueClock.nextRunAt).toBe(now.getTime() + 60 * 60 * 1000)
   })
 
+  it('never retries past the office’s midnight: a post failing late at night waits for the next 06:45', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { annotationDue, annotationDueClock } = createStreaks(config)
+    // 17 Oct 2026, 23:30 in Vienna: an hour later is already the 18th.
+    const late = new Date('2026-10-17T21:30:00Z')
+    annotationDueClock.nextRunAt = late.getTime()
+    const down = vi.fn().mockResolvedValue({ ok: false, status: 503, headers: new Headers(), text: () => Promise.resolve('') })
+
+    expect(await sweepAnnotationDue(config, down, annotationDue, annotationDueClock, late)).toBeNull()
+    expect(new Date(annotationDueClock.nextRunAt).toISOString()).toBe('2026-10-18T04:45:00.000Z')
+  })
+
   it('waits for 06:45 on a start before it: a restart at night sends no push or mail at night', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const { annotationDue, annotationDueClock } = createStreaks(config)

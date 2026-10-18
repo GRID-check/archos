@@ -14,6 +14,7 @@
  */
 
 import 'server-only'
+import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
@@ -30,7 +31,13 @@ export async function replacingDocumentOf(session: AuthorizedSession, doc: Docum
     const next = facts.get(current.id)?.supersededBy ?? null
     if (!next || seen.has(next.id)) break
     seen.add(next.id)
-    current = await getAccessibleDocument(session, next.id, 'read')
+    // The shelf may show a link the reader still cannot open (a closed folder): the walk ends at the last one they can.
+    const opened = await getAccessibleDocument(session, next.id, 'read').catch((error: unknown) => {
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) return null
+      throw error
+    })
+    if (!opened) break
+    current = opened
   }
   return current.id === doc.id ? null : current
 }

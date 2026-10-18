@@ -128,6 +128,17 @@ describe('enqueueDueReminders (the daily sweep)', () => {
     await expect(enqueueDueReminders(new Date('2026-10-17T05:00:00Z'))).resolves.toMatchObject({ queued: 0, already: 1 })
   })
 
+  it('queues the others and then fails the sweep when an organization could not be queued, so the scheduler retries', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(listOrganizationsWithDueMarks).mockResolvedValue(['org_a', 'org_b'])
+    vi.mocked(enqueueJob).mockRejectedValueOnce(new Error('connection reset')).mockResolvedValueOnce(undefined as never)
+
+    await expect(enqueueDueReminders(new Date('2026-10-17T05:00:00Z'))).rejects.toThrow('1 of 2 organization(s) could not be queued')
+    expect(enqueueJob).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(enqueueJob).mock.calls[1]?.[0]).toMatchObject({ organizationId: 'org_b' })
+    warn.mockRestore()
+  })
+
   it('warns when the organizations reach the cap, so a left-out office is seen rather than silent', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     vi.mocked(listOrganizationsWithDueMarks).mockResolvedValue(

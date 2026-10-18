@@ -110,6 +110,7 @@ export async function enqueueDueReminders(now: Date = new Date()): Promise<DueRe
     )
   }
   const sweep: DueReminderSweep = { day, organizations: organizations.length, queued: 0, already: 0 }
+  const failed: string[] = []
   for (const organizationId of organizations) {
     try {
       await withTenant({ organizationId }, () =>
@@ -123,8 +124,15 @@ export async function enqueueDueReminders(now: Date = new Date()): Promise<DueRe
       sweep.queued += 1
     } catch (error) {
       if (isUniqueViolation(error, 'bff_job_queue_pkey')) sweep.already += 1
-      else console.warn(`[annotations] could not queue the due reminders of ${organizationId}:`, error)
+      else {
+        console.warn(`[annotations] could not queue the due reminders of ${organizationId}:`, error)
+        failed.push(organizationId)
+      }
     }
+  }
+  // The others are queued; failing the sweep makes the scheduler retry, and what is queued counts as `already`.
+  if (failed.length > 0) {
+    throw new Error(`due reminders for ${day}: ${failed.length} of ${organizations.length} organization(s) could not be queued`)
   }
   return sweep
 }

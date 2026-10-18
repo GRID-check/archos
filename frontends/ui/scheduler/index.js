@@ -429,7 +429,8 @@ const officeDayOf = (date) => new Intl.DateTimeFormat('en-CA', { timeZone: OFFIC
  * before 06:45 waits for it: a restart at 01:00 would otherwise push and mail
  * at 01:00, and its stamps would silence the 06:45 run. A start later in the
  * day catches that day's run up at once; when it already ran, the job's stamps
- * tell nobody twice. A failed post retries in an hour. Never throws; logs only
+ * tell nobody twice. A failed post retries in an hour, but never past the
+ * office's midnight: then it waits for the next 06:45. Never throws; logs only
  * what it queued or a failure. Returns the counts, or null when it did not run.
  */
 async function sweepAnnotationDue(config, fetchImpl, streak, clock, now = new Date()) {
@@ -447,7 +448,12 @@ async function sweepAnnotationDue(config, fetchImpl, streak, clock, now = new Da
     label: 'Frist reminder',
   })
   if (!counts) {
-    clock.nextRunAt = now.getTime() + ANNOTATION_DUE_RETRY_MS
+    // A retry stays on the office's day: one past midnight would remind the next day at night, and its stamps would silence 06:45.
+    const retry = new Date(now.getTime() + ANNOTATION_DUE_RETRY_MS)
+    clock.nextRunAt =
+      officeDayOf(retry) === officeDayOf(now)
+        ? retry.getTime()
+        : nextOccurrence(ANNOTATION_DUE_CRON, OFFICE_TIME_ZONE, now).getTime()
     return null
   }
   clock.nextRunAt = nextOccurrence(ANNOTATION_DUE_CRON, OFFICE_TIME_ZONE, now).getTime()
