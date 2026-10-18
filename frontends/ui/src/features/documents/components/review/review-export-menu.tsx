@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import {
   ANNOTATION_EXPORT_FASSUNGEN,
   ANNOTATION_EXPORT_FORMATS,
@@ -87,7 +88,11 @@ export function ReviewExportMenu({
     setBusy(true)
     const result = await downloadProtocol(annotationExportHref(documentId, optionsFor(format)), `protokoll.${format}`)
     setBusy(false)
-    if (result.saved) return
+    if (result.saved) {
+      // The CSAT trigger the answer and the BIM exports fire: the kind and the format, never the name.
+      capturePosthog('report_exported', { kind: 'annotations', format })
+      return
+    }
     toast.error(
       result.status === 422 && format === 'pdf' ? t('review.export.tooLongForPdf') : t('review.export.failed'),
       reviewToast(),

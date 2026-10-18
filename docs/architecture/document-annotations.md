@@ -142,6 +142,13 @@ held it).
 
 The UI and Piloti are equal clients of one service (ADR-0055).
 
+**What PostHog counts.** Because every client passes the service, the product
+events about marks are sent there and nowhere else: `annotation_created`
+(who set it, person or Piloti, its kind, open or proposed), `annotation_closed`
+(resolved or dismissed, by whom, whose mark, from which status) and
+`annotation_carried` (in place or across). Kinds and statuses only, never a
+word of a mark or a name ([`posthog-events.md`](../observability/posthog-events.md)).
+
 **Who may do what.** Every right is a permission on the document, asked through
 the shelf's rule (`getAccessibleDocument` for the session, and for other people
 `mayOpenDocument` / `mayWriteDocument` in `lib/documents/may-open.ts`), never a
@@ -1119,8 +1126,10 @@ an entry names its page.
 
 **The trail.** Each export is the audit event `document.annotations.exported`
 on the document: format, scope, Fassung, whether proposals were included, and
-the counts, never a name or a word of the marks. Nothing calls a model, so
-nothing is traced to Langfuse.
+the counts, never a name or a word of the marks. A download is also the
+browser's `report_exported` with `kind: 'annotations'` and the format, the
+trigger of the CSAT survey the answer and room-schedule exports fire. Nothing
+calls a model, so nothing is traced to Langfuse.
 
 ## Offene Punkte: a project's open marks
 

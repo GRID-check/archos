@@ -63,6 +63,7 @@ import {
   NotFoundError,
   UnprocessableError,
 } from '@/lib/api/errors'
+import { captureServer, type ServerEvent } from '@/lib/analytics/posthog-server'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document, DocumentAnnotationReplyRow, DocumentAnnotationRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
@@ -441,6 +442,27 @@ function announce(
   })
 }
 
+/**
+ * One product event about marks, sent from the one door every client passes
+ * (the review, the inbox, the chat's card, Piloti), so a count never depends on
+ * which surface did it (`docs/observability/posthog-events.md`). The person who
+ * acted, or for Piloti the person it acted for; kinds and statuses only, never
+ * a word of a mark, a name or a document's name. Queued, never failing the write.
+ */
+function markEvent(
+  session: AuthorizedSession,
+  event: Extract<ServerEvent, 'annotation_created' | 'annotation_closed' | 'annotation_carried'>,
+  documentId: string,
+  properties: Record<string, string | boolean>
+): void {
+  captureServer({
+    event,
+    distinctId: session.userId,
+    organizationId: session.organizationId,
+    properties: { document_id: documentId, ...properties },
+  })
+}
+
 async function requireWritableDocument(session: AuthorizedSession, documentId: string): Promise<Document> {
   const doc = await getAccessibleDocument(session, documentId, 'write')
   if (!annotatable(doc)) throw new BadRequestError('This document cannot carry Anmerkungen.')
@@ -555,6 +577,7 @@ export async function createAnnotation(
     marks: [toMark({ ...parsed, mentions })],
   }).catch(limitReached)
   announce(session, doc.id, [row.id], 'created', { ...actor, kind: 'person' })
+  markEvent(session, 'annotation_created', doc.id, { author_kind: 'person', kind: row.kind, status: row.status })
   if (row.assigneeUserId) traceAssigned(session, doc, row, null, PERSON)
   traceMentioned(session, doc, row, mentioned, row.body, mentions, row.assigneeUserId)
   return { annotation: await viewOf(session, doc, row.id) }
@@ -607,6 +630,9 @@ async function insertPilotiMarks(
   }).catch(limitReached)
   const ids = rows.map((row) => row.id)
   announce(session, doc.id, ids, 'created', PILOTI)
+  for (const row of rows) {
+    markEvent(session, 'annotation_created', doc.id, { author_kind: 'piloti', kind: row.kind, status: row.status })
+  }
   const names = await directoryNames(session.organizationId)
   const records = await listDocumentAnnotations(session.organizationId, doc.id)
   const annotations = records
@@ -995,6 +1021,14 @@ export async function updateAnnotation(
   if (actor.kind === 'person' && moves) {
     traceMove(session, { id: doc.id, projectId: doc.projectId ?? null }, annotationId, existing, parsed.status)
   }
+  if (moves && closes && parsed.status) {
+    markEvent(session, 'annotation_closed', doc.id, {
+      status: parsed.status,
+      by: actor.kind,
+      author_kind: existing.authorKind,
+      was: existing.status,
+    })
+  }
   traceMentioned(
     session,
     doc,
@@ -1045,6 +1079,7 @@ async function carryToCurrent(
   // Closed, or carried by a colleague a moment ago: say so rather than guess.
   if (!updated) throw conflict()
   announce(session, doc.id, [existing.id], 'updated', actor)
+  markEvent(session, 'annotation_carried', doc.id, { way: 'in_place', by: actor.kind })
   return { annotation: await viewOf(session, doc, existing.id) }
 }
 
@@ -1095,6 +1130,8 @@ async function carryAcross(
   if (!row) throw conflict()
   announce(session, doc.id, [existing.id], 'updated', actor)
   announce(session, target.id, [row.id], 'created', actor)
+  // A carry, not a close: the source's closing is the carry's own bookkeeping.
+  markEvent(session, 'annotation_carried', doc.id, { way: 'across', by: actor.kind })
   traceSettled(session, existing.id, true)
   if (row.assigneeUserId) traceAssigned(session, target, row, null, actor)
   return { annotation: await viewOf(session, target, row.id) }

@@ -34,6 +34,7 @@ vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8,
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
 vi.mock('@/lib/annotations/repository', () => ({
   AnnotationLimitReachedError: class AnnotationLimitReachedError extends Error {},
   ReplyLimitReachedError: class ReplyLimitReachedError extends Error {},
@@ -56,6 +57,7 @@ import {
   replyToAnnotation,
   updateAnnotation,
 } from '@/lib/annotations/client'
+import * as service from '@/lib/annotations/service'
 import { deleteReply } from '@/lib/annotations/service'
 import {
   AnnotationLimitReachedError,
@@ -74,6 +76,7 @@ import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { recordAuditEvent } from '@/lib/audit/service'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { expectRegistered } from '@/test-utils/audit'
 
 import { GET as list, POST as create } from './route'
@@ -676,5 +679,59 @@ describe('POST /api/documents/[id]/annotations/[annotationId]/replies', () => {
 
     await expect(replyToAnnotation('doc_1', 'ann_1', { body: 'x' }, { run })).rejects.toMatchObject({ status: 403 })
     expect(insertAnnotationReply).not.toHaveBeenCalled()
+  })
+})
+
+describe('what the marks tell PostHog (the one door every client passes)', () => {
+  const events = () => vi.mocked(captureServer).mock.calls.map(([capture]) => capture)
+
+  it('counts a mark a person set, by who and what kind, as the person, never with a word of it', async () => {
+    await createAnnotation('doc_1', { page: 3, shape: 'point', x: 0.25, y: 0.5, kind: 'defect', body: 'Tür T30 fehlt im Fluchtweg' }, { run })
+
+    expect(events()).toEqual([
+      {
+        event: 'annotation_created',
+        distinctId: 'user_1',
+        organizationId: 'org_1',
+        properties: { document_id: 'doc_1', author_kind: 'person', kind: 'defect', status: 'open' },
+      },
+    ])
+    expect(JSON.stringify(events())).not.toContain('Fluchtweg')
+  })
+
+  // The service itself, as the inbox, the card and Piloti reach it: the route's own request budget is not under test.
+  const session = {
+    userId: 'user_1',
+    organizationId: 'org_1',
+    email: 'a@grid.test',
+    name: 'Anna Berger',
+    role: 'member',
+    permissions: [],
+  } as unknown as Parameters<typeof service.updateAnnotation>[0]
+
+  it('counts a close by its status, who closed it and whose mark it was; a reply or a reword is no close', async () => {
+    vi.mocked(updateDocumentAnnotation).mockResolvedValue({ ...RECORD, status: 'resolved' })
+    await service.updateAnnotation(session, 'doc_1', 'ann_1', { status: 'resolved', expectedStatus: 'open' })
+    await service.updateAnnotation(session, 'doc_1', 'ann_1', { body: 'Tür T30 fehlt' })
+    await service.replyToAnnotation(session, 'doc_1', 'ann_1', { body: 'Erledigt.' })
+
+    expect(events()).toEqual([
+      {
+        event: 'annotation_closed',
+        distinctId: 'user_1',
+        organizationId: 'org_1',
+        properties: { document_id: 'doc_1', status: 'resolved', by: 'person', author_kind: 'person', was: 'open' },
+      },
+    ])
+  })
+
+  it('counts a proposal dismissed as a close of Piloti’s mark', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+    vi.mocked(updateDocumentAnnotation).mockResolvedValue({ ...PROPOSAL, status: 'dismissed' })
+    await service.updateAnnotation(session, 'doc_1', 'ann_p', { status: 'dismissed', expectedStatus: 'proposed' })
+
+    expect(events().map((capture) => capture.properties)).toEqual([
+      { document_id: 'doc_1', status: 'dismissed', by: 'person', author_kind: 'piloti', was: 'proposed' },
+    ])
   })
 })

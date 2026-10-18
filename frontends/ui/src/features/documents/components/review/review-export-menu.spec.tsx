@@ -13,10 +13,12 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.f
 vi.mock('@/lib/browser-download', () => ({ startBrowserDownload: vi.fn() }))
 const push = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 
 import { toast } from 'sonner'
 import { render, screen } from '@/test-utils'
 import { startBrowserDownload } from '@/lib/browser-download'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { ReviewExportMenu } from './review-export-menu'
 
 const fetchMock = vi.fn()
@@ -56,6 +58,13 @@ describe('ReviewExportMenu', () => {
     )
   })
 
+  it('counts a downloaded Protokoll as a report taken out of the app (the CSAT trigger), by kind and format only', async () => {
+    const user = await open()
+    await user.click(await screen.findByRole('menuitem', { name: 'Word (.docx)' }))
+
+    await vi.waitFor(() => expect(capturePosthog).toHaveBeenCalledWith('report_exported', { kind: 'annotations', format: 'docx' }))
+  })
+
   it('carries the scope, the Fassung and the proposals into the link, and stays open while choosing', async () => {
     const user = await open({ hasFassungen: true, hasProposals: true })
     await user.click(await screen.findByRole('menuitemradio', { name: 'Resolved ones too' }))
@@ -90,6 +99,7 @@ describe('ReviewExportMenu', () => {
 
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too long for a PDF. Export them as Word or Markdown.', {}))
     expect(startBrowserDownload).not.toHaveBeenCalled()
+    expect(capturePosthog).not.toHaveBeenCalled()
   })
 })
 

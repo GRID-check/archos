@@ -62,6 +62,9 @@ export type ServerEvent =
   | 'push_device_removed'
   | 'push_notification_sent'
   | 'annotation_due_reminders_sent'
+  | 'annotation_created'
+  | 'annotation_closed'
+  | 'annotation_carried'
 
 let client: PostHog | null = null
 let resolved = false
