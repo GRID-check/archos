@@ -1,0 +1,18 @@
+---
+features:
+  - >
+    New annotations on a document now reach the people responsible for it and
+    the person who uploaded it, as one inbox entry per document and per person
+    who set them, such as „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“.
+    Piloti's proposals and the annotations it sets for someone are announced
+    the same way.
+improvements:
+  - >
+    Several annotations reaching you at once, such as the morning's due date
+    reminders or a batch handed over to you, now arrive as one notification
+    on your devices that says how many are due and how many are overdue.
+  - >
+    Your own annotation can no longer be deleted once a colleague has answered
+    in it or it has been carried over to another document. Its menu says why
+    and offers to resolve it instead, so their answers and the numbering in
+    the minutes stay intact.
