@@ -24,6 +24,7 @@ import {
   type ShareableResourceType,
 } from '@/lib/db/schema'
 import type { InboxListFilter } from './types'
+import { MARKS_SET_GROUP_ANCHOR } from './registry'
 
 /** Hard cap for an inbox page. Read-time re-authorization cost scales with this. */
 export const INBOX_LIST_LIMIT = 50
@@ -596,12 +597,18 @@ export async function archiveInboxItem(
  * Clear ambient items for a resource once the recipient has actually looked at it
  * (spec IB-9). Deliberately does NOT touch actionable items: reading a thread is
  * not answering the question someone asked in it.
+ *
+ * `only` narrows it to the rows whose group key folds on an anchor prefix
+ * (`groupAnchor`, as {@link AnchoredRows} reads it), in the types the caller
+ * may see: opening a document's review reads its „15 Anmerkungen gesetzt“
+ * rows ({@link MARKS_SET_GROUP_ANCHOR}) and nothing else of the document's news.
  */
 export async function markResourceItemsRead(
   organizationId: string,
   recipientUserId: string,
   resourceType: ShareableResourceType,
   resourceId: string,
+  only?: { groupAnchor: string; types: InboxTypeScope },
 ): Promise<number> {
   const db = getDb()
   const rows = await db
@@ -615,6 +622,8 @@ export async function markResourceItemsRead(
         eq(inboxItems.resourceId, resourceId),
         eq(inboxItems.actionable, false),
         isNull(inboxItems.readAt),
+        only ? sql`${inboxItems.groupKey} LIKE ${groupAnchorPattern(only.groupAnchor)}` : undefined,
+        only ? typeFilter(only.types) : undefined,
       ),
     )
     .returning({ id: inboxItems.id })
@@ -622,10 +631,18 @@ export async function markResourceItemsRead(
 }
 
 /**
+ * Rows anchored on a mark only for their link: they fold per document and
+ * setter ({@link MARKS_SET_GROUP_ANCHOR}), so their news is not the mark's.
+ */
+const foldedOnItsAnchor = () => sql`${inboxItems.groupKey} NOT LIKE ${groupAnchorPattern(MARKS_SET_GROUP_ANCHOR)}`
+
+/**
  * {@link markResourceItemsRead} for ONE thing inside the resource: the
  * informational items anchored on one mark of a document, once the recipient
  * has opened that mark. The rest of the document's news stays unread, and an
- * actionable request survives being seen, as it does for the resource.
+ * actionable request survives being seen, as it does for the resource. A row
+ * anchored on the mark only for its link (new marks, folded per document) is
+ * not its news, and is read with the document's review instead.
  */
 export async function markAnchorItemsRead(
   organizationId: string,
@@ -649,6 +666,7 @@ export async function markAnchorItemsRead(
         eq(inboxItems.actionable, false),
         isNull(inboxItems.readAt),
         typeFilter(types),
+        foldedOnItsAnchor(),
       ),
     )
     .returning({ id: inboxItems.id })
@@ -665,8 +683,9 @@ export const UNREAD_ANCHORS_LIMIT = 500
  * The anchors inside one resource that hold news the recipient has not read:
  * exactly the rows {@link markAnchorItemsRead} would read for each (their own,
  * informational, unread, in the types they may see), less what they archived
- * or what was redacted, which the inbox no longer shows as news either. For a
- * document, the marks whose thread the review shows a dot on. One query on
+ * or what was redacted, which the inbox no longer shows as news either, and
+ * less a row anchored there only for its link ({@link MARKS_SET_GROUP_ANCHOR}).
+ * For a document, the marks whose thread the review shows a dot on. One query on
  * `idx_inbox_items_target`, bounded by {@link UNREAD_ANCHORS_LIMIT}.
  */
 export async function listUnreadAnchors(
@@ -692,6 +711,8 @@ export async function listUnreadAnchors(
         isNull(inboxItems.archivedAt),
         isNull(inboxItems.inertAt),
         typeFilter(types),
+        // „Anna hat 15 Anmerkungen gesetzt“ is the document's news, not its newest mark's: no dot on that one pin.
+        foldedOnItsAnchor(),
       ),
     )
     .limit(UNREAD_ANCHORS_LIMIT)

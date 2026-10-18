@@ -264,6 +264,16 @@ export function useDocumentReview(
     }, MARK_NEWS_SETTLE_MS)
     return () => clearTimeout(timer)
   }, [enabled, documentId, selectedId, selectedHasNews, inbox])
+  /**
+   * The review of this document is open in front of the reader: its rows
+   * about new marks are read („Anna hat 15 Anmerkungen gesetzt“). They fold
+   * per document and anchor on the newest mark only for their link, so no
+   * pin's dot carries them (`listUnreadAnchors`), and seeing the review is
+   * seeing the marks they tell about. Best effort; a miss leaves the row unread.
+   */
+  const readMarksSetNews = useCallback(() => {
+    void inbox.markMarksSetRead(documentId).catch(() => undefined)
+  }, [documentId, inbox])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [filter, setFilter] = useState<ReviewFilter>('open')
   /** „Für Sie“: only the marks that are this reader's ({@link isForReader}), the same ones Dateien counts „für Sie“. */
@@ -901,6 +911,7 @@ export function useDocumentReview(
       carryAll,
       resolveCarried,
       unread,
+      readMarksSetNews,
     }),
     [
       documentId,
@@ -941,6 +952,7 @@ export function useDocumentReview(
       carryAll,
       resolveCarried,
       unread,
+      readMarksSetNews,
     ]
   )
 }

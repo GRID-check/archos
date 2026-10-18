@@ -73,6 +73,7 @@ import {
   markRead,
   markResourceItemsReadFor,
   markAnchorItemsReadFor,
+  markMarksSetReadFor,
   markUnread,
   unarchiveItem,
   decodeInboxCursor,
@@ -760,6 +761,18 @@ describe('the reader’s own read state and archive', () => {
       ...ALL_TYPES,
     ])
     expect(publishToUser).toHaveBeenCalledWith('user_1', { kind: 'inbox.changed', pending: 1 })
+  })
+
+  it('reads the rows about new marks when the caller opens the document’s review, and only those', async () => {
+    vi.mocked(repository.markResourceItemsRead).mockResolvedValue(1)
+    vi.mocked(repository.countPendingInboxItems).mockResolvedValue(0)
+
+    expect(await markMarksSetReadFor(session, 'document', 'doc_1')).toEqual({ affected: 1, pending: 0 })
+    expect(repository.markResourceItemsRead).toHaveBeenCalledWith('org_1', 'user_1', 'document', 'doc_1', {
+      groupAnchor: 'set:',
+      types: [...ALL_TYPES],
+    })
+    expect(publishToUser).toHaveBeenCalledWith('user_1', { kind: 'inbox.changed', pending: 0 })
   })
 
   it('nudges nobody when the mark had no news: every open inbox would re-read for nothing', async () => {

@@ -658,3 +658,18 @@ describe('the tools spelled out, on a narrow stage', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent(/Comment\s*C/)
   })
 })
+
+describe('opening the review reads the news about new marks', () => {
+  it('reads the document’s „15 Anmerkungen gesetzt“ rows, which no pin’s dot carries', async () => {
+    const reads: unknown[] = []
+    serve([view({ id: 'm1' })])
+    server.use(
+      http.post('/api/inbox/read', async ({ request }) => {
+        reads.push(await request.json())
+        return HttpResponse.json({ affected: 1, pending: 0 })
+      })
+    )
+    render(<Host />)
+    await waitFor(() => expect(reads).toContainEqual({ resourceType: 'document', resourceId: 'doc_1', marksSet: true }))
+  })
+})

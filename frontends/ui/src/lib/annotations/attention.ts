@@ -63,7 +63,7 @@ import { isLive, type MarkMention } from './types'
 import { wakeEndReasonKind } from './wake-end-reason'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
-import { inboxGroupKey, MARK_ANCHORED_INBOX_TYPES } from '@/lib/inbox/registry'
+import { inboxGroupKey, MARK_ANCHORED_INBOX_TYPES, MARKS_SET_GROUP_ANCHOR } from '@/lib/inbox/registry'
 import {
   emitInboxItems,
   markInboxItemsInertAnchoredOn,
@@ -85,12 +85,6 @@ export interface MarkRef {
   /** The document's project; null on the Büroablage. */
   projectId: string | null
 }
-
-/**
- * What new marks fold on instead of the mark (`set:<variant>:<actor>`): one
- * counted row per document and per who set them ({@link onMarksSet}).
- */
-const SET_GROUP_ANCHOR = 'set:'
 
 /** The payload keys that quote a text: what goes when the text does. */
 const QUOTE_KEYS = ['excerpt', 'mentions'] as const
@@ -343,12 +337,12 @@ export async function onMarkDeleted(input: Pick<MarkRef, 'organizationId' | 'ann
     await markInboxItemsInertAnchoredOn({
       ...rows,
       types: MARK_ANCHORED_INBOX_TYPES,
-      groupAnchor: { isNot: SET_GROUP_ANCHOR },
+      groupAnchor: { isNot: MARKS_SET_GROUP_ANCHOR },
     })
     await retractInboxOccurrenceAnchoredOn({
       ...rows,
       types: ['annotation.activity'],
-      groupAnchor: { is: SET_GROUP_ANCHOR },
+      groupAnchor: { is: MARKS_SET_GROUP_ANCHOR },
       clear: [...QUOTE_KEYS, 'related'],
       inertWhenSpent: true,
     })
@@ -564,7 +558,8 @@ export async function onMarksSet(
           mentions: newest.mentions,
           variant: input.by,
           actorUserId: input.actorUserId,
-          groupAnchor: `set:${input.by}:${input.actorUserId}`,
+          // One counted row per document and per who set them (`MARKS_SET_GROUP_ANCHOR`).
+          groupAnchor: `${MARKS_SET_GROUP_ANCHOR}${input.by}:${input.actorUserId}`,
           occurrences: count,
         }
       )

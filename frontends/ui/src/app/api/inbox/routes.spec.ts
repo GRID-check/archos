@@ -35,6 +35,7 @@ vi.mock('@/lib/inbox/service', () => ({
   markRead: vi.fn(async () => RESULT),
   markAllRead: vi.fn(async () => RESULT),
   markAnchorItemsReadFor: vi.fn(async () => RESULT),
+  markMarksSetReadFor: vi.fn(async () => RESULT),
   unreadAnchorsFor: vi.fn(async () => ({ anchorIds: ['mark-4', 'mark-7'] })),
   markUnread: vi.fn(async () => RESULT),
   archiveItem: vi.fn(async () => RESULT),
@@ -47,6 +48,7 @@ import {
   listInbox,
   markAllRead,
   markAnchorItemsReadFor,
+  markMarksSetReadFor,
   markRead,
   markUnread,
   unarchiveItem,
@@ -111,6 +113,8 @@ describe('POST /api/inbox/read', () => {
     expect(markAllRead).toHaveBeenCalledWith(SESSION)
     expect(await client.markMarkRead({ documentId: 'doc-1', annotationId: 'mark-4' })).toEqual(RESULT)
     expect(markAnchorItemsReadFor).toHaveBeenCalledWith(SESSION, 'document', 'doc-1', 'mark-4')
+    expect(await client.markMarksSetRead('doc-1')).toEqual(RESULT)
+    expect(markMarksSetReadFor).toHaveBeenCalledWith(SESSION, 'document', 'doc-1')
   })
 
   it('refuses an anchor on anything but a document, and a body that is two shapes at once', async () => {
@@ -118,6 +122,9 @@ describe('POST /api/inbox/read', () => {
       serve(INBOX_READ_PATH, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
     expect((await send({ resourceType: 'conversation', resourceId: 'c1', anchorId: 'm1' })).status).toBe(400)
     expect((await send({ all: true, itemIds: [ITEM] })).status).toBe(400)
+    expect((await send({ resourceType: 'conversation', resourceId: 'c1', marksSet: true })).status).toBe(400)
+    expect((await send({ resourceType: 'document', resourceId: 'd1', marksSet: false })).status).toBe(400)
+    expect(markMarksSetReadFor).not.toHaveBeenCalled()
     expect(markAnchorItemsReadFor).not.toHaveBeenCalled()
     expect(markAllRead).not.toHaveBeenCalled()
   })

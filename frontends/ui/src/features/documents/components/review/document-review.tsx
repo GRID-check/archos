@@ -705,6 +705,12 @@ export function DocumentReviewMode({
     if (intro && (draft || openAsk)) foldIntro()
   }, [intro, draft, openAsk, foldIntro])
 
+  // The review is open: the document's rows about new marks are read, which no pin's dot carries.
+  const { readMarksSetNews } = review
+  useEffect(() => {
+    if (open) readMarksSetNews()
+  }, [open, readMarksSetNews])
+
   // Entered with a tool in hand: armed once per opening.
   const armed = useRef(false)
   useEffect(() => {

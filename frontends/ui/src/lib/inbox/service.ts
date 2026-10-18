@@ -62,6 +62,7 @@ import {
   PLATFORM_INBOX_PERMISSION,
   platformInboxTypes,
   visibleInboxTypes,
+  MARKS_SET_GROUP_ANCHOR,
 } from './registry'
 import {
   isMarkAnchored,
@@ -984,6 +985,31 @@ export async function markAnchorItemsReadFor(
   )
   // Most marks a reader opens have no news: then nothing changed, and a
   // nudge would make every open inbox of theirs re-read for nothing.
+  if (affected === 0) return { affected, pending: await countPendingAcross(session, lanes) }
+  return publishPending(session, lanes, affected)
+}
+
+/**
+ * The caller opened a document's review: its „Anna hat 15 Anmerkungen
+ * gesetzt“ rows are read. They fold per document and per who set them and
+ * anchor on the newest mark only for their link ({@link MARKS_SET_GROUP_ANCHOR}),
+ * so no mark's dot carries them, and opening the newest mark is not what
+ * reading fifteen new marks is: seeing the document's review is. Only the
+ * caller's own informational rows, in the types their lanes may see; no
+ * nudge when nothing changed, as for a mark.
+ */
+export async function markMarksSetReadFor(
+  session: AuthorizedSession,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+): Promise<InboxMutationResult> {
+  const lanes = await lanesFor(session)
+  const affected = await mutateAcross(session, lanes, (lane) =>
+    markResourceItemsRead(lane.organizationId, session.userId, resourceType, resourceId, {
+      groupAnchor: MARKS_SET_GROUP_ANCHOR,
+      types: lane.types,
+    }),
+  )
   if (affected === 0) return { affected, pending: await countPendingAcross(session, lanes) }
   return publishPending(session, lanes, affected)
 }

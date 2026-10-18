@@ -336,6 +336,14 @@ dot says there is news) and the dot goes. The set is read again on the tab's
 `inbox.changed` nudge, which goes out once the row is written; the room's hint
 goes out before the thread's notification is, so reading on the hint would race
 it. News that reaches a thread the reader has open is read as it arrives.
+A row about new marks („Anna hat 15 Anmerkungen gesetzt“, below) anchors on
+the newest mark only so its link opens there: its news is the document's, so
+it puts no dot on that one pin (`listUnreadAnchors` and `markAnchorItemsRead`
+leave out rows folded on `MARKS_SET_GROUP_ANCHOR`), and it is read when the
+review of the document opens (`readMarksSetNews` in the review's open effect,
+`markMarksSetRead`, `POST /api/inbox/read { resourceType: 'document',
+resourceId, marksSet: true }`, which narrows `markResourceItemsRead` to those
+rows in the types the reader may see).
 
 **The card's own facts.** The Zuständige chip and the date chip each carry a ×
 that clears them. The author's own mark has „Bearbeiten“ in the card's menu:
@@ -1024,9 +1032,11 @@ mention (the chat keeps no names on the server), quotes plain text:
 
 **New marks fold per document and per who set them.** Every other row about
 a mark folds on the mark; a new mark's row folds on the document and the
-setter (`groupAnchor` `set:<variant>:<actor>` in `inboxGroupKey`), anchored on
-the newest mark it tells about, so a review of fifteen marks is one counted row
-whose link opens the review at the newest. A write of several at once
+setter (`groupAnchor` `set:<variant>:<actor>` in `inboxGroupKey`,
+`MARKS_SET_GROUP_ANCHOR`), anchored on the newest mark it tells about, so a
+review of fifteen marks is one counted row whose link opens the review at the
+newest. That mark wears no dot for it, and opening the document's review reads
+it (above, „A thread with news“). A write of several at once
 (Piloti's batch) is ONE emission counting them all (`InboxEmission.occurrences`,
 which the upsert adds to the stored count), so it is one row write and one
 notification, not fifteen. Deleting the newest of them takes it out of the
@@ -1100,7 +1110,9 @@ mark stepped past with J/K is not, and one mark is read at most once a minute
 from a tab. Requests stay open: seeing a mark is not answering it. A mark
 with no news changes nothing, so it nudges no open inbox. A tapped
 notification is read too: the service worker posts its item to the same route
-before it opens the mark.
+before it opens the mark. The rows about new marks on the document are read
+when its review opens (`marksSet: true` on the same route), not with the mark
+they link to.
 
 A failure says why. `onWakeEnded` classes the wake's stored reason with
 `wakeEndReasonKind` (`frontends/ui/src/lib/annotations/wake-end-reason.ts`) and

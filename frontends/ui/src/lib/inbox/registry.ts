@@ -596,6 +596,17 @@ export function inboxIsReachable(collaborationEnabled: boolean): boolean {
 }
 
 /**
+ * The group-key anchor of rows that fold on something else than the anchor
+ * they point at: new marks fold per document and per who set them
+ * (`set:<variant>:<actor>`, `lib/annotations/attention.ts`), anchored on the
+ * newest mark only so their link opens the review there. Their news is about
+ * the document, not that mark: a dot on its pin would say an unrelated mark
+ * has news (`listUnreadAnchors` leaves them out), and opening the review of
+ * the document reads them (`markResourceItemsRead` narrowed to them).
+ */
+export const MARKS_SET_GROUP_ANCHOR = 'set:'
+
+/**
  * Build the grouping/dedup/idempotency key for an emission.
  *
  * ALWAYS use this rather than composing a key by hand: the unique index on

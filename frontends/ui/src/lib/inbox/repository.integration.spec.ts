@@ -311,7 +311,14 @@ describe.skipIf(!url)('unread anchors of a document against Postgres', () => {
     withPlatformAccess = context.withPlatformAccess
     db = (await import('@/lib/db')).getDb()
     repo = await import('./repository')
-    const rows: Array<{ recipient: string; resource: string; anchor: string | null; actionable: boolean; extra: string }> = [
+    const rows: Array<{
+      recipient: string
+      resource: string
+      anchor: string | null
+      actionable: boolean
+      extra: string
+      groupKey?: string
+    }> = [
       { recipient: ME, resource: 'doc-1', anchor: 'mark-news', actionable: false, extra: '' },
       // Two rows on one mark are one dot.
       { recipient: ME, resource: 'doc-1', anchor: 'mark-news', actionable: false, extra: '' },
@@ -322,6 +329,15 @@ describe.skipIf(!url)('unread anchors of a document against Postgres', () => {
       { recipient: ME, resource: 'doc-1', anchor: null, actionable: false, extra: '' },
       { recipient: ME, resource: 'doc-2', anchor: 'mark-elsewhere', actionable: false, extra: '' },
       { recipient: 'user_someone_else', resource: 'doc-1', anchor: 'mark-theirs', actionable: false, extra: '' },
+      // „Anna hat 15 Anmerkungen gesetzt“: anchored on the newest mark only for its link, folded on the document.
+      {
+        recipient: ME,
+        resource: 'doc-1',
+        anchor: 'mark-newest',
+        actionable: false,
+        extra: '',
+        groupKey: 'annotation.activity:document:doc-1:set:created:user_anna',
+      },
     ]
     await asMe(async () => {
       for (const [index, row] of rows.entries()) {
@@ -329,7 +345,7 @@ describe.skipIf(!url)('unread anchors of a document against Postgres', () => {
           insert into inbox_items (organization_id, recipient_user_id, type, resource_type, resource_id, anchor_id,
                                    group_key, actionable, read_at, archived_at, inert_at)
           values (${ORG_ANCHORS}, ${row.recipient}, 'annotation.activity', 'document', ${row.resource}, ${row.anchor},
-                  ${`annotation.activity:document:${ORG_ANCHORS}-${index}`}, ${row.actionable},
+                  ${row.groupKey ?? `annotation.activity:document:${ORG_ANCHORS}-${index}`}, ${row.actionable},
                   ${row.extra === 'read' ? sql`now()` : sql`null`}, ${row.extra === 'archived' ? sql`now()` : sql`null`},
                   ${row.extra === 'inert' ? sql`now()` : sql`null`})`)
       }
@@ -351,5 +367,23 @@ describe.skipIf(!url)('unread anchors of a document against Postgres', () => {
 
     expect(await asMe(() => repo.markAnchorItemsRead(ORG_ANCHORS, ME, 'document', 'doc-1', 'mark-news', repo.EVERY_INBOX_TYPE))).toBe(2)
     expect(await unread()).toEqual([])
+  })
+
+  it('puts no dot on the mark a „15 Anmerkungen gesetzt“ row anchors on, and reads that row with the document’s review', async () => {
+    expect(await asMe(() => repo.listUnreadAnchors(ORG_ANCHORS, ME, 'document', 'doc-1', repo.EVERY_INBOX_TYPE))).not.toContain(
+      'mark-newest'
+    )
+    // Opening the newest mark is not reading the document's new marks.
+    expect(
+      await asMe(() => repo.markAnchorItemsRead(ORG_ANCHORS, ME, 'document', 'doc-1', 'mark-newest', repo.EVERY_INBOX_TYPE))
+    ).toBe(0)
+    const set = { groupAnchor: 'set:', types: repo.EVERY_INBOX_TYPE }
+    // A reader who may not see the type reads nothing.
+    expect(
+      await asMe(() => repo.markResourceItemsRead(ORG_ANCHORS, ME, 'document', 'doc-1', { ...set, types: [] }))
+    ).toBe(0)
+    // Opening the review reads it, and only it: the request and the other rows stay as they were.
+    expect(await asMe(() => repo.markResourceItemsRead(ORG_ANCHORS, ME, 'document', 'doc-1', set))).toBe(1)
+    expect(await asMe(() => repo.markResourceItemsRead(ORG_ANCHORS, ME, 'document', 'doc-1', set))).toBe(0)
   })
 })
