@@ -44,6 +44,16 @@ const buttonVariants = cva(
         // Ghost is the quietest action: one step to secondary, not accent.
         ghost: 'hover:bg-secondary hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline active:scale-100',
+        // An action inside a sentence („… – trotzdem freigeben? In der
+        // Prüfansicht öffnen"). `link` underlines only on hover, and its
+        // `text-primary` is ink, the sentence's own colour, so in running text
+        // it read as more of the sentence: nothing said it could be pressed.
+        // This one is underlined at rest (a hairline at 40% that firms up on
+        // hover) and takes the sentence's size and line, whatever `size` says
+        // (the compound variant below). A prose link is exempt from the 44px
+        // floor (WCAG 2.5.8): a catchment would steal its neighbours' taps.
+        inline:
+          'font-medium text-foreground underline decoration-foreground/40 underline-offset-[3px] hover:decoration-foreground active:scale-100',
       },
       // Two pointers, two sizes. The desktop heights are tuned for a cursor,
       // which lands where it is pointed; a fingertip does not, and below ~44px
@@ -59,6 +69,12 @@ const buttonVariants = cva(
         icon: 'size-9 pointer-coarse:size-11',
       },
     },
+    compoundVariants: [
+      {
+        variant: 'inline',
+        className: 'h-auto p-0 align-baseline text-[length:inherit] leading-[inherit] pointer-coarse:h-auto pointer-coarse:min-w-0',
+      },
+    ],
     defaultVariants: {
       variant: 'default',
       size: 'default',
