@@ -53,6 +53,8 @@ import { summarizeDocumentVersions } from '@/lib/documents/lifecycle'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { moveDocumentToFolder } from '@/lib/documents/move-to-folder'
 import { FOLDER_NAME_TAKEN } from '@/lib/documents/shelf-folders'
+import { projectShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { moveFolderToBin, restoreFolderFromBin } from './folder-bin'
 import { createProjectFolder, listProjectFolders } from './folder-service'
 import { findProjectInOrg } from './repository'
@@ -335,6 +337,7 @@ async function undoCleanOut(session: AuthorizedSession, projectId: string, done:
     await attempt(`remove ${holder.id}`, async () => {
       // Not removed: something still lies in it (a move back failed, or a file someone else filed there).
       if (!(await deleteEmptyCreatedFolder(session.organizationId, projectId, holder.id))) throw new Error('not empty')
+      publishShelfChanged(session.organizationId, projectShelf(projectId), { folders: true })
     })
   }
   return failed

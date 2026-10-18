@@ -59,6 +59,7 @@
 import type { FileItem, FolderItem } from '../components/project-file-workspace'
 import { folderMatchKey, pathSegments } from '@/lib/projects/folders'
 import { documentAliasKey, documentNameKey } from '@/lib/documents/name-match'
+import { documentReadFamily } from '@/lib/documents/document-status'
 import type { FassungCandidateMatch } from '@/lib/documents/name-probe-types'
 import { findRevisionSeries, parseRevisionName } from '@/lib/documents/revision-series'
 import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-screen'
@@ -283,7 +284,7 @@ export interface FolderUploadCounts {
  */
 export type PlanDocument = Pick<
   FileItem,
-  'id' | 'filename' | 'displayName' | 'fileSize' | 'contentHash' | 'folderId' | 'authoredBy'
+  'id' | 'filename' | 'displayName' | 'fileSize' | 'contentHash' | 'folderId' | 'authoredBy' | 'status'
 > & { lifecycle?: FileItem['lifecycle'] }
 
 export interface FolderUploadPlanInput {
@@ -567,7 +568,15 @@ export function buildFolderUploadPlan(input: FolderUploadPlanInput): FolderUploa
     const sameSize = existing.fileSize === file.size
     const storedDigest = existing.contentHash ?? null
 
-    if (sameSize && storedDigest) {
+    // Identical bytes are sent again when the stored copy failed to read or
+    // was never read: re-uploading is how a person retries it, and the server
+    // accepts it (`shelf-upload.ts`, `placeUpload`). A copy being read, or held
+    // by the content check, is left alone: sending it again would read it
+    // twice, or be refused as a replacement of a held file.
+    const family = documentReadFamily(existing.status)
+    const retries = family === 'failed' || family === 'unindexed'
+
+    if (sameSize && storedDigest && !retries) {
       const digest = digests?.get(file)
       if (digest === undefined) {
         // Not hashed yet — worth asking about, and an update until we know.

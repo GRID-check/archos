@@ -88,7 +88,10 @@ export const nextConfig: NextConfig = {
   // ~60 dependencies (archiver, jszip, saxes, …) and circular requires, which
   // the server bundle gains nothing from inlining; the production image ships
   // node_modules (deploy/Dockerfile), so Node resolves it as it does in tests.
-  serverExternalPackages: ['exceljs'],
+  // `ws` likewise: the wake job's chat socket (`lib/turns/headless-turn.ts`),
+  // whose optional native peers (`bufferutil`, `utf-8-validate`) a bundler
+  // would try to resolve and inline.
+  serverExternalPackages: ['exceljs', 'ws'],
 
   experimental: {
     serverActions: {
@@ -144,6 +147,21 @@ export const nextConfig: NextConfig = {
           // Behind sign-in, so in no search index; the public site is what
           // gets found. Covers non-HTML responses the metadata cannot reach.
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
+      // The service worker for system notifications (ADR-0112). A browser
+      // checks `/sw.js` for a new version on its own schedule and through its
+      // own HTTP cache, so any max-age here would keep a fixed worker away from
+      // devices for as long as it says: it is never cached. Scope is the whole
+      // origin (the file sits at the root already; the header makes it explicit).
+      // It has no fetch handler and caches nothing, so nothing tenant-scoped can
+      // ever be served from it. After the global rule, which it must override.
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'text/javascript; charset=utf-8' },
+          { key: 'Service-Worker-Allowed', value: '/' },
         ],
       },
       // The base-corpus source-PDF stream is displayed inside a same-origin

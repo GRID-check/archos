@@ -826,11 +826,12 @@ describe('ProjectIntakeWizard — module rail', () => {
     const rail = await screen.findByRole('navigation', { name: /wizard modules/i })
     const moduleA = within(rail).getByText('Projektbasis').closest('button')!
 
-    // A1 is seeded from the project name, so module A opens at 1 of 5.
-    expect(within(moduleA).getByText('1 of 5')).toBeInTheDocument()
+    // A1 is seeded from the project name, so module A opens at 1 of 6: the
+    // Bundesland is asked until a country other than Austria is chosen.
+    expect(within(moduleA).getByText('1 of 6')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText(/Adresse \/ Gemeinde/), 'Innrain 1, 6020 Innsbruck')
-    await waitFor(() => expect(within(moduleA).getByText('2 of 5')).toBeInTheDocument())
+    await waitFor(() => expect(within(moduleA).getByText('2 of 6')).toBeInTheDocument())
   })
 })
 

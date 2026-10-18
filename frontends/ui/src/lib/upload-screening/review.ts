@@ -17,7 +17,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { filedInOf } from '@/lib/audit/document-names'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { requireFolderWrite } from '@/lib/authz/folder-access'
+import { canWriteFolder, requireFolderWrite } from '@/lib/authz/folder-access'
 import type { Document } from '@/lib/db/schema'
 import {
   findDocumentInOrg,
@@ -30,10 +30,12 @@ import { internalRead, isHeldAtRest } from '@/lib/documents/document-reader'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { dispatchDocument, type DispatchDocumentResult } from '@/lib/documents/service'
 import { resolveDocumentFolderPath } from '@/lib/documents/folder-path'
+import { documentShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { quarantineReviewersOf } from '@/lib/upload-batches/settle'
-import { parseQuarantine, type QuarantineVerdict } from './quarantine'
+import { quarantineNoticePayload, quarantineVerdictOf, type QuarantineVerdict } from './quarantine'
 import { mayReviewQuarantine } from './quarantine-reviewers'
 
 export { mayReviewQuarantine }
@@ -83,6 +85,8 @@ export async function releaseQuarantinedDocument(
     releasedAt,
   })
   if (!took) throw new ConflictError('The document changed while it was being released; open it again')
+  // Released: on its shelf for everyone who may read it, from now on.
+  publishShelfChanged(session.organizationId, documentShelf(doc))
 
   const { jobId, status } = await dispatchDocument({
     organizationId: session.organizationId,
@@ -95,7 +99,7 @@ export async function releaseQuarantinedDocument(
     folderPath: await resolveDocumentFolderPath(doc, session.organizationId),
   })
 
-  const reasons = parseQuarantine(doc.errorMessage)?.reasons ?? []
+  const reasons = quarantineVerdictOf(doc)?.reasons ?? []
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
@@ -160,11 +164,41 @@ export async function requestQuarantineRelease(
       anchorId: doc.id,
       actorUserId: session.userId,
       groupKey: inboxGroupKey('document.release_requested', 'organization', session.organizationId, doc.id),
-      // The file's name, which every recipient may already see in their queue.
-      payload: { subject: doc.filename },
+      // The file's name, which every recipient may already see in their queue,
+      // and the kind of reason it was held for.
+      payload: quarantineNoticePayload(doc),
     }))
   )
   return { id: doc.id, notified: reviewers.length }
+}
+
+export interface QuarantineReviewAccess {
+  /** This session may allow the held document (`releaseQuarantinedDocument`) or delete it. */
+  canReview: boolean
+  /** This session uploaded it and may not decide about it, so it may ask those who can (`requestQuarantineRelease`). */
+  canAskForReview: boolean
+}
+
+/**
+ * What this session may do about one held document, for the surface showing it
+ * (the Files preview): decide about it, ask for a decision, or neither.
+ *
+ * The same rules the two actions enforce, asked without acting: a reviewer
+ * (`mayReviewQuarantine`) who may also write the document's folder, as release
+ * requires (ADR-0088); otherwise its uploader. A document this session may not
+ * see is not found (`getAccessibleDocument`), and one that is not held answers
+ * no to both.
+ */
+export async function quarantineReviewAccess(
+  session: AuthorizedSession,
+  documentId: string
+): Promise<QuarantineReviewAccess> {
+  const doc = await getAccessibleDocument(session, documentId)
+  if (!isHeldAtRest(doc)) return { canReview: false, canAskForReview: false }
+  const canReview =
+    (await mayReviewQuarantine(session, doc)) &&
+    (doc.scope !== 'project' || !doc.projectId || (await canWriteFolder(session, doc.projectId, doc.folderId)))
+  return { canReview, canAskForReview: !canReview && doc.createdBy === session.userId }
 }
 
 export interface QuarantineQueueItem {
@@ -228,6 +262,6 @@ export async function listQuarantineQueue(session: AuthorizedSession): Promise<Q
     conversationId: row.conversationId,
     uploadedBy: row.createdBy,
     quarantinedAt: new Date(row.updatedAt).toISOString(),
-    verdict: parseQuarantine(row.errorMessage),
+    verdict: quarantineVerdictOf(row),
   }))
 }

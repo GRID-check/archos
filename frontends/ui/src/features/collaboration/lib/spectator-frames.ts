@@ -19,7 +19,7 @@
 import type { WireEvent } from '@/adapters/api/wire-v2'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { foldTurnEvent, type TurnView } from '@/features/chat/lib/turn-fold'
-import { INTERACTIVE_CARD_TYPES } from '@/features/grid-cards/card-decision'
+import { ACTING_CARD_TYPES } from '@/features/grid-cards/card-decision'
 import { SYSTEM_CARD_TYPES } from '@/features/skills/lib/card-catalog'
 import { validateGridCards, type GridCard } from '@/shared/cards/schemas'
 
@@ -39,7 +39,7 @@ export const hasSomethingToShow = (view: TurnView): boolean =>
 /** The steps in the order they first appeared. */
 export const orderedSteps = (view: TurnView): StoredThinkingStep[] => view.stepOrder.map((id) => view.steps[id])
 
-const NOT_FOR_OBSERVERS: ReadonlySet<string> = new Set<string>([...INTERACTIVE_CARD_TYPES, ...SYSTEM_CARD_TYPES])
+const NOT_FOR_OBSERVERS: ReadonlySet<string> = new Set<string>([...ACTING_CARD_TYPES, ...SYSTEM_CARD_TYPES])
 
 /** The cards an observer may see, by index, with a hole for every other one. */
 export function observerCards(view: TurnView): (GridCard | undefined)[] | undefined {

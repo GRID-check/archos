@@ -68,17 +68,19 @@ interface FollowUpChipsProps {
  * chip fills the composer should not have to learn it twice.
  */
 const CHIP = cn(
-  'group inline-flex h-8 max-w-full items-center gap-1.5 rounded-md border px-[13px]',
+  'group inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-md border px-[13px] py-1',
   // On a phone a chip is given a floor of 12rem and the row wraps, so each
   // question gets a line of its own: „Wie wird das Hauptgeschoß…" is still a
-  // usable offer where „Wie…" is not. On desktop the chips size to their
-  // content, because four of them fit across 636px and a set the eye takes in
+  // usable offer where „Wie…" is not, and the question WRAPS there instead of
+  // being cut (a `title` is not shown on a phone, and the chip is what the
+  // reader decides on). On desktop the chips size to their content and cut at
+  // one line, because four of them fit across 636px and a set the eye takes in
   // at once is the whole affordance.
   'max-sm:min-w-[12rem] bg-card text-foreground/85 shadow-xs card-caption font-medium',
   'transition-colors duration-quick ease-out motion-reduce:transition-none',
   'hover:bg-accent hover:text-foreground',
   'focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-2',
-  'pointer-coarse:h-11',
+  'pointer-coarse:min-h-11',
 )
 
 /**
@@ -119,8 +121,8 @@ export const FollowUpChips: FC<FollowUpChipsProps> = ({
           <button
             key={`${item.question}-${index}`}
             type="button"
-            // The whole question in the tooltip, so nothing is lost to the
-            // one-line truncation; the hint follows it rather than replacing it.
+            // The whole question in the tooltip on desktop, where the chip cuts
+            // at one line; the hint follows it rather than replacing it.
             title={item.hint ? `${item.question} — ${item.hint}` : item.question}
             onClick={() => setComposerPrefill(item.question)}
             className={CHIP}
@@ -129,7 +131,7 @@ export const FollowUpChips: FC<FollowUpChipsProps> = ({
               className="text-subtle group-hover:text-foreground size-3.5 shrink-0 transition-colors duration-quick ease-out motion-reduce:transition-none"
               aria-hidden="true"
             />
-            <span className="truncate">{item.question}</span>
+            <span className="max-sm:text-left sm:truncate">{item.question}</span>
           </button>
         ))}
         {actions.map((action) => {
@@ -146,7 +148,7 @@ export const FollowUpChips: FC<FollowUpChipsProps> = ({
                 className="text-subtle group-hover:text-foreground size-3.5 shrink-0 transition-colors duration-quick ease-out motion-reduce:transition-none"
                 aria-hidden="true"
               />
-              <span className="truncate">{action.label}</span>
+              <span className="max-sm:text-left sm:truncate">{action.label}</span>
             </button>
           )
         })}

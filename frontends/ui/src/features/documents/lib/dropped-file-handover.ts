@@ -29,3 +29,16 @@ export function takeDroppedFiles(projectId: string): File[] {
   held = null
   return files
 }
+
+/**
+ * The key a drop onto the create-project dialog is held under: the project does
+ * not exist yet, so it has no id to be held for. The setup page of a project
+ * Piloti is about to read takes it (`IntakeUpload`), and the dialog discards it
+ * when it closes without creating anything.
+ */
+export const NEW_PROJECT_DROP_KEY = 'new-project'
+
+/** Forget what is held for this project (a dialog closed, a drop taken back). */
+export function discardDroppedFiles(projectId: string): void {
+  if (held?.projectId === projectId) held = null
+}

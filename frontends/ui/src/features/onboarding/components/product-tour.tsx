@@ -42,6 +42,7 @@ import { motionDeliberate, motionInstant } from '@/components/motion'
 import { TourCard } from '@/components/ui/tour-card'
 import { ShortcutKeys } from '@/components/shell/shortcut-keys'
 import { MOD } from '@/components/shell/shortcuts'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { patchUserPreferences } from '@/lib/user-preferences/client'
@@ -50,6 +51,7 @@ import {
   NO_TOURS,
   TOURS,
   TOUR_HOME,
+  TOUR_PLACEMENT_ATTRIBUTE,
   TOUR_SEEN_KEYS,
   isSetupPage,
   placeStops,
@@ -72,6 +74,8 @@ const ARRIVAL_POLL_MS = 100
 const ARRIVAL_SETTLE_MS = 400
 
 const StartTourContext = React.createContext<(() => void) | null>(null)
+/** The running tour's placed stops, for the card to read its own sideways shift. */
+const PlacedStopsContext = React.createContext<readonly PlacedTourStop[]>([])
 
 export interface ProductTourProps extends TourFlags {
   children: React.ReactNode
@@ -117,6 +121,9 @@ function ProductTourRunner({
   const router = useRouter()
   const reduceMotion = useReducedMotion()
   const { startNextStep } = useNextStep()
+  // The phone shell (tab bar, drawer, search button) stands on the same `md`
+  // line the shell draws, and some stops have a phone variant for it.
+  const phone = useIsMobile()
   const t = useTranslations('onboarding.tour')
   const [active, setActive] = React.useState<{ tour: TourId; stops: PlacedTourStop[] } | null>(null)
   // Tours started in this tab. `eligible` came from the server when the frame
@@ -135,7 +142,7 @@ function ProductTourRunner({
   // the same pass that opens the tour.
   const startHere = React.useCallback(
     (tour: TourId, handover: boolean) => {
-      const reader = { canAccessArchiv, canAccessInbox, canManageOrganization, handover }
+      const reader = { canAccessArchiv, canAccessInbox, canManageOrganization, handover, phone }
       const stops = placeStops(TOURS[tour], reader, locateAnchor, {
         width: window.innerWidth,
         height: window.innerHeight,
@@ -147,7 +154,7 @@ function ProductTourRunner({
         void patchUserPreferences({ [TOUR_SEEN_KEYS[tour]]: new Date().toISOString() })
       }
     },
-    [canAccessArchiv, canAccessInbox, canManageOrganization, startNextStep],
+    [canAccessArchiv, canAccessInbox, canManageOrganization, phone, startNextStep],
   )
 
   const start = React.useCallback(() => {
@@ -201,6 +208,7 @@ function ProductTourRunner({
 
   return (
     <StartTourContext.Provider value={start}>
+      <PlacedStopsContext.Provider value={active?.stops ?? EMPTY_STOPS}>
       <NextStep
         steps={tours}
         cardComponent={ProductTourCard}
@@ -224,6 +232,7 @@ function ProductTourRunner({
       >
         {children}
       </NextStep>
+      </PlacedStopsContext.Provider>
     </StartTourContext.Provider>
   )
 }
@@ -247,13 +256,26 @@ function waitForArrival(tour: TourId, start: () => void): () => void {
   return () => window.clearInterval(timer)
 }
 
-/** An anchor's box, or null when it is absent or not laid out (a closed drawer). */
+/**
+ * An anchor's box, or null when it is absent or not laid out (a closed drawer).
+ *
+ * The FIRST LAID-OUT match, not the first match: one stop can have two
+ * elements, a rail entry and a phone tab, of which CSS hides one at any width.
+ * The element may also say which edge it sits on ({@link TOUR_PLACEMENT_ATTRIBUTE}).
+ */
 function locateAnchor(selector: string): AnchorBox | null {
-  const element = document.querySelector(selector)
-  if (!element) return null
-  const { left, right, top, bottom } = element.getBoundingClientRect()
-  return right > left && bottom > top ? { left, right, top, bottom } : null
+  for (const element of Array.from(document.querySelectorAll(selector))) {
+    const { left, right, top, bottom } = element.getBoundingClientRect()
+    if (!(right > left && bottom > top)) continue
+    const placement = element.getAttribute(TOUR_PLACEMENT_ATTRIBUTE)
+    return placement === 'above' || placement === 'below' || placement === 'beside'
+      ? { left, right, top, bottom, placement }
+      : { left, right, top, bottom }
+  }
+  return null
 }
+
+const EMPTY_STOPS: readonly PlacedTourStop[] = []
 
 function ProductTourCard({
   step,
@@ -264,7 +286,11 @@ function ProductTourCard({
   skipTour,
 }: CardComponentProps): JSX.Element {
   const t = useTranslations('onboarding.tour')
+  const shiftX = React.useContext(PlacedStopsContext)[currentStep]?.shiftX ?? 0
   return (
+    // A card centred above a phone tab slides back on screen (`cardShift`);
+    // NextStep positions the box around this element and never clamps it.
+    <div style={shiftX ? { transform: `translateX(${shiftX}px)` } : undefined}>
     <TourCard
       title={step.title}
       step={currentStep}
@@ -282,6 +308,7 @@ function ProductTourCard({
     >
       {step.content}
     </TourCard>
+    </div>
   )
 }
 

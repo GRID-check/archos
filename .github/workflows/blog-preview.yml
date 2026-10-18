@@ -11,7 +11,7 @@
 # Informational only: a harness failure must never block the PR.
 #
 # Job split is deliberate: the job that executes PR-controlled
-# code (npm install, the site's own build and server) runs with a read-only token
+# code (bun install, the site's own build and server) runs with a read-only token
 # and no persisted credential; the commenting job checks out nothing, runs no PR
 # code, and is the only one holding write scope.
 
@@ -137,8 +137,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: frontends/web/package-lock.json
+
+      - uses: ./.github/actions/setup-bun
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -170,8 +170,8 @@ jobs:
         # to hold it — unpinned, every run would resolve whatever `latest` is and
         # silently invalidate the browser cache.
         run: |
-          npm i --no-save "playwright-core@${PLAYWRIGHT_VERSION}"
-          npx playwright-core install chromium
+          bun add --no-save "playwright-core@${PLAYWRIGHT_VERSION}"
+          ./node_modules/.bin/playwright-core install chromium
 
       - name: Start the built server
         working-directory: frontends/web

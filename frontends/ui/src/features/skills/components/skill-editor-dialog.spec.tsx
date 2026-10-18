@@ -715,3 +715,61 @@ describe('the skill check gates the save', () => {
     expect(screen.getByTestId('skill-review-stale')).toBeInTheDocument()
   })
 })
+
+describe('SkillEditorDialog — closing with unsaved work', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    reviewSkillMock.mockResolvedValue({ findings: [] })
+  })
+
+  test('a clean form closes at once, with nothing asked', () => {
+    const onOpenChange = vi.fn()
+    render(<SkillEditorDialog {...dialogProps} onOpenChange={onOpenChange} skill={null} />)
+
+    fireEvent.click(screen.getByTestId('skill-back'))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(screen.queryByText('Discard your changes?')).not.toBeInTheDocument()
+  })
+
+  test('Cancel, Escape and the close X all ask before throwing typed work away', async () => {
+    const onOpenChange = vi.fn()
+    render(<SkillEditorDialog {...dialogProps} onOpenChange={onOpenChange} skill={null} />)
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'oib-fire-check' } })
+
+    fireEvent.click(screen.getByTestId('skill-back'))
+    expect(await screen.findByText('Discard your changes?')).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    // Keep editing: the question goes, the editor and what was typed stay.
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
+    await waitFor(() => expect(screen.queryByText('Discard your changes?')).not.toBeInTheDocument())
+    expect(screen.getByLabelText(/^Name/)).toHaveValue('oib-fire-check')
+
+    // Escape is the same question.
+    fireEvent.keyDown(screen.getByLabelText(/^Name/), { key: 'Escape' })
+    expect(await screen.findByText('Discard your changes?')).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  test('typing a letter and deleting it again is not a change', () => {
+    const onOpenChange = vi.fn()
+    render(<SkillEditorDialog {...dialogProps} onOpenChange={onOpenChange} skill={null} />)
+    const name = screen.getByLabelText(/^Name/)
+    fireEvent.change(name, { target: { value: 'a' } })
+    fireEvent.change(name, { target: { value: '' } })
+
+    fireEvent.click(screen.getByTestId('skill-back'))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  test('the editor is a full-screen sheet on a phone, clear of the notch and the home indicator', () => {
+    render(<SkillEditorDialog {...dialogProps} skill={null} />)
+    const content = screen.getByRole('dialog')
+    expect(content).toHaveAttribute('data-mobile-presentation', 'fullscreen')
+    expect(content.className).toMatch(/phone:pt-\[env\(safe-area-inset-top\)\]/)
+    expect(content.className).toMatch(/phone:pb-\[env\(safe-area-inset-bottom\)\]/)
+  })
+})

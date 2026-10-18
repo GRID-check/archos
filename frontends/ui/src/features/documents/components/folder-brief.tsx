@@ -10,8 +10,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { SegmentMeter, ToneSwatch, type MeterTone } from '@/components/ui/segment-meter'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange } from '@/lib/format'
+import { offeredForRetry } from '@/lib/documents/retry-policy'
 import { cn } from '@/lib/utils'
 import type { BulkReingestProgress } from '../hooks/use-bulk-reingest'
+import { usePhoneLayout } from '../hooks/use-phone-layout'
 import { FolderReadState } from './folder-read-state'
 import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
 import {
@@ -129,7 +131,13 @@ export function FolderBrief({
 }: FolderBriefProps): JSX.Element | null {
   const t = useTranslations('files')
   const { tally } = brief
+  const phone = usePhoneLayout()
   if (tally.total === 0) return null
+  // Nothing to act on, and a phone has no room for a line that only reassures:
+  // when every document is read the disclosure is gone. One unread, failed,
+  // held or unplaced document, or a missing one at the root, brings it back,
+  // folded to its one line.
+  if (phone && briefHasNothingToSay(tally, folderName === null ? missing : null)) return null
 
   const scope = folderName
     ? t('brief.scopeFolder', { name: folderName })
@@ -224,6 +232,23 @@ export function FolderBrief({
 }
 
 type Translate = ReturnType<typeof useTranslations>
+
+/** Every document Piloti is meant to read has been read: nothing reading, failed or held. */
+export function everythingRead(tally: KnowledgeTally): boolean {
+  return tally.reading + tally.failed + tally.held === 0 && tally.readable === tally.total - tally.unindexed
+}
+
+/**
+ * True when the brief would only reassure: everything is read, nothing waits to
+ * be placed in a document type, and the agent misses nothing here (`missing` is
+ * the root's list, null in a folder or while unknown).
+ */
+export function briefHasNothingToSay(
+  tally: KnowledgeTally,
+  missing: readonly MissingDocument[] | null | undefined
+): boolean {
+  return everythingRead(tally) && tally.unplaced === 0 && (missing?.length ?? 0) === 0
+}
 
 function briefHeadline(tally: KnowledgeTally, t: Translate): string {
   const share = readShare(tally)
@@ -500,8 +525,10 @@ function NeedsYouSection({
   // Counted from the tally, which both briefs carry exactly; the attention
   // lists only NAME documents for an action, and a summary-built brief names
   // the failed ones alone, up to the summary's limit (ADR-0102). The re-read
-  // button counts what it will send.
+  // button counts what it will send: not a file that failed for a lasting
+  // reason (`offeredForRetry`), which stays in the tally and is not sent.
   const { failed, held, unplaced } = brief.tally
+  const sendable = offeredForRetry(brief.attention.failed).length
   if (failed + held + unplaced === 0) return null
   return (
     <section className="flex flex-col gap-2.5 px-3 py-3" aria-labelledby="folder-brief-needs">
@@ -516,7 +543,7 @@ function NeedsYouSection({
           onShow={() => onSelect({ kind: 'state', state: 'failed' })}
           testId="folder-brief-needs-failed"
         >
-          {onReadAgain && (
+          {onReadAgain && (sendable > 0 || Boolean(readAgainProgress)) && (
             <Button
               type="button"
               size="sm"
@@ -529,7 +556,7 @@ function NeedsYouSection({
               <RotateCcw className={cn('size-3.5', readAgainProgress && 'animate-spin motion-reduce:animate-none')} aria-hidden />
               {readAgainProgress
                 ? t('brief.readAgainProgress', { done: readAgainProgress.done, count: readAgainProgress.total })
-                : t('brief.readAgainAll', { count: brief.attention.failed.length })}
+                : t('brief.readAgainAll', { count: sendable })}
             </Button>
           )}
         </AttentionRow>

@@ -1,0 +1,80 @@
+import 'server-only'
+/**
+ * What on a proposal needs a person's attention, as inbox items (ADR-0035,
+ * ADR-0105). Best-effort: never throws into the write that called it.
+ *
+ * A stored proposal waits on the person it was made for, the one whose turn
+ * Piloti acted in (`piloti.proposal_waiting`). Whoever decides it, that person
+ * or a colleague who may write in the project, settles it for them.
+ *
+ * The item points at the chat the proposal was made in, where its card is.
+ * A proposal no chat made is a filing suggestion (`lib/filing`): it points at
+ * the shelf, the project's Dateien or, for one with no project, the
+ * Büroablage (`organization`), where the file row carries it. Either way the
+ * reader's access is re-derived when the row is read. It carries the one-line
+ * summary as its excerpt, what the proposal changes as its `variant` (the
+ * row's wording: „Piloti schlägt vor, Dateien umzubenennen“), and no actor:
+ * Piloti proposed it.
+ */
+
+import { bestEffortInbox } from '@/lib/inbox/best-effort'
+import { inboxGroupKey } from '@/lib/inbox/registry'
+import { emitInboxItems, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
+import type { ProposalNoticeVariant } from './types'
+
+const TYPE = 'piloti.proposal_waiting'
+
+/** Longest summary quoted in a row. */
+const SUMMARY_LENGTH = 200
+
+/** A proposal was stored (`lib/proposals/service.ts`): the person it was made for may decide it. */
+export async function onProposalCreated(input: {
+  organizationId: string
+  /** Null for a Büroablage proposal (0146). */
+  projectId: string | null
+  proposalId: string
+  originConversationId: string | null
+  onBehalfOf: string
+  /** One line naming the change, for the inbox row. */
+  summary: string
+  /** What it changes, which picks the row's wording. */
+  variant: ProposalNoticeVariant
+}): Promise<void> {
+  await bestEffortInbox(`${TYPE} for proposal ${input.proposalId}`, input.organizationId, () => {
+    const [resourceType, resourceId] = input.originConversationId
+      ? (['conversation', input.originConversationId] as const)
+      : input.projectId
+        ? (['project', input.projectId] as const)
+        : (['organization', input.organizationId] as const)
+    const summary = input.summary.replace(/\s+/g, ' ').trim()
+    return emitInboxItems([
+      {
+        organizationId: input.organizationId,
+        recipientUserId: input.onBehalfOf,
+        type: TYPE,
+        resourceType,
+        resourceId,
+        anchorId: input.proposalId,
+        actorUserId: null,
+        groupKey: inboxGroupKey(TYPE, resourceType, resourceId, input.proposalId),
+        payload: {
+          variant: input.variant,
+          ...(summary
+            ? { excerpt: summary.length > SUMMARY_LENGTH ? `${summary.slice(0, SUMMARY_LENGTH - 1)}…` : summary }
+            : {}),
+        },
+      },
+    ])
+  })
+}
+
+/** A proposal was applied or dismissed: nothing waits on anybody any more. */
+export async function onProposalDecided(input: { organizationId: string; proposalId: string }): Promise<void> {
+  await bestEffortInbox(`settling proposal ${input.proposalId}`, input.organizationId, () =>
+    resolveInboxItemsAnchoredOn({
+      organizationId: input.organizationId,
+      types: [TYPE],
+      anchorId: input.proposalId,
+    })
+  )
+}

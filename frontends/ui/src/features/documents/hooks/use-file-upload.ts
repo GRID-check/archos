@@ -11,18 +11,17 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { useLocale, useTranslations } from '@/i18n'
-import { isProjectClosedBody } from '@/lib/projects/project-status'
 import { createDocumentsClient } from '@/adapters/api'
 import { deleteSessionDocument } from '@/adapters/api/session-documents-client'
-import { xhrUpload, XhrUploadError } from '@/lib/http/xhr-upload'
+import { xhrUpload, XhrNetworkError, XhrUploadError } from '@/lib/http/xhr-upload'
 import { useDocumentsStore } from '../store'
 import { useAuth } from '@/adapters/auth'
 import { useAppConfig } from '@/shared/context'
 import { useLayoutStore } from '@/features/layout/store'
-import type { TrackedFile, UploadIntent } from '../types'
+import { mayRetryUpload, type TrackedFile, type UploadIntent } from '../types'
 import { mapUploadResponseStatus } from '../utils'
 import { shouldEmitProgress } from '../lib/upload-progress'
-import { isJoblessIngesting } from '../lib/document-status-reads'
+import { isJoblessIngesting, trackedPatchFromStatus } from '../lib/document-status-reads'
 import { runWithConcurrency, sendWaitingOutRateLimit, UPLOAD_CONCURRENCY } from '../lib/upload-queue'
 import { validateFileUpload, type ValidationContext } from '../validation'
 import { summarizeValidation } from '../lib/validation-messages'
@@ -37,6 +36,10 @@ import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { exclusionsByTerm, openUploadBatch, sealUploadBatch } from '../lib/upload-batch'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { fileExtensionLabel } from '../document-kind'
+import { failedWhileReading } from '../lib/ingest-failure'
+import { requestReingest } from '../lib/reingest-request'
+import { mayRetryRefusal, uploadRefusalOf, type UploadRefusal } from '../lib/upload-refusal'
+import { toast } from 'sonner'
 
 /**
  * The upload endpoints' response: `/api/documents/upload`,
@@ -69,21 +72,56 @@ async function deleteShelfDocument(shelf: 'project' | 'archiv' | 'session', docu
 /** A user-initiated cancel, not a failure — it must not colour a row red. */
 const isAbort = (error: unknown): boolean => error instanceof Error && error.name === 'AbortError'
 
-/** The clearest sentence available about why an upload did not happen. */
-const failureMessage = (error: unknown, fallback: string, projectClosed?: string): string => {
-  if (error instanceof XhrUploadError) {
-    try {
-      const body: unknown = JSON.parse(error.responseText)
-      // A closed project (ADR-0090) is named in the reader's language: the
-      // project closed while this tab was open.
-      if (projectClosed && isProjectClosedBody(body)) return projectClosed
-      const message = (body as { error?: unknown })?.error
-      if (typeof message === 'string' && message) return message
-    } catch {
-      // Not JSON — fall through to the transport's own message.
-    }
+/** The sentences an upload failure is said in, in the reader's language. */
+interface UploadFailureCopy {
+  projectClosed: string
+  failed: string
+  network: string
+  stalled: string
+  timeout: string
+  folderReadOnly: string
+  changedMeanwhile: string
+  screeningUnavailable: string
+  nameTaken: (name: string) => string
+  heldReplace: (name: string) => string
+}
+
+/** A refusal the server gave a reason for, said from the dictionary (`../lib/upload-refusal`). */
+const refusalMessage = (refusal: UploadRefusal, copy: UploadFailureCopy, fileName: string): string => {
+  switch (refusal.kind) {
+    case 'held-replace':
+      return copy.heldReplace(fileName)
+    case 'name-taken':
+      return copy.nameTaken(fileName)
+    case 'project-closed':
+      return copy.projectClosed
+    case 'folder-read-only':
+      return copy.folderReadOnly
+    case 'changed-meanwhile':
+      return copy.changedMeanwhile
+    case 'screening-unavailable':
+      return copy.screeningUnavailable
+    case 'name-stop':
+      return copy.failed
+    case 'other':
+      return refusal.message ?? copy.failed
   }
-  return error instanceof Error ? error.message : fallback
+}
+
+/**
+ * The clearest sentence available about why an upload did not happen.
+ *
+ * The transport's own messages are English and for logs (`XhrNetworkError`,
+ * `XhrUploadError`); a stalled or dropped link is the failure a reader on site
+ * actually meets, so it is said in the dictionary and never passed through.
+ * A refusal with a reason is said from the dictionary too; only one the server
+ * gave no reason for is shown in its own words.
+ */
+const failureMessage = (error: unknown, copy: UploadFailureCopy, fileName = ''): string => {
+  if (error instanceof XhrNetworkError) return copy[error.reason]
+  const refusal = uploadRefusalOf(error)
+  if (refusal) return refusalMessage(refusal, copy, fileName)
+  return error instanceof Error && error.message ? error.message : copy.failed
 }
 
 interface UseFileUploadOptions {
@@ -163,7 +201,8 @@ export interface UploadFilesOptions {
 }
 
 interface UseFileUploadReturn {
-  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<void>
+  /** Resolves with how many files the server took; the rest say why on their own. */
+  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<number>
   cancelUpload: () => void
   /** Abort one in-flight file, leaving the rest of the batch running. */
   cancelFile: (fileId: string) => void
@@ -195,6 +234,21 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
   // be punctuated like the one on the file card beside it, and the user may be
   // reading the app in German on an English-locale browser.
   const { locale } = useLocale()
+  const failureCopy = useMemo<UploadFailureCopy>(
+    () => ({
+      projectClosed: t('errors.projectClosed'),
+      failed: t('errors.uploadFailed'),
+      network: t('errors.uploadNetwork'),
+      stalled: t('errors.uploadStalled'),
+      timeout: t('errors.uploadTimeout'),
+      folderReadOnly: t('folders.access.readOnlyRefused'),
+      changedMeanwhile: t('errors.uploadChangedMeanwhile'),
+      screeningUnavailable: t('errors.screeningPolicyUnavailable'),
+      nameTaken: (name) => t('errors.nameTaken', { name }),
+      heldReplace: (name) => t('errors.quarantinedReplace', { name }),
+    }),
+    [t]
+  )
   const { fileUpload: fileUploadConfig } = useAppConfig()
   const clientRef = useRef(createDocumentsClient({ authToken: idToken }))
   const previousSessionIdRef = useRef<string | undefined>(undefined)
@@ -301,8 +355,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
   )
 
   const uploadFiles = useCallback(
-    async (files: File[], options?: UploadFilesOptions) => {
-      if (files.length === 0) return
+    async (files: File[], options?: UploadFilesOptions): Promise<number> => {
+      if (files.length === 0) return 0
 
       // See `UploadFilesOptions.collectionOverride`.
       const targetCollection = options?.collectionOverride ?? collectionName
@@ -310,7 +364,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         const uploadError = new Error('Collection name required for upload')
         setError(uploadError.message)
         onError?.(uploadError)
-        return
+        return 0
       }
 
       const validationResult = validateFileUpload(files, validationContext, fileUploadConfig, locale)
@@ -335,12 +389,12 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
 
       if (validationResult.batchErrors.length > 0) {
         setError(localizedSummary)
-        return
+        return 0
       }
 
       if (validationResult.validFiles.length === 0) {
         setError(imageVlmBlocked ? imageVlmMessage : localizedSummary)
-        return
+        return 0
       }
 
       /*
@@ -358,7 +412,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         policy = options?.screeningPolicy ?? (await loadUploadScreeningPolicy())
       } catch {
         setError(t('errors.screeningPolicyUnavailable'))
-        return
+        return 0
       }
       const screenedOut: Array<{ file: File; matches: NameMatch[] }> = []
       const validFiles = validationResult.validFiles.filter((file) => {
@@ -374,7 +428,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       const screenedMessage = describeScreenedOut(screenedOut, t)
       if (validFiles.length === 0) {
         setError(screenedMessage ?? localizedSummary)
-        return
+        return 0
       }
       setUploading(true)
 
@@ -435,6 +489,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       // the user dropped is accounted for from the first frame.
       for (const entry of entries) addTrackedFile(entry.tracked)
 
+      let taken = 0
       try {
         await ensureCollectionExists(targetCollection)
 
@@ -462,6 +517,13 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         // File types of the files the server took, for the `document_uploaded`
         // event: extensions only, never a name.
         const uploadedTypes: string[] = []
+        // Files the server's repeat of the name check stopped (422), which the
+        // browser's own check did not: said and counted like the browser's
+        // stops, never as failures (ADR-0086).
+        const serverStopped: Array<{ file: File; matches: NameMatch[] }> = []
+        // Files refused because the document they replace is held: neither
+        // uploaded nor failed, they wait on that document's review.
+        const heldReplaced: string[] = []
 
         // Several at a time, not one after another: each POST also writes to
         // object storage, checks the org quota and dispatches to the ingest
@@ -502,7 +564,9 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           // `asPathStampedFiles`, so one property covers both ways of
           // choosing a folder. Absent for a picked file, which genuinely has
           // no origin path — the server records null rather than a guess.
-          if (shelf !== 'session' && file.webkitRelativePath) {
+          // Sent for a chat attachment too: the screening above read its
+          // folders, and the server's repeat must read the same (ADR-0086).
+          if (file.webkitRelativePath) {
             formData.append('originPath', file.webkitRelativePath)
           }
 
@@ -533,7 +597,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             // tombstone from an earlier delete must not hide it.
             if (result.documentId) removeRecentlyDeletedIds([result.documentId])
             updateTrackedFile(tracked.id, {
-              status: mapUploadResponseStatus(result.status),
+              status: mapUploadResponseStatus(result.status, result.unchanged === true),
               serverFileId: result.documentId,
               jobId: result.jobId ?? undefined,
               ...(result.unchanged ? { unchanged: true } : {}),
@@ -550,9 +614,36 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             // The failure belongs to THIS file. The other eleven documents in
             // an Einreichung are still wanted, and the row that refused is the
             // one that has to say so.
-            const message = failureMessage(err, 'Upload failed', t('errors.projectClosed'))
-            updateTrackedFile(tracked.id, { status: 'failed', errorMessage: message })
-            throw err instanceof Error ? err : new Error(message)
+            const refusal = uploadRefusalOf(err)
+            if (refusal?.kind === 'held-replace') {
+              // The document it would replace waits on a review: the row is
+              // held with it, says so in its own sentence, and is not retried
+              // (a retry meets the same 409 until somebody decides).
+              const sentence = failureCopy.heldReplace(file.name)
+              updateTrackedFile(tracked.id, {
+                status: 'held',
+                errorMessage: sentence,
+                retryable: false,
+                replacesHeld: { documentId: refusal.documentId, ownUpload: refusal.ownUpload },
+              })
+              heldReplaced.push(sentence)
+              return
+            }
+            if (refusal?.kind === 'name-stop') {
+              // Not uploaded, as a stop of the browser's own check is: no row,
+              // the same sentence on the batch's line, the same tally.
+              dismissTrackedFiles([tracked.id])
+              serverStopped.push({ file, matches: refusal.matches })
+              return
+            }
+            const message = failureMessage(err, failureCopy, file.name)
+            updateTrackedFile(tracked.id, {
+              status: 'failed',
+              errorMessage: message,
+              ...(mayRetryRefusal(refusal) ? {} : { retryable: false as const }),
+            })
+            // A refusal is thrown as the sentence the row says, so the batch's line says it too.
+            throw err instanceof Error && !refusal ? err : Object.assign(new Error(message), { cause: err })
           } finally {
             abortControllersRef.current.delete(tracked.id)
           }
@@ -579,24 +670,34 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         }
 
         // Sealed once every request has answered: the files that wrote no row
-        // are counted here, the rest the server can see for itself.
+        // are counted here, the rest the server can see for itself. A file the
+        // server's name check stopped is counted by term, as the browser's
+        // stops were when the batch opened; a held-replace is neither.
         if (batchId) {
+          const excluded = exclusionsByTerm(serverStopped.map(({ matches }) => matches))
           await sealUploadBatch(batchId, {
             unchanged: unchangedCount,
             failed: results.filter((result) => result.status === 'rejected').length,
+            ...(excluded.length > 0 ? { excluded } : {}),
           })
         }
 
+        taken = results.filter((result) => result.status === 'fulfilled').length
         const firstFailure = results.find((result) => result.status === 'rejected')
         if (firstFailure && firstFailure.status === 'rejected') {
           const failedCount = results.filter((result) => result.status === 'rejected').length
-          const message = failureMessage(firstFailure.reason, 'Upload failed', t('errors.projectClosed'))
+          const message = failureMessage(firstFailure.reason, failureCopy)
           setError(
             failedCount > 1
               ? t('errors.someUploadsFailed', { failed: failedCount, total: entries.length, reason: message })
               : message
           )
           onError?.(firstFailure.reason instanceof Error ? firstFailure.reason : new Error(message))
+        } else if (serverStopped.length > 0) {
+          // Every file not uploaded, the browser's stops and the server's, in one sentence.
+          setError(describeScreenedOut([...screenedOut, ...serverStopped], t) ?? failureCopy.failed)
+        } else if (heldReplaced.length > 0 && !screenedMessage) {
+          setError(heldReplaced[0])
         }
       } catch (err) {
         if (isAbort(err)) {
@@ -604,9 +705,9 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             const storeFile = useDocumentsStore.getState().trackedFiles.find((f) => f.id === tracked.id)
             if (storeFile?.status === 'uploading') updateTrackedFile(tracked.id, { status: 'canceled' })
           }
-          return
+          return taken
         }
-        const message = failureMessage(err, 'Upload failed')
+        const message = failureMessage(err, failureCopy)
         setError(message)
         onError?.(err instanceof Error ? err : new Error(message))
 
@@ -658,6 +759,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         }
         setUploading(false)
       }
+      return taken
     },
     [
       collectionName,
@@ -671,12 +773,14 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       ensureCollectionExists,
       addTrackedFile,
       updateTrackedFile,
+      dismissTrackedFiles,
       setUploadProgress,
       setUploading,
       clearError,
       setError,
       onError,
       removeRecentlyDeletedIds,
+      failureCopy,
       t,
     ]
   )
@@ -756,7 +860,38 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
   const retryFile = useCallback(
     async (fileId: string) => {
       const file = trackedFiles.find((f) => f.id === fileId)
-      if (!file) return
+      // A held file is not retried, from any surface: the server refuses a
+      // re-upload onto it (409), and nothing went wrong to repeat (ADR-0086).
+      // Nor is a file refused for a reason the retry meets again.
+      if (!file || !mayRetryUpload(file)) return
+
+      // A file the server accepted and then could not READ is read again, not
+      // sent again. A re-upload of the same bytes went around the retry rule
+      // (`lib/documents/retry-policy.ts`): the shelf upload re-ingests a
+      // failed row whatever its failure, so a file certain to fail the same
+      // way was read again on every press. The re-read request is the one
+      // „Erneut lesen“ sends, and the server answers it by that rule. The
+      // chat's shelf keeps the re-upload: its attachments have their own
+      // routes.
+      if (file.status === 'failed' && file.serverFileId && failedWhileReading(file) && shelf !== 'session') {
+        const outcome = await requestReingest(file.serverFileId)
+        if (outcome.kind === 'failed') {
+          setError(t('actions.reingestError'))
+          return
+        }
+        if (outcome.kind === 'unchanged') {
+          // Refused on purpose. The row keeps its reason and loses its retry;
+          // the way out is a new revision of the file.
+          updateTrackedFile(fileId, { retryable: false })
+          toast.info(t('actions.reingestWouldFailAgain'))
+          return
+        }
+        const settled = outcome.kind === 'settled' ? trackedPatchFromStatus(outcome.status) : null
+        updateTrackedFile(fileId, settled ?? { status: 'ingesting', errorMessage: null, jobId: undefined, progress: 0 })
+        UploadOrchestrator.watchDocuments([fileId])
+        notifyDocumentsChanged()
+        return
+      }
 
       if (!file.file) {
         setError(t('errors.cannotRetryServerFile'))
@@ -790,7 +925,10 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           fassungOf: (each) => intentOf(each)?.fassungOf,
         }
         try {
-          if (shelf !== 'session') return await uploadFiles(files, retryOptions)
+          if (shelf !== 'session') {
+            await uploadFiles(files, retryOptions)
+            return
+          }
           for (const each of files) await uploadFiles([each], retryOptions)
         } finally {
           for (const each of files) intents.delete(each)
@@ -799,7 +937,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       pendingRetriesRef.current = { files, done }
       await done
     },
-    [trackedFiles, removeTrackedFile, uploadFiles, setError, t, shelf]
+    [trackedFiles, removeTrackedFile, updateTrackedFile, uploadFiles, setError, t, shelf]
   )
 
   return {

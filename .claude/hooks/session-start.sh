@@ -59,20 +59,28 @@ fi
 # candidate is rebuilt on a final 3.14 here, or the sync fails saying why.
 uv sync --group dev
 
+# Bun, pinned where CI pins it (.github/actions/setup-bun). The container's own
+# Bun is whatever its image shipped, and `bun check` (`task fe:types`) reports
+# what the pinned version reports, so a different one is a different gate.
+BUN_VERSION="$(awk -F'"' '/default:/ {print $2; exit}' .github/actions/setup-bun/action.yml)"
+if [ "$(bun --version 2>/dev/null || true)" != "$BUN_VERSION" ]; then
+  step "bun ${BUN_VERSION} (npm, as CI installs it)"
+  npm i -g "bun@${BUN_VERSION}" || step "bun ${BUN_VERSION} install failed; using $(bun --version 2>/dev/null || echo none)"
+fi
+
 step "UI dependencies (bun)"
-# Bun is the INSTALLER and script runner only, never the runtime — see
-# `fe:install`. Do not add `--bun`.
+# Bun is the toolchain, never the runtime (ADR-0103) — see `fe:install`.
+# Do not add `--bun`.
 (cd frontends/ui && bun install --frozen-lockfile)
 
-step "web/landing dependencies (npm)"
-# npm, not bun: the Astro toolchain ships its own lockfile and bundler.
-(cd frontends/web && npm ci)
+step "web/landing dependencies (bun)"
+bun install --frozen-lockfile --cwd frontends/web
 
-step "Pulumi program and policy pack"
+step "Pulumi program and policy pack (bun)"
 # Two Node programs, each with its own lockfile. Installing only the policy pack
 # leaves `task verify` failing at `infra:types`.
-npm --prefix deploy/pulumi ci
-npm --prefix deploy/pulumi/policy ci
+bun install --frozen-lockfile --cwd deploy/pulumi
+bun install --frozen-lockfile --cwd deploy/pulumi/policy
 
 step "agent skills (apm install --frozen)"
 # The step whose absence is invisible. `--frozen` refuses to install when the

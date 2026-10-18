@@ -9,13 +9,19 @@
 'use client'
 
 import { type ChangeEvent, type FC, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { CheckCircle2, FileText, Upload, XCircle } from 'lucide-react'
+import { FileText, Upload } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatBytes } from '@/lib/format'
 import { useDocumentsStore } from '../store'
 import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
+import type { TrackedFile } from '../types'
+import { uploadPhase, type UploadPhase } from '../lib/upload-progress'
+import { HeldUploadReason } from './held-upload-reason'
+import { ingestionMarkOfPhase, IngestionStatusWord } from './ingestion-atoms'
+import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
+import { photoIntake, prepareSitePhotos } from '../lib/site-photo'
 import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '../'
 import type { Transition } from 'motion/react'
 import {
@@ -33,12 +39,25 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
+/**
+ * What a row shows: the upload tray's phase of the same file (`uploadPhase`),
+ * drawn with the same glyph (`ingestionMarkOfPhase`), so the zone and the tray
+ * cannot name one file's state two ways. `held` (the content check, ADR-0086)
+ * and `stored` (kept, not read) are at rest and neither green nor red;
+ * `canceled` is the user's own decision.
+ */
 interface UploadedFile {
   id: string
   file: File
-  status: 'uploading' | 'success' | 'error'
+  phase: UploadPhase
   errorMessage?: string
+  replacesHeld?: TrackedFile['replacesHeld']
+  /** Why a held file is held (`quarantineVerdictOf`), read once where the row is mirrored. */
+  verdict: QuarantineVerdict | null
 }
+
+/** In flight: the zone's one moving mark, since it has no header to carry the loop. */
+const IN_FLIGHT: ReadonlySet<UploadPhase> = new Set<UploadPhase>(['queued', 'uploading', 'processing'])
 
 interface FileUploadZoneProps {
   /** Collection name for filtering displayed files */
@@ -102,26 +121,36 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
       .map((tf) => ({
         id: tf.id,
         file: tf.file!,
-        status:
-          tf.status === 'failed'
-            ? ('error' as const)
-            : tf.status === 'success'
-              ? ('success' as const)
-              : ('uploading' as const),
+        phase: uploadPhase(tf),
         errorMessage: tf.errorMessage ?? undefined,
+        replacesHeld: tf.replacesHeld,
+        verdict: tf.status === 'held' ? quarantineVerdictOf(tf) : null,
       }))
     setUploadValue(mapped)
   }, [collectionFiles])
 
   const uploadDisabled = isUploading || isBusy
 
+  const tCapture = useTranslations('capture')
   const handleValueChange = useCallback(
-    (files: File[]) => {
-      if (files.length === 0) return
-      // Pass files to parent - validation happens in uploadFiles hook
-      onUpload?.(files)
+    (selected: File[]) => {
+      if (selected.length === 0) return
+      // A photo gets a name of its own before validation sees it: the name is
+      // the document's identity, and iOS calls a library or camera photo
+      // `image.jpg` (`site-photo.ts`). Validation happens in uploadFiles.
+      void prepareSitePhotos(selected, {
+        source: 'picker',
+        prefix: tCapture('photos.fileNamePrefix'),
+        taken: collectionFiles.map((file) => file.fileName),
+        imagesAccepted: photoIntake({ acceptedTypes }).available,
+      }).then(({ files, unconvertibleHeic }) => {
+        // An unconvertible HEIC goes on under its own name, for the hook's
+        // validation to report alongside every other refused file.
+        const rest = selected.filter((file) => unconvertibleHeic.includes(file.name))
+        if (files.length + rest.length > 0) onUpload?.([...files, ...rest])
+      })
     },
-    [onUpload]
+    [onUpload, tCapture, collectionFiles, acceptedTypes]
   )
 
   const handleInputChange = useCallback(
@@ -207,13 +236,30 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
               <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-foreground">{item.file.name}</p>
-                {item.errorMessage ? <p className="text-xs text-destructive">{item.errorMessage}</p> : null}
+                {/* A held file's stored text is the verdict as JSON: it reads
+                    as its reasons, never as a red error line. */}
+                {item.phase === 'held' ? (
+                  <HeldUploadReason
+                    verdict={item.verdict}
+                    replacesHeld={item.replacesHeld}
+                    message={item.errorMessage}
+                    testId="upload-zone-held"
+                  />
+                ) : item.phase === 'failed' && item.errorMessage ? (
+                  <p className="text-xs text-destructive">{item.errorMessage}</p>
+                ) : null}
               </div>
-              {item.status === 'uploading' ? (
+              {IN_FLIGHT.has(item.phase) ? (
                 <Spinner size="sm" className="shrink-0 text-muted-foreground" />
-              ) : null}
-              {item.status === 'success' ? <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden /> : null}
-              {item.status === 'error' ? <XCircle className="size-4 shrink-0 text-destructive" aria-hidden /> : null}
+              ) : (
+                // The tray's glyph and ink for the same phase; the word is for
+                // assistive tech, the row has no room for it.
+                <IngestionStatusWord mark={ingestionMarkOfPhase(item.phase)} className="shrink-0">
+                  <span className="sr-only" data-testid="upload-zone-state">
+                    {t(`uploads.row.${item.phase}`)}
+                  </span>
+                </IngestionStatusWord>
+              )}
             </motion.li>
           ))}
           </AnimatePresence>

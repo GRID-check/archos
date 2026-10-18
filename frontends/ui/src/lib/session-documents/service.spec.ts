@@ -153,7 +153,7 @@ const existing = makeLiveDocumentMatch({
   fileSize: 900,
   contentHash: null,
   folderId: null,
-  status: 'ready',
+  status: 'completed',
 })
 
 beforeEach(() => {
@@ -237,6 +237,35 @@ describe("uploadSessionDocument onto somebody else's quarantined attachment", ()
       ),
     ).rejects.toBeInstanceOf(ConflictError)
     expect(admitReplacementOrDiscard).not.toHaveBeenCalled()
+  })
+})
+
+// The browser screens a dropped folder's names before a chat attachment goes;
+// the server's repeat reads the same segments (ADR-0086), so a client that
+// skipped the check cannot slip a file in from „Personalunterlagen“.
+describe('uploadSessionDocument screens the folders the file came from', () => {
+  it('refuses a file because of its origin folder, before anything is stored', async () => {
+    const error = await uploadSessionDocument(
+      session,
+      { conversationId: CONVERSATION_ID, file: file('scan_0042.pdf'), originPath: 'Akt/Personalunterlagen/scan_0042.pdf' },
+      new Request('http://x'),
+    ).catch((caught: unknown) => caught)
+
+    expect(error).toMatchObject({
+      code: 'UPLOAD_SCREENED',
+      details: { matches: [{ term: 'Personal', segment: 'Personalunterlagen', kind: 'folder' }] },
+    })
+    expect(admitOrDiscard).not.toHaveBeenCalled()
+    expect(s3Send).not.toHaveBeenCalled()
+  })
+
+  it('lets the same file through without a path', async () => {
+    await uploadSessionDocument(
+      session,
+      { conversationId: CONVERSATION_ID, file: file('scan_0042.pdf') },
+      new Request('http://x'),
+    )
+    expect(admitOrDiscard).toHaveBeenCalled()
   })
 })
 

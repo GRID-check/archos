@@ -1,15 +1,20 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { cn } from '@/lib/utils'
 import { selectCardConversationId, useCardDecision } from '../hooks/use-card-decision'
 import { useChatStore } from '@/features/chat/store'
 import { invalidateProjectFacts } from '@/features/chat/hooks/use-project-facts'
+import { ProfilePatchReceipt } from './ProposalReceipts'
+import { ProfilePatchTable } from './ProfilePatchTable'
+import { DECISION_BUTTON, DECISION_ROW } from './card-chrome'
 import { ProposalShell } from './ProposalShell'
-import { StackedLabel } from './StackedLabel'
+import { StackedLabel } from '@/components/ui/stacked-label'
+import { useCurrentProfile } from '../hooks/use-current-profile'
 import { buildPatchPreviewRows } from '@/lib/project-profile/patch-preview'
-import type { ProjectProfile, ProjectProfilePatchOperation } from '@/lib/project-profile/types'
+import type { ProjectProfilePatchOperation } from '@/lib/project-profile/types'
 
 interface ProjectProfilePatchCardProps {
   title: string
@@ -26,6 +31,8 @@ interface ProjectProfilePatchCardProps {
    * `GridCards.decisionsMustPersist`.
    */
   decisionsMustPersist?: boolean
+  /** The stored proposal this card is a receipt of (ADR-0105). Absent: the fallback below. */
+  proposalId?: string | null
 }
 
 /**
@@ -33,11 +40,34 @@ interface ProjectProfilePatchCardProps {
  * the user accepts — the agent can never silently rewrite a project fact
  * (docs/architecture/project-memory-design.md §11.7: propose, never auto-apply).
  *
- * Accept/Reject is recorded on the owning message (`useCardDecision`) rather
- * than in local state, so an applied patch stays applied across reloads instead
- * of re-offering a button that would write it to the brief a second time.
+ * A card with a `proposal_id` is the receipt of a stored `project_profile`
+ * proposal (ADR-0105) and is drawn by {@link ProfilePatchReceipt}: the server
+ * applies the patch in the deciding person's session and records who decided
+ * and when. Without one it is the fallback below.
  */
-export function ProjectProfilePatchCard({
+export function ProjectProfilePatchCard({ proposalId, ...props }: ProjectProfilePatchCardProps) {
+  return proposalId ? (
+    <ProfilePatchReceipt
+      proposalId={proposalId}
+      title={props.title}
+      rationale={props.rationale}
+      patch={props.patch}
+      projectId={props.projectId}
+    />
+  ) : (
+    <BrowserAppliedProfileCard {...props} />
+  )
+}
+
+/**
+ * FALLBACK for answers older than server proposals (and for a proposal the
+ * agent could not store): the browser applies the patch through the reader's
+ * own session. Accept/Reject is recorded on the owning message
+ * (`useCardDecision`) rather than in local state, so an applied patch stays
+ * applied across reloads instead of re-offering a button that would write it to
+ * the brief a second time. Kept as it was for those answers.
+ */
+function BrowserAppliedProfileCard({
   title,
   rationale,
   patch,
@@ -45,7 +75,7 @@ export function ProjectProfilePatchCard({
   messageId,
   cardKey,
   decisionsMustPersist,
-}: ProjectProfilePatchCardProps) {
+}: Omit<ProjectProfilePatchCardProps, 'proposalId'>) {
   const t = useTranslations('chat')
   const { decision, decide, canDecide } = useCardDecision(messageId, cardKey, {
     mustPersist: decisionsMustPersist,
@@ -59,23 +89,7 @@ export function ProjectProfilePatchCard({
   // from a model-supplied preview — so what the user consents to is exactly what
   // gets written. The current profile is fetched once; on failure it stays null
   // and the "Before" column is hidden rather than guessed.
-  const [profile, setProfile] = useState<ProjectProfile | null>(null)
-
-  useEffect(() => {
-    if (!projectId) return
-    let cancelled = false
-    fetch(`/api/projects/${projectId}/profile`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.profile) setProfile(data.profile as ProjectProfile)
-      })
-      .catch(() => {
-        /* leave profile null — the Before column stays hidden */
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
+  const profile = useCurrentProfile(projectId)
 
   const rows = useMemo(() => buildPatchPreviewRows(patch, profile), [patch, profile])
 
@@ -142,28 +156,7 @@ export function ProjectProfilePatchCard({
       <p className="text-sm font-semibold text-foreground">{title}</p>
       <p className="text-sm leading-relaxed text-muted-foreground">{rationale}</p>
 
-      {rows.length > 0 && (
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border text-muted-foreground">
-              <th scope="col" className="py-1 pr-2 text-left font-medium">{t('profilePatchCard.field')}</th>
-              {profile !== null && (
-                <th scope="col" className="p-1 text-left font-medium">{t('profilePatchCard.before')}</th>
-              )}
-              <th scope="col" className="pl-2 text-left font-medium">{t('profilePatchCard.after')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i} className="border-b border-border">
-                <td className="py-1 pr-2 font-medium text-foreground">{row.label}</td>
-                {profile !== null && <td className="p-1 text-muted-foreground">{row.before}</td>}
-                <td className="pl-2 text-foreground">{row.after}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <ProfilePatchTable rows={rows} showBefore={profile !== null} />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -173,11 +166,11 @@ export function ProjectProfilePatchCard({
           next reader of this proposal would be offered the same write again. The
           question is put where the answer has a home, which is the thread. */}
       {canDecide && (
-        // The note wraps onto its own line before it squeezes the buttons: on a
-        // phone it sat beside them four words to a line.
-        <div className="flex flex-wrap items-center gap-2">
+        // The note takes its own line above the buttons (DECISION_ROW stacks on
+        // a phone), so it never sits beside them four words to a line.
+        <div className={DECISION_ROW}>
           {!projectId && (
-            <p className="min-w-[16rem] flex-1 text-xs text-muted-foreground">{t('profilePatchCard.noProject')}</p>
+            <p className="text-xs text-muted-foreground sm:mr-auto sm:min-w-[16rem] sm:flex-1">{t('profilePatchCard.noProject')}</p>
           )}
           {/* Without a project there is nothing to apply to: that one IS
               disabled, and says why beside it. In flight it is only busy —
@@ -191,7 +184,7 @@ export function ProjectProfilePatchCard({
             disabled={!projectId}
             aria-disabled={isSubmitting || undefined}
             aria-busy={isSubmitting || undefined}
-            className="aria-disabled:cursor-default"
+            className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default')}
           >
             <StackedLabel
               busy={isSubmitting}
@@ -205,7 +198,7 @@ export function ProjectProfilePatchCard({
             size="sm"
             onClick={handleReject}
             aria-disabled={isSubmitting || undefined}
-            className="aria-disabled:cursor-default aria-disabled:opacity-50"
+            className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default aria-disabled:opacity-50')}
           >
             {t('profilePatchCard.reject')}
           </Button>

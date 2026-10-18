@@ -114,7 +114,12 @@ export function StageTrack({
   if (labels) {
     // Each stage a column: its segment, and its name under it. The columns
     // size to their names (`flex-auto`), so the longest German word is not
-    // the one that gets cut on a narrow rail.
+    // the one that gets cut on a narrow rail. The names are set at the
+    // eyebrow's 10.5px with tight tracking because at 11px the four German
+    // ones need 236px and the preview rail's group gives the track 221px:
+    // every name was clipped („Entw…", „Veröffentli…"), which taught the
+    // order this track exists to teach to nobody. `truncate` stays as the
+    // last resort for a narrower host, not as the expected case.
     return (
       <div
         aria-hidden
@@ -132,7 +137,7 @@ export function StageTrack({
               data-stage-label={stage}
               data-current={index === current || undefined}
               className={cn(
-                'truncate text-[11px] leading-tight whitespace-nowrap',
+                'truncate text-[10.5px] leading-tight tracking-tight whitespace-nowrap',
                 index === current ? 'text-foreground font-medium' : 'text-muted-foreground',
               )}
             >

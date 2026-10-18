@@ -72,7 +72,7 @@ Called internally (no external route) by `server.js` during WebSocket upgrade. R
 ## The chat wire
 
 The socket speaks chat wire v2: the upgrade asks for `?v=2`, and any other
-version is closed with `4426`. The event set, the four client messages and
+version is closed with `4426`. The event set, the five client messages and
 the rejection codes are the contract in
 [`websocket-protocol.md`](../api/websocket-protocol.md); the design, and why
 it replaced NAT's frames, is [`chat-wire-v2.md`](../design/chat-wire-v2.md).

@@ -16,6 +16,7 @@ export {
   MAX_RETRY_BACKOFF_SECONDS,
   claimNext,
   complete,
+  defer,
   depth,
   enqueue,
   eraseLane,

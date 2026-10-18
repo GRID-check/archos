@@ -29,6 +29,9 @@ PRESETS = frozenset({"law", "project", "office"})
 _focused_file_name: ContextVar[str | None] = ContextVar("grid_focused_file_name", default=None)
 _focused_shelf: ContextVar[str | None] = ContextVar("grid_focused_shelf", default=None)
 _turn_shelves: ContextVar[frozenset[str] | None] = ContextVar("grid_turn_shelves", default=None)
+#: The document (its BFF id) the composer or the review canvas says this turn is
+#: about: what the canvas tools act on when the model names no document.
+_focused_document_id: ContextVar[str | None] = ContextVar("grid_focused_document_id", default=None)
 
 
 def _normalize_shelf(value: object) -> str | None:
@@ -87,10 +90,12 @@ def set_turn_intent(
     file_name: object = None,
     shelf: object = None,
     source_preset: object = None,
+    document_id: object = None,
 ) -> None:
     """Replace the whole turn intent. Every extract path goes through here."""
     trimmed = file_name.strip() if isinstance(file_name, str) else ""
     _focused_file_name.set(trimmed or None)
+    _focused_document_id.set(document_id.strip() or None if isinstance(document_id, str) else None)
     _focused_shelf.set(_normalize_shelf(shelf))
     _turn_shelves.set(shelves_for_turn(focus_shelf=shelf, source_preset=source_preset))
 
@@ -129,3 +134,7 @@ def get_focused_shelf() -> str | None:
 
 def get_turn_shelves() -> frozenset[str] | None:
     return _turn_shelves.get()
+
+
+def get_focused_document_id() -> str | None:
+    return _focused_document_id.get()

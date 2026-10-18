@@ -87,6 +87,16 @@ function rootFor(zipName: string, members: readonly string[][]): string | null {
   return sharesOneRoot ? null : zipName.replace(/\.zip$/i, '')
 }
 
+/**
+ * The folder the archive itself sat in, when it came inside a dropped folder:
+ * `Projekt/Unterlagen/plaene.zip` unpacks under `Projekt/Unterlagen`, beside the
+ * files it was dropped with, not at the top of the drop.
+ */
+function folderOf(zip: File): string[] {
+  const segments = safeSegments(zip.webkitRelativePath ?? '') ?? []
+  return segments.slice(0, -1)
+}
+
 interface Admission {
   admit: (info: UnzipFileInfo) => boolean
   entries: () => number
@@ -140,10 +150,11 @@ async function expandZip(zip: File): Promise<ZipExpansion> {
   if (members.length === 0) return refusal(zip, 'empty')
 
   const root = rootFor(zip.name, members.map((member) => member.segments))
+  const base = [...folderOf(zip), ...(root ? [root] : [])]
   const files = members.map(({ segments, bytes }) => {
     const name = segments[segments.length - 1]
     const file = new File([bytes as BlobPart], name, { type: mimeTypeForFileName(name) })
-    return stampRelativePath(file, (root ? [root, ...segments] : segments).join('/'))
+    return stampRelativePath(file, [...base, ...segments].join('/'))
   })
   return { files, notes: [] }
 }

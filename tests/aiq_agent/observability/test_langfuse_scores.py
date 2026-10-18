@@ -17,6 +17,7 @@ from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import score_body
 from aiq_agent.observability.langfuse_scores import score_id
+from aiq_agent.observability.langfuse_scores import thread_reply_scores
 from aiq_agent.observability.langfuse_scores import turn_outcome_scores
 
 REPO = Path(__file__).resolve().parents[3]
@@ -149,6 +150,19 @@ class TestEmit:
         assert emit_scores([RuntimeScore("citation-health", 1.0)], writer="chat") == 0
 
 
+class TestThreadReplyScores:
+    @pytest.mark.parametrize(
+        ("verdict", "scores"),
+        [
+            ("replied", {"thread-answered-in-place": 1.0}),
+            ("skipped", {"thread-answered-in-place": 0.0}),
+            ("skipped_withheld", {}),
+        ],
+    )
+    def test_the_verdict_is_a_boolean_and_a_withheld_turn_has_none(self, verdict, scores):
+        assert _by_name(thread_reply_scores(verdict)) == scores
+
+
 class TestOneListOfNames:
     """A score name exists in the definitions, the BFF and the docs, or nowhere."""
 
@@ -161,7 +175,7 @@ class TestOneListOfNames:
 
     def test_every_score_the_bff_writes_is_defined(self):
         source = "\n".join(path.read_text() for path in (REPO / "frontends/ui/src/lib/langfuse").glob("*.ts"))
-        written = set(re.findall(r"""['"](user-feedback[a-z-]*)['"]""", source))
+        written = set(re.findall(r"""['"](user-feedback[a-z-]*|piloti-decision)['"]""", source))
         defined = {definition.name for definition in SCORE_DEFINITIONS if definition.writer == "bff"}
 
         assert written <= defined
@@ -169,3 +183,27 @@ class TestOneListOfNames:
     @pytest.mark.parametrize("definition", SCORE_DEFINITIONS, ids=lambda definition: definition.name)
     def test_every_score_is_documented(self, definition):
         assert f"`{definition.name}`" in (REPO / "docs/observability/langfuse.md").read_text()
+
+
+class TestSteerCount:
+    def test_a_steered_turn_scores_its_notes_and_says_how_many_were_read(self):
+        from aiq_agent.common.steering import SteerInbox
+        from aiq_agent.common.steering import SteerNote
+        from aiq_agent.observability.langfuse_scores import steer_scores
+
+        inbox = SteerInbox()
+        inbox.offer(SteerNote(steer_id="a", text="x"))
+        inbox.offer(SteerNote(steer_id="b", text="y"))
+        inbox.take()
+        inbox.offer(SteerNote(steer_id="c", text="z"))
+
+        [score] = steer_scores(inbox)
+
+        assert (score.name, score.value, score.comment) == ("steer-count", 3.0, "applied 2")
+        assert score.data_type == "NUMERIC"
+
+    def test_an_unsteered_turn_writes_no_score(self):
+        from aiq_agent.common.steering import SteerInbox
+        from aiq_agent.observability.langfuse_scores import steer_scores
+
+        assert steer_scores(SteerInbox()) == []

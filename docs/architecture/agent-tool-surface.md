@@ -29,7 +29,7 @@ We apply the published guidance:
 
 Tool retrieval pays off on catalogs of
 hundreds or thousands of tools ([RAG-MCP][rag-mcp], [Less is More][less-more],
-[Gorilla/BFCL][bfcl]). Piloti binds 20, at OpenAI's line. Of a 33.4k-token research call,
+[Gorilla/BFCL][bfcl]). Piloti binds 28, past OpenAI's line of 20 since the canvas group (§2). Of a 33.4k-token research call,
 26.1k are a cached prefix, and tool execution is 1.3 s of a 31.3 s median turn
 ([turns audit](turns-per-answer-audit-2026-09.md),
 [turn latency](turn-latency-measured-2026-09.md) §2). Seconds follow rounds and
@@ -40,7 +40,10 @@ model to do next.
 
 ## 2. The surface today
 
-A project turn binds 20 tools, about 16.1k tokens. Tool schemas were 38 % of a
+A project turn binds 28 tools, about 17.3k tokens (the canvas group replaced
+the one `document_annotations` tool, 940 tokens, with seven, 1,625; parity with
+a person, 2026-10-13, added `canvas__update` and `canvas__delete` and `mark`'s
+`open`, +502, to nine and 2,127). Tool schemas were 38 % of a
 research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 
 | Tool | What it does | ~Tokens | Owner |
@@ -50,19 +53,20 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `knowledge_search` | Ranked search; `match="exact"` is Ctrl+F across the files | 1,300 | `sources/knowledge_layer/src/register.py` |
 | `ris_lookup` | Austrian law by citation | 760 | `sources/ris_adapter/src/lookup/tool.py` |
 | `read_passage` | Opens one Punkt, page or outline, ≤12 chunks | 730 | `sources/knowledge_layer/src/read_passage.py` |
-| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentarten (von Piloti zugeordnet): …`) and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `fassungen_of=<file name>` returns one document's chain of Fassungen instead | 660 | `sources/knowledge_layer/src/browse.py` |
+| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentarten (von Piloti zugeordnet): …`) and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `fassungen_of=<file name>` returns one document's chain of Fassungen instead, and with `compare_to=` what changed between two of them | 770 | `sources/knowledge_layer/src/browse.py` |
 | `surface_documents` | Shows a file or a 1–3 thumbnail choice | 510 | `src/aiq_agent/cards/surface_documents.py` |
 | `ask_user` | Blocking multiple-choice question | 490 | `src/aiq_agent/agents/piloti/ask_user.py` |
 | `remember` | Project memory capture | 420 | `src/aiq_agent/memory/register.py` |
 | `create_task` | Delegates work as a task | 400 | `src/aiq_agent/tools/tasks/register.py` |
 | `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `src/aiq_agent/tools/files/register.py` |
+| `canvas__look`, `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group: look at a page or a box on it, who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `src/aiq_agent/tools/canvas/register.py` |
 | `view_knowledge_image` | Shows a page or figure to the model | 300 | `sources/knowledge_layer/src/view_image.py` |
 | `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock) | 131 / 226 / 244 / 312 | `src/aiq_agent/tools/documents/tools.py` |
 | `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `src/aiq_agent/tools/documents/register.py` |
 | `use_skill` | Loads a skill body | 60 | `src/aiq_agent/skills/runtime.py` |
 | web search, advanced web search | Tavily | ~400 together | `sources/tavily_web_search/src/register.py` |
 
-The `ifc_*` pair is 8.65k of the 16.1k (the turns audit measured ~8.2k).
+The `ifc_*` pair is 8.65k of the 17.3k (the turns audit measured ~8.2k).
 
 ```mermaid
 flowchart LR
@@ -152,7 +156,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 | Retag | `PATCH /api/documents/[id]/tags` | Propose | S |
 | Revise any Markdown project document | `POST /api/documents/[id]/versions` | Build. Today only the conversation's subject (`src/aiq_agent/tools/documents/filing.py`) | M |
 | See version history, uploader, lifecycle state | `GET /api/documents/[id]/versions` | Fassungen under other file names: done (`list_files(fassungen_of=…)`). Same-name versions and uploader: add to `list_files` rows | S |
-| Compare versions | `GET /api/documents/[id]/versions/diff` | Build `compare_versions` (§5) | L |
+| Compare versions | `GET /api/documents/[id]/versions/diff` | Fassungen under other file names: done (`list_files(fassungen_of=…, compare_to=…)`, ADR-0104). Same-name versions once every Fassung stays indexed | M |
 | Share | `/api/sharing/[resourceType]/[resourceId]` | Person only | none |
 | Set Dokumentart | platform-only `/api/platform/knowledge/documents/[fileName]/doc-class` | Waits for a project route | n/a |
 | Delete a document | `DELETE /api/documents/[id]` | Never. Hard delete, one-way | none |
@@ -278,7 +282,10 @@ been uploaded and read).
   the files filed in it or under it (`browse._files_by_collection`, the
   exact mode's resolver), and only those are ranked. It used to filter the
   shelf's top `3 × top_k`, so a folder whose passages ranked lower came back
-  empty while holding what was asked.
+  empty while holding what was asked. The folder is a payload condition
+  on the Qdrant points (`folder_ancestors`), together with `doc_class` and
+  the superseded exclusion, and none of them over-fetches
+  (`qdrant/prefilter.py`). The post-filter still runs over what comes back.
 - **Fassungen: marks in `list_files`, and older ones out of the ranking
   (ADR-0099).** A row a PERSON confirmed as replaced reads `ersetzt durch <neuer>
   (bestätigt)`; the newer one `ersetzt <älterer> (bestätigt)` and, when a change
@@ -295,8 +302,10 @@ been uploaded and read).
   has its row are read from `document_metadata` at search time
   (`DocumentMetadataStore.get_superseded_files`) and sent as `file_name NOT IN`, so
   a replaced file cannot outrank its replacement on similarity alone, and a link
-  made or lifted a minute ago applies to the next search. A call that names the file
-  (`file_name=`) hides nothing, and says nothing. When files were left out the result
+  made or lifted a minute ago applies to the next search. Under Qdrant the
+  search filters on the mirrored `superseded` flag instead, and the same
+  Postgres list drops any hit whose flag the mirror has not caught up with.
+  A call that names the file (`file_name=`) hides nothing, and says nothing. When files were left out the result
   opens with `Ältere Fassungen ausgeblendet: <Namen> — mit file_name=… gezielt
   lesbar.` (five names, then „und n weitere“), through the notice slot so the
   grounding block's hash still matches. `match="exact"` is a literal search and
@@ -323,6 +332,19 @@ been uploaded and read).
   (`restrict_rows_to_turn`), so a shelf the turn did not ask for, a restricted
   folder's collection and a held upload are not in it. A name that matches two
   different documents asks for the exact name instead of choosing.
+- **`compare_to=` compares two Fassungen of that chain (ADR-0104), still without a
+  tool of its own.** `fassungen_of` names the newer one (or the document, meaning its
+  current Fassung) and `compare_to` the other, by file name or as „vorige“; the order
+  comes from the chain, not the arguments (`browse.resolve_compare`). The report is
+  read from what the index holds, with no model call (`knowledge/fassung_diff.py`):
+  the Plankopf's Index and Stand, pages aligned by their text so an inserted sheet
+  shifts nothing, values that moved inside a printed line („Fluchtweglänge 38 m →
+  42 m“), and from the drawing analysis the quantities and verbatim dimension strings
+  that changed. A model's prose description of a drawing is never compared, because
+  two readings of one sheet word it differently. The stored change line rides along
+  only when it was written against exactly that older file. Reading both files is
+  reported to the restricted-use admission (ADR-0088). Same-name uploads are not in
+  the index yet, so they compare once every Fassung stays indexed.
 - **`read_passage` reads an older Fassung on request and says it is one.** The read
   is not refused (a question about Index B needs B); the first line of the result,
   in the grounding block's notice slot like the search's „Ältere Fassungen

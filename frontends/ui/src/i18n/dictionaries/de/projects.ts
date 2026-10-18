@@ -7,8 +7,9 @@ export const projects: typeof en.projects = {
     description:
       'Jedes Bauprojekt in einem Arbeitsbereich: Dokumente, Mitglieder, Aufgaben, Recherche und Chat, mit Büroablage und Baurecht zur Hand.',
     loading: 'Projekte werden geladen…',
-    searchPlaceholder: 'Projekte durchsuchen…',
-    searchAria: 'Projekte nach Namen durchsuchen',
+    searchPlaceholder: 'Name, Ort oder Bauherr…',
+    searchAria: 'Projekte nach Name, Adresse oder Bauherr durchsuchen',
+    searchReset: 'Suche zurücksetzen',
     resume: {
       heading: 'Weitermachen',
       fallbackHeading: 'Ihre Projekte',
@@ -21,7 +22,7 @@ export const projects: typeof en.projects = {
     },
     noMatch: {
       title: 'Keine passenden Projekte',
-      description: 'Kein Projektname entspricht Ihrer Suche.',
+      description: 'Weder Name noch Adresse oder Bauherr entspricht Ihrer Suche.',
       clear: 'Suche löschen',
     },
     empty: {
@@ -308,7 +309,8 @@ export const projects: typeof en.projects = {
     documents: 'Dokumente',
     docLabel: '{count} {unit}',
     open: '{name} öffnen',
-    settingsAria: 'Einstellungen für {name} öffnen',
+    overview: 'Übersicht',
+    overviewAria: 'Übersicht von {name} öffnen',
   },
   archivCard: {
     title: 'Büroablage',
@@ -318,9 +320,8 @@ export const projects: typeof en.projects = {
   },
   dialog: {
     newProject: 'Neues Projekt',
-    title: 'Projekt erstellen',
-    description:
-      'Ein Projekt ist ein fokussierter Arbeitsbereich für ein Gebäude — dessen Dokumente, Mitglieder, Recherche und Chat-Kontext bleiben zusammen.',
+    title: 'Neues Projekt',
+    description: 'Ein Projekt hält seine Dokumente, sein Team und die Gespräche darüber an einem Ort zusammen.',
   },
   form: {
     nameRequired: 'Der Projektname ist erforderlich.',
@@ -329,19 +330,63 @@ export const projects: typeof en.projects = {
       'Wir konnten dieses Projekt gerade nicht erstellen. Bitte versuchen Sie es in einem Moment erneut.',
     nameLabel: 'Projektname',
     namePlaceholder: 'z. B. Wohnhaus Hauptstraße 12',
-    templateLabel: 'Mit einer Vorlage beginnen',
-    templates: {
-      neubauWohnbau: { label: 'Neubau Wohnbau', name: 'Neubau Wohnbau' },
-      betriebsbauBrandschutz: {
-        label: 'Betriebsbau Brandschutz',
-        name: 'Betriebsbau — Brandschutz',
-      },
-      sanierungBestand: { label: 'Sanierung Bestand', name: 'Sanierung Bestand' },
-      oibBrandschutzAudit: { label: 'OIB Brandschutz-Audit', name: 'OIB Brandschutz-Audit' },
+    state: {
+      label: 'Projektstatus',
+      active: 'Laufend',
+      activeHint: 'Wir arbeiten gerade daran.',
+      closed: 'Abgeschlossen',
+      closedHint: 'Ein früheres Projekt als Referenz fürs Büro.',
     },
-    footnote:
-      'Erstellen Sie einen Arbeitsbereich für Dokumente, Mitglieder und Chat, fundiert in den Projektdateien, der Büroablage und dem Baurecht.',
-    submit: 'Projekt erstellen',
+    closed: {
+      startedOn: 'Beginn',
+      optional: 'optional',
+      clearStartedOn: 'Beginn leeren',
+      endedOnBeforeStart: 'Der Abschluss liegt vor dem Beginn.',
+      readOnly:
+        'Ein abgeschlossenes Projekt ist schreibgeschützt. Dokumente und Briefing ergänzen Sie, indem Sie es wieder öffnen.',
+      readOnlyPiloti:
+        'Das Projekt bleibt offen, solange Piloti die Dokumente liest. Es wird abgeschlossen, wenn Sie die Erfassung beenden.',
+    },
+    addressLabel: 'Adresse',
+    addressPlaceholder: 'Straße und Hausnummer oder Ort',
+    addressHelp: 'Gemeinde und Bundesland übernimmt Piloti daraus.',
+    address: {
+      searching: 'Suche läuft…',
+      none: 'Keine Übereinstimmung. Die Adresse lässt sich später ergänzen.',
+      suggestions: 'Adressvorschläge',
+      change: 'Andere Adresse wählen',
+    },
+    bundeslandLabel: 'Bundesland',
+    bundeslandPlaceholder: 'Bundesland wählen',
+    bundeslandHelp: 'Die Adresssuche ist hier nicht eingerichtet. Wählen Sie das Bundesland.',
+    sameAddress: {
+      heading: 'An dieser Adresse gibt es schon ein Projekt',
+      hint: 'Seine Dokumente sind oft die beste Quelle für das neue.',
+      closed: 'abgeschlossen',
+      opensInNewTab: 'Öffnet in einem neuen Tab',
+    },
+    description: {
+      label: 'Worum geht es?',
+      placeholder: 'z. B. Aufstockung eines Gründerzeithauses um zwei Geschoße, Dachgeschoßausbau mit 6 Wohnungen',
+      help: 'Ein, zwei Sätze helfen Piloti beim Lesen der Unterlagen.',
+    },
+    setup: {
+      label: 'Einrichtung',
+      piloti: 'Piloti richtet ein',
+      pilotiHint: 'Sie legen den Projektordner ab. Piloti liest ihn und schlägt jeden Wert mit der Seite vor, auf der er steht.',
+      self: 'Selbst ausfüllen',
+      selfHint: 'Sie beantworten die Fragen der Reihe nach.',
+    },
+    drop: {
+      hint: 'Den Projektordner können Sie auch auf dieses Fenster ziehen.',
+      overlay: 'Projektordner hier ablegen',
+      held: 'Ordner „{name}“: {count, plural, one {# Datei wird} other {# Dateien werden}} abgelegt, sobald das Projekt besteht.',
+      heldNoName: '{count, plural, one {# Datei wird} other {# Dateien werden}} abgelegt, sobald das Projekt besteht.',
+      remove: 'Ordner entfernen',
+    },
+    cancel: 'Abbrechen',
+    submit: 'Projekt anlegen',
+    submitClosed: 'Abgeschlossen anlegen',
   },
   applicableStandards: {
     heading: 'Anwendbare Standards',
@@ -432,7 +477,7 @@ export const projects: typeof en.projects = {
     },
     tryAgain: 'Erneut versuchen',
     conflictReload: 'Aktualisieren',
-    draftSaved: 'Entwurf gespeichert',
+    draftSaved: 'Entwurf auf diesem Gerät gespeichert',
     salvage: {
       partial:
         'Teile des bestehenden Projekt-Briefings konnten nicht geladen werden und werden beim Speichern ersetzt.',
@@ -445,6 +490,30 @@ export const projects: typeof en.projects = {
       'Etwa 2 Minuten. Mit diesem Briefing arbeitet Piloti auf Ihr Gebäude zugeschnitten und zeigt, welche OIB-Richtlinien gelten.',
     moduleNav: 'Module',
     moduleNavAria: 'Wizard-Module',
+    documentRole: {
+      takePhoto: 'Foto aufnehmen',
+      loading: 'Zuordnungen werden geladen …',
+      boundAria: 'Zugeordnet als {role}',
+      suggested: 'vorgeschlagen',
+      unbindAria: '{name} nicht mehr als {role} führen',
+      heldUntilSave: 'wird beim Speichern zugeordnet',
+      discardAria: '{name} nicht als {role} führen',
+      pickOther: 'Anderes Dokument wählen …',
+      pickExisting: 'Vorhandenes Dokument wählen …',
+      upload: 'Datei hochladen',
+      dropHereOne: 'Datei hierher ziehen',
+      dropHereMany: 'Dateien hierher ziehen',
+      dropAria: 'Datei ablegen, um sie als {role} zu führen',
+      dropBusy: 'Warten Sie, bis der laufende Upload abgeschlossen ist.',
+      dropOnlyOne: 'Hier wird ein Dokument geführt: {name} wurde übernommen, die übrigen Dateien nicht.',
+      actionFailed: 'Aktion fehlgeschlagen. Bitte erneut versuchen.',
+      bindFailed: 'Dokument konnte nicht zugeordnet werden.',
+      unbindFailed: 'Zuordnung konnte nicht entfernt werden.',
+      replaced: '{name} ist nicht mehr {role}.',
+      uploadFailed: '{name} konnte nicht hochgeladen werden.',
+      uploadedUnbound: '{name} wurde abgelegt, aber nicht zugeordnet.',
+    },
+    modulePickerAria: 'Modul {module}, {title}. Alle Module anzeigen',
     schnellstart: 'Schnellstart',
     schnellstartOn:
       'Nur Kernfragen. Alles Übrige wird als „offen“ übernommen und in der Zusammenfassung als offener Punkt gelistet.',

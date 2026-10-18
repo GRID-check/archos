@@ -161,12 +161,14 @@ export const formatBytes = (bytes: number | null | undefined, locale?: string): 
  * to the raw ISO string for unparseable input. Truncates toward zero at unit
  * boundaries so a value never rounds up into a misleading "in 60 minutes".
  * Shared by the research-runs list and the sessions-panel Deep Research section.
+ * `now` is the moment it is relative to: a caller that decided by its own `now`
+ * whether to say a relative time at all must format against the same one.
  */
-export const formatRelativeTime = (isoDate: string, locale?: string): string => {
+export const formatRelativeTime = (isoDate: string, locale?: string, now: number = Date.now()): string => {
   const date = new Date(isoDate)
   if (Number.isNaN(date.getTime())) return isoDate
 
-  const diffMs = date.getTime() - Date.now()
+  const diffMs = date.getTime() - now
   const diffSeconds = Math.round(diffMs / 1000)
   const absSeconds = Math.abs(diffSeconds)
 
@@ -304,3 +306,14 @@ export const formatDurationElapsed = (seconds: number, locale?: string): string 
  */
 export const formatTransferRate = (bytesPerSecond: number, locale?: string): string =>
   `${formatBytes(bytesPerSecond, locale)}/s`
+
+/**
+ * The reader's own calendar day as `YYYY-MM-DD`, the shape a Postgres `date`
+ * arrives in, so a stored day compares with it as a string. Local, not UTC:
+ * a Frist that ends today is not overdue at 00:30 in Vienna because UTC is
+ * still on yesterday.
+ */
+export const localCalendarDay = (date: Date = new Date()): string => {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}

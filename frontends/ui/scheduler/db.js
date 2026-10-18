@@ -1,22 +1,8 @@
 /**
- * grid_app SQL helpers for the job scheduler (purger idiom: a small
- * createSql() over the `postgres` client, plus pure functions that take a
- * postgres.js tagged-template so they are trivially unit-testable with a fake).
+ * grid_app SQL helpers for the job scheduler (purger idiom: pure functions
+ * that take a postgres.js tagged-template so they are trivially unit-testable
+ * with a fake; the client is `workers/app-database.js`).
  */
-
-const postgres = require('postgres')
-
-/**
- * The scheduler's own postgres-js client, connecting as `grid_app_rw` like the
- * BFF. Its work spans tenants, so every transaction steps up to the platform
- * role explicitly (see `withPlatformScope`) rather than this connection being
- * privileged (ADR-0041).
- */
-function createSql() {
-  const url = process.env.GRID_APP_DATABASE_URL
-  if (!url) throw new Error('GRID_APP_DATABASE_URL is not defined')
-  return postgres(url, { prepare: false })
-}
 
 const LOG = '[job-scheduler]'
 const PRUNE_BATCH = 1000
@@ -342,7 +328,6 @@ async function pruneDownloadLog(sql, { batch = DOWNLOAD_LOG_BATCH, maxBatches = 
 }
 
 module.exports = {
-  createSql,
   pruneDownloadLog,
   DOWNLOAD_LOG_MAX_DAYS,
   DOWNLOAD_LOG_MIN_DAYS,

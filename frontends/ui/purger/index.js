@@ -23,13 +23,13 @@
 const { WorkOS } = require('@workos-inc/node')
 const {
   claimNext,
-  createSql,
   markFailed,
   markFailedPermanent,
   markPurged,
   reapStranded,
   releaseHeld,
 } = require('./db')
+const { createSql } = require('../workers/app-database')
 const { abortMultipartUploads, createS3Client, deleteStoragePrefix } = require('./storage')
 const { LEGAL_HOLD_CODE, purgeProject } = require('./purge-project')
 const { PERMANENT_FAILURE_CODE, purgeConversation } = require('./purge-conversation')

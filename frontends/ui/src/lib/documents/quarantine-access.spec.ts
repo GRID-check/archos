@@ -46,6 +46,7 @@ vi.mock('@/lib/projects/repository', () => ({
 vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend:8000' }))
 // Which documents a Fassung link names, resolved for the reader, is `fassung-facts.spec.ts`'s subject.
 vi.mock('./fassung-facts', () => ({ loadFassungFacts: vi.fn(async () => new Map()) }))
+vi.mock('@/lib/annotations/repository', () => ({ tallyLiveMarks: vi.fn(async () => new Map()) }))
 vi.mock('./reconcile-status', () => ({
   reconcileDocumentStatuses: vi.fn(async (rows: unknown[]) => rows),
   describeBackendIngestState: vi.fn(),
@@ -99,7 +100,7 @@ const quarantined = (overrides: Partial<Document> = {}): Document =>
     scope: 'project',
     projectId: 'proj-1',
     createdBy: 'uploader-1',
-    status: 'quarantined',
+    status: 'quarantined' as const,
     errorMessage: 'quarantined:{"reasons":[{"kind":"iban"}]}',
     ...overrides,
   })
@@ -172,7 +173,7 @@ describe.each(SURFACES)('the $name of a quarantined project document', ({ open, 
 describe('the signed image URL of a document that turns held', () => {
   const imageRow = (overrides: Partial<Document> = {}): Document =>
     quarantined({ filename: 'plan.png', contentType: 'image/png', storageKey: 'org-1/proj-1/doc-q/plan.png', ...overrides })
-  const before = imageRow({ status: 'completed', errorMessage: null, screeningOutcome: 'clean' })
+  const before = imageRow({ status: 'completed' as const, errorMessage: null, screeningOutcome: 'clean' })
 
   /** Mint through the real surface, then present the URL as the optimizer would. */
   async function mintThenStream(session: AuthorizedSession, atMint: Document, atUse: Document): Promise<Response> {
@@ -224,12 +225,12 @@ describe('the signed image URL of a document that turns held', () => {
 
 describe('a document whose screening passed', () => {
   it('is served to every project member as before', async () => {
-    store(quarantined({ status: 'completed', errorMessage: null, screeningOutcome: 'clean' }))
+    store(quarantined({ status: 'completed' as const, errorMessage: null, screeningOutcome: 'clean' }))
     await expect(getDocumentDownload(member, 'doc-q')).resolves.toMatchObject({ filename: 'plan.pdf' })
   })
 
   it('shows its thumbnail', async () => {
-    store(quarantined({ status: 'completed', errorMessage: null, screeningOutcome: 'clean' }))
+    store(quarantined({ status: 'completed' as const, errorMessage: null, screeningOutcome: 'clean' }))
     await expect(getDocumentThumbnail(member, 'doc-q')).resolves.not.toEqual({ url: null })
   })
 })
@@ -245,7 +246,7 @@ describe.each([
   ['pending', null],
   ['processing', null],
   ['failed', null],
-])('a project upload at %s with no verdict', (status, screeningOutcome) => {
+] as const)('a project upload at %s with no verdict', (status, screeningOutcome) => {
   beforeEach(() => {
     store(quarantined({ status, errorMessage: null, screeningOutcome }))
   })
@@ -275,7 +276,7 @@ describe('the write paths on a held document', () => {
   const request = () => new Request('http://localhost/api/documents/doc-q', { method: 'DELETE' })
 
   beforeEach(() => {
-    store(quarantined({ status: 'processing', errorMessage: null, screeningOutcome: null }))
+    store(quarantined({ status: 'processing' as const, errorMessage: null, screeningOutcome: null }))
   })
 
   it('answers 404 to a member who would delete it', async () => {
@@ -290,7 +291,7 @@ describe('the write paths on a held document', () => {
 
 describe('a held document re-dispatched with an earlier pass on record', () => {
   it('stays served to members: the verdict on these bytes passed', async () => {
-    store(quarantined({ status: 'pending', errorMessage: null, screeningOutcome: 'released' }))
+    store(quarantined({ status: 'pending' as const, errorMessage: null, screeningOutcome: 'released' }))
     await expect(getDocumentDownload(member, 'doc-q')).resolves.toBeDefined()
   })
 })
@@ -368,10 +369,12 @@ describe('a verdict that lands during the listing', () => {
   const pendingRow = (id: string, createdBy: string): DocumentListRow => ({
     id,
     filename: `${id}.pdf`,
+    projectId: 'proj-1',
+    scope: 'project',
     displayName: null,
     fileSize: 64,
     contentType: 'application/pdf',
-    status: 'pending',
+    status: 'pending' as const,
     authoredBy: 'user',
     publishedVersionId: null,
     lifecycle: 'active',
@@ -394,7 +397,7 @@ describe('a verdict that lands during the listing', () => {
       nextCursor: null,
     })
     vi.mocked(reconcileDocumentStatuses).mockImplementation(async (rows) =>
-      rows.map((row) => ({ ...row, status: 'quarantined', screeningOutcome: 'quarantined' }))
+      rows.map((row) => ({ ...row, status: 'quarantined' as const, screeningOutcome: 'quarantined' }))
     )
   })
 
@@ -420,7 +423,7 @@ describe('a verdict that lands during the listing', () => {
  */
 describe('the preview of a held image', () => {
   const heldImage = () =>
-    quarantined({ status: 'processing', errorMessage: null, filename: 'scan.png', contentType: 'image/png' })
+    quarantined({ status: 'processing' as const, errorMessage: null, filename: 'scan.png', contentType: 'image/png' })
 
   beforeEach(() => {
     vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-secret')
@@ -450,7 +453,7 @@ describe('the preview of a held image', () => {
     store(heldImage())
     vi.mocked(findDocumentInOrg).mockImplementation(async (_id, _org, reader) => {
       const screened = quarantined({
-        status: 'completed',
+        status: 'completed' as const,
         errorMessage: null,
         screeningOutcome: 'clean',
         filename: 'scan.png',

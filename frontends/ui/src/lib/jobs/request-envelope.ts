@@ -18,6 +18,7 @@ import type { GridSession } from '@/lib/auth/types'
 import type { ScopedCollection } from '@/lib/collection-scope'
 import {
   buildGridRequestContextWireHeaders,
+  requesterOf,
   type GridRequestContextInput,
 } from '@/lib/request-context'
 
@@ -75,6 +76,7 @@ export function signJobRequestContext(
       : scope.scopedCollections.filter((entry) => entry.shelf !== 'project'),
     conversationId: scope.verifiedConversationId ?? null,
     issuedAt: now,
+    requester: requesterOf(session),
     ...submit,
   }
   return buildGridRequestContextWireHeaders(input, process.env.GRID_INTERNAL_API_TOKEN)

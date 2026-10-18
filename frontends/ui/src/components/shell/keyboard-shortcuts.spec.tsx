@@ -1,9 +1,11 @@
 import { render, screen, waitFor } from '@/test-utils'
-import { fireEvent } from '@testing-library/react'
+import { act, fireEvent } from '@testing-library/react'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { KeyboardShortcuts } from './keyboard-shortcuts'
 import { projectIdFromPathname } from './command-palette'
 import { SHORTCUTS_PREFERENCE_KEY } from '@/hooks/use-shortcuts-preference'
+import { ShellSearchButton } from './shell-search-button'
+import { useShellOverlays } from './shell-overlays'
 
 const push = vi.fn()
 let pathname = '/app/projects'
@@ -34,6 +36,9 @@ describe('KeyboardShortcuts', () => {
   beforeEach(() => {
     push.mockClear()
     window.localStorage.removeItem(SHORTCUTS_PREFERENCE_KEY)
+    // The palette's open state is a module store now; a test that opened it
+    // would otherwise hand an open palette to the next one.
+    useShellOverlays.setState({ paletteOpen: false })
     pathname = '/app/projects'
     vi.stubGlobal(
       'fetch',
@@ -272,6 +277,35 @@ describe('KeyboardShortcuts', () => {
     expect(push).not.toHaveBeenCalled()
 
     addListener.mockRestore()
+  })
+
+  test('the header search button opens the same palette ⌘K does', async () => {
+    render(
+      <>
+        <ShellSearchButton />
+        <KeyboardShortcuts authRequired canViewOrganization />
+      </>,
+    )
+    expect(screen.queryByPlaceholderText('Type a command or search…')).toBeNull()
+
+    fireEvent.click(screen.getByTestId('shell-search'))
+
+    expect(await screen.findByPlaceholderText('Type a command or search…')).toBeInTheDocument()
+    // A phone has no Escape: the palette carries its own way out.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByPlaceholderText('Type a command or search…')).toBeNull())
+    expect(useShellOverlays.getState().paletteOpen).toBe(false)
+  })
+
+  test('with shortcuts off the keys are inert, but the search button still opens the palette', async () => {
+    window.localStorage.setItem(SHORTCUTS_PREFERENCE_KEY, 'false')
+    render(<KeyboardShortcuts authRequired canViewOrganization />)
+
+    pressCmdK()
+    expect(screen.queryByPlaceholderText('Type a command or search…')).toBeNull()
+
+    act(() => useShellOverlays.getState().setPaletteOpen(true))
+    expect(await screen.findByPlaceholderText('Type a command or search…')).toBeInTheDocument()
   })
 
   test('keydown listener is removed on unmount', () => {

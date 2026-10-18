@@ -136,11 +136,11 @@ export function RisDocumentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[90dvh] w-[95vw] max-w-[95vw] flex-col gap-3 p-4 sm:max-w-[95vw] sm:p-5">
+      <DialogContent className="flex h-[90dvh] w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] flex-col gap-3 p-4 sm:max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] sm:p-5">
         <DialogHeader className="shrink-0 pr-8 text-left">
           <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
             {headerChip}
-            <span className="min-w-0 flex-1 truncate">{heading}</span>
+            <span className="min-w-0 flex-1 line-clamp-2 break-words" title={heading}>{heading}</span>
             {headerActions}
           </DialogTitle>
           <DialogDescription className="flex flex-wrap items-center gap-3 text-xs">
@@ -149,7 +149,7 @@ export function RisDocumentDialog({
               href={state.status === 'ready' ? state.document.url : url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary duration-quick inline-flex items-center gap-1 font-medium transition-opacity ease-out hover:opacity-80"
+              className="text-primary duration-quick inline-flex items-center gap-1 font-medium transition-opacity ease-out hover:opacity-80 pointer-coarse:min-h-11"
             >
               <ExternalLink className="size-3" aria-hidden />
               {t('risViewer.openAtRis')}
@@ -171,7 +171,7 @@ export function RisDocumentDialog({
             </div>
           )}
           {state.status === 'ready' && (
-            <article className="text-foreground mx-auto max-w-[70ch] whitespace-pre-wrap text-sm leading-relaxed">
+            <article className="text-foreground mx-auto max-w-[70ch] whitespace-pre-wrap text-sm leading-relaxed pointer-coarse:text-base hyphens-auto" lang="de">
               {passage ? (
                 <>
                   {text.slice(0, passage.start)}

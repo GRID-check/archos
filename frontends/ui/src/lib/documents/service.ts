@@ -39,6 +39,7 @@ import { filedInOf } from '@/lib/audit/document-names'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
 import { findProjectInOrg } from '@/lib/projects/repository'
+import { projectFactsForIngest, type ProjectFactsWire, type SearchBoostWire } from '@/lib/cross-project/project-facts-mirror'
 import {
   ApiError,
   BadRequestError,
@@ -49,7 +50,8 @@ import {
 import { ALLOWED_TAGS, MAX_TOPICS, MAX_TOPIC_LENGTH } from './tag-vocabulary'
 import { documentStatusFacts } from './document-status'
 import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
-import { INGEST_ALREADY_DONE, INGEST_NOT_ELIGIBLE, INGEST_RUNNING } from './reingest-codes'
+import { INGEST_ALREADY_DONE, INGEST_NOT_ELIGIBLE, INGEST_RUNNING, INGEST_WOULD_FAIL_AGAIN } from './reingest-codes'
+import { canRetry, contentHashChanged, CURRENT_INGEST_READER_VERSION, type RetryFacts } from './retry-policy'
 import { normalizeDrawingStructured, type DrawingStructured } from './drawing-structured'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import {
@@ -67,12 +69,13 @@ import { deleteAssignmentsForResource } from '@/lib/assignments/repository'
 import { purgeResourceCollaboration } from '@/lib/collaboration/cleanup'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Document, DocumentAuthor } from '@/lib/db/schema'
+import type { Document, DocumentAuthor, Project } from '@/lib/db/schema'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { reconcileDocumentStatuses, describeBackendIngestState, extractIngestJobId } from './reconcile-status'
 import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
 import { loadFassungFacts } from './fassung-facts'
-import { projectShelf } from './shelf'
+import { documentShelf, projectShelf } from './shelf'
+import { publishShelfChanged } from './shelf-live'
 import type { DocumentLevelQuery } from './list-query'
 import { uploadToShelf, type UploadDocumentResult } from './shelf-upload'
 import { resolveDocumentFolderPath } from './folder-path'
@@ -85,6 +88,7 @@ import {
   deleteProjectDocument,
   documentExistsInCollection,
   findDocumentInOrg,
+  markDocumentNotIndexed,
   findStorageKeyByCollectionAndFilename,
   findStorageKeyByIdAndCollection,
   listDocumentLevelPage,
@@ -125,6 +129,7 @@ import {
 import { findDocumentForSession, getAccessibleDocument } from './access'
 import { hasPassedScreening, internalRead, SCREENED_ONLY } from './document-reader'
 import { maySeeHeld, shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
+import { quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 import { recordDocumentAccess } from '@/lib/download-log/service'
 import { findOpenVersion, listDocumentVersionSummaries } from './version-repository'
 import { eraseDocumentObjectsOrKeepRow } from './object-cleanup'
@@ -433,6 +438,7 @@ export async function dispatchIngest(
   // Read from the row rather than threaded through every caller; a failed read
   // books the spend to the organization alone, never fails the dispatch.
   const attribution = await findDocumentInOrg(documentId, organizationId, internalRead('ingest')).catch(() => null)
+  const projectFacts = await projectFactsForIngest(attribution?.projectId, organizationId)
   // The content gate's rules (ADR-0086). Every path into the index passes this
   // line — upload, re-ingest, re-index, Archiv, chat, the IFC digest — so the
   // gate is not something a new caller has to remember. A policy that cannot
@@ -451,6 +457,10 @@ export async function dispatchIngest(
     document_id: documentId,
     project_id: attribution?.projectId ?? null,
     user_id: attribution?.createdBy ?? null,
+    // The project's facts and status, stamped onto every chunk the job writes
+    // to Qdrant, so a new document is filtered and lifted like its siblings
+    // from its first search (`cross-project/project-facts-mirror.ts`).
+    project_facts: projectFacts,
     thumbnail_upload_url: thumbnailUploadUrl,
     // A PDF of an office original (ADR-0070), for the thumbnail: the
     // backend cannot rasterise a .docx. Null for everything else and
@@ -648,6 +658,12 @@ export interface BackendSearchHit {
   snippet: string
   page_number: number | null
   collection: string
+  /**
+   * Position in ONE ranking across several collections (the grouped search,
+   * `fetchGroupedSemanticHits`), 0 = best. Absent on a single-collection
+   * search, whose hits are ordered by `score`.
+   */
+  rank?: number
 }
 
 /**
@@ -659,6 +675,8 @@ export type SearchedDocument<T> = T & {
   snippet: string
   page: number | null
   score: number
+  /** Position in one ranking across several collections, when the search produced one (`BackendSearchHit.rank`). */
+  rank?: number
 }
 
 /**
@@ -736,6 +754,109 @@ export async function fetchSemanticHits(
     // an empty result set, exactly like any other transport failure.
     return []
   }
+}
+
+/**
+ * One ranking across many collections, from the backend's grouped search
+ * (`POST /v1/collections/search`, ADR-0116): every collection named is ranked
+ * in ONE query, and the documents come back in that ranking's order across
+ * collections (at most `filesPerCollection` from any one), each hit carrying
+ * its position as `rank`. Scores from separate searches are not comparable;
+ * this order is. `options` narrow the search and lift similar projects inside
+ * the same query.
+ *
+ * Qdrant is the only store (ADR-0115), so there is nothing to fall back to: a
+ * backend that refuses, cannot be reached or answers something unreadable is
+ * an {@link UpstreamError}, never an empty result a caller would read as
+ * "nothing found". The envelope is signed for exactly these collections, every
+ * one of which the caller has already authorized.
+ */
+export async function fetchGroupedSemanticHits(
+  collections: readonly string[],
+  query: string,
+  filesPerCollection: number,
+  snippetMaxChars?: number,
+  options: GroupedSearchOptions = {}
+): Promise<BackendSearchHit[]> {
+  const unique = [...new Set(collections)]
+  if (unique.length === 0) return []
+  const scopeHeaders = buildGridRequestContextWireHeaders(
+    { collectionScope: unique },
+    process.env.GRID_INTERNAL_API_TOKEN
+  )
+  let res: Response
+  try {
+    res = await fetch(`${getBackendUrl()}/v1/collections/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...scopeHeaders },
+      body: JSON.stringify({
+        query,
+        collections: unique,
+        groups: Math.min(unique.length, GROUPED_SEARCH_MAX_GROUPS),
+        files_per_group: Math.min(Math.max(1, filesPerCollection), GROUPED_SEARCH_MAX_FILES_PER_GROUP),
+        ...(snippetMaxChars ? { snippet_max_chars: snippetMaxChars } : {}),
+        ...(options.filters ? { filters: options.filters } : {}),
+        ...(options.boost ? { boost: options.boost } : {}),
+      }),
+      signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
+    })
+  } catch (error) {
+    throw new UpstreamError('Grouped search backend unreachable', error instanceof Error ? error.message : undefined)
+  }
+  if (!res.ok) throw new UpstreamError(`Grouped search backend returned ${res.status}`)
+  const body = await res.json().catch(() => null)
+  if (!Array.isArray(body?.hits)) throw new UpstreamError('Grouped search backend returned an unexpected shape')
+  const allowed = new Set(unique)
+  // A hit names the collection it came from; one this call did not ask for
+  // is dropped rather than trusted, so the join can only ever see these.
+  return (body.hits as BackendSearchHit[])
+    .filter((hit) => allowed.has(hit.collection))
+    .map((hit, rank) => ({ ...hit, rank }))
+}
+
+/** The backend's bounds on a grouped search (`GroupedDocumentSearchRequest`). */
+const GROUPED_SEARCH_MAX_GROUPS = 200
+const GROUPED_SEARCH_MAX_FILES_PER_GROUP = 20
+
+/**
+ * The most collections one backend search may name: `collections` is
+ * `max_length=500` on both `GroupedDocumentSearchRequest`
+ * (`aiq_api/models/requests.py`) and `SimilarPassagesRequest`
+ * (`aiq_api/models/similar.py`). Past it the backend answers 422. A project
+ * brings its own collection and every restricted folder's the reader is
+ * cleared for, so a page of projects can pass it.
+ */
+export const BACKEND_SEARCH_MAX_COLLECTIONS = 500
+
+/**
+ * How many of a walk's projects, by their collection counts in walk order,
+ * one search can name together within `cap`. The project that would pass it,
+ * and every one after it, waits. The first always counts, so a walk never
+ * stalls on a project cleared for more folders than the cap: the caller cuts
+ * its collections to the cap.
+ */
+export function projectsWithinCollectionCap(sizes: readonly number[], cap = BACKEND_SEARCH_MAX_COLLECTIONS): number {
+  let total = 0
+  for (const [index, size] of sizes.entries()) {
+    total += size
+    if (total > cap) return Math.max(index, 1)
+  }
+  return sizes.length
+}
+
+/** The grouped search's pre-filters (`GroupedSearchFilters`): within a list any of, across lists all of. */
+export interface GroupedSearchFilters {
+  document_types?: string[]
+  disciplines?: string[]
+  project_facts?: Partial<ProjectFactsWire>
+  project_status?: Array<'active' | 'paused' | 'closed'>
+}
+
+/** What narrows and what lifts a grouped search, applied inside its one query. */
+export interface GroupedSearchOptions {
+  filters?: GroupedSearchFilters
+  /** The current project's facts and the similarity weights (`similarityBoostOf`). */
+  boost?: SearchBoostWire | null
 }
 
 /** The identity of a document in the backend: its collection and its filename. */
@@ -819,7 +940,13 @@ export function joinHitsToFiles<
     // The hit's own collection, never a name match across collections.
     const file = byName.get(collectionFileKey(hit.collection, hit.file_name))
     if (!file) continue
-    matched.push({ ...file, snippet: hit.snippet, page: hit.page_number ?? null, score: hit.score })
+    matched.push({
+      ...file,
+      snippet: hit.snippet,
+      page: hit.page_number ?? null,
+      score: hit.score,
+      ...(hit.rank === undefined ? {} : { rank: hit.rank }),
+    })
   }
   return matched
 }
@@ -845,26 +972,64 @@ export async function searchProjectDocuments(
   projectId: string,
   query: string,
   topK = 20,
-  options: { snippetMaxChars?: number; forModel?: boolean } = {}
+  options: ProjectSearchOptions = {}
 ): Promise<{ hits: Array<SearchedDocument<ListedDocument>> }> {
-  await requireProjectAccess(session, projectId, 'project:view')
-
-  const project = await findProjectInOrg(projectId, session.organizationId)
-  if (!project) throw new NotFoundError('Project not found')
-
-  // The project's own collection and every restricted one this reader is
-  // cleared for (ADR-0087); one ranking across them, cut to `topK`.
-  const access = await getProjectFolderAccess(session, projectId, project.collectionName)
-  const collections = [project.collectionName, ...access.clearedRestrictedCollections]
+  const plan = await planProjectSearch(session, projectId)
   const hits = (
     await Promise.all(
-      collections.map((collection) => fetchSemanticHits(collection, query, topK, options.snippetMaxChars))
+      plan.collections.map((collection) => fetchSemanticHits(collection, query, topK, options.snippetMaxChars))
     )
   )
     .flat()
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)
-  if (hits.length === 0) return { hits: [] }
+  return { hits: await hydrateProjectHits(session, plan, hits, options) }
+}
+
+/** How a project search's hits are cut and who they are for. */
+export interface ProjectSearchOptions {
+  snippetMaxChars?: number
+  /**
+   * The hits go to a model: joined to screened rows only (`SCREENED_ONLY`,
+   * ADR-0086), and no superseded Fassung among them (ADR-0099).
+   */
+  forModel?: boolean
+}
+
+/** What a reader may search in one project: the project and the collections they are cleared for. */
+export interface ProjectSearchPlan {
+  project: Project
+  access: Awaited<ReturnType<typeof getProjectFolderAccess>>
+  /** The project's own collection and every restricted one this reader is cleared for (ADR-0087). */
+  collections: string[]
+}
+
+/** Authorize a search of one project (`project:view`) and name the collections it covers. */
+export async function planProjectSearch(session: AuthorizedSession, projectId: string): Promise<ProjectSearchPlan> {
+  await requireProjectAccess(session, projectId, 'project:view')
+
+  const project = await findProjectInOrg(projectId, session.organizationId)
+  if (!project) throw new NotFoundError('Project not found')
+
+  const access = await getProjectFolderAccess(session, projectId, project.collectionName)
+  return { project, access, collections: [project.collectionName, ...access.clearedRestrictedCollections] }
+}
+
+/**
+ * Turn one project's backend hits into its document rows, in the hits' order.
+ * Only hits from the plan's own collections are considered: the join below
+ * keys on the hit's collection, and a plan is what this reader was cleared for.
+ */
+export async function hydrateProjectHits(
+  session: AuthorizedSession,
+  plan: ProjectSearchPlan,
+  hits: BackendSearchHit[],
+  options: ProjectSearchOptions = {}
+): Promise<Array<SearchedDocument<ListedDocument>>> {
+  const allowed = new Set(plan.collections)
+  const own = hits.filter((hit) => allowed.has(hit.collection))
+  if (own.length === 0) return []
+  const projectId = plan.project.id
   // The canonical rows, hydrated exactly as the listing hydrates them, so a
   // semantic result is always a real, visible document with its live status.
   const reader = options.forModel ? SCREENED_ONLY : await shelfReaderFor(session, { scope: 'project', projectId })
@@ -875,10 +1040,15 @@ export async function searchProjectDocuments(
   const rows = await findProjectDocumentsByFilenames(
     projectId,
     session.organizationId,
-    hits.map((hit) => hit.file_name),
-    { hiddenFolderIds: [...access.hiddenFolderIds], reader }
+    own.map((hit) => hit.file_name),
+    { hiddenFolderIds: [...plan.access.hiddenFolderIds], reader }
   )
-  return { hits: joinHitsToFiles(hits, await toListedDocuments(session, rows, reader)) }
+  const joined = joinHitsToFiles(own, await toListedDocuments(session, rows, reader))
+  // A model is handed no superseded Fassung (ADR-0099: search leaves it out
+  // unless asked by name). The backend filters Qdrant's copy of the mark,
+  // which can lag a person's confirmation; the row is the authority. A person
+  // searching still sees it, badged by the listing.
+  return options.forModel ? joined.filter((row) => !row.fassung?.supersededBy) : joined
 }
 
 export interface UploadDocumentInput {
@@ -1042,9 +1212,10 @@ export interface DispatchDocumentResult {
    * `processing` is a detached path: an IFC model ({@link beginModelExtraction})
    * or an office file converting first ({@link beginRenditionIngest}).
    * `quarantined` is a row nothing was dispatched for: it waits on a reviewer
-   * (ADR-0086), and only a release sends it on.
+   * (ADR-0086), and only a release sends it on. `stored` is an archived row,
+   * which is not read while it is archived.
    */
-  status: 'pending' | 'uploaded' | 'failed' | 'processing' | 'quarantined'
+  status: 'pending' | 'uploaded' | 'failed' | 'processing' | 'quarantined' | 'stored'
 }
 
 /**
@@ -1145,6 +1316,14 @@ export async function dispatchDocument(
   // again under whatever the rules had become. Asked of the row here, so the
   // next such caller cannot forget it.
   if (row.status === 'quarantined') return { jobId: null, status: 'quarantined' }
+  // An archived document has left the working set and answers nothing
+  // (`archiveDocument` purged its chunks). A same-name re-upload still versions
+  // it, and sending those bytes to the index would make a document nobody can
+  // see in the listing answer questions again. It is read when it comes back.
+  if (row.lifecycle === 'archived') {
+    await markDocumentNotIndexed(row.id, input.organizationId)
+    return { jobId: null, status: 'stored' }
+  }
 
   if (isIfcFilename(input.filename)) {
     return beginModelExtraction(input)
@@ -1562,6 +1741,13 @@ export interface ReingestDocumentResult {
  * Every refusal is a 409 whose `details.code` says why (`./reingest-codes`),
  * so the client can tell "already running" and "already finished" from a
  * failure worth retrying.
+ *
+ * A failure is retried only when reading it again may come out differently
+ * (`canRetry`, `./retry-policy`): a file that failed for a lasting reason with
+ * the same bytes and the same reader is refused with `INGEST_WOULD_FAIL_AGAIN`,
+ * which the client turns into "upload a new version". Decided on the failure
+ * the backend reported, so a row healed from `processing` to `failed` here is
+ * judged by the job that just failed, not by the row's earlier columns.
  */
 export async function reingestDocument(
   session: AuthorizedSession,
@@ -1589,6 +1775,18 @@ export async function reingestDocument(
       code: INGEST_NOT_ELIGIBLE,
     })
   }
+
+  // The failure a retry would answer: the row's own, or (below) the one the
+  // backend just reported for a row that looked in flight. Null when the retry
+  // answers no failure at all (an indexed re-read, a lost in-flight job).
+  let failure: RetryFacts | null = isRetryable
+    ? {
+        status: doc.status,
+        ingestFailureCategory: doc.ingestFailureCategory,
+        ingestRetryable: doc.ingestRetryable,
+        ingestReaderVersion: doc.ingestReaderVersion,
+      }
+    : null
 
   if (isInFlight) {
     // In flight: retry only what the backend has LOST. A row can sit at
@@ -1640,7 +1838,26 @@ export async function reingestDocument(
           code: INGEST_ALREADY_DONE,
         })
       }
+      failure = {
+        status: knowledge.resolution.status,
+        ingestFailureCategory: knowledge.resolution.failure?.category ?? null,
+        ingestRetryable: knowledge.resolution.failure?.retryable ?? null,
+        ingestReaderVersion: knowledge.resolution.failure?.readerVersion ?? null,
+      }
     }
+  }
+
+  if (
+    failure &&
+    !canRetry(failure, {
+      currentReaderVersion: CURRENT_INGEST_READER_VERSION,
+      contentHashChanged: contentHashChanged(doc),
+    })
+  ) {
+    throw new ConflictError('Reading this file again would fail the same way', {
+      status: failure.status,
+      code: INGEST_WOULD_FAIL_AGAIN,
+    })
   }
 
   // The bucket the object is ACTUALLY in — `doc.storageBucket`, not the bucket
@@ -1966,7 +2183,14 @@ async function retryFailedDocument(
     return outcome.status === 'failed' ? 'failed' : 'queued'
   } catch (error) {
     const code = reingestRefusalCode(error)
-    if (code === INGEST_RUNNING || code === INGEST_ALREADY_DONE || code === INGEST_NOT_ELIGIBLE) return 'skipped'
+    if (
+      code === INGEST_RUNNING ||
+      code === INGEST_ALREADY_DONE ||
+      code === INGEST_NOT_ELIGIBLE ||
+      code === INGEST_WOULD_FAIL_AGAIN
+    ) {
+      return 'skipped'
+    }
     if (error instanceof NotFoundError || error instanceof ForbiddenError) return 'skipped'
     return 'failed'
   }
@@ -2182,6 +2406,7 @@ export async function renameDocument(
   }
 
   await setDocumentDisplayName(documentId, session.organizationId, displayName)
+  publishShelfChanged(session.organizationId, documentShelf(doc))
 
   // Mirror the name onto the backend's metadata row so citation chips follow
   // the rename immediately, with no re-ingest (the retrieval layer prefers a
@@ -2281,6 +2506,7 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
   ])
 
   await deleteProjectDocument(doc.id, organizationId, projectId)
+  publishShelfChanged(organizationId, projectShelf(projectId))
 
   // Once more, now that the row is gone: an ingest of this document that
   // asked `GET /api/internal/document-exists` before the row went saw it,
@@ -2929,6 +3155,9 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     contentType: reconciled.contentType,
     collectionName: reconciled.collectionName,
     errorMessage: reconciled.errorMessage,
+    // Why a held file is held, as data (ADR-0113). Only a reader who may see
+    // the held row gets this far (the check above).
+    quarantine: quarantineVerdictOf(reconciled),
     createdAt: reconciled.createdAt,
     updatedAt: reconciled.updatedAt,
     // Read-only document metadata merged from the backend collection listing.
@@ -3062,6 +3291,7 @@ export async function findDocumentStorageKey(
   filename: string,
   organizationId?: string
 ): Promise<{
+  id: string
   storageKey: string
   storageBucket: string | null
   contentType: string | null

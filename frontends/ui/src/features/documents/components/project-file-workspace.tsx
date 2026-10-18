@@ -1,19 +1,22 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Mail } from 'lucide-react'
 import { ProjectSectionActions } from '@/components/shell/project-section-frame'
 import { createDocumentNameProbeClient } from '@/lib/documents/name-probe-client'
 import { useTranslations } from '@/i18n'
 import type { DocumentLifecyclePermission } from '@/lib/documents/lifecycle-types'
 import { askAboutFile } from '../lib/ask-about-file'
 import type { FileShelf } from '../lib/file-shelf'
+import { usePhoneLayout } from '../hooks/use-phone-layout'
 import { projectEndpoints } from '../lib/file-shelf'
 import type { DocumentWireRow } from '../lib/file-item'
 import { useProjectDocuments } from '../hooks/use-project-documents'
 import type { FolderItem } from '../file-types'
 import { FileWorkspace } from './file-workspace'
 import { MailImportAction } from './mail-import-action'
+import { MailImportDialog } from './mail-import-dialog'
 
 // The row and folder types live in `../file-types`; they are re-exported here
 // because this is the name every importer already uses.
@@ -94,6 +97,11 @@ export function ProjectFileWorkspace({
   const t = useTranslations('files')
   const router = useRouter()
   const probe = useMemo(() => createDocumentNameProbeClient(), [])
+  // The Outlook import is a button beside the upload control on a wide screen
+  // and an entry in the header's ⋯ on a phone, which has no width for a second button.
+  const phone = usePhoneLayout()
+  const [mailOpen, setMailOpen] = useState(false)
+  const mailOffered = mailImportEnabled && initialRootAccess === 'write'
 
   const shelf: FileShelf = {
     source: 'project',
@@ -122,18 +130,35 @@ export function ProjectFileWorkspace({
   }
 
   return (
-    <FileWorkspace
-      shelf={shelf}
-      renderHeader={(controls) => (
-        <ProjectSectionActions>
-          {controls}
-          {mailImportEnabled && initialRootAccess === 'write' && <MailImportAction projectId={projectId} />}
-        </ProjectSectionActions>
-      )}
-      initialFolders={initialFolders}
-      initialFiles={initialFiles}
-      initialNextCursor={initialNextCursor}
-      initialFolderId={initialFolderId}
-    />
+    <>
+      <FileWorkspace
+        shelf={shelf}
+        renderHeader={(controls) => (
+          <ProjectSectionActions>
+            {controls}
+            {mailOffered && !phone && <MailImportAction projectId={projectId} />}
+          </ProjectSectionActions>
+        )}
+        moreEntries={
+          mailOffered && phone
+            ? [
+                {
+                  type: 'item',
+                  id: 'mail-import',
+                  label: t('mailImport.action'),
+                  icon: Mail,
+                  onSelect: () => setMailOpen(true),
+                  testId: 'mail-import-trigger',
+                },
+              ]
+            : undefined
+        }
+        initialFolders={initialFolders}
+        initialFiles={initialFiles}
+        initialNextCursor={initialNextCursor}
+        initialFolderId={initialFolderId}
+      />
+      {mailOffered && phone && <MailImportDialog projectId={projectId} open={mailOpen} onOpenChange={setMailOpen} />}
+    </>
   )
 }

@@ -34,6 +34,7 @@ import { findDocumentForSession } from './access'
 import { documentShelf, type DocumentShelf } from './shelf'
 import { requireShelfWrite } from './shelf-authz'
 import { findShelfFolder } from './shelf-folders'
+import { publishShelfChanged } from './shelf-live'
 
 /** Same ceiling the other backend mirrors in `@/lib/documents/service` use. */
 const BACKEND_MIRROR_TIMEOUT_MS = 10_000
@@ -116,6 +117,8 @@ export async function moveDocumentToFolder(
     .set({ folderId: input.folderId, updatedAt: new Date() })
     .where(eq(documents.id, document.id))
     .returning({ id: documents.id, folderId: documents.folderId })
+  // Before the mirrors below: the row is where the workspaces read from.
+  publishShelfChanged(session.organizationId, shelf)
 
   // Across a restriction boundary the document belongs in another collection:
   // placement purges it from this one first, then re-reads it into the right

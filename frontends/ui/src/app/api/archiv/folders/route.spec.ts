@@ -49,6 +49,7 @@ const folder = {
   parentId: null,
   name: 'Normen',
   path: 'Normen',
+  description: null,
   createdAt: new Date('2026-10-01T00:00:00Z'),
   updatedAt: new Date('2026-10-01T00:00:00Z'),
 }
@@ -133,6 +134,34 @@ describe('PATCH and DELETE /api/archiv/folders/[folderId]', () => {
       name: 'Neu',
       parentId: null,
     })
+  })
+
+  it('describes a folder on its own, and clears the description with null', async () => {
+    vi.mocked(updateArchivFolder).mockResolvedValue({ ok: true, folder: { ...folder, description: 'Gekaufte Normen' } })
+
+    const response = await PATCH(
+      json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: 'Gekaufte Normen' }),
+      item,
+    )
+    expect(response.status).toBe(200)
+    expect((await response.json()).folder.description).toBe('Gekaufte Normen')
+    expect(updateArchivFolder).toHaveBeenCalledWith(expect.anything(), { folderId: FOLDER_ID, description: 'Gekaufte Normen' })
+
+    await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: null }), item)
+    expect(updateArchivFolder).toHaveBeenLastCalledWith(expect.anything(), { folderId: FOLDER_ID, description: null })
+  })
+
+  it('refuses a service refusal of a description as a 400 in its words', async () => {
+    vi.mocked(updateArchivFolder).mockResolvedValue({ ok: false, error: 'A folder description may be at most 500 characters.' })
+    const response = await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: 'x'.repeat(600) }), item)
+    expect(response.status).toBe(400)
+  })
+
+  it('marks a taken name with its reason, so the browser can say which name is in the way', async () => {
+    vi.mocked(updateArchivFolder).mockResolvedValue({ ok: false, error: 'A folder with this name already exists here.' })
+    const response = await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { parentId: null }), item)
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ details: { reason: 'folder-name-taken' } })
   })
 
   it('rejects an empty patch', async () => {

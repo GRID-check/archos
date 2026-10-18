@@ -187,6 +187,26 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
     expect(intoProject).toEqual({ ok: false, error: 'Parent folder not found.' })
   })
 
+  it('says a sibling of the same name is in the way, for a move and for a rename, and changes nothing', async () => {
+    const loose = await inTenant(() => folders.createShelfFolder(session(), shelf.ARCHIV_SHELF, { name: 'EG' }))
+    if (!loose.ok) throw new Error(loose.error)
+    const [plaene] = (await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))).filter(
+      (row) => row.path === 'Plaene',
+    )
+
+    const moved = await inTenant(() =>
+      folders.updateShelfFolder(session(), shelf.ARCHIV_SHELF, { folderId: loose.folder.id, parentId: plaene.id }),
+    )
+    const renamed = await inTenant(() =>
+      folders.updateShelfFolder(session(), shelf.ARCHIV_SHELF, { folderId: loose.folder.id, name: 'Normen' }),
+    )
+
+    expect(moved).toEqual({ ok: false, error: 'A folder with this name already exists here.' })
+    expect(renamed).toEqual({ ok: false, error: 'A folder with this name already exists here.' })
+    const after = await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))
+    expect(after.find((row) => row.id === loose.folder.id)?.path).toBe('EG')
+  })
+
   it('files an Archiv document, refuses a project document there, and re-files on delete', async () => {
     const archivDoc = '00000000-0000-4000-8000-0000000f0001'
     const projectDoc = '00000000-0000-4000-8000-0000000f0002'

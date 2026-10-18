@@ -4,19 +4,20 @@
  *
  *   - policy  → `GET|PUT /api/organization/upload-screening`
  *   - queue   → `GET     /api/quarantine`
+ *   - access  → `GET     /api/documents/[id]/quarantine`
  *   - release → `POST    /api/documents/[id]/quarantine/release`
  *   - ask     → `POST    /api/documents/[id]/quarantine/request-release`
  *   - delete  → each shelf's own delete route (project, Archiv, chat)
  *
  * The queue's server type lives in `lib/upload-screening/review.ts`, which is
  * server-only, so its wire shape is declared here. The verdict is NOT
- * re-declared: it is read back through `parseQuarantine`, the one schema the
- * server used to build it, so the two cannot drift.
+ * re-declared: it is read with `verdictSchema`, the one schema the server used
+ * to build it, so the two cannot drift.
  */
 
 import { z } from 'zod'
 import { uploadScreeningPolicySchema, type UploadScreeningPolicy } from '@/lib/upload-screening/policy'
-import { parseQuarantine, QUARANTINED_PREFIX, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
+import { verdictSchema } from '@/lib/upload-screening/quarantine'
 import { ApiRequestError } from './api-error'
 
 const UploadScreeningResponseSchema = z.object({
@@ -31,11 +32,7 @@ const SavedUploadScreeningSchema = z.object({
 })
 
 /** A verdict the server could not explain, or one this client cannot read, is `null`, never a guess. */
-const verdictSchema = z
-  .unknown()
-  .transform((value): QuarantineVerdict | null =>
-    value === null || value === undefined ? null : parseQuarantine(`${QUARANTINED_PREFIX}${JSON.stringify(value)}`)
-  )
+const QuarantineFieldSchema = verdictSchema.nullable().catch(null)
 
 const QuarantineQueueItemSchema = z.object({
   id: z.string(),
@@ -47,7 +44,7 @@ const QuarantineQueueItemSchema = z.object({
   conversationId: z.string().nullable(),
   uploadedBy: z.string(),
   quarantinedAt: z.string(),
-  verdict: verdictSchema,
+  verdict: QuarantineFieldSchema,
 })
 
 const QuarantineQueueSchema = z.object({ items: z.array(QuarantineQueueItemSchema) })
@@ -92,12 +89,32 @@ export async function listQuarantineQueue(signal?: AbortSignal): Promise<Quarant
   return QuarantineQueueSchema.parse(await response.json()).items
 }
 
-/** Release one document: it is read again, unscreened, like any other upload. */
-export async function releaseQuarantinedDocument(documentId: string): Promise<void> {
+const ReleaseSchema = z.object({ status: z.string() })
+
+/**
+ * Release one document: it is read again, unscreened, like any other upload.
+ * Resolves to the status it was dispatched with (`uploaded`, `processing`, …),
+ * so a surface showing the document can show it being read.
+ */
+export async function releaseQuarantinedDocument(documentId: string): Promise<{ status: string }> {
   const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/quarantine/release`, {
     method: 'POST',
   })
   if (!response.ok) throw await requestError(response, 'Failed to release the document')
+  return ReleaseSchema.parse(await response.json())
+}
+
+const QuarantineReviewAccessSchema = z.object({ canReview: z.boolean(), canAskForReview: z.boolean() })
+export type QuarantineReviewAccess = z.infer<typeof QuarantineReviewAccessSchema>
+
+/** What this session may do about one held document: decide about it, or ask for a decision. */
+export async function getQuarantineReviewAccess(
+  documentId: string,
+  signal?: AbortSignal
+): Promise<QuarantineReviewAccess> {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/quarantine`, { signal })
+  if (!response.ok) throw await requestError(response, 'Failed to read what may be done about the document')
+  return QuarantineReviewAccessSchema.parse(await response.json())
 }
 
 const ReleaseRequestSchema = z.object({ id: z.string(), notified: z.number().int().nonnegative() })

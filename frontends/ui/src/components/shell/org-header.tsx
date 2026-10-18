@@ -4,7 +4,7 @@ import type { JSX } from 'react'
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Archive, Inbox, MessageSquarePlus } from 'lucide-react'
+import { Archive, Bell, MessageSquarePlus } from 'lucide-react'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
@@ -12,7 +12,10 @@ import { useFeedbackAvailable, useOpenFeedback } from '@/features/product-feedba
 import { InboxBadge } from '@/features/collaboration/components'
 import { useTranslations } from '@/i18n'
 import { TOUR_ANCHORS, type TourAnchor } from '@/features/onboarding/lib/product-tour'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { cn } from '@/lib/utils'
+import { ConnectionBand } from './connection-band'
+import { ShellSearchButton } from './shell-search-button'
 import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
 
 /**
@@ -28,6 +31,11 @@ import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
  * The header carries exactly what must stay one click away: the wordmark (the
  * way home), the two org-wide doorways with the inbox badge, and the avatar.
  * Everything account-shaped is behind the avatar — two clicks, deliberately.
+ *
+ * On a phone the doorways move to the tab bar at the bottom of the screen
+ * (`PhoneTabBar`), where the thumb is, and this band keeps the wordmark, the
+ * search that opens the command palette, the avatar, and, while the network is
+ * gone, a line that says so (`ConnectionBand`).
  */
 
 export interface OrgHeaderProps {
@@ -58,63 +66,71 @@ export function OrgHeader({
   const tFeedback = useTranslations('feedback')
   const openFeedback = useOpenFeedback()
   const feedbackAvailable = useFeedbackAvailable()
+  const isMobile = useIsMobile()
 
   return (
     <header
       data-scope="org"
-      className="border-border bg-background flex min-h-14 w-full shrink-0 items-center justify-between gap-3 border-b px-4 pt-[env(safe-area-inset-top)] md:px-6"
+      className="border-border bg-background flex w-full shrink-0 flex-col border-b pt-[env(safe-area-inset-top)]"
     >
-      <Link
-        href="/app/projects"
-        aria-label={t('allProjects')}
-        className="text-foreground focus-visible:ring-ring/60 rounded-md text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
-      >
-        Piloti
-      </Link>
+      <div className="flex min-h-14 items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] md:pl-6 md:pr-6">
+        <Link
+          href="/app/projects"
+          aria-label={t('allProjects')}
+          className="text-foreground focus-visible:ring-ring/60 rounded-md text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
+        >
+          Piloti
+        </Link>
 
-      <div className="flex items-center gap-1">
-        {canAccessArchiv && (
-          <OrgHeaderIconLink
-            href="/app/archiv"
-            label={t('sections.archiv')}
-            icon={Archive}
-            tourAnchor={TOUR_ANCHORS.archiv}
-            active={pathname === '/app/archiv' || pathname.startsWith('/app/archiv/')}
+        <div className="flex items-center gap-1">
+          {/* On a phone the two doorways live in the tab bar, under the thumb
+              (`PhoneTabBar`), and feedback in the avatar menu; the band keeps
+              search and the account. */}
+          {canAccessArchiv && (
+            <OrgHeaderIconLink
+              href="/app/archiv"
+              label={t('sections.archiv')}
+              icon={Archive}
+              tourAnchor={TOUR_ANCHORS.archiv}
+              active={pathname === '/app/archiv' || pathname.startsWith('/app/archiv/')}
+            />
+          )}
+          {canAccessInbox && (
+            <OrgHeaderIconLink
+              href="/app/inbox"
+              label={tCollaboration('inbox.navLabel')}
+              icon={Bell}
+              tourAnchor={TOUR_ANCHORS.inbox}
+              active={pathname === '/app/inbox' || pathname.startsWith('/app/inbox/')}
+              badgeCount={inboxPending}
+            />
+          )}
+          {feedbackAvailable && (
+            <OrgHeaderIconButton
+              label={tFeedback('open')}
+              hint={tFeedback('openHint')}
+              icon={MessageSquarePlus}
+              onClick={() => openFeedback()}
+            />
+          )}
+          <ShellSearchButton className="md:hidden" />
+          <div className="bg-border mx-2 hidden h-6 w-px md:block" aria-hidden />
+          <SidebarUserMenu
+            user={user}
+            organizationName={organizationName}
+            authRequired={authRequired}
+            compact
+            menuSide="bottom"
+            menuAlign="end"
+            avatarSizeClass="size-8"
+            canManageOrganization={canManageOrganization}
+            canViewOrganization={canViewOrganization}
+            canManagePlatform={canManagePlatform}
+            tourAnchor={TOUR_ANCHORS.account}
           />
-        )}
-        {canAccessInbox && (
-          <OrgHeaderIconLink
-            href="/app/inbox"
-            label={tCollaboration('inbox.navLabel')}
-            icon={Inbox}
-            tourAnchor={TOUR_ANCHORS.inbox}
-            active={pathname === '/app/inbox' || pathname.startsWith('/app/inbox/')}
-            badgeCount={inboxPending}
-          />
-        )}
-        {feedbackAvailable && (
-          <OrgHeaderIconButton
-            label={tFeedback('open')}
-            hint={tFeedback('openHint')}
-            icon={MessageSquarePlus}
-            onClick={() => openFeedback()}
-          />
-        )}
-        <div className="bg-border mx-2 h-6 w-px" aria-hidden />
-        <SidebarUserMenu
-          user={user}
-          organizationName={organizationName}
-          authRequired={authRequired}
-          compact
-          menuSide="bottom"
-          menuAlign="end"
-          avatarSizeClass="size-8"
-          canManageOrganization={canManageOrganization}
-          canViewOrganization={canViewOrganization}
-          canManagePlatform={canManagePlatform}
-          tourAnchor={TOUR_ANCHORS.account}
-        />
+        </div>
       </div>
+      {isMobile && <ConnectionBand />}
     </header>
   )
 }
@@ -144,7 +160,7 @@ function OrgHeaderIconLink({
           aria-current={active ? 'page' : undefined}
           data-tour={tourAnchor}
           className={cn(
-            'focus-visible:ring-ring/60 relative flex size-9 items-center justify-center rounded-lg transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+            'focus-visible:ring-ring/60 relative hidden size-9 items-center justify-center rounded-lg transition-colors pointer-coarse:size-11 md:flex duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
             active
               ? 'bg-accent text-foreground'
               : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -182,7 +198,7 @@ function OrgHeaderIconButton({
           aria-label={label}
           onClick={onClick}
           data-testid="org-header-feedback"
-          className="focus-visible:ring-ring/60 text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 items-center justify-center rounded-lg transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="focus-visible:ring-ring/60 text-muted-foreground hover:bg-accent hover:text-foreground hidden size-9 pointer-coarse:size-11 md:flex items-center justify-center rounded-lg transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
         >
           <Icon className="size-4" aria-hidden />
         </button>

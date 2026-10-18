@@ -9,7 +9,9 @@
  * them is best for every change:
  *
  *  - **Nebeneinander**: two sheets that scroll and zoom as one, for reading each
- *    on its own terms. Stacks vertically below `md`.
+ *    on its own terms. Stacks vertically below `md`, which is why a phone
+ *    opens in Wischen instead: two stacked half-height sheets are two 0.3 px/mm
+ *    drawings, and the swipe gives one sheet the whole height.
  *  - **Überlagert**: the older sheet inked cyan, the newer orange, multiplied.
  *    What did not change lands on itself and goes near-black; what changed keeps
  *    its colour. The colour key lives under the sheet, only here, because only
@@ -39,8 +41,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { ListChecks } from 'lucide-react'
 import { distinguishingTailLength } from '@/lib/text/middle-truncate'
-import { useIsMobile } from '@/hooks/use-is-mobile'
+import { PHONE_ON_ITS_SIDE_QUERY, PHONE_QUERY, useIsMobile } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useFassungVisualChanges } from '../../hooks/use-fassung-visual-changes'
@@ -87,7 +93,7 @@ export interface FassungCompareProps {
   overlays?: readonly CompareRegion[]
   /** Where the pages come from. Defaults to the app's PDF and image renderers. */
   loadSource?: SourceLoader
-  /** The mode the comparison opens in. */
+  /** The mode the comparison opens in. Unset: Wischen on a phone, Nebeneinander elsewhere. */
   initialMode?: CompareMode
   /**
    * Open the text comparison of the same two Fassungen, for files that cannot
@@ -112,12 +118,14 @@ export function FassungCompare({
   onClose,
   overlays = [],
   loadSource = openPageSource,
-  initialMode = 'side',
+  initialMode,
   onOpenTextCompare,
 }: FassungCompareProps): JSX.Element {
   const t = useTranslations('files')
   const stacked = useIsMobile()
   const wide = useMediaQuery(WIDE_QUERY)
+  const phone = useMediaQuery(PHONE_QUERY)
+  const sideways = useMediaQuery(PHONE_ON_ITS_SIDE_QUERY)
   const reducedMotion = useReducedMotion()
   const descriptionId = useId()
   const keysId = useId()
@@ -141,7 +149,12 @@ export function FassungCompare({
   const olderState = usePageSource(older, loadSource, attempts.older)
   const newerState = usePageSource(newer, loadSource, attempts.newer)
 
-  const [mode, setMode] = useState<CompareMode>(initialMode)
+  const [mode, setMode] = useState<CompareMode>(() => initialMode ?? (phone ? 'swipe' : 'side'))
+  // Below `lg` the change list is a sheet from the bottom edge, opened from
+  // the toolbar: always on screen under the stage it took 192 to 224px of a
+  // phone's height before anything was drawn, and on a phone on its side it
+  // left the sheets about 70px.
+  const [changesOpen, setChangesOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [zoom, setZoom] = useState(FIT_ZOOM)
   const [opacity, setOpacity] = useState(100)
@@ -222,6 +235,8 @@ export function FassungCompare({
   const [revealRequest, setRevealRequest] = useState(0)
   const showRegion = (number: number): void => {
     const entry = numbered.find((candidate) => candidate.number === number)
+    // The sheet steps aside so the box it pointed at can be seen.
+    setChangesOpen(false)
     activeRegion.pin(number)
     if (entry) goToPage(entry.region.page)
     reveal.current = number
@@ -287,6 +302,7 @@ export function FassungCompare({
           ? { kind: 'ready', page: current }
           : { kind: 'missing', page: current }
   const markButton = <MarkButton state={markState} onMark={() => markPage(current)} className={wide ? undefined : 'w-full'} />
+  const changeCount = numbered.length
   // A refusal belongs to the page it was asked for; turning the page leaves it behind.
   const markError =
     visual.state === 'error' && askedPage === current
@@ -296,7 +312,7 @@ export function FassungCompare({
   // On a wide screen the list opens beside the sheet only once it has
   // something to say; before a run the button sits in the toolbar and the
   // sheets keep the width.
-  const panelOpen = !wide || numbered.length > 0 || groups.length > 0 || loadingPage !== null || markError !== null
+  const panelOpen = wide && (numbered.length > 0 || groups.length > 0 || loadingPage !== null || markError !== null)
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -324,10 +340,23 @@ export function FassungCompare({
           event.preventDefault()
           if (opener?.isConnected) opener.focus()
         }}
-        className="top-0 left-0 h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 max-sm:rounded-none max-sm:border-0 sm:top-4 sm:left-4 sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-none sm:translate-x-0 sm:translate-y-0"
+        // A phone, upright or on its side, gets the whole screen: the 1rem
+        // inset of a desktop window is 32px of a 393px-high landscape phone.
+        // The full-screen presentation also moves the close button under the
+        // status bar, where a thumb can reach it.
+        mobilePresentation="fullscreen"
+        className="top-0 left-0 h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 max-sm:rounded-none max-sm:border-0 sm:top-4 sm:left-4 sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-none sm:translate-x-0 sm:translate-y-0 phone:inset-0 phone:h-dvh phone:max-h-dvh phone:w-screen phone:rounded-none phone:border-0"
       >
-        <DialogHeader className="gap-1 border-b px-4 py-3 pr-14 text-left">
-          <DialogTitle className="text-base">{t('compare.title')}</DialogTitle>
+        <DialogHeader
+          className={cn(
+            'gap-1 border-b px-4 py-3 pr-14 text-left',
+            'phone:pt-[max(0.75rem,env(safe-area-inset-top))] phone:pr-[calc(env(safe-area-inset-right)+3.75rem)] phone:pl-[max(1rem,env(safe-area-inset-left))]',
+            // On its side: the two names ARE the header; the title stays for
+            // a screen reader, and the stage gets the line back.
+            sideways && 'py-2',
+          )}
+        >
+          <DialogTitle className={cn('text-base', sideways && 'sr-only')}>{t('compare.title')}</DialogTitle>
           <DialogDescription id={descriptionId} className="flex min-w-0 flex-col gap-x-5 gap-y-0.5 sm:flex-row" data-testid="compare-names">
             <FileName label={t('compare.olderLabel')} name={older.filename} tail={distinguishingTailLength(older.filename, newer.filename)} />
             <FileName label={t('compare.newerLabel')} name={newer.filename} tail={distinguishingTailLength(newer.filename, older.filename)} />
@@ -340,9 +369,23 @@ export function FassungCompare({
         {finalNotice ? (
           <div />
         ) : (
-          <div className="space-y-1.5 border-b px-4 py-2" data-testid="compare-toolbar">
+          <div
+            className="space-y-1.5 border-b px-4 py-2 phone:pr-[max(1rem,env(safe-area-inset-right))] phone:pl-[max(1rem,env(safe-area-inset-left))]"
+            data-testid="compare-toolbar"
+          >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <ModeSwitch mode={mode} onMode={setMode} />
+              <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-between">
+                <ModeSwitch mode={mode} onMode={setMode} />
+                {!wide && phone && !blocked && (
+                  <ChangesButton
+                    label={t('compare.changesRegion')}
+                    count={changeCount}
+                    busy={loadingPage !== null}
+                    open={changesOpen}
+                    onOpen={() => setChangesOpen(true)}
+                  />
+                )}
+              </div>
               <div className="flex items-center gap-x-3 max-sm:w-full max-sm:justify-between">
                 {!blocked && span.count > 1 && <PageNav current={current} count={span.count} onPage={goToPage} />}
                 <ZoomControl
@@ -353,6 +396,17 @@ export function FassungCompare({
                 />
               </div>
               {wide && !blocked && <div className="ml-auto">{markButton}</div>}
+              {!wide && !phone && !blocked && (
+                <div className="ml-auto">
+                  <ChangesButton
+                    label={t('compare.changesRegion')}
+                    count={changeCount}
+                    busy={loadingPage !== null}
+                    open={changesOpen}
+                    onOpen={() => setChangesOpen(true)}
+                  />
+                </div>
+              )}
             </div>
             {!blocked && span.differs && (
               <p className="text-warning text-xs" role="status" data-testid="compare-page-count-note">
@@ -366,7 +420,10 @@ export function FassungCompare({
         )}
 
         <div className="flex min-h-0 flex-col lg:flex-row">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="compare-area">
+          <div
+            className="flex min-h-0 min-w-0 flex-1 flex-col phone:pb-[env(safe-area-inset-bottom)]"
+            data-testid="compare-area"
+          >
             <div ref={areaRef} className="min-h-0 flex-1">
               {blocked ? (
                 <StageNotice
@@ -450,9 +507,34 @@ export function FassungCompare({
               loadingPage={loadingPage}
               error={markError}
               onRetry={() => askedPage !== null && markPage(askedPage)}
-              action={wide ? undefined : markButton}
-              className="max-h-48 shrink-0 border-t sm:max-h-56 lg:max-h-none lg:w-80 lg:border-t-0 lg:border-l"
+              className="lg:w-80 lg:border-l"
             />
+          )}
+          {!finalNotice && !blocked && !wide && (
+            <Sheet open={changesOpen} onOpenChange={setChangesOpen}>
+              <SheetContent
+                side="bottom"
+                closeLabel={t('compare.close')}
+                data-testid="compare-changes-sheet"
+                className="max-h-[70dvh] gap-0 rounded-t-2xl p-0 pb-[env(safe-area-inset-bottom)] sm:mx-auto sm:max-w-xl"
+              >
+                <SheetHeader className="px-4 pt-4 pb-0">
+                  <SheetTitle className="text-base">{t('compare.changesRegion')}</SheetTitle>
+                  <SheetDescription className="sr-only">{t('compare.title')}</SheetDescription>
+                </SheetHeader>
+                <ChangeList
+                  groups={groups}
+                  current={current}
+                  activeRegion={activeRegion}
+                  onShow={showRegion}
+                  loadingPage={loadingPage}
+                  error={markError}
+                  onRetry={() => askedPage !== null && markPage(askedPage)}
+                  action={markButton}
+                  className="min-h-0"
+                />
+              </SheetContent>
+            </Sheet>
           )}
         </div>
       </DialogContent>
@@ -475,4 +557,46 @@ function markErrorKey(status: number | null): 'compare.markNotRead' | 'compare.m
   if (status === 409) return 'compare.markNotRead'
   if (status === 502 || status === 503) return 'compare.markUnavailable'
   return 'compare.markFailed'
+}
+
+/**
+ * The way to the change list below `lg`: its name, how many changes are
+ * marked, and a spinner while Piloti reads the page. One tap opens the list as
+ * a sheet over the stage; picking a change closes it and shows the box.
+ */
+function ChangesButton({
+  label,
+  count,
+  busy,
+  open,
+  onOpen,
+  className,
+}: {
+  label: string
+  count: number
+  busy: boolean
+  open: boolean
+  onOpen: () => void
+  className?: string
+}): JSX.Element {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      data-testid="compare-changes-open"
+      onClick={onOpen}
+      className={cn('shrink-0 gap-1.5 pointer-coarse:h-11', className)}
+    >
+      {busy ? <Spinner size="xs" aria-hidden /> : <ListChecks aria-hidden />}
+      {label}
+      {count > 0 && (
+        <span className="bg-foreground text-background rounded-full px-1.5 text-[11px] leading-4 font-semibold tabular-nums">
+          {count}
+        </span>
+      )}
+    </Button>
+  )
 }

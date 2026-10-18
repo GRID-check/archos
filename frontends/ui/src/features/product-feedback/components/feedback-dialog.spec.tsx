@@ -162,3 +162,40 @@ describe('FeedbackDialog', () => {
     })
   })
 })
+
+describe('FeedbackDialog on a phone', () => {
+  const coarse = (matches: boolean): void => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) => ({
+        matches: matches && query === '(pointer: coarse)',
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        onchange: null,
+        dispatchEvent: () => false,
+      }),
+    )
+  }
+
+  test('does not raise the keyboard on open, so the kinds and the send button stay visible', () => {
+    coarse(true)
+    setup()
+    expect(message()).not.toHaveFocus()
+    vi.unstubAllGlobals()
+  })
+
+  test('with a mouse the message takes focus, as it always did', async () => {
+    coarse(false)
+    setup()
+    await waitFor(() => expect(message()).toHaveFocus())
+    vi.unstubAllGlobals()
+  })
+
+  test('the keyboard-shortcut hint is not painted where there is no keyboard', () => {
+    setup()
+    expect(document.getElementById(`${message().id}-hint`)?.className).toMatch(/pointer-coarse:hidden/)
+  })
+})

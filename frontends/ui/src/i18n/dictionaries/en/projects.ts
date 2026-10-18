@@ -5,8 +5,9 @@ export const projects = {
     description:
       'Every building project in one workspace: documents, members, tasks, research and chat, with Office filing and building law at hand.',
     loading: 'Loading projects…',
-    searchPlaceholder: 'Search projects…',
-    searchAria: 'Search projects by name',
+    searchPlaceholder: 'Name, place or client…',
+    searchAria: 'Search projects by name, address or client',
+    searchReset: 'Reset search',
     resume: {
       // Shown when the rail is filled by the viewer's own activity…
       heading: 'Pick up where you left off',
@@ -24,7 +25,7 @@ export const projects = {
     },
     noMatch: {
       title: 'No matching projects',
-      description: 'No project name matches your search.',
+      description: 'Neither a name, an address nor a client matches your search.',
       clear: 'Clear search',
     },
     empty: {
@@ -310,7 +311,8 @@ export const projects = {
     documents: 'documents',
     docLabel: '{count} {unit}',
     open: 'Open {name}',
-    settingsAria: 'Open settings for {name}',
+    overview: 'Overview',
+    overviewAria: 'Open overview of {name}',
   },
   archivCard: {
     title: 'Office filing',
@@ -320,9 +322,8 @@ export const projects = {
   },
   dialog: {
     newProject: 'New project',
-    title: 'Create a project',
-    description:
-      'A project is a focused workspace for one building — its documents, members, research, and chat context stay together.',
+    title: 'New project',
+    description: 'A project keeps its documents, its team and the conversations about it together in one place.',
   },
   form: {
     nameRequired: 'Project name is required.',
@@ -330,22 +331,61 @@ export const projects = {
     createError: "We couldn't create this project just now. Please try again in a moment.",
     nameLabel: 'Project name',
     namePlaceholder: 'e.g. Apartment building, 12 Main Street',
-    templateLabel: 'Start from a template',
-    templates: {
-      neubauWohnbau: { label: 'New residential build', name: 'New residential build' },
-      betriebsbauBrandschutz: {
-        label: 'Commercial build — fire safety',
-        name: 'Commercial build — fire safety',
-      },
-      sanierungBestand: {
-        label: 'Existing-building renovation',
-        name: 'Existing-building renovation',
-      },
-      oibBrandschutzAudit: { label: 'OIB fire-safety audit', name: 'OIB fire-safety audit' },
+    state: {
+      label: 'Status',
+      active: 'Ongoing',
+      activeHint: 'We are working on it now.',
+      closed: 'Closed',
+      closedHint: 'A past project, kept as a reference for the office.',
     },
-    footnote:
-      'Create a workspace for documents, members, and chat, grounded in the project files, Office filing, and building law.',
+    closed: {
+      startedOn: 'Start',
+      optional: 'optional',
+      clearStartedOn: 'Clear start',
+      endedOnBeforeStart: 'The completion lies before the start.',
+      readOnly: 'A closed project is read-only. To add documents or the brief, reopen it.',
+      readOnlyPiloti: 'The project stays open while Piloti reads its documents. It closes when you finish the review.',
+    },
+    addressLabel: 'Address',
+    addressPlaceholder: 'Street and number, or the town',
+    addressHelp: 'Piloti takes the Gemeinde and the Bundesland from it.',
+    address: {
+      searching: 'Searching…',
+      none: 'No match. You can add the address later.',
+      suggestions: 'Address suggestions',
+      change: 'Choose another address',
+    },
+    bundeslandLabel: 'Bundesland',
+    bundeslandPlaceholder: 'Choose a Bundesland',
+    bundeslandHelp: 'Address search is not set up here, so choose the Bundesland.',
+    sameAddress: {
+      heading: 'There is already a project at this address',
+      hint: 'Its documents may be the best source for the new one.',
+      closed: 'closed',
+      opensInNewTab: 'Opens in a new tab',
+    },
+    description: {
+      label: 'What is it about?',
+      placeholder: 'e.g. Adding two storeys to a Gründerzeit building, attic conversion with 6 flats',
+      help: 'One or two sentences help Piloti read the documents.',
+    },
+    setup: {
+      label: 'Setup',
+      piloti: 'Piloti sets it up',
+      pilotiHint: 'Drop the project folder. Piloti reads it and suggests each value with the page it found it on.',
+      self: 'Fill it in myself',
+      selfHint: 'Answer the questions one by one.',
+    },
+    drop: {
+      hint: 'You can also drop the project folder on this window.',
+      overlay: 'Drop the project folder',
+      held: 'Folder “{name}”: {count, plural, one {# file} other {# files}} will be filed once the project exists.',
+      heldNoName: '{count, plural, one {# file} other {# files}} will be filed once the project exists.',
+      remove: 'Remove the folder',
+    },
+    cancel: 'Cancel',
     submit: 'Create project',
+    submitClosed: 'Create closed project',
   },
   applicableStandards: {
     heading: 'Applicable standards',
@@ -432,7 +472,7 @@ export const projects = {
     },
     tryAgain: 'Try again',
     conflictReload: 'Refresh',
-    draftSaved: 'Draft saved',
+    draftSaved: 'Draft saved on this device',
     salvage: {
       partial:
         'Parts of the existing project brief could not be loaded and will be replaced when you save.',
@@ -445,6 +485,30 @@ export const projects = {
       'About 2 minutes. Piloti uses this brief to work on your building and to show which OIB guidelines apply.',
     moduleNav: 'Modules',
     moduleNavAria: 'Wizard modules',
+    documentRole: {
+      takePhoto: 'Take photo',
+      loading: 'Loading assignments …',
+      boundAria: 'Assigned as {role}',
+      suggested: 'suggested',
+      unbindAria: 'Stop keeping {name} as {role}',
+      heldUntilSave: 'assigned when you save',
+      discardAria: 'Do not keep {name} as {role}',
+      pickOther: 'Choose another document …',
+      pickExisting: 'Choose an existing document …',
+      upload: 'Upload file',
+      dropHereOne: 'Drag a file here',
+      dropHereMany: 'Drag files here',
+      dropAria: 'Drop a file to keep it as {role}',
+      dropBusy: 'Wait until the current upload is finished.',
+      dropOnlyOne: 'This slot holds one document: {name} was taken, the other files were not.',
+      actionFailed: 'That did not work. Please try again.',
+      bindFailed: 'The document could not be assigned.',
+      unbindFailed: 'The assignment could not be removed.',
+      replaced: '{name} is no longer the {role}.',
+      uploadFailed: '{name} could not be uploaded.',
+      uploadedUnbound: '{name} was filed but not assigned.',
+    },
+    modulePickerAria: 'Module {module}, {title}. Show all modules',
     schnellstart: 'Quick start',
     schnellstartOn:
       'Core questions only. Everything else is recorded as “open” and listed in the summary as an open point.',

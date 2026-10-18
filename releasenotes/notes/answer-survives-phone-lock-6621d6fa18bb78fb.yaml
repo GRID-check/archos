@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    An answer you leave running while the phone is locked or offline now carries
+    on where it was when you come back, instead of being reported as lost.
+    Uploads over a patchy connection retry on their own when the transfer
+    stalls or drops.

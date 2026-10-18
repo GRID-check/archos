@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   buildCardSchemaModule,
+  discriminatedOneOfOverride,
   exportName,
   outPath,
   refParserOverride,
@@ -112,6 +113,39 @@ describe('$ref resolution', () => {
 
   it('leaves non-$ref nodes to the library', () => {
     expect(refParserOverride({ type: 'string' })).toBeUndefined()
+  })
+
+  it('emits a tagged oneOf of defs as z.discriminatedUnion, not a Zod 4 superRefine', () => {
+    const generatedModule = buildCardSchemaModule({
+      discriminator: { propertyName: 'type' },
+      oneOf: [{ $ref: '#/$defs/ThingCard' }],
+      $defs: {
+        ThingCard: card(
+          'thing',
+          {
+            items: {
+              type: 'array',
+              items: {
+                discriminator: { propertyName: 'action' },
+                oneOf: [{ $ref: '#/$defs/Left' }, { $ref: '#/$defs/Right' }],
+              },
+            },
+          },
+          ['items']
+        ),
+        Left: { type: 'object', properties: { action: { const: 'left' } }, required: ['action'] },
+        Right: { type: 'object', properties: { action: { const: 'right' } }, required: ['action'] },
+      },
+    })
+    expect(generatedModule).toContain('z.array(z.discriminatedUnion("action", [leftSchema, rightSchema]))')
+    expect(generatedModule).not.toContain('z.core')
+  })
+
+  it('leaves a oneOf without a discriminator, or with an inline branch, to the library', () => {
+    expect(discriminatedOneOfOverride({ oneOf: [{ $ref: '#/$defs/A' }] })).toBeUndefined()
+    expect(
+      discriminatedOneOfOverride({ discriminator: { propertyName: 'kind' }, oneOf: [{ type: 'string' }] })
+    ).toBeUndefined()
   })
 
   it('names a def the way the module exports it', () => {

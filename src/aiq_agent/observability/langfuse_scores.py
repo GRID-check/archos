@@ -83,6 +83,14 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("inaccurate", "wrong_source", "too_slow", "other"),
     ),
     ScoreDefinition(
+        "piloti-decision",
+        "CATEGORICAL",
+        "A person's decision on something Piloti produced in this turn: a proposal or a proposed mark taken "
+        "over (accepted) or dismissed, an applied change undone. Metadata names the subject and its id.",
+        writer="bff",
+        categories=("accepted", "dismissed", "undone"),
+    ),
+    ScoreDefinition(
         "citation-health",
         "BOOLEAN",
         "True when citation verification found nothing to remove, patch or flag on this turn.",
@@ -160,10 +168,22 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "steer-count",
+        "NUMERIC",
+        "How many notes the asker typed into this turn while it ran; written only on a steered turn.",
+        min_value=0,
+    ),
+    ScoreDefinition(
         "card-validity",
         "CATEGORICAL",
         "Each envelope card that missed its schema: repaired, or dropped.",
         categories=("repaired", "dropped"),
+    ),
+    ScoreDefinition(
+        "thread-answered-in-place",
+        "BOOLEAN",
+        "On a turn asked to answer in an Anmerkung's thread: true when the model replied there itself, false "
+        "when the socket had to post the answer for it. Not written when the turn may not post there.",
     ),
 )
 
@@ -303,9 +323,25 @@ def quote_patch_scores(patched: int) -> list[RuntimeScore]:
     return [RuntimeScore("quotes-patched", float(max(0, patched)))]
 
 
+def steer_scores(inbox: Any) -> list[RuntimeScore]:
+    """A steered turn's count of notes (``common.steering.SteerInbox``): taken, and how many the turn read."""
+    received = int(getattr(inbox, "received", 0) or 0)
+    if received <= 0:
+        return []
+    applied = len(getattr(inbox, "applied", None) or [])
+    return [RuntimeScore("steer-count", float(received), comment=f"applied {applied}")]
+
+
 def card_validity_score(*, outcome: str, card_type: str, index: int) -> RuntimeScore:
     """One envelope card's schema miss, repaired or dropped."""
     return RuntimeScore("card-validity", outcome, comment=card_type, item=str(index), metadata={"card_type": card_type})
+
+
+def thread_reply_scores(verdict: str) -> list[RuntimeScore]:
+    """A thread turn's ``thread_reply`` verdict as a score: ``replied`` true, ``skipped`` false, else none."""
+    if verdict not in ("replied", "skipped"):
+        return []
+    return [_boolean("thread-answered-in-place", verdict == "replied")]
 
 
 # ---------------------------------------------------------------------------

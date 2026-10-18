@@ -207,10 +207,12 @@ def _build_checkpointer_serde() -> JsonPlusSerializer:
     """
     # Imported lazily to avoid a circular import: the agent state modules import
     # from ``aiq_agent.common`` at module load time.
+    from aiq_agent.common.wire_v2 import FocusRegion
+    from aiq_agent.common.wire_v2 import TurnTrigger
     from aiq_agent.knowledge.schema import AvailableDocument
 
     return JsonPlusSerializer(
-        allowed_msgpack_modules=[AvailableDocument],
+        allowed_msgpack_modules=[AvailableDocument, FocusRegion, TurnTrigger],
     )
 
 

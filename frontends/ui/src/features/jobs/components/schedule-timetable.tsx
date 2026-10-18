@@ -264,7 +264,7 @@ export function ScheduleTimetable({
               <button
                 type="button"
                 onClick={() => onSelect?.(job)}
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 flex items-center gap-1.5 rounded-sm text-xs focus-visible:outline-none focus-visible:ring-2"
+                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 pointer-coarse:min-h-11 flex items-center gap-1.5 rounded-sm text-xs focus-visible:outline-none focus-visible:ring-2"
               >
                 <span
                   aria-hidden
@@ -526,7 +526,7 @@ function Agenda({
                     <button
                       type="button"
                       onClick={() => onSelect(block.jobId)}
-                      className="border-border bg-card focus-visible:ring-ring/60 flex w-full items-center gap-2 rounded-lg border border-l-[3px] px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2"
+                      className="border-border bg-card focus-visible:ring-ring/60 pointer-coarse:min-h-11 flex w-full items-center gap-2 rounded-lg border border-l-[3px] px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2"
                       style={{ borderLeftColor: colorOf(block.jobId) }}
                     >
                       <span className="text-muted-foreground shrink-0 text-xs tabular-nums">

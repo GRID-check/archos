@@ -63,6 +63,9 @@ scheduled run, and cannot be trusted to survive a redirect or to be unblocked.
 | `bim_query_executed` | personless | `kind` (the query op), `ok`, `organization_id` | `app/api/internal/bim/query/route.ts` |
 | `budget_blocked` | the refused user | `blocked_scope` (`organization`, `member`, `project`), `unit` (`credit`, `token`), `organization_id` | `lib/budgets/budget-events.ts`, called by `app/api/auth/websocket-scope/route.ts`. Once per person and scope per hour |
 | `budget_threshold_crossed` | personless | `scope`, `window` (`day`, `month`), `pct` (`80` or `100`), `unit`, `subject_id` (the project id for a project budget, else absent), `organization_id` | `lib/budgets/budget-events.ts`, called by `app/api/internal/usage/route.ts` after the ledger write. Once per scope, window and threshold; the dedupe key is in the shared cache and starts with the organization |
+| `push_device_registered` | the person | `organization_id` | `lib/push/service.ts`, `registerDevice` (also on each refresh a browser makes) |
+| `push_device_removed` | the person | `organization_id` | `lib/push/service.ts`, `removeDevice` |
+| `push_notification_sent` | personless | `item_type`, `category`, `urgency`, `devices`, `delivered`, `gone`, `rejected`, `transient`, `organization_id` | `lib/push/inbox-push-job.ts`, once per job that reached the push services. `gone` devices were pruned |
 
 `$exception` events from the server come from `@posthog/next`'s request-error
 capture, configured in `lib/analytics/request-error.ts` (see
@@ -94,6 +97,8 @@ No-op until `initPosthogClient` ran, which needs the host and project token in
 | `product_feedback_submitted` | `kind` | `features/product-feedback/components/feedback-dialog.tsx` |
 | `document_uploaded` | `count`, `types` (comma-joined extensions), `shelf` | `features/documents/hooks/use-file-upload.ts` |
 | `chat_message_sent` | `has_attachments`, `effort`, `data_source_count` | `features/chat/hooks/use-websocket-chat.ts` |
+| `similar_passages_searched` | `entry` (`citation` or `selection`), `origin` (`point` or `embedded`), `groups`, `documents`, `projects_searched` | `features/similar-passages/lib/use-similar-passages.ts`, when an answer arrives |
+| `similar_passage_opened` | `group` (`current`, `project`, `archiv`), `rank` (the document's place in the answer) | `features/similar-passages/lib/use-similar-passages.ts`, `useSimilarPassagesViewer().open` |
 | `report_exported` | `kind`, `format`. The trigger of the CSAT survey | `features/chat/components/AnswerActions.tsx`, `features/bim/components/ifc-model-tables.tsx`, `features/grid-cards/components/IfcDataCards.tsx` |
 
 `organization_created` is still a member of the `PostHogEvent` union, but nothing

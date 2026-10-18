@@ -157,6 +157,28 @@
       "envelopeJson": "{\"organizationId\":\"org_123\",\"userId\":\"user_456\",\"projectId\":\"proj_789\",\"collectionScope\":[\"oib_knowledge\",\"proj_proj_789\"],\"memoryReflectionEnabled\":true,\"conversationId\":\"s_conv_1\",\"issuedAt\":1789430400000}",
       "header": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xMjMiLCJ1c2VySWQiOiJ1c2VyXzQ1NiIsInByb2plY3RJZCI6InByb2pfNzg5IiwiY29sbGVjdGlvblNjb3BlIjpbIm9pYl9rbm93bGVkZ2UiLCJwcm9qX3Byb2pfNzg5Il0sIm1lbW9yeVJlZmxlY3Rpb25FbmFibGVkIjp0cnVlLCJjb252ZXJzYXRpb25JZCI6InNfY29udl8xIiwiaXNzdWVkQXQiOjE3ODk0MzA0MDAwMDB9",
       "signature": "fb8acc1b3060e47630e50c817b6839e3689b41aad809aaec832f7a3a541573b9"
+    },
+    {
+      "name": "signed_envelope_with_requester",
+      "comment": "Who `userId` is, by name, for the agent prompt's `User:` and `Office:` lines: the requester rides inside the signed bytes (a name shown to the reader never comes from a caller-chosen header), appended LAST after `contextTransport`, so every case above keeps byte-identical header/signature. The BFF fills it from the session the envelope is minted for, live or pinned (`requesterOf`).",
+      "input": {
+        "organizationId": "org_123",
+        "userId": "user_456",
+        "projectId": "proj_789",
+        "memoryReflectionEnabled": true,
+        "conversationId": "s_conv_42",
+        "issuedAt": 1789430400000,
+        "contextTransport": "bff",
+        "requester": {
+          "name": "Anna Weber",
+          "email": "anna@example.at",
+          "organizationName": "Atelier Nord"
+        }
+      },
+      "secret": "grid-envelope-fixture-secret",
+      "envelopeJson": "{\"organizationId\":\"org_123\",\"userId\":\"user_456\",\"projectId\":\"proj_789\",\"memoryReflectionEnabled\":true,\"conversationId\":\"s_conv_42\",\"issuedAt\":1789430400000,\"contextTransport\":\"bff\",\"requester\":{\"name\":\"Anna Weber\",\"email\":\"anna@example.at\",\"organizationName\":\"Atelier Nord\"}}",
+      "header": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xMjMiLCJ1c2VySWQiOiJ1c2VyXzQ1NiIsInByb2plY3RJZCI6InByb2pfNzg5IiwibWVtb3J5UmVmbGVjdGlvbkVuYWJsZWQiOnRydWUsImNvbnZlcnNhdGlvbklkIjoic19jb252XzQyIiwiaXNzdWVkQXQiOjE3ODk0MzA0MDAwMDAsImNvbnRleHRUcmFuc3BvcnQiOiJiZmYiLCJyZXF1ZXN0ZXIiOnsibmFtZSI6IkFubmEgV2ViZXIiLCJlbWFpbCI6ImFubmFAZXhhbXBsZS5hdCIsIm9yZ2FuaXphdGlvbk5hbWUiOiJBdGVsaWVyIE5vcmQifX0",
+      "signature": "8dd7a1a1079fae9ecbe3d55f8a681822cfb90fae9b2eefd6dfe63728faab545c"
     }
   ]
 }

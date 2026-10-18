@@ -530,6 +530,7 @@ async function main(): Promise<void> {
     'create FGA resource types organization/project/skill if absent (dashboard-only)',
     'toggle AuthKit "Allow sign-ups" OFF (dashboard-only)',
     'confirm multipleRolesEnabled matches environment policy (dashboard-only)',
+    'confirm the JWT template adds name, email and organization_name (dashboard-only; content in docs/deployment/workos-provisioning.md)',
     'arrange customer-managed KEK with WorkOS support (enterprise tenants only)',
     `verify the "${connectAppName()}" Connect application holds platform:organizations:view under Scopes`,
   )

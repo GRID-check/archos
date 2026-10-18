@@ -96,4 +96,18 @@ describe('PlatformNav', () => {
 
     expect(screen.queryAllByRole('link', { current: 'page' })).toHaveLength(0)
   })
+
+  test('the phone strip is the shared one: entries grow to 44px under a finger, in a strip that fades at its cut', () => {
+    pathname.value = '/app/platform/models'
+    const { container } = render(<PlatformNav />)
+
+    const strip = container.querySelector('[data-testid="platform-nav"] > div.lg\\:hidden')
+    expect(strip).not.toBeNull()
+    const links = Array.from(strip!.querySelectorAll('a'))
+    expect(links).toHaveLength(PLATFORM_SECTIONS.length)
+    for (const link of links) expect(link).toHaveClass('pointer-coarse:min-h-11')
+    // The strip scrolls inside a named region, never the page body.
+    expect(strip!.querySelector('[class*="overflow-x"]')).not.toBeNull()
+    expect(strip!.querySelector('a[aria-current="page"]')).toHaveTextContent('Models')
+  })
 })

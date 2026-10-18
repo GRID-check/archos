@@ -13,24 +13,30 @@ import {
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertCircle, Archive, Boxes, FileText, LayoutGrid, List, RotateCcw, Trash2, X } from 'lucide-react'
-import Link from 'next/link'
+import { AlertCircle, Archive, Boxes, FileText, RotateCcw, X } from 'lucide-react'
 import { sourceBase } from '@/lib/ui/source-tint'
+import { cn } from '@/lib/utils'
+import type { ActionMenuEntry } from '@/components/ui/action-menu'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useLocale, useTranslations } from '@/i18n'
 import { createDocumentByNameClient } from '@/lib/documents/by-name-client'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { shelfSummaryUrl, type LevelPageRequest } from '@/lib/documents/level-client'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
+import type { LiveShelf } from '@/lib/documents/shelf-live-events'
+import { offeredForRetry } from '@/lib/documents/retry-policy'
 import { inferDocumentKind } from '../document-kind'
 import type { FileItem, FolderItem } from '../file-types'
 import { useDocParamSync, usePreviewChannel, type PreviewHandlers } from '../hooks/use-preview-channel'
 import { useDocumentMoves } from '../hooks/use-document-moves'
-import { useFileDragDrop } from '../hooks/use-file-drag-drop'
+import { useDocumentSelection } from '../hooks/use-document-selection'
+import { usePhoneLayout } from '../hooks/use-phone-layout'
+import { UploadFab } from './upload-fab'
+import { useFileDragDrop, type DropInfo } from '../hooks/use-file-drag-drop'
+import { isInternalDragActive, useFolderDropTarget, type FileDropAim } from '../hooks/use-document-drag'
 import { useFileListing } from '../hooks/use-file-listing'
 import { useFileSearch } from '../hooks/use-file-search'
 import { useFolderParam } from '../hooks/use-folder-param'
@@ -40,6 +46,7 @@ import { useLevelListing } from '../hooks/use-level-listing'
 import { useLinkedDocuments } from '../hooks/use-linked-documents'
 import { useModelStage } from '../hooks/use-model-stage'
 import { useSettleTrackedUploads } from '../hooks/use-settle-tracked-uploads'
+import { useShelfLive, type ShelfChange } from '../hooks/use-shelf-live'
 import { useShelfSummary } from '../hooks/use-shelf-summary'
 import { useShelfUpload } from '../hooks/use-shelf-upload'
 import { useViewPreference } from '../hooks/use-view-preference'
@@ -67,7 +74,7 @@ import {
 } from '../lib/file-filters'
 import type { FileShelf, FolderAccessLevel } from '../lib/file-shelf'
 import { DEFAULT_FILE_SORT, type FileSort } from '../lib/file-sort'
-import { DocumentActionsTrigger, DocumentObjectMenu } from './document-actions'
+import { DocumentActionsTrigger, DocumentObjectMenu, useMoveInSheet } from './document-actions'
 import {
   DEFAULT_DOCUMENT_ACTIONS,
   READ_ONLY_DOCUMENT_ACTIONS,
@@ -78,10 +85,16 @@ import { FileDropOverlay, useWindowDragGuard } from './file-drop-overlay'
 import { FileFilterMenu } from './file-filter-menu'
 import { FilePreviewDialog } from './file-preview-dialog'
 import { FolderBrief } from './folder-brief'
+import { FolderPickerSheet } from './folder-picker-sheet'
+import { SelectionBar } from './selection-bar'
 import { withoutOlderFassungen } from '../lib/fassung-chain'
 import { sortedFolderDestinations } from '../lib/folder-path-label'
-import { FileSearchField } from './file-search-bar'
+import { FilesHeaderControls } from './files-header-controls'
 import { FolderAccessDialog } from './folder-access-dialog'
+import { FolderDescriptionDialog } from './folder-description-dialog'
+import { FilingSuggestionsProvider } from './filing-suggestion'
+import { useFilingSuggestions } from '../hooks/use-filing-suggestions'
+import type { ProposalListQuery } from '@/lib/proposals/types'
 import { FolderUploadDialog } from './folder-upload-dialog'
 import { ProjectUppyUpload } from './project-uppy-upload'
 import { UploadTray } from './upload-tray'
@@ -108,6 +121,12 @@ export interface FileWorkspaceProps {
    * `count` is the shelf's document count, null until it is known.
    */
   renderHeader: (controls: ReactNode, state: { count: number | null }) => ReactNode
+  /**
+   * More entries for the phone header's ⋯, after the view choice and the
+   * Papierkorb: what a header carries as a button of its own on a wide screen
+   * (a project's Outlook import) and cannot afford a button for on 393px.
+   */
+  moreEntries?: readonly ActionMenuEntry[]
   /**
    * The folder tree and the first page of a folder level as the SERVER already
    * read them, for the first paint (ADR-0102). `initialFiles` is the first
@@ -149,6 +168,7 @@ function mergeById(first: readonly FileItem[], second: readonly FileItem[]): Fil
 export function FileWorkspace({
   shelf,
   renderHeader,
+  moreEntries,
   initialFolders,
   initialFiles,
   initialNextCursor = null,
@@ -328,6 +348,7 @@ export function FileWorkspace({
     reloadFilesRef.current = reloadAll
   }, [reloadAll])
 
+
   const upload = shelf.useUpload({
     collectionName,
     folderId: selectedFolderId ?? undefined,
@@ -336,7 +357,38 @@ export function FileWorkspace({
   const { isUploading, error } = upload
 
   const moves = useDocumentMoves(files, setFiles, folders)
-  const { moved: moveRow, dropInFolder: dropRowInFolder } = moves
+  const { moved: moveRow, dropInFolder: dropRowInFolder, moveMany, isMoving } = moves
+
+  // Changes made anywhere else (a colleague, Piloti, the chat beside this,
+  // another tab) arrive as a hint on the shelf's channel; what is on screen
+  // is read again, quietly and coalesced (`reloadQuietly`, the upload's own
+  // settle signal), and the folder tree when it moved too. Not while this
+  // tab's own moves are on the wire: their echoes would put rows back that
+  // are about to leave.
+  const liveShelf = useMemo<LiveShelf>(
+    () => (shelf.projectId ? { kind: 'project', projectId: shelf.projectId } : { kind: 'archiv' }),
+    [shelf.projectId]
+  )
+  const { load: loadFolders } = tree
+  const onShelfChanged = useCallback(
+    (change: ShelfChange) => {
+      reloadQuietly()
+      if (change.folders) void loadFolders()
+    },
+    [reloadQuietly, loadFolders]
+  )
+  /*
+   * Held while anything is being dragged, not only while a move is on the
+   * wire: a re-read in the middle of a drag moves the tiles under the
+   * pointer, and the document or file lands in whatever slid into place.
+   */
+  const fileDraggingRef = useRef(false)
+  const folderMoving = tree.isMoving
+  const holdLive = useCallback(
+    () => isMoving() || folderMoving() || isInternalDragActive() || fileDraggingRef.current,
+    [isMoving, folderMoving]
+  )
+  useShelfLive(liveShelf, onShelfChanged, { holdWhile: holdLive })
   // A move changes two folders' counts: the summary is read again after it.
   const moved = useCallback(
     (fileId: string, folderId: string | null) => {
@@ -356,10 +408,15 @@ export function FileWorkspace({
     shelf,
     upload,
     folders,
-    foldersReady: !tree.isLoading && !tree.error,
+    // Once the tree has answered. A re-read later (every live hint is one) must
+    // not hold a drop back; a tree that never loaded must, or a dropped folder
+    // is planned against no folders and lands in read-only ones.
+    foldersReady: !tree.isFirstLoad && !tree.error,
+    foldersSettled: !tree.isFirstLoad,
     selectedFolderId,
     loadFolders: tree.load,
     loadFiles: reloadFiles,
+    uploading: isUploading,
   })
   const { handleUpload } = shelfUpload
   const access = useFolderAccess(shelf, folders, tree.rootAccess)
@@ -475,14 +532,102 @@ export function FileWorkspace({
   // office file read from its PDF rendition).
   useSettleTrackedUploads(paneFiles, activeUploads)
 
-  // A level the reader may only read (ADR-0088) takes no dropped files. The
-  // server refuses either way; this keeps the surface from offering it.
-  const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
-    onDrop: handleUpload,
-    disabled: isUploading || !canManage || !writableHere,
+  // Piloti's filing suggestions for this shelf, on the file rows and the tray's
+  // rows. Asked again every few seconds while an upload is on screen: the
+  // judgement from the names runs as soon as the batch is sealed.
+  const filingQuery = useMemo<ProposalListQuery>(
+    () => (shelf.projectId ? { projectId: shelf.projectId } : { shelf: 'archiv' }),
+    [shelf.projectId]
+  )
+  const filing = useFilingSuggestions({ query: filingQuery, refreshKey: files.length, watching: activeUploads.length > 0 })
+  const { reload: reloadFiling } = filing
+  const onFilingSettled = useCallback(() => {
+    void reloadAll()
+    reloadFiling()
+  }, [reloadAll, reloadFiling])
+  // Where a document is now, for the before line of a suggestion's popover:
+  // its folder's path, '' at the top level, unknown for a row no page holds.
+  const folderPathOf = useMemo(() => {
+    const folderOf = new Map(files.map((file) => [file.id, file.folderId ?? null]))
+    const pathOf = new Map(folders.map((folder) => [folder.id, folder.path]))
+    return (documentId: string): string | undefined => {
+      const folderId = folderOf.get(documentId)
+      if (folderId === undefined) return undefined
+      return folderId === null ? '' : pathOf.get(folderId)
+    }
+  }, [files, folders])
+  /** The folder whose description is being written (migration 0145). */
+  const [describingFolderId, setDescribingFolderId] = useState<string | null>(null)
+
+  // A level the reader may only read (ADR-0088) takes no dropped files, and
+  // says so while they are dragged over it rather than swallowing them. A drop
+  // while an upload runs is no longer refused: `useShelfUpload` queues it.
+  const onDroppedHere = useCallback(
+    (dropped: File[], info: DropInfo) => handleUpload(dropped, { info }),
+    [handleUpload]
+  )
+  const { isDragging, isUnsupportedDrag, refusal: dropRefusal, dragHandlers } = useFileDragDrop({
+    onDrop: onDroppedHere,
+    disabled: !canManage,
+    refusal: writableHere ? null : t('workspace.dropRefusedHere'),
     acceptZip: true,
   })
+  useEffect(() => {
+    fileDraggingRef.current = isDragging
+  }, [isDragging])
+  /** The folder tile or way up the desktop files hover, which the overlay names. */
+  const [fileAim, setFileAim] = useState<FileDropAim | null>(null)
+  useEffect(() => {
+    if (!isDragging) setFileAim(null)
+  }, [isDragging])
+  const dropFilesInFolder = useCallback(
+    (dropped: File[], info: DropInfo, folderId: string | null) => handleUpload(dropped, { folderId, info }),
+    [handleUpload]
+  )
+  const folderNameOf = (folderId: string | null): string =>
+    folderId === null ? t('folders.allFiles') : (folders.find((folder) => folder.id === folderId)?.name ?? '')
+  // Where the drop lands, named: the tile under the pointer, or the folder on
+  // screen. „In dieses Projekt" said nothing about which folder a drop in a
+  // search result, or three levels down, would land in.
+  const dropTargetLabel = fileAim
+    ? t('workspace.dropInto', { name: folderNameOf(fileAim.folderId) })
+    : selectedFolderId !== null && folderNameOf(selectedFolderId)
+      ? t('workspace.dropInto', { name: folderNameOf(selectedFolderId) })
+      : shelf.messages.dropToUpload
   useWindowDragGuard()
+
+  /**
+   * The level on screen is a target for a document or folder that is not
+   * already in it. A drag held over a folder opens it (`onSpringOpen` on the
+   * tiles and the path), and the release then lands on this level's
+   * background, not on a tile: without this it did nothing. On its own level
+   * it is still refused, so a document let go between two tiles is not a move.
+   * Not while a search is in force: its results span the shelf.
+   */
+  const levelDrop = useFolderDropTarget({
+    folderId: selectedFolderId,
+    onDropDocument: (documentId, folderId) => void dropInFolder(documentId, folderId),
+    onDropFolder: (folderId, parentId) => void tree.move(folderId, parentId),
+    disabled: !canManage || search.query.trim() !== '' || search.semantic.active,
+    refusal: writableHere ? null : t('workspace.dropRefusedHere'),
+    onlyFromElsewhere: true,
+  })
+  /** Both on the one surface: each answers its own kind of drag and passes the other through. */
+  const surfaceDragHandlers = {
+    onDragEnter: dragHandlers.onDragEnter,
+    onDragOver: (event: React.DragEvent) => {
+      levelDrop.dropProps.onDragOver(event)
+      dragHandlers.onDragOver(event)
+    },
+    onDragLeave: (event: React.DragEvent) => {
+      levelDrop.dropProps.onDragLeave(event)
+      dragHandlers.onDragLeave(event)
+    },
+    onDrop: (event: React.DragEvent) => {
+      levelDrop.dropProps.onDrop(event)
+      dragHandlers.onDrop(event)
+    },
+  }
 
   // The status filter is the server's on a paged level; asking it again of
   // the rows that came back is the same answer, and keeps a row whose status
@@ -590,6 +735,33 @@ export function FileWorkspace({
   const listingError = pagedView ? level.error : listing.error
   const retryListing = pagedView ? () => void level.reload(false) : () => void listing.load()
 
+  /*
+   * PICKING SEVERAL (phone first). „Auswählen" turns a press on a card or row
+   * into a pick and the foot of the listing into a bar: five site photos go to
+   * their folder in three taps instead of five trips through a menu. It is a
+   * mode of ONE level, so walking elsewhere, searching or opening a slice of
+   * the brief ends it.
+   */
+  const phone = usePhoneLayout()
+  const moveInSheet = useMoveInSheet()
+  const selection = useDocumentSelection()
+  const { exit: exitSelection, set: setSelection, start: startSelection } = selection
+  const [moveSheetOpen, setMoveSheetOpen] = useState(false)
+  const searchingNow = search.query.trim() !== '' || search.semantic.active
+  const sliceOpen = briefSurface.slice !== undefined
+  useEffect(() => {
+    exitSelection()
+  }, [selectedFolderId, searchingNow, sliceOpen, exitSelection])
+  const mayPick = canManage && writableHere
+  const pickable = useMemo(() => levelFiles.map((file) => file.id), [levelFiles])
+  const moveSelection = async (folderId: string | null, folderName: string): Promise<void> => {
+    setMoveSheetOpen(false)
+    const ids = [...selection.selectedIds]
+    exitSelection()
+    await moveMany(ids, folderId, folderName)
+    void reloadSummary()
+  }
+
   const pickFilesRef = useRef<(() => void) | null>(null)
   const pickFolderRef = useRef<(() => void) | null>(null)
   // No upload into a level the reader may only read (ADR-0088).
@@ -604,60 +776,48 @@ export function FileWorkspace({
     ) : undefined
 
   const controls = (
-    <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2">
-      <ToggleGroup
-        type="single"
-        value={view}
-        onValueChange={(value) => {
-          if (value === 'cards' || value === 'list') selectView(value)
-        }}
-        segmented
-        size="icon-sm"
-        aria-label={t('workspace.view.label')}
-      >
-        <ToggleGroupItem value="cards" aria-label={t('workspace.view.cards')} title={t('workspace.view.cards')}>
-          <LayoutGrid />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="list" aria-label={t('workspace.view.list')} title={t('workspace.view.list')}>
-          <List />
-        </ToggleGroupItem>
-      </ToggleGroup>
-      {/* The Papierkorb: deleted folders, restorable until their purge (ADR-0088). */}
-      {shelf.bin && (
-        <Button asChild variant="ghost" size="icon" aria-label={t('workspace.openBin')} title={t('workspace.openBin')}>
-          <Link href={shelf.bin.href} data-testid="files-open-bin">
-            <Trash2 />
-          </Link>
-        </Button>
+    <FilesHeaderControls
+      phone={phone}
+      view={view}
+      onViewChange={selectView}
+      binHref={shelf.bin?.href}
+      renderFilter={(compact) => (
+        <FileFilterMenu
+          canCollaborate={canCollaborate}
+          filters={filters}
+          onFiltersChange={setFilters}
+          sort={sort}
+          onSortChange={setSort}
+          // A ranked result set orders itself; offering a column here would throw
+          // the ranking away without saying so.
+          sortDisabled={search.semantic.active}
+          tagOptions={tagOptions}
+          compact={compact}
+        />
       )}
-      <FileFilterMenu
-        canCollaborate={canCollaborate}
-        filters={filters}
-        onFiltersChange={setFilters}
-        sort={sort}
-        onSortChange={setSort}
-        // A ranked result set orders itself; offering a column here would throw
-        // the ranking away without saying so.
-        sortDisabled={search.semantic.active}
-        tagOptions={tagOptions}
-      />
-      {/* The corpus search, in the header with the other controls that act on
-          the listing. No run button: the field reads as the plain filter it
-          mostly is, and Enter commits the query to the semantic search. */}
-      <FileSearchField
-        className="w-full sm:w-64 lg:w-72"
-        value={search.query}
-        onChange={search.setQuery}
-        onSubmit={search.run}
-        onClear={search.clear}
-        placeholder={t('browser.searchPlaceholder')}
-        searchLabel={t('browser.searchLabel')}
-        resetLabel={t('browser.resetSearch')}
-      />
-      {/* The durable corpus is where a büro brings a whole tree in. */}
-      {uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}
-    </div>
+      // The corpus search, in the header with the other controls that act on the
+      // listing. No run button: the field reads as the plain filter it mostly is,
+      // and Enter commits the query to the semantic search.
+      search={{ value: search.query, onChange: search.setQuery, onSubmit: search.run, onClear: search.clear }}
+      // The durable corpus is where a büro brings a whole tree in. On a phone the
+      // same control floats at the foot of the screen instead (`uploadFab`).
+      upload={phone ? undefined : uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}
+      moreEntries={moreEntries}
+    />
   )
+
+  /*
+   * The phone's Hochladen: the ONE upload control (a second instance would be a
+   * second hidden input and a second owner of the pick refs), moved from the
+   * header to the foot of the listing, in the thumb's reach. It is the same
+   * component, so whatever the uploader offers in its menu is here too. Hidden
+   * while picking: the selection bar owns the foot then. The workspace is the
+   * positioned ancestor, so the button rides above the phone's in-flow tab bar
+   * with no height to guess.
+   */
+  const inSheet = shelf.source === 'office'
+  const uploadFab =
+    phone && !selection.active ? uploader({ allowFolders: true, pickFilesRef, pickFolderRef }) : undefined
 
   /*
    * One menu per card and row, built lazily (`DocumentObjectMenu`) and handed
@@ -683,22 +843,43 @@ export function FileWorkspace({
         onDeleted={handlers.onDeleted}
         onMoved={moved}
         onReingested={handlers.onReingested}
+        onSelectMode={mayPick ? () => startSelection(file.id) : undefined}
+        moveInSheet={moveInSheet}
       >
         {node}
       </DocumentObjectMenu>
     ),
-    [documentScope, canManage, documentActionsAt, folderDestinations, selectFile, askAbout, handlers, moved]
+    [
+      documentScope,
+      canManage,
+      documentActionsAt,
+      folderDestinations,
+      selectFile,
+      askAbout,
+      handlers,
+      moved,
+      mayPick,
+      startSelection,
+      moveInSheet,
+    ]
   )
   const wrapFile = useCallback((file: FileItem, card: ReactNode) => objectMenu(file, card, false), [objectMenu])
   const wrapFileRow = useCallback((file: FileItem, row: ReactNode) => objectMenu(file, row, true), [objectMenu])
 
   return (
-    <div className="relative flex h-full flex-col" {...(canManage ? dragHandlers : {})} data-testid="workspace-dropzone">
+    <FilingSuggestionsProvider
+      byDocument={filing.byDocument}
+      byFolder={filing.byFolder}
+      onSettled={onFilingSettled}
+      folderPathOf={folderPathOf}
+    >
+    <div className="relative flex h-full flex-col" {...(canManage ? surfaceDragHandlers : {})} data-testid="workspace-dropzone">
       {canManage && isDragging && (
         <FileDropOverlay
           isUnsupported={isUnsupportedDrag}
-          uploadLabel={shelf.messages.dropToUpload}
+          uploadLabel={dropTargetLabel}
           unsupportedLabel={t('workspace.dropUnsupported')}
+          refusal={fileAim ? fileAim.refusal : dropRefusal}
           testId="workspace-drop-overlay"
         />
       )}
@@ -753,7 +934,19 @@ export function FileWorkspace({
           </div>
         )}
 
-        <div className="scroll-fade-bottom min-h-0 min-w-0 flex-1 overflow-y-auto">
+        {/* On a phone the Hochladen button floats over the foot of the list, so
+            the list ends the button's height plus its 1rem offset and a 1rem gap (6rem) above the screen's edge: the last
+            card is never under it. */}
+        <div
+          className={cn(
+            'scroll-fade-bottom min-h-0 min-w-0 flex-1 overflow-y-auto',
+            // The Archiv is a sheet over the shell: it reaches the screen's
+            // edge, so its list ends above the home indicator. A project's
+            // Dateien sits above the in-flow tab bar, which owns that inset.
+            inSheet && !uploadFab && 'pb-[env(safe-area-inset-bottom)]',
+            uploadFab && (inSheet ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : 'pb-24')
+          )}
+        >
           {listingError ? (
             <PaneLoadError message={t('workspace.documentsLoadError')} onRetry={retryListing} />
           ) : (
@@ -788,6 +981,8 @@ export function FileWorkspace({
               filterEmptyNotice={filterEmptyNotice}
               onDropDocumentInFolder={canManage ? dropInFolder : undefined}
               onDropFolderInFolder={canManage ? tree.move : undefined}
+              onDropFilesInFolder={canManage ? dropFilesInFolder : undefined}
+              onFileAim={setFileAim}
               onPickFiles={canManage ? () => pickFilesRef.current?.() : undefined}
               onPickFolder={canManage ? () => pickFolderRef.current?.() : undefined}
               cardExtras={shelf.cardExtras}
@@ -805,6 +1000,7 @@ export function FileWorkspace({
                       onRenameFolder: tree.rename,
                       onDeleteFolder: tree.remove,
                       readOnly: !canManage,
+                      onDescribeFolder: canManage ? setDescribingFolderId : undefined,
                       ...access.folderNav,
                     },
                   })}
@@ -816,10 +1012,41 @@ export function FileWorkspace({
               uploadCard={uploader({ variant: 'dropcard' })}
               brief={briefSurface.brief}
               slice={briefSurface.slice}
+              selection={
+                mayPick
+                  ? {
+                      active: selection.active,
+                      selectedIds: selection.selectedIds,
+                      onToggle: selection.toggle,
+                      onStart: sliceOpen ? undefined : () => startSelection(),
+                    }
+                  : undefined
+              }
             />
           )}
         </div>
       </div>
+
+      {selection.active && (
+        <SelectionBar
+          count={selection.selectedIds.size}
+          total={pickable.length}
+          canMove={folderDestinations.length > 0}
+          onSelectAll={() => setSelection(pickable)}
+          onMove={() => setMoveSheetOpen(true)}
+          onDone={exitSelection}
+        />
+      )}
+      {uploadFab && <UploadFab inSheet={inSheet}>{uploadFab}</UploadFab>}
+      <FolderPickerSheet
+        open={moveSheetOpen}
+        onOpenChange={setMoveSheetOpen}
+        title={t('picker.titleMany', { count: selection.selectedIds.size })}
+        destinations={folderDestinations}
+        // A level's documents all stand in the folder the reader is in.
+        currentFolderId={tree.error ? undefined : selectedFolderId}
+        onPick={(folderId, folderName) => void moveSelection(folderId, folderName)}
+      />
 
       {/* „Wollen Sie aktualisieren?" — the plan a dropped folder opens, before
           anything moves. Rendered unconditionally so its own exit transition
@@ -836,6 +1063,13 @@ export function FileWorkspace({
         kind={shelfUpload.decision.kind}
         onReleaseChange={shelfUpload.onReleaseChange}
         onFassungChange={shelfUpload.onFassungChange}
+      />
+
+      {/* What belongs in a folder (migration 0145), on both shelves. */}
+      <FolderDescriptionDialog
+        folder={folders.find((folder) => folder.id === describingFolderId) ?? null}
+        onOpenChange={(next) => !next && setDescribingFolderId(null)}
+        onSave={tree.describe}
       />
 
       {/* Who may read and write a folder (ADR-0088), a project's only. Saving
@@ -890,6 +1124,7 @@ export function FileWorkspace({
 
       {compareElement}
     </div>
+    </FilingSuggestionsProvider>
   )
 }
 
@@ -932,7 +1167,7 @@ function useFolderBriefSurface({
   mayReadAgain: boolean
 }) {
   const t = useTranslations('files')
-  const [collapsed, setCollapsed] = useBriefCollapsed()
+  const [collapsed, setCollapsed] = useBriefCollapsed(usePhoneLayout())
   const [selection, setSelection] = useState<{ folderId: string | null; selection: BriefSelection } | null>(null)
   const bulk = useBulkReingest(onReingested)
   const missing = useMissingDocuments(shelf.projectId)
@@ -946,9 +1181,11 @@ function useFolderBriefSurface({
 
   const failedIds = brief?.attention.failed
   const readAgain = useCallback(async () => {
-    const ids = (failedIds ?? []).map((file) => file.id)
+    // Only what reading again may change: a file that failed for a lasting
+    // reason is left out, as the button's count already says.
+    const ids = offeredForRetry(failedIds ?? []).map((file) => file.id)
     const result = await bulk.run(ids)
-    const started = result.done - result.failed
+    const started = result.done - result.failed - (result.unchanged ?? 0)
     if (started > 0) toast.success(t('brief.readAgainDone', { count: started }))
     if (result.failed > 0) toast.error(t('brief.readAgainPartial', { count: result.failed }))
     onReadAgainDone()

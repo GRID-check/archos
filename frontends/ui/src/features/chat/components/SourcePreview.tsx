@@ -37,7 +37,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type FC, type ReactNode } from 'react'
 import { capturePosthog } from '@/lib/analytics/posthog'
-import { ChevronDown, ChevronUp, Download, ExternalLink, Link2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, ExternalLink, Link2, TextSearch } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
@@ -55,6 +55,14 @@ import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { PRESSABLE } from '@/components/ui/press'
 import { Spinner } from '@/components/ui/spinner'
 import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
+import { SimilarPassagesPanel } from '@/features/similar-passages/components/similar-passages-panel'
+import { openedPassageView } from '@/features/similar-passages/components/similar-passages-dialog'
+import {
+  useSimilarPassagesViewer,
+  type DocumentSrcOf,
+  type SimilarPassagesLoader,
+} from '@/features/similar-passages/lib/use-similar-passages'
+import { SIMILAR_PASSAGE_TEXT_MIN, type SimilarSourceDocument } from '@/lib/similar-passages/types'
 import { RisDocumentDialog } from '@/features/knowledge/components/ris-document-dialog'
 import {
   SourceSignalChip,
@@ -287,7 +295,10 @@ const useConversationId = (): string | null =>
 // dipped to 0.99, and both drew a third focus ring. Busy is `aria-busy`, never
 // `disabled` — see `DocumentPreviewChip`.
 const chipButtonClasses = cn(
-  'inline-flex h-6 max-w-full shrink-0 cursor-pointer items-center gap-1 truncate whitespace-nowrap pointer-coarse:h-11',
+  // Under a finger the chip may take two lines: the edition and the Fundstelle are
+  // what tells two chips of one Richtlinie apart, and they sit at the END of a
+  // title that a single truncated line cut off.
+  'inline-flex h-6 max-w-full shrink-0 cursor-pointer items-center gap-1 truncate whitespace-nowrap pointer-coarse:h-auto pointer-coarse:min-h-11 pointer-coarse:whitespace-normal pointer-coarse:py-1.5 pointer-coarse:text-left',
   'rounded-md border px-2.5 text-xs font-medium outline-none',
   '[&>svg]:size-3 [&>svg]:shrink-0 hover:brightness-95 dark:hover:brightness-125 aria-busy:cursor-progress',
   PRESSABLE,
@@ -335,7 +346,7 @@ const cardButtonClasses = cn(
 )
 
 const faceClasses = (variant: CitationVariant): string =>
-  variant === 'card' ? cardButtonClasses : cn(chipButtonClasses, 'max-w-56')
+  variant === 'card' ? cardButtonClasses : cn(chipButtonClasses, 'max-w-56 pointer-coarse:max-w-full')
 
 /**
  * The card face while nothing can be opened yet (the preview index is still
@@ -435,7 +446,7 @@ const CitationFace: FC<CitationFaceProps> = ({
         <CitationIndex index={index} />
         <LeadingIcon signal={signal} busy={busy} className="size-3 shrink-0" />
         {authority && <AuthorityTag>{authority}</AuthorityTag>}
-        <span className="truncate">{label}</span>
+        <span className="truncate pointer-coarse:line-clamp-2 pointer-coarse:whitespace-normal pointer-coarse:break-words">{label}</span>
       </>
     )
   }
@@ -851,8 +862,16 @@ export const CitationDocumentDialog: FC<{
   src?: string
   open: boolean
   onOpenChange: (open: boolean) => void
-}> = ({ target, citation, activeLocus, onSelectLocus, src, open, onOpenChange }) => {
+  /**
+   * How „Im Büro behandelt" asks and where an opened passage's bytes stream
+   * from: the real client and the same-origin stream, unless the preview route
+   * passes fixtures.
+   */
+  similarFixtures?: { load: SimilarPassagesLoader; srcOf: DocumentSrcOf }
+}> = ({ target, citation, activeLocus, onSelectLocus, src, open, onOpenChange, similarFixtures }) => {
   const t = useTranslations('chat')
+  const tKnowledge = useTranslations('knowledge')
+  const projectId = useChatStore((s) => s.projectId)
   // The provenance tint comes from the SOURCE, not from where the file happens
   // to be stored: a chip and the dialog it opens must never disagree about what
   // kind of source this is.
@@ -891,10 +910,39 @@ export const CitationDocumentDialog: FC<{
   )
   const downloadBusy = useDelayedFlag(isDownloading)
 
+  // „Im Büro behandelt": the rail replaces the Fundstellen while it is open, and
+  // a similar passage the reader opens takes the stage until they go back.
+  const similar = useSimilarPassagesViewer()
+  const sourceDocument: SimilarSourceDocument =
+    target.document.type === 'stored'
+      ? { kind: 'stored', documentId: target.document.id }
+      : { kind: 'base', fileName: target.document.fileName }
+  const findSimilar = (text: string, passagePage: number | null, cited: boolean): void =>
+    similar.start({ document: sourceDocument, passage: { text, page: passagePage, cited }, projectId })
+  const citedSearchable = !!passage && passage.trim().length >= SIMILAR_PASSAGE_TEXT_MIN
+  const closeDialog = (next: boolean): void => {
+    if (!next) similar.close()
+    onOpenChange(next)
+  }
+  const similarRail = similar.request && (
+    <SimilarPassagesPanel
+      request={similar.request}
+      opened={similar.opened}
+      onOpen={similar.open}
+      onBackToSource={similar.backToSource}
+      onClose={similar.close}
+      load={similarFixtures?.load}
+    />
+  )
+
+  // A similar passage on the stage: the same dialog shows its document instead
+  // (spread last, below), and the citation's own affordances step aside.
+  const openedView = similar.opened ? openedPassageView(similar.opened, similarFixtures?.srcOf) : null
+
   return (
     <PdfViewerDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={closeDialog}
       fileName={
         target.document.type === 'base' ? target.document.fileName : target.document.filename
       }
@@ -907,7 +955,7 @@ export const CitationDocumentDialog: FC<{
       // page the reader then has to search — and it wears this source's own
       // tint, the same one the chip that opened the dialog wore.
       highlight={passage}
-      regions={regions}
+      regions={openedView ? undefined : regions}
       highlightColor={`var(--source-${headerSignal})`}
       // What the reader's OWN selection becomes on the clipboard. The viewer
       // knows the words and the page; only this side knows the document they
@@ -916,17 +964,23 @@ export const CitationDocumentDialog: FC<{
       // from the source and one pasted from the chat must not arrive in the
       // reader's Stellungnahme looking like two different conventions.
       quoteFormat={
-        citation &&
-        (({ text, page: quotedPage }) =>
-          toQuoteList(
-            [
-              {
-                document: citation.document,
-                locus: { key: 'selection', page: quotedPage, snippet: text, isCited: true },
-              },
-            ],
-            new Date()
-          ))
+        citation && !openedView
+          ? ({ text, page: quotedPage }) =>
+              toQuoteList(
+                [
+                  {
+                    document: citation.document,
+                    locus: { key: 'selection', page: quotedPage, snippet: text, isCited: true },
+                  },
+                ],
+                new Date()
+              )
+          : undefined
+      }
+      // A selection in the cited document asks for its neighbours; the rail is
+      // about that document, so a passage opened from it offers no search of its own.
+      onFindSimilar={
+        openedView ? undefined : ({ text, page: selectedPage }) => findSimilar(text, selectedPage, false)
       }
       headerChip={
         <SourceSignalChip signal={headerSignal}>
@@ -938,8 +992,25 @@ export const CitationDocumentDialog: FC<{
         </SourceSignalChip>
       }
       headerActions={
-        (shown || rendition) && (
+        !openedView &&
+        (shown || rendition || citedSearchable) && (
           <span className="flex shrink-0 items-center gap-2">
+            {citedSearchable && (
+              // The cited passage's own neighbours: the Fundstelle is retrieved
+              // text, so the backend finds its stored chunk and embeds nothing.
+              <button
+                type="button"
+                onClick={() => {
+                  if (passage) findSimilar(passage, page ?? null, true)
+                }}
+                aria-label={tKnowledge('similar.forPassage')}
+                data-find-similar=""
+                className={COPY_ACTION_CLASSES}
+              >
+                <TextSearch aria-hidden="true" className="size-3" />
+                {tKnowledge('similar.action')}
+              </button>
+            )}
             {rendition && (
               <>
                 <span className="text-muted-foreground text-xs font-normal" data-rendition-note="">
@@ -976,16 +1047,18 @@ export const CitationDocumentDialog: FC<{
         )
       }
       aside={
-        citation && (
+        similarRail ||
+        (citation && (
           <LocusRail
             document={citation.document}
             activeKey={activeLocus?.key}
             onSelect={onSelectLocus}
           />
-        )
+        ))
       }
+      {...openedView}
     >
-      {passage && !passageInRail && <CitedPassageBox snippet={passage} signal={headerSignal} />}
+      {!openedView && passage && !passageInRail && <CitedPassageBox snippet={passage} signal={headerSignal} />}
     </PdfViewerDialog>
   )
 }
@@ -1612,6 +1685,14 @@ export interface SourcePreviewChipProps {
    * `full`; see {@link CitationDetail}.
    */
   detail?: CitationDetail
+  /**
+   * The project the cited file is looked up in, for a surface that is not the
+   * chat (the Projekterfassung cites the project's own documents and has no
+   * conversation to read it from). Unset, it is the chat's project.
+   */
+  projectId?: string | null
+  /** The chip's text where the document's name alone is not the point (name and page). Unset, the document's label. */
+  label?: string
 }
 
 /**
@@ -1639,8 +1720,11 @@ export const SourcePreviewChip: FC<SourcePreviewChipProps> = ({
   variant = 'chip',
   trailing,
   detail = 'full',
+  projectId: projectIdOverride,
+  label: labelOverride,
 }) => {
-  const projectId = useChatStore((s) => s.projectId)
+  const chatProjectId = useChatStore((s) => s.projectId)
+  const projectId = projectIdOverride === undefined ? chatProjectId : projectIdOverride
   const conversationId = useConversationId()
   const { document: doc, locus } = citation
   // Only a document with a filename and no outbound link can resolve to a
@@ -1670,7 +1754,7 @@ export const SourcePreviewChip: FC<SourcePreviewChipProps> = ({
       ? (asDownloadTarget(resolved) ?? resolved)
       : resolved
 
-  const label = citationLabel(doc)
+  const label = labelOverride ?? citationLabel(doc)
   const precedent = isPrecedent(doc, projectId)
   // A chip stands for a DOCUMENT, so it names every marker that document
   // carries — "2, 7", not an arbitrary one of them. A chip narrowed to a locus

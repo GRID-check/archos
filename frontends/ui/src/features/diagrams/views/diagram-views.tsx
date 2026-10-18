@@ -424,7 +424,7 @@ export function ScheduleDiagram({ model }: { model: ScheduleModel }) {
     <div className="@container flex flex-col gap-1">
       <div className="grid grid-cols-1 gap-x-3 @[30rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
         <span className="hidden @[30rem]:block" />
-        <div className="text-muted-foreground relative h-5 text-[11px] tabular-nums">
+        <div className="text-muted-foreground relative h-5 text-[11px] tabular-nums pointer-coarse:text-xs">
           {ticks.map((tick, i) => (
             <span
               key={tick.iso}
@@ -440,7 +440,7 @@ export function ScheduleDiagram({ model }: { model: ScheduleModel }) {
       {model.sections.map((section) => (
         <div key={section.label} className="flex flex-col gap-1">
           {section.label ? (
-            <p className="text-muted-foreground border-border border-t pt-1.5 text-[11px] font-semibold tracking-wide uppercase">
+            <p className="text-muted-foreground border-border border-t pt-1.5 text-[11px] font-semibold tracking-wide uppercase pointer-coarse:text-xs">
               {section.label}
             </p>
           ) : null}
@@ -452,7 +452,7 @@ export function ScheduleDiagram({ model }: { model: ScheduleModel }) {
             >
               <span className="flex min-w-0 items-baseline justify-between gap-2 @[30rem]:flex-col @[30rem]:items-start @[30rem]:gap-0">
                 <span className="text-foreground text-[13px] leading-snug text-pretty">{task.label}</span>
-                <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
+                <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums pointer-coarse:text-xs">
                   {task.milestone ? dateLabel(task.start) : `${dateLabel(task.start)}–${dateLabel(lastDay(task))}`}
                 </span>
               </span>

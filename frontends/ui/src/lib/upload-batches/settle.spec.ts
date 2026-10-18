@@ -13,7 +13,7 @@ vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
 // What it announces is `fassung-notify.spec.ts`'s; here, settling hands over the documents that came to rest.
 vi.mock('@/lib/documents/fassung-notify', () => ({ announceSettledVersions: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
-vi.mock('@/lib/authz/project-membership', () => ({
+vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8,
   resolveSubjectMembership: vi.fn(),
   userHoldsProjectPermission: vi.fn(),
 }))
@@ -23,6 +23,8 @@ vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleToMember: vi.fn().m
 vi.mock('@/lib/upload-screening/quarantine-audit', () => ({
   auditOwedQuarantines: vi.fn().mockResolvedValue(undefined),
 }))
+// Which projects get a reading is `project-intake/trigger.spec.ts`'s; here, settling hands the batches over.
+vi.mock('@/lib/project-intake/trigger', () => ({ queueIntakeReadsAfterUpload: vi.fn().mockResolvedValue([]) }))
 
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
@@ -33,6 +35,7 @@ import { findDocumentInOrg } from '@/lib/documents/repository'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { queueIntakeReadsAfterUpload } from '@/lib/project-intake/trigger'
 import { makeDocument, makeProject } from '@/test-utils/db-fixtures'
 import { batchIdsOfDocuments, completeSettledBatches, reopenCompletedBatches } from './repository'
 import { onDocumentsSettled, settleUploadBatches } from './settle'
@@ -118,6 +121,38 @@ describe('settleUploadBatches', () => {
   })
 })
 
+describe('settleUploadBatches — the intake reads what arrived (ADR-0111)', () => {
+  it('hands the completed batches to the intake trigger after the uploader was told', async () => {
+    const completed = [batch()]
+    vi.mocked(completeSettledBatches).mockResolvedValue(completed)
+
+    await settleUploadBatches('org-1', ['batch-1'])
+
+    expect(queueIntakeReadsAfterUpload).toHaveBeenCalledWith('org-1', completed)
+    expect(vi.mocked(emitInboxItems).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(queueIntakeReadsAfterUpload).mock.invocationCallOrder[0]
+    )
+  })
+
+  it('keeps the completion when the reading cannot be queued', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
+    vi.mocked(queueIntakeReadsAfterUpload).mockRejectedValue(new Error('queue down'))
+
+    await expect(settleUploadBatches('org-1', ['batch-1'])).resolves.toHaveLength(1)
+    expect(reopenCompletedBatches).not.toHaveBeenCalled()
+  })
+
+  it('queues nothing when no batch completed, nor when the uploader could not be told', async () => {
+    await settleUploadBatches('org-1', ['batch-1'])
+    vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
+    vi.mocked(emitInboxItems).mockRejectedValueOnce(new Error('inbox down'))
+    await expect(settleUploadBatches('org-1', ['batch-1'])).rejects.toThrow('inbox down')
+
+    expect(queueIntakeReadsAfterUpload).not.toHaveBeenCalled()
+  })
+})
+
 describe('onDocumentsSettled', () => {
   it('settles the batches the moved documents belong to', async () => {
     vi.mocked(batchIdsOfDocuments).mockResolvedValue(['batch-1'])
@@ -126,7 +161,15 @@ describe('onDocumentsSettled', () => {
   })
 
   it("tells a quarantined project document's reviewers: org admins and that project's admins, nobody else", async () => {
-    vi.mocked(findDocumentInOrg).mockResolvedValue(makeDocument({ id: 'doc-q', projectId: 'proj-1', createdBy: 'uploader' }))
+    vi.mocked(findDocumentInOrg).mockResolvedValue(
+      makeDocument({
+        id: 'doc-q',
+        projectId: 'proj-1',
+        createdBy: 'uploader',
+        filename: 'Lohnzettel_März.pdf',
+        quarantine: { reasons: [{ kind: 'iban', count: 1, pages: [2], sample: 'AT61 •••• •••• •••• 3201' }] },
+      })
+    )
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(
       new Map([
         ['admin', person('admin')],
@@ -151,8 +194,10 @@ describe('onDocumentsSettled', () => {
       resourceId: 'org-1',
       groupKey: 'document.quarantined:organization:org-1',
     })
-    // The row names no file: a badge must not leak another project's file names.
-    expect(JSON.stringify(emitted)).not.toContain('doc-q')
+    // The row names the file and the kind of reason, never the value found. Only
+    // this file's reviewers get it, so it names nothing they could not open.
+    expect(emitted[0]?.payload).toEqual({ subject: 'Lohnzettel_März.pdf', variant: 'iban' })
+    expect(JSON.stringify(emitted)).not.toContain('3201')
   })
 
   it('leaves out a project admin the quarantined document\'s folder is hidden from (ADR-0087)', async () => {

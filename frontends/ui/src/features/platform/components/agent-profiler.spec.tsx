@@ -164,6 +164,24 @@ describe('AgentProfiler', () => {
     expect(within(card).getByText('failed')).toBeDefined()
   })
 
+  test('prints the reason a span failed on the page, and a tap opens the full text', async () => {
+    // The reason used to be `sr-only` text plus a `title`, neither of which a
+    // sighted reader on a phone ever gets.
+    vi.stubGlobal('fetch', routedFetch([conversation('c-1', 'Brandabschnitte')]))
+
+    render(<AgentProfiler scope={SEPTEMBER} />)
+    await userEvent.click(await screen.findByRole('button', { name: /Brandabschnitte/ }))
+
+    const reason = await screen.findByTestId('span-failure')
+    expect(reason).toHaveTextContent('Failed: HTTP 504')
+    expect(reason.className).not.toContain('sr-only')
+    expect(reason).toHaveAttribute('aria-expanded', 'false')
+    expect(reason.className).toContain('line-clamp-2')
+    await userEvent.click(reason)
+    expect(reason).toHaveAttribute('aria-expanded', 'true')
+    expect(reason.className).not.toContain('line-clamp-2')
+  })
+
   test('draws a turn whose root span was lost, and says its top bar is a stand-in', async () => {
     vi.stubGlobal('fetch', routedFetch([conversation('c-1', 'Brandabschnitte')]))
 
@@ -243,7 +261,7 @@ describe('AgentProfiler', () => {
     render(<AgentProfiler scope={SEPTEMBER} />)
     expect(await screen.findByText('No profiled conversations in this period.')).toBeDefined()
 
-    await userEvent.type(screen.getByRole('textbox', { name: /Search by conversation/ }), 'xyz')
+    await userEvent.type(screen.getByRole('textbox', { name: /Search conversations/ }), 'xyz')
     expect(
       await screen.findByText('No conversation matches “xyz”.', {}, { timeout: 2000 })
     ).toBeDefined()
@@ -262,7 +280,7 @@ describe('AgentProfiler', () => {
 
     const alert = await screen.findByRole('alert')
     expect(alert.textContent).toContain('Could not load the profiler data.')
-    expect(screen.getByRole('textbox', { name: /Search by conversation/ })).toBeDefined()
+    expect(screen.getByRole('textbox', { name: /Search conversations/ })).toBeDefined()
 
     await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText('Recovered')).toBeDefined()
@@ -284,7 +302,7 @@ describe('AgentProfiler', () => {
       )
     ).toBeDefined()
 
-    await userEvent.type(screen.getByRole('textbox', { name: /Search by conversation/ }), 'Wien')
+    await userEvent.type(screen.getByRole('textbox', { name: /Search conversations/ }), 'Wien')
     await vi.waitFor(() => expect(listQueries(fetchSpy).at(-1)?.get('q')).toBe('Wien'))
     expect(listQueries(fetchSpy).at(-1)?.getAll('org')).toEqual(['org_1', 'org_2'])
   })

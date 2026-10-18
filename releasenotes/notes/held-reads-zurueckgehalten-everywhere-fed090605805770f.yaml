@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    A file the content check held back is now called „Zurückgehalten“ on its
+    badge and in the upload summary, the same word the upload panel, the folder
+    overview and the chat use.

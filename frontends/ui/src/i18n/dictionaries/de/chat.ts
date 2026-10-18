@@ -112,6 +112,8 @@ export const chat: typeof en.chat = {
     notIndexed:
       'Abgelegt, nicht gelesen. Sie können die Datei öffnen, aber Piloti zitiert sie nicht.',
     failed: 'Lesen fehlgeschlagen. Piloti kann diese Datei nicht zitieren.',
+    // Von der Inhaltsprüfung zurückgehalten (ADR-0086): nie „freigeben“.
+    held: 'Zurückgehalten: Die Inhaltsprüfung hält diese Datei von Piloti fern. Piloti zitiert sie erst, wenn jemand sie zulässt.',
   },
   composer: {
     /** Shown when the reader holds project:view but not project:chat. */
@@ -347,12 +349,26 @@ export const chat: typeof en.chat = {
     untitledSource: 'Quelle ohne Titel',
     downloadDocx: 'Als Word-Dokument herunterladen',
     downloadFailed: 'Das Word-Dokument konnte nicht erstellt werden.',
+    // Systemdialog „Teilen“ am Telefon: Beschriftung und Titel der geteilten Nachricht.
+    share: 'Antwort teilen',
+    shareTitle: 'Antwort von Piloti',
+  },
+  // Die Abschnittsliste einer langen Antwort (Bericht): auf dem Telefon der Weg zu
+  // einem Abschnitt, ohne bis nach oben zu scrollen.
+  outline: {
+    label: 'Abschnitte',
+    count: '{count, plural, one {# Abschnitt} other {# Abschnitte}}',
+    close: 'Schließen',
+    title: 'Abschnitte',
+    description: 'Zu einem Abschnitt dieser Antwort springen.',
   },
   // Der Zitat-Peek: was diese Fundstelle IST, bevor man sie öffnet.
   citationPeek: {
     wholeDocument: 'Gesamtes Dokument',
     openAtPage: 'An dieser Stelle öffnen',
-    notOpenable: 'In Piloti nicht zu öffnen',
+    notOpenable: 'Zu dieser Quelle liegt in Piloti keine Datei vor.',
+    sheetTitle: 'Quelle {number}',
+    sheetDescription: 'Die Fundstelle im Wortlaut und der Weg ins Dokument.',
     // Das Dokument IST da — nur sein Format kann Piloti nicht zeichnen. Ohne
     // diesen Satz las sich das Fehlen der Öffnen-Schaltfläche als „die Datei
     // ist weg", und genau das wurde gemeldet.
@@ -440,6 +456,11 @@ export const chat: typeof en.chat = {
       tipp: 'Tipp',
       more: 'Mehr dazu',
       less: 'Weniger',
+    },
+    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
+    clamp: {
+      more: 'Mehr anzeigen',
+      less: 'Weniger anzeigen',
     },
     calculation: {
       eyebrow: 'Rechenweg',
@@ -543,32 +564,167 @@ export const chat: typeof en.chat = {
         create_folder: 'Neuer Ordner',
         assign: 'Zuweisen',
       },
+      // Eine Verschiebung, die ihren Zielordner erst anlegt: Er steht vor den Zeilen.
+      newFolder: 'Neuer Ordner',
       // Die oberste Ebene hat keinen Pfad, aber einen Namen, den Menschen sagen.
       root: 'Oberste Ebene',
-      prompt: 'Übernehmen?',
-      accept: 'Übernehmen',
-      reject: 'Verwerfen',
-      applying: 'Wird übernommen …',
       applied: {
         move: '{count, plural, one {Datei verschoben.} other {# Dateien verschoben.}}',
         rename: '{count, plural, one {Datei umbenannt.} other {# Dateien umbenannt.}}',
         create_folder: '{count, plural, one {Ordner angelegt.} other {# Ordner angelegt.}}',
         assign: '{count, plural, one {Datei zugewiesen.} other {# Dateien zugewiesen.}}',
       },
-      // Teils übernommen, teils nicht. WELCHE, wird nicht gespeichert (eine
-      // Entscheidung ist eine Entscheidung und ein Zeitpunkt) — nach dem Neuladen
-      // ist das alles, was die Karte ehrlich sagen kann, und sie sagt, wo man
-      // nachsieht, statt zu raten.
+      // Einige Einträge einer Karte, die vor den Vorschlägen auf dem Server
+      // entschieden wurde. WELCHE, wird dort nicht gespeichert (eine Entscheidung
+      // ist eine Entscheidung und ein Zeitpunkt) — die Karte sagt, wo man nachsieht,
+      // statt zu raten.
       partial:
         'Teilweise übernommen. Einige Einträge konnten nicht ausgeführt werden – sehen Sie unter Dateien nach.',
+      // Eine Karte, deren Vorschlag der Server hält, nennt die Zahl der
+      // gelungenen Einträge aus dem Ergebnis je Zeile.
+      partialCount: '{applied} von {total} übernommen.',
       dismissed: 'Verworfen. Es wurde nichts geändert.',
-      error: 'Konnte nicht übernommen werden.',
-      // Der eine Fall, in dem die Karte nichts auszuführen hat. Der Vorschlag
-      // bleibt lesbar, die Schaltfläche erscheint nicht, und hier steht warum —
-      // statt beim Klick zu scheitern.
-      unavailable: {
-        noProject:
-          'Diese Unterhaltung gehört zu keinem Projekt, es gibt hier also keine Ablage zu ändern.',
+      // Eine Karte ohne gespeicherten Vorschlag (eine Antwort aus der Zeit
+      // davor, oder einer, den der Agent nicht ablegen konnte). Im Browser wird
+      // nichts mehr ausgeführt: Der Vorschlag bleibt lesbar, übernehmen lässt er
+      // sich nicht, und hier steht warum.
+      notStored:
+        'Konnte nicht als Vorschlag angelegt werden. Bitten Sie Piloti, die Änderung noch einmal vorzuschlagen.',
+    },
+    // Ein Vorschlag, den der Server hält (ADR-0105), gleich welcher Art: Datei-
+    // änderung, Notiz oder Änderung am Projektkontext. Stand, Ergebnis und wer
+    // entschieden hat, kommen aus diesem Objekt — jede Leserin sieht die
+    // Entscheidung der Kollegin.
+    proposalReceipt: {
+      prompt: 'Übernehmen?',
+      accept: 'Übernehmen',
+      reject: 'Verwerfen',
+      applying: 'Wird übernommen …',
+      failed: 'Nichts konnte übernommen werden. Es wurde nichts geändert.',
+      applyError: 'Konnte nicht übernommen werden.',
+      dismissError: 'Konnte nicht verworfen werden.',
+      decidedBy: {
+        applied: 'Übernommen von {name} · {when}',
+        partially_applied: 'Übernommen von {name} · {when}',
+        failed: 'Versucht von {name} · {when}',
+        dismissed: 'Verworfen von {name} · {when}',
+      },
+      // Der Name ist dieser Leserin nicht bekannt.
+      someone: 'einer Kollegin oder einem Kollegen',
+      // Der Klick kam an, nachdem jemand anderes entschieden hatte.
+      overtaken: 'Inzwischen wurde darüber entschieden.',
+      readOnly: 'Sie können diesen Vorschlag lesen, in diesem Projekt aber nicht übernehmen.',
+      loadError: 'Der Stand dieses Vorschlags konnte nicht geladen werden.',
+      memory: {
+        confidence: { low: 'Sicherheit: gering', medium: 'Sicherheit: mittel', high: 'Sicherheit: hoch' },
+        goesInto: {
+          organization: 'Kommt in das Gedächtnis des Büros, für alle Projekte.',
+          project: 'Kommt in das Gedächtnis dieses Projekts.',
+        },
+        supersedes: 'Ersetzt: „{note}“',
+        onlyInProject: 'Nur im Projekt merken',
+        saving: 'Wird gespeichert …',
+        saved: 'Notiz gemerkt.',
+        // Die Überschrift der entschiedenen Karte, wenn bekannt ist, wohin die Notiz kam.
+        savedIn: { organization: 'Im Gedächtnis des Büros gemerkt.', project: 'Im Projekt gemerkt.' },
+        dismissed: 'Verworfen. Es wurde nichts gemerkt.',
+      },
+      profile: {
+        applied: 'Projektkontext aktualisiert.',
+        dismissed: 'Verworfen. Der Projektkontext blieb unverändert.',
+      },
+    },
+    // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
+    // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und
+    // der Weg in die Prüfansicht an genau diese Stelle. Eine Datei heißt hier
+    // Dokument, nie „Plan“.
+    canvasActivity: {
+      headline: {
+        proposed: '{count, plural, one {# Anmerkung vorgeschlagen} other {# Anmerkungen vorgeschlagen}}',
+        repliedOne: 'Im Thread von #{number} geantwortet',
+        repliedMany: 'In {count} Threads geantwortet',
+        created: '{count, plural, one {# Anmerkung gesetzt} other {# Anmerkungen gesetzt}}',
+        changed: '{count, plural, one {# Anmerkung geändert} other {# Anmerkungen geändert}}',
+        deleted: '{count, plural, one {# Anmerkung gelöscht} other {# Anmerkungen gelöscht}}',
+        repliedPart: 'in {threads, plural, one {einem Thread} other {# Threads}} geantwortet',
+      },
+      kinds: {
+        hint: 'Hinweis',
+        question: 'Rückfrage',
+        defect: 'Mangel',
+      },
+      page: 'Seite {page}',
+      repliedIn: 'Antwort im Thread von #{number}',
+      show: 'Im Dokument zeigen',
+      showMarkLabel: 'Anmerkung {number} im Dokument zeigen',
+      showThreadLabel: 'Thread von Anmerkung {number} im Dokument zeigen',
+      showError: 'Das Dokument konnte nicht geöffnet werden.',
+      accept: 'Übernehmen',
+      accepting: 'Wird übernommen …',
+      acceptLabel: 'Anmerkung {number} übernehmen',
+      reject: 'Verwerfen',
+      rejectLabel: 'Anmerkung {number} verwerfen',
+      state: {
+        proposed: 'Vorgeschlagen',
+        open: 'Übernommen',
+        resolved: 'Erledigt',
+        dismissed: 'Verworfen',
+        gone: 'Nicht mehr vorhanden',
+      },
+      error: 'Konnte nicht gespeichert werden.',
+      forbidden: 'Sie können diese Anmerkung nicht ändern.',
+      // Was Piloti auf Bitte der Person an einer Anmerkung geändert hat, in
+      // ihren Worten: „#4 erledigt“, „#4 Anna zugewiesen“.
+      change: {
+        taken: 'übernommen',
+        reopened: 'wieder geöffnet',
+        resolved: 'erledigt',
+        dismissed: 'verworfen',
+        assigned: '{name} zugewiesen',
+        someone: 'jemandem',
+        unassigned: 'Zuständigkeit entfernt',
+        due: 'Frist {date}',
+        undue: 'Frist entfernt',
+        kind: 'als {kind} eingestuft',
+        body: 'Text geändert',
+      },
+      status: {
+        proposed: 'Vorschlag',
+        open: 'offen',
+        resolved: 'erledigt',
+        dismissed: 'verworfen',
+      },
+      undo: 'Rückgängig',
+      undoing: 'Wird rückgängig gemacht …',
+      undoLabel: 'Änderung an Anmerkung {number} rückgängig machen',
+      undone: 'Rückgängig gemacht',
+      movedSince: 'Seitdem geändert, jetzt {state}',
+      deleted: 'Anmerkung #{number} gelöscht',
+      // Who the turn acted for, and why an undo did not happen (ADR-0109).
+      forPerson: 'für {name}',
+      movedOn: 'Jemand hat das inzwischen geändert, daher bleibt es, wie es ist.',
+      alreadyUndone: 'Das wurde bereits rückgängig gemacht.',
+      // Mehrere Vorschläge auf einmal (Übernehmen oder Verwerfen je Anmerkung
+      // bleibt) und der Stand des Threads auf einen Blick.
+      batch: {
+        acceptAll: 'Alle übernehmen',
+        accepting: 'Wird übernommen …',
+        rejectRest: 'Übrige verwerfen',
+        rejecting: 'Wird verworfen …',
+        confirmTitle:
+          '{count, plural, one {Diese Anmerkung verwerfen?} other {# Anmerkungen verwerfen?}}',
+        confirmBody: 'Das lässt sich hier nicht rückgängig machen.',
+        confirm: 'Verwerfen',
+        cancel: 'Abbrechen',
+        already: 'bereits erledigt',
+        alreadyBy: 'bereits erledigt von {name}',
+        failed:
+          '{count, plural, one {Eine Anmerkung konnte nicht gespeichert werden.} other {# Anmerkungen konnten nicht gespeichert werden.}}',
+      },
+      thread: {
+        count: '{count, plural, one {# Antwort} other {# Antworten}}',
+        last: 'zuletzt {name}: „{excerpt}“',
+        someone: 'jemand',
       },
     },
     verdictHeader: {
@@ -858,6 +1014,15 @@ export const chat: typeof en.chat = {
           draftFiled: 'Entwurf wird im Projekt abgelegt …',
           draftSubmitted: 'Entwurf wird zur Freigabe eingereicht …',
           taskCreated: 'Auftrag wird angelegt …',
+          // Anmerkungen in einem Dokument. Eigene Befunde schlägt Piloti nur
+          // vor: Erst eine Person übernimmt oder verwirft sie. Setzen, ändern
+          // und löschen tut Piloti nur, worum die Person bittet.
+          annotationsRead: 'Anmerkungen werden gelesen …',
+          annotationsPropose: 'Anmerkungen werden vorgeschlagen …',
+          annotationsSet: 'Anmerkungen werden gesetzt …',
+          annotationsUpdate: 'Anmerkung wird geändert …',
+          annotationsDelete: 'Anmerkung wird gelöscht …',
+          annotationsReply: 'Antwort auf eine Anmerkung wird geschrieben …',
         },
         // Die Werkzeuge sind durch, die Antwort wird geschrieben. Dieselben
         // Worte wie `activity.composing` darüber: ein Vokabular für dieselbe
@@ -874,6 +1039,13 @@ export const chat: typeof en.chat = {
         // kann, bleibt markiert.
         repair: 'Ein Zitat weicht vom Wortlaut der Quelle ab — wird am Original korrigiert …',
         escalation: 'Kurzrecherche reicht nicht — Tiefenrecherche startet',
+        // Eine Ergänzung, die die Person getippt hat, während Piloti
+        // arbeitet. `{text}` sind ihre eigenen Worte; `{round}` die Runde,
+        // in der Piloti sie gelesen hat.
+        steer: {
+          received: 'Ergänzt: „{text}“ — wird berücksichtigt …',
+          applied: 'Ergänzung übernommen in Runde {round}: „{text}“',
+        },
       },
     },
     // Das eine Skill-Ereignis, das Lesende sehen, danach unterschieden, WER
@@ -903,6 +1075,8 @@ export const chat: typeof en.chat = {
       // abgelegt oder zur Freigabe eingereicht.
       filing: 'Ablage',
       task: 'Auftrag',
+      // Anmerkungen im Dokument: gelesen, vorgeschlagen oder beantwortet.
+      annotations: 'Anmerkungen',
       // Die Dateiaktionen SCHLAGEN vor und schreiben nichts (ADR-0003).
       fileProposal: 'Ablagevorschlag',
       // Ein Chip pro Skill, den dieser Turn tatsächlich angewendet hat.
@@ -924,10 +1098,11 @@ export const chat: typeof en.chat = {
       skillSelection: 'Skill-Auswahl',
     },
     interrupted: 'Unterbrochen',
-    // Kompakter Inline-Hinweis auf einer unterbrochenen Antwort: eine stille
-    // Wiederverbindung kann eine laufende Antwort verwerfen (Protokoll-
-    // Robustheit, Punkt 4). Statt nur des stummen „Unterbrochen“-Chips.
-    interruptedNotice: 'Verbindung kurz unterbrochen — Antwort ging verloren. Bitte erneut senden.',
+    // Kompakter Inline-Hinweis auf einer unterbrochenen Antwort, statt nur des
+    // stummen „Unterbrochen“-Chips. Erst, wenn der Server bestätigt hat, dass er
+    // keine Antwort hat und der Zug nicht mehr läuft: vorher ist sie nicht
+    // verloren, nur unterwegs. Die Verbindung ist dann nicht die Ursache.
+    interruptedNotice: 'Diese Antwort wurde nicht fertig, und auf dem Server liegt keine. Bitte die Frage erneut senden.',
     // Vorübergehender „Wird geprüft“-Zustand (FIX 3): angezeigt, solange der
     // Wiederherstellungs-Abruf nach einer Wiederverbindung läuft, damit ein
     // Zug, der nur unterbrochen AUSSIEHT, nicht sofort den „verloren“-Hinweis
@@ -1146,10 +1321,11 @@ export const chat: typeof en.chat = {
       title: 'Antwort fehlgeschlagen',
       message: 'Beim Erstellen einer Antwort ist beim Assistenten ein Fehler aufgetreten.',
     },
+    // Erst, wenn der Server bestätigt hat, dass er keine Antwort hat.
     responseInterrupted: {
       title: 'Antwort unterbrochen',
       message:
-        'Ihre vorherige Anfrage wurde nicht abgeschlossen. Bitte senden Sie Ihre Nachricht erneut.',
+        'Piloti hat diese Antwort nicht abgeschlossen, und auf dem Server liegt keine. Bitte senden Sie die Frage erneut.',
     },
     noResponse: {
       title: 'Keine Rückmeldung',

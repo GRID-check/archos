@@ -112,6 +112,17 @@ repos:
         pass_filenames: false
         files: ^docs/adr/.*\.md$|^scripts/check_adrs\.py$
 
+      - id: release-notes
+        name: the release notes keep the house rules
+        # CI's Repo checks job ran this and nothing local did, so a note that
+        # grew past its length limit in a follow-up commit was found only
+        # after the push. Scoped to the notes and their linter: reno is
+        # fetched by uv, a second or so, and only when a note changed.
+        entry: uv run --no-project --with reno==4.1.0 python scripts/release_notes.py lint
+        language: system
+        pass_filenames: false
+        files: ^releasenotes/notes/.*\.yaml$|^scripts/release_notes\.py$
+
       - id: hidden-unicode
         name: no invisible or bidi-control characters in committed text
         # A zero-width space or a bidi override renders as nothing, so a grep
@@ -131,6 +142,16 @@ repos:
         pass_filenames: false
         files: ^docs/architecture/where-is-what\.md$|^scripts/check_doc_paths\.py$
 
+      - id: env-docs
+        name: the queue workers' environment variables have a row in the env reference
+        # AGENTS.md asks for a row per variable; nothing else checks it, and an
+        # operator tuning a worker otherwise finds the knob only in its source.
+        # Scoped to the queue-worker files (SCOPE in the script).
+        entry: python3 scripts/check_env_docs.py
+        language: system
+        pass_filenames: false
+        files: ^docs/deployment/environment-variables\.md$|^scripts/check_env_docs\.py$|^frontends/aiq_api/src/aiq_api/jobs/.*\.py$|^src/aiq_agent/knowledge/ingest_.*\.py$|^frontends/ui/(workers|purger|scheduler)/.*\.js$|^frontends/ui/src/lib/(jobs-queue|mail-import)/.*\.ts$
+
       - id: validate-skills
         name: skill bundles are well-formed
         # The script existed and nothing ran it — not pre-commit, not the
@@ -140,6 +161,17 @@ repos:
         language: system
         pass_filenames: false
         files: ^skills/.*$|^scripts/validate_skills\.py$
+
+      - id: release-notes
+        name: release notes keep to the house rules
+        # The rules (two sentences an entry, no template text, no code words)
+        # were checked only by CI's Repo checks, so a note over the limit was
+        # found after the push, twice on one branch. The house lint needs no
+        # reno; `task release:lint` still runs reno's own scan in CI.
+        entry: .venv/bin/python scripts/release_notes.py lint
+        language: system
+        pass_filenames: false
+        files: ^releasenotes/.*\.yaml$|^scripts/release_notes\.py$
 
   - repo: https://github.com/tcort/markdown-link-check
     rev: v3.11.2

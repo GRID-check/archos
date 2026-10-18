@@ -121,7 +121,8 @@ describe('FileBrowserPane — card grid', () => {
     const { unmount } = renderPane()
     const card = screen.getAllByTestId('file-card').find((c) => within(c).queryByText('site-plan.pdf'))!
     expect(within(card).getByText('PDF')).toBeInTheDocument()
-    expect(within(card).getByText(/1 kB/)).toBeInTheDocument()
+    // The size is in the footer, the card button's sibling.
+    expect(within(card.nextElementSibling as HTMLElement).getByText(/1 kB/)).toBeInTheDocument()
     // Citable is the normal state: the card says nothing about it.
     expect(within(card).queryByText('Citable')).not.toBeInTheDocument()
     unmount()
@@ -250,6 +251,26 @@ describe('FileBrowserPane — folder drill-down', () => {
 
     await user.type(screen.getByRole('textbox', { name: /search files/i }), 'permit')
     expect(screen.getByText('permit.pdf')).toBeInTheDocument()
+  })
+
+  it('lifts no document out of a level the reader may only read; the server would refuse the move', () => {
+    const readOnly = folders.map((folder) => (folder.id === 'root-2' ? { ...folder, access: 'read' as const } : folder))
+    // The tile around each card is what lifts; folder tiles are not counted.
+    const liftingCards = (container: HTMLElement) =>
+      screen.getAllByTestId('file-card').filter((card) => card.closest('[draggable="true"]') && container.contains(card))
+
+    const readOnlyLevel = renderPane({
+      folderNav: { ...folderNav('root-2'), folders: readOnly },
+      onDropDocumentInFolder: vi.fn(),
+    })
+    expect(liftingCards(readOnlyLevel.container)).toHaveLength(0)
+    readOnlyLevel.unmount()
+
+    const writableLevel = renderPane({
+      folderNav: { ...folderNav('root-1'), folders: readOnly },
+      onDropDocumentInFolder: vi.fn(),
+    })
+    expect(liftingCards(writableLevel.container)).toHaveLength(files.length)
   })
 
   it('renders no folder navigation without folderNav', () => {

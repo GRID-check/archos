@@ -5,15 +5,21 @@
  *
  * Dataviz specs: thin bars with 2px surface gaps between columns AND between
  * stacked segments, rounded data end on the topmost segment only, recessive
- * baseline, a legend (>=2 series is never color-alone), full-column hover
- * targets with a per-day breakdown tooltip, and all text in text tokens —
+ * baseline, a legend (>=2 series is never color-alone), and all text in text
+ * tokens —
  * color only ever paints the marks. Series colors come from the validated
  * categorical palette in fixed slot order, so a kind keeps its hue even when
  * another kind disappears from the window.
+ *
+ * The per-day breakdown is a readout above the plot for the selected column
+ * (newest until the reader picks another), moved by tap, drag, hover or arrow
+ * keys (`useColumnSelection`): a tooltip needs a hover a finger does not have.
+ * The columns shrink to the width they are given, so the newest day is on
+ * screen on a phone without a swipe.
  */
 
 import { type FC } from 'react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useColumnSelection } from '@/components/charts/use-column-selection'
 import { SectionLabel } from '@/components/ui/section-label'
 import { SeriesPaletteStyle } from '@/components/charts/palette'
 import { useLocale } from '@/i18n'
@@ -63,6 +69,7 @@ export const CitationDefectChart: FC<CitationDefectChartProps> = ({
   ariaLabel,
 }) => {
   const { locale } = useLocale()
+  const { selected, plotRef, plotProps, columnProps } = useColumnSelection(points.length)
   const stackTotal = (point: CitationDefectPoint): number =>
     kinds.reduce((sum, kind) => sum + (point.byKind[kind] ?? 0), 0)
   const maxStack = Math.max(...points.map(stackTotal), 0)
@@ -84,126 +91,111 @@ export const CitationDefectChart: FC<CitationDefectChartProps> = ({
     .map((kind, index) => ({ kind, index }))
     .filter(({ kind }) => points.some((point) => (point.byKind[kind] ?? 0) > 0))
 
+  const current = points[selected]
+  const currentKinds = presentKinds.filter(({ kind }) => (current.byKind[kind] ?? 0) > 0)
+
   return (
-    <TooltipProvider delayDuration={100}>
-      {/* The palette scope wraps the plot AND the legend: the series variables
-          only resolve under `.grid-usage-viz`, and a legend outside it drew its
-          swatches in no colour at all, leaving the labels to stand alone. */}
-      <div className="grid-usage-viz">
-        <SeriesPaletteStyle />
-        {/* Wide content scrolls in its own container — a 30-column chart needs a
-          width floor to stay hoverable on narrow viewports. */}
-        <div className="overflow-x-auto">
-          <div className="min-w-[420px]">
-            <div className="flex justify-end">
-              <SectionLabel className="leading-4">{findingsLabel(maxStack)}</SectionLabel>
-            </div>
-            {/* Deliberately NOT role="img": that would collapse the whole plot
-              into one opaque node and hide the per-day tooltip triggers from
-              assistive tech. The group keeps an accessible name; each column
-              below is its own focusable, describable target. */}
-            <div
-              className="border-border flex h-24 items-end gap-[2px] border-b"
-              role="group"
-              aria-label={ariaLabel}
-            >
-              {points.map((point) => {
-                const total = stackTotal(point)
-                return (
-                  <Tooltip key={point.day}>
-                    {/* Full-height column = hit target bigger than the mark.
-                      tabIndex makes it reachable by keyboard, so the tooltip's
-                      per-day breakdown is not mouse-only. */}
-                    <TooltipTrigger asChild>
-                      <div
-                        tabIndex={0}
-                        role="button"
-                        aria-label={`${dateLabel(point.day)}: ${findingsLabel(total)}`}
-                        className="focus-visible:ring-ring/60 flex h-full min-w-[6px] flex-1 cursor-default flex-col justify-end gap-[2px] rounded-sm focus-visible:outline-none focus-visible:ring-2"
-                      >
-                        {total > 0 ? (
-                          presentKinds
-                            // Bottom-up stack: render in reverse so slot 1 sits
-                            // on the baseline and the rounded end lands on top.
-                            .filter(({ kind }) => (point.byKind[kind] ?? 0) > 0)
-                            .reverse()
-                            .map(({ kind, index }, position) => (
-                              <div
-                                key={kind}
-                                // 3px, not `rounded-t-sm` (6px): the bar is 6px
-                                // wide at its floor, and a 6px cap turns a mark
-                                // into a lozenge. A data end's radius is bounded
-                                // by the mark's width.
-                                className={position === 0 ? 'w-full rounded-t-[3px]' : 'w-full'}
-                                style={{
-                                  backgroundColor: seriesVar(index),
-                                  height: `${Math.max(((point.byKind[kind] ?? 0) / maxStack) * 100, 3)}%`,
-                                }}
-                              />
-                            ))
-                        ) : (
-                          <div className="bg-border h-px w-full" />
-                        )}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="font-medium">{dateLabel(point.day)}</p>
-                      {/* Turns observed, then how many of them carried a finding —
-                        the stack below counts findings, and without both lines a
-                        3-segment column reads as three bad turns. */}
-                      <p className="text-muted-foreground tabular-nums">
-                        {turnsLabel(point.turns)}
-                      </p>
-                      <p className="text-muted-foreground tabular-nums">
-                        {flaggedLabel(point.defectTurns)}
-                      </p>
-                      {total === 0 ? null : (
-                        <ul className="mt-1 space-y-0.5">
-                          {presentKinds
-                            .filter(({ kind }) => (point.byKind[kind] ?? 0) > 0)
-                            .map(({ kind, index }) => (
-                              <li key={kind} className="flex items-center gap-1.5">
-                                <span
-                                  // 2px on an 8px swatch: `rounded-sm` (6px) would
-                                  // round it to all but a circle, and a legend key
-                                  // must read as the same shape as the bar it names.
-                                  className="size-2 shrink-0 rounded-[2px]"
-                                  style={{ backgroundColor: seriesVar(index) }}
-                                  aria-hidden
-                                />
-                                <span>{kindLabel(kind)}</span>
-                                <span className="ml-auto tabular-nums">{point.byKind[kind]}</span>
-                              </li>
-                            ))}
-                        </ul>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-                )
-              })}
-            </div>
-            <SectionLabel as="div" className="mt-1 flex justify-between leading-4">
-              <span>{dateLabel(points[0].day)}</span>
-              <span>{dateLabel(points[points.length - 1].day)}</span>
-            </SectionLabel>
-          </div>
-        </div>
-        {/* Legend: identity is never color-alone. */}
-        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-          {presentKinds.map(({ kind, index }) => (
-            <li key={kind} className="text-muted-foreground flex items-center gap-1.5 text-xs">
-              <span
-                // 2px on a 10px swatch — see the tooltip key above: the token
-                // step would round the square into a dot.
-                className="size-2.5 shrink-0 rounded-[2px]"
-                style={{ backgroundColor: seriesVar(index) }}
-                aria-hidden
-              />
-              {kindLabel(kind)}
-            </li>
-          ))}
-        </ul>
+    // The palette scope wraps the plot AND the legend: the series variables
+    // only resolve under `.grid-usage-viz`, and a legend outside it drew its
+    // swatches in no colour at all, leaving the labels to stand alone.
+    <div className="grid-usage-viz">
+      <SeriesPaletteStyle />
+      {/* The selected day. Turns observed, then how many of them carried a
+          finding: the stack counts findings, and without both lines a
+          3-segment column reads as three bad turns. */}
+      <div className="min-h-[3.25rem] text-sm leading-5" aria-live="polite" data-testid="defect-readout">
+        <p className="font-medium">{dateLabel(current.day)}</p>
+        <p className="text-muted-foreground tabular-nums">
+          {turnsLabel(current.turns)} · {flaggedLabel(current.defectTurns)}
+        </p>
+        {currentKinds.length > 0 && (
+          <ul className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+            {currentKinds.map(({ kind, index }) => (
+              <li key={kind} className="flex items-center gap-1.5">
+                <span
+                  // 2px on an 8px swatch: `rounded-sm` (6px) would round it to
+                  // all but a circle, and a legend key must read as the same
+                  // shape as the bar it names.
+                  className="size-2 shrink-0 rounded-[2px]"
+                  style={{ backgroundColor: seriesVar(index) }}
+                  aria-hidden
+                />
+                <span>{kindLabel(kind)}</span>
+                <span className="tabular-nums">{current.byKind[kind]}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-    </TooltipProvider>
+      <div className="flex justify-end">
+        <SectionLabel className="leading-4">{findingsLabel(maxStack)}</SectionLabel>
+      </div>
+      {/* Deliberately NOT role="img": that would collapse the whole plot into
+          one opaque node and hide the per-day columns from assistive tech. The
+          group keeps an accessible name; each column below is its own
+          focusable, describable target. */}
+      <div
+        ref={plotRef}
+        className="border-border flex h-24 touch-pan-y items-end gap-[2px] border-b"
+        role="group"
+        aria-label={ariaLabel}
+        {...plotProps}
+      >
+        {points.map((point, index) => {
+          const total = stackTotal(point)
+          return (
+            // Full-height column = hit target bigger than the mark.
+            <button
+              key={point.day}
+              aria-label={`${dateLabel(point.day)}: ${findingsLabel(total)}`}
+              className="focus-visible:ring-ring/60 data-[selected=true]:bg-muted flex h-full min-w-0 flex-1 cursor-default flex-col justify-end gap-[2px] rounded-sm outline-none focus-visible:ring-2"
+              {...columnProps(index)}
+            >
+              {total > 0 ? (
+                presentKinds
+                  // Bottom-up stack: render in reverse so slot 1 sits on the
+                  // baseline and the rounded end lands on top.
+                  .filter(({ kind }) => (point.byKind[kind] ?? 0) > 0)
+                  .reverse()
+                  .map(({ kind, index: slot }, position) => (
+                    <span
+                      key={kind}
+                      // 3px, not `rounded-t-sm` (6px): the bar is under 10px
+                      // wide on a phone, and a 6px cap turns a mark into a
+                      // lozenge. A data end's radius is bounded by its width.
+                      className={position === 0 ? 'block w-full rounded-t-[3px]' : 'block w-full'}
+                      style={{
+                        backgroundColor: seriesVar(slot),
+                        height: `${Math.max(((point.byKind[kind] ?? 0) / maxStack) * 100, 3)}%`,
+                      }}
+                    />
+                  ))
+              ) : (
+                <span className="bg-border block h-px w-full" />
+              )}
+            </button>
+          )
+        })}
+      </div>
+      <SectionLabel as="div" className="mt-1 flex justify-between leading-4">
+        <span>{dateLabel(points[0].day)}</span>
+        <span>{dateLabel(points[points.length - 1].day)}</span>
+      </SectionLabel>
+      {/* Legend: identity is never color-alone. */}
+      <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+        {presentKinds.map(({ kind, index }) => (
+          <li key={kind} className="text-muted-foreground flex items-center gap-1.5 text-xs">
+            <span
+              // 2px on a 10px swatch — see the readout key above: the token
+              // step would round the square into a dot.
+              className="size-2.5 shrink-0 rounded-[2px]"
+              style={{ backgroundColor: seriesVar(index) }}
+              aria-hidden
+            />
+            {kindLabel(kind)}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

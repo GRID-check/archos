@@ -70,6 +70,10 @@ _EXAMPLE_EXEMPT = {
     # that a task row exists — which is the one claim this card was added to
     # make unfakeable.
     "task_created",
+    # System-emitted (by the canvas tools `mark` and `reply`) and built in
+    # Python from the mark ids and numbers the BFF returned. An example would
+    # teach the model to author proof that a mark or a reply exists.
+    "canvas_activity",
 }
 
 

@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
-vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleTo: vi.fn(), requireFolderWrite: vi.fn() }))
+vi.mock('@/lib/authz/folder-access', () => ({
+  isFolderVisibleTo: vi.fn(),
+  requireFolderWrite: vi.fn(),
+  canWriteFolder: vi.fn(),
+}))
 vi.mock('@/lib/documents/repository', () => ({
   findDocumentInOrg: vi.fn(),
   listQuarantinedDocuments: vi.fn(),
@@ -11,7 +15,7 @@ vi.mock('@/lib/documents/repository', () => ({
   QUARANTINE_LIST_LIMIT: 3,
 }))
 vi.mock('@/lib/documents/service', () => ({
-  dispatchDocument: vi.fn().mockResolvedValue({ jobId: 'job-9', status: 'pending' }),
+  dispatchDocument: vi.fn().mockResolvedValue({ jobId: 'job-9', status: 'pending' as const }),
 }))
 vi.mock('@/lib/documents/folder-path', () => ({
   resolveDocumentFolderPath: vi.fn().mockResolvedValue('Verwaltung'),
@@ -21,7 +25,7 @@ vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn().mockResolvedValu
 
 import { recordAuditEvent } from '@/lib/audit/service'
 import { DOCUMENT_NAME_KEYS } from '@/lib/audit/document-names'
-import { isFolderVisibleTo, requireFolderWrite } from '@/lib/authz/folder-access'
+import { canWriteFolder, isFolderVisibleTo, requireFolderWrite } from '@/lib/authz/folder-access'
 import { folderReadOnlyError } from '@/lib/authz/folder-access-rule'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findDocumentInOrg, listQuarantinedDocuments, markScreeningReleased } from '@/lib/documents/repository'
@@ -32,7 +36,13 @@ import { quarantineReviewersOf } from '@/lib/upload-batches/settle'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { makeDocument } from '@/test-utils/db-fixtures'
-import { listQuarantineQueue, mayReviewQuarantine, releaseQuarantinedDocument, requestQuarantineRelease } from './review'
+import {
+  listQuarantineQueue,
+  mayReviewQuarantine,
+  quarantineReviewAccess,
+  releaseQuarantinedDocument,
+  requestQuarantineRelease,
+} from './review'
 
 const member: AuthorizedSession = {
   userId: 'user-member',
@@ -51,7 +61,7 @@ const archivist: AuthorizedSession = { ...member, userId: 'user-arch', permissio
 const verdict = 'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","count":1,"pages":[1]},{"kind":"iban","count":1,"sample":"AT61 •••• 1234"}],"checked":"full"}'
 const quarantined = makeDocument({
   id: 'doc-q',
-  status: 'quarantined',
+  status: 'quarantined' as const,
   errorMessage: verdict,
   contentHash: 'sha256:abc',
   storageKey: 'org/org-1/project/proj-1/doc/doc-q/x.pdf',
@@ -62,6 +72,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(isFolderVisibleTo).mockResolvedValue(true)
   vi.mocked(requireFolderWrite).mockResolvedValue(undefined)
+  vi.mocked(canWriteFolder).mockResolvedValue(true)
   // The repository answers by the reader it is asked for, as `documentVisibleTo` does.
   vi.mocked(findDocumentInOrg).mockImplementation(async (_id, _org, reader) =>
     mayReadDocument(quarantined, reader) ? quarantined : null
@@ -109,7 +120,7 @@ describe('releaseQuarantinedDocument', () => {
   it('releases the exact bytes, re-dispatches, and audits kinds and terms only', async () => {
     const result = await releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))
 
-    expect(result).toEqual({ id: 'doc-q', status: 'pending', jobId: 'job-9' })
+    expect(result).toEqual({ id: 'doc-q', status: 'pending' as const, jobId: 'job-9' })
     expect(markScreeningReleased).toHaveBeenCalledWith(
       'doc-q',
       'org-1',
@@ -160,7 +171,7 @@ describe('releaseQuarantinedDocument', () => {
   })
 
   it('refuses a document that is not quarantined', async () => {
-    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...quarantined, status: 'completed', errorMessage: null })
+    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...quarantined, status: 'completed' as const, errorMessage: null })
     await expect(releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))).rejects.toMatchObject({
       status: 409,
     })
@@ -174,9 +185,9 @@ describe('releaseQuarantinedDocument', () => {
    * without a release it stayed with its uploader for ever.
    */
   it.each([
-    ['whose reading failed', { status: 'failed', errorMessage: 'IFC zu groß' }],
-    ['stranded before its dispatch', { status: 'uploaded', errorMessage: null }],
-    ['whose bytes were swapped after its verdict', { status: 'completed', screeningOutcome: 'clean' as const, screenedHash: 'sha256:earlier' }],
+    ['whose reading failed', { status: 'failed' as const, errorMessage: 'IFC zu groß' }],
+    ['stranded before its dispatch', { status: 'uploaded' as const, errorMessage: null }],
+    ['whose bytes were swapped after its verdict', { status: 'completed' as const, screeningOutcome: 'clean' as const, screenedHash: 'sha256:earlier' }],
   ])('releases a file %s, which waits on a reviewer as a quarantine does', async (_label, fields) => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({ ...quarantined, errorMessage: null, ...fields })
     await expect(releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))).resolves.toMatchObject({
@@ -187,7 +198,7 @@ describe('releaseQuarantinedDocument', () => {
   })
 
   it('refuses a held file still in flight: its own job decides it', async () => {
-    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...quarantined, status: 'processing', errorMessage: null })
+    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...quarantined, status: 'processing' as const, errorMessage: null })
     await expect(releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))).rejects.toMatchObject({
       status: 409,
     })
@@ -255,7 +266,7 @@ describe('listQuarantineQueue', () => {
 
   it('lists a file whose reading ended without a verdict as unscreened, not as a reasonless quarantine', async () => {
     vi.mocked(listQuarantinedDocuments)
-      .mockResolvedValueOnce([quarantined, { ...quarantined, id: 'doc-f', status: 'failed', errorMessage: 'IFC zu groß' }])
+      .mockResolvedValueOnce([quarantined, { ...quarantined, id: 'doc-f', status: 'failed' as const, errorMessage: 'IFC zu groß' }])
       .mockResolvedValue([])
     const items = await listQuarantineQueue(orgAdmin)
     expect(items.map((item) => [item.id, item.held])).toEqual([
@@ -321,15 +332,50 @@ describe('requestQuarantineRelease („Freigabe anfragen")', () => {
 
   it('lets the uploader ask about a file whose reading failed before a verdict', async () => {
     vi.mocked(findDocumentInOrg).mockImplementation(async (_id, _org, reader) => {
-      const failed = { ...quarantined, status: 'failed', errorMessage: 'IFC zu groß' }
+      const failed = { ...quarantined, status: 'failed' as const, errorMessage: 'IFC zu groß' }
       return mayReadDocument(failed, reader) ? failed : null
     })
     await expect(requestQuarantineRelease(uploader, 'doc-q')).resolves.toEqual({ id: 'doc-q', notified: 2 })
   })
 
   it('refuses a file that is no longer in quarantine', async () => {
-    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...quarantined, status: 'completed', errorMessage: null })
+    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...quarantined, status: 'completed' as const, errorMessage: null })
     await expect(requestQuarantineRelease(uploader, 'doc-q')).rejects.toBeInstanceOf(ConflictError)
     expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+})
+
+describe('quarantineReviewAccess (what the Files preview offers)', () => {
+  // `makeDocument` is uploaded by `user-1`, into the project root of `proj-1`.
+  const uploader: AuthorizedSession = { ...member, userId: 'user-1' }
+
+  beforeEach(() => {
+    vi.mocked(requireProjectAccess).mockImplementation(async (_s, _projectId, permission) => {
+      if (permission === 'project:manage') throw new NotFoundError('Project not found')
+      return { role: 'project-viewer' } as Awaited<ReturnType<typeof requireProjectAccess>>
+    })
+  })
+
+  it('lets a reviewer decide, and does not offer them the request', async () => {
+    await expect(quarantineReviewAccess(orgAdmin, 'doc-q')).resolves.toEqual({ canReview: true, canAskForReview: false })
+    expect(canWriteFolder).toHaveBeenCalledWith(orgAdmin, 'proj-1', null)
+  })
+
+  it('offers the uploader who may not decide the request instead', async () => {
+    await expect(quarantineReviewAccess(uploader, 'doc-q')).resolves.toEqual({ canReview: false, canAskForReview: true })
+  })
+
+  it('does not let a reviewer who may only read the folder decide, as release would refuse them (ADR-0088)', async () => {
+    vi.mocked(canWriteFolder).mockResolvedValue(false)
+    await expect(quarantineReviewAccess(orgAdmin, 'doc-q')).resolves.toEqual({ canReview: false, canAskForReview: false })
+  })
+
+  it('answers no to both for a document that is not held', async () => {
+    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...quarantined, status: 'completed' as const, errorMessage: null })
+    await expect(quarantineReviewAccess(orgAdmin, 'doc-q')).resolves.toEqual({ canReview: false, canAskForReview: false })
+  })
+
+  it('does not exist for a member who neither uploaded nor reviews it', async () => {
+    await expect(quarantineReviewAccess(member, 'doc-q')).rejects.toBeInstanceOf(NotFoundError)
   })
 })

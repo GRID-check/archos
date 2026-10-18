@@ -11,12 +11,30 @@ Both encode the same hand-written verdicts (OIB 1/2/3 near-universal, 4/5 always
 with a stronger reason for public/noise-sensitive uses, the fire sub-Richtlinien
 2.1/2.2/2.3 conditional, 6 conditional for unconditioned storage/agriculture).
 
+What it reads. The intake wizard stores a building's facts under a suffix per
+Bauwerk (``fluchtniveau_m@bw1``), so every read takes the flat key and each
+``<key>@<bwN>`` copy. A use zone's copy (``<key>@bw1@wohnen``) is that zone's
+detail and is skipped.
+
+* ``hauptnutzung``: stated flat; else the one D0 use the Bauwerke share
+  (``nutzungen``) that is also a verdict token. Two or more, or none: unknown.
+* ``gebaeudeklasse``: ``4`` or ``GK4``; the highest class across the Bauwerke.
+* ``fluchtniveau``: the band stated flat; else the band of the highest
+  ``fluchtniveau_m`` (metres) across the Bauwerke.
+* ``geschosse_unterirdisch``: the highest count across the Bauwerke.
+
+The prompt view writes these as ``- key=value`` lines.
+``facts_from_project_context`` reads ``4`` as an int, and a comma-joined
+``nutzungen`` as one string; both are handled here.
+
 The result is orientation, not legal advice.
 """
 
 from __future__ import annotations
 
 import json
+import math
+import re
 from dataclasses import dataclass
 from typing import Any
 from typing import Literal
@@ -41,6 +59,10 @@ _BETRIEBSBAU_CHECK = frozenset({"landwirtschaft", "sonstiges"})
 _PUBLIC_USES = frozenset({"beherbergung", "gesundheit", "versammlung", "buero"})
 _NOISE_SENSITIVE = frozenset({"wohnen", "beherbergung", "gesundheit", "buero", "versammlung"})
 _OIB6_EXEMPT = frozenset({"lager", "landwirtschaft"})
+# Every hauptnutzung token the verdicts compare: the union of the groups above.
+# The D0 catalogue shares only some of them (see the TS twin for the list).
+_HAUPTNUTZUNG_TOKENS = _BETRIEBSBAU_USES | _BETRIEBSBAU_CHECK | _PUBLIC_USES | _NOISE_SENSITIVE | _OIB6_EXEMPT
+_GK_TOKEN = re.compile(r"(?:GK)?([1-5])")
 
 _VERDICT_LABELS_DE: dict[str, str] = {
     "required": "verbindlich",
@@ -70,16 +92,19 @@ _TRIGGER_HINTS: tuple[tuple[str, str], ...] = (
 
 
 def _as_number(value: Any) -> float | None:
+    """A finite number, else None. Booleans are never numbers; strings are read as the prompt view writes them."""
     if isinstance(value, bool):
         return None
     if isinstance(value, int | float):
-        return float(value)
-    if isinstance(value, str):
+        number = float(value)
+    elif isinstance(value, str):
         try:
-            return float(value.strip())
+            number = float(value.strip())
         except ValueError:
             return None
-    return None
+    else:
+        return None
+    return number if math.isfinite(number) else None
 
 
 def _fact_str(facts: Facts, key: str) -> str | None:
@@ -88,9 +113,88 @@ def _fact_str(facts: Facts, key: str) -> str | None:
     return value if isinstance(value, str) and value != "" else None
 
 
-def _fact_num(facts: Facts, key: str) -> float | None:
-    """A numeric fact, else None (booleans are never numeric)."""
-    return _as_number(facts.get(key))
+def _scoped_values(facts: Facts, base: str) -> list[Any]:
+    """Every value stored under ``base``: the flat key and each ``<base>@<bwN>`` copy.
+
+    A use zone's copy (``<base>@bw1@wohnen``) is that zone's detail, not the building's, and is skipped.
+    """
+    values: list[Any] = []
+    for key, value in facts.items():
+        key_base, _, rest = key.partition("@")
+        if key_base == base and "@" not in rest:
+            values.append(value)
+    return values
+
+
+def _max_number(facts: Facts, base: str) -> float | None:
+    """The largest numeric value stored under ``base`` (flat or scoped), else None."""
+    numbers = [n for n in map(_as_number, _scoped_values(facts, base)) if n is not None]
+    return max(numbers) if numbers else None
+
+
+def fluchtniveau_band(facts: Facts) -> str | None:
+    """The Fluchtniveau band the rules read: the stated ``fluchtniveau``, else the highest ``fluchtniveau_m``.
+
+    Each band takes its upper bound inclusively: exactly 7 m is ``<=7m``, 11 m is ``7-11m``, 22 m is ``11-22m``.
+    """
+    stated = _fact_str(facts, "fluchtniveau")
+    if stated is not None:
+        return stated
+    metres = _max_number(facts, "fluchtniveau_m")
+    if metres is None:
+        return None
+    if metres <= 7:
+        return "<=7m"
+    if metres <= 11:
+        return "7-11m"
+    if metres <= 22:
+        return "11-22m"
+    return ">22m"
+
+
+def _nutzungen_tokens(facts: Facts) -> set[str]:
+    """Every D0 token the Bauwerke name. A list is taken as is; the prompt view's comma-joined text is split."""
+    tokens: set[str] = set()
+    for value in _scoped_values(facts, "nutzungen"):
+        if isinstance(value, list):
+            items = value
+        elif isinstance(value, str):
+            items = value.split(",")
+        else:
+            continue
+        tokens.update(str(item).strip() for item in items)
+    tokens.discard("")
+    return tokens
+
+
+def _hauptnutzung(facts: Facts) -> str | None:
+    """The stated ``hauptnutzung``, else the ``nutzungen`` when they name exactly one use and it is a verdict token."""
+    stated = _fact_str(facts, "hauptnutzung")
+    if stated is not None:
+        return stated
+    # Every use must name a verdict token: a use outside the vocabulary (``produktion``)
+    # is unknown, and an unknown use may be the Betriebsbau.
+    uses = _nutzungen_tokens(facts)
+    if len(uses) == 1 and uses <= _HAUPTNUTZUNG_TOKENS:
+        return next(iter(uses))
+    return None
+
+
+def _gebaeudeklasse_class(value: Any) -> int | None:
+    """``4`` or ``GK4`` (either case) as its class number, else None."""
+    if isinstance(value, str):
+        match = _GK_TOKEN.fullmatch(value.strip().upper())
+        return int(match.group(1)) if match else None
+    number = _as_number(value)
+    if number is None or number not in (1, 2, 3, 4, 5):
+        return None
+    return int(number)
+
+
+def _gebaeudeklasse(facts: Facts) -> str | None:
+    """The Gebäudeklasse across the Bauwerke: the highest class named, as ``GK<n>``."""
+    classes = [c for c in map(_gebaeudeklasse_class, _scoped_values(facts, "gebaeudeklasse")) if c is not None]
+    return f"GK{max(classes)}" if classes else None
 
 
 def _is_true(value: Any) -> bool:
@@ -149,10 +253,10 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
     if not facts:
         return _generic_six()
 
-    hauptnutzung = _fact_str(facts, "hauptnutzung")
-    gebaeudeklasse = _fact_str(facts, "gebaeudeklasse")
-    fluchtniveau = _fact_str(facts, "fluchtniveau")
-    geschosse_unterirdisch = _fact_num(facts, "geschosse_unterirdisch")
+    hauptnutzung = _hauptnutzung(facts)
+    gebaeudeklasse = _gebaeudeklasse(facts)
+    fluchtniveau = fluchtniveau_band(facts)
+    geschosse_unterirdisch = _max_number(facts, "geschosse_unterirdisch")
 
     verdicts: list[OibVerdict] = []
 

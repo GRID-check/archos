@@ -88,6 +88,13 @@ type MenuParts = {
   SubContent: typeof DropdownMenuSubContent
   RadioGroup: typeof DropdownMenuRadioGroup
   RadioItem: typeof DropdownMenuRadioItem
+  /**
+   * A submenu's size: 16rem wide and at most 18rem tall, but never taller than
+   * the room the menu has (on a phone on its side that is under 393px), so it
+   * scrolls instead of running off the screen. Spelled per menu kind because
+   * Radix names the variable after the primitive.
+   */
+  subContentClassName: string
 }
 
 const DROPDOWN_PARTS: MenuParts = {
@@ -98,6 +105,7 @@ const DROPDOWN_PARTS: MenuParts = {
   SubContent: DropdownMenuSubContent,
   RadioGroup: DropdownMenuRadioGroup,
   RadioItem: DropdownMenuRadioItem,
+  subContentClassName: 'w-64 max-h-[min(18rem,var(--radix-dropdown-menu-content-available-height))]',
 }
 
 const CONTEXT_PARTS: MenuParts = {
@@ -108,6 +116,7 @@ const CONTEXT_PARTS: MenuParts = {
   SubContent: ContextMenuSubContent,
   RadioGroup: ContextMenuRadioGroup,
   RadioItem: ContextMenuRadioItem,
+  subContentClassName: 'w-64 max-h-[min(18rem,var(--radix-context-menu-content-available-height))]',
 }
 
 function renderEntries(entries: readonly ActionMenuEntry[], parts: MenuParts): ReactNode {
@@ -156,7 +165,7 @@ function renderEntries(entries: readonly ActionMenuEntry[], parts: MenuParts): R
               {Icon ? <Icon className="size-4" aria-hidden /> : null}
               {entry.label}
             </parts.SubTrigger>
-            <parts.SubContent className="max-h-72 w-64 overflow-y-auto">
+            <parts.SubContent className={parts.subContentClassName}>
               {renderEntries(entry.items, parts)}
             </parts.SubContent>
           </parts.Sub>

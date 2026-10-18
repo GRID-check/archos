@@ -51,6 +51,8 @@ export const tasks: typeof en.tasks = {
   card: {
     openAria: '„{title}“ öffnen',
     unreviewed: 'Noch nicht geprüft',
+    /** Das sichtbare Wort für den Punkt rechts oben: auf dem Telefon gibt es kein Hover. */
+    toReview: 'Zu prüfen',
   },
   result: {
     document: 'Dokument öffnen',
@@ -72,7 +74,7 @@ export const tasks: typeof en.tasks = {
     runs: 'Aufgaben',
     /** Macht aus einem Einmaligen eine stehende Aufgabe, vorausgefüllt. */
     promote: 'Als stehende Aufgabe speichern',
-    promoteHint: 'Öffnet den Aufgaben-Assistenten, dieser Auftrag ist schon eingetragen.',
+    promoteHint: 'Öffnet den Aufgaben-Assistenten mit diesem Auftrag. Gespeichert wird erst im letzten Schritt, dieser Lauf bleibt unverändert.',
     gone: 'Das gibt es nicht mehr — möglicherweise wurde es gelöscht.',
     /**
      * Ein Deep Link, der in diesem Projekt auf keine Zeile passt. Der Link zeigt

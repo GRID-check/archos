@@ -11,11 +11,17 @@
  * (`dropped-file-handover`).
  *
  * The sections that answer a drop themselves are left to it, a drop beside
- * their zone included: the chat attaches to the conversation, research to its
- * run, the intake binds to a slot, and Dateien is the destination already.
+ * their zone included: the chat attaches to the conversation, the intake binds
+ * to a slot, the setup page files into the project's root, and Dateien is the
+ * destination already. (`research` is not among them: the route only
+ * redirects to the chat now.)
  * Taking a near miss there to another page would lose what the reader was in
  * the middle of. Inner zones built on `useFileDragDrop` stop the event, so they
  * win wherever this one is active.
+ *
+ * Dateien files a handed-over drop at the project's root, so a reader who may
+ * only read there (ADR-0088) is told so while the files are over the page, and
+ * the drop is refused, rather than sent to a Dateien that cannot take it.
  */
 
 import type { ReactNode } from 'react'
@@ -24,10 +30,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from '@/i18n'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
 import { handOverDroppedFiles } from '../lib/dropped-file-handover'
+import type { FolderAccessLevel } from '../lib/file-shelf'
 import { FileDropOverlay, useWindowDragGuard } from './file-drop-overlay'
 
 /** Project sections with a drop target of their own. */
-const SECTIONS_WITH_OWN_DROP = new Set(['chat', 'files', 'intake', 'research'])
+const SECTIONS_WITH_OWN_DROP = new Set(['chat', 'files', 'intake', 'setup'])
 
 /** Whether a drop on this path is the project's to route to Dateien. */
 export function routesDropToFiles(pathname: string, projectId: string): boolean {
@@ -39,11 +46,14 @@ export function routesDropToFiles(pathname: string, projectId: string): boolean 
 export function ProjectFileDrop({
   projectId,
   disabled = false,
+  rootAccess = 'write',
   children,
 }: {
   projectId: string
   /** No drop target at all: a closed project takes no files (ADR-0090). */
   disabled?: boolean
+  /** What the reader may do at the project's root, where Dateien files the drop (`projectRootAccess`). */
+  rootAccess?: FolderAccessLevel
   children: ReactNode
 }) {
   const pathname = usePathname() ?? ''
@@ -58,9 +68,10 @@ export function ProjectFileDrop({
     },
     [projectId, router]
   )
-  const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
+  const { isDragging, isUnsupportedDrag, refusal, dragHandlers } = useFileDragDrop({
     onDrop: sendToFiles,
     disabled: !active,
+    refusal: rootAccess === 'write' ? null : t('workspace.dropRefusedHere'),
     acceptZip: true,
   })
   useWindowDragGuard()
@@ -75,6 +86,7 @@ export function ProjectFileDrop({
           isUnsupported={isUnsupportedDrag}
           uploadLabel={t('workspace.dropToUpload')}
           unsupportedLabel={t('workspace.dropUnsupported')}
+          refusal={refusal}
           testId="project-drop-overlay"
         />
       )}

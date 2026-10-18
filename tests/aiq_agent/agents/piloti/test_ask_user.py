@@ -303,3 +303,36 @@ class TestToolDescriptionPrefersAskingWhenOptionsAreNameable:
         assert "project context already states" in description
         assert "at most one ask_user per turn" in description
         assert "never for an open question" in description
+
+
+class TestAHeadlessTurnIsNeverAsked:
+    """A turn an event woke (``X-AIQ-Mode: headless``): nobody holds the socket to answer."""
+
+    @pytest.mark.asyncio
+    async def test_the_tool_refuses_without_prompting_and_points_at_the_thread(self):
+        prompt_user_input = AsyncMock()
+        with patch("aiq_api.auth.middleware.get_current_user", return_value={"type": "internal", "headless": True}):
+            result = await _call(
+                prompt_user_input,
+                question="Welches Modell meinst du?",
+                options=["Castle.ifc", "Institute.ifc"],
+            )
+
+        prompt_user_input.assert_not_awaited()
+        assert "canvas__reply" in result
+        assert "assumption" in result
+
+    @pytest.mark.asyncio
+    async def test_an_anonymous_caller_that_only_skips_the_clarifier_is_still_asked(self):
+        prompt_user_input = AsyncMock(return_value=_interaction_response(HumanResponseText(text="Castle.ifc")))
+        with patch(
+            "aiq_api.auth.middleware.get_current_user", return_value={"type": "anonymous", "skip_clarifier": True}
+        ):
+            result = await _call(
+                prompt_user_input,
+                question="Welches Modell meinst du?",
+                options=["Castle.ifc", "Institute.ifc"],
+            )
+
+        prompt_user_input.assert_awaited_once()
+        assert "Castle.ifc" in result

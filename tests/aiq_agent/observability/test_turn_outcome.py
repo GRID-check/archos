@@ -139,3 +139,45 @@ class TestTheBox:
             record_turn_finished(object())
         finally:
             end_turn_outcome(token)
+
+
+class TestFactsOnlyTheWorkflowKnows:
+    """`record_turn_facts`: the workflow's own facts (``focus_region_viewed``) on the root."""
+
+    def test_a_fact_rides_beside_the_terminal_whichever_comes_first(self):
+        from aiq_agent.observability.turn_outcome import record_turn_facts
+
+        token = begin_turn_outcome()
+        try:
+            record_turn_facts(focus_region_viewed=True, ignored=None)
+            record_turn_finished(RunFinishedBody(outcome="answered", result=TurnResult(message_id="m", text="A.")))
+            attributes = current_turn_outcome()
+        finally:
+            end_turn_outcome(token)
+
+        assert attributes["langfuse.trace.metadata.focus_region_viewed"] is True
+        assert attributes["langfuse.trace.metadata.turn_outcome"] == "answered"
+        assert "langfuse.trace.metadata.ignored" not in attributes
+        assert "__turn_facts__" not in attributes
+
+    def test_a_fact_recorded_in_a_child_context_reaches_the_box(self):
+        from aiq_agent.observability.turn_outcome import record_turn_facts
+
+        async def workflow():
+            record_turn_facts(focus_region_viewed=False)
+
+        token = begin_turn_outcome()
+        try:
+            asyncio.run(workflow())
+            attributes = current_turn_outcome()
+        finally:
+            end_turn_outcome(token)
+
+        assert attributes == {"langfuse.trace.metadata.focus_region_viewed": False}
+
+    def test_outside_a_turn_nothing_is_recorded(self):
+        from aiq_agent.observability.turn_outcome import record_turn_facts
+
+        record_turn_facts(focus_region_viewed=True)
+
+        assert current_turn_outcome() is None

@@ -30,6 +30,7 @@ import { Chip, ChipCount } from '@/components/ui/chip'
 import { CountPill } from '@/components/ui/count-pill'
 import { StatCardIcon } from '@/components/ui/stat-card'
 import { useTranslations } from '@/i18n'
+import { surfaceStateLabel } from '@/lib/documents/surface-state'
 import type { CountKey } from '../lib/upload-summary'
 
 type Tone = 'success' | 'info' | 'warning' | 'destructive' | 'muted'
@@ -54,15 +55,15 @@ export function useTallyLabel(): (key: CountKey) => string {
   return (key) => {
     switch (key) {
       case 'ready':
-        return tFiles('status.ready')
+        return surfaceStateLabel('citable', tFiles)
       case 'reading':
-        return tFiles('status.processing')
+        return surfaceStateLabel('reading', tFiles)
       case 'quarantined':
-        return tFiles('status.quarantined')
+        return surfaceStateLabel('held', tFiles)
       case 'failed':
-        return tFiles('status.failed')
+        return surfaceStateLabel('unreadable', tFiles)
       case 'stored':
-        return tFiles('status.stored')
+        return surfaceStateLabel('stored', tFiles)
       case 'unchanged':
         return t('summary.counts.unchanged')
       case 'excluded':

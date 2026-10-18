@@ -1,39 +1,70 @@
 /**
  * The document-status vocabulary, declared once, as data.
  *
- * `documents.status` is an open `text` column and THREE vocabularies disagree
- * about what may be in it:
+ * Two sets, and the difference between them is the point:
  *
- *   - the schema and its docs describe `pending → processing → processed | error`;
- *   - `reconcile-status.ts` writes `completed` and `failed`, and nothing else
- *     ever writes `processed` or `error`;
- *   - the Files badge knew eleven strings (`ready`, `uploaded`, `ingested`,
- *     `success`, `completed`, `ingesting`, `pending`, `processing`,
- *     `uploading`, `failed`, `error`) through a `Record<string, …>` with a
- *     silent fallback, so a twelfth cost nothing to add and nothing noticed.
+ *   - {@link DOCUMENT_STATUSES}: the seven values `documents.status` may hold.
+ *     Migration 0135 rewrote every legacy spelling to one of them and added a
+ *     CHECK (`documents_status_known`), so a writer that emits an eighth fails
+ *     its write. `document-status.spec.ts` scans the writers and fails first.
+ *   - {@link DOCUMENT_STATUS_FACTS}: every value a SURFACE may be handed, which
+ *     is those seven plus the spellings that arrive from outside the column:
+ *     the chat's session files keep the backend's file states in the browser
+ *     (`uploading`, `ingesting`, `success`, `error`), and the platform corpus
+ *     listing reports `ingested`/`ready`. They render as what they mean; none
+ *     of them is ever written to `documents.status`.
  *
- * This module DOES NOT resolve that disagreement — it records it. Unifying what
- * the writers emit is a bigger, riskier change (a migration over live rows and
- * every reader of the column), and doing half of it here would leave the badge
- * telling a reader something the database no longer says. What changes is that
- * the set is now KNOWABLE: every value anything is known to emit is declared
- * here with what it means, `document-status.tsx` and `reconcile-status.ts`
- * DERIVE their tables from it instead of restating it, and
- * `document-status.spec.ts` fails when a writer emits a value nobody declared.
- * The next drift is a failing test rather than a grey badge.
+ * The column used to be open `text`, and three vocabularies disagreed about it:
+ * the schema documented `pending → processing → processed | error`, the
+ * reconcile wrote `completed` and `failed`, and the badge knew eleven strings.
+ * This module once recorded that disagreement without resolving it; 0135
+ * resolved it in the database (ADR-0104, rule 8).
  *
  * Two facts per value:
  *
  *   - `variant` — the Badge colour, which is also the FAMILY. Green is not
  *     decoration: it is the product telling the reader "Piloti can quote this",
  *     which is why `isCitableStatus` is exactly the `success` set and
- *     `isFailedStatus` exactly the `destructive` one. They were separate sets
- *     that happened to be identical; here they are one statement.
+ *     `isFailedStatus` exactly the `destructive` one. The word a surface says
+ *     for it is derived from the colour too (`surfaceStateOf`,
+ *     `./surface-state`): one word per state, the same on every surface.
  *   - `phase` — whether the row will change on its own. This is the
  *     load-bearing one for `reconcile-status.ts`, which polls the backend for
  *     every in-flight row, and for the workspace, which re-reads the listing
  *     while anything is unsettled.
  */
+
+/**
+ * What `documents.status` may hold (migration 0135, CHECK `documents_status_known`).
+ * The order is the reading's order; the meanings are in {@link DOCUMENT_STATUS_FACTS}.
+ */
+export const DOCUMENT_STATUSES = [
+  'uploaded',
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+  'quarantined',
+  'stored',
+] as const
+
+export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number]
+
+const COLUMN_STATUSES: ReadonlySet<string> = new Set(DOCUMENT_STATUSES)
+
+/** Whether a value is one `documents.status` may hold. */
+export function isDocumentStatus(value: string | null | undefined): value is DocumentStatus {
+  return value != null && COLUMN_STATUSES.has(value)
+}
+
+/**
+ * The column's values among `values`: what a SQL filter over `documents.status`
+ * needs from a set that also names spellings from outside the column (the
+ * in-flight set includes the upload tray's `uploading`).
+ */
+export function columnStatuses(values: Iterable<string>): DocumentStatus[] {
+  return [...values].filter(isDocumentStatus)
+}
 
 /** Badge variants the Files chrome uses for a status. */
 export type DocumentStatusVariant = 'success' | 'info' | 'destructive' | 'secondary' | 'warning'
@@ -44,44 +75,35 @@ export type DocumentStatusPhase = 'in-flight' | 'terminal'
 export interface DocumentStatusFacts {
   readonly variant: DocumentStatusVariant
   readonly phase: DocumentStatusPhase
-  /** `files` dictionary key for the badge label. */
-  readonly labelKey: string
 }
 
 /**
- * Every status this codebase is known to render or write, and what it means.
- *
- * Grouped by family rather than alphabetically, because the grouping is the
- * point: four spellings of "indexed" exist because four writers arrived at the
- * question separately, and seeing them stacked is what makes that visible.
- * (`uploaded` used to be the fifth; it now sits with `stored`, because a row
- * that was never indexed is not an indexing success.)
+ * Every status a surface may be handed, and what it means: the seven of
+ * {@link DOCUMENT_STATUSES}, and the spellings that arrive from outside the
+ * column (marked as such below). Grouped by family, because the family is what
+ * a reader acts on.
  */
 export const DOCUMENT_STATUS_FACTS = {
-  // --- Indexed: Piloti can quote it. Four spellings, one meaning. ------------
-  ready: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
-  ingested: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
-  success: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
-  /** What `reconcile-status.ts` actually writes when ingestion finishes. */
-  completed: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
-  /**
-   * The schema's documented terminal success. NOTHING in this repo emits it —
-   * it is declared because the column's documentation names it, and because a
-   * value that arrives from outside should render as what it means rather than
-   * fall through to a grey badge. Declaring it is not a claim that anything
-   * writes it; it is the fourth disagreement, written down.
-   */
-  processed: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
+  // --- Indexed: Piloti can quote it. --------------------------------------
+  /** The column's value, written by `reconcile-status.ts` when the read finishes. */
+  completed: { variant: 'success', phase: 'terminal' },
+  /** From outside the column: the backend's file state, the platform corpus listing. */
+  ready: { variant: 'success', phase: 'terminal' },
+  ingested: { variant: 'success', phase: 'terminal' },
+  success: { variant: 'success', phase: 'terminal' },
+  processed: { variant: 'success', phase: 'terminal' },
 
   // --- In flight: the row will change on its own, so it gets polled. --------
-  uploading: { variant: 'info', phase: 'in-flight', labelKey: 'status.uploading' },
-  pending: { variant: 'info', phase: 'in-flight', labelKey: 'status.processing' },
-  processing: { variant: 'info', phase: 'in-flight', labelKey: 'status.processing' },
-  ingesting: { variant: 'info', phase: 'in-flight', labelKey: 'status.processing' },
+  pending: { variant: 'info', phase: 'in-flight' },
+  processing: { variant: 'info', phase: 'in-flight' },
+  /** From outside the column: the upload tray and the chat's session files. */
+  uploading: { variant: 'info', phase: 'in-flight' },
+  ingesting: { variant: 'info', phase: 'in-flight' },
 
   // --- Failed: terminal, and the card says why. ----------------------------
-  failed: { variant: 'destructive', phase: 'terminal', labelKey: 'status.failed' },
-  error: { variant: 'destructive', phase: 'terminal', labelKey: 'status.failed' },
+  failed: { variant: 'destructive', phase: 'terminal' },
+  /** From outside the column: the chat's session files. */
+  error: { variant: 'destructive', phase: 'terminal' },
 
   // --- Neither: the bytes are here and indexing was deliberately skipped. ---
   /**
@@ -96,7 +118,7 @@ export const DOCUMENT_STATUS_FACTS = {
    * job (there is no job — the document was never dispatched to `/v1/ingest`)
    * and the card spins forever on a row that is already at rest.
    */
-  stored: { variant: 'secondary', phase: 'terminal', labelKey: 'status.stored' },
+  stored: { variant: 'secondary', phase: 'terminal' },
   /**
    * Every row's birth status, and nothing else's. The upload path inserts the
    * row as `uploaded` before dispatching, so a listing read in that millisecond
@@ -110,7 +132,7 @@ export const DOCUMENT_STATUS_FACTS = {
    * "Ready" forever. Terminal, so nothing polls it: there is no job to ask
    * about. Retry remains possible through the re-ingest action.
    */
-  uploaded: { variant: 'secondary', phase: 'terminal', labelKey: 'status.stored' },
+  uploaded: { variant: 'secondary', phase: 'terminal' },
 
   // --- Held back: the bytes are here and a person has to decide. -----------
   /**
@@ -124,7 +146,7 @@ export const DOCUMENT_STATUS_FACTS = {
    * at rest either — it waits on a decision. The reasons are in `errorMessage`
    * as `quarantined:{json}` (`lib/upload-screening/quarantine.ts` reads them).
    */
-  quarantined: { variant: 'warning', phase: 'terminal', labelKey: 'status.quarantined' },
+  quarantined: { variant: 'warning', phase: 'terminal' },
 } as const satisfies Record<string, DocumentStatusFacts>
 
 /** The declared vocabulary as a type — `keyof`, so it cannot drift from the data. */

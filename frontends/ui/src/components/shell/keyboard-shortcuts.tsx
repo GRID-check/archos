@@ -7,7 +7,9 @@
  * (the outer gate). The per-user preference
  * (profile → keyboard shortcuts, default ON) is the inner gate: when the
  * user turns shortcuts off this component registers ZERO listeners and
- * renders nothing, so the whole feature is inert.
+ * renders no cheatsheet, so every key is inert. The command palette stays
+ * mounted either way: it is also opened by the search button in the phone
+ * and org headers, and its open state lives in the shell (`useShellOverlays`).
  *
  * What it binds:
  *   ⌘K / Ctrl+K   open the command palette
@@ -29,6 +31,7 @@ import { usePathname, useRouter } from 'next/navigation'
 
 import { useShortcutsPreference } from '@/hooks/use-shortcuts-preference'
 import { CommandPalette, projectIdFromPathname } from './command-palette'
+import { useShellOverlays } from './shell-overlays'
 import { ShortcutsCheatsheet } from './shortcuts-cheatsheet'
 import {
   isModifierKey,
@@ -80,7 +83,11 @@ export function KeyboardShortcuts({
   const { enabled } = useShortcutsPreference()
   const router = useRouter()
   const pathname = usePathname() ?? ''
-  const [paletteOpen, setPaletteOpen] = React.useState(false)
+  // The palette's open state is the shell's, not this listener's: the search
+  // button in the phone header and the org header opens the same palette.
+  const paletteOpen = useShellOverlays((s) => s.paletteOpen)
+  const setPaletteOpen = useShellOverlays((s) => s.setPaletteOpen)
+  const togglePalette = useShellOverlays((s) => s.togglePalette)
   const [cheatsheetOpen, setCheatsheetOpen] = React.useState(false)
   const leaderArmedAtRef = React.useRef<number | null>(null)
 
@@ -128,7 +135,7 @@ export function KeyboardShortcuts({
         event.preventDefault()
         leaderArmedAtRef.current = null
         setCheatsheetOpen(false)
-        setPaletteOpen((prev) => !prev)
+        togglePalette()
         return
       }
 
@@ -168,13 +175,12 @@ export function KeyboardShortcuts({
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [enabled, router, flags])
-
-  // Inner gate: nothing rendered either — the feature is fully inert.
-  if (!enabled) return null
+  }, [enabled, router, flags, togglePalette])
 
   return (
     <>
+      {/* Mounted whether or not shortcuts are on: turning the keys off must
+          not take the search button's palette with them. */}
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
@@ -185,6 +191,9 @@ export function KeyboardShortcuts({
         showSkills={showSkills}
         canAccessArchiv={canAccessArchiv}
       />
+      {/* Only `?` opens the cheatsheet, so it only ever opens for someone at a
+          keyboard; with shortcuts off it is not mounted at all. */}
+      {enabled && (
       <ShortcutsCheatsheet
         open={cheatsheetOpen}
         onOpenChange={setCheatsheetOpen}
@@ -196,6 +205,7 @@ export function KeyboardShortcuts({
         canCollaborate={canCollaborate}
         canAccessInbox={canAccessInbox}
       />
+      )}
     </>
   )
 }

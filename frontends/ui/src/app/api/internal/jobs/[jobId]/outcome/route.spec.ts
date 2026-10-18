@@ -29,9 +29,17 @@ vi.mock('@/lib/tasks/service', () => ({
   recordRunOutcome: vi.fn(),
 }))
 
+// A reading of a project's documents has no run row (ADR-0111); its fallback
+// is the intake's. No intake has the job unless a spec says so.
+vi.mock('@/lib/project-intake/service', () => ({
+  settleIntakeOutcome: vi.fn(async () => null),
+}))
+
 import type { TaskRun } from '@/lib/db/schema'
 import { loadRunForOutcome, recordRunOutcome } from '@/lib/tasks/service'
-import { withPlatformAccess } from '@/lib/db/tenant-context'
+import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
+import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'
+import { settleIntakeOutcome } from '@/lib/project-intake/service'
 import { POST } from './route'
 
 const REAL_TOKEN = 'a-real-secret-token'
@@ -111,6 +119,33 @@ describe('POST /api/internal/jobs/[jobId]/outcome', () => {
     // row, and the worker reads 404 as "nothing to notify".
     expect(response.status).toBe(404)
     expect(recordRunOutcome).not.toHaveBeenCalled()
+  })
+
+  it('settles the reading of a project’s documents when the job is an intake’s, in the body’s organization', async () => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.mocked(loadRunForOutcome).mockResolvedValue(null)
+    vi.mocked(settleIntakeOutcome).mockResolvedValue({
+      projectId: 'proj-1',
+      status: 'failed',
+    } as Partial<ProjectIntakeRow> as ProjectIntakeRow)
+
+    const response = await POST(makeRequest({ organizationId: 'org-1', status: 'failure', error: 'boom' }, REAL_TOKEN), routeContext)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ intake: { projectId: 'proj-1', status: 'failed' } })
+    expect(settleIntakeOutcome).toHaveBeenCalledWith('org-1', BACKEND_JOB_ID, 'failure')
+    expect(withTenant).toHaveBeenCalledWith({ organizationId: 'org-1' }, expect.any(Function))
+    expect(recordRunOutcome).not.toHaveBeenCalled()
+  })
+
+  it('asks no intake when a run row knows the job', async () => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.mocked(loadRunForOutcome).mockResolvedValue(run)
+    vi.mocked(recordRunOutcome).mockResolvedValue({ notified: true, filed: null, closed: true })
+
+    await POST(makeRequest({ organizationId: 'org-1', status: 'success' }, REAL_TOKEN), routeContext)
+
+    expect(settleIntakeOutcome).not.toHaveBeenCalled()
   })
 
   it('refuses a run whose tenant disagrees with the caller, as a 404', async () => {

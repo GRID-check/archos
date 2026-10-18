@@ -33,26 +33,66 @@ import { servedFrom } from '@/lib/permits/repository'
 /** No restricted folder: the clearance every member of the project has. */
 const NO_CLEARANCE: readonly string[] = []
 
+/** The predicate both readers below share: the rows the closing extraction and the intake may read. */
+async function extractableWhere(organizationId: string, projectId: string, collectionName: string) {
+  const access = await liveFolderAccess(organizationId, projectId, NO_CLEARANCE)
+  return and(
+    eq(documents.organizationId, organizationId),
+    eq(documents.projectId, projectId),
+    eq(documents.collectionName, collectionName),
+    documentVisibleTo(SCREENED_ONLY),
+    eq(documents.lifecycle, 'active'),
+    servedFrom(access.visibleFolderIds)
+  )
+}
+
 /** The file names of the project's main collection the closing extraction may read, sorted; none for an empty one. */
 export async function extractableFileNames(
   organizationId: string,
   projectId: string,
   collectionName: string
 ): Promise<string[]> {
-  const access = await liveFolderAccess(organizationId, projectId, NO_CLEARANCE)
   const rows = await getDb()
     .selectDistinct({ fileName: documents.filename })
     .from(documents)
-    .where(
-      and(
-        eq(documents.organizationId, organizationId),
-        eq(documents.projectId, projectId),
-        eq(documents.collectionName, collectionName),
-        documentVisibleTo(SCREENED_ONLY),
-        eq(documents.lifecycle, 'active'),
-        servedFrom(access.visibleFolderIds)
-      )
-    )
+    .where(await extractableWhere(organizationId, projectId, collectionName))
     .orderBy(asc(documents.filename))
   return rows.map((row) => row.fileName)
+}
+
+/** Most documents {@link extractableDocuments} answers with. */
+export const MAX_EXTRACTABLE_DOCUMENTS = 2000
+
+/** One document a reading may read, by its id and the bytes it holds. */
+export interface ExtractableDocument {
+  documentId: string
+  fileName: string
+  /** `sha256:<hex>`, or null when the digest is unknown (a row from before 0123's backfill). */
+  contentHash: string | null
+  updatedAt: Date
+}
+
+/**
+ * The same documents as {@link extractableFileNames}, with their ids and
+ * content hashes, sorted by name: what the intake records as read, so a new
+ * Fassung (new bytes, new hash) is read again (ADR-0111). Bounded by
+ * {@link MAX_EXTRACTABLE_DOCUMENTS}.
+ */
+export async function extractableDocuments(
+  organizationId: string,
+  projectId: string,
+  collectionName: string
+): Promise<ExtractableDocument[]> {
+  const rows = await getDb()
+    .select({
+      documentId: documents.id,
+      fileName: documents.filename,
+      contentHash: documents.contentHash,
+      updatedAt: documents.updatedAt,
+    })
+    .from(documents)
+    .where(await extractableWhere(organizationId, projectId, collectionName))
+    .orderBy(asc(documents.filename), asc(documents.id))
+    .limit(MAX_EXTRACTABLE_DOCUMENTS)
+  return rows.map((row) => ({ ...row, updatedAt: new Date(row.updatedAt) }))
 }

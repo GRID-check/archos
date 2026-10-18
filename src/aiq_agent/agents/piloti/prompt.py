@@ -218,6 +218,115 @@ def shelf_label(shelf: str | None) -> str | None:
     return SHELF_QUALIFIERS.get(parsed) if parsed is not None else None
 
 
+def _where_on_the_page(region: Any) -> str:
+    """The box's place in words, by its centre: „oben links“, „in der Seitenmitte“, „unten rechts“."""
+    cx, cy = region.x + region.w / 2, region.y + region.h / 2
+    row = "oben" if cy < 1 / 3 else ("unten" if cy > 2 / 3 else "")
+    column = "links" if cx < 1 / 3 else ("rechts" if cx > 2 / 3 else "")
+    if row and column:
+        return f"{row} {column}"
+    if row:
+        return f"{row} in der Mitte"
+    return f"in der Mitte {column}" if column else "in der Seitenmitte"
+
+
+def _percent(share: float) -> str:
+    return f"{max(1, round(share * 100))} %"
+
+
+def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
+    """The „Fokusbereich“ section: the box a person drew, and what to do with it. None without one.
+
+    German like the blocks around it, and short: which document, page and box in
+    words a person would use, then the order of work — look at exactly that crop
+    before answering (``canvas__look``, or ``view_knowledge_image`` where the
+    canvas tools are not bound), show what the answer refers to, propose
+    findings as marks, and answer in the thread when the question was asked
+    there. The model decides; nothing is posted for it.
+    """
+    region = getattr(state, "focus_region", None)
+    if region is None:
+        return None
+    file_name = getattr(state, "focus_file_name", None)
+    document = f"von **{file_name}**" if file_name else "des geöffneten Dokuments"
+    box = f"[{region.x:.3f}, {region.y:.3f}, {region.w:.3f}, {region.h:.3f}]"
+    canvas = "canvas__look" in tool_names
+    lines = [
+        "## Fokusbereich",
+        f"Die Person hat auf Seite {region.page} {document} einen Rahmen gezogen: {_where_on_the_page(region)}, "
+        f"etwa {_percent(region.w)} der Seitenbreite und {_percent(region.h)} der Seitenhöhe (`region={box}`: "
+        "x, y, w, h als Anteile der Seite, Ursprung oben links). „Hier“, „das“ und „diese Stelle“ meinen diesen "
+        "Ausschnitt.",
+    ]
+    if canvas:
+        lines.append(
+            f"Sieh ihn an, bevor du antwortest: `canvas__look` mit `page={region.page}` und `region={box}`. "
+            "Antworte über das, was im Rahmen liegt, und sag, wenn du dafür etwas außerhalb brauchst. Zeig mit "
+            "`canvas__highlight` oder `canvas__point`, worauf du dich beziehst; Befunde schlägst du mit "
+            "`canvas__mark` als Anmerkungen vor, die Stelle abgelesen an dem, was du gesehen hast. Was die Person "
+            "ausdrücklich verlangt, tust du in ihrem Namen: `canvas__mark` mit `open=true`, `canvas__update`, "
+            "`canvas__delete`."
+        )
+    else:
+        target = f'`file_name="{file_name}"`, ' if file_name else ""
+        lines.append(
+            f"Sieh ihn an, bevor du antwortest: `view_knowledge_image` mit {target}`page_number={region.page}` "
+            f"und `region={box}`. Antworte über das, was im Rahmen liegt."
+        )
+    if getattr(state, "reply_in_thread", False) and region.annotation_id and canvas:
+        lines.append(
+            f"Gefragt wurdest du im Verlauf der Anmerkung mit der id `{region.annotation_id}`: Antworte dort mit "
+            "`canvas__reply` (`annotation` = diese id), kurz, für sich verständlich und ohne Quellenmarken, und "
+            "gib hier dieselbe Antwort."
+        )
+    lines.append(
+        "Zeigt das Werkzeug kein Bild, etwa weil das Modell dieses Büros keine Bilder liest, sag das offen und "
+        "rate nicht, was im Rahmen steht."
+    )
+    return "\n".join(lines)
+
+
+#: What woke a turn, in the words the prompt uses (``wire_v2.TurnTrigger.kind``).
+_TRIGGER_EVENTS = {
+    "thread_mention": "hat dich im Verlauf einer Anmerkung erwähnt",
+    "thread_reply": "hat im Verlauf einer Anmerkung geantwortet, die du begonnen hast",
+    "assigned": "hat dir eine Anmerkung zugewiesen",
+}
+
+
+def trigger_block(state: Any, tool_names: Sequence[str]) -> str | None:
+    """The „Geweckt durch“ section: an event woke this turn, nobody is typing. None for a typed turn.
+
+    A fact block, not a policy: who acted (the verified name the turn runs
+    under), what they did, on which Anmerkung, and the outcome to reach, which
+    is an answer where it happened (ADR-0060: the prompt states the outcome).
+    It also says nobody watches the turn live, because ``ask_user`` refuses on
+    such a turn and a question belongs in the thread.
+    """
+    trigger = getattr(state, "trigger", None)
+    if trigger is None:
+        return None
+    user = getattr(state, "user_info", None) or {}
+    who = (user.get("name") or user.get("email") or "Eine Person") if isinstance(user, dict) else "Eine Person"
+    lines = [
+        "## Geweckt durch",
+        f"Niemand hat diese Frage in den Chat getippt: {who} {_TRIGGER_EVENTS[trigger.kind]} "
+        f"(Ereignis `{trigger.event_id}`), und das hat dich geweckt. Niemand sieht dir dabei live zu.",
+    ]
+    if trigger.annotation_id and "canvas__reply" in tool_names:
+        lines.append(
+            f"Antworte dort, wo es passiert ist: im Verlauf der Anmerkung `{trigger.annotation_id}` mit "
+            "`canvas__reply` (`annotation` = diese id), kurz und für sich verständlich. Brauchst du eine Angabe, "
+            "frag dort im Verlauf; warte nicht auf eine Antwort in diesem Zug."
+        )
+    else:
+        lines.append(
+            "Antworte so, dass die Person es dort findet, wo sie gefragt hat. Brauchst du eine Angabe, frag in "
+            "deiner Antwort; warte nicht auf eine Antwort in diesem Zug."
+        )
+    return "\n".join(lines)
+
+
 def oib_applicability(project_context: str | None) -> str | None:
     """Which OIB-Richtlinien this project's own facts make applicable, or None.
 
@@ -316,6 +425,8 @@ def render_system_prompt(
         ),
         focus_file_name=state.focus_file_name,
         focus_shelf_label=shelf_label(state.focus_shelf),
+        focus_region_block=focus_region_block(state, [tool.get("name", "") for tool in tools_info]),
+        trigger_block=trigger_block(state, [tool.get("name", "") for tool in tools_info]),
         oib_applicability=oib_applicability(state.project_context),
         parcel_note=parcel_note(documents),
         # The L1 skills catalog, collated by the register layer; None renders

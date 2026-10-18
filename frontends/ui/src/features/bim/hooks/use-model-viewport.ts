@@ -147,10 +147,28 @@ export interface ModelVisibility extends ViewerVisibility {
   restore: (edits: ViewerVisibility) => void
 }
 
+/**
+ * The way out of a download that is going badly, and the way back in.
+ *
+ * Separate from `status` because it is the READER's decision rather than the
+ * renderer's report. A hundred-megabyte model on a site's patchy network is
+ * the likeliest thing in the product to stall, and the only exits used to be
+ * closing the whole dialog (cancel) or reopening it (retry).
+ */
+export interface ModelDownload {
+  /** The reader stopped this download. The canvas must stay unmounted. */
+  cancelled: boolean
+  /** Abandon the download; the in-flight request is aborted by the unmount. */
+  cancel: () => void
+  /** Start again from the same source, forgetting a failure or a cancel. */
+  restart: () => void
+}
+
 export interface ModelViewport {
   /** False when the browser has no WebGPU at all — the canvas cannot mount. */
   webGpu: boolean
   status: IfcViewerStatus
+  download: ModelDownload
   /** The model's vertical extent in metres, once it has loaded. */
   bounds: { minMetres: number; maxMetres: number } | null
   /** The cut, clamped into this model's extent. */
@@ -240,6 +258,25 @@ export function useModelViewport({
   const [statusSource, setStatusSource] = useState<string | null>(sourceUrl)
   const current: IfcViewerStatus =
     statusSource === sourceUrl ? status : { phase: 'idle', percent: null, meshCount: 0 }
+
+  /**
+   * A cancel belongs to the source it stopped, like a failure does: opening
+   * the next model must not inherit "cancelled" from the last one.
+   */
+  const [cancelledSource, setCancelledSource] = useState<string | null>(null)
+  const cancelled = cancelledSource !== null && cancelledSource === sourceUrl
+  const download = useMemo<ModelDownload>(
+    () => ({
+      cancelled,
+      cancel: () => setCancelledSource(sourceUrl),
+      restart: () => {
+        setCancelledSource(null)
+        setStatusSource(sourceUrl)
+        setStatus({ phase: 'idle', percent: null, meshCount: 0 })
+      },
+    }),
+    [cancelled, sourceUrl]
+  )
 
   const [bounds, setBounds] = useState<{ minMetres: number; maxMetres: number } | null>(null)
 
@@ -654,6 +691,7 @@ export function useModelViewport({
   return {
     webGpu,
     status: current,
+    download,
     bounds,
     section,
     selectedExpressId,

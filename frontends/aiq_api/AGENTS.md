@@ -25,9 +25,10 @@ access belongs in the BFF, not here.
 **Job workers are claimed in the database, not assigned.** Both queues are
 tables on one claim, `aiq_agent.common.claim_queue` (ADR-0079): fewest running in
 the lane (the organization) fleet-wide first, then the lane served longest ago,
-then `interactive` before `bulk`, then oldest; a heartbeat, a reclaim of stale
-claims, `release_claims` on a drain (no attempt spent), and `dead` rows kept as a
-trace instead of a `DELETE`. A change to the order, the heartbeat or the dead
+then the lane with the oldest job, then the lane name; inside the lane
+`interactive` before `bulk`, then oldest. Priority never picks the lane. It also
+holds the heartbeat, the reclaim of stale claims, `release_claims` on a drain (no
+attempt spent), and `dead` rows kept as a trace instead of a `DELETE`. A change to the order, the heartbeat or the dead
 rows is made there, once. `jobs/queue.py` and `jobs/worker.py` are research's
 table, encrypted payload and poison verdict on it; the reaper and the checkpoint
 retention sweep assume it. Ingestion claims from its own table,
@@ -42,6 +43,16 @@ worker), and the one 429 left is `GRID_MAX_QUEUED_JOBS_PER_ORG`, abuse protectio
 many jobs one organization may have waiting. A scheduled fire is `bulk`. Do not
 turn a full cluster back into a refusal: a scheduled task that meets one is
 skipped, not retried.
+
+**A background run acts as its requester, by echo** (ADR-0108). The worker
+injects the identity headers from the run's identity and, when the run carries
+one, the requester's signed request-context envelope the BFF minted, so the
+tools that act as a person behave as on a chat turn. The envelope is kept at
+submit only when it verifies for the run's requester (`jobs/run_envelope.py`,
+`capture_request_envelope`), travels in the encrypted payload, and is renewed
+by the BFF at claim once it is an hour old. This tier verifies and forwards; it
+never builds or signs one, and never logs one. Any refusal or failure means the
+run acts as nobody and those tools refuse.
 
 ## Reference
 

@@ -96,14 +96,17 @@ describe("the program constructs with public DNS enabled", () => {
     expect([...dnsHosts()].sort()).toEqual([...listenerHosts()].sort());
   });
 
-  it("covers the conditional listener too", () => {
+  it("covers the conditional listeners too", () => {
     // Guards the test above against passing because BOTH sides went empty, and
-    // pins the host whose listener exists only when its tier is deployed —
-    // langfuse (ADR-0044). The otel host (ADR-0029) is gone with the dashboard.
-    const host = `langfuse.dev.${ZONE}`;
-    expect(listenerHosts()).toContain(host);
-    expect(dnsHosts()).toContain(host);
-    expect(dnsHosts()).toHaveLength(4);
+    // pins the hosts whose listener exists only when its route is deployed:
+    // langfuse (ADR-0044), and Qdrant's dashboard, on by default wherever the
+    // Connect application gating it is set (this stack sets it, for Langfuse).
+    // The otel host (ADR-0029) is gone with the Aspire dashboard.
+    for (const host of [`langfuse.dev.${ZONE}`, `qdrant.dev.${ZONE}`]) {
+      expect(listenerHosts()).toContain(host);
+      expect(dnsHosts()).toContain(host);
+    }
+    expect(dnsHosts()).toHaveLength(5);
   });
 
   it("points every record at the pinned LoadBalancer IP", () => {

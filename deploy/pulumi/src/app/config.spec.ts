@@ -7,8 +7,8 @@ import type { GridConfig } from "../config";
 const here = __dirname;
 // src/app -> src -> deploy/pulumi -> deploy -> repo root
 const repoRoot = join(here, "..", "..", "..", "..");
-// The whole worker, not just its entrypoint: `db.js` reads the DSN, and the
-// point of this guard is to see every name the process consumes.
+// The whole worker, not just its entrypoint: the shared `workers/app-database.js`
+// reads the DSN, and the point of this guard is to see every name the process consumes.
 const schedulerDir = join(repoRoot, "frontends", "ui", "scheduler");
 const schedulerSource = [
   ...readdirSync(schedulerDir)
@@ -16,6 +16,7 @@ const schedulerSource = [
     .map((file) => readFileSync(join(schedulerDir, file), "utf8")),
   // The retention window is read by the shared Langfuse client the sweep uses.
   readFileSync(join(repoRoot, "frontends", "ui", "workers", "langfuse-traces.js"), "utf8"),
+  readFileSync(join(repoRoot, "frontends", "ui", "workers", "app-database.js"), "utf8"),
 ].join("\n");
 const configSource = readFileSync(join(here, "config.ts"), "utf8");
 

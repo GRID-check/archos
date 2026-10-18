@@ -38,11 +38,15 @@ import {
   openToOrganizationWhenClosed,
   type ProjectOutcome,
 } from './project-status'
-import { currentMonth, dateToMonth, monthToDate, type Month } from './month'
+import { currentMonth, dateToMonth, isMonth, monthToDate, type Month } from './month'
+import type { ProjectSetup } from './create-project-schema'
+import { startProjectIntake } from './intake-seed'
+import type { GeocodeResult } from '@/lib/geocoding/types'
 import { rearmOneShotsSkippedWhileParked } from '@/lib/tasks/repository'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { memberReader } from '@/lib/documents/visibility'
 import { withServedEvidence } from './memory-evidence'
+import { syncProjectFacts } from '@/lib/cross-project/project-facts-mirror'
 import {
   clearanceOf,
   customFolderNames,
@@ -55,6 +59,7 @@ import {
   deleteProjectMemoryItem,
   listProjectMemory,
   updateProjectMemoryItem,
+  type CreateMemoryOptions,
 } from './memory-service'
 import {
   deleteProjectRow,
@@ -113,18 +118,33 @@ async function listProjectsHolding(
   order: 'newest' | 'oldest'
 ): Promise<Project[]> {
   const projects = await listProjectsInOrg(session.organizationId, { order })
+  return projectsHolding(session, projects, permissions)
+}
+
+/**
+ * Of `projects`, the ones on which the caller holds ANY of `permissions`; the
+ * filter {@link listProjects} applies, for a caller that already has its
+ * candidates (the same-address lookup asks about its few matches, not all of
+ * them).
+ */
+export async function projectsHolding<T extends Pick<Project, 'id' | 'status'>>(
+  session: AuthorizedSession,
+  projects: readonly T[],
+  permissions: readonly ProjectPermission[] = ['project:view']
+): Promise<T[]> {
   // The same permission-gated bypass `requireProjectAccess` applies, checked the
   // same way — if these two ever disagreed the grid would list projects the
   // detail view then refuses, or hide ones it would have opened.
-  if (hasPermission(session, ORG_PERMISSIONS.projectsAdminister)) return projects
+  if (hasPermission(session, ORG_PERMISSIONS.projectsAdminister)) return [...projects]
 
-  const holds = async (project: Project): Promise<boolean> => {
+  const holds = async (project: T): Promise<boolean> => {
     // A closed project (ADR-0090), decided as `requireProjectAccess` decides it:
     // only what a closed project still allows is asked, and what is open to the
     // whole organization (reading, chatting) every member holds.
-    const asked = isProjectClosed(project) ? keptWhenClosed(permissions) : permissions
+    const closed = isProjectClosed(project)
+    const asked = closed ? keptWhenClosed(permissions) : permissions
     if (asked.length === 0) return false
-    if (isProjectClosed(project) && openToOrganizationWhenClosed(asked)) return true
+    if (closed && openToOrganizationWhenClosed(asked)) return true
     for (const permissionSlug of asked) {
       const allowed = await checkResourcePermission({
         organizationMembershipId: session.organizationMembershipId,
@@ -137,8 +157,8 @@ async function listProjectsHolding(
     }
     return false
   }
-  const visible = await Promise.all(projects.map(async (project) => ((await holds(project)) ? project : null)))
-  return visible.filter((project): project is Project => project !== null)
+  const held = await Promise.all(projects.map(holds))
+  return projects.filter((_, index) => held[index])
 }
 
 /**
@@ -188,8 +208,38 @@ export async function getProjectsGridData(
 }
 
 /**
+ * How a past project created as closed ended (ADR-0098): the same outcome and
+ * Abschluss a close names, plus the Beginn, which a new row has not got yet.
+ */
+export interface ProjectClosing {
+  outcome: ProjectOutcome
+  endedOn: Month
+  startedOn: Month | null
+}
+
+/**
+ * `setup` says how a new project is set up. `piloti`: Piloti reads the
+ * documents and the person reviews (ADR-0111); the project gets its
+ * `project_intakes` row. `self`: no intake, the wizard fills the profile.
+ */
+export interface CreateProjectInput {
+  name: string
+  closing?: ProjectClosing
+  /** Absent means `self`: the person-facing callers (the route, the form's action) default to `piloti`. */
+  setup?: ProjectSetup
+  /** „Worum geht es?", at most 500 characters. Kept with the intake. */
+  description?: string
+  /** The address search's hit. Seeds the profile (address, country, Bundesland). */
+  location?: GeocodeResult
+  /** A Bundesland token chosen by hand when no geocoder is configured. */
+  bundesland?: string
+}
+
+/**
  * Create a project, register it as a WorkOS FGA resource, and make the
- * creator its project-admin.
+ * creator its project-admin. With `closing`, the project is a past one added
+ * as the office's reference (ADR-0098): it is created and then closed at once,
+ * with the outcome, Beginn and Abschluss given here.
  *
  * ## Why the compensating delete
  *
@@ -205,47 +255,92 @@ export async function getProjectsGridData(
  * row is removed and the caller sees the error. A leaked WorkOS resource with no
  * row pointing at it is inert (nothing resolves it, and project ids are UUIDs so
  * it can never be re-hit), which makes it the right thing to leak of the two.
+ *
+ * ## Creating a closed project
+ *
+ * The Abschluss is checked before anything is written, against the same
+ * bounds a close uses. The close itself is the repository write, not
+ * {@link setProjectStatus}: that one asks FGA for `project:manage`, and the
+ * grant made a moment ago may not have reached the check yet. The creator is
+ * the one who may close it by construction. A close that fails is undone like
+ * a failed WorkOS step, so no half-created active project is left behind. It
+ * skips the debrief and the clear-out of an ordinary close: a project created
+ * this second has no memory and no files to review.
+ *
+ * ## Piloti sets it up
+ *
+ * With `setup: 'piloti'` the project gets its intake row, status
+ * `waiting`, and the profile facts the chosen address decides, in one write
+ * after the FGA steps and inside the same compensating delete (the intake row
+ * cascades with the project). A closing given with it is NOT carried out: the
+ * project stays active while its documents are read and is closed when the
+ * person finishes the review, so the intake keeps the closing as an intent.
+ * Without it this is the function it always was.
  */
 export async function createProject(
   session: AuthorizedSession,
-  input: { name: string },
+  input: CreateProjectInput,
   // Optional because the projects-page server action has no `Request` to pass.
   // `recordAuditEvent` already treats it as optional (it only enriches the event
   // context with IP + user agent), so requiring it here was the sole reason that
   // action re-implemented this whole function instead of calling it.
-  request?: Request
+  request?: Request,
+  now: Date = new Date()
 ): Promise<Project> {
+  const closing = input.closing ? closingOrRefuse(input.closing, currentMonth(now)) : undefined
+  const piloti = input.setup === 'piloti'
+  // A closing Piloti sets up is carried out when the review is finished.
+  const closeNow = closing && !piloti ? closing : undefined
   const workos = getWorkOS()
 
-  const project = await insertProject({
+  const inserted = await insertProject({
     organizationId: session.organizationId,
     name: input.name,
     createdBy: session.userId,
     collectionName: `proj_${crypto.randomUUID()}`,
+    // The Beginn is the person's answer, whoever sets the project up: closing it
+    // waits for the review, the month it began does not.
+    ...(closing?.startedOn ? { startedOn: monthToDate(closing.startedOn) } : {}),
   })
 
+  let project = inserted
   try {
     const resource = await workos.authorization.createResource({
       resourceTypeSlug: 'project',
-      externalId: project.id,
+      externalId: inserted.id,
       organizationId: session.organizationId,
       name: input.name,
     })
 
-    await setProjectWorkosResourceId(project.id, session.organizationId, resource.id)
+    await setProjectWorkosResourceId(inserted.id, session.organizationId, resource.id)
 
     await workos.authorization.assignRole({
       organizationMembershipId: session.organizationMembershipId,
-      resourceExternalId: project.id,
+      resourceExternalId: inserted.id,
       resourceTypeSlug: 'project',
       roleSlug: 'project-admin',
     })
+
+    if (piloti) {
+      await startProjectIntake(
+        session,
+        inserted,
+        {
+          description: input.description,
+          location: input.location,
+          bundesland: input.bundesland,
+          closing: closing && { outcome: closing.outcome, startedOn: closing.startedOn, endedOn: closing.endedOn },
+        },
+        now
+      )
+    }
+    if (closeNow) project = await closeNewProject(session, inserted.id, closeNow, now)
   } catch (error) {
     // Best-effort undo. If even this fails the row survives unreachable, which is
     // the state we are trying to avoid — so say so loudly rather than swallow it.
-    await deleteProjectRow(project.id, session.organizationId).catch((cleanupError) => {
+    await deleteProjectRow(inserted.id, session.organizationId).catch((cleanupError) => {
       console.error(
-        `[projects] project ${project.id} was created without FGA access and could not be rolled back:`,
+        `[projects] project ${inserted.id} was created half-way and could not be rolled back:`,
         cleanupError
       )
     })
@@ -258,11 +353,49 @@ export async function createProject(
     action: 'project.created',
     targetType: 'project',
     targetId: project.id,
-    metadata: { name: input.name },
+    metadata: piloti ? { name: input.name, setup: 'piloti' } : { name: input.name },
     request,
   })
+  if (closeNow) {
+    await recordAuditEvent({
+      organizationId: session.organizationId,
+      actor: { userId: session.userId, email: session.email },
+      action: 'project.closed',
+      targetType: 'project',
+      targetId: project.id,
+      metadata: { name: project.name, from: 'active', outcome: closeNow.outcome, endedOn: closeNow.endedOn },
+      request,
+    })
+  }
 
   return project
+}
+
+/** The closing of a project being created, or a 400: months, and an Abschluss within `abschlussBounds`. */
+function closingOrRefuse(closing: ProjectClosing, thisMonth: Month): ProjectClosing {
+  if (closing.startedOn !== null && !isMonth(closing.startedOn)) {
+    throw new BadRequestError('The Beginn must be a month, YYYY-MM.', { reason: 'invalid-month' })
+  }
+  abschlussOrRefuse(closing.endedOn, closing.startedOn, thisMonth)
+  return closing
+}
+
+/** Close the row just created and granted; throws when the write changed nothing, so the caller rolls back. */
+async function closeNewProject(
+  session: AuthorizedSession,
+  projectId: string,
+  closing: ProjectClosing,
+  now: Date
+): Promise<Project> {
+  const closed = await setProjectStatusInOrg(projectId, session.organizationId, 'active', {
+    status: 'closed',
+    at: now,
+    closedBy: session.userId,
+    outcome: closing.outcome,
+    endedOn: monthToDate(closing.endedOn),
+  })
+  if (!closed) throw new Error('The project was created but could not be closed, so it was not kept.')
+  return closed
 }
 
 export async function getProject(session: AuthorizedSession, projectId: string): Promise<Project> {
@@ -391,6 +524,9 @@ export async function setProjectStatus(
     throw new ConflictError('The project changed meanwhile.', { reason: 'invalid-transition', from, to: change.status })
   }
   if (change.status === 'active') await rearmParkedOneShots(projectId, session.organizationId)
+  // The status is on every chunk of the project, for the cross-project search's
+  // filters (design §7). Never throws; the weekly sync repairs a failed copy.
+  await syncProjectFacts(session.organizationId, projectId)
 
   await recordAuditEvent({
     organizationId: session.organizationId,
@@ -429,9 +565,12 @@ async function rearmParkedOneShots(projectId: string, organizationId: string): P
   }
 }
 
-/** The Abschluss a close names, or a 400: within `abschlussBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
+/** The Abschluss a close names, or a 400: a month within `abschlussBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
 function abschlussOrRefuse(endedOn: Month, startedOn: Month | null, thisMonth: Month): Month {
   const problem = abschlussProblem(endedOn, startedOn, thisMonth)
+  if (problem === 'invalid') {
+    throw new BadRequestError('The Abschluss must be a month, YYYY-MM.', { reason: 'invalid-month' })
+  }
   if (problem === 'future') {
     throw new BadRequestError('The Abschluss cannot lie in the future.', { reason: 'abschluss-in-future' })
   }
@@ -577,30 +716,65 @@ export async function getProjectMemory(
   return labelRestrictions(session, projectId, items)
 }
 
-/** Manually add a memory item — user-authored and user-confirmed by definition. */
+/**
+ * The rights that write a project's memory: the panel's add, edit and delete,
+ * and the decision on a memory proposal (`lib/proposals/appliers.ts`), which
+ * must not pass a gate this service then refuses.
+ */
+export const MEMORY_WRITE_PERMISSIONS: readonly ProjectPermission[] = ['project:memory:write', 'project:edit']
+
+/** A note a person writes, or accepts from Piloti: user-authored and user-confirmed by definition. */
+export interface PersonMemoryInput {
+  kind: ProjectMemoryKind
+  content: string
+  confidence?: ProjectMemoryConfidence
+  pinned?: boolean
+  /**
+   * The conversation the note was learned in, when it came from a proposal.
+   * Purging a folder that conversation drew on deletes the note with it
+   * (`deleteMemoryDrawnFrom`), so the link is not decoration.
+   */
+  sourceConversationId?: string | null
+}
+
+const personNote = (session: AuthorizedSession, input: PersonMemoryInput) => ({
+  organizationId: session.organizationId,
+  kind: input.kind,
+  content: input.content,
+  confidence: input.confidence ?? 'medium',
+  pinned: input.pinned ?? false,
+  provenanceType: 'user' as const,
+  verification: 'user_confirmed' as const,
+  createdBy: session.userId,
+  ...(input.sourceConversationId ? { sourceConversationId: input.sourceConversationId } : {}),
+})
+
+/**
+ * Manually add a memory item to a project. `options.supersedesContent` names
+ * the note this one corrects (an accepted memory proposal's `supersedes`).
+ */
 export async function addProjectMemoryItem(
   session: AuthorizedSession,
   projectId: string,
-  input: {
-    kind: ProjectMemoryKind
-    content: string
-    confidence?: ProjectMemoryConfidence
-    pinned?: boolean
-  }
+  input: PersonMemoryInput,
+  options: Pick<CreateMemoryOptions, 'supersedesContent'> = {}
 ): Promise<ProjectMemoryItem> {
-  await requireProjectAccess(session, projectId, ['project:memory:write', 'project:edit'])
-  return createProjectMemoryItem({
-    scope: 'project',
-    projectId,
-    organizationId: session.organizationId,
-    kind: input.kind,
-    content: input.content,
-    confidence: input.confidence ?? 'medium',
-    pinned: input.pinned ?? false,
-    provenanceType: 'user',
-    verification: 'user_confirmed',
-    createdBy: session.userId,
-  })
+  await requireProjectAccess(session, projectId, MEMORY_WRITE_PERMISSIONS)
+  return createProjectMemoryItem({ scope: 'project', projectId, ...personNote(session, input) }, options)
+}
+
+/**
+ * Add a note to the organization's memory, which every project of the tenant
+ * reads. Any member may (the organization memory panel is deliberately not
+ * admin-gated); the tenant is the session's. The panel's route and an accepted
+ * organization memory proposal both write through here.
+ */
+export async function createOrganizationMemoryItem(
+  session: AuthorizedSession,
+  input: PersonMemoryInput,
+  options: Pick<CreateMemoryOptions, 'supersedesContent'> = {}
+): Promise<ProjectMemoryItem> {
+  return createProjectMemoryItem({ scope: 'organization', projectId: null, ...personNote(session, input) }, options)
 }
 
 export async function editProjectMemoryItem(

@@ -19,6 +19,7 @@
 import type { FassungFacts, FassungHistoryEntry, FassungRef } from '@/lib/documents/fassung'
 import type { RevisionFacts } from '@/lib/documents/revision-facts'
 import type { DocumentVersionState, DocumentVersionView } from '@/lib/documents/lifecycle-types'
+import type { DocumentReadFamily } from '@/lib/documents/document-status'
 import { parseRevisionName } from '@/lib/documents/revision-series'
 
 const isoDay = /^(\d{4})-(\d{2})-(\d{2})/
@@ -130,10 +131,11 @@ const REFUSAL_MILESTONES = [
 
 /**
  * A version that arrived as a person's upload and never went through a review:
- * born `published` (ADR-0054), so the row carries `approvedBy`/`publishedBy` =
- * the uploader to satisfy the CHECK, and was never submitted. Those columns are
- * not acts anybody took. Saying „Freigegeben" or „Veröffentlicht" about it
- * would invent an approval flow the document never had.
+ * born `published` (ADR-0054) and never submitted. Rows written before
+ * migration 0137 carried the uploader as approver to satisfy the CHECK; those
+ * columns are not acts anybody took either. Saying „Freigegeben" or
+ * „Veröffentlicht" about it would invent an approval flow the document never
+ * had.
  */
 export function bornPublished(version: Pick<DocumentVersionView, 'state' | 'submittedBy'>): boolean {
   return (version.state === 'published' || version.state === 'superseded') && version.submittedBy === null
@@ -151,6 +153,14 @@ export function versionActs(version: DocumentVersionView): VersionAct[] {
     const when = version[at]
     return typeof actor === 'string' && typeof when === 'string' ? [{ key, actor, when }] : []
   })
+  // „Freigeben" publishes in the same step (ADR-0104 rule 5): one act, said
+  // once, as the approval it was. A version approved and published apart, before
+  // that, keeps both.
+  const approved = acts.find((act) => act.key === 'approved')
+  const published = acts.find((act) => act.key === 'published')
+  if (approved && published && approved.actor === published.actor && approved.when === published.when) {
+    acts.splice(acts.indexOf(published), 1)
+  }
   const refusal = REFUSAL_MILESTONES.find((row) => row.state === version.state)
   if (refusal && version.reviewedBy && version.reviewedAt) {
     acts.push({ key: refusal.key, actor: version.reviewedBy, when: version.reviewedAt })
@@ -184,7 +194,11 @@ export interface VersionRow {
   version: DocumentVersionView
   /** The version with the next lower number: the one a text comparison is against. */
   predecessor: DocumentVersionView | null
-  /** The published version: the Fassung answers are given from. */
+  /**
+   * The Fassung answers are given from: the published version once it has been
+   * read, or the one before it while that one still stands in
+   * ({@link BuildTimelineInput.newestRead}).
+   */
   current: boolean
   /** The newest version, whatever its state: the one the review controls act on. */
   newest: boolean
@@ -241,6 +255,20 @@ export interface BuildTimelineInput {
   headAt: string | null
   /** The newer document that replaced this one (`FassungFacts.supersededBy`), if any. */
   newer?: FassungRef | null
+  /**
+   * How far the reading of the document's current bytes has got
+   * (`documentReadFamily(file.status)`). Published is not yet answerable: a
+   * Fassung Piloti has not read, or failed to read, answers nothing.
+   */
+  newestRead?: DocumentReadFamily
+  /**
+   * Whether the previous Fassung keeps answering until its successor has been
+   * read. True for a person's upload: the knowledge layer retires the old
+   * passages only once the new ones are stored, so a failed read leaves the old
+   * Fassung answering. False for a Piloti document, whose publish purges the
+   * old passages first (`ingestPublished`).
+   */
+  predecessorStandsIn?: boolean
 }
 
 const time = (value: string | null): number => {
@@ -274,22 +302,26 @@ function byNewest(a: Unnumbered, b: Unnumbered): number {
  *
  * `current` marks the one Fassung Piloti answers from: the published upload, or
  * the newer document when this one has been replaced (then no row of this
- * document's own is current).
+ * document's own is current). A published upload Piloti has not read yet, or
+ * could not read, is not current: the one before it is, when it still stands in
+ * ({@link answeringVersionId}), and otherwise none is.
  */
 export function buildFassungTimeline(input: BuildTimelineInput): TimelineRow[] {
-  const { versions, publishedVersionId, history, directIds, headAt, newer = null } = input
+  const { versions, history, directIds, headAt, newer = null } = input
   const replaced = newer !== null
+  const read = input.newestRead ?? 'readable'
   const byNumber = [...versions].sort((a, b) => b.versionNumber - a.versionNumber)
+  const answering = answeringVersionId(byNumber, input.publishedVersionId, read, input.predecessorStandsIn ?? true)
   const own: Unnumbered[] =
     byNumber.length === 0
-      ? [{ kind: 'head', key: 'head', at: headAt, current: !replaced, newest: true }]
+      ? [{ kind: 'head', key: 'head', at: headAt, current: !replaced && read === 'readable', newest: true }]
       : byNumber.map((version, index) => ({
           kind: 'version',
           key: `version:${version.id}`,
           at: version.createdAt,
           version,
           predecessor: byNumber[index + 1] ?? null,
-          current: !replaced && version.id === publishedVersionId,
+          current: !replaced && version.id === answering,
           newest: index === 0,
         }))
   const linked: Unnumbered[] = history.map((entry) => ({
@@ -302,6 +334,28 @@ export function buildFassungTimeline(input: BuildTimelineInput): TimelineRow[] {
   const top: Unnumbered[] = newer ? [{ kind: 'newer', key: `newer:${newer.id}`, at: null, ref: newer }] : []
   const ordered = [...top, ...[...own, ...linked].sort(byNewest)]
   return ordered.map((row, index) => ({ ...row, number: ordered.length - index }) as TimelineRow)
+}
+
+/**
+ * The version Piloti answers from. The document's reading status is about its
+ * current bytes, which are the published version's only when the published
+ * version is the newest: while a newer one waits for review, the published one
+ * is what was read, and it answers.
+ *
+ * When the newest is published and not readable, the previous version answers
+ * if it stands in and was itself the published one before (`superseded`).
+ * `byNumber` is newest first.
+ */
+function answeringVersionId(
+  byNumber: readonly DocumentVersionView[],
+  publishedVersionId: string | null,
+  read: DocumentReadFamily,
+  predecessorStandsIn: boolean,
+): string | null {
+  const [newest, previous] = byNumber
+  if (read === 'readable' || newest === undefined || newest.id !== publishedVersionId) return publishedVersionId
+  if (!predecessorStandsIn || previous === undefined || previous.state !== 'superseded') return null
+  return previous.id
 }
 
 /** A row before it has its place: `Omit` applied to each member of the union, not to the union. */

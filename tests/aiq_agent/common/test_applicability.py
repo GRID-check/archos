@@ -1,5 +1,8 @@
 """Tests for the hand-written OIB applicability module."""
 
+import pytest
+
+from aiq_agent.common import applicability
 from aiq_agent.common.applicability import OibVerdict
 from aiq_agent.common.applicability import facts_from_project_context
 from aiq_agent.common.applicability import render_project_block
@@ -132,6 +135,47 @@ class TestFactsFromProjectContext:
     def test_empty_text(self):
         assert facts_from_project_context("") == {}
 
+    def test_suggestions_and_contested_sections_add_no_facts(self):
+        """The intake's suggestions ride the view (frontends/ui prompt-view.ts); only ``confirmed:`` is a fact.
+
+        An ``assumptions:`` line now ends in ``[Vorschlag: Datei, S. n]`` or ``[abgeleitet]``, and a
+        ``contested:`` section lists ``- key: value | alternativ: v2 (Datei, S. n)``. A file name may
+        itself contain ``=``; none of it may leak into the facts.
+        """
+        confirmed_only = (
+            "PROJECT_CONTEXT v1\n\n"
+            "confirmed:\n"
+            "- bauwerkstyp@bw1=gebaeude\n"
+            "- bundesland=wien\n"
+            "- geschosse_oberirdisch@bw1=3\n"
+            "- nutzungen@bw1=wohnen\n"
+        )
+        text = (
+            confirmed_only
+            + "\n"
+            + "goals:\n"
+            + "- primary=check_oib_requirements\n\n"
+            + "unknown:\n"
+            + "- fluchtniveau_m@bw1\n\n"
+            + "assumptions:\n"
+            + "- bgf_oberirdisch@bw1=412 [Vorschlag: Raumbuch=2026.xlsx]\n"
+            + "- fluchtniveau_m@bw1=9.5 [Vorschlag: Einreichplan Schnitt.pdf, S. 2]\n"
+            + "- gebaeudeklasse@bw1=2 [abgeleitet]\n"
+            + "- widmung=bauland\n\n"
+            + "contested:\n"
+            + "- fluchtniveau_m@bw1: 9.5 | alternativ: 11 (Brandschutzkonzept.pdf, S. 3)\n"
+            + "- geschosse_oberirdisch@bw1: 3 | alternativ: 4 (Plan=final.pdf, S. 2) | alternativ: 5\n"
+            + "- … und 3 weitere"
+        )
+
+        assert facts_from_project_context(text) == facts_from_project_context(confirmed_only)
+        assert facts_from_project_context(text) == {
+            "bauwerkstyp@bw1": "gebaeude",
+            "bundesland": "wien",
+            "geschosse_oberirdisch@bw1": 3,
+            "nutzungen@bw1": "wohnen",
+        }
+
 
 class TestRenderProjectBlock:
     def test_none_when_facts_empty(self):
@@ -159,3 +203,125 @@ class TestRenderProjectBlock:
         assert block is not None
         assert "Denkmalschutz" not in block
         assert "Kleingartengebiet" not in block
+
+
+class TestFluchtniveauBand:
+    @pytest.mark.parametrize(
+        ("metres", "band"),
+        [(7, "<=7m"), (7.5, "7-11m"), (11, "7-11m"), (11.5, "11-22m"), (22, "11-22m"), (22.5, ">22m")],
+    )
+    def test_band_from_bauwerk_metres(self, metres, band):
+        assert applicability.fluchtniveau_band({"fluchtniveau_m@bw1": metres}) == band
+
+    def test_highest_metres_across_bauwerke(self):
+        assert applicability.fluchtniveau_band({"fluchtniveau_m@bw1": 5, "fluchtniveau_m@bw2": 23}) == ">22m"
+        assert applicability.fluchtniveau_band({"fluchtniveau_m": 9, "fluchtniveau_m@bw2": 4}) == "7-11m"
+
+    def test_stated_flat_band_wins(self):
+        assert applicability.fluchtniveau_band({"fluchtniveau": "<=7m", "fluchtniveau_m@bw1": 30}) == "<=7m"
+
+    def test_empty_stated_band_is_no_answer(self):
+        assert applicability.fluchtniveau_band({"fluchtniveau": "", "fluchtniveau_m@bw1": 30}) == ">22m"
+
+    def test_zone_copy_and_missing_metres_are_not_read(self):
+        assert applicability.fluchtniveau_band({"fluchtniveau_m@bw1@wohnen": 30}) is None
+        assert applicability.fluchtniveau_band({"hauptnutzung": "wohnen"}) is None
+
+    def test_non_finite_metres_are_not_read(self):
+        assert applicability.fluchtniveau_band({"fluchtniveau_m@bw1": "nan"}) is None
+
+
+class TestWizardScopedFacts:
+    def test_scoped_metres_above_22_flag_hochhaus(self):
+        assert _by_code({"gebaeudeklasse": "GK5", "fluchtniveau_m@bw1": 22.5})["OIB 2.3"].verdict == "required"
+
+    def test_exactly_22_metres_does_not_flag_2_3(self):
+        assert "OIB 2.3" not in _by_code({"gebaeudeklasse": "GK5", "fluchtniveau_m@bw1": 22})
+
+    def test_scoped_gebaeudeklasse_accepts_bare_number_and_gk_prefix(self):
+        assert _by_code({"gebaeudeklasse@bw1": 5})["OIB 2.3"].verdict == "check"
+        assert _by_code({"gebaeudeklasse@bw1": "5"})["OIB 2.3"].verdict == "check"
+        assert _by_code({"gebaeudeklasse@bw1": "GK5"})["OIB 2.3"].verdict == "check"
+
+    def test_bare_and_gk_prefixed_class_4_read_alike(self):
+        bare = resolve_oib_applicability({"hauptnutzung": "wohnen", "gebaeudeklasse@bw1": "4"})
+        prefixed = resolve_oib_applicability({"hauptnutzung": "wohnen", "gebaeudeklasse": "GK4"})
+        assert bare == prefixed
+        assert "OIB 2.3" not in _by_code({"gebaeudeklasse@bw1": "4"})
+
+    def test_highest_gebaeudeklasse_across_bauwerke(self):
+        verdicts = _by_code({"gebaeudeklasse@bw1": "4", "gebaeudeklasse@bw2": "GK5"})
+        assert verdicts["OIB 2.3"].verdict == "check"
+
+    def test_highest_basement_count_across_bauwerke(self):
+        assert _by_code({"geschosse_unterirdisch@bw1": 0, "geschosse_unterirdisch@bw2": 2})["OIB 2.2"].verdict == (
+            "check"
+        )
+        assert "OIB 2.2" not in _by_code({"geschosse_unterirdisch@bw1": 0, "geschosse_unterirdisch@bw2": 0})
+
+    def test_one_verdict_use_shared_by_bauwerke_is_hauptnutzung(self):
+        verdicts = _by_code({"nutzungen@bw1": ["wohnen"], "nutzungen@bw2": ["wohnen"]})
+        assert "OIB 2.1" not in verdicts
+        assert verdicts["OIB 5"].verdict == "required"
+
+    def test_a_use_without_verdict_token_leaves_the_main_use_unknown(self):
+        # `produktion` (D0) is not `produzierend`: an unknown use may be the Betriebsbau,
+        # so a mixed building keeps its OIB 2.1 "check".
+        assert _by_code({"nutzungen@bw1": ["wohnen", "produktion"]})["OIB 2.1"].verdict == "check"
+
+    def test_produktion_alone_names_no_verdict_use(self):
+        assert _by_code({"nutzungen@bw1": ["produktion"]})["OIB 2.1"].verdict == "check"
+
+    def test_two_verdict_uses_leave_hauptnutzung_unknown(self):
+        verdicts = _by_code({"nutzungen@bw1": ["wohnen"], "nutzungen@bw2": ["buero"]})
+        assert verdicts["OIB 2.1"].verdict == "check"
+        assert verdicts["OIB 5"].verdict == "likely"
+
+    def test_stated_hauptnutzung_beats_nutzungen(self):
+        assert _by_code({"hauptnutzung": "lager", "nutzungen@bw1": ["wohnen"]})["OIB 2.1"].verdict == "required"
+
+
+class TestWizardPromptText:
+    def test_prompt_view_lines_read_as_the_wizard_writes_them(self):
+        text = (
+            "PROJECT_CONTEXT v1\n"
+            "confirmed:\n"
+            "- gebaeudeklasse@bw1=4\n"
+            "- gebaeudeklasse@bw2=GK5\n"
+            "- fluchtniveau_m@bw1=22.5\n"
+            "- geschosse_unterirdisch@bw1=0\n"
+            "- geschosse_unterirdisch@bw2=2\n"
+            "- nutzungen@bw1=wohnen,garage\n"
+        )
+        verdicts = _by_code(facts_from_project_context(text))
+        assert verdicts["OIB 2.3"].verdict == "required"
+        assert verdicts["OIB 2.2"].verdict == "check"
+        assert verdicts["OIB 2.1"].verdict == "check"  # garage names no verdict use
+
+    def test_comma_joined_nutzungen_with_two_verdict_uses_is_ambiguous(self):
+        text = "PROJECT_CONTEXT v1\nconfirmed:\n- nutzungen@bw1=wohnen,buero\n"
+        verdicts = _by_code(facts_from_project_context(text))
+        assert verdicts["OIB 2.1"].verdict == "check"
+
+
+class TestTwinParityFixtures:
+    """Mirrors the table in frontends/ui/src/lib/oib/applicable-standards.test.ts. Keep the two identical."""
+
+    @pytest.mark.parametrize(
+        ("facts", "expected"),
+        [
+            ({"gebaeudeklasse@bw1": "5"}, {"OIB 2.3": "check"}),
+            ({"gebaeudeklasse@bw1": "4", "gebaeudeklasse@bw2": "GK5"}, {"OIB 2.3": "check"}),
+            ({"gebaeudeklasse": "GK5", "fluchtniveau_m@bw1": 22.5}, {"OIB 2.3": "required"}),
+            ({"gebaeudeklasse": "GK5", "fluchtniveau_m@bw1": 22}, {"OIB 2.3": None}),
+            (
+                {"nutzungen@bw1": ["wohnen"], "geschosse_unterirdisch@bw1": 2},
+                {"OIB 2.1": None, "OIB 2.2": "check", "OIB 5": "required"},
+            ),
+            ({"nutzungen@bw1": ["wohnen"], "nutzungen@bw2": ["buero"]}, {"OIB 2.1": "check", "OIB 5": "likely"}),
+        ],
+    )
+    def test_verdicts_match_the_ts_table(self, facts, expected):
+        verdicts = _by_code(facts)
+        actual = {code: verdicts[code].verdict if code in verdicts else None for code in expected}
+        assert actual == expected

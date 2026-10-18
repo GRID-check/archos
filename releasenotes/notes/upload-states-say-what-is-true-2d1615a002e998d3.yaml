@@ -1,0 +1,15 @@
+---
+fixes:
+  - >
+    A file whose upload is still on its way says „Wird hochgeladen“ again
+    instead of „Wird gelesen“.
+  - >
+    An upload refused because the file it would replace waits in the Quarantäne
+    now says so in your language and no longer offers a retry that would be
+    refused the same way.
+  - >
+    A chat attachment Piloti has not read, or has held back, no longer counts as
+    an available source after the chat reloads its files.
+  - >
+    A file Piloti could not start reading now says exactly that, instead of
+    blaming a restart that never happened.

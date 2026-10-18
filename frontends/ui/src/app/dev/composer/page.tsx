@@ -31,11 +31,27 @@ import { AppConfigProvider, type AppConfig } from '@/shared/context'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import { InputArea } from '@/features/layout/components'
 import { useChatStore } from '@/features/chat'
+import { useLayoutStore } from '@/features/layout/store'
 import { publishThreadRole } from '@/shared/collaboration/thread-sharing'
 
 const config: AppConfig = {
   authRequired: false,
   fileUpload: getFileUploadConfigFromEnv(),
+}
+
+/**
+ * The same deployment with photos on: the `image-upload` flag AND a vision
+ * model. The block that uses it comes FIRST, so a capture that clicks the
+ * paperclip (`--click '[data-testid=composer-attach]'`) opens the attach menu
+ * with the camera and the library live; the blocks below keep the default
+ * config, where the menu says why photos are off.
+ */
+const photoConfig: AppConfig = {
+  authRequired: false,
+  fileUpload: getFileUploadConfigFromEnv(process.env, {
+    imageUploadEnabled: true,
+    vlmAvailable: true,
+  }),
 }
 
 const CONVERSATION_ID = 'dev-composer-conv'
@@ -84,6 +100,10 @@ export default function ComposerPreviewPage() {
       hasHydrated: true,
     })
     publishThreadRole(CONVERSATION_ID, 'viewer')
+    // Uploads are offered only where the knowledge layer answers, which this
+    // backend-free page cannot ask; without it the paperclip is disabled and
+    // the attach menu could never be captured.
+    useLayoutStore.setState({ knowledgeLayerAvailable: true })
     setReady(true)
   }, [hasHydrated])
 
@@ -94,6 +114,19 @@ export default function ComposerPreviewPage() {
           <h1 className="font-mono text-xs text-muted-foreground" data-testid="composer-preview">
             /dev/composer — chat composer (empty-thread state, desktop + mobile)
           </h1>
+
+          <AppConfigProvider config={photoConfig}>
+            <div>
+              <div className="text-muted-foreground mb-2 font-mono text-xs">
+                ↓ photos accepted (image-upload flag + vision model)
+              </div>
+              <InputArea
+                isAuthenticated
+                connectionMode="sse"
+                projectName="Wohnhausanlage Seestadt Aspern, Bauteil C"
+              />
+            </div>
+          </AppConfigProvider>
 
           <div>
             <div className="mb-2 font-mono text-xs text-muted-foreground">↓ desktop</div>

@@ -353,6 +353,8 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
       ],
       // The backend refuses an envelope without one as a grant (ADR-0084).
       issuedAt: expect.any(Number),
+      // Who the job is for, by name: what the agent's prompt calls the person.
+      requester: { name: 'Test User', email: 'user@grid.example', organizationName: null },
     })
   })
 

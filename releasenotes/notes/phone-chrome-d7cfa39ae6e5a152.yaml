@@ -1,0 +1,13 @@
+---
+improvements:
+  - >
+    On a phone the top of every project page is calmer: a compact title without
+    the description, so in Dateien the first documents start in the top third of
+    the screen.
+  - >
+    In Dateien on a phone, the path row stays in view instead of scrolling half
+    under the search, and an unassigned file shows a small marker instead of a
+    cut-off word.
+  - >
+    "Mehr" in the bottom bar now opens a sheet with only what the bar does not
+    already show, such as Automatisierung, the Büroablage and your account.

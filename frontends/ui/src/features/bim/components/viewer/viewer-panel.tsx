@@ -88,6 +88,8 @@ export interface ViewerPanelProps {
   children: ReactNode
   /** Pinned below the scroll area, so the primary action never scrolls away. */
   footer?: ReactNode
+  /** Overrides the `p-3` body — a list of rows brings its own inset. */
+  bodyClassName?: string
   className?: string
 }
 
@@ -98,6 +100,7 @@ export function ViewerPanel({
   onClose,
   children,
   footer,
+  bodyClassName,
   className,
 }: ViewerPanelProps): JSX.Element {
   return (
@@ -116,7 +119,7 @@ export function ViewerPanel({
     >
       <ViewerSectionHeader className="items-start border-b border-border">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold text-foreground" title={title}>
+          <h2 className="truncate text-sm font-semibold text-foreground pointer-coarse:line-clamp-2 pointer-coarse:break-words pointer-coarse:whitespace-normal" title={title}>
             {title}
           </h2>
           {subtitle && <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>}
@@ -132,7 +135,9 @@ export function ViewerPanel({
           <X className="size-4" aria-hidden="true" />
         </Button>
       </ViewerSectionHeader>
-      <ViewerSectionBody className="min-h-0 flex-1 overflow-y-auto">{children}</ViewerSectionBody>
+      <ViewerSectionBody className={cn('min-h-0 flex-1 overflow-y-auto', bodyClassName)}>
+        {children}
+      </ViewerSectionBody>
       {/* Footer keeps the panel scale (`p-3` like header and body) — a tighter
           `p-2` here was a second padding hiding in the same card. */}
       {footer && <div className="border-t border-border p-3">{footer}</div>}

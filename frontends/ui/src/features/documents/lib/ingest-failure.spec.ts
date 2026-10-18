@@ -32,12 +32,19 @@ const BACKEND_MESSAGES: Array<[string, IngestFailureKind]> = [
     'download_failed',
   ],
   ['interrupted: ingestion stopped when the service restarted; retry to index this file', 'interrupted'],
+  // The queued job's payload could not be read: reading never started, and no
+  // service restarted. Said as a start that failed, never as the restart.
+  ['unreadable_job: the queued ingestion job could not be read; retry to index this file', 'dispatch_failed'],
   [
     'vlm_not_configured: scanned PDF pages need a vision model to be transcribed (AIQ_VLM_API_KEY)',
     'vision_not_configured',
   ],
   ['vlm_not_configured: image ingestion requires AIQ_VLM_API_KEY', 'vision_not_configured'],
   ['document_deleted: the document was deleted while it was being ingested', 'deleted'],
+  [
+    'screening_unavailable: the screening policy in this job could not be applied; nothing of the file was read',
+    'screening_unavailable',
+  ],
   ['No content extracted (file may be password-protected, corrupted, or empty)', 'empty'],
   ['Request timed out after 180s', 'timeout'],
   ['httpx.ReadTimeout: timeout', 'timeout'],

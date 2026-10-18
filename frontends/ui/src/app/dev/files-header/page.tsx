@@ -29,20 +29,20 @@
 import type { JSX } from 'react'
 import { use, useState } from 'react'
 import { notFound } from 'next/navigation'
-import { LayoutGrid, List } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { usePhoneLayout } from '@/features/documents/hooks/use-phone-layout'
+import type { FileView } from '@/features/documents/hooks/use-view-preference'
 import { FileFilterMenu } from '@/features/documents/components/file-filter-menu'
 import { NO_FILE_FILTERS, type FileFilters } from '@/features/documents/lib/file-filters'
 import { DEFAULT_FILE_SORT, type FileSort } from '@/features/documents/lib/file-sort'
-import { FileSearchField } from '@/features/documents/components/file-search-bar'
+import { FilesHeaderControls } from '@/features/documents/components/files-header-controls'
 import { ProjectUppyUpload } from '@/features/documents/components/project-uppy-upload'
 import { I18nProvider, useTranslations } from '@/i18n'
 
 function Header() {
-  const t = useTranslations('files')
   const tNav = useTranslations('nav')
-  const [view, setView] = useState<'cards' | 'list'>('cards')
+  const phone = usePhoneLayout()
+  const [view, setView] = useState<FileView>('cards')
   const [filters, setFilters] = useState<FileFilters>(NO_FILE_FILTERS)
   const [sort, setSort] = useState<FileSort>(DEFAULT_FILE_SORT)
   const [query, setQuery] = useState('')
@@ -52,43 +52,24 @@ function Header() {
       title={tNav('sections.files')}
       subtitle={tNav('sectionSubtitles.files')}
       action={
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-          <ToggleGroup
-            type="single"
-            value={view}
-            onValueChange={(value) => {
-              if (value === 'cards' || value === 'list') setView(value)
-            }}
-            segmented
-            size="icon-sm"
-            aria-label={t('workspace.view.label')}
-          >
-            <ToggleGroupItem value="cards" aria-label={t('workspace.view.cards')}>
-              <LayoutGrid />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label={t('workspace.view.list')}>
-              <List />
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <FileFilterMenu
-            canCollaborate
-            filters={filters}
-            onFiltersChange={setFilters}
-            sort={sort}
-            onSortChange={setSort}
-          />
-          <FileSearchField
-            className="w-full sm:w-64 lg:w-72"
-            value={query}
-            onChange={setQuery}
-            onSubmit={() => {}}
-            onClear={() => setQuery('')}
-            placeholder={t('browser.searchPlaceholder')}
-            searchLabel={t('browser.searchLabel')}
-            resetLabel={t('browser.resetSearch')}
-          />
-          <ProjectUppyUpload onUpload={() => {}} isUploading={false} allowFolders />
-        </div>
+        <FilesHeaderControls
+          phone={phone}
+          view={view}
+          onViewChange={setView}
+          binHref="/app/projects/dev/files/bin"
+          renderFilter={(compact) => (
+            <FileFilterMenu
+              canCollaborate
+              filters={filters}
+              onFiltersChange={setFilters}
+              sort={sort}
+              onSortChange={setSort}
+              compact={compact}
+            />
+          )}
+          search={{ value: query, onChange: setQuery, onSubmit: () => {}, onClear: () => setQuery('') }}
+          upload={phone ? undefined : <ProjectUppyUpload onUpload={() => {}} isUploading={false} allowFolders />}
+        />
       }
     />
   )

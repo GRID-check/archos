@@ -98,7 +98,15 @@ export function RouteDialog({
             <DialogDescription className="sr-only">{title}</DialogDescription>
           )}
         </DialogHeader>
-        <div className={cn('scroll-fade-bottom min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6', bodyClassName)}>
+        {/* `p-0` above hands the dialog's padding, and with it the bottom
+            safe area, to this body: on a phone the sheet's bottom edge is the
+            screen's, so the last line clears the home indicator. */}
+        <div
+          className={cn(
+            'scroll-fade-bottom min-h-0 flex-1 overflow-y-auto px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6',
+            bodyClassName
+          )}
+        >
           {children}
         </div>
       </DialogContent>

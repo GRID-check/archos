@@ -77,6 +77,75 @@ describe('salvageProjectProfile', () => {
     expect(dropped).toContain('facts.broken')
   })
 
+  describe('evidence and alternatives (ADR-0111)', () => {
+    const goodEvidence = [
+      { kind: 'document', fileName: 'Baubeschreibung.pdf', page: 4, quote: 'drei Geschoße' },
+    ]
+    const goodAlternative = {
+      value: 4,
+      evidence: goodEvidence,
+      recordedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const malformed = [{ kind: 'document', fileName: '', page: 'vier', quote: 7 }, 'not evidence']
+
+    it('keeps the value of a fact whose evidence or alternatives are malformed, and reports nothing dropped', () => {
+      const raw = {
+        facts: {
+          geschosse_oberirdisch: { ...fact(3), evidence: malformed, alternatives: [{ value: {} }] },
+        },
+        goals: {},
+        unknowns: [],
+        assumptions: {},
+      }
+      const { profile, dropped } = salvageProjectProfile(raw)
+      expect(dropped).toEqual([])
+      expect(profile!.facts.geschosse_oberirdisch.value).toBe(3)
+      expect(profile!.facts.geschosse_oberirdisch.evidence).toBeUndefined()
+      expect(profile!.facts.geschosse_oberirdisch.alternatives).toBeUndefined()
+    })
+
+    it('keeps the value of an assumption whose evidence or alternatives are malformed, fact by fact', () => {
+      // `broken` sends the profile down the per-part path rather than the fast one.
+      const raw = {
+        facts: {
+          broken: { value: 'x', confidence: 'guessed' },
+          bundesland: { ...fact('wien'), evidence: 'Seite 4' },
+        },
+        goals: {},
+        unknowns: [],
+        assumptions: {
+          geschosse_oberirdisch: { ...assumption(3), evidence: malformed, alternatives: 'viele' },
+          fluchtniveau_m: {
+            ...assumption(9),
+            evidence: goodEvidence,
+            alternatives: [goodAlternative],
+          },
+        },
+      }
+      const { profile, dropped } = salvageProjectProfile(raw)
+      expect(dropped).toEqual(['facts.broken'])
+      expect(profile!.facts.bundesland).toMatchObject({ value: 'wien' })
+      expect(profile!.facts.bundesland.evidence).toBeUndefined()
+      expect(profile!.assumptions.geschosse_oberirdisch.value).toBe(3)
+      expect(profile!.assumptions.geschosse_oberirdisch.evidence).toBeUndefined()
+      expect(profile!.assumptions.geschosse_oberirdisch.alternatives).toBeUndefined()
+      // Well-formed evidence is not collateral damage.
+      expect(profile!.assumptions.fluchtniveau_m.evidence).toEqual(goodEvidence)
+      expect(profile!.assumptions.fluchtniveau_m.alternatives).toEqual([goodAlternative])
+    })
+
+    it('opens an assumptions-only profile with malformed evidence in edit mode, without a banner', () => {
+      const entry = deriveIntakeEntry({
+        facts: {},
+        goals: {},
+        unknowns: [],
+        assumptions: { geschosse_oberirdisch: { ...assumption(3), evidence: malformed } },
+      })
+      expect(entry.mode).toBe('edit')
+      expect(entry.salvageNotice).toBeNull()
+    })
+  })
+
   it('salvages valid goals and unknowns while dropping malformed entries', () => {
     const raw = {
       facts: {},

@@ -130,7 +130,12 @@ export function SidebarUserMenu({
           'transition-[color,background-color,transform] duration-quick ease-out hover:bg-accent',
           'active:scale-[0.98] motion-reduce:transition-none',
           'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
-          compact ? 'w-auto rounded-full p-0' : 'w-full rounded-lg py-1 pl-0 pr-2',
+          // Compact is an avatar alone, 30-32px. Under a finger the trigger
+          // grows to 44px around the disc rather than lending it a catchment:
+          // in the org header the search button stands right beside it.
+          compact
+            ? 'w-auto rounded-full p-0 pointer-coarse:size-11 pointer-coarse:justify-center'
+            : 'w-full rounded-lg py-1 pl-0 pr-2',
         )}
         aria-label={t('userMenu.label', { name: displayName })}
         data-tour={tourAnchor}

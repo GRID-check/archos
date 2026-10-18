@@ -5,8 +5,8 @@
  * visual chunk's description, rendered on its own and already expanded.
  *
  * It lives here rather than only inside `/dev/file-preview` because it is two
- * collapsed levels deep in the real pane (Detailed information → Structured
- * data), which a screenshot cannot reach. What must be visible for review is
+ * levels deep in the real pane (Auf den Seiten → Strukturierte Daten, the
+ * second collapsed), which a screenshot cannot reach. What must be visible for review is
  * the shape of the rendering: one labelled line per vocabulary category, layers
  * in order, figures that keep their meaning, relations as triples, and the
  * provenance line that stops an inferred reading from looking measured.

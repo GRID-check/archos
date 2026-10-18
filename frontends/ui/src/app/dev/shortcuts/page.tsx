@@ -30,10 +30,15 @@ import { I18nProvider } from '@/i18n'
 // (`server-only` + `next/headers`). Pulling the barrel into a client component
 // therefore fails the build.
 import { ShortcutsCheatsheet } from '@/components/shell/shortcuts-cheatsheet'
+import { CommandPalette } from '@/components/shell/command-palette'
 
-type Variant = 'default' | 'minimal'
+type Variant = 'default' | 'minimal' | 'palette'
 
-const VARIANTS: readonly Variant[] = ['minimal']
+/**
+ * `palette`: the ⌘K command palette open, the surface the search button opens
+ * on a phone (full screen above the keyboard, a 16px field, „Abbrechen“).
+ */
+const VARIANTS: readonly Variant[] = ['minimal', 'palette']
 
 const readVariant = (): Variant => {
   if (typeof window === 'undefined') return 'default'
@@ -53,6 +58,17 @@ export default function ShortcutsPreviewPage() {
         <h1 className="mx-auto mb-6 max-w-2xl font-mono text-xs text-muted-foreground">
           /dev/shortcuts — Tastaturkürzel ({variant})
         </h1>
+        {variant === 'palette' ? (
+          <CommandPalette
+            open
+            onOpenChange={() => {}}
+            authRequired
+            canViewOrganization
+            showKnowledge
+            showSkills
+            canAccessArchiv
+          />
+        ) : (
         <ShortcutsCheatsheet
           open
           onOpenChange={() => {}}
@@ -66,6 +82,7 @@ export default function ShortcutsPreviewPage() {
           // would quietly render a cheatsheet missing the `g i` jump.
           canAccessInbox={everything}
         />
+        )}
       </main>
     </I18nProvider>
   )

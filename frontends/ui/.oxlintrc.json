@@ -277,7 +277,8 @@
         "src/features/grid-cards/components/VerdictHeaderCard.tsx",
         "src/features/grid-cards/components/CalloutCard.tsx",
         "src/features/grid-cards/components/ProposalShell.tsx",
-        "src/features/grid-cards/schematics/kit.tsx"
+        "src/features/grid-cards/schematics/kit.tsx",
+        "src/features/grid-cards/components/CanvasActivityCard.tsx"
       ],
       "rules": { "grid/card-type-scale": "error" }
     }

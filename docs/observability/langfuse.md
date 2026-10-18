@@ -17,7 +17,7 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 
 | Field in Langfuse | Where it comes from | Values |
 |---|---|---|
-| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `fassung-visual-compare` (two page images in one vision call, input shown without the pixels) |
+| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `fassung-visual-compare` (two page images in one vision call, input shown without the pixels), `filing-fit` (where an upload batch belongs; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `similar-passages` (a retriever, not a generation: `observed_retrieval`) |
 | Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
 | Release | `GRID_GIT_SHA`, the image's commit | the commit hash |
 | Session | the conversation id (NAT sets `session.id`) | one session per chat |
@@ -53,11 +53,20 @@ Trace metadata on the root:
 | `reference_fit_scored`, `reference_fit_top`, `reference_fit_fitting` | the reference fit (ADR-0064 use 10): how many catalog lines it scored, the best p(fits), how many moved ahead |
 | `organization_id`, `project_id` | the tenant, only with identity attributes on |
 | `$posthog_session_id` | the asker's PostHog browser session, only with identity attributes on and a UUIDv7 ([PostHog export](#posthog-export)) |
+| `turn_surface` | where the question was asked: `chat`, `review_canvas` (a box drawn on a document, `user_message.focus_region`) or `annotation_thread` (asked in an Anmerkung's thread, `reply_in_thread` with the mark's id). Recorded by the socket for every turn (`record_turn_surface`); both canvas values also carry the tag `surface:review-canvas` |
+| `turn_trigger`, `trigger_event_id` | on a turn an event woke, not typed (`user_message.trigger`, the BFF's wake job; ADR-0106): the kind (`thread_mention`, `thread_reply`, `assigned`) and the id of the reply or assignment that woke it. Recorded by the socket (`record_turn_trigger`) with the tag `trigger:<kind>`; absent on a typed turn The trace id's turn is `wakeTurnId(<event id>)`, the same id as the `piloti_wakes` row and the job. A wake that started no turn (a cap, the switch, rights lost, a spent budget) has no model call and so no trace: it is on its `piloti_wakes` row and in the WorkOS audit trail, as `piloti.wake.suppressed` when it was held (`lib/annotations/wake.ts`), as `piloti.wake.ended` when the job was refused or gave up (`lib/annotations/wake-audit.ts`) |
+| `steer_count` | on a turn the asker steered: how many of their notes (`steer`, typed while the turn ran) it has read so far, recorded by the agent node each time it reads one (`agent._announce_steer`). With the tag `steered` |
+| `thread_reply` | on a turn asked to answer in an Anmerkung's thread (`reply_in_thread`): `replied` (the model called `canvas__reply` on that mark), `skipped` (it did not, so the socket posts the answer in the thread after the turn, `aiq_agent.turn.annotation_reply`), or `skipped_withheld` (it did not, and the conversation drew on a restricted folder, so nothing is posted). Recorded when the turn leaves the canvas (`settle_thread_reply`). The fallback's own post runs after the trace closes and is not an observation; this value is what keeps a model that stops replying in threads visible |
+| `focus_region_viewed` | on a turn with a box only: whether a region view (`canvas__look` or `view_knowledge_image` with `region`) ran, read off the turn's image budget (`conversation_register._finished`). `false` is a turn that answered about a drawing it never looked at |
 
 Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
 `confidence:<…>`, `capped:<…>`, `citations-removed`, `quote-not-found`,
 `research-truncated`, `handed-off`, `error:<code>`, `feature:ifc`,
-`feature:cross-project` (a `project_lookup` ran), `reference-prefetch`,
+`feature:cross-project` (a `project_lookup` ran), `feature:canvas` (a canvas
+tool ran), `surface:review-canvas` (the question was asked from a document's
+review canvas or one of its threads), `steered` (the asker typed a note the
+turn read mid-run), `trigger:<kind>` (an event woke the turn),
+`reference-prefetch`,
 `cited-precedent`,
 `feature:<auxiliary feature>`, `surface:auxiliary`, and `org:<id>` with
 identity attributes on. Tags are labels, never ids or text, with the one
@@ -73,6 +82,68 @@ and score, with each pick's `solved` and the pool's `solved_any` and
 `injection_flagged` when the hit judge ran (ADR-0064 use 11; `judged: false`
 when it did not). A refusal is `{"refused": <code>}`: `no_envelope`, `not_found`,
 `audience_changed`, `invalid`, `unreachable` or `invalid_arguments`.
+
+Each „Im Büro behandelt“ search (`POST /v1/collections/similar`) is a root
+trace `similar-passages` holding one `retrieve.similar_passages` retriever
+observation (`direct_trace.observed_retrieval`, since the route runs outside
+NAT): its input the source's collection, file, page and kind, whether it named
+a chunk, the length of its text and how many collections were searched; its
+output `origin` (`point` or `embedded`), the filter fields (never values) and
+the picks by collection, file, chunk, page and score. Metadata: `origin`,
+`documents`, `candidates`. No passage text either way.
+
+Each canvas tool (the `canvas` function group, `tools/canvas/`) is a tool
+observation of its own (`canvas__look`, `canvas__room`, `canvas__point`,
+`canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`,
+`canvas__delete`, `canvas__reply`), and under it a `canvas.<tool>` step
+(`calls.observe`): its input the page, whether a region was asked, how many
+marks were sent and whether `open`, which fields an `update` changes; its
+output counts and numbers, never the text of a mark, a reply, a note or a
+label, nor a person's name: the document id, and `annotations`, `live` and
+`by_kind` for `marks`, `proposed` (or `created`) and `pages` for `mark`, the
+mark's `number`, the changed `fields`, its `status` and whether the note was
+posted (`noted`) for `update`, `number` and `deleted` for `delete`, the mark's
+`number` and its `replies` for `reply`, `peers`,
+`drafts` and `selected` for `room`, `viewed` for `look`, `ok` for a gesture. A
+refusal is `{"refused": <code>}`: `no_envelope`, `unresolved_document`,
+`no_document_subject`, `forbidden`, `not_found`, `conflict`, `invalid`,
+`assignee_unclear`, `unreachable`, `invalid_arguments`, or `restricted` (a write everyone who opens
+the document would see, refused because the conversation drew on a restricted
+folder or another project: `tools/canvas/policy.py`). The harness's one call,
+taking Piloti's cursor off a document when the turn ends, is a `canvas.leave`
+step.
+
+Each steering note the turn reads (`common/steering.py`) is a `turn.steer`
+step under the decision that read it: its input the `round` it was read in,
+its length in `chars`, how long it `waited_ms` in the inbox and whether it
+carried a `region`; its output `applied` and the index `at` it was spliced
+into the request. Never the note's words: those are in the generation's input,
+masked like the question. A write the model chose before the note arrived and
+the turn held back is the technical step `status:steered:<round>` beside
+`repeat`, `refused` and `width`.
+
+### The project intake run
+
+The reading of a new project's documents (ADR-0111) is a `research-job` trace of
+agent type `project_intake` (ADR-0108), not a trace of its own name. The run
+writes its facts once, when it ends, in `_record_trace`
+(`src/aiq_agent/agents/intake/agent.py`):
+
+| Key | Meaning |
+|---|---|
+| `intake_ended` | how the run ended: `model` (the model called `finish_intake`), `model_without_finish` (it stopped without that, and the run finished in code), `step_limit`, `time_budget`, `no_model`, `refused`, `error` or `no_job` |
+| `intake_mode` | the mode the intake was read in (`active` unless the intake's needs say otherwise) |
+| `intake_documents_read` | how many documents the run opened |
+| `intake_suggested` | values recorded as suggestions, which a person will check |
+| `intake_corroborated` | values the profile already held, where the run added its evidence |
+| `intake_contradictions` | values that differ from the one on the profile, kept beside it for a person |
+| `intake_withdrawn` | suggestions the run recorded and then took back itself (`withdraw_values`); a refused withdrawal is counted under `intake_refusals` as `withdraw:<reason>` |
+| `intake_finish_held` | whether `finish_intake` held the model's first call once, because decisive needs were open and files unread |
+| `intake_refusals` | the refusals the run hit, as comma-joined `reason=count` pairs (`local:<code>`, `local:not-stated`, `refused:<reason>`, `withdraw:<reason>`); absent when there were none |
+| `intake_decisive_open` | how many decisive needs were still open when the run ended |
+
+A suggestion a person accepts or dismisses is scored `piloti-decision` on this
+same trace, with `subject` `intake_suggestion` (see [Scores](#scores)).
 
 ### The decision model
 
@@ -97,6 +168,7 @@ a name is written but not declared, or declared but not listed here.
 |---|---|---|---|
 | `user-feedback` | numeric 0–1 | BFF, on a vote | 1 helpful, 0 not. The mean is the helpful rate |
 | `user-feedback-reason` | categorical | BFF, on a down-vote | `inaccurate`, `wrong_source`, `too_slow`, `other` |
+| `piloti-decision` | categorical | BFF, on a person's decision | `accepted`, `dismissed`, `undone`: what a person did with a proposal, a proposed mark or an applied change Piloti made in this turn, or with a value a reading of the project's documents suggested (ADR-0111). One score per decision, on the trace of the producing turn (for an intake suggestion, the reading's `research-job` trace); metadata `subject` (`proposal`, `annotation`, `change`, `intake_suggestion`) and `subject_id`. The acceptance rate of Piloti's work |
 | `citation-health` | boolean | agent | nothing removed, patched or flagged on this turn |
 | `answer-grounded` | boolean | agent | false when sources were retrieved but no citation survived |
 | `citations-removed` | numeric | agent | citations verification dropped |
@@ -110,6 +182,8 @@ a name is written but not declared, or declared but not listed here.
 | `quotes-patched` | numeric | agent | misremembered quotes the repair corrected (ADR-0067) |
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
 | `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
+| `steer-count` | numeric | agent, at the terminal | on a steered turn only: the notes the asker typed into it; the comment says how many it read (`applied N`). A note left unread became the next question |
+| `thread-answered-in-place` | boolean | agent, when the turn leaves the canvas | on a turn asked to answer in an Anmerkung's thread: true when the model replied there itself (`canvas__reply`), false when it did not and the socket posts the answer for it. No score when the turn may not post there (`thread_reply` = `skipped_withheld`). The false rate is how often the prompt is ignored, which the fallback otherwise hides |
 | `review-correctness` | categorical | reviewer, in the queue | `correct`, `partly_correct`, `incorrect` |
 | `review-sources` | categorical | reviewer, in the queue | `right_sources`, `missing_sources`, `wrong_sources` |
 | `judge-answers-question` | numeric 0–1 | LLM judge | how directly the answer addresses the question |
@@ -235,7 +309,7 @@ never reads a trace's body, so this is the whole cost.
   turn.
 * The page sends the id only to a server whose hello lists
   `user_message.posthog_session_id` in `accepts`, which is withheld while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is off (its default). Turn that on for the link.
+  `GRID_WIRE_V2_ADDITIVE_FIELDS` is off. It is on by default; set off, the link is gone.
 
 ### How to enable
 
@@ -285,6 +359,7 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 | Model calls outside NAT | `src/aiq_agent/observability/direct_trace.py` |
 | Langfuse configuration as code | `src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
 | Votes, reasons, review queue | `frontends/ui/src/lib/langfuse/feedback-score.ts` |
+| Decisions on Piloti's proposals, marks and changes | `frontends/ui/src/lib/langfuse/decision-score.ts` |
 | PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `frontends/ui/src/lib/analytics/posthog.ts` |
 | Retention and erasure | `frontends/ui/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
 | Deployment | `deploy/pulumi/src/platform/langfuse.ts` ([`kubernetes.md`](../deployment/kubernetes.md) § Langfuse) |

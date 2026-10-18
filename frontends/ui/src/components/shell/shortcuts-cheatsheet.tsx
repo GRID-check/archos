@@ -160,7 +160,7 @@ export function ShortcutsCheatsheet({
           {/* Body — two balanced columns on desktop, one stack on mobile. The
               whole set fits without scrolling at normal window heights; the
               scroll fade is there for short viewports only. */}
-          <div className="scroll-fade-bottom max-h-[min(70vh,38rem)] overflow-y-auto px-6 pb-6">
+          <div className="scroll-fade-bottom max-h-[min(70dvh,38rem)] overflow-y-auto px-6 pb-6">
             <div className="grid items-start gap-x-5 gap-y-5 sm:grid-cols-2">
               {columns.map((column, index) => (
                 <div key={index} className="space-y-5">

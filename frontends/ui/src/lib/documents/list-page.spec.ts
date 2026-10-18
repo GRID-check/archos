@@ -77,6 +77,8 @@ function wireRow(n: number, cursorCreatedAt = `2026-01-01T00:00:00.${String(n).p
   return [
     id, // id
     `plan-${n}.pdf`, // filename
+    'proj-1', // projectId
+    'project', // scope
     null, // displayName
     100, // fileSize
     'application/pdf', // contentType
@@ -94,7 +96,11 @@ function wireRow(n: number, cursorCreatedAt = `2026-01-01T00:00:00.${String(n).p
     '2026-01-01T00:00:00.000Z', // createdAt
     '2026-01-01T00:00:00.000Z', // updatedAt
     null, // errorMessage
+    null, // quarantine
     null, // metadata
+    null, // ingestFailureCategory
+    null, // ingestRetryable
+    null, // ingestReaderVersion
     cursorCreatedAt, // cursorCreatedAt
   ]
 }

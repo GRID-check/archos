@@ -7,7 +7,7 @@ End-to-end flow from file upload to vector search.
 ## Overview
 
 ```
-User's Browser                 Next.js BFF                    SeaweedFS          Python Backend          ChromaDB
+User's Browser                 Next.js BFF                    SeaweedFS          Python Backend          Qdrant
       │                            │                          │                      │                    │
       │   POST /api/documents/      │                          │                      │                    │
       │   upload (multipart)        │                          │                      │                    │
@@ -228,12 +228,12 @@ For each file:
    Every PDFium call in the process (page triage, page renders, image extraction, thumbnails, `view_knowledge_image`) is serialized through `pdfium_lock` in `knowledge_layer/llamaindex/pdfium_lock.py`, because PDFium is not thread-safe; the lock is held per page and image encoding happens after it is released.
 
 4. **Summarization** (optional) — If `generate_summary` is enabled, the first and last chunks are combined and sent, as two **concurrent** calls to the same `summary_model` LLM, for a one-sentence summary and a tag classification (document type + OIB discipline; see "Backfilling tags" below). Both calls independently swallow exceptions/timeouts and return nothing on failure. A deterministic, text-derived fallback summary now fires whenever the LLM summary is missing — for any reason, independent of whether tag classification succeeded — so a document that finishes ingestion always gets a `document_metadata` row (see "Silent summary-row loss" below for the fix and the reconciliation backstop).
-5. **Indexing** — All `Document` objects are inserted into a `VectorStoreIndex` backed by ChromaDB with OpenRouter embeddings (`openai/text-embedding-3-large` by default; see "Embedding-model changes" below — stored vectors only match query vectors from the same model)
+5. **Indexing** — All `Document` objects are cut by a `SentenceSplitter` with the job's chunk size and overlap, embedded with the ingestor's embedder (OpenRouter, `openai/text-embedding-3-large` by default; see "Embedding-model changes" below — stored vectors only match query vectors from the same model) and written to Qdrant by `qdrant/writes.write_chunks`, which puts the office, project, document, folder, project facts, `indexed_at` and the facts people set on every point. A write Qdrant refuses fails the file (ADR-0115)
 6. **Job completion** — Status updated to `JobState.COMPLETED` with metadata about chunks, tables, charts, and images created
 
 ### Upload screening, before the first model call
 
-A job whose config carries `screening` (the organization's policy, sent by the BFF on `POST /v1/ingest`; see the [endpoint contract](../api/python-endpoints.md)) checks each file's locally extracted text against the office's terms and detectors (`sources/knowledge_layer/src/llamaindex/screening.py`) before any of it is sent to a model. A match fails the file with `error_message` `quarantined:{…}` and the loop moves to the next file; nothing of a quarantined file is transcribed, captioned, summarised or embedded. The job without a policy (the OIB corpus sync) runs exactly as before.
+A job whose config carries `screening` (the organization's policy, sent by the BFF on `POST /v1/ingest`; see the [endpoint contract](../api/python-endpoints.md)) checks each file's locally extracted text, read as a person reads it (invisible characters left out, a hyphen at a line break joined, a PDF's pages also joined without their running headers and footers), against the office's terms and detectors (`sources/knowledge_layer/src/llamaindex/screening.py`) before any of it is sent to a model. A match fails the file with its typed verdict on `file_details[].quarantine` (`{"reasons":[…],"checked":…}`, plus `"omitted":N` when the verdict leaves N reasons out; `QuarantineVerdict`, ADR-0113), the same verdict in the legacy `error_message` `quarantined:{…}` for one release, and the loop moves to the next file; nothing of a quarantined file is transcribed, captioned, summarised or embedded. The job without a policy (the OIB corpus sync) runs exactly as before. A policy that is present but cannot be applied (malformed, or naming no rule this build knows; `content_screen.screening_config_unusable`) fails closed: every file of the job fails with `screening_unavailable:` before it is read, category `configuration` (retryable, the next dispatch sends the policy afresh), and waits held like any file without a verdict. A PDF whose scanned pages were transcribed is screened again on the transcript before anything else reads it; a match there is held with `after_transcription: true`, since the vision model saw those pages.
 
 Where it sits, per file, against the five places ingestion sends content out:
 
@@ -319,16 +319,15 @@ per file, under a lock on (collection, normalized name):
    answer to its name and what a person set on their metadata row:
    `doc_class`, `display_title`, `folder_path`, and `tags` when a person chose
    them (`tags_set_by = 'person'`). It deletes nothing. The read is
-   a Chroma `where={"file_name": {"$in": [...]}}` over the spellings a stored
+   a Qdrant scroll with `file_name` in the spellings a stored
    version can carry: the name, its percent-encoded forms, and the
    `tmp[8]_`-prefixed names the metadata rows know
-   (`find_tmp_upload_names`; Chroma cannot filter by pattern and the prefix is
-   random). Its cost is the chunks of the file being replaced; it used to read
+   (`find_tmp_upload_names`; a keyword index cannot match a pattern and the
+   prefix is random). Its cost is the chunks of the file being replaced; it used to read
    every chunk of the collection, once per OIB PDF. A legacy tmp-prefixed
    version with no metadata row is not found and stays beside its re-upload.
 2. After a file reaches `SUCCESS`, `_retire_previous_version` deletes exactly
-   those collected ids from Chroma and from the lexical mirror
-   (`ChunkTextStore.delete_chunks`), and bumps the collection version. The
+   those collected ids from Qdrant, and bumps the collection version. The
    metadata row under the new name is the new version's row and keeps the
    fields people set; a row under another spelling of the name is dropped, and
    its fields were carried onto the new row. Tags a person chose survive the
@@ -345,15 +344,15 @@ The cost is that both versions are retrievable for the length of the job.
 A file the upload screen quarantines is the exception. A quarantine holds the
 whole document, its earlier screened version included, from everyone but its
 uploader and its reviewers until a reviewer releases or deletes it (ADR-0086),
-so `_retire_held_predecessor` takes the previous version's chunks out of Chroma
-and the lexical mirror as the verdict lands, still under the replacement lock.
+so `_retire_held_predecessor` takes the previous version's chunks out of Qdrant
+as the verdict lands, still under the replacement lock.
 It drops no metadata row: the Dokumentart and title a person set wait there for
 the release's reading.
 
 A file that fails after some of its chunks were inserted (an embedding batch
 timing out halfway through a long PDF) takes those chunks back out:
-`_discard_partial_version` deletes, from Chroma and the lexical mirror, the ids
-under the name that were not there when the attempt started. Left in, they sat
+`_discard_partial_version` deletes exactly the ids this attempt sent to Qdrant.
+They are fresh node ids, so the kept version's chunks are never among them. Left in, they sat
 beside the kept version as part of a version nobody published.
 
 The lock (`keyed_lock` in `aiq_agent/knowledge/leader_lock.py`) is held from
@@ -391,7 +390,7 @@ with the service token (`knowledge_layer/llamaindex/document_presence.py`,
 `{ "exists": false }` the file:
 
 - discards what this attempt inserted, by the same `_discard_partial_version`
-  difference a failure uses, from Chroma and from the lexical mirror;
+  a failure uses;
 - retires nothing. Under the same name the predecessor may already be a new
   document's first version: a delete, then a new upload of the name that
   indexed while this attempt waited for the lock;
@@ -434,7 +433,6 @@ One window remains, narrow and named:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `persist_dir` | `AIQ_CHROMA_DIR` or `/tmp/chroma_data` | ChromaDB persistence directory |
 | `embed_model` | `openai/text-embedding-3-large` (via OpenRouter) | Embedding model id; keep it stable, stored vectors only match query vectors from the same model — see "Embedding-model changes" below |
 | `chunk_size` | 1024 | Text chunk size (model supports up to 2048 tokens) |
 | `chunk_overlap` | 128 | Overlap between chunks |
@@ -449,22 +447,23 @@ One window remains, narrow and named:
 
 Stored vectors are only comparable to query vectors from the same model, so
 changing the embedding model invalidates every stored vector. The code default
-moved from the NVIDIA embedder to `openai/text-embedding-3-large` on OpenRouter:
-collections that carry an embedding fingerprint refuse a mismatched model with
-an `embedding mismatch` error, while collections written before the fingerprint
-existed are adopted silently and just retrieve garbage (see the gotchas
-register, `docs/contributing/gotchas.md`).
+moved from the NVIDIA embedder to `openai/text-embedding-3-large` on OpenRouter.
+A Qdrant collection records the embedder its vectors came from when it is
+created, and refuses reads and writes from any other with an `embedding
+mismatch` error (see the gotchas register, `docs/contributing/gotchas.md`).
 
 After any embedding-model change:
 
-1. Delete the Chroma directory (`AIQ_CHROMA_DIR`, `/app/data/chroma_data` in compose).
+1. Rebuild the collections empty under the new model (`scripts/qdrant_rebuild.py`
+   and [the runbook](../deployment/qdrant-runbook.md)); a dev stack can drop its
+   Qdrant volume instead.
 2. Re-ingest the base corpus (OIB sync) and every project collection.
 3. Pin `AIQ_EMBED_MODEL` explicitly wherever the deployment must survive the
    next default change (production does this and is unaffected).
 
 ### TTL Cleanup
 
-Session-scoped collections (`s_*`) are automatically reaped by a background thread. Default TTL is 24 hours (`AIQ_COLLECTION_TTL_HOURS`), checked every 3600 seconds (`AIQ_TTL_CLEANUP_INTERVAL_SECONDS`). Base/project collections are never auto-deleted.
+Session-scoped collections (`s_*`) are automatically reaped by a background thread, measured from the newest `indexed_at` on their points. Default TTL is 24 hours (`AIQ_COLLECTION_TTL_HOURS`), checked every 3600 seconds (`AIQ_TTL_CLEANUP_INTERVAL_SECONDS`). Base/project collections are never auto-deleted.
 
 ### Backfilling tags for documents ingested before tagging existed
 
@@ -490,7 +489,7 @@ error/timeout. `register_summary()` — the only call that writes a row into
 the `document_metadata` table — only runs when a summary value exists. Previously the
 deterministic fallback summary (derived from already-extracted text) only
 covered the case where *tagging* succeeded but *summarization* didn't, so a
-**double** failure left the document indexed into ChromaDB and marked
+**double** failure left the document indexed in the vector store and marked
 `SUCCESS` (fully searchable via `knowledge_search`) but with no `document_metadata`
 row at all — invisible in `available_documents` (agent prompts, Data Sources
 panel summary list), and unrecoverable by the tag-backfill script above
@@ -515,9 +514,9 @@ Two fixes landed together, both described in
 Recovery no longer requires re-ingesting the file; the reconciliation pass
 catches it on the next ingestion run for that collection.
 
-- **Text source**: the document's already-indexed Chroma chunk text when available (the same text ingestion classified from), falling back to the stored summary otherwise.
+- **Text source**: the document's already-indexed chunk text, read from Qdrant (`collection_pages.read_pages`), when available (the same text ingestion classified from), falling back to the stored summary otherwise.
 - **LLM access**: it runs outside the NAT runtime, so it builds an OpenAI-compatible client from env vars that must match the `summary_llm` block in `configs/config_oib_openrouter.yml`: `BACKFILL_SUMMARY_API_KEY` (falls back to the provider key inferred from the base URL, `OPENROUTER_API_KEY` by default), `BACKFILL_SUMMARY_BASE_URL` (default `https://openrouter.ai/api/v1`), `BACKFILL_SUMMARY_MODEL` (default `GRID_DEFAULT_MODEL`, then `openai/gpt-6-luna`).
-- **Store**: `AIQ_SUMMARY_DB` (or `--summary-db`); chunk source dir `AIQ_CHROMA_DIR` (or `--chroma-dir`).
+- **Store**: `AIQ_SUMMARY_DB` (or `--summary-db`); chunk text from Qdrant at `AIQ_QDRANT_URL` (without it, the stored summary).
 - **Exit codes** (for CI): `0` = success (nothing to do, or a completed run with no failures; `--dry-run` always exits `0`), `1` = a real run finished but at least one document failed to classify (`stats.failed > 0`, so a partial backfill can be flagged), `2` = the tagging LLM could not be constructed (no `BACKFILL_SUMMARY_API_KEY` and no provider key for the base URL).
 
 ---
@@ -530,7 +529,7 @@ Two pollers read two different things.
 - Polls the backend JOB every 5 seconds through the BFF proxy: `GET /api/v1/documents/{jobId}/status` (`documentsClient.getJobStatus`), which reaches `GET /v1/documents/{job_id}/status` in `documents.py` and returns `IngestionJobStatus` with per-file progress
 - Maximum 420 poll attempts (~35 minutes)
 - Persists job state to localStorage for recovery on page refresh
-- Updates `TrackedFile` entries in the Zustand store from the job status
+- Updates `TrackedFile` entries in the Zustand store from the job status. A file the job ends `failed` with a `quarantine` verdict becomes `held`, not `failed` (`trackedStatusOfJobFile`; a job from before the typed field is read by its `quarantined:{…}` error), so the tray never offers to retry a file the content check held back (ADR-0086). A row settled by a document status read takes the status's read family instead (`trackedPatchFromStatus`): `quarantined` is `held`, `uploaded` and `stored` are `stored`, never `success`. The tray's states: [`docs/ux/file-upload-and-explorer.md`](../ux/file-upload-and-explorer.md#the-rule)
 
 **Document status**: `GET /api/documents/{id}/status` (`frontends/ui/src/app/api/documents/[id]/status/route.ts` → `getDocumentStatus` in `lib/documents/service.ts`)
 - Reads the `documents` row, reconciling an in-flight row first (see below)
@@ -569,6 +568,14 @@ row stops being vouched for by a heartbeat, and the status endpoint answers
 minutes old, which step 2 records like any other failure and re-ingest can
 retry ([python endpoints](../api/python-endpoints.md#ingestion)).
 
+A queued job whose payload the worker cannot read is retired dead, and its
+status fails with `unreadable_job:` on the job **and** on every file it left
+unfinished (`unreadable_job_failure`, `jobs/ingest_dispatch.py`). Step 2 reads a
+single-file job's reason off the file first, so a file that said `interrupted:`
+would tell the reader the service restarted when it did not. The UI says the
+dispatch sentence for it („Das Lesen ließ sich nicht starten“): reading never
+began. It is `transient`, so it is read again.
+
 Dispatch (`dispatchIngest` in `service.ts`) sends `POST /v1/ingest` with a
 ten-second budget. A timeout is sent once more: the backend is idempotent per
 document and object, so the second request joins the job the first one started.
@@ -576,6 +583,32 @@ Only a second timeout, a non-2xx answer or a connection that never reached the
 backend records `failed` with „Ingestion could not be started".
 
 The collection file list is fetched at most once per collection per request.
+
+### Which failures are read again
+
+A terminal job also says *why* each file failed (`aiq_agent/knowledge/ingest_failures.py`):
+`FileProgress.failure_category` and `retryable`, and the job's `reader_version`
+(`sources/knowledge_layer/src/reader_version.py`). Step 2 writes them onto the row
+(`ingest_failure_category`, `ingest_retryable`, `ingest_reader_version`, migration 0134),
+and `lib/documents/retry-policy.ts` (`canRetry`) decides from them whether reading the
+file again can come out differently:
+
+| category | read again |
+|---|---|
+| `transient` (timeout, connection, 5xx, 429) | yes |
+| `configuration` (401/403/404, a missing vision model) | yes |
+| `deterministic` (encrypted, empty, unparsable bytes, other 4xx) | only once the bytes changed or the deployed reader is newer |
+| `quarantined` | no: a reviewer decides (ADR-0086) |
+| `unknown`, or none recorded | yes, as before the column |
+
+A refused „Erneut lesen“ answers 409 with `code: INGEST_WOULD_FAIL_AGAIN`. The bulk
+„Alle erneut lesen“ and the org rescan select with the same rule in SQL
+(`retryAllowedSql` in `repository.ts`, held to `canRetryRow` by
+`retry-policy.integration.spec.ts`), so they never send a file that would fail the same
+way. Raise `INGEST_READER_VERSION` (and its mirror `CURRENT_INGEST_READER_VERSION`) when a
+reader change could read bytes that failed before; that re-opens every `deterministic`
+failure.
+
 
 Metadata enrichment reads the listing through a 15-second cache
 (`loadCollectionFilesCached`), except in two cases that read it fresh and
@@ -595,18 +628,18 @@ At query time, the `knowledge_retrieval` NAT function:
 
 1. Resolves target collections via `_resolve_target_collections()` (see [Collection Scoping](collection-scoping.md))
 2. For each collection, calls `retriever.retrieve(query, collection_name, top_k)` (config `top_k`, default 5; the working OpenRouter config uses 8)
-3. The `LlamaIndexRetriever` queries ChromaDB for the `top_k` most similar chunks
+3. The `LlamaIndexRetriever` runs one hybrid Qdrant query (dense and German BM25, fused) for the `top_k` best chunks
 4. Results from all collections are merged by relevance score (cosine similarity) with a per-document diversity cap (`max_chunks_per_document`, default 2): a first pass takes at most that many chunks per distinct document (keyed by collection + file_name), then remaining slots up to `top_k` are filled with the highest-scoring leftovers — so cross-cutting questions span multiple Richtlinien instead of all chunks coming from the 1-2 top-scoring PDFs
 5. Formatted with citations (filename, page number) for LLM consumption (chunk content truncated at 2500 chars so OIB tables survive intact)
 
-Note this search path reads **only** the ChromaDB vector index — it is
+Note this search path reads **only** the Qdrant index — it is
 independent of the SQL `document_metadata` table that feeds `available_documents`
 (the per-document summary list injected into agent prompts, described above
 and in `docs/architecture/backend-deep-dive.md` §6). The two stores remain
 architecturally distinct, so a document can in principle be returned here
 without a `document_metadata` row (the reconciliation backstop above closes this for
 every ingestion path in practice), and conversely `available_documents`
-cannot show a document that failed to index into ChromaDB.
+cannot show a document that failed to index into Qdrant.
 
 ---
 

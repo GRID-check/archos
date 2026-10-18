@@ -68,7 +68,7 @@
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import ts from 'typescript'
+import ts from 'typescript-api'
 import { DOWNLOAD_LOG_KINDS, type DownloadLogKind } from './kinds'
 
 const SRC = join(process.cwd(), 'src')
@@ -161,8 +161,12 @@ const ROUTES: Record<string, RouteDisposition> = {
   'conversations/[id]/messages/[messageId]/export/route.ts': {
     exempt: 'renders one chat answer as a document; it is not a stored file, and the answer is the conversation’s own content.',
   },
+  'documents/[id]/annotations/export/route.ts': {
+    exempt: 'renders the document’s Anmerkungen and their threads as a Protokoll; none of the document’s bytes, and the audit event document.annotations.exported records it.',
+  },
   'conversations/[id]/live/route.ts': { exempt: 'server-sent events of a conversation.' },
   'stream/route.ts': { exempt: 'server-sent events.' },
+  'realtime/route.ts': { exempt: 'server-sent events of the live channels (lib/realtime): presence, pointers and change hints; no file bytes.' },
   'health/route.ts': { exempt: 'the health probe; no files.' },
   'v1/[...path]/route.ts': { exempt: 'proxy of the allowlisted JSON endpoints of the agent service (lib/proxy/v1-allowlist); no file bytes.' },
   'knowledge-base/documents/[fileName]/route.ts': { exempt: 'the platform’s shared knowledge base (norms), served from the agent service; not an organization’s document.' },

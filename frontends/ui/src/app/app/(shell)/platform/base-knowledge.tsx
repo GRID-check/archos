@@ -146,7 +146,8 @@ export function BaseKnowledge(): JSX.Element {
 
   const [uploadOpen, setUploadOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [lastUpload, setLastUpload] = useState<KnowledgeUploadResult | null>(null)
+  /** The results of the last batch, for the ZIP members it rejected. */
+  const [lastUploads, setLastUploads] = useState<KnowledgeUploadResult[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncConfirmOpen, setSyncConfirmOpen] = useState(false)
   const [isReingesting, setIsReingesting] = useState(false)
@@ -242,45 +243,73 @@ export function BaseKnowledge(): JSX.Element {
 
   const ingest = useIngestWatch(fetchStatus, applyStatus, files)
 
-  const handleUpload = useCallback(
-    (file: File) => {
-      setIsUploading(true)
-      setLastUpload(null)
+  /**
+   * Post one file to the corpus and say how it went. The names it queued, for
+   * the indexing watch, and its result; null when it was refused.
+   */
+  const uploadOne = useCallback(
+    async (file: File): Promise<{ names: string[]; result: KnowledgeUploadResult } | null> => {
       const form = new FormData()
       form.append('file', file)
-      fetch('/api/platform/knowledge/documents', { method: 'POST', body: form })
-        .then(async (r) => {
-          const body = (await r.json().catch(() => ({}))) as Partial<KnowledgeUploadResult> & {
-            error?: string
-          }
-          if (!r.ok || (body.status !== 'pending' && body.status !== 'success')) {
-            toast.error(body.error ?? t('knowledge.uploadFailed', { name: file.name }))
-            return
-          }
-          setLastUpload(body as KnowledgeUploadResult)
-          if (body.kind === 'zip') {
-            toast.success(
-              t('knowledge.zipQueued', {
-                accepted: body.accepted ?? 0,
-                rejected: body.rejected ?? 0,
-              })
-            )
-          } else {
-            toast.success(t('knowledge.uploadPending', { name: body.fileName ?? file.name }))
-          }
-          const names =
-            body.kind === 'zip'
-              ? (body.members ?? []).filter((m) => m.status === 'pending').map((m) => m.fileName)
-              : body.fileName
-                ? [body.fileName]
-                : []
-          await load()
-          ingest.watch(names)
-        })
-        .catch(() => toast.error(t('knowledge.uploadFailed', { name: file.name })))
-        .finally(() => setIsUploading(false))
+      try {
+        const r = await fetch('/api/platform/knowledge/documents', { method: 'POST', body: form })
+        const body = (await r.json().catch(() => ({}))) as Partial<KnowledgeUploadResult> & {
+          error?: string
+        }
+        if (!r.ok || (body.status !== 'pending' && body.status !== 'success')) {
+          toast.error(body.error ?? t('knowledge.uploadFailed', { name: file.name }))
+          return null
+        }
+        if (body.kind === 'zip') {
+          toast.success(
+            t('knowledge.zipQueued', {
+              accepted: body.accepted ?? 0,
+              rejected: body.rejected ?? 0,
+            })
+          )
+        } else {
+          toast.success(t('knowledge.uploadPending', { name: body.fileName ?? file.name }))
+        }
+        const names =
+          body.kind === 'zip'
+            ? (body.members ?? []).filter((m) => m.status === 'pending').map((m) => m.fileName)
+            : body.fileName
+              ? [body.fileName]
+              : []
+        return { names, result: body as KnowledgeUploadResult }
+      } catch {
+        toast.error(t('knowledge.uploadFailed', { name: file.name }))
+        return null
+      }
     },
-    [ingest, load, t]
+    [t]
+  )
+
+  // One request per file, one after another: the route takes a single file,
+  // and the panel stays busy until the whole batch has been handed over.
+  const handleUpload = useCallback(
+    async (batch: File[]) => {
+      if (batch.length === 0) return
+      setIsUploading(true)
+      setLastUploads([])
+      const names: string[] = []
+      const results: KnowledgeUploadResult[] = []
+      try {
+        for (const file of batch) {
+          const outcome = await uploadOne(file)
+          if (!outcome) continue
+          names.push(...outcome.names)
+          results.push(outcome.result)
+        }
+        setLastUploads(results)
+        if (results.length === 0) return
+        await load()
+        ingest.watch(names)
+      } finally {
+        setIsUploading(false)
+      }
+    },
+    [ingest, load, uploadOne]
   )
 
   const handleSync = useCallback(() => {
@@ -703,7 +732,7 @@ export function BaseKnowledge(): JSX.Element {
                   >
                     <SelectTrigger
                       size="sm"
-                      className="w-52"
+                      className="w-52 [&>span]:min-w-0 [&>span]:truncate"
                       aria-label={t('knowledgeAdmin.bulkReclassify')}
                     >
                       <SelectValue placeholder={t('knowledgeAdmin.bulkReclassify')} />
@@ -751,7 +780,7 @@ export function BaseKnowledge(): JSX.Element {
                   >
                     <SelectTrigger
                       size="sm"
-                      className="min-w-40 flex-1 sm:w-48 sm:flex-none"
+                      className="min-w-40 flex-1 sm:w-48 sm:flex-none [&>span]:min-w-0 [&>span]:truncate"
                       aria-label={t('knowledgeAdmin.typeFilterLabel')}
                     >
                       <SelectValue />
@@ -800,7 +829,7 @@ export function BaseKnowledge(): JSX.Element {
               open={uploadOpen}
               isUploading={isUploading}
               isBusy={isBusy}
-              onFile={handleUpload}
+              onFiles={(batch) => void handleUpload(batch)}
               items={ingest.items}
               timedOut={ingest.timedOut}
               onRearm={() => {
@@ -809,7 +838,7 @@ export function BaseKnowledge(): JSX.Element {
               }}
               missing={ingest.missing}
               onDismissMissing={ingest.dismissMissing}
-              lastUpload={lastUpload}
+              lastUploads={lastUploads}
             />
           ) : null}
 
@@ -854,9 +883,9 @@ export function BaseKnowledge(): JSX.Element {
                         </TableHead>
                       ) : null}
                       {sortableHead('document', t('knowledgeAdmin.colDocument'))}
-                      {sortableHead('class', t('knowledgeAdmin.colType'))}
-                      {sortableHead('state', t('knowledgeAdmin.colState'))}
-                      {sortableHead('chunks', t('knowledgeAdmin.colChunks'), 'text-right')}
+                      {sortableHead('class', t('knowledgeAdmin.colType'), 'max-sm:hidden')}
+                      {sortableHead('state', t('knowledgeAdmin.colState'), 'max-sm:hidden')}
+                      {sortableHead('chunks', t('knowledgeAdmin.colChunks'), 'text-right max-sm:hidden')}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -884,7 +913,12 @@ export function BaseKnowledge(): JSX.Element {
                               />
                             </TableCell>
                           ) : null}
-                          <TableCell className="max-w-[22rem]">
+                          {/* `max-w-0` + `w-full` is what makes `truncate` bite in an
+                              auto-layout table: a plain `max-w` on a cell is ignored, so
+                              the title used to stretch the column past the card edge and
+                              push Dokumentart and Status out of sight. From `sm` the cap
+                              is the 22rem it always was. */}
+                          <TableCell className="w-full max-w-0 sm:w-auto sm:max-w-[22rem]">
                             <button
                               type="button"
                               className="pointer-coarse:min-h-11 focus-visible:ring-ring/60 block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2"
@@ -902,15 +936,22 @@ export function BaseKnowledge(): JSX.Element {
                                   {file.fileName}
                                 </span>
                               ) : null}
+                              {/* The Dokumentart and Status columns are hidden on a
+                                  phone; their chips ride under the title instead, so
+                                  the title has the card's width. */}
+                              <span className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:hidden">
+                                <DocClassChip docClass={file.docClass} />
+                                <KnowledgeStateBadge state={file.state} />
+                              </span>
                             </button>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-sm:hidden">
                             <DocClassChip docClass={file.docClass} />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-sm:hidden">
                             <KnowledgeStateBadge state={file.state} hint="tooltip" />
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right text-sm tabular-nums">
+                          <TableCell className="text-muted-foreground text-right text-sm tabular-nums max-sm:hidden">
                             {file.chunkCount > 0 ? file.chunkCount.toLocaleString(locale) : '–'}
                           </TableCell>
                         </TableRow>

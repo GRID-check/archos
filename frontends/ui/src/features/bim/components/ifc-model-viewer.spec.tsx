@@ -11,7 +11,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEffect } from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { IfcModelViewer } from './ifc-model-viewer'
 import type { IfcViewerStatus } from './ifc-viewer-canvas'
 import type { BimViewerElement } from '../lib/model-index'
@@ -266,5 +266,89 @@ describe('IfcModelViewer with WebGPU', () => {
     render(<IfcModelViewer sourceUrl="https://example.test/model.ifc" elements={ELEMENTS} />)
     await screen.findByTestId('ifc-canvas')
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
+})
+
+describe('IfcModelViewer — the loading veil stays in its box', () => {
+  it('positions the veil against the viewer, not against the page', () => {
+    // The veil is `absolute inset-0`. Without a positioned ancestor it measured
+    // against the PAGE: on /dev/bim-model "Modell wird geladen…" and its bar drew
+    // across the metadata rows above the viewer, and in a chat card it would have
+    // covered the thread.
+    setWebGpu(true)
+    render(<IfcModelViewer sourceUrl={null} elements={ELEMENTS} />)
+    const veil = screen.getByRole('progressbar').parentElement
+    expect(veil?.className).toContain('absolute')
+    const box = veil?.parentElement
+    expect(box?.className).toMatch(/\brelative\b/)
+    expect(box?.className).toContain('overflow-hidden')
+  })
+})
+
+describe('IfcModelViewer — a way out of a bad download, and a way back', () => {
+  it('names the size while a file arrives, so a weak connection can decide', async () => {
+    setWebGpu(true)
+    canvas.status = {
+      phase: 'downloading',
+      percent: 31,
+      meshCount: 0,
+      bytes: { loaded: 37_000_000, total: 120_000_000 },
+    }
+    render(<IfcModelViewer sourceUrl="https://example.test/model.ifc" elements={ELEMENTS} />)
+    expect(await screen.findByText('31% · 37 of 120 MB')).toBeInTheDocument()
+  })
+
+  it('cancels the download, unmounting the canvas — which is what aborts the request', async () => {
+    setWebGpu(true)
+    canvas.status = { phase: 'downloading', percent: 31, meshCount: 0 }
+    render(<IfcModelViewer sourceUrl="https://example.test/model.ifc" elements={ELEMENTS} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByTestId('ifc-canvas')).not.toBeInTheDocument()
+    expect(screen.getByText('Loading cancelled')).toBeInTheDocument()
+    // Said plainly: cancelling saves nothing, and the way back is one press.
+    expect(screen.getByText(/nothing was saved on this device/)).toBeInTheDocument()
+  })
+
+  it('loads again from a cancel with one press', async () => {
+    setWebGpu(true)
+    canvas.status = { phase: 'downloading', percent: 31, meshCount: 0 }
+    render(<IfcModelViewer sourceUrl="https://example.test/model.ifc" elements={ELEMENTS} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Load again' }))
+    expect(await screen.findByTestId('ifc-canvas')).toBeInTheDocument()
+    expect(screen.queryByText('Loading cancelled')).not.toBeInTheDocument()
+  })
+
+  it('does not carry a cancel over to the next model', async () => {
+    setWebGpu(true)
+    canvas.status = { phase: 'downloading', percent: 31, meshCount: 0 }
+    const { rerender } = render(
+      <IfcModelViewer sourceUrl="https://example.test/a.ifc" elements={ELEMENTS} />
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    rerender(<IfcModelViewer sourceUrl="https://example.test/b.ifc" elements={ELEMENTS} />)
+    expect(await screen.findByTestId('ifc-canvas')).toHaveAttribute('data-source', 'https://example.test/b.ifc')
+  })
+
+  it('offers a retry on a failed load, and asks the surface for a fresh URL when it can', async () => {
+    // A presigned URL that expired mid-download fails identically however often
+    // it is asked, so the surface that minted it is the one to ask again.
+    setWebGpu(true)
+    canvas.status = { phase: 'error', percent: null, meshCount: 0, message: 'download failed (403)' }
+    const onRetry = vi.fn()
+    render(<IfcModelViewer sourceUrl="https://example.test/a.ifc" elements={ELEMENTS} onRetry={onRetry} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries against the same source when nothing can mint a new one', async () => {
+    setWebGpu(true)
+    canvas.status = { phase: 'error', percent: null, meshCount: 0, message: 'network' }
+    render(<IfcModelViewer sourceUrl="https://example.test/a.ifc" elements={ELEMENTS} />)
+    expect(await screen.findByText('The 3D view could not be loaded')).toBeInTheDocument()
+    canvas.status = null
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByTestId('ifc-canvas')).toBeInTheDocument()
   })
 })

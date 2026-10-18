@@ -42,6 +42,8 @@ const PROJECT_SECTION_SEGMENTS: readonly ProjectSectionKey[] = [
  */
 const EXTRA_PROJECT_SEGMENTS: Record<string, PathLabel> = {
   research: { namespace: 'nav', key: 'sections.research' },
+  // Piloti's reading of the project's documents (ADR-0111): reached from the create dialog and the overview.
+  setup: { namespace: 'nav', key: 'sections.setup' },
   members: { namespace: 'nav', key: 'returnTargets.members' },
   model: { namespace: 'nav', key: 'returnTargets.model' },
   // Similar projects left the rail for the project hub; `/referenzen` only
