@@ -361,7 +361,9 @@ export function Composer({
             onSelect={(event) => syncQuery(event.currentTarget.value, event.currentTarget.selectionStart)}
             onBlur={() => setQuery(null)}
             onKeyDown={onKeyDown}
-            className="placeholder:text-muted-foreground min-h-6 flex-1 resize-none border-0 bg-transparent py-0.5 text-[13px] leading-5 shadow-none outline-none! ring-0 focus-visible:ring-0"
+            // 16px on a coarse pointer, as the field atoms (`input.tsx`): under it
+            // iOS zooms the page on focus and does not zoom back out.
+            className="placeholder:text-muted-foreground min-h-6 flex-1 resize-none border-0 bg-transparent py-0.5 text-[13px] leading-5 shadow-none outline-none! ring-0 focus-visible:ring-0 pointer-coarse:text-base"
           />
           {pilotiButton}
           <Button
