@@ -677,7 +677,8 @@ function FassungLines({
       <p key={key} className="flex items-start gap-1.5" data-testid={`thread-carried-${key}`}>
         <Link2 className="mt-px size-3 shrink-0" aria-hidden />
         {href ? (
-          <NextLink href={href} className="hover:text-foreground underline underline-offset-2">
+          // Replaces, as walking the marks does: closing the review it opens then steps back out in one go.
+          <NextLink href={href} replace className="hover:text-foreground underline underline-offset-2">
             {text}
           </NextLink>
         ) : (

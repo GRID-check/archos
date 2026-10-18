@@ -394,8 +394,10 @@ order, the hash aside). The trail keeps paths only and cuts itself back on a
 revisit, so a Postfach row in the project the reader came from looked like
 Dateien behind, and a review reached by „Übernommen aus …“ looked like the
 Postfach behind when the first review was. Otherwise (a new tab, a shared link,
-a review reached from another review, a browser without the API) the entry is
-replaced with `back`. `back` is
+a browser without the API) the entry is replaced with `back`. A link from one
+review to another („Übernommen aus …“, „Weiter in …“) replaces its entry
+too, as walking the marks does, so the review it opens has the page the first
+was reached from right behind it and closes there in one step. `back` is
 only ever a path of this app (`appReturnPath`, `lib/utils/same-origin-path.ts`:
 no scheme, no other origin, no `//`, no backslash or control character, under
 `/app/`); anything else is dropped as if it were absent. A reload stays
@@ -1119,7 +1121,7 @@ every request on a mark (`annotation.assigned_to_you`, `piloti.asks_you`,
 
 | `answerIn` | When | The row offers |
 |---|---|---|
-| `row` | the reader may write the document | „Antworten“, which answers in the thread from the row, and on an assigned mark „Erledigen“ (`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved meanwhile is a `409`, not overwritten). The write waits for the undo window, as archiving a row does (`useUndoableArchive`, `ARCHIVE_UNDO_MS`): the row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes when the window ends, the page is hidden or the row goes. „Rückgängig“ inside it lets go and sends nothing, so the request is still open and the list's re-read keeps the row; a write refused when it goes says the row's conflict (409) or failure words. The focus follows: „Rückgängig“ takes it from „Erledigen“, „Erledigen“ takes it back on an undo, and when the window ends with the write, the outcome line (`tabIndex -1`) takes it, since „Erledigen“ is not drawn again (`useFocusBackOnClose`). Under „Für mich“ the re-read after the write drops the row, outcome line and all; the list hands the focus to the row now at its place, or to the list when none is left (`InboxList`, any row a refresh takes with the focus in it) |
+| `row` | the reader may write the document | „Antworten“, which answers in the thread from the row, and on an assigned mark „Erledigen“ (`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved meanwhile is a `409`, not overwritten). The write waits for the undo window, as archiving a row does (`useUndoableArchive`, `ARCHIVE_UNDO_MS`): the row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes when the window ends, the page is hidden or the row goes. „Rückgängig“ inside it lets go and sends nothing, so the request is still open and the list's re-read keeps the row; a write refused when it goes says the row's conflict (409) or failure words. The focus follows: „Rückgängig“ takes it from „Erledigen“, „Erledigen“ takes it back on an undo, and when the window ends with the write, the outcome line (`tabIndex -1`) takes it, since „Erledigen“ is not drawn again (`useFocusBackOnClose`). Under „Für mich“ the re-read after the write drops the row, outcome line and all; the list hands the focus to the row now at its place, or to the list when none is left, without scrolling, so a reader who scrolled on during the window stays where they read (`InboxList`, any row a refresh takes with the focus in it) |
 | `review` | Piloti's Rückfrage while events do not wake Piloti (`piloti-wakes` off) | „In der Prüfansicht beantworten“ in place of „Zur Anmerkung“: the thread card asks Piloti with the answer, which a row cannot |
 | null | the reader may only read the document (a mention reaches readers too), or the row is no open request | „Zur Anmerkung“ alone |
 

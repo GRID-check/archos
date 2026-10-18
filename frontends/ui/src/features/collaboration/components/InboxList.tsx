@@ -204,11 +204,12 @@ export function InboxList({
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const focusedIndex = visibleItems.findIndex((item) => item.id === focusedId)
 
-  const focusRow = useCallback((itemId: string) => {
+  /** Focus a row; `scroll` brings it into view, as a key moving through the list wants and a handoff the reader did not ask for does not. */
+  const focusRow = useCallback((itemId: string, { scroll = true }: { scroll?: boolean } = {}) => {
     setFocusedId(itemId)
     const row = rootRef.current?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(itemId)}"]`)
     row?.focus({ preventScroll: true })
-    row?.scrollIntoView?.({ block: 'nearest' })
+    if (scroll) row?.scrollIntoView?.({ block: 'nearest' })
   }, [])
 
   // ---- The focus stays on the list when its row leaves ----
@@ -231,7 +232,8 @@ export function InboxList({
     const inLeavingRow = active instanceof Element && active.closest('[data-item-id]')?.getAttribute('data-item-id') === held
     if (!inLeavingRow && !focusLost()) return
     const next = visibleItems[Math.min(Math.max(previous.indexOf(held), 0), visibleItems.length - 1)]
-    if (next) focusRow(next.id)
+    // Without scrolling: the reader may have scrolled on during the undo window, and stays where they read.
+    if (next) focusRow(next.id, { scroll: false })
     else restoreFocus(listRef.current)
   }, [visibleItems, focusRow])
   /** Which row the focus is in, so its leaving can hand the focus on. */

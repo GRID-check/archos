@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@/test-utils'
 
 import type { InboxItemView } from '@/lib/inbox/types'
@@ -468,6 +468,23 @@ describe('InboxList — the focus when a refresh drops its row', () => {
     rerender(<InboxList />)
     await waitFor(() => expect(document.activeElement).toBe(rowOf('i3')))
     expect(rowOf('i3')).toHaveAttribute('data-focused', 'true')
+  })
+
+  test('hands the focus on without scrolling: the reader stays where they read', async () => {
+    const scroll = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scroll
+    onTestFinished(() => {
+      Element.prototype.scrollIntoView = original
+    })
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND, THIRD], pending: 3 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    scroll.mockClear()
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, THIRD], pending: 2 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i3')))
+    expect(scroll).not.toHaveBeenCalled()
   })
 
   test('goes to the row before it when it was the last', async () => {
