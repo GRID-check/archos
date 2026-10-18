@@ -1,0 +1,17 @@
+---
+improvements:
+  - >
+    An annotation you resolved from your inbox can be opened again right there
+    with „Rückgängig“, unless someone changed it in the meantime.
+  - >
+    In the review, J and K now also step to the open annotations of an earlier
+    revision, and a screen reader hears each listed annotation's number and
+    state, there and in Offene Punkte.
+fixes:
+  - >
+    Writing in an annotation's thread or answering it from your inbox no longer
+    zooms the page in on an iPhone or iPad. Sending, saving or cancelling puts
+    the keyboard focus back on the button you started from.
+  - >
+    Offene Punkte now says „Für Sie“ as the review does, and a reply whose edit
+    failed now says it could not be saved rather than sent.
