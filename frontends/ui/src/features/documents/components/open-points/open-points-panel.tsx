@@ -11,10 +11,16 @@
  * `review` and `mark`, which the pane already answers). The filters are the
  * Jour fixe's two questions, whose points are mine and what is due; the
  * Protokoll carries what the filters show.
+ *
+ * The filters are in the page's address (`assignee=me`, `due=…`), and every
+ * link into a review carries that address as `back`: closing the review
+ * returns here, to the same selection, rather than leaving the reader in
+ * Dateien. The list is read again when the page comes back (`useProjectMarks`).
  */
 
 import { useState, type JSX } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { AlertTriangle, ArrowLeft, CheckCheck, FileText, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -47,6 +53,29 @@ const filtersOf = (assignee: AssigneeChoice, due: DueChoice): ProjectMarksFilter
   ...(due === 'all' ? {} : { due }),
 })
 
+/** The filters the page's address names; anything else is the default. */
+function choicesOf(params: Pick<URLSearchParams, 'get'> | null): { assignee: AssigneeChoice; due: DueChoice } {
+  const due = params?.get('due')
+  return {
+    assignee: params?.get('assignee') === ASSIGNEE_ME ? 'me' : 'all',
+    due: due && (PROJECT_MARK_DUE as readonly string[]).includes(due) ? (due as ProjectMarkDue) : 'all',
+  }
+}
+
+/**
+ * This page's address with the filters on it, leaving out the defaults and
+ * keeping any other param: the `back` of every link into a review.
+ */
+function hrefOf(pathname: string, current: string, assignee: AssigneeChoice, due: DueChoice): string {
+  const params = new URLSearchParams(current)
+  if (assignee === 'me') params.set('assignee', ASSIGNEE_ME)
+  else params.delete('assignee')
+  if (due !== 'all') params.set('due', due)
+  else params.delete('due')
+  const query = params.toString()
+  return query ? `${pathname}?${query}` : pathname
+}
+
 /** The marks by document, in the order the documents first appear (the list is ordered by document). */
 function byDocument(marks: readonly ProjectMarkView[]): { documentId: string; documentName: string; marks: ProjectMarkView[] }[] {
   const groups = new Map<string, { documentId: string; documentName: string; marks: ProjectMarkView[] }>()
@@ -68,8 +97,19 @@ export interface OpenPointsPanelProps {
 
 export function OpenPointsPanel({ projectId, currentUserId, initial }: OpenPointsPanelProps): JSX.Element {
   const t = useTranslations('files')
-  const [assignee, setAssignee] = useState<AssigneeChoice>('all')
-  const [due, setDue] = useState<DueChoice>('all')
+  const router = useRouter()
+  const pathname = usePathname() ?? `/app/projects/${projectId}/files/open-points`
+  const searchParams = useSearchParams()
+  const [assignee, setAssigneeState] = useState<AssigneeChoice>(() => choicesOf(searchParams).assignee)
+  const [due, setDueState] = useState<DueChoice>(() => choicesOf(searchParams).due)
+  const current = searchParams?.toString() ?? ''
+  const here = hrefOf(pathname, current, assignee, due)
+  /** A filter changes the list and the address, so Back from a review comes back to it. */
+  const choose = (next: { assignee: AssigneeChoice; due: DueChoice }) => {
+    setAssigneeState(next.assignee)
+    setDueState(next.due)
+    router.replace(hrefOf(pathname, current, next.assignee, next.due), { scroll: false })
+  }
   const filters = filtersOf(assignee, due)
   const list = useProjectMarks(projectId, filters, { page: initial, filters: OPEN_POINTS_DEFAULT_FILTERS })
   const filtered = assignee !== 'all' || due !== 'all'
@@ -100,7 +140,7 @@ export function OpenPointsPanel({ projectId, currentUserId, initial }: OpenPoint
               type="single"
               value={assignee}
               onValueChange={(value) => {
-                if (value === 'all' || value === 'me') setAssignee(value)
+                if (value === 'all' || value === 'me') choose({ assignee: value, due })
               }}
               segmented
               size="sm"
@@ -120,7 +160,9 @@ export function OpenPointsPanel({ projectId, currentUserId, initial }: OpenPoint
               type="single"
               value={due}
               onValueChange={(value) => {
-                if (value === 'all' || (PROJECT_MARK_DUE as readonly string[]).includes(value)) setDue(value as DueChoice)
+                if (value === 'all' || (PROJECT_MARK_DUE as readonly string[]).includes(value)) {
+                  choose({ assignee, due: value as DueChoice })
+                }
               }}
               segmented
               size="sm"
@@ -176,7 +218,7 @@ export function OpenPointsPanel({ projectId, currentUserId, initial }: OpenPoint
                   <h2 className="text-foreground min-w-0 flex-1 truncate text-sm font-semibold">{group.documentName}</h2>
                   <Button asChild variant="ghost" size="sm" className="shrink-0">
                     <Link
-                      href={reviewFilesHref(projectId, { documentId: group.documentId })}
+                      href={reviewFilesHref(projectId, { documentId: group.documentId }, { back: here })}
                       aria-label={t('openPoints.openReviewOf', { name: group.documentName })}
                     >
                       {t('openPoints.openReview')}
@@ -187,7 +229,11 @@ export function OpenPointsPanel({ projectId, currentUserId, initial }: OpenPoint
                   {group.marks.map((mark) => (
                     <li key={mark.id}>
                       <Link
-                        href={reviewFilesHref(projectId, { documentId: mark.documentId, annotationId: mark.id })}
+                        href={reviewFilesHref(
+                          projectId,
+                          { documentId: mark.documentId, annotationId: mark.id },
+                          { back: here }
+                        )}
                         className={markRowClassName()}
                         data-testid="open-point-row"
                       >

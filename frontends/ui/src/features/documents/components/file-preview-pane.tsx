@@ -698,6 +698,9 @@ export function FilePreviewPane({
    * (`lib/open-review.ts`). A reload stays in it, Back leaves it, and a
    * bookmark or a copied link comes back to it. Opening from here pushes, so
    * Back closes; what follows replaces, so walking the marks is one entry.
+   * A link this pane did not push is taken off on closing, or, when it came
+   * from another page and says so (`back`: Offene Punkte, the Postfach),
+   * closing returns there.
    *
    * In the chat the pane is the peek, and `doc` there means „a new chat about
    * this file" (`project-chat-client.tsx`): the review of the peeked document
@@ -784,9 +787,14 @@ export function FilePreviewPane({
         router.back()
         return
       }
+      // A link from another page (Offene Punkte, the Postfach) says where it came from: closing goes there.
+      if (reviewLink.back) {
+        router.replace(reviewLink.back, { scroll: false })
+        return
+      }
       replaceParams(clearReviewParams(new URLSearchParams(searchParams?.toString() ?? '')))
     },
-    [openReview, urlOpen, router, replaceParams, searchParams]
+    [openReview, urlOpen, router, replaceParams, searchParams, reviewLink.back]
   )
   /** The review on its own, in a tab of its own: the document on its shelf, at the review. */
   const popoutHref =

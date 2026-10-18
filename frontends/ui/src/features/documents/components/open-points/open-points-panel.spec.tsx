@@ -10,6 +10,12 @@ import userEvent from '@testing-library/user-event'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
+const nav = vi.hoisted(() => ({ params: new URLSearchParams(), replace: vi.fn() }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: nav.replace, back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => '/app/projects/proj_1/files/open-points',
+  useSearchParams: () => nav.params,
+}))
 
 import { toast } from 'sonner'
 import { render, screen, within } from '@/test-utils'
@@ -71,6 +77,10 @@ const answer = (body: unknown, status = 200) => new Response(JSON.stringify(body
 
 beforeEach(() => {
   vi.clearAllMocks()
+  nav.params = new URLSearchParams()
+  fetchMock.mockReset()
+  // The page reads its first page again on mount; unless a spec says otherwise, the list is as the server read it.
+  fetchMock.mockImplementation(async () => answer(PAGE))
   vi.stubGlobal('fetch', fetchMock)
   Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:protokoll'), revokeObjectURL: vi.fn() })
 })
@@ -79,6 +89,10 @@ afterEach(() => vi.unstubAllGlobals())
 
 const show = (initial: ProjectMarksResponse | null = PAGE) =>
   render(<OpenPointsPanel projectId="proj_1" currentUserId="user_anna" initial={initial} />)
+
+/** The query of a link's `back`, the page closing its review returns to. */
+const backOf = (href: string | null) => new URL(href ?? '', 'https://piloti.test').searchParams.get('back')
+const HERE = '/app/projects/proj_1/files/open-points'
 
 describe('OpenPointsPanel', () => {
   it('groups the marks by document, each row a link into that document’s review at the mark', () => {
@@ -91,16 +105,49 @@ describe('OpenPointsPanel', () => {
     ])
     const rows = within(documents[0]).getAllByTestId('open-point-row')
     expect(rows).toHaveLength(2)
-    expect(rows[0]).toHaveAttribute('href', '/app/projects/proj_1/files?doc=doc_a&review=1&mark=doc_a_1')
+    const row = new URL(rows[0].getAttribute('href') ?? '', 'https://piloti.test')
+    expect(`${row.pathname}?${row.searchParams.toString()}`).toBe(
+      `/app/projects/proj_1/files?doc=doc_a&review=1&mark=doc_a_1&back=${encodeURIComponent(HERE)}`
+    )
     expect(rows[0]).toHaveTextContent('Fluchttür zu schmal')
     expect(rows[0]).toHaveTextContent('Bernd Huber')
     expect(rows[0]).toHaveTextContent('Page 2')
-    expect(within(documents[1]).getByRole('link', { name: 'Open the review of “Schnitt A-A.pdf”' })).toHaveAttribute(
-      'href',
-      '/app/projects/proj_1/files?doc=doc_b&review=1'
+    const whole = within(documents[1]).getByRole('link', { name: 'Open the review of “Schnitt A-A.pdf”' })
+    expect(whole.getAttribute('href')).toContain('/app/projects/proj_1/files?doc=doc_b&review=1')
+    expect(backOf(whole.getAttribute('href'))).toBe(HERE)
+  })
+
+  it('reads the first page again on mount, quietly: Back from a review shows what was closed there', async () => {
+    fetchMock.mockImplementation(async () => answer({ marks: [PAGE.marks[2]], nextCursor: null }))
+    show()
+    // The server's page is painted at once, with no spinner, until the fresh read replaces it.
+    expect(screen.getAllByTestId('open-point-row')).toHaveLength(3)
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/proj_1/annotations', { method: 'GET' })
+    await vi.waitFor(() => expect(screen.getAllByTestId('open-point-row')).toHaveLength(1))
+  })
+
+  it('reads it again when the tab comes back into view', async () => {
+    show()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    fetchMock.mockImplementation(async () => answer({ marks: [], nextCursor: null }))
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(await screen.findByText('Nothing open')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the filters in the address, so a review closed from a row comes back to them', async () => {
+    nav.params = new URLSearchParams('assignee=me')
+    fetchMock.mockImplementation(async () => answer(PAGE))
+    const user = userEvent.setup()
+    show()
+    await vi.waitFor(() => expect(screen.getAllByTestId('open-point-row')).toHaveLength(3))
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/proj_1/annotations?assignee=me', { method: 'GET' })
+
+    await user.click(screen.getByTestId('open-points-due-overdue'))
+    expect(nav.replace).toHaveBeenLastCalledWith(`${HERE}?assignee=me&due=overdue`, { scroll: false })
+    await vi.waitFor(() =>
+      expect(backOf(screen.getAllByTestId('open-point-row')[0].getAttribute('href'))).toBe(`${HERE}?assignee=me&due=overdue`)
     )
-    // The server's first page stands in for the first read.
-    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('names each row by its number and state for a screen reader, as the review list does', () => {
@@ -116,9 +163,10 @@ describe('OpenPointsPanel', () => {
   })
 
   it('reads the list again for „For you" and says when nothing is in that selection', async () => {
-    fetchMock.mockResolvedValue(answer({ marks: [], nextCursor: null }))
     const user = userEvent.setup()
     show()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    fetchMock.mockImplementation(async () => answer({ marks: [], nextCursor: null }))
 
     // The review's and Files' word for the same predicate (`isForReader`), never „Me".
     expect(screen.getByTestId('open-points-assignee-me')).toHaveTextContent('For you')
@@ -130,7 +178,6 @@ describe('OpenPointsPanel', () => {
 
   it('says a failed read failed, and reads again on „Try again"', async () => {
     fetchMock.mockResolvedValueOnce(answer({ error: 'down', code: 'UNAVAILABLE' }, 503))
-    fetchMock.mockResolvedValueOnce(answer(PAGE))
     const user = userEvent.setup()
     show(null)
 
@@ -141,17 +188,21 @@ describe('OpenPointsPanel', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it('says nothing is open when the project has nothing open', () => {
+  it('says nothing is open when the project has nothing open', async () => {
+    fetchMock.mockImplementation(async () => answer({ marks: [], nextCursor: null }))
     show({ marks: [], nextCursor: null })
     expect(screen.getByText('Nothing open')).toBeInTheDocument()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
   })
 
   it('reads the next page from where the last one stopped', async () => {
-    fetchMock.mockResolvedValue(
-      answer({ marks: [mark({ documentId: 'doc_b', documentName: 'Schnitt A-A.pdf', number: 9 })], nextCursor: null })
-    )
+    fetchMock.mockImplementation(async () => answer({ ...PAGE, nextCursor: 'abc' }))
     const user = userEvent.setup()
     show({ ...PAGE, nextCursor: 'abc' })
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    fetchMock.mockImplementation(async () =>
+      answer({ marks: [mark({ documentId: 'doc_b', documentName: 'Schnitt A-A.pdf', number: 9 })], nextCursor: null })
+    )
 
     await user.click(screen.getByTestId('load-more-button'))
 
@@ -162,6 +213,7 @@ describe('OpenPointsPanel', () => {
   })
 
   it('exports the Protokoll with the filters on screen, and says why one was refused', async () => {
+    fetchMock.mockResolvedValueOnce(answer(PAGE))
     fetchMock.mockResolvedValueOnce(answer(PAGE))
     fetchMock.mockResolvedValueOnce(
       new Response(new Blob(['# x']), {

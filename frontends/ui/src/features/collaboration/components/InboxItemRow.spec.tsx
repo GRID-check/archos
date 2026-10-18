@@ -14,6 +14,14 @@ import { server } from '@/mocks/server'
 import { InboxItemRow, type InboxMarkClient } from './InboxItemRow'
 import { ARCHIVE_UNDO_MS } from '../hooks/use-undoable-archive'
 
+/** Where the row is drawn: the Postfach, as the reader has it filtered. */
+const page = vi.hoisted(() => ({ pathname: '/', search: '' }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => page.pathname,
+  useSearchParams: () => new URLSearchParams(page.search),
+}))
+
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>
@@ -1136,6 +1144,26 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     expect(screen.queryByTestId('discuss-document')).not.toBeInTheDocument()
     fireEvent.click(open)
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
+  })
+
+  test('opens the mark with the Postfach as the page to return to, so closing the review comes back here', () => {
+    page.pathname = '/app/inbox'
+    page.search = 'filter=requests'
+    try {
+      render(<InboxItemRow item={markRow()} />)
+      const back = encodeURIComponent('/app/inbox?filter=requests')
+      expect(screen.getByTestId('inbox-open-mark')).toHaveAttribute(
+        'href',
+        `/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4&back=${back}`
+      )
+      expect(screen.getByTestId('inbox-item-link')).toHaveAttribute(
+        'href',
+        `/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4&back=${back}`
+      )
+    } finally {
+      page.pathname = '/'
+      page.search = ''
+    }
   })
 
   test('answers an assigned mark through the annotations client, and the answered row is read', async () => {

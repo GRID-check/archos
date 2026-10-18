@@ -21,6 +21,8 @@ import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import type { PushPreferences } from '@/lib/inbox/push-categories'
 import type { InboxPushFold } from '@/lib/inbox/registry'
 import { INBOX_TYPE_PRESENTATION, UNKNOWN_TYPE_PRESENTATION, type InboxItemView } from '@/lib/inbox/types'
+// Only a path on this origin may be a notification's destination.
+import { isSameOriginPath } from '@/lib/utils/same-origin-path'
 
 export const PUSH_PAYLOAD_VERSION = 1
 const MAX_TITLE = 120
@@ -52,11 +54,6 @@ export function pushTagFor(groupKey: string): string {
 function clip(text: string, max: number): string {
   const single = text.replace(/\s+/g, ' ').trim()
   return single.length > max ? `${single.slice(0, max - 1).trimEnd()}…` : single
-}
-
-/** Only a path on this origin may be a notification's destination. */
-export function isSameOriginPath(value: string): boolean {
-  return value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')
 }
 
 /** Where a notification about several items lands: the inbox, which lists them all. */

@@ -271,6 +271,24 @@ describe('the review keeps its address', () => {
     expect(nav.back).not.toHaveBeenCalled()
     expect(nav.replace).toHaveBeenLastCalledWith('/app/projects/proj-1/files?doc=doc-1', { scroll: false })
   })
+
+  it('returns to the page a link came from (Offene Punkte with its filters), not to the bare document', async () => {
+    serve([mark()])
+    const back = '/app/projects/proj-1/files/open-points?assignee=me'
+    nav.params = new URLSearchParams(`doc=doc-1&review=1&mark=ann-1&back=${encodeURIComponent(back)}`)
+    render(pane())
+    fireEvent.click(await screen.findByRole('button', { name: 'close review' }))
+    expect(nav.back).not.toHaveBeenCalled()
+    expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
+  })
+
+  it('never follows a return path out of the app', async () => {
+    serve([])
+    nav.params = new URLSearchParams(`doc=doc-1&review=1&back=${encodeURIComponent('https://evil.example/app/x')}`)
+    render(pane())
+    fireEvent.click(await screen.findByRole('button', { name: 'close review' }))
+    expect(nav.replace).toHaveBeenLastCalledWith('/app/projects/proj-1/files?doc=doc-1', { scroll: false })
+  })
 })
 
 describe('„Anmerken"', () => {

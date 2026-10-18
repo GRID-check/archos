@@ -116,7 +116,10 @@ with every open Anmerkung on the project's documents, grouped by document. Each
 row reads like a row of the Prüfansicht's list: the number, what the mark says,
 its kind and page, who set it, who is responsible, how many answers it has and
 its Frist. Pressing a row opens that document in the Prüfansicht at the mark;
-**Prüfansicht öffnen** beside a document's name opens its whole review.
+**Prüfansicht öffnen** beside a document's name opens its whole review. Closing
+the review brings you back to Offene Punkte with your filters, and the list
+shows what you closed there as closed. A mark opened from the Postfach returns
+to the Postfach the same way.
 
 Two filters answer the meeting's questions:
 

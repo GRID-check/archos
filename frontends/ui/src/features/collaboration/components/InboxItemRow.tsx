@@ -44,6 +44,7 @@
 import type { JSX } from 'react'
 import { forwardRef, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
 import {
   Archive,
   ArchiveRestore,
@@ -105,6 +106,7 @@ import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
+import { withReviewBack } from '@/features/documents/lib/open-review'
 import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
 import { useUndoableArchive } from '../hooks/use-undoable-archive'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
@@ -269,6 +271,15 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   */
   const markRow =
     isMarkAnchored(item.type) && !inert && !redacted && item.resourceType === 'document' && item.anchorId !== null
+  /*
+    The mark opens in Dateien, at the review: closing it comes back here, to
+    the Postfach as the reader left it (`back`), not to the bare document.
+  */
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const query = searchParams?.toString()
+  const here = pathname ? `${pathname}${query ? `?${query}` : ''}` : null
+  const linkHref = markRow && item.href ? withReviewBack(item.href, here) : item.href
   /*
     A request on a mark is answered where the server says it may be
     (`answerIn`): here in the row, only in the Prüfansicht (Piloti's Rückfrage
@@ -603,7 +614,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               // archive button inside the anchor (that button is lifted above the
               // overlay with `z-10`).
               <Link
-                href={item.href}
+                href={linkHref ?? item.href}
                 // Only a plain primary click counts as "opened". Cmd/ctrl/middle
                 // click is the natural triage gesture — open three rows in
                 // background tabs — and it used to spend the read state of all
@@ -952,7 +963,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             {markRow && item.href && (
               <Button asChild size="sm" variant={markOpen ? 'default' : 'outline'} className="relative z-10 h-8">
                 <Link
-                  href={item.href}
+                  href={linkHref ?? item.href}
                   onClick={(event) => {
                     if (isPlainClick(event)) onOpen?.(item)
                   }}

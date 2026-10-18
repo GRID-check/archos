@@ -8,7 +8,7 @@ vi.mock('server-only', () => ({}))
 import { DEFAULT_PUSH_PREFERENCES } from '@/lib/inbox/push-categories'
 import type { InboxItemView } from '@/lib/inbox/types'
 import { INBOX_TYPE_DEFINITIONS } from '@/lib/inbox/registry'
-import { buildFoldedPushMessage, buildPushMessage, isSameOriginPath, pushTagFor } from './payload'
+import { buildFoldedPushMessage, buildPushMessage, pushTagFor } from './payload'
 
 function item(overrides: Partial<InboxItemView> = {}): InboxItemView {
   return {
@@ -86,18 +86,6 @@ describe('the tag and Topic of a group', () => {
 
   it('does not reveal the group key', () => {
     expect(pushTagFor('conversation.activity:conversation:secret-id')).not.toContain('secret')
-  })
-})
-
-describe('same-origin paths', () => {
-  it.each([
-    ['/app/inbox', true],
-    ['//evil.example', false],
-    ['https://x.example', false],
-    ['/\\evil.example', false],
-    ['app/inbox', false],
-  ])('%s -> %s', (value, expected) => {
-    expect(isSameOriginPath(value)).toBe(expected)
   })
 })
 

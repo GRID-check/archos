@@ -343,7 +343,14 @@ and the server tells only whom the new text adds (`newlyMentioned`); Escape or
 tool in hand (`features/documents/lib/open-review.ts` reads and writes them;
 the pane keeps them in step). Opening from the pane pushes, so Back closes the
 review; a new mark or tool replaces, so walking the marks is one entry; closing
-goes back, or takes them off when the review came in by a link. A reload stays
+goes back, or takes them off when the review came in by a link. A link from
+another page of the app (an Offene Punkte row, a Postfach row) carries `back`,
+that page's own address with its filters (`reviewFilesHref(…, { back })`,
+`withReviewBack`), and closing a review the pane did not push replaces the entry
+with it, so the reader lands where they left rather than in Dateien. `back` is
+only ever a path of this app (`appReturnPath`, `lib/utils/same-origin-path.ts`:
+no scheme, no other origin, no `//`, no backslash or control character, under
+`/app/`); anything else is dropped as if it were absent. A reload stays
 in the review, and the Files reconciler (`use-preview-channel.ts`) drops them
 when a different document opens. The pane writes the address only where the URL
 names its document (Dateien's `doc`, or the chat's peek).
@@ -1373,13 +1380,19 @@ organization's directory is read once per page.
 review list's row (`MarkRowContent`, `review/mark-row.tsx`, which the
 review's own list wears too), here a link into that document's review at the
 mark: Dateien with `doc`, `review=1` and `mark` (`reviewFilesHref`), which the
-pane already answers. Each document's heading has „Prüfansicht öffnen“ for the
-whole review. The filters are „Zuständig: Alle | Für Sie“ (`isForReader`, the review's word) and „Frist: Alle |
-Überfällig | Bald“; a change reads the first page again through the typed
-client (`listProjectAnnotations` in `client.ts`), and a later page is read at
-the foot of the list (`LoadMore`). The server reads the first page for the
-first paint. A failed read says so with „Erneut versuchen“. `/dev/open-points`
-previews it over fixtures.
+pane already answers, and `back`, this page's address with its filters, so
+closing the review returns here (above, „The review's address“). Each
+document's heading has „Prüfansicht öffnen“ for the whole review. The filters
+are „Zuständig: Alle | Für Sie“ (`isForReader`, the review's word) and „Frist: Alle | Überfällig | Bald“, kept in the
+page's address (`assignee=me`, `due=overdue|soon`); a change replaces the
+address and reads the first page again through the typed client
+(`listProjectAnnotations` in `client.ts`), and a later page is read at the foot
+of the list (`LoadMore`). The server reads the first page for the first paint.
+The list is read again, quietly, on mount (Back from a review restores the page
+with the server's first page as it was, before the reader closed the marks they
+went to) and when the tab returns to view (`useProjectMarks`); that read covers
+as many marks as are shown, up to a page's most. A failed read says so with
+„Erneut versuchen“. `/dev/open-points` previews it over fixtures.
 
 **The Protokoll** (`GET /api/projects/[id]/annotations/export`,
 `project-export.ts`). „Protokoll exportieren“ on the page asks only the
