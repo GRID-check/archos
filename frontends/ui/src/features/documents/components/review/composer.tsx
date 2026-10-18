@@ -63,6 +63,10 @@ function withoutMention(text: string, mentions: readonly DraftMention[], targetI
  * mention too); `documentId` offers everyone who may open that document. The
  * server keeps a mention only for someone who may open it; `onSubmit` answers
  * with the mentions it kept, and the box says whom it did not tell.
+ *
+ * One box for every place a person writes into a thread: the thread's reply,
+ * the draft, the author rewording a mark or a reply, and the answer from a
+ * Postfach row (`features/collaboration/components/InboxItemRow.tsx`).
  */
 export function Composer({
   placeholder,
@@ -77,6 +81,7 @@ export function Composer({
   maxLength = MAX_ANNOTATION_BODY,
   initialBody = '',
   initialMentions,
+  describeFailure,
   testId,
 }: {
   placeholder: string
@@ -96,6 +101,13 @@ export function Composer({
   initialBody?: string
   /** Whom `initialBody` mentions, as the server kept them: they stay mentioned while their name stands. */
   initialMentions?: readonly MarkMention[]
+  /**
+   * The caller's words for a send `onSubmit` threw on, where it has them (a
+   * reply Piloti took up meanwhile, the Postfach row's own failure); null
+   * leaves the box's own: the chat's words for a spent mention budget, else
+   * that it was not sent. The text stays either way.
+   */
+  describeFailure?: (error: unknown) => string | null
   testId: string
 }): JSX.Element {
   const t = useTranslations('files')
@@ -246,10 +258,11 @@ export function Composer({
           : []
       )
     } catch (error) {
+      const rateLimited = error instanceof AnnotationRequestError && error.reason === MENTION_ERROR_REASONS.rateLimited
       setFailed(
-        error instanceof AnnotationRequestError && error.reason === MENTION_ERROR_REASONS.rateLimited
+        rateLimited
           ? tCollab('mentions.errors.rateLimited')
-          : t('review.sendFailed')
+          : (describeFailure?.(error) ?? t('review.sendFailed'))
       )
     } finally {
       setBusy(false)
@@ -348,7 +361,9 @@ export function Composer({
             onSelect={(event) => syncQuery(event.currentTarget.value, event.currentTarget.selectionStart)}
             onBlur={() => setQuery(null)}
             onKeyDown={onKeyDown}
-            className="placeholder:text-muted-foreground min-h-6 flex-1 resize-none border-0 bg-transparent py-0.5 text-[13px] leading-5 shadow-none outline-none! ring-0 focus-visible:ring-0"
+            // 16px on a coarse pointer, as the field atoms (`input.tsx`): under it
+            // iOS zooms the page on focus and does not zoom back out.
+            className="placeholder:text-muted-foreground min-h-6 flex-1 resize-none border-0 bg-transparent py-0.5 text-[13px] leading-5 shadow-none outline-none! ring-0 focus-visible:ring-0 pointer-coarse:text-base"
           />
           {pilotiButton}
           <Button

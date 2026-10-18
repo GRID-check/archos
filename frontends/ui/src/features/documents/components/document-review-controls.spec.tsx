@@ -194,7 +194,7 @@ describe('DocumentReviewControls — approving signs its stand', () => {
         lifecycle="active"
         viewer={editor}
         onAct={onAct}
-        openMarks={{ status: 'counted', count: 4, onOpen }}
+        openMarks={{ status: 'counted', open: 4, proposed: 0, onOpen }}
       />,
     )
 
@@ -211,6 +211,22 @@ describe('DocumentReviewControls — approving signs its stand', () => {
     expect(onAct).toHaveBeenCalledWith('approve')
   })
 
+  it('tells Piloti’s untaken proposals apart from the open Anmerkungen', async () => {
+    render(
+      <DocumentReviewControls
+        version={inReview()}
+        lifecycle="active"
+        viewer={editor}
+        onAct={vi.fn()}
+        openMarks={{ status: 'counted', open: 2, proposed: 12, onOpen: vi.fn() }}
+      />,
+    )
+    await userEvent.click(screen.getByTestId('document-lifecycle-approve'))
+    expect(screen.getByTestId('document-review-approve-open-marks')).toHaveTextContent(
+      '2 open annotations and 12 proposals from Piloti – approve anyway?',
+    )
+  })
+
   it('says nothing about Anmerkungen when none is open', async () => {
     render(
       <DocumentReviewControls
@@ -218,7 +234,7 @@ describe('DocumentReviewControls — approving signs its stand', () => {
         lifecycle="active"
         viewer={editor}
         onAct={vi.fn()}
-        openMarks={{ status: 'counted', count: 0, onOpen: vi.fn() }}
+        openMarks={{ status: 'counted', open: 0, proposed: 0, onOpen: vi.fn() }}
       />,
     )
     await userEvent.click(screen.getByTestId('document-lifecycle-approve'))

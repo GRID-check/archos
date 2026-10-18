@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { render as renderPlain } from '@testing-library/react'
 import { act, fireEvent, render, screen, waitFor, within } from '@/test-utils'
 import { I18nProvider } from '@/i18n'
@@ -9,7 +9,18 @@ import { formatAbsoluteTime } from '@/lib/format'
 import { DocumentLifecycleError } from '@/lib/documents/lifecycle-client'
 import { AnnotationRequestError } from '@/lib/annotations/client'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/mocks/server'
 import { InboxItemRow, type InboxMarkClient } from './InboxItemRow'
+import { ARCHIVE_UNDO_MS } from '../hooks/use-undoable-archive'
+
+/** Where the row is drawn: the Postfach, as the reader has it filtered. */
+const page = vi.hoisted(() => ({ pathname: '/', search: '' }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => page.pathname,
+  useSearchParams: () => new URLSearchParams(page.search),
+}))
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
@@ -778,6 +789,24 @@ describe('InboxItemRow — a new Fassung (document.new_fassung)', () => {
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
+  test('says how many open marks the new Fassung leaves to check, and from which Fassung', () => {
+    const same = { related: null, resourceId: 'doc-a', anchorId: 'ver-3', excerpt: null }
+    const de = (row: InboxItemView) =>
+      renderPlain(
+        <I18nProvider initialLocale="de" fixedLocale>
+          <InboxItemRow item={row} />
+        </I18nProvider>,
+      )
+    const many = de(newFassung({ ...same, variant: 'marks', openMarks: 4, marksFassung: 2 }))
+    expect(screen.getByText('4 offene Anmerkungen aus Fassung 2 prüfen')).toBeInTheDocument()
+    many.unmount()
+
+    // Beside what changed, and from another document: „the previous Fassung".
+    de(newFassung({ variant: 'mark_earlier', openMarks: 1, marksFassung: null }))
+    expect(screen.getByText('1 offene Anmerkung aus der vorigen Fassung prüfen')).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Wand im EG verschoben.')
+  })
+
   test('says where the change is when there is no excerpt', () => {
     render(<InboxItemRow item={newFassung({ excerpt: null })} />)
     expect(screen.getByText('Open the revision to see what changed.')).toBeInTheDocument()
@@ -967,6 +996,33 @@ describe('InboxItemRow — a colleague’s work on a mark, in the reader’s wor
     expect(screen.getByText('Piloti hat Ihnen für Anna Weber Anmerkung 4 in „Grundriss EG“ zugewiesen')).toBeInTheDocument()
   })
 
+  test('says by when the Zuständige is responsible, when the mark has a date', () => {
+    german(onMark({ dueOn: '2026-10-24' }))
+    expect(
+      screen.getByText('Sie sind dafür zuständig, bis 24. Okt. 2026. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.'),
+    ).toBeInTheDocument()
+  })
+
+  test.each([
+    ['due', '2026-10-31', 'Anna Weber hat die Frist von Anmerkung 4 in „Grundriss EG“ auf 31. Okt. 2026 gesetzt'],
+    ['due_cleared', null, 'Anna Weber hat die Frist von Anmerkung 4 in „Grundriss EG“ entfernt'],
+    ['due_piloti', '2026-10-31', 'Piloti hat für Anna Weber die Frist von Anmerkung 4 in „Grundriss EG“ auf 31. Okt. 2026 gesetzt'],
+  ] as const)('tells the Zuständige the date moved (%s)', (variant, dueOn, title) => {
+    german(onMark({ variant, dueOn }))
+    expect(screen.getByText(title)).toBeInTheDocument()
+  })
+
+  test('the daily reminder says the date is near, then that it has passed, in the same row', () => {
+    const reminder = { actorName: null, actorUserId: null, dueOn: '2026-10-18' }
+    const soon = german(onMark({ ...reminder, variant: 'due_soon' }))
+    expect(screen.getByText('Anmerkung 4 in „Grundriss EG“ ist am 18. Okt. 2026 fällig')).toBeInTheDocument()
+    soon.unmount()
+
+    german(onMark({ ...reminder, variant: 'overdue' }))
+    expect(screen.getByText('Anmerkung 4 in „Grundriss EG“ war am 18. Okt. 2026 fällig')).toBeInTheDocument()
+    expect(screen.getByText(/die Frist ist abgelaufen/)).toBeInTheDocument()
+  })
+
   test('counts replies on one mark in one row, and reads a read row without „neu“', () => {
     const reply = { type: 'annotation.activity' as const, actionable: false, variant: 'reply', excerpt: 'Ist bestellt.' }
     const { unmount } = german(onMark({ ...reply, count: 1 }))
@@ -1056,11 +1112,28 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
       ...overrides,
     })
 
+  /** What the reply route answers: the mark with its thread, the new reply's id, and the wake. */
+  const answered = (wake: 'none' | 'off' | 'queued', mentions: Array<{ targetId: string; display: string }> = []) =>
+    ({ annotation: { replies: [{ id: 'reply-1', mentions }] }, replyId: 'reply-1', wake }) as never
+
   const client = (overrides: Partial<InboxMarkClient> = {}): InboxMarkClient => ({
-    reply: vi.fn(async () => ({}) as never),
+    reply: vi.fn(async () => answered('none')),
     update: vi.fn(async () => ({}) as never),
     ...overrides,
   })
+
+  const JAKOB = { userId: 'u-jakob', name: 'Jakob Huber', email: null, profilePictureUrl: null }
+  /** The „@" picker's row for one person (or Piloti), as the chat's picker draws it. */
+  const pickerOption = (targetId: string): HTMLElement => {
+    const row = screen
+      .getAllByTestId('mention-option')
+      .find((option) => option.getAttribute('data-target-id') === targetId)
+    if (!row) throw new Error(`no picker row for ${targetId}`)
+    return row
+  }
+
+  const candidates = () =>
+    server.use(http.get('/api/assignments/:type/:id/candidates', () => HttpResponse.json({ candidates: [JAKOB] })))
 
   test('leads with „Go to annotation“, which opens the mark and marks the row read, and offers no chat about the document', () => {
     const onOpen = vi.fn()
@@ -1073,13 +1146,47 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
   })
 
+  test('says „To the annotations“ on a row about several new marks, which opens the review at the newest', () => {
+    const created = (count: number, variant: string) =>
+      markRow({ type: 'annotation.activity', variant, count, answerIn: null, actionable: false })
+    const { rerender } = render(<InboxItemRow item={created(15, 'created')} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('To the annotations')
+    rerender(<InboxItemRow item={created(3, 'created_piloti')} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('To the annotations')
+    // One new mark, or news about one mark, is one annotation.
+    rerender(<InboxItemRow item={created(1, 'created')} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('Go to annotation')
+    rerender(<InboxItemRow item={created(4, 'reply')} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('Go to annotation')
+  })
+
+  test('opens the mark with the Postfach as the page to return to, so closing the review comes back here', () => {
+    page.pathname = '/app/inbox'
+    page.search = 'filter=unread'
+    try {
+      render(<InboxItemRow item={markRow()} />)
+      const back = encodeURIComponent('/app/inbox?filter=unread')
+      expect(screen.getByTestId('inbox-open-mark')).toHaveAttribute(
+        'href',
+        `/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4&back=${back}`
+      )
+      expect(screen.getByTestId('inbox-item-link')).toHaveAttribute(
+        'href',
+        `/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4&back=${back}`
+      )
+    } finally {
+      page.pathname = '/'
+      page.search = ''
+    }
+  })
+
   test('answers an assigned mark through the annotations client, and the answered row is read', async () => {
     const marks = client()
     const onOpen = vi.fn()
     render(<InboxItemRow item={markRow()} onOpen={onOpen} markClient={marks} />)
     fireEvent.click(screen.getByTestId('inbox-mark-reply'))
     fireEvent.change(screen.getByLabelText('Your reply to annotation 4'), { target: { value: '  Ist bestellt.  ' } })
-    fireEvent.click(screen.getByTestId('inbox-mark-reply-send'))
+    fireEvent.click(screen.getByTestId('inbox-mark-reply-box-send'))
     await waitFor(() => expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Reply sent.'))
     expect(marks.reply).toHaveBeenCalledWith('doc-eg', 'mark-4', { body: 'Ist bestellt.' })
     expect(onOpen).toHaveBeenCalledTimes(1)
@@ -1091,20 +1198,102 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     expect(screen.queryByTestId('inbox-mark-resolve')).not.toBeInTheDocument()
     fireEvent.click(screen.getByTestId('inbox-mark-reply'))
     fireEvent.change(screen.getByLabelText('Your reply to annotation 4'), { target: { value: 'Passt.' } })
-    fireEvent.click(screen.getByTestId('inbox-mark-reply-send'))
+    fireEvent.click(screen.getByTestId('inbox-mark-reply-box-send'))
     await waitFor(() => expect(marks.reply).toHaveBeenCalledWith('doc-eg', 'mark-4', { body: 'Passt.' }))
   })
 
-  test('resolves an assigned mark only if it is still open, and says so when someone moved it first', async () => {
-    const marks = client({
-      update: vi.fn(async () => {
-        throw new AnnotationRequestError(409, 'CONFLICT', 'moved')
-      }),
+  describe('„Resolve“ holds its write for the undo window', () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    /** Let the held write's promise settle inside React's act. */
+    const settle = () => act(async () => {})
+
+    test('says it at once, offers „Undo“ while the row stays, and writes only when the window ends', async () => {
+      const marks = client()
+      const { rerender } = render(<InboxItemRow item={markRow()} markClient={marks} />)
+      fireEvent.click(screen.getByTestId('inbox-mark-resolve'))
+
+      expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Marked as resolved. Undo')
+      expect(marks.update).not.toHaveBeenCalled()
+      // Nothing was written, so the request is still open and the list's re-read keeps the row: „Undo“ stays usable.
+      rerender(<InboxItemRow item={markRow({ state: 'read' })} markClient={marks} />)
+      expect(screen.getByTestId('inbox-mark-undo')).toBeEnabled()
+      act(() => {
+        vi.advanceTimersByTime(ARCHIVE_UNDO_MS - 1)
+      })
+      expect(marks.update).not.toHaveBeenCalled()
+
+      act(() => {
+        vi.advanceTimersByTime(1)
+      })
+      await settle()
+      expect(marks.update).toHaveBeenCalledTimes(1)
+      expect(marks.update).toHaveBeenCalledWith('doc-eg', 'mark-4', { status: 'resolved', expectedStatus: 'open' })
+      expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Marked as resolved.')
+      expect(screen.queryByTestId('inbox-mark-undo')).not.toBeInTheDocument()
     })
-    render(<InboxItemRow item={markRow()} markClient={marks} />)
-    fireEvent.click(screen.getByTestId('inbox-mark-resolve'))
-    await waitFor(() => expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent(/Someone changed the annotation first/))
-    expect(marks.update).toHaveBeenCalledWith('doc-eg', 'mark-4', { status: 'resolved', expectedStatus: 'open' })
+
+    test('„Undo“ inside the window writes nothing, and the focus follows the control that took the pressed one’s place', async () => {
+      const marks = client()
+      render(<InboxItemRow item={markRow()} markClient={marks} />)
+      screen.getByTestId('inbox-mark-resolve').focus()
+      fireEvent.click(screen.getByTestId('inbox-mark-resolve'))
+      expect(screen.getByTestId('inbox-mark-undo')).toHaveFocus()
+
+      fireEvent.click(screen.getByTestId('inbox-mark-undo'))
+      expect(screen.queryByTestId('inbox-mark-outcome')).not.toBeInTheDocument()
+      expect(screen.getByTestId('inbox-mark-resolve')).toHaveFocus()
+      act(() => {
+        vi.advanceTimersByTime(ARCHIVE_UNDO_MS * 2)
+      })
+      await settle()
+      expect(marks.update).not.toHaveBeenCalled()
+    })
+
+    test('gives the focus to the outcome line once the window ends with the write, never to the page', async () => {
+      const marks = client()
+      render(<InboxItemRow item={markRow()} markClient={marks} />)
+      screen.getByTestId('inbox-mark-resolve').focus()
+      fireEvent.click(screen.getByTestId('inbox-mark-resolve'))
+      expect(screen.getByTestId('inbox-mark-undo')).toHaveFocus()
+
+      act(() => {
+        vi.advanceTimersByTime(ARCHIVE_UNDO_MS)
+      })
+      await settle()
+      expect(marks.update).toHaveBeenCalledTimes(1)
+      // „Undo“ went and „Resolve“ is not drawn again: the line that says what happened holds the focus.
+      expect(screen.queryByTestId('inbox-mark-resolve')).not.toBeInTheDocument()
+      expect(screen.getByTestId('inbox-mark-outcome')).toHaveFocus()
+    })
+
+    test('says so in the row’s own words when the write that finally goes finds the mark moved', async () => {
+      const marks = client({
+        update: vi.fn(async () => {
+          throw new AnnotationRequestError(409, 'CONFLICT', 'moved')
+        }),
+      })
+      render(<InboxItemRow item={markRow()} markClient={marks} />)
+      fireEvent.click(screen.getByTestId('inbox-mark-resolve'))
+      act(() => {
+        vi.advanceTimersByTime(ARCHIVE_UNDO_MS)
+      })
+      await settle()
+
+      expect(marks.update).toHaveBeenCalledWith('doc-eg', 'mark-4', { status: 'resolved', expectedStatus: 'open' })
+      expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent(/Someone changed the annotation first/)
+      expect(screen.getByTestId('inbox-mark-outcome')).toHaveAttribute('role', 'alert')
+      expect(screen.queryByTestId('inbox-mark-undo')).not.toBeInTheDocument()
+    })
+
+    test('sends a held write when the row goes', () => {
+      const marks = client()
+      const { unmount } = render(<InboxItemRow item={markRow()} markClient={marks} />)
+      fireEvent.click(screen.getByTestId('inbox-mark-resolve'))
+      unmount()
+      expect(marks.update).toHaveBeenCalledWith('doc-eg', 'mark-4', { status: 'resolved', expectedStatus: 'open' })
+    })
   })
 
   test('answers Piloti’s question, but does not resolve the mark for it', () => {
@@ -1138,14 +1327,110 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
   })
 
   test('says how to reach Piloti when an answer sent from the row met a wake rule nothing acts on', async () => {
-    const marks = client({ reply: vi.fn(async () => ({ wake: 'off' }) as never) })
+    const marks = client({ reply: vi.fn(async () => answered('off')) })
     render(<InboxItemRow item={markRow()} markClient={marks} />)
     fireEvent.click(screen.getByTestId('inbox-mark-reply'))
     fireEvent.change(screen.getByLabelText('Your reply to annotation 4'), { target: { value: 'Ist bestellt.' } })
-    fireEvent.click(screen.getByTestId('inbox-mark-reply-send'))
+    fireEvent.click(screen.getByTestId('inbox-mark-reply-box-send'))
     await waitFor(() =>
       expect(screen.getByTestId('inbox-mark-outcome')).toHaveTextContent('Piloti reads it only once you ask it with @Piloti in the review.'),
     )
+  })
+
+  // The row's answer is the thread's composer: Enter sends, Shift+Enter breaks the line.
+  test('sends on Enter and breaks the line on Shift+Enter, as the thread does', async () => {
+    const marks = client()
+    render(<InboxItemRow item={markRow()} markClient={marks} />)
+    fireEvent.click(screen.getByTestId('inbox-mark-reply'))
+    const box = screen.getByLabelText('Your reply to annotation 4')
+    await userEvent.type(box, 'Ist bestellt.{Shift>}{Enter}{/Shift}Lieferung Freitag.')
+    expect(marks.reply).not.toHaveBeenCalled()
+    await userEvent.type(box, '{Enter}')
+    await waitFor(() =>
+      expect(marks.reply).toHaveBeenCalledWith('doc-eg', 'mark-4', { body: 'Ist bestellt.\nLieferung Freitag.' }),
+    )
+    expect(await screen.findByTestId('inbox-mark-outcome')).toHaveTextContent('Reply sent.')
+    expect(screen.queryByTestId('inbox-mark-reply-form')).not.toBeInTheDocument()
+  })
+
+  test('gives the focus back to „Reply“ when the answer box is sent or let go, never to the page', async () => {
+    const marks = client()
+    const user = userEvent.setup()
+    render(<InboxItemRow item={markRow()} markClient={marks} />)
+
+    await user.click(screen.getByTestId('inbox-mark-reply'))
+    expect(screen.getByLabelText('Your reply to annotation 4')).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(screen.getByTestId('inbox-mark-reply')).toHaveFocus()
+
+    await user.click(screen.getByTestId('inbox-mark-reply'))
+    await user.click(screen.getByTestId('inbox-mark-reply-cancel'))
+    expect(screen.getByTestId('inbox-mark-reply')).toHaveFocus()
+
+    await user.click(screen.getByTestId('inbox-mark-reply'))
+    await user.type(screen.getByLabelText('Your reply to annotation 4'), 'Ist bestellt.{Enter}')
+    expect(await screen.findByTestId('inbox-mark-outcome')).toHaveTextContent('Reply sent.')
+    expect(screen.getByTestId('inbox-mark-reply')).toHaveFocus()
+  })
+
+  test('mentions a colleague who may open the document, with whom it picked, and says whom the server did not tell', async () => {
+    candidates()
+    const marks = client({ reply: vi.fn(async () => answered('none')) })
+    render(<InboxItemRow item={markRow()} markClient={marks} />)
+    fireEvent.click(screen.getByTestId('inbox-mark-reply'))
+    const box = screen.getByLabelText('Your reply to annotation 4')
+    await userEvent.type(box, '@Ja')
+    await userEvent.click(await waitFor(() => pickerOption('u-jakob')))
+    await userEvent.type(box, 'bitte prüfen{Enter}')
+    await waitFor(() =>
+      expect(marks.reply).toHaveBeenCalledWith('doc-eg', 'mark-4', {
+        body: '@Jakob Huber bitte prüfen',
+        mentions: [{ targetId: 'u-jakob', display: 'Jakob Huber' }],
+      }),
+    )
+    // The server kept nobody: Jakob cannot open the document after all.
+    expect(await screen.findByTestId('inbox-mark-outcome')).toHaveTextContent('Jakob Huber was not told.')
+  })
+
+  test('offers @Piloti where events wake Piloti, and sends it as the reply’s flag', async () => {
+    candidates()
+    const marks = client({ reply: vi.fn(async () => answered('queued', [{ targetId: 'agent:piloti', display: 'Piloti' }])) })
+    render(<InboxItemRow item={markRow({ pilotiWakes: true })} markClient={marks} />)
+    fireEvent.click(screen.getByTestId('inbox-mark-reply'))
+    fireEvent.click(screen.getByTestId('inbox-mark-reply-box-mention'))
+    const box = screen.getByLabelText('Your reply to annotation 4')
+    await userEvent.type(box, 'stimmt das?{Enter}')
+    await waitFor(() =>
+      expect(marks.reply).toHaveBeenCalledWith('doc-eg', 'mark-4', {
+        body: '@Piloti stimmt das?',
+        addressesPiloti: true,
+        mentions: [{ targetId: 'agent:piloti', display: 'Piloti' }],
+      }),
+    )
+  })
+
+  test('offers no @Piloti where nothing would wake it', async () => {
+    candidates()
+    render(<InboxItemRow item={markRow({ pilotiWakes: false })} markClient={client()} />)
+    fireEvent.click(screen.getByTestId('inbox-mark-reply'))
+    expect(screen.queryByTestId('inbox-mark-reply-box-mention')).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Your reply to annotation 4'), '@')
+    await waitFor(() => pickerOption('u-jakob'))
+    expect(screen.getAllByTestId('mention-option').map((row) => row.getAttribute('data-target-id'))).toEqual(['u-jakob'])
+  })
+
+  test('keeps the words and says the row’s failure when the answer did not go', async () => {
+    const marks = client({
+      reply: vi.fn(async () => {
+        throw new AnnotationRequestError(500, 'INTERNAL', 'boom')
+      }),
+    })
+    render(<InboxItemRow item={markRow()} markClient={marks} />)
+    fireEvent.click(screen.getByTestId('inbox-mark-reply'))
+    const box = screen.getByLabelText('Your reply to annotation 4')
+    await userEvent.type(box, 'Ist bestellt.{Enter}')
+    expect(await screen.findByText('That did not work. Nothing has changed.')).toBeInTheDocument()
+    expect(box).toHaveValue('Ist bestellt.')
   })
 
   test('news on a mark only opens it: nothing waits on the reader there', () => {

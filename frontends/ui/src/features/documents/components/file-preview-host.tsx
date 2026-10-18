@@ -418,6 +418,10 @@ export function FilePreviewHost({
             if (fileId === file.id) patchFile(summary)
             context.onLifecycleChanged?.(fileId, summary)
           }}
+          onMarksChanged={(fileId, marks) => {
+            if (fileId === file.id) patchFile({ marks })
+            context.onMarksChanged?.(fileId, marks)
+          }}
         />
       </div>
     </>

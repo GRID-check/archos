@@ -11,8 +11,14 @@
  *
  * ## Who hears
  *
- * The people assigned to the OLDER document (ADR-0047) and its uploader, minus
- * the person who made the change: nobody needs telling about their own gesture.
+ * The people assigned to the OLDER document (ADR-0047) and its uploader, and
+ * everyone working on one of its open marks that the new Fassung leaves behind
+ * (`markParticipants`: who set it, its Zuständige, who delegated it, answered
+ * or was mentioned in it), minus the person who made the change: nobody needs
+ * telling about their own gesture. The row then says how many open marks to
+ * check, and from which Fassung („4 offene Anmerkungen aus Fassung 2 prüfen"):
+ * each is listed and not drawn on the new sheet until someone carries it on
+ * („Auf aktuelle Fassung übernehmen", `lib/annotations/carry.ts`).
  * Assignment is not access, so the list is then cut to those who may open BOTH
  * documents: project membership and the folder each is filed in, or
  * organization membership for the Büroablage. The row names the older document
@@ -43,6 +49,8 @@
  */
 
 import 'server-only'
+import { markParticipants } from '@/lib/annotations/attention'
+import { listDocumentAnnotations, type AnnotationRecord } from '@/lib/annotations/repository'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import type { Document } from '@/lib/db/schema'
 import { inboxGroupKey } from '@/lib/inbox/registry'
@@ -135,10 +143,47 @@ export function fassungRowNames(follow: NamedDocument, newer: NamedDocument | nu
 export function fassungRecipients(input: {
   assigneeIds: readonly string[]
   uploaderIds: readonly (string | null | undefined)[]
+  /** The people working on the open marks the new Fassung leaves behind. */
+  participantIds?: readonly string[]
   actorUserId: string | null
 }): string[] {
-  const everyone = [...input.assigneeIds, ...input.uploaderIds]
+  const everyone = [...input.assigneeIds, ...input.uploaderIds, ...(input.participantIds ?? [])]
   return [...new Set(everyone.filter((id): id is string => Boolean(id) && id !== input.actorUserId))]
+}
+
+/**
+ * What the row says about the open marks the new Fassung leaves behind: how
+ * many, and from which Fassung when they all sit on one numbered Fassung of
+ * the same document. Its `variant` picks the words (one or several, a Fassung
+ * named or „the previous one"); nothing when there are none. Pure.
+ */
+export function openMarksFacts(
+  marks: ReadonlyArray<Pick<AnnotationRecord, 'fassungNumber'>>,
+  { sameDocument }: { sameDocument: boolean }
+): { variant: string; openMarks: number; marksFassung: number | null } | null {
+  if (marks.length === 0) return null
+  const numbers = new Set(marks.map((mark) => mark.fassungNumber))
+  const [only] = [...numbers]
+  // Another document's own Fassung numbers count its states, not this timeline's.
+  const marksFassung = sameDocument && numbers.size === 1 && typeof only === 'number' ? only : null
+  const variant = `${marks.length === 1 ? 'mark' : 'marks'}${marksFassung === null ? '_earlier' : ''}`
+  return { variant, openMarks: marks.length, marksFassung }
+}
+
+/**
+ * The open marks of the followed document that the new Fassung does not carry:
+ * for a same-name version every open mark set on another version, for a
+ * document another one replaced every open mark it has. Keyed by a document
+ * read with the screened-only reader above. Bounded by the list read.
+ */
+async function marksLeftBehind(
+  organizationId: string,
+  follow: Document,
+  versionId: string | null | undefined
+): Promise<AnnotationRecord[]> {
+  if (follow.scope !== 'project' && follow.scope !== 'archiv') return []
+  const marks = await listDocumentAnnotations(organizationId, follow.id)
+  return marks.filter((mark) => mark.status === 'open' && (!versionId || (mark.versionId ?? null) !== versionId))
 }
 
 /**
@@ -184,10 +229,14 @@ async function writeFassungItems(
 ): Promise<number> {
   const { organizationId } = announcement
   const sameDocument = newer.id === follow.id
-  const assignments = await listAssignmentsForResources(organizationId, 'document', [follow.id])
+  const [assignments, marks] = await Promise.all([
+    listAssignmentsForResources(organizationId, 'document', [follow.id]),
+    marksLeftBehind(organizationId, follow, sameDocument ? (announcement.versionId ?? newer.publishedVersionId) : null),
+  ])
   const candidates = fassungRecipients({
     assigneeIds: assignments.map((row) => row.subjectUserId),
     uploaderIds: [follow.createdBy, ...(announcement.previousUploaderIds ?? [])],
+    participantIds: marks.flatMap((mark) => markParticipants(mark)),
     actorUserId: announcement.actorUserId,
   })
   if (candidates.length === 0) return 0
@@ -204,6 +253,7 @@ async function writeFassungItems(
   if (told.length === 0) return 0
 
   const excerpt = firstSummaryLine(announcement.changeSummary)
+  const openMarks = openMarksFacts(marks, { sameDocument })
   await emitInboxItems(
     told.map((recipientUserId) => ({
       organizationId,
@@ -220,6 +270,7 @@ async function writeFassungItems(
       payload: {
         ...fassungRowNames(follow, sameDocument ? null : newer),
         ...(excerpt ? { excerpt } : {}),
+        ...(openMarks ?? {}),
       },
     })),
   )

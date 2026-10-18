@@ -5,6 +5,7 @@ import { useTranslations } from '@/i18n'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FassungFacts } from '@/lib/documents/fassung'
+import type { MarkTally } from '@/lib/annotations/types'
 import type { DocumentScope } from './document-actions'
 import type { FileItem } from './project-file-workspace'
 import { FilePreviewPane } from './file-preview-pane'
@@ -24,6 +25,8 @@ interface FilePreviewDialogProps {
   onOpenDocument?: (fileId: string) => void
   /** A link was confirmed or taken back: the Fassung facts of one of the two documents, so the listing moves both cards. */
   onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
+  /** The review read or changed the document's marks: the listing's tally for its chip. */
+  onMarksChanged?: (fileId: string, marks: MarkTally | null) => void
   /** The document was renamed in the pane's header menu. */
   onRenamed?: (fileId: string, displayName: string | null) => void
   /** The document was deleted in the pane's header menu. */
@@ -69,6 +72,7 @@ export function FilePreviewDialog({
   onTagsUpdated,
   onOpenDocument,
   onFassungChanged,
+  onMarksChanged,
   onRenamed,
   onDeleted,
   showModels,
@@ -166,6 +170,7 @@ export function FilePreviewDialog({
             onTagsUpdated={onTagsUpdated}
             onOpenDocument={onOpenDocument}
             onFassungChanged={onFassungChanged}
+            onMarksChanged={onMarksChanged}
             onRenamed={onRenamed}
             onDeleted={onDeleted}
             showModels={showModels}

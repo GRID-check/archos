@@ -3,6 +3,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
+  backReaches,
   labelVisit,
   navigationArea,
   previousVisit,
@@ -98,6 +99,29 @@ describe('previousVisit', () => {
         '/app/organization/models',
       ),
     ).toEqual({ path: '/app/projects/p1/chat' })
+  })
+})
+
+describe('backReaches', () => {
+  const FILES = '/app/projects/p1/files'
+
+  test('is true when the page one step back is the target', () => {
+    expect(backReaches(visits('/app/projects/p1/files/open-points', FILES), FILES, '/app/projects/p1/files/open-points')).toBe(true)
+    expect(backReaches(visits('/app/projects', '/app/inbox', FILES), FILES, '/app/inbox')).toBe(true)
+  })
+
+  test('is false for a target that is not one step back', () => {
+    expect(backReaches(visits('/app/inbox', '/app/projects/p2/chat', FILES), FILES, '/app/inbox')).toBe(false)
+  })
+
+  test('is false with no record of how the reader got here (a new tab, a shared link)', () => {
+    expect(backReaches([], FILES, '/app/inbox')).toBe(false)
+    expect(backReaches(visits(FILES), FILES, '/app/inbox')).toBe(false)
+  })
+
+  test('is false when naming the target skipped a settings tab, which puts it two entries back', () => {
+    const models = '/app/organization/models'
+    expect(backReaches(visits('/app/projects/p1/chat', '/app/organization', models), models, '/app/projects/p1/chat')).toBe(false)
   })
 })
 

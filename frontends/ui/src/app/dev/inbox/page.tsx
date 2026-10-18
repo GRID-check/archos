@@ -37,6 +37,7 @@ import { Bell } from 'lucide-react'
 import { I18nProvider } from '@/i18n'
 import { InboxBadge, InboxList } from '@/features/collaboration/components'
 import type { InboxItemView } from '@/lib/inbox/types'
+import type { AnnotationReplyView, AnnotationView } from '@/lib/annotations/types'
 
 // Relative to now, so „vor 4 Minuten“ reads as it would in the product rather
 // than every row claiming months.
@@ -324,10 +325,38 @@ const ITEMS: InboxItemView[] = [
     related: 'Grundriss EG Index C',
     excerpt: 'Die Tür zum Technikraum wurde verschoben, die Wandstärke im Kern von 25 auf 30 cm erhöht.',
     mentions: [],
-    variant: null,
+    // The open marks Index B leaves behind: the row says how many to check.
+    variant: 'marks_earlier',
+    openMarks: 4,
+    marksFassung: null,
     answerIn: null,
     createdAt: ago(9),
     updatedAt: ago(9),
+  },
+  // A same-name Fassung: its open marks all sit on Fassung 2.
+  {
+    id: 'i-fassung-marks',
+    type: 'document.new_fassung',
+    state: 'read',
+    archived: false,
+    actionable: false,
+    resourceType: 'document',
+    resourceId: 'd-schnitt',
+    anchorId: 'v-schnitt-3',
+    actorName: 'Jakob Huber',
+    actorUserId: 'u-jakob',
+    count: 0,
+    href: '/app/projects/p1/files?doc=d-schnitt',
+    subject: 'Schnitt A-A',
+    related: null,
+    excerpt: null,
+    mentions: [],
+    variant: 'marks',
+    openMarks: 3,
+    marksFassung: 2,
+    answerIn: null,
+    createdAt: ago(55),
+    updatedAt: ago(55),
   },
   // The content check held files back (ADR-0086): a collapsed row of three
   // naming the newest and its kind of reason, never the value found; and an
@@ -466,9 +495,82 @@ const ITEMS: InboxItemView[] = [
     excerpt: 'Brandschutztür T30 zum Stiegenhaus fehlt in der Legende.',
     mentions: [],
     variant: null,
+    dueOn: '2026-10-24',
     answerIn: 'row',
     createdAt: ago(7),
     updatedAt: ago(7),
+  },
+  // The daily reminder of a Frist, in the Zuständige's row for the mark: near,
+  // then passed (the same row upgraded). No actor: the calendar did it.
+  {
+    id: 'i-mark-due-soon',
+    type: 'annotation.assigned_to_you',
+    state: 'unread',
+    archived: false,
+    actionable: true,
+    resourceType: 'document',
+    resourceId: 'd-eg-c',
+    anchorId: 'mark-11',
+    actorName: null,
+    actorUserId: null,
+    count: 2,
+    href: '/app/projects/p1/files?doc=d-eg-c&review=1&mark=mark-11',
+    subject: 'Grundriss EG',
+    related: '11',
+    excerpt: 'Fluchtwegbreite im Gang nachweisen.',
+    mentions: [],
+    variant: 'due_soon',
+    dueOn: '2026-10-18',
+    answerIn: 'row',
+    createdAt: ago(600),
+    updatedAt: ago(3),
+  },
+  {
+    id: 'i-mark-overdue',
+    type: 'annotation.assigned_to_you',
+    state: 'unread',
+    archived: false,
+    actionable: true,
+    resourceType: 'document',
+    resourceId: 'd-schnitt',
+    anchorId: 'mark-2',
+    actorName: null,
+    actorUserId: null,
+    count: 3,
+    href: '/app/projects/p1/files?doc=d-schnitt&review=1&mark=mark-2',
+    subject: 'Schnitt A-A',
+    related: '2',
+    excerpt: 'Brüstungshöhe im 2. OG unter 1,00 m.',
+    mentions: [],
+    variant: 'overdue',
+    dueOn: '2026-10-15',
+    answerIn: 'row',
+    createdAt: ago(4000),
+    updatedAt: ago(4),
+  },
+  // A colleague moved the date of a mark the reader is Zuständige for.
+  {
+    id: 'i-mark-redated',
+    type: 'annotation.assigned_to_you',
+    state: 'read',
+    archived: false,
+    actionable: true,
+    resourceType: 'document',
+    resourceId: 'd-eg-c',
+    anchorId: 'mark-12',
+    actorName: 'Anna Weber',
+    actorUserId: 'u-anna',
+    count: 0,
+    href: '/app/projects/p1/files?doc=d-eg-c&review=1&mark=mark-12',
+    subject: 'Grundriss EG',
+    related: '12',
+    excerpt: 'Schachtquerschnitt mit der Haustechnik abstimmen.',
+    mentions: [],
+    variant: 'due',
+    dueOn: '2026-10-31',
+    answerIn: 'row',
+    createdAt: ago(300),
+    updatedAt: ago(40),
   },
   // A colleague @mentioned the reader in a mark's thread, with the chat's
   // picker: the row opens at the mark, and the reader can answer from here.
@@ -492,6 +594,8 @@ const ITEMS: InboxItemView[] = [
     mentions: [{ targetId: VIEWER_ID, display: 'Miriam Hofer' }],
     variant: null,
     answerIn: 'row',
+    // Events wake Piloti in this office: „Antworten" opens the thread's composer with @Piloti beside Send.
+    pilotiWakes: true,
     createdAt: ago(3),
     updatedAt: ago(3),
   },
@@ -517,6 +621,53 @@ const ITEMS: InboxItemView[] = [
     answerIn: null,
     createdAt: ago(30),
     updatedAt: ago(14),
+  },
+  // A colleague's review of a document the reader is Verantwortlich for: fifteen new marks, one counted row.
+  {
+    id: 'i-marks-set',
+    type: 'annotation.activity',
+    state: 'unread',
+    archived: false,
+    actionable: false,
+    resourceType: 'document',
+    resourceId: 'd-grundriss',
+    anchorId: 'mark-15',
+    actorName: 'Anna Weber',
+    actorUserId: 'u-anna',
+    count: 15,
+    href: '/app/projects/p1/files?doc=d-grundriss&review=1&mark=mark-15',
+    subject: 'Grundriss EG',
+    related: '15',
+    excerpt: 'Fluchtwegbreite im Stiegenhaus mit 1,20 m kotieren.',
+    mentions: [],
+    variant: 'created',
+    answerIn: null,
+    createdAt: ago(48),
+    updatedAt: ago(9),
+  },
+  // Piloti's proposals a colleague took over, on a document the reader uploaded:
+  // a proposal tells nobody until then, and then reads as Piloti's marks for them.
+  {
+    id: 'i-marks-taken-over',
+    type: 'annotation.activity',
+    state: 'read',
+    archived: false,
+    actionable: false,
+    resourceType: 'document',
+    resourceId: 'd-schnitt',
+    anchorId: 'mark-8',
+    actorName: 'Markus Hofer',
+    actorUserId: 'u-markus',
+    count: 3,
+    href: '/app/projects/p1/files?doc=d-schnitt&review=1&mark=mark-8',
+    subject: 'Schnitt A-A',
+    related: '8',
+    excerpt: 'Brüstungshöhe im Schnitt nicht kotiert (OIB-RL 4, Pkt. 4.2).',
+    mentions: [],
+    variant: 'created_piloti',
+    answerIn: null,
+    createdAt: ago(200),
+    updatedAt: ago(180),
   },
   {
     id: 'i-piloti-proposal',
@@ -572,6 +723,13 @@ const PAGE = 12
 const isEmptyVariant = (): boolean =>
   typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('variant') === 'empty'
 
+/** Who may open the fixtures' documents: the rows the reply composer's „@" picker offers. */
+const MENTIONABLE = [
+  { userId: 'u-anna', name: 'Anna Weber', email: 'anna@buero.at', profilePictureUrl: null },
+  { userId: 'u-jakob', name: 'Jakob Huber', email: 'jakob@buero.at', profilePictureUrl: null },
+  { userId: 'u-markus', name: 'Markus Lehner', email: 'markus@buero.at', profilePictureUrl: null },
+]
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const w = window as unknown as { __inboxShim?: boolean }
   if (!w.__inboxShim) {
@@ -599,6 +757,33 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const items = rows.slice(start, start + PAGE)
         const hasMore = start + PAGE < rows.length
         return Response.json({ items, pending: PENDING.length, counts, hasMore, nextCursor: hasMore ? String(start + PAGE) : null })
+      }
+      // „Antworten" from a mark's row: the thread's composer asks who may open
+      // the document for its „@" picker, and sends through the reply route.
+      if (/^\/api\/assignments\/document\/[^/]+\/candidates/.test(url)) {
+        return Response.json({ candidates: MENTIONABLE })
+      }
+      const reply = /^\/api\/documents\/[^/]+\/annotations\/([^/]+)\/replies$/.exec(url)
+      if (reply && init?.method === 'POST') {
+        const sent = JSON.parse(String(init.body ?? '{}')) as Pick<AnnotationReplyView, 'body' | 'mentions' | 'addressesPiloti'>
+        const replyId = `reply-${Date.now()}`
+        const now = new Date().toISOString()
+        // The mark as the reply route answers it, its thread holding the new reply with whom it kept.
+        const annotation: AnnotationView = {
+          id: reply[1], documentId: 'd-eg-c', number: 11, page: 1, shape: 'point', x: 0.4, y: 0.4, w: null, h: null,
+          kind: 'question', body: 'Fluchtwegbreite im Gang nachweisen.', mentions: [], basis: null, authorKind: 'person',
+          status: 'open', assigneeUserId: VIEWER_ID, assigneeName: 'Miriam Hofer', dueOn: null, fassungNumber: 3,
+          onCurrentFassung: true, createdBy: 'u-jakob', createdByName: 'Jakob Huber', createdAt: now, updatedAt: now,
+          acceptedBy: null, acceptedByName: null, closedBy: null, closedByName: null, closedAt: null,
+          delegatedBy: null, delegatedByName: null, delegatedAt: null, canEdit: true, canDelete: false,
+          replies: [{
+            id: replyId, annotationId: reply[1], authorKind: 'person', body: sent.body, createdBy: VIEWER_ID,
+            createdByName: 'Miriam Hofer', createdAt: now, addressesPiloti: sent.addressesPiloti === true,
+            mentions: sent.mentions ?? [], editedAt: null,
+          }],
+        }
+        const wake = sent.addressesPiloti ? 'queued' : 'none'
+        return Response.json({ annotation, replyId, wake }, { status: 201 })
       }
       // The live channel is deliberately absent here: the list must render fully
       // from the plain fetch (spec RT-3/RT-4), which is what a screenshot proves.

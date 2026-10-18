@@ -35,6 +35,8 @@ vi.mock('@/lib/inbox/service', () => ({
   markRead: vi.fn(async () => RESULT),
   markAllRead: vi.fn(async () => RESULT),
   markAnchorItemsReadFor: vi.fn(async () => RESULT),
+  markMarksSetReadFor: vi.fn(async () => RESULT),
+  unreadAnchorsFor: vi.fn(async () => ({ anchorIds: ['mark-4', 'mark-7'] })),
   markUnread: vi.fn(async () => RESULT),
   archiveItem: vi.fn(async () => RESULT),
   unarchiveItem: vi.fn(async () => RESULT),
@@ -46,14 +48,17 @@ import {
   listInbox,
   markAllRead,
   markAnchorItemsReadFor,
+  markMarksSetReadFor,
   markRead,
   markUnread,
   unarchiveItem,
+  unreadAnchorsFor,
 } from '@/lib/inbox/service'
 import { createInboxClient, INBOX_READ_PATH, InboxRequestError } from '@/lib/inbox/client'
 import { GET as list } from './route'
 import { POST as read } from './read/route'
 import { POST as unread } from './unread/route'
+import { GET as unreadAnchors } from './unread-anchors/route'
 import { GET as summary } from './summary/route'
 import { DELETE as unarchive, POST as archive } from './[id]/archive/route'
 
@@ -63,6 +68,7 @@ const ROUTES: Array<{ pattern: RegExp; method: string; handler: Handler }> = [
   { pattern: /^\/api\/inbox\/summary$/, method: 'GET', handler: summary },
   { pattern: /^\/api\/inbox\/read$/, method: 'POST', handler: read },
   { pattern: /^\/api\/inbox\/unread$/, method: 'POST', handler: unread },
+  { pattern: /^\/api\/inbox\/unread-anchors$/, method: 'GET', handler: unreadAnchors },
   { pattern: /^\/api\/inbox\/([^/]+)\/archive$/, method: 'POST', handler: archive },
   { pattern: /^\/api\/inbox\/([^/]+)\/archive$/, method: 'DELETE', handler: unarchive },
 ]
@@ -107,6 +113,8 @@ describe('POST /api/inbox/read', () => {
     expect(markAllRead).toHaveBeenCalledWith(SESSION)
     expect(await client.markMarkRead({ documentId: 'doc-1', annotationId: 'mark-4' })).toEqual(RESULT)
     expect(markAnchorItemsReadFor).toHaveBeenCalledWith(SESSION, 'document', 'doc-1', 'mark-4')
+    expect(await client.markMarksSetRead('doc-1')).toEqual(RESULT)
+    expect(markMarksSetReadFor).toHaveBeenCalledWith(SESSION, 'document', 'doc-1')
   })
 
   it('refuses an anchor on anything but a document, and a body that is two shapes at once', async () => {
@@ -114,6 +122,9 @@ describe('POST /api/inbox/read', () => {
       serve(INBOX_READ_PATH, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
     expect((await send({ resourceType: 'conversation', resourceId: 'c1', anchorId: 'm1' })).status).toBe(400)
     expect((await send({ all: true, itemIds: [ITEM] })).status).toBe(400)
+    expect((await send({ resourceType: 'conversation', resourceId: 'c1', marksSet: true })).status).toBe(400)
+    expect((await send({ resourceType: 'document', resourceId: 'd1', marksSet: false })).status).toBe(400)
+    expect(markMarksSetReadFor).not.toHaveBeenCalled()
     expect(markAnchorItemsReadFor).not.toHaveBeenCalled()
     expect(markAllRead).not.toHaveBeenCalled()
   })
@@ -121,6 +132,19 @@ describe('POST /api/inbox/read', () => {
   it('is the path the service worker posts a tapped notification to', () => {
     const worker = readFileSync(join(process.cwd(), 'public', 'sw.js'), 'utf8')
     expect(worker).toContain(`var READ_PATH = '${INBOX_READ_PATH}'`)
+  })
+})
+
+describe('GET /api/inbox/unread-anchors', () => {
+  it('reads the marks of one document whose news the reader has not read', async () => {
+    expect(await client.unreadMarks('doc-1')).toEqual(['mark-4', 'mark-7'])
+    expect(unreadAnchorsFor).toHaveBeenCalledWith(SESSION, 'document', 'doc-1')
+  })
+
+  it('refuses an anchored resource that is not a document, and a missing one', async () => {
+    expect((await serve('/api/inbox/unread-anchors?resourceType=conversation&resourceId=c1')).status).toBe(400)
+    expect((await serve('/api/inbox/unread-anchors?resourceType=document')).status).toBe(400)
+    expect(unreadAnchorsFor).not.toHaveBeenCalled()
   })
 })
 

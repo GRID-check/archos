@@ -13,7 +13,7 @@
 
 import 'server-only'
 import type { InboxItem } from '@/lib/db/schema'
-import { isPushStillDue } from '@/lib/inbox/push-policy'
+import { isPushStillDue, pushPolicyFor } from '@/lib/inbox/push-policy'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { BFF_JOB_PRIORITY } from '@/lib/jobs-queue/types'
 import { webPushConfig } from './config'
@@ -21,9 +21,15 @@ import { userIdsWithSubscription } from './repository'
 
 /**
  * A row folded into an unread group a moment ago is part of a burst. Its job
- * waits this long, so the burst's last occurrence is the one that sends.
+ * waits this long, so the burst's last occurrence is the one that sends. A
+ * type that folds across rows (`fold` in its push policy, `./fold.ts`) waits
+ * this long on every row, the first included, so the burst is there before
+ * anything is told.
  */
 export const BURST_HOLD_MS = 5_000
+
+/** Whether this row's job waits for the rest of its burst. */
+const held = (row: InboxItem) => row.count > 1 || Boolean(pushPolicyFor(row.type)?.fold)
 
 export async function enqueueInboxPushes(rows: readonly InboxItem[], now: Date = new Date()): Promise<number> {
   try {
@@ -42,7 +48,7 @@ export async function enqueueInboxPushes(rows: readonly InboxItem[], now: Date =
           organizationId,
           priority: BFF_JOB_PRIORITY.interactive,
           payload: { itemId: row.id, recipientUserId: row.recipientUserId, stamp: row.updatedAt.toISOString() },
-          ...(row.count > 1 ? { notBefore: new Date(now.getTime() + BURST_HOLD_MS) } : {}),
+          ...(held(row) ? { notBefore: new Date(now.getTime() + BURST_HOLD_MS) } : {}),
         })
         queued += 1
       }

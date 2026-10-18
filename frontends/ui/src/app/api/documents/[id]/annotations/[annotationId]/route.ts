@@ -1,7 +1,8 @@
 /**
  * One Anmerkung of a document: GET reads it as the caller sees it (what a
  * room hint names, read again on its own), PATCH changes it (take a proposal over or
- * dismiss it, resolve or reopen it, reword it, assign it, give it a date),
+ * dismiss it, resolve or reopen it, reword it, assign it, give it a date, carry
+ * it to the current Fassung),
  * DELETE removes one the caller set. Thin handlers; the rules live in
  * `@/lib/annotations/service`.
  */

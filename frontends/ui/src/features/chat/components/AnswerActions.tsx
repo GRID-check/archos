@@ -59,7 +59,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { copyMarkdownToClipboard } from '@/shared/utils/clipboard-rich'
-import { startBrowserDownload } from '@/lib/browser-download'
+import { downloadFetched } from '@/lib/browser-download'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { useAnswerData } from '@/shared/components/MarkdownRenderer/answer-block-context'
 import type { StripOptions } from '@/lib/text/answer-directives'
@@ -186,36 +186,24 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
   /**
    * The .docx the export route builds for this answer — question, citations,
    * cards and confidence included, which no clipboard copy carries. Fetched
-   * rather than navigated to, so a failure (a turn the server never persisted,
-   * access lost meanwhile) is a toast instead of a JSON error filling a tab.
+   * rather than navigated to (`downloadFetched`), so a failure (a turn the
+   * server never persisted, access lost meanwhile) is a toast instead of a
+   * JSON error filling a tab.
    */
   const handleDownloadDocx = useCallback(async (): Promise<void> => {
     if (!conversationId || !messageId || exporting) return
     setExporting(true)
-    try {
-      const response = await fetch(
-        `/api/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/export`
-      )
-      if (!response.ok) throw new Error(`export failed: ${response.status}`)
-      const blob = await response.blob()
-      const filename =
-        /filename="([^"]+)"/.exec(response.headers.get('content-disposition') ?? '')?.[1] ??
-        'piloti.docx'
-      const url = URL.createObjectURL(blob)
-      try {
-        startBrowserDownload(url, filename)
-        // The kind and the format, never the file name (it carries the question).
-        capturePosthog('report_exported', { kind: 'answer', format: 'docx' })
-      } finally {
-        // The download has the blob by reference; the URL itself can go on the
-        // next tick without cutting it off.
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      }
-    } catch {
+    const result = await downloadFetched(
+      `/api/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/export`,
+      'piloti.docx'
+    )
+    setExporting(false)
+    if (!result.saved) {
       toast.error(t('answerActions.downloadFailed'))
-    } finally {
-      setExporting(false)
+      return
     }
+    // The kind and the format, never the file name (it carries the question).
+    capturePosthog('report_exported', { kind: 'answer', format: 'docx' })
   }, [conversationId, messageId, exporting, t])
 
   const handleCopyAnswer = useCallback((): void => {

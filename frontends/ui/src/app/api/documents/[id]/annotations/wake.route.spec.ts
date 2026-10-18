@@ -185,6 +185,7 @@ const MARK: AnnotationRecord = {
   closedAt: null,
   delegatedBy: null,
   delegatedAt: null,
+  carriedFromId: null,
   mentions: [],
   fassungNumber: null,
   replies: [],
@@ -217,6 +218,7 @@ beforeEach(() => {
       ...input,
       addressesAgent: input.addressesAgent ?? false,
       mentions: input.mentions ?? [],
+      editedAt: null,
     }
     await afterInsert?.(TX, row)
     return row
@@ -673,6 +675,7 @@ describe('what a change or a reply tells people', () => {
       previousAssigneeUserId: 'user_2',
       assigneeUserId: 'user_3',
       open: true,
+      dueOn: null,
     })
   })
 

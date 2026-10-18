@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * The controls of the Dateien header: view, Papierkorb, filter, search, upload.
+ * The controls of the Dateien header: view, Offene Punkte, Papierkorb, filter, search, upload.
  *
  * ONE ROW ON A PHONE. The header used to stack four rows (view and filter,
  * search, upload) and put about 270px of controls between the title and the
@@ -17,7 +17,7 @@
 
 import type { JSX, ReactNode } from 'react'
 import Link from 'next/link'
-import { LayoutGrid, List, MoreHorizontal, Trash2 } from 'lucide-react'
+import { LayoutGrid, List, ListTodo, MoreHorizontal, Trash2 } from 'lucide-react'
 import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -32,6 +32,8 @@ export interface FilesHeaderControlsProps {
   onViewChange: (view: FileView) => void
   /** Where the Papierkorb is; absent where the shelf has none. */
   binHref?: string
+  /** Where the shelf's Offene Punkte are, the open Anmerkungen of all its documents; absent where it has none. */
+  openPointsHref?: string
   /** The filter menu, told whether the row has room for its word. */
   renderFilter: (compact: boolean) => ReactNode
   search: {
@@ -54,6 +56,7 @@ export function FilesHeaderControls({
   view,
   onViewChange,
   binHref,
+  openPointsHref,
   renderFilter,
   search,
   upload,
@@ -87,6 +90,19 @@ export function FilesHeaderControls({
           { value: 'list', label: t('workspace.view.list'), testId: 'files-view-list' },
         ],
       },
+      ...(openPointsHref
+        ? [
+            { type: 'separator' as const },
+            {
+              type: 'item' as const,
+              id: 'open-points',
+              label: t('openPoints.open'),
+              icon: ListTodo,
+              href: openPointsHref,
+              testId: 'files-open-points',
+            },
+          ]
+        : []),
       ...(binHref
         ? [
             { type: 'separator' as const },
@@ -136,6 +152,15 @@ export function FilesHeaderControls({
           <List />
         </ToggleGroupItem>
       </ToggleGroup>
+      {/* The open Anmerkungen of every document, for the Jour fixe: a page of its own, as the Papierkorb is. */}
+      {openPointsHref && (
+        <Button asChild variant="ghost" size="sm">
+          <Link href={openPointsHref} data-testid="files-open-points">
+            <ListTodo />
+            {t('openPoints.open')}
+          </Link>
+        </Button>
+      )}
       {/* The Papierkorb: deleted folders, restorable until their purge (ADR-0088). */}
       {binHref && (
         <Button asChild variant="ghost" size="icon" aria-label={t('workspace.openBin')} title={t('workspace.openBin')}>

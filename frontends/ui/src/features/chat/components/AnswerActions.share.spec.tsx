@@ -15,7 +15,6 @@ import { AnswerActions } from './AnswerActions'
 const toastError = vi.hoisted(() => vi.fn())
 vi.mock('sonner', () => ({ toast: { error: toastError } }))
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
-vi.mock('@/lib/browser-download', () => ({ startBrowserDownload: vi.fn() }))
 
 const ANSWER = 'Die Fluchtweglänge ist auf **40 m** begrenzt [1].'
 

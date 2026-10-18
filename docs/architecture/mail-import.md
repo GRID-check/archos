@@ -125,7 +125,7 @@ dropped folder gets.
 | Ending | When | What the person sees |
 |---|---|---|
 | `completed` | The cursor passed the last item | Inbox: imported, linking to the folder; later, the upload summary |
-| `failed` | Not an archive; quota full; the person lost write access (to the project, or to the `E-Mail-Import` or archive folder) or left; the import's folder went to the Papierkorb; passing failures through every backoff with no mail filed; a job that kept vanishing | Inbox: stopped (emailed if unread after 30 min); the dialog words the reason (`error_code`) |
+| `failed` | Not an archive; quota full; the person lost write access (to the project, or to the `E-Mail-Import` or archive folder) or left; the import's folder went to the Papierkorb; passing failures through every backoff with no mail filed; a job that kept vanishing | Inbox: stopped (its type would mail it after 30 min unread, once the inbox has a sender, `lib/inbox/delivery.ts`; none does today); the dialog words the reason (`error_code`) |
 | `cancelled` | The person (or an org project administrator) cancelled; a send unfinished after 48 h | The dialog |
 
 Each ending seals the upload batch and deletes the staged archive. What was

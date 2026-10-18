@@ -38,6 +38,7 @@ import {
   markInboxItemsUnread,
   unarchiveInboxItem,
   findLiveInboxGroupKeys,
+  listTouchedOfType,
   markAllInboxItemsRead,
   markInboxItemsRead,
   markResourceItemsRead,
@@ -181,12 +182,12 @@ describe('upsertInboxItems — the batch fold matches the single-row fold', () =
     await upsertInboxItem(newItem())
     const singleSet = conflictSet(onlyQuery().sql)
 
-    // Counting is relative to the STORED row, never to `excluded` — the incoming
-    // row always carries the default 1. And a new occurrence is new information,
-    // so the fold clears the states that would otherwise keep the row out of
-    // sight.
+    // Counting adds to the STORED row what the incoming one stands for: the
+    // column's default 1, or the occurrences one emission folded (fifteen marks
+    // Piloti set in one write). And a new occurrence is new information, so the
+    // fold clears the states that would otherwise keep the row out of sight.
     for (const set of [batchSet, singleSet]) {
-      expect(set).toContain('"count" = "inbox_items"."count" + 1')
+      expect(set).toContain('"count" = "inbox_items"."count" + excluded.count')
       expect(set).toContain('"read_at" = ')
       expect(set).toContain('"resolved_at" = ')
       expect(set).toContain('"archived_at" = ')
@@ -457,5 +458,22 @@ describe('countInboxFilters', () => {
     expect(sql).toContain('count(*) filter (where')
     expect(sql.match(/count\(\*\) filter/g)).toHaveLength(2)
     expect(sql).toContain('"archived_at" is null')
+  })
+})
+
+describe('listTouchedOfType — the rows a burst is made of', () => {
+  it('asks for one person’s rows of one type, whatever became of them, in the window, newest first and bounded', async () => {
+    const from = new Date('2026-10-18T04:35:00.000Z')
+    const to = new Date('2026-10-18T04:45:05.000Z')
+    await listTouchedOfType('org_1', 'user_me', 'annotation.assigned_to_you', { from, to }, 51)
+
+    const { sql, params } = onlyQuery()
+    for (const column of ['organization_id', 'recipient_user_id', 'type']) expect(sql).toContain(`"inbox_items"."${column}" = $`)
+    // A row read since still links its burst: the job tells only the rows still news.
+    for (const state of ['read_at', 'archived_at', 'resolved_at', 'inert_at']) expect(sql).not.toContain(`"inbox_items"."${state}"`)
+    expect(sql).toContain('"inbox_items"."updated_at" >= $')
+    expect(sql).toContain('"inbox_items"."updated_at" <= $')
+    expect(sql).toMatch(/order by "inbox_items"."updated_at" desc limit \$\d+/)
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'user_me', 'annotation.assigned_to_you', 51]))
   })
 })

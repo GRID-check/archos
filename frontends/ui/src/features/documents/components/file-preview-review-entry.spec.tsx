@@ -271,6 +271,144 @@ describe('the review keeps its address', () => {
     expect(nav.back).not.toHaveBeenCalled()
     expect(nav.replace).toHaveBeenLastCalledWith('/app/projects/proj-1/files?doc=doc-1', { scroll: false })
   })
+
+  it('returns to the page a link came from (Offene Punkte with its filters), not to the bare document', async () => {
+    serve([mark()])
+    const back = '/app/projects/proj-1/files/open-points?assignee=me'
+    nav.params = new URLSearchParams(`doc=doc-1&review=1&mark=ann-1&back=${encodeURIComponent(back)}`)
+    render(pane())
+    // At the link's mark, its list read, as a reader is before they close: the address has settled.
+    expect((await screen.findByTestId('review-mode')).dataset.focus).toBe('ann-1')
+    await waitFor(() => expect(screen.getAllByTestId('annotations-summary-row')).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'close review' }))
+    expect(nav.back).not.toHaveBeenCalled()
+    expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
+  })
+
+  /** This tab's history as the Navigation API lists it, the review the last entry. */
+  const historyBehind = (...paths: string[]) => {
+    const origin = window.location.origin
+    const entries = [...paths, `/app/projects/proj-1/files?${nav.params.toString()}`].map((path) => ({ url: `${origin}${path}` }))
+    Object.defineProperty(window, 'navigation', {
+      configurable: true,
+      value: { entries: () => entries, currentEntry: { index: entries.length - 1 } },
+    })
+  }
+  /** The address a link opens: the review at its mark, with where it came from. */
+  const openFromLink = (back: string) => {
+    nav.params = new URLSearchParams(`doc=doc-1&review=1&mark=ann-1&back=${encodeURIComponent(back)}`)
+  }
+  /** At the link's mark, its list read, as a reader is before they close: then close. */
+  const closeSettled = async () => {
+    render(pane())
+    expect((await screen.findByTestId('review-mode')).dataset.focus).toBe('ann-1')
+    await waitFor(() => expect(screen.getAllByTestId('annotations-summary-row')).toHaveLength(1))
+    nav.replace.mockReset()
+    fireEvent.click(screen.getByRole('button', { name: 'close review' }))
+  }
+
+  describe('a link back to a page that is the entry one step back', () => {
+    afterEach(() => {
+      Reflect.deleteProperty(window, 'navigation')
+    })
+
+    it('goes Back to the Postfach opened from Dateien of the same project, so it is in history once', async () => {
+      serve([mark()])
+      const back = '/app/inbox?filter=unread'
+      // The review's path is Dateien's, as the entry two back: only the query tells them apart.
+      openFromLink(back)
+      historyBehind('/app/projects/proj-1/files', back)
+      await closeSettled()
+      expect(nav.back).toHaveBeenCalledTimes(1)
+      expect(nav.replace).not.toHaveBeenCalled()
+    })
+
+    it('goes Back to Offene Punkte with its filters, opened from Dateien', async () => {
+      serve([mark()])
+      const back = '/app/projects/proj-1/files/open-points?assignee=me'
+      openFromLink(back)
+      historyBehind('/app/projects/proj-1/files', back)
+      await closeSettled()
+      expect(nav.back).toHaveBeenCalledTimes(1)
+      expect(nav.replace).not.toHaveBeenCalled()
+    })
+
+    it('replaces with the Postfach when the entry behind is the review it was „Übernommen aus“, not the Postfach', async () => {
+      serve([mark()])
+      const back = '/app/inbox?filter=unread'
+      openFromLink(back)
+      historyBehind(back, `/app/projects/proj-1/files?doc=doc-0&review=1&mark=ann-0&back=${encodeURIComponent(back)}`)
+      await closeSettled()
+      expect(nav.back).not.toHaveBeenCalled()
+      expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
+    })
+
+    it('replaces when the browser has no Navigation API, whatever is behind', async () => {
+      serve([mark()])
+      const back = '/app/inbox?filter=unread'
+      openFromLink(back)
+      window.history.pushState(null, '', window.location.href)
+      await closeSettled()
+      expect(nav.back).not.toHaveBeenCalled()
+      expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
+    })
+  })
+
+  it('never follows a return path out of the app', async () => {
+    serve([])
+    nav.params = new URLSearchParams(`doc=doc-1&review=1&back=${encodeURIComponent('https://evil.example/app/x')}`)
+    render(pane())
+    fireEvent.click(await screen.findByRole('button', { name: 'close review' }))
+    expect(nav.replace).toHaveBeenLastCalledWith('/app/projects/proj-1/files?doc=doc-1', { scroll: false })
+  })
+})
+
+describe('the row behind the pane says what the review says', () => {
+  it('hands the listing the tally the review counts once its list is read, as the server counts it', async () => {
+    serve([
+      mark({ id: 'ann-1', status: 'open', assigneeUserId: 'user_me' }),
+      mark({ id: 'ann-2', number: 2, status: 'open' }),
+      mark({ id: 'ann-3', number: 3, status: 'proposed', authorKind: 'piloti' }),
+      mark({ id: 'ann-4', number: 4, status: 'resolved' }),
+    ])
+    const onMarksChanged = vi.fn()
+    // The listing was read when all five were open.
+    render(pane({ file: { ...FILE, marks: { open: 5, proposed: 0, forYou: 0 } }, viewerUserId: 'user_me', onMarksChanged }))
+    await waitFor(() => expect(onMarksChanged).toHaveBeenCalledWith('doc-1', { open: 2, proposed: 1, forYou: 1 }))
+  })
+
+  it('says nothing is live with null, as the listing does, and nothing at all when the row already says it', async () => {
+    serve([mark({ status: 'resolved' })])
+    const onMarksChanged = vi.fn()
+    const { rerender } = render(pane({ file: { ...FILE, marks: { open: 5, proposed: 0, forYou: 0 } }, onMarksChanged }))
+    await waitFor(() => expect(onMarksChanged).toHaveBeenCalledWith('doc-1', null))
+
+    onMarksChanged.mockReset()
+    rerender(pane({ file: { ...FILE, marks: null }, onMarksChanged }))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(onMarksChanged).not.toHaveBeenCalled()
+  })
+
+  it('never hands the next document the last one’s tally while its own list is on the way', async () => {
+    const pending = new Set(['doc-2'])
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/annotations')) {
+        if ([...pending].some((id) => url.includes(id))) return new Promise<Response>(() => {})
+        return json({ annotations: [mark()], canAnnotate: true, pilotiWakes: false })
+      }
+      if (url.endsWith('/preview')) return json({ url: 'https://example.test/plan.pdf', contentType: 'application/pdf' })
+      return json({}, 404)
+    })
+    const onMarksChanged = vi.fn()
+    const { rerender } = render(pane({ file: { ...FILE, marks: null }, onMarksChanged }))
+    await waitFor(() => expect(onMarksChanged).toHaveBeenCalledWith('doc-1', { open: 1, proposed: 0, forYou: 0 }))
+
+    // The pane is reused for another document, whose listing row says three are open.
+    rerender(pane({ file: { ...FILE, id: 'doc-2', marks: { open: 3, proposed: 0, forYou: 0 } }, onMarksChanged }))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(onMarksChanged.mock.calls.filter(([id]) => id === 'doc-2')).toEqual([])
+  })
 })
 
 describe('„Anmerken"', () => {

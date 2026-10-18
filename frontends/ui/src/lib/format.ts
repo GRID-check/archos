@@ -317,3 +317,26 @@ export const localCalendarDay = (date: Date = new Date()): string => {
   const pad = (value: number) => String(value).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+/**
+ * The office's day and clock, Austria first like the rest of the product: a
+ * server in UTC would date a late-evening export to the next morning, and
+ * remind of tomorrow's Frist a day early.
+ */
+export const OFFICE_TIME_ZONE = 'Europe/Vienna'
+
+/**
+ * The calendar day `YYYY-MM-DD` it is in `timeZone` at `date`: the office's day
+ * for a server that runs in UTC (`en-CA` writes ISO calendar days). A Frist
+ * that ends today in Vienna is not overdue at 00:30 because UTC is still on
+ * yesterday, and a reminder sent at 23:30 UTC belongs to the next day there.
+ */
+export const calendarDayIn = (timeZone: string, date: Date = new Date()): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone }).format(date)
+
+/** `day` (`YYYY-MM-DD`) moved by whole calendar days, without a clock or a time zone to slip on. */
+export const addCalendarDays = (day: string, days: number): string => {
+  const at = new Date(`${day}T00:00:00Z`)
+  at.setUTCDate(at.getUTCDate() + days)
+  return at.toISOString().slice(0, 10)
+}

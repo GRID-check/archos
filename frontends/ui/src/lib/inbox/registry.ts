@@ -115,6 +115,23 @@ export interface InboxPushPolicy {
    * them, the way `mention.answered` does, and is not ambient activity.
    */
   readonly yours?: PushCategory
+  /**
+   * Fold a burst of this type's rows for ONE person into one notification,
+   * across resources: the morning's due reminders, fifteen marks carried on to
+   * a new document, a mark handed over after another. See {@link InboxPushFold}.
+   */
+  readonly fold?: InboxPushFold
+}
+
+/**
+ * How a burst of one type's rows for one person is counted in the one
+ * notification that tells them all (`lib/push/fold.ts`): each row's `variant`
+ * is counted under a part of the line („3 heute oder morgen fällig, 1
+ * überfällig“), worded by `pushFold.parts.<part>` in the type's copy. A
+ * variant not listed is counted under `other`.
+ */
+export interface InboxPushFold {
+  readonly parts: Readonly<Record<string, string>>
 }
 
 const IN_APP_ONLY: InboxEmailDefault = { send: 'never' }
@@ -420,8 +437,8 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     the badge is what says so. Resolved when someone else becomes responsible
     and for everyone when the mark is closed (`lib/annotations/attention.ts`).
     `per-anchor` on the mark: assigning it twice is one row. A reminder by
-    mail after two hours unread: a mark handed to someone who never opens the
-    app would otherwise wait for good. Operational, like `piloti.asks_you`:
+    mail after two hours unread, once a sender exists (`./delivery`): a mark
+    handed to someone who never opens the app would otherwise wait for good. Operational, like `piloti.asks_you`:
     marks are not a chat feature.
   */
   'annotation.assigned_to_you': {
@@ -430,16 +447,41 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 120 },
-    push: { category: 'requests', urgency: 'normal' },
+    // A day's reminders and a bulk hand-over are one notification, not one per mark.
+    push: {
+      category: 'requests',
+      urgency: 'normal',
+      fold: {
+        parts: {
+          overdue: 'overdue',
+          due_soon: 'due_soon',
+          person: 'assigned',
+          piloti: 'assigned',
+          due: 'redated',
+          due_piloti: 'redated',
+          due_cleared: 'redated',
+          due_cleared_piloti: 'redated',
+        },
+      },
+    },
   },
   /*
     News on a mark the reader takes part in: a reply, or their mark closed or
     reopened by someone else. `per-anchor` on the mark, so a busy thread is ONE
-    counted row per mark, as `conversation.activity` is one per chat.
+    counted row per mark, as `conversation.activity` is one per chat. Also new
+    marks on a document the reader is Verantwortlich for or uploaded (variants
+    `created` / `created_piloti`, `onMarksSet`): those fold per document and
+    per who set them instead (anchor `set:<variant>:<actor>`), still anchored
+    on the newest mark, so a review of fifteen is one counted row.
     Informational and in-app only: mailing it would teach people to filter our
-    mail. Pushed as activity to the thread's other participants, who turned that
-    on; to the mark's AUTHOR (`yours`) it is an answer to what they wrote, as
-    `mention.answered` is, and is pushed as a result.
+    mail. Pushed as activity to the thread's other participants and to the
+    document's people, who turned that on; to the mark's AUTHOR (`yours`) it is
+    an answer to what they wrote, as `mention.answered` is, and is pushed as a
+    result. Folded across marks: a colleague resolving fifteen of the reader's
+    marks one after another is one notification („15 Neuigkeiten zu
+    Anmerkungen“ over „15 erledigt“), not fifteen. A burst counts only the rows
+    the reader's categories push (`readBurst` with `isPushWanted`), so their
+    own marks' news and a thread they only take part in do not mix.
   */
   'annotation.activity': {
     actionable: false,
@@ -447,7 +489,21 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
-    push: { category: 'activity', urgency: 'low', yours: 'results' },
+    push: {
+      category: 'activity',
+      urgency: 'low',
+      yours: 'results',
+      fold: {
+        parts: {
+          reply: 'reply',
+          resolved: 'resolved',
+          dismissed: 'dismissed',
+          reopened: 'reopened',
+          created: 'created',
+          created_piloti: 'created',
+        },
+      },
+    },
   },
   /*
     A colleague @mentioned the reader on an Anmerkung: the chat's
@@ -455,8 +511,8 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     person asked the reader something, and the badge is what shows it until
     they answer in the thread or the mark is closed
     (`lib/annotations/attention.ts`). `per-anchor` on the mark: being mentioned
-    twice on one mark is one row. Mailed and pushed as the chat's mention is,
-    so a person learns one rule for both. Operational, like the other marks'
+    twice on one mark is one row. Pushed as the chat's mention is, and mailed
+    as it is once a sender exists, so a person learns one rule for both. Operational, like the other marks'
     types: marks are not a chat feature.
   */
   'annotation.mentioned': {
@@ -538,6 +594,17 @@ export function platformInboxTypes(): InboxItemType[] {
 export function inboxIsReachable(collaborationEnabled: boolean): boolean {
   return visibleInboxTypes(collaborationEnabled).length > 0
 }
+
+/**
+ * The group-key anchor of rows that fold on something else than the anchor
+ * they point at: new marks fold per document and per who set them
+ * (`set:<variant>:<actor>`, `lib/annotations/attention.ts`), anchored on the
+ * newest mark only so their link opens the review there. Their news is about
+ * the document, not that mark: a dot on its pin would say an unrelated mark
+ * has news (`listUnreadAnchors` leaves them out), and opening the review of
+ * the document reads them (`markResourceItemsRead` narrowed to them).
+ */
+export const MARKS_SET_GROUP_ANCHOR = 'set:'
 
 /**
  * Build the grouping/dedup/idempotency key for an emission.
