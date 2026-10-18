@@ -1696,7 +1696,7 @@ describe('a mark goes on with the current Fassung', () => {
 
     await userEvent.click(await screen.findByTestId('review-row'))
     const thread = await screen.findByTestId('review-thread')
-    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('From revision 2. Not drawn on this sheet.')
+    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('From revision 2. Drawn hollow where it stood there.')
     await userEvent.click(within(thread).getByTestId('thread-carry'))
 
     await waitFor(() =>

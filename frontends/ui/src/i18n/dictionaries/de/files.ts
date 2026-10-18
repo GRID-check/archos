@@ -1779,6 +1779,8 @@ export const files: typeof en.files = {
     linkCopied: 'Link kopiert',
     linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
     earlierFassung: 'Aus Fassung {number}. Auf diesem Blatt nicht eingezeichnet.',
+    // Offen: hohl und punktiert dort gezeichnet, wo sie auf ihrer Fassung stand.
+    earlierFassungGhost: 'Aus Fassung {number}. Hohl gezeichnet, wo sie dort stand.',
     // „Gilt weiter": eine offene Anmerkung geht mit der aktuellen Fassung weiter,
     // an derselben Stelle, mit Nummer und Verlauf. Eine Anmerkung eines
     // ersetzten Dokuments kommt als verknüpfte Anmerkung in das neue.

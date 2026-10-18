@@ -335,7 +335,7 @@ let annotations: AnnotationView[] = [
     id: 'ann-6',
     number: 6,
     shape: 'region',
-    ...region(50, 270, 190, 320),
+    ...region(62, 278, 178, 312),
     kind: 'question',
     body: 'Gangbreite vor Zimmer 1: reicht 1,20 m nach dem Umbau der Wand?',
     createdBy: 'u-2',

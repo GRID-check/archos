@@ -1817,6 +1817,7 @@ export const files = {
     linkCopied: 'Link copied',
     linkCopyFailed: 'The link could not be copied.',
     earlierFassung: 'From revision {number}. Not drawn on this sheet.',
+    earlierFassungGhost: 'From revision {number}. Drawn hollow where it stood there.',
     carry: 'Carry to the current revision',
     carryTo: 'Carry to “{name}”',
     carryMark: 'Carry annotation {number} to the current revision',

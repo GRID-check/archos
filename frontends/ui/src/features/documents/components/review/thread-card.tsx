@@ -58,7 +58,7 @@ import { Composer, type ComposerSend } from './composer'
 import { otherReviewHref } from '../../lib/fassung-links'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
-import type { CardSide } from './review-page-layer'
+import { isGhostMark, type CardSide } from './review-page-layer'
 import { useCardFit } from './review-stage'
 
 export const KIND_ICONS: Record<AnnotationKind, typeof TriangleAlert> = {
@@ -639,7 +639,10 @@ function FassungLines({
           <History className="mt-px size-3 shrink-0" aria-hidden />
           {earlier
             ? annotation.fassungNumber
-              ? t('review.earlierFassung', { number: annotation.fassungNumber })
+              ? // An open one is drawn as a ghost where it stood; a closed one is not drawn.
+                t(isGhostMark(annotation, review.documentId) ? 'review.earlierFassungGhost' : 'review.earlierFassung', {
+                  number: annotation.fassungNumber,
+                })
               : t('annotations.earlierFassungUnnumbered')
             : t('review.replacedNotice', { name: replacedBy?.filename ?? '' })}
         </p>
