@@ -129,6 +129,7 @@ import {
   MAX_REPLIES_PER_ANNOTATION,
   updateAnnotationRequestSchema,
   type AnnotationAuthor,
+  type AnnotationDeleteRefusal,
   type AnnotationListResponse,
   type AnnotationProposal,
   type AnnotationReplyView,
@@ -165,6 +166,27 @@ export const PILOTI: AnnotationActor = { kind: 'piloti' }
  */
 const mayDeleteMark = (record: Pick<AnnotationRecord, 'authorKind' | 'createdBy' | 'acceptedBy'>, userId: string) =>
   record.createdBy === userId && (record.authorKind === 'person' || record.acceptedBy === userId)
+
+/**
+ * Why even its author may not delete this mark now, or null when nothing
+ * stands in the way. The rule the undo of Piloti's mark always kept
+ * (`lib/changes/undo.ts`), for every delete:
+ *
+ * - `discussed`: somebody other than its author and Piloti has written in its
+ *   thread. Deleting the mark would take their answer with it, turn their inbox
+ *   rows inert and leave a hole in the numbering a Protokoll cites.
+ * - `carried`: it went on to another document, or came from one. The link
+ *   between the two is what carries the point on; deleting either end drops it.
+ *
+ * Such a mark is resolved instead; the card says why and offers that.
+ */
+export function deleteRefusalOf(
+  record: Pick<AnnotationRecord, 'createdBy' | 'replies' | 'carriedFromId' | 'carriedFrom' | 'carriedTo'>
+): AnnotationDeleteRefusal | null {
+  if (record.carriedFromId || record.carriedFrom || record.carriedTo) return 'carried'
+  const othersWrote = record.replies.some((reply) => reply.authorKind !== 'piloti' && reply.createdBy !== record.createdBy)
+  return othersWrote ? 'discussed' : null
+}
 
 /** Whether the document sits on a shelf that carries Anmerkungen. */
 const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'archiv'
@@ -209,6 +231,9 @@ function toView(
   carryWay: CarryWay | null = null
 ): AnnotationView {
   const wake = work.get(record.id)
+  // The author's own mark that the thread or a carry keeps: the card says why it stays.
+  const own = writable && mayDeleteMark(record, session.userId)
+  const deleteRefused = own ? deleteRefusalOf(record) : null
   return {
     id: record.id,
     documentId: record.documentId,
@@ -250,7 +275,8 @@ function toView(
     carriedTo: linkView(record.carriedTo, linked),
     carryTarget: writable ? carryTargetOf(record, doc, carryWay) : null,
     canEdit: writable,
-    canDelete: writable && mayDeleteMark(record, session.userId),
+    canDelete: own && deleteRefused === null,
+    deleteRefused,
   }
 }
 
@@ -1111,7 +1137,9 @@ function auditHeldWake(
 
 /**
  * Delete one Anmerkung the session set itself, or Piloti set for it
- * ({@link mayDeleteMark}). Piloti's proposals are dismissed, never deleted.
+ * ({@link mayDeleteMark}), while nothing but its author and Piloti stands on it
+ * ({@link deleteRefusalOf}: a 409 `mark-discussed` or `mark-carried`
+ * otherwise). Piloti's proposals are dismissed, never deleted.
  */
 export async function deleteAnnotation(
   session: AuthorizedSession,
@@ -1124,6 +1152,17 @@ export async function deleteAnnotation(
   if (!existing) throw new NotFoundError()
   if (!mayDeleteMark(existing, session.userId)) {
     throw new ForbiddenError('Only the person who set an Anmerkung can delete it. Resolve or dismiss it instead.')
+  }
+  const refused = deleteRefusalOf(existing)
+  if (refused === 'discussed') {
+    throw new ConflictError('Somebody else has answered in this thread. Resolve the Anmerkung instead.', {
+      reason: 'mark-discussed',
+    })
+  }
+  if (refused === 'carried') {
+    throw new ConflictError('This Anmerkung was carried on between documents. Resolve it instead.', {
+      reason: 'mark-carried',
+    })
   }
   const ended = delegationOfMark(session, doc.id, existing)
   const stopTurn = actor.kind === 'person'

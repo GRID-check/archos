@@ -837,6 +837,35 @@ export function ThreadCard({
           },
         ]
       : []),
+    // The author's own mark that a colleague's answer or a carry keeps: the
+    // delete stays in view, withheld, with why, and resolving is offered in
+    // its place while the mark is open (the server's rule, `deleteRefusalOf`).
+    ...(!annotation.canDelete && annotation.deleteRefused
+      ? [
+          { type: 'separator' as const },
+          ...(annotation.canEdit && annotation.status === 'open'
+            ? [
+                {
+                  type: 'item' as const,
+                  id: 'resolve-instead',
+                  label: t('review.resolveInstead'),
+                  icon: Check,
+                  testId: 'thread-resolve-instead',
+                  onSelect: () => void move('resolved'),
+                },
+              ]
+            : []),
+          {
+            type: 'item' as const,
+            id: 'delete',
+            label: t('review.delete'),
+            hint: t(`review.deleteRefused.${annotation.deleteRefused}`),
+            icon: Trash2,
+            disabled: true,
+            testId: 'thread-delete-refused',
+          },
+        ]
+      : []),
   ]
 
   return (

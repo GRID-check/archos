@@ -292,6 +292,10 @@ export type CarryLinkView = z.infer<typeof carryLinkViewSchema>
 export const carryTargetViewSchema = carryLinkViewSchema.pick({ documentId: true, documentName: true })
 export type CarryTargetView = z.infer<typeof carryTargetViewSchema>
 
+/** Why its author may not delete a mark: a colleague answered in it, or it was carried on (`deleteRefusalOf`). */
+export const annotationDeleteRefusalSchema = z.enum(['discussed', 'carried'])
+export type AnnotationDeleteRefusal = z.infer<typeof annotationDeleteRefusalSchema>
+
 export const annotationViewSchema = z.object({
   id: z.string(),
   documentId: z.string(),
@@ -357,8 +361,20 @@ export const annotationViewSchema = z.object({
   carryTarget: carryTargetViewSchema.nullable().optional(),
   /** Whether THIS reader may change it: take it over, resolve it, reword it, assign it, reply. */
   canEdit: z.boolean(),
-  /** Whether THIS reader may delete it: whoever set it, while they may still write here. */
+  /**
+   * Whether THIS reader may delete it: whoever set it, while they may still
+   * write here, and while nothing but its author and Piloti stands on it
+   * (`deleteRefused`).
+   */
   canDelete: z.boolean(),
+  /**
+   * Why the author may NOT delete their own mark now: `discussed` (a colleague
+   * answered in its thread) or `carried` (it went on to, or came from, another
+   * document). Null for anybody else's mark and for one they may delete. The
+   * card shows the delete it withholds, and why. Absent from a server that
+   * predates the rule.
+   */
+  deleteRefused: annotationDeleteRefusalSchema.nullable().optional(),
 })
 export type AnnotationView = z.infer<typeof annotationViewSchema>
 

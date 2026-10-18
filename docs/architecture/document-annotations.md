@@ -151,7 +151,21 @@ role name:
 |---|---|
 | whoever may open the document (`project:view` and read in its folder; on the Büroablage every member) | read the marks and their threads, export the Protokoll, be @mentioned and be told |
 | whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:archiv:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti, carry an open mark to the current Fassung (to a replacing document only with the right to write that one too); **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
-| the author (`createdBy`, a person's own mark) | reword it („Bearbeiten“ in the card's menu; the server lets any writer change a `body`, the card offers it to the author) and delete it (`mayDeleteMark`) |
+| the author (`createdBy`, a person's own mark) | reword it („Bearbeiten“ in the card's menu; the server lets any writer change a `body`, the card offers it to the author) and delete it (`mayDeleteMark`), while nothing but its author and Piloti stands on it (below) |
+
+**What a delete would take with it.** Deleting a mark takes its thread along,
+turns every inbox row anchored on it inert, leaves a hole in the numbering a
+Protokoll cites, and for a carried mark cuts the link that carries the point
+on. So even its author deletes a mark only while nobody but the author and
+Piloti has written in its thread, and while it neither went on to another
+document nor came from one (`deleteRefusalOf`, `lib/annotations/service.ts`;
+the rule undo always kept, below, now kept for every delete). Otherwise
+`DELETE` is `409` with `details.reason` `mark-discussed` or `mark-carried`.
+The view says it before anyone tries: `canDelete` is false and
+`deleteRefused` names why (`discussed`, `carried`) on the author's own mark,
+and the card's menu shows „Löschen“ withheld with that reason under it,
+with „Stattdessen erledigen“ above it while the mark is open. A resolved mark
+stays in the Protokoll's record (`scope=all`); an open one is resolved.
 
 The Zuständige picker reads who may write
 (`GET /api/assignments/document/{id}/candidates?access=write`,
@@ -543,7 +557,7 @@ service functions the person's own routes use (`lib/annotations/agent.ts`):
 |---|---|---|---|
 | Set a mark | `create` | `setAnnotationsForAsker`: born `open`, `author_kind = piloti` | `created_by` and `accepted_by`/`accepted_at` = the asker |
 | Resolve, reopen, dismiss a proposal, take one over, assign, set or clear a date, reword, change the kind | `update` | `updateAnnotationForAsker`, which runs `updateAnnotation` with `actor = PILOTI`, then posts `note` as Piloti's reply | `closed_by` / `accepted_by` = the asker |
-| Delete a mark | `delete` | `deleteAnnotation`, which allows only a mark the asker set themselves | nothing left |
+| Delete a mark | `delete` | `deleteAnnotation`, which allows only a mark the asker set themselves, while nobody else wrote in its thread and it was not carried | nothing left |
 
 Findings Piloti makes on its own initiative, including a whole-document review
 the person did not itemise, stay proposals (`propose`). The tool descriptions

@@ -1492,6 +1492,23 @@ describe('closing the loop on a mark', () => {
       await userEvent.keyboard('{Escape}')
     }
   })
+
+  it('withholds deleting the author’s own mark a colleague answered in, says why, and offers resolving instead', async () => {
+    const mark = view({ id: 'ann_1', canDelete: false, deleteRefused: 'discussed' })
+    serve([mark])
+    const patched = servePatches(mark)
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+    const withheld = await screen.findByTestId('thread-delete-refused')
+    expect(withheld).toHaveAttribute('aria-disabled', 'true')
+    expect(withheld).toHaveTextContent('Others have answered in its thread. Resolve the annotation instead.')
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Resolve instead' }))
+    await waitFor(() => expect(patched).toEqual([{ status: 'resolved', expectedStatus: 'open' }]))
+  })
 })
 
 describe('a mark goes on with the current Fassung', () => {

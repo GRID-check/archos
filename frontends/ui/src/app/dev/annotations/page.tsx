@@ -33,6 +33,8 @@
  *   …&review=1&mark=ann-1                    „Zuständig": who may write (Lena only reads,
  *                                            so only „@" offers her), „Mir zuweisen", the
  *                                            date's ×, „Bearbeiten" in the menu (Miriam's mark)
+ *   …&review=1&mark=ann-1, the card's ⋯       „Löschen" withheld on Miriam's own mark Anna answered in,
+ *                                            with why, and „Stattdessen erledigen"
  *   …&review=1&mark=ann-5                    answer Piloti's Rückfrage: the thread asks Piloti
  *   …&review=1&piloti=1, then J, E or ⌫      the decision's toast with „Rückgängig"
  *   …&review=1&mark=ann-4                    a mark of Fassung 2: „Auf aktuelle Fassung übernehmen";
@@ -260,6 +262,9 @@ let annotations: AnnotationView[] = [
     assigneeUserId: 'u-2',
     assigneeName: ANNA.name,
     dueOn: '2026-10-10',
+    // Miriam's own mark, but Anna answered in it: the menu withholds „Löschen", says why, and offers „Stattdessen erledigen".
+    canDelete: false,
+    deleteRefused: 'discussed',
     replies: [
       reply('ann-1', ANNA, 95, '@Miriam Hofer Kommt mit Index D. Gilt das auch für die Tür vom Bad?', [mention(ME)]),
       // A colleague mentioned with the chat's „@" picker: the chip, and Jakob told in his Postfach.

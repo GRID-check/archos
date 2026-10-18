@@ -1814,6 +1814,12 @@ export const files: typeof en.files = {
     },
     delete: 'Löschen',
     deleteConfirm: 'Anmerkung {number} löschen?',
+    // Die eigene Anmerkung, die nicht mehr gelöscht wird: warum, und was stattdessen geht.
+    deleteRefused: {
+      discussed: 'Andere haben im Verlauf geantwortet. Erledigen Sie die Anmerkung stattdessen.',
+      carried: 'Sie wurde zwischen Dokumenten übernommen. Erledigen Sie sie stattdessen.',
+    },
+    resolveInstead: 'Stattdessen erledigen',
     // Den eigenen Text einer Anmerkung ändern: wer neu erwähnt wird, erfährt es; wer schon erwähnt war, nicht noch einmal.
     edit: 'Bearbeiten',
     editLabel: 'Text von Anmerkung {number}',

@@ -1846,6 +1846,11 @@ export const files = {
     },
     delete: 'Delete',
     deleteConfirm: 'Delete annotation {number}?',
+    deleteRefused: {
+      discussed: 'Others have answered in its thread. Resolve the annotation instead.',
+      carried: 'It was carried over between documents. Resolve it instead.',
+    },
+    resolveInstead: 'Resolve instead',
     edit: 'Edit',
     editLabel: 'Text of annotation {number}',
     save: 'Save',

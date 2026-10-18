@@ -494,6 +494,57 @@ describe('DELETE /api/documents/[id]/annotations/[annotationId]', () => {
     expect(deleteDocumentAnnotation).not.toHaveBeenCalled()
   })
 
+  describe('a mark something else stands on (the undo path’s rule, for every delete)', () => {
+    const answer = (patch: Partial<AnnotationRecord['replies'][number]>): AnnotationRecord['replies'][number] => ({
+      id: 'rep_1',
+      organizationId: 'org_1',
+      annotationId: 'ann_1',
+      authorKind: 'person',
+      body: 'Kommt mit Index D.',
+      createdBy: 'user_2',
+      createdAt: new Date('2026-10-02T08:00:00Z'),
+      addressesAgent: false,
+      mentions: [],
+      ...patch,
+    })
+    const LINK = { annotationId: 'ann_x', documentId: 'doc_2', number: 7 }
+
+    it('is still deleted while only its author and Piloti wrote in its thread', async () => {
+      const quiet = { ...RECORD, replies: [answer({ createdBy: 'user_1' }), answer({ id: 'rep_2', authorKind: 'piloti', createdBy: 'user_2' })] }
+      vi.mocked(findDocumentAnnotation).mockResolvedValue(quiet)
+      vi.mocked(listDocumentAnnotations).mockResolvedValue([quiet])
+      expect((await listAnnotations('doc_1', run)).annotations[0]).toMatchObject({ canDelete: true, deleteRefused: null })
+
+      await expect(deleteAnnotation('doc_1', 'ann_1', { run })).resolves.toBeUndefined()
+      expect(deleteDocumentAnnotation).toHaveBeenCalled()
+    })
+
+    it('refuses its author with a 409 and a reason once a colleague answered, or it was carried, and says so on the view', async () => {
+      const cases: Array<[AnnotationRecord, string, 'discussed' | 'carried']> = [
+        [{ ...RECORD, replies: [answer({})] }, 'mark-discussed', 'discussed'],
+        [{ ...RECORD, carriedFromId: 'ann_x', carriedFrom: LINK }, 'mark-carried', 'carried'],
+        // The source on the replaced document, closed by the carry: the link back from the other end.
+        [{ ...RECORD, status: 'resolved', closedBy: 'user_1', closedAt: new Date(), carriedTo: LINK }, 'mark-carried', 'carried'],
+      ]
+      for (const [record, reason, refused] of cases) {
+        vi.mocked(findDocumentAnnotation).mockResolvedValue(record)
+        const error = await deleteAnnotation('doc_1', record.id, { run }).catch((caught: unknown) => caught)
+        expect(error).toMatchObject({ status: 409, reason })
+
+        vi.mocked(listDocumentAnnotations).mockResolvedValue([record])
+        expect((await listAnnotations('doc_1', run)).annotations[0]).toMatchObject({ canDelete: false, deleteRefused: refused })
+      }
+      expect(deleteDocumentAnnotation).not.toHaveBeenCalled()
+      expect(publishToDocumentRoom).not.toHaveBeenCalledWith('doc_1', expect.objectContaining({ change: 'deleted' }))
+    })
+
+    it('names no reason on a mark that was never the reader’s to delete', async () => {
+      const theirs = { ...RECORD, createdBy: 'user_2', replies: [answer({ createdBy: 'user_3' })] }
+      vi.mocked(listDocumentAnnotations).mockResolvedValue([theirs])
+      expect((await listAnnotations('doc_1', run)).annotations[0]).toMatchObject({ canDelete: false, deleteRefused: null })
+    })
+  })
+
   describe("a mark Piloti set (author 'piloti')", () => {
     // Piloti works in the asker's session, so `created_by` is the asker; `accepted_by` is the asker when the mark was
     // born open at their request.
