@@ -105,10 +105,9 @@ describe('previousVisit', () => {
 describe('backReaches', () => {
   const FILES = '/app/projects/p1/files'
 
-  test('is true when the page one step back is the target, whatever its query', () => {
-    // The history entry is the page as the reader left it; the trail keeps no query.
-    expect(backReaches(visits('/app/projects/p1/files/open-points', FILES), FILES, '/app/projects/p1/files/open-points?assignee=me')).toBe(true)
-    expect(backReaches(visits('/app/projects', '/app/inbox', FILES), FILES, '/app/inbox?filter=unread')).toBe(true)
+  test('is true when the page one step back is the target', () => {
+    expect(backReaches(visits('/app/projects/p1/files/open-points', FILES), FILES, '/app/projects/p1/files/open-points')).toBe(true)
+    expect(backReaches(visits('/app/projects', '/app/inbox', FILES), FILES, '/app/inbox')).toBe(true)
   })
 
   test('is false for a target that is not one step back', () => {

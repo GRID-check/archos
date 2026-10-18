@@ -148,15 +148,15 @@ export function previousVisit(trail: ReturnTrail, currentPath: string): TrailEnt
 /**
  * Whether ONE `history.back()` from `currentPath` lands on `target`: the entry
  * below the top of the trail is `target`'s path, and no sibling of a tabbed
- * shell was skipped to name it (that would put it two entries back). The trail
- * keeps paths, not queries, so a `target` with a query is compared by its
- * path: the history entry is the page as the reader left it, query and all.
- * False when the tab has no record (a new tab, a shared link).
+ * shell was skipped to name it (that would put it two entries back). Paths
+ * only, as the trail keeps them: a question about an address with its query is
+ * the history's to answer (`backLandsOn` in `./history-step`). False when the
+ * tab has no record (a new tab, a shared link).
  */
 export function backReaches(trail: ReturnTrail, currentPath: string, target: string): boolean {
   const previous = previousVisit(trail, currentPath)
   if (!previous || trail[trail.length - 2]?.path !== previous.path) return false
-  return previous.path === target.split(/[?#]/)[0]
+  return previous.path === target
 }
 
 /** Read the tab's trail. Returns an empty trail in SSR or on any storage error. */

@@ -285,27 +285,73 @@ describe('the review keeps its address', () => {
     expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
   })
 
-  it('goes Back to the page a link came from when it is the entry one step back, so it is in history once', async () => {
-    serve([mark()])
-    const back = '/app/inbox?filter=unread'
-    // The tab came from the Postfach: its trail says so, and there is an entry behind this one.
-    window.sessionStorage.setItem(
-      'grid.return-trail',
-      JSON.stringify([{ path: '/app/projects/proj-1/chat' }, { path: '/app/inbox' }, { path: '/app/projects/proj-1/files' }])
-    )
-    window.history.pushState(null, '', window.location.href)
-    try {
-      nav.params = new URLSearchParams(`doc=doc-1&review=1&mark=ann-1&back=${encodeURIComponent(back)}`)
-      render(pane())
-      expect((await screen.findByTestId('review-mode')).dataset.focus).toBe('ann-1')
-      await waitFor(() => expect(screen.getAllByTestId('annotations-summary-row')).toHaveLength(1))
-      nav.replace.mockReset()
-      fireEvent.click(screen.getByRole('button', { name: 'close review' }))
+  /** This tab's history as the Navigation API lists it, the review the last entry. */
+  const historyBehind = (...paths: string[]) => {
+    const origin = window.location.origin
+    const entries = [...paths, `/app/projects/proj-1/files?${nav.params.toString()}`].map((path) => ({ url: `${origin}${path}` }))
+    Object.defineProperty(window, 'navigation', {
+      configurable: true,
+      value: { entries: () => entries, currentEntry: { index: entries.length - 1 } },
+    })
+  }
+  /** The address a link opens: the review at its mark, with where it came from. */
+  const openFromLink = (back: string) => {
+    nav.params = new URLSearchParams(`doc=doc-1&review=1&mark=ann-1&back=${encodeURIComponent(back)}`)
+  }
+  /** At the link's mark, its list read, as a reader is before they close: then close. */
+  const closeSettled = async () => {
+    render(pane())
+    expect((await screen.findByTestId('review-mode')).dataset.focus).toBe('ann-1')
+    await waitFor(() => expect(screen.getAllByTestId('annotations-summary-row')).toHaveLength(1))
+    nav.replace.mockReset()
+    fireEvent.click(screen.getByRole('button', { name: 'close review' }))
+  }
+
+  describe('a link back to a page that is the entry one step back', () => {
+    afterEach(() => {
+      Reflect.deleteProperty(window, 'navigation')
+    })
+
+    it('goes Back to the Postfach opened from Dateien of the same project, so it is in history once', async () => {
+      serve([mark()])
+      const back = '/app/inbox?filter=unread'
+      // The review's path is Dateien's, as the entry two back: only the query tells them apart.
+      openFromLink(back)
+      historyBehind('/app/projects/proj-1/files', back)
+      await closeSettled()
       expect(nav.back).toHaveBeenCalledTimes(1)
       expect(nav.replace).not.toHaveBeenCalled()
-    } finally {
-      window.sessionStorage.removeItem('grid.return-trail')
-    }
+    })
+
+    it('goes Back to Offene Punkte with its filters, opened from Dateien', async () => {
+      serve([mark()])
+      const back = '/app/projects/proj-1/files/open-points?assignee=me'
+      openFromLink(back)
+      historyBehind('/app/projects/proj-1/files', back)
+      await closeSettled()
+      expect(nav.back).toHaveBeenCalledTimes(1)
+      expect(nav.replace).not.toHaveBeenCalled()
+    })
+
+    it('replaces with the Postfach when the entry behind is the review it was „Übernommen aus“, not the Postfach', async () => {
+      serve([mark()])
+      const back = '/app/inbox?filter=unread'
+      openFromLink(back)
+      historyBehind(back, `/app/projects/proj-1/files?doc=doc-0&review=1&mark=ann-0&back=${encodeURIComponent(back)}`)
+      await closeSettled()
+      expect(nav.back).not.toHaveBeenCalled()
+      expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
+    })
+
+    it('replaces when the browser has no Navigation API, whatever is behind', async () => {
+      serve([mark()])
+      const back = '/app/inbox?filter=unread'
+      openFromLink(back)
+      window.history.pushState(null, '', window.location.href)
+      await closeSettled()
+      expect(nav.back).not.toHaveBeenCalled()
+      expect(nav.replace).toHaveBeenLastCalledWith(back, { scroll: false })
+    })
   })
 
   it('never follows a return path out of the app', async () => {

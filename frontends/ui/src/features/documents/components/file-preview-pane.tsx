@@ -99,7 +99,7 @@ import type {
 } from '@/lib/documents/lifecycle-types'
 import { AssignPopover } from './assign-popover'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { backReaches, readTrail } from '@/lib/navigation/return-trail'
+import { backLandsOn } from '@/lib/navigation/history-step'
 import { askAboutFile } from '../lib/ask-about-file'
 import { DiscussDocumentButton } from './discuss-document-button'
 import { dropFileSubject } from '../lib/open-file-peek'
@@ -825,17 +825,18 @@ export function FilePreviewPane({
         return
       }
       // A link from another page (Offene Punkte, the Postfach) says where it came from: closing goes there.
-      // When that page is the entry one step back in this tab (`backReaches`), Back is the way: a
-      // replace would leave the page in history twice, and a sheet over it closes with Back.
-      // Otherwise (a new tab, a shared link) nothing behind is ours, and the entry is replaced.
+      // When that page, query and all, is the entry one step back in this tab (`backLandsOn`, read off
+      // the tab's own history), Back is the way: a replace would leave the page in history twice, and a
+      // sheet over it closes with Back. Otherwise (a new tab, a shared link, a review reached from
+      // another review, no Navigation API) the entry behind is not that page, and this one is replaced.
       if (reviewLink.back) {
-        if (window.history.length > 1 && backReaches(readTrail(), pathname ?? '', reviewLink.back)) router.back()
+        if (backLandsOn(reviewLink.back)) router.back()
         else router.replace(reviewLink.back, { scroll: false })
         return
       }
       replaceParams(clearReviewParams(new URLSearchParams(searchParams?.toString() ?? '')))
     },
-    [openReview, urlOpen, router, replaceParams, searchParams, reviewLink.back, pathname]
+    [openReview, urlOpen, router, replaceParams, searchParams, reviewLink.back]
   )
   /** The review on its own, in a tab of its own: the document on its shelf, at the review. */
   const popoutHref =

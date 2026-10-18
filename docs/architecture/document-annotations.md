@@ -383,13 +383,19 @@ goes back, or takes them off when the review came in by a link. A link from
 another page of the app (an Offene Punkte row, a Postfach row) carries `back`,
 that page's own address with its filters (`reviewFilesHref(…, { back })`,
 `withReviewBack`), and closing a review the pane did not push goes there, so the
-reader lands where they left rather than in Dateien. When that page is the
-entry one step back in this tab (the tab's return trail says so,
-`backReaches` in `lib/navigation/return-trail.ts`, compared by path since the
-trail keeps no query), closing is `router.back()`: a replace left the
-Postfach in history twice, and its sheet, whose close is Back, came back
-after the first. Otherwise (a new tab, a shared link) the entry is replaced
-with `back`. `back` is
+reader lands where they left rather than in Dateien. When that page, query
+and all, is the entry one step back in this tab, closing is `router.back()`: a
+replace left the Postfach in history twice, and its sheet, whose close is Back,
+came back after the first. The tab's history answers that, not the return
+trail: `backLandsOn` in `lib/navigation/history-step.ts` reads the entry before
+`navigation.currentEntry` off the Navigation API, which sees each
+`replaceState`, and compares path and query with `back` (parameters in any
+order, the hash aside). The trail keeps paths only and cuts itself back on a
+revisit, so a Postfach row in the project the reader came from looked like
+Dateien behind, and a review reached by „Übernommen aus …“ looked like the
+Postfach behind when the first review was. Otherwise (a new tab, a shared link,
+a review reached from another review, a browser without the API) the entry is
+replaced with `back`. `back` is
 only ever a path of this app (`appReturnPath`, `lib/utils/same-origin-path.ts`:
 no scheme, no other origin, no `//`, no backslash or control character, under
 `/app/`); anything else is dropped as if it were absent. A reload stays
