@@ -18,6 +18,7 @@ import { PHONE_ON_ITS_SIDE_QUERY } from '@/hooks/phone-on-its-side'
 import type { DocumentScope } from '../components/document-actions'
 import type { FileItem } from '../components/project-file-workspace'
 import type { FassungFacts } from '@/lib/documents/fassung'
+import type { MarkTally } from '@/lib/annotations/types'
 import type {
   DocumentLifecyclePermission,
   DocumentVersionState,
@@ -152,6 +153,8 @@ export interface FilePreviewContext {
     fileId: string,
     summary: { versionState: DocumentVersionState; versionCount: number },
   ) => void
+  /** The review read or changed the document's marks: the listing's tally for its chip (`FileItem.marks`). */
+  onMarksChanged?: (fileId: string, marks: MarkTally | null) => void
 }
 
 interface FilePreviewState {

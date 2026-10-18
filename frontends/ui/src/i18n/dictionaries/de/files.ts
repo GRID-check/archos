@@ -1316,7 +1316,8 @@ export const files: typeof en.files = {
       actingDateOnly: 'Handelnd: {date}',
       checkbox: 'Ich gebe diese Fassung frei',
       // Vor der Unterschrift, nie als Sperre: offene Punkte freizugeben ist erlaubt, sie zu übersehen nicht.
-      openMarks: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}} – trotzdem freigeben?',
+      // {marks}: „2 offene Anmerkungen und 12 Vorschläge von Piloti“, wie der Chip in Dateien.
+      openMarks: '{marks} – trotzdem freigeben?',
       openMarksLoading: 'Offene Anmerkungen werden noch gelesen …',
       openMarksUnavailable: 'Ob Anmerkungen offen sind, ließ sich gerade nicht lesen.',
     },
@@ -1471,7 +1472,6 @@ export const files: typeof en.files = {
   // Bereich, mit dem, was dort zu tun ist (CONTEXT.md „Anmerkung“).
   annotations: {
     section: 'Anmerkungen',
-    openCount: '{count} offen',
     kind: 'Art',
     kinds: {
       hint: 'Hinweis',
@@ -1506,6 +1506,63 @@ export const files: typeof en.files = {
     // Was der Chip selbst sagt, kurz genug für eine Karte; der Tooltip trägt den ganzen Satz.
     listedOpenShort: '{count} offen',
     listedOpenShortForYou: '{count} offen · {mine} für Sie',
+    // Pilotis Vorschläge, die niemand übernommen hat: getrennt von „offen“, wie in Offene Punkte und im Protokoll.
+    listedProposedShort: '{count, plural, one {# Vorschlag} other {# Vorschläge}}',
+  },
+  // Offene Punkte: die offenen Anmerkungen aller Dokumente eines Projekts, für den Jour fixe.
+  openPoints: {
+    open: 'Offene Punkte',
+    title: 'Offene Punkte',
+    subtitle: 'Was in den Dokumenten dieses Projekts offen ist, über alle Dokumente: die Liste für den Jour fixe.',
+    back: 'Zurück zu den Dateien',
+    filters: {
+      assignee: 'Zuständig',
+      due: 'Frist',
+      all: 'Alle',
+      // Dasselbe Prädikat wie „Für Sie“ in der Prüfansicht und in Dateien (`isForReader`), also dieselben Worte.
+      me: 'Für Sie',
+      overdue: 'Überfällig',
+      soon: 'Bald',
+      soonHint: 'Frist heute oder in den nächsten sieben Tagen',
+    },
+    openReview: 'Prüfansicht öffnen',
+    openReviewOf: 'Prüfansicht von „{name}“ öffnen',
+    loading: 'Offene Punkte werden geladen',
+    loadError: 'Die offenen Punkte konnten nicht geladen werden.',
+    retry: 'Erneut versuchen',
+    loadMore: 'Weitere laden',
+    loadingMore: 'Weitere werden geladen …',
+    loadMoreFailed: 'Weitere konnten nicht geladen werden.',
+    empty: {
+      noneTitle: 'Nichts offen',
+      noneBody: 'In den Dokumenten dieses Projekts ist keine Anmerkung offen.',
+      filteredTitle: 'Nichts in dieser Auswahl',
+      filteredBody: 'Mit diesen Filtern ist nichts offen. Andere Filter zeigen mehr.',
+    },
+    export: {
+      button: 'Protokoll exportieren',
+      formatLabel: 'Herunterladen als',
+      hint: 'Mit den Filtern, die gerade gesetzt sind',
+      failed: 'Das Protokoll konnte nicht exportiert werden.',
+      tooMany: 'Zu viele offene Punkte für ein Protokoll. Bitte mit einem Filter eingrenzen.',
+      title: 'Offene Punkte – {name}',
+      fileName: 'Offene Punkte – {name}',
+      // Im Projekt abgelegt: der Name der Datei, {date} als JJJJ-MM-TT im Kalender des Büros.
+      filedName: 'Offene Punkte – {name} – {date}',
+      // Warum „Im Projekt ablegen“ nicht geht: das Protokoll zitiert Dokumente, die nicht alle öffnen dürfen.
+      fileRestricted: 'Nicht möglich: Einige Punkte stehen auf Dokumenten, die nicht alle im Projekt öffnen dürfen. Im Projekt abgelegt, wäre ihr Text für alle lesbar.',
+      documents: 'Dokumente',
+      status: {
+        open: 'Offene Anmerkungen',
+        proposed: 'Vorschläge von Piloti',
+        'all-live': 'Offene Anmerkungen und Vorschläge von Piloti',
+      },
+      assignee: 'Zuständig: {name}',
+      due: {
+        overdue: 'Frist überfällig',
+        soon: 'Frist heute oder in den nächsten sieben Tagen',
+      },
+    },
   },
   // Die Prüfansicht: ein Dokument im Vollbild, die Anmerkungen darauf, die
   // Gespräche darunter, und wer gerade mit hinschaut.
@@ -1515,6 +1572,8 @@ export const files: typeof en.files = {
     othersHere: '{count, plural, one {# weitere Person sieht sich das gerade an} other {# weitere Personen sehen sich das gerade an}}',
     close: 'Prüfansicht schließen',
     nothingOpen: 'Nichts offen',
+    // Der Knopf zur Liste auf dem Telefon zeigt die offenen; sein Name sagt den ganzen Satz des Chips.
+    listOpen: 'Anmerkungen: {marks}',
     fassung: 'Fassung {number}',
     offline: 'Verbindung unterbrochen',
     toolsLabel: 'Werkzeuge',
@@ -1627,6 +1686,9 @@ export const files: typeof en.files = {
       reviewFound: '{count, plural, one {Piloti hat # Punkt gefunden} other {Piloti hat # Punkte gefunden}}',
       busyTooltip: 'Piloti beantwortet gerade Ihre Frage',
       reviewFailed: 'Prüfung fehlgeschlagen',
+      // „Was behoben ist“: Piloti antwortet im Verlauf jeder Anmerkung, nicht in einer Liste.
+      checkingFixed: 'Piloti prüft, was behoben ist …',
+      checkFixedDone: 'Piloti hat in den Verläufen geantwortet',
       openConversation: 'Gespräch',
       declined: 'Piloti hat das nicht übernommen. Den Grund lesen Sie oben.',
       handedOff: 'Piloti recherchiert das ausführlich. Das Ergebnis kommt im Chat.',
@@ -1663,6 +1725,11 @@ export const files: typeof en.files = {
       proposed: 'Vorschlag',
       resolved: 'erledigt',
       dismissed: 'verworfen',
+      // Eine offene Anmerkung einer früheren Fassung, hohl gezeichnet, wo sie auf jener stand.
+      ghost: 'aus Fassung {number}',
+      ghostUnnumbered: 'aus einer früheren Fassung',
+      // Der Verlauf hat Neues, das die lesende Person noch nicht geöffnet hat (der Punkt am Pin).
+      unread: 'ungelesen',
     },
     pinOpenBy: 'offen bei {names}',
     draftCard: 'Neue Anmerkung',
@@ -1694,6 +1761,8 @@ export const files: typeof en.files = {
     replyPlaceholder: 'Antworten …',
     send: 'Senden',
     sendFailed: 'Konnte nicht gesendet werden. Der Text ist noch da.',
+    // Eine Anmerkung oder Antwort, die ihre Verfasserin umformuliert: gespeichert, nicht gesendet.
+    saveFailed: 'Konnte nicht gespeichert werden. Der Text ist noch da.',
     actionFailed: 'Das hat nicht geklappt. Bitte noch einmal.',
     conflict: 'Jemand hat diese Anmerkung gerade geändert. Sie sehen jetzt den aktuellen Stand.',
     someone: 'Unbekannt',
@@ -1721,6 +1790,8 @@ export const files: typeof en.files = {
     linkCopied: 'Link kopiert',
     linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
     earlierFassung: 'Aus Fassung {number}. Auf diesem Blatt nicht eingezeichnet.',
+    // Offen: hohl und punktiert dort gezeichnet, wo sie auf ihrer Fassung stand.
+    earlierFassungGhost: 'Aus Fassung {number}. Der hohle Punkt zeigt, wo sie dort stand.',
     // „Gilt weiter": eine offene Anmerkung geht mit der aktuellen Fassung weiter,
     // an derselben Stelle, mit Nummer und Verlauf. Eine Anmerkung eines
     // ersetzten Dokuments kommt als verknüpfte Anmerkung in das neue.
@@ -1741,13 +1812,47 @@ export const files: typeof en.files = {
     replacedBy: 'Ersetzt durch „{name}“',
     replaces: 'Ersetzt „{name}“',
     replacedNotice: 'Dieses Dokument ist durch „{name}“ ersetzt.',
+    // Piloti prüfen lassen, ob die offenen Anmerkungen einer früheren Fassung in
+    // der aktuellen behoben sind. Piloti antwortet im Verlauf jeder Anmerkung und
+    // ändert keinen Status: Erledigen bleibt bei der Person. Die Frage geht so,
+    // wie sie hier steht, an Piloti und steht im Gespräch.
+    checkFixed: {
+      action: 'Piloti prüfen lassen, was behoben ist',
+      running: 'Piloti prüft, was behoben ist …',
+      currentFassung: 'der aktuellen Fassung',
+      seed:
+        'Prüfen, ob {count, plural, one {die offene Anmerkung {numbers}} other {die offenen Anmerkungen {numbers}}} aus einer früheren Fassung in {current} behoben {count, plural, one {ist} other {sind}}. Je Anmerkung lesen, die Stelle in diesem Dokument ansehen und im Verlauf der Anmerkung antworten, beginnend mit „In {current} behoben:“ oder „Weiterhin offen:“, und in einem Satz sagen, woran das zu sehen ist. Keine Anmerkung erledigen oder sonst ändern: Das entscheiden wir selbst.',
+      seedFrom:
+        'Prüfen, ob {count, plural, one {die offene Anmerkung {numbers}} other {die offenen Anmerkungen {numbers}}} auf „{from}“ in diesem Dokument, „{current}“, behoben {count, plural, one {ist} other {sind}}. Je Anmerkung auf „{from}“ lesen, die Stelle hier ansehen und im Verlauf der Anmerkung auf „{from}“ antworten, beginnend mit „In {current} behoben:“ oder „Weiterhin offen:“, und in einem Satz sagen, woran das zu sehen ist. Keine Anmerkung erledigen oder sonst ändern: Das entscheiden wir selbst.',
+      // Was Piloti zu einer Anmerkung des ersetzten Dokuments geantwortet hat, in ihrer Zeile.
+      verdict: 'Antwort von Piloti',
+      resolve: 'Erledigen',
+      resolveMark: 'Anmerkung {number} auf „{name}“ erledigen',
+      resolveFailed: 'Die Anmerkung konnte nicht erledigt werden. Bitte noch einmal.',
+    },
     delete: 'Löschen',
     deleteConfirm: 'Anmerkung {number} löschen?',
+    // Die eigene Anmerkung, die nicht mehr gelöscht wird: warum, und was stattdessen geht.
+    deleteRefused: {
+      discussed: 'Andere haben im Verlauf geantwortet. Erledigen Sie die Anmerkung stattdessen.',
+      carried: 'Sie wurde zwischen Dokumenten übernommen. Erledigen Sie sie stattdessen.',
+    },
+    resolveInstead: 'Stattdessen erledigen',
     // Den eigenen Text einer Anmerkung ändern: wer neu erwähnt wird, erfährt es; wer schon erwähnt war, nicht noch einmal.
     edit: 'Bearbeiten',
     editLabel: 'Text von Anmerkung {number}',
     save: 'Speichern',
     editCancel: 'Abbrechen',
+    // Die eigene Antwort im Verlauf ändern oder löschen, solange die Anmerkung offen ist und Piloti sie nicht aufgenommen hat.
+    replyMore: 'Weitere Aktionen zu Ihrer Antwort',
+    replyEditLabel: 'Ihre Antwort',
+    // Eine Bearbeitung ist kein neues Ereignis: Piloti wird davon nicht geweckt, auch nicht durch ein neues @Piloti.
+    replyEditNoWake: 'Eine bearbeitete Antwort erreicht Piloti nicht. Fragen Sie Piloti mit einer neuen Antwort.',
+    replyDeleteConfirm: 'Ihre Antwort löschen?',
+    replyDeleteHint: 'Wer darin erwähnt wurde, sieht den Hinweis darauf nicht mehr.',
+    replyTakenUp: 'Piloti hat diese Antwort schon aufgenommen. Sie bleibt, wie sie ist; schreiben Sie eine neue.',
+    // Neben der Zeit einer Antwort, die ihre Verfasserin geändert hat.
+    edited: 'bearbeitet',
     // Die Zuständige ist die lesende Person selbst, solange ihr Name noch nicht da ist.
     assigneeYou: 'Sie',
     clearDue: 'Frist entfernen',
@@ -1763,7 +1868,8 @@ export const files: typeof en.files = {
       open: 'Offen',
       closed: 'Erledigt',
     },
-    mine: 'Mir zugewiesen',
+    // Dieselben Wörter wie der Chip in Dateien („4 offen · 2 für Sie“): die Anmerkungen, für die Sie zuständig sind.
+    mine: 'Für Sie',
     proposalsGroup: '{count, plural, one {# Vorschlag von Piloti} other {# Vorschläge von Piloti}}',
     walkProposals: 'Durchgehen',
     walkPosition: '{index}/{total}',
@@ -1776,7 +1882,7 @@ export const files: typeof en.files = {
       readOnlyTitle: 'Noch keine Anmerkungen',
       readOnlyBody: 'Hier hat noch niemand etwas angemerkt.',
       mineTitle: 'Nichts für Sie',
-      mineBody: 'Ihnen ist hier nichts zugewiesen, und Sie haben nichts Offenes gesetzt.',
+      mineBody: 'Für keine Anmerkung hier sind Sie zuständig.',
       doneTitle: 'Alles erledigt',
       doneBody: 'Auf diesem Dokument ist nichts mehr offen.',
       openTitle: 'Nichts offen',
@@ -1807,6 +1913,18 @@ export const files: typeof en.files = {
       },
       failed: 'Das Protokoll konnte nicht exportiert werden.',
       tooLongForPdf: 'Zu umfangreich für ein PDF. Bitte als Word oder Markdown exportieren.',
+      // Das Protokoll als Dokument im Projekt, im Ordner des Dokuments: über die
+      // Hochladetür der Dateien, wie ein Mensch es ablegt. Derselbe Name am
+      // selben Tag wird eine neue Fassung des ersten.
+      fileInto: 'Im Projekt ablegen',
+      filing: 'Wird abgelegt …',
+      fileName: 'Protokoll – {name} – {date}',
+      filed: 'Abgelegt als „{name}“',
+      filedAgain: 'Als neue Fassung von „{name}“ abgelegt',
+      filedUnchanged: '„{name}“ liegt schon so im Projekt.',
+      openFiled: 'Öffnen',
+      fileFailed: 'Das Protokoll konnte nicht abgelegt werden.',
+      fileNameTaken: 'Ein anderes Dokument im Projekt heißt schon „{name}“. Das Protokoll wurde nicht abgelegt.',
       document: {
         title: 'Anmerkungen – {name}',
         fileName: 'Anmerkungen – {name}',

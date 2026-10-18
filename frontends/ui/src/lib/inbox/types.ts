@@ -110,6 +110,12 @@ export interface InboxItemView {
    * what this says; the annotations' service checks every write again.
    */
   answerIn: InboxAnswerPlace | null
+  /**
+   * An answer from the row may address Piloti (its @Piloti): events wake
+   * Piloti in the organization (`piloti-wakes`), so the server answers it, as
+   * it does in the thread. Only where `answerIn` is `row`; absent is false.
+   */
+  pilotiWakes?: boolean
   createdAt: string
   updatedAt: string
 }

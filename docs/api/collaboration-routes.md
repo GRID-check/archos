@@ -286,8 +286,8 @@ asked in it (spec IB-9).
 ## Inbox
 
 Every route below has one typed client, `frontends/ui/src/lib/inbox/client.ts`
-(ADR-0055): the inbox list and badge, the review (opening a mark reads its
-news) and the shell's notification offer call it, and `app/api/inbox/routes.spec.ts`
+(ADR-0055): the inbox list and badge, the review (which marks have unread
+news, and opening a mark reads it) and the shell's notification offer call it, and `app/api/inbox/routes.spec.ts`
 drives the real handlers through it. The service worker posts a tapped
 notification's item to `POST /api/inbox/read` itself (`public/sw.js` cannot
 import), and the same spec holds its path to the client's.
@@ -307,6 +307,10 @@ id, on the bare column the list index covers). `filter` picks the slice
 | `all` (default) | everything not archived | „Alle“ |
 | `archived` | only archived rows | „Archiviert“ |
 | `pending` | the badge's own set: unread, or a request still open | — |
+
+The Postfach keeps the filter it shows in its page's address (`/app/inbox?filter=unread|all|archived`;
+„Für mich“, the default, is not written; `InboxList`), replaced with `history.replaceState` on a
+change, so a row's link into the review carries it as `back` and closing the review comes back to it.
 
 `counts` are the numbers beside the first two
 filters. `hasMore` says a further page exists; pass `nextCursor` back as
@@ -337,7 +341,12 @@ marks it leaves to check and the Fassung they sit on), `answerIn` (where an open
 `review` for Piloti's Rückfrage while events do not wake Piloti, or null when
 the reader may not write the document; see
 [`document-annotations.md`](../architecture/document-annotations.md#what-the-person-hears)),
-`href`, `resourceType`/`resourceId`/`anchorId`, and timestamps.
+`pilotiWakes` (an answer from the row may address Piloti with @Piloti: events
+wake Piloti in the organization; only where `answerIn` is `row`, absent is
+false), `href`, `resourceType`/`resourceId`/`anchorId`, and timestamps. A row a
+reply in a mark's thread wrote (`annotation.activity`, `annotation.mentioned`)
+names that reply in its payload (`replyId`), and goes inert when its author
+deletes the reply (`DELETE /api/documents/{id}/annotations/{annotationId}/replies/{replyId}`).
 Rendering is driven entirely by `INBOX_TYPE_PRESENTATION` in
 `lib/inbox/types.ts`, so a new item type needs a registry entry and its
 translations — no new component (spec IB-6).
@@ -364,7 +373,7 @@ index `idx_inbox_items_pending`.
 
 ### `POST /api/inbox/read`
 
-Exactly one of three bodies; anything else (`{}`, two shapes at once) is a `400`:
+Exactly one of four bodies; anything else (`{}`, two shapes at once) is a `400`:
 
 - `{ itemIds: string[] }` — the rows the reader opened. Uuids, capped at
   `INBOX_LIST_LIMIT`, because a mark-read request can only ever be about rows
@@ -372,12 +381,28 @@ Exactly one of three bodies; anything else (`{}`, two shapes at once) is a `400`
 - `{ all: true }` — „Alle als gelesen markieren“, in the types the caller may see.
 - `{ resourceType: 'document', resourceId, anchorId }` — the reader opened one
   mark in the review: their informational items anchored on it are read
-  (`markAnchorItemsRead`); requests stay open, as for a whole resource.
+  (`markAnchorItemsRead`); requests stay open, as for a whole resource. A row
+  anchored there only for its link („15 Anmerkungen gesetzt“, folded on
+  `MARKS_SET_GROUP_ANCHOR`) is not the mark's news and is left alone.
+- `{ resourceType: 'document', resourceId, marksSet: true }` — the reader
+  opened the document's review: their rows about new marks on it are read
+  (`markMarksSetReadFor`, `markResourceItemsRead` narrowed to rows folded on
+  `MARKS_SET_GROUP_ANCHOR`, in the types they may see).
 
 Scoped to the caller, so ids belonging to someone else cannot be poked (they
 simply match nothing — telling you an item is not yours would confirm it
 exists). Returns `{ affected, pending }`: rows actually touched (`0` is a
 legitimate no-op) and the recomputed badge, so no follow-up read is needed.
+
+### `GET /api/inbox/unread-anchors?resourceType=document&resourceId=…`
+
+`{ anchorIds: string[] }`: the marks of one document whose news the caller has
+not read, the review's dots. The same rows `POST /api/inbox/read`'s anchor form
+reads (the caller's own, informational, unread, in the types they may see),
+less what they archived or what was redacted, and less the rows about new
+marks, which anchor on the newest mark only for their link. One query on
+`idx_inbox_items_target`, at most `UNREAD_ANCHORS_LIMIT` (500, a document's
+most marks). Only `document` is an anchored resource; anything else is a `400`.
 
 ### `POST /api/inbox/unread`
 

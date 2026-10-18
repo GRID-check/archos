@@ -78,6 +78,7 @@ vi.mock('@/lib/annotations/attention', () => ({
   onMarkReplied: vi.fn(async () => undefined),
   onMarkMoved: vi.fn(async () => undefined),
   onMarkDeleted: vi.fn(async () => undefined),
+  onMarksSet: vi.fn(async () => undefined),
 }))
 
 import { requirePinnedSession, requireVerifiedContext } from '@/lib/api/internal-envelope'
@@ -105,7 +106,14 @@ import {
 import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { onAssigneeChanged, onMarkMoved, onMarkReplied, onMarkSettledByPerson, onPilotiWrote } from '@/lib/annotations/attention'
+import {
+  onAssigneeChanged,
+  onMarkMoved,
+  onMarkReplied,
+  onMarkSettledByPerson,
+  onMarksSet,
+  onPilotiWrote,
+} from '@/lib/annotations/attention'
 import { insertPilotiChanges } from '@/lib/changes/repository'
 import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
 import { expectRegistered } from '@/test-utils/audit'
@@ -518,6 +526,7 @@ function fakeRepository() {
       ...input,
       addressesAgent: input.addressesAgent ?? false,
       mentions: input.mentions ?? [],
+      editedAt: null,
     }
     if (current) marks.set(input.annotationId, { ...current, replies: [...current.replies, reply] })
     return reply
@@ -554,6 +563,17 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
     const born = marks.get(body.created[0].id)
     expect(born).toMatchObject({ status: 'open', authorKind: 'piloti', acceptedBy: 'user_1' })
     expect(violatedChecks(born ?? record())).toEqual([])
+    // The document's people hear Piloti set it for the asker, who asked and is not told.
+    await vi.waitFor(() =>
+      expect(onMarksSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentId: DOC_ID,
+          actorUserId: 'user_1',
+          by: 'created_piloti',
+          marks: [expect.objectContaining({ id: body.created[0].id, number: 10, toldOtherwise: [] })],
+        })
+      )
+    )
   })
 
   it('resolves for the asker, in their name, and says so in the thread as Piloti', async () => {

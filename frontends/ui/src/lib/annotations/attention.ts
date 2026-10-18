@@ -15,7 +15,9 @@ import 'server-only'
  * | The wake job was refused, or gave up, before a turn answered | `piloti.work_failed` | whoever woke Piloti |
  * | Any woken turn ended `stopped` | none: the person stopped it | |
  * | Piloti set a Rückfrage, or replied on its own open Rückfrage | `piloti.asks_you` | the mark's Zuständige, else the person its turn acted for |
- * | Piloti set another mark | none: ordinary work | |
+ * | Piloti set another mark | none to the asker: ordinary work they asked for | |
+ * | A person set marks on a document, Piloti set them for the person its turn acted for, or a person took over Piloti's proposal | `annotation.activity`, variant `created` (`created_piloti`), one counted row per document and per who set them | the document's people ({@link onMarksSet}: its Verantwortliche and its uploader), minus whoever acted, minus whom a mark already tells otherwise (its Zuständige, whom it mentions, whom Piloti's Rückfrage asks) |
+ * | Piloti proposed marks nobody took over yet | none: a proposal is nobody's news until someone takes it over | |
  * | A person made someone the mark's Zuständige (setting it, changing it, or taking over Piloti's proposal that names one) | `annotation.assigned_to_you` | the new Zuständige, unless they did it themselves |
  * | Piloti did, for the person its turn acted for | `annotation.assigned_to_you`, variant `piloti` | the same |
  * | Someone else became responsible, or nobody | resolves the previous Zuständige's `annotation.assigned_to_you` | |
@@ -27,7 +29,9 @@ import 'server-only'
  * | A person answered in the thread | resolves `piloti.asks_you`, for everyone, and their own `annotation.mentioned` | |
  * | The mark was resolved or dismissed | resolves everyone's `piloti.asks_you`, `annotation.assigned_to_you` and `annotation.mentioned` | |
  * | A mention was taken out of the text, or its reply deleted, and nothing left on the mark names that person | their `annotation.mentioned` turns inert | |
- * | The mark was deleted | every row anchored on it turns inert, for everyone | |
+ * | A reply was deleted | every `annotation.activity` and `annotation.mentioned` row still quoting it (its `replyId`) counts one less and quotes nothing; a thread row that counted only it turns inert | |
+ * | A reply was reworded | every row still quoting it quotes the new words, unresurfaced | |
+ * | The mark was deleted | every row anchored on it turns inert, for everyone, but a „N Anmerkungen gesetzt“ row, which counts one less and turns inert only once it counts none | |
  *
  * The author's `annotation.activity` row says `yours: true`: a reply or a move
  * on a mark they wrote answers them, and is pushed as a result, not as activity.
@@ -48,15 +52,25 @@ import 'server-only'
  * mark's date (`dueOn`, null without one), so the row says by when. Rows fold per mark and their payloads
  * merge, so every row names its `variant`: a failed wake the class of its
  * reason (`./wake-end-reason.ts`), so the notice says why in words the person
- * can act on, never the stored reason itself.
+ * can act on, never the stored reason itself. A row a reply wrote
+ * (`annotation.activity`, `annotation.mentioned`) names it as `replyId`, and
+ * every other write to those rows clears it, so deleting the reply finds the
+ * rows that still quote it and nothing else ({@link onReplyDeleted}).
  */
 
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { isLive, type MarkMention } from './types'
 import { wakeEndReasonKind } from './wake-end-reason'
+import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
-import { inboxGroupKey, MARK_ANCHORED_INBOX_TYPES } from '@/lib/inbox/registry'
-import { emitInboxItems, markInboxItemsInertAnchoredOn, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
+import { inboxGroupKey, MARK_ANCHORED_INBOX_TYPES, MARKS_SET_GROUP_ANCHOR } from '@/lib/inbox/registry'
+import {
+  emitInboxItems,
+  markInboxItemsInertAnchoredOn,
+  resolveInboxItemsAnchoredOn,
+  retractInboxOccurrenceAnchoredOn,
+  rewriteInboxPayloadsAnchoredOn,
+} from '@/lib/inbox/service'
 import type { DocumentAnnotationReplyRow, InboxItemType } from '@/lib/db/schema'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { describeResource } from '@/lib/sharing/registry'
@@ -71,6 +85,9 @@ export interface MarkRef {
   /** The document's project; null on the Büroablage. */
   projectId: string | null
 }
+
+/** The payload keys that quote a text: what goes when the text does. */
+const QUOTE_KEYS = ['excerpt', 'mentions'] as const
 
 /** Longest question quoted in a row. */
 const EXCERPT_LENGTH = 160
@@ -112,6 +129,15 @@ interface MarkItem {
   author?: string | null
   /** Facts the row's words need beyond the mark's (its date), merged into the payload as given; null clears. */
   facts?: Record<string, string | number | null>
+  /**
+   * What the row folds on instead of the mark: new marks fold per document and
+   * per who set them (`set:<variant>:<actor>`), so fifteen marks are one row.
+   * The row still anchors on the mark the ref names (the newest), which is
+   * where its link opens the review.
+   */
+  groupAnchor?: string
+  /** How many occurrences this one item stands for (`InboxEmission.occurrences`). */
+  occurrences?: number
 }
 
 /** One item about a mark, addressed to each of these people. */
@@ -119,7 +145,7 @@ async function emitAboutMark(
   type: InboxItemType,
   ref: MarkRef,
   recipientUserIds: readonly string[],
-  { excerpt, mentions = [], variant = null, actorUserId = null, author = null, facts = {} }: MarkItem
+  { excerpt, mentions = [], variant = null, actorUserId = null, author = null, facts = {}, groupAnchor, occurrences }: MarkItem
 ): Promise<void> {
   if (recipientUserIds.length === 0) return
   const subject = await documentName(ref)
@@ -139,8 +165,9 @@ async function emitAboutMark(
       resourceId: ref.documentId,
       anchorId: ref.annotationId,
       actorUserId,
-      groupKey: inboxGroupKey(type, 'document', ref.documentId, ref.annotationId),
+      groupKey: inboxGroupKey(type, 'document', ref.documentId, groupAnchor ?? ref.annotationId),
       payload: author !== null && recipientUserId === author ? { ...payload, yours: true } : payload,
+      ...(occurrences !== undefined && { occurrences }),
     }))
   )
 }
@@ -295,15 +322,31 @@ export async function onMarkSettledByPerson(
   })
 }
 
-/** The mark was deleted: no row keeps a link to it, or a quote from it. */
+/**
+ * The mark was deleted: no row about it keeps a link to it, or a quote from
+ * it. A „15 Anmerkungen gesetzt“ row anchored on it ({@link onMarksSet}, on
+ * the newest it counts) is about the other fourteen too: it counts one less
+ * and quotes nothing, no longer naming the mark (`related`), and goes inert
+ * only once it counts none. It cannot cheaply be re-anchored on the next
+ * newest (which marks a reader's row counts is not stored), so its link opens
+ * the review without a mark selected.
+ */
 export async function onMarkDeleted(input: Pick<MarkRef, 'organizationId' | 'annotationId'>): Promise<void> {
-  await bestEffortInbox(`clearing deleted mark ${input.annotationId}`, input.organizationId, () =>
-    markInboxItemsInertAnchoredOn({
-      organizationId: input.organizationId,
+  const rows = { organizationId: input.organizationId, anchorId: input.annotationId }
+  await bestEffortInbox(`clearing deleted mark ${input.annotationId}`, input.organizationId, async () => {
+    await markInboxItemsInertAnchoredOn({
+      ...rows,
       types: MARK_ANCHORED_INBOX_TYPES,
-      anchorId: input.annotationId,
+      groupAnchor: { isNot: MARKS_SET_GROUP_ANCHOR },
     })
-  )
+    await retractInboxOccurrenceAnchoredOn({
+      ...rows,
+      types: ['annotation.activity'],
+      groupAnchor: { is: MARKS_SET_GROUP_ANCHOR },
+      clear: [...QUOTE_KEYS, 'related'],
+      inertWhenSpent: true,
+    })
+  })
 }
 
 /**
@@ -416,6 +459,8 @@ export async function onMarkReplied(
   input: MarkAct & {
     mark: MarkPeople & Pick<AnnotationRecord, 'kind' | 'status'>
     replyText: string
+    /** The reply, so the row it writes can be found again if it is deleted. */
+    replyId?: string | null
     mayOpen: MayOpen
     mentioned?: readonly string[]
     /** Whom the reply mentions, as the server kept them. */
@@ -432,7 +477,93 @@ export async function onMarkReplied(
       variant: 'reply',
       actorUserId: input.byPiloti ? null : input.actorUserId,
       author: markAuthor(input.mark),
+      facts: { replyId: input.replyId ?? null },
     })
+  })
+}
+
+/**
+ * Who set new marks, as the row words it: a person, or Piloti for a person
+ * (who asked for them, or took its proposal over). Piloti's proposals nobody
+ * took over tell nobody: a proposal counts once someone takes it over.
+ */
+export type MarksSetBy = 'created' | 'created_piloti'
+
+/** One new mark, and whom it already tells otherwise. */
+export interface SetMark {
+  id: string
+  number: number
+  body: string
+  mentions?: readonly MarkMention[]
+  /**
+   * The people this mark tells in a row of its own, who hear nothing more
+   * about it: the Zuständige a person's mark hands it to
+   * (`annotation.assigned_to_you`), whom its text mentions
+   * (`annotation.mentioned`), whom Piloti's Rückfrage asks (`piloti.asks_you`).
+   */
+  toldOtherwise: readonly (string | null)[]
+}
+
+/**
+ * New marks on a document tell the document's people: who is Verantwortlich
+ * for it (ADR-0047) and who uploaded it, as a new Fassung does
+ * (`lib/documents/fassung-notify.ts`). Without it a review only reached the
+ * room, and a mark nobody was assigned or mentioned on waited for somebody to
+ * open the document.
+ *
+ * One counted row per document and per who set them (`groupAnchor`
+ * `set:<by>:<actor>`), so a review of fifteen marks is one row, „Miriam hat
+ * 15 Anmerkungen in „Grundriss EG“ gesetzt“, and one write of fifteen (Piloti's
+ * batch) is one emission counting fifteen. The row anchors on the newest mark
+ * the reader is told about, where its link opens the review. Whoever acted is
+ * left out (for Piloti, the person who asked for them or took them over), as
+ * is anybody a mark tells in a row of its own; everyone else must be able to
+ * open the document now (`mayOpen`). Informational, like every
+ * `annotation.activity`.
+ */
+export async function onMarksSet(
+  input: Omit<MarkRef, 'annotationId' | 'annotationNumber'> & {
+    actorUserId: string
+    uploaderUserId: string | null
+    by: MarksSetBy
+    marks: readonly SetMark[]
+    mayOpen: MayOpen
+  }
+): Promise<void> {
+  if (input.marks.length === 0) return
+  await bestEffortInbox(`annotation.activity (set) on document ${input.documentId}`, input.organizationId, async () => {
+    const assignments = await listAssignmentsForResources(input.organizationId, 'document', [input.documentId])
+    const people = [...new Set([...assignments.map((row) => row.subjectUserId), input.uploaderUserId])].filter(
+      (userId): userId is string => Boolean(userId) && userId !== input.actorUserId
+    )
+    const recipients = await whoMayOpen(input.mayOpen, people)
+    // Each reader's own share of the marks: the ones no other row tells them about.
+    const byShare = new Map<string, { newest: SetMark; count: number; recipients: string[] }>()
+    for (const recipient of recipients) {
+      const theirs = input.marks.filter((mark) => !mark.toldOtherwise.includes(recipient))
+      if (theirs.length === 0) continue
+      const newest = theirs.reduce((a, b) => (b.number > a.number ? b : a))
+      const key = `${newest.id}\n${theirs.length}`
+      const share = byShare.get(key) ?? { newest, count: theirs.length, recipients: [] }
+      share.recipients.push(recipient)
+      byShare.set(key, share)
+    }
+    for (const { newest, count, recipients: told } of byShare.values()) {
+      await emitAboutMark(
+        'annotation.activity',
+        { ...input, annotationId: newest.id, annotationNumber: newest.number },
+        told,
+        {
+          excerpt: excerptOf(newest.body),
+          mentions: newest.mentions,
+          variant: input.by,
+          actorUserId: input.actorUserId,
+          // One counted row per document and per who set them (`MARKS_SET_GROUP_ANCHOR`).
+          groupAnchor: `${MARKS_SET_GROUP_ANCHOR}${input.by}:${input.actorUserId}`,
+          occurrences: count,
+        }
+      )
+    }
   })
 }
 
@@ -452,6 +583,8 @@ export async function onMarkMoved(
       variant: input.move,
       actorUserId: input.actorUserId,
       author,
+      // The row folds per mark: it quotes the move now, no longer a reply.
+      facts: { replyId: null },
     })
   )
 }
@@ -469,6 +602,8 @@ export async function onMarkMentioned(
     text: string
     /** Whom `text` mentions, as the server kept them: the row draws them as chips. */
     mentions: readonly MarkMention[]
+    /** The reply `text` is, or absent for the mark's own text. */
+    replyId?: string | null
     mayOpen: MayOpen
   }
 ): Promise<void> {
@@ -479,27 +614,90 @@ export async function onMarkMentioned(
       excerpt: excerptOf(input.text),
       mentions: input.mentions,
       actorUserId: input.actorUserId,
+      facts: { replyId: input.replyId ?? null },
     })
   )
 }
 
 /**
+ * A reply was deleted: what it told is taken back, and only that.
+ *
+ * Whom it mentioned and nothing left on the mark names (`withdrawn`, computed
+ * by the caller) have their `annotation.mentioned` turn inert
+ * ({@link onMentionsWithdrawn}). Every other row that still quotes it
+ * (`annotation.activity` for the thread, `annotation.mentioned` for whom
+ * something else on the mark still asks, found by the `replyId` they carry)
+ * counts one less and quotes nothing, without resurfacing: a colleague's
+ * mention elsewhere on the mark still asks, and a thread row still holds the
+ * replies before it. A thread row that counted only this reply goes inert:
+ * its news is gone. A row a later reply or move wrote over names that one and
+ * stays as it is.
+ */
+export async function onReplyDeleted(
+  input: Pick<MarkRef, 'organizationId' | 'annotationId'> & { replyId: string; withdrawn: readonly string[] }
+): Promise<void> {
+  await bestEffortInbox(`clearing deleted reply ${input.replyId}`, input.organizationId, async () => {
+    await withdrawMentions(input)
+    const rows = {
+      organizationId: input.organizationId,
+      anchorId: input.annotationId,
+      payloadHas: { replyId: input.replyId },
+      clear: [...QUOTE_KEYS, 'replyId'],
+    }
+    await retractInboxOccurrenceAnchoredOn({ ...rows, types: ['annotation.mentioned'], inertWhenSpent: false })
+    await retractInboxOccurrenceAnchoredOn({ ...rows, types: ['annotation.activity'], inertWhenSpent: true })
+  })
+}
+
+/**
+ * A reply was reworded: every row that still quotes it (by its `replyId`)
+ * quotes the new words and whom they mention, in place. Nothing new happened,
+ * so no row resurfaces; whom the edit mentions anew is told by
+ * {@link onMarkMentioned}, whom it no longer names by {@link onMentionsWithdrawn}.
+ */
+export async function onReplyEdited(
+  input: Pick<MarkRef, 'organizationId' | 'annotationId'> & {
+    replyId: string
+    text: string
+    mentions: readonly MarkMention[]
+  }
+): Promise<void> {
+  await bestEffortInbox(`rewording reply ${input.replyId}`, input.organizationId, () =>
+    rewriteInboxPayloadsAnchoredOn({
+      organizationId: input.organizationId,
+      types: ['annotation.activity', 'annotation.mentioned'],
+      anchorId: input.annotationId,
+      payloadHas: { replyId: input.replyId },
+      facts: { excerpt: excerptOf(input.text), mentions: [...input.mentions] },
+    })
+  )
+}
+
+/** Each of these people's `annotation.mentioned` on the mark turns inert, its quote wiped. */
+async function withdrawMentions(
+  input: Pick<MarkRef, 'organizationId' | 'annotationId'> & { withdrawn: readonly string[] }
+): Promise<void> {
+  for (const recipientUserId of input.withdrawn) {
+    await markInboxItemsInertAnchoredOn({
+      organizationId: input.organizationId,
+      types: ['annotation.mentioned'],
+      anchorId: input.annotationId,
+      recipientUserId,
+    })
+  }
+}
+
+/**
  * These people's mention on the mark is gone: the text that named them was
- * changed or its reply deleted, and nothing left on the mark names them. Their
+ * changed, and nothing left on the mark names them. Their
  * `annotation.mentioned` turns inert, its quote wiped, as a deleted mark's
- * rows do; nobody else's row is touched.
+ * rows do; nobody else's row is touched. A deleted reply's are withdrawn by
+ * {@link onReplyDeleted}.
  */
 export async function onMentionsWithdrawn(
   input: Pick<MarkRef, 'organizationId' | 'annotationId'> & { userIds: readonly string[] }
 ): Promise<void> {
-  await bestEffortInbox(`withdrawing mentions on mark ${input.annotationId}`, input.organizationId, async () => {
-    for (const recipientUserId of input.userIds) {
-      await markInboxItemsInertAnchoredOn({
-        organizationId: input.organizationId,
-        types: ['annotation.mentioned'],
-        anchorId: input.annotationId,
-        recipientUserId,
-      })
-    }
-  })
+  await bestEffortInbox(`withdrawing mentions on mark ${input.annotationId}`, input.organizationId, () =>
+    withdrawMentions({ ...input, withdrawn: input.userIds })
+  )
 }

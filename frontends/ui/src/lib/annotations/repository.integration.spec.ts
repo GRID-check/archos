@@ -22,7 +22,8 @@
  *   - a thread comes back in order and goes with its mark;
  *   - one reply is deleted alone, and only while it still says what the caller
  *     read (undo's compare-and-swap); another mark's reply with the same id is
- *     not touched;
+ *     not touched; a reply is reworded the same way, its edit stamped by the
+ *     database's clock (migration 0152);
  *   - another organization reads none of them and cannot plant one on this
  *     organization's document;
  *   - a wake of Piloti (migration 0139, ADR-0106) is recorded and queued in
@@ -469,6 +470,38 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(keep.id).not.toBe(gone.id)
   })
 
+  it('rewords one reply only while it says what the caller read, stamping the edit by the database clock', async () => {
+    const [row] = await insert(ids.document)
+    const reply = await inOrg(ORG, () =>
+      repo.insertAnnotationReply({ organizationId: ORG, annotationId: row.id, authorKind: 'person', body: 'Vorher', createdBy: USER })
+    )
+    expect(reply.editedAt).toBeNull()
+    const mentions = [{ targetId: 'user_anna', display: 'Anna Berger' }]
+
+    // The words moved since the caller read them: nothing changes.
+    expect(
+      await inOrg(ORG, () => repo.updateAnnotationReply(ORG, row.id, reply.id, 'Anders', { body: 'Nachher', mentions }))
+    ).toBeNull()
+    // Another organization finds nothing.
+    expect(
+      await inOrg(OTHER_ORG, () => repo.updateAnnotationReply(OTHER_ORG, row.id, reply.id, 'Vorher', { body: 'Nachher', mentions }))
+    ).toBeNull()
+
+    const edited = await inOrg(ORG, () =>
+      repo.updateAnnotationReply(ORG, row.id, reply.id, 'Vorher', { body: 'Nachher', mentions })
+    )
+    expect(edited).toMatchObject({ body: 'Nachher', mentions })
+    expect(edited?.editedAt).toBeInstanceOf(Date)
+    expect(edited!.editedAt!.getTime()).toBeGreaterThanOrEqual(reply.createdAt.getTime())
+    // A second edit from the same reading finds nothing: the first one won.
+    expect(
+      await inOrg(ORG, () => repo.updateAnnotationReply(ORG, row.id, reply.id, 'Vorher', { body: 'Zweite', mentions: [] }))
+    ).toBeNull()
+    const [stored] = (await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id)))?.replies ?? []
+    expect(stored).toMatchObject({ body: 'Nachher', mentions })
+    expect(stored?.editedAt).toBeInstanceOf(Date)
+  })
+
   it('shows another organization none of them, and refuses one planted on this document', async () => {
     expect(await inOrg(OTHER_ORG, () => repo.listDocumentAnnotations(OTHER_ORG, ids.document))).toEqual([])
     const leaked = await inOrg(OTHER_ORG, () =>
@@ -512,17 +545,57 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     const tally = (reader: Parameters<typeof repo.tallyLiveMarks>[2], organizationId = ORG) =>
       inOrg(organizationId, () => repo.tallyLiveMarks(organizationId, [clean, held, ids.second], reader, USER))
 
-    // Two open and one proposal are live; only the open one assigned to USER is theirs (the proposal naming them is not yet).
+    // Two open and one proposal are live, counted apart; only the open one assigned to USER is theirs (the proposal naming them is not yet).
     const member = await tally(memberReader(USER))
-    expect(member.get(clean)).toEqual({ live: 3, forYou: 1 })
+    expect(member.get(clean)).toEqual({ open: 2, proposed: 1, forYou: 1 })
     expect(member.has(held)).toBe(false)
-    expect(member.get(ids.second)?.live).toBeGreaterThan(0)
+    const second = member.get(ids.second)
+    expect((second?.open ?? 0) + (second?.proposed ?? 0)).toBeGreaterThan(0)
     // The uploader and the reviewers see the held upload's marks, as they see the upload.
-    expect((await tally(memberReader(UPLOADER))).get(held)).toEqual({ live: 1, forYou: 1 })
-    expect((await tally(REVIEWER_READER)).get(held)).toEqual({ live: 1, forYou: 1 })
+    expect((await tally(memberReader(UPLOADER))).get(held)).toEqual({ open: 1, proposed: 0, forYou: 1 })
+    expect((await tally(REVIEWER_READER)).get(held)).toEqual({ open: 1, proposed: 0, forYou: 1 })
     expect(await inOrg(OTHER_ORG, () => repo.tallyLiveMarks(OTHER_ORG, [clean, held], memberReader(USER), USER))).toEqual(
       new Map()
     )
+  })
+
+  it('counts „für Sie“ as the review’s predicate says, case for case', async () => {
+    const { memberReader } = await import('@/lib/documents/visibility')
+    const { isForReader, isLive } = await import('./types')
+    const { FOR_READER_CASES } = await import('@/test-utils/marks-for-reader')
+    const COLLEAGUE = `${USER}_colleague`
+    const person = (who: 'reader' | 'colleague') => (who === 'reader' ? USER : COLLEAGUE)
+    // One document per case, so the tally speaks for each on its own.
+    const placed: Array<{ given: (typeof FOR_READER_CASES)[number]; documentId: string }> = []
+    for (const [index, given] of FOR_READER_CASES.entries()) {
+      const documentId = await document(ids.project, `FuerSie_${index}.pdf`)
+      const [row] = await insert(documentId, [mark({ assigneeUserId: given.assignee ? person(given.assignee) : null })], {
+        authorKind: given.authorKind,
+        createdBy: person(given.setBy),
+        // Piloti's mark is the office's only once somebody took it over.
+        ...(given.authorKind === 'piloti' && given.status !== 'proposed' ? { acceptedBy: COLLEAGUE } : {}),
+      })
+      if (given.status === 'resolved' || given.status === 'dismissed') {
+        await inOrg(ORG, () =>
+          repo.updateDocumentAnnotation(ORG, documentId, row.id, 'open', {
+            transition: { status: given.status, closedBy: USER, closedAt: new Date() },
+          })
+        )
+      }
+      placed.push({ given, documentId })
+    }
+
+    const tally = await inOrg(ORG, () =>
+      repo.tallyLiveMarks(ORG, placed.map((entry) => entry.documentId), memberReader(USER), USER)
+    )
+    for (const { given, documentId } of placed) {
+      const [stored] = await inOrg(ORG, () => repo.listDocumentAnnotations(ORG, documentId))
+      if (!stored) throw new Error(`no mark stored for „${given.name}“`)
+      expect(stored.status, given.name).toBe(given.status)
+      expect(isForReader(stored, USER), given.name).toBe(given.forReader)
+      expect(isLive(stored) && isForReader(stored, USER), given.name).toBe(given.counted)
+      expect(tally.get(documentId)?.forYou ?? 0, given.name).toBe(given.counted ? 1 : 0)
+    }
   })
 
   describe('waking Piloti (migration 0139)', () => {

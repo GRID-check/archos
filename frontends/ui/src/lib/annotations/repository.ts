@@ -59,10 +59,11 @@ export interface AnnotationRecord extends DocumentAnnotationRow {
 }
 
 /** The mark this one was carried from, and the one it was carried to (unique, so at most one). */
-const carriedSource = alias(documentAnnotations, 'carried_source')
-const carriedCopy = alias(documentAnnotations, 'carried_copy')
+export const carriedSource = alias(documentAnnotations, 'carried_source')
+export const carriedCopy = alias(documentAnnotations, 'carried_copy')
 
-const selection = {
+/** The columns every read of a mark selects; `project-repository.ts` selects them too. */
+export const selection = {
   row: documentAnnotations,
   fassungNumber: documentVersions.versionNumber,
   fromId: carriedSource.id,
@@ -73,7 +74,7 @@ const selection = {
   toNumber: carriedCopy.number,
 }
 
-type SelectedRow = {
+export type SelectedRow = {
   row: DocumentAnnotationRow
   fassungNumber: number | null
   fromId: string | null
@@ -113,7 +114,7 @@ async function listReplies(organizationId: string, annotationIds: readonly strin
   return byAnnotation
 }
 
-async function withThreads(organizationId: string, rows: SelectedRow[]): Promise<AnnotationRecord[]> {
+export async function withThreads(organizationId: string, rows: SelectedRow[]): Promise<AnnotationRecord[]> {
   const threads = await listReplies(
     organizationId,
     rows.map(({ row }) => row.id)
@@ -128,7 +129,7 @@ async function withThreads(organizationId: string, rows: SelectedRow[]): Promise
 }
 
 /** The joins every read of a mark makes: its Fassung's number, and both ends of a carry in the same organization. */
-const carryJoins = (organizationId: string) => ({
+export const carryJoins = (organizationId: string) => ({
   source: and(eq(carriedSource.id, documentAnnotations.carriedFromId), eq(carriedSource.organizationId, organizationId)),
   copy: and(eq(carriedCopy.carriedFromId, documentAnnotations.id), eq(carriedCopy.organizationId, organizationId)),
 })
@@ -161,9 +162,14 @@ export async function listDocumentAnnotations(
 
 /**
  * The live Anmerkungen of each of these documents, counted in ONE grouped
- * query for a listing page: how many are open or proposed, and how many of
- * those are open with `readerUserId` as Zuständige. Every Fassung counts: a
- * mark set on an earlier one is still work until somebody closes it.
+ * query for a listing page: how many are open, how many are Piloti's proposals
+ * nobody decided on (told apart, because a proposal is not yet the office's
+ * work), and how many of the open ones have `readerUserId` as Zuständige. That
+ * third number is the
+ * review's „Für Sie“ (`isForReader` over the live marks) in SQL: keep the two
+ * equal, `repository.integration.spec.ts` asks both the same cases. Every
+ * Fassung counts: a mark set on an earlier one is still work until somebody
+ * closes it.
  *
  * The documents are joined and narrowed by the reader the listing was read
  * with (`documentVisibleTo`), so a held upload's marks are not counted for
@@ -181,7 +187,8 @@ export async function tallyLiveMarks(
     db
       .select({
         documentId: documentAnnotations.documentId,
-        live: sql<number | string>`count(*)`,
+        open: sql<number | string>`count(*) filter (where ${documentAnnotations.status} = 'open')`,
+        proposed: sql<number | string>`count(*) filter (where ${documentAnnotations.status} = 'proposed')`,
         forYou: sql<number | string>`count(*) filter (where ${documentAnnotations.status} = 'open' and ${documentAnnotations.assigneeUserId} = ${readerUserId})`,
       })
       .from(documentAnnotations)
@@ -199,7 +206,12 @@ export async function tallyLiveMarks(
       .limit(documentIds.length)
   )
   // `count(*)` is a bigint, which the driver hands over as a string.
-  return new Map(rows.map((row) => [row.documentId, { live: Number(row.live), forYou: Number(row.forYou) }]))
+  return new Map(
+    rows.map((row) => [
+      row.documentId,
+      { open: Number(row.open), proposed: Number(row.proposed), forYou: Number(row.forYou) },
+    ])
+  )
 }
 
 /** One Anmerkung of one document with its thread, or null. */
@@ -609,4 +621,38 @@ export async function deleteAnnotationReply(
       .returning({ id: documentAnnotationReplies.id })
   )
   return rows.length > 0
+}
+
+/**
+ * Change what one reply says and whom it mentions (migration 0152): a
+ * compare-and-swap on the words the service read, so an edit that raced
+ * another edit, or a delete, changes nothing. `edited_at` is the database's
+ * clock, the clock `created_at` was set by
+ * (`document_annotation_replies_edited_after_created`). The row as it now
+ * stands, or null when nothing matched. The service read the Anmerkung's
+ * document for writing first.
+ */
+export async function updateAnnotationReply(
+  organizationId: string,
+  annotationId: string,
+  replyId: string,
+  expectedBody: string,
+  changes: { body: string; mentions: MarkMention[] }
+): Promise<DocumentAnnotationReplyRow | null> {
+  const db = getDb()
+  const [row] = await withTenant({ organizationId }, () =>
+    db
+      .update(documentAnnotationReplies)
+      .set({ body: changes.body, mentions: changes.mentions, editedAt: sql`now()` })
+      .where(
+        and(
+          eq(documentAnnotationReplies.organizationId, organizationId),
+          eq(documentAnnotationReplies.annotationId, annotationId),
+          eq(documentAnnotationReplies.id, replyId),
+          eq(documentAnnotationReplies.body, expectedBody)
+        )
+      )
+      .returning()
+  )
+  return row ?? null
 }

@@ -255,6 +255,8 @@ export const collaboration: typeof en.collaboration = {
     // antworten oder erledigen, wie im Verlauf der Anmerkung.
     mark: {
       open: 'Zur Anmerkung',
+      // Eine Zeile über neue Anmerkungen („Anna hat 15 Anmerkungen gesetzt“): sie öffnet die Prüfansicht bei der neuesten.
+      openMany: 'Zu den Anmerkungen',
       // Eine Rückfrage von Piloti, solange Ereignisse Piloti nicht wecken: Erst die Prüfansicht fragt Piloti mit der Antwort.
       answerInReview: 'In der Prüfansicht beantworten',
       reply: 'Antworten',
@@ -533,6 +535,19 @@ export const collaboration: typeof en.collaboration = {
       // für die Piloti gearbeitet hat). {related} ist die Nummer der
       // Anmerkung, {subject} das Dokument; der Auszug ist, was sie sagt.
       annotationAssigned: {
+        // Eine Benachrichtigung für viele Zeilen auf einmal (die Erinnerungen
+        // des Morgens, eine Übergabe in einem Zug): die Zahl im Titel, darunter
+        // wie viele wovon, das Dringendste zuerst.
+        pushFold: {
+          title: '{count, plural, one {# Anmerkung} other {# Anmerkungen}} für Sie',
+          parts: {
+            overdue: '{count} überfällig',
+            due_soon: '{count} heute oder morgen fällig',
+            assigned: '{count} zugewiesen',
+            redated: '{count, plural, one {# mit neuer Frist} other {# mit neuen Fristen}}',
+            other: '{count} weitere',
+          },
+        },
         title: '{actor} hat Ihnen eine Anmerkung zugewiesen',
         titleRelated: '{actor} hat Ihnen Anmerkung {related} in „{subject}“ zugewiesen',
         titleRelatedNoSubject: '{actor} hat Ihnen Anmerkung {related} zugewiesen',
@@ -588,6 +603,19 @@ export const collaboration: typeof en.collaboration = {
       // Wer geantwortet hat, steht im Titel; `…NoActor`, wenn es Piloti war
       // oder niemand Bestimmtes.
       annotationActivity: {
+        // Eine Benachrichtigung für viele Zeilen auf einmal (jemand erledigt 15 Ihrer
+        // Anmerkungen): gezählt je Zeile, also je Anmerkung, neue Anmerkungen je Dokument.
+        pushFold: {
+          title: '{count, plural, one {# Neuigkeit} other {# Neuigkeiten}} zu Anmerkungen',
+          parts: {
+            reply: '{count, plural, one {# mit neuer Antwort} other {# mit neuen Antworten}}',
+            resolved: '{count} erledigt',
+            dismissed: '{count} verworfen',
+            reopened: '{count} wieder geöffnet',
+            created: '{count, plural, one {# Dokument mit neuen Anmerkungen} other {# Dokumente mit neuen Anmerkungen}}',
+            other: '{count} weitere',
+          },
+        },
         title: '{actor} hat zu einer Anmerkung geantwortet',
         titleNoActor: 'Neue Antwort zu einer Anmerkung',
         titleRelated: '{actor} hat zu Anmerkung {related} in „{subject}“ geantwortet',
@@ -615,6 +643,63 @@ export const collaboration: typeof en.collaboration = {
             title: '{actor} hat eine Anmerkung wieder geöffnet',
             titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ wieder geöffnet',
             titleRelatedNoSubject: '{actor} hat Anmerkung {related} wieder geöffnet',
+          },
+          // Neue Anmerkungen an einem Dokument, für das Sie verantwortlich
+          // sind oder das Sie hochgeladen haben: eine Zeile je Dokument und je
+          // Person, die mitzählt. {related} ist die neueste, der Auszug, was
+          // sie sagt. Ohne {related} und Auszug: die neueste wurde gelöscht,
+          // die Zeile zählt die übrigen. „NoActor“: die Person ist nicht mehr
+          // im Verzeichnis.
+          created: {
+            title: '{actor} hat eine Anmerkung gesetzt',
+            titleNoActor: 'Eine Anmerkung wurde gesetzt',
+            titleOne: '{actor} hat eine Anmerkung in „{subject}“ gesetzt',
+            titleOneNoActor: 'Eine Anmerkung in „{subject}“ wurde gesetzt',
+            titleMany: '{actor} hat {count} Anmerkungen in „{subject}“ gesetzt',
+            titleManyNoActor: '{count} neue Anmerkungen in „{subject}“',
+            titleNone: '{actor} hat Anmerkungen in „{subject}“ gesetzt',
+            titleNoneNoActor: 'Neue Anmerkungen in „{subject}“',
+            titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ gesetzt',
+            titleRelatedNoActor: 'Anmerkung {related} in „{subject}“ wurde gesetzt',
+            titleRelatedMany: '{actor} hat {count} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedManyNoActor: '{count} neue Anmerkungen in „{subject}“',
+            titleRelatedNone: '{actor} hat Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNoneNoActor: 'Neue Anmerkungen in „{subject}“',
+            titleRelatedNoSubject: '{actor} hat Anmerkung {related} gesetzt',
+            titleRelatedNoSubjectNoActor: 'Anmerkung {related} wurde gesetzt',
+            titleRelatedNoSubjectMany: '{actor} hat {count} Anmerkungen gesetzt',
+            titleRelatedNoSubjectManyNoActor: '{count} neue Anmerkungen',
+            titleRelatedNoSubjectNone: '{actor} hat Anmerkungen gesetzt',
+            titleRelatedNoSubjectNoneNoActor: 'Neue Anmerkungen',
+            bodyMany: 'Die neueste ist Anmerkung {related}.',
+            bodyNoExcerpt: 'Eine der Anmerkungen wurde inzwischen gelöscht.',
+          },
+          // Piloti hat sie für {actor} gesetzt: {actor} hat darum gebeten,
+          // oder hat Pilotis Vorschlag übernommen. Ein Vorschlag, den niemand
+          // übernommen hat, meldet sich nicht.
+          created_piloti: {
+            title: 'Piloti hat für {actor} eine Anmerkung gesetzt',
+            titleNoActor: 'Piloti hat eine Anmerkung gesetzt',
+            titleOne: 'Piloti hat für {actor} eine Anmerkung in „{subject}“ gesetzt',
+            titleOneNoActor: 'Piloti hat eine Anmerkung in „{subject}“ gesetzt',
+            titleMany: 'Piloti hat für {actor} {count} Anmerkungen in „{subject}“ gesetzt',
+            titleManyNoActor: 'Piloti hat {count} Anmerkungen in „{subject}“ gesetzt',
+            titleNone: 'Piloti hat für {actor} Anmerkungen in „{subject}“ gesetzt',
+            titleNoneNoActor: 'Piloti hat Anmerkungen in „{subject}“ gesetzt',
+            titleRelated: 'Piloti hat für {actor} Anmerkung {related} in „{subject}“ gesetzt',
+            titleRelatedNoActor: 'Piloti hat Anmerkung {related} in „{subject}“ gesetzt',
+            titleRelatedMany: 'Piloti hat für {actor} {count} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedManyNoActor: 'Piloti hat {count} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNone: 'Piloti hat für {actor} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNoneNoActor: 'Piloti hat Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNoSubject: 'Piloti hat für {actor} Anmerkung {related} gesetzt',
+            titleRelatedNoSubjectNoActor: 'Piloti hat Anmerkung {related} gesetzt',
+            titleRelatedNoSubjectMany: 'Piloti hat für {actor} {count} Anmerkungen gesetzt',
+            titleRelatedNoSubjectManyNoActor: 'Piloti hat {count} Anmerkungen gesetzt',
+            titleRelatedNoSubjectNone: 'Piloti hat für {actor} Anmerkungen gesetzt',
+            titleRelatedNoSubjectNoneNoActor: 'Piloti hat Anmerkungen gesetzt',
+            bodyMany: 'Die neueste ist Anmerkung {related}.',
+            bodyNoExcerpt: 'Eine der Anmerkungen wurde inzwischen gelöscht.',
           },
         },
       },

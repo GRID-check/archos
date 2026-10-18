@@ -12,7 +12,7 @@
  */
 
 import 'server-only'
-import { and, desc, eq, getTableColumns, inArray, isNotNull, isNull, lt, ne, notExists, or, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, lt, lte, ne, notExists, notInArray, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import {
   conversations,
@@ -24,6 +24,7 @@ import {
   type ShareableResourceType,
 } from '@/lib/db/schema'
 import type { InboxListFilter } from './types'
+import { MARKS_SET_GROUP_ANCHOR } from './registry'
 
 /** Hard cap for an inbox page. Read-time re-authorization cost scales with this. */
 export const INBOX_LIST_LIMIT = 50
@@ -45,7 +46,8 @@ export async function upsertInboxItem(values: NewInboxItem): Promise<InboxItem> 
     .onConflictDoUpdate({
       target: [inboxItems.recipientUserId, inboxItems.groupKey],
       set: {
-        count: sql`${inboxItems.count} + 1`,
+        // The stored count plus the occurrences the incoming row stands for (1 unless the emitter said more).
+        count: sql`${inboxItems.count} + excluded.count`,
         updatedAt: new Date(),
         actorUserId: values.actorUserId ?? null,
         anchorId: values.anchorId ?? null,
@@ -73,7 +75,10 @@ export async function upsertInboxItems(values: NewInboxItem[]): Promise<InboxIte
     .onConflictDoUpdate({
       target: [inboxItems.recipientUserId, inboxItems.groupKey],
       set: {
-        count: sql`${inboxItems.count} + 1`,
+        // The stored count plus the occurrences the incoming row stands for:
+        // `excluded.count` is the column's default 1, or what the emitter
+        // folded into one emission (`InboxEmission.occurrences`).
+        count: sql`${inboxItems.count} + excluded.count`,
         updatedAt: new Date(),
         // These three were missing while the doc above promised the folds were
         // identical. Without them a collapsed group kept its FIRST actor and its
@@ -121,6 +126,37 @@ export async function findInboxItemForRecipient(
     )
     .limit(1)
   return row ?? null
+}
+
+/**
+ * A person's rows of one type last touched between `from` and `to`, whatever
+ * became of them since (read, resolved, archived or inert too), newest first
+ * and at most `limit`. For the push job's fold (`lib/push/fold.ts`): which rows
+ * make up a burst. A row read since still links the rows around it, so a burst
+ * is not cut in two by a read in its middle; the job tells only the rows still
+ * news (`isPushStillDue`).
+ */
+export async function listTouchedOfType(
+  organizationId: string,
+  recipientUserId: string,
+  type: InboxItemType,
+  window: { from: Date; to: Date },
+  limit: number,
+): Promise<InboxItem[]> {
+  return getDb()
+    .select()
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.recipientUserId, recipientUserId),
+        eq(inboxItems.type, type),
+        gte(inboxItems.updatedAt, window.from),
+        lte(inboxItems.updatedAt, window.to),
+      ),
+    )
+    .orderBy(desc(inboxItems.updatedAt))
+    .limit(limit)
 }
 
 /**
@@ -561,12 +597,18 @@ export async function archiveInboxItem(
  * Clear ambient items for a resource once the recipient has actually looked at it
  * (spec IB-9). Deliberately does NOT touch actionable items: reading a thread is
  * not answering the question someone asked in it.
+ *
+ * `only` narrows it to the rows whose group key folds on an anchor prefix
+ * (`groupAnchor`, as {@link AnchoredRows} reads it), in the types the caller
+ * may see: opening a document's review reads its „15 Anmerkungen gesetzt“
+ * rows ({@link MARKS_SET_GROUP_ANCHOR}) and nothing else of the document's news.
  */
 export async function markResourceItemsRead(
   organizationId: string,
   recipientUserId: string,
   resourceType: ShareableResourceType,
   resourceId: string,
+  only?: { groupAnchor: string; types: InboxTypeScope },
 ): Promise<number> {
   const db = getDb()
   const rows = await db
@@ -580,6 +622,8 @@ export async function markResourceItemsRead(
         eq(inboxItems.resourceId, resourceId),
         eq(inboxItems.actionable, false),
         isNull(inboxItems.readAt),
+        only ? sql`${inboxItems.groupKey} LIKE ${groupAnchorPattern(only.groupAnchor)}` : undefined,
+        only ? typeFilter(only.types) : undefined,
       ),
     )
     .returning({ id: inboxItems.id })
@@ -587,10 +631,18 @@ export async function markResourceItemsRead(
 }
 
 /**
+ * Rows anchored on a mark only for their link: they fold per document and
+ * setter ({@link MARKS_SET_GROUP_ANCHOR}), so their news is not the mark's.
+ */
+const foldedOnItsAnchor = () => sql`${inboxItems.groupKey} NOT LIKE ${groupAnchorPattern(MARKS_SET_GROUP_ANCHOR)}`
+
+/**
  * {@link markResourceItemsRead} for ONE thing inside the resource: the
  * informational items anchored on one mark of a document, once the recipient
  * has opened that mark. The rest of the document's news stays unread, and an
- * actionable request survives being seen, as it does for the resource.
+ * actionable request survives being seen, as it does for the resource. A row
+ * anchored on the mark only for its link (new marks, folded per document) is
+ * not its news, and is read with the document's review instead.
  */
 export async function markAnchorItemsRead(
   organizationId: string,
@@ -614,10 +666,57 @@ export async function markAnchorItemsRead(
         eq(inboxItems.actionable, false),
         isNull(inboxItems.readAt),
         typeFilter(types),
+        foldedOnItsAnchor(),
       ),
     )
     .returning({ id: inboxItems.id })
   return rows.length
+}
+
+/**
+ * How many anchors one read of {@link listUnreadAnchors} returns at most: a
+ * document holds at most this many marks (`MAX_ANNOTATIONS_PER_DOCUMENT`).
+ */
+export const UNREAD_ANCHORS_LIMIT = 500
+
+/**
+ * The anchors inside one resource that hold news the recipient has not read:
+ * exactly the rows {@link markAnchorItemsRead} would read for each (their own,
+ * informational, unread, in the types they may see), less what they archived
+ * or what was redacted, which the inbox no longer shows as news either, and
+ * less a row anchored there only for its link ({@link MARKS_SET_GROUP_ANCHOR}).
+ * For a document, the marks whose thread the review shows a dot on. One query on
+ * `idx_inbox_items_target`, bounded by {@link UNREAD_ANCHORS_LIMIT}.
+ */
+export async function listUnreadAnchors(
+  organizationId: string,
+  recipientUserId: string,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+  types: InboxTypeScope,
+): Promise<string[]> {
+  const db = getDb()
+  const rows = await db
+    .selectDistinct({ anchorId: inboxItems.anchorId })
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.recipientUserId, recipientUserId),
+        eq(inboxItems.resourceType, resourceType),
+        eq(inboxItems.resourceId, resourceId),
+        isNotNull(inboxItems.anchorId),
+        eq(inboxItems.actionable, false),
+        isNull(inboxItems.readAt),
+        isNull(inboxItems.archivedAt),
+        isNull(inboxItems.inertAt),
+        typeFilter(types),
+        // „Anna hat 15 Anmerkungen gesetzt“ is the document's news, not its newest mark's: no dot on that one pin.
+        foldedOnItsAnchor(),
+      ),
+    )
+    .limit(UNREAD_ANCHORS_LIMIT)
+  return rows.flatMap((row) => (row.anchorId ? [row.anchorId] : []))
 }
 
 /**
@@ -708,32 +807,109 @@ export async function resolveOpenItemsAnchoredOn(input: {
 }
 
 /**
- * Neutralise every item of these types anchored on one thing that is gone — a
- * deleted mark — for everyone, or for one recipient when one is named (a
- * mention taken back), the shape of {@link resolveOpenItemsAnchoredOn}. Wipes
- * the payload, as every inert write does: the quoted text is gone. Returns who
- * held one, so the caller can nudge their badge.
+ * The rows anchored on one thing, of these types, for one recipient or for
+ * everyone, that are not inert yet: the one predicate every write to an
+ * anchored row's standing shares. `payloadHas` narrows it to the rows whose
+ * payload carries these facts (a reply's rows, by its `replyId`): JSON
+ * containment, so a row that names another reply, or none, is not one.
+ * `groupAnchor` narrows it to the rows whose group key does (`is`) or does not
+ * (`isNot`) fold on that anchor prefix instead of the anchor itself (new marks
+ * fold on `set:<variant>:<actor>`, `inboxGroupKey`).
  */
-export async function markItemsInertAnchoredOn(input: {
+export interface AnchoredRows {
   organizationId: string
   types: readonly InboxItemType[]
   anchorId: string
   recipientUserId?: string
-}): Promise<string[]> {
+  /** Leave these recipients' rows alone. */
+  exceptRecipients?: readonly string[]
+  payloadHas?: Record<string, string>
+  groupAnchor?: { is: string } | { isNot: string }
+}
+
+/** A `LIKE` pattern matching a group key whose anchor segment starts with `prefix`. */
+const groupAnchorPattern = (prefix: string): string => `%:${prefix.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
+
+function anchoredRows(input: AnchoredRows) {
+  const anchor = input.groupAnchor
+  return and(
+    eq(inboxItems.organizationId, input.organizationId),
+    inArray(inboxItems.type, [...input.types]),
+    eq(inboxItems.anchorId, input.anchorId),
+    isNull(inboxItems.inertAt),
+    input.recipientUserId ? eq(inboxItems.recipientUserId, input.recipientUserId) : undefined,
+    input.exceptRecipients?.length ? notInArray(inboxItems.recipientUserId, [...input.exceptRecipients]) : undefined,
+    input.payloadHas ? sql`${inboxItems.payload} @> ${JSON.stringify(input.payloadHas)}::jsonb` : undefined,
+    anchor && 'is' in anchor ? sql`${inboxItems.groupKey} LIKE ${groupAnchorPattern(anchor.is)}` : undefined,
+    anchor && 'isNot' in anchor ? sql`${inboxItems.groupKey} NOT LIKE ${groupAnchorPattern(anchor.isNot)}` : undefined,
+  )
+}
+
+/** What every inert write sets: the moment, a wiped payload (the quoted text is gone), and nothing left to count. */
+const inertValues = () => ({ inertAt: new Date(), payload: {}, count: 0 })
+
+/**
+ * Neutralise every item of these types anchored on one thing that is gone — a
+ * deleted mark — for everyone, or for one recipient when one is named (a
+ * mention taken back), the shape of {@link resolveOpenItemsAnchoredOn}. Wipes
+ * the payload and the count, as every inert write does: the quoted text is
+ * gone, and a row revived later counts only what revived it. Returns who held
+ * one, so the caller can nudge their badge. Narrowed by {@link AnchoredRows}.
+ */
+export async function markItemsInertAnchoredOn(input: AnchoredRows): Promise<string[]> {
   if (input.types.length === 0) return []
   const db = getDb()
   const rows = await db
     .update(inboxItems)
-    .set({ inertAt: new Date(), payload: {} })
-    .where(
-      and(
-        eq(inboxItems.organizationId, input.organizationId),
-        inArray(inboxItems.type, [...input.types]),
-        eq(inboxItems.anchorId, input.anchorId),
-        isNull(inboxItems.inertAt),
-        input.recipientUserId ? eq(inboxItems.recipientUserId, input.recipientUserId) : undefined,
-      ),
-    )
+    .set(inertValues())
+    .where(anchoredRows(input))
+    .returning({ recipientUserId: inboxItems.recipientUserId })
+  return [...new Set(rows.map((row) => row.recipientUserId))]
+}
+
+/**
+ * Take ONE occurrence back out of the rows that counted it, without
+ * resurfacing them (`updated_at` and `read_at` stay): a deleted reply out of
+ * its thread's row, a deleted mark out of a „15 Anmerkungen gesetzt“ row. The
+ * count drops by one, never below zero, and the `clear` keys leave the payload
+ * (the quote of what is gone). A row left counting nothing goes inert when
+ * `inertWhenSpent` (its news was only what is gone), else it stays, quoting
+ * nothing (a request that still asks). Returns who held one.
+ */
+export async function retractOccurrenceAnchoredOn(
+  input: AnchoredRows & { clear: readonly string[]; inertWhenSpent: boolean },
+): Promise<string[]> {
+  if (input.types.length === 0) return []
+  const db = getDb()
+  const spent = input.inertWhenSpent ? sql`${inboxItems.count} <= 1` : sql`false`
+  const cleared = input.clear.reduce((payload, key) => sql`${payload} - ${key}::text`, sql`${inboxItems.payload}`)
+  const rows = await db
+    .update(inboxItems)
+    .set({
+      count: sql`greatest(${inboxItems.count} - 1, 0)`,
+      payload: sql`CASE WHEN ${spent} THEN '{}'::jsonb ELSE ${cleared} END`,
+      inertAt: sql`CASE WHEN ${spent} THEN now() ELSE NULL END`,
+    })
+    .where(anchoredRows(input))
+    .returning({ recipientUserId: inboxItems.recipientUserId })
+  return [...new Set(rows.map((row) => row.recipientUserId))]
+}
+
+/**
+ * Rewrite facts in the payload of the rows that quote something which changed
+ * (a reworded reply, by its `replyId`), without resurfacing them: `updated_at`,
+ * `read_at` and the count stay, because nothing new happened. jsonb concat, so
+ * the keys given win and the rest is kept. Returns who held one.
+ */
+export async function rewriteItemPayloadsAnchoredOn(
+  input: AnchoredRows & { facts: Record<string, unknown> },
+): Promise<string[]> {
+  if (input.types.length === 0) return []
+  const db = getDb()
+  const rows = await db
+    .update(inboxItems)
+    .set({ payload: sql`${inboxItems.payload} || ${JSON.stringify(input.facts)}::jsonb` })
+    .where(anchoredRows(input))
     .returning({ recipientUserId: inboxItems.recipientUserId })
   return [...new Set(rows.map((row) => row.recipientUserId))]
 }
@@ -751,7 +927,7 @@ export async function markItemsInertForSubjectRow(
   const db = getDb()
   const rows = await db
     .update(inboxItems)
-    .set({ inertAt: new Date(), payload: {} })
+    .set(inertValues())
     .where(
       and(
         eq(inboxItems.resourceType, resourceType),
@@ -775,7 +951,7 @@ export async function markItemsInertForResource(
   const db = getDb()
   const rows = await db
     .update(inboxItems)
-    .set({ inertAt: new Date(), payload: {} })
+    .set(inertValues())
     .where(
       and(
         eq(inboxItems.resourceType, resourceType),
@@ -804,7 +980,7 @@ export async function markItemsInertForSubjectInProject(
   const db = getDb()
   const rows = await db
     .update(inboxItems)
-    .set({ inertAt: new Date(), payload: {} })
+    .set(inertValues())
     .where(
       and(
         eq(inboxItems.organizationId, organizationId),

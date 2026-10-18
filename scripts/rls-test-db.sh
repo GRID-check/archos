@@ -122,7 +122,7 @@ done
 # cosine query — and a mocked drizzle handle cannot disagree with the fixture
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
-echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging and Anmerkungen suites as grid_app_rw"
+echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen and Offene Punkte suites as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
@@ -152,6 +152,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/cross-project/decisions-repository.integration.spec.ts \
     src/lib/permits/repository.integration.spec.ts \
     src/lib/annotations/repository.integration.spec.ts \
+    src/lib/annotations/project-repository.integration.spec.ts \
     src/lib/proposals/repository.integration.spec.ts \
     src/lib/project-intake/repository.integration.spec.ts \
     src/lib/changes/repository.integration.spec.ts \
@@ -2110,3 +2111,37 @@ apply_in grid_carry 0151_annotation_carry_and_due.sql
 apply_in grid_carry 0151_annotation_carry_and_due.sql
 check_in grid_carry "SELECT coalesce(carried_from_id::text, 'null') FROM document_annotations" "null" "0151 re-applies, twice"
 echo "==> 0151 carried marks and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0152: when a reply was last changed by its author, its CHECK, and
+# the DOWN.
+#
+# On a database of its own, migrated to 0151. A reply written before was never
+# edited; an edit stamped by the database's clock passes; an edit before the
+# reply was written is refused; the down drops the column and leaves the
+# reply with its words.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0152 reply edits and their down migration on grid_reply_edit"
+migrate_until grid_reply_edit 0151_annotation_carry_and_due
+sql_in grid_reply_edit <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000152', 'org_0152', 'Bearbeiten 0152', 'user_1', 'proj_0152');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000152', 'org_0152', 'user_1', 'a.pdf', 'k/0152/a', 'proj_0152', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000152');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000152', 'org_0152', 'd1d1d1d1-0000-4000-8000-000000000152', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
+INSERT INTO document_annotation_replies (id, organization_id, annotation_id, author_kind, body, created_by)
+VALUES ('e1e1e1e1-0000-4000-8000-000000000152', 'org_0152', 'f1f1f1f1-0000-4000-8000-000000000152', 'person', 'Vor 0152 geschrieben', 'user_2');
+SQL
+apply_in grid_reply_edit 0152_annotation_reply_edits.sql
+check_in grid_reply_edit "SELECT coalesce(edited_at::text, 'null') FROM document_annotation_replies" "null" "a reply written before 0152 was never edited"
+sql_in grid_reply_edit <<<"UPDATE document_annotation_replies SET body = 'Nachher', edited_at = now()"
+check_in grid_reply_edit "SELECT body || ':' || (edited_at IS NOT NULL)::text FROM document_annotation_replies" "Nachher:true" "an edit stamped by the database's clock passes"
+refused_in grid_reply_edit "UPDATE document_annotation_replies SET edited_at = created_at - interval '1 second'" "document_annotation_replies_edited_after_created" "an edit before the reply was written was accepted"
+apply_in grid_reply_edit 0152_annotation_reply_edits.down.sql
+check_in grid_reply_edit "SELECT count(*) FROM information_schema.columns WHERE column_name = 'edited_at' AND table_name = 'document_annotation_replies'" "0" "down dropped the column"
+check_in grid_reply_edit "SELECT body FROM document_annotation_replies" "Nachher" "down left the reply with its words"
+apply_in grid_reply_edit 0152_annotation_reply_edits.sql
+apply_in grid_reply_edit 0152_annotation_reply_edits.sql
+check_in grid_reply_edit "SELECT coalesce(edited_at::text, 'null') FROM document_annotation_replies" "null" "0152 re-applies, twice"
+echo "==> 0152 reply edits and down migration verified"

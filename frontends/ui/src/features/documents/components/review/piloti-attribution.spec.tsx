@@ -66,6 +66,7 @@ function reviewWith(peers: RoomPeerState[]): DocumentReview {
     select: () => {},
     setDraft: () => {},
     hover: () => {},
+    unread: new Set(),
   }
   return review as DocumentReview
 }

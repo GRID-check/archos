@@ -227,6 +227,20 @@ export const createReplyRequestSchema = z
   .strict()
 export type CreateReplyRequest = z.input<typeof createReplyRequestSchema>
 
+/**
+ * `PATCH …/replies/{replyId}`: its author rewords their reply. Whom the new
+ * words mention, as the composer kept them; absent, the ones stored whose
+ * name still stands. No `addressesPiloti`: an edit never wakes Piloti, and
+ * whether the reply addressed it stays what it was when it was posted.
+ */
+export const updateReplyRequestSchema = z
+  .object({
+    body: text(MAX_ANNOTATION_BODY),
+    mentions: markMentionsSchema.optional(),
+  })
+  .strict()
+export type UpdateReplyRequest = z.input<typeof updateReplyRequestSchema>
+
 export const annotationReplyViewSchema = z.object({
   id: z.string(),
   annotationId: z.string(),
@@ -245,6 +259,8 @@ export const annotationReplyViewSchema = z.object({
   wokenBy: z.enum(PILOTI_WAKE_TRIGGERS).nullable().optional(),
   /** Whom it mentions, as the server kept them; absent from a server that predates mentions. */
   mentions: z.array(markMentionSchema).optional(),
+  /** When its author last reworded it, or null; absent from a server that predates editing (migration 0152). */
+  editedAt: z.string().nullable().optional(),
 })
 export type AnnotationReplyView = z.infer<typeof annotationReplyViewSchema>
 
@@ -291,6 +307,10 @@ export type CarryLinkView = z.infer<typeof carryLinkViewSchema>
  */
 export const carryTargetViewSchema = carryLinkViewSchema.pick({ documentId: true, documentName: true })
 export type CarryTargetView = z.infer<typeof carryTargetViewSchema>
+
+/** Why its author may not delete a mark: a colleague answered in it, or it was carried on (`deleteRefusalOf`). */
+export const annotationDeleteRefusalSchema = z.enum(['discussed', 'carried'])
+export type AnnotationDeleteRefusal = z.infer<typeof annotationDeleteRefusalSchema>
 
 export const annotationViewSchema = z.object({
   id: z.string(),
@@ -357,8 +377,20 @@ export const annotationViewSchema = z.object({
   carryTarget: carryTargetViewSchema.nullable().optional(),
   /** Whether THIS reader may change it: take it over, resolve it, reword it, assign it, reply. */
   canEdit: z.boolean(),
-  /** Whether THIS reader may delete it: whoever set it, while they may still write here. */
+  /**
+   * Whether THIS reader may delete it: whoever set it, while they may still
+   * write here, and while nothing but its author and Piloti stands on it
+   * (`deleteRefused`).
+   */
   canDelete: z.boolean(),
+  /**
+   * Why the author may NOT delete their own mark now: `discussed` (a colleague
+   * answered in its thread) or `carried` (it went on to, or came from, another
+   * document). Null for anybody else's mark and for one they may delete. The
+   * card shows the delete it withholds, and why. Absent from a server that
+   * predates the rule.
+   */
+  deleteRefused: annotationDeleteRefusalSchema.nullable().optional(),
 })
 export type AnnotationView = z.infer<typeof annotationViewSchema>
 
@@ -396,6 +428,30 @@ export type ReplyResponse = z.infer<typeof replyResponseSchema>
 /** `POST /api/documents/{id}/thread`: the caller's own thread about the document (ADR-0106). */
 export const documentThreadResponseSchema = z.object({ conversationId: z.string().min(1) })
 
+/**
+ * The `details.reason` of a 409 on a reply its author may no longer change:
+ * Piloti took it up (it is working on it, or answered after it).
+ */
+export const REPLY_TAKEN_UP_REASON = 'piloti-took-it-up'
+/** The `details.reason` of a 422 on a reply of a mark that is closed: its thread is the record. */
+export const REPLY_MARK_CLOSED_REASON = 'mark-closed'
+
+/** Whether a reply was for Piloti: its @Piloti, or an answer on Piloti's own Rückfrage. Pure. */
+export const replyIsForPiloti = (
+  mark: { authorKind: AnnotationAuthor; kind: AnnotationKind },
+  reply: { authorKind: AnnotationAuthor; addressesPiloti: boolean }
+): boolean =>
+  reply.authorKind === 'person' && (reply.addressesPiloti || (mark.authorKind === 'piloti' && mark.kind === 'question'))
+
+/** Whether Piloti wrote in the thread after this reply. Pure; `createdAt` as stored or as the view says it. */
+export const pilotiRepliedSince = (
+  replies: ReadonlyArray<{ authorKind: AnnotationAuthor; createdAt: Date | string }>,
+  reply: { createdAt: Date | string }
+): boolean => {
+  const at = new Date(reply.createdAt).getTime()
+  return replies.some((other) => other.authorKind === 'piloti' && new Date(other.createdAt).getTime() > at)
+}
+
 /** The statuses that still ask something of somebody: open, and Piloti's proposals nobody has decided on. */
 export const LIVE_ANNOTATION_STATUSES = ['open', 'proposed'] as const satisfies readonly AnnotationStatus[]
 
@@ -404,12 +460,51 @@ export const isLive = (annotation: Pick<AnnotationView, 'status'>): boolean =>
   (LIVE_ANNOTATION_STATUSES as readonly AnnotationStatus[]).includes(annotation.status)
 
 /**
+ * Whether a mark is the reader's: they are its Zuständige, and it is the
+ * office's, not a proposal of Piloti's nobody took over yet (a proposal that
+ * names them becomes theirs when somebody takes it over). Who set it does not
+ * count: a mark a person set for a colleague is the colleague's.
+ *
+ * The one answer to „für Sie“: the review's filter of that name lists the
+ * marks it holds, and the live ones among them ({@link isLive}, so open) are
+ * the number Dateien's chip says („4 offen · 2 für Sie“). The server counts
+ * that number in SQL (`tallyLiveMarks`, `status = 'open' and assignee_user_id
+ * = reader`); `repository.integration.spec.ts` holds the two to the same cases
+ * (`@/test-utils/marks-for-reader`).
+ */
+export function isForReader(
+  annotation: Pick<AnnotationView, 'status' | 'assigneeUserId'>,
+  readerUserId: string | null
+): boolean {
+  return readerUserId !== null && annotation.status !== 'proposed' && annotation.assigneeUserId === readerUserId
+}
+
+/**
+ * Whether a mark is drawn as a ghost in the review of `documentId`: still
+ * open, and set on an earlier Fassung of THIS document, so it is drawn hollow
+ * where it stood on that sheet, for the reader to see where it would land
+ * before carrying it on. A mark of another document (a replaced one) is never
+ * drawn there: its sheet is another drawing, and its place may mean nothing
+ * on this one.
+ */
+export function isGhostMark(
+  annotation: Pick<AnnotationView, 'documentId' | 'onCurrentFassung' | 'status'>,
+  documentId: string
+): boolean {
+  return annotation.documentId === documentId && !annotation.onCurrentFassung && annotation.status === 'open'
+}
+
+/**
  * What a listing row says about a document's Anmerkungen, for the reader it
- * was read for: how many are live ({@link isLive}, on every Fassung), and how
- * many of those are open with the reader as Zuständige.
+ * was read for, on every Fassung: how many are open, how many are Piloti's
+ * proposals nobody decided on (live, {@link isLive}, but not yet the office's:
+ * counted apart, so „offen“ means the same here as in Offene Punkte, the
+ * Protokoll and the Postfach), and how many of the open ones are the reader's
+ * ({@link isForReader}: open, with the reader as Zuständige).
  */
 export interface MarkTally {
-  live: number
+  open: number
+  proposed: number
   forYou: number
 }
 

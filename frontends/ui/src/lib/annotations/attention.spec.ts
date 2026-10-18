@@ -8,8 +8,11 @@ vi.mock('@/lib/inbox/service', () => ({
   emitInboxItems: vi.fn(),
   resolveInboxItemsAnchoredOn: vi.fn(),
   markInboxItemsInertAnchoredOn: vi.fn(),
+  retractInboxOccurrenceAnchoredOn: vi.fn(),
+  rewriteInboxPayloadsAnchoredOn: vi.fn(),
 }))
 vi.mock('./repository', () => ({ findDocumentAnnotation: vi.fn() }))
+vi.mock('@/lib/assignments/repository', () => ({ listAssignmentsForResources: vi.fn() }))
 vi.mock('@/lib/sharing/registry', () => ({ describeResource: vi.fn() }))
 vi.mock('@/lib/db/tenant-context', () => ({
   getTenantContext: vi.fn(),
@@ -18,9 +21,20 @@ vi.mock('@/lib/db/tenant-context', () => ({
 
 import { getTenantContext, withTenant } from '@/lib/db/tenant-context'
 import type { InboxEmission } from '@/lib/inbox/service'
-import { emitInboxItems, markInboxItemsInertAnchoredOn, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
+import {
+  emitInboxItems,
+  markInboxItemsInertAnchoredOn,
+  resolveInboxItemsAnchoredOn,
+  retractInboxOccurrenceAnchoredOn,
+  rewriteInboxPayloadsAnchoredOn,
+} from '@/lib/inbox/service'
 import { MARK_ANCHORED_INBOX_TYPES } from '@/lib/inbox/registry'
 import { describeResource } from '@/lib/sharing/registry'
+import { listAssignmentsForResources } from '@/lib/assignments/repository'
+import { inboxItemCopy } from '@/lib/inbox/item-copy'
+import type { InboxItemView } from '@/lib/inbox/types'
+import { getDictionary } from '@/i18n/dictionaries'
+import { createTranslator } from '@/i18n/translate'
 import {
   markAuthor,
   markParticipants,
@@ -33,7 +47,10 @@ import {
   onMarkMoved,
   onMarkReplied,
   onMarkSettledByPerson,
+  onMarksSet,
   onPilotiWrote,
+  onReplyDeleted,
+  onReplyEdited,
   onWakeEnded,
   type MarkPeople,
   type MarkRef,
@@ -79,6 +96,7 @@ beforeEach(() => {
   vi.mocked(emitInboxItems).mockResolvedValue(1)
   vi.mocked(resolveInboxItemsAnchoredOn).mockResolvedValue(1)
   vi.mocked(markInboxItemsInertAnchoredOn).mockResolvedValue(1)
+  vi.mocked(listAssignmentsForResources).mockResolvedValue([])
   vi.spyOn(console, 'error').mockImplementation(() => undefined)
 })
 
@@ -708,22 +726,265 @@ describe('onMarkMoved', () => {
 })
 
 describe('onMarkDeleted', () => {
-  it('turns every row anchored on the mark inert, for everyone', async () => {
+  it('turns every row about the mark inert, for everyone, but the „N Anmerkungen gesetzt“ rows anchored on it', async () => {
     await onMarkDeleted({ organizationId: 'org_1', annotationId: 'ann_1' })
 
     expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith({
       organizationId: 'org_1',
       types: MARK_ANCHORED_INBOX_TYPES,
       anchorId: 'ann_1',
+      groupAnchor: { isNot: 'set:' },
     })
     expect(MARK_ANCHORED_INBOX_TYPES).toEqual(
       expect.arrayContaining(['piloti.asks_you', 'annotation.assigned_to_you', 'annotation.activity']),
     )
   })
 
+  it('takes the deleted mark out of a „15 Anmerkungen gesetzt“ row: one less, no quote, inert only once it counts none', async () => {
+    await onMarkDeleted({ organizationId: 'org_1', annotationId: 'ann_15' })
+
+    expect(retractInboxOccurrenceAnchoredOn).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      types: ['annotation.activity'],
+      anchorId: 'ann_15',
+      groupAnchor: { is: 'set:' },
+      clear: ['excerpt', 'mentions', 'related'],
+      inertWhenSpent: true,
+    })
+  })
+
   it('never throws into the delete', async () => {
     vi.mocked(markInboxItemsInertAnchoredOn).mockRejectedValue(new Error('database down'))
 
     await expect(onMarkDeleted({ organizationId: 'org_1', annotationId: 'ann_1' })).resolves.toBeUndefined()
+  })
+})
+
+describe('onMarksSet', () => {
+  const assigned = (...userIds: string[]) =>
+    vi.mocked(listAssignmentsForResources).mockResolvedValue(
+      userIds.map((subjectUserId) => ({
+        resourceType: 'document' as const,
+        resourceId: 'doc_1',
+        subjectUserId,
+        assignedBy: 'user_x',
+        createdAt: new Date(),
+      }))
+    )
+  const everyone: MayOpen = async (userIds) => new Set(userIds)
+  const set = (number: number, toldOtherwise: Array<string | null> = []) => ({
+    id: `ann_${number}`,
+    number,
+    body: `Anmerkung Nummer ${number}`,
+    toldOtherwise,
+  })
+  const base = {
+    organizationId: 'org_1',
+    documentId: 'doc_1',
+    projectId: 'proj_1',
+    actorUserId: 'user_miriam',
+    uploaderUserId: 'user_uploader',
+    mayOpen: everyone,
+  }
+  const sent = () => vi.mocked(emitInboxItems).mock.calls.flatMap(([emissions]) => emissions)
+
+  it('tells the document’s Verantwortliche and its uploader, as one row per document and setter, anchored on the newest', async () => {
+    assigned('user_lead')
+    await onMarksSet({ ...base, by: 'created', marks: [set(4)] })
+
+    const rows = sent()
+    expect(rows.map((row) => row.recipientUserId)).toEqual(['user_lead', 'user_uploader'])
+    expect(rows[0]).toMatchObject({
+      type: 'annotation.activity',
+      resourceId: 'doc_1',
+      anchorId: 'ann_4',
+      actorUserId: 'user_miriam',
+      groupKey: 'annotation.activity:document:doc_1:set:created:user_miriam',
+      occurrences: 1,
+      payload: { subject: 'Grundriss EG.pdf', related: '4', excerpt: 'Anmerkung Nummer 4', variant: 'created' },
+    })
+  })
+
+  it('counts a batch in one emission per reader, and leaves out whom a mark already tells otherwise', async () => {
+    assigned('user_lead', 'user_anna')
+    // Anna is the Zuständige of 7 (she hears `annotation.assigned_to_you` about it).
+    await onMarksSet({ ...base, by: 'created_piloti', marks: [set(5), set(6), set(7, ['user_anna'])] })
+
+    const rows = sent()
+    expect(rows.map((row) => [row.recipientUserId, row.occurrences, row.anchorId])).toEqual([
+      ['user_lead', 3, 'ann_7'],
+      ['user_uploader', 3, 'ann_7'],
+      ['user_anna', 2, 'ann_6'],
+    ])
+    expect(rows.every((row) => row.groupKey === 'annotation.activity:document:doc_1:set:created_piloti:user_miriam')).toBe(true)
+  })
+
+  it('tells nobody who acted, nobody who may not open the document, and nobody when the document has no people', async () => {
+    assigned('user_miriam', 'user_closed')
+    await onMarksSet({
+      ...base,
+      uploaderUserId: 'user_miriam',
+      by: 'created',
+      marks: [set(1)],
+      mayOpen: async (userIds) => new Set(userIds.filter((userId) => userId !== 'user_closed')),
+    })
+    expect(emitInboxItems).not.toHaveBeenCalled()
+
+    assigned()
+    await onMarksSet({ ...base, uploaderUserId: null, by: 'created', marks: [set(1)] })
+    expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+
+  it('reads as the colleague’s sentence, counted: „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“', () => {
+    const dictionary = getDictionary('de')
+    const t = createTranslator(dictionary, 'collaboration')
+    const row = (variant: string, count: number) =>
+      ({
+        type: 'annotation.activity',
+        variant,
+        count,
+        actorName: 'Miriam',
+        subject: 'Grundriss EG',
+        related: '15',
+        excerpt: 'x',
+        href: '/x',
+        state: 'unread',
+        dueOn: null,
+        answerIn: null,
+        resourceType: 'document',
+      }) as unknown as InboxItemView
+    expect(inboxItemCopy(row('created', 15), t, dictionary)).toEqual({
+      title: 'Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt',
+      body: 'Die neueste ist Anmerkung 15.',
+    })
+    expect(inboxItemCopy(row('created', 1), t, dictionary).title).toBe('Miriam hat Anmerkung 15 in „Grundriss EG“ gesetzt')
+    expect(inboxItemCopy(row('created_piloti', 3), t, dictionary).title).toBe(
+      'Piloti hat für Miriam 3 Anmerkungen in „Grundriss EG“ gesetzt'
+    )
+  })
+
+  it('names nobody, never „Jemand“ or an empty name, when the person who set them is unknown', () => {
+    const dictionary = getDictionary('de')
+    const t = createTranslator(dictionary, 'collaboration')
+    const row = (variant: string, count: number, subject: string | null) =>
+      ({
+        type: 'annotation.activity',
+        variant,
+        count,
+        actorName: null,
+        subject,
+        related: '15',
+        excerpt: 'x',
+        href: '/x',
+        state: count === 0 ? 'read' : 'unread',
+        dueOn: null,
+        answerIn: null,
+        resourceType: 'document',
+      }) as unknown as InboxItemView
+    const titles = ['created', 'created_piloti'].flatMap((variant) =>
+      [0, 1, 3].flatMap((count) => ['Grundriss EG', null].map((subject) => inboxItemCopy(row(variant, count, subject), t, dictionary).title))
+    )
+    for (const title of titles) {
+      expect(title).not.toMatch(/Jemand|für\s+(Anmerkung|\d|eine)|\{actor\}/)
+    }
+    expect(inboxItemCopy(row('created_piloti', 3, 'Grundriss EG'), t, dictionary).title).toBe(
+      'Piloti hat 3 Anmerkungen in „Grundriss EG“ gesetzt'
+    )
+    expect(inboxItemCopy(row('created', 0, null), t, dictionary).title).toBe('Neue Anmerkungen')
+  })
+
+  it('reads a row whose newest mark was deleted by its count alone, and says one of them is gone', () => {
+    const dictionary = getDictionary('de')
+    const t = createTranslator(dictionary, 'collaboration')
+    const row = {
+      type: 'annotation.activity',
+      variant: 'created',
+      count: 14,
+      actorName: 'Miriam',
+      subject: 'Grundriss EG',
+      related: null,
+      excerpt: null,
+      href: '/x',
+      state: 'unread',
+      dueOn: null,
+      answerIn: null,
+      resourceType: 'document',
+    } as unknown as InboxItemView
+    expect(inboxItemCopy(row, t, dictionary)).toEqual({
+      title: 'Miriam hat 14 Anmerkungen in „Grundriss EG“ gesetzt',
+      body: 'Eine der Anmerkungen wurde inzwischen gelöscht.',
+    })
+  })
+})
+
+describe('onReplyDeleted', () => {
+  const input = { organizationId: 'org_1', annotationId: 'ann_1', replyId: 'rep_2' }
+
+  it('withdraws the mention only of whom nothing left on the mark names', async () => {
+    await onReplyDeleted({ ...input, withdrawn: ['user_dana'] })
+
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledTimes(1)
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      types: ['annotation.mentioned'],
+      anchorId: 'ann_1',
+      recipientUserId: 'user_dana',
+    })
+  })
+
+  it('keeps a mention the mark still makes: its row counts one less and quotes nothing, but still asks', async () => {
+    // Anna's mark names Ben; Carl's deleted reply named him again.
+    await onReplyDeleted({ ...input, withdrawn: [] })
+
+    expect(markInboxItemsInertAnchoredOn).not.toHaveBeenCalled()
+    expect(retractInboxOccurrenceAnchoredOn).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      types: ['annotation.mentioned'],
+      anchorId: 'ann_1',
+      payloadHas: { replyId: 'rep_2' },
+      clear: ['excerpt', 'mentions', 'replyId'],
+      inertWhenSpent: false,
+    })
+  })
+
+  it('keeps the thread’s row with the replies before it: one less, no quote, inert only when it counted only this one', async () => {
+    await onReplyDeleted({ ...input, withdrawn: [] })
+
+    expect(retractInboxOccurrenceAnchoredOn).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      types: ['annotation.activity'],
+      anchorId: 'ann_1',
+      payloadHas: { replyId: 'rep_2' },
+      clear: ['excerpt', 'mentions', 'replyId'],
+      inertWhenSpent: true,
+    })
+  })
+
+  it('never throws into the delete', async () => {
+    vi.mocked(retractInboxOccurrenceAnchoredOn).mockRejectedValue(new Error('database down'))
+
+    await expect(onReplyDeleted({ ...input, withdrawn: [] })).resolves.toBeUndefined()
+  })
+})
+
+describe('onReplyEdited', () => {
+  it('rewrites the quote of every row still quoting the reply, with whom it now mentions', async () => {
+    const mentions = [{ targetId: 'user_ben', start: 0, length: 10 }] as never
+    await onReplyEdited({
+      organizationId: 'org_1',
+      annotationId: 'ann_1',
+      replyId: 'rep_1',
+      text: '@Ben Gruber   bitte\nprüfen',
+      mentions,
+    })
+
+    expect(rewriteInboxPayloadsAnchoredOn).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      types: ['annotation.activity', 'annotation.mentioned'],
+      anchorId: 'ann_1',
+      payloadHas: { replyId: 'rep_1' },
+      facts: { excerpt: '@Ben Gruber bitte prüfen', mentions },
+    })
+    expect(emitInboxItems).not.toHaveBeenCalled()
   })
 })

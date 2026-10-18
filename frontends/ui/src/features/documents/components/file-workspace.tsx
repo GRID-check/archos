@@ -458,6 +458,9 @@ export function FileWorkspace({
       // re-read the version list, so both numbers are the server's own.
       onLifecycleChanged: (id, summary: { versionState: DocumentVersionState; versionCount: number }) =>
         patchFile(id, summary),
+      // The review read the marks or the reader changed them: the chip says
+      // what the review says, not what the listing read before.
+      onMarksChanged: (id, marks) => patchFile(id, { marks }),
       onDeleted: (id) => {
         setFiles((prev) => prev.filter((f) => f.id !== id))
         void reloadSummary()
@@ -781,6 +784,7 @@ export function FileWorkspace({
       view={view}
       onViewChange={selectView}
       binHref={shelf.bin?.href}
+      openPointsHref={shelf.openPoints?.href}
       renderFilter={(compact) => (
         <FileFilterMenu
           canCollaborate={canCollaborate}
@@ -1099,6 +1103,7 @@ export function FileWorkspace({
           onTagsUpdated={handlers.onTagsUpdated}
           onOpenDocument={handlers.onOpenDocument}
           onFassungChanged={handlers.onFassungChanged}
+          onMarksChanged={handlers.onMarksChanged}
           onRenamed={handlers.onRenamed}
           onDeleted={handlers.onDeleted}
         />

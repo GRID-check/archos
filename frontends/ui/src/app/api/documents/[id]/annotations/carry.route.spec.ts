@@ -47,6 +47,7 @@ vi.mock('@/lib/sharing/registry', () => ({
 }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
 vi.mock('@/lib/inbox/service', () => ({
   emitInboxItems: vi.fn().mockResolvedValue(1),
   resolveInboxItemsAnchoredOn: vi.fn().mockResolvedValue(1),
@@ -76,6 +77,7 @@ import {
   type AnnotationRecord,
 } from '@/lib/annotations/repository'
 import { NotFoundError } from '@/lib/api/errors'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import type { Document, DocumentAnnotationRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import type { FassungFacts } from '@/lib/documents/fassung'
@@ -223,6 +225,12 @@ describe('carrying a mark to the current Fassung of its own document', () => {
     expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_a', expect.objectContaining({ annotationIds: ['ann_1'] }))
     expect(await rows()).toEqual([])
     expect(carryAnnotationToDocument).not.toHaveBeenCalled()
+    expect(captureServer).toHaveBeenCalledWith({
+      event: 'annotation_carried',
+      distinctId: 'user_me',
+      organizationId: 'org_1',
+      properties: { document_id: 'doc_a', way: 'in_place', by: 'person' },
+    })
   })
 
   it('changes nothing for a mark already on the current Fassung', async () => {
@@ -296,6 +304,10 @@ describe('carrying a mark of a document another one replaced', () => {
     const sent = await rows()
     expect(sent.map((row) => [row.type, row.recipientUserId, row.resourceId, row.anchorId])).toEqual([
       ['annotation.assigned_to_you', 'user_anna', 'doc_c', 'ann_c'],
+    ])
+    // A carry, counted once as one; the source's closing is its bookkeeping, not a close of its own.
+    expect(vi.mocked(captureServer).mock.calls.map(([capture]) => [capture.event, capture.properties])).toEqual([
+      ['annotation_carried', { document_id: 'doc_b', way: 'across', by: 'person' }],
     ])
     // What B's mark asked of people is settled: it is closed.
     expect(resolveInboxItemsAnchoredOn).toHaveBeenCalledWith(

@@ -365,6 +365,8 @@ export const collaboration = {
     /** A row about an annotation: go there, and for a request answer or resolve it right here. */
     mark: {
       open: 'Go to annotation',
+      /** A row about new marks („Anna set 15 annotations“): it opens the review at the newest. */
+      openMany: 'To the annotations',
       answerInReview: 'Answer in the review',
       reply: 'Reply',
       replyLabel: 'Your reply to annotation {related}',
@@ -688,6 +690,19 @@ export const collaboration = {
       // worked for). {related} is the annotation's number, {subject} the
       // document; the excerpt is what the annotation says.
       annotationAssigned: {
+        // One notification for many rows at once (the morning's reminders, a
+        // hand-over in one go): the count in the title, how many of what
+        // under it, the most pressing first.
+        pushFold: {
+          title: '{count, plural, one {# annotation} other {# annotations}} for you',
+          parts: {
+            overdue: '{count} overdue',
+            due_soon: '{count} due today or tomorrow',
+            assigned: '{count} assigned',
+            redated: '{count, plural, one {# with a new due date} other {# with new due dates}}',
+            other: '{count} more',
+          },
+        },
         title: '{actor} assigned you an annotation',
         titleRelated: '{actor} assigned you annotation {related} in “{subject}”',
         titleRelatedNoSubject: '{actor} assigned you annotation {related}',
@@ -742,6 +757,19 @@ export const collaboration = {
       // it says.
       // Who replied is in the title; `…NoActor` when it was Piloti or nobody in particular.
       annotationActivity: {
+        // One notification for many rows at once (someone resolves 15 of your
+        // annotations): counted per row, so per annotation, new annotations per document.
+        pushFold: {
+          title: '{count, plural, one {# update} other {# updates}} on annotations',
+          parts: {
+            reply: '{count, plural, one {# with a new reply} other {# with new replies}}',
+            resolved: '{count} resolved',
+            dismissed: '{count} dismissed',
+            reopened: '{count} reopened',
+            created: '{count, plural, one {# document with new annotations} other {# documents with new annotations}}',
+            other: '{count} more',
+          },
+        },
         title: '{actor} replied on an annotation',
         titleNoActor: 'New reply on an annotation',
         titleRelated: '{actor} replied on annotation {related} in “{subject}”',
@@ -769,6 +797,61 @@ export const collaboration = {
             title: '{actor} reopened an annotation',
             titleRelated: '{actor} reopened annotation {related} in “{subject}”',
             titleRelatedNoSubject: '{actor} reopened annotation {related}',
+          },
+          // New annotations on a document you are responsible for or uploaded:
+          // one counted row per document and per person. {related} is the
+          // newest, the excerpt what it says. Without {related} and excerpt:
+          // the newest was deleted, and the row counts the rest. "NoActor":
+          // the person is no longer in the directory.
+          created: {
+            title: '{actor} added an annotation',
+            titleNoActor: 'An annotation was added',
+            titleOne: '{actor} added an annotation in “{subject}”',
+            titleOneNoActor: 'An annotation was added in “{subject}”',
+            titleMany: '{actor} added {count} annotations in “{subject}”',
+            titleManyNoActor: '{count} new annotations in “{subject}”',
+            titleNone: '{actor} added annotations in “{subject}”',
+            titleNoneNoActor: 'New annotations in “{subject}”',
+            titleRelated: '{actor} added annotation {related} in “{subject}”',
+            titleRelatedNoActor: 'Annotation {related} was added in “{subject}”',
+            titleRelatedMany: '{actor} added {count} annotations in “{subject}”',
+            titleRelatedManyNoActor: '{count} new annotations in “{subject}”',
+            titleRelatedNone: '{actor} added annotations in “{subject}”',
+            titleRelatedNoneNoActor: 'New annotations in “{subject}”',
+            titleRelatedNoSubject: '{actor} added annotation {related}',
+            titleRelatedNoSubjectNoActor: 'Annotation {related} was added',
+            titleRelatedNoSubjectMany: '{actor} added {count} annotations',
+            titleRelatedNoSubjectManyNoActor: '{count} new annotations',
+            titleRelatedNoSubjectNone: '{actor} added annotations',
+            titleRelatedNoSubjectNoneNoActor: 'New annotations',
+            bodyMany: 'The newest is annotation {related}.',
+            bodyNoExcerpt: 'One of these annotations has since been deleted.',
+          },
+          // Piloti added them for {actor}: {actor} asked, or took over
+          // Piloti's proposal. A proposal nobody took over tells nobody.
+          created_piloti: {
+            title: 'Piloti added an annotation for {actor}',
+            titleNoActor: 'Piloti added an annotation',
+            titleOne: 'Piloti added an annotation in “{subject}” for {actor}',
+            titleOneNoActor: 'Piloti added an annotation in “{subject}”',
+            titleMany: 'Piloti added {count} annotations in “{subject}” for {actor}',
+            titleManyNoActor: 'Piloti added {count} annotations in “{subject}”',
+            titleNone: 'Piloti added annotations in “{subject}” for {actor}',
+            titleNoneNoActor: 'Piloti added annotations in “{subject}”',
+            titleRelated: 'Piloti added annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoActor: 'Piloti added annotation {related} in “{subject}”',
+            titleRelatedMany: 'Piloti added {count} annotations in “{subject}” for {actor}',
+            titleRelatedManyNoActor: 'Piloti added {count} annotations in “{subject}”',
+            titleRelatedNone: 'Piloti added annotations in “{subject}” for {actor}',
+            titleRelatedNoneNoActor: 'Piloti added annotations in “{subject}”',
+            titleRelatedNoSubject: 'Piloti added annotation {related} for {actor}',
+            titleRelatedNoSubjectNoActor: 'Piloti added annotation {related}',
+            titleRelatedNoSubjectMany: 'Piloti added {count} annotations for {actor}',
+            titleRelatedNoSubjectManyNoActor: 'Piloti added {count} annotations',
+            titleRelatedNoSubjectNone: 'Piloti added annotations for {actor}',
+            titleRelatedNoSubjectNoneNoActor: 'Piloti added annotations',
+            bodyMany: 'The newest is annotation {related}.',
+            bodyNoExcerpt: 'One of these annotations has since been deleted.',
           },
         },
       },

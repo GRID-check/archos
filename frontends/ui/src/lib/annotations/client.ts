@@ -12,6 +12,12 @@
 
 import { ROOM_PEER_HEADER } from './peer-header'
 import {
+  projectMarksHref,
+  projectMarksResponseSchema,
+  type ProjectMarksFilters,
+  type ProjectMarksResponse,
+} from './project-types'
+import {
   annotationListResponseSchema,
   annotationResponseSchema,
   documentThreadResponseSchema,
@@ -23,6 +29,7 @@ import {
   type CreateReplyRequest,
   type ReplyResponse,
   type UpdateAnnotationRequest,
+  type UpdateReplyRequest,
 } from './types'
 
 /** How a request is made: `fetch` in a browser, the real handler in a route spec. */
@@ -145,6 +152,39 @@ export function replyToAnnotation(
   )
 }
 
+const replyPath = (documentId: string, annotationId: string, replyId: string) =>
+  `${annotationPath(documentId, annotationId)}/replies/${encodeURIComponent(replyId)}`
+
+/**
+ * Reword one's own reply: the mark with its thread as it now stands. Refused
+ * 409 with `REPLY_TAKEN_UP_REASON` once Piloti took the reply up, and 422 with
+ * `REPLY_MARK_CLOSED_REASON` on a closed mark. Never wakes Piloti.
+ */
+export function editReply(
+  documentId: string,
+  annotationId: string,
+  replyId: string,
+  input: UpdateReplyRequest,
+  { peerId, run = defaultFetch }: WriteOptions = {}
+): Promise<AnnotationView> {
+  return request(run, replyPath(documentId, annotationId, replyId), json('PATCH', input, peerId), one)
+}
+
+/** Delete one's own reply, refused as {@link editReply} is. */
+export function deleteReply(
+  documentId: string,
+  annotationId: string,
+  replyId: string,
+  { peerId, run = defaultFetch }: WriteOptions = {}
+): Promise<void> {
+  return request(
+    run,
+    replyPath(documentId, annotationId, replyId),
+    { method: 'DELETE', headers: peerId ? { [ROOM_PEER_HEADER]: peerId } : {} },
+    () => undefined
+  )
+}
+
 /** The caller's own thread about a document, created when it does not exist (ADR-0106). */
 export function documentThread(
   documentId: string,
@@ -168,5 +208,20 @@ export function deleteAnnotation(
     annotationPath(documentId, annotationId),
     { method: 'DELETE', headers: peerId ? { [ROOM_PEER_HEADER]: peerId } : {} },
     () => undefined
+  )
+}
+
+/**
+ * A page of a project's Offene Punkte: the live marks of every document of the
+ * project this reader may see, each the view a document's list carries, with
+ * the document's name (`GET /api/projects/{id}/annotations`).
+ */
+export function listProjectAnnotations(
+  projectId: string,
+  filters: ProjectMarksFilters = {},
+  { limit, cursor, run = defaultFetch }: { limit?: number; cursor?: string | null; run?: AnnotationFetch } = {}
+): Promise<ProjectMarksResponse> {
+  return request(run, projectMarksHref(projectId, filters, { limit, cursor }), { method: 'GET' }, (value) =>
+    projectMarksResponseSchema.parse(value)
   )
 }

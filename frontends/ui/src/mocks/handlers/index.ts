@@ -5,10 +5,11 @@
  */
 
 import { documentHandlers } from './documents'
+import { inboxHandlers } from './inbox'
 import { uploadScreeningHandlers } from './upload-screening'
 import { userPreferencesHandlers } from './user-preferences'
 
-export const handlers = [...documentHandlers, ...userPreferencesHandlers, ...uploadScreeningHandlers]
+export const handlers = [...documentHandlers, ...userPreferencesHandlers, ...uploadScreeningHandlers, ...inboxHandlers]
 
 // Re-export individual handler groups for selective use in tests
 export { documentHandlers }

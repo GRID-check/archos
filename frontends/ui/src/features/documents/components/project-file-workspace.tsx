@@ -112,6 +112,7 @@ export function ProjectFileWorkspace({
     canManage: true,
     folderAccess: { projectId, canManage: canManageFolderAccess, initialRootAccess },
     bin: { href: `/app/projects/${projectId}/files/bin` },
+    openPoints: { href: `/app/projects/${projectId}/files/open-points` },
     canCollaborate,
     currentUserId,
     askAbout: (file) => askAboutFile({ projectId, file, navigate: (href) => router.push(href) }),

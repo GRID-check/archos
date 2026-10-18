@@ -92,7 +92,7 @@ Files render as cards in a responsive grid. Each card shows:
 - the file name and, when ingestion generated one, a one-line **AI description**
 - a tinted **extension chip** (PDF, DOCX, …), the file size and a relative upload time
 - an **ingestion status badge** only while the document is not yet citable (Processing / Failed / held back) — failed cards show the failure reason inline. A citable document carries no badge on its card; the list view's status column names every state, „Zitierbar“ included
-- what is **still open on its pages**, when anything is: a small chip under the size and date that says how many Anmerkungen are open (Piloti's proposals nobody has decided on included, from every Fassung) and how many of those are yours, „4 offen · 2 für Sie“. Pointing at it shows the whole sentence, „4 offene Anmerkungen, 2 für Sie“. Pressing it opens the document in the Prüfansicht. The list view shows the same beside the name
+- what is **still open on its pages**, when anything is: a small chip under the size and date that says how many Anmerkungen are open (from every Fassung), how many of those are yours, and how many of Piloti's proposals nobody has decided on yet, „2 offen · 1 für Sie · 12 Vorschläge“. A proposal is not counted as open until someone takes it over, as in Offene Punkte and the Protokoll. Pointing at it shows the whole sentence, „2 offene Anmerkungen, 1 für Sie und 12 Vorschläge von Piloti“. Pressing it opens the document in the Prüfansicht. The list view shows the same beside the name
 
 The last tile of the grid is a dashed **upload card** listing the actually accepted file types and the size limit; drag-and-drop anywhere on the workspace also works. A file dropped on another project page, such as Settings or Members, opens Files and is uploaded there; the chat, the research page and the intake keep their own drop targets.
 
@@ -107,6 +107,42 @@ A **search field** above the grid searches the file names and renames of the who
 Most filters and the sort order are answered by the server per folder. A few still need every document of the shelf in the browser and load them when you turn them on: the kind and tag (Kategorie) filters, the assignment filter, „Freigabe ausstehend", sorting by status, and in the folder brief the „Worum es hier geht" details and the lists its chips open. For a very large shelf these take a moment the first time.
 
 Semantic results arrive in whichever view you are in. In the detail view the ranking is preserved rather than being re-sorted by upload date: **Relevance** is the column the list opens sorted by (and can be sorted the other way), and each row carries the passage that matched with its page number in place of the document's summary.
+
+### Offene Punkte: what is open across the project
+
+A Jour fixe goes through the project, not one sheet at a time. **Offene
+Punkte** in the Dateien header (on a phone, in the header's ⋯) opens one page
+with every open Anmerkung on the project's documents, grouped by document. Each
+row reads like a row of the Prüfansicht's list: the number, what the mark says,
+its kind and page, who set it, who is responsible, how many answers it has and
+its Frist. Pressing a row opens that document in the Prüfansicht at the mark;
+**Prüfansicht öffnen** beside a document's name opens its whole review. Closing
+the review brings you back to Offene Punkte with your filters, and the list
+shows what you closed there as closed. A mark opened from the Postfach returns
+to the Postfach the same way.
+
+Two filters answer the meeting's questions:
+
+- **Zuständig: Für Sie** keeps the marks you are responsible for, as **Für Sie** does in the Prüfansicht.
+- **Frist: Überfällig** keeps the marks whose Frist has passed; **Bald** those
+  due today or in the next seven days.
+
+**Protokoll exportieren** downloads what the list shows, with the filters you
+set, as one PDF, Word or Markdown file: each document under its own heading,
+each mark written as the document's own Protokoll writes it. A Protokoll holds
+at most 1000 marks; past that, narrow it with a filter.
+
+**Im Projekt ablegen** in the same menu files that Protokoll in the project's
+top folder, as „Offene Punkte – <Projekt> – <Datum>“, if you may upload files
+there. Everyone in the project can read that folder, so it is not offered while
+a listed point sits on a document not everyone may open (in a restricted
+folder, or an upload still being checked): the menu says so. Narrow the list
+with a filter that leaves those documents out, or download the Protokoll
+instead.
+
+You see the marks of the documents you can open: a file in a folder you may
+not read, and an upload still held back from you, are left out here as they
+are in Dateien.
 
 ### When an upload is refused
 
@@ -463,7 +499,8 @@ is yours to take, Piloti has a suggestion to answer, or the file is an older
 Fassung. Once you close it, it stays closed.
 
 When Anmerkungen are still open on the document, **Freigeben** says so before
-you sign: „4 offene Anmerkungen – trotzdem freigeben?“, with **In der
+you sign, and Piloti's proposals nobody took over apart from them: „2 offene
+Anmerkungen und 12 Vorschläge von Piloti – trotzdem freigeben?“, with **In der
 Prüfansicht öffnen** beside it. If the Anmerkungen are still loading, or
 could not be read, it says that instead, so silence always means nothing is
 open. It does not stop you: whether an open point stands in the way of a
@@ -503,6 +540,32 @@ edit the folder can answer.
 People assigned to the older document, and whoever uploaded it, get a note in the
 inbox when a newer Fassung is linked or uploaded under the same name, if they
 may open the newer one (see „The inbox“ in the chat guide).
+
+### Anmerkungen from an earlier Fassung, and the Protokoll
+
+In the Prüfansicht of the current Fassung, the list keeps what is still open
+from before: „Offen aus früheren Fassungen“ for marks set on an earlier upload
+under the same name, and „Aus Fassung „…““ for marks of the document this one
+replaces. Each can be carried on to the current Fassung, one by one or all at
+once.
+
+**Piloti prüfen lassen, was behoben ist** sits under both. Piloti reads those
+marks, looks at the same place in the current Fassung, and answers in each
+mark's thread: „In Fassung 3 behoben: …“ or „Weiterhin offen: …“, with what it
+saw. It only answers; it never closes a mark. You decide: **Erledigt** in the
+mark's thread, or, for a mark of the replaced document, **Erledigen** on its row,
+where Piloti's answer is shown too. Piloti checks only when you ask, never on its
+own when a new Fassung arrives. The question and Piloti's summary stay in your
+conversation about the document (**Gespräch** in the header).
+
+**Protokoll exportieren** in the header downloads the Anmerkungen as PDF, Word
+or Markdown. **Im Projekt ablegen** in the same menu, there when you may add
+files to the document's folder, files it as a document of the project instead, with the choices you made (open only, or resolved ones
+too), named „Protokoll – Grundriss EG – 2026-10-18.pdf“ and put in the folder of
+the document it is about, so it is as restricted as that document. The notice
+that says so has **Öffnen**. Filing it again on the same day makes a new Fassung
+of that Protokoll rather than a second file. A Protokoll too long for a PDF is
+filed as Word.
 
 ### The approval process
 

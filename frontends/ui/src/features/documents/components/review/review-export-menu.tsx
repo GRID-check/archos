@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, type JSX } from 'react'
-import { FileDown } from 'lucide-react'
+import { useRef, useState, type JSX } from 'react'
+import { useRouter } from 'next/navigation'
+import { FileDown, FolderInput } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,17 +17,25 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
-import { startBrowserDownload } from '@/lib/browser-download'
+import { capturePosthog } from '@/lib/analytics/posthog'
+import { downloadFetched } from '@/lib/browser-download'
 import {
   ANNOTATION_EXPORT_FASSUNGEN,
   ANNOTATION_EXPORT_FORMATS,
   ANNOTATION_EXPORT_SCOPES,
   annotationExportHref,
-  fileNameFromDisposition,
   type AnnotationExportFassung,
   type AnnotationExportFormat,
   type AnnotationExportScope,
 } from '@/lib/annotations/export-request'
+import { documentFilesHref } from '../../lib/document-question'
+import {
+  documentStem,
+  fileProtocol,
+  ProtocolFilingError,
+  protocolFilingStem,
+  type ProtocolFilingTarget,
+} from '../../lib/protocol-filing'
 import { reviewToast } from './review-toaster'
 
 /** Choosing an option keeps the menu open: the choice is made before the download, not instead of it. */
@@ -41,53 +50,85 @@ const keepOpen = (event: Event) => event.preventDefault()
  * was set on: a new Index before the Jour fixe does not close the points on
  * the one before.
  *
- * Fetched rather than navigated to, as the answer export is: a refusal (a PDF
- * too long to lay out, access lost meanwhile) is a toast, not a JSON file in
- * the downloads folder.
+ * Fetched rather than navigated to (`downloadFetched`, which the project's
+ * Offene Punkte use too): a refusal (a PDF too long to lay out, access lost
+ * meanwhile) is a toast, not a JSON file in the downloads folder.
+ *
+ * „Im Projekt ablegen" files the same export, with the same choices, as a
+ * document of the project, in the folder of the document it is about
+ * (`../../lib/protocol-filing.ts`), and the toast opens it. Offered where the
+ * document is a project's and the reader may file into it (`filing`).
  */
 export function ReviewExportMenu({
   documentId,
   hasFassungen,
   hasProposals,
+  filing = null,
 }: {
   documentId: string
   /** The document has earlier Fassungen, whose marks the export may carry too. */
   hasFassungen: boolean
   /** Piloti proposed marks nobody took over; they can be appended under their own heading. */
   hasProposals: boolean
+  /** Where „Im Projekt ablegen" files it, and the document's name the file is named after; absent, it is not offered. */
+  filing?: { target: ProtocolFilingTarget; documentName: string } | null
 }): JSX.Element {
   const t = useTranslations('files')
   const [scope, setScope] = useState<AnnotationExportScope>('open')
   const [fassung, setFassung] = useState<AnnotationExportFassung>('current')
   const [includeProposals, setIncludeProposals] = useState(false)
   const [busy, setBusy] = useState(false)
+  const router = useRouter()
+  /** What this tab filed, by name: a second filing of the same name the same day is a new Fassung of it. */
+  const filedHere = useRef(new Map<string, string>())
+
+  const optionsFor = (format: AnnotationExportFormat) =>
+    ({
+      format,
+      scope,
+      fassung: hasFassungen && scope === 'all' ? fassung : 'current',
+      includeProposals: hasProposals && includeProposals,
+    }) as const
 
   const download = async (format: AnnotationExportFormat): Promise<void> => {
     setBusy(true)
+    const result = await downloadFetched(annotationExportHref(documentId, optionsFor(format)), `protokoll.${format}`)
+    setBusy(false)
+    if (result.saved) {
+      // The CSAT trigger the answer and the BIM exports fire: the kind and the format, never the name.
+      capturePosthog('report_exported', { kind: 'annotations', format })
+      return
+    }
+    toast.error(
+      result.status === 422 && format === 'pdf' ? t('review.export.tooLongForPdf') : t('review.export.failed'),
+      reviewToast(),
+    )
+  }
+
+  const file = async (target: ProtocolFilingTarget, documentName: string): Promise<void> => {
+    setBusy(true)
+    const stem = protocolFilingStem((values) => t('review.export.fileName', values), documentStem(documentName))
     try {
-      const options = {
-        format,
-        scope,
-        fassung: hasFassungen && scope === 'all' ? fassung : 'current',
-        includeProposals: hasProposals && includeProposals,
-      } as const
-      const response = await fetch(annotationExportHref(documentId, options))
-      if (!response.ok) {
-        toast.error(
-          response.status === 422 && format === 'pdf' ? t('review.export.tooLongForPdf') : t('review.export.failed'),
-          reviewToast(),
-        )
-        return
-      }
-      const url = URL.createObjectURL(await response.blob())
-      try {
-        startBrowserDownload(url, fileNameFromDisposition(response.headers.get('content-disposition'), `protokoll.${format}`))
-      } finally {
-        // The download holds the blob by reference; the URL can go on the next tick.
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      }
-    } catch {
-      toast.error(t('review.export.failed'), reviewToast())
+      const filed = await fileProtocol((format) => annotationExportHref(documentId, optionsFor(format)), target, stem)
+      const again = filedHere.current.get(filed.filename) === filed.documentId
+      filedHere.current.set(filed.filename, filed.documentId)
+      const message = filed.unchanged
+        ? t('review.export.filedUnchanged', { name: filed.filename })
+        : again
+          ? t('review.export.filedAgain', { name: filed.filename })
+          : t('review.export.filed', { name: filed.filename })
+      toast.success(
+        message,
+        reviewToast({
+          action: {
+            label: t('review.export.openFiled'),
+            onClick: () => router.push(documentFilesHref(target.projectId, filed.documentId)),
+          },
+        })
+      )
+    } catch (error) {
+      const taken = error instanceof ProtocolFilingError && error.reason === 'name-taken'
+      toast.error(taken ? t('review.export.fileNameTaken', { name: stem }) : t('review.export.fileFailed'), reviewToast())
     } finally {
       setBusy(false)
     }
@@ -152,6 +193,19 @@ export function ReviewExportMenu({
             {t(`review.export.formats.${format}`)}
           </DropdownMenuItem>
         ))}
+        {filing && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => void file(filing.target, filing.documentName)}
+              disabled={busy}
+              data-testid="review-export-file"
+            >
+              <FolderInput aria-hidden />
+              {busy ? t('review.export.filing') : t('review.export.fileInto')}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

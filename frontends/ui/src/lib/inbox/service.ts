@@ -37,6 +37,7 @@ import {
   countPendingInboxItems,
   INBOX_LIST_LIMIT,
   listInboxItems,
+  listUnreadAnchors,
   markAllInboxItemsRead,
   markAnchorItemsRead,
   markInboxItemsRead,
@@ -48,8 +49,11 @@ import {
   openRecipientsOfGroup,
   resolveInboxItemsForTargets,
   resolveOpenItemsAnchoredOn,
+  retractOccurrenceAnchoredOn,
+  rewriteItemPayloadsAnchoredOn,
   unarchiveInboxItem,
   upsertInboxItems,
+  type AnchoredRows,
   type InboxCursor,
   type InboxResolutionTarget,
 } from './repository'
@@ -58,6 +62,7 @@ import {
   PLATFORM_INBOX_PERMISSION,
   platformInboxTypes,
   visibleInboxTypes,
+  MARKS_SET_GROUP_ANCHOR,
 } from './registry'
 import {
   isMarkAnchored,
@@ -84,6 +89,13 @@ export interface InboxEmission {
   actorUserId?: string | null
   groupKey: string
   payload?: Record<string, unknown>
+  /**
+   * How many occurrences this one emission stands for, when one write is
+   * several of the same thing for the same person (Piloti setting fifteen
+   * marks on one document): the row's count moves by this many, as it would
+   * for that many emissions, in ONE write and so one notification. Default 1.
+   */
+  occurrences?: number
 }
 
 /** Split rows into waves in which no (recipient, group key) repeats, keeping their order. */
@@ -126,6 +138,7 @@ export async function emitInboxItems(emissions: InboxEmission[]): Promise<number
       groupKey: emission.groupKey,
       actionable: inboxItemIsActionable(emission.type),
       payload: emission.payload ?? {},
+      count: Math.max(1, Math.floor(emission.occurrences ?? 1)),
     }))
 
   if (rows.length === 0) return 0
@@ -218,7 +231,11 @@ export async function resolveInboxItemsAnchoredOn(input: {
   anchorId: string
   recipientUserId?: string
 }): Promise<number> {
-  const recipients = await resolveOpenItemsAnchoredOn(input)
+  return nudge(await resolveOpenItemsAnchoredOn(input))
+}
+
+/** Tell each of these people's open inboxes to read again. */
+async function nudge(recipients: readonly string[]): Promise<number> {
   await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))
   return recipients.length
 }
@@ -227,17 +244,32 @@ export async function resolveInboxItemsAnchoredOn(input: {
  * Neutralise the items of these types anchored on a thing that is gone (a
  * deleted mark), for everyone, or for one recipient whose reason for the row
  * is gone (a mention taken back): no row keeps a link to it, or the text it
- * quoted. Session-less, like the emitter.
+ * quoted. `payloadHas` narrows it to the rows a deleted reply wrote (by its
+ * `replyId`), `groupAnchor` to the rows folded on another anchor (`AnchoredRows`).
+ * Session-less, like the emitter.
  */
-export async function markInboxItemsInertAnchoredOn(input: {
-  organizationId: string
-  types: readonly InboxItemType[]
-  anchorId: string
-  recipientUserId?: string
-}): Promise<number> {
-  const recipients = await markItemsInertAnchoredOn(input)
-  await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))
-  return recipients.length
+export async function markInboxItemsInertAnchoredOn(input: AnchoredRows): Promise<number> {
+  return nudge(await markItemsInertAnchoredOn(input))
+}
+
+/**
+ * Take one occurrence that is gone (a deleted reply, a deleted mark) back out
+ * of the rows that counted it, without resurfacing them
+ * (`retractOccurrenceAnchoredOn`). Session-less, like the emitter.
+ */
+export async function retractInboxOccurrenceAnchoredOn(
+  input: AnchoredRows & { clear: readonly string[]; inertWhenSpent: boolean }
+): Promise<number> {
+  return nudge(await retractOccurrenceAnchoredOn(input))
+}
+
+/**
+ * Rewrite what the rows quoting something that changed say (a reworded
+ * reply), without resurfacing them (`rewriteItemPayloadsAnchoredOn`).
+ * Session-less, like the emitter.
+ */
+export async function rewriteInboxPayloadsAnchoredOn(input: AnchoredRows & { facts: Record<string, unknown> }): Promise<number> {
+  return nudge(await rewriteItemPayloadsAnchoredOn(input))
 }
 
 /**
@@ -648,6 +680,7 @@ function toItemView(
   const messageId = nonEmpty(payload.runMessageId)
   const run: RunMessageRef | null =
     conversationId && runId && messageId ? { conversationId, runId, messageId } : null
+  const answerIn = answerPlaceOf(row, access !== null, answers)
 
   return {
     id: row.id,
@@ -681,7 +714,8 @@ function toItemView(
     dueOn: access ? coerceDay(payload.dueOn) : null,
     openMarks: access ? coerceCount(payload.openMarks) : null,
     marksFassung: access ? coerceCount(payload.marksFassung) : null,
-    answerIn: answerPlaceOf(row, access !== null, answers),
+    answerIn,
+    pilotiWakes: answerIn === 'row' && answers.wakesOn,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -953,4 +987,53 @@ export async function markAnchorItemsReadFor(
   // nudge would make every open inbox of theirs re-read for nothing.
   if (affected === 0) return { affected, pending: await countPendingAcross(session, lanes) }
   return publishPending(session, lanes, affected)
+}
+
+/**
+ * The caller opened a document's review: its „Anna hat 15 Anmerkungen
+ * gesetzt“ rows are read. They fold per document and per who set them and
+ * anchor on the newest mark only for their link ({@link MARKS_SET_GROUP_ANCHOR}),
+ * so no mark's dot carries them, and opening the newest mark is not what
+ * reading fifteen new marks is: seeing the document's review is. Only the
+ * caller's own informational rows, in the types their lanes may see; no
+ * nudge when nothing changed, as for a mark.
+ */
+export async function markMarksSetReadFor(
+  session: AuthorizedSession,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+): Promise<InboxMutationResult> {
+  const lanes = await lanesFor(session)
+  const affected = await mutateAcross(session, lanes, (lane) =>
+    markResourceItemsRead(lane.organizationId, session.userId, resourceType, resourceId, {
+      groupAnchor: MARKS_SET_GROUP_ANCHOR,
+      types: lane.types,
+    }),
+  )
+  if (affected === 0) return { affected, pending: await countPendingAcross(session, lanes) }
+  return publishPending(session, lanes, affected)
+}
+
+/**
+ * The anchors inside one resource whose news the caller has not read: for a
+ * document, the marks the review draws a dot on. The counterpart of
+ * {@link markAnchorItemsReadFor}, which reading a mark's thread calls, over the
+ * same rows (`listUnreadAnchors`). No access check, for the same reason: only
+ * the caller's own rows, in the types their lanes may see, and an anchor id
+ * says nothing their inbox did not already say.
+ */
+export async function unreadAnchorsFor(
+  session: AuthorizedSession,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+): Promise<{ anchorIds: string[] }> {
+  const lanes = await lanesFor(session)
+  const perLane = await Promise.all(
+    lanes.map((lane) =>
+      inLane(session, lane, () =>
+        listUnreadAnchors(lane.organizationId, session.userId, resourceType, resourceId, lane.types),
+      ),
+    ),
+  )
+  return { anchorIds: [...new Set(perLane.flat())] }
 }

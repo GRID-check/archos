@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    Offene Punkte in Dateien lists every open Anmerkung of the project on one
+    page, grouped by document and filtered to yours or to what is overdue or
+    due this week. Each row opens the Prüfansicht at the mark, and the list
+    exports as one Protokoll for the Jour fixe.

@@ -42,6 +42,12 @@ export type ActionMenuItemEntry = {
   icon?: LucideIcon
   variant?: 'default' | 'destructive'
   disabled?: boolean
+  /**
+   * A second, quieter line under the label: why an item is disabled, or what
+   * to do instead. Part of the item's accessible name, so a screen reader hears
+   * the reason with the action it explains.
+   */
+  hint?: string
   /** Run on select. An entry with `href` may omit it: the link is the action. */
   onSelect?: () => void
   /**
@@ -129,7 +135,14 @@ function renderEntries(entries: readonly ActionMenuEntry[], parts: MenuParts): R
         const content = (
           <>
             {Icon ? <Icon className="size-4" aria-hidden /> : null}
-            {entry.label}
+            {entry.hint ? (
+              <span className="flex min-w-0 flex-col">
+                <span>{entry.label}</span>
+                <span className="text-muted-foreground text-xs leading-snug">{entry.hint}</span>
+              </span>
+            ) : (
+              entry.label
+            )}
           </>
         )
         if (entry.href) {

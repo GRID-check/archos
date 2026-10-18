@@ -164,6 +164,9 @@ const ROUTES: Record<string, RouteDisposition> = {
   'documents/[id]/annotations/export/route.ts': {
     exempt: 'renders the document’s Anmerkungen and their threads as a Protokoll; none of the document’s bytes, and the audit event document.annotations.exported records it.',
   },
+  'projects/[id]/annotations/export/route.ts': {
+    exempt: 'renders the open Anmerkungen of a project’s documents and their threads as one Protokoll; none of a document’s bytes, and the audit event project.annotations.exported records it.',
+  },
   'conversations/[id]/live/route.ts': { exempt: 'server-sent events of a conversation.' },
   'stream/route.ts': { exempt: 'server-sent events.' },
   'realtime/route.ts': { exempt: 'server-sent events of the live channels (lib/realtime): presence, pointers and change hints; no file bytes.' },

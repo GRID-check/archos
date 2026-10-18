@@ -93,11 +93,13 @@ function Host({
   initialTool,
   onOpenChange = () => {},
   fassung = null,
+  protocolFiling = null,
 }: {
   popoutHref?: string | null
   initialTool?: ReviewTool
   onOpenChange?: (open: boolean) => void
   fassung?: ReviewFassung | null
+  protocolFiling?: { projectId: string; folderId: string | null } | null
 }) {
   const [transport] = useState(room)
   const review = useDocumentReview('doc_1', { enabled: true, transport, fassung })
@@ -110,6 +112,7 @@ function Host({
       canPickAssignee={false}
       popoutHref={popoutHref}
       initialTool={initialTool}
+      protocolFiling={protocolFiling}
     />
   )
 }
@@ -125,6 +128,35 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('filing the Protokoll', () => {
+  const FILING = { projectId: 'proj_1', folderId: 'folder_plans' }
+  const served = (canAnnotate: boolean) =>
+    server.use(
+      http.get('/api/documents/:id/annotations', () =>
+        HttpResponse.json({ annotations: [view({ id: 'm1' })], canAnnotate, pilotiWakes: false })
+      )
+    )
+
+  it('offers „Im Projekt ablegen“ to whoever may write the document’s folder', async () => {
+    served(true)
+    const user = userEvent.setup()
+    render(<Host protocolFiling={FILING} />)
+    await user.click(await screen.findByRole('button', { name: 'Export minutes' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'File in the project' })).toBeInTheDocument()
+  })
+
+  it('offers only the download to a reader who may not write there: the upload would refuse them', async () => {
+    served(false)
+    const user = userEvent.setup()
+    render(<Host protocolFiling={FILING} />)
+    await user.click(await screen.findByRole('button', { name: 'Export minutes' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'PDF' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'File in the project' })).not.toBeInTheDocument()
+  })
 })
 
 describe('the header', () => {
@@ -624,5 +656,96 @@ describe('the tools spelled out, on a narrow stage', () => {
     // Folded, the glyph still says its name and key where a pointer finds it: the icons' tooltip.
     await userEvent.hover(point)
     expect(await screen.findByRole('tooltip')).toHaveTextContent(/Comment\s*C/)
+  })
+})
+
+describe('the list on a phone', () => {
+  // Under `lg` the list is not beside the sheet: a button in the header opens it.
+  const realMatchMedia = window.matchMedia
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: query === '(min-width: 1024px)' ? false : realMatchMedia(query).matches,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia
+  })
+  afterEach(() => {
+    window.matchMedia = realMatchMedia
+  })
+
+  it('shows the open marks, as „offen“ counts them, and names the whole sentence', async () => {
+    serve([
+      view({ id: 'a1' }),
+      view({ id: 'a2', number: 2, x: 0.4 }),
+      view({ id: 'p1', number: 3, x: 0.6, authorKind: 'piloti', status: 'proposed' }),
+    ])
+    render(<Host />)
+    await screen.findAllByTestId('review-row')
+    const button = screen.getByTestId('review-list-open')
+    expect(button).toHaveTextContent(/^2$/)
+    expect(button).toHaveAccessibleName('Annotations: 2 open annotations and 1 proposal from Piloti')
+  })
+
+  it('says when nothing is open', async () => {
+    serve([])
+    render(<Host />)
+    await screen.findByTestId('review-empty')
+    expect(screen.getByTestId('review-list-open')).toHaveAccessibleName('Annotations: Nothing open')
+  })
+})
+
+describe('a mark’s link', () => {
+  const copied = async () => {
+    const writeText = vi.fn((_text: string) => Promise.resolve())
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+    await act(async () => {
+      await userEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }))
+    })
+    return new URL(writeText.mock.calls[0][0])
+  }
+
+  it('is the mark on its shelf, without the tool in hand or the page this reader came from', async () => {
+    const before = window.location.href
+    window.history.replaceState(null, '', '/app/projects/p1/files?doc=doc_1&review=1&mark=ann_1&tool=point&back=%2Fapp%2Finbox')
+    try {
+      serve([view({ id: 'ann_1' })])
+      render(<Host popoutHref="/app/projects/p1/files?doc=doc_1&review=1" />)
+      const url = await copied()
+      expect(`${url.pathname}${url.search}`).toBe('/app/projects/p1/files?doc=doc_1&review=1&mark=ann_1')
+    } finally {
+      window.history.replaceState(null, '', before)
+    }
+  })
+
+  it('is this page’s, at the mark, where the review has no shelf of its own to open on', async () => {
+    const before = window.location.href
+    window.history.replaceState(null, '', '/app/archiv?doc=doc_1&review=1&tool=region&back=%2Fapp%2Finbox&folder=f1')
+    try {
+      serve([view({ id: 'ann_1' })])
+      render(<Host />)
+      const url = await copied()
+      expect(`${url.pathname}${url.search}`).toBe('/app/archiv?doc=doc_1&folder=f1&review=1&mark=ann_1')
+    } finally {
+      window.history.replaceState(null, '', before)
+    }
+  })
+})
+
+describe('opening the review reads the news about new marks', () => {
+  it('reads the document’s „15 Anmerkungen gesetzt“ rows, which no pin’s dot carries', async () => {
+    const reads: unknown[] = []
+    serve([view({ id: 'm1' })])
+    server.use(
+      http.post('/api/inbox/read', async ({ request }) => {
+        reads.push(await request.json())
+        return HttpResponse.json({ affected: 1, pending: 0 })
+      })
+    )
+    render(<Host />)
+    await waitFor(() => expect(reads).toContainEqual({ resourceType: 'document', resourceId: 'doc_1', marksSet: true }))
   })
 })

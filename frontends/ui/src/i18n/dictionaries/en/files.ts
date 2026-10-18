@@ -1347,7 +1347,8 @@ export const files = {
       actingDateOnly: 'Acting: {date}',
       checkbox: 'I approve this revision',
       // Before the signature, never a block: approving with open points is allowed, missing them is not.
-      openMarks: '{count, plural, one {# open annotation} other {# open annotations}} – approve anyway?',
+      // {marks}: “2 open annotations and 12 proposals from Piloti”, as the chip in Files says it.
+      openMarks: '{marks} – approve anyway?',
       openMarksLoading: 'Still reading the open annotations …',
       openMarksUnavailable: 'Could not read whether any annotations are open.',
     },
@@ -1512,7 +1513,6 @@ export const files = {
   // to be done there (CONTEXT.md „Anmerkung“).
   annotations: {
     section: 'Annotations',
-    openCount: '{count} open',
     kind: 'Kind',
     kinds: {
       hint: 'Note',
@@ -1547,6 +1547,63 @@ export const files = {
     // What the chip itself says, short enough for a card; the tooltip carries the whole sentence.
     listedOpenShort: '{count} open',
     listedOpenShortForYou: '{count} open · {mine} for you',
+    // Piloti's proposals nobody took over: counted apart from “open”, as Offene Punkte and the minutes count them.
+    listedProposedShort: '{count, plural, one {# proposal} other {# proposals}}',
+  },
+  // Open points: the open annotations of every document of a project, for the site meeting.
+  openPoints: {
+    open: 'Open points',
+    title: 'Open points',
+    subtitle: 'What is open in this project’s documents, across all of them: the list for the site meeting.',
+    back: 'Back to files',
+    filters: {
+      assignee: 'Assignee',
+      due: 'Due',
+      all: 'All',
+      // The same predicate as „For you“ in the review and in Files (`isForReader`), so the same words.
+      me: 'For you',
+      overdue: 'Overdue',
+      soon: 'Soon',
+      soonHint: 'Due today or in the next seven days',
+    },
+    openReview: 'Open review',
+    openReviewOf: 'Open the review of “{name}”',
+    loading: 'Loading open points',
+    loadError: 'The open points could not be loaded.',
+    retry: 'Try again',
+    loadMore: 'Load more',
+    loadingMore: 'Loading more …',
+    loadMoreFailed: 'More could not be loaded.',
+    empty: {
+      noneTitle: 'Nothing open',
+      noneBody: 'No annotation is open on this project’s documents.',
+      filteredTitle: 'Nothing in this selection',
+      filteredBody: 'Nothing is open with these filters. Other filters show more.',
+    },
+    export: {
+      button: 'Export minutes',
+      formatLabel: 'Download as',
+      hint: 'With the filters set now',
+      failed: 'The minutes could not be exported.',
+      tooMany: 'Too many open points for one set of minutes. Narrow them with a filter.',
+      title: 'Open points – {name}',
+      fileName: 'Open points – {name}',
+      // Filed in the project: the file's name, {date} as YYYY-MM-DD on the office's calendar.
+      filedName: 'Open points – {name} – {date}',
+      // Why “File in the project” is withheld: the minutes quote documents not everyone may open.
+      fileRestricted: 'Not possible: some points are on documents not everyone in the project may open. Filed in the project, their text would be readable by all.',
+      documents: 'Documents',
+      status: {
+        open: 'Open annotations',
+        proposed: 'Piloti’s proposals',
+        'all-live': 'Open annotations and Piloti’s proposals',
+      },
+      assignee: 'Assignee: {name}',
+      due: {
+        overdue: 'Overdue',
+        soon: 'Due today or in the next seven days',
+      },
+    },
   },
   // The review: a document full screen, the annotations on it, the threads
   // under them, and who is looking with you.
@@ -1556,6 +1613,8 @@ export const files = {
     othersHere: '{count, plural, one {# other person is looking at this now} other {# other people are looking at this now}}',
     close: 'Close review',
     nothingOpen: 'Nothing open',
+    /** The list button on a phone shows the open count; its name says the chip's whole sentence. */
+    listOpen: 'Annotations: {marks}',
     fassung: 'Revision {number}',
     offline: 'Connection interrupted',
     toolsLabel: 'Tools',
@@ -1668,6 +1727,8 @@ export const files = {
       reviewFound: '{count, plural, one {Piloti found # point} other {Piloti found # points}}',
       busyTooltip: 'Piloti is answering your question',
       reviewFailed: 'Review failed',
+      checkingFixed: 'Piloti is checking what is fixed …',
+      checkFixedDone: 'Piloti answered in the threads',
       openConversation: 'Conversation',
       declined: 'Piloti did not take this on. The reason is above.',
       handedOff: 'Piloti is researching this in depth. The result arrives in the chat.',
@@ -1704,6 +1765,9 @@ export const files = {
       proposed: 'proposal',
       resolved: 'resolved',
       dismissed: 'dismissed',
+      ghost: 'from revision {number}',
+      ghostUnnumbered: 'from an earlier revision',
+      unread: 'unread',
     },
     pinOpenBy: 'open for {names}',
     draftCard: 'New annotation',
@@ -1735,6 +1799,8 @@ export const files = {
     replyPlaceholder: 'Reply …',
     send: 'Send',
     sendFailed: 'Could not be sent. Your text is still here.',
+    /** A mark or a reply its author rewords: saved, not sent. */
+    saveFailed: 'Could not be saved. Your text is still here.',
     actionFailed: 'That did not work. Please try again.',
     conflict: 'Someone just changed this annotation. You are seeing the current state now.',
     someone: 'Unknown',
@@ -1762,6 +1828,7 @@ export const files = {
     linkCopied: 'Link copied',
     linkCopyFailed: 'The link could not be copied.',
     earlierFassung: 'From revision {number}. Not drawn on this sheet.',
+    earlierFassungGhost: 'From revision {number}. The hollow pin shows where it stood there.',
     carry: 'Carry to the current revision',
     carryTo: 'Carry to “{name}”',
     carryMark: 'Carry annotation {number} to the current revision',
@@ -1779,12 +1846,37 @@ export const files = {
     replacedBy: 'Replaced by “{name}”',
     replaces: 'Replaces “{name}”',
     replacedNotice: 'This document was replaced by “{name}”.',
+    checkFixed: {
+      action: 'Have Piloti check what is fixed',
+      running: 'Piloti is checking what is fixed …',
+      currentFassung: 'the current revision',
+      seed:
+        'Check whether {count, plural, one {open annotation {numbers}} other {open annotations {numbers}}} from an earlier revision {count, plural, one {is} other {are}} fixed in {current}. For each one, read it, look at the place in this document and answer in its thread, starting with “Fixed in {current}:” or “Still open:”, saying in one sentence how you can tell. Do not resolve or otherwise change any annotation: we decide that ourselves.',
+      seedFrom:
+        'Check whether {count, plural, one {open annotation {numbers}} other {open annotations {numbers}}} on “{from}” {count, plural, one {is} other {are}} fixed in this document, “{current}”. For each one, read it on “{from}”, look at the place here and answer in its thread on “{from}”, starting with “Fixed in {current}:” or “Still open:”, saying in one sentence how you can tell. Do not resolve or otherwise change any annotation: we decide that ourselves.',
+      verdict: 'Piloti’s answer',
+      resolve: 'Resolve',
+      resolveMark: 'Resolve annotation {number} on “{name}”',
+      resolveFailed: 'The annotation could not be resolved. Please try again.',
+    },
     delete: 'Delete',
     deleteConfirm: 'Delete annotation {number}?',
+    deleteRefused: {
+      discussed: 'Others have answered in its thread. Resolve the annotation instead.',
+      carried: 'It was carried over between documents. Resolve it instead.',
+    },
+    resolveInstead: 'Resolve instead',
     edit: 'Edit',
     editLabel: 'Text of annotation {number}',
     save: 'Save',
     editCancel: 'Cancel',
+    replyMore: 'More for your reply',
+    replyEditLabel: 'Your reply',
+    replyEditNoWake: 'An edited reply does not reach Piloti. Ask Piloti in a new reply.',
+    replyDeleteConfirm: 'Delete your reply?',
+    replyDeleteHint: 'People it mentioned no longer see the notice about it.',
+    replyTakenUp: 'Piloti has already taken this reply up. It stays as it is; write a new one.',
+    edited: 'edited',
     assigneeYou: 'You',
     clearDue: 'Remove due date',
     decided: {
@@ -1798,7 +1890,7 @@ export const files = {
       open: 'Open',
       closed: 'Done',
     },
-    mine: 'Mine',
+    mine: 'For you',
     proposalsGroup: '{count, plural, one {# proposal from Piloti} other {# proposals from Piloti}}',
     walkProposals: 'Go through',
     walkPosition: '{index}/{total}',
@@ -1811,7 +1903,7 @@ export const files = {
       readOnlyTitle: 'No annotations yet',
       readOnlyBody: 'Nobody has annotated anything here yet.',
       mineTitle: 'Nothing for you',
-      mineBody: 'Nothing here is assigned to you, and nothing you set is open.',
+      mineBody: 'You are not responsible for any annotation here.',
       doneTitle: 'All done',
       doneBody: 'Nothing is open on this document any more.',
       openTitle: 'Nothing open',
@@ -1842,6 +1934,15 @@ export const files = {
       },
       failed: 'The minutes could not be exported.',
       tooLongForPdf: 'Too long for a PDF. Export them as Word or Markdown.',
+      fileInto: 'File in the project',
+      filing: 'Filing …',
+      fileName: 'Minutes – {name} – {date}',
+      filed: 'Filed as “{name}”',
+      filedAgain: 'Filed as a new revision of “{name}”',
+      filedUnchanged: '“{name}” is already in the project as it is.',
+      openFiled: 'Open',
+      fileFailed: 'The minutes could not be filed.',
+      fileNameTaken: 'Another document in the project is already called “{name}”. The minutes were not filed.',
       document: {
         title: 'Annotations – {name}',
         fileName: 'Annotations – {name}',

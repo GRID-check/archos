@@ -5,6 +5,8 @@ import {
   AnnotationRequestError,
   createAnnotation,
   deleteAnnotation,
+  deleteReply,
+  editReply as editReplyRequest,
   getAnnotation,
   listAnnotations,
   replyToAnnotation,
@@ -12,7 +14,10 @@ import {
 } from '@/lib/annotations/client'
 import {
   compareAnnotations,
+  isForReader,
+  isGhostMark,
   isLive,
+  REPLY_TAKEN_UP_REASON,
   type AnnotationKind,
   type AnnotationShape,
   type AnnotationStatus,
@@ -21,9 +26,11 @@ import {
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
 import type { FassungRef } from '@/lib/documents/fassung'
+import { inPool } from '@/lib/utils/in-pool'
 import { useChatStore } from '@/features/chat'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '@/features/collaboration/hooks/use-undoable-archive'
+import { useLiveEvents } from '@/features/collaboration/hooks/use-live-events'
 import { useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
 import { useDocumentRoom, type RoomTransport } from './use-document-room'
 
@@ -36,30 +43,25 @@ export const HINT_READ_ONE_BY_ONE = 8
 
 /** How long a mark must stay open before opening it counts as reading its news: J/K past it does not. */
 export const MARK_NEWS_SETTLE_MS = 400
-/** How soon the same mark's news is read again in this tab: once a minute is enough for a busy thread. */
-const MARK_NEWS_AGAIN_MS = 60_000
-/** When this tab last read each mark's news (`documentId:annotationId`). Per tab, per session. */
-const markNewsReadAt = new Map<string, number>()
 
 /**
  * Opening a mark is reading its news: the reader's informational inbox items
  * anchored on it (a reply, the mark closed, Piloti's finished work) are read,
  * through the inbox's own client (`POST /api/inbox/read` with the anchor), so
  * the inbox stops calling news the reader has just seen. Requests stay open:
- * seeing a mark is not answering it. Best effort; a miss costs an unread row.
+ * seeing a mark is not answering it. Called only for a mark whose dot says it
+ * has news (the review's `unread`, the same rows): most marks a reader opens
+ * have none, and a write for each was a request for nothing. Best effort; a
+ * miss costs an unread row, whose dot the next read of `unread` brings back.
  */
 export function readMarkNews(documentId: string, annotationId: string, client: InboxClient = inboxClient): void {
-  const key = `${documentId}:${annotationId}`
-  const last = markNewsReadAt.get(key)
-  if (last !== undefined && Date.now() - last < MARK_NEWS_AGAIN_MS) return
-  markNewsReadAt.set(key, Date.now())
-  void client.markMarkRead({ documentId, annotationId }).catch(() => markNewsReadAt.delete(key))
+  void client.markMarkRead({ documentId, annotationId }).catch(() => undefined)
 }
 
-/** For the specs: forget what this tab has read. */
-export function forgetMarkNewsReads(): void {
-  markNewsReadAt.clear()
-}
+/** How long the review waits after the inbox changed before it reads which marks have news: one read for a burst. */
+export const UNREAD_READ_DELAY_MS = 250
+
+const NO_MARKS: ReadonlySet<string> = new Set()
 
 /** How long a decision taken by a key (E, ⌫) waits before it is sent: the toast's „Rückgängig" window. */
 export const DECISION_UNDO_MS = ARCHIVE_UNDO_MS
@@ -109,6 +111,9 @@ export interface CarriedGroup {
 /** How many replaced documents a review lists the open marks of: the direct predecessors, a few at most. */
 export const CARRY_GROUPS_MAX = 3
 
+/** How many carries „Alle übernehmen" has in flight at once: quick for thirty marks, gentle on the server. */
+export const CARRY_AT_ONCE = 4
+
 /** A place picked on a page and not yet saved: a point, or a region dragged out. */
 export interface ReviewDraft {
   page: number
@@ -139,9 +144,12 @@ export function useDocumentReview(
     piloti: pilotiOptions,
     viewerUserId,
     fassung,
+    inbox = inboxClient,
   }: {
     enabled: boolean
     transport?: RoomTransport
+    /** The inbox's typed client: which marks have unread news, and reading it. A spec passes its own. */
+    inbox?: InboxClient
     /** Asking Piloti on the canvas; absent (or without a project) it is not offered. */
     piloti?: Omit<UseCanvasAskOptions, 'documentId' | 'enabled'>
     /** The signed-in person as the page knows them (the shelf's `currentUserId`), for when the room is not up. */
@@ -155,14 +163,23 @@ export function useDocumentReview(
   /**
    * Who is reading: the room's own word once it has welcomed this tab, else
    * the page's (`viewerUserId`), else the session's user id the app keeps
-   * (`useChatStore`'s `currentUserId`, set from `useAuth`). „Mir zugewiesen"
+   * (`useChatStore`'s `currentUserId`, set from `useAuth`). „Für Sie"
    * and „Mir zuweisen" must not go blank while the room is down, and a
    * mention of the reader stands out (`MarkBody`'s `viewerId`) before the room
    * answers. The one answer to „who reads" in the review.
    */
   const sessionUserId = useChatStore((state) => state.currentUserId)
   const me = room.self?.userId ?? viewerUserId ?? sessionUserId ?? null
-  const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [readLoad, setLoad] = useState<'loading' | 'ready' | 'error'>('loading')
+  /**
+   * The document the list in hand was read for. A pane reused for another
+   * document renders once with the last one's list before its effect asks
+   * again, and in that render `ready` would hand the last document's marks to
+   * whatever counts them under the new one's id (the pane's tally for
+   * Dateien's chip): until the new document's list answers, it is loading.
+   */
+  const [listedFor, setListedFor] = useState<string | null>(null)
+  const load = readLoad === 'ready' && listedFor !== documentId ? 'loading' : readLoad
   /** The marks as the server last answered; `annotations` below shows them with the held decisions. */
   const [stored, setAnnotations] = useState<AnnotationView[]>([])
   const [canAnnotate, setCanAnnotate] = useState(false)
@@ -175,15 +192,104 @@ export function useDocumentReview(
   // Which mark this reader has open, for the room: Piloti resolves „diese Anmerkung“ by it.
   const { sendSelection } = room
   useEffect(() => sendSelection(selectedId), [selectedId, sendSelection])
-  // A mark that stays open has been read, and so has its news in the inbox.
+
+  /**
+   * The marks whose thread has news this reader has not read: the inbox's
+   * informational items anchored on them, unread (`GET /api/inbox/unread-anchors`,
+   * one bounded read for the document). A dot on the pin and the row. Read
+   * again when the inbox changes (the `inbox.changed` nudge on the tab's live
+   * channel, sent once the row is written; the room's hint goes out before
+   * it, so reading on the hint would race the row), when the tab returns to
+   * view, and on the slow poll while the channel is down (`useLiveEvents`).
+   */
+  const [unread, setUnread] = useState<ReadonlySet<string>>(NO_MARKS)
+  const unreadRead = useRef({ documentId, ticket: 0 })
+  unreadRead.current.documentId = documentId
+  const fetchUnread = useCallback(async () => {
+    const ticket = ++unreadRead.current.ticket
+    const ids = await inbox.unreadMarks(documentId).catch(() => null)
+    // Only the newest read, for the document still shown; a failed read keeps the dots there are.
+    if (!ids || unreadRead.current.ticket !== ticket || unreadRead.current.documentId !== documentId) return
+    setUnread(new Set(ids))
+  }, [documentId, inbox])
   useEffect(() => {
-    if (!enabled || !selectedId) return
-    const timer = setTimeout(() => readMarkNews(documentId, selectedId), MARK_NEWS_SETTLE_MS)
+    if (!enabled) return
+    const asked = unreadRead.current
+    setUnread(NO_MARKS)
+    void fetchUnread()
+    // Leaving the document (or closing the review) lets no read of its dots land.
+    return () => {
+      asked.ticket += 1
+    }
+  }, [enabled, fetchUnread])
+  const unreadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (unreadTimer.current) clearTimeout(unreadTimer.current)
+    },
+    []
+  )
+  /**
+   * Whether the review is in front of the reader ({@link watchMarksSetNews}):
+   * then a change in the inbox also reads the rows about new marks, which no
+   * dot carries (`readMarksSetNews`). It cannot loop: a read that finds
+   * nothing unread (`affected: 0`) sends no `inbox.changed`
+   * (`markMarksSetReadFor`).
+   */
+  const marksSetWatched = useRef(false)
+  const readMarksSetNews = useCallback(() => {
+    void inbox.markMarksSetRead(documentId).catch(() => undefined)
+  }, [documentId, inbox])
+  const readInbox = useCallback(() => {
+    void fetchUnread()
+    if (marksSetWatched.current) readMarksSetNews()
+  }, [fetchUnread, readMarksSetNews])
+  useLiveEvents({
+    enabled,
+    onEvent: (event) => {
+      if (event.kind !== 'inbox.changed') return
+      if (unreadTimer.current) clearTimeout(unreadTimer.current)
+      unreadTimer.current = setTimeout(readInbox, UNREAD_READ_DELAY_MS)
+    },
+    onRefresh: readInbox,
+  })
+
+  // A mark with news that stays open has been read, and so has its news in the
+  // inbox: its dot goes at once, and news that arrives while it is open is read
+  // too (the inbox's nudge reads `unread` again, which brings the dot back first).
+  // A mark without a dot has nothing to read, and writes nothing.
+  const selectedHasNews = selectedId !== null && unread.has(selectedId)
+  useEffect(() => {
+    if (!enabled || !selectedId || !selectedHasNews) return
+    const timer = setTimeout(() => {
+      setUnread((current) => {
+        const next = new Set(current)
+        next.delete(selectedId)
+        return next
+      })
+      readMarkNews(documentId, selectedId, inbox)
+    }, MARK_NEWS_SETTLE_MS)
     return () => clearTimeout(timer)
-  }, [enabled, documentId, selectedId])
+  }, [enabled, documentId, selectedId, selectedHasNews, inbox])
+  /**
+   * The review of this document is open in front of the reader: its rows
+   * about new marks are read („Anna hat 15 Anmerkungen gesetzt“), now and on
+   * every change in the inbox until the returned function is called (the
+   * review closes, or the document changes). They fold per document and anchor
+   * on the newest mark only for their link, so no pin's dot carries them
+   * (`listUnreadAnchors`), and seeing the review is seeing the marks they tell
+   * about. Best effort; a miss leaves the row unread.
+   */
+  const watchMarksSetNews = useCallback(() => {
+    marksSetWatched.current = true
+    readMarksSetNews()
+    return () => {
+      marksSetWatched.current = false
+    }
+  }, [readMarksSetNews])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [filter, setFilter] = useState<ReviewFilter>('open')
-  /** Only what is on this reader's plate: assigned to them, or set by them. */
+  /** „Für Sie“: only the marks that are this reader's ({@link isForReader}), the same ones Dateien counts „für Sie“. */
   const [mine, setMine] = useState(false)
   const [notice, setNotice] = useState<'conflict' | null>(null)
   /**
@@ -221,6 +327,21 @@ export function useDocumentReview(
   }, [sources])
   /** Read the replaced documents' marks again, after a group could not be read. */
   const retryCarried = useCallback(() => void fetchCarried(), [fetchCarried])
+  /**
+   * Piloti's answers to a check of a replaced document's marks land in THAT
+   * document's threads, whose room this review is not in: once such a check
+   * ends, its marks are read again, so each row shows what Piloti found.
+   */
+  const checking = useRef(new Set<string>())
+  useEffect(() => {
+    let ended = false
+    for (const ask of canvas.asks) {
+      if (!ask.checkFixed || ask.checkFixed.documentId === documentId) continue
+      if (ask.status === 'thinking') checking.current.add(ask.id)
+      else if (checking.current.delete(ask.id)) ended = true
+    }
+    if (ended) void fetchCarried()
+  }, [canvas.asks, documentId, fetchCarried])
   useEffect(() => {
     if (!enabled) return
     setCarried([])
@@ -253,6 +374,7 @@ export function useDocumentReview(
     setAnnotations(result.annotations)
     setCanAnnotate(result.canAnnotate)
     setPilotiWakes(result.pilotiWakes)
+    setListedFor(documentId)
     setLoad('ready')
     return result.annotations
   }, [documentId])
@@ -352,14 +474,17 @@ export function useDocumentReview(
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [enabled, fetchList])
 
-  /** A write a colleague beat: say so, and show what they did. */
+  /**
+   * A write a colleague beat: say so, and show what they did. A reply Piloti
+   * took up is no colleague's move: the card that tried says that itself.
+   */
   const guard = useCallback(
     async <T,>(act: () => Promise<T>): Promise<T> => {
       try {
         return await act()
       } catch (error) {
         if (error instanceof AnnotationRequestError && error.status === 409) {
-          setNotice('conflict')
+          if (error.reason !== REPLY_TAKEN_UP_REASON) setNotice('conflict')
           void fetchList().catch(() => {})
         }
         throw error
@@ -586,6 +711,35 @@ export function useDocumentReview(
     [documentId, guard, replace, write]
   )
 
+  /**
+   * Reword one's own reply, with whom it mentions as the composer kept them.
+   * Never wakes Piloti. A reply Piloti took up meanwhile is refused (409,
+   * `REPLY_TAKEN_UP_REASON`) and the list is read again.
+   */
+  const editReply = useCallback(
+    async (annotationId: string, replyId: string, body: string, mentions: MarkMention[]) => {
+      const updated = await guard(() => editReplyRequest(documentId, annotationId, replyId, { body, mentions }, write))
+      replace(updated)
+      return updated
+    },
+    [documentId, guard, replace, write]
+  )
+
+  /** Delete one's own reply, refused as {@link editReply} is; the thread shows it gone at once. */
+  const removeReply = useCallback(
+    async (annotationId: string, replyId: string) => {
+      await guard(() => deleteReply(documentId, annotationId, replyId, write))
+      setAnnotations((current) =>
+        current.map((annotation) =>
+          annotation.id === annotationId
+            ? { ...annotation, replies: annotation.replies.filter((reply) => reply.id !== replyId) }
+            : annotation
+        )
+      )
+    },
+    [documentId, guard, write]
+  )
+
   const remove = useCallback(
     async (annotationId: string) => {
       if (holdOn(annotationId)) undoDecision(annotationId)
@@ -616,22 +770,63 @@ export function useDocumentReview(
     [documentId, guard, write, replace, fetchList, fetchCarried]
   )
 
-  /** „Alle offenen übernehmen": the same carry, one mark after the other; how many went, and how many did not. */
+  /**
+   * „Erledigen" on a mark of a replaced document, listed here read-only: what
+   * Piloti's check found fixed, closed by the person where it was set, with
+   * the status the row showed. Its list is read again, whatever the answer:
+   * the mark leaves it, or shows where a colleague took it.
+   */
+  const resolveCarried = useCallback(
+    async (annotation: Pick<AnnotationView, 'id' | 'documentId' | 'status'>) => {
+      try {
+        return await guard(() =>
+          updateAnnotation(annotation.documentId, annotation.id, { status: 'resolved', expectedStatus: annotation.status }, write)
+        )
+      } finally {
+        // A colleague's move first is the conflict notice; either way the row shows where the mark stands.
+        await fetchCarried()
+      }
+    },
+    [guard, write, fetchCarried]
+  )
+
+  /**
+   * „Alle übernehmen": the same PATCH as {@link carry} for each mark, at most
+   * {@link CARRY_AT_ONCE} at a time, and the lists read ONCE after the last:
+   * thirty marks are thirty PATCHes and, when any crossed documents or a
+   * colleague beat one, one read of this list and one of each replaced
+   * document's, not two to four reads per mark. A mark carried in place takes
+   * the PATCH's answer and needs no read. How many went, and how many did not.
+   */
   const carryAll = useCallback(
     async (marks: ReadonlyArray<Pick<AnnotationView, 'id' | 'documentId' | 'status'>>) => {
-      let carriedOn = 0
-      let failed = 0
-      for (const annotation of marks) {
+      const outcomes = await inPool(marks, CARRY_AT_ONCE, async (annotation) => {
         try {
-          await carry(annotation)
-          carriedOn += 1
-        } catch {
-          failed += 1
+          const after = await updateAnnotation(
+            annotation.documentId,
+            annotation.id,
+            { carryToCurrent: true, expectedStatus: annotation.status },
+            write
+          )
+          return { annotation, after, error: null }
+        } catch (error) {
+          return { annotation, after: null, error }
         }
+      })
+      let crossed = false
+      let conflict = false
+      for (const { annotation, after, error } of outcomes) {
+        if (error instanceof AnnotationRequestError && error.status === 409) conflict = true
+        if (!after) continue
+        if (after.documentId === documentId) replace(after)
+        if (annotation.documentId !== documentId || after.documentId !== documentId) crossed = true
       }
-      return { carried: carriedOn, failed }
+      if (conflict) setNotice('conflict')
+      if (crossed || conflict) await Promise.all([fetchList().catch(() => undefined), fetchCarried()])
+      const failed = outcomes.filter((outcome) => outcome.after === null).length
+      return { carried: outcomes.length - failed, failed }
     },
-    [carry]
+    [documentId, write, replace, fetchList, fetchCarried]
   )
 
   const counts = useMemo(
@@ -648,7 +843,7 @@ export function useDocumentReview(
       annotations.filter(
         (annotation) =>
           (filter === 'open' ? isLive(annotation) : !isLive(annotation)) &&
-          (!mine || (me !== null && (annotation.assigneeUserId === me || annotation.createdBy === me)))
+          (!mine || isForReader(annotation, me))
       ),
     [annotations, filter, mine, me]
   )
@@ -656,8 +851,11 @@ export function useDocumentReview(
   /**
    * Step to the next or previous mark, in the order the list shows them: what
    * the filter and „Mine" leave, Piloti's proposals first, as their group
-   * leads the list. Only marks on this Fassung, which are on the sheet. From
-   * nothing selected, J starts at the first and K at the last.
+   * leads the list. Only marks drawn on the sheet: this Fassung's, and the
+   * ghosts of an earlier one ({@link isGhostMark}), which are listed under
+   * Offen and drawn where they stood. A closed mark of an earlier Fassung is
+   * listed and not drawn, so a key does not land on it. From nothing
+   * selected, J starts at the first and K at the last.
    */
   const step = useCallback(
     (direction: 1 | -1, scope: 'live' | 'proposed' = 'live') => {
@@ -665,7 +863,7 @@ export function useDocumentReview(
       const walk = [
         ...shown.filter((annotation) => annotation.status === 'proposed'),
         ...shown.filter((annotation) => annotation.status !== 'proposed'),
-      ].filter((annotation) => annotation.onCurrentFassung)
+      ].filter((annotation) => annotation.onCurrentFassung || isGhostMark(annotation, documentId))
       if (walk.length === 0) return null
       const index = walk.findIndex((annotation) => annotation.id === selectedId)
       const next =
@@ -676,7 +874,7 @@ export function useDocumentReview(
       setSelectedId(next.id)
       return next
     },
-    [annotations, listed, selectedId]
+    [annotations, listed, selectedId, documentId]
   )
 
   const retry = useCallback(() => setAttempt((value) => value + 1), [])
@@ -715,6 +913,8 @@ export function useDocumentReview(
       decide,
       undoDecision,
       reply,
+      editReply,
+      removeReply,
       remove,
       step,
       me,
@@ -723,6 +923,9 @@ export function useDocumentReview(
       retryCarried,
       carry,
       carryAll,
+      resolveCarried,
+      unread,
+      watchMarksSetNews,
     }),
     [
       documentId,
@@ -752,6 +955,8 @@ export function useDocumentReview(
       undoDecision,
       me,
       reply,
+      editReply,
+      removeReply,
       remove,
       step,
       fassung,
@@ -759,6 +964,9 @@ export function useDocumentReview(
       retryCarried,
       carry,
       carryAll,
+      resolveCarried,
+      unread,
+      watchMarksSetNews,
     ]
   )
 }

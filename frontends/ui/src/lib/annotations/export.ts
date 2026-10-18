@@ -59,7 +59,7 @@ import { getLocale, getTranslations } from '@/i18n/server'
 import type { Translator } from '@/i18n/translate'
 import { listAnnotations } from './service'
 import { isLive, isOverdue, type AnnotationView } from './types'
-import type { AnnotationExportOptions } from './export-request'
+import { protocolFileNameOf, type AnnotationExportOptions } from './export-request'
 
 export const MARKDOWN_MEDIA_TYPE = 'text/markdown; charset=utf-8'
 
@@ -133,7 +133,7 @@ export function selectMarks(
   }
 }
 
-interface Formatters {
+export interface Formatters {
   /** A calendar day held as `YYYY-MM-DD`: a due date. */
   day: (isoDay: string) => string
   /** The day of an instant, on the office's calendar. */
@@ -144,7 +144,7 @@ interface Formatters {
   today: string
 }
 
-function formatters(locale: string, now: Date): Formatters {
+export function formatters(locale: string, now: Date): Formatters {
   const day = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' })
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: OFFICE_TIME_ZONE })
   const dateTime = new Intl.DateTimeFormat(locale, {
@@ -233,7 +233,7 @@ function threadBlocks(annotation: AnnotationView, t: Translator, f: Formatters):
 }
 
 /** One mark: „Nr. 4 · Seite 2 · Mangel · offen", who stands behind it, the text, its facts and its thread. */
-function entryBlocks(annotation: AnnotationView, t: Translator, f: Formatters): DocBlock[] {
+export function entryBlocks(annotation: AnnotationView, t: Translator, f: Formatters): DocBlock[] {
   const heading = t('review.export.document.entry', {
     number: annotation.number,
     page: annotation.page,
@@ -451,8 +451,6 @@ async function renderPdf(protocol: Protocol): Promise<Uint8Array> {
   return new Uint8Array(await renderToBuffer(element as unknown as PdfDocumentElement))
 }
 
-const EXTENSIONS: Record<AnnotationExportOptions['format'], string> = { pdf: 'pdf', docx: 'docx', md: 'md' }
-
 /** „Anmerkungen – Grundriss EG – Fassung 3.pdf": what the office files it under. */
 export function protocolFileName(
   header: Pick<ProtocolHeader, 'documentName' | 'fassung'>,
@@ -466,10 +464,10 @@ export function protocolFileName(
       : header.fassung
         ? t('review.export.document.fileNameFassung', { name, number: header.fassung.number })
         : t('review.export.document.fileName', { name })
-  return `${stem.replace(/[\\/:*?"<>|\r\n]+/g, ' ').trim()}.${EXTENSIONS[options.format]}`
+  return protocolFileNameOf(stem, options.format)
 }
 
-async function renderProtocol(protocol: Protocol, format: AnnotationExportOptions['format']) {
+export async function renderProtocol(protocol: Protocol, format: AnnotationExportOptions['format']) {
   if (format === 'pdf') return { bytes: await renderPdf(protocol), mediaType: PDF_MEDIA_TYPE }
   if (format === 'docx') return { bytes: renderDocx(withHeader(protocol)), mediaType: DOCX_MEDIA_TYPE }
   return { bytes: new TextEncoder().encode(blocksToMarkdown(withHeader(protocol))), mediaType: MARKDOWN_MEDIA_TYPE }

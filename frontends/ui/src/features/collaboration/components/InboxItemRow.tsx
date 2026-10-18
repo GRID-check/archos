@@ -21,6 +21,9 @@
  * (assigned to the reader, Piloti's question, a mention) is answered or
  * resolved right here, through the annotations' own client: the same writes
  * the thread makes, and only where the server's `answerIn` says the reader may.
+ * The answer is written in the thread's own composer (`Composer`): Enter sends,
+ * „@" mentions whoever may open the document, and @Piloti is offered where
+ * events wake Piloti (`pilotiWakes`), as the thread offers it.
  *
  * The row answers **who / what / where / when without being opened** (IB-20):
  * the title carries the actor, the body the subject, the excerpt the actual
@@ -41,6 +44,7 @@
 import type { JSX } from 'react'
 import { forwardRef, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
 import {
   Archive,
   ArchiveRestore,
@@ -72,6 +76,8 @@ import {
   type InboxTypePresentation,
 } from '@/lib/inbox/types'
 import { AnnotationRequestError, replyToAnnotation, updateAnnotation } from '@/lib/annotations/client'
+import type { MarkMention } from '@/lib/annotations/types'
+import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
@@ -100,6 +106,11 @@ import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
+import { withReviewBack } from '@/features/documents/lib/open-review'
+import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
+import { useUndoableArchive } from '../hooks/use-undoable-archive'
+import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
+import type { MarksSetBy } from '@/lib/annotations/attention'
 import { MentionText } from './MentionText'
 
 /**
@@ -129,6 +140,9 @@ export interface InboxMarkClient {
 }
 
 const MARK_CLIENT: InboxMarkClient = { reply: replyToAnnotation, update: updateAnnotation }
+
+/** The variants of `annotation.activity` that tell of new marks, counted per document (`MarksSetBy`, `lib/annotations/attention.ts`). */
+const MARKS_SET_VARIANTS: readonly string[] = ['created', 'created_piloti'] satisfies readonly MarksSetBy[]
 
 /** Only a plain primary click counts as "opened"; see the title link. */
 function isPlainClick(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }): boolean {
@@ -180,6 +194,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   ref,
 ): JSX.Element {
   const t = useTranslations('collaboration')
+  const tFiles = useTranslations('files')
   const { dictionary } = useI18n()
   const { locale } = useLocale()
 
@@ -261,6 +276,16 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const markRow =
     isMarkAnchored(item.type) && !inert && !redacted && item.resourceType === 'document' && item.anchorId !== null
   /*
+    The mark opens in Dateien, at the review: closing it comes back here, to
+    the Postfach as the reader left it (`back`: this address, which carries
+    the list's filter, `InboxList`), not to the bare document.
+  */
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const query = searchParams?.toString()
+  const here = pathname ? `${pathname}${query ? `?${query}` : ''}` : null
+  const linkHref = markRow && item.href ? withReviewBack(item.href, here) : item.href
+  /*
     A request on a mark is answered where the server says it may be
     (`answerIn`): here in the row, only in the Prüfansicht (Piloti's Rückfrage
     while events do not wake Piloti: the review asks Piloti itself), or not at
@@ -271,45 +296,101 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const answerInReview = markOpen && item.answerIn === 'review'
   const canResolveMark = answerHere && item.type === 'annotation.assigned_to_you'
   const [replying, setReplying] = useState(false)
-  const [replyText, setReplyText] = useState('')
+  // Sent or let go, the answer box goes and „Antworten“ comes back: the focus goes with it.
+  const replyButtonRef = useFocusBackOnClose<HTMLButtonElement>(answerHere && replying && item.anchorId !== null)
   const [markBusy, setMarkBusy] = useState(false)
-  const [markOutcome, setMarkOutcome] = useState<'sent' | 'sentPilotiNotAsked' | 'resolved' | 'conflict' | 'failed' | null>(null)
+  const [markOutcome, setMarkOutcome] = useState<
+    'sent' | 'sentPilotiNotAsked' | 'resolved' | 'conflict' | 'failed' | null
+  >(null)
+  /** Whom the last answer named and the server did not keep: they cannot open the document, so nobody told them. */
+  const [untold, setUntold] = useState<string[]>([])
 
-  const sendReply = async (): Promise<void> => {
-    const words = replyText.trim()
-    if (!answerHere || !item.anchorId || words === '' || markBusy) return
+  /*
+    The answer goes in as the thread's would, with whom it mentions as picked
+    and @Piloti as its flag. A failure throws back into the composer, which
+    keeps the text and says the row's own words for it (`describeFailure`).
+    Answers with the mentions the server kept.
+  */
+  const sendReply = async (body: string, { piloti, mentions }: ComposerSend): Promise<readonly MarkMention[] | void> => {
+    if (!answerHere || !item.anchorId) return
     setMarkBusy(true)
     setMarkOutcome(null)
     try {
-      const { wake } = await markClient.reply(item.resourceId, item.anchorId, { body: words })
+      const { annotation, replyId, wake } = await markClient.reply(item.resourceId, item.anchorId, {
+        body: body.trim(),
+        ...(piloti ? { addressesPiloti: true } : {}),
+        ...(mentions.length > 0 ? { mentions } : {}),
+      })
+      const kept = annotation.replies.find((reply) => reply.id === replyId)?.mentions ?? []
+      const keptIds = new Set(kept.map((mention) => mention.targetId))
+      setUntold(
+        mentions
+          .filter((mention) => mention.targetId !== AGENT_MENTION_ID && !keptIds.has(mention.targetId))
+          .map((mention) => mention.display),
+      )
       setReplying(false)
-      setReplyText('')
       // `off`: the answer met a wake rule but nothing wakes Piloti here; the row says how to ask it.
       setMarkOutcome(wake === 'off' ? 'sentPilotiNotAsked' : 'sent')
       // Answered from here is read here: the thread has the reply.
       onOpen?.(item)
-    } catch {
-      setMarkOutcome('failed')
+      return kept
     } finally {
       setMarkBusy(false)
     }
   }
 
-  const resolveMark = async (): Promise<void> => {
-    if (!canResolveMark || !item.anchorId || markBusy) return
+  /*
+    „Erledigen“ holds its write for the undo window, as archiving a row does
+    and as the review holds a decision by a key (`useUndoableArchive`): the
+    row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes
+    when the window ends, the page is hidden or the row goes. „Rückgängig“
+    inside the window lets go of it: nothing was sent, so the request this row
+    asks is still open on the server and the list keeps the row. The write is
+    from the status the row knows the mark in (`expectedStatus`): a mark
+    somebody moved meanwhile is a 409, never overwritten from a copy of it,
+    and the row says so when the write finally goes.
+  */
+  const sendResolve = async (anchorId: string): Promise<void> => {
     setMarkBusy(true)
-    setMarkOutcome(null)
     try {
-      // `expectedStatus`: a mark somebody reopened or dismissed meanwhile is a
-      // 409, never overwritten from a copy of it.
-      await markClient.update(item.resourceId, item.anchorId, { status: 'resolved', expectedStatus: 'open' })
-      setMarkOutcome('resolved')
+      await markClient.update(item.resourceId, anchorId, { status: 'resolved', expectedStatus: 'open' })
     } catch (error) {
       setMarkOutcome(error instanceof AnnotationRequestError && error.status === 409 ? 'conflict' : 'failed')
     } finally {
       setMarkBusy(false)
     }
   }
+  const resolveLater = useUndoableArchive(sendResolve)
+  const resolveHeld = item.anchorId !== null && resolveLater.pendingIds.has(item.anchorId)
+
+  const resolveMark = (): void => {
+    if (!canResolveMark || !item.anchorId || markBusy) return
+    setMarkOutcome('resolved')
+    resolveLater.request(item.anchorId)
+  }
+
+  const undoResolve = (): void => {
+    if (!item.anchorId) return
+    resolveLater.undo(item.anchorId)
+    setMarkOutcome(null)
+  }
+
+  // „Rückgängig“ while the write is held, not once it has gone out.
+  const offerUndo = resolveHeld && !markBusy && markOutcome === 'resolved'
+  // „Erledigen“ goes when it is pressed and „Rückgängig“ takes its place, and back
+  // again: the focus follows the control that took the place of the pressed one.
+  // When the window ends with the write, „Rückgängig“ goes and „Erledigen“ does
+  // not come back: the focus goes to the outcome line, which stays („Als
+  // erledigt markiert.“). Whichever of the two is drawn takes it, the other's
+  // ref is empty.
+  const undoRef = useFocusBackOnClose<HTMLButtonElement>(!offerUndo)
+  const resolveRef = useFocusBackOnClose<HTMLButtonElement>(offerUndo)
+  const outcomeRef = useFocusBackOnClose<HTMLParagraphElement>(offerUndo)
+  /*
+    A row about new marks („Anna hat 15 Anmerkungen gesetzt“) opens the review
+    at the newest of them, and its button says it goes to all of them.
+  */
+  const marksSet = item.type === 'annotation.activity' && MARKS_SET_VARIANTS.includes(item.variant ?? '') && item.count > 1
 
   // The row's own menu: read state, archive (the only archive control on a
   // phone, where an icon column cost the text its width) and restore.
@@ -548,7 +629,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               // archive button inside the anchor (that button is lifted above the
               // overlay with `z-10`).
               <Link
-                href={item.href}
+                href={linkHref ?? item.href}
                 // Only a plain primary click counts as "opened". Cmd/ctrl/middle
                 // click is the natural triage gesture — open three rows in
                 // background tabs — and it used to spend the read state of all
@@ -897,18 +978,19 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             {markRow && item.href && (
               <Button asChild size="sm" variant={markOpen ? 'default' : 'outline'} className="relative z-10 h-8">
                 <Link
-                  href={item.href}
+                  href={linkHref ?? item.href}
                   onClick={(event) => {
                     if (isPlainClick(event)) onOpen?.(item)
                   }}
                   data-testid="inbox-open-mark"
                 >
-                  {t(answerInReview ? 'inbox.mark.answerInReview' : 'inbox.mark.open')}
+                  {t(answerInReview ? 'inbox.mark.answerInReview' : marksSet ? 'inbox.mark.openMany' : 'inbox.mark.open')}
                 </Link>
               </Button>
             )}
             {answerHere && !replying && markOutcome !== 'resolved' && (
               <Button
+                ref={replyButtonRef}
                 type="button"
                 size="sm"
                 variant="outline"
@@ -925,13 +1007,14 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             )}
             {canResolveMark && !replying && markOutcome !== 'resolved' && (
               <Button
+                ref={resolveRef}
                 type="button"
                 size="sm"
                 variant="outline"
                 className="relative z-10 h-8"
                 disabled={markBusy}
                 data-testid="inbox-mark-resolve"
-                onClick={() => void resolveMark()}
+                onClick={resolveMark}
               >
                 {t('inbox.mark.resolve')}
               </Button>
@@ -948,52 +1031,37 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             )}
           </div>
 
-          {answerHere && replying && (
-            <div className="relative z-10 mt-2 space-y-2 rounded-lg border p-2" data-testid="inbox-mark-reply-form">
-              <label htmlFor={`inbox-mark-reply-${item.id}`} className="text-muted-foreground block text-xs">
-                {item.related ? t('inbox.mark.replyLabel', { related: item.related }) : t('inbox.mark.replyLabelNoNumber')}
-              </label>
-              <Textarea
-                id={`inbox-mark-reply-${item.id}`}
-                value={replyText}
+          {answerHere && replying && item.anchorId && (
+            <div className="relative z-10 mt-2 space-y-1.5" data-testid="inbox-mark-reply-form">
+              <Composer
                 autoFocus
-                rows={2}
-                onChange={(event) => setReplyText(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                    event.preventDefault()
-                    void sendReply()
-                  }
-                }}
+                testId="inbox-mark-reply-box"
+                placeholder={
+                  item.related ? t('inbox.mark.replyLabel', { related: item.related }) : t('inbox.mark.replyLabelNoNumber')
+                }
+                submitLabel={t('inbox.mark.send')}
+                documentId={item.resourceId}
+                mentionPiloti={item.pilotiWakes === true}
+                describeFailure={() => t('inbox.mark.failed')}
+                onSubmit={sendReply}
+                onEscape={() => setReplying(false)}
               />
-              <div className="flex items-center justify-end gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    setReplying(false)
-                    setReplyText('')
-                  }}
-                >
-                  {t('inbox.mark.cancel')}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-7 text-xs"
-                  disabled={replyText.trim() === '' || markBusy}
-                  data-testid="inbox-mark-reply-send"
-                  onClick={() => void sendReply()}
-                >
-                  {t('inbox.mark.send')}
-                </Button>
-              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                data-testid="inbox-mark-reply-cancel"
+                onClick={() => setReplying(false)}
+              >
+                {t('inbox.mark.cancel')}
+              </Button>
             </div>
           )}
           {markOutcome && (
             <p
+              ref={outcomeRef}
+              tabIndex={-1}
               role={markOutcome === 'failed' || markOutcome === 'conflict' ? 'alert' : 'status'}
               className={cn(
                 'mt-1.5 text-xs',
@@ -1002,6 +1070,30 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               data-testid="inbox-mark-outcome"
             >
               {t(`inbox.mark.${markOutcome}`)}
+              {offerUndo && (
+                <>
+                  {' '}
+                  <Button
+                    ref={undoRef}
+                    type="button"
+                    variant="inline"
+                    className="relative z-10"
+                    disabled={markBusy}
+                    data-testid="inbox-mark-undo"
+                    onClick={undoResolve}
+                  >
+                    {t('inbox.undo')}
+                  </Button>
+                </>
+              )}
+              {markOutcome !== 'failed' && markOutcome !== 'conflict' && untold.length > 0 && (
+                <>
+                  {' '}
+                  {untold.length === 1
+                    ? tFiles('review.mentions.untoldOne', { name: untold[0] })
+                    : tFiles('review.mentions.untoldMany', { names: untold.join(', ') })}
+                </>
+              )}
             </p>
           )}
         </ItemContent>
