@@ -2,31 +2,79 @@
 
 import { memo, useState, type JSX } from 'react'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { CheckCheck, ChevronDown, Clock, MessageCircle, MousePointerClick, Sparkles, UserRound } from 'lucide-react'
+import { CheckCheck, ChevronDown, Clock, GitCompare, History, MousePointerClick, Sparkles, UserRound } from 'lucide-react'
+import NextLink from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CommentPin } from '@/components/ui/comment-pin'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
-import { formatDayRange, localCalendarDay } from '@/lib/format'
-import { isLive, isOverdue, type AnnotationView } from '@/lib/annotations/types'
+import { formatDayRange } from '@/lib/format'
+import { isForReader, isLive, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
+import type { FassungRef } from '@/lib/documents/fassung'
 import { cn } from '@/lib/utils'
-import type { DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
+import type { CarriedGroup, DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
+import { compareFromReviewHref } from '../../lib/fassung-links'
 import { MarkBody } from './mark-body'
-import { usePilotiByline } from './piloti-attribution'
+import { MarkRowContent, markRowClassName } from './mark-row'
 import { markInk } from './review-page-layer'
 
 /** Open a mark from the list; `byKeyboard` when Enter or Space did it, so its card takes the focus. */
 export type OpenMark = (annotation: AnnotationView, byKeyboard?: boolean) => void
 
 /**
- * One mark in the list: its number (what people say aloud), what it says, and
- * one quiet line of who, how many answers, and by when. Memoised on its mark:
- * a list of five hundred redraws the row that changed.
+ * Have Piloti check which of these open marks of an earlier Fassung look fixed
+ * now: of this document (`from` null), or of the document `from` it replaces.
+ */
+export type CheckFixed = (marks: readonly AnnotationView[], from: FassungRef | null) => void
+
+/**
+ * „Piloti prüfen lassen, was behoben ist" under a group of marks set on an
+ * earlier Fassung: the review's own Piloti ask, scoped to these marks. Busy
+ * while Piloti works on anything here (one turn at a time), and says so while
+ * it checks this group.
+ */
+function CheckFixedButton({
+  review,
+  marks,
+  from,
+  onCheckFixed,
+}: {
+  review: DocumentReview
+  marks: readonly AnnotationView[]
+  from: FassungRef | null
+  onCheckFixed: CheckFixed
+}): JSX.Element {
+  const t = useTranslations('files')
+  const target = from?.id ?? review.documentId
+  const running = review.piloti.asks.some(
+    (ask) => ask.status === 'thinking' && ask.checkFixed?.documentId === target
+  )
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-6 gap-1 px-2 text-xs"
+      disabled={review.piloti.busy}
+      data-testid={from ? 'review-check-fixed-from' : 'review-check-fixed-earlier'}
+      onClick={() => onCheckFixed(marks, from)}
+    >
+      {running ? <Spinner size="sm" /> : <Sparkles className="size-3" aria-hidden />}
+      {running ? t('review.checkFixed.running') : t('review.checkFixed.action')}
+    </Button>
+  )
+}
+
+/**
+ * One mark in the list, a button that opens it (`MarkRowContent` says what it
+ * is, as a project's Offene Punkte does). Memoised on its mark: a list of five
+ * hundred redraws the row that changed.
  */
 const Row = memo(function Row({
   annotation,
   viewerId,
   selected,
+  unread,
   onHover,
   onOpen,
 }: {
@@ -34,15 +82,11 @@ const Row = memo(function Row({
   /** The reader, so a mention of them stands out. */
   viewerId: string | null
   selected: boolean
+  /** Its thread has news the reader has not opened: the pin's dot, and said in words. */
+  unread: boolean
   onHover: (annotationId: string | null) => void
   onOpen: OpenMark
 }): JSX.Element {
-  const t = useTranslations('files')
-  const { locale } = useLocale()
-  const byline = usePilotiByline()
-  const overdue = isOverdue(annotation, localCalendarDay())
-  const author =
-    annotation.authorKind === 'piloti' ? byline(annotation.createdByName) : (annotation.createdByName ?? t('review.someone'))
   return (
     <li>
       <button
@@ -53,57 +97,9 @@ const Row = memo(function Row({
         onClick={(event) => onOpen(annotation, event.detail === 0)}
         onPointerEnter={() => onHover(annotation.id)}
         onPointerLeave={() => onHover(null)}
-        className={cn(
-          'flex w-full gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-quick ease-out outline-none',
-          'hover:bg-accent/60 focus-visible:ring-ring/60 focus-visible:ring-2',
-          selected && 'bg-accent'
-        )}
+        className={markRowClassName(selected)}
       >
-        <span className="pt-0.5">
-          <CommentPin
-            as="span"
-            number={annotation.number}
-            color={markInk(annotation)}
-            proposed={annotation.status === 'proposed'}
-            done={!isLive(annotation)}
-          />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className={cn('text-foreground line-clamp-2 text-sm leading-5', !isLive(annotation) && 'text-muted-foreground')}>
-            <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={viewerId} clamped />
-          </span>
-          {/* Items separated by space and their own icons, never a leading „·"
-              when a line wraps; each item keeps to one line. */}
-          <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs" data-testid="review-row-meta">
-            <span className="whitespace-nowrap">{t(`annotations.kinds.${annotation.kind}`)}</span>
-            <span className="min-w-0 truncate">{author}</span>
-            {annotation.assigneeName && (
-              <span className="inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap">
-                <UserRound className="size-3 shrink-0" aria-hidden />
-                <span className="truncate">{annotation.assigneeName}</span>
-              </span>
-            )}
-            {annotation.replies.length > 0 && (
-              <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
-                <MessageCircle className="size-3" aria-hidden />
-                {annotation.replies.length}
-              </span>
-            )}
-            {annotation.dueOn && (
-              <span className={cn('inline-flex items-center gap-0.5 whitespace-nowrap', overdue && 'text-foreground font-semibold')}>
-                <Clock className="size-3" aria-hidden />
-                {overdue ? t('review.overdue') : formatDayRange(annotation.dueOn, annotation.dueOn, locale)}
-              </span>
-            )}
-          </span>
-          {!annotation.onCurrentFassung && (
-            <span className="text-muted-foreground mt-0.5 block text-xs italic" title={t('annotations.earlierFassungHint')}>
-              {annotation.fassungNumber
-                ? t('annotations.earlierFassung', { number: annotation.fassungNumber })
-                : t('annotations.earlierFassungUnnumbered')}
-            </span>
-          )}
-        </span>
+        <MarkRowContent annotation={annotation} viewerId={viewerId} unread={unread} />
       </button>
     </li>
   )
@@ -138,8 +134,9 @@ function Pages({
                 <Row
                   key={annotation.id}
                   annotation={annotation}
-                  viewerId={review.viewerId}
+                  viewerId={review.me}
                   selected={annotation.id === review.selectedId}
+                  unread={review.unread.has(annotation.id) && annotation.id !== review.selectedId}
                   onHover={review.hover}
                   onOpen={onOpen}
                 />
@@ -151,24 +148,248 @@ function Pages({
   )
 }
 
+/** Carry marks on, one or all, and say so when not all of them went. */
+function useCarrying(review: DocumentReview) {
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const carry = async (marks: readonly AnnotationView[]) => {
+    setBusy(true)
+    setFailed(false)
+    const { failed: missed } = await review.carryAll(marks)
+    setFailed(missed > 0)
+    setBusy(false)
+  }
+  return { busy, failed, carry }
+}
+
+/**
+ * The open marks of this document set on an earlier Fassung, listed under
+ * Offen and drawn as ghosts where they stood (`isGhostMark`): how many,
+ * and „Alle übernehmen", which carries each the way its card's „Auf aktuelle
+ * Fassung übernehmen" does.
+ */
+function EarlierBar({ review, onCheckFixed }: { review: DocumentReview; onCheckFixed?: CheckFixed }): JSX.Element | null {
+  const t = useTranslations('files')
+  const { busy, failed, carry } = useCarrying(review)
+  const marks = review.annotations.filter((annotation) => !annotation.onCurrentFassung && annotation.carryTarget)
+  if (marks.length === 0) return null
+  return (
+    <div className="bg-muted/40 mx-0.5 mb-2 space-y-1 rounded-xl px-2.5 py-2" data-testid="review-earlier-bar">
+      <div className="flex items-center gap-2">
+        <History className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+        <span className="text-foreground min-w-0 flex-1 text-xs font-medium">{t('review.earlierOpen', { count: marks.length })}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          disabled={busy}
+          data-testid="review-carry-all-earlier"
+          onClick={() => void carry(marks)}
+        >
+          {t('review.carryAll')}
+        </Button>
+      </div>
+      {onCheckFixed && <CheckFixedButton review={review} marks={marks} from={null} onCheckFixed={onCheckFixed} />}
+      {failed && <p className="text-destructive text-[11px] leading-4">{t('review.carryFailed')}</p>}
+    </div>
+  )
+}
+
+/**
+ * The open marks of a document this one replaces (Index B, filed again as this
+ * one under another name), read-only, under „Aus Fassung B": each carried on
+ * as a linked mark by „Übernehmen", or all of them at once, where the server
+ * says this reader's carry goes through (`carryTarget`), named by where it
+ * lands; „Fassungen vergleichen" lays the two side by side first. A list that
+ * could not be read says so, with a retry.
+ */
+function CarriedFrom({
+  review,
+  group,
+  onCheckFixed,
+}: {
+  review: DocumentReview
+  group: CarriedGroup
+  onCheckFixed?: CheckFixed
+}): JSX.Element {
+  const t = useTranslations('files')
+  const { locale } = useLocale()
+  const { busy, failed, carry } = useCarrying(review)
+  const [resolveFailed, setResolveFailed] = useState(false)
+  const resolve = async (annotation: AnnotationView) => {
+    setResolveFailed(false)
+    await review.resolveCarried(annotation).catch(() => setResolveFailed(true))
+  }
+  const carryable = group.annotations.filter((annotation) => annotation.carryTarget)
+  /** The button's words: „Übernehmen" when it lands here, else the document it lands on; the row's mark for a screen reader. */
+  const carryWords = (annotation: AnnotationView, target: CarryTargetView) =>
+    target.documentId === review.documentId
+      ? { label: t('review.carry'), aria: t('review.carryMark', { number: annotation.number }) }
+      : {
+          label: t('review.carryTo', { name: target.documentName }),
+          aria: t('review.carryMarkTo', { number: annotation.number, name: target.documentName }),
+        }
+  const compare =
+    typeof window === 'undefined' ? null : compareFromReviewHref(window.location, review.documentId, group.from.id)
+  return (
+    <section
+      data-testid="review-carried-group"
+      aria-label={t('review.carriedGroup', { name: group.from.filename })}
+      className="mx-0.5 mb-2 rounded-xl border"
+    >
+      <div className="space-y-1 px-2.5 pt-2 pb-1">
+        <div className="flex items-center gap-2">
+          <History className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+          <h3 className="text-foreground min-w-0 flex-1 truncate text-xs font-semibold">
+            {t('review.carriedGroup', { name: group.from.filename })}
+          </h3>
+          {carryable.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              disabled={busy}
+              data-testid="review-carry-all-from"
+              onClick={() => void carry(carryable)}
+            >
+              {t('review.carryAll')}
+            </Button>
+          )}
+        </div>
+        <p className="text-muted-foreground text-[11px] leading-4">{t('review.carriedGroupHint', { name: group.from.filename })}</p>
+        {onCheckFixed && carryable.length > 0 && (
+          <CheckFixedButton review={review} marks={carryable} from={group.from} onCheckFixed={onCheckFixed} />
+        )}
+        {compare && (
+          <NextLink
+            href={compare}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] underline underline-offset-2"
+            data-testid="review-compare-fassungen"
+          >
+            <GitCompare className="size-3" aria-hidden />
+            {t('review.compareFassungen')}
+          </NextLink>
+        )}
+      </div>
+      {group.load === 'error' && (
+        <div className="space-y-2 px-2.5 pb-2" data-testid="review-carried-error">
+          <p className="text-muted-foreground text-[11px] leading-4">
+            {t('review.carriedLoadError', { name: group.from.filename })}
+          </p>
+          <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={review.retryCarried}>
+            {t('annotations.retry')}
+          </Button>
+        </div>
+      )}
+      <ul className="space-y-0.5 px-0.5 pb-1">
+        {group.annotations.map((annotation) => (
+          <li key={annotation.id} className="flex gap-3 rounded-lg px-2.5 py-2" data-testid="review-carried-row">
+            <span className="pt-0.5">
+              <CommentPin as="span" number={annotation.number} color={markInk(annotation)} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground line-clamp-2 text-sm leading-5">
+                <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={review.me} clamped />
+              </span>
+              <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs">
+                <span className="whitespace-nowrap">{t(`annotations.kinds.${annotation.kind}`)}</span>
+                {t('review.page', { page: annotation.page })}
+                {annotation.assigneeName && (
+                  <span className="inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap">
+                    <UserRound className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">{annotation.assigneeName}</span>
+                  </span>
+                )}
+                {annotation.dueOn && (
+                  <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+                    <Clock className="size-3" aria-hidden />
+                    {formatDayRange(annotation.dueOn, annotation.dueOn, locale)}
+                  </span>
+                )}
+              </span>
+              <PilotiVerdict annotation={annotation} viewerId={review.me} />
+              {annotation.carryTarget && (
+                <span className="mt-1.5 flex flex-wrap gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={busy}
+                    data-testid="review-carry-from"
+                    aria-label={carryWords(annotation, annotation.carryTarget).aria}
+                    onClick={() => void carry([annotation])}
+                  >
+                    {carryWords(annotation, annotation.carryTarget).label}
+                  </Button>
+                  {/* Fixed in this document: closed where it was set, by the person, never by Piloti. */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={busy}
+                    data-testid="review-resolve-from"
+                    aria-label={t('review.checkFixed.resolveMark', { number: annotation.number, name: group.from.filename })}
+                    onClick={() => void resolve(annotation)}
+                  >
+                    {t('review.checkFixed.resolve')}
+                  </Button>
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {failed && <p className="text-destructive px-2.5 pb-2 text-[11px] leading-4">{t('review.carryFailed')}</p>}
+      {resolveFailed && (
+        <p className="text-destructive px-2.5 pb-2 text-[11px] leading-4">{t('review.checkFixed.resolveFailed')}</p>
+      )}
+    </section>
+  )
+}
+
+/**
+ * What Piloti last said in a mark's thread, when its newest answer is Piloti's:
+ * on a row of a replaced document, whose thread this review does not open,
+ * it is how the person reads a check of what is fixed („In … behoben: …").
+ */
+function PilotiVerdict({ annotation, viewerId }: { annotation: AnnotationView; viewerId: string | null }): JSX.Element | null {
+  const t = useTranslations('files')
+  const newest = annotation.replies.at(-1)
+  if (newest?.authorKind !== 'piloti') return null
+  return (
+    <span className="text-muted-foreground mt-1 flex gap-1 text-xs leading-4" data-testid="review-carried-verdict">
+      <Sparkles className="mt-0.5 size-3 shrink-0" aria-hidden />
+      <span className="line-clamp-3 min-w-0">
+        <span className="sr-only">{t('review.checkFixed.verdict')}: </span>
+        <MarkBody text={newest.body} mentions={newest.mentions} viewerId={viewerId} clamped />
+      </span>
+    </span>
+  )
+}
+
 const FILTERS: ReviewFilter[] = ['open', 'closed']
 
 /**
  * The counts on the Offen / Erledigt tabs, over what the list would show:
- * with „Mir zugewiesen" on, only the marks assigned to or set by the reader,
- * the same marks the list holds, so a tab never promises six and shows two.
+ * with „Für Sie" on, only the reader's marks ({@link isForReader}), the same
+ * marks the list holds, so a tab never promises six and shows two. The Offen
+ * tab lists Piloti's untaken proposals too, and counts them apart, as
+ * Dateien's chip does („2 offen · 12 Vorschläge"): `open` is the office's own
+ * open marks, `proposed` the proposals. With „Für Sie" on its `open` is the
+ * number the chip says „für Sie".
  */
 export function tabCounts(
-  annotations: readonly Pick<AnnotationView, 'status' | 'assigneeUserId' | 'createdBy'>[],
+  annotations: readonly Pick<AnnotationView, 'status' | 'assigneeUserId'>[],
   mine: { on: boolean; me: string | null }
-): Record<ReviewFilter, number> {
-  const shown = mine.on
-    ? annotations.filter(
-        (annotation) => mine.me !== null && (annotation.assigneeUserId === mine.me || annotation.createdBy === mine.me)
-      )
-    : annotations
+): Record<ReviewFilter | 'proposed', number> {
+  const shown = mine.on ? annotations.filter((annotation) => isForReader(annotation, mine.me)) : annotations
   return {
-    open: shown.filter((annotation) => isLive(annotation)).length,
+    open: shown.filter((annotation) => annotation.status === 'open').length,
+    proposed: shown.filter((annotation) => annotation.status === 'proposed').length,
     closed: shown.filter((annotation) => !isLive(annotation)).length,
   }
 }
@@ -184,12 +405,15 @@ export function ReviewPanel({
   review,
   onOpen,
   onWalkProposals,
+  onCheckFixed,
   presentation = 'rail',
 }: {
   review: DocumentReview
   onOpen: OpenMark
   /** Start going through Piloti's proposals one by one. */
   onWalkProposals?: () => void
+  /** Have Piloti check what of the earlier Fassungen' open marks is fixed; absent where Piloti cannot be asked. */
+  onCheckFixed?: CheckFixed
   /**
    * `rail`: the column beside the sheet, from `lg`. `sheet`: the same list in
    * a sheet from the bottom edge, which is how a phone (and a phone on its
@@ -200,7 +424,7 @@ export function ReviewPanel({
 }): JSX.Element {
   const t = useTranslations('files')
   const { listed, filter, setFilter, load, mine, setMine } = review
-  const counts = tabCounts(review.annotations, { on: mine, me: review.room.self?.userId ?? null })
+  const counts = tabCounts(review.annotations, { on: mine, me: review.me })
   const [proposalsOpen, setProposalsOpen] = useState(true)
   const proposals = filter === 'open' ? listed.filter((annotation) => annotation.status === 'proposed') : []
   const rest = listed.filter((annotation) => !proposals.includes(annotation))
@@ -233,6 +457,11 @@ export function ReviewPanel({
               >
                 {t(`review.filters.${option}`)}
                 <span className="text-muted-foreground font-mono tabular-nums">{count}</span>
+                {option === 'open' && counts.proposed > 0 && (
+                  <span className="text-muted-foreground" data-testid="review-filter-open-proposed">
+                    · {t('annotations.listedProposedShort', { count: counts.proposed })}
+                  </span>
+                )}
               </button>
             )
           })}
@@ -263,57 +492,98 @@ export function ReviewPanel({
               {t('annotations.retry')}
             </Button>
           </div>
-        ) : listed.length === 0 ? (
-          <EmptyList review={review} />
         ) : (
           <>
-            {proposals.length > 0 && (
-              <section
-                data-testid="review-proposals"
-                className="border-foreground/25 mx-0.5 mb-2 rounded-xl border border-dashed"
-              >
-                <div className="flex items-center gap-2 px-2.5 py-2">
-                  <button
-                    type="button"
-                    aria-expanded={proposalsOpen}
-                    onClick={() => setProposalsOpen((open) => !open)}
-                    className="text-foreground flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold"
-                  >
-                    <Sparkles className="size-3.5" aria-hidden />
-                    {t('review.proposalsGroup', { count: proposals.length })}
-                    <ChevronDown
-                      className={cn('text-muted-foreground size-3.5 transition-transform duration-quick', !proposalsOpen && '-rotate-90')}
-                      aria-hidden
-                    />
-                  </button>
-                  {onWalkProposals && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      data-testid="review-walk-proposals"
-                      onClick={onWalkProposals}
-                    >
-                      {t('review.walkProposals')}
-                    </Button>
-                  )}
-                </div>
-                {proposalsOpen && (
-                  <div className="px-0.5 pb-1">
-                    <Pages marks={proposals} review={review} onOpen={onOpen} />
-                    <p className="text-muted-foreground px-2.5 pt-1 pb-1.5 text-[11px] leading-4" data-testid="review-proposals-legend">
-                      {t('review.proposalsLegend')}
-                    </p>
-                  </div>
-                )}
-              </section>
+            {filter === 'open' &&
+              review.carried.map((group) => (
+                <CarriedFrom key={group.from.id} review={review} group={group} onCheckFixed={onCheckFixed} />
+              ))}
+            {filter === 'open' && <EarlierBar review={review} onCheckFixed={onCheckFixed} />}
+            {listed.length === 0 ? (
+              <EmptyList review={review} />
+            ) : (
+              <ListedMarks
+                review={review}
+                proposals={proposals}
+                rest={rest}
+                proposalsOpen={proposalsOpen}
+                setProposalsOpen={setProposalsOpen}
+                onOpen={onOpen}
+                onWalkProposals={onWalkProposals}
+              />
             )}
-            <Pages marks={rest} review={review} onOpen={onOpen} />
           </>
         )}
       </div>
     </aside>
+  )
+}
+
+/** The list proper: Piloti's proposals as a group with one way through them, then the rest by page. */
+function ListedMarks({
+  review,
+  proposals,
+  rest,
+  proposalsOpen,
+  setProposalsOpen,
+  onOpen,
+  onWalkProposals,
+}: {
+  review: DocumentReview
+  proposals: readonly AnnotationView[]
+  rest: readonly AnnotationView[]
+  proposalsOpen: boolean
+  setProposalsOpen: (update: (open: boolean) => boolean) => void
+  onOpen: OpenMark
+  onWalkProposals?: () => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  return (
+    <>
+      {proposals.length > 0 && (
+        <section
+          data-testid="review-proposals"
+          className="border-foreground/25 mx-0.5 mb-2 rounded-xl border border-dashed"
+        >
+          <div className="flex items-center gap-2 px-2.5 py-2">
+            <button
+              type="button"
+              aria-expanded={proposalsOpen}
+              onClick={() => setProposalsOpen((open) => !open)}
+              className="text-foreground flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-semibold"
+            >
+              <Sparkles className="size-3.5" aria-hidden />
+              {t('review.proposalsGroup', { count: proposals.length })}
+              <ChevronDown
+                className={cn('text-muted-foreground size-3.5 transition-transform duration-quick', !proposalsOpen && '-rotate-90')}
+                aria-hidden
+              />
+            </button>
+            {onWalkProposals && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                data-testid="review-walk-proposals"
+                onClick={onWalkProposals}
+              >
+                {t('review.walkProposals')}
+              </Button>
+            )}
+          </div>
+          {proposalsOpen && (
+            <div className="px-0.5 pb-1">
+              <Pages marks={proposals} review={review} onOpen={onOpen} />
+              <p className="text-muted-foreground px-2.5 pt-1 pb-1.5 text-[11px] leading-4" data-testid="review-proposals-legend">
+                {t('review.proposalsLegend')}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+      <Pages marks={rest} review={review} onOpen={onOpen} />
+    </>
   )
 }
 

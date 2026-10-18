@@ -2,11 +2,12 @@
  * The typed client for who is on the hook for a resource (ADR-0055), the one
  * place the browser writes the paths of `/api/assignments/{type}/{id}`: who is
  * assigned (GET), assigning and releasing a person (POST, DELETE), and the
- * people who could be (`…/candidates`: who could open it now,
- * `listAssignmentCandidates`, for a document `mayOpenDocument`). The
- * Zuständige picker and the Anmerkung composer's „@" picker read the same
- * candidates, so whom a mark may be assigned to and whom it may mention cannot
- * drift.
+ * people who could be (`…/candidates`): who could open it now
+ * (`listAssignmentCandidates`, for a document `mayOpenDocument`), or with
+ * `access: 'write'` who could change it (`mayWriteDocument`). A document's
+ * assignee and whom an Anmerkung may mention read the first list; a mark's
+ * Zuständige, who must answer and close it, the second, which the server
+ * checks again on every write.
  *
  * No `server-only`: the browser imports this.
  */
@@ -69,13 +70,19 @@ export async function releasePerson(
   )
 }
 
-/** The people who could open the resource, the caller left out, by name. Throws on a refusal: a failed load is not „nobody". */
+/**
+ * The people who could open (or, with `access: 'write'`, change) the resource,
+ * the caller left out, by name. Throws on a refusal: a failed load is not
+ * „nobody".
+ */
 export async function listAssignmentCandidates(
   resourceType: string,
   resourceId: string,
+  options: { access?: 'read' | 'write' } = {},
   run: AssignmentFetch = defaultFetch
 ): Promise<DirectoryPerson[]> {
-  const response = await run(`${resourcePath(resourceType, resourceId)}/candidates`)
+  const query = options.access === 'write' ? '?access=write' : ''
+  const response = await run(`${resourcePath(resourceType, resourceId)}/candidates${query}`)
   if (!response.ok) throw new Error(`candidates ${response.status}`)
   const body = (await response.json()) as { candidates?: DirectoryPerson[] }
   return body.candidates ?? []

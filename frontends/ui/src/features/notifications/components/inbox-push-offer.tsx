@@ -50,16 +50,31 @@ function markShown(): void {
   }
 }
 
-/** Who to name: the newest thing waiting on the person, if a person caused it. */
-async function newestAsker(client: InboxClient): Promise<{ actor: string | null; mentioned: boolean }> {
+/** What the newest request is, for the sentence that names it. */
+type Asker = { kind: 'piloti' } | { kind: 'person'; actor: string | null; mentioned: boolean }
+
+/**
+ * Who to name: the newest thing waiting on the person. Piloti's Rückfrage
+ * (`piloti.asks_you`) is Piloti's, whoever its turn acted for, so the offer
+ * says Piloti asked rather than that somebody needs them.
+ */
+async function newestAsker(client: InboxClient): Promise<Asker> {
   try {
     // A request, never an FYI: the sentence must not name someone who only replied.
     const page = await client.list({ filter: 'requests' })
     const newest = page.items[0]
-    return { actor: newest?.actorName ?? null, mentioned: newest?.type === 'mention.requested' }
+    if (newest?.type === 'piloti.asks_you') return { kind: 'piloti' }
+    return { kind: 'person', actor: newest?.actorName ?? null, mentioned: newest?.type === 'mention.requested' }
   } catch {
-    return { actor: null, mentioned: false }
+    return { kind: 'person', actor: null, mentioned: false }
   }
+}
+
+/** The offer's first sentence, by who is waiting. */
+function offerKey(asker: Asker): 'offer.piloti' | 'offer.mentioned' | 'offer.actor' | 'offer.someone' {
+  if (asker.kind === 'piloti') return 'offer.piloti'
+  if (!asker.actor) return 'offer.someone'
+  return asker.mentioned ? 'offer.mentioned' : 'offer.actor'
 }
 
 export function InboxPushOffer({
@@ -120,10 +135,8 @@ function OfferWhenDue({ client }: { client: InboxClient }): JSX.Element | null {
     }
     offered.current = true
     markShown()
-    void newestAsker(client).then(({ actor, mentioned }) => {
-      const message = actor
-        ? t(mentioned ? 'offer.mentioned' : 'offer.actor', { actor })
-        : t('offer.someone')
+    void newestAsker(client).then((asker) => {
+      const message = t(offerKey(asker), asker.kind === 'person' && asker.actor ? { actor: asker.actor } : undefined)
       toast(message, {
         id: TOAST_ID,
         duration: OFFER_MS,

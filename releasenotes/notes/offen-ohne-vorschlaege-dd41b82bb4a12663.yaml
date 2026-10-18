@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    „offen“ now counts the same everywhere: Piloti's proposals that nobody has
+    taken over are no longer counted as open in Dateien, in the Prüfansicht or
+    before a Freigabe. They are named on their own, „2 offen · 12 Vorschläge“,
+    so the number matches Offene Punkte and the Protokoll.

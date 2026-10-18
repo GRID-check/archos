@@ -17,13 +17,18 @@ import { server } from '@/mocks/server'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import type { RoomFrame } from '@/lib/annotations/room-types'
 import type { AnnotationView } from '@/lib/annotations/types'
-import { useDocumentReview, type ReviewTool } from '../../hooks/use-document-review'
+import { useDocumentReview, type ReviewFassung, type ReviewTool } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
 import { DocumentReviewMode, TOOLS_INTRO_KEY } from './document-review'
+import { REVIEW_TOASTER } from './review-toaster'
 
 vi.mock('@/features/chat', () => ({
   useChatStore: (selector: (state: { currentUserId: string }) => unknown) => selector({ currentUserId: 'user_me' }),
 }))
+
+const toastMock = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), dismiss: vi.fn() }))
+// The real Toaster, so the review's own mounts; only the calls are watched.
+vi.mock('sonner', async (importOriginal) => ({ ...(await importOriginal<typeof import('sonner')>()), toast: toastMock }))
 
 vi.mock('@/features/knowledge/components/pdf-document-view', () => ({
   PdfDocumentView: ({ pageOverlay, toolbarLead }: { pageOverlay?: (page: number) => ReactNode; toolbarLead?: ReactNode }) => (
@@ -87,13 +92,17 @@ function Host({
   popoutHref,
   initialTool,
   onOpenChange = () => {},
+  fassung = null,
+  protocolFiling = null,
 }: {
   popoutHref?: string | null
   initialTool?: ReviewTool
   onOpenChange?: (open: boolean) => void
+  fassung?: ReviewFassung | null
+  protocolFiling?: { projectId: string; folderId: string | null } | null
 }) {
   const [transport] = useState(room)
-  const review = useDocumentReview('doc_1', { enabled: true, transport })
+  const review = useDocumentReview('doc_1', { enabled: true, transport, fassung })
   return (
     <DocumentReviewMode
       open
@@ -103,6 +112,7 @@ function Host({
       canPickAssignee={false}
       popoutHref={popoutHref}
       initialTool={initialTool}
+      protocolFiling={protocolFiling}
     />
   )
 }
@@ -118,6 +128,49 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('filing the Protokoll', () => {
+  const FILING = { projectId: 'proj_1', folderId: 'folder_plans' }
+  const served = (canAnnotate: boolean) =>
+    server.use(
+      http.get('/api/documents/:id/annotations', () =>
+        HttpResponse.json({ annotations: [view({ id: 'm1' })], canAnnotate, pilotiWakes: false })
+      )
+    )
+
+  it('offers „Im Projekt ablegen“ to whoever may write the document’s folder', async () => {
+    served(true)
+    const user = userEvent.setup()
+    render(<Host protocolFiling={FILING} />)
+    await user.click(await screen.findByRole('button', { name: 'Export minutes' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'File in the project' })).toBeInTheDocument()
+  })
+
+  it('offers only the download to a reader who may not write there: the upload would refuse them', async () => {
+    served(false)
+    const user = userEvent.setup()
+    render(<Host protocolFiling={FILING} />)
+    await user.click(await screen.findByRole('button', { name: 'Export minutes' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'PDF' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'File in the project' })).not.toBeInTheDocument()
+  })
+})
+
+describe('the header', () => {
+  it('says when another document replaces this one, and when this one replaces another', async () => {
+    serve([])
+    const replaced = render(
+      <Host fassung={{ replacedBy: { id: 'doc_c', filename: 'Grundriss Index C.pdf' }, replaces: [] }} />
+    )
+    expect(await screen.findByText(/Replaced by “Grundriss Index C\.pdf”/)).toBeInTheDocument()
+    replaced.unmount()
+
+    render(<Host fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }} />)
+    expect(await screen.findByText(/Replaces “Grundriss Index B\.pdf”/)).toBeInTheDocument()
+  })
 })
 
 describe('the tools', () => {
@@ -189,6 +242,85 @@ describe('going through the proposals', () => {
     await userEvent.click(within(thread).getByTestId('thread-walk-next'))
     expect(within(screen.getByTestId('review-thread')).getByText('Dritter Befund')).toBeInTheDocument()
     expect(screen.getByTestId('thread-walk')).toHaveTextContent('2/2')
+  })
+})
+
+/**
+ * E and ⌫ decide with one key, which is easy to hit by mistake: the decision
+ * shows at once, the toast names it with „Rückgängig", and it is sent only
+ * when the toast's window closes, with the status the mark had. Undone, it
+ * never reaches the server.
+ */
+describe('deciding by a key', () => {
+  type Toasted = [string, { action: { label: string; onClick: () => void }; duration: number; toasterId?: string }]
+  const lastToast = () => toastMock.mock.calls.at(-1) as Toasted
+
+  beforeEach(() => {
+    toastMock.mockClear()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const patches = () => {
+    const patched: unknown[] = []
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ request, params }) => {
+        const body = (await request.json()) as { status: AnnotationView['status'] }
+        patched.push(body)
+        return HttpResponse.json({ annotation: view({ id: String(params.annotationId), authorKind: 'piloti', status: body.status }) })
+      })
+    )
+    return patched
+  }
+
+  it('takes ⌫ on a proposal back with „Rückgängig": shown dismissed at once, nothing sent, the proposal back', async () => {
+    serve([view({ id: 'p1', number: 4, authorKind: 'piloti', status: 'proposed' })])
+    const patched = patches()
+    render(<Host />)
+    await screen.findByTestId('review-row')
+
+    fireEvent.keyDown(window, { key: 'j' })
+    await screen.findByTestId('review-thread')
+    fireEvent.keyDown(window, { key: 'Backspace' })
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalled())
+    const [message, options] = lastToast()
+    expect(message).toBe('Annotation 4 dismissed')
+    expect(options.action.label).toBe('Undo')
+    expect(screen.getByTestId('review-thread')).toHaveTextContent('Dismissed')
+    // In the review's own toaster, inside its dialog at the canvas's foot: the
+    // app's sits over the review's header and list, outside the modal dialog,
+    // where „Undo" could not be clicked.
+    expect(options.toasterId).toBe(REVIEW_TOASTER)
+    expect(within(screen.getByTestId('review-canvas')).getByRole('region', { name: /Notifications/ })).toBeInTheDocument()
+
+    act(() => options.action.onClick())
+    await act(async () => {
+      vi.advanceTimersByTime(6_000)
+    })
+    expect(patched).toEqual([])
+    expect(screen.getByTestId('thread-accept')).toBeInTheDocument()
+  })
+
+  it('sends E on an open mark once the window closes, with the status the card showed', async () => {
+    serve([view({ id: 'ann_1', number: 2 })])
+    const patched = patches()
+    render(<Host />)
+    await screen.findByTestId('review-row')
+
+    fireEvent.keyDown(window, { key: 'j' })
+    await screen.findByTestId('review-thread')
+    fireEvent.keyDown(window, { key: 'e' })
+    await waitFor(() => expect(toastMock).toHaveBeenCalled())
+    expect(lastToast()[0]).toBe('Annotation 2 resolved')
+    expect(patched).toEqual([])
+
+    await act(async () => {
+      vi.advanceTimersByTime(6_000)
+    })
+    await waitFor(() => expect(patched).toEqual([{ status: 'resolved', expectedStatus: 'open' }]))
   })
 })
 
@@ -524,5 +656,96 @@ describe('the tools spelled out, on a narrow stage', () => {
     // Folded, the glyph still says its name and key where a pointer finds it: the icons' tooltip.
     await userEvent.hover(point)
     expect(await screen.findByRole('tooltip')).toHaveTextContent(/Comment\s*C/)
+  })
+})
+
+describe('the list on a phone', () => {
+  // Under `lg` the list is not beside the sheet: a button in the header opens it.
+  const realMatchMedia = window.matchMedia
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: query === '(min-width: 1024px)' ? false : realMatchMedia(query).matches,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia
+  })
+  afterEach(() => {
+    window.matchMedia = realMatchMedia
+  })
+
+  it('shows the open marks, as „offen“ counts them, and names the whole sentence', async () => {
+    serve([
+      view({ id: 'a1' }),
+      view({ id: 'a2', number: 2, x: 0.4 }),
+      view({ id: 'p1', number: 3, x: 0.6, authorKind: 'piloti', status: 'proposed' }),
+    ])
+    render(<Host />)
+    await screen.findAllByTestId('review-row')
+    const button = screen.getByTestId('review-list-open')
+    expect(button).toHaveTextContent(/^2$/)
+    expect(button).toHaveAccessibleName('Annotations: 2 open annotations and 1 proposal from Piloti')
+  })
+
+  it('says when nothing is open', async () => {
+    serve([])
+    render(<Host />)
+    await screen.findByTestId('review-empty')
+    expect(screen.getByTestId('review-list-open')).toHaveAccessibleName('Annotations: Nothing open')
+  })
+})
+
+describe('a mark’s link', () => {
+  const copied = async () => {
+    const writeText = vi.fn((_text: string) => Promise.resolve())
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+    await act(async () => {
+      await userEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }))
+    })
+    return new URL(writeText.mock.calls[0][0])
+  }
+
+  it('is the mark on its shelf, without the tool in hand or the page this reader came from', async () => {
+    const before = window.location.href
+    window.history.replaceState(null, '', '/app/projects/p1/files?doc=doc_1&review=1&mark=ann_1&tool=point&back=%2Fapp%2Finbox')
+    try {
+      serve([view({ id: 'ann_1' })])
+      render(<Host popoutHref="/app/projects/p1/files?doc=doc_1&review=1" />)
+      const url = await copied()
+      expect(`${url.pathname}${url.search}`).toBe('/app/projects/p1/files?doc=doc_1&review=1&mark=ann_1')
+    } finally {
+      window.history.replaceState(null, '', before)
+    }
+  })
+
+  it('is this page’s, at the mark, where the review has no shelf of its own to open on', async () => {
+    const before = window.location.href
+    window.history.replaceState(null, '', '/app/archiv?doc=doc_1&review=1&tool=region&back=%2Fapp%2Finbox&folder=f1')
+    try {
+      serve([view({ id: 'ann_1' })])
+      render(<Host />)
+      const url = await copied()
+      expect(`${url.pathname}${url.search}`).toBe('/app/archiv?doc=doc_1&folder=f1&review=1&mark=ann_1')
+    } finally {
+      window.history.replaceState(null, '', before)
+    }
+  })
+})
+
+describe('opening the review reads the news about new marks', () => {
+  it('reads the document’s „15 Anmerkungen gesetzt“ rows, which no pin’s dot carries', async () => {
+    const reads: unknown[] = []
+    serve([view({ id: 'm1' })])
+    server.use(
+      http.post('/api/inbox/read', async ({ request }) => {
+        reads.push(await request.json())
+        return HttpResponse.json({ affected: 1, pending: 0 })
+      })
+    )
+    render(<Host />)
+    await waitFor(() => expect(reads).toContainEqual({ resourceType: 'document', resourceId: 'doc_1', marksSet: true }))
   })
 })

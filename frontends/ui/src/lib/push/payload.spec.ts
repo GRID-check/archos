@@ -7,7 +7,8 @@ vi.mock('server-only', () => ({}))
 
 import { DEFAULT_PUSH_PREFERENCES } from '@/lib/inbox/push-categories'
 import type { InboxItemView } from '@/lib/inbox/types'
-import { buildPushMessage, isSameOriginPath, pushTagFor } from './payload'
+import { INBOX_TYPE_DEFINITIONS } from '@/lib/inbox/registry'
+import { buildFoldedPushMessage, buildPushMessage, pushTagFor } from './payload'
 
 function item(overrides: Partial<InboxItemView> = {}): InboxItemView {
   return {
@@ -28,6 +29,7 @@ function item(overrides: Partial<InboxItemView> = {}): InboxItemView {
     excerpt: 'Ist die Brandwand hier nach EN 1366 geprüft? (vertraulicher Auszug)',
     mentions: [],
     variant: null,
+    answerIn: null,
     createdAt: '2026-10-15T10:00:00.000Z',
     updatedAt: '2026-10-15T10:00:00.000Z',
     ...overrides,
@@ -87,14 +89,44 @@ describe('the tag and Topic of a group', () => {
   })
 })
 
-describe('same-origin paths', () => {
-  it.each([
-    ['/app/inbox', true],
-    ['//evil.example', false],
-    ['https://x.example', false],
-    ['/\\evil.example', false],
-    ['app/inbox', false],
-  ])('%s -> %s', (value, expected) => {
-    expect(isSameOriginPath(value)).toBe(expected)
+describe('one notification for a burst of rows (the fold)', () => {
+  const fold = INBOX_TYPE_DEFINITIONS['annotation.assigned_to_you'].push.fold
+  const mark = (id: string, variant: string) =>
+    item({
+      id,
+      type: 'annotation.assigned_to_you',
+      resourceType: 'document',
+      variant,
+      href: `/app/projects/p1/files?doc=d1&review=1&mark=${id}`,
+      related: '4',
+      subject: 'Grundriss EG',
+    })
+
+  it('counts the morning’s reminders in one line, the overdue first, and opens the inbox naming no item', () => {
+    if (!fold) throw new Error('annotation.assigned_to_you folds')
+    const items = [mark('a', 'due_soon'), mark('b', 'overdue'), mark('c', 'due_soon'), mark('d', 'due_soon')]
+    const message = buildFoldedPushMessage(items, fold, DEFAULT_PUSH_PREFERENCES, 'de')
+    expect(message).toMatchObject({
+      title: '4 Anmerkungen für Sie',
+      body: '1 überfällig, 3 heute oder morgen fällig',
+      url: '/app/inbox',
+      itemId: '',
+      // The burst's own tag, after its newest item: a later burst stands beside it, a retry replaces it.
+      tag: pushTagFor('fold:annotation.assigned_to_you:a'),
+    })
+    expect(buildFoldedPushMessage([mark('a', 'person'), mark('b', 'piloti'), mark('c', 'due')], fold, DEFAULT_PUSH_PREFERENCES, 'en')).toMatchObject({
+      title: '3 annotations for you',
+      body: '2 assigned, 1 with a new due date',
+    })
+  })
+
+  it('names nothing with the preview off, and leaves a single item to its own words', () => {
+    if (!fold) throw new Error('annotation.assigned_to_you folds')
+    const items = [mark('a', 'due_soon'), mark('b', 'overdue')]
+    expect(buildFoldedPushMessage(items, fold, { ...DEFAULT_PUSH_PREFERENCES, showContent: false }, 'de')).toMatchObject({
+      title: 'Neue Nachricht in Piloti',
+      body: null,
+    })
+    expect(buildFoldedPushMessage([mark('a', 'due_soon')], fold, DEFAULT_PUSH_PREFERENCES, 'de')).toBeNull()
   })
 })

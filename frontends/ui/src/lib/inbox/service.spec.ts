@@ -44,8 +44,10 @@ vi.mock('./repository', () => ({
 // render the real repository's WHERE clause with drizzle's dialect. `@/lib/db` is
 // mocked so no connection is ever opened.
 vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
+vi.mock('@/lib/documents/can-write', () => ({ canWriteDocument: vi.fn() }))
 
 import { PgDialect } from 'drizzle-orm/pg-core'
+import { canWriteDocument } from '@/lib/documents/can-write'
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboxItem, InboxItemType } from '@/lib/db/schema'
@@ -71,6 +73,7 @@ import {
   markRead,
   markResourceItemsReadFor,
   markAnchorItemsReadFor,
+  markMarksSetReadFor,
   markUnread,
   unarchiveItem,
   decodeInboxCursor,
@@ -461,6 +464,25 @@ describe('listInbox — projection', () => {
     expect(byId.get('gone')!.variant).toBeNull()
   })
 
+  it('carries a mark’s date and a new Fassung’s open marks only in their shape, and withholds them when redacted', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', resourceId: 'conv_ok', payload: { dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 } }),
+      row({ id: 'junk', resourceId: 'conv_ok', payload: { dueOn: '24.10.2026', openMarks: '4', marksFassung: 2.5 } }),
+      row({ id: 'gone', resourceId: 'conv_gone', payload: { dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    expect(byId.get('ok')).toMatchObject({ dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 })
+    expect(byId.get('junk')).toMatchObject({ dueOn: null, openMarks: null, marksFassung: null })
+    expect(byId.get('gone')).toMatchObject({ dueOn: null, openMarks: null, marksFassung: null })
+  })
+
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([row({ actorUserId: 'user_deactivated' })])
     vi.mocked(resolvePeople).mockResolvedValue(new Map())
@@ -739,6 +761,18 @@ describe('the reader’s own read state and archive', () => {
       ...ALL_TYPES,
     ])
     expect(publishToUser).toHaveBeenCalledWith('user_1', { kind: 'inbox.changed', pending: 1 })
+  })
+
+  it('reads the rows about new marks when the caller opens the document’s review, and only those', async () => {
+    vi.mocked(repository.markResourceItemsRead).mockResolvedValue(1)
+    vi.mocked(repository.countPendingInboxItems).mockResolvedValue(0)
+
+    expect(await markMarksSetReadFor(session, 'document', 'doc_1')).toEqual({ affected: 1, pending: 0 })
+    expect(repository.markResourceItemsRead).toHaveBeenCalledWith('org_1', 'user_1', 'document', 'doc_1', {
+      groupAnchor: 'set:',
+      types: [...ALL_TYPES],
+    })
+    expect(publishToUser).toHaveBeenCalledWith('user_1', { kind: 'inbox.changed', pending: 0 })
   })
 
   it('nudges nobody when the mark had no news: every open inbox would re-read for nothing', async () => {
@@ -1116,6 +1150,27 @@ describe('emitInboxItems — repeated keys in one call', () => {
     await emitInboxItems([emission, emission])
     expect(repository.upsertInboxItems).toHaveBeenCalledTimes(2)
   })
+
+  it('writes one emission that stands for several occurrences as one row counting them all', async () => {
+    vi.mocked(repository.upsertInboxItems).mockResolvedValue([])
+    const emission = {
+      organizationId: 'org-1',
+      recipientUserId: 'lead',
+      type: 'annotation.activity' as const,
+      resourceType: 'document' as const,
+      resourceId: 'doc-1',
+      anchorId: 'ann-15',
+      actorUserId: 'miriam',
+      groupKey: 'annotation.activity:document:doc-1:set:created:miriam',
+    }
+    await emitInboxItems([{ ...emission, occurrences: 15 }, { ...emission, recipientUserId: 'uploader' }])
+
+    expect(repository.upsertInboxItems).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(repository.upsertInboxItems).mock.calls[0]?.[0].map((row) => [row.recipientUserId, row.count])).toEqual([
+      ['lead', 15],
+      ['uploader', 1],
+    ])
+  })
 })
 
 describe('resolveInboxItemsAnchoredOn', () => {
@@ -1226,5 +1281,90 @@ describe('viewInboxItemAs — the row as its recipient would be shown it', () =>
     expect(await viewInboxItemAs(platformSession, feedback)).toBeNull()
     vi.mocked(hasPlatformPermission).mockResolvedValue(true)
     expect((await viewInboxItemAs(platformSession, feedback))?.href).toBe('/app/platform/feedback?report=f1')
+  })
+})
+
+/**
+ * A request on a mark says where it may be answered, decided on the server:
+ * answering and closing a mark are writes, so a reader who may only read the
+ * document is offered neither; and Piloti's Rückfrage while events do not wake
+ * Piloti is answered in the Prüfansicht, which asks Piloti itself.
+ */
+describe('listInbox — where a request on a mark may be answered (answerIn)', () => {
+  const onMark = (overrides: Partial<InboxItem>) =>
+    row({
+      type: 'annotation.assigned_to_you',
+      resourceType: 'document',
+      resourceId: 'doc_w',
+      anchorId: 'ann_1',
+      actionable: true,
+      groupKey: 'annotation.assigned_to_you:document:doc_w:ann_1',
+      ...overrides,
+    })
+
+  beforeEach(() => {
+    vi.mocked(canWriteDocument).mockImplementation(async (_session, documentId) => documentId === 'doc_w')
+  })
+
+  it('offers the row to a reader who may write the document, and nothing to one who may only read it', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      onMark({ id: 'writer' }),
+      onMark({ id: 'reader', resourceId: 'doc_r', groupKey: 'g_r' }),
+      onMark({ id: 'mentioned', type: 'annotation.mentioned', groupKey: 'g_m' }),
+      // A mention reaches whoever may open the document: a reader is told, and only opens the mark.
+      onMark({ id: 'mentionedReader', type: 'annotation.mentioned', resourceId: 'doc_r', groupKey: 'g_mr' }),
+    ])
+
+    const { items } = await listInbox(session)
+
+    expect(Object.fromEntries(items.map((item) => [item.id, item.answerIn]))).toEqual({
+      writer: 'row',
+      reader: null,
+      mentioned: 'row',
+      mentionedReader: null,
+    })
+    // Each document is asked once, however many rows name it.
+    expect(vi.mocked(canWriteDocument).mock.calls.map(([, documentId]) => documentId).sort()).toEqual(['doc_r', 'doc_w'])
+  })
+
+  it('sends Piloti’s Rückfrage to the Prüfansicht while events do not wake Piloti, and keeps it in the row when they do', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([onMark({ id: 'asks', type: 'piloti.asks_you' })])
+
+    expect((await listInbox(session)).items[0]!.answerIn).toBe('review')
+
+    const wakes = makeSession({ featureFlags: ['collaboration', 'piloti-wakes'] })
+    expect((await listInbox(wakes)).items[0]!.answerIn).toBe('row')
+  })
+
+  it('lets an answer from the row address Piloti only where events wake it, and only where the row answers', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      onMark({ id: 'writer' }),
+      onMark({ id: 'reader', resourceId: 'doc_r', groupKey: 'g_r' }),
+    ])
+
+    const off = await listInbox(session)
+    expect(off.items.map((item) => [item.id, item.pilotiWakes])).toEqual([
+      ['writer', false],
+      ['reader', false],
+    ])
+
+    const on = await listInbox(makeSession({ featureFlags: ['collaboration', 'piloti-wakes'] }))
+    expect(on.items.map((item) => [item.id, item.pilotiWakes])).toEqual([
+      ['writer', true],
+      ['reader', false],
+    ])
+  })
+
+  it('asks nothing for a row that is no request on a mark, and offers nothing on an unreachable one', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'chat' }),
+      onMark({ id: 'fyi', type: 'annotation.activity', actionable: false, groupKey: 'g_a' }),
+      onMark({ id: 'gone', inertAt: at, groupKey: 'g_g' }),
+    ])
+
+    const { items } = await listInbox(session)
+
+    expect(items.map((item) => item.answerIn)).toEqual([null, null, null])
+    expect(canWriteDocument).not.toHaveBeenCalled()
   })
 })

@@ -99,7 +99,7 @@ export function InlineMarkPeek({
           />
           <div className="min-w-0 flex-1">
             <p className="text-foreground line-clamp-3 text-[13px] leading-5">
-              <MarkBody text={mark.body} mentions={mark.mentions} viewerId={review.viewerId} clamped />
+              <MarkBody text={mark.body} mentions={mark.mentions} viewerId={review.me} clamped />
             </p>
             <p className="text-muted-foreground mt-1 truncate text-xs">
               {[t(`annotations.kinds.${mark.kind}`), author, mark.replies.length > 0 ? t('annotations.replies', { count: mark.replies.length }) : null]

@@ -252,12 +252,43 @@ export async function filterUsersWhoMayReadFolder(
   folderId: string | null,
   userIds: readonly string[]
 ): Promise<Set<string>> {
+  return filterUsersByFolderLevel(organizationId, projectId, folderId, userIds, 'read')
+}
+
+/**
+ * Which of `userIds` may write in `folderId` (null: the project root) now: the
+ * folder half of {@link requireFolderWrite}, asked about other people by the
+ * folder roles WorkOS reports for their membership. The project's
+ * document-write permission (the ceiling) is the caller's to ask first. For a
+ * caller that hands someone a document to act on: an Anmerkung's Zuständige
+ * must be able to answer it (`mayWriteDocument`). Fails closed per person.
+ */
+export async function filterUsersWhoMayWriteFolder(
+  organizationId: string,
+  projectId: string,
+  folderId: string | null,
+  userIds: readonly string[]
+): Promise<Set<string>> {
+  return filterUsersByFolderLevel(organizationId, projectId, folderId, userIds, 'write')
+}
+
+/** The two filters above: a folder this person may not read is never one they write in, as {@link requireFolderWrite} says. */
+async function filterUsersByFolderLevel(
+  organizationId: string,
+  projectId: string,
+  folderId: string | null,
+  userIds: readonly string[],
+  needed: 'read' | 'write'
+): Promise<Set<string>> {
   if (folderId === null || userIds.length === 0) return new Set(userIds)
   const folders = await loadCustomFolderTree(organizationId, projectId)
   if (!folders) return new Set(userIds)
   const clearances = await Promise.all(userIds.map((userId) => clearanceOfMember(organizationId, userId, projectId)))
   return new Set(
-    userIds.filter((_userId, index) => computeFolderAccess(folders, clearances[index], '').isVisible(folderId))
+    userIds.filter((_userId, index) => {
+      const access = computeFolderAccess(folders, clearances[index], '')
+      return access.isVisible(folderId) && (needed === 'read' || access.levelOf(folderId) === 'write')
+    })
   )
 }
 

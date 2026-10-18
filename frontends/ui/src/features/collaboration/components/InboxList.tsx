@@ -29,10 +29,18 @@
  * The four filters are four questions: „Für mich“ is what waits on the reader
  * (an open request), „Ungelesen“ what they have not opened, „Alle“ everything,
  * and „Archiviert“ what they put away, which can come back from there.
+ *
+ * The filter is in the page's address (`filter=unread|all|archived`; „Für
+ * mich“, the default, is not written), as Offene Punkte keeps its own: a row
+ * that opens a mark carries this address as `back`, so closing the review
+ * comes back to the filter the reader left, and a reload keeps it. A change
+ * replaces the address with `history.replaceState`, which Next's router
+ * follows (`useSearchParams` reads it) without asking the server again.
  */
 
-import type { JSX } from 'react'
+import type { FocusEvent, JSX } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { AlertCircle, Archive, Bell, CheckCheck, CheckCircle2, MailOpen } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -51,6 +59,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AnimatePresence } from '@/components/motion'
 import { cn } from '@/lib/utils'
 import { NotificationPrompt } from '@/features/notifications/components/notification-prompt'
+import { focusLost, restoreFocus } from '@/features/documents/components/review/focus-return'
 import { InboxItemRow } from './InboxItemRow'
 
 type InboxFilter = 'needsMe' | 'unread' | 'all' | 'archived'
@@ -71,6 +80,27 @@ function isInboxFilter(value: string): value is InboxFilter {
   return (FILTERS as readonly string[]).includes(value)
 }
 
+/** The page's address parameter that holds the filter. */
+const FILTER_PARAM = 'filter'
+
+/** The filter the page's address names; anything else is `fallback`. */
+function filterOf(params: Pick<URLSearchParams, 'get'> | null, fallback: InboxFilter): InboxFilter {
+  const named = params?.get(FILTER_PARAM)
+  return named && isInboxFilter(named) ? named : fallback
+}
+
+/**
+ * This page's address with `filter` on it, leaving out the default („Für mich“)
+ * and keeping every other param: what a row's link carries as `back`.
+ */
+function hrefOf(pathname: string, current: string, filter: InboxFilter): string {
+  const params = new URLSearchParams(current)
+  if (filter === 'needsMe') params.delete(FILTER_PARAM)
+  else params.set(FILTER_PARAM, filter)
+  const query = params.toString()
+  return query ? `${pathname}?${query}` : pathname
+}
+
 /** Whether a key press belongs to whatever has focus rather than to the list. */
 function typingInto(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -86,10 +116,10 @@ export interface InboxListProps {
    */
   enabled?: boolean
   /**
-   * Which filter the list opens on. Defaults to `needsMe` — the inbox exists to
-   * answer "what needs me?" — but an entry point that means "show me everything
-   * that happened" can seed the other one. Seed only: the user's clicks own it
-   * from then on.
+   * Which filter the list opens on when the page's address names none. Defaults
+   * to `needsMe` — the inbox exists to answer "what needs me?" — but an entry
+   * point that means "show me everything that happened" can seed the other one.
+   * Seed only: the address, and the user's clicks, own it from then on.
    */
   initialFilter?: InboxFilter
   /** The reader: a quoted mention of them is drawn louder, as the thread draws it. */
@@ -104,7 +134,15 @@ export function InboxList({
   className,
 }: InboxListProps): JSX.Element {
   const t = useTranslations('collaboration')
-  const [filter, setFilter] = useState<InboxFilter>(initialFilter)
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [filter, setFilter] = useState<InboxFilter>(() => filterOf(searchParams, initialFilter))
+  /** A filter changes the list and the address, so a review opened from a row comes back to it. */
+  const choose = (next: InboxFilter): void => {
+    setFilter(next)
+    setFocusedId(null)
+    if (pathname) window.history.replaceState(null, '', hrefOf(pathname, searchParams?.toString() ?? '', next))
+  }
 
   const {
     items,
@@ -166,12 +204,46 @@ export function InboxList({
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const focusedIndex = visibleItems.findIndex((item) => item.id === focusedId)
 
-  const focusRow = useCallback((itemId: string) => {
+  /** Focus a row; `scroll` brings it into view, as a key moving through the list wants and a handoff the reader did not ask for does not. */
+  const focusRow = useCallback((itemId: string, { scroll = true }: { scroll?: boolean } = {}) => {
     setFocusedId(itemId)
     const row = rootRef.current?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(itemId)}"]`)
     row?.focus({ preventScroll: true })
-    row?.scrollIntoView?.({ block: 'nearest' })
+    if (scroll) row?.scrollIntoView?.({ block: 'nearest' })
   }, [])
+
+  // ---- The focus stays on the list when its row leaves ----
+  // A row can leave with the focus in it without a key pressed here: a refresh
+  // drops it (under „Für mich“ a mark resolved from its row is no open request,
+  // and the re-read after the undo window takes the row with its outcome line).
+  // The focus would fall to the page. It goes to the row now at that place, or
+  // to the list when none is left. A row on its way out (its exit animation)
+  // still holds the focus, so that counts as lost too.
+  const listRef = useRef<HTMLDivElement>(null)
+  const heldRowId = useRef<string | null>(null)
+  const shownIds = useRef<string[]>([])
+  useEffect(() => {
+    const previous = shownIds.current
+    shownIds.current = visibleItems.map((item) => item.id)
+    const held = heldRowId.current
+    if (!held || shownIds.current.includes(held)) return
+    heldRowId.current = null
+    const active = document.activeElement
+    const inLeavingRow = active instanceof Element && active.closest('[data-item-id]')?.getAttribute('data-item-id') === held
+    if (!inLeavingRow && !focusLost()) return
+    const next = visibleItems[Math.min(Math.max(previous.indexOf(held), 0), visibleItems.length - 1)]
+    // Without scrolling: the reader may have scrolled on during the undo window, and stays where they read.
+    if (next) focusRow(next.id, { scroll: false })
+    else restoreFocus(listRef.current)
+  }, [visibleItems, focusRow])
+  /** Which row the focus is in, so its leaving can hand the focus on. */
+  const trackFocus = (event: FocusEvent<HTMLDivElement>): void => {
+    heldRowId.current = event.target.closest('[data-item-id]')?.getAttribute('data-item-id') ?? null
+  }
+  const dropFocus = (event: FocusEvent<HTMLDivElement>): void => {
+    // Only when the reader takes it elsewhere: a row unmounting blurs to nothing.
+    if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) heldRowId.current = null
+  }
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -227,7 +299,7 @@ export function InboxList({
   const emptyKey = filter
 
   return (
-    <div ref={rootRef} className={cn('space-y-4', className)}>
+    <div ref={rootRef} className={cn('space-y-4', className)} onFocus={trackFocus} onBlur={dropFocus}>
       {/* ---- Filter + bulk action ---- */}
       {/* `min-h-8` holds the toolbar's line even if the filter wraps, so a
           count arriving cannot lift the list. */}
@@ -243,10 +315,7 @@ export function InboxList({
           onValueChange={(value) => {
             // type=single can emit "" when the pressed item is clicked again;
             // the inbox always has a filter, so ignore a clear.
-            if (isInboxFilter(value)) {
-              setFilter(value)
-              setFocusedId(null)
-            }
+            if (isInboxFilter(value)) choose(value)
           }}
           aria-label={t('inbox.filters.ariaLabel')}
         >
@@ -308,7 +377,8 @@ export function InboxList({
           container: announcing the container meant a screen reader read the whole
           inbox — every row, title, body, excerpt and timestamp — on the first
           skeleton→rows swap, on every filter change and after every archive. */}
-      <div data-testid="inbox-list">
+      {/* Focusable from code only: where the focus goes when the last row leaves with it. */}
+      <div ref={listRef} data-testid="inbox-list" tabIndex={-1} className="outline-none">
         {error ? (
           <Alert variant="destructive">
             <AlertCircle />

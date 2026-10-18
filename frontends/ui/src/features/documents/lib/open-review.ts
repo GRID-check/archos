@@ -33,8 +33,17 @@
  * A surface with no pane beside it (the card gallery, a report) goes to the
  * project's Dateien with `doc`, `review` and `mark`, whose modal pane answers
  * them the same way.
+ *
+ * ## Back to where the link was
+ *
+ * A link from another page (Offene Punkte, the Postfach) lands in Dateien. The
+ * pane did not push that entry, so it cannot go Back to leave it: it could be
+ * the tab's first page. Such a link carries `back`, the page it came from
+ * with its filters ({@link appReturnPath}: a path of this app, nothing else),
+ * and closing the review goes there instead of leaving the reader in Dateien.
  */
 
+import { appReturnPath } from '@/lib/utils/same-origin-path'
 import { useFilePreviewStore } from '../stores/file-preview-store'
 import { openFiledDocument } from './open-filed-document'
 import { documentFilesHref } from './document-question'
@@ -44,6 +53,8 @@ export const MARK_PARAM = 'mark'
 export const DOC_PARAM = 'doc'
 /** The tool in hand when the review opens: „Anmerken" arms the point. */
 export const TOOL_PARAM = 'tool'
+/** Where closing the review returns to, for a link from another page of the app. */
+export const BACK_PARAM = 'back'
 
 /** The tools a link may arm: the ones that set a mark. Selecting is the review's own start. */
 export type ReviewLinkTool = 'point' | 'region'
@@ -65,9 +76,11 @@ export interface ReviewParams {
   open: boolean
   annotationId: string | null
   tool: ReviewLinkTool | null
+  /** The page the link came from, to return to on closing; only a path of this app ({@link appReturnPath}). */
+  back: string | null
 }
 
-/** Read the review off a page's params. A `mark` or `tool` without `review` opens nothing. */
+/** Read the review off a page's params. A `mark`, `tool` or `back` without `review` opens nothing. */
 export function readReviewParams(params: Pick<URLSearchParams, 'get'> | null | undefined): ReviewParams {
   const open = Boolean(params?.get(REVIEW_PARAM))
   const tool = params?.get(TOOL_PARAM)
@@ -76,6 +89,7 @@ export function readReviewParams(params: Pick<URLSearchParams, 'get'> | null | u
     open,
     annotationId: open ? params?.get(MARK_PARAM) || null : null,
     tool: open && isReviewLinkTool(tool) ? tool : null,
+    back: open ? appReturnPath(params?.get(BACK_PARAM)) : null,
   }
 }
 
@@ -84,6 +98,7 @@ export function clearReviewParams(params: URLSearchParams): URLSearchParams {
   params.delete(REVIEW_PARAM)
   params.delete(MARK_PARAM)
   params.delete(TOOL_PARAM)
+  params.delete(BACK_PARAM)
   return params
 }
 
@@ -127,11 +142,31 @@ export function reviewHrefAt(
   return `${location.pathname}?${params.toString()}${location.hash}`
 }
 
-/** The review link into a project's Dateien, for a surface with no pane of its own. */
-export function reviewFilesHref(projectId: string, target: ReviewTarget): string {
+/**
+ * The review link into a project's Dateien, for a surface with no pane of its
+ * own. `back`: the page the link is on, with its filters, where closing the
+ * review returns (a path outside the app is dropped).
+ */
+export function reviewFilesHref(projectId: string, target: ReviewTarget, { back }: { back?: string | null } = {}): string {
   const base = documentFilesHref(projectId, target.documentId)
   const [path, search = ''] = base.split('?')
-  return `${path}?${setReviewParams(new URLSearchParams(search), target, { withDocument: true }).toString()}`
+  const params = setReviewParams(new URLSearchParams(search), target, { withDocument: true })
+  return withReviewBack(`${path}?${params.toString()}`, back)
+}
+
+/**
+ * A review link (`review=1`) with `back` on it, so closing the review returns
+ * to `back`; anything else, or a `back` outside the app, comes back unchanged.
+ * For a link built elsewhere, such as a Postfach row's.
+ */
+export function withReviewBack(href: string, back: string | null | undefined): string {
+  const path = appReturnPath(back)
+  const [base, hash = ''] = href.split('#')
+  const [pathname, search = ''] = base.split('?')
+  const params = new URLSearchParams(search)
+  if (!path || !params.get(REVIEW_PARAM)) return href
+  params.set(BACK_PARAM, path)
+  return `${pathname}?${params.toString()}${hash ? `#${hash}` : ''}`
 }
 
 /** Whether a pathname is a project's chat, which keeps the file pane beside the conversation. */

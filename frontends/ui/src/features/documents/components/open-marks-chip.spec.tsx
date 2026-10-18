@@ -62,7 +62,7 @@ describe('the open Anmerkungen on a file card', () => {
   it('says how many are open and how many are the reader’s, and opens the review, not the card', async () => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
-    render(<FileCard file={doc({ marks: { live: 3, forYou: 1 } })} isSelected={false} onSelect={onSelect} locale="en" />)
+    render(<FileCard file={doc({ marks: { open: 3, proposed: 0, forYou: 1 } })} isSelected={false} onSelect={onSelect} locale="en" />)
 
     const chip = screen.getByRole('button', { name: '3 open annotations, 1 for you in “Grundriss_EG.pdf”' })
     await user.click(chip)
@@ -73,7 +73,7 @@ describe('the open Anmerkungen on a file card', () => {
 
   it('says it in words, not as bare numbers, and the whole sentence in its tooltip', () => {
     focusVisible()
-    render(<FileCard file={doc({ marks: { live: 4, forYou: 2 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
+    render(<FileCard file={doc({ marks: { open: 4, proposed: 0, forYou: 2 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
 
     const chip = screen.getByTestId('open-marks')
     expect(chip).toHaveTextContent('4 open · 2 for you')
@@ -84,7 +84,7 @@ describe('the open Anmerkungen on a file card', () => {
   it('keeps the size and the date in the footer, the chip beside them rather than in their place', () => {
     render(
       <FileCard
-        file={doc({ fileSize: 1_900_000, marks: { live: 4, forYou: 2 } })}
+        file={doc({ fileSize: 1_900_000, marks: { open: 4, proposed: 0, forYou: 2 } })}
         isSelected={false}
         onSelect={vi.fn()}
         locale="en"
@@ -97,14 +97,14 @@ describe('the open Anmerkungen on a file card', () => {
   })
 
   it('names the count alone when none is the reader’s, and one in the singular', () => {
-    render(<FileCard file={doc({ marks: { live: 1, forYou: 0 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
+    render(<FileCard file={doc({ marks: { open: 1, proposed: 0, forYou: 0 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
     expect(screen.getByRole('button', { name: '1 open annotation in “Grundriss_EG.pdf”' })).toHaveTextContent('1 open')
   })
 
   it('names the document it opens, so two rows with the same count are told apart', () => {
     render(
       <FileListView
-        files={[doc({ marks: { live: 2, forYou: 0 } }), doc({ id: 'doc-2', filename: 'Schnitt_AA.pdf', marks: { live: 2, forYou: 0 } })]}
+        files={[doc({ marks: { open: 2, proposed: 0, forYou: 0 } }), doc({ id: 'doc-2', filename: 'Schnitt_AA.pdf', marks: { open: 2, proposed: 0, forYou: 0 } })]}
         selectedFileId={null}
         onSelectFile={vi.fn()}
       />,
@@ -113,10 +113,26 @@ describe('the open Anmerkungen on a file card', () => {
     expect(screen.getByRole('button', { name: '2 open annotations in “Schnitt_AA.pdf”' })).toBeInTheDocument()
   })
 
+  it('tells Piloti’s proposals nobody took over apart from what is open, as Offene Punkte and the Protokoll count', () => {
+    focusVisible()
+    render(<FileCard file={doc({ marks: { open: 2, proposed: 12, forYou: 1 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
+    const chip = screen.getByRole('button', {
+      name: '2 open annotations, 1 for you and 12 proposals from Piloti in “Grundriss_EG.pdf”',
+    })
+    expect(chip).toHaveTextContent('2 open · 1 for you · 12 proposals')
+    fireEvent.focus(chip)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('2 open annotations, 1 for you and 12 proposals from Piloti')
+  })
+
+  it('names only the proposals when nothing of the office’s own is open', () => {
+    render(<FileCard file={doc({ marks: { open: 0, proposed: 1, forYou: 0 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
+    expect(screen.getByRole('button', { name: '1 proposal from Piloti in “Grundriss_EG.pdf”' })).toHaveTextContent('1 proposal')
+  })
+
   it('shows nothing where nothing is open', () => {
     const { rerender } = render(<FileCard file={doc()} isSelected={false} onSelect={vi.fn()} locale="en" />)
     expect(screen.queryByTestId('open-marks')).toBeNull()
-    rerender(<FileCard file={doc({ marks: { live: 0, forYou: 0 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
+    rerender(<FileCard file={doc({ marks: { open: 0, proposed: 0, forYou: 0 } })} isSelected={false} onSelect={vi.fn()} locale="en" />)
     expect(screen.queryByTestId('open-marks')).toBeNull()
   })
 })
@@ -125,7 +141,7 @@ describe('the open Anmerkungen on a list row', () => {
   it('sits by the name and opens the review; neither a click nor Enter on it opens the row', async () => {
     const onSelectFile = vi.fn()
     const user = userEvent.setup()
-    render(<FileListView files={[doc({ marks: { live: 4, forYou: 0 } })]} selectedFileId={null} onSelectFile={onSelectFile} />)
+    render(<FileListView files={[doc({ marks: { open: 4, proposed: 0, forYou: 0 } })]} selectedFileId={null} onSelectFile={onSelectFile} />)
 
     const chip = screen.getByRole('button', { name: '4 open annotations in “Grundriss_EG.pdf”' })
     expect(chip).toHaveTextContent('4 open')

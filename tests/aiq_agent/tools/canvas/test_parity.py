@@ -282,3 +282,12 @@ class TestAnOfficeThatHasPilotiProposeOnly:
     @pytest.mark.parametrize("tool", ["mark", "update", "delete"])
     def test_each_acting_tool_says_so_in_its_description(self, tool) -> None:
         assert "nur vorschlagen" in DESCRIPTIONS[tool]
+
+
+def test_a_check_of_what_is_fixed_is_answered_in_each_thread_and_changes_no_status() -> None:
+    """„Piloti prüfen lassen, was behoben ist“: a verdict per mark, in its thread; closing it stays the person's."""
+    assert "prüfen, ob etwas behoben ist, verlangt keine Änderung" in DESCRIPTIONS["update"]
+    reply = DESCRIPTIONS["reply"]
+    assert "„In <Fassung> behoben:“" in reply
+    assert "„Weiterhin offen:“" in reply
+    assert "Den Status änderst du dabei nicht" in reply

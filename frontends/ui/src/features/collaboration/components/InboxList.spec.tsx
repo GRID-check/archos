@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@/test-utils'
 
 import type { InboxItemView } from '@/lib/inbox/types'
@@ -13,6 +13,14 @@ vi.mock('sonner', () => ({ toast: toastMock }))
 vi.mock('../hooks/use-inbox', () => ({
   useInboxList: vi.fn(),
   useInboxBadge: vi.fn(),
+}))
+
+/** The page's address, played by the test: the Postfach's own, with whatever query it carries. */
+const page = vi.hoisted(() => ({ pathname: '/app/inbox', search: '' }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => page.pathname,
+  useSearchParams: () => new URLSearchParams(page.search),
 }))
 
 vi.mock('next/link', () => ({
@@ -80,6 +88,7 @@ const ITEM: InboxItemView = {
   excerpt: null,
   mentions: [],
   variant: null,
+  answerIn: null,
   createdAt: '2026-07-29T09:00:00Z',
   updatedAt: '2026-07-29T09:00:00Z',
 }
@@ -113,6 +122,33 @@ describe('InboxList — filters', () => {
     const all = screen.getByRole('radio', { name: 'All' })
     expect(all).toHaveAttribute('data-state', 'on')
     expect(all).toHaveAttribute('aria-checked', 'true')
+  })
+
+  test('keeps the filter in the address without a server render, so a review closed from a row comes back to it', () => {
+    const replaceState = vi.spyOn(window.history, 'replaceState')
+    page.search = 'tab=x'
+    try {
+      render(<InboxList />)
+      fireEvent.click(screen.getByRole('radio', { name: 'Unread' }))
+      expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x&filter=unread')
+      // „Needs me“ is the default, and the address does not say it.
+      fireEvent.click(screen.getByRole('radio', { name: /Needs me/ }))
+      expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x')
+    } finally {
+      page.search = ''
+      replaceState.mockRestore()
+    }
+  })
+
+  test('opens on the filter the address names, as the reader left it', () => {
+    page.search = 'filter=archived'
+    try {
+      render(<InboxList />)
+      expect(useInboxListMock).toHaveBeenCalledWith(true, 'archived')
+      expect(screen.getByRole('radio', { name: 'Archived' })).toHaveAttribute('aria-checked', 'true')
+    } finally {
+      page.search = ''
+    }
   })
 
   test('passes the disabled flag through, so a gated org issues no request', () => {
@@ -409,6 +445,76 @@ describe('InboxList — keyboard triage', () => {
     fireEvent.keyDown(field, { key: 'e' })
     expect(focusedRow()).toBeNull()
     expect(toastMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('InboxList — the focus when a refresh drops its row', () => {
+  const SECOND: InboxItemView = { ...ITEM, id: 'i2', actorName: 'Markus Hofer', actorUserId: 'u-markus' }
+  const THIRD: InboxItemView = { ...ITEM, id: 'i3', actorName: 'Lena Berger', actorUserId: 'u-lena' }
+  const rowOf = (id: string) => document.querySelector<HTMLElement>(`[data-item-id="${id}"]`)
+  /** The row's own control holds the focus, as the outcome line does after „Erledigen“. */
+  const focusIn = (id: string) => {
+    const control = rowOf(id)?.querySelector<HTMLElement>('a, button') ?? rowOf(id)
+    act(() => control?.focus())
+    expect(rowOf(id)).toContainElement(document.activeElement as HTMLElement)
+  }
+
+  test('goes to the row now at its place, when the re-read under „For me“ no longer lists it', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND, THIRD], pending: 3 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    // The mark was resolved: the next read of open requests leaves its row out.
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, THIRD], pending: 2 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i3')))
+    expect(rowOf('i3')).toHaveAttribute('data-focused', 'true')
+  })
+
+  test('hands the focus on without scrolling: the reader stays where they read', async () => {
+    const scroll = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scroll
+    onTestFinished(() => {
+      Element.prototype.scrollIntoView = original
+    })
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND, THIRD], pending: 3 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    scroll.mockClear()
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, THIRD], pending: 2 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i3')))
+    expect(scroll).not.toHaveBeenCalled()
+  })
+
+  test('goes to the row before it when it was the last', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND], pending: 2 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i1')))
+  })
+
+  test('goes to the list when no row is left', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i1')
+    useInboxListMock.mockReturnValue(result({ items: [], pending: 0 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(screen.getByTestId('inbox-list')).toHaveFocus())
+  })
+
+  test('leaves the focus where the reader put it since', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND], pending: 2 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    const filter = screen.getByRole('radio', { name: /All/ })
+    act(() => filter.focus())
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    rerender(<InboxList />)
+    await act(async () => {})
+    expect(filter).toHaveFocus()
   })
 })
 

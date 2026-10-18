@@ -86,6 +86,15 @@ class TestRefusals:
 
         assert expected in await run()
 
+    @pytest.mark.parametrize("reason", ["mark-discussed", "mark-carried"])
+    def test_a_kept_mark_is_said_as_kept_not_as_a_race(self, reason) -> None:
+        """A delete the thread or a carry refuses is a 409 too, but rereading would not change it."""
+        refused = canvas_calls.refusal_for(
+            CanvasRequestError("x", status=409, code="CONFLICT", reason=reason), "delete"
+        )
+
+        assert "Nicht gelöscht" in str(refused) and "gerade geändert" not in str(refused)
+
     async def test_no_document_subject_wins_over_the_status(self, monkeypatch, calls) -> None:
         """The reason is what tells „name the document“ from a malformed request."""
         answering(monkeypatch, calls, CanvasRequestError("x", status=422, reason="no-document-subject"))

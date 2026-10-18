@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    A Postfach entry such as „Anna hat 15 Anmerkungen gesetzt“ no longer puts
+    an unread dot on just the newest of those Anmerkungen in the Prüfansicht.
+    It counts as read once you open the document's Prüfansicht.

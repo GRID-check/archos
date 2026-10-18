@@ -16,6 +16,7 @@ export interface PreviewHandlers {
   onOpenDocument: (fileId: string) => void
   onFassungChanged: NonNullable<FilePreviewContext['onFassungChanged']>
   onLifecycleChanged: NonNullable<FilePreviewContext['onLifecycleChanged']>
+  onMarksChanged: NonNullable<FilePreviewContext['onMarksChanged']>
 }
 
 /**
