@@ -168,7 +168,10 @@ export async function runInboxPush(
   const preferences = resolvePushPreferences(prefs?.pushNotifications)
   if (!isPushWanted(row.type, preferences, row.payload)) return { sent: false, reason: 'category-off' }
 
-  const burst = policy?.fold ? await readBurst(row) : []
+  // The burst of the rows this person's categories push: one they get no notification for is not part of it.
+  const burst = policy?.fold
+    ? await readBurst(row, (candidate) => isPushWanted(candidate.type, preferences, candidate.payload))
+    : []
   // A newer row of the same burst arrived within the hold: its job tells them all.
   if (burst === 'later') return { sent: false, reason: 'folded' }
 

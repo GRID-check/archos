@@ -755,6 +755,19 @@ export const collaboration = {
       // it says.
       // Who replied is in the title; `…NoActor` when it was Piloti or nobody in particular.
       annotationActivity: {
+        // One notification for many rows at once (someone resolves 15 of your
+        // annotations): counted per row, so per annotation, new annotations per document.
+        pushFold: {
+          title: '{count, plural, one {# update} other {# updates}} on annotations',
+          parts: {
+            reply: '{count, plural, one {# with a new reply} other {# with new replies}}',
+            resolved: '{count} resolved',
+            dismissed: '{count} dismissed',
+            reopened: '{count} reopened',
+            created: '{count, plural, one {# document with new annotations} other {# documents with new annotations}}',
+            other: '{count} more',
+          },
+        },
         title: '{actor} replied on an annotation',
         titleNoActor: 'New reply on an annotation',
         titleRelated: '{actor} replied on annotation {related} in “{subject}”',

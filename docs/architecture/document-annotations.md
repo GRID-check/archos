@@ -969,6 +969,18 @@ newest job reads, and committed after, can start a burst of its own that
 tells the earlier rows again (`lib/push/fold.ts`). The inbox rows stay one
 per mark.
 
+`annotation.activity` folds the same way, so a colleague resolving fifteen of
+the reader's marks one after another is one notification, „15 Neuigkeiten zu
+Anmerkungen“ over „14 erledigt, 1 verworfen“, not fifteen
+(`collaboration.inbox.types.annotationActivity.pushFold`; parts `reply`,
+`resolved`, `dismissed`, `reopened`, and `created` for both new-mark variants,
+which push as activity to whoever turned that on). Its rows reach a person
+under two categories (their own mark's news as results through `yours`, a
+thread they only take part in as activity), so a burst counts only the rows
+the person's categories push (`readBurst` with `isPushWanted`): a newer row
+they get no notification for would otherwise take the telling from the rows
+before it, and nobody would tell them.
+
 The participants are derived from the mark when something happens, never
 stored as a list (`markParticipants`): its author (who set it, or for Piloti's
 mark who took it over or asked for it), its Zuständige, who delegated it to

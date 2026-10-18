@@ -305,3 +305,72 @@ describe('a burst of one type’s rows is one notification (the fold)', () => {
     expect(JSON.parse(send.mock.calls[0]![1])).toMatchObject({ itemId: 'i2', url: morning[1]!.view.href })
   })
 })
+
+describe('a burst of news on the reader’s own marks is one notification', () => {
+  // A colleague resolves the reader's marks one after another: each row is `yours` (results, on by default).
+  const news = (id: string, secondsBefore: number, variant: string, yours: boolean) => ({
+    row: row({
+      id,
+      type: 'annotation.activity',
+      groupKey: `annotation.activity:document:d1:${id}`,
+      updatedAt: new Date(UPDATED.getTime() - secondsBefore * 1000),
+      payload: { variant, ...(yours ? { yours: true } : {}) },
+    }),
+    view: {
+      ...view,
+      id,
+      type: 'annotation.activity',
+      href: `/app/projects/p/files?doc=d1&review=1&mark=${id}`,
+      variant,
+      related: '4',
+    } as InboxItemView,
+  })
+
+  function serveBurst(rows: ReturnType<typeof news>[], own: ReturnType<typeof news>) {
+    vi.mocked(findInboxItemForRecipient).mockResolvedValue(own.row)
+    vi.mocked(listTouchedOfType).mockResolvedValue(rows.map((entry) => entry.row))
+    vi.mocked(viewInboxItemAs).mockImplementation(async (_session, item) => rows.find((entry) => entry.row.id === item.id)?.view ?? null)
+  }
+
+  it('tells fifteen marks resolved as one counted notification, from the newest row’s job', async () => {
+    const burst = Array.from({ length: 15 }, (_, index) => news(`i${index + 1}`, index, index === 3 ? 'reply' : 'resolved', true))
+    serveBurst(burst, burst[0]!)
+    const { sender, send } = senderReturning({})
+
+    await expect(runInboxPush(ORG, payload, first, sender)).resolves.toMatchObject({ sent: true })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(send.mock.calls[0]![1])).toMatchObject({
+      title: '15 Neuigkeiten zu Anmerkungen',
+      body: '1 mit neuer Antwort, 14 erledigt',
+      url: '/app/inbox',
+    })
+
+    // Every earlier row's job leaves it to the newest.
+    vi.mocked(findInboxItemForRecipient).mockResolvedValue(burst[7]!.row)
+    await expect(
+      runInboxPush(ORG, { ...payload, itemId: 'i8', stamp: burst[7]!.row.updatedAt.toISOString() }, first, sender)
+    ).resolves.toEqual({ sent: false, reason: 'folded' })
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it('counts only the rows the reader’s categories push, and a newer row they get no push for does not take the telling', async () => {
+    // i1 is a reply in a thread the reader only takes part in (activity, off by default); i2–i4 are on their own marks.
+    const participant = news('i1', 0, 'reply', false)
+    const own = [news('i2', 1, 'resolved', true), news('i3', 2, 'resolved', true), news('i4', 3, 'dismissed', true)]
+    serveBurst([participant, ...own], own[0]!)
+    const { sender, send } = senderReturning({})
+
+    await expect(
+      runInboxPush(ORG, { ...payload, itemId: 'i2', stamp: own[0]!.row.updatedAt.toISOString() }, first, sender)
+    ).resolves.toMatchObject({ sent: true })
+    expect(JSON.parse(send.mock.calls[0]![1])).toMatchObject({
+      title: '3 Neuigkeiten zu Anmerkungen',
+      body: '2 erledigt, 1 verworfen',
+    })
+    expect(vi.mocked(viewInboxItemAs).mock.calls.map(([, item]) => item.id)).not.toContain('i1')
+
+    // The participant's own row is not pushed at all.
+    vi.mocked(findInboxItemForRecipient).mockResolvedValue(participant.row)
+    await expect(runInboxPush(ORG, payload, first, sender)).resolves.toEqual({ sent: false, reason: 'category-off' })
+  })
+})

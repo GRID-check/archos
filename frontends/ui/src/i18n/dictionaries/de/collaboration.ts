@@ -601,6 +601,19 @@ export const collaboration: typeof en.collaboration = {
       // Wer geantwortet hat, steht im Titel; `…NoActor`, wenn es Piloti war
       // oder niemand Bestimmtes.
       annotationActivity: {
+        // Eine Benachrichtigung für viele Zeilen auf einmal (jemand erledigt 15 Ihrer
+        // Anmerkungen): gezählt je Zeile, also je Anmerkung, neue Anmerkungen je Dokument.
+        pushFold: {
+          title: '{count, plural, one {# Neuigkeit} other {# Neuigkeiten}} zu Anmerkungen',
+          parts: {
+            reply: '{count, plural, one {# mit neuer Antwort} other {# mit neuen Antworten}}',
+            resolved: '{count} erledigt',
+            dismissed: '{count} verworfen',
+            reopened: '{count} wieder geöffnet',
+            created: '{count, plural, one {# Dokument mit neuen Anmerkungen} other {# Dokumente mit neuen Anmerkungen}}',
+            other: '{count} weitere',
+          },
+        },
         title: '{actor} hat zu einer Anmerkung geantwortet',
         titleNoActor: 'Neue Antwort zu einer Anmerkung',
         titleRelated: '{actor} hat zu Anmerkung {related} in „{subject}“ geantwortet',

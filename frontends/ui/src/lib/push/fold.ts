@@ -77,8 +77,18 @@ export function burstOf<T extends BurstRow>(
   return burst.slice(0, FOLD_MAX_ROWS - 1)
 }
 
-/** Read the burst of `row` for its recipient ({@link burstOf}), the rows before it whatever became of them. */
-export async function readBurst(row: InboxItem): Promise<'later' | InboxItem[]> {
+/**
+ * Read the burst of `row` for its recipient ({@link burstOf}), the rows before
+ * it whatever became of them. `pushes`: only the rows the person's categories
+ * push take part (a type whose rows land in more than one category, as
+ * `annotation.activity` does with `yours`): a row they never get a
+ * notification for neither counts in the burst nor takes the telling from the
+ * rows that do, which would leave those untold.
+ */
+export async function readBurst(
+  row: InboxItem,
+  pushes: (candidate: InboxItem) => boolean = () => true
+): Promise<'later' | InboxItem[]> {
   const candidates = await listTouchedOfType(
     row.organizationId,
     row.recipientUserId,
@@ -86,5 +96,5 @@ export async function readBurst(row: InboxItem): Promise<'later' | InboxItem[]> 
     { from: new Date(row.updatedAt.getTime() - FOLD_LOOKBACK_MS), to: new Date(row.updatedAt.getTime() + BURST_HOLD_MS) },
     FOLD_MAX_ROWS + 1
   )
-  return burstOf(row, candidates)
+  return burstOf(row, candidates.filter(pushes))
 }

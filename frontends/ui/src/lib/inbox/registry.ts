@@ -477,7 +477,11 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     mail. Pushed as activity to the thread's other participants and to the
     document's people, who turned that on; to the mark's AUTHOR (`yours`) it is
     an answer to what they wrote, as `mention.answered` is, and is pushed as a
-    result.
+    result. Folded across marks: a colleague resolving fifteen of the reader's
+    marks one after another is one notification („15 Neuigkeiten zu
+    Anmerkungen“ over „15 erledigt“), not fifteen. A burst counts only the rows
+    the reader's categories push (`readBurst` with `isPushWanted`), so their
+    own marks' news and a thread they only take part in do not mix.
   */
   'annotation.activity': {
     actionable: false,
@@ -485,7 +489,21 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
-    push: { category: 'activity', urgency: 'low', yours: 'results' },
+    push: {
+      category: 'activity',
+      urgency: 'low',
+      yours: 'results',
+      fold: {
+        parts: {
+          reply: 'reply',
+          resolved: 'resolved',
+          dismissed: 'dismissed',
+          reopened: 'reopened',
+          created: 'created',
+          created_piloti: 'created',
+        },
+      },
+    },
   },
   /*
     A colleague @mentioned the reader on an Anmerkung: the chat's
