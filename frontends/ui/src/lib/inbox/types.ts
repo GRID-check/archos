@@ -14,6 +14,7 @@
  */
 
 import type { InboxItemType, InboxTargetType, ShareableResourceType } from '@/lib/db/schema'
+import type { MarkMention } from '@/lib/annotations/types'
 
 export type { InboxItemType, InboxTargetType, ShareableResourceType }
 
@@ -63,6 +64,16 @@ export interface InboxItemView {
    * because an inbox must never leak content whose access was revoked (IB-13).
    */
   excerpt: string | null
+  /**
+   * Whom the excerpt mentions, as the server kept them (the chat's mention
+   * shape, `MarkMention`), so the row draws them as the chips the thread
+   * shows (`MentionText`); a name only typed stays text. Written by the
+   * emitter beside every excerpt it writes, so a folded row's quote and its
+   * mentions are always the same write's. Empty where the emitter carries none
+   * (a chat mention keeps no names on the server), and withheld with the
+   * payload when the item is inert.
+   */
+  mentions: MarkMention[]
   /**
    * Which wording of its type the row reads, where a type has more than one:
    * why Piloti could not work a mark (`piloti.work_failed`, the classes of

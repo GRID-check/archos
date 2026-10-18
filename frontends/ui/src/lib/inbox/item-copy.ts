@@ -123,11 +123,15 @@ export function inboxItemCopy(item: InboxItemView, t: Translator, dictionary: un
   // the excerpt saying „open it to see what changed" repeated it. A counted
   // row of several reads `bodyMany` where its type has one. A type that lands
   // in a different place by what it points at (a proposal: its chat, or the
-  // file under Dateien) says where as `body<ResourceType>`.
+  // file under Dateien) says where as `body<ResourceType>`. A request the
+  // server sends to the Prüfansicht to be answered (`answerIn: 'review'`,
+  // Piloti's Rückfrage while events do not wake it) says so as `bodyInReview`,
+  // so the line under the title names the place the row's action leads to.
   const bodyLeaf = pickKey(
     dictionary,
     presentation.i18nKey,
     withVariant(item.variant, [
+      ...(item.answerIn === 'review' ? ['bodyInReview'] : []),
       ...(item.subject === null ? ['bodyNoSubject'] : []),
       ...(item.excerpt === null ? ['bodyNoExcerpt'] : []),
       // A collapsed row of several (`count > 1`) whose subject is only the

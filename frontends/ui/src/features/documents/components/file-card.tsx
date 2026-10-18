@@ -506,11 +506,17 @@ export const FileCard = memo(function FileCard({
           Its height is the same with a chip or without one (the chip's margin
           box is a line of text), so a row of tiles stays even when a
           suggestion arrives or goes. On a narrow tile the chip's folder name
-          ellipsizes first, then the relative time drops; it never wraps. */}
+          ellipsizes first, then the relative time drops; it never wraps.
+          What is still open on the pages is the one thing that takes a second
+          line, under the size and the age and never in their place: „4 offen ·
+          2 für Sie" and „vor 4 Monaten" do not share a 220px tile, and a
+          count without its words had to be learnt. It is a property of the
+          document rather than a suggestion that comes and goes, so a row of
+          tiles is uneven only where a document has open work. */}
       {!hideFooter && (
         <GridTileFooter
           onClick={onSelect}
-          className="@container/foot group/foot cursor-pointer justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
+          className="@container/foot group/foot cursor-pointer flex-wrap justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
           data-testid="file-card-footer"
         >
           <span className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -521,20 +527,18 @@ export const FileCard = memo(function FileCard({
               phone's card keeps 10px of padding (the title's too) and a tighter
               gap: the age used to run into the edge the title keeps clear. */}
           <span className="flex shrink-0 items-center gap-1.5 phone:gap-1">
-            {/* What is still open on its pages, and the way into them: the
-                review opens from here without opening the card first. */}
-            <OpenMarksChip file={file} name={name} />
-            {/* With the chip in, a narrow tile drops the size too: the
-                filing chip's minimum, the marks and the size do not fit 156px. */}
-            <span className="tabular-nums group-has-[[data-slot=open-marks]]/foot:@max-[14rem]/foot:hidden">
-              {formatBytes(file.fileSize, locale)}
-            </span>
-            <span className="flex items-center gap-1.5 phone:gap-1 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden group-has-[[data-slot=open-marks]]/foot:@max-[14rem]/foot:hidden">
+            <span className="tabular-nums">{formatBytes(file.fileSize, locale)}</span>
+            <span className="flex items-center gap-1.5 phone:gap-1 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden">
               <span aria-hidden className="text-muted-foreground/40">
                 ·
               </span>
               <TimeAgo date={file.createdAt} locale={locale} className="tabular-nums" />
             </span>
+          </span>
+          {/* Its own line (`basis-full`), and none at all when nothing is open:
+              the review opens from here without opening the card first. */}
+          <span className="flex basis-full empty:hidden">
+            <OpenMarksChip file={file} name={name} />
           </span>
         </GridTileFooter>
       )}

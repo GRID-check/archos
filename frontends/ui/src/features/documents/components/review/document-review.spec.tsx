@@ -20,13 +20,15 @@ import type { AnnotationView } from '@/lib/annotations/types'
 import { useDocumentReview, type ReviewFassung, type ReviewTool } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
 import { DocumentReviewMode, TOOLS_INTRO_KEY } from './document-review'
+import { REVIEW_TOASTER } from './review-toaster'
 
 vi.mock('@/features/chat', () => ({
   useChatStore: (selector: (state: { currentUserId: string }) => unknown) => selector({ currentUserId: 'user_me' }),
 }))
 
 const toastMock = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), dismiss: vi.fn() }))
-vi.mock('sonner', () => ({ toast: toastMock }))
+// The real Toaster, so the review's own mounts; only the calls are watched.
+vi.mock('sonner', async (importOriginal) => ({ ...(await importOriginal<typeof import('sonner')>()), toast: toastMock }))
 
 vi.mock('@/features/knowledge/components/pdf-document-view', () => ({
   PdfDocumentView: ({ pageOverlay, toolbarLead }: { pageOverlay?: (page: number) => ReactNode; toolbarLead?: ReactNode }) => (
@@ -218,7 +220,7 @@ describe('going through the proposals', () => {
  * never reaches the server.
  */
 describe('deciding by a key', () => {
-  type Toasted = [string, { action: { label: string; onClick: () => void }; duration: number }]
+  type Toasted = [string, { action: { label: string; onClick: () => void }; duration: number; toasterId?: string }]
   const lastToast = () => toastMock.mock.calls.at(-1) as Toasted
 
   beforeEach(() => {
@@ -256,6 +258,11 @@ describe('deciding by a key', () => {
     expect(message).toBe('Annotation 4 dismissed')
     expect(options.action.label).toBe('Undo')
     expect(screen.getByTestId('review-thread')).toHaveTextContent('Dismissed')
+    // In the review's own toaster, inside its dialog at the canvas's foot: the
+    // app's sits over the review's header and list, outside the modal dialog,
+    // where „Undo" could not be clicked.
+    expect(options.toasterId).toBe(REVIEW_TOASTER)
+    expect(within(screen.getByTestId('review-canvas')).getByRole('region', { name: /Notifications/ })).toBeInTheDocument()
 
     act(() => options.action.onClick())
     await act(async () => {

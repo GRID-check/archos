@@ -1205,6 +1205,35 @@ describe('mentioning a colleague on a mark', () => {
     )
   })
 
+  it('↵ after „@Le" mentions Lena, the name typed, not a colleague whose address matches', async () => {
+    serve([view({ id: 'ann_1' })])
+    const anna = { ...ANNA_PERSON, email: 'anna@lehner-architekten.at' }
+    const jakob = { userId: 'user_jakob', name: 'Jakob Huber', email: 'jakob.huber@lechner.at', profilePictureUrl: null }
+    const lena = { userId: 'user_lena', name: 'Lena Fuchs', email: 'lena@buero.at', profilePictureUrl: null }
+    server.use(
+      http.get('/api/assignments/:type/:id/candidates', () => HttpResponse.json({ candidates: [anna, jakob, lena] }))
+    )
+    const sent = serveReplies()
+    render(<Harness transport={scriptedRoom().transport} />)
+    const { thread, box } = await openThread()
+
+    await userEvent.type(box, '@Le')
+    await waitFor(() =>
+      expect(within(thread).getAllByTestId('mention-option').map((row) => row.getAttribute('data-target-id'))).toEqual([
+        'user_lena',
+        'user_anna',
+        'user_jakob',
+      ])
+    )
+    await userEvent.type(box, '{Enter}')
+    expect(box).toHaveValue('@Lena Fuchs ')
+    await userEvent.type(box, 'bitte{Enter}')
+
+    await waitFor(() =>
+      expect(sent).toEqual([{ body: '@Lena Fuchs bitte', mentions: [{ targetId: 'user_lena', display: 'Lena Fuchs' }] }])
+    )
+  })
+
   it('says the chat’s words when the mention budget is spent, and the bound before sending too many names', async () => {
     serve([view({ id: 'ann_1' })])
     const many = Array.from({ length: 11 }, (_, index) => ({

@@ -113,6 +113,8 @@ describe('onWakeEnded', () => {
       subject: 'Grundriss EG.pdf',
       related: '4',
       excerpt: 'Türbreite prüfen',
+      // Every excerpt names its mentions, none here, so a folded row never keeps another's.
+      mentions: [],
       variant: 'assigned',
     })
   })
@@ -571,8 +573,19 @@ describe('onMarkReplied', () => {
       actorUserId: 'user_replier',
       anchorId: 'ann_1',
       groupKey: 'annotation.activity:document:doc_1:ann_1',
-      payload: { subject: 'Grundriss EG.pdf', related: '4', excerpt: 'Ist bestellt.', variant: 'reply' },
+      payload: { subject: 'Grundriss EG.pdf', related: '4', excerpt: 'Ist bestellt.', mentions: [], variant: 'reply' },
     })
+  })
+
+  it('quotes a reply with whom it mentions, and every excerpt names its own, so a folded row never keeps the last one’s', async () => {
+    const anna = { targetId: 'user_anna', display: 'Anna Berger' }
+    await onMarkReplied({ ...reply, replyText: '@Anna Berger ist bestellt.', replyMentions: [anna], mark: thread, mayOpen: everyone })
+    expect(vi.mocked(emitInboxItems).mock.calls[0][0][0].payload).toMatchObject({ mentions: [anna] })
+
+    // The next row folds into this one and its payload merges: a quote
+    // without mentions writes `[]` rather than inheriting Anna's.
+    await onMarkMoved({ ...ref, actorUserId: 'user_bob', byPiloti: false, markText: 'Tür T30 fehlt', move: 'resolved', mark: thread, mayOpen: everyone })
+    expect(vi.mocked(emitInboxItems).mock.calls[1][0][0].payload).toMatchObject({ excerpt: 'Tür T30 fehlt', mentions: [] })
   })
 
   it('says to the mark’s author alone that the reply is on their mark, so it reaches them as an answer', async () => {
@@ -624,9 +637,10 @@ describe('onMarkMentioned', () => {
     byPiloti: false,
     markText: 'Tür T30 fehlt',
     text: '@Anna Berger   bitte\nprüfen',
+    mentions: [{ targetId: 'user_anna', display: 'Anna Berger' }],
   }
 
-  it('asks each person mentioned, at the mark, named by who wrote it, quoting the text', async () => {
+  it('asks each person mentioned, at the mark, named by who wrote it, quoting the text with its mentions', async () => {
     await onMarkMentioned({ ...said, mentioned: ['user_anna', 'user_ben'], mayOpen: everyone })
 
     expect(recipients()).toEqual(['user_anna', 'user_ben'])
@@ -637,7 +651,13 @@ describe('onMarkMentioned', () => {
       anchorId: 'ann_1',
       actorUserId: 'user_writer',
       groupKey: 'annotation.mentioned:document:doc_1:ann_1',
-      payload: { subject: 'Grundriss EG.pdf', related: '4', excerpt: '@Anna Berger bitte prüfen' },
+      payload: {
+        subject: 'Grundriss EG.pdf',
+        related: '4',
+        excerpt: '@Anna Berger bitte prüfen',
+        // The row draws them as the thread's chips.
+        mentions: [{ targetId: 'user_anna', display: 'Anna Berger' }],
+      },
     })
   })
 

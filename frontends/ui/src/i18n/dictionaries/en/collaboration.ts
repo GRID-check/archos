@@ -649,6 +649,9 @@ export const collaboration = {
         titleRelated: 'Piloti has a question for you on annotation {related} in “{subject}”',
         titleRelatedNoSubject: 'Piloti has a question for you on annotation {related}',
         body: 'Piloti is waiting for your answer. Reply in the annotation’s thread.',
+        // `answerIn: 'review'`: nothing wakes Piloti on its own; the review
+        // asks it with the answer, so nobody is waiting here.
+        bodyInReview: 'Answer in the review. From there your answer reaches Piloti.',
       },
       // A proposal the server holds (ADR-0105), for the person Piloti made it
       // for. `variants` name what it changes (a file operation by its verb,

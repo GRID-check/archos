@@ -492,6 +492,9 @@ export const collaboration: typeof en.collaboration = {
         titleRelated: 'Piloti hat eine Rückfrage an Sie zu Anmerkung {related} in „{subject}“',
         titleRelatedNoSubject: 'Piloti hat eine Rückfrage an Sie zu Anmerkung {related}',
         body: 'Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.',
+        // `answerIn: 'review'`: Piloti wird nicht von selbst geweckt, erst die
+        // Prüfansicht fragt es mit der Antwort. Also wartet hier niemand.
+        bodyInReview: 'Antworten Sie in der Prüfansicht. Von dort erreicht Ihre Antwort Piloti.',
       },
       // Ein Vorschlag, den der Server hält (ADR-0105), für die Person, für die
       // Piloti ihn gemacht hat. `variants` nennen, was er ändert (eine

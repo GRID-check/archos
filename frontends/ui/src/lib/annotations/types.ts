@@ -141,7 +141,7 @@ export const markMentionSchema = z
 export type MarkMention = z.infer<typeof markMentionSchema>
 
 /** At most as many as one chat message may mention: one bound for one gesture (`MAX_MENTIONS_PER_MESSAGE`). */
-const mentionsField = z.array(markMentionSchema).max(MAX_MENTIONS_PER_MESSAGE)
+export const markMentionsSchema = z.array(markMentionSchema).max(MAX_MENTIONS_PER_MESSAGE)
 
 const content = {
   kind: z.enum(ANNOTATION_KINDS),
@@ -152,7 +152,7 @@ const content = {
 }
 
 export const createAnnotationRequestSchema = z
-  .object({ ...placeFields, ...content, mentions: mentionsField.optional() })
+  .object({ ...placeFields, ...content, mentions: markMentionsSchema.optional() })
   .strict()
   .superRefine(checkPlace)
 export type CreateAnnotationRequest = z.input<typeof createAnnotationRequestSchema>
@@ -173,7 +173,7 @@ export const updateAnnotationRequestSchema = z
      * the stored mentions stand. A body sent without them keeps the stored
      * mentions whose token it still shows. Only someone mentioned anew is told.
      */
-    mentions: mentionsField.optional(),
+    mentions: markMentionsSchema.optional(),
     basis: content.basis,
     status: z.enum(['open', 'resolved', 'dismissed']).optional(),
     assigneeUserId: content.assigneeUserId,
@@ -222,7 +222,7 @@ export const createReplyRequestSchema = z
      * Whom the reply mentions, as picked in the composer: colleagues, who are
      * told, and Piloti (which addresses it, as `addressesPiloti` does).
      */
-    mentions: mentionsField.optional(),
+    mentions: markMentionsSchema.optional(),
   })
   .strict()
 export type CreateReplyRequest = z.input<typeof createReplyRequestSchema>
