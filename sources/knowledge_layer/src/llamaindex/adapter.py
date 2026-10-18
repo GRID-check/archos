@@ -40,6 +40,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
+from collections.abc import Iterator
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -2685,6 +2686,37 @@ class _PdfScreen(NamedTuple):
         return {} if self.triage is None else {"triage": self.triage}
 
 
+#: The order ``[ingest-perf]`` lists a file's stages in, so two lines compare.
+_INGEST_PERF_ORDER = ("text", "tables", "screen", "renders", "rasters", "vision", "summary", "embedding", "write")
+
+
+@contextlib.contextmanager
+def _stage(stages: dict[str, float], name: str) -> Iterator[None]:
+    """Add one ingestion stage's elapsed seconds to ``stages``.
+
+    Log-only, and never raises: wrap a call site (``with _stage(stages, "text"):``)
+    so the per-file ``[ingest-perf]`` line can show where a job's wall time went.
+    Accumulates, so a stage reached on more than one path (the screen, run twice)
+    is one number.
+    """
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        stages[name] = stages.get(name, 0.0) + (time.perf_counter() - start)
+
+
+def _log_ingest_perf(file_name: str, stages: dict[str, float]) -> None:
+    """One ``[ingest-perf]`` line per file: each stage's seconds, in ``_INGEST_PERF_ORDER``.
+
+    The stages a file never reached are simply absent, so a held or failed file
+    shows how far it got. Same file name in the line as the other per-file logs.
+    """
+    parts = [f"{name}={stages[name]:.3f}" for name in _INGEST_PERF_ORDER if name in stages]
+    if parts:
+        logger.info("[ingest-perf] %s %s", file_name, " ".join(parts))
+
+
 @register_ingestor("llamaindex")
 class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     """
@@ -4537,6 +4569,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 # — stays the original's.
                 rendition = resolve_rendition(config, i, downloaded)
                 source_path = rendition or file_path
+                # ``[ingest-perf]``: this file's stage seconds, logged in the finally below.
+                stages: dict[str, float] = {}
                 try:
                     file_size = os.path.getsize(file_path)
 
@@ -4634,7 +4668,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     tables: list[dict[str, Any]] = []
                     table_documents: list[Any] = []
                     if is_pdf:
-                        text_pages = _extract_text_from_pdf(source_path)
+                        with _stage(stages, "text"):
+                            text_pages = _extract_text_from_pdf(source_path)
                         unreadable = unreadable_pdf_verdict(text_pages)
                         if unreadable:
                             self._update_file_status(job, i, FileStatus.FAILED, error=unreadable)
@@ -4648,22 +4683,24 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # The text layer and the companions are screened BEFORE
                         # the table pass, so a file the screen holds never pays
                         # for its tables (measured: 125 s of a 133-page PDF).
-                        screen = self._screen_pdf(
-                            job,
-                            i,
-                            screening_rules,
-                            source_path,
-                            text_pages,
-                            companions,
-                            captions_rasters=bool(vlm_api_key) and (extract_images or extract_charts),
-                        )
+                        with _stage(stages, "screen"):
+                            screen = self._screen_pdf(
+                                job,
+                                i,
+                                screening_rules,
+                                source_path,
+                                text_pages,
+                                companions,
+                                captions_rasters=bool(vlm_api_key) and (extract_images or extract_charts),
+                            )
                         if screen is None:
                             continue
                         if extract_tables:
                             from knowledge_layer.llamaindex.section_chunking import uncaptioned_table_documents
 
                             taken = {page["page_number"]: page.get("table_boxes") or [] for page in text_pages}
-                            tables = _extract_tables_from_pdf(source_path, taken)
+                            with _stage(stages, "tables"):
+                                tables = _extract_tables_from_pdf(source_path, taken)
                             table_documents = [
                                 document
                                 for table in tables
@@ -4671,7 +4708,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             ]
                             # The tables are text that will be embedded, so they
                             # are screened too, still before any model call.
-                            if self._screen_tables(job, i, screening_rules, table_documents, screen.checked):
+                            with _stage(stages, "screen"):
+                                held = self._screen_tables(job, i, screening_rules, table_documents, screen.checked)
+                            if held:
                                 continue
                         page_routes = _transcription.route_pdf_pages(
                             source_path,
@@ -4780,9 +4819,12 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         from knowledge_layer.llamaindex import office_extractors
                         from knowledge_layer.llamaindex.text_formats import extract_text_format_documents
 
-                        office_documents = office_extractors.extract_office_documents(file_path, file_name, file_size)
-                        if office_documents is None:
-                            office_documents = extract_text_format_documents(file_path, file_name, file_size)
+                        with _stage(stages, "text"):
+                            office_documents = office_extractors.extract_office_documents(
+                                file_path, file_name, file_size
+                            )
+                            if office_documents is None:
+                                office_documents = extract_text_format_documents(file_path, file_name, file_size)
                         over_cap = 0
                         if office_documents is not None:
                             text_documents = office_documents
@@ -4803,7 +4845,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # over-long cell were never read: not screened, not indexed.
                         cut = office_extractors.content_cut(text_documents)
                         checked = "partial" if over_cap or cut else "full"
-                        if self._screen_or_quarantine(job, i, screening_rules, document_pages(text_documents), checked):
+                        with _stage(stages, "screen"):
+                            held = self._screen_or_quarantine(
+                                job, i, screening_rules, document_pages(text_documents), checked
+                            )
+                        if held:
                             continue
                         # An office original indexed from its own bytes has a
                         # thumbnail only through its rendition (`preview_paths`).
@@ -4849,15 +4895,16 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             # (watermark-stripped) page texts: the PDF's text
                             # layer is read once, and the visual heuristic's
                             # "watermark-stripped text" threshold actually holds.
-                            drawing_pages_raw = _processing.render_visual_pages_no_vlm(
-                                source_path,
-                                min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
-                                min_paths=VISUAL_PAGE_MIN_PATHS,
-                                max_pages=MAX_RENDERED_PAGES,
-                                max_dim=PAGE_RENDER_MAX_DIM,
-                                page_texts=page_texts_for_visual_heuristic(text_pages),
-                                only_pages=page_routes.drawing_pages,
-                            )
+                            with _stage(stages, "renders"):
+                                drawing_pages_raw = _processing.render_visual_pages_no_vlm(
+                                    source_path,
+                                    min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
+                                    min_paths=VISUAL_PAGE_MIN_PATHS,
+                                    max_pages=MAX_RENDERED_PAGES,
+                                    max_dim=PAGE_RENDER_MAX_DIM,
+                                    page_texts=page_texts_for_visual_heuristic(text_pages),
+                                    only_pages=page_routes.drawing_pages,
+                                )
                             drawing_over_cap = len(page_routes.drawing_pages or ()) - MAX_RENDERED_PAGES
                             if drawing_over_cap > 0:
                                 self._record_file_counts(job, i, drawing_pages_over_cap=drawing_over_cap)
@@ -4865,24 +4912,27 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # Embedded rasters (no VLM yet): none from a page that is
                         # rendered whole above or transcribed as a scan (its one
                         # raster IS the page), at most MAX_IMAGES_PER_DOCUMENT.
-                        images, images_over_cap = _embedded_images_for_analysis(
-                            source_path,
-                            rendered_pages={page["page_number"] for page in drawing_pages_raw} | page_routes.scan_pages,
-                            enabled=extract_images or extract_charts,
-                        )
+                        with _stage(stages, "rasters"):
+                            images, images_over_cap = _embedded_images_for_analysis(
+                                source_path,
+                                rendered_pages={page["page_number"] for page in drawing_pages_raw}
+                                | page_routes.scan_pages,
+                                enabled=extract_images or extract_charts,
+                            )
                         if images_over_cap:
                             self._record_file_counts(job, i, images_over_cap=images_over_cap)
                         if images and vlm_api_key:
                             self._record_unscreened_rasters(job, i)
 
-                        image_results, drawing_pages = _processing.enrich_vlm_batch(
-                            image_records=images,
-                            drawing_pages=drawing_pages_raw,
-                            vlm_model=vlm_model,
-                            vlm_base_url=vlm_base_url,
-                            vlm_api_key=vlm_api_key,
-                            extract_charts=extract_charts,
-                        )
+                        with _stage(stages, "vision"):
+                            image_results, drawing_pages = _processing.enrich_vlm_batch(
+                                image_records=images,
+                                drawing_pages=drawing_pages_raw,
+                                vlm_model=vlm_model,
+                                vlm_base_url=vlm_base_url,
+                                vlm_api_key=vlm_api_key,
+                                extract_charts=extract_charts,
+                            )
 
                         # Keep the rasters the VLM just captioned, beside the
                         # document, so `view_knowledge_image` can show one at
@@ -5038,32 +5088,35 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 executor, suggest_doc_class, llm_input, file_name, organization_id=organization_id
                             )
 
-                    # Wait for summary if started
-                    summary = None
-                    if summary_future:
-                        try:
-                            summary = summary_future.result(timeout=30)
-                        except TimeoutError:
-                            logger.warning("Summary generation timed out for %s", file_name)
-                        except Exception as e:
-                            logger.warning("Summary generation failed for %s: %s", file_name, e)
+                    # Wait for summary if started. The summary/tag/topic calls were
+                    # started earlier and ran alongside the vision batch; this is
+                    # the time left to collect them.
+                    with _stage(stages, "summary"):
+                        summary = None
+                        if summary_future:
+                            try:
+                                summary = summary_future.result(timeout=30)
+                            except TimeoutError:
+                                logger.warning("Summary generation timed out for %s", file_name)
+                            except Exception as e:
+                                logger.warning("Summary generation failed for %s: %s", file_name, e)
 
-                    # Wait for tags if started (independent timeout, fail-open —
-                    # a tag failure never affects the summary or the ingestion).
-                    tags = None
-                    if tags_future:
-                        try:
-                            tags = tags_future.result(timeout=30)
-                        except TimeoutError:
-                            logger.warning("Tag classification timed out for %s", file_name)
-                        except Exception as e:
-                            logger.warning("Tag classification failed for %s: %s", file_name, e)
+                        # Wait for tags if started (independent timeout, fail-open —
+                        # a tag failure never affects the summary or the ingestion).
+                        tags = None
+                        if tags_future:
+                            try:
+                                tags = tags_future.result(timeout=30)
+                            except TimeoutError:
+                                logger.warning("Tag classification timed out for %s", file_name)
+                            except Exception as e:
+                                logger.warning("Tag classification failed for %s: %s", file_name, e)
 
-                    topics = _future_result(topics_future, "Topic suggestion", file_name)
+                        topics = _future_result(topics_future, "Topic suggestion", file_name)
 
-                    # Clean up executor
-                    if executor:
-                        executor.shutdown(wait=False)
+                        # Clean up executor
+                        if executor:
+                            executor.shutdown(wait=False)
 
                     # The vision model saw the pixels; the classifier only read
                     # its caption. A photograph is a Foto whatever it shows.
@@ -5130,7 +5183,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # Embedding is the expensive step; a run that lost its claim
                     # stops before it.
                     self._assert_still_owner(job_id)
-                    records = self._embedded_records(all_documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+                    with _stage(stages, "embedding"):
+                        records = self._embedded_records(
+                            all_documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+                        )
                     # The last moment a run that lost its claim can stop with
                     # nothing of this file written: the new owner indexes it.
                     self._assert_still_owner(job_id)
@@ -5139,7 +5195,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     attempted = [record.chunk_id for record in records]
                     from ..qdrant import writes as qdrant_writes
 
-                    qdrant_writes.write_chunks(collection_name, file_name, records, identity=identity, config=config)
+                    with _stage(stages, "write"):
+                        qdrant_writes.write_chunks(
+                            collection_name, file_name, records, identity=identity, config=config
+                        )
 
                     # The document may have been deleted while this attempt
                     # ran: by a delete that did not wait for the replacement
@@ -5379,6 +5438,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     self._update_file_status(job, i, FileStatus.FAILED, error=str(e), exc=e)
                     self._discard_partial_version(collection_name, file_name, attempted)
                 finally:
+                    # Where this file's wall time went, in one line. Logged here,
+                    # not on the success path, so a held or failed file shows the
+                    # stages it did reach: that is where the screening win reads.
+                    _log_ingest_perf(file_name, stages)
                     # Still under the replacement lock: a quarantined re-upload
                     # holds its whole document (ADR-0086) until a reviewer
                     # acts, so its predecessor stops answering now.
