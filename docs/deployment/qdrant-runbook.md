@@ -12,6 +12,68 @@ in the shape the StatefulSet creates; [Drill log](#drill-log) says what it
 was, how it differed from a cluster, and what it found. A step marked
 **undrilled** has never been run; read it twice and do it on a copy first.
 
+## Secrets and settings to set before the first deploy
+
+Qdrant is self-hosted: no vendor account, no bought key. Every value below
+is one you generate yourself and keep in the stack's ESC environment
+(`matthiasbigl/grid-oib/dev` for staging, `matthiasbigl/grid-oib/prod` for
+prod). Do this once per environment, before the deploy that brings Qdrant.
+
+**1. Three Qdrant secrets. Required:** `pulumi preview` fails without any of
+them, and fails if two are equal.
+
+| Key | What it is | Must differ from |
+|---|---|---|
+| `qdrantApiKey` | Qdrant's admin password (`service.api_key`): every backend tier reads and writes with it | `qdrantReadOnlyApiKey` |
+| `qdrantReadOnlyApiKey` | A password that can only search; for read-only callers and for looking in the dashboard | `qdrantApiKey` |
+| `qdrantS3SecretKey` | Not a Qdrant key: the login of the `grid-qdrant` identity in our SeaweedFS, which stores the nightly snapshots | `seaweedfsSecretKey`, `seaweedfsBackendReadSecretKey`, `seaweedfsTenantAdminSecretKey`, `langfuseS3SecretKey` |
+
+```bash
+ENV=matthiasbigl/grid-oib/dev   # or matthiasbigl/grid-oib/prod
+esc env set $ENV pulumiConfig.grid-oib:qdrantApiKey         "$(openssl rand -base64 32)" --secret
+esc env set $ENV pulumiConfig.grid-oib:qdrantReadOnlyApiKey "$(openssl rand -base64 32)" --secret
+esc env set $ENV pulumiConfig.grid-oib:qdrantS3SecretKey    "$(openssl rand -base64 32)" --secret
+```
+
+Each command generates a fresh random value, so running them as written gives
+three different values. Run each once: running one again replaces the key, and
+replacing `qdrantApiKey` on a live cluster is a rotation
+([Rotate the API key](#rotate-the-api-key)), not a re-run. `qdrantAltApiKey`
+exists only during that rotation; do not set it now.
+
+**2. The dashboard's sign-in. Already set** wherever Langfuse signs in: the
+dashboard reuses the platform WorkOS Connect application.
+
+| Key | Where | Status |
+|---|---|---|
+| `otelOidcIssuer` | plain config in `Pulumi.<stack>.yaml` | set on dev and prod |
+| `otelOidcClientId` | plain config in `Pulumi.<stack>.yaml` | set on dev and prod |
+| `otelOidcClientSecret` | ESC, secret | set where Langfuse's sign-in works |
+
+The one new step is in the WorkOS dashboard, not a secret: add
+`https://qdrant.<baseDomain>/oauth2/callback` as a redirect URI on that
+application (`https://qdrant.dev.piloti.at/oauth2/callback` for staging,
+`https://qdrant.piloti.at/oauth2/callback` for prod). The dashboard is on by
+default, so do it before the deploy ([Dashboard](#on-a-public-host)).
+
+**3. The migration flag. A setting, not a secret.** `chromaMigration: "true"`
+is already in `Pulumi.dev.yaml`; prod gets it in the promotion PR, and every
+stack removes it after its migration
+([Migrating from Chroma on Kubernetes](#migrating-from-chroma-on-kubernetes)).
+
+**Check before deploying**, without printing a value:
+
+```bash
+cd deploy/pulumi
+pulumi config --stack dev | grep -E 'qdrant(ApiKey|ReadOnlyApiKey|S3SecretKey)|otelOidc'
+# each line shows the key with [secret] or its plain value; a missing line is a missing key
+pulumi preview --stack dev   # names any missing or colliding key
+```
+
+**Compose and Coolify** need none of this. Compose runs Qdrant without a key on
+its internal network, and Coolify generates the key itself
+(`SERVICE_PASSWORD_QDRANT`).
+
 ## Before you start
 
 The commands use these names, which are the ones Pulumi creates:
@@ -27,7 +89,7 @@ The commands use these names, which are the ones Pulumi creates:
 | Keys | Secret `qdrant-credentials`: `api-key`, `read-only-api-key`, `s3-secret-key` (and `alt-api-key` during a rotation) |
 | Snapshot bucket | `qdrant-snapshots` in the in-cluster SeaweedFS, identity `grid-qdrant` |
 | Collections | `piloti_office_v1` behind alias `piloti_office`, `piloti_corpus_v1` behind `piloti_corpus` |
-| Web dashboard | `http://localhost:6333/dashboard` through a port-forward, or `https://qdrant.<baseDomain>/dashboard` with `qdrantDashboardEnabled` ([Dashboard](#dashboard)) |
+| Web dashboard | `https://qdrant.<baseDomain>/dashboard`, on by default where the `otelOidc*` keys are set, or `http://localhost:6333/dashboard` through a port-forward ([Dashboard](#dashboard)) |
 
 **Reach the peers from inside the namespace.** The NetworkPolicies admit only
 named callers to Qdrant (`allow-app-to-qdrant`). `qdrant-ops` is the one
@@ -163,7 +225,7 @@ collections, their points and payloads, a console for REST calls, and the
 cluster view. The UI calls the REST API on its own origin, so whatever reaches
 `/dashboard` must reach the whole port.
 
-### When it is off (the default)
+### When it is off, or on Compose
 
 Port-forward to the Service and open it locally:
 
@@ -194,23 +256,27 @@ recreate the container, a few seconds of retrieval errors on the local stack.
 
 ### On a public host
 
-`qdrantDashboardEnabled` puts the dashboard at `https://qdrant.<baseDomain>`
-(`qdrantDashboardDomain` overrides the host) behind the same edge gate as
-Langfuse: the platform WorkOS Connect application, and the
-`platform:organizations:view` permission only. Analysts holding
-`platform:observability:view` get Langfuse, not this. Turning it on, per
-environment:
+The dashboard is at `https://qdrant.<baseDomain>` (`qdrantDashboardDomain`
+overrides the host) behind the same edge gate as Langfuse: the platform WorkOS
+Connect application, and the `platform:organizations:view` permission only.
+Analysts holding `platform:observability:view` get Langfuse, not this.
 
-1. **WorkOS first.** Register `https://qdrant.<baseDomain>/oauth2/callback` as
-   a redirect URI on the platform Connect application, the one Langfuse uses
-   ([`kubernetes.md` §9](kubernetes.md#the-platform-connect-application)). Do
-   not create a second application. Skip it and the login dies at WorkOS with
-   `invalid_redirect_uri`.
-2. **Set the flag.** It needs the three `otelOidc*` keys; `pulumi preview`
-   refuses the flag without them.
+It is **on by default** (`qdrantDashboardEnabled` defaults to `true`) on every
+stack that has the three `otelOidc*` keys, which dev and prod both do. A stack
+without them gets no route and a warning in `pulumi preview`; one that sets
+the flag to `true` explicitly without them fails the plan. Per environment:
+
+1. **WorkOS first, before the deploy that brings it.** Register
+   `https://qdrant.<baseDomain>/oauth2/callback` as a redirect URI on the
+   platform Connect application, the one Langfuse uses
+   ([`kubernetes.md` §9](kubernetes.md#the-platform-connect-application)).
+   Do not create a second application. Skip it and the login dies at WorkOS
+   with `invalid_redirect_uri`; nothing else breaks.
+2. **Nothing to set.** The flag is on by default. To keep a stack without the
+   dashboard and port-forward instead:
 
    ```bash
-   pulumi config set grid-oib:qdrantDashboardEnabled true
+   pulumi config set grid-oib:qdrantDashboardEnabled false
    ```
 
 3. **DNS.** Nothing to do with `dnsEnabled`: the host's record follows the
@@ -220,13 +286,13 @@ environment:
    `grid-qdrant-tls` certificate, the `grid-qdrant-dashboard` HTTPRoute, its
    `grid-qdrant-dashboard-auth` SecurityPolicy with the `qdrant-dashboard-oidc`
    Secret, and the `allow-edge-to-qdrant-dashboard` NetworkPolicy (the edge to
-   6333, nothing else). `pulumi config rm grid-oib:qdrantDashboardEnabled`
+   6333, nothing else). `pulumi config set grid-oib:qdrantDashboardEnabled false`
    removes all of it again.
 
 `https://qdrant.<baseDomain>/` redirects to `/dashboard`, through the WorkOS
 login when there is no session.
 
-**Undrilled**: no stack has run with the flag on yet. The manifests are held by
+**Undrilled**: no stack has served it yet. The manifests are held by
 `deploy/pulumi/index-qdrant-dashboard.spec.ts`.
 
 **Check it once after the first deploy.** The route strips `Authorization` and
@@ -243,8 +309,8 @@ Qdrant, and the strip is not working.
 Then sign in as a user who holds neither platform permission (a tenant user):
 the edge must answer `403 RBAC: access denied`. That is the open question
 [`kubernetes.md` §9b](kubernetes.md#giving-analysts-read-only-access) step 3
-records for the shared gate. If the user gets in, `pulumi config rm
-grid-oib:qdrantDashboardEnabled` and deploy: Qdrant's key would still refuse
+records for the shared gate. If the user gets in, `pulumi config set
+grid-oib:qdrantDashboardEnabled false` and deploy: Qdrant's key would still refuse
 them every API call, but the host would be open to anyone with a WorkOS
 account.
 

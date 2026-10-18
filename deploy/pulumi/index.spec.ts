@@ -311,10 +311,11 @@ describe("the program constructs in the split topology", () => {
     }
   });
 
-  it("puts nothing of Qdrant's dashboard at the edge on a stack that does not ask for it", () => {
-    // `qdrantDashboardEnabled` defaults off, and off must render exactly what a
-    // stack rendered before the knob existed: a listener is a certificate
-    // request, a route without the flag is a public window onto the store.
+  it("puts nothing of Qdrant's dashboard at the edge on a stack without the Connect application", () => {
+    // `qdrantDashboardEnabled` defaults on, but only where the WorkOS Connect
+    // application is set (this base stack sets none): without its gate the
+    // route would be a public window onto the store, and the stack must render
+    // exactly what it rendered before the knob existed.
     // `index-qdrant-dashboard.spec.ts` builds the on side.
     const gateway = RESOURCES.find((r) => r.name === "grid-gateway");
     const listeners = (gateway?.inputs.spec as unknown as { listeners: Array<{ name: string }> }).listeners;

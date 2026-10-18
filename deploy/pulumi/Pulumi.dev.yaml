@@ -130,13 +130,13 @@ config:
   grid-oib:qdrantCpu: "1"
   grid-oib:qdrantMemory: 4Gi
   grid-oib:qdrantStorageSize: 20Gi
-  # Qdrant's web dashboard at qdrant.<baseDomain>, behind the operator gate.
-  # OFF here: operators port-forward (docs/deployment/qdrant-runbook.md,
-  # "Dashboard"). To turn it on, register
-  # https://qdrant.dev.piloti.at/oauth2/callback on the platform Connect
-  # application in WorkOS FIRST, then uncomment (the host comes from baseDomain;
-  # set qdrantDashboardDomain only to override it):
-  # grid-oib:qdrantDashboardEnabled: "true"
+  # Qdrant's web dashboard at qdrant.dev.piloti.at, behind the operator gate:
+  # ON by default here, because the Connect application below (otelOidc*) is
+  # set. Register https://qdrant.dev.piloti.at/oauth2/callback on that
+  # application in WorkOS before this deploys, or its sign-in fails with
+  # invalid_redirect_uri (docs/deployment/qdrant-runbook.md, "Dashboard").
+  # To keep it off and port-forward instead:
+  # grid-oib:qdrantDashboardEnabled: "false"
   # Copies the retired Chroma into Qdrant on the deploy that removes it, once:
   # the Job reads the still-running server, and the backend tiers roll after it.
   # Switch it off (`pulumi config rm`) once the import verified and retrieval

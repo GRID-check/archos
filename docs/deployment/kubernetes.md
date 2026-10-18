@@ -2108,7 +2108,7 @@ because they are literal env values in the pod template.
 
 Langfuse's route is gated at the edge, and its UI signs in, against a
 **dedicated WorkOS Connect application**, not the app's AuthKit client. The
-Qdrant dashboard's route, when `qdrantDashboardEnabled` turns it on, is gated by
+Qdrant dashboard's route, on by default on every stack with this application, is gated by
 the same application, for the operator permission alone. That is
 a hard requirement, not a preference: WorkOS's `/user_management/*` endpoints
 read client credentials only from the request body, while Envoy Gateway
@@ -2139,8 +2139,8 @@ One-time setup, in the WorkOS dashboard under **Connect**:
    client has no secret, and the SecurityPolicy requires one).
 2. Generate a client secret.
 3. Redirect URIs: the two Langfuse callbacks listed in §9b ("One-time WorkOS
-   setup"), and, on a stack that sets `qdrantDashboardEnabled`, Qdrant's
-   dashboard callback:
+   setup"), and Qdrant's dashboard callback, on every stack that has not set
+   `qdrantDashboardEnabled=false`:
 
    ```text
    https://qdrant.<baseDomain>/oauth2/callback   # Envoy's OIDC callback for the Qdrant dashboard

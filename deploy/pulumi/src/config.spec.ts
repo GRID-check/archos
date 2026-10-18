@@ -221,10 +221,26 @@ describe("Qdrant's dashboard at the edge", () => {
     "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret
   };
 
-  it("is off by default, on the qdrant.<baseDomain> host", () => {
+  it("is on by default where the Connect application is set, on the qdrant.<baseDomain> host", () => {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...connectApp });
+    const cfg = loadConfig();
+    expect(cfg.qdrant.dashboard).toEqual({ enabled: true, domain: "qdrant.example.test" });
+    expect(cfg.dns.hosts).toContain("qdrant.example.test");
+  });
+
+  // Default on never means ungated: without the application there is no gate
+  // to put in front of the route, so the default stands down with a warning.
+  it("stands down by default on a stack without the Connect application", () => {
     pulumi.runtime.setAllConfig(baseStackConfig());
     const cfg = loadConfig();
-    expect(cfg.qdrant.dashboard).toEqual({ enabled: false, domain: "qdrant.example.test" });
+    expect(cfg.qdrant.dashboard.enabled).toBe(false);
+    expect(cfg.dns.hosts).not.toContain("qdrant.example.test");
+  });
+
+  it("stays off where a stack sets it false, Connect application or not", () => {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...connectApp, "grid-oib:qdrantDashboardEnabled": "false" });
+    const cfg = loadConfig();
+    expect(cfg.qdrant.dashboard.enabled).toBe(false);
     expect(cfg.dns.hosts).not.toContain("qdrant.example.test");
   });
 
@@ -261,8 +277,9 @@ describe("Qdrant's dashboard at the edge", () => {
     expect(error?.message).toMatch(/grid-oib:qdrantDashboardDomain is still the template placeholder/);
   });
 
-  // The gate is the only thing between the public host and the store.
-  it("refuses to turn on without the Connect application, naming what is missing", () => {
+  // The gate is the only thing between the public host and the store, and a
+  // stack that asks for the route explicitly has made a mistake if it is missing.
+  it("refuses an explicit true without the Connect application, naming what is missing", () => {
     const error = loadWith({
       "grid-oib:qdrantDashboardEnabled": "true",
       "grid-oib:otelOidcIssuer": "https://grid.authkit.app",

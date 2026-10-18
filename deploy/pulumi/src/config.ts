@@ -663,12 +663,17 @@ export interface GridConfig {
     };
     /**
      * Qdrant's built-in web dashboard on a public host, behind the platform
-     * operator gate (`platform/qdrant-dashboard.ts`). Off by default: with it
-     * off, no listener, certificate, DNS record, route, SecurityPolicy or
-     * NetworkPolicy exists for it, and operators port-forward instead.
+     * operator gate (`platform/qdrant-dashboard.ts`). On by default, wherever
+     * the stack has the `otelOidc*` Connect application that gates it; off, no
+     * listener, certificate, DNS record, route, SecurityPolicy or NetworkPolicy
+     * exists for it, and operators port-forward instead.
      */
     dashboard: {
-      /** `qdrantDashboardEnabled`. Refused without the `otelOidc*` Connect application. */
+      /**
+       * `qdrantDashboardEnabled` (default true) AND the Connect application.
+       * Without the application the route is skipped with a warning, unless the
+       * flag was set to true explicitly, which fails the plan.
+       */
       enabled: boolean;
       /** Public hostname. Derived: `qdrant.<baseDomain>` unless overridden. */
       domain: string;
@@ -2392,19 +2397,30 @@ export function loadConfig(): GridConfig {
   }
 
   // ── Qdrant dashboard at the edge (platform/qdrant-dashboard.ts) ────────────
-  // Off by default, and a hard failure rather than Langfuse's warn-and-skip
-  // when the Connect application is missing: nobody gets this by default, so a
-  // stack that sets the flag asked for it, and the gate is the only thing
-  // between the public host and every office's chunk text. Planning a route
-  // with an empty issuer would put that host on the internet ungated by
-  // anything that works.
+  // On by default, like Langfuse, and on the same rule: the flag AND the
+  // capability. The capability is the platform Connect application, because
+  // the gate is the only thing between the public host and every office's
+  // chunk text; a route planned with an empty issuer would put that host on
+  // the internet ungated by anything that works. So a stack without the
+  // `otelOidc*` keys gets no route and a warning, never an open one. A stack
+  // that sets the flag to true explicitly asked for the route, and is failed
+  // instead: there the missing gate is a mistake, not a default.
   const qdrantDashboardDomain = cfg.get("qdrantDashboardDomain") ?? `qdrant.${baseDomain}`;
-  const qdrantDashboardEnabled = bool(cfg, "qdrantDashboardEnabled", false);
-  if (qdrantDashboardEnabled && missingOidcDeps.length > 0) {
+  const qdrantDashboardFlag = bool(cfg, "qdrantDashboardEnabled", true);
+  const qdrantDashboardAsked = cfg.get("qdrantDashboardEnabled") !== undefined;
+  const missingDashboardGate = missingOidcDeps.map((k) => `grid-oib:${k}`).join(", ");
+  if (qdrantDashboardFlag && qdrantDashboardAsked && missingOidcDeps.length > 0) {
     throw new Error(
       "grid-oib:qdrantDashboardEnabled needs the platform WorkOS Connect application its route is gated " +
-        `by: missing ${missingOidcDeps.map((k) => `grid-oib:${k}`).join(", ")}. Set them ` +
+        `by: missing ${missingDashboardGate}. Set them ` +
         "(docs/deployment/kubernetes.md §9), or set qdrantDashboardEnabled=false and port-forward instead.",
+    );
+  }
+  const qdrantDashboardEnabled = qdrantDashboardFlag && missingOidcDeps.length === 0;
+  if (qdrantDashboardFlag && !qdrantDashboardEnabled) {
+    pulumi.log.warn(
+      `Qdrant dashboard not served: missing ${missingDashboardGate}, the WorkOS application its ` +
+        "route is gated by. Set them to serve it, or set grid-oib:qdrantDashboardEnabled=false to silence this.",
     );
   }
 

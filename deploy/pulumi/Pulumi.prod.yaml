@@ -450,6 +450,11 @@ config:
   grid-oib:clickhouseStorageSize: 50Gi
   grid-oib:otelOidcIssuer: https://prestigious-energy-03.authkit.app
   grid-oib:otelOidcClientId: client_01M0SKKRX0XAQ99AFZ31WNJ6XT # pragma: allowlist secret (public OAuth client id)
+  # The same application gates Qdrant's dashboard at qdrant.piloti.at, on by
+  # default because these keys are set. Register
+  # https://qdrant.piloti.at/oauth2/callback on it in WorkOS before the deploy
+  # that brings it (docs/deployment/qdrant-runbook.md, "Dashboard"), or keep
+  # it off with: grid-oib:qdrantDashboardEnabled: "false"
   # ── BFF background pool (ADR-0079) ──
   # Internal replicas of the frontend image claim bff_job_queue fairly across
   # organisations and run project reindex and failed-ingestion rescan jobs, IFC
