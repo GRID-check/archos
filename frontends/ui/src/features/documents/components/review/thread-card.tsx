@@ -692,18 +692,25 @@ function FassungLines({
 
 /**
  * Whether Piloti took this reply up, as far as the card can tell: it was for
- * Piloti, and Piloti answered after it or works for its author now. The
- * server decides with the reply's own wake (`editReply`); this only keeps the
- * card from offering what it would refuse.
+ * Piloti, and Piloti answered after it, works for its author now, or this tab
+ * is asking it in the thread (`asking`: wakes off, so the browser asked, and
+ * only Piloti's answer would tell the server). The server decides with the
+ * reply's own wake (`editReply`) and lets a change through in the moment
+ * before a browser ask's answer lands; the card keeps the author from
+ * changing what Piloti is reading.
  */
-function takenUpByPiloti(annotation: AnnotationView, reply: AnnotationReplyView): boolean {
+function takenUpByPiloti(annotation: AnnotationView, reply: AnnotationReplyView, asking: boolean): boolean {
   if (!replyIsForPiloti(annotation, reply)) return false
-  if (pilotiRepliedSince(annotation.replies, reply)) return true
+  if (asking || pilotiRepliedSince(annotation.replies, reply)) return true
   const work = annotation.pilotiWork
   return Boolean(
     work && (work.state === 'queued' || work.state === 'working') && work.trigger !== 'assigned' && work.forUserId === reply.createdBy
   )
 }
+
+/** Whether this tab's own ask of Piloti, answering in this mark's thread, is still thinking. */
+const pilotiAskingIn = (review: DocumentReview, annotationId: string): boolean =>
+  review.piloti.asks.some((ask) => ask.replyInThread && ask.annotationId === annotationId && ask.status === 'thinking')
 
 /**
  * One reply in the thread. Its author may reword it („Bearbeiten“: the
@@ -730,7 +737,7 @@ function ReplyEntry({
     isLive(annotation) &&
     reply.authorKind === 'person' &&
     reply.createdBy === review.me &&
-    !takenUpByPiloti(annotation, reply)
+    !takenUpByPiloti(annotation, reply, pilotiAskingIn(review, annotation.id))
   const failureOf = (error: unknown) =>
     error instanceof AnnotationRequestError && error.reason === REPLY_TAKEN_UP_REASON ? t('review.replyTakenUp') : null
 

@@ -68,7 +68,10 @@ export const INBOX_PATH = '/app/inbox'
  * line under it („4 Anmerkungen für Sie“ / „3 heute oder morgen fällig, 1
  * überfällig“), from the type's `pushFold` copy and its push policy's parts.
  * It opens the inbox, and names no item, so a tap marks none of them read.
- * Null when the type has no words for it: each item is then told on its own.
+ * Its tag is the burst's own (`fold:<type>:<newest item>`): a later burst's
+ * notification stands beside this one rather than replacing its count, and a
+ * retry of the same burst replaces it. Null when the type has no words for
+ * it: each item is then told on its own.
  *
  * `items` are views the recipient's own session produced (`viewInboxItemAs`),
  * newest first; only those with an address count.
@@ -83,7 +86,8 @@ export function buildFoldedPushMessage(
   const type = told[0]?.type
   if (!type || told.length < 2) return null
   const dictionary = getDictionary(locale)
-  const base = { version: PUSH_PAYLOAD_VERSION, url: INBOX_PATH, tag: pushTagFor(`fold:${type}`), itemId: '' } as const
+  const tag = pushTagFor(`fold:${type}:${told[0]?.id}`)
+  const base = { version: PUSH_PAYLOAD_VERSION, url: INBOX_PATH, tag, itemId: '' } as const
   if (!preferences.showContent) {
     return { ...base, title: createTranslator(dictionary, 'notifications')('push.genericTitle'), body: null }
   }

@@ -128,12 +128,14 @@ export async function findInboxItemForRecipient(
 }
 
 /**
- * A person's rows of one type that are still news (unread, and not archived,
- * resolved or inert), last touched between `from` and `to`, newest first and
- * at most `limit`. For the push job's fold (`lib/push/fold.ts`): which rows of
- * a burst one notification tells about.
+ * A person's rows of one type last touched between `from` and `to`, whatever
+ * became of them since (read, resolved, archived or inert too), newest first
+ * and at most `limit`. For the push job's fold (`lib/push/fold.ts`): which rows
+ * make up a burst. A row read since still links the rows around it, so a burst
+ * is not cut in two by a read in its middle; the job tells only the rows still
+ * news (`isPushStillDue`).
  */
-export async function listStillDueOfType(
+export async function listTouchedOfType(
   organizationId: string,
   recipientUserId: string,
   type: InboxItemType,
@@ -148,10 +150,6 @@ export async function listStillDueOfType(
         eq(inboxItems.organizationId, organizationId),
         eq(inboxItems.recipientUserId, recipientUserId),
         eq(inboxItems.type, type),
-        isNull(inboxItems.readAt),
-        isNull(inboxItems.archivedAt),
-        isNull(inboxItems.resolvedAt),
-        isNull(inboxItems.inertAt),
         gte(inboxItems.updatedAt, window.from),
         lte(inboxItems.updatedAt, window.to),
       ),

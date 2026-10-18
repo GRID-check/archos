@@ -1611,6 +1611,41 @@ describe('one’s own reply in the thread', () => {
     ).toBeInTheDocument()
   })
 
+  it('offers no change of an @Piloti reply while this tab’s own ask of Piloti about it is thinking (wakes off)', async () => {
+    const asked = reply({ id: 'r1', body: '@Piloti Stimmt die Breite?', mentions: [], addressesPiloti: true })
+    serve([view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25 })])
+    serveConversation()
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
+        HttpResponse.json({
+          annotation: view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25, replies: [asked] }),
+          replyId: 'r1',
+          wake: 'off',
+        })
+      )
+    )
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    const thread = await openThread()
+    const box = within(thread).getByTestId('thread-reply')
+    await userEvent.type(box, '@pil')
+    await userEvent.click(pickerOption(thread, 'agent:piloti'))
+    await userEvent.type(box, 'Stimmt die Breite?{Enter}')
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+
+    // Piloti is reading it in this tab: the server would let a delete through, and Piloti would answer a reply that is gone.
+    const asking = screen.getByTestId('review-thread')
+    expect(within(asking).getByTestId('thread-piloti-pending')).toBeInTheDocument()
+    expect(within(asking).getAllByTestId('thread-reply-entry')).toHaveLength(1)
+    expect(within(asking).queryByTestId('thread-reply-more')).toBeNull()
+
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'RUN_ERROR', code: 'workflow_error', message: 'The connection closed.', details: null })
+    // Piloti broke off without answering: nothing took the reply up, so it is its author's again.
+    await waitFor(() => expect(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-more')).toBeInTheDocument())
+  })
+
   it('offers no change of a colleague’s reply, of Piloti’s, on a closed mark, or of one Piloti answered', async () => {
     const forPiloti = reply({ body: '@Piloti stimmt das?', mentions: [], addressesPiloti: true })
     const answer = reply({

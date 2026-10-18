@@ -186,8 +186,11 @@ const mayDeleteMark = (record: Pick<AnnotationRecord, 'authorKind' | 'createdBy'
 
 /**
  * Why even its author may not delete this mark now, or null when nothing
- * stands in the way. The rule the undo of Piloti's mark always kept
- * (`lib/changes/undo.ts`), for every delete:
+ * stands in the way, for every delete. Looser than the undo of Piloti's mark
+ * (`undoCreate` in `lib/changes/undo.ts`), which stays as it is: undo takes
+ * back only an open mark nobody but Piloti has written in, the asker's own
+ * reply included, because it is Piloti's work being withdrawn. Here the
+ * author's own words in the thread are theirs to delete with it:
  *
  * - `discussed`: somebody other than its author and Piloti has written in its
  *   thread. Deleting the mark would take their answer with it, turn their inbox

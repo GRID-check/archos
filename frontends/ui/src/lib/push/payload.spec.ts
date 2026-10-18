@@ -123,7 +123,8 @@ describe('one notification for a burst of rows (the fold)', () => {
       body: '1 überfällig, 3 heute oder morgen fällig',
       url: '/app/inbox',
       itemId: '',
-      tag: pushTagFor('fold:annotation.assigned_to_you'),
+      // The burst's own tag, after its newest item: a later burst stands beside it, a retry replaces it.
+      tag: pushTagFor('fold:annotation.assigned_to_you:a'),
     })
     expect(buildFoldedPushMessage([mark('a', 'person'), mark('b', 'piloti'), mark('c', 'due')], fold, DEFAULT_PUSH_PREFERENCES, 'en')).toMatchObject({
       title: '3 annotations for you',

@@ -38,7 +38,7 @@ import {
   markInboxItemsUnread,
   unarchiveInboxItem,
   findLiveInboxGroupKeys,
-  listStillDueOfType,
+  listTouchedOfType,
   markAllInboxItemsRead,
   markInboxItemsRead,
   markResourceItemsRead,
@@ -461,15 +461,16 @@ describe('countInboxFilters', () => {
   })
 })
 
-describe('listStillDueOfType — the rows a folded notification tells', () => {
-  it('asks for one person’s rows of one type that are still news, in the window, newest first and bounded', async () => {
+describe('listTouchedOfType — the rows a burst is made of', () => {
+  it('asks for one person’s rows of one type, whatever became of them, in the window, newest first and bounded', async () => {
     const from = new Date('2026-10-18T04:35:00.000Z')
     const to = new Date('2026-10-18T04:45:05.000Z')
-    await listStillDueOfType('org_1', 'user_me', 'annotation.assigned_to_you', { from, to }, 51)
+    await listTouchedOfType('org_1', 'user_me', 'annotation.assigned_to_you', { from, to }, 51)
 
     const { sql, params } = onlyQuery()
     for (const column of ['organization_id', 'recipient_user_id', 'type']) expect(sql).toContain(`"inbox_items"."${column}" = $`)
-    for (const state of ['read_at', 'archived_at', 'resolved_at', 'inert_at']) expect(sql).toContain(`"inbox_items"."${state}" is null`)
+    // A row read since still links its burst: the job tells only the rows still news.
+    for (const state of ['read_at', 'archived_at', 'resolved_at', 'inert_at']) expect(sql).not.toContain(`"inbox_items"."${state}"`)
     expect(sql).toContain('"inbox_items"."updated_at" >= $')
     expect(sql).toContain('"inbox_items"."updated_at" <= $')
     expect(sql).toMatch(/order by "inbox_items"."updated_at" desc limit \$\d+/)

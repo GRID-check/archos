@@ -765,7 +765,6 @@ export function useDocumentReview(
     [guard, write, fetchCarried]
   )
 
-
   /**
    * „Alle übernehmen": the same PATCH as {@link carry} for each mark, at most
    * {@link CARRY_AT_ONCE} at a time, and the lists read ONCE after the last:

@@ -10,7 +10,7 @@ vi.mock('@/lib/auth/pinned-session', () => ({
   resolvePinnedRequesterSession: vi.fn(async () => null),
   resolvePinnedRequesterSessionStrict: vi.fn(),
 }))
-vi.mock('@/lib/inbox/repository', () => ({ findInboxItemForRecipient: vi.fn(), listStillDueOfType: vi.fn() }))
+vi.mock('@/lib/inbox/repository', () => ({ findInboxItemForRecipient: vi.fn(), listTouchedOfType: vi.fn() }))
 vi.mock('@/lib/inbox/service', () => ({ viewInboxItemAs: vi.fn() }))
 vi.mock('@/lib/user-preferences/repository', () => ({ findUserPreferences: vi.fn() }))
 vi.mock('./repository', () => ({
@@ -24,7 +24,7 @@ vi.mock('./repository', () => ({
 import { resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboxItem } from '@/lib/db/schema'
-import { findInboxItemForRecipient, listStillDueOfType } from '@/lib/inbox/repository'
+import { findInboxItemForRecipient, listTouchedOfType } from '@/lib/inbox/repository'
 import { viewInboxItemAs } from '@/lib/inbox/service'
 import type { InboxItemView } from '@/lib/inbox/types'
 import { findUserPreferences } from '@/lib/user-preferences/repository'
@@ -226,7 +226,7 @@ describe('a burst of one type’s rows is one notification (the fold)', () => {
 
   beforeEach(() => {
     vi.mocked(findInboxItemForRecipient).mockResolvedValue(newest.row)
-    vi.mocked(listStillDueOfType).mockResolvedValue(morning.map((entry) => entry.row))
+    vi.mocked(listTouchedOfType).mockResolvedValue(morning.map((entry) => entry.row))
     vi.mocked(viewInboxItemAs).mockImplementation(async (_session, item) => morning.find((entry) => entry.row.id === item.id)?.view ?? null)
   })
 
@@ -254,6 +254,46 @@ describe('a burst of one type’s rows is one notification (the fold)', () => {
     await expect(
       runInboxPush(ORG, { ...payload, itemId: 'i4', stamp: earlier.row.updatedAt.toISOString() }, first, sender)
     ).resolves.toEqual({ sent: false, reason: 'folded' })
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('tells the rows before it when the newest row was read before its job ran: they left the telling to it', async () => {
+    // i1's job runs after the person read i1 alone; i2–i4 folded into it and are still news.
+    const read = { ...newest.row, readAt: new Date() }
+    vi.mocked(findInboxItemForRecipient).mockResolvedValue(read)
+    vi.mocked(listTouchedOfType).mockResolvedValue([read, ...morning.slice(1).map((entry) => entry.row)])
+    const { sender, send } = senderReturning({})
+
+    await expect(runInboxPush(ORG, payload, first, sender)).resolves.toMatchObject({ sent: true })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(send.mock.calls[0]![1])).toMatchObject({
+      title: '3 Anmerkungen für Sie',
+      body: '1 überfällig, 2 heute oder morgen fällig',
+    })
+    expect(vi.mocked(viewInboxItemAs).mock.calls.map(([, item]) => item.id)).toEqual(['i2', 'i3', 'i4'])
+  })
+
+  it('keeps a burst whole across a row read in its middle, and still leaves it to its newest', async () => {
+    // i3 was read; i4's job must not tell i4 on its own: i3 still links it to i2 and i1.
+    const earlier = morning[3]!
+    vi.mocked(findInboxItemForRecipient).mockResolvedValue(earlier.row)
+    vi.mocked(listTouchedOfType).mockResolvedValue(
+      morning.map((entry) => (entry.row.id === 'i3' ? { ...entry.row, readAt: new Date() } : entry.row))
+    )
+    const { sender, send } = senderReturning({})
+
+    await expect(
+      runInboxPush(ORG, { ...payload, itemId: 'i4', stamp: earlier.row.updatedAt.toISOString() }, first, sender)
+    ).resolves.toEqual({ sent: false, reason: 'folded' })
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing for a read row whose burst holds nothing else still news', async () => {
+    vi.mocked(findInboxItemForRecipient).mockResolvedValue({ ...newest.row, readAt: new Date() })
+    vi.mocked(listTouchedOfType).mockResolvedValue(morning.map((entry) => ({ ...entry.row, readAt: new Date() })))
+    const { sender, send } = senderReturning({})
+
+    await expect(runInboxPush(ORG, payload, first, sender)).resolves.toEqual({ sent: false, reason: 'no-longer-news' })
     expect(send).not.toHaveBeenCalled()
   })
 

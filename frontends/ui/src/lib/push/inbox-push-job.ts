@@ -14,6 +14,8 @@
  *      identity provider). If the identity provider says not, their devices
  *      here are removed; if it could not be asked, the job throws and retries;
  *   2. the item is still theirs, unread and not resolved, archived or inert;
+ *      for a type that folds across rows (5), its job still tells the rest of
+ *      its burst when only its own row stopped being news;
  *   3. nothing newer superseded it: a burst of occurrences folds into one row,
  *      and only the job carrying the row's latest stamp sends, so twenty
  *      messages are one notification;
@@ -116,21 +118,20 @@ async function settle(
 /**
  * The rows of a burst the person wants and may see right now, as their own
  * session reads them (`viewInboxItemAs`): newest first, the job's own row
- * included when it still qualifies. Rule 5 holds per row: a row they may no
- * longer see is not counted, never worded more vaguely.
+ * (`own`, already checked, or null when it is no longer news) first. Rule 6
+ * holds per row: a row they may no longer see is not counted, never worded
+ * more vaguely; a row of the burst no longer news is not told.
  */
 async function visibleViews(
   session: AuthorizedSession,
-  rows: readonly InboxItem[],
+  own: InboxItem | null,
+  burst: readonly InboxItem[],
   preferences: PushPreferences
 ): Promise<InboxItemView[]> {
-  const views = await Promise.all(
-    rows.map(async (candidate, index) =>
-      index === 0 || (isPushStillDue(candidate) && isPushWanted(candidate.type, preferences, candidate.payload))
-        ? viewInboxItemAs(session, candidate)
-        : null
-    )
+  const told = burst.filter(
+    (candidate) => isPushStillDue(candidate) && isPushWanted(candidate.type, preferences, candidate.payload)
   )
+  const views = await Promise.all((own ? [own, ...told] : told).map((candidate) => viewInboxItemAs(session, candidate)))
   return views.filter((view): view is InboxItemView => view !== null)
 }
 
@@ -155,21 +156,25 @@ export async function runInboxPush(
   }
 
   const row = await findInboxItemForRecipient(organizationId, userId, payload.itemId)
-  if (!row || !isPushStillDue(row)) return { sent: false, reason: 'no-longer-news' }
-  if (row.updatedAt.toISOString() !== payload.stamp) return { sent: false, reason: 'superseded' }
+  if (!row) return { sent: false, reason: 'no-longer-news' }
+  const policy = pushPolicyFor(row.type)
+  const news = isPushStillDue(row)
+  // Rule 2, except that the newest row of a folding type's burst speaks for the
+  // rows before it, which left the telling to its job: read alone, it still tells them.
+  if (!news && !policy?.fold) return { sent: false, reason: 'no-longer-news' }
+  if (row.updatedAt.toISOString() !== payload.stamp) return { sent: false, reason: news ? 'superseded' : 'no-longer-news' }
 
   const prefs = await findUserPreferences(userId, organizationId)
   const preferences = resolvePushPreferences(prefs?.pushNotifications)
   if (!isPushWanted(row.type, preferences, row.payload)) return { sent: false, reason: 'category-off' }
 
-  const policy = pushPolicyFor(row.type)
   const burst = policy?.fold ? await readBurst(row) : []
   // A newer row of the same burst arrived within the hold: its job tells them all.
   if (burst === 'later') return { sent: false, reason: 'folded' }
 
-  const views = await visibleViews(session, [row, ...burst], preferences)
+  const views = await visibleViews(session, news ? row : null, burst, preferences)
   const view = views.find((candidate) => candidate.id === row.id) ?? views[0]
-  if (!view) return { sent: false, reason: 'not-visible' }
+  if (!view) return { sent: false, reason: news ? 'not-visible' : 'no-longer-news' }
   const locale = localeOf(prefs)
   const message =
     (policy?.fold && views.length > 1 ? buildFoldedPushMessage(views, policy.fold, preferences, locale) : null) ??

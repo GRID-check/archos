@@ -377,11 +377,13 @@ The server refuses, and the menu is not offered:
   own transaction) is queued, running, answered or stopped. A wake a cap held,
   or one refused or failed before it answered, took nothing up. With wakes off
   the browser asked Piloti itself, and only Piloti's answer in the thread says
-  so: a delete in the moment between the ask and the answer goes through, and
-  Piloti answers a reply that is gone. The card reads the same facts
-  (`pilotiRepliedSince`, `pilotiWork` for the reply's author) to keep from
-  offering what the server would refuse, and the refusal says so in the card,
-  not as a colleague's move.
+  so: the server lets a delete through in the moment between the ask and the
+  answer, and Piloti answers a reply that is gone. The card reads the same
+  facts (`pilotiRepliedSince`, `pilotiWork` for the reply's author) to keep
+  from offering what the server would refuse, and withholds the change too
+  while this tab's own ask of Piloti in that thread is thinking
+  (`pilotiAskingIn`), which leaves that moment to another tab only. The
+  refusal says so in the card, not as a colleague's move.
 
 The write is a compare-and-swap on the words the service read
 (`updateAnnotationReply`, `deleteAnnotationReply` with the body), so an edit
@@ -933,14 +935,20 @@ row per mark instead: the morning's Frist reminders, „Alle übernehmen“ hand
 every mark over again on the replacing document, a person handing out marks
 one after another. `annotation.assigned_to_you` therefore folds its pushes per
 person across marks (`fold` in its push policy, `lib/push/fold.ts`): every
-job of it waits `BURST_HOLD_MS` (5 s), a burst is the person's unread rows of
-the type each within 5 s of the next, and only the newest row's job sends,
-one counted notification for the rows the person may still see: „4
-Anmerkungen für Sie“ over „1 überfällig, 3 heute oder morgen fällig“
-(`buildFoldedPushMessage`, `collaboration.inbox.types.annotationAssigned.pushFold`;
-each variant counted under a part, `fold.parts` in the registry). It opens the
-Postfach, which lists them, and names no item; a burst of one is told in its
-row's own words. The inbox rows stay one per mark.
+job of it waits `BURST_HOLD_MS` (5 s), a burst is the person's rows of the
+type each within 5 s of the next (a row read meanwhile still links it), and
+only the newest row's job sends, one counted notification for the rows still
+news that the person may still see: „4 Anmerkungen für Sie“ over „1
+überfällig, 3 heute oder morgen fällig“ (`buildFoldedPushMessage`,
+`collaboration.inbox.types.annotationAssigned.pushFold`; each variant counted
+under a part, `fold.parts` in the registry). That job sends even when its own
+row was read before it ran: the rows before it left the telling to it. It
+opens the Postfach, which lists them, and names no item; a burst of one is
+told in its row's own words. Each burst's notification has its own tag, so a
+later burst stands beside it. A row stamped in the milliseconds before the
+newest job reads, and committed after, can start a burst of its own that
+tells the earlier rows again (`lib/push/fold.ts`). The inbox rows stay one
+per mark.
 
 The participants are derived from the mark when something happens, never
 stored as a list (`markParticipants`): its author (who set it, or for Piloti's
