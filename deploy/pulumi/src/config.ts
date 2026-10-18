@@ -3019,20 +3019,24 @@ export function loadConfig(): GridConfig {
       enabled: langfuseEnabled,
       domain: langfuseDomain,
       // Digest-pinned on the same terms as the ADR-0029 images, and scanned by
-      // the same trivy gate: langfuse 4.56.0 (web + worker, which MUST be the
+      // the same trivy gate: langfuse 4.63.0 (web + worker, which MUST be the
       // same version) and ClickHouse 26.8.15.10 LTS, which v4 needs (>= 25.12).
-      // The langfuse digests are what GHCR's `4.56.0` tags resolve to (checked
-      // 2026-10-09); `26.8` is a moving tag upstream and this is the digest it
-      // resolved to when pinned. 4.56.0 moved both images from node:24-alpine
-      // to UBI 9 micro; the uid (1001) and the `node` binary the preStop hook
-      // runs are unchanged. v3 (3.225.11) shipped next 16.2.11, whose
-      // next/og RCE (GHSA-vcvr-r3jv-pc5j) no 3.x release fixes.
+      // The langfuse digests are what GHCR's `4.63.0` tags resolve to, read by
+      // the same manifest lookup as the 4.56.0 pin (checked 2026-10-18);
+      // `26.8` is a moving tag upstream and this is the digest it resolved to
+      // when pinned. Moved off 4.56.0 because trivy flagged three HIGH pcre2
+      // advisories (CVE-2026-103111, -86145, -89161) against 10.40-6.el9 in
+      // the UBI 9 base both 4.56.0 images share; 10.40-7.el9_8 is the fixed
+      // build. 4.56.0 had moved both images off node:24-alpine onto UBI 9
+      // micro, and the uid (1001) and the `node` binary the preStop hook runs
+      // are unchanged between the two. v3 (3.225.11) shipped next 16.2.11,
+      // whose next/og RCE (GHSA-vcvr-r3jv-pc5j) no 3.x release fixes.
       webImage:
         cfg.get("langfuseWebImage") ??
-        "ghcr.io/langfuse/langfuse@sha256:b1948c7c0931f277975b985e30e73536b1bca5822705ddd9a89ba7c1ed79b3ee",
+        "ghcr.io/langfuse/langfuse@sha256:67f48d12a190e4ad585249c75ae1ce172b449de3dbbe7486b8179cd28e21408e",
       workerImage:
         cfg.get("langfuseWorkerImage") ??
-        "ghcr.io/langfuse/langfuse-worker@sha256:3f7571ff3a725ebdcdf4c35e06bdf8c3f8325770691c673793ad61b328265e13",
+        "ghcr.io/langfuse/langfuse-worker@sha256:ca32a8fb2a214c7b5f42dd9c540c8072e41db659cb621f317911ce695ad6bca2",
       clickhouseImage:
         cfg.get("clickhouseImage") ??
         "clickhouse/clickhouse-server@sha256:3043f691ec1a847f38b446ff43708893fcbf9815bd9bd88c0f84bfe064ce852f",
