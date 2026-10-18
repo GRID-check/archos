@@ -596,6 +596,10 @@
     "de": "Eine vorgeschlagene Änderung an den Fakten eines Projekts wird Feld für Feld als Vorher und Nachher gezeigt, damit Sie vor dem Übernehmen sehen, was sich ändern würde."
   },
   {
+    "en": "A suggestion Piloti made for a file says it waits on the file under Dateien, not in a chat.",
+    "de": "Ein Vorschlag, den Piloti für eine Datei gemacht hat, wird bei der Datei unter „Dateien“ angezeigt, nicht in einem Chat."
+  },
+  {
     "en": "A task Piloti starts in a conversation, and a connection message, now appear in that conversation even if you have opened another one in the meantime.",
     "de": "Ein Auftrag, den Piloti in einer Unterhaltung startet, und eine Verbindungsmeldung erscheinen jetzt in dieser Unterhaltung, auch wenn Sie inzwischen eine andere geöffnet haben."
   },
@@ -664,6 +668,10 @@
     "de": "Admins sehen jetzt, wann Piloti einen Upload zurückhält und welche Regel des Büros dabei angeschlagen hat. Außerdem sehen sie jede Entscheidung darüber, wer eine Notiz lesen darf, die Piloti aus einem Chat mit eingeschränkten Ordnern festhält, auch eine Notiz für das ganze Büro, die Piloti Ihnen zum Speichern angeboten hat."
   },
   {
+    "en": "After a new Fassung arrives, the Protokoll still lists every Anmerkung that is open on an earlier Fassung, and each entry says which Fassung it was set on. Before, the default Protokoll left them out, so a Jour fixe run from it missed exactly those points.",
+    "de": "Nach Eingang einer neuen Fassung führt das Protokoll weiterhin alle Anmerkungen auf, die in einer früheren Fassung noch offen sind, und gibt bei jedem Eintrag an, in welcher Fassung die Anmerkung erfasst wurde. Bisher ließ das Standard-Protokoll sie aus, sodass bei einem darauf basierenden Jour fixe genau diese Punkte fehlten."
+  },
+  {
     "en": "After a short disruption on our side, documents that are being read now carry on by themselves, and answers no longer stall while Piloti looks something up in your files.",
     "de": "Nach einer kurzen Störung auf unserer Seite werden gerade eingelesene Dokumente nun selbstständig weiterverarbeitet, und Antworten stocken nicht mehr, während Piloti Ihre Dateien durchsucht."
   },
@@ -690,6 +698,10 @@
   {
     "en": "Almost every answer now opens with a one- or two-sentence summary of the result and its decisive limitation, right under the verdict when there is one.",
     "de": "Praktisch jede Antwort beginnt jetzt mit einer Zusammenfassung in ein, zwei Sätzen, die das Ergebnis samt entscheidender Einschränkung vorwegnimmt, direkt unter dem Urteil, wenn es eines gibt."
+  },
+  {
+    "en": "An Anmerkung opened from the keyboard takes the focus, and closing it returns you to where you were, so Enter never resolves one by accident. A screen reader hears what colleagues and Piloti change on the drawing.",
+    "de": "Eine per Tastatur geöffnete Anmerkung erhält den Fokus. Beim Schließen kehren Sie an die vorherige Stelle zurück, damit Sie nicht versehentlich mit Enter eine Anmerkung als erledigt markieren. Ein Screenreader gibt wieder, was Kolleginnen und Kollegen und Piloti in der Zeichnung ändern."
   },
   {
     "en": "An IFC file now behaves the same everywhere: a click opens a preview with the building in it, and a button below leads into the model area.",
@@ -782,6 +794,10 @@
   {
     "en": "An empty project chat now says in one sentence that Piloti can also write file notes and drafts on request.",
     "de": "Der leere Chat im Projekt sagt jetzt in einem Satz, dass Piloti auf Zuruf auch Aktenvermerke und Entwürfe schreibt."
+  },
+  {
+    "en": "An entry is marked read however you reach it: from a notification on your device, or by opening its Anmerkung in the Prüfansicht.",
+    "de": "Ein Eintrag wird unabhängig davon, wie Sie ihn aufrufen, als gelesen markiert: über eine Benachrichtigung auf Ihrem Gerät oder durch Öffnen der zugehörigen Anmerkung in der Prüfansicht."
   },
   {
     "en": "An open document now shows what Piloti saw on each page, with the drawing type and scale, right under its summary, and a click on an entry turns the document to that page. Format, page count and size sit under the name, so the side panel keeps only what Piloti read, the Fassungen and the pages.",
@@ -1060,8 +1076,16 @@
     "de": "Beim Schließen eines Projekts wird jetzt gefragt, was das Büro verlassen soll. Der Dialog zeigt die Fakten, anhand derer Piloti Projekte vergleicht, nennt die noch offenen Punkte und listet die erfassten Entscheidungen des Projekts auf."
   },
   {
+    "en": "Closing the Prüfansicht keeps your place: the preview opens at the page you were reading, and the review stays smooth with many colleagues and hundreds of Anmerkungen.",
+    "de": "Beim Schließen der Prüfansicht bleibt Ihre Position erhalten: Die Vorschau öffnet sich auf der zuletzt gelesenen Seite, und die Prüfung läuft auch mit vielen Kolleginnen und Kollegen und Hunderten von Anmerkungen reibungslos weiter."
+  },
+  {
     "en": "Closing the preview is never one-way: with the ✕, Escape or by dragging it shut, a tab stays at the edge and brings the document back at the width you chose.",
     "de": "Das Schließen der Vorschau ist nie endgültig: Nach ✕, Escape oder Zuziehen bleibt am Rand ein Reiter, der das Dokument in der gewählten Breite zurückholt."
+  },
+  {
+    "en": "Colleagues' colours on the drawing are darker, so their names on pointers, cursor chat and pins stay readable in every colour.",
+    "de": "Die Farben Ihrer Kolleginnen und Kollegen in der Zeichnung sind dunkler, damit ihre Namen auf Zeigern, im Cursor-Chat und auf Pins in jeder Farbe lesbar bleiben."
   },
   {
     "en": "Common words that appear in nearly every document no longer use up search results. Answers can then cite more of the documents that differ on the question.",
@@ -1118,6 +1142,10 @@
   {
     "en": "Dateien now has a filter menu for responsibility, origin, status and file type, with sorting in the same menu, and a number on the button shows how many filters are active.",
     "de": "Dateien hat jetzt ein Filtermenü für Verantwortung, Herkunft, Status und Dateityp, mit Sortierung im selben Menü. Eine Zahl auf der Schaltfläche zeigt, wie viele Filter aktiv sind."
+  },
+  {
+    "en": "Dateien now says which documents still have open Anmerkungen, and how many of them are yours, in words: „4 offen · 2 für Sie“ under the size and date on the card, and beside the name in the list. Pressing it opens the document in the Prüfansicht.",
+    "de": "Dateien zeigt jetzt an, bei welchen Dokumenten noch Anmerkungen offen sind und wie viele davon von Ihnen stammen: „4 offen · 2 für Sie“ unter Größe und Datum auf der Karte sowie neben dem Namen in der Liste. Ein Klick darauf öffnet das Dokument in der Prüfansicht."
   },
   {
     "en": "Dateien now shows each file's state: draft, in review, changes requested, approved, published, replaced, rejected or archived. The label appears only on files with more than one version and on everything Piloti wrote.",
@@ -1516,6 +1544,10 @@
     "de": "Die Skills für Prognosen und Prognoseberichte kommen nicht mehr automatisch mit jeder Tiefenrecherche mit. Sie liegen im Skills-Tab, für die Aufgaben, die sie brauchen."
   },
   {
+    "en": "Freigeben now names the Anmerkungen still open on the document before you sign, such as „4 offene Anmerkungen – trotzdem freigeben?“, with a link to the Prüfansicht. It does not stop the Freigabe.",
+    "de": "Beim Freigeben werden jetzt die noch offenen Anmerkungen zum Dokument angezeigt, bevor Sie unterschreiben, z. B. „4 offene Anmerkungen – trotzdem freigeben?“, mit einem Link zur Prüfansicht. Die Freigabe wird dadurch nicht verhindert."
+  },
+  {
     "en": "Hold a file or folder you are dragging over a folder for a moment and it opens, so you can move things into folders that are not on screen. Every move now offers to undo it.",
     "de": "Halten Sie eine Datei oder einen Ordner beim Ziehen kurz über einen Ordner, damit er sich öffnet und Sie Elemente in nicht sichtbare Ordner verschieben können. Jede Verschiebung können Sie jetzt rückgängig machen."
   },
@@ -1628,6 +1660,10 @@
     "de": "In der Herleitung tragen gelesene, aber nicht zitierte Dokumente jetzt ebenfalls eine Kennzeichnung und Farbe, die zeigt, ob sie aus dem Projekt, dem Büroarchiv oder diesem Chat stammen."
   },
   {
+    "en": "In the Prüfansicht you now see which Anmerkung a colleague has open, whose box is being drawn and who is on another page, and „/“ puts a few words beside your pointer for everyone looking. Working on a drawing together feels like sitting at one table, and when Piloti reads a part of the sheet, that part lights up.",
+    "de": "In der Prüfansicht sehen Sie jetzt, welche Anmerkung ein Kollege geöffnet hat, wer gerade einen Rahmen zeichnet und wer auf einer anderen Seite arbeitet. Mit „/“ erscheinen ein paar Wörter neben Ihrem Cursor, die alle sehen. Gemeinsam an einer Zeichnung zu arbeiten fühlt sich an, als säßen Sie an einem Tisch, und wenn Piloti einen Teil des Plans liest, wird dieser hervorgehoben."
+  },
+  {
     "en": "In the Rechtsgrundlage card a long reference now sits on the line beside the Richtlinie instead of in the narrow margin, where it broke across seven lines.",
     "de": "In der Karte Rechtsgrundlage steht eine lange Fundstelle jetzt in der Zeile neben der Richtlinie statt in der schmalen Randspalte, wo sie auf sieben Zeilen umbrach."
   },
@@ -1646,6 +1682,10 @@
   {
     "en": "In the task list a running card shows in one line what the task is doing, such as „Recherchieren · 3 Runden · 9 Dokumente“.",
     "de": "In der Aufträge-Liste zeigt eine laufende Karte in einer Zeile, was der Auftrag gerade tut, etwa „Recherchieren · 3 Runden · 9 Dokumente“."
+  },
+  {
+    "en": "In the „@“ list, the people whose name starts with what you typed now come first, and Enter mentions the first of them. Typing „@Le“ used to keep colleagues whose e-mail address contains „le“ at the top, and Enter then mentioned one of them instead of Lena.",
+    "de": "In der „@“-Liste stehen jetzt zuerst die Personen, deren Name mit Ihrer Eingabe beginnt, und mit Enter erwähnen Sie die erste davon. Bei „@Le“ wurden bisher Kolleginnen und Kollegen, deren E-Mail-Adresse „le“ enthält, oben angezeigt, und mit Enter erwähnten Sie dann eine dieser Personen statt Lena."
   },
   {
     "en": "Inbox notices about Piloti now say what it did, on which annotation in which document, and what you can do next. When Piloti could not work on an annotation, the notice says why, such as a used-up usage budget, instead of only that it did not finish.",
@@ -2500,6 +2540,18 @@
     "de": "Die Piloti-Website öffnet sich wieder mit ihrem früheren, ruhigeren Startbildschirm unter einer kleineren Navigationsleiste. Auch die Seiten wirken ruhiger: Mehr Riso-Drucke stehen neben den Abschnitten, die sie illustrieren, und auf den Changelog-Stempeln ist ein Turmdrehkran zu sehen. Jede Seite endet nun mit einer Einladung, Pilotbüro zu werden, die eine bereits halb vorformulierte E-Mail öffnet."
   },
   {
+    "en": "The Postfach has four filters: „Für mich“ is what waits on you, „Ungelesen“ what you have not opened, „Alle“ everything, and „Archiviert“ what you put away, which you can restore. A row can be marked unread again, older entries load at the end of the list, and J, K, Enter, E and U work the list from the keyboard.",
+    "de": "Das Postfach hat vier Filter: „Für mich“ zeigt, was bei Ihnen ansteht, „Ungelesen“ zeigt, was Sie noch nicht geöffnet haben, „Alle“ zeigt alles und „Archiviert“ zeigt, was Sie abgelegt haben und wiederherstellen können. Ein Eintrag kann wieder als ungelesen markiert werden, ältere Einträge werden am Ende der Liste geladen und mit J, K, Enter, E und U bedienen Sie die Liste per Tastatur."
+  },
+  {
+    "en": "The Postfach says who: a row shows the colleague's face and names them in the title, „Anna Weber hat in „Atrium“ geschrieben“. A row about an Anmerkung opens it with „Zur Anmerkung“, and an Anmerkung assigned to you, or Piloti's question, can be answered or resolved right in the row.",
+    "de": "Das Postfach zeigt, von wem eine Nachricht stammt: Jede Zeile zeigt das Gesicht der Kollegin oder des Kollegen und nennt die Person im Titel: „Anna Weber hat in „Atrium“ geschrieben“. Eine Zeile zu einer Anmerkung öffnet diese mit „Zur Anmerkung“; eine Ihnen zugewiesene Anmerkung oder eine Frage von Piloti können Sie direkt in der Zeile beantworten oder erledigen."
+  },
+  {
+    "en": "The Prüfansicht works without a mouse: choose the comment, area or Piloti tool with its key and a crosshair appears, which the arrow keys move and Enter sets. Marks can be placed and asked about from the keyboard alone.",
+    "de": "Die Prüfansicht funktioniert ohne Maus: Wählen Sie den Kommentar, den Bereich oder das Piloti-Tool mit der jeweiligen Taste aus. Ein Fadenkreuz erscheint, das Sie mit den Pfeiltasten bewegen und mit Enter setzen. Markierungen lassen sich allein über die Tastatur setzen und abfragen."
+  },
+  {
     "en": "The Schnitt filter in the Archiv now reads Schnitt / Ansicht, as in Dateien, because it also finds elevations.",
     "de": "Der Filter „Schnitt“ im Archiv heißt jetzt „Schnitt / Ansicht“, wie in Dateien, weil er auch Ansichten findet."
   },
@@ -2674,6 +2726,10 @@
   {
     "en": "The first question in a new chat is no longer lost when you send it straight from a suggestion, without typing.",
     "de": "Die erste Frage in einem neuen Chat geht nicht mehr verloren, wenn Sie sie direkt aus einem Vorschlag senden, ohne etwas einzutippen."
+  },
+  {
+    "en": "The first time something waits on you, Piloti offers once to notify you on this device, also if you never open the Postfach.",
+    "de": "Wenn zum ersten Mal etwas auf Sie wartet, bietet Piloti Ihnen einmalig an, Sie auf diesem Gerät zu benachrichtigen – auch wenn Sie das Postfach nie öffnen."
   },
   {
     "en": "The folder chips above the file list in Dateien are readable again. In projects with a long file list, they were squeezed until the folder names were cut off in the middle.",
@@ -2906,6 +2962,10 @@
   {
     "en": "The working folder belongs to the conversation, and nothing in it is filed, made searchable or quoted as a source. A draft becomes a project document only when somebody takes it into the project.",
     "de": "Der Arbeitsordner gehört zur Unterhaltung, und nichts darin wird abgelegt, durchsuchbar gemacht oder als Quelle zitiert. Ein Entwurf wird erst dann zu einem Projektdokument, wenn jemand ihn ins Projekt übernimmt."
+  },
+  {
+    "en": "The „@“ list offers only people who can open the document, and if someone cannot, the reply box says they were not told.",
+    "de": "Die „@“-Liste zeigt nur Personen an, die das Dokument öffnen können; kann jemand es nicht öffnen, weist das Antwortfeld darauf hin, dass die Person nicht informiert wurde."
   },
   {
     "en": "The „Freigabe und Fassungen“ section now sits at the end of the file info, collapsed, and shows the status, the path from draft to published and what the file is waiting for. It opens by itself when a version is waiting for you.",
@@ -3248,6 +3308,10 @@
     "de": "Wenn Sie ein Projekt abschließen, schlägt Piloti jetzt vor, welche Dateien es nicht mehr braucht, etwa Arbeitskopien, ältere Fassungen, Duplikate und temporäre Dateien. Der Vorschlag ist als KI-Vorschlag gekennzeichnet, Sie entscheiden über jede Datei, und was Sie bestätigen, kommt für 14 Tage in den Papierkorb."
   },
   {
+    "en": "When you draw a box and ask Piloti about it, Piloti answers about that box again, and an @Piloti question in an Anmerkung is answered in its thread. Everyone sees in the thread when Piloti is working on it, also after reloading, and the thread says why when Piloti could not answer.",
+    "de": "Wenn Sie ein Rechteck zeichnen und Piloti dazu befragen, antwortet Piloti wieder zu diesem Rechteck. Eine Frage mit @Piloti in einer Anmerkung wird im zugehörigen Thread beantwortet. Alle sehen im Thread, wenn Piloti daran arbeitet – auch nach dem Neuladen. Kann Piloti nicht antworten, steht im Thread, warum."
+  },
+  {
     "en": "When you mention Piloti in an annotation's thread, or hand an open annotation to Piloti, your inbox tells you when it is done or when it has a question for you. Taking an annotation back from Piloti stops the work.",
     "de": "Wenn Sie Piloti im Thread einer Anmerkung erwähnen oder Piloti eine offene Anmerkung übergeben, informiert Sie Ihre Inbox, sobald die Aufgabe erledigt ist oder Piloti eine Rückfrage hat. Wenn Sie eine Anmerkung von Piloti zurücknehmen, wird die Arbeit gestoppt."
   },
@@ -3320,6 +3384,10 @@
     "de": "Während ein Durchlauf läuft, fügt „Dokument hinzufügen“ ein weiteres Dokument hinzu, und der Block zeigt für jedes genannte Dokument, ob es gelesen wurde. Ein Bericht nennt jedes Dokument, das er nicht erreicht hat."
   },
   {
+    "en": "While an upload is still held by the office's content check, only you and whoever reviews held files can be made responsible for it or mentioned on it. Colleagues no longer get a Postfach entry about a file they cannot open yet.",
+    "de": "Solange ein Upload noch von der Inhaltsprüfung des Büros zurückgehalten wird, können nur Sie und Personen, die zurückgehaltene Dateien prüfen, dafür verantwortlich sein oder darin erwähnt werden. Kolleginnen und Kollegen erhalten keinen Postfach-Eintrag mehr zu einer Datei, die sie noch nicht öffnen können."
+  },
+  {
     "en": "While files upload and Piloti reads them, every status now has its own symbol, so a document that is waiting, being read, held back for review or filed unread is told apart at a glance in the upload panel, on the cards and in the list. A document that could not be read is marked in a calmer red, and shortened file names always show where they were cut.",
     "de": "Während Dateien hochgeladen werden und Piloti sie einliest, hat jetzt jeder Status ein eigenes Symbol. So lassen sich wartende, gerade eingelesene, zur Prüfung zurückgestellte oder ungelesen abgelegte Dokumente im Upload-Panel, auf den Karten und in der Liste auf einen Blick unterscheiden. Dokumente, die nicht gelesen werden konnten, sind in einem dezenteren Rot markiert, und gekürzte Dateinamen zeigen immer an, wo sie gekürzt wurden."
   },
@@ -3346,6 +3414,10 @@
   {
     "en": "You can import an Outlook archive (.pst or .ost, up to 25 GB) into a project's files, and every email becomes a folder with its attachments and a note holding its sender, recipients, date and text. Piloti can then find and cite your correspondence; your administrator switches the import on.",
     "de": "Sie können ein Outlook-Archiv (.pst oder .ost, bis zu 25 GB) in die Dateien eines Projekts importieren. Dabei wird jede E-Mail zu einem Ordner mit ihren Anhängen und einer Notiz mit Absender, Empfängern, Datum und Text. Piloti kann Ihre Korrespondenz anschließend finden und zitieren; Ihre Administratorin oder Ihr Administrator schaltet den Import ein."
+  },
+  {
+    "en": "You can mention a colleague in an Anmerkung the way you mention someone in the chat: type „@“ in a new Anmerkung or in its thread and pick the person, whose name then shows as the chat's chip. They find it in their Postfach, where the quote shows the names as the same chips, and as a notification on their devices, which opens the Prüfansicht right at that Anmerkung, and they can answer from there.",
+    "de": "Sie können Kolleginnen und Kollegen in einer Anmerkung genauso erwähnen wie im Chat: Geben Sie in einer neuen Anmerkung oder in deren Thread „@“ ein und wählen Sie die Person aus. Ihr Name erscheint dann wie im Chat als Chip. Die Person findet die Erwähnung in ihrem Postfach, wo die Namen im Zitat als dieselben Chips angezeigt werden, und als Benachrichtigung auf ihren Geräten. Über die Benachrichtigung gelangt sie direkt zur Anmerkung in der Prüfansicht und kann von dort aus antworten."
   },
   {
     "en": "You can now close a finished project in its settings. It stays complete and searchable, becomes read-only, and everyone in your office can read it, while folders with their own access list stay restricted.",
