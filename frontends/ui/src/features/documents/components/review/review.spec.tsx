@@ -301,6 +301,23 @@ describe('the review', () => {
     expect(closed).toEqual(['done', 'done'])
   })
 
+  it('says each row’s number and state to a screen reader, the pin being drawn for the eye only', async () => {
+    serve([
+      view({ id: 'a', number: 1 }),
+      view({ id: 'p', number: 3, authorKind: 'piloti', status: 'proposed', kind: 'question' }),
+      view({ id: 'r', number: 2, status: 'resolved' }),
+    ])
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const rows = await screen.findAllByTestId('review-row')
+    expect(rows.map((row) => row.querySelector('[data-slot="comment-pin"]')?.getAttribute('aria-hidden'))).toEqual(['true', 'true'])
+    expect(rows[0]).toHaveAccessibleName(/^Annotation 3: Question · proposal\. /)
+    expect(rows[1]).toHaveAccessibleName(/^Annotation 1: Defect\. Tür ohne Feuerwiderstandsklasse/)
+
+    await userEvent.click(screen.getByTestId('review-filter-closed'))
+    expect(screen.getByTestId('review-row')).toHaveAccessibleName(/^Annotation 2: Defect · resolved\. /)
+  })
+
   it('draws a point as a pin and a region as a box with its pin at the corner', async () => {
     serve([
       view({ id: 'a', number: 1 }),

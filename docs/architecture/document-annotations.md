@@ -262,7 +262,9 @@ Escape), as it does when the crosshair or the cursor chat goes
 A card is a `dialog` named by its header („Mangel #4"); a pin says its state
 in words („Vorschlag", „erledigt"), who else has it open, and that it opens a
 dialog (`aria-haspopup`; `aria-expanded` in the review, not in the file
-preview, where a pin opens the review). The list's filter and a draft's
+preview, where a pin opens the review). A row, in the list or in Offene
+Punkte, draws its pin for the eye only and starts with the same words
+(`pinLabel`, `mark-row.tsx`): „Anmerkung 4: Mangel · Vorschlag“. The list's filter and a draft's
 kinds are buttons that say which is on (`aria-pressed`), each reached by Tab.
 Every control of the viewer's pill keeps its 28px target; a pill longer than
 its stage scrolls, and under about 1000px of stage the tools spelled out with

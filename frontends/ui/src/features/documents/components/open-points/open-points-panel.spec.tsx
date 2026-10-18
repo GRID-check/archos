@@ -103,6 +103,18 @@ describe('OpenPointsPanel', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('names each row by its number and state for a screen reader, as the review list does', () => {
+    show({
+      marks: [mark({ number: 1 }), mark({ number: 4, kind: 'question', authorKind: 'piloti', status: 'proposed' })],
+      nextCursor: null,
+    })
+
+    const rows = screen.getAllByTestId('open-point-row')
+    expect(rows[0].querySelector('[data-slot="comment-pin"]')).toHaveAttribute('aria-hidden')
+    expect(rows[0]).toHaveAccessibleName(/^Annotation 1: Defect\. Fluchttür zu schmal/)
+    expect(rows[1]).toHaveAccessibleName(/^Annotation 4: Question · proposal\. /)
+  })
+
   it('reads the list again for „Me" and says when nothing is in that selection', async () => {
     fetchMock.mockResolvedValue(answer({ marks: [], nextCursor: null }))
     const user = userEvent.setup()

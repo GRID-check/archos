@@ -9,7 +9,7 @@ import { isLive, isOverdue, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
-import { markInk } from './review-page-layer'
+import { markInk, pinLabel } from './review-page-layer'
 
 /**
  * The surface of one mark's row: the review's list (a button) and a project's
@@ -52,6 +52,12 @@ export function MarkRowContent({
   return (
     <>
       <span className="pt-0.5">
+        {/* The pin is drawn for the eye only (`aria-hidden`): its number and its
+            state (a dash, a tick, the dot) are said here, as a pin on the page
+            says them. Who set it and the Fassung are the row's own text. */}
+        <span className="sr-only" data-testid="mark-row-label">
+          {`${pinLabel(t, annotation, undefined, undefined, { unread })}. `}
+        </span>
         <CommentPin
           as="span"
           number={annotation.number}
@@ -60,7 +66,6 @@ export function MarkRowContent({
           done={!isLive(annotation)}
           unread={unread}
         />
-        {unread && <span className="sr-only">{t('review.pinState.unread')}</span>}
       </span>
       <span className="min-w-0 flex-1">
         <span className={cn('text-foreground line-clamp-2 text-sm leading-5', !isLive(annotation) && 'text-muted-foreground')}>
