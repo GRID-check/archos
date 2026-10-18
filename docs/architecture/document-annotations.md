@@ -218,7 +218,13 @@ people who may open the document, read from the Zuständige picker's own list
 `mayOpenDocument`), under „Können das Dokument öffnen“; a reply also offers
 Piloti, and its spark writes the @Piloti mention too. A draft does not: setting
 a mark wakes nobody. A query that finds nobody says that only people who may
-open the document can be mentioned.
+open the document can be mentioned. The picker ranks what it finds
+(`filterMentionCandidates`): a name part that starts with the query, then a
+name that contains it, then a person found only by their e-mail address; the
+server's order stands among equals. Every new letter puts the selection back
+on the best match, so Enter after „@Le“ mentions Lena, not Anna whose address
+reads `…@lehner-architekten.at`. The chat's composer ranks alike: it is the
+same picker.
 
 The server keeps a mention only while its token stands in the text, the name is
 the directory's, and the person may open the document
