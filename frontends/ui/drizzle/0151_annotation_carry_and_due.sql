@@ -1,4 +1,4 @@
--- 0150: a mark that goes on with the document's next Fassung, and the index the
+-- 0151: a mark that goes on with the document's next Fassung, and the index the
 -- daily reminder of a Zuständige's date reads by.
 --
 -- ## What was missing

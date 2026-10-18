@@ -97,7 +97,7 @@ export const documentAnnotations = pgTable(
     delegatedAt: timestamp('delegated_at', { withTimezone: true }),
     /**
      * The mark this one was carried from, on the document this one's document
-     * replaced (migration 0150): Index B's mark, gone on with Index C. Once per
+     * replaced (migration 0151): Index B's mark, gone on with Index C. Once per
      * source (`uniq_document_annotations_carried_from`); null when the source
      * is gone.
      */
@@ -123,7 +123,7 @@ export const documentAnnotations = pgTable(
     carriedOnce: uniqueIndex('uniq_document_annotations_carried_from')
       .on(table.carriedFromId)
       .where(sql`${table.carriedFromId} IS NOT NULL`),
-    /** The open marks with a Zuständige and a date, for the daily reminder (migration 0150). */
+    /** The open marks with a Zuständige and a date, for the daily reminder (migration 0151). */
     dueIdx: index('idx_document_annotations_due')
       .on(table.dueOn)
       .where(sql`${table.status} = 'open' AND ${table.assigneeUserId} IS NOT NULL AND ${table.dueOn} IS NOT NULL`),

@@ -32,7 +32,7 @@ import {
   type MarkMention,
 } from './types'
 
-/** The other end of a carry (migration 0150): a mark on another document, by its id, its document and its number. */
+/** The other end of a carry (migration 0151): a mark on another document, by its id, its document and its number. */
 export interface CarryLink {
   annotationId: string
   documentId: string
@@ -278,7 +278,7 @@ export class AlreadyCarriedError extends Error {}
 
 /**
  * Carry one open mark of a replaced document onto the document that replaced
- * it (migration 0150), in ONE transaction: the mark is set again on `target`,
+ * it (migration 0151), in ONE transaction: the mark is set again on `target`,
  * numbered there under the same per-document lock and cap as any new mark,
  * with its place, its text, whom it mentions, its author, its Zuständige and
  * its date, and `carried_from_id` pointing back; the source is closed
