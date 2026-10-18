@@ -222,17 +222,20 @@ def _prepare_pdf_with_one_raster(tmp_path, monkeypatch):
     monkeypatch.setattr(adapter, "_extract_text_from_pdf", lambda p: [])
     monkeypatch.setattr(
         adapter,
-        "_extract_images_from_pdf",
-        lambda *a, **k: [
-            {
-                "image_bytes": b"\xff\xd8raster",
-                "page_number": 2,
-                "image_index": 0,
-                "format": "jpeg",
-                "width": 800,
-                "height": 600,
-            }
-        ],
+        "_extract_image_records",
+        lambda *a, **k: (
+            [
+                {
+                    "image_bytes": b"\xff\xd8raster",
+                    "page_number": 2,
+                    "image_index": 0,
+                    "format": "jpeg",
+                    "width": 800,
+                    "height": 600,
+                }
+            ],
+            0,
+        ),
     )
     monkeypatch.setattr(adapter, "analyze_visual", lambda *a, **k: ("image", "A photo of the facade.", {}))
     import knowledge_layer.llamaindex.processing as processing_module

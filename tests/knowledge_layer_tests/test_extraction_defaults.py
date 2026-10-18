@@ -252,11 +252,14 @@ class _Pipeline:
         monkeypatch.setattr(adapter, "_extract_tables_from_pdf", lambda *a, **k: [])
         rasters = [_raster(1, 0, 2000, 2000), _raster(2, 0, 800, 600), _raster(3, 0, 400, 300)]
 
-        def _extract(pdf_path, *args, skip_pages=frozenset(), **kwargs):
+        def _extract(pdf_path, *, min_width, min_height, skip_pages=frozenset(), max_images=None, **kwargs):
             self.extract_calls.append(set(skip_pages))
-            return [r for r in rasters if r["page_number"] not in skip_pages]
+            candidates = [r for r in rasters if r["page_number"] not in skip_pages]
+            if max_images is None:
+                return candidates, 0
+            return adapter.cap_images(candidates, max_images)
 
-        monkeypatch.setattr(adapter, "_extract_images_from_pdf", _extract)
+        monkeypatch.setattr(adapter, "_extract_image_records", _extract)
 
         def _analyze(image_bytes, *args, **kwargs):
             self.analysed.append(image_bytes)
