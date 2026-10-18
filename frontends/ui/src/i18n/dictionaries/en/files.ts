@@ -1548,6 +1548,56 @@ export const files = {
     listedOpenShort: '{count} open',
     listedOpenShortForYou: '{count} open · {mine} for you',
   },
+  // Open points: the open annotations of every document of a project, for the site meeting.
+  openPoints: {
+    open: 'Open points',
+    title: 'Open points',
+    subtitle: 'What is open in this project’s documents, across all of them: the list for the site meeting.',
+    back: 'Back to files',
+    filters: {
+      assignee: 'Assignee',
+      due: 'Due',
+      all: 'All',
+      me: 'Me',
+      overdue: 'Overdue',
+      soon: 'Soon',
+      soonHint: 'Due today or in the next seven days',
+    },
+    openReview: 'Open review',
+    openReviewOf: 'Open the review of “{name}”',
+    loading: 'Loading open points',
+    loadError: 'The open points could not be loaded.',
+    retry: 'Try again',
+    loadMore: 'Load more',
+    loadingMore: 'Loading more …',
+    loadMoreFailed: 'More could not be loaded.',
+    empty: {
+      noneTitle: 'Nothing open',
+      noneBody: 'No annotation is open on this project’s documents.',
+      filteredTitle: 'Nothing in this selection',
+      filteredBody: 'Nothing is open with these filters. Other filters show more.',
+    },
+    export: {
+      button: 'Export minutes',
+      formatLabel: 'Download as',
+      hint: 'With the filters set now',
+      failed: 'The minutes could not be exported.',
+      tooMany: 'Too many open points for one set of minutes. Narrow them with a filter.',
+      title: 'Open points – {name}',
+      fileName: 'Open points – {name}',
+      documents: 'Documents',
+      status: {
+        open: 'Open annotations',
+        proposed: 'Piloti’s proposals',
+        'all-live': 'Open annotations and Piloti’s proposals',
+      },
+      assignee: 'Assignee: {name}',
+      due: {
+        overdue: 'Overdue',
+        soon: 'Due today or in the next seven days',
+      },
+    },
+  },
   // The review: a document full screen, the annotations on it, the threads
   // under them, and who is looking with you.
   review: {

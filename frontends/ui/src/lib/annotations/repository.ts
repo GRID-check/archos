@@ -59,10 +59,11 @@ export interface AnnotationRecord extends DocumentAnnotationRow {
 }
 
 /** The mark this one was carried from, and the one it was carried to (unique, so at most one). */
-const carriedSource = alias(documentAnnotations, 'carried_source')
-const carriedCopy = alias(documentAnnotations, 'carried_copy')
+export const carriedSource = alias(documentAnnotations, 'carried_source')
+export const carriedCopy = alias(documentAnnotations, 'carried_copy')
 
-const selection = {
+/** The columns every read of a mark selects; `project-repository.ts` selects them too. */
+export const selection = {
   row: documentAnnotations,
   fassungNumber: documentVersions.versionNumber,
   fromId: carriedSource.id,
@@ -73,7 +74,7 @@ const selection = {
   toNumber: carriedCopy.number,
 }
 
-type SelectedRow = {
+export type SelectedRow = {
   row: DocumentAnnotationRow
   fassungNumber: number | null
   fromId: string | null
@@ -113,7 +114,7 @@ async function listReplies(organizationId: string, annotationIds: readonly strin
   return byAnnotation
 }
 
-async function withThreads(organizationId: string, rows: SelectedRow[]): Promise<AnnotationRecord[]> {
+export async function withThreads(organizationId: string, rows: SelectedRow[]): Promise<AnnotationRecord[]> {
   const threads = await listReplies(
     organizationId,
     rows.map(({ row }) => row.id)
@@ -128,7 +129,7 @@ async function withThreads(organizationId: string, rows: SelectedRow[]): Promise
 }
 
 /** The joins every read of a mark makes: its Fassung's number, and both ends of a carry in the same organization. */
-const carryJoins = (organizationId: string) => ({
+export const carryJoins = (organizationId: string) => ({
   source: and(eq(carriedSource.id, documentAnnotations.carriedFromId), eq(carriedSource.organizationId, organizationId)),
   copy: and(eq(carriedCopy.carriedFromId, documentAnnotations.id), eq(carriedCopy.organizationId, organizationId)),
 })

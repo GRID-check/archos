@@ -781,6 +781,7 @@ export function FileWorkspace({
       view={view}
       onViewChange={selectView}
       binHref={shelf.bin?.href}
+      openPointsHref={shelf.openPoints?.href}
       renderFilter={(compact) => (
         <FileFilterMenu
           canCollaborate={canCollaborate}

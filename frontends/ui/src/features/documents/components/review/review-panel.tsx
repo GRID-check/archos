@@ -2,28 +2,28 @@
 
 import { memo, useState, type JSX } from 'react'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { CheckCheck, ChevronDown, Clock, GitCompare, History, MessageCircle, MousePointerClick, Sparkles, UserRound } from 'lucide-react'
+import { CheckCheck, ChevronDown, Clock, GitCompare, History, MousePointerClick, Sparkles, UserRound } from 'lucide-react'
 import NextLink from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CommentPin } from '@/components/ui/comment-pin'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
-import { formatDayRange, localCalendarDay } from '@/lib/format'
-import { isLive, isOverdue, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
+import { formatDayRange } from '@/lib/format'
+import { isLive, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import type { CarriedGroup, DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
 import { compareFromReviewHref } from '../../lib/fassung-links'
 import { MarkBody } from './mark-body'
-import { usePilotiByline } from './piloti-attribution'
+import { MarkRowContent, markRowClassName } from './mark-row'
 import { markInk } from './review-page-layer'
 
 /** Open a mark from the list; `byKeyboard` when Enter or Space did it, so its card takes the focus. */
 export type OpenMark = (annotation: AnnotationView, byKeyboard?: boolean) => void
 
 /**
- * One mark in the list: its number (what people say aloud), what it says, and
- * one quiet line of who, how many answers, and by when. Memoised on its mark:
- * a list of five hundred redraws the row that changed.
+ * One mark in the list, a button that opens it (`MarkRowContent` says what it
+ * is, as a project's Offene Punkte does). Memoised on its mark: a list of five
+ * hundred redraws the row that changed.
  */
 const Row = memo(function Row({
   annotation,
@@ -39,12 +39,6 @@ const Row = memo(function Row({
   onHover: (annotationId: string | null) => void
   onOpen: OpenMark
 }): JSX.Element {
-  const t = useTranslations('files')
-  const { locale } = useLocale()
-  const byline = usePilotiByline()
-  const overdue = isOverdue(annotation, localCalendarDay())
-  const author =
-    annotation.authorKind === 'piloti' ? byline(annotation.createdByName) : (annotation.createdByName ?? t('review.someone'))
   return (
     <li>
       <button
@@ -55,57 +49,9 @@ const Row = memo(function Row({
         onClick={(event) => onOpen(annotation, event.detail === 0)}
         onPointerEnter={() => onHover(annotation.id)}
         onPointerLeave={() => onHover(null)}
-        className={cn(
-          'flex w-full gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-quick ease-out outline-none',
-          'hover:bg-accent/60 focus-visible:ring-ring/60 focus-visible:ring-2',
-          selected && 'bg-accent'
-        )}
+        className={markRowClassName(selected)}
       >
-        <span className="pt-0.5">
-          <CommentPin
-            as="span"
-            number={annotation.number}
-            color={markInk(annotation)}
-            proposed={annotation.status === 'proposed'}
-            done={!isLive(annotation)}
-          />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className={cn('text-foreground line-clamp-2 text-sm leading-5', !isLive(annotation) && 'text-muted-foreground')}>
-            <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={viewerId} clamped />
-          </span>
-          {/* Items separated by space and their own icons, never a leading „·"
-              when a line wraps; each item keeps to one line. */}
-          <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs" data-testid="review-row-meta">
-            <span className="whitespace-nowrap">{t(`annotations.kinds.${annotation.kind}`)}</span>
-            <span className="min-w-0 truncate">{author}</span>
-            {annotation.assigneeName && (
-              <span className="inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap">
-                <UserRound className="size-3 shrink-0" aria-hidden />
-                <span className="truncate">{annotation.assigneeName}</span>
-              </span>
-            )}
-            {annotation.replies.length > 0 && (
-              <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
-                <MessageCircle className="size-3" aria-hidden />
-                {annotation.replies.length}
-              </span>
-            )}
-            {annotation.dueOn && (
-              <span className={cn('inline-flex items-center gap-0.5 whitespace-nowrap', overdue && 'text-foreground font-semibold')}>
-                <Clock className="size-3" aria-hidden />
-                {overdue ? t('review.overdue') : formatDayRange(annotation.dueOn, annotation.dueOn, locale)}
-              </span>
-            )}
-          </span>
-          {!annotation.onCurrentFassung && (
-            <span className="text-muted-foreground mt-0.5 block text-xs italic" title={t('annotations.earlierFassungHint')}>
-              {annotation.fassungNumber
-                ? t('annotations.earlierFassung', { number: annotation.fassungNumber })
-                : t('annotations.earlierFassungUnnumbered')}
-            </span>
-          )}
-        </span>
+        <MarkRowContent annotation={annotation} viewerId={viewerId} />
       </button>
     </li>
   )

@@ -57,6 +57,7 @@ function Header() {
           view={view}
           onViewChange={setView}
           binHref="/app/projects/dev/files/bin"
+          openPointsHref="/dev/open-points"
           renderFilter={(compact) => (
             <FileFilterMenu
               canCollaborate

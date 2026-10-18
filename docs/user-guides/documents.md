@@ -108,6 +108,31 @@ Most filters and the sort order are answered by the server per folder. A few sti
 
 Semantic results arrive in whichever view you are in. In the detail view the ranking is preserved rather than being re-sorted by upload date: **Relevance** is the column the list opens sorted by (and can be sorted the other way), and each row carries the passage that matched with its page number in place of the document's summary.
 
+### Offene Punkte: what is open across the project
+
+A Jour fixe goes through the project, not one sheet at a time. **Offene
+Punkte** in the Dateien header (on a phone, in the header's ⋯) opens one page
+with every open Anmerkung on the project's documents, grouped by document. Each
+row reads like a row of the Prüfansicht's list: the number, what the mark says,
+its kind and page, who set it, who is responsible, how many answers it has and
+its Frist. Pressing a row opens that document in the Prüfansicht at the mark;
+**Prüfansicht öffnen** beside a document's name opens its whole review.
+
+Two filters answer the meeting's questions:
+
+- **Zuständig: Ich** keeps the marks you are responsible for.
+- **Frist: Überfällig** keeps the marks whose Frist has passed; **Bald** those
+  due today or in the next seven days.
+
+**Protokoll exportieren** downloads what the list shows, with the filters you
+set, as one PDF, Word or Markdown file: each document under its own heading,
+each mark written as the document's own Protokoll writes it. A Protokoll holds
+at most 1000 marks; past that, narrow it with a filter.
+
+You see the marks of the documents you can open: a file in a folder you may
+not read, and an upload still held back from you, are left out here as they
+are in Dateien.
+
 ### When an upload is refused
 
 Files are validated before anything leaves the browser: type, individual size, the batch's total size, and duplicates (both within one selection and against what is already there). A rejection names the reason in the language the interface is in — the validator itself is a pure module and keeps an English fallback for callers with no dictionary, but nothing user-facing renders it any more.

@@ -104,6 +104,7 @@ the shelf's `?doc=` sync and the pane already answer.
 | `repository.ts` | SQL |
 | `service.ts` | who may do what, and the state machine (`transition()`) |
 | `client.ts` | the typed client the UI uses |
+| `project-types.ts`, `project-marks.ts`, `project-repository.ts`, `project-export.ts` | a project's Offene Punkte: the query and the view, the service, the SQL, and the Protokoll (below) |
 
 Routes:
 
@@ -113,6 +114,8 @@ Routes:
 | `/[annotationId]` | GET (one mark as the caller sees it: what a room hint names), PATCH, DELETE |
 | `/[annotationId]/replies` | POST |
 | `/api/documents/[id]/thread` | POST: the caller's own thread about the document (below) |
+| `/api/projects/[id]/annotations` | GET: a project's Offene Punkte, the live marks of all its documents (below, „Offene Punkte“) |
+| `/api/projects/[id]/annotations/export` | GET: their Protokoll |
 
 A mark's create (POST), a PATCH that carries a `body`, and a reply take
 `mentions`: whom the person picked in the composer's „@“ picker, as
@@ -1072,6 +1075,80 @@ an entry names its page.
 on the document: format, scope, Fassung, whether proposals were included, and
 the counts, never a name or a word of the marks. Nothing calls a model, so
 nothing is traced to Langfuse.
+
+## Offene Punkte: a project's open marks
+
+A Jour fixe is held per project, not per document. The Prüfansicht answers
+what is open on one sheet, and the Postfach what is waiting for one person;
+neither answers what is open in the project. **Offene Punkte** does:
+`/app/projects/[id]/files/open-points`, reached from the Dateien header beside
+the Papierkorb (on a phone from its ⋯), lists the live marks of every
+document of the project, grouped by document.
+
+**Why a page under Dateien and not a project section.** A section is a rail
+entry, a palette command, a `g` shortcut, a tour stop and a phone tab
+decision (`components/shell/project-sections.ts`, `phone-tabs.ts`). Open
+points are a view of the documents, so they stand where the Papierkorb
+stands: a page of the Dateien section with its own address, which a Jour fixe
+can bookmark, and the Dateien tab stays lit on a phone. The rail carries no
+counts but the Postfach's, so the page has no count in the navigation.
+
+**What is listed** (`GET /api/projects/[id]/annotations`,
+`listProjectAnnotations` in `lib/annotations/project-marks.ts`). The project
+gate first (`requireProjectAccess(…, 'project:view')`, as the Dateien listing
+asks it). Then one query (`listProjectAnnotationPage`,
+`project-repository.ts`) joins `documents` and narrows them exactly as the
+listing does: the project's shelf, active documents only (an archived one has
+left the working set), outside every folder hidden from the reader
+(`getHiddenFolderIds`, the Papierkorb included) and
+`documentVisibleTo(reader)` with the reader from `shelfReaderFor`, so a held
+upload's marks are listed for its uploader and its reviewers and nobody else.
+The function composes the predicate itself, so
+`document-visibility.spec.ts` holds it without an allowlist entry.
+
+The filters: `status` (`open` by default, `proposed`, or `all-live`),
+`assignee` (`me` or a user id) and `due`: `overdue` is a Frist before today,
+`soon` today through seven days ahead (`DUE_SOON_DAYS`, the week to the next
+Jour fixe), both on the office's calendar as the daily reminder counts. The
+page is ordered by the document's shown name, case-folded by Postgres, then
+the number (`order=document`), or by Frist with the marks without one last
+(`order=due`). It is keyset-paged: at most 100 rows a page, 50 by default, and
+the cursor carries the last row's keys as Postgres wrote them, opaque on the
+wire and refused (400) when it is not one the service wrote.
+
+**One view.** Each row is the view a document's own list carries: the list
+projection (`documentAnnotationViews` in `service.ts`, which
+`listAnnotations` uses too) runs per document of the page, with what this
+reader may do on that document (`canWriteDocument`, so `canEdit`,
+`canDelete` and `carryTarget` are that document's), plus `documentName`. The
+organization's directory is read once per page.
+
+**The page** (`features/documents/components/open-points/`). Each row is the
+review list's row (`MarkRowContent`, `review/mark-row.tsx`, which the
+review's own list wears too), here a link into that document's review at the
+mark: Dateien with `doc`, `review=1` and `mark` (`reviewFilesHref`), which the
+pane already answers. Each document's heading has „Prüfansicht öffnen“ for the
+whole review. The filters are „Zuständig: Alle | Ich“ and „Frist: Alle |
+Überfällig | Bald“; a change reads the first page again through the typed
+client (`listProjectAnnotations` in `client.ts`), and a later page is read at
+the foot of the list (`LoadMore`). The server reads the first page for the
+first paint. A failed read says so with „Erneut versuchen“. `/dev/open-points`
+previews it over fixtures.
+
+**The Protokoll** (`GET /api/projects/[id]/annotations/export`,
+`project-export.ts`). „Protokoll exportieren“ on the page asks only the
+format: what is in the file is what the filters show. The export reads the
+marks page by page through `listProjectAnnotations`, so exactly what the
+reader's list shows, sorts each document's into the office's marks and
+Piloti's proposals with `selectMarks`, and writes each entry with the
+document Protokoll's own `entryBlocks` under a heading per document; the files
+come from the same `renderProtocol`. Past 1000 marks
+(`PROJECT_PROTOCOL_MAX_MARKS`) it is refused (422 `too-many-marks`) rather
+than cut. The download goes the document Protokoll's way
+(`features/documents/lib/download-protocol.ts`, which `ReviewExportMenu` uses
+too). Each export is the audit event `project.annotations.exported`, with the
+filters and the counts and never a name or a word of the marks. Nothing calls
+a model, so nothing is traced to Langfuse.
 
 ## Known debts
 

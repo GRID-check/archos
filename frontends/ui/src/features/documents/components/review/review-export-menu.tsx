@@ -16,17 +16,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
-import { startBrowserDownload } from '@/lib/browser-download'
 import {
   ANNOTATION_EXPORT_FASSUNGEN,
   ANNOTATION_EXPORT_FORMATS,
   ANNOTATION_EXPORT_SCOPES,
   annotationExportHref,
-  fileNameFromDisposition,
   type AnnotationExportFassung,
   type AnnotationExportFormat,
   type AnnotationExportScope,
 } from '@/lib/annotations/export-request'
+import { downloadProtocol } from '../../lib/download-protocol'
 import { reviewToast } from './review-toaster'
 
 /** Choosing an option keeps the menu open: the choice is made before the download, not instead of it. */
@@ -41,9 +40,9 @@ const keepOpen = (event: Event) => event.preventDefault()
  * was set on: a new Index before the Jour fixe does not close the points on
  * the one before.
  *
- * Fetched rather than navigated to, as the answer export is: a refusal (a PDF
- * too long to lay out, access lost meanwhile) is a toast, not a JSON file in
- * the downloads folder.
+ * Fetched rather than navigated to (`downloadProtocol`, the project's Offene
+ * Punkte use it too): a refusal (a PDF too long to lay out, access lost
+ * meanwhile) is a toast, not a JSON file in the downloads folder.
  */
 export function ReviewExportMenu({
   documentId,
@@ -64,33 +63,19 @@ export function ReviewExportMenu({
 
   const download = async (format: AnnotationExportFormat): Promise<void> => {
     setBusy(true)
-    try {
-      const options = {
-        format,
-        scope,
-        fassung: hasFassungen && scope === 'all' ? fassung : 'current',
-        includeProposals: hasProposals && includeProposals,
-      } as const
-      const response = await fetch(annotationExportHref(documentId, options))
-      if (!response.ok) {
-        toast.error(
-          response.status === 422 && format === 'pdf' ? t('review.export.tooLongForPdf') : t('review.export.failed'),
-          reviewToast(),
-        )
-        return
-      }
-      const url = URL.createObjectURL(await response.blob())
-      try {
-        startBrowserDownload(url, fileNameFromDisposition(response.headers.get('content-disposition'), `protokoll.${format}`))
-      } finally {
-        // The download holds the blob by reference; the URL can go on the next tick.
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      }
-    } catch {
-      toast.error(t('review.export.failed'), reviewToast())
-    } finally {
-      setBusy(false)
-    }
+    const options = {
+      format,
+      scope,
+      fassung: hasFassungen && scope === 'all' ? fassung : 'current',
+      includeProposals: hasProposals && includeProposals,
+    } as const
+    const result = await downloadProtocol(annotationExportHref(documentId, options), `protokoll.${format}`)
+    setBusy(false)
+    if (result.saved) return
+    toast.error(
+      result.status === 422 && format === 'pdf' ? t('review.export.tooLongForPdf') : t('review.export.failed'),
+      reviewToast(),
+    )
   }
 
   return (

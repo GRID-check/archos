@@ -1507,6 +1507,56 @@ export const files: typeof en.files = {
     listedOpenShort: '{count} offen',
     listedOpenShortForYou: '{count} offen · {mine} für Sie',
   },
+  // Offene Punkte: die offenen Anmerkungen aller Dokumente eines Projekts, für den Jour fixe.
+  openPoints: {
+    open: 'Offene Punkte',
+    title: 'Offene Punkte',
+    subtitle: 'Was in den Dokumenten dieses Projekts offen ist, über alle Dokumente: die Liste für den Jour fixe.',
+    back: 'Zurück zu den Dateien',
+    filters: {
+      assignee: 'Zuständig',
+      due: 'Frist',
+      all: 'Alle',
+      me: 'Ich',
+      overdue: 'Überfällig',
+      soon: 'Bald',
+      soonHint: 'Frist heute oder in den nächsten sieben Tagen',
+    },
+    openReview: 'Prüfansicht öffnen',
+    openReviewOf: 'Prüfansicht von „{name}“ öffnen',
+    loading: 'Offene Punkte werden geladen',
+    loadError: 'Die offenen Punkte konnten nicht geladen werden.',
+    retry: 'Erneut versuchen',
+    loadMore: 'Weitere laden',
+    loadingMore: 'Weitere werden geladen …',
+    loadMoreFailed: 'Weitere konnten nicht geladen werden.',
+    empty: {
+      noneTitle: 'Nichts offen',
+      noneBody: 'In den Dokumenten dieses Projekts ist keine Anmerkung offen.',
+      filteredTitle: 'Nichts in dieser Auswahl',
+      filteredBody: 'Mit diesen Filtern ist nichts offen. Andere Filter zeigen mehr.',
+    },
+    export: {
+      button: 'Protokoll exportieren',
+      formatLabel: 'Herunterladen als',
+      hint: 'Mit den Filtern, die gerade gesetzt sind',
+      failed: 'Das Protokoll konnte nicht exportiert werden.',
+      tooMany: 'Zu viele offene Punkte für ein Protokoll. Bitte mit einem Filter eingrenzen.',
+      title: 'Offene Punkte – {name}',
+      fileName: 'Offene Punkte – {name}',
+      documents: 'Dokumente',
+      status: {
+        open: 'Offene Anmerkungen',
+        proposed: 'Vorschläge von Piloti',
+        'all-live': 'Offene Anmerkungen und Vorschläge von Piloti',
+      },
+      assignee: 'Zuständig: {name}',
+      due: {
+        overdue: 'Frist überfällig',
+        soon: 'Frist heute oder in den nächsten sieben Tagen',
+      },
+    },
+  },
   // Die Prüfansicht: ein Dokument im Vollbild, die Anmerkungen darauf, die
   // Gespräche darunter, und wer gerade mit hinschaut.
   review: {

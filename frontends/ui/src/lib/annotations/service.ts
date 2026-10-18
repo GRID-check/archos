@@ -478,17 +478,35 @@ export async function listAnnotations(session: AuthorizedSession, documentId: st
     canWriteDocument(session, doc.id),
     directoryNames(session.organizationId),
   ])
-  const [wakes, work, linked, carryWay] = await Promise.all([
+  const annotations = (await documentAnnotationViews(session, doc, records, { writable, names })).sort(compareAnnotations)
+  return { annotations, canAnnotate: writable, pilotiWakes: wakesEnabled(session) }
+}
+
+/**
+ * The list projection: one document's marks as this reader sees them, in the
+ * order given. Shared by the document's own list and a project's Offene
+ * Punkte (`./project-marks.ts`), so a row reads the same on both. The caller
+ * read `doc` for this reader and says whether they may write it; `names` is
+ * the organization's directory, read once however many documents a page holds.
+ */
+export async function documentAnnotationViews(
+  session: AuthorizedSession,
+  doc: Document,
+  records: readonly AnnotationRecord[],
+  { writable, names }: { writable: boolean; names?: Names }
+): Promise<AnnotationView[]> {
+  const [directory, wakes, work, linked, carryWay] = await Promise.all([
+    names ?? directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, records),
     latestWakesFor(session.organizationId, doc.id),
     linkedDocuments(session, records),
     writable ? carryWayOf(session, doc, records) : null,
   ])
-  const annotations = records
-    .map((record) => toView(record, doc, session, writable, names, wakes, work, linked, carryWay))
-    .sort(compareAnnotations)
-  return { annotations, canAnnotate: writable, pilotiWakes: wakesEnabled(session) }
+  return records.map((record) => toView(record, doc, session, writable, directory, wakes, work, linked, carryWay))
 }
+
+/** The organization's directory by user id, for a caller that projects several documents' marks with one read. */
+export const annotationDirectory = (organizationId: string): Promise<Names> => directoryNames(organizationId)
 
 /** A person sets one Anmerkung on the Fassung the document shows now. */
 export async function createAnnotation(

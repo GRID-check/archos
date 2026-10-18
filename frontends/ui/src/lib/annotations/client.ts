@@ -12,6 +12,12 @@
 
 import { ROOM_PEER_HEADER } from './peer-header'
 import {
+  projectMarksHref,
+  projectMarksResponseSchema,
+  type ProjectMarksFilters,
+  type ProjectMarksResponse,
+} from './project-types'
+import {
   annotationListResponseSchema,
   annotationResponseSchema,
   documentThreadResponseSchema,
@@ -168,5 +174,20 @@ export function deleteAnnotation(
     annotationPath(documentId, annotationId),
     { method: 'DELETE', headers: peerId ? { [ROOM_PEER_HEADER]: peerId } : {} },
     () => undefined
+  )
+}
+
+/**
+ * A page of a project's Offene Punkte: the live marks of every document of the
+ * project this reader may see, each the view a document's list carries, with
+ * the document's name (`GET /api/projects/{id}/annotations`).
+ */
+export function listProjectAnnotations(
+  projectId: string,
+  filters: ProjectMarksFilters = {},
+  { limit, cursor, run = defaultFetch }: { limit?: number; cursor?: string | null; run?: AnnotationFetch } = {}
+): Promise<ProjectMarksResponse> {
+  return request(run, projectMarksHref(projectId, filters, { limit, cursor }), { method: 'GET' }, (value) =>
+    projectMarksResponseSchema.parse(value)
   )
 }
