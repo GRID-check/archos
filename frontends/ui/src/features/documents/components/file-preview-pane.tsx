@@ -106,6 +106,7 @@ import { useFilePreviewStore } from '../stores/file-preview-store'
 import { useDocumentReview } from '../hooks/use-document-review'
 import { AnnotationsSummary } from './review/annotations-summary'
 import { DocumentReviewMode, Presence, useRoomCompany } from './review/document-review'
+import { tabCounts } from './review/review-panel'
 import { ReviewPageLayer } from './review/review-page-layer'
 import { InlineMarkPeek } from './inline-mark-peek'
 import {
@@ -116,7 +117,7 @@ import {
   setReviewParams,
   type ReviewLinkTool,
 } from '../lib/open-review'
-import { isLive } from '@/lib/annotations/types'
+import { isLive, type MarkTally } from '@/lib/annotations/types'
 import { CountPill } from '@/components/ui/count-pill'
 import { ToolbarTextButton } from '@/components/ui/floating-toolbar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -183,6 +184,13 @@ interface FilePreviewPaneProps {
     fileId: string,
     summary: { versionState: DocumentVersionState; versionCount: number },
   ) => void
+  /**
+   * The review read the marks, or the reader changed them: the listing's tally
+   * for this document, as the server counts it (`tallyLiveMarks`), `null` when
+   * none is live. Dateien's chip is read with the listing and would otherwise
+   * say „5 offen“ after the reader closed all five here.
+   */
+  onMarksChanged?: (fileId: string, marks: MarkTally | null) => void
   /** Modal on Files; peek/expanded once this file is the chat subject. */
   presentation?: 'modal' | 'peek' | 'expanded'
   onAssigneesChanged?: (assignees: FileItem['assignees']) => void
@@ -229,6 +237,7 @@ export function FilePreviewPane({
   lifecyclePermissions,
   viewerUserId,
   onLifecycleChanged,
+  onMarksChanged,
   scope = 'files',
   onClose,
   onReingested,
@@ -647,6 +656,31 @@ export function FilePreviewPane({
     },
   })
   const liveMarks = review.annotations.filter(isLive).length
+  /**
+   * The row behind the pane says what the review says: once the list is read,
+   * and whenever a decision changes it, the tally goes to the listing in the
+   * shape the server sends (`marks`, `null` with nothing live). „für Sie“ is
+   * the review's own „Für Sie“ count (`tabCounts`, `isForReader`). Only a
+   * tally the row does not already hold is sent.
+   */
+  const marksForYou = useMemo(
+    () => tabCounts(review.annotations, { on: true, me: review.me }).open,
+    [review.annotations, review.me]
+  )
+  const shownMarks = file.marks ?? null
+  useEffect(() => {
+    if (!reviewEnabled || review.load !== 'ready' || !onMarksChanged) return
+    const { open, proposed } = review.counts
+    const tally: MarkTally | null = open + proposed > 0 ? { open, proposed, forYou: marksForYou } : null
+    const same =
+      tally === null
+        ? shownMarks === null
+        : shownMarks !== null &&
+          shownMarks.open === tally.open &&
+          shownMarks.proposed === tally.proposed &&
+          shownMarks.forYou === tally.forYou
+    if (!same) onMarksChanged(file.id, tally)
+  }, [reviewEnabled, review.load, review.counts, marksForYou, shownMarks, onMarksChanged, file.id])
   const [reviewOpen, setReviewOpen] = useState(false)
   /**
    * The inline viewer steps aside while the review is open, as it does for the

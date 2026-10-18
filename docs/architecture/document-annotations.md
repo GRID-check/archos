@@ -94,7 +94,20 @@ when none is live. `tallyLiveMarks`
 bounded by the page's ids, that joins `documents` behind the listing's own
 `documentVisibleTo(reader)`. A proposal that names the reader is not theirs
 yet: only the person who takes it over makes it so. The count comes with the
-listing and is as fresh as its last read; it is not live. Dateien draws it as
+listing and is as fresh as its last read; it is not live, with one exception:
+the document open in the preview. Once the pane's review has read the marks,
+and whenever the reader's work there changes them, the pane hands its tally
+to the row (`onMarksChanged` in `PreviewHandlers`,
+`hooks/use-preview-channel.ts`, which Dateien answers with `patchFile(id, {
+marks })`, and the preview host patches the open file too): the review's
+`counts`, with `forYou` the review's own „Für Sie“ count (`tabCounts`), and
+`null` when nothing is live, as the server sends it. Only a tally the row
+does not already hold is sent, so a reader who resolves all five marks and
+closes the review sees no „5 offen“ left behind. The review's `load` reads
+`loading`, never `ready`, until the list of the document it is now for has
+answered (`listedFor` in `use-document-review.ts`): a pane reused for
+another document otherwise counted the last one's marks under the new id for
+one render. Dateien draws it as
 `OpenMarksChip` (`features/documents/components/open-marks-chip.tsx`), the
 kit's `Chip`, beside the name in the list and on a card's footer, on its own
 line under the size and the date (never in their place). It says it in words,

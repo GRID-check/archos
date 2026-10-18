@@ -294,6 +294,54 @@ describe('the review keeps its address', () => {
   })
 })
 
+describe('the row behind the pane says what the review says', () => {
+  it('hands the listing the tally the review counts once its list is read, as the server counts it', async () => {
+    serve([
+      mark({ id: 'ann-1', status: 'open', assigneeUserId: 'user_me' }),
+      mark({ id: 'ann-2', number: 2, status: 'open' }),
+      mark({ id: 'ann-3', number: 3, status: 'proposed', authorKind: 'piloti' }),
+      mark({ id: 'ann-4', number: 4, status: 'resolved' }),
+    ])
+    const onMarksChanged = vi.fn()
+    // The listing was read when all five were open.
+    render(pane({ file: { ...FILE, marks: { open: 5, proposed: 0, forYou: 0 } }, viewerUserId: 'user_me', onMarksChanged }))
+    await waitFor(() => expect(onMarksChanged).toHaveBeenCalledWith('doc-1', { open: 2, proposed: 1, forYou: 1 }))
+  })
+
+  it('says nothing is live with null, as the listing does, and nothing at all when the row already says it', async () => {
+    serve([mark({ status: 'resolved' })])
+    const onMarksChanged = vi.fn()
+    const { rerender } = render(pane({ file: { ...FILE, marks: { open: 5, proposed: 0, forYou: 0 } }, onMarksChanged }))
+    await waitFor(() => expect(onMarksChanged).toHaveBeenCalledWith('doc-1', null))
+
+    onMarksChanged.mockReset()
+    rerender(pane({ file: { ...FILE, marks: null }, onMarksChanged }))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(onMarksChanged).not.toHaveBeenCalled()
+  })
+
+  it('never hands the next document the last one’s tally while its own list is on the way', async () => {
+    const pending = new Set(['doc-2'])
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/annotations')) {
+        if ([...pending].some((id) => url.includes(id))) return new Promise<Response>(() => {})
+        return json({ annotations: [mark()], canAnnotate: true, pilotiWakes: false })
+      }
+      if (url.endsWith('/preview')) return json({ url: 'https://example.test/plan.pdf', contentType: 'application/pdf' })
+      return json({}, 404)
+    })
+    const onMarksChanged = vi.fn()
+    const { rerender } = render(pane({ file: { ...FILE, marks: null }, onMarksChanged }))
+    await waitFor(() => expect(onMarksChanged).toHaveBeenCalledWith('doc-1', { open: 1, proposed: 0, forYou: 0 }))
+
+    // The pane is reused for another document, whose listing row says three are open.
+    rerender(pane({ file: { ...FILE, id: 'doc-2', marks: { open: 3, proposed: 0, forYou: 0 } }, onMarksChanged }))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(onMarksChanged.mock.calls.filter(([id]) => id === 'doc-2')).toEqual([])
+  })
+})
+
 describe('„Anmerken"', () => {
   it('in the viewer pill opens the review with the point in hand', async () => {
     serve([])

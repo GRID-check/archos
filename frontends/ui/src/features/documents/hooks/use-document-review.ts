@@ -170,7 +170,16 @@ export function useDocumentReview(
    */
   const sessionUserId = useChatStore((state) => state.currentUserId)
   const me = room.self?.userId ?? viewerUserId ?? sessionUserId ?? null
-  const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [readLoad, setLoad] = useState<'loading' | 'ready' | 'error'>('loading')
+  /**
+   * The document the list in hand was read for. A pane reused for another
+   * document renders once with the last one's list before its effect asks
+   * again, and in that render `ready` would hand the last document's marks to
+   * whatever counts them under the new one's id (the pane's tally for
+   * Dateien's chip): until the new document's list answers, it is loading.
+   */
+  const [listedFor, setListedFor] = useState<string | null>(null)
+  const load = readLoad === 'ready' && listedFor !== documentId ? 'loading' : readLoad
   /** The marks as the server last answered; `annotations` below shows them with the held decisions. */
   const [stored, setAnnotations] = useState<AnnotationView[]>([])
   const [canAnnotate, setCanAnnotate] = useState(false)
@@ -344,6 +353,7 @@ export function useDocumentReview(
     setAnnotations(result.annotations)
     setCanAnnotate(result.canAnnotate)
     setPilotiWakes(result.pilotiWakes)
+    setListedFor(documentId)
     setLoad('ready')
     return result.annotations
   }, [documentId])
