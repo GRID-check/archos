@@ -99,6 +99,7 @@ import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
+import { MentionText } from './MentionText'
 
 /**
  * The ONE place the registry's icon names become components. Keeping the map here
@@ -150,6 +151,8 @@ export interface InboxItemRowProps {
   onMarkUnread?: (itemId: string) => void
   /** The row the list's keyboard is on (j/k): drawn with a ring, and the one Enter opens. */
   focused?: boolean
+  /** The reader, so the excerpt's mention of them is drawn louder, as the thread draws it. */
+  viewerId?: string | null
   /** Answering or resolving a mark from the row. Injected by the specs. */
   markClient?: InboxMarkClient
   /**
@@ -172,6 +175,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     onMarkRead,
     onMarkUnread,
     focused = false,
+    viewerId = null,
     reviewClient = documentLifecycleClient,
     markClient = MARK_CLIENT,
   },
@@ -589,7 +593,15 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               )}
               data-testid="inbox-item-excerpt"
             >
-              {item.excerpt}
+              {/* The quote's mentions as the thread's chips (`MentionText`):
+                  only the ones the server kept, so a name typed by hand stays
+                  text. One paragraph, as in any clamp. */}
+              <MentionText
+                content={item.excerpt}
+                mentions={item.mentions}
+                currentUserId={viewerId}
+                className="whitespace-normal"
+              />
             </p>
           )}
 

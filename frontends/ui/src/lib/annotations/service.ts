@@ -425,7 +425,7 @@ export async function createAnnotation(
   }).catch(limitReached)
   announce(session, doc.id, [row.id], 'created', { ...actor, kind: 'person' })
   if (row.assigneeUserId) traceAssigned(session, doc, row, null, PERSON)
-  traceMentioned(session, doc, row, mentioned, row.body, row.assigneeUserId)
+  traceMentioned(session, doc, row, mentioned, row.body, mentions, row.assigneeUserId)
   return { annotation: await viewOf(session, doc, row.id) }
 }
 
@@ -570,6 +570,7 @@ function traceMentioned(
   mark: { id: string; number: number },
   mentioned: readonly string[],
   text: string,
+  mentions: readonly MarkMention[],
   assignedNow: string | null = null
 ): void {
   const told = mentioned.filter((userId) => userId !== assignedNow)
@@ -582,6 +583,7 @@ function traceMentioned(
       markText: text,
       mentioned: told,
       text,
+      mentions,
       mayOpen: mayOpenOf(session, doc),
     })
   )
@@ -848,6 +850,7 @@ export async function updateAnnotation(
     existing,
     mentioned,
     changes.body ?? existing.body,
+    mentions ?? existing.mentions,
     changes.assigneeUserId !== undefined && changes.assigneeUserId !== existing.assigneeUserId ? changes.assigneeUserId : null
   )
   traceWithdrawn(session, annotationId, withdrawn)
@@ -1037,7 +1040,7 @@ export async function replyToAnnotation(
   actor: AnnotationActor = PERSON
 ): Promise<{ annotation: AnnotationView; replyId: string; wake: WakeOutcome }> {
   const { doc, existing, reply, wake, mentioned } = await postReply(session, documentId, annotationId, input, actor)
-  traceMentioned(session, doc, existing, mentioned, reply.body)
+  traceMentioned(session, doc, existing, mentioned, reply.body, reply.mentions)
   bestEffort('tell the thread', () =>
     onMarkReplied({
       ...markRefOf(session, doc, existing),
@@ -1046,6 +1049,7 @@ export async function replyToAnnotation(
       markText: existing.body,
       mark: existing,
       replyText: reply.body,
+      replyMentions: reply.mentions,
       mayOpen: mayOpenOf(session, doc),
       mentioned,
     })

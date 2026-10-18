@@ -49,7 +49,7 @@ import 'server-only'
  */
 
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
-import { isLive } from './types'
+import { isLive, type MarkMention } from './types'
 import { wakeEndReasonKind } from './wake-end-reason'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
 import { inboxGroupKey, MARK_ANCHORED_INBOX_TYPES } from '@/lib/inbox/registry'
@@ -91,6 +91,13 @@ async function documentName(ref: MarkRef): Promise<string | null> {
 /** What a row about a mark says beyond the mark: its quote, its wording, and who did it (null: Piloti). */
 interface MarkItem {
   excerpt: string | null
+  /**
+   * Whom the quoted text mentions, as the server kept them, so the row draws
+   * the chips the thread draws. Written beside every excerpt, `[]` where the
+   * caller has none: rows fold per mark and their payloads merge, and an
+   * excerpt must never inherit the mentions of the one it replaced.
+   */
+  mentions?: readonly MarkMention[]
   /** Picks the row's wording, where its type has more than one. */
   variant?: string | null
   actorUserId?: string | null
@@ -107,14 +114,14 @@ async function emitAboutMark(
   type: InboxItemType,
   ref: MarkRef,
   recipientUserIds: readonly string[],
-  { excerpt, variant = null, actorUserId = null, author = null }: MarkItem
+  { excerpt, mentions = [], variant = null, actorUserId = null, author = null }: MarkItem
 ): Promise<void> {
   if (recipientUserIds.length === 0) return
   const subject = await documentName(ref)
   const payload = {
     ...(subject ? { subject } : {}),
     related: String(ref.annotationNumber),
-    ...(excerpt ? { excerpt } : {}),
+    ...(excerpt ? { excerpt, mentions: [...mentions] } : {}),
     ...(variant ? { variant } : {}),
   }
   await emitInboxItems(
@@ -348,6 +355,8 @@ export async function onMarkReplied(
     replyText: string
     mayOpen: MayOpen
     mentioned?: readonly string[]
+    /** Whom the reply mentions, as the server kept them. */
+    replyMentions?: readonly MarkMention[]
   }
 ): Promise<void> {
   await bestEffortInbox(`annotation.activity for mark ${input.annotationId}`, input.organizationId, async () => {
@@ -356,6 +365,7 @@ export async function onMarkReplied(
     const candidates = markParticipants(input.mark).filter((userId) => !toldOtherwise.has(userId))
     await emitAboutMark('annotation.activity', input, await whoMayOpen(input.mayOpen, candidates), {
       excerpt: excerptOf(input.replyText),
+      mentions: input.replyMentions,
       variant: 'reply',
       actorUserId: input.byPiloti ? null : input.actorUserId,
       author: markAuthor(input.mark),
@@ -391,13 +401,20 @@ export async function onMarkMoved(
  * again whether they may open the document now, as every item about a mark is.
  */
 export async function onMarkMentioned(
-  input: MarkAct & { mentioned: readonly string[]; text: string; mayOpen: MayOpen }
+  input: MarkAct & {
+    mentioned: readonly string[]
+    text: string
+    /** Whom `text` mentions, as the server kept them: the row draws them as chips. */
+    mentions: readonly MarkMention[]
+    mayOpen: MayOpen
+  }
 ): Promise<void> {
   const recipients = input.mentioned.filter((userId) => userId !== input.actorUserId)
   if (recipients.length === 0) return
   await bestEffortInbox(`annotation.mentioned for mark ${input.annotationId}`, input.organizationId, async () =>
     emitAboutMark('annotation.mentioned', input, await whoMayOpen(input.mayOpen, recipients), {
       excerpt: excerptOf(input.text),
+      mentions: input.mentions,
       actorUserId: input.actorUserId,
     })
   )

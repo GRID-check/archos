@@ -247,7 +247,7 @@ like a person as in the chat, before anything is written. A write that closes
 the mark tells nobody it mentions.
 
 A mention renders as the chat's chip (`MentionText`, through
-`review/mark-body.tsx`): the name, never the id, louder when it is the reader
+`review/mark-body.tsx`; in the reader's Postfach too, below): the name, never the id, louder when it is the reader
 (the review's `viewerId`: the room's word for this tab, else the signed-in
 person the chat knows). In a line clamp (the list, the peek, the summary) the
 text runs as one paragraph; the thread card keeps its line breaks.
@@ -605,7 +605,14 @@ concerns, exactly as the asker's own change would.
 Each row reads as a colleague's sentence: what Piloti did, to which mark in
 which document, and what the reader can do now. The payload carries the
 document's name (`subject`), the mark's number (`related`) and, as the excerpt,
-what the mark says (Piloti's question for a Rückfrage):
+what the mark says (Piloti's question for a Rückfrage). Beside the excerpt of
+an `annotation.mentioned` and of a reply's `annotation.activity` it carries
+whom that text mentions (`mentions`, as the server kept them), and the row
+draws them as the thread's chips (`MentionText`, the reader's own louder:
+`InboxList` takes the reader's id from the page's session). Every excerpt
+writes its `mentions`, `[]` where there are none, so a folded row never pairs
+one quote with the last one's names. A row written before this, or a chat
+mention (the chat keeps no names on the server), quotes plain text:
 
 | Item | Title | Body |
 |---|---|---|
