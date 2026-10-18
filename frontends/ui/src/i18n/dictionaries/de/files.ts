@@ -1517,7 +1517,8 @@ export const files: typeof en.files = {
       assignee: 'Zuständig',
       due: 'Frist',
       all: 'Alle',
-      me: 'Ich',
+      // Dasselbe Prädikat wie „Für Sie“ in der Prüfansicht und in Dateien (`isForReader`), also dieselben Worte.
+      me: 'Für Sie',
       overdue: 'Überfällig',
       soon: 'Bald',
       soonHint: 'Frist heute oder in den nächsten sieben Tagen',
@@ -1752,6 +1753,8 @@ export const files: typeof en.files = {
     replyPlaceholder: 'Antworten …',
     send: 'Senden',
     sendFailed: 'Konnte nicht gesendet werden. Der Text ist noch da.',
+    // Eine Anmerkung oder Antwort, die ihre Verfasserin umformuliert: gespeichert, nicht gesendet.
+    saveFailed: 'Konnte nicht gespeichert werden. Der Text ist noch da.',
     actionFailed: 'Das hat nicht geklappt. Bitte noch einmal.',
     conflict: 'Jemand hat diese Anmerkung gerade geändert. Sie sehen jetzt den aktuellen Stand.',
     someone: 'Unbekannt',
@@ -1780,7 +1783,7 @@ export const files: typeof en.files = {
     linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
     earlierFassung: 'Aus Fassung {number}. Auf diesem Blatt nicht eingezeichnet.',
     // Offen: hohl und punktiert dort gezeichnet, wo sie auf ihrer Fassung stand.
-    earlierFassungGhost: 'Aus Fassung {number}. Hohl gezeichnet, wo sie dort stand.',
+    earlierFassungGhost: 'Aus Fassung {number}. Der hohle Punkt zeigt, wo sie dort stand.',
     // „Gilt weiter": eine offene Anmerkung geht mit der aktuellen Fassung weiter,
     // an derselben Stelle, mit Nummer und Verlauf. Eine Anmerkung eines
     // ersetzten Dokuments kommt als verknüpfte Anmerkung in das neue.

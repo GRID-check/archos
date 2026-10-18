@@ -1558,7 +1558,8 @@ export const files = {
       assignee: 'Assignee',
       due: 'Due',
       all: 'All',
-      me: 'Me',
+      // The same predicate as „For you“ in the review and in Files (`isForReader`), so the same words.
+      me: 'For you',
       overdue: 'Overdue',
       soon: 'Soon',
       soonHint: 'Due today or in the next seven days',
@@ -1790,6 +1791,8 @@ export const files = {
     replyPlaceholder: 'Reply …',
     send: 'Send',
     sendFailed: 'Could not be sent. Your text is still here.',
+    /** A mark or a reply its author rewords: saved, not sent. */
+    saveFailed: 'Could not be saved. Your text is still here.',
     actionFailed: 'That did not work. Please try again.',
     conflict: 'Someone just changed this annotation. You are seeing the current state now.',
     someone: 'Unknown',
@@ -1817,7 +1820,7 @@ export const files = {
     linkCopied: 'Link copied',
     linkCopyFailed: 'The link could not be copied.',
     earlierFassung: 'From revision {number}. Not drawn on this sheet.',
-    earlierFassungGhost: 'From revision {number}. Drawn hollow where it stood there.',
+    earlierFassungGhost: 'From revision {number}. The hollow pin shows where it stood there.',
     carry: 'Carry to the current revision',
     carryTo: 'Carry to “{name}”',
     carryMark: 'Carry annotation {number} to the current revision',

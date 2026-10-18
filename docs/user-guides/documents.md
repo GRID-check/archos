@@ -120,7 +120,7 @@ its Frist. Pressing a row opens that document in the Prüfansicht at the mark;
 
 Two filters answer the meeting's questions:
 
-- **Zuständig: Ich** keeps the marks you are responsible for.
+- **Zuständig: Für Sie** keeps the marks you are responsible for, as **Für Sie** does in the Prüfansicht.
 - **Frist: Überfällig** keeps the marks whose Frist has passed; **Bald** those
   due today or in the next seven days.
 

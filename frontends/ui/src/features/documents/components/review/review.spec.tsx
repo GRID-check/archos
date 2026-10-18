@@ -1626,6 +1626,25 @@ describe('one’s own reply in the thread', () => {
     expect(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-more')).toHaveFocus()
   })
 
+  it('says a rewording that failed was not saved, and keeps the words', async () => {
+    serve([view({ id: 'ann_1', replies: [reply()] })])
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId/replies/:replyId', () =>
+        HttpResponse.json({ error: 'down', code: 'INTERNAL' }, { status: 500 })
+      )
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    const thread = await openThread()
+    await userEvent.click(within(thread).getByTestId('thread-reply-more'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+    await userEvent.type(within(screen.getByTestId('review-thread')).getByTestId('thread-reply-edit-body'), ' bis Freitag{Enter}')
+
+    const edit = within(screen.getByTestId('review-thread')).getByTestId('thread-reply-edit')
+    expect(await within(edit).findByText('Could not be saved. Your text is still here.')).toBeInTheDocument()
+    expect(within(edit).getByTestId('thread-reply-edit-body')).toHaveValue('@Anna Berger bitte prüfen bis Freitag')
+  })
+
   it('deletes it after asking, and the thread shows it gone', async () => {
     serve([view({ id: 'ann_1', replies: [reply()] })])
     const deleted: string[] = []
@@ -1790,7 +1809,7 @@ describe('a mark goes on with the current Fassung', () => {
 
     await userEvent.click(await screen.findByTestId('review-row'))
     const thread = await screen.findByTestId('review-thread')
-    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('From revision 2. Drawn hollow where it stood there.')
+    expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('From revision 2. The hollow pin shows where it stood there.')
     await userEvent.click(within(thread).getByTestId('thread-carry'))
 
     await waitFor(() =>

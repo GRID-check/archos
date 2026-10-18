@@ -1374,7 +1374,7 @@ review list's row (`MarkRowContent`, `review/mark-row.tsx`, which the
 review's own list wears too), here a link into that document's review at the
 mark: Dateien with `doc`, `review=1` and `mark` (`reviewFilesHref`), which the
 pane already answers. Each document's heading has „Prüfansicht öffnen“ for the
-whole review. The filters are „Zuständig: Alle | Ich“ and „Frist: Alle |
+whole review. The filters are „Zuständig: Alle | Für Sie“ (`isForReader`, the review's word) and „Frist: Alle |
 Überfällig | Bald“; a change reads the first page again through the typed
 client (`listProjectAnnotations` in `client.ts`), and a later page is read at
 the foot of the list (`LoadMore`). The server reads the first page for the

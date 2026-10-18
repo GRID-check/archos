@@ -771,7 +771,8 @@ function ReplyEntry({
           documentId={review.documentId}
           initialBody={reply.body}
           initialMentions={reply.mentions}
-          describeFailure={failureOf}
+          // A rewording is saved, not sent: its failure says so.
+          describeFailure={(error) => failureOf(error) ?? t('review.saveFailed')}
           onSubmit={save}
           onEscape={() => setEditing(false)}
         />
@@ -1180,6 +1181,7 @@ export function ThreadCard({
               documentId={review.documentId}
               initialBody={annotation.body}
               initialMentions={annotation.mentions}
+              describeFailure={() => t('review.saveFailed')}
               onSubmit={saveEdit}
               onEscape={() => setEditing(false)}
             />

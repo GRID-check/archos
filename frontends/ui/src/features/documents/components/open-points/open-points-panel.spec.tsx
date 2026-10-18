@@ -115,11 +115,13 @@ describe('OpenPointsPanel', () => {
     expect(rows[1]).toHaveAccessibleName(/^Annotation 4: Question · proposal\. /)
   })
 
-  it('reads the list again for „Me" and says when nothing is in that selection', async () => {
+  it('reads the list again for „For you" and says when nothing is in that selection', async () => {
     fetchMock.mockResolvedValue(answer({ marks: [], nextCursor: null }))
     const user = userEvent.setup()
     show()
 
+    // The review's and Files' word for the same predicate (`isForReader`), never „Me".
+    expect(screen.getByTestId('open-points-assignee-me')).toHaveTextContent('For you')
     await user.click(screen.getByTestId('open-points-assignee-me'))
 
     expect(fetchMock).toHaveBeenCalledWith('/api/projects/proj_1/annotations?assignee=me', { method: 'GET' })
