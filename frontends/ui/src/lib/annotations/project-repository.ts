@@ -14,13 +14,13 @@
  */
 
 import 'server-only'
-import { and, asc, eq, gte, inArray, lt, lte, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, lt, lte, not, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { documentAnnotations, documents, documentVersions, type Document } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import { outsideHiddenFolders } from '@/lib/documents/repository'
 import { projectShelf, shelfDocumentWhere } from '@/lib/documents/shelf'
-import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
+import { documentVisibleTo, SCREENED_ONLY, type DocumentReader } from '@/lib/documents/visibility'
 import { MAX_PROJECT_MARKS_PAGE, type ProjectMarkOrder } from './project-types'
 import {
   carriedCopy,
@@ -104,6 +104,52 @@ function dueWhere(due: DueRange | null | undefined): SQL[] {
 
 const clampLimit = (limit: number) => Math.min(Math.max(1, Math.trunc(limit)), MAX_PROJECT_MARKS_PAGE)
 
+/** What a page and its whole selection share: the project's documents as its listing narrows them, and the filters. */
+type SelectionQuery = Omit<ProjectAnnotationPageQuery, 'order' | 'cursor' | 'limit'>
+
+/** The WHERE of the selection, every page alike: the listing's narrowing, the reader's hold, the filters. */
+function selectionWhere(organizationId: string, projectId: string, query: SelectionQuery): (SQL | undefined)[] {
+  return [
+    eq(documentAnnotations.organizationId, organizationId),
+    shelfDocumentWhere(projectShelf(projectId), organizationId),
+    eq(documents.lifecycle, 'active'),
+    ...outsideHiddenFolders(query.hiddenFolderIds),
+    documentVisibleTo(query.reader),
+    inArray(documentAnnotations.status, [...query.statuses]),
+    ...(query.assigneeUserId ? [eq(documentAnnotations.assigneeUserId, query.assigneeUserId)] : []),
+    ...dueWhere(query.due),
+  ]
+}
+
+/**
+ * Whether any mark of the whole selection (every page of it, the filters
+ * applied) sits on a document not every member of the project may open: one
+ * filed in `restrictedFolderIds` (`getRestrictedFolderIds`), or an upload still
+ * held back (ADR-0086), which only its uploader and its reviewers see. Its
+ * Protokoll quotes those marks, so it must not be filed where every member
+ * reads it. One `EXISTS`-shaped read, a row at most.
+ */
+export async function selectionReachesRestrictedDocuments(
+  organizationId: string,
+  projectId: string,
+  query: SelectionQuery & { restrictedFolderIds: readonly string[] }
+): Promise<boolean> {
+  const db = getDb()
+  const restricted = or(
+    ...(query.restrictedFolderIds.length > 0 ? [inArray(documents.folderId, [...query.restrictedFolderIds])] : []),
+    not(documentVisibleTo(SCREENED_ONLY) ?? sql`true`)
+  )
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({ id: documentAnnotations.id })
+      .from(documentAnnotations)
+      .innerJoin(documents, eq(documents.id, documentAnnotations.documentId))
+      .where(and(...selectionWhere(organizationId, projectId, query), restricted))
+      .limit(1)
+  )
+  return rows.length > 0
+}
+
 /**
  * One page of the project's Anmerkungen with these statuses, each with its
  * thread (bounded per mark, `withThreads`), its Fassung's number and both ends
@@ -129,14 +175,7 @@ export async function listProjectAnnotationPage(
       .leftJoin(carriedCopy, joins.copy)
       .where(
         and(
-          eq(documentAnnotations.organizationId, organizationId),
-          shelfDocumentWhere(projectShelf(projectId), organizationId),
-          eq(documents.lifecycle, 'active'),
-          ...outsideHiddenFolders(query.hiddenFolderIds),
-          documentVisibleTo(query.reader),
-          inArray(documentAnnotations.status, [...query.statuses]),
-          ...(query.assigneeUserId ? [eq(documentAnnotations.assigneeUserId, query.assigneeUserId)] : []),
-          ...dueWhere(query.due),
+          ...selectionWhere(organizationId, projectId, query),
           ...(query.cursor ? [after(query.order, query.cursor)] : [])
         )
       )

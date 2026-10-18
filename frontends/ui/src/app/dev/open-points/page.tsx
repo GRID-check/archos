@@ -17,6 +17,12 @@
  *   /dev/open-points?fail=1      reads fail for three seconds: the error, then „Erneut versuchen" reads
  *   /dev/open-points?empty=1     nothing open
  *   /dev/open-points?slow=1      each read takes two seconds: the loading state
+ *   /dev/open-points?restricted=1  a point sits on a document not every member may open:
+ *                                „Im Projekt ablegen" is withheld, with why
+ *   /dev/open-points?nofile=1    a reader who may not upload to the project root: no „Im Projekt ablegen"
+ *
+ * „Im Projekt ablegen" files through a shimmed upload (`/api/documents/upload`)
+ * and says „Abgelegt als …"; nothing is stored.
  *
  * Not linked from anywhere and 404s outside development (`../layout.tsx`).
  */
@@ -211,7 +217,11 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const start = Number(url.searchParams.get('cursor') ?? 0)
         const marks = all.slice(start, start + PAGE_SIZE)
         const next = start + PAGE_SIZE < all.length ? String(start + PAGE_SIZE) : null
-        return Response.json({ marks, nextCursor: next })
+        return Response.json({ marks, nextCursor: next, ...(start === 0 ? { restricted: Boolean(params.get('restricted')) } : {}) })
+      }
+      if (url.pathname === '/api/documents/upload') {
+        await pause()
+        return Response.json({ documentId: 'dev-filed-protocol', unchanged: false })
       }
       return real(input, init)
     }
@@ -221,7 +231,12 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
 export default function OpenPointsPreview(): JSX.Element {
   return (
     <div className="bg-background h-dvh">
-      <OpenPointsPanel projectId={PROJECT} currentUserId={ME} initial={null} />
+      <OpenPointsPanel
+        projectId={PROJECT}
+        currentUserId={ME}
+        initial={null}
+        filing={params.get('nofile') ? null : { projectName: 'Wohnhaus Lend' }}
+      />
     </div>
   )
 }

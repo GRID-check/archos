@@ -18,6 +18,11 @@ export interface ProjectMarksState {
   /** Whether a further page exists, and how reading it goes. */
   hasMore: boolean
   more: 'idle' | 'loading' | 'error'
+  /**
+   * Whether what these filters select quotes a document not every member may
+   * open (the first page's `restricted`); null until the first page is read.
+   */
+  restricted: boolean | null
   /** Read the first page again, after a failure. */
   retry: () => void
   loadMore: () => void
@@ -47,6 +52,7 @@ export function useProjectMarks(
   const [marks, setMarks] = useState<ProjectMarkView[]>(seeded?.marks ?? [])
   const [cursor, setCursor] = useState<string | null>(seeded?.nextCursor ?? null)
   const [load, setLoad] = useState<ProjectMarksState['load']>(seeded ? 'ready' : 'loading')
+  const [restricted, setRestricted] = useState<boolean | null>(seeded?.restricted ?? null)
   const [more, setMore] = useState<ProjectMarksState['more']>('idle')
   const [attempt, setAttempt] = useState(0)
   /** The latest read; the answer to any earlier one is dropped. */
@@ -63,7 +69,10 @@ export function useProjectMarks(
   const readFirst = useCallback(
     (quiet: boolean) => {
       const read = ++latest.current
-      if (!quiet) setLoad('loading')
+      if (!quiet) {
+        setLoad('loading')
+        setRestricted(null)
+      }
       setMore('idle')
       const covered = Math.min(shown.current.count, MAX_PROJECT_MARKS_PAGE)
       const page = quiet && covered > PROJECT_MARKS_PAGE_SIZE ? { limit: covered } : {}
@@ -72,6 +81,7 @@ export function useProjectMarks(
           if (latest.current !== read) return
           setMarks(answer.marks)
           setCursor(answer.nextCursor)
+          setRestricted(answer.restricted ?? null)
           setLoad('ready')
         })
         .catch(() => {
@@ -117,5 +127,5 @@ export function useProjectMarks(
 
   const retry = useCallback(() => setAttempt((count) => count + 1), [])
 
-  return { marks, load, hasMore: cursor !== null, more, retry, loadMore }
+  return { marks, load, restricted, hasMore: cursor !== null, more, retry, loadMore }
 }

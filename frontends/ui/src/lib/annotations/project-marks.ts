@@ -25,7 +25,7 @@ import 'server-only'
 import { z } from 'zod'
 import { BadRequestError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { getHiddenFolderIds } from '@/lib/authz/folder-access'
+import { getHiddenFolderIds, getRestrictedFolderIds } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { Document } from '@/lib/db/schema'
 import { canWriteDocument } from '@/lib/documents/can-write'
@@ -35,6 +35,7 @@ import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { inPool } from '@/lib/utils/in-pool'
 import {
   listProjectAnnotationPage,
+  selectionReachesRestrictedDocuments,
   type DueRange,
   type ProjectAnnotationRecord,
   type ProjectMarkCursor,
@@ -125,17 +126,27 @@ export async function listProjectAnnotations(
     shelfReaderFor(session, { scope: 'project', projectId }),
     getHiddenFolderIds(session, projectId),
   ])
-  const page = await listProjectAnnotationPage(session.organizationId, projectId, {
+  const selection = {
     reader,
     hiddenFolderIds,
     statuses: STATUSES[query.status],
     assigneeUserId: query.assignee === ASSIGNEE_ME ? session.userId : (query.assignee ?? null),
     due: dueRangeOf(query.due, calendarDayIn(OFFICE_TIME_ZONE, now)),
+  }
+  const page = await listProjectAnnotationPage(session.organizationId, projectId, {
+    ...selection,
     order: query.order,
     cursor,
     limit: query.limit,
   })
-  if (page.records.length === 0) return { marks: [], nextCursor: null }
+  if (page.records.length === 0) return { marks: [], nextCursor: null, ...(cursor ? {} : { restricted: false }) }
+  // The first page says whether the whole selection quotes a document not every member may open.
+  const restricted = cursor
+    ? undefined
+    : await selectionReachesRestrictedDocuments(session.organizationId, projectId, {
+        ...selection,
+        restrictedFolderIds: await getRestrictedFolderIds(session.organizationId, projectId),
+      })
 
   const names = await annotationDirectory(session.organizationId)
   const projected = await inPool(byDocument(page.records), DOCUMENTS_AT_ONCE, async ({ doc, records }) =>
@@ -146,5 +157,9 @@ export async function listProjectAnnotations(
     const view = views.get(record.id)
     return view ? [{ ...view, documentName: documentDisplayName(record.document) }] : []
   })
-  return { marks, nextCursor: page.next ? encodeProjectMarkCursor(page.next) : null }
+  return {
+    marks,
+    nextCursor: page.next ? encodeProjectMarkCursor(page.next) : null,
+    ...(restricted === undefined ? {} : { restricted }),
+  }
 }

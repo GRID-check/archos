@@ -1588,6 +1588,10 @@ export const files = {
       tooMany: 'Too many open points for one set of minutes. Narrow them with a filter.',
       title: 'Open points – {name}',
       fileName: 'Open points – {name}',
+      // Filed in the project: the file's name, {date} as YYYY-MM-DD on the office's calendar.
+      filedName: 'Open points – {name} – {date}',
+      // Why “File in the project” is withheld: the minutes quote documents not everyone may open.
+      fileRestricted: 'Not possible: some points are on documents not everyone in the project may open. Filed in the project, their text would be readable by all.',
       documents: 'Documents',
       status: {
         open: 'Open annotations',

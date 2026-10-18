@@ -1,11 +1,13 @@
 /**
  * „Im Projekt ablegen" for the Protokoll: the export the menu downloads, filed
  * as a document of the project instead, through the door every person's file
- * goes through.
+ * goes through. A document's Protokoll (the Prüfansicht) and a project's
+ * (Offene Punkte) alike: the caller names its export link.
  *
  * Two existing doors, composed in the browser, and no third one (ADR-0055):
- * the export (`GET /api/documents/{id}/annotations/export`, the same bytes the
- * download saves) and the project's upload (`POST /api/documents/upload`,
+ * the export (`GET /api/documents/{id}/annotations/export` or
+ * `GET /api/projects/{id}/annotations/export`, the same bytes the download
+ * saves) and the project's upload (`POST /api/documents/upload`,
  * `uploadDocument`), with the person's own session, rights, folder rules,
  * screening, quota and audit. Not the chat draft card's door
  * (`POST /api/conversations/{id}/draft/file`): that one files a text Piloti
@@ -15,7 +17,9 @@
  *
  * The file goes into the folder of the document it is about: a Protokoll of a
  * document in a restricted folder quotes what only that folder's readers may
- * read, and the root would hand it to everyone.
+ * read, and the root would hand it to everyone. A project's Protokoll goes
+ * into the root, and is offered only while nothing it quotes sits where not
+ * every member may read (`restricted` on the Offene Punkte list).
  *
  * The name is the office's day, not the reader's locale's date: two filings on
  * the same day carry the same name, and the upload door makes the second a new
@@ -25,15 +29,10 @@
 
 import { isNameTakenBody } from '@/lib/documents/name-taken'
 import { splitDocumentName } from '@/lib/documents/display-name'
-import {
-  annotationExportHref,
-  protocolFileNameOf,
-  safeFileStem,
-  type AnnotationExportOptions,
-} from '@/lib/annotations/export-request'
+import { protocolFileNameOf, safeFileStem, type AnnotationExportFormat } from '@/lib/annotations/export-request'
 import { calendarDayIn, OFFICE_TIME_ZONE } from '@/lib/format'
 
-/** Where the Protokoll is filed: the document's project, and the folder the document sits in. */
+/** Where the Protokoll is filed: the project, and the folder (the document's, or null for the root). */
 export interface ProtocolFilingTarget {
   projectId: string
   folderId: string | null
@@ -56,38 +55,42 @@ export class ProtocolFilingError extends Error {
 
 /**
  * „Protokoll – Grundriss EG – 2026-10-18": the name the dictionary gives
- * (`template`, with `{name}` and `{date}`), the document's name without its
- * extension, and the office's day as `YYYY-MM-DD`, which sorts.
+ * (`template`, with `{name}` and `{date}`), `name` (a document's without its
+ * extension, a project's as it is), and the office's day as `YYYY-MM-DD`,
+ * which sorts.
  */
 export function protocolFilingStem(
   template: (values: { name: string; date: string }) => string,
-  documentName: string,
+  name: string,
   now: Date = new Date()
 ): string {
-  const name = splitDocumentName(documentName).stem
   return safeFileStem(template({ name, date: calendarDayIn(OFFICE_TIME_ZONE, now) }))
 }
+
+/** A document's name as a Protokoll filed about it carries it: without its extension. */
+export const documentStem = (documentName: string): string => splitDocumentName(documentName).stem
+
+/** The export's link in a format: the menu's other choices are the caller's. */
+export type ProtocolExportHref = (format: AnnotationExportFormat) => string
 
 /**
  * The export to file: a PDF, the record that previews in Dateien and is read
  * like any other file; Word when the Protokoll is too long to lay out as a PDF
  * (the export's 422), so a long review is filed rather than refused.
  */
-async function exportFor(documentId: string, options: AnnotationExportOptions) {
-  const first = await fetch(annotationExportHref(documentId, options))
-  if (first.status !== 422 || options.format !== 'pdf') return { response: first, format: options.format }
-  const docx = { ...options, format: 'docx' } as const
-  return { response: await fetch(annotationExportHref(documentId, docx)), format: docx.format }
+async function exportFor(href: ProtocolExportHref) {
+  const first = await fetch(href('pdf'))
+  if (first.status !== 422) return { response: first, format: 'pdf' as const }
+  return { response: await fetch(href('docx')), format: 'docx' as const }
 }
 
-/** Export the Protokoll with the menu's choices and file it into the project. */
+/** Export the Protokoll (`href`, with the menu's choices) and file it into the project. */
 export async function fileProtocol(
-  documentId: string,
+  href: ProtocolExportHref,
   target: ProtocolFilingTarget,
-  stem: string,
-  options: AnnotationExportOptions
+  stem: string
 ): Promise<FiledProtocol> {
-  const { response: exported, format } = await exportFor(documentId, options)
+  const { response: exported, format } = await exportFor(href)
   if (!exported.ok) throw new ProtocolFilingError('export')
   const blob = await exported.blob()
   const filename = protocolFileNameOf(stem, format)

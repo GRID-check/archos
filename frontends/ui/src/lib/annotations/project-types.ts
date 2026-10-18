@@ -86,6 +86,13 @@ export const projectMarksResponseSchema = z.object({
   marks: z.array(projectMarkViewSchema),
   /** Where the next page starts; null on the last one. */
   nextCursor: z.string().nullable(),
+  /**
+   * On the first page: whether any mark these filters select, on any page,
+   * sits on a document not every member of the project may open (a restricted
+   * folder, an upload held back). Its Protokoll quotes them, so it is not
+   * filed in the project root, which every member reads. Absent on a later page.
+   */
+  restricted: z.boolean().optional(),
 })
 export type ProjectMarksResponse = z.infer<typeof projectMarksResponseSchema>
 

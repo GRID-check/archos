@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, type JSX } from 'react'
-import { FileDown } from 'lucide-react'
+import { useRef, useState, type JSX } from 'react'
+import { useRouter } from 'next/navigation'
+import { FileDown, FolderInput } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemText,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
@@ -16,6 +19,8 @@ import { capturePosthog } from '@/lib/analytics/posthog'
 import { downloadFetched } from '@/lib/browser-download'
 import { ANNOTATION_EXPORT_FORMATS, type AnnotationExportFormat } from '@/lib/annotations/export-request'
 import { projectProtocolHref, type ProjectMarksFilters } from '@/lib/annotations/project-types'
+import { documentFilesHref } from '../../lib/document-question'
+import { fileProtocol, ProtocolFilingError, protocolFilingStem } from '../../lib/protocol-filing'
 
 /**
  * „Protokoll exportieren" over a project's Offene Punkte: the marks the list
@@ -23,16 +28,35 @@ import { projectProtocolHref, type ProjectMarksFilters } from '@/lib/annotations
  * (`/api/projects/{id}/annotations/export`), downloaded the way a document's
  * Protokoll is (`downloadFetched`). Only the format is asked: what is in it
  * is what is on screen.
+ *
+ * „Im Projekt ablegen" files the same export into the project root, through
+ * the upload door every person's file goes through (`fileProtocol`, as the
+ * document's Protokoll is filed), named „Offene Punkte – <Projekt> – <Datum>“.
+ * Offered where the reader may upload to the root (`filing`). The Protokoll
+ * quotes the marks of every document it lists, and every member reads the
+ * root: while what the filters select includes a document not every member
+ * may open (`restricted`: a restricted folder, an upload held back), the item
+ * stays in the menu, withheld, and says why, rather than handing that text to
+ * people who may not open the document.
  */
 export function ProjectProtocolMenu({
   projectId,
   filters,
+  filing = null,
+  restricted = null,
 }: {
   projectId: string
   filters: ProjectMarksFilters
+  /** Where the reader may file into the project root: the project's name for the file. Null, not offered. */
+  filing?: { projectName: string } | null
+  /** The list's answer: the selection quotes a document not every member may open. Null while unknown. */
+  restricted?: boolean | null
 }): JSX.Element {
   const t = useTranslations('files')
+  const router = useRouter()
   const [busy, setBusy] = useState(false)
+  /** What this tab filed, by name: a second filing of the same name the same day is a new Fassung of it. */
+  const filedHere = useRef(new Map<string, string>())
 
   const download = async (format: AnnotationExportFormat): Promise<void> => {
     setBusy(true)
@@ -50,6 +74,29 @@ export function ProjectProtocolMenu({
           ? t('review.export.tooLongForPdf')
           : t('openPoints.export.failed')
     )
+  }
+
+  const file = async (projectName: string): Promise<void> => {
+    setBusy(true)
+    const stem = protocolFilingStem((values) => t('openPoints.export.filedName', values), projectName)
+    try {
+      const filed = await fileProtocol((format) => projectProtocolHref(projectId, filters, format), { projectId, folderId: null }, stem)
+      const again = filedHere.current.get(filed.filename) === filed.documentId
+      filedHere.current.set(filed.filename, filed.documentId)
+      const message = filed.unchanged
+        ? t('review.export.filedUnchanged', { name: filed.filename })
+        : again
+          ? t('review.export.filedAgain', { name: filed.filename })
+          : t('review.export.filed', { name: filed.filename })
+      toast.success(message, {
+        action: { label: t('review.export.openFiled'), onClick: () => router.push(documentFilesHref(projectId, filed.documentId)) },
+      })
+    } catch (error) {
+      const taken = error instanceof ProtocolFilingError && error.reason === 'name-taken'
+      toast.error(taken ? t('review.export.fileNameTaken', { name: stem }) : t('review.export.fileFailed'))
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -70,6 +117,25 @@ export function ProjectProtocolMenu({
             {t(`review.export.formats.${format}`)}
           </DropdownMenuItem>
         ))}
+        {filing && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => void file(filing.projectName)}
+              disabled={busy || restricted !== false}
+              data-testid="open-points-export-file"
+            >
+              <FolderInput aria-hidden />
+              {restricted ? (
+                <DropdownMenuItemText title={t('review.export.fileInto')} hint={t('openPoints.export.fileRestricted')} />
+              ) : busy ? (
+                t('review.export.filing')
+              ) : (
+                t('review.export.fileInto')
+              )}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

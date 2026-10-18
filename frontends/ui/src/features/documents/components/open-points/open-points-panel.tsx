@@ -93,9 +93,11 @@ export interface OpenPointsPanelProps {
   currentUserId: string | null
   /** The first page the server read for {@link OPEN_POINTS_DEFAULT_FILTERS}; null when that read failed. */
   initial: ProjectMarksResponse | null
+  /** „Im Projekt ablegen": the project's name for the file, where the reader may file into the root; null, not offered. */
+  filing?: { projectName: string } | null
 }
 
-export function OpenPointsPanel({ projectId, currentUserId, initial }: OpenPointsPanelProps): JSX.Element {
+export function OpenPointsPanel({ projectId, currentUserId, initial, filing = null }: OpenPointsPanelProps): JSX.Element {
   const t = useTranslations('files')
   const router = useRouter()
   const pathname = usePathname() ?? `/app/projects/${projectId}/files/open-points`
@@ -122,7 +124,12 @@ export function OpenPointsPanel({ projectId, currentUserId, initial }: OpenPoint
           subtitle={t('openPoints.subtitle')}
           action={
             <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-              <ProjectProtocolMenu projectId={projectId} filters={filters} />
+              <ProjectProtocolMenu
+                projectId={projectId}
+                filters={filters}
+                filing={filing}
+                restricted={list.load === 'ready' ? list.restricted : null}
+              />
               <Button asChild variant="ghost" size="sm">
                 <Link href={`/app/projects/${projectId}/files`}>
                   <ArrowLeft className="size-4" aria-hidden />

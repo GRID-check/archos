@@ -243,6 +243,27 @@ describe.skipIf(!url)('a project’s Offene Punkte against live Postgres', () =>
     expect(mine.fassungNumber).toBeNull()
   })
 
+  it('says whether the whole selection quotes a document not every member may open', async () => {
+    const reaches = (overrides: Partial<Parameters<typeof projects.selectionReachesRestrictedDocuments>[2]> = {}) =>
+      inOrg(() =>
+        projects.selectionReachesRestrictedDocuments(ORG, ids.project, {
+          reader: memberReader(READER),
+          hiddenFolderIds: [ids.folder],
+          statuses: ['open'],
+          restrictedFolderIds: [ids.folder],
+          ...overrides,
+        })
+      )
+    // The reader's own held upload is in their list, and nobody else may open it.
+    expect(await reaches()).toBe(true)
+    // Narrowed to what sits in the root and passed screening: nothing to hide.
+    expect(await reaches({ assigneeUserId: READER })).toBe(false)
+    // A member who may read the restricted folder sees its document in the list; it is restricted for the others.
+    const third = { reader: memberReader(`${READER}_third`), hiddenFolderIds: [] }
+    expect(await reaches(third)).toBe(true)
+    expect(await reaches({ ...third, restrictedFolderIds: [] })).toBe(false)
+  })
+
   it('reads nothing for another organization', async () => {
     const page = await withTenant({ organizationId: OTHER_ORG, userId: READER }, () => read({}, OTHER_ORG))
     expect(page.records).toEqual([])

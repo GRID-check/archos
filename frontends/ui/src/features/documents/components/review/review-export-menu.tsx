@@ -29,7 +29,13 @@ import {
   type AnnotationExportScope,
 } from '@/lib/annotations/export-request'
 import { documentFilesHref } from '../../lib/document-question'
-import { fileProtocol, ProtocolFilingError, protocolFilingStem, type ProtocolFilingTarget } from '../../lib/protocol-filing'
+import {
+  documentStem,
+  fileProtocol,
+  ProtocolFilingError,
+  protocolFilingStem,
+  type ProtocolFilingTarget,
+} from '../../lib/protocol-filing'
 import { reviewToast } from './review-toaster'
 
 /** Choosing an option keeps the menu open: the choice is made before the download, not instead of it. */
@@ -101,9 +107,9 @@ export function ReviewExportMenu({
 
   const file = async (target: ProtocolFilingTarget, documentName: string): Promise<void> => {
     setBusy(true)
-    const stem = protocolFilingStem((values) => t('review.export.fileName', values), documentName)
+    const stem = protocolFilingStem((values) => t('review.export.fileName', values), documentStem(documentName))
     try {
-      const filed = await fileProtocol(documentId, target, stem, optionsFor('pdf'))
+      const filed = await fileProtocol((format) => annotationExportHref(documentId, optionsFor(format)), target, stem)
       const again = filedHere.current.get(filed.filename) === filed.documentId
       filedHere.current.set(filed.filename, filed.documentId)
       const message = filed.unchanged

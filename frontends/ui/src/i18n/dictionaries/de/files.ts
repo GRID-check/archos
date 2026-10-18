@@ -1547,6 +1547,10 @@ export const files: typeof en.files = {
       tooMany: 'Zu viele offene Punkte für ein Protokoll. Bitte mit einem Filter eingrenzen.',
       title: 'Offene Punkte – {name}',
       fileName: 'Offene Punkte – {name}',
+      // Im Projekt abgelegt: der Name der Datei, {date} als JJJJ-MM-TT im Kalender des Büros.
+      filedName: 'Offene Punkte – {name} – {date}',
+      // Warum „Im Projekt ablegen“ nicht geht: das Protokoll zitiert Dokumente, die nicht alle öffnen dürfen.
+      fileRestricted: 'Nicht möglich: Einige Punkte stehen auf Dokumenten, die nicht alle im Projekt öffnen dürfen. Im Projekt abgelegt, wäre ihr Text für alle lesbar.',
       documents: 'Dokumente',
       status: {
         open: 'Offene Anmerkungen',

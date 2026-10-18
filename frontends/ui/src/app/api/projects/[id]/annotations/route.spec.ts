@@ -29,18 +29,21 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
-vi.mock('@/lib/authz/folder-access', () => ({ getHiddenFolderIds: vi.fn() }))
+vi.mock('@/lib/authz/folder-access', () => ({ getHiddenFolderIds: vi.fn(), getRestrictedFolderIds: vi.fn() }))
 vi.mock('@/lib/upload-screening/quarantine-reviewers', () => ({ shelfReaderFor: vi.fn() }))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
-vi.mock('@/lib/annotations/project-repository', () => ({ listProjectAnnotationPage: vi.fn() }))
+vi.mock('@/lib/annotations/project-repository', () => ({
+  listProjectAnnotationPage: vi.fn(),
+  selectionReachesRestrictedDocuments: vi.fn(),
+}))
 
 import { ForbiddenError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { getHiddenFolderIds } from '@/lib/authz/folder-access'
+import { getHiddenFolderIds, getRestrictedFolderIds } from '@/lib/authz/folder-access'
 import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { memberReader } from '@/lib/documents/document-reader'
@@ -51,6 +54,7 @@ import { AnnotationRequestError, listProjectAnnotations } from '@/lib/annotation
 import { encodeProjectMarkCursor } from '@/lib/annotations/project-marks'
 import {
   listProjectAnnotationPage,
+  selectionReachesRestrictedDocuments,
   type ProjectAnnotationPage,
   type ProjectAnnotationRecord,
 } from '@/lib/annotations/project-repository'
@@ -142,6 +146,8 @@ beforeEach(() => {
   writable = new Set([DOC_A])
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer' } as Awaited<ReturnType<typeof requireProjectAccess>>)
   vi.mocked(getHiddenFolderIds).mockResolvedValue(['folder_closed'])
+  vi.mocked(getRestrictedFolderIds).mockResolvedValue(['folder_restricted'])
+  vi.mocked(selectionReachesRestrictedDocuments).mockResolvedValue(false)
   vi.mocked(shelfReaderFor).mockResolvedValue(READER)
   vi.mocked(getAccessibleDocument).mockImplementation(async (_session, id, intent) => {
     if (intent === 'write' && !writable.has(id)) throw new ForbiddenError()
@@ -227,6 +233,30 @@ describe('GET /api/projects/[id]/annotations', () => {
     const refused = listProjectAnnotations('proj_1', {}, { run, cursor: forged })
     await expect(refused).rejects.toBeInstanceOf(AnnotationRequestError)
     await expect(refused).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('says on the first page whether the whole selection quotes a document not every member may open', async () => {
+    const next = { due: '9999-12-31', name: 'grundriss eg.pdf', documentId: DOC_A, number: 7 }
+    vi.mocked(listProjectAnnotationPage).mockResolvedValue(page([record(DOC_A, 7)], next))
+    vi.mocked(selectionReachesRestrictedDocuments).mockResolvedValue(true)
+
+    const first = await listProjectAnnotations('proj_1', { assignee: 'me' }, { run })
+    expect(first.restricted).toBe(true)
+    // The selection the page reads, asked over every page, against the folders not every member may read.
+    expect(selectionReachesRestrictedDocuments).toHaveBeenCalledWith(
+      'org_1',
+      'proj_1',
+      expect.objectContaining({
+        reader: READER,
+        hiddenFolderIds: ['folder_closed'],
+        assigneeUserId: 'user_1',
+        restrictedFolderIds: ['folder_restricted'],
+      })
+    )
+    // A later page does not ask again.
+    const later = await listProjectAnnotations('proj_1', { assignee: 'me' }, { run, cursor: first.nextCursor })
+    expect(later.restricted).toBeUndefined()
+    expect(selectionReachesRestrictedDocuments).toHaveBeenCalledTimes(1)
   })
 
   it('answers each row as its document’s list does, in the page’s order, with the document’s name', async () => {

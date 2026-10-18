@@ -244,3 +244,67 @@ describe('OpenPointsPanel', () => {
     expect(capturePosthog).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('filing the project’s Protokoll', () => {
+  const filed = (restricted: boolean) => {
+    const uploads: FormData[] = []
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.startsWith('/api/projects/proj_1/annotations/export')) {
+        return new Response(new Blob(['%PDF']), { status: 200, headers: { 'content-type': 'application/pdf' } })
+      }
+      if (url === '/api/documents/upload') {
+        uploads.push(init?.body as FormData)
+        return answer({ documentId: 'doc_filed', unchanged: false })
+      }
+      return answer({ ...PAGE, restricted })
+    })
+    return uploads
+  }
+  const showFiling = () =>
+    render(<OpenPointsPanel projectId="proj_1" currentUserId="user_anna" initial={PAGE} filing={{ projectName: 'Lend' }} />)
+
+  it('files the Protokoll the filters show into the project root, through the upload, named after the project and the day', async () => {
+    const uploads = filed(false)
+    const user = userEvent.setup()
+    showFiling()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    await user.click(screen.getByTestId('open-points-due-overdue'))
+    await user.click(screen.getByRole('button', { name: 'Export minutes' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'File in the project' }))
+
+    await vi.waitFor(() => expect(uploads).toHaveLength(1))
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/proj_1/annotations/export?due=overdue&format=pdf')
+    const form = uploads[0]!
+    expect(form.get('projectId')).toBe('proj_1')
+    // The root: every member reads it, which is why it is offered only for what every member may read.
+    expect(form.get('folderId')).toBeNull()
+    expect((form.get('file') as File).name).toMatch(/^Open points – Lend – \d{4}-\d{2}-\d{2}\.pdf$/)
+    await vi.waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/^Filed as “Open points – Lend – /), expect.anything())
+    )
+  })
+
+  it('withholds it, and says why, while the selection quotes a document not everyone in the project may open', async () => {
+    const uploads = filed(true)
+    const user = userEvent.setup()
+    showFiling()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    await user.click(screen.getByRole('button', { name: 'Export minutes' }))
+    const item = await screen.findByTestId('open-points-export-file')
+    expect(item).toHaveAttribute('aria-disabled', 'true')
+    expect(item).toHaveTextContent('some points are on documents not everyone in the project may open')
+    await user.click(item)
+    expect(uploads).toHaveLength(0)
+  })
+
+  it('is not offered where the reader may not file into the project root', async () => {
+    filed(false)
+    const user = userEvent.setup()
+    show()
+    await user.click(screen.getByRole('button', { name: 'Export minutes' }))
+    await screen.findByRole('menuitem', { name: 'PDF' })
+    expect(screen.queryByTestId('open-points-export-file')).toBeNull()
+  })
+})

@@ -132,6 +132,14 @@ set, as one PDF, Word or Markdown file: each document under its own heading,
 each mark written as the document's own Protokoll writes it. A Protokoll holds
 at most 1000 marks; past that, narrow it with a filter.
 
+**Im Projekt ablegen** in the same menu files that Protokoll in the project's
+top folder, as „Offene Punkte – <Projekt> – <Datum>“, if you may upload files
+there. Everyone in the project can read that folder, so it is not offered while
+a listed point sits on a document not everyone may open (in a restricted
+folder, or an upload still being checked): the menu says so. Narrow the list
+with a filter that leaves those documents out, or download the Protokoll
+instead.
+
 You see the marks of the documents you can open: a file in a folder you may
 not read, and an upload still held back from you, are left out here as they
 are in Dateien.

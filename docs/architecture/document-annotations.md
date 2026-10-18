@@ -1444,6 +1444,28 @@ download is also the browser's `report_exported` with `kind: 'open_points'`
 and the format, as the document Protokoll's is. Nothing calls a model, so
 nothing is traced to Langfuse.
 
+**Filed in the project.** „Im Projekt ablegen“ in the same menu
+(`ProjectProtocolMenu`) files that Protokoll, with the filters on screen, into
+the project root, the way a document's Protokoll is filed (below): the export,
+then the upload door (`fileProtocol` in `protocol-filing.ts`, which takes the
+export's link, so both menus share it), named „Offene Punkte – <Projekt> –
+<the office's day, YYYY-MM-DD>“ (`openPoints.export.filedName`). It is offered
+where the reader may upload to the root, the check the upload makes
+(`canWriteFolder(…, null)`, read by the page), and the project is not closed.
+The root is where every member reads, and the Protokoll quotes the marks of
+every document it lists: a point on a document in a folder not every member
+may read, or on an upload still held back, would reach people who may not open
+that document. So the list's first page says whether the whole selection
+(every page, the filters applied) touches such a document (`restricted`,
+`selectionReachesRestrictedDocuments` over `getRestrictedFolderIds` and the
+screening hold, one bounded read), and while it does the item stays in the
+menu, withheld, with why under it („Nicht möglich: Einige Punkte stehen auf
+Dokumenten, die nicht alle im Projekt öffnen dürfen …“). A filter that leaves
+those documents out makes it available again. Filing the project's Protokoll
+into a restricted folder instead was not taken: which folder would be
+narrow enough for every document it quotes has no one answer, and the root
+with this refusal is what the reader can predict.
+
 **Filed as a document.** „Im Projekt ablegen“ in a document Protokoll's menu
 (`ReviewExportMenu`) files the export, with the menu's choices, into the project
 (`features/documents/lib/protocol-filing.ts`). It is offered on a project's
