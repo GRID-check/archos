@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Large plan sets with many drawings now upload and become searchable instead
+    of failing partway through, and documents with a lot of pages are handled
+    without the system running short of memory.

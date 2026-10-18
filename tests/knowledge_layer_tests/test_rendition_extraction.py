@@ -225,23 +225,26 @@ def pdf_pipeline(monkeypatch):
 
     def _images(path, *args, **kwargs):
         read["images"].append(path)
-        return [
-            {
-                "image_bytes": b"\xff\xd8raster",
-                "page_number": 2,
-                "image_index": 0,
-                "format": "jpeg",
-                "width": 800,
-                "height": 600,
-            }
-        ]
+        return (
+            [
+                {
+                    "image_bytes": b"\xff\xd8raster",
+                    "page_number": 2,
+                    "image_index": 0,
+                    "format": "jpeg",
+                    "width": 800,
+                    "height": 600,
+                }
+            ],
+            0,
+        )
 
     def _pages(path, *args, **kwargs):
         read["pages"].append(path)
         return []
 
     monkeypatch.setattr(adapter, "_extract_text_from_pdf", _text)
-    monkeypatch.setattr(adapter, "_extract_images_from_pdf", _images)
+    monkeypatch.setattr(adapter, "_extract_image_records", _images)
     monkeypatch.setattr(adapter, "analyze_visual", lambda *a, **k: ("image", "Ein Schnitt A-A.", {}))
     import knowledge_layer.llamaindex.processing as processing_module
 
