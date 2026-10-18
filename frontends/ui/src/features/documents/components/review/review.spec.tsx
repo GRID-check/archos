@@ -270,25 +270,35 @@ async function askAboutABox(piloti: ReturnType<typeof scriptedPiloti>) {
 }
 
 describe('the review', () => {
-  it('walks the marks in the order the list shows them: proposals first, this Fassung only; K from nothing is the last', async () => {
+  it('walks the marks the sheet draws in the order the list shows them: proposals first, ghosts too; K from nothing is the last', async () => {
     serve([
       view({ id: 'a', number: 1 }),
       view({ id: 'b', number: 2 }),
       view({ id: 'p', number: 3, authorKind: 'piloti', status: 'proposed' }),
-      view({ id: 'old', number: 4, onCurrentFassung: false }),
+      // Open on an earlier Fassung of this document: a ghost, drawn and listed under Offen.
+      view({ id: 'ghost', number: 4, onCurrentFassung: false }),
+      // Closed on an earlier Fassung: listed under Erledigt, not drawn.
+      view({ id: 'gone', number: 5, onCurrentFassung: false, status: 'resolved' }),
+      view({ id: 'done', number: 6, status: 'resolved' }),
     ])
     let review: ReturnType<typeof useDocumentReview> | null = null
     render(<Harness transport={scriptedRoom().transport} onReady={(next) => (review = next)} />)
     await screen.findAllByTestId('review-pin')
 
     const walked: Array<string | undefined> = []
-    for (let i = 0; i < 4; i += 1) act(() => void walked.push(review?.step(1)?.id))
-    expect(walked).toEqual(['p', 'a', 'b', 'p'])
+    for (let i = 0; i < 5; i += 1) act(() => void walked.push(review?.step(1)?.id))
+    expect(walked).toEqual(['p', 'a', 'b', 'ghost', 'p'])
 
     act(() => review?.select(null))
     let back: string | undefined
     act(() => void (back = review?.step(-1)?.id))
-    expect(back).toBe('b')
+    expect(back).toBe('ghost')
+
+    await userEvent.click(screen.getByTestId('review-filter-closed'))
+    act(() => review?.select(null))
+    const closed: Array<string | undefined> = []
+    for (let i = 0; i < 2; i += 1) act(() => void closed.push(review?.step(1)?.id))
+    expect(closed).toEqual(['done', 'done'])
   })
 
   it('draws a point as a pin and a region as a box with its pin at the corner', async () => {

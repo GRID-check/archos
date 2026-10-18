@@ -35,6 +35,7 @@ import { formatDayRange, localCalendarDay } from '@/lib/format'
 import { AnnotationRequestError } from '@/lib/annotations/client'
 import {
   ANNOTATION_KINDS,
+  isGhostMark,
   isLive,
   pilotiRepliedSince,
   REPLY_TAKEN_UP_REASON,
@@ -58,7 +59,7 @@ import { Composer, type ComposerSend } from './composer'
 import { otherReviewHref } from '../../lib/fassung-links'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
-import { isGhostMark, type CardSide } from './review-page-layer'
+import type { CardSide } from './review-page-layer'
 import { useCardFit } from './review-stage'
 
 export const KIND_ICONS: Record<AnnotationKind, typeof TriangleAlert> = {

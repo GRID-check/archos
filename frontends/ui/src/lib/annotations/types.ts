@@ -480,6 +480,21 @@ export function isForReader(
 }
 
 /**
+ * Whether a mark is drawn as a ghost in the review of `documentId`: still
+ * open, and set on an earlier Fassung of THIS document, so it is drawn hollow
+ * where it stood on that sheet, for the reader to see where it would land
+ * before carrying it on. A mark of another document (a replaced one) is never
+ * drawn there: its sheet is another drawing, and its place may mean nothing
+ * on this one.
+ */
+export function isGhostMark(
+  annotation: Pick<AnnotationView, 'documentId' | 'onCurrentFassung' | 'status'>,
+  documentId: string
+): boolean {
+  return annotation.documentId === documentId && !annotation.onCurrentFassung && annotation.status === 'open'
+}
+
+/**
  * What a listing row says about a document's Anmerkungen, for the reader it
  * was read for: how many are live ({@link isLive}, on every Fassung), and how
  * many of those are the reader's ({@link isForReader}: open, with the reader

@@ -212,7 +212,7 @@ Keys:
 | Key | Does |
 |---|---|
 | V / C / R / P | select, point, box, ask Piloti about a box; C, R and P from the keyboard bring the crosshair (below) |
-| J / K | step through the marks the list shows, proposals first |
+| J / K | step through the marks the list shows that the sheet draws, proposals first: this Fassung's and the ghosts of an earlier one (below), not a closed mark of an earlier Fassung |
 | E | take a proposal over, or resolve an open mark; a toast says so with „Rückgängig“ (below) |
 | ⌫ / Entf | dismiss a proposal, with the same toast |
 | / | cursor chat |

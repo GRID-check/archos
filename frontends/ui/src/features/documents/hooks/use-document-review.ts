@@ -15,6 +15,7 @@ import {
 import {
   compareAnnotations,
   isForReader,
+  isGhostMark,
   isLive,
   REPLY_TAKEN_UP_REASON,
   type AnnotationKind,
@@ -826,8 +827,11 @@ export function useDocumentReview(
   /**
    * Step to the next or previous mark, in the order the list shows them: what
    * the filter and „Mine" leave, Piloti's proposals first, as their group
-   * leads the list. Only marks on this Fassung, which are on the sheet. From
-   * nothing selected, J starts at the first and K at the last.
+   * leads the list. Only marks drawn on the sheet: this Fassung's, and the
+   * ghosts of an earlier one ({@link isGhostMark}), which are listed under
+   * Offen and drawn where they stood. A closed mark of an earlier Fassung is
+   * listed and not drawn, so a key does not land on it. From nothing
+   * selected, J starts at the first and K at the last.
    */
   const step = useCallback(
     (direction: 1 | -1, scope: 'live' | 'proposed' = 'live') => {
@@ -835,7 +839,7 @@ export function useDocumentReview(
       const walk = [
         ...shown.filter((annotation) => annotation.status === 'proposed'),
         ...shown.filter((annotation) => annotation.status !== 'proposed'),
-      ].filter((annotation) => annotation.onCurrentFassung)
+      ].filter((annotation) => annotation.onCurrentFassung || isGhostMark(annotation, documentId))
       if (walk.length === 0) return null
       const index = walk.findIndex((annotation) => annotation.id === selectedId)
       const next =
@@ -846,7 +850,7 @@ export function useDocumentReview(
       setSelectedId(next.id)
       return next
     },
-    [annotations, listed, selectedId]
+    [annotations, listed, selectedId, documentId]
   )
 
   const retry = useCallback(() => setAttempt((value) => value + 1), [])

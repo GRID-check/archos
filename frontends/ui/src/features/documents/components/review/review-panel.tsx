@@ -163,9 +163,10 @@ function useCarrying(review: DocumentReview) {
 }
 
 /**
- * The open marks of this document listed and not drawn, because they were set
- * on an earlier Fassung: how many, and „Alle übernehmen", which carries each
- * the way its card's „Auf aktuelle Fassung übernehmen" does.
+ * The open marks of this document set on an earlier Fassung, listed under
+ * Offen and drawn as ghosts where they stood (`isGhostMark`): how many,
+ * and „Alle übernehmen", which carries each the way its card's „Auf aktuelle
+ * Fassung übernehmen" does.
  */
 function EarlierBar({ review, onCheckFixed }: { review: DocumentReview; onCheckFixed?: CheckFixed }): JSX.Element | null {
   const t = useTranslations('files')

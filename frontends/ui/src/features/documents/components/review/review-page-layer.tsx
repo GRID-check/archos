@@ -20,7 +20,7 @@ import { LiveCursor } from '@/components/ui/live-cursor'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { WorkingDots } from '@/components/ui/working-dots'
 import { useTranslations } from '@/i18n'
-import { isLive, type AnnotationView } from '@/lib/annotations/types'
+import { isGhostMark, isLive, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import { askRegionOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview, ReviewDraft, ReviewTool } from '../../hooks/use-document-review'
@@ -295,20 +295,6 @@ function PeerSelection({
       )}
     </>
   )
-}
-
-/**
- * Whether a mark is drawn as a ghost: still open, and set on an earlier
- * Fassung of THIS document, so it is drawn hollow where it stood on that
- * sheet, for the reader to see where it would land before carrying it on. A
- * mark of another document (a replaced one) is never drawn here: its sheet
- * is another drawing, and its place may mean nothing on this one.
- */
-export function isGhostMark(
-  annotation: Pick<AnnotationView, 'documentId' | 'onCurrentFassung' | 'status'>,
-  documentId: string
-): boolean {
-  return annotation.documentId === documentId && !annotation.onCurrentFassung && annotation.status === 'open'
 }
 
 /** Whose colour a mark wears: Piloti's ink, or the person who set it. */
