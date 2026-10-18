@@ -29,6 +29,7 @@ import { HIGHLIGHT_OUTLINE } from '@/components/ui/highlight'
 import { Check } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FileName } from './file-name'
+import { OpenMarksChip } from './open-marks-chip'
 
 /** Provenance tint per corpus, from the shared `--source-*` token family. */
 const SOURCE_TINT: Record<'projekt' | 'buero', CSSProperties> = {
@@ -505,11 +506,17 @@ export const FileCard = memo(function FileCard({
           Its height is the same with a chip or without one (the chip's margin
           box is a line of text), so a row of tiles stays even when a
           suggestion arrives or goes. On a narrow tile the chip's folder name
-          ellipsizes first, then the relative time drops; it never wraps. */}
+          ellipsizes first, then the relative time drops; it never wraps.
+          What is still open on the pages is the one thing that takes a second
+          line, under the size and the age and never in their place: „4 offen ·
+          2 für Sie" and „vor 4 Monaten" do not share a 220px tile, and a
+          count without its words had to be learnt. It is a property of the
+          document rather than a suggestion that comes and goes, so a row of
+          tiles is uneven only where a document has open work. */}
       {!hideFooter && (
         <GridTileFooter
           onClick={onSelect}
-          className="@container/foot group/foot cursor-pointer justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
+          className="@container/foot group/foot cursor-pointer flex-wrap justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
           data-testid="file-card-footer"
         >
           <span className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -527,6 +534,11 @@ export const FileCard = memo(function FileCard({
               </span>
               <TimeAgo date={file.createdAt} locale={locale} className="tabular-nums" />
             </span>
+          </span>
+          {/* Its own line (`basis-full`), and none at all when nothing is open:
+              the review opens from here without opening the card first. */}
+          <span className="flex basis-full empty:hidden">
+            <OpenMarksChip file={file} name={name} />
           </span>
         </GridTileFooter>
       )}

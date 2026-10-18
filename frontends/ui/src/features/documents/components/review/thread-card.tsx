@@ -1,8 +1,7 @@
 'use client'
 
-import { forwardRef, useEffect, useId, useRef, useState, type JSX, type KeyboardEvent } from 'react'
+import { forwardRef, useId, useRef, useState, type JSX } from 'react'
 import {
-  ArrowUp,
   CalendarClock,
   Check,
   CircleHelp,
@@ -34,9 +33,9 @@ import { formatDayRange, localCalendarDay } from '@/lib/format'
 import {
   ANNOTATION_KINDS,
   isLive,
-  MAX_ANNOTATION_BODY,
   type AnnotationKind,
   type AnnotationView,
+  type MarkMention,
   type PilotiWakeTrigger,
 } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
@@ -48,6 +47,8 @@ import { answerAsBody } from '../../lib/piloti-answer-text'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
 import { useFollowEnd } from '../../hooks/use-follow-end'
 import { AssignPopover } from '../assign-popover'
+import { Composer, type ComposerSend } from './composer'
+import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
 import type { CardSide } from './review-page-layer'
 import { useCardFit } from './review-stage'
@@ -67,6 +68,8 @@ function Message({
   userId,
   at,
   body,
+  mentions,
+  viewerId,
   proposal,
   woken,
 }: {
@@ -75,6 +78,10 @@ function Message({
   userId: string
   at: string
   body: string
+  /** Whom it mentions, drawn as the chat's chips. */
+  mentions?: readonly MarkMention[]
+  /** The reader, so a mention of them stands out. */
+  viewerId: string | null
   /** Piloti's finding nobody has taken over: it says so in its byline. */
   proposal?: boolean
   /** The reply was written by a turn an event woke, and where (`number` of the Anmerkung). */
@@ -116,236 +123,10 @@ function Message({
             {t(`review.attribution.woken.${woken.trigger}`)}
           </p>
         )}
-        <p className="text-foreground mt-0.5 text-[13px] leading-5 break-words whitespace-pre-wrap">{body}</p>
+        <p className="text-foreground mt-0.5 text-[13px] leading-5 break-words whitespace-pre-wrap">
+          <MarkBody text={body} mentions={mentions} viewerId={viewerId} />
+        </p>
       </div>
-    </div>
-  )
-}
-
-/** Whether the text before the caret ends in an „@" word that could still become „@Piloti". */
-function mentionQuery(text: string, caret: number): { start: number } | null {
-  const before = text.slice(0, caret)
-  const at = before.lastIndexOf('@')
-  if (at < 0 || (at > 0 && !/\s/.test(before[at - 1]))) return null
-  const query = before.slice(at + 1)
-  return /^\p{L}*$/u.test(query) && 'piloti'.startsWith(query.toLowerCase()) ? { start: at } : null
-}
-
-/**
- * The reply box and the draft box: Enter sends, Shift+Enter breaks the line,
- * Escape lets go.
- *
- * `onAskPiloti`: a second way out, the text handed to Piloti instead
- * (⌘/Ctrl+Enter, or the spark beside Send). `mentionPiloti`: Piloti can be
- * brought into the thread. Typing „@" offers it, and taking the offer (or the
- * spark) puts a chip in the box: the mention is that chip, a fact the box
- * holds, never a pattern read out of the text.
- */
-export function Composer({
-  placeholder,
-  submitLabel,
-  autoFocus,
-  onSubmit,
-  onEscape,
-  onAskPiloti,
-  mentionPiloti,
-  maxLength = MAX_ANNOTATION_BODY,
-  testId,
-}: {
-  placeholder: string
-  submitLabel: string
-  autoFocus?: boolean
-  onSubmit: (body: string, options: { piloti: boolean }) => Promise<unknown>
-  onEscape?: () => void
-  onAskPiloti?: (body: string) => void
-  mentionPiloti?: boolean
-  maxLength?: number
-  testId: string
-}): JSX.Element {
-  const t = useTranslations('files')
-  const [body, setBody] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
-  const [mentioned, setMentioned] = useState(false)
-  const [suggest, setSuggest] = useState<{ start: number } | null>(null)
-  const ref = useRef<HTMLTextAreaElement | null>(null)
-
-  useEffect(() => {
-    if (autoFocus) ref.current?.focus()
-  }, [autoFocus])
-
-  // Grow with the text, up to a handful of lines, then scroll.
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    node.style.height = '0px'
-    node.style.height = `${Math.min(node.scrollHeight, 144)}px`
-  }, [body])
-
-  const submit = async () => {
-    if (!body.trim() || busy) return
-    setBusy(true)
-    setFailed(false)
-    try {
-      await onSubmit(body, { piloti: mentioned })
-      setBody('')
-      setMentioned(false)
-    } catch {
-      setFailed(true)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  /** Take the „@…" offer: the typed word goes, the chip comes. */
-  const takeMention = () => {
-    const node = ref.current
-    if (suggest && node) {
-      const caret = node.selectionStart ?? body.length
-      setBody(body.slice(0, suggest.start) + body.slice(caret))
-    }
-    setSuggest(null)
-    setMentioned(true)
-    node?.focus()
-  }
-
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.nativeEvent.isComposing) return
-    if (suggest && (event.key === 'Enter' || event.key === 'Tab')) {
-      event.preventDefault()
-      takeMention()
-      return
-    }
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && onAskPiloti) {
-      event.preventDefault()
-      onAskPiloti(body.trim())
-      return
-    }
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      void submit()
-    }
-    if (event.key === 'Escape') {
-      if (suggest) {
-        event.stopPropagation()
-        setSuggest(null)
-        return
-      }
-      if (onEscape) {
-        event.stopPropagation()
-        onEscape()
-      }
-    }
-  }
-
-  const pilotiButton = onAskPiloti ? (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="size-6 shrink-0 rounded-full [&_svg]:size-3.5"
-      aria-label={t('review.piloti.ask')}
-      title={`${t('review.piloti.ask')} (⌘↵)`}
-      data-testid={`${testId}-piloti`}
-      onClick={() => onAskPiloti(body.trim())}
-    >
-      <Sparkles aria-hidden />
-    </Button>
-  ) : mentionPiloti ? (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className={cn('size-6 shrink-0 rounded-full [&_svg]:size-3.5', mentioned && 'bg-accent text-foreground')}
-      aria-label={t('review.piloti.mention')}
-      aria-pressed={mentioned}
-      title={t('review.piloti.mentionHint')}
-      data-testid={`${testId}-mention`}
-      onClick={() => setMentioned((on) => !on)}
-    >
-      <Sparkles aria-hidden />
-    </Button>
-  ) : null
-
-  return (
-    <div className="relative">
-      <div className="bg-input-background focus-within:border-foreground/40 rounded-lg border px-2.5 py-1.5 transition-colors duration-quick ease-out">
-        {mentioned && (
-          <Chip size="sm" variant="secondary" className="mb-1 gap-1 pr-1" data-testid={`${testId}-mention-chip`}>
-            <Sparkles aria-hidden />
-            @Piloti
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground rounded-sm"
-              aria-label={t('review.piloti.mentionRemove')}
-              onClick={() => setMentioned(false)}
-            >
-              <X className="size-3" aria-hidden />
-            </button>
-          </Chip>
-        )}
-        <div className="flex items-end gap-1.5">
-          <textarea
-            ref={ref}
-            data-testid={testId}
-            aria-label={placeholder}
-            aria-autocomplete={mentionPiloti ? 'list' : undefined}
-            rows={1}
-            value={body}
-            maxLength={maxLength}
-            placeholder={placeholder}
-            onChange={(event) => {
-              setBody(event.target.value)
-              if (mentionPiloti && !mentioned) {
-                setSuggest(mentionQuery(event.target.value, event.target.selectionStart ?? event.target.value.length))
-              }
-            }}
-            onBlur={() => setSuggest(null)}
-            onKeyDown={onKeyDown}
-            className="placeholder:text-muted-foreground min-h-6 flex-1 resize-none border-0 bg-transparent py-0.5 text-[13px] leading-5 shadow-none outline-none! ring-0 focus-visible:ring-0"
-          />
-          {pilotiButton}
-          <Button
-            type="button"
-            size="icon"
-            className="size-6 shrink-0 rounded-full [&_svg]:size-3.5"
-            disabled={!body.trim() || busy}
-            aria-label={submitLabel}
-            title={`${submitLabel} (Enter)`}
-            data-testid={`${testId}-send`}
-            onClick={() => void submit()}
-          >
-            <ArrowUp aria-hidden />
-          </Button>
-        </div>
-      </div>
-      {suggest && (
-        <div
-          role="listbox"
-          aria-label={t('review.piloti.mention')}
-          className="bg-popover border-border/70 absolute top-full left-0 z-10 mt-1 w-56 rounded-lg border p-1 shadow-md"
-        >
-          <button
-            type="button"
-            role="option"
-            aria-selected
-            data-testid={`${testId}-mention-option`}
-            // Before the textarea's blur closes the offer.
-            onPointerDown={(event) => {
-              event.preventDefault()
-              takeMention()
-            }}
-            className="bg-accent flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left"
-          >
-            <PilotiGlyph size="xs" />
-            <span className="min-w-0">
-              <span className="text-foreground block text-xs font-semibold">Piloti</span>
-              <span className="text-muted-foreground block text-[11px] leading-4">{t('review.piloti.mentionHint')}</span>
-            </span>
-          </button>
-        </div>
-      )}
-      {failed && <FieldError className="mt-1">{t('review.sendFailed')}</FieldError>}
     </div>
   )
 }
@@ -755,9 +536,11 @@ export function DraftCard({
           submitLabel={t('review.set')}
           onEscape={() => review.setDraft(null)}
           onAskPiloti={askPiloti}
-          onSubmit={(body) =>
-            review.create({ kind, body, assigneeUserId: assignee?.userId ?? null, dueOn })
-          }
+          documentId={review.documentId}
+          onSubmit={async (body, { mentions }) => {
+            const created = await review.create({ kind, body, mentions, assigneeUserId: assignee?.userId ?? null, dueOn })
+            return created?.mentions
+          }}
         />
         <ResponsibilityRow
           documentId={review.documentId}
@@ -817,18 +600,24 @@ export function ThreadCard({
   )
 
   /**
-   * The reply goes in as the person's own. With @Piloti it says so (a flag,
-   * never the text), and the server answers whether it wakes Piloti itself
-   * (`queued`, or `suppressed` when a cap held it): then the mark's own view
-   * says how Piloti's work stands (`pilotiWork`), for everyone. With the
-   * organization's switch off, this tab asks Piloti as before, under the turn
-   * id a server wake of the same reply would use, so the two never both run.
+   * The reply goes in as the person's own, with whom it mentions as picked
+   * (never read out of the text): colleagues are told by the server, and
+   * @Piloti says the reply addresses Piloti. The server answers whether it
+   * wakes Piloti itself (`queued`, or `suppressed` when a cap held it): then
+   * the mark's own view says how Piloti's work stands (`pilotiWork`), for
+   * everyone. With the organization's switch off, this tab asks Piloti as
+   * before, under the turn id a server wake of the same reply would use, so
+   * the two never both run. Answers with the mentions the server kept.
    */
-  const sendReply = async (body: string, { piloti: mentioned }: { piloti: boolean }) => {
+  const sendReply = async (body: string, { piloti: mentioned, mentions }: ComposerSend) => {
     // Sent into the thread: what follows it (the reply, Piloti at work, its answer) comes into view.
     thread.follow()
-    const { wake, replyId } = await review.reply(annotation.id, body, { addressesPiloti: mentioned })
-    if (!mentioned || wake === 'queued' || wake === 'suppressed' || !piloti.available) return
+    const { annotation: after, wake, replyId } = await review.reply(annotation.id, body, {
+      addressesPiloti: mentioned,
+      mentions,
+    })
+    const kept = after.replies.find((reply) => reply.id === replyId)?.mentions
+    if (!mentioned || wake === 'queued' || wake === 'suppressed' || !piloti.available) return kept
     piloti.ask({
       text: body.trim(),
       region: askRegionOf(annotation),
@@ -837,6 +626,7 @@ export function ThreadCard({
       baseline: pilotiReplies,
       ...(replyId ? { turnId: wakeTurnId(replyId) } : {}),
     })
+    return kept
   }
 
   const act = async (run: () => Promise<unknown>) => {
@@ -1039,6 +829,8 @@ export function ThreadCard({
           userId={annotation.createdBy}
           at={annotation.createdAt}
           body={annotation.body}
+          mentions={annotation.mentions}
+          viewerId={review.viewerId}
           proposal={proposed}
         />
         {annotation.basis && (
@@ -1055,6 +847,8 @@ export function ThreadCard({
             userId={reply.createdBy}
             at={reply.createdAt}
             body={reply.body}
+            mentions={reply.mentions}
+            viewerId={review.viewerId}
             woken={reply.wokenBy ? { trigger: reply.wokenBy, number: annotation.number } : null}
           />
         ))}
@@ -1109,6 +903,8 @@ export function ThreadCard({
             placeholder={t('review.replyPlaceholder')}
             submitLabel={t('review.send')}
             mentionPiloti={piloti.available}
+            documentId={review.documentId}
+            pickerSide="above"
             onSubmit={sendReply}
             // Esc steps out of the field, keeping what is typed; the next Esc closes the thread.
             onEscape={() => {

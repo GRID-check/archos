@@ -1315,6 +1315,10 @@ export const files: typeof en.files = {
       actingWithName: 'Handelnd: {name} · {date}',
       actingDateOnly: 'Handelnd: {date}',
       checkbox: 'Ich gebe diese Fassung frei',
+      // Vor der Unterschrift, nie als Sperre: offene Punkte freizugeben ist erlaubt, sie zu übersehen nicht.
+      openMarks: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}} – trotzdem freigeben?',
+      openMarksLoading: 'Offene Anmerkungen werden noch gelesen …',
+      openMarksUnavailable: 'Ob Anmerkungen offen sind, ließ sich gerade nicht lesen.',
     },
     // Die Veröffentlichung ist ein eigener Akt im eigenen Abschnitt — nie ein
     // Knopf neben der Freigabe. Die Freigabe behauptet den Inhalt, die
@@ -1495,6 +1499,13 @@ export const files: typeof en.files = {
     openInReview: 'In der Prüfansicht öffnen',
     loading: 'Anmerkungen werden geladen',
     readerCount: '{count, plural, one {# Anmerkung} other {# Anmerkungen}}',
+    // In Dateien neben dem Namen: was auf dem Dokument noch offen ist, über alle Fassungen.
+    listedOpen: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}',
+    listedOpenForYou: '{count, plural, one {# offene Anmerkung} other {# offene Anmerkungen}}, {mine} für Sie',
+    listedOpenIn: '{marks} in „{name}“',
+    // Was der Chip selbst sagt, kurz genug für eine Karte; der Tooltip trägt den ganzen Satz.
+    listedOpenShort: '{count} offen',
+    listedOpenShortForYou: '{count} offen · {mine} für Sie',
   },
   // Die Prüfansicht: ein Dokument im Vollbild, die Anmerkungen darauf, die
   // Gespräche darunter, und wer gerade mit hinschaut.
@@ -1543,13 +1554,23 @@ export const files: typeof en.files = {
     },
     popout: 'In neuem Fenster öffnen',
     copyReviewLink: 'Link zur Prüfansicht kopieren',
+    // Kolleginnen in einer Anmerkung oder ihrem Verlauf mit „@“ erwähnen, wie im Chat.
+    // Erwähnen kann man nur, wer das Dokument öffnen kann. Wen der Server nicht behielt, nennt der
+    // Verlauf ohne Grund: es kann der Ordner sein, aber auch eine ausgeschaltete Zusammenarbeit.
+    mentions: {
+      othersHeading: 'Können das Dokument öffnen',
+      noResultsHint: 'Erwähnen können Sie alle, die dieses Dokument öffnen können.',
+      untoldOne: '{name} wurde nicht benachrichtigt.',
+      untoldMany: '{names} wurden nicht benachrichtigt.',
+      tooMany: 'Erwähnen Sie höchstens {max} Personen auf einmal.',
+      peopleFailed: 'Die Personen konnten nicht geladen werden. Tippen Sie „@“ noch einmal.',
+    },
     // Piloti in der Prüfansicht: ein Ausschnitt, nach dem gefragt wird, die Antwort daneben, und Piloti im Verlauf.
     piloti: {
       conversationTitle: '{name} · Prüfansicht',
       ask: 'Piloti fragen',
       mention: 'Piloti erwähnen',
       mentionHint: 'Piloti antwortet in diesem Verlauf',
-      mentionRemove: 'Erwähnung entfernen',
       replying: 'Piloti antwortet …',
       replyFailed: 'Piloti konnte nicht antworten.',
       replyingFor: 'Piloti antwortet … · für {name}',
@@ -1768,6 +1789,8 @@ export const files: typeof en.files = {
         fassungen: {
           current: 'aktuelle Fassung',
           all: 'alle Fassungen',
+          // Auch Erledigtes, aber nur der aktuellen Fassung: was aus früheren noch offen ist, steht trotzdem drin.
+          currentWithOpenFromEarlier: 'aktuelle Fassung, dazu Offenes aus früheren Fassungen',
         },
         withProposals: 'mit Vorschlägen von Piloti',
         exportedAt: 'Exportiert am',

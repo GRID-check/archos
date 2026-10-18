@@ -92,12 +92,15 @@ export interface InboxListProps {
    * from then on.
    */
   initialFilter?: InboxFilter
+  /** The reader: a quoted mention of them is drawn louder, as the thread draws it. */
+  viewerId?: string | null
   className?: string
 }
 
 export function InboxList({
   enabled = true,
   initialFilter = 'needsMe',
+  viewerId = null,
   className,
 }: InboxListProps): JSX.Element {
   const t = useTranslations('collaboration')
@@ -355,6 +358,7 @@ export function InboxList({
                   key={item.id}
                   item={item}
                   focused={item.id === focusedId}
+                  viewerId={viewerId}
                   onOpen={onOpen}
                   onArchive={onArchive}
                   onUnarchive={onUnarchive}

@@ -15,6 +15,7 @@
  */
 
 import { z } from 'zod'
+import { MAX_MENTIONS_PER_MESSAGE } from '@/lib/limits/catalog'
 
 /** Hinweis, Rückfrage, Mangel. */
 export const ANNOTATION_KINDS = ['hint', 'question', 'defect'] as const
@@ -124,6 +125,24 @@ const checkPlace = (value: PlaceInput, context: z.RefinementCtx) => {
   if (problem) context.addIssue({ code: 'custom', message: problem })
 }
 
+/**
+ * Someone a mark's text or a reply mentions: who was picked in the composer's
+ * „@" picker (a user id, or Piloti's `AGENT_MENTION_ID`) and the name the
+ * text shows for them, without the „@". The chat's own mention shape
+ * (`DraftMention`, `features/collaboration/lib/mention-text.ts`), stored on
+ * the row (migration 0150) and rendered with the chat's chip. The server keeps
+ * one only while its token still stands in the text, the name is the one the
+ * directory has, and the person may open the document (`./mentions.ts`): a
+ * client list is never taken on trust.
+ */
+export const markMentionSchema = z
+  .object({ targetId: z.string().min(1).max(128), display: z.string().min(1).max(200) })
+  .strict()
+export type MarkMention = z.infer<typeof markMentionSchema>
+
+/** At most as many as one chat message may mention: one bound for one gesture (`MAX_MENTIONS_PER_MESSAGE`). */
+export const markMentionsSchema = z.array(markMentionSchema).max(MAX_MENTIONS_PER_MESSAGE)
+
 const content = {
   kind: z.enum(ANNOTATION_KINDS),
   body: text(MAX_ANNOTATION_BODY),
@@ -133,7 +152,7 @@ const content = {
 }
 
 export const createAnnotationRequestSchema = z
-  .object({ ...placeFields, ...content })
+  .object({ ...placeFields, ...content, mentions: markMentionsSchema.optional() })
   .strict()
   .superRefine(checkPlace)
 export type CreateAnnotationRequest = z.input<typeof createAnnotationRequestSchema>
@@ -149,6 +168,12 @@ export const updateAnnotationRequestSchema = z
   .object({
     kind: content.kind.optional(),
     body: content.body.optional(),
+    /**
+     * Whom the new `body` mentions, as picked. Only with a body: without one
+     * the stored mentions stand. A body sent without them keeps the stored
+     * mentions whose token it still shows. Only someone mentioned anew is told.
+     */
+    mentions: markMentionsSchema.optional(),
     basis: content.basis,
     status: z.enum(['open', 'resolved', 'dismissed']).optional(),
     assigneeUserId: content.assigneeUserId,
@@ -169,6 +194,7 @@ export const updateAnnotationRequestSchema = z
   })
   .strict()
   .refine(({ expectedStatus: _, ...changes }) => Object.keys(changes).length > 0, 'nothing to change')
+  .refine(({ mentions, body }) => mentions === undefined || body !== undefined, 'mentions go with a body')
 export type UpdateAnnotationRequest = z.input<typeof updateAnnotationRequestSchema>
 
 export const createReplyRequestSchema = z
@@ -179,6 +205,11 @@ export const createReplyRequestSchema = z
      * flag the person set, never read from the text (ADR-0036).
      */
     addressesPiloti: z.boolean().optional(),
+    /**
+     * Whom the reply mentions, as picked in the composer: colleagues, who are
+     * told, and Piloti (which addresses it, as `addressesPiloti` does).
+     */
+    mentions: markMentionsSchema.optional(),
   })
   .strict()
 export type CreateReplyRequest = z.input<typeof createReplyRequestSchema>
@@ -199,6 +230,8 @@ export const annotationReplyViewSchema = z.object({
    * (`./wake-attribution.ts`); absent from a server that predates it.
    */
   wokenBy: z.enum(PILOTI_WAKE_TRIGGERS).nullable().optional(),
+  /** Whom it mentions, as the server kept them; absent from a server that predates mentions. */
+  mentions: z.array(markMentionSchema).optional(),
 })
 export type AnnotationReplyView = z.infer<typeof annotationReplyViewSchema>
 
@@ -237,6 +270,8 @@ export const annotationViewSchema = z.object({
   h: z.number().nullable(),
   kind: z.enum(ANNOTATION_KINDS),
   body: z.string(),
+  /** Whom its text mentions, as the server kept them; absent from a server that predates mentions. */
+  mentions: z.array(markMentionSchema).optional(),
   basis: z.string().nullable(),
   authorKind: z.enum(ANNOTATION_AUTHORS),
   status: z.enum(ANNOTATION_STATUSES),
@@ -313,9 +348,22 @@ export type ReplyResponse = z.infer<typeof replyResponseSchema>
 /** `POST /api/documents/{id}/thread`: the caller's own thread about the document (ADR-0106). */
 export const documentThreadResponseSchema = z.object({ conversationId: z.string().min(1) })
 
+/** The statuses that still ask something of somebody: open, and Piloti's proposals nobody has decided on. */
+export const LIVE_ANNOTATION_STATUSES = ['open', 'proposed'] as const satisfies readonly AnnotationStatus[]
+
 /** Whether an Anmerkung still asks something of somebody. */
 export const isLive = (annotation: Pick<AnnotationView, 'status'>): boolean =>
-  annotation.status === 'open' || annotation.status === 'proposed'
+  (LIVE_ANNOTATION_STATUSES as readonly AnnotationStatus[]).includes(annotation.status)
+
+/**
+ * What a listing row says about a document's Anmerkungen, for the reader it
+ * was read for: how many are live ({@link isLive}, on every Fassung), and how
+ * many of those are open with the reader as Zuständige.
+ */
+export interface MarkTally {
+  live: number
+  forYou: number
+}
 
 /** Live ones first, then by page and number: the order a review walks them in. */
 export function compareAnnotations(a: AnnotationView, b: AnnotationView): number {

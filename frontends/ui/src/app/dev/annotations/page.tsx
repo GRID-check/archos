@@ -30,6 +30,9 @@
  *   …&review=1&mark=ann-1                    the review, open at Anmerkung 1
  *   …&review=1&piloti=1                      the review, while Piloti proposes
  *   …&review=1, then `p` and a box           ask Piloti about the box (any route)
+ *   …&review=1, „Protokoll exportieren"      the export menu: the Fassung choice only under
+ *                                            „Auch erledigte", since „Nur offene" carries the
+ *                                            mark still open from Fassung 2 either way
  *
  * Not linked from anywhere and 404s outside development (`../layout.tsx`).
  */
@@ -180,7 +183,13 @@ const base = {
   canDelete: true,
 }
 
-const reply = (annotationId: string, by: { userId: string; name: string }, minutes: number, body: string): AnnotationReplyView => ({
+const reply = (
+  annotationId: string,
+  by: { userId: string; name: string },
+  minutes: number,
+  body: string,
+  mentions: AnnotationReplyView['mentions'] = []
+): AnnotationReplyView => ({
   id: `${annotationId}-r${minutes}`,
   annotationId,
   authorKind: 'person',
@@ -189,7 +198,11 @@ const reply = (annotationId: string, by: { userId: string; name: string }, minut
   createdByName: by.name,
   createdAt: minutesAgo(minutes),
   addressesPiloti: false,
+  mentions,
 })
+
+/** A colleague as the „@" picker writes them into a text: the chat's mention. */
+const mention = (person: { userId: string; name: string }) => ({ targetId: person.userId, display: person.name })
 
 /**
  * Piloti's reply, as the service gives it: written in the session of the
@@ -217,8 +230,11 @@ let annotations: AnnotationView[] = [
     assigneeName: ANNA.name,
     dueOn: '2026-10-10',
     replies: [
-      reply('ann-1', ANNA, 95, 'Kommt mit Index D. Gilt das auch für die Tür vom Bad?'),
-      reply('ann-1', ME, 80, 'Nein, Bad geht nicht in den Gang. Nur Wohnen 1 und 2.'),
+      reply('ann-1', ANNA, 95, '@Miriam Hofer Kommt mit Index D. Gilt das auch für die Tür vom Bad?', [mention(ME)]),
+      // A colleague mentioned with the chat's „@" picker: the chip, and Jakob told in his Postfach.
+      reply('ann-1', ME, 80, 'Nein, Bad geht nicht in den Gang. Nur Wohnen 1 und 2. @Jakob Huber, bitte in Index D nachziehen.', [
+        mention(JAKOB),
+      ]),
     ],
   },
   {
@@ -246,7 +262,9 @@ let annotations: AnnotationView[] = [
     shape: 'point',
     ...pt(380, 440),
     kind: 'hint',
-    body: 'Bad: Lüftung über Dach, Schacht im Technikraum.',
+    // A mark whose text mentions a colleague: the chip in the list, the peek and the thread.
+    body: 'Bad: Lüftung über Dach, Schacht im Technikraum. @Anna Berger, passt das zur Haustechnik?',
+    mentions: [mention(ANNA)],
     status: 'resolved',
     closedBy: 'u-2',
     closedByName: ANNA.name,
@@ -894,7 +912,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         // An id of its own per reply, as the server's: the wake's turn id is made from it, and a
         // second „@Piloti" in one thread under the first one's id was refused as the same turn.
         const added = {
-          ...reply(current.id, ME, 0, String(input.body).trim()),
+          ...reply(current.id, ME, 0, String(input.body).trim(), (input.mentions as AnnotationReplyView['mentions']) ?? []),
           id: `${current.id}-posted-${Date.now()}`,
           addressesPiloti: input.addressesPiloti === true,
         }
@@ -946,10 +964,14 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       }
       if (url.endsWith(`/api/documents/${FILE.id}/annotations`)) {
         if (method === 'POST') {
-          const input = body() as Pick<AnnotationView, 'page' | 'shape' | 'x' | 'y' | 'w' | 'h' | 'kind' | 'body' | 'assigneeUserId' | 'dueOn'>
+          const input = body() as Pick<
+            AnnotationView,
+            'page' | 'shape' | 'x' | 'y' | 'w' | 'h' | 'kind' | 'body' | 'mentions' | 'assigneeUserId' | 'dueOn'
+          >
           const created: AnnotationView = {
             ...base,
             ...input,
+            mentions: input.mentions ?? [],
             w: input.w ?? null,
             h: input.h ?? null,
             body: input.body.trim(),

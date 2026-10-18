@@ -19,10 +19,12 @@ import 'server-only'
  * | A person made someone the mark's Zuständige (setting it, changing it, or taking over Piloti's proposal that names one) | `annotation.assigned_to_you` | the new Zuständige, unless they did it themselves |
  * | Piloti did, for the person its turn acted for | `annotation.assigned_to_you`, variant `piloti` | the same |
  * | Someone else became responsible, or nobody | resolves the previous Zuständige's `annotation.assigned_to_you` | |
- * | A person or Piloti replied in the thread | `annotation.activity`, variant `reply` | the mark's participants ({@link markParticipants}), minus whoever acted (for Piloti, the person its turn acted for: on a wake, who woke it and hears `piloti.work_done`), minus who Piloti's open Rückfrage asks |
+ * | A person mentioned a colleague in a mark's text (setting it, or rewording it) or in a reply | `annotation.mentioned` | each person mentioned anew, minus whoever wrote it and minus a Zuständige the same write made responsible (who hears `annotation.assigned_to_you`) |
+ * | A person or Piloti replied in the thread | `annotation.activity`, variant `reply` | the mark's participants ({@link markParticipants}), minus whoever acted (for Piloti, the person its turn acted for: on a wake, who woke it and hears `piloti.work_done`), minus who Piloti's open Rückfrage asks, minus whom the reply mentions (who hear `annotation.mentioned` instead) |
  * | Someone resolved, dismissed or reopened a mark | `annotation.activity`, variant `resolved` / `dismissed` / `reopened` | the mark's author, unless they did it |
- * | A person answered in the thread | resolves `piloti.asks_you`, for everyone | |
- * | The mark was resolved or dismissed | resolves everyone's `piloti.asks_you` and `annotation.assigned_to_you` | |
+ * | A person answered in the thread | resolves `piloti.asks_you`, for everyone, and their own `annotation.mentioned` | |
+ * | The mark was resolved or dismissed | resolves everyone's `piloti.asks_you`, `annotation.assigned_to_you` and `annotation.mentioned` | |
+ * | A mention was taken out of the text, or its reply deleted, and nothing left on the mark names that person | their `annotation.mentioned` turns inert | |
  * | The mark was deleted | every row anchored on it turns inert, for everyone | |
  *
  * The author's `annotation.activity` row says `yours: true`: a reply or a move
@@ -47,12 +49,13 @@ import 'server-only'
  */
 
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
-import { isLive } from './types'
+import { isLive, type MarkMention } from './types'
 import { wakeEndReasonKind } from './wake-end-reason'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
 import { inboxGroupKey, MARK_ANCHORED_INBOX_TYPES } from '@/lib/inbox/registry'
 import { emitInboxItems, markInboxItemsInertAnchoredOn, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
 import type { DocumentAnnotationReplyRow, InboxItemType } from '@/lib/db/schema'
+import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { describeResource } from '@/lib/sharing/registry'
 
 /** The mark an event is about. */
@@ -88,6 +91,13 @@ async function documentName(ref: MarkRef): Promise<string | null> {
 /** What a row about a mark says beyond the mark: its quote, its wording, and who did it (null: Piloti). */
 interface MarkItem {
   excerpt: string | null
+  /**
+   * Whom the quoted text mentions, as the server kept them, so the row draws
+   * the chips the thread draws. Written beside every excerpt, `[]` where the
+   * caller has none: rows fold per mark and their payloads merge, and an
+   * excerpt must never inherit the mentions of the one it replaced.
+   */
+  mentions?: readonly MarkMention[]
   /** Picks the row's wording, where its type has more than one. */
   variant?: string | null
   actorUserId?: string | null
@@ -104,14 +114,14 @@ async function emitAboutMark(
   type: InboxItemType,
   ref: MarkRef,
   recipientUserIds: readonly string[],
-  { excerpt, variant = null, actorUserId = null, author = null }: MarkItem
+  { excerpt, mentions = [], variant = null, actorUserId = null, author = null }: MarkItem
 ): Promise<void> {
   if (recipientUserIds.length === 0) return
   const subject = await documentName(ref)
   const payload = {
     ...(subject ? { subject } : {}),
     related: String(ref.annotationNumber),
-    ...(excerpt ? { excerpt } : {}),
+    ...(excerpt ? { excerpt, mentions: [...mentions] } : {}),
     ...(variant ? { variant } : {}),
   }
   await emitInboxItems(
@@ -133,9 +143,12 @@ async function emitAboutMark(
 export type MayOpen = (userIds: readonly string[]) => Promise<ReadonlySet<string>>
 
 /** What of a mark says who takes part in it. */
-export type MarkPeople = Pick<AnnotationRecord, 'authorKind' | 'createdBy' | 'acceptedBy' | 'assigneeUserId' | 'delegatedBy'> & {
-  replies: ReadonlyArray<Pick<DocumentAnnotationReplyRow, 'authorKind' | 'createdBy'>>
-}
+export type MarkPeople = Pick<AnnotationRecord, 'authorKind' | 'createdBy' | 'acceptedBy' | 'assigneeUserId' | 'delegatedBy'> &
+  Partial<Pick<AnnotationRecord, 'mentions'>> & {
+    replies: ReadonlyArray<
+      Pick<DocumentAnnotationReplyRow, 'authorKind' | 'createdBy'> & Partial<Pick<DocumentAnnotationReplyRow, 'mentions'>>
+    >
+  }
 
 /**
  * Whose mark it is: the person who set it, or for Piloti's mark the person who
@@ -147,16 +160,23 @@ export const markAuthor = (mark: Pick<MarkPeople, 'authorKind' | 'createdBy' | '
 
 /**
  * Everyone a mark's thread concerns, once each: its author, its Zuständige,
- * who delegated it to Piloti, and every person who replied. Derived from the
- * mark when something happens, never stored, so it is always today's thread.
- * Pure. The one definition every item about a mark's thread asks.
+ * who delegated it to Piloti, every person who replied, and every person its
+ * text or a reply mentions (being asked into a thread is taking part in it,
+ * as in the chat). Derived from the mark when something happens, never stored
+ * as a list, so it is always today's thread. Pure. The one definition every
+ * item about a mark's thread asks.
  */
 export function markParticipants(mark: MarkPeople): string[] {
+  const mentioned = [mark.mentions ?? [], ...mark.replies.map((reply) => reply.mentions ?? [])]
+    .flat()
+    .map((mention) => mention.targetId)
+    .filter((targetId) => targetId !== AGENT_MENTION_ID)
   const people = [
     markAuthor(mark),
     mark.assigneeUserId,
     mark.delegatedBy,
     ...mark.replies.filter((reply) => reply.authorKind === 'person').map((reply) => reply.createdBy),
+    ...mentioned,
   ]
   return [...new Set(people.filter((userId): userId is string => Boolean(userId)))]
 }
@@ -243,18 +263,30 @@ export async function onPilotiWrote(
  * A person answered in a mark's thread, or the mark was resolved or dismissed
  * (`lib/annotations/service.ts`), by a person or by Piloti in their name:
  * whatever Piloti asked there is no longer waiting on anybody, since one
- * answer answers it for everyone, and a closed mark is nobody's to do.
+ * answer answers it for everyone, and a closed mark is nobody's to do. A
+ * person who was mentioned has answered by answering (`answeredBy`): only
+ * their own mention is settled, since a colleague asked in the same breath
+ * has not.
  */
 export async function onMarkSettledByPerson(
-  input: Pick<MarkRef, 'organizationId' | 'annotationId'> & { closed: boolean }
+  input: Pick<MarkRef, 'organizationId' | 'annotationId'> & { closed: boolean; answeredBy?: string | null }
 ): Promise<void> {
-  await bestEffortInbox(`settling mark ${input.annotationId}`, input.organizationId, () =>
-    resolveInboxItemsAnchoredOn({
+  await bestEffortInbox(`settling mark ${input.annotationId}`, input.organizationId, async () => {
+    await resolveInboxItemsAnchoredOn({
       organizationId: input.organizationId,
-      types: input.closed ? ['piloti.asks_you', 'annotation.assigned_to_you'] : ['piloti.asks_you'],
+      types: input.closed
+        ? ['piloti.asks_you', 'annotation.assigned_to_you', 'annotation.mentioned']
+        : ['piloti.asks_you'],
       anchorId: input.annotationId,
     })
-  )
+    if (input.closed || !input.answeredBy) return
+    await resolveInboxItemsAnchoredOn({
+      organizationId: input.organizationId,
+      types: ['annotation.mentioned'],
+      anchorId: input.annotationId,
+      recipientUserId: input.answeredBy,
+    })
+  })
 }
 
 /** The mark was deleted: no row keeps a link to it, or a quote from it. */
@@ -311,22 +343,29 @@ export async function onAssigneeChanged(
 /**
  * Someone answered in a mark's thread: its participants hear it, as one
  * counted row per mark, except whoever acted (for Piloti, the person its turn
- * acted for: on a wake, who woke it, and they hear `piloti.work_done`) and,
- * when Piloti follows up its own open Rückfrage, the Zuständige it asks
- * (`piloti.asks_you`). `mark` is the mark as it was read for the reply.
+ * acted for: on a wake, who woke it, and they hear `piloti.work_done`), when
+ * Piloti follows up its own open Rückfrage, the Zuständige it asks
+ * (`piloti.asks_you`), and whom the reply mentions (`mentioned`: they hear
+ * `annotation.mentioned`, one row for one reply). `mark` is the mark as it
+ * was read for the reply.
  */
 export async function onMarkReplied(
   input: MarkAct & {
     mark: MarkPeople & Pick<AnnotationRecord, 'kind' | 'status'>
     replyText: string
     mayOpen: MayOpen
+    mentioned?: readonly string[]
+    /** Whom the reply mentions, as the server kept them. */
+    replyMentions?: readonly MarkMention[]
   }
 ): Promise<void> {
   await bestEffortInbox(`annotation.activity for mark ${input.annotationId}`, input.organizationId, async () => {
     const asked = input.byPiloti && waitsOnPerson(input.mark) ? input.mark.assigneeUserId : null
-    const candidates = markParticipants(input.mark).filter((userId) => userId !== input.actorUserId && userId !== asked)
+    const toldOtherwise = new Set([input.actorUserId, asked, ...(input.mentioned ?? [])])
+    const candidates = markParticipants(input.mark).filter((userId) => !toldOtherwise.has(userId))
     await emitAboutMark('annotation.activity', input, await whoMayOpen(input.mayOpen, candidates), {
       excerpt: excerptOf(input.replyText),
+      mentions: input.replyMentions,
       variant: 'reply',
       actorUserId: input.byPiloti ? null : input.actorUserId,
       author: markAuthor(input.mark),
@@ -352,4 +391,52 @@ export async function onMarkMoved(
       author,
     })
   )
+}
+
+/**
+ * A person mentioned colleagues in a mark's text or in a reply: each of
+ * `mentioned` (already the people the write mentions ANEW) is asked to look,
+ * at the mark, unless they wrote it themselves. `text` is what mentions them,
+ * quoted so the row says what they are asked about. Every one of them is asked
+ * again whether they may open the document now, as every item about a mark is.
+ */
+export async function onMarkMentioned(
+  input: MarkAct & {
+    mentioned: readonly string[]
+    text: string
+    /** Whom `text` mentions, as the server kept them: the row draws them as chips. */
+    mentions: readonly MarkMention[]
+    mayOpen: MayOpen
+  }
+): Promise<void> {
+  const recipients = input.mentioned.filter((userId) => userId !== input.actorUserId)
+  if (recipients.length === 0) return
+  await bestEffortInbox(`annotation.mentioned for mark ${input.annotationId}`, input.organizationId, async () =>
+    emitAboutMark('annotation.mentioned', input, await whoMayOpen(input.mayOpen, recipients), {
+      excerpt: excerptOf(input.text),
+      mentions: input.mentions,
+      actorUserId: input.actorUserId,
+    })
+  )
+}
+
+/**
+ * These people's mention on the mark is gone: the text that named them was
+ * changed or its reply deleted, and nothing left on the mark names them. Their
+ * `annotation.mentioned` turns inert, its quote wiped, as a deleted mark's
+ * rows do; nobody else's row is touched.
+ */
+export async function onMentionsWithdrawn(
+  input: Pick<MarkRef, 'organizationId' | 'annotationId'> & { userIds: readonly string[] }
+): Promise<void> {
+  await bestEffortInbox(`withdrawing mentions on mark ${input.annotationId}`, input.organizationId, async () => {
+    for (const recipientUserId of input.userIds) {
+      await markInboxItemsInertAnchoredOn({
+        organizationId: input.organizationId,
+        types: ['annotation.mentioned'],
+        anchorId: input.annotationId,
+        recipientUserId,
+      })
+    }
+  })
 }

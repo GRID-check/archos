@@ -722,6 +722,15 @@ export const collaboration = {
           },
         },
       },
+      // A colleague @mentioned you on an annotation or in its thread, as in
+      // the chat. {actor} is them, {related} the annotation's number,
+      // {subject} the document; the excerpt is the text that mentions you.
+      annotationMentioned: {
+        title: '{actor} mentioned you in an annotation',
+        titleRelated: '{actor} mentioned you in annotation {related} in “{subject}”',
+        titleRelatedNoSubject: '{actor} mentioned you in annotation {related}',
+        body: 'Answer in the annotation’s thread.',
+      },
       unknown: {
         title: 'Something happened',
         body: 'in {subject}',

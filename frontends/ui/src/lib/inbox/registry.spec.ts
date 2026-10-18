@@ -230,6 +230,7 @@ describe('the Piloti types', () => {
     expect([...MARK_ANCHORED_INBOX_TYPES].sort()).toEqual([
       'annotation.activity',
       'annotation.assigned_to_you',
+      'annotation.mentioned',
       'piloti.asks_you',
       'piloti.work_done',
       'piloti.work_failed',
@@ -268,9 +269,22 @@ describe('the Anmerkung types', () => {
     )
   })
 
+  it('ask whom a colleague mentioned as the chat’s mention does: actionable, one row per mark, mailed after an hour, pushed as a request', () => {
+    expect(INBOX_TYPE_DEFINITIONS['annotation.mentioned']).toMatchObject({
+      actionable: true,
+      grouping: 'per-anchor',
+      gate: 'operational',
+      email: INBOX_TYPE_DEFINITIONS['mention.requested'].email,
+      push: INBOX_TYPE_DEFINITIONS['mention.requested'].push,
+    })
+    expect(inboxGroupKey('annotation.mentioned', 'document', 'doc_1', 'ann_1')).toBe(
+      'annotation.mentioned:document:doc_1:ann_1',
+    )
+  })
+
   it('stay visible to an office without collaboration: marks are not a chat feature', () => {
     expect(visibleInboxTypes(false)).toEqual(
-      expect.arrayContaining(['annotation.assigned_to_you', 'annotation.activity']),
+      expect.arrayContaining(['annotation.assigned_to_you', 'annotation.activity', 'annotation.mentioned']),
     )
   })
 })

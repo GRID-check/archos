@@ -679,14 +679,16 @@ export async function resolveOpenItemsAnchoredOn(input: {
 
 /**
  * Neutralise every item of these types anchored on one thing that is gone — a
- * deleted mark — for everyone. Wipes the payload, as every inert write does: the
- * quoted text was the mark's, and the mark no longer exists. Returns who held
- * one, so the caller can nudge their badge.
+ * deleted mark — for everyone, or for one recipient when one is named (a
+ * mention taken back), the shape of {@link resolveOpenItemsAnchoredOn}. Wipes
+ * the payload, as every inert write does: the quoted text is gone. Returns who
+ * held one, so the caller can nudge their badge.
  */
 export async function markItemsInertAnchoredOn(input: {
   organizationId: string
   types: readonly InboxItemType[]
   anchorId: string
+  recipientUserId?: string
 }): Promise<string[]> {
   if (input.types.length === 0) return []
   const db = getDb()
@@ -699,6 +701,7 @@ export async function markItemsInertAnchoredOn(input: {
         inArray(inboxItems.type, [...input.types]),
         eq(inboxItems.anchorId, input.anchorId),
         isNull(inboxItems.inertAt),
+        input.recipientUserId ? eq(inboxItems.recipientUserId, input.recipientUserId) : undefined,
       ),
     )
     .returning({ recipientUserId: inboxItems.recipientUserId })

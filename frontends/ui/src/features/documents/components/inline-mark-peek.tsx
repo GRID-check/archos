@@ -8,6 +8,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
 import type { DocumentReview } from '../hooks/use-document-review'
+import { MarkBody } from './review/mark-body'
 import { markInk } from './review/review-page-layer'
 
 /** Long enough that crossing a pin on the way somewhere else does not open it. */
@@ -97,7 +98,9 @@ export function InlineMarkPeek({
             proposed={mark.status === 'proposed'}
           />
           <div className="min-w-0 flex-1">
-            <p className="text-foreground line-clamp-3 text-[13px] leading-5">{mark.body}</p>
+            <p className="text-foreground line-clamp-3 text-[13px] leading-5">
+              <MarkBody text={mark.body} mentions={mark.mentions} viewerId={review.viewerId} clamped />
+            </p>
             <p className="text-muted-foreground mt-1 truncate text-xs">
               {[t(`annotations.kinds.${mark.kind}`), author, mark.replies.length > 0 ? t('annotations.replies', { count: mark.replies.length }) : null]
                 .filter(Boolean)

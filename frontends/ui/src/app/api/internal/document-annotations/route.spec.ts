@@ -452,6 +452,7 @@ const record = (patch: Partial<AnnotationRecord> = {}): AnnotationRecord => ({
   closedAt: null,
   delegatedBy: null,
   delegatedAt: null,
+  mentions: [],
   fassungNumber: null,
   replies: [],
   ...patch,
@@ -515,6 +516,7 @@ function fakeRepository() {
       createdAt: NOW,
       ...input,
       addressesAgent: input.addressesAgent ?? false,
+      mentions: input.mentions ?? [],
     }
     if (current) marks.set(input.annotationId, { ...current, replies: [...current.replies, reply] })
     return reply
@@ -577,6 +579,7 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
         body: NOTE,
         createdBy: 'user_1',
         addressesAgent: false,
+        mentions: [],
       },
       // Piloti's own reply never wakes Piloti.
       undefined
@@ -635,7 +638,12 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
     expect(onMarkMoved).toHaveBeenCalledWith(
       expect.objectContaining({ move: 'resolved', actorUserId: 'user_1', byPiloti: true, annotationId: MARK_ID })
     )
-    expect(onMarkSettledByPerson).toHaveBeenCalledWith({ organizationId: 'org_1', annotationId: MARK_ID, closed: true })
+    expect(onMarkSettledByPerson).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      annotationId: MARK_ID,
+      closed: true,
+      answeredBy: null,
+    })
   })
 
   it('asks back when a name means two people, and changes nothing', async () => {

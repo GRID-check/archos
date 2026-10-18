@@ -146,6 +146,7 @@ const ALL_TYPES = [
   // A colleague's work on an Anmerkung: marks are not a chat feature either.
   'annotation.assigned_to_you',
   'annotation.activity',
+  'annotation.mentioned',
 ] as const satisfies readonly InboxItemType[]
 
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
@@ -184,6 +185,7 @@ const OPERATIONAL_TYPES = [
   // A colleague's work on an Anmerkung: marks are not a chat feature either.
   'annotation.assigned_to_you',
   'annotation.activity',
+  'annotation.mentioned',
 ] as const satisfies readonly InboxItemType[]
 
 const at = new Date('2026-07-29T10:00:00.000Z')
@@ -391,6 +393,25 @@ describe('listInbox — projection', () => {
     expect(byId.get('padded')!.subject).toBe('spaced')
     expect(byId.get('padded')!.excerpt!.length).toBeLessThanOrEqual(501)
     expect(byId.get('empty')).toMatchObject({ subject: null, excerpt: null })
+  })
+
+  it('carries the excerpt\'s mentions as the bounded mention shape, withholds them when redacted, and drops junk', async () => {
+    const anna = { targetId: 'user_anna', display: 'Anna Berger' }
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', payload: { excerpt: '@Anna Berger bitte', mentions: [anna] } }),
+      row({ id: 'inert', inertAt: at, payload: { excerpt: '@Anna Berger bitte', mentions: [anna] } }),
+      row({ id: 'junk', payload: { excerpt: 'x', mentions: [{ targetId: 'user_anna', display: 'Anna', extra: '<b>' }] } }),
+      row({ id: 'old', payload: { excerpt: 'x' } }),
+    ])
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    expect(byId.get('ok')!.mentions).toEqual([anna])
+    expect(byId.get('inert')!.mentions).toEqual([])
+    expect(byId.get('junk')!.mentions).toEqual([])
+    // A row written before mentions travelled with the quote reads plain text.
+    expect(byId.get('old')!.mentions).toEqual([])
   })
 
   it('carries the second name of a row (a new Fassung\'s newer document) and withholds it with the rest of the payload', async () => {

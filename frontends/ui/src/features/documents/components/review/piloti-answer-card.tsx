@@ -15,7 +15,8 @@ import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { answerAsBody, answerMarkdown } from '../../lib/piloti-answer-text'
 import { CANVAS_ASK_INTENTS, stepsOf, type CanvasAsk, type CanvasAskIntent } from '../../hooks/use-canvas-ask'
 import type { DocumentReview } from '../../hooks/use-document-review'
-import { Composer, ReviewCard, type CardPlacement } from './thread-card'
+import { Composer } from './composer'
+import { ReviewCard, type CardPlacement } from './thread-card'
 
 /** The line a failed question says: by what broke, never the wire code itself. */
 export function failureKey(ask: Pick<CanvasAsk, 'error' | 'view'>): 'busy' | 'failedSession' | 'failedConnection' | 'failed' {

@@ -14,6 +14,7 @@
  */
 
 import type { InboxItemType, InboxTargetType, ShareableResourceType } from '@/lib/db/schema'
+import type { MarkMention } from '@/lib/annotations/types'
 
 export type { InboxItemType, InboxTargetType, ShareableResourceType }
 
@@ -63,6 +64,16 @@ export interface InboxItemView {
    * because an inbox must never leak content whose access was revoked (IB-13).
    */
   excerpt: string | null
+  /**
+   * Whom the excerpt mentions, as the server kept them (the chat's mention
+   * shape, `MarkMention`), so the row draws them as the chips the thread
+   * shows (`MentionText`); a name only typed stays text. Written by the
+   * emitter beside every excerpt it writes, so a folded row's quote and its
+   * mentions are always the same write's. Empty where the emitter carries none
+   * (a chat mention keeps no names on the server), and withheld with the
+   * payload when the item is inert.
+   */
+  mentions: MarkMention[]
   /**
    * Which wording of its type the row reads, where a type has more than one:
    * why Piloti could not work a mark (`piloti.work_failed`, the classes of
@@ -193,6 +204,8 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'piloti.intake_ready': { icon: 'piloti', i18nKey: 'pilotiIntakeReady', tone: 'request' },
   'annotation.assigned_to_you': { icon: 'user-plus', i18nKey: 'annotationAssigned', tone: 'request', anchor: 'mark' },
   'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info', anchor: 'mark' },
+  // The chat mention's glyph: one sign for „someone asked you", wherever it was.
+  'annotation.mentioned': { icon: 'at-sign', i18nKey: 'annotationMentioned', tone: 'request', anchor: 'mark' },
 }
 
 /**

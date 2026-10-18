@@ -68,6 +68,13 @@ describe('a person’s choices override the default per category', () => {
     expect(pushCategoryOf('conversation.activity', { yours: true })).toBe('activity')
   })
 
+  it('a mention on a mark reaches the device as the chat’s mention does, by default, and goes with requests', () => {
+    expect(pushCategoryOf('annotation.mentioned', {})).toBe('requests')
+    expect(isPushWanted('annotation.mentioned', DEFAULT_PUSH_PREFERENCES)).toBe(true)
+    const off = applyPushPreferencesPatch(DEFAULT_PUSH_PREFERENCES, { categories: { requests: false } })
+    expect(isPushWanted('annotation.mentioned', off)).toBe(false)
+  })
+
   it('reads a damaged stored bag as the defaults, never as an opt-in', () => {
     expect(resolvePushPreferences(undefined)).toEqual(DEFAULT_PUSH_PREFERENCES)
     expect(resolvePushPreferences('yes')).toEqual(DEFAULT_PUSH_PREFERENCES)

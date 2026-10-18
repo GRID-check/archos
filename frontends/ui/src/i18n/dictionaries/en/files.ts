@@ -1346,6 +1346,10 @@ export const files = {
       actingWithName: 'Acting: {name} · {date}',
       actingDateOnly: 'Acting: {date}',
       checkbox: 'I approve this revision',
+      // Before the signature, never a block: approving with open points is allowed, missing them is not.
+      openMarks: '{count, plural, one {# open annotation} other {# open annotations}} – approve anyway?',
+      openMarksLoading: 'Still reading the open annotations …',
+      openMarksUnavailable: 'Could not read whether any annotations are open.',
     },
     /**
      * Publication is its own act in its own section — never a sibling button
@@ -1536,6 +1540,13 @@ export const files = {
     openInReview: 'Open in the review',
     loading: 'Loading annotations',
     readerCount: '{count, plural, one {# annotation} other {# annotations}}',
+    // In Files beside the name: what is still open on the document, on every revision.
+    listedOpen: '{count, plural, one {# open annotation} other {# open annotations}}',
+    listedOpenForYou: '{count, plural, one {# open annotation} other {# open annotations}}, {mine} for you',
+    listedOpenIn: '{marks} in “{name}”',
+    // What the chip itself says, short enough for a card; the tooltip carries the whole sentence.
+    listedOpenShort: '{count} open',
+    listedOpenShortForYou: '{count} open · {mine} for you',
   },
   // The review: a document full screen, the annotations on it, the threads
   // under them, and who is looking with you.
@@ -1584,13 +1595,23 @@ export const files = {
     },
     popout: 'Open in a new window',
     copyReviewLink: 'Copy link to the review',
+    // Mentioning colleagues on an annotation or in its thread with "@", as in the chat.
+    // Only people who can open the document can be mentioned. Whom the server did not keep is
+    // named without a reason: the folder may be why, or collaboration switched off.
+    mentions: {
+      othersHeading: 'Can open this document',
+      noResultsHint: 'You can mention anyone who can open this document.',
+      untoldOne: '{name} was not told.',
+      untoldMany: '{names} were not told.',
+      tooMany: 'Mention at most {max} people at once.',
+      peopleFailed: 'Could not load the people. Type "@" again.',
+    },
     // Piloti on the canvas: a box asked about, the answer beside it, and Piloti in a thread.
     piloti: {
       conversationTitle: '{name} · Review',
       ask: 'Ask Piloti',
       mention: 'Mention Piloti',
       mentionHint: 'Piloti answers in this thread',
-      mentionRemove: 'Remove mention',
       replying: 'Piloti is answering …',
       replyFailed: 'Piloti could not answer.',
       replyingFor: 'Piloti is answering … · for {name}',
@@ -1809,6 +1830,8 @@ export const files = {
         fassungen: {
           current: 'current revision',
           all: 'all revisions',
+          // Closed ones too, of the current revision only: what is still open from earlier ones is in it anyway.
+          currentWithOpenFromEarlier: 'current revision, plus what is still open from earlier ones',
         },
         withProposals: 'with Piloti’s proposals',
         exportedAt: 'Exported on',
