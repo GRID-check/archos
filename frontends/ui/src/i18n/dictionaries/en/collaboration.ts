@@ -365,6 +365,8 @@ export const collaboration = {
     /** A row about an annotation: go there, and for a request answer or resolve it right here. */
     mark: {
       open: 'Go to annotation',
+      /** A row about new marks („Anna set 15 annotations“): it opens the review at the newest. */
+      openMany: 'To the annotations',
       answerInReview: 'Answer in the review',
       reply: 'Reply',
       replyLabel: 'Your reply to annotation {related}',

@@ -110,6 +110,7 @@ import { withReviewBack } from '@/features/documents/lib/open-review'
 import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
 import { useUndoableArchive } from '../hooks/use-undoable-archive'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
+import type { MarksSetBy } from '@/lib/annotations/attention'
 import { MentionText } from './MentionText'
 
 /**
@@ -139,6 +140,9 @@ export interface InboxMarkClient {
 }
 
 const MARK_CLIENT: InboxMarkClient = { reply: replyToAnnotation, update: updateAnnotation }
+
+/** The variants of `annotation.activity` that tell of new marks, counted per document (`MarksSetBy`, `lib/annotations/attention.ts`). */
+const MARKS_SET_VARIANTS: readonly string[] = ['created', 'created_piloti'] satisfies readonly MarksSetBy[]
 
 /** Only a plain primary click counts as "opened"; see the title link. */
 function isPlainClick(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }): boolean {
@@ -375,8 +379,18 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const offerUndo = resolveHeld && !markBusy && markOutcome === 'resolved'
   // „Erledigen“ goes when it is pressed and „Rückgängig“ takes its place, and back
   // again: the focus follows the control that took the place of the pressed one.
+  // When the window ends with the write, „Rückgängig“ goes and „Erledigen“ does
+  // not come back: the focus goes to the outcome line, which stays („Als
+  // erledigt markiert.“). Whichever of the two is drawn takes it, the other's
+  // ref is empty.
   const undoRef = useFocusBackOnClose<HTMLButtonElement>(!offerUndo)
   const resolveRef = useFocusBackOnClose<HTMLButtonElement>(offerUndo)
+  const outcomeRef = useFocusBackOnClose<HTMLParagraphElement>(offerUndo)
+  /*
+    A row about new marks („Anna hat 15 Anmerkungen gesetzt“) opens the review
+    at the newest of them, and its button says it goes to all of them.
+  */
+  const marksSet = item.type === 'annotation.activity' && MARKS_SET_VARIANTS.includes(item.variant ?? '') && item.count > 1
 
   // The row's own menu: read state, archive (the only archive control on a
   // phone, where an icon column cost the text its width) and restore.
@@ -970,7 +984,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                   }}
                   data-testid="inbox-open-mark"
                 >
-                  {t(answerInReview ? 'inbox.mark.answerInReview' : 'inbox.mark.open')}
+                  {t(answerInReview ? 'inbox.mark.answerInReview' : marksSet ? 'inbox.mark.openMany' : 'inbox.mark.open')}
                 </Link>
               </Button>
             )}
@@ -1046,6 +1060,8 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
           )}
           {markOutcome && (
             <p
+              ref={outcomeRef}
+              tabIndex={-1}
               role={markOutcome === 'failed' || markOutcome === 'conflict' ? 'alert' : 'status'}
               className={cn(
                 'mt-1.5 text-xs',

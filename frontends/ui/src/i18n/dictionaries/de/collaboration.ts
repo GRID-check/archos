@@ -255,6 +255,8 @@ export const collaboration: typeof en.collaboration = {
     // antworten oder erledigen, wie im Verlauf der Anmerkung.
     mark: {
       open: 'Zur Anmerkung',
+      // Eine Zeile über neue Anmerkungen („Anna hat 15 Anmerkungen gesetzt“): sie öffnet die Prüfansicht bei der neuesten.
+      openMany: 'Zu den Anmerkungen',
       // Eine Rückfrage von Piloti, solange Ereignisse Piloti nicht wecken: Erst die Prüfansicht fragt Piloti mit der Antwort.
       answerInReview: 'In der Prüfansicht beantworten',
       reply: 'Antworten',

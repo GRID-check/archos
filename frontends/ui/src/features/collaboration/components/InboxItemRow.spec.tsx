@@ -1146,12 +1146,26 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'i1' }))
   })
 
+  test('says „To the annotations“ on a row about several new marks, which opens the review at the newest', () => {
+    const created = (count: number, variant: string) =>
+      markRow({ type: 'annotation.activity', variant, count, answerIn: null, actionable: false })
+    const { rerender } = render(<InboxItemRow item={created(15, 'created')} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('To the annotations')
+    rerender(<InboxItemRow item={created(3, 'created_piloti')} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('To the annotations')
+    // One new mark, or news about one mark, is one annotation.
+    rerender(<InboxItemRow item={created(1, 'created')} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('Go to annotation')
+    rerender(<InboxItemRow item={created(4, 'reply')} />)
+    expect(screen.getByTestId('inbox-open-mark')).toHaveTextContent('Go to annotation')
+  })
+
   test('opens the mark with the Postfach as the page to return to, so closing the review comes back here', () => {
     page.pathname = '/app/inbox'
-    page.search = 'filter=requests'
+    page.search = 'filter=unread'
     try {
       render(<InboxItemRow item={markRow()} />)
-      const back = encodeURIComponent('/app/inbox?filter=requests')
+      const back = encodeURIComponent('/app/inbox?filter=unread')
       expect(screen.getByTestId('inbox-open-mark')).toHaveAttribute(
         'href',
         `/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4&back=${back}`
@@ -1235,6 +1249,23 @@ describe('InboxItemRow — a row about a mark acts on the mark', () => {
       })
       await settle()
       expect(marks.update).not.toHaveBeenCalled()
+    })
+
+    test('gives the focus to the outcome line once the window ends with the write, never to the page', async () => {
+      const marks = client()
+      render(<InboxItemRow item={markRow()} markClient={marks} />)
+      screen.getByTestId('inbox-mark-resolve').focus()
+      fireEvent.click(screen.getByTestId('inbox-mark-resolve'))
+      expect(screen.getByTestId('inbox-mark-undo')).toHaveFocus()
+
+      act(() => {
+        vi.advanceTimersByTime(ARCHIVE_UNDO_MS)
+      })
+      await settle()
+      expect(marks.update).toHaveBeenCalledTimes(1)
+      // „Undo“ went and „Resolve“ is not drawn again: the line that says what happened holds the focus.
+      expect(screen.queryByTestId('inbox-mark-resolve')).not.toBeInTheDocument()
+      expect(screen.getByTestId('inbox-mark-outcome')).toHaveFocus()
     })
 
     test('says so in the row’s own words when the write that finally goes finds the mark moved', async () => {

@@ -1099,7 +1099,13 @@ person's face with the type's glyph in its corner.
 
 The row acts on the mark (`anchor: 'mark'` on the type's entry in
 `INBOX_TYPE_PRESENTATION`, from which the server's `MARK_ANCHORED_INBOX_TYPES`
-is derived). „Zur Anmerkung“ opens the Prüfansicht at it and marks the row read.
+is derived). „Zur Anmerkung“ opens the Prüfansicht at it and marks the row read;
+on a row about several new marks („Anna hat 15 Anmerkungen gesetzt“,
+`annotation.activity` with the variant `created` or `created_piloti` and a
+count over one) it says „Zu den Anmerkungen“ (`inbox.mark.openMany`). The
+link carries the Postfach's own address as `back`, and the Postfach keeps its
+filter in that address (`filter=unread|all|archived`, „Für mich“ unwritten,
+`InboxList`), so closing the review comes back to the filter the reader left.
 The row offers only what the reader can do, and the server says what that is:
 every request on a mark (`annotation.assigned_to_you`, `piloti.asks_you`,
 `annotation.mentioned`) carries `answerIn` (`InboxItemView`, decided in
@@ -1107,7 +1113,7 @@ every request on a mark (`annotation.assigned_to_you`, `piloti.asks_you`,
 
 | `answerIn` | When | The row offers |
 |---|---|---|
-| `row` | the reader may write the document | „Antworten“, which answers in the thread from the row, and on an assigned mark „Erledigen“ (`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved meanwhile is a `409`, not overwritten). The write waits for the undo window, as archiving a row does (`useUndoableArchive`, `ARCHIVE_UNDO_MS`): the row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes when the window ends, the page is hidden or the row goes. „Rückgängig“ inside it lets go and sends nothing, so the request is still open and the list's re-read keeps the row; a write refused when it goes says the row's conflict (409) or failure words |
+| `row` | the reader may write the document | „Antworten“, which answers in the thread from the row, and on an assigned mark „Erledigen“ (`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved meanwhile is a `409`, not overwritten). The write waits for the undo window, as archiving a row does (`useUndoableArchive`, `ARCHIVE_UNDO_MS`): the row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes when the window ends, the page is hidden or the row goes. „Rückgängig“ inside it lets go and sends nothing, so the request is still open and the list's re-read keeps the row; a write refused when it goes says the row's conflict (409) or failure words. The focus follows: „Rückgängig“ takes it from „Erledigen“, „Erledigen“ takes it back on an undo, and when the window ends with the write, the outcome line (`tabIndex -1`) takes it, since „Erledigen“ is not drawn again (`useFocusBackOnClose`) |
 | `review` | Piloti's Rückfrage while events do not wake Piloti (`piloti-wakes` off) | „In der Prüfansicht beantworten“ in place of „Zur Anmerkung“: the thread card asks Piloti with the answer, which a row cannot |
 | null | the reader may only read the document (a mention reaches readers too), or the row is no open request | „Zur Anmerkung“ alone |
 
