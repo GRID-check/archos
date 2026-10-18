@@ -122,7 +122,8 @@ describe('which marks have news', () => {
 
     await waitFor(() => expect(inbox.unreadMarks).toHaveBeenCalledTimes(2), SETTLED)
     await waitFor(() => expect(inbox.markMarkRead).toHaveBeenCalledTimes(1), SETTLED)
-    expect(result.current.unread.has('mark-2')).toBe(false)
+    // The dot goes in the same tick the read is sent, as a state update: wait for the render, not the call.
+    await waitFor(() => expect(result.current.unread.has('mark-2')).toBe(false), SETTLED)
     expect(inbox.unreadMarks).toHaveBeenCalledTimes(2)
   })
 })
