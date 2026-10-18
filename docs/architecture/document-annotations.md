@@ -1039,7 +1039,7 @@ every request on a mark (`annotation.assigned_to_you`, `piloti.asks_you`,
 
 | `answerIn` | When | The row offers |
 |---|---|---|
-| `row` | the reader may write the document | „Antworten“, which answers in the thread from the row, and on an assigned mark „Erledigen“ (`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved meanwhile is a `409`, not overwritten). One tap writes; the row then says „Als erledigt markiert. Rückgängig“, and „Rückgängig“ is the inverse write (`status: 'open'`, `expectedStatus: 'resolved'`; a refusal says the row's conflict or failure words). The requests the close settled stay settled, so the row reads „Wieder offen.“ and no longer asks |
+| `row` | the reader may write the document | „Antworten“, which answers in the thread from the row, and on an assigned mark „Erledigen“ (`status: 'resolved'`, `expectedStatus: 'open'`, so a mark someone moved meanwhile is a `409`, not overwritten). The write waits for the undo window, as archiving a row does (`useUndoableArchive`, `ARCHIVE_UNDO_MS`): the row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes when the window ends, the page is hidden or the row goes. „Rückgängig“ inside it lets go and sends nothing, so the request is still open and the list's re-read keeps the row; a write refused when it goes says the row's conflict (409) or failure words |
 | `review` | Piloti's Rückfrage while events do not wake Piloti (`piloti-wakes` off) | „In der Prüfansicht beantworten“ in place of „Zur Anmerkung“: the thread card asks Piloti with the answer, which a row cannot |
 | null | the reader may only read the document (a mention reaches readers too), or the row is no open request | „Zur Anmerkung“ alone |
 
@@ -1435,7 +1435,6 @@ it, and the project is not closed (`protocolFiling`, `file-preview-pane.tsx`).
 ## Known debts
 
 - „Fassungen vergleichen“ compares two documents (`fassung-compare-service.ts`); two versions under the same name have no visual comparison yet, so a mark of an earlier Fassung of the same document is carried with only its ghost pin to show where it stood.
-- „Rückgängig“ on a Postfach row's „Erledigen“ is an inverse write, and closing the mark settles the row's request (`onMarkSettledByPerson`), which nudges the list (`inbox.changed`). Under „Braucht mich“ (the open requests) the re-read drops the row, and „Rückgängig“ with it, a moment after the tap; reopening does not unsettle the request. Holding the close for the toast's seconds before writing, as the review's E does (`DECISION_UNDO_MS`), would keep both.
 - A mark carried on to a replacing document starts a new thread there; the old one is read on the replaced document, by the link in the card. The two are not one timeline.
 
 - The chat-hosted canvas (the review open over the chat) still asks an @Piloti reply in the chat's conversation, under the chat's own message id, when wakes are off; only the standalone canvas uses the reply's turn id.

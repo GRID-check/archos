@@ -1,8 +1,8 @@
 ---
 improvements:
   - >
-    An annotation you resolved from your inbox can be opened again right there
-    with „Rückgängig“, unless someone changed it in the meantime.
+    Resolving an annotation from your inbox can now be taken back with
+    „Rückgängig“ for a few seconds, before anything is saved.
   - >
     In the review, J and K now also step to the open annotations of an earlier
     revision, and a screen reader hears each listed annotation's number and

@@ -266,7 +266,6 @@ export const collaboration: typeof en.collaboration = {
       sentPilotiNotAsked: 'Antwort gesendet. Piloti liest sie erst, wenn Sie es in der Prüfansicht mit @Piloti fragen.',
       resolve: 'Erledigen',
       resolved: 'Als erledigt markiert.',
-      reopened: 'Wieder offen.',
       conflict: 'Jemand hat die Anmerkung zuerst geändert. Öffnen Sie sie, um den aktuellen Stand zu sehen.',
       failed: 'Das hat nicht geklappt. Es hat sich nichts geändert.',
     },

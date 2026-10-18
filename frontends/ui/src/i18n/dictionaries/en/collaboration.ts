@@ -375,7 +375,6 @@ export const collaboration = {
       sentPilotiNotAsked: 'Reply sent. Piloti reads it only once you ask it with @Piloti in the review.',
       resolve: 'Resolve',
       resolved: 'Marked as resolved.',
-      reopened: 'Open again.',
       conflict: 'Someone changed the annotation first. Open it to see where it stands.',
       failed: 'That did not work. Nothing has changed.',
     },

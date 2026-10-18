@@ -106,6 +106,7 @@ import { DiscussDocumentButton } from '@/features/documents/components/discuss-d
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
 import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
 import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
+import { useUndoableArchive } from '../hooks/use-undoable-archive'
 import { useFocusBackOnClose } from '@/features/documents/components/review/focus-return'
 import { MentionText } from './MentionText'
 
@@ -283,7 +284,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const replyButtonRef = useFocusBackOnClose<HTMLButtonElement>(answerHere && replying && item.anchorId !== null)
   const [markBusy, setMarkBusy] = useState(false)
   const [markOutcome, setMarkOutcome] = useState<
-    'sent' | 'sentPilotiNotAsked' | 'resolved' | 'reopened' | 'conflict' | 'failed' | null
+    'sent' | 'sentPilotiNotAsked' | 'resolved' | 'conflict' | 'failed' | null
   >(null)
   /** Whom the last answer named and the server did not keep: they cannot open the document, so nobody told them. */
   const [untold, setUntold] = useState<string[]>([])
@@ -323,43 +324,47 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   }
 
   /*
-    A status move on the mark, from the status the row knows it in
-    (`expectedStatus`): a mark somebody moved meanwhile is a 409, never
-    overwritten from a copy of it, and the row says so.
+    „Erledigen“ holds its write for the undo window, as archiving a row does
+    and as the review holds a decision by a key (`useUndoableArchive`): the
+    row says „Als erledigt markiert. Rückgängig“ at once, and the PATCH goes
+    when the window ends, the page is hidden or the row goes. „Rückgängig“
+    inside the window lets go of it: nothing was sent, so the request this row
+    asks is still open on the server and the list keeps the row. The write is
+    from the status the row knows the mark in (`expectedStatus`): a mark
+    somebody moved meanwhile is a 409, never overwritten from a copy of it,
+    and the row says so when the write finally goes.
   */
-  const moveMark = async (
-    move: { status: 'resolved'; expectedStatus: 'open' } | { status: 'open'; expectedStatus: 'resolved' },
-    outcome: 'resolved' | 'reopened',
-  ): Promise<void> => {
-    if (!item.anchorId || markBusy) return
+  const sendResolve = async (anchorId: string): Promise<void> => {
     setMarkBusy(true)
     try {
-      await markClient.update(item.resourceId, item.anchorId, move)
-      setMarkOutcome(outcome)
+      await markClient.update(item.resourceId, anchorId, { status: 'resolved', expectedStatus: 'open' })
     } catch (error) {
       setMarkOutcome(error instanceof AnnotationRequestError && error.status === 409 ? 'conflict' : 'failed')
     } finally {
       setMarkBusy(false)
     }
   }
+  const resolveLater = useUndoableArchive(sendResolve)
+  const resolveHeld = item.anchorId !== null && resolveLater.pendingIds.has(item.anchorId)
 
-  const resolveMark = async (): Promise<void> => {
-    if (!canResolveMark || markBusy) return
-    setMarkOutcome(null)
-    await moveMark({ status: 'resolved', expectedStatus: 'open' }, 'resolved')
+  const resolveMark = (): void => {
+    if (!canResolveMark || !item.anchorId || markBusy) return
+    setMarkOutcome('resolved')
+    resolveLater.request(item.anchorId)
   }
 
-  /*
-    „Rückgängig“ beside „Als erledigt markiert.“: one tap on „Erledigen“
-    wrote, so taking it back is the inverse write, from the status this row
-    set. Offered only while the outcome line still says this row resolved it,
-    which stays until the answer comes, so the focus has somewhere to go.
-  */
-  const reopenMark = (): Promise<void> => moveMark({ status: 'open', expectedStatus: 'resolved' }, 'reopened')
-  // „Erledigen“ goes when it lands and „Rückgängig“ takes its place, and back
+  const undoResolve = (): void => {
+    if (!item.anchorId) return
+    resolveLater.undo(item.anchorId)
+    setMarkOutcome(null)
+  }
+
+  // „Rückgängig“ while the write is held, not once it has gone out.
+  const offerUndo = resolveHeld && !markBusy && markOutcome === 'resolved'
+  // „Erledigen“ goes when it is pressed and „Rückgängig“ takes its place, and back
   // again: the focus follows the control that took the place of the pressed one.
-  const undoRef = useFocusBackOnClose<HTMLButtonElement>(markOutcome !== 'resolved')
-  const resolveRef = useFocusBackOnClose<HTMLButtonElement>(markOutcome === 'resolved')
+  const undoRef = useFocusBackOnClose<HTMLButtonElement>(!offerUndo)
+  const resolveRef = useFocusBackOnClose<HTMLButtonElement>(offerUndo)
 
   // The row's own menu: read state, archive (the only archive control on a
   // phone, where an icon column cost the text its width) and restore.
@@ -983,7 +988,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 className="relative z-10 h-8"
                 disabled={markBusy}
                 data-testid="inbox-mark-resolve"
-                onClick={() => void resolveMark()}
+                onClick={resolveMark}
               >
                 {t('inbox.mark.resolve')}
               </Button>
@@ -1037,7 +1042,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               data-testid="inbox-mark-outcome"
             >
               {t(`inbox.mark.${markOutcome}`)}
-              {markOutcome === 'resolved' && item.anchorId && (
+              {offerUndo && (
                 <>
                   {' '}
                   <Button
@@ -1047,7 +1052,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                     className="relative z-10"
                     disabled={markBusy}
                     data-testid="inbox-mark-undo"
-                    onClick={() => void reopenMark()}
+                    onClick={undoResolve}
                   >
                     {t('inbox.undo')}
                   </Button>
