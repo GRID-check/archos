@@ -52,6 +52,7 @@ import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel, type OpenMark } from './review-panel'
 import { ReviewAnnouncer } from './review-announcer'
 import { ReviewExportMenu } from './review-export-menu'
+import { covers, ReviewStageContext, STAGE_FOOT, STAGE_HEAD, type StageBounds } from './review-stage'
 import { DraftCard, ThreadCard, type CardPlacement } from './thread-card'
 
 /** A tool on the palette: the review's own, or the cursor chat, which sets nothing. */
@@ -394,6 +395,11 @@ function useScrollTick(ref: RefObject<HTMLElement | null>): void {
  * to them, the way a design tool keeps a colleague's pointer at the edge of
  * the canvas when it is off-screen. A chip jumps there; following stays the
  * face's. `edge` is the one edge this instance draws.
+ *
+ * Never over the open card: the card lives in the page's scroller, which no
+ * z-index lifts above these, so the card keeps out of the foot (`fitCard`) and
+ * a row that would still lie over it (the reader scrolled the card under it)
+ * steps aside until it is clear.
  */
 function Elsewhere({
   review,
@@ -411,8 +417,12 @@ function Elsewhere({
 }): JSX.Element | null {
   const t = useTranslations('files')
   useScrollTick(canvas)
+  const row = useRef<HTMLDivElement | null>(null)
   const node = canvas.current
   const view = node?.getBoundingClientRect() ?? null
+  const card = node?.querySelector<HTMLElement>('[data-review-card]')?.getBoundingClientRect() ?? null
+  const lane = row.current?.getBoundingClientRect() ?? null
+  const overCard = Boolean(card && lane && covers(card, lane))
   // Its own subscription: where people are moves with every pointer, and only these chips redraw for it.
   const peers = useRoomPeers(review.room)
   const here = people(peers).flatMap((state) => {
@@ -427,11 +437,14 @@ function Elsewhere({
   const Arrow = edge === 'above' ? ArrowUp : ArrowDown
   return (
     <div
+      ref={row}
       className={cn(
         'pointer-events-none flex flex-wrap justify-center gap-1.5',
-        edge === 'below' && 'absolute bottom-16 left-1/2 z-30 -translate-x-1/2 pointer-coarse:bottom-36'
+        edge === 'below' && 'absolute bottom-16 left-1/2 z-30 -translate-x-1/2 pointer-coarse:bottom-36',
+        overCard && 'invisible'
       )}
       data-testid={`review-elsewhere-${edge}`}
+      data-over-card={overCard || undefined}
     >
       {here.map(({ state, at }) => (
         <button
@@ -634,6 +647,13 @@ export function DocumentReviewMode({
   )
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const touch = useMediaQuery('(pointer: coarse)')
+  /** What the toolbars and the chips below take of the canvas's foot. */
+  const foot = touch ? STAGE_FOOT.touch : STAGE_FOOT.pointer
+  /** The canvas less its head and foot: where a card on the sheet keeps. */
+  const stage = useCallback<StageBounds>(() => {
+    const box = canvasRef.current?.getBoundingClientRect()
+    return box ? { top: box.top + STAGE_HEAD, bottom: box.bottom - foot } : null
+  }, [foot])
   /**
    * Cursor chat („/"): open, and where this reader's pointer last was, to open
    * it there. From the toolbar's button there is no pointer to open at (the
@@ -1104,98 +1124,100 @@ export function DocumentReviewMode({
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1">
-          <div
-            ref={canvasRef}
-            className="relative min-w-0 flex-1"
-            data-testid="review-canvas"
-            onWheelCapture={() => following && setFollowing(null)}
-            onPointerDownCapture={() => following && setFollowing(null)}
-            onPointerMove={(event) => {
-              lastPointer.current = { x: event.clientX, y: event.clientY }
-            }}
-          >
-            {/* What sits at the top of the canvas, one under the other: whom the
-                view follows, who is out of view above, what the tool in hand does. */}
-            <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-col items-center gap-1.5">
-              {followedState && (
-                <span
-                  className="rounded-full px-3 py-1 text-xs font-medium text-white shadow-md"
-                  style={{ backgroundColor: identityInk(followedState.userId) }}
-                  role="status"
-                >
-                  {t('review.following', { name: followedState.name })}
-                </span>
-              )}
-              <Elsewhere review={review} page={viewPage ?? 1} edge="above" canvas={canvasRef} onJump={jumpTo} />
-              {toolHint && (
-                // With the crosshair out its own label says the keys in words; the glyphs here would be read on top of it.
-                <FloatingNote role={aim ? undefined : 'status'} aria-hidden={aim ? true : undefined} data-testid="review-tool-hint">
-                  {toolHint}
-                </FloatingNote>
-              )}
-            </div>
-            <Elsewhere review={review} page={viewPage ?? 1} edge="below" canvas={canvasRef} onJump={jumpTo} />
-            {earlier && !openAsk && !draft && !docked && (
-              <div className="absolute top-4 left-1/2 z-40 -translate-x-1/2" data-testid="review-earlier-thread">
-                {threadCard('detached')}
+        <ReviewStageContext.Provider value={stage}>
+          <div className="flex min-h-0 flex-1">
+            <div
+              ref={canvasRef}
+              className="relative min-w-0 flex-1"
+              data-testid="review-canvas"
+              onWheelCapture={() => following && setFollowing(null)}
+              onPointerDownCapture={() => following && setFollowing(null)}
+              onPointerMove={(event) => {
+                lastPointer.current = { x: event.clientX, y: event.clientY }
+              }}
+            >
+              {/* What sits at the top of the canvas, one under the other: whom the
+                  view follows, who is out of view above, what the tool in hand does. */}
+              <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-col items-center gap-1.5">
+                {followedState && (
+                  <span
+                    className="rounded-full px-3 py-1 text-xs font-medium text-white shadow-md"
+                    style={{ backgroundColor: identityInk(followedState.userId) }}
+                    role="status"
+                  >
+                    {t('review.following', { name: followedState.name })}
+                  </span>
+                )}
+                <Elsewhere review={review} page={viewPage ?? 1} edge="above" canvas={canvasRef} onJump={jumpTo} />
+                {toolHint && (
+                  // With the crosshair out its own label says the keys in words; the glyphs here would be read on top of it.
+                  <FloatingNote role={aim ? undefined : 'status'} aria-hidden={aim ? true : undefined} data-testid="review-tool-hint">
+                    {toolHint}
+                  </FloatingNote>
+                )}
               </div>
-            )}
-            {chat && (
-              <CursorChat
-                userId={room.self?.userId ?? null}
-                from={chat.from}
-                bounds={() => canvasRef.current?.getBoundingClientRect() ?? null}
-                // Above the viewer's pill and the chips of who is below, and on a
-                // touch screen above the tools over the pill too.
-                foot={touch ? 176 : 100}
-                onChat={room.sendChat}
-                onClose={() => setChat(null)}
-              />
-            )}
-            {followedState && (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0 z-30 border-[3px]"
-                style={{ borderColor: identityInk(followedState.userId) }}
-              />
-            )}
-            {touch && (
-              // On a touch screen the tools sit centred ABOVE the viewer's own
-              // pill, at the thumb, each with its name under it.
-              <FloatingToolbar className="pointer-events-auto absolute bottom-[4.75rem] left-1/2 z-30 -translate-x-1/2">
-                {toolsPalette('touch')}
-              </FloatingToolbar>
-            )}
-            <PdfDocumentView
-              src={documentFileUrl(review.documentId)}
-              title={documentName}
-              focus={focus}
-              onViewport={onViewport}
-              // With a pointer, the tools lead the viewer's own pill: one bar at the foot.
-              toolbarLead={touch ? undefined : toolsPalette(intro ? 'intro' : 'icons')}
-              pageOverlay={(page) => (
-                <ReviewPageLayer
-                  page={page}
-                  review={review}
-                  focused
-                  onPinByKeyboard={focusNextCard}
-                  aim={aim && aim.page === page ? aim : null}
-                  renderAsk={
-                    docked ? undefined : (ask, { placement }) => <PilotiAnswerCard key={ask.id} review={review} ask={ask} placement={placement} />
-                  }
-                  renderThread={
-                    docked
-                      ? undefined
-                      : ({ placement }) => (draft && draft.page !== page ? null : threadCard(placement))
-                  }
+              <Elsewhere review={review} page={viewPage ?? 1} edge="below" canvas={canvasRef} onJump={jumpTo} />
+              {earlier && !openAsk && !draft && !docked && (
+                <div className="absolute top-4 left-1/2 z-40 -translate-x-1/2" data-testid="review-earlier-thread">
+                  {threadCard('detached')}
+                </div>
+              )}
+              {chat && (
+                <CursorChat
+                  userId={room.self?.userId ?? null}
+                  from={chat.from}
+                  bounds={() => canvasRef.current?.getBoundingClientRect() ?? null}
+                  // Above the viewer's pill and the chips of who is below, and on a
+                  // touch screen above the tools over the pill too.
+                  foot={foot}
+                  onChat={room.sendChat}
+                  onClose={() => setChat(null)}
                 />
               )}
-              className="size-full"
-            />
+              {followedState && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-30 border-[3px]"
+                  style={{ borderColor: identityInk(followedState.userId) }}
+                />
+              )}
+              {touch && (
+                // On a touch screen the tools sit centred ABOVE the viewer's own
+                // pill, at the thumb, each with its name under it.
+                <FloatingToolbar className="pointer-events-auto absolute bottom-[4.75rem] left-1/2 z-30 -translate-x-1/2">
+                  {toolsPalette('touch')}
+                </FloatingToolbar>
+              )}
+              <PdfDocumentView
+                src={documentFileUrl(review.documentId)}
+                title={documentName}
+                focus={focus}
+                onViewport={onViewport}
+                // With a pointer, the tools lead the viewer's own pill: one bar at the foot.
+                toolbarLead={touch ? undefined : toolsPalette(intro ? 'intro' : 'icons')}
+                pageOverlay={(page) => (
+                  <ReviewPageLayer
+                    page={page}
+                    review={review}
+                    focused
+                    onPinByKeyboard={focusNextCard}
+                    aim={aim && aim.page === page ? aim : null}
+                    renderAsk={
+                      docked ? undefined : (ask, { placement }) => <PilotiAnswerCard key={ask.id} review={review} ask={ask} placement={placement} />
+                    }
+                    renderThread={
+                      docked
+                        ? undefined
+                        : ({ placement }) => (draft && draft.page !== page ? null : threadCard(placement))
+                    }
+                  />
+                )}
+                className="size-full"
+              />
+            </div>
+            <ReviewPanel review={review} onOpen={openFromList} onWalkProposals={walkProposals} />
           </div>
-          <ReviewPanel review={review} onOpen={openFromList} onWalkProposals={walkProposals} />
-        </div>
+        </ReviewStageContext.Provider>
         {docked && (
           // Not modal: no veil over the drawing the card is about, and the page
           // stays in reach (another pin, a pinch). Only its × and Escape close it.
