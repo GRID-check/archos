@@ -93,11 +93,13 @@ function Host({
   initialTool,
   onOpenChange = () => {},
   fassung = null,
+  protocolFiling = null,
 }: {
   popoutHref?: string | null
   initialTool?: ReviewTool
   onOpenChange?: (open: boolean) => void
   fassung?: ReviewFassung | null
+  protocolFiling?: { projectId: string; folderId: string | null } | null
 }) {
   const [transport] = useState(room)
   const review = useDocumentReview('doc_1', { enabled: true, transport, fassung })
@@ -110,6 +112,7 @@ function Host({
       canPickAssignee={false}
       popoutHref={popoutHref}
       initialTool={initialTool}
+      protocolFiling={protocolFiling}
     />
   )
 }
@@ -125,6 +128,35 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('filing the Protokoll', () => {
+  const FILING = { projectId: 'proj_1', folderId: 'folder_plans' }
+  const served = (canAnnotate: boolean) =>
+    server.use(
+      http.get('/api/documents/:id/annotations', () =>
+        HttpResponse.json({ annotations: [view({ id: 'm1' })], canAnnotate, pilotiWakes: false })
+      )
+    )
+
+  it('offers „Im Projekt ablegen“ to whoever may write the document’s folder', async () => {
+    served(true)
+    const user = userEvent.setup()
+    render(<Host protocolFiling={FILING} />)
+    await user.click(await screen.findByRole('button', { name: 'Export minutes' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'File in the project' })).toBeInTheDocument()
+  })
+
+  it('offers only the download to a reader who may not write there: the upload would refuse them', async () => {
+    served(false)
+    const user = userEvent.setup()
+    render(<Host protocolFiling={FILING} />)
+    await user.click(await screen.findByRole('button', { name: 'Export minutes' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'PDF' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'File in the project' })).not.toBeInTheDocument()
+  })
 })
 
 describe('the header', () => {

@@ -25,7 +25,12 @@
 
 import { isNameTakenBody } from '@/lib/documents/name-taken'
 import { splitDocumentName } from '@/lib/documents/display-name'
-import { annotationExportHref, type AnnotationExportOptions } from '@/lib/annotations/export-request'
+import {
+  annotationExportHref,
+  protocolFileNameOf,
+  safeFileStem,
+  type AnnotationExportOptions,
+} from '@/lib/annotations/export-request'
 import { calendarDayIn, OFFICE_TIME_ZONE } from '@/lib/format'
 
 /** Where the Protokoll is filed: the document's project, and the folder the document sits in. */
@@ -49,9 +54,6 @@ export class ProtocolFilingError extends Error {
   }
 }
 
-/** Characters no file name on a person's disk may carry, as the export's own name drops them. */
-const UNSAFE = /[\\/:*?"<>|\r\n]+/g
-
 /**
  * „Protokoll – Grundriss EG – 2026-10-18": the name the dictionary gives
  * (`template`, with `{name}` and `{date}`), the document's name without its
@@ -63,10 +65,8 @@ export function protocolFilingStem(
   now: Date = new Date()
 ): string {
   const name = splitDocumentName(documentName).stem
-  return template({ name, date: calendarDayIn(OFFICE_TIME_ZONE, now) }).replace(UNSAFE, ' ').trim()
+  return safeFileStem(template({ name, date: calendarDayIn(OFFICE_TIME_ZONE, now) }))
 }
-
-const EXTENSION: Record<AnnotationExportOptions['format'], string> = { pdf: 'pdf', docx: 'docx', md: 'md' }
 
 /**
  * The export to file: a PDF, the record that previews in Dateien and is read
@@ -90,7 +90,7 @@ export async function fileProtocol(
   const { response: exported, format } = await exportFor(documentId, options)
   if (!exported.ok) throw new ProtocolFilingError('export')
   const blob = await exported.blob()
-  const filename = `${stem}.${EXTENSION[format]}`
+  const filename = protocolFileNameOf(stem, format)
   const form = new FormData()
   form.append('file', new File([blob], filename, { type: blob.type || exported.headers.get('content-type') || '' }))
   form.append('projectId', target.projectId)

@@ -29,10 +29,10 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { getLocale, getTranslations } from '@/i18n/server'
 import type { Translator } from '@/i18n/translate'
 import type { CoverFact } from '@/lib/pdf/branding'
+import { protocolFileNameOf } from './export-request'
 import {
   entryBlocks,
   formatters,
-  protocolFileNameOf,
   renderProtocol,
   selectMarks,
   type ExportedProtocol,

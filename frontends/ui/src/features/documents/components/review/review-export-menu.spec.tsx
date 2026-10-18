@@ -10,21 +10,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
-vi.mock('@/lib/browser-download', () => ({ startBrowserDownload: vi.fn() }))
 const push = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 
 import { toast } from 'sonner'
 import { render, screen } from '@/test-utils'
-import { startBrowserDownload } from '@/lib/browser-download'
+import { captureDownloads, type StartedDownload } from '@/test-utils/downloads'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { ReviewExportMenu } from './review-export-menu'
 
 const fetchMock = vi.fn()
+let downloads: StartedDownload[] = []
 
 beforeEach(() => {
   vi.clearAllMocks()
+  downloads = captureDownloads()
   vi.stubGlobal('fetch', fetchMock)
   // jsdom has no object URLs; this file's own environment, so nothing else sees them.
   Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:protokoll'), revokeObjectURL: vi.fn() })
@@ -54,7 +55,7 @@ describe('ReviewExportMenu', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=open&fassung=current')
     await vi.waitFor(() =>
-      expect(startBrowserDownload).toHaveBeenCalledWith('blob:protokoll', 'Anmerkungen – Grundriss EG – Fassung 3.pdf')
+      expect(downloads).toEqual([{ href: 'blob:protokoll', download: 'Anmerkungen – Grundriss EG – Fassung 3.pdf' }])
     )
   })
 
@@ -98,7 +99,7 @@ describe('ReviewExportMenu', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'PDF' }))
 
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too long for a PDF. Export them as Word or Markdown.', {}))
-    expect(startBrowserDownload).not.toHaveBeenCalled()
+    expect(downloads).toEqual([])
     expect(capturePosthog).not.toHaveBeenCalled()
   })
 })
@@ -138,7 +139,7 @@ describe('filing the Protokoll in the project', () => {
     expect((form.get('file') as File).name).toBe('Minutes – Grundriss EG – 2026-10-18.pdf')
     expect(form.get('projectId')).toBe('proj_1')
     expect(form.get('folderId')).toBe('folder_plans')
-    expect(startBrowserDownload).not.toHaveBeenCalled()
+    expect(downloads).toEqual([])
 
     await vi.waitFor(() => expect(toast.success).toHaveBeenCalled())
     const [message, options] = vi.mocked(toast.success).mock.calls[0] ?? []

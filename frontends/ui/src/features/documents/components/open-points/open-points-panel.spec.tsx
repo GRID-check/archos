@@ -9,11 +9,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
-vi.mock('@/lib/browser-download', () => ({ startBrowserDownload: vi.fn() }))
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 
 import { toast } from 'sonner'
 import { render, screen, within } from '@/test-utils'
-import { startBrowserDownload } from '@/lib/browser-download'
+import { captureDownloads } from '@/test-utils/downloads'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import type { ProjectMarksResponse, ProjectMarkView } from '@/lib/annotations/project-types'
 import { OpenPointsPanel } from './open-points-panel'
 
@@ -154,6 +155,7 @@ describe('OpenPointsPanel', () => {
         headers: { 'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent('Offene Punkte – Lend.md')}` },
       })
     )
+    const downloads = captureDownloads()
     const user = userEvent.setup()
     show()
 
@@ -162,7 +164,10 @@ describe('OpenPointsPanel', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Markdown' }))
 
     expect(fetchMock).toHaveBeenLastCalledWith('/api/projects/proj_1/annotations/export?due=overdue&format=md')
-    await vi.waitFor(() => expect(startBrowserDownload).toHaveBeenCalledWith('blob:protokoll', 'Offene Punkte – Lend.md'))
+    await vi.waitFor(() => expect(downloads).toEqual([{ href: 'blob:protokoll', download: 'Offene Punkte – Lend.md' }]))
+    // The CSAT trigger every export fires: the kind and the format, never a name, and only once the file is saved.
+    expect(capturePosthog).toHaveBeenCalledTimes(1)
+    expect(capturePosthog).toHaveBeenCalledWith('report_exported', { kind: 'open_points', format: 'md' })
 
     fetchMock.mockResolvedValueOnce(answer({ error: 'x', code: 'UNPROCESSABLE', details: { reason: 'too-many-marks' } }, 422))
     await user.click(screen.getByRole('button', { name: 'Export minutes' }))
@@ -170,5 +175,6 @@ describe('OpenPointsPanel', () => {
     await vi.waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('Too many open points for one set of minutes. Narrow them with a filter.')
     )
+    expect(capturePosthog).toHaveBeenCalledTimes(1)
   })
 })

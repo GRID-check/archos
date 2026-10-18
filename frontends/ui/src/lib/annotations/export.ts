@@ -59,7 +59,7 @@ import { getLocale, getTranslations } from '@/i18n/server'
 import type { Translator } from '@/i18n/translate'
 import { listAnnotations } from './service'
 import { isLive, isOverdue, type AnnotationView } from './types'
-import type { AnnotationExportOptions } from './export-request'
+import { protocolFileNameOf, type AnnotationExportOptions } from './export-request'
 
 export const MARKDOWN_MEDIA_TYPE = 'text/markdown; charset=utf-8'
 
@@ -451,8 +451,6 @@ async function renderPdf(protocol: Protocol): Promise<Uint8Array> {
   return new Uint8Array(await renderToBuffer(element as unknown as PdfDocumentElement))
 }
 
-const EXTENSIONS: Record<AnnotationExportOptions['format'], string> = { pdf: 'pdf', docx: 'docx', md: 'md' }
-
 /** „Anmerkungen – Grundriss EG – Fassung 3.pdf": what the office files it under. */
 export function protocolFileName(
   header: Pick<ProtocolHeader, 'documentName' | 'fassung'>,
@@ -468,10 +466,6 @@ export function protocolFileName(
         : t('review.export.document.fileName', { name })
   return protocolFileNameOf(stem, options.format)
 }
-
-/** A Protokoll's file name: the stem without what a file system refuses, and the format's extension. */
-export const protocolFileNameOf = (stem: string, format: AnnotationExportOptions['format']): string =>
-  `${stem.replace(/[\\/:*?"<>|\r\n]+/g, ' ').trim()}.${EXTENSIONS[format]}`
 
 export async function renderProtocol(protocol: Protocol, format: AnnotationExportOptions['format']) {
   if (format === 'pdf') return { bytes: await renderPdf(protocol), mediaType: PDF_MEDIA_TYPE }

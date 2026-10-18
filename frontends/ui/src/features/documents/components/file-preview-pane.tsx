@@ -2047,11 +2047,10 @@ export function FilePreviewPane({
           popoutHref={popoutHref}
           initialTool={reviewTool ?? undefined}
           onPage={onReviewPage}
-          // The Protokoll filed as a document: a project's file, in its own folder, by someone who may file there.
+          // The Protokoll filed as a document: a project's file, in its own folder. Who may file there
+          // (write in that folder) the review knows, and decides (`canAnnotate`).
           protocolFiling={
-            projectId && scope !== 'archiv' && canManage && !closedProjectName
-              ? { projectId, folderId: file.folderId }
-              : null
+            projectId && scope !== 'archiv' && !closedProjectName ? { projectId, folderId: file.folderId } : null
           }
         />
       )}

@@ -1376,14 +1376,24 @@ Piloti's proposals with `selectMarks`, and writes each entry with the
 document Protokoll's own `entryBlocks` under a heading per document; the files
 come from the same `renderProtocol`. Past 1000 marks
 (`PROJECT_PROTOCOL_MAX_MARKS`) it is refused (422 `too-many-marks`) rather
-than cut. The download goes the document Protokoll's way
-(`features/documents/lib/download-protocol.ts`, which `ReviewExportMenu` uses
-too). Each export is the audit event `project.annotations.exported`, with the
-filters and the counts and never a name or a word of the marks. Nothing calls
-a model, so nothing is traced to Langfuse.
+than cut. The download goes the document Protokoll's way (`downloadFetched`
+in `lib/browser-download.ts`, which `ReviewExportMenu` and the answer's Word
+export use too). Each export is the audit event `project.annotations.exported`,
+with the filters and the counts and never a name or a word of the marks; a
+download is also the browser's `report_exported` with `kind: 'open_points'`
+and the format, as the document Protokoll's is. Nothing calls a model, so
+nothing is traced to Langfuse.
 
-**Filed as a document.** „Im Projekt ablegen“ in the same menu files the export,
-with the menu's choices, into the project (`features/documents/lib/protocol-filing.ts`).
+**Filed as a document.** „Im Projekt ablegen“ in a document Protokoll's menu
+(`ReviewExportMenu`) files the export, with the menu's choices, into the project
+(`features/documents/lib/protocol-filing.ts`). It is offered on a project's
+document, not archived and not in a closed project, to a reader who may write
+the document's folder: the review's `canAnnotate`, which is
+`getAccessibleDocument(…, 'write')` and so the folder's write (ADR-0088), the
+right the upload asks for too. Filing sends no PostHog event: it is neither a
+file taken out of the app (`report_exported`) nor a person bringing files in
+(`document_uploaded`), and the server's `document.uploaded` audit event
+records it.
 It composes two existing doors in the browser and adds none (ADR-0055): the
 export above, then the project's upload, `POST /api/documents/upload`
 (`uploadDocument`), the door every person's file goes through, so the

@@ -629,7 +629,10 @@ export function DocumentReviewMode({
   initialTool?: ReviewTool
   /** The page the reader is on, as it changes: the file preview opens there again once the review closes. */
   onPage?: (page: number) => void
-  /** Where „Protokoll exportieren" may file the Protokoll as a document; null where the reader may not. */
+  /**
+   * Where „Protokoll exportieren" may file the Protokoll as a document; null where it has no place (not a
+   * project's, archived, a closed project). Offered only to a reader who may write the document's folder.
+   */
   protocolFiling?: ProtocolFilingTarget | null
 }): JSX.Element {
   const t = useTranslations('files')
@@ -1041,7 +1044,9 @@ export function DocumentReviewMode({
       documentId={review.documentId}
       hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
       hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
-      filing={protocolFiling ? { target: protocolFiling, documentName } : null}
+      // Filing is an upload into the document's folder: offered to whoever may write there, which is
+      // what `canAnnotate` says (the document's write, folder included, ADR-0088). The upload checks again.
+      filing={protocolFiling && review.canAnnotate ? { target: protocolFiling, documentName } : null}
     />
   )
   const checkFixed = useCheckFixed(review, { documentName, fassungLabel: fassungLabel ?? null })

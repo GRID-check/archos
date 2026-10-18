@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
 import { capturePosthog } from '@/lib/analytics/posthog'
+import { downloadFetched } from '@/lib/browser-download'
 import {
   ANNOTATION_EXPORT_FASSUNGEN,
   ANNOTATION_EXPORT_FORMATS,
@@ -27,7 +28,6 @@ import {
   type AnnotationExportFormat,
   type AnnotationExportScope,
 } from '@/lib/annotations/export-request'
-import { downloadProtocol } from '../../lib/download-protocol'
 import { documentFilesHref } from '../../lib/document-question'
 import { fileProtocol, ProtocolFilingError, protocolFilingStem, type ProtocolFilingTarget } from '../../lib/protocol-filing'
 import { reviewToast } from './review-toaster'
@@ -44,8 +44,8 @@ const keepOpen = (event: Event) => event.preventDefault()
  * was set on: a new Index before the Jour fixe does not close the points on
  * the one before.
  *
- * Fetched rather than navigated to (`downloadProtocol`, the project's Offene
- * Punkte use it too): a refusal (a PDF too long to lay out, access lost
+ * Fetched rather than navigated to (`downloadFetched`, which the project's
+ * Offene Punkte use too): a refusal (a PDF too long to lay out, access lost
  * meanwhile) is a toast, not a JSON file in the downloads folder.
  *
  * „Im Projekt ablegen" files the same export, with the same choices, as a
@@ -86,7 +86,7 @@ export function ReviewExportMenu({
 
   const download = async (format: AnnotationExportFormat): Promise<void> => {
     setBusy(true)
-    const result = await downloadProtocol(annotationExportHref(documentId, optionsFor(format)), `protokoll.${format}`)
+    const result = await downloadFetched(annotationExportHref(documentId, optionsFor(format)), `protokoll.${format}`)
     setBusy(false)
     if (result.saved) {
       // The CSAT trigger the answer and the BIM exports fire: the kind and the format, never the name.

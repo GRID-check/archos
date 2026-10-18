@@ -547,8 +547,8 @@ own when a new Fassung arrives. The question and Piloti's summary stay in your
 conversation about the document (**Gespräch** in the header).
 
 **Protokoll exportieren** in the header downloads the Anmerkungen as PDF, Word
-or Markdown. **Im Projekt ablegen** in the same menu files it as a document of
-the project instead, with the choices you made (open only, or resolved ones
+or Markdown. **Im Projekt ablegen** in the same menu, there when you may add
+files to the document's folder, files it as a document of the project instead, with the choices you made (open only, or resolved ones
 too), named „Protokoll – Grundriss EG – 2026-10-18.pdf“ and put in the folder of
 the document it is about, so it is as restricted as that document. The notice
 that says so has **Öffnen**. Filing it again on the same day makes a new Fassung

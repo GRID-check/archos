@@ -12,15 +12,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
+import { capturePosthog } from '@/lib/analytics/posthog'
+import { downloadFetched } from '@/lib/browser-download'
 import { ANNOTATION_EXPORT_FORMATS, type AnnotationExportFormat } from '@/lib/annotations/export-request'
 import { projectProtocolHref, type ProjectMarksFilters } from '@/lib/annotations/project-types'
-import { downloadProtocol } from '../../lib/download-protocol'
 
 /**
  * „Protokoll exportieren" over a project's Offene Punkte: the marks the list
  * shows, under its filters, as one file across the documents
  * (`/api/projects/{id}/annotations/export`), downloaded the way a document's
- * Protokoll is (`downloadProtocol`). Only the format is asked: what is in it
+ * Protokoll is (`downloadFetched`). Only the format is asked: what is in it
  * is what is on screen.
  */
 export function ProjectProtocolMenu({
@@ -35,9 +36,13 @@ export function ProjectProtocolMenu({
 
   const download = async (format: AnnotationExportFormat): Promise<void> => {
     setBusy(true)
-    const result = await downloadProtocol(projectProtocolHref(projectId, filters, format), `protokoll.${format}`)
+    const result = await downloadFetched(projectProtocolHref(projectId, filters, format), `protokoll.${format}`)
     setBusy(false)
-    if (result.saved) return
+    if (result.saved) {
+      // The CSAT trigger the document's Protokoll fires: the kind and the format, never a name or a filter.
+      capturePosthog('report_exported', { kind: 'open_points', format })
+      return
+    }
     toast.error(
       result.reason === 'too-many-marks'
         ? t('openPoints.export.tooMany')

@@ -101,7 +101,7 @@ No-op until `initPosthogClient` ran, which needs the host and project token in
 | `product_feedback_submitted` | `kind` | `features/product-feedback/components/feedback-dialog.tsx` |
 | `document_uploaded` | `count`, `types` (comma-joined extensions), `shelf` | `features/documents/hooks/use-file-upload.ts` |
 | `chat_message_sent` | `has_attachments`, `effort`, `data_source_count` | `features/chat/hooks/use-websocket-chat.ts` |
-| `report_exported` | `kind` (`answer`, `room_schedule`, `annotations`), `format`. The trigger of the CSAT survey | `features/chat/components/AnswerActions.tsx`, `features/bim/components/ifc-model-tables.tsx`, `features/grid-cards/components/IfcDataCards.tsx`, `features/documents/components/review/review-export-menu.tsx` (the Protokoll, once its file is handed to the browser) |
+| `report_exported` | `kind` (`answer`, `room_schedule`, `annotations`, `open_points`), `format`. The trigger of the CSAT survey | `features/chat/components/AnswerActions.tsx`, `features/bim/components/ifc-model-tables.tsx`, `features/grid-cards/components/IfcDataCards.tsx`, `features/documents/components/review/review-export-menu.tsx` (a document's Protokoll, `annotations`), `features/documents/components/open-points/project-protocol-menu.tsx` (the project's Offene Punkte, `open_points`); each once its file is handed to the browser. Filing a Protokoll in the project („Im Projekt ablegen“) sends nothing: it stays in the app, and the upload's audit event records it |
 
 `organization_created` is still a member of the `PostHogEvent` union, but nothing
 in the browser sends it any more: the route does. Drop it from the union when the
