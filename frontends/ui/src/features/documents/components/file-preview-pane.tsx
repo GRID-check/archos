@@ -6,7 +6,7 @@ import {
   isOfficeRenditionSource,
 } from '@/lib/documents/preview-types'
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { FileTextPage, isTextPageType } from './file-text-page'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
@@ -30,7 +30,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { firstFinding, parseQuarantine, type QuarantineFinding } from '@/lib/upload-screening/quarantine'
+import { firstFinding, quarantineVerdictOf, type QuarantineFinding } from '@/lib/upload-screening/quarantine'
 import { ApiRequestError } from '@/adapters/api/api-error'
 import {
   getQuarantineReviewAccess,
@@ -59,6 +59,7 @@ import { inferDocumentKind } from '../document-kind'
 import type { DocumentKind } from '../document-kind'
 import { DocumentKindThumbnail } from './document-kind-thumbnail'
 import { FileExtChip } from './file-ext-chip'
+import type { OpenMarksAtApproval } from './document-review-controls'
 import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
 import { useSeenOnce } from '@/hooks/use-seen-once'
@@ -435,11 +436,14 @@ export function FilePreviewPane({
    * reviewers can open a held file, and both are meant to see why.
    */
   const isHeld = file.status === 'quarantined'
-  const heldErrorMessage = isHeld ? file.errorMessage : null
+  const heldVerdict = useMemo(
+    () => (isHeld ? quarantineVerdictOf({ quarantine: file.quarantine, errorMessage: file.errorMessage }) : null),
+    [isHeld, file.quarantine, file.errorMessage]
+  )
   const [shownFinding, setShownFinding] = useState<QuarantineFinding | null>(null)
   useEffect(() => {
-    setShownFinding(firstFinding(parseQuarantine(heldErrorMessage)))
-  }, [file.id, heldErrorMessage])
+    setShownFinding(firstFinding(heldVerdict))
+  }, [file.id, heldVerdict])
   const Icon = fileTypeIcon(file.contentType, file.filename)
   const fileFacts = useFileFacts(file)
   const responsibleNames = (file.assignees ?? [])
@@ -736,6 +740,17 @@ export function FilePreviewPane({
     },
     [showReview, urlOpen, addressed, searchParams, file.id, replaceParams]
   )
+  /**
+   * What the approve confirm names before the signature: the live marks, and
+   * the review to see them in. Until the review has read them, or when it
+   * could not, the confirm says so: an unknown count is not a zero.
+   */
+  const openMarks = useMemo((): OpenMarksAtApproval | null => {
+    if (!reviewEnabled) return null
+    const onOpen = () => openReview()
+    if (review.load === 'ready') return { status: 'counted', count: liveMarks, onOpen }
+    return review.load === 'loading' ? { status: 'loading' } : { status: 'unavailable', onOpen }
+  }, [reviewEnabled, review.load, liveMarks, openReview])
   // While open, the address follows the mark selected and the tool in hand.
   const linkTool: ReviewLinkTool | null = review.tool === 'point' || review.tool === 'region' ? review.tool : null
   useEffect(() => {
@@ -1786,6 +1801,7 @@ export function FilePreviewPane({
                     versionCount: summary.versionCount,
                   })
                 }
+                openMarks={openMarks}
                 className={cn(showIndexedHeading && 'mt-5')}
               />
             )}
@@ -1921,7 +1937,7 @@ export function FilePreviewPane({
                   <div className="min-w-0 space-y-2">
                     <p className="text-warning text-sm font-medium">{t('preview.heldTitle')}</p>
                     <QuarantineFindings
-                      errorMessage={file.errorMessage}
+                      verdict={heldVerdict}
                       // A page to jump to only where the well is the PDF viewer.
                       onShowFinding={
                         shownType === 'application/pdf'

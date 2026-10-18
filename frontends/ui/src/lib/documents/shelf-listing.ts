@@ -11,6 +11,8 @@
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { listAssignmentsWithoutAccessCheck, type AssignedPerson } from '@/lib/assignments/service'
+import { tallyLiveMarks } from '@/lib/annotations/repository'
+import type { MarkTally } from '@/lib/annotations/types'
 import { encodeDocumentLevelCursor, encodeDocumentListCursor } from './list-cursor'
 import { reconcileDocumentStatuses, type DocumentMetadata } from './reconcile-status'
 import type { FassungFacts } from './fassung'
@@ -18,6 +20,7 @@ import { loadFassungFacts } from './fassung-facts'
 import type { DocumentLevelPage, DocumentListPage, DocumentListRow } from './repository'
 import { keepReadable, type ListingReader, type ShelfReader } from './document-reader'
 import { canRetryRow } from './retry-policy'
+import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 
 /**
  * One row of a document listing.
@@ -40,6 +43,7 @@ export type ListedDocument = Omit<
   | 'ingestFailureCategory'
   | 'ingestRetryable'
   | 'ingestReaderVersion'
+  | 'quarantine'
 > &
   DocumentMetadata & {
     assignees: AssignedPerson[]
@@ -63,6 +67,18 @@ export type ListedDocument = Omit<
      * listing shows „Quelle gelöscht am …". Null for every other document.
      */
     sourceDeletedAt?: string | null
+    /**
+     * The document's live Anmerkungen for THIS reader (`tallyLiveMarks`): open
+     * and proposed on every Fassung, and how many of them are the reader's.
+     * Null when there is none, so a folder scanned at a glance shows only the
+     * documents that carry open work.
+     */
+    marks?: MarkTally | null
+    /**
+     * Why the content check held it (ADR-0113), read for this build from the
+     * stored verdict (`quarantineVerdictOf`); null on every row it did not hold.
+     */
+    quarantine: QuarantineVerdict | null
   }
 
 /** The purge's mark on a filed report, when it carries a real date. */
@@ -91,7 +107,16 @@ export async function toListedDocuments(
   // by the same rule, after the verdict (ADR-0086).
   const reconciled = keepReadable(await reconcileDocumentStatuses(rows, session.organizationId), reader)
 
-  const fassung = await loadFassungFacts(session, reconciled, reader)
+  // Both keyed by the rows the reader may see, each one query for the page.
+  const [fassung, marks] = await Promise.all([
+    loadFassungFacts(session, reconciled, reader),
+    tallyLiveMarks(
+      session.organizationId,
+      reconciled.map((row) => row.id),
+      reader,
+      session.userId,
+    ),
+  ])
   const listed = reconciled.map(
     ({
       metadata,
@@ -103,9 +128,11 @@ export async function toListedDocuments(
       ingestFailureCategory,
       ingestRetryable,
       ingestReaderVersion,
+      quarantine,
       ...row
     }) => ({
       ...row,
+      quarantine: quarantineVerdictOf({ quarantine, errorMessage: row.errorMessage }),
       // Decided here, from the reconciled row, while `metadata` still says
       // which bytes the last dispatch sent; only the answer leaves.
       retryable: canRetryRow({
@@ -118,6 +145,7 @@ export async function toListedDocuments(
       }),
       sourceDeletedAt: sourceDeletedAtOf(metadata),
       fassung: fassung.get(row.id) ?? null,
+      marks: marks.get(row.id) ?? null,
     })
   )
 
