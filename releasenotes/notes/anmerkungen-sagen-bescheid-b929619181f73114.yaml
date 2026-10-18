@@ -4,8 +4,8 @@ features:
     New annotations on a document now reach the people responsible for it and
     the person who uploaded it, as one inbox entry per document and per person
     who set them, such as „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“.
-    Piloti's proposals and the annotations it sets for someone are announced
-    the same way.
+    Annotations Piloti sets for someone count the same way, and Piloti's
+    proposals only once someone takes them over.
 improvements:
   - >
     Several annotations reaching you at once, such as the morning's due date

@@ -49,8 +49,11 @@ import {
   openRecipientsOfGroup,
   resolveInboxItemsForTargets,
   resolveOpenItemsAnchoredOn,
+  retractOccurrenceAnchoredOn,
+  rewriteItemPayloadsAnchoredOn,
   unarchiveInboxItem,
   upsertInboxItems,
+  type AnchoredRows,
   type InboxCursor,
   type InboxResolutionTarget,
 } from './repository'
@@ -227,7 +230,11 @@ export async function resolveInboxItemsAnchoredOn(input: {
   anchorId: string
   recipientUserId?: string
 }): Promise<number> {
-  const recipients = await resolveOpenItemsAnchoredOn(input)
+  return nudge(await resolveOpenItemsAnchoredOn(input))
+}
+
+/** Tell each of these people's open inboxes to read again. */
+async function nudge(recipients: readonly string[]): Promise<number> {
   await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))
   return recipients.length
 }
@@ -237,18 +244,31 @@ export async function resolveInboxItemsAnchoredOn(input: {
  * deleted mark), for everyone, or for one recipient whose reason for the row
  * is gone (a mention taken back): no row keeps a link to it, or the text it
  * quoted. `payloadHas` narrows it to the rows a deleted reply wrote (by its
- * `replyId`). Session-less, like the emitter.
+ * `replyId`), `groupAnchor` to the rows folded on another anchor (`AnchoredRows`).
+ * Session-less, like the emitter.
  */
-export async function markInboxItemsInertAnchoredOn(input: {
-  organizationId: string
-  types: readonly InboxItemType[]
-  anchorId: string
-  recipientUserId?: string
-  payloadHas?: Record<string, string>
-}): Promise<number> {
-  const recipients = await markItemsInertAnchoredOn(input)
-  await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))
-  return recipients.length
+export async function markInboxItemsInertAnchoredOn(input: AnchoredRows): Promise<number> {
+  return nudge(await markItemsInertAnchoredOn(input))
+}
+
+/**
+ * Take one occurrence that is gone (a deleted reply, a deleted mark) back out
+ * of the rows that counted it, without resurfacing them
+ * (`retractOccurrenceAnchoredOn`). Session-less, like the emitter.
+ */
+export async function retractInboxOccurrenceAnchoredOn(
+  input: AnchoredRows & { clear: readonly string[]; inertWhenSpent: boolean }
+): Promise<number> {
+  return nudge(await retractOccurrenceAnchoredOn(input))
+}
+
+/**
+ * Rewrite what the rows quoting something that changed say (a reworded
+ * reply), without resurfacing them (`rewriteItemPayloadsAnchoredOn`).
+ * Session-less, like the emitter.
+ */
+export async function rewriteInboxPayloadsAnchoredOn(input: AnchoredRows & { facts: Record<string, unknown> }): Promise<number> {
+  return nudge(await rewriteItemPayloadsAnchoredOn(input))
 }
 
 /**

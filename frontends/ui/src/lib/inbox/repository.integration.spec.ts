@@ -17,7 +17,7 @@
  */
 
 import { sql } from 'drizzle-orm'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
@@ -142,6 +142,150 @@ describe.skipIf(!url)('a deleted reply’s rows against Postgres', () => {
       ['1', false, { replyId: 'r2' }],
       ['2', false, { replyId: null }],
       ['3', false, {}],
+    ])
+  })
+})
+
+/**
+ * Taking one occurrence back out of a row, and rewording a quote, in place:
+ * what a deleted reply, a reworded reply and a deleted mark do to the rows that
+ * counted them (`lib/annotations/attention.ts`). Nothing resurfaces: neither
+ * `updated_at` nor `read_at` moves.
+ */
+describe.skipIf(!url)('retracting and rewording rows in place against Postgres', () => {
+  const ANCHOR = '00000000-0000-4000-8000-0000000000bb'
+  const OTHER = '00000000-0000-4000-8000-0000000000cc'
+  const RETRACT_ORG = `${ORG}_retract`
+  const STAMP = '2026-10-01 10:00:00+00'
+  let repo: typeof import('./repository')
+  let withTenant: typeof import('@/lib/db/tenant-context').withTenant
+  let withPlatformAccess: typeof import('@/lib/db/tenant-context').withPlatformAccess
+  let db: ReturnType<typeof import('@/lib/db').getDb>
+
+  const asMe = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: RETRACT_ORG, userId: ME }, run)
+
+  /** One row of mine: its group key's tail, type, count, whether it was read, and payload. */
+  const insert = (tail: string, type: string, count: number, read: boolean, payload: Record<string, unknown>, anchor = ANCHOR) =>
+    db.execute(sql`
+      insert into inbox_items (organization_id, recipient_user_id, type, resource_type, resource_id,
+                               anchor_id, group_key, actionable, count, payload, updated_at, read_at)
+      values (${RETRACT_ORG}, ${ME}, ${type}, 'document', 'doc-1', ${anchor},
+              ${`${type}:document:doc-1:${tail}`}, ${type === 'annotation.mentioned'}, ${count},
+              ${JSON.stringify(payload)}::jsonb, ${STAMP}::timestamptz,
+              ${read ? sql`${STAMP}::timestamptz` : sql`null`})`)
+
+  const rows = () =>
+    asMe(() =>
+      db.execute<{ tail: string; count: number; inert: boolean; payload: Record<string, unknown>; moved: boolean; read: boolean }>(sql`
+        select split_part(group_key, ':doc-1:', 2) as tail, count, inert_at is not null as inert, payload,
+               updated_at <> ${STAMP}::timestamptz as moved, read_at is not null as read
+        from inbox_items where organization_id = ${RETRACT_ORG} order by group_key`)
+    ).then((result) => Array.from(result))
+
+  beforeAll(async () => {
+    process.env.GRID_APP_DATABASE_URL = url
+    const context = await import('@/lib/db/tenant-context')
+    withTenant = context.withTenant
+    withPlatformAccess = context.withPlatformAccess
+    db = (await import('@/lib/db')).getDb()
+    repo = await import('./repository')
+  })
+
+  beforeEach(async () => {
+    await withPlatformAccess('inbox retract spec reset', () =>
+      db.execute(sql`DELETE FROM inbox_items WHERE organization_id = ${RETRACT_ORG}`)
+    )
+  })
+
+  afterAll(async () => {
+    await withPlatformAccess('inbox retract spec cleanup', () =>
+      db.execute(sql`DELETE FROM inbox_items WHERE organization_id = ${RETRACT_ORG}`)
+    )
+  })
+
+  it('takes a deleted reply out: one less, no quote; a row that counted only it goes inert where asked, and a request stays', async () => {
+    const quote = { replyId: 'r2', excerpt: 'Zwei', mentions: [], related: '4' }
+    await asMe(async () => {
+      await insert('a-thread', 'annotation.activity', 2, false, quote)
+      await insert('b-alone', 'annotation.activity', 1, false, quote)
+      await insert('c-other', 'annotation.activity', 3, false, { replyId: 'r1', excerpt: 'Eins' })
+      await insert('d-ask', 'annotation.mentioned', 1, false, quote)
+    })
+
+    const clear = ['excerpt', 'mentions', 'replyId']
+    await asMe(async () => {
+      for (const [type, inertWhenSpent] of [['annotation.activity', true], ['annotation.mentioned', false]] as const) {
+        await repo.retractOccurrenceAnchoredOn({
+          organizationId: RETRACT_ORG,
+          types: [type],
+          anchorId: ANCHOR,
+          payloadHas: { replyId: 'r2' },
+          clear,
+          inertWhenSpent,
+        })
+      }
+    })
+
+    expect((await rows()).map((row) => [row.tail, row.count, row.inert, row.payload, row.moved, row.read])).toEqual([
+      ['a-thread', 1, false, { related: '4' }, false, false],
+      ['b-alone', 0, true, {}, false, false],
+      ['c-other', 3, false, { replyId: 'r1', excerpt: 'Eins' }, false, false],
+      ['d-ask', 0, false, { related: '4' }, false, false],
+    ])
+  })
+
+  it('rewords the rows quoting a reply in place, and no other row', async () => {
+    await asMe(async () => {
+      await insert('a-thread', 'annotation.activity', 2, true, { replyId: 'r2', excerpt: 'Alt', mentions: [{ targetId: 'u' }] })
+      await insert('b-other', 'annotation.activity', 1, false, { replyId: 'r1', excerpt: 'Eins' })
+    })
+
+    await asMe(() =>
+      repo.rewriteItemPayloadsAnchoredOn({
+        organizationId: RETRACT_ORG,
+        types: ['annotation.activity'],
+        anchorId: ANCHOR,
+        payloadHas: { replyId: 'r2' },
+        facts: { excerpt: 'Neu', mentions: [] },
+      })
+    )
+
+    expect((await rows()).map((row) => [row.tail, row.count, row.payload, row.moved, row.read])).toEqual([
+      ['a-thread', 2, { replyId: 'r2', excerpt: 'Neu', mentions: [] }, false, true],
+      ['b-other', 1, { replyId: 'r1', excerpt: 'Eins' }, false, false],
+    ])
+  })
+
+  it('tells a „set“ row from the mark’s own rows, and an inert row counts nothing', async () => {
+    await asMe(async () => {
+      await insert(`set:created:miriam`, 'annotation.activity', 15, false, { related: '15', excerpt: 'Neu', variant: 'created' })
+      await insert(`set:created:ben`, 'annotation.activity', 1, false, { related: '15', excerpt: 'Neu', variant: 'created' })
+      await insert(ANCHOR, 'annotation.activity', 4, false, { excerpt: 'Antwort' })
+      await insert(OTHER, 'annotation.activity', 2, false, { excerpt: 'Andere' }, OTHER)
+    })
+
+    await asMe(async () => {
+      await repo.markItemsInertAnchoredOn({
+        organizationId: RETRACT_ORG,
+        types: ['annotation.activity'],
+        anchorId: ANCHOR,
+        groupAnchor: { isNot: 'set:' },
+      })
+      await repo.retractOccurrenceAnchoredOn({
+        organizationId: RETRACT_ORG,
+        types: ['annotation.activity'],
+        anchorId: ANCHOR,
+        groupAnchor: { is: 'set:' },
+        clear: ['excerpt', 'mentions', 'related'],
+        inertWhenSpent: true,
+      })
+    })
+
+    expect((await rows()).map((row) => [row.tail, row.count, row.inert, row.payload])).toEqual([
+      [ANCHOR, 0, true, {}],
+      [OTHER, 2, false, { excerpt: 'Andere' }],
+      ['set:created:ben', 0, true, {}],
+      ['set:created:miriam', 14, false, { variant: 'created' }],
     ])
   })
 })

@@ -49,6 +49,8 @@ vi.mock('@/lib/inbox/service', () => ({
   emitInboxItems: vi.fn().mockResolvedValue(1),
   resolveInboxItemsAnchoredOn: vi.fn().mockResolvedValue(1),
   markInboxItemsInertAnchoredOn: vi.fn().mockResolvedValue(1),
+  retractInboxOccurrenceAnchoredOn: vi.fn().mockResolvedValue(1),
+  rewriteInboxPayloadsAnchoredOn: vi.fn().mockResolvedValue(1),
 }))
 vi.mock('@/lib/annotations/wake-repository', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/annotations/wake-repository')>()),
@@ -83,7 +85,13 @@ import { findWake } from '@/lib/annotations/wake-repository'
 import type { Document, DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { mayOpenDocument } from '@/lib/documents/may-open'
-import { emitInboxItems, markInboxItemsInertAnchoredOn, type InboxEmission } from '@/lib/inbox/service'
+import {
+  emitInboxItems,
+  markInboxItemsInertAnchoredOn,
+  retractInboxOccurrenceAnchoredOn,
+  rewriteInboxPayloadsAnchoredOn,
+  type InboxEmission,
+} from '@/lib/inbox/service'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 
@@ -258,6 +266,14 @@ describe('rewording one’s own reply', () => {
     expect(emitted[0].payload).toMatchObject({ excerpt: '@Ben Gruber bitte prüfen', replyId: 'rep_1' })
     // An edit is not a reply: the thread hears nothing new.
     expect(emitted.some((row) => row.type === 'annotation.activity')).toBe(false)
+    // The rows that quote the reply quote its new words, in place: nobody's row resurfaces.
+    expect(rewriteInboxPayloadsAnchoredOn).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      types: ['annotation.activity', 'annotation.mentioned'],
+      anchorId: 'ann_1',
+      payloadHas: { replyId: 'rep_1' },
+      facts: { excerpt: '@Ben Gruber bitte prüfen', mentions: [BEN] },
+    })
     expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith({
       organizationId: 'org_1',
       types: ['annotation.mentioned'],
@@ -315,12 +331,9 @@ describe('deleting one’s own reply', () => {
     await rows()
 
     expect(deleteAnnotationReply).toHaveBeenCalledWith('org_1', 'ann_1', 'rep_1', '@Anna Berger bitte prüfen')
-    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith({
-      organizationId: 'org_1',
-      types: ['annotation.activity', 'annotation.mentioned'],
-      anchorId: 'ann_1',
-      payloadHas: { replyId: 'rep_1' },
-    })
+    expect(retractInboxOccurrenceAnchoredOn).toHaveBeenCalledWith(
+      expect.objectContaining({ types: ['annotation.activity'], anchorId: 'ann_1', payloadHas: { replyId: 'rep_1' } })
+    )
     // Anna was mentioned only there: her mention goes too.
     expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith(
       expect.objectContaining({ types: ['annotation.mentioned'], recipientUserId: 'user_anna' })

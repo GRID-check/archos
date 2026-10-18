@@ -399,13 +399,20 @@ as a new text does (`keepMentions`): the people it adds are told
 (`annotation.mentioned`, quoting the new words), and the people it drops whom
 nothing else on the mark names have their row turn inert
 (`onMentionsWithdrawn`). The thread hears nothing new: an edit is not a reply.
-Rows already written keep the words they quoted. A delete takes back what the
-reply told: every `annotation.activity` and `annotation.mentioned` row that
-still quotes it goes inert, found by the `replyId` a reply's rows carry
-(`onReplyDeleted`; a later reply or move writing over the row names its own,
-or none, so that row stays), and so does the mention of whoever nothing left
-on the mark names. A folded „3 neue Antworten“ row whose newest reply is the
-deleted one goes with it. A `piloti.asks_you` the reply settled stays settled.
+Every row that still quotes the reply, found by the `replyId` a reply's rows
+carry, quotes the new words and whom they mention, in place
+(`onReplyEdited`, `rewriteItemPayloadsAnchoredOn`): no row resurfaces, since
+nothing new happened. A delete takes back what the reply told, and only that
+(`onReplyDeleted`): the mention of whoever nothing left on the mark names goes
+inert, and every other `annotation.activity` and `annotation.mentioned` row
+still quoting it counts one less and quotes nothing
+(`retractOccurrenceAnchoredOn`), again without resurfacing. So Ben, whom
+Anna's mark asks, keeps his request when Carl deletes the reply that named him
+again, and a folded „2 neue Antworten“ row whose newest reply Dana deleted
+still holds Carl's. A thread row that counted only the deleted reply goes
+inert: its news is gone. A later reply or move writing over a row names its
+own reply, or none, so that row is not touched. A `piloti.asks_you` the reply
+settled stays settled.
 
 ### A mark goes on with a new Fassung
 
@@ -903,7 +910,7 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `annotation.mentioned` | a person @mentioned someone in a mark's text (setting it, or a `body` that adds them) or in a reply | each person mentioned anew who may open the document, minus whoever wrote it, minus a Zuständige the same write made responsible (who has `annotation.assigned_to_you`) | yes |
 | `annotation.activity` | a person or Piloti replied in the thread | the mark's participants, minus whoever acted, minus whom the reply mentions (one row for one reply: the mention) | no |
 | `annotation.activity` | someone resolved, dismissed or reopened a mark | the mark's author, unless they did it | no |
-| `annotation.activity`, variants `created` / `created_piloti` / `proposed` | a person set a mark, or Piloti set marks for the person who asked or proposed them (`onMarksSet`) | the document's people: who is Verantwortlich for it (ADR-0047) and who uploaded it, as for a new Fassung; minus whoever acted (for Piloti, the person who asked), minus whom a mark already tells in its own row (its Zuständige, whom it mentions, whom Piloti's Rückfrage asks) | no |
+| `annotation.activity`, variants `created` / `created_piloti` | a person set a mark, Piloti set marks for the person who asked for them, or a person took over Piloti's proposal (`onMarksSet`; a proposal nobody took over tells nobody) | the document's people: who is Verantwortlich for it (ADR-0047) and who uploaded it, as for a new Fassung; minus whoever acted (for Piloti, the person who asked or took it over), minus whom a mark already tells in its own row (its Zuständige, whom it mentions, whom Piloti's Rückfrage asks) | no |
 
 The author's `annotation.activity` row says `yours: true`: a reply or a move
 on a mark they wrote answers them, so it reaches their devices as a result
@@ -974,7 +981,7 @@ mention (the chat keeps no names on the server), quotes plain text:
 | `annotation.mentioned` | „Miriam hat Sie in Anmerkung 4 in „Grundriss EG“ erwähnt“ | „Antworten Sie im Verlauf der Anmerkung.“; the excerpt is the text that mentions them |
 | `annotation.activity`, variant `reply` | „Miriam hat zu Anmerkung 4 in „Grundriss EG“ geantwortet“, counted „3 neue Antworten zu Anmerkung 4 in „Grundriss EG“, zuletzt von Miriam“; Piloti's reply „Neue Antwort zu Anmerkung 4 in „Grundriss EG““ | none: the newest reply is the excerpt |
 | `annotation.activity`, variants `resolved` / `dismissed` / `reopened` | „Miriam hat Anmerkung 4 in „Grundriss EG“ erledigt“ / „… verworfen“ / „… wieder geöffnet“ | none |
-| `annotation.activity`, variant `created` | „Miriam hat Anmerkung 4 in „Grundriss EG“ gesetzt“, counted „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“; `created_piloti` „Piloti hat für Miriam …“, `proposed` „Piloti hat für Miriam 3 Anmerkungen in „Grundriss EG“ vorgeschlagen“ | counted: „Die neueste ist Anmerkung 15.“; a proposal adds that it counts once someone takes it over |
+| `annotation.activity`, variant `created` | „Miriam hat Anmerkung 4 in „Grundriss EG“ gesetzt“, counted „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“; `created_piloti` „Piloti hat für Miriam …“ (Miriam asked for them, or took Piloti's proposal over); a setter the directory no longer knows „Piloti hat 3 Anmerkungen …“, „Neue Anmerkungen in „Grundriss EG““ (`…NoActor`) | counted: „Die neueste ist Anmerkung 15.“; once the newest was deleted: „Eine der Anmerkungen wurde inzwischen gelöscht.“ (`bodyNoExcerpt`) |
 
 **New marks fold per document and per who set them.** Every other row about
 a mark folds on the mark; a new mark's row folds on the document and the
@@ -983,8 +990,23 @@ the newest mark it tells about, so a review of fifteen marks is one counted row
 whose link opens the review at the newest. A write of several at once
 (Piloti's batch) is ONE emission counting them all (`InboxEmission.occurrences`,
 which the upsert adds to the stored count), so it is one row write and one
-notification, not fifteen. Deleting the newest of them turns the row inert, as
-it does every row anchored on a deleted mark.
+notification, not fifteen. Deleting the newest of them takes it out of the
+row (`onMarkDeleted`): the row counts one less, quotes nothing and no longer
+names it (no `related`), so it reads „Miriam hat 14 Anmerkungen in „Grundriss
+EG“ gesetzt“ over „Eine der Anmerkungen wurde inzwischen gelöscht.“, and it
+goes inert only once it counts none. Which marks a reader's row counts is not
+stored, so the row is not re-anchored on the next newest: its link opens the
+review with no mark selected, and deleting a mark that is not the row's anchor
+leaves its count as it was. Every other row anchored on a deleted mark goes
+inert.
+
+Piloti's proposals tell the document's people nothing: a proposal is nobody's
+news until a person takes it over. Taking it over (`proposed → open`, or
+reopening a dismissed proposal nobody stood behind, the moves that set
+`accepted_by`) tells them then, as a mark Piloti set for whoever took it over
+(`created_piloti`, folded with the marks Piloti set for them; `traceChange` in
+`lib/annotations/service.ts`), less its Zuständige, who hears
+`annotation.assigned_to_you`.
 
 `piloti.work_done` names what woke Piloti as its variant; a delegation's end
 (`assigned`) adds „Die Anmerkung liegt wieder bei Ihnen.“ Rows fold per mark
@@ -1065,11 +1087,13 @@ answer in the thread: mentioning yourself tells nobody, and a colleague asked
 in the same breath has not answered. A mention taken back (a `body` that no
 longer names the person, or its reply deleted), with nothing else on the mark
 naming them, turns their `annotation.mentioned` inert, its quote wiped
-(`onMentionsWithdrawn`). A deleted reply turns every row still quoting it
-inert, for everyone (`onReplyDeleted`, above). A Zuständige
+(`onMentionsWithdrawn`). Every other row still quoting a deleted reply counts
+one less and quotes nothing (`onReplyDeleted`, above). A Zuständige
 who is replaced, or removed, has their `annotation.assigned_to_you` resolved.
-Deleting a mark turns every row anchored on it inert, for everyone: none keeps a
-link to it or a quote from it.
+Deleting a mark turns every row about it inert, for everyone: none keeps a
+link to it or a quote from it. A „15 Anmerkungen gesetzt“ row anchored on it
+counts one less instead (above). Every inert write also sets the row's count
+to 0, so a row revived later counts only what revived it.
 
 A proposal Piloti made (`piloti.proposal_waiting`, `lib/proposals/attention.ts`)
 is worded by what it changes, stored as its `variant`: a file operation by its

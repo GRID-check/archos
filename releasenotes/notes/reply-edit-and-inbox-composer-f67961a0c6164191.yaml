@@ -2,9 +2,9 @@
 features:
   - >
     You can now edit or delete your own reply in an Anmerkung's thread while
-    the Anmerkung is open and Piloti has not answered it yet. An edited reply is
-    marked as edited, and colleagues it no longer mentions stop seeing it in
-    their Postfach.
+    the Anmerkung is open and Piloti has not answered it yet. The Postfach
+    follows: it quotes the new words, and a deleted reply leaves the thread's
+    other news and the colleagues the Anmerkung still asks untouched.
 improvements:
   - >
     Answering an Anmerkung from the Postfach now works like the thread: Enter

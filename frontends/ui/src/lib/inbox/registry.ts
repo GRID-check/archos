@@ -468,11 +468,16 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
   /*
     News on a mark the reader takes part in: a reply, or their mark closed or
     reopened by someone else. `per-anchor` on the mark, so a busy thread is ONE
-    counted row per mark, as `conversation.activity` is one per chat.
+    counted row per mark, as `conversation.activity` is one per chat. Also new
+    marks on a document the reader is Verantwortlich for or uploaded (variants
+    `created` / `created_piloti`, `onMarksSet`): those fold per document and
+    per who set them instead (anchor `set:<variant>:<actor>`), still anchored
+    on the newest mark, so a review of fifteen is one counted row.
     Informational and in-app only: mailing it would teach people to filter our
-    mail. Pushed as activity to the thread's other participants, who turned that
-    on; to the mark's AUTHOR (`yours`) it is an answer to what they wrote, as
-    `mention.answered` is, and is pushed as a result.
+    mail. Pushed as activity to the thread's other participants and to the
+    document's people, who turned that on; to the mark's AUTHOR (`yours`) it is
+    an answer to what they wrote, as `mention.answered` is, and is pushed as a
+    result.
   */
   'annotation.activity': {
     actionable: false,

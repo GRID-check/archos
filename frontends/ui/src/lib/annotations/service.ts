@@ -105,6 +105,7 @@ import {
   onMarkSettledByPerson,
   onMarksSet,
   onReplyDeleted,
+  onReplyEdited,
   type MarkRef,
   type MarksSetBy,
   type SetMark,
@@ -651,12 +652,15 @@ async function insertPilotiMarks(
     markEvent(session, 'annotation_created', doc.id, { author_kind: 'piloti', kind: row.kind, status: row.status })
   }
   // The asker asked for them and is not told; a Rückfrage's Zuständige hears `piloti.asks_you` instead (`agent.ts`).
-  traceSet(
-    session,
-    doc,
-    acceptedBy ? 'created_piloti' : 'proposed',
-    rows.map((row) => ({ ...row, toldOtherwise: row.kind === 'question' ? [row.assigneeUserId] : [] }))
-  )
+  // A proposal tells nobody: it is nobody's news until someone takes it over (`traceChange`).
+  if (acceptedBy) {
+    traceSet(
+      session,
+      doc,
+      'created_piloti',
+      rows.map((row) => ({ ...row, toldOtherwise: row.kind === 'question' ? [row.assigneeUserId] : [] }))
+    )
+  }
   const names = await directoryNames(session.organizationId)
   const records = await listDocumentAnnotations(session.organizationId, doc.id)
   const annotations = records
@@ -852,6 +856,9 @@ function traceRedated(session: AuthorizedSession, doc: Document, mark: ChangedMa
  * their PATCH, or Piloti for the asker through {@link updateAnnotationForAsker}):
  * a new Zuständige, a new date to the Zuständige who stays, a mark closed or
  * reopened under its author, and a closed mark settles what was asked on it.
+ * Piloti's proposal taken over (open, and nobody had stood behind it) is new
+ * to the document's people now, as a mark Piloti set for the person who took
+ * it over (`created_piloti`, folded with the marks Piloti set for them).
  */
 function traceChange(
   session: AuthorizedSession,
@@ -866,6 +873,11 @@ function traceChange(
     traceAssigned(session, doc, after, reassigned ? existing.assigneeUserId : null, actor)
   } else if (after.dueOn !== existing.dueOn && after.assigneeUserId) {
     traceRedated(session, doc, after, actor)
+  }
+  if (existing.authorKind === 'piloti' && existing.acceptedBy === null && after.status === 'open') {
+    traceSet(session, doc, 'created_piloti', [
+      { ...after, mentions: existing.mentions, toldOtherwise: [after.assigneeUserId] },
+    ])
   }
   if (after.status === existing.status) return
   const closedAs = after.status === 'resolved' || after.status === 'dismissed' ? after.status : null
@@ -1482,9 +1494,10 @@ export async function deleteReply(
 }
 
 /**
- * Delete the reply, tell the room, and take back what it told people: every
- * inbox row still quoting it goes inert (`onReplyDeleted`), and so does the
- * mention of anyone nothing left on the mark names (`traceWithdrawn`).
+ * Delete the reply, tell the room, and take back what it told people, and
+ * only that (`onReplyDeleted`): the mention of anyone nothing left on the mark
+ * names goes inert, and every other row still quoting it counts one less and
+ * quotes nothing.
  */
 async function removeReply(
   session: AuthorizedSession,
@@ -1497,14 +1510,10 @@ async function removeReply(
   const gone = await deleteAnnotationReply(session.organizationId, existing.id, reply.id, expectedBody)
   if (!gone) throw conflict()
   announce(session, doc.id, [existing.id], 'updated', actor)
-  bestEffort('clear the deleted reply’s rows', () =>
-    onReplyDeleted({ organizationId: session.organizationId, annotationId: existing.id, replyId: reply.id })
-  )
   const left = existing.replies.filter((candidate) => candidate.id !== reply.id)
-  traceWithdrawn(
-    session,
-    existing.id,
-    noLongerMentioned(reply.mentions, [existing.mentions, ...left.map((candidate) => candidate.mentions)])
+  const withdrawn = noLongerMentioned(reply.mentions, [existing.mentions, ...left.map((candidate) => candidate.mentions)])
+  bestEffort('clear the deleted reply’s rows', () =>
+    onReplyDeleted({ organizationId: session.organizationId, annotationId: existing.id, replyId: reply.id, withdrawn })
   )
 }
 
@@ -1568,7 +1577,8 @@ async function ownReplyOf(
  * Whom it mentions is kept as a new text's is (`keepMentions`): the people it
  * adds are told (`annotation.mentioned`), and the people it drops whom nothing
  * else on the mark names have their row turn inert. The thread hears nothing
- * new: an edit is not a reply.
+ * new: an edit is not a reply. Every row still quoting the reply quotes the
+ * new words, without resurfacing (`onReplyEdited`).
  *
  * An edit never wakes Piloti: the wake was the posting's event, decided once.
  * So an @Piloti is kept only when the reply already had it; one added in an
@@ -1598,6 +1608,15 @@ export async function editReply(
   // Deleted or reworded in another tab a moment ago: say so rather than guess.
   if (!updated) throw conflict()
   announce(session, doc.id, [existing.id], 'updated', actor)
+  bestEffort('reword the reply’s rows', () =>
+    onReplyEdited({
+      organizationId: session.organizationId,
+      annotationId: existing.id,
+      replyId: updated.id,
+      text: updated.body,
+      mentions: updated.mentions,
+    })
+  )
   traceMentioned(session, doc, existing, mentioned, updated.body, updated.mentions, null, updated.id)
   traceWithdrawn(session, existing.id, withdrawn)
   return { annotation: await viewOf(session, doc, existing.id) }

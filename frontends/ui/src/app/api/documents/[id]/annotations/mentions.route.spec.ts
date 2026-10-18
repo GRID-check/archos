@@ -51,6 +51,8 @@ vi.mock('@/lib/inbox/service', () => ({
   emitInboxItems: vi.fn().mockResolvedValue(1),
   resolveInboxItemsAnchoredOn: vi.fn().mockResolvedValue(1),
   markInboxItemsInertAnchoredOn: vi.fn().mockResolvedValue(1),
+  retractInboxOccurrenceAnchoredOn: vi.fn().mockResolvedValue(1),
+  rewriteInboxPayloadsAnchoredOn: vi.fn().mockResolvedValue(1),
 }))
 vi.mock('@/lib/assignments/repository', () => ({ listAssignmentsForResources: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/lib/annotations/repository', () => ({
@@ -82,7 +84,12 @@ import type { Document, DocumentAnnotationReplyRow, DocumentAnnotationRow } from
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import type { InboxEmission } from '@/lib/inbox/service'
-import { emitInboxItems, markInboxItemsInertAnchoredOn, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
+import {
+  emitInboxItems,
+  markInboxItemsInertAnchoredOn,
+  resolveInboxItemsAnchoredOn,
+  retractInboxOccurrenceAnchoredOn,
+} from '@/lib/inbox/service'
 import { enforceMentionBounds } from '@/lib/mentions/service'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 
@@ -545,16 +552,22 @@ describe('a mention whose text is gone, or whose mark is closed', () => {
     await deleteReply(session as unknown as Parameters<typeof deleteReply>[0], 'doc_1', 'ann_1', 'rep_1')
     await rows()
 
-    // The rows the reply wrote, by its id, and Anna's mention, which nothing left names.
-    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledTimes(2)
-    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith({
-      organizationId: 'org_1',
-      types: ['annotation.activity', 'annotation.mentioned'],
-      anchorId: 'ann_1',
-      payloadHas: { replyId: 'rep_1' },
-    })
+    // Anna's mention goes, which nothing left names; Ben's stays, because the mark still asks him.
+    expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledTimes(1)
     expect(markInboxItemsInertAnchoredOn).toHaveBeenCalledWith(
       expect.objectContaining({ types: ['annotation.mentioned'], anchorId: 'ann_1', recipientUserId: 'user_anna' })
+    )
+    // Every other row the reply wrote, by its id, counts it no more and quotes nothing: Ben's request still asks.
+    expect(retractInboxOccurrenceAnchoredOn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        types: ['annotation.mentioned'],
+        anchorId: 'ann_1',
+        payloadHas: { replyId: 'rep_1' },
+        inertWhenSpent: false,
+      })
+    )
+    expect(retractInboxOccurrenceAnchoredOn).toHaveBeenCalledWith(
+      expect.objectContaining({ types: ['annotation.activity'], payloadHas: { replyId: 'rep_1' }, inertWhenSpent: true })
     )
   })
 })

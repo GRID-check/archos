@@ -12,7 +12,7 @@
  */
 
 import 'server-only'
-import { and, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, lt, lte, ne, notExists, or, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, lt, lte, ne, notExists, notInArray, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import {
   conversations,
@@ -788,36 +788,109 @@ export async function resolveOpenItemsAnchoredOn(input: {
 }
 
 /**
- * Neutralise every item of these types anchored on one thing that is gone — a
- * deleted mark — for everyone, or for one recipient when one is named (a
- * mention taken back), the shape of {@link resolveOpenItemsAnchoredOn}. Wipes
- * the payload, as every inert write does: the quoted text is gone. Returns who
- * held one, so the caller can nudge their badge. `payloadHas` narrows it to the
- * rows whose payload carries these facts (a deleted reply's rows, by its
- * `replyId`): JSON containment, so a row that names another reply, or none, stays.
+ * The rows anchored on one thing, of these types, for one recipient or for
+ * everyone, that are not inert yet: the one predicate every write to an
+ * anchored row's standing shares. `payloadHas` narrows it to the rows whose
+ * payload carries these facts (a reply's rows, by its `replyId`): JSON
+ * containment, so a row that names another reply, or none, is not one.
+ * `groupAnchor` narrows it to the rows whose group key does (`is`) or does not
+ * (`isNot`) fold on that anchor prefix instead of the anchor itself (new marks
+ * fold on `set:<variant>:<actor>`, `inboxGroupKey`).
  */
-export async function markItemsInertAnchoredOn(input: {
+export interface AnchoredRows {
   organizationId: string
   types: readonly InboxItemType[]
   anchorId: string
   recipientUserId?: string
+  /** Leave these recipients' rows alone. */
+  exceptRecipients?: readonly string[]
   payloadHas?: Record<string, string>
-}): Promise<string[]> {
+  groupAnchor?: { is: string } | { isNot: string }
+}
+
+/** A `LIKE` pattern matching a group key whose anchor segment starts with `prefix`. */
+const groupAnchorPattern = (prefix: string): string => `%:${prefix.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
+
+function anchoredRows(input: AnchoredRows) {
+  const anchor = input.groupAnchor
+  return and(
+    eq(inboxItems.organizationId, input.organizationId),
+    inArray(inboxItems.type, [...input.types]),
+    eq(inboxItems.anchorId, input.anchorId),
+    isNull(inboxItems.inertAt),
+    input.recipientUserId ? eq(inboxItems.recipientUserId, input.recipientUserId) : undefined,
+    input.exceptRecipients?.length ? notInArray(inboxItems.recipientUserId, [...input.exceptRecipients]) : undefined,
+    input.payloadHas ? sql`${inboxItems.payload} @> ${JSON.stringify(input.payloadHas)}::jsonb` : undefined,
+    anchor && 'is' in anchor ? sql`${inboxItems.groupKey} LIKE ${groupAnchorPattern(anchor.is)}` : undefined,
+    anchor && 'isNot' in anchor ? sql`${inboxItems.groupKey} NOT LIKE ${groupAnchorPattern(anchor.isNot)}` : undefined,
+  )
+}
+
+/** What every inert write sets: the moment, a wiped payload (the quoted text is gone), and nothing left to count. */
+const inertValues = () => ({ inertAt: new Date(), payload: {}, count: 0 })
+
+/**
+ * Neutralise every item of these types anchored on one thing that is gone — a
+ * deleted mark — for everyone, or for one recipient when one is named (a
+ * mention taken back), the shape of {@link resolveOpenItemsAnchoredOn}. Wipes
+ * the payload and the count, as every inert write does: the quoted text is
+ * gone, and a row revived later counts only what revived it. Returns who held
+ * one, so the caller can nudge their badge. Narrowed by {@link AnchoredRows}.
+ */
+export async function markItemsInertAnchoredOn(input: AnchoredRows): Promise<string[]> {
   if (input.types.length === 0) return []
   const db = getDb()
   const rows = await db
     .update(inboxItems)
-    .set({ inertAt: new Date(), payload: {} })
-    .where(
-      and(
-        eq(inboxItems.organizationId, input.organizationId),
-        inArray(inboxItems.type, [...input.types]),
-        eq(inboxItems.anchorId, input.anchorId),
-        isNull(inboxItems.inertAt),
-        input.recipientUserId ? eq(inboxItems.recipientUserId, input.recipientUserId) : undefined,
-        input.payloadHas ? sql`${inboxItems.payload} @> ${JSON.stringify(input.payloadHas)}::jsonb` : undefined,
-      ),
-    )
+    .set(inertValues())
+    .where(anchoredRows(input))
+    .returning({ recipientUserId: inboxItems.recipientUserId })
+  return [...new Set(rows.map((row) => row.recipientUserId))]
+}
+
+/**
+ * Take ONE occurrence back out of the rows that counted it, without
+ * resurfacing them (`updated_at` and `read_at` stay): a deleted reply out of
+ * its thread's row, a deleted mark out of a „15 Anmerkungen gesetzt“ row. The
+ * count drops by one, never below zero, and the `clear` keys leave the payload
+ * (the quote of what is gone). A row left counting nothing goes inert when
+ * `inertWhenSpent` (its news was only what is gone), else it stays, quoting
+ * nothing (a request that still asks). Returns who held one.
+ */
+export async function retractOccurrenceAnchoredOn(
+  input: AnchoredRows & { clear: readonly string[]; inertWhenSpent: boolean },
+): Promise<string[]> {
+  if (input.types.length === 0) return []
+  const db = getDb()
+  const spent = input.inertWhenSpent ? sql`${inboxItems.count} <= 1` : sql`false`
+  const cleared = input.clear.reduce((payload, key) => sql`${payload} - ${key}::text`, sql`${inboxItems.payload}`)
+  const rows = await db
+    .update(inboxItems)
+    .set({
+      count: sql`greatest(${inboxItems.count} - 1, 0)`,
+      payload: sql`CASE WHEN ${spent} THEN '{}'::jsonb ELSE ${cleared} END`,
+      inertAt: sql`CASE WHEN ${spent} THEN now() ELSE NULL END`,
+    })
+    .where(anchoredRows(input))
+    .returning({ recipientUserId: inboxItems.recipientUserId })
+  return [...new Set(rows.map((row) => row.recipientUserId))]
+}
+
+/**
+ * Rewrite facts in the payload of the rows that quote something which changed
+ * (a reworded reply, by its `replyId`), without resurfacing them: `updated_at`,
+ * `read_at` and the count stay, because nothing new happened. jsonb concat, so
+ * the keys given win and the rest is kept. Returns who held one.
+ */
+export async function rewriteItemPayloadsAnchoredOn(
+  input: AnchoredRows & { facts: Record<string, unknown> },
+): Promise<string[]> {
+  if (input.types.length === 0) return []
+  const db = getDb()
+  const rows = await db
+    .update(inboxItems)
+    .set({ payload: sql`${inboxItems.payload} || ${JSON.stringify(input.facts)}::jsonb` })
+    .where(anchoredRows(input))
     .returning({ recipientUserId: inboxItems.recipientUserId })
   return [...new Set(rows.map((row) => row.recipientUserId))]
 }
@@ -835,7 +908,7 @@ export async function markItemsInertForSubjectRow(
   const db = getDb()
   const rows = await db
     .update(inboxItems)
-    .set({ inertAt: new Date(), payload: {} })
+    .set(inertValues())
     .where(
       and(
         eq(inboxItems.resourceType, resourceType),
@@ -859,7 +932,7 @@ export async function markItemsInertForResource(
   const db = getDb()
   const rows = await db
     .update(inboxItems)
-    .set({ inertAt: new Date(), payload: {} })
+    .set(inertValues())
     .where(
       and(
         eq(inboxItems.resourceType, resourceType),
@@ -888,7 +961,7 @@ export async function markItemsInertForSubjectInProject(
   const db = getDb()
   const rows = await db
     .update(inboxItems)
-    .set({ inertAt: new Date(), payload: {} })
+    .set(inertValues())
     .where(
       and(
         eq(inboxItems.organizationId, organizationId),

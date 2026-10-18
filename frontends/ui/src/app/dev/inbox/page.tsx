@@ -645,9 +645,10 @@ const ITEMS: InboxItemView[] = [
     createdAt: ago(48),
     updatedAt: ago(9),
   },
-  // Piloti's proposals for a colleague on a document the reader uploaded.
+  // Piloti's proposals a colleague took over, on a document the reader uploaded:
+  // a proposal tells nobody until then, and then reads as Piloti's marks for them.
   {
-    id: 'i-marks-proposed',
+    id: 'i-marks-taken-over',
     type: 'annotation.activity',
     state: 'read',
     archived: false,
@@ -663,7 +664,7 @@ const ITEMS: InboxItemView[] = [
     related: '8',
     excerpt: 'Brüstungshöhe im Schnitt nicht kotiert (OIB-RL 4, Pkt. 4.2).',
     mentions: [],
-    variant: 'proposed',
+    variant: 'created_piloti',
     answerIn: null,
     createdAt: ago(200),
     updatedAt: ago(180),

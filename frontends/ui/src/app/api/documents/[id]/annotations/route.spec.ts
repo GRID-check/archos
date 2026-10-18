@@ -35,6 +35,11 @@ vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
+// Whom new marks tell, at its seam: the rest of the attention runs as it is.
+vi.mock('@/lib/annotations/attention', async (original) => ({
+  ...(await original<typeof import('@/lib/annotations/attention')>()),
+  onMarksSet: vi.fn(async () => undefined),
+}))
 vi.mock('@/lib/annotations/repository', () => ({
   AnnotationLimitReachedError: class AnnotationLimitReachedError extends Error {},
   ReplyLimitReachedError: class ReplyLimitReachedError extends Error {},
@@ -58,6 +63,7 @@ import {
   updateAnnotation,
 } from '@/lib/annotations/client'
 import * as service from '@/lib/annotations/service'
+import { onMarksSet } from '@/lib/annotations/attention'
 import { deleteReply } from '@/lib/annotations/service'
 import {
   AnnotationLimitReachedError,
@@ -736,5 +742,56 @@ describe('what the marks tell PostHog (the one door every client passes)', () =>
     expect(events().map((capture) => capture.properties)).toEqual([
       { document_id: 'doc_1', status: 'dismissed', by: 'person', author_kind: 'piloti', was: 'proposed' },
     ])
+  })
+})
+
+describe('whom Piloti’s proposals tell', () => {
+  const session = {
+    userId: 'user_1',
+    organizationId: 'org_1',
+    email: 'a@grid.test',
+    name: 'Anna Berger',
+    role: 'member',
+    permissions: [],
+  } as unknown as Parameters<typeof service.updateAnnotation>[0]
+  const PROPOSED = { page: 1, shape: 'point' as const, x: 0.1, y: 0.1, kind: 'defect' as const, body: 'Tür T30 fehlt' }
+
+  it('tells the document’s people nothing while a proposal waits: nobody took it over yet', async () => {
+    vi.mocked(insertDocumentAnnotations).mockResolvedValue([PROPOSAL])
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([PROPOSAL])
+
+    await service.proposeAnnotations(session, 'doc_1', [PROPOSED])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(onMarksSet).not.toHaveBeenCalled()
+  })
+
+  it('tells them once a person takes it over, as Piloti’s mark set for that person, minus its Zuständige', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...PROPOSAL, assigneeUserId: 'user_in' })
+    vi.mocked(updateDocumentAnnotation).mockResolvedValue({ ...PROPOSAL, status: 'open', acceptedBy: 'user_1' })
+
+    await service.updateAnnotation(session, 'doc_1', 'ann_p', { status: 'open', expectedStatus: 'proposed' })
+
+    await vi.waitFor(() => expect(onMarksSet).toHaveBeenCalledTimes(1))
+    expect(onMarksSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: 'doc_1',
+        actorUserId: 'user_1',
+        by: 'created_piloti',
+        marks: [expect.objectContaining({ id: 'ann_p', number: PROPOSAL.number, toldOtherwise: ['user_in'] })],
+      })
+    )
+  })
+
+  it('tells nothing new for a mark someone already stood behind, reopened or reworded', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...PROPOSAL, status: 'dismissed', acceptedBy: 'user_2', closedBy: 'user_2' })
+    await service.updateAnnotation(session, 'doc_1', 'ann_p', { status: 'open' })
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(RECORD)
+    await service.updateAnnotation(session, 'doc_1', 'ann_1', { body: 'Tür T30 fehlt' })
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+    await service.updateAnnotation(session, 'doc_1', 'ann_p', { status: 'dismissed', expectedStatus: 'proposed' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(onMarksSet).not.toHaveBeenCalled()
   })
 })
