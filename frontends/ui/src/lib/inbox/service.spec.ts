@@ -1137,6 +1137,27 @@ describe('emitInboxItems — repeated keys in one call', () => {
     await emitInboxItems([emission, emission])
     expect(repository.upsertInboxItems).toHaveBeenCalledTimes(2)
   })
+
+  it('writes one emission that stands for several occurrences as one row counting them all', async () => {
+    vi.mocked(repository.upsertInboxItems).mockResolvedValue([])
+    const emission = {
+      organizationId: 'org-1',
+      recipientUserId: 'lead',
+      type: 'annotation.activity' as const,
+      resourceType: 'document' as const,
+      resourceId: 'doc-1',
+      anchorId: 'ann-15',
+      actorUserId: 'miriam',
+      groupKey: 'annotation.activity:document:doc-1:set:created:miriam',
+    }
+    await emitInboxItems([{ ...emission, occurrences: 15 }, { ...emission, recipientUserId: 'uploader' }])
+
+    expect(repository.upsertInboxItems).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(repository.upsertInboxItems).mock.calls[0]?.[0].map((row) => [row.recipientUserId, row.count])).toEqual([
+      ['lead', 15],
+      ['uploader', 1],
+    ])
+  })
 })
 
 describe('resolveInboxItemsAnchoredOn', () => {

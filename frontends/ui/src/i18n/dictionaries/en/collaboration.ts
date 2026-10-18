@@ -770,6 +770,48 @@ export const collaboration = {
             titleRelated: '{actor} reopened annotation {related} in “{subject}”',
             titleRelatedNoSubject: '{actor} reopened annotation {related}',
           },
+          // New annotations on a document you are responsible for or uploaded:
+          // one counted row per document and per person. {related} is the
+          // newest, the excerpt what it says.
+          created: {
+            title: '{actor} added an annotation',
+            titleRelated: '{actor} added annotation {related} in “{subject}”',
+            titleRelatedMany: '{actor} added {count} annotations in “{subject}”',
+            titleRelatedNone: '{actor} added annotations in “{subject}”',
+            titleRelatedNoSubject: '{actor} added annotation {related}',
+            titleRelatedNoSubjectMany: '{actor} added {count} annotations',
+            titleRelatedNoSubjectNone: '{actor} added annotations',
+            bodyMany: 'The newest is annotation {related}.',
+          },
+          // Piloti added them for {actor}, because {actor} asked.
+          created_piloti: {
+            title: 'Piloti added an annotation for {actor}',
+            titleNoActor: 'Piloti added an annotation',
+            titleRelated: 'Piloti added annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoActor: 'Piloti added annotation {related} in “{subject}”',
+            titleRelatedMany: 'Piloti added {count} annotations in “{subject}” for {actor}',
+            titleRelatedManyNoActor: 'Piloti added {count} annotations in “{subject}”',
+            titleRelatedNone: 'Piloti added annotations in “{subject}” for {actor}',
+            titleRelatedNoSubject: 'Piloti added annotation {related} for {actor}',
+            titleRelatedNoSubjectMany: 'Piloti added {count} annotations for {actor}',
+            titleRelatedNoSubjectNone: 'Piloti added annotations for {actor}',
+            bodyMany: 'The newest is annotation {related}.',
+          },
+          // Piloti proposed them for {actor}: they count once someone takes them over.
+          proposed: {
+            title: 'Piloti proposed an annotation for {actor}',
+            titleNoActor: 'Piloti proposed an annotation',
+            titleRelated: 'Piloti proposed annotation {related} in “{subject}” for {actor}',
+            titleRelatedNoActor: 'Piloti proposed annotation {related} in “{subject}”',
+            titleRelatedMany: 'Piloti proposed {count} annotations in “{subject}” for {actor}',
+            titleRelatedManyNoActor: 'Piloti proposed {count} annotations in “{subject}”',
+            titleRelatedNone: 'Piloti proposed annotations in “{subject}” for {actor}',
+            titleRelatedNoSubject: 'Piloti proposed annotation {related} for {actor}',
+            titleRelatedNoSubjectMany: 'Piloti proposed {count} annotations for {actor}',
+            titleRelatedNoSubjectNone: 'Piloti proposed annotations for {actor}',
+            body: 'A proposal counts once someone takes it over.',
+            bodyMany: 'The newest is annotation {related}. Proposals count once someone takes them over.',
+          },
         },
       },
       // A colleague @mentioned you on an annotation or in its thread, as in

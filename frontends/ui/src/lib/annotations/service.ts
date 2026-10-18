@@ -100,7 +100,10 @@ import {
   onMentionsWithdrawn,
   onMarkReplied,
   onMarkSettledByPerson,
+  onMarksSet,
   type MarkRef,
+  type MarksSetBy,
+  type SetMark,
   type MayOpen,
 } from './attention'
 import { auditMarkDecided } from './mark-audit'
@@ -580,6 +583,7 @@ export async function createAnnotation(
   markEvent(session, 'annotation_created', doc.id, { author_kind: 'person', kind: row.kind, status: row.status })
   if (row.assigneeUserId) traceAssigned(session, doc, row, null, PERSON)
   traceMentioned(session, doc, row, mentioned, row.body, mentions, row.assigneeUserId)
+  traceSet(session, doc, 'created', [{ ...row, toldOtherwise: [row.assigneeUserId, ...mentioned] }])
   return { annotation: await viewOf(session, doc, row.id) }
 }
 
@@ -633,6 +637,13 @@ async function insertPilotiMarks(
   for (const row of rows) {
     markEvent(session, 'annotation_created', doc.id, { author_kind: 'piloti', kind: row.kind, status: row.status })
   }
+  // The asker asked for them and is not told; a Rückfrage's Zuständige hears `piloti.asks_you` instead (`agent.ts`).
+  traceSet(
+    session,
+    doc,
+    acceptedBy ? 'created_piloti' : 'proposed',
+    rows.map((row) => ({ ...row, toldOtherwise: row.kind === 'question' ? [row.assigneeUserId] : [] }))
+  )
   const names = await directoryNames(session.organizationId)
   const records = await listDocumentAnnotations(session.organizationId, doc.id)
   const annotations = records
@@ -741,6 +752,22 @@ function traceMentioned(
       mentioned: told,
       text,
       mentions,
+      mayOpen: mayOpenOf(session, doc),
+    })
+  )
+}
+
+/** New marks tell the document's people, once they committed (`onMarksSet`): one counted row per document and setter. */
+function traceSet(session: AuthorizedSession, doc: Document, by: MarksSetBy, marks: readonly SetMark[]): void {
+  bestEffort('tell the document’s people', () =>
+    onMarksSet({
+      organizationId: session.organizationId,
+      documentId: doc.id,
+      projectId: doc.projectId ?? null,
+      actorUserId: session.userId,
+      uploaderUserId: doc.createdBy ?? null,
+      by,
+      marks,
       mayOpen: mayOpenOf(session, doc),
     })
   )

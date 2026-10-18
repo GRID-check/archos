@@ -52,6 +52,7 @@ vi.mock('@/lib/inbox/service', () => ({
   resolveInboxItemsAnchoredOn: vi.fn().mockResolvedValue(1),
   markInboxItemsInertAnchoredOn: vi.fn().mockResolvedValue(1),
 }))
+vi.mock('@/lib/assignments/repository', () => ({ listAssignmentsForResources: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/lib/annotations/repository', () => ({
   AnnotationLimitReachedError: class AnnotationLimitReachedError extends Error {},
   ReplyLimitReachedError: class ReplyLimitReachedError extends Error {},
@@ -66,6 +67,7 @@ vi.mock('@/lib/annotations/repository', () => ({
 
 import { createAnnotation, replyToAnnotation, updateAnnotation } from '@/lib/annotations/client'
 import { deleteReply } from '@/lib/annotations/service'
+import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import {
   deleteAnnotationReply,
@@ -348,6 +350,38 @@ describe('a mark whose text mentions colleagues', () => {
     )
     expect(await rowsOf('annotation.mentioned')).toEqual(['user_anna'])
     expect(await rowsOf('annotation.assigned_to_you')).toEqual(['user_ben'])
+  })
+
+  it('tells the document’s Verantwortliche and its uploader about a new mark, but not whom it already tells, nor the setter', async () => {
+    vi.mocked(getAccessibleDocument).mockResolvedValue({ ...DOC, createdBy: 'user_up' } as Document)
+    vi.mocked(listAssignmentsForResources).mockResolvedValue(
+      ['user_lead', 'user_anna', 'user_ben', 'user_me', 'user_far'].map((subjectUserId) => ({
+        resourceType: 'document' as const,
+        resourceId: 'doc_1',
+        subjectUserId,
+        assignedBy: 'user_x',
+        createdAt: new Date(),
+      }))
+    )
+    await createAnnotation(
+      'doc_1',
+      {
+        page: 1,
+        shape: 'point',
+        x: 0.2,
+        y: 0.2,
+        kind: 'defect',
+        body: '@Anna Berger Brüstung zu niedrig',
+        mentions: [ANNA],
+        assigneeUserId: 'user_ben',
+      },
+      { run }
+    )
+
+    // Anna is mentioned, Ben made Zuständige, Miriam set it, Fritz may not open the folder.
+    expect(await rowsOf('annotation.activity')).toEqual(['user_lead', 'user_up'])
+    const [row] = (await rows()).filter((emission) => emission.type === 'annotation.activity')
+    expect(row).toMatchObject({ anchorId: 'ann_new', actorUserId: 'user_me', payload: expect.objectContaining({ variant: 'created', related: '5' }) })
   })
 
   it('tells only whom an edit adds, and uses the picked list supplied with the edit', async () => {

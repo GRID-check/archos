@@ -181,12 +181,12 @@ describe('upsertInboxItems — the batch fold matches the single-row fold', () =
     await upsertInboxItem(newItem())
     const singleSet = conflictSet(onlyQuery().sql)
 
-    // Counting is relative to the STORED row, never to `excluded` — the incoming
-    // row always carries the default 1. And a new occurrence is new information,
-    // so the fold clears the states that would otherwise keep the row out of
-    // sight.
+    // Counting adds to the STORED row what the incoming one stands for: the
+    // column's default 1, or the occurrences one emission folded (fifteen marks
+    // Piloti set in one write). And a new occurrence is new information, so the
+    // fold clears the states that would otherwise keep the row out of sight.
     for (const set of [batchSet, singleSet]) {
-      expect(set).toContain('"count" = "inbox_items"."count" + 1')
+      expect(set).toContain('"count" = "inbox_items"."count" + excluded.count')
       expect(set).toContain('"read_at" = ')
       expect(set).toContain('"resolved_at" = ')
       expect(set).toContain('"archived_at" = ')

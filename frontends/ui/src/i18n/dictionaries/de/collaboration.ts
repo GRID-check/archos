@@ -616,6 +616,49 @@ export const collaboration: typeof en.collaboration = {
             titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ wieder geöffnet',
             titleRelatedNoSubject: '{actor} hat Anmerkung {related} wieder geöffnet',
           },
+          // Neue Anmerkungen an einem Dokument, für das Sie verantwortlich
+          // sind oder das Sie hochgeladen haben: eine Zeile je Dokument und je
+          // Person, die mitzählt. {related} ist die neueste, der Auszug, was
+          // sie sagt.
+          created: {
+            title: '{actor} hat eine Anmerkung gesetzt',
+            titleRelated: '{actor} hat Anmerkung {related} in „{subject}“ gesetzt',
+            titleRelatedMany: '{actor} hat {count} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNone: '{actor} hat Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNoSubject: '{actor} hat Anmerkung {related} gesetzt',
+            titleRelatedNoSubjectMany: '{actor} hat {count} Anmerkungen gesetzt',
+            titleRelatedNoSubjectNone: '{actor} hat Anmerkungen gesetzt',
+            bodyMany: 'Die neueste ist Anmerkung {related}.',
+          },
+          // Piloti hat sie für {actor} gesetzt, weil {actor} darum gebeten hat.
+          created_piloti: {
+            title: 'Piloti hat für {actor} eine Anmerkung gesetzt',
+            titleNoActor: 'Piloti hat eine Anmerkung gesetzt',
+            titleRelated: 'Piloti hat für {actor} Anmerkung {related} in „{subject}“ gesetzt',
+            titleRelatedNoActor: 'Piloti hat Anmerkung {related} in „{subject}“ gesetzt',
+            titleRelatedMany: 'Piloti hat für {actor} {count} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedManyNoActor: 'Piloti hat {count} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNone: 'Piloti hat für {actor} Anmerkungen in „{subject}“ gesetzt',
+            titleRelatedNoSubject: 'Piloti hat für {actor} Anmerkung {related} gesetzt',
+            titleRelatedNoSubjectMany: 'Piloti hat für {actor} {count} Anmerkungen gesetzt',
+            titleRelatedNoSubjectNone: 'Piloti hat für {actor} Anmerkungen gesetzt',
+            bodyMany: 'Die neueste ist Anmerkung {related}.',
+          },
+          // Piloti hat sie für {actor} vorgeschlagen: Sie zählen erst, wenn jemand sie übernimmt.
+          proposed: {
+            title: 'Piloti hat für {actor} eine Anmerkung vorgeschlagen',
+            titleNoActor: 'Piloti hat eine Anmerkung vorgeschlagen',
+            titleRelated: 'Piloti hat für {actor} Anmerkung {related} in „{subject}“ vorgeschlagen',
+            titleRelatedNoActor: 'Piloti hat Anmerkung {related} in „{subject}“ vorgeschlagen',
+            titleRelatedMany: 'Piloti hat für {actor} {count} Anmerkungen in „{subject}“ vorgeschlagen',
+            titleRelatedManyNoActor: 'Piloti hat {count} Anmerkungen in „{subject}“ vorgeschlagen',
+            titleRelatedNone: 'Piloti hat für {actor} Anmerkungen in „{subject}“ vorgeschlagen',
+            titleRelatedNoSubject: 'Piloti hat für {actor} Anmerkung {related} vorgeschlagen',
+            titleRelatedNoSubjectMany: 'Piloti hat für {actor} {count} Anmerkungen vorgeschlagen',
+            titleRelatedNoSubjectNone: 'Piloti hat für {actor} Anmerkungen vorgeschlagen',
+            body: 'Ein Vorschlag zählt erst, wenn jemand ihn übernimmt.',
+            bodyMany: 'Die neueste ist Anmerkung {related}. Vorschläge zählen erst, wenn jemand sie übernimmt.',
+          },
         },
       },
       // Eine Kollegin hat Sie in einer Anmerkung oder ihrem Verlauf mit „@“

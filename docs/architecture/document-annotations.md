@@ -799,6 +799,7 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `annotation.mentioned` | a person @mentioned someone in a mark's text (setting it, or a `body` that adds them) or in a reply | each person mentioned anew who may open the document, minus whoever wrote it, minus a Zuständige the same write made responsible (who has `annotation.assigned_to_you`) | yes |
 | `annotation.activity` | a person or Piloti replied in the thread | the mark's participants, minus whoever acted, minus whom the reply mentions (one row for one reply: the mention) | no |
 | `annotation.activity` | someone resolved, dismissed or reopened a mark | the mark's author, unless they did it | no |
+| `annotation.activity`, variants `created` / `created_piloti` / `proposed` | a person set a mark, or Piloti set marks for the person who asked or proposed them (`onMarksSet`) | the document's people: who is Verantwortlich for it (ADR-0047) and who uploaded it, as for a new Fassung; minus whoever acted (for Piloti, the person who asked), minus whom a mark already tells in its own row (its Zuständige, whom it mentions, whom Piloti's Rückfrage asks) | no |
 
 The author's `annotation.activity` row says `yours: true`: a reply or a move
 on a mark they wrote answers them, so it reaches their devices as a result
@@ -854,6 +855,17 @@ mention (the chat keeps no names on the server), quotes plain text:
 | `annotation.mentioned` | „Miriam hat Sie in Anmerkung 4 in „Grundriss EG“ erwähnt“ | „Antworten Sie im Verlauf der Anmerkung.“; the excerpt is the text that mentions them |
 | `annotation.activity`, variant `reply` | „Miriam hat zu Anmerkung 4 in „Grundriss EG“ geantwortet“, counted „3 neue Antworten zu Anmerkung 4 in „Grundriss EG“, zuletzt von Miriam“; Piloti's reply „Neue Antwort zu Anmerkung 4 in „Grundriss EG““ | none: the newest reply is the excerpt |
 | `annotation.activity`, variants `resolved` / `dismissed` / `reopened` | „Miriam hat Anmerkung 4 in „Grundriss EG“ erledigt“ / „… verworfen“ / „… wieder geöffnet“ | none |
+| `annotation.activity`, variant `created` | „Miriam hat Anmerkung 4 in „Grundriss EG“ gesetzt“, counted „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“; `created_piloti` „Piloti hat für Miriam …“, `proposed` „Piloti hat für Miriam 3 Anmerkungen in „Grundriss EG“ vorgeschlagen“ | counted: „Die neueste ist Anmerkung 15.“; a proposal adds that it counts once someone takes it over |
+
+**New marks fold per document and per who set them.** Every other row about
+a mark folds on the mark; a new mark's row folds on the document and the
+setter (`groupAnchor` `set:<variant>:<actor>` in `inboxGroupKey`), anchored on
+the newest mark it tells about, so a review of fifteen marks is one counted row
+whose link opens the review at the newest. A write of several at once
+(Piloti's batch) is ONE emission counting them all (`InboxEmission.occurrences`,
+which the upsert adds to the stored count), so it is one row write and one
+notification, not fifteen. Deleting the newest of them turns the row inert, as
+it does every row anchored on a deleted mark.
 
 `piloti.work_done` names what woke Piloti as its variant; a delegation's end
 (`assigned`) adds „Die Anmerkung liegt wieder bei Ihnen.“ Rows fold per mark

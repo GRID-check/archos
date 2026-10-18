@@ -45,7 +45,8 @@ export async function upsertInboxItem(values: NewInboxItem): Promise<InboxItem> 
     .onConflictDoUpdate({
       target: [inboxItems.recipientUserId, inboxItems.groupKey],
       set: {
-        count: sql`${inboxItems.count} + 1`,
+        // The stored count plus the occurrences the incoming row stands for (1 unless the emitter said more).
+        count: sql`${inboxItems.count} + excluded.count`,
         updatedAt: new Date(),
         actorUserId: values.actorUserId ?? null,
         anchorId: values.anchorId ?? null,
@@ -73,7 +74,10 @@ export async function upsertInboxItems(values: NewInboxItem[]): Promise<InboxIte
     .onConflictDoUpdate({
       target: [inboxItems.recipientUserId, inboxItems.groupKey],
       set: {
-        count: sql`${inboxItems.count} + 1`,
+        // The stored count plus the occurrences the incoming row stands for:
+        // `excluded.count` is the column's default 1, or what the emitter
+        // folded into one emission (`InboxEmission.occurrences`).
+        count: sql`${inboxItems.count} + excluded.count`,
         updatedAt: new Date(),
         // These three were missing while the doc above promised the folds were
         // identical. Without them a collapsed group kept its FIRST actor and its

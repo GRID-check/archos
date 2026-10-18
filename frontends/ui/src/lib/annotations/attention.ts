@@ -15,7 +15,8 @@ import 'server-only'
  * | The wake job was refused, or gave up, before a turn answered | `piloti.work_failed` | whoever woke Piloti |
  * | Any woken turn ended `stopped` | none: the person stopped it | |
  * | Piloti set a Rückfrage, or replied on its own open Rückfrage | `piloti.asks_you` | the mark's Zuständige, else the person its turn acted for |
- * | Piloti set another mark | none: ordinary work | |
+ * | Piloti set another mark | none to the asker: ordinary work they asked for | |
+ * | A person set marks on a document, or Piloti set or proposed them for the person its turn acted for | `annotation.activity`, variant `created` (`created_piloti`, `proposed`), one counted row per document and per who set them | the document's people ({@link onMarksSet}: its Verantwortliche and its uploader), minus whoever acted, minus whom a mark already tells otherwise (its Zuständige, whom it mentions, whom Piloti's Rückfrage asks) |
  * | A person made someone the mark's Zuständige (setting it, changing it, or taking over Piloti's proposal that names one) | `annotation.assigned_to_you` | the new Zuständige, unless they did it themselves |
  * | Piloti did, for the person its turn acted for | `annotation.assigned_to_you`, variant `piloti` | the same |
  * | Someone else became responsible, or nobody | resolves the previous Zuständige's `annotation.assigned_to_you` | |
@@ -54,6 +55,7 @@ import 'server-only'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { isLive, type MarkMention } from './types'
 import { wakeEndReasonKind } from './wake-end-reason'
+import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
 import { inboxGroupKey, MARK_ANCHORED_INBOX_TYPES } from '@/lib/inbox/registry'
 import { emitInboxItems, markInboxItemsInertAnchoredOn, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
@@ -112,6 +114,15 @@ interface MarkItem {
   author?: string | null
   /** Facts the row's words need beyond the mark's (its date), merged into the payload as given; null clears. */
   facts?: Record<string, string | number | null>
+  /**
+   * What the row folds on instead of the mark: new marks fold per document and
+   * per who set them (`set:<variant>:<actor>`), so fifteen marks are one row.
+   * The row still anchors on the mark the ref names (the newest), which is
+   * where its link opens the review.
+   */
+  groupAnchor?: string
+  /** How many occurrences this one item stands for (`InboxEmission.occurrences`). */
+  occurrences?: number
 }
 
 /** One item about a mark, addressed to each of these people. */
@@ -119,7 +130,7 @@ async function emitAboutMark(
   type: InboxItemType,
   ref: MarkRef,
   recipientUserIds: readonly string[],
-  { excerpt, mentions = [], variant = null, actorUserId = null, author = null, facts = {} }: MarkItem
+  { excerpt, mentions = [], variant = null, actorUserId = null, author = null, facts = {}, groupAnchor, occurrences }: MarkItem
 ): Promise<void> {
   if (recipientUserIds.length === 0) return
   const subject = await documentName(ref)
@@ -139,8 +150,9 @@ async function emitAboutMark(
       resourceId: ref.documentId,
       anchorId: ref.annotationId,
       actorUserId,
-      groupKey: inboxGroupKey(type, 'document', ref.documentId, ref.annotationId),
+      groupKey: inboxGroupKey(type, 'document', ref.documentId, groupAnchor ?? ref.annotationId),
       payload: author !== null && recipientUserId === author ? { ...payload, yours: true } : payload,
+      ...(occurrences !== undefined && { occurrences }),
     }))
   )
 }
@@ -433,6 +445,86 @@ export async function onMarkReplied(
       actorUserId: input.byPiloti ? null : input.actorUserId,
       author: markAuthor(input.mark),
     })
+  })
+}
+
+/** Who set new marks, as the row words it: a person, Piloti open for its asker, or Piloti's proposals. */
+export type MarksSetBy = 'created' | 'created_piloti' | 'proposed'
+
+/** One new mark, and whom it already tells otherwise. */
+export interface SetMark {
+  id: string
+  number: number
+  body: string
+  mentions?: readonly MarkMention[]
+  /**
+   * The people this mark tells in a row of its own, who hear nothing more
+   * about it: the Zuständige a person's mark hands it to
+   * (`annotation.assigned_to_you`), whom its text mentions
+   * (`annotation.mentioned`), whom Piloti's Rückfrage asks (`piloti.asks_you`).
+   */
+  toldOtherwise: readonly (string | null)[]
+}
+
+/**
+ * New marks on a document tell the document's people: who is Verantwortlich
+ * for it (ADR-0047) and who uploaded it, as a new Fassung does
+ * (`lib/documents/fassung-notify.ts`). Without it a review only reached the
+ * room, and a mark nobody was assigned or mentioned on waited for somebody to
+ * open the document.
+ *
+ * One counted row per document and per who set them (`groupAnchor`
+ * `set:<by>:<actor>`), so a review of fifteen marks is one row, „Miriam hat
+ * 15 Anmerkungen in „Grundriss EG“ gesetzt“, and one write of fifteen (Piloti's
+ * batch) is one emission counting fifteen. The row anchors on the newest mark
+ * the reader is told about, where its link opens the review. Whoever acted is
+ * left out (for Piloti, the person its turn acted for, who asked for them), as
+ * is anybody a mark tells in a row of its own; everyone else must be able to
+ * open the document now (`mayOpen`). Informational, like every
+ * `annotation.activity`.
+ */
+export async function onMarksSet(
+  input: Omit<MarkRef, 'annotationId' | 'annotationNumber'> & {
+    actorUserId: string
+    uploaderUserId: string | null
+    by: MarksSetBy
+    marks: readonly SetMark[]
+    mayOpen: MayOpen
+  }
+): Promise<void> {
+  if (input.marks.length === 0) return
+  await bestEffortInbox(`annotation.activity (set) on document ${input.documentId}`, input.organizationId, async () => {
+    const assignments = await listAssignmentsForResources(input.organizationId, 'document', [input.documentId])
+    const people = [...new Set([...assignments.map((row) => row.subjectUserId), input.uploaderUserId])].filter(
+      (userId): userId is string => Boolean(userId) && userId !== input.actorUserId
+    )
+    const recipients = await whoMayOpen(input.mayOpen, people)
+    // Each reader's own share of the marks: the ones no other row tells them about.
+    const byShare = new Map<string, { newest: SetMark; count: number; recipients: string[] }>()
+    for (const recipient of recipients) {
+      const theirs = input.marks.filter((mark) => !mark.toldOtherwise.includes(recipient))
+      if (theirs.length === 0) continue
+      const newest = theirs.reduce((a, b) => (b.number > a.number ? b : a))
+      const key = `${newest.id}\n${theirs.length}`
+      const share = byShare.get(key) ?? { newest, count: theirs.length, recipients: [] }
+      share.recipients.push(recipient)
+      byShare.set(key, share)
+    }
+    for (const { newest, count, recipients: told } of byShare.values()) {
+      await emitAboutMark(
+        'annotation.activity',
+        { ...input, annotationId: newest.id, annotationNumber: newest.number },
+        told,
+        {
+          excerpt: excerptOf(newest.body),
+          mentions: newest.mentions,
+          variant: input.by,
+          actorUserId: input.actorUserId,
+          groupAnchor: `set:${input.by}:${input.actorUserId}`,
+          occurrences: count,
+        }
+      )
+    }
   })
 }
 

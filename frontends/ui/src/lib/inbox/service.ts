@@ -84,6 +84,13 @@ export interface InboxEmission {
   actorUserId?: string | null
   groupKey: string
   payload?: Record<string, unknown>
+  /**
+   * How many occurrences this one emission stands for, when one write is
+   * several of the same thing for the same person (Piloti setting fifteen
+   * marks on one document): the row's count moves by this many, as it would
+   * for that many emissions, in ONE write and so one notification. Default 1.
+   */
+  occurrences?: number
 }
 
 /** Split rows into waves in which no (recipient, group key) repeats, keeping their order. */
@@ -126,6 +133,7 @@ export async function emitInboxItems(emissions: InboxEmission[]): Promise<number
       groupKey: emission.groupKey,
       actionable: inboxItemIsActionable(emission.type),
       payload: emission.payload ?? {},
+      count: Math.max(1, Math.floor(emission.occurrences ?? 1)),
     }))
 
   if (rows.length === 0) return 0
