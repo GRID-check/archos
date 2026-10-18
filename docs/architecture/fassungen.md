@@ -338,8 +338,17 @@ name, each labelled as what it is.
   job ends, so `announceSettledVersions` (called from
   `lib/upload-batches/settle.ts`) tells people the moment the document is
   readable.
-- **Who.** The people assigned to the older document and its uploaders, minus the
-  person who made the change, then cut to those who may open both documents.
+- **Who.** The people assigned to the older document and its uploaders, and
+  everyone working on an open Anmerkung the new Fassung leaves behind (its
+  `markParticipants`: who set it, its Zuständige, who delegated it, answered or
+  was mentioned in it; for a same-name version the open marks set on another
+  version, for a link every open mark of the older document), minus the person
+  who made the change, then cut to those who may open both documents. The row
+  then says how many open marks to check and from which Fassung („4 offene
+  Anmerkungen aus Fassung 2 prüfen“; „aus der vorigen Fassung“ when they sit on
+  several, or on another document): `openMarks`, `marksFassung` and the
+  `variant` that picks the words (`openMarksFacts`). Each is carried on in the
+  Prüfansicht ([`document-annotations.md`](document-annotations.md#a-mark-goes-on-with-a-new-fassung)).
 - **What.** The first line of the change summary, at most 200 characters, and
   only when the summary was written against the older document of THIS
   notification (its basis). A summary against the earlier upload under the

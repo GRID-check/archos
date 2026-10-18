@@ -48,6 +48,15 @@ Migration `0149_annotation_mentions.sql` adds whom a text mentions (below,
 |---|---|---|
 | `document_annotations.mentions`, `document_annotation_replies.mentions` | whom the mark's text or the reply mentions, as the server kept them: the chat's mention shape, `[{targetId, display}]` | an array of at most ten (`MAX_MENTIONS_PER_MESSAGE`; `…_mentions_bounded`); default `[]` |
 
+Migration `0151_annotation_carry_and_due.sql` adds what a mark carried on to
+another document keeps, and the index the daily Frist reminder reads by (below,
+„A mark goes on with a new Fassung“ and „The daily Frist reminder“):
+
+| Where | Holds | CHECK |
+|---|---|---|
+| `document_annotations.carried_from_id` | the mark of the replaced document this one was carried on from; `ON DELETE SET NULL` | never the mark itself (`…_carried_from_other`); unique where set (`uniq_document_annotations_carried_from`): one source is carried once, whatever raced |
+| `idx_document_annotations_due` | open marks with a Zuständige and a date, by the date (partial) | |
+
 Migration `0142_piloti_changes.sql` adds the change record: every change Piloti
 applied to a mark or a thread, with the turn that made it. The chat card reads
 it, and undo runs from it (below, „In the chat“). Each change is also one
@@ -90,6 +99,17 @@ A mark's create (POST), a PATCH that carries a `body`, and a reply take
 with a `body` (400 otherwise). Every view carries the `mentions` the server
 kept, on the mark and on each reply. See „Mentioning a colleague“ below.
 
+A PATCH with `carryToCurrent: true` (and nothing but `expectedStatus` beside
+it, 400 otherwise) carries an open mark to the document's current Fassung
+(below, „A mark goes on with a new Fassung“): a closed or proposed mark is 422
+`not-open`, a mark Piloti works on another document's behalf 422 `delegated`,
+and a colleague's move first, or a second carry, 409. It answers the mark as it
+now stands, which for a mark of a replaced document is the linked mark on the
+replacing one (its `documentId` says which). Every view carries `carriedFrom`
+and `carriedTo`: the other end of a carry, `{annotationId, documentId, number,
+documentName}`, or null, named only to a reader who may open that document
+(`linkedDocuments`, through `getAccessibleDocument`).
+
 The list answers `pilotiWakes`, whether the organization lets events wake
 Piloti. A reply answers `{annotation, replyId, wake}` and a PATCH that
 delegates `{annotation, wake}`, where `wake` is `none` (no rule met), `off`
@@ -106,7 +126,7 @@ role name:
 | Who | May |
 |---|---|
 | whoever may open the document (`project:view` and read in its folder; on the Büroablage every member) | read the marks and their threads, export the Protokoll, be @mentioned and be told |
-| whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:archiv:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti; **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
+| whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:archiv:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti, carry an open mark to the current Fassung (to a replacing document only with the right to write that one too); **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
 | the author (`createdBy`, a person's own mark) | reword it („Bearbeiten“ in the card's menu; the server lets any writer change a `body`, the card offers it to the author) and delete it (`mayDeleteMark`) |
 
 The Zuständige picker reads who may write
@@ -194,7 +214,8 @@ never this reader's own changes, in this tab or another. The same line twice
 is said twice. The pointers and their tags are hidden from it.
 
 A mark of an earlier Fassung is listed and never drawn; selected, its thread
-opens over the sheet, saying so in its first line. Status moves carry the status the card showed
+opens over the sheet, saying so in its first line, and an open one offers to go
+on with the current Fassung (below). Status moves carry the status the card showed
 (`expectedStatus`), so a stale tab gets the conflict notice, never a blind
 change. The list is read again when the room returns after a drop and when the
 tab returns to view.
@@ -233,6 +254,61 @@ reader's thumb, which opens the review with the point tool armed (`tool=point`,
 hover card („In der Prüfansicht öffnen", `inline-mark-peek.tsx`, a hovering
 pointer only: a tap on a pin opens the review as before). The pane header shows
 who is in the document with the review's own `Presence`, without following.
+
+### A mark goes on with a new Fassung
+
+A mark is set on one Fassung, because a position is true of the sheet somebody
+looked at. When the document gets a new Fassung, its open marks stay open and
+are listed, not drawn, and the people working on them are told how many to
+check (`document.new_fassung`, [`fassungen.md`](fassungen.md#notifications)).
+A mark that still holds goes on with the new Fassung: „Auf aktuelle Fassung
+übernehmen“ in its card's first line, for whoever may edit an open mark
+(`carryToCurrent`, `lib/annotations/service.ts`). It keeps its place on the
+page: a position never changes under someone who read it, so a mark that no
+longer fits is resolved and set again instead.
+
+- **Under the same name** the mark moves in place: `version_id` becomes the
+  published version's, compared and swapped against the Fassung the mark was
+  read on and its status (`fassung` in `updateDocumentAnnotation`), so two
+  people carrying it at once move it once. Its number, its thread, and every
+  inbox row, wake and change record anchored on it stay whole, and it is drawn
+  again. Nobody is told: the new Fassung already told them, and the room
+  re-reads. The list's „Offen aus früheren Fassungen: 4 · Alle übernehmen“
+  carries each the same way, one PATCH per mark.
+- **Under another name** (Index B confirmed as replaced by Index C, `supersededBy`
+  in `lib/documents/fassung.ts`; through a chain, its end, read only through
+  documents the carrier may open, `lib/annotations/carry.ts`) the mark cannot
+  move. B's number is what a Protokoll and a Jour fixe named; its thread is
+  anchored on B in every inbox row (`resourceId` and the group key both name B),
+  wake and change record that points at it; and C has numbers of its own.
+  Moving the row (a new `document_id`) would cut all of that, or need every one
+  of those rows rewritten. So C receives a **linked mark** instead: set on C's
+  current Fassung with B's place, text, kind, Grundlage, author, Zuständige (while
+  they may still answer on C) and date, numbered on C, `carried_from_id`
+  pointing back; and B's mark is closed (`resolved`, by the carrier) in the same
+  transaction (`carryAnnotationToDocument`). B's thread stays readable where
+  every link expects it; C's card says „Übernommen aus „B“, Anmerkung 4“ and
+  B's „Weiter in „C“ als Anmerkung 7“, each a link to the other review where
+  the page addresses documents by `?doc=` (Dateien, the Büroablage; over the
+  chat the name stands without a link, `features/documents/lib/fassung-links.ts`).
+  Closing B's mark settles what it asked of people; its Zuständige is asked
+  again on C's mark (`annotation.assigned_to_you`), unless they carried it
+  themselves. A mark Piloti works is taken back first: its running turn writes
+  on B.
+
+The review shows both sides. C's review lists B's open marks read-only under
+„Aus Fassung „B““ (the hook reads B's list through the same typed client,
+`useDocumentReview`'s `carried`, the direct predecessors from the file's
+`fassung` facts, at most three), each with „Auf aktuelle Fassung übernehmen“,
+„Alle übernehmen“ for several, and „Fassungen vergleichen“, the comparison the
+inbox row opens (`compareFassungHref`). In B's review an open mark's card says
+„Dieses Dokument ist durch „C“ ersetzt.“ and offers „In „C“ übernehmen“. The
+header says „Ersetzt durch „C““ or „Ersetzt „B““ beside the Fassung.
+
+A carry is a person's edit of a mark, content activity like every other, so it
+is not in the admin audit trail
+([`workos-provisioning.md`](../deployment/workos-provisioning.md#5-audit-logs-native-workos-product));
+the room hears it, and a carried mark names its source on the mark itself.
 
 ### Mentioning a colleague
 
@@ -590,7 +666,9 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `piloti.work_done` | a woken turn ended `answered` | who mentioned, answered or delegated | no |
 | `piloti.work_failed` | a woken turn ended `failed`, or the wake job was refused or gave up before a turn answered (a delegation, a mention or an answer) | who delegated, mentioned or answered | no |
 | `piloti.asks_you` | Piloti set a Rückfrage, or replied on its own open one | the mark's Zuständige, else the person its turn acted for | yes |
-| `annotation.assigned_to_you` | a person made someone Zuständige of an open mark (setting it, changing it, or taking over Piloti's proposal that names one), or Piloti did for the person its turn acted for | the new Zuständige, unless they did it themselves | yes |
+| `annotation.assigned_to_you` | a person made someone Zuständige of an open mark (setting it, changing it, taking over Piloti's proposal that names one, or carrying it on to a replacing document), or Piloti did for the person its turn acted for | the new Zuständige, unless they did it themselves | yes |
+| `annotation.assigned_to_you`, variants `due` / `due_cleared` (`…_piloti`) | someone set, moved or cleared the date of an open mark whose Zuständige stays (a date that comes with a new Zuständige is their assignment) | the Zuständige, unless they did it, in the row they have for the mark | yes |
+| `annotation.assigned_to_you`, variants `due_soon` / `overdue` | the daily reminder: the Frist is today or tomorrow, or it has passed (below) | the Zuständige, while they may open the document; once per reminder and date, the overdue one upgrading the same row | yes |
 | `annotation.mentioned` | a person @mentioned someone in a mark's text (setting it, or a `body` that adds them) or in a reply | each person mentioned anew who may open the document, minus whoever wrote it, minus a Zuständige the same write made responsible (who has `annotation.assigned_to_you`) | yes |
 | `annotation.activity` | a person or Piloti replied in the thread | the mark's participants, minus whoever acted, minus whom the reply mentions (one row for one reply: the mention) | no |
 | `annotation.activity` | someone resolved, dismissed or reopened a mark | the mark's author, unless they did it | no |
@@ -630,7 +708,7 @@ what the mark says (Piloti's question for a Rückfrage):
 | `piloti.work_done` | „Piloti hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet“ | „Lesen Sie die Antwort im Verlauf der Anmerkung.“ |
 | `piloti.work_failed` | „Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten“ | why, and what to do (below) |
 | `piloti.asks_you` | „Piloti hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG““ | „Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.“ |
-| `annotation.assigned_to_you` | „Miriam hat Ihnen Anmerkung 4 in „Grundriss EG“ zugewiesen“; variant `piloti`: „Piloti hat Ihnen für Miriam Anmerkung 4 in „Grundriss EG“ zugewiesen“ | „Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.“ |
+| `annotation.assigned_to_you` | „Miriam hat Ihnen Anmerkung 4 in „Grundriss EG“ zugewiesen“; variant `piloti`: „Piloti hat Ihnen für Miriam Anmerkung 4 in „Grundriss EG“ zugewiesen“; `due`: „Miriam hat die Frist von Anmerkung 4 in „Grundriss EG“ auf 24. Okt. 2026 gesetzt“; `due_cleared`: „… die Frist … entfernt“; `due_soon`: „Anmerkung 4 in „Grundriss EG“ ist am 18. Okt. 2026 fällig“; `overdue`: „… war am 15. Okt. 2026 fällig“ | „Sie sind dafür zuständig. Antworten Sie im Verlauf oder erledigen Sie die Anmerkung.“; with a date (`dueOn` in the payload) „Sie sind dafür zuständig, bis 24. Okt. 2026. …“; `overdue` says the Frist has passed and to agree on a new one |
 | `annotation.mentioned` | „Miriam hat Sie in Anmerkung 4 in „Grundriss EG“ erwähnt“ | „Antworten Sie im Verlauf der Anmerkung.“; the excerpt is the text that mentions them |
 | `annotation.activity`, variant `reply` | „Miriam hat zu Anmerkung 4 in „Grundriss EG“ geantwortet“, counted „3 neue Antworten zu Anmerkung 4 in „Grundriss EG“, zuletzt von Miriam“; Piloti's reply „Neue Antwort zu Anmerkung 4 in „Grundriss EG““ | none: the newest reply is the excerpt |
 | `annotation.activity`, variants `resolved` / `dismissed` / `reopened` | „Miriam hat Anmerkung 4 in „Grundriss EG“ erledigt“ / „… verworfen“ / „… wieder geöffnet“ | none |
@@ -715,6 +793,48 @@ verb („Piloti schlägt eine Umbenennung vor“), a note („Piloti möchte sic
 Notiz merken“), a change to the project context. Its excerpt names the files,
 the note or the change, and its body says the proposal is in the chat and that
 nothing changes until the person applies it.
+
+### The daily Frist reminder
+
+A mark handed to someone with a date used to say nothing when the date came.
+Once a day the Zuständige of every open mark whose Frist is today or tomorrow
+is reminded (`due_soon`), and of every mark whose Frist has passed (`overdue`),
+in the row they already have for the mark: `annotation.assigned_to_you`, folded
+per mark, so the overdue reminder upgrades the earlier one and is never a
+second row. Same type, same push and mail policy as being handed the mark
+(requests, a mail after two hours unread): it is the same request, coming due.
+
+- **When.** The job scheduler's daily clock (`scheduler/index.js`,
+  `sweepAnnotationDue`) posts `POST /api/internal/annotations/due-reminders` at
+  06:45 in Vienna, and on the first tick after a start; a failed post retries
+  in an hour.
+- **Where it runs.** The route (`enqueueDueReminders`,
+  `lib/annotations/due-reminders.ts`) finds the organizations with marks due
+  (one grouped read under the platform scope, `listOrganizationsWithDueMarks`)
+  and enqueues one `annotation_due_reminders` job per organization on the BFF
+  job queue (ADR-0079), inside `withTenant` for its own lane, so one office's
+  thousand marks never hold up the next office's handful. The job's id is uuid5
+  of the organization and the office's day: a second post the same day (a
+  restart, a second replica) finds it queued and adds nothing.
+- **What it reads.** A page of 100 marks per slice, by id from where the last
+  slice stopped (`listDueMarksPage`): open, with a Zuständige and a date on or
+  before tomorrow, on an active document of the project or the Büroablage that
+  passed screening (`documentVisibleTo(SCREENED_ONLY)`: a held upload reminds
+  nobody, as it tells nobody). Both reads take `idx_document_annotations_due`.
+- **Whom it tells.** The Zuständige, while they may open the document
+  (`mayOpenDocument`, asked once per document a page holds), as every item
+  about a mark is filtered.
+- **Once.** The row records which reminder for which date it carries
+  (`reminder: "due_soon:2026-10-18"`, `remindedFor`), and the job reads the
+  rows first (`readGroupPayloads`): a second run, a retried slice or a
+  restarted scheduler tells nobody twice, a date moved since is reminded of
+  anew, and a read row that already says it stays read.
+- **Observable.** Nothing calls a model, so nothing is traced to Langfuse. A
+  finished job is one `annotation_due_reminders_sent` PostHog server event with
+  its counts (`checked`, `due_soon`, `overdue`, `already`, `unreachable`,
+  `failed`), the way the push job reports what it sent
+  ([`posthog-events.md`](../observability/posthog-events.md)). A mark that could
+  not be told is a warning in the log, and the next run tells it.
 
 ### Piloti as the delegate
 
@@ -837,6 +957,9 @@ the counts, never a name or a word of the marks. Nothing calls a model, so
 nothing is traced to Langfuse.
 
 ## Known debts
+
+- „Fassungen vergleichen“ compares two documents (`fassung-compare-service.ts`); two versions under the same name have no visual comparison yet, so a mark of an earlier Fassung of the same document is carried without one.
+- A mark carried on to a replacing document starts a new thread there; the old one is read on the replaced document, by the link in the card. The two are not one timeline.
 
 - The chat-hosted canvas (the review open over the chat) still asks an @Piloti reply in the chat's conversation, under the chat's own message id, when wakes are off; only the standalone canvas uses the reply's turn id.
 - The „Geweckt durch“ prompt block names the person the turn runs for. A woken turn has no access token, so the name comes from the signed envelope's `requester`, which the wake job mints from the pinned session (`resolvePerson`; `turn.context.user_info_for`). `author_name` on the message only attributes the turn in the transcript. A woken turn whose person WorkOS cannot name still reads „Eine Person“.

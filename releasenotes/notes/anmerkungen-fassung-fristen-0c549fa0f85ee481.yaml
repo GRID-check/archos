@@ -1,0 +1,17 @@
+---
+features:
+  - >
+    An open annotation from an earlier revision can now be carried over to the
+    current one from its card, or all of them at once from the list, keeping its
+    number, its place and its thread.
+  - >
+    When a document replaces another under a new name, its review lists the open
+    annotations of the replaced one so you can carry them over or compare the two
+    revisions first. Both reviews say which document replaces which.
+  - >
+    Whoever is responsible for an annotation now sees its due date in their
+    inbox, hears when someone moves it, and is reminded the day before it is due
+    and once it is overdue.
+  - >
+    A new revision now also tells everyone working on the open annotations it
+    leaves behind, and says how many are left to check.
