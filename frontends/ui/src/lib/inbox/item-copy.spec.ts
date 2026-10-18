@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { de } from '@/i18n/dictionaries/de'
+import { en } from '@/i18n/dictionaries/en'
 import { createTranslator } from '@/i18n/translate'
 import { inboxItemCopy } from './item-copy'
 import type { InboxItemView } from './types'
@@ -68,6 +69,47 @@ describe('a reviewer’s notice about held files', () => {
     expect(title).toBe('Anna Weber bittet Sie, „Lohnzettel_März.pdf“ zu prüfen')
     expect(body).toBe(
       'Sie enthält eine Sozialversicherungsnummer. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.'
+    )
+  })
+})
+
+describe('Piloti’s Rückfrage, by where it is answered', () => {
+  const asks = (answerIn: InboxItemView['answerIn']) =>
+    quarantined({
+      type: 'piloti.asks_you',
+      resourceType: 'document',
+      resourceId: 'doc-1',
+      anchorId: 'mark-4',
+      actorName: null,
+      actorUserId: null,
+      href: '/app/projects/p1/files?doc=doc-1&review=1&mark=mark-4',
+      subject: 'Grundriss EG',
+      related: '4',
+      excerpt: 'Gilt die Höhe ab Rohdecke?',
+      variant: null,
+      answerIn,
+    })
+  const enDictionary = { collaboration: en.collaboration }
+  const enT = createTranslator(enDictionary, 'collaboration')
+
+  // While events do not wake Piloti the row leads to the Prüfansicht
+  // („In der Prüfansicht beantworten“): its line says so, never that Piloti
+  // waits for an answer in the thread.
+  it('says the answer goes in the review when the row leads there', () => {
+    expect(inboxItemCopy(asks('review'), t, dictionary).body).toBe(
+      'Antworten Sie in der Prüfansicht. Von dort erreicht Ihre Antwort Piloti.',
+    )
+    expect(inboxItemCopy(asks('review'), enT, enDictionary).body).toBe(
+      'Answer in the review. From there your answer reaches Piloti.',
+    )
+  })
+
+  it('keeps the thread for a row that answers in place', () => {
+    expect(inboxItemCopy(asks('row'), t, dictionary).body).toBe(
+      'Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.',
+    )
+    expect(inboxItemCopy(asks(null), enT, enDictionary).body).toBe(
+      'Piloti is waiting for your answer. Reply in the annotation’s thread.',
     )
   })
 })
