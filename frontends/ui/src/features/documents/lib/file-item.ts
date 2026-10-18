@@ -29,6 +29,7 @@ type OptionalWireField =
   | 'displayName'
   | 'folderId'
   | 'errorMessage'
+  | 'quarantine'
   | 'summary'
   | 'pageCount'
   | 'chunkCount'
@@ -60,6 +61,7 @@ export function toFileItem(row: DocumentWireRow): FileItem {
     contentHash: row.contentHash ?? null,
     createdAt: row.createdAt,
     errorMessage: row.errorMessage ?? null,
+    quarantine: row.quarantine ?? null,
     summary: row.summary ?? null,
     pageCount: row.pageCount ?? null,
     chunkCount: row.chunkCount ?? null,
@@ -112,7 +114,7 @@ const TRAILING_METADATA: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>([
 ])
 
 /** What a stale in-flight read would take back along with the status. */
-const REGRESSION_FIELDS: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>(['status', 'errorMessage'])
+const REGRESSION_FIELDS: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>(['status', 'errorMessage', 'quarantine'])
 
 /**
  * A read that would move a TERMINAL row back to an in-flight status, without a

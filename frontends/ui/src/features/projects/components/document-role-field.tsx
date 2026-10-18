@@ -35,6 +35,7 @@ import { useTranslations } from '@/i18n'
 import { loadUploadScreeningPolicy } from '@/adapters/api/upload-screening-policy'
 import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-screen'
 import { describeScreenedOut } from '@/lib/upload-screening/quarantine'
+import { nameStopMatchesOf } from '@/lib/upload-screening/name-stop'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { exclusionsByTerm, openUploadBatch, sealUploadBatch } from '@/features/documents/lib/upload-batch'
 import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
@@ -207,6 +208,9 @@ export function DocumentRoleField({
             : null
         let unchanged = 0
         let failed = 0
+        // Stopped by the server's repeat of the name check (422): not uploaded,
+        // like the stops above, and counted by term, not as failures (ADR-0086).
+        const serverStopped: Array<{ file: File; matches: NameMatch[] }> = []
         // Files whose upload answered, so a request that threw leaves the
         // rest counted as not arrived when the batch is sealed.
         let answered = 0
@@ -219,6 +223,11 @@ export function DocumentRoleField({
             const response = await fetch('/api/documents/upload', { method: 'POST', body: form })
             answered += 1
             if (!response.ok) {
+              const matches = nameStopMatchesOf(await response.json().catch(() => null))
+              if (matches) {
+                serverStopped.push({ file, matches })
+                continue
+              }
               failed += 1
               toast.error(tRole('uploadFailed', { name: file.name }))
               continue
@@ -235,9 +244,16 @@ export function DocumentRoleField({
             await bind(documentId, file.name)
           }
         } finally {
-          if (batchId) await sealUploadBatch(batchId, { unchanged, failed: failed + allowed.length - answered })
+          const excluded = exclusionsByTerm(serverStopped.map(({ matches }) => matches))
+          if (batchId) {
+            await sealUploadBatch(batchId, {
+              unchanged,
+              failed: failed + allowed.length - answered,
+              ...(excluded.length > 0 ? { excluded } : {}),
+            })
+          }
         }
-        const screenedMessage = describeScreenedOut(screenedOut, tFiles)
+        const screenedMessage = describeScreenedOut([...screenedOut, ...serverStopped], tFiles)
         if (screenedMessage) toast.error(screenedMessage)
       } finally {
         setBusy(false)
