@@ -999,7 +999,10 @@ prod takes this release:
 - **Three data nodes** with 4 CPU / 16Gi free on each (`qdrantCpu`,
   `qdrantMemory`, request = limit): with `nodeGroupData` set, the peers'
   anti-affinity is required, one per node, so a third peer without a third
-  node stays Pending and the deploy fails on it.
+  node stays Pending and the deploy fails on it. A group that has just come up
+  serves pods before the CSI plugin registers on the new nodes, so its first
+  two or three minutes show attach errors on PVCs that are `Bound` throughout
+  ([gotchas](../contributing/gotchas.md)): wait, and do not delete anything.
 - **The three Qdrant keys in ESC** (`grid-oib/prod`): `qdrantApiKey`,
   `qdrantReadOnlyApiKey`, `qdrantS3SecretKey`, each its own value (the
   `esc env set` lines in the header of `Pulumi.prod.yaml`).
