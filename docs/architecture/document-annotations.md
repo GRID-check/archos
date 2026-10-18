@@ -49,7 +49,7 @@ Migration `0150_annotation_mentions.sql` adds whom a text mentions (below,
 | `document_annotations.mentions`, `document_annotation_replies.mentions` | whom the mark's text or the reply mentions, as the server kept them: the chat's mention shape, `[{targetId, display}]` | an array of at most ten (`MAX_MENTIONS_PER_MESSAGE`; `…_mentions_bounded`); default `[]` |
 
 Migration `0151_annotation_carry_and_due.sql` adds what a mark carried on to
-another document keeps, and the index the daily Frist reminder reads by (below,
+another document keeps, and an index over the rows the daily Frist reminder ranges over (below,
 „A mark goes on with a new Fassung“ and „The daily Frist reminder“):
 
 | Where | Holds | CHECK |
@@ -307,7 +307,10 @@ longer fits is resolved and set again instead.
   current Fassung with B's place, text, kind, Grundlage, author, Zuständige (while
   they may still answer on C) and date, numbered on C, `carried_from_id`
   pointing back; and B's mark is closed (`resolved`, by the carrier) in the same
-  transaction (`carryAnnotationToDocument`). B's thread stays readable where
+  transaction (`carryAnnotationToDocument`), compared and swapped on `open` and
+  on `delegated_by` being null, so a delegation that lands between the
+  service's read and the close makes the carry a conflict (409), like a
+  colleague's close. B's thread stays readable where
   every link expects it; C's card says „Übernommen aus „B“, Anmerkung 4“ and
   B's „Weiter in „C“ als Anmerkung 7“, each a link to the other review where
   the page addresses documents by `?doc=` (Dateien, the Büroablage; over the
@@ -317,14 +320,29 @@ longer fits is resolved and set again instead.
   themselves. A mark Piloti works is taken back first: its running turn writes
   on B.
 
+What the review offers is what the server would do. Each mark of a list or a
+write's answer carries `carryTarget`: the document this reader's carry lands
+on, named as they see it, or null where the carry would be refused or do
+nothing (`carryWayOf` and `carryTargetOf`, `lib/annotations/service.ts`): a
+mark that is not open, a reader who may not write its document, a mark on the
+current Fassung of a document nothing replaces; across, a replacing document
+the reader may not write, and a mark Piloti works. The target is the end of the
+chain the carry walks (`replacingDocumentOf`), so when C was replaced by D in
+turn, B's card names D, not the direct successor its notice names. A list read
+whose chain cannot be read offers no carry rather than failing.
+
 The review shows both sides. C's review lists B's open marks read-only under
 „Aus Fassung „B““ (the hook reads B's list through the same typed client,
 `useDocumentReview`'s `carried`, the direct predecessors from the file's
-`fassung` facts, at most three), each with „Auf aktuelle Fassung übernehmen“,
-„Alle übernehmen“ for several, and „Fassungen vergleichen“, the comparison the
-inbox row opens (`compareFassungHref`). In B's review an open mark's card says
-„Dieses Dokument ist durch „C“ ersetzt.“ and offers „In „C“ übernehmen“. The
-header says „Ersetzt durch „C““ or „Ersetzt „B““ beside the Fassung.
+`fassung` facts, at most three), each with „Auf aktuelle Fassung übernehmen“
+where it has a `carryTarget` (labelled for a screen reader with its number,
+„Anmerkung 4 auf aktuelle Fassung übernehmen“), „Alle übernehmen“ for several,
+and „Fassungen vergleichen“, the comparison the inbox row opens
+(`compareFassungHref`). A list of B that could not be read stays as its group,
+saying so, with „Erneut versuchen“ (`retryCarried`). In B's review an open
+mark's card says „Dieses Dokument ist durch „C“ ersetzt.“ and offers
+„In „D“ übernehmen“, D being its `carryTarget`. The header says
+„Ersetzt durch „C““ or „Ersetzt „B““ beside the Fassung.
 
 A carry is a person's edit of a mark, content activity like every other, so it
 is not in the admin audit trail
@@ -831,16 +849,18 @@ nothing changes until the person applies it.
 
 A mark handed to someone with a date used to say nothing when the date came.
 Once a day the Zuständige of every open mark whose Frist is today or tomorrow
-is reminded (`due_soon`), and of every mark whose Frist has passed (`overdue`),
-in the row they already have for the mark: `annotation.assigned_to_you`, folded
+is reminded (`due_soon`), and of every mark whose Frist passed in the last
+seven days (`overdue`), in the row they already have for the mark: `annotation.assigned_to_you`, folded
 per mark, so the overdue reminder upgrades the earlier one and is never a
 second row. Same type, same push and mail policy as being handed the mark
 (requests, a mail after two hours unread): it is the same request, coming due.
 
 - **When.** The job scheduler's daily clock (`scheduler/index.js`,
   `sweepAnnotationDue`) posts `POST /api/internal/annotations/due-reminders` at
-  06:45 in Vienna, and on the first tick after a start; a failed post retries
-  in an hour.
+  06:45 in Vienna. A start before 06:45 waits for it: a restart at 01:00 would
+  otherwise push and mail at 01:00, and its stamps would silence the 06:45
+  run. A start later in the day catches that day's run up on its first tick.
+  A failed post retries in an hour.
 - **Where it runs.** The route (`enqueueDueReminders`,
   `lib/annotations/due-reminders.ts`) finds the organizations with marks due
   (one grouped read under the platform scope, `listOrganizationsWithDueMarks`)
@@ -848,12 +868,26 @@ second row. Same type, same push and mail policy as being handed the mark
   job queue (ADR-0079), inside `withTenant` for its own lane, so one office's
   thousand marks never hold up the next office's handful. The job's id is uuid5
   of the organization and the office's day: a second post the same day (a
-  restart, a second replica) finds it queued and adds nothing.
+  restart, a second replica) adds nothing while that job is queued, running or
+  dead. A finished job's row is deleted (migration 0104), so a post after it
+  queues the day's job again, and the stamps (below) make that run tell nobody
+  twice. Discovery takes at most 1000 organizations
+  (`DUE_REMINDER_MAX_ORGANIZATIONS`), in an order that turns over with the day
+  (a hash of the organization and the day), so the ones over the cap are a
+  different set each day rather than the same tail for good; reaching the cap
+  is a warning in the log. Not by the earliest Frist: discovery cannot see the
+  stamps, so offices with long-overdue marks already reminded of would hold
+  the head of the list every day.
 - **What it reads.** A page of 100 marks per slice, by id from where the last
-  slice stopped (`listDueMarksPage`): open, with a Zuständige and a date on or
-  before tomorrow, on an active document of the project or the Büroablage that
-  passed screening (`documentVisibleTo(SCREENED_ONLY)`: a held upload reminds
-  nobody, as it tells nobody). Both reads take `idx_document_annotations_due`.
+  slice stopped (`listDueMarksPage`): open, with a Zuständige and a date from
+  seven days back through tomorrow (`dueWindowOn`, `DUE_REMINDER_OVERDUE_DAYS`),
+  on an active document of the project or the Büroablage that passed screening
+  (`documentVisibleTo(SCREENED_ONLY)`: a held upload reminds nobody, as it
+  tells nobody). Discovery reads the same window, so the first run does not
+  remind of every Frist that ever passed, and an office whose only open marks
+  are long overdue drops out of the daily discovery.
+  `idx_document_annotations_due` holds exactly the rows the window ranges over;
+  whether a read takes it is the planner's call.
 - **Whom it tells.** The Zuständige, while they may open the document
   (`mayOpenDocument`, asked once per document a page holds), as every item
   about a mark is filtered.
@@ -861,7 +895,12 @@ second row. Same type, same push and mail policy as being handed the mark
   (`reminder: "due_soon:2026-10-18"`, `remindedFor`), and the job reads the
   rows first (`readGroupPayloads`): a second run, a retried slice or a
   restarted scheduler tells nobody twice, a date moved since is reminded of
-  anew, and a read row that already says it stays read.
+  anew, and a read row that already says it stays read. Handing the mark to
+  someone or moving its date clears the stamp (`reminder: null` in
+  `onAssigneeChanged` and `onDueChanged`; the row's payload merges, so only an
+  explicit null takes it off): a date moved 18→20→18, or a mark handed
+  A→B→A, is reminded of again. A change the Zuständige makes themselves
+  writes no row, and so leaves the stamp.
 - **Observable.** Nothing calls a model, so nothing is traced to Langfuse. A
   finished job is one `annotation_due_reminders_sent` PostHog server event with
   its counts (`checked`, `due_soon`, `overdue`, `already`, `unreachable`,

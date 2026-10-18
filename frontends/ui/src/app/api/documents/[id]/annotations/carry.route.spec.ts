@@ -13,11 +13,12 @@
  * another one replaced hands its mark to that one as a linked mark, its own
  * closed in the same write, the Zuständige asked again on the new mark only
  * while they may still answer there; a second carry, a delegated mark and a
- * colleague's earlier move are refused; and a link names only a document the
- * reader may open.
+ * colleague's earlier move are refused; a link names only a document the
+ * reader may open; and the list names, per mark, where this reader's carry
+ * lands (the end of the chain), or nothing where the carry would be refused.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockResolvedValue({
@@ -341,6 +342,73 @@ describe('carrying a mark of a document another one replaced', () => {
 
     await expect(carry('doc_b', 'ann_b')).rejects.toMatchObject({ status: 404 })
     expect(carryAnnotationToDocument).not.toHaveBeenCalled()
+  })
+})
+
+describe('what a list offers to carry, and where to', () => {
+  const D = doc('doc_d', { filename: 'Grundriss EG Index D.pdf' })
+  const chain = async (_session: unknown, subjects: readonly { id: string }[]) => {
+    if (subjects[0]?.id === 'doc_b') return replacedBy(B, C)
+    if (subjects[0]?.id === 'doc_c') return replacedBy(C, D)
+    return new Map<string, FassungFacts>()
+  }
+  const targets = async (documentId: string) =>
+    Object.fromEntries((await listAnnotations(documentId, run)).annotations.map((mark) => [mark.id, mark.carryTarget]))
+
+  beforeEach(() => DOCS.set('doc_d', D))
+  afterEach(() => DOCS.delete('doc_d'))
+
+  it('names the document itself for an open mark of an earlier Fassung, and nothing for one on the current Fassung or closed', async () => {
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([
+      MARK,
+      { ...MARK, id: 'ann_now', versionId: 'doc_a_ver_2' },
+      { ...MARK, id: 'ann_done', status: 'resolved', closedBy: 'user_me', closedAt: new Date() },
+    ])
+
+    expect(await targets('doc_a')).toEqual({
+      ann_1: { documentId: 'doc_a', documentName: 'doc_a.pdf' },
+      ann_now: null,
+      ann_done: null,
+    })
+  })
+
+  it('names the end of the chain, where the carry lands (B→C→D lands in D), and nothing for a mark Piloti works', async () => {
+    vi.mocked(loadFassungFacts).mockImplementation(chain)
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([
+      ON_B,
+      { ...ON_B, id: 'ann_delegated', delegatedBy: 'user_me', delegatedAt: new Date() },
+    ])
+
+    expect(await targets('doc_b')).toEqual({
+      ann_b: { documentId: 'doc_d', documentName: 'Grundriss EG Index D.pdf' },
+      ann_delegated: null,
+    })
+  })
+
+  it('offers nothing where the carry would be refused: a replacing document the reader may not write, or a source they may not', async () => {
+    vi.mocked(loadFassungFacts).mockImplementation(chain)
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([ON_B])
+    vi.mocked(getAccessibleDocument).mockImplementation(async (_session, id, intent) => {
+      if (id === 'doc_d' && intent === 'write') throw new NotFoundError()
+      return DOCS.get(id) as Document
+    })
+    expect(await targets('doc_b')).toEqual({ ann_b: null })
+
+    vi.mocked(getAccessibleDocument).mockImplementation(async (_session, id, intent) => {
+      if (id === 'doc_b' && intent === 'write') throw new NotFoundError()
+      return DOCS.get(id) as Document
+    })
+    expect(await targets('doc_b')).toEqual({ ann_b: null })
+  })
+
+  it('answers the list, offering no carry, when the chain cannot be read', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(loadFassungFacts).mockRejectedValue(new Error('listing down'))
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([ON_B])
+
+    expect(await targets('doc_b')).toEqual({ ann_b: null })
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
   })
 })
 

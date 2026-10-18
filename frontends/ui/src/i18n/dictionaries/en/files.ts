@@ -1761,6 +1761,8 @@ export const files = {
     earlierFassung: 'From revision {number}. Not drawn on this sheet.',
     carry: 'Carry to the current revision',
     carryTo: 'Carry to “{name}”',
+    carryMark: 'Carry annotation {number} to the current revision',
+    carryMarkTo: 'Carry annotation {number} to “{name}”',
     carryAll: 'Carry all',
     carryFailed: 'Not every annotation could be carried on. Please try again.',
     compareFassungen: 'Compare revisions',
@@ -1768,6 +1770,7 @@ export const files = {
     carriedGroup: 'From revision “{name}”',
     carriedGroupHint:
       'Set on “{name}”, which this document replaces. Carry on what still holds: the annotation comes here at its place, its thread stays there.',
+    carriedLoadError: 'The annotations from “{name}” could not be loaded.',
     carriedFrom: 'Carried on from “{name}”, annotation {number}',
     carriedTo: 'Continues in “{name}” as annotation {number}',
     replacedBy: 'Replaced by “{name}”',

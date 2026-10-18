@@ -40,6 +40,8 @@
  *   …&review=1                               „Aus Fassung „Grundriss_RG_Index-B.pdf““: the open marks of
  *                                            the document this one replaces, each carried on as a
  *                                            linked mark of this one; the header says „Ersetzt …"
+ *   …&review=1&carriedFails=1                that group when Index B's list could not be read:
+ *                                            it says so, and „Erneut versuchen" reads it again
  *   …&review=1, „Protokoll exportieren"      the export menu: the Fassung choice only under
  *                                            „Auch erledigte", since „Nur offene" carries the
  *                                            mark still open from Fassung 2 either way
@@ -156,6 +158,9 @@ const FILE: FileItem = {
 
 /** The document this one replaces: its marks are listed in this one's review, to carry on. */
 const INDEX_B = { id: 'dev-doc-index-b', filename: 'Grundriss_RG_Index-B.pdf' }
+
+/** Where the server says a carry of an open mark here, or of Index B's, lands for Miriam: this document. */
+const CARRY_HERE = { documentId: FILE.id, documentName: FILE.filename }
 
 const ME = { userId: 'u-1', name: 'Miriam Hofer' }
 const ANNA = { userId: 'u-2', name: 'Anna Berger' }
@@ -287,6 +292,7 @@ let annotations: AnnotationView[] = [
     body: 'Fensterbrüstung Zimmer 1 unter 1,00 m.',
     fassungNumber: 2,
     onCurrentFassung: false,
+    carryTarget: CARRY_HERE,
   },
   {
     ...base,
@@ -323,6 +329,7 @@ let indexB: AnnotationView[] = [
     assigneeName: JAKOB.name,
     dueOn: '2026-10-24',
     fassungNumber: 2,
+    carryTarget: CARRY_HERE,
   },
   {
     ...base,
@@ -337,6 +344,7 @@ let indexB: AnnotationView[] = [
     createdByName: ANNA.name,
     canDelete: false,
     fassungNumber: 2,
+    carryTarget: CARRY_HERE,
   },
   {
     ...base,
@@ -413,6 +421,14 @@ const pilotiPeer: RoomPeer = { peerId: 'piloti-dev-conv', userId: ME.userId, nam
 
 /** `?wakes=1`: the organization lets events wake Piloti, so the server answers an @Piloti reply. */
 const WAKES = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('wakes')
+
+/**
+ * `?carriedFails=1`: Index B's list cannot be read while the page opens (every
+ * read in its first two seconds, so a development double effect fails too),
+ * so its group says so and offers a retry, which then reads it.
+ */
+const CARRIED_FAILS_UNTIL =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('carriedFails') ? Date.now() + 2_000 : 0
 
 /** The server's wake, answered: Piloti's reply arrives through the room, as it would from the job. */
 const wakeReply = (annotationId: string) => {
@@ -982,6 +998,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (url.endsWith('/api/realtime/send')) return new Response(null, { status: 204 })
       // Index B, the document this one replaces: its list, and a mark of it carried on as a linked mark of this one.
       if (url.endsWith(`/api/documents/${INDEX_B.id}/annotations`)) {
+        if (Date.now() < CARRIED_FAILS_UNTIL) return json({ error: 'Unavailable', code: 'UNAVAILABLE' }, 503)
         return json({ annotations: indexB, canAnnotate: true, pilotiWakes: WAKES })
       }
       const fromB = new RegExp(`/api/documents/${INDEX_B.id}/annotations/([^/?]+)$`).exec(url)
@@ -999,11 +1016,12 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           createdAt: now,
           updatedAt: now,
           carriedFrom: { annotationId: source.id, documentId: INDEX_B.id, number: source.number, documentName: INDEX_B.filename },
+          carryTarget: null,
         }
         nextNumber += 1
         indexB = indexB.map((annotation) =>
           annotation.id === source.id
-            ? { ...annotation, status: 'resolved', closedBy: ME.userId, closedByName: ME.name, closedAt: now }
+            ? { ...annotation, status: 'resolved', closedBy: ME.userId, closedByName: ME.name, closedAt: now, carryTarget: null }
             : annotation
         )
         annotations = [...annotations, copy]
@@ -1048,7 +1066,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const now = new Date().toISOString()
         // „Auf aktuelle Fassung übernehmen": the same mark, its number and thread, now on Fassung 3 and drawn.
         if (carryToCurrent) {
-          const carried = { ...current, fassungNumber: 3, onCurrentFassung: true, updatedAt: now }
+          const carried = { ...current, fassungNumber: 3, onCurrentFassung: true, carryTarget: null, updatedAt: now }
           annotations = annotations.map((annotation) => (annotation.id === carried.id ? carried : annotation))
           return json({ annotation: carried })
         }
@@ -1067,9 +1085,11 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           status,
           ...(change.assigneeUserId !== undefined ? { assigneeName: change.assigneeUserId ? NAMES[change.assigneeUserId] ?? null : null } : {}),
           ...(moved && (status === 'resolved' || status === 'dismissed')
-            ? { closedBy: ME.userId, closedByName: ME.name, closedAt: now }
+            ? { closedBy: ME.userId, closedByName: ME.name, closedAt: now, carryTarget: null }
             : {}),
-          ...(moved && status === 'open' ? { closedBy: null, closedByName: null, closedAt: null } : {}),
+          ...(moved && status === 'open'
+            ? { closedBy: null, closedByName: null, closedAt: null, carryTarget: current.onCurrentFassung ? null : CARRY_HERE }
+            : {}),
           ...(moved && status === 'open' && current.authorKind === 'piloti' && !current.acceptedBy
             ? { acceptedBy: ME.userId, acceptedByName: ME.name }
             : {}),

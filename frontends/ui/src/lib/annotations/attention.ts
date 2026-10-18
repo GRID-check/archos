@@ -341,7 +341,8 @@ export async function onAssigneeChanged(
       excerpt: excerptOf(input.markText),
       variant: input.byPiloti ? 'piloti' : 'person',
       actorUserId: input.actorUserId,
-      facts: { dueOn: input.dueOn },
+      // Handed anew, the Frist is reminded of anew: the payload merges, so the last reminder's stamp is cleared.
+      facts: { dueOn: input.dueOn, reminder: null },
     })
   })
 }
@@ -364,7 +365,8 @@ export async function onDueChanged(
       excerpt: excerptOf(input.markText),
       variant,
       actorUserId: input.actorUserId,
-      facts: { dueOn: input.dueOn },
+      // A date moved is reminded of anew, even back to one reminded of before: the stamp is cleared.
+      facts: { dueOn: input.dueOn, reminder: null },
     })
   )
 }

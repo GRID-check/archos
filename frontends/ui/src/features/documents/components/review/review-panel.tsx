@@ -9,7 +9,7 @@ import { CommentPin } from '@/components/ui/comment-pin'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange, localCalendarDay } from '@/lib/format'
-import { isLive, isOverdue, type AnnotationView } from '@/lib/annotations/types'
+import { isLive, isOverdue, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import type { CarriedGroup, DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
 import { compareFromReviewHref } from '../../lib/fassung-links'
@@ -175,9 +175,7 @@ function useCarrying(review: DocumentReview) {
 function EarlierBar({ review }: { review: DocumentReview }): JSX.Element | null {
   const t = useTranslations('files')
   const { busy, failed, carry } = useCarrying(review)
-  const marks = review.annotations.filter(
-    (annotation) => !annotation.onCurrentFassung && annotation.status === 'open' && annotation.canEdit
-  )
+  const marks = review.annotations.filter((annotation) => !annotation.onCurrentFassung && annotation.carryTarget)
   if (marks.length === 0) return null
   return (
     <div className="bg-muted/40 mx-0.5 mb-2 space-y-1 rounded-xl px-2.5 py-2" data-testid="review-earlier-bar">
@@ -204,14 +202,24 @@ function EarlierBar({ review }: { review: DocumentReview }): JSX.Element | null 
 /**
  * The open marks of a document this one replaces (Index B, filed again as this
  * one under another name), read-only, under „Aus Fassung B": each carried on
- * as a linked mark of this document by „Übernehmen", or all of them at once;
- * „Fassungen vergleichen" lays the two side by side first.
+ * as a linked mark by „Übernehmen", or all of them at once, where the server
+ * says this reader's carry goes through (`carryTarget`), named by where it
+ * lands; „Fassungen vergleichen" lays the two side by side first. A list that
+ * could not be read says so, with a retry.
  */
 function CarriedFrom({ review, group }: { review: DocumentReview; group: CarriedGroup }): JSX.Element {
   const t = useTranslations('files')
   const { locale } = useLocale()
   const { busy, failed, carry } = useCarrying(review)
-  const carryable = group.annotations.filter((annotation) => annotation.canEdit && review.canAnnotate)
+  const carryable = group.annotations.filter((annotation) => annotation.carryTarget)
+  /** The button's words: „Übernehmen" when it lands here, else the document it lands on; the row's mark for a screen reader. */
+  const carryWords = (annotation: AnnotationView, target: CarryTargetView) =>
+    target.documentId === review.documentId
+      ? { label: t('review.carry'), aria: t('review.carryMark', { number: annotation.number }) }
+      : {
+          label: t('review.carryTo', { name: target.documentName }),
+          aria: t('review.carryMarkTo', { number: annotation.number, name: target.documentName }),
+        }
   const compare =
     typeof window === 'undefined' ? null : compareFromReviewHref(window.location, review.documentId, group.from.id)
   return (
@@ -252,6 +260,16 @@ function CarriedFrom({ review, group }: { review: DocumentReview; group: Carried
           </NextLink>
         )}
       </div>
+      {group.load === 'error' && (
+        <div className="space-y-2 px-2.5 pb-2" data-testid="review-carried-error">
+          <p className="text-muted-foreground text-[11px] leading-4">
+            {t('review.carriedLoadError', { name: group.from.filename })}
+          </p>
+          <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={review.retryCarried}>
+            {t('annotations.retry')}
+          </Button>
+        </div>
+      )}
       <ul className="space-y-0.5 px-0.5 pb-1">
         {group.annotations.map((annotation) => (
           <li key={annotation.id} className="flex gap-3 rounded-lg px-2.5 py-2" data-testid="review-carried-row">
@@ -278,7 +296,7 @@ function CarriedFrom({ review, group }: { review: DocumentReview; group: Carried
                   </span>
                 )}
               </span>
-              {annotation.canEdit && review.canAnnotate && (
+              {annotation.carryTarget && (
                 <Button
                   type="button"
                   variant="outline"
@@ -286,9 +304,10 @@ function CarriedFrom({ review, group }: { review: DocumentReview; group: Carried
                   className="mt-1.5 h-7 text-xs"
                   disabled={busy}
                   data-testid="review-carry-from"
+                  aria-label={carryWords(annotation, annotation.carryTarget).aria}
                   onClick={() => void carry([annotation])}
                 >
-                  {t('review.carry')}
+                  {carryWords(annotation, annotation.carryTarget).label}
                 </Button>
               )}
             </span>

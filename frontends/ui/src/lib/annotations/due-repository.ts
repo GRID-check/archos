@@ -1,14 +1,18 @@
 /**
  * The marks the daily reminder of a Zuständige's Frist reads
- * (`./due-reminders.ts`): open, with a Zuständige and a date on or before a
- * day, on a document that carries marks, is in the working set and passed
+ * (`./due-reminders.ts`): open, with a Zuständige and a date inside a window
+ * of days, on a document that carries marks, is in the working set and passed
  * screening. A held upload is reminded of by nobody, as it is told to nobody
- * (`SCREENED_ONLY`, ADR-0086). Both reads take the partial index of migration
- * 0151 (`idx_document_annotations_due`).
+ * (`SCREENED_ONLY`, ADR-0086). The window bounds both reads from below as well
+ * as above, so a mark whose Frist passed long ago neither reminds anyone nor
+ * keeps its organization in the daily discovery. The partial index of
+ * migration 0151 (`idx_document_annotations_due`, on `due_on` over the open
+ * marks with a Zuständige and a date) holds exactly the rows the window
+ * ranges over; whether a read takes it is the planner's call.
  */
 
 import 'server-only'
-import { and, asc, eq, gt, inArray, isNotNull, lte } from 'drizzle-orm'
+import { and, asc, eq, gt, gte, inArray, isNotNull, lte, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { documentAnnotations, documents } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
@@ -27,12 +31,19 @@ export interface DueMark {
   document: OpenableDocument & { id: string }
 }
 
-const dueThrough = (through: string) =>
+/** The days, `YYYY-MM-DD` and inclusive, whose Frist a run reminds of. */
+export interface DueWindow {
+  from: string
+  through: string
+}
+
+const dueWithin = (window: DueWindow) =>
   and(
     eq(documentAnnotations.status, 'open'),
     isNotNull(documentAnnotations.assigneeUserId),
     isNotNull(documentAnnotations.dueOn),
-    lte(documentAnnotations.dueOn, through),
+    gte(documentAnnotations.dueOn, window.from),
+    lte(documentAnnotations.dueOn, window.through),
     eq(documents.lifecycle, 'active'),
     inArray(documents.scope, ['project', 'archiv']),
     documentVisibleTo(SCREENED_ONLY)
@@ -44,25 +55,33 @@ const onItsDocument = and(
 )
 
 /**
- * The organizations with at least one mark due on or before `through`, by id,
- * at most `limit`. Discovery for the daily sweep, which runs it under the
- * platform scope and then works inside each organization (`withTenant`).
+ * The organizations with at least one mark due within `window`, at most
+ * `limit`. Discovery for the daily sweep, which runs it under the platform
+ * scope and then works inside each organization (`withTenant`).
+ *
+ * In an order that changes with `day` (a hash of the organization and the
+ * day), so when more organizations have marks due than `limit`, the ones left
+ * out are a different set each day rather than the same tail for good. Not by
+ * the earliest Frist: discovery cannot see which marks were reminded already
+ * (that is on the inbox rows), so the offices with long-overdue, already
+ * reminded marks would hold the head of the list every day.
  */
-export async function listOrganizationsWithDueMarks(through: string, limit: number): Promise<string[]> {
+export async function listOrganizationsWithDueMarks(window: DueWindow, day: string, limit: number): Promise<string[]> {
   const rows = await getDb()
-    .selectDistinct({ organizationId: documentAnnotations.organizationId })
+    .select({ organizationId: documentAnnotations.organizationId })
     .from(documentAnnotations)
     .innerJoin(documents, onItsDocument)
-    .where(dueThrough(through))
-    .orderBy(asc(documentAnnotations.organizationId))
+    .where(dueWithin(window))
+    .groupBy(documentAnnotations.organizationId)
+    .orderBy(sql`md5(${documentAnnotations.organizationId} || ${day})`, asc(documentAnnotations.organizationId))
     .limit(limit)
   return rows.map((row) => row.organizationId)
 }
 
-/** One page of an organization's marks due on or before `through`, by id after `after`, at most `limit`. */
+/** One page of an organization's marks due within `window`, by id after `after`, at most `limit`. */
 export async function listDueMarksPage(
   organizationId: string,
-  through: string,
+  window: DueWindow,
   after: string | null,
   limit: number
 ): Promise<DueMark[]> {
@@ -90,7 +109,7 @@ export async function listDueMarksPage(
       .where(
         and(
           eq(documentAnnotations.organizationId, organizationId),
-          dueThrough(through),
+          dueWithin(window),
           after ? gt(documentAnnotations.id, after) : undefined
         )
       )

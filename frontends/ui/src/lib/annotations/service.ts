@@ -135,6 +135,7 @@ import {
   type AnnotationStatus,
   type AnnotationView,
   type CarryLinkView,
+  type CarryTargetView,
   type CreateAnnotationRequest,
   type CreateReplyRequest,
   type InternalAnnotation,
@@ -204,7 +205,8 @@ function toView(
   names: Names,
   wakes: readonly WakeSpan[] = [],
   work: ReadonlyMap<string, PilotiWakeRow> = new Map(),
-  linked: LinkedDocuments = new Map()
+  linked: LinkedDocuments = new Map(),
+  carryWay: CarryWay | null = null
 ): AnnotationView {
   const wake = work.get(record.id)
   return {
@@ -246,6 +248,7 @@ function toView(
     pilotiWork: wake ? pilotiWorkOf(wake, nameOf(names, wake.actorUserId)) : null,
     carriedFrom: linkView(record.carriedFrom, linked),
     carriedTo: linkView(record.carriedTo, linked),
+    carryTarget: writable ? carryTargetOf(record, doc, carryWay) : null,
     canEdit: writable,
     canDelete: writable && mayDeleteMark(record, session.userId),
   }
@@ -278,6 +281,52 @@ async function linkedDocuments(session: AuthorizedSession, records: readonly Ann
     })
   )
   return new Map(names.filter((entry): entry is readonly [string, string] => entry !== null))
+}
+
+/**
+ * Where this reader's carry takes the open marks of one document
+ * (`carryToCurrent`): `across` to the document that replaces it, at the end of
+ * its chain as the reader sees it (`replacingDocumentOf`, the walk the carry
+ * itself takes), or in place.
+ */
+interface CarryWay {
+  to: CarryTargetView
+  across: boolean
+}
+
+/**
+ * The {@link CarryWay} for a reader who may write `doc`, read once per view:
+ * null when nothing of it can be carried (no open mark, or a replacing
+ * document the reader may not write, which the carry refuses), or when the
+ * chain could not be read: a list read does not fail on it, and offers no
+ * carry it cannot vouch for.
+ */
+async function carryWayOf(
+  session: AuthorizedSession,
+  doc: Document,
+  records: readonly Pick<AnnotationRecord, 'status'>[]
+): Promise<CarryWay | null> {
+  if (!records.some((record) => record.status === 'open')) return null
+  const replacing = await replacingDocumentOf(session, doc).catch((error: unknown) => {
+    console.warn(`[annotations] could not read what replaces document ${doc.id}:`, error)
+    return undefined
+  })
+  if (replacing === undefined) return null
+  if (!replacing) return { to: { documentId: doc.id, documentName: documentDisplayName(doc) }, across: false }
+  if (!annotatable(replacing) || !(await canWriteDocument(session, replacing.id))) return null
+  return { to: { documentId: replacing.id, documentName: documentDisplayName(replacing) }, across: true }
+}
+
+/**
+ * Where one mark goes when this reader carries it, as {@link carryToCurrent}
+ * would take it, or null where it refuses or does nothing: a mark that is not
+ * open; across, one Piloti works (`carryAcross` asks for it back first); in
+ * place, one already on the current Fassung.
+ */
+function carryTargetOf(record: AnnotationRecord, doc: Document, way: CarryWay | null): CarryTargetView | null {
+  if (!way || record.status !== 'open') return null
+  if (way.across) return record.delegatedBy ? null : way.to
+  return (record.versionId ?? null) === (doc.publishedVersionId ?? null) ? null : way.to
 }
 
 /**
@@ -375,13 +424,14 @@ async function requireWritableDocument(session: AuthorizedSession, documentId: s
 async function viewOf(session: AuthorizedSession, doc: Document, annotationId: string): Promise<AnnotationView> {
   const record = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!record) throw new NotFoundError()
-  const [names, wakes, work, linked] = await Promise.all([
+  const [names, wakes, work, linked, carryWay] = await Promise.all([
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
     latestWakesFor(session.organizationId, doc.id, record.id),
     linkedDocuments(session, [record]),
+    carryWayOf(session, doc, [record]),
   ])
-  return toView(record, doc, session, true, names, wakes, work, linked)
+  return toView(record, doc, session, true, names, wakes, work, linked, carryWay)
 }
 
 const limitReached = (error: unknown): never => {
@@ -428,13 +478,14 @@ export async function listAnnotations(session: AuthorizedSession, documentId: st
     canWriteDocument(session, doc.id),
     directoryNames(session.organizationId),
   ])
-  const [wakes, work, linked] = await Promise.all([
+  const [wakes, work, linked, carryWay] = await Promise.all([
     wakeSpansFor(session.organizationId, doc.id, records),
     latestWakesFor(session.organizationId, doc.id),
     linkedDocuments(session, records),
+    writable ? carryWayOf(session, doc, records) : null,
   ])
   const annotations = records
-    .map((record) => toView(record, doc, session, writable, names, wakes, work, linked))
+    .map((record) => toView(record, doc, session, writable, names, wakes, work, linked, carryWay))
     .sort(compareAnnotations)
   return { annotations, canAnnotate: writable, pilotiWakes: wakesEnabled(session) }
 }
@@ -1093,7 +1144,8 @@ export async function readAnnotation(
     latestWakesFor(session.organizationId, doc.id, record.id),
     linkedDocuments(session, [record]),
   ])
-  return toView(record, doc, session, writable, names, wakes, work, linked)
+  const carryWay = writable ? await carryWayOf(session, doc, [record]) : null
+  return toView(record, doc, session, writable, names, wakes, work, linked, carryWay)
 }
 
 /** What Piloti may change on a mark for the asker: what a person's PATCH changes, the assignee by name. */

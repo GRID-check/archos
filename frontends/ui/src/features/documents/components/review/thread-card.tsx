@@ -576,7 +576,9 @@ export function DraftCard({
  * Where the mark stands among the document's Fassungen, as the card's first
  * lines (the card is all the reader looks at): set on an earlier Fassung (listed,
  * not drawn), or on a document another one replaced, each with „Auf aktuelle
- * Fassung übernehmen" for whoever may edit an open mark; and where a carried
+ * Fassung übernehmen" where the server says this reader's carry goes through
+ * (`carryTarget`), named by the document it lands on: the end of the chain of
+ * replacements, not the direct successor the notice names; and where a carried
  * mark came from or went on to, linked where the page can open that document.
  */
 function FassungLines({
@@ -592,13 +594,13 @@ function FassungLines({
 }): JSX.Element | null {
   const t = useTranslations('files')
   const replacedBy = review.fassung?.replacedBy ?? null
-  const carryable = annotation.canEdit && annotation.status === 'open'
+  const target = annotation.carryTarget ?? null
   const earlier = !annotation.onCurrentFassung
   const where = typeof window === 'undefined' ? null : window.location
   const linkTo = (link: { documentId: string; annotationId: string }) =>
     where ? otherReviewHref(where, review.documentId, link) : null
   const lines: JSX.Element[] = []
-  if (earlier || (replacedBy && carryable)) {
+  if (earlier || (replacedBy && target)) {
     lines.push(
       <div key="fassung" className="flex flex-col gap-1.5" data-testid="thread-earlier">
         <p className="flex items-start gap-1.5">
@@ -609,7 +611,7 @@ function FassungLines({
               : t('annotations.earlierFassungUnnumbered')
             : t('review.replacedNotice', { name: replacedBy?.filename ?? '' })}
         </p>
-        {carryable && (
+        {target && (
           <Button
             type="button"
             variant="outline"
@@ -619,7 +621,9 @@ function FassungLines({
             data-testid="thread-carry"
             onClick={onCarry}
           >
-            {replacedBy ? t('review.carryTo', { name: replacedBy.filename }) : t('review.carry')}
+            {target.documentId === annotation.documentId
+              ? t('review.carry')
+              : t('review.carryTo', { name: target.documentName })}
           </Button>
         )}
       </div>

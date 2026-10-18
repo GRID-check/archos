@@ -283,6 +283,15 @@ export const carryLinkViewSchema = z.object({
 })
 export type CarryLinkView = z.infer<typeof carryLinkViewSchema>
 
+/**
+ * Where „Auf aktuelle Fassung übernehmen" takes a mark for THIS reader: the
+ * document it lands on, named as people see it. The mark's own document when
+ * it moves in place; the document that replaces it, at the end of its chain
+ * as the reader sees it, when it goes on as a linked mark.
+ */
+export const carryTargetViewSchema = carryLinkViewSchema.pick({ documentId: true, documentName: true })
+export type CarryTargetView = z.infer<typeof carryTargetViewSchema>
+
 export const annotationViewSchema = z.object({
   id: z.string(),
   documentId: z.string(),
@@ -337,6 +346,15 @@ export const annotationViewSchema = z.object({
   carriedFrom: carryLinkViewSchema.nullable().optional(),
   /** Where it went on: the replacing document's mark. Absent from a server that predates carrying. */
   carriedTo: carryLinkViewSchema.nullable().optional(),
+  /**
+   * Where THIS reader's carry would take it, or null when they may not carry
+   * it: it is not open, they may not edit it, it is on the current Fassung of
+   * a document nothing replaces, or it goes on to a replacing document they
+   * may not write or not open, or Piloti works it. Every condition the server
+   * refuses a carry on, so the review offers only what goes through. Absent
+   * from a server that predates it, which offers none.
+   */
+  carryTarget: carryTargetViewSchema.nullable().optional(),
   /** Whether THIS reader may change it: take it over, resolve it, reword it, assign it, reply. */
   canEdit: z.boolean(),
   /** Whether THIS reader may delete it: whoever set it, while they may still write here. */

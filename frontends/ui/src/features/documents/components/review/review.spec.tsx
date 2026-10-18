@@ -1463,13 +1463,22 @@ describe('closing the loop on a mark', () => {
 })
 
 describe('a mark goes on with the current Fassung', () => {
+  /** Where the server says this reader's carry lands: this document, in place or as a linked mark. */
+  const HERE = { documentId: 'doc_1', documentName: 'Grundriss EG.pdf' }
+
   /** The marks of each document, as its own list answers them; what was patched, with the document it went to. */
-  function serveDocuments(lists: Record<string, AnnotationView[]>) {
+  function serveDocuments(lists: Record<string, AnnotationView[]>, { failingReads = {} }: { failingReads?: Record<string, number> } = {}) {
     const patched: Array<{ documentId: string; annotationId: string; change: Record<string, unknown> }> = []
+    const failing = { ...failingReads }
     server.use(
-      http.get('/api/documents/:id/annotations', ({ params }) =>
-        HttpResponse.json({ annotations: lists[String(params.id)] ?? [], canAnnotate: true, pilotiWakes: false })
-      ),
+      http.get('/api/documents/:id/annotations', ({ params }) => {
+        const id = String(params.id)
+        if ((failing[id] ?? 0) > 0) {
+          failing[id] -= 1
+          return HttpResponse.json({ error: 'Unavailable', code: 'UNAVAILABLE' }, { status: 503 })
+        }
+        return HttpResponse.json({ annotations: lists[id] ?? [], canAnnotate: true, pilotiWakes: false })
+      }),
       http.patch('/api/documents/:id/annotations/:annotationId', async ({ params, request }) => {
         const change = (await request.json()) as Record<string, unknown>
         const documentId = String(params.id)
@@ -1478,7 +1487,7 @@ describe('a mark goes on with the current Fassung', () => {
         const mark = (lists[documentId] ?? []).find((annotation) => annotation.id === annotationId) as AnnotationView
         if (documentId === 'doc_1') {
           // Under its own name the mark moves in place: same id, same number, now on the sheet.
-          const moved = { ...mark, onCurrentFassung: true, fassungNumber: 3 }
+          const moved = { ...mark, onCurrentFassung: true, fassungNumber: 3, carryTarget: null }
           lists.doc_1 = lists.doc_1.map((annotation) => (annotation.id === annotationId ? moved : annotation))
           return HttpResponse.json({ annotation: moved })
         }
@@ -1489,9 +1498,10 @@ describe('a mark goes on with the current Fassung', () => {
           documentId: 'doc_1',
           number: 9,
           carriedFrom: { annotationId, documentId, number: mark.number, documentName: 'Grundriss Index B.pdf' },
+          carryTarget: null,
         })
         lists[documentId] = (lists[documentId] ?? []).map((annotation) =>
-          annotation.id === annotationId ? { ...annotation, status: 'resolved' } : annotation
+          annotation.id === annotationId ? { ...annotation, status: 'resolved', carryTarget: null } : annotation
         )
         lists.doc_1 = [...(lists.doc_1 ?? []), copy]
         return HttpResponse.json({ annotation: copy })
@@ -1501,7 +1511,9 @@ describe('a mark goes on with the current Fassung', () => {
   }
 
   it('carries a mark of an earlier Fassung from its card, keeping its number, and the card stops saying it is not drawn', async () => {
-    const patched = serveDocuments({ doc_1: [view({ id: 'ann_4', number: 4, onCurrentFassung: false, fassungNumber: 2 })] })
+    const patched = serveDocuments({
+      doc_1: [view({ id: 'ann_4', number: 4, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE })],
+    })
     render(<Harness transport={scriptedRoom().transport} />)
 
     await userEvent.click(await screen.findByTestId('review-row'))
@@ -1518,25 +1530,30 @@ describe('a mark goes on with the current Fassung', () => {
     expect(screen.getByTestId('review-thread')).toHaveTextContent('#4')
   })
 
-  it('offers no carry on a mark that is closed, or to a reader who may not edit it', async () => {
+  it('offers no carry the server says this reader’s carry would not go through: closed, read-only, or refused', async () => {
     serveDocuments({
       doc_1: [
         view({ id: 'ann_closed', number: 1, onCurrentFassung: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
         view({ id: 'ann_ro', number: 2, onCurrentFassung: false, canEdit: false }),
+        // Open and editable, and still no carry: the server named no target (a replacing document this reader may not write).
+        view({ id: 'ann_refused', number: 3, onCurrentFassung: false, carryTarget: null }),
       ],
     })
     render(<Harness transport={scriptedRoom().transport} />)
 
-    await userEvent.click(await screen.findByTestId('review-row'))
-    expect(within(await screen.findByTestId('review-thread')).queryByTestId('thread-carry')).toBeNull()
+    for (const index of [0, 1]) {
+      await waitFor(() => expect(screen.getAllByTestId('review-row').length).toBeGreaterThan(index))
+      await userEvent.click(screen.getAllByTestId('review-row')[index] as HTMLElement)
+      expect(within(await screen.findByTestId('review-thread')).queryByTestId('thread-carry')).toBeNull()
+    }
     expect(screen.queryByTestId('review-earlier-bar')).toBeNull()
   })
 
   it('carries every open mark of earlier Fassungen at once from the list', async () => {
     const patched = serveDocuments({
       doc_1: [
-        view({ id: 'ann_1', number: 1, onCurrentFassung: false, fassungNumber: 1 }),
-        view({ id: 'ann_2', number: 2, onCurrentFassung: false, fassungNumber: 2 }),
+        view({ id: 'ann_1', number: 1, onCurrentFassung: false, fassungNumber: 1, carryTarget: HERE }),
+        view({ id: 'ann_2', number: 2, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
         view({ id: 'ann_3', number: 3 }),
       ],
     })
@@ -1554,8 +1571,18 @@ describe('a mark goes on with the current Fassung', () => {
     const patched = serveDocuments({
       doc_1: [],
       doc_b: [
-        view({ id: 'ann_b4', documentId: 'doc_b', number: 4, body: 'Brüstung unter 1,00 m' }),
+        view({ id: 'ann_b4', documentId: 'doc_b', number: 4, body: 'Brüstung unter 1,00 m', carryTarget: HERE }),
         view({ id: 'ann_b5', documentId: 'doc_b', number: 5, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+        // Piloti works it: listed, and not offered, since the server would refuse it.
+        view({
+          id: 'ann_b6',
+          documentId: 'doc_b',
+          number: 6,
+          body: 'Geländerhöhe prüfen',
+          delegatedBy: 'user_me',
+          delegatedAt: '2026-10-02T08:00:00.000Z',
+          carryTarget: null,
+        }),
       ],
     })
     render(
@@ -1567,20 +1594,48 @@ describe('a mark goes on with the current Fassung', () => {
 
     const group = await screen.findByTestId('review-carried-group')
     expect(group).toHaveTextContent('From revision “Grundriss Index B.pdf”')
-    expect(within(group).getAllByTestId('review-carried-row')).toHaveLength(1)
-    expect(within(group).getByTestId('review-carried-row')).toHaveTextContent('Brüstung unter 1,00 m')
+    const rows = within(group).getAllByTestId('review-carried-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('Brüstung unter 1,00 m')
+    expect(within(rows[1] as HTMLElement).queryByTestId('review-carry-from')).toBeNull()
+    expect(within(group).queryByTestId('review-carry-all-from')).toBeNull()
     // Read-only: a row there opens no thread here.
     expect(within(group).queryByTestId('review-row')).toBeNull()
 
-    await userEvent.click(within(group).getByTestId('review-carry-from'))
+    // Each row's button names its mark for a screen reader.
+    await userEvent.click(within(group).getByRole('button', { name: 'Carry annotation 4 to the current revision' }))
 
     await waitFor(() =>
       expect(patched).toEqual([
         { documentId: 'doc_b', annotationId: 'ann_b4', change: { carryToCurrent: true, expectedStatus: 'open' } },
       ])
     )
-    await waitFor(() => expect(screen.queryByTestId('review-carried-group')).toBeNull())
+    await waitFor(() => expect(within(screen.getByTestId('review-carried-group')).getAllByTestId('review-carried-row')).toHaveLength(1))
     expect(await screen.findByTestId('review-row')).toHaveTextContent('Brüstung unter 1,00 m')
+  })
+
+  it('says when the replaced document’s marks could not be read, and reads them again on retry', async () => {
+    serveDocuments(
+      { doc_1: [], doc_b: [view({ id: 'ann_b4', documentId: 'doc_b', number: 4, body: 'Brüstung unter 1,00 m', carryTarget: HERE })] },
+      { failingReads: { doc_b: 1 } }
+    )
+    render(
+      <Harness
+        transport={scriptedRoom().transport}
+        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+      />
+    )
+
+    const group = await screen.findByTestId('review-carried-group')
+    expect(within(group).getByTestId('review-carried-error')).toHaveTextContent(
+      'The annotations from “Grundriss Index B.pdf” could not be loaded.'
+    )
+    expect(within(group).queryByTestId('review-carried-row')).toBeNull()
+
+    await userEvent.click(within(group).getByRole('button', { name: 'Try again' }))
+
+    expect(await within(group).findByTestId('review-carried-row')).toHaveTextContent('Brüstung unter 1,00 m')
+    expect(within(group).queryByTestId('review-carried-error')).toBeNull()
   })
 
   it('lists nothing from a replaced document while another document replaces this one', async () => {
@@ -1599,10 +1654,11 @@ describe('a mark goes on with the current Fassung', () => {
     expect(screen.queryByTestId('review-carried-group')).toBeNull()
   })
 
-  it('offers to carry an open mark of a replaced document to the one that replaces it, and says where a carried mark came from', async () => {
+  it('offers to carry an open mark of a replaced document to where the carry lands, and says where a carried mark came from', async () => {
     serveDocuments({
       doc_1: [
-        view({ id: 'ann_1', number: 1 }),
+        // C was replaced by D in turn: the carry lands at the end of the chain, and the button says so.
+        view({ id: 'ann_1', number: 1, carryTarget: { documentId: 'doc_d', documentName: 'Grundriss Index D.pdf' } }),
         view({
           id: 'ann_2',
           number: 2,
@@ -1623,7 +1679,7 @@ describe('a mark goes on with the current Fassung', () => {
     await userEvent.click((await screen.findAllByTestId('review-row'))[0])
     const thread = await screen.findByTestId('review-thread')
     expect(within(thread).getByTestId('thread-earlier')).toHaveTextContent('This document was replaced by “Grundriss Index C.pdf”.')
-    expect(within(thread).getByTestId('thread-carry')).toHaveTextContent('Carry to “Grundriss Index C.pdf”')
+    expect(within(thread).getByTestId('thread-carry')).toHaveTextContent('Carry to “Grundriss Index D.pdf”')
 
     await userEvent.click(screen.getByTestId('review-filter-closed'))
     await userEvent.click(await screen.findByTestId('review-row'))

@@ -95,10 +95,15 @@ export interface ReviewFassung {
   replaces: readonly FassungRef[]
 }
 
-/** The open marks of a document this one replaces, listed read-only in its review to be carried on. */
+/**
+ * The open marks of a document this one replaces, listed read-only in its
+ * review to be carried on; `load` is `error` when its list could not be read,
+ * so the group says so and offers a retry rather than vanishing.
+ */
 export interface CarriedGroup {
   from: FassungRef
   annotations: AnnotationView[]
+  load: 'ready' | 'error'
 }
 
 /** How many replaced documents a review lists the open marks of: the direct predecessors, a few at most. */
@@ -200,14 +205,22 @@ export function useDocumentReview(
   const fetchCarried = useCallback(async () => {
     const ticket = ++carriedRead.current
     const groups = await Promise.all(
-      sources.map(async (from) => {
-        const listed = await listAnnotations(from.id).catch(() => null)
-        const open = (listed?.annotations ?? []).filter((annotation) => annotation.status === 'open')
-        return { from, annotations: open }
+      sources.map(async (from): Promise<CarriedGroup> => {
+        // A document gone meanwhile has nothing to carry; any other failure is said, with a retry.
+        const listed = await listAnnotations(from.id).catch((error: unknown) =>
+          error instanceof AnnotationRequestError && error.status === 404 ? { annotations: [] } : null
+        )
+        if (!listed) return { from, annotations: [], load: 'error' }
+        const open = listed.annotations.filter((annotation) => annotation.status === 'open')
+        return { from, annotations: open, load: 'ready' }
       })
     )
-    if (carriedRead.current === ticket) setCarried(groups.filter((group) => group.annotations.length > 0))
+    if (carriedRead.current === ticket) {
+      setCarried(groups.filter((group) => group.load === 'error' || group.annotations.length > 0))
+    }
   }, [sources])
+  /** Read the replaced documents' marks again, after a group could not be read. */
+  const retryCarried = useCallback(() => void fetchCarried(), [fetchCarried])
   useEffect(() => {
     if (!enabled) return
     setCarried([])
@@ -707,6 +720,7 @@ export function useDocumentReview(
       me,
       fassung: fassung ?? null,
       carried,
+      retryCarried,
       carry,
       carryAll,
     }),
@@ -742,6 +756,7 @@ export function useDocumentReview(
       step,
       fassung,
       carried,
+      retryCarried,
       carry,
       carryAll,
     ]

@@ -440,6 +440,14 @@ describe('onAssigneeChanged', () => {
     expect(emitted()).toMatchObject({ payload: { variant: 'person', dueOn: '2026-10-24' } })
   })
 
+  it('clears the daily reminder’s stamp, so a mark handed back (A→B→A) is reminded of its Frist again', async () => {
+    await onAssigneeChanged({ ...act, dueOn: '2026-10-18', previousAssigneeUserId: 'user_carol', assigneeUserId: 'user_bob' })
+
+    // The row's payload merges (`payload || excluded.payload`): only an explicit null takes the old stamp off.
+    const merged = { reminder: 'due_soon:2026-10-18', ...emitted().payload }
+    expect(merged).toHaveProperty('reminder', null)
+  })
+
   it('says Piloti did it for the asker when Piloti changed the mark', async () => {
     await onAssigneeChanged({ ...act, byPiloti: true, previousAssigneeUserId: null, assigneeUserId: 'user_bob' })
 
@@ -499,6 +507,13 @@ describe('onDueChanged', () => {
       groupKey: 'annotation.assigned_to_you:document:doc_1:ann_1',
       payload: { variant: 'due', dueOn: '2026-10-24', related: '4' },
     })
+  })
+
+  it('clears the daily reminder’s stamp, so a date moved and moved back (18→20→18) is reminded of again', async () => {
+    await onDueChanged({ ...act, assigneeUserId: 'user_bob', dueOn: '2026-10-18' })
+
+    const merged = { reminder: 'due_soon:2026-10-18', ...emitted().payload }
+    expect(merged).toHaveProperty('reminder', null)
   })
 
   it('says the date was cleared, and that Piloti did it for the person it worked for', async () => {

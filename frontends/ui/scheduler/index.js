@@ -30,10 +30,11 @@
  *   9. once a day, purges the download log past its retention: 12 months at
  *      most, less where an organization chose so, in bounded batches
  *      (`sweepDownloadLogRetention`; migration 0114);
- *  10. once a day, at 06:45 in Vienna (and on the first tick after a start),
+ *  10. once a day, at 06:45 in Vienna (and on the first tick after a start
+ *      that comes later in the office's day, to catch that day's run up),
  *      POSTs the BFF's Frist reminder (`/api/internal/annotations/due-reminders`),
  *      which queues one job per organization with marks due today, tomorrow
- *      or past (`sweepAnnotationDue`; `lib/annotations/due-reminders.ts`).
+ *      or in the last week (`sweepAnnotationDue`; `lib/annotations/due-reminders.ts`).
  * See ADR-0046 and docs/architecture/agent-skills.md ("Scheduler worker").
  *
  * Environment:
@@ -417,17 +418,29 @@ const OFFICE_TIME_ZONE = 'Europe/Vienna'
 /** After a failed post. Not the 30 s tick: the BFF is down or wrong, and a day's reminder can wait an hour. */
 const ANNOTATION_DUE_RETRY_MS = 60 * 60 * 1000
 
+/** The calendar day of `date` in the office's time zone, `YYYY-MM-DD`. */
+const officeDayOf = (date) => new Intl.DateTimeFormat('en-CA', { timeZone: OFFICE_TIME_ZONE }).format(date)
+
 /**
  * The daily Frist reminder: POST {frontendUrl}/api/internal/annotations/due-reminders.
  * The BFF queues one job per organization whose marks have a Zuständige and a
- * Frist today, tomorrow or past; the job reminds each of them once per reminder
- * and date. On the first tick after a start, then every day at 06:45 in
- * Vienna: the BFF names each organization's job by the office's day, so a
- * restart, or a second replica, queues nothing twice, and the job tells nobody
- * twice. A failed post retries in an hour. Never throws; logs only what it
- * queued or a failure. Returns the counts, or null when it did not run.
+ * Frist today, tomorrow or within the overdue window; the job reminds each of
+ * them once per reminder and date. Every day at 06:45 in Vienna. A start
+ * before 06:45 waits for it: a restart at 01:00 would otherwise push and mail
+ * at 01:00, and its stamps would silence the 06:45 run. A start later in the
+ * day catches that day's run up at once; when it already ran, the job's stamps
+ * tell nobody twice. A failed post retries in an hour. Never throws; logs only
+ * what it queued or a failure. Returns the counts, or null when it did not run.
  */
 async function sweepAnnotationDue(config, fetchImpl, streak, clock, now = new Date()) {
+  if (clock.nextRunAt === 0) {
+    const next = nextOccurrence(ANNOTATION_DUE_CRON, OFFICE_TIME_ZONE, now)
+    // Today's run is still ahead: wait for it rather than run at whatever hour this started.
+    if (officeDayOf(next) === officeDayOf(now)) {
+      clock.nextRunAt = next.getTime()
+      return null
+    }
+  }
   if (now.getTime() < clock.nextRunAt) return null
   const counts = await postSweep(config, fetchImpl, streak, {
     path: '/api/internal/annotations/due-reminders',

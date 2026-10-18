@@ -1723,6 +1723,8 @@ export const files: typeof en.files = {
     // ersetzten Dokuments kommt als verknüpfte Anmerkung in das neue.
     carry: 'Auf aktuelle Fassung übernehmen',
     carryTo: 'In „{name}“ übernehmen',
+    carryMark: 'Anmerkung {number} auf aktuelle Fassung übernehmen',
+    carryMarkTo: 'Anmerkung {number} in „{name}“ übernehmen',
     carryAll: 'Alle übernehmen',
     carryFailed: 'Nicht alle Anmerkungen konnten übernommen werden. Bitte noch einmal.',
     compareFassungen: 'Fassungen vergleichen',
@@ -1730,6 +1732,7 @@ export const files: typeof en.files = {
     carriedGroup: 'Aus Fassung „{name}“',
     carriedGroupHint:
       'Gesetzt auf „{name}“, das dieses Dokument ersetzt. Übernehmen Sie, was weiter gilt: Die Anmerkung kommt mit ihrer Stelle hierher, ihr Verlauf bleibt dort.',
+    carriedLoadError: 'Die Anmerkungen aus „{name}“ konnten nicht geladen werden.',
     carriedFrom: 'Übernommen aus „{name}“, Anmerkung {number}',
     carriedTo: 'Weiter in „{name}“ als Anmerkung {number}',
     replacedBy: 'Ersetzt durch „{name}“',

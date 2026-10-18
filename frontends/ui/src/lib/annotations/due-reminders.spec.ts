@@ -35,8 +35,10 @@ import { readGroupPayloads } from '@/lib/inbox/repository'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { emptyDueReminderCounts, type AnnotationDueRemindersPayload } from '@/lib/jobs-queue/types'
 import {
+  DUE_REMINDER_MAX_ORGANIZATIONS,
   DUE_REMINDER_PAGE,
   dueReminderJobId,
+  dueWindowOn,
   enqueueDueReminders,
   reminderOn,
   runDueRemindersSlice,
@@ -74,6 +76,14 @@ beforeEach(() => {
   vi.mocked(enqueueJob).mockResolvedValue({ jobId: 'job' })
 })
 
+describe('dueWindowOn', () => {
+  it('reaches from a week back, the overdue Fristen still reminded of, through tomorrow', () => {
+    expect(dueWindowOn('2026-10-17')).toEqual({ from: '2026-10-10', through: '2026-10-18' })
+    // Across a month's end.
+    expect(dueWindowOn('2026-11-03')).toEqual({ from: '2026-10-27', through: '2026-11-04' })
+  })
+})
+
 describe('reminderOn', () => {
   it('reminds of a Frist today or tomorrow, says one that passed is overdue, and leaves a later one alone', () => {
     expect(reminderOn('2026-10-17', '2026-10-17')).toBe('due_soon')
@@ -92,7 +102,8 @@ describe('enqueueDueReminders (the daily sweep)', () => {
     // 23:30 UTC on the 16th is already the 17th in Vienna.
     const sweep = await enqueueDueReminders(new Date('2026-10-16T23:30:00Z'))
 
-    expect(listOrganizationsWithDueMarks).toHaveBeenCalledWith('2026-10-18', 1000)
+    // The overdue window reaches seven days back; the order turns over with the day.
+    expect(listOrganizationsWithDueMarks).toHaveBeenCalledWith({ from: '2026-10-10', through: '2026-10-18' }, '2026-10-17', 1000)
     expect(sweep).toEqual({ day: '2026-10-17', organizations: 2, queued: 2, already: 0 })
     expect(vi.mocked(withTenant).mock.calls.map(([scope]) => scope)).toEqual([
       { organizationId: 'org_a' },
@@ -116,6 +127,19 @@ describe('enqueueDueReminders (the daily sweep)', () => {
 
     await expect(enqueueDueReminders(new Date('2026-10-17T05:00:00Z'))).resolves.toMatchObject({ queued: 0, already: 1 })
   })
+
+  it('warns when the organizations reach the cap, so a left-out office is seen rather than silent', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(listOrganizationsWithDueMarks).mockResolvedValue(
+      Array.from({ length: DUE_REMINDER_MAX_ORGANIZATIONS }, (_, index) => `org_${index}`)
+    )
+
+    await enqueueDueReminders(new Date('2026-10-17T05:00:00Z'))
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0]?.[0])).toContain(`the cap of ${DUE_REMINDER_MAX_ORGANIZATIONS} organizations was reached`)
+    warn.mockRestore()
+  })
 })
 
 describe('runDueRemindersSlice (one organization’s job)', () => {
@@ -127,7 +151,7 @@ describe('runDueRemindersSlice (one organization’s job)', () => {
 
     const result = await runDueRemindersSlice('org_1', FIRST)
 
-    expect(listDueMarksPage).toHaveBeenCalledWith('org_1', '2026-10-18', null, DUE_REMINDER_PAGE)
+    expect(listDueMarksPage).toHaveBeenCalledWith('org_1', { from: '2026-10-10', through: '2026-10-18' }, null, DUE_REMINDER_PAGE)
     expect(emitted().map((row) => [row.recipientUserId, row.anchorId, row.payload?.variant, row.payload?.reminder])).toEqual([
       ['user_anna', 'ann_soon', 'due_soon', 'due_soon:2026-10-18'],
       ['user_ben', 'ann_past', 'overdue', 'overdue:2026-10-10'],
@@ -195,7 +219,7 @@ describe('runDueRemindersSlice (one organization’s job)', () => {
 
     const result = await runDueRemindersSlice('org_1', { ...FIRST, cursor: 'ann_prev' })
 
-    expect(listDueMarksPage).toHaveBeenCalledWith('org_1', '2026-10-18', 'ann_prev', DUE_REMINDER_PAGE)
+    expect(listDueMarksPage).toHaveBeenCalledWith('org_1', { from: '2026-10-10', through: '2026-10-18' }, 'ann_prev', DUE_REMINDER_PAGE)
     expect(result.done).toBe(false)
     expect(result.payload.cursor).toBe(`ann_${String(DUE_REMINDER_PAGE - 1).padStart(3, '0')}`)
     expect(captureServer).not.toHaveBeenCalled()

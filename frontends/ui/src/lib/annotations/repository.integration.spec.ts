@@ -16,7 +16,9 @@
  *   - the Fassung a mark was set on comes back by number, and a discarded
  *     version leaves the mark standing;
  *   - a status move is compare-and-swap: the second of two moves from the same
- *     state finds nothing to move;
+ *     state finds nothing to move; a carry to a replacing document closes the
+ *     source only while it is open and not delegated to Piloti;
+ *   - the daily reminder reads only marks whose Frist is inside its window;
  *   - a thread comes back in order and goes with its mark;
  *   - one reply is deleted alone, and only while it still says what the caller
  *     read (undo's compare-and-swap); another mark's reply with the same id is
@@ -311,15 +313,45 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(orphan).toMatchObject({ carriedFromId: null, carriedFrom: null, status: 'open' })
   })
 
-  it('finds the marks whose Frist is near or past for the daily reminder: open, with a Zuständige, by id', async () => {
+  it('carries no mark delegated to Piloti after the service read it: the close finds nothing, and nothing is set on the target', async () => {
+    const replacing = await document(ids.project, `Index_D_${STAMP}.pdf`)
+    // Read open and undelegated by the service; delegated a moment later.
+    const [source] = await insert(ids.document, [mark({ body: 'Geländer' })])
+    await inOrg(ORG, () =>
+      repo.updateDocumentAnnotation(ORG, ids.document, source.id, 'open', {
+        delegation: { delegatedBy: USER, delegatedAt: new Date() },
+      })
+    )
+
+    const carried = await inOrg(ORG, () =>
+      repo.carryAnnotationToDocument({
+        organizationId: ORG,
+        source,
+        target: { documentId: replacing, versionId: null },
+        values: { mentions: [], assigneeUserId: null },
+        closedBy: USER,
+      })
+    )
+
+    expect(carried).toBeNull()
+    expect(await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, source.id))).toMatchObject({
+      status: 'open',
+      delegatedBy: USER,
+    })
+    expect(await inOrg(ORG, () => repo.listDocumentAnnotations(ORG, replacing))).toEqual([])
+  })
+
+  it('finds the marks whose Frist is near or recently past for the daily reminder: open, with a Zuständige, by id', async () => {
     const dated = await document(ids.project, `Frist_${STAMP}.pdf`)
-    const [soon, past, later, nobody, closed] = await insert(dated, [
+    const [soon, past, later, nobody, closed, stale] = await insert(dated, [
       mark({ assigneeUserId: USER, dueOn: '2026-10-18', body: 'morgen' }),
-      mark({ assigneeUserId: USER, dueOn: '2026-10-01', body: 'vorbei' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-10-10', body: 'vorbei' }),
       mark({ assigneeUserId: USER, dueOn: '2026-11-30', body: 'später' }),
-      mark({ assigneeUserId: null, dueOn: '2026-10-01', body: 'niemand' }),
-      mark({ assigneeUserId: USER, dueOn: '2026-10-01', body: 'erledigt' }),
+      mark({ assigneeUserId: null, dueOn: '2026-10-12', body: 'niemand' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-10-12', body: 'erledigt' }),
+      mark({ assigneeUserId: USER, dueOn: '2026-10-09', body: 'längst vorbei' }),
     ])
+    const window = { from: '2026-10-10', through: '2026-10-18' }
     await inOrg(ORG, () =>
       repo.updateDocumentAnnotation(ORG, dated, closed.id, 'open', {
         transition: { status: 'resolved', closedBy: USER, closedAt: new Date() },
@@ -327,7 +359,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     )
     const due = await import('./due-repository')
 
-    const page = await due.listDueMarksPage(ORG, '2026-10-18', null, 100)
+    const page = await due.listDueMarksPage(ORG, window, null, 100)
     const onDated = page.filter((row) => row.documentId === dated)
     expect(onDated.map((row) => row.body).sort()).toEqual(['morgen', 'vorbei'])
     expect(onDated.find((row) => row.id === soon.id)).toMatchObject({
@@ -337,16 +369,23 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
       document: { id: dated, scope: 'project', projectId: ids.project },
     })
     expect(page.map((row) => row.id)).toEqual([...page.map((row) => row.id)].sort())
-    expect(page.some((row) => [later.id, nobody.id, closed.id].includes(row.id))).toBe(false)
+    // Neither a later Frist, nor one before the window: a first run does not remind of everything that ever passed.
+    expect(page.some((row) => [later.id, nobody.id, closed.id, stale.id].includes(row.id))).toBe(false)
 
-    const after = await due.listDueMarksPage(ORG, '2026-10-18', [soon.id, past.id].sort()[0], 100)
+    const after = await due.listDueMarksPage(ORG, window, [soon.id, past.id].sort()[0], 100)
     expect(after.map((row) => row.id)).not.toContain([soon.id, past.id].sort()[0])
 
     const organizations = await withPlatformAccess('test: the due sweep finds its organizations', () =>
-      due.listOrganizationsWithDueMarks('2026-10-18', 1000)
+      due.listOrganizationsWithDueMarks(window, '2026-10-17', 1000)
     )
     expect(organizations).toContain(ORG)
     expect(organizations).not.toContain(OTHER_ORG)
+    expect(new Set(organizations).size).toBe(organizations.length)
+    // The window bounds discovery from below too: on a day after all of this office's Fristen, it is not found.
+    const laterWindow = await withPlatformAccess('test: the due sweep skips stale marks', () =>
+      due.listOrganizationsWithDueMarks({ from: '2026-12-01', through: '2026-12-02' }, '2026-12-01', 1000)
+    )
+    expect(laterWindow).not.toContain(ORG)
   })
 
   it('keeps a thread in order, touches the mark, and lets the thread go with its mark', async () => {

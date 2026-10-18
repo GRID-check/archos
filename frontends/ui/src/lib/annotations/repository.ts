@@ -10,7 +10,7 @@
  */
 
 import 'server-only'
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
@@ -330,8 +330,9 @@ export class AlreadyCarriedError extends Error {}
  * numbered there under the same per-document lock and cap as any new mark,
  * with its place, its text, whom it mentions, its author, its Zuständige and
  * its date, and `carried_from_id` pointing back; the source is closed
- * (`resolved`, by `closedBy`), compared and swapped on `open`. Null when the
- * source is no longer open (a colleague closed it first); a second carry of
+ * (`resolved`, by `closedBy`), compared and swapped on `open` and on nobody
+ * having delegated it to Piloti. Null when the source is no longer open (a
+ * colleague closed it first) or was delegated meanwhile; a second carry of
  * the same mark is refused by the unique index ({@link AlreadyCarriedError}).
  * Both documents were read for writing by the service.
  */
@@ -372,7 +373,11 @@ export async function carryAnnotationToDocument(input: {
               eq(documentAnnotations.organizationId, organizationId),
               eq(documentAnnotations.documentId, source.documentId),
               eq(documentAnnotations.id, source.id),
-              eq(documentAnnotations.status, 'open')
+              eq(documentAnnotations.status, 'open'),
+              // A mark Piloti works is not carried: its running turn writes on the source. The
+              // service refuses one it read delegated; a delegation that lands after that read
+              // is caught here, in the swap, and the carry is the same conflict as a close.
+              isNull(documentAnnotations.delegatedBy)
             )
           )
           .returning({ id: documentAnnotations.id })
