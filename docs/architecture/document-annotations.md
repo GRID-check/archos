@@ -155,7 +155,11 @@ over or dismissing it has none. The deferral is the inbox archive's own
 `use-document-review.ts` hold the decision. A click on the card's own button
 is deliberate and writes at once; a change to a mark whose decision is still
 held (a click, a reply's status) lets the decision go and starts from where
-the mark really stands.
+the mark really stands. Once its PATCH has gone out, a decision is no longer
+held: the card shows it until the answer comes, and a change or „Rückgängig“
+meanwhile goes to the server as it is (a status moved under it is the usual
+conflict notice). A decision is sent to the document it was taken on, and its
+answer is dropped if the pane has moved to another document.
 
 **Without a mouse.** A mark tool taken up from the keyboard (its key, or its
 button with Enter) puts a crosshair at the middle of the reader's view on the
