@@ -10,6 +10,7 @@ return "I cannot say", never a number that quietly omits 81% of the bill.
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+from numbers import Integral
 
 import pytest
 
@@ -46,6 +47,19 @@ def _facts(
         scanned_pages=scanned,
         drawing_pages=drawings,
     )
+
+
+class _VectorCount:
+    """A count as a vector library returns it: an ``Integral`` that is not an ``int``."""
+
+    def __init__(self, value: int) -> None:
+        self._value = value
+
+    def __index__(self) -> int:
+        return self._value
+
+
+Integral.register(_VectorCount)
 
 
 class TestTheConstants:
@@ -135,6 +149,13 @@ class TestTheMechanism:
         assert estimate.vision_calls == 0
         assert estimate.transcription_calls == 0
         assert estimate.embedding_tokens == 0
+
+    def test_a_count_that_is_not_a_builtin_int_still_counts(self):
+        # A count measured through a vector library is an Integral, not an int;
+        # reading it as 0 would silently drop pages from the estimate.
+        estimate = estimate_ingest_cost(_facts(pages=_VectorCount(10), scanned=_VectorCount(2)))
+        assert estimate.embedding_tokens == 10 * EMBEDDING_TOKENS_PER_PAGE
+        assert estimate.transcription_calls == 2
 
     def test_tokens_follow_the_predicted_calls(self):
         estimate = estimate_ingest_cost(_facts(rasters=((200, 200), (300, 300), (400, 400))))

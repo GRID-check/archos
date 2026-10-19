@@ -75,6 +75,7 @@ Pure: no I/O, no framework, no clock.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 
 #: Smallest embedded raster, in px on both edges, that earns a vision call.
 #: Mirrors ``MIN_IMAGE_WIDTH_PX`` / ``MIN_IMAGE_HEIGHT_PX`` in the adapter.
@@ -171,8 +172,12 @@ class IngestCostEstimate:
 
 
 def _count(value: int | None) -> int:
-    """A non-negative int from a measured count; ``None`` and negatives are 0."""
-    return max(0, value) if isinstance(value, int) else 0
+    """A non-negative int from a measured count; ``None`` and negatives are 0.
+
+    Accepts any ``numbers.Integral`` (a numpy or pandas count is still a count),
+    so a caller that measures through a dataframe is not silently read as 0.
+    """
+    return max(0, int(value)) if isinstance(value, Integral) else 0
 
 
 def _distinct_raster_sizes(sizes: tuple[tuple[int, int], ...]) -> int:
