@@ -255,6 +255,7 @@ Enforcement points:
 | GET/PUT | `/api/platform/pricing` | `platform:settings:view` / `manage` | the price list, its bounds, the version trail |
 | GET/PUT | `/api/platform/organizations/:organizationId/budgets` | `platform:organizations:view` / `manage` | view usage and effective daily/monthly limits, or supersede the org policy in its current unit; a stale unit is rejected with 409 |
 | GET | `/api/platform/overview` | `platform:organizations:view` | cost (with the own-key share apart), revenue (price), credits and tokens per organization and in total, plus the active price list; the UI shows `costUsd − ownKeyCostUsd` as the platform's cost |
+| PUT | `/api/platform/organizations/:organizationId/ingest-cost-threshold` | `platform:organizations:manage` | the ingest-cost confirmation threshold, in USD: the number above which a large upload is confirmed with the person before it is read. Platform-owned, like the storage quota and the per-file upload limit — a tenant that could raise its own threshold would simply not be prompted. The estimate it is compared against rides the ingest job's own status (`GET /api/documents/{id}/ingest-cost` reads both); see [`document-ingestion.md`](../technical-reference/document-ingestion.md#the-ingest-cost-estimate-from-the-same-pre-read) |
 
 ## UI (org page → "Usage & budgets")
 

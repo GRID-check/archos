@@ -60,6 +60,8 @@ from aiq_agent.knowledge.base import PreparedIngestJob
 from aiq_agent.knowledge.base import TTLCleanupMixin
 from aiq_agent.knowledge.factory import register_ingestor
 from aiq_agent.knowledge.factory import register_retriever
+from aiq_agent.knowledge.ingest_cost_estimate import PdfPreReadFacts
+from aiq_agent.knowledge.ingest_cost_estimate import estimate_ingest_cost
 from aiq_agent.knowledge.ingest_scheduler import FairIngestScheduler
 from aiq_agent.knowledge.ingest_scheduler import JobSource
 from aiq_agent.knowledge.ingest_scheduler import per_org_cap_from_env
@@ -69,6 +71,7 @@ from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.schema import FileInfo
 from aiq_agent.knowledge.schema import FileProgress
 from aiq_agent.knowledge.schema import FileStatus
+from aiq_agent.knowledge.schema import IngestCostReport
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
 from aiq_agent.knowledge.schema import QuarantineVerdict
@@ -2670,20 +2673,14 @@ def _from_epoch(seconds: int | None) -> datetime | None:
 
 
 class _PdfScreen(NamedTuple):
-    """A PDF the upload screen let through: its routing and how much of it was screened.
+    """A PDF the upload screen let through: how much of it was screened.
 
-    ``triage`` is the page triage ``route_pdf_pages`` runs on, measured once here
-    (``None`` when the PDF could not be measured). ``checked`` is ``partial`` when
-    some content reaches a model unscreened. ``routing()`` is what ``route_pdf_pages``
-    takes: no ``triage`` key when there is none, so it measures the PDF itself,
-    exactly as the old empty dict did.
+    The page triage is the caller's now — measured once for the screen, the OCR
+    routing and the ingest-cost estimate — so this carries only the verdict.
+    ``checked`` is ``partial`` when some content reaches a model unscreened.
     """
 
-    triage: Any = None
     checked: str = "full"
-
-    def routing(self) -> dict[str, Any]:
-        return {} if self.triage is None else {"triage": self.triage}
 
 
 #: The order ``[ingest-perf]`` lists a file's stages in, so two lines compare.
@@ -3195,14 +3192,43 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             job, file_index, rules, list(body), "partial", stream=body, after_transcription=transcribed
         )
 
+    def _record_ingest_cost(self, job: IngestionJobStatus, file_index: int, triage: Any) -> None:
+        """Put the cheap pre-read's ingest-cost estimate on the file, before any model call.
+
+        The facts are what the triage already measured (page count, scanned and
+        drawing pages) plus the embedded raster sizes it now records in its one
+        page-object pass: no second parse of the PDF. ``triage`` is ``None``
+        when pdfium could not measure the file, and then no estimate is written,
+        which reads as "I cannot say", never as a free ingest.
+        """
+        if triage is None:
+            return
+        estimate = estimate_ingest_cost(
+            PdfPreReadFacts(
+                page_count=triage.page_count,
+                embedded_raster_sizes_px=triage.raster_sizes_px,
+                scanned_pages=len(triage.transcribed),
+                drawing_pages=len(triage.drawings),
+            )
+        )
+        with self._lock:
+            if file_index < len(job.file_details):
+                job.file_details[file_index].ingest_cost = IngestCostReport(
+                    expected_usd=estimate.expected_usd,
+                    upper_usd=estimate.upper_usd,
+                    is_coarse=estimate.is_coarse,
+                    missing_inputs=list(estimate.missing_inputs),
+                )
+
     def _screen_pdf(
         self,
         job: IngestionJobStatus,
         file_index: int,
         rules: Any,
-        source_path: str,
         text_pages: list[dict[str, Any]],
+        page_texts: dict[int, str],
         companions: list[Any],
+        triage: Any,
         *,
         captions_rasters: bool,
     ) -> _PdfScreen | None:
@@ -3214,25 +3240,25 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         before any model call, so a page the text pass lost can carry a match in
         its table alone.
 
+        ``page_texts`` and ``triage`` are the caller's: the text layer is read
+        once and the PDF is triaged once for the screen, the OCR routing and the
+        cost estimate together. ``triage`` is ``None`` when pdfium could not
+        measure the file, which makes the verdict ``partial``.
+
         Returns the routing and the ``checked`` verdict for ``route_pdf_pages``,
-        the page triage measured here so the PDF is measured once, or ``None``
-        when the file was quarantined. ``checked`` is ``partial`` when the triage
-        sends a page to transcription or drawing analysis, or cannot measure the
-        PDF, or when ``captions_rasters`` (the VLM will caption embedded images)
-        and a page carries one: that content reaches a model without having been
-        screened, which the product accepts for content that cannot be read
-        locally. A page the text pass could not read (``failed_pages``) makes it
-        ``partial`` too: its text was never read, so never screened.
+        or ``None`` when the file was quarantined. ``checked`` is ``partial``
+        when the triage sends a page to transcription or drawing analysis, or
+        cannot measure the PDF, or when ``captions_rasters`` (the VLM will
+        caption embedded images) and a page carries one: that content reaches a
+        model without having been screened, which the product accepts for
+        content that cannot be read locally. A page the text pass could not read
+        (``failed_pages``) makes it ``partial`` too: its text was never read, so
+        never screened.
         """
         if rules is None:
             return _PdfScreen()
-        from knowledge_layer.llamaindex import page_triage
         from knowledge_layer.llamaindex.screening import document_pages
 
-        page_texts = page_texts_for_visual_heuristic(text_pages)
-        triage = page_triage.triage_pdf(
-            source_path, page_texts, min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS, min_paths=VISUAL_PAGE_MIN_PATHS
-        )
         has_rasters = any(page.get("image_count") for page in text_pages)
         lost_pages = bool(getattr(text_pages, "failed_pages", ()))
         unscreened = (
@@ -3246,7 +3272,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         pages = [*body, *document_pages(companions)]
         if self._screen_or_quarantine(job, file_index, rules, pages, checked, stream=body):
             return None
-        return _PdfScreen(triage, checked)
+        return _PdfScreen(checked)
 
     def _screen_tables(
         self,
@@ -4678,23 +4704,40 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         self._record_failed_pages(job, i, text_pages)
                         if rendition:
                             companions = _rendition_companions(file_path, file_name, file_size)
-                        # The upload screen: the last step before a page of
-                        # this file can reach a model (transcription, below).
-                        # The text layer and the companions are screened BEFORE
-                        # the table pass, so a file the screen holds never pays
-                        # for its tables (measured: 125 s of a 133-page PDF).
+                        # The cheap pre-read, measured ONCE: the text layer is
+                        # read once, then the PDF is triaged once for the screen,
+                        # the OCR/drawing routing and the ingest-cost estimate
+                        # together. Nothing here decodes a raster — the sizes
+                        # come from image metadata — so the estimate is available
+                        # before the first model call.
+                        from knowledge_layer.llamaindex import page_triage
+
+                        page_texts = page_texts_for_visual_heuristic(text_pages)
                         with _stage(stages, "screen"):
+                            triage = page_triage.triage_pdf(
+                                source_path,
+                                page_texts,
+                                min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
+                                min_paths=VISUAL_PAGE_MIN_PATHS,
+                            )
+                            # The upload screen: the last step before a page of
+                            # this file can reach a model (transcription, below).
+                            # The text layer and the companions are screened BEFORE
+                            # the table pass, so a file the screen holds never pays
+                            # for its tables (measured: 125 s of a 133-page PDF).
                             screen = self._screen_pdf(
                                 job,
                                 i,
                                 screening_rules,
-                                source_path,
                                 text_pages,
+                                page_texts,
                                 companions,
+                                triage,
                                 captions_rasters=bool(vlm_api_key) and (extract_images or extract_charts),
                             )
                         if screen is None:
                             continue
+                        self._record_ingest_cost(job, i, triage)
                         if extract_tables:
                             from knowledge_layer.llamaindex.section_chunking import uncaptioned_table_documents
 
@@ -4715,7 +4758,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         page_routes = _transcription.route_pdf_pages(
                             source_path,
                             text_pages,
-                            page_texts_for_visual_heuristic(text_pages),
+                            page_texts,
                             vlm_api_key=vlm_api_key,
                             model=ocr_model,
                             base_url=vlm_base_url,
@@ -4723,7 +4766,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             min_paths=VISUAL_PAGE_MIN_PATHS,
                             max_ocr_pages=MAX_OCR_PAGES,
                             max_dim=PAGE_RENDER_MAX_DIM,
-                            **screen.routing(),
+                            triage=triage,
                         )
                         self._record_file_counts(job, i, **page_routes.counts())
                         # What the vision model read off scanned pages is text

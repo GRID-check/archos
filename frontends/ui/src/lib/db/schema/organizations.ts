@@ -53,10 +53,17 @@ export type NewOrganization = typeof organizations.$inferInsert
  *
  * A key belongs here when the tenant is the party the value CONSTRAINS. A
  * setting the tenant chooses for itself (`zdrOnly`, `webSearchEnabled`,
- * `providerMode`) does not, however sensitive. Today: the storage quota, and
- * the per-file upload limit (`maxUploadFileBytes`, `@/lib/storage/upload-limit`).
+ * `providerMode`) does not, however sensitive. Today: the storage quota, the
+ * per-file upload limit (`maxUploadFileBytes`, `@/lib/storage/upload-limit`),
+ * and the ingest-cost confirmation threshold
+ * (`ingestCostConfirmationThresholdUsd`, `@/lib/ingest-cost/threshold`) — a
+ * tenant that could raise its own threshold would not be asked.
  */
-export const PLATFORM_OWNED_SETTINGS = ['storageQuotaBytes', 'maxUploadFileBytes'] as const
+export const PLATFORM_OWNED_SETTINGS = [
+  'storageQuotaBytes',
+  'maxUploadFileBytes',
+  'ingestCostConfirmationThresholdUsd',
+] as const
 
 export type PlatformOwnedSetting = (typeof PLATFORM_OWNED_SETTINGS)[number]
 

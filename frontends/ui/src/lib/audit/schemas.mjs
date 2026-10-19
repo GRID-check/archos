@@ -101,6 +101,15 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'organization' }],
     metadata: { maxUploadFileBytes: 'number' },
   },
+  // Per-organization ingest-cost confirmation threshold: the USD figure above
+  // which an upload asks before it spends. Its own action for the reason the
+  // two above have one — it changes what an office is asked, and "who raised
+  // it, and to what" must be answerable on its own. A cleared value is recorded
+  // as the default it follows, so this is always a number.
+  'org.ingest_cost_threshold.updated': {
+    targets: [{ type: 'organization' }],
+    metadata: { ingestCostConfirmationThresholdUsd: 'number' },
+  },
   // An org-wide retry of every ingestion that failed to read (behind
   // "Rescan failed ingestions" in Organization > Enterprise). The counts
   // are the outcome, so the trail can answer who re-read the tenant's

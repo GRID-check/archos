@@ -17,7 +17,10 @@ files and no system fonts. The vision model is mocked throughout.
 from __future__ import annotations
 
 import io
+import threading
 import time
+from datetime import UTC
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -33,6 +36,10 @@ from knowledge_layer.llamaindex.page_triage import classify_page
 from knowledge_layer.llamaindex.page_triage import text_quality
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
+from aiq_agent.knowledge.ingest_cost_estimate import PdfPreReadFacts
+from aiq_agent.knowledge.ingest_cost_estimate import estimate_ingest_cost
+from aiq_agent.knowledge.schema import FileProgress
+from aiq_agent.knowledge.schema import IngestionJobStatus
 from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
 from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
@@ -295,6 +302,126 @@ class TestTriageRealPdfs:
     def test_an_unopenable_pdf_is_not_triaged(self, tmp_path):
         path = _write(tmp_path, "broken.pdf", b"%PDF-1.4\n% nothing\n")
         assert page_triage.triage_pdf(path, {}, min_text_chars=200, min_paths=300) is None
+
+
+# =============================================================================
+# The raster sizes the ingest-cost estimate needs
+# =============================================================================
+
+
+class _FakeImage:
+    """An image page-object: the two attributes ``_raster_signals`` reads."""
+
+    type = 3  # FPDF_PAGEOBJ_IMAGE
+
+    def __init__(self, px: tuple[int, int]) -> None:
+        self._px = px
+
+    def get_bounds(self) -> tuple[float, float, float, float]:
+        return 0.0, 0.0, 100.0, 50.0
+
+    def get_px_size(self) -> tuple[int, int]:
+        return self._px
+
+
+class _FakePage:
+    def __init__(self, objects: list[object]) -> None:
+        self._objects = objects
+
+    def get_objects(self) -> list[object]:
+        return list(self._objects)
+
+
+class TestRasterSizes:
+    """The embedded raster sizes the ingest-cost estimate is built on (one pass, no decode)."""
+
+    def test_each_image_objects_pixel_size_is_read(self):
+        page = _FakePage([_FakeImage((1200, 800)), _FakeImage((80, 60))])
+        coverage, sizes = page_triage._raster_signals(page, 100.0 * 50.0)
+        assert sizes == ((1200, 800), (80, 60)), "small ones too: the estimate applies its own minimum"
+        assert coverage == pytest.approx(1.0)
+
+    def test_a_size_that_cannot_be_read_makes_the_whole_list_unknown(self):
+        class Anonymous(_FakeImage):
+            def get_px_size(self):
+                raise RuntimeError("no pixel metadata")
+
+        _, sizes = page_triage._raster_signals(_FakePage([Anonymous((1, 1))]), 100.0)
+        assert sizes is None, "half a list would under-count the vision calls"
+
+    def test_a_page_without_an_image_object_carries_no_raster_sizes(self):
+        coverage, sizes = page_triage._raster_signals(_FakePage([]), 100.0)
+        assert sizes == () and coverage == 0.0
+
+    def test_the_document_sizes_are_every_page_and_none_when_one_is_unknown(self):
+        both = [PageSignals(1, "", raster_sizes_px=((10, 10),)), PageSignals(2, "", raster_sizes_px=((20, 20),))]
+        assert page_triage._document_raster_sizes(both) == ((10, 10), (20, 20))
+        assert page_triage._document_raster_sizes([*both, PageSignals(3, "", raster_sizes_px=None)]) is None
+
+
+class TestIngestCostFromThePreRead:
+    """The pre-read's facts become the ingest-cost estimate, before any model call."""
+
+    def test_the_triage_reports_a_scans_raster_and_counts_its_pages(self, tmp_path):
+        path = _write(tmp_path, "scan.pdf", scan_pdf(pages=2))
+        triage = page_triage.triage_pdf(path, _plumber_texts(path), min_text_chars=200, min_paths=300)
+
+        assert triage.page_count == 2
+        assert triage.raster_sizes_px is not None and len(triage.raster_sizes_px) == 2
+
+    def test_a_text_pdf_has_no_embedded_raster(self, tmp_path):
+        path = _write(tmp_path, "letter.pdf", _pdf([text_page()]))
+        triage = page_triage.triage_pdf(path, _plumber_texts(path), min_text_chars=200, min_paths=300)
+
+        assert triage.raster_sizes_px == (), "the empty tuple is 'no raster', not 'unknown'"
+
+    def test_a_scanned_pdf_reports_its_ingest_cost_from_the_same_triage(
+        self, tmp_path, monkeypatch, indexed, no_drawing_vlm
+    ):
+        """End to end and offline: the real PDF is triaged once and priced from those facts."""
+        _credential(monkeypatch)
+        live, _calls = _fake_live()
+        monkeypatch.setattr(transcription, "_transcribe_live", live)
+        path = _write(tmp_path, "bescheid.pdf", scan_pdf(pages=2))
+
+        status = _ingest(indexed, path, "bescheid.pdf")
+
+        report = status.file_details[0].ingest_cost
+        assert report is not None, "the pre-read ran, so the file must carry an estimate"
+        triage = page_triage.triage_pdf(
+            path,
+            _plumber_texts(path),
+            min_text_chars=adapter.VISUAL_PAGE_MIN_TEXT_CHARS,
+            min_paths=adapter.VISUAL_PAGE_MIN_PATHS,
+        )
+        expected = estimate_ingest_cost(
+            PdfPreReadFacts(
+                page_count=triage.page_count,
+                embedded_raster_sizes_px=triage.raster_sizes_px,
+                scanned_pages=len(triage.transcribed),
+                drawing_pages=len(triage.drawings),
+            )
+        )
+        assert report.expected_usd == pytest.approx(expected.expected_usd)
+        assert report.upper_usd == pytest.approx(expected.upper_usd)
+        assert report.missing_inputs == list(expected.missing_inputs)
+        assert report.expected_usd and report.expected_usd > 0, "a scanned page is not a free ingest"
+
+    def test_a_pdf_the_triage_cannot_measure_gets_no_estimate(self):
+        """pdfium could not open it: "I cannot say", never a free ingest."""
+        ingestor = object.__new__(adapter.LlamaIndexIngestor)
+        ingestor._lock = threading.Lock()
+        job = IngestionJobStatus(
+            job_id="j",
+            submitted_at=datetime.now(UTC),
+            collection_name="coll",
+            backend="llamaindex",
+            file_details=[FileProgress(file_name="broken.pdf")],
+        )
+
+        ingestor._record_ingest_cost(job, 0, None)
+
+        assert job.file_details[0].ingest_cost is None
 
 
 # =============================================================================

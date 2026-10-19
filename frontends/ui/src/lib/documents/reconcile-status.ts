@@ -232,7 +232,9 @@ const fetchJson = async (url: string, init?: RequestInit): Promise<{ status: num
 }
 
 /** One file of a job, as the batch status endpoint reports it (`FileProgress`). */
-interface BackendJobFile {
+export interface BackendJobFile {
+  /** The file's name in the collection, the join key this module and the reader both use. */
+  file_name?: string
   status?: string
   error_message?: string | null
   /** The content gate's per-file outcome (ADR-0086), null when the job carried no rules. */
@@ -246,6 +248,13 @@ interface BackendJobFile {
   /** Why it failed (`ingest_failures.py`), and whether the same bytes may read again; null unless FAILED. */
   failure_category?: string | null
   retryable?: boolean | null
+  /**
+   * What the job's cheap pre-read expected this file to cost
+   * (`FileProgress.ingest_cost`), or absent on a file it never priced — an
+   * image, or a PDF it could not measure. Raw, and read where it is asked for
+   * (`@/lib/ingest-cost/types`), never trusted as typed here.
+   */
+  ingest_cost?: unknown
 }
 
 interface BackendJobStatus {
@@ -326,6 +335,29 @@ const fetchJobStatuses = async (jobIds: string[]): Promise<Map<string, BackendJo
 
   const statuses = (result.body as { statuses?: Record<string, BackendJobStatus | null> }).statuses ?? {}
   return new Map(Object.entries(statuses))
+}
+
+/**
+ * The backend's per-file report for one ingest job, read live, or null.
+ *
+ * The same batch call the reconciler makes, asked a different question: not
+ * "what status is this row" but "what did this job say about this file" — which
+ * is where the cheap pre-read's ingest-cost estimate arrives
+ * (`FileProgress.ingest_cost`). One implementation of "what the backend knows
+ * about a job", read two ways, so the endpoint, the timeout and the
+ * unknown-job-means-null rule cannot drift between them.
+ *
+ * The file is matched by NAME, because a job may in principle carry several. A
+ * single-file job whose entry does not match the name asked for is still that
+ * file — the job this BFF dispatches carries exactly one document — so its one
+ * entry is returned rather than nothing.
+ */
+export async function readBackendJobFile(jobId: string, fileName: string): Promise<BackendJobFile | null> {
+  const statuses = await fetchJobStatuses([jobId])
+  const job = statuses?.get(jobId)
+  const files = job?.file_details
+  if (!files || files.length === 0) return null
+  return files.find((file) => file.file_name === fileName) ?? (files.length === 1 ? files[0]! : null)
 }
 
 const resolveFromJobStatus = (job: BackendJobStatus | null | undefined): JobResolution => {

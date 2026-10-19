@@ -359,6 +359,34 @@ class FileInfo(BaseModel):
     )
 
 
+class IngestCostReport(BaseModel):
+    """What the cheap pre-read expects one file to cost to ingest (the wire shape).
+
+    Fitted on 259 production PDFs by ``aiq_agent.knowledge.ingest_cost_estimate``,
+    whose ``IngestCostEstimate`` this mirrors for the job status. ``expected_usd``
+    and ``upper_usd`` are null together, and only when the pre-read could not see
+    the embedded rasters — 81% of the bill — so a number here is never one that
+    quietly omits most of the cost. ``is_coarse`` says some fact was missing and
+    a zero stood in for it, so the dollars are a floor; ``missing_inputs`` names
+    those facts. The reader must not read a coarse estimate as a firm one.
+    """
+
+    expected_usd: float | None = Field(
+        None, ge=0.0, description="The expected ingest bill in USD, or null when the rasters were not measured."
+    )
+    upper_usd: float | None = Field(
+        None,
+        ge=0.0,
+        description="``expected_usd`` times ``UPPER_BOUND_MULTIPLIER``, which covered 90% of the sample; not a quote.",
+    )
+    is_coarse: bool = Field(
+        False, description="True when an input was missing: the dollars are a floor, read `missing_inputs`."
+    )
+    missing_inputs: list[str] = Field(
+        default_factory=list, description="The `PdfPreReadFacts` fields the pre-read could not measure."
+    )
+
+
 class FileProgress(BaseModel):
     """Progress tracking for individual files within an ingestion job."""
 
@@ -368,6 +396,14 @@ class FileProgress(BaseModel):
     progress_percent: float = Field(0.0, ge=0.0, le=100.0, description="Processing progress (0-100).")
     error_message: str | None = Field(default=None, description="Error message if processing failed.")
     chunks_created: int = Field(0, ge=0, description="Number of chunks created from this file.")
+    ingest_cost: IngestCostReport | None = Field(
+        default=None,
+        description=(
+            "What the file's cheap pre-read expects it to cost to ingest, reported before any "
+            "model call so a reader can ask before the spend. Null for a file that was never "
+            "pre-read (an image, a spreadsheet), or a PDF the pre-read could not measure."
+        ),
+    )
     pages_failed: int = Field(
         0,
         ge=0,

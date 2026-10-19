@@ -208,6 +208,13 @@ class PageSignals:
     text: str
     path_count: int = 0
     raster_coverage: float = 0.0
+    #: ``(width_px, height_px)`` of every embedded raster on the page, small ones
+    #: included, or ``None`` when an image object's size could not be read from
+    #: its metadata (the cost estimate then says "I cannot say" rather than
+    #: under-counting the bill). ``()`` is a page with no image object at all.
+    #: Read from metadata, never from pixels: decoding a raster is the cost the
+    #: two-pass extractor exists to avoid.
+    raster_sizes_px: tuple[tuple[int, int], ...] | None = ()
 
 
 def classify_page(signals: PageSignals, *, min_text_chars: int, min_paths: int) -> PageKind:
@@ -241,15 +248,47 @@ def classify_page(signals: PageSignals, *, min_text_chars: int, min_paths: int) 
 # ---------------------------------------------------------------------------
 
 
-def _raster_coverage(page: Any, page_area: float) -> float:
-    """Share of the page covered by its largest image object (0..1)."""
+def _raster_px_size(obj: Any) -> tuple[int, int] | None:
+    """An image object's pixel size from its metadata, or ``None`` when it has none.
+
+    ``PdfImage.get_px_size`` answers from the object's metadata without decoding
+    a pixel (the adapter's ``_image_pixel_size`` reads the same). A library or
+    image that cannot answer reports ``None``: the cost estimate prefers "I
+    cannot say" to a number that quietly omits a raster.
+    """
+    get_px_size = getattr(obj, "get_px_size", None)
+    if get_px_size is None:
+        return None
+    try:
+        width, height = get_px_size()
+        return int(width), int(height)
+    except Exception:  # noqa: BLE001 - an unreadable size degrades the estimate, never the ingest
+        return None
+
+
+def _raster_signals(page: Any, page_area: float) -> tuple[float, tuple[tuple[int, int], ...] | None]:
+    """One page's raster coverage (0..1), and every embedded raster's pixel size.
+
+    One pass over the page's objects: coverage is the largest image's share of
+    the page (what decides a scan), the sizes are what the ingest-cost estimate
+    needs to guess how many rasters earn a vision call. A size that cannot be
+    read makes the whole list ``None`` rather than a short one.
+    """
     largest = 0.0
+    sizes: list[tuple[int, int]] = []
+    unknown = False
     for obj in page.get_objects():
         if obj.type != _PAGEOBJ_IMAGE:
             continue
         left, bottom, right, top = obj.get_bounds()
         largest = max(largest, max(0.0, right - left) * max(0.0, top - bottom))
-    return min(1.0, largest / page_area) if page_area > 0 else 0.0
+        size = _raster_px_size(obj)
+        if size is None:
+            unknown = True
+        else:
+            sizes.append(size)
+    coverage = min(1.0, largest / page_area) if page_area > 0 else 0.0
+    return coverage, (None if unknown else tuple(sizes))
 
 
 def _path_count(page: Any, ceiling: int) -> int:
@@ -264,11 +303,13 @@ def _path_count(page: Any, ceiling: int) -> int:
 
 def _page_signals(page: Any, page_number: int, text: str, min_paths: int) -> PageSignals:
     width, height = page.get_size()
+    coverage, sizes = _raster_signals(page, width * height)
     return PageSignals(
         page_number=page_number,
         text=text,
         path_count=_path_count(page, max(1, min_paths)),
-        raster_coverage=_raster_coverage(page, width * height),
+        raster_coverage=coverage,
+        raster_sizes_px=sizes,
     )
 
 
@@ -281,11 +322,11 @@ def _measure_page(doc: Any, index: int, text: str, min_paths: int) -> PageSignal
         try:
             page = doc[index]
         except Exception:  # noqa: BLE001 - one damaged page costs that page's signals
-            return PageSignals(number, text)
+            return PageSignals(number, text, raster_sizes_px=None)
         try:
             return _page_signals(page, number, text, min_paths)
         except Exception:  # noqa: BLE001
-            return PageSignals(number, text)
+            return PageSignals(number, text, raster_sizes_px=None)
         finally:
             page.close()
 
@@ -332,9 +373,19 @@ class PdfTriage:
     """Every page's kind, in page order."""
 
     kinds: dict[int, PageKind]
+    #: Every embedded raster's ``(width_px, height_px)`` across the document, or
+    #: ``None`` when any page's rasters could not be measured (then the ingest
+    #: cost cannot be estimated). Aggregated by :func:`triage_pdf` from the same
+    #: pass that classified the pages.
+    raster_sizes_px: tuple[tuple[int, int], ...] | None = None
 
     def pages(self, *kinds: PageKind) -> list[int]:
         return [number for number, kind in self.kinds.items() if kind in kinds]
+
+    @property
+    def page_count(self) -> int:
+        """How many pages the PDF has: one entry per page, whatever kind it took."""
+        return len(self.kinds)
 
     @property
     def transcribed(self) -> list[int]:
@@ -343,6 +394,16 @@ class PdfTriage:
     @property
     def drawings(self) -> list[int]:
         return self.pages(PageKind.DRAWING)
+
+
+def _document_raster_sizes(signals: list[PageSignals]) -> tuple[tuple[int, int], ...] | None:
+    """Every page's embedded raster sizes, or ``None`` when one page's could not be measured."""
+    sizes: list[tuple[int, int]] = []
+    for page in signals:
+        if page.raster_sizes_px is None:
+            return None
+        sizes.extend(page.raster_sizes_px)
+    return tuple(sizes)
 
 
 def triage_pdf(
@@ -359,4 +420,4 @@ def triage_pdf(
     kinds = {s.page_number: classify_page(s, min_text_chars=min_text_chars, min_paths=min_paths) for s in signals}
     counts = {kind.value: sum(1 for k in kinds.values() if k is kind) for kind in PageKind}
     logger.info("Page triage for %s: %s", pdf_path, counts)
-    return PdfTriage(kinds)
+    return PdfTriage(kinds, raster_sizes_px=_document_raster_sizes(signals))

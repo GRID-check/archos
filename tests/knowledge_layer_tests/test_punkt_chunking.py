@@ -350,8 +350,18 @@ def test_the_chunker_works_under_the_deployed_import_path() -> None:
     ingestion would have raised on every OIB PDF with the whole suite green. This
     asserts the installed-package path is importable in isolation.
     """
+    import os
     import subprocess
     import sys
+
+    # The strip is this test's whole point: PATH and PYTHONPATH are emptied so the
+    # installed package path is what resolves, not the source tree. On Windows that
+    # also takes away SystemRoot, without which the interpreter cannot initialise
+    # Winsock and ``import asyncio`` dies with WinError 10106 before the import
+    # under test is reached. Put that one back; nothing else comes back.
+    env = {"PATH": "/usr/bin:/bin", "PYTHONPATH": "src"}
+    if sys.platform == "win32":
+        env["SystemRoot"] = os.environ["SystemRoot"]
 
     result = subprocess.run(
         [
@@ -364,7 +374,7 @@ def test_the_chunker_works_under_the_deployed_import_path() -> None:
         capture_output=True,
         check=False,
         text=True,
-        env={"PATH": "/usr/bin:/bin", "PYTHONPATH": "src"},
+        env=env,
         cwd=str(__import__("pathlib").Path(__file__).resolve().parents[2]),
     )
     assert result.returncode == 0, result.stderr
