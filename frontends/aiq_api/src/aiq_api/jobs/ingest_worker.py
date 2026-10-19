@@ -21,7 +21,7 @@ leaves its claims to go stale and be claimed again.
 
 Config (env):
   CONFIG_FILE / NAT_CONFIG_FILE        the NAT config the web tier runs
-  AIQ_INGEST_MAX_WORKERS               jobs this process runs at once (default 2)
+  AIQ_INGEST_MAX_WORKERS               jobs this process runs at once (default 1)
   GRID_INGEST_WORKER_DRAIN_SECONDS     drain budget on SIGTERM (default 600)
   GRID_WORKER_LIVENESS_FILE            touched while the loop is alive
 """

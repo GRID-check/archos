@@ -88,14 +88,14 @@ describe("the ingest tier's peak vision calls", () => {
     const { cfg, assertVlmPeakFitsCeiling } = await load({ "grid-oib:ingestWorkerMaxReplicas": "12" });
 
     expect(() => assertVlmPeakFitsCeiling(cfg)).toThrow(
-      /ingestWorkerMaxReplicas \(12\) x ingestWorkerConcurrency \(3\) x vlmBatchWorkers \(4\) = 144 vision calls at the peak, more than 2x vlmFleetConcurrency \(32\) = 64/,
+      /ingestWorkerMaxReplicas \(12\) x ingestWorkerConcurrency \(1\) x vlmBatchWorkers \(8\) = 96 vision calls at the peak, more than 2x vlmFleetConcurrency \(32\) = 64/,
     );
-    expect(() => assertVlmPeakFitsCeiling(cfg)).toThrow(/Lower ingestWorkerMaxReplicas to 5 or less, or raise vlmFleetConcurrency/);
+    expect(() => assertVlmPeakFitsCeiling(cfg)).toThrow(/Lower ingestWorkerMaxReplicas to 8 or less, or raise vlmFleetConcurrency/);
   });
 
   it("are allowed twice the pool, no more", async () => {
     const at = await load({ "grid-oib:ingestWorkerMaxReplicas": "5" });
-    const over = await load({ "grid-oib:ingestWorkerMaxReplicas": "6" });
+    const over = await load({ "grid-oib:ingestWorkerMaxReplicas": "9" });
 
     expect(() => at.assertVlmPeakFitsCeiling(at.cfg)).not.toThrow();
     expect(() => over.assertVlmPeakFitsCeiling(over.cfg)).toThrow(/= 72 vision calls/);
@@ -107,10 +107,10 @@ describe("the ingest tier's peak vision calls", () => {
       "grid-oib:vlmFleetConcurrency": "72",
       "grid-oib:providerModelLimitCeiling": "72",
     });
-    const deeper = await load({ "grid-oib:vlmBatchWorkers": "8" });
+    const deeper = await load({ "grid-oib:vlmBatchWorkers": "16" });
 
     expect(() => raised.assertVlmPeakFitsCeiling(raised.cfg)).not.toThrow();
-    expect(() => deeper.assertVlmPeakFitsCeiling(deeper.cfg)).toThrow(/vlmBatchWorkers \(8\) = 120/);
+    expect(() => deeper.assertVlmPeakFitsCeiling(deeper.cfg)).toThrow(/vlmBatchWorkers \(16\) = 80/);
   });
 
   it("are not held to a pool that is switched off", async () => {

@@ -348,10 +348,10 @@ export interface GridConfig {
        * (`pgPoolerPoolSize`, PgBouncer's `default_pool_size`). The default is 12,
        * the largest that lets a fresh stack with everything on pass the plan:
        * two poolers x (three pooled pairs x 12 + 1 auth session) = 74 of the
-       * primary's 200 connections, against a direct reserve of up to 122 (62
-       * fixed or sized by the ingest tier at 5 x 3, 20 for Langfuse, 40 for a
-       * filer that keeps its namespace in Postgres) = 196. Prod, on the single
-       * SeaweedFS topology and an ingest tier of 3 x 3, holds 74 + 76 = 150.
+       * primary's 200 connections, against a direct reserve of up to 112 (52
+       * fixed or sized by the ingest tier at 5 x 1, 20 for Langfuse, 40 for a
+       * filer that keeps its namespace in Postgres) = 186. Prod, on the single
+       * SeaweedFS topology and an ingest tier of 8 x 1, holds 74 + 75 = 149.
        * It is not a demand number: a transaction holds a server connection for milliseconds, and 24 per pair
        * across the two poolers serves hundreds of statements a second. Clients
        * past the pool queue in PgBouncer, which shows as `cl_waiting` rather than
@@ -2910,10 +2910,10 @@ export function loadConfig(): GridConfig {
         limitsMemory: cfg.get("ingestWorkerLimitsMemory") ?? "6Gi",
       },
       minReplicas: Math.max(0, num(cfg, "ingestWorkerMinReplicas", 1)),
-      // 5 x 3 x `AIQ_VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
+      // 5 x 1 x `AIQ_VLM_BATCH_WORKERS` (8) = 40, within 2 x the vision pool (32): the
       // most the default budget can feed (`assertVlmPeakFitsCeiling`).
       maxReplicas: Math.max(1, num(cfg, "ingestWorkerMaxReplicas", 5)),
-      concurrency: Math.max(1, num(cfg, "ingestWorkerConcurrency", 3)),
+      concurrency: Math.max(1, num(cfg, "ingestWorkerConcurrency", 1)),
       drainSeconds: Math.max(30, num(cfg, "ingestWorkerDrainSeconds", 600)),
       maxPerOrg: Math.max(0, num(cfg, "ingestMaxPerOrg", 0)),
       // One decoded raster peaks near this times ~4 bytes (1 GiB at the default
@@ -2950,7 +2950,7 @@ export function loadConfig(): GridConfig {
     // default, is where the fleet's budget is read and changed.
     providerLimits: {
       vlmFleetConcurrency: Math.max(0, num(cfg, "vlmFleetConcurrency", 32)),
-      vlmBatchWorkers: Math.max(1, num(cfg, "vlmBatchWorkers", 4)),
+      vlmBatchWorkers: Math.max(1, num(cfg, "vlmBatchWorkers", 8)),
       limitCeiling: Math.max(1, num(cfg, "providerLimitCeiling", 128)),
       modelLimitCeiling: Math.max(1, num(cfg, "providerModelLimitCeiling", 32)),
     },

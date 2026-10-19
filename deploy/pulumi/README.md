@@ -172,7 +172,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `pgInstances` | `1` (prod template: 3) | 1 = single primary; 3 = HA with auto-failover |
 | `pgStorageSize` | `20Gi` | Per-instance volume (expandable via config — CNPG manages PVCs) |
 | `pgPoolerInstances` | `2` (dev: 1) | PgBouncers in the transaction pooler (`grid-pg-pooler-rw`, ADR-0083), spread across nodes with a PDB when more than 1 |
-| `pgPoolerPoolSize` | `12` | Server connections each PgBouncer opens per (database, role) pair. The plan fails when `pgPoolerInstances x (3 pooled pairs x this + 1)` plus the direct reserve passes `max_connections` (200): prod 74 + 76 = 150, a fresh stack with everything on 196 (`assertPgConnectionBudget`) |
+| `pgPoolerPoolSize` | `12` | Server connections each PgBouncer opens per (database, role) pair. The plan fails when `pgPoolerInstances x (3 pooled pairs x this + 1)` plus the direct reserve passes `max_connections` (200): prod 74 + 75 = 149, a fresh stack with everything on 186 (`assertPgConnectionBudget`) |
 | `pgPoolerImage` | digest-pinned `ghcr.io/cloudnative-pg/pgbouncer:1.26.0@sha256:…` | PgBouncer image, must be 1.21 or newer (prepared statements in transaction mode). Scanned by the trivy `image-scan` job; override only for a deliberate upgrade |
 | `legacyCorpusClaim` | unset (prod, dev: `data-aiq-agent-0`) | The pre-A2 backend data volume the one-shot `legacy-corpus-import` Job reads the base corpus from (ADR-0082 A2). Set only where that claim exists: a Job mounting a missing claim never schedules. Remove with the importer once it has run |
 | `pgAppUser` | `aiq` | Role owning all three databases |
@@ -260,9 +260,9 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `apiHpaCpuTargetPercent` | `70` | HPA target average CPU, as a percentage of requests (`apiRequestsCpu`) |
 | `apiRequestsCpu/Memory`, `apiLimitsCpu/Memory` | 500m / 1536Mi / 2 / 6Gi | Sizing |
 | **Ingestion tier, BFF pool and KEDA** (ADR-0076, ADR-0079) | | |
-| `ingestWorkerMinReplicas` / `ingestWorkerMaxReplicas` | 1 / 5 (prod 1 / 8) | KEDA bounds for the ingest tier, which scales on `ingest_job_queue` depth. The ceiling is held to the provider budget below: the deploy fails when it is more than 2x `vlmFleetConcurrency`. Prod's 8 x 2 x 4 = 64 sits exactly at it |
+| `ingestWorkerMinReplicas` / `ingestWorkerMaxReplicas` | 1 / 5 (prod 1 / 8) | KEDA bounds for the ingest tier, which scales on `ingest_job_queue` depth. The ceiling is held to the provider budget below: the deploy fails when it is more than 2x `vlmFleetConcurrency`. Prod's 8 x 1 x 8 = 64 sits exactly at it |
 | `ingestWorkerRequestsCpu/Memory`, `ingestWorkerLimitsCpu/Memory` | 500m / 4Gi / 2 / 6Gi (prod: 1 / 6Gi / 2 / 6Gi, on the batch group) | Sizing. The memory request is what a worker holds while it parses, so the scheduler cannot pack several onto one node; prod sets request = limit, so it cannot overcommit at all |
-| `ingestWorkerConcurrency` / `ingestWorkerDrainSeconds` | 3 (prod 2) / 600 | Jobs per worker (also KEDA's jobs-per-replica target) / SIGTERM budget; the grace period is the drain plus 30 s |
+| `ingestWorkerConcurrency` / `ingestWorkerDrainSeconds` | 1 (prod 1) / 600 | Jobs per worker (also KEDA's jobs-per-replica target) / SIGTERM budget; the grace period is the drain plus 30 s |
 | `ingestMaxPerOrg` | `0` | Most ingest jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless) |
 | `bffJobsEnabled` | `true` | Run the `bff-jobs` pool. It runs project reindex, failed-ingestion rescan, IFC extraction, Office → PDF rendition and research-report filing, so with it off none of those runs |
 | `bffJobsRequestsCpu/Memory`, `bffJobsLimitsCpu/Memory` | 250m / 512Mi / 1 / 2Gi | Sizing. The limit is double a frontend pod's because an IFC model is parsed in the pod, several times its own size in memory, `bffJobsConcurrency` of them at once |
@@ -273,7 +273,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `installKeda` | `true` | Install KEDA (chart pinned in `src/platform/keda.ts`, the release the plan's CRDs are validated against). `false` when the cluster already runs one, which must then be the same release |
 | **Provider budget** (ADR-0076, ADR-0081) | | |
 | `vlmFleetConcurrency` | `32` | `AIQ_VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once (0 = off). Held to `providerModelLimitCeiling` and `providerLimitCeiling`: a vision call holds a slot in both pools, so a larger pool never fills |
-| `vlmBatchWorkers` | `4` | `AIQ_VLM_BATCH_WORKERS`: vision calls one file runs at once. With the ingest tier's replicas and concurrency it sets the peak that `vlmFleetConcurrency` is checked against |
+| `vlmBatchWorkers` | `8` | `AIQ_VLM_BATCH_WORKERS`: vision calls one file runs at once. With the ingest tier's replicas and concurrency it sets the peak that `vlmFleetConcurrency` is checked against |
 | `providerLimitCeiling` / `providerModelLimitCeiling` | 128 / 32 | `GRID_PROVIDER_LIMIT_CEILING` / `GRID_PROVIDER_MODEL_LIMIT_CEILING`: model calls in flight fleet-wide, all models together and any one model; where the adaptive limiter starts and what it recovers to |
 | **Frontend** | | |
 | `frontendRequestsCpu/Memory`, `frontendLimitsCpu/Memory` | 100m / 256Mi / 1 / 1Gi | Sizing |

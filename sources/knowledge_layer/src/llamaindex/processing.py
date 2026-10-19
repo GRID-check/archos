@@ -64,13 +64,14 @@ logger = logging.getLogger(__name__)
 # @environment_variable AIQ_VLM_BATCH_WORKERS
 # @category Knowledge Layer
 # @type int
-# @default 4
+# @default 8
 # @required false
-# Max concurrent VLM workers per file. Kept modest to avoid saturating the
-# provider rate-limit or the process socket pool — architectural plan sets
-# typically have 5-20 visual pages and 0-10 embedded images, so 4 workers
-# cuts a 20-page serial loop to ~5 rounds.
-VLM_BATCH_WORKERS = max(1, int(os.environ.get("AIQ_VLM_BATCH_WORKERS", "4")))
+# Max concurrent VLM workers per file. Architectural plan sets typically have
+# 5-20 visual pages and 0-10 embedded images, so 8 workers cut a 20-page serial
+# loop to ~3 rounds. The provider rate-limit is held by the fleet pool
+# (`AIQ_VLM_FLEET_CONCURRENCY`), which the ingest tier's peak is checked
+# against, so a wider file-local batch only fills the pool it is given.
+VLM_BATCH_WORKERS = max(1, int(os.environ.get("AIQ_VLM_BATCH_WORKERS", "8")))
 
 # Content-hash cache TTL: 30 days. Long enough that re-ingesting a changed PDF
 # (but with many unchanged images) still hits the cache for the stable images.
