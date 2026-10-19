@@ -20,6 +20,14 @@
  * opposite: it demanded `withTenant` around every `getDb()` use, which would
  * have forced the parameter-threading the tenant-context module was designed to
  * avoid. Checking the entry points is both smaller and the actual invariant.
+ *
+ * The second shape it catches is a session handed DOWN as a prop. An async
+ * server component rendered under `<Suspense>` runs after the page's
+ * `withPageSession` callback has returned, so the slot that session came from is
+ * already closed, and the component's queries fail closed even though it holds a
+ * perfectly good session object. Issue #1097: the Overview's similar-projects
+ * tile took `session` as a prop and broke the page whenever it had a closed
+ * project to read. Such a component opens its own slot with `withPageSession`.
  */
 
 /** Session accessors that only mean anything inside a slot. */
@@ -100,6 +108,25 @@ function insideScope(node, sourceCode) {
   return false
 }
 
+/** The name a function is declared or bound under, when it has one. */
+function functionName(node, sourceCode) {
+  if (node.id) return node.id.name
+  const parent = sourceCode.getParent ? sourceCode.getParent(node) : node.parent
+  return parent?.type === 'VariableDeclarator' && parent.id.type === 'Identifier' ? parent.id.name : null
+}
+
+/** True when an async function is a component (PascalCase) that destructures `session` from its props. */
+function isAsyncComponentTakingSession(node, sourceCode) {
+  if (!node.async) return false
+  const name = functionName(node, sourceCode)
+  if (!name || !/^[A-Z]/.test(name)) return false
+  const props = node.params[0]
+  if (!props || props.type !== 'ObjectPattern') return false
+  return props.properties.some(
+    (property) => property.type === 'Property' && property.key.type === 'Identifier' && property.key.name === 'session'
+  )
+}
+
 /** @type {import('eslint').Rule.RuleModule} */
 export default {
   meta: {
@@ -116,6 +143,11 @@ export default {
         'security (MissingTenantContextError) — see issues #342 and #344. Wrap the body in ' +
         'withPageSession(async (session) => …), or runWithTenantSlot(async () => …) when the ' +
         'session is nullable.',
+      sessionProp:
+        'This async server component takes a session as a prop. React renders it after the parent ' +
+        "page's withPageSession callback has returned, so that tenant slot is already closed and every " +
+        'query underneath fails closed (MissingTenantContextError) — see issue #1097. Drop the prop and ' +
+        'resolve the session inside the component: withPageSession(async (session) => …).',
     },
   },
 
@@ -130,7 +162,14 @@ export default {
       /[\\/]src[\\/]app[\\/]/.test(filename) && !/[\\/]route\.tsx?$/.test(filename) && !/\.spec\.tsx?$/.test(filename)
     if (!isEntryPoint) return {}
 
+    const checkComponent = (node) => {
+      if (isAsyncComponentTakingSession(node, sourceCode)) context.report({ node, messageId: 'sessionProp' })
+    }
+
     return {
+      FunctionDeclaration: checkComponent,
+      FunctionExpression: checkComponent,
+      ArrowFunctionExpression: checkComponent,
       CallExpression(node) {
         const callee = calleeIdentifier(node)
         if (!callee || !SESSION_ACCESSORS.has(callee.name)) return
