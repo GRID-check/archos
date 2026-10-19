@@ -22,7 +22,7 @@ their own namespaces.
 | `aiq-api` (the **`api` role**, `GRID_ROLE=api`: every other backend HTTP route; `BACKEND_URL` names its Service, ADR-0082) | Deployment + HPA + PDB | `apiMinReplicas`→`apiMaxReplicas` (default 2→4; prod 1→3, dev 1→2) | — | Horizontally (CPU HPA, `apiHpaCpuTargetPercent`). Stateless: no volume. Drains for 60 s (the SSE close and short requests), not for a chat turn |
 | `frontend` (Next.js + BFF + WS gateway) | Deployment + HPA | `frontendMinReplicas`→`frontendMaxReplicas` (default 2→6; prod and dev 1→3) | — | Horizontally (CPU HPA) |
 | `agent-worker` (research) | Deployment + KEDA ScaledObject | `agentWorkerMinReplicas`→`agentWorkerMaxReplicas` (default 1→8; prod 1→3, dev 0→3) | — | Horizontally, on `research_job_queue` depth (§6.3) |
-| `ingest-worker` (ingestion) | Deployment + KEDA ScaledObject | `ingestWorkerMinReplicas`→`ingestWorkerMaxReplicas` (default 1→5; prod 1→3, dev 0→3) | — | Horizontally, on `ingest_job_queue` depth; the ceiling is held to the provider budget (§6.3b, §6.3d) |
+| `ingest-worker` (ingestion) | Deployment + KEDA ScaledObject | `ingestWorkerMinReplicas`→`ingestWorkerMaxReplicas` (default 1→5; prod 1→8, dev 0→3) | — | Horizontally, on `ingest_job_queue` depth; the ceiling is held to the provider budget (§6.3b, §6.3d) |
 | `bff-jobs` (the BFF's background pool: reindex, rescan, IFC, rendition, report filing; no Service, no route) | Deployment + KEDA ScaledObject | `bffJobsMinReplicas`→`bffJobsMaxReplicas` (default 1→4; prod 1→4, dev 0→2) | — | Horizontally, on `bff_job_queue` depth (§6.3c) |
 | KEDA (`keda` namespace) | Helm release, chart pinned to the release the plan's CRDs are validated against | 1 operator | — | n/a; what it may read and reach is §6.3d |
 | `purger` | Deployment | 1 | — | n/a (SKIP LOCKED-safe) |
@@ -196,7 +196,7 @@ specs and flips pullPolicy to `Always`) — never a bare `pulumi up --refresh`.
 
 **Size worker groups against the autoscaler ceilings.** The cluster autoscaler
 only adds nodes within a worker group's min/max. In prod the ceilings are
-frontend 3 (HPA) + agent-worker 3 + ingest-worker 3 + bff-jobs 4 (KEDA), plus
+frontend 3 (HPA) + agent-worker 3 + ingest-worker 8 + bff-jobs 4 (KEDA), plus
 the chat tier's `backendMaxReplicas` (1 while affinity is on, §6.4b) and the
 fixed tiers; the defaults for a stack that sets none are frontend 6, agent-worker
 8, ingest-worker 5, bff-jobs 4 and web 4. If the sum of limits at those ceilings
@@ -230,7 +230,7 @@ Every pod template in the program is pinned:
   `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` on every stack: an
   autoscaler scale-down that evicts a peer is a shard recovery with the PVC
   following the pod. A drain for a node upgrade still moves it.
-- `batch`: `ingest-worker` (8Gi requested, 12Gi limit in prod, §6.3b),
+- `batch`: `ingest-worker` (6Gi requested and limit in prod, §6.3b),
   Gotenberg and the legacy corpus import.
 - `Node`: everything else, the chat, api and agent-worker tiers, the frontend,
   web, Langfuse, the collector, the workers and every Job.
@@ -863,7 +863,7 @@ schema.
   opening at most `pgPoolerPoolSize` (default 12) server connections per
   (database, role) pair. The plan refuses a stack whose pooler worst case plus
   the direct reserve passes `max_connections` (200): `assertPgConnectionBudget`
-  prints every part. Prod is 74 pooled + 76 direct = 150; a fresh stack with
+  prints every part. Prod is 74 pooled + 83 direct = 157; a fresh stack with
   everything on is 196. Clients past the pool wait in PgBouncer instead of
   failing, so saturation shows as waiting clients rather than errors:
   PgBouncer's `SHOW POOLS` reports them as `cl_waiting`, and a value above 0 for
@@ -1205,14 +1205,20 @@ default memory request is 4Gi (limit 6Gi), and its pods spread across nodes
 (`maxSkew` 1 on `kubernetes.io/hostname`, `ScheduleAnyway`). At the old 1536Mi
 request the scheduler packed three workers onto one 16 GB node, they outgrew
 it, and nodes went NotReady one after another (2026-10). Big PDFs, three
-files at once, were then OOMKilled at the 6Gi limit. Prod therefore runs the
-tier on the `batch` worker group (§2b, 64 GB nodes) at 500m / 8Gi requested
-and 4 CPU / 12Gi limits, with a ceiling of 3: all three at their limit fit on
-one batch node. Raise the ceiling only with batch-node memory to match. The
-ceiling is also bounded from the other side:
+files at once, were then OOMKilled at the 6Gi limit, and prod ran three pods
+of three files at 8Gi / 12Gi. That sizing paid for a text pass that held the
+whole document (2026-10-19, #1095); the pass now holds one page. Prod therefore
+runs the tier wide and small on the `batch` worker group (§2b, 64 GB nodes):
+up to 8 pods of 2 files, 1 CPU / 6Gi requested and 2 CPU / 6Gi limits. Memory
+request equals limit, so the scheduler never places more than a node holds,
+and all eight fit one batch node. Two files a pod because pdfplumber parses on
+one core (the GIL): another pod adds parse speed where a third thread does
+not, and an OOM kill costs two jobs an attempt rather than three. Raise the
+memory before the ceiling if `[ingest-mem]` shows a pod near 6Gi. The ceiling
+is also bounded from the other side:
 `ingestWorkerMaxReplicas` × `ingestWorkerConcurrency` × `vlmBatchWorkers` is the
 tier's peak of vision calls, and the program fails the deploy when that is more
-than twice `vlmFleetConcurrency` (§6.3d). Prod's 3 × 3 × 4 is 36, within 2 × 32 = 64.
+than twice `vlmFleetConcurrency` (§6.3d). Prod's 8 × 2 × 4 is 64, exactly 2 × 32: more pods only wait for a vision slot, so the next lever for drawing-heavy files is the provider pool, not the ceiling.
 
 ### 6.3c BFF background jobs — a pool of frontend-image pods on `bff_job_queue` (ADR-0079)
 

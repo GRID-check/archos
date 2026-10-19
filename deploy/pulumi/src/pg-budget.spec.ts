@@ -147,12 +147,12 @@ describe("assertPgConnectionBudget", () => {
     const budget = pgConnectionBudget(cfg);
 
     expect(cfg.langfuse.enabled).toBe(true);
-    expect(cfg.ingestWorker.maxReplicas).toBe(3);
+    expect(cfg.ingestWorker.maxReplicas).toBe(8);
     // 2 x (3 x 12 + 1)
     expect(budget.pooled).toBe(74);
-    // 3 superuser + 6 CNPG + 20 LISTEN + (3 x 3 + 4) locks + 6 Jobs + 8 KEDA + 20 Langfuse
-    expect(budget.reserveTotal).toBe(76);
-    expect(budget.total).toBe(150);
+    // 3 superuser + 6 CNPG + 20 LISTEN + (8 x 2 + 4) locks + 6 Jobs + 8 KEDA + 20 Langfuse
+    expect(budget.reserveTotal).toBe(83);
+    expect(budget.total).toBe(157);
   });
 
   it("passes a fresh stack with everything on, which is the defaults' worst case", async () => {

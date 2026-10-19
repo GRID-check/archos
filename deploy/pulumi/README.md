@@ -260,9 +260,9 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `apiHpaCpuTargetPercent` | `70` | HPA target average CPU, as a percentage of requests (`apiRequestsCpu`) |
 | `apiRequestsCpu/Memory`, `apiLimitsCpu/Memory` | 500m / 1536Mi / 2 / 6Gi | Sizing |
 | **Ingestion tier, BFF pool and KEDA** (ADR-0076, ADR-0079) | | |
-| `ingestWorkerMinReplicas` / `ingestWorkerMaxReplicas` | 1 / 5 (prod 1 / 3) | KEDA bounds for the ingest tier, which scales on `ingest_job_queue` depth. The ceiling is held to the provider budget below: the deploy fails when it is more than 2x `vlmFleetConcurrency`. Prod is held lower by node memory: a worker holds 4-6 GB while it parses |
-| `ingestWorkerRequestsCpu/Memory`, `ingestWorkerLimitsCpu/Memory` | 500m / 4Gi / 2 / 6Gi (prod: 500m / 8Gi / 4 / 12Gi, on the batch group) | Sizing. The memory request is what a worker holds while it parses, so the scheduler cannot pack several onto one node |
-| `ingestWorkerConcurrency` / `ingestWorkerDrainSeconds` | 3 / 600 | Jobs per worker (also KEDA's jobs-per-replica target) / SIGTERM budget; the grace period is the drain plus 30 s |
+| `ingestWorkerMinReplicas` / `ingestWorkerMaxReplicas` | 1 / 5 (prod 1 / 8) | KEDA bounds for the ingest tier, which scales on `ingest_job_queue` depth. The ceiling is held to the provider budget below: the deploy fails when it is more than 2x `vlmFleetConcurrency`. Prod's 8 x 2 x 4 = 64 sits exactly at it |
+| `ingestWorkerRequestsCpu/Memory`, `ingestWorkerLimitsCpu/Memory` | 500m / 4Gi / 2 / 6Gi (prod: 1 / 6Gi / 2 / 6Gi, on the batch group) | Sizing. The memory request is what a worker holds while it parses, so the scheduler cannot pack several onto one node; prod sets request = limit, so it cannot overcommit at all |
+| `ingestWorkerConcurrency` / `ingestWorkerDrainSeconds` | 3 (prod 2) / 600 | Jobs per worker (also KEDA's jobs-per-replica target) / SIGTERM budget; the grace period is the drain plus 30 s |
 | `ingestMaxPerOrg` | `0` | Most ingest jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless) |
 | `bffJobsEnabled` | `true` | Run the `bff-jobs` pool. It runs project reindex, failed-ingestion rescan, IFC extraction, Office → PDF rendition and research-report filing, so with it off none of those runs |
 | `bffJobsRequestsCpu/Memory`, `bffJobsLimitsCpu/Memory` | 250m / 512Mi / 1 / 2Gi | Sizing. The limit is double a frontend pod's because an IFC model is parsed in the pod, several times its own size in memory, `bffJobsConcurrency` of them at once |

@@ -325,19 +325,29 @@ config:
   # cluster-autoscaler adds nodes for Pending replicas up to the worker group's
 
   # max, so size that group for maxReplicas × the limits below.
-  # 3, not 5: five workers on three 16 GB nodes took the nodes down one after
-  # another (2026-10). The tier now runs on the batch group (nodeGroupBatch,
-  # 8 vCPU / 64 GB nodes). Raise it only with batch-node memory to match.
+  # Wide and small (2026-10-19): eight pods of two files, not three of three.
+  # The 8Gi/12Gi sizing paid for a parse that held the whole document; the text
+  # pass now holds one page (AIQ_PDF_PAGE_MAX_OBJECTS, #1095), so a file peaks
+  # at about one raster decode (<= 1 GiB) plus a page and its embeddings, and
+  # two files fit 6Gi. Memory request = limit, so the scheduler never places
+  # more than a node holds: overcommitted limits took the 16 GB app nodes down
+  # one after another (2026-10). Eight at 6Gi is 48 GB, within one 64 GB batch
+  # node (nodeGroupBatch, 8 vCPU / 64 GB, autoscale 2-4).
+  # Two files a pod, because pdfplumber parses on one core (the GIL): a third
+  # thread adds no parse speed, another pod does, and one OOM kill then costs
+  # two jobs an attempt, not three. 1 CPU requested for that core.
+  # Ceilings it is held to: vision 8 x 2 x 4 = 64 <= 2 x vlmFleetConcurrency
+  # (assertVlmPeakFitsCeiling); Postgres 16 ingest locks, 157 of 200
+  # (assertPgConnectionBudget, below).
+  # Watch `[ingest-mem] file:released` and `kubectl top` after a large file;
+  # raise the memory before the ceiling if a pod nears 6Gi.
   grid-oib:ingestWorkerMinReplicas: "1"
-  grid-oib:ingestWorkerMaxReplicas: "3"
-  # Big PDFs, three files at once, were OOMKilled at a 6Gi limit. Even all three
-  # workers at their 12Gi limit on one 64 GB batch node (36 GB) do not overcommit
-  # it, which is the failure the app nodes had.
-  grid-oib:ingestWorkerRequestsCpu: 500m
-  grid-oib:ingestWorkerRequestsMemory: 8Gi
-  grid-oib:ingestWorkerLimitsCpu: "4"
-  grid-oib:ingestWorkerLimitsMemory: 12Gi
-  grid-oib:ingestWorkerConcurrency: "3"
+  grid-oib:ingestWorkerMaxReplicas: "8"
+  grid-oib:ingestWorkerRequestsCpu: "1"
+  grid-oib:ingestWorkerRequestsMemory: 6Gi
+  grid-oib:ingestWorkerLimitsCpu: "2"
+  grid-oib:ingestWorkerLimitsMemory: 6Gi
+  grid-oib:ingestWorkerConcurrency: "2"
   grid-oib:ingestWorkerDrainSeconds: "600"
   # Chat/web replicas. Safe at >1 via conversation affinity (the frontend WS
 
@@ -502,8 +512,8 @@ config:
   # ── Postgres pooler (ADR-0083) ──
   # Two PgBouncers, spread across nodes, so a drain takes one. Budget against the
   # primary's max_connections of 200 (assertPgConnectionBudget): 2 x (3 pooled
-  # database/role pairs x pgPoolerPoolSize 12 + 1 auth session) = 74, plus 76 held
-  # for the direct connections (see POSTGRES_DIRECT_RESERVE) = 150, 50 to spare.
+  # database/role pairs x pgPoolerPoolSize 12 + 1 auth session) = 74, plus 83 held
+  # for the direct connections (see POSTGRES_DIRECT_RESERVE) = 157, 43 to spare.
   grid-oib:pgPoolerInstances: "2"
   # ── The api tier (ADR-0082 step B) ── every backend HTTP route but the chat
   # socket, behind the aiq-api Service (BACKEND_URL). Sized like the frontend.
