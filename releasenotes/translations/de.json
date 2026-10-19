@@ -208,6 +208,10 @@
     "de": "Wenn Piloti das Lesen einer Datei nicht starten konnte, wird jetzt genau das angezeigt, statt fälschlich einen Neustart als Ursache anzugeben, der nie stattgefunden hat."
   },
   {
+    "en": "A file Piloti is still reading can now be stopped, from the upload list or from the file's own menu. Nothing it had not read yet is added to what Piloti can answer from, the file stays in the project, and you can read it again at any time.",
+    "de": "Eine Datei, die Piloti gerade einliest, können Sie jetzt in der Upload-Liste oder im Menü der Datei stoppen. Was Piloti bis dahin noch nicht gelesen hat, wird nicht zu seiner Antwortgrundlage hinzugefügt. Die Datei bleibt im Projekt und Sie können sie jederzeit erneut einlesen lassen."
+  },
+  {
     "en": "A file cannot be uploaded over one waiting in quarantine, not even by its uploader, so the held-back version never becomes part of the file's history. Delete the quarantined file first, or have it released.",
     "de": "Über eine Datei, die in Quarantäne wartet, lässt sich keine andere hochladen, auch nicht von ihrem Uploader, sodass die zurückgehaltene Fassung nie Teil des Verlaufs wird. Löschen Sie zuerst die Datei in Quarantäne oder lassen Sie sie freigeben."
   },
