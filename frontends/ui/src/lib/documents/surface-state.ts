@@ -42,7 +42,7 @@ import {
 } from './document-status'
 
 /**
- * The seven states a reader can tell apart, and acts on differently.
+ * The eight states a reader can tell apart, and acts on differently.
  *
  * - `citable`    — indexed; Piloti can find and cite it („Zitierbar“).
  * - `uploading`  — the bytes are still arriving; nothing has been read yet
@@ -54,11 +54,21 @@ import {
  *                  and a person can read it again („Fehlgeschlagen“).
  * - `stored`     — at rest and deliberately not in the knowledge base: a
  *                  report Piloti wrote, a row stranded at birth („Abgelegt“).
+ * - `cancelled`  — a person stopped the read before it finished („Abgebrochen“);
+ *                  nothing failed and nothing was indexed. The bytes are here.
  * - `unknown`    — a status nobody declared („Unbekannt“). Drift, not
  *                  vocabulary: `document-status.spec.ts` fails for a writer
  *                  that emits one.
  */
-export type SurfaceState = 'citable' | 'uploading' | 'reading' | 'held' | 'unreadable' | 'stored' | 'unknown'
+export type SurfaceState =
+  | 'citable'
+  | 'uploading'
+  | 'reading'
+  | 'held'
+  | 'unreadable'
+  | 'stored'
+  | 'cancelled'
+  | 'unknown'
 
 /** Every state, in the order a reader scans for them: what Piloti has, what moves, what needs a person, the rest. */
 export const SURFACE_STATES: readonly SurfaceState[] = [
@@ -68,6 +78,7 @@ export const SURFACE_STATES: readonly SurfaceState[] = [
   'held',
   'unreadable',
   'stored',
+  'cancelled',
   'unknown',
 ]
 
@@ -91,6 +102,9 @@ const STATE_BY_VARIANT: Record<DocumentStatusVariant, SurfaceState> = {
  */
 const STATE_BY_STATUS: ReadonlyMap<string, SurfaceState> = new Map<KnownDocumentStatus, SurfaceState>([
   ['uploading', 'uploading'],
+  // Shares the neutral colour with `stored` but is its own word: a reader
+  // needs to tell "somebody stopped this" from "this was filed and never read".
+  ['cancelled', 'cancelled'],
 ])
 
 /**
@@ -122,6 +136,7 @@ const VARIANT_BY_STATE: Record<SurfaceState, DocumentStatusVariant> = {
   held: 'warning',
   unreadable: 'destructive',
   stored: 'secondary',
+  cancelled: 'secondary',
   unknown: 'secondary',
 }
 
@@ -143,6 +158,7 @@ export const SURFACE_STATE_LABEL_KEYS: Record<SurfaceState, string> = {
   held: 'status.quarantined',
   unreadable: 'status.failed',
   stored: 'status.stored',
+  cancelled: 'status.cancelled',
   unknown: 'status.unknown',
 }
 
@@ -168,6 +184,7 @@ const FAMILY_BY_STATE: Record<SurfaceState, DocumentReadFamily> = {
   held: 'held',
   unreadable: 'failed',
   stored: 'unindexed',
+  cancelled: 'unindexed',
   unknown: 'reading',
 }
 

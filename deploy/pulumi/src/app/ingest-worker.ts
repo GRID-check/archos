@@ -14,9 +14,9 @@ import { UID } from "../constants";
 export const QUEUE_TABLE = "ingest_job_queue";
 
 /**
- * KEDA's measure of the tier's work: every job queued or held by a worker, dead
- * rows left out (`queueDepthQuery`). A crashed claim ages out of the table
- * through the reaper.
+ * KEDA's measure of the tier's work: every job queued or held by a worker,
+ * retired rows (dead, cancelled) left out (`queueDepthQuery`). A crashed claim
+ * ages out of the table through the reaper.
  */
 export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
 

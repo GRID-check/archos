@@ -63,7 +63,7 @@ export function jobsDatabaseTables(): string[] {
   return [INGEST_TABLE, RESEARCH_TABLE];
 }
 
-/** What the scaler may read of a queue table: the column its `COUNT(*) ... WHERE status <> 'dead'` filters on. */
+/** What the scaler may read of a queue table: the column its `COUNT(*) ... WHERE status NOT IN ('dead', 'cancelled')` filters on. */
 export const SCALER_READABLE_COLUMNS = ["status"] as const;
 
 /**

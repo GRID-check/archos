@@ -1179,7 +1179,10 @@ lost on restart. Now:
   reindex no longer queues everyone else; inside one office a job's
   `priority` (`interactive`, the default, or `bulk`) orders the claim. Claims
   heartbeat and are taken again when a worker dies, up to three times, and then
-  kept as a `dead` row with a reason (ADR-0079). A worker that must exit hands
+  kept as a `dead` row with a reason (ADR-0079). A job a person stops is marked
+  `cancelled` — terminal like `dead`, never claimed again, its payload blanked
+  and its row kept so the status store can settle the job (`cancel`, ADR-0079's
+  substrate). A worker that must exit hands
   its claims back without spending an attempt.
 - **A dedicated `ingest-worker` tier** (same image, `GRID_ROLE=ingest-worker`,
   no port, no PVC) claims them, and it is the only process that does: the `chat`
@@ -1187,7 +1190,8 @@ lost on restart. Now:
   CPU. The tier is always deployed.
 - **KEDA scales it on the queue**, not on CPU (a job mostly waits on the
   provider): its `postgresql` trigger counts the table's rows that are not
-  `dead` and asks for
+  retired — `status NOT IN ('dead', 'cancelled')`, since neither will ever run —
+  and asks for
   ceil(jobs / `ingestWorkerConcurrency`) replicas between
   `ingestWorkerMinReplicas` and `ingestWorkerMaxReplicas`. Out at once, in a pod
   a minute; dev's floor is 0. Pulumi installs KEDA (`installKeda`, default on)
@@ -1342,7 +1346,7 @@ parts that are not about their own signal, and `keda-scaling.spec.ts` holds it.
 - **The scaler cannot write.** KEDA reads the queues as `grid_keda_scaler`
   (declared with the other roles on the Cluster, `data/postgres.ts`), a login with
   nothing but `LOGIN` whose rights are SELECT on the `status` column (the one its
-  `COUNT(*) … WHERE status <> 'dead'` reads, so a leaked DSN cannot read a
+  `COUNT(*) … WHERE status NOT IN ('dead', 'cancelled')` reads, so a leaked DSN cannot read a
   payload) of `ingest_job_queue` and `research_job_queue` in `aiq_jobs` and of
   `bff_job_queue` in `grid_app`. That last table is secured per organisation, so the role reads it through a policy of
   its own (`FOR SELECT TO grid_keda_scaler`), not through `BYPASSRLS`. Its password

@@ -32,10 +32,14 @@ export const DocumentFileStatusSchema = z.enum(['uploading', 'ingesting', 'succe
  * the proxy's listing never does. Neither is `success`, which is what counts
  * as an available source.
  */
-export const ListedFileStatusSchema = z.enum([...DocumentFileStatusSchema.options, 'stored', 'held'])
+export const ListedFileStatusSchema = z.enum([
+  ...DocumentFileStatusSchema.options,
+  'stored',
+  'held',
+])
 
 /** Ingestion job state */
-export const JobStateSchema = z.enum(['pending', 'processing', 'completed', 'failed'])
+export const JobStateSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'cancelled'])
 
 // ============================================================================
 // Collection Schemas

@@ -489,10 +489,11 @@ than an admission.
   `GRID_INGEST_MAX_JOB_SECONDS`, or silent for
   `GRID_INGEST_PROGRESS_TIMEOUT_SECONDS`, is no longer heartbeat and is claimed
   again. A job that fails every claim is kept as a `dead` row with its reason,
-  and is not counted as work.
+  and is not counted as work. A job a person stops is `cancelled`, terminal the
+  same way (`POST /v1/documents/{job_id}/cancel`).
 - **Elastic.** The ingest-worker tier scales on the queue's depth through
-  KEDA, not on CPU (`deploy/pulumi/src/app/ingest-worker.ts`); dead rows are
-  excluded from that depth. Its ceiling is held to the provider budget at plan
+  KEDA, not on CPU (`deploy/pulumi/src/app/ingest-worker.ts`); retired rows —
+  `dead` and `cancelled` — are excluded from that depth. Its ceiling is held to the provider budget at plan
   time: `ingestWorkerMaxReplicas` x `ingestWorkerConcurrency` x
   `AIQ_VLM_BATCH_WORKERS` may not exceed twice `AIQ_VLM_FLEET_CONCURRENCY`, or
   `pulumi up` fails with the numbers (`assertVlmPeakFitsCeiling`); replicas past

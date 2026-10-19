@@ -2068,8 +2068,9 @@ export async function setDocumentReconciledStatus(
         })
       if (!moved) return false
       // The versions holding the bytes this job judged take the same verdict
-      // (migration 0131). A read that ended without one (`failed`) says nothing.
-      if (resolution.status !== 'failed') {
+      // (migration 0131). A read that ended without one (`failed`), or that was
+      // stopped before it could judge them (`cancelled`), says nothing.
+      if (resolution.status !== 'failed' && resolution.status !== 'cancelled') {
         await recordVersionVerdict(tx, documentId, organizationId, {
           judgedHash: resolution.status === 'completed' ? moved.screenedHash : moved.dispatchedHash,
           passed: resolution.status === 'completed' && verdictPasses(moved),

@@ -65,6 +65,9 @@ export const files: typeof en.files = {
       collapse: 'Dateien ausblenden',
       cancelAll: 'Alle abbrechen',
       cancel: 'Upload von {name} abbrechen',
+      // Nicht „Upload abbrechen“: Die Bytes liegen auf dem Server, abgebrochen
+      // wird das Lesen. So gesagt, weiß man, was endet.
+      stop: 'Lesen von {name} abbrechen',
       retryAll: 'Fehlgeschlagene wiederholen',
       retryFile: 'Erneut versuchen',
       dismiss: '{name} ausblenden',
@@ -83,6 +86,11 @@ export const files: typeof en.files = {
     // Erfolg („Zitierbar“ wäre ein Versprechen, das die Suche nicht einlöst)
     // und kein Fehler. Dasselbe Wort wie im Toast nach dem Lauf.
     stored: 'Abgelegt',
+    // Jemand hat das Lesen abgebrochen: Die Bytes sind da, nichts wurde
+    // indexiert, und nichts ist schiefgegangen – also nie „Fehlgeschlagen“.
+    // Neutral wie „Abgelegt“, aber ein eigenes Wort, damit beides
+    // unterscheidbar bleibt.
+    cancelled: 'Abgebrochen',
     // Die Inhaltsprüfung (ADR-0086) hat angeschlagen: Die Datei liegt im
     // Projekt, kein Modell hat sie gesehen, und jemand muss entscheiden.
     quarantined: 'Zurückgehalten',
@@ -723,6 +731,15 @@ export const files: typeof en.files = {
     reingestConfirmAction: 'Erneut lesen',
     reingestError:
       'Das erneute Lesen konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
+    // Ein noch laufendes Lesen beenden: Die Bytes bleiben, nichts wurde
+    // indexiert, und ein erneutes Lesen liest sie wieder. Neutral wie
+    // „Erneut lesen“, nie ein zerstörerisches Rot.
+    cancel: 'Lesen abbrechen',
+    cancelling: 'Wird abgebrochen …',
+    cancelled: 'Lesen von „{name}“ abgebrochen',
+    cancelFinished: 'Nichts abzubrechen – das Lesen war bereits beendet',
+    cancelUnavailable: 'Für diese Datei lässt sich das Lesen nicht abbrechen – Piloti wandelt sie auf diesem Server um',
+    cancelError: 'Das Lesen konnte nicht abgebrochen werden. Bitte versuchen Sie es erneut.',
     label: 'Dateiaktionen für „{name}“',
     menuLabel: 'Dateiaktionen',
     download: 'Herunterladen',

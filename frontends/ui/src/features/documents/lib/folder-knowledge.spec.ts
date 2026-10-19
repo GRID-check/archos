@@ -67,6 +67,7 @@ const EXPECTED_READ_STATE: Record<KnownDocumentStatus, ReadState> = {
   quarantined: 'held',
   stored: 'unindexed',
   uploaded: 'unindexed',
+  cancelled: 'unindexed',
 }
 
 describe('readStateOf', () => {

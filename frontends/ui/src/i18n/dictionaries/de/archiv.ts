@@ -44,6 +44,14 @@ export const archiv = {
     reingestConfirmDescription:
       'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis Piloti damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
     reingestConfirmAction: 'Erneut lesen',
+    // Ein noch laufendes Lesen beenden: Die Bytes bleiben, nichts wurde
+    // indexiert, und ein erneutes Lesen liest sie wieder. Neutral.
+    cancel: 'Lesen abbrechen',
+    cancelling: 'Wird abgebrochen …',
+    cancelled: 'Lesen von „{name}“ abgebrochen',
+    cancelFinished: 'Nichts abzubrechen – das Lesen war bereits beendet',
+    cancelUnavailable: 'Für diese Datei lässt sich das Lesen nicht abbrechen – Piloti wandelt sie auf diesem Server um',
+    cancelError: 'Das Lesen konnte nicht abgebrochen werden. Bitte versuchen Sie es erneut.',
     menuLabel: 'Dateiaktionen',
     download: 'Herunterladen',
     open: 'Öffnen',

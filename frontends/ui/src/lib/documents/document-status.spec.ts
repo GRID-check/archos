@@ -537,7 +537,7 @@ describe('every surface state has a label in both locales', () => {
   })
 })
 
-describe('the column vocabulary (migration 0135)', () => {
+describe('the column vocabulary (migration 0135, extended by 0153)', () => {
   it('renders every value the column may hold', () => {
     for (const status of DOCUMENT_STATUSES) expect(isKnownDocumentStatus(status), status).toBe(true)
   })
@@ -546,9 +546,23 @@ describe('the column vocabulary (migration 0135)', () => {
     // Three spellings of one set: this module, the migration's CHECK and the
     // drizzle declaration. A value added to one and not the others either fails
     // writes in production or lets an undeclared one in.
-    const migration = readFileSync(join(process.cwd(), 'drizzle/0135_document_status_closed.sql'), 'utf8')
+    //
+    // The CHECK is REDEFINED as the vocabulary grows — 0135 wrote the closed
+    // seven, 0153 added `cancelled` — so this reads the LAST migration that
+    // redefines `documents_status_known`, not a fixed file: the constraint the
+    // database is under is whatever the final ALTER left, and pinning 0135
+    // would go red the day a ninth value lands.
+    const dir = join(process.cwd(), 'drizzle')
+    const defining = readdirSync(dir)
+      .filter((name) => name.endsWith('.sql') && !name.endsWith('.down.sql'))
+      .sort()
+      .filter((name) =>
+        readFileSync(join(dir, name), 'utf8').includes('ADD CONSTRAINT "documents_status_known"'),
+      )
+    expect(defining, 'a migration must define documents_status_known').not.toEqual([])
+    const migration = readFileSync(join(dir, defining[defining.length - 1]), 'utf8')
     const check = migration.match(/CHECK \("status" IN \(([^)]*)\)\)/)
-    expect(check, 'the CHECK in 0135').not.toBeNull()
+    expect(check, `the CHECK in ${defining[defining.length - 1]}`).not.toBeNull()
     const listed = [...(check?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((match) => match[1])
     expect(listed.sort()).toEqual([...DOCUMENT_STATUSES].sort())
   })

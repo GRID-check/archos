@@ -584,6 +584,39 @@ backend records `failed` with „Ingestion could not be started".
 
 The collection file list is fetched at most once per collection per request.
 
+### Stopping a read (cancel)
+
+A read in progress can be stopped from the file's own menu, or from the upload
+list while the row is being read. Both send one request,
+`POST /api/documents/{id}/cancel` (`cancelDocumentIngest` in
+`lib/documents/service.ts`), which reads the row's `metadata.ingestJobId` and
+forwards `POST /v1/documents/{job_id}/cancel` to the backend.
+
+The stop is expressed through the ingest claim, not a second control channel:
+`cancel` (`src/aiq_agent/common/claim_queue.py`) marks the job's queue row
+`cancelled` — a terminal status that is never claimed again and is not counted
+by KEDA — and blanks its payload. A worker reading the file then finds its
+heartbeat refused (the lease renews only while the row is `claimed`) and stops
+at its next `_assert_still_owner`, before it reads the next page or writes the
+next chunk, so no half-indexed document is left behind. A job still `queued` is
+settled immediately.
+
+The answer is one of three: `cancelled` (a live job was stopped), `finished`
+(the durable queue held no live job — the row the reader clicked was stale), or
+`unavailable` (the durable ingest queue is off, or the work runs inside the BFF,
+so no queue can reach it). Only `cancelled` changes the row: to the terminal
+`cancelled` status (migration 0153). Nothing was indexed, the bytes stay, and a
+re-ingest reads them again. `cancelled` is neutral in the UI („Abgebrochen“),
+never a failure. Because a stop can land between the worker's last ownership
+check and its write, a `cancelled` row is re-checked for thirty minutes like an
+`interrupted` one (`resolveCancelledRow`, `reconcile-status.ts`): a job that did
+finalize heals the row to `completed`.
+
+The queue row is kept as a tombstone — not deleted — so the status store can
+settle the job terminal `cancelled` (`settle_cancelled`,
+`ingest_status_store.py`), and is purged on the same clock as a dead row
+(`purge_retired`, `claim_queue.py`).
+
 ### Which failures are read again
 
 A terminal job also says *why* each file failed (`aiq_agent/knowledge/ingest_failures.py`):

@@ -34,7 +34,7 @@ import type { UploadPhase } from '../lib/upload-progress'
  * tray's header carries the batch's one loop.
  */
 
-/** Every state an ingestion surface can name: the seven surface states, and the two only an upload has. */
+/** Every state an ingestion surface can name: the eight surface states, and the two only an upload has. */
 export type IngestionMark = SurfaceState | 'queued' | 'canceled'
 
 export const INGESTION_GLYPH: Record<IngestionMark, LucideIcon> = {
@@ -50,7 +50,10 @@ export const INGESTION_GLYPH: Record<IngestionMark, LucideIcon> = {
   // At rest and not read: an open ring, quieter than a decision.
   stored: CircleDashed,
   unknown: CircleHelp,
-  // The reader stopped it: a decision, never a failure.
+  // The reader stopped it: a decision, never a failure. Same glyph for the
+  // server-side cancel (`cancelled`, on a document row) and the tray's own
+  // (`canceled`, on an upload) — the same act, told apart by the row.
+  cancelled: Ban,
   canceled: Ban,
 }
 
@@ -92,6 +95,7 @@ const WORD_TONE: Record<IngestionMark, string> = {
   unreadable: 'text-error',
   stored: 'text-muted-foreground',
   unknown: 'text-muted-foreground',
+  cancelled: 'text-muted-foreground',
   canceled: 'text-muted-foreground',
 }
 

@@ -43,6 +43,14 @@ export const archiv = {
     reingestConfirmDescription:
       'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, Piloti keeps answering from what it read before.',
     reingestConfirmAction: 'Read again',
+    // Stop a read that has not finished: the bytes stay, nothing was indexed,
+    // and a re-ingest reads them again. Neutral, never a destructive red.
+    cancel: 'Stop reading',
+    cancelling: 'Stopping…',
+    cancelled: 'Reading “{name}” stopped',
+    cancelFinished: 'Nothing to stop — the reading had already finished',
+    cancelUnavailable: "Reading can’t be stopped for this file — Piloti is converting it on this server",
+    cancelError: "Reading couldn't be stopped. Please try again.",
     menuLabel: 'File actions',
     download: 'Download',
     open: 'Open',

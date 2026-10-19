@@ -848,3 +848,24 @@ def add_document_routes(router: APIRouter):
         collection file list), mirroring the single endpoint's 404.
         """
         return {"statuses": await asyncio.to_thread(_job_statuses, ingestor, request.job_ids)}
+
+    @router.post(
+        "/v1/documents/{job_id}/cancel",
+        tags=["documents"],
+        summary="Cancel an ingestion job",
+    )
+    async def cancel_job(job_id: str) -> dict[str, Any]:
+        """Stop a queued or running ingestion job.
+
+        The BFF has already decided the caller may act on the document this job
+        belongs to; this tier only stops the job. ``result`` is one of the
+        cancel outcomes (``ingest_dispatch.cancel``): ``cancelled`` when a live
+        job was stopped, ``finished`` when the queue holds no live row for it,
+        and ``unavailable`` when the queue is off or has no database (an
+        in-memory job runs in a process this one cannot reach).
+        """
+        try:
+            return {"result": await asyncio.to_thread(ingest_dispatch.cancel, job_id)}
+        except Exception as e:
+            logger.error("Failed to cancel ingestion job %s: %s", job_id, type(e).__name__)
+            raise HTTPException(status_code=500, detail="Failed to cancel ingestion job")

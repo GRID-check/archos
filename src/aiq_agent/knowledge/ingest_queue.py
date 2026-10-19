@@ -18,8 +18,8 @@ the status store's.
 The payload is opaque here: ``aiq_api.jobs.ingest_dispatch`` writes it
 (encrypted, since it carries presigned URLs) and reads it back. The status store
 (``ingest_status_store``) reads this table to know that a PENDING job whose
-accepting replica is gone is still waiting here, not lost; a DEAD row does not
-hold a job.
+accepting replica is gone is still waiting here, not lost; a retired row (dead,
+or cancelled by a person) holds a job no more.
 """
 
 from __future__ import annotations
@@ -27,21 +27,26 @@ from __future__ import annotations
 import os
 
 from aiq_agent.common import claim_queue
+from aiq_agent.common.claim_queue import CANCELLED
 from aiq_agent.common.claim_queue import CLAIMED
 from aiq_agent.common.claim_queue import DEAD
 from aiq_agent.common.claim_queue import QUEUED
+from aiq_agent.common.claim_queue import RETIRED
 from aiq_agent.common.claim_queue import Claim
 
 from .document_metadata_store import DocumentMetadataStore
 from .ingest_scheduler import lane_of
 
 __all__ = [
+    "CANCELLED",
     "CLAIMED",
     "DEAD",
     "QUEUED",
+    "RETIRED",
     "TABLE",
     "Claim",
     "ahead_in_lane",
+    "cancel",
     "claim_next",
     "counts",
     "db_url",
@@ -51,9 +56,10 @@ __all__ = [
     "mark_dead",
     "mark_done",
     "mark_ensured",
-    "purge_dead",
+    "purge_retired",
     "reap_exhausted",
     "release_claims",
+    "status_of",
 ]
 
 TABLE = "ingest_job_queue"
@@ -126,6 +132,16 @@ def mark_done(job_id: str, worker: str | None = None) -> None:
     QUEUE.mark_done(job_id, worker)
 
 
+def cancel(job_id: str) -> str | None:
+    """Stop a live job (queued or claimed); the status it held, or None when none was live."""
+    return QUEUE.cancel(job_id)
+
+
+def status_of(job_id: str) -> str | None:
+    """The queue's status for a job, or None when it holds none."""
+    return QUEUE.status_of(job_id)
+
+
 def release_claims(job_ids: list[str], worker: str) -> int:
     """Give a worker's claimed jobs back without spending an attempt; how many."""
     return QUEUE.release_claims(job_ids, worker)
@@ -145,13 +161,13 @@ def reap_exhausted(*, stale_seconds: int, max_attempts: int) -> list[str]:
     return QUEUE.reap_exhausted(stale_seconds=stale_seconds, max_attempts=max_attempts)
 
 
-def purge_dead(*, older_than_seconds: int) -> int:
-    """Delete dead rows past their retention; how many."""
-    return QUEUE.purge_dead(older_than_seconds=older_than_seconds)
+def purge_retired(*, older_than_seconds: int) -> int:
+    """Delete dead or cancelled rows past their retention; how many."""
+    return QUEUE.purge_retired(older_than_seconds=older_than_seconds)
 
 
 def counts() -> dict[str, int]:
-    """Rows by status. The autoscaler scales on every row that is not dead."""
+    """Rows by status. The autoscaler scales on every row that is not retired."""
     return QUEUE.counts()
 
 

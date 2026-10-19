@@ -112,7 +112,7 @@ def test_the_per_organization_cap_makes_the_next_job_wait_not_fail(db_url):
 
     assert {first["lane"], second["lane"]} == {"org-a", "org-b"}
     assert third is None  # org-a is at its cap: a1 waits, and is still in the queue
-    assert queue.counts(db_url) == {"queued": 1, "claimed": 2, "dead": 0}
+    assert queue.counts(db_url) == {"queued": 1, "claimed": 2, "dead": 0, "cancelled": 0}
 
     org_a_running = first if first["lane"] == "org-a" else second
     queue.mark_done(db_url, org_a_running["job_id"], "w0" if first is org_a_running else "w1")
@@ -213,6 +213,6 @@ def test_the_queue_reports_under_its_own_name(db_url, monkeypatch):
     provider.shutdown()
 
     depth = {p.attributes["status"]: p.value for p in points["grid.queue.depth"] if p.attributes["queue"] == "research"}
-    assert depth == {"queued": 1, "claimed": 1, "dead": 0}
+    assert depth == {"queued": 1, "claimed": 1, "dead": 0, "cancelled": 0}
     assert points["grid.queue.claim_latency_ms"][0].attributes == {"queue": "research"}
     assert points["grid.queue.job_duration_seconds"][0].attributes == {"queue": "research", "kind": "deep_researcher"}

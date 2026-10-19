@@ -58,9 +58,15 @@ export async function onDocumentsSettled(organizationId: string, settled: readon
     // A same-name upload is held until now; the people who followed the
     // document hear about the new Fassung once it is readable. Detached:
     // it asks the directory about each person and logs its own failures.
+    //
+    // A stopped read announces nothing: it is not in the index, so "the new
+    // Fassung is here" would be false, and its row is the uploader's own to
+    // act on again. Held back is left out for the same reason.
     void announceSettledVersions(
       organizationId,
-      settled.filter((row) => row.status !== 'quarantined').map((row) => row.id)
+      settled
+        .filter((row) => row.status !== 'quarantined' && row.status !== 'cancelled')
+        .map((row) => row.id)
     ).catch((error) => console.warn('[upload-batches] announcing new Fassungen failed:', error))
   } catch (error) {
     console.warn('[upload-batches] settling after reconciliation failed; the sweep retries:', error)

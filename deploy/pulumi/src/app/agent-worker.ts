@@ -21,8 +21,9 @@ export const QUEUE_TABLE = "research_job_queue";
 
 /**
  * KEDA's measure of the tier's work: every research job queued or held by a
- * worker, dead rows left out (`queueDepthQuery`). A FINISHED job is deleted from
- * the table (`queue.mark_done`), so it needs no clause.
+ * worker, retired rows (dead, cancelled) left out (`queueDepthQuery`). A
+ * FINISHED job is deleted from the table (`queue.mark_done`), so it needs no
+ * clause.
  */
 export const RESEARCH_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
 

@@ -348,7 +348,8 @@ class UploadOrchestratorImpl {
         store.setFilesFromServer(conversationId, files)
         store.setCurrentCollection(conversationId)
         markSessionHasCollection(conversationId)
-        if (files.some((file) => file.status === 'ingesting')) this.pollSessionDocuments(conversationId)
+        if (files.some((file) => file.status === 'ingesting'))
+          this.pollSessionDocuments(conversationId)
       }
       this.lastLoadedSessionId = conversationId
     } catch {
@@ -582,7 +583,10 @@ class UploadOrchestratorImpl {
         updatePersistedJobFiles(jobId, currentFiles)
       }
 
-      const isTerminal = status.status === 'completed' || status.status === 'failed'
+      // `cancelled`: a person stopped the read (tray or document menu). Terminal,
+      // and not an error: the stop is what they asked for.
+      const isTerminal =
+        status.status === 'completed' || status.status === 'failed' || status.status === 'cancelled'
       console.debug('[UploadOrchestrator] Job status:', status.status, 'isTerminal:', isTerminal)
 
       if (isTerminal) {
@@ -598,7 +602,7 @@ class UploadOrchestratorImpl {
         // composer's inline file chips; no side panel is opened.
         if (status.status === 'completed') {
           this.emit('onComplete')
-        } else if (status.error_message) {
+        } else if (status.status !== 'cancelled' && status.error_message) {
           store.setError(status.error_message)
           this.emit('onError', new Error(status.error_message))
         }
