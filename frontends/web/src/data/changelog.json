@@ -61,6 +61,10 @@
               "de": "Große Dateien mit CAD-Zeichnungen, etwa gesammelte Projektunterlagen oder ein Brandschutzkonzept mit vielen Planblättern, lassen sich jetzt hochladen und durchsuchen. Bisher schlägt das Einlesen solcher Dateien jedes Mal fehl, und auch ein erneuter Versuch scheitert."
             },
             {
+              "en": "A project's Übersicht opens again when your office has a closed project to compare it with. Before, the similar-projects tile failed to load and took the whole Übersicht down with an error page.",
+              "de": "Die Übersicht eines Projekts öffnet sich wieder, wenn Ihr Büro ein abgeschlossenes Projekt zum Vergleich hat. Zuvor konnte die Kachel für ähnliche Projekte nicht geladen werden und brachte die gesamte Übersicht mit einer Fehlerseite zum Absturz."
+            },
+            {
               "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
               "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
             }

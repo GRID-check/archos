@@ -456,6 +456,10 @@
     "de": "Der Abschlussmonat eines Projekts wird jetzt beim Schließen festgelegt. Ein laufendes Projekt zeigt „laufend“, und ein früher eingetragener Monat wird nicht mehr angezeigt; beim Schließen des Projekts wird er erneut abgefragt."
   },
   {
+    "en": "A project's Übersicht opens again when your office has a closed project to compare it with. Before, the similar-projects tile failed to load and took the whole Übersicht down with an error page.",
+    "de": "Die Übersicht eines Projekts öffnet sich wieder, wenn Ihr Büro ein abgeschlossenes Projekt zum Vergleich hat. Zuvor konnte die Kachel für ähnliche Projekte nicht geladen werden und brachte die gesamte Übersicht mit einer Fehlerseite zum Absturz."
+  },
+  {
     "en": "A question about a file you just attached now waits until the file can be searched, instead of being answered from everything except that document. The chat says what it is waiting for, and one click asks right away.",
     "de": "Eine Frage zu einer gerade angehängten Datei wartet jetzt, bis die Datei durchsuchbar ist, statt aus allem außer diesem Dokument beantwortet zu werden. Der Chat sagt, worauf er wartet, und ein Klick fragt sofort."
   },
