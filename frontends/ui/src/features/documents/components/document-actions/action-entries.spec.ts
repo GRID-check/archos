@@ -8,7 +8,12 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { documentActionEntries, reingestOffer, type DocumentActionLabels } from './action-entries'
+import {
+  cancelOffer,
+  documentActionEntries,
+  reingestOffer,
+  type DocumentActionLabels,
+} from './action-entries'
 
 const LABELS: DocumentActionLabels = {
   open: 'Open',
@@ -21,6 +26,8 @@ const LABELS: DocumentActionLabels = {
   delete: 'Delete…',
   reingest: 'Read again',
   reingesting: 'Retrying…',
+  cancel: 'Stop reading',
+  cancelling: 'Stopping…',
   allFiles: 'All Files',
 }
 
@@ -31,6 +38,7 @@ const handlers = {
   onRename: vi.fn(),
   onDelete: vi.fn(),
   onReingest: vi.fn(),
+  onCancel: vi.fn(),
   onMove: vi.fn(),
 }
 
@@ -164,6 +172,62 @@ describe('documentActionEntries', () => {
         { onCopyOriginPath: vi.fn() },
       ),
     ).toContain('copy-origin')
+  })
+})
+
+describe('cancelOffer — stopping a read', () => {
+  it('offers a stop on a row that is being read and has not finished', () => {
+    expect(ids({ ...DOCUMENT, status: 'pending' })).toContain('cancel')
+    expect(ids({ ...DOCUMENT, status: 'processing' })).toContain('cancel')
+    expect(cancelOffer({ status: 'pending' })).toBe(true)
+    expect(cancelOffer({ status: 'processing' })).toBe(true)
+  })
+
+  it('offers no stop where there is no ingest job to stop', () => {
+    // `uploading`: the bytes are still arriving from the browser; the tray's
+    // own cancel aborts that transport. A terminal row is already ended.
+    expect(cancelOffer({ status: 'uploading' })).toBe(false)
+    expect(cancelOffer({ status: 'completed' })).toBe(false)
+    expect(cancelOffer({ status: 'failed' })).toBe(false)
+    expect(cancelOffer({ status: 'cancelled' })).toBe(false)
+    // No status at all: nothing is known, so nothing is offered.
+    expect(cancelOffer({})).toBe(false)
+  })
+
+  it('offers no stop to someone who may not manage the document', () => {
+    expect(ids({ ...DOCUMENT, status: 'processing' }, { canManage: false })).not.toContain('cancel')
+  })
+
+  it('hides the stop when the surface did not ask for it', () => {
+    expect(ids({ ...DOCUMENT, status: 'processing' }, { actions: ['download'] })).not.toContain(
+      'cancel',
+    )
+  })
+
+  it('runs the surface’s cancel handler from the item', () => {
+    const onCancel = vi.fn()
+    const entry = documentActionEntries({
+      document: { ...DOCUMENT, status: 'processing' },
+      labels: LABELS,
+      ...handlers,
+      onCancel,
+    }).find((e) => e.type === 'item' && e.id === 'cancel')
+    if (entry?.type !== 'item') throw new Error('no cancel entry')
+    expect(entry.label).toBe('Stop reading')
+    entry.onSelect?.()
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('says the read is being stopped while the request is in flight', () => {
+    const entry = documentActionEntries({
+      document: { ...DOCUMENT, status: 'processing' },
+      labels: LABELS,
+      ...handlers,
+      isCancelling: true,
+    }).find((e) => e.type === 'item' && e.id === 'cancel')
+    if (entry?.type !== 'item') throw new Error('no cancel entry')
+    expect(entry.label).toBe('Stopping…')
+    expect(entry.disabled).toBe(true)
   })
 })
 

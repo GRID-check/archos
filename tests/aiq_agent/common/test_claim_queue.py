@@ -65,8 +65,8 @@ def test_two_queues_in_one_database_do_not_see_each_others_jobs(url):
 
     assert other.claim_next("w1", **CLAIM) is None
     assert research.claim_next("w1", **CLAIM).job_id == "r0"
-    assert other.counts() == {"queued": 0, "claimed": 0, "dead": 0}
-    assert research.counts() == {"queued": 0, "claimed": 1, "dead": 0}
+    assert other.counts() == {"queued": 0, "claimed": 0, "dead": 0, "cancelled": 0}
+    assert research.counts() == {"queued": 0, "claimed": 1, "dead": 0, "cancelled": 0}
 
 
 def test_a_queue_keeps_its_own_fairness_and_priority(url):
@@ -123,7 +123,7 @@ def test_release_and_dead_rows_work_on_any_table(url):
     assert queue.claim_next("w2", **CLAIM).attempts == 1
 
     assert queue.mark_dead("r0", "cancelled") is True
-    assert queue.counts() == {"queued": 0, "claimed": 0, "dead": 1}
+    assert queue.counts() == {"queued": 0, "claimed": 0, "dead": 1, "cancelled": 0}
 
 
 def test_a_queue_without_a_database_is_inert():
@@ -132,7 +132,7 @@ def test_a_queue_without_a_database_is_inert():
     )
 
     assert queue.claim_next("w1", **CLAIM) is None
-    assert queue.counts() == {"queued": 0, "claimed": 0, "dead": 0}
+    assert queue.counts() == {"queued": 0, "claimed": 0, "dead": 0, "cancelled": 0}
     assert queue.release_claims(["a"], "w1") == 0
     assert queue.reap_exhausted(**CLAIM) == []
     assert queue.ahead_in_lane(["a"]) == {}

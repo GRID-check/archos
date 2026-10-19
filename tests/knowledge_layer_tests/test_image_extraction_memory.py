@@ -8,6 +8,9 @@ cannot come back:
 
 - the per-document cap is applied to image metadata, so an image that will not
   be analysed is never decoded at all;
+- a raster over the per-raster pixel budget (``AIQ_MAX_IMAGE_PIXELS``) is
+  refused from its metadata too, so a pathological raster never allocates a
+  full-resolution bitmap in the first place;
 - a raster's full-resolution bitmap is closed before the next one is opened, so
   the peak is one raster, not the sum of the document's rasters;
 - a downscaled or untouched raster owns its pixels, because ``PdfBitmap.to_pil``
@@ -160,15 +163,22 @@ def _install(monkeypatch: pytest.MonkeyPatch, document: object) -> None:
     monkeypatch.setattr(pdfium, "PdfDocument", lambda _path: document)
 
 
-def _extract(**overrides: object) -> tuple[list[dict], int]:
+def _extract_records(**overrides: object) -> tuple[list[dict], int, int]:
     kwargs: dict[str, object] = {
         "min_width": 100,
         "min_height": 100,
         "skip_pages": frozenset(),
         "max_images": None,
+        "max_pixels": adapter.MAX_IMAGE_PIXELS,
     }
     kwargs.update(overrides)
     return adapter._extract_image_records("ignored.pdf", **kwargs)  # type: ignore[arg-type]
+
+
+def _extract(**overrides: object) -> tuple[list[dict], int]:
+    """Records and the cap's left-outs; the pixel-budget refusals are dropped (use ``_extract_records``)."""
+    records, over_cap, _ = _extract_records(**overrides)
+    return records, over_cap
 
 
 # =============================================================================
@@ -262,6 +272,94 @@ def test_identical_rasters_are_still_deduped(monkeypatch, ledger) -> None:
     records, _ = _extract()
 
     assert len(records) == 1
+
+
+# =============================================================================
+# The per-raster pixel budget: a pathological raster is never decoded
+# =============================================================================
+
+
+def test_an_over_budget_raster_is_refused_before_it_is_decoded(monkeypatch, ledger) -> None:
+    """A 20000x20000 px raster (~400 MP, ~1.6 GiB) is refused on metadata; the ordinary one is read."""
+    _install(
+        monkeypatch,
+        _Document([_Page([_ImageObject((20000, 20000), ledger), _ImageObject((800, 600), ledger, color=(0, 20, 0))])]),
+    )
+
+    records, _, over_pixel_budget = _extract_records()
+
+    assert over_pixel_budget == 1
+    # the only bitmap opened is the raster that was kept: the refused one never allocated
+    assert ledger.opened == [(800, 600)]
+    assert [(record["width"], record["height"]) for record in records] == [(800, 600)]
+
+
+def test_a_raster_exactly_at_the_budget_is_decoded(monkeypatch, ledger) -> None:
+    """The budget is a ceiling, not a floor: width x height == max_pixels is inside it."""
+    _install(monkeypatch, _Document([_Page([_ImageObject((2000, 2000), ledger)])]))
+
+    records, _, over_pixel_budget = _extract_records(max_pixels=4_000_000)
+
+    assert over_pixel_budget == 0
+    assert ledger.opened == [(2000, 2000)]
+    assert len(records) == 1
+
+
+def test_one_pixel_over_the_budget_is_refused(monkeypatch, ledger) -> None:
+    """One pixel past the ceiling is out, so the boundary is the number the env var states."""
+    _install(monkeypatch, _Document([_Page([_ImageObject((2001, 2000), ledger)])]))
+
+    records, _, over_pixel_budget = _extract_records(max_pixels=4_000_000)
+
+    assert over_pixel_budget == 1
+    assert records == []
+    assert ledger.opened == []
+
+
+def test_the_default_budget_admits_a_300_dpi_a0_scan(monkeypatch, ledger) -> None:
+    """The default is generous to real plans: A0 at 300 dpi (9933x14043 px, ~139.5 MP) is kept."""
+    _install(monkeypatch, _Document([_Page([_ImageObject((9933, 14043), ledger)])]))
+
+    records, _, over_pixel_budget = _extract_records()
+
+    assert over_pixel_budget == 0
+    assert len(records) == 1
+
+
+def test_a_metadata_less_over_budget_raster_costs_only_its_sizing_decode(monkeypatch, ledger) -> None:
+    """Without metadata there is no size but the decode: it is sized once, then refused and not analysed."""
+    _install(monkeypatch, _Document([_Page([_ImageObject((20000, 20000), ledger, metadata=False)])]))
+
+    records, _, over_pixel_budget = _extract_records()
+
+    assert over_pixel_budget == 1
+    assert records == []
+    # one decode, to read the size the stream would not report -- never a second to analyse it
+    assert ledger.opened == [(20000, 20000)]
+
+
+def test_the_refusal_count_survives_the_analysis_wrapper(monkeypatch, ledger) -> None:
+    """``_embedded_images_for_analysis`` carries the refusal count the caller records on the job status."""
+    _install(monkeypatch, _Document([_Page([_ImageObject((20000, 20000), ledger), _ImageObject((700, 700), ledger)])]))
+
+    images, over_cap, over_pixel_budget = adapter._embedded_images_for_analysis(
+        "ignored.pdf", rendered_pages=set(), enabled=True
+    )
+
+    assert (over_cap, over_pixel_budget) == (0, 1)
+    assert [(image["width"], image["height"]) for image in images] == [(700, 700)]
+
+
+def test_a_page_that_skips_extraction_costs_no_budget_check(monkeypatch, ledger) -> None:
+    """A rendered or scanned page is analysed whole; its rasters are neither sized nor refused."""
+    skipped = _ImageObject((20000, 20000), ledger)
+    _install(monkeypatch, _Document([_Page([skipped]), _Page([_ImageObject((700, 700), ledger)])]))
+
+    records, _, over_pixel_budget = _extract_records(skip_pages=frozenset({1}))
+
+    assert over_pixel_budget == 0
+    assert [record["page_number"] for record in records] == [2]
+    assert skipped.sized_calls == 0
 
 
 # =============================================================================

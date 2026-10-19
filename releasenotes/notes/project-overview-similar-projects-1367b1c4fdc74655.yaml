@@ -1,0 +1,5 @@
+---
+fixes:
+  - >
+    A project's Übersicht opens again when your office has a closed project to compare it with.
+    Before, the similar-projects tile failed to load and took the whole Übersicht down with an error page.

@@ -172,13 +172,13 @@ describe("worker-group placement with prod's knobs", () => {
     expect(NODE_GROUP_LABEL).toBe("k8s.at/node-group");
   });
 
-  it("sizes prod's ingest workers for big PDFs on the batch nodes", () => {
-    // OOMKilled at a 6Gi limit with three files in parallel (2026-10).
+  it("sizes prod's ingest workers wide and small on the batch nodes", () => {
+    // Two files a pod at 6Gi, request = limit, once the text pass held one page (#1095).
     const [container] = podOf("kubernetes:apps/v1:Deployment", "ingest-worker").spec.containers;
 
     expect(container.resources).toEqual({
-      requests: { cpu: "500m", memory: "8Gi" },
-      limits: { cpu: "4", memory: "12Gi" },
+      requests: { cpu: "1", memory: "6Gi" },
+      limits: { cpu: "2", memory: "6Gi" },
     });
   });
 

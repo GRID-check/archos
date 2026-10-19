@@ -75,8 +75,9 @@ has run in production since ADR-0021.
   can forge.
 * **The tier scales on the queue.** `GRID_ROLE=ingest-worker` runs
   `aiq_api.jobs.ingest_worker`. KEDA's `postgresql` trigger counts the rows of
-  `ingest_job_queue` that are not `dead` (a dead row is kept as a trace, and is
-  no work) and asks for ceil(jobs / concurrency) replicas. It scales
+  `ingest_job_queue` that are not retired — neither `dead` nor `cancelled` (a
+  retired row is kept as a trace, and is no work; `cancelled` was added later,
+  ADR-0079's substrate) — and asks for ceil(jobs / concurrency) replicas. It scales
   out at once and in one pod a minute, down to zero where the floor is zero.
   The cluster-autoscaler adds nodes for Pending replicas (docs/deployment/
   kubernetes.md). CPU cannot drive this tier: a job mostly waits on the provider.

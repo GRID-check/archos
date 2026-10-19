@@ -60,6 +60,23 @@ ruleTester.run('require-tenant-scope', rule, {
       filename: 'src/app/projects/page.spec.tsx',
       code: "import { getGridSession } from '@/lib/auth/session'\ngetGridSession()",
     },
+    {
+      // A streamed child that opens its own slot (the fix for issue #1097).
+      filename: PAGE,
+      code:
+        "import { withPageSession } from '@/lib/auth/require-auth'\n" +
+        'async function Slot({ projectId }) { return withPageSession(async (session) => [session, projectId]) }',
+    },
+    {
+      // A synchronous component may take a session: it renders inside its parent's call.
+      filename: PAGE,
+      code: 'function Badge({ session }) { return session.userId }',
+    },
+    {
+      // Library code is not an entry point, so a helper there is not checked.
+      filename: 'src/features/projects/components/tile.tsx',
+      code: 'export async function Tile({ session }) { return session }',
+    },
   ],
   invalid: [
     {
@@ -103,6 +120,18 @@ ruleTester.run('require-tenant-scope', rule, {
         "import { getGridSession } from '@/lib/auth/session'\n" +
         'export default function Page() { return helpers.withTenant(() => getGridSession()) }',
       errors: [{ messageId: 'unscoped' }],
+    },
+    {
+      // Issue #1097: a Suspense child handed the page's session renders after its slot closed.
+      filename: PAGE,
+      code: 'async function SimilarProjectsSlot({ session, projectId }) { return [session, projectId] }',
+      errors: [{ messageId: 'sessionProp' }],
+    },
+    {
+      // The same shape bound to a const.
+      filename: PAGE,
+      code: 'const Slot = async ({ session }) => session',
+      errors: [{ messageId: 'sessionProp' }],
     },
   ],
 })

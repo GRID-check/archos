@@ -150,6 +150,10 @@ class JobState(StrEnum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    #: A person stopped the job before it finished (``claim_queue.CANCELLED``).
+    #: Terminal, and neither a failure nor a success: nothing went wrong, but
+    #: nothing was indexed either. A reader shows it as its own state.
+    CANCELLED = "cancelled"
 
 
 class FileStatus(StrEnum):
@@ -378,9 +382,13 @@ class FileProgress(BaseModel):
         description=(
             "Extraction counts for this file that the chunk count does not show, e.g. "
             "`images_over_cap`: embedded images left unanalysed by AIQ_MAX_IMAGES_PER_DOCUMENT; "
+            "`images_over_pixel_budget`: embedded images refused before decoding by "
+            "AIQ_MAX_IMAGE_PIXELS; "
             "`pages_transcribed`, `pages_transcription_failed`, `pages_over_ocr_cap`, "
             "`pages_not_transcribed_no_vlm`: scanned or garbled PDF pages and what became of them; "
-            "`drawing_pages_over_cap`: drawing pages past AIQ_MAX_RENDERED_PAGES."
+            "`drawing_pages_over_cap`: drawing pages past AIQ_MAX_RENDERED_PAGES; "
+            "`pages_read_without_layout`: PDF pages over AIQ_PDF_PAGE_MAX_OBJECTS, whose text was "
+            "read without tables or line styles."
         ),
     )
     screening: Literal["clean", "partial", "unchecked", "quarantined"] | None = Field(
@@ -470,8 +478,8 @@ class IngestionJobStatus(BaseModel):
 
     @property
     def is_terminal(self) -> bool:
-        """Check if job is in a terminal state (completed or failed)."""
-        return self.status in (JobState.COMPLETED, JobState.FAILED)
+        """Check if job is in a terminal state (completed, failed or cancelled)."""
+        return self.status in (JobState.COMPLETED, JobState.FAILED, JobState.CANCELLED)
 
     @property
     def is_success(self) -> bool:

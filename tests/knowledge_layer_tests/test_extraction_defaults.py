@@ -243,9 +243,10 @@ def _indexed_documents():
 class _Pipeline:
     """A PDF whose page 1 is rendered whole and whose rasters sit on pages 1-3."""
 
-    def __init__(self, tmp_path, monkeypatch, *, rendered_pages=(1,)):
+    def __init__(self, tmp_path, monkeypatch, *, rendered_pages=(1,), over_pixel_budget=0):
         self.analysed: list[bytes] = []
         self.extract_calls: list[set] = []
+        self.over_pixel_budget = over_pixel_budget
         cred = ResolvedCredential(api_key="vlm-key", base_url="https://vlm.test/v1", model="test-vlm", source="env")
         monkeypatch.setattr(adapter, "resolve_vlm_credential", lambda organization_id=None: cred)
         monkeypatch.setattr(adapter, "_extract_text_from_pdf", lambda p: [])
@@ -256,8 +257,9 @@ class _Pipeline:
             self.extract_calls.append(set(skip_pages))
             candidates = [r for r in rasters if r["page_number"] not in skip_pages]
             if max_images is None:
-                return candidates, 0
-            return adapter.cap_images(candidates, max_images)
+                return candidates, 0, self.over_pixel_budget
+            kept, over_cap = adapter.cap_images(candidates, max_images)
+            return kept, over_cap, self.over_pixel_budget
 
         monkeypatch.setattr(adapter, "_extract_image_records", _extract)
 
@@ -326,3 +328,32 @@ def test_under_the_cap_nothing_is_recorded(tmp_path, monkeypatch, ingestor, summ
     status = _ingest(ingestor, pipeline)
 
     assert status.file_details[0].metadata == {}
+
+
+def test_a_raster_over_the_pixel_budget_is_counted_on_the_file_status(tmp_path, monkeypatch, ingestor, summary_db):
+    """An oversized raster is refused, and the refusal reaches the file's job status."""
+    pipeline = _Pipeline(tmp_path, monkeypatch, rendered_pages=(), over_pixel_budget=1)
+
+    status = _ingest(ingestor, pipeline)
+
+    assert status.file_details[0].metadata == {"images_over_pixel_budget": 1}
+
+
+def test_pages_read_without_layout_are_counted_and_kept_from_the_table_pass(
+    tmp_path, monkeypatch, ingestor, summary_db
+):
+    """A page over AIQ_PDF_PAGE_MAX_OBJECTS is a partial read, and the job status says so."""
+    pipeline = _Pipeline(tmp_path, monkeypatch, rendered_pages=())
+    table_calls: list = []
+    monkeypatch.setattr(
+        adapter,
+        "_extract_text_from_pdf",
+        lambda p: adapter.PdfTextPages([], page_count=3, dense_pages=[2, 3]),
+    )
+    monkeypatch.setattr(adapter, "_extract_tables_from_pdf", lambda *a, **k: table_calls.append(a) or [])
+    monkeypatch.setattr(LlamaIndexIngestor, "DEFAULT_EXTRACT_TABLES", True)
+
+    status = _ingest(ingestor, pipeline)
+
+    assert status.file_details[0].metadata == {"pages_read_without_layout": 2}
+    assert [call[2] for call in table_calls] == [[2, 3]]

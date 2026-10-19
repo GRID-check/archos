@@ -81,7 +81,12 @@ Concretely, the rules that keep it modular:
    `AIQ_MAX_IMAGES_PER_DOCUMENT` (64, the BFF's storage cap), largest first;
    the number left out is recorded on the file's job status
    (`file_details[].metadata.images_over_cap`). Rendered pages have their own
-   cap, `AIQ_MAX_RENDERED_PAGES`.
+   cap, `AIQ_MAX_RENDERED_PAGES`. Each accepted raster is also bounded in size
+   before it is decoded: one over `AIQ_MAX_IMAGE_PIXELS` (256 MP) is refused
+   from its metadata (`get_px_size`), because pypdfium2 cannot downscale an
+   embedded image on decode and a 20000x20000 px raster is a ~1.6 GiB
+   allocation. The refusals are counted as `images_over_pixel_budget` and
+   logged with the page, index and pixel size; the page keeps its text layer.
 
 ## Scans and garbled text layers
 

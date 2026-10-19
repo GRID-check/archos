@@ -140,7 +140,7 @@ def test_reap_exhausted_keeps_a_dead_row_that_is_no_work(db_url):
 
     # Kept as the trace of what failed, payload blanked, and never counted as work.
     assert _status_of(db_url, "job-1") == queue.DEAD
-    assert queue.counts(db_url) == {"queued": 0, "claimed": 0, "dead": 1}
+    assert queue.counts(db_url) == {"queued": 0, "claimed": 0, "dead": 1, "cancelled": 0}
     assert queue.claim_next(db_url, "w", 30, 3) is None
     assert queue.reap_exhausted(db_url, 30, 3) == []
 
@@ -148,11 +148,11 @@ def test_reap_exhausted_keeps_a_dead_row_that_is_no_work(db_url):
 def test_purge_dead_deletes_only_rows_past_their_retention(db_url):
     queue.enqueue(db_url, "job-1", {"input_text": "x"})
     queue.mark_dead(db_url, "job-1", "attempts_exhausted")
-    assert queue.purge_dead(db_url, older_than_seconds=3600) == 0
+    assert queue.purge_retired(db_url, older_than_seconds=3600) == 0
     with queue._connection(db_url) as conn:
         conn.execute(text("UPDATE research_job_queue SET dead_at = datetime('now', '-2 days')"))
         conn.commit()
-    assert queue.purge_dead(db_url, older_than_seconds=3600) == 1
+    assert queue.purge_retired(db_url, older_than_seconds=3600) == 1
     assert queue.counts(db_url)["dead"] == 0
 
 

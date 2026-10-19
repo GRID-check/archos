@@ -38,15 +38,25 @@ export const SCALER_COOLDOWN_SECONDS = 300;
 /** The status of a row a queue gave up on (`aiq_agent.common.claim_queue.DEAD`, `bff_job_queue`). */
 export const DEAD_STATUS = "dead";
 
+/** The status of a row a person stopped (`aiq_agent.common.claim_queue.CANCELLED`). */
+export const CANCELLED_STATUS = "cancelled";
+
+/**
+ * The statuses a queue never runs again: dead (gave up), cancelled (stopped).
+ * Both are kept as traces and are never work, so the depth must not count them.
+ */
+export const RETIRED_STATUSES = [DEAD_STATUS, CANCELLED_STATUS] as const;
+
 /**
  * KEDA's measure of a claim queue's work: every row a worker could still run or
  * is running. Counting claimed rows keeps a tier from scaling in underneath the
- * jobs it is running. A DEAD row is kept as the trace of a job that failed every
- * claim and is never work: counting it would hold replicas up for a job nobody
- * will run. A finished job's row is deleted, so it needs no clause.
+ * jobs it is running. A RETIRED row (dead or cancelled) is kept as a trace and is
+ * never work: counting it would hold replicas up for a job nobody will run. A
+ * finished job's row is deleted, so it needs no clause.
  */
 export function queueDepthQuery(table: string): string {
-  return `SELECT COUNT(*) FROM ${table} WHERE status <> '${DEAD_STATUS}'`;
+  const retired = RETIRED_STATUSES.map((status) => `'${status}'`).join(", ");
+  return `SELECT COUNT(*) FROM ${table} WHERE status NOT IN (${retired})`;
 }
 
 /**

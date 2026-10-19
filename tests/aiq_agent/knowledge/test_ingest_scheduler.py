@@ -8,6 +8,7 @@ takes jobs in, with workers held on events so the order is deterministic.
 from __future__ import annotations
 
 import threading
+import time
 
 import pytest
 
@@ -55,7 +56,8 @@ def scheduler():
     created: list[FairIngestScheduler] = []
 
     def make(workers: int = 1, **kwargs) -> FairIngestScheduler:
-        s = FairIngestScheduler(workers, idle_poll_seconds=0.05, **kwargs)
+        idle = kwargs.pop("idle_poll_seconds", 0.05)
+        s = FairIngestScheduler(workers, idle_poll_seconds=idle, **kwargs)
         created.append(s)
         return s
 
@@ -297,6 +299,101 @@ def test_a_job_with_nothing_to_give_back_still_runs_after_a_detach(scheduler):
     r.wait_started("claimed")
 
 
+# ------------------------------------------------------- the idle relay
+#
+# An empty claim used to notify a sibling, whose own empty claim notified the
+# next, so three idle workers relayed the claim round and round instead of
+# sleeping out `idle_poll_seconds` (~13,300 empty claims/s at 5.0 s; measured
+# ~0.52 core and ~1,900 claims/s against an empty production queue). A relay
+# needs a SECOND waiter, which is why every source test above (all `workers=1`)
+# was structurally blind to it.
+
+
+def test_three_idle_workers_do_not_relay_empty_claims(scheduler):
+    """3 workers and an empty source: ~workers/idle_poll_seconds claims, not thousands."""
+    idle = 0.5
+    window = 1.0
+    source = _Source([])
+    s = scheduler(workers=3, idle_poll_seconds=idle)
+    s.attach_source(source)
+
+    _wait_until(lambda: source.asked >= 3, "every worker asks the empty source")
+    source.asked = 0
+    threading.Event().wait(window)
+
+    ceiling = _empty_claim_ceiling(3, idle, window)
+    assert source.asked <= ceiling, (
+        f"{source.asked} empty claims in {window}s with {idle}s idle polling: "
+        "the workers are waking one another instead of sleeping"
+    )
+
+
+def test_an_idle_worker_does_not_relay_while_a_lane_waits_at_its_cap(scheduler):
+    """A lane held back by ``per_org_cap`` leaves local work no worker may pick.
+
+    ``_pick_local`` returns None while ``_lanes`` is still non-empty, so a guard
+    that notified whenever local work existed would relay here exactly as
+    before. This is why the wake is tied to the CLAIM finding something.
+    """
+    idle = 0.5
+    window = 1.0
+    r = Recorder()
+    s = scheduler(workers=3, idle_poll_seconds=idle, per_org_cap=1)
+    s.submit("org-a", r.job("hold", hold=True))
+    r.wait_started("hold")
+    s.submit("org-a", r.job("held-back-by-the-cap"))
+    source = _Source([])
+    s.attach_source(source)
+
+    _wait_until(lambda: source.asked >= 2, "the two free workers ask the empty source")
+    source.asked = 0
+    threading.Event().wait(window)
+
+    ceiling = _empty_claim_ceiling(2, idle, window)
+    assert source.asked <= ceiling, (
+        f"{source.asked} empty claims in {window}s while a lane sat at its cap: "
+        "the workers are waking one another instead of sleeping"
+    )
+    r.release("hold")
+
+
+def test_a_parked_worker_is_woken_by_a_local_submit(scheduler):
+    """A submit hands its job to a waiting worker at once, not on the next poll.
+
+    ``idle_poll_seconds`` is far longer than the wait asserted, so a worker that
+    only slept out its poll timer would fail this.
+    """
+    s = scheduler(workers=2, idle_poll_seconds=5.0)
+    source = _Source([])
+    s.attach_source(source)
+    r = Recorder()
+
+    _wait_until(lambda: source.asked >= 2, "both workers ask the empty source")
+    threading.Event().wait(0.1)  # both are parked in `_next` now
+
+    started = time.monotonic()
+    s.submit("org-a", r.job("local"))
+    r.wait_started("local")
+    assert time.monotonic() - started < 1.0
+
+
+def test_a_job_that_appears_in_the_source_is_claimed_within_the_idle_interval(scheduler):
+    """A queued job waits at most ``idle_poll_seconds``; a multi-minute wait is the bug."""
+    idle = 0.5
+    s = scheduler(workers=1, idle_poll_seconds=idle)
+    source = _Source([])
+    s.attach_source(source)
+    r = Recorder()
+
+    _wait_until(lambda: source.asked >= 1, "the worker asks the empty source")
+    threading.Event().wait(0.1)  # the worker is parked in `_next` now
+
+    started = time.monotonic()
+    source.jobs.append(r.job("late"))
+    r.wait_started("late")
+    assert time.monotonic() - started <= idle + 1.0
+
+
 def test_the_per_org_cap_is_read_from_the_fleet_name(monkeypatch):
     monkeypatch.setenv("GRID_INGEST_MAX_PER_ORG", "3")
     monkeypatch.setenv("AIQ_INGEST_MAX_PER_ORG", "9")
@@ -324,6 +421,27 @@ def test_a_missing_or_malformed_per_org_cap_means_no_cap(monkeypatch, value):
     monkeypatch.delenv("AIQ_INGEST_MAX_PER_ORG", raising=False)
 
     assert per_org_cap_from_env() == 0
+
+
+def _wait_until(predicate, what: str) -> None:
+    """Wait up to ``TIMEOUT`` for ``predicate()`` to hold."""
+    deadline = time.monotonic() + TIMEOUT
+    while time.monotonic() < deadline:
+        if predicate():
+            return
+        threading.Event().wait(0.01)
+    raise AssertionError(f"timed out waiting until {what}")
+
+
+def _empty_claim_ceiling(workers: int, idle_poll_seconds: float, window: float) -> float:
+    """A generous upper bound on empty claims in ``window`` seconds.
+
+    A sleeping worker asks at most once per ``idle_poll_seconds``, plus one
+    claim in flight at the boundary; the factor of three is slack for scheduler
+    jitter on a loaded runner. A relay asks orders of magnitude more, so the
+    bound still separates the two loudly.
+    """
+    return 3 * workers * (window / idle_poll_seconds + 1)
 
 
 def _drain_when(r: Recorder, count: int) -> None:

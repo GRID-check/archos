@@ -369,15 +369,15 @@ class ResearchWorker:
         await self._purge_dead()
 
     async def _purge_dead(self) -> None:
-        """Delete dead rows past their retention, at most once an hour per process."""
+        """Delete retired rows (dead, or cancelled) past their retention, at most once an hour per process."""
         now = time.monotonic()
         if now < self._next_purge:
             return
         self._next_purge = now + _PURGE_EVERY_SECONDS
         try:
-            await asyncio.to_thread(queue.purge_dead, self.db_url, _dead_retention_seconds())
+            await asyncio.to_thread(queue.purge_retired, self.db_url, _dead_retention_seconds())
         except Exception:
-            logger.warning("Purging dead research queue rows failed (non-fatal)", exc_info=True)
+            logger.warning("Purging retired research queue rows failed (non-fatal)", exc_info=True)
 
     async def _drain(self) -> None:
         """Wait for the jobs this worker holds; give back, at no cost, the ones that outlast the budget."""

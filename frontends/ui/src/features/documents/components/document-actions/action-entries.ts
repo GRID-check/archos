@@ -18,6 +18,7 @@ import {
   Pencil,
   RotateCcw,
   Trash2,
+  Ban,
   Eye,
 } from 'lucide-react'
 import type { ActionMenuEntry } from '@/components/ui/action-menu'
@@ -35,6 +36,7 @@ export type DocumentActionKind =
   | 'copyOriginPath'
   | 'delete'
   | 'reingest'
+  | 'cancel'
 
 export const DEFAULT_DOCUMENT_ACTIONS: readonly DocumentActionKind[] = [
   'open',
@@ -46,6 +48,7 @@ export const DEFAULT_DOCUMENT_ACTIONS: readonly DocumentActionKind[] = [
   'copyOriginPath',
   'delete',
   'reingest',
+  'cancel',
 ]
 
 /**
@@ -65,6 +68,8 @@ export interface DocumentActionLabels {
   delete: string
   reingest: string
   reingesting: string
+  cancel: string
+  cancelling: string
   allFiles: string
 }
 
@@ -82,6 +87,7 @@ export interface DocumentActionEntriesInput {
   destinations?: readonly FolderDestination[]
   isDownloading?: boolean
   isReingesting?: boolean
+  isCancelling?: boolean
   isMoving?: boolean
   onOpen?: () => void
   onAsk?: () => void
@@ -97,6 +103,8 @@ export interface DocumentActionEntriesInput {
   onRename: () => void
   onDelete: () => void
   onReingest: () => void
+  /** Stop a read that has not finished. Offered only where {@link cancelOffer} says it applies. */
+  onCancel: () => void
   onMove: (folderId: string | null, folderName: string) => void
   onCopyOriginPath?: () => void
 }
@@ -133,6 +141,22 @@ export function reingestOffer(
   return null
 }
 
+/**
+ * Whether stopping the read applies to this row: it is being read, and the read
+ * has not finished.
+ *
+ * In flight and NOT `uploading`. An `uploading` row's bytes are still arriving
+ * from the browser, so there is no ingest job to stop yet and the tray's own
+ * cancel — which aborts the transport — is the action there. A `pending` row
+ * waits in the durable ingest queue and a `processing` one may be read by a
+ * worker or converted inside the BFF (an IFC extraction, an office rendition);
+ * the menu cannot tell those apart, and the server answers `unavailable` for
+ * the ones with no queue row, which the caller turns into its own sentence.
+ */
+export function cancelOffer(document: Pick<ActionableDocument, 'status'>): boolean {
+  return isSettlingStatus(document.status) && document.status !== 'uploading'
+}
+
 export function documentActionEntries({
   document,
   labels,
@@ -142,6 +166,7 @@ export function documentActionEntries({
   destinations: sortedDestinations,
   isDownloading = false,
   isReingesting = false,
+  isCancelling = false,
   isMoving = false,
   onOpen,
   onAsk,
@@ -151,6 +176,7 @@ export function documentActionEntries({
   onRename,
   onDelete,
   onReingest,
+  onCancel,
   onMove,
   onCopyOriginPath,
 }: DocumentActionEntriesInput): ActionMenuEntry[] {
@@ -165,9 +191,15 @@ export function documentActionEntries({
       return Boolean(document.originPath && onCopyOriginPath)
     }
     if (kind === 'reingest') return canManage && reingestOffer(document) !== null
+    if (kind === 'cancel') return canManage && cancelOffer(document)
     if (kind === 'move') return canManage && Boolean(destinations && destinations.length > 0)
     return canManage
   }
+
+  // Both acts below work on what the file IS in the index — reading it again,
+  // or stopping the read in progress — so they stand together, set apart from
+  // the file operations that follow.
+  const offersReadAction = offers('reingest') || offers('cancel')
 
   const entries: ActionMenuEntry[] = []
   const pushSep = (): void => {
@@ -208,8 +240,9 @@ export function documentActionEntries({
     })
   }
 
+  if (offersReadAction) pushSep()
+
   if (offers('reingest')) {
-    pushSep()
     entries.push({
       type: 'item',
       id: 'reingest',
@@ -218,6 +251,18 @@ export function documentActionEntries({
       disabled: isReingesting,
       onSelect: onReingest,
       testId: 'document-action-reingest',
+    })
+  }
+
+  if (offers('cancel')) {
+    entries.push({
+      type: 'item',
+      id: 'cancel',
+      label: isCancelling ? labels.cancelling : labels.cancel,
+      icon: Ban,
+      disabled: isCancelling,
+      onSelect: onCancel,
+      testId: 'document-action-cancel',
     })
   }
 

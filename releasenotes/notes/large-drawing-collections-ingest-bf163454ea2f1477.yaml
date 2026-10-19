@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    Large files full of CAD drawings, such as a project's collected documents
+    or a fire safety concept with many drawing sheets, now upload and become
+    searchable. Before, such a file could fail every time it was read, and a
+    retry failed the same way.

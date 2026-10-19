@@ -223,9 +223,9 @@ For each file:
 
    A PDF counts as structured when it has at least three headings, at least half its text sits under one, and at most 30% of its lines are headings (`section_chunking.structure_is_usable`). A heading is a short line in a larger type than the body, in bold, or opened by a German numbering; lines that repeat at the top or bottom of most pages are running headers and are dropped. A transcribed page's Markdown ATX headings (`## 1 Befund`) are section headings. A numbered line in body type counts only when its title reads as one: at most 8 words, no finite verb, not ending mid-sentence. A line that runs on in lowercase into a line of another style is not a heading. Locators are normalised, so `§3` and `Art.3` become `§ 3` and `Art. 3`. `read_passage(page=N)` returns the chunks whose `[page_label, page_end]` range covers N, so a section chunk that starts on page 2 and ends on page 3 is found for page 3.
 2. **Table extraction** (PDF only, optional) — Uses `pdfplumber` to extract the tables the text pass did not already index as captioned tables; each becomes row groups that repeat the header row (`content_type: "table"`, `table_part` orders them), so the splitter never cuts a table into header-less rows. The tables are read right after the text, before the upload screen, and screened with it: the table pass opens the PDF on its own and also reads a page the text pass lost
-3. **Image extraction** (PDF only, optional) — Uses `pypdfium2` to extract images (min 100×100px to filter icons); each image is sent to the VLM API (default: `openai/gpt-6-luna` via OpenRouter — image input verified, caption quality on OIB drawings still open, see the Configuration table) for classification (chart vs image) and captioning; captions become `Document` objects with `content_type: "chart"` or `"image"` metadata
+3. **Image extraction** (PDF only, optional) — Uses `pypdfium2` to extract the embedded rasters worth a caption, at least 100×100 px by the image object's own metadata, so an icon is filtered without being decoded. Every candidate is sized from metadata (`PdfImage.get_px_size()`, no pixels read), the per-document cap `AIQ_MAX_IMAGES_PER_DOCUMENT` (64) is applied right there — largest first, everything past it never decoded — and only the kept rasters are decoded, one at a time, each downscaled to `VLM_MAX_IMAGE_DIM` before it is held. Peak memory is one raster instead of the document's, which is the bound that keeps an ingest pod inside its limit on a plan set ([ingest memory runbook](../deployment/ingest-memory-runbook.md)). Each kept raster is sent to the VLM API (default: `openai/gpt-6-luna` via OpenRouter — image input verified, caption quality on OIB drawings still open, see the Configuration table) for classification (chart vs image) and captioning; captions become `Document` objects with `content_type: "chart"` or `"image"` metadata
 
-   Every PDFium call in the process (page triage, page renders, image extraction, thumbnails, `view_knowledge_image`) is serialized through `pdfium_lock` in `knowledge_layer/llamaindex/pdfium_lock.py`, because PDFium is not thread-safe; the lock is held per page and image encoding happens after it is released.
+   Every PDFium call in the process (page triage, page renders, image extraction, thumbnails, `view_knowledge_image`) is serialized through `pdfium_lock` in `knowledge_layer/llamaindex/pdfium_lock.py`, because PDFium is not thread-safe; the lock is held for the PDFium work alone — reading a page's objects, decoding one raster — and image encoding happens after it is released.
 
 4. **Summarization** (optional) — If `generate_summary` is enabled, the first and last chunks are combined and sent, as two **concurrent** calls to the same `summary_model` LLM, for a one-sentence summary and a tag classification (document type + OIB discipline; see "Backfilling tags" below). Both calls independently swallow exceptions/timeouts and return nothing on failure. A deterministic, text-derived fallback summary now fires whenever the LLM summary is missing — for any reason, independent of whether tag classification succeeded — so a document that finishes ingestion always gets a `document_metadata` row (see "Silent summary-row loss" below for the fix and the reconciliation backstop).
 5. **Indexing** — All `Document` objects are cut by a `SentenceSplitter` with the job's chunk size and overlap, embedded with the ingestor's embedder (OpenRouter, `openai/text-embedding-3-large` by default; see "Embedding-model changes" below — stored vectors only match query vectors from the same model) and written to Qdrant by `qdrant/writes.write_chunks`, which puts the office, project, document, folder, project facts, `indexed_at` and the facts people set on every point. A write Qdrant refuses fails the file (ADR-0115)
@@ -583,6 +583,39 @@ Only a second timeout, a non-2xx answer or a connection that never reached the
 backend records `failed` with „Ingestion could not be started".
 
 The collection file list is fetched at most once per collection per request.
+
+### Stopping a read (cancel)
+
+A read in progress can be stopped from the file's own menu, or from the upload
+list while the row is being read. Both send one request,
+`POST /api/documents/{id}/cancel` (`cancelDocumentIngest` in
+`lib/documents/service.ts`), which reads the row's `metadata.ingestJobId` and
+forwards `POST /v1/documents/{job_id}/cancel` to the backend.
+
+The stop is expressed through the ingest claim, not a second control channel:
+`cancel` (`src/aiq_agent/common/claim_queue.py`) marks the job's queue row
+`cancelled` — a terminal status that is never claimed again and is not counted
+by KEDA — and blanks its payload. A worker reading the file then finds its
+heartbeat refused (the lease renews only while the row is `claimed`) and stops
+at its next `_assert_still_owner`, before it reads the next page or writes the
+next chunk, so no half-indexed document is left behind. A job still `queued` is
+settled immediately.
+
+The answer is one of three: `cancelled` (a live job was stopped), `finished`
+(the durable queue held no live job — the row the reader clicked was stale), or
+`unavailable` (the durable ingest queue is off, or the work runs inside the BFF,
+so no queue can reach it). Only `cancelled` changes the row: to the terminal
+`cancelled` status (migration 0153). Nothing was indexed, the bytes stay, and a
+re-ingest reads them again. `cancelled` is neutral in the UI („Abgebrochen“),
+never a failure. Because a stop can land between the worker's last ownership
+check and its write, a `cancelled` row is re-checked for thirty minutes like an
+`interrupted` one (`resolveCancelledRow`, `reconcile-status.ts`): a job that did
+finalize heals the row to `completed`.
+
+The queue row is kept as a tombstone — not deleted — so the status store can
+settle the job terminal `cancelled` (`settle_cancelled`,
+`ingest_status_store.py`), and is purged on the same clock as a dead row
+(`purge_retired`, `claim_queue.py`).
 
 ### Which failures are read again
 

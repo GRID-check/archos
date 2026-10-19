@@ -58,6 +58,7 @@ const STATES: { status: string; note: string; queueAhead?: number; errorMessage?
   { status: 'uploading', note: 'bytes still arriving', name: 'Wohnbau-Nord_Gesamtmodell.ifc' },
   { status: 'pending', note: 'in the office’s ingest queue', queueAhead: 3, name: 'Baubeschreibung_Einreichung.pdf' },
   { status: 'processing', note: 'Piloti is reading it', name: 'Brandschutzkonzept_Wohnbau-Nord.pdf' },
+  { status: 'cancelled', note: 'someone stopped the read', name: 'Wohnbau-Nord_Schnitt_A-A.pdf' },
   { status: 'completed', note: 'Piloti can cite it', name: 'Energieausweis.pdf' },
   {
     status: 'quarantined',

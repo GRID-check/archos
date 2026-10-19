@@ -218,7 +218,9 @@ describe("the program's ScaledObjects", () => {
           targetQueryValue: String(concurrency),
           activationTargetQueryValue: "0",
         });
-        expect(trigger.metadata.query, tier).toBe(`SELECT COUNT(*) FROM ${table} WHERE status <> 'dead'`);
+        expect(trigger.metadata.query, tier).toBe(
+          `SELECT COUNT(*) FROM ${table} WHERE status NOT IN ('dead', 'cancelled')`,
+        );
       }
     });
 
@@ -336,7 +338,9 @@ describe("the program's ScaledObjects", () => {
       const { queueDepthQuery } = await import("./keda-scaling");
 
       expect(SCALER_READABLE_COLUMNS).toEqual(["status"]);
-      expect(queueDepthQuery("any_queue")).toBe("SELECT COUNT(*) FROM any_queue WHERE status <> 'dead'");
+      expect(queueDepthQuery("any_queue")).toBe(
+        "SELECT COUNT(*) FROM any_queue WHERE status NOT IN ('dead', 'cancelled')",
+      );
     });
 
     it("cross the organisation boundary by a policy of their own, for SELECT and for that role only", () => {

@@ -61,6 +61,10 @@ const LISTED_STATUS_BY_STATE: Record<SurfaceState, ListedFileStatus> = {
   held: 'held',
   unreadable: 'failed',
   stored: 'stored',
+  // A read a person stopped: at rest and not in the index, like `stored`. It is
+  // not a failure, so it is not `failed`; and there is nothing to retry, so the
+  // chat offers it no different from any other unread file.
+  cancelled: 'stored',
   unknown: 'stored',
 }
 

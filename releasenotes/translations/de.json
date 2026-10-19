@@ -208,6 +208,10 @@
     "de": "Wenn Piloti das Lesen einer Datei nicht starten konnte, wird jetzt genau das angezeigt, statt fälschlich einen Neustart als Ursache anzugeben, der nie stattgefunden hat."
   },
   {
+    "en": "A file Piloti is still reading can now be stopped, from the upload list or from the file's own menu. Nothing it had not read yet is added to what Piloti can answer from, the file stays in the project, and you can read it again at any time.",
+    "de": "Eine Datei, die Piloti gerade einliest, können Sie jetzt in der Upload-Liste oder im Menü der Datei stoppen. Was Piloti bis dahin noch nicht gelesen hat, wird nicht zu seiner Antwortgrundlage hinzugefügt. Die Datei bleibt im Projekt und Sie können sie jederzeit erneut einlesen lassen."
+  },
+  {
     "en": "A file cannot be uploaded over one waiting in quarantine, not even by its uploader, so the held-back version never becomes part of the file's history. Delete the quarantined file first, or have it released.",
     "de": "Über eine Datei, die in Quarantäne wartet, lässt sich keine andere hochladen, auch nicht von ihrem Uploader, sodass die zurückgehaltene Fassung nie Teil des Verlaufs wird. Löschen Sie zuerst die Datei in Quarantäne oder lassen Sie sie freigeben."
   },
@@ -424,6 +428,10 @@
     "de": "Ein Foto wird jetzt zusätzlich zum dargestellten Inhalt als „Foto“ gekennzeichnet: Ein Foto eines Grundrisses ist sowohl „Foto“ als auch „Grundriss“."
   },
   {
+    "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
+    "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
+  },
+  {
     "en": "A precedent from another Bundesland is now marked as decided under a different Bauordnung.",
     "de": "Ein Präzedenzfall aus einem anderen Bundesland ist jetzt als nach einer anderen Bauordnung entschieden gekennzeichnet."
   },
@@ -446,6 +454,10 @@
   {
     "en": "A project's completion month is now set when you close it. A running project shows \"ongoing\", and a month entered earlier is no longer shown; you are asked for it again when you close the project.",
     "de": "Der Abschlussmonat eines Projekts wird jetzt beim Schließen festgelegt. Ein laufendes Projekt zeigt „laufend“, und ein früher eingetragener Monat wird nicht mehr angezeigt; beim Schließen des Projekts wird er erneut abgefragt."
+  },
+  {
+    "en": "A project's Übersicht opens again when your office has a closed project to compare it with. Before, the similar-projects tile failed to load and took the whole Übersicht down with an error page.",
+    "de": "Die Übersicht eines Projekts öffnet sich wieder, wenn Ihr Büro ein abgeschlossenes Projekt zum Vergleich hat. Zuvor konnte die Kachel für ähnliche Projekte nicht geladen werden und brachte die gesamte Übersicht mit einer Fehlerseite zum Absturz."
   },
   {
     "en": "A question about a file you just attached now waits until the file can be searched, instead of being answered from everything except that document. The chat says what it is waiting for, and one click asks right away.",
@@ -1750,6 +1762,10 @@
   {
     "en": "Jobs and Skills now sit together in one Automation section, as two tabs instead of two places in the sidebar. Jobs comes first, since a job is the instruction this project runs on a timer, and Skills is one click away.",
     "de": "Jobs und Skills liegen jetzt gemeinsam im Bereich Automation, als zwei Tabs statt an zwei Stellen in der Seitenleiste. Jobs steht vorn, weil ein Job die Anweisung ist, die dieses Projekt zeitgesteuert ausführt, und Skills ist mit einem Klick erreichbar."
+  },
+  {
+    "en": "Large files full of CAD drawings, such as a project's collected documents or a fire safety concept with many drawing sheets, now upload and become searchable. Before, such a file could fail every time it was read, and a retry failed the same way.",
+    "de": "Große Dateien mit CAD-Zeichnungen, etwa gesammelte Projektunterlagen oder ein Brandschutzkonzept mit vielen Planblättern, lassen sich jetzt hochladen und durchsuchen. Bisher schlägt das Einlesen solcher Dateien jedes Mal fehl, und auch ein erneuter Versuch scheitert."
   },
   {
     "en": "Large folders in a project's files and in the Archiv now open and scroll faster: the first documents appear right away while the rest load behind them, and previews load as you scroll to them.",
@@ -3162,6 +3178,10 @@
   {
     "en": "Uploading the same file twice no longer reads it again when nothing has changed.",
     "de": "Wird dieselbe Datei zweimal hochgeladen, wird sie nicht erneut gelesen, wenn sich nichts geändert hat."
+  },
+  {
+    "en": "Uploads finish sooner. A document the content check turns away no longer spends time reading its tables first.",
+    "de": "Uploads sind schneller abgeschlossen. Wird ein Dokument von der Inhaltsprüfung abgelehnt, werden seine Tabellen nicht mehr zuerst ausgelesen."
   },
   {
     "en": "Uploads into a project or into Office filing are no longer limited to 100 MB at a time, so a complete Einreichung goes through. Only your organization's storage quota applies now.",

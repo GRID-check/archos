@@ -1,0 +1,10 @@
+---
+# One entry per user-visible change. This one is not customer-visible: it is for
+# the people running the platform (the ingest tier), so it lives in `operators`,
+# which stays off the public changelog.
+operators:
+  - >
+    An idle ingest worker no longer wakes its sleeping siblings. With an empty
+    queue the workers used to relay a claim round and round instead of waiting
+    out the poll interval, spending about half a core per pod and millions of
+    database transactions a day on no work at all.

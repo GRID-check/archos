@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
-import { AlertCircle, Check, ChevronDown, RotateCcw, ShieldAlert, WifiOff, X } from 'lucide-react'
+import { AlertCircle, Ban, Check, ChevronDown, RotateCcw, ShieldAlert, WifiOff, X } from 'lucide-react'
 import { mayRetryUpload, type TrackedFile } from '../types'
 import {
   isDeterminate,
@@ -531,6 +531,12 @@ function UploadRow({
   const percent = uploadPercent(file)
   const mark = ingestionMarkOfPhase(phase)
   const canCancel = (phase === 'uploading' || phase === 'queued') && onCancel !== undefined
+  // Stopping a read in progress: the bytes are on the server, so this is a
+  // request to the backend, never an abort of a transport. Keyed on
+  // `ingesting` (not the `processing` phase, which also covers `deleting`)
+  // and on a document id, since there is nothing to stop before the server
+  // holds the file.
+  const canStopReading = file.status === 'ingesting' && !!file.serverFileId && onCancel !== undefined
   const isFailed = phase === 'failed'
   // Held back by the content check (ADR-0086). Never retried: the server
   // refuses a re-upload onto it, and nothing went wrong to repeat.
@@ -636,11 +642,15 @@ function UploadRow({
               className="pointer-coarse:hidden"
             />
           )}
-          {canCancel && (
+          {(canCancel || canStopReading) && (
             <RowAction
-              label={t('uploads.actions.cancel', { name: file.fileName })}
+              label={
+                canStopReading
+                  ? t('uploads.actions.stop', { name: file.fileName })
+                  : t('uploads.actions.cancel', { name: file.fileName })
+              }
               onClick={() => onCancel?.(file.id)}
-              icon={X}
+              icon={canStopReading ? Ban : X}
             />
           )}
           {canDismiss && (

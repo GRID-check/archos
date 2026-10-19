@@ -64,6 +64,9 @@ export const files = {
       collapse: 'Hide files',
       cancelAll: 'Cancel all',
       cancel: 'Cancel upload of {name}',
+      // Not "cancel upload": the bytes are on the server and the ingest job is
+      // what is stopped. Said as what it is, so the reader knows what ends.
+      stop: 'Stop reading {name}',
       retryAll: 'Retry failed',
       retryFile: 'Try again',
       dismiss: 'Dismiss {name}',
@@ -82,6 +85,10 @@ export const files = {
     // the knowledge base. Neither a success ("Citable" would promise a citation
     // retrieval cannot make) nor a failure — nothing went wrong.
     stored: 'Filed',
+    // A person stopped the read before it finished: the bytes are here, nothing
+    // was indexed, and nothing went wrong — so never "Failed". Neutral, like
+    // `stored`, and its own word so a reader can tell the two apart.
+    cancelled: 'Cancelled',
     // The content check (ADR-0086) matched: the file is in the project, no
     // model has seen it, and someone has to decide.
     quarantined: 'Held back',
@@ -733,6 +740,15 @@ export const files = {
       'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, Piloti keeps answering from what it read before.',
     reingestConfirmAction: 'Read again',
     reingestError: "Reading couldn't be restarted. Please try again.",
+    // Stop a read that has not finished: the bytes stay, nothing was indexed,
+    // and a re-ingest reads them again. Neutral, like `reingest`, never a
+    // destructive red.
+    cancel: 'Stop reading',
+    cancelling: 'Stopping…',
+    cancelled: 'Reading “{name}” stopped',
+    cancelFinished: 'Nothing to stop — the reading had already finished',
+    cancelUnavailable: "Reading can’t be stopped for this file — Piloti is converting it on this server",
+    cancelError: "Reading couldn't be stopped. Please try again.",
     label: 'File actions for “{name}”',
     menuLabel: 'File actions',
     download: 'Download',

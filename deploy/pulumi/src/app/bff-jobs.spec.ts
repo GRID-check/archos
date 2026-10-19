@@ -184,8 +184,12 @@ describe("the bff-jobs pool", () => {
 
     expect(table).toBe("bff_job_queue");
     expect(read("frontends", "ui", "workers", "job-queue.js")).toContain(`FROM ${table}`);
-    expect(BFF_QUEUE_DEPTH_QUERY).toBe(`SELECT COUNT(*) FROM ${table} WHERE status <> 'dead'`);
-    // The status the query excludes is one the schema allows.
+    // The retired set is shared by every tier, so `cancelled` is named here too.
+    // This queue never writes it, and the clause is true on either status.
+    expect(BFF_QUEUE_DEPTH_QUERY).toBe(
+      `SELECT COUNT(*) FROM ${table} WHERE status NOT IN ('dead', 'cancelled')`,
+    );
+    // The status this queue does retire on is one the schema allows.
     expect(migration).toMatch(/"status" IN \('queued', 'claimed', 'dead'\)/);
   });
 

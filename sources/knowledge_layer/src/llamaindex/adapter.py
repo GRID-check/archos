@@ -40,6 +40,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
+from collections.abc import Iterator
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -47,6 +48,7 @@ from dataclasses import field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from typing import NamedTuple
 
 from aiq_agent.common.cost_tracking import USAGE_ROLE_EMBEDDING
 from aiq_agent.common.cost_tracking import USAGE_ROLE_INGEST_VISION
@@ -280,6 +282,33 @@ MIN_IMAGE_HEIGHT_PX = 100
 # job status as `images_over_cap`. 0 analyses none.
 MAX_IMAGES_PER_DOCUMENT = _env_int("AIQ_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
 
+# @environment_variable AIQ_MAX_IMAGE_PIXELS
+# @category Knowledge Layer
+# @type int
+# @default 268435456
+# @required false
+# Refuse an embedded raster larger than this many pixels, decided from its
+# metadata before a single bitmap is allocated. pypdfium2 offers no
+# reduced-scale decode for an embedded image (`PdfImage.get_bitmap()` takes no
+# scale argument), so `width x height` from the image metadata is the only thing
+# that can stand between a pathological raster and the allocation it would make;
+# a PDFium bitmap is about 4 bytes a pixel, so one decode peaks near
+# `AIQ_MAX_IMAGE_PIXELS * 4` bytes (1 GiB at the default). The default,
+# 268 435 456 px (256 MP, 2^28), admits every realistic architectural scan and
+# refuses only the pathological:
+#   A0 (841x1189 mm = 33.1x46.8 in) at 300 dpi = 9933x14043  = 139.5 MP  kept
+#   A0 at 400 dpi                             = 13244x18724 = 248.0 MP  kept
+#   A1 at 300 dpi                             = 7016x9933  =  69.7 MP  kept
+#   A2 at 600 dpi                             = 9921x14031 = 139.2 MP  kept
+#   A3 at 600 dpi                             = 7016x9921  =  69.6 MP  kept
+#   A4 at 300 dpi                             = 2480x3508  =   8.7 MP  kept
+#   A0 at 600 dpi                             = 19866x28087 = 558.0 MP  refused
+#   a 20000x20000 px raster (as in the OOM report) =  400.0 MP          refused
+# A raster refused here is counted on the file's job status as
+# `images_over_pixel_budget` and logged with its page, index and pixel size; its
+# page keeps its text layer. 0 refuses every embedded raster.
+MAX_IMAGE_PIXELS = _env_int("AIQ_MAX_IMAGE_PIXELS", 268_435_456, minimum=0)
+
 # Cap on the longest edge (px) of an image before it is JPEG-re-encoded and sent
 # to the VLM. Larger images are downscaled (aspect preserved, never upscaled) to
 # bound the VLM payload/token cost; smaller images pass through untouched. The
@@ -342,6 +371,20 @@ MAX_RENDERED_PAGES = _env_int("AIQ_MAX_RENDERED_PAGES", 20, minimum=0)
 # quietly. 0 transcribes none: the OCR switch, independent of
 # AIQ_RENDER_VISUAL_PAGES.
 MAX_OCR_PAGES = _env_int("AIQ_MAX_OCR_PAGES", 500, minimum=0)
+
+# @environment_variable AIQ_PDF_PAGE_MAX_OBJECTS
+# @category Knowledge Layer
+# @type int
+# @default 50000
+# @required false
+# Page objects (paths, text runs, rasters, counted by PDFium) past which a PDF
+# page's text is read by PDFium instead of pdfplumber. pdfplumber turns every
+# vector path into Python dicts and runs its table finder over every edge:
+# measured at about 4 KiB and 0.1 ms per object, so a CAD sheet of 500 000
+# paths costs about 2 GiB and minutes for its title block. Such a page keeps
+# its text, without captioned tables or line styles, and is counted on the
+# file's job status (`pages_read_without_layout`). 0 lifts the ceiling.
+PDF_PAGE_MAX_OBJECTS = _env_int("AIQ_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
 
 # @environment_variable AIQ_VLM_TIMEOUT_SECONDS
 # @category Knowledge Layer
@@ -950,11 +993,20 @@ def _extract_images_from_pdf(
             scanned page is one full-page raster; without this it was analysed
             twice, once as that raster and once as the rendered page.
 
+    Uncapped in the number of rasters, but every raster is still held to
+    ``MAX_IMAGE_PIXELS``: the pixel budget bounds one decode, which no caller can
+    raise.
+
     Returns:
         List of dicts with 'image_bytes', 'page_number', 'image_index', 'format'.
     """
-    records, _ = _extract_image_records(
-        pdf_path, min_width=min_width, min_height=min_height, skip_pages=skip_pages, max_images=None
+    records, _, _ = _extract_image_records(
+        pdf_path,
+        min_width=min_width,
+        min_height=min_height,
+        skip_pages=skip_pages,
+        max_images=None,
+        max_pixels=MAX_IMAGE_PIXELS,
     )
     return records
 
@@ -966,30 +1018,36 @@ def _extract_image_records(
     min_height: int,
     skip_pages: set[int] | frozenset[int],
     max_images: int | None,
-) -> tuple[list[dict[str, Any]], int]:
-    """Embedded rasters worth analysing, and how many the cap left out.
+    max_pixels: int,
+) -> tuple[list[dict[str, Any]], int, int]:
+    """Embedded rasters worth analysing, the cap's left-outs, and the oversized refusals.
 
     Two passes, because only the second one costs memory. The first reads every
     image object's pixel size from metadata, decoding nothing, and applies the
-    cap there -- so an image-heavy document decodes only the rasters it will
-    actually analyse. The second decodes those, one at a time: pypdfium2 cannot
+    per-document cap and the per-raster pixel budget there -- so an image that
+    will not be analysed, and an image too large to decode safely, never cost a
+    bitmap. The second decodes the survivors, one at a time: pypdfium2 cannot
     downscale an embedded image on decode, so each raster's full-resolution
     bitmap exists for one image, is downscaled from a zero-copy view, and is
     freed before the next. Peak memory is flat in the number of rasters and in
-    the length of the document, which is what keeps an ingest pod inside its
-    limit instead of being OOM-killed by a plan set.
+    the length of the document, and bounded above by ``max_pixels``, which is
+    what keeps an ingest pod inside its limit instead of being OOM-killed by a
+    plan set.
 
     The same raster embedded repeatedly is captioned and indexed once: the
     content hash still dedupes the records, after the cap.
+
+    Returns ``(records, over_cap, over_pixel_budget)``.
     """
     try:
         import pypdfium2 as pdfium
     except ImportError:
         logger.warning("pypdfium2 not installed. Install with: pip install pypdfium2")
-        return [], 0
+        return [], 0, 0
 
     records: list[dict[str, Any]] = []
     over_cap = 0
+    over_pixel_budget = 0
     seen_hashes: set[str] = set()
     try:
         with pdfium_lock():
@@ -1000,12 +1058,16 @@ def _extract_image_records(
             for page_num in range(page_count):
                 if page_num + 1 in skip_pages:
                     continue
-                candidates.extend(_image_candidates(doc, page_num, min_width, min_height))
+                page_candidates, page_over_budget = _image_candidates(
+                    doc, page_num, min_width, min_height, max_pixels=max_pixels, pdf_path=pdf_path
+                )
+                candidates.extend(page_candidates)
+                over_pixel_budget += page_over_budget
             if max_images is None:
                 kept = candidates
             else:
                 kept, over_cap = cap_images(candidates, max_images)
-            _log_memory(f"rasters:start kept={len(kept)} over_cap={over_cap}")
+            _log_memory(f"rasters:start kept={len(kept)} over_cap={over_cap} over_pixel_budget={over_pixel_budget}")
             for page_number, page_candidates in _candidates_by_page(kept):
                 records.extend(_decode_page_candidates(doc, page_number, page_candidates, seen_hashes))
             _log_memory(f"rasters:done kept={len(kept)}")
@@ -1013,27 +1075,34 @@ def _extract_image_records(
             with pdfium_lock():
                 doc.close()
         logger.info(
-            "Extracted %d images from %s (%d candidates, %d over cap)",
+            "Extracted %d images from %s (%d candidates, %d over cap, %d over the pixel budget)",
             len(records),
             pdf_path,
             len(candidates),
             over_cap,
+            over_pixel_budget,
         )
 
     except Exception as e:
         logger.error(f"Error extracting images from PDF: {e}")
 
-    return records, over_cap
+    return records, over_cap, over_pixel_budget
 
 
-def _image_candidates(doc: Any, page_num: int, min_width: int, min_height: int) -> list[dict[str, Any]]:
-    """One page's image objects that clear the size filter, as metadata records.
+def _image_candidates(
+    doc: Any, page_num: int, min_width: int, min_height: int, *, max_pixels: int, pdf_path: str
+) -> tuple[list[dict[str, Any]], int]:
+    """One page's image objects that clear both metadata filters, and how many the pixel budget refused.
 
     ``image_index`` counts every image object on the page, kept or not. No pixels
     are touched here: ``_image_pixel_size`` asks the library for the size, which
-    is what lets the cap run before a single raster is allocated.
+    is what lets the icon filter AND the pixel budget run before a single raster
+    is allocated. A raster whose ``width x height`` is over ``max_pixels`` is
+    refused and warned about; the only way to bound a decode pypdfium2 will not
+    scale is never to start it.
     """
     candidates: list[dict[str, Any]] = []
+    over_budget = 0
     with pdfium_lock():
         page = doc[page_num]
         try:
@@ -1044,13 +1113,29 @@ def _image_candidates(doc: Any, page_num: int, min_width: int, min_height: int) 
                     logger.debug(f"Could not size image {img_idx} on page {page_num}: {e}")
                     continue
                 # Filter small images (likely icons/logos)
-                if width >= min_width and height >= min_height:
-                    candidates.append(
-                        {"page_number": page_num + 1, "image_index": img_idx, "width": width, "height": height}
+                if width < min_width or height < min_height:
+                    continue
+                pixels = width * height
+                if pixels > max_pixels:
+                    over_budget += 1
+                    logger.warning(
+                        "Refusing to decode %dx%d px (%d MP) image %d on page %d of %s: over the "
+                        "%d MP per-raster budget (AIQ_MAX_IMAGE_PIXELS); the page's text is still indexed",
+                        width,
+                        height,
+                        pixels // 1_000_000,
+                        img_idx,
+                        page_num + 1,
+                        pdf_path,
+                        max_pixels // 1_000_000,
                     )
+                    continue
+                candidates.append(
+                    {"page_number": page_num + 1, "image_index": img_idx, "width": width, "height": height}
+                )
         finally:
             page.close()
-    return candidates
+    return candidates, over_budget
 
 
 def _close_bitmap(bitmap: Any) -> None:
@@ -1180,6 +1265,25 @@ def _log_memory(stage: str) -> None:
     logger.info("[ingest-mem] %s rss=%.0fMiB", stage, rss)
 
 
+def _release_memory(file_name: str) -> None:
+    """Hand a finished file's memory back to the OS, and log what the process still holds.
+
+    pdfplumber's parsed pages sit in reference cycles, so leaving its ``with``
+    block frees nothing until the cycle collector runs, and glibc keeps what
+    is freed in its arenas. Measured on eight CAD sheets: 878 MiB after the
+    text pass, 583 MiB after ``gc.collect()``, 354 MiB after ``malloc_trim``.
+    Without it a worker carried a 726-page file's 7.2 GiB into the next file
+    (2026-10-19). Linux/glibc only; elsewhere the collect alone runs.
+    """
+    import ctypes
+    import gc
+
+    gc.collect()
+    with contextlib.suppress(OSError, AttributeError):
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    _log_memory(f"file:released {file_name}")
+
+
 def _raster_record(
     pil_image: Any, page_number: int, img_idx: int, size: tuple[int, int], seen_hashes: set[str]
 ) -> dict[str, Any] | None:
@@ -1254,21 +1358,23 @@ def cap_images(images: list[dict[str, Any]], max_images: int) -> tuple[list[dict
 
 def _embedded_images_for_analysis(
     pdf_path: str, *, rendered_pages: set[int], enabled: bool
-) -> tuple[list[dict[str, Any]], int]:
-    """The embedded rasters worth a VLM call, and how many the cap left out.
+) -> tuple[list[dict[str, Any]], int, int]:
+    """The embedded rasters worth a VLM call, the cap's left-outs, and the oversized refusals.
 
     Each page is analysed once: a page rendered whole as a visual page carries
     its rasters in the render, so none are extracted from it. What remains is
-    capped at ``MAX_IMAGES_PER_DOCUMENT``.
+    capped at ``MAX_IMAGES_PER_DOCUMENT`` and refuses any single raster over
+    ``MAX_IMAGE_PIXELS``.
     """
     if not enabled:
-        return [], 0
-    images, over_cap = _extract_image_records(
+        return [], 0, 0
+    images, over_cap, over_pixel_budget = _extract_image_records(
         pdf_path,
         min_width=MIN_IMAGE_WIDTH_PX,
         min_height=MIN_IMAGE_HEIGHT_PX,
         skip_pages=rendered_pages,
         max_images=MAX_IMAGES_PER_DOCUMENT,
+        max_pixels=MAX_IMAGE_PIXELS,
     )
     if over_cap:
         logger.warning(
@@ -1278,7 +1384,14 @@ def _embedded_images_for_analysis(
             len(images),
             over_cap,
         )
-    return images, over_cap
+    if over_pixel_budget:
+        logger.warning(
+            "%s holds %d embedded image(s) over the %d MP per-raster budget; refused before decoding",
+            pdf_path,
+            over_pixel_budget,
+            MAX_IMAGE_PIXELS // 1_000_000,
+        )
+    return images, over_cap, over_pixel_budget
 
 
 def indexed_visual_type(content_type: str, *, extract_images: bool, extract_charts: bool) -> str | None:
@@ -1297,7 +1410,9 @@ def indexed_visual_type(content_type: str, *, extract_images: bool, extract_char
     return content_type if extract_images else None
 
 
-def _extract_tables_from_pdf(pdf_path: str, taken: dict[int, list[tuple]] | None = None) -> list[dict[str, Any]]:
+def _extract_tables_from_pdf(
+    pdf_path: str, taken: dict[int, list[tuple]] | None = None, skip_pages: Sequence[int] = ()
+) -> list[dict[str, Any]]:
     """
     Extract tables from a PDF file using pdfplumber.
 
@@ -1308,6 +1423,10 @@ def _extract_tables_from_pdf(pdf_path: str, taken: dict[int, list[tuple]] | None
             ``table_boxes``). Those are skipped: indexed again here, every OIB
             table stood in the index twice, as „Tabelle 3" and as
             „[TABLE from page 30]", under two competing citations.
+        skip_pages: 1-based pages not to look at, the text pass's
+            ``dense_pages``: a table finder over hundreds of thousands of
+            edges is the cost the page ceiling exists to refuse. Every page
+            is closed once read, for the reason ``_extract_text_from_pdf`` gives.
 
     Returns:
         List of dicts with 'table_text' (markdown), 'page_number', 'table_index'.
@@ -1322,34 +1441,46 @@ def _extract_tables_from_pdf(pdf_path: str, taken: dict[int, list[tuple]] | None
     tables = []
     try:
         with pdfplumber.open(pdf_path) as pdf:
+            skipped = set(skip_pages)
             for page_num, page in enumerate(pdf.pages):
-                skip = taken.get(page_num + 1) or []
-                for table_idx, found in enumerate(page.find_tables()):
-                    if tuple(found.bbox) in skip:
-                        continue
-                    table = found.extract()
-                    if table and len(table) > 1:  # Has header and at least one row
-                        # Convert to markdown format
-                        markdown = _table_to_markdown(table)
-                        if markdown:
-                            tables.append(
-                                {
-                                    "table_text": markdown,
-                                    # The raw rows, for the header-repeating row groups
-                                    # ``uncaptioned_table_documents`` indexes.
-                                    "cells": table,
-                                    "page_number": page_num + 1,
-                                    "table_index": table_idx,
-                                    "rows": len(table),
-                                    "cols": len(table[0]) if table else 0,
-                                }
-                            )
+                if page_num + 1 in skipped:
+                    continue
+                try:
+                    tables.extend(_page_tables(page, page_num, taken.get(page_num + 1) or []))
+                finally:
+                    page.close()
 
         logger.info(f"Extracted {len(tables)} tables from {pdf_path}")
 
     except Exception as e:
         logger.error(f"Error extracting tables from PDF: {e}")
 
+    return tables
+
+
+def _page_tables(page: Any, page_num: int, skip: list[tuple]) -> list[dict[str, Any]]:
+    """The uncaptioned tables on one pdfplumber page (0-based ``page_num``), minus the ``skip`` boxes."""
+    tables = []
+    for table_idx, found in enumerate(page.find_tables()):
+        if tuple(found.bbox) in skip:
+            continue
+        table = found.extract()
+        if not table or len(table) < 2:  # a header and at least one row
+            continue
+        markdown = _table_to_markdown(table)
+        if markdown:
+            tables.append(
+                {
+                    "table_text": markdown,
+                    # The raw rows, for the header-repeating row groups
+                    # ``uncaptioned_table_documents`` indexes.
+                    "cells": table,
+                    "page_number": page_num + 1,
+                    "table_index": table_idx,
+                    "rows": len(table),
+                    "cols": len(table[0]),
+                }
+            )
     return tables
 
 
@@ -1413,13 +1544,23 @@ class PdfTextPages(list):
 
     A list, so every caller that iterates pages is unchanged. ``failed_pages``
     is the 1-based numbers of pages whose extraction raised; ``page_count`` is
-    how many pages the PDF has (0 when it could not be opened).
+    how many pages the PDF has (0 when it could not be opened);
+    ``dense_pages`` the pages over ``PDF_PAGE_MAX_OBJECTS``, read by PDFium
+    without layout (no captioned tables, no line styles).
     """
 
-    def __init__(self, pages=(), *, failed_pages: list[int] | None = None, page_count: int = 0) -> None:
+    def __init__(
+        self,
+        pages=(),
+        *,
+        failed_pages: list[int] | None = None,
+        page_count: int = 0,
+        dense_pages: list[int] | None = None,
+    ) -> None:
         super().__init__(pages)
         self.failed_pages = failed_pages or []
         self.page_count = page_count
+        self.dense_pages = dense_pages or []
 
 
 #: The share of a PDF's pages that may fail to read before the file fails. Past
@@ -1487,6 +1628,83 @@ def _raster_count(page) -> int:
         return 1
 
 
+def _dense_page_texts(pdf_path: str, max_objects: int) -> dict[int, dict[str, Any]]:
+    """The pages of ``pdf_path`` holding more than ``max_objects`` page objects, read by PDFium.
+
+    Page number (1-based) to the page's text and raster count. Counting is
+    ``FPDFPage_CountObjects``, which parses the page but builds nothing per
+    object: 40 sheets of 20 000 paths count in well under a second. The PDFium
+    lock is held per page, as ``pdfium_lock`` asks. Fail-open: a PDF PDFium
+    cannot open, or a page it cannot load, is left to pdfplumber as before.
+    """
+    if max_objects <= 0:
+        return {}
+    import pypdfium2 as pdfium
+    from knowledge_layer.llamaindex.pdfium_lock import pdfium_lock
+
+    try:
+        with pdfium_lock():
+            document = pdfium.PdfDocument(pdf_path)
+            page_count = len(document)
+    except Exception as exc:  # noqa: BLE001 - the layout pass still reads every page
+        logger.warning("Could not count page objects in %s: %s", pdf_path, exc)
+        return {}
+    dense: dict[int, dict[str, Any]] = {}
+    try:
+        for index in range(page_count):
+            with pdfium_lock():
+                read = _dense_page_text(document, index, max_objects)
+            if read is not None:
+                dense[index + 1] = read
+    finally:
+        with pdfium_lock():
+            document.close()
+    return dense
+
+
+def _dense_page_text(document: Any, index: int, max_objects: int) -> dict[str, Any] | None:
+    """Page ``index``'s text and raster count when it is over ``max_objects``, else None. Inside ``pdfium_lock``."""
+    import pypdfium2.raw as pdfium_c
+
+    try:
+        page = document[index]
+    except Exception as exc:  # noqa: BLE001 - pdfplumber gets its own try at the page
+        logger.warning("Could not load page %d to count its objects: %s", index + 1, exc)
+        return None
+    try:
+        count = pdfium_c.FPDFPage_CountObjects(page.raw)
+        if count <= max_objects:
+            return None
+        textpage = page.get_textpage()
+        try:
+            text = textpage.get_text_range()
+        finally:
+            textpage.close()
+        rasters = sum(
+            1
+            for i in range(count)
+            if pdfium_c.FPDFPageObj_GetType(pdfium_c.FPDFPage_GetObject(page.raw, i)) == pdfium_c.FPDF_PAGEOBJ_IMAGE
+        )
+        return {"text": text, "image_count": rasters}
+    finally:
+        page.close()
+
+
+def _dense_page_entry(dense: dict[str, Any], page_num: int) -> dict[str, Any] | None:
+    """The text-pass entry for a page read by PDFium: its text, no tables, no line styles."""
+    text = _strip_watermark_lines(dense["text"])
+    if not text:
+        return None
+    return {
+        "page_number": page_num,
+        "text": text,
+        "tables": [],
+        "table_boxes": [],
+        "line_styles": [],
+        "image_count": dense["image_count"],
+    }
+
+
 def _extract_text_from_pdf(pdf_path: str) -> PdfTextPages:
     """Extract per-page text from a PDF without falling back to raw PDF bytes.
 
@@ -1494,6 +1712,15 @@ def _extract_text_from_pdf(pdf_path: str) -> PdfTextPages:
     the loop, and every page after it was dropped without a word. A failed page
     is now logged, skipped and counted in ``failed_pages``, and the caller
     decides with ``unreadable_pdf_verdict`` whether the file still stands.
+
+    Memory is one page, not the document. pdfplumber caches every parsed object
+    on its ``Page`` until the page is closed, and the pages hang off the open
+    ``PDF``: unclosed, a set of CAD sheets held about 77 MiB per sheet of
+    20 000 paths until the whole file was read, and two 26-29 MB plan
+    collections OOM-killed a 12 GiB worker before this function returned. A
+    page is closed as soon as its entry is built, and a page denser than
+    ``PDF_PAGE_MAX_OBJECTS`` never reaches pdfplumber at all
+    (``_dense_page_texts``).
     """
     try:
         import pdfplumber
@@ -1504,25 +1731,37 @@ def _extract_text_from_pdf(pdf_path: str) -> PdfTextPages:
     pages: list[dict[str, Any]] = []
     failed: list[int] = []
     page_count = 0
+    dense = _dense_page_texts(pdf_path, PDF_PAGE_MAX_OBJECTS)
     try:
         with pdfplumber.open(pdf_path) as pdf:
             page_count = len(pdf.pages)
             previous = None
             for page_num, page in enumerate(pdf.pages, start=1):
                 try:
-                    entry, previous = _read_pdf_page(page, page_num, previous, pdf_path)
+                    if page_num in dense:
+                        entry, previous = _dense_page_entry(dense[page_num], page_num), None
+                    else:
+                        entry, previous = _read_pdf_page(page, page_num, previous, pdf_path)
                 except Exception as exc:  # noqa: BLE001 - one bad page must not cost the rest
                     logger.warning("Text extraction failed on page %d of %s: %s", page_num, pdf_path, exc)
                     failed.append(page_num)
                     previous = None
                     continue
+                finally:
+                    page.close()
                 if entry is not None:
                     pages.append(entry)
-        logger.info("Extracted text from %d PDF pages in %s (%d unreadable)", len(pages), pdf_path, len(failed))
+        logger.info(
+            "Extracted text from %d PDF pages in %s (%d unreadable, %d read without layout)",
+            len(pages),
+            pdf_path,
+            len(failed),
+            len(dense),
+        )
     except Exception as e:
         logger.error("Error extracting PDF text: %s", e)
 
-    return PdfTextPages(pages, failed_pages=failed, page_count=page_count)
+    return PdfTextPages(pages, failed_pages=failed, page_count=page_count, dense_pages=sorted(dense))
 
 
 def _inside_any(obj: dict[str, Any], boxes: list[tuple]) -> bool:
@@ -2667,6 +2906,54 @@ def _from_epoch(seconds: int | None) -> datetime | None:
     return datetime.fromtimestamp(seconds, UTC) if seconds is not None else None
 
 
+class _PdfScreen(NamedTuple):
+    """A PDF the upload screen let through: its routing and how much of it was screened.
+
+    ``triage`` is the page triage ``route_pdf_pages`` runs on, measured once here
+    (``None`` when the PDF could not be measured). ``checked`` is ``partial`` when
+    some content reaches a model unscreened. ``routing()`` is what ``route_pdf_pages``
+    takes: no ``triage`` key when there is none, so it measures the PDF itself,
+    exactly as the old empty dict did.
+    """
+
+    triage: Any = None
+    checked: str = "full"
+
+    def routing(self) -> dict[str, Any]:
+        return {} if self.triage is None else {"triage": self.triage}
+
+
+#: The order ``[ingest-perf]`` lists a file's stages in, so two lines compare.
+_INGEST_PERF_ORDER = ("text", "tables", "screen", "renders", "rasters", "vision", "summary", "embedding", "write")
+
+
+@contextlib.contextmanager
+def _stage(stages: dict[str, float], name: str) -> Iterator[None]:
+    """Add one ingestion stage's elapsed seconds to ``stages``.
+
+    Log-only, and never raises: wrap a call site (``with _stage(stages, "text"):``)
+    so the per-file ``[ingest-perf]`` line can show where a job's wall time went.
+    Accumulates, so a stage reached on more than one path (the screen, run twice)
+    is one number.
+    """
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        stages[name] = stages.get(name, 0.0) + (time.perf_counter() - start)
+
+
+def _log_ingest_perf(file_name: str, stages: dict[str, float]) -> None:
+    """One ``[ingest-perf]`` line per file: each stage's seconds, in ``_INGEST_PERF_ORDER``.
+
+    The stages a file never reached are simply absent, so a held or failed file
+    shows how far it got. Same file name in the line as the other per-file logs.
+    """
+    parts = [f"{name}={stages[name]:.3f}" for name in _INGEST_PERF_ORDER if name in stages]
+    if parts:
+        logger.info("[ingest-perf] %s %s", file_name, " ".join(parts))
+
+
 @register_ingestor("llamaindex")
 class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     """
@@ -2987,7 +3274,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
     def _record_file_counts(self, job: IngestionJobStatus, file_index: int, **counts: int) -> None:
         """Put extraction counts on a file's job status, where a later
-        "partially indexed" signal reads them (``images_over_cap`` today)."""
+        "partially indexed" signal reads them (``images_over_cap``,
+        ``images_over_pixel_budget`` today)."""
         with self._lock:
             if file_index < len(job.file_details):
                 job.file_details[file_index].metadata.update(counts)
@@ -3155,26 +3443,27 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         companions: list[Any],
         *,
         captions_rasters: bool,
-        tables: list[Any],
-    ) -> dict[str, Any] | None:
-        """Screen a PDF's text layer, its rendition's companions and its ``tables`` before any page reaches a model.
+    ) -> _PdfScreen | None:
+        """Screen a PDF's text layer and its rendition's companions before any page reaches a model.
 
-        ``tables`` are the table pass's Documents: that pass opens the PDF on
-        its own and reads pages the text pass lost, so they are screened as
-        what they are, the text that will be embedded.
+        The text layer is screened FIRST, before the table pass: a file the
+        screen holds never pays for its tables. The table pass's own Documents
+        are screened straight after it reads them (``_screen_tables``), still
+        before any model call, so a page the text pass lost can carry a match in
+        its table alone.
 
-        Returns what ``route_pdf_pages`` takes from it, the page triage measured
-        here so the PDF is measured once, or ``None`` when the file was
-        quarantined. ``checked`` is ``partial`` when the triage sends a page to
-        transcription or drawing analysis, or cannot measure the PDF, or when
-        ``captions_rasters`` (the VLM will caption embedded images) and a page
-        carries one: that content reaches a model without having been screened,
-        which the product accepts for content that cannot be read locally. A
-        page the text pass could not read (``failed_pages``) makes it
+        Returns the routing and the ``checked`` verdict for ``route_pdf_pages``,
+        the page triage measured here so the PDF is measured once, or ``None``
+        when the file was quarantined. ``checked`` is ``partial`` when the triage
+        sends a page to transcription or drawing analysis, or cannot measure the
+        PDF, or when ``captions_rasters`` (the VLM will caption embedded images)
+        and a page carries one: that content reaches a model without having been
+        screened, which the product accepts for content that cannot be read
+        locally. A page the text pass could not read (``failed_pages``) makes it
         ``partial`` too: its text was never read, so never screened.
         """
         if rules is None:
-            return {}
+            return _PdfScreen()
         from knowledge_layer.llamaindex import page_triage
         from knowledge_layer.llamaindex.screening import document_pages
 
@@ -3191,11 +3480,37 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             or lost_pages
         )
         body = sorted(page_texts.items())
-        pages = [*body, *document_pages(companions), *document_pages(tables)]
         checked = "partial" if unscreened else "full"
+        pages = [*body, *document_pages(companions)]
         if self._screen_or_quarantine(job, file_index, rules, pages, checked, stream=body):
             return None
-        return {"triage": triage}
+        return _PdfScreen(triage, checked)
+
+    def _screen_tables(
+        self,
+        job: IngestionJobStatus,
+        file_index: int,
+        rules: Any,
+        table_documents: list[Any],
+        checked: str,
+    ) -> bool:
+        """Screen the table pass's Documents; True when the file was quarantined.
+
+        The table pass runs only after ``_screen_pdf`` passed the text layer, so
+        a file about to be held never paid for it. The tables are still screened
+        before any model call reads them: a page the text pass lost is read by
+        the table pass alone, and a term only its table carries must hold the
+        file. Additive to the text screen's verdict, so the rules see the same
+        text they saw before the two were split.
+        """
+        if rules is None:
+            return False
+        from knowledge_layer.llamaindex.screening import document_pages
+
+        pages = document_pages(table_documents)
+        if not any(text.strip() for _page, text in pages):
+            return False
+        return self._screen_or_quarantine(job, file_index, rules, pages, checked)
 
     def _record_failed_pages(self, job: IngestionJobStatus, file_index: int, text_pages: list) -> None:
         """Put the pages a PDF read lost, below the failure threshold, on the file's result."""
@@ -4492,6 +4807,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 # — stays the original's.
                 rendition = resolve_rendition(config, i, downloaded)
                 source_path = rendition or file_path
+                # ``[ingest-perf]``: this file's stage seconds, logged in the finally below.
+                stages: dict[str, float] = {}
                 try:
                     file_size = os.path.getsize(file_path)
 
@@ -4584,11 +4901,17 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # What the PDF export dropped from the original (pptx
                     # speaker notes), read before the screen so it is screened too.
                     companions: list[Any] = []
-                    # The PDF's uncaptioned tables, likewise read before the screen.
+                    # The PDF's uncaptioned tables. Read only once the text
+                    # layer has passed the screen below: a held file keeps them.
                     tables: list[dict[str, Any]] = []
                     table_documents: list[Any] = []
                     if is_pdf:
-                        text_pages = _extract_text_from_pdf(source_path)
+                        with _stage(stages, "text"):
+                            text_pages = _extract_text_from_pdf(source_path)
+                        dense_pages = getattr(text_pages, "dense_pages", [])
+                        _log_memory(f"text:done pages={len(text_pages)} without_layout={len(dense_pages)}")
+                        if dense_pages:
+                            self._record_file_counts(job, i, pages_read_without_layout=len(dense_pages))
                         unreadable = unreadable_pdf_verdict(text_pages)
                         if unreadable:
                             self._update_file_status(job, i, FileStatus.FAILED, error=unreadable)
@@ -4597,30 +4920,41 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         self._record_failed_pages(job, i, text_pages)
                         if rendition:
                             companions = _rendition_companions(file_path, file_name, file_size)
+                        # The upload screen: the last step before a page of
+                        # this file can reach a model (transcription, below).
+                        # The text layer and the companions are screened BEFORE
+                        # the table pass, so a file the screen holds never pays
+                        # for its tables (measured: 125 s of a 133-page PDF).
+                        with _stage(stages, "screen"):
+                            screen = self._screen_pdf(
+                                job,
+                                i,
+                                screening_rules,
+                                source_path,
+                                text_pages,
+                                companions,
+                                captions_rasters=bool(vlm_api_key) and (extract_images or extract_charts),
+                            )
+                        if screen is None:
+                            continue
                         if extract_tables:
                             from knowledge_layer.llamaindex.section_chunking import uncaptioned_table_documents
 
                             taken = {page["page_number"]: page.get("table_boxes") or [] for page in text_pages}
-                            tables = _extract_tables_from_pdf(source_path, taken)
+                            with _stage(stages, "tables"):
+                                tables = _extract_tables_from_pdf(source_path, taken, dense_pages)
+                            _log_memory(f"tables:done tables={len(tables)}")
                             table_documents = [
                                 document
                                 for table in tables
                                 for document in uncaptioned_table_documents(table, file_name, file_size)
                             ]
-                        # The upload screen: the last step before a page of
-                        # this file can reach a model (transcription, below).
-                        route_kwargs = self._screen_pdf(
-                            job,
-                            i,
-                            screening_rules,
-                            source_path,
-                            text_pages,
-                            companions,
-                            captions_rasters=bool(vlm_api_key) and (extract_images or extract_charts),
-                            tables=table_documents,
-                        )
-                        if route_kwargs is None:
-                            continue
+                            # The tables are text that will be embedded, so they
+                            # are screened too, still before any model call.
+                            with _stage(stages, "screen"):
+                                held = self._screen_tables(job, i, screening_rules, table_documents, screen.checked)
+                            if held:
+                                continue
                         page_routes = _transcription.route_pdf_pages(
                             source_path,
                             text_pages,
@@ -4632,7 +4966,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             min_paths=VISUAL_PAGE_MIN_PATHS,
                             max_ocr_pages=MAX_OCR_PAGES,
                             max_dim=PAGE_RENDER_MAX_DIM,
-                            **route_kwargs,
+                            **screen.routing(),
                         )
                         self._record_file_counts(job, i, **page_routes.counts())
                         # What the vision model read off scanned pages is text
@@ -4728,9 +5062,12 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         from knowledge_layer.llamaindex import office_extractors
                         from knowledge_layer.llamaindex.text_formats import extract_text_format_documents
 
-                        office_documents = office_extractors.extract_office_documents(file_path, file_name, file_size)
-                        if office_documents is None:
-                            office_documents = extract_text_format_documents(file_path, file_name, file_size)
+                        with _stage(stages, "text"):
+                            office_documents = office_extractors.extract_office_documents(
+                                file_path, file_name, file_size
+                            )
+                            if office_documents is None:
+                                office_documents = extract_text_format_documents(file_path, file_name, file_size)
                         over_cap = 0
                         if office_documents is not None:
                             text_documents = office_documents
@@ -4751,7 +5088,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # over-long cell were never read: not screened, not indexed.
                         cut = office_extractors.content_cut(text_documents)
                         checked = "partial" if over_cap or cut else "full"
-                        if self._screen_or_quarantine(job, i, screening_rules, document_pages(text_documents), checked):
+                        with _stage(stages, "screen"):
+                            held = self._screen_or_quarantine(
+                                job, i, screening_rules, document_pages(text_documents), checked
+                            )
+                        if held:
                             continue
                         # An office original indexed from its own bytes has a
                         # thumbnail only through its rendition (`preview_paths`).
@@ -4797,15 +5138,16 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             # (watermark-stripped) page texts: the PDF's text
                             # layer is read once, and the visual heuristic's
                             # "watermark-stripped text" threshold actually holds.
-                            drawing_pages_raw = _processing.render_visual_pages_no_vlm(
-                                source_path,
-                                min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
-                                min_paths=VISUAL_PAGE_MIN_PATHS,
-                                max_pages=MAX_RENDERED_PAGES,
-                                max_dim=PAGE_RENDER_MAX_DIM,
-                                page_texts=page_texts_for_visual_heuristic(text_pages),
-                                only_pages=page_routes.drawing_pages,
-                            )
+                            with _stage(stages, "renders"):
+                                drawing_pages_raw = _processing.render_visual_pages_no_vlm(
+                                    source_path,
+                                    min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
+                                    min_paths=VISUAL_PAGE_MIN_PATHS,
+                                    max_pages=MAX_RENDERED_PAGES,
+                                    max_dim=PAGE_RENDER_MAX_DIM,
+                                    page_texts=page_texts_for_visual_heuristic(text_pages),
+                                    only_pages=page_routes.drawing_pages,
+                                )
                             drawing_over_cap = len(page_routes.drawing_pages or ()) - MAX_RENDERED_PAGES
                             if drawing_over_cap > 0:
                                 self._record_file_counts(job, i, drawing_pages_over_cap=drawing_over_cap)
@@ -4813,24 +5155,29 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # Embedded rasters (no VLM yet): none from a page that is
                         # rendered whole above or transcribed as a scan (its one
                         # raster IS the page), at most MAX_IMAGES_PER_DOCUMENT.
-                        images, images_over_cap = _embedded_images_for_analysis(
-                            source_path,
-                            rendered_pages={page["page_number"] for page in drawing_pages_raw} | page_routes.scan_pages,
-                            enabled=extract_images or extract_charts,
-                        )
+                        with _stage(stages, "rasters"):
+                            images, images_over_cap, images_over_pixel_budget = _embedded_images_for_analysis(
+                                source_path,
+                                rendered_pages={page["page_number"] for page in drawing_pages_raw}
+                                | page_routes.scan_pages,
+                                enabled=extract_images or extract_charts,
+                            )
                         if images_over_cap:
                             self._record_file_counts(job, i, images_over_cap=images_over_cap)
+                        if images_over_pixel_budget:
+                            self._record_file_counts(job, i, images_over_pixel_budget=images_over_pixel_budget)
                         if images and vlm_api_key:
                             self._record_unscreened_rasters(job, i)
 
-                        image_results, drawing_pages = _processing.enrich_vlm_batch(
-                            image_records=images,
-                            drawing_pages=drawing_pages_raw,
-                            vlm_model=vlm_model,
-                            vlm_base_url=vlm_base_url,
-                            vlm_api_key=vlm_api_key,
-                            extract_charts=extract_charts,
-                        )
+                        with _stage(stages, "vision"):
+                            image_results, drawing_pages = _processing.enrich_vlm_batch(
+                                image_records=images,
+                                drawing_pages=drawing_pages_raw,
+                                vlm_model=vlm_model,
+                                vlm_base_url=vlm_base_url,
+                                vlm_api_key=vlm_api_key,
+                                extract_charts=extract_charts,
+                            )
 
                         # Keep the rasters the VLM just captioned, beside the
                         # document, so `view_knowledge_image` can show one at
@@ -4986,32 +5333,35 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 executor, suggest_doc_class, llm_input, file_name, organization_id=organization_id
                             )
 
-                    # Wait for summary if started
-                    summary = None
-                    if summary_future:
-                        try:
-                            summary = summary_future.result(timeout=30)
-                        except TimeoutError:
-                            logger.warning("Summary generation timed out for %s", file_name)
-                        except Exception as e:
-                            logger.warning("Summary generation failed for %s: %s", file_name, e)
+                    # Wait for summary if started. The summary/tag/topic calls were
+                    # started earlier and ran alongside the vision batch; this is
+                    # the time left to collect them.
+                    with _stage(stages, "summary"):
+                        summary = None
+                        if summary_future:
+                            try:
+                                summary = summary_future.result(timeout=30)
+                            except TimeoutError:
+                                logger.warning("Summary generation timed out for %s", file_name)
+                            except Exception as e:
+                                logger.warning("Summary generation failed for %s: %s", file_name, e)
 
-                    # Wait for tags if started (independent timeout, fail-open —
-                    # a tag failure never affects the summary or the ingestion).
-                    tags = None
-                    if tags_future:
-                        try:
-                            tags = tags_future.result(timeout=30)
-                        except TimeoutError:
-                            logger.warning("Tag classification timed out for %s", file_name)
-                        except Exception as e:
-                            logger.warning("Tag classification failed for %s: %s", file_name, e)
+                        # Wait for tags if started (independent timeout, fail-open —
+                        # a tag failure never affects the summary or the ingestion).
+                        tags = None
+                        if tags_future:
+                            try:
+                                tags = tags_future.result(timeout=30)
+                            except TimeoutError:
+                                logger.warning("Tag classification timed out for %s", file_name)
+                            except Exception as e:
+                                logger.warning("Tag classification failed for %s: %s", file_name, e)
 
-                    topics = _future_result(topics_future, "Topic suggestion", file_name)
+                        topics = _future_result(topics_future, "Topic suggestion", file_name)
 
-                    # Clean up executor
-                    if executor:
-                        executor.shutdown(wait=False)
+                        # Clean up executor
+                        if executor:
+                            executor.shutdown(wait=False)
 
                     # The vision model saw the pixels; the classifier only read
                     # its caption. A photograph is a Foto whatever it shows.
@@ -5078,7 +5428,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # Embedding is the expensive step; a run that lost its claim
                     # stops before it.
                     self._assert_still_owner(job_id)
-                    records = self._embedded_records(all_documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+                    with _stage(stages, "embedding"):
+                        records = self._embedded_records(
+                            all_documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+                        )
                     # The last moment a run that lost its claim can stop with
                     # nothing of this file written: the new owner indexes it.
                     self._assert_still_owner(job_id)
@@ -5087,7 +5440,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     attempted = [record.chunk_id for record in records]
                     from ..qdrant import writes as qdrant_writes
 
-                    qdrant_writes.write_chunks(collection_name, file_name, records, identity=identity, config=config)
+                    with _stage(stages, "write"):
+                        qdrant_writes.write_chunks(
+                            collection_name, file_name, records, identity=identity, config=config
+                        )
 
                     # The document may have been deleted while this attempt
                     # ran: by a delete that did not wait for the replacement
@@ -5327,6 +5683,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     self._update_file_status(job, i, FileStatus.FAILED, error=str(e), exc=e)
                     self._discard_partial_version(collection_name, file_name, attempted)
                 finally:
+                    # Where this file's wall time went, in one line. Logged here,
+                    # not on the success path, so a held or failed file shows the
+                    # stages it did reach: that is where the screening win reads.
+                    _log_ingest_perf(file_name, stages)
+                    _release_memory(file_name)
                     # Still under the replacement lock: a quarantined re-upload
                     # holds its whole document (ADR-0086) until a reviewer
                     # acts, so its predecessor stops answering now.

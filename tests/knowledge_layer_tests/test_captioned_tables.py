@@ -159,6 +159,9 @@ class _FakePage:
     def extract_text(self):
         return "Fließtext."
 
+    def close(self):
+        """pdfplumber's ``Page.close``: both passes close every page they read."""
+
 
 def test_a_captionless_box_pages_later_does_not_continue_an_old_table(monkeypatch):
     """Tabelle 3 on p.3, nothing on p.4, a caption-less ruled box at the top of
