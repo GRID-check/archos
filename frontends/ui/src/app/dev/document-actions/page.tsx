@@ -1,8 +1,11 @@
 'use client'
 
 /**
- * Dev preview for the file operations — the two decisions a document's overflow
+ * Dev preview for the file operations — the decisions a document's overflow
  * menu leads to, and the trigger they hang off.
+ *
+ * The fixture document is mid-read, so the menu also carries the stop the
+ * server offers while a read has not finished; open the trigger to see it.
  *
  * Both dialogs are controlled, so they render open with fixture state and
  * nothing to click: `?variant=rename` (the default) shows the rename form on a
@@ -37,6 +40,9 @@ const DOCUMENT = {
   filename: 'Brandschutzkonzept_Wohnbau-Nord_GK4.pdf',
   displayName: 'Brandschutzkonzept Wohnbau Nord.pdf',
   folderId: 'f-brand',
+  // Mid-read, so the menu offers the stop beside the other operations: the
+  // entry is offered only while a read has not finished (`cancelOffer`).
+  status: 'processing',
 }
 
 /** A nested tree, so the submenu has a path to render and not just a name. */
@@ -131,7 +137,7 @@ function HeaderRow({ onMoved }: { onMoved?: (id: string, folderId: string | null
       <DocumentActionsMenu
         document={DOCUMENT}
         scope="files"
-        actions={['rename', 'move', 'delete']}
+        actions={['rename', 'move', 'cancel', 'delete']}
         folders={FOLDERS}
         moveInSheet={moveInSheet}
         onMoved={onMoved ?? (() => {})}
