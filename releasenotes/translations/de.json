@@ -3164,6 +3164,10 @@
     "de": "Wird dieselbe Datei zweimal hochgeladen, wird sie nicht erneut gelesen, wenn sich nichts geändert hat."
   },
   {
+    "en": "Uploads finish sooner. A document the content check turns away no longer spends time reading its tables first.",
+    "de": "Uploads sind schneller abgeschlossen. Wird ein Dokument von der Inhaltsprüfung abgelehnt, werden seine Tabellen nicht mehr zuerst ausgelesen."
+  },
+  {
     "en": "Uploads into a project or into Office filing are no longer limited to 100 MB at a time, so a complete Einreichung goes through. Only your organization's storage quota applies now.",
     "de": "Uploads in ein Projekt oder in die Büroablage sind nicht mehr auf 100 MB pro Vorgang begrenzt, damit eine vollständige Einreichung durchgeht. Jetzt gilt nur noch das Speicherkontingent Ihrer Organisation."
   },

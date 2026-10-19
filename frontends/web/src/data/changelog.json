@@ -28,6 +28,25 @@
   },
   "releases": [
     {
+      "id": "2026-W43",
+      "kind": "week",
+      "version": null,
+      "date": "2026-10-19",
+      "dateEnd": "2026-10-25",
+      "summary": null,
+      "sections": [
+        {
+          "key": "improvements",
+          "notes": [
+            {
+              "en": "Uploads finish sooner. A document the content check turns away no longer spends time reading its tables first.",
+              "de": "Uploads sind schneller abgeschlossen. Wird ein Dokument von der Inhaltsprüfung abgelehnt, werden seine Tabellen nicht mehr zuerst ausgelesen."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "2026-W42",
       "kind": "week",
       "version": null,
