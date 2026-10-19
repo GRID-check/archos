@@ -280,6 +280,39 @@ def build_plan_set_pdf(
     return _xref_pdf(objects)
 
 
+def build_drawing_sheets_pdf(sheets: int, paths_per_sheet: int, *, seed: int = 7) -> bytes:
+    """A set of CAD-exported sheets: ``paths_per_sheet`` stroked line segments and a title block each.
+
+    The shape that OOM-killed the ingest worker in the text pass (2026-10-19):
+    pdfplumber builds a dict per path and its table finder walks every edge,
+    while the text a person would search for is two lines in the corner.
+    """
+    rng = random.Random(seed)
+    objects: list[bytes] = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    ]
+    kids: list[int] = []
+    for sheet in range(1, sheets + 1):
+        ops = bytearray(b"0.2 w\n")
+        for _ in range(paths_per_sheet):
+            x, y = rng.uniform(20, 1170), rng.uniform(60, 820)
+            ops += f"{x:.1f} {y:.1f} m {x + rng.uniform(-40, 40):.1f} {y + rng.uniform(-40, 40):.1f} l S\n".encode()
+        ops += f"BT /FR 10 Tf 900 40 Td (Plan {sheet} Grundriss EG M 1:100) Tj ET\n".encode()
+        objects.append(b"<< /Length " + str(len(ops)).encode() + b" >>\nstream\n" + bytes(ops) + b"\nendstream")
+        content = len(objects)
+        objects.append(
+            (
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1190 842] "
+                f"/Resources << /Font << /FR 3 0 R >> >> /Contents {content} 0 R >>"
+            ).encode()
+        )
+        kids.append(len(objects))
+    objects[1] = f"<< /Type /Pages /Kids [{' '.join(f'{kid} 0 R' for kid in kids)}] /Count {len(kids)} >>".encode()
+    return _xref_pdf(objects)
+
+
 def write_plan_set(path: Path, **kwargs: object) -> Path:
     """Write a plan set to ``path``, with any keyword of :func:`build_plan_set_pdf`."""
     path.write_bytes(build_plan_set_pdf(**kwargs))  # type: ignore[arg-type]

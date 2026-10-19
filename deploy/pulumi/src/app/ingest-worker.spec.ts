@@ -73,19 +73,21 @@ describe("the ingest-worker tier", () => {
     expect(read("deploy", "pulumi", "src", "app", "ingest-worker.ts")).toContain("JOBS_QUEUE_AUTH");
   });
 
-  it("caps prod at three workers on the batch group, sized for big PDFs", () => {
-    // Five took the app nodes down one after another, and big PDFs were
-    // OOMKilled at 6Gi (2026-10). The provider budget would allow five; node
-    // memory is the bound here. Three at their 12Gi limit fit one 64 GB node.
+  it("runs prod wide and small on the batch group, never able to overcommit a node", () => {
+    // Overcommitted limits took the 16 GB app nodes down one after another
+    // (2026-10). The rule that prevents it, not just today's numbers: memory
+    // request equals limit, so the scheduler places only what a node holds,
+    // and every replica at its limit fits one 64 GB batch node (56 GiB: the
+    // node less the kubelet reserve and Gotenberg, which shares the group).
     const prod = read("deploy", "pulumi", "Pulumi.prod.yaml");
     const knob = (key: string) => prod.match(new RegExp(`^\\s*grid-oib:${key}: "?([^"\\s]+)"?\\s*$`, "m"))?.[1];
+    const gib = (value: string | undefined) => Number(value?.replace(/Gi$/, ""));
 
-    expect(knob("ingestWorkerMaxReplicas")).toBe("3");
     expect(knob("nodeGroupBatch")).toBe("batch");
-    expect(knob("ingestWorkerRequestsCpu")).toBe("500m");
-    expect(knob("ingestWorkerRequestsMemory")).toBe("8Gi");
-    expect(knob("ingestWorkerLimitsCpu")).toBe("4");
-    expect(knob("ingestWorkerLimitsMemory")).toBe("12Gi");
+    expect(knob("ingestWorkerMaxReplicas")).toBe("8");
+    expect(knob("ingestWorkerConcurrency")).toBe("2");
+    expect(knob("ingestWorkerRequestsMemory")).toBe(knob("ingestWorkerLimitsMemory"));
+    expect(Number(knob("ingestWorkerMaxReplicas")) * gib(knob("ingestWorkerLimitsMemory"))).toBeLessThanOrEqual(56);
   });
 
   it("runs the role the entrypoint knows", () => {

@@ -45,6 +45,9 @@ class _Page:
             raise ValueError("unparseable content stream")
         return f"Seite {self._number}"
 
+    def close(self):
+        """pdfplumber's ``Page.close``: the text pass closes every page it read."""
+
 
 class _Pdf:
     def __init__(self, pages):

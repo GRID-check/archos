@@ -382,7 +382,9 @@ class FileProgress(BaseModel):
             "AIQ_MAX_IMAGE_PIXELS; "
             "`pages_transcribed`, `pages_transcription_failed`, `pages_over_ocr_cap`, "
             "`pages_not_transcribed_no_vlm`: scanned or garbled PDF pages and what became of them; "
-            "`drawing_pages_over_cap`: drawing pages past AIQ_MAX_RENDERED_PAGES."
+            "`drawing_pages_over_cap`: drawing pages past AIQ_MAX_RENDERED_PAGES; "
+            "`pages_read_without_layout`: PDF pages over AIQ_PDF_PAGE_MAX_OBJECTS, whose text was "
+            "read without tables or line styles."
         ),
     )
     screening: Literal["clean", "partial", "unchecked", "quarantined"] | None = Field(
