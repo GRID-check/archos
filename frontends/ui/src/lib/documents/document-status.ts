@@ -3,12 +3,13 @@
  *
  * Two sets, and the difference between them is the point:
  *
- *   - {@link DOCUMENT_STATUSES}: the seven values `documents.status` may hold.
- *     Migration 0135 rewrote every legacy spelling to one of them and added a
- *     CHECK (`documents_status_known`), so a writer that emits an eighth fails
- *     its write. `document-status.spec.ts` scans the writers and fails first.
+ *   - {@link DOCUMENT_STATUSES}: the eight values `documents.status` may hold.
+ *     Migration 0135 rewrote every legacy spelling to seven of them and added a
+ *     CHECK (`documents_status_known`), so a writer that emits a value outside
+ *     the set fails its write; 0153 added the eighth (`cancelled`).
+ *     `document-status.spec.ts` scans the writers and fails first.
  *   - {@link DOCUMENT_STATUS_FACTS}: every value a SURFACE may be handed, which
- *     is those seven plus the spellings that arrive from outside the column:
+ *     is those eight plus the spellings that arrive from outside the column:
  *     the chat's session files keep the backend's file states in the browser
  *     (`uploading`, `ingesting`, `success`, `error`), and the platform corpus
  *     listing reports `ingested`/`ready`. They render as what they mean; none
@@ -35,8 +36,9 @@
  */
 
 /**
- * What `documents.status` may hold (migration 0135, CHECK `documents_status_known`).
- * The order is the reading's order; the meanings are in {@link DOCUMENT_STATUS_FACTS}.
+ * What `documents.status` may hold (migration 0135, extended by 0153; CHECK
+ * `documents_status_known`). The order is the reading's order; the meanings are
+ * in {@link DOCUMENT_STATUS_FACTS}.
  */
 export const DOCUMENT_STATUSES = [
   'uploaded',
@@ -46,6 +48,7 @@ export const DOCUMENT_STATUSES = [
   'failed',
   'quarantined',
   'stored',
+  'cancelled',
 ] as const
 
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number]
@@ -78,7 +81,7 @@ export interface DocumentStatusFacts {
 }
 
 /**
- * Every status a surface may be handed, and what it means: the seven of
+ * Every status a surface may be handed, and what it means: the eight of
  * {@link DOCUMENT_STATUSES}, and the spellings that arrive from outside the
  * column (marked as such below). Grouped by family, because the family is what
  * a reader acts on.
@@ -133,6 +136,15 @@ export const DOCUMENT_STATUS_FACTS = {
    * about. Retry remains possible through the re-ingest action.
    */
   uploaded: { variant: 'secondary', phase: 'terminal' },
+  /**
+   * A person stopped the read before it finished (a cancel route, migration
+   * 0153). NEUTRAL on purpose: nothing failed, so it is not the destructive
+   * `failed`; and nothing was indexed, so it is not the green `completed`.
+   * Terminal, so nothing polls it — except a short re-check window
+   * (`reconcile-status.ts`) that heals a cancelled row whose job finalized in
+   * the same instant. The bytes are here and a re-ingest reads them again.
+   */
+  cancelled: { variant: 'secondary', phase: 'terminal' },
 
   // --- Held back: the bytes are here and a person has to decide. -----------
   /**

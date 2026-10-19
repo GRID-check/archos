@@ -71,7 +71,12 @@ import { assertNoActiveHold } from '@/lib/compliance/holds'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document, DocumentAuthor, Project } from '@/lib/db/schema'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
-import { reconcileDocumentStatuses, describeBackendIngestState, extractIngestJobId } from './reconcile-status'
+import {
+  cancelledResolution,
+  reconcileDocumentStatuses,
+  describeBackendIngestState,
+  extractIngestJobId,
+} from './reconcile-status'
 import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
 import { loadFassungFacts } from './fassung-facts'
 import { documentShelf, projectShelf } from './shelf'
@@ -1884,6 +1889,114 @@ export async function reingestDocument(
     priority: options.priority,
   })
   return { id: doc.id, status, jobId }
+}
+
+/**
+ * What a cancel did, as `POST /api/documents/{id}/cancel` reports it.
+ *
+ *  - `cancelled` — a live job was stopped, and this call settled the row
+ *    `cancelled` (see {@link cancelDocumentIngest}).
+ *  - `finished` — the durable queue held no live row: the job had already run
+ *    to an end, and the next listing read reconciles the row to its real
+ *    outcome. Not a failure; there was simply nothing to stop.
+ *  - `unavailable` — nothing this tier can stop: the durable ingest queue is
+ *    off (the job runs in a process the BFF cannot reach), or the row carries
+ *    no job id (work the BFF itself owns, `processing`).
+ */
+export type CancelIngestOutcome = 'cancelled' | 'finished' | 'unavailable'
+
+export interface CancelIngestResult {
+  id: string
+  result: CancelIngestOutcome
+}
+
+/**
+ * One `POST /v1/documents/{jobId}/cancel`, bounded.
+ *
+ * A transport failure or an answer this build does not understand is an
+ * {@link UpstreamError}, never a quiet `finished`: "we could not ask whether it
+ * stopped" must not read to the reader as "there was nothing to stop".
+ */
+async function requestIngestCancel(jobId: string, organizationId: string): Promise<CancelIngestOutcome> {
+  let response: Response
+  try {
+    response = await fetch(`${getBackendUrl()}/v1/documents/${encodeURIComponent(jobId)}/cancel`, {
+      method: 'POST',
+      // Forward the org id, as the dispatch does: the backend resolves the
+      // organization's queue from it.
+      headers: { 'x-grid-organization-id': organizationId },
+      signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
+    })
+  } catch (error) {
+    throw new UpstreamError(
+      'The ingestion backend could not be reached to stop this job',
+      error instanceof Error ? error.message : undefined
+    )
+  }
+  if (!response.ok) throw new UpstreamError(`Stopping this job returned ${response.status}`)
+  const body: unknown = await response.json().catch(() => null)
+  const result =
+    typeof body === 'object' && body !== null ? (body as { result?: unknown }).result : null
+  if (result === 'cancelled' || result === 'finished' || result === 'unavailable') return result
+  throw new UpstreamError('Stopping this job returned an unexpected shape')
+}
+
+/**
+ * Stop a running ingest for one document: a person's upload still being read,
+ * or a queued one that has not started.
+ *
+ * The stop is the durable queue's (`POST /v1/ingest`'s job row), so it is safe
+ * to repeat: a queued job is never claimed, a running worker stops at its next
+ * ownership check — before it reads or writes anything — and the backend
+ * settles the job `cancelled` either way. Nothing is half-indexed: a job
+ * stopped between reads leaves no chunks, and a job that finalized in the same
+ * instant as the stop is healed back by the reconcile's cancelled re-check
+ * (`./reconcile-status`).
+ *
+ * The row is settled `cancelled` HERE, on a confirmed stop, rather than left to
+ * the next listing read: the surface the person is looking at must stop saying
+ * the file is being read. A row the write did not move (a concurrent read got
+ * there first) settles nothing, exactly as reconciliation does.
+ *
+ * Authorization is {@link getAccessibleDocument} with `write`, the same gate
+ * every other mutation of a document passes.
+ */
+export async function cancelDocumentIngest(
+  session: AuthorizedSession,
+  documentId: string
+): Promise<CancelIngestResult> {
+  const doc = await getAccessibleDocument(session, documentId, 'write')
+
+  // Nothing to stop on a row that has come to rest. The control is offered only
+  // for an in-flight row, so this is the race where the job ended between the
+  // render and the click: reported as `finished`, which the client shows as
+  // "already done", never as a stop that did not happen.
+  if (!IN_FLIGHT_DOCUMENT_STATUSES.has(doc.status)) {
+    return { id: doc.id, result: 'finished' }
+  }
+
+  const jobId = extractIngestJobId(doc.metadata)
+  if (!jobId) {
+    // In flight with no job id: the work runs inside the BFF (`processing` — an
+    // IFC extraction or an office rendition) or predates the job id being
+    // recorded. Neither has a durable queue row for this tier to stop.
+    return { id: doc.id, result: 'unavailable' }
+  }
+
+  const result = await requestIngestCancel(jobId, session.organizationId)
+  if (result === 'cancelled') {
+    const resolution = cancelledResolution()
+    const moved = await setDocumentReconciledStatus(doc.id, session.organizationId, resolution, {
+      status: doc.status,
+      jobId,
+    })
+    if (moved) {
+      // Settle the upload batch and audit as a listing read would: a cancelled
+      // row still has to tell its batch it came to rest. Never throws.
+      await onDocumentsSettled(session.organizationId, [{ id: doc.id, status: 'cancelled' }])
+    }
+  }
+  return { id: doc.id, result }
 }
 
 export interface ReindexProjectResult {

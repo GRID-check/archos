@@ -37,6 +37,7 @@ describe('surfaceStateOf', () => {
     expect(surfaceStateOf('quarantined')).toBe('held')
     expect(surfaceStateOf('error')).toBe('unreadable')
     expect(surfaceStateOf('uploaded')).toBe('stored')
+    expect(surfaceStateOf('cancelled')).toBe('cancelled')
   })
 
   it('calls an undeclared status unknown, never citable', () => {

@@ -275,6 +275,11 @@ const OUTCOME_BY_STATE: Record<SurfaceState, UploadSummaryDocument['outcome']> =
   held: 'quarantined',
   unreadable: 'failed',
   stored: 'stored',
+  // A read a person stopped: the bytes are here and nothing was read, the same
+  // at-rest family as `stored` — never `failed` (nothing went wrong) and never
+  // `ready`. The tally has no `cancelled` word of its own, so it counts the
+  // document with the other at-rest ones; the row's own status says the rest.
+  cancelled: 'stored',
   unknown: 'reading',
 }
 

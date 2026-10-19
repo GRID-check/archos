@@ -162,7 +162,7 @@ export interface DocumentMetadata {
 }
 
 interface TerminalResolution {
-  status: 'completed' | 'failed' | 'quarantined'
+  status: 'completed' | 'failed' | 'quarantined' | 'cancelled'
   errorMessage: string | null
   /**
    * What the job's content gate concluded (ADR-0086), when it ran. Absent
@@ -328,9 +328,28 @@ const fetchJobStatuses = async (jobIds: string[]): Promise<Map<string, BackendJo
   return new Map(Object.entries(statuses))
 }
 
+/**
+ * The resolution a stopped job writes: `cancelled`, and nothing else.
+ *
+ * Neutral, like `stored` — nothing failed, so no failure facts and no reason
+ * string, which clears any category a previous failure left on the row. The
+ * message the backend carries is a machine prefix for the UI's own sentence,
+ * not a verdict to store. One builder, so the polling pass here and the eager
+ * settle in `cancelDocumentIngest` write the same row.
+ */
+export const cancelledResolution = (): TerminalResolution => ({
+  status: 'cancelled',
+  errorMessage: null,
+  failure: NO_FAILURE_FACTS,
+})
+
 const resolveFromJobStatus = (job: BackendJobStatus | null | undefined): JobResolution => {
   if (job === undefined || job === null) return { kind: 'unknown' }
 
+  if (job.status === 'cancelled') {
+    // A person stopped it (`aiq_agent.knowledge.schema.JobState.CANCELLED`).
+    return { kind: 'terminal', resolution: cancelledResolution() }
+  }
   if (job.status === 'completed') {
     // A single-file job can complete at the job level while its only file
     // failed; surface that as a failure rather than a false 'completed'.
@@ -678,6 +697,25 @@ const isRecheckableInterruption = (row: ReconcilableDocument, now: number): bool
 }
 
 /**
+ * A `cancelled` row recent enough to still be worth asking about, and with a
+ * job the batch call can answer for.
+ *
+ * A cancel and a job finalizing can land in the same instant: a worker that
+ * passed its last ownership check may finish and write `completed` just as the
+ * queue records the stop. The stop is the trace then, not the truth, and a row
+ * the BFF wrote `cancelled` is asked about again for the same bounded window as
+ * an interruption — a late `completed` heals it. The status alone is the
+ * marker, so no message prefix is needed. A row without `updatedAt` is not
+ * re-checked: nothing would bound how long it keeps asking.
+ */
+const isRecheckableCancellation = (row: ReconcilableDocument, now: number): boolean => {
+  if (row.status !== 'cancelled') return false
+  if (!extractIngestJobId(row.metadata)) return false
+  const writtenAt = toEpochMs(row.updatedAt)
+  return writtenAt !== null && now - writtenAt < INTERRUPTED_RECHECK_WINDOW_MS
+}
+
+/**
  * What the backend's answer about an interrupted job changes, or null for
  * nothing: a job that is still failed (or unknown) leaves the row as it is, so
  * a confirmed interruption costs no write.
@@ -685,6 +723,20 @@ const isRecheckableInterruption = (row: ReconcilableDocument, now: number): bool
 const resolveInterruptedRow = (job: BackendJobStatus | null | undefined): RowResolution | null => {
   const result = resolveFromJobStatus(job)
   if (result.kind === 'in_progress') return { status: 'pending', errorMessage: null }
+  if (result.kind === 'terminal' && result.resolution.status === 'completed') return result.resolution
+  return null
+}
+
+/**
+ * What the backend's answer about a cancelled job changes, or null for nothing.
+ *
+ * Only a `completed` heals it: the job finished before the stop took effect, so
+ * the row is citable after all. An `in_progress` answer is not a revival — the
+ * queue row is still cancelled, the worker is on its way out — so the cancelled
+ * row stays as it is rather than flipping back to `pending` and polling again.
+ */
+const resolveCancelledRow = (job: BackendJobStatus | null | undefined): RowResolution | null => {
+  const result = resolveFromJobStatus(job)
   if (result.kind === 'terminal' && result.resolution.status === 'completed') return result.resolution
   return null
 }
@@ -757,8 +809,9 @@ function announceSettledShelves(
 /**
  * Reconcile in-flight document rows with the backend's ingestion state and
  * persist any terminal transition (and re-check a recent `interrupted:`
- * failure, see {@link INTERRUPTED_REASON_PREFIX}), then merge the backend's read-only document
- * metadata (summary, page/chunk counts, content types) onto every returned row.
+ * failure or `cancelled` row, see {@link INTERRUPTED_REASON_PREFIX}), then merge
+ * the backend's read-only document metadata (summary, page/chunk counts,
+ * content types) onto every returned row.
  *
  * Returns the rows with fresh statuses and metadata; rows that are already
  * terminal (or still genuinely in flight) keep their status, and metadata is
@@ -803,11 +856,12 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
   )
   const now = Date.now()
   const interrupted = rows.filter((row) => isRecheckableInterruption(row, now))
-  if (inFlight.length > 0 || interrupted.length > 0) {
+  const cancelled = rows.filter((row) => isRecheckableCancellation(row, now))
+  if (inFlight.length > 0 || interrupted.length > 0 || cancelled.length > 0) {
     // One batch call for every job id asked about (previously one GET per row).
     const jobIds = [
       ...new Set(
-        [...inFlight, ...interrupted]
+        [...inFlight, ...interrupted, ...cancelled]
           .map((row) => extractIngestJobId(row.metadata))
           .filter((id): id is string => !!id)
       ),
@@ -822,6 +876,21 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
         const jobId = extractIngestJobId(row.metadata)
         if (jobStatuses === null || !jobId) return
         const resolution = resolveInterruptedRow(jobStatuses.get(jobId))
+        if (!resolution) return
+        if (await setDocumentReconciledStatus(row.id, organizationId, resolution, { status: row.status, jobId })) {
+          moved.add(row.id)
+        }
+        resolutions.set(row.id, resolution)
+      })
+    )
+
+    // A cancelled row, re-checked only to heal a job that finalized in the
+    // same instant as the stop. From its job alone, for the same reason.
+    await Promise.all(
+      cancelled.map(async (row) => {
+        const jobId = extractIngestJobId(row.metadata)
+        if (jobStatuses === null || !jobId) return
+        const resolution = resolveCancelledRow(jobStatuses.get(jobId))
         if (!resolution) return
         if (await setDocumentReconciledStatus(row.id, organizationId, resolution, { status: row.status, jobId })) {
           moved.add(row.id)
@@ -942,6 +1011,11 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
     settled.flatMap(([id, resolution]) => {
       const row = rowsById.get(id)
       if (!row || resolution.status === 'pending') return []
+      // A stop is not an ingest result: nothing was read, so there is no
+      // duration to report (the row's own write is the settle, not the
+      // dispatch) and no outcome the funnel can use. The person's act is the
+      // record; this event stays what it says it is — a read that came to rest.
+      if (resolution.status === 'cancelled') return []
       const meta = metaByRow.get(id)
       return [
         {

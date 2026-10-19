@@ -31,6 +31,7 @@ import { documentDisplayName, type NamedDocument } from '@/lib/documents/display
 import { LEGAL_HOLD_REASON } from '@/lib/compliance/legal-hold-codes'
 import { INGEST_RUNNING } from '@/lib/documents/reingest-codes'
 import { requestReingest } from '../../lib/reingest-request'
+import { requestCancelIngest } from '../../lib/cancel-request'
 
 /** Which corpus the document belongs to — and so which words and which route. */
 export type DocumentScope = 'files' | 'archiv'
@@ -60,6 +61,11 @@ export interface UseDocumentActionsOptions {
   onRenamed?: (documentId: string, displayName: string | null) => void
   /** The document was sent back through ingestion; carries the new status. */
   onReingested?: (documentId: string, status: string) => void
+  /**
+   * The read in progress was stopped. Carries the row's new status
+   * (`'cancelled'`), so a surface can mirror it before any refetch.
+   */
+  onCancelled?: (documentId: string, status: string) => void
   /** The document is gone. Surfaces drop it from their list and close anything
    * that was showing it. */
   onDeleted?: (documentId: string) => void
@@ -76,6 +82,11 @@ export interface DocumentActions {
   isDeleting: boolean
   isDownloading: boolean
   isReingesting: boolean
+  /**
+   * A read is being stopped. Gates the menu item while the request is in
+   * flight so a second click cannot fire a second stop.
+   */
+  isCancelling: boolean
   /** The last download attempt failed; cleared when a new one starts. */
   downloadFailed: boolean
   /** `null` restores the file's own name. Resolves false when nothing changed. */
@@ -87,6 +98,13 @@ export interface DocumentActions {
    * indexed file); resolves the row's status afterwards, or `null` on failure.
    */
   reingest: () => Promise<string | null>
+  /**
+   * Stop the read in progress. Resolves true only when a live job was
+   * actually stopped; a job that had already finished, or work this tier
+   * cannot reach, is reported through a toast and resolves false — it is not
+   * a failure, but nothing changed about the row.
+   */
+  cancel: () => Promise<boolean>
   isMoving: boolean
   /** Re-file into another folder; `null` is the project root. */
   move: (folderId: string | null, folderName: string) => Promise<boolean>
@@ -110,6 +128,7 @@ export function useDocumentActions({
   onRenamed,
   onDeleted,
   onReingested,
+  onCancelled,
   onMoved,
 }: UseDocumentActionsOptions): DocumentActions {
   const t = useTranslations(scope)
@@ -119,6 +138,7 @@ export function useDocumentActions({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [isReingesting, setIsReingesting] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
   const [downloadFailed, setDownloadFailed] = useState(false)
 
@@ -251,6 +271,42 @@ export function useDocumentActions({
   }, [document.id, onReingested, t])
 
   /**
+   * Stop a read that has not finished.
+   *
+   * Unlike re-ingest, this is a single click: stopping a read destroys nothing
+   * (the bytes stay and a re-ingest reads them again), so there is no dialog to
+   * interrupt the person with. A refused answer is not an error to retry — the
+   * row they clicked was stale, or the work runs somewhere no queue can reach —
+   * so each is said for what it is rather than as "please try again".
+   */
+  const cancel = useCallback(async (): Promise<boolean> => {
+    setIsCancelling(true)
+    try {
+      const outcome = await requestCancelIngest(document.id)
+      if (outcome.kind === 'failed') {
+        toast.error(t('actions.cancelError'))
+        return false
+      }
+      if (outcome.kind === 'finished') {
+        toast.info(t('actions.cancelFinished'))
+        return false
+      }
+      if (outcome.kind === 'unavailable') {
+        toast.info(t('actions.cancelUnavailable'))
+        return false
+      }
+      // The row left the in-flight set and is now `cancelled`; caches holding
+      // its status must re-read it, and the surface mirrors the new status.
+      notifyDocumentsChanged()
+      toast.success(t('actions.cancelled', { name }))
+      onCancelled?.(document.id, 'cancelled')
+      return true
+    } finally {
+      setIsCancelling(false)
+    }
+  }, [document.id, name, onCancelled, t])
+
+  /**
    * Re-file the document. `folderName` is only for the words — the toast has to
    * say WHERE it went, or "Moved" is a claim the reader cannot check without
    * going to look.
@@ -290,12 +346,14 @@ export function useDocumentActions({
     isDeleting,
     isDownloading,
     isReingesting,
+    isCancelling,
     isMoving,
     downloadFailed,
     rename,
     remove,
     download,
     reingest,
+    cancel,
     move,
   }
 }

@@ -38,6 +38,7 @@ import { capturePosthog } from '@/lib/analytics/posthog'
 import { fileExtensionLabel } from '../document-kind'
 import { failedWhileReading } from '../lib/ingest-failure'
 import { requestReingest } from '../lib/reingest-request'
+import { requestCancelIngest } from '../lib/cancel-request'
 import { mayRetryRefusal, uploadRefusalOf, type UploadRefusal } from '../lib/upload-refusal'
 import { toast } from 'sonner'
 
@@ -204,7 +205,11 @@ interface UseFileUploadReturn {
   /** Resolves with how many files the server took; the rest say why on their own. */
   uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<number>
   cancelUpload: () => void
-  /** Abort one in-flight file, leaving the rest of the batch running. */
+  /**
+   * Abandon one file: abort its transport while the bytes are still moving,
+   * or stop the read if the server already holds them. Either way the row
+   * settles as `canceled`, and the rest of the batch runs on.
+   */
   cancelFile: (fileId: string) => void
   /** Drop settled rows (done, failed, canceled) from the upload surface. */
   dismissFiles: (fileIds: string[]) => void
@@ -789,10 +794,52 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
    * Abandon one file. The request is aborted at the transport, so the bytes
    * stop moving immediately rather than finishing invisibly in the background,
    * and the row settles as `canceled` — a decision, not a failure.
+   *
+   * A row the SERVER is already reading has no transport left to abort: its
+   * bytes are stored and an ingest job is working on them. There the stop is a
+   * request to the backend (`stopReading`), and the row settles the same way —
+   * `canceled` — because nothing was indexed and the file can be read again.
    */
-  const cancelFile = useCallback((fileId: string) => {
-    abortControllersRef.current.get(fileId)?.abort()
-  }, [])
+  const stopReading = useCallback(
+    async (fileId: string, documentId: string): Promise<void> => {
+      const outcome = await requestCancelIngest(documentId)
+      if (outcome.kind === 'cancelled') {
+        updateTrackedFile(fileId, { status: 'canceled' })
+        notifyDocumentsChanged()
+        return
+      }
+      if (outcome.kind === 'finished') {
+        // The job had already run to an end, so the row is not stuck: let the
+        // orchestrator read where it actually landed rather than say stopped.
+        toast.info(t('actions.cancelFinished'))
+        UploadOrchestrator.watchDocuments([fileId])
+        return
+      }
+      // Not a failure to retry: the work runs somewhere a queue cannot reach
+      // (queue off, or a conversion inside the BFF), and the row is honest as
+      // it stands.
+      if (outcome.kind === 'unavailable') {
+        toast.info(t('actions.cancelUnavailable'))
+        return
+      }
+      toast.error(t('actions.cancelError'))
+    },
+    [updateTrackedFile, t]
+  )
+
+  const cancelFile = useCallback(
+    (fileId: string) => {
+      // Read the live row rather than a captured render: the row's status may
+      // have moved from uploading to reading since the callback was made.
+      const file = useDocumentsStore.getState().trackedFiles.find((f) => f.id === fileId)
+      if (file?.status === 'ingesting' && file.serverFileId) {
+        void stopReading(fileId, file.serverFileId)
+        return
+      }
+      abortControllersRef.current.get(fileId)?.abort()
+    },
+    [stopReading]
+  )
 
   const cancelUpload = useCallback(() => {
     for (const controller of abortControllersRef.current.values()) controller.abort()

@@ -72,6 +72,8 @@ export interface DocumentActionsMenuProps {
   onRenamed?: (documentId: string, displayName: string | null) => void
   onDeleted?: (documentId: string) => void
   onReingested?: (documentId: string, status: string) => void
+  /** The read in progress was stopped; carries the row's new status. */
+  onCancelled?: (documentId: string, status: string) => void
   folders?: readonly MoveTargetFolder[]
   /** The move targets, sorted once by a listing — see `documentActionEntries`. Wins over `folders`. */
   destinations?: readonly FolderDestination[]
@@ -107,6 +109,7 @@ export function useDocumentActionMenu({
   onRenamed,
   onDeleted,
   onReingested,
+  onCancelled,
   folders,
   destinations,
   onMoved,
@@ -136,6 +139,7 @@ export function useDocumentActionMenu({
     onRenamed,
     onDeleted,
     onReingested,
+    onCancelled,
     onMoved,
   })
 
@@ -163,6 +167,8 @@ export function useDocumentActionMenu({
       delete: t('actions.delete'),
       reingest: t('actions.reingest'),
       reingesting: t('actions.reingesting'),
+      cancel: t('actions.cancel'),
+      cancelling: t('actions.cancelling'),
       allFiles: filesT('folders.allFiles'),
     },
     actions,
@@ -171,6 +177,7 @@ export function useDocumentActionMenu({
     destinations,
     isDownloading: documentActions.isDownloading,
     isReingesting: documentActions.isReingesting,
+    isCancelling: documentActions.isCancelling,
     isMoving: documentActions.isMoving,
     onOpen,
     onAsk,
@@ -185,6 +192,9 @@ export function useDocumentActionMenu({
       reingestOffer(document) === 'reread'
         ? setRereadOpen(true)
         : void documentActions.reingest(),
+    // Stopping a read destroys nothing, so it runs on the click: no dialog
+    // stands between the person and the thing they asked for.
+    onCancel: () => void documentActions.cancel(),
     onMove: (folderId, folderName) => void documentActions.move(folderId, folderName),
     onCopyOriginPath: document.originPath ? copyOriginPath : undefined,
   })

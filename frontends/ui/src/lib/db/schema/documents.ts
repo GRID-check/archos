@@ -661,7 +661,7 @@ export const documents = pgTable('documents', {
    * not.
    */
   lifecycleKnown: check('documents_lifecycle_known', sql`${table.lifecycle} IN ('active', 'archived')`),
-  /** Where reading stands (migration 0135, ADR-0104): an eighth value fails its write. */
+  /** Where reading stands (migration 0153, ADR-0104): a ninth value fails its write. */
   statusKnown: check(
     'documents_status_known',
     sql`${table.status} IN (${sql.raw(DOCUMENT_STATUSES.map((status) => `'${status}'`).join(', '))})`
