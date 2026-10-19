@@ -237,6 +237,7 @@ def pdf_pipeline(monkeypatch):
                 }
             ],
             0,
+            0,
         )
 
     def _pages(path, *args, **kwargs):

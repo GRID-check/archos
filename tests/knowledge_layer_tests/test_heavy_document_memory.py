@@ -177,7 +177,9 @@ def heavy_plan_set(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def heavy_run(heavy_plan_set: Path, adapter: Any) -> tuple[list[dict[str, Any]], int, _Tally]:
     """One real analysis of the heavy plan set, with its tally kept for the readers below."""
     with _counting_decodes(adapter) as tally:
-        kept, over_cap = adapter._embedded_images_for_analysis(str(heavy_plan_set), rendered_pages=set(), enabled=True)
+        kept, over_cap, _ = adapter._embedded_images_for_analysis(
+            str(heavy_plan_set), rendered_pages=set(), enabled=True
+        )
     return kept, over_cap, tally
 
 
@@ -193,7 +195,7 @@ def over_cap_run(adapter: Any, tmp_path: Path) -> tuple[list[dict[str, Any]], in
         include_undersized_raster=True,
     )
     with _counting_decodes(adapter) as tally:
-        kept, over_cap = adapter._embedded_images_for_analysis(str(path), rendered_pages=set(), enabled=True)
+        kept, over_cap, _ = adapter._embedded_images_for_analysis(str(path), rendered_pages=set(), enabled=True)
     return kept, over_cap, tally
 
 

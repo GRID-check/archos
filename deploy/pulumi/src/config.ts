@@ -1026,6 +1026,17 @@ export interface GridConfig {
     drainSeconds: number;
     /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
     maxPerOrg: number;
+    /**
+     * `AIQ_MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
+     * refused before it is decoded. pypdfium2 cannot downscale an embedded image
+     * on decode, so this is the only bound on one bitmap's allocation; the
+     * PDFium lock serialises decodes within a process, so the tier's raster peak
+     * is near this number (times ~4 bytes a pixel), not this times `concurrency`.
+     * The default admits an A0 sheet at 400 dpi (~248 MP) and refuses the
+     * 20000x20000 px raster (~400 MP) from the OOM report. 0 refuses every
+     * embedded raster.
+     */
+    maxImagePixels: number;
   };
 
   /**
@@ -2905,6 +2916,10 @@ export function loadConfig(): GridConfig {
       concurrency: Math.max(1, num(cfg, "ingestWorkerConcurrency", 3)),
       drainSeconds: Math.max(30, num(cfg, "ingestWorkerDrainSeconds", 600)),
       maxPerOrg: Math.max(0, num(cfg, "ingestMaxPerOrg", 0)),
+      // One decoded raster peaks near this times ~4 bytes (1 GiB at the default
+      // 256 MP). 268_435_456 is adapter.py's own default: 256 MP admits an A0
+      // sheet at 400 dpi and refuses a 20000x20000 px pavement.
+      maxImagePixels: Math.max(0, num(cfg, "ingestWorkerMaxImagePixels", 268_435_456)),
     },
     bffJobs: {
       enabled: cfg.getBoolean("bffJobsEnabled") !== false,

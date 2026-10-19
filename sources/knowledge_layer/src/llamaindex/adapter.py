@@ -282,6 +282,33 @@ MIN_IMAGE_HEIGHT_PX = 100
 # job status as `images_over_cap`. 0 analyses none.
 MAX_IMAGES_PER_DOCUMENT = _env_int("AIQ_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
 
+# @environment_variable AIQ_MAX_IMAGE_PIXELS
+# @category Knowledge Layer
+# @type int
+# @default 268435456
+# @required false
+# Refuse an embedded raster larger than this many pixels, decided from its
+# metadata before a single bitmap is allocated. pypdfium2 offers no
+# reduced-scale decode for an embedded image (`PdfImage.get_bitmap()` takes no
+# scale argument), so `width x height` from the image metadata is the only thing
+# that can stand between a pathological raster and the allocation it would make;
+# a PDFium bitmap is about 4 bytes a pixel, so one decode peaks near
+# `AIQ_MAX_IMAGE_PIXELS * 4` bytes (1 GiB at the default). The default,
+# 268 435 456 px (256 MP, 2^28), admits every realistic architectural scan and
+# refuses only the pathological:
+#   A0 (841x1189 mm = 33.1x46.8 in) at 300 dpi = 9933x14043  = 139.5 MP  kept
+#   A0 at 400 dpi                             = 13244x18724 = 248.0 MP  kept
+#   A1 at 300 dpi                             = 7016x9933  =  69.7 MP  kept
+#   A2 at 600 dpi                             = 9921x14031 = 139.2 MP  kept
+#   A3 at 600 dpi                             = 7016x9921  =  69.6 MP  kept
+#   A4 at 300 dpi                             = 2480x3508  =   8.7 MP  kept
+#   A0 at 600 dpi                             = 19866x28087 = 558.0 MP  refused
+#   a 20000x20000 px raster (as in the OOM report) =  400.0 MP          refused
+# A raster refused here is counted on the file's job status as
+# `images_over_pixel_budget` and logged with its page, index and pixel size; its
+# page keeps its text layer. 0 refuses every embedded raster.
+MAX_IMAGE_PIXELS = _env_int("AIQ_MAX_IMAGE_PIXELS", 268_435_456, minimum=0)
+
 # Cap on the longest edge (px) of an image before it is JPEG-re-encoded and sent
 # to the VLM. Larger images are downscaled (aspect preserved, never upscaled) to
 # bound the VLM payload/token cost; smaller images pass through untouched. The
@@ -952,11 +979,20 @@ def _extract_images_from_pdf(
             scanned page is one full-page raster; without this it was analysed
             twice, once as that raster and once as the rendered page.
 
+    Uncapped in the number of rasters, but every raster is still held to
+    ``MAX_IMAGE_PIXELS``: the pixel budget bounds one decode, which no caller can
+    raise.
+
     Returns:
         List of dicts with 'image_bytes', 'page_number', 'image_index', 'format'.
     """
-    records, _ = _extract_image_records(
-        pdf_path, min_width=min_width, min_height=min_height, skip_pages=skip_pages, max_images=None
+    records, _, _ = _extract_image_records(
+        pdf_path,
+        min_width=min_width,
+        min_height=min_height,
+        skip_pages=skip_pages,
+        max_images=None,
+        max_pixels=MAX_IMAGE_PIXELS,
     )
     return records
 
@@ -968,30 +1004,36 @@ def _extract_image_records(
     min_height: int,
     skip_pages: set[int] | frozenset[int],
     max_images: int | None,
-) -> tuple[list[dict[str, Any]], int]:
-    """Embedded rasters worth analysing, and how many the cap left out.
+    max_pixels: int,
+) -> tuple[list[dict[str, Any]], int, int]:
+    """Embedded rasters worth analysing, the cap's left-outs, and the oversized refusals.
 
     Two passes, because only the second one costs memory. The first reads every
     image object's pixel size from metadata, decoding nothing, and applies the
-    cap there -- so an image-heavy document decodes only the rasters it will
-    actually analyse. The second decodes those, one at a time: pypdfium2 cannot
+    per-document cap and the per-raster pixel budget there -- so an image that
+    will not be analysed, and an image too large to decode safely, never cost a
+    bitmap. The second decodes the survivors, one at a time: pypdfium2 cannot
     downscale an embedded image on decode, so each raster's full-resolution
     bitmap exists for one image, is downscaled from a zero-copy view, and is
     freed before the next. Peak memory is flat in the number of rasters and in
-    the length of the document, which is what keeps an ingest pod inside its
-    limit instead of being OOM-killed by a plan set.
+    the length of the document, and bounded above by ``max_pixels``, which is
+    what keeps an ingest pod inside its limit instead of being OOM-killed by a
+    plan set.
 
     The same raster embedded repeatedly is captioned and indexed once: the
     content hash still dedupes the records, after the cap.
+
+    Returns ``(records, over_cap, over_pixel_budget)``.
     """
     try:
         import pypdfium2 as pdfium
     except ImportError:
         logger.warning("pypdfium2 not installed. Install with: pip install pypdfium2")
-        return [], 0
+        return [], 0, 0
 
     records: list[dict[str, Any]] = []
     over_cap = 0
+    over_pixel_budget = 0
     seen_hashes: set[str] = set()
     try:
         with pdfium_lock():
@@ -1002,12 +1044,16 @@ def _extract_image_records(
             for page_num in range(page_count):
                 if page_num + 1 in skip_pages:
                     continue
-                candidates.extend(_image_candidates(doc, page_num, min_width, min_height))
+                page_candidates, page_over_budget = _image_candidates(
+                    doc, page_num, min_width, min_height, max_pixels=max_pixels, pdf_path=pdf_path
+                )
+                candidates.extend(page_candidates)
+                over_pixel_budget += page_over_budget
             if max_images is None:
                 kept = candidates
             else:
                 kept, over_cap = cap_images(candidates, max_images)
-            _log_memory(f"rasters:start kept={len(kept)} over_cap={over_cap}")
+            _log_memory(f"rasters:start kept={len(kept)} over_cap={over_cap} over_pixel_budget={over_pixel_budget}")
             for page_number, page_candidates in _candidates_by_page(kept):
                 records.extend(_decode_page_candidates(doc, page_number, page_candidates, seen_hashes))
             _log_memory(f"rasters:done kept={len(kept)}")
@@ -1015,27 +1061,34 @@ def _extract_image_records(
             with pdfium_lock():
                 doc.close()
         logger.info(
-            "Extracted %d images from %s (%d candidates, %d over cap)",
+            "Extracted %d images from %s (%d candidates, %d over cap, %d over the pixel budget)",
             len(records),
             pdf_path,
             len(candidates),
             over_cap,
+            over_pixel_budget,
         )
 
     except Exception as e:
         logger.error(f"Error extracting images from PDF: {e}")
 
-    return records, over_cap
+    return records, over_cap, over_pixel_budget
 
 
-def _image_candidates(doc: Any, page_num: int, min_width: int, min_height: int) -> list[dict[str, Any]]:
-    """One page's image objects that clear the size filter, as metadata records.
+def _image_candidates(
+    doc: Any, page_num: int, min_width: int, min_height: int, *, max_pixels: int, pdf_path: str
+) -> tuple[list[dict[str, Any]], int]:
+    """One page's image objects that clear both metadata filters, and how many the pixel budget refused.
 
     ``image_index`` counts every image object on the page, kept or not. No pixels
     are touched here: ``_image_pixel_size`` asks the library for the size, which
-    is what lets the cap run before a single raster is allocated.
+    is what lets the icon filter AND the pixel budget run before a single raster
+    is allocated. A raster whose ``width x height`` is over ``max_pixels`` is
+    refused and warned about; the only way to bound a decode pypdfium2 will not
+    scale is never to start it.
     """
     candidates: list[dict[str, Any]] = []
+    over_budget = 0
     with pdfium_lock():
         page = doc[page_num]
         try:
@@ -1046,13 +1099,29 @@ def _image_candidates(doc: Any, page_num: int, min_width: int, min_height: int) 
                     logger.debug(f"Could not size image {img_idx} on page {page_num}: {e}")
                     continue
                 # Filter small images (likely icons/logos)
-                if width >= min_width and height >= min_height:
-                    candidates.append(
-                        {"page_number": page_num + 1, "image_index": img_idx, "width": width, "height": height}
+                if width < min_width or height < min_height:
+                    continue
+                pixels = width * height
+                if pixels > max_pixels:
+                    over_budget += 1
+                    logger.warning(
+                        "Refusing to decode %dx%d px (%d MP) image %d on page %d of %s: over the "
+                        "%d MP per-raster budget (AIQ_MAX_IMAGE_PIXELS); the page's text is still indexed",
+                        width,
+                        height,
+                        pixels // 1_000_000,
+                        img_idx,
+                        page_num + 1,
+                        pdf_path,
+                        max_pixels // 1_000_000,
                     )
+                    continue
+                candidates.append(
+                    {"page_number": page_num + 1, "image_index": img_idx, "width": width, "height": height}
+                )
         finally:
             page.close()
-    return candidates
+    return candidates, over_budget
 
 
 def _close_bitmap(bitmap: Any) -> None:
@@ -1256,21 +1325,23 @@ def cap_images(images: list[dict[str, Any]], max_images: int) -> tuple[list[dict
 
 def _embedded_images_for_analysis(
     pdf_path: str, *, rendered_pages: set[int], enabled: bool
-) -> tuple[list[dict[str, Any]], int]:
-    """The embedded rasters worth a VLM call, and how many the cap left out.
+) -> tuple[list[dict[str, Any]], int, int]:
+    """The embedded rasters worth a VLM call, the cap's left-outs, and the oversized refusals.
 
     Each page is analysed once: a page rendered whole as a visual page carries
     its rasters in the render, so none are extracted from it. What remains is
-    capped at ``MAX_IMAGES_PER_DOCUMENT``.
+    capped at ``MAX_IMAGES_PER_DOCUMENT`` and refuses any single raster over
+    ``MAX_IMAGE_PIXELS``.
     """
     if not enabled:
-        return [], 0
-    images, over_cap = _extract_image_records(
+        return [], 0, 0
+    images, over_cap, over_pixel_budget = _extract_image_records(
         pdf_path,
         min_width=MIN_IMAGE_WIDTH_PX,
         min_height=MIN_IMAGE_HEIGHT_PX,
         skip_pages=rendered_pages,
         max_images=MAX_IMAGES_PER_DOCUMENT,
+        max_pixels=MAX_IMAGE_PIXELS,
     )
     if over_cap:
         logger.warning(
@@ -1280,7 +1351,14 @@ def _embedded_images_for_analysis(
             len(images),
             over_cap,
         )
-    return images, over_cap
+    if over_pixel_budget:
+        logger.warning(
+            "%s holds %d embedded image(s) over the %d MP per-raster budget; refused before decoding",
+            pdf_path,
+            over_pixel_budget,
+            MAX_IMAGE_PIXELS // 1_000_000,
+        )
+    return images, over_cap, over_pixel_budget
 
 
 def indexed_visual_type(content_type: str, *, extract_images: bool, extract_charts: bool) -> str | None:
@@ -3037,7 +3115,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
     def _record_file_counts(self, job: IngestionJobStatus, file_index: int, **counts: int) -> None:
         """Put extraction counts on a file's job status, where a later
-        "partially indexed" signal reads them (``images_over_cap`` today)."""
+        "partially indexed" signal reads them (``images_over_cap``,
+        ``images_over_pixel_budget`` today)."""
         with self._lock:
             if file_index < len(job.file_details):
                 job.file_details[file_index].metadata.update(counts)
@@ -4913,7 +4992,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # rendered whole above or transcribed as a scan (its one
                         # raster IS the page), at most MAX_IMAGES_PER_DOCUMENT.
                         with _stage(stages, "rasters"):
-                            images, images_over_cap = _embedded_images_for_analysis(
+                            images, images_over_cap, images_over_pixel_budget = _embedded_images_for_analysis(
                                 source_path,
                                 rendered_pages={page["page_number"] for page in drawing_pages_raw}
                                 | page_routes.scan_pages,
@@ -4921,6 +5000,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             )
                         if images_over_cap:
                             self._record_file_counts(job, i, images_over_cap=images_over_cap)
+                        if images_over_pixel_budget:
+                            self._record_file_counts(job, i, images_over_pixel_budget=images_over_pixel_budget)
                         if images and vlm_api_key:
                             self._record_unscreened_rasters(job, i)
 

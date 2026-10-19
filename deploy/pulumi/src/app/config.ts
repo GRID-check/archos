@@ -496,6 +496,9 @@ export function ingestWorkerEnv(w: AppWiring, livenessFile: string): EnvVar[] {
     ),
     { name: "GRID_ROLE", value: "ingest-worker" },
     { name: "AIQ_INGEST_MAX_WORKERS", value: String(w.cfg.ingestWorker.concurrency) },
+    // What one embedded raster may allocate before it is refused (adapter.py).
+    // Set from the stack where the tier's memory is, because it is a memory bound.
+    { name: "AIQ_MAX_IMAGE_PIXELS", value: String(w.cfg.ingestWorker.maxImagePixels) },
     { name: "GRID_INGEST_WORKER_DRAIN_SECONDS", value: String(w.cfg.ingestWorker.drainSeconds) },
     { name: "GRID_WORKER_LIVENESS_FILE", value: livenessFile },
   ];

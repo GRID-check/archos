@@ -870,7 +870,11 @@ document summary:
    Returns raw image bytes — **no VLM call yet**. Pages rendered whole in step 4
    are skipped, so each page is analysed once, and at most
    `AIQ_MAX_IMAGES_PER_DOCUMENT` (64, largest first) go to the VLM; the rest are
-   counted on the file's job status as `images_over_cap`. Identical rasters (a logo re-embedded on every
+   counted on the file's job status as `images_over_cap`. A single raster over
+   `AIQ_MAX_IMAGE_PIXELS` (256 MP) is refused from its metadata before it is
+   decoded — pypdfium2 cannot downscale an embedded image on decode, so a
+   20000x20000 px raster would be a ~1.6 GiB transient allocation — and counted
+   as `images_over_pixel_budget`, with its page, index and pixel size logged. Identical rasters (a logo re-embedded on every
    page, a reused plan) are content-hash deduped (SHA-256 of the re-encoded
    JPEG) so each unique image is captioned and indexed exactly once.
 4. **Rendered visual/vector pages** — `processing.render_visual_pages_no_vlm`,

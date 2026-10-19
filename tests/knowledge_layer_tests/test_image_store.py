@@ -235,6 +235,7 @@ def _prepare_pdf_with_one_raster(tmp_path, monkeypatch):
                 }
             ],
             0,
+            0,
         ),
     )
     monkeypatch.setattr(adapter, "analyze_visual", lambda *a, **k: ("image", "A photo of the facade.", {}))

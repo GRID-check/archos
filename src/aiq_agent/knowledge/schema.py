@@ -378,6 +378,8 @@ class FileProgress(BaseModel):
         description=(
             "Extraction counts for this file that the chunk count does not show, e.g. "
             "`images_over_cap`: embedded images left unanalysed by AIQ_MAX_IMAGES_PER_DOCUMENT; "
+            "`images_over_pixel_budget`: embedded images refused before decoding by "
+            "AIQ_MAX_IMAGE_PIXELS; "
             "`pages_transcribed`, `pages_transcription_failed`, `pages_over_ocr_cap`, "
             "`pages_not_transcribed_no_vlm`: scanned or garbled PDF pages and what became of them; "
             "`drawing_pages_over_cap`: drawing pages past AIQ_MAX_RENDERED_PAGES."

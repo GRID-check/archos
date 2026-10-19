@@ -152,7 +152,7 @@ def quiet_pdf_pipeline(monkeypatch):
 
     none = ResolvedCredential(api_key="", base_url="https://vlm.test/v1", model="test-vlm", source="none")
     monkeypatch.setattr(adapter_module, "resolve_vlm_credential", lambda organization_id=None: none)
-    monkeypatch.setattr(adapter_module, "_extract_image_records", lambda *a, **k: ([], 0))
+    monkeypatch.setattr(adapter_module, "_extract_image_records", lambda *a, **k: ([], 0, 0))
     monkeypatch.setattr(processing_module, "render_visual_pages_no_vlm", lambda *a, **k: [])
 
 
