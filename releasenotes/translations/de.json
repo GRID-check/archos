@@ -1204,6 +1204,10 @@
     "de": "Die Dateien zeigen jetzt den Stand jeder Datei: Entwurf, In Prüfung, Änderungen erbeten, Freigegeben, Veröffentlicht, Ersetzt, Abgelehnt oder Archiviert. Die Kennzeichnung erscheint nur bei Dateien mit mehr als einer Fassung und bei allem, was Piloti geschrieben hat."
   },
   {
+    "en": "Dateien opens again in a closed project. You can read its files as before; only changing them stays locked until the project is reopened.",
+    "de": "Dateien sind in einem geschlossenen Projekt wieder verfügbar. Sie können die Dateien wie bisher lesen; Änderungen bleiben gesperrt, bis Sie das Projekt erneut öffnen."
+  },
+  {
     "en": "Deep research and the Automation section are switched off for now; questions are answered in chat as before, and published skills keep working there. If your office needs either, talk to us: we can switch them on for your organization.",
     "de": "Tiefenrecherche und der Bereich Automatisierung sind vorerst ausgeschaltet; Fragen beantwortet Piloti wie bisher im Chat, und die veröffentlichten Skills funktionieren dort weiter. Braucht Ihr Büro eines davon, sprechen Sie uns an: Wir können beides für Ihre Organisation einschalten."
   },

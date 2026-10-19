@@ -1,0 +1,5 @@
+---
+fixes:
+  - >
+    Dateien opens again in a closed project. You can read its files as before;
+    only changing them stays locked until the project is reopened.

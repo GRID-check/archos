@@ -43,6 +43,7 @@ import {
   getRestrictedFolderIds,
   isRestrictedCollectionOf,
   listLevel,
+  projectMayWriteDocuments,
   readRestrictingFoldersOnPath,
   readableByEveryMember,
   readableFolderIdsFor,
@@ -70,6 +71,7 @@ import { heldFolderLevels } from './folder-roles'
 import { requireProjectAccess } from './projects'
 import { checkResourcePermission } from './resource-check'
 import { findProjectTenancy } from '@/lib/projects/repository'
+import { projectClosedError } from '@/lib/projects/project-status'
 
 const COLLECTION = 'proj_8f2c3b1e-0000-4000-8000-000000000001'
 const F = {
@@ -679,6 +681,37 @@ describe('a closed project (ADR-0090): closing opens no restricted folder', () =
     vi.mocked(checkResourcePermission).mockResolvedValue(false)
     expect((await clearanceOf(session('gf'), 'proj-1')).levels).toEqual(levelsOf('gf'))
     expect(checkResourcePermission).not.toHaveBeenCalled()
+  })
+})
+
+describe('projectMayWriteDocuments — the write ceiling never throws a denial', () => {
+  afterEach(() => {
+    vi.mocked(requireProjectAccess).mockReset()
+    vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
+  })
+
+  it('a grant is a yes', async () => {
+    expect(await projectMayWriteDocuments(session('gf'), 'proj-1')).toBe(true)
+  })
+
+  it('no grant is a no', async () => {
+    vi.mocked(requireProjectAccess).mockRejectedValue(new NotFoundError())
+    expect(await projectMayWriteDocuments(session('gf'), 'proj-1')).toBe(false)
+  })
+
+  it('a closed project is a no, not an error page (#1096)', async () => {
+    vi.mocked(requireProjectAccess).mockRejectedValue(projectClosedError())
+    expect(await projectMayWriteDocuments(session('gf'), 'proj-1')).toBe(false)
+  })
+
+  it('an outage still throws, so it never reads as a missing permission', async () => {
+    vi.mocked(requireProjectAccess).mockRejectedValue(new Error('WorkOS down'))
+    await expect(projectMayWriteDocuments(session('gf'), 'proj-1')).rejects.toThrow('WorkOS down')
+  })
+
+  it('any other 403 still throws', async () => {
+    vi.mocked(requireProjectAccess).mockRejectedValue(new ForbiddenError('something else'))
+    await expect(projectMayWriteDocuments(session('gf'), 'proj-1')).rejects.toBeInstanceOf(ForbiddenError)
   })
 })
 
