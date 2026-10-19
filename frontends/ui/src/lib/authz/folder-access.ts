@@ -46,7 +46,7 @@ import { requireProjectAccess } from './projects'
 import { checkResourcePermission } from './resource-check'
 import { resolveSubjectMembership } from './project-membership'
 import { findProjectTenancy } from '@/lib/projects/repository'
-import { isProjectClosed } from '@/lib/projects/project-status'
+import { isProjectClosed, isProjectClosedError } from '@/lib/projects/project-status'
 import {
   listCustomFolderNames,
   listProjectFolderTree,
@@ -292,13 +292,19 @@ async function filterUsersByFolderLevel(
   )
 }
 
-/** Whether the session may change the project's documents at all: the write ceiling. Never throws. */
+/**
+ * Whether the session may change the project's documents at all: the write
+ * ceiling. A denial is a plain no, and so is a closed project (ADR-0090): its
+ * write-only checks are refused outright rather than with a 404, and before
+ * this caught that refusal it escaped every read-only page that asks this,
+ * Dateien among them (#1096). Anything else is an outage and still throws.
+ */
 export async function projectMayWriteDocuments(session: AuthorizedSession, projectId: string): Promise<boolean> {
   try {
     await requireProjectAccess(session, projectId, DOCUMENT_WRITE_PERMISSIONS)
     return true
   } catch (error) {
-    if (error instanceof NotFoundError) return false
+    if (error instanceof NotFoundError || isProjectClosedError(error)) return false
     throw error
   }
 }
