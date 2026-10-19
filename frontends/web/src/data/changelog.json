@@ -43,6 +43,15 @@
               "de": "Uploads sind schneller abgeschlossen. Wird ein Dokument von der Inhaltsprüfung abgelehnt, werden seine Tabellen nicht mehr zuerst ausgelesen."
             }
           ]
+        },
+        {
+          "key": "fixes",
+          "notes": [
+            {
+              "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
+              "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
+            }
+          ]
         }
       ]
     },

@@ -424,6 +424,10 @@
     "de": "Ein Foto wird jetzt zusätzlich zum dargestellten Inhalt als „Foto“ gekennzeichnet: Ein Foto eines Grundrisses ist sowohl „Foto“ als auch „Grundriss“."
   },
   {
+    "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
+    "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
+  },
+  {
     "en": "A precedent from another Bundesland is now marked as decided under a different Bauordnung.",
     "de": "Ein Präzedenzfall aus einem anderen Bundesland ist jetzt als nach einer anderen Bauordnung entschieden gekennzeichnet."
   },
