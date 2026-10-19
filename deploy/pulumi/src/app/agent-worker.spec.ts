@@ -113,11 +113,18 @@ describe("the agent-worker tier", () => {
       /^TABLE = "([a-z_]+)"$/m,
     )?.[1];
     const dead = read("src", "aiq_agent", "common", "claim_queue.py").match(/^DEAD = "([a-z_]+)"$/m)?.[1];
+    const cancelled = read("src", "aiq_agent", "common", "claim_queue.py").match(
+      /^CANCELLED = "([a-z_]+)"$/m,
+    )?.[1];
 
     expect(table).toBe("research_job_queue");
     expect(dead).toBeDefined();
-    // Dead rows stay in the table as a trace; they must not keep replicas up.
-    expect(RESEARCH_QUEUE_DEPTH_QUERY).toBe(`SELECT COUNT(*) FROM ${table} WHERE status <> '${dead}'`);
+    expect(cancelled).toBeDefined();
+    // Retired rows (dead, cancelled) stay in the table as traces; they must not
+    // keep replicas up.
+    expect(RESEARCH_QUEUE_DEPTH_QUERY).toBe(
+      `SELECT COUNT(*) FROM ${table} WHERE status NOT IN ('${dead}', '${cancelled}')`,
+    );
   });
 
   it("counts every row a worker could still run, because a finished job's row is deleted", () => {

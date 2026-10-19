@@ -62,8 +62,15 @@ describe("the ingest-worker tier", () => {
     expect(table).toBeDefined();
     const dead = read("src", "aiq_agent", "common", "claim_queue.py").match(/^DEAD = "([a-z_]+)"$/m)?.[1];
     expect(dead).toBeDefined();
-    // Dead rows stay in the table as a trace; they must not keep replicas up.
-    expect(QUEUE_DEPTH_QUERY).toBe(`SELECT COUNT(*) FROM ${table} WHERE status <> '${dead}'`);
+    const cancelled = read("src", "aiq_agent", "common", "claim_queue.py").match(
+      /^CANCELLED = "([a-z_]+)"$/m,
+    )?.[1];
+    expect(cancelled).toBeDefined();
+    // Retired rows (dead, cancelled) stay in the table as traces; they must not
+    // keep replicas up.
+    expect(QUEUE_DEPTH_QUERY).toBe(
+      `SELECT COUNT(*) FROM ${table} WHERE status NOT IN ('${dead}', '${cancelled}')`,
+    );
   });
 
   it("reads the queue through the one TriggerAuthentication both Python tiers share", () => {

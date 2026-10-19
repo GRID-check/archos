@@ -15,9 +15,9 @@ export const QUEUE_TABLE = "bff_job_queue";
 
 /**
  * KEDA's measure of the pool's work: every job a worker could still run or is
- * running, dead rows left out (`queueDepthQuery`): a job that failed every
- * attempt waits for an operator, and counting it would hold a replica up forever
- * for work nothing will ever claim.
+ * running, retired rows (dead, cancelled) left out (`queueDepthQuery`): a job
+ * that failed every attempt waits for an operator, and counting it would hold a
+ * replica up forever for work nothing will ever claim.
  */
 export const BFF_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
 
