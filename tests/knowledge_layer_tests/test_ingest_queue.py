@@ -489,6 +489,29 @@ def test_cancelling_a_running_job_fails_its_next_heartbeat_so_it_stops(db):
     assert ingest_queue.claim_next("w2", **CLAIM) is None  # and no one claims it again
 
 
+def test_cancel_reports_the_status_it_stopped_when_a_worker_claims_in_between(db, monkeypatch):
+    """A claim landing as the cancel runs is reported as ``claimed``, never ``queued``.
+
+    ``cancel`` used to read the status, then update ``queued`` or ``claimed`` in
+    one go: a worker that claimed between the two was reported as ``queued``, and
+    the dispatcher settled the status of a job a worker held. The worker here
+    claims right before the cancel's first statement runs.
+    """
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+    stop_if = ingest_queue.QUEUE._cancel_if
+
+    def _claimed_first(conn, job_id, live, now):
+        if live == claim_queue.QUEUED:
+            ingest_queue.claim_next("w1", **CLAIM)
+        return stop_if(conn, job_id, live, now)
+
+    monkeypatch.setattr(ingest_queue.QUEUE, "_cancel_if", _claimed_first)
+
+    assert ingest_queue.cancel("a0") == "claimed"
+    assert ingest_queue.status_of("a0") == "cancelled"
+    assert ingest_queue.heartbeat("a0", "w1") is False
+
+
 def test_cancel_stops_at_a_job_that_is_finished_or_absent(db):
     assert ingest_queue.cancel("never-queued") is None
 

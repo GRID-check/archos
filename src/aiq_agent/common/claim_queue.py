@@ -616,6 +616,12 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
     def cancel(self, job_id: str) -> str | None:
         """Stop a live job before it finishes; the status it held (``queued``/``claimed``), or None.
 
+        The status returned is the one the update itself matched, never a read
+        before it: a worker that claims the row between a read and the write
+        would otherwise be reported as ``queued``, and the caller would settle
+        a status a worker holds. So a queued row is stopped first, in one
+        statement, and only then a claimed one.
+
         A queued row never reaches a worker. A claimed one is left to its worker:
         ``heartbeat`` matches only a CLAIMED row, so the worker's next beat fails
         and it stops at its next ownership check, before it reads or writes. The
@@ -630,29 +636,26 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
         self.ensure_table(url)
         now = "NOW()" if _is_postgres(url) else "CURRENT_TIMESTAMP"
         with self._engine_for(url).connect() as conn:
-            prior = conn.execute(
-                # Only module constants are interpolated; the id is bound.
-                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-                text(f"SELECT status FROM {self.table} WHERE job_id = :id"),
-                {"id": job_id},
-            ).scalar()
-            if prior not in (QUEUED, CLAIMED):
-                return None
-            result = conn.execute(
-                # `now` is a dialect literal, the rest module constants; values are bound.
-                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-                text(
-                    f"UPDATE {self.table} SET status = :cancelled, cancelled_at = {now}, payload = '' "
-                    "WHERE job_id = :id AND status IN (:queued, :claimed)"
-                ),
-                {"cancelled": CANCELLED, "queued": QUEUED, "claimed": CLAIMED, "id": job_id},
-            )
-            conn.commit()
-        if (result.rowcount or 0) == 0:
-            # Finished under us between the read and the write: nothing to stop.
+            prior = next((live for live in (QUEUED, CLAIMED) if self._cancel_if(conn, job_id, live, now)), None)
+        if prior is None:
+            # Retired, absent, or finished under us: nothing to stop.
             return None
         logger.info("%s: job %s cancelled (was %s)", self.name, job_id, prior)
-        return str(prior)
+        return prior
+
+    def _cancel_if(self, conn: Any, job_id: str, live: str, now: str) -> bool:
+        """Cancel ``job_id`` if its row is ``live`` right now, in one statement; whether it was."""
+        result = conn.execute(
+            # `now` is a dialect literal, the rest module constants; values are bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            text(
+                f"UPDATE {self.table} SET status = :cancelled, cancelled_at = {now}, payload = '' "
+                "WHERE job_id = :id AND status = :live"
+            ),
+            {"cancelled": CANCELLED, "live": live, "id": job_id},
+        )
+        conn.commit()
+        return bool(result.rowcount)
 
     def status_of(self, job_id: str) -> str | None:
         """The queue's status for a job, or None when it holds none (finished, or never queued)."""

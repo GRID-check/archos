@@ -266,7 +266,10 @@ def cancelled(status: IngestionJobStatus) -> IngestionJobStatus:
 def _queue_status(conn, job_id: str) -> str | None:
     """The job's row in the queue table as it stands, or None. A constant statement; the id is bound."""
     row = conn.execute(
-        text(f"SELECT status FROM {ingest_queue.TABLE} WHERE job_id = :job_id"), {"job_id": job_id}
+        # Only a module constant is interpolated; the id is bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+        text(f"SELECT status FROM {ingest_queue.TABLE} WHERE job_id = :job_id"),
+        {"job_id": job_id},
     ).scalar_one_or_none()
     return str(row) if row is not None else None
 
@@ -360,6 +363,24 @@ def put(status: IngestionJobStatus) -> bool:
     return True
 
 
+def _write_cancelled(conn, url: str, job_id: str) -> bool:
+    """Write ``cancelled`` over a live row; whether there was one."""
+    status = _read(conn, job_id)
+    if status is None or not _is_live(status):
+        return False
+    conn.execute(
+        # _now is a dialect-chosen literal; values are bound.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+        text(
+            f"UPDATE ingest_jobs SET status_json = :status_json, updated_at = {_now(url)}, owner = NULL "
+            "WHERE job_id = :job_id"
+        ),
+        {"job_id": job_id, "status_json": cancelled(status).model_dump_json(warnings=False)},
+    )
+    conn.commit()
+    return True
+
+
 def settle_cancelled(job_id: str) -> bool:
     """Settle a live row as ``cancelled``; whether one was live. Never raises.
 
@@ -376,21 +397,11 @@ def settle_cancelled(job_id: str) -> bool:
         _ensure_table(url)
         engine = DocumentMetadataStore._get_or_create_sync_engine(url)
         with engine.connect() as conn:
-            status = _read(conn, job_id)
-            if status is None or not _is_live(status):
-                return False
-            conn.execute(
-                # _now is a dialect-chosen literal; values are bound.
-                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-                text(
-                    f"UPDATE ingest_jobs SET status_json = :status_json, updated_at = {_now(url)}, owner = NULL "
-                    "WHERE job_id = :job_id"
-                ),
-                {"job_id": job_id, "status_json": cancelled(status).model_dump_json(warnings=False)},
-            )
-            conn.commit()
+            written = _write_cancelled(conn, url, job_id)
     except Exception:
         logger.warning("Failed to settle cancelled ingest job %s", job_id, exc_info=True)
+        return False
+    if not written:
         return False
     logger.info("Ingest job %s was cancelled; status settled", job_id)
     return True
