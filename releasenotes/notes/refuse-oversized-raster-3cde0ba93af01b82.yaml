@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    A plan set that contains an extremely large scanned image no longer fails
+    partway through: the oversized image is left out so the rest of the set
+    still uploads and becomes searchable.
