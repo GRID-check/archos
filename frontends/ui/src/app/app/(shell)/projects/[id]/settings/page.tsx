@@ -2,7 +2,6 @@ import type { JSX } from 'react'
 import { Suspense } from 'react'
 import { type Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import type { AuthorizedSession } from '@/lib/auth/types'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getProjectUsage } from '@/lib/budgets/service'
@@ -72,7 +71,7 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
               </BentoCell>
             }
           >
-            <SimilarProjectsSlot session={session} projectId={id} />
+            <SimilarProjectsSlot projectId={id} />
           </Suspense>
         }
         access={{
@@ -87,19 +86,24 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
   })
 }
 
-/** The similar-projects tile, read on its own so the dashboard does not wait for it. */
-async function SimilarProjectsSlot({
-  session,
-  projectId,
-}: {
-  session: AuthorizedSession
-  projectId: string
-}): Promise<JSX.Element> {
-  const page = await getSimilarProjects(session, projectId)
-  return (
-    <SimilarProjectsTile
-      page={page}
-      href={settingsSectionHref(projectId, 'references')}
-    />
-  )
+/**
+ * The similar-projects tile, read on its own so the dashboard does not wait for it.
+ *
+ * It opens its own tenant slot rather than taking the page's session as a prop.
+ * React renders a component under `<Suspense>` after the page's
+ * `withPageSession` callback has returned, so that slot is already closed and
+ * every query here failed with `MissingTenantContextError`, taking the whole
+ * Overview down whenever the organization had a closed project to compare
+ * against (issue #1097).
+ */
+async function SimilarProjectsSlot({ projectId }: { projectId: string }): Promise<JSX.Element> {
+  return withPageSession(async (session) => {
+    const page = await getSimilarProjects(session, projectId)
+    return (
+      <SimilarProjectsTile
+        page={page}
+        href={settingsSectionHref(projectId, 'references')}
+      />
+    )
+  })
 }
