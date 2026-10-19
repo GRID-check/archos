@@ -299,11 +299,12 @@ class FairIngestScheduler:
         finally:
             with self._cond:
                 self._busy -= 1
-                # Notify only after a claim that FOUND something. A woken
-                # sibling resumes with ``source_was_empty=False`` and re-asks
-                # at once, which is how a burst of queued jobs reaches every
-                # worker in parallel instead of one per poll interval. An
-                # EMPTY claim must wake nobody: the woken sibling claims again,
+                # Notify only after a claim that FOUND something, once its job
+                # has run: a woken sibling resumes with
+                # ``source_was_empty=False`` and re-asks at once. A parked
+                # worker does not wait for this to see new queue work; it
+                # re-asks on its own every ``idle_poll_seconds``. An EMPTY
+                # claim must wake nobody: the woken sibling claims again,
                 # its own empty claim woke the next, and the workers relayed
                 # the claim round and round instead of sleeping out
                 # ``idle_poll_seconds``. Measured on this class with 3 workers,
