@@ -184,6 +184,17 @@ they are.
 
 ## More Information
 
+* **Measured after this record was written (2026-10-19): the text pass was not
+  page-bounded.** "`_extract_text_from_pdf` already reads one page at a time"
+  held for the control flow, not for memory: pdfplumber caches each page's
+  parsed objects until `Page.close()`, and no page was closed, so the pass held
+  the whole document (77 MiB per CAD sheet of 20 000 paths, 3.3 GiB for 40).
+  Two plan collections OOM-killed a 12 GiB worker there, before any raster was
+  touched. Closing each page, and reading a page over `AIQ_PDF_PAGE_MAX_OBJECTS`
+  with PDFium instead of pdfplumber, made the pass flat (366 MiB for the same
+  40 sheets). Any window this record builds must keep that property: a page
+  leaves pdfplumber closed, or the window bounds nothing.
+
 * Revisit when ingest wall time p95 stops improving under the window, or when the
   fleet's vision calls already saturate `AIQ_VLM_FLEET_CONCURRENCY` — at that
   point the pipeline's win is CPU-only and the next lever is the provider, not

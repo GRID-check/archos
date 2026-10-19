@@ -134,6 +134,34 @@ Before the fix this line reported a cap that was applied *after* everything had
 been decoded, so it never bounded the work. After the fix it is the cap doing
 its job, and it should be read together with the `rasters:start` line above.
 
+### 3a. The text pass (2026-10-19)
+
+The raster lines above never appeared before the 2026-10-19 kills, because
+those died earlier: inside `_extract_text_from_pdf`, before even its
+`Extracted text from N PDF pages` line. pdfplumber caches every parsed object on
+its `Page` until the page is closed, and nothing closed them, so a file of CAD
+sheets held every sheet's paths until the last page was read (about 77 MiB per
+sheet of 20 000 paths). Two 26-29 MB plan collections crossed 12 GiB that way.
+
+The fixed build adds three lines, so the window between `file:start` and
+`rasters:start` is measured:
+
+```
+[ingest-mem] text:done pages=<n> without_layout=<m> rss=…MiB
+[ingest-mem] tables:done tables=<n> rss=…MiB
+[ingest-mem] file:released <name> rss=…MiB
+```
+
+- `text:done` should sit within a few hundred MiB of `file:start` whatever the
+  page count. `without_layout=m` is the pages over `AIQ_PDF_PAGE_MAX_OBJECTS`
+  that were read by PDFium instead (their text only); the same count is on the
+  file's job status as `pages_read_without_layout`.
+- `file:released` comes after `gc.collect()` and `malloc_trim(0)`. It should
+  land back near the idle figure. Before it, the next file started from the last
+  one's high-water mark (7.2 GiB after a 726-page document).
+- `[ingest-perf]` is written in the file's `finally`, so a killed process never
+  writes it. Its absence says the process died, not where.
+
 ## 4. Queue depth and dead jobs
 
 The scaler reads `ingest_job_queue`, so the same table is what to look at when

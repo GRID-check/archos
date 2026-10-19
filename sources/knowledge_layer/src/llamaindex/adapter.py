@@ -372,6 +372,20 @@ MAX_RENDERED_PAGES = _env_int("AIQ_MAX_RENDERED_PAGES", 20, minimum=0)
 # AIQ_RENDER_VISUAL_PAGES.
 MAX_OCR_PAGES = _env_int("AIQ_MAX_OCR_PAGES", 500, minimum=0)
 
+# @environment_variable AIQ_PDF_PAGE_MAX_OBJECTS
+# @category Knowledge Layer
+# @type int
+# @default 50000
+# @required false
+# Page objects (paths, text runs, rasters, counted by PDFium) past which a PDF
+# page's text is read by PDFium instead of pdfplumber. pdfplumber turns every
+# vector path into Python dicts and runs its table finder over every edge:
+# measured at about 4 KiB and 0.1 ms per object, so a CAD sheet of 500 000
+# paths costs about 2 GiB and minutes for its title block. Such a page keeps
+# its text, without captioned tables or line styles, and is counted on the
+# file's job status (`pages_read_without_layout`). 0 lifts the ceiling.
+PDF_PAGE_MAX_OBJECTS = _env_int("AIQ_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
+
 # @environment_variable AIQ_VLM_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type int
@@ -1251,6 +1265,25 @@ def _log_memory(stage: str) -> None:
     logger.info("[ingest-mem] %s rss=%.0fMiB", stage, rss)
 
 
+def _release_memory(file_name: str) -> None:
+    """Hand a finished file's memory back to the OS, and log what the process still holds.
+
+    pdfplumber's parsed pages sit in reference cycles, so leaving its ``with``
+    block frees nothing until the cycle collector runs, and glibc keeps what
+    is freed in its arenas. Measured on eight CAD sheets: 878 MiB after the
+    text pass, 583 MiB after ``gc.collect()``, 354 MiB after ``malloc_trim``.
+    Without it a worker carried a 726-page file's 7.2 GiB into the next file
+    (2026-10-19). Linux/glibc only; elsewhere the collect alone runs.
+    """
+    import ctypes
+    import gc
+
+    gc.collect()
+    with contextlib.suppress(OSError, AttributeError):
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    _log_memory(f"file:released {file_name}")
+
+
 def _raster_record(
     pil_image: Any, page_number: int, img_idx: int, size: tuple[int, int], seen_hashes: set[str]
 ) -> dict[str, Any] | None:
@@ -1377,7 +1410,9 @@ def indexed_visual_type(content_type: str, *, extract_images: bool, extract_char
     return content_type if extract_images else None
 
 
-def _extract_tables_from_pdf(pdf_path: str, taken: dict[int, list[tuple]] | None = None) -> list[dict[str, Any]]:
+def _extract_tables_from_pdf(
+    pdf_path: str, taken: dict[int, list[tuple]] | None = None, skip_pages: Sequence[int] = ()
+) -> list[dict[str, Any]]:
     """
     Extract tables from a PDF file using pdfplumber.
 
@@ -1388,6 +1423,10 @@ def _extract_tables_from_pdf(pdf_path: str, taken: dict[int, list[tuple]] | None
             ``table_boxes``). Those are skipped: indexed again here, every OIB
             table stood in the index twice, as „Tabelle 3" and as
             „[TABLE from page 30]", under two competing citations.
+        skip_pages: 1-based pages not to look at, the text pass's
+            ``dense_pages``: a table finder over hundreds of thousands of
+            edges is the cost the page ceiling exists to refuse. Every page
+            is closed once read, for the reason ``_extract_text_from_pdf`` gives.
 
     Returns:
         List of dicts with 'table_text' (markdown), 'page_number', 'table_index'.
@@ -1402,34 +1441,46 @@ def _extract_tables_from_pdf(pdf_path: str, taken: dict[int, list[tuple]] | None
     tables = []
     try:
         with pdfplumber.open(pdf_path) as pdf:
+            skipped = set(skip_pages)
             for page_num, page in enumerate(pdf.pages):
-                skip = taken.get(page_num + 1) or []
-                for table_idx, found in enumerate(page.find_tables()):
-                    if tuple(found.bbox) in skip:
-                        continue
-                    table = found.extract()
-                    if table and len(table) > 1:  # Has header and at least one row
-                        # Convert to markdown format
-                        markdown = _table_to_markdown(table)
-                        if markdown:
-                            tables.append(
-                                {
-                                    "table_text": markdown,
-                                    # The raw rows, for the header-repeating row groups
-                                    # ``uncaptioned_table_documents`` indexes.
-                                    "cells": table,
-                                    "page_number": page_num + 1,
-                                    "table_index": table_idx,
-                                    "rows": len(table),
-                                    "cols": len(table[0]) if table else 0,
-                                }
-                            )
+                if page_num + 1 in skipped:
+                    continue
+                try:
+                    tables.extend(_page_tables(page, page_num, taken.get(page_num + 1) or []))
+                finally:
+                    page.close()
 
         logger.info(f"Extracted {len(tables)} tables from {pdf_path}")
 
     except Exception as e:
         logger.error(f"Error extracting tables from PDF: {e}")
 
+    return tables
+
+
+def _page_tables(page: Any, page_num: int, skip: list[tuple]) -> list[dict[str, Any]]:
+    """The uncaptioned tables on one pdfplumber page (0-based ``page_num``), minus the ``skip`` boxes."""
+    tables = []
+    for table_idx, found in enumerate(page.find_tables()):
+        if tuple(found.bbox) in skip:
+            continue
+        table = found.extract()
+        if not table or len(table) < 2:  # a header and at least one row
+            continue
+        markdown = _table_to_markdown(table)
+        if markdown:
+            tables.append(
+                {
+                    "table_text": markdown,
+                    # The raw rows, for the header-repeating row groups
+                    # ``uncaptioned_table_documents`` indexes.
+                    "cells": table,
+                    "page_number": page_num + 1,
+                    "table_index": table_idx,
+                    "rows": len(table),
+                    "cols": len(table[0]),
+                }
+            )
     return tables
 
 
@@ -1493,13 +1544,23 @@ class PdfTextPages(list):
 
     A list, so every caller that iterates pages is unchanged. ``failed_pages``
     is the 1-based numbers of pages whose extraction raised; ``page_count`` is
-    how many pages the PDF has (0 when it could not be opened).
+    how many pages the PDF has (0 when it could not be opened);
+    ``dense_pages`` the pages over ``PDF_PAGE_MAX_OBJECTS``, read by PDFium
+    without layout (no captioned tables, no line styles).
     """
 
-    def __init__(self, pages=(), *, failed_pages: list[int] | None = None, page_count: int = 0) -> None:
+    def __init__(
+        self,
+        pages=(),
+        *,
+        failed_pages: list[int] | None = None,
+        page_count: int = 0,
+        dense_pages: list[int] | None = None,
+    ) -> None:
         super().__init__(pages)
         self.failed_pages = failed_pages or []
         self.page_count = page_count
+        self.dense_pages = dense_pages or []
 
 
 #: The share of a PDF's pages that may fail to read before the file fails. Past
@@ -1567,6 +1628,83 @@ def _raster_count(page) -> int:
         return 1
 
 
+def _dense_page_texts(pdf_path: str, max_objects: int) -> dict[int, dict[str, Any]]:
+    """The pages of ``pdf_path`` holding more than ``max_objects`` page objects, read by PDFium.
+
+    Page number (1-based) to the page's text and raster count. Counting is
+    ``FPDFPage_CountObjects``, which parses the page but builds nothing per
+    object: 40 sheets of 20 000 paths count in well under a second. The PDFium
+    lock is held per page, as ``pdfium_lock`` asks. Fail-open: a PDF PDFium
+    cannot open, or a page it cannot load, is left to pdfplumber as before.
+    """
+    if max_objects <= 0:
+        return {}
+    import pypdfium2 as pdfium
+    from knowledge_layer.llamaindex.pdfium_lock import pdfium_lock
+
+    try:
+        with pdfium_lock():
+            document = pdfium.PdfDocument(pdf_path)
+            page_count = len(document)
+    except Exception as exc:  # noqa: BLE001 - the layout pass still reads every page
+        logger.warning("Could not count page objects in %s: %s", pdf_path, exc)
+        return {}
+    dense: dict[int, dict[str, Any]] = {}
+    try:
+        for index in range(page_count):
+            with pdfium_lock():
+                read = _dense_page_text(document, index, max_objects)
+            if read is not None:
+                dense[index + 1] = read
+    finally:
+        with pdfium_lock():
+            document.close()
+    return dense
+
+
+def _dense_page_text(document: Any, index: int, max_objects: int) -> dict[str, Any] | None:
+    """Page ``index``'s text and raster count when it is over ``max_objects``, else None. Inside ``pdfium_lock``."""
+    import pypdfium2.raw as pdfium_c
+
+    try:
+        page = document[index]
+    except Exception as exc:  # noqa: BLE001 - pdfplumber gets its own try at the page
+        logger.warning("Could not load page %d to count its objects: %s", index + 1, exc)
+        return None
+    try:
+        count = pdfium_c.FPDFPage_CountObjects(page.raw)
+        if count <= max_objects:
+            return None
+        textpage = page.get_textpage()
+        try:
+            text = textpage.get_text_range()
+        finally:
+            textpage.close()
+        rasters = sum(
+            1
+            for i in range(count)
+            if pdfium_c.FPDFPageObj_GetType(pdfium_c.FPDFPage_GetObject(page.raw, i)) == pdfium_c.FPDF_PAGEOBJ_IMAGE
+        )
+        return {"text": text, "image_count": rasters}
+    finally:
+        page.close()
+
+
+def _dense_page_entry(dense: dict[str, Any], page_num: int) -> dict[str, Any] | None:
+    """The text-pass entry for a page read by PDFium: its text, no tables, no line styles."""
+    text = _strip_watermark_lines(dense["text"])
+    if not text:
+        return None
+    return {
+        "page_number": page_num,
+        "text": text,
+        "tables": [],
+        "table_boxes": [],
+        "line_styles": [],
+        "image_count": dense["image_count"],
+    }
+
+
 def _extract_text_from_pdf(pdf_path: str) -> PdfTextPages:
     """Extract per-page text from a PDF without falling back to raw PDF bytes.
 
@@ -1574,6 +1712,15 @@ def _extract_text_from_pdf(pdf_path: str) -> PdfTextPages:
     the loop, and every page after it was dropped without a word. A failed page
     is now logged, skipped and counted in ``failed_pages``, and the caller
     decides with ``unreadable_pdf_verdict`` whether the file still stands.
+
+    Memory is one page, not the document. pdfplumber caches every parsed object
+    on its ``Page`` until the page is closed, and the pages hang off the open
+    ``PDF``: unclosed, a set of CAD sheets held about 77 MiB per sheet of
+    20 000 paths until the whole file was read, and two 26-29 MB plan
+    collections OOM-killed a 12 GiB worker before this function returned. A
+    page is closed as soon as its entry is built, and a page denser than
+    ``PDF_PAGE_MAX_OBJECTS`` never reaches pdfplumber at all
+    (``_dense_page_texts``).
     """
     try:
         import pdfplumber
@@ -1584,25 +1731,37 @@ def _extract_text_from_pdf(pdf_path: str) -> PdfTextPages:
     pages: list[dict[str, Any]] = []
     failed: list[int] = []
     page_count = 0
+    dense = _dense_page_texts(pdf_path, PDF_PAGE_MAX_OBJECTS)
     try:
         with pdfplumber.open(pdf_path) as pdf:
             page_count = len(pdf.pages)
             previous = None
             for page_num, page in enumerate(pdf.pages, start=1):
                 try:
-                    entry, previous = _read_pdf_page(page, page_num, previous, pdf_path)
+                    if page_num in dense:
+                        entry, previous = _dense_page_entry(dense[page_num], page_num), None
+                    else:
+                        entry, previous = _read_pdf_page(page, page_num, previous, pdf_path)
                 except Exception as exc:  # noqa: BLE001 - one bad page must not cost the rest
                     logger.warning("Text extraction failed on page %d of %s: %s", page_num, pdf_path, exc)
                     failed.append(page_num)
                     previous = None
                     continue
+                finally:
+                    page.close()
                 if entry is not None:
                     pages.append(entry)
-        logger.info("Extracted text from %d PDF pages in %s (%d unreadable)", len(pages), pdf_path, len(failed))
+        logger.info(
+            "Extracted text from %d PDF pages in %s (%d unreadable, %d read without layout)",
+            len(pages),
+            pdf_path,
+            len(failed),
+            len(dense),
+        )
     except Exception as e:
         logger.error("Error extracting PDF text: %s", e)
 
-    return PdfTextPages(pages, failed_pages=failed, page_count=page_count)
+    return PdfTextPages(pages, failed_pages=failed, page_count=page_count, dense_pages=sorted(dense))
 
 
 def _inside_any(obj: dict[str, Any], boxes: list[tuple]) -> bool:
@@ -4749,6 +4908,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     if is_pdf:
                         with _stage(stages, "text"):
                             text_pages = _extract_text_from_pdf(source_path)
+                        dense_pages = getattr(text_pages, "dense_pages", [])
+                        _log_memory(f"text:done pages={len(text_pages)} without_layout={len(dense_pages)}")
+                        if dense_pages:
+                            self._record_file_counts(job, i, pages_read_without_layout=len(dense_pages))
                         unreadable = unreadable_pdf_verdict(text_pages)
                         if unreadable:
                             self._update_file_status(job, i, FileStatus.FAILED, error=unreadable)
@@ -4779,7 +4942,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
                             taken = {page["page_number"]: page.get("table_boxes") or [] for page in text_pages}
                             with _stage(stages, "tables"):
-                                tables = _extract_tables_from_pdf(source_path, taken)
+                                tables = _extract_tables_from_pdf(source_path, taken, dense_pages)
+                            _log_memory(f"tables:done tables={len(tables)}")
                             table_documents = [
                                 document
                                 for table in tables
@@ -5523,6 +5687,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # not on the success path, so a held or failed file shows the
                     # stages it did reach: that is where the screening win reads.
                     _log_ingest_perf(file_name, stages)
+                    _release_memory(file_name)
                     # Still under the replacement lock: a quarantined re-upload
                     # holds its whole document (ADR-0086) until a reviewer
                     # acts, so its predecessor stops answering now.

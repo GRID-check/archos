@@ -337,3 +337,23 @@ def test_a_raster_over_the_pixel_budget_is_counted_on_the_file_status(tmp_path, 
     status = _ingest(ingestor, pipeline)
 
     assert status.file_details[0].metadata == {"images_over_pixel_budget": 1}
+
+
+def test_pages_read_without_layout_are_counted_and_kept_from_the_table_pass(
+    tmp_path, monkeypatch, ingestor, summary_db
+):
+    """A page over AIQ_PDF_PAGE_MAX_OBJECTS is a partial read, and the job status says so."""
+    pipeline = _Pipeline(tmp_path, monkeypatch, rendered_pages=())
+    table_calls: list = []
+    monkeypatch.setattr(
+        adapter,
+        "_extract_text_from_pdf",
+        lambda p: adapter.PdfTextPages([], page_count=3, dense_pages=[2, 3]),
+    )
+    monkeypatch.setattr(adapter, "_extract_tables_from_pdf", lambda *a, **k: table_calls.append(a) or [])
+    monkeypatch.setattr(LlamaIndexIngestor, "DEFAULT_EXTRACT_TABLES", True)
+
+    status = _ingest(ingestor, pipeline)
+
+    assert status.file_details[0].metadata == {"pages_read_without_layout": 2}
+    assert [call[2] for call in table_calls] == [[2, 3]]
