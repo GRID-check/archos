@@ -47,7 +47,7 @@ The phase model:
 | `processing` | the backend reading and indexing | no — sweep + elapsed |
 | `ready` / `held` / `stored` / `failed` / `canceled` | nothing | terminal |
 
-Two terminal phases are neither a success nor a failure:
+Three terminal phases are neither a success nor a failure:
 
 - **`held`**, „Zurückgehalten“ (“Held back”), in the warning colour: the content
   check held the file back (ADR-0086). The row lists what was found
@@ -63,6 +63,14 @@ Two terminal phases are neither a success nor a failure:
 - **`stored`**, „Abgelegt“ (“Filed”), muted: the bytes are kept and nothing
   read them (the document's `uploaded` / `stored` status). Not „Zitierbar“,
   because Piloti cannot cite it. The header counts it as added.
+- **`canceled`**, „Abgebrochen“ (“Cancelled”), muted: the reader stopped it. Two
+  acts land here and read the same. While the bytes are still moving the row's
+  ✕ aborts the transport. Once the server holds them and is reading the file the
+  row offers „Lesen abbrechen“ instead (a struck circle, not an ✕): that calls
+  `POST /api/documents/{id}/cancel` and settles the document `cancelled`. Either
+  way nothing was indexed, the bytes stay, and a re-ingest reads them again —
+  never a failure, so never red, and offerable to retry (`retryFile`) because
+  reading the same bytes again can work.
 
 A fresh file the server refuses because the document it would replace waits in
 the Quarantäne (409, `details.reason: quarantined`, `assertMayReplaceHeld`)
