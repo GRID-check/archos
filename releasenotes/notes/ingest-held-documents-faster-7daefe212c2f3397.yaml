@@ -1,0 +1,5 @@
+---
+improvements:
+  - >
+    Uploads finish sooner. A document the content check turns away no longer
+    spends time reading its tables first.
