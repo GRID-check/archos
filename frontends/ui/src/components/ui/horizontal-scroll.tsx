@@ -15,6 +15,8 @@
 
 import { type HTMLAttributes, type ReactNode, useLayoutEffect, useRef, useState } from 'react'
 
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+
 import { cn } from '@/lib/utils'
 
 /** How far into the content each fade reaches. */
@@ -32,6 +34,10 @@ const maskFor = ({ start, end }: Overflow): string | undefined => {
   return `linear-gradient(to right, ${from}, ${to})`
 }
 
+/** A small paper disc, so the chevron reads over whatever text the fade is cutting. */
+const CUE_CLASS =
+  'pointer-events-none absolute top-1/2 size-6 -translate-y-1/2 rounded-full border border-border bg-card p-1 text-muted-foreground shadow-xs'
+
 export interface HorizontalScrollProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode
   /**
@@ -42,6 +48,12 @@ export interface HorizontalScrollProps extends HTMLAttributes<HTMLDivElement> {
    * cannot, and the column that did not fit was simply out of reach.
    */
   'aria-label': string
+  /**
+   * Draw a chevron on each edge that hides content. A fade says "cut", a
+   * chevron says "more this way": for a tab strip whose last entry is the one
+   * the reader came for, and which a fade alone leaves looking merely clipped.
+   */
+  cue?: boolean
 }
 
 export function HorizontalScroll({
@@ -49,6 +61,7 @@ export function HorizontalScroll({
   className,
   style,
   'aria-label': label,
+  cue = false,
   ...props
 }: HorizontalScrollProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -87,7 +100,7 @@ export function HorizontalScroll({
   // landmark: every table in an answer as a named region would bury the ones
   // that need the keyboard among dozens that do not.
   const scrollable = overflow.start || overflow.end
-  return (
+  const scroller = (
     <div
       ref={ref}
       role={scrollable ? 'region' : undefined}
@@ -105,6 +118,24 @@ export function HorizontalScroll({
       <div ref={content} className="w-fit min-w-full">
         {children}
       </div>
+    </div>
+  )
+  if (!cue) return scroller
+  return (
+    <div className="relative">
+      {scroller}
+      {overflow.start && (
+        <ChevronLeft
+          aria-hidden
+          className={CUE_CLASS + ' left-1'}
+        />
+      )}
+      {overflow.end && (
+        <ChevronRight
+          aria-hidden
+          className={CUE_CLASS + ' right-1'}
+        />
+      )}
     </div>
   )
 }

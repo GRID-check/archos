@@ -1,11 +1,36 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import * as pulumi from "@pulumi/pulumi";
 import { QUEUE_DEPTH_QUERY } from "./ingest-worker";
+import { baseStackConfig } from "../test-support/stack-config";
 
 // src/app -> src -> deploy/pulumi -> deploy -> repo root
 const repoRoot = join(__dirname, "..", "..", "..", "..");
 const read = (...parts: string[]) => readFileSync(join(repoRoot, ...parts), "utf8");
+
+// The program's own resolved config, not a regex over the file next door: the
+// default lives in `src/config.ts`, the env wiring in `src/app/config.ts`.
+pulumi.runtime.setMocks(
+  {
+    newResource: (args: pulumi.runtime.MockResourceArgs) => ({
+      id: `${args.name}-id`,
+      state: { ...args.inputs, metadata: args.inputs.metadata ?? { name: args.name } },
+    }),
+    call: () => ({}),
+  },
+  "grid-oib",
+  "test",
+  false,
+);
+
+async function load() {
+  pulumi.runtime.setAllConfig({
+    ...baseStackConfig(),
+    "grid-oib:observabilityEnabled": "false",
+  });
+  return import("../config").then((m) => m.loadConfig());
+}
 
 const pythonSources = [
   read("frontends", "aiq_api", "src", "aiq_api", "jobs", "ingest_dispatch.py"),
@@ -48,8 +73,39 @@ describe("the ingest-worker tier", () => {
     expect(read("deploy", "pulumi", "src", "app", "ingest-worker.ts")).toContain("JOBS_QUEUE_AUTH");
   });
 
+  it("caps prod at three workers on the batch group, sized for big PDFs", () => {
+    // Five took the app nodes down one after another, and big PDFs were
+    // OOMKilled at 6Gi (2026-10). The provider budget would allow five; node
+    // memory is the bound here. Three at their 12Gi limit fit one 64 GB node.
+    const prod = read("deploy", "pulumi", "Pulumi.prod.yaml");
+    const knob = (key: string) => prod.match(new RegExp(`^\\s*grid-oib:${key}: "?([^"\\s]+)"?\\s*$`, "m"))?.[1];
+
+    expect(knob("ingestWorkerMaxReplicas")).toBe("3");
+    expect(knob("nodeGroupBatch")).toBe("batch");
+    expect(knob("ingestWorkerRequestsCpu")).toBe("500m");
+    expect(knob("ingestWorkerRequestsMemory")).toBe("8Gi");
+    expect(knob("ingestWorkerLimitsCpu")).toBe("4");
+    expect(knob("ingestWorkerLimitsMemory")).toBe("12Gi");
+  });
+
   it("runs the role the entrypoint knows", () => {
     expect(read("deploy", "entrypoint.py")).toContain('role == "ingest-worker"');
     expect(configSource).toContain('{ name: "GRID_ROLE", value: "ingest-worker" }');
+  });
+
+  it("states the raster pixel budget the Python module defaults to", async () => {
+    // Two sides, one number: a drift here either refuses a real plan scan or
+    // lets one decode grow past the pod's limit. The Python side is read as
+    // source, the Pulumi side from the loaded config, like the provider-budget
+    // tests' `cfg.providerLimits`.
+    const cfg = await load();
+    const python = read("sources", "knowledge_layer", "src", "llamaindex", "adapter.py").match(
+      /MAX_IMAGE_PIXELS = _env_int\("AIQ_MAX_IMAGE_PIXELS", ([\d_]+)/,
+    )?.[1];
+    expect(python).toBeDefined();
+    expect(cfg.ingestWorker.maxImagePixels).toBe(Number(python!.replace(/_/g, "")));
+    expect(configSource).toContain(
+      '{ name: "AIQ_MAX_IMAGE_PIXELS", value: String(w.cfg.ingestWorker.maxImagePixels) }',
+    );
   });
 });

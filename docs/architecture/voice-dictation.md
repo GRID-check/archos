@@ -7,13 +7,21 @@ would have typed.
 
 ## What is true when it works
 
-- The button sits in the composer's control row, before the paperclip.
-- While recording, the button shows a live waveform of the microphone level
-  and the elapsed seconds (`AudioWave`, `frontends/ui/src/components/ui/audio-wave.tsx`).
+- The button sits in the composer's control row, between the paperclip and
+  Send, where the thumb ends up.
+- While recording with a mouse, the button shows a live waveform of the
+  microphone level and the elapsed seconds (`AudioWave`,
+  `frontends/ui/src/components/ui/audio-wave.tsx`). On a touch screen the
+  button stays a 44px Stop square, so the row never reflows, and a full-width
+  strip above the row (`DictationStrip`) shows the level, the time against the
+  45-second limit and a progress line; the whole strip is the Stop target.
 - Recording stops by itself at 45 seconds (`MAX_DICTATION_SECONDS`).
 - A browser with no microphone API, no supported container, a page that is not
   `https`, or a microphone permission the member denied gets the button
-  **disabled**, with the reason on hover and on keyboard focus.
+  **unavailable** (`aria-disabled`, dimmed), with the reason on hover and on
+  keyboard focus, and, on a press, as a line under the composer: a touch
+  screen has no hover, and a disabled button would answer a finger with
+  nothing.
 - Chromium and Firefox record WebM/Opus (Firefox also Ogg); Safari records
   MP4/AAC, sent as `m4a`. A browser offering none of them gets the disabled
   button.

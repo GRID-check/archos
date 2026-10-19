@@ -91,6 +91,10 @@ vi.mock('@/lib/inbox/repository', () => ({
   archiveInboxItem: vi.fn(),
   countPendingInboxItems: vi.fn(),
   listInboxItems: vi.fn(),
+  countInboxFilters: vi.fn(async () => ({ requests: 0, unread: 0 })),
+  markAnchorItemsRead: vi.fn(),
+  markInboxItemsUnread: vi.fn(),
+  unarchiveInboxItem: vi.fn(),
   markAllInboxItemsRead: vi.fn(),
   markInboxItemsRead: vi.fn(),
   markItemsInertForResource: vi.fn(),
@@ -403,10 +407,28 @@ describe('emitting the same notification twice (matrix D23, spec IB-8)', () => {
 
     expect(queries).toHaveLength(1)
     expect(queries[0]!.sql).toContain('on conflict ("recipient_user_id","group_key") do update set')
-    expect(queries[0]!.sql).toContain('"count" = "inbox_items"."count" + 1')
+    // The stored count plus what the incoming row stands for: 1 for a
+    // plain emission, N for one emission that folds N occurrences (`InboxEmission.occurrences`).
+    expect(queries[0]!.sql).toContain('"count" = "inbox_items"."count" + excluded.count')
     // A new occurrence is new information, so the group resurfaces.
     expect(queries[0]!.sql).toContain('"read_at" = ')
     expect(queries[0]!.sql).not.toContain('do nothing')
+  })
+
+  it('adds exactly one for a plain emission, and N for one emission standing for N occurrences', async () => {
+    await emitInboxItems([emission])
+    await emitInboxItems([{ ...emission, occurrences: 4 }])
+
+    const [plain] = vi.mocked(upsertInboxItems).mock.calls[0]![0] as NewInboxItem[]
+    const [folded] = vi.mocked(upsertInboxItems).mock.calls[1]![0] as NewInboxItem[]
+    expect(plain!.count).toBe(1)
+    expect(folded!.count).toBe(4)
+
+    // …and that is the value the insert carries, so `excluded.count` adds it.
+    const queries = captureSql([['item_1']])
+    const inbox = await vi.importActual<typeof import('@/lib/inbox/repository')>('@/lib/inbox/repository')
+    await inbox.upsertInboxItems([{ ...folded!, payload: {} }])
+    expect(queries[0]!.params).toContain(4)
   })
 
   it('drops the actor\'s own copy, so a re-emission cannot self-notify either', async () => {

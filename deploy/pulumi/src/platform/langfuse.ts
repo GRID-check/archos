@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "./scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
 import { GridConfig, pullPolicyFor } from "../config";
@@ -13,7 +14,7 @@ import {
   startupBudgetSeconds,
 } from "./rollout";
 import { GATEWAY_NAME } from "./gateway";
-import { OBSERVABILITY_VIEW_PERMISSION, platformOidcSecurityPolicySpec } from "./platform-oidc";
+import { OBSERVABILITY_VIEW_PERMISSION, OIDC_CLIENT_SECRET_KEY, platformOidcSecurityPolicySpec } from "./platform-oidc";
 import { EDGE_TIMEOUT, LANGFUSE, PORT } from "../constants";
 
 /** Secret name. A constant rather than `secret.metadata.name` because the
@@ -24,10 +25,11 @@ const SECRETS_NAME = "langfuse-secrets"; // pragma: allowlist secret (Kubernetes
 export const LANGFUSE_SECRETS_NAME = SECRETS_NAME;
 
 /**
- * The uid/gid both Langfuse images run as, verified against the pinned
- * revision's Dockerfiles (4.56.0: `ARG UID=1001` / `ARG GID=1001`, the
- * `nextjs` and `expressjs` users baked into the UBI 9 micro rootfs, `/app`
- * chowned to them, and a numeric `USER ${UID}`).
+ * The uid/gid both Langfuse images run as. Re-checked on the 4.63.0 bump from
+ * the images' own config, where `User` is `"1001"` on both, and it matches
+ * 4.56.0's Dockerfiles (`ARG UID=1001` / `ARG GID=1001`, the `nextjs` and
+ * `expressjs` users baked into the UBI 9 micro rootfs, `/app` chowned to them,
+ * and a numeric `USER ${UID}`).
  *
  * Named because it is a fact ABOUT THE IMAGE, not a preference: it must be
  * re-checked on an image bump, and it deliberately differs from the 1000 the
@@ -91,12 +93,6 @@ export function langfuseDefaultMembershipEnv(
  */
 const WEB_STARTUP_PERIOD_SECONDS = 10;
 const WEB_STARTUP_FAILURE_THRESHOLD = 60;
-
-/**
- * Envoy Gateway requires the OIDC client secret under exactly this key
- * (`OIDC.ClientSecret`). Do not rename.
- */
-const OIDC_CLIENT_SECRET_KEY = "client-secret"; // pragma: allowlist secret (Secret key name fixed by the Envoy Gateway API, not a credential)
 
 /**
  * Keys in the Langfuse Secret. Exported for the collector's Basic-auth header.
@@ -512,6 +508,7 @@ export function installLangfuse(
             // no endpoint-propagation wait at all — the classic "a few 502s on
             // every deploy", which `endpointDrainSeconds` exists to remove.
             terminationGracePeriodSeconds: webShutdown.terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "langfuse-web",
@@ -634,6 +631,7 @@ export function installLangfuse(
             securityContext: podSecurity,
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.langfuse).terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "langfuse-worker",

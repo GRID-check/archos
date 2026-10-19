@@ -238,6 +238,14 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
     expect(buildProjectMemoryDigest).not.toHaveBeenCalled()
   })
 
+  it('names the person the socket is for, which the envelope signs for the agent to address them', async () => {
+    getGridSession.mockResolvedValue({ ...SESSION, organizationName: 'Atelier Nord' })
+
+    const body = await (await upgrade()).json()
+
+    expect(body.requester).toEqual({ name: 'Someone', email: 'someone@grid.com', organizationName: 'Atelier Nord' })
+  })
+
   it('never loads or emits large prompt blocks during the handshake', async () => {
     loadProjectPromptView.mockResolvedValue('ä'.repeat(3101))
     const response = await upgrade()

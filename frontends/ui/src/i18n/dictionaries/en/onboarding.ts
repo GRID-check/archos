@@ -90,6 +90,10 @@ export const onboarding = {
         palette: 'Jump to anything',
         cheatsheet: 'All shortcuts',
       },
+      searchPhone: {
+        title: 'Search and jump',
+        body: 'The magnifier at the top takes you to any project, any section and the office filing. A few letters are enough.',
+      },
       projectWelcome: {
         title: 'Your project is set up',
         body: 'Piloti now knows the basics of this building. Here is where the work happens.',
@@ -109,6 +113,10 @@ export const onboarding = {
       projectArchiv: {
         title: 'Office filing: your office’s documents',
         body: 'Office filing sits above your projects, and every project searches it automatically. It starts empty: admins add documents, and everyone in the organization can read and cite them.',
+      },
+      projectArchivPhone: {
+        title: 'Office filing: your office’s documents',
+        body: 'Office filing sits above your projects, and every project searches it automatically. You find it under “More”, with everything that is not in the bar.',
       },
       filesOrArchiv: {
         title: 'Files or Office filing?',

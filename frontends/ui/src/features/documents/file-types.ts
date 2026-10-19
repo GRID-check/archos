@@ -1,7 +1,9 @@
+import type { MarkTally } from '@/lib/annotations/types'
 import type { DocumentAuthor } from '@/lib/db/schema'
 import type { FassungFacts } from '@/lib/documents/fassung'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
 import type { RevisionFacts } from '@/lib/documents/revision-facts'
+import type { QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import type {
   DocumentLifecycle,
   DocumentVersionState,
@@ -12,6 +14,8 @@ export interface FolderItem {
   parentId: string | null
   name: string
   path: string
+  /** What belongs in it, in a person's words (migration 0145); null or absent when nobody described it. */
+  description?: string | null
   createdAt?: string
   updatedAt?: string
   /**
@@ -66,6 +70,12 @@ export interface FileItem {
   createdAt: string
   /** Server-persisted reason a document is in `failed` status, if any. */
   errorMessage: string | null
+  /**
+   * Why the content check held it back (ADR-0086, ADR-0113), on a `quarantined`
+   * row; null or absent otherwise. Read it through `quarantineVerdictOf`, which
+   * also covers a row whose verdict is still only in `errorMessage`.
+   */
+  quarantine?: QuarantineVerdict | null
   /** One-sentence summary of the document content, if the backend generated one. */
   summary: string | null
   /** Number of pages the backend indexed for this document. */
@@ -134,6 +144,21 @@ export interface FileItem {
    * the purge ran, for „Quelle gelöscht am …". Null for every other document.
    */
   sourceDeletedAt?: string | null
+  /**
+   * Whether reading the document again may come out differently
+   * (`lib/documents/retry-policy.ts`). False only for a FAILED file whose
+   * failure is lasting (empty, encrypted, unparseable) and whose bytes and
+   * reader have not changed since: „Alle erneut lesen“ leaves it out, and its
+   * „Erneut lesen“ says to upload a new version instead. Absent reads as true,
+   * which is what every listing served before the field meant.
+   */
+  retryable?: boolean
+  /**
+   * The document's live Anmerkungen as the listing counted them for this
+   * reader: open and proposed on every Fassung, and how many are open with the
+   * reader as Zuständige. Null or absent: none, or a listing that did not count.
+   */
+  marks?: MarkTally | null
 }
 
 export interface FileAssignee {

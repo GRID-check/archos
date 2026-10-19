@@ -9,8 +9,13 @@ what this file exists to hold:
   in words the model cannot read as success.
 * **Nothing is guessed.** A name that resolves to two files, or to none, comes
   back as a question — never as a proposal naming one of them.
+
+The server is faked in ``turn`` below (it stores every proposal), so these tests
+see the tool the way it behaves when the BFF answers. What happens when it does
+not is in ``test_proposals.py``.
 """
 
+import uuid
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,6 +26,7 @@ from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
 from aiq_agent.knowledge.inventory import set_turn_documents
 from aiq_agent.knowledge.schema import AvailableDocument
+from aiq_agent.tools import proposals_client
 from aiq_agent.tools.files import resolve
 from aiq_agent.tools.files.register import ProposeFileChangeConfig
 from aiq_agent.tools.files.register import propose_file_change
@@ -58,8 +64,13 @@ def registry():
 
 @pytest.fixture(autouse=True)
 def turn(monkeypatch):
-    """A project-scoped turn that can see the inventory above."""
+    """A project-scoped turn that can see the inventory above, with a server that stores every proposal."""
+
+    async def store(kind, payload, *, card_index=None):
+        return str(uuid.uuid4())
+
     monkeypatch.setattr(pc, "get_project_id_from_context", lambda: "p1")
+    monkeypatch.setattr(proposals_client, "create_proposal", store)
     set_turn_documents(INVENTORY)
     yield
     set_turn_documents(None)
@@ -143,16 +154,15 @@ class TestProposalsNeverWrite:
         assert "NOCH NICHTS geändert" in result
         assert "sage nicht, dass es erledigt ist" in result
 
-    async def test_several_moves_land_on_one_card(self, registry):
-        """„Räum die Einreichunterlagen zusammen" is one decision, not four."""
+    async def test_several_moves_are_several_cards(self, registry):
+        """A stored proposal cannot grow: „Räum die Einreichunterlagen zusammen" is one card per move."""
         await _move(document="Brandschutzkonzept.pdf", target_folder="Einreichung")
         await _move(document="Grundriss OG.pdf", target_folder="Einreichung")
 
-        (card,) = registry.snapshot()
-        assert [item["document"] for item in card["operations"]] == [
-            "Brandschutzkonzept.pdf",
-            "Grundriss OG.pdf",
-        ]
+        first, second = registry.snapshot()
+        assert [item["document"] for item in first["operations"]] == ["Brandschutzkonzept.pdf"]
+        assert [item["document"] for item in second["operations"]] == ["Grundriss OG.pdf"]
+        assert first["proposal_id"] != second["proposal_id"]
 
     async def test_a_different_operation_opens_its_own_card(self, registry):
         """A move and a rename are two decisions and must be answerable apart."""
@@ -160,17 +170,6 @@ class TestProposalsNeverWrite:
         await _propose("rename", document="Grundriss OG.pdf", new_name="Grundriss Obergeschoss")
 
         assert [card["operation"] for card in registry.snapshot()] == ["move", "rename"]
-
-    async def test_the_card_stops_at_the_cap(self, registry):
-        """Past the cap a proposal is not a decision anyone reads before answering."""
-        from aiq_agent.cards.models import MAX_FILE_OPERATIONS
-
-        for _ in range(MAX_FILE_OPERATIONS + 2):
-            await _move(document="Grundriss OG.pdf", target_folder="Einreichung")
-
-        cards = registry.snapshot()
-        assert len(cards[0]["operations"]) == MAX_FILE_OPERATIONS
-        assert len(cards) == 2
 
     async def test_a_move_that_changes_nothing_is_not_proposed(self, registry):
         result = await _move(document="Grundriss EG.pdf", target_folder="Einreichung/Pläne")
@@ -225,7 +224,7 @@ class TestRefusals:
     async def test_a_run_with_no_card_channel_says_so_instead_of_succeeding(self):
         """No registry bound (a CLI run, an eval): the proposal was never shown."""
         result = await _move(document="Grundriss OG.pdf", target_folder="Einreichung")
-        assert "konnte also nicht" in result
+        assert "konnte nicht angelegt werden" in result
         assert "Es wurde nichts geändert" in result
 
     async def test_a_turn_that_sees_no_files_says_that_instead_of_guessing(self, registry):

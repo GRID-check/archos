@@ -29,6 +29,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemMedia, I
 import { PageHeader } from '@/components/ui/page-header'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatCalendarDate } from '@/lib/format'
+import { FOLDER_NAME_TAKEN_REASON } from '@/lib/projects/folder-bin-codes'
 
 export interface FolderBinPanelProps {
   projectId: string
@@ -68,7 +69,7 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
     } catch (error) {
       const reason = error instanceof FolderBinRequestError ? error.reason : null
       toast.error(
-        reason === 'folder-name-taken'
+        reason === FOLDER_NAME_TAKEN_REASON
           ? t('bin.restoreNameTaken', { name: entry.name })
           : reason === 'folder-read-only'
             ? t('bin.restoreReadOnly')
@@ -143,14 +144,19 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
               </ItemMedia>
               <ItemContent className="basis-[calc(100%-2.75rem)] sm:basis-auto">
                 <ItemTitle title={entry.path}>{entry.name}</ItemTitle>
-                <ItemDescription>
+                {/* What is in it first: it is the figure that says whether this
+                    is the folder to bring back, and the line used to end in
+                    „… 14 Do…" on a phone. Each fact its own line, wrapping
+                    below `sm` instead of cutting. */}
+                <ItemDescription className="whitespace-normal sm:truncate">
+                  {t('bin.contents', { documents: entry.documents, folders: entry.folders })}
+                </ItemDescription>
+                <ItemDescription className="whitespace-normal sm:truncate">
                   {entry.deletedBy.name
                     ? t('bin.deletedBy', { name: entry.deletedBy.name, date: date(entry.deletedAt) })
                     : t('bin.deletedOn', { date: date(entry.deletedAt) })}
-                  {' · '}
-                  {t('bin.contents', { documents: entry.documents, folders: entry.folders })}
                 </ItemDescription>
-                <ItemDescription>
+                <ItemDescription className="whitespace-normal sm:truncate">
                   {entry.status === 'purging'
                     ? t('bin.purging')
                     : entry.status === 'failed'
@@ -158,7 +164,12 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
                       : t('bin.purgeOn', { date: date(entry.purgeAfter) })}
                 </ItemDescription>
               </ItemContent>
-              <ItemActions className="w-full flex-wrap justify-end sm:w-auto sm:flex-nowrap">
+              {/* Restore at the start of the row, „Endgültig löschen" at the far
+                  end of it: the destructive action has the width of the row
+                  between it and the one a thumb reaches for. It used to sit 23px
+                  from Wiederherstellen. `ml-auto` keeps it at the end when it is
+                  the only action, so the row does not change shape. */}
+              <ItemActions className="w-full flex-wrap justify-between sm:w-auto sm:flex-nowrap sm:justify-end">
                 {entry.canRestore && (
                   <Button
                     variant="outline"
@@ -175,7 +186,7 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-destructive"
+                    className="text-destructive ml-auto"
                     onClick={() => setPurging(entry)}
                     data-testid={`bin-purge-${entry.folderId}`}
                   >

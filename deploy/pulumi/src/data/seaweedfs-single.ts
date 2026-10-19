@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, pullPolicyFor } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -83,12 +84,13 @@ export function installSingleNodeSeaweedFS(
         template: {
           metadata: { labels, annotations: secretChecksumAnnotations(configChecksum) },
           spec: {
-            enableServiceLinks: false, // see chroma.ts — legacy env collisions
+            enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             securityContext: { fsGroup: 1000 },
             // `weed server` flushes volume/filer state on SIGTERM; the 30s
             // default is thin for a store that may be mid-write.
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.dataPlane).terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.data),
             containers: [
               {
                 name: "seaweedfs",
@@ -206,7 +208,10 @@ export function installSingleNodeSeaweedFS(
       // patching the PVC (see docs/deployment/kubernetes.md storage section);
       // the template value is initial-size-only.
       ignoreChanges: ["spec.volumeClaimTemplates"],
-      // Fixed-name StatefulSet: replaces must delete first (see chroma.ts).
+      // Fixed-name StatefulSet: Pulumi's default create-before-delete replace
+      // collides with the existing object ("seaweedfs already exists"), so a
+      // replace must delete first. Safe: the PVC is pinned Retain and rebinds
+      // to the recreated StatefulSet by template name.
       deleteBeforeReplace: true,
       // The only S3 server in the stack: every uploaded PDF, every presigned
       // preview URL, and (when pgBackupsEnabled) the Postgres PITR archive go

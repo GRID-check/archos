@@ -167,7 +167,7 @@ function CuratedSkillCard({
                 type="button"
                 onClick={() => onSelect(skill)}
                 aria-label={t('toolbox.actions.openAria', { name: skill.name })}
-                className="rounded-sm text-left hover:underline focus-visible:outline-none focus-visible:ring-2"
+                className="pointer-coarse:block pointer-coarse:w-full pointer-coarse:py-3 truncate rounded-sm text-left hover:underline focus-visible:outline-none focus-visible:ring-2"
               >
                 <span aria-hidden className="text-muted-foreground">
                   /
@@ -176,15 +176,16 @@ function CuratedSkillCard({
               </button>
             </h3>
             <p className="text-muted-foreground line-clamp-2 text-sm">{skill.description}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {/* Same rule as an org card: a scope badge only where the
-                skill does NOT reach every agent. */}
+            {/* Same rule as an org card: a scope badge only where the skill does
+                NOT reach every agent, and under the description — beside the
+                switch it took the row on a phone and cut the name to "/energy". */}
             {agentScopeLabelKey(skill.metadata['grid-agents']) && (
-              <Badge variant="outline">
+              <Badge variant="outline" className="mt-1">
                 {t(`toolbox.scope.${agentScopeLabelKey(skill.metadata['grid-agents'])}`)}
               </Badge>
             )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             {canManage && (
               <Switch
                 checked={skill.enabled}
@@ -208,7 +209,7 @@ function CuratedSkillCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground group -my-1 ml-auto h-7 shrink-0 px-2"
+                className="text-muted-foreground group pointer-coarse:-my-2 pointer-coarse:h-11 -my-1 ml-auto h-7 shrink-0 px-2"
               >
                 <BookOpen className="size-3.5" aria-hidden />
                 {t('toolbox.actions.viewBody')}

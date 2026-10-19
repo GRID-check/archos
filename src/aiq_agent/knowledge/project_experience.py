@@ -25,6 +25,7 @@ A fault is logged and answered as ``error`` with empty lists; nothing raises to 
 from __future__ import annotations
 
 import logging
+import unicodedata
 from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Mapping
@@ -398,9 +399,16 @@ def _joined(bounded: Mapping[str, str]) -> str:
     return "\n\n".join(f"=== {name} ===\n{body}" for name, body in bounded.items())
 
 
-def _folded(text: str) -> str:
-    """Whitespace and case folded away: a PDF's line breaks are not the model's to reproduce."""
-    return " ".join(text.split()).casefold()
+def folded_for_quote(text: str) -> str:
+    """``text`` as a quote is matched against what was read: NFC, whitespace collapsed, case folded.
+
+    A PDF's line breaks are not the model's to reproduce, and neither is the
+    Unicode form an extractor happened to emit: „ä" composed and „a" plus a
+    combining diaeresis read the same, and only NFC makes them compare equal
+    (``src/aiq_agent/tools/AGENTS.md``). The closed-project reading and the
+    intake's read log (``agents/intake/read_log.py``) both check quotes with it.
+    """
+    return " ".join(unicodedata.normalize("NFC", text).split()).casefold()
 
 
 def _evidence_within(items: list[ItemT], read: Mapping[str, str]) -> list[ItemT]:
@@ -410,10 +418,12 @@ def _evidence_within(items: list[ItemT], read: Mapping[str, str]) -> list[ItemT]
     read, or that the file's text does not contain (whitespace and case aside), is no evidence, and
     an item left with none is dropped.
     """
-    folded = {name: _folded(body) for name, body in read.items()}
+    folded = {name: folded_for_quote(body) for name, body in read.items()}
     kept = []
     for item in items:
-        evidence = [e for e in item.evidence if e.file_name in folded and _folded(e.quote) in folded[e.file_name]]
+        evidence = [
+            e for e in item.evidence if e.file_name in folded and folded_for_quote(e.quote) in folded[e.file_name]
+        ]
         if evidence:
             kept.append(item.model_copy(update={"evidence": evidence}))
     return kept

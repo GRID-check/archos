@@ -9,7 +9,7 @@ import {
   toResourceRequirements,
 } from "../config";
 import { commonLabels } from "../platform/namespaces";
-import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
+import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import {
   ROLLOUT,
@@ -80,7 +80,7 @@ export function installFrontend(
             annotations: secretChecksumAnnotations(withLangfuseKeysChecksum(cfg, secrets.checksum)),
           },
           spec: {
-            enableServiceLinks: false, // see chroma.ts — legacy env collisions
+            enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             imagePullSecrets: w.imagePullSecrets,
             // Keep serving after SIGTERM: preStop covers EndpointSlice
             // propagation at the gateway, then server.js drains in-flight
@@ -93,6 +93,7 @@ export function installFrontend(
             // provider's automatic upgrade node-replacement) never drops the
             // whole frontend tier. Soft (ScheduleAnyway) — never blocks a deploy.
             topologySpreadConstraints: spreadAcrossNodes(labels),
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "frontend",

@@ -35,7 +35,7 @@ export const SCREENING_PASSED_OUTCOMES = ['clean', 'partial', 'unchecked', 'rele
  * `processing`) or never made it (`failed`, `error`), and is held: nothing
  * has said its content may be read. Lowercase, as every writer writes them.
  */
-export const UNSCREENED_SETTLED_STATUSES = ['completed', 'ready', 'ingested', 'success', 'processed'] as const
+export const UNSCREENED_SETTLED_STATUSES = ['completed'] as const
 
 /** The row facts the rule reads. */
 export interface ScreeningFacts {

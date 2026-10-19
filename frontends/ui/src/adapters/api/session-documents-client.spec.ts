@@ -25,11 +25,15 @@ describe('session documents client', () => {
   it.each([
     ['pending', 'ingesting'],
     ['processing', 'ingesting'],
+    ['uploading', 'ingesting'],
     ['completed', 'success'],
-    ['uploaded', 'success'],
+    // Stored and never read: not a source the chat can answer from.
+    ['uploaded', 'stored'],
+    ['stored', 'stored'],
+    ['quarantined', 'held'],
     ['failed', 'failed'],
-    // Undeclared: at rest, or the poll would never end.
-    ['something-new', 'success'],
+    // Undeclared: at rest, or the poll would never end, and not a source either.
+    ['something-new', 'stored'],
   ])('reads a document row in status %s as %s', (status, expected) => {
     expect(sessionDocumentFileStatus(status)).toBe(expected)
   })

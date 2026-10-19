@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { render, screen, within } from '@/test-utils'
+import { installLayoutObservers } from '@/test-utils/layout-observers'
 import userEvent from '@testing-library/user-event'
 import { FileBrowserPane } from './file-browser-pane'
 import { FileSearchField } from './file-search-bar'
@@ -92,29 +93,36 @@ function renderPane(overrides: HarnessProps = {}) {
 
 describe('FileBrowserPane — card grid', () => {
   it('renders one card per file with a content-aware skeleton thumbnail', async () => {
-    renderPane()
-    const cards = screen.getAllByTestId('file-card')
-    expect(cards).toHaveLength(2)
-    // Kind inference drives the thumbnail: "site-plan.pdf" → siteplan sketch.
-    // The thumbnail request settles (a brief skeleton first) before the fallback.
-    const sitePlanCard = cards.find((c) => within(c).queryByText('site-plan.pdf'))!
-    expect(await within(sitePlanCard).findByTestId('document-kind-thumbnail')).toHaveAttribute(
-      'data-kind',
-      'siteplan'
-    )
-    // "permit.pdf" → official-notice sketch.
-    const permitCard = cards.find((c) => within(c).queryByText('permit.pdf'))!
-    expect(await within(permitCard).findByTestId('document-kind-thumbnail')).toHaveAttribute(
-      'data-kind',
-      'notice'
-    )
+    // A card asks for its thumbnail once it has been on screen; here, at once.
+    const restoreObservers = installLayoutObservers({ intersecting: true })
+    try {
+      renderPane()
+      const cards = screen.getAllByTestId('file-card')
+      expect(cards).toHaveLength(2)
+      // Kind inference drives the thumbnail: "site-plan.pdf" → siteplan sketch.
+      // The thumbnail request settles (a brief skeleton first) before the fallback.
+      const sitePlanCard = cards.find((c) => within(c).queryByText('site-plan.pdf'))!
+      expect(await within(sitePlanCard).findByTestId('document-kind-thumbnail')).toHaveAttribute(
+        'data-kind',
+        'siteplan'
+      )
+      // "permit.pdf" → official-notice sketch.
+      const permitCard = cards.find((c) => within(c).queryByText('permit.pdf'))!
+      expect(await within(permitCard).findByTestId('document-kind-thumbnail')).toHaveAttribute(
+        'data-kind',
+        'notice'
+      )
+    } finally {
+      restoreObservers()
+    }
   })
 
   it('shows the tinted extension chip and size, and a status badge only when the document is not citable', () => {
     const { unmount } = renderPane()
     const card = screen.getAllByTestId('file-card').find((c) => within(c).queryByText('site-plan.pdf'))!
     expect(within(card).getByText('PDF')).toBeInTheDocument()
-    expect(within(card).getByText(/1 kB/)).toBeInTheDocument()
+    // The size is in the footer, the card button's sibling.
+    expect(within(card.nextElementSibling as HTMLElement).getByText(/1 kB/)).toBeInTheDocument()
     // Citable is the normal state: the card says nothing about it.
     expect(within(card).queryByText('Citable')).not.toBeInTheDocument()
     unmount()
@@ -219,6 +227,19 @@ describe('FileBrowserPane — folder drill-down', () => {
     expect(within(card).getByText('2 items')).toBeInTheDocument()
   })
 
+  /**
+   * In the list view the folders are one connected run with the file table
+   * under it. A row that carries its own radius, border or shadow is a pill, and
+   * the run stops reading as one list.
+   */
+  it('lists the level’s folders as one connected run in the list view', () => {
+    renderPane({ folderNav: folderNav(null), view: 'list' })
+    const row = screen.getByTestId('folder-row-root-1')
+    // Not the direct parent: the row's context menu wraps it in a block div.
+    expect(row.closest('[data-slot="item-list"]')).not.toBeNull()
+    expect(row.className).not.toMatch(/\brounded|\bborder\b|\bshadow/)
+  })
+
   it('a typed query escapes the current folder and searches the corpus', async () => {
     const user = userEvent.setup()
     renderPane({
@@ -230,6 +251,26 @@ describe('FileBrowserPane — folder drill-down', () => {
 
     await user.type(screen.getByRole('textbox', { name: /search files/i }), 'permit')
     expect(screen.getByText('permit.pdf')).toBeInTheDocument()
+  })
+
+  it('lifts no document out of a level the reader may only read; the server would refuse the move', () => {
+    const readOnly = folders.map((folder) => (folder.id === 'root-2' ? { ...folder, access: 'read' as const } : folder))
+    // The tile around each card is what lifts; folder tiles are not counted.
+    const liftingCards = (container: HTMLElement) =>
+      screen.getAllByTestId('file-card').filter((card) => card.closest('[draggable="true"]') && container.contains(card))
+
+    const readOnlyLevel = renderPane({
+      folderNav: { ...folderNav('root-2'), folders: readOnly },
+      onDropDocumentInFolder: vi.fn(),
+    })
+    expect(liftingCards(readOnlyLevel.container)).toHaveLength(0)
+    readOnlyLevel.unmount()
+
+    const writableLevel = renderPane({
+      folderNav: { ...folderNav('root-1'), folders: readOnly },
+      onDropDocumentInFolder: vi.fn(),
+    })
+    expect(liftingCards(writableLevel.container)).toHaveLength(files.length)
   })
 
   it('renders no folder navigation without folderNav', () => {

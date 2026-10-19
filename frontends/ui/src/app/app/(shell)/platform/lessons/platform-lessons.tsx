@@ -315,7 +315,7 @@ export const PlatformLessons: FC = () => {
       />
 
       <Dialog open={provenanceOpen} onOpenChange={setProvenanceOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[80dvh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t('lessons.provenanceTitle')}</DialogTitle>
             <DialogDescription>{t('lessons.provenanceSubtitle')}</DialogDescription>

@@ -4,6 +4,7 @@ import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { toast } from 'sonner'
 import type { ComposerPrefill, ComposerSubject } from '@/features/chat/types'
 import { InputArea } from './InputArea'
+import { ChatDropZone } from './chat-drop-zone'
 import { emptyRunLedger, setRunStatus } from '@/lib/runs/run-ledger'
 
 // Transient send failures surface as toasts; spy on them rather than render them.
@@ -212,6 +213,7 @@ vi.mock('@/features/documents', () => ({
   useFileDragDrop: vi.fn(() => ({
     isDragging: false,
     isUnsupportedDrag: false,
+    refusal: null,
     dragHandlers: {
       onDragEnter: vi.fn(),
       onDragLeave: vi.fn(),
@@ -350,6 +352,7 @@ describe('InputArea', () => {
     vi.mocked(useFileDragDrop).mockReturnValue({
       isDragging: false,
       isUnsupportedDrag: false,
+      refusal: null,
       dragHandlers: {
         onDragEnter: vi.fn(),
         onDragLeave: vi.fn(),
@@ -431,7 +434,7 @@ describe('InputArea', () => {
     await user.tab()
     expect(input).toHaveFocus()
 
-    // Order per the click-dummy composer: scope, the effort dial, dictation, then attach + send (the files
+    // Order: scope, the effort dial, attach, dictation beside send, then send (the files
     // counter appears only once files are attached, so it is absent here). The
     // Datengrundlage trigger is withheld with the picker — see the
     // commented-out block in InputArea. Nothing offers to choose deep research:
@@ -444,13 +447,14 @@ describe('InputArea', () => {
     await user.tab()
     expect(screen.getByRole('button', { name: /effort: medium/i })).toHaveFocus()
 
-    // Dictation. jsdom has no MediaRecorder, so the button is disabled and its
-    // wrapper takes focus instead, which is how a keyboard user reads why.
-    await user.tab()
-    expect(screen.getByTestId('dictation-unavailable')).toHaveFocus()
-
     await user.tab()
     expect(screen.getByRole('button', { name: /attach files/i })).toHaveFocus()
+
+    // Dictation, beside Send. jsdom has no MediaRecorder, so the microphone is
+    // unavailable: `aria-disabled` rather than disabled, so it still takes
+    // focus (and a press), which is how a keyboard or touch user learns why.
+    await user.tab()
+    expect(screen.getByTestId('dictation-unavailable')).toHaveFocus()
 
     await user.tab()
     expect(screen.getByRole('button', { name: /send message/i })).toHaveFocus()
@@ -714,6 +718,7 @@ describe('InputArea', () => {
     vi.mocked(useFileDragDrop).mockReturnValue({
       isDragging: true,
       isUnsupportedDrag: false,
+      refusal: null,
       dragHandlers: {
         onDragEnter: vi.fn(),
         onDragLeave: vi.fn(),
@@ -722,20 +727,21 @@ describe('InputArea', () => {
       },
     })
 
-    const { container } = render(<InputArea isAuthenticated={true} />)
+    // The zone is the chat panel the composer sits in, not the composer card.
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={true} />
+      </ChatDropZone>
+    )
 
-    expect(screen.getByText('Drop files to upload')).toBeInTheDocument()
-    // Tailwind v4 preflight resets border-width to 0, so the dashed
-    // drop-target ring needs an explicit border-width class alongside
-    // border-color/border-style to render at all (regression coverage).
-    const composer = container.querySelector('.border-brand.border-dashed')
-    expect(composer).toHaveClass('border-2')
+    expect(screen.getByTestId('chat-drop-overlay')).toHaveTextContent('Drop files to upload')
   })
 
   test('shows error drag overlay for unsupported files', () => {
     vi.mocked(useFileDragDrop).mockReturnValue({
       isDragging: true,
       isUnsupportedDrag: true,
+      refusal: null,
       dragHandlers: {
         onDragEnter: vi.fn(),
         onDragLeave: vi.fn(),
@@ -744,11 +750,51 @@ describe('InputArea', () => {
       },
     })
 
-    const { container } = render(<InputArea isAuthenticated={true} />)
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={true} />
+      </ChatDropZone>
+    )
 
-    expect(screen.getByText('Unsupported file type')).toBeInTheDocument()
-    const composer = container.querySelector('.border-error.border-dashed')
-    expect(composer).toHaveClass('border-2')
+    expect(screen.getByTestId('chat-drop-overlay')).toHaveTextContent('Unsupported file type')
+  })
+
+  /** What the panel's drop zone was last configured with. */
+  const lastDropZone = () => vi.mocked(useFileDragDrop).mock.calls.at(-1)?.[0]
+
+  test('offers the chat panel its attach path while the reader may attach', () => {
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={true} />
+      </ChatDropZone>
+    )
+
+    expect(lastDropZone()).toMatchObject({ disabled: false, refusal: null })
+  })
+
+  test('says why a drop is refused while Piloti answers, instead of letting it vanish', () => {
+    mockIsStreaming = true
+    vi.mocked(useIsCurrentSessionBusy).mockReturnValue(true)
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={true} />
+      </ChatDropZone>
+    )
+
+    expect(lastDropZone()).toMatchObject({
+      disabled: false,
+      refusal: 'Piloti is answering. Attach files once the answer is complete.',
+    })
+  })
+
+  test('is no drop target for a reader who is not signed in', () => {
+    render(
+      <ChatDropZone>
+        <InputArea isAuthenticated={false} />
+      </ChatDropZone>
+    )
+
+    expect(lastDropZone()).toMatchObject({ disabled: true })
   })
 
   test('disables input when isBusy is true (session has active operations)', () => {
@@ -1288,6 +1334,80 @@ describe('InputArea', () => {
         expect(mockDrafts['session-1']).toBe('Und die Brandschutzklasse?')
       })
 
+      describe('steering the own turn, when the server reads notes', () => {
+        const mockSteer = vi.fn(() => true)
+        const offerSteering = () =>
+          vi.mocked(useWebSocketChat).mockReturnValue({
+            sendMessage: mockSendMessage,
+            isLoading: false,
+            respondToInteraction: mockRespondToInteraction,
+            noteSendIntent: mockNoteSendIntent,
+            pendingInteraction: null,
+            steer: mockSteer,
+            canSteer: true,
+          } as unknown as ReturnType<typeof useWebSocketChat>)
+        beforeEach(() => mockSteer.mockClear())
+
+        test('says Enter steers Piloti, with a small chip by the field, and keeps Stop', () => {
+          offerSteering()
+          startOwnTurn()
+          render(<InputArea isAuthenticated={true} connectionMode="sse" />)
+
+          const input = screen.getByRole('textbox')
+          expect(input).toHaveAttribute('placeholder', 'Steer Piloti …')
+          expect(input).toHaveAccessibleDescription(
+            'Enter adds to the running answer; Piloti reads it before its next step.'
+          )
+          expect(screen.getByTestId('composer-steer-chip')).toHaveTextContent('steering')
+          expect(screen.getByRole('button', { name: /stop response/i })).toBeInTheDocument()
+        })
+
+        test('Enter sends the note into the running turn, not a question, and clears the field', async () => {
+          const user = userEvent.setup()
+          offerSteering()
+          startOwnTurn()
+          render(<InputArea isAuthenticated={true} connectionMode="sse" />)
+
+          const input = screen.getByRole('textbox')
+          await user.click(input)
+          await user.keyboard('nicht die Tür, die Treppe{Enter}')
+
+          expect(mockSteer).toHaveBeenCalledWith({ text: 'nicht die Tür, die Treppe' })
+          expect(mockSendMessage).not.toHaveBeenCalled()
+          expect(mockStopStreaming).not.toHaveBeenCalled()
+          expect(input).toHaveValue('')
+        })
+
+        test('a note the turn could not take stays in the field', async () => {
+          const user = userEvent.setup()
+          offerSteering()
+          mockSteer.mockReturnValueOnce(false)
+          startOwnTurn()
+          render(<InputArea isAuthenticated={true} connectionMode="sse" />)
+
+          const input = screen.getByRole('textbox')
+          await user.click(input)
+          await user.keyboard('die Treppe{Enter}')
+
+          expect(mockSteer).toHaveBeenCalledTimes(1)
+          expect(input).toHaveValue('die Treppe')
+        })
+
+        test('without a running turn of its own, the same Enter asks a question', async () => {
+          const user = userEvent.setup()
+          offerSteering()
+          mockSendMessage.mockReturnValue(true)
+          render(<InputArea isAuthenticated={true} connectionMode="sse" />)
+
+          await user.click(screen.getByRole('textbox'))
+          await user.keyboard('Erste Frage{Enter}')
+
+          expect(mockSteer).not.toHaveBeenCalled()
+          expect(mockSendMessage).toHaveBeenCalledWith('Erste Frage')
+          expect(screen.queryByTestId('composer-steer-chip')).toBeNull()
+        })
+      })
+
       test('after the settle the button is Send again and Enter sends exactly once', async () => {
         const user = userEvent.setup()
         mockSendMessage.mockReturnValue(true)
@@ -1619,6 +1739,28 @@ describe('InputArea', () => {
       await user.keyboard('{Tab}')
 
       expect(composer()).toHaveValue('@Anna Weber ')
+    })
+
+    // iOS drops the keyboard the moment the field blurs, and a caret put back
+    // by an effect after the insertion cannot raise it again: the reader picked
+    // a name and lost the keyboard they were typing on. Focus moves on the
+    // press, so the picker cancels the press; the tap's click still inserts.
+    test('a press on a candidate keeps the focus in the field, and the tap still inserts', async () => {
+      const user = userEvent.setup()
+      render(<InputArea isAuthenticated={true} canCollaborate connectionMode="sse" />)
+
+      await user.click(composer())
+      await user.keyboard('@anna')
+      const [row] = await screen.findAllByTestId('mention-option')
+
+      // `false`: the default action, moving the focus, was cancelled.
+      expect(fireEvent.pointerDown(row!)).toBe(false)
+      expect(fireEvent.mouseDown(row!)).toBe(false)
+      expect(composer()).toHaveFocus()
+
+      fireEvent.click(row!)
+      expect(composer()).toHaveValue('@Anna Weber ')
+      expect(composer()).toHaveFocus()
     })
 
     test('the arrow keys choose which candidate is inserted', async () => {
@@ -2354,10 +2496,14 @@ describe('InputArea', () => {
         order.push('upload')
       })
 
-      render(<InputArea isAuthenticated={true} />)
-      const { onDrop } = vi.mocked(useFileDragDrop).mock.calls[0][0]
+      render(
+        <ChatDropZone>
+          <InputArea isAuthenticated={true} />
+        </ChatDropZone>
+      )
+      const { onDrop } = vi.mocked(useFileDragDrop).mock.calls.at(-1)![0]
       await act(async () => {
-        await onDrop([new File(['x'], 'plan.pdf', { type: 'application/pdf' })])
+        await onDrop([new File(['x'], 'plan.pdf', { type: 'application/pdf' })], { truncated: false, unreadable: 0 })
       })
 
       expect(order).toEqual(['ensureConversation', 'upload'])
@@ -2394,6 +2540,7 @@ describe('InputArea', () => {
       vi.mocked(useFileDragDrop).mockReturnValue({
         isDragging: true,
         isUnsupportedDrag: false,
+        refusal: null,
         dragHandlers: {
           onDragEnter: vi.fn(),
           onDragLeave: vi.fn(),
@@ -2402,10 +2549,15 @@ describe('InputArea', () => {
         },
       })
 
-      render(<InputArea isAuthenticated={true} />)
+      render(
+        <ChatDropZone>
+          <InputArea isAuthenticated={true} />
+        </ChatDropZone>
+      )
 
-      expect(screen.getByText('Drop files to upload')).toBeInTheDocument()
-      expect(screen.getByTestId('upload-destination')).toHaveTextContent(DESTINATION)
+      const overlay = screen.getByTestId('chat-drop-overlay')
+      expect(overlay).toHaveTextContent('Drop files to upload')
+      expect(within(overlay).getByTestId('upload-destination')).toHaveTextContent(DESTINATION)
     })
 
     test('says nothing about a destination for a file it will refuse', () => {
@@ -2414,6 +2566,7 @@ describe('InputArea', () => {
       vi.mocked(useFileDragDrop).mockReturnValue({
         isDragging: true,
         isUnsupportedDrag: true,
+        refusal: null,
         dragHandlers: {
           onDragEnter: vi.fn(),
           onDragLeave: vi.fn(),
@@ -2422,9 +2575,13 @@ describe('InputArea', () => {
         },
       })
 
-      render(<InputArea isAuthenticated={true} />)
+      render(
+        <ChatDropZone>
+          <InputArea isAuthenticated={true} />
+        </ChatDropZone>
+      )
 
-      expect(screen.getByText('Unsupported file type')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-drop-overlay')).toHaveTextContent('Unsupported file type')
       expect(screen.queryByTestId('upload-destination')).not.toBeInTheDocument()
     })
   })

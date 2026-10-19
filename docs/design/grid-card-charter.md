@@ -14,6 +14,25 @@
 > (`features/chat/components/AnswerAnatomy.tsx`). Where an older line below
 > reads as praise for borders or shadows, this brief wins.
 
+> **State of the code (2026-10).** ADR-0069 retired most of the catalogue this
+> charter was written against, and deleted the files with the types. Gone from
+> `features/grid-cards/components/`: `ComparisonTableCard`, `TypedTableCard`,
+> `NormChainCard`, `ConditionTreeCard`, `ProcessMapCard`, `DocumentChecklistCard`,
+> `DeadlineTimelineCard`, `ChangeImpactCard`, `RequirementChecklistCard`,
+> `LegalBasisCard`, `SummaryCard`, `FollowUpsCard`, the shared `CARD_LIST_ROW`
+> and the non-geometry plans (`acoustic_check`, `parking_requirement`, …). Their
+> content is now Markdown the renderer draws: `:::compare`, `:::check`,
+> `:::procedure`, `:::cases` and `:::metrics`
+> (`shared/components/MarkdownRenderer/answer-atoms.tsx`, `directive-shape.ts`),
+> and the follow-up questions are `FollowUpChips.tsx`. What is still a card:
+> the schematics (`schematics/`), `calculation`, the anatomy cards the masthead
+> draws (`verdict_header`, `key_takeaways`, `callout`), the proposal and system
+> cards (`ProposalReceipt`, `MemoryProposalCard`, `ProjectProfilePatchCard`,
+> `FileOperationProposalCard`, `DocumentDraftCard`, `TaskCreatedCard`,
+> `CanvasActivityCard`, `DocumentGridCard`) and the IFC cards. A `file:line`
+> below that names a retired file is the record of a decision, not a pointer;
+> §A9 holds the rules that apply to the cards that remain, on a phone.
+
 **Audience.** Implementation agents work from this file as their contract. Every claim about the current state carries a `file:line` so it stays checkable.
 
 ---
@@ -26,9 +45,9 @@ The complaint "same box, different content" is half wrong, and that is why it ha
 
 | Chrome | Cards | Evidence |
 |---|---|---|
-| `SchematicCard` (kit.tsx:702) | comparison_table, typed_table, norm_chain, calculation, condition_tree, process_map, document_checklist, deadline_timeline, change_impact | ComparisonTableCard.tsx:39, TypedTableCard.tsx:85, NormChainCard.tsx:52, CalculationCard.tsx:239, ConditionTreeCard.tsx:293, ProcessMapCard.tsx:47, DocumentChecklistCard.tsx:47, DeadlineTimelineCard.tsx:38, ChangeImpactCard.tsx |
-| `Card` + hand-composed `SectionLabel` | key_takeaways, follow_ups, verdict_header, callout | KeyTakeawaysCard.tsx:101–102, FollowUpsCard.tsx, VerdictHeaderCard.tsx:59–60, CalloutCard.tsx:91 |
-| Flat, no chrome at all | summary, requirement_checklist, legal_basis | SummaryCard.tsx:17, RequirementChecklistCard.tsx:61, LegalBasisCard.tsx:70 |
+| `SchematicCard` (`schematics/kit.tsx`) | the schematics, calculation. *At the audit also:* comparison_table, typed_table, norm_chain, condition_tree, process_map, document_checklist, deadline_timeline, change_impact (retired, ADR-0069) | CalculationCard.tsx, `schematics/*Card.tsx` |
+| `Card` + hand-composed `SectionLabel` | key_takeaways, verdict_header, callout. *At the audit also:* follow_ups (now `FollowUpChips.tsx`, flat) | KeyTakeawaysCard.tsx, VerdictHeaderCard.tsx, CalloutCard.tsx |
+| Flat, no chrome at all | *At the audit:* summary, requirement_checklist, legal_basis (all retired, ADR-0069) | — |
 | `ProposalShell` | memory_proposal, project_profile_patch | ProposalShell.tsx:25–38 |
 | Borrowed from another feature | document_grid (FileCard/FileGrid), the 6 IFC cards | DocumentGridCard.tsx:6–8 |
 
@@ -36,9 +55,11 @@ Cards in group 1 and group 2 render an identical silhouette — `rounded-lg bord
 
 ### 0.2 The newest cards reproduce the problem, which proves it is structural
 
+> *Retired (ADR-0069): the three cards, `process_map` and `condition_tree` no longer exist. The finding stands as the argument for §A5; the files it cites are gone.*
+
 `document_checklist`, `deadline_timeline` and `change_impact` landed in commit `67c2ee03` (2026-08-19). They are **well-built** — derived tallies, honest unknown states, no fabricated fields — and they are, at a glance, **the same card three times**: a left rail with a small round node, a 13.5px label, a 13.5px semibold second line, a status chip right-aligned, a chevron, an identical dashed-bordered disclosure panel, an identical footer.
 
-Seen in a capture of `/dev/cards`, the three stack into one undifferentiated column. Two older cards — `process_map` (ProcessMapCard.tsx:117–213) and `condition_tree` (ConditionTreeCard.tsx:123–273) — use the same silhouette, so **five cards now share one interaction shape.**
+Seen in a capture of `/dev/cards`, the three stack into one undifferentiated column. Two older cards — `process_map` and `condition_tree` (both since retired) — used the same silhouette, so **five cards then shared one interaction shape.**
 
 This is the charter's central evidence. The sameness is not legacy debt in old cards; it is what a competent implementer produces *today*, because the shared pattern is the path of least resistance and nothing tells them what should differ. **A charter that only fixes existing cards fixes nothing. The rules in §A are what stop the sixth card from being the same card again.**
 
@@ -68,7 +89,7 @@ Thirteen distinct sizes, ten of them arbitrary values — and note `text-[12px]`
 `statusColor()` (kit.tsx:49–60) resolves four verdict states to `--text-color-feedback-*` tokens. It is correct and used consistently. But three *other* semantic axes are each solved ad hoc:
 
 - **Modality** (binding vs interpretive): NormChainCard.tsx:76–78 uses weight + ink + a word. Correct.
-- **Currency** (applies to you vs hypothetical): ConditionTreeCard.tsx:203 uses `border-dashed bg-muted/30` against a solid tinted panel — chrome differing *in kind*. Correct and excellent.
+- **Currency** (applies to you vs hypothetical): the retired `condition_tree` used `border-dashed bg-muted/30` against a solid tinted panel — chrome differing *in kind*. Correct and excellent.
 - **Lifecycle**: ProposalShell.tsx:12 spends `border-l-warning` on "pending", which collides with `warning` meaning "close to a limit" everywhere else. **This is a live role collision.**
 - **Direction** (`change_impact`): ChangeImpactCard.tsx:63–69 chose amber for `tightens` with an explicit note that red would be wrong. Correct, and it arrived at §A3 axis 4 independently — evidence the axis is real and should be written down before a sixth card guesses differently.
 
@@ -161,7 +182,7 @@ Chroma belongs to provenance (`grid-design-language.md` §Principles 2). These a
 - interpretive / advisory → `text-muted-foreground font-normal`
 - inactive / hypothetical → `text-muted-foreground` on `border-dashed bg-muted/30`
 
-NormChainCard.tsx:76–78 and ConditionTreeCard.tsx:203 already do this. Codify it so the next card does not invent a fifth hue family.
+The retired `norm_chain` and `condition_tree` cards already did this. Codify it so the next card does not invent a fifth hue family.
 
 **3. The binding constraint — "which one decides it?"** In a set of checks, exactly one usually decides the verdict, and nothing marks it today: `LimitBar` (kit.tsx:414–519) draws every check identically. The deciding row gets a **1px `--foreground` left rule and its value at the Figure step**; every other row stays Body with no rule. One per card, or none.
 
@@ -178,12 +199,12 @@ Red is forbidden here: tightening is a cost, not an error, and error red is for 
 
 - Card padding `p-5` (20px). Flat register: no padding, `gap-3` from the prose.
 - Between blocks inside a card: 12px (`gap-3`). Within a block: 6px (`gap-1.5`). Above the `NormRefFooter` rule: 20px. **These four values are the card spacing scale**; there is no token layer for them yet, so they are written as Tailwind steps and never as arbitrary values (`gap-[11px]` and `pb-[17px]` are drift).
-- Scannable row min-height 36px, `pointer-coarse:` 44px. The expandable row that `condition_tree`, `process_map`, `document_checklist` and `change_impact` are each built from was one exported class (`CARD_LIST_ROW`) rather than four byte-identical copies, so the floor landed once; it left with the four cards (ADR-0069). Rows GROW rather than take a `touch-target` catchment: stacked ~33px apart, 44px catchments overlap and the later row in the DOM takes taps meant for the one above it. A disclosure with prose around it (`CalloutCard`, `CalculationCard`) is the opposite case and takes the catchment, so the card's rhythm does not change on a phone.
-- **Two gutter widths only**: 22px for a rail (ConditionTreeCard.tsx:123), 26px for a numbered node (KeyTakeawaysCard.tsx:43, ProcessMapCard.tsx:117). Rails then align when two cards stack.
+- Scannable row min-height 36px, `pointer-coarse:` 44px. The expandable row that `condition_tree`, `process_map`, `document_checklist` and `change_impact` were each built from was one exported class (`CARD_LIST_ROW`) rather than four byte-identical copies, so the floor landed once; it left with the four cards (ADR-0069). The one expandable row left in the card set is the `key_takeaways` row (`KeyTakeawaysCard.tsx`, `TakeawayRow`), and it keeps the rule: `pointer-coarse:py-3` takes it from 37px to 45px. Rows GROW rather than take a `touch-target` catchment: stacked ~33px apart, 44px catchments overlap and the later row in the DOM takes taps meant for the one above it. A disclosure with prose around it (`CalloutCard`, `CalculationCard`) is the opposite case and takes the catchment, so the card's rhythm does not change on a phone.
+- **Two gutter widths only**: 22px for a rail, 26px for a numbered node (`KeyTakeawaysCard.tsx`, the `ROW` grid: 8px padding and an 18px ordinal column). The rail cards that shared the 22px gutter are retired; the Markdown `:::procedure` rail keeps the width so the two align when stacked.
 - Radius: cards `rounded-lg` (12px), inner panels `rounded-md` (8px), chips `rounded-md`, status pills `rounded-full`.
 - Elevation: `shadow-xs` and nothing else in the transcript. Never two shadows in one card. In dark mode elevation is carried by the token, not by a `dark:` variant — see tokens.css:216–241.
-- **No card inside a card.** The opened panels in `condition_tree` / `process_map` (`rounded-md border` on the same surface) are the legal form. A surface is not a card-in-card: it has no frame of its own. Tabs and Row are layout on the answer surface, and each leaf keeps its own register.
-- Every table and every drawing scrolls inside its own `overflow-x-auto`. Already correct at ComparisonTableCard.tsx:46 and TypedTableCard.tsx:92.
+- **No card inside a card.** The opened panels the retired `condition_tree` / `process_map` drew (`rounded-md border` on the same surface) were the legal form. A surface is not a card-in-card: it has no frame of its own. Tabs and Row are layout on the answer surface, and each leaf keeps its own register.
+- Every table and every drawing fits its own box. A drawing scales with the column (`SchematicCanvas`) and never scrolls sideways; a Markdown table scrolls inside its own `overflow-x-auto` (`answer-atoms.tsx`), except `:::compare`, which stacks (§A9).
 - **Design to 636px desktop / ~314px phone** (§0.5.3), not to the gallery's `max-w-2xl`.
 
 ### A5. How a card announces its type — the shape vocabulary
@@ -254,7 +275,7 @@ A reader should be able to tell a schematic from a generic card instantly — th
 2. No card with two elements above 14px.
 3. No hand-rolled eyebrow — `SectionLabel` only. CalloutCard.tsx:111 is the one documented exception, and its reason (the eyebrow carries the tone's ink, which `cn` cannot dedupe against `SectionLabel`'s hardcoded muted) stands.
 4. No colour travelling alone. Every hue carries a word or an `aria-label`ed icon. Currently unbroken — keep it that way.
-5. No hex or `oklch` literal in JSX. `statusColor()` or a token. The `color-mix(in oklch, ${color} N%, transparent)` inline-style pattern (ComparisonTableCard.tsx:84, TypedTableCard.tsx:60, ConditionTreeCard.tsx:156) is the sanctioned escape hatch because Tailwind cannot compose a runtime colour — it may only ever mix a `statusColor()` result.
+5. No hex or `oklch` literal in JSX. `statusColor()` or a token. The `color-mix(in oklch, ${color} N%, transparent)` inline-style pattern (`CalculationCard.tsx` and the schematics; formerly also the table and tree cards) is the sanctioned escape hatch because Tailwind cannot compose a runtime colour — it may only ever mix a `statusColor()` result.
 6. No `rough` stroke outside `SchematicCanvas`.
 7. No nested card.
 8. No chart with an axis the data does not have (§D.1).
@@ -262,6 +283,41 @@ A reader should be able to tell a schematic from a generic card instantly — th
 10. No new dependency. `motion`, `roughjs`, lucide and Tailwind are the entire toolkit.
 11. No serif, no display face, no third font family. Sans is prose; **mono means "a number or identifier you could go and check"** — spending it on a heading costs the product its one typographic signal.
 12. No per-item field read without a fallback (§0.5.1).
+
+### A9. On a phone
+
+The rules the cards that remain keep at ~314px of card width, each held by a
+test or a lint where one exists. They apply on the pointer, not the breakpoint,
+wherever the thing being sized is a finger (`grid-design-language.md`, Touch).
+
+1. **A label that decides a verdict is never clipped.** `DimChecksList` rows
+   (`schematics/kit.tsx`) wrap: the label takes the free width (basis 12rem) and
+   the figures drop under it, right-aligned, when the box is narrow. A `title`
+   attribute is not a second way in: a touch screen never shows one.
+2. **Text the reader decides on wraps or opens.** A proposal's reason, a
+   document's or task's title and path use `ClampedText`: two lines, and a
+   "Mehr anzeigen" button (44px catchment) only when the clamp really cut
+   something. Chips (`FollowUpChips`) and operand labels wrap on a phone instead
+   of truncating; `sm:` and up may cut at one line where a row's rhythm needs it.
+3. **A decision row is one column on a phone.** Proposal cards use
+   `DECISION_ROW` / `DECISION_BUTTON` (`components/card-chrome.ts`): the
+   question, then „Übernehmen" FIRST in the DOM and on screen, then the
+   alternative, then „Verwerfen", each full width and 44px. From `sm` the same
+   buttons are one right-aligned row beside the question. The order is the same
+   everywhere, so the primary never moves with the wrap.
+4. **An openable row grows to 44px under a coarse pointer.** Rows grow
+   (`pointer-coarse:py-3`); prose disclosures take the `touch-target` catchment
+   (§A4).
+5. **A drawing scales, its words do not.** `SchematicCanvas` scales the geometry
+   with the column and floors every `SvgLabel` at 10px on screen
+   (`legibleLabelSize`, at most 2× its authored size). Larger words collide, so
+   after each layout `declutterLabels` (`schematics/declutter.ts`) moves a later
+   label clear of an earlier one (vertically, at most 14px) and back inside the
+   drawing's edge. A template places labels in viewBox units for a drawing near
+   1px per unit and never has to know the phone scale.
+6. **A comparison stacks by its own width**, not the viewport: `:::compare`
+   becomes one block per variant under 30rem of its own box
+   (`answer-atoms.tsx`).
 
 ---
 
@@ -280,7 +336,7 @@ Format: **job** → **grammar** → **unmistakable** → **degradation** → **e
 
 #### `key_takeaways`
 **Job.** The 2–5 points a skimmer leaves with.
-**Grammar.** Kill `divide-y` (KeyTakeawaysCard.tsx:107) — hairlines between rows are what makes it a generic list. Replace with ordinals hanging off one continuous vertical hairline in the 26px gutter, every takeaway on the same text column. (A descending staircase, item *n* indented `(n−1) × 6px`, shipped first and was withdrawn: at 6px a step reads as misregistration, not as rank.) Ordinals at Meta mono in `--muted-foreground/60`. **Item 1 breaks the pattern**: its ordinal is full-weight `--foreground` and its text is **15px/600** — the card's one figure. A reader who reads nothing else reads takeaway one, which is what "most important first" is supposed to buy.
+**Grammar.** Kill `divide-y` (done, Sprint 1; `KeyTakeawaysCard.tsx` has none) — hairlines between rows are what makes it a generic list. Replace with ordinals hanging off one continuous vertical hairline in the 26px gutter, every takeaway on the same text column. (A descending staircase, item *n* indented `(n−1) × 6px`, shipped first and was withdrawn: at 6px a step reads as misregistration, not as rank.) Ordinals at Meta mono in `--muted-foreground/60`. **Item 1 breaks the pattern**: its ordinal is full-weight `--foreground` and its text is **15px/600** — the card's one figure. A reader who reads nothing else reads takeaway one, which is what "most important first" is supposed to buy.
 Keep verbatim: a row with no `detail` is not a button (line 58).
 **Unmistakable.** Ordinals on one continuous hairline plus one heavy first row. No other card marks rank by weight alone.
 **Degradation.** Every item sits on the same text column, so 2 items and 5 read alike and the width needs no allowance at 314px. Long compounds wrap with `text-pretty` — **never truncate a takeaway**, it is the payload. Missing `text` on an item → skip the row silently (§0.5.1).
@@ -295,7 +351,7 @@ Keep verbatim: a row with no `detail` is not a button (line 58).
 **Degradation.** Unknown `kind` already falls back to `hinweis` (line 87) and must, because `kind` arrives through a `z.any()` union member. Long compound title wraps under the kind word (already `flex-wrap`).
 **Effort: S.**
 
-#### `legal_basis`
+#### `legal_basis` *(retired, ADR-0069)*
 **Job.** The product's proof-of-work — a citation you can verify.
 **Grammar.** It should look like a page from a Gesetzblatt, not a chat block:
 - The whole card sits on **`--input-background`** — the recessed surface. A quotation is *cut into* the page, not floated on it. It becomes the only recessed card in the system.
@@ -317,7 +373,7 @@ Keep verbatim: a row with no `detail` is not a button (line 58).
 
 **Effort: M** (plus backend work for the two fields).
 
-#### `norm_chain`
+#### `norm_chain` *(retired, ADR-0069)*
 **Job.** Which of these norms actually binds, and which only interprets.
 **Grammar.** The card's subject is a *hierarchy* and it currently renders as a flat vertical list — every link at the same x (NormChainCard.tsx:58–99). Make it a **descending terrace**: horizontal inset by rank — bundesgesetz 0, landesgesetz 12, verordnung 24, oib_richtlinie 36, oenorm 48, leitfaden 60. The connector becomes an **elbow** that drops and steps right at each level change, so a reader sees "the ÖNORM sits two levels under the Verordnung" without reading a badge.
 Binding links get a solid 3px left edge on their row block; interpretive links get no edge and 60% ink (§A3 axis 2 — weight and ink, no hue). The `bindingTag` caveat for `oib_richtlinie` („bindend, wo erklärt", line 43) stays as words — it is the card's most important honesty device.
@@ -325,7 +381,7 @@ Binding links get a solid 3px left edge on their row block; interpretive links g
 **Degradation.** All links at one rank → flat cascade, which is *honest*; the elbow degrades to a plain rail. Unknown rank already falls back to the raw string, non-binding (line 55) — keep. Cap inset at `min(rank×12, 48)` on mobile; 6 links at 314px still leaves ~250px for the label.
 **Effort: M.**
 
-#### `requirement_checklist`
+#### `requirement_checklist` *(retired, ADR-0069)*
 **Job.** Several criteria read against this project.
 **Grammar.** Today the plainest thing in the set — a bullet list with coloured icons (RequirementChecklistCard.tsx:60–120). Its real information is **how many are open**, and nothing shows it.
 - **Signature: a segmented tally bar.** Full card width, 5px tall, one segment per item in verdict colour, 2px gaps. Beside it, at the **Figure step (15px tabular-nums)**: „3 von 7 offen". Fully derived from the rows; encodes exactly the counts with no interpolation, so it asserts nothing the data does not hold.
@@ -334,7 +390,7 @@ Binding links get a solid 3px left edge on their row block; interpretive links g
 **Degradation.** **Below 3 items, suppress the bar** — a one-segment bar is a joke. All-pass → solid green bar, „7 von 7 erfüllt". Unknown status already falls back to `CircleHelp` (line 74) and **must** (§0.5.1). Long compounds wrap; the 88px verdict column does not.
 **Effort: M.**
 
-#### `comparison_table`
+#### `comparison_table` *(retired, ADR-0069: `:::compare`)*
 **Job.** Genuinely weigh 2–3 options against each other.
 **Grammar.** **Kill the `<table>`** (ComparisonTableCard.tsx:47–95). A table with a tinted cell is the archetype the brief is complaining about.
 - A CSS grid of criterion-rows × option-columns with **vertical rules only** (`divide-x`), **no horizontal rules**. Each option column is headed by its name at 14px/600 over a `bg-muted/40` band that **runs the full column height at ~3% opacity** — a column becomes a legible vertical body, which is what "side by side" actually means.
@@ -342,10 +398,10 @@ Binding links get a solid 3px left edge on their row block; interpretive links g
 - **Signature: a win-tally strip** under each column header — one small dot per row that column wins, derived from `highlight_index`. A reader sees "this option wins 4 of 6" before reading a single row. Exactly the summary a table cannot give, and it needs no new field.
 - `recommendation` moves out of the card footer (line 98) into the **winning column's foot**, tinted, with the ThumbsUp. It belongs to a column, not to the card.
 **Unmistakable.** Vertical rules and no horizontal ones, plus the tally strip. `typed_table` is deliberately the exact inverse.
-**Degradation.** Schema guarantees ≥2 options and the backend pads short rows to `''` and nulls out-of-range highlights (`_square_rows`, models.py:650–666), so the grid is always square — render '—' muted for empties (already line 88). 4+ options → `overflow-x-auto` with the criterion column `position: sticky; left: 0`. **Below 360px the card transposes**: one option per block, criteria as rows inside it. That transposition is the mobile *design*, not a fallback — three columns at ~100px each with „Brandabschnittsfläche" in them is unreadable at any type size.
+**Degradation.** Schema guarantees ≥2 options and the backend pads short rows to `''` and nulls out-of-range highlights (`_square_rows`, models.py:650–666), so the grid is always square — render '—' muted for empties (already line 88). 4+ options → `overflow-x-auto` with the criterion column `position: sticky; left: 0`. **Narrow, the comparison transposes**: one option per block, criteria as rows inside it. It shipped for `:::compare` (`CompareStackFrame` and `CompareVariantCard` in `answer-atoms.tsx`) and is keyed to the comparison's OWN width, not the viewport: the container query is `@max-[30rem]/compare`, so a phone, a side panel and a narrow window all get it, and it is covered by `directives.spec.tsx` (`compare-stack`). That transposition is the mobile *design*, not a fallback — three columns at ~100px each with „Brandabschnittsfläche" in them is unreadable at any type size.
 **Effort: L.**
 
-#### `typed_table`
+#### `typed_table` *(retired, ADR-0069)*
 **Job.** The tabular long tail where every row is true at once.
 **Grammar.** It should look like a table — that is its job, and it is the deliberate foil to `comparison_table`. Make it look like a **data sheet**:
 - Horizontal hairlines only (already `divide-y`), **no vertical rules ever**. A **1px `--foreground` rule under the header row**, replacing the current hairline (line 95).
@@ -356,13 +412,13 @@ Binding links get a solid 3px left edge on their row block; interpretive links g
 **Degradation.** Unparseable column → no bars, plain sheet. This must be the *common* case, not an error state. Unknown verdict word already renders a neutral chip (line 50) — keep, it is right. Wide table → `overflow-x-auto` (already) plus a sticky first column, which is the whole mobile design.
 **Effort: M.**
 
-#### `condition_tree`
+#### `condition_tree` *(retired, ADR-0069)*
 **Job.** The answer forks on one factor; here is your branch, and here is what the others would say.
 **Grammar.** **This is the best card in the product.** Four independent markings of the active branch (ConditionTreeCard.tsx:24–42), Konjunktiv vs Indikativ in the German itself, the correcting sentence *inside* the croppable rectangle. Keep all of it. Two changes:
 1. **The root connector is a straight rail** (line 303), so a fork does not look like a fork. Replace with an **SVG brace**: one stem from the root splitting into *n* elbows at a single junction y — the classic decision-tree bracket. Drawn, not typeset, because a border-based rail cannot express a junction. Geometry hand-computed; there is no auto-layout (§0.5.5). This is the one place the generic family draws a connector, and it stays crisp (§A7).
 2. The active branch's outcome is the card's figure: **15px/600 in the row itself**, not only inside the panel. Today the row truncates it (line 169), which puts the answer behind a click on the one card whose answer must survive a crop.
 **Unmistakable.** Already is. The brace makes it so at 40px.
-**Degradation.** No `active` → nothing marked, tree opens closed (line 288) — never pick a case for the reader. **Live mobile bug worth naming:** the condition chip is `shrink-0` (line 160); a long condition („Gebäudeklasse 5 mit Fluchtniveau über 22 m") squeezes the outcome to nothing at 314px. Let the chip wrap, with the outcome claiming a `flex-[1_1_9rem]` basis — the same fix ProcessMapCard.tsx:156–161 already documents for its own row.
+**Degradation.** No `active` → nothing marked, tree opens closed (line 288) — never pick a case for the reader. *The `shrink-0` condition-chip bug this paragraph named went with the card.* The lesson stands for any row with a chip and an outcome: let the chip wrap, and give the outcome a `flex-[1_1_9rem]` basis.
 **Effort: M.**
 
 #### `calculation`
@@ -372,10 +428,10 @@ Binding links get a solid 3px left edge on their row block; interpretive links g
 2. **Bind the limit to the result.** The limit currently sits in its own line under the card (`LimitLine`, :193–219). Put the result and the limit on **one baseline with the `≤`/`≥` between them, both at 24px**, so the comparison reads as arithmetic rather than as two separate facts. The limit's label and reference drop to Caption beneath.
 Untouched, and untouchable: no `result` on the wire, `resultDecimals` precision escalation, tolerance-band propagation, the straddle sentence at `warning`. That is the card's soul (:10–35).
 **Unmistakable.** The only card with a horizontal rule inside a computation and a 24px mono figure.
-**Degradation.** Missing operand → already italic „fehlende Angabe" (line 104), result undecidable (line 181). The rule and figure still draw, but the missing phrase renders at **15px, not 24px** — a missing value must never be the biggest thing on screen. Operand labels truncate at 11rem with a `title` (line 112); drop to 7rem below 360px. More than 4 operands in a step → **stack them vertically, one term per line**, which is also how a long Rechenweg is written on paper.
+**Degradation.** Missing operand → already italic „fehlende Angabe" (line 104), result undecidable (line 181). The rule and figure still draw, but the missing phrase renders at **15px, not 24px** — a missing value must never be the biggest thing on screen. Operand labels are capped at 11rem and WRAP (`CalculationCard.tsx`, `Operand`): they used to truncate with a `title`, which a touch screen never shows. More than 4 operands in a step → **stack them vertically, one term per line**, which is also how a long Rechenweg is written on paper.
 **Effort: M.**
 
-#### `process_map`
+#### `process_map` *(retired, ADR-0069)*
 **Job.** The Verfahren, and where this project stands in it.
 **Grammar.** Excellent already (ProcessMapCard.tsx). The rail is vertical and reads as a list; a Verfahren is a *route*. Two changes:
 1. **Progress spine.** The rail above the current node draws solid `--foreground/40` (already, line 126); the rail **below** it draws **dashed**. Travelled and untravelled at a glance — the entire meaning of `current_step`.
@@ -385,7 +441,7 @@ Keep: `duration` chips carry the Bauordnung's own words and are never a computed
 **Degradation.** No `current_step` → no cap, no dashes, everything neutral (:32–33). That rule is correct and must not be softened. The row already has the wrap fixes for a narrow column (:156–187); do not regress them.
 **Effort: S–M.**
 
-#### `follow_ups`
+#### `follow_ups` *(retired as a card; `FollowUpChips.tsx` draws the chips)*
 **Job.** Hand the reader their next question, already phrased.
 **Grammar.** **Drop the card.** Today: chips inside a `Card` with an eyebrow (FollowUpsCard.tsx). The chips are right; the frame around them is wrong. This card closes *every subject-matter answer by default* (catalog.py `_FOLLOW_UPS_RULE`), so it is the single most-seen card in the product — and it puts a bordered box at the bottom of every answer. **A large share of the "everything is a box" feeling is this one card's frame, seen a hundred times.**
 Flat register: Eyebrow + chips directly on the answer surface, 20px above, nothing else. The chips already carry their own border and shadow (CHIP, lines 52–59).
@@ -394,7 +450,7 @@ Rationale beyond aesthetics: this is the one card that is **not evidence** and m
 **Degradation.** Keep one line per chip with the whole question in `title` (:82–84). At 314px set `min-w-[12rem]` and let the row wrap — „Wie wird das Hauptgeschoß…" is still useful, „Wie…" is not. Empty `items` → render nothing at all, not an empty eyebrow.
 **Effort: S.**
 
-#### `summary`
+#### `summary` *(retired, ADR-0069)*
 **Job.** The answer's headline and intro, flat on the result surface.
 **Grammar.** Nearly correct already (SummaryCard.tsx:17–30). The key-point rule is `border-border` (line 23), the same hairline every disclosure panel uses — promote it to **2px `--foreground/20`**; these are the answer's own emphasis, not a nested aside. Apply the cross-card rule from §A2: **with a `verdict_header` present, the title renders at 14px/600.**
 **Degradation.** No `content` → title + points. No `key_points` → title + intro, and the rule is absent rather than empty.
@@ -419,7 +475,7 @@ Rationale beyond aesthetics: this is the one card that is **not evidence** and m
 
 All three landed in commit `67c2ee03`. **They are well-built**: derived tallies with no summary field on the wire, honest three-state unknowns, no fabricated values, correct wrap treatment for the narrow column. Nothing below asks for a rewrite. What they lack is **differentiation from each other and from `process_map`** — see §0.2. Each needs its §A5 mark and its §A2 figure, and nothing else.
 
-#### `document_checklist`
+#### `document_checklist` *(retired, ADR-0069)*
 **Job.** The Einreichliste as *states*, not names.
 **As built.** `SchematicCard`; rows with a status icon (`CircleCheck` / `Circle` / `CircleHelp` for present / missing / unknown, DocumentChecklistCard.tsx:65–69); a derived count row at 13px mono (`Count`, :92–99); condition printed in the row for conditional documents (:145–148); independent per-row disclosure using a `Set` rather than one-at-a-time, correctly reasoned (:34–36). The three-state face including a distinct "unknown" is exactly right and must not be collapsed (:60–63).
 **What remains.**
@@ -430,7 +486,7 @@ All three landed in commit `67c2ee03`. **They are well-built**: derived tallies 
 **Schema:** fully served. No addition needed.
 **Effort: M.**
 
-#### `deadline_timeline`
+#### `deadline_timeline` *(retired, ADR-0069)*
 **Job.** Several Fristen in the order they run, each with what starts its clock.
 **As built.** `SchematicCard`; an evenly-spaced rail with **numbered round nodes** (DeadlineTimelineCard.tsx:80–94); label at 13.5px, `period` at 13.5px semibold, `starts_from` under it behind an Eyebrow label (:112–124); a footer stating out loud that the rail is not to scale and no date is computed. The refusal to scale the rail is correct and load-bearing (:21–25) — a bar whose length meant anything would claim that four weeks and four years sit on one timeline.
 **What remains.**
@@ -442,7 +498,7 @@ All three landed in commit `67c2ee03`. **They are well-built**: derived tallies 
 **Schema:** fully served. No addition needed.
 **Effort: M.**
 
-#### `change_impact`
+#### `change_impact` *(retired, ADR-0069)*
 **Job.** What one moved fact costs.
 **As built.** `SchematicCard`; a header panel carrying `factor: from → to` at 13.5px medium with the derived direction tally beneath (ChangeImpactCard.tsx:212–245); rows of `aspect` at 13.5px over `after` at 13.5px semibold, a direction glyph, a direction chip, a disclosure holding `before`, `detail` and the required Fundstelle. **`tightens` is amber with an explicit note that red would be wrong (:63)** — it arrived at §A3 axis 4 independently. The absent-`from_value` case is handled in words rather than by inventing a plausible value (:27–31), which is exactly right.
 **What remains.**
@@ -485,7 +541,7 @@ All three landed in commit `67c2ee03`. **They are well-built**: derived tallies 
 
 Axis: **(visual poverty today) × (how often the model emits it)**. Frequency is read off the trigger table (catalog.py:80–107) and the doctrine: `follow_ups` closes *every* subject-matter answer by default; the generic answer shapes fire on almost any OIB question;
 
-> **Since this was written:** `follow_ups` is retired — the model emits none, and the post-answer STAGE produces the questions instead, rendered below the answer rather than inside it (`docs/architecture/post-answer-stages.md` §7.10). The ranking below is left as the record of a decision already taken and shipped; `FollowUpsCard.tsx` still draws every stored card and the rail, so §B1's flat register is still what a reader sees. a schematic fires only when the question names its geometry; IFC cards fire only with a model loaded.
+> **Since this was written:** `follow_ups` is retired — the model emits none, and the post-answer STAGE produces the questions instead, rendered below the answer rather than inside it (`docs/architecture/post-answer-stages.md` §7.10). The ranking below is left as the record of a decision already taken and shipped; `FollowUpChips.tsx` draws the chips (`FollowUpsCard.tsx` is gone), flat on the answer surface, which is §B1's register. a schematic fires only when the question names its geometry; IFC cards fire only with a model loaded.
 
 Poverty was assessed by reading the JSX **and by looking at the rendered gallery** (`/dev/cards` in both themes, desktop and mobile) — the three-newest-cards finding in §0.2 came from looking, not from reading.
 
@@ -605,22 +661,22 @@ The tables were the substance. `comparison_table` rendered **thirteen distinct t
 
 | # | Card | Section | Effort | Status |
 |---|---|---|---|---|
-| 1 | follow_ups | B1 | S | **Done** (Sprint 1, `b82f23e1`) — frame dropped; `title` deliberately KEPT, see note below |
-| 2 | comparison_table | B1 | L | **Type scale done** (ramp sprint 2, 2026-09-01) — one size for the table, weight/ink for hierarchy. The transposing mobile layout is still Pending |
-| 3 | requirement_checklist | B1 | M | Pending |
+| 1 | follow_ups | B1 | S | **Done** (Sprint 1, `b82f23e1`), then retired as a card (`FollowUpChips.tsx`) — frame dropped; `title` deliberately KEPT, see note below |
+| 2 | comparison_table | B1 | L | Retired (ADR-0069) — `:::compare`; its phone transposition shipped (§A9.6) |
+| 3 | requirement_checklist | B1 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
 | 4 | key_takeaways | B1 | S | **Done** (Sprint 1, `b82f23e1`) |
-| 5 | legal_basis | B1 | M | Pending — schema now LANDED (`284b2625`), so no longer blocked; the recessed ground / margin § column / hanging quote marks remain |
+| 5 | legal_basis | B1 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
 | 6 | verdict_header | B1 | S | **Done** (Sprint 1, `b82f23e1`) — gauge shipped as three 5px squares, NOT 12×3 bars; see note below |
-| 7 | deadline_timeline | B2 | M | Pending |
-| 8 | change_impact | B2 | M | Pending |
-| 9 | norm_chain | B1 | M | Pending |
-| 10 | document_checklist | B2 | M | Pending |
-| 11 | acoustic_check | B3 | L | Pending |
-| 12 | typed_table | B1 | M | Pending |
+| 7 | deadline_timeline | B2 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
+| 8 | change_impact | B2 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
+| 9 | norm_chain | B1 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
+| 10 | document_checklist | B2 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
+| 11 | acoustic_check | B3 | L | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
+| 12 | typed_table | B1 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
 | 13 | calculation | B1 | M | Pending |
-| 14 | condition_tree | B1 | M | Pending (includes the `shrink-0` mobile bug) |
-| 15 | process_map | B1 | S–M | Pending |
-| 16 | parking_requirement | B3 | M | Pending |
+| 14 | condition_tree | B1 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
+| 15 | process_map | B1 | S–M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
+| 16 | parking_requirement | B3 | M | Retired (ADR-0069) — the card and its file are gone; the Markdown dialect replaces it |
 | 17 | summary | B1 | S | **Done** (Sprint 1, `b82f23e1`) |
 | 18 | callout | B1 | S | **Done** (Sprint 1, `b82f23e1`) |
 | 19 | proposals (memory / patch) | B1 | S | **Done** (Sprint 1, `b82f23e1`) — accent kept at `foreground/40`; verified legible at pixel level, an amendment to /60 was considered and declined |
@@ -676,5 +732,5 @@ Both require a change to `src/aiq_agent/cards/models.py`, regeneration of `share
 | Defect | Evidence | Severity |
 |---|---|---|
 | Every `$ref` flattens to `z.any()`, so a card missing a **required** nested field passes validation and crashes the route — no error boundary exists | generated.ts:63 vs models.py:546, :550; RequirementChecklistCard.tsx:71–73 | **High** |
-| `condition_tree` condition chip is `shrink-0`; a long condition squeezes the outcome to nothing on a phone | ConditionTreeCard.tsx:160 | Medium |
+| ~~`condition_tree` condition chip is `shrink-0`~~ | Card retired (ADR-0069); no longer applies | — |
 | `ProposalShell` spends `--warning` on the pending lifecycle state, colliding with "near a limit" | ProposalShell.tsx:12 | Low |

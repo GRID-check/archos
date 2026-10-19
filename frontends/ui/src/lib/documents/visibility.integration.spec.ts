@@ -42,7 +42,7 @@ const UPLOADER = 'user_vis_uploader'
 const OTHER = 'user_vis_other'
 const COLLECTION = `coll_visibility_${STAMP}`
 
-const STATUSES = ['uploaded', 'pending', 'processing', 'completed', 'ready', 'failed', 'error', 'stored', 'quarantined']
+const STATUSES = ['uploaded', 'pending', 'processing', 'completed', 'failed', 'stored', 'quarantined']
 const OUTCOMES = [null, 'clean', 'partial', 'unchecked', 'quarantined', 'released'] as const
 
 type Row = ReadableFacts & { id: string }
@@ -195,7 +195,7 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
         row.authoredBy === 'user' &&
         (row.status === 'quarantined' ||
           row.screeningOutcome === 'quarantined' ||
-          (row.screeningOutcome === null && !['completed', 'ready', 'ingested', 'success', 'processed'].includes(row.status)))
+          (row.screeningOutcome === null && !['completed'].includes(row.status)))
     )
     expect(held.length).toBeGreaterThan(40)
     expect(held.filter((row) => seen.has(row.id))).toEqual([])

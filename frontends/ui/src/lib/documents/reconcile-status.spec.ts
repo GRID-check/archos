@@ -17,8 +17,13 @@ vi.mock('@/lib/upload-batches/settle', () => ({ onDocumentsSettled: vi.fn().mock
 const captureServer = vi.hoisted(() => vi.fn(() => true))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
 
+// The live channel's own subject is `shelf-live.spec.ts`; here it is which
+// shelves a reconciliation announces.
+vi.mock('./shelf-live', () => ({ publishShelfChanged: vi.fn() }))
+
 import { getDb } from '@/lib/db'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
+import { publishShelfChanged } from './shelf-live'
 import { asDb } from '@/test-utils/db-fixtures'
 import {
   reconcileDocumentStatuses,
@@ -209,7 +214,29 @@ describe('reconcileDocumentStatuses', () => {
     const [result] = await reconcileDocumentStatuses([makeRow()], 'org-1')
 
     expect(result.status).toBe('failed')
-    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }))
+    // The file's cause, not the adapter's tally.
+    expect(db.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', errorMessage: 'PDF is encrypted' })
+    )
+  })
+
+  it('keeps the job message when the run died before any file reported', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': {
+          status: 'failed',
+          error_message: 'interrupted: worker stopped',
+          file_details: [{ status: 'ingesting' }],
+        },
+      })
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(db.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', errorMessage: 'interrupted: worker stopped' })
+    )
   })
 
   it('leaves a row pending while the job is still in progress', async () => {
@@ -1259,7 +1286,14 @@ describe('describeBackendIngestState', () => {
 
     const knowledge = await describeBackendIngestState(makeRow({ status: 'processing' }))
 
-    expect(knowledge).toEqual({ state: 'terminal', resolution: { status: 'completed', errorMessage: null } })
+    expect(knowledge).toEqual({
+      state: 'terminal',
+      resolution: {
+        status: 'completed',
+        errorMessage: null,
+        failure: { category: null, retryable: null, readerVersion: null },
+      },
+    })
   })
 
   it("reports absent, not an earlier dispatch's failure, when the backend forgot the job", async () => {
@@ -1336,7 +1370,13 @@ describe('reconcileDocumentStatuses — upload screening', () => {
     expect(result.status).toBe('quarantined')
     expect(result.errorMessage).toBe(verdict)
     expect(db.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'quarantined', errorMessage: verdict, screeningOutcome: 'quarantined' })
+      expect.objectContaining({
+        status: 'quarantined',
+        errorMessage: verdict,
+        screeningOutcome: 'quarantined',
+        // A job from before the typed field: its message is read once, here, and stored as data.
+        quarantine: { reasons: [{ kind: 'term', term: 'Lohnzettel', count: 1, pages: [1] }], checked: 'full' },
+      })
     )
     // The versions holding the bytes this job judged lose any earlier pass (migration 0131).
     expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: null })
@@ -1350,14 +1390,96 @@ describe('reconcileDocumentStatuses — upload screening', () => {
       projectId: 'p1',
       filename: 'a.pdf',
       reasons: 'term:Lohnzettel',
+      reasonsOmitted: 0,
       checked: 'full',
       uploadedBy: 'user-1',
     })
   })
 
+  // ADR-0113: the job's typed verdict decides and is what the row stores, and
+  // its message is not read when the verdict is there.
+  const typed = {
+    reasons: [
+      { kind: 'iban', count: 2, pages: [3, 4], sample: 'AT61 •••• •••• •••• 3201' },
+      { kind: 'passport', count: 1, pages: [5] },
+    ],
+    checked: 'partial',
+    omitted: 4,
+  }
+
+  it('quarantines from the typed verdict alone, and stores it with every kind as the job wrote it', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': {
+          status: 'failed',
+          error_message: '1/1 file(s) failed',
+          file_details: [{ status: 'failed', error_message: null, screening: 'quarantined', quarantine: typed }],
+        },
+      })
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ quarantine: null } as Partial<ReconcilableDocument>)], 'org-1')
+
+    expect(result.status).toBe('quarantined')
+    expect((result as { quarantine?: unknown }).quarantine).toEqual(typed)
+    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'quarantined', quarantine: typed }))
+    expect(db.values).toHaveBeenCalledWith(
+      expect.objectContaining({ reasons: 'iban,passport', reasonsOmitted: 4, checked: 'partial' })
+    )
+  })
+
+  it('takes the typed verdict over the message beside it', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': {
+          status: 'completed',
+          file_details: [{ status: 'failed', error_message: verdict, screening: 'quarantined', quarantine: typed }],
+        },
+      })
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ quarantine: typed }))
+    expect(db.values).toHaveBeenCalledWith(expect.objectContaining({ reasons: 'iban,passport' }))
+  })
+
+  it('quarantines from the collection file list by its typed verdict', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([{ file_name: 'plan.pdf', status: 'failed', error_message: null, quarantine: typed }])
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ metadata: null })], 'org-1')
+
+    expect(result.status).toBe('quarantined')
+    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ quarantine: typed }))
+  })
+
+  it('writes no verdict for an ordinary failure', async () => {
+    const failed = makeDbMock()
+    mockFetch.mockResolvedValue(batchResponse({ 'job-1': { status: 'failed', error_message: 'unparseable PDF' } }))
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+    expect(failed.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed', quarantine: null }))
+  })
+
   it('quarantines from a failed job too', async () => {
     const db = makeDbMock()
-    mockFetch.mockResolvedValue(batchResponse({ 'job-1': { status: 'failed', error_message: verdict } }))
+    // The shape the adapter really produces for a one-file upload it held: the
+    // job carries the tally, the verdict sits on the file. The spec once put the
+    // verdict on the job, a shape no job has, and passed while every real
+    // quarantine was stored as an ordinary failure.
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': {
+          status: 'failed',
+          error_message: '1/1 file(s) failed',
+          file_details: [{ status: 'failed', error_message: verdict, screening: 'quarantined' }],
+        },
+      })
+    )
 
     const [result] = await reconcileDocumentStatuses([makeRow()], 'org-1')
 
@@ -1502,5 +1624,58 @@ describe('reconcileDocumentStatuses — settling uploads', () => {
     await reconcileDocumentStatuses([makeRow()], 'org-1')
 
     expect(onDocumentsSettled).not.toHaveBeenCalled()
+  })
+})
+
+describe('reconcileDocumentStatuses announcing what settled', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+    mockFetch.mockResolvedValue(
+      batchResponse({ 'job-1': { status: 'completed', file_details: [{ file_name: 'plan.pdf', status: 'success' }] } })
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  type ShelfRow = ReconcilableDocument & { projectId: string | null; scope: string }
+
+  it('tells the Archiv when a listing row on it settles: the listing carries its shelf', async () => {
+    makeDbMock()
+    const row: ShelfRow = { ...makeRow(), projectId: null, scope: 'archiv' }
+
+    await reconcileDocumentStatuses([row], 'org-1')
+
+    expect(publishShelfChanged).toHaveBeenCalledTimes(1)
+    expect(publishShelfChanged).toHaveBeenCalledWith('org-1', { kind: 'archiv' })
+  })
+
+  it('tells each shelf once, however many of its rows settled', async () => {
+    makeDbMock()
+    const rows: ShelfRow[] = [
+      { ...makeRow(), projectId: 'p1', scope: 'project' },
+      { ...makeRow({ id: 'doc-2' }), projectId: 'p1', scope: 'project' },
+    ]
+
+    await reconcileDocumentStatuses(rows, 'org-1')
+
+    expect(publishShelfChanged).toHaveBeenCalledTimes(1)
+    expect(publishShelfChanged).toHaveBeenCalledWith('org-1', { kind: 'project', projectId: 'p1' })
+  })
+
+  it('says nothing for a row another read moved first: that read announced it', async () => {
+    makeDbMock({ moved: false })
+    await reconcileDocumentStatuses([{ ...makeRow(), projectId: 'p1', scope: 'project' } as ShelfRow], 'org-1')
+    expect(publishShelfChanged).not.toHaveBeenCalled()
+  })
+
+  it('says nothing for a chat attachment, which is on no shelf', async () => {
+    makeDbMock()
+    await reconcileDocumentStatuses([{ ...makeRow(), projectId: null, scope: 'session' } as ShelfRow], 'org-1')
+    expect(publishShelfChanged).not.toHaveBeenCalled()
   })
 })

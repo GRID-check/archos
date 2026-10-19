@@ -30,7 +30,7 @@ import {
 import { canManageArchiv } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { Document, UploadBatch, UploadBatchExclusion, UploadBatchScope } from '@/lib/db/schema'
-import { documentStatusFacts } from '@/lib/documents/document-status'
+import { surfaceStateOf, type SurfaceState } from '@/lib/documents/surface-state'
 import { reconcileDocumentStatuses, type DocumentMetadata } from '@/lib/documents/reconcile-status'
 import { encodeDocumentListCursor, type DocumentListCursor } from '@/lib/documents/list-cursor'
 import { findFolderPathsInProject } from '@/lib/documents/repository'
@@ -38,8 +38,9 @@ import { memberReader } from '@/lib/documents/document-reader'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { parseQuarantine, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
+import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import {
+  addUploadBatchExclusions,
   countBatchDocumentsByStatus,
   findUploadBatch,
   insertUploadBatch,
@@ -120,21 +121,51 @@ export function readUploadBatchId(value: FormDataEntryValue | null): string | nu
   return typeof value === 'string' && UUID_PATTERN.test(value) ? value : null
 }
 
-/** Seal the session's batch once its last request has answered. Idempotent for a sealed batch. */
+/**
+ * Seal the session's batch once its last request has answered. Idempotent for
+ * a sealed batch. `excluded` is what the server's repeat of the name check
+ * refused (a 422 the browser's own check did not foresee), by term and count,
+ * never by name: added to what the browser's check held back when it opened.
+ */
 export async function sealOwnUploadBatch(
   session: AuthorizedSession,
   batchId: string,
-  counts: { unchanged: number; failed: number }
+  counts: { unchanged: number; failed: number; excluded?: UploadBatchExclusion[] }
 ): Promise<void> {
   const batch = await findOwnUploadBatch(session, batchId)
   if (!batch) throw new NotFoundError('Upload not found')
   if (batch.sealedAt) return
   const sealed = await sealUploadBatch(session.organizationId, batchId, session.userId, counts, new Date())
   if (!sealed) throw new ConflictError('The upload changed while it was being sealed')
+  // The bytes are in and the person is still looking at the upload: Piloti
+  // judges where it belongs from the names now (`lib/filing`). Never throws,
+  // and neither does loading it: a seal is never refused over a suggestion.
+  await import('@/lib/filing/trigger')
+    .then(({ queueFilingReview }) => queueFilingReview(session.organizationId, batch, 'name'))
+    .catch((error: unknown) => console.warn(`[filing] the name review of batch ${batch.id} was not queued; the upload is unaffected:`, error))
   // A batch whose documents all finished before the seal arrived completes
   // here rather than waiting for a reader or the sweep.
   const { settleUploadBatches } = await import('./settle')
   await settleUploadBatches(session.organizationId, [batchId])
+}
+
+/**
+ * Record files the name check refused on a job's batch (the mail import), by
+ * term and count, so its summary says why they are missing, as a browser
+ * upload's does. Never throws: the summary is a courtesy, and the import's own
+ * skip list names the file to the person who started it.
+ */
+export async function recordJobUploadExclusions(
+  organizationId: string,
+  batchId: string,
+  createdBy: string,
+  excluded: readonly UploadBatchExclusion[]
+): Promise<void> {
+  try {
+    await addUploadBatchExclusions(organizationId, batchId, createdBy, excluded)
+  } catch (error) {
+    console.warn(`[upload-batches] could not record exclusions on batch ${batchId}; the import still lists them:`, error)
+  }
 }
 
 /** A batch as a server-side job filing into it sees it; see {@link findJobUploadBatch}. */
@@ -231,14 +262,24 @@ export interface UploadSummary {
   documents: UploadSummaryDocument[]
 }
 
+/**
+ * The tally's word for each state (`surfaceStateOf`). A status nobody declared
+ * is counted as being read, as the folder brief and its SQL count it
+ * (`documentReadFamily`), never as stored: „Abgelegt“ is a claim that the
+ * bytes are at rest on purpose, and nothing is known about an undeclared one.
+ */
+const OUTCOME_BY_STATE: Record<SurfaceState, UploadSummaryDocument['outcome']> = {
+  citable: 'ready',
+  uploading: 'reading',
+  reading: 'reading',
+  held: 'quarantined',
+  unreadable: 'failed',
+  stored: 'stored',
+  unknown: 'reading',
+}
+
 function outcomeOf(status: string): UploadSummaryDocument['outcome'] {
-  if (status === 'quarantined') return 'quarantined'
-  const facts = documentStatusFacts(status)
-  if (!facts) return 'stored'
-  if (facts.phase === 'in-flight') return 'reading'
-  if (facts.variant === 'success') return 'ready'
-  if (facts.variant === 'destructive') return 'failed'
-  return 'stored'
+  return OUTCOME_BY_STATE[surfaceStateOf(status)]
 }
 
 type EnrichedDocument = Document & DocumentMetadata
@@ -256,7 +297,7 @@ function toSummaryDocument(
     status: row.status,
     outcome: outcomeOf(row.status),
     screening: row.screeningOutcome,
-    quarantine: parseQuarantine(row.errorMessage),
+    quarantine: quarantineVerdictOf(row),
     // A quarantine verdict is shown as reasons, not as an error string.
     errorMessage: row.status === 'quarantined' ? null : row.errorMessage,
     summary: row.summary ?? null,

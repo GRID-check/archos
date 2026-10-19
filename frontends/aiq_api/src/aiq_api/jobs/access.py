@@ -17,6 +17,8 @@ from sqlalchemy.engine import Connection
 from aiq_agent.auth import Principal
 from aiq_agent.auth import get_current_principal
 from aiq_agent.common.db_utils import ensure_schema
+from aiq_agent.common.db_utils import present_columns
+from aiq_agent.common.db_utils import present_indexes
 from aiq_agent.knowledge.restricted_collections import base_collection_of
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
@@ -420,6 +422,41 @@ class JobCaller:
     scope: SignedJobScope | None = None
 
 
+def verified_envelope(
+    headers: Mapping[str, str],
+    *,
+    user_id: str | None,
+    organization_id: str | None = None,
+    now_ms: int | None = None,
+) -> GridRequestContext | None:
+    """A request's signed envelope when it may speak for ``user_id``, else None.
+
+    The bar every reader that TRUSTS the envelope here holds it to: signed with
+    the shared secret (no secret, nothing verifies), naming an organization
+    (``organization_id`` when one is expected), speaking for exactly the user the
+    caller says it is, and inside the BFF verifier's window, counted in both
+    directions. Any failure is the same as no envelope.
+    """
+    secret = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    if not secret or not user_id:
+        return None
+    context = GridRequestContext.from_envelope(
+        headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
+        headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+        secret,
+    )
+    if context is None or not context.organization_id or context.issued_at is None:
+        return None
+    if context.user_id != user_id:
+        return None
+    if organization_id is not None and context.organization_id != organization_id:
+        return None
+    now = now_ms if now_ms is not None else int(time.time() * 1000)
+    if abs(now - context.issued_at) > JOB_ENVELOPE_MAX_AGE_MS:
+        return None
+    return context
+
+
 def signed_job_scope(
     headers: Mapping[str, str],
     principal: Principal,
@@ -429,26 +466,12 @@ def signed_job_scope(
     """The job scope a request's signed envelope grants, or None when it grants nothing.
 
     Stricter than the envelope middleware, which only asks that one is present.
-    An envelope that widens access past the owner must be signed (no secret, no
-    grant), name an organization, speak for the user the bearer token names,
-    and be inside the BFF verifier's window, counted in both directions. A
-    failure on any of these is the same as no envelope: the caller keeps what
-    it owns and nothing more.
+    An envelope that widens access past the owner must pass
+    :func:`verified_envelope` for the user the bearer token names. A failure is
+    the same as no envelope: the caller keeps what it owns and nothing more.
     """
-    secret = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not secret:
-        return None
-    context = GridRequestContext.from_envelope(
-        headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
-        headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
-        secret,
-    )
-    if context is None or not context.organization_id or context.issued_at is None:
-        return None
-    if context.user_id != principal.sub:
-        return None
-    now = now_ms if now_ms is not None else int(time.time() * 1000)
-    if abs(now - context.issued_at) > JOB_ENVELOPE_MAX_AGE_MS:
+    context = verified_envelope(headers, user_id=principal.sub, now_ms=now_ms)
+    if context is None or context.organization_id is None:
         return None
     return SignedJobScope(
         organization_id=context.organization_id,
@@ -570,18 +593,27 @@ def _ensure_job_access_schema(db_url: str) -> None:
 
 def _create_job_access_schema(conn: Connection, db_url: str) -> None:
     conn.execute(text(_job_access_table_sql(db_url)))
-    conn.execute(text(_JOB_ACCESS_INDEX_SQL))
+    # Every index and column is checked before its DDL: ``CREATE INDEX IF NOT
+    # EXISTS`` and ``ADD COLUMN IF NOT EXISTS`` lock the table before they check,
+    # so issued on every start they block its writers or readers for nothing, and
+    # queue behind any session a dead node left holding the table
+    # (``aiq_agent.common.db_utils.present_columns``). On a current table this
+    # issues no DDL at all.
+    indexes = present_indexes(conn, "job_access")
+    if "idx_job_access_owner" not in indexes:
+        conn.execute(text(_JOB_ACCESS_INDEX_SQL))
     # Backfill columns onto pre-existing tables BEFORE creating the
     # project_collection index below -- on a deployment where job_access
     # already existed without that column, CREATE TABLE IF NOT EXISTS is a
     # no-op and the index creation would otherwise fail with
     # "column project_collection does not exist".
     if _is_postgres(db_url):
-        for statement in _job_access_add_column_statements(db_url):
+        for statement in _job_access_add_column_statements(db_url, present_columns(conn, "job_access")):
             conn.execute(text(statement))
     else:
         _ensure_sqlite_job_access_columns(conn)
-    conn.execute(text(_JOB_ACCESS_PROJECT_INDEX_SQL))
+    if "idx_job_access_owner_project" not in indexes:
+        conn.execute(text(_JOB_ACCESS_PROJECT_INDEX_SQL))
 
 
 def _job_access_table_sql(db_url: str) -> str:
@@ -602,22 +634,27 @@ def _job_access_table_sql(db_url: str) -> str:
     )
 
 
-def _job_access_add_column_statements(db_url: str) -> list[str]:
-    """Backfill columns onto pre-existing job_access tables.
+#: Columns added after ``job_access`` first shipped, and the statement that adds each.
+_JOB_ACCESS_BACKFILL_COLUMNS = {
+    "conversation_id": "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS conversation_id VARCHAR",
+    "project_collection": "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS project_collection VARCHAR",
+    "organization_id": "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS organization_id VARCHAR",
+}
+
+
+def _job_access_add_column_statements(db_url: str, present: set[str] | frozenset[str] = frozenset()) -> list[str]:
+    """Backfill the columns a pre-existing job_access table lacks; none of those in ``present``.
 
     CREATE TABLE IF NOT EXISTS only creates the table with the new columns
     when it doesn't already exist. Deployments with a pre-existing job_access
     table need these columns added explicitly. Postgres supports
     ``ADD COLUMN IF NOT EXISTS``; SQLite does not, so column additions there
     are guarded with a manual existence check (mirroring the rest of this
-    module's Postgres/SQLite branching).
+    module's Postgres/SQLite branching). ``present`` is what the table already
+    has: the statement locks the table even when the column exists.
     """
     if _is_postgres(db_url):
-        return [
-            "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS conversation_id VARCHAR",
-            "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS project_collection VARCHAR",
-            "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS organization_id VARCHAR",
-        ]
+        return [statement for column, statement in _JOB_ACCESS_BACKFILL_COLUMNS.items() if column not in present]
     return []
 
 

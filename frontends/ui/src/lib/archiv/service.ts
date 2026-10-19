@@ -25,9 +25,11 @@ import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { fetchSemanticHits, joinHitsToFiles, type SearchedDocument } from '@/lib/documents/service'
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { ARCHIV_SHELF } from '@/lib/documents/shelf'
-import { toListedDocuments, toListedPage, type ListedDocument } from '@/lib/documents/shelf-listing'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
+import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from '@/lib/documents/shelf-listing'
 import { uploadToShelf, type ShelfUploadInput, type UploadDocumentResult } from '@/lib/documents/shelf-upload'
 import type { DocumentListCursor } from '@/lib/documents/list-cursor'
+import type { DocumentLevelQuery } from '@/lib/documents/list-query'
 import type { DocumentNameMatchRow } from '@/lib/documents/repository'
 import { fassungCandidatesOnShelf } from '@/lib/documents/fassung-candidates'
 import type { FassungCandidateMatch } from '@/lib/documents/name-probe-types'
@@ -43,6 +45,7 @@ import {
   findArchivDocument,
   findArchivDocumentsByFilenames,
   findArchivDocumentsByNames,
+  listArchivDocumentLevel,
   listArchivDocuments as listArchivDocumentRows,
 } from './repository'
 
@@ -78,17 +81,36 @@ function archivReader(session: AuthorizedSession): Promise<ShelfReader> {
  */
 export async function listArchiv(
   session: AuthorizedSession,
-  options: { authoredBy?: DocumentAuthor; includeArchived?: boolean; cursor?: DocumentListCursor } = {},
+  options: {
+    authoredBy?: DocumentAuthor
+    includeArchived?: boolean
+    cursor?: DocumentListCursor
+    /** One folder level in the reader's order instead of the drain (ADR-0102), as `listDocumentsPage` takes it. */
+    level?: DocumentLevelQuery
+  } = {},
 ): Promise<ArchivListResult> {
   // A held file is listed for its uploader and the curators only (ADR-0086).
   const reader = await archivReader(session)
-  const page = await listArchivDocumentRows(session.organizationId, { ...options, reader })
+  const { level, ...listing } = options
+  const listed = level
+    ? await toListedLevelPage(
+        session,
+        await listArchivDocumentLevel(session.organizationId, {
+          authoredBy: listing.authoredBy,
+          includeArchived: listing.includeArchived,
+          reader,
+          level,
+        }),
+        reader,
+      )
+    : await toListedPage(session, await listArchivDocumentRows(session.organizationId, { ...listing, reader }), reader)
   return {
-    ...(await toListedPage(session, page, reader)),
+    ...listed,
     collectionName: archivCollectionName(session.organizationId),
     canManage: canManageArchiv(session),
   }
 }
+
 
 /**
  * Document-centric semantic search over the org's shared Archiv. Any org member
@@ -235,6 +257,7 @@ export async function deleteArchivDocument(
   await eraseDocumentObjectsOrKeepRow(doc, session.organizationId)
 
   await deleteArchivDocumentRow(documentId, session.organizationId)
+  publishShelfChanged(session.organizationId, ARCHIV_SHELF)
 
   // Once more, now that the row is gone: an ingest of this document that
   // asked `GET /api/internal/document-exists` before the row went saw it,

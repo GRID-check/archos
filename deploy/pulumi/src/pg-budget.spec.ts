@@ -131,24 +131,28 @@ describe("assertPgConnectionBudget", () => {
     expect(() => assertPgConnectionBudget(cfg)).not.toThrow();
   });
 
-  it("holds production at 156 of 200: Langfuse and KEDA on, the ingest tier at its ceiling, the single topology", async () => {
+  it("holds production at 150 of 200: Langfuse and KEDA on, the ingest tier at its ceiling, the single topology", async () => {
     // The arithmetic Pulumi.prod.yaml's comment and the pgPoolerPoolSize doc
-    // state. A change here is a change to those numbers, on purpose.
+    // state. A change here is a change to those numbers, on purpose. The ingest
+    // ceiling is read from the stack file, so lowering it there moves this too.
     const { cfg, pgConnectionBudget } = await load({
       ...langfuseStackConfig(),
       "grid-oib:observabilityEnabled": "true",
       "grid-oib:seaweedfsTopology": "single",
       "grid-oib:pgInstances": "3",
       "grid-oib:pgPoolerInstances": "2",
+      "grid-oib:ingestWorkerMaxReplicas": stackKnob("prod", "ingestWorkerMaxReplicas")!,
+      "grid-oib:ingestWorkerConcurrency": stackKnob("prod", "ingestWorkerConcurrency")!,
     });
     const budget = pgConnectionBudget(cfg);
 
     expect(cfg.langfuse.enabled).toBe(true);
+    expect(cfg.ingestWorker.maxReplicas).toBe(3);
     // 2 x (3 x 12 + 1)
     expect(budget.pooled).toBe(74);
-    // 3 superuser + 6 CNPG + 20 LISTEN + (5 x 3 + 4) locks + 6 Jobs + 8 KEDA + 20 Langfuse
-    expect(budget.reserveTotal).toBe(82);
-    expect(budget.total).toBe(156);
+    // 3 superuser + 6 CNPG + 20 LISTEN + (3 x 3 + 4) locks + 6 Jobs + 8 KEDA + 20 Langfuse
+    expect(budget.reserveTotal).toBe(76);
+    expect(budget.total).toBe(150);
   });
 
   it("passes a fresh stack with everything on, which is the defaults' worst case", async () => {

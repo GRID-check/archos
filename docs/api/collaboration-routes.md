@@ -181,6 +181,12 @@ project). The caller is omitted (`Assign to me` is a separate control). People
 who still need project access are absent: assigning them would be refused, and
 a collaborator cannot add them to the project.
 
+`?access=write` (a document only; 400 for anything else) lists who may change
+the document instead of who may open it (`mayWriteDocument`): the people an
+Anmerkung may be handed to, since its Zuständige answers and closes it. The
+annotations service checks the pick again. Without it, the list is also whom a
+mark may mention.
+
 This is **not** the share-invite list. `/api/organization/members` is also
 wrong here — that route is org-admin only.
 
@@ -279,16 +285,42 @@ asked in it (spec IB-9).
 
 ## Inbox
 
-### `GET /api/inbox?pendingOnly=true|false`
+Every route below has one typed client, `frontends/ui/src/lib/inbox/client.ts`
+(ADR-0055): the inbox list and badge, the review (which marks have unread
+news, and opening a mark reads it) and the shell's notification offer call it, and `app/api/inbox/routes.spec.ts`
+drives the real handlers through it. The service worker posts a tapped
+notification's item to `POST /api/inbox/read` itself (`public/sw.js` cannot
+import), and the same spec holds its path to the client's.
 
-Returns `InboxListResponse` = `{ items: InboxItemView[], pending: number }`,
-bounded by `INBOX_LIST_LIMIT`. `pendingOnly` is an explicit `'true' | 'false'`
-enum, not a coerced boolean (`z.coerce.boolean()` reads `"false"` as `true`).
+### `GET /api/inbox?filter=…&cursor=…`
+
+Returns `InboxListResponse` = `{ items: InboxItemView[], pending, counts:
+{ requests, unread }, hasMore, nextCursor }`, one page of `INBOX_LIST_LIMIT`
+rows, newest first (by `updated_at` as stored, to the microsecond, then by
+id, on the bare column the list index covers). `filter` picks the slice
+(`InboxListFilter` in `lib/inbox/types.ts`):
+
+| `filter` | Rows | The list's filter |
+|---|---|---|
+| `requests` | actionable, not resolved, not redacted, not archived | „Für mich“ |
+| `unread` | not opened, not redacted, not archived | „Ungelesen“ |
+| `all` (default) | everything not archived | „Alle“ |
+| `archived` | only archived rows | „Archiviert“ |
+| `pending` | the badge's own set: unread, or a request still open | — |
+
+The Postfach keeps the filter it shows in its page's address (`/app/inbox?filter=unread|all|archived`;
+„Für mich“, the default, is not written; `InboxList`), replaced with `history.replaceState` on a
+change, so a row's link into the review carries it as `back` and closing the review comes back to it.
+
+`counts` are the numbers beside the first two
+filters. `hasMore` says a further page exists; pass `nextCursor` back as
+`?cursor=` to read it. A cursor is opaque and written by the server; one it did
+not write is a `400`.
 
 **Access is re-checked at read time** (spec IB-13). An item never grants access.
 For every distinct target on the page — resolved **once per resource**, not once
 per item — access is re-derived; anything unreachable, or already marked inert,
-comes back with `href: null`, `subject: null`, `related: null` and `excerpt: null`. Such rows are **redacted, not
+comes back with `href: null`, `subject: null`, `related: null`, `excerpt: null` and `variant: null`. Such rows are **redacted, not
 dropped**: a redacted row explains itself, a vanished one looks like a bug.
 A run's row (`job.completed`, `job.failed`, `job.waiting`) targets its project,
 and is also judged by the run it names: a revision task whose document now sits
@@ -297,9 +329,24 @@ in a folder the reader may not read is redacted like a revoked target
 and the run view withhold it.
 
 `InboxItemView` carries `type`, `state` (`unread`/`read`/`resolved`/`archived`/
-`inert`), `actionable`, `count`, `actorName`, `actorUserId`, `subject`,
+`inert`), `archived` (the reader archived it; its own fact, because an archived
+row whose target went away reads `state: 'inert'` and is still restored, never
+archived again), `actionable`, `count`, `actorName`, `actorUserId`, `subject`,
 `related` (the second name a type shows, e.g. the newer document of a
-`document.new_fassung`), `excerpt`, `href`, `resourceType`/`resourceId`/`anchorId`, and timestamps.
+`document.new_fassung`), `excerpt`, `variant` (which wording of its type the
+row reads, a key segment: why Piloti could not work a mark, what a proposal
+changes), `dueOn` (the date of the mark a Zuständige is asked about, so the row
+says by when), `openMarks` and `marksFassung` (for a new Fassung, how many open
+marks it leaves to check and the Fassung they sit on), `answerIn` (where an open request on a mark may be answered: `row`,
+`review` for Piloti's Rückfrage while events do not wake Piloti, or null when
+the reader may not write the document; see
+[`document-annotations.md`](../architecture/document-annotations.md#what-the-person-hears)),
+`pilotiWakes` (an answer from the row may address Piloti with @Piloti: events
+wake Piloti in the organization; only where `answerIn` is `row`, absent is
+false), `href`, `resourceType`/`resourceId`/`anchorId`, and timestamps. A row a
+reply in a mark's thread wrote (`annotation.activity`, `annotation.mentioned`)
+names that reply in its payload (`replyId`), and goes inert when its author
+deletes the reply (`DELETE /api/documents/{id}/annotations/{annotationId}/replies/{replyId}`).
 Rendering is driven entirely by `INBOX_TYPE_PRESENTATION` in
 `lib/inbox/types.ts`, so a new item type needs a registry entry and its
 translations — no new component (spec IB-6).
@@ -326,20 +373,48 @@ index `idx_inbox_items_pending`.
 
 ### `POST /api/inbox/read`
 
-Body `{ itemIds: string[] }` or `{ all: true }` — at least one of them; `{}` is a
-`400`. `itemIds` must be uuids and is capped at `INBOX_LIST_LIMIT`, because a
-mark-read request can only ever be about rows the client was shown. If both are
-sent, `all` wins. Scoped to the caller, so ids belonging to someone else cannot be
-poked (they simply match nothing — telling you an item is not yours would confirm
-it exists).
+Exactly one of four bodies; anything else (`{}`, two shapes at once) is a `400`:
 
-Returns `{ affected, pending }`: rows actually touched (`0` is a legitimate
-no-op) and the recomputed badge, so no follow-up read is needed.
+- `{ itemIds: string[] }` — the rows the reader opened. Uuids, capped at
+  `INBOX_LIST_LIMIT`, because a mark-read request can only ever be about rows
+  the client was shown.
+- `{ all: true }` — „Alle als gelesen markieren“, in the types the caller may see.
+- `{ resourceType: 'document', resourceId, anchorId }` — the reader opened one
+  mark in the review: their informational items anchored on it are read
+  (`markAnchorItemsRead`); requests stay open, as for a whole resource. A row
+  anchored there only for its link („15 Anmerkungen gesetzt“, folded on
+  `MARKS_SET_GROUP_ANCHOR`) is not the mark's news and is left alone.
+- `{ resourceType: 'document', resourceId, marksSet: true }` — the reader
+  opened the document's review: their rows about new marks on it are read
+  (`markMarksSetReadFor`, `markResourceItemsRead` narrowed to rows folded on
+  `MARKS_SET_GROUP_ANCHOR`, in the types they may see).
 
-### `POST /api/inbox/{id}/archive`
+Scoped to the caller, so ids belonging to someone else cannot be poked (they
+simply match nothing — telling you an item is not yours would confirm it
+exists). Returns `{ affected, pending }`: rows actually touched (`0` is a
+legitimate no-op) and the recomputed badge, so no follow-up read is needed.
 
-Archive one item. `404` on a miss — indistinguishable from "not yours". Returns
-the same `{ affected, pending }`.
+### `GET /api/inbox/unread-anchors?resourceType=document&resourceId=…`
+
+`{ anchorIds: string[] }`: the marks of one document whose news the caller has
+not read, the review's dots. The same rows `POST /api/inbox/read`'s anchor form
+reads (the caller's own, informational, unread, in the types they may see),
+less what they archived or what was redacted, and less the rows about new
+marks, which anchor on the newest mark only for their link. One query on
+`idx_inbox_items_target`, at most `UNREAD_ANCHORS_LIMIT` (500, a document's
+most marks). Only `document` is an anchored resource; anything else is a `400`.
+
+### `POST /api/inbox/unread`
+
+`{ itemIds: string[] }` — „Als ungelesen markieren“: the caller's own live rows
+lose their `readAt`. `count` stays as reading left it. Same bounds and the
+same `{ affected, pending }`.
+
+### `POST /api/inbox/{id}/archive`, `DELETE /api/inbox/{id}/archive`
+
+`POST` archives one item; `DELETE` takes it out of the archive again
+(„Wiederherstellen“ under „Archiviert“). `404` on a miss — indistinguishable
+from "not yours". Both return `{ affected, pending }`.
 
 ---
 

@@ -7,12 +7,14 @@
  */
 
 import type { ComponentProps } from 'react'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { EMPTY_FASSUNG } from '@/lib/documents/fassung'
+import type { ShelfSummary } from '@/lib/documents/shelf-summary-types'
 import type { FileItem, FolderItem } from '../file-types'
-import { buildFolderBrief } from '../lib/folder-knowledge'
+import { buildFolderBrief, buildFolderBriefFromSummary } from '../lib/folder-knowledge'
 import { FolderBrief } from './folder-brief'
 
 let seq = 0
@@ -105,7 +107,7 @@ describe('FolderBrief — the numbers add up', () => {
 describe('FolderBrief — what needs the reader comes first', () => {
   it('orders the body by what the reader has to do, and folds the reference sections', () => {
     renderBrief()
-    const body = document.getElementById('folder-brief-body')!
+    const body = screen.getByTestId('folder-brief-sections')
     const order = [...body.children].map(
       (section) => section.getAttribute('data-testid') ?? section.getAttribute('aria-labelledby')
     )
@@ -165,10 +167,10 @@ describe('FolderBrief — chips', () => {
 })
 
 describe('FolderBrief — folded', () => {
-  it('is one line naming the headline, with no bar, legend or sections, and opens on a click', async () => {
+  it('is one line naming the headline, with no bar, legend or sections, and asks to open on a click', async () => {
     const onCollapsedChange = vi.fn()
     renderBrief(CORPUS, { collapsed: true, onCollapsedChange })
-    const line = screen.getByTestId('folder-brief')
+    const line = screen.getByTestId('folder-brief-toggle')
     expect(line).toHaveTextContent(/3 of 5 documents read/)
     expect(line).toHaveAttribute('aria-expanded', 'false')
     expect(document.querySelector('[data-slot="segment-meter"]')).toBeNull()
@@ -176,5 +178,72 @@ describe('FolderBrief — folded', () => {
     expect(screen.queryByTestId('folder-brief-needs-failed')).not.toBeInTheDocument()
     await userEvent.click(line)
     expect(onCollapsedChange).toHaveBeenCalledWith(false)
+  })
+
+  it('opens in place: the line clicked is the same element afterwards, now the open card\'s header', async () => {
+    function Live() {
+      const [collapsed, setCollapsed] = useState(true)
+      return (
+        <FolderBrief
+          brief={buildFolderBrief(CORPUS, FOLDERS, null)}
+          folderName={null}
+          shelfKind="project"
+          onSelect={vi.fn()}
+          onOpenFolder={vi.fn()}
+          collapsed={collapsed}
+          onCollapsedChange={setCollapsed}
+        />
+      )
+    }
+    render(<Live />)
+    const line = screen.getByTestId('folder-brief-toggle')
+    expect(screen.getByTestId('folder-brief')).toHaveAttribute('data-state', 'closed')
+
+    await userEvent.click(line)
+    // Not a swap for another element: the node the reader clicked is still there.
+    expect(screen.getByTestId('folder-brief-toggle')).toBe(line)
+    expect(line).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('folder-brief')).toHaveAttribute('data-state', 'open')
+    expect(document.querySelector('[data-slot="segment-meter"]')).not.toBeNull()
+
+    await userEvent.click(line)
+    expect(screen.getByTestId('folder-brief-toggle')).toBe(line)
+    expect(line).toHaveAttribute('aria-expanded', 'false')
+  })
+})
+
+/**
+ * The brief of a folder read page by page (ADR-0102): the counts are the shelf
+ * summary's, and what Piloti put on the documents is loaded only when asked.
+ */
+describe('FolderBrief - from the shelf summary', () => {
+  const SUMMARY: ShelfSummary = {
+    folders: [{ folderId: 'P', total: 6, readable: 3, reading: 0, failed: 1, held: 1, unindexed: 1, latest: null }],
+    failed: [{ id: 'f-failed', folderId: 'P' }],
+    failedTruncated: false,
+  }
+  const renderPartial = (props: Partial<ComponentProps<typeof FolderBrief>> = {}) =>
+    renderBrief(CORPUS, { brief: buildFolderBriefFromSummary(SUMMARY, FOLDERS, null), ...props })
+
+  it('counts what the corpus brief counts, and still offers the re-read for the failed one', () => {
+    renderPartial()
+    expect(screen.getByTestId('folder-brief-needs-failed')).toBeInTheDocument()
+    expect(screen.getByTestId('folder-brief-needs-held')).toBeInTheDocument()
+    expect(screen.getByTestId('folder-brief-read-again')).toHaveTextContent('Read again')
+  })
+
+  it('does not claim Piloti recognised no document type: it offers to load what it did', async () => {
+    const onLoadDetails = vi.fn()
+    renderPartial({ onLoadDetails })
+    await userEvent.click(screen.getByTestId('folder-brief-about-toggle'))
+    expect(screen.queryByTestId('folder-brief-types')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('folder-brief-load-details'))
+    expect(onLoadDetails).toHaveBeenCalledTimes(1)
+  })
+
+  it('says the details are on their way while the shelf is read', async () => {
+    renderPartial({ onLoadDetails: vi.fn(), detailsLoading: true })
+    await userEvent.click(screen.getByTestId('folder-brief-about-toggle'))
+    expect(screen.getByTestId('folder-brief-load-details')).toBeDisabled()
   })
 })

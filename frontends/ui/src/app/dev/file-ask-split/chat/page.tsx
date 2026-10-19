@@ -59,6 +59,9 @@
  *                  that already had one. The index kept the previous version,
  *                  so the strip says Piloti still cites that one rather than
  *                  "cannot cite this file".
+ *   - `pdf`      — a PDF, in the pane's own pdf.js viewer: the case the peek
+ *                  is opened on most, and the one whose viewer brings chrome
+ *                  of its own (page position, zoom) into the narrow column.
  *   - `wide`     — the peek at a width the reader dragged it to and the split
  *                  remembered. Until the seam was fixed this state was
  *                  unreachable: the drag fought back after ~20px and the old
@@ -78,6 +81,7 @@ import {
   useFilePreviewStore,
 } from '@/features/documents/stores/file-preview-store'
 import { FLOOR_PLAN_DATA_URI } from '../../_fixtures/floor-plan'
+import { buildPdf, type PdfLine } from '../../_fixtures/sample-pdf'
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
 
 const FILE: FileItem = {
@@ -100,6 +104,43 @@ const FILE: FileItem = {
   capture: null,
 }
 
+const PDF_FILE: FileItem = {
+  ...FILE,
+  id: 'doc-brandschutzkonzept',
+  filename: 'Brandschutzkonzept_Wohnbau_Nord.pdf',
+  contentType: 'application/pdf',
+  fileSize: 1_284_096,
+  pageCount: 2,
+  summary:
+    'Brandschutzkonzept für den Wohnbau Nord, Gebäudeklasse 4 nach OIB-Richtlinie 2 (2023). Beschreibt zwei unabhängige Fluchtwege je Nutzungseinheit, Brandabschnitte in REI 90, die Rauchableitung über das Treppenhaus und die Löschwasserversorgung.',
+}
+
+const PDF_PAGES: readonly (readonly PdfLine[])[] = [
+  [
+    ['Brandschutzkonzept Wohnbau Nord', 22, true],
+    ['Gebäudeklasse 4 · OIB-Richtlinie 2 (2023)', 11, false],
+    ['', 11, false],
+    ['1. Fluchtwege', 14, true],
+    ['', 11, false],
+    ['Je Nutzungseinheit stehen zwei voneinander unabhängige Fluchtwege', 11, false],
+    ['zur Verfügung: der erste über den notwendigen Flur in das nördliche', 11, false],
+    ['Sicherheitstreppenhaus, der zweite über die anleiterbaren Fenster', 11, false],
+    ['an der Ostfassade.', 11, false],
+    ['', 11, false],
+    ['2. Brandabschnitte', 14, true],
+    ['', 11, false],
+    ['Brandabschnitte sind mit Trennwänden REI 90 ausgeführt; die', 11, false],
+    ['Wohnungstrennwände erreichen REI 60.', 11, false],
+  ],
+  [
+    ['3. Rauchableitung', 14, true],
+    ['', 11, false],
+    ['Die Rauchableitung erfolgt über die Rauch- und Wärmeabzugsanlage', 11, false],
+    ['im Treppenhaus mit einer aerodynamisch wirksamen Öffnungsfläche', 11, false],
+    ['von 1,0 m².', 11, false],
+  ],
+]
+
 const CONTEXT = { projectId: 'proj-1', projectName: 'Seestadt Baufeld', scope: 'files' } as const
 
 /**
@@ -121,6 +162,13 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     // document that has been deleted — or one this reader may no longer open.
     if (url.includes('/preview') && new URLSearchParams(window.location.search).get('variant') === 'gone') {
       return Promise.resolve(new Response(null, { status: 404 }))
+    }
+    // `?variant=pdf`: the viewer FETCHES the same-origin `/file` stream, so it
+    // gets real bytes; `/preview` only has to say there is something to show.
+    if (url.includes('/file') && new URLSearchParams(window.location.search).get('variant') === 'pdf') {
+      return Promise.resolve(
+        new Response(buildPdf(PDF_PAGES), { status: 200, headers: { 'content-type': 'application/pdf' } }),
+      )
     }
     if (url.includes('/preview')) {
       return Promise.resolve(
@@ -162,7 +210,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
             ? { ...FILE, status: 'failed', errorMessage: 'Seite 3: Text-Layer konnte nicht gelesen werden.', versionCount: 1 }
             : seed === 'failed-reupload'
               ? { ...FILE, status: 'failed', errorMessage: 'Seite 3: Text-Layer konnte nicht gelesen werden.', versionCount: 2 }
-              : FILE,
+              : seed === 'pdf'
+                ? PDF_FILE
+                : FILE,
       mode: 'peek',
       hidden: seed === 'hidden',
       context: CONTEXT,

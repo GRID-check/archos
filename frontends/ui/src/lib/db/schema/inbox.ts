@@ -134,6 +134,57 @@ export const INBOX_ITEM_TYPES = [
    * the NEWER document, so the read-time access check is the one that matters.
    */
   'document.new_fassung',
+  /**
+   * Informational, operational tier: a turn Piloti ran on an Anmerkung ended
+   * for the person whose act woke it (ADR-0106): the mark they delegated is
+   * done, or Piloti answered where they mentioned it. Anchored on the mark, so
+   * the row opens the Prüfansicht at it.
+   */
+  'piloti.work_done',
+  /** Informational, operational tier: Piloti could not finish a woken turn on an Anmerkung (a delegation, a mention or an answer to its question); a stopped turn tells nobody. */
+  'piloti.work_failed',
+  /**
+   * Actionable, operational tier: Piloti asked a question on an Anmerkung and
+   * waits for a person (ADR-0106): the mark's responsible person, else the
+   * person its turn acted for. Anchored on the mark. Resolved when that person
+   * answers in the thread, and for everyone when the mark is closed.
+   */
+  'piloti.asks_you',
+  /**
+   * Actionable, operational tier: a stored proposal waits for the person it was
+   * made for (ADR-0105). Anchored on the proposal; resolved when it is applied
+   * or dismissed, by whoever decides it.
+   */
+  'piloti.proposal_waiting',
+  /**
+   * Actionable, operational tier: a reading of the project's documents has
+   * finished and its suggestions wait for review (ADR-0111). Addressed to the
+   * person whose upload or click started it, pointing at the project and
+   * anchored on its intake, so a second reading folds into the same row.
+   * Resolved when somebody finishes the review.
+   */
+  'piloti.intake_ready',
+  /**
+   * Actionable, operational tier: a colleague made the recipient the
+   * Zuständige of an Anmerkung, or Piloti did in a colleague's name (ADR-0106).
+   * Anchored on the mark. Resolved when someone else becomes responsible, and
+   * for everyone when the mark is closed; made inert when it is deleted.
+   */
+  'annotation.assigned_to_you',
+  /**
+   * Informational, operational tier: news on an Anmerkung the recipient takes
+   * part in (wrote, is responsible for, delegated or answered in): a reply, or
+   * their own mark closed or reopened by someone else. One counted row per
+   * mark; the people are derived when it happens, never stored.
+   */
+  'annotation.activity',
+  /**
+   * Actionable, operational tier: a colleague @mentioned the recipient in an
+   * Anmerkung's text or in its thread, with the chat's own „@" picker. Anchored
+   * on the mark. Resolved when the recipient answers in the thread, and for
+   * everyone when the mark is closed; made inert when it is deleted.
+   */
+  'annotation.mentioned',
 ] as const
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number]
 

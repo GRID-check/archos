@@ -238,7 +238,8 @@ are the models. What follows is the decision, per event.
 | `CUSTOM` `stage` | `{stage, status: ready \| empty \| failed, payload?}` | The post-answer stages. They are the only events after `RUN_FINISHED`, on the same `seq` |
 | `CUSTOM` `interaction_request` | `{interaction_id, input: text \| choice, text, options[{id,label}], placeholder?, expires_at}` | HITL, over NAT's `prompt_user_input` (below). Only the two shapes a producer builds exist. The legacy `approval` and `multiple_choice`, and the never-produced checkbox, dropdown, notification and oauth inputs, are gone |
 | `CUSTOM` `interaction_resolved` | `{interaction_id, outcome: answered \| expired \| cancelled}` | Closes the prompt in every tab and for spectators, who used to learn it only from the next frame |
-| `CUSTOM` `rejected` | `{of, code, message?}`, with `seq: 0` | A client message was refused (`auth_expired`, `conversation_mismatch`, `duplicate_turn`, `not_asker`, `no_pending_interaction`, `turn_not_found`, `invalid_message`). It is out of band and never ends a turn. That is why an unauthorised Stop is not a `RUN_ERROR`. `of: unknown` answers a frame with no type this wire has, which used to be dropped: a client never waits on silence |
+| `CUSTOM` `steer_received` / `steer_applied` | `{steer_id, text}` / `{steer_id, round}` | A note the asker typed into the running turn reached its inbox, then was read before decision `round`. A note with no `steer_applied` by the terminal is the client's to ask next ([`websocket-protocol.md`](../api/websocket-protocol.md#steering-a-running-turn-steer)) |
+| `CUSTOM` `rejected` | `{of, code, message?}`, with `seq: 0` | A client message was refused (`auth_expired`, `conversation_mismatch`, `duplicate_turn`, `not_asker`, `no_pending_interaction`, `turn_not_found`, `invalid_message`, `busy` for an `if_idle` question, `steer_limit`). It is out of band and never ends a turn. That is why an unauthorised Stop is not a `RUN_ERROR`. `of: unknown` answers a frame with no type this wire has, which used to be dropped: a client never waits on silence |
 
 **One frame is not a turn's: `hello`.** `{v: 2, type: CUSTOM, name: hello, ts,
 value: {build, accepts}}` is the server's first frame on every socket, sent once the
@@ -278,14 +279,15 @@ Each step is compact, typed data. None of them carries a tool's input or output.
 
 ### Client → server
 
-The client sends four messages, all with `v: 2` and `conversation_id`.
+The client sends five messages, all with `v: 2` and `conversation_id`.
 
 | `type` | Fields | Notes |
 |---|---|---|
-| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?` | The fields are flat, where they used to be a JSON string inside a NAT text part. The type name stays `user_message` because the gateway's turn limiter (`lib/limits/ws-frames.js`) counts turns by it, so it needs no change. `include_shelves` does not exist: the contract refuses it |
+| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?` | The fields are flat, where they used to be a JSON string inside a NAT text part. The type name stays `user_message` because the gateway's turn limiter (`lib/limits/ws-frames.js`) counts turns by it, so it needs no change. `include_shelves` does not exist: the contract refuses it |
 | `interaction_response` | `turn_id`, `interaction_id`, `answer: {text} \| {option_id}` | Exactly one answer, and the contract enforces that structurally |
 | `cancel_turn` | `turn_id`, `shown?: {seq, chars}` | Stop. Authorised: only the asker's verified subject, or an internal caller, may cancel. Anyone else gets `rejected{not_asker}`. `shown` is how much of the answer was on screen: the first `chars` code points of the text the client had folded through `seq`. A position, not the text, so the server keeps only what the model wrote and the frame stays small enough for the gateway's limiter to read whole (`ws-frames.js` peeks 512 bytes and charges a longer message as a turn). Sent only when the hello accepts `cancel_turn.shown` |
 | `attach` | `turn_id`, `after_seq` | After a reconnect or a reload: replay the turn from `after_seq + 1`, then continue live |
+| `steer` | `turn_id`, `steer_id`, `text`, `focus_region?` | A note for the running turn, read at its next tool-round boundary. Not a turn: it never claims, holds or supersedes. Sent only when the hello accepts `steer` |
 
 The socket asks for the version on the upgrade (`?v=2`). Any other version is
 closed with `4426` (`CLOSE_CLIENT_OUTDATED`), and the client turns that into
@@ -327,20 +329,19 @@ field, a new required field, a known `CUSTOM` whose value no longer parses.
 `shared/wire/v2/newer-events.jsonl` holds the tolerated drift; the UI spec
 reads it, the Python test refuses it.
 
-**This release is the exception, and it is staged.** The lenient read above
-ships in this release; the bundle before it generated every server-to-client
-schema `.strict()`. A tab of that bundle still open after the deploy refuses
-a hello that names `accepts` (its socket ends `outdated`) and a `RUN_FINISHED`
-whose result has `reasoning_effort` (the turn never ends). So the server
-withholds both until `GRID_WIRE_V2_ADDITIVE_FIELDS` is on, and it is off by
-default in this release (`STAGED_SERVER_FIELDS`, `aiq_api/chat_socket.py`). A
-new tab works without them: with no `accepts` it sends no `shown`, so a Stop
-stores everything streamed so far, as before; a Stop that crossed the
-finished answer is still cut by the BFF (`cutStoppedAnswer`), which needs
-neither field; and the answer shows the level the asker chose, while the
-stored row keeps the resolved one. The next release turns the flag on by
-default and then removes it and the list, once no tab of the strict bundle can
-still be open. Per-client gating was not available: the hello is the server's
+**The release that shipped the lenient read was staged.** The bundle before
+it generated every server-to-client schema `.strict()`. A tab of that bundle
+still open after the deploy refused a hello that names `accepts` (its socket
+ends `outdated`) and a `RUN_FINISHED` whose result has `reasoning_effort` (the
+turn never ends). So for that one release the server withheld both behind
+`GRID_WIRE_V2_ADDITIVE_FIELDS`, off by default (`STAGED_SERVER_FIELDS`,
+`aiq_api/chat_socket.py`). Every bundle since parses leniently, so the flag is
+now on by default; `off` is the rollback. A new tab works without the two
+fields: with no `accepts` it sends no `shown`, so a Stop stores everything
+streamed so far; a Stop that crossed the finished answer is still cut by the
+BFF (`cutStoppedAnswer`), which needs neither field; and the answer shows the
+level the asker chose, while the stored row keeps the resolved one. The flag
+and the list go once the rollback is no longer needed. Per-client gating was not available: the hello is the server's
 first frame and the client sends nothing before it, so the server cannot know
 which bundle it talks to.
 

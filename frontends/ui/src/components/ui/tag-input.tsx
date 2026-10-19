@@ -164,7 +164,10 @@ export function TagInput({
           aria-describedby={ariaDescribedBy}
           enterKeyHint="done"
           autoComplete="off"
-          className="h-7 min-w-32 flex-1 bg-transparent px-1 outline-none placeholder:text-muted-foreground pointer-coarse:text-base"
+          // The typing surface is the field under a finger: 44px tall on a
+          // coarse pointer (grown, not given a catchment, because the chips
+          // wrap right beside it), at 16px so iOS does not zoom on focus.
+          className="h-7 min-w-32 flex-1 bg-transparent px-1 outline-none placeholder:text-muted-foreground pointer-coarse:h-11 pointer-coarse:text-base"
         />
       )}
     </div>

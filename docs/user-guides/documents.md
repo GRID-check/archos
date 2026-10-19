@@ -44,8 +44,8 @@ never filed simply have no folder, and the assistant says nothing about one.
 Above every folder's files sits one quiet line, for example „35 von 44
 Dokumenten gelesen in diesem Projekt“. It covers the folder and everything
 inside it, subfolders included, so you can see what has been read without
-opening each folder. Click the line to open the full overview, „Was Piloti hier
-weiß“. The arrow folds it again, and the choice is remembered in this browser.
+opening each folder. Click the line and the full overview opens around it; click
+it again to fold it. The choice is remembered in this browser.
 
 - The bar counts the documents by state: „gelesen“ (Piloti can cite them),
   „wird gelesen“, „fehlgeschlagen“ and „zurückgehalten“ (the content check holds
@@ -92,6 +92,7 @@ Files render as cards in a responsive grid. Each card shows:
 - the file name and, when ingestion generated one, a one-line **AI description**
 - a tinted **extension chip** (PDF, DOCX, …), the file size and a relative upload time
 - an **ingestion status badge** only while the document is not yet citable (Processing / Failed / held back) — failed cards show the failure reason inline. A citable document carries no badge on its card; the list view's status column names every state, „Zitierbar“ included
+- what is **still open on its pages**, when anything is: a small chip under the size and date that says how many Anmerkungen are open (from every Fassung), how many of those are yours, and how many of Piloti's proposals nobody has decided on yet, „2 offen · 1 für Sie · 12 Vorschläge“. A proposal is not counted as open until someone takes it over, as in Offene Punkte and the Protokoll. Pointing at it shows the whole sentence, „2 offene Anmerkungen, 1 für Sie und 12 Vorschläge von Piloti“. Pressing it opens the document in the Prüfansicht. The list view shows the same beside the name
 
 The last tile of the grid is a dashed **upload card** listing the actually accepted file types and the size limit; drag-and-drop anywhere on the workspace also works. A file dropped on another project page, such as Settings or Members, opens Files and is uploaded there; the chat, the research page and the intake keep their own drop targets.
 
@@ -99,9 +100,49 @@ Right-click a file, a folder, or the empty listing — the same operations as th
 
 The **detail view** (the list toggle) is a dense sortable table for a corpus past what a card grid can hold. It is fully keyboard-navigable: one tab stop into the list, then arrows to walk it and Home/End to jump to either end — and the tab stop stays on the row you walked to, so tabbing away and back does not return you to the top. Enter opens the row.
 
-A **search field** above the grid filters the current listing client-side by file name, ingestion tags, and the AI description. Folders are the drill-down inside the listing itself (breadcrumb, tiles, `?folder=` in the URL); a search escapes the current folder and runs over everything.
+A folder opens on its first hundred documents, and more load as you scroll to the end of the grid or list (a **Weitere laden** button does the same from the keyboard). A folder with thousands of documents, such as a large Büroablage root, therefore opens right away instead of waiting for the whole shelf. The folder tiles, the count in the header and the folder brief are counted by the server for the whole shelf, so they stay right however little of a folder has loaded.
+
+A **search field** above the grid searches the file names and renames of the whole shelf: it narrows what is on screen as you type and asks the server a moment after you stop, so a document two folders down is found from anywhere. To search the contents (the AI description, tags, the text), press Enter for the semantic search. Folders are the drill-down inside the listing itself (breadcrumb, tiles, `?folder=` in the URL); a search escapes the current folder and runs over everything.
+
+Most filters and the sort order are answered by the server per folder. A few still need every document of the shelf in the browser and load them when you turn them on: the kind and tag (Kategorie) filters, the assignment filter, „Freigabe ausstehend", sorting by status, and in the folder brief the „Worum es hier geht" details and the lists its chips open. For a very large shelf these take a moment the first time.
 
 Semantic results arrive in whichever view you are in. In the detail view the ranking is preserved rather than being re-sorted by upload date: **Relevance** is the column the list opens sorted by (and can be sorted the other way), and each row carries the passage that matched with its page number in place of the document's summary.
+
+### Offene Punkte: what is open across the project
+
+A Jour fixe goes through the project, not one sheet at a time. **Offene
+Punkte** in the Dateien header (on a phone, in the header's ⋯) opens one page
+with every open Anmerkung on the project's documents, grouped by document. Each
+row reads like a row of the Prüfansicht's list: the number, what the mark says,
+its kind and page, who set it, who is responsible, how many answers it has and
+its Frist. Pressing a row opens that document in the Prüfansicht at the mark;
+**Prüfansicht öffnen** beside a document's name opens its whole review. Closing
+the review brings you back to Offene Punkte with your filters, and the list
+shows what you closed there as closed. A mark opened from the Postfach returns
+to the Postfach the same way.
+
+Two filters answer the meeting's questions:
+
+- **Zuständig: Für Sie** keeps the marks you are responsible for, as **Für Sie** does in the Prüfansicht.
+- **Frist: Überfällig** keeps the marks whose Frist has passed; **Bald** those
+  due today or in the next seven days.
+
+**Protokoll exportieren** downloads what the list shows, with the filters you
+set, as one PDF, Word or Markdown file: each document under its own heading,
+each mark written as the document's own Protokoll writes it. A Protokoll holds
+at most 1000 marks; past that, narrow it with a filter.
+
+**Im Projekt ablegen** in the same menu files that Protokoll in the project's
+top folder, as „Offene Punkte – <Projekt> – <Datum>“, if you may upload files
+there. Everyone in the project can read that folder, so it is not offered while
+a listed point sits on a document not everyone may open (in a restricted
+folder, or an upload still being checked): the menu says so. Narrow the list
+with a filter that leaves those documents out, or download the Protokoll
+instead.
+
+You see the marks of the documents you can open: a file in a folder you may
+not read, and an upload still held back from you, are left out here as they
+are in Dateien.
 
 ### When an upload is refused
 
@@ -149,14 +190,33 @@ Additional limits:
 
 ## Moving a file into a folder
 
-Drag it onto the folder — a card, a row, or „Alle Dateien“ in the breadcrumb to
-move it back to the top level. The folder lights up as the target while you are
-over it. „Verschieben“ in a file's overflow menu does the same thing and remains
-the way to move a file into a folder you are not currently looking at.
+Drag it onto the folder — a card, a row, or „Alle Dateien“ or any folder in the
+breadcrumb to move it up. The folder lights up as the target while you are over
+it. Folders move the same way.
+
+To reach a folder that is not on screen, hold the drag over a folder (or a
+folder in the breadcrumb) for a moment: it opens, and you can go on down, or let
+go anywhere in it. „Verschieben“ in the overflow menu does the same thing
+without a drag.
+
+Every move says where it went, with **Rückgängig** to put it back. When a move
+cannot happen, Piloti says why: a folder you may only read (it turns red while
+you hold something over it), a folder of the same name already there, or a
+folder someone has just deleted.
 
 Dragging a file inside Piloti never starts an upload: a drag carrying files from
 your desktop and a drag carrying a document already here are different things to
 the browser, and only the first raises the upload overlay.
+
+Files from your desktop go where you drop them, too: onto a folder card or row
+to upload into that folder, onto „Alle Dateien“ or a folder in the breadcrumb to
+upload there, anywhere else in the file area to upload into the folder you are
+looking at. The overlay names the folder before you let go.
+
+A folder you may only read takes nothing: a file in it cannot be dragged out,
+and the overlay says „Nur lesen“ in red instead of offering a drop that the
+server would refuse. A second drop while an upload is still running waits its
+turn, and Piloti says that it will follow, rather than dropping it.
 
 ## Uploading a whole folder
 
@@ -224,7 +284,8 @@ document of its own, and a link can be undone later („Verknüpfung lösen“).
   question on its own, „Neue Fassung von „…“?“, with two buttons: „Als neue
   Fassung ablegen“ and „Als eigenes Dokument hochladen“.
 - **Unchanged re-exports** (same name, same content) stay „unverändert, wird
-  übersprungen“ and never get a proposal.
+  übersprungen“ and never get a proposal. The exception is a file Piloti could
+  not read, or never read: uploading the same bytes again retries it.
 
 The tick travels with the upload: Piloti files the link as soon as the new file
 has been read, and says in words what changed. If the older document was deleted
@@ -321,7 +382,7 @@ User uploads file
          │ Background thread processes file
          ▼
    ┌──────────┐
-   │ ingesting │  Text extracted, chunked, embedded, stored in ChromaDB
+   │ ingesting │  Text extracted, chunked, embedded, stored in Qdrant
    └─────┬────┘
          │
     ┌────┴────┐
@@ -336,7 +397,7 @@ User uploads file
 1. **Upload** — `FileUploadZone` captures the file, the `useFileUpload` hook validates it against configured limits, then POSTs it as `multipart/form-data` to `/api/documents/upload` with `projectId` and `file`.
 2. **BFF upload route** — The Next.js API route generates a UUID `documentId`, stores the file in SeaweedFS at `org/{orgId}/project/{projId}/doc/{docId}/{filename}`, inserts a `documents` row in Drizzle (status: `uploaded`), generates a presigned GET URL, and calls the Python backend's `POST /v1/ingest` with that URL.
 3. **Python ingest route** — Downloads the file from the presigned URL via `httpx`, saves it to a tempfile, and submits it to the active ingestor via `submit_job()`.
-4. **Background ingestion** — the LlamaIndex backend extracts text (pdfplumber for PDFs and for the PDF rendition of a Word or presentation file; dedicated office extractors for spreadsheets, one chunk per sheet), optionally extracts tables (`pdfplumber`) and images (`pypdfium2`) with VLM captioning, chunks the content, generates embeddings via NVIDIA models, and stores the vectors in ChromaDB.
+4. **Background ingestion** — the LlamaIndex backend extracts text (pdfplumber for PDFs and for the PDF rendition of a Word or presentation file; dedicated office extractors for spreadsheets, one chunk per sheet), optionally extracts tables (`pdfplumber`) and images (`pypdfium2`) with VLM captioning, chunks the content, generates embeddings via NVIDIA models, and stores the vectors in Qdrant.
 5. **Status polling** — The `UploadOrchestrator` polls the backend job through `/api/v1/documents/{jobId}/status`. Document lists and the open preview read `/api/documents/{id}/status`, which reconciles the `documents` row with the backend and returns its status together with the summary, page count, chunk count, content types and tags. Details: [Document ingestion, step 5](../technical-reference/document-ingestion.md#step-5-status-polling).
 6. **Searchable** — Once `status = 'completed'`, the document's chunks are queryable via the knowledge search function.
 
@@ -404,7 +465,8 @@ The header is always visible, also when the section is shut. It is about the
   Veröffentlicht, Ersetzt, Abgelehnt or Stillgelegt. A file you uploaded has no
   state word: nobody approved it, you put it there.
 - **The four steps, named:** Entwurf, In Prüfung, Freigegeben, Veröffentlicht,
-  with the step the Fassung has reached set darker. A file you uploaded has no
+  with the step the Fassung has reached set darker. Approving fills the track to
+  the end: it publishes the Fassung in the same step. A file you uploaded has no
   track, and neither has a Fassung a newer one replaced.
 - **The next step, with a person:** „Nächster Schritt: Freigabe durch Sabine
   Gruber“ (whoever the round was sent to), „Nächster Schritt: Ihre Freigabe“ when
@@ -414,21 +476,35 @@ The header is always visible, also when the section is shut. It is about the
 
   | Situation | What the header says |
   |---|---|
-  | The newest is published, or is a file you uploaded | Piloti antwortet aus dieser Fassung. |
+  | The newest is published, or is a file you uploaded, and Piloti has read it | Piloti antwortet aus dieser Fassung. |
   | The newest waits, an older one is published | Piloti antwortet weiter aus Fassung 1. |
-  | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie veröffentlicht ist. |
-  | The newest was refused, nothing published | Piloti antwortet nicht daraus. |
+  | You uploaded a new Fassung and Piloti is still reading it, or could not read it | Piloti antwortet weiter aus Fassung 1. |
+  | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie freigegeben ist. |
+  | Your first upload is still being read | Piloti antwortet daraus, sobald sie gelesen ist. |
+  | The newest was refused, or could not be read, and nothing stands behind it | Piloti antwortet nicht daraus. |
   | You opened an older document a newer one replaced | Piloti antwortet aus der neueren Fassung 2; diese bleibt lesbar, auch für Vergleiche. |
   | Stillgelegt | Stillgelegt. Nicht mehr in der Dateiliste, Piloti zitiert sie nicht mehr. |
 
   Only a **published** Fassung is read into the knowledge base, so a draft or a
-  round in review never replaces the Fassung answers come from.
+  round in review never replaces the Fassung answers come from. When you upload
+  a new Fassung of a file, the previous one keeps answering until the new one
+  has been read, and goes on answering if the reading fails; „aktuell“ stays on
+  it until then. A document Piloti wrote has no such overlap: publishing removes
+  the previous Fassung from the knowledge base first.
 
 When a decision is yours, **Freigeben** and **Änderungen anfordern** sit under
 the header; **Piloti überarbeiten lassen** and **Ablehnen** are behind the ⋯
 beside them. The section opens itself when something is asked of you: a decision
 is yours to take, Piloti has a suggestion to answer, or the file is an older
 Fassung. Once you close it, it stays closed.
+
+When Anmerkungen are still open on the document, **Freigeben** says so before
+you sign, and Piloti's proposals nobody took over apart from them: „2 offene
+Anmerkungen und 12 Vorschläge von Piloti – trotzdem freigeben?“, with **In der
+Prüfansicht öffnen** beside it. If the Anmerkungen are still loading, or
+could not be read, it says that instead, so silence always means nothing is
+open. It does not stop you: whether an open point stands in the way of a
+release is yours to decide.
 
 ### The timeline
 
@@ -464,6 +540,32 @@ edit the folder can answer.
 People assigned to the older document, and whoever uploaded it, get a note in the
 inbox when a newer Fassung is linked or uploaded under the same name, if they
 may open the newer one (see „The inbox“ in the chat guide).
+
+### Anmerkungen from an earlier Fassung, and the Protokoll
+
+In the Prüfansicht of the current Fassung, the list keeps what is still open
+from before: „Offen aus früheren Fassungen“ for marks set on an earlier upload
+under the same name, and „Aus Fassung „…““ for marks of the document this one
+replaces. Each can be carried on to the current Fassung, one by one or all at
+once.
+
+**Piloti prüfen lassen, was behoben ist** sits under both. Piloti reads those
+marks, looks at the same place in the current Fassung, and answers in each
+mark's thread: „In Fassung 3 behoben: …“ or „Weiterhin offen: …“, with what it
+saw. It only answers; it never closes a mark. You decide: **Erledigt** in the
+mark's thread, or, for a mark of the replaced document, **Erledigen** on its row,
+where Piloti's answer is shown too. Piloti checks only when you ask, never on its
+own when a new Fassung arrives. The question and Piloti's summary stay in your
+conversation about the document (**Gespräch** in the header).
+
+**Protokoll exportieren** in the header downloads the Anmerkungen as PDF, Word
+or Markdown. **Im Projekt ablegen** in the same menu, there when you may add
+files to the document's folder, files it as a document of the project instead, with the choices you made (open only, or resolved ones
+too), named „Protokoll – Grundriss EG – 2026-10-18.pdf“ and put in the folder of
+the document it is about, so it is as restricted as that document. The notice
+that says so has **Öffnen**. Filing it again on the same day makes a new Fassung
+of that Protokoll rather than a second file. A Protokoll too long for a PDF is
+filed as Word.
 
 ### The approval process
 
@@ -531,8 +633,9 @@ tables.
 - Files uploaded before this change keep their old index: their text is
   searchable, their pictures are not, and a Word citation opens at page 1.
   Choose „Erneut lesen“ in the file's ⋯ menu to have it read the new way.
-  Uploading the same file again does not: identical bytes are skipped as
-  „Unverändert“. Until the new reading finishes, answers use the old one.
+  Uploading the same file again does not: identical bytes of a file that was
+  read are skipped as „Unverändert“. Until the new reading finishes, answers use
+  the old one.
 - A diagram drawn with Office shapes or SmartArt is not a picture to Piloti.
   Its labels are text and are found; its layout is not described.
 - If the PDF cannot be made, the file shows „Lesen fehlgeschlagen“ with the
@@ -614,7 +717,7 @@ Ingestion turns raw files into a searchable knowledge base:
 2. **Optional multimodal extraction** — PDFs can have tables extracted (pdfplumber) and images/charts extracted (pypdfium2) with VLM-generated captions (NVIDIA nemotron-nano-12b)
 3. **Chunking** — Text is split into overlapping segments (default: 1024 tokens, 128 overlap)
 4. **Embedding** — Each chunk is vectorized using NVIDIA's `llama-nemotron-embed-vl-1b-v2` model
-5. **Storage** — Vectors are stored in ChromaDB under the target collection
+5. **Storage** — Vectors are stored in Qdrant under the target collection
 6. **Summarization** — Optionally, a one-sentence summary is generated for each document (configured via `generate_summary` + `summary_model`)
 
 At query time, the AI searches across all collections in scope (see [Knowledge Search](knowledge-search.md) and [Collection Scoping](../technical-reference/collection-scoping.md)).

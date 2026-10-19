@@ -17,8 +17,8 @@
  * upgraded or a schema grows a shape this cannot express. It is not in the
  * lockfile, and adding a dependency has to be worth the lockfile churn in the
  * image and in CI; the hundred lines below handle exactly the node kinds the
- * wire modules use — object, string, number, boolean, literal, enum, array,
- * optional, nullable, default, effects, discriminated union. The bound is
+ * wire modules use — object, string, number, boolean, null, literal, enum,
+ * array, optional, nullable, default, effects, union, discriminated union. The bound is
  * deliberate and enforced: an unsupported node THROWS rather than emitting
  * `{}`, so a schema this cannot describe fails a spec instead of silently
  * exporting a contract that permits anything. That failure is the signal to add
@@ -115,6 +115,15 @@ export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {
       // enforced by the route's 400. Unwrapping keeps the export honest about
       // the shape without re-implementing the check in a second language.
       return toJsonSchema((definition.schema as ZodTypeAny) ?? z.unknown())
+    case z.ZodFirstPartyTypeKind.ZodPipeline:
+      // `z.string().transform(trim).pipe(z.string().min(1))`: the wire carries
+      // a string, and the bounds the route enforces are the piped side's, so
+      // that is the side described. The trim itself is BFF-side, like a refine.
+      return toJsonSchema((definition.out as ZodTypeAny) ?? z.unknown())
+    case z.ZodFirstPartyTypeKind.ZodTuple: {
+      const items = (definition.items as ZodTypeAny[]).map((item) => toJsonSchema(item))
+      return { type: 'array', prefixItems: items, minItems: items.length, maxItems: items.length }
+    }
     case z.ZodFirstPartyTypeKind.ZodNullable:
       // `anyOf` rather than a type array, because the inner node may carry
       // constraints (`maxLength`, `enum`) that a `["string", "null"]` shorthand
@@ -129,6 +138,20 @@ export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {
           propertyName: (schema as z.ZodDiscriminatedUnion<string, never[]>).discriminator,
         },
       }
+    case z.ZodFirstPartyTypeKind.ZodUnion:
+      // `anyOf`, not `oneOf`: the options of a plain union may overlap, and a
+      // value matching two of them is valid to zod. The profile's primitive
+      // value (string | number | boolean | string[] | null) is the first caller.
+      return {
+        anyOf: (schema as z.ZodUnion<[ZodTypeAny, ...ZodTypeAny[]]>).options.map((option) => toJsonSchema(option)),
+      }
+    case z.ZodFirstPartyTypeKind.ZodNull:
+      return { type: 'null' }
+    case z.ZodFirstPartyTypeKind.ZodUnknown:
+      // Any JSON value: the empty schema. Used where the contract deliberately
+      // leaves a value open (a profile patch's `value`, checked by the profile
+      // vocabulary when it is applied, not by its shape).
+      return {}
     default:
       throw new UnsupportedSchemaNodeError(definition.typeName)
   }

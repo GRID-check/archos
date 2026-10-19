@@ -20,19 +20,76 @@
  * The guard is on ENTER AND LEAVE deliberately. The counter below pairs them,
  * so a leave that is counted after an enter that was not would drive it
  * negative and leave the overlay stuck on the next real upload.
+ *
+ * ## Off, and saying no, are different
+ *
+ * A zone that is `disabled` is not a target: it touches no event, so the drop
+ * falls through to whatever is around it, or to the window guard. It used to
+ * claim the drop anyway (`preventDefault`, `stopPropagation`) and do nothing
+ * with it, so the cursor said „copy" and the files vanished without a word:
+ * the composer while Piloti answered, a read-only folder in Dateien, a second
+ * batch dropped while the first was uploading.
+ *
+ * A zone that is there but cannot take files right now says so instead:
+ * `refusal` keeps the overlay up with the reason in it and the cursor at
+ * „no drop", and the drop never fires.
+ *
+ * ## A portal is not the zone
+ *
+ * React bubbles a synthetic event along the COMPONENT tree, and a Radix dialog,
+ * popover or sheet is portalled out of the DOM but stays inside the component
+ * that opened it. So a file let go over a dialog opened from a project page
+ * reached the project's zone behind it and was sent to Dateien, and one let go
+ * over a dialog opened from the chat was attached to the conversation. An
+ * event whose target is not inside the zone's own element is not a drag over
+ * the zone: {@link outsideTheZone} leaves it alone, and the window guard gives
+ * it „no drop" unless the dialog has a zone of its own.
+ *
+ * ## The overlay ends when the drag does
+ *
+ * The counter only hears enters and leaves that reach this zone. A drag that
+ * ended elsewhere (a drop on a folder tile, which claims it and stops it there;
+ * a drop beside the zone; a release over the desktop) left the overlay up.
+ * `useDragEnd` hears every end.
  */
 
 import { useCallback, useRef, useState } from 'react'
 import { useAppConfig } from '@/shared/context'
 import { checkDraggedFilesSupported } from '../validation'
 import { isExternalFileDrag } from './use-document-drag'
-import { asPathStampedFiles, readDroppedTree } from '../lib/dropped-entries'
+import { useDragEnd } from './use-drag-end'
+import { readDrop } from '../lib/dropped-entries'
+
+/**
+ * Whether the event reached this zone from outside its element: from a portal
+ * (a dialog, a popover) that a component inside the zone rendered. Nodes only,
+ * so an event without a DOM target is taken as the zone's own.
+ */
+export function outsideTheZone(e: Pick<React.DragEvent, 'currentTarget' | 'target'>): boolean {
+  const zone = e.currentTarget
+  const target = e.target
+  if (!(zone instanceof Node) || !(target instanceof Node)) return false
+  return !zone.contains(target)
+}
+
+/** What a drop could not hand over, for the caller to say. */
+export interface DropInfo {
+  /** A bound was reached: the drop held more than the files passed. */
+  truncated: boolean
+  /** Files that were dropped and could not be read. */
+  unreadable: number
+}
 
 interface UseFileDragDropOptions {
-  /** Callback when files are dropped */
-  onDrop: (files: File[]) => void
-  /** Whether drag-drop is disabled */
+  /** The dropped files, folders read through (paths stamped), ZIPs as they are. */
+  onDrop: (files: File[], info: DropInfo) => void
+  /** Not a target at all: every event passes through untouched. */
   disabled?: boolean
+  /**
+   * A target that cannot take files right now, and why, in the reader's words
+   * („Nur lesen"). The overlay says it and the drop is refused.
+   */
+  refusal?: string | null
   /**
    * Whether a dragged `.zip` counts as supported. On for the durable shelves,
    * which unpack it before uploading; off for a chat attachment, where an
@@ -46,6 +103,8 @@ interface UseFileDragDropReturn {
   isDragging: boolean
   /** Whether dragged files contain unsupported types */
   isUnsupportedDrag: boolean
+  /** The refusal in force for the drag over the zone, or null when it would be taken. */
+  refusal: string | null
   /** Event handlers to spread on the drop zone element */
   dragHandlers: {
     onDragEnter: (e: React.DragEvent) => void
@@ -62,6 +121,7 @@ interface UseFileDragDropReturn {
 export function useFileDragDrop({
   onDrop,
   disabled = false,
+  refusal = null,
   acceptZip = false,
 }: UseFileDragDropOptions): UseFileDragDropReturn {
   const [isDragging, setIsDragging] = useState(false)
@@ -69,16 +129,20 @@ export function useFileDragDrop({
   const dragCounterRef = useRef(0)
   const { fileUpload: fileUploadConfig } = useAppConfig()
 
+  const reset = useCallback(() => {
+    dragCounterRef.current = 0
+    setIsDragging(false)
+    setIsUnsupportedDrag(false)
+  }, [])
+  useDragEnd(isDragging, reset)
+
   const handleDragEnter = useCallback(
     (e: React.DragEvent) => {
+      // Not an upload (a document or a folder being moved inside the page), or
+      // not a target: left alone entirely, so what is under or around it decides.
+      if (disabled || !isExternalFileDrag(e.dataTransfer) || outsideTheZone(e)) return
       e.preventDefault()
       e.stopPropagation()
-      if (disabled) return
-
-      // Not an upload — a document or a folder being moved inside the page.
-      // Left alone entirely: the folder under the pointer is the target, and
-      // this overlay would sit on top of it saying something else.
-      if (!isExternalFileDrag(e.dataTransfer)) return
 
       dragCounterRef.current++
       setIsDragging(true)
@@ -91,28 +155,36 @@ export function useFileDragDrop({
     [disabled, fileUploadConfig, acceptZip]
   )
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // Paired with the enter above: a leave this hook never counted must not be
-    // subtracted, or the counter goes negative and the overlay never clears.
-    if (!isExternalFileDrag(e.dataTransfer)) return
-    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1)
-    if (dragCounterRef.current === 0) {
-      setIsDragging(false)
-      setIsUnsupportedDrag(false)
-    }
-  }, [])
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      // Paired with the enter above: a leave this hook never counted must not be
+      // subtracted, or the counter goes negative and the overlay never clears.
+      if (disabled || !isExternalFileDrag(e.dataTransfer) || outsideTheZone(e)) return
+      e.preventDefault()
+      e.stopPropagation()
+      dragCounterRef.current = Math.max(0, dragCounterRef.current - 1)
+      if (dragCounterRef.current === 0) {
+        setIsDragging(false)
+        setIsUnsupportedDrag(false)
+      }
+    },
+    [disabled]
+  )
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    // An in-app drag is answered by the folder under the pointer, which calls
-    // `preventDefault` itself. Doing it here as well would make the whole
-    // workspace a valid drop target for a move, so a document released between
-    // two folder tiles would read as accepted and do nothing.
-    if (!isExternalFileDrag(e.dataTransfer)) return
-    e.preventDefault()
-    e.stopPropagation()
-  }, [])
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      // An in-app drag is answered by the folder under the pointer, which calls
+      // `preventDefault` itself. Doing it here as well would make the whole
+      // workspace a valid drop target for a move, so a document released between
+      // two folder tiles would read as accepted and do nothing.
+      if (disabled || !isExternalFileDrag(e.dataTransfer) || outsideTheZone(e)) return
+      e.preventDefault()
+      e.stopPropagation()
+      // The cursor states the outcome: a copy onto the shelf, or no drop at all.
+      e.dataTransfer.dropEffect = refusal ? 'none' : 'copy'
+    },
+    [disabled, refusal]
+  )
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -120,51 +192,32 @@ export function useFileDragDrop({
       // missed its folder is not this surface's to accept: the document stays
       // where it is, and `useWindowDragGuard` is what stops the browser doing
       // anything with the release.
-      if (!isExternalFileDrag(e.dataTransfer)) return
+      if (disabled || !isExternalFileDrag(e.dataTransfer) || outsideTheZone(e)) return
 
       e.preventDefault()
       e.stopPropagation()
-      setIsDragging(false)
-      setIsUnsupportedDrag(false)
-      dragCounterRef.current = 0
+      reset()
+      // A refused drag shows „no drop" and is not delivered; a browser that
+      // delivers it anyway is told no here as well.
+      if (refusal) return
 
-      if (disabled) return
-
-      // A DROPPED FOLDER IS INVISIBLE TO `dataTransfer.files`.
-      //
-      // The browser reports directories only through the entries API, and only
-      // from within the drop event — so dragging a project folder onto the file
-      // area used to do nothing at all, silently: the overlay appeared, the
-      // finger let go, and the page carried on. `readDroppedTree` must capture
-      // its entries synchronously for that reason; it is called before any
-      // await here and returns null when the browser exposes none, which is
-      // the signal to use the list below exactly as this always did.
-      //
-      // That list is copied HERE, synchronously, for the same reason: once the
-      // drop event has finished the browser empties `dataTransfer.files`. Read
-      // after the traversal's awaits, it was empty whenever the traversal came
-      // back with nothing — an entry whose `file()` fails (an Outlook
-      // attachment, a OneDrive file that is only in the cloud, a Windows path
-      // past 260 characters) — and the drop did nothing, silently.
-      const transfer = e.dataTransfer
-      const droppedFiles = Array.from(transfer.files)
-      void (async () => {
-        const tree = await readDroppedTree(transfer)
-        if (tree) {
-          onDrop(asPathStampedFiles(tree))
-          return
-        }
-        if (droppedFiles.length === 0) return
+      // A DROPPED FOLDER IS INVISIBLE TO `dataTransfer.files`, and the browser
+      // empties the transfer the moment this handler returns: `readDrop`
+      // captures both the list and the entries synchronously, before its first
+      // await (see `lib/dropped-entries`).
+      void readDrop(e.dataTransfer).then(({ files, truncated, unreadable }) => {
+        if (files.length === 0 && !truncated && unreadable === 0) return
         // Validation happens in uploadFiles.
-        onDrop(droppedFiles)
-      })()
+        onDrop(files, { truncated, unreadable })
+      })
     },
-    [disabled, onDrop]
+    [disabled, refusal, onDrop, reset]
   )
 
   return {
     isDragging,
     isUnsupportedDrag,
+    refusal: isDragging ? refusal : null,
     dragHandlers: {
       onDragEnter: handleDragEnter,
       onDragLeave: handleDragLeave,

@@ -35,13 +35,14 @@ describe('ProjectCard', () => {
     )
   })
 
-  test('carries a per-card settings link to the project settings page', () => {
+  test('carries a per-card link to the project overview, named for what it opens', () => {
     render(<ProjectCard project={createProject({ id: 'proj-abc', name: 'Beta' })} />)
 
-    expect(screen.getByRole('link', { name: /settings for beta/i })).toHaveAttribute(
-      'href',
-      '/app/projects/proj-abc/settings',
-    )
+    const overview = screen.getByRole('link', { name: /overview of beta/i })
+    expect(overview).toHaveAttribute('href', '/app/projects/proj-abc/settings')
+    expect(overview).toHaveTextContent('Overview')
+    // 44px under a finger: the gear it replaced was 30px.
+    expect(overview).toHaveClass('pointer-coarse:h-11')
   })
 
   test('carries no status chip while the project is active: the normal case says nothing (ADR-0098)', () => {

@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { GridCard } from '@/shared/cards/schemas'
 import { A2uiCard } from './A2uiCard'
-import { INTERACTIVE_CARD_TYPES } from '@/features/grid-cards/card-decision'
+import { ACTING_CARD_TYPES } from '@/features/grid-cards/card-decision'
 import { GridCardItem } from '@/features/grid-cards/components/GridCards'
 import { DrawnProvider, SURFACE_EXCLUDED_LEAVES, preflight, structuralRefusal } from './catalog'
 import { surfaceLeaves } from './surface-messages'
@@ -213,10 +213,11 @@ describe('a card through A2UI', () => {
     expect(preflight(blank)).not.toBeNull()
   })
 
-  it('keeps every interactive card type out of a surface', () => {
-    // The ratchet: a new interactive card type fails here until it is added
-    // to this hand-kept list; cards/models.py derives its own from the catalog.
-    for (const type of INTERACTIVE_CARD_TYPES) expect(SURFACE_EXCLUDED_LEAVES.has(type)).toBe(true)
+  it('keeps every interactive and live card type out of a surface', () => {
+    // The ratchet: a new interactive or live card type fails here until it is
+    // added to this hand-kept list; cards/models.py derives its own from the
+    // catalog (where a live card is still one that asks).
+    for (const type of ACTING_CARD_TYPES) expect(SURFACE_EXCLUDED_LEAVES.has(type)).toBe(true)
   })
 
   const LEAF = { component: 'calculation', title: 'x', steps: STEPS }

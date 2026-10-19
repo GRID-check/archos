@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { DOCUMENT_STATUS_FACTS, type KnownDocumentStatus } from '@/lib/documents/document-status'
 import { EMPTY_FASSUNG } from '@/lib/documents/fassung'
+import type { ShelfSummary } from '@/lib/documents/shelf-summary-types'
 import type { FileItem, FolderItem } from '../file-types'
 import {
   MAX_HOTSPOTS,
   buildFolderBrief,
+  buildFolderBriefFromSummary,
+  talliesFromSummary,
+  type KnowledgeTally,
   emptyTally,
   filesInSubtree,
   isUnplaced,
@@ -710,5 +714,74 @@ describe('buildFolderBrief over Fassungen', () => {
   it('leaves the folder hotspots without replaced Fassungen too', () => {
     const brief = buildFolderBrief(corpus, tree, null)
     expect(brief.hotspots).toEqual([])
+  })
+})
+
+/**
+ * The paged workspace's brief and folder tiles (ADR-0102): folded from the
+ * shelf summary's per-folder counts instead of from the corpus, and agreeing
+ * with what the corpus would have said about everything Postgres can count.
+ */
+describe('the brief and the tiles from the shelf summary', () => {
+  const S_TREE = [folder('A', 'A'), folder('B', 'B', 'A'), folder('C', 'C', 'B'), folder('D', 'D')]
+  const corpus = [
+    // Placed in a document type, so no folder is a hotspot for being unplaced:
+    // that needs the backend's tags, which the summary does not carry.
+    file({ id: 'r1', folderId: null, status: 'ready', tags: ['Grundriss'], createdAt: '2026-01-01T00:00:00.000Z' }),
+    file({ id: 'a1', folderId: 'A', status: 'ready', tags: ['Grundriss'], createdAt: '2026-02-01T00:00:00.000Z' }),
+    file({ id: 'b1', folderId: 'B', status: 'failed', createdAt: '2026-03-01T00:00:00.000Z' }),
+    file({ id: 'c1', folderId: 'C', status: 'pending', createdAt: '2026-04-01T00:00:00.000Z' }),
+    file({ id: 'c2', folderId: 'C', status: 'quarantined', createdAt: '2026-01-15T00:00:00.000Z' }),
+    file({ id: 'd1', folderId: 'D', status: 'stored', createdAt: '2026-05-01T00:00:00.000Z' }),
+  ]
+  /** The summary Postgres would answer for `corpus`: one row per folder, its direct documents by family. */
+  const summary: ShelfSummary = {
+    folders: [
+      { folderId: null, total: 1, readable: 1, reading: 0, failed: 0, held: 0, unindexed: 0, latest: '2026-01-01T00:00:00.000Z' },
+      { folderId: 'A', total: 1, readable: 1, reading: 0, failed: 0, held: 0, unindexed: 0, latest: '2026-02-01T00:00:00.000Z' },
+      { folderId: 'B', total: 1, readable: 0, reading: 0, failed: 1, held: 0, unindexed: 0, latest: '2026-03-01T00:00:00.000Z' },
+      { folderId: 'C', total: 2, readable: 0, reading: 1, failed: 0, held: 1, unindexed: 0, latest: '2026-04-01T00:00:00.000Z' },
+      { folderId: 'D', total: 1, readable: 0, reading: 0, failed: 0, held: 0, unindexed: 1, latest: '2026-05-01T00:00:00.000Z' },
+    ],
+    failed: [{ id: 'b1', folderId: 'B' }],
+    failedTruncated: false,
+  }
+  /** What a tally says that Postgres can count: unplaced and pages need the backend's tags and counts. */
+  const counted = ({ unplaced: _unplaced, pages: _pages, ...rest }: KnowledgeTally) => rest
+
+  it('folds the per-folder counts up the tree exactly as the corpus folds', () => {
+    const fromSummary = talliesFromSummary(summary, S_TREE)
+    const fromCorpus = subtreeTallies(corpus, S_TREE)
+    for (const id of ['A', 'B', 'C', 'D']) {
+      expect(counted(fromSummary.subtree.get(id)!)).toEqual(counted(fromCorpus.get(id)!))
+    }
+    expect(fromSummary.total).toBe(corpus.length)
+    expect(fromSummary.direct.get(null)?.total).toBe(1)
+  })
+
+  it('agrees with the corpus brief on the headline, the needs and where the trouble is', () => {
+    for (const at of [null, 'A', 'B']) {
+      const partial = buildFolderBriefFromSummary(summary, S_TREE, at)
+      const whole = buildFolderBrief(corpus, S_TREE, at)
+      expect(counted(partial.tally)).toEqual(counted(whole.tally))
+      expect(partial.attention.failed.map((d) => d.id)).toEqual(whole.attention.failed.map((d) => d.id))
+      expect(partial.hotspots.map((h) => [h.folder.id, h.trail])).toEqual(whole.hotspots.map((h) => [h.folder.id, h.trail]))
+    }
+  })
+
+  it('says it is partial, and claims nothing about what Piloti put on the documents', () => {
+    const brief = buildFolderBriefFromSummary(summary, S_TREE, null)
+    expect(brief.partial).toBe(true)
+    expect(brief.files).toEqual([])
+    expect(brief.documentTypes).toEqual([])
+    expect(brief.topics).toEqual([])
+    expect(brief.photos).toBeNull()
+    expect(brief.tally.unplaced).toBe(0)
+    expect(brief.tally.pages).toBe(0)
+  })
+
+  it('names only the failed documents of the subtree it is about', () => {
+    expect(buildFolderBriefFromSummary(summary, S_TREE, 'D').attention.failed).toEqual([])
+    expect(buildFolderBriefFromSummary(summary, S_TREE, 'A').attention.failed).toEqual([{ id: 'b1' }])
   })
 })

@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
-import { FAKE_FRAME_WIDTH, fakePdfjsRuntime, type FakePdfState } from '@/test-utils/pdfjs-fake'
+import {
+  FAKE_FRAME_WIDTH,
+  fakePdfjsRuntime,
+  fakeTextRun,
+  selectRenderedText,
+  type FakePdfState,
+} from '@/test-utils/pdfjs-fake'
 import { FilePreviewPane } from './file-preview-pane'
 import { CurrentProjectProvider } from '@/features/projects/lib/current-project'
 
@@ -153,10 +159,10 @@ describe('FilePreviewPane', () => {
     expect(screen.queryByText('Citable')).toBeNull()
 
     // What Piloti made of it, and who owns it — the rail's, not the chrome's.
-    expect(chrome.queryByRole('button', { name: 'Discuss' })).toBeNull()
+    expect(chrome.queryByRole('button', { name: 'Discuss with Piloti' })).toBeNull()
     expect(chrome.queryByRole('button', { name: 'Ask a colleague' })).toBeNull()
     expect(chrome.queryByText('Responsible')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Discuss' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Discuss with Piloti' })).toBeInTheDocument()
     expect(screen.getByText('Responsible')).toBeInTheDocument()
   })
 
@@ -208,7 +214,7 @@ describe('FilePreviewPane', () => {
     expect(screen.queryByText(/still use the previous revision/)).toBeNull()
   })
 
-  it('offers an expand affordance for a PDF once its preview URL has loaded', async () => {
+  it('offers the review for a PDF once its preview URL has loaded, in place of the enlarged viewer', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ url: 'https://example.test/plan.pdf' }),
@@ -216,10 +222,11 @@ describe('FilePreviewPane', () => {
 
     render(<FilePreviewPane file={mockFile} projectId="proj-1" />)
 
-    expect(await screen.findByRole('button', { name: /open large preview/i })).toBeDefined()
+    expect(await screen.findByRole('button', { name: 'Open review' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: /open large preview/i })).toBeNull()
   })
 
-  it('names the format in the Type row and keeps the MIME type in its tooltip', () => {
+  it('names the format in the facts line under the name and keeps the MIME type in its tooltip', () => {
     const docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, json: async () => ({}) } as Response)
 
@@ -230,8 +237,9 @@ describe('FilePreviewPane', () => {
       />
     )
 
-    const type = screen.getByText('Word document')
-    expect(type.getAttribute('title')).toBe(docx)
+    const facts = screen.getByTestId('file-preview-facts')
+    expect(facts).toHaveTextContent('Word document')
+    expect(facts.getAttribute('title')).toBe(docx)
     expect(screen.queryByText(docx)).toBeNull()
   })
 
@@ -273,14 +281,16 @@ describe('FilePreviewPane', () => {
     expect(screen.getByRole('button', { name: /try again/i })).toBeDefined()
   })
 
-  it('opens the large preview dialog when the expand affordance is clicked', async () => {
+  it('opens the large preview dialog for an image when the expand affordance is clicked', async () => {
     const user = userEvent.setup()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => ({ url: 'https://example.test/plan.pdf' }),
+      json: async () => ({ url: 'https://example.test/diagram.png' }),
     } as Response)
 
-    render(<FilePreviewPane file={mockFile} projectId="proj-1" />)
+    render(
+      <FilePreviewPane file={{ ...mockFile, filename: 'diagram.png', contentType: 'image/png' }} projectId="proj-1" />
+    )
 
     await user.click(await screen.findByRole('button', { name: /open large preview/i }))
 
@@ -316,7 +326,8 @@ describe('FilePreviewPane', () => {
     it('opens one document at a time: the enlarged view borrows it from the pane', async () => {
       const user = userEvent.setup()
       presigned()
-      render(<FilePreviewPane file={mockFile} projectId="proj-1" />)
+      // A PDF that carries no marks (no rail to show them in) keeps the enlarged viewer.
+      render(<FilePreviewPane file={mockFile} projectId="proj-1" showMetadataPanel={false} />)
       await screen.findByRole('group', { name: 'plan.pdf' })
 
       await user.click(screen.getByRole('button', { name: /open large preview/i }))
@@ -324,6 +335,41 @@ describe('FilePreviewPane', () => {
       await screen.findByRole('link', { name: /open in new tab/i })
       await waitFor(() => expect(screen.getAllByTestId('pdf-scroll')).toHaveLength(1))
       expect(within(screen.getByRole('dialog')).getByTestId('pdf-scroll')).toBeInTheDocument()
+    })
+
+    /**
+     * „Im Büro behandelt" from Files: a passage selected in the inline viewer
+     * opens the large viewer with the rail, asking about this document as
+     * SELECTED text (embedded once, never matched to a chunk), in its project.
+     */
+    it('asks for passages like a selection, and opens them beside the document', async () => {
+      pdf.pages = [{ items: [fakeTextRun('Die Fluchttreppe wird als Außentreppe ausgeführt', 700, 300)] }]
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        String(input) === '/api/passages/similar'
+          ? new Response(JSON.stringify({ origin: 'embedded', projectsSearched: 0, groups: [] }), { status: 200 })
+          : ({ ok: true, status: 200, json: async () => ({ url: 'https://example.test/plan.pdf' }) } as Response)
+      )
+      render(<FilePreviewPane file={mockFile} projectId="proj-1" />)
+      await selectRenderedText('Die Fluchttreppe wird als Außentreppe ausgeführt')
+      fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
+      fireEvent.click(await screen.findByTestId('pdf-find-similar'))
+
+      expect(await screen.findByText('Not handled in your office yet')).toBeInTheDocument()
+      const call = fetchMock.mock.calls.find(([input]) => String(input) === '/api/passages/similar')
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+        document: { kind: 'stored', documentId: 'doc-1' },
+        passage: { text: 'Die Fluchttreppe wird als Außentreppe ausgeführt', page: 1, cited: false },
+        projectId: 'proj-1',
+      })
+    })
+
+    it('offers no similar passages in a document Piloti has not read', async () => {
+      pdf.pages = [{ items: [fakeTextRun('Die Fluchttreppe wird als Außentreppe ausgeführt', 700, 300)] }]
+      presigned()
+      render(<FilePreviewPane file={{ ...mockFile, status: 'processing' }} projectId="proj-1" />)
+      await selectRenderedText('Die Fluchttreppe wird als Außentreppe ausgeführt')
+      fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
+      expect(screen.queryByTestId('pdf-find-similar')).toBeNull()
     })
 
     it('says it could not load, and retries, when the viewer cannot open the bytes', async () => {
@@ -353,7 +399,7 @@ describe('FilePreviewPane', () => {
       } as Response)
       render(<FilePreviewPane file={mockFile} projectId="proj-1" />)
 
-      await screen.findByRole('button', { name: /open large preview/i })
+      await screen.findByRole('button', { name: 'Open review' })
       expect(screen.queryByTestId('pdf-scroll')).toBeNull()
       expect(pdf.opened).toEqual([])
     })
@@ -438,7 +484,7 @@ describe('FilePreviewPane', () => {
       expect(panel.getByText('Grundriss')).toBeInTheDocument()
     })
 
-    it('lazily loads and shows per-page drawing descriptions in "Detailed information"', async () => {
+    it('loads the per-page drawing descriptions with the document, under "On the pages"', async () => {
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
         const url = String(input)
         if (url.includes('/visual-details')) {
@@ -470,22 +516,91 @@ describe('FilePreviewPane', () => {
         />
       )
 
-      // Collapsed by default: the description is not in the DOM yet.
-      expect(screen.queryByText('Ein Längsschnitt.')).toBeNull()
-
-      const toggle = screen.getByRole('button', { name: /detailed information/i })
-      await userEvent.click(toggle)
-
-      // The description is lazily fetched and rendered on expand.
-      expect(await screen.findByText('Ein Längsschnitt.')).toBeDefined()
-      // Per-page header shows the page number and the drawing type badge.
-      expect(screen.getByText('Page 1')).toBeDefined()
-      expect(screen.getByText(/· schnitt/)).toBeDefined()
+      // Loaded with the document: no disclosure stands between the reader and
+      // what Piloti saw on each page.
+      expect(screen.queryByRole('button', { name: /detailed information/i })).toBeNull()
+      const pages = within(await screen.findByRole('region', { name: 'On the pages' }))
+      expect(await pages.findByText('Ein Längsschnitt.')).toBeDefined()
+      // Each entry names its page, its drawing type (an unknown key humanized,
+      // never printed raw) and its scale.
+      expect(pages.getByLabelText('Page 1')).toHaveTextContent('p. 1')
+      expect(pages.getByText('Schnitt')).toBeDefined()
+      expect(pages.getByText('Scale 1:100')).toBeDefined()
     })
 
-    it('does not show "Detailed information" when the document has no visual chunks', () => {
+    it('neither shows "On the pages" nor asks for descriptions when the document has no visual chunks', () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, json: async () => ({}) } as Response)
       render(<FilePreviewPane file={{ ...mockFile, contentTypes: ['text'] }} projectId="proj-1" />)
-      expect(screen.queryByRole('button', { name: /detailed information/i })).toBeNull()
+      expect(screen.queryByTestId('page-readings')).toBeNull()
+      expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/visual-details'))).toBe(false)
+    })
+
+    describe('turning to a page from its reading', () => {
+      // The well mounts its viewer once it has been seen. The suite's
+      // IntersectionObserver never reports anything, so the well is never
+      // seen and no page link would ever render; without one the hook takes
+      // the well as seen, which is what a real browser reports.
+      beforeEach(() => vi.stubGlobal('IntersectionObserver', undefined))
+      afterEach(() => vi.unstubAllGlobals())
+
+      const withReading = (detail: Record<string, unknown>, previewUrl: string) =>
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
+          String(input).includes('/visual-details')
+            ? ({ ok: true, json: async () => ({ details: [detail] }) } as Response)
+            : ({ ok: true, json: async () => ({ url: previewUrl }) } as Response),
+        )
+
+      it('links each reading to its page where the well is the PDF viewer', async () => {
+        withReading(
+          { page: 7, contentType: 'drawing', drawingType: 'floor_plan', scale: '1:100', text: 'Regelgeschoss.' },
+          'https://example.test/plan.pdf',
+        )
+        render(<FilePreviewPane file={{ ...mockFile, contentTypes: ['text', 'drawing'] }} projectId="proj-1" />)
+        expect((await screen.findByTitle('Show page 7 in the document')).tagName).toBe('BUTTON')
+      })
+
+      it('offers no page link where the well is not the PDF viewer', async () => {
+        // A photo has no page to turn to: an entry drawn as a link would do
+        // nothing, and in the peek it would also flip to the Document tab.
+        withReading(
+          { page: 1, contentType: 'image', drawingType: 'photo', scale: '', text: 'Ein Baustellenfoto.' },
+          'https://example.test/photo.jpg',
+        )
+        render(
+          <FilePreviewPane
+            file={{ ...mockFile, filename: 'Baustelle.jpg', contentType: 'image/jpeg', contentTypes: ['image'] }}
+            projectId="proj-1"
+          />
+        )
+        expect(await screen.findByText('Ein Baustellenfoto.')).toBeDefined()
+        expect(screen.queryByTitle(/show page/i)).toBeNull()
+      })
+    })
+
+    it('asks for no descriptions when the metadata panel is off', () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, json: async () => ({}) } as Response)
+      render(
+        <FilePreviewPane
+          file={{ ...mockFile, contentTypes: ['text', 'drawing'] }}
+          projectId="proj-1"
+          showMetadataPanel={false}
+        />
+      )
+      expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/visual-details'))).toBe(false)
+    })
+
+    it('translates a drawing type it knows', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
+        String(input).includes('/visual-details')
+          ? ({
+              ok: true,
+              json: async () => ({ details: [{ page: 3, contentType: 'drawing', drawingType: 'site_plan', scale: '', text: 'Lageplan.' }] }),
+            } as Response)
+          : ({ ok: false, json: async () => ({}) } as Response),
+      )
+      render(<FilePreviewPane file={{ ...mockFile, contentTypes: ['drawing'] }} projectId="proj-1" />)
+      expect(await screen.findByText('Site plan')).toBeDefined()
+      expect(screen.queryByText(/site_plan/)).toBeNull()
     })
 
     it('marks which of the sheet\'s depictions a row is when a sheet carries several', async () => {
@@ -533,7 +648,6 @@ describe('FilePreviewPane', () => {
         />
       )
 
-      await userEvent.click(screen.getByRole('button', { name: /detailed information/i }))
       expect(await screen.findByText('Erdgeschoss.')).toBeDefined()
       expect(screen.getByText('Obergeschoss.')).toBeDefined()
       // Language-neutral by construction: `1/2` needs no dictionary.
@@ -632,7 +746,6 @@ describe('FilePreviewPane', () => {
         />
       )
 
-      await userEvent.click(screen.getByRole('button', { name: /detailed information/i }))
       await screen.findByText('Grundriss des Erdgeschosses.')
 
       // Advanced by design: the structured values stay hidden until asked for.
@@ -704,7 +817,6 @@ describe('FilePreviewPane', () => {
         />
       )
 
-      await userEvent.click(screen.getByRole('button', { name: /detailed information/i }))
       await screen.findByText('Ein Baustellenfoto.')
 
       expect(screen.queryByRole('button', { name: /structured data/i })).toBeNull()
@@ -727,20 +839,23 @@ describe('FilePreviewPane', () => {
         />
       )
 
-      await userEvent.click(screen.getByRole('button', { name: /detailed information/i }))
-
       expect(await screen.findByText('Ein Schnitt.')).toBeDefined()
       expect(screen.queryByRole('button', { name: /structured data/i })).toBeNull()
     })
 
-    it('renders the Updated row, and no caption under the reading', () => {
-      render(<FilePreviewPane file={mockFile} projectId="proj-1" />)
-      expect(screen.getByText('Updated')).toBeInTheDocument()
+    it('carries no Project, Type, Size or Updated row, and no caption under the reading', () => {
+      render(<FilePreviewPane file={mockFile} projectId="proj-1" projectName="Stadthaus Linz" />)
+      // Each was a row the eye passed on the way to something it came for: the
+      // project is the one the reader is in, format and size are the line under
+      // the name, the date is on the Fassung.
+      for (const label of ['Project', 'Type', 'Size', 'Updated']) {
+        expect(screen.queryByText(label)).toBeNull()
+      }
       // The caption claimed corrections improve answers, which tags never do.
       expect(screen.queryByText(/your corrections improve future answers/i)).toBeNull()
     })
 
-    it('shows the project row and the detected category only from real metadata', () => {
+    it('shows the detected category only from real metadata', () => {
       render(
         <FilePreviewPane
           file={{ ...mockFile, tags: ['Grundriss', 'Brandschutz'] }}
@@ -752,8 +867,6 @@ describe('FilePreviewPane', () => {
       // 'Grundriss' appears there and as the reading's type chip, and nowhere else.
       expect(screen.queryByText('Document type')).toBeNull()
       expect(screen.getAllByText('Grundriss')).toHaveLength(2)
-      expect(screen.getByText('Project')).toBeDefined()
-      expect(screen.getByText('Stadthaus Linz')).toBeDefined()
     })
 
     it('omits the project row and the category chip without the metadata', () => {
@@ -764,7 +877,7 @@ describe('FilePreviewPane', () => {
       expect(screen.queryByText('Passages')).toBeNull()
     })
 
-    it('hides the whole panel when the metadata panel is off (peek), keeping status/type/size', () => {
+    it('hides the whole panel when the metadata panel is off (peek), keeping type and size', () => {
       render(
         <FilePreviewPane
           file={{
@@ -792,10 +905,8 @@ describe('FilePreviewPane', () => {
       // fixture means nothing at all, on either surface.
       expect(screen.queryByText('Citable')).toBeNull()
       expect(screen.queryByText('Status')).toBeNull()
-      expect(screen.queryByText('Status')).toBeNull()
-      expect(screen.getByText('Type')).toBeDefined()
-      expect(screen.getByText('Size')).toBeDefined()
-      expect(screen.getByText(/1 MB/i)).toBeDefined()
+      // Type and size are the facts line under the name, which no flag gates.
+      expect(screen.getByTestId('file-preview-facts')).toHaveTextContent(/1 MB/i)
     })
 
     it('counts the content kinds in the facts line only when the document holds more than plain text', () => {
@@ -1002,7 +1113,7 @@ describe('FilePreviewPane', () => {
       expect(screen.getByText(LONG_SUMMARY).className).toContain('line-clamp-5')
       expect(screen.getByRole('button', { name: /full summary/i })).toBeDefined()
       // The rail's other sections are rendered, not pushed out of the tree.
-      expect(screen.getByText('Properties')).toBeDefined()
+      expect(screen.getByTestId('piloti-reading')).toBeInTheDocument()
     })
 
     it('expands and collapses on request', async () => {
@@ -1114,12 +1225,12 @@ describe('FilePreviewPane', () => {
     // depends on it: the turn reads the subject version's own bytes. Disabling
     // the control would now be withholding something that works.
     render(<FilePreviewPane file={{ ...mockFile, status: 'processing' }} projectId="proj-1" />)
-    expect(screen.getByRole('button', { name: 'Discuss' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Discuss with Piloti' })).toBeEnabled()
   })
 
   it('offers Besprechen once ingest has reconciled, too', () => {
     render(<FilePreviewPane file={{ ...mockFile, status: 'completed' }} projectId="proj-1" />)
-    expect(screen.getByRole('button', { name: 'Discuss' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Discuss with Piloti' })).toBeEnabled()
   })
 
   describe('a document that is not there any more', () => {
@@ -1145,6 +1256,100 @@ describe('FilePreviewPane', () => {
 
       expect(await screen.findByRole('button', { name: /try again/i })).toBeInTheDocument()
       expect(screen.queryByText(/no longer available/i)).not.toBeInTheDocument()
+    })
+  })
+
+  /**
+   * A reviewer decides where they look at the document and the finding, not
+   * only in the Quarantäne list; the uploader asks. Which of the two is the
+   * server's answer (`GET /api/documents/{id}/quarantine`), never a role.
+   */
+  describe('a file held back by the content check (ADR-0086)', () => {
+    const HELD = {
+      ...mockFile,
+      status: 'quarantined',
+      errorMessage:
+        'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","count":2,"pages":[2,5]}],"checked":"full"}',
+    }
+
+    const stubHeld = (access: { canReview: boolean; canAskForReview: boolean }) => {
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/documents/doc-1/quarantine') return Response.json(access)
+        if (url === '/api/documents/doc-1/quarantine/release' && init?.method === 'POST') {
+          return Response.json({ id: 'doc-1', status: 'uploaded', jobId: 'job-1' })
+        }
+        if (url === '/api/documents/doc-1/quarantine/request-release' && init?.method === 'POST') {
+          return Response.json({ id: 'doc-1', notified: 2 })
+        }
+        if (url === '/api/documents/doc-1' && init?.method === 'DELETE') return new Response(null, { status: 204 })
+        return new Response(null, { status: 404 })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      return fetchMock
+    }
+    const called = (fetchMock: ReturnType<typeof stubHeld>, url: string, method: string): boolean =>
+      fetchMock.mock.calls.some(([calledUrl, init]) => calledUrl === url && init?.method === method)
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('offers a reviewer „Zulassen", asks first, and shows the file being read once allowed', async () => {
+      const fetchMock = stubHeld({ canReview: true, canAskForReview: false })
+      const onReingested = vi.fn()
+      const user = userEvent.setup()
+      render(<FilePreviewPane file={HELD} projectId="proj-1" onReingested={onReingested} />)
+
+      await user.click(await screen.findByTestId('preview-held-release'))
+      // The question the Quarantäne list asks, word for word.
+      expect(screen.getByRole('dialog')).toHaveTextContent(/language models see its content/)
+      expect(called(fetchMock, '/api/documents/doc-1/quarantine/release', 'POST')).toBe(false)
+      expect(screen.queryByTestId('preview-held-request-review')).toBeNull()
+
+      await user.click(screen.getByTestId('preview-held-release-confirm'))
+      // The listing and the store flip the row to the status it was sent with.
+      await waitFor(() => expect(onReingested).toHaveBeenCalledWith('doc-1', 'uploaded'))
+      expect(called(fetchMock, '/api/documents/doc-1/quarantine/release', 'POST')).toBe(true)
+    })
+
+    it("lets a reviewer delete it with the document's own delete question, and closes", async () => {
+      const fetchMock = stubHeld({ canReview: true, canAskForReview: false })
+      const onDeleted = vi.fn()
+      const onClose = vi.fn()
+      const user = userEvent.setup()
+      render(<FilePreviewPane file={HELD} projectId="proj-1" onDeleted={onDeleted} onClose={onClose} />)
+
+      await user.click(await screen.findByTestId('preview-held-delete'))
+      await user.click(await screen.findByTestId('document-delete-confirm'))
+
+      await waitFor(() => expect(onDeleted).toHaveBeenCalledWith('doc-1'))
+      expect(onClose).toHaveBeenCalled()
+      expect(called(fetchMock, '/api/documents/doc-1', 'DELETE')).toBe(true)
+    })
+
+    it('offers the uploader who may not decide „Prüfung anfragen" instead', async () => {
+      const fetchMock = stubHeld({ canReview: false, canAskForReview: true })
+      const user = userEvent.setup()
+      render(<FilePreviewPane file={HELD} projectId="proj-1" />)
+
+      const ask = await screen.findByTestId('preview-held-request-review')
+      expect(ask).toHaveTextContent('Ask for a review')
+      expect(screen.queryByTestId('preview-held-release')).toBeNull()
+      expect(screen.queryByTestId('preview-held-delete')).toBeNull()
+
+      await user.click(ask)
+      await waitFor(() => expect(ask).toHaveTextContent('Review requested'))
+      expect(called(fetchMock, '/api/documents/doc-1/quarantine/request-release', 'POST')).toBe(true)
+    })
+
+    it('offers nothing to a reader who may do neither, and still says what was found', async () => {
+      const fetchMock = stubHeld({ canReview: false, canAskForReview: false })
+      render(<FilePreviewPane file={HELD} projectId="proj-1" />)
+
+      await waitFor(() =>
+        expect(fetchMock.mock.calls.some(([url]) => url === '/api/documents/doc-1/quarantine')).toBe(true)
+      )
+      expect(within(screen.getByTestId('preview-held')).getByTestId('preview-held-findings')).toBeInTheDocument()
+      expect(screen.queryByTestId('preview-held-review')).toBeNull()
+      expect(screen.queryByTestId('preview-held-request-review')).toBeNull()
     })
   })
 
@@ -1177,13 +1382,11 @@ describe('FilePreviewPane', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc-1/preview', expect.anything())
     })
 
-    it('shows the rendition in the PDF viewer, says so, and can enlarge it', async () => {
+    it('shows the rendition in the PDF viewer, says so, and opens it as the review', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rendition))
       const { container } = render(<FilePreviewPane file={docx} projectId="proj-1" />)
 
-      expect(
-        await screen.findByRole('button', { name: /open large preview/i })
-      ).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Open review' })).toBeInTheDocument()
       // `/file` streams the rendition for an office file, so the viewer reads
       // the same address it reads for a PDF upload.
       await waitFor(() => expect(container.querySelectorAll('[data-page]')).toHaveLength(1))
@@ -1202,7 +1405,7 @@ describe('FilePreviewPane', () => {
         <FilePreviewPane file={{ ...docx, contentType: null }} projectId="proj-1" />
       )
 
-      await screen.findByRole('button', { name: /open large preview/i })
+      await screen.findByRole('button', { name: 'Open review' })
       await waitFor(() => expect(container.querySelectorAll('[data-page]')).toHaveLength(1))
     })
 
@@ -1331,13 +1534,13 @@ describe('FilePreviewPane', () => {
       const reading = { ...mockFile, status: 'processing', contentTypes: ['text', 'drawing'] }
       const { rerender } = render(<FilePreviewPane file={reading} projectId="proj-1" />)
 
-      await userEvent.click(screen.getByRole('button', { name: /detailed information/i }))
-      expect(await screen.findByText('No visual descriptions available.')).toBeInTheDocument()
+      // The early answer is empty, and an empty section draws nothing.
+      await waitFor(() => expect(detailsCalls).toBe(1))
+      expect(screen.queryByTestId('page-readings')).toBeNull()
 
       rerender(<FilePreviewPane file={{ ...reading, status: 'ready' }} projectId="proj-1" />)
 
       expect(await screen.findByText('Ein Grundriss.')).toBeInTheDocument()
-      expect(screen.queryByText('No visual descriptions available.')).toBeNull()
       expect(detailsCalls).toBe(2)
     })
 
@@ -1354,10 +1557,9 @@ describe('FilePreviewPane', () => {
       })
       render(<FilePreviewPane file={{ ...mockFile, contentTypes: ['drawing'] }} projectId="proj-1" />)
 
-      await userEvent.click(screen.getByRole('button', { name: /detailed information/i }))
       expect(await screen.findByText('The descriptions could not be loaded.')).toBeInTheDocument()
-      // Not the same claim as "there are none".
-      expect(screen.queryByText('No visual descriptions available.')).toBeNull()
+      // Not the same claim as "there are none", which draws no section at all.
+      expect(screen.getByTestId('page-readings')).toBeInTheDocument()
 
       const details = screen.getByText('The descriptions could not be loaded.').parentElement!
       await userEvent.click(within(details).getByRole('button', { name: 'Try again' }))
@@ -1495,8 +1697,8 @@ describe('FilePreviewPane — a report Piloti wrote', () => {
     // The eyebrow describes an ingestion that never ran, and it would sit two
     // lines under a hint saying the report is not in the knowledge base.
     expect(screen.queryByText('Read by Piloti')).not.toBeInTheDocument()
-    // The facts that come from the FILE are still there.
-    expect(screen.getByText('Size')).toBeInTheDocument()
+    // The facts that come from the FILE are still there, under its name.
+    expect(screen.getByTestId('file-preview-facts')).toHaveTextContent('PDF')
   })
 
   it('offers Besprechen and still says the report is not in the knowledge base', async () => {
@@ -1508,27 +1710,30 @@ describe('FilePreviewPane — a report Piloti wrote', () => {
     // the hint still says so.
     render(<FilePreviewPane file={generated} projectId="proj-1" />)
 
-    const discuss = screen.getByRole('button', { name: 'Discuss' })
+    const discuss = screen.getByRole('button', { name: 'Discuss with Piloti' })
     expect(discuss).toBeEnabled()
     expect(discuss).toHaveAttribute('title', 'Created by Piloti — not in the knowledge base')
   })
 
-  it('withholds Ask on a machine-authored row whose status says citable', () => {
-    // The design's own lesson from this feature, which had been written down
-    // and not applied: "Every not-citable affordance derived from `status`.
-    // That was fine while `stored` implied agent-authored, and wrong the
-    // instant anything moved the row out of `stored`. Provenance is the durable
-    // fact." The gates read `status` alone until now.
-    //
-    // Nothing can move an agent row out of `stored` today — `dispatchDocument`
-    // refuses it, and `stored` is terminal so the poller never revisits it —
-    // which is precisely why this is cheap to fix now and expensive to discover
-    // later. `status` says where a document is in a pipeline and can move;
-    // `authored_by` says what it is and cannot.
+  it('calls a published Piloti document what it is: in the knowledge base', () => {
+    // This test used to pin the opposite, on the premise that "nothing can move
+    // an agent row out of `stored`". ADR-0054 made that false: a person who
+    // publishes Piloti's document sends that version to the index
+    // (`ingestPublished`), and the dispatch guard lets nothing else through.
+    // The authorship override then told the reader a published, indexed report
+    // was „nicht in der Wissensbasis“.
     render(<FilePreviewPane file={{ ...generated, status: 'completed' }} projectId="proj-1" />)
 
-    const discuss = screen.getByRole('button', { name: 'Discuss' })
-    expect(discuss).toHaveAttribute('title', 'Created by Piloti — not in the knowledge base')
+    const discuss = screen.getByRole('button', { name: 'Discuss with Piloti' })
+    expect(discuss).not.toHaveAttribute('title', 'Created by Piloti — not in the knowledge base')
+  })
+
+  it('names Piloti only for a document Piloti wrote', () => {
+    // An archived upload is `stored` too, and was told „Von Piloti erstellt".
+    render(<FilePreviewPane file={{ ...generated, authoredBy: 'user', status: 'stored' }} projectId="proj-1" />)
+
+    const discuss = screen.getByRole('button', { name: 'Discuss with Piloti' })
+    expect(discuss).not.toHaveAttribute('title', 'Created by Piloti — not in the knowledge base')
   })
 
   it('says nothing extra about a document that is simply still being read', () => {
@@ -1542,7 +1747,7 @@ describe('FilePreviewPane — a report Piloti wrote', () => {
       />
     )
 
-    const discuss = screen.getByRole('button', { name: 'Discuss' })
+    const discuss = screen.getByRole('button', { name: 'Discuss with Piloti' })
     expect(discuss).toBeEnabled()
     expect(discuss).not.toHaveAttribute('title')
   })
@@ -1643,5 +1848,73 @@ describe('FilePreviewPane — a report Piloti wrote', () => {
 
       expect(await screen.findByRole('button', { name: /try again/i })).toBeDefined()
     })
+  })
+})
+
+describe('FilePreviewPane — the reader on a phone', () => {
+  const drawing = {
+    id: 'doc-phone',
+    filename: 'WBN_Grundriss_1OG_Index_C.pdf',
+    displayName: null,
+    fileSize: 2_380_000,
+    contentType: 'application/pdf',
+    status: 'ready',
+    folderId: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    errorMessage: null,
+    summary: 'Grundriss 1. Obergeschoss, M 1:100.',
+    pageCount: 1,
+    chunkCount: null,
+    contentTypes: null,
+    tags: null,
+    topics: null,
+    capture: null,
+  }
+  const original = window.matchMedia
+  /** Pretend to be a phone: below `sm`, and on its side when asked. */
+  const phone = (sideways = false) => {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('40rem') || (sideways && query.includes('31.25rem') && !query.includes('40rem') && !query.includes('48rem')),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+    })) as unknown as typeof window.matchMedia
+  }
+  afterEach(() => {
+    window.matchMedia = original
+  })
+
+  it('gives the document the screen: a one-line header, the actions at the thumb, the rail in a sheet', async () => {
+    phone()
+    render(<FilePreviewPane file={drawing} projectId="proj-1" onClose={() => {}} />)
+    const header = screen.getByTestId('file-reader-header')
+    expect(within(header).getByRole('heading')).toHaveAttribute('title', 'WBN_Grundriss_1OG_Index_C.pdf')
+    expect(within(header).getByTestId('file-reader-close')).toBeInTheDocument()
+    const bar = screen.getByTestId('file-reader-bar')
+    expect(within(bar).getByRole('button', { name: 'Discuss with Piloti' })).toBeInTheDocument()
+    // Not a 50dvh well with the metadata scrolling under it.
+    expect(screen.queryByTestId('file-preview-rail')).toBeNull()
+    expect(screen.getByTestId('file-preview-well').className).not.toContain('50dvh')
+
+    fireEvent.click(within(bar).getByTestId('file-reader-details'))
+    const sheet = await screen.findByTestId('file-reader-details-sheet')
+    expect(within(sheet).getByTestId('file-preview-rail')).toBeInTheDocument()
+    // Besprechen is in the bar; the rail does not repeat it.
+    expect(within(sheet).queryByRole('button', { name: 'Discuss with Piloti' })).toBeNull()
+  })
+
+  it('on its side, moves the actions into the header: there is no height for a bar', () => {
+    phone(true)
+    render(<FilePreviewPane file={drawing} projectId="proj-1" onClose={() => {}} />)
+    expect(screen.queryByTestId('file-reader-bar')).toBeNull()
+    expect(within(screen.getByTestId('file-reader-header')).getByTestId('file-reader-actions')).toBeInTheDocument()
+  })
+
+  it('keeps the desktop layout off a phone', () => {
+    render(<FilePreviewPane file={drawing} projectId="proj-1" onClose={() => {}} />)
+    expect(screen.queryByTestId('file-reader-header')).toBeNull()
+    expect(screen.getByTestId('file-preview-rail')).toBeInTheDocument()
   })
 })

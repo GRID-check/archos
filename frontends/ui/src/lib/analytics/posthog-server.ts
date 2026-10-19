@@ -58,6 +58,13 @@ export type ServerEvent =
   | 'bim_query_executed'
   | 'budget_blocked'
   | 'budget_threshold_crossed'
+  | 'push_device_registered'
+  | 'push_device_removed'
+  | 'push_notification_sent'
+  | 'annotation_due_reminders_sent'
+  | 'annotation_created'
+  | 'annotation_closed'
+  | 'annotation_carried'
 
 let client: PostHog | null = null
 let resolved = false

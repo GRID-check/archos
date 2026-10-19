@@ -8,7 +8,7 @@ The project card is part of the design language, not one page's component. It is
 the click-dummy's Projektübersicht card (spec §1/§3) and it is what "a project,
 listed" looks like everywhere in Piloti: a subtle-surface body carrying a raised
 white plate with the name, the status chip and the brief line, and a quiet meta
-strip underneath with the timestamp and a settings gear.
+strip underneath with the timestamp and a shortcut to the project's Übersicht.
 
 Two lookalike cards do not stay lookalikes. They drift on the first token retune
 — one keeps a 12px radius while the other moves, one gets the new hover lift,
@@ -26,7 +26,7 @@ projects-home rework grew a second, larger `ProjectResumeCard` beside
 | `components/ui/section-label.tsx`, `components/ui/count-pill.tsx` | The eyebrow and the quiet number beside it. The grid's `SectionHeading` is only the arrangement of these two |
 | `components/projects/project-atoms.tsx` | The **project-specific parts**: links, brief, activity, doc count, initials tile |
 | `components/projects/project-card.tsx` | **The card.** `RaisedCard` + the atoms. Use this by default |
-| `components/projects/project-list-row.tsx` | The dense row — the same atoms in a different arrangement |
+| `components/projects/project-list-row.tsx` | The dense row — the same atoms in a different arrangement, an `Item` in the connected `ItemList` |
 | `components/projects/project-status.tsx` | The status chip and the (deliberately honest) status derivation |
 
 The split matters: the card's geometry is not a project concern. `RaisedCard`
@@ -46,11 +46,11 @@ for the primitive.** It is usually there.
 
 | Atom | Owns |
 |---|---|
-| `ProjectOpenLink` | The name as the surface's primary link, **stretched** over the whole surface, with the `Open {name}` label |
+| `ProjectOpenLink` | The name as the surface's primary link, **stretched** over the whole surface, with the `Open {name}` label. The name is cut in the **middle** when it does not fit (`MiddleTruncate`, tail from `projectNameTail`): what tells two projects apart is the end of the name |
 | `ProjectSummaryLine` | The brief, falling back to the shared invitation when a project has none |
-| `ProjectActivity` | **Whose timestamp this is** — see below |
+| `ProjectActivity` | **Whose timestamp this is** — see below. `compact` keeps the icon and moves the words to assistive tech, for a footer that also carries a link |
 | `ProjectDocCount` | Ingested document count, pluralized |
-| `ProjectSettingsLink` | The gear, layered above the stretched link (`relative z-10`) — never nested inside it |
+| `ProjectOverviewLink` | The shortcut to the project's Übersicht (`/settings`, with the navigation's own dashboard icon), layered above the stretched link (`relative z-10`) — never nested inside it. 44px on a touch pointer; it grows rather than overhangs, because a neighbour sits beside it. It replaced a gear that promised a settings form and hid the page that says where the project stands |
 | `ProjectInitialsTile` | The fixed left edge of a dense list, so a scan has a column to index by |
 
 Two of them carry meaning rather than styling, and are the reason the atoms are
@@ -80,8 +80,10 @@ review.
 2. **Does it need a genuinely different arrangement** (a table row, a compact
    menu item, a mention chip)? Compose it from the atoms, like
    `ProjectListRow` does. The row is the card's material caught in another
-   state — its resting form is the paper with a hairline under it, and on hover
-   it becomes the card surface.
+   state: one row of a connected `ItemList`, divided from its neighbours by the
+   list's hairline, with no radius, border or shadow of its own. On hover it
+   tints like every `Item`. It does not lift, because a lifted row detaches from
+   the rows either side of it.
 3. **Does it need something no atom provides?** Add the atom, then use it. An
    atom added for one surface is available to the others; a bespoke `div` in one
    component is not.

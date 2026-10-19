@@ -197,12 +197,33 @@ const OpenOnLoad: FC = () => {
   return null
 }
 
+/**
+ * The base-corpus listing a deployment serves (`/api/knowledge-base`), so the
+ * peek resolves the Richtlinie the way it does in the product and offers „An
+ * dieser Stelle öffnen". Without a backend the list is empty and every corpus
+ * source reads as one with no file, which is the wrong state to film.
+ */
+const CorpusListing: FC = () => {
+  useEffect(() => {
+    const real = window.fetch
+    window.fetch = (input, init) =>
+      String(input) === '/api/knowledge-base'
+        ? Promise.resolve(Response.json({ files: [{ fileName: OIB, state: 'ingested' }] }))
+        : real(input, init)
+    return () => {
+      window.fetch = real
+    }
+  }, [])
+  return null
+}
+
 export default function CitationInteractionPreview() {
   return (
     <div
       data-testid="citation-interaction-preview"
       className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-8"
     >
+      <CorpusListing />
       <OpenOnLoad />
       <Block
         title="Inline markers are citations"

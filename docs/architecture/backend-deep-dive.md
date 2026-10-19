@@ -13,7 +13,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
-  scheduler/worker + in-process ChromaDB. Runs the LangGraph workflow and the
+  scheduler/worker; every chunk lives in Qdrant (ADR-0115). Runs the LangGraph workflow and the
   async deep-research jobs.
 - **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`frontends/ui/server.js`).
 - **dragonfly** — Redis-protocol shared cache (ADR-0020): read-through caches
@@ -226,6 +226,15 @@ this **dual-write transition**. Authenticated WebSocket handshakes instead
 carry compact claims with `contextTransport: "bff"` and omit project context,
 memory and office instructions from both the individual headers and the
 signed envelope (ADR-0077).
+Every envelope also signs `requester` (`{ name, email, organizationName }`):
+who `userId` is, from the session it is minted for. A live session has it from
+AuthKit and the token's `organization_name` claim; a pinned one (a scheduled
+run, a woken thread) from WorkOS through `lib/auth/person.ts`. The agent names
+the person from the verified token while someone is signed in, else from this
+field (`turn.context.user_info_for`), so a turn nobody is signed in for is
+named too. A research job reads it the same way when its submit carried no
+`user_info` (`jobs/runner._run_user_info`): a scheduled fire is named from its
+run envelope, which the BFF re-signs at every renewal.
 `server.js` duplicates the same builder logic (with a pinning comment) since
 it is plain CommonJS and cannot import the TS module.
 
@@ -508,11 +517,18 @@ The agent keeps the brief current by emitting a `project_profile_patch` card
 Piloti's prompt has an explicit "Keeping the Project Brief
 current" policy, and the card model carries the canonical fact-key vocabulary
 (`PROFILE_FACT_VOCABULARY` in `cards/models.py`, mirroring the intake
-definition). The card only proposes: the user's Accept posts the JSON-Patch to
-`POST /api/projects/{id}/profile/patches`, which normalizes bare values into
-full fact objects (`source: 'user_confirmed'` — accepting IS the confirmation),
-applies them through the shared patch engine, and prunes unknowns the patch
-just answered. `GridCards` receives the chat store's `projectId` in both the
+definition). The card only proposes. At the end of the turn the patch is
+stored as a `project_profile` proposal (`register_envelope_card`,
+[`proposed-changes.md`](proposed-changes.md), ADR-0105) and the card carries its
+`proposal_id`; the user's Accept asks the server to apply it, in their session,
+through `patchProjectProfile`, the service behind
+`POST /api/projects/{id}/profile/patches`. That service normalizes bare values
+into full fact objects (`source: 'user_confirmed'` — accepting IS the
+confirmation), applies them through the shared patch engine, and prunes unknowns
+the patch just answered. The proposal records who decided and when, and every
+reader of the thread sees it. A card without a `proposal_id` (an older answer, or
+a run that could not store it) posts the patch to the same route from the
+browser, as before. `GridCards` receives the chat store's `projectId` in both the
 chat bubble and the run block's report (both `AgentResponse.tsx`), so
 Accept is live wherever the card renders.
 
@@ -637,10 +653,12 @@ prose from ("Opened … (Projekt, Ordner Brandschutz/Fluchtwege)"). A file at th
 root gets no `Ordner` at all — absence must read as absence, not as a folder the
 user never made.
 
-**Retrieval.** `knowledge_search` takes `folder=`, applied post-merge alongside
-`doc_class` / `title_contains` / `file_name` so it works uniformly across the
-base, session and project layers, and it covers the **subtree**: `Brandschutz`
-also reads `Brandschutz/Fluchtwege`. `_format_results` emits an `Ordner:` line
+**Retrieval.** `knowledge_search` takes `folder=`, which narrows the ranking
+to the folder's files before retrieval and is checked again post-merge
+alongside `doc_class` / `title_contains` / `file_name`, so it works uniformly
+across the base, session and project layers, and it covers the **subtree**:
+`Brandschutz` also reads `Brandschutz/Fluchtwege`. The narrowing is a payload
+condition on `folder_ancestors` inside the search (`qdrant/prefilter.py`). `_format_results` emits an `Ordner:` line
 per hit so a cited passage can say where its document lives. The store read
 (`_resolve_folder_paths`) is one batched query per in-scope collection and fails
 open to an empty map — which means "at the root", so a `folder=`-scoped search
@@ -697,7 +715,7 @@ in front of the answering agent (ADR-0052).
 ### Document summaries & `available_documents` (SQL side-table, distinct from the vector index)
 
 Two separate stores back "documents" and are **architecturally distinct**:
-the **ChromaDB vector index** that `knowledge_search`/`knowledge_retrieval`
+the **Qdrant vector index** that `knowledge_search`/`knowledge_retrieval`
 queries (what's actually retrievable), and a **SQL `document_metadata`
 side-table** (`DocumentMetadataStore`,
 `src/aiq_agent/knowledge/document_metadata_store.py` + `factory.py
@@ -812,7 +830,7 @@ together:
    primary summary path failed silently — this is a backstop, not a silent
    fix). Backends may optionally expose `get_document_text_sample()` to give
    the fallback a real text sample; `LlamaIndexIngestor` does, reading chunk
-   text back out of Chroma. The per-job call is **scoped** to the job's own
+   text back out of Qdrant (a structural fetch). The per-job call is **scoped** to the job's own
    successful files (`file_names=[...]`), so the caller's known-indexed set is
    diffed directly and the full `list_files` metadata scan — O(collection
    size) on every single-file upload, painful on the large `oib_knowledge`
@@ -824,7 +842,7 @@ ungating `fallback_summary_from_text` from tag success) and make "ingested ⇒
 visible in `available_documents`" hold for every ingestion path — a document
 that finishes ingestion always gets a `document_metadata` row, either from the
 primary LLM path or, on backfill, from the reconciliation pass. The two
-stores remain architecturally distinct (SQL side-table vs. ChromaDB vector
+stores remain architecturally distinct (SQL side-table vs. Qdrant vector
 index), so this is a structural backstop rather than a merge of the two
 sources — see backlog T3-10 for the closed status and rationale.
 
@@ -852,7 +870,11 @@ document summary:
    Returns raw image bytes — **no VLM call yet**. Pages rendered whole in step 4
    are skipped, so each page is analysed once, and at most
    `AIQ_MAX_IMAGES_PER_DOCUMENT` (64, largest first) go to the VLM; the rest are
-   counted on the file's job status as `images_over_cap`. Identical rasters (a logo re-embedded on every
+   counted on the file's job status as `images_over_cap`. A single raster over
+   `AIQ_MAX_IMAGE_PIXELS` (256 MP) is refused from its metadata before it is
+   decoded — pypdfium2 cannot downscale an embedded image on decode, so a
+   20000x20000 px raster would be a ~1.6 GiB transient allocation — and counted
+   as `images_over_pixel_budget`, with its page, index and pixel size logged. Identical rasters (a logo re-embedded on every
    page, a reused plan) are content-hash deduped (SHA-256 of the re-encoded
    JPEG) so each unique image is captioned and indexed exactly once.
 4. **Rendered visual/vector pages** — `processing.render_visual_pages_no_vlm`,
@@ -942,10 +964,11 @@ Each segment becomes its **own chunk**: the rendered structured German text
 segment's scale. The full structured analysis rides on the chunk as
 `drawing_data` (JSON string, embed-excluded), so re-chunking or the detail
 view never needs the VLM again. The same descriptions
-are browsable by the user, second to the one-line summary: `get_document_visual_details`
-reads the visual chunks back from Chroma — each item now carrying `segment`
-and the parsed `structured` payload — and the file-preview pane's collapsible
-**"Detailed information"** section lazy-loads them (`GET /api/documents/{id}/visual-details`
+are browsable by the user, under the summary: `get_document_visual_details`
+reads the visual chunks back from Qdrant — each item now carrying `segment`
+and the parsed `structured` payload — and the file-preview pane's
+**„Auf den Seiten"** section loads them with any document that has visual
+content (`page-readings.tsx`; `GET /api/documents/{id}/visual-details`
 → `GET /v1/collections/{c}/documents/{f}/visual-details`). Drawing chunks carry
 `content_type: "drawing"` in metadata (mapped to `ContentType.DRAWING` at
 retrieval by `normalize`), giving them their own citation format
@@ -1201,6 +1224,9 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    or display title). `_apply_agent_filters` applies them post-merge with an
    over-fetch factor of 3 (`_AGENT_FILTER_OVERFETCH`): retrieval asks for 3×
    `top_k` candidates so the filters still leave ≥ `top_k` results. `doc_class`
+   (and `folder`, and the superseded exclusion) run inside the vector search
+   as payload conditions, so only `title_contains` and `file_name` still
+   over-fetch (`qdrant/prefilter.py`). `doc_class`
    and titles are **store-authoritative**: `_resolve_doc_classes` /
    `_resolve_display_titles` build `(collection, file_name) → value` maps via
    `aiq_agent.knowledge.factory` (`get_document_doc_classes` /
@@ -1216,13 +1242,13 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
 
 2. **Hybrid lexical + vector retrieval (RRF)** — gated on `AIQ_HYBRID_RETRIEVAL`
    (default on, config key `hybrid_search` in the knowledge layer YAML block).
-   When enabled, `LlamaIndexRetriever` issues an additional exact-term lexical
-   query per collection: `extract_exact_terms` (token-based, shared utility in
-   `src/aiq_agent/common/legal_terms.py` — deliberately **no regex**) pulls up to
-   three technical tokens from the query, matched via Chroma's
-   `where_document: {"$contains": term}`. The lexical channel is fused with the
-   vector channel using **reciprocal rank fusion** (`reciprocal_rank_fusion` in
-   `llamaindex/hybrid.py`, Cormack `k=60`, vector channel wins ties). This fixes
+   When enabled, `LlamaIndexRetriever` adds lexical channels to the dense one
+   in the same Qdrant query: German BM25 over the chunk text, and per selective
+   exact term (`extract_exact_terms`, token-based, shared utility in
+   `src/aiq_agent/common/legal_terms.py` — deliberately **no regex**; up to
+   three technical tokens) the dense ranking restricted to chunks containing
+   it (`qdrant/search.py`). The channels are fused server-side by **reciprocal
+   rank fusion** (`k=60`). This fixes
    exact-keyword misses (e.g. a norm number or a precise term that the embedding
    model did not weight) without an embedding re-index.
 
@@ -2071,9 +2097,9 @@ loads house voice, offers and org skills through `use_skill`
   fixed (§6, "Silent summary-row loss on double LLM failure"); the LLM calls
   themselves can still fail silently, just without the visibility consequence
   anymore.
-- **`available_documents` vs. ChromaDB divergence — mitigated 2026-07-16** —
+- **`available_documents` vs. vector-index divergence — mitigated 2026-07-16** —
   the SQL summaries side-table that feeds `available_documents` can still, in
-  principle, diverge from what's indexed in ChromaDB (they remain
+  principle, diverge from what's indexed in Qdrant (they remain
   architecturally distinct stores), but the reconciliation backfill (§6) now
   closes every gap the double-LLM-failure case could produce, and the
   deep-research prompts no longer gate document *awareness* on the list being

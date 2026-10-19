@@ -31,6 +31,10 @@ class ImageViewBudget:
     def __init__(self, limit: int = MAX_IMAGE_VIEWS_PER_TURN) -> None:
         self.limit = limit
         self.used = 0
+        #: How many of the views rendered a REGION of a page (``region=``): the
+        #: turn looked at the box a person drew, not just at the page around it.
+        #: Read once the turn ends, as ``focus_region_viewed`` on its trace.
+        self.regions_viewed = 0
 
     @property
     def remaining(self) -> int:
@@ -66,3 +70,10 @@ def try_consume_image_view() -> bool:
     """Take one view from the turn's budget; always ``True`` when none is bound."""
     budget = _budget_var.get()
     return True if budget is None else budget.try_consume()
+
+
+def note_region_viewed() -> None:
+    """A region of a page was rendered for the model this turn; nothing to note outside a turn."""
+    budget = _budget_var.get()
+    if budget is not None:
+        budget.regions_viewed += 1

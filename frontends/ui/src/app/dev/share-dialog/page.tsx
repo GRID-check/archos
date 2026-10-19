@@ -226,6 +226,8 @@ function Preview({ variant }: { variant: Variant }): JSX.Element {
         resourceId={RESOURCE_ID}
         sharing={sharing}
         currentUserId={ME}
+        // The preview is not a chat page, so it names the address the real one derives.
+        shareUrl={`https://piloti.example/app/projects/p-atrium/chat?session=${RESOURCE_ID}`}
       />
     </>
   )

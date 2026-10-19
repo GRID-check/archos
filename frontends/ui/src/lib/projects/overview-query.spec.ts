@@ -143,6 +143,26 @@ describe('getProjectOverviewData', () => {
     expect(compile(predicates[1])).toEqual(compile(predicates[2]))
   })
 
+  it('hands the overview a profile with its four parts when the intake was never saved', async () => {
+    // A project whose intake was never saved stored `{}` before migration 0133
+    // (`DEFAULT '{}'`). The close dialog's debrief reads `profile.facts`
+    // through `fingerprintOf`, and the raw `{}` crashed „Projekt abschließen"
+    // with `Object.keys(e.facts)` on undefined (PostHog, /settings).
+    vi.mocked(getDb).mockReturnValue(
+      recordingDb([[{ ...projectRow, profile: {} }], [{ count: 0, totalSize: '0' }], []])
+    )
+
+    const data = await getProjectOverviewData(PROJECT_ID, ORG_ID, OPEN)
+
+    expect(data?.profile).toEqual({ facts: {}, goals: {}, unknowns: [], assumptions: {} })
+  })
+
+  it('hands the overview the empty profile for a row without one', async () => {
+    const data = await getProjectOverviewData(PROJECT_ID, ORG_ID, OPEN)
+
+    expect(data?.profile?.facts).toEqual({})
+  })
+
   it("leaves somebody else's held file out of the count, the total size and the recent list", async () => {
     // ADR-0086. The recent list names the file; for a reader who neither
     // uploaded it nor reviews the quarantine, a file the screening has not

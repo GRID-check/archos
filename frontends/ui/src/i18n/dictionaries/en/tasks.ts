@@ -53,6 +53,8 @@ export const tasks = {
   card: {
     openAria: 'Open “{title}”',
     unreviewed: 'Not reviewed yet',
+    /** The visible word for the dot at the top right: a phone has no hover. */
+    toReview: 'To review',
   },
   /** Where a result lives — one word per destination, on the card and in the drawer. */
   result: {
@@ -77,7 +79,7 @@ export const tasks = {
     runs: 'Tasks',
     /** Turns a one-off into a standing task, pre-filled. */
     promote: 'Save as a standing task',
-    promoteHint: 'Opens the task wizard with this request already written in.',
+    promoteHint: 'Opens the task wizard with this request filled in. Nothing is saved until the last step, and this run stays as it is.',
     /** A deep link whose row is gone — deleted, or never visible to this reader. */
     gone: 'This no longer exists. It may have been deleted.',
     /**

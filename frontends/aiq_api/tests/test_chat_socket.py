@@ -19,12 +19,16 @@ import uuid
 from collections.abc import AsyncIterator
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 import pytest_asyncio
+from jsonschema import Draft202012Validator
+from jsonschema import FormatChecker
 from langgraph.checkpoint.base import empty_checkpoint
 from langgraph.checkpoint.memory import InMemorySaver
 from starlette.datastructures import QueryParams
@@ -54,6 +58,9 @@ from aiq_agent.common.write_fence import TurnFenced
 from aiq_agent.common.write_fence import current_write_fence
 from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
 from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+from aiq_agent.turn import annotation_reply
+from aiq_agent.turn.annotation_reply import note_thread_post
+from aiq_agent.turn.annotation_reply import settle_thread_reply
 from aiq_agent.turn.response import answer_message_id
 from aiq_api import chat_socket
 from aiq_api import internal_api as chat_socket_internal
@@ -1602,16 +1609,29 @@ def test_the_row_is_the_typed_result_in_wire_spelling():
 
 
 async def test_the_hello_names_nothing_it_accepts_while_the_additive_fields_are_off(harness, monkeypatch):
-    """An open tab of the previous release parses the hello strictly: ``accepts`` would mark it outdated."""
+    """The rollback: a hello with no ``accepts``, as for a tab that parses the hello strictly."""
     monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
-    monkeypatch.delenv("GRID_WIRE_V2_ADDITIVE_FIELDS", raising=False)
+    monkeypatch.setenv("GRID_WIRE_V2_ADDITIVE_FIELDS", "off")
     sock = harness().connect()
     await until(lambda: sock.frames)
 
     assert sock.frames[0]["value"] == {"build": "abc1234"}
 
 
-@pytest.mark.parametrize(("flag", "sent"), [(None, False), ("off", False), ("on", True), ("1", True)])
+async def test_the_hello_names_the_canvas_fields_by_default(harness, monkeypatch):
+    """Unset, the hello says it reads the canvas's box, thread target and notes: without them a
+    canvas question reaches Piloti without its box and never answers in its thread."""
+    monkeypatch.delenv("GRID_WIRE_V2_ADDITIVE_FIELDS", raising=False)
+    sock = harness().connect()
+    await until(lambda: sock.frames)
+
+    accepts = sock.frames[0]["value"]["accepts"]
+    assert "user_message.focus_region" in accepts
+    assert "user_message.reply_in_thread" in accepts
+    assert "steer" in accepts
+
+
+@pytest.mark.parametrize(("flag", "sent"), [(None, True), ("off", False), ("on", True), ("1", True)])
 async def test_the_level_reaches_the_frame_only_with_the_additive_fields_on(persisted, monkeypatch, flag, sent):
     if flag is None:
         monkeypatch.delenv("GRID_WIRE_V2_ADDITIVE_FIELDS", raising=False)
@@ -2192,6 +2212,10 @@ async def test_an_owner_cut_off_from_dragonfly_past_its_window_cancels_itself_an
     sock = harness(gate.turn, a.registry).connect()
     sock.client(type="user_message", message_id="t1", text="?")
     await until(lambda: gate.calls)
+    # The prose the turn streamed before the cut reaches the socket on its own
+    # schedule; under load it arrived after `heard` was counted and read as
+    # sent past the cut. Count from once it is here.
+    await until(lambda: "TEXT_MESSAGE_CONTENT" in [event["type"] for event in sock.events()])
     _bus_down(monkeypatch, shared, "expire_if_value", "publish", "xadd", "get")
     heard = len(sock.events())
 
@@ -2284,7 +2308,7 @@ async def test_the_posthog_session_of_a_turn_becomes_trace_metadata_when_identit
     sock.client(type="user_message", message_id="t1", text="?", posthog_session_id=_POSTHOG_SESSION)
     await until(lambda: _last(sock) == "RUN_FINISHED")
 
-    assert seen[0]["metadata"] == {"$posthog_session_id": _POSTHOG_SESSION}
+    assert seen[0]["metadata"] == {"$posthog_session_id": _POSTHOG_SESSION, "turn_surface": "chat"}
 
 
 async def test_a_turn_without_identity_attributes_keeps_the_session_off_the_trace(harness, monkeypatch):
@@ -2294,7 +2318,36 @@ async def test_a_turn_without_identity_attributes_keeps_the_session_off_the_trac
     sock.client(type="user_message", message_id="t1", text="?", posthog_session_id=_POSTHOG_SESSION)
     await until(lambda: _last(sock) == "RUN_FINISHED")
 
-    assert seen[0]["metadata"] == {}
+    assert seen[0]["metadata"] == {"turn_surface": "chat"}
+
+
+@pytest.mark.parametrize(
+    ("fields", "surface", "tags"),
+    [
+        ({}, "chat", []),
+        (
+            {"focus_region": {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.2}},
+            "review_canvas",
+            ["surface:review-canvas"],
+        ),
+        (
+            {
+                "focus_region": {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.2, "annotation_id": "a-1"},
+                "reply_in_thread": True,
+            },
+            "annotation_thread",
+            ["surface:review-canvas"],
+        ),
+    ],
+)
+async def test_where_the_question_was_asked_is_on_every_span_of_the_turn(harness, fields, surface, tags):
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    sock.client(type="user_message", message_id="t1", text="?", **fields)
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen[0]["metadata"]["turn_surface"] == surface
+    assert seen[0]["tags"] == tags
 
 
 async def test_a_malformed_session_id_costs_the_replay_link_and_not_the_turn(harness, monkeypatch):
@@ -2305,4 +2358,677 @@ async def test_a_malformed_session_id_costs_the_replay_link_and_not_the_turn(har
     await until(lambda: _last(sock) == "RUN_FINISHED")
 
     assert sock.events()[-1]["outcome"] == "answered"
-    assert seen[0]["metadata"] == {}
+    assert "$posthog_session_id" not in seen[0]["metadata"]
+
+
+# ---------------------------------------------------------------------------
+# Steering: a note for the running turn (``steer``), never a turn of its own
+# ---------------------------------------------------------------------------
+
+
+class Steered:
+    """A turn that waits for its asker's notes, takes them as the agent node does, and says it read them."""
+
+    def __init__(self, wanted: int = 1) -> None:
+        self.wanted = wanted
+        self.read: list[str] = []
+        self.release = asyncio.Event()
+        self.torn_down = False
+
+    async def turn(self, request, ask):
+        from aiq_agent.common.steering import current_steer_inbox
+        from aiq_agent.common.wire_v2 import SteerAppliedBody
+        from aiq_agent.common.wire_v2 import SteerAppliedValue
+
+        inbox = current_steer_inbox()
+        try:
+            yield TextMessageStartBody(message_id="m")
+            while len(self.read) < self.wanted and not self.release.is_set():
+                for note in inbox.take():
+                    self.read.append(note.text)
+                    yield SteerAppliedBody(value=SteerAppliedValue(steer_id=note.steer_id, round=2))
+                await asyncio.sleep(0.01)
+            await self.release.wait()
+            yield _finished(request, text="Die Treppe.")
+        finally:
+            self.torn_down = True
+
+
+async def test_a_note_reaches_the_running_turn_and_is_acknowledged_on_its_seq(harness):
+    steered = Steered()
+    h = harness(steered.turn)
+    sock = h.connect()
+    sock.client(type="user_message", message_id="t1", text="Markier die Tür.")
+    await until(lambda: sock.events())
+
+    sock.client(type="steer", turn_id="t1", steer_id="s1", text="nicht die Tür, die Treppe")
+    await until(lambda: steered.read)
+    steered.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    events = sock.events()
+    assert _types(events) == [
+        "RUN_STARTED",
+        "TEXT_MESSAGE_START",
+        "steer_received",
+        "steer_applied",
+        "RUN_FINISHED",
+    ]
+    assert events[2]["value"] == {"steer_id": "s1", "text": "nicht die Tür, die Treppe"}
+    assert events[3]["value"] == {"steer_id": "s1", "round": 2}
+    assert [event["seq"] for event in events] == list(range(1, 6))
+    # Not a turn: nothing was superseded, claimed or opened for it.
+    assert events[-1]["outcome"] == "answered"
+    assert len(h.sessions.opened) == 1
+    assert sock.rejected() == []
+
+
+async def test_a_resent_note_is_taken_once(harness):
+    steered = Steered(wanted=2)
+    sock = harness(steered.turn).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: sock.events())
+
+    for _ in range(2):
+        sock.client(type="steer", turn_id="t1", steer_id="s1", text="die Treppe")
+    await until(lambda: steered.read)
+    await asyncio.sleep(0.05)
+    steered.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert _types(sock.events()).count("steer_received") == 1
+    assert steered.read == ["die Treppe"]
+    assert sock.rejected() == []
+
+
+async def test_a_colleague_cannot_steer_the_asker_s_turn(harness):
+    steered = Steered()
+    h = harness(steered.turn)
+    asker = h.connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: asker.events())
+    colleague = h.connect(token="tok-colleague")
+
+    colleague.client(type="steer", turn_id="t1", steer_id="s1", text="die Treppe")
+    await until(lambda: colleague.rejected())
+    steered.release.set()
+    await until(lambda: _last(asker) == "RUN_FINISHED")
+
+    assert colleague.rejected() == [{"of": "steer", "code": "not_asker"}]
+    assert steered.read == []
+
+
+async def test_a_note_for_no_running_turn_is_turn_not_found(harness):
+    sock = harness().connect()
+    sock.client(type="steer", turn_id="gone", steer_id="s1", text="die Treppe")
+    await until(lambda: sock.rejected())
+
+    assert sock.rejected() == [{"of": "steer", "code": "turn_not_found"}]
+
+
+async def test_the_note_past_the_cap_is_refused_and_the_turn_runs_on(harness):
+    from aiq_agent.common.steering import MAX_STEERS_PER_TURN
+
+    gate = Gate()
+    sock = harness(gate.turn).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+
+    for index in range(MAX_STEERS_PER_TURN + 1):
+        sock.client(type="steer", turn_id="t1", steer_id=f"s{index}", text=f"Notiz {index}")
+    await until(lambda: sock.rejected())
+    gate.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert sock.rejected() == [{"of": "steer", "code": "steer_limit"}]
+    assert _types(sock.events()).count("steer_received") == MAX_STEERS_PER_TURN
+    assert sock.events()[-1]["outcome"] == "answered"
+
+
+async def test_a_note_reaches_the_turn_masked(harness, office):
+    steered = Steered()
+    sock = harness(steered.turn).connect(headers=_office_envelope())
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: sock.events())
+
+    sock.client(type="steer", turn_id="t1", steer_id="s1", text=f"Konto ist {_IBAN}")
+    await until(lambda: steered.read)
+    steered.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert steered.read == ["Konto ist [IBAN entfernt]"]
+    received = [event for event in sock.events() if event.get("name") == "steer_received"]
+    assert received[0]["value"]["text"] == "Konto ist [IBAN entfernt]"
+
+
+async def test_a_note_received_by_another_replica_reaches_the_owner_s_turn(harness):
+    owner, relay, _ = _replicas()
+    steered = Steered()
+    asker = harness(steered.turn, owner).connect()
+    asker_elsewhere = harness(steered.turn, relay).connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: asker.events())
+    await asyncio.sleep(0.02)  # the owner's input subscription lands
+
+    asker_elsewhere.client(type="steer", turn_id="t1", steer_id="s1", text="die Treppe")
+    await until(lambda: steered.read)
+    steered.release.set()
+    await until(lambda: _last(asker) == "RUN_FINISHED")
+
+    assert steered.read == ["die Treppe"]
+    assert "steer_received" in _types(asker.events())
+    assert asker_elsewhere.rejected() == []
+
+
+async def test_the_hello_offers_steering_and_the_wake_fields():
+    assert {"steer", "user_message.trigger", "user_message.if_idle"} <= set(ACCEPTED_CLIENT_FIELDS)
+
+
+async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back_a_write(harness, monkeypatch):
+    """End to end: socket → inbox → Piloti's compiled graph → ``steer_applied`` on the asker's socket.
+
+    The model chose to look AND mark the door; the asker typed while it was
+    deciding. The mark is held, the look runs, the next request carries the
+    note, and the reader is told which round read it.
+    """
+    from unittest.mock import MagicMock
+    from unittest.mock import patch
+
+    from langchain_core.messages import AIMessage
+    from langchain_core.messages import HumanMessage
+    from langchain_core.messages import ToolMessage
+    from langchain_core.tools import tool
+
+    from aiq_agent.agents.piloti.agent import PilotiAgent
+    from aiq_agent.agents.piloti.models import ResearchAgentState
+    from aiq_agent.common import LLMProvider
+    from aiq_agent.common.citation_verification import SourceEntry
+    from aiq_agent.common.citation_verification import SourceRegistry
+    from aiq_agent.common.steering import HELD_FOR_STEER
+
+    ran: list[str] = []
+    requests: list[list] = []
+    deciding, steered = asyncio.Event(), asyncio.Event()
+
+    @tool("canvas__look")
+    def look(page: int) -> str:
+        """Look at a page."""
+        ran.append("look")
+        return "Tür links, Treppe rechts"
+
+    @tool("canvas__mark")
+    def mark(target: str) -> str:
+        """Propose an Anmerkung."""
+        ran.append(f"mark:{target}")
+        return "ok"
+
+    replies = [
+        AIMessage(
+            content="",
+            tool_calls=[
+                {"name": "canvas__look", "args": {"page": 1}, "id": "l1"},
+                {"name": "canvas__mark", "args": {"target": "Tür"}, "id": "m1"},
+            ],
+        ),
+        AIMessage(content="", tool_calls=[{"name": "canvas__mark", "args": {"target": "Treppe"}, "id": "m2"}]),
+        AIMessage(content="Die Treppe ist markiert."),
+    ]
+
+    async def respond(messages, *_args, **_kwargs):
+        requests.append(list(messages))
+        if len(requests) == 1:
+            deciding.set()
+            await steered.wait()  # the person types while the model decides
+        return replies[len(requests) - 1]
+
+    llm = MagicMock()
+    llm.bind_tools = MagicMock(return_value=llm)
+    llm.ainvoke = AsyncMock(side_effect=respond)
+    provider = MagicMock(spec=LLMProvider)
+    provider.get = MagicMock(return_value=llm)
+    agent = PilotiAgent(llm_provider=provider, tools=[look, mark], system_prompt="Du bist Piloti.")
+
+    async def graph_turn(request, ask):
+        bodies: asyncio.Queue = asyncio.Queue()
+        monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.put_nowait)
+        with (
+            patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
+            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        ):
+            verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+                verified_report=content, removed_citations=[]
+            )
+            sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
+            run = asyncio.create_task(agent.run(ResearchAgentState(messages=[HumanMessage(content=request.text)])))
+            while not run.done() or not bodies.empty():
+                try:
+                    yield await asyncio.wait_for(bodies.get(), timeout=0.01)
+                except TimeoutError:
+                    continue
+            result = await run
+        yield _finished(request, text=str(result.messages[-1].content))
+
+    sock = harness(graph_turn).connect()
+    sock.client(type="user_message", message_id="t1", text="Markier die Tür.")
+    await until(deciding.is_set)
+    sock.client(type="steer", turn_id="t1", steer_id="s1", text="nicht die Tür, die Treppe")
+    await until(lambda: "steer_received" in _types(sock.events()))
+    steered.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED", timeout=5.0)
+
+    names = _types(sock.events())
+    assert names.index("steer_received") < names.index("steer_applied") < names.index("RUN_FINISHED")
+    applied = next(event for event in sock.events() if event.get("name") == "steer_applied")
+    assert applied["value"] == {"steer_id": "s1", "round": 2}
+    held = next(event for event in sock.events() if event.get("step", {}).get("id") == "status:steered:0")
+    assert held["step"]["detail"] == {"round": 0, "withheld": 1}
+    assert ran == ["look", "mark:Treppe"]
+    second = requests[1]
+    assert isinstance(second[-1], HumanMessage) and "nicht die Tür, die Treppe" in second[-1].content
+    assert isinstance(second[-2], ToolMessage) and second[-2].content == HELD_FOR_STEER
+    assert sock.events()[-1]["result"]["text"] == "Die Treppe ist markiert."
+
+
+# ---------------------------------------------------------------------------
+# A turn an event woke (ADR-0105 draft §3(b)): if_idle and the trigger
+# ---------------------------------------------------------------------------
+
+
+async def test_an_if_idle_question_never_supersedes_and_may_be_sent_again_later(harness):
+    gate = Gate()
+    h = harness(gate.turn)
+    asker = h.connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    wake = h.connect()
+
+    wake.client(type="user_message", message_id="w1", text="@Piloti?", if_idle=True)
+    await until(lambda: wake.rejected())
+    assert wake.rejected() == [{"of": "user_message", "code": "busy", "message": chat_socket.BUSY_REFUSAL}]
+    assert not gate.torn_down  # the typed turn runs on
+    assert len(h.sessions.opened) == 1
+
+    gate.release.set()
+    await until(lambda: _last(asker) == "RUN_FINISHED")
+    wake.client(type="user_message", message_id="w1", text="@Piloti?", if_idle=True)
+    await until(lambda: _last(wake, "w1") == "RUN_FINISHED")
+    assert wake.events("w1")[-1]["outcome"] == "answered"  # the same id ran: the refusal claimed nothing
+
+
+async def test_an_if_idle_question_is_busy_while_another_replica_runs_the_conversation(harness):
+    owner, relay, _ = _replicas()
+    gate = Gate()
+    asker = harness(gate.turn, owner).connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    wake = harness(gate.turn, relay).connect()
+
+    wake.client(type="user_message", message_id="w1", text="@Piloti?", if_idle=True)
+    await until(lambda: wake.rejected())
+
+    assert [value["code"] for value in wake.rejected()] == ["busy"]
+    assert not gate.torn_down
+    gate.release.set()
+    await until(lambda: _last(asker) == "RUN_FINISHED")
+
+
+async def test_an_idle_conversation_runs_an_if_idle_question(harness):
+    sock = harness().connect()
+    sock.client(type="user_message", message_id="w1", text="@Piloti?", if_idle=True)
+    await until(lambda: _last(sock, "w1") == "RUN_FINISHED")
+
+    assert sock.events("w1")[-1]["outcome"] == "answered"
+
+
+async def test_the_event_that_woke_a_turn_is_on_its_trace(harness):
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    trigger = {"kind": "thread_mention", "event_id": "reply-7", "annotation_id": "a-1"}
+    sock.client(type="user_message", message_id="t1", text="@Piloti?", trigger=trigger)
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen[0]["metadata"]["turn_trigger"] == "thread_mention"
+    assert seen[0]["metadata"]["trigger_event_id"] == "reply-7"
+    assert "trigger:thread_mention" in seen[0]["tags"]
+
+
+async def test_a_typed_turn_names_no_trigger(harness):
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert "turn_trigger" not in seen[0]["metadata"]
+    assert not [tag for tag in seen[0]["tags"] if tag.startswith("trigger:")]
+
+
+async def test_a_headless_socket_s_caller_skips_the_clarifier_and_says_it_is_headless():
+    sock = FakeSocket(headers=[(b"x-aiq-mode", b"headless")])
+
+    caller, code = await authenticate_websocket_connection(sock)
+
+    assert code is None
+    assert caller["skip_clarifier"] is True
+    assert caller["headless"] is True
+
+
+# ---------------------------------------------------------------------------
+# After the terminal: the outcome a headless caller waits for (ADR-0106, ADR-0109)
+# ---------------------------------------------------------------------------
+
+OUTCOME_SCHEMA = (
+    Path(__file__).resolve().parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "turn-outcome.schema.json"
+)
+HEADLESS = [(b"x-aiq-mode", b"headless")]
+WAKE = "aaaaaaaa-0000-4000-8000-000000000001"
+WAKE_2 = "aaaaaaaa-0000-4000-8000-000000000002"
+WAKE_3 = "aaaaaaaa-0000-4000-8000-000000000003"
+
+
+class _Bff(SimpleNamespace):
+    """The BFF's outcome route: every body it took, how many answer rows were written by then, and its answer."""
+
+
+@pytest.fixture
+def bff(monkeypatch, persisted) -> _Bff:
+    seen = _Bff(outcomes=[], rows_before=[], attempts=0, answer=(200, {"settled": True}))
+    real_client = httpx.AsyncClient
+
+    def reply(request: httpx.Request) -> httpx.Response:
+        if request.url.path != "/api/internal/turns/outcome":
+            return httpx.Response(404, json={})
+        seen.attempts += 1
+        assert request.headers["x-grid-internal-token"] == _SECRET
+        if isinstance(seen.answer, Exception):
+            raise seen.answer
+        seen.outcomes.append(json.loads(request.content))
+        seen.rows_before.append(len(persisted))
+        status, body = seen.answer
+        return httpx.Response(status, json=body)
+
+    def client(*args: Any, **kwargs: Any) -> httpx.AsyncClient:
+        return real_client(*args, transport=httpx.MockTransport(reply), **kwargs)
+
+    monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
+    monkeypatch.setattr(chat_socket_internal.httpx, "AsyncClient", client)
+    return seen
+
+
+@pytest.fixture(scope="module")
+def outcome_contract() -> dict[str, Draft202012Validator]:
+    schema = json.loads(OUTCOME_SCHEMA.read_text(encoding="utf-8"))
+    return {
+        name: Draft202012Validator({**schema["$defs"][name], "$defs": schema["$defs"]}, format_checker=FormatChecker())
+        for name in ("TurnOutcomeRequest", "TurnOutcomeResponse")
+    }
+
+
+async def _settle_background() -> None:
+    """Let every write after a terminal land: the row, the thread's answer, the outcome."""
+    await asyncio.gather(*chat_socket._PERSIST_TASKS, return_exceptions=True)
+
+
+async def test_a_headless_turn_reports_its_outcome_once_after_its_row_is_written(harness, bff, outcome_contract):
+    sock = harness().connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert bff.outcomes == [{"conversationId": CONV, "turnId": WAKE, "outcome": "answered"}]
+    assert bff.rows_before == [1]  # the answer row went first
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+    outcome_contract["TurnOutcomeResponse"].validate(bff.answer[1])
+
+
+@pytest.mark.parametrize(
+    ("outcome", "text", "expected"),
+    [
+        (
+            "refused",
+            "Das Monatsbudget ist aufgebraucht.",
+            {"outcome": "refused", "reason": "Das Monatsbudget ist aufgebraucht."},
+        ),
+        ("handed_off", "", {"outcome": "handed_off"}),
+    ],
+)
+async def test_every_finished_terminal_is_reported_in_the_bff_s_words(
+    harness, bff, outcome_contract, outcome, text, expected
+):
+    async def ending(request, ask):
+        yield _finished(request, text=text, outcome=outcome)
+
+    sock = harness(ending).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert bff.outcomes == [{"conversationId": CONV, "turnId": WAKE, **expected}]
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+
+
+async def test_a_stopped_headless_turn_reports_stopped(harness, bff, outcome_contract):
+    gate = Gate()
+    sock = harness(gate.turn).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: gate.calls)
+    sock.client(type="cancel_turn", turn_id=WAKE)
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert sock.events(WAKE)[-1]["outcome"] == "cancelled"
+    assert bff.outcomes == [{"conversationId": CONV, "turnId": WAKE, "outcome": "stopped"}]
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+
+
+async def test_a_failed_headless_turn_reports_failed_with_the_reader_s_words_never_the_trace(
+    harness, bff, outcome_contract, persisted
+):
+    async def failing(request, ask):
+        yield TextMessageStartBody(message_id="m")
+        raise RuntimeError('Traceback: File "/srv/secret.py", line 7, KeyError: org_42')
+
+    sock = harness(failing).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    [report] = bff.outcomes
+    assert (report["outcome"], report["turnId"]) == ("failed", WAKE)
+    assert report["reason"] == sock.events(WAKE)[-1]["message"]
+    assert "secret" not in report["reason"] and "Traceback" not in report["reason"]
+    assert persisted == []
+    outcome_contract["TurnOutcomeRequest"].validate(report)
+
+
+async def test_a_headless_turn_with_no_result_reports_failed_once(harness, bff, outcome_contract):
+    async def silent(request, ask):
+        yield TextMessageStartBody(message_id="m")
+
+    sock = harness(silent).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert [report["outcome"] for report in bff.outcomes] == ["failed"]
+    assert [event["type"] for event in sock.events(WAKE)].count("RUN_ERROR") == 1
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+
+
+async def test_a_headless_question_the_fence_refuses_still_reports(harness, bff, monkeypatch, outcome_contract):
+    owner, _, shared = _replicas()
+    monkeypatch.setenv("GRID_CHAT_AFFINITY", "0")
+    _bus_down(monkeypatch, shared, "set_nx", "get", "publish", "xadd")
+    sock = harness(answering, owner).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert [(report["outcome"], report["turnId"]) for report in bff.outcomes] == [("refused", WAKE)]
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+
+
+async def test_a_browser_turn_reports_nothing(harness, bff, persisted):
+    sock = harness().connect()
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert bff.outcomes == [] and bff.attempts == 0
+
+
+@pytest.mark.parametrize("answer", [httpx.ConnectError("refused"), (500, {"error": "down"})])
+async def test_a_failing_bff_neither_breaks_nor_holds_the_turn(harness, bff, persisted, answer):
+    bff.answer = answer
+    sock = harness().connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: _last(sock, WAKE) == "RUN_FINISHED")
+    await _settle_background()
+
+    assert sock.events(WAKE)[-1]["outcome"] == "answered"
+    assert persisted and persisted[0]["text"] == "Antwort [1]."
+    assert bff.attempts == 3  # retried briefly, then given up on and logged
+
+    sock.client(type="user_message", message_id=WAKE_2, text="??")  # the socket serves on
+    await until(lambda: _last(sock, WAKE_2) == "RUN_FINISHED")
+
+
+async def test_a_headless_turn_whose_id_no_wake_mints_reports_nothing(harness, bff, persisted):
+    sock = harness().connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert bff.attempts == 0
+
+
+# ---------------------------------------------------------------------------
+# After the terminal: a thread question answered in its thread
+# ---------------------------------------------------------------------------
+
+MARK = "33333333-0000-4000-8000-000000000003"
+MARKED_DOCUMENT = "11111111-0000-4000-8000-000000000001"
+THREAD = {
+    "focus_region": {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.2, "annotation_id": MARK},
+    "reply_in_thread": True,
+    "focus_document_id": MARKED_DOCUMENT,
+}
+SIGNED = _envelope({"conversationId": CONV, "userId": "user_asker", "organizationId": "org-1"})
+
+
+@pytest.fixture
+def thread_posts(monkeypatch) -> list[tuple[dict, Any]]:
+    """Every reply the fallback sent to the canvas route, with the envelope it echoed."""
+    made: list[tuple[dict, Any]] = []
+
+    def post(payload: dict, envelope: Any, **_: Any) -> dict:
+        made.append((payload, envelope))
+        return {"documentId": MARKED_DOCUMENT, "documentName": "Grundriss.pdf", "annotationId": MARK, "number": 4}
+
+    monkeypatch.setattr(annotation_reply, "post_canvas", post)
+    return made
+
+
+def _thread_turn(*, replied: bool = False, text: str = "Die Tür ist zu schmal [1].", fail: bool = False):
+    """A thread turn's workflow: maybe the model replied, then the canvas's end-of-turn call settles the record."""
+
+    async def turn(request, ask):
+        if replied:
+            note_thread_post(MARK)
+        settle_thread_reply()  # what `leave_canvas` does in the real workflow's `finally`
+        if fail:
+            raise RuntimeError("model gone")
+        yield _finished(request, text=text)
+
+    return turn
+
+
+async def test_a_thread_question_the_model_left_unanswered_is_answered_in_the_thread(
+    harness, thread_posts, bff, persisted
+):
+    sock = harness(_thread_turn()).connect(headers=[*SIGNED, *HEADLESS])
+    sock.client(type="user_message", message_id=WAKE, text="@Piloti reicht die Tür?", **THREAD)
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    [(payload, envelope)] = thread_posts
+    assert payload == {
+        "op": "reply",
+        "annotationId": MARK,
+        "body": "Die Tür ist zu schmal.",
+        "answerMessageId": answer_message_id(CONV, WAKE),
+        "documentId": MARKED_DOCUMENT,
+    }
+    # Echo, never sign: the envelope's bytes exactly as the socket received them.
+    assert (envelope.header, envelope.signature) == (SIGNED[0][1].decode(), SIGNED[1][1].decode())
+    assert [report["outcome"] for report in bff.outcomes] == ["answered"]
+
+
+async def test_a_thread_the_model_replied_in_gets_nothing_more(harness, thread_posts, persisted):
+    sock = harness(_thread_turn(replied=True)).connect(headers=SIGNED)
+    sock.client(type="user_message", message_id=WAKE, text="?", **THREAD)
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert thread_posts == []
+
+
+async def test_a_question_asked_outside_a_thread_posts_into_none(harness, thread_posts, persisted):
+    sock = harness(_thread_turn()).connect(headers=SIGNED)
+    sock.client(type="user_message", message_id=WAKE, text="?", focus_region=THREAD["focus_region"])
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert thread_posts == []
+
+
+async def test_a_failed_thread_turn_posts_nothing(harness, thread_posts, bff):
+    sock = harness(_thread_turn(fail=True)).connect(headers=[*SIGNED, *HEADLESS])
+    sock.client(type="user_message", message_id=WAKE, text="?", **THREAD)
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert thread_posts == []
+    assert [report["outcome"] for report in bff.outcomes] == ["failed"]
+
+
+async def test_a_stopped_thread_turn_posts_nothing(harness, thread_posts, persisted):
+    release = asyncio.Event()
+
+    async def waiting(request, ask):
+        settle_thread_reply()
+        yield TextMessageStartBody(message_id="m")
+        yield TextMessageContentBody(message_id="m", delta="Die Tür ")
+        await release.wait()
+        yield _finished(request, text="Die Tür ist zu schmal.")
+
+    sock = harness(waiting).connect(headers=SIGNED)
+    sock.client(type="user_message", message_id=WAKE, text="?", **THREAD)
+    await until(lambda: len(sock.events(WAKE)) >= 3)
+    sock.client(type="cancel_turn", turn_id=WAKE)
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert persisted[0]["metadata"]["stopped"] is True
+    assert thread_posts == []
+
+
+async def test_one_turn_s_reply_is_not_the_next_turn_s(harness, thread_posts, persisted):
+    turns = iter([_thread_turn(replied=True), _thread_turn(text="Zweite Antwort."), _thread_turn(text="Dritte.")])
+
+    async def next_turn(request, ask):
+        async for body in next(turns)(request, ask):
+            yield body
+
+    sock = harness(next_turn).connect(headers=SIGNED)
+    sock.client(type="user_message", message_id=WAKE, text="?", **THREAD)
+    await until(lambda: len(persisted) == 1)
+    sock.client(type="user_message", message_id=WAKE_2, text="??", **THREAD)
+    await until(lambda: len(persisted) == 2)
+    sock.client(type="user_message", message_id=WAKE_3, text="???")
+    await until(lambda: len(persisted) == 3)
+    await _settle_background()
+
+    assert [(payload["body"], payload["answerMessageId"]) for payload, _ in thread_posts] == [
+        ("Zweite Antwort.", answer_message_id(CONV, WAKE_2))
+    ]

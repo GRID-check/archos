@@ -11,6 +11,7 @@ import type {
   IngestionJobStatus,
 } from '@/adapters/api/documents-schemas'
 import type { FileItem } from './components/project-file-workspace'
+import type { QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 
 // Re-export API types from schemas (single source of truth)
 export type {
@@ -48,6 +49,9 @@ export interface UploadIntent {
   fassungOf?: string | null
 }
 
+/** Every status a {@link TrackedFile} can be in; see its `status` field. */
+export type TrackedFileStatus = DocumentFileStatus | 'deleting' | 'canceled' | 'held' | 'stored'
+
 /** Tracked file in the upload queue (client-side) */
 export interface TrackedFile {
   /** Client-generated ID */
@@ -64,8 +68,22 @@ export interface TrackedFile {
   fileName: string
   /** File size in bytes */
   fileSize: number
-  /** Current status (includes the client-only 'deleting' / 'canceled' transient states) */
-  status: DocumentFileStatus | 'deleting' | 'canceled'
+  /**
+   * Current status: the backend's file vocabulary, the client-only transient
+   * states, and two terminal states the backend's vocabulary cannot say:
+   *
+   * - `deleting` / `canceled`: client-only, transient.
+   * - `held`: the content check (*Inhaltsprüfung*) held the file back
+   *   (ADR-0086). Nothing failed and a re-upload is refused, so it is never
+   *   retried; the reasons are in `quarantine` (ADR-0113). A
+   *   reviewer lets it through (*zulassen*) or deletes it, elsewhere. Also a
+   *   file refused because the document it replaces is held
+   *   ({@link TrackedFile.replacesHeld}): it waits on the same decision.
+   * - `stored`: the bytes are kept and nothing was read, the document's
+   *   `uploaded` / `stored` status. Not a success, because Piloti cannot cite
+   *   it, and not a failure.
+   */
+  status: TrackedFileStatus
   /**
    * Backend-reported ingestion progress (0-100).
    *
@@ -88,6 +106,29 @@ export interface TrackedFile {
   uploadStartedAt?: number
   /** Error message if failed */
   errorMessage?: string | null
+  /**
+   * Why the content check held it back, when it did (ADR-0113): the job's
+   * typed verdict, or the document status read's. Read it through
+   * `quarantineVerdictOf`, which also covers a job from before the field.
+   */
+  quarantine?: QuarantineVerdict | null
+  /**
+   * `false` when sending the same bytes again cannot succeed: the server
+   * refused the upload for a reason a retry meets again (a re-upload onto a
+   * quarantined file, `QUARANTINED_REPLACE_REASON`). Absent reads as retryable.
+   * {@link mayRetryUpload} is the rule every retry surface asks.
+   */
+  retryable?: false
+  /**
+   * Set on a `held` row whose OWN bytes were never stored: the server refused
+   * it because the document it would replace is held by the content check
+   * (ADR-0086, `QUARANTINED_REPLACE_REASON`), and this person may see that
+   * document. `errorMessage` is then the sentence that says so, not a verdict;
+   * `documentId` is the held document, and `ownUpload` whether this person
+   * uploaded it and so may ask the reviewers about it. Never `serverFileId`:
+   * this row is not that document, and removing the row must not delete it.
+   */
+  replacesHeld?: { documentId: string | null; ownUpload: boolean }
   /** Backend file_id once uploaded */
   serverFileId?: string
   /** Ingestion job ID */
@@ -102,6 +143,16 @@ export interface TrackedFile {
   collectionName?: string
   /** When the file was uploaded (from server) */
   uploadedAt?: string | null
+}
+
+/**
+ * Whether sending this upload again can come out differently. A held file is
+ * refused a re-upload (ADR-0086) and nothing went wrong to repeat, and a row
+ * marked `retryable: false` was refused for a reason the retry meets again.
+ * `retryFile` refuses both; a surface offering „Erneut versuchen“ asks this.
+ */
+export function mayRetryUpload(file: Pick<TrackedFile, 'status' | 'retryable'>): boolean {
+  return file.status !== 'held' && file.retryable !== false
 }
 
 /** Tracks which banners have been shown for a job */
@@ -137,10 +188,13 @@ export function trackedFileToFileItem(file: TrackedFile): FileItem {
     displayName: null,
     fileSize: file.fileSize ?? null,
     contentType: null,
-    status: file.status,
+    // The preview's badge reads the DOCUMENT vocabulary: a held file is the
+    // document's `quarantined`, and `stored` is already a document status.
+    status: file.status === 'held' ? 'quarantined' : file.status,
     folderId: null,
     createdAt: file.uploadedAt ?? new Date().toISOString(),
     errorMessage: file.errorMessage ?? null,
+    quarantine: file.quarantine ?? null,
     summary: null,
     pageCount: null,
     chunkCount: null,

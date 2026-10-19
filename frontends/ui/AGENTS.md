@@ -19,9 +19,10 @@ sends it.
 
 `task db:test:rls` is required whenever you touch the tenant boundary, and
 `task verify` does not run it. `next build` typechecks production code only
-(`tsconfig.build.json`); the specs are typechecked by `task fe:types`. `bun
-installs and runs scripts here and is never the runtime: `--bun` exports
-`NODE_OPTIONS=--bun`, which kills Turbopack's PostCSS step.
+(`tsconfig.build.json`); the specs are typechecked by `task fe:types`, which is
+`bun check`, TypeScript 7's checker. Bun is the toolchain here (install, scripts,
+bundling the deploy scripts, type checking) and never the runtime (ADR-0103):
+`--bun` exports `NODE_OPTIONS=--bun`, which kills Turbopack's PostCSS step.
 
 ## Obligations
 
@@ -39,9 +40,9 @@ installs and runs scripts here and is never the runtime: `--bun` exports
 | Write a general-purpose helper | Search first, then put it in `lib/text/`, `lib/utils/` or `lib/format.ts` | A private copy is a fork, and the drift is invisible because each copy looks locally correct |
 | Build a component | Compose atoms; if the kit lacks a shape, add the atom rather than a `<div className="…">` in the organism | Review. The viewport that ignored this had four floating panels in three materials, none testable |
 | Show something a surface already shows | Compose the same atoms, or reuse the organism | Two lookalikes drift on the first token retune. `project-atoms.tsx` exists for exactly this |
-| Add a card type | Classify it in `CARD_INTERACTIVITY` (`features/grid-cards/card-decision.ts`). An interactive or system (`SYSTEM_CARD_TYPES`) type is also added by hand to `SURFACE_EXCLUDED_LEAVES` in `features/a2ui/catalog.tsx` (`cards/models.py` derives its copy from those sets): a leaf inside a surface has no message position for its decision to be keyed by | `task fe:types`; `tests/aiq_agent/cards/test_surface_excluded_parity.py` |
+| Add a card type | Classify it in `CARD_INTERACTIVITY` (`features/grid-cards/card-decision.ts`): `presentational`, `interactive` (its decision is kept on the message), or `live` (it shows server objects and every control writes to them, never to the message; give it a case in the `live card wiring` ratchet). An interactive or system (`SYSTEM_CARD_TYPES`) type is also added by hand to `SURFACE_EXCLUDED_LEAVES` in `features/a2ui/catalog.tsx` (`cards/models.py` derives its copy from those sets): a leaf inside a surface has no message position for its decision to be keyed by | `task fe:types`; `tests/aiq_agent/cards/test_surface_excluded_parity.py` |
 | Touch `features/a2ui` | Keep the catalog the card types (ADR-0065). It is built from the generated `gridCardSchema`, so a card type is added in `src/aiq_agent/cards/models.py` and reaches the catalog through `npm run generate:cards`; only the frontend's `SURFACE_EXCLUDED_LEAVES` is kept by hand, held to the set `cards/models.py` derives by `test_surface_excluded_parity.py` | `card-schemas` pre-commit hook; a type missing from the catalog is refused by `preflight` and drawn without A2UI |
-| Store a card's answer | On `ChatMessage.cardInteractions` via `useCardDecision` | A reload re-applies the patch; neither endpoint is idempotent |
+| Store a card's answer | On `ChatMessage.cardInteractions` via `useCardDecision`, except for a card that shows a server proposal (`proposal_id`, ADR-0105): the proposal records who decided and when, and the card writes nothing to the message ([`proposed-changes.md`](../../docs/architecture/proposed-changes.md)) | A reload re-applies the patch; neither endpoint is idempotent |
 | Add a lint rule of our own | Write it against ESLint's rule API in `eslint-rules/`, register it in `eslint-rules/index.mjs`, switch it on in `.oxlintrc.json`, spec it with oxlint's `RuleTester`, and plant a violation in `eslint-rules/lint-config.spec.mjs`. Suppress with `oxlint-disable-next-line <rule> -- <reason>` | `lint-config.spec.mjs` fails when a guarded rule stops firing at the path it guards. [`lint-evaluation.md`](../../docs/contributing/lint-evaluation.md) |
 | Add user-facing copy | Add the key to every dictionary in `src/i18n/dictionaries` | `key-coverage.spec.ts` |
 | Ship a user-visible surface | A `/dev/<name>` preview route, and a capture of it attached to the PR (`agent-browser` + `before-and-after`). Commit no PNGs | Review. [`docs/ux/visual-screenshots.md`](../../docs/ux/visual-screenshots.md) |
@@ -77,9 +78,12 @@ one per deployment (platform defaults, an upstream catalog) goes in
 `eslint-rules/global-cache-keys.mjs` **with the reason it is safe to share** —
 an unexplained entry there is indistinguishable from a leak somebody silenced.
 
-**The project profile has one editor, the intake wizard.** Settings shows it
+**The project profile has one form, the intake wizard.** Settings shows it
 read-only and links there. Its facts are interdependent, so edits belong in the
-guided flow rather than a second form.
+guided flow rather than a second form. The Projekterfassung (ADR-0111) is not a
+second form: it confirms or dismisses what Piloti read, and answers a single
+open question with the wizard's own control (`intake-question-field.tsx`),
+writing through `patchProjectProfile`, the profile's one door.
 
 **Piloti is the product, GRID is the repo.** User-facing strings say Piloti;
 env vars (`GRID_*`), headers (`x-grid-*`) and CSS variables stay GRID.

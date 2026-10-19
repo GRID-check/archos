@@ -28,6 +28,7 @@
 
 import type { JSX } from 'react'
 import { notFound } from 'next/navigation'
+import type { BimComparison } from '@/lib/bim/compare'
 import {
   IfcComplianceCard,
   IfcDiffCard,
@@ -192,7 +193,16 @@ const COMPLIANCE = {
   ],
 }
 
-const COMPARISON = {
+/**
+ * Typed against the card's own contract, not left as a loose literal.
+ *
+ * The fixture lacked `counts` once, `IfcDiffCard` read `counts.added`, and the
+ * whole route threw on render ("Cannot read properties of undefined (reading
+ * 'added')") — the one preview of the four cards was an error page, silently,
+ * because an untyped literal answers to nobody. The annotation makes the next
+ * field the contract grows a compile error here instead.
+ */
+const COMPARISON: { comparison: BimComparison } = {
   comparison: {
     added: [
       {
@@ -209,10 +219,13 @@ const COMPARISON = {
         ifcType: 'IfcWallStandardCase',
         name: 'AW 38 Nord',
         storeyName: 'Erdgeschoss',
-        changes: [{ field: 'Pset_WallCommon.FireRating', before: 'REI 90', after: 'REI 30' }],
+        changes: [
+          { field: 'Pset_WallCommon.FireRating', before: 'REI 90', after: 'REI 30', delta: null },
+        ],
       },
     ],
     unchangedCount: 99,
+    counts: { added: 1, removed: 0, changed: 1 },
     totals: { base: 100, revision: 101 },
     truncated: false,
   },

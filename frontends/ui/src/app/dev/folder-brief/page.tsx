@@ -3,9 +3,9 @@
 import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
 
 /**
- * Dev preview for the folder brief („Was Piloti hier weiß") and the read state
- * on folder tiles — the real `FolderBrief` and `FolderCard`, over the
- * „Wohnbau Seestadt Nord" corpus in `fixtures.ts`.
+ * Dev preview for the folder brief (the read line that opens in place) and the
+ * read state on folder tiles — the real `FolderBrief` and `FolderCard`, over
+ * the „Wohnbau Seestadt Nord" corpus in `fixtures.ts`.
  *
  * Six sections, one per state the brief has to show: the project root (folded
  * to its one line, as the product opens it; click to open), a nested folder
@@ -15,8 +15,9 @@ import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
  * corpus holds three replaced Fassungen (one a failed read); the brief and the
  * rows count one entry per document, so the root reads „35 von 44“ over 48
  * files and no replaced Fassung is listed under failures. The Fassungen timeline is at `/dev/fassungen`.
- * `?section=a|b|c|d|e|f` shows just one of them, for captures; the default
- * shows all six.
+ * `?section=a|b|c|d|e|f|g` shows just one of them, for captures; the default
+ * shows all seven. Section g is a folder read page by page (ADR-0102): its
+ * brief is counted from the shelf summary and offers to load the details.
  *
  * "Alle erneut lesen" is faked here: it steps a progress object to completion
  * on a timer and changes no document, so the button's busy state can be seen
@@ -28,14 +29,22 @@ import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
 import type { JSX, ReactNode } from 'react'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { notFound, useSearchParams } from 'next/navigation'
+import { ItemList } from '@/components/ui/item'
 import { FolderBrief } from '@/features/documents/components/folder-brief'
 import { FolderCard, FolderRow } from '@/features/documents/components/folder-navigation'
-import { buildFolderBrief, subtreeTallies } from '@/features/documents/lib/folder-knowledge'
+import {
+  buildFolderBrief,
+  buildFolderBriefFromSummary,
+  readStateOf,
+  subtreeTallies,
+} from '@/features/documents/lib/folder-knowledge'
+import type { FileItem } from '@/features/documents/file-types'
+import type { ShelfFolderTally, ShelfSummary } from '@/lib/documents/shelf-summary-types'
 import { withoutOlderFassungen } from '@/features/documents/lib/fassung-chain'
 import type { BulkReingestProgress } from '@/features/documents/hooks/use-bulk-reingest'
 import { FILES, FOLDERS, PROJECT_NAME } from './fixtures'
 
-const SECTIONS = ['a', 'b', 'c', 'd', 'e', 'f'] as const
+const SECTIONS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const
 type SectionId = (typeof SECTIONS)[number]
 
 const ROOT_BRIEF = buildFolderBrief(FILES, FOLDERS, null)
@@ -46,6 +55,39 @@ const GRUNDLAGEN_BRIEF = buildFolderBrief(FILES, FOLDERS, 'f-01')
 const LISTED = withoutOlderFassungen(FILES, false)
 const TALLIES = subtreeTallies(LISTED, FOLDERS)
 const ROOT_FOLDERS = FOLDERS.filter((folder) => folder.parentId === null)
+
+/**
+ * The shelf summary the server would answer for the corpus (ADR-0102): the
+ * documents filed directly in each folder, by read-state family. What a folder
+ * read page by page builds its brief from until its documents are loaded.
+ */
+function summaryOf(files: readonly FileItem[]): ShelfSummary {
+  const rows = new Map<string | null, ShelfFolderTally>()
+  for (const file of files) {
+    const key = file.folderId ?? null
+    const row: ShelfFolderTally = rows.get(key) ?? {
+      folderId: key,
+      total: 0,
+      readable: 0,
+      reading: 0,
+      failed: 0,
+      held: 0,
+      unindexed: 0,
+      latest: null,
+    }
+    row.total += 1
+    row[readStateOf(file.status)] += 1
+    if (row.latest === null || file.createdAt > row.latest) row.latest = file.createdAt
+    rows.set(key, row)
+  }
+  const failed = files.filter((file) => readStateOf(file.status) === 'failed')
+  return {
+    folders: [...rows.values()],
+    failed: failed.map((file) => ({ id: file.id, folderId: file.folderId ?? null })),
+    failedTruncated: false,
+  }
+}
+const SUMMARY_BRIEF = buildFolderBriefFromSummary(summaryOf(FILES), FOLDERS, null)
 
 const noop = (): void => {}
 const resolveFalse = (): Promise<boolean> => Promise.resolve(false)
@@ -152,11 +194,11 @@ function FolderTiles(): JSX.Element {
           <FolderCard key={folder.id} {...tileProps(folder)} />
         ))}
       </div>
-      <div className="flex flex-col gap-1.5">
+      <ItemList className="bg-muted/40">
         {ROOT_FOLDERS.map((folder) => (
           <FolderRow key={folder.id} {...tileProps(folder)} />
         ))}
-      </div>
+      </ItemList>
     </div>
   )
 }
@@ -237,6 +279,22 @@ function FolderBriefPreview(): JSX.Element {
               onOpenFolder={noop}
               collapsed={false}
               onCollapsedChange={noop}
+            />
+          </Section>
+        )}
+
+        {shows('g') && (
+          <Section id="g" title="A folder read page by page (counts from the server, details on request)">
+            <FolderBrief
+              brief={SUMMARY_BRIEF}
+              folderName={null}
+              shelfKind="office"
+              onSelect={noop}
+              onOpenFolder={noop}
+              onReadAgain={noop}
+              collapsed={false}
+              onCollapsedChange={noop}
+              onLoadDetails={noop}
             />
           </Section>
         )}

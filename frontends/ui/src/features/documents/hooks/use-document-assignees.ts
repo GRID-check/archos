@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { listAssignees } from '@/lib/assignments/client'
 import type { FileAssignee } from '../components/project-file-workspace'
 
 /**
@@ -16,11 +17,9 @@ export function useDocumentAssignees(documentId: string | null, enabled: boolean
       return
     }
     let cancelled = false
-    void fetch(`/api/assignments/document/${encodeURIComponent(documentId)}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body: { assignees?: FileAssignee[] } | null) => {
-        if (cancelled) return
-        setAssignees(body?.assignees ?? [])
+    void listAssignees('document', documentId)
+      .then((people) => {
+        if (!cancelled) setAssignees(people)
       })
       .catch(() => {
         if (!cancelled) setAssignees([])

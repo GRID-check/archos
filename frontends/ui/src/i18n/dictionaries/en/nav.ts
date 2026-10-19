@@ -33,6 +33,8 @@ export const nav = {
     settings: 'Overview',
     // The intake wizard, labelled "Setup" in the product (⌘K palette only).
     intake: 'Setup',
+    // Piloti reads the project's documents; the person reviews (ADR-0111).
+    setup: 'Project setup',
   },
   sectionGroups: {
     work: 'Work',
@@ -45,6 +47,7 @@ export const nav = {
     knowledge: 'What the knowledge base currently contains.',
     settings: 'Where this project stands, and how it is set up.',
     intake: 'Guided briefing for this project.',
+    setup: 'Piloti reads the documents, you check what it found.',
   },
   /**
    * The back control on pages outside the project shell (`BackLink`): `{label}`
@@ -71,6 +74,7 @@ export const nav = {
    */
   tabTitle: {
     intake: 'Setup',
+    setup: 'Project setup',
     researchProgress: '{percent}% · {label} — Piloti',
     researchActive: '⏳ {label} — Piloti',
   },
@@ -83,6 +87,36 @@ export const nav = {
     allProjects: 'All projects',
     viewAllProjects: 'View all projects',
     newProject: 'New project',
+  },
+  /** The phone's bottom tab bar (`components/shell/phone-tab-bar.tsx`). */
+  tabBar: {
+    label: 'Main navigation',
+    /** Opens the sheet with the destinations the bar does not carry. */
+    more: 'More',
+    /** The sheet behind "More" (`components/shell/phone-more-sheet.tsx`). */
+    moreSheet: {
+      title: 'More',
+      description: 'More areas and your account.',
+      close: 'Close',
+      places: 'Areas',
+      account: 'Account',
+    },
+  },
+  search: {
+    /** The touch door into the command palette, in both headers. */
+    open: 'Search and jump',
+  },
+  /** The project switcher as a bottom sheet on a phone. */
+  projectSheet: {
+    description: 'The projects you opened last come first, then every running project.',
+    close: 'Close',
+    searchLabel: 'Search projects',
+    searchPlaceholder: 'Search projects',
+    clearSearch: 'Clear search',
+    recent: 'Recently opened',
+    others: 'Other projects',
+    matches: 'Matching projects',
+    noMatch: 'No running project has that name.',
   },
   userMenu: {
     label: 'User menu for {name}',

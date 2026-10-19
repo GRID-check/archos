@@ -83,7 +83,7 @@ import { type FC, type ReactNode, useCallback, useEffect, useMemo, useState } fr
 import { AlertTriangle, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -317,14 +317,14 @@ const SpendTable: FC<{
     <table className="mt-1.5 w-full border-collapse text-sm" data-testid="spend-table">
       <caption className="sr-only">{captionLabel}</caption>
       <thead>
-        <tr className="text-muted-foreground border-b text-[10px] font-medium uppercase leading-4">
+        <tr className="text-muted-foreground border-b text-[11px] font-medium uppercase leading-4">
           <th scope="col" className="py-1 text-left font-medium">
             <span className="sr-only">{captionLabel}</span>
           </th>
-          <th scope="col" className="py-1 text-right font-medium">
+          <th scope="col" className="py-1 pl-2 text-right font-medium">
             {todayLabel}
           </th>
-          <th scope="col" className="py-1 text-right font-medium">
+          <th scope="col" className="py-1 pl-2 text-right font-medium">
             {monthLabel}
           </th>
         </tr>
@@ -340,7 +340,7 @@ const SpendTable: FC<{
                   aria-hidden
                 />
                 <span className="min-w-0">
-                  <span className="block max-w-40 truncate font-mono text-xs sm:max-w-none">
+                  <span className="block break-all font-mono text-xs">
                     {segment.label || otherLabel}
                   </span>
                   <span className="text-muted-foreground block text-[11px]">
@@ -349,14 +349,14 @@ const SpendTable: FC<{
                 </span>
               </span>
             </th>
-            <td className="py-1.5 text-right align-top tabular-nums">
+            <td className="py-1.5 pl-2 text-right align-top tabular-nums whitespace-nowrap">
               {segment.dayAmount > 0 ? (
                 amountLabel(segment.dayAmount)
               ) : (
                 <span className="text-muted-foreground">—</span>
               )}
             </td>
-            <td className="py-1.5 text-right align-top tabular-nums">
+            <td className="py-1.5 pl-2 text-right align-top tabular-nums whitespace-nowrap">
               {amountLabel(segment.monthAmount)}
             </td>
           </tr>
@@ -531,10 +531,12 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
       {/* `grid-spend-viz` scopes the validated chart tokens (end of globals.css). */}
       <div className="grid-spend-viz animate-in fade-in-0 duration-base flex min-h-[16rem] flex-col gap-5 ease-out motion-reduce:animate-none">
         {usage.status.blocked && (
-          <Badge variant="destructive" className="self-start">
-            <AlertTriangle className="mr-1 size-3" aria-hidden />
-            {t('budgets.overLimit')}
-          </Badge>
+          // A sentence, not a badge: a badge cannot wrap, and this one ran
+          // 25px past the card on a phone.
+          <Alert variant="destructive" data-testid="budget-blocked">
+            <AlertTriangle aria-hidden />
+            <AlertDescription>{t('budgets.overLimit')}</AlertDescription>
+          </Alert>
         )}
 
         {/* An organization on its own key pays its provider, not Piloti: say
@@ -573,6 +575,7 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                 formatValue={amountLabel}
                 requestsLabel={requestsLabel}
                 emptyLabel={t('budgets.trendEmpty')}
+                label={t('budgets.trendTitle')}
               />
             </div>
           </div>
@@ -719,6 +722,7 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                         <LimitEditor
                           scope="member"
                           subjectId={member.id}
+                          subjectLabel={member.name ?? member.email}
                           current={policy}
                           unitWord={unitWord}
                           onSaved={load}
@@ -764,6 +768,7 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                   <LimitEditor
                     scope="project"
                     subjectId={selectedProject}
+                    subjectLabel={projectName(selectedProject)}
                     current={projectPolicies.find((p) => p.subjectId === selectedProject)}
                     unitWord={unitWord}
                     onSaved={load}
@@ -793,6 +798,7 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
                       <LimitEditor
                         scope="project"
                         subjectId={policy.subjectId as string}
+                        subjectLabel={projectName(policy.subjectId)}
                         current={policy}
                         unitWord={unitWord}
                         onSaved={load}

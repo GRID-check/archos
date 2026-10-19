@@ -18,6 +18,8 @@
 import { describe, expect, it } from 'vitest'
 import type { GridCard } from '@/shared/cards/schemas'
 import type { CardInteractions } from '@/features/grid-cards/card-decision'
+import type { DecidedProposals } from '@/features/grid-cards/decided-proposals'
+import type { ProposedChangeView } from '@/lib/proposals/types'
 import { turnMemoryItems } from './turn-memory'
 
 const proposal = (content: string): GridCard =>
@@ -39,6 +41,16 @@ const reflected = {
 
 const answered = (decision: string): CardInteractions => ({
   'memory_proposal-0': { decision, decidedAt: '2026-08-19T10:31:00.000Z' } as CardInteractions[string],
+})
+
+const PROPOSAL_ID = '00000000-0000-4000-8000-0000000000a1'
+
+/** A memory card the server holds (`proposal_id`): the card is the receipt of a stored proposal. */
+const serverProposal = (content: string): GridCard =>
+  ({ ...proposal(content), proposal_id: PROPOSAL_ID }) as GridCard
+
+const stored = (status: ProposedChangeView['status']): DecidedProposals => ({
+  [PROPOSAL_ID]: { id: PROPOSAL_ID, kind: 'memory', status } as ProposedChangeView,
 })
 
 describe('turnMemoryItems', () => {
@@ -105,5 +117,41 @@ describe('turnMemoryItems', () => {
       cardInteractions: { 'calculation-0': { decision: 'savedOrg', decidedAt: 'x' } as CardInteractions[string] },
     })
     expect(items).toEqual([])
+  })
+
+  describe('a memory card the server decides (proposal_id)', () => {
+    const cards = [serverProposal('Die Fluchtwegbreite ist mit 1,20 m vorgegeben.')]
+
+    it('reports a proposal the server applied', () => {
+      expect(turnMemoryItems({ cards, decidedProposals: stored('applied') })).toEqual([
+        {
+          id: 'memory_proposal-0',
+          kind: 'constraint',
+          content: 'Die Fluchtwegbreite ist mit 1,20 m vorgegeben.',
+          provenance: 'inTurn',
+        },
+      ])
+    })
+
+    it('does not claim one that was dismissed, failed, or is still open', () => {
+      for (const status of ['dismissed', 'failed', 'proposed'] as const) {
+        expect(turnMemoryItems({ cards, decidedProposals: stored(status) })).toEqual([])
+      }
+    })
+
+    it('does not claim one the tab has not seen decided', () => {
+      expect(turnMemoryItems({ cards, decidedProposals: {} })).toEqual([])
+      expect(turnMemoryItems({ cards })).toEqual([])
+    })
+
+    it('reads the proposal and never cardInteractions', () => {
+      // A server card writes none; a stale decision on the message does not make it remembered.
+      expect(turnMemoryItems({ cards, cardInteractions: answered('savedOrg'), decidedProposals: {} })).toEqual([])
+    })
+
+    it('leaves a card without a proposal_id on its cardInteractions', () => {
+      const legacy = [proposal('Ältere Antwort')]
+      expect(turnMemoryItems({ cards: legacy, cardInteractions: answered('savedOrg'), decidedProposals: stored('dismissed') })).toHaveLength(1)
+    })
   })
 })

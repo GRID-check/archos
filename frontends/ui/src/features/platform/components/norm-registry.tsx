@@ -393,7 +393,7 @@ export function NormRegistry(): JSX.Element {
                     resetPaging()
                   }}
                 >
-                  <SelectTrigger size="sm" className="w-44" aria-label={t('norms.filters.rank')}>
+                  <SelectTrigger size="sm" className="w-44 [&>span]:min-w-0 [&>span]:truncate" aria-label={t('norms.filters.rank')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -412,7 +412,7 @@ export function NormRegistry(): JSX.Element {
                     resetPaging()
                   }}
                 >
-                  <SelectTrigger size="sm" className="w-40" aria-label={t('norms.filters.scope')}>
+                  <SelectTrigger size="sm" className="w-40 [&>span]:min-w-0 [&>span]:truncate" aria-label={t('norms.filters.scope')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

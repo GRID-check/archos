@@ -10,8 +10,9 @@
  * access on top: it needs `project:manage` and leaves a
  * `project.folder.access_changed` line, like `setFolderAccess`; one that
  * changes nothing (an open folder moved between open folders, a rename) needs
- * only the write and is not audited. Deleting is the Papierkorb's
- * (`folder-bin.integration.spec.ts`).
+ * only the write and is not audited. Describing a folder (what belongs in it,
+ * migration 0145) is a write on that folder, like a rename. Deleting is the
+ * Papierkorb's (`folder-bin.integration.spec.ts`).
  *
  * Who is on a list is the folder roles WorkOS reports for each membership
  * (ADR-0097): `om-gf` (the session), `om-bh` (the reader), `om-hr` (nobody here).
@@ -81,6 +82,8 @@ const state = vi.hoisted(() => ({
   /** Rows a read without a limit answers with. */
   children: [] as unknown[],
   transactions: 0,
+  /** What the last write outside a transaction set (a description). */
+  written: null as Record<string, unknown> | null,
 }))
 
 vi.mock('@/lib/authz/projects', () => ({
@@ -138,6 +141,12 @@ vi.mock('@/lib/db', () => {
   }
   return {
     getDb: () => ({
+      update: () => ({
+        set: (values: Record<string, unknown>) => {
+          state.written = values
+          return { where: () => statement([{ id: 'written', ...values }]) }
+        },
+      }),
       select: () => ({
         from: () => ({
           where: () =>
@@ -185,6 +194,7 @@ beforeEach(() => {
   state.reads = []
   state.children = []
   state.transactions = 0
+  state.written = null
 })
 
 describe('moving a folder', () => {
@@ -389,5 +399,57 @@ describe('a folder the session may not read', () => {
       updateProjectFolder({ projectId: 'proj-1', folderId: TREE.ablage.id, parentId: TREE.honorare.id }, session)
     ).rejects.toBeInstanceOf(NotFoundError)
     expect(state.transactions).toBe(0)
+  })
+})
+
+describe('describing a folder (migration 0145)', () => {
+  it('lets a writer say what belongs in it, stored folded and trimmed, without moving or auditing anything', async () => {
+    reads(TREE.ablage)
+    const result = await updateProjectFolder(
+      { projectId: 'proj-1', folderId: TREE.ablage.id, description: '  Bescheide   und Stellungnahmen  ' },
+      session
+    )
+    expect(result.ok).toBe(true)
+    expect(state.written).toMatchObject({ description: 'Bescheide und Stellungnahmen' })
+    expect(state.transactions).toBe(0)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('clears it with an empty text, and refuses one over 500 characters in words', async () => {
+    reads(TREE.ablage)
+    await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.ablage.id, description: '   ' }, session)
+    expect(state.written).toMatchObject({ description: null })
+    state.written = null
+    reads(TREE.ablage)
+    const tooLong = await updateProjectFolder(
+      { projectId: 'proj-1', folderId: TREE.ablage.id, description: 'x'.repeat(501) },
+      session
+    )
+    expect(tooLong).toEqual({ ok: false, error: 'A folder description may be at most 500 characters.' })
+    expect(state.written).toBeNull()
+  })
+
+  it('refuses a reader who may only read the folder with a typed 403, and writes nothing', async () => {
+    state.granted = new Set(MANAGER)
+    reads(TREE.alt)
+    await expect(
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.alt.id, description: 'Alte Verträge' }, reader)
+    ).rejects.toBeInstanceOf(ForbiddenError)
+    expect(state.written).toBeNull()
+  })
+
+  it('answers a folder the session may not read as missing, and keeps the project write the ceiling', async () => {
+    state.granted = new Set(MANAGER)
+    reads(TREE.honorare)
+    await expect(
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.honorare.id, description: 'x' }, session)
+    ).rejects.toBeInstanceOf(NotFoundError)
+    state.granted = new Set(['project:view'])
+    reads(TREE.ablage)
+    await expect(
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.ablage.id, description: 'x' }, session)
+    ).rejects.toThrow(/Forbidden: project:documents:write/)
+    expect(state.written).toBeNull()
   })
 })

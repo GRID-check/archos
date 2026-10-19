@@ -95,6 +95,24 @@ describe('buildFassungTimeline', () => {
     expect(published).toMatchObject({ kind: 'version', current: true, newest: false })
   })
 
+  it('moves current off a published upload Piloti has not read, to the upload it replaced', () => {
+    const versions = [version(1, 'superseded'), version(2, 'published', { createdAt: '2026-09-02T08:00:00.000Z' })]
+    const current = (rows: TimelineRow[]) => rows.flatMap((row) => (row.kind === 'version' && row.current ? [row.version.versionNumber] : []))
+
+    expect(current(build({ versions, publishedVersionId: 'ver_2' }))).toEqual([2])
+    expect(current(build({ versions, publishedVersionId: 'ver_2', newestRead: 'reading' }))).toEqual([1])
+    expect(current(build({ versions, publishedVersionId: 'ver_2', newestRead: 'failed' }))).toEqual([1])
+    // A Piloti document's publish removed the old passages first: nothing stands in.
+    expect(current(build({ versions, publishedVersionId: 'ver_2', newestRead: 'reading', predecessorStandsIn: false }))).toEqual([])
+    // The stand-in row of a document whose versions are unknown is not current while it is read.
+    expect(build({ newestRead: 'reading' })[0]).toMatchObject({ kind: 'head', current: false })
+  })
+
+  it('reads the status as the published upload’s while a newer one waits for review', () => {
+    const rows = build({ versions: [version(1, 'published'), version(2, 'in_review')], publishedVersionId: 'ver_1', newestRead: 'reading' })
+    expect(rows.find((row) => row.kind === 'version' && row.current)).toMatchObject({ version: { versionNumber: 1 } })
+  })
+
   it('pairs each upload with its true predecessor by number, and the oldest with none', () => {
     const rows = build({ versions: [version(3, 'published'), version(1, 'superseded'), version(2, 'superseded')] })
 
@@ -167,6 +185,20 @@ describe('buildFassungTimeline', () => {
 })
 
 describe('versionActs / latestAct', () => {
+  it('says a one-step approval once, as the approval it was', () => {
+    const at = '2026-09-03T10:00:00.000Z'
+    const approved = version(2, 'published', {
+      submittedBy: 'user_author',
+      submittedAt: '2026-09-02T10:00:00.000Z',
+      approvedBy: 'user_markus',
+      approvedAt: at,
+      publishedBy: 'user_markus',
+      publishedAt: at,
+    })
+    expect(versionActs(approved).map((act) => act.key)).toEqual(['submitted', 'approved'])
+    expect(latestAct(approved)).toMatchObject({ key: 'approved', actor: 'user_markus' })
+  })
+
   const stamped = {
     submittedBy: 'user_a',
     submittedAt: '2026-09-02T09:00:00Z',

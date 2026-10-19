@@ -9,7 +9,7 @@
  */
 
 import type { JSX } from 'react'
-import { MessageSquare, UserPlus } from 'lucide-react'
+import { Sparkles, UserPlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from '@/i18n'
 import { askAboutFile } from '@/features/documents/lib/ask-about-file'
@@ -59,7 +59,8 @@ export function ModelFileOwnership({
       {canAsk && (
         <ViewerIconButton
           label={t('assignment.discuss')}
-          icon={MessageSquare}
+          // Piloti's glyph, as on „Mit Piloti besprechen“ in the file rail.
+          icon={Sparkles}
           onClick={() =>
             askAboutFile({
               projectId,

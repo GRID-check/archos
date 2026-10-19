@@ -178,20 +178,28 @@ describe('the headers the BFF puts on a job fire', () => {
   })
 })
 
-describe('the fire path in lib/jobs/service.ts', () => {
-  // `submitAgentRun` needs a database, WorkOS and the budget service to run,
-  // so what is pinned here is the WIRING: that it still builds the wire headers
-  // with the shared builder and hands them to `submitJob`. A refactor that
-  // passes a hand-rolled object instead would keep every test above green while
-  // dropping the envelope from production.
-  const source = readFileSync(new URL('../../../src/lib/jobs/service.ts', import.meta.url), 'utf8')
+describe('the fire path in lib/jobs/background-run.ts', () => {
+  // `submitBackgroundRun` needs a database, WorkOS and the budget service to
+  // run, so what is pinned here is the WIRING: that it still builds the wire
+  // headers with the shared builder and hands them to `submitJob`, and that
+  // every background run (the chat's `submitAgentRun`, the intake) fires
+  // through it. A refactor that passes a hand-rolled object instead would keep
+  // every test above green while dropping the envelope from production.
+  const read = (path: string) => readFileSync(new URL(`../../../src/lib/jobs/${path}`, import.meta.url), 'utf8')
+  const fire = read('background-run.ts')
 
   it('builds its headers with the shared wire builder', () => {
-    expect(source).toContain('buildGridRequestContextWireHeaders(')
-    expect(source).toContain('process.env.GRID_INTERNAL_API_TOKEN')
+    expect(fire).toContain('buildGridRequestContextWireHeaders(')
+    expect(fire).toContain('process.env.GRID_INTERNAL_API_TOKEN')
   })
 
   it('hands those headers, and not a second object, to submitJob', () => {
-    expect(source).toContain('await submitJob(payload, contextHeaders)')
+    expect(fire).toContain('return submitJob(payload, contextHeaders)')
+  })
+
+  it('is the one way submitAgentRun reaches submitJob', () => {
+    const service = read('service.ts')
+    expect(service).toContain('await submitBackgroundRun(')
+    expect(service).not.toMatch(/\bsubmitJob\(/)
   })
 })

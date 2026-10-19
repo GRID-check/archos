@@ -20,7 +20,7 @@ import type { TrackedFile } from '../types'
 
 /** What the shared workspace needs from whichever upload hook a shelf uses. */
 export interface ShelfUploadApi {
-  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<void>
+  uploadFiles: (files: File[], options?: UploadFilesOptions) => Promise<number>
   isUploading: boolean
   trackedFiles: TrackedFile[]
   error: string | null
@@ -101,6 +101,11 @@ export interface FileShelf {
    * re-files its contents into the parent and removes the folder.
    */
   bin?: { href: string }
+  /**
+   * The shelf's Offene Punkte, a project's only: the open Anmerkungen of all
+   * its documents on one page, for the Jour fixe, reached from the header.
+   */
+  openPoints?: { href: string }
   /** Faces, „Unvergeben", the assignment filter (the collaboration flag). */
   canCollaborate: boolean
   currentUserId?: string

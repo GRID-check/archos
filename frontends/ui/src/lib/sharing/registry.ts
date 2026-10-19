@@ -91,6 +91,20 @@ export interface ResourceProbe {
   folderId?: string | null
 }
 
+/**
+ * Where inside a resource a deep link lands.
+ *
+ * `anchorId` is a message of a conversation. `markId` is an Anmerkung of a
+ * document, and it is a field of its own because a document is also the target
+ * of items anchored on a Fassung: reading every anchor as a mark would open the
+ * Prüfansicht at an id that is none.
+ */
+export interface DeepLinkOptions {
+  anchorId?: string
+  markId?: string
+  projectId?: string | null
+}
+
 export interface ShareableDescriptor {
   /** Stable key — appears in grants, inbox items, audit events and deep links. */
   readonly type: ShareableResourceType
@@ -116,7 +130,7 @@ export interface ShareableDescriptor {
    * the share surface AND by every inbox item that points at this type, so a
    * notification can always land the user where the thing happened.
    */
-  readonly deepLink: (resourceId: string, options?: { anchorId?: string; projectId?: string | null }) => string
+  readonly deepLink: (resourceId: string, options?: DeepLinkOptions) => string
   /** i18n key suffix for the type's display name (`sharing.resourceTypes.<key>`). */
   readonly labelKey: string
   /**
@@ -307,8 +321,11 @@ const documentDescriptor: ShareableDescriptor = {
   exists: (ids) => documentIdsExisting(ids),
   listIdsInProject: (projectId, organizationId) => listDocumentIdsForProject(projectId, organizationId),
   deepLink: (resourceId, options) => {
-    if (!options?.projectId) return `/app/archiv?doc=${encodeURIComponent(resourceId)}`
-    return `/app/projects/${encodeURIComponent(options.projectId)}/files?doc=${encodeURIComponent(resourceId)}`
+    const doc = encodeURIComponent(resourceId)
+    // `review=1&mark=` opens the Prüfansicht at the mark (`features/documents/lib/open-review.ts`).
+    const review = options?.markId ? `&review=1&mark=${encodeURIComponent(options.markId)}` : ''
+    if (!options?.projectId) return `/app/archiv?doc=${doc}${review}`
+    return `/app/projects/${encodeURIComponent(options.projectId)}/files?doc=${doc}${review}`
   },
   labelKey: 'document',
 }

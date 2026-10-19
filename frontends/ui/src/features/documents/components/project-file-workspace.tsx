@@ -1,19 +1,22 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Mail } from 'lucide-react'
 import { ProjectSectionActions } from '@/components/shell/project-section-frame'
 import { createDocumentNameProbeClient } from '@/lib/documents/name-probe-client'
 import { useTranslations } from '@/i18n'
 import type { DocumentLifecyclePermission } from '@/lib/documents/lifecycle-types'
 import { askAboutFile } from '../lib/ask-about-file'
 import type { FileShelf } from '../lib/file-shelf'
+import { usePhoneLayout } from '../hooks/use-phone-layout'
 import { projectEndpoints } from '../lib/file-shelf'
 import type { DocumentWireRow } from '../lib/file-item'
 import { useProjectDocuments } from '../hooks/use-project-documents'
 import type { FolderItem } from '../file-types'
 import { FileWorkspace } from './file-workspace'
 import { MailImportAction } from './mail-import-action'
+import { MailImportDialog } from './mail-import-dialog'
 
 // The row and folder types live in `../file-types`; they are re-exported here
 // because this is the name every importer already uses.
@@ -42,13 +45,15 @@ interface ProjectFileWorkspaceProps {
    */
   lifecyclePermissions?: readonly DocumentLifecyclePermission[]
   /**
-   * The folder tree and the corpus as the SERVER already read them, for the
-   * first paint — see {@link FileWorkspace}. `initialFilesComplete` is false when
-   * the server read only one bounded page.
+   * The folder tree and the first page of the folder level the URL names, as
+   * the SERVER already read them, for the first paint — see {@link FileWorkspace}.
+   * `initialNextCursor` is where that level continues (null: it was the whole
+   * level); `initialFolderId` the level (null: the root, ADR-0102).
    */
   initialFolders?: readonly FolderItem[]
   initialFiles?: readonly DocumentWireRow[]
-  initialFilesComplete?: boolean
+  initialNextCursor?: string | null
+  initialFolderId?: string | null
   /**
    * Whether this reader may change who may read and write a folder
    * (`project:manage`, resolved on the server, ADR-0088). Shows „Zugriff…" in the
@@ -83,7 +88,8 @@ export function ProjectFileWorkspace({
   lifecyclePermissions,
   initialFolders,
   initialFiles,
-  initialFilesComplete = true,
+  initialNextCursor = null,
+  initialFolderId = null,
   canManageFolderAccess = false,
   initialRootAccess = 'write',
   mailImportEnabled = false,
@@ -91,6 +97,11 @@ export function ProjectFileWorkspace({
   const t = useTranslations('files')
   const router = useRouter()
   const probe = useMemo(() => createDocumentNameProbeClient(), [])
+  // The Outlook import is a button beside the upload control on a wide screen
+  // and an entry in the header's ⋯ on a phone, which has no width for a second button.
+  const phone = usePhoneLayout()
+  const [mailOpen, setMailOpen] = useState(false)
+  const mailOffered = mailImportEnabled && initialRootAccess === 'write'
 
   const shelf: FileShelf = {
     source: 'project',
@@ -101,6 +112,7 @@ export function ProjectFileWorkspace({
     canManage: true,
     folderAccess: { projectId, canManage: canManageFolderAccess, initialRootAccess },
     bin: { href: `/app/projects/${projectId}/files/bin` },
+    openPoints: { href: `/app/projects/${projectId}/files/open-points` },
     canCollaborate,
     currentUserId,
     askAbout: (file) => askAboutFile({ projectId, file, navigate: (href) => router.push(href) }),
@@ -119,17 +131,35 @@ export function ProjectFileWorkspace({
   }
 
   return (
-    <FileWorkspace
-      shelf={shelf}
-      renderHeader={(controls) => (
-        <ProjectSectionActions>
-          {controls}
-          {mailImportEnabled && initialRootAccess === 'write' && <MailImportAction projectId={projectId} />}
-        </ProjectSectionActions>
-      )}
-      initialFolders={initialFolders}
-      initialFiles={initialFiles}
-      initialFilesComplete={initialFilesComplete}
-    />
+    <>
+      <FileWorkspace
+        shelf={shelf}
+        renderHeader={(controls) => (
+          <ProjectSectionActions>
+            {controls}
+            {mailOffered && !phone && <MailImportAction projectId={projectId} />}
+          </ProjectSectionActions>
+        )}
+        moreEntries={
+          mailOffered && phone
+            ? [
+                {
+                  type: 'item',
+                  id: 'mail-import',
+                  label: t('mailImport.action'),
+                  icon: Mail,
+                  onSelect: () => setMailOpen(true),
+                  testId: 'mail-import-trigger',
+                },
+              ]
+            : undefined
+        }
+        initialFolders={initialFolders}
+        initialFiles={initialFiles}
+        initialNextCursor={initialNextCursor}
+        initialFolderId={initialFolderId}
+      />
+      {mailOffered && phone && <MailImportDialog projectId={projectId} open={mailOpen} onOpenChange={setMailOpen} />}
+    </>
   )
 }

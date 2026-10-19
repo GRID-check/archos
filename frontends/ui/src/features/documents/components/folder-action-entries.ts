@@ -4,7 +4,7 @@
  * middle; delete set apart.
  */
 
-import { Check, Folder, FolderInput, FolderPlus, Lock, Pencil, Trash2, Eye } from 'lucide-react'
+import { Check, Folder, FolderInput, FolderPlus, Lock, Pencil, Trash2, Eye, Text } from 'lucide-react'
 import type { ActionMenuEntry } from '@/components/ui/action-menu'
 import { sortedFolderDestinations, type PathFolder } from '../lib/folder-path-label'
 
@@ -17,6 +17,8 @@ export interface FolderActionLabels {
   allFiles: string
   /** „Zugriff…" — needed only when `onAccess` is given. */
   access?: string
+  /** „Beschreibung …" — needed only when `onDescribe` is given. */
+  describe?: string
   /** „Nur lesen" — the note a read-only folder's menu carries instead of its write entries. */
   readOnly?: string
 }
@@ -30,7 +32,14 @@ export interface FolderActionEntriesInput {
   onOpen: () => void
   onNewInside?: () => void
   onRename: () => void
+  /** Say what belongs in it (migration 0145). Absent for a reader who may not write the shelf. */
+  onDescribe?: () => void
   onMove?: (parentId: string | null, parentName: string) => void
+  /**
+   * Choose the destination in a sheet of its own (`FolderPickerSheet`) instead
+   * of a submenu, which opens beside its item and has no beside on a phone.
+   */
+  onPickMoveTarget?: () => void
   /** Who may read and write the folder (ADR-0088). Absent for a reader who may not manage the project. */
   onAccess?: () => void
   onDelete: () => void
@@ -51,7 +60,9 @@ export function folderActionEntries({
   onOpen,
   onNewInside,
   onRename,
+  onDescribe,
   onMove,
+  onPickMoveTarget,
   onAccess,
   onDelete,
   readOnly = false,
@@ -103,7 +114,28 @@ export function folderActionEntries({
     testId: `folder-action-rename-${folder.id}`,
   })
 
-  if (onMove && folders && folders.length > 0) {
+  if (onDescribe && labels.describe) {
+    entries.push({
+      type: 'item',
+      id: 'describe',
+      label: labels.describe,
+      icon: Text,
+      onSelect: onDescribe,
+      testId: `folder-action-describe-${folder.id}`,
+    })
+  }
+
+  if (onMove && onPickMoveTarget && folders && folders.length > 0) {
+    entries.push({
+      type: 'item',
+      id: 'move',
+      label: labels.move,
+      icon: FolderInput,
+      disabled: isMoving,
+      onSelect: onPickMoveTarget,
+      testId: `folder-action-move-${folder.id}`,
+    })
+  } else if (onMove && folders && folders.length > 0) {
     const destinations = sortedFolderDestinations(folders).filter(
       ({ folder: dest }) => dest.id !== folder.id,
     )

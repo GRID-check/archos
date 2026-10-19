@@ -12,13 +12,13 @@ describe('the width a diagram is shown at', () => {
     // labels printed at 36 px.
     expect(diagramFrameStyle('<svg viewBox="0 0 235.87 360">')).toEqual({
       width: '236px',
-      maxWidth: 'max(100%, 177px)',
+      maxWidth: 'max(calc(100cqw - 26px), 177px)',
     })
   })
 
   it('shrinks a wide diagram at most to three quarters, then lets it scroll', () => {
     // A five-entry timeline is 1 390 px; fitted to 606 px its labels were 6 px.
-    expect(diagramFrameStyle('<svg viewBox="100 -57 1390 467.6">')?.maxWidth).toBe('max(100%, 1043px)')
+    expect(diagramFrameStyle('<svg viewBox="100 -57 1390 467.6">')?.maxWidth).toBe('max(calc(100cqw - 26px), 1043px)')
   })
 
   it('leaves an SVG without a viewBox to the column', () => {

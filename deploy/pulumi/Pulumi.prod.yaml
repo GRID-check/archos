@@ -63,6 +63,16 @@
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:rateLimitStorePassword "$(openssl rand -base64 32)" --secret
 
+#   # Qdrant (ADR-0115), always deployed: the read-write and read-only API keys
+
+#   # and the snapshot S3 identity's secret. REQUIRED, each its own value.
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:qdrantApiKey          "$(openssl rand -base64 32)" --secret
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:qdrantReadOnlyApiKey  "$(openssl rand -base64 32)" --secret
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:qdrantS3SecretKey     "$(openssl rand -base64 32)" --secret
+
 #   # Optional (only if using the local BYOK backend):
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:byokLocalKek          "$(openssl rand -base64 32)" --secret
@@ -181,7 +191,7 @@ config:
 
   # `pulumi up`: the CloudNativePG Cluster (the operator owns its PVCs, so
 
-  # deleting the CR destroys every database) and the SeaweedFS / Chroma
+  # deleting the CR destroys every database) and the SeaweedFS / Qdrant
 
   # StatefulSets. Protected resources make Pulumi REFUSE to delete or replace
 
@@ -192,6 +202,20 @@ config:
   # `pulumi state unprotect <urn>`.
 
   # grid-oib:protectDataResources: "true"
+
+  # ── Worker groups (IPAX) ──
+  # Three groups, made and sized in the IPAX Control Center (not here). IPAX
+  # labels every node `k8s.at/node-group: <group name>`, case-sensitive:
+  #   Node   k8s1.gp.large  4 vCPU / 16 GB, autoscale 2-6: the app tier
+  #   data   k8s1.m.large   4 vCPU / 32 GB, fixed 4: the data stores
+  #   batch  k8s1.m.xlarge  8 vCPU / 64 GB, autoscale 2-4: ingestion
+  # A group cannot be tainted from the console, so these are nodeSelectors: they
+  # keep a tier on its group, not other pods off it. So every workload selects
+  # one: the stores on data, ingestion on batch, the rest on Node. A data group
+  # also makes the Postgres and PgBouncer spread required (kubernetes.md §2b).
+  grid-oib:nodeGroupApp: Node
+  grid-oib:nodeGroupData: data
+  grid-oib:nodeGroupBatch: batch
 
   # ── Postgres (CloudNativePG) ──
   grid-oib:pgInstances: "3" # HA: 1 primary + 2 streaming replicas
@@ -241,13 +265,23 @@ config:
   grid-oib:seaweedfsStorageSize: 20Gi
   grid-oib:seaweedfsBucket: grid-documents
   grid-oib:seaweedfsAccessKey: grid
-  # ── Shared Chroma vector store (horizontal scaling) ──
+  # ── Vector store ──
 
-  # true = one shared Chroma server all agent replicas/workers use (unpins
+  # Qdrant is always deployed (ADR-0115), three peers by default; its three keys
 
-  # vectors from a single pod). false = embedded per-pod Chroma (single agent).
-  grid-oib:chromaEnabled: "true"
-  grid-oib:chromaStorageSize: 20Gi
+  # come from the ESC environment (`qdrantApiKey`, `qdrantReadOnlyApiKey`,
+
+  # `qdrantS3SecretKey`). The migration off Chroma ran on production on
+
+  # 2026-10-18 (#1079): 11 collections, 52,280 chunks, 0 failed or out of step.
+
+  # Do NOT set `grid-oib:chromaMigration` again: a second Job's import finds the
+
+  # mark the first one left and refuses (exit 2), which fails the deploy. The
+
+  # retired Chroma's volume stays as `data-chroma-0`, the only way back, until it
+
+  # is deleted a few days later (docs/deployment/qdrant-runbook.md).
   # ── Agent (backend) — vertical scaling levers ──
 
   grid-oib:backendRequestsCpu: "1"
@@ -259,7 +293,7 @@ config:
   # ── Research execution (ADR-0021) ──
 
   # Dedicated agent-worker replicas execute research jobs, scaling the token-heavy
-  # workload horizontally. Requires chromaEnabled.
+  # workload horizontally.
   # KEDA scales the tier on research_job_queue (ADR-0079); one worker stays warm.
   grid-oib:agentWorkerMinReplicas: "1"
   grid-oib:agentWorkerMaxReplicas: "3"
@@ -291,8 +325,18 @@ config:
   # cluster-autoscaler adds nodes for Pending replicas up to the worker group's
 
   # max, so size that group for maxReplicas × the limits below.
+  # 3, not 5: five workers on three 16 GB nodes took the nodes down one after
+  # another (2026-10). The tier now runs on the batch group (nodeGroupBatch,
+  # 8 vCPU / 64 GB nodes). Raise it only with batch-node memory to match.
   grid-oib:ingestWorkerMinReplicas: "1"
-  grid-oib:ingestWorkerMaxReplicas: "5"
+  grid-oib:ingestWorkerMaxReplicas: "3"
+  # Big PDFs, three files at once, were OOMKilled at a 6Gi limit. Even all three
+  # workers at their 12Gi limit on one 64 GB batch node (36 GB) do not overcommit
+  # it, which is the failure the app nodes had.
+  grid-oib:ingestWorkerRequestsCpu: 500m
+  grid-oib:ingestWorkerRequestsMemory: 8Gi
+  grid-oib:ingestWorkerLimitsCpu: "4"
+  grid-oib:ingestWorkerLimitsMemory: 12Gi
   grid-oib:ingestWorkerConcurrency: "3"
   grid-oib:ingestWorkerDrainSeconds: "600"
   # Chat/web replicas. Safe at >1 via conversation affinity (the frontend WS
@@ -399,8 +443,16 @@ config:
   grid-oib:langfuseInitUserEmail: matthias@bigls.net
   grid-oib:langfuseOrgId: grid
   grid-oib:langfuseProjectId: grid-oib
+  # ClickHouse PVC for Langfuse. Matches the program default (src/config.ts);
+  # pinned here so the prod size is visible. Live volume was grown 20Gi -> 50Gi.
+  grid-oib:clickhouseStorageSize: 50Gi
   grid-oib:otelOidcIssuer: https://prestigious-energy-03.authkit.app
   grid-oib:otelOidcClientId: client_01M0SKKRX0XAQ99AFZ31WNJ6XT # pragma: allowlist secret (public OAuth client id)
+  # The same application gates Qdrant's dashboard at qdrant.piloti.at, on by
+  # default because these keys are set. Register
+  # https://qdrant.piloti.at/oauth2/callback on it in WorkOS before the deploy
+  # that brings it (docs/deployment/qdrant-runbook.md, "Dashboard"), or keep
+  # it off with: grid-oib:qdrantDashboardEnabled: "false"
   # ── BFF background pool (ADR-0079) ──
   # Internal replicas of the frontend image claim bff_job_queue fairly across
   # organisations and run project reindex and failed-ingestion rescan jobs, IFC
@@ -429,8 +481,10 @@ config:
   # What the one OpenRouter key is asked to carry, written down here instead of
   # left to the backend image's defaults (these ARE those defaults). Vision calls
   # are held to vlmFleetConcurrency fleet-wide whatever the replica count, so the
-  # ingest tier's ceiling is sized against it: ingestWorkerMaxReplicas (5) x
-  # ingestWorkerConcurrency (3) x vlmBatchWorkers (4) = 60, within 2 x 32. The
+  # ingest tier's ceiling is sized against it: ingestWorkerMaxReplicas (3) x
+  # ingestWorkerConcurrency (3) x vlmBatchWorkers (4) = 36, within 2 x 32. Node
+  # memory, not this budget, holds it at 3 (see the ingestion tier above); the
+  # budget alone would allow 5. The
   # program refuses a stack past 2x (assertVlmPeakFitsCeiling), because replicas
   # beyond it only queue on the pool. It was 12 replicas (144), then 8 (96 against
   # a pool of 48), before this: a vision call also holds a slot in its model's own
@@ -448,8 +502,8 @@ config:
   # ── Postgres pooler (ADR-0083) ──
   # Two PgBouncers, spread across nodes, so a drain takes one. Budget against the
   # primary's max_connections of 200 (assertPgConnectionBudget): 2 x (3 pooled
-  # database/role pairs x pgPoolerPoolSize 12 + 1 auth session) = 74, plus 82 held
-  # for the direct connections (see POSTGRES_DIRECT_RESERVE) = 156, 44 to spare.
+  # database/role pairs x pgPoolerPoolSize 12 + 1 auth session) = 74, plus 76 held
+  # for the direct connections (see POSTGRES_DIRECT_RESERVE) = 150, 50 to spare.
   grid-oib:pgPoolerInstances: "2"
   # ── The api tier (ADR-0082 step B) ── every backend HTTP route but the chat
   # socket, behind the aiq-api Service (BACKEND_URL). Sized like the frontend.

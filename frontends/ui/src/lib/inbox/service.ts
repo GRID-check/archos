@@ -12,9 +12,11 @@
  */
 
 import 'server-only'
-import { NotFoundError } from '@/lib/api/errors'
+import { BadRequestError, NotFoundError } from '@/lib/api/errors'
+import { markMentionsSchema, type MarkMention } from '@/lib/annotations/types'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
-import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
+import { isCollaborationEnabled, isPilotiWakesEnabled } from '@/lib/authz/feature-flags'
+import { canWriteDocument } from '@/lib/documents/can-write'
 import { getPlatformOrganizationId, hasPlatformPermission } from '@/lib/authz/platform'
 import { withTenant } from '@/lib/db/tenant-context'
 import { publishToUser } from '@/lib/events/bus'
@@ -25,22 +27,34 @@ import type {
   NewInboxItem,
   ShareableResourceType,
 } from '@/lib/db/schema'
+import { enqueueInboxPushes } from '@/lib/push/enqueue'
 import { resolvePeople } from '@/lib/sharing/directory'
 import { unreadableRunIds, type RunRef } from '@/lib/tasks/subject-access'
 import { findInboxTarget, type InboxTargetAccess, type RunMessageRef } from './targets'
 import {
   archiveInboxItem,
+  countInboxFilters,
   countPendingInboxItems,
   INBOX_LIST_LIMIT,
   listInboxItems,
+  listUnreadAnchors,
   markAllInboxItemsRead,
+  markAnchorItemsRead,
   markInboxItemsRead,
+  markInboxItemsUnread,
+  markItemsInertAnchoredOn,
   markItemsInertForResource,
   markItemsInertForSubjectRow,
   markResourceItemsRead,
   openRecipientsOfGroup,
   resolveInboxItemsForTargets,
+  resolveOpenItemsAnchoredOn,
+  retractOccurrenceAnchoredOn,
+  rewriteItemPayloadsAnchoredOn,
+  unarchiveInboxItem,
   upsertInboxItems,
+  type AnchoredRows,
+  type InboxCursor,
   type InboxResolutionTarget,
 } from './repository'
 import {
@@ -48,12 +62,17 @@ import {
   PLATFORM_INBOX_PERMISSION,
   platformInboxTypes,
   visibleInboxTypes,
+  MARKS_SET_GROUP_ANCHOR,
 } from './registry'
-import type {
-  InboxItemState,
-  InboxItemView,
-  InboxListResponse,
-  InboxSummaryResponse,
+import {
+  isMarkAnchored,
+  type InboxAnswerPlace,
+  type InboxItemState,
+  type InboxItemView,
+  type InboxListFilter,
+  type InboxListResponse,
+  type InboxMutationResult,
+  type InboxSummaryResponse,
 } from './types'
 
 /**
@@ -70,6 +89,13 @@ export interface InboxEmission {
   actorUserId?: string | null
   groupKey: string
   payload?: Record<string, unknown>
+  /**
+   * How many occurrences this one emission stands for, when one write is
+   * several of the same thing for the same person (Piloti setting fifteen
+   * marks on one document): the row's count moves by this many, as it would
+   * for that many emissions, in ONE write and so one notification. Default 1.
+   */
+  occurrences?: number
 }
 
 /** Split rows into waves in which no (recipient, group key) repeats, keeping their order. */
@@ -91,7 +117,8 @@ export function upsertWaves<T extends { recipientUserId: string; groupKey: strin
 }
 
 /**
- * Create (or fold) notifications and nudge each recipient's badge.
+ * Create (or fold) notifications, queue their system notifications and nudge
+ * each recipient's badge.
  *
  * A recipient equal to the actor is dropped: nobody needs to be told about their
  * own action, and self-notification is the most common cause of an inbox that
@@ -111,6 +138,7 @@ export async function emitInboxItems(emissions: InboxEmission[]): Promise<number
       groupKey: emission.groupKey,
       actionable: inboxItemIsActionable(emission.type),
       payload: emission.payload ?? {},
+      count: Math.max(1, Math.floor(emission.occurrences ?? 1)),
     }))
 
   if (rows.length === 0) return 0
@@ -122,6 +150,10 @@ export async function emitInboxItems(emissions: InboxEmission[]): Promise<number
   // the row's count still says two.
   const inserted = []
   for (const wave of upsertWaves(rows)) inserted.push(...(await upsertInboxItems(wave)))
+
+  // A system notification for whoever turned them on. Best effort and queued:
+  // the request that wrote the item never waits on a push service.
+  await enqueueInboxPushes(inserted)
 
   // Badge nudge per recipient. Publishing is fail-open by construction, and the
   // badge is re-read from Postgres anyway, so a miss costs latency only.
@@ -189,6 +221,58 @@ export async function resolveInboxItemsFor(
 }
 
 /**
+ * Resolve the open items of these types anchored on one thing (a mark, a
+ * proposal), for one recipient or for everyone. Session-less, like the emitter:
+ * the caller is the domain event that settled the request.
+ */
+export async function resolveInboxItemsAnchoredOn(input: {
+  organizationId: string
+  types: readonly InboxItemType[]
+  anchorId: string
+  recipientUserId?: string
+}): Promise<number> {
+  return nudge(await resolveOpenItemsAnchoredOn(input))
+}
+
+/** Tell each of these people's open inboxes to read again. */
+async function nudge(recipients: readonly string[]): Promise<number> {
+  await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))
+  return recipients.length
+}
+
+/**
+ * Neutralise the items of these types anchored on a thing that is gone (a
+ * deleted mark), for everyone, or for one recipient whose reason for the row
+ * is gone (a mention taken back): no row keeps a link to it, or the text it
+ * quoted. `payloadHas` narrows it to the rows a deleted reply wrote (by its
+ * `replyId`), `groupAnchor` to the rows folded on another anchor (`AnchoredRows`).
+ * Session-less, like the emitter.
+ */
+export async function markInboxItemsInertAnchoredOn(input: AnchoredRows): Promise<number> {
+  return nudge(await markItemsInertAnchoredOn(input))
+}
+
+/**
+ * Take one occurrence that is gone (a deleted reply, a deleted mark) back out
+ * of the rows that counted it, without resurfacing them
+ * (`retractOccurrenceAnchoredOn`). Session-less, like the emitter.
+ */
+export async function retractInboxOccurrenceAnchoredOn(
+  input: AnchoredRows & { clear: readonly string[]; inertWhenSpent: boolean }
+): Promise<number> {
+  return nudge(await retractOccurrenceAnchoredOn(input))
+}
+
+/**
+ * Rewrite what the rows quoting something that changed say (a reworded
+ * reply), without resurfacing them (`rewriteItemPayloadsAnchoredOn`).
+ * Session-less, like the emitter.
+ */
+export async function rewriteInboxPayloadsAnchoredOn(input: AnchoredRows & { facts: Record<string, unknown> }): Promise<number> {
+  return nudge(await rewriteItemPayloadsAnchoredOn(input))
+}
+
+/**
  * Neutralise one person's items for a resource, in the SAME operation that
  * revokes their access (spec IB-14).
  *
@@ -231,8 +315,46 @@ export { INBOX_LIST_LIMIT }
 export type { InboxResolutionTarget }
 
 export interface ListInboxParams {
-  /** `true` = only what needs attention; omitted = everything unarchived. */
-  pendingOnly?: boolean
+  /** Which slice (`InboxListFilter`); everything unarchived when omitted. */
+  filter?: InboxListFilter
+  /** The previous page's `nextCursor`; the first page when omitted. */
+  cursor?: string | null
+}
+
+/**
+ * A page's end as the browser carries it: opaque, so nobody builds one by
+ * hand, and only ever read back by {@link decodeInboxCursor}.
+ */
+export function encodeInboxCursor(cursor: InboxCursor): string {
+  return Buffer.from(`${cursor.micros}|${cursor.id}`, 'utf8').toString('base64url')
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** A cursor this server wrote, or a 400: a forged one must not reach the SQL as a malformed cast. */
+export function decodeInboxCursor(cursor: string): InboxCursor {
+  const [micros, id, ...rest] = Buffer.from(cursor, 'base64url').toString('utf8').split('|')
+  if (rest.length > 0 || !id || !UUID.test(id) || !micros || !/^\d{1,19}$/.test(micros)) {
+    throw new BadRequestError('Invalid inbox cursor')
+  }
+  return { micros, id }
+}
+
+/**
+ * The exact moment a listed row is ordered by. A row from a stub without the
+ * column falls back to its millisecond, which orders the same unless two rows
+ * share one.
+ */
+function microsOf(row: InboxItem & { listedAtMicros?: string }): bigint {
+  return row.listedAtMicros ? BigInt(row.listedAtMicros) : BigInt(row.updatedAt.getTime()) * BigInt(1000)
+}
+
+/** Newest first, as the repository orders a lane: by the stored microsecond, then by id. */
+function newestFirst(a: InboxItem, b: InboxItem): number {
+  const ta = microsOf(a)
+  const tb = microsOf(b)
+  if (ta !== tb) return tb > ta ? 1 : -1
+  return a.id < b.id ? 1 : a.id > b.id ? -1 : 0
 }
 
 /** Key for the per-page target cache — one entry per DISTINCT resource. */
@@ -359,6 +481,35 @@ const SUBJECT_MAX_LENGTH = 200
 const EXCERPT_MAX_LENGTH = 500
 
 /**
+ * The excerpt's mentions, as the bounded mention schema reads them; anything
+ * else (an older row without them, a payload nobody should trust) is none, and
+ * the row then quotes plain text.
+ */
+function coerceMentions(value: unknown): MarkMention[] {
+  const parsed = markMentionsSchema.safeParse(value)
+  return parsed.success ? parsed.data : []
+}
+
+/**
+ * A payload's `variant` is a segment of a dictionary path the row reads
+ * (`InboxItemView.variant`), so only a short lower-case token passes; anything
+ * else is absent and the row reads its type's general wording.
+ */
+function coerceVariant(value: unknown): string | null {
+  return typeof value === 'string' && /^[a-z][a-z_]{0,31}$/.test(value) ? value : null
+}
+
+/** A payload's calendar day (`YYYY-MM-DD`, a mark's date); anything else is absent. */
+function coerceDay(value: unknown): string | null {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
+}
+
+/** A payload's count (how many open marks), a whole number from 1 to 10 000; anything else is absent. */
+function coerceCount(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10_000 ? value : null
+}
+
+/**
  * Re-derive, ONCE per distinct target in the page, whether the recipient can
  * still reach it (spec IB-13). This is the security core of the inbox read path:
  * an item is a pointer and never a grant, so the link and the snippet are earned
@@ -454,6 +605,51 @@ async function rowsWithUnreadableRuns(session: AuthorizedSession, rows: readonly
  * the half that also covers a missed transition, a narrowed visibility, or a lost
  * project membership, none of which touch the stored row.
  */
+/** Whether a row is a request about a mark, which the reader answers in its thread. */
+const asksAboutMark = (row: InboxItem): boolean =>
+  row.actionable && row.resourceType === 'document' && row.anchorId !== null && !row.inertAt && isMarkAnchored(row.type)
+
+/** What decides where a request on a mark may be answered: the documents the reader may write, and the wake switch. */
+interface MarkAnswers {
+  writable: ReadonlySet<string>
+  wakesOn: boolean
+}
+
+/**
+ * The documents among the page's requests on a mark that the reader may write
+ * now, each asked once (`canWriteDocument`). Answering a mark and closing it
+ * are writes, so a row on a document the reader may only read offers neither.
+ * A probe that fails counts as no: the row still opens the mark.
+ */
+async function markAnswersFor(
+  session: AuthorizedSession,
+  rows: readonly InboxItem[],
+  targets: Map<string, InboxTargetAccess | null>,
+): Promise<MarkAnswers> {
+  const documentIds = new Set(
+    rows
+      .filter((row) => asksAboutMark(row) && targets.get(targetKey(row.resourceType, row.resourceId)))
+      .map((row) => row.resourceId),
+  )
+  const verdicts = await Promise.all(
+    [...documentIds].map(async (documentId) => [documentId, await canWriteDocument(session, documentId).catch(() => false)] as const),
+  )
+  return {
+    writable: new Set(verdicts.filter(([, writable]) => writable).map(([documentId]) => documentId)),
+    wakesOn: isPilotiWakesEnabled(session),
+  }
+}
+
+/**
+ * Where this row's request may be answered (`InboxItemView.answerIn`). Piloti's
+ * Rückfrage while events do not wake Piloti is answered in the Prüfansicht,
+ * which asks Piloti itself; an answer from the row would reach nobody.
+ */
+function answerPlaceOf(row: InboxItem, reachable: boolean, answers: MarkAnswers): InboxAnswerPlace | null {
+  if (!reachable || !asksAboutMark(row) || !answers.writable.has(row.resourceId)) return null
+  return row.type === 'piloti.asks_you' && !answers.wakesOn ? 'review' : 'row'
+}
+
 /** A payload string that says something, trimmed; anything else is absent. */
 function nonEmpty(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
@@ -464,6 +660,7 @@ function toItemView(
   targets: Map<string, InboxTargetAccess | null>,
   actorNames: Map<string, string>,
   withheld: ReadonlySet<string>,
+  answers: MarkAnswers,
 ): InboxItemView {
   const access =
     row.inertAt || withheld.has(row.id) ? null : (targets.get(targetKey(row.resourceType, row.resourceId)) ?? null)
@@ -483,11 +680,13 @@ function toItemView(
   const messageId = nonEmpty(payload.runMessageId)
   const run: RunMessageRef | null =
     conversationId && runId && messageId ? { conversationId, runId, messageId } : null
+  const answerIn = answerPlaceOf(row, access !== null, answers)
 
   return {
     id: row.id,
     type: row.type,
     state: deriveState(row),
+    archived: row.archivedAt !== null,
     actionable: row.actionable,
     resourceType: row.resourceType,
     resourceId: row.resourceId,
@@ -510,6 +709,13 @@ function toItemView(
     subject: access ? coerceText(payload.subject, SUBJECT_MAX_LENGTH) : null,
     related: access ? coerceText(payload.related, SUBJECT_MAX_LENGTH) : null,
     excerpt: access ? coerceText(payload.excerpt, EXCERPT_MAX_LENGTH) : null,
+    mentions: access ? coerceMentions(payload.mentions) : [],
+    variant: access ? coerceVariant(payload.variant) : null,
+    dueOn: access ? coerceDay(payload.dueOn) : null,
+    openMarks: access ? coerceCount(payload.openMarks) : null,
+    marksFassung: access ? coerceCount(payload.marksFassung) : null,
+    answerIn,
+    pilotiWakes: answerIn === 'row' && answers.wakesOn,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -531,13 +737,18 @@ export async function listInbox(
   session: AuthorizedSession,
   params: ListInboxParams = {},
 ): Promise<InboxListResponse> {
+  const filter: InboxListFilter = params.filter ?? 'all'
+  const cursor = params.cursor ? decodeInboxCursor(params.cursor) : null
   const lanes = await lanesFor(session)
+  // One more than a page per lane: the extra row is how the page knows there
+  // is a further one, without a count.
   const perLane = await Promise.all(
     lanes.map((lane) =>
       inLane(session, lane, () =>
         listInboxItems(lane.organizationId, session.userId, {
-          pendingOnly: params.pendingOnly ?? false,
-          limit: INBOX_LIST_LIMIT,
+          filter,
+          cursor,
+          limit: INBOX_LIST_LIMIT + 1,
           types: lane.types,
         }),
       ),
@@ -545,23 +756,73 @@ export async function listInbox(
   )
   // Each lane is already newest-first and bounded, so the merged page is the
   // newest INBOX_LIST_LIMIT across them — the same bound one lane had.
-  const rows = perLane
-    .flat()
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-    .slice(0, INBOX_LIST_LIMIT)
+  const merged = perLane.flat().sort(newestFirst)
+  const rows = merged.slice(0, INBOX_LIST_LIMIT)
+  const hasMore = merged.length > INBOX_LIST_LIMIT
+  const last = rows.at(-1)
 
   const actorIds = [...new Set(rows.flatMap((row) => (row.actorUserId ? [row.actorUserId] : [])))]
 
-  const [targets, withheld, people, pending] = await Promise.all([
+  const [targets, withheld, people, pending, counts] = await Promise.all([
     resolveTargets(session, rows),
     rowsWithUnreadableRuns(session, rows),
     resolvePeople(session.organizationId, actorIds),
     countPendingAcross(session, lanes),
+    countFiltersAcross(session, lanes),
   ])
 
   const actorNames = new Map([...people].map(([userId, person]) => [userId, person.name]))
+  const answers = await markAnswersFor(session, rows, targets)
 
-  return { items: rows.map((row) => toItemView(row, targets, actorNames, withheld)), pending }
+  return {
+    items: rows.map((row) => toItemView(row, targets, actorNames, withheld, answers)),
+    pending,
+    counts,
+    hasMore,
+    nextCursor: hasMore && last ? encodeInboxCursor({ micros: microsOf(last).toString(), id: last.id }) : null,
+  }
+}
+
+/** The numbers beside the filters, across every lane. */
+async function countFiltersAcross(
+  session: AuthorizedSession,
+  lanes: readonly InboxLane[],
+): Promise<InboxListResponse['counts']> {
+  const counts = await Promise.all(
+    lanes.map((lane) =>
+      inLane(session, lane, () => countInboxFilters(lane.organizationId, session.userId, lane.types)),
+    ),
+  )
+  return counts.reduce(
+    (sum, value) => ({ requests: sum.requests + value.requests, unread: sum.unread + value.unread }),
+    { requests: 0, unread: 0 },
+  )
+}
+
+/**
+ * One stored item, as this person would be shown it right now, or null when
+ * they could not see it.
+ *
+ * For a channel outside the app (Web Push, ADR-0112), which must say no more
+ * than the inbox would. It runs the read path's own steps for one row: the type
+ * is in a lane the session may read, the target is still reachable, a run is
+ * still readable. A null answer means send nothing; the row is not redacted
+ * into a vaguer notification, because a notification cannot be taken back.
+ * `session` is the recipient's, resolved today (`resolvePinnedRequesterSession`),
+ * in the row's own organization.
+ */
+export async function viewInboxItemAs(session: AuthorizedSession, row: InboxItem): Promise<InboxItemView | null> {
+  const lanes = await lanesFor(session)
+  const inLaneOfRow = lanes.some((lane) => lane.organizationId === row.organizationId && lane.types.includes(row.type))
+  if (!inLaneOfRow) return null
+  const [targets, withheld, people] = await Promise.all([
+    resolveTargets(session, [row]),
+    rowsWithUnreadableRuns(session, [row]),
+    resolvePeople(session.organizationId, row.actorUserId ? [row.actorUserId] : []),
+  ])
+  const actorNames = new Map([...people].map(([userId, person]) => [userId, person.name]))
+  const view = toItemView(row, targets, actorNames, withheld, await markAnswersFor(session, [row], targets))
+  return view.href ? view : null
 }
 
 /**
@@ -578,12 +839,7 @@ export async function getInboxSummary(session: AuthorizedSession): Promise<Inbox
 // Mutating the caller's own inbox
 // ---------------------------------------------------------------------------
 
-export interface InboxMutationResult {
-  /** Rows the operation actually touched (0 is a legitimate no-op). */
-  affected: number
-  /** Recomputed badge count, so the caller needs no follow-up request. */
-  pending: number
-}
+export type { InboxMutationResult }
 
 /**
  * Recompute the badge and push it to the caller's own channel.
@@ -656,6 +912,35 @@ export async function archiveItem(session: AuthorizedSession, itemId: string): P
 }
 
 /**
+ * Mark specific items unread again („Als ungelesen markieren“). Quiet for ids
+ * that are not the caller's, exactly as {@link markRead} is.
+ */
+export async function markUnread(
+  session: AuthorizedSession,
+  itemIds: readonly string[],
+): Promise<InboxMutationResult> {
+  const lanes = await lanesFor(session)
+  const affected = await mutateAcross(session, lanes, (lane) =>
+    markInboxItemsUnread(lane.organizationId, session.userId, [...itemIds], lane.types),
+  )
+  return publishPending(session, lanes, affected)
+}
+
+/**
+ * Take one archived item back („Wiederherstellen“ under „Archiviert“). A miss
+ * is a 404, the same for "not archived", "not yours" and "not there", as
+ * {@link archiveItem} answers.
+ */
+export async function unarchiveItem(session: AuthorizedSession, itemId: string): Promise<InboxMutationResult> {
+  const lanes = await lanesFor(session)
+  const restored = await mutateAcross(session, lanes, async (lane) =>
+    (await unarchiveInboxItem(lane.organizationId, session.userId, itemId, lane.types)) ? 1 : 0,
+  )
+  if (restored === 0) throw new NotFoundError()
+  return publishPending(session, lanes, restored)
+}
+
+/**
  * Clear the ambient items for a resource because the caller has now actually
  * looked at it (spec IB-9) — called by the conversation read path, not by a
  * button.
@@ -679,4 +964,76 @@ export async function markResourceItemsReadFor(
     resourceId,
   )
   return publishPending(session, await lanesFor(session), affected)
+}
+
+/**
+ * {@link markResourceItemsReadFor} for one mark: the caller opened an
+ * Anmerkung in the review, so the news about THAT mark (a reply, a closed
+ * mark, Piloti's finished work) is read, and the rest of the document's is
+ * not. Requests survive being seen, as they do for the resource. Only the
+ * caller's own rows, in the types their lanes may see.
+ */
+export async function markAnchorItemsReadFor(
+  session: AuthorizedSession,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+  anchorId: string,
+): Promise<InboxMutationResult> {
+  const lanes = await lanesFor(session)
+  const affected = await mutateAcross(session, lanes, (lane) =>
+    markAnchorItemsRead(lane.organizationId, session.userId, resourceType, resourceId, anchorId, lane.types),
+  )
+  // Most marks a reader opens have no news: then nothing changed, and a
+  // nudge would make every open inbox of theirs re-read for nothing.
+  if (affected === 0) return { affected, pending: await countPendingAcross(session, lanes) }
+  return publishPending(session, lanes, affected)
+}
+
+/**
+ * The caller opened a document's review: its „Anna hat 15 Anmerkungen
+ * gesetzt“ rows are read. They fold per document and per who set them and
+ * anchor on the newest mark only for their link ({@link MARKS_SET_GROUP_ANCHOR}),
+ * so no mark's dot carries them, and opening the newest mark is not what
+ * reading fifteen new marks is: seeing the document's review is. Only the
+ * caller's own informational rows, in the types their lanes may see; no
+ * nudge when nothing changed, as for a mark.
+ */
+export async function markMarksSetReadFor(
+  session: AuthorizedSession,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+): Promise<InboxMutationResult> {
+  const lanes = await lanesFor(session)
+  const affected = await mutateAcross(session, lanes, (lane) =>
+    markResourceItemsRead(lane.organizationId, session.userId, resourceType, resourceId, {
+      groupAnchor: MARKS_SET_GROUP_ANCHOR,
+      types: lane.types,
+    }),
+  )
+  if (affected === 0) return { affected, pending: await countPendingAcross(session, lanes) }
+  return publishPending(session, lanes, affected)
+}
+
+/**
+ * The anchors inside one resource whose news the caller has not read: for a
+ * document, the marks the review draws a dot on. The counterpart of
+ * {@link markAnchorItemsReadFor}, which reading a mark's thread calls, over the
+ * same rows (`listUnreadAnchors`). No access check, for the same reason: only
+ * the caller's own rows, in the types their lanes may see, and an anchor id
+ * says nothing their inbox did not already say.
+ */
+export async function unreadAnchorsFor(
+  session: AuthorizedSession,
+  resourceType: ShareableResourceType,
+  resourceId: string,
+): Promise<{ anchorIds: string[] }> {
+  const lanes = await lanesFor(session)
+  const perLane = await Promise.all(
+    lanes.map((lane) =>
+      inLane(session, lane, () =>
+        listUnreadAnchors(lane.organizationId, session.userId, resourceType, resourceId, lane.types),
+      ),
+    ),
+  )
+  return { anchorIds: [...new Set(perLane.flat())] }
 }

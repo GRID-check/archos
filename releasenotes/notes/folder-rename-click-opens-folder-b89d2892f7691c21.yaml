@@ -1,0 +1,5 @@
+---
+fixes:
+  - >
+    Renaming a folder in the Dateiablage grid view works again: clicking into
+    the name field places the cursor there instead of opening the folder.

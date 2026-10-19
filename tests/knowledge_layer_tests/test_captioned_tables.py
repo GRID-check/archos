@@ -114,9 +114,9 @@ def test_a_caption_without_a_title_is_the_table_number_alone():
 
 
 class _FakeTable:
-    def __init__(self, rows, top):
+    def __init__(self, rows, top, left=0):
         self._rows = rows
-        self.bbox = (0, top, 500, top + 100)
+        self.bbox = (left, top, left + 500, top + 100)
 
     def extract(self):
         return self._rows
@@ -131,18 +131,26 @@ class _FakeRegion:
 
 
 class _FakePage:
-    """A pdfplumber page: its tables, and the caption text standing above them (if any)."""
+    """A pdfplumber page: its tables, and the caption text standing above them (if any).
 
-    width = 600
+    ``within_bbox`` refuses a region outside the page's box, as pdfplumber does. The
+    fake once accepted any region, so a crop built from ``(0, 0)`` passed here and
+    failed on every page whose box does not start at the origin.
+    """
 
-    def __init__(self, tables=(), caption=""):
+    def __init__(self, tables=(), caption="", bbox=(0, 0, 600, 842)):
         self._tables = list(tables)
         self._caption = caption
+        self.bbox = bbox
+        self.width = bbox[2] - bbox[0]
 
     def find_tables(self):
         return self._tables
 
     def within_bbox(self, bbox):
+        x0, top, x1, bottom = self.bbox
+        if bbox[0] < x0 or bbox[1] < top or bbox[2] > x1 or bbox[3] > bottom:
+            raise ValueError(f"Bounding box {bbox} is not fully within parent page bounding box {self.bbox}")
         return _FakeRegion(self._caption)
 
     def filter(self, predicate):
@@ -217,6 +225,32 @@ def test_the_table_pass_skips_what_the_captioned_pass_took(monkeypatch):
     assert [(table["page_number"], table["table_text"].splitlines()[0]) for table in tables] == [
         (3, "| Formular | Feld |")
     ]
+
+
+def test_a_page_whose_box_is_not_at_the_origin_still_reads_its_tables():
+    """A CAD export's sheet, box (-1162, 1275, 1162, 3826): the caption region was built
+    from x 0 and page.width, pdfplumber refused it, and every table on the page went
+    unread (2026-10, ``WR_25003_P1240_0.pdf``)."""
+    from knowledge_layer.llamaindex.captioned_tables import extract_page_tables
+
+    box = (-1162.2, 1275.54, 1162.2, 3826.62)
+    captioned = _FakeTable([HEADER, *ROWS], top=1700, left=-1000)
+    page = _FakePage([captioned], caption="Tabelle 3: Anforderungen an Treppenhäuser", bbox=box)
+
+    [(fragment, _bbox)] = extract_page_tables(page, 1, None)
+
+    assert fragment.table_id == "3"
+
+
+def test_a_continuation_is_measured_from_the_top_of_its_page_box():
+    from knowledge_layer.llamaindex.captioned_tables import extract_page_tables
+
+    box = (-1162.2, 1275.54, 1162.2, 3826.62)
+    near_top = _FakeTable([["4.1 in Treppenhäusern", "R 60"], ["4.2", "R 30"]], top=1275.54 + 60, left=-1000)
+
+    [(fragment, _bbox)] = extract_page_tables(_FakePage([near_top], bbox=box), 4, _table(page=3))
+
+    assert fragment.continuation
 
 
 def test_only_the_next_page_can_continue_a_table():

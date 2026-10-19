@@ -1,0 +1,8 @@
+---
+features:
+  - >
+    Offene Punkte can now file its Protokoll in the project: „Im Projekt
+    ablegen“ in „Protokoll exportieren“ saves it as „Offene Punkte – <Projekt>
+    – <Datum>“ in the project's top folder, with the filters you set. It is not
+    offered while a listed point is on a document not everyone in the project
+    may open, and the menu says why.

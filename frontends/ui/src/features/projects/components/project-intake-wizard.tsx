@@ -1,15 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import type { MutableRefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   AlertTriangle,
   Check,
+  ChevronsUpDown,
   FolderOpen,
-  HelpCircle,
   Loader2,
   PencilLine,
   Plus,
@@ -17,25 +16,17 @@ import {
   Trash2,
 } from 'lucide-react'
 import { projectTourUrl } from '@/features/onboarding/lib/product-tour'
-import { AnimatePresence, motion, springGlide } from '@/components/motion'
+import { AnimatePresence, motion } from '@/components/motion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { SectionLabel } from '@/components/ui/section-label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { DocumentRoleField } from './document-role-field'
+import { QuestionControl, QuestionHeader } from './intake-question-field'
 import { ProjektgrundlagenStep } from './projektgrundlagen-step'
 import {
   createUploadTracker,
@@ -77,25 +68,6 @@ import type { ConsistencyFinding } from '@/lib/project-profile/intake-consistenc
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import { useLocale, useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
-
-/**
- * Horizontal twin of the `scroll-fade-bottom` utility (`app/globals.css`): the
- * edges of a horizontally scrolling strip dissolve so a clipped step reads as
- * "there is more sideways", not as broken chrome.
- *
- * It is a MASK, deliberately. The overlay gradients this replaced painted
- * `from-background to-transparent`, which (a) is a gradient — a Do-not in
- * `grid-design-language.md` — and (b) hard-codes the surface, so the fade would
- * be visibly wrong the moment the wizard sits on a card or in a dialog. A mask
- * composites against whatever is actually behind it and names no colour.
- *
- * FOLLOW-UP for the `app/globals.css` owner: this belongs beside
- * `scroll-fade-bottom` as `@utility scroll-fade-x`, with the same
- * `--scroll-fade-size` var. It is inline here only because that file is not
- * this change's to edit.
- */
-const SCROLL_FADE_X =
-  'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)'
 
 interface ProjectIntakeWizardProps {
   projectId: string
@@ -244,7 +216,6 @@ export function ProjectIntakeWizard({
   const bwCounter = useRef(1)
   // The active module-stepper button, scrolled into view whenever the step changes
   // so the current pill never hides off the right edge on a narrow screen.
-  const activeStepRef = useRef<HTMLButtonElement | null>(null)
 
   // Load the definition, then restore a draft or prefill from the stored profile.
   useEffect(() => {
@@ -355,21 +326,6 @@ export function ProjectIntakeWizard({
       return () => clearTimeout(timer)
     }
   }, [draftSaved])
-
-  // Keep the active module pill visible: on a phone the A–H stepper is wider than
-  // the screen, so from module E on the current step would sit off the right edge.
-  useEffect(() => {
-    const el = activeStepRef.current
-    if (!el) return
-    const prefersReduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    el.scrollIntoView({
-      inline: 'center',
-      block: 'nearest',
-      behavior: prefersReduced ? 'auto' : 'smooth',
-    })
-  }, [currentStep])
 
   const stages = useMemo(() => definition?.stages ?? [], [definition])
   const totalSteps = stages.length
@@ -865,7 +821,13 @@ export function ProjectIntakeWizard({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+      {/* One line on a phone: the project, and the Schnellstart switch beside
+          it. The eyebrow stays; the subtitle (what the briefing is for, and how
+          long it takes) is read once and cost about 60px above the first
+          question on every module. „Roomy“ is wide AND tall: a phone on its
+          side is 852px wide and 393px high, and keeps the compact form, because
+          its scarce axis is the vertical one (`sm:` alone cannot say that). */}
+      <header className="mb-4 flex min-w-0 items-center justify-between gap-x-6 gap-y-3 sm:[@media(min-height:32rem)]:mb-6 sm:[@media(min-height:32rem)]:flex-wrap sm:[@media(min-height:32rem)]:items-end">
         <div className="min-w-0">
           <SectionLabel>
             {isEdit ? t('intake.eyebrowEdit') : t('intake.eyebrowCreate')}
@@ -873,7 +835,9 @@ export function ProjectIntakeWizard({
           <h1 className="mt-1 truncate text-xl font-semibold tracking-tight">
             {projectName || t('intake.titleFallback')}
           </h1>
-          <p className="text-muted-foreground mt-1 max-w-prose text-sm">{t('intake.subtitle')}</p>
+          <p className="text-muted-foreground mt-1 hidden max-w-prose text-sm sm:[@media(min-height:32rem)]:block">
+            {t('intake.subtitle')}
+          </p>
         </div>
         <QuickStartToggle
           enabled={quickStart}
@@ -908,12 +872,24 @@ export function ProjectIntakeWizard({
           currentStep={currentStep}
           progress={stageProgress}
           onSelect={goToStep}
-          activeStepRef={activeStepRef}
           t={t}
         />
 
         <div className="min-w-0 lg:max-w-2xl">
-          <div className="mb-6 flex items-center justify-between gap-4">
+          {/* Below `lg` the module list is one bar that opens a sheet: nine
+              modules in a strip showed four, labels cut at eleven pixels, and
+              put about 150px between the title and the first question. The bar
+              says where you are (module, title, n/9) and is the way to any
+              other; the counter it carries replaces the three that used to
+              repeat it. */}
+          <ModulePicker
+            stages={stages}
+            currentStep={currentStep}
+            progress={stageProgress}
+            onSelect={goToStep}
+            t={t}
+          />
+          <div className="mb-4 flex items-center justify-between gap-4 lg:mb-6">
             <Progress value={progress} className="h-1 flex-1" />
             <span
               className={cn(
@@ -955,7 +931,7 @@ export function ProjectIntakeWizard({
               >
                 <div className="mb-6">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2 max-lg:hidden">
                       <span className="text-primary font-mono text-xs">Modul {stage.id}</span>
                       <span className="text-muted-foreground text-xs">
                         {currentStep + 1}/{totalSteps}
@@ -969,7 +945,7 @@ export function ProjectIntakeWizard({
                       stageProgress.get(stage.id) !== undefined &&
                       stageProgress.get(stage.id)!.answered <
                         stageProgress.get(stage.id)!.total && (
-                        <Button type="button" variant="ghost" size="sm" onClick={skipRestOfStage}>
+                        <Button type="button" variant="ghost" size="sm" className="ml-auto" onClick={skipRestOfStage}>
                           {t('intake.skipRest')}
                         </Button>
                       )}
@@ -1101,7 +1077,13 @@ export function ProjectIntakeWizard({
               </Alert>
             )}
 
-            <div className="bg-background/85 sticky bottom-0 z-20 -mx-4 mt-10 flex items-center justify-between gap-4 border-t px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-md">
+            {/* Sticky to the bottom of the shell's scroll container, which the shell
+                already sizes to what the on-screen keyboard leaves
+                (`--visual-viewport-height`), so this bar rides above the
+                keyboard rather than behind it; the number keypad has no Return,
+                and Weiter is the way on. The phone's tab bar stands down on this
+                route, so the home indicator's inset is this bar's to clear. */}
+            <div className="bg-background/85 sticky bottom-0 z-20 -mx-4 mt-10 flex items-center justify-between gap-3 border-t px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:gap-4 sm:pt-4 [@media(max-height:31rem)]:pb-[max(0.5rem,env(safe-area-inset-bottom))] [@media(max-height:31rem)]:pt-2">
               <Button
                 type="button"
                 variant="outline"
@@ -1111,15 +1093,16 @@ export function ProjectIntakeWizard({
                 {t('intake.back')}
               </Button>
 
-              <span className="text-muted-foreground text-xs">
+              {/* The phone has the counter in the module bar above the questions. */}
+              <span className="text-muted-foreground hidden text-xs sm:inline">
                 {t('intake.stepCounter', { current: currentStep + 1, total: totalSteps })}
               </span>
 
               {isReview ? (
                 findings && findings.length > 0 ? (
-                  <span aria-hidden className="inline-flex min-h-9 min-w-36" />
+                  <span aria-hidden className="inline-flex min-h-9 min-w-36 max-sm:hidden" />
                 ) : (
-                  <Button type="submit" disabled={saving || checking} className="min-w-36">
+                  <Button type="submit" disabled={saving || checking} className="min-w-36 max-sm:flex-1">
                     <Loader2
                       className={
                         saving || checking
@@ -1138,7 +1121,7 @@ export function ProjectIntakeWizard({
                   </Button>
                 )
               ) : (
-                <Button type="submit" disabled={saving}>
+                <Button type="submit" disabled={saving} className="max-sm:flex-1">
                   {t('intake.next')}
                 </Button>
               )}
@@ -1155,14 +1138,17 @@ export function ProjectIntakeWizard({
 // ---------------------------------------------------------------------------
 
 /**
- * The A–I module list, vertical on desktop and a scrolling strip below `lg`.
+ * The A–I module list: a persistent rail beside the questions from `lg`, and
+ * the same rows in a bottom sheet below it ({@link ModulePicker}).
  *
  * Each row carries the module's real title and its answered/total count, which
  * is the pair that answers "where am I and what is left" at a glance. The
  * horizontal stepper this replaced could show neither: at eight modules across
  * a 3xl column every label truncated to about eight characters, so the nav read
  * "Grundstück …", "Technik & En…", "Zusammenfa…" — three labels that are the
- * same word to a reader scanning for where to click.
+ * same word to a reader scanning for where to click. Its phone form, a strip of
+ * 80px tiles, was that problem again: four of nine modules on screen, 11px
+ * labels, and a row of chrome above the first question.
  *
  * Rows stay reachable in BOTH directions. Forward navigation to an unvisited
  * module is deliberate: the spec's validation is soft everywhere but A1/A2/A5,
@@ -1175,94 +1161,166 @@ function ModuleRail({
   currentStep,
   progress,
   onSelect,
-  activeStepRef,
   t,
 }: {
   stages: ProjectIntakeStage[]
   currentStep: number
   progress: Map<string, { answered: number; total: number }>
   onSelect: (step: number) => void
-  activeStepRef: MutableRefObject<HTMLButtonElement | null>
   t: Translator
 }) {
   return (
-    <nav aria-label={t('intake.moduleNavAria')} className="mb-6 lg:sticky lg:top-6 lg:mb-0">
-      <SectionLabel className="mb-2 hidden lg:block">{t('intake.moduleNav')}</SectionLabel>
-      <ol
-        className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0 lg:pb-0"
-        style={{ maskImage: SCROLL_FADE_X, WebkitMaskImage: SCROLL_FADE_X }}
-      >
-        {stages.map((stage, index) => {
-          const state =
-            index < currentStep ? 'visited' : index === currentStep ? 'current' : 'upcoming'
-          const counts = progress.get(stage.id)
-          const complete =
-            counts !== undefined && counts.total > 0 && counts.answered === counts.total
-          return (
-            <li key={stage.id} className="shrink-0 lg:shrink">
-              <button
-                type="button"
-                ref={state === 'current' ? activeStepRef : undefined}
-                onClick={() => onSelect(index)}
-                aria-current={state === 'current' ? 'step' : undefined}
+    <nav aria-label={t('intake.moduleNavAria')} className="hidden lg:sticky lg:top-6 lg:block">
+      <SectionLabel className="mb-2">{t('intake.moduleNav')}</SectionLabel>
+      <ModuleList
+        stages={stages}
+        currentStep={currentStep}
+        progress={progress}
+        onSelect={onSelect}
+        t={t}
+      />
+    </nav>
+  )
+}
+
+function ModuleList({
+  stages,
+  currentStep,
+  progress,
+  onSelect,
+  t,
+  touch = false,
+}: {
+  stages: ProjectIntakeStage[]
+  currentStep: number
+  progress: Map<string, { answered: number; total: number }>
+  onSelect: (step: number) => void
+  t: Translator
+  /** Finger-sized rows (the sheet) instead of the rail's dense ones. */
+  touch?: boolean
+}) {
+  return (
+    <ol className="flex flex-col gap-0.5">
+      {stages.map((stage, index) => {
+        const state = index < currentStep ? 'visited' : index === currentStep ? 'current' : 'upcoming'
+        const counts = progress.get(stage.id)
+        const complete = counts !== undefined && counts.total > 0 && counts.answered === counts.total
+        return (
+          <li key={stage.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(index)}
+              aria-current={state === 'current' ? 'step' : undefined}
+              className={cn(
+                'duration-quick focus-visible:ring-ring/40 group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left outline-none transition-colors ease-out focus-visible:ring-2 motion-reduce:transition-none',
+                touch && 'min-h-12 px-3',
+                state === 'current' ? 'bg-muted' : 'hover:bg-muted/50'
+              )}
+            >
+              <span
                 className={cn(
-                  'duration-quick focus-visible:ring-ring/40 group flex w-20 flex-col items-center gap-1.5 rounded-lg px-1 py-1.5 text-left outline-none transition-colors ease-out focus-visible:ring-2 motion-reduce:transition-none',
-                  'lg:w-full lg:flex-row lg:items-center lg:gap-2.5 lg:px-2 lg:py-2',
-                  state === 'current' ? 'lg:bg-muted' : 'lg:hover:bg-muted/50'
+                  'duration-quick flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors ease-out motion-reduce:transition-none',
+                  complete && state !== 'current' && 'border-primary bg-primary text-primary-foreground',
+                  state === 'current' && 'border-primary text-primary ring-ring/30 ring-2',
+                  !complete && state !== 'current' && 'border-border text-muted-foreground'
                 )}
               >
+                {/* The step NUMBER, not `stage.id`. Modul I (Projektgrundlagen)
+                    deliberately runs before Modul H (Zusammenfassung) — the
+                    documents are inputs to the B and C answers, and the
+                    summary is the save gate, so it has to be last — which
+                    makes a letter column read "… G, I, H" and look like a
+                    bug. The letter still anchors the content header, where it
+                    ties back to the spec. */}
+                {complete && state !== 'current' ? <Check className="size-3.5" aria-hidden /> : index + 1}
+              </span>
+              <span className="flex min-w-0 flex-col">
                 <span
                   className={cn(
-                    'duration-quick flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors ease-out motion-reduce:transition-none',
-                    complete &&
-                      state !== 'current' &&
-                      'border-primary bg-primary text-primary-foreground',
-                    state === 'current' && 'border-primary text-primary ring-ring/30 ring-2',
-                    !complete && state !== 'current' && 'border-border text-muted-foreground'
+                    'block truncate text-sm',
+                    state === 'current' ? 'text-foreground font-medium' : 'text-muted-foreground'
                   )}
                 >
-                  {/* The step NUMBER, not `stage.id`. Modul I (Projektgrundlagen)
-                      deliberately runs before Modul H (Zusammenfassung) — the
-                      documents are inputs to the B and C answers, and the
-                      summary is the save gate, so it has to be last — which
-                      makes a letter column read "… G, I, H" and look like a
-                      bug. The letter still anchors the content header, where it
-                      ties back to the spec. */}
-                  {complete && state !== 'current' ? (
-                    <Check className="size-3.5" aria-hidden />
-                  ) : (
-                    index + 1
-                  )}
+                  {stage.title}
                 </span>
-                <span className="w-full min-w-0 lg:flex lg:flex-col">
-                  <span
-                    className={cn(
-                      'block truncate text-center text-[11px] leading-tight lg:text-left lg:text-sm',
-                      state === 'current' ? 'text-foreground font-medium' : 'text-muted-foreground'
-                    )}
-                  >
-                    {stage.title}
+                {counts !== undefined && counts.total > 0 && (
+                  <span className="text-muted-foreground text-xs">
+                    {complete
+                      ? t('intake.moduleDone')
+                      : t('intake.moduleProgress', { answered: counts.answered, total: counts.total })}
                   </span>
-                  {/* Counts on the rail only: on the mobile strip they would not
-                      fit under a 20-unit-wide pill without truncating the title
-                      they are meant to annotate. */}
-                  {counts !== undefined && counts.total > 0 && (
-                    <span className="text-muted-foreground hidden text-xs lg:block">
-                      {complete
-                        ? t('intake.moduleDone')
-                        : t('intake.moduleProgress', {
-                            answered: counts.answered,
-                            total: counts.total,
-                          })}
-                    </span>
-                  )}
-                </span>
-              </button>
-            </li>
-          )
-        })}
-      </ol>
-    </nav>
+                )}
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/**
+ * The module list below `lg`: one 44px bar — „Modul C · 3/9" — that opens the
+ * list in a bottom sheet. A selection among nine named places is a choice you
+ * make and leave, which is what a sheet is for; the questions stay where they
+ * were behind it. Choosing a module closes the sheet.
+ */
+function ModulePicker({
+  stages,
+  currentStep,
+  progress,
+  onSelect,
+  t,
+}: {
+  stages: ProjectIntakeStage[]
+  currentStep: number
+  progress: Map<string, { answered: number; total: number }>
+  onSelect: (step: number) => void
+  t: Translator
+}) {
+  const tCommon = useTranslations('common')
+  const [open, setOpen] = useState(false)
+  const stage = stages[currentStep]
+  if (!stage) return null
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          data-testid="intake-module-picker"
+          aria-label={t('intake.modulePickerAria', { module: stage.id, title: stage.title })}
+          className="border-border bg-card focus-visible:ring-ring/40 mb-3 flex min-h-11 w-full items-center gap-3 rounded-lg border px-3.5 text-left outline-none focus-visible:ring-2 lg:hidden"
+        >
+          {/* Two spans: the content header below `lg` carries the same „Modul B“
+              as one text node, and a screen that has the bar and the header at
+              once (a tablet in portrait, a test) should find it once. */}
+          <span className="text-primary font-mono text-xs">
+            <span>Modul</span> <span>{stage.id}</span>
+          </span>
+          <span className="text-muted-foreground flex-1 text-xs tabular-nums">
+            {currentStep + 1}/{stages.length}
+          </span>
+          <ChevronsUpDown className="text-muted-foreground size-4" aria-hidden />
+        </button>
+      </SheetTrigger>
+      <SheetContent side="bottom" closeLabel={tCommon('actions.close')} className="gap-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:hidden">
+        <SheetHeader>
+          <SheetTitle>{t('intake.moduleNav')}</SheetTitle>
+          <SheetDescription className="sr-only">{t('intake.moduleNavAria')}</SheetDescription>
+        </SheetHeader>
+        <ModuleList
+          stages={stages}
+          currentStep={currentStep}
+          progress={progress}
+          onSelect={(step) => {
+            setOpen(false)
+            onSelect(step)
+          }}
+          t={t}
+          touch
+        />
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -1291,12 +1349,16 @@ function QuickStartToggle({
         size="sm"
         onClick={onToggle}
         aria-pressed={enabled}
+        // The explanation is beside the switch from `sm`; on a phone it is the
+        // switch's description, and the module itself says what it hides
+        // („n weitere Fragen im Schnellstart ausgeblendet").
+        aria-describedby="intake-schnellstart-hint"
         className="shrink-0"
       >
         <Sparkles className="size-4" aria-hidden />
         {t('intake.schnellstart')}
       </Button>
-      <p className="text-muted-foreground max-w-[24rem] text-xs leading-snug">
+      <p id="intake-schnellstart-hint" className="text-muted-foreground max-w-[24rem] text-xs leading-snug sr-only sm:[@media(min-height:32rem)]:not-sr-only">
         {enabled ? t('intake.schnellstartOn') : t('intake.schnellstartOff')}
       </p>
     </div>
@@ -1383,6 +1445,7 @@ function BauwerkStage({
               {bw.id.toUpperCase()}
             </Badge>
             {canManage ? (
+              <>
               <input
                 value={bw.name}
                 onChange={(e) => onRenameBauwerk(bw.id, e.target.value)}
@@ -1396,8 +1459,13 @@ function BauwerkStage({
                 // The height comes with it: 25px was half the floor for a control
                 // whose whole affordance is a dashed underline you have to find.
                 enterKeyHint="done"
-                className="hover:border-border focus:border-primary min-w-0 flex-1 border-b border-dashed border-transparent bg-transparent py-0.5 text-sm font-medium outline-none pointer-coarse:py-2.5 pointer-coarse:text-base"
+                // The dashed underline is the whole affordance and it was
+                // hover-only; a touch device has no hover, so it is drawn at
+                // rest there, with the pencil beside it.
+                className="hover:border-border focus:border-primary min-w-0 flex-1 border-b border-dashed border-transparent bg-transparent py-0.5 text-sm font-medium outline-none pointer-coarse:border-border pointer-coarse:py-2.5 pointer-coarse:text-base"
               />
+              <PencilLine className="text-muted-foreground -ml-1 hidden size-3.5 shrink-0 pointer-coarse:block" aria-hidden />
+              </>
             ) : (
               <span className="flex-1 truncate text-sm font-medium">{bw.name}</span>
             )}
@@ -1470,7 +1538,7 @@ function BauwerkStage({
               <button
                 type="button"
                 onClick={onAddBauwerk}
-                className="border-border text-muted-foreground hover:border-primary/60 hover:bg-primary/5 hover:text-primary inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2.5 font-mono text-xs transition-colors duration-quick ease-out motion-reduce:transition-none"
+                className="border-border text-muted-foreground hover:border-primary/60 hover:bg-primary/5 hover:text-primary inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2.5 font-mono text-xs pointer-coarse:min-h-11 transition-colors duration-quick ease-out motion-reduce:transition-none"
               >
                 <Plus className="size-4" aria-hidden />
                 {t('intake.bauwerk.add')}
@@ -1881,8 +1949,6 @@ function QuestionField({
   onSetAnswer: (key: string, value: ProjectPrimitiveValue) => void
   onSetMode: (key: string, mode: IntakeAnswerMode) => void
 }) {
-  const t = useTranslations('projects')
-  const value = answers[answerKey]
   const domId = `q-${answerKey}`
 
   if (question.type === 'info_placeholder') {
@@ -1907,389 +1973,15 @@ function QuestionField({
       </div>
     )
   }
-
-  const header = <QuestionHeader question={question} domId={domId} />
-  const errorText = error ? (
-    <p id={`${domId}-error`} className="text-destructive text-sm">
-      {error}
-    </p>
-  ) : null
-
-  switch (question.type) {
-    case 'text':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Input
-            id={domId}
-            type="text"
-            value={typeof value === 'string' ? value : ''}
-            placeholder={question.placeholder}
-            aria-invalid={error ? true : undefined}
-            onChange={(e) => onSetAnswer(answerKey, e.target.value)}
-            className="max-w-md"
-          />
-          {errorText}
-        </div>
-      )
-    case 'textarea':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Textarea
-            id={domId}
-            value={typeof value === 'string' ? value : ''}
-            placeholder={question.placeholder}
-            onChange={(e) => onSetAnswer(answerKey, e.target.value)}
-            className="min-h-24 max-w-2xl"
-          />
-          {errorText}
-        </div>
-      )
-    case 'number':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Input
-            id={domId}
-            type="number"
-            inputMode="decimal"
-            value={typeof value === 'number' ? value : typeof value === 'string' ? value : ''}
-            aria-invalid={error ? true : undefined}
-            onChange={(e) => {
-              const raw = e.target.value
-              if (raw === '') return onSetAnswer(answerKey, '')
-              const parsed = Number(raw)
-              onSetAnswer(answerKey, Number.isFinite(parsed) ? parsed : raw)
-            }}
-            className="max-w-40"
-          />
-          {errorText}
-        </div>
-      )
-    case 'number_tri':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <NumberTriControl
-            domId={domId}
-            question={question}
-            value={value}
-            mode={(answers[modeKeyFor(answerKey)] as IntakeAnswerMode) ?? 'wert'}
-            onValue={(v) => onSetAnswer(answerKey, v)}
-            onMode={(m) => onSetMode(answerKey, m)}
-          />
-          {errorText}
-        </div>
-      )
-    case 'yes_no_open':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Segmented
-            ariaLabel={question.label}
-            value={typeof value === 'string' ? value : ''}
-            options={[
-              { value: 'ja', label: t('intake.yes') },
-              { value: 'nein', label: t('intake.no') },
-              { value: 'offen', label: t('intake.open'), tone: 'muted' },
-            ]}
-            onChange={(v) => onSetAnswer(answerKey, v)}
-          />
-          {errorText}
-        </div>
-      )
-    case 'boolean':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Segmented
-            ariaLabel={question.label}
-            value={value === true ? 'ja' : value === false ? 'nein' : ''}
-            options={[
-              { value: 'ja', label: t('intake.yes') },
-              { value: 'nein', label: t('intake.no') },
-            ]}
-            onChange={(v) => onSetAnswer(answerKey, v === 'ja')}
-          />
-          {errorText}
-        </div>
-      )
-    case 'single_select':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Select
-            value={typeof value === 'string' ? value : ''}
-            onValueChange={(v) => onSetAnswer(answerKey, v)}
-          >
-            <SelectTrigger
-              id={domId}
-              className="w-full max-w-md"
-              aria-invalid={error ? true : undefined}
-            >
-              <SelectValue placeholder={t('intake.selectPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {(question.options ?? []).map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errorText}
-        </div>
-      )
-    case 'multi_select':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <ChipMultiSelect
-            question={question}
-            value={Array.isArray(value) ? value : []}
-            onChange={(next) => onSetAnswer(answerKey, next)}
-          />
-          {errorText}
-        </div>
-      )
-    default:
-      return null
-  }
-}
-
-function QuestionHeader({ question, domId }: { question: ProjectIntakeQuestion; domId: string }) {
-  const t = useTranslations('projects')
-  const [whyOpen, setWhyOpen] = useState(false)
-  const whyId = `${domId}-why`
   return (
-    <div className="flex flex-col gap-1">
-      {/* `items-center` on touch: the rationale glyph beside the label is a full
-          44px control there, and baseline alignment would hang it off the label's
-          text baseline instead of centring it in the row it now defines. */}
-      <div className="flex items-baseline gap-2 pointer-coarse:items-center">
-        <Label htmlFor={domId} className="text-sm font-medium">
-          {question.label}
-          {/* Mark the handful of hard-required fields so they're distinguishable
-              from the ~90 soft ones BEFORE Next is pressed (error prevention),
-              mirroring the FieldShell required marker used elsewhere. */}
-          {question.required && (
-            <span aria-hidden className="text-destructive">
-              {' '}
-              *
-            </span>
-          )}
-        </Label>
-        {question.optional && (
-          <span className="text-muted-foreground text-xs font-normal">{t('intake.optional')}</span>
-        )}
-        {/* The rationale rides ON the label row as a glyph rather than under it
-            as its own "Warum fragen wir das?" line. Nearly every question in the
-            catalog carries a `why`, so a per-field row put a second, louder
-            control beside every label — an accordion the length of the form
-            competing with the questions it annotates. */}
-        {question.why && (
-          <button
-            type="button"
-            onClick={() => setWhyOpen((previous) => !previous)}
-            aria-expanded={whyOpen}
-            aria-controls={whyId}
-            aria-label={t('intake.why')}
-            title={t('intake.why')}
-            // 44px of REAL layout space, not a negative-margin overhang.
-            //
-            // The overhang is the tempting version — it grows the target and
-            // moves nothing — and it is wrong here because this control has
-            // neighbours on every side it would grow into: the `<Label>` is 8px
-            // to its left and the field it annotates is 4px below. A 14px
-            // overhang therefore covers the end of the label (which focuses the
-            // field) and the top edge of the field itself, so the two taps a
-            // reader is most likely to make in this row would both open the
-            // rationale instead. A target that big by theft is worse than a
-            // small one: it is wrong on purpose rather than by omission.
-            //
-            // The cost is the honest one — the label row is 44px tall on touch.
-            // `pointer-coarse:items-center` below keeps the glyph and the label
-            // aligned once the row is taller than its baseline.
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/40 pointer-coarse:size-11 inline-flex size-4 shrink-0 items-center justify-center self-center rounded-full outline-none transition-colors duration-quick ease-out focus-visible:ring-2 motion-reduce:transition-none"
-          >
-            <HelpCircle className="size-3.5" aria-hidden />
-          </button>
-        )}
-      </div>
-      {question.why && whyOpen && (
-        // The documented quotation rule (`border-l-2 border-border`) on a real
-        // surface, rather than a second differently-alpha'd action ink.
-        <p
-          id={whyId}
-          className="border-border bg-muted text-muted-foreground max-w-prose border-l-2 px-3 py-2 text-xs"
-        >
-          {question.why}
-        </p>
-      )}
-      {question.help && <p className="text-muted-foreground text-xs">{question.help}</p>}
-    </div>
-  )
-}
-
-/** Number input with a value/estimate/open answer-mode segmented control. */
-function NumberTriControl({
-  domId,
-  question,
-  value,
-  mode,
-  onValue,
-  onMode,
-}: {
-  domId: string
-  question: ProjectIntakeQuestion
-  value: ProjectPrimitiveValue
-  mode: IntakeAnswerMode
-  onValue: (v: ProjectPrimitiveValue) => void
-  onMode: (m: IntakeAnswerMode) => void
-}) {
-  const t = useTranslations('projects')
-  const disabled = mode === 'offen'
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          id={domId}
-          type="number"
-          inputMode="decimal"
-          disabled={disabled}
-          placeholder={question.placeholder}
-          value={typeof value === 'number' ? value : typeof value === 'string' ? value : ''}
-          onChange={(e) => {
-            const raw = e.target.value
-            if (raw === '') return onValue('')
-            const parsed = Number(raw)
-            onValue(Number.isFinite(parsed) ? parsed : raw)
-          }}
-          className="max-w-32 font-mono"
-        />
-        {question.unit && (
-          <span className="text-muted-foreground font-mono text-xs">{question.unit}</span>
-        )}
-        <Segmented
-          ariaLabel={t('intake.mode.aria')}
-          size="sm"
-          value={mode}
-          options={[
-            { value: 'wert', label: t('intake.mode.wert') },
-            { value: 'geschaetzt', label: t('intake.mode.geschaetzt'), tone: 'warning' },
-            { value: 'offen', label: t('intake.mode.offen'), tone: 'muted' },
-          ]}
-          onChange={(v) => onMode(v as IntakeAnswerMode)}
-        />
-      </div>
-      {question.hint && <p className="text-muted-foreground max-w-xl text-xs">{question.hint}</p>}
-    </div>
-  )
-}
-
-type SegmentTone = 'default' | 'warning' | 'muted'
-
-/** A compact segmented single-choice control (yes/no/open, answer modes). */
-function Segmented({
-  value,
-  options,
-  onChange,
-  ariaLabel,
-  size = 'md',
-}: {
-  value: string
-  options: { value: string; label: string; tone?: SegmentTone }[]
-  onChange: (value: string) => void
-  ariaLabel: string
-  size?: 'sm' | 'md'
-}) {
-  // One pill per control: several Segmented share a page, so the shared-layout
-  // id is scoped to this instance or the fill would fly between questions.
-  const pillId = useId()
-  return (
-    <div
-      role="group"
-      aria-label={ariaLabel}
-      className="border-border inline-flex w-fit flex-wrap self-start overflow-hidden rounded-lg border"
-    >
-      {options.map((opt, i) => {
-        const active = value === opt.value
-        const tone = opt.tone ?? 'default'
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(opt.value)}
-            className={cn(
-              'border-border relative isolate inline-flex items-center justify-center transition-colors duration-quick ease-out motion-reduce:transition-none',
-              i > 0 && 'border-l',
-              // Comfortable tap targets on touch screens; denser on desktop pointers.
-              size === 'sm'
-                ? 'min-h-9 px-3 text-xs font-medium md:min-h-8 md:px-2.5 md:text-[11px]'
-                : 'min-h-11 px-4 text-sm md:min-h-9 md:px-3.5',
-              !active && 'bg-card text-foreground hover:bg-muted',
-              active && tone === 'default' && 'text-primary-foreground',
-              active && tone === 'warning' && 'text-white',
-              active && tone === 'muted' && 'text-background'
-            )}
-          >
-            {active && (
-              <motion.span
-                layoutId={pillId}
-                transition={springGlide}
-                aria-hidden="true"
-                className={cn(
-                  'absolute inset-0 -z-10',
-                  tone === 'default' && 'bg-primary',
-                  tone === 'warning' && 'bg-warning',
-                  tone === 'muted' && 'bg-muted-foreground'
-                )}
-              />
-            )}
-            <span className="relative">{opt.label}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-/** Multi-select rendered as toggleable chips. */
-function ChipMultiSelect({
-  question,
-  value,
-  onChange,
-}: {
-  question: ProjectIntakeQuestion
-  value: string[]
-  onChange: (next: string[]) => void
-}) {
-  return (
-    <div className="flex max-w-2xl flex-wrap gap-2">
-      {(question.options ?? []).map((opt) => {
-        const active = value.includes(opt.value)
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() =>
-              onChange(active ? value.filter((v) => v !== opt.value) : [...value, opt.value])
-            }
-            className={cn(
-              'inline-flex min-h-11 items-center justify-center rounded-full border px-4 py-1.5 text-sm transition-colors duration-quick ease-out motion-reduce:transition-none md:min-h-9 md:px-3.5',
-              active
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5'
-            )}
-          >
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
+    <QuestionControl
+      question={question}
+      answerKey={answerKey}
+      answers={answers}
+      error={error}
+      onSetAnswer={onSetAnswer}
+      onSetMode={onSetMode}
+    />
   )
 }
 

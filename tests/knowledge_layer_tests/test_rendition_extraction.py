@@ -27,6 +27,8 @@ from knowledge_layer.renditions import align_extraction_paths
 from knowledge_layer.renditions import requires_rendition
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
+from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
+from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
 pptx = pytest.importorskip("pptx")
 
@@ -164,18 +166,15 @@ def summary_db(tmp_path):
 
 
 @pytest.fixture
-def ingestor(tmp_path, monkeypatch):
+def ingestor(tmp_path, monkeypatch, qdrant_store):
     llm = MagicMock()
     llm.invoke.side_effect = lambda prompt: MagicMock(
         content='["Bericht"]' if "klassifizierst" in prompt else "Ein Bericht zur Baubesprechung."
     )
-    ing = LlamaIndexIngestor(
-        {"persist_dir": str(tmp_path / "chroma"), "generate_summary": True, "summary_llm": llm, "extract_images": True}
-    )
-    ing._embed_model = MagicMock()
+    ing = LlamaIndexIngestor({"generate_summary": True, "summary_llm": llm, "extract_images": True})
+    ing._embed_model = FakeEmbedder()
     ing._initialized = True
-    monkeypatch.setattr("llama_index.core.VectorStoreIndex", MagicMock())
-    monkeypatch.setattr("llama_index.core.Settings", MagicMock())
+    capture_indexed_documents(monkeypatch, into=_INDEXED)
     return ing
 
 
@@ -202,13 +201,12 @@ def _gone(path, timeout=5) -> bool:
     return not path.exists()
 
 
-def _indexed_documents():
-    import llama_index.core
+#: What each file of the running test's jobs handed to chunking and embedding (``ingestor`` records it).
+_INDEXED: list[list] = []
 
-    documents = []
-    for call in llama_index.core.VectorStoreIndex.from_documents.call_args_list:
-        documents.extend(call.args[0])
-    return documents
+
+def _indexed_documents():
+    return [document for documents in _INDEXED for document in documents]
 
 
 @pytest.fixture
@@ -227,23 +225,27 @@ def pdf_pipeline(monkeypatch):
 
     def _images(path, *args, **kwargs):
         read["images"].append(path)
-        return [
-            {
-                "image_bytes": b"\xff\xd8raster",
-                "page_number": 2,
-                "image_index": 0,
-                "format": "jpeg",
-                "width": 800,
-                "height": 600,
-            }
-        ]
+        return (
+            [
+                {
+                    "image_bytes": b"\xff\xd8raster",
+                    "page_number": 2,
+                    "image_index": 0,
+                    "format": "jpeg",
+                    "width": 800,
+                    "height": 600,
+                }
+            ],
+            0,
+            0,
+        )
 
     def _pages(path, *args, **kwargs):
         read["pages"].append(path)
         return []
 
     monkeypatch.setattr(adapter, "_extract_text_from_pdf", _text)
-    monkeypatch.setattr(adapter, "_extract_images_from_pdf", _images)
+    monkeypatch.setattr(adapter, "_extract_image_records", _images)
     monkeypatch.setattr(adapter, "analyze_visual", lambda *a, **k: ("image", "Ein Schnitt A-A.", {}))
     import knowledge_layer.llamaindex.processing as processing_module
 

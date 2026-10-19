@@ -41,10 +41,10 @@ export const UnresolvedCard: FC<{ entry: ResolvedSurfacedDocument; projectId?: s
           <FileSearch className="size-7" aria-hidden />
         </div>
         <div className="px-3.5 pb-3 pt-[11px]">
-          <p className="truncate text-xs font-medium text-foreground/80" title={entry.surfaced.file_name}>
+          <p className="text-xs font-medium text-foreground/80 [overflow-wrap:anywhere]">
             {entry.surfaced.file_name}
           </p>
-          <p className="mt-1 line-clamp-2 text-[11px] leading-[1.45] text-muted-foreground">
+          <p className="mt-1 text-[11px] leading-[1.45] text-muted-foreground">
             {t('documentGrid.unresolvedHint')}
           </p>
           <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary group-hover:underline">

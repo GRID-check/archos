@@ -32,10 +32,18 @@ vi.mock('@/lib/db', () => ({ getDb: () => proxyDb }))
 import {
   EVERY_INBOX_TYPE,
   archiveInboxItemsOfType,
+  countInboxFilters,
+  listInboxItems,
+  markAnchorItemsRead,
+  markInboxItemsUnread,
+  unarchiveInboxItem,
   findLiveInboxGroupKeys,
+  listTouchedOfType,
   markAllInboxItemsRead,
   markInboxItemsRead,
   markResourceItemsRead,
+  resolveOpenItemsAnchoredOn,
+  markItemsInertAnchoredOn,
   upsertInboxItem,
   upsertInboxItems,
 } from './repository'
@@ -93,6 +101,10 @@ describe('mark-read — reading a group spends its counter', () => {
     {
       name: 'markResourceItemsRead',
       run: () => markResourceItemsRead('org_1', 'user_me', 'conversation', 'c1'),
+    },
+    {
+      name: 'markAnchorItemsRead',
+      run: () => markAnchorItemsRead('org_1', 'user_me', 'document', 'doc_1', 'mark_4', EVERY_INBOX_TYPE),
     },
   ]
 
@@ -170,12 +182,12 @@ describe('upsertInboxItems — the batch fold matches the single-row fold', () =
     await upsertInboxItem(newItem())
     const singleSet = conflictSet(onlyQuery().sql)
 
-    // Counting is relative to the STORED row, never to `excluded` — the incoming
-    // row always carries the default 1. And a new occurrence is new information,
-    // so the fold clears the states that would otherwise keep the row out of
-    // sight.
+    // Counting adds to the STORED row what the incoming one stands for: the
+    // column's default 1, or the occurrences one emission folded (fifteen marks
+    // Piloti set in one write). And a new occurrence is new information, so the
+    // fold clears the states that would otherwise keep the row out of sight.
     for (const set of [batchSet, singleSet]) {
-      expect(set).toContain('"count" = "inbox_items"."count" + 1')
+      expect(set).toContain('"count" = "inbox_items"."count" + excluded.count')
       expect(set).toContain('"read_at" = ')
       expect(set).toContain('"resolved_at" = ')
       expect(set).toContain('"archived_at" = ')
@@ -258,5 +270,210 @@ describe('archiveInboxItemsOfType — retiring a condition that no longer holds'
     expect(sql).toContain('"anchor_id" is null or')
     expect(sql).toContain('"anchor_id" <> ')
     expect(params).toContain('90')
+  })
+})
+
+describe('markItemsInertAnchoredOn', () => {
+  beforeEach(() => {
+    captured.length = 0
+  })
+
+  it('turns every live item of the named types on one anchor inert, for everyone, and wipes what it quoted', async () => {
+    await markItemsInertAnchoredOn({
+      organizationId: 'org_1',
+      types: ['piloti.asks_you', 'annotation.activity'],
+      anchorId: 'ann_1',
+    })
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/^update "inbox_items" set /)
+    expect(sql).toContain('"inert_at" = $')
+    expect(sql).toContain('"payload" = $')
+    expect(sql).toContain('"organization_id" = $')
+    expect(sql).toContain('"type" in ($')
+    expect(sql).toContain('"anchor_id" = $')
+    expect(sql).toContain('"inert_at" is null')
+    expect(sql).not.toContain('"recipient_user_id" = $')
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'piloti.asks_you', 'annotation.activity', 'ann_1']))
+  })
+
+  it('turns one recipient’s items inert, and nobody else’s, when one is named', async () => {
+    await markItemsInertAnchoredOn({
+      organizationId: 'org_1',
+      types: ['annotation.mentioned'],
+      anchorId: 'ann_1',
+      recipientUserId: 'user_anna',
+    })
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toContain('"recipient_user_id" = $')
+    expect(sql).toContain('"payload" = $')
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'annotation.mentioned', 'ann_1', 'user_anna']))
+  })
+
+  it('touches nothing for an empty type list', async () => {
+    expect(await markItemsInertAnchoredOn({ organizationId: 'org_1', types: [], anchorId: 'ann_1' })).toEqual([])
+    expect(captured).toHaveLength(0)
+  })
+})
+
+describe('resolveOpenItemsAnchoredOn', () => {
+  beforeEach(() => {
+    captured.length = 0
+  })
+
+  it('resolves the open items of the named types on one anchor, in one organization, for everyone', async () => {
+    await resolveOpenItemsAnchoredOn({
+      organizationId: 'org_1',
+      types: ['piloti.asks_you'],
+      anchorId: 'ann_1',
+    })
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/^update "inbox_items" set "resolved_at" = /)
+    expect(sql).toContain('"organization_id" = $')
+    expect(sql).toContain('"type" in ($')
+    expect(sql).toContain('"anchor_id" = $')
+    expect(sql).toContain('"resolved_at" is null')
+    expect(sql).not.toContain('"recipient_user_id" = $')
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'piloti.asks_you', 'ann_1']))
+  })
+
+  it('narrows to one recipient when one is named', async () => {
+    await resolveOpenItemsAnchoredOn({
+      organizationId: 'org_1',
+      types: ['piloti.asks_you'],
+      anchorId: 'ann_1',
+      recipientUserId: 'user_me',
+    })
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toContain('"recipient_user_id" = $')
+    expect(params).toContain('user_me')
+  })
+
+  it('touches nothing for an empty type list', async () => {
+    expect(await resolveOpenItemsAnchoredOn({ organizationId: 'org_1', types: [], anchorId: 'a' })).toEqual([])
+    expect(captured).toHaveLength(0)
+  })
+})
+
+describe('markAnchorItemsRead — opening one mark reads its news, and only its news', () => {
+  it('reads the recipient’s informational items on that mark of that document, in the types they may see', async () => {
+    await markAnchorItemsRead('org_1', 'user_me', 'document', 'doc_1', 'mark_4', ['annotation.activity'])
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toContain('"recipient_user_id" = $')
+    expect(sql).toContain('"resource_type" = $')
+    expect(sql).toContain('"resource_id" = $')
+    expect(sql).toContain('"anchor_id" = $')
+    // A request survives being seen, as it does for the whole resource.
+    expect(sql).toContain('"actionable" = $')
+    expect(sql).toContain('"read_at" is null')
+    expect(sql).toContain('"type" in ($')
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'user_me', 'document', 'doc_1', 'mark_4', false, 'annotation.activity']))
+  })
+})
+
+describe('markInboxItemsUnread', () => {
+  it('clears read_at on the recipient’s own live rows, and leaves the counter as reading left it', async () => {
+    await markInboxItemsUnread('org_1', 'user_me', ['item_1'], EVERY_INBOX_TYPE)
+
+    const { sql } = onlyQuery()
+    expect(sql).toMatch(/^update "inbox_items" set "read_at" = \$1 where/)
+    expect(sql).not.toContain('"count"')
+    expect(sql).toContain('"recipient_user_id" = $')
+    expect(sql).toContain('"read_at" is not null')
+    expect(sql).toContain('"archived_at" is null')
+    expect(sql).toContain('"inert_at" is null')
+  })
+
+  it('touches nothing for no ids', async () => {
+    expect(await markInboxItemsUnread('org_1', 'user_me', [], EVERY_INBOX_TYPE)).toBe(0)
+    expect(captured).toHaveLength(0)
+  })
+})
+
+describe('unarchiveInboxItem', () => {
+  it('takes one archived row of the recipient’s out of the archive', async () => {
+    await unarchiveInboxItem('org_1', 'user_me', 'item_1', ['annotation.activity'])
+
+    const { sql } = onlyQuery()
+    expect(sql).toMatch(/^update "inbox_items" set "archived_at" = \$1 where/)
+    expect(sql).toContain('"recipient_user_id" = $')
+    expect(sql).toContain('"archived_at" is not null')
+    expect(sql).toContain('"type" in ($')
+  })
+})
+
+describe('listInboxItems — the filters and the page after a cursor', () => {
+  const where = (sql: string) => sql.slice(sql.indexOf(' where '), sql.indexOf(' order by '))
+
+  it('„requests“ is an open request: actionable, unresolved, not redacted, not archived', async () => {
+    await listInboxItems('org_1', 'user_me', { filter: 'requests', types: EVERY_INBOX_TYPE })
+    const clause = where(onlyQuery().sql)
+    expect(clause).toContain('"archived_at" is null')
+    expect(clause).toContain('"inert_at" is null')
+    expect(clause).toContain('"actionable" = $')
+    expect(clause).toContain('"resolved_at" is null')
+    expect(clause).not.toContain('"read_at"')
+  })
+
+  it('„unread“ is not opened yet and not redacted, whatever it asks', async () => {
+    await listInboxItems('org_1', 'user_me', { filter: 'unread', types: EVERY_INBOX_TYPE })
+    const clause = where(onlyQuery().sql)
+    expect(clause).toContain('"read_at" is null')
+    expect(clause).toContain('"inert_at" is null')
+    expect(clause).not.toContain('"actionable"')
+  })
+
+  it('„archived“ is only what was put away', async () => {
+    await listInboxItems('org_1', 'user_me', { filter: 'archived', types: EVERY_INBOX_TYPE })
+    expect(where(onlyQuery().sql)).toContain('"archived_at" is not null')
+  })
+
+  it('a cursor reads strictly after the row it names, to the stored microsecond, on the bare indexed column', async () => {
+    await listInboxItems('org_1', 'user_me', {
+      cursor: { micros: '1790848800123456', id: '00000000-0000-4000-8000-000000000001' },
+      limit: 51,
+      types: EVERY_INBOX_TYPE,
+    })
+    const { sql, params } = onlyQuery()
+    expect(sql).toContain(
+      `("inbox_items"."updated_at", "inbox_items"."id") < (timestamptz 'epoch' + $`,
+    )
+    // Ordered on the column itself, which `idx_inbox_items_recipient_org_updated` covers.
+    expect(sql).toMatch(/order by "inbox_items"\."updated_at" desc, "inbox_items"\."id" desc limit \$/)
+    expect(sql).not.toContain('date_trunc')
+    // The exact moment travels beside the row, for the next cursor.
+    expect(sql).toContain('(extract(epoch from "updated_at") * 1000000)::bigint::text')
+    expect(params).toEqual(expect.arrayContaining(['1790848800123456', '00000000-0000-4000-8000-000000000001', 51]))
+  })
+})
+
+describe('countInboxFilters', () => {
+  it('counts open requests and unread rows in one statement over the badge’s own rows', async () => {
+    await countInboxFilters('org_1', 'user_me', EVERY_INBOX_TYPE)
+    const { sql } = onlyQuery()
+    expect(sql).toContain('count(*) filter (where')
+    expect(sql.match(/count\(\*\) filter/g)).toHaveLength(2)
+    expect(sql).toContain('"archived_at" is null')
+  })
+})
+
+describe('listTouchedOfType — the rows a burst is made of', () => {
+  it('asks for one person’s rows of one type, whatever became of them, in the window, newest first and bounded', async () => {
+    const from = new Date('2026-10-18T04:35:00.000Z')
+    const to = new Date('2026-10-18T04:45:05.000Z')
+    await listTouchedOfType('org_1', 'user_me', 'annotation.assigned_to_you', { from, to }, 51)
+
+    const { sql, params } = onlyQuery()
+    for (const column of ['organization_id', 'recipient_user_id', 'type']) expect(sql).toContain(`"inbox_items"."${column}" = $`)
+    // A row read since still links its burst: the job tells only the rows still news.
+    for (const state of ['read_at', 'archived_at', 'resolved_at', 'inert_at']) expect(sql).not.toContain(`"inbox_items"."${state}"`)
+    expect(sql).toContain('"inbox_items"."updated_at" >= $')
+    expect(sql).toContain('"inbox_items"."updated_at" <= $')
+    expect(sql).toMatch(/order by "inbox_items"."updated_at" desc limit \$\d+/)
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'user_me', 'annotation.assigned_to_you', 51]))
   })
 })

@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, pullPolicyFor } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -155,7 +156,7 @@ export function installClickHouse(
         serviceName: `${name}-headless`,
         replicas: 1,
         // Retain across delete/scale: this is the trace store. Matches the k8s
-        // default, pinned against a future default flip (as in chroma.ts).
+        // default, pinned against a future default flip (as in qdrant.ts).
         persistentVolumeClaimRetentionPolicy: { whenDeleted: "Retain", whenScaled: "Retain" },
         ...orderedRollout(ROLLOUT.dataPlane),
         selector: { matchLabels: labels },
@@ -185,6 +186,7 @@ export function installClickHouse(
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.dataPlane).terminationGracePeriodSeconds,
             volumes: [{ name: "syslog-ttl", configMap: { name: syslogTtl.metadata.name } }],
+            ...onNodeGroup(cfg.nodeGroups.data),
             containers: [
               {
                 name: "clickhouse",

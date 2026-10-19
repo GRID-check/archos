@@ -71,6 +71,8 @@ describe('filterMentionCandidates — order and grouping', () => {
   })
 
   test('filters on name and on email, case-insensitively', () => {
+    // The address stays searchable: typing it is how one of two namesakes is
+    // picked. It ranks below every name match ("ranking" below).
     expect(filterMentionCandidates(CANDIDATES, 'hof', true, 'Piloti').visible).toEqual([MARKUS])
     expect(filterMentionCandidates(CANDIDATES, 'U-SABINE@', true, 'Piloti').visible).toEqual([
       SABINE,
@@ -309,6 +311,83 @@ describe('MentionPicker — selection', () => {
 
     act(() => ref.current?.move(1))
     expect(last().activeOptionId).toBe(screen.getAllByRole('option')[1].id)
+  })
+})
+
+/**
+ * „@Le" is somebody reaching for Lena. The picker used to match the e-mail too
+ * and keep the server's order, so Anna and Jakob, whose addresses contain „le",
+ * stayed listed above Lena with Anna selected, and ↵ mentioned Anna.
+ */
+describe('ranking: names before e-mail addresses', () => {
+  const ANNA_LEHNER = person('u-anna', 'Anna Berger', {
+    isParticipant: false,
+    person: { userId: 'u-anna', name: 'Anna Berger', email: 'anna@lehner-architekten.at', profilePictureUrl: null },
+  })
+  const JAKOB = person('u-jakob', 'Jakob Huber', {
+    isParticipant: false,
+    person: { userId: 'u-jakob', name: 'Jakob Huber', email: 'jakob.huber@lechner.at', profilePictureUrl: null },
+  })
+  const LENA = person('u-lena', 'Lena Fuchs', { isParticipant: false })
+  const READERS = [ANNA_LEHNER, JAKOB, LENA]
+
+  test('a name match leads, and e-mail-only matches stay below it', () => {
+    const groups = filterMentionCandidates(READERS, 'Le', true, 'Piloti')
+    expect(groups.visible.map((c) => c.targetId)).toEqual(['u-lena', 'u-anna', 'u-jakob'])
+    expect(groups.preselected).toBe(0)
+  })
+
+  test('the start of a name part beats the query inside a name', () => {
+    const JOHANN = person('u-johann', 'Johann Berger')
+    const ANDREA = person('u-andrea', 'Maria Andrea Huber')
+    const groups = filterMentionCandidates([JOHANN, ANDREA], 'an', true, 'Piloti')
+    expect(groups.visible).toEqual([ANDREA, JOHANN])
+  })
+
+  test('↵ after „@Le" mentions Lena', () => {
+    const onSelect = vi.fn()
+    const { ref } = renderPicker({ candidates: READERS, query: 'Le', onSelect })
+    expect(screen.getAllByRole('option')[0]).toHaveAttribute('data-target-id', 'u-lena')
+    expect(screen.getAllByRole('option')[0]).toHaveAttribute('aria-selected', 'true')
+    act(() => {
+      ref.current?.selectActive()
+    })
+    expect(onSelect).toHaveBeenCalledWith(LENA)
+  })
+
+  test('across groups, ↵ takes the best match, not a participant whose e-mail matched', () => {
+    // A participant leads the list by group, but only her address says „le":
+    // ↵ takes Lena, who is further down under „Weitere im Projekt".
+    const PARTICIPANT = { ...ANNA_LEHNER, isParticipant: true }
+    const onSelect = vi.fn()
+    const { ref } = renderPicker({ candidates: [PARTICIPANT, LENA], query: 'le', onSelect })
+    expect(screen.getAllByRole('option').map((o) => o.getAttribute('data-target-id'))).toEqual([
+      'u-anna',
+      'u-lena',
+    ])
+    expect(screen.getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true')
+    act(() => {
+      ref.current?.selectActive()
+    })
+    expect(onSelect).toHaveBeenCalledWith(LENA)
+  })
+
+  test('the emphasis is the fragment that ranked the row', () => {
+    renderPicker({ candidates: [person('u-johann', 'Johann Anders')], query: 'an' })
+    expect((document.querySelector('mark') as HTMLElement).textContent).toBe('An')
+  })
+
+  test('an address still finds its person when no name matches', () => {
+    expect(filterMentionCandidates(READERS, 'lechner', true, 'Piloti').visible).toEqual([JAKOB])
+  })
+
+  test('a letter more puts the selection back on the best match, even when the same people match', () => {
+    const { ref, rerender } = renderPicker({ candidates: READERS, query: 'l' })
+    act(() => ref.current?.move(2))
+    expect(screen.getAllByRole('option')[2]).toHaveAttribute('aria-selected', 'true')
+    rerender(<MentionPicker ref={ref} query="le" candidates={READERS} canInvite onSelect={vi.fn()} />)
+    expect(screen.getAllByRole('option')[0]).toHaveAttribute('data-target-id', 'u-lena')
+    expect(screen.getAllByRole('option')[0]).toHaveAttribute('aria-selected', 'true')
   })
 })
 

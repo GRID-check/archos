@@ -134,6 +134,15 @@ export interface TaskCardProps {
   onSelect: (task: TaskWireRow) => void
 }
 
+const ABSOLUTE_AFTER_MS = 24 * 60 * 60 * 1000
+
+/** Relative within a day, the exact date after it. */
+export function cardTimeLabel(iso: string, locale: string, now: number = Date.now()): string {
+  const at = new Date(iso).getTime()
+  if (Number.isNaN(at) || now - at <= ABSOLUTE_AFTER_MS) return formatRelativeTime(iso, locale, now)
+  return formatAbsoluteTime(iso, locale)
+}
+
 export function TaskCard({ projectId, task, onSelect }: TaskCardProps): JSX.Element {
   const t = useTranslations('tasks')
   const { locale } = useLocale()
@@ -148,6 +157,9 @@ export function TaskCard({ projectId, task, onSelect }: TaskCardProps): JSX.Elem
    */
   const unreviewed = task.status === 'succeeded' && task.review === null
 
+  // A phone has no hover, so the exact date a `title` carries is out of reach:
+  // once a card is more than a day old it says WHEN, not "vor 3 Tagen".
+  const when = cardTimeLabel(task.createdAt, locale)
   const open = (): void => onSelect(task)
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.key !== 'Enter' && event.key !== ' ') return
@@ -188,13 +200,26 @@ export function TaskCard({ projectId, task, onSelect }: TaskCardProps): JSX.Elem
                   {task.title}
                 </h3>
                 {unreviewed && (
-                  <span
-                    className="bg-primary mt-1.5 size-2 shrink-0 rounded-full"
-                    title={t('card.unreviewed')}
-                    data-testid="task-card-unreviewed"
-                  >
-                    <span className="sr-only">{t('card.unreviewed')}</span>
-                  </span>
+                  <>
+                    <span
+                      className="bg-primary pointer-coarse:hidden mt-1.5 size-2 shrink-0 rounded-full"
+                      title={t('card.unreviewed')}
+                      data-testid="task-card-unreviewed"
+                    >
+                      <span className="sr-only">{t('card.unreviewed')}</span>
+                    </span>
+                    {/* The dot's words live in a `title`, which a touch screen
+                        never shows: on a finger-driven device the open loop is
+                        said out loud, in the same ink as the dot. */}
+                    <Chip
+                      size="sm"
+                      variant="default"
+                      className="pointer-coarse:inline-flex hidden shrink-0"
+                      data-testid="task-card-to-review"
+                    >
+                      {t('card.toReview')}
+                    </Chip>
+                  </>
                 )}
               </div>
 
@@ -291,17 +316,14 @@ export function TaskCard({ projectId, task, onSelect }: TaskCardProps): JSX.Elem
             title={formatAbsoluteTime(task.createdAt, locale)}
           >
             {task.requesterName
-              ? t('meta.byOn', {
-                  name: task.requesterName,
-                  when: formatRelativeTime(task.createdAt, locale),
-                })
-              : t('meta.on', { when: formatRelativeTime(task.createdAt, locale) })}
+              ? t('meta.byOn', { name: task.requesterName, when })
+              : t('meta.on', { when })}
           </span>
           {result && ResultIcon && (
             <Link
               href={result.href}
               onClick={stop}
-              className="text-primary ml-auto inline-flex shrink-0 items-center gap-1 font-medium hover:underline"
+              className="text-primary touch-target ml-auto inline-flex shrink-0 items-center gap-1 font-medium hover:underline"
               data-testid="task-card-result"
             >
               <ResultIcon aria-hidden className="size-3.5" />

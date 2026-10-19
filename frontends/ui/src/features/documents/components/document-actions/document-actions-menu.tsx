@@ -17,10 +17,13 @@
 import { useState, type ReactNode } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
-import { ActionMenu } from '@/components/ui/action-menu'
+import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
+import { cn } from '@/lib/utils'
+import { DeleteDocumentDialog } from './delete-document-dialog'
 import { RenameDocumentDialog } from './rename-document-dialog'
 import {
   documentActionEntries,
@@ -28,9 +31,12 @@ import {
   type DocumentActionKind,
 } from './action-entries'
 import { useDocumentActions, type ActionableDocument, type DocumentScope } from './use-document-actions'
-import type { PathFolder } from '../../lib/folder-path-label'
+import { sortedFolderDestinations, type FolderDestination, type PathFolder } from '../../lib/folder-path-label'
+import { FolderPickerSheet } from '../folder-picker-sheet'
 
 export type { DocumentActionKind }
+
+const NO_ENTRIES: readonly ActionMenuEntry[] = []
 
 /** Overflow-only default: Open / Ask / Copy path belong on the tile, not here. */
 const DEFAULT_ACTIONS: readonly DocumentActionKind[] = [
@@ -43,6 +49,21 @@ const DEFAULT_ACTIONS: readonly DocumentActionKind[] = [
 
 export type MoveTargetFolder = PathFolder
 
+/**
+ * Where „Verschieben" is a sheet and not a submenu: under a finger, or on a
+ * screen too narrow for a panel to open beside its item.
+ */
+const SHEET_MOVE_QUERY = '(pointer: coarse), (max-width: 639px)'
+
+/**
+ * Whether „Verschieben" should open the folder sheet. Asked ONCE by a listing
+ * and handed to every row (`moveInSheet`): a media-query subscription per row
+ * of a thousand-document folder is a thousand listeners for one answer.
+ */
+export function useMoveInSheet(): boolean {
+  return useMediaQuery(SHEET_MOVE_QUERY)
+}
+
 export interface DocumentActionsMenuProps {
   document: ActionableDocument & { originPath?: string | null }
   scope: DocumentScope
@@ -52,10 +73,28 @@ export interface DocumentActionsMenuProps {
   onDeleted?: (documentId: string) => void
   onReingested?: (documentId: string, status: string) => void
   folders?: readonly MoveTargetFolder[]
+  /** The move targets, sorted once by a listing — see `documentActionEntries`. Wins over `folders`. */
+  destinations?: readonly FolderDestination[]
   onMoved?: (documentId: string, folderId: string | null) => void
   onOpen?: () => void
   onAsk?: () => void
+  /** „Auswählen": a listing's way into picking several documents. Absent where nothing can select. */
+  onSelectMode?: () => void
+  /**
+   * „Verschieben" opens a sheet with a search field instead of a submenu
+   * (`useMoveInSheet`). A submenu opens beside its item, and on a phone there
+   * is no beside: it ran off the left edge with its folders out of reach.
+   */
+  moveInSheet?: boolean
   trigger?: ReactNode
+  /**
+   * What the default trigger sits on. `floating` (the default) lays it over a
+   * thumbnail or a viewport, so it carries its own translucent ground and
+   * shadow to stay legible on whatever is behind it. `toolbar` sits in a row of
+   * ghost icon buttons (the preview header) and must look like its neighbours:
+   * the floating ground there read as one grey square among plain glyphs.
+   */
+  surface?: 'floating' | 'toolbar'
   align?: 'start' | 'end'
   side?: 'top' | 'right' | 'bottom' | 'left'
 }
@@ -69,15 +108,28 @@ export function useDocumentActionMenu({
   onDeleted,
   onReingested,
   folders,
+  destinations,
   onMoved,
   onOpen,
   onAsk,
-}: Omit<DocumentActionsMenuProps, 'trigger' | 'align' | 'side'>) {
+  onSelectMode,
+  moveInSheet = false,
+  live = true,
+}: Omit<DocumentActionsMenuProps, 'trigger' | 'align' | 'side'> & {
+  /**
+   * Whether the menu is wanted yet. A listing mounts one of these per row and
+   * passes false until the reader first opens that row's menu: the state is
+   * kept, but no entries are built and no dialogs are mounted for a row
+   * nobody has asked about.
+   */
+  live?: boolean
+}) {
   const t = useTranslations(scope)
   const filesT = useTranslations('files')
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [rereadOpen, setRereadOpen] = useState(false)
+  const [moveOpen, setMoveOpen] = useState(false)
   const documentActions = useDocumentActions({
     document,
     scope,
@@ -86,6 +138,8 @@ export function useDocumentActionMenu({
     onReingested,
     onMoved,
   })
+
+  if (!live) return { entries: NO_ENTRIES, dialogs: null, name: documentActions.name }
 
   const copyOriginPath = (): void => {
     const path = document.originPath
@@ -101,6 +155,7 @@ export function useDocumentActionMenu({
     labels: {
       open: t('actions.open'),
       ask: t('actions.ask'),
+      select: t('actions.select'),
       download: t('actions.download'),
       rename: t('actions.rename'),
       move: t('actions.move'),
@@ -113,11 +168,14 @@ export function useDocumentActionMenu({
     actions,
     canManage,
     folders,
+    destinations,
     isDownloading: documentActions.isDownloading,
     isReingesting: documentActions.isReingesting,
     isMoving: documentActions.isMoving,
     onOpen,
     onAsk,
+    onSelect: onSelectMode,
+    onPickMoveTarget: moveInSheet ? () => setMoveOpen(true) : undefined,
     onDownload: () => void documentActions.download(),
     onRename: () => setRenameOpen(true),
     onDelete: () => setDeleteOpen(true),
@@ -133,6 +191,20 @@ export function useDocumentActionMenu({
 
   const dialogs = (
     <>
+      {moveInSheet && entries.some((entry) => entry.type === 'item' && entry.id === 'move') && (
+        <FolderPickerSheet
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          title={filesT('picker.titleOne', { name: documentActions.name })}
+          destinations={destinations ?? sortedFolderDestinations(folders ?? [])}
+          currentFolderId={document.folderId ?? null}
+          pending={documentActions.isMoving}
+          onPick={(folderId, folderName) => {
+            setMoveOpen(false)
+            void documentActions.move(folderId, folderName)
+          }}
+        />
+      )}
       {entries.some((entry) => entry.type === 'item' && entry.id === 'rename') && (
         <RenameDocumentDialog
           open={renameOpen}
@@ -144,18 +216,11 @@ export function useDocumentActionMenu({
         />
       )}
       {entries.some((entry) => entry.type === 'item' && entry.id === 'delete') && (
-        <ConfirmDialog
+        <DeleteDocumentDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          title={t('delete.title', { name: documentActions.name })}
-          description={t('delete.confirm')}
-          confirmLabel={documentActions.isDeleting ? t('delete.deleting') : t('delete.confirmAction')}
-          cancelLabel={t('delete.cancel')}
-          pending={documentActions.isDeleting}
-          confirmTestId="document-delete-confirm"
-          onConfirm={async () => {
-            if (await documentActions.remove()) setDeleteOpen(false)
-          }}
+          scope={scope}
+          actions={documentActions}
         />
       )}
       {entries.some((entry) => entry.type === 'item' && entry.id === 'reingest') && (
@@ -185,6 +250,7 @@ export function useDocumentActionMenu({
 
 export function DocumentActionsMenu({
   trigger,
+  surface = 'floating',
   align = 'end',
   side = 'bottom',
   ...props
@@ -205,7 +271,10 @@ export function DocumentActionsMenu({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-8 shrink-0 bg-background/80 shadow-2xs backdrop-blur-sm"
+              className={cn(
+                'size-8 shrink-0',
+                surface === 'floating' && 'bg-background/80 shadow-2xs backdrop-blur-sm',
+              )}
               aria-label={t('actions.label', { name })}
               title={t('actions.menuLabel')}
               data-testid="document-actions-trigger"

@@ -1,7 +1,7 @@
 /**
  * The viewport's UI kit.
  *
- * Nine atoms, and everything the model stage draws is built from them. The
+ * Eleven atoms, and everything the model stage draws is built from them. The
  * rule this barrel exists to enforce is that the organisms import from HERE
  * and not from Tailwind: if a control needs a shape the kit does not have, the
  * kit gains an atom rather than the organism gaining a `<div className="...">`.
@@ -16,7 +16,18 @@ export {
   ViewerIconButtonBase,
   type ViewerIconButtonProps,
 } from './viewer-icon-button'
+export {
+  ViewerToolButton,
+  type ViewerToolButtonProps,
+} from './viewer-tool-button'
 export { ViewerDock, ViewerDockSeparator, type ViewerDockProps } from './viewer-dock'
+export {
+  ViewerSheet,
+  sheetGesture,
+  type ViewerSheetCollapse,
+  type ViewerSheetProps,
+  type ViewerSheetSnap,
+} from './viewer-sheet'
 export {
   ViewerRail,
   ViewerRailItem,

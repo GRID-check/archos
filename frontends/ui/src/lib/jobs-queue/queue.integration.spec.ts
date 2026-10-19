@@ -27,6 +27,9 @@ const lane = (name: string) => `org_jobq_${name}_${STAMP}`
 const A = lane('a')
 const B = lane('b')
 const C = lane('c')
+/** More lanes than one claim ranks (`LANES_PER_CLAIM`), named in the order a tie serves them. */
+const TIED = ['t0', 't1', 't2', 't3', 't4', 't5'].map(lane)
+const OURS = [A, B, C, ...TIED]
 
 const OPTIONS = { staleSeconds: 180, maxAttempts: 3 }
 
@@ -73,8 +76,8 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
 
   async function clearOurs() {
     await withPlatformScope(sql, async (tx) => {
-      await tx`DELETE FROM bff_job_queue WHERE lane IN (${A}, ${B}, ${C})`
-      await tx`DELETE FROM bff_job_lane_turns WHERE lane IN (${A}, ${B}, ${C})`
+      await tx`DELETE FROM bff_job_queue WHERE lane = ANY(${OURS}::text[])`
+      await tx`DELETE FROM bff_job_lane_turns WHERE lane = ANY(${OURS}::text[])`
     })
   }
 
@@ -157,6 +160,25 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
     expect([idOf(first), idOf(second)]).toEqual(['a-interactive-0', 'b-bulk'])
   })
 
+  // The next two scenarios are the lane order every claim shares: the same two run
+  // in tests/knowledge_layer_tests/test_ingest_queue.py and
+  // tests/aiq_agent/common/test_claim_queue.py. Priority never picks the lane.
+  it('ranks a lane by its oldest job, not its best priority: an older bulk job beats a newer interactive one', async () => {
+    await seed('a-bulk', A, '2026-09-30T10:00:00Z', 1)
+    await seed('b-interactive', B, '2026-09-30T10:00:01Z', 0)
+
+    expect(idOf(await claim('w1'))).toBe('a-bulk')
+  })
+
+  it('serves tied lanes by name, past the lanes one claim ranks', async () => {
+    for (const [n, tied] of [...TIED].reverse().entries()) await seed(`j${n}`, tied, '2026-09-30T10:00:00Z')
+
+    const claimed = []
+    for (let i = 0; i < TIED.length; i++) claimed.push((await claim(`w${i}`))?.lane)
+
+    expect(claimed).toEqual(TIED)
+  })
+
   it('holds an office at its cap', async () => {
     await seed('a0', A, '2026-09-30T10:00:00Z')
     await seed('a1', A, '2026-09-30T10:00:01Z')
@@ -208,6 +230,21 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
     const again = await claim('w2')
     expect(again?.attempts).toBe(1) // the drained claim cost nothing
     expect(again?.payload).toEqual({ id: 'a0', cursor: 'page-3' })
+  })
+
+  it('lets a waiting job wait: given back with its progress and its attempt, not claimed before its time', async () => {
+    const id = await seed('a0', A, '2026-09-30T10:00:00Z')
+    expect((await claim('w1'))?.attempts).toBe(1)
+
+    const later = new Date(Date.now() + 60_000)
+    expect(await queue.defer(sql, id, 'w1', { id: 'a0', waits: 1 }, later)).toBe(true)
+    expect(await queue.defer(sql, id, 'w1', { id: 'a0', waits: 2 }, later)).toBe(false) // no longer w1's
+    expect(await claim('w2')).toBeNull() // waiting until `later`
+
+    await withPlatformScope(sql, (tx) => tx`UPDATE bff_job_queue SET not_before = now() - interval '1 second' WHERE job_id = ${id}::uuid`)
+    const again = await claim('w2')
+    expect(again?.attempts).toBe(1) // the wait cost nothing
+    expect(again?.payload).toEqual({ id: 'a0', waits: 1 })
   })
 
   it('refuses progress from a worker that lost the claim', async () => {

@@ -26,9 +26,21 @@ vi.mock('@/lib/sharing/directory', () => ({
   unknownPerson: (userId: string) => ({ userId, email: null, name: userId, profilePictureUrl: null }),
 }))
 
-vi.mock('@/lib/authz/project-membership', () => ({
-  canUserAccessProject: vi.fn(),
+vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8,
+  userHoldsProjectPermission: vi.fn(),
+  resolveSubjectMembership: vi.fn(),
   filterUsersWithProjectAccess: vi.fn(),
+}))
+
+vi.mock('@/lib/documents/access', () => ({ findDocumentForSession: vi.fn() }))
+
+vi.mock('@/lib/authz/folder-access', () => ({
+  filterUsersWhoMayReadFolder: vi.fn(
+    async (_org: string, _project: string, _folder: string | null, userIds: readonly string[]) => new Set(userIds),
+  ),
+  filterUsersWhoMayWriteFolder: vi.fn(
+    async (_org: string, _project: string, _folder: string | null, userIds: readonly string[]) => new Set(userIds),
+  ),
 }))
 
 vi.mock('@/lib/audit/service', () => ({
@@ -54,8 +66,10 @@ vi.mock('./repository', () => ({
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
-import { canUserAccessProject, filterUsersWithProjectAccess } from '@/lib/authz/project-membership'
-import type { ResourceRole } from '@/lib/db/schema'
+import { filterUsersWhoMayReadFolder, filterUsersWhoMayWriteFolder } from '@/lib/authz/folder-access'
+import { filterUsersWithProjectAccess, resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
+import type { Document, ResourceRole } from '@/lib/db/schema'
+import { findDocumentForSession } from '@/lib/documents/access'
 import { requireResourceAccess, requireResourceWriteAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import {
@@ -99,8 +113,24 @@ beforeEach(() => {
     ]),
   )
   vi.mocked(filterUsersWithProjectAccess).mockResolvedValue(new Set(['user_anna', 'user_bob']))
-  vi.mocked(canUserAccessProject).mockResolvedValue(true)
+  // Anna and Bob are in the project; Carol is not.
+  vi.mocked(userHoldsProjectPermission).mockImplementation(async (_session, _project, userId) => userId !== 'user_carol')
+  vi.mocked(findDocumentForSession).mockResolvedValue(projectDocument(null))
+  vi.mocked(filterUsersWhoMayReadFolder).mockImplementation(async (_org, _project, _folder, userIds) => new Set(userIds))
 })
+
+/** A document filed in a project, in `folderId` (null: the project root). */
+function projectDocument(folderId: string | null): Document {
+  return { id: 'doc_1', scope: 'project', projectId: 'proj_1', folderId } as Partial<Document> as Document
+}
+
+/** Only Anna may read the restricted folder `fld_hr`. */
+function onlyAnnaReadsTheFolder(): void {
+  vi.mocked(findDocumentForSession).mockResolvedValue(projectDocument('fld_hr'))
+  vi.mocked(filterUsersWhoMayReadFolder).mockImplementation(
+    async (_org, _project, _folder, userIds) => new Set(userIds.filter((userId) => userId === 'user_anna')),
+  )
+}
 
 describe('listAssignmentCandidates', () => {
   it('lets a collaborator list project members, excluding themselves', async () => {
@@ -133,13 +163,57 @@ describe('listAssignmentCandidates', () => {
     )
   })
 
+  it('leaves out a project member who may not read the folder the document is filed in', async () => {
+    onlyAnnaReadsTheFolder()
+
+    const candidates = await listAssignmentCandidates(session, 'document', 'doc_1')
+
+    expect(candidates.map((person) => person.userId)).toEqual(['user_anna'])
+    expect(filterUsersWhoMayReadFolder).toHaveBeenCalledWith('org_1', 'proj_1', 'fld_hr', ['user_anna', 'user_bob'])
+  })
+
+  it('still asks the project alone for a resource that is not a document', async () => {
+    const candidates = await listAssignmentCandidates(session, 'conversation', 'conv_1')
+
+    expect(filterUsersWithProjectAccess).toHaveBeenCalledWith(session, 'proj_1', ['user_anna', 'user_bob', 'user_carol'])
+    expect(findDocumentForSession).not.toHaveBeenCalled()
+    expect(candidates.map((person) => person.userId)).toEqual(['user_anna', 'user_bob'])
+  })
+
   it('lists the org directory when the resource has no project container', async () => {
     stubCallerRole('collaborator', null)
+    vi.mocked(findDocumentForSession).mockResolvedValue({ id: 'doc_1', scope: 'archiv', projectId: null, folderId: null } as Partial<Document> as Document)
+    // Every person in the directory is a member; the Büroablage asks each membership, not a role.
+    vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
 
     const candidates = await listAssignmentCandidates(session, 'document', 'doc_1')
 
     expect(filterUsersWithProjectAccess).not.toHaveBeenCalled()
     expect(candidates.map((person) => person.userId)).toEqual(['user_anna', 'user_bob', 'user_carol'])
+  })
+
+  // A mark's Zuständige answers and closes it, which are writes: the picker for
+  // a mark lists who may change the document, and leaves out who may only read it.
+  it('with access write lists only who may change the document: a reader of the project is left out', async () => {
+    vi.mocked(userHoldsProjectPermission).mockImplementation(
+      async (_session, _project, userId, permission) =>
+        userId === 'user_anna' || (userId === 'user_bob' && permission === 'project:view')
+    )
+
+    const candidates = await listAssignmentCandidates(session, 'document', 'doc_1', { access: 'write' })
+
+    expect(candidates.map((person) => person.userId)).toEqual(['user_anna'])
+    expect(filterUsersWhoMayWriteFolder).toHaveBeenCalledWith('org_1', 'proj_1', null, ['user_anna'])
+    // Without it, the same document still lists everyone who may open it: whom a mark may mention.
+    const readers = await listAssignmentCandidates(session, 'document', 'doc_1')
+    expect(readers.map((person) => person.userId)).toEqual(['user_anna', 'user_bob'])
+  })
+
+  it('refuses access write for a resource that is not a document, before reading anything', async () => {
+    await expect(
+      listAssignmentCandidates(session, 'conversation', 'conv_1', { access: 'write' }),
+    ).rejects.toMatchObject({ status: 400 })
+    expect(requireResourceAccess).not.toHaveBeenCalled()
   })
 
   it('is invisible when collaboration is off', async () => {
@@ -153,10 +227,20 @@ describe('listAssignmentCandidates', () => {
 })
 
 describe('addResourceAssignment — container check', () => {
-  it('asks canUserAccessProject with the caller session, not the subject id', async () => {
+  it('asks project:view of the subject, in the caller’s organization', async () => {
     await addResourceAssignment(session, 'document', 'doc_1', 'user_anna')
 
-    expect(canUserAccessProject).toHaveBeenCalledWith(session, 'proj_1', 'user_anna')
+    expect(userHoldsProjectPermission).toHaveBeenCalledWith({ organizationId: session.organizationId }, 'proj_1', 'user_anna', 'project:view')
+  })
+
+  it('refuses a project member who may not read the document’s folder, and writes nothing', async () => {
+    onlyAnnaReadsTheFolder()
+
+    await expect(addResourceAssignment(session, 'document', 'doc_1', 'user_bob')).rejects.toMatchObject({
+      status: 400,
+      details: { reason: 'container-access-required' },
+    })
+    expect(insertAssignment).not.toHaveBeenCalled()
   })
 })
 

@@ -1,29 +1,35 @@
 'use client'
 
 import type { JSX } from 'react'
-import { Fragment, useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, memo, useCallback, useDeferredValue, useMemo, useState, type ReactNode } from 'react'
 import type { FileItem, FolderItem } from '../file-types'
 import type { CardExtras } from '../lib/file-shelf'
-import { Search, SearchX, FilterX, FolderOpen, Sparkles } from 'lucide-react'
+import { CheckSquare, Search, SearchX, FilterX, FolderOpen, Sparkles } from 'lucide-react'
 import { RisoPrint } from '@/components/brand/riso-print'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ItemList } from '@/components/ui/item'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FileSearch } from '../hooks/use-file-search'
+import { useCoarsePointer } from '../hooks/use-coarse-pointer'
 import { useLevelDirection } from '../hooks/use-level-direction'
 import { motion, motionEntrance } from '@/components/motion'
 import { ActionMenu } from '@/components/ui/action-menu'
-import { FileCard } from './file-card'
+import { useMoveInSheet } from './document-actions'
+import { FileCard, type FileCardProps } from './file-card'
+import { FilingViewBar } from './filing-bar'
 import { FileGrid, FileCardSkeleton } from './file-grid'
 import { FileListSkeleton, FileListView } from './file-list-view'
 import { FolderActionsTrigger, FolderObjectMenu } from './folder-object-menu'
+import { FolderDescriptionLine } from './folder-description-dialog'
 import { listingActionEntries } from './listing-action-entries'
 import { NewFolderDialog } from './new-folder-dialog'
 import { DEFAULT_FILE_SORT, sortFiles, type FileSort } from '../lib/file-sort'
-import { subtreeTallies } from '../lib/folder-knowledge'
+import { subtreeTallies, type KnowledgeTally } from '../lib/folder-knowledge'
+import { LoadMore } from '@/components/ui/load-more'
 import { withoutOlderFassungen } from '../lib/fassung-chain'
 import {
   FolderBreadcrumbRow,
@@ -32,7 +38,10 @@ import {
   FolderCardSkeleton,
   FolderRow,
   FolderRowSkeleton,
+  FOLDER_ROWS_ON_PHONE,
+  type DropFilesInFolder,
 } from './folder-navigation'
+import type { FileDropAim } from '../hooks/use-document-drag'
 import { AssignmentFaces } from './assignment-faces'
 
 /** Finder-style drill-down wiring — see `folder-navigation.tsx`. */
@@ -55,6 +64,12 @@ export interface FolderNavigation {
    * project's folders only: the Archiv's are governed by who manages it.
    */
   onEditFolderAccess?: (folderId: string) => void
+  /**
+   * Open the folder's description (migration 0145): „Beschreibung …" in its
+   * menu and the edit on the line at the top of the folder. Absent for a
+   * reader who may not write the shelf.
+   */
+  onDescribeFolder?: (folderId: string) => void
   /**
    * What the reader may do at the project root (ADR-0088): `read` hides the
    * root's upload and new-folder affordances. Absent reads as `write`; each
@@ -109,6 +124,14 @@ interface FileBrowserPaneProps {
    * folder drag off entirely, for the same reason as the document drag.
    */
   onDropFolderInFolder?: (draggedFolderId: string, parentId: string | null) => void
+  /**
+   * Files from the desktop released on a folder tile or a way up (a breadcrumb
+   * segment, „Zurück") go into THAT folder. Absent leaves every file drop to the
+   * surface around the pane, which files it in the folder on screen.
+   */
+  onDropFilesInFolder?: DropFilesInFolder
+  /** Told which folder desktop files would land in while they hover a target, for the overlay to name it. */
+  onFileAim?: (aim: FileDropAim | null) => void
   /** Upload control rendered inside the first-run empty state. */
   uploadControl?: ReactNode
   /** Dashed upload card rendered as the last tile of the grid (project corpus). */
@@ -168,10 +191,110 @@ interface FileBrowserPaneProps {
    * A slice of the subtree the brief opened — every failed document under this
    * folder, every Grundriss — drawn flat in place of the level, with the way
    * back. A folder's documents are spread over its subfolders; walking each to
-   * find them is the chore the brief exists to remove.
+   * find them is the chore the brief exists to remove. `loading` while the
+   * documents it is drawn from are still being read (ADR-0102).
    */
-  slice?: { files: readonly FileItem[]; label: string; onClear: () => void }
+  slice?: { files: readonly FileItem[]; label: string; onClear: () => void; loading?: boolean }
+  /**
+   * The level is read page by page (ADR-0102): the end of the grid or list
+   * reads the next page when the reader reaches it. Absent: everything is here.
+   */
+  paging?: { hasMore: boolean; loading: boolean; failed: boolean; onLoadMore: () => void }
+  /**
+   * What every folder tile shows, counted by the server for the whole shelf
+   * (the shelf summary, ADR-0102). Absent: folded from `searchFiles ?? files`,
+   * which is the corpus only when the caller holds the whole shelf.
+   */
+  folderStats?: { counts: ReadonlyMap<string, number>; tallies: ReadonlyMap<string, KnowledgeTally> }
+  /**
+   * Whether the shelf holds no document at all, when the caller knows better
+   * than the rows it handed over (a paged level, a search's results). Absent:
+   * `searchFiles ?? files` is empty.
+   */
+  shelfEmpty?: boolean
+  /**
+   * The search matches file names only (a paged level asks the server, which
+   * reads names; the content is the semantic search's). The empty result then
+   * says so rather than suggesting a tag or a description.
+   */
+  searchMatchesNamesOnly?: boolean
+  /**
+   * Picking several documents (`useDocumentSelection`, owned by the caller,
+   * who also owns what the picks are for). While `active`, a press on a card
+   * or row toggles it, the ⋯ and the drag step aside, and ranked semantic hits
+   * stay as they are: a result set is read, not filed.
+   */
+  selection?: FileBrowserSelection
 }
+
+export interface FileBrowserSelection {
+  active: boolean
+  selectedIds: ReadonlySet<string>
+  onToggle: (documentId: string) => void
+  /** „Auswählen" in the path row. Absent where nothing can be done to a selection. */
+  onStart?: () => void
+}
+
+interface FileTileProps {
+  file: FileItem
+  isSelected: boolean
+  onSelectFile: (id: string | null) => void
+  locale: string
+  match?: FileCardProps['match']
+  showAssignment: boolean
+  cardExtras?: (file: FileItem) => CardExtras
+  renderActions?: (file: FileItem) => ReactNode
+  wrapFile?: (file: FileItem, node: ReactNode) => ReactNode
+  draggable: boolean
+  /** Selection mode: the card is a toggle, `checked` says whether it is picked. */
+  selecting: boolean
+  checked: boolean
+  onToggle: (documentId: string) => void
+}
+
+/**
+ * One cell of the grid: the card and its menu.
+ *
+ * Memoised, and handed only stable functions by the workspace, so a pane that
+ * re-renders (a poll patched one row, the reader typed, the preview opened
+ * another file) re-renders the cells whose document or selection changed and
+ * leaves the other few thousand alone.
+ */
+const FileTile = memo(function FileTile({
+  file,
+  isSelected,
+  onSelectFile,
+  locale,
+  match,
+  showAssignment,
+  cardExtras,
+  renderActions,
+  wrapFile,
+  draggable,
+  selecting,
+  checked,
+  onToggle,
+}: FileTileProps): ReactNode {
+  const onSelect = useCallback(
+    () => (selecting ? onToggle(file.id) : onSelectFile(file.id)),
+    [selecting, onToggle, onSelectFile, file.id]
+  )
+  const card = (
+    <FileCard
+      file={file}
+      isSelected={isSelected}
+      onSelect={onSelect}
+      locale={locale}
+      match={match}
+      footerLead={showAssignment ? <AssignmentFaces assignees={file.assignees} /> : undefined}
+      {...cardExtras?.(file)}
+      actions={renderActions?.(file)}
+      draggable={draggable}
+      selection={selecting ? { checked } : undefined}
+    />
+  )
+  return wrapFile ? wrapFile(file, card) : card
+})
 
 /** The names a document's older Fassungen are stored under: what a search for them should find the document by. */
 function olderFassungNames(file: FileItem): string[] {
@@ -196,6 +319,8 @@ export function FileBrowserPane({
   filterEmptyNotice,
   onDropDocumentInFolder,
   onDropFolderInFolder,
+  onDropFilesInFolder,
+  onFileAim,
   renderActions,
   cardExtras,
   wrapFile,
@@ -207,15 +332,25 @@ export function FileBrowserPane({
   onSortChange,
   brief,
   slice,
+  paging,
+  folderStats,
+  shelfEmpty,
+  searchMatchesNamesOnly = false,
+  selection,
 }: FileBrowserPaneProps) {
   const t = useTranslations('files')
   const { locale } = useLocale()
-  const { query, semantic } = search
+  const { semantic } = search
+  // The field answers every keystroke; the filter over the whole corpus, and
+  // everything drawn from it, follows a beat behind and is dropped for a newer
+  // keystroke. Typing stays immediate at five thousand documents.
+  const query = useDeferredValue(search.query)
 
   // The level, ordered. The list view re-applies the identical sort to the rows
   // it is handed — a no-op, and cheaper than teaching every branch below which
   // of the two views it is about to render into.
   const orderedFiles = useMemo(() => sortFiles(files, sort, locale), [files, sort, locale])
+  const levelDocumentIds = useMemo(() => files.map((file) => file.id), [files])
   const orderedSlice = useMemo(() => (slice ? sortFiles(slice.files, sort, locale) : []), [slice, sort, locale])
 
   // Client-side filter: name, plus AI tags, topics and summary when the backend
@@ -244,9 +379,17 @@ export function FileBrowserPane({
   // A level the reader may only read offers no upload and no new folder
   // (ADR-0088); a notice says why. The server refuses either way.
   const writableHere = mayWriteAt(folderNav, currentFolderId)
+  /**
+   * Whether a document card lifts. Moving it out is a write where it is
+   * (ADR-0088): in a read-only level the server would refuse it. And not while
+   * a search is in force: the folders and the path, every place it could be
+   * dropped, are hidden then, so a card that lifted had nowhere to go.
+   */
+  const liftable = Boolean(onDropDocumentInFolder) && writableHere && query.trim() === '' && !semantic.active
   const [createFolderIn, setCreateFolderIn] = useState<string | null | undefined>(undefined)
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
 
+  const touch = useCoarsePointer()
   const listingEntries = useMemo(
     () =>
       listingActionEntries({
@@ -268,7 +411,9 @@ export function FileBrowserPane({
             ? () => setCreateFolderIn(currentFolderId)
             : undefined,
         onUploadFiles: writableHere ? onPickFiles : undefined,
-        onUploadFolder: writableHere ? onPickFolder : undefined,
+        // iOS Safari cannot pick a folder: the entry would open a plain file
+        // picker, so a finger is not offered it.
+        onUploadFolder: writableHere && !touch ? onPickFolder : undefined,
         onViewChange,
         onSortChange,
       }),
@@ -283,29 +428,33 @@ export function FileBrowserPane({
       writableHere,
       onPickFiles,
       onPickFolder,
+      touch,
       onViewChange,
       onSortChange,
     ],
   )
 
-  const fileCard = (file: FileItem, extra: { match?: Parameters<typeof FileCard>[0]['match'] } = {}) => {
-    const card = (
-      <FileCard
-        file={file}
-        isSelected={selectedFileId === file.id}
-        onSelect={() => onSelectFile(file.id)}
-        locale={locale}
-        match={extra.match}
-        footerLead={
-          showAssignment ? <AssignmentFaces assignees={file.assignees} /> : undefined
-        }
-        {...cardExtras?.(file)}
-        actions={renderActions?.(file)}
-        draggable={Boolean(onDropDocumentInFolder)}
-      />
-    )
-    return wrapFile ? wrapFile(file, card) : card
-  }
+  const picking = selection?.active === true
+  const toggleSelected = selection?.onToggle ?? noToggle
+  const moveInSheet = useMoveInSheet()
+
+  const fileCard = (file: FileItem, extra: { match?: FileCardProps['match'] } = {}) => (
+    <FileTile
+      file={file}
+      isSelected={selectedFileId === file.id}
+      onSelectFile={onSelectFile}
+      locale={locale}
+      match={extra.match}
+      showAssignment={showAssignment}
+      cardExtras={cardExtras}
+      renderActions={renderActions}
+      wrapFile={wrapFile}
+      draggable={liftable}
+      selecting={picking && !extra.match}
+      checked={selection?.selectedIds.has(file.id) === true}
+      onToggle={toggleSelected}
+    />
+  )
 
   const folderTile = (folder: FolderItem, asRow: boolean) => {
     const props = {
@@ -319,6 +468,8 @@ export function FileBrowserPane({
       onDropDocument: onDropDocumentInFolder,
       onDropFolder: onDropFolderInFolder,
       canAcceptFolder,
+      onDropFiles: onDropFilesInFolder,
+      onFileAim,
       actions: folderNav ? (folderNav.readOnly ? <Fragment /> : <FolderActionsTrigger />) : undefined,
       editing: editingFolderId === folder.id,
       onEditingChange: (next: boolean) => setEditingFolderId(next ? folder.id : null),
@@ -330,10 +481,15 @@ export function FileBrowserPane({
       <FolderObjectMenu
         folder={folder}
         folders={folderNav.folders}
-        canAcceptMove={(target) => canAcceptFolder(folder.id, target)}
+        canAcceptMove={(target) => canMoveFolderTo(folder.id, target)}
         onOpen={() => folderNav.onNavigate(folder.id)}
         onNewInside={() => setCreateFolderIn(folder.id)}
         onRename={() => setEditingFolderId(folder.id)}
+        onDescribe={
+          folderNav.onDescribeFolder && folder.access !== 'read'
+            ? () => folderNav.onDescribeFolder?.(folder.id)
+            : undefined
+        }
         onMove={
           onDropFolderInFolder
             ? (parentId) => void onDropFolderInFolder(folder.id, parentId)
@@ -344,6 +500,7 @@ export function FileBrowserPane({
         }
         onDelete={() => void folderNav.onDeleteFolder(folder.id)}
         readOnly={folder.access === 'read'}
+        moveInSheet={moveInSheet}
       >
         {tile}
       </FolderObjectMenu>
@@ -393,8 +550,6 @@ export function FileBrowserPane({
   const canAcceptFolder = useCallback(
     (draggedId: string, targetId: string | null): boolean => {
       if (draggedId === targetId) return false
-      // A move is a write into the target (ADR-0088): a read-only one never lights up.
-      if (!mayWriteAt(folderNav, targetId)) return false
       const all = folderNav?.folders ?? []
       const dragged = all.find((folder) => folder.id === draggedId)
       if (!dragged) return false
@@ -409,6 +564,15 @@ export function FileBrowserPane({
       return true
     },
     [folderNav]
+  )
+  /**
+   * What the menu's „Verschieben" may pick: where it may go, and where the
+   * reader may write (ADR-0088). A drag shows the second as a red, refusing
+   * target instead (the target's `refusal`), so the reader learns why.
+   */
+  const canMoveFolderTo = useCallback(
+    (draggedId: string, targetId: string | null) => canAcceptFolder(draggedId, targetId) && mayWriteAt(folderNav, targetId),
+    [canAcceptFolder, folderNav]
   )
 
   /** The folders directly inside the current level — the drill-down tiles. */
@@ -427,7 +591,13 @@ export function FileBrowserPane({
    * the folder brief so a tile and the brief above it cannot disagree about
    * the same folder; the item count is direct children only and needs no walk.
    */
-  const folderAggregates = useMemo(() => {
+  const folderAggregates = useMemo((): {
+    counts: ReadonlyMap<string, number>
+    tallies: ReadonlyMap<string, KnowledgeTally>
+  } => {
+    // The server counted the whole shelf (ADR-0102): the rows on screen are
+    // one level's first pages and would undercount every folder.
+    if (folderStats) return folderStats
     // One entry per document, like the cards below the tiles: a folder holding
     // Index A, B and C of one drawing counts one item unless older Fassungen
     // are asked for (ADR-0099).
@@ -440,7 +610,7 @@ export function FileBrowserPane({
     for (const file of corpus) bump(file.folderId)
     for (const folder of allFolders) bump(folder.parentId)
     return { counts, tallies: subtreeTallies(corpus, allFolders) }
-  }, [files, searchFiles, folderNav?.folders, showOlderFassungen])
+  }, [folderStats, files, searchFiles, folderNav?.folders, showOlderFassungen])
 
   /** Documents + subfolders directly inside `folderId`, for the count line. */
   const folderItemCount = (folderId: string): number => folderAggregates.counts.get(folderId) ?? 0
@@ -483,7 +653,7 @@ export function FileBrowserPane({
   // First-run empty state — nothing anywhere: no documents, no folders. An
   // EMPTY FOLDER is not this case; it keeps the breadcrumb so the reader can
   // walk back out or create something where they stand.
-  const corpusEmpty = (searchFiles ?? files).length === 0
+  const corpusEmpty = shelfEmpty ?? (searchFiles ?? files).length === 0
   if (corpusEmpty && (folderNav?.folders ?? []).length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-8">
@@ -498,10 +668,29 @@ export function FileBrowserPane({
   }
 
   const searching = query.trim() !== ''
-  const levelEmpty = files.length === 0 && childFolders.length === 0
+  const currentFolder =
+    folderNav && currentFolderId ? (folderNav.folders.find((folder) => folder.id === currentFolderId) ?? null) : null
+  const levelEmpty = files.length === 0 && childFolders.length === 0 && !paging?.hasMore
+
+  // The end of a paged level or search: the next page when the reader gets there.
+  const pagingFooter = paging ? (
+    <LoadMore
+      hasMore={paging.hasMore}
+      loading={paging.loading}
+      failed={paging.failed}
+      onLoadMore={paging.onLoadMore}
+      loadMoreLabel={t('browser.loadMore')}
+      loadingLabel={t('browser.loadingMore')}
+      failedLabel={t('browser.loadMoreFailed')}
+    />
+  ) : null
 
   return (
-    <div className="flex h-full flex-col">
+    // `phone:h-auto phone:min-h-full`: the breadcrumb row pins to the top of the
+    // scroll container on a phone, and a sticky box only sticks inside its
+    // parent. At `h-full` the parent is exactly one screen tall and the row
+    // would let go after one screenful.
+    <div className="flex h-full flex-col phone:h-auto phone:min-h-full">
       {/* No banner over the results. It restated in a tinted strip what the
           listing below it already shows — how many hits, for which query —
           and it moved the whole listing down a row the moment a search ran.
@@ -523,14 +712,46 @@ export function FileBrowserPane({
           onDropDocument={onDropDocumentInFolder}
           onDropFolder={onDropFolderInFolder}
           canAcceptFolder={canAcceptFolder}
+          onDropFiles={onDropFilesInFolder}
+          onFileAim={onFileAim}
+          mayWriteAt={(folderId) => mayWriteAt(folderNav, folderId)}
           readOnly={!writableHere}
-        />
+        >
+          {selection?.onStart && !picking && orderedFiles.length > 0 && writableHere && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={selection.onStart}
+              data-testid="selection-start"
+            >
+              <CheckSquare className="size-4" aria-hidden />
+              <span className="phone:sr-only">{t('selection.start')}</span>
+            </Button>
+          )}
+        </FolderBreadcrumbRow>
       )}
 
       {/* What Piloti knows about the level's whole subtree. Hidden while a
           query runs for the same reason the breadcrumb is: the query is the
           context then, and its results span the corpus. */}
-      {brief && !semantic.active && !searching && <div className={`${CONTENT_MAX} px-4 pt-4`}>{brief}</div>}
+      {currentFolder && !semantic.active && !searching && (
+        <div className={`${CONTENT_MAX} px-4 pt-3`}>
+          <FolderDescriptionLine
+            folder={currentFolder}
+            canEdit={Boolean(folderNav?.onDescribeFolder) && writableHere}
+            onEdit={() => folderNav?.onDescribeFolder?.(currentFolder.id)}
+          />
+        </div>
+      )}
+      {brief && !semantic.active && !searching && <div className={`${CONTENT_MAX} px-4 pt-4 phone:pt-2`}>{brief}</div>}
+      {/* Piloti's filing suggestions for the documents of this level, one line
+          per target folder, when one folder would collect two or more: the
+          decision that moves several files, made where they are all in view. */}
+      {!semantic.active && !searching && !slice && (
+        <FilingViewBar documentIds={levelDocumentIds} className={`${CONTENT_MAX} px-4 pt-4`} />
+      )}
 
       <ActionMenu mode="context" entries={listingEntries}>
       {semantic.active ? (
@@ -632,13 +853,13 @@ export function FileBrowserPane({
       ) : searching ? (
         /* Substring-filtered listing (instant, as you type) — over the CORPUS,
            so a match two folders down is reachable from anywhere. */
-        filteredFiles.length === 0 ? (
+        filteredFiles.length === 0 && !paging?.hasMore && !paging?.loading ? (
           <div className="p-8">
             <EmptyState
               variant="bare"
               icon={Search}
               title={t('browser.noMatch', { query })}
-              description={t('browser.noMatchDescription')}
+              description={t(searchMatchesNamesOnly ? 'browser.noMatchNamesDescription' : 'browser.noMatchDescription')}
               action={
                 <Button variant="outline" size="sm" onClick={search.clear}>
                   {t('browser.clearSearch')}
@@ -656,7 +877,9 @@ export function FileBrowserPane({
               wrapRow={wrapFileRow}
               sort={sort}
               onSortChange={onSortChange}
+              selection={selection}
             />
+            {pagingFooter}
           </div>
         ) : (
           <div className={`${CONTENT_MAX} p-4`}>
@@ -665,6 +888,7 @@ export function FileBrowserPane({
                 <Fragment key={file.id}>{fileCard(file)}</Fragment>
               ))}
             </FileGrid>
+            {pagingFooter}
           </div>
         )
       ) : slice ? (
@@ -677,7 +901,19 @@ export function FileBrowserPane({
               {t('brief.sliceClear')}
             </Button>
           </div>
-          {slice.files.length === 0 ? (
+          {slice.loading ? (
+            view === 'list' ? (
+              <FileListSkeleton />
+            ) : (
+              <div className="p-4">
+                <FileGrid>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <FileCardSkeleton key={i} />
+                  ))}
+                </FileGrid>
+              </div>
+            )
+          ) : slice.files.length === 0 ? (
             <div className="p-8">
               <EmptyState variant="bare" icon={FolderOpen} title={t('brief.sliceEmpty')} />
             </div>
@@ -690,6 +926,7 @@ export function FileBrowserPane({
               wrapRow={wrapFileRow}
               sort={sort}
               onSortChange={onSortChange}
+              selection={selection}
             />
           ) : (
             <div className="p-4">
@@ -723,10 +960,14 @@ export function FileBrowserPane({
           className={CONTENT_MAX}
         >
             {folderNav && childFolders.length > 0 && (
-              <div className="border-b px-2 py-2" role="group" aria-label={t('folders.heading')}>
-                {childFolders.map((folder) => (
-                  <Fragment key={folder.id}>{folderTile(folder, true)}</Fragment>
-                ))}
+              // The folders are one connected run, not a stack of pills: the
+              // `ItemList` rounds the outer corners and draws the hairlines.
+              <div className="px-2 py-2" role="group" aria-label={t('folders.heading')}>
+                <ItemList className="bg-muted/40">
+                  {childFolders.map((folder) => (
+                    <Fragment key={folder.id}>{folderTile(folder, true)}</Fragment>
+                  ))}
+                </ItemList>
               </div>
             )}
             {orderedFiles.length > 0 && (
@@ -738,9 +979,11 @@ export function FileBrowserPane({
                 wrapRow={wrapFileRow}
                 sort={sort}
                 onSortChange={onSortChange}
-                draggable={Boolean(onDropDocumentInFolder)}
+                draggable={liftable}
+                selection={selection}
               />
             )}
+            {pagingFooter}
         </motion.div>
       ) : (
         <motion.div
@@ -751,11 +994,7 @@ export function FileBrowserPane({
             {/* Section label — "Recently uploaded" at the corpus root, matching
                 the click-dummy. Hidden inside a folder (the breadcrumb already
                 names it) and while searching (the query is the context). */}
-            {currentFolderId === null && files.length > 0 && (
-              <SectionLabel as="p" className="mb-3 font-semibold tracking-[0.05em]">
-                {t('browser.recentlyUploaded')}
-              </SectionLabel>
-            )}
+
             {/*
               ONE ENTRANCE FOR THE LEVEL, NOT ONE PER TILE.
 
@@ -780,16 +1019,27 @@ export function FileBrowserPane({
               animation, is what a Finder-style drill actually looks like, and
               renders at full opacity when nothing has navigated.
             */}
-            <FileGrid>
+            <FileGrid className={FOLDER_ROWS_ON_PHONE}>
               {folderNav &&
                 childFolders.map((folder) => (
                   <Fragment key={folder.id}>{folderTile(folder, false)}</Fragment>
                 ))}
+              {/* The label heads the FILES: it sat above the folder tiles and
+                  promised recent uploads over a block of folders. A grid child
+                  spanning the row, so it falls between the two. */}
+              {currentFolderId === null && orderedFiles.length > 0 && (
+                <SectionLabel as="p" className="col-span-full mt-1 font-semibold tracking-[0.05em] first:mt-0">
+                  {t('browser.recentlyUploaded')}
+                </SectionLabel>
+              )}
               {orderedFiles.map((file) => (
                 <Fragment key={file.id}>{fileCard(file)}</Fragment>
               ))}
-              {writableHere && uploadCard}
+              {/* A drop zone is a mouse affordance: there is no dragging a file
+                  onto a phone, and the Hochladen button is under the thumb. */}
+              {writableHere && !picking && uploadCard && <div className="contents pointer-coarse:hidden">{uploadCard}</div>}
             </FileGrid>
+            {pagingFooter}
         </motion.div>
       )}
       </ActionMenu>
@@ -885,10 +1135,12 @@ export function FileBrowserSkeleton({
       {view === 'list' ? (
         <div className={CONTENT_MAX}>
           {folderCount > 0 && (
-            <div className="space-y-1 border-b px-2 py-2">
-              {Array.from({ length: folderCount }).map((_, index) => (
-                <FolderRowSkeleton key={index} />
-              ))}
+            <div className="px-2 py-2">
+              <ItemList className="bg-muted/40">
+                {Array.from({ length: folderCount }).map((_, index) => (
+                  <FolderRowSkeleton key={index} />
+                ))}
+              </ItemList>
             </div>
           )}
           <FileListSkeleton rows={files} />
@@ -896,7 +1148,7 @@ export function FileBrowserSkeleton({
       ) : (
         <div className={`${CONTENT_MAX} p-4`}>
           <Skeleton className="mb-3 h-3 w-36" />
-          <FileGrid>
+          <FileGrid className={FOLDER_ROWS_ON_PHONE}>
             {Array.from({ length: folderCount }).map((_, index) => (
               <FolderCardSkeleton key={`folder-${index}`} />
             ))}
@@ -918,3 +1170,5 @@ export function FileBrowserSkeleton({
  * content centres inside the toolbars, which keep spanning the full width.
  */
 const CONTENT_MAX = 'mx-auto w-full max-w-[1200px]'
+
+const noToggle = (): void => undefined

@@ -265,7 +265,7 @@ What this buys, none of it as a feature to build later:
 **Reads are consistent with the node store, not the index.** An agent must be
 able to `fs_read` what it just wrote, in the same turn, without waiting on
 chunking, VLM enrichment or embedding. Retrieval catches up asynchronously
-under the existing `pending → processing → processed | error` status, and
+under the existing `pending → processing → completed | failed` status, and
 `fs_search` says so when a node in scope is not yet searchable rather than
 silently returning less. Nothing else in this design is allowed to make the
 agent poll its own writes.

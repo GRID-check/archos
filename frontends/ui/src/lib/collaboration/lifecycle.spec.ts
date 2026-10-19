@@ -135,6 +135,10 @@ vi.mock('@/lib/inbox/repository', () => ({
   deleteItemsForResource: vi.fn(),
   deleteOrphanedInboxItems: vi.fn(),
   listInboxItems: vi.fn(),
+  countInboxFilters: vi.fn(async () => ({ requests: 0, unread: 0 })),
+  markAnchorItemsRead: vi.fn(),
+  markInboxItemsUnread: vi.fn(),
+  unarchiveInboxItem: vi.fn(),
   markAllInboxItemsRead: vi.fn(),
   markInboxItemsRead: vi.fn(),
   markItemsInertForResource: vi.fn(),
@@ -700,8 +704,9 @@ describe('revoking a grant (matrix C14–C15, spec SH-13, IB-14)', () => {
     await inbox.markItemsInertForSubjectRow('conversation', CONVERSATION_ID, ANNA)
 
     expect(queries).toHaveLength(1)
-    expect(queries[0]!.sql).toMatch(/^update "inbox_items" set "payload" = \$1/)
-    expect(queries[0]!.params[0]).toBe('{}')
+    // …and the count with it: a row revived later counts only what revived it.
+    expect(queries[0]!.sql).toMatch(/^update "inbox_items" set "count" = \$1, "payload" = \$2/)
+    expect(queries[0]!.params.slice(0, 2)).toEqual([0, '{}'])
     expect(queries[0]!.sql).toContain('"inbox_items"."recipient_user_id" = ')
     expect(queries[0]!.sql).toContain('"inbox_items"."inert_at" is null')
   })

@@ -3,7 +3,13 @@ import { applyProjectProfilePatch, emptyProjectProfile } from './patch-engine'
 // evaluator from this module as a VALUE. A type import is erased at compile
 // time, so the two files reference each other without a runtime cycle.
 import type { DocumentRole } from './document-roles'
-import type { ProjectPrimitiveValue, ProjectProfile, ProjectProfilePatchOperation } from './types'
+import type {
+  ProjectAssumption,
+  ProjectFact,
+  ProjectPrimitiveValue,
+  ProjectProfile,
+  ProjectProfilePatchOperation,
+} from './types'
 
 // ---------------------------------------------------------------------------
 // Project-Wizard Baurecht Österreich — machine-readable content specification.
@@ -64,8 +70,11 @@ export interface ProjectIntakeOption {
  */
 export interface ProjectIntakeCondition {
   param: string
-  /** `lte` is numeric and only satisfied when a value exists AND its answer mode is not 'offen'. */
-  op: 'equals' | 'includes_any' | 'not_empty' | 'lte'
+  /**
+   * `lte` is numeric and only satisfied when a value exists AND its answer mode is not 'offen'.
+   * `excludes_any` holds when the answer holds none of the values, so an unanswered param holds it.
+   */
+  op: 'equals' | 'includes_any' | 'excludes_any' | 'not_empty' | 'lte'
   value?: string | string[] | number
 }
 
@@ -132,6 +141,18 @@ export interface ProjectIntakeQuestion {
    * here in phase 2 (e.g. `gebaeudeklasse`, `uvp`). Purely descriptive.
    */
   derives?: string
+  /**
+   * The documents (German kinds, as an Austrian office names them) where the
+   * value is usually stated: „Einreichplan (Schnitt)", „Baubeschreibung". The
+   * intake agent reads them first and a Rückfrage names them. Descriptive:
+   * nothing validates a document against it.
+   */
+  foundIn?: string[]
+  /**
+   * The derivation this value is an input of. Descriptive here; `lib/project-intake`
+   * reads it to know which gaps could change the Gebäudeklasse.
+   */
+  feeds?: 'gebaeudeklasse'
 }
 
 /** A per-use zone question set (module D `zone_definitions`). */
@@ -174,6 +195,28 @@ const NUTZUNGEN: ProjectIntakeOption[] = [
   { value: 'technik', label: 'Technik / Sonstiges' },
 ]
 
+/**
+ * Where a value is usually stated, by the document kinds of an Austrian
+ * planning office. One name per kind, so the agent and a Rückfrage say the
+ * same thing for the same document.
+ */
+const FOUND_IN = {
+  plankopf: 'Einreichplan (Plankopf)',
+  lageplanPlan: 'Lageplan',
+  lageplan: 'Einreichplan (Lageplan)',
+  grundriss: 'Einreichplan (Grundriss)',
+  schnitt: 'Einreichplan (Schnitt)',
+  ansicht: 'Einreichplan (Ansicht)',
+  baubeschreibung: 'Baubeschreibung',
+  bescheid: 'Bescheid',
+  grundbuch: 'Grundbuchauszug',
+  widmung: 'Flächenwidmungsplan',
+  bebauungsplan: 'Bebauungsplan (Plandokument)',
+  energieausweis: 'Energieausweis',
+  brandschutz: 'Brandschutzkonzept',
+  statik: 'Statik',
+} as const
+
 export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
   version: 5,
   stages: [
@@ -192,6 +235,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           required: true,
           placeholder: 'z. B. WHA Quellenstraße',
           writesTo: '/facts/project_name/value',
+          foundIn: [FOUND_IN.plankopf, FOUND_IN.baubeschreibung, FOUND_IN.bescheid],
         },
         {
           id: 'A2_adr',
@@ -202,6 +246,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'Straße, PLZ Ort',
           why: 'Aus der Gemeinde folgen örtliche Vorschriften wie Fernwärme-Anschlussgebiete oder Schutzzonen.',
           writesTo: '/facts/standort_adresse/value',
+          foundIn: [FOUND_IN.plankopf, FOUND_IN.lageplan, FOUND_IN.grundbuch, FOUND_IN.bescheid],
         },
         // Spec id A2_staat with AT/DE only. Kept as the shipped superset: the
         // storage key `country` and its token set are load-bearing (mirrored by
@@ -224,6 +269,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'other', label: 'Anderes Land' },
           ],
           writesTo: '/facts/country/value',
+          foundIn: [FOUND_IN.plankopf, FOUND_IN.baubeschreibung],
         },
         {
           id: 'A2_land',
@@ -231,7 +277,10 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Bundesland',
           type: 'single_select',
           required: true,
-          conditions: [{ param: 'A2_country', op: 'equals', value: 'at' }],
+          // Asked unless another country was chosen: Piloti is Austria's, and a
+          // reading that finds „Bundesland: Wien“ before any document names the
+          // country must still be asked for it. Answering it derives `country`.
+          conditions: [{ param: 'A2_country', op: 'excludes_any', value: ['de', 'ch', 'other'] }],
           why: 'Bestimmt, welche landesspezifischen Rechtstexte für den Standort herangezogen werden.',
           options: [
             { value: 'wien', label: 'Wien' },
@@ -246,6 +295,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'ausserhalb_oesterreichs', label: 'Außerhalb Österreichs' },
           ],
           writesTo: '/facts/bundesland/value',
+          foundIn: [FOUND_IN.plankopf, FOUND_IN.bescheid, FOUND_IN.baubeschreibung],
         },
         {
           id: 'standort_details',
@@ -273,6 +323,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'bestand_betrieb', label: 'Bestand & Betrieb' },
           ],
           writesTo: '/facts/projektphase/value',
+          foundIn: [FOUND_IN.plankopf, FOUND_IN.baubeschreibung, FOUND_IN.bescheid],
         },
         {
           id: 'A5',
@@ -291,6 +342,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'aussenanlagen', label: 'Außenanlagen' },
           ],
           writesTo: '/facts/vorhabensart/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.bescheid, FOUND_IN.plankopf],
         },
       ],
     },
@@ -320,6 +372,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'offen', label: 'noch offen' },
           ],
           writesTo: '/facts/flaechenwidmung/value',
+          foundIn: [FOUND_IN.widmung, FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
         },
         {
           // v1.0's B1_orig, now unconditionally visible: the original wording
@@ -331,6 +384,12 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           placeholder: 'z. B. W II g 12m – oder frei beschreiben',
           writesTo: '/facts/flaechenwidmung_orig/value',
+          foundIn: [
+            FOUND_IN.widmung,
+            FOUND_IN.bebauungsplan,
+            FOUND_IN.bescheid,
+            FOUND_IN.baubeschreibung,
+          ],
         },
         {
           id: 'B2',
@@ -338,6 +397,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Liegt ein Bebauungsplan vor?',
           type: 'yes_no_open',
           writesTo: '/facts/bebauungsplan/value',
+          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid, FOUND_IN.baubeschreibung],
         },
         {
           // Spec: unconditional `upload` for B-Plan OR FWP. Ours binds the
@@ -362,6 +422,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Höhenvorgaben der Landes-Bauordnung; Grundlage der Zulässigkeitsprüfung des Entwurfs.',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/max_gebaeudehoehe/value',
+          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
         },
         {
           id: 'B3_weise',
@@ -376,6 +437,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'noch_offen', label: 'noch offen' },
           ],
           writesTo: '/facts/bebauungsweise/value',
+          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
         },
         {
           id: 'B3_dichte',
@@ -385,6 +447,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. 1.5',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/bebauungsdichte/value',
+          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
         },
         {
           id: 'B3_flucht',
@@ -393,6 +456,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           kernset: true,
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/baufluchtlinien/value',
+          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.lageplanPlan, FOUND_IN.bescheid],
         },
         {
           // Absorbs v1.0's A8 (Schutzzone / Altstadterhaltung) — part of the
@@ -405,6 +469,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. Schutzzone, Dachvorschriften, Begrünungspflicht',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/bebauungsplan_besonderes/value',
+          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
         },
         {
           id: 'B3_stellplatz',
@@ -415,6 +480,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. 1 Stellplatz je Wohnung',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/stellplatzregulativ/value',
+          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
         },
         {
           // v1.0's B4 + B5 (Altlast) + B9 (Baumbestand) + B10 (Schutzgebiet)
@@ -518,6 +584,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'sonstig', label: 'sonstiges Bauwerk (Flugdach, Stützmauer, Werbeanlage …)' },
           ],
           writesTo: '/facts/bauwerkstyp/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.ansicht, FOUND_IN.bescheid],
+          feeds: 'gebaeudeklasse',
         },
         {
           id: 'C2',
@@ -530,6 +598,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'bestand', label: 'Bestandsgebäude' },
           ],
           writesTo: '/facts/errichtungsstatus/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.bescheid, FOUND_IN.grundriss],
         },
         // -------------------------------------------------- Bestandsblock
         // v1.0 asked these once per PROJECT (A6/A7/A9/A10); since v1.1 they
@@ -546,6 +615,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Das Alter hilft einzuordnen, welche Regeln damals galten und was heute Bestandsschutz genießt.',
           conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
           writesTo: '/facts/baujahr_bestand/value',
+          foundIn: [FOUND_IN.energieausweis, FOUND_IN.baubeschreibung, FOUND_IN.bescheid],
         },
         {
           id: 'CB2',
@@ -564,6 +634,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Denkmalschutz bringt ein eigenes Verfahren und teils Erleichterungen bei anderen Anforderungen mit sich.',
           conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
           writesTo: '/facts/denkmalschutz/value',
+          foundIn: [FOUND_IN.bescheid, FOUND_IN.baubeschreibung],
         },
         {
           id: 'CB4',
@@ -582,6 +653,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           ],
           conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
           writesTo: '/facts/bestand_massnahmen/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.grundriss, FOUND_IN.bescheid],
         },
         {
           id: 'CB5',
@@ -644,6 +716,13 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           hint: 'Immer den Zustand NACH Umsetzung aller Maßnahmen angeben – bei Aufstockung von drei auf fünf Geschoße also fünf.',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/geschosse_oberirdisch/value',
+          foundIn: [
+            FOUND_IN.schnitt,
+            FOUND_IN.ansicht,
+            FOUND_IN.grundriss,
+            FOUND_IN.baubeschreibung,
+          ],
+          feeds: 'gebaeudeklasse',
         },
         {
           id: 'C4',
@@ -651,6 +730,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/geschosse_unterirdisch/value',
+          foundIn: [FOUND_IN.schnitt, FOUND_IN.grundriss, FOUND_IN.baubeschreibung],
         },
         {
           id: 'C5',
@@ -659,9 +739,11 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           unit: 'm',
           why: 'Zentraler Wert für die Einstufung des Gebäudes — bei sehr hohen Gebäuden gelten eigene Hochhaus-Regeln.',
-          hint: 'Höhendifferenz zwischen der Fußbodenoberkante des höchstgelegenen Geschoßes mit Aufenthaltsräumen und dem tiefsten Punkt des angrenzenden Geländes.',
+          hint: 'Höhendifferenz zwischen der Fußbodenoberkante des höchstgelegenen oberirdischen Geschoßes und der an das Gebäude angrenzenden Geländeoberfläche nach Fertigstellung im Mittel.',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/fluchtniveau_m/value',
+          foundIn: [FOUND_IN.schnitt, FOUND_IN.brandschutz, FOUND_IN.baubeschreibung],
+          feeds: 'gebaeudeklasse',
         },
         {
           id: 'C6',
@@ -670,6 +752,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           unit: 'm²',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/bgf_oberirdisch/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.grundriss, FOUND_IN.energieausweis],
+          feeds: 'gebaeudeklasse',
         },
         {
           id: 'C7',
@@ -678,6 +762,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/nutzungseinheiten/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.grundriss, FOUND_IN.bescheid],
+          feeds: 'gebaeudeklasse',
         },
         {
           // v1.0's C7 with INVERTED polarity, so it writes a NEW key:
@@ -695,6 +781,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { param: 'C3', op: 'lte', value: 4 },
           ],
           writesTo: '/facts/einheiten_ueber_400/value',
+          foundIn: [FOUND_IN.grundriss, FOUND_IN.baubeschreibung, FOUND_IN.brandschutz],
+          feeds: 'gebaeudeklasse',
         },
         {
           id: 'C9',
@@ -707,6 +795,22 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'reihenhaus', label: 'Reihenhaus' },
           ],
           writesTo: '/facts/gebaeudestellung/value',
+          foundIn: [FOUND_IN.lageplanPlan, FOUND_IN.lageplan, FOUND_IN.baubeschreibung],
+          feeds: 'gebaeudeklasse',
+        },
+        {
+          id: 'C9_zugang',
+          label:
+            'An mindestens drei Seiten auf eigenem Grund oder von Verkehrsflächen für die Feuerwehr zugänglich?',
+          type: 'yes_no_open',
+          why: 'Unterscheidet bei freistehenden Gebäuden zwischen Gebäudeklasse 1 und 2 (OIB-Begriffsbestimmungen).',
+          conditions: [
+            { param: 'C1', op: 'equals', value: 'gebaeude' },
+            { param: 'C9', op: 'equals', value: 'freistehend' },
+          ],
+          writesTo: '/facts/zugang_drei_seiten/value',
+          feeds: 'gebaeudeklasse',
+          foundIn: [FOUND_IN.lageplanPlan, FOUND_IN.lageplan],
         },
         {
           // Multi-select since v1.1 (a building can combine structures); the
@@ -725,6 +829,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'offen', label: 'noch offen' },
           ],
           writesTo: '/facts/bauweise/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.statik, FOUND_IN.brandschutz],
         },
         {
           id: 'C10_text',
@@ -748,6 +853,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'unkonditioniert', label: 'unkonditioniert' },
           ],
           writesTo: '/facts/konditionierung/value',
+          foundIn: [FOUND_IN.energieausweis, FOUND_IN.baubeschreibung],
         },
         {
           id: 'C_GK_CONFIRM',
@@ -777,6 +883,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           hint: 'Mehrfachauswahl — je Nutzung folgen Kennzahlen.',
           options: NUTZUNGEN,
           writesTo: '/facts/nutzungen/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.grundriss, FOUND_IN.bescheid],
+          feeds: 'gebaeudeklasse',
         },
         {
           id: 'DX1',
@@ -785,6 +893,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           why: 'Öffentlich zugängliche Bereiche bringen typischerweise Barrierefreiheitsanforderungen mit sich.',
           writesTo: '/facts/publikumsverkehr/value',
+          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.bescheid],
         },
         {
           id: 'DX2',
@@ -1338,6 +1447,15 @@ export function evaluateIntakeConditions(
   return conditions.every((cond) => evaluateSingleCondition(cond, answers, instanceId))
 }
 
+function answerIncludesAny(
+  answer: ProjectPrimitiveValue | undefined,
+  value: ProjectIntakeCondition['value']
+): boolean {
+  const needles = Array.isArray(value) ? value : value !== undefined ? [String(value)] : []
+  if (Array.isArray(answer)) return answer.some((v) => needles.includes(String(v)))
+  return typeof answer === 'string' && needles.includes(answer)
+}
+
 function evaluateSingleCondition(
   cond: ProjectIntakeCondition,
   answers: Record<string, ProjectPrimitiveValue>,
@@ -1352,15 +1470,10 @@ function evaluateSingleCondition(
   switch (cond.op) {
     case 'not_empty':
       return isIntakeAnswerProvided(answer)
-    case 'includes_any': {
-      const needles = Array.isArray(cond.value)
-        ? cond.value
-        : cond.value !== undefined
-          ? [cond.value]
-          : []
-      if (Array.isArray(answer)) return answer.some((v) => needles.includes(String(v)))
-      return typeof answer === 'string' && needles.includes(answer)
-    }
+    case 'includes_any':
+      return answerIncludesAny(answer, cond.value)
+    case 'excludes_any':
+      return !answerIncludesAny(answer, cond.value)
     case 'lte': {
       // Only a PRESENT, non-'offen' value can satisfy a numeric bound: a
       // question gated on "höchstens 4 Geschoße" must not appear while the
@@ -1740,6 +1853,49 @@ function emitStageForBauwerk(
   }
 }
 
+/** Two profile values are the same when they are equal; a multi-select's order is not part of the answer. */
+function sameProfileValue(a: ProjectPrimitiveValue, b: ProjectPrimitiveValue): boolean {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    const sortedB = [...b].sort()
+    return a.length === b.length && [...a].sort().every((item, index) => item === sortedB[index])
+  }
+  return a === b
+}
+
+/**
+ * What a rebuilt entry keeps of what the previous profile knew about its key
+ * (ADR-0111): the `evidence` when the value is unchanged, so confirming a
+ * suggestion in the wizard keeps the page it was found on, and the
+ * `alternatives` a reading found, except one that equals the value now chosen.
+ * The wizard builds values without either, so without this a save would erase
+ * both. A rebuilt estimate (`onboarding_default`) is the person's own figure
+ * and keeps no evidence, only the alternatives.
+ */
+function carryOverProvenance<Entry extends ProjectFact | ProjectAssumption>(
+  built: Record<string, Entry>,
+  previous: ProjectProfile,
+  options: { evidence: boolean }
+): Record<string, Entry> {
+  return Object.fromEntries(
+    Object.entries(built).map(([key, entry]) => {
+      const before = previous.facts[key] ?? previous.assumptions[key]
+      if (!before) return [key, entry]
+      const alternatives = before.alternatives?.filter(
+        (alternative) => !sameProfileValue(alternative.value, entry.value)
+      )
+      const carried: Entry = { ...entry }
+      if (
+        options.evidence &&
+        before.evidence?.length &&
+        sameProfileValue(before.value, entry.value)
+      )
+        carried.evidence = before.evidence
+      if (alternatives?.length) carried.alternatives = alternatives
+      return [key, carried]
+    })
+  )
+}
+
 /**
  * Merge a freshly wizard-built profile over the previously stored one so a
  * whole-profile PUT can never destroy knowledge the wizard doesn't own
@@ -1768,7 +1924,7 @@ export function mergeIntakeProfile(
 
   const facts = {
     ...Object.fromEntries(Object.entries(previous.facts).filter(([key]) => !isIntakeFact(key))),
-    ...built.facts,
+    ...carryOverProvenance(built.facts, previous, { evidence: true }),
   }
   const goals = {
     ...Object.fromEntries(Object.entries(previous.goals).filter(([key]) => !isIntakeGoal(key))),
@@ -1777,10 +1933,17 @@ export function mergeIntakeProfile(
   const assumptions = {
     ...Object.fromEntries(
       Object.entries(previous.assumptions).filter(
-        ([key]) => !isIntakeFact(key) && !isIntakeGoal(key)
+        ([key, assumption]) =>
+          // A reading's suggestion is not the wizard's to delete: it stays unless
+          // this save answers the key (a fact) or estimates it (an assumption).
+          // Everything else under an intake key is the wizard's own and is rebuilt.
+          (!isIntakeFact(key) && !isIntakeGoal(key)) ||
+          (assumption.source === 'agent_suggested' &&
+            !(key in built.facts) &&
+            !(key in built.assumptions))
       )
     ),
-    ...built.assumptions,
+    ...carryOverProvenance(built.assumptions, previous, { evidence: false }),
   }
 
   const unknowns = [...built.unknowns]

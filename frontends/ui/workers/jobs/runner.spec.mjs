@@ -36,6 +36,7 @@ function fakeQueue(overrides = {}) {
     complete: vi.fn().mockResolvedValue(true),
     release: vi.fn().mockResolvedValue(true),
     saveProgress: vi.fn().mockResolvedValue(true),
+    defer: vi.fn().mockResolvedValue(true),
     fail: vi.fn().mockResolvedValue('queued'),
     reapExhausted: vi.fn().mockResolvedValue([]),
     purgeDead: vi.fn().mockResolvedValue(0),
@@ -72,6 +73,21 @@ describe('a claimed job', () => {
     expect(queue.fail).not.toHaveBeenCalled()
     expect(queue.release).not.toHaveBeenCalled()
     expect(runner.inFlight()).toBe(0)
+  })
+
+  it('gives a waiting job back without spending an attempt, with its progress, not before the time it named', async () => {
+    const queue = fakeQueue()
+    const notBefore = new Date('2026-10-13T10:00:30Z')
+    const { runner, runSlice } = runnerOver(queue, [{ kind: 'defer', payload: { waits: 1 }, notBefore }])
+
+    await runner.runClaim(CLAIM, 'w-0')
+
+    // One slice: a wake whose person's thread runs another turn asks again later, not now.
+    expect(runSlice).toHaveBeenCalledTimes(1)
+    expect(queue.defer).toHaveBeenCalledWith(expect.anything(), 'job-1', 'w-0', { waits: 1 }, notBefore)
+    expect(queue.fail).not.toHaveBeenCalled()
+    expect(queue.complete).not.toHaveBeenCalled()
+    expect(queue.saveProgress).not.toHaveBeenCalled()
   })
 
   it('gives a long claim its slot back between slices, keeping its progress and its attempt', async () => {
@@ -313,6 +329,18 @@ describe('the slice request', () => {
   it('reads done: false as another slice to run, with the progress to save', async () => {
     const outcome = await sliceOver(respond(200, { done: false, payload: { cursor: 'p2' } }))(CLAIM, 'w-0')
     expect(outcome).toEqual({ kind: 'more', payload: { cursor: 'p2' } })
+  })
+
+  it('reads done: false with a notBefore as a job that waits until then', async () => {
+    const outcome = await sliceOver(
+      respond(200, { done: false, payload: { waits: 1 }, notBefore: '2026-10-13T10:00:30.000Z' })
+    )(CLAIM, 'w-0')
+    expect(outcome).toEqual({ kind: 'defer', payload: { waits: 1 }, notBefore: new Date('2026-10-13T10:00:30.000Z') })
+    // A date it cannot read is no wait.
+    expect(await sliceOver(respond(200, { done: false, payload: {}, notBefore: 'bald' }))(CLAIM, 'w-0')).toEqual({
+      kind: 'more',
+      payload: {},
+    })
   })
 
   it('reads a 409 as a lost claim', async () => {

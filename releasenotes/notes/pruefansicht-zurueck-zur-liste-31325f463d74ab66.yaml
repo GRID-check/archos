@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Closing an Anmerkung you opened from Offene Punkte or the Postfach takes
+    you back there, with your filters as you set them, instead of leaving you
+    in Dateien. Offene Punkte then shows the marks you closed as closed.

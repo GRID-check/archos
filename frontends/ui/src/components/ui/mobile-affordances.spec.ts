@@ -109,7 +109,9 @@ describe('a hover reveal always has a second way in', () => {
    *  - `pointer-coarse:opacity-100` — present where a finger drives the pointer,
    *    which is the escape `project-memory-panel` established; or
    *  - `md:opacity-0` — the mobile-first inversion, where the control is simply
-   *    visible below the breakpoint and only hides itself on a desktop.
+   *    visible below the breakpoint and only hides itself on a desktop. Only
+   *    half an escape: the rule below holds it to `pointer-coarse:opacity-100`
+   *    as well, for the touch tablet past `md`.
    *
    * `focus-visible:opacity-100` is NOT one of them: it answers for the keyboard,
    * and a touch device has neither hover nor a tab key.
@@ -129,6 +131,69 @@ describe('a hover reveal always has a second way in', () => {
     }
     expect(offenders).toEqual([])
   })
+
+  /**
+   * `md:opacity-0` is the mobile-first inversion, and on its own it is only half
+   * of one. It shows the control below `md` and hides it above, which assumes
+   * that everything past `md` has a hover to reveal it with. A touch TABLET is
+   * past `md` and has none (Tailwind's `group-hover` is itself behind
+   * `@media (hover: hover)`), so on an iPad the control was mounted, focusable
+   * and invisible: the file card's „…" menu, the folder row's actions, the
+   * sidebar's item actions. A phone on its side was the same until `md` learned
+   * to exclude it (`globals.css`).
+   */
+  it('never hides a control at rest on a screen that has no hover (a touch tablet past md)', () => {
+    const offenders: string[] = []
+    for (const file of SOURCE_FILES) {
+      for (const region of classRegions(readCode(file))) {
+        if (!/(?:^|[\s'"])md:opacity-0(?:[\s'"]|$)/.test(region)) continue
+        if (region.includes('pointer-coarse:opacity-100')) continue
+        offenders.push(`${relative(file)}: ${region.slice(0, 100).replace(/\s+/g, ' ')}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('no height is measured against the large viewport', () => {
+  /**
+   * `vh` on iOS Safari is the LARGE viewport: the height with the toolbars
+   * collapsed. While they show, `85vh` is taller than 85% of what is visible,
+   * so a dialog's footer or a list's last row sits under Safari's toolbar, and
+   * on a phone on its side (393px tall, ~330px visible) that is most of the
+   * screen. `dvh` follows the toolbars; `svh` is the stable small viewport, for
+   * a cap that must not move while the reader scrolls. `h-screen` is `100vh`.
+   *
+   * Absolute: no file is excused. The last seven (the cheatsheet, the lesson
+   * dialog, the source picker, the share body, the onboarding offset, the draft
+   * preview, the feedback screenshot) moved to `dvh`, and the onboarding offset
+   * to `svh`, a position that must not jump while the toolbars move.
+   */
+  const VH = /(?<![\w-])\d+(?:\.\d+)?vh\b|\b(?:min-h|max-h|h)-screen\b/g
+
+  // Previews (`app/dev`) are desk tooling, never on a phone.
+  const PRODUCT_FILES = SOURCE_FILES.filter(
+    (f) => !/\.(?:spec|test)\.tsx?$/.test(f) && !relative(f).startsWith('app/dev/')
+  )
+
+  const vhOffenders = (): Map<string, string[]> => {
+    const found = new Map<string, string[]>()
+    for (const file of PRODUCT_FILES) {
+      const hits = readCode(file).match(VH)
+      if (hits) found.set(relative(file), hits)
+    }
+    return found
+  }
+
+  it('sizes nothing in vh', () => {
+    expect([...vhOffenders()]).toEqual([])
+  })
+
+  it('holds the stylesheet to the same rule', () => {
+    for (const sheet of ['app/globals.css', 'styles/tokens.css']) {
+      expect(readFileSync(join(SRC, ...sheet.split('/')), 'utf8').match(VH), sheet).toBeNull()
+    }
+  })
 })
 
 describe('no text field invites the iOS zoom', () => {
@@ -141,7 +206,35 @@ describe('no text field invites the iOS zoom', () => {
    * `type="checkbox"`, `type="radio"`, and anything `sr-only`/`hidden`. A file
    * input's font size is the label's problem, not the keyboard's.
    */
-  const TYPED_TAG = /<(input|textarea)\b[\s\S]*?(?:\/>|>)/g
+  /**
+   * Every hand-written `<input>` / `<textarea>` opening tag, whole.
+   *
+   * A tag ends at the first `>` that is neither inside a `{…}` expression nor
+   * inside a quoted attribute. The regex this replaced stopped at the first `>`
+   * of any kind, and the first one in a field with a handler is the arrow of
+   * `onChange={(event) => …}`: everything after it, the className included,
+   * was never read. The thread's composer (`text-[13px]`, no floor) zoomed
+   * every iPhone that answered in a thread for exactly that reason.
+   */
+  const fieldTags = (source: string): string[] => {
+    const tags: string[] = []
+    for (const match of source.matchAll(/<(?:input|textarea)\b/g)) {
+      let depth = 0
+      let quote: string | null = null
+      let i = match.index + match[0].length
+      for (; i < source.length; i += 1) {
+        const c = source[i]
+        if (quote) {
+          if (c === quote) quote = null
+        } else if (c === '"' || c === "'" || c === '`') quote = c
+        else if (c === '{') depth += 1
+        else if (c === '}') depth -= 1
+        else if (c === '>' && depth === 0) break
+      }
+      tags.push(source.slice(match.index, i + 1))
+    }
+    return tags
+  }
   const EXEMPT_TYPE = /type=(?:"|')(?:file|range|checkbox|radio|hidden)(?:"|')|type=\{'(?:file|range)'\}/
   const VISUALLY_GONE = /className=(?:"|')(?:[^"']*\s)?(?:sr-only|hidden)(?:\s[^"']*)?(?:"|')/
 
@@ -150,11 +243,12 @@ describe('no text field invites the iOS zoom', () => {
     for (const file of SOURCE_FILES) {
       if (file.endsWith('.spec.tsx') || file.endsWith('.test.tsx')) continue
       const source = readCode(file)
-      for (const match of source.matchAll(TYPED_TAG)) {
-        const tag = match[0]
+      for (const tag of fieldTags(source)) {
         if (EXEMPT_TYPE.test(tag) || VISUALLY_GONE.test(tag)) continue
         // Under 16px…
-        if (!/\btext-(?:xs|sm|\[1[0-5](?:\.\d+)?px\])\b/.test(tag)) continue
+        // `(?![\w-])`, not `\b`: after `]` a word boundary needs a word
+        // character next, so `text-[13px] leading-5` never matched.
+        if (!/\btext-(?:xs|sm|\[1[0-5](?:\.\d+)?px\])(?![\w-])/.test(tag)) continue
         // …unless the field also raises itself back to 16px on a coarse pointer.
         if (/\bpointer-coarse:text-base\b/.test(tag)) continue
         offenders.push(`${relative(file)}: ${tag.slice(0, 90).replace(/\s+/g, ' ')}`)
@@ -177,12 +271,11 @@ describe('no text field invites the iOS zoom', () => {
    */
   it('never rebuilds the floor out of a viewport breakpoint', () => {
     const offenders: string[] = []
-    const BREAKPOINT_SHRINK = /\b(?:sm|md|lg|xl|2xl):text-(?:xs|sm|\[1[0-5](?:\.\d+)?px\])\b/g
+    const BREAKPOINT_SHRINK = /\b(?:sm|md|lg|xl|2xl):text-(?:xs|sm|\[1[0-5](?:\.\d+)?px\])(?![\w-])/g
     for (const file of SOURCE_FILES) {
       if (file.endsWith('.spec.tsx') || file.endsWith('.test.tsx')) continue
       const source = readCode(file)
-      for (const match of source.matchAll(TYPED_TAG)) {
-        const tag = match[0]
+      for (const tag of fieldTags(source)) {
         if (EXEMPT_TYPE.test(tag) || VISUALLY_GONE.test(tag)) continue
         for (const shrink of tag.match(BREAKPOINT_SHRINK) ?? []) {
           offenders.push(`${relative(file)}: ${shrink}`)
@@ -279,5 +372,99 @@ describe('the soft keyboard is told what the action key does', () => {
     const source = readCode(join(SRC, 'components', 'ui', 'search-field.tsx'))
     expect(source).toMatch(/autoCapitalize="off"/)
     expect(source).toMatch(/autoCorrect="off"/)
+  })
+})
+
+describe('every floating surface fits the screen it opens on', () => {
+  /**
+   * Radix measures the room between a menu's anchor and the screen edge and
+   * publishes it as `--radix-<primitive>-content-available-{width,height}`. A
+   * surface that ignores them is as big as its content: the Verschieben submenu
+   * (`overflow-hidden`, no height) listed every folder of the shelf off the
+   * bottom of the screen, unreachable, and a caller's desktop `w-96` popover ran
+   * off a 393px phone. The cap is the primitive's, so no caller has to know.
+   */
+  it.each([
+    ['dropdown-menu.tsx', 'dropdown-menu', 2],
+    ['context-menu.tsx', 'context-menu', 2],
+    ['select.tsx', 'select', 1],
+  ])('%s caps every menu, submenus included, to the room it has', (file, primitive, surfaces) => {
+    const source = readCode(join(SRC, 'components', 'ui', file))
+    for (const axis of ['height', 'width']) {
+      const cap = `max-${axis === 'height' ? 'h' : 'w'}-(--radix-${primitive}-content-available-${axis})`
+      expect(source.split(cap).length - 1, `${file}: ${cap}`).toBe(surfaces)
+    }
+  })
+
+  it.each([
+    ['popover.tsx', 'popover'],
+    ['tooltip.tsx', 'tooltip'],
+  ])('%s is never wider than the room it has', (file, primitive) => {
+    expect(readCode(join(SRC, 'components', 'ui', file))).toContain(
+      `max-w-(--radix-${primitive}-content-available-width)`
+    )
+  })
+})
+
+describe('a focus ring is for the keyboard', () => {
+  /**
+   * Controls draw their own ring at `/60` (`FOCUS_RING`), a soft halo under 3:1
+   * on paper. The global outline is what carries the keyboard indicator, so it
+   * must stay UNLAYERED: an unlayered rule beats `outline-none` on every
+   * control. In `@layer base` it once lost to `outline-none` everywhere and the
+   * indicator fell from about 7.9:1 to 2.3:1 (WCAG 2.4.11 asks 3:1).
+   *
+   * Two exceptions follow it, unlayered too: an overlay panel that holds the
+   * focus itself on open (a frame along the top of a phone sheet answers no
+   * question) and a cmdk field inside its own bordered row.
+   */
+  const css = blankComments(readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')) as string
+
+  /** `[start, end)` of every `@layer … { … }` block. */
+  const layers = (): Array<[number, number]> => {
+    const out: Array<[number, number]> = []
+    for (const match of css.matchAll(/@layer\s+[\w-]+\s*\{/g)) {
+      let depth = 0
+      for (let i = match.index + match[0].length - 1; i < css.length; i += 1) {
+        if (css[i] === '{') depth += 1
+        else if (css[i] === '}' && --depth === 0) {
+          out.push([match.index, i])
+          break
+        }
+      }
+    }
+    return out
+  }
+
+  it('keeps the global :focus-visible outline unlayered, so outline-none cannot drop it', () => {
+    const outline = /(^|\n):focus-visible\s*\{\s*outline:\s*2px solid var\(--ring\)/.exec(css)
+    expect(outline).not.toBeNull()
+    const at = outline?.index ?? -1
+    expect(layers().some(([start, end]) => at > start && at < end)).toBe(false)
+  })
+
+  it('draws no frame around an overlay panel that holds the focus itself, nor inside a cmdk field', () => {
+    expect(css).toMatch(
+      /:is\(\[role='dialog'\], \[role='alertdialog'\]\):focus-visible,\s*\[cmdk-input\]:focus-visible\s*\{\s*outline:\s*none/
+    )
+  })
+})
+
+describe('a dialog footer is pinned by the primitive, not by hand', () => {
+  /**
+   * `DialogContent` pins its `DialogFooter` on a phone, with the negative inset
+   * that a sticky box inside a padded scroller needs. Two dialogs had rolled
+   * their own before it did, and a hand-rolled `sticky bottom-0` rode up over
+   * the last line of the body by exactly the padding. A caller that pins its own
+   * footer opts out of every later fix to the primitive's.
+   */
+  it('no DialogFooter carries its own sticky', () => {
+    const offenders = SOURCE_FILES.filter((f) => !/\.(?:spec|test)\.tsx?$/.test(f))
+      .flatMap((file) =>
+        [...readCode(file).matchAll(/<DialogFooter\b[^>]*className=(?:"[^"]*"|\{[^}]*\})/g)]
+          .filter((match) => /(?<![\w-])sticky\b/.test(match[0]))
+          .map(() => relative(file))
+      )
+    expect(offenders).toEqual([])
   })
 })

@@ -65,3 +65,30 @@ export function formatMeasure(value: number | null, unit: string, locale: string
 export function formatMetresIn(metres: number, locale: string): string {
   return metres.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+
+/**
+ * How much of a download has arrived, in megabytes — "37 von 120 MB".
+ *
+ * Decimal megabytes (10^6), the unit a mobile contract and a file manager both
+ * count in; an architect weighing a 120 MB download against a data allowance
+ * must read the same number the carrier bills. One decimal under 10 MB so a
+ * small model does not read "0 von 1 MB", none above, where a tenth of a
+ * megabyte is noise.
+ *
+ * `total` of 0 means the transfer declared no length: only what has arrived is
+ * said, because a guessed total would be a progress bar lying about its end.
+ */
+export function formatDownloadProgress(
+  loadedBytes: number,
+  totalBytes: number,
+  locale: string,
+  of: (loaded: string, total: string) => string
+): string {
+  const megabytes = (bytes: number): string =>
+    (bytes / 1_000_000).toLocaleString(locale, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: bytes < 10_000_000 ? 1 : 0,
+    })
+  if (totalBytes <= 0) return `${megabytes(loadedBytes)} MB`
+  return of(megabytes(loadedBytes), `${megabytes(totalBytes)} MB`)
+}

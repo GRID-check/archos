@@ -1,5 +1,11 @@
 import { describe, test, expect } from 'vitest'
-import { mapBackendStatus, mapToDisplayStatus, normalizeFileName } from './utils'
+import {
+  mapBackendStatus,
+  mapToDisplayStatus,
+  mapUploadResponseStatus,
+  normalizeFileName,
+  trackedStatusOfJobFile,
+} from './utils'
 
 describe('utils', () => {
   describe('mapBackendStatus', () => {
@@ -43,6 +49,56 @@ describe('utils', () => {
 
     test('defaults unknown status to uploading', () => {
       expect(mapToDisplayStatus('unknown' as never)).toBe('uploading')
+    })
+
+    test('a held file is held, never an error and never a spinner', () => {
+      expect(mapToDisplayStatus('held')).toBe('held')
+    })
+
+    test('a stored file is neutral: the chat cannot answer from it', () => {
+      expect(mapToDisplayStatus('stored')).toBe('stored')
+    })
+  })
+
+  describe('trackedStatusOfJobFile', () => {
+    test('a failure carrying the content check verdict is held', () => {
+      expect(trackedStatusOfJobFile({ status: 'failed', error_message: 'quarantined:{"reasons":[]}' })).toBe('held')
+    })
+
+    test('a failure carrying the typed verdict is held, with no message at all (ADR-0113)', () => {
+      expect(
+        trackedStatusOfJobFile({ status: 'failed', error_message: null, quarantine: { reasons: [], checked: 'full' } })
+      ).toBe('held')
+    })
+
+    test('any other failure stays failed', () => {
+      expect(trackedStatusOfJobFile({ status: 'failed', error_message: 'interrupted: restart' })).toBe('failed')
+      expect(trackedStatusOfJobFile({ status: 'failed', error_message: null })).toBe('failed')
+    })
+
+    test('the prefix means nothing on a file that did not fail', () => {
+      expect(trackedStatusOfJobFile({ status: 'success', error_message: 'quarantined:{}' })).toBe('success')
+      expect(trackedStatusOfJobFile({ status: 'ingesting' })).toBe('ingesting')
+    })
+  })
+
+  describe('mapUploadResponseStatus', () => {
+    test('a stored, never-read document is stored, not success', () => {
+      expect(mapUploadResponseStatus('uploaded')).toBe('stored')
+    })
+
+    test('an unchanged upload is the live document, still success', () => {
+      expect(mapUploadResponseStatus('uploaded', true)).toBe('success')
+    })
+
+    test('a quarantined row is held', () => {
+      expect(mapUploadResponseStatus('quarantined')).toBe('held')
+    })
+
+    test('a dispatched document is being read, a failed one failed', () => {
+      expect(mapUploadResponseStatus('pending')).toBe('ingesting')
+      expect(mapUploadResponseStatus('processing')).toBe('ingesting')
+      expect(mapUploadResponseStatus('failed')).toBe('failed')
     })
   })
 

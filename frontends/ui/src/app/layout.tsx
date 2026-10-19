@@ -98,6 +98,13 @@ export const metadata: Metadata = {
   // icon.svg, apple-icon.png) and manifest.ts; all are rendered from
   // shared/brand/piloti-mark.svg. The app is behind sign-in: see robots.ts.
   robots: { index: false, follow: false },
+  // Added to the home screen, iOS runs the app standalone under this name. The
+  // status bar is `default`: dark glyphs on the warm paper, which `themeColor`
+  // above paints behind it. `black-translucent` would draw white glyphs over
+  // the paper, and the shell already clears the status bar itself
+  // (`env(safe-area-inset-top)` on every top band), so it would buy nothing.
+  appleWebApp: { capable: true, title: PRODUCT_NAME, statusBarStyle: 'default' },
+  applicationName: PRODUCT_NAME,
 }
 
 /**

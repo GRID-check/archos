@@ -83,8 +83,10 @@ on:
           Image tag to deploy. Leave empty for the triggering commit's own
           sha-<40-hex> tag. Set it to a PREVIOUS build's tag to roll the cluster
           back without reverting code — the rollout is gated exactly like a
-          forward deploy (surge, soak, drain), so a rollback is just a deploy of
-          an older image.
+          forward deploy (surge, soak, drain). It deploys the CURRENT program
+          with the older images, so it is refused for a backend built for
+          another vector store than the program runs (vector-store-floor.sh):
+          to go back across the Chroma-to-Qdrant change, revert it on develop.
         required: false
         type: string
       target:
@@ -253,21 +255,22 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: deploy/pulumi/package-lock.json
+
+      # Bun installs; Node runs the Pulumi program (Pulumi.yaml `packagemanager: bun`, ADR-0103).
+      - uses: ./.github/actions/setup-bun
 
       - name: Install program deps
         working-directory: deploy/pulumi
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       # The CrossGuard policy pack is a separate Node program with its own deps.
       - name: Install policy-pack deps
         working-directory: deploy/pulumi/policy
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Typecheck (cluster-free gate)
         working-directory: deploy/pulumi
-        run: npx tsc --noEmit && (cd policy && npx tsc --noEmit)
+        run: bun run typecheck && bun run --cwd policy typecheck
 
       # Plan + two independent gates on the SAME plan `pulumi up` will apply
       # (the imageTag override is applied BEFORE previewing):
@@ -279,7 +282,7 @@ jobs:
       #      the preview here, before anything touches the cluster.
       # The CLI release of the SDK the lockfile pins, not `latest`: Pulumi
       # releases the two in lockstep, so the CLI moves only in a reviewed
-      # package-lock.json diff (Dependabot's, usually), and staging and prod run
+      # bun.lock diff (Dependabot's, usually), and staging and prod run
       # the same one. `latest` changed the CLI under a deploy nobody changed.
       - name: Install Pulumi
         working-directory: deploy/pulumi
@@ -297,7 +300,9 @@ jobs:
       # newest commit on develop's first-parent line whose tag GHCR has.
       # Then a guard: a resolved commit older than the one the stack last
       # deployed (stack output `deployedImages`) fails the job, unless it is an
-      # operator rollback. deploy/pulumi/scripts/resolve-image-refs.{sh,spec.ts}.
+      # operator rollback. Below that, a floor even a rollback does not pass: a
+      # backend built for another vector store than this program runs
+      # (vector-store-floor.sh). deploy/pulumi/scripts/resolve-image-refs.{sh,spec.ts}.
       - name: Resolve per-service image refs
         working-directory: deploy/pulumi
         run: |
@@ -454,26 +459,31 @@ jobs:
       cancel-in-progress: false
     steps:
       # Pushes land on refs/heads/prod, so the default checkout IS the
-      # promoted commit (dispatch checks out whatever ref it ran from).
+      # promoted commit (dispatch checks out whatever ref it ran from). Full
+      # history: the vector-store floor reads the commit the pinned image was
+      # built from, a develop commit behind the promotion.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: deploy/pulumi/package-lock.json
+
+      # Bun installs; Node runs the Pulumi program (Pulumi.yaml `packagemanager: bun`, ADR-0103).
+      - uses: ./.github/actions/setup-bun
 
       - name: Install program deps
         working-directory: deploy/pulumi
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Install policy-pack deps
         working-directory: deploy/pulumi/policy
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Typecheck (cluster-free gate)
         working-directory: deploy/pulumi
-        run: npx tsc --noEmit && (cd policy && npx tsc --noEmit)
+        run: bun run typecheck && bun run --cwd policy typecheck
 
       # Prod consumes the tag its committed stack file pins, and nothing else
       # checked that tag was ever built: a promotion to a commit whose publish
@@ -485,6 +495,10 @@ jobs:
           tag="$(sed -n 's/^  grid-oib:imageTag: *//p' Pulumi.prod.yaml | tr -d '"' | tr -d "'")"
           [ -n "$tag" ] || { echo "::error::Pulumi.prod.yaml pins no grid-oib:imageTag"; exit 1; }
           ./scripts/verify-image-tag.sh "$GITHUB_REPOSITORY_OWNER" "$tag"
+          # The backend must be built for the vector store this program runs:
+          # an older pin across the Chroma removal answers from an empty store.
+          owner="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          DEPLOY_SHA="$GITHUB_SHA" ./scripts/vector-store-floor.sh "ghcr.io/${owner}/grid-oib-backend:${tag}"
         env:
           GH_TOKEN: ${{ github.token }}
 

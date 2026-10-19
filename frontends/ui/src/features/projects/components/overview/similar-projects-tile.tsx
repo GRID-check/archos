@@ -66,7 +66,7 @@ export function SimilarProjectsTile({
           {anyClosed ? tRefs('noneAlike') : t('project.overview.similar.empty')}
         </p>
       ) : (
-        <ul className="grid gap-x-6 gap-y-4 md:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
           {alike.slice(0, SHOWN).map((project) => (
             <li key={project.id} className="flex min-w-0 flex-col gap-1.5">
               <Link

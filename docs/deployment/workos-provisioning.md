@@ -302,8 +302,26 @@ nobody. The current gap in both environments, and what it costs users, is in
   `WORKOS_DESIRED_REDIRECT_URIS` for redirect URIs); extras are report-only
   unless `--apply --prune`.
 - Auth methods: password + Google + GitHub + Microsoft + Apple; email
-  verification required; MFA off. No JWT template (default claims carry
-  role/permissions per active org — exactly what the app reads).
+  verification required; MFA off.
+- **JWT template** (AuthKit → Sessions → JWT template; set 2026-10-15 in
+  Staging and Production). It adds three claims and keeps every default one
+  (`org_id`, `role`, `roles`, `permissions`, `feature_flags`, checked with a
+  preview against a real membership before saving):
+
+  ```json
+  {"name": "{{ user.first_name }} {{ user.last_name }}", "email": {{ user.email }}, "organization_name": {{ organization.name }}}
+  ```
+
+  The agent reads them off the verified token as the person's name, email and
+  office in the system prompt (`aiq_api.auth.jwt_validator`,
+  `aiq_agent.turn.context.user_info_from_principal`); without the template
+  the prompt has no name. A null `organization.name` drops its key, and an
+  unknown name renders as an empty string, which the agent reads as no name.
+  WorkOS has no public API for the template, so `provision:workos-env` cannot
+  check it: it lists it as a manual step. A turn with no signed-in person (a
+  scheduled task, a woken thread reply) has no token; it is named from the
+  signed request-context envelope's `requester` instead, which the BFF resolves
+  from WorkOS for the pinned session (`lib/auth/person.ts`).
 - **Sign-up: decided posture is INVITE-ONLY EVERYTHING** (platform owner
   decision, 2026-07-08). Two switches, one per layer:
   1. **WorkOS-native**: AuthKit → Authentication → *Allow sign-ups* **OFF**.
@@ -339,10 +357,65 @@ Broadly the trail covers: org creation/settings, budgets, model configuration
 (org versions, ZDR, fleet defaults), BYOK credentials, legal holds,
 break-glass platform access (lands in the GRID Platform org's trail, throttled
 to once per actor per hour), project lifecycle and role grants, document and
-Archiv uploads/deletes, and the sharing/ownership changes from ADR-0032.
+Archiv uploads/deletes, the sharing/ownership changes from ADR-0032, and what
+Piloti did in the office (below).
 Deliberately NOT audited: high-frequency content activity (memory items,
 profile edits, conversation messages, renames, user preferences) — it would
-drown the admin trail.
+drown the admin trail. A person's own edits of Anmerkungen are content
+activity; Piloti's are not, because a machine acting in a person's name is
+what an admin has to be able to account for, and neither is a person taking
+over or dismissing a mark Piloti proposed: that is a decision on Piloti's
+work (`piloti.mark.decided`).
+
+- **What Piloti did** (`piloti.*`, added 2026-10-14). Piloti acts in a
+  person's session as that person (ADR-0105, ADR-0108), so the trail names the
+  person and the action family names Piloti:
+
+  | Action | When | Actor | Targets | Metadata |
+  |---|---|---|---|---|
+  | `piloti.change.applied` | Piloti set, changed or deleted a mark, or answered in its thread, in the asker's name: one per `piloti_changes` row (`lib/changes/service.ts`) | the person the turn acted for | mark, document, project, conversation | `op` (create, update, delete, reply), `markNumber`, `markKind`, `status`, `fields` (names of the fields that moved), `messageId`, `changeId` |
+  | `piloti.change.undone` | a person undid one (`POST /api/piloti-changes/[id]/undo`) | who undid it | mark, document, conversation | `op`, `inverse`, `markNumber`, `onBehalfOf`, `messageId`, `changeId` |
+  | `piloti.proposal.created` | Piloti filed a proposed change, once per card (`lib/proposals/service.ts`) | the person Piloti acted for | proposal, project, conversation | `kind`, `operation`, `items`, `memoryScope`, `messageId` |
+  | `piloti.proposal.decided` | a person applied or dismissed it | the decider | proposal, project, conversation | `kind`, `decision` (applied, partially_applied, failed, dismissed), `operation`, `items`, `appliedItems`, `memoryScope`, `onBehalfOf`, `messageId` |
+  | `piloti.mark.decided` | a person took over (`open`) or dismissed a mark Piloti proposed, on the canvas: the per-mark buttons and the live card's batch send the same PATCH, so one per mark that left `proposed` (`lib/annotations/service.ts`); a colleague's earlier move (409) records nothing | the person who decided | mark, document, project | `decision` (taken_over, dismissed), `markNumber`, `markKind`, `onBehalfOf` (the person Piloti proposed it for) |
+  | `piloti.wake.started` | a wake's turn started (`lib/annotations/wake-job.ts`) | the person whose act woke Piloti | mark, document, project, their thread | `trigger`, `wakeId`, `markNumber`, `waits` |
+  | `piloti.wake.ended` | the wake ended, once: its turn ended (`lib/turns/outcome.ts`), or the wake job refused it or gave up before a turn answered (`lib/annotations/wake-job.ts`) | the same person | the same | `trigger`, `wakeId`, `outcome` (answered, stopped, failed; refused for the job's refusal), `turnOutcome` (what the socket reported; absent when the job ended it), `reason` (the stored reason, cut at 200), `reasonKind` (budget, busy, access, error: the class the person's inbox notice is worded by, `lib/annotations/wake-end-reason.ts`), `handedBack`, `markNumber` |
+  | `piloti.wake.stopped` | a person took the mark back, or deleted it, and that stopped a queued or running wake (`lib/annotations/take-back.ts`) | who took it back | the same | `trigger`, `wakeId`, `wakeStatus`, `wokenBy`, `by` (person, or piloti when Piloti closed the mark) |
+  | `piloti.wake.suppressed` | a wake was held before Piloti was asked: a cap, the switch off, the person's right to write gone, the mark or reply gone, the delegation taken back. Until 2026-10-14 a failed turn (`stage: 'turn'`) and a wake the job ended `refused` or `failed` were recorded here too; they are now `piloti.wake.ended` | the person whose act woke Piloti | mark | `documentId`, `trigger`, `status` (suppressed), `reason`, `stage` (enqueue, claim) |
+
+  *The actor model.* The actor is always a person, never Piloti: the actor is
+  the authorization principal (`AuditActorType` in `lib/audit/service.ts`, the
+  decision `document.generated` already took), and it is the field the viewer
+  and the export filter by. An agent actor would hide on whose behalf Piloti
+  acted in the one place an admin searches. So an admin finds everything Piloti
+  did with the action filter on `piloti.*`, and everything it did for one
+  person with that person's actor filter added. A wake's row keeps the
+  person's id and not their email, so the wake events look the email up in
+  the organization's directory before they go out (best effort: the id alone
+  when the directory does not know the person). The turn is the
+  `conversation` target and `messageId`, the answer whose Langfuse trace and
+  change card carry the same id. A `via: 'piloti'` key would only repeat the
+  action family.
+
+  *No content.* Ids, numbers, kinds, field names and counts only: never a word
+  of a mark, a reply, a note, a proposal or a document name, so none of these
+  actions needs `filedIn`. `schemas.spec.ts` refuses a `piloti.*` metadata key
+  that could carry text.
+
+  *Once per act.* Each is emitted after the write it records committed, by the
+  call whose compare-and-swap won (`recordAuditEventAfterCommit`, fire and
+  forget: a lost line is logged, the act is never failed or rolled back). A
+  repeated proposal card, an already-undone undo, a wake the job or the outcome
+  settled twice, a decision a colleague made first, and a change that moved
+  nothing emit nothing. Undoing a mark Piloti proposed dismisses it, so it is
+  both `piloti.change.undone` and `piloti.mark.decided`. A background run
+  (ADR-0108) reaches the same internal routes, so what Piloti changes in one
+  is recorded the same way; `task.*` records the run itself.
+
+  The deploy's schema Job registers the new actions; no new environment
+  variable. An environment reconciled by hand needs
+  `npm run provision:audit-schemas -- --apply` before this release, or WorkOS
+  rejects these events (and the trail silently lacks them).
 
 - **Schemas are reconciled on every deploy, on all three deployment paths.**
   Each runs `node scripts/provision-workos-audit-schemas.mjs --apply` from the
@@ -442,6 +515,8 @@ the Staging WorkOS environment.
 | `skills` | entitlement | Agent Skills and the project Jobs that attach them (ADR-0046): the project **Automation** section (its Tasks / Zeitplan / Skills tabs, its rail entry, its ⌘K entries and the `g j` jump), every `/api/skills` and `/api/projects/[id]/jobs` route, and every scheduled fire (`fireScheduledJob` asks per organization and records a `skipped` run when it is off; the `skill-scheduler` itself has no gate). Created 2026-09-18, **OFF for all organizations in both environments** |
 | `task-automation` | entitlement | Delegated TASKS and their schedules (ADR-0051/0054, `task_definitions` + `task_runs`): work a chat turn hands over instead of answering, plus the recurring `cadence` form the scheduler fires. Gates the agent's `create_task` tool — told to the model in its per-turn prompt block and refused at `POST /api/internal/tasks`, so a turn neither offers one nor creates one — and the session-bearing `/api/projects/[id]/tasks`. **Deliberately separate from `skills`**, which shipped with it and is not the same feature: a skill is an instruction the agent may follow inside a turn, a task is work that outlives the turn, costs the requester's budget and runs under their permissions. It is also the second door into `deep-research`, since a task's agent type may be `researcher` or `deep_researcher`. Created 2026-09-18, **OFF for all organizations in both environments** |
 | `collaboration` | entitlement | Shared chats, `@`-mentions with the agent hand-off, and the inbox (ADR-0032…0035): the inbox nav entry + page, the share surfaces, the mention picker, and every `/api/inbox/*`, `/api/sharing/*` and `/api/stream` route. An entitlement because the feature changes who can READ a conversation. The flag hides the surfaces, it does not revoke grants: a thread shared while it was on stays shared in the database after it goes off |
+| `piloti-wakes` | entitlement | Events on Piloti's work wake a turn (ADR-0106): a reply that addresses Piloti in an Anmerkung's thread, a reply on Piloti's own open question, and a mark delegated to Piloti are answered by the server (the `piloti_wake` job) as the person who acted, with nobody's browser open. Read from the person's session when the reply or delegation is written, and from their pinned session when the job runs. Off: an @Piloti reply is asked by the browser that wrote it, as before, and „An Piloti delegieren" is not offered. An entitlement because a wake is a model call nobody typed. **Not created yet in either environment**: create it OFF, then switch it on per organization |
+| `piloti-acts` | entitlement | Piloti acts when asked (ADR-0105): sets a mark born open, changes one (resolve, reopen, dismiss, take over, assign, date, reword) or deletes one the person set, in the asker's name, through `POST /api/internal/document-annotations` (ops `create`, `update`, `delete`). Read from the asker's pinned session on that route (`isPilotiActsEnabled`, `lib/authz/feature-flags.ts`). Off: those ops are refused with a 403, code `PILOTI_ACTS_OFF`, `details.reason` `piloti-acts-off`, and Piloti proposes the mark instead or tells the person to make the change themselves; reads, the room, pointing, highlighting, thread replies and proposals are unaffected. An entitlement so an office starts with Piloti proposing only and switches acting on once it trusts it. **Not created yet in either environment**: create it OFF, then switch it on per organization; an organization that already relies on acting needs it targeted in the same release |
 | `mail-import` | entitlement | The Outlook archive import into a project's Dateien (ADR-0085): the **Outlook-Archiv importieren** action and the routes that start and complete an import (`isMailImportEnabled`, `lib/authz/feature-flags.ts`). **Not created yet in either environment**, so the import is off for everybody until it is: create it OFF, then switch it on per organization once its Art. 28 notice covers imported correspondence |
 | `ifc-models` | rollout | IFC/BIM models (ADR-0045): the `.ifc` entry in the upload accept-list (client **and** the server-side allow-list), the model surfaces, every `/api/**/bim/*` route, and the agent's `ifc_query` tool via the internal service route. Worth knowing before enabling it for a customer: the feature renders OIB compliance verdicts, and `docs/roadmap/ifc-review-findings.md` lists the rules that still overstate |
 | `agent-authored-documents` | rollout | The ONE filing seam for documents Piloti writes — a finished Recherchebericht, a drawn diagram — into a project as `documents` rows (`lib/documents/generated.ts`, ADR-0047). Deliberately alongside the `project:documents:generate` permission, not instead of it: the permission is the TENANT's (per project, per role, set by the org's own admin), this flag is the OPERATOR's — the lever that stops filing for every producer and every tenant at once without editing a built-in role (which would then fail `provision:authz --check` in CI) |

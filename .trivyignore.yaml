@@ -55,13 +55,19 @@ vulnerabilities:
   # langfuse-worker, not a package this repo references. Langfuse 4.54.0
   # cleared the rest of this block (fast-uri, js-yaml, nanoid, sharp, undici,
   # next, nodemailer, and the Go standard library in `usr/bin/migrate`); the
-  # entry below is the one it did not, and 4.56.0 (the current pin) does not
-  # either.
+  # entry below is the one it did not, and 4.56.0 did not either.
   #
   # 4.56.0 also moved both images from node:24-alpine to UBI 9 micro. Every
   # Alpine package finding is gone with that base, and any UBI 9 (RHEL)
   # finding is new to this file: scan the 4.56.0 digests with the Langfuse
   # entries removed before boxing anything against the new base.
+  #
+  # The pin moved 4.56.0 -> 4.63.0 on 2026-10-18 (see the config.ts comment),
+  # which took the three unboxed pcre2 HIGH findings with it. The entries
+  # below were written against 4.54.0/4.56.0 and are NOT re-verified against
+  # the 4.63.0 digests. Re-verify by scanning 4.63.0 with the entry removed:
+  # with the entry in place, a green scan cannot tell a fixed finding from a
+  # boxed one. Drop what the bump cleared.
   #
   # Shared context: the Langfuse UI is reachable only through the Envoy
   # Gateway behind an OIDC flow gated on `platform:organizations:view` or
@@ -101,7 +107,7 @@ vulnerabilities:
       stable `@prisma/config` through 7.10.0 (2026-08-25, `latest` on npm) pins
       7.1.5, the first to take 8.x is 8.1.0-dev.5 (2026-09-01), and Langfuse
       4.55.0 (2026-10-08) still shipped Prisma 6.19.3, read from its layers, as
-      does 4.56.0 (2026-10-09, the current pin), read from its lockfile. Boxed a
+      does 4.56.0 (2026-10-09), read from its lockfile. Boxed a
       month because the exit is a Prisma major, then Langfuse adopting it.
 
       Drop as soon as a Langfuse image ships `@prisma/config` >= 8 (deepmerge-ts
@@ -130,8 +136,8 @@ vulnerabilities:
       authorization server it should not trust. The defect lives in the
       client-side OAuth discovery flow; Langfuse here makes no outbound MCP
       OAuth connections, and its UI sits behind the Envoy Gateway's OIDC flow.
-      Fixed in 1.31.0; drop when a Langfuse image ships it. Langfuse 4.56.0 (the
-      current pin) does not: its pnpm-lock.yaml still resolves 1.29.0.
+      Fixed in 1.31.0; drop when a Langfuse image ships it. Langfuse 4.56.0 did
+      not: its pnpm-lock.yaml still resolved 1.29.0.
 
   # OpenTelemetry Collector contrib 0.161.0 (the pin), Go 1.26.8 standard
   # library, published after the 2026-10-08 scans (first red on PR #932).
@@ -157,6 +163,17 @@ vulnerabilities:
       references in a ClientHello. No TLS listener or TLS client is configured
       on this collector (plaintext in-cluster receivers and exporters), so no
       ClientHello reaches crypto/tls. See the block note.
+  - id: CVE-2026-78669
+    expired_at: 2026-10-23
+    statement: |
+      golang.org/x/net v0.58.0 and the Go 1.26.8 stdlib HTTP/2 server: denial
+      of service through a flood of SETTINGS frames. Unlike the two above this
+      code is reached: the OTLP gRPC receiver speaks HTTP/2. But only pods in
+      the namespace can dial it (NetworkPolicy, no route, no Gateway listener),
+      so an attacker needs a foothold in a pod first, and the worst outcome is
+      the collector restarting and dropping traces, never a user request.
+      Fixed in x/net 0.60.0 and Go 1.26.9, which no contrib release carries yet
+      (first red on PR #1012, 2026-10-12). Same exit as the block: bump the pin.
 
 secrets:
   - id: gcp-service-account

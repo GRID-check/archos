@@ -356,6 +356,19 @@ llms:
     request_timeout: 25
     reasoning_effort: none
 
+# The review canvas (src/aiq_agent/tools/canvas), one NAT function group: Piloti
+# works a document the way a person at the canvas does. `look` at a page or a
+# box on it, see who is in the `room`, `point` and `highlight` for everyone,
+# read the `marks`, propose a `mark` (a person takes it over), and, when the
+# person asks, set one open, `update` or `delete` one in their name; `reply` in
+# a thread. The model calls them `canvas__<tool>`. Each acts on a document the
+# model names, the one open on the canvas, or the conversation's subject; the
+# BFF checks it against the asker's access and the turn's signed scope, from
+# the signed envelope. Chat only, because only a turn carries an envelope.
+function_groups:
+  canvas:
+    _type: document_canvas
+
 functions:
   data_sources:
     _type: data_source_registry
@@ -524,7 +537,6 @@ functions:
     # top_k buys per-document depth by giving up that breadth.
     top_k: 16
     max_chunks_per_document: 5
-    chroma_dir: ${AIQ_CHROMA_DIR:-/tmp/chroma_data}
     # LLM-judge reranking: over-fetch rerank_candidates chunks and re-order them
     # against the query with the dedicated rerank LLM before trimming to top_k.
     # Fail-open: any judge error returns the fused (hybrid+vector) order.
@@ -770,6 +782,8 @@ functions:
       - file_draft
       - create_task
       - project_lookup
+      # The `canvas` function group (below): nine tools, `canvas__look` …
+      - canvas
       - ifc_query
       - ifc_measure
       - ask_user
@@ -1080,6 +1094,27 @@ functions:
     # value took application startup down (post-#72 incident). Point the env var
     # at a writable volume path or a Postgres DSN to enable resume-by-job_id.
     checkpoint_db: ${AIQ_DEEP_CHECKPOINT_DB:-}
+
+  # The Erfassungs-Agent (ADR-0111, docs/design/agentic-project-intake.md):
+  # Piloti sets a new project's profile up from its documents, as a background
+  # run on the research worker (agent type `project_intake`). It runs on the
+  # chat model's agent group (`research_llm`; the runner maps this type to
+  # AgentGroup.RESEARCH), so an organization's model choice for chat applies.
+  # Its own tools (intake_needs, record_values, finish_intake, read_document)
+  # are built by the agent; the list below is the shared reading tools, pinned
+  # because an empty list would inherit every data source, the web and RIS
+  # among them, and a profile value comes from the project's documents only.
+  project_intake_agent:
+    _type: project_intake_agent
+    llm: research_llm
+    tools:
+      - list_files
+      - knowledge_search
+      - read_passage
+    # The reading's budgets, stated to the model as information. The run ends
+    # itself before the BFF reconciles a reading older than 30 minutes.
+    max_tool_steps: 80
+    max_run_seconds: 1200
 
 workflow:
   _type: chat_deepresearcher_agent

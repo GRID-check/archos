@@ -6,9 +6,22 @@
  * The result is orientation, not legal advice: it maps a handful of the brief's
  * facts (main use, building class, escape level, storeys) onto the Richtlinien
  * and explains, in one line, why each is relevant.
+ *
+ * What it reads. The intake wizard stores a building's facts under a suffix per
+ * Bauwerk (`fluchtniveau_m@bw1`), so every read takes the flat key and each
+ * `<key>@<bwN>` copy. A use zone's copy (`<key>@bw1@wohnen`) is that zone's detail
+ * and is skipped.
+ *   - `hauptnutzung`: stated flat; else the one D0 use the Bauwerke share
+ *     (`nutzungen`) that is also a verdict token. Two or more, or none: unknown.
+ *   - `gebaeudeklasse`: `4` or `GK4`; the highest class across the Bauwerke.
+ *   - `fluchtniveau`: the band stated flat; else the band of the highest
+ *     `fluchtniveau_m` (metres) across the Bauwerke.
+ *   - `geschosse_unterirdisch`: the highest count across the Bauwerke.
+ * The Python twin, `src/aiq_agent/common/applicability.py`, reads the same keys
+ * from the prompt view and must give the same verdicts.
  */
 
-import type { ProjectProfile } from '@/lib/project-profile/types'
+import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import { getOibStandard, OIB_STANDARDS } from './standards-catalog'
 
 /** How strongly a Richtlinie applies, given what the brief tells us. */
@@ -44,18 +57,104 @@ function annotate(code: string, status: ApplicableStatus, reason: string): Appli
   }
 }
 
-/** Read a fact value as a string, defensively. Returns undefined when absent. */
-function factString(profile: ProjectProfile | null, id: string): string | undefined {
-  const value = profile?.facts?.[id]?.value
-  return typeof value === 'string' ? value : undefined
+/** Every fact value stored under a base key: the flat key and each `<key>@bwN` copy. */
+function factValuesByBase(profile: ProjectProfile | null, base: string): ProjectPrimitiveValue[] {
+  const facts = profile?.facts ?? {}
+  return Object.keys(facts)
+    .filter((name) => {
+      const [key, , zone] = name.split('@')
+      return key === base && zone === undefined
+    })
+    .map((name) => facts[name]?.value)
+    .filter((value): value is ProjectPrimitiveValue => value !== undefined)
 }
 
-/** Read a fact value as a number, defensively. Returns undefined when absent/NaN. */
-function factNumber(profile: ProjectProfile | null, id: string): number | undefined {
+/** A stated flat fact as a string, defensively. An empty string is no answer. */
+function factString(profile: ProjectProfile | null, id: string): string | undefined {
   const value = profile?.facts?.[id]?.value
-  if (value === undefined || value === null || value === '') return undefined
-  const n = Number(value)
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+
+/** A fact value as a finite number, as the Python twin reads it. Booleans are never numbers. */
+function asNumber(value: ProjectPrimitiveValue | undefined): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (typeof value !== 'string' || value.trim() === '') return undefined
+  const n = Number(value.trim())
   return Number.isFinite(n) ? n : undefined
+}
+
+/** The largest of the defined numbers, or undefined when there are none. */
+function maxNumber(values: ReadonlyArray<number | undefined>): number | undefined {
+  const defined = values.filter((n): n is number => n !== undefined)
+  return defined.length > 0 ? Math.max(...defined) : undefined
+}
+
+/**
+ * The Fluchtniveau band the rules read: the stated `fluchtniveau`, else the band of
+ * the highest `fluchtniveau_m` across the Bauwerke. Each band takes its upper bound
+ * inclusively: exactly 7 m is `<=7m`, 11 m is `7-11m`, 22 m is `11-22m`.
+ */
+export function fluchtniveauBand(profile: ProjectProfile | null): string | undefined {
+  const stated = factString(profile, 'fluchtniveau')
+  if (stated !== undefined) return stated
+  const metres = maxNumber(factValuesByBase(profile, 'fluchtniveau_m').map(asNumber))
+  if (metres === undefined) return undefined
+  if (metres <= 7) return '<=7m'
+  if (metres <= 11) return '7-11m'
+  if (metres <= 22) return '11-22m'
+  return '>22m'
+}
+
+/**
+ * The D0 uses the verdicts compare `hauptnutzung` against: the union of the tokens
+ * in the comparisons below. The D0 catalogue (`intake-definition.ts`) shares only
+ * some of them (`wohnen`, `buero`, `beherbergung`, `versammlung`, `gesundheit`,
+ * `landwirtschaft`). `produzierend`, `lager` and `sonstiges` are never a D0 token,
+ * and `produktion` is not `produzierend`, so no mapping between them is invented.
+ */
+const HAUPTNUTZUNG_TOKENS: ReadonlySet<string> = new Set([
+  'produzierend',
+  'lager',
+  'landwirtschaft',
+  'sonstiges',
+  'wohnen',
+  'beherbergung',
+  'gesundheit',
+  'versammlung',
+  'buero',
+])
+
+/**
+ * The main use: the stated `hauptnutzung`; else, only when the Bauwerke's `nutzungen`
+ * together name exactly one verdict token, that token. Two or none: unknown.
+ */
+function hauptnutzungOf(profile: ProjectProfile | null): string | undefined {
+  const stated = factString(profile, 'hauptnutzung')
+  if (stated !== undefined) return stated
+  const uses = new Set(
+    factValuesByBase(profile, 'nutzungen').flatMap((value) =>
+      Array.isArray(value) ? value.map((token) => token.trim()) : []
+    )
+  )
+  // Every use must name a verdict token: a use outside the vocabulary
+  // (`produktion`) is unknown, and an unknown use may be the Betriebsbau.
+  if (uses.size !== 1) return undefined
+  const [only] = uses
+  return HAUPTNUTZUNG_TOKENS.has(only) ? only : undefined
+}
+
+/** `4` or `GK4` (either case) as its class number, else undefined. */
+function gebaeudeklasseClass(value: ProjectPrimitiveValue): number | undefined {
+  if (typeof value === 'number') return [1, 2, 3, 4, 5].includes(value) ? value : undefined
+  if (typeof value !== 'string') return undefined
+  const match = /^(?:GK)?([1-5])$/.exec(value.trim().toUpperCase())
+  return match ? Number(match[1]) : undefined
+}
+
+/** The Gebäudeklasse across the Bauwerke: the highest class named, as `GK<n>`. */
+function gebaeudeklasseOf(profile: ProjectProfile | null): string | undefined {
+  const top = maxNumber(factValuesByBase(profile, 'gebaeudeklasse').map(gebaeudeklasseClass))
+  return top === undefined ? undefined : `GK${top}`
 }
 
 /** The six Richtlinien that apply to essentially every building, as generic 'required'. */
@@ -86,10 +185,12 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
     return genericSix()
   }
 
-  const hauptnutzung = factString(profile, 'hauptnutzung')
-  const gebaeudeklasse = factString(profile, 'gebaeudeklasse')
-  const fluchtniveau = factString(profile, 'fluchtniveau')
-  const geschosseUnterirdisch = factNumber(profile, 'geschosse_unterirdisch')
+  const hauptnutzung = hauptnutzungOf(profile)
+  const gebaeudeklasse = gebaeudeklasseOf(profile)
+  const fluchtniveau = fluchtniveauBand(profile)
+  const geschosseUnterirdisch = maxNumber(
+    factValuesByBase(profile, 'geschosse_unterirdisch').map(asNumber)
+  )
 
   const standards: ApplicableStandard[] = []
 

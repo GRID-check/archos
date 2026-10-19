@@ -61,6 +61,8 @@ import { requireMayFileFrom, type ConversationOrigin } from '@/lib/conversations
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { AuthoredRefKind } from './document-authors'
 import { deleteProjectDocument, findDocumentAuthoredByRef } from './repository'
+import { projectShelf } from './shelf'
+import { publishShelfChanged } from './shelf-live'
 
 /**
  * What produced a document no person wrote, and what kind of identifier it
@@ -802,6 +804,8 @@ async function unfile(
 ): Promise<void> {
   try {
     await deleteProjectDocument(documentId, organizationId, projectId)
+    // Its admission was announced; so is its withdrawal.
+    publishShelfChanged(organizationId, projectShelf(projectId))
   } catch (error) {
     console.error(
       '[documents] failed to delete the row of a generated document after its audit write failed; ' +

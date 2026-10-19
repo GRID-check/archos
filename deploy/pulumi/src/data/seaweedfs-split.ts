@@ -8,7 +8,7 @@ import {
   orderedRollout,
   secretChecksumAnnotations,
 } from "../platform/rollout";
-import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
+import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { DATA_RESOURCES, PORT, SEAWEED } from "../constants";
 import type { SeaweedTopology } from "./seaweedfs-types";
 
@@ -279,9 +279,10 @@ export function installSplitSeaweedFS(
         template: {
           metadata: { labels: masterLabels },
           spec: {
-            enableServiceLinks: false, // see chroma.ts — legacy env collisions
+            enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             securityContext: { fsGroup: 1000 },
             topologySpreadConstraints: spreadAcrossNodes(masterLabels),
+            ...onNodeGroup(cfg.nodeGroups.data),
             ...gracefulShutdown(ROLLOUT.dataPlane),
             containers: [
               {
@@ -402,6 +403,7 @@ export function installSplitSeaweedFS(
             // Two copies of a chunk on one node is one copy. This is what makes
             // `-rack=$(NODE_NAME)` mean something.
             topologySpreadConstraints: spreadAcrossNodes(volumeLabels),
+            ...onNodeGroup(cfg.nodeGroups.data),
             ...gracefulShutdown(ROLLOUT.dataPlane),
             containers: [
               {
@@ -510,6 +512,7 @@ export function installSplitSeaweedFS(
             // `weed` flushes the buffer on SIGTERM; the grace period is what
             // gives it time to finish.
             ...gracefulShutdown(ROLLOUT.dataPlane),
+            ...onNodeGroup(cfg.nodeGroups.data),
             containers: [
               {
                 name: "filer",

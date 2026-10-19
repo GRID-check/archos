@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, appPullPolicy, frontendImage, toResourceRequirements } from "../config";
 import { commonLabels } from "../platform/namespaces";
-import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
+import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { agentWorkerRollout, gracefulShutdown, secretChecksumAnnotations, surgeRollout } from "../platform/rollout";
 import { withLangfuseKeysChecksum } from "../platform/langfuse";
@@ -75,11 +75,12 @@ export function installBffJobs(
         template: {
           metadata: { labels, annotations: secretChecksumAnnotations(withLangfuseKeysChecksum(cfg, secrets.checksum)) },
           spec: {
-            enableServiceLinks: false, // see chroma.ts — legacy env collisions
+            enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             imagePullSecrets: w.imagePullSecrets,
             securityContext: { runAsNonRoot: true, runAsUser: UID.frontend, runAsGroup: UID.frontend },
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
             topologySpreadConstraints: spreadAcrossNodes(labels),
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "bff-jobs",

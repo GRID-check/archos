@@ -24,6 +24,7 @@ export const uploadBatches = {
       sending: 'The upload is still running.',
       reading: 'Piloti is still reading. This summary updates itself.',
       done: 'Everything has been read.',
+      doneHeld: 'Everything except the files held back has been read. Piloti shows them to no model.',
     },
     counts: {
       label: 'At a glance',
@@ -39,9 +40,11 @@ export const uploadBatches = {
     },
     excluded: {
       title: 'Not uploaded',
+      // Stopped by the name check: in the browser (the file never left the
+      // computer), by the server, or in the mail import (nothing was stored).
       description:
-        'These files never left your computer. Your office marks these terms in file and folder names as sensitive.',
-      listLabel: 'Files kept back, by term',
+        'The name check did not upload these files, and none of them was stored. Your office marks these terms in file and folder names as sensitive.',
+      listLabel: 'Files not uploaded, by term',
     },
     files: {
       title: 'Files',
@@ -52,7 +55,6 @@ export const uploadBatches = {
       },
       empty: 'No file from this upload reached Piloti.',
       pages: '{count, plural, one {# page} other {# pages}}',
-      reasonsLabel: 'Why it is held back',
       openInFiles: 'Open in Files',
       openInArchiv: 'Open in Office filing',
       changedHint: 'A new revision of a document that was already here. The previous one stays readable under “Revisions and approval”.',

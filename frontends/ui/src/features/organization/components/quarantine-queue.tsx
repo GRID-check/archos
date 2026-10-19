@@ -8,20 +8,21 @@
  * queue, a project admin their projects' part of it, everyone else an empty
  * list. So the page is open to every member and this list never re-derives a
  * permission. Each row says what the file is, where it was uploaded, when, and
- * which rule caught it, in the same phrases the upload summary uses
- * (`describeQuarantineReason`). Detector samples arrive masked from the job.
+ * which rule caught it on which pages, through the same `QuarantineFindings`
+ * the Files preview shows. Detector samples arrive masked from the job.
  *
  * Release sends the file to the models like any other upload, so it asks
  * first. Delete goes through the shelf's own delete route. A row leaves the
  * list only once the server said yes.
  *
- * „Ansehen" opens the file where it is filed, in the Files view or the
- * Büroablage, on its preview: a reviewer may open a quarantined file there
+ * „Ansehen" opens the file where it is filed, in the project's Files view or
+ * the Büroablage, on its preview, which opens at the first finding and offers
+ * the same two decisions: a reviewer may open a held file there
  * (`getAccessibleDocument`), and should see it before deciding. A chat
  * attachment has no per-file view, so its row offers none.
  */
 
-import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FC, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Eye, FileWarning, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -34,7 +35,6 @@ import {
   type QuarantineQueueItem,
 } from '@/adapters/api/upload-screening-client'
 import { Button } from '@/components/ui/button'
-import { Chip } from '@/components/ui/chip'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
@@ -48,9 +48,9 @@ import {
 } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
+import { QuarantineFindings } from '@/features/documents/components/quarantine-findings'
 import { documentHref } from '@/features/uploads/lib/upload-summary'
 import { useLocale, useTranslations } from '@/i18n'
-import { describeQuarantineReason } from '@/lib/upload-screening/quarantine'
 
 type PendingAction = { kind: 'release' | 'delete'; item: QuarantineQueueItem }
 
@@ -211,13 +211,8 @@ const QuarantineRow: FC<{
   onDelete: () => void
 }> = ({ item, projectName, onRelease, onDelete }) => {
   const t = useTranslations('organization')
-  // The reason phrases live with the upload summary's, in `files.screening.*`.
-  const tFiles = useTranslations('files')
   const { locale } = useLocale()
-  const reasons = useMemo(
-    () => (item.verdict?.reasons ?? []).map((reason) => describeQuarantineReason(reason, tFiles)),
-    [item.verdict, tFiles]
-  )
+  const hasReasons = (item.verdict?.reasons.length ?? 0) > 0
 
   const where =
     item.scope === 'archiv'
@@ -239,25 +234,17 @@ const QuarantineRow: FC<{
         <ItemDescription>
           {where} · <TimeAgo date={item.quarantinedAt} locale={locale} />
         </ItemDescription>
-        {reasons.length > 0 ? (
-          <ul className="flex flex-wrap gap-1.5" aria-label={t('quarantine.reasonsLabel')}>
-            {reasons.map((reason, index) => (
-              <li key={`${index}-${reason}`} className="max-w-full">
-                <Chip variant="warning" className="max-w-full">
-                  <span className="truncate">{reason}</span>
-                </Chip>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          // A sentence, not a label, for the same reason as the one below.
-          <ItemDescription className={item.held === 'unscreened' ? 'whitespace-normal' : undefined}>
+        {/* The findings as the preview shows them, pages as text: „Ansehen"
+            opens the document at the first one, where the pages are buttons.
+            Also says when the content was only partly checked. */}
+        {item.verdict && (
+          <QuarantineFindings verdict={item.verdict} withoutSentence testId={`quarantine-findings-${item.id}`} />
+        )}
+        {!hasReasons && (
+          // A sentence, not a label: it wraps instead of truncating on a phone.
+          <ItemDescription className="whitespace-normal">
             {item.held === 'unscreened' ? t('quarantine.unscreened') : t('quarantine.noReason')}
           </ItemDescription>
-        )}
-        {item.verdict?.checked === 'partial' && (
-          // A sentence, not a label: it wraps instead of truncating on a phone.
-          <ItemDescription className="whitespace-normal">{tFiles('screening.partial')}</ItemDescription>
         )}
       </ItemContent>
       <ItemActions className="w-full justify-end sm:w-auto">

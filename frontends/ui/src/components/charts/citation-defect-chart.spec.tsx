@@ -1,4 +1,4 @@
-import { render, screen } from '@/test-utils'
+import { fireEvent, render, screen } from '@/test-utils'
 import { describe, expect, test } from 'vitest'
 import { CitationDefectChart } from './citation-defect-chart'
 
@@ -69,5 +69,25 @@ describe('CitationDefectChart', () => {
     )
 
     expect(screen.getByText('No citation findings in this window.')).toBeDefined()
+  })
+
+  test('prints the newest day first, and a tap on another column moves the breakdown there', () => {
+    render(
+      <CitationDefectChart
+        points={[
+          { day: '2026-07-27', turns: 9, defectTurns: 2, byKind: { answer_ungrounded: 2 } },
+          { day: '2026-07-28', turns: 4, defectTurns: 1, byKind: { citations_removed: 1 } },
+        ]}
+        kinds={KINDS}
+        {...labels}
+      />
+    )
+
+    const readout = screen.getByTestId('defect-readout')
+    expect(readout).toHaveTextContent('Jul 28')
+    expect(readout).toHaveTextContent('4 turns · 1 flagged')
+    fireEvent.click(screen.getByRole('button', { name: 'Jul 27: 2 findings' }))
+    expect(readout).toHaveTextContent('9 turns · 2 flagged')
+    expect(readout).toHaveTextContent('answer_ungrounded2')
   })
 })

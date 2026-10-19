@@ -30,6 +30,7 @@ from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from aiq_api.context_envelope import _INTERNAL_TOKEN_HEADER_NAMES
 from aiq_api.context_envelope import ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES
 from aiq_api.context_envelope import _path_matches
+from aiq_api.jobs.runner import WORKER_ENVELOPE_HEADERS
 from aiq_api.jobs.runner import WORKER_IDENTITY_HEADERS
 from aiq_api.routes.internal_auth import _TOKEN_HEADERS
 from aiq_api.routes.internal_auth import _require_internal_token
@@ -132,6 +133,9 @@ def test_the_signed_envelope_headers_match_what_the_bff_signs(contract: dict) ->
     envelope = _lower({REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER})
     assert envelope == _lower(contract["contextEnvelope"])
     assert envelope <= _lower(contract["sentByBff"])
+    # What the worker re-injects for a run that carries one (ADR-0108) is the
+    # same pair the BFF sent with the fire, under the same names.
+    assert _lower(WORKER_ENVELOPE_HEADERS) == envelope
 
 
 def test_the_contract_covers_the_route_the_middleware_enforces(contract: dict) -> None:

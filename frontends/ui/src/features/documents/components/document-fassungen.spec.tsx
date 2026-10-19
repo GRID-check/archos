@@ -79,7 +79,7 @@ const fileFixture = (overrides: Partial<FileItem> = {}): FileItem => ({
   displayName: null,
   fileSize: 1024,
   contentType: 'application/pdf',
-  status: 'ready',
+  status: 'completed',
   folderId: null,
   createdAt: '2026-08-14T00:00:00.000Z',
   errorMessage: null,
@@ -286,11 +286,36 @@ describe('DocumentFassungen — the header says where the newest Fassung stands'
     expect(screen.getByTestId('document-fassungen')).not.toHaveTextContent('Diese Fassung')
   })
 
+  it('keeps naming the previous upload while a re-upload is still being read, and marks that one current', async () => {
+    const upload = { approvedBy: 'user_author', publishedBy: 'user_author' }
+    await renderOpen({
+      viewer: viewOnly,
+      file: fileFixture({ status: 'processing', authoredBy: 'user' }),
+      client: clientOf([makeVersion(1, 'superseded', upload), makeVersion(2, 'published', upload)]),
+    })
+
+    const header = await screen.findByTestId('fassung-header')
+    expect(within(header).getByTestId('fassung-answer')).toHaveTextContent('Piloti antwortet weiter aus Fassung 1.')
+    const rows = screen.getAllByTestId('fassung-timeline-row')
+    expect(within(rows[0]).queryByTestId('fassung-row-current')).toBeNull()
+    expect(within(rows[1]).getByTestId('fassung-row-current')).toHaveTextContent('aktuell')
+  })
+
+  it('says a first upload answers once it has been read', async () => {
+    renderSection({
+      viewer: viewOnly,
+      file: fileFixture({ status: 'processing' }),
+      client: clientOf([makeVersion(1, 'published', { approvedBy: 'user_author', publishedBy: 'user_author' })]),
+    })
+
+    expect(await screen.findByTestId('fassung-answer')).toHaveTextContent('Piloti antwortet daraus, sobald sie gelesen ist.')
+  })
+
   it('does not point at a published Fassung when there is none', async () => {
     renderSection({ viewer: viewOnly, client: clientOf([reviewed(1, 'in_review')]) })
 
     const answerLine = await screen.findByTestId('fassung-answer')
-    expect(answerLine).toHaveTextContent('Piloti antwortet erst daraus, wenn sie veröffentlicht ist.')
+    expect(answerLine).toHaveTextContent('Piloti antwortet erst daraus, wenn sie freigegeben ist.')
     expect(answerLine).not.toHaveTextContent('Fassung 1')
   })
 
@@ -411,6 +436,19 @@ describe('DocumentFassungen — shut at rest, open when it is the reader’s tur
     expect(await screen.findByRole('button', { name: 'Freigeben' })).toBeInTheDocument()
   })
 
+  it('names what is still open on the pages in the approve confirm, with the way into the review', async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    renderSection({ viewer: reviewer, client: clientOf([reviewed(1, 'in_review')]), openMarks: { status: 'counted', open: 4, proposed: 0, onOpen } })
+
+    await user.click(await screen.findByRole('button', { name: 'Freigeben' }))
+    expect(screen.getByTestId('document-review-approve-open-marks')).toHaveTextContent(
+      '4 offene Anmerkungen – trotzdem freigeben?'
+    )
+    await user.click(screen.getByRole('button', { name: 'In der Prüfansicht öffnen' }))
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
   it('stays shut for a reader nothing is expected of, and still says what it waits for', async () => {
     renderSection({ viewer: viewOnly, client: clientOf([reviewed(1, 'in_review')]) })
 
@@ -525,6 +563,17 @@ describe('DocumentFassungen — one numbered timeline', () => {
     expect(screen.getByTestId('fassung-header-label')).toHaveTextContent('Fassung 4')
   })
 
+  it('compares with the previous Fassung in one tap from its row, not only from its ⋯', async () => {
+    compareOpened.mockClear()
+    await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: linked }), canManage: true })
+    const rows = await screen.findAllByTestId('fassung-timeline-row')
+    // Only the Fassung directly before this one carries it.
+    expect(screen.getAllByTestId('fassung-compare-previous')).toHaveLength(1)
+    await userEvent.click(within(rows[1]).getByTestId('fassung-compare-previous'))
+    expect(compareOpened).toHaveBeenCalledTimes(1)
+    expect(compareOpened.mock.calls[0]?.[1]).toMatchObject({ filename: 'EG_Index_C_2026-08-14.pdf' })
+  })
+
   it('tags rows with their index, says „aktuell" only on the one Piloti answers from, and never „Ersetzt"', async () => {
     await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: linked }), canManage: true })
 
@@ -559,9 +608,9 @@ describe('DocumentFassungen — one numbered timeline', () => {
 
     const row = (await screen.findAllByTestId('fassung-timeline-row'))[1]
     const name = within(row).getByTitle(long)
-    // The tail is kept whole; only the head ellipsizes.
+    // The tail is kept whole while there is room; the head ellipsizes first.
     expect(name.lastElementChild).toHaveTextContent('Index-C_2026-06-30.pdf')
-    expect(name.lastElementChild?.className).toContain('shrink-0')
+    expect(name.lastElementChild).toHaveAttribute('data-part', 'tail')
   })
 
   it('says each date once, on the act line, with the person', async () => {

@@ -1,6 +1,12 @@
 import { boolean, index, integer, jsonb, pgTable, real, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { projects } from './projects'
+import {
+  PROJECT_MEMORY_CONFIDENCES,
+  PROJECT_MEMORY_KINDS,
+  type ProjectMemoryConfidence,
+  type ProjectMemoryKind,
+} from '@/lib/projects/memory-vocabulary'
 
 /**
  * Project Memory — durable, evolving, agent-authored + user-curated findings
@@ -11,20 +17,12 @@ import { projects } from './projects'
  * the structured profile.
  */
 
-export const PROJECT_MEMORY_KINDS = [
-  'decision',
-  'constraint',
-  'open_question',
-  'derived_fact',
-  'preference',
-] as const
-export type ProjectMemoryKind = (typeof PROJECT_MEMORY_KINDS)[number]
+export { PROJECT_MEMORY_KINDS, type ProjectMemoryKind }
 
 export const PROJECT_MEMORY_STATUSES = ['proposed', 'active', 'superseded', 'dismissed'] as const
 export type ProjectMemoryStatus = (typeof PROJECT_MEMORY_STATUSES)[number]
 
-export const PROJECT_MEMORY_CONFIDENCES = ['low', 'medium', 'high'] as const
-export type ProjectMemoryConfidence = (typeof PROJECT_MEMORY_CONFIDENCES)[number]
+export { PROJECT_MEMORY_CONFIDENCES, type ProjectMemoryConfidence }
 
 export const PROJECT_MEMORY_VERIFICATIONS = [
   'unverified',

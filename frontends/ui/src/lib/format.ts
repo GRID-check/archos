@@ -161,12 +161,14 @@ export const formatBytes = (bytes: number | null | undefined, locale?: string): 
  * to the raw ISO string for unparseable input. Truncates toward zero at unit
  * boundaries so a value never rounds up into a misleading "in 60 minutes".
  * Shared by the research-runs list and the sessions-panel Deep Research section.
+ * `now` is the moment it is relative to: a caller that decided by its own `now`
+ * whether to say a relative time at all must format against the same one.
  */
-export const formatRelativeTime = (isoDate: string, locale?: string): string => {
+export const formatRelativeTime = (isoDate: string, locale?: string, now: number = Date.now()): string => {
   const date = new Date(isoDate)
   if (Number.isNaN(date.getTime())) return isoDate
 
-  const diffMs = date.getTime() - Date.now()
+  const diffMs = date.getTime() - now
   const diffSeconds = Math.round(diffMs / 1000)
   const absSeconds = Math.abs(diffSeconds)
 
@@ -304,3 +306,37 @@ export const formatDurationElapsed = (seconds: number, locale?: string): string 
  */
 export const formatTransferRate = (bytesPerSecond: number, locale?: string): string =>
   `${formatBytes(bytesPerSecond, locale)}/s`
+
+/**
+ * The reader's own calendar day as `YYYY-MM-DD`, the shape a Postgres `date`
+ * arrives in, so a stored day compares with it as a string. Local, not UTC:
+ * a Frist that ends today is not overdue at 00:30 in Vienna because UTC is
+ * still on yesterday.
+ */
+export const localCalendarDay = (date: Date = new Date()): string => {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/**
+ * The office's day and clock, Austria first like the rest of the product: a
+ * server in UTC would date a late-evening export to the next morning, and
+ * remind of tomorrow's Frist a day early.
+ */
+export const OFFICE_TIME_ZONE = 'Europe/Vienna'
+
+/**
+ * The calendar day `YYYY-MM-DD` it is in `timeZone` at `date`: the office's day
+ * for a server that runs in UTC (`en-CA` writes ISO calendar days). A Frist
+ * that ends today in Vienna is not overdue at 00:30 because UTC is still on
+ * yesterday, and a reminder sent at 23:30 UTC belongs to the next day there.
+ */
+export const calendarDayIn = (timeZone: string, date: Date = new Date()): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone }).format(date)
+
+/** `day` (`YYYY-MM-DD`) moved by whole calendar days, without a clock or a time zone to slip on. */
+export const addCalendarDays = (day: string, days: number): string => {
+  const at = new Date(`${day}T00:00:00Z`)
+  at.setUTCDate(at.getUTCDate() + days)
+  return at.toISOString().slice(0, 10)
+}

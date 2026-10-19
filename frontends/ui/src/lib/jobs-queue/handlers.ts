@@ -14,8 +14,10 @@
  * in the meantime must not have it carry on with the rights they had when they
  * clicked. The services the handlers call then check access per document
  * exactly as they do for a request. `purge_binned_chunks` and
- * `placement_reingest` walk as the system, and the other kinds are single
- * steps run as the system (see `./types.ts`).
+ * `placement_reingest` walk as the system, `project_intake_read` and
+ * `filing_review` are one step as the uploader, and the other kinds are single
+ * steps run as the system
+ * (see `./types.ts`).
  */
 
 import 'server-only'
@@ -32,13 +34,25 @@ import { runPurgeBinnedChunksSlice, runRestoreFolderSlice } from '@/lib/projects
 import { runPlacementReingestSlice } from '@/lib/projects/collection-placement'
 import { runMailImportSlice } from '@/lib/mail-import/job'
 import { runReportFilingJob } from '@/lib/tasks/service'
+import { runPilotiWake } from '@/lib/annotations/wake-job'
+import { runPilotiWakeStop } from '@/lib/annotations/wake-stop-job'
+import { runIntakeReadSlice } from '@/lib/project-intake/service'
+import { runFilingReviewSlice } from '@/lib/filing/job'
+import { runInboxPush } from '@/lib/push/inbox-push-job'
+import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
 import { isLastAttempt } from './attempts'
 import {
+  annotationDueRemindersPayloadSchema,
   bimExtractPayloadSchema,
   fileResearchReportPayloadSchema,
+  filingReviewPayloadSchema,
+  inboxPushPayloadSchema,
   mailImportPayloadSchema,
   officeRenditionPayloadSchema,
+  pilotiWakePayloadSchema,
+  pilotiWakeStopPayloadSchema,
   placementReingestPayloadSchema,
+  projectIntakeReadPayloadSchema,
   purgeBinnedChunksPayloadSchema,
   reindexProjectPayloadSchema,
   reingestFailedPayloadSchema,
@@ -128,6 +142,15 @@ const mailImportHandler: JobHandler = async ({ organizationId, payload }) => {
   return runMailImportSlice(session, parsed, organizationId)
 }
 
+/**
+ * A wake of Piloti (ADR-0106). Not {@link handler}: it resolves the person
+ * itself, because a person who left ends the wake WITH a record on its
+ * `piloti_wakes` row, and it may answer „not yet" (`notBefore`) while another
+ * turn of the person's thread runs.
+ */
+const pilotiWakeHandler: JobHandler = async ({ organizationId, payload, attempts }) =>
+  runPilotiWake(organizationId, pilotiWakePayloadSchema.parse(payload), { last: isLastAttempt(attempts) })
+
 /** One handler per kind; the record's type makes a kind without one a compile error. */
 export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   reindex_project: handler(reindexProjectPayloadSchema, runReindexSlice),
@@ -139,4 +162,12 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   office_rendition: systemHandler(officeRenditionPayloadSchema, runOfficeRenditionJob),
   file_research_report: systemHandler(fileResearchReportPayloadSchema, runReportFilingJob),
   mail_import: mailImportHandler,
+  piloti_wake: pilotiWakeHandler,
+  piloti_wake_stop: systemHandler(pilotiWakeStopPayloadSchema, runPilotiWakeStop),
+  project_intake_read: handler(projectIntakeReadPayloadSchema, runIntakeReadSlice),
+  filing_review: handler(filingReviewPayloadSchema, runFilingReviewSlice),
+  inbox_push: systemHandler(inboxPushPayloadSchema, async (organizationId, payload, attempt) => {
+    await runInboxPush(organizationId, payload, attempt)
+  }),
+  annotation_due_reminders: systemSliceHandler(annotationDueRemindersPayloadSchema, runDueRemindersSlice),
 }

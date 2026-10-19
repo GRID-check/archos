@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    PDFs with large blocks of display lettering, such as the legend on a
+    structural engineering sheet, are now read instead of marked as failed.
+    Read an affected document again to pick it up.

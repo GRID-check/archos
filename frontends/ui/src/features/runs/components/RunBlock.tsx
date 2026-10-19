@@ -323,6 +323,7 @@ const DocChip: FC<{ doc: RunLedgerDoc; reduced: boolean }> = ({ doc, reduced }) 
       signal={tint}
       className={cn(
         'duration-quick max-w-full transition-opacity ease-out motion-reduce:transition-none',
+        WRAPPING_CHIP,
         doc.repeat && 'opacity-75'
       )}
       title={loci ? `${name} · ${loci}` : name}
@@ -354,6 +355,18 @@ const DocChip: FC<{ doc: RunLedgerDoc; reduced: boolean }> = ({ doc, reduced }) 
     </SourceSignalChip>
   )
 }
+
+/**
+ * A document chip that WRAPS instead of ellipsising. The chip's tail is where it
+ * was read: the section, the page, „bereits gelesen". On a 393px phone a long
+ * Richtlinie title filled the line and the tail was cut to "· …", so the one
+ * piece of the reference a reader checks was the piece the layout dropped. A
+ * two-line chip is wider evidence than a one-line one; a clipped locus is none.
+ * Overrides the base chip's `truncate` on the pill and on its label.
+ */
+const WRAPPING_CHIP =
+  'h-auto min-h-6 items-start overflow-visible! whitespace-normal! text-clip! rounded-xl py-0.5 text-left ' +
+  '[&>svg]:mt-[3px] [&>span]:overflow-visible! [&>span]:whitespace-normal! [&>span]:text-clip! [&>span]:[overflow-wrap:anywhere]'
 
 /** A plain fade, for the chips and the line that follow a round's rise. */
 const FADE = { hidden: { opacity: 0 }, visible: { opacity: 1 } }
@@ -409,7 +422,7 @@ const RoundRow: FC<{ step: RunStep; index: number; reduced: boolean }> = ({
         )}
         {step.findings && step.findings.length > 0 && (
           <motion.ul
-            className="text-foreground text-[11px] leading-relaxed"
+            className="text-foreground text-xs leading-relaxed"
             data-testid="run-findings"
             variants={FADE}
             transition={fadeAfter(afterChips)}
@@ -427,7 +440,7 @@ const RoundRow: FC<{ step: RunStep; index: number; reduced: boolean }> = ({
         )}
         {step.openPoints && step.openPoints.length > 0 && (
           <motion.p
-            className="text-muted-foreground text-[11px] leading-relaxed"
+            className="text-muted-foreground text-xs leading-relaxed"
             data-testid="run-open-points"
             variants={FADE}
             transition={fadeAfter(afterChips)}
@@ -505,11 +518,11 @@ const PhaseActs: FC<{
       {rows.map(({ phase, line, duration }) => (
         <div
           key={phase}
-          className="text-muted-foreground flex gap-1.5 text-[11px]"
+          className="text-muted-foreground flex gap-1.5 text-xs"
           data-phase={phase}
         >
           <dt className="shrink-0 font-medium">{t(`phase.${phase}`)}</dt>
-          <dd className="min-w-0 truncate">
+          <dd className="min-w-0 break-words">
             {line}
             {duration !== null && (
               <>
@@ -544,7 +557,7 @@ const RunElapsed: FC<{ ledger: RunLedger; live: boolean }> = ({ ledger, live }) 
   const elapsed = formatElapsed(elapsedSeconds)
   return (
     <span
-      className="text-muted-foreground text-[11px] tabular-nums"
+      className="text-muted-foreground text-xs tabular-nums"
       aria-label={t('block.elapsedAria', { elapsed })}
       data-testid="run-elapsed"
     >
@@ -825,7 +838,7 @@ export function RunBlock({
               >
                 <RunStatusGlyph status={status} size="sm" delay={landing?.glyph ?? 0} />
                 <span
-                  className="text-foreground min-w-0 flex-1 truncate text-xs font-medium"
+                  className="text-foreground min-w-0 flex-1 break-words text-xs font-medium leading-snug line-clamp-2"
                   data-testid="run-title"
                 >
                   {name}
@@ -900,7 +913,7 @@ export function RunBlock({
               the run reads as one the run is about to read. */}
           {addDocumentFailure && (
             <p
-              className="text-error flex items-start gap-1.5 text-[11px] leading-[1.5]"
+              className="text-error flex items-start gap-1.5 text-xs leading-[1.5]"
               role="alert"
               data-testid="run-add-document-failure"
             >
@@ -937,7 +950,7 @@ export function RunBlock({
                   data-testid="run-grundlage"
                   aria-label={t('unterlagen.receiptLabel')}
                 >
-                  <p className="text-muted-foreground text-[11px] font-medium">
+                  <p className="text-muted-foreground text-xs font-medium">
                     {t('unterlagen.receipt', {
                       read: receipt.filter((row) => row.read).length,
                       total: receipt.length,
@@ -970,7 +983,7 @@ export function RunBlock({
                             >
                               <SourceSignalChip
                                 signal={docProvenance(row.doc).tint}
-                                className={cn('max-w-full', !row.read && 'opacity-75')}
+                                className={cn('max-w-full', WRAPPING_CHIP, !row.read && 'opacity-75')}
                                 title={row.doc.name}
                               >
                                 {body}
@@ -979,7 +992,7 @@ export function RunBlock({
                           ) : (
                             <SourceSignalChip
                               signal={docProvenance(row.doc).tint}
-                              className={cn('max-w-full', !row.read && 'opacity-75')}
+                              className={cn('max-w-full', WRAPPING_CHIP, !row.read && 'opacity-75')}
                               title={row.doc.name}
                             >
                               {body}
@@ -1032,7 +1045,7 @@ export function RunBlock({
           >
             {before && (
               <p
-                className="text-muted-foreground text-[11px] leading-relaxed"
+                className="text-muted-foreground text-xs leading-relaxed"
                 data-testid="run-completed-before"
               >
                 {before}
@@ -1042,7 +1055,7 @@ export function RunBlock({
               /* The reviewer's words, quoted on the run they are about —
                  the same adjunct a version row renders under itself. */
               <p
-                className="text-foreground flex items-start gap-1.5 border-l-2 pl-2 text-[11px] leading-[1.5]"
+                className="text-foreground flex items-start gap-1.5 border-l-2 pl-2 text-xs leading-[1.5]"
                 data-testid="run-review"
                 data-decision={review.decision}
               >
@@ -1056,7 +1069,7 @@ export function RunBlock({
             )}
             {connectionLine && (
               <p
-                className="text-muted-foreground text-[11px] leading-relaxed"
+                className="text-muted-foreground text-xs leading-relaxed"
                 role="status"
                 data-testid="run-connection"
                 data-connection={connection}

@@ -73,6 +73,7 @@ FRAME = "frame"  # owner -> relays: a stamped chat wire v2 event (payload = the 
 HITL_ANSWER = "hitl_answer"  # relay -> owner: an interaction_response, with who sent it
 CANCEL = "cancel"  # relay -> owner: a cancel_turn, with who sent it
 SUPERSEDE = "supersede"  # any replica -> owner: a newer question started, so stop the stale turn
+STEER = "steer"  # relay -> owner: a steering note for the running turn, masked, with who sent it
 
 # Per-conversation channel / key names. Mirrors ADR-0020's ``citations:{id}`` style.
 _EVENTS = "conv:{id}:events"  # owner publishes, relays and spectators subscribe
@@ -451,6 +452,11 @@ class ConversationBus:
         key = _TURN.format(id=conv, turn=turn_id)
         return await self._call("claim_turn", lambda: self._t.set_nx(key, self.replica_id, _STREAM_TTL_SECONDS))
 
+    async def release_turn(self, conv: str, turn_id: str) -> bool:
+        """Give back a claim this replica made and did not run (an ``if_idle`` question refused as busy)."""
+        key = _TURN.format(id=conv, turn=turn_id)
+        return await self._call("release_turn", lambda: self._t.delete_if_value(key, self.replica_id))
+
     # ---- one running turn per conversation ------------------------------
     def _running_value(self, turn_id: str) -> str:
         return json.dumps({"replica": self.replica_id, "turn_id": turn_id}, sort_keys=True)
@@ -489,7 +495,7 @@ class ConversationBus:
 
     # ---- relays -> owner (answers / control) ----------------------------
     async def publish_input(self, conv: str, input_type: str, payload: dict[str, Any]) -> None:
-        """Hand a client message to the owner: ``HITL_ANSWER``, ``CANCEL`` or ``SUPERSEDE``."""
+        """Hand a client message to the owner: ``HITL_ANSWER``, ``CANCEL``, ``STEER`` or ``SUPERSEDE``."""
         env = Envelope(conv=conv, type=input_type, payload=payload, origin=self.replica_id)
         await self._call("publish_input", lambda: self._t.publish(_INPUT.format(id=conv), env.encode()))
 

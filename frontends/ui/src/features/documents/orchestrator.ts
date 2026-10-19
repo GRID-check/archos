@@ -25,7 +25,7 @@ import { listSessionDocuments } from '@/adapters/api/session-documents-client'
 import { useDocumentsStore } from './store'
 import { useLayoutStore } from '@/features/layout/store'
 import type { TrackedFile } from './types'
-import { mapBackendStatus } from './utils'
+import { trackedStatusOfJobFile } from './utils'
 import { notifyDocumentsChanged } from '@/lib/documents/document-changes'
 import {
   isJoblessIngesting,
@@ -461,9 +461,10 @@ class UploadOrchestratorImpl {
             if (persistedFile) {
               store.addTrackedFile({
                 ...persistedFile,
-                status: mapBackendStatus(jobFile.status),
+                status: trackedStatusOfJobFile(jobFile),
                 progress: jobFile.progress_percent,
                 errorMessage: jobFile.error_message ?? undefined,
+                quarantine: jobFile.quarantine ?? null,
                 serverFileId: jobFile.file_id,
               } as TrackedFile)
             }

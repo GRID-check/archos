@@ -44,15 +44,28 @@ import {
   DOCUMENT_LIST_LIMIT,
   findProjectDocumentsByFilenames,
   findProjectDocumentsByNames,
+  findShelfDocumentListRow,
+  listDocumentLevelPage,
   listProjectDocumentPage,
+  listShelfFailedDocuments,
+  summarizeShelfFolders,
 } from './repository'
 import { FILENAME_LOOKUP_MAX_NAMES } from './filename-lookup'
 import {
   findArchivDocumentsByFilenames,
   findArchivDocumentsByNames,
+  listArchivDocumentLevel,
   listArchivDocuments,
 } from '@/lib/archiv/repository'
-import { decodeDocumentListCursor, encodeDocumentListCursor } from './list-cursor'
+import {
+  decodeDocumentLevelCursor,
+  decodeDocumentListCursor,
+  encodeDocumentLevelCursor,
+  encodeDocumentListCursor,
+  type DocumentLevelCursor,
+} from './list-cursor'
+import type { DocumentLevelQuery } from './list-query'
+import { projectShelf } from './shelf'
 import { REVIEWER_READER } from './document-reader'
 
 /** Every row: these pin the shape of the listing SQL, not the hold (`visibility.integration.spec.ts`). */
@@ -64,6 +77,8 @@ function wireRow(n: number, cursorCreatedAt = `2026-01-01T00:00:00.${String(n).p
   return [
     id, // id
     `plan-${n}.pdf`, // filename
+    'proj-1', // projectId
+    'project', // scope
     null, // displayName
     100, // fileSize
     'application/pdf', // contentType
@@ -81,7 +96,11 @@ function wireRow(n: number, cursorCreatedAt = `2026-01-01T00:00:00.${String(n).p
     '2026-01-01T00:00:00.000Z', // createdAt
     '2026-01-01T00:00:00.000Z', // updatedAt
     null, // errorMessage
+    null, // quarantine
     null, // metadata
+    null, // ingestFailureCategory
+    null, // ingestRetryable
+    null, // ingestReaderVersion
     cursorCreatedAt, // cursorCreatedAt
   ]
 }
@@ -301,5 +320,237 @@ describe('findArchivDocumentsByNames', () => {
     expect(sql).toMatch(/lower\("documents"\."filename"\) in/)
     expect(sql).not.toMatch(/"lifecycle" =/)
     expect(params).toEqual(expect.arrayContaining(['org-1', 'archiv', 'user', 'EG.pdf', 'eg.pdf']))
+  })
+})
+
+/**
+ * A folder LEVEL, page by page (ADR-0102): the Files workspace's read instead
+ * of the shelf drain. One level, in the reader's order, with the id as the
+ * ascending tiebreak and the cursor read off the row by the ORDER BY's own
+ * expression.
+ */
+describe('listDocumentLevelPage', () => {
+  const shelf = projectShelf('p1')
+  const level = (overrides: Partial<DocumentLevelQuery> = {}): DocumentLevelQuery => ({
+    folderId: null,
+    sort: 'added',
+    dir: 'desc',
+    limit: 100,
+    ...overrides,
+  })
+  /** A level row as pg-proxy returns it: the listing's columns, then the cursor value. */
+  const levelRow = (n: number, cursorValue: string): unknown[] => [...wireRow(n).slice(0, -1), cursorValue]
+
+  it('reads one level of the shelf, newest first, behind the listing predicates', async () => {
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ folderId: '00000000-0000-4000-8000-0000000000f1' }) })
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/(?:"documents"\.)?"folder_id" = \$\d+/)
+    expect(sql).toMatch(/(?:"documents"\.)?"project_id" = \$\d+/)
+    expect(sql).toMatch(/(?:"documents"\.)?"lifecycle" = \$\d+/)
+    expect(sql).toMatch(/order by (?:"documents"\.)?"created_at" desc, (?:"documents"\.)?"id" asc/i)
+    expect(params).toEqual(expect.arrayContaining(['p1', 'org-1', 'project', 'active', '00000000-0000-4000-8000-0000000000f1']))
+    expect(params.at(-1)).toBe(101)
+  })
+
+  it('reads the root as the documents filed in no folder', async () => {
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ folderId: null }) })
+    expect(onlyQuery().sql).toMatch(/(?:"documents"\.)?"folder_id" is null/)
+  })
+
+  it('reads the whole shelf when no folder is named (a search)', async () => {
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ folderId: undefined, q: 'Grundriss' }) })
+    const { sql } = onlyQuery()
+    expect(sql).not.toMatch(/"folder_id" (=|is null)/)
+    expect(sql).toMatch(/strpos\(lower\((?:"documents"\.)?"filename"\), lower\(\$\d+\)\) > 0/)
+    expect(sql).toMatch(/strpos\(lower\(coalesce\((?:"documents"\.)?"display_name", ''\)\), lower\(\$\d+\)\) > 0/)
+  })
+
+  it('searches the name in both Unicode forms, with no wildcard in what was typed', async () => {
+    const decomposed = 'Übersicht'.normalize('NFD')
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ q: `  ${decomposed} 50%_ ` }) })
+    const { sql, params } = onlyQuery()
+    expect(sql).not.toMatch(/ like /i)
+    expect(params).toEqual(
+      expect.arrayContaining([`${decomposed} 50%_`.normalize('NFC'), `${decomposed} 50%_`.normalize('NFD')]),
+    )
+  })
+
+  it('orders by the shown name, case-folded, and reads the cursor by the same expression', async () => {
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ sort: 'name', dir: 'asc' }) })
+    const { sql } = onlyQuery()
+    expect(sql).toMatch(
+      /order by lower\(coalesce\((?:"documents"\.)?"display_name", (?:"documents"\.)?"filename"\)\) asc, (?:"documents"\.)?"id" asc/i,
+    )
+    expect(sql).toMatch(/select .*lower\(coalesce\((?:"documents"\.)?"display_name", (?:"documents"\.)?"filename"\)\) from/i)
+  })
+
+  it('orders by size with an unknown size as the smallest', async () => {
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ sort: 'size', dir: 'desc' }) })
+    const { sql } = onlyQuery()
+    expect(sql).toMatch(/order by coalesce\((?:"documents"\.)?"file_size", -1\) desc, (?:"documents"\.)?"id" asc/i)
+    expect(sql).toMatch(/coalesce\((?:"documents"\.)?"file_size", -1\)::text/)
+  })
+
+  it.each([
+    ['added', 'desc', '2026-01-01T00:00:00.123456', /(?:"documents"\.)?"created_at" < \(\$\d+::timestamp AT TIME ZONE 'UTC'\)/],
+    ['added', 'asc', '2026-01-01T00:00:00.123456', /(?:"documents"\.)?"created_at" > \(\$\d+::timestamp AT TIME ZONE 'UTC'\)/],
+    ['name', 'asc', 'plan eg.pdf', /lower\(coalesce\((?:"documents"\.)?"display_name", (?:"documents"\.)?"filename"\)\) > \$\d+::text/],
+    ['size', 'desc', '2048', /coalesce\((?:"documents"\.)?"file_size", -1\) < \$\d+::integer/],
+  ] as const)('starts strictly after a %s %s cursor, the id breaking ties ascending', async (sort, dir, value, past) => {
+    const cursor: DocumentLevelCursor = { sort, dir, value, id: '00000000-0000-4000-8000-000000000009' }
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ sort, dir, cursor }) })
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(past)
+    expect(sql).toMatch(/AND (?:"documents"\.)?"id" > \$\d+::uuid\)\)/)
+    expect(params).toEqual(expect.arrayContaining([value, cursor.id]))
+  })
+
+  it('keeps every row of a full page, drops the probe row and points the cursor at the last kept one', async () => {
+    answer = [levelRow(1, 'a.pdf'), levelRow(2, 'b.pdf'), levelRow(3, 'c.pdf')]
+    const page = await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ sort: 'name', dir: 'asc', limit: 2 }) })
+    expect(page.rows.map((row) => row.filename)).toEqual(['plan-1.pdf', 'plan-2.pdf'])
+    expect(page.nextCursor).toEqual({ sort: 'name', dir: 'asc', value: 'b.pdf', id: '00000000-0000-4000-8000-000000000002' })
+    expect(page.rows[0]).not.toHaveProperty('cursorValue')
+    expect(page.rows[0].createdAt).toBeInstanceOf(Date)
+  })
+
+  it('reports no next page when the probe row did not come back', async () => {
+    answer = [levelRow(1, '10'), levelRow(2, '5')]
+    const page = await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ sort: 'size', limit: 2 }) })
+    expect(page.nextCursor).toBeNull()
+  })
+
+  it('clamps the page to the listing cap, and a nonsense limit to one row', async () => {
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ limit: 10_000 }) })
+    expect(captured.at(-1)?.params.at(-1)).toBe(DOCUMENT_LIST_LIMIT + 1)
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ limit: -3 }) })
+    expect(captured.at(-1)?.params.at(-1)).toBe(2)
+  })
+
+  it('narrows to read-state families by the status vocabulary, unknown statuses counted as being read', async () => {
+    await listDocumentLevelPage(shelf, 'org-1', { reader, level: level({ states: ['failed', 'reading'] }) })
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/lower\((?:"documents"\.)?"status"\) in \(/)
+    expect(sql).toMatch(/lower\((?:"documents"\.)?"status"\) not in \(/)
+    expect(params).toEqual(expect.arrayContaining(['failed', 'error', 'ready', 'quarantined', 'stored']))
+  })
+
+  it('asks no family predicate when every family is asked for', async () => {
+    await listDocumentLevelPage(shelf, 'org-1', {
+      reader,
+      level: level({ states: ['readable', 'reading', 'failed', 'held', 'unindexed'] }),
+    })
+    expect(onlyQuery().sql).not.toMatch(/"status"\)/)
+  })
+
+  it('reads the Archiv shelf the same way', async () => {
+    await listArchivDocumentLevel('org-1', { reader, level: level() })
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/(?:"documents"\.)?"scope" = \$\d+/)
+    expect(sql).not.toMatch(/(?:"documents"\.)?"project_id" = /)
+    expect(params).toEqual(expect.arrayContaining(['org-1', 'archiv']))
+  })
+})
+
+describe('the level cursor codec', () => {
+  const cursor: DocumentLevelCursor = {
+    sort: 'name',
+    dir: 'asc',
+    value: 'übersicht eg.pdf',
+    id: '00000000-0000-4000-8000-000000000001',
+  }
+  const raw = (body: unknown) => Buffer.from(JSON.stringify(body)).toString('base64url')
+
+  it('round-trips every order', () => {
+    expect(decodeDocumentLevelCursor(encodeDocumentLevelCursor(cursor))).toEqual(cursor)
+    const added = { ...cursor, sort: 'added', dir: 'desc', value: '2026-01-01T00:00:00.123456' } as const
+    expect(decodeDocumentLevelCursor(encodeDocumentLevelCursor(added))).toEqual(added)
+    const size = { ...cursor, sort: 'size', value: '-1' } as const
+    expect(decodeDocumentLevelCursor(encodeDocumentLevelCursor(size))).toEqual(size)
+  })
+
+  it('is not mistaken for a listing cursor, nor a listing cursor for it', () => {
+    const listing = encodeDocumentListCursor({ createdAt: '2026-01-01T00:00:00.123456', id: cursor.id })
+    expect(decodeDocumentLevelCursor(listing)).toBeNull()
+    expect(decodeDocumentListCursor(encodeDocumentLevelCursor(cursor))).toBeNull()
+  })
+
+  it.each([
+    ['garbage', 'not-a-cursor'],
+    ['empty', ''],
+    ['an unknown order', raw({ s: 'status', d: 'asc', v: 'x', i: cursor.id })],
+    ['an unknown direction', raw({ s: 'name', d: 'up', v: 'x', i: cursor.id })],
+    ['an added key at millisecond precision', raw({ s: 'added', d: 'desc', v: '2026-01-01T00:00:00.123', i: cursor.id })],
+    ['a size key that is not a number', raw({ s: 'size', d: 'desc', v: '1; DROP TABLE documents', i: cursor.id })],
+    ['a non-uuid id', raw({ s: 'name', d: 'asc', v: 'x', i: "1' OR 1=1" })],
+    ['an oversized key', raw({ s: 'name', d: 'asc', v: 'x'.repeat(2000), i: cursor.id })],
+  ])('refuses %s', (_label, encoded) => {
+    expect(decodeDocumentLevelCursor(encoded)).toBeNull()
+  })
+})
+
+/**
+ * The shelf summary (ADR-0102): one aggregate per folder over the listing's
+ * own WHERE, counted by the status vocabulary's families, and the failed
+ * documents for „Alle erneut lesen“. Postgres only.
+ */
+describe('summarizeShelfFolders', () => {
+  it('groups the listing rows by folder and counts each family by its declared statuses', async () => {
+    await summarizeShelfFolders(projectShelf('p1'), 'org-1', { reader })
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/group by (?:"documents"\.)?"folder_id"/i)
+    expect(sql).toMatch(/count\(\*\) FILTER \(WHERE lower\((?:"documents"\.)?"status"\) in \(/)
+    expect(sql).toMatch(/(?:"documents"\.)?"lifecycle" = \$\d+/)
+    expect(params).toEqual(expect.arrayContaining(['p1', 'org-1', 'project', 'completed', 'failed', 'quarantined', 'stored']))
+    expect(sql).toMatch(/limit \$\d+$/i)
+  })
+
+  it('coerces the counts and leaves the rest of the total to the reading family', async () => {
+    answer = [
+      [null, '10', '6', '1', '1', '1', '2026-03-01T10:00:00.000Z'],
+      ['00000000-0000-4000-8000-0000000000f1', 3, 3, 0, 0, 0, null],
+    ]
+    const rows = await summarizeShelfFolders(projectShelf('p1'), 'org-1', { reader })
+    expect(rows).toEqual([
+      { folderId: null, total: 10, readable: 6, reading: 1, failed: 1, held: 1, unindexed: 1, latest: '2026-03-01T10:00:00.000Z' },
+      {
+        folderId: '00000000-0000-4000-8000-0000000000f1',
+        total: 3,
+        readable: 3,
+        reading: 0,
+        failed: 0,
+        held: 0,
+        unindexed: 0,
+        latest: null,
+      },
+    ])
+  })
+})
+
+describe('listShelfFailedDocuments', () => {
+  it('asks for the failed family, newest first, one probe row past the limit', async () => {
+    answer = Array.from({ length: 1001 }, (_, n) => [`00000000-0000-4000-8000-${String(n).padStart(12, '0')}`, null])
+    const result = await listShelfFailedDocuments(projectShelf('p1'), 'org-1', { reader })
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/lower\((?:"documents"\.)?"status"\) in \(\$\d+, \$\d+\)/)
+    expect(params).toEqual(expect.arrayContaining(['failed', 'error']))
+    expect(params.at(-1)).toBe(1001)
+    expect(result.failed).toHaveLength(1000)
+    expect(result.failedTruncated).toBe(true)
+  })
+})
+
+describe('findShelfDocumentListRow', () => {
+  it('reads one document through the listing predicates', async () => {
+    await findShelfDocumentListRow(projectShelf('p1'), 'org-1', '00000000-0000-4000-8000-000000000001', {
+      reader,
+      includeArchived: true,
+    })
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/(?:"documents"\.)?"id" = \$\d+/)
+    expect(sql).toMatch(/(?:"documents"\.)?"project_id" = \$\d+/)
+    // Archived documents are found: a link names one on purpose.
+    expect(sql).not.toMatch(/"lifecycle" =/)
+    expect(params).toEqual(expect.arrayContaining(['00000000-0000-4000-8000-000000000001', 'p1', 'org-1']))
   })
 })

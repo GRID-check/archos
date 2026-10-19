@@ -98,7 +98,7 @@ describe("the bff-jobs pool", () => {
       redisUrl: pulumi.output("redis://dragonfly:6379"),
       seaweedInternalEndpoint: pulumi.output("http://seaweedfs:8333"),
       seaweedPublicEndpoint: pulumi.output("https://s3.example.test"),
-      chromaUrl: pulumi.output("http://chroma:8000"),
+      qdrantUrl: pulumi.output("http://qdrant.grid.svc.cluster.local:6333"),
       dsn: (opts: { db: string; clusterWide?: boolean }) => {
         dsnRequests.push({ db: opts.db, clusterWide: opts.clusterWide });
         return pulumi.output(`postgresql://x/${opts.db}`);
@@ -154,6 +154,19 @@ describe("the bff-jobs pool", () => {
     // What the runner and the BFF in its pod cannot start without.
     const names = env.map((e) => e.name);
     expect(names).toEqual(expect.arrayContaining(["GRID_APP_DATABASE_URL", "GRID_INTERNAL_API_TOKEN"]));
+  });
+
+  it("carries the Web Push key pair and contact: this pool is the one that sends (ADR-0112)", async () => {
+    const names = env.map((e) => e.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "GRID_WEB_PUSH_VAPID_PUBLIC_KEY",
+        "GRID_WEB_PUSH_VAPID_PRIVATE_KEY",
+        "GRID_WEB_PUSH_SUBJECT",
+      ]),
+    );
+    const privateKey = env.find((e) => e.name === "GRID_WEB_PUSH_VAPID_PRIVATE_KEY");
+    expect(privateKey).toMatchObject({ valueFrom: { secretKeyRef: { key: "GRID_WEB_PUSH_VAPID_PRIVATE_KEY" } } });
   });
 
   it("names no variable twice, and logs under its own service name", async () => {

@@ -174,6 +174,44 @@ const RAW_FIXTURES: CardInput[] = [
     note: 'Vorschlag — es wurde noch nichts verschoben.',
   },
   {
+    // Both kinds of row: two marks to take over or discard, a box and a
+    // point, and an answer in an existing thread.
+    type: 'canvas_activity',
+    document: { id: '00000000-0000-4000-8000-0000000000c1', name: 'Grundriss EG.pdf' },
+    items: [
+      {
+        action: 'proposed',
+        annotation_id: '00000000-0000-4000-8000-0000000000c2',
+        number: 7,
+        page: 1,
+        shape: 'region',
+        x: 0.58,
+        y: 0.34,
+        w: 0.14,
+        h: 0.22,
+        kind: 'defect',
+        body: 'Laufbreite im Treppenhaus 1,10 m; für GK 4 sind 1,20 m nutzbare Laufbreite gefordert (OIB-Richtlinie 4, Pkt. 2.2).',
+      },
+      {
+        action: 'proposed',
+        annotation_id: '00000000-0000-4000-8000-0000000000c3',
+        number: 8,
+        page: 1,
+        shape: 'point',
+        x: 0.31,
+        y: 0.62,
+        kind: 'question',
+        body: 'Ist die Tür zum Müllraum als EI2 30-C ausgeführt?',
+      },
+      {
+        action: 'replied',
+        annotation_id: '00000000-0000-4000-8000-0000000000c4',
+        number: 4,
+        excerpt: 'Die Brandschutztür ist im Türenbuch als EI2 30-C geführt, Position T-EG-04.',
+      },
+    ],
+  },
+  {
     type: 'building_section',
     title: 'Gebäudeschnitt – Höhenprüfung GK 4',
     storeys: [

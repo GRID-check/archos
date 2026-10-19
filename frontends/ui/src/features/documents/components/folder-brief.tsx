@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Chip, ChipCount, ChipLabel } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { SectionLabel } from '@/components/ui/section-label'
 import { SegmentMeter, ToneSwatch, type MeterTone } from '@/components/ui/segment-meter'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange } from '@/lib/format'
+import { offeredForRetry } from '@/lib/documents/retry-policy'
 import { cn } from '@/lib/utils'
 import type { BulkReingestProgress } from '../hooks/use-bulk-reingest'
+import { usePhoneLayout } from '../hooks/use-phone-layout'
 import { FolderReadState } from './folder-read-state'
 import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
 import {
@@ -80,6 +81,14 @@ export interface FolderBriefProps {
    * null when unknown, so an unread list is never presented as "nothing missing".
    */
   missing?: readonly MissingDocument[] | null
+  /**
+   * Load what Piloti put on each document, for a {@link FolderBriefData.partial}
+   * brief (ADR-0102): the workspace then reads the whole shelf once and the
+   * brief is built from it. Absent offers nothing to load.
+   */
+  onLoadDetails?: () => void
+  /** The shelf is being read for {@link onLoadDetails}. */
+  detailsLoading?: boolean
 }
 
 /**
@@ -117,10 +126,18 @@ export function FolderBrief({
   collapsed,
   onCollapsedChange,
   missing,
+  onLoadDetails,
+  detailsLoading = false,
 }: FolderBriefProps): JSX.Element | null {
   const t = useTranslations('files')
   const { tally } = brief
+  const phone = usePhoneLayout()
   if (tally.total === 0) return null
+  // Nothing to act on, and a phone has no room for a line that only reassures:
+  // when every document is read the disclosure is gone. One unread, failed,
+  // held or unplaced document, or a missing one at the root, brings it back,
+  // folded to its one line.
+  if (phone && briefHasNothingToSay(tally, folderName === null ? missing : null)) return null
 
   const scope = folderName
     ? t('brief.scopeFolder', { name: folderName })
@@ -128,92 +145,110 @@ export function FolderBrief({
   const headline = briefHeadline(tally, t)
   const meterLabel = `${headline} ${scope}. ${legendSentence(tally, t)}`
 
-  // Folded, the brief is one quiet line above the listing, not a card: what
-  // Piloti has read is worth a glance, not the top third of every folder. The
-  // full account (bar, legend, what needs a person) is one click away.
-  if (collapsed) {
-    return (
-      <button
-        type="button"
-        onClick={() => onCollapsedChange(false)}
-        aria-expanded={false}
-        title={t('brief.expand')}
-        className="text-muted-foreground hover:bg-accent/60 hover:text-foreground focus-visible:ring-ring touch-target -mx-2 flex w-[calc(100%+1rem)] min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
-        data-testid="folder-brief"
-        data-collapsed=""
-      >
-        <Sparkles className="size-3.5 shrink-0" aria-hidden />
-        <span className="min-w-0 truncate">
-          {headline} {scope}
-        </span>
-        <ChevronDown className="size-3.5 shrink-0" aria-hidden />
-      </button>
-    )
-  }
-
+  // ONE ELEMENT THAT OPENS IN PLACE.
+  //
+  // Folded, the brief is one quiet line above the listing: what Piloti has read
+  // is worth a glance, not the top third of every folder. It used to open by
+  // swapping that line for a different element, a card with its own header, so
+  // the thing just clicked vanished and the words reappeared elsewhere in
+  // another size. Now the line IS the card's header in both states: it never
+  // moves, the card's border fades in around it, and the details open below.
+  // The `-mx-3` holds in both states, so the line's text stays on the
+  // listing's edge whether or not a border is drawn around it.
+  const open = !collapsed
   return (
     <Card
-      className="gap-0 py-0"
+      className={cn(
+        '-mx-3 gap-0 py-0 transition-[background-color,border-color,box-shadow] duration-quick ease-out motion-reduce:transition-none',
+        collapsed && 'border-transparent bg-transparent shadow-none'
+      )}
       data-testid="folder-brief"
+      data-state={open ? 'open' : 'closed'}
       aria-labelledby="folder-brief-title"
       role="region"
     >
-      <div className="flex flex-col gap-2.5 px-4 py-3.5">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <SectionLabel as="p" icon={Sparkles} className="font-semibold tracking-[0.05em]">
-              {t('brief.eyebrow')}
-            </SectionLabel>
-            <p id="folder-brief-title" className="text-foreground mt-1.5 text-sm font-semibold leading-snug">
-              {headline}{' '}
-              <span className="text-muted-foreground font-normal">{scope}</span>
-            </p>
+      <Collapsible open={open} onOpenChange={(next) => onCollapsedChange(!next)}>
+        <h2 className="m-0">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              id="folder-brief-title"
+              title={t(open ? 'brief.collapse' : 'brief.expand')}
+              className={cn(
+                'hover:text-foreground focus-visible:ring-ring flex w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset motion-reduce:transition-none pointer-coarse:min-h-11',
+                open ? 'text-foreground' : 'text-muted-foreground hover:bg-accent/60'
+              )}
+              data-testid="folder-brief-toggle"
+            >
+              <Sparkles className="size-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 truncate">
+                <span className={cn(open && 'font-medium')}>{headline}</span>{' '}
+                <span className="text-muted-foreground">{scope}</span>
+              </span>
+              <ChevronDown
+                className={cn(
+                  'text-muted-foreground size-3.5 shrink-0 transition-transform duration-quick ease-out motion-reduce:transition-none',
+                  open && 'rotate-180'
+                )}
+                aria-hidden
+              />
+            </button>
+          </CollapsibleTrigger>
+        </h2>
+
+        <CollapsibleContent id="folder-brief-body">
+          <div className="flex flex-col gap-2.5 px-3 pb-3 pt-0.5">
+            <SegmentMeter
+              label={meterLabel}
+              segments={meterStates(tally).map((state) => ({ key: state, value: tally[state], tone: READ_STATE_TONE[state] }))}
+            />
+            <ReadStateLegend tally={tally} onSelect={onSelect} />
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="-mr-1.5 -mt-1 size-7 shrink-0 pointer-coarse:size-11"
-            onClick={() => onCollapsedChange(true)}
-            aria-expanded
-            aria-controls="folder-brief-body"
-            aria-label={t('brief.collapse')}
-            title={t('brief.collapse')}
-            data-testid="folder-brief-toggle"
-          >
-            <ChevronDown className="rotate-180" aria-hidden />
-          </Button>
-        </div>
 
-        <SegmentMeter
-          label={meterLabel}
-          segments={meterStates(tally).map((state) => ({ key: state, value: tally[state], tone: READ_STATE_TONE[state] }))}
-        />
-
-        <ReadStateLegend tally={tally} onSelect={onSelect} />
-      </div>
-
-      {/* Ordered by what the reader has to do: what needs them first, open;
-          then what Piloti is missing, what the folder is about and where the
-          trouble sits, each folded to one line that already names its content.
-          Open in full, the brief was taller than a laptop screen and the
-          listing it introduces started below the fold. */}
-      <div id="folder-brief-body" className="flex flex-col divide-y border-t">
-        <NeedsYouSection
-          brief={brief}
-          onSelect={onSelect}
-          onReadAgain={onReadAgain}
-          readAgainProgress={readAgainProgress}
-        />
-        {folderName === null && missing && missing.length > 0 && <MissingSection missing={missing} />}
-        <AboutSection brief={brief} onSelect={onSelect} />
-        <HotspotSection hotspots={brief.hotspots} onOpenFolder={onOpenFolder} />
-      </div>
+          {/* Ordered by what the reader has to do: what needs them first, open;
+              then what Piloti is missing, what the folder is about and where the
+              trouble sits, each folded to one line that already names its content.
+              Open in full, the brief was taller than a laptop screen and the
+              listing it introduces started below the fold. */}
+          <div className="flex flex-col divide-y border-t" data-testid="folder-brief-sections">
+            <NeedsYouSection
+              brief={brief}
+              onSelect={onSelect}
+              onReadAgain={onReadAgain}
+              readAgainProgress={readAgainProgress}
+            />
+            {folderName === null && missing && missing.length > 0 && <MissingSection missing={missing} />}
+            {brief.partial ? (
+              <DeferredAboutSection tally={tally} onLoadDetails={onLoadDetails} loading={detailsLoading} />
+            ) : (
+              <AboutSection brief={brief} onSelect={onSelect} />
+            )}
+            <HotspotSection hotspots={brief.hotspots} onOpenFolder={onOpenFolder} />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   )
 }
 
 type Translate = ReturnType<typeof useTranslations>
+
+/** Every document Piloti is meant to read has been read: nothing reading, failed or held. */
+export function everythingRead(tally: KnowledgeTally): boolean {
+  return tally.reading + tally.failed + tally.held === 0 && tally.readable === tally.total - tally.unindexed
+}
+
+/**
+ * True when the brief would only reassure: everything is read, nothing waits to
+ * be placed in a document type, and the agent misses nothing here (`missing` is
+ * the root's list, null in a folder or while unknown).
+ */
+export function briefHasNothingToSay(
+  tally: KnowledgeTally,
+  missing: readonly MissingDocument[] | null | undefined
+): boolean {
+  return everythingRead(tally) && tally.unplaced === 0 && (missing?.length ?? 0) === 0
+}
 
 function briefHeadline(tally: KnowledgeTally, t: Translate): string {
   const share = readShare(tally)
@@ -349,6 +384,43 @@ function AboutSection({ brief, onSelect }: { brief: FolderBriefData; onSelect: (
 }
 
 /**
+ * „Worum es hier geht“ before the documents are loaded (ADR-0102). The folder
+ * is read page by page, and what Piloti put on each document lives beside the
+ * rows rather than in the counts, so the section says that and offers to load
+ * them instead of claiming Piloti recognised nothing.
+ */
+function DeferredAboutSection({
+  tally,
+  onLoadDetails,
+  loading,
+}: {
+  tally: KnowledgeTally
+  onLoadDetails?: () => void
+  loading: boolean
+}) {
+  const t = useTranslations('files')
+  if (tally.readable === 0) return null
+  return (
+    <BriefDisclosure id="folder-brief-about" title={t('brief.aboutTitle')} summary={t('brief.aboutDeferred')}>
+      <p className="text-muted-foreground text-xs leading-relaxed">{t('brief.aboutDeferredHint')}</p>
+      {onLoadDetails && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 self-start"
+          onClick={onLoadDetails}
+          disabled={loading}
+          data-testid="folder-brief-load-details"
+        >
+          {loading ? t('brief.loadingDetails') : t('brief.loadDetails')}
+        </Button>
+      )}
+    </BriefDisclosure>
+  )
+}
+
+/**
  * One family of chips under its run-in label — „Dokumentart", „Fachbereich",
  * „Themen" — so a type and a discipline are told apart by a word, not only by
  * fill against outline.
@@ -386,7 +458,7 @@ function BriefDisclosure({
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="hover:bg-accent/60 focus-visible:ring-ring group flex w-full min-w-0 items-center gap-3 px-4 py-2.5 text-left transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset motion-reduce:transition-none pointer-coarse:min-h-11"
+              className="hover:bg-accent/60 focus-visible:ring-ring group flex w-full min-w-0 items-center gap-3 px-3 py-2.5 text-left transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset motion-reduce:transition-none pointer-coarse:min-h-11"
               data-testid={`${id}-toggle`}
             >
               <span className="text-muted-foreground shrink-0 text-xs font-medium">{title}</span>
@@ -404,7 +476,7 @@ function BriefDisclosure({
             </button>
           </CollapsibleTrigger>
         </h3>
-        <CollapsibleContent className="flex flex-col gap-2.5 px-4 pb-3">{children}</CollapsibleContent>
+        <CollapsibleContent className="flex flex-col gap-2.5 px-3 pb-3">{children}</CollapsibleContent>
       </section>
     </Collapsible>
   )
@@ -450,22 +522,28 @@ function NeedsYouSection({
   readAgainProgress?: BulkReingestProgress | null
 }) {
   const t = useTranslations('files')
-  const { failed, held, unplaced } = brief.attention
-  if (failed.length + held.length + unplaced.length === 0) return null
+  // Counted from the tally, which both briefs carry exactly; the attention
+  // lists only NAME documents for an action, and a summary-built brief names
+  // the failed ones alone, up to the summary's limit (ADR-0102). The re-read
+  // button counts what it will send: not a file that failed for a lasting
+  // reason (`offeredForRetry`), which stays in the tally and is not sent.
+  const { failed, held, unplaced } = brief.tally
+  const sendable = offeredForRetry(brief.attention.failed).length
+  if (failed + held + unplaced === 0) return null
   return (
-    <section className="flex flex-col gap-2.5 px-4 py-3" aria-labelledby="folder-brief-needs">
+    <section className="flex flex-col gap-2.5 px-3 py-3" aria-labelledby="folder-brief-needs">
       <h3 id="folder-brief-needs" className="text-muted-foreground text-xs font-medium">
         {t('brief.needsTitle')}
       </h3>
-      {failed.length > 0 && (
+      {failed > 0 && (
         <AttentionRow
           tone="destructive"
-          text={t('brief.failedLine', { count: failed.length })}
-          showLabel={t('brief.showFailed', { count: failed.length })}
+          text={t('brief.failedLine', { count: failed })}
+          showLabel={t('brief.showFailed', { count: failed })}
           onShow={() => onSelect({ kind: 'state', state: 'failed' })}
           testId="folder-brief-needs-failed"
         >
-          {onReadAgain && (
+          {onReadAgain && (sendable > 0 || Boolean(readAgainProgress)) && (
             <Button
               type="button"
               size="sm"
@@ -478,26 +556,26 @@ function NeedsYouSection({
               <RotateCcw className={cn('size-3.5', readAgainProgress && 'animate-spin motion-reduce:animate-none')} aria-hidden />
               {readAgainProgress
                 ? t('brief.readAgainProgress', { done: readAgainProgress.done, count: readAgainProgress.total })
-                : t('brief.readAgainAll', { count: failed.length })}
+                : t('brief.readAgainAll', { count: sendable })}
             </Button>
           )}
         </AttentionRow>
       )}
-      {held.length > 0 && (
+      {held > 0 && (
         <AttentionRow
           tone="warning"
-          text={t('brief.heldLine', { count: held.length })}
-          showLabel={t('brief.showHeld', { count: held.length })}
+          text={t('brief.heldLine', { count: held })}
+          showLabel={t('brief.showHeld', { count: held })}
           onShow={() => onSelect({ kind: 'state', state: 'held' })}
           testId="folder-brief-needs-held"
         />
       )}
-      {unplaced.length > 0 && (
+      {unplaced > 0 && (
         <AttentionRow
           tone="muted"
-          text={t('brief.unplacedLine', { count: unplaced.length })}
+          text={t('brief.unplacedLine', { count: unplaced })}
           hint={t('brief.unplacedHint')}
-          showLabel={t('brief.showUnplaced', { count: unplaced.length })}
+          showLabel={t('brief.showUnplaced', { count: unplaced })}
           onShow={() => onSelect({ kind: 'unplaced' })}
           testId="folder-brief-needs-unplaced"
         />

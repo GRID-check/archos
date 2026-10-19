@@ -80,7 +80,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Bun is the INSTALLER and script runner; Node stays the runtime. Copied from
+# Bun is the toolchain; Node stays the runtime (ADR-0103). Copied from
 # the official image rather than installed, so the layer is deterministic and
 # needs no network step.
 #
@@ -93,8 +93,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Tag choice: `-slim` (Debian bookworm, glibc — matches this node base), not
 # `-debian`. Bun does not publish a `-debian` alias for every release (1.3.11
 # has none), so that suffix breaks the build on an ordinary version bump.
-# Keep the version in lockstep with `.github/actions/setup-bun`.
-COPY --from=oven/bun:1.3.11-slim /usr/local/bin/bun /usr/local/bin/bun
+# The version is the one `.github/actions/setup-bun` pins;
+# `tests/test_bun_version_pin.py` fails when they differ.
+COPY --from=oven/bun:1.4.3-slim /usr/local/bin/bun /usr/local/bin/bun
 
 # =============================================================================
 # Stage 2: Dependencies
@@ -237,6 +238,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-upgrade-headers.
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-teardown.js ./src/lib/proxy/ws-teardown.js
 # And this one to pick which aiq-agent address a chat socket dials (ADR-0080).
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/backend-target.js ./src/lib/proxy/backend-target.js
+# And this one to build a chat turn's headers and signed envelope (ADR-0106).
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/turns/turn-headers.js ./src/lib/turns/turn-headers.js
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 

@@ -16,7 +16,9 @@ import { IfcViewerCard } from './IfcViewerCard'
 
 /** The viewport needs a GPU; the card's own logic does not. */
 vi.mock('@/features/bim/components/ifc-model-viewer', () => ({
-  IfcModelViewer: () => <div data-testid="ifc-viewport" />,
+  IfcModelViewer: ({ onRetry }: { onRetry?: () => void }) => (
+    <button type="button" data-testid="ifc-viewport" onClick={onRetry} />
+  ),
 }))
 
 const MODELS = {
@@ -185,6 +187,19 @@ describe('IfcViewerCard — which of three situations it is in', () => {
     stubFetch({ models: MODELS, query: ELEMENTS, source: { url: 'https://example.test/m.ifc' } })
     card()
     expect(await screen.findByTestId('ifc-viewport')).toBeInTheDocument()
+  })
+
+  it('asks for a fresh model URL when the viewport retries a failed load', async () => {
+    stubFetch({ models: MODELS, query: ELEMENTS, source: { url: 'https://example.test/m.ifc' } })
+    card()
+    const viewport = await screen.findByTestId('ifc-viewport')
+    const sourceRequests = () =>
+      vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/source')).length
+    expect(sourceRequests()).toBe(1)
+
+    viewport.click()
+
+    await waitFor(() => expect(sourceRequests()).toBe(2))
   })
 })
 

@@ -14,6 +14,8 @@
 
 import { INBOX_ITEM_TYPES, type InboxItemType, type InboxTargetType } from '@/lib/db/schema'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
+import type { PushCategory, PushUrgency } from './push-categories'
+import { isMarkAnchored } from './types'
 
 /**
  * Which product gate a type lives behind.
@@ -61,6 +63,11 @@ export interface InboxTypeDefinition {
    * {@link InboxEmailDefault} and `./delivery`.
    */
   readonly email: InboxEmailDefault
+  /**
+   * How the type reaches a person's phone or desktop as a system notification
+   * (ADR-0112). See {@link InboxPushPolicy} and `./push-policy`.
+   */
+  readonly push: InboxPushPolicy
 }
 
 /**
@@ -87,6 +94,46 @@ export type InboxEmailDefault =
   | { readonly send: 'never' }
   | { readonly send: 'if-unread'; readonly afterMinutes: number }
 
+/**
+ * How a type is pushed (ADR-0112). Not a yes or no: every type may reach a
+ * device the person turned notifications on for, and the person decides per
+ * `category` (`./push-categories`), whose default is on for what is addressed to
+ * them and off for ambient activity. `urgency` is what the push service is told
+ * about how soon the device should wake for it.
+ *
+ * Unlike the email policy, push has no delay: a notification is only worth
+ * sending while the item is unread, and the job that sends it checks that at
+ * the moment it runs (`lib/push/inbox-push-job.ts`), which is the same
+ * cancellation email gets from reading a row first.
+ */
+export interface InboxPushPolicy {
+  readonly category: PushCategory
+  readonly urgency: PushUrgency
+  /**
+   * The category instead, when the item is about the recipient's OWN thing
+   * (its payload says `yours: true`): a reply on a mark they wrote answers
+   * them, the way `mention.answered` does, and is not ambient activity.
+   */
+  readonly yours?: PushCategory
+  /**
+   * Fold a burst of this type's rows for ONE person into one notification,
+   * across resources: the morning's due reminders, fifteen marks carried on to
+   * a new document, a mark handed over after another. See {@link InboxPushFold}.
+   */
+  readonly fold?: InboxPushFold
+}
+
+/**
+ * How a burst of one type's rows for one person is counted in the one
+ * notification that tells them all (`lib/push/fold.ts`): each row's `variant`
+ * is counted under a part of the line („3 heute oder morgen fällig, 1
+ * überfällig“), worded by `pushFold.parts.<part>` in the type's copy. A
+ * variant not listed is counted under `other`.
+ */
+export interface InboxPushFold {
+  readonly parts: Readonly<Record<string, string>>
+}
+
 const IN_APP_ONLY: InboxEmailDefault = { send: 'never' }
 
 export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> = {
@@ -98,6 +145,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'collaboration',
     email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
   },
   // "Your request was answered" — one per answered request.
   'mention.answered': {
@@ -106,6 +154,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'normal' },
   },
   // "You now have access" — one per resource; re-sharing should not stack.
   'conversation.shared_with_you': {
@@ -114,6 +163,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'access', urgency: 'normal' },
   },
   // Ambient thread activity — the type that MUST collapse, or the inbox is noise.
   'conversation.activity': {
@@ -122,6 +172,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
   },
   /*
     Storage pressure (ADR-0042). `per-anchor` rather than `collapse`, and the
@@ -140,6 +191,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 0 },
+    push: { category: 'office', urgency: 'normal' },
   },
   'document.assigned_to_you': {
     actionable: false,
@@ -147,6 +199,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'collaboration',
     email: IN_APP_ONLY,
+    push: { category: 'access', urgency: 'normal' },
   },
   /*
     A background run ended. `per-anchor` with the backend job id as the anchor:
@@ -163,6 +216,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
   },
   'job.failed': {
     actionable: false,
@@ -170,6 +224,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'results', urgency: 'normal' },
   },
   /*
     A run has a question for the person who asked for it (ADR-0062, `wartet`).
@@ -185,6 +240,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'requests', urgency: 'high' },
   },
   /*
     A version is waiting for a decision (ADR-0054). Actionable, because it IS an
@@ -206,6 +262,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 180,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'normal' },
   },
   /*
     A member sent product feedback (Platform → Feedback). Informational: the
@@ -228,6 +285,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
   },
   'mail_import.failed': {
     actionable: false,
@@ -235,6 +293,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'results', urgency: 'normal' },
   },
   'feedback.submitted': {
     actionable: false,
@@ -242,6 +301,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 90,
     gate: 'platform',
     email: { send: 'if-unread', afterMinutes: 0 },
+    push: { category: 'office', urgency: 'low' },
   },
   /*
     An upload of yours has been read (ADR-0086). `per-anchor` on the batch id:
@@ -254,6 +314,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
   },
   /*
     The content check held files back (ADR-0086). `collapse` per organization:
@@ -267,6 +328,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'office', urgency: 'normal' },
   },
   /*
     The uploader asks for a quarantined file to be released (ADR-0086).
@@ -280,6 +342,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 30,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'office', urgency: 'normal' },
   },
   /*
     A newer Fassung of a document the recipient follows (ADR-0054, ADR-0099).
@@ -296,8 +359,183 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     retentionDays: 60,
     gate: 'operational',
     email: IN_APP_ONLY,
+    push: { category: 'activity', urgency: 'low' },
+  },
+  /*
+    Piloti finished a turn on an Anmerkung for the person who woke it (ADR-0106).
+    `per-anchor` on the MARK: a second answer on the same mark folds into the
+    row it has, which is the row the reader is about to open. Informational: the
+    answer is in the thread, nothing waits on the reader. Operational, like
+    `document.review_requested`: marks are not a chat feature. Short retention:
+    it announces work that is already visible on the mark. A failure is the one
+    worth keeping and mailing, as `job.failed` is: the person delegated the mark
+    and may have left.
+  */
+  'piloti.work_done': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 30,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
+  },
+  'piloti.work_failed': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'results', urgency: 'normal' },
+  },
+  /*
+    Piloti asked a question and waits for a person. Actionable, because the
+    mark is stuck until someone answers and the badge is what shows it; resolved
+    by `onMarkSettledByPerson`, so it never sits there for good. `per-anchor` on
+    the mark: a follow-up question folds into the row, and a second mark is a
+    second row. Kept as long as a mention, for the same reason.
+  */
+  'piloti.asks_you': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
+  },
+  /*
+    A stored proposal waits for a decision (ADR-0105). Actionable until it is
+    applied or dismissed. In-app only: it is a suggestion Piloti made while the
+    person was working with it, not a request against them, so it does not earn
+    mail. `per-anchor` on the proposal.
+  */
+  'piloti.proposal_waiting': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'requests', urgency: 'normal' },
+  },
+  /*
+    A reading of the project's documents is ready for review (ADR-0111).
+    Actionable: the suggestions count for nothing until a person confirms them,
+    and the badge is what says so. `per-anchor` on the intake: the next reading
+    of the same project folds into the row. Resolved by `completeIntake`, for
+    everyone, so it never sits there for good.
+  */
+  'piloti.intake_ready': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'requests', urgency: 'normal' },
+  },
+  /*
+    A colleague made the reader responsible for an Anmerkung (ADR-0106).
+    Actionable: the mark waits on them until it is closed or handed on, and
+    the badge is what says so. Resolved when someone else becomes responsible
+    and for everyone when the mark is closed (`lib/annotations/attention.ts`).
+    `per-anchor` on the mark: assigning it twice is one row. A reminder by
+    mail after two hours unread, once a sender exists (`./delivery`): a mark
+    handed to someone who never opens the app would otherwise wait for good. Operational, like `piloti.asks_you`:
+    marks are not a chat feature.
+  */
+  'annotation.assigned_to_you': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 120 },
+    // A day's reminders and a bulk hand-over are one notification, not one per mark.
+    push: {
+      category: 'requests',
+      urgency: 'normal',
+      fold: {
+        parts: {
+          overdue: 'overdue',
+          due_soon: 'due_soon',
+          person: 'assigned',
+          piloti: 'assigned',
+          due: 'redated',
+          due_piloti: 'redated',
+          due_cleared: 'redated',
+          due_cleared_piloti: 'redated',
+        },
+      },
+    },
+  },
+  /*
+    News on a mark the reader takes part in: a reply, or their mark closed or
+    reopened by someone else. `per-anchor` on the mark, so a busy thread is ONE
+    counted row per mark, as `conversation.activity` is one per chat. Also new
+    marks on a document the reader is Verantwortlich for or uploaded (variants
+    `created` / `created_piloti`, `onMarksSet`): those fold per document and
+    per who set them instead (anchor `set:<variant>:<actor>`), still anchored
+    on the newest mark, so a review of fifteen is one counted row.
+    Informational and in-app only: mailing it would teach people to filter our
+    mail. Pushed as activity to the thread's other participants and to the
+    document's people, who turned that on; to the mark's AUTHOR (`yours`) it is
+    an answer to what they wrote, as `mention.answered` is, and is pushed as a
+    result. Folded across marks: a colleague resolving fifteen of the reader's
+    marks one after another is one notification („15 Neuigkeiten zu
+    Anmerkungen“ over „15 erledigt“), not fifteen. A burst counts only the rows
+    the reader's categories push (`readBurst` with `isPushWanted`), so their
+    own marks' news and a thread they only take part in do not mix.
+  */
+  'annotation.activity': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 30,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: {
+      category: 'activity',
+      urgency: 'low',
+      yours: 'results',
+      fold: {
+        parts: {
+          reply: 'reply',
+          resolved: 'resolved',
+          dismissed: 'dismissed',
+          reopened: 'reopened',
+          created: 'created',
+          created_piloti: 'created',
+        },
+      },
+    },
+  },
+  /*
+    A colleague @mentioned the reader on an Anmerkung: the chat's
+    `mention.requested`, on a mark. Actionable, as a mention in the chat is: a
+    person asked the reader something, and the badge is what shows it until
+    they answer in the thread or the mark is closed
+    (`lib/annotations/attention.ts`). `per-anchor` on the mark: being mentioned
+    twice on one mark is one row. Pushed as the chat's mention is, and mailed
+    as it is once a sender exists, so a person learns one rule for both. Operational, like the other marks'
+    types: marks are not a chat feature.
+  */
+  'annotation.mentioned': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+    push: { category: 'requests', urgency: 'high' },
   },
 }
+
+/**
+ * The types whose `anchorId` is an Anmerkung (a mark) of the document they
+ * point at. Their link opens the Prüfansicht at that mark; every other type
+ * anchored on a document anchors on something else (a Fassung), and must not be
+ * read as a mark. Derived from the client half (`anchor: 'mark'` in
+ * `INBOX_TYPE_PRESENTATION`), which the row reads without this module.
+ */
+export const MARK_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = INBOX_ITEM_TYPES.filter(isMarkAnchored)
+
+/** The types anchored on a proposal: a deep link into a chat must not read that anchor as a message. */
+export const PROPOSAL_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = ['piloti.proposal_waiting']
 
 /**
  * The permission that opens the platform lane of a reader's inbox.
@@ -356,6 +594,17 @@ export function platformInboxTypes(): InboxItemType[] {
 export function inboxIsReachable(collaborationEnabled: boolean): boolean {
   return visibleInboxTypes(collaborationEnabled).length > 0
 }
+
+/**
+ * The group-key anchor of rows that fold on something else than the anchor
+ * they point at: new marks fold per document and per who set them
+ * (`set:<variant>:<actor>`, `lib/annotations/attention.ts`), anchored on the
+ * newest mark only so their link opens the review there. Their news is about
+ * the document, not that mark: a dot on its pin would say an unrelated mark
+ * has news (`listUnreadAnchors` leaves them out), and opening the review of
+ * the document reads them (`markResourceItemsRead` narrowed to them).
+ */
+export const MARKS_SET_GROUP_ANCHOR = 'set:'
 
 /**
  * Build the grouping/dedup/idempotency key for an emission.

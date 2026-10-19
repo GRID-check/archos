@@ -290,6 +290,18 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # coverage sticky comment
+    # A real Qdrant for every Python suite (ADR-0115): it is the only vector
+    # store, and the behaviour under test (German BM25, fusion, strict mode,
+    # group_by) is the server's, so a mock would only test the mock. Same
+    # version as production. Job-wide, so a suite that gains a store test
+    # cannot run it against nothing.
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
+    env:
+      AIQ_QDRANT_TEST_URL: http://localhost:6333
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -305,6 +317,18 @@ jobs:
         run: task be:test:api:ci
       - name: sources/ package suites
         run: task be:test:sources
+      - name: Chroma exporter and the one-time migration, end to end
+        run: task be:test:migration
+
+      # The suites above run each claim queue on SQLite only: their Postgres
+      # parameter skips without AIQ_TEST_POSTGRES_URL, and production runs the
+      # Postgres SQL. ubuntu-latest ships the server binaries; the RLS script
+      # builds the throwaway cluster, as in the frontend job.
+      - name: Claim queues on real Postgres
+        run: task be:test:postgres
+        env:
+          # Turns "the Postgres branch skipped" into a failure for THIS step only.
+          AIQ_TEST_POSTGRES_REQUIRED: "1"
       - name: Coverage comment (backend)
         if: github.event_name == 'pull_request'
         continue-on-error: true # never fail CI on a comment hiccup
@@ -341,7 +365,7 @@ jobs:
         with:
           persist-credentials: false
       # Node is the RUNTIME (Turbopack's PostCSS step spawns a real `node`);
-      # Bun is only the installer and script runner.
+      # Bun is the toolchain: install, scripts, `bun check` (ADR-0103).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
@@ -448,12 +472,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: frontends/web/package-lock.json
+      - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
       # Astro reprocesses every blog image on a cold cache. Keyed on the image
       # sources, with `restore-keys` turning a miss into a partial hit. Outside
-      # node_modules, where `npm ci` would delete it. The web image build
+      # node_modules, where a fresh install would delete it. The web image build
       # restores the same entry into its build context.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -476,15 +499,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: |
-            deploy/pulumi/package-lock.json
-            deploy/pulumi/policy/package-lock.json
-      - run: npm ci
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile
         working-directory: deploy/pulumi
       # The policy pack is its own Node program with its own lockfile; a rule
       # that no longer compiles would otherwise surface only at deploy time.
-      - run: npm ci
+      - run: bun install --frozen-lockfile
         working-directory: deploy/pulumi/policy
       - uses: ./.github/actions/setup-task
       # What can run on an untrusted PR: the types (every CRD `spec`, and the
@@ -495,7 +515,7 @@ jobs:
       - run: task infra:types
       - run: task infra:test
 
-  # packages/ sits outside both workspaces (own package-lock.json, own uv.lock),
+  # packages/ sits outside both workspaces (own bun.lock, own uv.lock),
   # so neither tier's install can run it. ~4 minutes, nearly all of it
   # ifc-spatial-py, which is why it is filtered at all.
   packages:
@@ -511,8 +531,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/ifc-spatial/package-lock.json
+      - uses: ./.github/actions/setup-bun
       # Keyed on the package's OWN uv.lock: the root one would restore an
       # environment this suite never uses (IfcOpenShell + shapely wheels).
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0

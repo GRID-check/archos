@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    While an upload is still held by the office's content check, only you and
+    whoever reviews held files can be made responsible for it or mentioned on
+    it. Colleagues no longer get a Postfach entry about a file they cannot open
+    yet.

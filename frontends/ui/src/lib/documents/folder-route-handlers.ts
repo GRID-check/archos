@@ -18,7 +18,8 @@ import { z } from 'zod'
 import { parseJsonBody, type ApiContext } from '@/lib/api/handler'
 import { BadRequestError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { DeleteFolderResult, FolderRow } from './shelf-folders'
+import { FOLDER_NAME_TAKEN_REASON } from '@/lib/projects/folder-bin-codes'
+import { FOLDER_NAME_TAKEN, type DeleteFolderResult, type FolderRow } from './shelf-folders'
 
 type Outcome<T> = ({ ok: true } & T) | { ok: false; error: string }
 
@@ -34,8 +35,14 @@ const updateFolderSchema = z
     // `.nullable().optional()` and not merely optional: absent and null mean
     // different things here.
     parentId: z.string().uuid().nullable().optional(),
+    /**
+     * What belongs in the folder (migration 0145). `null` or blank clears it.
+     * Bounded above the column's 500 so the service, which folds whitespace
+     * first, gives the refusal in words; this is only the untrusted edge.
+     */
+    description: z.string().max(2000).nullable().optional(),
   })
-  .refine((body) => body.name !== undefined || body.parentId !== undefined, {
+  .refine((body) => body.name !== undefined || body.parentId !== undefined || body.description !== undefined, {
     message: 'Nothing to update.',
   })
 
@@ -58,8 +65,11 @@ const ensureFoldersSchema = z.object({
 
 /** A service answer that is either its value or a message the caller's request earned. */
 function unwrap<T extends object>(outcome: Outcome<T>): T {
-  if (!outcome.ok) throw new BadRequestError(outcome.error)
-  return outcome
+  if (outcome.ok) return outcome
+  // A taken name is the one refusal the browser words differently („„Statik"
+  // gibt es dort schon"), so it carries its reason rather than only English.
+  const details = outcome.error === FOLDER_NAME_TAKEN ? { reason: FOLDER_NAME_TAKEN_REASON } : undefined
+  throw new BadRequestError(outcome.error, details)
 }
 
 /** `GET …/folders` → `{ folders }`. */
@@ -82,12 +92,12 @@ export function createFolderHandler<P>(
   }
 }
 
-/** `PATCH …/folders/[folderId]` `{ name?, parentId? }` → `{ folder }`. */
+/** `PATCH …/folders/[folderId]` `{ name?, parentId?, description? }` → `{ folder }`. */
 export function updateFolderHandler<P extends { folderId: string }>(
   update: (
     params: P,
     session: AuthorizedSession,
-    patch: { name?: string; parentId?: string | null },
+    patch: { name?: string; parentId?: string | null; description?: string | null },
     request: Request,
   ) => Promise<Outcome<{ folder: FolderRow }>>,
 ) {
@@ -97,6 +107,7 @@ export function updateFolderHandler<P extends { folderId: string }>(
       await update(params, session, {
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.parentId !== undefined ? { parentId: body.parentId } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
       }, request),
     )
     return { folder }

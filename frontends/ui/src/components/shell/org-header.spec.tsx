@@ -2,6 +2,7 @@ import { forwardRef, type AnchorHTMLAttributes, type ReactNode } from 'react'
 import { render, screen } from '@/test-utils'
 import { vi, describe, test, expect, afterEach } from 'vitest'
 import { OrgHeader } from './org-header'
+import { useShellOverlays } from './shell-overlays'
 
 let pathname = '/app/projects'
 vi.mock('next/navigation', () => ({
@@ -44,9 +45,17 @@ const baseProps = {
   canAccessInbox: true,
 }
 
+let mobile = false
+vi.mock('@/hooks/use-is-mobile', () => ({
+  useIsMobile: () => mobile,
+}))
+vi.mock('./connection-band', () => ({ ConnectionBand: () => <div data-testid="connection-band" /> }))
+
 afterEach(() => {
   pathname = '/app/projects'
   pending = 0
+  mobile = false
+  useShellOverlays.setState({ paletteOpen: false })
 })
 
 describe('OrgHeader — the org scope in one slim band', () => {
@@ -78,5 +87,31 @@ describe('OrgHeader — the org scope in one slim band', () => {
     render(<OrgHeader {...baseProps} />)
     const inbox = screen.getByLabelText('Inbox')
     expect(inbox.textContent).toContain('3')
+  })
+})
+
+describe('OrgHeader — on a phone', () => {
+  test('the doorways give way to the tab bar; search opens the palette', () => {
+    mobile = true
+    render(<OrgHeader {...baseProps} />)
+    // Hidden by CSS below `md` (the tab bar carries them), still the desktop's.
+    expect(screen.getByLabelText('Office filing').className).toMatch(/(^|\s)hidden(\s|$)/)
+    expect(screen.getByLabelText('Office filing').className).toContain('md:flex')
+    const search = screen.getByTestId('shell-search')
+    expect(search.className).toContain('md:hidden')
+    expect(search.className).toContain('pointer-coarse:size-11')
+    search.click()
+    expect(useShellOverlays.getState().paletteOpen).toBe(true)
+  })
+
+  test('says when the connection is gone, in the band rather than a drawer', () => {
+    mobile = true
+    render(<OrgHeader {...baseProps} />)
+    expect(screen.getByTestId('connection-band')).toBeInTheDocument()
+  })
+
+  test('leaves the desktop band as it was: no presence ping of its own', () => {
+    render(<OrgHeader {...baseProps} />)
+    expect(screen.queryByTestId('connection-band')).toBeNull()
   })
 })

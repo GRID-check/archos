@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, pullPolicyFor } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -67,7 +68,7 @@ export function installGotenberg(
         template: {
           metadata: { labels },
           spec: {
-            enableServiceLinks: false, // see chroma.ts — legacy env collisions
+            enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             automountServiceAccountToken: false,
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
             securityContext: {
@@ -75,6 +76,8 @@ export function installGotenberg(
               runAsUser: UID.gotenberg,
               runAsGroup: UID.gotenberg,
             },
+            // Beside the ingest workers it converts for.
+            ...onNodeGroup(cfg.nodeGroups.batch),
             containers: [
               {
                 name: GOTENBERG.name,

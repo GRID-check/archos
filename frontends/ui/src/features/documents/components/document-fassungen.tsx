@@ -52,6 +52,7 @@ import { toast } from 'sonner'
 import type { ActionMenuEntry } from '@/components/ui/action-menu'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { SectionLabel } from '@/components/ui/section-label'
+import { InspectorGroup } from '@/components/ui/inspector-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { StageTrack } from '@/components/ui/stage-track'
@@ -64,6 +65,7 @@ import type { DocumentLifecycleClient } from '@/lib/documents/lifecycle-client'
 import { documentLifecycleClient, versionFileUrl } from '@/lib/documents/lifecycle-client'
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { readDocumentText } from '@/lib/documents/text-client'
+import { documentReadFamily } from '@/lib/documents/document-status'
 import type { FileItem } from '../file-types'
 import {
   newestVersion,
@@ -97,7 +99,7 @@ import {
 } from '../lib/fassung-timeline'
 import { requestFassungLink } from '../lib/fassung-request'
 import { DocumentArchiveAction } from './document-archive-action'
-import { DocumentReviewControls } from './document-review-controls'
+import { DocumentReviewControls, type DocumentReviewControlsProps } from './document-review-controls'
 import { DocumentVersionDiff } from './document-version-diff'
 import { DocumentVersionStateBadge } from './document-version-badge'
 import { useFassungCompare, type SourceLoader } from './fassung-compare'
@@ -127,6 +129,8 @@ export interface DocumentFassungenProps {
   onOpenDocument?: (fileId: string) => void
   /** The document's editorial state changed here, so the listing behind the pane can move its badge. */
   onLifecycleChanged?: (summary: DocumentLifecycleSummary) => void
+  /** The document's live Anmerkungen and the way into them, for the approve confirm (`DocumentReviewControls`). */
+  openMarks?: DocumentReviewControlsProps['openMarks']
   className?: string
 }
 
@@ -168,6 +172,7 @@ export function DocumentFassungen({
   onFassungChanged,
   onOpenDocument,
   onLifecycleChanged,
+  openMarks,
   className,
 }: DocumentFassungenProps): JSX.Element | null {
   const t = useTranslations('files')
@@ -314,6 +319,7 @@ export function DocumentFassungen({
     return <Skeleton className={cn('h-16 w-full rounded-lg', className)} />
   }
 
+  const newestRead = documentReadFamily(file.status)
   const rows = buildFassungTimeline({
     versions,
     publishedVersionId: listing?.publishedVersionId ?? null,
@@ -321,6 +327,8 @@ export function DocumentFassungen({
     directIds,
     headAt: file.createdAt ?? null,
     newer: supersededBy,
+    newestRead,
+    predecessorStandsIn: file.authoredBy !== 'agent',
   })
   rowsRef.current = rows
   const standing = fassungStanding({
@@ -329,6 +337,7 @@ export function DocumentFassungen({
     lifecycle,
     reviewerUserIds: listing?.reviewerUserIds ?? [],
     viewer,
+    newestRead,
   })
 
   // Every source of a name the pane has: the listing's own resolution of the
@@ -483,6 +492,11 @@ export function DocumentFassungen({
       </RowAction>
     ) : null
 
+  // The Fassung before this one, compared in ONE tap from its row: the on-site
+  // question is „what changed since the last one", and the ⋯ menu made it
+  // three taps and a guess at where the comparison lives.
+  const previousKey = rows.find((candidate) => candidate.kind === 'linked')?.key ?? null
+
   const renderLinkedRow = (row: LinkedRow, index: number): JSX.Element => {
     const { entry } = row
     const menu: ActionMenuEntry[] = [compareEntry({ id: entry.id, filename: entry.filename }, { id: file.id, filename: file.filename })]
@@ -509,7 +523,21 @@ export function DocumentFassungen({
         changeHint={row.key === firstChangeKey ? t('preview.fassung.changeHint') : null}
         last={index === rows.length - 1}
         dataset={{ kind: 'linked', id: entry.id, number: String(row.number) }}
-        action={openAction(entry.id)}
+        action={
+          row.key === previousKey ? (
+            <>
+              <RowAction
+                onClick={() => openFassungCompare({ id: entry.id, filename: entry.filename }, { id: file.id, filename: file.filename })}
+                data-testid="fassung-compare-previous"
+              >
+                {t('preview.fassung.compare')}
+              </RowAction>
+              {openAction(entry.id)}
+            </>
+          ) : (
+            openAction(entry.id)
+          )
+        }
         menu={menu}
         menuLabel={t('preview.fassung.rail.rowMenu', { number: row.number })}
       >
@@ -552,13 +580,7 @@ export function DocumentFassungen({
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className={cn(
-        'space-y-2',
-        // Something is asked of the reader: a quiet card, so the one section
-        // that wants an answer does not look like the reference blocks around it.
-        attention && 'bg-card -mx-2.5 rounded-lg border px-2.5 py-2.5',
-        className,
-      )}
+      className={cn('flex flex-col gap-2', className)}
       data-testid="document-fassungen"
       data-attention={attention || undefined}
       asChild
@@ -566,11 +588,16 @@ export function DocumentFassungen({
       <section aria-label={t('lifecycle.title')}>
         {/* The heading IS the trigger: a disclosure whose label is not the thing
             you press has a second target for the same job. */}
-        <SectionLabel as="h3" className="font-semibold tracking-[0.05em]">
+        {/* The same header line as every other section of the rail
+            (`InspectorSection`): inset to the groups' content edge, uppercase.
+            `[text-transform:inherit]` because the preflight resets a button's
+            case, which drew this one heading in mixed case under three
+            uppercase ones. */}
+        <SectionLabel as="h3" className="px-3 font-semibold tracking-[0.05em]">
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="touch-target duration-snap hover:text-foreground focus-visible:ring-ring flex w-full items-center gap-1.5 text-left transition-colors ease-out outline-none focus-visible:ring-2 focus-visible:ring-offset-1 motion-reduce:transition-none"
+              className="touch-target duration-snap hover:text-foreground focus-visible:ring-ring flex min-h-5 w-full items-center gap-1.5 text-left tracking-[inherit] transition-colors ease-out outline-none [text-transform:inherit] focus-visible:ring-2 focus-visible:ring-offset-1 motion-reduce:transition-none"
               data-testid="document-fassungen-toggle"
             >
               <History className="size-3.5 shrink-0" aria-hidden />
@@ -587,13 +614,31 @@ export function DocumentFassungen({
           </CollapsibleTrigger>
         </SectionLabel>
 
+        {/* ONE region, divided by what each part asks: where the document
+            stands, the decision, Piloti's suggestion, the history, and the
+            one-way door. They used to run together as one undivided column
+            that widened into a card only while something was asked, so the
+            section changed material, and width, under the reader's eye.
+            Attention is now the group's stronger edge, and the decision's
+            own primary button. */}
+        <InspectorGroup
+          className={cn(
+            '[&>*+*]:border-border/60 [&>*+*]:border-t',
+            attention && 'border-foreground/20 shadow-xs',
+          )}
+        >
         {/* Outside the content, on purpose: this is what the section says when
             it is shut, and it is the reason somebody opens it. */}
-        <FassungHeader standing={standing} person={person} headerAct={headerAct} />
+        <div className="p-3">
+          <FassungHeader standing={standing} person={person} headerAct={headerAct} />
+        </div>
 
-        <CollapsibleContent className="space-y-3 pt-1">
+        {/* `empty:hidden`: open with nothing to say (no viewer, no suggestion,
+            a lone Fassung) it would still take the group's hairline above it
+            and draw a second rule along the group's foot. */}
+        <CollapsibleContent className="[&>*+*]:border-border/60 [&>*+*]:border-t empty:hidden">
           {viewer !== undefined && listing !== null && newest !== null && (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 p-3">
               <DocumentReviewControls
                 version={newest}
                 lifecycle={lifecycle}
@@ -603,6 +648,7 @@ export function DocumentFassungen({
                 reviewers={reviewers}
                 fassungNumber={standing.number ?? undefined}
                 publishBare
+                openMarks={openMarks}
                 // The signature line of the approve confirm: the viewer's own
                 // name where the surface knows one, else the moment alone.
                 actingName={viewer.userId ? (assigneeNames.get(viewer.userId) ?? listedNames.get(viewer.userId) ?? null) : null}
@@ -616,22 +662,24 @@ export function DocumentFassungen({
           )}
 
           {suggestion && (
+            <div className="p-3">
             <SuggestionNotice
               suggestion={suggestion}
               canManage={canManage}
               busy={busy}
               onDecide={(id, linked) => void decide(id, linked)}
             />
+            </div>
           )}
 
           {failed && listing === null && (
-            <p className="text-muted-foreground text-xs" data-testid="document-lifecycle-failed">
+            <p className="text-muted-foreground p-3 text-xs" data-testid="document-lifecycle-failed">
               {t('lifecycle.errors.loadFailed')}
             </p>
           )}
 
           {showTimeline && (
-            <ol className="flex flex-col" data-testid="fassung-timeline" aria-label={t('preview.fassung.timeline')}>
+            <ol className="flex flex-col p-3" data-testid="fassung-timeline" aria-label={t('preview.fassung.timeline')}>
               {rows.map(renderRow)}
             </ol>
           )}
@@ -639,14 +687,20 @@ export function DocumentFassungen({
           {/* Last, and quiet: the item-level one-way door. One line here; its
               confirm says everything it does before it does it. */}
           {viewer !== undefined && listing !== null && canArchiveDocument(listing.lifecycle, viewer) && (
+            <div className="px-3 py-1.5">
+            {/* The group's hairline is the divider here, so the action's own
+                top rule (`border-t`, for where it stands alone) is taken off. */}
             <DocumentArchiveAction
               compact
+              className="border-t-0 pt-0"
               filename={file.filename}
               pending={pending === 'archive'}
               onArchive={() => void act('archive')}
             />
+            </div>
           )}
         </CollapsibleContent>
+        </InspectorGroup>
         {compareElement}
       </section>
     </Collapsible>

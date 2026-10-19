@@ -12,7 +12,12 @@
  *
  * `tests/knowledge_layer_tests/test_ingest_failure_prefix_parity.py` reads
  * {@link INGEST_FAILURE_PREFIXES} and fails when the backend grows a
- * `reason:` prefix this file does not map.
+ * `reason:` prefix this file does not map (the knowledge layer, the agent's
+ * knowledge package and the API plugin's ingest worker are all scanned).
+ *
+ * This is the SENTENCE. Whether reading the file again is worth anything is
+ * not decided from this text: the backend sends a category beside it, which
+ * the BFF persists and `lib/documents/retry-policy.ts` decides from.
  */
 
 import type { Translator } from '@/i18n/translate'
@@ -28,6 +33,7 @@ export type IngestFailureKind =
   | 'empty'
   | 'deleted'
   | 'quarantined'
+  | 'screening_unavailable'
   | 'unknown'
 
 export type IngestFailure =
@@ -38,15 +44,21 @@ export type IngestFailure =
  * The backend's machine prefixes (the text before the first `:`), each to its
  * category. Parsed by the Python parity test: keep it one `'prefix': 'kind',`
  * entry per line.
+ *
+ * `unreadable_job` (the queued job's payload could not be read,
+ * `jobs/ingest_dispatch.py`) says the dispatch sentence: reading never started,
+ * and no service restarted.
  */
 export const INGEST_FAILURE_PREFIXES = {
   office_rendition_required: 'rendition_failed',
   original_download_failed: 'download_failed',
   interrupted: 'interrupted',
+  unreadable_job: 'dispatch_failed',
   pdf_pages_unreadable: 'unreadable_pages',
   vlm_not_configured: 'vision_not_configured',
   document_deleted: 'deleted',
   quarantined: 'quarantined',
+  screening_unavailable: 'screening_unavailable',
 } as const satisfies Record<string, IngestFailureKind>
 
 /**

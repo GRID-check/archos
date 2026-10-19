@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, pullPolicyFor } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -81,6 +82,8 @@ interface DragonflyOptions {
    * pod dial 6379.
    */
   password?: pulumi.Output<string>;
+  /** The worker group the pod runs on (`GridConfig.nodeGroups.data`). */
+  nodeGroup: string | undefined;
 }
 
 /** The shared Deployment+Service shape both instances use. */
@@ -157,9 +160,10 @@ function installDragonflyInstance(
         template: {
           metadata: { labels, annotations: authAnnotations },
           spec: {
-            enableServiceLinks: false, // see chroma.ts — legacy env collisions
+            enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.dataPlane).terminationGracePeriodSeconds,
+            ...onNodeGroup(opts.nodeGroup),
             containers: [
               {
                 name: "dragonfly",
@@ -277,6 +281,7 @@ export function installDragonfly(
 ): Dragonfly {
   return installDragonflyInstance(provider, namespace, {
     name: "dragonfly",
+    nodeGroup: cfg.nodeGroups.data,
     maxmemory: cfg.dragonfly.maxmemory,
     memoryLimit: cfg.dragonfly.memoryLimit,
     cacheMode: true,
@@ -319,6 +324,7 @@ export function installRateLimitStore(
 ): Dragonfly {
   return installDragonflyInstance(provider, namespace, {
     name: EDGE_RATE_LIMIT.storeService,
+    nodeGroup: cfg.nodeGroups.data,
     maxmemory: cfg.rateLimit.storeMaxmemory,
     memoryLimit: cfg.rateLimit.storeMemoryLimit,
     cacheMode: false,
@@ -362,6 +368,7 @@ export function installLangfuseQueue(
 ): Dragonfly {
   return installDragonflyInstance(provider, namespace, {
     name: LANGFUSE.queue,
+    nodeGroup: cfg.nodeGroups.data,
     maxmemory: cfg.langfuse.queueMaxmemory,
     memoryLimit: cfg.langfuse.queueMemoryLimit,
     cacheMode: false,

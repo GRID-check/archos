@@ -152,11 +152,18 @@ export const makeDocument = (overrides: Partial<Document> = {}): Document => ({
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-02T00:00:00Z'),
   errorMessage: null,
+  quarantine: null,
   metadata: null,
   screeningOutcome: null,
   screeningReleasedHash: null,
   screeningReleasedBy: null,
   screeningReleasedAt: null,
+  // Never failed, and never dispatched since migration 0134: what every row
+  // from before the columns carries, and what the retry rule reads as "retry".
+  ingestFailureCategory: null,
+  ingestRetryable: null,
+  ingestReaderVersion: null,
+  ingestAttempts: null,
   uploadBatchId: null,
   folderId: null,
   ...overrides,

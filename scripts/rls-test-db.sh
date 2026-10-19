@@ -77,6 +77,18 @@ run_pg "'$PGBIN/pg_ctl' -D '$PGDATA' -o '-p $PORT -k $WORKDIR' -l '$PGDATA/serve
 export PGOPTIONS="-c client_min_messages=warning"
 PSQL="$PGBIN/psql -h $WORKDIR -p $PORT -U postgres"
 
+# `--exec <command…>`: the same throwaway cluster, without the migration chain or
+# the suites below, for the Python suites whose Postgres branch would otherwise
+# skip (`task be:test:postgres`). They create and drop their own tables, so they
+# get an empty scratch database as the superuser, in AIQ_TEST_POSTGRES_URL.
+if [ "${1:-}" = "--exec" ]; then
+  shift
+  $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE aiq_queues;"
+  echo "==> running: $*"
+  AIQ_TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
+  exit 0
+fi
+
 # Reproduce the DEPLOYMENT topology, not a convenient one. Migrations run as a
 # plain non-superuser database owner with no CREATEROLE and no BYPASSRLS —
 # exactly what CloudNativePG hands the app. Running this chain as `postgres`
@@ -110,7 +122,7 @@ done
 # cosine query — and a mocked drizzle handle cannot disagree with the fixture
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
-echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, restricted-feedback, revision-subject, the hold on a document and permit-record suites as grid_app_rw"
+echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen and Offene Punkte suites as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
@@ -129,6 +141,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/documents/shelf-folders.integration.spec.ts \
     src/lib/projects/folder-bin.integration.spec.ts \
     src/lib/documents/stuck-processing.integration.spec.ts \
+    src/lib/documents/retry-policy.integration.spec.ts \
     src/lib/project-profile/profile-bindings.integration.spec.ts \
     src/lib/compliance/legal-hold.integration.spec.ts \
     src/lib/conversations/erasure-queue.integration.spec.ts \
@@ -137,7 +150,15 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/tasks/subject-access.integration.spec.ts \
     src/lib/conversations/cross-project-use.integration.spec.ts \
     src/lib/cross-project/decisions-repository.integration.spec.ts \
+    src/lib/similar-passages/service.integration.spec.ts \
     src/lib/permits/repository.integration.spec.ts \
+    src/lib/annotations/repository.integration.spec.ts \
+    src/lib/annotations/project-repository.integration.spec.ts \
+    src/lib/proposals/repository.integration.spec.ts \
+    src/lib/project-intake/repository.integration.spec.ts \
+    src/lib/changes/repository.integration.spec.ts \
+    src/lib/push/repository.integration.spec.ts \
+    src/lib/inbox/repository.integration.spec.ts \
     src/lib/project-experience/readable-files.integration.spec.ts \
     src/lib/projects/memory-evidence.integration.spec.ts \
     src/lib/download-log/download-log.integration.spec.ts \
@@ -158,13 +179,15 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
 $MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
 
 # The job-queue suites claim from ONE table, whichever lane a job is in, so run
-# in parallel they claim each other's seeded jobs. One file at a time.
-echo "==> running the job-queue suites one file at a time as grid_app_rw"
+# in parallel they claim each other's seeded jobs. One file at a time. The
+# scheduler's due-scan is the same shape over task_definitions, every tenant's.
+echo "==> running the job-queue and scheduler-claim suites one file at a time as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
     src/lib/jobs-queue/queue.integration.spec.ts \
     src/lib/jobs-queue/repository.integration.spec.ts \
-    workers/jobs/runner.integration.spec.mjs
+    workers/jobs/runner.integration.spec.mjs \
+    scheduler/db.integration.spec.mjs
 
 # ---------------------------------------------------------------------------
 # Migration 0086: the backfill, asserted per row shape, and its DOWN migration.
@@ -1380,3 +1403,746 @@ apply_in grid_vhash 0131_document_version_screened_hash.sql
 apply_in grid_vhash 0131_document_version_screened_hash.sql
 check_in grid_vhash "SELECT count(*) FROM document_versions WHERE organization_id = 'org_0131' AND screened_hash = content_hash" "4" "0131 re-applies, twice, to the same verdicts"
 echo "==> 0131 version verdict backfill and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0133: a project's profile always has its four parts, and its DOWN.
+#
+# On a database of its own, migrated to 0132, where a project that never saved
+# its intake still stores `{}` (the old default) and the close dialog's debrief
+# crashed on `profile.facts`. The backfill gives every row the shape and keeps
+# what is well-formed; the default is the empty profile; a hand-written `{}`
+# or a part of the wrong type is refused. The down leaves the data.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0133 project profile shape and its down migration on grid_pshape"
+migrate_until grid_pshape 0132_documents_folder_level_listing_idx
+sql_in grid_pshape <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name) VALUES
+  ('aaaaaaaa-0000-4000-8000-000000000133', 'org_0133', 'Nie erfasst', 'user_1', 'proj_0133a');
+INSERT INTO projects (id, organization_id, name, created_by, collection_name, profile, profile_version) VALUES
+  ('bbbbbbbb-0000-4000-8000-000000000133', 'org_0133', 'Teilweise', 'user_1', 'proj_0133b',
+   '{"facts":{"bundesland":{"value":"tirol"}},"unknowns":"kaputt","extra":1}', 4),
+  ('cccccccc-0000-4000-8000-000000000133', 'org_0133', 'Kein Objekt', 'user_1', 'proj_0133c', '[]', 2);
+SQL
+check_in grid_pshape "SELECT profile::text FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000133'" "{}" \
+  "before 0133 a project that never saved its intake stores {}"
+apply_in grid_pshape 0133_project_profile_shape.sql
+P133="SELECT profile::text || ' v' || profile_version FROM projects WHERE id ="
+check_in grid_pshape "$P133 'aaaaaaaa-0000-4000-8000-000000000133'" \
+  '{"facts": {}, "goals": {}, "unknowns": [], "assumptions": {}} v1' "the backfill gives a {} row the empty profile, version unchanged"
+check_in grid_pshape "$P133 'bbbbbbbb-0000-4000-8000-000000000133'" \
+  '{"extra": 1, "facts": {"bundesland": {"value": "tirol"}}, "goals": {}, "unknowns": [], "assumptions": {}} v4' \
+  "the backfill keeps a well-formed part and another key, and replaces a part of the wrong type"
+check_in grid_pshape "$P133 'cccccccc-0000-4000-8000-000000000133'" \
+  '{"facts": {}, "goals": {}, "unknowns": [], "assumptions": {}} v2' "the backfill turns a non-object into the empty profile"
+sql_in grid_pshape <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('dddddddd-0000-4000-8000-000000000133', 'org_0133', 'Neu', 'user_1', 'proj_0133d');
+SQL
+check_in grid_pshape "$P133 'dddddddd-0000-4000-8000-000000000133'" \
+  '{"facts": {}, "goals": {}, "unknowns": [], "assumptions": {}} v1' "a new project gets the empty profile by default"
+refused_in grid_pshape "UPDATE projects SET profile = '{}' WHERE id = 'dddddddd-0000-4000-8000-000000000133'" \
+  "projects_profile_shape_check" "a hand-written {} was accepted"
+refused_in grid_pshape "UPDATE projects SET profile = profile || '{\"unknowns\": {}}' WHERE id = 'dddddddd-0000-4000-8000-000000000133'" \
+  "projects_profile_shape_check" "unknowns as an object was accepted"
+refused_in grid_pshape "UPDATE projects SET profile = profile - 'goals' WHERE id = 'dddddddd-0000-4000-8000-000000000133'" \
+  "projects_profile_shape_check" "a profile without goals was accepted"
+apply_in grid_pshape 0133_project_profile_shape.down.sql
+check_in grid_pshape "SELECT count(*) FROM pg_constraint WHERE conname = 'projects_profile_shape_check'" "0" "down dropped the check"
+check_in grid_pshape "SELECT column_default FROM information_schema.columns WHERE table_name = 'projects' AND column_name = 'profile'" \
+  "'{}'::jsonb" "down restored the old default"
+check_in grid_pshape "$P133 'bbbbbbbb-0000-4000-8000-000000000133'" \
+  '{"extra": 1, "facts": {"bundesland": {"value": "tirol"}}, "goals": {}, "unknowns": [], "assumptions": {}} v4' "down left the data"
+sql_in grid_pshape <<<"UPDATE projects SET profile = '{}' WHERE id = 'dddddddd-0000-4000-8000-000000000133'"
+apply_in grid_pshape 0133_project_profile_shape.sql
+apply_in grid_pshape 0133_project_profile_shape.sql
+check_in grid_pshape "SELECT count(*) FROM projects WHERE organization_id = 'org_0133' AND profile ? 'facts'" "4" \
+  "0133 re-applies, twice, and backfills a {} written while it was down"
+echo "==> 0133 project profile shape and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0137: a version knows how it began, and an upload carries no
+# approval nobody gave (ADR-0104 rules 5 and 6), and its DOWN.
+#
+# On a database of its own, migrated to 0136. A version never submitted that is
+# or was the published one is an upload and loses its stand-in approver; one
+# that went through review keeps the reviewer's. Afterwards a published draft
+# without an approver and an unknown origin are refused, and an upload is
+# published with none. The down restores the stand-in approvals.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0137 version origin backfill and its down migration on grid_vorigin"
+migrate_until grid_vorigin 0136_document_version_reviews
+sql_in grid_vorigin <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000137', 'org_0137', 'Herkunft 0137', 'user_1', 'proj_0137');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000137', 'org_0137', 'user_1', 'a.pdf', 'k/0137/a2', 'proj_0137', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000137'),
+  ('d2d2d2d2-0000-4000-8000-000000000137', 'org_0137', 'user_1', 'piloti/b.md', 'k/0137/b1', 'proj_0137', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000137'),
+  ('d3d3d3d3-0000-4000-8000-000000000137', 'org_0137', 'user_1', 'piloti/c.md', 'k/0137/c1', 'proj_0137', 'stored', 'project', 'aaaaaaaa-0000-4000-8000-000000000137');
+INSERT INTO document_versions (organization_id, document_id, project_id, version_number, state, storage_key, created_by,
+                               submitted_by, submitted_at, approved_by, approved_at) VALUES
+  -- a re-uploaded file: both versions carry the uploader as stand-in approver
+  ('org_0137', 'd1d1d1d1-0000-4000-8000-000000000137', 'aaaaaaaa-0000-4000-8000-000000000137', 1, 'superseded', 'k/0137/a1', 'user_1', NULL, NULL, 'user_1', now()),
+  ('org_0137', 'd1d1d1d1-0000-4000-8000-000000000137', 'aaaaaaaa-0000-4000-8000-000000000137', 2, 'published',  'k/0137/a2', 'user_1', NULL, NULL, 'user_1', now()),
+  -- a Piloti document a reviewer approved
+  ('org_0137', 'd2d2d2d2-0000-4000-8000-000000000137', 'aaaaaaaa-0000-4000-8000-000000000137', 1, 'published',  'k/0137/b1', 'user_1', 'user_1', now(), 'user_2', now()),
+  -- a draft
+  ('org_0137', 'd3d3d3d3-0000-4000-8000-000000000137', 'aaaaaaaa-0000-4000-8000-000000000137', 1, 'draft',      'k/0137/c1', 'user_1', NULL, NULL, NULL, NULL);
+SQL
+V137="SELECT string_agg(d.filename || ':' || v.version_number || '=' || v.origin || '/' || coalesce(v.approved_by, '-'), ',' ORDER BY d.filename, v.version_number) FROM document_versions v JOIN documents d ON d.id = v.document_id WHERE v.organization_id = 'org_0137'"
+apply_in grid_vorigin 0137_document_version_origin.sql
+check_in grid_vorigin "$V137" "a.pdf:1=upload/-,a.pdf:2=upload/-,piloti/b.md:1=draft/user_2,piloti/c.md:1=draft/-" \
+  "the backfill calls a never-submitted published version an upload and drops its stand-in approver, and keeps a reviewer's"
+refused_in grid_vorigin "UPDATE document_versions SET state = 'published' WHERE document_id = 'd3d3d3d3-0000-4000-8000-000000000137'" \
+  "document_versions_published_is_approved" "a draft was published without an approver"
+refused_in grid_vorigin "UPDATE document_versions SET origin = 'import' WHERE document_id = 'd3d3d3d3-0000-4000-8000-000000000137'" \
+  "document_versions_origin_known" "an unknown origin was accepted"
+check_in grid_vorigin "SELECT column_default FROM information_schema.columns WHERE table_name = 'document_versions' AND column_name = 'origin'" \
+  "'draft'::text" "a writer that names no origin gets the one that demands an approver"
+apply_in grid_vorigin 0137_document_version_origin.down.sql
+check_in grid_vorigin "SELECT count(*) FROM information_schema.columns WHERE table_name = 'document_versions' AND column_name = 'origin'" "0" "down dropped the column"
+check_in grid_vorigin "SELECT count(*) FROM document_versions WHERE organization_id = 'org_0137' AND approved_by = created_by AND submitted_by IS NULL" "2" \
+  "down restored the stand-in approvals the old CHECK demands"
+apply_in grid_vorigin 0137_document_version_origin.sql
+apply_in grid_vorigin 0137_document_version_origin.sql
+check_in grid_vorigin "$V137" "a.pdf:1=upload/-,a.pdf:2=upload/-,piloti/b.md:1=draft/user_2,piloti/c.md:1=draft/-" "0137 re-applies, twice, to the same origins"
+echo "==> 0137 version origin backfill and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0138: document_annotations and their replies, the CHECKs, and the
+# DOWN.
+#
+# On a database of its own, migrated to 0137. A point is a share of the page
+# and a region stays on it; only Piloti proposes, and only a person takes a
+# proposal over; a closing is by somebody at some time; a number is unique per
+# document; a discarded version leaves the mark standing; a thread goes with
+# its mark.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0138 Anmerkungen tables and their down migration on grid_annot"
+migrate_until grid_annot 0137_document_version_origin
+apply_in grid_annot 0138_document_annotations.sql
+check_in grid_annot "SELECT string_agg(relrowsecurity::text, ',' ORDER BY relname) FROM pg_class WHERE relname IN ('document_annotations', 'document_annotation_replies')" "true,true" "0138 brings both tables up under row-level security"
+sql_in grid_annot <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000135', 'org_0135', 'Anmerkungen 0138', 'user_1', 'proj_0135');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000135', 'org_0135', 'user_1', 'a.pdf', 'k/0138/a', 'proj_0135', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000135');
+INSERT INTO document_versions (id, organization_id, document_id, project_id, version_number, state, storage_key, content_hash, created_by, approved_by, approved_at)
+VALUES ('e1e1e1e1-0000-4000-8000-000000000135', 'org_0135', 'd1d1d1d1-0000-4000-8000-000000000135', 'aaaaaaaa-0000-4000-8000-000000000135', 1, 'superseded', 'k/0138/a1', 'sha256:a1', 'user_1', 'user_1', now());
+INSERT INTO document_annotations (id, organization_id, document_id, version_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000135', 'org_0135', 'd1d1d1d1-0000-4000-8000-000000000135', 'e1e1e1e1-0000-4000-8000-000000000135', 1, 2, 'point', 0.25, 0.75, 'defect', 'Brandschutztür fehlt', 'person', 'open', 'user_1');
+INSERT INTO document_annotations (organization_id, document_id, number, page, shape, x, y, w, h, kind, body, basis, author_kind, status, created_by)
+VALUES ('org_0135', 'd1d1d1d1-0000-4000-8000-000000000135', 2, 1, 'region', 0.1, 0.1, 0.5, 0.5, 'question', 'Laufbreite?', 'OIB-RL 4, Pkt. 2.2', 'piloti', 'proposed', 'user_1');
+INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by)
+VALUES ('org_0135', 'f1f1f1f1-0000-4000-8000-000000000135', 'person', 'Erledige ich', 'user_2');
+SQL
+A135="INSERT INTO document_annotations (organization_id, document_id, number, page, shape, x, y, w, h, kind, body, author_kind, status, created_by) VALUES ('org_0135', 'd1d1d1d1-0000-4000-8000-000000000135'"
+refused_in grid_annot "$A135, 3, 1, 'point', 1.5, 0.5, NULL, NULL, 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_point_on_page" "a point off the page was accepted"
+refused_in grid_annot "$A135, 3, 1, 'point', 0.5, 0.5, 0.1, 0.1, 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_region_on_page" "a point with a size was accepted"
+refused_in grid_annot "$A135, 3, 1, 'region', 0.8, 0.5, 0.3, 0.1, 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_region_on_page" "a region off its page was accepted"
+refused_in grid_annot "$A135, 3, 0, 'point', 0.5, 0.5, NULL, NULL, 'hint', 'x', 'person', 'open', 'user_1')" "document_annotations_page_positive" "page 0 was accepted"
+refused_in grid_annot "$A135, 3, 1, 'point', 0.5, 0.5, NULL, NULL, 'todo', 'x', 'person', 'open', 'user_1')" "document_annotations_kind_known" "an unknown kind was accepted"
+refused_in grid_annot "$A135, 3, 1, 'point', 0.5, 0.5, NULL, NULL, 'hint', '   ', 'person', 'open', 'user_1')" "document_annotations_body_length" "a blank body was accepted"
+refused_in grid_annot "$A135, 3, 1, 'point', 0.5, 0.5, NULL, NULL, 'hint', 'x', 'person', 'proposed', 'user_1')" "document_annotations_only_piloti_proposes" "a person's proposal was accepted"
+refused_in grid_annot "$A135, 3, 1, 'point', 0.5, 0.5, NULL, NULL, 'hint', 'x', 'piloti', 'open', 'user_1')" "document_annotations_piloti_needs_a_person" "Piloti's mark was born open"
+refused_in grid_annot "$A135, 1, 1, 'point', 0.5, 0.5, NULL, NULL, 'hint', 'x', 'person', 'open', 'user_1')" "uniq_document_annotations_number" "a second number 1 was accepted"
+refused_in grid_annot "UPDATE document_annotations SET status = 'resolved' WHERE number = 1" "document_annotations_closing_complete" "a closing by nobody was accepted"
+refused_in grid_annot "UPDATE document_annotations SET status = 'open' WHERE number = 2" "document_annotations_piloti_needs_a_person" "a proposal was opened without a person taking it over"
+sql_in grid_annot <<<"UPDATE document_annotations SET status = 'open', accepted_by = 'user_2', accepted_at = now() WHERE number = 2"
+sql_in grid_annot <<<"UPDATE document_annotations SET status = 'resolved', closed_by = 'user_1', closed_at = now() WHERE number = 1"
+sql_in grid_annot <<<"DELETE FROM document_versions WHERE id = 'e1e1e1e1-0000-4000-8000-000000000135'"
+check_in grid_annot "SELECT string_agg(number || ':' || coalesce(version_id::text, 'null') || ':' || status, ',' ORDER BY number) FROM document_annotations" "1:null:resolved,2:null:open" "a discarded version leaves the mark standing, and a taken-over proposal is open"
+sql_in grid_annot <<<"DELETE FROM document_annotations WHERE number = 1"
+check_in grid_annot "SELECT count(*) FROM document_annotation_replies" "0" "a thread goes with its mark"
+apply_in grid_annot 0138_document_annotations.down.sql
+check_in grid_annot "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('document_annotations', 'document_annotation_replies')" "0" "down dropped both tables"
+apply_in grid_annot 0138_document_annotations.sql
+apply_in grid_annot 0138_document_annotations.sql
+check_in grid_annot "SELECT count(*) FROM document_annotations" "0" "0138 re-applies, twice, empty"
+echo "==> 0138 Anmerkungen tables and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0139: what wakes Piloti on an Anmerkung, the delegation to Piloti,
+# the record of each wake, and the DOWN.
+#
+# On a database of its own, migrated to 0138. A reply says whether it
+# addressed Piloti (false for every older reply); a delegation is both columns
+# or neither, and only on an open mark; a wake record says why it started no
+# turn exactly when it did not, and is settled exactly when it left `queued`;
+# a wake goes with its mark.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0139 wake record, the delegation and their down migration on grid_wake"
+migrate_until grid_wake 0138_document_annotations
+sql_in grid_wake <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000136', 'org_0136', 'Wecken 0139', 'user_1', 'proj_0136');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000136', 'org_0136', 'user_1', 'a.pdf', 'k/0139/a', 'proj_0136', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000136');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000136', 'org_0136', 'd1d1d1d1-0000-4000-8000-000000000136', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f2f2f2f2-0000-4000-8000-000000000136', 'org_0136', 'd1d1d1d1-0000-4000-8000-000000000136', 2, 1, 'point', 0.2, 0.2, 'question', 'Laufbreite?', 'piloti', 'proposed', 'user_1');
+INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by)
+VALUES ('org_0136', 'f1f1f1f1-0000-4000-8000-000000000136', 'person', 'Vor 0139 geschrieben', 'user_2');
+SQL
+apply_in grid_wake 0139_piloti_wakes.sql
+check_in grid_wake "SELECT relrowsecurity FROM pg_class WHERE relname = 'piloti_wakes'" "t" "0139 brings the wake record up under row-level security"
+check_in grid_wake "SELECT string_agg(addresses_agent::text, ',') FROM document_annotation_replies" "false" "a reply written before 0139 addressed nobody but people"
+refused_in grid_wake "UPDATE document_annotations SET delegated_by = 'user_1' WHERE number = 1" "document_annotations_delegation_complete" "a delegation without its time was accepted"
+refused_in grid_wake "UPDATE document_annotations SET delegated_at = now() WHERE number = 1" "document_annotations_delegation_complete" "a delegation without its person was accepted"
+refused_in grid_wake "UPDATE document_annotations SET delegated_by = 'user_1', delegated_at = now() WHERE number = 2" "document_annotations_delegated_while_open" "a proposal was delegated to Piloti"
+sql_in grid_wake <<<"UPDATE document_annotations SET delegated_by = 'user_1', delegated_at = now() WHERE number = 1"
+refused_in grid_wake "UPDATE document_annotations SET status = 'resolved', closed_by = 'user_1', closed_at = now() WHERE number = 1" "document_annotations_delegated_while_open" "a mark closed with Piloti still working it"
+sql_in grid_wake <<<"UPDATE document_annotations SET status = 'resolved', closed_by = 'user_1', closed_at = now(), delegated_by = NULL, delegated_at = NULL WHERE number = 1"
+W136="INSERT INTO piloti_wakes (id, organization_id, document_id, annotation_id, trigger_kind, event_id, actor_user_id, status, reason, settled_at) VALUES (gen_random_uuid(), 'org_0136', 'd1d1d1d1-0000-4000-8000-000000000136', 'f2f2f2f2-0000-4000-8000-000000000136'"
+refused_in grid_wake "$W136, 'shouted', 'e1', 'user_1', 'queued', NULL, NULL)" "piloti_wakes_trigger_known" "an unknown trigger was accepted"
+refused_in grid_wake "$W136, 'thread_reply', 'e1', 'user_1', 'snoozed', NULL, now())" "piloti_wakes_status_known" "an unknown status was accepted"
+refused_in grid_wake "$W136, 'thread_reply', 'e1', 'user_1', 'refused', NULL, now())" "piloti_wakes_reason_when_not_started" "a refused wake without its reason was accepted"
+refused_in grid_wake "$W136, 'thread_reply', 'e1', 'user_1', 'started', 'weil', now())" "piloti_wakes_reason_when_not_started" "a started wake with a reason was accepted"
+refused_in grid_wake "$W136, 'thread_reply', 'e1', 'user_1', 'started', NULL, NULL)" "piloti_wakes_settled_when_not_queued" "a started wake without its settling time was accepted"
+refused_in grid_wake "$W136, 'thread_reply', 'e1', 'user_1', 'queued', NULL, now())" "piloti_wakes_settled_when_not_queued" "a queued wake with a settling time was accepted"
+sql_in grid_wake <<<"$W136, 'thread_reply', 'e1', 'user_1', 'queued', NULL, NULL)"
+sql_in grid_wake <<<"$W136, 'assigned', 'e2', 'user_1', 'suppressed', 'cap:mark-hour', now())"
+check_in grid_wake "SELECT count(*) FROM piloti_wakes" "2" "a queued wake and a suppressed one with its reason are kept"
+sql_in grid_wake <<<"DELETE FROM document_annotations WHERE number = 2"
+check_in grid_wake "SELECT count(*) FROM piloti_wakes" "0" "a wake goes with its mark"
+apply_in grid_wake 0139_piloti_wakes.down.sql
+check_in grid_wake "SELECT count(*) FROM information_schema.tables WHERE table_name = 'piloti_wakes'" "0" "down dropped the wake record"
+check_in grid_wake "SELECT count(*) FROM information_schema.columns WHERE (table_name, column_name) IN (('document_annotations', 'delegated_by'), ('document_annotations', 'delegated_at'), ('document_annotation_replies', 'addresses_agent'))" "0" "down dropped the three columns"
+check_in grid_wake "SELECT count(*) FROM document_annotation_replies" "1" "down left the threads"
+apply_in grid_wake 0139_piloti_wakes.sql
+apply_in grid_wake 0139_piloti_wakes.sql
+check_in grid_wake "SELECT count(*) FROM piloti_wakes" "0" "0139 re-applies, twice, empty"
+echo "==> 0139 wake record, delegation and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0140: proposed_changes, the CHECKs, and the DOWN.
+#
+# On a database of its own, migrated to 0139. A proposal is decided by
+# somebody at some time exactly when it left `proposed`; it carries results
+# exactly when it was applied, as an array; the apply claim is both columns or
+# neither, and only while it is still `proposed`; the project and the
+# conversation are this organization's; it goes with either.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0140 proposed changes and their down migration on grid_prop"
+migrate_until grid_prop 0139_piloti_wakes
+apply_in grid_prop 0140_proposed_changes.sql
+check_in grid_prop "SELECT relrowsecurity FROM pg_class WHERE relname = 'proposed_changes'" "t" "0140 brings proposed_changes up under row-level security"
+sql_in grid_prop <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000137', 'org_0137', 'Vorschläge 0140', 'user_1', 'proj_0137'),
+       ('bbbbbbbb-0000-4000-8000-000000000137', 'org_other', 'Fremd 0140', 'user_9', 'proj_other_0137');
+INSERT INTO conversations (id, organization_id, created_by, project_id)
+VALUES ('conv_0137', 'org_0137', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000137'),
+       ('conv_other_0137', 'org_other', 'user_9', 'bbbbbbbb-0000-4000-8000-000000000137');
+INSERT INTO proposed_changes (id, organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id)
+VALUES ('c1c1c1c1-0000-4000-8000-000000000137', 'org_0137', 'aaaaaaaa-0000-4000-8000-000000000137', 'file_operation',
+        '{"operation":"move","operations":[{"document":"a.pdf","target_folder":"Einreichung"}]}', 'piloti', 'user_1', 'conv_0137'),
+       ('c2c2c2c2-0000-4000-8000-000000000137', 'org_0137', 'aaaaaaaa-0000-4000-8000-000000000137', 'file_operation',
+        '{"operation":"create_folder","operations":[{"folder_name":"Statik"}]}', 'piloti', 'user_1', NULL);
+SQL
+check_in grid_prop "SELECT string_agg(status, ',') FROM proposed_changes" "proposed,proposed" "a proposal is born proposed"
+P137="INSERT INTO proposed_changes (organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id, status, decided_by, decided_at, results, applying_by, applying_since) VALUES ('org_0137', 'aaaaaaaa-0000-4000-8000-000000000137'"
+refused_in grid_prop "$P137, 'delete_all', '{}', 'piloti', 'user_1', NULL, 'proposed', NULL, NULL, NULL, NULL, NULL)" "proposed_changes_kind_known" "an unknown kind was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'withdrawn', 'user_1', now(), NULL, NULL, NULL)" "proposed_changes_status_known" "an unknown status was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'robot', 'user_1', NULL, 'proposed', NULL, NULL, NULL, NULL, NULL)" "proposed_changes_proposer_known" "an unknown proposer was accepted"
+refused_in grid_prop "$P137, 'file_operation', '[]', 'piloti', 'user_1', NULL, 'proposed', NULL, NULL, NULL, NULL, NULL)" "proposed_changes_payload_object" "a payload that is not an object was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'dismissed', NULL, NULL, NULL, NULL, NULL)" "proposed_changes_decision_complete" "a decision by nobody was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'dismissed', 'user_1', NULL, NULL, NULL, NULL)" "proposed_changes_decision_complete" "a decision at no time was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'proposed', 'user_1', now(), NULL, NULL, NULL)" "proposed_changes_decision_complete" "an undecided proposal with a decider was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'applied', 'user_1', now(), NULL, NULL, NULL)" "proposed_changes_results_when_applied" "an applied proposal without results was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'dismissed', 'user_1', now(), '[]', NULL, NULL)" "proposed_changes_results_when_applied" "a dismissed proposal with results was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'failed', 'user_1', now(), '{}', NULL, NULL)" "proposed_changes_results_array" "results that are not a list were accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'proposed', NULL, NULL, NULL, 'user_1', NULL)" "proposed_changes_claim_complete" "a claim at no time was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', NULL, 'dismissed', 'user_1', now(), NULL, 'user_1', now())" "proposed_changes_claim_while_proposed" "a claim on a decided proposal was accepted"
+refused_in grid_prop "$P137, 'file_operation', '{}', 'piloti', 'user_1', 'conv_other_0137', 'proposed', NULL, NULL, NULL, NULL, NULL)" "proposed_changes_conversation_fkey" "another organization's conversation was accepted"
+refused_in grid_prop "INSERT INTO proposed_changes (organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0137', 'bbbbbbbb-0000-4000-8000-000000000137', 'file_operation', '{}', 'piloti', 'user_1')" "proposed_changes_project_fkey" "another organization's project was accepted"
+sql_in grid_prop <<<"UPDATE proposed_changes SET applying_by = 'user_2', applying_since = now() WHERE id = 'c1c1c1c1-0000-4000-8000-000000000137'"
+refused_in grid_prop "UPDATE proposed_changes SET status = 'partially_applied', decided_by = 'user_2', decided_at = now(), results = '[{\"label\":\"a.pdf\",\"ok\":true}]' WHERE id = 'c1c1c1c1-0000-4000-8000-000000000137'" "proposed_changes_claim_while_proposed" "a settle that kept its claim was accepted"
+sql_in grid_prop <<<"UPDATE proposed_changes SET status = 'partially_applied', decided_by = 'user_2', decided_at = now(), results = '[{\"label\":\"a.pdf\",\"ok\":true}]', applying_by = NULL, applying_since = NULL WHERE id = 'c1c1c1c1-0000-4000-8000-000000000137'"
+sql_in grid_prop <<<"DELETE FROM conversations WHERE id = 'conv_0137'"
+check_in grid_prop "SELECT count(*) FROM proposed_changes" "1" "a proposal goes with its conversation"
+sql_in grid_prop <<<"DELETE FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000137'"
+check_in grid_prop "SELECT count(*) FROM proposed_changes" "0" "a proposal goes with its project"
+apply_in grid_prop 0140_proposed_changes.down.sql
+check_in grid_prop "SELECT count(*) FROM information_schema.tables WHERE table_name = 'proposed_changes'" "0" "down dropped proposed_changes"
+check_in grid_prop "SELECT count(*) FROM conversations" "1" "down left the conversations"
+apply_in grid_prop 0140_proposed_changes.sql
+apply_in grid_prop 0140_proposed_changes.sql
+check_in grid_prop "SELECT count(*) FROM proposed_changes" "0" "0140 re-applies, twice, empty"
+echo "==> 0140 proposed changes and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0141: a wake's END, and the DOWN.
+#
+# On a database of its own, migrated to 0140. A wake has an end exactly when it
+# has its final word (not `queued`, not `started`); the rows 0139 settled
+# already ended when they settled; `answered` and `stopped` carry no reason,
+# `failed` does.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0141 wake ends and their down migration on grid_wend"
+migrate_until grid_wend 0140_proposed_changes
+sql_in grid_wend <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000138', 'org_0138', 'Enden 0141', 'user_1', 'proj_0138');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000138', 'org_0138', 'user_1', 'a.pdf', 'k/0141/a', 'proj_0138', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000138');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
+INSERT INTO piloti_wakes (id, organization_id, document_id, annotation_id, trigger_kind, event_id, actor_user_id, status, reason, settled_at)
+VALUES ('a1a1a1a1-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 'f1f1f1f1-0000-4000-8000-000000000138', 'thread_mention', 'e1', 'user_1', 'queued', NULL, NULL),
+       ('a2a2a2a2-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 'f1f1f1f1-0000-4000-8000-000000000138', 'thread_mention', 'e2', 'user_1', 'started', NULL, now()),
+       ('a3a3a3a3-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 'f1f1f1f1-0000-4000-8000-000000000138', 'assigned', 'e3', 'user_1', 'suppressed', 'cap:mark-hour', now());
+SQL
+apply_in grid_wend 0141_wake_ends.sql
+check_in grid_wend "SELECT string_agg(status || ':' || (ended_at IS NOT NULL)::text, ',' ORDER BY event_id) FROM piloti_wakes" "queued:false,started:false,suppressed:true" "a wake 0139 settled without a turn ended when it settled; the others have not ended"
+refused_in grid_wend "UPDATE piloti_wakes SET status = 'answered' WHERE event_id = 'e2'" "piloti_wakes_ended_when_final" "an answered wake without its end was accepted"
+refused_in grid_wend "UPDATE piloti_wakes SET ended_at = now() WHERE event_id = 'e2'" "piloti_wakes_ended_when_final" "a running wake with an end was accepted"
+refused_in grid_wend "UPDATE piloti_wakes SET status = 'snoozed', ended_at = now() WHERE event_id = 'e2'" "piloti_wakes_status_known" "an unknown end was accepted"
+refused_in grid_wend "UPDATE piloti_wakes SET status = 'answered', ended_at = now(), reason = 'weil' WHERE event_id = 'e2'" "piloti_wakes_reason_when_not_started" "an answered wake with a reason was accepted"
+refused_in grid_wend "UPDATE piloti_wakes SET status = 'failed', ended_at = now() WHERE event_id = 'e2'" "piloti_wakes_reason_when_not_started" "a failed turn without its reason was accepted"
+sql_in grid_wend <<<"UPDATE piloti_wakes SET status = 'failed', reason = 'turn error', ended_at = settled_at + interval '1 minute' WHERE event_id = 'e2'"
+sql_in grid_wend <<'SQL'
+INSERT INTO piloti_wakes (id, organization_id, document_id, annotation_id, trigger_kind, event_id, actor_user_id, status, reason, settled_at, ended_at)
+VALUES ('a4a4a4a4-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 'f1f1f1f1-0000-4000-8000-000000000138', 'thread_mention', 'e4', 'user_1', 'answered', NULL, now(), now() + interval '1 minute'),
+       ('a5a5a5a5-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 'f1f1f1f1-0000-4000-8000-000000000138', 'assigned', 'e5', 'user_1', 'stopped', NULL, now(), now() + interval '1 minute');
+SQL
+check_in grid_wend "SELECT count(*) FROM piloti_wakes WHERE ended_at IS NOT NULL" "4" "an answered, a stopped and a failed turn keep their ends"
+apply_in grid_wend 0141_wake_ends.down.sql
+check_in grid_wend "SELECT string_agg(status, ',' ORDER BY event_id) FROM piloti_wakes" "queued,started,suppressed,started,started" "down folds every end of a turn that ran back into started"
+check_in grid_wend "SELECT count(*) FROM information_schema.columns WHERE table_name = 'piloti_wakes' AND column_name = 'ended_at'" "0" "down dropped ended_at"
+apply_in grid_wend 0141_wake_ends.sql
+apply_in grid_wend 0141_wake_ends.sql
+check_in grid_wend "SELECT count(*) FROM piloti_wakes WHERE ended_at IS NOT NULL" "1" "0141 re-applies, twice: only the suppressed wake has ended"
+echo "==> 0141 wake ends and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0142: piloti_changes, the CHECKs, and the DOWN.
+#
+# On a database of its own, migrated to 0141. A change names a known object
+# and op; a create has no before, a delete no after, an update both; a reply
+# is only ever created; a mark's change names the mark as its object; states
+# are objects; an undo is by somebody at some time; the document and the
+# conversation are this organization's; it goes with either, and outlives the
+# mark it deleted.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0142 change record and its down migration on grid_chg"
+migrate_until grid_chg 0141_wake_ends
+apply_in grid_chg 0142_piloti_changes.sql
+check_in grid_chg "SELECT relrowsecurity FROM pg_class WHERE relname = 'piloti_changes'" "t" "0142 brings piloti_changes up under row-level security"
+sql_in grid_chg <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000139', 'org_0139', 'Änderungen 0142', 'user_1', 'proj_0139'),
+       ('bbbbbbbb-0000-4000-8000-000000000139', 'org_other', 'Fremd 0142', 'user_9', 'proj_other_0139');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000139', 'org_0139', 'user_1', 'a.pdf', 'k/0142/a', 'proj_0139', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000139'),
+       ('d2d2d2d2-0000-4000-8000-000000000139', 'org_0139', 'user_1', 'b.pdf', 'k/0142/b', 'proj_0139', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000139');
+INSERT INTO conversations (id, organization_id, created_by, project_id)
+VALUES ('conv_0139', 'org_0139', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000139'),
+       ('conv_other_0139', 'org_other', 'user_9', 'bbbbbbbb-0000-4000-8000-000000000139');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000139', 'org_0139', 'd1d1d1d1-0000-4000-8000-000000000139', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
+INSERT INTO piloti_changes (organization_id, document_id, annotation_id, object_kind, object_id, op, before, after, origin_conversation_id, origin_message_id, on_behalf_of)
+VALUES ('org_0139', 'd1d1d1d1-0000-4000-8000-000000000139', 'f1f1f1f1-0000-4000-8000-000000000139', 'annotation', 'f1f1f1f1-0000-4000-8000-000000000139', 'update', '{"status":"open"}', '{"status":"resolved"}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1'),
+       ('org_0139', 'd1d1d1d1-0000-4000-8000-000000000139', 'f1f1f1f1-0000-4000-8000-000000000139', 'annotation_reply', 'e1e1e1e1-0000-4000-8000-000000000139', 'create', NULL, '{"body":"Ja."}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1'),
+       ('org_0139', 'd2d2d2d2-0000-4000-8000-000000000139', 'f2f2f2f2-0000-4000-8000-000000000139', 'annotation', 'f2f2f2f2-0000-4000-8000-000000000139', 'delete', '{"status":"open","body":"weg"}', NULL, 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1');
+SQL
+check_in grid_chg "SELECT count(*) FROM piloti_changes WHERE undone_at IS NULL AND undone_by IS NULL" "3" "an update, a reply and a delete of a mark that no longer exists are recorded, undone by nobody"
+C139="INSERT INTO piloti_changes (organization_id, document_id, annotation_id, object_kind, object_id, op, before, after, origin_conversation_id, origin_message_id, on_behalf_of) VALUES ('org_0139', 'd1d1d1d1-0000-4000-8000-000000000139', 'f1f1f1f1-0000-4000-8000-000000000139'"
+refused_in grid_chg "$C139, 'document', 'f1f1f1f1-0000-4000-8000-000000000139', 'update', '{}', '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_object_known" "an unknown object was accepted"
+refused_in grid_chg "$C139, 'annotation', 'f1f1f1f1-0000-4000-8000-000000000139', 'move', '{}', '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_op_known" "an unknown op was accepted"
+refused_in grid_chg "$C139, 'annotation_reply', 'e1e1e1e1-0000-4000-8000-000000000139', 'update', '{}', '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_reply_is_created" "a reply changed by Piloti was accepted"
+refused_in grid_chg "$C139, 'annotation', 'e1e1e1e1-0000-4000-8000-000000000139', 'update', '{}', '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_annotation_is_object" "a mark's change naming another object was accepted"
+refused_in grid_chg "$C139, 'annotation', 'f1f1f1f1-0000-4000-8000-000000000139', 'create', '{}', '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_states_by_op" "a create with a before was accepted"
+refused_in grid_chg "$C139, 'annotation', 'f1f1f1f1-0000-4000-8000-000000000139', 'update', NULL, '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_states_by_op" "an update without a before was accepted"
+refused_in grid_chg "$C139, 'annotation', 'f1f1f1f1-0000-4000-8000-000000000139', 'delete', '{}', '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_states_by_op" "a delete with an after was accepted"
+refused_in grid_chg "$C139, 'annotation', 'f1f1f1f1-0000-4000-8000-000000000139', 'update', '[]', '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_states_are_objects" "a state that is not an object was accepted"
+refused_in grid_chg "$C139, 'annotation', 'f1f1f1f1-0000-4000-8000-000000000139', 'update', '{}', '{}', 'conv_other_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_conversation_fkey" "another organization's conversation was accepted"
+refused_in grid_chg "INSERT INTO piloti_changes (organization_id, document_id, annotation_id, object_kind, object_id, op, before, after, origin_conversation_id, origin_message_id, on_behalf_of) VALUES ('org_0139', '00000000-0000-4000-8000-000000000139', 'f1f1f1f1-0000-4000-8000-000000000139', 'annotation', 'f1f1f1f1-0000-4000-8000-000000000139', 'update', '{}', '{}', 'conv_0139', 'c1c1c1c1-0000-4000-8000-000000000139', 'user_1')" "piloti_changes_document_fkey" "a change on no document was accepted"
+refused_in grid_chg "UPDATE piloti_changes SET undone_at = now() WHERE op = 'update'" "piloti_changes_undo_complete" "an undo by nobody was accepted"
+refused_in grid_chg "UPDATE piloti_changes SET undone_by = 'user_2' WHERE op = 'update'" "piloti_changes_undo_complete" "an undo at no time was accepted"
+sql_in grid_chg <<<"UPDATE piloti_changes SET undone_at = now(), undone_by = 'user_2' WHERE op = 'update'"
+sql_in grid_chg <<<"DELETE FROM document_annotations WHERE id = 'f1f1f1f1-0000-4000-8000-000000000139'"
+check_in grid_chg "SELECT count(*) FROM piloti_changes" "3" "the record outlives the mark (no foreign key on the mark)"
+sql_in grid_chg <<<"DELETE FROM documents WHERE id = 'd2d2d2d2-0000-4000-8000-000000000139'"
+check_in grid_chg "SELECT count(*) FROM piloti_changes" "2" "a change goes with its document"
+sql_in grid_chg <<<"DELETE FROM conversations WHERE id = 'conv_0139'"
+check_in grid_chg "SELECT count(*) FROM piloti_changes" "0" "a change goes with the conversation of its turn"
+apply_in grid_chg 0142_piloti_changes.down.sql
+check_in grid_chg "SELECT count(*) FROM information_schema.tables WHERE table_name = 'piloti_changes'" "0" "down dropped piloti_changes"
+check_in grid_chg "SELECT count(*) FROM documents" "1" "down left the documents"
+apply_in grid_chg 0142_piloti_changes.sql
+apply_in grid_chg 0142_piloti_changes.sql
+check_in grid_chg "SELECT count(*) FROM piloti_changes" "0" "0142 re-applies, twice, empty"
+echo "==> 0142 change record and down migration verified"
+
+
+# ---------------------------------------------------------------------------
+# Migration 0143: two more proposal kinds, the card index, and the DOWN.
+#
+# On a database of its own, migrated to 0142. A memory note and a profile
+# change are stored, an unknown kind is not; a card index is never negative and
+# names a card of an answer, so it needs the answer; one card of one answer is
+# one proposal per organization, while another card, another answer, another
+# organization or no card at all is its own. The down deletes the new kinds,
+# forgets the card index, and the up re-applies twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0143 proposal kinds and their down migration on grid_kinds"
+migrate_until grid_kinds 0142_piloti_changes
+apply_in grid_kinds 0143_proposal_kinds.sql
+sql_in grid_kinds <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000140', 'org_0140', 'Vorschläge 0143', 'user_1', 'proj_0140'),
+       ('bbbbbbbb-0000-4000-8000-000000000140', 'org_other', 'Fremd 0143', 'user_9', 'proj_other_0140');
+INSERT INTO proposed_changes (id, organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of, origin_message_id, origin_card_index)
+VALUES ('c1c1c1c1-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'file_operation',
+        '{"operation":"create_folder","operations":[{"folder_name":"Statik"}]}', 'piloti', 'user_1', NULL, NULL),
+       ('c2c2c2c2-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"project","kind":"decision","content":"Flachdach","confidence":"high"}', 'piloti', 'user_1',
+        'dddddddd-0000-4000-8000-000000000140', 0),
+       ('c3c3c3c3-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'project_profile',
+        '{"title":"Bundesland","patch":[{"op":"replace","path":"/facts/bundesland/value","value":"tirol"}]}', 'piloti', 'user_1',
+        'dddddddd-0000-4000-8000-000000000140', 1),
+       ('c4c4c4c4-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"organization","kind":"preference","content":"1:100","confidence":"medium"}', 'piloti', 'user_1',
+        'dddddddd-0000-4000-8000-000000000140', NULL),
+       ('c5c5c5c5-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"organization","kind":"preference","content":"1:50","confidence":"medium"}', 'piloti', 'user_1',
+        'dddddddd-0000-4000-8000-000000000140', NULL),
+       ('c6c6c6c6-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"project","kind":"decision","content":"Holzbau","confidence":"high"}', 'piloti', 'user_1',
+        'eeeeeeee-0000-4000-8000-000000000140', 0),
+       ('c7c7c7c7-0000-4000-8000-000000000140', 'org_other', 'bbbbbbbb-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"project","kind":"decision","content":"Fremd","confidence":"low"}', 'piloti', 'user_9',
+        'dddddddd-0000-4000-8000-000000000140', 0);
+SQL
+check_in grid_kinds "SELECT string_agg(kind, ',' ORDER BY id) FROM proposed_changes" "file_operation,memory,project_profile,memory,memory,memory,memory" "0143 stores both new kinds, a card on another answer, two without a card, and the same card in another organization"
+P140="INSERT INTO proposed_changes (organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of, origin_message_id, origin_card_index) VALUES ('org_0140', 'aaaaaaaa-0000-4000-8000-000000000140'"
+refused_in grid_kinds "$P140, 'steckbrief', '{}', 'piloti', 'user_1', NULL, NULL)" "proposed_changes_kind_known" "an unknown kind was accepted"
+refused_in grid_kinds "$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', -1)" "proposed_changes_card_index_nonnegative" "a negative card index was accepted"
+refused_in grid_kinds "$P140, 'memory', '{}', 'piloti', 'user_1', NULL, 2)" "proposed_changes_card_index_needs_message" "a card index without its answer was accepted"
+refused_in grid_kinds "$P140, 'project_profile', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0)" "uniq_proposed_changes_origin_card" "the same card of the same answer was accepted twice"
+refused_in grid_kinds "UPDATE proposed_changes SET origin_card_index = 1 WHERE id = 'c2c2c2c2-0000-4000-8000-000000000140'" "uniq_proposed_changes_origin_card" "a proposal was moved onto another proposal's card"
+# The service's idempotent insert: the same card is no row, and the first one reads back.
+sql_in grid_kinds <<<"$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0) ON CONFLICT (organization_id, origin_message_id, origin_card_index) WHERE origin_card_index IS NOT NULL DO NOTHING"
+check_in grid_kinds "SELECT count(*) FROM proposed_changes WHERE organization_id = 'org_0140'" "6" "an insert of a card already proposed added a row"
+apply_in grid_kinds 0143_proposal_kinds.down.sql
+check_in grid_kinds "SELECT string_agg(kind, ',') FROM proposed_changes" "file_operation" "down deleted the proposals of the new kinds, and only those"
+check_in grid_kinds "SELECT count(*) FROM information_schema.columns WHERE table_name = 'proposed_changes' AND column_name = 'origin_card_index'" "0" "down dropped the card index"
+check_in grid_kinds "SELECT count(*) FROM pg_indexes WHERE indexname = 'uniq_proposed_changes_origin_card'" "0" "down dropped the card's unique index"
+refused_in grid_kinds "INSERT INTO proposed_changes (organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory', '{}', 'piloti', 'user_1')" "proposed_changes_kind_known" "down left the new kinds allowed"
+apply_in grid_kinds 0143_proposal_kinds.sql
+apply_in grid_kinds 0143_proposal_kinds.sql
+check_in grid_kinds "SELECT count(*) FROM proposed_changes" "1" "0143 re-applies, twice, keeping the file operation"
+sql_in grid_kinds <<<"$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0)"
+refused_in grid_kinds "$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0)" "uniq_proposed_changes_origin_card" "the re-applied 0143 lost the card's unique index"
+echo "==> 0143 proposal kinds and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0144: project_intakes, the CHECKs, and the DOWN.
+#
+# On a database of its own, migrated to 0143. One intake per project, of this
+# organization's project, gone with it. A closing intent exactly in `closing`
+# mode, and an object; a reading always names its job, and one job is one
+# intake's; the completion is by somebody at some time exactly when
+# `completed`; the read list and the dismissed values are arrays, born empty;
+# the description is at most 500 characters.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0144 project intakes and their down migration on grid_intake"
+migrate_until grid_intake 0143_proposal_kinds
+apply_in grid_intake 0144_project_intakes.sql
+check_in grid_intake "SELECT relrowsecurity FROM pg_class WHERE relname = 'project_intakes'" "t" "0144 brings project_intakes up under row-level security"
+sql_in grid_intake <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000144', 'org_0144', 'Erfassung 0144', 'user_1', 'proj_0144'),
+       ('cccccccc-0000-4000-8000-000000000144', 'org_0144', 'Abgeschlossen 0144', 'user_1', 'proj_closed_0144'),
+       ('dddddddd-0000-4000-8000-000000000144', 'org_0144', 'Frei 0144', 'user_1', 'proj_free_0144'),
+       ('bbbbbbbb-0000-4000-8000-000000000144', 'org_other', 'Fremd 0144', 'user_9', 'proj_other_0144');
+INSERT INTO project_intakes (organization_id, project_id, created_by)
+VALUES ('org_0144', 'aaaaaaaa-0000-4000-8000-000000000144', 'user_1');
+INSERT INTO project_intakes (organization_id, project_id, created_by, mode, closing, status, job_id, requested_by)
+VALUES ('org_0144', 'cccccccc-0000-4000-8000-000000000144', 'user_1', 'closing',
+        '{"outcome":"completed","endedOn":"2024-06"}', 'reading', 'job_0144', 'user_1');
+SQL
+check_in grid_intake "SELECT string_agg(mode || ':' || status || ':' || documents_read::text || ':' || dismissed::text || ':' || rerun_requested::text, ',' ORDER BY mode) FROM project_intakes" "active:waiting:[]:[]:false,closing:reading:[]:[]:false" "an intake is born waiting and active, with nothing read or dismissed"
+I144="INSERT INTO project_intakes (organization_id, project_id, created_by, mode, closing, status, job_id, completed_at, completed_by) VALUES ('org_0144', 'dddddddd-0000-4000-8000-000000000144', 'user_1'"
+refused_in grid_intake "$I144, 'active', NULL, 'paused', NULL, NULL, NULL)" "project_intakes_status_known" "an unknown status was accepted"
+refused_in grid_intake "$I144, 'archive', NULL, 'waiting', NULL, NULL, NULL)" "project_intakes_mode_known" "an unknown mode was accepted"
+refused_in grid_intake "$I144, 'closing', NULL, 'waiting', NULL, NULL, NULL)" "project_intakes_closing_when_closing" "a closing intake without its intent was accepted"
+refused_in grid_intake "$I144, 'active', '{\"outcome\":\"completed\",\"endedOn\":\"2024-06\"}', 'waiting', NULL, NULL, NULL)" "project_intakes_closing_when_closing" "an active intake with a closing intent was accepted"
+refused_in grid_intake "$I144, 'closing', '[]', 'waiting', NULL, NULL, NULL)" "project_intakes_closing_object" "a closing intent that is not an object was accepted"
+refused_in grid_intake "$I144, 'active', NULL, 'reading', NULL, NULL, NULL)" "project_intakes_job_when_reading" "a reading without its job was accepted"
+refused_in grid_intake "$I144, 'active', NULL, 'completed', NULL, NULL, NULL)" "project_intakes_completion_complete" "a completion by nobody at no time was accepted"
+refused_in grid_intake "$I144, 'active', NULL, 'completed', NULL, now(), NULL)" "project_intakes_completion_complete" "a completion by nobody was accepted"
+refused_in grid_intake "$I144, 'active', NULL, 'ready', NULL, now(), 'user_1')" "project_intakes_completion_complete" "a completion on an intake still under review was accepted"
+refused_in grid_intake "$I144, 'active', NULL, 'reading', 'job_0144', NULL, NULL)" "uniq_project_intakes_job" "one job reading for two intakes was accepted"
+refused_in grid_intake "INSERT INTO project_intakes (organization_id, project_id, created_by) VALUES ('org_0144', 'aaaaaaaa-0000-4000-8000-000000000144', 'user_1')" "uniq_project_intakes_project" "a second intake for one project was accepted"
+refused_in grid_intake "INSERT INTO project_intakes (organization_id, project_id, created_by) VALUES ('org_0144', 'bbbbbbbb-0000-4000-8000-000000000144', 'user_1')" "project_intakes_project_fkey" "another organization's project was accepted"
+refused_in grid_intake "INSERT INTO project_intakes (organization_id, project_id, created_by, documents_read) VALUES ('org_0144', 'dddddddd-0000-4000-8000-000000000144', 'user_1', '{}')" "project_intakes_documents_read_array" "a read list that is not a list was accepted"
+refused_in grid_intake "INSERT INTO project_intakes (organization_id, project_id, created_by, dismissed) VALUES ('org_0144', 'dddddddd-0000-4000-8000-000000000144', 'user_1', 'null')" "project_intakes_dismissed_array" "dismissed values that are not a list were accepted"
+refused_in grid_intake "INSERT INTO project_intakes (organization_id, project_id, created_by, location) VALUES ('org_0144', 'dddddddd-0000-4000-8000-000000000144', 'user_1', '\"Wien\"')" "project_intakes_location_object" "a location that is not an object was accepted"
+refused_in grid_intake "INSERT INTO project_intakes (organization_id, project_id, created_by, counts) VALUES ('org_0144', 'dddddddd-0000-4000-8000-000000000144', 'user_1', '[]')" "project_intakes_counts_object" "counts that are not an object were accepted"
+refused_in grid_intake "INSERT INTO project_intakes (organization_id, project_id, created_by, description) VALUES ('org_0144', 'dddddddd-0000-4000-8000-000000000144', 'user_1', repeat('x', 501))" "project_intakes_description_length" "a description over 500 characters was accepted"
+# A finished review: a reading that ends and is completed by somebody at some time.
+sql_in grid_intake <<<"UPDATE project_intakes SET status = 'completed', completed_at = now(), completed_by = 'user_1' WHERE project_id = 'cccccccc-0000-4000-8000-000000000144'"
+check_in grid_intake "SELECT status FROM project_intakes WHERE project_id = 'cccccccc-0000-4000-8000-000000000144'" "completed" "a review completes, keeping its last job"
+sql_in grid_intake <<<"DELETE FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000144'"
+check_in grid_intake "SELECT count(*) FROM project_intakes" "1" "an intake goes with its project"
+apply_in grid_intake 0144_project_intakes.down.sql
+check_in grid_intake "SELECT count(*) FROM information_schema.tables WHERE table_name = 'project_intakes'" "0" "down dropped project_intakes"
+check_in grid_intake "SELECT count(*) FROM projects WHERE organization_id = 'org_0144'" "2" "down left the projects"
+apply_in grid_intake 0144_project_intakes.sql
+apply_in grid_intake 0144_project_intakes.sql
+check_in grid_intake "SELECT count(*) FROM project_intakes" "0" "0144 re-applies, twice, empty"
+echo "==> 0144 project intakes and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0145: a folder's description, and the DOWN.
+#
+# On a database of its own, migrated to 0144. A folder on either shelf may say
+# what belongs in it; a description is never blank and at most 500 characters.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0145 folder descriptions and their down migration on grid_fdesc"
+migrate_until grid_fdesc 0144_project_intakes
+sql_in grid_fdesc <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000145', 'org_0145', 'Ablage 0145', 'user_1', 'proj_0145');
+INSERT INTO project_folders (id, organization_id, project_id, scope, name, path)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000145', 'org_0145', 'aaaaaaaa-0000-4000-8000-000000000145', 'project', 'Bescheide', 'Bescheide'),
+       ('f2f2f2f2-0000-4000-8000-000000000145', 'org_0145', NULL, 'archiv', 'Normen', 'Normen');
+SQL
+apply_in grid_fdesc 0145_folder_descriptions.sql
+check_in grid_fdesc "SELECT count(*) FROM project_folders WHERE description IS NULL" "2" "0145 leaves every folder undescribed"
+sql_in grid_fdesc <<<"UPDATE project_folders SET description = 'Bescheide und Stellungnahmen der Behörden' WHERE name = 'Bescheide'"
+sql_in grid_fdesc <<<"UPDATE project_folders SET description = 'ÖNORMEN, die das Büro gekauft hat' WHERE name = 'Normen'"
+check_in grid_fdesc "SELECT count(*) FROM project_folders WHERE description IS NOT NULL" "2" "a project folder and a Büroablage folder each take a description"
+refused_in grid_fdesc "UPDATE project_folders SET description = '   ' WHERE name = 'Bescheide'" "project_folders_description_length" "a blank description was accepted"
+refused_in grid_fdesc "UPDATE project_folders SET description = '' WHERE name = 'Bescheide'" "project_folders_description_length" "an empty description was accepted"
+refused_in grid_fdesc "UPDATE project_folders SET description = repeat('x', 501) WHERE name = 'Bescheide'" "project_folders_description_length" "a description over 500 characters was accepted"
+apply_in grid_fdesc 0145_folder_descriptions.down.sql
+check_in grid_fdesc "SELECT count(*) FROM information_schema.columns WHERE table_name = 'project_folders' AND column_name = 'description'" "0" "down dropped the description"
+check_in grid_fdesc "SELECT count(*) FROM project_folders" "2" "down kept the folders"
+apply_in grid_fdesc 0145_folder_descriptions.sql
+apply_in grid_fdesc 0145_folder_descriptions.sql
+check_in grid_fdesc "SELECT count(*) FROM project_folders WHERE description IS NULL" "2" "0145 re-applies, twice"
+echo "==> 0145 folder descriptions and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0146: proposals on the Büroablage, the trace, the CHECKs, the
+# re-secured policy, and the DOWN.
+#
+# On a database of its own, migrated to 0145. A proposal is on a project
+# exactly when it has one; a Büroablage proposal only moves Büroablage
+# documents; the runtime role sees its own organization's Büroablage proposals
+# and no other's.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0146 proposal shelves and their down migration on grid_pshelf"
+migrate_until grid_pshelf 0145_folder_descriptions
+sql_in grid_pshelf <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000146', 'org_0146', 'Ablage 0146', 'user_1', 'proj_0146');
+INSERT INTO proposed_changes (id, organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of)
+VALUES ('c1c1c1c1-0000-4000-8000-000000000146', 'org_0146', 'aaaaaaaa-0000-4000-8000-000000000146', 'file_operation',
+        '{"operation":"move","operations":[{"document":"a.pdf","target_folder":"Bescheide"}]}', 'piloti', 'user_1');
+SQL
+apply_in grid_pshelf 0146_proposal_shelves.sql
+check_in grid_pshelf "SELECT scope || ':' || (origin_trace_id IS NULL)::text FROM proposed_changes" "project:true" "0146 puts every existing proposal on its project's shelf"
+sql_in grid_pshelf <<'SQL'
+INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of, origin_trace_id)
+VALUES ('c2c2c2c2-0000-4000-8000-000000000146', 'org_0146', NULL, 'archiv', 'file_operation',
+        '{"operation":"move","operations":[{"document":"Norm.pdf","source":"buero","target_folder":"Normen"}],"basis":"name"}', 'piloti', 'user_1', 'abcdef0123456789abcdef0123456789'),
+       ('c3c3c3c3-0000-4000-8000-000000000146', 'org_other', NULL, 'archiv', 'file_operation',
+        '{"operation":"move","operations":[{"document":"Fremd.pdf","source":"buero","target_folder":"Fremd"}]}', 'piloti', 'user_9', NULL);
+SQL
+check_in grid_pshelf "SELECT count(*) FROM proposed_changes WHERE scope = 'archiv'" "2" "a Büroablage move is stored without a project"
+P146="INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0146'"
+refused_in grid_pshelf "$P146, NULL, 'regal', 'file_operation', '{\"operation\":\"move\",\"operations\":[{\"document\":\"a.pdf\",\"source\":\"buero\"}]}', 'piloti', 'user_1')" "proposed_changes_scope_known" "an unknown shelf was accepted"
+refused_in grid_pshelf "$P146, NULL, 'project', 'file_operation', '{\"operation\":\"move\",\"operations\":[]}', 'piloti', 'user_1')" "proposed_changes_scope_owner" "a project proposal without its project was accepted"
+refused_in grid_pshelf "$P146, 'aaaaaaaa-0000-4000-8000-000000000146', 'archiv', 'file_operation', '{\"operation\":\"move\",\"operations\":[{\"document\":\"a.pdf\",\"source\":\"buero\"}]}', 'piloti', 'user_1')" "proposed_changes_scope_owner" "a Büroablage proposal naming a project was accepted"
+refused_in grid_pshelf "$P146, NULL, 'archiv', 'memory', '{}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "a Büroablage proposal of another kind was accepted"
+refused_in grid_pshelf "$P146, NULL, 'archiv', 'file_operation', '{\"operation\":\"create_folder\",\"operations\":[{\"folder_name\":\"X\"}]}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "a Büroablage proposal that is not a move was accepted"
+refused_in grid_pshelf "$P146, NULL, 'archiv', 'file_operation', '{\"operation\":\"move\",\"operations\":[{\"document\":\"a.pdf\",\"source\":\"projekt\"}]}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "a Büroablage move of a project document was accepted"
+refused_in grid_pshelf "$P146, NULL, 'archiv', 'file_operation', '{\"operation\":\"move\",\"operations\":[{\"document\":\"a.pdf\"}]}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "a Büroablage move of an item without its shelf was accepted"
+refused_in grid_pshelf "$P146, NULL, 'archiv', 'file_operation', '{\"operation\":\"move\",\"operations\":[{\"document\":\"a.pdf\",\"source\":\"buero\"},{\"document\":\"b.pdf\",\"source\":\"projekt\"}]}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "a Büroablage move with one project item was accepted"
+refused_in grid_pshelf "$P146, NULL, 'archiv', 'file_operation', '{\"operation\":\"move\"}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "a Büroablage move without items was accepted"
+refused_in grid_pshelf "$P146, NULL, 'archiv', 'file_operation', '{\"operation\":\"move\",\"operations\":[]}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "a Büroablage move of no items was accepted"
+check_in grid_pshelf "SELECT pg_get_expr(polqual, polrelid) LIKE '%project_id IS NULL%' FROM pg_policy WHERE polname = 'grid_tenant_isolation' AND polrelid = 'proposed_changes'::regclass" "t" "0146 re-secures proposed_changes with the Büroablage arm"
+check_in grid_pshelf "SELECT count(*) FROM pg_policy WHERE polrelid = 'proposed_changes'::regclass" "1" "proposed_changes keeps exactly one policy"
+# The runtime role, inside one tenant: its own Büroablage proposal, not the other organization's.
+RW146=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_pshelf -qtA \
+  -c "SET grid.organization_id = 'org_0146'" \
+  -c "SELECT string_agg(id::text, ',' ORDER BY id) FROM proposed_changes WHERE scope = 'archiv'")
+if [ "$RW146" != "c2c2c2c2-0000-4000-8000-000000000146" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_pshelf: the runtime role saw another organization's Büroablage proposal, or not its own (got: $RW146)" >&2
+  exit 1
+fi
+apply_in grid_pshelf 0146_proposal_shelves.down.sql
+check_in grid_pshelf "SELECT string_agg(id::text, ',') FROM proposed_changes" "c1c1c1c1-0000-4000-8000-000000000146" "down deleted the Büroablage proposals, and only those"
+check_in grid_pshelf "SELECT count(*) FROM information_schema.columns WHERE table_name = 'proposed_changes' AND column_name IN ('scope', 'origin_trace_id')" "0" "down dropped the shelf and the trace"
+refused_in grid_pshelf "INSERT INTO proposed_changes (organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0146', NULL, 'file_operation', '{}', 'piloti', 'user_1')" "null value" "down left the project optional"
+apply_in grid_pshelf 0146_proposal_shelves.sql
+apply_in grid_pshelf 0146_proposal_shelves.sql
+check_in grid_pshelf "SELECT count(*) FROM proposed_changes" "1" "0146 re-applies, twice"
+echo "==> 0146 proposal shelves and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0148: a held document's reason as a typed verdict (ADR-0113), and
+# its DOWN. The backfill converts each quarantined row's `quarantined:` message
+# row by row and leaves a row whose message does not parse NULL without
+# stopping; the CHECKs hold the column to an object with a `reasons` array and
+# to quarantined rows, so the release that ends a quarantine must clear it; a
+# decision records how many reasons the job left out.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0148 quarantine verdict, its backfill and the down migration on grid_qverdict"
+migrate_until grid_qverdict 0147_push_subscriptions
+sql_in grid_qverdict <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000148', 'org_0148', 'Verdict 0148', 'user_1', 'proj_0148');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id, content_hash, screening_outcome, error_message) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'lohn.pdf', 'k/0148/lohn', 'proj_0148', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:lohn', 'quarantined',
+   'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","count":2,"pages":[1,3]},{"kind":"iban","count":1,"pages":[2],"sample":"AT61 •••• •••• •••• 3201"}],"checked":"full","omitted":3}'),
+  ('d2d2d2d2-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'kaputt.pdf', 'k/0148/kaputt', 'proj_0148', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:kaputt', 'quarantined',
+   'quarantined:{not json'),
+  ('d3d3d3d3-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'form.pdf', 'k/0148/form', 'proj_0148', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:form', 'quarantined',
+   'quarantined:{"reasons":"none"}'),
+  ('d4d4d4d4-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'plan.pdf', 'k/0148/plan', 'proj_0148', 'failed', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:plan', NULL,
+   'quarantined:{"reasons":[],"checked":"full"}'),
+  ('d5d5d5d5-0000-4000-8000-000000000148', 'org_0148', 'user_1', 'brief.pdf', 'k/0148/brief', 'proj_0148', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'sha256:brief', 'quarantined',
+   NULL);
+INSERT INTO document_quarantine_decisions (id, organization_id, document_id, job_id, scope, project_id, filename, reasons, uploaded_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000148', 'org_0148', 'd1d1d1d1-0000-4000-8000-000000000148', 'job-0148', 'project', 'aaaaaaaa-0000-4000-8000-000000000148', 'lohn.pdf', 'term:Lohnzettel,iban', 'user_1');
+SQL
+apply_in grid_qverdict 0148_document_quarantine_verdict.sql
+check_in grid_qverdict "SELECT quarantine->'reasons'->0->>'term' || ',' || (quarantine->>'omitted') || ',' || (quarantine->'reasons'->1->>'sample') FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000148'" "Lohnzettel,3,AT61 •••• •••• •••• 3201" "the backfill stores a quarantined row's verdict as data"
+check_in grid_qverdict "SELECT string_agg(filename, ',' ORDER BY filename) FROM documents WHERE organization_id = 'org_0148' AND quarantine IS NULL" "brief.pdf,form.pdf,kaputt.pdf,plan.pdf" "a message that is not JSON, a verdict of the wrong shape, a row that is not held and one with no message stay NULL"
+check_in grid_qverdict "SELECT count(*) FROM documents WHERE organization_id = 'org_0148' AND error_message LIKE 'quarantined:%'" "4" "the backfill leaves every message for the builds that still read it"
+check_in grid_qverdict "SELECT reasons_omitted FROM document_quarantine_decisions WHERE id = 'f1f1f1f1-0000-4000-8000-000000000148'" "0" "an existing decision left nothing out that it knew of"
+refused_in grid_qverdict "UPDATE documents SET quarantine = '[]'::jsonb WHERE id = 'd5d5d5d5-0000-4000-8000-000000000148';" "documents_quarantine_shape_check" "a verdict that is not an object was accepted"
+refused_in grid_qverdict "UPDATE documents SET quarantine = '{\"checked\":\"full\"}'::jsonb WHERE id = 'd5d5d5d5-0000-4000-8000-000000000148';" "documents_quarantine_shape_check" "a verdict without reasons was accepted"
+refused_in grid_qverdict "UPDATE documents SET quarantine = '{\"reasons\":[]}'::jsonb WHERE id = 'd4d4d4d4-0000-4000-8000-000000000148';" "documents_quarantine_held_check" "a verdict on a row that is not quarantined was accepted"
+refused_in grid_qverdict "UPDATE documents SET status = 'uploaded', screening_outcome = 'released', screening_released_hash = 'sha256:lohn', screening_released_by = 'user_2', screening_released_at = now() WHERE id = 'd1d1d1d1-0000-4000-8000-000000000148';" "documents_quarantine_held_check" "a release that keeps the verdict was accepted"
+sql_in grid_qverdict <<<"UPDATE documents SET status = 'uploaded', error_message = NULL, quarantine = NULL, screening_outcome = 'released', screening_released_hash = 'sha256:lohn', screening_released_by = 'user_2', screening_released_at = now() WHERE id = 'd1d1d1d1-0000-4000-8000-000000000148';"
+check_in grid_qverdict "SELECT status FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000148'" "uploaded" "the release that clears the verdict passes the hold"
+refused_in grid_qverdict "INSERT INTO document_quarantine_decisions (organization_id, document_id, job_id, scope, filename, uploaded_by, reasons_omitted) VALUES ('org_0148', gen_random_uuid(), 'job-x', 'archiv', 'x.pdf', 'u', -1);" "document_quarantine_decisions_reasons_omitted_check" "a negative count of left-out reasons was accepted"
+apply_in grid_qverdict 0148_document_quarantine_verdict.sql
+check_in grid_qverdict "SELECT count(*) FROM documents WHERE organization_id = 'org_0148' AND quarantine IS NOT NULL" "0" "0148 re-applies and backfills no released row"
+apply_in grid_qverdict 0148_document_quarantine_verdict.down.sql
+check_in grid_qverdict "SELECT count(*) FROM information_schema.columns WHERE (table_name = 'documents' AND column_name = 'quarantine') OR (table_name = 'document_quarantine_decisions' AND column_name = 'reasons_omitted')" "0" "down dropped both columns"
+apply_in grid_qverdict 0148_document_quarantine_verdict.sql
+apply_in grid_qverdict 0148_document_quarantine_verdict.sql
+check_in grid_qverdict "SELECT count(*) FROM pg_constraint WHERE conname IN ('documents_quarantine_shape_check', 'documents_quarantine_held_check', 'document_quarantine_decisions_reasons_omitted_check')" "3" "0148 re-applies, twice"
+echo "==> 0148 quarantine verdict and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0150: whom an Anmerkung or a reply mentions, the CHECKs, and the
+# DOWN.
+#
+# On a database of its own, migrated to 0149. Every mark and reply written
+# before mentions nobody; a mention list is an array of at most ten, on both
+# tables; the down drops both columns and leaves the marks and their threads.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0150 mentions on marks and replies and their down migration on grid_mention"
+migrate_until grid_mention 0149_piloti_wakes_document_idx
+sql_in grid_mention <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000150', 'org_0150', 'Erwähnen 0150', 'user_1', 'proj_0150');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000150', 'org_0150', 'user_1', 'a.pdf', 'k/0150/a', 'proj_0150', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000150');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000150', 'org_0150', 'd1d1d1d1-0000-4000-8000-000000000150', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
+INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by)
+VALUES ('org_0150', 'f1f1f1f1-0000-4000-8000-000000000150', 'person', 'Vor 0150 geschrieben', 'user_2');
+SQL
+apply_in grid_mention 0150_annotation_mentions.sql
+check_in grid_mention "SELECT (SELECT string_agg(mentions::text, ',') FROM document_annotations) || '|' || (SELECT string_agg(mentions::text, ',') FROM document_annotation_replies)" "[]|[]" "a mark and a reply written before 0150 mention nobody"
+sql_in grid_mention <<<"UPDATE document_annotations SET mentions = '[{\"targetId\":\"user_2\",\"display\":\"Anna Berger\"}]' WHERE number = 1"
+sql_in grid_mention <<<"UPDATE document_annotation_replies SET mentions = '[{\"targetId\":\"agent:piloti\",\"display\":\"Piloti\"}]'"
+check_in grid_mention "SELECT mentions->0->>'display' FROM document_annotations WHERE number = 1" "Anna Berger" "a mark keeps whom it mentions"
+refused_in grid_mention "UPDATE document_annotations SET mentions = '{\"targetId\":\"user_2\"}' WHERE number = 1" "document_annotations_mentions_bounded" "a mark's mentions that are not an array were accepted"
+refused_in grid_mention "UPDATE document_annotations SET mentions = (SELECT jsonb_agg(jsonb_build_object('targetId', 'user_' || n, 'display', 'P' || n)) FROM generate_series(1, 11) AS n) WHERE number = 1" "document_annotations_mentions_bounded" "a mark mentioning eleven people was accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = '\"user_2\"'" "document_annotation_replies_mentions_bounded" "a reply's mentions that are not an array were accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = (SELECT jsonb_agg(jsonb_build_object('targetId', 'user_' || n, 'display', 'P' || n)) FROM generate_series(1, 11) AS n)" "document_annotation_replies_mentions_bounded" "a reply mentioning eleven people was accepted"
+refused_in grid_mention "UPDATE document_annotation_replies SET mentions = NULL" "null value" "a reply without a mention list was accepted"
+apply_in grid_mention 0150_annotation_mentions.down.sql
+check_in grid_mention "SELECT count(*) FROM information_schema.columns WHERE column_name = 'mentions' AND table_name IN ('document_annotations', 'document_annotation_replies')" "0" "down dropped both columns"
+check_in grid_mention "SELECT (SELECT count(*) FROM document_annotations) || ':' || (SELECT count(*) FROM document_annotation_replies)" "1:1" "down left the marks and their threads"
+apply_in grid_mention 0150_annotation_mentions.sql
+apply_in grid_mention 0150_annotation_mentions.sql
+check_in grid_mention "SELECT string_agg(mentions::text, ',') FROM document_annotation_replies" "[]" "0150 re-applies, twice"
+echo "==> 0150 mentions and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0151: a mark carried on to the document that replaced its own, the
+# index the daily due reminder reads by, and the DOWN.
+#
+# On a database of its own, migrated to 0150. A mark written before carries
+# from nothing; a carried mark points back at its source, never at itself;
+# one source is carried once, whatever raced; deleting the source leaves the
+# carried mark standing without its link; the down drops the column and the
+# indexes and leaves both marks.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0151 carried marks and their down migration on grid_carry"
+migrate_until grid_carry 0150_annotation_mentions
+sql_in grid_carry <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000151', 'org_0151', 'Weitertragen 0151', 'user_1', 'proj_0151');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000151', 'org_0151', 'user_1', 'Index B.pdf', 'k/0151/b', 'proj_0151', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000151'),
+       ('d2d2d2d2-0000-4000-8000-000000000151', 'org_0151', 'user_1', 'Index C.pdf', 'k/0151/c', 'proj_0151', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000151');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, assignee_user_id, due_on)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000151', 'org_0151', 'd1d1d1d1-0000-4000-8000-000000000151', 4, 1, 'point', 0.5, 0.5, 'defect', 'Brüstung', 'person', 'open', 'user_1', 'user_2', '2026-10-24');
+SQL
+apply_in grid_carry 0151_annotation_carry_and_due.sql
+check_in grid_carry "SELECT coalesce(carried_from_id::text, 'null') FROM document_annotations" "null" "a mark written before 0151 carries from nothing"
+sql_in grid_carry <<'SQL'
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, carried_from_id)
+VALUES ('f2f2f2f2-0000-4000-8000-000000000151', 'org_0151', 'd2d2d2d2-0000-4000-8000-000000000151', 1, 1, 'point', 0.5, 0.5, 'defect', 'Brüstung', 'person', 'open', 'user_1', 'f1f1f1f1-0000-4000-8000-000000000151');
+SQL
+C150="INSERT INTO document_annotations (organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by, carried_from_id) VALUES ('org_0151', 'd2d2d2d2-0000-4000-8000-000000000151'"
+refused_in grid_carry "$C150, 2, 1, 'point', 0.5, 0.5, 'defect', 'x', 'person', 'open', 'user_1', 'f1f1f1f1-0000-4000-8000-000000000151')" "uniq_document_annotations_carried_from" "a mark was carried twice"
+refused_in grid_carry "UPDATE document_annotations SET carried_from_id = id WHERE number = 1" "document_annotations_carried_from_other" "a mark was carried from itself"
+refused_in grid_carry "$C150, 3, 1, 'point', 0.5, 0.5, 'defect', 'x', 'person', 'open', 'user_1', 'f9f9f9f9-0000-4000-8000-000000000151')" "document_annotations_carried_from_fkey" "a mark was carried from a mark that does not exist"
+check_in grid_carry "SELECT count(*) FROM pg_indexes WHERE indexname = 'idx_document_annotations_due'" "1" "0151 builds the due index"
+sql_in grid_carry <<<"DELETE FROM document_annotations WHERE id = 'f1f1f1f1-0000-4000-8000-000000000151'"
+check_in grid_carry "SELECT number || ':' || coalesce(carried_from_id::text, 'null') FROM document_annotations" "1:null" "deleting the source leaves the carried mark without its link"
+apply_in grid_carry 0151_annotation_carry_and_due.down.sql
+check_in grid_carry "SELECT count(*) FROM information_schema.columns WHERE column_name = 'carried_from_id' AND table_name = 'document_annotations'" "0" "down dropped the column"
+check_in grid_carry "SELECT count(*) FROM pg_indexes WHERE indexname IN ('idx_document_annotations_due', 'uniq_document_annotations_carried_from')" "0" "down dropped both indexes"
+check_in grid_carry "SELECT count(*) FROM document_annotations" "1" "down left the marks"
+apply_in grid_carry 0151_annotation_carry_and_due.sql
+apply_in grid_carry 0151_annotation_carry_and_due.sql
+check_in grid_carry "SELECT coalesce(carried_from_id::text, 'null') FROM document_annotations" "null" "0151 re-applies, twice"
+echo "==> 0151 carried marks and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0152: when a reply was last changed by its author, its CHECK, and
+# the DOWN.
+#
+# On a database of its own, migrated to 0151. A reply written before was never
+# edited; an edit stamped by the database's clock passes; an edit before the
+# reply was written is refused; the down drops the column and leaves the
+# reply with its words.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0152 reply edits and their down migration on grid_reply_edit"
+migrate_until grid_reply_edit 0151_annotation_carry_and_due
+sql_in grid_reply_edit <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000152', 'org_0152', 'Bearbeiten 0152', 'user_1', 'proj_0152');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000152', 'org_0152', 'user_1', 'a.pdf', 'k/0152/a', 'proj_0152', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000152');
+INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000152', 'org_0152', 'd1d1d1d1-0000-4000-8000-000000000152', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
+INSERT INTO document_annotation_replies (id, organization_id, annotation_id, author_kind, body, created_by)
+VALUES ('e1e1e1e1-0000-4000-8000-000000000152', 'org_0152', 'f1f1f1f1-0000-4000-8000-000000000152', 'person', 'Vor 0152 geschrieben', 'user_2');
+SQL
+apply_in grid_reply_edit 0152_annotation_reply_edits.sql
+check_in grid_reply_edit "SELECT coalesce(edited_at::text, 'null') FROM document_annotation_replies" "null" "a reply written before 0152 was never edited"
+sql_in grid_reply_edit <<<"UPDATE document_annotation_replies SET body = 'Nachher', edited_at = now()"
+check_in grid_reply_edit "SELECT body || ':' || (edited_at IS NOT NULL)::text FROM document_annotation_replies" "Nachher:true" "an edit stamped by the database's clock passes"
+refused_in grid_reply_edit "UPDATE document_annotation_replies SET edited_at = created_at - interval '1 second'" "document_annotation_replies_edited_after_created" "an edit before the reply was written was accepted"
+apply_in grid_reply_edit 0152_annotation_reply_edits.down.sql
+check_in grid_reply_edit "SELECT count(*) FROM information_schema.columns WHERE column_name = 'edited_at' AND table_name = 'document_annotation_replies'" "0" "down dropped the column"
+check_in grid_reply_edit "SELECT body FROM document_annotation_replies" "Nachher" "down left the reply with its words"
+apply_in grid_reply_edit 0152_annotation_reply_edits.sql
+apply_in grid_reply_edit 0152_annotation_reply_edits.sql
+check_in grid_reply_edit "SELECT coalesce(edited_at::text, 'null') FROM document_annotation_replies" "null" "0152 re-applies, twice"
+echo "==> 0152 reply edits and down migration verified"

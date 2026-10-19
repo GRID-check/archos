@@ -31,9 +31,11 @@ Document ingestion and retrieval for Piloti, on one backend: `llamaindex`.
 
 ## The Backend
 
-`llamaindex` is the knowledge layer's only backend: LlamaIndex over ChromaDB,
-with embeddings and the VLM through OpenRouter. It runs in the agent's process
-and needs no external service beyond OpenRouter. It is the production backend,
+`llamaindex` is the knowledge layer's only backend: LlamaIndex for loading and
+chunking, Qdrant as the one vector store (ADR-0115, reached through
+`qdrant-client` inside `knowledge_layer/qdrant/`), embeddings and the VLM
+through OpenRouter. It runs in the agent's process and needs a Qdrant cluster
+(`AIQ_QDRANT_URL`) and OpenRouter. It is the production backend,
 and has been since the first commit: every config Piloti deployed selects it.
 
 Earlier versions of this guide listed a second backend (a client for NVIDIA's
@@ -98,7 +100,6 @@ functions:
     _type: knowledge_retrieval      # NAT function type
     collection_name: my_docs        # Required: target collection
     top_k: 5                        # Results to return
-    chroma_dir: /tmp/chroma_data    # ChromaDB persistence directory
 ```
 
 You can also use environment variable substitution in YAML for sensitive values:
@@ -128,6 +129,7 @@ By default, LlamaIndex ingests text only and calls the embedding and VLM models 
 | `AIQ_EXTRACT_IMAGES` | `true` | Extract embedded images from PDFs and caption them with a VLM, skipping pages already rendered whole as visual pages. For a BFF-dispatched document the raster is also stored beside the file (`_img/<index>.jpg`, via the BFF presign route) so `view_knowledge_image` can show it at its own resolution |
 | `AIQ_EXTRACT_CHARTS` | `true` | Index a visual the VLM types as a chart as a `chart` chunk with its structured data (chart type, axis labels, data points); off, it is indexed as an image |
 | `AIQ_MAX_IMAGES_PER_DOCUMENT` | `64` | Most embedded images per PDF sent to the VLM, largest first; the count left out is on the file's job status as `images_over_cap` |
+| `AIQ_MAX_IMAGE_PIXELS` | `268435456` | Refuse an embedded raster over this many pixels (256 MP) before decoding it, from its metadata; pypdfium2 cannot downscale an embedded image on decode, so this bounds one bitmap's allocation (~1 GiB at the default). Counted as `images_over_pixel_budget`; a page refused this way keeps its text layer |
 | **Vision Model** | | |
 | `AIQ_VLM_MODEL` | `openai/gpt-6-luna` | VLM for image captioning — house model, image input verified on OpenRouter; caption quality on OIB tables/drawings still unevaluated (TODO) |
 | `AIQ_VLM_BASE_URL` | `https://openrouter.ai/api/v1` | VLM API base URL (any OpenAI-compatible chat endpoint that takes images) |
@@ -144,7 +146,7 @@ AIQ_EXTRACT_CHARTS=false   # Index charts as images
 The startup log shows the active mode; by default:
 
 ```
-LlamaIndexIngestor initialized: persist_dir=/app/data/chroma_data, mode=text + tables + charts + images
+LlamaIndexIngestor initialized: mode=text + tables + charts + images
 ```
 
 > **Note:** `AIQ_EXTRACT_IMAGES` and `AIQ_EXTRACT_CHARTS` work together. With both on (the default), each image is typed by the VLM and a chart is indexed as a chart. With charts off, a chart is indexed as an image; with images off, embedded images are still analysed and only charts are kept.
@@ -159,7 +161,7 @@ from knowledge_layer.llamaindex import LlamaIndexRetriever, LlamaIndexIngestor
 from aiq_agent.knowledge import get_retriever, get_ingestor
 
 # Ingest documents
-ingestor = get_ingestor("llamaindex", config={"persist_dir": "/tmp/chroma"})
+ingestor = get_ingestor("llamaindex")  # Qdrant at AIQ_QDRANT_URL
 ingestor.create_collection("my_docs")
 job_id = ingestor.upload_file("doc.pdf", "my_docs")
 
@@ -168,7 +170,7 @@ status = ingestor.get_file_status(job_id, "my_docs")
 print(f"Status: {status.status}")  # UPLOADING, INGESTING, SUCCESS, FAILED
 
 # Retrieve
-retriever = get_retriever("llamaindex", config={"persist_dir": "/tmp/chroma"})
+retriever = get_retriever("llamaindex")
 result = await retriever.retrieve("query", "my_docs", top_k=5)
 for chunk in result.chunks:
     print(f"{chunk.display_citation}: {chunk.content[:100]}")
@@ -497,7 +499,7 @@ Configuration values are resolved in the following order (highest to lowest prio
 
 1. **Explicit parameter** - Values passed directly to factory functions (`get_retriever("llamaindex")`)
 2. **YAML config file** - The options in your workflow config (recommended)
-3. **Environment variables** - `KNOWLEDGE_RETRIEVER_BACKEND`, `AIQ_CHROMA_DIR`, etc.
+3. **Environment variables** - `KNOWLEDGE_RETRIEVER_BACKEND`, `AIQ_QDRANT_URL`, etc.
 4. **Hardcoded defaults** - Built-in fallback values
 
 **Recommendation:** Use YAML config as your single source of truth for workflow configuration. Environment variables are useful for:
@@ -512,7 +514,7 @@ Configuration values are resolved in the following order (highest to lowest prio
 | `OPENROUTER_API_KEY` | All | Required for embeddings/VLM and LLM calls (everything routes through OpenRouter) |
 | `KNOWLEDGE_RETRIEVER_BACKEND` | All | Default retriever backend (fallback if not in YAML) |
 | `KNOWLEDGE_INGESTOR_BACKEND` | All | Default ingestor backend (fallback if not in YAML) |
-| `AIQ_CHROMA_DIR` | llamaindex | ChromaDB persistence path |
+| `AIQ_QDRANT_URL` | llamaindex | The Qdrant cluster every chunk is stored in (required; `AIQ_QDRANT_API_KEY` when it needs one) |
 | `AIQ_SUMMARY_DB` | All | Summary database URL (SQLite or PostgreSQL) |
 | `COLLECTION_NAME` | All | Default collection name |
 

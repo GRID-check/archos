@@ -4,11 +4,38 @@
 import { describe, expect, it } from 'vitest'
 import type { GridCard } from '@/shared/cards/schemas'
 import {
+  ACTING_CARD_TYPES,
+  CARD_INTERACTIVITY,
   cardKey,
+  cardKeyOfDecisionKey,
+  INTERACTIVE_CARD_TYPES,
   isCardDecision,
+  isInteractiveCardType,
+  isLiveCardType,
+  itemDecisionKey,
+  LIVE_CARD_TYPES,
   reconcileCardInteractions,
   sanitizeCardInteractions,
 } from './card-decision'
+
+describe('card classification', () => {
+  it('classifies the canvas card as live: its objects are the record, not the message', () => {
+    expect(CARD_INTERACTIVITY.canvas_activity).toBe('live')
+    expect(isLiveCardType('canvas_activity')).toBe(true)
+    // A live card is not a pending decision: nothing on the message waits for an answer.
+    expect(isInteractiveCardType('canvas_activity')).toBe(false)
+    expect(INTERACTIVE_CARD_TYPES).not.toContain('canvas_activity')
+    expect(LIVE_CARD_TYPES).toEqual(['canvas_activity'])
+  })
+
+  it('keeps the three classes apart, and counts both acting classes as acting', () => {
+    for (const type of LIVE_CARD_TYPES) expect(INTERACTIVE_CARD_TYPES).not.toContain(type)
+    expect(new Set(ACTING_CARD_TYPES)).toEqual(new Set([...INTERACTIVE_CARD_TYPES, ...LIVE_CARD_TYPES]))
+    expect(ACTING_CARD_TYPES).toHaveLength(INTERACTIVE_CARD_TYPES.length + LIVE_CARD_TYPES.length)
+    expect(isLiveCardType('calculation')).toBe(false)
+    expect(isInteractiveCardType('memory_proposal')).toBe(true)
+  })
+})
 
 describe('cardKey', () => {
   it('identifies a card by its type and position in the message', () => {
@@ -115,6 +142,38 @@ describe('reconcileCardInteractions', () => {
 
   it('is a no-op when nothing was decided', () => {
     expect(reconcileCardInteractions(undefined, [memory('x')], [memory('x')])).toBeUndefined()
+  })
+})
+
+describe('item decisions', () => {
+  const decided = (key: string) => ({
+    [key]: { decision: 'rejected' as const, decidedAt: '2026-10-13T09:00:00.000Z' },
+  })
+  const canvas = (body: string) =>
+    ({
+      type: 'canvas_activity',
+      document: { id: '00000000-0000-4000-8000-0000000000d1', name: 'Grundriss EG.pdf' },
+      items: [
+        { action: 'proposed', annotation_id: 'ann-7', number: 7, page: 1, shape: 'point', x: 0.1, y: 0.1, kind: 'hint', body },
+      ],
+    }) as unknown as GridCard
+
+  it('keys one item under its card and reads the card back out of the key', () => {
+    const key = itemDecisionKey('canvas_activity-2', 'ann-7')
+    expect(key).toBe('canvas_activity-2#ann-7')
+    expect(cardKeyOfDecisionKey(key)).toBe('canvas_activity-2')
+    expect(cardKeyOfDecisionKey('memory_proposal-0')).toBe('memory_proposal-0')
+  })
+
+  it('fits the route’s 64-character key with a uuid at the highest index', () => {
+    expect(itemDecisionKey('canvas_activity-19', '00000000-0000-4000-8000-000000000000').length).toBeLessThanOrEqual(64)
+  })
+
+  it('keeps an item decision while its card is unchanged, and drops it with the card', () => {
+    const before = [canvas('Treppe')]
+    const key = itemDecisionKey('canvas_activity-0', 'ann-7')
+    expect(reconcileCardInteractions(decided(key), before, [canvas('Treppe')])).toEqual(decided(key))
+    expect(reconcileCardInteractions(decided(key), before, [canvas('Tür')])).toBeUndefined()
   })
 })
 

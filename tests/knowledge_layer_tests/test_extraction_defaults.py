@@ -12,13 +12,14 @@ and the count the cap left out lands on the file's job status).
 from __future__ import annotations
 
 import time
-from unittest.mock import MagicMock
 
 import pytest
 from knowledge_layer.llamaindex import adapter
 from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
+from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
+from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
 _SWITCHES = ("AIQ_EXTRACT_TABLES", "AIQ_EXTRACT_IMAGES", "AIQ_EXTRACT_CHARTS")
 
@@ -56,7 +57,7 @@ def test_an_ingestor_built_without_config_extracts_everything(tmp_path, monkeypa
         # The class reads the env once at import; re-read it the same way.
         monkeypatch.setattr(LlamaIndexIngestor, attr, adapter._env_switch(name))
 
-    ing = LlamaIndexIngestor({"persist_dir": str(tmp_path / "chroma")})
+    ing = LlamaIndexIngestor({})
 
     assert (ing.extract_tables, ing.extract_images, ing.extract_charts) == (True, True, True)
 
@@ -69,7 +70,7 @@ def test_the_corpus_sync_leaves_the_switches_to_the_adapter(monkeypatch):
     for name in _SWITCHES:
         monkeypatch.delenv(name, raising=False)
     seen = {}
-    monkeypatch.setattr(oib_sync, "get_ingestor", lambda backend, config: seen.update(config))
+    monkeypatch.setattr(oib_sync, "get_ingestor", lambda backend, config=None: seen.update(config or {}))
 
     oib_sync._get_oib_ingestor()
 
@@ -209,16 +210,15 @@ def summary_db(tmp_path):
 
 
 @pytest.fixture
-def ingestor(tmp_path, monkeypatch):
+def ingestor(tmp_path, monkeypatch, qdrant_store):
     # The deployed default: no switch in the env, none named in the config.
     for name in _SWITCHES:
         monkeypatch.delenv(name, raising=False)
         monkeypatch.setattr(LlamaIndexIngestor, f"DEFAULT_{name[4:]}", adapter._env_switch(name))
-    ing = LlamaIndexIngestor({"persist_dir": str(tmp_path / "chroma")})
-    ing._embed_model = MagicMock()
+    ing = LlamaIndexIngestor({})
+    ing._embed_model = FakeEmbedder()
     ing._initialized = True
-    monkeypatch.setattr("llama_index.core.VectorStoreIndex", MagicMock())
-    monkeypatch.setattr("llama_index.core.Settings", MagicMock())
+    capture_indexed_documents(monkeypatch, into=_INDEXED)
     return ing
 
 
@@ -232,32 +232,36 @@ def _wait_terminal(ing, job_id, timeout=30):
     raise AssertionError("ingestion job did not terminate in time")
 
 
-def _indexed_documents():
-    import llama_index.core
+#: What each file of the running test's jobs handed to chunking and embedding (``ingestor`` records it).
+_INDEXED: list[list] = []
 
-    documents = []
-    for call in llama_index.core.VectorStoreIndex.from_documents.call_args_list:
-        documents.extend(call.args[0])
-    return documents
+
+def _indexed_documents():
+    return [document for documents in _INDEXED for document in documents]
 
 
 class _Pipeline:
     """A PDF whose page 1 is rendered whole and whose rasters sit on pages 1-3."""
 
-    def __init__(self, tmp_path, monkeypatch, *, rendered_pages=(1,)):
+    def __init__(self, tmp_path, monkeypatch, *, rendered_pages=(1,), over_pixel_budget=0):
         self.analysed: list[bytes] = []
         self.extract_calls: list[set] = []
+        self.over_pixel_budget = over_pixel_budget
         cred = ResolvedCredential(api_key="vlm-key", base_url="https://vlm.test/v1", model="test-vlm", source="env")
         monkeypatch.setattr(adapter, "resolve_vlm_credential", lambda organization_id=None: cred)
         monkeypatch.setattr(adapter, "_extract_text_from_pdf", lambda p: [])
         monkeypatch.setattr(adapter, "_extract_tables_from_pdf", lambda *a, **k: [])
         rasters = [_raster(1, 0, 2000, 2000), _raster(2, 0, 800, 600), _raster(3, 0, 400, 300)]
 
-        def _extract(pdf_path, *args, skip_pages=frozenset(), **kwargs):
+        def _extract(pdf_path, *, min_width, min_height, skip_pages=frozenset(), max_images=None, **kwargs):
             self.extract_calls.append(set(skip_pages))
-            return [r for r in rasters if r["page_number"] not in skip_pages]
+            candidates = [r for r in rasters if r["page_number"] not in skip_pages]
+            if max_images is None:
+                return candidates, 0, self.over_pixel_budget
+            kept, over_cap = adapter.cap_images(candidates, max_images)
+            return kept, over_cap, self.over_pixel_budget
 
-        monkeypatch.setattr(adapter, "_extract_images_from_pdf", _extract)
+        monkeypatch.setattr(adapter, "_extract_image_records", _extract)
 
         def _analyze(image_bytes, *args, **kwargs):
             self.analysed.append(image_bytes)
@@ -324,3 +328,12 @@ def test_under_the_cap_nothing_is_recorded(tmp_path, monkeypatch, ingestor, summ
     status = _ingest(ingestor, pipeline)
 
     assert status.file_details[0].metadata == {}
+
+
+def test_a_raster_over_the_pixel_budget_is_counted_on_the_file_status(tmp_path, monkeypatch, ingestor, summary_db):
+    """An oversized raster is refused, and the refusal reaches the file's job status."""
+    pipeline = _Pipeline(tmp_path, monkeypatch, rendered_pages=(), over_pixel_budget=1)
+
+    status = _ingest(ingestor, pipeline)
+
+    assert status.file_details[0].metadata == {"images_over_pixel_budget": 1}

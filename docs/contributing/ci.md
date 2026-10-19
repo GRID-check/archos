@@ -62,7 +62,7 @@ It also lists the third-party image pins the change adds or moves
 | Plan (`changes`) | always | the three answers above, written to the run summary with the reason for each |
 | Repo checks (`repo`) | unless reused | pre-commit on all files, the agent-skill lockfile, ruff, release-note lint and (PRs) the release-note requirement, gitleaks over the full history of the commit under test |
 | SAST (`semgrep`) | PRs touching code | Semgrep, diff-aware: blocks findings the PR introduces |
-| Backend tests (`backend`) | backend tier | core suite with the 65% coverage gate, the aiq_api suite, the `sources/` suites |
+| Backend tests (`backend`) | backend tier | core suite with the 65% coverage gate, the aiq_api suite, the `sources/` suites, and the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
 | Frontend tests (`frontend-test`) | frontend tier | the vitest suite in 4 shards |
 | Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |

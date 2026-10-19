@@ -69,7 +69,7 @@ export function ProjectSteckbrief({ projectId, steckbrief, span = 'wide' }: Proj
           {shown.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('steckbrief.noPeople')}</p>
           ) : (
-            <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
               {shown.map((person) => (
                 <li key={person.id ?? person.userId ?? person.name} className="min-w-0 text-sm">
                   <div className="flex min-w-0 items-center gap-1.5">

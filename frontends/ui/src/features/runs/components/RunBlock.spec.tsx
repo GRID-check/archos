@@ -182,6 +182,22 @@ describe('RunBlock — the body', () => {
     expect(within(first!).getByText('RIS')).toBeInTheDocument()
   })
 
+  it('never ellipsises where a document was read: the chip wraps, the loci stay whole', () => {
+    // Clipped to "OIB-Richtlinie 2, Ausgabe Mai 2023 · …" the page and section
+    // were exactly what the chip's tail dropped on a 393px phone. A reference
+    // that cannot be read in full is no reference.
+    render(<RunBlock ledger={researching()} title={TITLE} />)
+    const [first] = screen.getAllByTestId('run-step')
+    const chip = within(first!).getByText(/Pkt\. 4\.2 · S\. 18/).closest('span[title]')
+    expect(chip).not.toBeNull()
+    // The chip base is `truncate`; these win over it (important), on the pill and
+    // on its label span.
+    expect(chip!.className).toContain('whitespace-normal!')
+    expect(chip!.className).toContain('overflow-visible!')
+    expect(chip!.className).toContain('h-auto')
+    expect(chip!.className).toContain('[&>span]:whitespace-normal!')
+  })
+
   it('reports a finished phase as one act with its duration', () => {
     render(<RunBlock ledger={researching()} title={TITLE} />)
     const acts = screen.getByTestId('run-phase-acts')

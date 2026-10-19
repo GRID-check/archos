@@ -138,13 +138,12 @@ const TASK_ENGINES: Record<DelegatableTaskKind, TaskEngine> = {
    * Write a document. The RUN's answer IS the document, and the filing happens
    * at completion (`completeTaskForRun` → `fileAgentDocumentDraft`).
    *
-   * It is deliberately NOT told to call `file_draft`. The job worker injects
-   * three unsigned identity headers and never the signed envelope, so that tool
-   * has no acting person and refuses — correctly, and by design
-   * (`src/aiq_agent/tools/AGENTS.md`, "echo, never sign"). Telling the run to
-   * call it would spend its budget on a refusal and then have it report a
-   * failure for work it had actually done. The BFF is the party with a real
-   * session at completion, so the BFF files.
+   * It is deliberately NOT told to call `file_draft`. The run's tools do act as
+   * the requester now (ADR-0108: the worker echoes the envelope minted at
+   * submit), but the BFF files this kind's answer at completion, in the
+   * requester's pinned session. A run told to file as well would file the same
+   * document twice, and a run whose envelope renewal was refused would spend
+   * its budget on a refusal and report a failure for work it had done.
    */
   document: {
     instruction: (goal) =>
@@ -218,9 +217,9 @@ export interface DelegateTaskInput {
   /**
    * The text the run is revising, already read in the caller's own session and
    * bounded here. Quoted into the prompt rather than fetched by the worker,
-   * because the worker holds no signed envelope and therefore acts as nobody —
-   * the BFF is the only party in this chain with a real session at the moment
-   * the task is created.
+   * because the revision's thread has no subject document for the worker to
+   * load, and the BFF holds the caller's own session at the moment the task is
+   * created — reading it then is reading it as the person who asked.
    */
   sourceText?: string | null
   /**
@@ -725,8 +724,8 @@ interface QuotedSource {
  *
  * Whole or not at all, never cut: the run's answer REPLACES the open version's
  * bytes (`fileResultFor` → `replaceVersionContent`), and the run has no other
- * way to read the version — the worker holds no envelope, and the revision's
- * thread has no subject document to load into a working directory. A run
+ * way to read the version — the revision's thread has no subject document to
+ * load into a working directory. A run
  * handed the first part files the first part, and the rest is gone from the
  * version the reviewer sent back.
  */
@@ -743,7 +742,7 @@ function quoteSource(instruction: string, text: string | null | undefined): Quot
 /**
  * The run row's reason, in German because the task card shows it verbatim.
  *
- * It names the way that does work: „Besprechen" loads the open version into
+ * It names the way that does work: „Mit Piloti besprechen" loads the open version into
  * that conversation's working directory, where Piloti edits it in place and no
  * prompt ceiling applies (`src/aiq_agent/turn/subject_document.py`).
  */
@@ -751,6 +750,6 @@ function tooLongToRevise(length: number, budget: number): string {
   return [
     `Das Dokument ist mit ${formatCount(length, 'de-AT')} Zeichen zu lang für einen Überarbeitungsauftrag`,
     `(höchstens ${formatCount(budget, 'de-AT')} Zeichen). Die zurückgegebene Fassung bleibt unverändert;`,
-    'über „Besprechen“ am Dokument lässt sie sich mit Piloti abschnittsweise überarbeiten.',
+    'über „Mit Piloti besprechen“ am Dokument lässt sie sich abschnittsweise überarbeiten.',
   ].join(' ')
 }

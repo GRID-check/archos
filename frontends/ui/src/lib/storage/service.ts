@@ -28,6 +28,8 @@ import {
 import { readKnownOrganizationUsage } from './known-organization'
 import { getEffectiveMaxUploadBytes } from './upload-limit'
 import type { NewDocument } from '@/lib/db/schema'
+import { documentShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { InsufficientStorageError, UnprocessableError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { requirePlatformPermission } from '@/lib/authz/platform'
@@ -179,7 +181,12 @@ export async function assertWithinStorageQuota(
 export async function admitDocumentWithinQuota(values: NewDocument): Promise<void> {
   const quotaBytes = await getStorageQuotaBytes(values.organizationId)
   const result = await insertDocumentWithinQuota(values, quotaBytes)
-  if (result.ok) return
+  if (result.ok) {
+    // Every new row on a shelf comes through here: an upload, a mail import,
+    // a document Piloti filed. Committed by now, so a re-read sees it.
+    publishShelfChanged(values.organizationId, documentShelf({ scope: values.scope, projectId: values.projectId ?? null }))
+    return
+  }
 
   throw new InsufficientStorageError(
     STORAGE_QUOTA_EXCEEDED_MESSAGE,

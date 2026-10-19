@@ -297,6 +297,38 @@ class TestRetrieval:
         assert payload.key == "status.action.taskCreated"
         assert payload.values == {}
 
+    def test_each_annotation_tool_says_which_it_is(self, steps) -> None:
+        """Reading, proposing, setting, changing, deleting and answering in a thread are six lines.
+
+        Nothing else on screen tells them apart while the call runs, and only
+        the first leaves the document as it was. The canvas group's other tools
+        (look, room, point, highlight) say nothing: they show themselves.
+        """
+        calls = [
+            ("marks", {}),
+            ("mark", {}),
+            ("mark", {"open": True}),
+            ("update", {"annotation": "4", "status": "resolved"}),
+            ("delete", {"annotation": "4"}),
+            ("reply", {}),
+            ("look", {}),
+            ("room", {}),
+            ("point", {}),
+            ("highlight", {}),
+        ]
+        for index, (tool, args) in enumerate(calls):
+            turn_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=index)
+        keys = [payload.key for payload in _live(steps)]
+        assert keys == [
+            "status.action.annotationsRead",
+            "status.action.annotationsPropose",
+            "status.action.annotationsSet",
+            "status.action.annotationsUpdate",
+            "status.action.annotationsDelete",
+            "status.action.annotationsReply",
+        ]
+        assert all(payload.values == {} for payload in _live(steps))
+
     def test_a_file_proposal_is_an_action_and_never_a_retrieval(self, steps) -> None:
         """Nothing is being read: the file name is a name the reader gave, not a query."""
         turn_status.emit_retrieval(
@@ -657,6 +689,9 @@ def _every_live_payload(steps) -> list:
         [{"name": "create_task", "args": {"title": "Fluchtwege prüfen"}}],
         round_index=11,
     )
+    canvas = (("marks", {}), ("mark", {}), ("mark", {"open": True}), ("update", {}), ("delete", {}), ("reply", {}))
+    for index, (tool, args) in enumerate(canvas):
+        turn_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=12 + index)
     turn_status.emit_retrieval_requery(query_count=2)
     turn_status.emit_citation_check(source_count=3)
     turn_status.emit_answer_repair(quotes=1)

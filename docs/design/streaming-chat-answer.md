@@ -401,6 +401,27 @@ stamped event to the conversation's stream on Dragonfly (`conv:<id>:stream`,
 ADR-0028), also when no socket is attached. The fold drops an event with
 `seq ≤ lastSeq`, so an event that arrives both replayed and live counts once.
 
+**A page away is not a server down** (2026-10). A locked phone, or a reader
+who switched to the camera, freezes the page: iOS kills the socket and runs
+no timer until the page is back, then fires every due one at once. The
+reconnect ladder (12 rungs, 1 s doubling to 30 s) used to spend itself on the
+frozen page in two to four minutes, and the give-up ended every running turn.
+Now (`adapters/api/page-lifecycle.ts`, `turn-socket.ts`): while the page is
+hidden (`suspended`) or the browser is offline (`offline`) nothing is tried
+and the ladder keeps its budget; `visibilitychange` to visible, `online` and
+`pageshow` from the back/forward cache reopen the socket at once, from the
+first rung. A ready socket that heard nothing while the page was away for
+longer than a beat is reopened too, since its close may never have been
+delivered. A watchdog, hello or acknowledgement deadline that fired late,
+having slept through a freeze, counts nothing against the turn or the server.
+A socket that gives up on the network (`failed`, explained as
+`connection.failed`) ends no turn either: the turn keeps its words and its
+cursor, the status dock says „Verbindung unterbrochen · Piloti macht weiter,
+sobald sie wieder steht", and the socket that reopens attaches it. Only a
+give-up waiting cannot cure (a budget, an expired session, another wire) ends
+the turns, by asking the server for each answer. The tab's realtime stream
+(`features/realtime/connection.ts`) reopens on the page's return the same way.
+
 **A reconnect.** The socket client reconnects with backoff and an auth refresh,
 and on open sends `attach{turn_id, after_seq: lastSeq}` for every turn still
 open. The server registers the socket, buffers live events for it, replays the
@@ -415,7 +436,11 @@ question's own id is the turn id (the `user_message`'s `message_id`), so
 socket sends `attach{turn_id, after_seq: 0}` once it is up: the whole turn is
 folded again from its first event. `rejected{turn_not_found}`
 (the stream no longer holds the turn) ends it by asking for the persisted
-answer, and shows the banner only if there is none.
+answer, and shows the banner only if there is none. A turn that has drawn
+words keeps them on screen while it asks (`endInterruptedTurn`): the stored
+answer, under the same id, replaces them in their row in one frame; a server
+with no finished answer gets the wait below, and only once it confirms there
+is none are the words put back, dimmed (`failed`), above the banner.
 
 **A switch.** Opening another conversation mid-turn takes the socket with it,
 but not the turn: its view stays in the store (`turns`), and the partial answer
@@ -812,15 +837,15 @@ Accepted residuals:
 - Between the terminal and the settle (the 300 to 500 ms finish) the composer
   already shows Send, so Stop is not offered there.
 - The server names `cancel_turn.shown` in its hello's `accepts` only while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is on, and it is off in this release so that
-  tabs of the previous bundle keep parsing frames
+  `GRID_WIRE_V2_ADDITIVE_FIELDS` is on. It is on by default; `off` is the
+  rollback to the release that kept tabs of the strict bundle parsing frames
   ([chat wire v2, Compatibility](chat-wire-v2.md#compatibility-additive-changes-are-safe)).
-  Without it the page sends no `shown`, and the agent stores everything
+  With it off the page sends no `shown`, and the agent stores everything
   streamed so far; the same holds for a socket on an older agent during a
   rolling deploy. The browser stores its cut under the same id, and whichever
   write reaches the BFF first wins the row, so a reload may show more than the
   reader saw. A Stop that crossed the finished answer is still cut by the BFF,
-  which needs neither field. The next release turns the flag on by default.
+  which needs neither field.
 
 ### When a turn fails
 

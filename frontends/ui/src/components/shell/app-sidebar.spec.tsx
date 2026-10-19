@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, afterEach } from 'vitest'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useLayoutStore } from '@/features/layout/store'
+import { useShellOverlays } from './shell-overlays'
 import { I18nProvider } from '@/i18n'
 import { AppSidebar, railActivePillId } from './app-sidebar'
 
@@ -34,7 +35,8 @@ vi.mock('@/hooks/use-last-project-section', () => ({
   pruneProjectSections: () => {},
 }))
 
-vi.mock('./project-switcher', () => ({ ProjectSwitcher: () => <div /> }))
+vi.mock('./project-switcher', () => ({ ProjectSwitcher: () => <div />, ProjectStatusDot: () => <span /> }))
+vi.mock('./connection-band', () => ({ ConnectionBand: () => <div data-testid="connection-band" /> }))
 vi.mock('./sidebar-user-menu', () => ({ SidebarUserMenu: () => <div /> }))
 vi.mock('./connection-presence-indicator', () => ({
   ConnectionPresenceIndicator: () => <div />,
@@ -63,6 +65,7 @@ afterEach(() => {
   window.localStorage.removeItem('grid.sidebar.collapsed')
   vi.mocked(useIsMobile).mockReturnValue(false)
   useLayoutStore.setState({ isMobileNavOpen: false })
+  useShellOverlays.setState({ projectSheetOpen: false, paletteOpen: false })
 })
 
 describe('the Inbox entry follows canAccessInbox, in both directions', () => {
@@ -241,6 +244,50 @@ describe('AppSidebar - mobile top bar', () => {
     const banner = screen.getByRole('banner')
     expect(banner.className).toContain('hidden')
     expect(banner.className).not.toMatch(/(^|\s)flex(\s|$)/)
+  })
+})
+
+describe('AppSidebar - the phone top band', () => {
+  test("names the project, and opens the switcher sheet from it", async () => {
+    pathname = '/app/projects/p1/files'
+    const user = userEvent.setup()
+    render(<AppSidebar {...baseProps} />)
+    const pill = within(screen.getByRole('banner')).getByTestId('project-pill')
+    expect(pill).toHaveTextContent('Project One')
+    expect(pill).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(pill)
+
+    expect(useShellOverlays.getState().projectSheetOpen).toBe(true)
+  })
+
+  test('carries the search that opens the command palette', async () => {
+    pathname = '/app/projects/p1/files'
+    const user = userEvent.setup()
+    render(<AppSidebar {...baseProps} />)
+    await user.click(within(screen.getByRole('banner')).getByTestId('shell-search'))
+    expect(useShellOverlays.getState().paletteOpen).toBe(true)
+  })
+
+  test('offers a way back from a page one level below a tab, and none on a tab root', () => {
+    pathname = '/app/projects/p1/files/bin'
+    const { unmount } = render(<AppSidebar {...baseProps} />)
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Back to Files' })).toHaveAttribute(
+      'href',
+      '/app/projects/p1/files'
+    )
+    unmount()
+
+    pathname = '/app/projects/p1/files'
+    render(<AppSidebar {...baseProps} />)
+    expect(within(screen.getByRole('banner')).queryByRole('link', { name: /^Back to/ })).toBeNull()
+  })
+
+  test('shows the connection on a phone, where the rail footer is out of sight', () => {
+    pathname = '/app/projects/p1/files'
+    vi.mocked(useIsMobile).mockReturnValue(true)
+    render(<AppSidebar {...baseProps} />)
+    expect(within(screen.getByRole('banner')).getByTestId('connection-band')).toBeInTheDocument()
   })
 })
 

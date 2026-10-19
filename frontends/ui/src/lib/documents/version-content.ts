@@ -18,6 +18,8 @@
  * is data.
  */
 
+import { documentShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
@@ -57,7 +59,7 @@ import {
   type GeneratedRendering,
 } from './generated'
 import type { DocumentVersionState } from './lifecycle-types'
-import { findDocumentInOrg } from './repository'
+import { findDocumentInOrg, markDocumentNotIndexed } from './repository'
 import { hasPassedScreening, SCREENED_ONLY, versionBytesPassedScreening } from '@/lib/documents/document-reader'
 import { maySeeHeld } from '@/lib/upload-screening/quarantine-reviewers'
 import {
@@ -372,6 +374,8 @@ export async function writeVersionContent(input: WriteVersionContentInput): Prom
   if (outcome.previousKeyOrphaned) {
     await discardObject(resolveDocumentBucket(version.storageBucket), version.storageKey)
   }
+  // New bytes under the version: the row's size and date move with them.
+  publishShelfChanged(organizationId, documentShelf(document))
   return outcome.version
 }
 
@@ -583,7 +587,7 @@ export interface ServiceReader {
  * every member may read was admitted, so the agent knows the conversation is
  * confined from this turn on.
  */
-async function admitSubjectRead(
+export async function admitSubjectRead(
   document: Document,
   organizationId: string,
   conversationId: string,
@@ -708,6 +712,8 @@ export async function archiveDocument(
     ])
   }
   await setDocumentLifecycle(documentId, session.organizationId, 'archived')
+  // Out of the default listing for everyone, not only for the tab that archived it.
+  publishShelfChanged(session.organizationId, documentShelf(document))
   // „Archiviert" is a statement that the file has left the working set, and a
   // file that keeps answering questions has not left it. The chunks therefore
   // go, for a human upload as much as for a Piloti document — this docstring
@@ -724,6 +730,9 @@ export async function archiveDocument(
   const chunksPurged = purgeRef
     ? await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_PURGE_TIMEOUT_MS)
     : null
+  // The chunks are gone, so the row must stop saying it was read: a `completed`
+  // status left behind showed the archived document as „Zitierbar“.
+  await markDocumentNotIndexed(documentId, session.organizationId)
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },

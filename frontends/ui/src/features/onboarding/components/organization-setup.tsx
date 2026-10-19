@@ -60,7 +60,11 @@ export function OrganizationSetup({
 
   return (
     <main id="main-content" className="bg-background flex min-h-dvh flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 px-4 pt-[env(safe-area-inset-top)] md:px-6">
+      {/* `min-h-14`, not `h-14`: the top inset (59px under the Dynamic Island) is
+          padding, and a fixed 56px border box has no room left for the logo
+          once it is paid, so the row sat on the island instead of below it. The
+          side insets are for a phone on its side. */}
+      <header className="flex min-h-14 shrink-0 items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] md:px-6">
         <Logo kind="horizontal" size="small" />
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-muted-foreground hidden min-w-0 truncate text-xs sm:block">
@@ -73,7 +77,7 @@ export function OrganizationSetup({
         </div>
       </header>
 
-      <div className="flex flex-1 justify-center px-4 pb-16 pt-[min(14vh,8rem)]">
+      <div className="flex flex-1 justify-center px-4 pb-[max(4rem,env(safe-area-inset-bottom))] pt-[min(14svh,8rem)]">
         <FadeIn className="w-full max-w-sm" key={createdName ? 'done' : 'form'}>
           {createdName ? (
             <SetupDone name={createdName} />

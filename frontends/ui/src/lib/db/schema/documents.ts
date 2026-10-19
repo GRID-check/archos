@@ -5,6 +5,7 @@ import {
   timestamp,
   jsonb,
   integer,
+  boolean,
   check,
   foreignKey,
   index,
@@ -82,6 +83,9 @@ import {
   type DocumentAuthor,
 } from '@/lib/documents/document-authors'
 import { DOCUMENT_LIFECYCLES, type DocumentLifecycle } from '@/lib/documents/lifecycle-types'
+import { DOCUMENT_STATUSES, type DocumentStatus } from '@/lib/documents/document-status'
+import type { IngestFailureCategory } from '@/lib/documents/retry-policy'
+import type { StoredQuarantineVerdict } from '@/lib/upload-screening/quarantine'
 
 // Re-exported so `@/lib/db/schema` stays the one import site every existing
 // caller already uses; the declaration itself lives outside the schema so a
@@ -318,40 +322,26 @@ export const documents = pgTable('documents', {
    */
   contentHash: text('content_hash'),
   /**
-   * Where ingestion got to: `pending → processing → processed | error`, plus
-   * `stored`, which is none of those (migration 0063).
+   * Where reading stands: one of {@link DOCUMENT_STATUSES} (migration 0135,
+   * CHECK `documents_status_known`). The meanings are in
+   * `@/lib/documents/document-status`, and the migration's header lists them.
    *
-   * `stored` means "the bytes are here and indexing was deliberately skipped" —
-   * an agent-authored document, which is never dispatched to `/v1/ingest`
-   * because a report the agent wrote, embedded into the project corpus, comes
-   * back as retrievable evidence FOR the agent under a *Projektwissen* badge.
-   * The four existing states all describe a job that is running or has finished;
-   * there was no state for a job that was never started, and leaving such a row
-   * at `pending` renders a spinner that never resolves, because nothing will
-   * ever report on a job nobody dispatched.
-   *
-   * It is TERMINAL, and the load-bearing consequence lives in
+   * `stored` means "the bytes are here and nothing reads them": a document
+   * Piloti wrote that nobody published, and an archived document whose chunks
+   * were purged. It is TERMINAL, and the load-bearing consequence lives in
    * `@/lib/documents/reconcile-status`: `stored` must stay out of
    * `IN_FLIGHT_STATUSES`, or every read of the row polls a backend that has
    * never heard of it and then reconciles its status from a collection file
-   * list that holds nothing of ITS — but may well hold that same filename
-   * belonging to a document a person uploaded. `generatedFilename` builds an
-   * agent row's name from a title the model wrote, into the project's own
-   * `collectionName`, so the collision is reachable by the model rather than
-   * merely accidental (`lib/documents/service.ts`'s `joinHitsToFiles` and
-   * `lib/platform/vector-reconcile.ts` both turn on the same fact). The wrong
-   * answer there is not "no answer" — it is another document's.
-   *
-   * Which is why keeping `stored` out of the set is the cheap half of the rule
-   * and not the whole of it: a status value cannot carry an authorship
-   * invariant. The join itself is gated, by `authoredBy`, at its one entry point
+   * list that may hold that same filename belonging to another document. A
+   * status value cannot carry an authorship invariant, so the join itself is
+   * gated, by `authoredBy`, at its one entry point
    * (`@/lib/documents/collection-file-ref`).
    *
-   * Plain `text` with no CHECK, so a new state is a TypeScript change rather
-   * than a migration — the same arrangement `scope` has, and the reason 0063
-   * adds no DDL for this value.
+   * Open `text` until 0135, so a new state was "a TypeScript change rather than
+   * a migration"; that is how the column came to hold three vocabularies. A new
+   * state is now a migration, on purpose (ADR-0104).
    */
-  status: text('status').notNull().default('pending'),
+  status: text('status').$type<DocumentStatus>().notNull().default('uploaded'),
   /**
    * The version whose bytes the storage columns above mirror, or NULL when
    * nothing has been published yet (migration 0082, ADR-0054).
@@ -407,6 +397,18 @@ export const documents = pgTable('documents', {
    */
   screeningOutcome: text('screening_outcome').$type<DocumentScreeningOutcome>(),
   /**
+   * Why the content gate held the row back, as data (migration 0148, ADR-0113):
+   * the ingest job's typed verdict, written with `status = 'quarantined'` by
+   * the reconcile and cleared by the release, the one way out of quarantine.
+   * NULL on every other row (CHECK). The database guarantees an object with a
+   * `reasons` array; what is inside is `verdictSchema`'s
+   * (`lib/upload-screening/quarantine.ts`), and every reader goes through
+   * `quarantineVerdictOf`, which reads `error_message` only for a row the
+   * migration's backfill could not convert. Shown only to whoever may see the
+   * held row: its uploader and its reviewers (`documentVisibleTo`).
+   */
+  quarantine: jsonb('quarantine').$type<StoredQuarantineVerdict | null>(),
+  /**
    * The `content_hash` of the bytes `screening_outcome` judged (migration 0123):
    * written with the verdict from the hash its dispatch recorded, or with a
    * release. A person's upload passes the hold only while this equals
@@ -422,6 +424,24 @@ export const documents = pgTable('documents', {
   screeningReleasedHash: text('screening_released_hash'),
   screeningReleasedBy: text('screening_released_by'),
   screeningReleasedAt: timestamp('screening_released_at', { withTimezone: true }),
+  /**
+   * Why the last read failed, as the backend classified it (migration 0134,
+   * `aiq_agent/knowledge/ingest_failures.py`): `transient`, `configuration`,
+   * `deterministic`, `quarantined` or `unknown`. NULL while the row has not
+   * failed, and on every row from before the column. Written by the reconcile
+   * with the status; `lib/documents/retry-policy.ts` reads it to decide
+   * whether reading the document again is worth anything.
+   */
+  ingestFailureCategory: text('ingest_failure_category').$type<IngestFailureCategory>(),
+  /** The backend's flag beside the category: whether the same bytes may read on a retry. */
+  ingestRetryable: boolean('ingest_retryable'),
+  /**
+   * The backend reader (`INGEST_READER_VERSION`) that last read the row. A
+   * `deterministic` failure is offered again once the deployed reader is newer.
+   */
+  ingestReaderVersion: text('ingest_reader_version'),
+  /** Dispatches of this row since migration 0134 (`setDocumentIngestJob`). Informational. */
+  ingestAttempts: integer('ingest_attempts'),
   /**
    * The upload gesture that last wrote this document's bytes (migration 0110),
    * or NULL for a row no batch wrote. No foreign key: the batch is a pointer
@@ -447,6 +467,24 @@ export const documents = pgTable('documents', {
   collectionIdx: index('documents_collection_idx').on(table.collectionName),
   statusIdx: index('documents_status_idx').on(table.status),
   orgScopeIdx: index('documents_org_scope_idx').on(table.organizationId, table.scope),
+  /**
+   * One folder level of a shelf, newest first, a page at a time (migration
+   * 0132, ADR-0102): the shelf's equality columns, the folder, then the
+   * listing's order, so a page is a range read that stops at its last row.
+   */
+  projectFolderListingIdx: index('documents_project_folder_listing_idx').on(
+    table.projectId,
+    table.folderId,
+    table.createdAt.desc(),
+    table.id
+  ),
+  orgScopeFolderListingIdx: index('documents_org_scope_folder_listing_idx').on(
+    table.organizationId,
+    table.scope,
+    table.folderId,
+    table.createdAt.desc(),
+    table.id
+  ),
   /**
    * One live document per filename in a collection, over every row that can own
    * chunks (migrations 0074, restated by 0077, widened by 0083).
@@ -623,6 +661,29 @@ export const documents = pgTable('documents', {
    * not.
    */
   lifecycleKnown: check('documents_lifecycle_known', sql`${table.lifecycle} IN ('active', 'archived')`),
+  /** Where reading stands (migration 0135, ADR-0104): an eighth value fails its write. */
+  statusKnown: check(
+    'documents_status_known',
+    sql`${table.status} IN (${sql.raw(DOCUMENT_STATUSES.map((status) => `'${status}'`).join(', '))})`
+  ),
+  /**
+   * The held verdict is an object with a `reasons` array (migration 0148), and
+   * only a quarantined row carries one: the release that ends a quarantine
+   * clears it, and the hold trigger keeps every other writer from ending one.
+   */
+  quarantineShape: check(
+    'documents_quarantine_shape_check',
+    sql`${table.quarantine} IS NULL OR (jsonb_typeof(${table.quarantine}) = 'object' AND jsonb_typeof(${table.quarantine}->'reasons') IS NOT DISTINCT FROM 'array')`
+  ),
+  quarantineHeld: check(
+    'documents_quarantine_held_check',
+    sql`${table.quarantine} IS NULL OR ${table.status} = 'quarantined'`
+  ),
+  /** The retry rule's vocabulary (migration 0134): a category nothing knows would read as unknown. */
+  ingestFailureCategoryKnown: check(
+    'documents_ingest_failure_category_check',
+    sql`${table.ingestFailureCategory} IS NULL OR ${table.ingestFailureCategory} IN ('transient', 'configuration', 'deterministic', 'quarantined', 'unknown')`
+  ),
   authorshipRequiresProvenance: check(
     'documents_authorship_requires_provenance',
     sql`${table.authoredBy} = 'user' OR (${table.authoredByProducer} IS NOT NULL AND ${table.authoredByRef} IS NOT NULL AND ${table.authoredByRefKind} IS NOT NULL)`

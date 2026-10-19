@@ -3,8 +3,8 @@ import {
   Archive,
   BookOpenCheck,
   ClipboardList,
+  Bell,
   Folder,
-  Inbox,
   MessageSquare,
   LayoutDashboard,
   Zap,
@@ -212,7 +212,9 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
     key: 'inbox',
     segment: null,
     href: '/app/inbox',
-    icon: Inbox,
+    // A bell, not a tray: the Büroablage beside it is a box, and a tray
+    // beside a box read as two shelves rather than "something wants you".
+    icon: Bell,
     i18nKey: 'inbox',
     label: { namespace: 'collaboration', key: 'inbox.navLabel' },
     gate: 'canAccessInbox',
@@ -250,6 +252,28 @@ export const PROJECT_SETTINGS_SECTION: ProjectSection = {
   inRail: true,
   inPalette: true,
   shortcutKey: 's',
+}
+
+/** Where a section lives, under a project base (`/app/projects/<id>`). */
+export function sectionHref(section: ProjectSection, base: string): string {
+  return section.href ?? `${base}/${section.segment}`
+}
+
+/**
+ * Where a link TO a section goes. The same as {@link sectionHref} except for
+ * "Frag Piloti", which always opens a fresh chat (an empty draft), never the
+ * last thread the reader left open; `?new=1` is consumed once by the chat
+ * client. Shared by the rail and the phone tab bar, so the two doors to the
+ * same place cannot disagree about where it is.
+ */
+export function sectionLinkHref(section: ProjectSection, base: string): string {
+  const href = sectionHref(section, base)
+  return section.key === 'chat' ? `${href}?new=1` : href
+}
+
+/** One project section by key, if it exists in the IA at all. */
+export function projectSection(key: ProjectSectionKey): ProjectSection | undefined {
+  return key === 'settings' ? PROJECT_SETTINGS_SECTION : PROJECT_SECTIONS.find((section) => section.key === key)
 }
 
 function isVisible(section: ProjectSection, flags: ProjectSectionFlags): boolean {

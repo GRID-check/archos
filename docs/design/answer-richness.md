@@ -184,7 +184,7 @@ A second block of the same type gets merged.
 
 ## 4. Project-aware and interactive features, ranked
 
-1. **`:project`, the strip and `cases{by}`.** No write path. A missing chip opens the existing `project_profile_patch` card, which stays under ADR-0030.
+1. **`:project`, the strip and `cases{by}`.** No write path. A missing chip opens the existing `project_profile_patch` card, which decides as a server proposal (ADR-0105, [`proposed-changes.md`](../architecture/proposed-changes.md)).
 2. **Row actions.**
    - "Dazu fragen" exists already.
    - "Als Aufgabe" pre-fills the composer, then the agent's `create_task` runs and a `task_created` card appears.

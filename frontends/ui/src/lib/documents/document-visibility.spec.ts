@@ -25,7 +25,7 @@
 
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import ts from 'typescript'
+import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
 
 const SRC = join(process.cwd(), 'src')
@@ -48,6 +48,8 @@ const SEES_EVERY_ROW: Record<string, string> = {
     'Sweep: the failed-ingestion rescan re-dispatches each id through `reingestDocument`. Ids only, to a job.',
   'lib/platform/vector-reconcile.ts#liveFilenamesByCollection':
     'Sweep: which filenames still have a row, so chunks of deleted documents are purged. A held row is not deleted.',
+  'lib/platform/vector-reconcile.ts#liveFilenamesIn':
+    "The same sweep's second look at one collection right before its delete, so a document filed since the snapshot keeps its chunks. A held row is not deleted either.",
   'lib/session-documents/repository.ts#listSessionDocumentsForCleanup':
     "Discarding a chat erases every attachment's objects, held ones first among them.",
 
@@ -152,6 +154,35 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
   // --- Assignments: keyed by resources already authorized ------------------
   'lib/assignments/repository.ts#listAssignmentsForResources|resourceAssignments':
     'Ids from `requireResourceAccess` (which reads a document through the sharing registry) or from a listing its reader narrowed.',
+
+  // --- Anmerkungen: keyed by a document the caller already read -------------
+  'lib/annotations/repository.ts#listDocumentAnnotations|documentAnnotations':
+    "The Anmerkungen of a document the service read through `getAccessibleDocument` first. The two ends of a carry it joins name another document's mark by id and number only, and the service shows them to a reader who may open that document (`linkedDocuments`).",
+  'lib/annotations/repository.ts#listDocumentAnnotations|documentVersions':
+    'The Fassung number each Anmerkung was set on, of that same document.',
+  'lib/annotations/repository.ts#findDocumentAnnotation|documentAnnotations':
+    'One Anmerkung of a document the service read through `getAccessibleDocument` first.',
+  'lib/annotations/repository.ts#findDocumentAnnotation|documentVersions':
+    'The Fassung number it was set on, of that same document.',
+  'lib/annotations/repository.ts#insertDocumentAnnotations|documentAnnotations':
+    "The next number and the count, under the insert's lock, for a document the service read for writing.",
+  'lib/annotations/repository.ts#carryAnnotationToDocument|documentAnnotations':
+    "Carrying a mark (migration 0151): the next number and the count of the replacing document, the close of the replaced one's mark and the linked copy. The service read both documents for writing first (`getAccessibleDocument`, the replacing one found through `loadFassungFacts` for the reader).",
+  'lib/annotations/repository.ts#listReplies|documentAnnotationReplies':
+    'The threads of Anmerkungen just read from a document the service read first.',
+  'lib/annotations/repository.ts#insertAnnotationReply|documentAnnotationReplies':
+    "The thread's count under the insert's lock, for an Anmerkung of a document the service read for writing.",
+
+  // --- Piloti's change record: read through the Anmerkungen's own read gate -----
+  // A person's view of the record goes through `listAnnotations` (`getAccessibleDocument`, 'read') per document
+  // (`lib/changes/service.ts#readDocumentMarks`), and a document that gate refuses leaves its rows out. The two
+  // reads below only fetch rows by turn or by id; nothing they return leaves the service before that gate ran.
+  'lib/changes/repository.ts#listTurnChangeRows|pilotiChanges':
+    "The rows of one turn's answer, which `listTurnChanges` then narrows by `viewsFor`: a row whose document `listAnnotations` refuses is dropped.",
+  'lib/changes/repository.ts#findPilotiChange|pilotiChanges':
+    "One row by id for `undoChange`, which reads its document through `listAnnotations` (`loadReadable`) before it plans or runs anything; a document the reader may not see is a 404.",
+  'lib/langfuse/decision-score.ts#changeOriginMessage|pilotiChanges':
+    "The answer message id of the turn that made a change, handed to Langfuse to find the trace. An id for a score, never a row for a person; the decision it scores was authorized by the caller.",
 }
 
 /**
@@ -271,6 +302,11 @@ const GUARDED_TABLES: Record<string, string> = {
   // What a Bescheid said (permitting memory, ADR-0095): derived from a document, served to the agent.
   permitRecords: 'permit_records',
   permitRequirements: 'permit_requirements',
+  // Where a person marked a page (migration 0138): a document fact, keyed by the document.
+  documentAnnotations: 'document_annotations',
+  documentAnnotationReplies: 'document_annotation_replies',
+  // What Piloti changed on a document's Anmerkungen, and the turn that did (migration 0142, ADR-0109): a document fact.
+  pilotiChanges: 'piloti_changes',
 }
 
 /** The relational-API names that reach `documents` from another table (`one(documents)`, `many(documents)`). */
@@ -635,6 +671,8 @@ describe('every read of documents states its reader (ADR-0086)', () => {
         'bimCheckConfirmations',
         'resourceAssignments',
         'permitRequirements',
+        'documentAnnotations',
+        'pilotiChanges',
       ])
     )
     expect(DOCUMENT_RELATIONS).toEqual(new Set(['documents', 'document']))

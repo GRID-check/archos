@@ -28,6 +28,8 @@ import { useFilePreviewStore } from '@/features/documents/stores/file-preview-st
 import { FilePreviewPane } from '@/features/documents/components/file-preview-pane'
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
 import { buildPdf, type PdfLine } from '../_fixtures/sample-pdf'
+import { a1SheetPdf } from '../_fixtures/a1-sheet'
+import { normalizeDrawingStructured } from '@/lib/documents/drawing-structured'
 
 // A visible "document page" so the left preview renders something real (not a
 // blank iframe) in the screenshot. Encoded as an SVG data URI, backend-free.
@@ -80,7 +82,9 @@ const FIXTURE: FileItem = {
     'Nutzungssicherheit/Barrierefreiheit',
     'Schallschutz',
   ],
-  topics: null,
+  // Free-form subjects beside the vocabulary tags, so the rail's third chip
+  // weight is photographed too.
+  topics: ['Fluchtwege', 'Rauchableitung'],
   capture: null,
   // Somebody is on the hook for this document. `Unvergeben` is the other state
   // and the generated fixture below keeps it, so one run photographs both.
@@ -294,6 +298,20 @@ const pdfFixture = (variant: PdfVariant): FileItem => ({
   contentType: 'application/pdf',
 })
 
+/**
+ * `?variant=drawing`: the on-site case the reader is built for. An A1
+ * Grundriss at 1:100 (`a1-sheet.ts`), opened on a phone: full screen, zoomed
+ * until its 2.5 mm lettering reads, its Fassungen one sheet away.
+ */
+const DRAWING_FIXTURE: FileItem = {
+  ...FIXTURE,
+  id: 'dev-doc-drawing',
+  filename: 'WBN_Grundriss_1OG_Index_C.pdf',
+  contentType: 'application/pdf',
+  fileSize: 2_380_000,
+  pageCount: 1,
+}
+
 const isPdfVariant = (value: string | undefined): value is PdfVariant =>
   (PDF_VARIANTS as readonly string[]).includes(value ?? '')
 
@@ -400,11 +418,14 @@ Ergebnis
 
 // Install the fetch shim at module scope (before any component effect fires) so
 /**
- * A structured analysis exactly as the BFF hands it over (already normalized
- * to the display shape, snake_case only inside `segment`/`sheet` because that
- * is the ingestion schema's own vocabulary).
+ * A structured analysis as ingestion stores it (snake_case, the ingestion
+ * schema's own vocabulary). The shim below serves it through
+ * `normalizeDrawingStructured`, which is what the BFF does before it answers
+ * (`lib/documents/service.ts`). Serving the raw shape, as this preview once
+ * did, crashed the route the moment „Detaillierte Informationen" opened: the
+ * pane reads `segment.entityGroups`, which only the normalizer produces.
  */
-const DEV_STRUCTURED = {
+const DEV_STRUCTURED_RAW = {
   schema_version: 4,
   registry: 'architecture+general@850c9b2d770a',
   segment: {
@@ -610,6 +631,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       // The same-origin stream the pdf.js viewer reads: the rendition for the
       // office file, the upload itself for a PDF.
       const fileMatch = /\/api\/documents\/(.+)\/file$/.exec(url)
+      if (fileMatch?.[1] === DRAWING_FIXTURE.id) {
+        return new Response(a1SheetPdf('C'), { headers: { 'Content-Type': 'application/pdf' } })
+      }
       if (fileMatch?.[1] === 'dev-doc-pdf-unreadable') {
         return new Response('upstream unavailable', { status: 500 })
       }
@@ -680,7 +704,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
               scale: '1:100',
               segment: 0,
               text: 'Regelgeschoss mit eingetragenen Fluchtwegen und Brandabschnittsgrenzen (REI 90).',
-              structured: DEV_STRUCTURED,
+              structured: normalizeDrawingStructured(DEV_STRUCTURED_RAW),
             },
             {
               page: 7,
@@ -744,7 +768,7 @@ export default function FilePreviewDevPage({
     return (
       <main className="bg-muted/40 flex min-h-dvh items-center justify-center">
         <ScrollRailIntoView />
-        <div className="bg-popover text-popover-foreground h-[85vh] w-[min(960px,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-lg">
+        <div className="bg-popover text-popover-foreground h-[85dvh] w-[min(960px,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-lg phone:fixed phone:inset-0 phone:h-dvh phone:w-full phone:rounded-none phone:border-0">
           <FilePreviewPane
             file={REVIEW_FIXTURE}
             projectId="proj-demo"
@@ -766,7 +790,9 @@ export default function FilePreviewDevPage({
     ? officeFixture(variant)
     : isPdfVariant(variant)
       ? pdfFixture(variant)
-      : null
+      : variant === 'drawing'
+        ? DRAWING_FIXTURE
+        : null
 
   return (
     <FilePreviewDialog

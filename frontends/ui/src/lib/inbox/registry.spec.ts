@@ -9,6 +9,8 @@ import {
   inboxIsReachable,
   inboxItemIsActionable,
   inboxRetentionCutoff,
+  MARK_ANCHORED_INBOX_TYPES,
+  PROPOSAL_ANCHORED_INBOX_TYPES,
   platformInboxTypes,
   visibleInboxTypes,
 } from './registry'
@@ -191,5 +193,98 @@ describe('inboxIsReachable', () => {
     // itself, instead of leaving a page that renders a permanently empty list.
     expect(inboxIsReachable(false)).toBe(visibleInboxTypes(false).length > 0)
     expect(inboxIsReachable(true)).toBe(visibleInboxTypes(true).length > 0)
+  })
+})
+
+/**
+ * What Piloti's work on marks and proposals puts in the inbox (ADR-0105, ADR-0106).
+ * The asks are requests against a person and wait in the badge until settled;
+ * the reports are not.
+ */
+describe('the Piloti types', () => {
+  const asks = ['piloti.asks_you', 'piloti.proposal_waiting'] as const
+  const reports = ['piloti.work_done', 'piloti.work_failed'] as const
+
+  it('count in the badge only while a person has something to decide', () => {
+    for (const type of asks) expect(inboxItemIsActionable(type), type).toBe(true)
+    for (const type of reports) expect(inboxItemIsActionable(type), type).toBe(false)
+  })
+
+  it('are one row per mark or proposal, never collapsed', () => {
+    for (const type of [...asks, ...reports]) {
+      expect(INBOX_TYPE_DEFINITIONS[type].grouping, type).toBe('per-anchor')
+      expect(() => inboxGroupKey(type, 'document', 'doc_1'), type).toThrow(/groups per anchor/)
+    }
+    expect(inboxGroupKey('piloti.asks_you', 'document', 'doc_1', 'ann_1')).not.toBe(
+      inboxGroupKey('piloti.asks_you', 'document', 'doc_1', 'ann_2'),
+    )
+  })
+
+  it('stay visible to an office without collaboration: marks are not a chat feature', () => {
+    for (const type of [...asks, ...reports]) {
+      expect(visibleInboxTypes(false), type).toContain(type)
+    }
+  })
+
+  it('name the types whose anchor is a mark or a proposal, and only those', () => {
+    expect([...MARK_ANCHORED_INBOX_TYPES].sort()).toEqual([
+      'annotation.activity',
+      'annotation.assigned_to_you',
+      'annotation.mentioned',
+      'piloti.asks_you',
+      'piloti.work_done',
+      'piloti.work_failed',
+    ])
+    expect(PROPOSAL_ANCHORED_INBOX_TYPES).toEqual(['piloti.proposal_waiting'])
+  })
+})
+
+/**
+ * What a colleague's work on a mark puts in the inbox: being made responsible
+ * is a request that waits in the badge; a reply or a closed mark is news.
+ */
+describe('the Anmerkung types', () => {
+  it('ask the Zuständige: actionable, one row per mark, mailed after two hours unread, pushed as a request', () => {
+    const assigned = INBOX_TYPE_DEFINITIONS['annotation.assigned_to_you']
+    expect(assigned).toMatchObject({
+      actionable: true,
+      grouping: 'per-anchor',
+      gate: 'operational',
+      email: { send: 'if-unread', afterMinutes: 120 },
+      push: { category: 'requests', urgency: 'normal' },
+    })
+  })
+
+  it('tell the thread: informational, one counted row per mark, never mailed, pushed only as activity', () => {
+    const activity = INBOX_TYPE_DEFINITIONS['annotation.activity']
+    expect(activity).toMatchObject({
+      actionable: false,
+      grouping: 'per-anchor',
+      gate: 'operational',
+      email: { send: 'never' },
+      push: { category: 'activity' },
+    })
+    expect(inboxGroupKey('annotation.activity', 'document', 'doc_1', 'ann_1')).toBe(
+      'annotation.activity:document:doc_1:ann_1',
+    )
+  })
+
+  it('ask whom a colleague mentioned as the chat’s mention does: actionable, one row per mark, mailed after an hour, pushed as a request', () => {
+    expect(INBOX_TYPE_DEFINITIONS['annotation.mentioned']).toMatchObject({
+      actionable: true,
+      grouping: 'per-anchor',
+      gate: 'operational',
+      email: INBOX_TYPE_DEFINITIONS['mention.requested'].email,
+      push: INBOX_TYPE_DEFINITIONS['mention.requested'].push,
+    })
+    expect(inboxGroupKey('annotation.mentioned', 'document', 'doc_1', 'ann_1')).toBe(
+      'annotation.mentioned:document:doc_1:ann_1',
+    )
+  })
+
+  it('stay visible to an office without collaboration: marks are not a chat feature', () => {
+    expect(visibleInboxTypes(false)).toEqual(
+      expect.arrayContaining(['annotation.assigned_to_you', 'annotation.activity', 'annotation.mentioned']),
+    )
   })
 })

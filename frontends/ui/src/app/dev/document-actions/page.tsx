@@ -29,7 +29,7 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { DocumentActionsMenu } from '@/features/documents/components/document-actions'
+import { DocumentActionsMenu, useMoveInSheet } from '@/features/documents/components/document-actions'
 import { RenameDocumentDialog } from '@/features/documents/components/document-actions/rename-document-dialog'
 
 const DOCUMENT = {
@@ -88,6 +88,12 @@ function useOpenMoveMenu(pick: boolean): void {
       press(sub)
       if (!pick) return
       window.requestAnimationFrame(() => {
+        // On a phone „Verschieben" is a sheet, not a submenu: pick from its list.
+        const sheetRow = document.querySelector<HTMLElement>('[data-testid="folder-picker-f-statik"]')
+        if (sheetRow) {
+          sheetRow.click()
+          return
+        }
         const items = Array.from(
           document.querySelectorAll<HTMLElement>('[data-slot="dropdown-menu-sub-content"] [role="menuitem"]')
         )
@@ -103,6 +109,7 @@ function useOpenMoveMenu(pick: boolean): void {
 
 /** The preview pane's header row, close enough to show the trigger in context. */
 function HeaderRow({ onMoved }: { onMoved?: (id: string, folderId: string | null) => void }): JSX.Element {
+  const moveInSheet = useMoveInSheet()
   return (
     <div className="mx-auto flex w-full max-w-[720px] items-center gap-3 rounded-2xl border bg-card px-5 py-3.5 shadow-2xs">
       <span
@@ -126,6 +133,7 @@ function HeaderRow({ onMoved }: { onMoved?: (id: string, folderId: string | null
         scope="files"
         actions={['rename', 'move', 'delete']}
         folders={FOLDERS}
+        moveInSheet={moveInSheet}
         onMoved={onMoved ?? (() => {})}
       />
     </div>

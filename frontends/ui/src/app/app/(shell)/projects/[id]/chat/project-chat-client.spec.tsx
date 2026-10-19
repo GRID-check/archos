@@ -46,6 +46,12 @@ vi.mock('@/features/documents/stores/file-preview-store', () => ({
   ),
 }))
 
+const showDocumentBeside = vi.fn(async () => true)
+vi.mock('@/features/documents/lib/open-review', () => ({
+  REVIEW_PARAM: 'review',
+  showDocumentBeside: (...args: unknown[]) => showDocumentBeside(...(args as [])),
+}))
+
 const conversation = (overrides: Partial<Conversation> = {}): Conversation => ({
   id: 'conv-1',
   userId: 'user-1',
@@ -167,5 +173,54 @@ describe('ProjectChatClient ?session= hydration', () => {
     // …and the thread is not left showing a skeleton for a link that resolved
     // to nothing.
     expect(chatState.pendingMessagesFor).toBeNull()
+  })
+})
+
+/**
+ * `?doc=<id>&review=1&mark=<id>` is a link INTO a document's review („Link
+ * kopieren" on a thread). `doc` there is the review's address: it must not
+ * become the composer's subject, and once the pane has taken the link it
+ * leaves the URL so a reload does not read it as an ask.
+ */
+describe('ProjectChatClient review links', () => {
+  const DOC = '00000000-0000-4000-8000-0000000000d1'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    chatState.composerSubject = null
+    chatState.currentConversation = null
+    chatState.conversations = []
+  })
+
+  test('opens the document beside the chat and asks nothing', () => {
+    mockSearchParams = new URLSearchParams(`session=s1&doc=${DOC}&review=1&mark=ann-7`)
+
+    render(<ProjectChatClient {...clientProps} />)
+
+    expect(showDocumentBeside).toHaveBeenCalledWith(DOC, expect.objectContaining({ projectId: 'p1' }))
+    expect(chatState.setComposerPrefill).not.toHaveBeenCalled()
+    // `review` and `mark` are the pane's to take; the page leaves them.
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  test('drops doc once the pane has taken the link, still without an ask', () => {
+    mockSearchParams = new URLSearchParams(`session=s1&doc=${DOC}&review=1&mark=ann-7`)
+    const { rerender } = render(<ProjectChatClient {...clientProps} />)
+
+    // The pane opened the review and stripped its two params.
+    mockSearchParams = new URLSearchParams(`session=s1&doc=${DOC}`)
+    rerender(<ProjectChatClient {...clientProps} />)
+
+    expect(mockReplace).toHaveBeenCalledWith('/app/projects/p1/chat?session=s1', { scroll: false })
+    expect(chatState.setComposerPrefill).not.toHaveBeenCalled()
+  })
+
+  test('still treats a plain ?doc= as the subject of an ask', () => {
+    mockSearchParams = new URLSearchParams(`doc=${DOC}`)
+
+    render(<ProjectChatClient {...clientProps} />)
+
+    expect(chatState.setComposerPrefill).toHaveBeenCalled()
+    expect(showDocumentBeside).not.toHaveBeenCalled()
   })
 })

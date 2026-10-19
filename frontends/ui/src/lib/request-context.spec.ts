@@ -3,8 +3,8 @@
  */
 import fixtureData from '../../tests/fixtures/grid_request_context.json'
 import { readFileSync } from 'node:fs'
-import * as crypto from 'node:crypto'
 import { describe, expect, it } from 'vitest'
+import { buildGridRequestContextEnvelopeHeaders as commonJsEnvelopeHeaders, turnContextHeaders } from './turns/turn-headers.js'
 
 import {
   buildGridRequestContextEnvelope,
@@ -462,12 +462,15 @@ describe('verifyGridRequestContextEnvelope', () => {
  * evaluate the duplicated function: what drifts is the list, not the arithmetic.
  */
 describe('server.js mints the same envelope payload this module does', () => {
-  const source = readFileSync(new URL('../../server.js', import.meta.url), 'utf8')
+  // The builder server.js uses lives in `turns/turn-headers.js` (CommonJS, so
+  // server.js can require it and the wake job can import it).
+  const source = readFileSync(new URL('./turns/turn-headers.js', import.meta.url), 'utf8')
+  const server = readFileSync(new URL('../../server.js', import.meta.url), 'utf8')
 
   /** The `payload.<field>` assignments of the duplicated builder, in file order. */
   const serverFields = (): string[] => {
-    const start = source.indexOf('function buildGridRequestContextEnvelopeHeaders(input)')
-    expect(start, 'server.js no longer has the duplicated builder this spec pins').toBeGreaterThan(-1)
+    const start = source.indexOf('function buildGridRequestContextEnvelopeHeaders(input, secret)')
+    expect(start, 'turn-headers.js no longer has the duplicated builder this spec pins').toBeGreaterThan(-1)
     const body = source.slice(start, source.indexOf('const json = JSON.stringify(payload)', start))
     return [...body.matchAll(/payload\.([A-Za-z]+)\s*=/g)].map((match) => match[1])
   }
@@ -494,7 +497,7 @@ describe('server.js mints the same envelope payload this module does', () => {
     )
 
   it('carries every field, in the same key order — the signature is over the bytes', () => {
-    expect(serverFields()).toEqual([...canonicalFields(), 'contextTransport'])
+    expect(serverFields()).toEqual([...canonicalFields(), 'contextTransport', 'requester'])
   })
 
   it('signs the conversation and the mint time, which is what makes it a credential', () => {
@@ -511,21 +514,20 @@ describe('server.js mints the same envelope payload this module does', () => {
     // `/api/auth/websocket-scope`'s own render after `authorizeConversationScope`.
     // Signing `parsedUrl.query.conversationId` instead would put a caller-chosen
     // value inside a signature a write route trusts.
-    expect(source).toContain('conversationId: result.data?.conversationId')
+    expect(server).toContain('turnContextHeaders(result.data, {')
+    expect(source).toContain('conversationId: data.conversationId')
+    const headers = turnContextHeaders(
+      { header: 'scope', organizationId: 'org_1', userId: 'user_1', conversationId: 's_conv_1' },
+      { issuedAt: 1789430400000, secret: 'fixture-secret' },
+    )
+    const payload = JSON.parse(Buffer.from(headers['x-grid-request-context'], 'base64url').toString('utf8'))
+    expect(payload).toMatchObject({ conversationId: 's_conv_1', issuedAt: 1789430400000, contextTransport: 'bff' })
   })
 
   it('matches the signed bytes for compact capsules and every legacy fixture', () => {
-    const start = source.indexOf('function buildGridRequestContextEnvelopeHeaders(input)')
-    const end = source.indexOf('\nconst dev =', start)
-    const makeBuilder = new Function('crypto', 'process',
-      `${source.slice(start, end)}; return buildGridRequestContextEnvelopeHeaders`,
-    )
-    const serverBuilder = makeBuilder(crypto, { env: { GRID_INTERNAL_API_TOKEN: 'fixture-secret' } }) as (
-      input: GridRequestContextInput,
-    ) => Record<string, string>
+    const serverBuilder = (input: GridRequestContextInput) => commonJsEnvelopeHeaders(input, 'fixture-secret')
     for (const testCase of fixture.envelopeCases) {
-      const builder = makeBuilder(crypto, { env: { GRID_INTERNAL_API_TOKEN: testCase.secret } })
-      expect(builder(testCase.input)).toEqual({
+      expect(commonJsEnvelopeHeaders(testCase.input as GridRequestContextInput, testCase.secret)).toEqual({
         'x-grid-request-context': testCase.header,
         'x-grid-request-context-sig': testCase.signature,
       })

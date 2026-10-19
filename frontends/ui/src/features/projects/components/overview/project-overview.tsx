@@ -30,6 +30,7 @@ import {
   PauseCircle,
   Pencil,
   PlayCircle,
+  Sparkles,
   Trash2,
 } from 'lucide-react'
 import { ActionMenu } from '@/components/ui/action-menu'
@@ -79,6 +80,8 @@ export interface ProjectOverviewProps {
    * for that. The page passes a Suspense boundary here.
    */
   similar?: ReactNode
+  /** Piloti's reading of the project's documents is still open (ADR-0111): the hero links to it. */
+  setupOpen?: boolean
   access: ProjectOverviewAccess
 }
 
@@ -88,6 +91,7 @@ export function ProjectOverview({
   usage,
   steckbrief,
   similar,
+  setupOpen = false,
   access,
 }: ProjectOverviewProps): JSX.Element {
   const id = data.id
@@ -103,7 +107,7 @@ export function ProjectOverview({
   return (
     <div className="flex flex-col gap-4">
       <BentoGrid data-testid="project-overview">
-        <HeroTile data={data} activity={activity} access={access} />
+        <HeroTile data={data} activity={activity} access={access} setupOpen={setupOpen} />
         <DocumentsTile
           documentCount={data.documentCount}
           totalFileSize={data.totalFileSize}
@@ -144,10 +148,12 @@ function HeroTile({
   data,
   activity,
   access,
+  setupOpen,
 }: {
   data: ProjectOverviewData
   activity: ProjectActivityView
   access: ProjectOverviewAccess
+  setupOpen: boolean
 }): JSX.Element {
   const t = useTranslations('settings')
   const { locale } = useLocale()
@@ -272,6 +278,14 @@ function HeroTile({
             {t('project.overview.openFiles')}
           </Link>
         </Button>
+        {setupOpen && (
+          <Button asChild variant="outline">
+            <Link href={`${projectPath}/setup`}>
+              <Sparkles className="size-4" aria-hidden />
+              {t('project.overview.openSetup')}
+            </Link>
+          </Button>
+        )}
         {access.editProfile && (
           <Button asChild variant="outline">
             <Link href={`${projectPath}/intake`}>

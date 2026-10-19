@@ -141,8 +141,8 @@ ones that will fail your PR.
 | Name anything in code | English only. German just in UI copy, answers, domain data | Review |
 | Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `tests/aiq_agent/test_product_framing.py` (agent prompts), `frontends/web/scripts/lint-claims.mjs` (the site); review elsewhere |
 | Describe what Piloti is, in a doc, a prompt or copy | Lead with the workspace for architects; building law is one capability, never the frame ([`VISION.md`](VISION.md)) | `tests/aiq_agent/test_product_framing.py` on the first-impression docs and every agent prompt; review elsewhere |
-| Add an environment variable | Add its row to [`docs/deployment/environment-variables.md`](docs/deployment/environment-variables.md) in the same change | Review |
-| Change what a customer can notice | `task release:note -- <slug>` | CI's **Repo checks** job (its release-note step) |
+| Add an environment variable | Add its row to [`docs/deployment/environment-variables.md`](docs/deployment/environment-variables.md) in the same change | The `env-docs` pre-commit hook (`scripts/check_env_docs.py`) for the queue-worker files; review elsewhere |
+| Change what a customer can notice | `task release:note -- <slug>` | The `release-notes` pre-commit hook (house rules), then CI's **Repo checks** job (its release-note step) |
 | Change what a customer can **see** | Capture it and attach it to the PR — `agent-browser` to shoot, `before-and-after` to publish. Commit no image files. [`docs/ux/visual-screenshots.md`](docs/ux/visual-screenshots.md) | Review |
 | Add or edit anything under `skills/` | Add a skill only for agent-specific procedure; anything a contributor needs too is a document ([the rule](docs/contributing/agent-skills.md#skill-or-document)). Commit the re-locked `apm.lock.yaml` with it — `task agents:audit` rewrites it for you. The deployment is gitignored, so nothing else in your diff shows the lockfile went stale | `task lint:repo` and CI's **Repo checks** job for the lockfile; review for the rule |
 | Change behaviour a doc describes | Update the doc in the same commit | Review. Stale docs are a bug, because an agent acts on them |
@@ -156,9 +156,10 @@ calls the same definitions but schedules them differently, so a local pass is
 strong evidence rather than a guarantee. `task verify:fast` skips two production
 builds, `fe:build` and `web:build`.
 
-Two gates sit outside `task verify` and are still required: `task db:test:rls`
-whenever you touch the tenant boundary, and `task pkg:test` whenever you touch
-`packages/`. CI runs both (the Frontend job and the packages job), so a PR cannot merge without them; they stay
+Three gates sit outside `task verify` and are still required: `task db:test:rls`
+whenever you touch the tenant boundary, `task be:test:postgres` whenever you touch
+a Python claim queue's SQL (the BFF queue's is covered by `db:test:rls`), and `task pkg:test` whenever you touch `packages/`. CI runs
+all three (the Frontend, Backend and packages jobs), so a PR cannot merge without them; they stay
 out of `verify` because each needs something a per-commit gate should not pay
 for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 

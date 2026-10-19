@@ -1,14 +1,26 @@
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
-import { fireEvent, render, screen } from '@/test-utils'
+import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@/test-utils'
 
 import type { InboxItemView } from '@/lib/inbox/types'
+
+// The undo toast is the contract; sonner is stubbed so its action can be pressed.
+const toastMock = vi.hoisted(() => vi.fn())
+vi.mock('sonner', () => ({ toast: toastMock }))
 
 // The data hooks are already built and tested; this spec is about the four states
 // the list can be in and the controls around them, so the hook is stubbed.
 vi.mock('../hooks/use-inbox', () => ({
   useInboxList: vi.fn(),
   useInboxBadge: vi.fn(),
+}))
+
+/** The page's address, played by the test: the Postfach's own, with whatever query it carries. */
+const page = vi.hoisted(() => ({ pathname: '/app/inbox', search: '' }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => page.pathname,
+  useSearchParams: () => new URLSearchParams(page.search),
 }))
 
 vi.mock('next/link', () => ({
@@ -26,14 +38,24 @@ const useInboxListMock = vi.mocked(useInboxList)
 
 const refresh = vi.fn()
 const markRead = vi.fn(async () => {})
+const markUnread = vi.fn(async () => {})
 const markAllRead = vi.fn(async () => {})
 const archive = vi.fn(async () => {})
+const unarchive = vi.fn(async () => true)
+const loadMore = vi.fn()
 const dismissMutationError = vi.fn()
 
 function result(overrides: Partial<UseInboxListResult> = {}): UseInboxListResult {
   return {
     items: [],
     pending: 0,
+    counts: { requests: 0, unread: 0 },
+    hasMore: false,
+    loadingMore: false,
+    loadMoreFailed: false,
+    loadMore,
+    markUnread,
+    unarchive,
     loading: false,
     error: false,
     mutationError: false,
@@ -52,6 +74,7 @@ const ITEM: InboxItemView = {
   id: 'i1',
   type: 'mention.requested',
   state: 'unread',
+  archived: false,
   actionable: true,
   resourceType: 'conversation',
   resourceId: 'c1',
@@ -63,6 +86,9 @@ const ITEM: InboxItemView = {
   subject: 'Atrium',
   related: null,
   excerpt: null,
+  mentions: [],
+  variant: null,
+  answerIn: null,
   createdAt: '2026-07-29T09:00:00Z',
   updatedAt: '2026-07-29T09:00:00Z',
 }
@@ -73,9 +99,9 @@ describe('InboxList — filters', () => {
     useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
   })
 
-  test('defaults to "needs me", which asks the hook for pending items only', () => {
+  test('defaults to "needs me", which asks the hook for open requests only', () => {
     render(<InboxList />)
-    expect(useInboxListMock).toHaveBeenCalledWith(true, true)
+    expect(useInboxListMock).toHaveBeenCalledWith(true, 'requests')
     const needsMe = screen.getByRole('radio', { name: /Needs me/ })
     const all = screen.getByRole('radio', { name: 'All' })
     expect(needsMe).toHaveAttribute('data-state', 'on')
@@ -89,18 +115,66 @@ describe('InboxList — filters', () => {
     expect(screen.getByRole('radiogroup', { name: 'Filter inbox' })).toBeInTheDocument()
   })
 
-  test('switching to "all" re-reads without the pending-only filter', () => {
+  test('switching to "all" re-reads everything unarchived', () => {
     render(<InboxList />)
     fireEvent.click(screen.getByRole('radio', { name: 'All' }))
-    expect(useInboxListMock).toHaveBeenLastCalledWith(true, false)
+    expect(useInboxListMock).toHaveBeenLastCalledWith(true, 'all')
     const all = screen.getByRole('radio', { name: 'All' })
     expect(all).toHaveAttribute('data-state', 'on')
     expect(all).toHaveAttribute('aria-checked', 'true')
   })
 
+  test('keeps the filter in the address without a server render, so a review closed from a row comes back to it', () => {
+    const replaceState = vi.spyOn(window.history, 'replaceState')
+    page.search = 'tab=x'
+    try {
+      render(<InboxList />)
+      fireEvent.click(screen.getByRole('radio', { name: 'Unread' }))
+      expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x&filter=unread')
+      // „Needs me“ is the default, and the address does not say it.
+      fireEvent.click(screen.getByRole('radio', { name: /Needs me/ }))
+      expect(replaceState).toHaveBeenLastCalledWith(null, '', '/app/inbox?tab=x')
+    } finally {
+      page.search = ''
+      replaceState.mockRestore()
+    }
+  })
+
+  test('opens on the filter the address names, as the reader left it', () => {
+    page.search = 'filter=archived'
+    try {
+      render(<InboxList />)
+      expect(useInboxListMock).toHaveBeenCalledWith(true, 'archived')
+      expect(screen.getByRole('radio', { name: 'Archived' })).toHaveAttribute('aria-checked', 'true')
+    } finally {
+      page.search = ''
+    }
+  })
+
   test('passes the disabled flag through, so a gated org issues no request', () => {
     render(<InboxList enabled={false} />)
-    expect(useInboxListMock).toHaveBeenCalledWith(false, true)
+    expect(useInboxListMock).toHaveBeenCalledWith(false, 'requests')
+  })
+
+  test('„Unread“ and „Archived“ are filters of their own, each reading its own slice', () => {
+    render(<InboxList />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Unread' }))
+    expect(useInboxListMock).toHaveBeenLastCalledWith(true, 'unread')
+    fireEvent.click(screen.getByRole('radio', { name: 'Archived' }))
+    expect(useInboxListMock).toHaveBeenLastCalledWith(true, 'archived')
+  })
+
+  test('the selected filter wears a filled thumb', () => {
+    render(<InboxList />)
+    const needsMe = screen.getByRole('radio', { name: /Needs me/ })
+    expect(needsMe.querySelector('[data-slot="toggle-pill"]')).toHaveClass('bg-foreground')
+  })
+
+  test('a filter carries its count only when there is one, with no blank tail at zero', () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1, counts: { requests: 2, unread: 0 } }))
+    render(<InboxList />)
+    expect(screen.getByRole('radio', { name: /Needs me/ })).toHaveTextContent('Needs me2')
+    expect(screen.getByRole('radio', { name: 'Unread' }).querySelector('[data-slot="count-pill"]')).toBeNull()
   })
 })
 
@@ -127,15 +201,16 @@ describe('InboxList — states', () => {
 
     expect(screen.getByText('Nothing needs you')).toBeInTheDocument()
     expect(
-      screen.getByText('When a colleague asks for your input, it shows up here.'),
+      screen.getByText('When someone mentions you, assigns you an annotation or Piloti asks you something, it appears here.'),
     ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: 'All' }))
     expect(screen.getByText('Your inbox is empty')).toBeInTheDocument()
-    expect(
-      screen.getByText('Requests, answers and shared conversations appear here.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('News from your team and from Piloti appears here.')).toBeInTheDocument()
     expect(screen.queryByText('Nothing needs you')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Archived' }))
+    expect(screen.getByText('Nothing archived')).toBeInTheDocument()
   })
 
   test('renders one row per item, driven by the type registry', () => {
@@ -191,6 +266,29 @@ describe('InboxList — states', () => {
 })
 
 describe('InboxList — actions', () => {
+  test('mark-all-read is not offered on an empty list, nor under „Archived“', () => {
+    useInboxListMock.mockReturnValue(result())
+    render(<InboxList />)
+    expect(screen.queryByRole('button', { name: 'Mark all as read' })).not.toBeInTheDocument()
+
+    useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'archived' }] }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Archived' }))
+    expect(screen.queryByRole('button', { name: 'Mark all as read' })).not.toBeInTheDocument()
+  })
+
+  test('says there are older items, and loads them on request', () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1, hasMore: true }))
+    render(<InboxList />)
+    fireEvent.click(screen.getByRole('button', { name: 'Load older items' }))
+    expect(loadMore).toHaveBeenCalled()
+  })
+
+  test('says nothing about older items when there are none', () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1, hasMore: false }))
+    render(<InboxList />)
+    expect(screen.queryByRole('button', { name: 'Load older items' })).not.toBeInTheDocument()
+  })
+
   test('mark-all-read is disabled while nothing is unread', () => {
     useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'read' }] }))
     render(<InboxList />)
@@ -207,11 +305,53 @@ describe('InboxList — actions', () => {
     expect(markAllRead).toHaveBeenCalled()
   })
 
-  test('archiving a row calls through to the hook', () => {
-    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
-    render(<InboxList />)
-    fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
-    expect(archive).toHaveBeenCalledWith('i1')
+  describe('archiving', () => {
+    beforeEach(() => {
+      toastMock.mockClear()
+      vi.useFakeTimers()
+    })
+    afterEach(() => vi.useRealTimers())
+
+    test('hides the row at once and tells the server only when the undo window closes', () => {
+      useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+      render(<InboxList />)
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+
+      expect(screen.queryByTestId('inbox-item')).not.toBeInTheDocument()
+      expect(toastMock).toHaveBeenCalledWith(
+        'Archived',
+        expect.objectContaining({ action: expect.objectContaining({ label: 'Undo' }) }),
+      )
+      expect(archive).not.toHaveBeenCalled()
+
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+      expect(archive).toHaveBeenCalledWith('i1')
+    })
+
+    test('Undo brings the row back and sends nothing', () => {
+      useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+      render(<InboxList />)
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+
+      const options = toastMock.mock.calls[0][1] as { action: { onClick: () => void } }
+      act(() => options.action.onClick())
+      expect(screen.getByTestId('inbox-item')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(10000)
+      })
+      expect(archive).not.toHaveBeenCalled()
+    })
+
+    test('leaving the list sends an archive that is still waiting', () => {
+      useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+      const { unmount } = render(<InboxList />)
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+      unmount()
+      expect(archive).toHaveBeenCalledWith('i1')
+    })
   })
 
   test('opening an unread row marks just that item read', () => {
@@ -226,5 +366,193 @@ describe('InboxList — actions', () => {
     render(<InboxList />)
     fireEvent.click(screen.getByRole('link'))
     expect(markRead).not.toHaveBeenCalled()
+  })
+})
+
+describe('InboxList — keyboard triage', () => {
+  const SECOND: InboxItemView = { ...ITEM, id: 'i2', state: 'read', actorName: 'Markus Hofer', actorUserId: 'u-markus' }
+
+  beforeEach(() => {
+    toastMock.mockClear()
+    markRead.mockClear()
+    markUnread.mockClear()
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND], pending: 1 }))
+  })
+
+  const focusedRow = () => document.querySelector('[data-focused="true"]')?.getAttribute('data-item-id') ?? null
+
+  test('j and k move between rows', () => {
+    render(<InboxList />)
+    fireEvent.keyDown(document.body, { key: 'j' })
+    expect(focusedRow()).toBe('i1')
+    fireEvent.keyDown(document.body, { key: 'j' })
+    expect(focusedRow()).toBe('i2')
+    fireEvent.keyDown(document.body, { key: 'j' })
+    expect(focusedRow()).toBe('i2')
+    fireEvent.keyDown(document.body, { key: 'k' })
+    expect(focusedRow()).toBe('i1')
+  })
+
+  test('Enter opens the row, which marks it read', () => {
+    render(<InboxList />)
+    fireEvent.keyDown(document.body, { key: 'j' })
+    fireEvent.keyDown(document.body, { key: 'Enter' })
+    expect(markRead).toHaveBeenCalledWith(['i1'])
+  })
+
+  test('u toggles read, and e archives with the same undo as the button', () => {
+    vi.useFakeTimers()
+    try {
+      render(<InboxList />)
+      fireEvent.keyDown(document.body, { key: 'j' })
+      fireEvent.keyDown(document.body, { key: 'u' })
+      expect(markRead).toHaveBeenCalledWith(['i1'])
+      fireEvent.keyDown(document.body, { key: 'j' })
+      fireEvent.keyDown(document.body, { key: 'u' })
+      expect(markUnread).toHaveBeenCalledWith(['i2'])
+      fireEvent.keyDown(document.body, { key: 'e' })
+      expect(toastMock).toHaveBeenCalledWith('Archived', expect.objectContaining({ action: expect.anything() }))
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+      expect(archive).toHaveBeenCalledWith('i2')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('after e, the keyboard focus moves to the next row, in the DOM as well', () => {
+    vi.useFakeTimers()
+    try {
+      render(<InboxList />)
+      fireEvent.keyDown(document.body, { key: 'j' })
+      fireEvent.keyDown(document.body, { key: 'e' })
+      expect(document.activeElement?.getAttribute('data-item-id')).toBe('i2')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('typing in a field never triages', () => {
+    render(
+      <>
+        <input aria-label="Elsewhere" />
+        <InboxList />
+      </>,
+    )
+    const field = screen.getByLabelText('Elsewhere')
+    fireEvent.keyDown(field, { key: 'j' })
+    fireEvent.keyDown(field, { key: 'e' })
+    expect(focusedRow()).toBeNull()
+    expect(toastMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('InboxList — the focus when a refresh drops its row', () => {
+  const SECOND: InboxItemView = { ...ITEM, id: 'i2', actorName: 'Markus Hofer', actorUserId: 'u-markus' }
+  const THIRD: InboxItemView = { ...ITEM, id: 'i3', actorName: 'Lena Berger', actorUserId: 'u-lena' }
+  const rowOf = (id: string) => document.querySelector<HTMLElement>(`[data-item-id="${id}"]`)
+  /** The row's own control holds the focus, as the outcome line does after „Erledigen“. */
+  const focusIn = (id: string) => {
+    const control = rowOf(id)?.querySelector<HTMLElement>('a, button') ?? rowOf(id)
+    act(() => control?.focus())
+    expect(rowOf(id)).toContainElement(document.activeElement as HTMLElement)
+  }
+
+  test('goes to the row now at its place, when the re-read under „For me“ no longer lists it', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND, THIRD], pending: 3 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    // The mark was resolved: the next read of open requests leaves its row out.
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, THIRD], pending: 2 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i3')))
+    expect(rowOf('i3')).toHaveAttribute('data-focused', 'true')
+  })
+
+  test('hands the focus on without scrolling: the reader stays where they read', async () => {
+    const scroll = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scroll
+    onTestFinished(() => {
+      Element.prototype.scrollIntoView = original
+    })
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND, THIRD], pending: 3 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    scroll.mockClear()
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, THIRD], pending: 2 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i3')))
+    expect(scroll).not.toHaveBeenCalled()
+  })
+
+  test('goes to the row before it when it was the last', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND], pending: 2 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(document.activeElement).toBe(rowOf('i1')))
+  })
+
+  test('goes to the list when no row is left', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i1')
+    useInboxListMock.mockReturnValue(result({ items: [], pending: 0 }))
+    rerender(<InboxList />)
+    await waitFor(() => expect(screen.getByTestId('inbox-list')).toHaveFocus())
+  })
+
+  test('leaves the focus where the reader put it since', async () => {
+    useInboxListMock.mockReturnValue(result({ items: [ITEM, SECOND], pending: 2 }))
+    const { rerender } = render(<InboxList />)
+    focusIn('i2')
+    const filter = screen.getByRole('radio', { name: /All/ })
+    act(() => filter.focus())
+    useInboxListMock.mockReturnValue(result({ items: [ITEM], pending: 1 }))
+    rerender(<InboxList />)
+    await act(async () => {})
+    expect(filter).toHaveFocus()
+  })
+})
+
+describe('InboxList — the archive', () => {
+  beforeEach(() => {
+    toastMock.mockClear()
+    unarchive.mockClear()
+    archive.mockClear()
+  })
+
+  test('restores an archived row from its menu, and says so once it is true', async () => {
+    const userEvent = (await import('@testing-library/user-event')).default
+    const user = userEvent.setup()
+    useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'archived', archived: true }] }))
+    render(<InboxList initialFilter="archived" />)
+    await user.click(screen.getByRole('button', { name: 'More actions' }))
+    await user.click(await screen.findByTestId('inbox-unarchive'))
+    expect(unarchive).toHaveBeenCalledWith('i1')
+    await waitFor(() => expect(toastMock).toHaveBeenCalledWith('Restored'))
+  })
+
+  test('says nothing when the restore was refused', async () => {
+    unarchive.mockResolvedValueOnce(false)
+    useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'archived', archived: true }] }))
+    render(<InboxList initialFilter="archived" />)
+    fireEvent.keyDown(document.body, { key: 'j' })
+    fireEvent.keyDown(document.body, { key: 'e' })
+    await waitFor(() => expect(unarchive).toHaveBeenCalled())
+    await Promise.resolve()
+    expect(toastMock).not.toHaveBeenCalledWith('Restored')
+  })
+
+  test('e restores an archived row whose target went away, instead of archiving it again', () => {
+    useInboxListMock.mockReturnValue(result({ items: [{ ...ITEM, state: 'inert', archived: true, href: null }] }))
+    render(<InboxList initialFilter="archived" />)
+    fireEvent.keyDown(document.body, { key: 'j' })
+    fireEvent.keyDown(document.body, { key: 'e' })
+    expect(unarchive).toHaveBeenCalledWith('i1')
+    expect(toastMock).not.toHaveBeenCalledWith('Archived', expect.anything())
   })
 })

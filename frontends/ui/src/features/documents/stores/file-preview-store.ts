@@ -14,9 +14,11 @@
 
 import { create } from 'zustand'
 import { useChatStore } from '@/features/chat/store'
+import { PHONE_ON_ITS_SIDE_QUERY } from '@/hooks/phone-on-its-side'
 import type { DocumentScope } from '../components/document-actions'
 import type { FileItem } from '../components/project-file-workspace'
 import type { FassungFacts } from '@/lib/documents/fassung'
+import type { MarkTally } from '@/lib/annotations/types'
 import type {
   DocumentLifecyclePermission,
   DocumentVersionState,
@@ -35,6 +37,24 @@ export const FILE_PEEK_WIDTH_MIN = 280
  */
 export const FILE_PEEK_WIDTH_MAX = 960
 export const FILE_PEEK_WIDTH_DEFAULT = 320
+
+/** Share of a phone's width the peek takes when it is held on its side. */
+const FILE_PEEK_LANDSCAPE_SHARE = 0.45
+
+/**
+ * The width the peek opens at when the reader has not chosen one.
+ *
+ * 320px beside a 852px phone on its side leaves a drawing at about a third of a
+ * CSS pixel per millimetre, which cannot be read; there the peek takes 45% of
+ * the width instead. Everywhere else it stays the fixed default.
+ */
+export function defaultPeekWidth(): number {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return FILE_PEEK_WIDTH_DEFAULT
+  }
+  if (!window.matchMedia(PHONE_ON_ITS_SIDE_QUERY).matches) return FILE_PEEK_WIDTH_DEFAULT
+  return clampPeekWidth(window.innerWidth * FILE_PEEK_LANDSCAPE_SHARE)
+}
 
 /** Where the dragged width is remembered between sessions. */
 export const FILE_PEEK_WIDTH_STORAGE_KEY = 'grid.filePeek.width'
@@ -133,6 +153,8 @@ export interface FilePreviewContext {
     fileId: string,
     summary: { versionState: DocumentVersionState; versionCount: number },
   ) => void
+  /** The review read or changed the document's marks: the listing's tally for its chip (`FileItem.marks`). */
+  onMarksChanged?: (fileId: string, marks: MarkTally | null) => void
 }
 
 interface FilePreviewState {
@@ -228,7 +250,13 @@ export const useFilePreviewStore = create<FilePreviewState>((set, get) => ({
 
   restorePeekWidth: () => {
     const stored = readStoredPeekWidth()
-    if (stored === null) return null
+    if (stored === null) {
+      // Nothing chosen yet: a phone on its side opens wider than the fixed default.
+      const fallback = defaultPeekWidth()
+      if (fallback === FILE_PEEK_WIDTH_DEFAULT) return null
+      set({ peekWidth: fallback })
+      return fallback
+    }
     set({ peekWidth: stored })
     return stored
   },

@@ -82,45 +82,6 @@ MEMORY_REFLECTION_FEATURE_HEADER = "x-grid-feature-memory-reflection"
 ORGANIZATION_ID_HEADER = "x-grid-organization-id"
 USER_ID_HEADER = "x-grid-user-id"
 
-#: What each project-scoped tool needs from the request context to run at all,
-#: keyed by the NAT function TYPE (`_type:` in the config — the stable identity;
-#: the name a config binds it under is the config's choice), as the headers
-#: that carry it. DECLARATIVE, so a test can check every entry path that binds
-#: a tool supplies what it needs: the chat path sets these on the WebSocket
-#: upgrade, the job worker injects them from the run's identity
-#: (`aiq_api.jobs.runner.WORKER_IDENTITY_HEADERS`). `remember` answered "no
-#: project in scope" on every deep-research run for weeks because this
-#: contract lived in two hand-maintained lists that nothing compared.
-TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
-    "project_memory_remember": (PROJECT_ID_HEADER, ORGANIZATION_ID_HEADER),
-    # The write-side workspace tool (`tools/files/`). It proposes a change to a
-    # PROJECT's workspace — folders are project-scoped, and the reader's session
-    # applies the change against a project — so a run without the project
-    # header can only refuse, and refusing on every unattended run is the
-    # failure this table was written for.
-    "propose_file_change": (PROJECT_ID_HEADER,),
-    # Filing a draft into the project, and with `submit` sending it for review
-    # (`tools/documents/register.py`). The project header is what makes a filing ADDRESSABLE — a draft is filed INTO
-    # a project — so a run without it can only refuse.
-    #
-    # The signed envelope the tool ALSO needs is deliberately NOT declared here.
-    # This table lists what an entry path must SUPPLY, and the envelope is not
-    # supplyable: it is a per-turn credential the BFF mints from a live session,
-    # and a job worker synthesising one would be minting an identity rather than
-    # forwarding one. So the worker is allowed to bind the tool and the tool
-    # refuses the call, which is the honest shape — see the `_NO_ENVELOPE`
-    # refusal in `tools/documents/filing.py`.
-    "file_draft": (PROJECT_ID_HEADER,),
-    # Delegating work (`tools/tasks/register.py`). A task hangs off a PROJECT —
-    # `tasks.project_id` is NOT NULL and carries the tenant predicate — so a run
-    # without the project header can only refuse. The signed envelope it also
-    # needs is deliberately NOT declared here, for the reason stated above
-    # `file_draft`: this table lists what an entry path must SUPPLY, and an
-    # envelope is a per-turn credential a worker would have to MINT rather than
-    # forward.
-    "create_task": (PROJECT_ID_HEADER,),
-}
-
 # Consolidated signed context envelope (backlog T3-9 follow-up, 2026-07-16).
 # `X-Grid-Request-Context` carries base64url(JSON) of the SAME fields the
 # individual x-grid-* headers above carry (minus the internal token, which is
@@ -135,6 +96,68 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
 # headers otherwise.
 REQUEST_CONTEXT_ENVELOPE_HEADER = "x-grid-request-context"
 REQUEST_CONTEXT_ENVELOPE_SIG_HEADER = "x-grid-request-context-sig"
+
+#: What each project-scoped tool needs from the request context to run at all,
+#: keyed by the NAT function TYPE (`_type:` in the config — the stable identity;
+#: the name a config binds it under is the config's choice), as the headers
+#: that carry it. DECLARATIVE, so a test can check every entry path that binds
+#: a tool supplies what it needs: the chat path sets these on the WebSocket
+#: upgrade, the job worker injects them from the run's identity
+#: (`aiq_api.jobs.runner.WORKER_IDENTITY_HEADERS`) and, when the run carries
+#: one, the requester's signed envelope (`WORKER_ENVELOPE_HEADERS`). `remember` answered "no
+#: project in scope" on every deep-research run for weeks because this
+#: contract lived in two hand-maintained lists that nothing compared.
+TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
+    "project_memory_remember": (PROJECT_ID_HEADER, ORGANIZATION_ID_HEADER),
+    # The write-side workspace tool (`tools/files/`). It proposes a change to a
+    # PROJECT's workspace — folders are project-scoped, and the reader's session
+    # applies the change against a project — so a run without the project
+    # header can only refuse, and refusing on every unattended run is the
+    # failure this table was written for. The envelope names the person the
+    # proposal is filed for: the BFF stores it as a server proposal under that
+    # person (ADR-0105, `tools/proposals_client.py`), and without one the tool
+    # can offer nothing and says so. Supplied as for `file_draft` below.
+    "propose_file_change": (PROJECT_ID_HEADER, REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+    # Filing a draft into the project, and with `submit` sending it for review
+    # (`tools/documents/register.py`). The project header is what makes a filing ADDRESSABLE — a draft is filed INTO
+    # a project — so a run without it can only refuse.
+    #
+    # The signed envelope is what makes it an act OF SOMEBODY: the BFF files in
+    # the pinned session of the person the envelope names. An entry path
+    # supplies it by FORWARDING one the BFF minted, never by building one: the
+    # chat path from the turn's live session, the job worker from the
+    # requester's envelope the run carries (ADR-0108, `aiq_api.jobs.run_envelope`).
+    # A run that carries none injects none, and the tool refuses — see the
+    # `_NO_ENVELOPE` refusal in `tools/documents/filing.py`.
+    "file_draft": (PROJECT_ID_HEADER, REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+    # Delegating work (`tools/tasks/register.py`). A task hangs off a PROJECT —
+    # `tasks.project_id` is NOT NULL and carries the tenant predicate — so a run
+    # without the project header can only refuse. The envelope names the
+    # requester the task is pinned to, supplied as for `file_draft` above.
+    "create_task": (PROJECT_ID_HEADER, REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+    # Reading OTHER projects (`tools/cross_project/`, ADR-0094). The BFF decides
+    # the reach from the person the envelope names; no project header, because
+    # the projects it reads are not the conversation's.
+    "project_lookup": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+    # The review canvas (`tools/canvas/`, the `canvas` function group): a
+    # document's Anmerkungen and its room, worked on as the person the envelope
+    # names (ADR-0105). No project header: the document is named by the model
+    # or resolved by the BFF from the conversation, and may belong to no
+    # project (an Archiv or session upload). The envelope is supplied as for
+    # `file_draft` above; without one every canvas tool refuses.
+    "document_canvas": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+    # The Erfassungs-Agent (`agents/intake/`, ADR-0111): an agent, not a tool,
+    # keyed here because its tools (`intake_needs`, `record_values`,
+    # `finish_intake`, `read_document`) are built by the agent and have no NAT
+    # type of their own. Every one of them acts as the person whose upload or
+    # click started the run: the intake API takes the project and that person
+    # from the envelope, and `read_document` reads the collection scope signed
+    # into it. Only ever a background run, so the worker supplies it from the
+    # envelope the run carries (ADR-0108); a run without one ends before its
+    # first model call, having read and recorded nothing.
+    "project_intake_agent": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+}
+
 
 # Mirrored (not imported) from their owning modules — see the module
 # docstring above for why. Values must stay byte-identical to
@@ -298,6 +321,26 @@ def _normalize_raw_id(value: str | None) -> str | None:
     return value or None
 
 
+#: A name, an address or an office is one line of a few words; it reaches the
+#: system prompt verbatim, so anything longer, or spread over lines, is cut.
+REQUESTER_FIELD_MAX_CHARS = 120
+
+
+def _one_line(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    line = " ".join(value.split())[:REQUESTER_FIELD_MAX_CHARS].strip()
+    return line or None
+
+
+def _as_requester(value: Any) -> dict[str, str | None] | None:
+    """The envelope's ``requester``, each field one bounded line; None when it names nobody."""
+    if not isinstance(value, dict):
+        return None
+    requester = {field: _one_line(value.get(field)) for field in ("name", "email", "organizationName")}
+    return requester if any(requester.values()) else None
+
+
 def _as_str_list(value: Any) -> list[str] | None:
     if isinstance(value, list) and all(isinstance(item, str) for item in value):
         return value
@@ -431,6 +474,12 @@ class GridRequestContext:
     #: Growing prompt blocks are fetched per turn from the BFF when this
     #: signed, envelope-only marker is present. Legacy producers omit it.
     context_transport: Literal["bff"] | None = None
+    #: Who ``user_id`` is, by name (envelope-only): ``name``, ``email`` and
+    #: ``organizationName``, each a bounded single line or None. The BFF signs it
+    #: from the session the envelope is minted for, live or pinned, so it reaches
+    #: the turns no access token does (a scheduled run, a woken thread). None
+    #: when the envelope names nobody. Read by ``turn.context.user_info_for``.
+    requester: dict[str, str | None] | None = None
 
     @classmethod
     def from_context(cls) -> "GridRequestContext":
@@ -552,6 +601,7 @@ class GridRequestContext:
             envelope_header=header_value,
             envelope_signature=sig,
             context_transport="bff" if payload.get("contextTransport") == "bff" else None,
+            requester=_as_requester(payload.get("requester")),
         )
 
     @classmethod
@@ -745,8 +795,11 @@ def get_signed_request_context() -> GridRequestContext | None:
     proxy directly could set them; `server.js` now strips them, but a reader that
     trusts the signature does not depend on the proxy remembering to.
 
-    ``None`` off the BFF (a job worker, which injects its own headers; the CLI;
-    an eval) — only then may the reader fall back to the individual header.
+    ``None`` off the BFF (a job worker whose run carries no envelope, which
+    injects its own headers; the CLI; an eval) — only then may the reader fall
+    back to the individual header. A worker run that does carry one injects
+    the bytes the BFF signed for its requester (ADR-0108), and reads it here
+    exactly as a chat turn does.
     """
     return GridRequestContext.from_envelope(
         _read_header(REQUEST_CONTEXT_ENVELOPE_HEADER),
@@ -761,9 +814,11 @@ def get_request_envelope_from_context() -> tuple[str | None, str | None]:
     For a tool that calls back into the BFF. It echoes these two strings and
     signs nothing of its own — the BFF verifies them with the same secret and
     reads the acting user out of the verified payload (ADR-0054 §4). Both are
-    ``None`` off an authenticated chat turn (a CLI run, an eval, a job worker),
-    which is a refusal at the tool and never a reason to fall back to the
-    individual headers: those are unsigned, so a caller could choose them.
+    ``None`` off an authenticated chat turn (a CLI run, an eval, a job worker
+    run that carries no requester's envelope), which is a refusal at the tool
+    and never a reason to fall back to the individual headers: those are
+    unsigned, so a caller could choose them. A worker run that carries one
+    (ADR-0108) returns the bytes the BFF signed, echoed by the worker.
     """
     ctx = GridRequestContext.from_context()
     return ctx.envelope_header, ctx.envelope_signature

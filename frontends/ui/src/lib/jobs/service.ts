@@ -27,19 +27,10 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { isProjectClosed, runsOnSchedule, SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
-import { getBudgetStatus } from '@/lib/budgets/service'
-import { getEffectiveModelOverrides } from '@/lib/model-config/service'
-import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
-import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
-import { resolveOrgInstructions } from '@/lib/org-instructions/service'
-import { computeCollectionScope } from '@/lib/collection-scope'
 import type { PlanDocuments } from '@/lib/runs/plan-documents'
-import {
-  buildGridRequestContextWireHeaders,
-  encodeGridBudgetHeader,
-  type GridBudgetSnapshot,
-} from '@/lib/request-context'
-import { isMemoryReflectionEnabled, isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { submitBackgroundRun } from './background-run'
+import { resolveRunContext } from './run-context'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type {
   DefinitionTrigger,
@@ -51,13 +42,7 @@ import type {
 import { resolveSkillSnapshot } from '@/lib/skills/service'
 import { snapshotOf, type SkillSnapshot } from '@/lib/skills/types'
 import { nextOccurrence, validateCron, validateDueAt, minIntervalMinutesFromEnv } from './schedule'
-import {
-  submitJob,
-  JobSubmitError,
-  JobSubmitSkippedError,
-  type JobPriority,
-  type JobSubmitPayload,
-} from './backend-client'
+import { JobSubmitError, JobSubmitSkippedError, type JobPriority } from './backend-client'
 import * as repository from '@/lib/tasks/repository'
 import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
 import { previousDecisionsBlock } from '@/lib/tasks/service'
@@ -593,74 +578,24 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     )
   }
   const { organizationId, projectId, userId } = spec
-  const [
-    budgetSnapshot,
-    modelOverrides,
-    collectionScope,
-    projectContext,
-    bundesland,
-    projectMemory,
-    memoryReflectionEnabled,
-    orgInstructions,
-  ] = await Promise.all([
-    resolveBudgetSnapshot(organizationId, userId, projectId),
-    getEffectiveModelOverrides(organizationId).catch(() => null),
-    buildProjectCollectionScope(projectId, organizationId),
-    loadProjectPromptView(projectId, organizationId).catch(() => null),
-    loadProjectBundesland(projectId, organizationId).catch(() => null),
-    buildProjectMemoryDigest(projectId, organizationId, { query: spec.prompt }).catch(() => null),
-    isMemoryReflectionEnabled(organizationId).catch(() => false),
-    // The organization's standing instruction block. A scheduled or delegated
-    // run is a turn like any other, so it carries the same preferences a chat
-    // turn does — a task that answered in a voice the office had asked against
-    // would be the whole point of the block, missed.
-    resolveOrgInstructions(organizationId),
-  ])
-  const budgetHeader = budgetSnapshot ? encodeGridBudgetHeader(budgetSnapshot) : null
+  const subject = { organizationId, projectId, userId }
+  const context = await resolveRunContext(subject, spec.prompt)
   const conversationId = spec.conversationId
 
-  const payload: JobSubmitPayload = {
-    input: spec.prompt,
+  const { jobId, queued } = await submitBackgroundRun({
+    subject,
+    ownerEmail: spec.ownerEmail,
+    prompt: spec.prompt,
     skills: spec.skillSnapshot ? [spec.skillSnapshot.name] : [],
     output: spec.output,
-    ...(conversationId ? { conversation_id: conversationId } : {}),
-    // The run this job is, so the worker folds its ledger onto the run's own
-    // message instead of narrating into the void (ADR-0062).
-    run_id: spec.runId,
-    ...(spec.clarifierResult ? { clarifier_result: spec.clarifierResult } : {}),
-    ...(spec.documents ? { documents: spec.documents } : {}),
-    data_sources: withAlwaysOnSources(spec.dataSources ?? null),
-    collection_scope: collectionScope,
-    project_context: projectContext,
-    project_memory: projectMemory,
-    memory_reflection_enabled: memoryReflectionEnabled,
-    organization_id: organizationId,
-    user_id: userId,
-    project_id: projectId,
-    owner_email: spec.ownerEmail,
-    budget_header: budgetHeader,
-    model_overrides: modelOverrides,
+    conversationId,
+    runId: spec.runId,
+    clarifierResult: spec.clarifierResult,
+    documents: spec.documents,
+    dataSources: withAlwaysOnSources(spec.dataSources ?? null),
     priority: spec.priority ?? 'interactive',
-  }
-
-  const contextHeaders = buildGridRequestContextWireHeaders(
-    {
-      organizationId,
-      userId,
-      projectId,
-      collectionScope,
-      projectContext,
-      projectMemory,
-      orgInstructions,
-      modelOverrides,
-      budget: budgetSnapshot,
-      bundesland,
-      memoryReflectionEnabled,
-    },
-    process.env.GRID_INTERNAL_API_TOKEN,
-  )
-
-  const { jobId, queued } = await submitJob(payload, contextHeaders)
+    context,
+  })
   const runMessageId = conversationId
     ? await mintRunMessage(conversationId, spec.runId, spec.title)
     : null
@@ -963,49 +898,4 @@ export async function fireScheduledJob(
     return { fired: true, jobId: run.backendJobId ?? undefined }
   }
   return { fired: false, reason: run.status === 'skipped' ? 'skipped' : 'error' }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * The raw remaining-budget snapshot — identical values to the interactive
- * path's `x-grid-budget` header. Best-effort: a lookup failure must not block
- * the run.
- */
-async function resolveBudgetSnapshot(
-  organizationId: string,
-  userId: string,
-  projectId: string,
-): Promise<GridBudgetSnapshot | null> {
-  try {
-    const status = await getBudgetStatus(organizationId, userId, projectId)
-    return {
-      remainingOrgUsd: status.remainingOrgUsd,
-      remainingUserUsd: status.remainingUserUsd,
-      remainingProjectUsd: status.remainingProjectUsd,
-    }
-  } catch {
-    return null
-  }
-}
-
-/**
- * The ordered collection scope for the project — exactly what
- * buildCollectionScopeFromRequest produces for a project. Resolved from the
- * project row (session-less path); falls back to the id-derived name if the
- * row is gone.
- */
-async function buildProjectCollectionScope(
-  projectId: string,
-  organizationId: string,
-): Promise<string[] | null> {
-  const project = await findProjectInOrg(projectId, organizationId)
-  const scope = computeCollectionScope(null, {
-    projectId,
-    projectCollectionName: project?.collectionName,
-    includeProject: true,
-  })
-  return scope.length > 0 ? scope : null
 }

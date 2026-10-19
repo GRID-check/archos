@@ -12,13 +12,17 @@ import type { JSX } from 'react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { usePanelRef } from 'react-resizable-panels'
-import { AlertCircle, Download, Maximize2, PanelRight, X } from 'lucide-react'
+import { AlertCircle, Download, FileText, Maximize2, PanelRight, X } from 'lucide-react'
 import { useTranslations } from '@/i18n'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { Spinner } from '@/components/ui/spinner'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { ToolbarIconButton } from '@/components/ui/floating-toolbar'
+import { useFileFacts } from '../hooks/use-file-facts'
+import { FileExtChip } from './file-ext-chip'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { useSettlingRefresh } from '../hooks/use-settling-refresh'
 import { useDocumentActions, type DocumentScope } from './document-actions'
@@ -29,7 +33,7 @@ import { refreshedFileFields } from '../lib/file-item'
 import { STATUS_FIELDS } from '../lib/document-status-reads'
 import type { FileItem } from './project-file-workspace'
 import {
-  FILE_PEEK_WIDTH_DEFAULT,
+  defaultPeekWidth,
   FILE_PEEK_WIDTH_MAX,
   FILE_PEEK_WIDTH_MIN,
   useFilePreviewStore,
@@ -148,6 +152,11 @@ export function FilePreviewHost({
     openerRef.current = active instanceof HTMLElement && active !== document.body ? active : null
     panelRef.current?.focus()
     const onKey = (event: KeyboardEvent) => {
+      // A layer opened FROM the pane (the reader's details sheet, a confirm,
+      // the review) lives in a portal outside it and answers its own keys:
+      // Escape there closes that layer, not the document under it.
+      const layer = event.target instanceof Element ? event.target.closest('[role="dialog"], [role="alertdialog"]') : null
+      if (layer && layer !== panelRef.current) return
       if (event.key === 'Escape') {
         if (mode === 'expanded') peek()
         else close()
@@ -324,7 +333,7 @@ export function FilePreviewHost({
         className={cn(
           'flex flex-col overflow-hidden outline-none',
           parked &&
-            'invisible pointer-events-none fixed top-0 left-[-120vw] z-[-1] h-[80vh]',
+            'invisible pointer-events-none fixed top-0 left-[-120vw] z-[-1] h-[80dvh]',
           peeking && 'group h-full min-h-0 min-w-0 bg-card',
           // The seam is ONE hairline. This pane carried a `border-l` and the
           // resize handle beside it is itself a 1px line in the same colour —
@@ -344,7 +353,13 @@ export function FilePreviewHost({
           !parked && !peeking && 'group z-40',
           !parked &&
             !peeking &&
-            'bg-popover text-popover-foreground fixed left-1/2 top-1/2 z-50 h-[85vh] w-[min(960px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border shadow-lg',
+            'bg-popover text-popover-foreground fixed left-1/2 top-1/2 z-50 h-[85dvh] w-[min(960px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border shadow-lg',
+          // On a phone, portrait or on its side, the document is the screen:
+          // one presentation however it was opened (Dateien, the chat's file
+          // pill, a citation), not a card with the page dimmed around it.
+          !parked &&
+            !peeking &&
+            'phone:inset-0 phone:h-dvh phone:w-full phone:translate-x-0 phone:translate-y-0 phone:rounded-none phone:border-0 phone:shadow-none',
           // The enlarged view arrives on the page it covers: fade plus a small
           // scale, `duration-base`/`ease-entrance` — the vocabulary's content
           // entrance. `zoom-in-95` is 5% of a 960px dialog, a settle rather
@@ -374,7 +389,6 @@ export function FilePreviewHost({
           canCollaborate={context.canCollaborate}
           lifecyclePermissions={context.lifecyclePermissions}
           viewerUserId={context.viewerUserId}
-          showMetadataPanel={panePresentation !== 'peek'}
           showModels={context.showModels}
           presentation={panePresentation}
           onClose={overlay ? (mode === 'expanded' ? peek : close) : hide}
@@ -403,6 +417,10 @@ export function FilePreviewHost({
           onLifecycleChanged={(fileId, summary) => {
             if (fileId === file.id) patchFile(summary)
             context.onLifecycleChanged?.(fileId, summary)
+          }}
+          onMarksChanged={(fileId, marks) => {
+            if (fileId === file.id) patchFile({ marks })
+            context.onMarksChanged?.(fileId, marks)
           }}
         />
       </div>
@@ -554,7 +572,13 @@ function FilePreviewSplit({
       <ResizablePanel
         key="grid-file-ask-chat"
         id="grid-file-ask-chat"
-        defaultSize="100"
+        // NO `defaultSize`. It used to be "100" — 100% of the row — beside a
+        // file panel defaulting to 320px, two defaults summing past the row.
+        // Whenever the group could measure itself at mount (reduced motion was
+        // the reliable trigger) the library settled that by collapsing the file
+        // panel, and `expand()` could not bring it back: the peek never opened
+        // for anyone who had asked their system for less motion. The chat
+        // panel takes whatever the file panel leaves.
         minSize="40"
         className="relative min-h-0 min-w-0 overflow-hidden"
       >
@@ -610,8 +634,9 @@ function FilePreviewSplit({
           disableDoubleClick
           onDoubleClick={() => {
             filePanelRef.current?.expand()
-            filePanelRef.current?.resize(FILE_PEEK_WIDTH_DEFAULT)
-            setPeekWidth(FILE_PEEK_WIDTH_DEFAULT)
+            const width = defaultPeekWidth()
+            filePanelRef.current?.resize(width)
+            setPeekWidth(width)
           }}
         />
       ) : null}
@@ -668,21 +693,15 @@ function dismissPeek(hide: () => void): void {
 }
 
 /**
- * The peek's own actions, built to the chat's proportions.
+ * The peek's header: the document's identity on the left, its actions in a
+ * pill on the right.
  *
- * `size-9` and `rounded-md` are the pill buttons' across the seam, so the two
- * halves of the row are the same control size rather than 28px against 36px.
- * The ring is the app's shared recipe (`FOCUS_RING`) instead of a third
- * hand-rolled variant — `grid-design-language.md` allows exactly two, and a
- * control that invents its own teaches the reader that the ring means nothing.
+ * Identity is the extension tile, the name, and the facts line — the same
+ * tile the modal header carries, so a file looks like itself on both. The
+ * actions sit in the pill material the chat toolbar uses across the seam,
+ * which makes the two halves of the row one family instead of a toolbar
+ * facing three loose icons.
  */
-const peekIconButtonClass = cn(
-  'text-muted-foreground hover:text-foreground hover:bg-accent flex size-9 shrink-0 items-center justify-center rounded-md',
-  'opacity-70 transition-[opacity,color,background-color] duration-quick ease-out motion-reduce:transition-none',
-  'focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100',
-  FOCUS_RING,
-)
-
 function PeekToolbar({
   file,
   scope,
@@ -698,65 +717,59 @@ function PeekToolbar({
 }): JSX.Element {
   const t = useTranslations('files')
   const actions = useDocumentActions({ document: file, scope })
-  // Shown only when it is NOT the answer the reader assumes. A peek exists
-  // because this file is what the next question is about, and a document that
-  // is still indexing (or failed) is one the agent cannot cite — the modal has
-  // said so under the name since the day it was built, and the peek, the one
-  // surface whose whole reason is "you are asking about this", said nothing.
-  // Silent for a citable file: quiet chrome is the point of the peek.
-  const unreadable = !isCitableStatus(file.status)
+  const facts = useFileFacts(file)
   return (
     <>
-    {/* 48px row, held 10px off the top — the same band the chat's own pills
-        occupy (`ChatToolbar`: `pt-2.5` + `min-h-12`), so the file's name and the
-        session's title sit on one line across the seam instead of missing each
-        other by fourteen pixels. */}
-    <div className="mt-2.5 flex h-12 shrink-0 items-center gap-0.5 px-3">
-      <p
-        // `text-sm`, like the session title in the pills across the seam. At
-        // `text-xs` the two names sat on one line in two different sizes, which
-        // reads as two unrelated surfaces that happen to be adjacent.
-        className="text-foreground min-w-0 flex-1 truncate px-1 text-sm font-medium tracking-[-0.01em]"
-        // The pane is 280px at its narrowest and a plan's filename is not.
-        title={name}
-      >
-        {name}
-      </p>
-      <button
-        type="button"
-        onClick={() => void actions.download()}
-        disabled={actions.isDownloading}
-        aria-label={t('preview.download')}
-        title={t('preview.download')}
-        className={`${peekIconButtonClass} disabled:opacity-40`}
-      >
-        {/* A signed URL for a 40 MB plan is not instant, and a button that only
-            dims tells the reader their click may not have landed — so they
-            click again. The spinner is the acknowledgement, in the place the
-            icon was. */}
-        {actions.isDownloading ? (
-          <Spinner size="xs" aria-hidden />
-        ) : (
-          <Download className="size-4" />
+    {/* Held 10px off the top, the band the chat's own pills occupy
+        (`ChatToolbar`: `pt-2.5` + `min-h-12`), so the file's name and the
+        session's title sit on one line across the seam. */}
+    <div className="mt-2.5 flex min-h-12 shrink-0 items-center gap-2.5 pr-3 pb-2.5 pl-4">
+      <FileExtChip filename={file.filename} size="sm" fallback={<FileText className="size-3.5" />} />
+      <div className="min-w-0 flex-1">
+        <p
+          className="text-foreground truncate text-sm font-semibold leading-tight tracking-[-0.01em]"
+          // The pane is 280px at its narrowest and a plan's filename is not.
+          title={name}
+        >
+          {name}
+        </p>
+        {facts && (
+          <p
+            data-testid="file-peek-facts"
+            className="text-muted-foreground mt-0.5 truncate text-xs tabular-nums"
+          >
+            {facts}
+          </p>
         )}
-      </button>
-      <button
-        type="button"
-        onClick={onExpand}
-        aria-label={t('assignment.expandFile')}
-        title={t('assignment.expandFile')}
-        className={peekIconButtonClass}
-      >
-        <Maximize2 className="size-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => dismissPeek(onHide)}
-        aria-label={t('preview.closePreview')}
-        className={peekIconButtonClass}
-      >
-        <X className="size-4" />
-      </button>
+      </div>
+      <ButtonGroup className="border-base bg-card/60 shrink-0 gap-0.5 shadow-none">
+        <ToolbarIconButton
+          onClick={() => void actions.download()}
+          disabled={actions.isDownloading}
+          aria-label={t('preview.download')}
+          title={t('preview.download')}
+        >
+          {/* A signed URL for a 40 MB plan is not instant, and a button that
+              only dims tells the reader their click may not have landed — so
+              they click again. The spinner is the acknowledgement, in the
+              place the icon was. */}
+          {actions.isDownloading ? <Spinner size="xs" aria-hidden /> : <Download aria-hidden />}
+        </ToolbarIconButton>
+        <ToolbarIconButton
+          onClick={onExpand}
+          aria-label={t('assignment.expandFile')}
+          title={t('assignment.expandFile')}
+        >
+          <Maximize2 aria-hidden />
+        </ToolbarIconButton>
+        <ToolbarIconButton
+          onClick={() => dismissPeek(onHide)}
+          aria-label={t('preview.closePreview')}
+          title={t('preview.closePreview')}
+        >
+          <X aria-hidden />
+        </ToolbarIconButton>
+      </ButtonGroup>
     </div>
     {/* A STRIP, not a chip beside the name.
         The status has to be here at all: a peek exists because this file is
@@ -772,7 +785,7 @@ function PeekToolbar({
         Nothing at all for a citable file: quiet chrome is the point of the
         peek, and a badge that says "fine" on every document is a badge nobody
         reads when it says something else. */}
-    {unreadable && (
+    {!isCitableStatus(file.status) && (
       <div
         role="status"
         className={cn(
@@ -780,7 +793,10 @@ function PeekToolbar({
           // narrow pane, and a badge floating against the middle of a paragraph
           // reads as unrelated to it. Aligned to the first line it reads as the
           // sentence's subject, which is what it is.
-          'flex shrink-0 items-start gap-2 border-b px-3 pb-2.5 text-xs',
+          // Inset, at the stage's margins and on the radius ladder's inner-panel
+          // step, so it reads as a note ABOUT the document below it rather
+          // than as a band across the pane.
+          'mx-3 mb-2.5 flex shrink-0 items-start gap-2 rounded-md border px-3 py-2 text-xs',
           // TWO REGISTERS, because they are two different pieces of news.
           // "Still being read" is the ordinary state of a document somebody
           // just uploaded: it resolves itself, so it sits on the quiet ground
