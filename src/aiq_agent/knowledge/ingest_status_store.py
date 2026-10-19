@@ -57,6 +57,13 @@ replica is gone. While its queue row exists (queued, claimed, or waiting to be
 claimed again) the row is never stale (``_stale_predicate``); the queue drops
 the row when the job finishes or has failed every attempt, and only then can
 the job read as interrupted.
+
+A JOB A PERSON STOPPED SETTLES CANCELLED, NOT INTERRUPTED. A cancel leaves a
+cancelled row in the queue (``claim_queue.CANCELLED``) and that row is read
+before a lost owner is settled: ``_settle_lost`` writes ``cancelled`` when the
+queue says so, the ``interrupted`` failure otherwise. So the same lost owner
+reads honestly either way, and a worker that stops at its next ownership check
+settles its own row the same way (``settle_cancelled``).
 """
 
 from __future__ import annotations
@@ -107,6 +114,12 @@ _LEGACY_STALE_AFTER_SECONDS = 15 * 60
 #: ``reason: text`` shape as ``vlm_not_configured``) and in ``metadata``.
 INTERRUPTED = "interrupted"
 INTERRUPTED_MESSAGE = f"{INTERRUPTED}: ingestion stopped when the service restarted; retry to index this file"
+
+#: The reason a stopped job carries. Not a failure: nothing went wrong, a person
+#: ended it. It travels the same shape as ``INTERRUPTED`` so a reader that
+#: already parses ``reason: text`` needs no new path.
+CANCELLED = "cancelled"
+CANCELLED_MESSAGE = f"{CANCELLED}: ingestion was stopped; start it again to index this file"
 
 #: Newest stale rows the startup sweep settles; older ones settle when read.
 _SWEEP_LIMIT = 500
@@ -192,12 +205,14 @@ def _ago(url: str, seconds: int) -> str:
 
 def _stale_predicate(url: str) -> str:
     """SQL: this row's owner has stopped vouching for it. Built from constants only."""
+    retired = ", ".join(f"'{status}'" for status in ingest_queue.RETIRED)
     return (
         f"(((heartbeat_at IS NOT NULL AND heartbeat_at < {_ago(url, STALE_AFTER_SECONDS)}) "
         f"OR (heartbeat_at IS NULL AND updated_at < {_ago(url, _LEGACY_STALE_AFTER_SECONDS)})) "
-        # A dead row is the trace of a job the queue gave up on: it holds nothing.
+        # A retired row (dead: the queue gave up; cancelled: a person stopped it)
+        # holds nothing, so the job can settle.
         f"AND NOT EXISTS (SELECT 1 FROM {ingest_queue.TABLE} q "
-        f"WHERE q.job_id = ingest_jobs.job_id AND q.status <> '{ingest_queue.DEAD}'))"
+        f"WHERE q.job_id = ingest_jobs.job_id AND q.status NOT IN ({retired})))"
     )
 
 
@@ -225,16 +240,50 @@ def interrupted(status: IngestionJobStatus) -> IngestionJobStatus:
     return failed
 
 
-def _settle_interrupted(conn, url: str, status: IngestionJobStatus) -> IngestionJobStatus | None:
-    """Write the interrupted failure, unless the owner beat again since it was read.
+def cancelled(status: IngestionJobStatus) -> IngestionJobStatus:
+    """``status`` as a job a person stopped: terminal ``cancelled``, unfinished files stopped.
 
-    The failure written, or None when the conditional update matched no row:
-    the owner beat (or wrote) between the read and this update, so the row is
-    live and the caller must read it again rather than report a failure that
-    was never stored. ``owner`` is cleared so the owner, if it is alive after
-    all, sees its heartbeat miss this row (see the module docstring).
+    Not ``interrupted``: nothing failed, so the job carries no failure facts and
+    is not retryable-by-rule — a person starts it again if they want it. Files
+    the job had not finished cannot keep a live file state (the listing would
+    show them being read forever), so they are recorded FAILED, and their own
+    message says they were stopped (``FileStatus`` has no neutral state).
     """
-    failed = interrupted(status)
+    stopped = status.model_copy(deep=True)
+    stopped.status = JobState.CANCELLED
+    stopped.error_message = CANCELLED_MESSAGE
+    # A naive-UTC ISO string, as the adapter stores it (see ``interrupted``).
+    stopped.completed_at = datetime.now(UTC).replace(tzinfo=None).isoformat()
+    stopped.metadata = {**stopped.metadata, "cancelled": True}
+    for detail in stopped.file_details:
+        if detail.status in (FileStatus.SUCCESS, FileStatus.FAILED):
+            continue
+        detail.status = FileStatus.FAILED
+        detail.error_message = CANCELLED_MESSAGE
+    return stopped
+
+
+def _queue_status(conn, job_id: str) -> str | None:
+    """The job's row in the queue table as it stands, or None. A constant statement; the id is bound."""
+    row = conn.execute(
+        text(f"SELECT status FROM {ingest_queue.TABLE} WHERE job_id = :job_id"), {"job_id": job_id}
+    ).scalar_one_or_none()
+    return str(row) if row is not None else None
+
+
+def _settle_lost(conn, url: str, status: IngestionJobStatus) -> IngestionJobStatus | None:
+    """Write the terminal state a lost owner leaves, unless the owner beat again since it was read.
+
+    Which state is the queue's to say: ``cancelled`` when its row says a person
+    stopped the job, the ``interrupted`` failure otherwise (see the module
+    docstring). The state written, or None when the conditional update matched
+    no row: the owner beat (or wrote) between the read and this update, so the
+    row is live and the caller must read it again rather than report a state
+    that was never stored. ``owner`` is cleared so the owner, if it is alive
+    after all, sees its heartbeat miss this row (see the module docstring).
+    """
+    stopped = _queue_status(conn, status.job_id) == ingest_queue.CANCELLED
+    settled = cancelled(status) if stopped else interrupted(status)
     result = conn.execute(
         # _now/_stale_predicate are dialect-chosen literals; values are bound.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
@@ -242,13 +291,13 @@ def _settle_interrupted(conn, url: str, status: IngestionJobStatus) -> Ingestion
             f"UPDATE ingest_jobs SET status_json = :status_json, updated_at = {_now(url)}, owner = NULL "
             f"WHERE job_id = :job_id AND {_stale_predicate(url)}"
         ),
-        {"job_id": status.job_id, "status_json": failed.model_dump_json(warnings=False)},
+        {"job_id": status.job_id, "status_json": settled.model_dump_json(warnings=False)},
     )
     conn.commit()
     if result.rowcount == 0:
         return None
-    logger.warning("Ingest job %s lost its owner; recorded as %s", status.job_id, INTERRUPTED)
-    return failed
+    logger.warning("Ingest job %s lost its owner; recorded as %s", status.job_id, CANCELLED if stopped else INTERRUPTED)
+    return settled
 
 
 def _read(conn, job_id: str) -> IngestionJobStatus | None:
@@ -308,6 +357,42 @@ def put(status: IngestionJobStatus) -> bool:
     except Exception:
         logger.warning("Failed to persist ingest status for %s (will retry)", status.job_id, exc_info=True)
         return False
+    return True
+
+
+def settle_cancelled(job_id: str) -> bool:
+    """Settle a live row as ``cancelled``; whether one was live. Never raises.
+
+    For a run that ended because the queue stopped it (``QueueSource._finish``):
+    the worker abandoned before writing anything, so the row is still live and
+    ``cancelled`` is the honest state — not the ``interrupted`` a lost owner
+    leaves. Best effort: a row another writer already settled (a job that
+    finished in the race) is left as it is.
+    """
+    url = _db_url()
+    if not url:
+        return False
+    try:
+        _ensure_table(url)
+        engine = DocumentMetadataStore._get_or_create_sync_engine(url)
+        with engine.connect() as conn:
+            status = _read(conn, job_id)
+            if status is None or not _is_live(status):
+                return False
+            conn.execute(
+                # _now is a dialect-chosen literal; values are bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(
+                    f"UPDATE ingest_jobs SET status_json = :status_json, updated_at = {_now(url)}, owner = NULL "
+                    "WHERE job_id = :job_id"
+                ),
+                {"job_id": job_id, "status_json": cancelled(status).model_dump_json(warnings=False)},
+            )
+            conn.commit()
+    except Exception:
+        logger.warning("Failed to settle cancelled ingest job %s", job_id, exc_info=True)
+        return False
+    logger.info("Ingest job %s was cancelled; status settled", job_id)
     return True
 
 
@@ -376,7 +461,7 @@ def _as_read(conn, url: str, status_json: str, stale: bool) -> IngestionJobStatu
     status = IngestionJobStatus.model_validate_json(status_json)
     if not (stale and _is_live(status)):
         return status
-    return _settle_interrupted(conn, url, status) or _read(conn, status.job_id)
+    return _settle_lost(conn, url, status) or _read(conn, status.job_id)
 
 
 def find_live(dispatch_key: str) -> IngestionJobStatus | None:
@@ -409,7 +494,7 @@ def find_live(dispatch_key: str) -> IngestionJobStatus | None:
                     continue
                 if not stale:
                     return status
-                if _settle_interrupted(conn, url, status) is not None:
+                if _settle_lost(conn, url, status) is not None:
                     continue
                 # The owner beat between the read and the settle: live after all.
                 current = _read(conn, status.job_id)
@@ -450,7 +535,7 @@ def fail_interrupted() -> int:
             live = [status for status in map(IngestionJobStatus.model_validate_json, rows) if _is_live(status)]
             # Counted only when the conditional update matched: a row whose
             # owner beat since the read was not settled.
-            settled = sum(_settle_interrupted(conn, url, status) is not None for status in live)
+            settled = sum(_settle_lost(conn, url, status) is not None for status in live)
     except Exception:
         logger.warning("Could not settle interrupted ingest jobs (continuing)", exc_info=True)
     return settled

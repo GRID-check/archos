@@ -27,6 +27,10 @@ worker cannot finish it:
 * A job past ``GRID_INGEST_MAX_JOB_SECONDS``, or silent for
   ``GRID_INGEST_PROGRESS_TIMEOUT_SECONDS``, stops being heartbeat, so its claim
   goes stale and another worker takes it (up to the attempt limit, then dead).
+* A person may stop one (:func:`cancel`). Its queue row goes ``cancelled``,
+  which no worker claims again and no depth counts; a running worker's next
+  heartbeat fails, so it stops before it reads or writes and its status settles
+  ``cancelled``, not the ``interrupted`` a lost owner leaves.
 """
 
 from __future__ import annotations
@@ -395,7 +399,7 @@ class QueueSource:
             ingest_queue.reap_exhausted(stale_seconds=self._stale, max_attempts=self._max_attempts)
         if now >= self._next_purge:
             self._next_purge = now + _PURGE_EVERY_SECONDS
-            ingest_queue.purge_dead(older_than_seconds=_dead_retention_seconds())
+            ingest_queue.purge_retired(older_than_seconds=_dead_retention_seconds())
 
     def _run(self, job_id: str, prepared: PreparedIngestJob, run: _Run) -> None:
         beat = threading.Thread(target=self._beat, args=(job_id, run), daemon=True, name=f"ingest-claim-{job_id[:8]}")
@@ -409,16 +413,30 @@ class QueueSource:
             self._finish(job_id, run)
 
     def _finish(self, job_id: str, run: _Run) -> None:
-        """Account for a run that ended, and forget its job unless the deadline ended it."""
+        """Account for a run that ended, and forget its job unless it was stopped or expired."""
         with self._held_lock:
             self._held.pop(job_id, None)
         ingest_queue.QUEUE.record_duration(time.monotonic() - run.started, "ingest")
+        if self._was_cancelled(job_id):
+            # A person stopped it: keep the row as the trace, and settle the
+            # status the worker left live as ``cancelled``, not interrupted.
+            ingest_status_store.settle_cancelled(job_id)
+            return
         if run.expired:
             # The row keeps its stale heartbeat: another worker takes the job,
             # and the attempt limit decides when it is given up.
             logger.error("Ingestion job %s ran past %ds and was stopped", job_id, self._max_job_seconds)
             return
         ingest_queue.mark_done(job_id, self._worker)
+
+    @staticmethod
+    def _was_cancelled(job_id: str) -> bool:
+        """Whether the queue stopped this job. A database that cannot answer is not a cancel."""
+        try:
+            return ingest_queue.status_of(job_id) == ingest_queue.CANCELLED
+        except Exception:  # noqa: BLE001 - an unanswered question must not strand the row
+            logger.warning("Could not read the queue status of ingestion job %s", job_id, exc_info=True)
+            return False
 
     def _still_owner(self, job_id: str, run: _Run) -> bool:
         """Whether this worker still holds the claim, asked of the database at the moment it matters.
@@ -539,6 +557,38 @@ def release_held() -> int:
     """
     source = _active
     return source.release_held() if source is not None else 0
+
+
+#: How a cancel ended, as :func:`cancel` reports it.
+CANCEL_STOPPED = "cancelled"
+CANCEL_FINISHED = "finished"
+CANCEL_UNAVAILABLE = "unavailable"
+
+
+def cancel(job_id: str) -> str:
+    """Stop a queued or running ingestion job; what happened.
+
+    The stop is the queue's: its row goes ``cancelled``, so a waiting job is
+    never claimed and a running worker's next heartbeat fails, stopping it at
+    its next ownership check before it reads or writes. A running worker then
+    settles its own status (``QueueSource._finish``); a job still ``queued`` has
+    no worker to do that, so its status is settled here at once.
+
+    Returns ``CANCEL_STOPPED`` when a live job was stopped, ``CANCEL_FINISHED``
+    when the queue holds no live row for it (done, or never queued), and
+    ``CANCEL_UNAVAILABLE`` when the queue is off or has no database — an
+    in-memory job runs in a process this one cannot reach, so it cannot be
+    stopped from here.
+    """
+    if not queue_enabled():
+        return CANCEL_UNAVAILABLE
+    prior = ingest_queue.cancel(job_id)
+    if prior is None:
+        return CANCEL_FINISHED
+    if prior == ingest_queue.QUEUED:
+        # No worker will ever pick this up: settle its status here.
+        ingest_status_store.settle_cancelled(job_id)
+    return CANCEL_STOPPED
 
 
 def attach(ingestor: BaseIngestor | None) -> bool:

@@ -150,6 +150,10 @@ class JobState(StrEnum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    #: A person stopped the job before it finished (``claim_queue.CANCELLED``).
+    #: Terminal, and neither a failure nor a success: nothing went wrong, but
+    #: nothing was indexed either. A reader shows it as its own state.
+    CANCELLED = "cancelled"
 
 
 class FileStatus(StrEnum):
@@ -472,8 +476,8 @@ class IngestionJobStatus(BaseModel):
 
     @property
     def is_terminal(self) -> bool:
-        """Check if job is in a terminal state (completed or failed)."""
-        return self.status in (JobState.COMPLETED, JobState.FAILED)
+        """Check if job is in a terminal state (completed, failed or cancelled)."""
+        return self.status in (JobState.COMPLETED, JobState.FAILED, JobState.CANCELLED)
 
     @property
     def is_success(self) -> bool:

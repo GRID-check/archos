@@ -199,7 +199,7 @@ def test_a_worker_claims_runs_and_forgets_the_job(db):
 
     assert [p.job_id for p in worker.ran] == ["job-1"]
     assert worker.ran[0].file_paths[0].to_payload()["url"] == _ORIGINAL
-    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 0}
+    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 0, "cancelled": 0}
     assert worker.source() is None
 
 
@@ -213,7 +213,7 @@ def test_an_unreadable_job_is_dropped_and_reads_failed(db):
     worker.source()()
 
     assert worker.ran == []
-    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 1}  # kept, with its reason
+    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 1, "cancelled": 0}  # kept, with its reason
     failed = ingest_status_store.get("job-1")
     assert failed.status == JobState.FAILED
     assert failed.error_message.startswith("unreadable_job:")
@@ -275,7 +275,7 @@ def test_another_ingestors_free_worker_claims_and_runs_the_job(db, tmp_path, mon
         worker._ingest_pool.shutdown(wait=True, timeout=5)
 
     assert ran == [(prepared.job_id, "proj_1", "org-1", True)]
-    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 0}
+    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 0, "cancelled": 0}
 
 
 async def test_the_ingest_worker_claims_until_told_to_stop_then_drains(db, monkeypatch, tmp_path):
@@ -737,3 +737,79 @@ def test_a_queue_error_does_not_leak_the_payload(db, monkeypatch):
         ingest_dispatch.enqueue_only(_corpus_job())
 
     assert "secret" not in str(raised.value)
+
+
+# ------------------------------------------------------------------- cancel
+
+
+def test_cancelling_a_waiting_job_settles_it_cancelled_without_a_worker(db):
+    ingest_status_store.put(_prepared().status)
+    ingest_dispatch.dispatch(FakeIngestor(), _prepared())
+
+    assert ingest_dispatch.cancel("job-1") == ingest_dispatch.CANCEL_STOPPED
+
+    assert _queue_rows(db)["job-1"][0] == "cancelled"
+    settled = ingest_status_store.get("job-1")
+    assert settled.status == JobState.CANCELLED
+    assert settled.error_message.startswith("cancelled:")
+
+
+def test_a_cancel_reports_finished_when_the_queue_holds_no_live_row(db):
+    assert ingest_dispatch.cancel("never-queued") == ingest_dispatch.CANCEL_FINISHED
+
+    ingest_dispatch.dispatch(FakeIngestor(), _prepared())
+    worker = FakeIngestor()
+    ingest_dispatch.attach(worker)
+    worker.source()()  # runs and forgets the job
+
+    assert ingest_dispatch.cancel("job-1") == ingest_dispatch.CANCEL_FINISHED
+    assert _queue_rows(db) == {}
+
+
+def test_cancel_is_unavailable_when_the_queue_is_off_or_has_no_database(db, monkeypatch):
+    monkeypatch.setenv("GRID_INGEST_QUEUE", "off")
+    assert ingest_dispatch.cancel("job-1") == ingest_dispatch.CANCEL_UNAVAILABLE
+
+    monkeypatch.delenv("GRID_INGEST_QUEUE", raising=False)
+    monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+    monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
+    assert ingest_dispatch.cancel("job-1") == ingest_dispatch.CANCEL_UNAVAILABLE
+
+
+def test_a_running_job_cancelled_mid_run_stops_and_settles_cancelled(db):
+    """The whole stop: a claimed row cancelled in flight fails the next ownership check, writes nothing."""
+    ingest_status_store.put(_prepared().status)
+    ingest_dispatch.dispatch(FakeIngestor(), _prepared())
+    worker = FakeIngestor()
+    ingest_dispatch.attach(worker)
+    seen: list[bool] = []
+
+    def runs_until_cancelled(prepared, still_owner=None):
+        seen.append(still_owner())  # it holds the claim
+        assert ingest_dispatch.cancel(prepared.job_id) == ingest_dispatch.CANCEL_STOPPED
+        seen.append(still_owner())  # the next check says no: it stops here, before writing
+
+    worker.run_prepared = runs_until_cancelled
+    worker.source()()
+
+    assert seen == [True, False]
+    assert _queue_rows(db)["job-1"][0] == "cancelled"  # kept as the trace, not forgotten
+    settled = ingest_status_store.get("job-1")
+    assert settled.status == JobState.CANCELLED
+    assert settled.error_message.startswith("cancelled:")
+
+
+def test_a_queue_that_cannot_answer_whether_it_was_cancelled_is_not_a_cancel(db, monkeypatch):
+    """A database that cannot answer must not strand the row: the run finishes and is forgotten."""
+
+    def broken(_job_id):
+        raise ConnectionError("database gone")
+
+    monkeypatch.setattr(ingest_queue, "status_of", broken)
+    ingest_dispatch.dispatch(FakeIngestor(), _prepared())
+    worker = FakeIngestor()
+    ingest_dispatch.attach(worker)
+
+    worker.source()()
+
+    assert _queue_rows(db) == {}

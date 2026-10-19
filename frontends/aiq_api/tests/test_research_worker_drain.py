@@ -89,7 +89,7 @@ async def test_a_job_that_outlasts_the_drain_goes_back_to_the_queue_without_an_a
     assert cancelled.is_set(), "the run in this process stopped"
     # The claim is back, spent no attempt, and is another worker's to take at once.
     assert queue.claim_state(db_url, "job-1") == (queue.QUEUED, None)
-    assert queue.counts(db_url) == {"queued": 1, "claimed": 0, "dead": 0}
+    assert queue.counts(db_url) == {"queued": 1, "claimed": 0, "dead": 0, "cancelled": 0}
     taken = queue.claim_next(db_url, "worker-B", 90, 3)
     assert (taken["job_id"], taken["attempts"]) == ("job-1", 1)
     # It waits as submitted, not running, so the ghost reaper does not fail it, and nothing says "cancelled".
@@ -166,7 +166,7 @@ async def test_a_job_that_finishes_inside_the_drain_is_not_given_back(fleet, mon
     await asyncio.wait_for(task, timeout=15)
 
     assert finished == ["short"]
-    assert queue.counts(db_url) == {"queued": 0, "claimed": 0, "dead": 0}  # done: the row is gone
+    assert queue.counts(db_url) == {"queued": 0, "claimed": 0, "dead": 0, "cancelled": 0}  # done: the row is gone
     assert _job_status(async_url, "job-1") == "running"  # the worker's own verdict is the runner's to write
 
 

@@ -37,6 +37,10 @@ A claim that cannot finish is given back, not lost:
   times; ``reap_exhausted`` then moves it to ``status='dead'`` with a reason.
   A dead row is kept (the trace of what failed), counted, and never counted as
   work: it is not runnable, not running, and not in the autoscaler's depth.
+* ``cancel`` retires a job a person stopped before it finished
+  (``status='cancelled'``). Like a dead row it is kept as a trace, is never
+  runnable or running, and is not in the autoscaler's depth; unlike one it did
+  not fail, so the caller settles the job ``cancelled``, not interrupted.
 
 Postgres ranks LANES in SQL (~43 ms p50 at 100 000 queued jobs across 2 000
 lanes, ADR-0076); SQLite, which backs single-process dev and tests, ranks the
@@ -75,9 +79,18 @@ logger = logging.getLogger(__name__)
 QUEUED = "queued"
 CLAIMED = "claimed"
 DEAD = "dead"
+#: A job a person stopped before it finished. Terminal, and NOT work: not
+#: runnable, not running, and not in the autoscaler's depth (like DEAD), but it
+#: did not fail — the status store settles the job as ``cancelled``, not as the
+#: failure a dead row leaves. The row is kept as the trace that it was stopped,
+#: and ``purge_retired`` deletes it on the same clock as a dead row.
+CANCELLED = "cancelled"
+
+#: A status a job is never claimed in again: dead (gave up) or cancelled (stopped).
+RETIRED = (DEAD, CANCELLED)
 
 #: The statuses a row can have, for the depth gauge's zero fill.
-STATUSES = (QUEUED, CLAIMED, DEAD)
+STATUSES = (QUEUED, CLAIMED, DEAD, CANCELLED)
 
 #: Lower runs first. Stored as an integer so the order is an index order.
 PRIORITY_INTERACTIVE = 0
@@ -257,6 +270,7 @@ class ClaimQueue:
             f"  priority INTEGER NOT NULL DEFAULT {PRIORITY_INTERACTIVE},"
             f"  dead_at {ts},"
             "  dead_reason TEXT,"
+            f"  cancelled_at {ts},"
             f"  created_at {ts} DEFAULT {now}"
             ")",
             f"CREATE TABLE IF NOT EXISTS {self.turns_table} (lane VARCHAR PRIMARY KEY, last_claimed_at {ts})",
@@ -292,6 +306,7 @@ class ClaimQueue:
             "priority": f"INTEGER NOT NULL DEFAULT {PRIORITY_INTERACTIVE}",
             "dead_at": ts,
             "dead_reason": "TEXT",
+            "cancelled_at": ts,
         }
         present = {column["name"] for column in inspect(conn).get_columns(self.table)}
         guard = "IF NOT EXISTS " if "WITH TIME ZONE" in ts else ""
@@ -546,15 +561,22 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
         return (result.rowcount or 0) > 0
 
     def mark_done(self, job_id: str, worker: str | None = None) -> None:
-        """Forget a finished job; with ``worker``, only while the claim is still its own."""
+        """Forget a finished job; with ``worker``, only while the claim is still its own.
+
+        A worker's delete is gated on the row still being CLAIMED, so a row the
+        queue retired meanwhile (cancelled, dead) is kept as the trace it is, not
+        deleted under the worker's feet. A caller with no ``worker`` (the cancel
+        route, a submit that could not queue) deletes unconditionally.
+        """
         url = self._db_url()
         if not url:
             return
         sql = f"DELETE FROM {self.table} WHERE job_id = :id"
         params: dict = {"id": job_id}
         if worker is not None:
-            sql += " AND claimed_by = :worker"
+            sql += " AND claimed_by = :worker AND status = :claimed"
             params["worker"] = worker
+            params["claimed"] = CLAIMED
         with self._engine_for(url).connect() as conn:
             # Only module constants are interpolated; values are bound.
             # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
@@ -591,11 +613,68 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
             logger.info("%s: %d claim(s) of %s released without an attempt", self.name, released, worker)
         return released
 
+    def cancel(self, job_id: str) -> str | None:
+        """Stop a live job before it finishes; the status it held (``queued``/``claimed``), or None.
+
+        A queued row never reaches a worker. A claimed one is left to its worker:
+        ``heartbeat`` matches only a CLAIMED row, so the worker's next beat fails
+        and it stops at its next ownership check, before it reads or writes. The
+        row stays as a ``cancelled`` trace, on the same purge clock as a dead one,
+        its payload blanked as a dead row's is: it will never run, and the payload
+        can carry presigned URLs worth no longer holding. A row already retired
+        (dead, cancelled) or absent has nothing live to stop and is None.
+        """
+        url = self._db_url()
+        if not url:
+            return None
+        self.ensure_table(url)
+        now = "NOW()" if _is_postgres(url) else "CURRENT_TIMESTAMP"
+        with self._engine_for(url).connect() as conn:
+            prior = conn.execute(
+                # Only module constants are interpolated; the id is bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(f"SELECT status FROM {self.table} WHERE job_id = :id"),
+                {"id": job_id},
+            ).scalar()
+            if prior not in (QUEUED, CLAIMED):
+                return None
+            result = conn.execute(
+                # `now` is a dialect literal, the rest module constants; values are bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(
+                    f"UPDATE {self.table} SET status = :cancelled, cancelled_at = {now}, payload = '' "
+                    "WHERE job_id = :id AND status IN (:queued, :claimed)"
+                ),
+                {"cancelled": CANCELLED, "queued": QUEUED, "claimed": CLAIMED, "id": job_id},
+            )
+            conn.commit()
+        if (result.rowcount or 0) == 0:
+            # Finished under us between the read and the write: nothing to stop.
+            return None
+        logger.info("%s: job %s cancelled (was %s)", self.name, job_id, prior)
+        return str(prior)
+
+    def status_of(self, job_id: str) -> str | None:
+        """The queue's status for a job, or None when it holds none (finished, or never queued)."""
+        url = self._db_url()
+        if not url:
+            return None
+        self.ensure_table(url)
+        with self._engine_for(url).connect() as conn:
+            row = conn.execute(
+                # Only module constants are interpolated; the id is bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(f"SELECT status FROM {self.table} WHERE job_id = :id"),
+                {"id": job_id},
+            ).scalar()
+        return str(row) if row is not None else None
+
     def mark_dead(self, job_id: str, reason: str) -> bool:
         """Retire a job that must not run again, keeping the row; whether a live row was retired.
 
         The payload is blanked: it can carry presigned URLs and a dead row is
-        kept for the trace of what failed, not to run.
+        kept for the trace of what failed, not to run. A row already retired —
+        dead, or cancelled by a person — is left as it is.
         """
         url = self._db_url()
         if not url:
@@ -608,9 +687,9 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
                 # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 text(
                     f"UPDATE {self.table} SET status = :dead, dead_at = {now}, dead_reason = :reason, payload = '' "
-                    "WHERE job_id = :id AND status <> :dead"
+                    "WHERE job_id = :id AND status NOT IN (:dead, :cancelled)"
                 ),
-                {"dead": DEAD, "reason": reason, "id": job_id},
+                {"dead": DEAD, "cancelled": CANCELLED, "reason": reason, "id": job_id},
             )
             conn.commit()
         retired = (result.rowcount or 0) > 0
@@ -660,24 +739,30 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
             logger.error("%s: %d job(s) failed %d claims each and are dead", self.name, len(ids), max_attempts)
         return ids
 
-    def purge_dead(self, *, older_than_seconds: int) -> int:
-        """Delete dead rows older than the retention; how many. A dead row is a trace, not a record."""
+    def purge_retired(self, *, older_than_seconds: int) -> int:
+        """Delete dead or cancelled rows older than the retention; how many.
+
+        A retired row is a trace, not a record; the clock that ages it is the one
+        its retirement stamped (``dead_at`` or ``cancelled_at``).
+        """
         url = self._db_url()
         if not url:
             return 0
         self.ensure_table(url)
         if _is_postgres(url):
-            cutoff = "dead_at < NOW() - make_interval(secs => :age)"
-            params: dict = {"age": older_than_seconds, "dead": DEAD}
+            cutoff = "COALESCE(cancelled_at, dead_at) < NOW() - make_interval(secs => :age)"
+            params: dict = {"age": older_than_seconds}
         else:
-            cutoff = "dead_at < :threshold"
-            params = {"threshold": _sqlite_threshold(older_than_seconds), "dead": DEAD}
+            cutoff = "COALESCE(cancelled_at, dead_at) < :threshold"
+            params = {"threshold": _sqlite_threshold(older_than_seconds)}
         with self._engine_for(url).connect() as conn:
             result = conn.execute(
-                # `cutoff` is a dialect-chosen literal; values are bound.
+                # `cutoff` is a dialect-chosen literal, the rest module constants; values are bound.
                 # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-                text(f"DELETE FROM {self.table} WHERE status = :dead AND {cutoff}"),
-                params,
+                text(f"DELETE FROM {self.table} WHERE status IN :retired AND {cutoff}").bindparams(
+                    bindparam("retired", expanding=True)
+                ),
+                {**params, "retired": list(RETIRED)},
             )
             conn.commit()
         return result.rowcount or 0

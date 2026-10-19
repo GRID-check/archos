@@ -327,7 +327,7 @@ def test_an_unknown_priority_is_refused_and_nothing_is_stored(db):
     with pytest.raises(ValueError, match="unknown priority"):
         ingest_queue.enqueue("a0", "org-a", "p", priority="urgent")
 
-    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 0}
+    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 0, "cancelled": 0}
 
 
 def test_the_jobs_ahead_follow_the_claim_order_inside_the_office(db):
@@ -348,7 +348,7 @@ def test_a_released_claim_goes_back_without_costing_an_attempt(db):
 
     assert ingest_queue.release_claims(["a0"], "w1") == 1
 
-    assert ingest_queue.counts() == {"queued": 1, "claimed": 0, "dead": 0}
+    assert ingest_queue.counts() == {"queued": 1, "claimed": 0, "dead": 0, "cancelled": 0}
     again = ingest_queue.claim_next("w2", **CLAIM)
     assert (again.job_id, again.attempts) == ("a0", 1)
 
@@ -404,7 +404,7 @@ def test_a_job_that_exhausted_its_claims_is_kept_dead_with_its_reason(db):
     status, reason, payload = _row(db, "a0")
     assert (status, reason) == ("dead", "attempts_exhausted")
     assert payload == ""  # the presigned URLs do not outlive the job
-    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 1}
+    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 1, "cancelled": 0}
     assert ingest_queue.reap_exhausted(**CLAIM) == []  # a dead row is reaped once
 
 
@@ -455,10 +455,131 @@ def test_old_dead_rows_are_purged_and_fresh_ones_kept(db):
     with _engine(db).begin() as conn:
         conn.execute(text("UPDATE ingest_job_queue SET dead_at = '2000-01-01 00:00:00' WHERE job_id = 'old'"))
 
-    assert ingest_queue.purge_dead(older_than_seconds=86400) == 1
+    assert ingest_queue.purge_retired(older_than_seconds=86400) == 1
 
     assert _row(db, "old") is None
     assert _row(db, "fresh") is not None
+
+
+# ----------------------------------------------------------------- cancel
+
+
+def test_cancelling_a_waiting_job_keeps_it_from_ever_being_claimed(db):
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+
+    assert ingest_queue.cancel("a0") == "queued"
+
+    assert ingest_queue.status_of("a0") == "cancelled"
+    assert ingest_queue.claim_next("w1", **CLAIM) is None  # never work again
+    assert ingest_queue.heartbeat("a0", "w1") is False  # nothing claimed, so nothing to keep
+    assert ingest_queue.counts() == {"queued": 0, "claimed": 0, "dead": 0, "cancelled": 1}
+    # Its payload is blanked like a dead row's: it will never run.
+    assert _row(db, "a0")[2] == ""
+
+
+def test_cancelling_a_running_job_fails_its_next_heartbeat_so_it_stops(db):
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+    ingest_queue.claim_next("w1", **CLAIM)
+
+    assert ingest_queue.cancel("a0") == "claimed"
+
+    # ``heartbeat`` matches only a CLAIMED row, so the worker's next beat fails
+    # and it stops at its next ownership check.
+    assert ingest_queue.heartbeat("a0", "w1") is False
+    assert ingest_queue.claim_next("w2", **CLAIM) is None  # and no one claims it again
+
+
+def test_cancel_stops_at_a_job_that_is_finished_or_absent(db):
+    assert ingest_queue.cancel("never-queued") is None
+
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+    assert ingest_queue.cancel("a0") == "queued"
+    assert ingest_queue.cancel("a0") is None  # already retired: nothing live to stop
+
+    ingest_queue.enqueue("done", "org-a", "p")
+    ingest_queue.mark_done("done")
+    assert ingest_queue.cancel("done") is None  # forgotten: nothing to stop
+
+
+def test_a_cancelled_row_is_never_reaped_dead_again(db):
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+    _enqueue("a1", "org-a", "2026-09-30 10:00:01")
+    ingest_queue.claim_next("w1", **CLAIM)
+    assert ingest_queue.cancel("a0") == "claimed"
+
+    assert ingest_queue.reap_exhausted(**CLAIM) == []
+    assert ingest_queue.mark_dead("a0", "late") is False  # a person's stop is not overwritten
+
+    status, reason, _payload = _row(db, "a0")
+    assert (status, reason) == ("cancelled", None)
+
+
+def test_old_cancelled_rows_are_purged_on_the_retirement_clock(db):
+    for job_id in ("old", "fresh"):
+        ingest_queue.enqueue(job_id, "org-a", "p")
+        ingest_queue.cancel(job_id)
+    with _engine(db).begin() as conn:
+        conn.execute(text("UPDATE ingest_job_queue SET cancelled_at = '2000-01-01 00:00:00' WHERE job_id = 'old'"))
+
+    assert ingest_queue.purge_retired(older_than_seconds=86400) == 1
+
+    assert _row(db, "old") is None
+    assert _row(db, "fresh") is not None
+
+
+def test_a_cancelled_row_settles_the_job_cancelled_not_interrupted(db):
+    """The lost owner reads the queue: a stopped job settles cancelled, not the failure a dead row would leave."""
+    status = IngestionJobStatus(
+        job_id="a0",
+        status=JobState.PENDING,
+        submitted_at=datetime(2026, 9, 30, 10, 0, 0),
+        total_files=1,
+        collection_name="proj_1",
+        backend="llamaindex",
+    )
+    ingest_status_store.put(status)
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+    ingest_queue.claim_next("w1", **CLAIM)
+    ingest_queue.cancel("a0")
+    with _engine(db).begin() as conn:
+        conn.execute(text("UPDATE ingest_jobs SET heartbeat_at = '2000-01-01 00:00:00'"))
+
+    settled = ingest_status_store.get("a0")
+
+    assert settled.status == JobState.CANCELLED
+    assert settled.error_message.startswith("cancelled:")
+    assert settled.metadata["cancelled"] is True
+
+
+def test_a_worker_finishing_late_keeps_the_retired_trace_it_finished_into(db):
+    """The narrow race: the queue retires a job while its worker is still running.
+
+    The worker finds out at its next ownership check and then reports itself
+    finished. Its delete is gated on the row still being CLAIMED, so a row the
+    queue retired meanwhile - reaped dead, or stopped by a person - survives as
+    the trace it is, and the status store, which reads that row to settle the
+    job, still finds it. A job that finished before anyone retired it is still
+    forgotten.
+    """
+    _enqueue("dead", "org-a", "2026-09-30 10:00:00")
+    assert ingest_queue.claim_next("w1", **CLAIM).job_id == "dead"
+    assert ingest_queue.mark_dead("dead", "boom") is True
+
+    _enqueue("stopped", "org-a", "2026-09-30 10:00:01")
+    assert ingest_queue.claim_next("w1", **CLAIM).job_id == "stopped"
+    assert ingest_queue.cancel("stopped") == "claimed"
+
+    ingest_queue.mark_done("dead", "w1")
+    ingest_queue.mark_done("stopped", "w1")
+
+    assert _row(db, "dead")[0] == "dead"
+    assert _row(db, "stopped")[0] == "cancelled"
+
+    _enqueue("finished", "org-a", "2026-09-30 10:00:02")
+    assert ingest_queue.claim_next("w1", **CLAIM).job_id == "finished"
+    ingest_queue.mark_done("finished", "w1")
+
+    assert _row(db, "finished") is None
 
 
 # ------------------------------------------------------------------ upgrade
@@ -498,7 +619,7 @@ def test_a_table_from_before_priority_and_dead_rows_is_upgraded_in_place(db):
     claim = ingest_queue.claim_next("w1", **CLAIM)
     assert (claim.job_id, claim.priority) == ("old", claim_queue.PRIORITY_INTERACTIVE)
     ingest_queue.enqueue("new", "org-a", "p", priority="bulk")
-    assert ingest_queue.counts() == {"queued": 1, "claimed": 1, "dead": 0}
+    assert ingest_queue.counts() == {"queued": 1, "claimed": 1, "dead": 0, "cancelled": 0}
 
 
 # ------------------------------------------------------------------- meters
@@ -576,7 +697,7 @@ def test_an_id_the_queue_holds_is_not_stored_again_whatever_its_state(db):
 
     assert ingest_queue.enqueue("claimed", "org-a", "p") is False
     assert ingest_queue.enqueue("dead", "org-a", "p") is False
-    assert ingest_queue.counts() == {"queued": 0, "claimed": 1, "dead": 1}
+    assert ingest_queue.counts() == {"queued": 0, "claimed": 1, "dead": 1, "cancelled": 0}
 
 
 def test_an_id_can_be_queued_again_once_its_row_is_forgotten(db):

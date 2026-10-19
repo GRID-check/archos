@@ -71,7 +71,7 @@ __all__ = [
     "mark_done",
     "max_active_per_org",
     "max_queued_per_org",
-    "purge_dead",
+    "purge_retired",
     "queue_for",
     "queued_in_lane",
     "reap_exhausted",
@@ -340,17 +340,17 @@ def reap_exhausted(db_url: str, stale_seconds: int, max_attempts: int) -> list[s
     """Move claims that crashed and exhausted their retries to dead; return their ids.
 
     Callers flip these to FAILURE in job_info (the durable record). The row stays,
-    as dead, until ``purge_dead`` ages it out: it is not work, so it is in no
+    as dead, until ``purge_retired`` ages it out: it is not work, so it is in no
     autoscaler's depth.
     """
     return queue_for(db_url).reap_exhausted(stale_seconds=stale_seconds, max_attempts=max_attempts)
 
 
-def purge_dead(db_url: str, older_than_seconds: int) -> int:
-    """Delete dead rows past their retention; how many."""
-    return queue_for(db_url).purge_dead(older_than_seconds=older_than_seconds)
+def purge_retired(db_url: str, older_than_seconds: int) -> int:
+    """Delete retired rows (dead, or cancelled) past their retention; how many."""
+    return queue_for(db_url).purge_retired(older_than_seconds=older_than_seconds)
 
 
 def counts(db_url: str) -> dict[str, int]:
-    """Rows by status. The autoscaler scales on every row that is not dead."""
+    """Rows by status. The autoscaler scales on every row that is not retired."""
     return queue_for(db_url).counts()

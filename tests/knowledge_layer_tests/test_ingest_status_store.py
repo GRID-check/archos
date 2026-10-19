@@ -289,7 +289,7 @@ def _owner_beats_before_the_settle(monkeypatch, url: str) -> None:
     from sqlalchemy import create_engine
     from sqlalchemy import text
 
-    settle = ingest_status_store._settle_interrupted
+    settle = ingest_status_store._settle_lost
 
     def beat_then_settle(conn, url_, status):
         engine = create_engine(url)
@@ -301,7 +301,7 @@ def _owner_beats_before_the_settle(monkeypatch, url: str) -> None:
         engine.dispose()
         return settle(conn, url_, status)
 
-    monkeypatch.setattr(ingest_status_store, "_settle_interrupted", beat_then_settle)
+    monkeypatch.setattr(ingest_status_store, "_settle_lost", beat_then_settle)
 
 
 class TestWritesReportTheirOutcome:
@@ -391,3 +391,52 @@ class TestTheOwnerIsRightAboutItsJob:
         found = ingest_status_store.find_live("k1")
         assert found is not None and found.job_id == "job-1"
         assert ingest_status_store.heartbeat(["job-1"]) == 1
+
+
+# --- A job a person stopped --------------------------------------------------
+
+
+class TestCancelledJobs:
+    def test_settle_cancelled_marks_the_job_and_every_unfinished_file(self, sqlite_db):
+        ingest_status_store.put(_with_file("job-1", JobState.PROCESSING))
+
+        assert ingest_status_store.settle_cancelled("job-1") is True
+
+        got = ingest_status_store.get("job-1")
+        assert got is not None
+        assert got.status == JobState.CANCELLED
+        assert got.error_message.startswith("cancelled:")
+        assert got.metadata["cancelled"] is True
+        # A file mid-read cannot keep a live state, and its own reason says it was stopped.
+        assert got.file_details[0].status == FileStatus.FAILED
+        assert got.file_details[0].error_message.startswith("cancelled:")
+        # Not the failure a lost owner leaves: nothing failed.
+        assert "failure_reason" not in got.metadata
+
+    def test_a_cancelled_job_is_not_in_flight(self, sqlite_db):
+        ingest_status_store.put(_with_file("job-1", JobState.PROCESSING))
+        ingest_status_store.settle_cancelled("job-1")
+
+        assert ingest_status_store.in_flight_files(["s_test"]) == {}
+
+    def test_settle_cancelled_leaves_a_finished_row_alone(self, sqlite_db):
+        ingest_status_store.put(_with_file("job-1", JobState.COMPLETED))
+
+        assert ingest_status_store.settle_cancelled("job-1") is False
+        assert ingest_status_store.get("job-1").status == JobState.COMPLETED
+
+    def test_settle_cancelled_says_no_for_a_row_that_is_not_there(self, sqlite_db):
+        assert ingest_status_store.settle_cancelled("never-written") is False
+
+    def test_settle_cancelled_without_a_database_is_false(self, monkeypatch):
+        monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+        monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
+
+        assert ingest_status_store.settle_cancelled("job-1") is False
+
+    def test_cancelled_is_terminal_and_neither_success_nor_failure(self):
+        stopped = ingest_status_store.cancelled(_status("job-1", JobState.PROCESSING))
+
+        assert stopped.status == JobState.CANCELLED
+        assert stopped.is_terminal is True
+        assert stopped.is_success is False
