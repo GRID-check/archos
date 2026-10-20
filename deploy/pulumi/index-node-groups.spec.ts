@@ -137,6 +137,16 @@ describe("worker-group placement with prod's knobs", () => {
     expect(workloads()).toEqual(expect.arrayContaining(DATA.map((n) => expect.stringContaining(`/${n}`))));
   });
 
+  it("runs the per-node agent on every node, whatever its group", () => {
+    // The one pod maker that must NOT carry a group: a node without an agent
+    // is a node whose readings are missing, and nothing reports the gap.
+    const daemonSets = RESOURCES.filter((r) => r.type.endsWith("apps/v1:DaemonSet")).map((r) => `DaemonSet/${r.name}`);
+    expect(daemonSets).toEqual(["DaemonSet/otel-agent"]);
+    expect(nodeSelectors()).not.toHaveProperty("DaemonSet/otel-agent");
+    const pod = podOf("kubernetes:apps/v1:DaemonSet", "otel-agent") as unknown as { spec: { tolerations: unknown[] } };
+    expect(pod.spec.tolerations).toEqual([{ operator: "Exists" }]);
+  });
+
   it("keeps the Postgres instances on different nodes, required", () => {
     const cluster = RESOURCES.find((r) => r.name === "grid-pg")!.inputs as {
       spec: { affinity: { podAntiAffinityType: string; topologyKey: string } };

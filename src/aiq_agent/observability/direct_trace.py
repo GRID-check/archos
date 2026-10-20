@@ -47,6 +47,9 @@ from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_MODEL_
 from aiq_agent.observability.langfuse_trace_attributes import SESSION_ID_ATTRIBUTE
 from aiq_agent.observability.langfuse_trace_attributes import TAGS_ATTRIBUTE
 from aiq_agent.observability.langfuse_trace_attributes import usage_observation_attributes
+from aiq_agent.observability.otlp_resource import ENDPOINT_ENV
+from aiq_agent.observability.otlp_resource import resource_attributes
+from aiq_agent.observability.otlp_resource import signal_endpoint
 from aiq_agent.observability.trace_context import OBSERVATION_LEVEL_ATTRIBUTE
 from aiq_agent.observability.trace_context import OBSERVATION_STATUS_MESSAGE_ATTRIBUTE
 from aiq_agent.observability.trace_context import OBSERVATION_TYPE_ATTRIBUTE
@@ -54,12 +57,6 @@ from aiq_agent.observability.trace_context import TRACE_NAME_ATTRIBUTE
 from aiq_agent.observability.trace_context import process_trace_attributes
 
 logger = logging.getLogger(__name__)
-
-ENDPOINT_ENV = "OTEL_EXPORTER_OTLP_ENDPOINT"
-SERVICE_NAME_ENV = "OTEL_SERVICE_NAME"
-#: The NAT exporter's ``project`` default in ``configs/config_oib_openrouter.yml``,
-#: so these traces sit under the same service as the chat turns.
-DEFAULT_SERVICE_NAME = "grid-aiq-agent"
 
 #: Langfuse's observation-level input/output, which win over ``input.value``.
 INPUT_ATTRIBUTE = "langfuse.observation.input"
@@ -74,30 +71,12 @@ TRUNCATION_MARKER = "…[truncated]"
 #: Every trace from here is filterable as "not a chat turn" in one click.
 AUXILIARY_SURFACE_TAG = "surface:auxiliary"
 
-_TRACES_SUFFIX = "/v1/traces"
 _SCOPE = "aiq_agent.observability.direct_trace"
 
 _lock = threading.Lock()
 _resolved = False
 _provider = None
 _tracer = None
-
-
-def traces_endpoint(endpoint: str) -> str:
-    """The OTLP/HTTP traces endpoint for a configured traces (or bare collector) endpoint."""
-    endpoint = endpoint.strip().rstrip("/")
-    if endpoint.endswith(_TRACES_SUFFIX):
-        return endpoint
-    return endpoint + _TRACES_SUFFIX
-
-
-def _resource_attributes(env: Mapping[str, str]) -> dict[str, str]:
-    """Which tier and which build produced a span; blank values are left out."""
-    attributes = {"service.name": env.get(SERVICE_NAME_ENV, "").strip() or DEFAULT_SERVICE_NAME}
-    sha = env.get("GRID_GIT_SHA", "").strip()
-    if sha:
-        attributes["service.version"] = sha
-    return attributes
 
 
 def install_tracer_provider(endpoint: str | None, *, env: Mapping[str, str] | None = None, exporter=None):
@@ -137,8 +116,8 @@ def _build(endpoint: str | None, env: Mapping[str, str], exporter):
     if exporter is None:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
-        exporter = OTLPSpanExporter(endpoint=traces_endpoint(endpoint or ""))
-    provider = TracerProvider(resource=Resource.create(_resource_attributes(env)))
+        exporter = OTLPSpanExporter(endpoint=signal_endpoint(endpoint or "", "traces"))
+    provider = TracerProvider(resource=Resource.create(resource_attributes(env)))
     provider.add_span_processor(BatchSpanProcessor(exporter))
     return provider
 

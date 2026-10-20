@@ -54,6 +54,7 @@ import { installQueueScalerGrants } from "./src/app/queue-scaler-grants";
 import { installKeda } from "./src/platform/keda";
 import { installHttpRoutes } from "./src/app/httproutes";
 import { installOtelCollector } from "./src/platform/otel-collector";
+import { installOtelAgent } from "./src/platform/otel-agent";
 import { installDns, managedRecordNames } from "./src/platform/dns";
 import { installLangfuse } from "./src/platform/langfuse";
 import { installQdrantDashboard } from "./src/platform/qdrant-dashboard";
@@ -414,7 +415,7 @@ if (cfg.qdrant.dashboard.enabled) {
 
 // ── Observability (OTel Collector, ADR-0029) ─────────────────────────────────
 // Deployed when something consumes it (see config.ts): Langfuse for traces,
-// PostHog logs for logs. The Aspire dashboard and err2issue it used to feed are
+// PostHog logs for logs, PostHog metrics for metrics. The Aspire dashboard and err2issue it used to feed are
 // retired.
 if (cfg.observability.enabled) {
   // Langfuse (ADR-0044) before the collector: the collector's `otlp_http/langfuse` exporter starts exporting the moment it
@@ -449,16 +450,24 @@ if (cfg.observability.enabled) {
         )
       : undefined;
 
-  installOtelCollector(
+  const collector = installOtelCollector(
     cfg, provider, namespace,
     [
       ...(langfuse ? [langfuse.webService] : []),
     ],
-    langfuse ? langfuse.secret.metadata.name : undefined,
-    // Every Qdrant peer's metrics port (ADR-0115): the collector's one
-    // metrics pipeline, re-exposed on :8889 for whatever reads metrics.
-    qdrant.metricsTargets,
+    {
+      langfuseSecretName: langfuse ? langfuse.secret.metadata.name : undefined,
+      // Every Qdrant peer's metrics port (ADR-0115), scraped and re-exposed on
+      // :8889 for the alert rules.
+      qdrantMetricsTargets: qdrant.metricsTargets,
+    },
   );
+
+  // One collector per node for what the nodes and their pods are doing, sent to
+  // the collector above. It exists only to feed PostHog Metrics.
+  if (cfg.posthog.metricsEnabled) {
+    installOtelAgent(cfg, provider, namespace, [collector.service]);
+  }
 }
 
 // ── Public DNS ───────────────────────────────────────────────────────────────

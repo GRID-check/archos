@@ -536,6 +536,30 @@ async function depth(sql) {
   return Number(rows[0].n)
 }
 
+/**
+ * The queue as its meters report it: rows per status, and how long the oldest
+ * queued job has waited (null with none queued). One statement, read on each
+ * metrics export.
+ *
+ * @param {Sql} sql
+ * @returns {Promise<{ counts: Record<string, number>, oldestQueuedSeconds: number | null }>}
+ */
+async function stats(sql) {
+  const rows = await withPlatformScope(
+    sql,
+    (tx) => tx`
+      SELECT status, COUNT(*)::int AS n, EXTRACT(EPOCH FROM now() - MIN(created_at))::float8 AS oldest
+      FROM bff_job_queue GROUP BY status`,
+  )
+  const counts = Object.fromEntries([QUEUED, CLAIMED, DEAD].map((status) => [status, 0]))
+  let oldestQueuedSeconds = null
+  for (const row of rows) {
+    counts[String(row.status)] = Number(row.n)
+    if (row.status === QUEUED) oldestQueuedSeconds = Number(row.oldest)
+  }
+  return { counts, oldestQueuedSeconds }
+}
+
 module.exports = {
   CLAIMED,
   DEAD,
@@ -557,4 +581,5 @@ module.exports = {
   reapExhausted,
   release,
   saveProgress,
+  stats,
 }

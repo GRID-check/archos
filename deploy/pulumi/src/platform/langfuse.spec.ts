@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { loadConfig } from "../config";
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
+import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
 /**
  * The Langfuse tier (ADR-0044).
@@ -138,19 +139,17 @@ describe("with the Langfuse tier enabled", () => {
 
   describe("collector fan-out", () => {
     it("gives the traces pipeline to Langfuse alone", () => {
-      expect(collectorConfig).toMatch(
-        /traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/langfuse\]/,
-      );
+      expect(parseCollectorConfig(collectorConfig).service.pipelines.traces).toEqual(pipeline(["otlp_http/langfuse"]));
     });
 
     it("sends it no logs and no metrics", () => {
       // Langfuse ingests traces. Pointing logs at it would be silently
       // discarded volume — Langfuse's OTLP receiver is a traces endpoint. Logs
-      // go to PostHog (on by default) or end in the nop exporter, and nothing
-      // consumes metrics at all (collector-gate.spec.ts).
-      expect(collectorConfig).not.toMatch(/\n    logs[^:\n]*:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[[^\]]*\]\s*\n\s*exporters: \[[^\]]*langfuse/);
-      expect(collectorConfig).toMatch(/\n    logs[^:\n]*:\s*\n/);
-      expect(collectorConfig).not.toMatch(/\n    metrics:/);
+      // go to PostHog (on by default) or end in the nop exporter.
+      const users = Object.entries(parseCollectorConfig(collectorConfig).service.pipelines)
+        .filter(([, p]) => p.exporters.includes("otlp_http/langfuse"))
+        .map(([name]) => name);
+      expect(users).toEqual(["traces"]);
     });
 
     it("uses the component's CURRENT type id, not its deprecated alias", () => {
@@ -176,7 +175,10 @@ describe("with the Langfuse tier enabled", () => {
       // Without the header Langfuse v4 still accepts the spans, but routes them
       // through the server-side propagation: traces appear ~15 minutes late and
       // nothing reports it.
-      expect(collectorConfig).toContain('x-langfuse-ingestion-version: "4"');
+      const exporter = parseCollectorConfig(collectorConfig).exporters["otlp_http/langfuse"] as {
+        headers: Record<string, string>;
+      };
+      expect(exporter.headers["x-langfuse-ingestion-version"]).toBe("4");
     });
 
     it("reads its credential from the environment, never the ConfigMap", async () => {

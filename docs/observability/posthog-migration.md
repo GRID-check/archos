@@ -179,7 +179,8 @@ date.
    the feedback form's GitHub issue filing that borrowed its token. The owner
    removes the stack keys and revokes the PAT. Aspire is gone too: logs are in
    PostHog, traces in Langfuse, and the meters (`grid.queue.*`,
-   `grid.provider.*`) have no sink until the owner picks one.
+   `grid.provider.*`) go to PostHog Metrics with the cluster's own
+   ([ADR-0119](../adr/0119-every-metric-goes-to-posthog-through-the-collector.md)).
 
 ## Browser signal (wave 2)
 

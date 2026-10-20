@@ -53,17 +53,6 @@ def _spans(memory: InMemorySpanExporter):
     return memory.get_finished_spans()
 
 
-def test_the_traces_endpoint_accepts_the_full_path_pulumi_injects_and_a_bare_collector():
-    assert (
-        direct_trace.traces_endpoint("http://otel-collector:4318/v1/traces") == "http://otel-collector:4318/v1/traces"
-    )
-    assert (
-        direct_trace.traces_endpoint("http://otel-collector:4318/v1/traces/") == "http://otel-collector:4318/v1/traces"
-    )
-    assert direct_trace.traces_endpoint("http://localhost:4318") == "http://localhost:4318/v1/traces"
-    assert direct_trace.traces_endpoint("http://localhost:4318/") == "http://localhost:4318/v1/traces"
-
-
 @pytest.mark.parametrize("endpoint", [None, "", "   "])
 async def test_without_an_endpoint_nothing_is_built_and_the_call_runs_untouched(monkeypatch, endpoint):
     if endpoint is not None:

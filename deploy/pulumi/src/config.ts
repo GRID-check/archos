@@ -1175,6 +1175,15 @@ export interface GridConfig {
      */
     logsEnabled: boolean;
     /**
+     * Whether the collector ships metrics to PostHog Metrics: the application
+     * meters every tier sends over OTLP, and the cluster's own (nodes, pods,
+     * containers, workload state, every scraped service). The
+     * `posthogMetricsEnabled` flag AND the same three dependencies as
+     * {@link logsEnabled}. Default on. Also what deploys the per-node agent
+     * collector, which exists only to feed it.
+     */
+    metricsEnabled: boolean;
+    /**
      * Whether the browser may record sessions (`grid-oib:posthogSessionReplay`,
      * default on, like the browser's own default). Text and inputs are masked,
      * the PDF and IFC viewers, media and signed URLs are blocked, and the privacy
@@ -1565,6 +1574,25 @@ function nodeGroup(cfg: pulumi.Config, key: string): string | undefined {
 function bool(cfg: pulumi.Config, key: string, fallback: boolean): boolean {
   const v = cfg.getBoolean(key);
   return v === undefined ? fallback : v;
+}
+
+/**
+ * One signal the collector exports to PostHog (`key`, default on), resolved
+ * against the dependencies both share. Warns only when the stack asked for the
+ * signal by name: the default with the collector or PostHog switched off is
+ * that stack's choice, not a mistake.
+ */
+function posthogExport(cfg: pulumi.Config, key: string, what: string, missing: string[]): boolean {
+  const flag = bool(cfg, key, true);
+  if (missing.length === 0) return flag;
+  if (flag && cfg.get(key) !== undefined) {
+    pulumi.log.warn(
+      `PostHog ${what} not exported: missing ` +
+        missing.map((k) => (k.includes(" ") ? k : `grid-oib:${k}`)).join(", ") +
+        `. Set them to ship ${what} to PostHog, or set grid-oib:${key}=false to silence this.`,
+    );
+  }
+  return false;
 }
 
 /**
@@ -2583,39 +2611,30 @@ export function loadConfig(): GridConfig {
   // The SDK tiers capture with host + token alone (they no-op without them).
   // Both default to Piloti's project, so a stack sends unless it opts out with
   // an empty `posthogHost`; every event carries its `environment`, which keeps
-  // staging apart from production in the one project. Logs leave the cluster
-  // in bulk through the collector, so they also need the collector.
+  // staging apart from production in the one project.
   const posthogHost = cfg.get("posthogHost") ?? POSTHOG_DEFAULT_HOST;
   const posthogProjectToken = cfg.get("posthogProjectToken") ?? POSTHOG_DEFAULT_PROJECT_TOKEN;
-  const posthogLogsAsked = cfg.get("posthogLogsEnabled") !== undefined;
-  const posthogLogsFlag = bool(cfg, "posthogLogsEnabled", true);
-  const missingPosthogLogsDeps = [
+  // Logs and metrics leave the cluster in bulk through the collector, so each
+  // needs it as well as the pair. One check for both; each has its own flag.
+  const missingPosthogExportDeps = [
     posthogHost === "" ? "posthogHost" : undefined,
     posthogProjectToken === "" ? "posthogProjectToken" : undefined,
-    observabilityFlag ? undefined : "observabilityEnabled (PostHog logs are exported by the collector)",
+    observabilityFlag ? undefined : "observabilityEnabled (the collector is what exports to PostHog)",
   ].filter((k): k is string => k !== undefined);
-  const posthogLogsEnabled = posthogLogsFlag && missingPosthogLogsDeps.length === 0;
-  // Warn only when a stack asked for logs by name: the default with the
-  // collector or PostHog switched off is that stack's choice, not a mistake.
-  if (posthogLogsAsked && posthogLogsFlag && !posthogLogsEnabled) {
-    pulumi.log.warn(
-      "PostHog logs not exported: missing " +
-        missingPosthogLogsDeps.map((k) => (k.includes(" ") ? k : `grid-oib:${k}`)).join(", ") +
-        ". Set them to ship WARN+ logs to PostHog, or set " +
-        "grid-oib:posthogLogsEnabled=false to silence this.",
-    );
-  }
+  const posthogLogsEnabled = posthogExport(cfg, "posthogLogsEnabled", "WARN+ logs", missingPosthogExportDeps);
+  const posthogMetricsEnabled = posthogExport(cfg, "posthogMetricsEnabled", "metrics", missingPosthogExportDeps);
 
   // ── The collector: deployed when something consumes what it forwards ──────
-  // Two consumers, either of which is enough: Langfuse (traces) and PostHog
-  // logs (logs). With neither it would receive OTLP from every producer and
-  // forward it nowhere, and each producer would carry an endpoint pointing at a
-  // pod that does nothing.
-  const collectorEnabled = observabilityFlag && (langfuseEnabled || posthogLogsEnabled);
+  // Three consumers, any of which is enough: Langfuse (traces), PostHog logs
+  // and PostHog metrics. With none it would receive OTLP from every producer
+  // and forward it nowhere, and each producer would carry an endpoint pointing
+  // at a pod that does nothing.
+  const collectorEnabled = observabilityFlag && (langfuseEnabled || posthogLogsEnabled || posthogMetricsEnabled);
   if (observabilityFlag && !collectorEnabled) {
     pulumi.log.warn(
       "OTel Collector (ADR-0029) not deployed: nothing consumes it. Enable Langfuse " +
-        "(it also needs the otelOidc* application) or grid-oib:posthogLogsEnabled, or set " +
+        "(it also needs the otelOidc* application), grid-oib:posthogLogsEnabled or " +
+        "grid-oib:posthogMetricsEnabled, or set " +
         "grid-oib:observabilityEnabled=false to silence this.",
     );
   }
@@ -3043,6 +3062,7 @@ export function loadConfig(): GridConfig {
       host: posthogHost,
       projectToken: posthogProjectToken,
       logsEnabled: posthogLogsEnabled,
+      metricsEnabled: posthogMetricsEnabled,
       sessionReplay: bool(cfg, "posthogSessionReplay", true),
       replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "1",
       releaseId: (cfg.get("posthogReleaseId") ?? "").trim(),

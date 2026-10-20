@@ -72,6 +72,13 @@ export const PORT = {
    * needs BOTH: the app talks HTTP, its schema migrator speaks native.
    */
   clickhouseNative: 9000,
+  /**
+   * ClickHouse's Prometheus listener (`<prometheus>` in a `config.d` drop-in,
+   * `data/clickhouse.ts`): `/metrics` and nothing else, no login, so no query
+   * reaches the trace store through it. Upstream's documented port; unset,
+   * ClickHouse opens none. Only the node agent may dial it.
+   */
+  clickhouseMetrics: 9363,
   /** Gotenberg API (office → PDF, ADR-0070). Upstream default. */
   gotenberg: 3000,
   /** Photon, the address search behind `GRID_GEOCODER_URL` (ADR-0120). Upstream default. */
@@ -94,6 +101,17 @@ export const PORT = {
    * collector may dial it (`allow-collector-to-qdrant-metrics`).
    */
   qdrantMetrics: 6336,
+  /**
+   * Every SeaweedFS process's Prometheus listener (`-metricsPort`), master,
+   * volume, filer (with its S3 gateway) and the single-node `weed server`
+   * alike. Our choice, the port SeaweedFS's own Helm chart uses: unset, weed
+   * opens no metrics listener.
+   */
+  seaweedMetrics: 9327,
+  /** CloudNativePG's exporter on every Postgres instance: `/metrics`, always on. Upstream default. */
+  postgresMetrics: 9187,
+  /** CloudNativePG's exporter on every PgBouncer pooler: `/metrics`, always on. Upstream default. */
+  poolerMetrics: 9127,
 } as const;
 
 /**

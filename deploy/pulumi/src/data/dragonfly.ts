@@ -12,6 +12,7 @@ import {
   surgeRollout,
 } from "../platform/rollout";
 import { DATA_RESOURCES, EDGE_RATE_LIMIT, LANGFUSE, PORT } from "../constants";
+import { scrapeAnnotations } from "../platform/scrape";
 
 const DRAGONFLY_IMAGE = "docker.dragonflydb.io/dragonflydb/dragonfly:latest";
 
@@ -158,7 +159,11 @@ function installDragonflyInstance(
           : surgeRollout(ROLLOUT.dataPlane)),
         selector: { matchLabels: labels },
         template: {
-          metadata: { labels, annotations: authAnnotations },
+          // Memory, keys, hit rate, clients and command latency. Dragonfly
+          // serves `/metrics` over HTTP on its main port without the password
+          // (its console there answers 401; checked against v2.0.2), so the
+          // node agents scrape it holding no credential (ADR-0119).
+          metadata: { labels, annotations: { ...authAnnotations, ...scrapeAnnotations(PORT.redis) } },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             terminationGracePeriodSeconds:

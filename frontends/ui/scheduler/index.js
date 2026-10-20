@@ -73,6 +73,7 @@ const {
 } = require('./db')
 const { nextOccurrence } = require('./cron')
 const { initOtelLogs } = require('../observability/otel-logs')
+const { initOtelMetrics } = require('../observability/otel-metrics')
 const {
   LangfuseError,
   createTraceClient,
@@ -674,6 +675,7 @@ async function fireDue(sql, config, streak) {
 function main() {
   // No-op without OTEL_EXPORTER_OTLP_ENDPOINT (ADR-0029 capability gate).
   initOtelLogs()
+  initOtelMetrics()
   const config = readConfig(process.env)
   const sql = createSql()
   const streaks = createStreaks(config)

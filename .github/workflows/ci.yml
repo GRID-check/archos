@@ -724,6 +724,21 @@ jobs:
       # `pulumi preview`, CRD schema validation and CrossGuard need stack
       # credentials and run in deploy.yml.
       - run: task infra:types
+      # The collector build the image digest pins (`collectorImage` in
+      # deploy/pulumi/src/config.ts): `collector-validate.spec.ts` runs every
+      # rendered config through its `validate`, which is what refuses an
+      # unknown component or key before the collector would at start. Bump the
+      # version and checksum together with that digest.
+      - name: Install otelcol-contrib (config validation)
+        env:
+          OTELCOL_VERSION: "0.161.0"
+          OTELCOL_SHA256: "778c689efa681ff6e4722ce9f66b9b7f57c3ba009ab2e2b43dc2e0315862c731"
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/otelcol.tar.gz" \
+            "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v${OTELCOL_VERSION}/otelcol-contrib_${OTELCOL_VERSION}_linux_amd64.tar.gz"
+          echo "${OTELCOL_SHA256}  $RUNNER_TEMP/otelcol.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/otelcol.tar.gz" -C "$RUNNER_TEMP" otelcol-contrib
+          echo "OTELCOL_BIN=$RUNNER_TEMP/otelcol-contrib" >> "$GITHUB_ENV"
       - run: task infra:test
 
   # packages/ sits outside both workspaces (own bun.lock, own uv.lock),

@@ -40,7 +40,9 @@ const postgres = require('postgres')
 const queue = require('../job-queue')
 const { createFailureStreak, escalationTicks } = require('../failure-streak')
 const { createRunner, createSliceRunner } = require('./runner')
+const { createQueueMeters } = require('./queue-metrics')
 const { initOtelLogs } = require('../../observability/otel-logs')
+const { initOtelMetrics, shutdownOtelMetrics } = require('../../observability/otel-metrics')
 
 const LOG = '[bff-jobs]'
 
@@ -108,6 +110,7 @@ async function waitForServer(url, { attempts = 120, intervalMs = 1000, fetchImpl
 async function main() {
   // No-op without OTEL_EXPORTER_OTLP_ENDPOINT (ADR-0029 capability gate).
   initOtelLogs()
+  initOtelMetrics()
   const config = readConfig(process.env)
   if (!config.internalToken) throw new Error('GRID_INTERNAL_API_TOKEN is not defined')
   const databaseUrl = process.env.GRID_APP_DATABASE_URL
@@ -122,6 +125,7 @@ async function main() {
     queue,
     runSlice: createSliceRunner({ url: config.url, token: config.internalToken, timeoutMs: config.sliceTimeoutMs }),
     streak: createFailureStreak({ label: `${LOG} queue`, escalateAfter: escalationTicks(config.runner.pollMs) }),
+    meters: createQueueMeters(() => queue.stats(sql), console.warn),
   })
 
   /** @param {string} signal */
@@ -132,6 +136,7 @@ async function main() {
     const released = await runner.drain(config.drainMs)
     if (released > 0) console.warn(`${LOG} drain budget spent; ${released} claim(s) released mid-job`)
     await sql.end({ timeout: 5 }).catch(() => {})
+    await shutdownOtelMetrics().catch(() => {})
     server.kill('SIGTERM')
     setTimeout(() => process.exit(0), 10_000).unref()
   }

@@ -39,6 +39,7 @@ import socket
 import time
 
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
+from aiq_agent.observability import otlp_metrics
 from aiq_agent.observability.boot_timing import BootClock
 
 from . import lease_policy
@@ -299,7 +300,10 @@ class ResearchWorker:
             # A schema lock that timed out (or a database not up yet) must not
             # end the worker at start: every claim ensures the table again.
             logger.warning("Research queue table not ensured at start; the claim loop retries", exc_info=True)
-        # Depth, oldest age and dead rows are gauges this process reports for the fleet.
+        # Depth, oldest age and dead rows are gauges this process reports for the
+        # fleet, from start: an idle worker builds no workflow, so it installs
+        # its meter provider here rather than wait for the first job's.
+        otlp_metrics.install_from_env()
         queue.queue_for(self.db_url).observe()
         logger.info(
             "Research worker %s started (concurrency=%s, per-org cap=%s, poll=%ss, db=%s)",

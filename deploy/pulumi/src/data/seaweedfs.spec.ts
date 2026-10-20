@@ -623,7 +623,7 @@ describe("single-node topology", () => {
     // stack has, and prod runs `single`.
     expect(args).toBe(
       "exec weed server -dir=/data -volume.max=64 -s3 " +
-        "-s3.config=/etc/seaweedfs/s3.json -s3.port=8333 -filer.encryptVolumeData",
+        "-s3.config=/etc/seaweedfs/s3.json -s3.port=8333 -metricsPort=9327 -filer.encryptVolumeData",
     );
   });
 

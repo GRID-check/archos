@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Every metric from the application, the cluster and its stores now goes to
+    PostHog Metrics, switched by the stack key posthogMetricsEnabled (default on).
+    Enable Metrics in the PostHog project first, and expect the first deploy to
+    restart the stores that gained a metrics listener; five alerts wait, disabled,
+    on the Platform health dashboard.

@@ -35,6 +35,7 @@ const { LEGAL_HOLD_CODE, purgeProject } = require('./purge-project')
 const { PERMANENT_FAILURE_CODE, purgeConversation } = require('./purge-conversation')
 const { purgeFolder } = require('./purge-folder')
 const { initOtelLogs } = require('../observability/otel-logs')
+const { initOtelMetrics } = require('../observability/otel-metrics')
 const { createConversationTraceEraser, readLangfuseConfig } = require('../workers/langfuse-traces')
 // The deletion queue spans every organization, so the purger's transactions
 // step up to the BYPASSRLS role (ADR-0041).
@@ -186,6 +187,7 @@ function createPurger({ sql, deps, streak }) {
 function main() {
   // No-op without OTEL_EXPORTER_OTLP_ENDPOINT (ADR-0029 capability gate).
   initOtelLogs()
+  initOtelMetrics()
 
   const pollIntervalMs = parseInt(process.env.PURGER_POLL_INTERVAL_MS || '60000', 10)
   const s3 = createS3Client()

@@ -17,8 +17,8 @@ Each reading is one ``grid.boot.phase_seconds`` histogram point with ``role`` an
 ``research-worker`` and ``ingest-worker`` the workers; ``research-job`` is below),
 and one ``[boot-timing]`` log line. A reading taken before
 a meter provider exists would go to a no-op instrument, so readings wait in the
-process until ``flush``, which a role calls once a workflow is built. (No provider
-is installed today, so the log line is the reading that survives.) The research worker is ready before its
+process until ``flush``, which a role calls once a workflow is built: building it
+is what installs the provider (``otlp_metrics``). The research worker is ready before its
 first job builds one, so that job's build flushes the worker's reading too.
 """
 

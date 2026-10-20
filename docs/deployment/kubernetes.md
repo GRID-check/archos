@@ -1262,8 +1262,9 @@ died half way left no record of which half. Both are now jobs:
   ends. After `GRID_BFF_JOBS_MAX_ATTEMPTS` the row is marked `dead` with its
   reason in `last_error` and its payload (a report, the requester, storage keys)
   reduced to ids; it is deleted `GRID_BFF_JOBS_DEAD_RETENTION_DAYS` later, or at
-  once with its project. The BFF queue has no `grid.queue.*` meters yet (ADR-0079):
-  watch it through the depth KEDA reads and the `[bff-jobs] … now dead` ERROR lines.
+  once with its project. It reports the `grid.queue.*` meters as `queue="bff"`
+  (`workers/jobs/queue-metrics.js`), beside the Python queues, and each death is
+  also a `[bff-jobs] … now dead` ERROR line.
 - **KEDA scales it on the queue.** A `postgresql` trigger (its own
   TriggerAuthentication, on the app database) counts the rows whose status is
   not `dead` and asks for ceil(jobs / `bffJobsConcurrency`) replicas between
@@ -2033,20 +2034,37 @@ nothing else:
 |---|---|---|
 | Langfuse (§9b) | traces | `langfuseEnabled` and its credentials |
 | PostHog Logs | logs | `posthogLogsEnabled` plus `posthogHost` and `posthogProjectToken` |
+| PostHog Metrics | metrics | `posthogMetricsEnabled` plus `posthogHost` and `posthogProjectToken` |
 
-With neither `pulumi preview` logs a warning and nothing is deployed: no
+With none of them `pulumi preview` logs a warning and nothing is deployed: no
 collector, and no `OTEL_*` env on any producer (so the frontend's
 `src/instrumentation.ts` no-ops). Producers pointed at an absent collector would
 only retry exports forever.
 
-The stack deploys one component:
+The stack deploys two components, the topology the OpenTelemetry Helm charts
+call gateway and agent:
 
-- **`otel-collector`** (`deploy/pulumi/src/platform/otel-collector.ts`) — an
-  OpenTelemetry Collector that is the cluster's single OTLP ingestion point.
-  All producers send plain OTLP in-cluster; the collector batches, applies
-  memory back-pressure, and is the ONLY holder of the credentials its consumers
-  need (Langfuse's ingestion key, by `secretKeyRef`). Swapping or adding a
-  backend is a collector-config change, not an app change.
+- **`otel-collector`** (`deploy/pulumi/src/platform/otel-collector.ts`), the
+  gateway: one replica, the cluster's single OTLP ingestion point and the only
+  thing that exports out of it. All producers, the agents included, send plain
+  OTLP in-cluster; the collector batches, applies memory back-pressure, and is
+  the ONLY holder of the credentials its consumers need (Langfuse's ingestion
+  key, by `secretKeyRef`). With PostHog metrics on it also reads workload
+  state from the API (`k8s_cluster`), which is why it is one replica: a second
+  would report every workload twice.
+- **`otel-agent`** (`deploy/pulumi/src/platform/otel-agent.ts`), a DaemonSet on
+  every node, deployed only with PostHog metrics on. It reads its node's
+  kubelet (`kubelet_stats`) and scrapes the annotated pods scheduled on its node
+  (`prometheus/pods`), and sends both to the gateway. It holds no credential.
+
+The config each one runs is composed from one fragment per consumer or source
+(`collector-config.ts`), which also holds the invariants every collector
+carries: a `nop` pipeline for each OTLP signal nothing consumes,
+`memory_limiter` first and `batch` last in every pipeline, no component
+declared twice. Swapping or adding a backend is a fragment in the gateway, not
+an app change. `collector-validate.spec.ts` runs every config the program can
+render through the pinned collector's own `validate` (CI's infra job installs
+the binary).
 
 **Signals actually emitted today** (ADR-0029 Amendment 3): traces from
 grid-aiq-agent and grid-agent-worker (NAT tracing exporter); the BFF registers
@@ -2054,43 +2072,57 @@ no trace provider (below); logs from all five tiers - the Python tiers via the
 `otelcollector_logs` NAT logging method
 (`src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
 logger) and the Node tiers (grid-ui, skill-scheduler, purger) via the
-`frontends/ui/observability/otel-logs.js` console bridge. **Metrics: from
-Qdrant only, and nothing stores them.** No process installs a meter provider:
-the instruments (`grid.queue.*`, `grid.provider.*`, `grid.http.*`,
-`grid.boot.*`) still exist and are no-ops until a sink is chosen for them; the
-Aspire dashboard was their only one. Until then, queue depth and age are
-readable from Postgres, which is where the KEDA scalers read them. The
-collector carries one metrics pipeline, `metrics/qdrant`:
-its `prometheus/qdrant` receiver scrapes every Qdrant peer's keyless metrics
-port (6336) by headless name every 30 s (job `qdrant`, label `peer`), and its
-`prometheus` exporter re-exposes the series on `otel-collector:8889/metrics`.
-There is no metrics backend to export to, so that endpoint is the hand-off: a
-Prometheus, Grafana Alloy or any OpenMetrics scraper pointed at it gets every
-peer's series, and the alert rules for them ship in the `qdrant-alert-rules`
-ConfigMap; until one exists, `kubectl port-forward svc/otel-collector 8889`
-reads them by hand ([`qdrant-runbook.md`](qdrant-runbook.md)). A scraper in
-another namespace needs a NetworkPolicy rule admitting it to port 8889.
-**Qdrant alerting is therefore not active on any stack, staging included, and
-connecting it is a precondition for prod**: point the provider's metrics stack
-(or a `vmalert` beside it) at `otel-collector:8889` and load
-`qdrant.rules.yaml` from `qdrant-alert-rules`. The runbook's "Alerts" says how
-and how to prove it pages someone.
+`frontends/ui/observability/otel-logs.js` console bridge. **Metrics, every
+one of them, to PostHog Metrics** ([ADR-0119](../adr/0119-every-metric-goes-to-posthog-through-the-collector.md),
+[`observability/metrics.md`](../observability/metrics.md) for the catalogue):
+
+- *The application meters.* Every Python process installs one meter provider,
+  once (`src/aiq_agent/observability/otlp_metrics.py`), so the `grid.queue.*`,
+  `grid.provider.*` and `grid.boot.*` instruments report; the Node tiers
+  install theirs at start (`frontends/ui/observability/otel-metrics.js`) with
+  event loop delay and memory, and the gateway in `server.js` records
+  `http.server.request.duration`.
+- *The cluster.* Each node's agent reads its kubelet (node, pod, container and
+  volume CPU, memory, network and filesystem) and scrapes the pods on its node
+  annotated `prometheus.io/scrape: "true"`; the gateway reads workload state
+  (pod phases and restarts, availability, HPAs, jobs, node conditions).
+- *Qdrant.* The gateway's `prometheus/qdrant` receiver scrapes every peer's
+  keyless metrics port (6336) by headless name every 30 s (job `qdrant`, label
+  `peer`). Those series go to PostHog with the rest, and are also re-exposed on
+  `otel-collector:8889/metrics` for the alert rules in the
+  `qdrant-alert-rules` ConfigMap; `kubectl port-forward svc/otel-collector
+  8889` reads them by hand ([`qdrant-runbook.md`](qdrant-runbook.md)).
+  A peer down for 15 minutes is a row of the data-store alert in PostHog
+  ([`metrics.md`](../observability/metrics.md#alerts), created disabled until
+  metrics arrive). **The finer Qdrant rules are still not active on any stack,
+  and connecting them is a precondition for prod**: they are PromQL, which
+  PostHog does not evaluate, so either point a `vmalert` at
+  `otel-collector:8889` and load `qdrant.rules.yaml`, or rewrite them as rows
+  of that alert. The runbook's "Alerts" says how and how to prove it pages
+  someone.
+
+The gateway stamps `deployment.environment.name` with the stack on every
+series, so dev and prod stay apart in the one PostHog project. Application and
+scraped series also carry `service.name` (the tier, or the scraped workload's
+`app.kubernetes.io/name`); the kubelet and cluster-state series are named by
+their `k8s.*` resource attributes instead.
 
 ```text
 grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purger
-        │  plain OTLP (in-cluster, no key)
+        │  plain OTLP (in-cluster, no key): traces, logs, metrics
         ▼
-  otel-collector ──▶ traces ──▶ Langfuse
-                 ──▶ logs   ──▶ PostHog (WARN+)
-        ▲        ──▶ metrics ─▶ :8889/metrics (Prometheus text, no consumer yet)
-        │ scrape every 30 s, keyless port 6336
-  qdrant-0 / qdrant-1 / qdrant-2
+  otel-collector ──▶ traces  ──▶ Langfuse
+   (gateway)     ──▶ logs    ──▶ PostHog Logs (WARN+)
+     ▲  ▲  ▲     ──▶ metrics ──▶ PostHog Metrics   (+ Qdrant on :8889)
+     │  │  └── k8s_cluster: workload state from the API
+     │  └───── scrape every 30 s: qdrant-0 / qdrant-1 / qdrant-2 (port 6336)
+     │ OTLP
+  otel-agent (one per node) ◀── its kubelet (:10250) and its annotated pods
 ```
 
 A signal no consumer takes ends in the collector's own `nop` exporter, because
 the OTLP receiver answers a signal that has no pipeline with an error that every
-producer would log on each export. The exporter is declared only when a pipeline
-needs it.
+producer would log on each export.
 
 **Log consumer.** The collector's logs signal has one consumer, on a pipeline of
 its own so that a second consumer added later never inherits its severity
@@ -2105,14 +2137,26 @@ PostHog Logs takes `{posthogHost}/i/v1/logs` with `Authorization: Bearer
 browser bundle carries, so it sits in the collector ConfigMap as plain config:
 no env var on the pod. The collector reads its config once, at start, so the
 pod template carries a digest of it (with the Langfuse key's): a changed token,
-or a changed Qdrant peer count, rolls the collector. Only logs go: LLM traces reach
-PostHog through Langfuse's own integration, and no producer sends metrics. The WARN
+or a changed Qdrant peer count, rolls the collector. No traces go: LLM traces reach
+PostHog through Langfuse's own integration. The WARN
 floor and the 1000-batch bounded queue are what keep the signal inside
 PostHog's 10 GB free tier and a PostHog outage out of the rest of the
-collector. Not done: the `k8sattributes` processor (pod, namespace and node
-attributes), because it needs a ServiceAccount with `pods`/`namespaces` read
-RBAC and the collector pod deliberately mounts no API token; `service.name`
-already tells the tiers apart.
+collector. Not done: the `k8sattributes` processor on application signals;
+the producers already name their pod (`service.instance.id`) and tier
+(`service.name`).
+
+**Metrics consumer.** `metrics/posthog` on the gateway, exporter
+`otlp_http/posthog_metrics` to `{posthogHost}/i/v1/metrics`, the same bearer
+token, its own bounded queue. Its receivers are the OTLP receiver (the tiers
+and the agents), `k8s_cluster` and, with Qdrant deployed, `prometheus/qdrant`.
+Switch: `posthogMetricsEnabled` (default `true`), with the same dependencies as
+the logs; it also deploys the agents. With it on the gateway runs as the
+`otel-collector` ServiceAccount and the agents as `otel-agent`, each bound to
+a ClusterRole of get/list/watch rules (`collector-identity.ts`); with it off
+the gateway mounts no API token, as before. The agents reach each kubelet on
+its host IP, port 10250, with the service account's token and
+`insecure_skip_verify` (a kubelet's serving certificate is self-signed and
+names no IP).
 
 Egress needs no NetworkPolicy change: egress is open by design
 (`network-policies.ts`), so the collector, the frontend and the Python tiers

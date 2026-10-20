@@ -44,6 +44,9 @@ function forEachWorkload(check: (workload: WorkloadProps, report: ReportViolatio
     validateResourceOfType(k8s.apps.v1.StatefulSet, (props, _args, report) =>
       check(props as unknown as WorkloadProps, report),
     ),
+    validateResourceOfType(k8s.apps.v1.DaemonSet, (props, _args, report) =>
+      check(props as unknown as WorkloadProps, report),
+    ),
   ];
 }
 

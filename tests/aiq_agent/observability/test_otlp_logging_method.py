@@ -10,17 +10,20 @@ import pytest
 import yaml
 from opentelemetry import metrics as otel_metrics
 
+from aiq_agent.observability import otlp_metrics
 from aiq_agent.observability.otlp_logging_method import OtlpLoggingMethodConfig
-from aiq_agent.observability.otlp_logging_method import _logs_endpoint
 from aiq_agent.observability.otlp_logging_method import otlp_logging_method
 
 CONFIG_PATH = "configs/config_oib_openrouter.yml"
 
 
-def test_logs_endpoint_is_derived_from_the_traces_path():
-    assert _logs_endpoint("http://otel-collector:4318/v1/traces") == "http://otel-collector:4318/v1/logs"
-    assert _logs_endpoint("http://otel-collector:4318/v1/traces/") == "http://otel-collector:4318/v1/logs"
-    assert _logs_endpoint("http://localhost:4318") == "http://localhost:4318/v1/logs"
+@pytest.fixture(autouse=True)
+def _provider_already_installed(monkeypatch):
+    """Every test sees a provider already in place, so none starts an exporter thread at a collector that is not there.
+
+    The two tests about the provider itself clear it again.
+    """
+    monkeypatch.setattr(otlp_metrics, "_provider", object())
 
 
 async def test_missing_endpoint_yields_a_null_handler():
@@ -31,19 +34,37 @@ async def test_missing_endpoint_yields_a_null_handler():
         assert isinstance(handler, logging.NullHandler)
 
 
-@pytest.mark.parametrize("endpoint", [None, "http://otel-collector:4318/v1/traces"])
-async def test_no_meter_provider_is_installed_with_or_without_an_endpoint(monkeypatch, endpoint):
-    # Metrics have no consumer (the collector carries no metrics pipeline), so
-    # the logging method exports logs and nothing else: a MeterProvider set here
-    # would batch readings to an endpoint that answers 404 on every interval.
-    # The global provider is set once per process: record the calls, never make them.
+async def test_no_meter_provider_without_an_endpoint(monkeypatch):
+    # No collector, no provider: the instruments stay no-ops instead of
+    # batching readings for an endpoint that does not exist.
     calls: list[object] = []
     monkeypatch.setattr(otel_metrics, "set_meter_provider", calls.append)
+    monkeypatch.setattr(otlp_metrics, "_provider", None)
 
-    async with otlp_logging_method(OtlpLoggingMethodConfig(endpoint=endpoint), None):
+    async with otlp_logging_method(OtlpLoggingMethodConfig(), None):
         pass
 
     assert calls == []
+
+
+async def test_the_meter_provider_is_installed_once_and_outlives_the_workflow(monkeypatch):
+    # The research worker builds a workflow per job, and OpenTelemetry sets the
+    # global provider once: a provider stopped with the first workflow left
+    # every later job recording into a dead one (gotchas.md). The global
+    # provider is set once per process: record the calls, never make them.
+    calls: list[object] = []
+    monkeypatch.setattr(otel_metrics, "set_meter_provider", calls.append)
+    monkeypatch.setattr(otlp_metrics, "_provider", None)
+    config = OtlpLoggingMethodConfig(endpoint="http://otel-collector:4318/v1/traces")
+
+    for _job in range(2):
+        async with otlp_logging_method(config, None):
+            pass
+
+    assert len(calls) == 1
+    provider = calls[0]
+    assert not provider._shutdown  # noqa: SLF001 - the property under test
+    provider.shutdown()
 
 
 async def test_configured_endpoint_yields_an_otlp_handler():
@@ -76,21 +97,6 @@ def test_shipped_config_wires_the_otlp_logging_method():
     assert otlp["endpoint"] == "${OTEL_EXPORTER_OTLP_ENDPOINT:-}", (
         "logging endpoint must default to empty so the handler no-ops when the observability tier is not deployed"
     )
-
-
-def test_resource_names_the_build_the_record_came_from():
-    # err2issue reads service.version into the issue's "Version" row; without
-    # it a regression on a closed issue could not be told from a stale pod.
-    from aiq_agent.observability.otlp_logging_method import _resource_attributes
-
-    attributes = _resource_attributes({"OTEL_SERVICE_NAME": "grid-agent-worker", "GRID_GIT_SHA": " abc123 "})
-    assert attributes == {"service.name": "grid-agent-worker", "service.version": "abc123"}
-
-
-def test_resource_omits_the_version_when_the_image_carries_none():
-    from aiq_agent.observability.otlp_logging_method import _resource_attributes
-
-    assert _resource_attributes({"GRID_GIT_SHA": ""}) == {"service.name": "aiq-agent"}
 
 
 def test_a_failed_build_exports_its_cause_not_its_itemization(caplog):

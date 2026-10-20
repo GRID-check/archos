@@ -14,6 +14,9 @@ const LANGFUSE_WEB = LANGFUSE.web;
 const LANGFUSE_WORKER = LANGFUSE.worker;
 const CLICKHOUSE = LANGFUSE.clickhouse;
 
+/** The per-node metrics agent (ADR-0119), named by the rules that admit its scrape to a withheld pod. */
+const OTEL_AGENT_POD = { podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-agent" } } };
+
 /**
  * The backend roles that carry the Langfuse API keys (`backendEnv`, less the
  * ingest worker) and so are named callers of the web tier in rule 11d.
@@ -346,7 +349,9 @@ export function installNetworkPolicies(
   //     running the background conversions (ADR-0079), so it is named too: a
   //     pool left out here would fail every office file with a green plan. The
   //     agent never calls it (the BFF hands the backend the finished PDF), and
-  //     nothing else has a reason to.
+  //     nothing else has a reason to, except the node agent (`otel-agent`,
+  //     ADR-0119) scraping `/prometheus/metrics`, which Gotenberg serves on the
+  //     same port; named only while it is deployed.
   const gotenberg = cfg.gotenberg.enabled
     ? mk("gotenberg-frontend-only", {
         podSelector: { matchLabels: { "app.kubernetes.io/name": GOTENBERG.name } },
@@ -358,6 +363,7 @@ export function installNetworkPolicies(
               ...(cfg.bffJobs.enabled
                 ? [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "bff-jobs" } } }]
                 : []),
+              ...(cfg.posthog.metricsEnabled ? [OTEL_AGENT_POD] : []),
             ],
             ports: [{ protocol: "TCP", port: PORT.gotenberg }],
           },
@@ -503,6 +509,19 @@ export function installNetworkPolicies(
       })
     : undefined;
 
+  // 21. otel-agent → ClickHouse's metrics listener (ADR-0119), which answers
+  //     `/metrics` without a login and nothing else (`PORT.clickhouseMetrics`).
+  //     Rule 12 keeps the query ports to Langfuse; this admits the node
+  //     agent, and to that port alone, so no scrape can become a query.
+  const agentToClickhouse =
+    cfg.langfuse.enabled && cfg.posthog.metricsEnabled
+      ? mk("allow-agent-to-clickhouse-metrics", {
+          podSelector: { matchLabels: { "app.kubernetes.io/name": CLICKHOUSE } },
+          policyTypes: ["Ingress"],
+          ingress: [{ from: [OTEL_AGENT_POD], ports: [{ protocol: "TCP", port: PORT.clickhouseMetrics }] }],
+        })
+      : undefined;
+
   return [
     deny,
     intra,
@@ -526,5 +545,6 @@ export function installNetworkPolicies(
     qdrantPeers,
     ...(collectorToQdrant ? [collectorToQdrant] : []),
     ...(edgeQdrant ? [edgeQdrant] : []),
+    ...(agentToClickhouse ? [agentToClickhouse] : []),
   ];
 }

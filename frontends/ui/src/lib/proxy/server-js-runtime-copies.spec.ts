@@ -33,9 +33,13 @@ describe('server.js runtime image copies', () => {
     expect(requires.length).toBeGreaterThan(0)
   })
 
+  /** Every destination a `COPY` line writes, relative to the image's working directory. */
+  const copied = [...dockerfile.matchAll(/^COPY .* \.\/(\S+)$/gm)].map((match) => match[1].replace(/\/$/, ''))
+
   it.each(requires)('copies %s into the production image', (file) => {
     expect(existsSync(path.join(UI_ROOT, file)), `server.js requires ${file}, which does not exist`).toBe(true)
-    const copyPattern = new RegExp(`^COPY .* \\./${file.replace(/[/.]/g, (c) => `\\${c}`)}$`, 'm')
-    expect(copyPattern.test(dockerfile), `deploy/Dockerfile must COPY ${file}: server.js requires it`).toBe(true)
+    // The file itself, or a directory above it (`observability/` is copied whole).
+    const covered = copied.some((dest) => file === dest || file.startsWith(`${dest}/`))
+    expect(covered, `deploy/Dockerfile must COPY ${file}: server.js requires it`).toBe(true)
   })
 })

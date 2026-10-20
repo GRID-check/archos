@@ -432,6 +432,20 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
     expect(await queue.depth(sql)).toBe(before + 1)
   })
 
+  it('reports every status and the oldest queued job’s age to the meters', async () => {
+    const before = await queue.stats(sql)
+    await seed('a0', A, '2026-09-30T10:00:00Z')
+    const dead = await seed('a1', A, '2026-09-30T10:00:01Z')
+    await withPlatformScope(sql, (tx) => tx`UPDATE bff_job_queue SET status = 'dead', dead_at = now() WHERE job_id = ${dead}::uuid`)
+
+    const after = await queue.stats(sql)
+    expect(after.counts.queued).toBe(before.counts.queued + 1)
+    expect(after.counts.dead).toBe(before.counts.dead + 1)
+    expect(after.counts).toHaveProperty('claimed')
+    // Seeded at a fixed time in the past, so the oldest queued job is at least that old.
+    expect(after.oldestQueuedSeconds).toBeGreaterThan((Date.now() - Date.parse('2026-09-30T10:00:00Z')) / 1000 - 5)
+  })
+
   it('never claims one job twice among racing workers', async () => {
     const lanes = [A, B, C]
     for (let i = 0; i < 30; i++) await seed(`j${i}`, lanes[i % 3], `2026-09-30T10:00:${String(i).padStart(2, '0')}Z`)

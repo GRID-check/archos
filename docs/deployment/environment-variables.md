@@ -433,13 +433,14 @@ The submit path persists a deep-research job as a `research_job_queue` row; dedi
 These are set by the Pulumi stack on the respective Deployments — not part of
 `deploy/.env`. In Compose they are unset and export no-ops. Pulumi injects them
 only when the collector is deployed: `observabilityEnabled` and at least one
-consumer (Langfuse, or `posthogLogsEnabled`) — `docs/deployment/kubernetes.md`
-§9; otherwise they stay unset and no producer exports.
+consumer (Langfuse, `posthogLogsEnabled` or `posthogMetricsEnabled`) —
+`docs/deployment/kubernetes.md` §9; otherwise they stay unset and no producer
+exports.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | unset | OTLP/HTTP collector endpoint. Python tiers get the FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts as-is); the frontend gets the BASE URL (its log exporter appends `/v1/logs`; the BFF exports no traces). Unset → frontend log export no-ops. |
-| `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `grid-aiq-agent` / `grid-agent-worker`. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | unset | OTLP/HTTP collector endpoint. Python tiers get the FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts as-is); the frontend gets the BASE URL (the BFF exports no traces). Every exporter derives its own signal path from either (`/v1/logs`, `/v1/metrics`): `otlp_resource.py`, `observability/otlp.js`. Unset → no log or metric export, and no meter provider. |
+| `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `grid-aiq-agent` / `grid-agent-worker`. Every signal also carries `service.instance.id` from `HOSTNAME` (the pod name Kubernetes sets) and `process.pid`. |
 | `GRID_TRACE_IDENTITY_ATTRIBUTES` | No | unset (off) | When `true`, keeps the `user.id` NAT 1.9 sets from the verified subject and stamps `langfuse.session.id` and the organization onto every span; when off, Grid strips NAT's `user.id` and `<prefix>.user.id` before export (`UserIdentityStripProcessor`) (`src/aiq_agent/observability/langfuse_trace_attributes.py`), which is what turns anonymous spans into traces attributable to a user and a tenant. Keyed off the Langfuse tier (ADR-0044) rather than observability generally, and Kubernetes-only. Off by default because it is a privacy posture rather than a performance knob: ADR-0029 accepted that traces carry user content on the grounds that access is gated to platform operators, and making every span attributable to a named individual is a further step that should arrive with the product decision needing it. The processor runs ahead of NAT's redaction processor, so these attributes stay redactable. Session grouping and input/output need no flag: NAT already emits `session.id` and OpenInference `input.value`/`output.value`. Backend (aiq-agent) and agent-worker services. |
 
 ## PostHog (ADR-0100)
@@ -454,7 +455,7 @@ The browser and BFF read `NEXT_PUBLIC_POSTHOG_HOST` / `NEXT_PUBLIC_POSTHOG_PROJE
 
 On Kubernetes every PostHog pair is on by default: `grid-oib:posthogHost` and `grid-oib:posthogProjectToken` default to Piloti's EU project (`POSTHOG_DEFAULT_HOST` and `POSTHOG_DEFAULT_PROJECT_TOKEN` in `deploy/pulumi/src/config.ts`), so staging and production both send, told apart by each event's `environment`. A stack opts out with `grid-oib:posthogHost: ""`. Compose and a local `bun dev` still need the variables set by hand, so a developer's machine sends nothing by accident.
 
-The collector's WARN-and-above log pipeline to PostHog Logs is not an environment variable. It is the stack key `grid-oib:posthogLogsEnabled` (default true), and it needs `posthogHost`, `posthogProjectToken` and the observability tier ([`kubernetes.md`](kubernetes.md) §9).
+The collector's WARN-and-above log pipeline to PostHog Logs is not an environment variable. It is the stack key `grid-oib:posthogLogsEnabled` (default true), and it needs `posthogHost`, `posthogProjectToken` and the observability tier ([`kubernetes.md`](kubernetes.md) §9). The metrics pipeline to PostHog Metrics, and the per-node agents that feed it, are the stack key `grid-oib:posthogMetricsEnabled` (default true), with the same three dependencies.
 
 ## Prompt management (Langfuse)
 

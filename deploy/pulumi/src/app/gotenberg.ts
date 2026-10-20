@@ -6,6 +6,7 @@ import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { ROLLOUT, gracefulShutdown, surgeRollout } from "../platform/rollout";
 import { GOTENBERG, PORT, UID } from "../constants";
+import { scrapeAnnotations } from "../platform/scrape";
 
 export interface Gotenberg {
   deployment: k8s.apps.v1.Deployment;
@@ -66,7 +67,10 @@ export function installGotenberg(
         selector: { matchLabels: labels },
         ...surgeRollout(ROLLOUT.converter),
         template: {
-          metadata: { labels },
+          // Conversions, their durations and LibreOffice restarts, on the API
+          // port (Gotenberg's Prometheus module is on by default). The node
+          // agent is admitted to that port by `gotenberg-frontend-only`.
+          metadata: { labels, annotations: scrapeAnnotations(PORT.gotenberg, "/prometheus/metrics") },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             automountServiceAccountToken: false,

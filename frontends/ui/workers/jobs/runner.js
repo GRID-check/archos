@@ -41,6 +41,7 @@
  */
 
 const { databaseOutage, describeTransportError, describeFailedResponse, isTransientStatus } = require('../failure-streak')
+const { NO_QUEUE_METERS } = require('./queue-metrics')
 
 /** @typedef {import('../job-queue').Claim} Claim */
 
@@ -79,6 +80,7 @@ const { databaseOutage, describeTransportError, describeFailedResponse, isTransi
  * @property {Pick<Console, 'log' | 'warn' | 'error'>} [log]
  * @property {(ms: number) => Promise<void>} [sleep]
  * @property {() => number} [now]
+ * @property {import('./queue-metrics').QueueMeters} [meters]
  */
 
 /** @param {number} ms */
@@ -132,6 +134,7 @@ function createRunner(config, deps) {
   const log = deps.log ?? console
   const sleep = deps.sleep ?? defaultSleep
   const now = deps.now ?? Date.now
+  const meters = deps.meters ?? NO_QUEUE_METERS
   const options = { staleSeconds: config.staleSeconds, maxAttempts: config.maxAttempts, perLaneCap: config.perLaneCap }
 
   let stopping = false
@@ -197,6 +200,7 @@ function createRunner(config, deps) {
     } finally {
       stopHeartbeat()
       inFlight.delete(claim.jobId)
+      meters.ran(claim.kind, (now() - claimedAt) / 1000)
     }
   }
 
@@ -251,7 +255,9 @@ function createRunner(config, deps) {
     const { claim, worker } = held
     const verdict = await queue.fail(sql, claim.jobId, worker, message, config.maxAttempts, config.retryBackoffSeconds)
     log.error(`[bff-jobs] job ${claim.jobId} (${claim.kind}) attempt ${claim.attempts} failed: ${message}`)
-    if (verdict === 'dead') log.error(`[bff-jobs] a job failed every attempt and is now dead: ${claim.jobId} (${claim.kind})`)
+    if (verdict !== 'dead') return
+    meters.died(1)
+    log.error(`[bff-jobs] a job failed every attempt and is now dead: ${claim.jobId} (${claim.kind})`)
   }
 
   /**
@@ -272,6 +278,7 @@ function createRunner(config, deps) {
     lastReapAt = now
     const dead = await queue.reapExhausted(sql, options)
     if (dead.length === 0) return
+    meters.died(dead.length)
     log.error(`[bff-jobs] ${dead.length} job(s) lost their worker on their last attempt and are now dead`)
     log.warn(`[bff-jobs] dead jobs: ${dead.join(', ')}`)
   }
@@ -301,7 +308,9 @@ function createRunner(config, deps) {
     try {
       await reapIfDue()
       await purgeIfDue()
+      const claimStartedAt = now()
       const claim = await queue.claimNext(sql, worker, options)
+      meters.claimed(now() - claimStartedAt)
       if (!claim) {
         streak.succeeded()
         return false
