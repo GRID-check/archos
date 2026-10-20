@@ -169,6 +169,10 @@ const BOUNDARY_MIGRATIONS = [
   // Platform bookkeeping with no tenant data, so a PLATFORM table: every
   // tenant reads, only the platform role (the exporter) writes.
   '0154_analytics_export_cursors.sql',
+  // Adds project_upload_screening — what one project changes about the
+  // office's sensitive-data name terms (ADR-0086, 2026-10-20). Keyed by its
+  // organization; the composite foreign key ties it to the project's.
+  '0158_project_upload_screening.sql',
   // Adds org_openrouter_keys — the OpenRouter key the platform provisions for
   // each organization (ADR-0121). Keyed directly by its organization.
   '0159_org_openrouter_keys.sql',

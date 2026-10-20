@@ -136,6 +136,45 @@ describe('ProjectOverview', () => {
     expect(screen.queryByTestId('overview-members')).not.toBeInTheDocument()
   })
 
+  test('an open setup is ONE way in, saying what waits, and the briefing waits until it is done', () => {
+    const { rerender } = render(
+      <ProjectOverview
+        data={DATA}
+        activity={ACTIVITY}
+        usage={null}
+        access={ADMIN}
+        setupProgress={{ status: 'ready', counts: { documentsRead: 23, suggested: 41, contradictions: 1, decisiveOpen: 3 } }}
+      />
+    )
+
+    const hero = screen.getByTestId('overview-hero')
+    const setup = within(hero).getByRole('link', { name: /Continue setup/ })
+    expect(setup).toHaveAttribute('href', '/app/projects/p1/setup')
+    expect(setup).toHaveTextContent('3 questions open')
+    expect(within(hero).queryByRole('link', { name: /briefing/i })).not.toBeInTheDocument()
+
+    rerender(
+      <ProjectOverview
+        data={DATA}
+        activity={ACTIVITY}
+        usage={null}
+        access={ADMIN}
+        setupProgress={{ status: 'reading', counts: null }}
+      />
+    )
+    expect(within(hero).getByRole('link', { name: /Continue setup/ })).toHaveTextContent('Piloti is still reading')
+
+    rerender(<ProjectOverview data={DATA} activity={ACTIVITY} usage={null} access={ADMIN} />)
+    expect(within(hero).queryByRole('link', { name: /Continue setup/ })).not.toBeInTheDocument()
+    expect(within(hero).getByRole('link', { name: /briefing/i })).toHaveAttribute('href', '/app/projects/p1/intake')
+  })
+
+  test('an open setup without counts says nothing it does not know', () => {
+    render(<ProjectOverview data={DATA} activity={ACTIVITY} usage={null} access={ADMIN} setupOpen />)
+    expect(within(screen.getByTestId('overview-hero')).getByRole('link', { name: /Continue setup/ })).toBeInTheDocument()
+    expect(screen.queryByTestId('overview-setup-note')).not.toBeInTheDocument()
+  })
+
   test('an admin gets the menu, the spend and the roster', async () => {
     render(<ProjectOverview data={DATA} activity={ACTIVITY} usage={USAGE} access={ADMIN} />)
 

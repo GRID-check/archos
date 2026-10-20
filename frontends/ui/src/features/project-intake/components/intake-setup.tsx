@@ -18,12 +18,16 @@ import { IntakeSetupView } from './intake-setup-view'
 
 export interface IntakeSetupProps {
   projectId: string
+  /** The project's name, for the page head. */
+  projectName?: string
   /** The project's RAG collection, which uploads go to. */
   collectionName: string
   /** The review as the server read it; null when the project has no intake (set up by hand). */
   initial: IntakeView | null
   /** A closed project takes no documents (ADR-0090). */
   projectClosed: boolean
+  /** The key the create dialog held a dropped folder under, from the redirect; null when none. */
+  dropKey?: string | null
   /** The typed client; the real one unless a spec brings its own. */
   client?: ProjectIntakeClient
 }
@@ -59,19 +63,19 @@ function NoIntake({ projectId }: { projectId: string }): JSX.Element {
 
 function ConnectedSetup({
   projectId,
+  projectName,
   collectionName,
   initial,
   projectClosed,
+  dropKey = null,
   client,
 }: Omit<IntakeSetupProps, 'initial'> & { initial: IntakeView }): JSX.Element {
   const intake = useIntake({ projectId, initial, client })
   const { view, watch, refresh } = intake
-  const waitingForDocuments =
-    view.status === 'waiting' && view.counts.documentsRead + view.counts.unreadDocuments === 0
   const { send, shelfUpload, upload } = useIntakeUpload({
     projectId,
     collectionName,
-    takeNewProjectDrop: waitingForDocuments,
+    dropKey: projectClosed ? null : dropKey,
     onSettled: () => {
       watch()
       void refresh()
@@ -96,6 +100,7 @@ function ConnectedSetup({
     <IntakeSetupView
       view={view}
       projectId={projectId}
+      projectName={projectName}
       busy={intake.busy}
       stale={intake.stale}
       canUpload={!projectClosed}

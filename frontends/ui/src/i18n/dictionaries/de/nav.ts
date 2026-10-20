@@ -30,7 +30,7 @@ export const nav: typeof en.nav = {
     // Der Intake-Assistent, im Produkt „Einrichtung" (nur ⌘K-Palette).
     intake: 'Einrichtung',
     // Piloti liest die Dokumente des Projekts, die Person prüft (ADR-0111).
-    setup: 'Projekterfassung',
+    setup: 'Einrichtung',
   },
   sectionGroups: {
     work: 'Arbeit',
@@ -43,7 +43,7 @@ export const nav: typeof en.nav = {
     knowledge: 'Was die Wissensbasis derzeit enthält.',
     settings: 'Wo dieses Projekt steht und wie es eingerichtet ist.',
     intake: 'Geführtes Briefing für dieses Projekt.',
-    setup: 'Piloti liest die Dokumente, Sie prüfen, was es gefunden hat.',
+    setup: 'Projekt, Ablage, Erfassung, Rückfragen, Steckbrief: Piloti liest, Sie prüfen und bestätigen.',
   },
   backTo: 'Zurück zu {label}',
   returnTargets: {
@@ -56,7 +56,7 @@ export const nav: typeof en.nav = {
   },
   tabTitle: {
     intake: 'Einrichtung',
-    setup: 'Projekterfassung',
+    setup: 'Einrichtung',
     researchProgress: '{percent}% · {label} — Piloti',
     researchActive: '⏳ {label} — Piloti',
   },

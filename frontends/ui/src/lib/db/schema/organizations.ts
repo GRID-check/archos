@@ -22,8 +22,12 @@ export const organizations = pgTable('organizations', {
   workosOrganizationId: text('workos_organization_id').primaryKey(),
   /** Optional Grid display-name override; falls back to the WorkOS org name. */
   displayName: text('display_name'),
-  /** Default interface language applied to new members / unset users. */
-  defaultLocale: text('default_locale').notNull().default('en'),
+  /**
+   * Interface language for members who never picked one; NULL until an admin
+   * chooses (migration 0156). It used to default to 'en', which no reader could
+   * tell from a choice, and German offices were switched to English by it.
+   */
+  defaultLocale: text('default_locale'),
   /** Flexible bag for additional org-scoped settings. */
   settings: jsonb('settings').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -1,0 +1,82 @@
+/**
+ * intakeReadingStep namespace: step 3, Erfassung: the reading in the background, its progress, and leaving while it runs (`/app/projects/[id]/setup`, ticket 26,
+ * `docs/design/project-setup-five-steps.md`).
+ */
+export const intakeReadingStep = {
+  heading: {
+    waiting: 'No documents yet',
+    waitingWithDocuments: 'Piloti is about to read your documents',
+    reading: 'Piloti is reading your documents',
+    ready: 'Piloti has read your documents',
+    failed: 'Piloti stopped reading',
+    completed: 'Piloti has read your documents',
+  },
+  lead: {
+    failed: 'What Piloti found until then stays. Another attempt reads what is still missing.',
+    waiting: 'Piloti starts reading as soon as documents are in the filing.',
+    waitingWithDocuments: 'The documents are here. The reading starts in a moment.',
+  },
+  retry: 'Read again',
+  retryBusy: 'Starting …',
+  nextAnyway: 'On to the questions anyway',
+  documents: {
+    of: '{read} of {total} read',
+    read: '{count, plural, one {# document read} other {# documents read}}',
+    aria: '{read} of {total} documents read',
+    unread: '{count, plural, one {# document not read yet} other {# documents not read yet}}',
+    reread: 'Read now',
+    rereadAria: '{count, plural, one {Read the document that is not read yet} other {Read the # documents that are not read yet}}',
+    rereadBusy: 'Starting …',
+    add: 'Add documents',
+    addFiles: 'Choose files',
+    addFolder: 'Choose a folder',
+    uploading: 'Uploading …',
+  },
+  milestones: {
+    label: 'Progress of the reading',
+    later: 'after the reading',
+    none: 'none',
+    noneYet: 'none so far',
+    site: {
+      done: 'Site determined',
+      suggested: 'Site found',
+      searching: 'Looking for the site',
+      open: 'Site still open',
+      asked: 'in the questions',
+      toConfirm: 'to confirm',
+    },
+    values: { label: 'Values found' },
+    contradictions: { label: 'Contradictions' },
+    gaps: { label: 'Gaps that decide the building class' },
+    states: {
+      done: 'done',
+      active: 'in progress',
+      pending: 'not yet',
+      attention: 'needs you',
+    },
+  },
+  found: {
+    fresh: 'Just found',
+    soFar: 'Found so far',
+    sample: 'Found, among others',
+    source: '{name}, p. {page}',
+    all: '{count, plural, one {Show it in the profile} other {All # in the profile}}',
+  },
+  summary: {
+    toggle: 'What Piloti says about it',
+  },
+  band: {
+    waiting: 'You can already ask Piloti in the chat, with or without documents.',
+    reading: 'You do not have to wait. Piloti lets you know when it is done.',
+    ready: 'Everything Piloti read, you can now ask about in the chat.',
+    failed: 'What Piloti read until then, you can already ask about in the chat.',
+  },
+  chat: {
+    early: 'Ask in the chat now',
+    label: 'Ask in the chat',
+    aria: 'Open the project chat and ask Piloti about the documents',
+  },
+  toFiling: 'Go to filing',
+  withoutDocuments: 'Continue without documents',
+  next: 'On to the questions',
+}

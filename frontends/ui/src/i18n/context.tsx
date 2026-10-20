@@ -20,7 +20,14 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { defaultLocale, isLocale, LOCALE_COOKIE, localeNames, type Locale } from './config'
+import {
+  defaultLocale,
+  isLocale,
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE_SECONDS,
+  localeNames,
+  type Locale,
+} from './config'
 import { getDictionary, type Dictionary } from './dictionaries'
 import { createTranslator, type Translator } from './translate'
 import { fetchUserPreferences, patchUserPreferences } from '@/lib/user-preferences/client'
@@ -37,11 +44,9 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null)
 
-const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
-
 function writeLocaleCookie(locale: Locale): void {
   if (typeof document === 'undefined') return
-  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE_SECONDS}; samesite=lax`
 }
 
 export interface I18nProviderProps {
@@ -98,10 +103,12 @@ export function I18nProvider({
 
   // On first mount, reconcile the active locale with the user's context:
   //   1. their saved personal preference (cross-device), else
-  //   2. their organization's default language (so a new member starts in the
-  //      org's configured language until they pick their own).
-  // This covers a fresh device where the cookie was never set and the server
-  // fell back to the Accept-Language header.
+  //   2. their organization's default language, when an admin chose one (so a
+  //      new member starts in the org's configured language until they pick
+  //      their own; null until chosen, and then the browser's language stands).
+  // The server already resolved the same two facts for a signed-in render
+  // (`request-locale.ts`), so this normally changes nothing. It is the
+  // fallback for a render that could not read them.
   //
   // `fixedLocale` opts out: a preview route asked for one specific language and
   // must keep it, whoever is looking at it.

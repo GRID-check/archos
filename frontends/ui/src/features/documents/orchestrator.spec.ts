@@ -573,7 +573,8 @@ describe('UploadOrchestrator', () => {
       UploadOrchestrator.startPolling('job-1', 'session-1')
       await vi.advanceTimersByTimeAsync(5000)
 
-      expect(mockDocumentsStore.setError).toHaveBeenCalledWith('Upload failed')
+      // The job's own text is English and for logs; the line says its category.
+      expect(mockDocumentsStore.setError).toHaveBeenCalledWith(getStoreTranslator('files')('ingestFailure.unknown'))
     })
 
     /**

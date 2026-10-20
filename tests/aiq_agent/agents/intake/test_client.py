@@ -33,6 +33,7 @@ class TestTheWireContract:
             "InternalIntakeNeedsResponse",
             "InternalIntakeRecordResponse",
             "InternalIntakeWithdrawResponse",
+            "InternalIntakeProgressResponse",
             "InternalIntakeFinishResponse",
         ],
     )
@@ -50,6 +51,8 @@ class TestTheWireContract:
             client.withdraw_request(JOB, [f"k{n}" for n in range(25)]),
             client.finish_request(JOB, "Drei Dokumente gelesen.", ["Baubeschreibung.pdf"], "a" * 32),
             client.finish_request(JOB, "", [], None),
+            client.progress_request(JOB, ["Baubeschreibung.pdf", "", "Einreichplan.pdf"]),
+            client.progress_request(JOB, [f"Datei {n}.pdf" for n in range(600)]),
         ],
         ids=[
             "needs",
@@ -60,6 +63,8 @@ class TestTheWireContract:
             "withdraw-bounded",
             "finish",
             "finish-empty",
+            "progress",
+            "progress-bounded",
         ],
     )
     def test_every_body_the_client_builds_is_one_the_route_accepts(self, intake_schema, body):

@@ -1,0 +1,14 @@
+---
+fixes:
+  - >
+    Piloti no longer switches to English on its own: pages open in the
+    language you or your office chose, also after a redirect and on Safari.
+  - >
+    Upload problems, such as a file that is too large or a full storage, are
+    now named in your language.
+upgrade:
+  - >
+    An office's default language under Organisation → Einstellungen is now
+    "Nicht festgelegt" until an administrator picks one, and each person then
+    starts in their browser's language. Offices that had the English preset
+    stored have it reset; set it again there if your office wants English.

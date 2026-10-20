@@ -83,7 +83,7 @@ export async function findOrganizations(
 export async function upsertOrganization(values: {
   organizationId: string
   displayName: string | null
-  defaultLocale: string
+  defaultLocale: string | null
   settings: Record<string, unknown>
 }): Promise<void> {
   const db = getDb()

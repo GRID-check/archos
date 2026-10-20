@@ -529,6 +529,14 @@ export const collaboration: typeof en.collaboration = {
         title: 'Piloti hat die Dokumente von „{subject}“ gelesen',
         titleRelated: 'Piloti hat die Dokumente von „{subject}“ gelesen – Rückfragen: {related}',
         body: 'Prüfen Sie die Vorschläge und bestätigen Sie, was stimmt.',
+        // Das Lesen ist nicht fertig geworden (abgebrochen, nicht gestartet,
+        // zu lange ohne Antwort). Wer gegangen ist, erfährt es hier.
+        variants: {
+          failed: {
+            title: 'Piloti konnte die Dokumente von „{subject}“ nicht fertig lesen',
+            body: 'Was Piloti bis dahin gefunden hat, bleibt. Öffnen Sie die Erfassung und starten Sie das Lesen erneut.',
+          },
+        },
       },
       // Eine Kollegin hat Sie für eine Anmerkung zuständig gemacht, oder Piloti
       // hat es für sie getan (`variants.piloti`, dann ist {actor} die Person,

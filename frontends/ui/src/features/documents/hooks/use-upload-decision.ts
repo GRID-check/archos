@@ -175,8 +175,14 @@ export interface UploadDecision {
  * existing document opens the plan dialog first, and so does a file whose name
  * continues one as its next Fassung (ADR-0099, `fassungOffers`). A folder always
  * opens it.
+ *
+ * `projectId` names the project the upload goes into, when it goes into one:
+ * the names are screened with that project's policy, the office's list with
+ * the name terms the project added or set aside (ADR-0086, 2026-10-20), which
+ * is the one the server screens uploads into the project with.
  */
-export function useUploadDecision(): UploadDecision {
+export function useUploadDecision(options: { projectId?: string | null } = {}): UploadDecision {
+  const screeningProjectId = options.projectId ?? null
   const [plan, setPlan] = useState<FolderUploadPlan | null>(null)
   const [kind, setKind] = useState<UploadDecisionKind>('files')
   const [open, setOpen] = useState(false)
@@ -206,7 +212,7 @@ export function useUploadDecision(): UploadDecision {
     // The screening first, and alone: the name probe is a request, and a name
     // the office's policy holds back must not leave the browser in it either
     // (ADR-0086). Without the policy nothing is planned and nothing is sent.
-    const policy = await loadUploadScreeningPolicy()
+    const policy = await loadUploadScreeningPolicy(screeningProjectId)
     if (current !== generation.current) return
     const screening = { policy, basePath: screeningBasePath ?? null, released: new Set<File>() }
     const screened = buildFolderUploadPlan({ ...planInput, documents: [], screening })
@@ -238,7 +244,7 @@ export function useUploadDecision(): UploadDecision {
     if (current !== generation.current) return
     lastInput.current = { ...base, digests }
     setPlan(buildFolderUploadPlan(lastInput.current))
-  }, [])
+  }, [screeningProjectId])
 
   /**
    * Ask the name probe about the files it was never asked about, and fold what
@@ -321,7 +327,7 @@ export function useUploadDecision(): UploadDecision {
     while (asking.current.size > 0) await Promise.all([...asking.current])
     // Read afresh: an admin may have saved a term while the dialog was open,
     // and the folders this plan creates are named before any file is screened.
-    const policy = await loadUploadScreeningPolicy()
+    const policy = await loadUploadScreeningPolicy(screeningProjectId)
     const input = lastInput.current
     if (current !== generation.current || !input?.screening) return null
     lastInput.current = { ...input, screening: { ...input.screening, policy } }
@@ -333,7 +339,7 @@ export function useUploadDecision(): UploadDecision {
     const settled = buildFolderUploadPlan(lastInput.current)
     setPlan(settled)
     return { plan: settled, policy }
-  }, [probe])
+  }, [probe, screeningProjectId])
 
   return { propose, setReleased, settle, changeFassung, plan, kind, open, setOpen, pending, setPending }
 }

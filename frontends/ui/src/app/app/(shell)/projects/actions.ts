@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { isNewProjectDropKey } from '@/features/documents/lib/dropped-file-handover'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { BadRequestError } from '@/lib/api/errors'
 import { createProjectSchema } from '@/lib/projects/create-project-schema'
@@ -95,12 +96,17 @@ export async function createProject(
   // active until the review is finished, so it lands on the setup page too.
   // Outside the scope on purpose: `redirect()` reports itself by throwing, and a
   // throw is not something the tenant slot should be unwinding through.
-  redirect(createdProjectPath(projectId))
+  redirect(createdProjectPath(projectId, formData.get('dropKey')))
 }
 
 /** Where a project just created lands. */
-function createdProjectPath(created: { id: string; closed: boolean; setup: 'piloti' | 'self' }): string {
-  if (created.setup === 'piloti') return `/app/projects/${created.id}/setup`
+function createdProjectPath(created: { id: string; closed: boolean; setup: 'piloti' | 'self' }, dropKey: unknown): string {
+  // A folder dropped on the dialog waits under the dialog's own key; the setup
+  // page of THIS project is told it, and no other page takes it.
+  if (created.setup === 'piloti') {
+    const drop = isNewProjectDropKey(dropKey) ? `?drop=${encodeURIComponent(dropKey)}` : ''
+    return `/app/projects/${created.id}/setup${drop}`
+  }
   return created.closed ? `/app/projects/${created.id}/settings` : `/app/projects/${created.id}/intake`
 }
 
@@ -128,23 +134,24 @@ function closingFromForm(formData: FormData): ProjectClosing | FormRefusal | und
   return { outcome, endedOn, startedOn: startedOn === '' ? null : startedOn }
 }
 
-/** The form's Einrichtung, „Worum geht es?", address and Bundesland, checked as the route checks its body. */
+/** The form's Einrichtung, „Worum geht es?", address (chosen or typed) and Bundesland, checked as the route checks its body. */
 function setupFromForm(
   formData: FormData
-): (Required<Pick<CreateProjectInput, 'setup'>> & Pick<CreateProjectInput, 'description' | 'location' | 'bundesland'>) | FormRefusal {
+): (Required<Pick<CreateProjectInput, 'setup'>> & Pick<CreateProjectInput, 'description' | 'location' | 'address' | 'bundesland'>) | FormRefusal {
   const location = formData.get('location')
-  const parsed = createProjectSchema.pick({ setup: true, description: true, location: true, bundesland: true }).safeParse({
+  const parsed = createProjectSchema.pick({ setup: true, description: true, location: true, address: true, bundesland: true }).safeParse({
     setup: formData.get('setup') ?? 'self',
     description: formData.get('description') ?? undefined,
     location: typeof location === 'string' && location !== '' ? safeJson(location) : undefined,
+    address: formData.get('address') ?? undefined,
     bundesland: formData.get('bundesland') || undefined,
   })
   if (!parsed.success) return { error: 'The setup details are not valid.', reason: 'invalid-setup' }
-  const { setup, description, location: place, bundesland } = parsed.data
+  const { setup, description, location: place, address, bundesland } = parsed.data
   return {
     setup,
     ...(description ? { description } : {}),
-    ...(place ? { location: place } : {}),
+    ...(place ? { location: place } : address ? { address } : {}),
     ...(bundesland ? { bundesland } : {}),
   }
 }
