@@ -294,8 +294,8 @@ describe('IntakeSetupView', () => {
         '1. Project',
         '2. Filing — 23 documents',
         '3. Reading — 23 read',
-        '4. Questions — 3 open',
-        '5. Profile — 1 contradiction',
+        '4. Questions — 4 open',
+        '5. Profile — 41 values',
       ])
       for (const button of within(rail()).getAllByRole('button')) expect(button).toBeEnabled()
       expect(within(screen.getByTestId('intake-setup-footer')).getByText('Step 4 of 5')).toBeInTheDocument()
@@ -460,7 +460,7 @@ describe('IntakeSetupView', () => {
   describe('drops', () => {
     const dataTransfer = (file: File) => ({ dataTransfer: { types: ['Files'], files: [file], items: [] } })
 
-    it.each(['project', 'filing', 'reading', 'questions', 'profile'])('files a document dropped anywhere on the %s step', async (step) => {
+    it.each(['project', 'reading', 'questions', 'profile'])('files a document dropped anywhere on the %s step', async (step) => {
       at(`?step=${step}`)
       setup(INTAKE_READY)
       const file = new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })
@@ -470,7 +470,14 @@ describe('IntakeSetupView', () => {
       await vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
     })
 
-    it('takes no drop on a finished setup', () => {
+    it('leaves a drop on the Ablage to its tree, which chooses before anything is uploaded', () => {
+      at('?step=filing')
+      setup(INTAKE_READY)
+      fireEvent.drop(screen.getByTestId('intake-setup'), dataTransfer(new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })))
+      expect(onFiles).not.toHaveBeenCalled()
+    })
+
+        it('takes no drop on a finished setup', () => {
       setup(INTAKE_COMPLETED)
       fireEvent.drop(screen.getByTestId('intake-setup'), dataTransfer(new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })))
       expect(onFiles).not.toHaveBeenCalled()

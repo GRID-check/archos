@@ -1,29 +1,72 @@
 import type { en } from '../en'
 
-/** intakeQuestionsStep: step 4, Rückfragen: what the classification still needs, and the documents to hand in. */
+/** intakeQuestionsStep: step 4, Rückfragen: one question at a time, only what changes the classification. */
 export const intakeQuestionsStep: typeof en.intakeQuestionsStep = {
   heading: 'Rückfragen',
-  description:
-    'Nur was die Einstufung ändert: die entscheidenden Angaben und die Unterlagen, die der Standort verlangt. Beantworten Sie, was Sie wissen, reichen Sie ein Dokument nach oder markieren Sie es als nicht bekannt.',
+  subtitle: 'Nur, was die Einstufung ändert',
+  groups: {
+    missing: 'Fehlt in den Unterlagen',
+    location: 'Unterlagen zum Standort',
+    contradiction: 'Widerspruch',
+  },
+  list: {
+    done: 'erledigt',
+    current: 'jetzt gefragt',
+    open: 'offen',
+  },
   progress: '{done} von {total} erledigt',
-  progressLabel: 'Erledigte Rückfragen',
-  readingNote:
-    'Piloti liest die Unterlagen noch. Vollständig sind die Rückfragen, wenn das Lesen abgeschlossen ist. Was Sie schon wissen, können Sie jetzt beantworten.',
-  closingNote:
-    'Ein abgeschlossenes Projekt: Piloti fragt nur das Wichtigste. Was die Unterlagen nicht nennen, bleibt „nicht bekannt“.',
-  decisiveHeading: 'Entscheidende Angaben',
-  locationHeading: 'Unterlagen zum Standort',
-  locationPlace: 'Was der Standort in {place} verlangt.',
-  locationPlaceUnknown: 'Sobald das Bundesland feststeht, nennt Piloti die Unterlagen, die dort gelten.',
+  readingNote: 'Piloti liest die Unterlagen noch. Was Sie schon wissen, können Sie jetzt beantworten.',
+  closingNote: 'Ein abgeschlossenes Projekt: Piloti fragt nur das Wichtigste.',
+  card: {
+    position: 'Frage {index} von {total}',
+    submit: 'Übernehmen und weiter',
+    submitting: 'Wird übernommen …',
+    unknown: 'Weiß ich nicht',
+    unknownBusy: 'Wird vermerkt …',
+    unknownAria: '{label}: weiß ich nicht',
+    later: 'Später entscheiden',
+    laterAria: '{label}: später entscheiden',
+  },
+  why: {
+    decisive: 'entscheidet die Gebäudeklasse',
+    register: 'bestimmt, was der Standort verlangt',
+    location: 'verlangt der Standort in {place}',
+    locationUnknown: 'verlangt der Standort',
+    contradiction: 'die Unterlagen nennen verschiedene Werte',
+  },
+  or: 'oder',
+  handIn: {
+    where: 'Steht meist in:',
+    wherePhone: 'Steht meist in: {where}',
+    drop: 'Hier ablegen, Piloti liest die Antwort selbst heraus.',
+    pick: 'Datei wählen',
+    pickAria: 'Datei wählen für: {label}',
+  },
   request: {
     sources: 'Grundlage: {sources}',
-    answerInstead: 'Oder direkt angeben',
-    unknown: 'Nicht bekannt',
-    unknownAria: '{label}: nicht bekannt',
+    unknownAria: '{label}: weiß ich nicht',
+    documentOnly: 'Legen Sie das Dokument unten ab, Piloti liest die Werte daraus.',
   },
-  nothing: 'Keine Rückfragen: Die Unterlagen nennen alles, was die Einstufung entscheidet.',
-  done: 'Alles erledigt. Im Steckbrief bestätigen Sie, was Piloti gefunden hat.',
+  contradiction: {
+    title: '{label}: {values}?',
+    description: 'Die Unterlagen nennen verschiedene Werte. Wählen Sie den, der gilt.',
+    choose: 'Geltender Wert',
+    current: 'im Steckbrief',
+    found: 'auch gefunden',
+  },
+  value: {
+    unknown: 'nicht bekannt',
+    handedIn: 'Datei abgelegt',
+  },
+  doneTitle: 'Alle Rückfragen erledigt',
+  done: 'Im Steckbrief bestätigen Sie, was Piloti gefunden hat.',
+  nothingTitle: 'Keine Rückfragen',
+  nothing: 'Die Unterlagen nennen alles, was die Einstufung entscheidet.',
+  waitingTitle: 'Noch keine Rückfragen',
+  waiting: 'Piloti liest die Unterlagen noch. Was dabei offen bleibt, fragt Piloti hier.',
   more: 'Weitere Angaben',
   moreHint: 'Freiwillig: Nichts davon ändert die Einstufung.',
+  moreClose: 'Schließen',
+  rest: 'Rest später, zum Steckbrief',
   next: 'Weiter zum Steckbrief',
 }

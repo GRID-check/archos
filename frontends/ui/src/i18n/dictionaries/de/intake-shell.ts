@@ -26,7 +26,6 @@ export const intakeShell: typeof en.intakeShell = {
     readOf: '{read} von {total}',
     failed: 'unterbrochen',
     open: '{count} offen',
-    contradictions: '{count, plural, one {# Widerspruch} other {# Widersprüche}}',
     values: '{count, plural, one {# Wert} other {# Werte}}',
     done: 'abgeschlossen',
   },

@@ -2,23 +2,22 @@
 
 import type { JSX } from 'react'
 import { useState } from 'react'
-import { RefreshCw, ShieldCheck } from 'lucide-react'
+import { ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ProjectUploadScreeningState } from '@/adapters/api/project-upload-screening-client'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { BusyButton } from '@/components/ui/busy-button'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { TagInput } from '@/components/ui/tag-input'
-import { useTranslations } from '@/i18n'
+import { useLocale, useTranslations, type Translator } from '@/i18n'
 import { normalizeTermList } from '@/lib/upload-screening/policy'
 import type { ProjectScreeningOverride } from '@/lib/upload-screening/project-policy'
-import { IntakeSection } from '../intake-atoms'
+import { SummaryBlock } from './filing-atoms'
 import type { ScreeningPreview } from './folder-tree'
 
-export interface ScreeningPanelProps {
+export interface ScreeningSummaryProps {
   /** The project's list; null while it loads or when it could not be read. */
   screening: ProjectUploadScreeningState | null
   loadFailed: boolean
@@ -33,47 +32,106 @@ export interface ScreeningPanelProps {
 
 const key = (term: string): string => term.toLocaleLowerCase('de')
 
+/** Which list this is, in a sentence: the office's, Piloti's suggestion, or the project's own. */
+function listName(screening: ProjectUploadScreeningState, t: Translator): string {
+  const { override } = screening
+  if (override.addedNameTerms.length + override.removedNameTerms.length > 0) return t('screening.listProject')
+  return screening.officeSuggested ? t('screening.listSuggested') : t('screening.listOffice')
+}
+
 /**
- * Sensible Daten for this project: what the office's list holds back of the
- * choice and which rule holds it, and (for whoever manages the project) the
- * list changed for this project only: an office term switched off here, or a
- * term added here. A draft shows its effect in the tree before it is saved.
+ * Sensible Daten, as one block of the summary card: what the office's list
+ * keeps on the server of the choice and on which terms, and (for whoever
+ * manages the project) „Für dieses Projekt anpassen", which opens the list for
+ * this project only in a sheet: an office term switched off here, or a term
+ * added here. A draft shows its effect in the tree and the sheet before it is
+ * saved (ADR-0086, 2026-10-20).
  */
-export function ScreeningPanel({
+export function ScreeningSummary(props: ScreeningSummaryProps): JSX.Element {
+  const { screening, loadFailed, onRetry, preview, draft, onDraftChange } = props
+  const t = useTranslations('intakeFilingStep')
+  const { locale } = useLocale()
+
+  if (loadFailed) {
+    return (
+      <SummaryBlock
+        testId="filing-screening"
+        icon={<ShieldAlert className="text-destructive" aria-hidden />}
+        title={t('screening.heading')}
+        body={t('screening.loadError')}
+        action={
+          <Button type="button" variant="inline" onClick={onRetry}>
+            {t('screening.retry')}
+          </Button>
+        }
+      />
+    )
+  }
+  if (!screening) {
+    return (
+      <SummaryBlock
+        testId="filing-screening"
+        icon={<ShieldCheck className="text-muted-foreground" aria-hidden />}
+        title={t('screening.heading')}
+        body={t('screening.loading')}
+      />
+    )
+  }
+  if (!screening.office.enabled) {
+    return (
+      <SummaryBlock
+        testId="filing-screening"
+        icon={<ShieldOff className="text-muted-foreground" aria-hidden />}
+        title={t('screening.offTitle')}
+        body={t('screening.off')}
+      />
+    )
+  }
+
+  const list = listName(screening, t)
+  const terms = new Intl.ListFormat(locale, { type: 'conjunction' }).format(
+    (preview?.byTerm ?? []).map((entry) => t('screening.term', { term: entry.term }))
+  )
+  const held = preview?.held.length ?? 0
+  const title = !preview ? t('screening.aheadTitle') : held > 0 ? t('screening.heldTitle', { count: held }) : t('screening.noneTitle')
+  const body = !preview ? t('screening.ahead', { list }) : held > 0 ? t('screening.because', { terms, list }) : t('screening.none', { list })
+
+  return (
+    <>
+      <SummaryBlock
+        testId="filing-screening"
+        icon={<ShieldCheck className={held > 0 ? 'text-warning' : 'text-muted-foreground'} aria-hidden />}
+        title={<span data-testid="filing-held">{title}</span>}
+        body={body}
+        action={
+          screening.canManage ? (
+            <Button type="button" variant="inline" onClick={() => onDraftChange(screening.override)}>
+              {t('screening.adjust')}
+            </Button>
+          ) : (
+            <span className="text-muted-foreground text-xs">{t('screening.readOnly')}</span>
+          )
+        }
+      />
+      <ScreeningEditor {...props} screening={screening} open={draft !== null} />
+    </>
+  )
+}
+
+/** The list for this project, in a sheet: the office's terms switched per project, and terms of its own. */
+function ScreeningEditor({
   screening,
-  loadFailed,
-  onRetry,
   preview,
   draft,
   onDraftChange,
   onSave,
-}: ScreeningPanelProps): JSX.Element | null {
+  open,
+}: ScreeningSummaryProps & { screening: ProjectUploadScreeningState; open: boolean }): JSX.Element {
   const t = useTranslations('intakeFilingStep')
   const [saving, setSaving] = useState(false)
-
-  if (loadFailed) {
-    return (
-      <IntakeSection label={t('screening.heading')} testId="filing-screening">
-        <Alert variant="destructive">
-          <AlertDescription className="text-current">
-            <p>{t('screening.loadError')}</p>
-            <Button type="button" size="sm" variant="outline" onClick={onRetry}>
-              <RefreshCw aria-hidden />
-              {t('screening.retry')}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      </IntakeSection>
-    )
-  }
-  // Still loading: nothing to say yet, and the upload waits for it.
-  if (!screening) return null
-
   const { office, override } = screening
-  const editing = draft !== null
   const current = draft ?? override
   const removed = new Set(current.removedNameTerms.map(key))
-  const changed = override.addedNameTerms.length + override.removedNameTerms.length > 0
 
   const toggleOfficeTerm = (term: string): void => {
     const removedNameTerms = removed.has(key(term))
@@ -96,111 +154,65 @@ export function ScreeningPanel({
   }
 
   return (
-    <IntakeSection
-      label={t('screening.heading')}
-      description={t('screening.description')}
-      testId="filing-screening"
-      action={
-        screening.canManage && !editing ? (
-          <Button type="button" size="sm" variant="outline" onClick={() => onDraftChange(override)}>
-            {t('screening.change')}
+    <Sheet open={open} onOpenChange={(next) => !next && onDraftChange(null)}>
+      <SheetContent side="right" closeLabel={t('screening.close')} data-testid="filing-screening-editor">
+        <SheetHeader>
+          <SheetTitle>{t('screening.heading')}</SheetTitle>
+          <SheetDescription>{t('screening.description')}</SheetDescription>
+        </SheetHeader>
+        {preview && (
+          <p className="bg-muted/60 rounded-lg px-3 py-2 text-sm" role="status" data-testid="filing-screening-preview">
+            {preview.held.length > 0
+              ? t('screening.preview', { count: preview.held.length })
+              : t('screening.previewNone')}
+          </p>
+        )}
+        <Field>
+          <FieldLabel>{t('screening.officeTerms')}</FieldLabel>
+          <FieldDescription>{t('screening.officeTermsHint')}</FieldDescription>
+          <ul className="flex flex-wrap gap-2">
+            {office.nameTerms.map((term) => {
+              const on = !removed.has(key(term))
+              return (
+                <li key={term}>
+                  <Chip asChild interactive variant={on ? 'secondary' : 'outline'} size="md">
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={t(on ? 'screening.termOn' : 'screening.termOff', { term })}
+                      className={on ? undefined : 'text-muted-foreground line-through'}
+                      onClick={() => toggleOfficeTerm(term)}
+                    >
+                      {term}
+                    </button>
+                  </Chip>
+                </li>
+              )
+            })}
+          </ul>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="filing-added-terms">{t('screening.added')}</FieldLabel>
+          <TagInput
+            id="filing-added-terms"
+            value={current.addedNameTerms}
+            onChange={(addedNameTerms) => onDraftChange({ ...current, addedNameTerms })}
+            normalize={normalizeTermList}
+            removeLabel={(term) => t('screening.removeTerm', { term })}
+            placeholder={t('screening.addedPlaceholder')}
+            aria-label={t('screening.added')}
+          />
+        </Field>
+        <p className="text-muted-foreground text-xs">{t('screening.contentNote')}</p>
+        <SheetFooter>
+          <Button type="button" variant="ghost" onClick={() => onDraftChange(null)}>
+            {t('screening.cancel')}
           </Button>
-        ) : undefined
-      }
-    >
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <ShieldCheck className="text-muted-foreground size-4" aria-hidden />
-        <span>{screening.officeSuggested ? t('screening.officeSuggested') : t('screening.officeList')}</span>
-        {changed && <Badge variant="info">{t('screening.projectChanged')}</Badge>}
-      </div>
-
-      {!office.enabled ? (
-        <p className="text-muted-foreground text-sm">{t('screening.off')}</p>
-      ) : (
-        preview && <HeldBack preview={preview} />
-      )}
-
-      {editing && office.enabled && (
-        <div className="space-y-4 rounded-lg border p-4" data-testid="filing-screening-editor">
-          <Field>
-            <FieldLabel>{t('screening.officeTerms')}</FieldLabel>
-            <FieldDescription>{t('screening.officeTermsHint')}</FieldDescription>
-            <ul className="flex flex-wrap gap-2">
-              {office.nameTerms.map((term) => {
-                const on = !removed.has(key(term))
-                return (
-                  <li key={term}>
-                    <Chip asChild interactive variant={on ? 'secondary' : 'outline'} size="md">
-                      <button
-                        type="button"
-                        aria-pressed={on}
-                        aria-label={t(on ? 'screening.termOn' : 'screening.termOff', { term })}
-                        className={on ? undefined : 'text-muted-foreground line-through'}
-                        onClick={() => toggleOfficeTerm(term)}
-                      >
-                        {term}
-                      </button>
-                    </Chip>
-                  </li>
-                )
-              })}
-            </ul>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="filing-added-terms">{t('screening.added')}</FieldLabel>
-            <TagInput
-              id="filing-added-terms"
-              value={current.addedNameTerms}
-              onChange={(addedNameTerms) => onDraftChange({ ...current, addedNameTerms })}
-              normalize={normalizeTermList}
-              removeLabel={(term) => t('screening.removeTerm', { term })}
-              placeholder={t('screening.addedPlaceholder')}
-              aria-label={t('screening.added')}
-            />
-          </Field>
-          <p className="text-muted-foreground text-xs">{t('screening.contentNote')}</p>
-          <div className="flex flex-wrap gap-2">
-            <BusyButton type="button" size="sm" busy={saving} busyLabel={t('screening.saving')} onClick={() => void save()}>
-              {t('screening.save')}
-            </BusyButton>
-            <Button type="button" size="sm" variant="ghost" onClick={() => onDraftChange(null)}>
-              {t('screening.cancel')}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {!screening.canManage && office.enabled && <p className="text-muted-foreground text-xs">{t('screening.readOnly')}</p>}
-    </IntakeSection>
-  )
-}
-
-/** Per term, how many files of the choice it holds back, and where. */
-function HeldBack({ preview }: { preview: ScreeningPreview }): JSX.Element {
-  const t = useTranslations('intakeFilingStep')
-  if (preview.held.length === 0) {
-    return <p className="text-muted-foreground text-sm" data-testid="filing-held-none">{t('screening.heldNone')}</p>
-  }
-  return (
-    <div className="space-y-2" data-testid="filing-held">
-      <p className="text-sm font-medium">{t('screening.held', { count: preview.held.length })}</p>
-      <ul className="space-y-1 text-sm">
-        {preview.byTerm.map((entry) => (
-          <li key={entry.term} data-testid="filing-held-term">
-            <span className="font-medium">{t('screening.term', { term: entry.term })}</span>
-            <span className="text-muted-foreground">
-              {' · '}
-              {t('screening.termFiles', { count: entry.files })}{' '}
-              {t('screening.inFolders', {
-                folders: [
-                  ...entry.folders.slice(0, 3).map((folder) => folder || t('screening.topLevel')),
-                  ...(entry.folders.length > 3 ? ['…'] : []),
-                ].join(', '),
-              })}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
+          <BusyButton type="button" busy={saving} busyLabel={t('screening.saving')} onClick={() => void save()}>
+            {t('screening.save')}
+          </BusyButton>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }

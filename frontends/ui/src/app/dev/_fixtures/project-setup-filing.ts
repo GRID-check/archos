@@ -4,7 +4,7 @@
  * the office's list holds back), the project's sensitive-data list, its
  * folders, and a client that answers from them with no server.
  *
- * `/dev/project-setup-filing?state=empty | chosen | changed | uploaded | readonly`.
+ * `/dev/project-setup-filing?state=empty | chosen | changed | readonly | listfailed | uploading | uploaded`.
  */
 
 import type { ProjectUploadScreeningState } from '@/adapters/api/project-upload-screening-client'

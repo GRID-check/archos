@@ -1,8 +1,10 @@
 /**
- * Step 4, Rückfragen, drawn from its fixtures: one list, one pass, the
- * location's documents with their reasons, the hand-in right at the entry,
- * the progress, the note while Piloti still reads, the few questions of a
- * past project, and the interview folded away.
+ * Step 4, Rückfragen, drawn from its fixtures: the round in three groups, one
+ * question at a time, each answered with the wizard's own control, marked
+ * „weiß ich nicht", or settled by handing in its document; the location's
+ * documents with their reasons; the contradictions, settled by picking a
+ * value; the note while Piloti still reads; the few questions of a past
+ * project; and the interview folded away.
  */
 import { fireEvent, render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
@@ -35,27 +37,32 @@ const onDecide = vi.fn()
 const onFiles = vi.fn()
 const onNext = vi.fn()
 
-function setup(view: IntakeView, props: Partial<SetupStepProps> = {}) {
-  return render(
-    <QuestionsStep
-      view={view}
-      projectId={view.projectId}
-      busy={false}
-      canDecide
-      canUpload
-      uploading={false}
-      onDecide={onDecide}
-      onFiles={onFiles}
-      onReread={vi.fn()}
-      onNext={onNext}
-      onGoTo={vi.fn()}
-      {...props}
-    />
-  )
+function props(view: IntakeView, overrides: Partial<SetupStepProps> = {}): SetupStepProps {
+  return {
+    view,
+    projectId: view.projectId,
+    busy: false,
+    canDecide: true,
+    canUpload: true,
+    uploading: false,
+    onDecide,
+    onFiles,
+    onReread: vi.fn(),
+    onNext,
+    onGoTo: vi.fn(),
+    ...overrides,
+  }
 }
 
+function setup(view: IntakeView, overrides: Partial<SetupStepProps> = {}) {
+  return render(<QuestionsStep {...props(view, overrides)} />)
+}
+
+const list = () => screen.getByTestId('questions-list')
+const choose = (name: RegExp) => userEvent.click(within(list()).getByRole('button', { name }))
+
 describe('questionRound', () => {
-  it('lists the decisive questions and the open requests once, and folds every other need away', () => {
+  it('lists the decisive questions, the open requests and the contradictions once, and folds every other need away', () => {
     const round = questionRound(QUESTIONS_READY)
     expect(round.questions.map((need) => need.key)).toEqual([
       'bgf_oberirdisch@bw1',
@@ -67,6 +74,17 @@ describe('questionRound', () => {
       'denkmalschutz',
       'standortrisiken',
       'laerm',
+    ])
+    expect(round.contradictions.map((item) => item.key)).toEqual(['geschosse_oberirdisch@bw1'])
+    expect(round.openIds).toEqual([
+      'question:bgf_oberirdisch@bw1',
+      'question:einheiten_ueber_400@bw1',
+      'question:gebaeudestellung@bw1',
+      'request:grundstueck',
+      'request:denkmalschutz',
+      'request:standortrisiken',
+      'request:laerm',
+      'contradiction:geschosse_oberirdisch@bw1',
     ])
     // The Widmung was found by the reading: settled, so it counts as done.
     expect(round.settledIds).toEqual(['request:widmung'])
@@ -85,84 +103,177 @@ describe('QuestionsStep', () => {
     onDecide.mockResolvedValue(true)
   })
 
-  it('shows every question and document request on one screen, with the progress', () => {
+  it('lists the round in its three groups, the settled document done', () => {
     setup(QUESTIONS_READY)
-    expect(screen.getByTestId('questions-progress')).toHaveTextContent('1 of 8 done')
+    expect(within(screen.getByTestId('questions-group-missing')).getAllByRole('listitem')).toHaveLength(3)
+    const location = within(screen.getByTestId('questions-group-location')).getAllByRole('listitem')
+    expect(location).toHaveLength(5)
+    expect(location[4]).toHaveTextContent('Widmung und Bebauungsbestimmungen')
+    expect(location[4]).toHaveTextContent('done')
+    expect(within(screen.getByTestId('questions-group-contradiction')).getByRole('button')).toHaveTextContent(
+      'Anzahl oberirdischer Geschoße (Zielzustand): 6 or 7?'
+    )
+  })
+
+  it('asks one question at a time, with where it sits and why it matters', () => {
+    setup(QUESTIONS_READY)
+    const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
+    expect(card).toHaveTextContent('Question 1 of 9 · decides the building class')
+    expect(card).toHaveTextContent('Die Fläche entscheidet bei Gebäuden')
+    expect(screen.queryByTestId('intake-question-einheiten_ueber_400@bw1')).toBeNull()
+    expect(within(list()).getByRole('button', { current: true })).toHaveTextContent('Brutto-Grundfläche')
+  })
+
+  it('answers with the typed number, only once there is one, and moves on with the value in the list', async () => {
+    setup(QUESTIONS_READY)
+    const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
+    const answer = within(card).getByRole('button', { name: 'Use and continue' })
+    expect(answer).toBeDisabled()
+    await userEvent.type(within(card).getByRole('spinbutton'), '1250')
+    await userEvent.click(answer)
+    expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'answer', value: 1250 }])
+    expect(await screen.findByTestId('intake-question-einheiten_ueber_400@bw1')).toHaveTextContent('Question 2 of 9')
+    const done = within(screen.getByTestId('questions-group-missing')).getAllByRole('listitem')[0]
+    expect(done).toHaveTextContent('1250')
+    expect(done).toHaveTextContent('done')
+  })
+
+  it('stays on the question when the answer did not go through', async () => {
+    onDecide.mockResolvedValue(false)
+    setup(QUESTIONS_READY)
+    const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
+    await userEvent.type(within(card).getByRole('spinbutton'), '1250')
+    await userEvent.click(within(card).getByRole('button', { name: 'Use and continue' }))
     expect(screen.getByTestId('intake-question-bgf_oberirdisch@bw1')).toBeInTheDocument()
-    const location = screen.getByTestId('questions-location')
-    expect(location).toHaveTextContent('What the location calls for in Wien.')
-    expect(within(location).getAllByRole('listitem')).toHaveLength(4)
-    expect(screen.queryByTestId('document-request-widmung')).not.toBeInTheDocument()
   })
 
-  it('names the document, why, and the law a request rests on', () => {
+  it('answers a yes/no question with a boolean', async () => {
     setup(QUESTIONS_READY)
-    const card = screen.getByTestId('document-request-denkmalschutz')
-    expect(card).toHaveTextContent('Auszug aus der Denkmalliste oder Unterschutzstellungsbescheid')
-    expect(card).toHaveTextContent('Bundesdenkmalamts')
-    expect(card).toHaveTextContent('Basis: Denkmalschutzgesetz (DMSG)')
+    await choose(/Nutzungseinheiten/)
+    const card = screen.getByTestId('intake-question-einheiten_ueber_400@bw1')
+    await userEvent.click(within(card).getByRole('button', { name: 'No' }))
+    await userEvent.click(within(card).getByRole('button', { name: 'Use and continue' }))
+    expect(onDecide).toHaveBeenCalledWith([{ key: 'einheiten_ueber_400@bw1', action: 'answer', value: false }])
   })
 
-  it('takes the document right at the request', () => {
+  it("answers a select question with the option's token", async () => {
     setup(QUESTIONS_READY)
-    const card = screen.getByTestId('document-request-grundstueck')
-    const file = new File(['%PDF'], 'Grundbuchauszug.pdf', { type: 'application/pdf' })
+    await choose(/Gebäudestellung/)
+    const card = screen.getByTestId('intake-question-gebaeudestellung@bw1')
+    await userEvent.click(within(card).getByRole('combobox'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Reihenhaus' }))
+    await userEvent.click(within(card).getByRole('button', { name: 'Use and continue' }))
+    expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudestellung@bw1', action: 'answer', value: 'reihenhaus' }])
+  })
+
+  it('records „Weiß ich nicht“ as unknown, and moves on', async () => {
+    setup(QUESTIONS_READY)
+    await userEvent.click(screen.getByRole('button', { name: /^Brutto-Grundfläche.*: I don't know/ }))
+    expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'unknown' }])
+    expect(await screen.findByTestId('intake-question-einheiten_ueber_400@bw1')).toBeInTheDocument()
+    expect(within(screen.getByTestId('questions-group-missing')).getAllByRole('listitem')[0]).toHaveTextContent('not known')
+  })
+
+  it('says where the answer usually stands, and takes the document there', async () => {
+    setup(QUESTIONS_READY)
+    const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
+    const row = within(card).getByTestId('document-hand-in')
+    expect(row).toHaveTextContent('Einreichplan (Plankopf) or Baubeschreibung')
+    const file = new File(['%PDF'], 'Flaechenaufstellung.pdf', { type: 'application/pdf' })
     fireEvent.change(within(card).getByTestId('document-hand-in-input'), { target: { files: [file] } })
     expect(onFiles).toHaveBeenCalledWith([file])
+    // Handed in: the round moves on, Piloti reads the answer out of it.
+    expect(await screen.findByTestId('intake-question-einheiten_ueber_400@bw1')).toBeInTheDocument()
   })
 
-  it('marks every open value of a request as not known in one decision', async () => {
+  it('takes a document dropped on the row', () => {
     setup(QUESTIONS_READY)
-    const card = screen.getByTestId('document-request-grundstueck')
-    await userEvent.click(within(card).getByRole('button', { name: 'Grundstück, Fläche und Einlagezahl: not known' }))
-    expect(onDecide).toHaveBeenCalledWith([
-      { key: 'grundstueck_ez', action: 'unknown' },
-      { key: 'grundstuecksflaeche', action: 'unknown' },
-    ])
-  })
-
-  it('takes a value stated directly on a request', async () => {
-    setup(QUESTIONS_READY)
-    const field = within(screen.getByTestId('intake-need-grundstueck_ez')).getByRole('textbox')
-    await userEvent.type(field, 'EZ 1234')
-    await userEvent.click(
-      within(screen.getByTestId('intake-need-grundstueck_ez')).getByRole('button', { name: /Einlagezahl/ })
-    )
-    expect(onDecide).toHaveBeenCalledWith([{ key: 'grundstueck_ez', action: 'answer', value: 'EZ 1234' }])
+    const row = within(screen.getByTestId('intake-question-bgf_oberirdisch@bw1')).getByTestId('document-hand-in')
+    const file = new File(['%PDF'], 'Flaechenaufstellung.pdf', { type: 'application/pdf' })
+    fireEvent.drop(row, { dataTransfer: { types: ['Files'], files: [file], items: [] } })
+    return vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
   })
 
   it('offers no hand-in where the project takes no documents', () => {
     setup(QUESTIONS_READY, { canUpload: false })
-    expect(within(screen.getByTestId('document-request-grundstueck')).queryByTestId('document-hand-in')).toBeNull()
+    expect(screen.queryByTestId('document-hand-in')).toBeNull()
   })
 
-  it('counts an answered question as done when it leaves the list', () => {
+  describe('a document the location asks for', () => {
+    it('names the document, why, the law it rests on and the place', async () => {
+      setup(QUESTIONS_READY)
+      await choose(/Denkmal- und Ortsbildschutz/)
+      const card = screen.getByTestId('document-request-denkmalschutz')
+      expect(card).toHaveTextContent('Auszug aus der Denkmalliste oder Unterschutzstellungsbescheid')
+      expect(card).toHaveTextContent('Bundesdenkmalamts')
+      expect(card).toHaveTextContent('Basis: Denkmalschutzgesetz (DMSG)')
+      expect(card).toHaveTextContent('called for by the location in Wien')
+    })
+
+    it('takes its values stated directly', async () => {
+      setup(QUESTIONS_READY)
+      await choose(/Grundstück, Fläche und Einlagezahl/)
+      const card = screen.getByTestId('document-request-grundstueck')
+      await userEvent.type(within(screen.getByTestId('intake-need-grundstueck_ez')).getByRole('textbox'), 'EZ 1234')
+      await userEvent.click(within(card).getByRole('button', { name: 'Use and continue' }))
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'grundstueck_ez', action: 'answer', value: 'EZ 1234' }])
+    })
+
+    it('marks every open value as not known in one decision', async () => {
+      setup(QUESTIONS_READY)
+      await choose(/Grundstück, Fläche und Einlagezahl/)
+      await userEvent.click(screen.getByRole('button', { name: "Grundstück, Fläche und Einlagezahl: I don't know" }))
+      expect(onDecide).toHaveBeenCalledWith([
+        { key: 'grundstueck_ez', action: 'unknown' },
+        { key: 'grundstuecksflaeche', action: 'unknown' },
+      ])
+    })
+
+    it('says the documents follow once the Bundesland is known', async () => {
+      setup(QUESTIONS_TYPED_ADDRESS)
+      expect(screen.getByTestId('intake-question-bundesland')).toBeInTheDocument()
+      await choose(/Grundstück, Fläche und Einlagezahl/)
+      expect(screen.getByTestId('document-request-grundstueck').textContent).toMatch(/· called for by the location(?! in)/)
+    })
+  })
+
+  describe('a contradiction', () => {
+    it('confirms the value picked, at its index', async () => {
+      setup(QUESTIONS_READY)
+      await choose(/6 or 7/)
+      const card = screen.getByTestId('intake-contradiction-geschosse_oberirdisch@bw1')
+      expect(card).toHaveTextContent('Question 9 of 9 · decides the building class')
+      const answer = within(card).getByRole('button', { name: 'Use and continue' })
+      expect(answer).toBeDisabled()
+      await userEvent.click(within(card).getByRole('radio', { name: /7/ }))
+      await userEvent.click(answer)
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'geschosse_oberirdisch@bw1', action: 'confirm', alternativeIndex: 0 }])
+    })
+
+    it('confirms the value on the profile without an index', async () => {
+      setup(QUESTIONS_READY)
+      await choose(/6 or 7/)
+      const card = screen.getByTestId('intake-contradiction-geschosse_oberirdisch@bw1')
+      await userEvent.click(within(card).getByRole('radio', { name: /6/ }))
+      await userEvent.click(within(card).getByRole('button', { name: 'Use and continue' }))
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'geschosse_oberirdisch@bw1', action: 'confirm' }])
+    })
+
+    it('can be put off: nothing is decided, the round goes on', async () => {
+      setup(QUESTIONS_READY)
+      await choose(/6 or 7/)
+      await userEvent.click(screen.getByRole('button', { name: /: decide later$/ }))
+      expect(onDecide).not.toHaveBeenCalled()
+      expect(screen.getByTestId('intake-question-bgf_oberirdisch@bw1')).toBeInTheDocument()
+    })
+  })
+
+  it('counts a question as done when it leaves the review', () => {
     const { rerender } = setup(QUESTIONS_READY)
     const answered = { ...QUESTIONS_READY, questions: QUESTIONS_READY.questions.slice(1) }
-    rerender(
-      <QuestionsStep
-        view={answered}
-        projectId={answered.projectId}
-        busy={false}
-        canDecide
-        canUpload
-        uploading={false}
-        onDecide={onDecide}
-        onFiles={onFiles}
-        onReread={vi.fn()}
-        onNext={onNext}
-        onGoTo={vi.fn()}
-      />
-    )
-    expect(screen.getByTestId('questions-progress')).toHaveTextContent('2 of 8 done')
-  })
-
-  it('asks for the Bundesland when no geocoder named it', () => {
-    setup(QUESTIONS_TYPED_ADDRESS)
-    expect(screen.getByTestId('intake-question-bundesland')).toBeInTheDocument()
-    expect(screen.getByTestId('questions-location')).toHaveTextContent(
-      'Once the federal state is known, Piloti names the documents that apply there.'
-    )
+    rerender(<QuestionsStep {...props(answered)} />)
+    expect(within(screen.getByTestId('questions-group-missing')).getAllByRole('listitem')[0]).toHaveTextContent('done')
+    expect(screen.getByTestId('intake-question-einheiten_ueber_400@bw1')).toHaveTextContent('Question 2 of 9')
   })
 
   it('says the round follows the reading, and still takes answers', () => {
@@ -174,99 +285,19 @@ describe('QuestionsStep', () => {
   it('asks a past project only its Bundesland, and requests no document', () => {
     setup(QUESTIONS_CLOSING)
     expect(screen.getByTestId('questions-closing-note')).toBeInTheDocument()
-    expect(screen.getByTestId('intake-question-bundesland')).toBeInTheDocument()
-    expect(screen.queryByTestId('questions-location')).toBeNull()
+    expect(screen.getByTestId('intake-question-bundesland')).toHaveTextContent('Question 1 of 1')
+    expect(screen.queryByTestId('questions-group-location')).toBeNull()
   })
 
   it('says so when everything is settled', () => {
     setup(QUESTIONS_DONE)
-    expect(screen.getByTestId('questions-done')).toHaveTextContent('All done.')
-    expect(screen.getByTestId('questions-progress')).toHaveTextContent('5 of 5 done')
+    expect(screen.getByTestId('questions-done')).toHaveTextContent('All questions answered')
   })
 
   it('folds the optional interview away until it is opened', async () => {
     setup(QUESTIONS_READY)
     expect(screen.queryByTestId('intake-interview')).toBeNull()
-    await userEvent.click(screen.getByRole('button', { name: /More details/ }))
-    expect(screen.getByTestId('intake-interview')).toHaveTextContent('Question 1 of 2')
-  })
-
-  it('goes on to the profile', async () => {
-    setup(QUESTIONS_READY)
-    await userEvent.click(screen.getByRole('button', { name: 'Continue to the profile' }))
-    expect(onNext).toHaveBeenCalled()
-  })
-
-  // Carried from the single-page review's spec (7a1b2eb2e): a decisive question as the step asks it.
-  describe('a decisive question', () => {
-    it('answers with the typed number, only once there is one', async () => {
-      setup(QUESTIONS_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
-      const answer = within(card).getByRole('button', { name: /Use this answer for Brutto-Grundfläche/ })
-      expect(answer).toBeDisabled()
-      await userEvent.type(within(card).getByRole('spinbutton'), '1250')
-      expect(answer).toBeEnabled()
-      await userEvent.click(answer)
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'answer', value: 1250 }])
-    })
-
-    it('answers a yes/no question with a boolean', async () => {
-      setup(QUESTIONS_READY)
-      const card = screen.getByTestId('intake-question-einheiten_ueber_400@bw1')
-      await userEvent.click(within(card).getByRole('button', { name: 'No' }))
-      await userEvent.click(within(card).getByRole('button', { name: /Use this answer/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'einheiten_ueber_400@bw1', action: 'answer', value: false }])
-    })
-
-    it("answers a select question with the option's token", async () => {
-      setup(QUESTIONS_READY)
-      const card = screen.getByTestId('intake-question-gebaeudestellung@bw1')
-      await userEvent.click(within(card).getByRole('combobox'))
-      await userEvent.click(await screen.findByRole('option', { name: 'Reihenhaus' }))
-      await userEvent.click(within(card).getByRole('button', { name: /Use this answer/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudestellung@bw1', action: 'answer', value: 'reihenhaus' }])
-    })
-
-    it('says why Piloti asks and where the answer is usually found', async () => {
-      setup(QUESTIONS_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
-      expect(card).toHaveTextContent('Usually found in: Einreichplan (Plankopf), Baubeschreibung')
-      await userEvent.click(within(card).getByRole('button', { name: /why/i }))
-      expect(card).toHaveTextContent('Die Fläche entscheidet bei Gebäuden')
-    })
-
-    it('records „Nicht bekannt“ as unknown', async () => {
-      setup(QUESTIONS_READY)
-      await userEvent.click(screen.getByRole('button', { name: /^Brutto-Grundfläche.*: not known/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'unknown' }])
-    })
-
-    it('hands a document in as a row of the card, with a drop ring only while a file is over it', () => {
-      setup(QUESTIONS_READY)
-      const row = within(screen.getByTestId('intake-question-bgf_oberirdisch@bw1')).getByTestId('document-hand-in')
-      expect(row.className).not.toMatch(/\bborder\b/)
-      expect(row).not.toHaveAttribute('data-dragging')
-      fireEvent.dragEnter(row, { dataTransfer: { types: ['Files'], files: [], items: [] } })
-      expect(row).toHaveAttribute('data-dragging')
-      expect(row.className).toMatch(/ring-2/)
-    })
-
-    it('hands a document in by choosing it', () => {
-      setup(QUESTIONS_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
-      const file = new File(['%PDF'], 'Flaechenaufstellung.pdf', { type: 'application/pdf' })
-      fireEvent.change(within(card).getByTestId('document-hand-in-input'), { target: { files: [file] } })
-      expect(onFiles).toHaveBeenCalledWith([file])
-    })
-
-    it('hands a document in by dropping it there', () => {
-      setup(QUESTIONS_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
-      const file = new File(['%PDF'], 'Flaechenaufstellung.pdf', { type: 'application/pdf' })
-      fireEvent.drop(within(card).getByTestId('document-hand-in'), {
-        dataTransfer: { types: ['Files'], files: [file], items: [] },
-      })
-      return vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
-    })
+    await userEvent.click(within(list()).getByRole('button', { name: /More details/ }))
+    expect(await screen.findByTestId('intake-interview')).toHaveTextContent('Question 1 of 2')
   })
 })

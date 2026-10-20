@@ -1,22 +1,23 @@
 'use client'
 
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { useState } from 'react'
-import { ArrowRight, ChevronDown, Info } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ArrowRight, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { CountPill } from '@/components/ui/count-pill'
-import { Progress } from '@/components/ui/progress'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
 import type { IntakeView } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 import { displayValue } from '../../lib/display'
-import { IntakeSection } from '../intake-atoms'
-import { InterviewSection, QuestionCard } from '../question-section'
-import { DocumentRequestCard } from '../questions/document-request-card'
-import { useRoundProgress } from '../questions/use-round-progress'
-import { questionRound } from '../../lib/question-round'
+import { questionRound, type RoundEntry } from '../../lib/question-round'
+import { InterviewSection } from '../question-section'
+import type { QuestionPosition, RoundFooter } from '../questions/question-shell'
+import { ContradictionQuestion, NeedQuestion, RequestQuestion, useContradictionTitle } from '../questions/round-questions'
+import { RoundList } from '../questions/round-list'
+import { currentRow, nextOpenRow, useRoundMemory, type RoundRow } from '../questions/use-round-memory'
+import { ASIDE_ACTION_CLASS, PRIMARY_ACTION_CLASS, StepFooter } from '../setup-frame'
 import type { SetupStepProps } from './types'
 
 export { questionRound, type QuestionRound } from '../../lib/question-round'
@@ -31,116 +32,147 @@ function placeOf(view: IntakeView): string | null {
 }
 
 /**
- * Step 4, Rückfragen: every question and every document request on one
- * screen, done in one pass (ticket 26). Only what changes the classification:
- * the location register's inputs, the needs that decide a Gebäudeklasse, and
- * the documents the location calls for. Each entry is answered, marked „nicht
- * bekannt", or settled by handing in its document right there; a settled one
- * leaves the list and counts as done. The round belongs after the reading,
- * but nothing waits for it: while Piloti still reads, the step says so and
- * takes what the person already knows. A past project is asked only the few
- * things that matter. The other open needs stay reachable, folded, below.
+ * Step 4, Rückfragen: one question at a time (ticket 26). On the left every
+ * Rückfrage of the round, grouped: what is missing in the documents (the
+ * location register's inputs and the needs that decide a Gebäudeklasse), the
+ * documents the location calls for, and the contradictions, where picking a
+ * value settles it. On the right the one asked now, answered with the
+ * wizard's own control, marked „nicht bekannt", or settled by handing in its
+ * document right there; each answer moves on to the next. Nothing waits for
+ * the round: „Rest später" goes on to the Steckbrief. While Piloti still
+ * reads, the step says so and takes what the person already knows. The other
+ * open needs stay reachable, folded into a sheet.
  */
 export function QuestionsStep({ view, canDecide, busy, canUpload, onDecide, onFiles, onNext }: SetupStepProps): JSX.Element {
   const t = useTranslations('intakeQuestionsStep')
+  const isMobile = useIsMobile()
   const round = questionRound(view)
-  const progress = useRoundProgress(round.openIds, round.settledIds)
+  const contradictionTitle = useContradictionTitle()
+  const labelOf = (entry: RoundEntry): string =>
+    entry.kind === 'need' ? entry.need.label : entry.kind === 'request' ? entry.request.label : contradictionTitle(entry.contradiction)
+  const { rows, markDone } = useRoundMemory(round.entries, round.settled, labelOf)
+  const [chosenId, setChosenId] = useState<string | null>(null)
+  const [putOff, setPutOff] = useState<ReadonlySet<string>>(() => new Set())
   const [moreOpen, setMoreOpen] = useState(false)
-  const decide = { canDecide, busy, onDecide }
+  const current = currentRow(rows, chosenId, putOff)
   const reading = view.status === 'reading' || (view.status === 'waiting' && view.counts.unreadDocuments > 0)
   const place = placeOf(view)
-  const nothingOpen = round.questions.length === 0 && round.requests.length === 0
-  const hasRequests = round.requests.length > 0 || round.settledIds.length > 0
+
+  const done = rows.filter((row) => row.done).length
+  const total = rows.length
+  const progress = { done, total, label: t('progress', { done, total }) }
+  const allDone = current === null
+  const desk: ReactNode = onNext ? (
+    <Button type="button" variant={allDone ? 'default' : 'outline'} className={PRIMARY_ACTION_CLASS} onClick={onNext}>
+      {allDone ? t('next') : t('rest')}
+      <ArrowRight aria-hidden />
+    </Button>
+  ) : undefined
+  const footer: RoundFooter = { progress, desk }
+
+  const note: ReactNode = reading ? (
+    <p className="flex gap-1.5" data-testid="questions-reading-note" role="status">
+      <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+      {t('readingNote')}
+    </p>
+  ) : view.mode === 'closing' ? (
+    <p className="flex gap-1.5" data-testid="questions-closing-note" role="status">
+      <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+      {t('closingNote')}
+    </p>
+  ) : null
+
+  const more =
+    round.more.length > 0 && canDecide ? (
+      <Button
+        type="button"
+        variant="link"
+        className="text-muted-foreground hover:text-foreground h-auto min-h-11 gap-2 p-0 text-[15px] font-normal md:min-h-0 md:text-[13px]"
+        onClick={() => setMoreOpen(true)}
+      >
+        {t('more')}
+        <CountPill>{round.more.length}</CountPill>
+      </Button>
+    ) : null
+
+  const whyOf = (entry: RoundEntry): string => {
+    if (entry.kind === 'need') return entry.need.decisive ? t('why.decisive') : t('why.register')
+    if (entry.kind === 'request') return place ? t('why.location', { place }) : t('why.locationUnknown')
+    return entry.contradiction.decisive ? t('why.decisive') : t('why.contradiction')
+  }
+
+  const ask = (row: RoundRow & { entry: RoundEntry }): JSX.Element => {
+    const position: QuestionPosition = {
+      index: rows.findIndex((candidate) => candidate.id === row.id) + 1,
+      total,
+      why: whyOf(row.entry),
+    }
+    const shared = {
+      position,
+      footer,
+      canDecide,
+      busy,
+      onDecide,
+      onFiles: canUpload ? onFiles : undefined,
+      onDone: (value: string) => markDone(row.id, value),
+      onPutOff: () => {
+        const next = new Set(putOff).add(row.id)
+        setPutOff(next)
+        setChosenId(nextOpenRow(rows, row.id, next)?.id ?? null)
+      },
+      after: (
+        <>
+          {more}
+          {onNext && (
+            <Button type="button" variant="link" className={cn(ASIDE_ACTION_CLASS, 'h-auto px-0 font-normal')} onClick={onNext}>
+              {t('rest')}
+            </Button>
+          )}
+        </>
+      ),
+    }
+    const { entry } = row
+    // Keyed by the item: a new question starts with an empty draft.
+    if (entry.kind === 'need') return <NeedQuestion key={row.id} need={entry.need} {...shared} />
+    if (entry.kind === 'request') return <RequestQuestion key={row.id} request={entry.request} {...shared} />
+    return <ContradictionQuestion key={row.id} item={entry.contradiction} {...shared} />
+  }
 
   return (
-    <div className="space-y-8" data-testid="setup-step-questions">
-      <IntakeSection label={t('heading')} description={t('description')} testId="questions-round">
-        {progress.total > 0 && (
-          <div className="space-y-1.5" data-testid="questions-progress">
-            <p className="text-muted-foreground text-xs tabular-nums">
-              {t('progress', { done: progress.done, total: progress.total })}
-            </p>
-            <Progress value={(progress.done / progress.total) * 100} aria-label={t('progressLabel')} />
-          </div>
-        )}
-        {reading && (
-          <Alert role="status" data-testid="questions-reading-note">
-            <Info aria-hidden />
-            <AlertDescription>{t('readingNote')}</AlertDescription>
-          </Alert>
-        )}
-        {view.mode === 'closing' && (
-          <Alert role="status" data-testid="questions-closing-note">
-            <Info aria-hidden />
-            <AlertDescription>{t('closingNote')}</AlertDescription>
-          </Alert>
-        )}
-        {nothingOpen && !reading && (
-          <p
-            className="text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm"
-            data-testid="questions-done"
-          >
-            {progress.total > 0 ? t('done') : t('nothing')}
-          </p>
-        )}
-      </IntakeSection>
+    <div className="mx-auto flex w-full max-w-[1040px] justify-center gap-10" data-testid="setup-step-questions">
+      <RoundList rows={rows} currentId={current?.id ?? null} onChoose={setChosenId} note={note} footer={more} />
 
-      {round.questions.length > 0 && (
-        <IntakeSection label={t('decisiveHeading')} count={round.questions.length} testId="questions-decisive">
-          <ul className="space-y-3">
-            {round.questions.map((need) => (
-              <li key={need.key}>
-                <QuestionCard need={need} {...decide} onFiles={canUpload ? onFiles : undefined} />
-              </li>
-            ))}
-          </ul>
-        </IntakeSection>
-      )}
-
-      {hasRequests && (
-        <IntakeSection
-          label={t('locationHeading')}
-          count={round.requests.length}
-          description={place ? t('locationPlace', { place }) : t('locationPlaceUnknown')}
-          testId="questions-location"
+      {current?.entry ? (
+        <div className="flex min-w-0 flex-1 flex-col gap-4 md:max-w-[640px] md:flex-none md:basis-[640px]">
+          {isMobile && note && <div className="text-muted-foreground text-[13px] leading-snug">{note}</div>}
+          {ask(current as RoundRow & { entry: RoundEntry })}
+        </div>
+      ) : (
+        <section
+          className="md:bg-card md:border-border w-full min-w-0 md:max-w-[640px] md:basis-[640px] md:self-start md:rounded-[14px] md:border md:px-9 md:py-8"
+          data-testid="questions-done"
         >
-          <ul className="space-y-3">
-            {round.requests.map((request) => (
-              <li key={request.determinant}>
-                <DocumentRequestCard request={request} {...decide} onFiles={onFiles} canUpload={canUpload} />
-              </li>
-            ))}
-          </ul>
-        </IntakeSection>
+          {isMobile && note && <div className="text-muted-foreground text-[13px] leading-snug">{note}</div>}
+          <h2 className="text-[22px] leading-[1.3] font-semibold tracking-tight">
+            {total > 0 ? t('doneTitle') : reading ? t('waitingTitle') : t('nothingTitle')}
+          </h2>
+          <p className="text-muted-foreground mt-2.5 text-[15px] leading-normal md:text-sm">
+            {total > 0 ? t('done') : reading ? t('waiting') : t('nothing')}
+          </p>
+          {isMobile && more && <div className="mt-6">{more}</div>}
+          <StepFooter primary={desk} progress={total > 0 ? progress : undefined} />
+        </section>
       )}
 
-      {round.more.length > 0 && canDecide && (
-        <Collapsible open={moreOpen} onOpenChange={setMoreOpen} data-testid="questions-more">
-          <CollapsibleTrigger asChild>
-            <Button type="button" variant="ghost" className="h-auto w-full justify-start gap-2 px-2 py-2 text-left">
-              <ChevronDown
-                className={cn('size-4 shrink-0 transition-transform motion-reduce:transition-none', moreOpen && 'rotate-180')}
-                aria-hidden
-              />
-              <span className="font-medium">{t('more')}</span>
-              <CountPill>{round.more.length}</CountPill>
-              <span className="text-muted-foreground hidden truncate text-xs font-normal sm:inline">{t('moreHint')}</span>
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-3">
-            <InterviewSection needs={round.more} {...decide} bare />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {onNext && (
-        <nav className="border-border flex justify-end border-t pt-5" data-testid="questions-next">
-          <Button type="button" onClick={onNext}>
-            {t('next')}
-            <ArrowRight aria-hidden />
-          </Button>
-        </nav>
-      )}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side={isMobile ? 'bottom' : 'right'} closeLabel={t('moreClose')} className="sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>{t('more')}</SheetTitle>
+            <SheetDescription>{t('moreHint')}</SheetDescription>
+          </SheetHeader>
+          <InterviewSection needs={round.more} canDecide={canDecide} busy={busy} onDecide={onDecide} bare />
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

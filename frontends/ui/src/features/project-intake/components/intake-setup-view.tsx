@@ -105,9 +105,9 @@ export function setupStepSummaries(view: IntakeView, tShell: Translator): SetupS
     return counts.documentsRead > 0 ? tShell('notes.read', { count: counts.documentsRead }) : undefined
   }
   const openQuestions = finished ? 0 : questionRound(view).openIds.length
+  // Contradictions are settled in the Rückfragen round and counted there.
   const profileNote = (): string | undefined => {
     if (finished) return tShell('notes.done')
-    if (counts.contradictions > 0) return tShell('notes.contradictions', { count: counts.contradictions })
     return counts.suggested > 0 ? tShell('notes.values', { count: counts.suggested }) : undefined
   }
   return [
@@ -120,15 +120,15 @@ export function setupStepSummaries(view: IntakeView, tShell: Translator): SetupS
     { id: 'reading', note: readingNote(), open: false },
     {
       id: 'questions',
-      // Everything step 4 asks: the register's and the decisive questions and
-      // the location documents still to hand in.
+      // Everything step 4 asks: the decisive questions, the location
+      // documents still to hand in, and the contradictions.
       note: openQuestions > 0 ? tShell('notes.open', { count: openQuestions }) : undefined,
       open: openQuestions > 0,
     },
     {
       id: 'profile',
       note: profileNote(),
-      open: !finished && (counts.contradictions > 0 || counts.suggested > 0),
+      open: !finished && counts.suggested > 0,
     },
   ]
 }
@@ -193,13 +193,15 @@ export function IntakeSetupView({
   const t = useTranslations('projectIntake')
   const finished = view.status === 'completed'
   const dropping = canUpload && !finished
+  const [step, go] = useSetupStep(view)
+  // The Ablage takes a folder through its tree (choose, then upload); a drop
+  // anywhere else on that step would skip the tree, so the page takes none there.
   const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
     onDrop: onFiles,
-    disabled: !dropping,
+    disabled: !dropping || step === 'filing',
     acceptZip: true,
   })
   useWindowDragGuard()
-  const [step, go] = useSetupStep(view)
   const top = useRef<HTMLElement>(null)
   const footer = useStepFooterChannel()
   const shown = useRef(step)
