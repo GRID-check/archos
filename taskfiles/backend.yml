@@ -48,7 +48,7 @@ tasks:
         tests/test_ci_workflows.py tests/test_reuse_green_run.py tests/test_last_green.py
         tests/test_image_inputs.py tests/test_pinned_images.py tests/test_plan_summary.py
         tests/test_release_notes.py tests/test_pr_closing_keywords.py tests/test_bun_version_pin.py
-        tests/test_py_selection.py
+        tests/test_pr_selection.py
 
   be:test:sources:
     desc: The sources/ package suites
@@ -79,7 +79,7 @@ tasks:
       # testmon otherwise switches selection off whenever `-m` is set. Exit 5
       # (nothing selected) is a pass: the change reached nothing in this suite.
       - '{{.TESTMON_ENV}}{{.SUITE}} "{{.PY}}" -X faulthandler -m pytest {{index .TESTMON_PATHS .SUITE}} -q {{.XDIST}} --testmon-forceselect || [ $? -eq 5 ]'
-      # Test files that name a changed non-Python file (ci/py_selection.py),
+      # Test files that name a changed non-Python file (ci/pr_selection.py),
       # which coverage cannot connect to the change.
       - cmd: '"{{.PY}}" -X faulthandler -m pytest {{.EXTRA}} -q {{.XDIST}}'
         if: '[ -n "{{.EXTRA}}" ]'

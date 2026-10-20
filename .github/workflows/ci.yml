@@ -84,11 +84,14 @@ jobs:
       images: ${{ steps.images.outputs.images }}
       # Third-party image pins this change adds or moves, for trivy.
       pins: ${{ steps.pins.outputs.pins || '[]' }}
-      # A pull request's Python lane: 'select' runs only the tests its change
-      # reaches (testmon), 'full' the sharded, coverage-gated suite. A push is
-      # always full. ci/py_selection.py says why.
-      backend_mode: ${{ steps.pysel.outputs.mode || 'full' }}
-      py_extra: ${{ steps.pysel.outputs.extra || '[]' }}
+      # What a pull request's test lanes run: 'select' only the tests its
+      # change reaches since its last green run, 'full' the sharded,
+      # coverage-gated suite, 'none' (UI) nothing. A push is always full.
+      # ci/pr_selection.py says why, in this job's log.
+      backend_mode: ${{ steps.pysel.outputs.py_mode || 'full' }}
+      py_extra: ${{ steps.pysel.outputs.py_extra || '[]' }}
+      ui_mode: ${{ steps.pysel.outputs.ui_mode || 'full' }}
+      ui_files: ${{ steps.pysel.outputs.ui_files || '[]' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -156,15 +159,16 @@ jobs:
             python3 ci/image_inputs.py plan --registry "$GITHUB_REPOSITORY_OWNER"
           fi
 
-      - name: Python tests this change reaches
+      - name: Tests this change reaches
         id: pysel
-        if: github.event_name == 'pull_request' && steps.filter.outputs.backend == 'true'
-        # A failure here leaves the mode unset, which reads 'full'.
+        if: github.event_name == 'pull_request' && (steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true')
+        # A failure here leaves every mode unset, which reads 'full'.
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
           BASE: ${{ github.event.pull_request.base.sha }}
-        run: python3 ci/py_selection.py "$BASE"
+        run: python3 ci/pr_selection.py "$BASE"
 
       - name: Image pins this change adds
         id: pins
@@ -442,7 +446,7 @@ jobs:
   # recorded (`backend-testmon`). The full sharded suite and the coverage gate
   # run on every push to develop, which the deploy waits for, so a test this
   # selection misses still turns develop red before staging. What forces the
-  # full suite on a pull request instead: ci/py_selection.py.
+  # full suite on a pull request instead: ci/pr_selection.py.
   backend-affected:
     name: Backend affected tests (${{ matrix.suite }})
     needs: changes
@@ -468,13 +472,19 @@ jobs:
         with:
           python-version: "3.14"
       - uses: ./.github/actions/setup-task
+      # This pull request's own database first: it carries what the last push
+      # ran, so the next push re-runs only what it changed (and anything that
+      # failed, which testmon keeps selecting until it passes). Else develop's.
       - name: Restore the recorded test database
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .testmondata-*
-          key: testmon-${{ github.event.pull_request.base.sha }}
-          restore-keys: testmon-
+          path: .testmondata-${{ matrix.suite }}
+          key: testmon-pr-${{ github.event.pull_request.number }}-${{ matrix.suite }}-${{ github.sha }}
+          restore-keys: |
+            testmon-pr-${{ github.event.pull_request.number }}-${{ matrix.suite }}-
+            testmon-
       - name: The ${{ matrix.suite }} tests this change reaches
+        id: affected
         env:
           SUITE: ${{ matrix.suite }}
           EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
@@ -483,6 +493,14 @@ jobs:
           case "$SUITE" in core) root=tests/ ;; api) root=frontends/aiq_api/tests/ ;; sources) root=sources/ ;; esac
           extra="$(jq -r --arg root "$root" '[.[] | select(startswith($root))] | join(" ")' <<<"$EXTRA_JSON")"
           task be:test:affected SUITE="$SUITE" EXTRA="$extra"
+      # Saved red or green: a failed test is recorded as failed and re-runs.
+      - name: Keep this pull request's database for its next push
+        if: always() && steps.affected.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .testmondata-${{ matrix.suite }}
+          key: testmon-pr-${{ github.event.pull_request.number }}-${{ matrix.suite }}-${{ github.sha }}
       # Production's claim SQL, beside the suite whose queue it is cheapest to
       # pair with. 14 seconds; not worth selecting.
       - name: Claim queues on real Postgres
@@ -572,7 +590,10 @@ jobs:
   frontend-test:
     name: Frontend tests (shard ${{ matrix.shard }}/6)
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    # A pull request whose change no UI spec reads since its last green run
+    # ('none') runs none; one that a selection can see runs only the specs
+    # its change reaches ('select'); everything else, and every push, all.
+    if: needs.changes.outputs.frontend == 'true' && (github.event_name == 'push' || needs.changes.outputs.ui_mode != 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -595,12 +616,20 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
       - run: task fe:install
-      - run: task fe:test:shard SHARD=${{ matrix.shard }}/6
+      - name: All specs, shard ${{ matrix.shard }}/6
+        if: github.event_name == 'push' || needs.changes.outputs.ui_mode == 'full'
+        run: task fe:test:shard SHARD=${{ matrix.shard }}/6
+      - name: The specs this change reaches, shard ${{ matrix.shard }}/6
+        if: github.event_name == 'pull_request' && needs.changes.outputs.ui_mode == 'select'
+        env:
+          SHARD: ${{ matrix.shard }}/6
+          FILES_JSON: ${{ needs.changes.outputs.ui_files }}
+        run: task fe:test:related SHARD="$SHARD" FILES="$(jq -r 'join(" ")' <<<"$FILES_JSON")"
       # Coverage is collected per shard and merged below: a shard only loads
       # its own slice of the app. Uploaded even when the shard failed, because
       # the merged report is where a reviewer looks.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && needs.changes.outputs.ui_mode == 'full'
         with:
           name: vitest-blob-${{ matrix.shard }}
           path: frontends/ui/.vitest-reports
@@ -613,7 +642,7 @@ jobs:
   frontend-coverage:
     name: Frontend coverage
     needs: [changes, frontend-test]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.frontend == 'true' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.changes.outputs.ui_mode == 'full' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

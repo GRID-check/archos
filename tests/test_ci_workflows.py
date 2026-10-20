@@ -73,7 +73,13 @@ BUILD = json.dumps([{"name": "backend"}])
 
 
 def plan(
-    *, event: str, parent_green: bool = False, hit: str | None = None, build: str = BUILD, py_mode: str | None = None
+    *,
+    event: str,
+    parent_green: bool = False,
+    hit: str | None = None,
+    build: str = BUILD,
+    py_mode: str | None = None,
+    ui_mode: str | None = None,
 ) -> dict:
     """The plan job's outputs, given what each of its scripts would answer."""
     github = {"event_name": event}
@@ -84,8 +90,8 @@ def plan(
         steps["reuse"] = {"outputs": {"hit": hit}}
     if evaluate(STEPS["filter"]["if"], github=github, steps=steps):
         steps["filter"] = {"outputs": dict.fromkeys(TIERS, "true")}
-    if evaluate(STEPS["pysel"]["if"], github=github, steps=steps) and py_mode is not None:
-        steps["pysel"] = {"outputs": {"mode": py_mode, "extra": "[]"}}
+    if evaluate(STEPS["pysel"]["if"], github=github, steps=steps) and (py_mode or ui_mode):
+        steps["pysel"] = {"outputs": {"py_mode": py_mode or "", "ui_mode": ui_mode or ""}}
     steps["images"] = {"outputs": {"build": build, "images": "[]"}}
     if evaluate(STEPS["pins"]["if"], github=github, steps=steps):
         steps["pins"] = {"outputs": {"pins": '["x@sha256:' + "0" * 64 + '"]'}}
@@ -241,9 +247,33 @@ def test_the_test_database_follows_every_develop_push_and_holds_nobody_up():
     assert save > run and "if" not in steps[save]
 
 
+def test_a_ui_selection_runs_the_shards_without_the_coverage_comment():
+    selected = plan(event="pull_request", ui_mode="select")
+    nothing = plan(event="pull_request", ui_mode="none")
+    full = plan(event="pull_request", ui_mode="full")
+
+    assert runs("frontend-test", event="pull_request", outputs=selected)
+    assert not runs("frontend-coverage", event="pull_request", outputs=selected)
+    assert not runs("frontend-test", event="pull_request", outputs=nothing)
+    assert runs("frontend-test", event="pull_request", outputs=full)
+    assert runs("frontend-coverage", event="pull_request", outputs=full)
+    # Lint, types and tenant isolation are not selected: they always run.
+    assert runs("frontend", event="pull_request", outputs=nothing)
+
+
+def test_a_push_always_runs_every_ui_spec():
+    outputs = plan(event="push", ui_mode="none")
+
+    assert runs("frontend-test", event="push", outputs=outputs)
+    steps = {step.get("name", ""): step for step in JOBS["frontend-test"]["steps"]}
+    full = next(step for name, step in steps.items() if name.startswith("All specs"))
+    assert evaluate(full["if"], github={"event_name": "push"}, needs={"changes": {"outputs": outputs}})
+
+
 def test_a_failed_selection_step_reads_as_the_full_suite():
     assert STEPS["pysel"]["continue-on-error"] is True
-    assert PLAN["outputs"]["backend_mode"] == "${{ steps.pysel.outputs.mode || 'full' }}"
+    assert PLAN["outputs"]["backend_mode"] == "${{ steps.pysel.outputs.py_mode || 'full' }}"
+    assert PLAN["outputs"]["ui_mode"] == "${{ steps.pysel.outputs.ui_mode || 'full' }}"
 
 
 def test_the_reuse_lookup_cannot_fail_the_run():
