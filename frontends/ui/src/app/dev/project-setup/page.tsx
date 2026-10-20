@@ -32,6 +32,7 @@ import {
 import { installFixtureDocuments } from './fixture-documents'
 import { IntakeSetupView } from '@/features/project-intake/components/intake-setup-view'
 import { createFixtureParticipantsClient, isProjectStepState } from '@/app/dev/_fixtures/project-setup-project'
+import { PROFILE_STEP_FIXTURES, type ProfileStepFixtureName } from '@/app/dev/_fixtures/project-setup-profile'
 import { useFilingSuggestions } from '@/features/documents/hooks/use-filing-suggestions'
 import type { IntakeDecision } from '@/lib/project-intake/types'
 
@@ -53,7 +54,13 @@ export default function ProjectSetupPreviewPage({
   const params = use(searchParams)
   const name = stateOf(params.state)
   const busy = params.busy === '1'
-  const view = INTAKE_FIXTURES[name]
+  // `?profile=review | confirmed | hochhaus | readonly` draws the Steckbrief's own
+  // fixtures (with the rule set's Ampel computed by the real function).
+  const profileName =
+    typeof params.profile === 'string' && params.profile in PROFILE_STEP_FIXTURES
+      ? (params.profile as ProfileStepFixtureName)
+      : null
+  const view = profileName ? PROFILE_STEP_FIXTURES[profileName] : INTAKE_FIXTURES[name]
   const [sent, setSent] = useState<string | null>(null)
   // Step 1 reads the Beteiligte from its own API; here from an in-memory one
   // (`?project=fresh | team | viewer | closing`), made once per state.
@@ -72,7 +79,7 @@ export default function ProjectSetupPreviewPage({
       <ProjectSectionHeader state={name} />
       <IntakeSetupView
         // A new state is a new page: the step it opens on is chosen again.
-        key={`${name}-${projectState}`}
+        key={`${name}-${projectState}-${profileName ?? ''}`}
         participantsClient={participantsClient}
         view={view}
         projectId={view.projectId}
