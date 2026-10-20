@@ -29,7 +29,7 @@ import { en } from './dictionaries/en'
  */
 const FILE_NAMESPACES = [
   'files',
-  'archiv',
+  'office_shelf',
   'uploadBatches',
   'knowledge',
   'onboarding',

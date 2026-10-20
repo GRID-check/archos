@@ -302,8 +302,8 @@ export const documents = pgTable('documents', {
 |--------|------|-------------|-------|
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | |
-| `project_id` | `uuid` | FK → `projects.id` ON DELETE CASCADE | **Nullable since ADR-0024**: `NULL` for org-wide `archiv` documents; set for `project` documents. |
-| `scope` | `text` | NOT NULL, DEFAULT `'project'` | ADR-0024 discriminator: `'project'` (hangs off `project_id`) or `'archiv'` (org-wide, `project_id` NULL, `collection_name = archiv_<orgId>`). |
+| `project_id` | `uuid` | FK → `projects.id` ON DELETE CASCADE | **Nullable since ADR-0024**: `NULL` for org-wide `office_shelf` documents; set for `project` documents. |
+| `scope` | `text` | NOT NULL, DEFAULT `'project'` | ADR-0024 discriminator: `'project'` (hangs off `project_id`) or `'office_shelf'` (org-wide, `project_id` NULL, `collection_name = archiv_<orgId>`). |
 | `created_by` | `text` | NOT NULL | Uploading user ID — for an agent-authored document, the **commissioning** user. Provenance of the row, never responsibility for the content (ADR-0047); who is on the hook lives in `resource_assignments`. |
 | `authored_by` | `text` | NOT NULL, DEFAULT `'user'` | **Migration `0063`**: whose hand wrote the bytes. `user` (somebody uploaded a file) and `agent` (a commissioned run produced it) are the members that exist today, declared as the `DOCUMENT_AUTHORS` tuple the way `DOCUMENT_SCOPES` is. No CHECK on the value, so a later producer (`system` for a scheduled sync, `import` for a partner feed) is a TypeScript change — anticipated, not promised, and nothing writes either today. Every row predating the column is `user` by definition, so there is no backfill (the `storage_bucket` reasoning again). |
 | `authored_by_producer` | `text` | | **Migration `0063`**: WHAT wrote a non-`user` document, as a producer identifier (`deep_research`, `diagram_svg`, `diagram_pdf`), never a display label. A producer is a KIND OF DELIVERABLE, not a piece of software — which is why one run can carry two of them, and why migration `0065` makes it half of the idempotency key. `NULL` for everything a person uploaded. Separate from `authored_by_ref` because a reference identifies the producer only while there is exactly one of them; recovering it later from pruned job history is archaeology. Since migration `0066` it is also what the reference KIND is derived from. |
@@ -344,7 +344,7 @@ export const documents = pgTable('documents', {
 The three `authored_by` partial indexes above live **only in the migration** — drizzle's index builder cannot express a `WHERE` clause — with a NOTE beside the relevant column in `schema/documents.ts`; the filename one is declared in the schema as well. `documents.spec.ts` pins each one to its migration so a regeneration cannot quietly drop it.
 
 **Constraints:**
-- `documents_folder_requires_project` — `folder_id IS NULL OR project_id IS NOT NULL OR scope = 'archiv'`: a filed document is a project document or an Archiv one. Introduced as "a document with a folder has a project" so the composite `(folder_id, project_id)` FK checks anything under MATCH SIMPLE (migrations `0030`, `0031`); widened by migration `0102`, whose next constraint now checks every folder reference whatever the project
+- `documents_folder_requires_project` — `folder_id IS NULL OR project_id IS NOT NULL OR scope = 'office_shelf'`: a filed document is a project document or an Archiv one. Introduced as "a document with a folder has a project" so the composite `(folder_id, project_id)` FK checks anything under MATCH SIMPLE (migrations `0030`, `0031`); widened by migration `0102`, whose next constraint now checks every folder reference whatever the project
 - `documents_folder_id_organization_id_scope_fkey` — FK (`folder_id`, `organization_id`, `scope`) → `project_folders (id, organization_id, scope)`, `ON DELETE CASCADE` (migration `0102`, ADR-0078). A document's folder is on its own **shelf and tenant**: a project document cannot be filed in an Archiv folder (nor the reverse), neither in another tenant's folder, and a `session` attachment cannot be filed at all — no folder row can carry scope `session`, so the key has nothing to match. MATCH SIMPLE skips it when `folder_id` is NULL. The cascade is only a backstop and agrees with `documents_folder_id_project_id_fkey`: `deleteShelfFolder` re-files a folder's documents and children into its parent before it removes the row
 - `documents_session_requires_conversation` — the scope partition: a `session` row has a conversation, nothing else does, and a `session` row has no project (migration `0049`)
 - `documents_authorship_requires_provenance` — `authored_by = 'user' OR (authored_by_producer IS NOT NULL AND authored_by_ref IS NOT NULL AND authored_by_ref_kind IS NOT NULL)`. A document no person wrote can always say what wrote it, which one, and what kind of identifier that is; one that cannot is an audit trail in appearance only. The third conjunct is migration `0066`'s: the first two were satisfiable by a row whose reference nobody could resolve, because the column's name asserted a job id over a value that was not one. Written against `<> 'user'` rather than against `agent` so a member added to `DOCUMENT_AUTHORS` arrives already constrained instead of arriving as a hole nothing notices (migration `0063`). One-directional: a `user` row carrying all three is legal.
@@ -746,7 +746,7 @@ trigger (`once`, no due date), which is what lets chat say „jeden Montag".
 
 ## project_folders
 
-Folders of a **shelf**: a project's Dateien (`scope = 'project'`) or the org-wide Archiv (`scope = 'archiv'`) — migration `0102`, [ADR-0078](../adr/0078-folders-are-a-property-of-a-shelf-not-of-a-project.md).
+Folders of a **shelf**: a project's Dateien (`scope = 'project'`) or the org-wide Archiv (`scope = 'office_shelf'`) — migration `0102`, [ADR-0078](../adr/0078-folders-are-a-property-of-a-shelf-not-of-a-project.md).
 
 > **The name is a deliberate deferral.** `project_folders` is a misnomer for the Archiv half of its rows. Renaming it touches the Python mirror (`document_metadata.folder_path`, ADR-0049) and ten earlier migrations and turns a column change into a table swap, so it waits for something that forces a table swap anyway. Read it as "shelf folders"; the same note sits beside the table in `schema/project-folders.ts`.
 
@@ -756,7 +756,7 @@ export const projectFolders = pgTable('project_folders', {
   id: uuid('id').primaryKey().defaultRandom(),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }), // NULL for an Archiv folder
   organizationId: text('organization_id').notNull(),
-  scope: text('scope').$type<'project' | 'archiv'>().notNull().default('project'),
+  scope: text('scope').$type<'project' | 'office_shelf'>().notNull().default('project'),
   parentId: uuid('parent_id'),
   name: varchar('name', { length: 255 }).notNull(),
   path: varchar('path', { length: 1024 }).notNull(),
@@ -770,7 +770,7 @@ export const projectFolders = pgTable('project_folders', {
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `project_id` | `uuid` | nullable, FK → `projects.id` ON DELETE CASCADE | `NULL` exactly for an Archiv folder (`project_folders_scope_owner_check`) |
 | `organization_id` | `text` | NOT NULL | The tenant, on the row (migration `0102`, backfilled from `projects.organization_id`). Pinned by the RLS policy and the composite keys below |
-| `scope` | `text` | NOT NULL, default `'project'`, CHECK in (`project`, `archiv`) | The shelf, in `documents.scope`'s vocabulary minus `session`: a chat attachment is never filed |
+| `scope` | `text` | NOT NULL, default `'project'`, CHECK in (`project`, `office_shelf`) | The shelf, in `documents.scope`'s vocabulary minus `session`: a chat attachment is never filed |
 | `parent_id` | `uuid` | | `NULL` for a folder at the root of its shelf |
 | `name` | `varchar(255)` | NOT NULL | |
 | `path` | `varchar(1024)` | NOT NULL | Materialised path, for breadcrumbs and the backend mirror |
@@ -792,7 +792,7 @@ export const projectFolders = pgTable('project_folders', {
 - `project_folders_id_organization_id_scope_key` — UNIQUE on (`id`, `organization_id`, `scope`), the target of the two shelf keys below (migration `0102`).
 - `project_folders_parent_id_project_id_fkey` — a folder's parent lives in the same project. This replaced an RLS policy that referenced `project_folders` from its own predicate, which Postgres answers with "infinite recursion detected in policy" — and because `documents`' policy joined this table, both became unreadable for the runtime role. MATCH SIMPLE skips an Archiv folder (NULL project); the next key covers it.
 - `project_folders_parent_id_organization_id_scope_fkey` — a folder's parent is on its own **shelf and tenant** (migration `0102`). Skipped for a root folder (NULL parent).
-- `project_folders_scope_check` — `scope IN ('project', 'archiv')`; `project_folders_scope_owner_check` — `(scope = 'project') = (project_id IS NOT NULL)`, so the three columns tell one story.
+- `project_folders_scope_check` — `scope IN ('project', 'office_shelf')`; `project_folders_scope_owner_check` — `(scope = 'project') = (project_id IS NOT NULL)`, so the three columns tell one story.
 - `uniq_project_folders_parent_name` — UNIQUE on (`organization_id`, `COALESCE(project_id, nil uuid)`, `COALESCE(parent_id, nil uuid)`, `name`) (migration `0063`, widened by `0102` from (`project_id`, `COALESCE(parent_id, …)`, `name`)). **PARTIAL** `WHERE deleted_at IS NULL` since `0111`, so a tombstone does not hold its name. One living folder per name per parent **on a shelf**. The `COALESCE`s are load-bearing: `parent_id` is `NULL` at a root and `project_id` is `NULL` for the whole Archiv, `NULL` never equals `NULL` in a unique index, so a plain index would police nested project folders and leave **root** folders — where a fixed, created-on-first-use destination like `Berichte` lands — and every Archiv folder uncontrolled. The nil UUID cannot collide with a real id (`gen_random_uuid()` is v4). Get-or-create is not a transaction, and before this index two runs finishing at once produced two `Berichte` folders with no way to say which was real. Case- and whitespace-sensitive on purpose: it stops a race between identical writes, it does not police folder naming. An EXPRESSION index, so it lives only in the migration; `documents.spec.ts` pins it. Within one tenant a project id determines the organization, so for every row that predates `0109` the widened index rejects exactly what the old one did.
 - **RLS:** `grid_tenant_isolation` on `organization_id = grid_current_org()` (`0102`; `0031` joined `projects`). No table read, so no recursion, and cheaper per row.
 
@@ -875,7 +875,7 @@ who started it ([`mail-import.md`](../architecture/mail-import.md#what-the-perso
 | `id` | `uuid` | PK | Chosen by the browser, so every file can carry it before the batch is confirmed. A mail import's is derived from the import's id and a generation (`lib/mail-import/upload-batch.ts`) |
 | `organization_id` | `text` | NOT NULL | RLS: `organization_id = grid_current_org()` |
 | `created_by` | `text` | NOT NULL | The uploader; the summary is theirs only |
-| `scope` | `text` | NOT NULL, CHECK `project`/`archiv`/`session` | The shelf |
+| `scope` | `text` | NOT NULL, CHECK `project`/`office_shelf`/`session` | The shelf |
 | `project_id` | `uuid` | FK → `projects.id` ON DELETE CASCADE; set exactly when `scope = 'project'` | |
 | `conversation_id` | `text` | | The chat, for a session upload |
 | `expected_count` | `integer` | NOT NULL, 0–10 000 | Files the browser announced; a job opens with 0 and its seal writes the documents that carry the batch |
@@ -1013,7 +1013,7 @@ read it: [`user-guides/download-log.md`](../user-guides/download-log.md).
 | `occurred_at` | `timestamptz` | NOT NULL, `now()` | The database's clock; the keyset cursor reads it as text to the microsecond |
 | `user_id` | `text` | NOT NULL | The WorkOS user id. Names and emails are resolved from WorkOS when the admin page is read, never copied here |
 | `kind` | `text` | NOT NULL, CHECK `download`/`preview`/`pdf`/`text`/`version`/`model` | |
-| `scope` | `text` | NOT NULL, CHECK `project`/`archiv`/`session` | Same names as `documents.scope` |
+| `scope` | `text` | NOT NULL, CHECK `project`/`office_shelf`/`session` | Same names as `documents.scope` |
 | `project_id` | `uuid` | | CHECK `(scope = 'project') = (project_id IS NOT NULL)` |
 | `document_id` | `uuid` | NOT NULL | No FK: the row outlives the document |
 | `document_name` | `text` | NOT NULL, CHECK 1–500 characters | The name the document was shown under then |
@@ -1067,7 +1067,7 @@ exists. The audit trail holds the event under its own retention.
 | `document_id` | `uuid` | NOT NULL | No FK: a reviewer may delete the file before the decision reaches the trail. The retention, not the document, ends the row |
 | `job_id` | `text` | UNIQUE with `document_id` (`document_quarantine_decisions_dispatch_key`) | The ingest job whose gate decided: one dispatch, one decision. NULL only when the row carried no job (the backend's file list said quarantined). A row that carries a job takes a failure only from that job, never from the file list, whose failed entry under the name may be an earlier dispatch's (`attributableFailure`, `lib/documents/reconcile-status.ts`) |
 | `decided_at` | `timestamptz` | NOT NULL, `now()` | The event's `occurredAt` |
-| `scope` | `text` | NOT NULL, CHECK `project`/`archiv`/`session` | |
+| `scope` | `text` | NOT NULL, CHECK `project`/`office_shelf`/`session` | |
 | `project_id` | `uuid` | | CHECK `(scope = 'project') = (project_id IS NOT NULL)` |
 | `folder_id` | `uuid` | | The folder the document was filed in when quarantined; NULL at a shelf's root. No FK. The event's `filedIn`: under a folder not every project member may read, the name is withheld (`nameWithheld`, ADR-0087) |
 | `filename` | `text` | NOT NULL, CHECK 1–500 characters | The name at the time |

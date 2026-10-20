@@ -174,7 +174,7 @@ describe('parseKbLocator', () => {
     expect(parseKbLocator('Plan.pdf (Büroablage)')).toEqual({
       filename: 'Plan.pdf',
       page: undefined,
-      shelf: 'archiv',
+      shelf: 'office_shelf',
     })
   })
 
@@ -310,12 +310,12 @@ describe('resolveCitationTarget', () => {
     // data (ADR-0047); the collection id is never prefix-matched for it.
     const shelvedDocuments: StoredDocumentRef[] = [
       { id: 'doc-1', filename: 'Plan.pdf', contentType: 'application/pdf', shelf: 'project' },
-      { id: 'archiv-9', filename: 'Plan.pdf', contentType: 'application/pdf', shelf: 'archiv' },
+      { id: 'archiv-9', filename: 'Plan.pdf', contentType: 'application/pdf', shelf: 'office_shelf' },
     ]
 
     test('the wire shelf resolves to the office shelf copy', () => {
       const target = targetFor(
-        { url: '', content: '[KB] Plan.pdf, p.2', collection: 'archiv_org1', shelf: 'archiv' },
+        { url: '', content: '[KB] Plan.pdf, p.2', collection: 'archiv_org1', shelf: 'office_shelf' },
         shelvedDocuments
       )
 
@@ -379,10 +379,10 @@ describe('resolveCitationTarget', () => {
     })
 
     test('a stored-shelf citation does not slide onto a base-corpus file either', () => {
-      // The corpus is the `base` shelf. An `archiv` citation naming a filename
+      // The corpus is the `base` shelf. An `office_shelf` citation naming a filename
       // the corpus also carries must not be answered with the corpus copy.
       const target = targetFor(
-        { url: '', content: '[KB] Handbuch.pdf, p.2', shelf: 'archiv' },
+        { url: '', content: '[KB] Handbuch.pdf, p.2', shelf: 'office_shelf' },
         shelvedDocuments,
         ['Handbuch.pdf']
       )

@@ -14,7 +14,7 @@
  * permission applies from the row itself.
  *
  * DELETE is not, and stays project-only: deleting an Archiv document goes
- * through `/api/archiv/documents/[id]`, where the org-level `org:archiv:manage`
+ * through `/api/office-shelf/documents/[id]`, where the org-level `org:office_shelf:manage`
  * gate and the dark-launch feature flag live.
  */
 
@@ -56,7 +56,7 @@ export const PATCH = apiRoute<Params>(
     const { displayName } = await parseJsonBody(request, renameSchema)
     return renameDocument(session, params.id, displayName, request)
   },
-  { authz: { enforcedBy: 'renameDocument -> getAccessibleDocument (project:documents:write | org:archiv:manage)' } }
+  { authz: { enforcedBy: 'renameDocument -> getAccessibleDocument (project:documents:write | org:office_shelf:manage)' } }
 )
 
 export const DELETE = apiRoute<Params>(

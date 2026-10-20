@@ -19,7 +19,7 @@ const FOLDERS: FolderItem[] = [
 /** One tree, two shelves: the hook only knows the URL it is handed. */
 describe.each([
   ['a project', '/api/projects/proj-1/folders'],
-  ['the Archiv', '/api/archiv/folders'],
+  ['the Archiv', '/api/office-shelf/folders'],
 ])('useFolderTree over %s', (_name, foldersUrl) => {
   const reloadFiles = vi.fn().mockResolvedValue(undefined)
   const onSelectFolder = vi.fn()

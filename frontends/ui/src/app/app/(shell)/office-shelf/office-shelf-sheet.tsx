@@ -2,13 +2,13 @@
  * Org-wide Archiv, presented as a page sheet (ADR-0024).
  *
  * One component behind both arrivals: the intercepted overlay
- * (`(shell)/@overlay/(.)archiv`), where the sheet rises above whatever page
- * the reader is on, and the real `/app/archiv` page, where a hard load renders
+ * (`(shell)/@overlay/(.)office-shelf`), where the sheet rises above whatever page
+ * the reader is on, and the real `/app/office-shelf` page, where a hard load renders
  * the same sheet standing alone over the org chrome. Only `standalone` — what
  * "close" means — differs; see {@link RoutePageSheet}.
  *
  * Reachable by any org member, with uploads and deletes gated on
- * `org:archiv:manage`.
+ * `org:office_shelf:manage`.
  *
  * Headerless on purpose: {@link OfficeShelfWorkspace} already opens with the gold
  * Büroablage identity row (mark, name, count, upload). A sheet header above it

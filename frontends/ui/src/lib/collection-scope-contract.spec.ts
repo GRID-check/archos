@@ -97,6 +97,6 @@ describe('X-Grid-Collection-Scope — the shape the agent decodes', () => {
         .filter((shelf): shelf is string => shelf !== null)
     )
 
-    expect([...shelves].sort()).toEqual(['archiv', 'base', 'project', 'session'])
+    expect([...shelves].sort()).toEqual(['office_shelf', 'base', 'project', 'session'])
   })
 })

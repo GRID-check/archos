@@ -58,7 +58,7 @@ describe('queueIntakeReadsAfterUpload', () => {
     const queued = await queueIntakeReadsAfterUpload('org-1', [
       { scope: 'project', projectId: P1, createdBy: 'anna' },
       { scope: 'project', projectId: P1, createdBy: 'ben' },
-      { scope: 'archiv', projectId: null, createdBy: 'anna' },
+      { scope: 'office_shelf', projectId: null, createdBy: 'anna' },
     ])
 
     expect(queued).toEqual([P1])

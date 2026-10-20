@@ -181,7 +181,7 @@ async function marksLeftBehind(
   follow: Document,
   versionId: string | null | undefined
 ): Promise<AnnotationRecord[]> {
-  if (follow.scope !== 'project' && follow.scope !== 'archiv') return []
+  if (follow.scope !== 'project' && follow.scope !== 'office_shelf') return []
   const marks = await listDocumentAnnotations(organizationId, follow.id)
   return marks.filter((mark) => mark.status === 'open' && (!versionId || (mark.versionId ?? null) !== versionId))
 }

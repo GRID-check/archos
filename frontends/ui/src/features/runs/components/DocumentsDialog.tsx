@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { asShelf, type Shelf } from '@/features/chat/lib/source-kinds'
 import { useTranslations } from '@/i18n'
 import { planDocumentLabel, type PlanDocument } from '@/lib/runs/plan-documents'
 import { cn } from '@/lib/utils'
@@ -68,8 +69,8 @@ export type DocumentsDialogProps = CommonProps &
 
 const fold = (name: string): string => name.trim().toLocaleLowerCase()
 
-const shelfKey = (shelf: string | undefined): 'project' | 'archiv' | 'session' | 'base' | null =>
-  shelf === 'project' || shelf === 'archiv' || shelf === 'session' || shelf === 'base' ? shelf : null
+// asShelf also reads a ledger stored before the rename (`archiv`).
+const shelfKey = (shelf: string | undefined): Shelf | null => asShelf(shelf) ?? null
 
 export const DocumentsDialog: FC<DocumentsDialogProps> = (props) => {
   const { open, onOpenChange, documents, loading = false } = props

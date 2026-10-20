@@ -27,7 +27,7 @@ const DOCUMENTS: PlanDocument[] = [
   { name: 'Brandschutzkonzept_v3.pdf', title: 'Brandschutzkonzept, Stand 3', shelf: 'project' },
   { name: 'Baubeschreibung.docx', shelf: 'project' },
   { name: 'Stellungnahme_MA37_alt.pdf', title: 'Stellungnahme MA 37 (überholt)', shelf: 'project' },
-  { name: 'Musterbrandschutzkonzept.pdf', shelf: 'archiv' },
+  { name: 'Musterbrandschutzkonzept.pdf', shelf: 'office_shelf' },
 ]
 
 const PLAN: PlanShape = {

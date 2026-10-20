@@ -64,7 +64,7 @@ const byName = (rows: Row[], init?: RequestInit) => {
 const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input)
   if (url === '/api/documents/by-name') return Promise.resolve(byName(PROJECT_ROWS, init))
-  if (url === '/api/archiv/documents/by-name') return Promise.resolve(byName(OFFICE_SHELF_ROWS, init))
+  if (url === '/api/office-shelf/documents/by-name') return Promise.resolve(byName(OFFICE_SHELF_ROWS, init))
   // The BFF's two "no rendition" answers (ADR-0070): conversion switched off,
   // and conversion attempted and failed.
   if (url === '/api/documents/doc-sheet/preview') {

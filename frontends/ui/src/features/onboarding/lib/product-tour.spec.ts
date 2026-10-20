@@ -69,7 +69,7 @@ describe('project tour', () => {
 
   it('points at the rail items the sidebar marks, by section key', () => {
     const anchors = TOURS.project.flatMap((stop) => (stop.anchor ? [stop.anchor] : []))
-    expect(anchors).toEqual(['chat', 'files', 'archiv', 'settings'].map(sectionAnchor))
+    expect(anchors).toEqual(['chat', 'files', 'office_shelf', 'settings'].map(sectionAnchor))
   })
 
   it('drops both Archiv stops when the organization has no Archiv', () => {

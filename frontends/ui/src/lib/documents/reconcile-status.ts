@@ -801,7 +801,7 @@ function announceSettledShelves(
   for (const row of rows) {
     if (!settledIds.has(row.id) || !('projectId' in row)) continue
     const shelf = documentShelf(row as { projectId: string | null; scope?: string })
-    if (shelf) shelves.set(shelf.kind === 'project' ? shelf.projectId : 'archiv', shelf)
+    if (shelf) shelves.set(shelf.kind === 'project' ? shelf.projectId : 'office_shelf', shelf)
   }
   for (const shelf of shelves.values()) publishShelfChanged(organizationId, shelf)
 }

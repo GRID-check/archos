@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * `GET /api/archiv/documents/summary` (ADR-0102): the Archiv's half of the
+ * `GET /api/office-shelf/documents/summary` (ADR-0102): the Archiv's half of the
  * shelf summary, with the same filters and body as a project's.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -29,9 +29,9 @@ import { summarizeOfficeShelfDocuments } from '@/lib/documents/shelf-summary'
 import { GET } from './route'
 
 const get = (query = '') =>
-  GET(new NextRequest(`https://grid.test/api/archiv/documents/summary${query}`), { params: Promise.resolve({}) })
+  GET(new NextRequest(`https://grid.test/api/office-shelf/documents/summary${query}`), { params: Promise.resolve({}) })
 
-describe('GET /api/archiv/documents/summary', () => {
+describe('GET /api/office-shelf/documents/summary', () => {
   it("serves the Archiv's summary for the working set by default", async () => {
     const body = await (await get()).json()
 

@@ -584,7 +584,7 @@ subfolder" `+` on each folder row and makes root creation explicit.
 (rename and/or move) and `deleteProjectFolder`, which is the Papierkorb's
 `moveFolderToBin` in `folder-bin.ts` (ADR-0088). They sit behind
 `POST`/`PATCH`/`DELETE` on `/api/projects/{id}/folders[/{folderId}]`; the
-Archiv's folders (`/api/archiv/folders`, ADR-0078) share the shelf core in
+Archiv's folders (`/api/office-shelf/folders`, ADR-0078) share the shelf core in
 `lib/documents/shelf-folders.ts`, delete included. Two invariants are
 load-bearing:
 

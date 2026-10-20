@@ -26,7 +26,7 @@ describe('useProjectInventory', () => {
           ? HttpResponse.json({ documents: [row('p-old', 'Bestand.pdf')], nextCursor: null })
           : HttpResponse.json({ documents: [row('p-new', 'Statik.pdf')], nextCursor: 'p2' })
       ),
-      http.get('/api/archiv/documents', () =>
+      http.get('/api/office-shelf/documents', () =>
         HttpResponse.json({ documents: [row('a1', 'Detail.pdf')], nextCursor: null })
       )
     )
@@ -37,14 +37,14 @@ describe('useProjectInventory', () => {
     expect(result.current.documents?.map((doc) => [doc.name, doc.shelf])).toEqual([
       ['Statik.pdf', 'project'],
       ['Bestand.pdf', 'project'],
-      ['Detail.pdf', 'archiv'],
+      ['Detail.pdf', 'office_shelf'],
     ])
   })
 
   it('lists no Archiv rows when the Archiv is gated off', async () => {
     server.use(
       http.get('/api/documents', () => HttpResponse.json({ documents: [row('p1', 'Plan.pdf')] })),
-      http.get('/api/archiv/documents', () => HttpResponse.json({}, { status: 403 }))
+      http.get('/api/office-shelf/documents', () => HttpResponse.json({}, { status: 403 }))
     )
 
     const { result } = renderHook(() => useProjectInventory('proj-1', true))
@@ -63,7 +63,7 @@ describe('useProjectInventory', () => {
           nextCursor: null,
         })
       ),
-      http.get('/api/archiv/documents', () =>
+      http.get('/api/office-shelf/documents', () =>
         HttpResponse.json({ documents: [{ ...row('a1', 'Detail.pdf'), collectionName: 'archiv_org_1' }] })
       )
     )

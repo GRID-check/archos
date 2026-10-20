@@ -26,7 +26,7 @@
  *
  * Resolution data is fetched lazily and cached for the lifetime of the page:
  * the cited document's project and Archiv rows BY NAME
- * (`POST /api/documents/by-name`, `POST /api/archiv/documents/by-name`, batched
+ * (`POST /api/documents/by-name`, `POST /api/office-shelf/documents/by-name`, batched
  * across the chips of one render — the listings are paged, and a citation of a
  * plan older than their first page used to resolve to nothing), plus this
  * conversation's attachments (`/api/session/documents?conversationId=…`) and
@@ -182,7 +182,7 @@ const loadSourcePreviewIndex = async (
     storedDocuments: [
       ...toRefs(answers.flatMap((answer) => answer.project), 'project'),
       ...lists.sessionDocuments,
-      ...toRefs(answers.flatMap((answer) => answer.officeShelf), 'archiv'),
+      ...toRefs(answers.flatMap((answer) => answer.officeShelf), 'office_shelf'),
     ],
     baseCorpusFiles: lists.baseCorpusFiles,
   }

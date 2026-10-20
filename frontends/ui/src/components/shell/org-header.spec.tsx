@@ -62,7 +62,7 @@ describe('OrgHeader — the org scope in one slim band', () => {
   test('carries the wordmark home link, both doorways, and the avatar menu', () => {
     render(<OrgHeader {...baseProps} />)
     expect(screen.getByText('Piloti').closest('a')).toHaveAttribute('href', '/app/projects')
-    expect(screen.getByLabelText('Office filing')).toHaveAttribute('href', '/app/archiv')
+    expect(screen.getByLabelText('Office filing')).toHaveAttribute('href', '/app/office-shelf')
     expect(screen.getByLabelText('Inbox')).toHaveAttribute('href', '/app/inbox')
     expect(screen.getByTestId('user-menu')).toBeInTheDocument()
   })
@@ -76,7 +76,7 @@ describe('OrgHeader — the org scope in one slim band', () => {
   })
 
   test('marks the doorway whose sheet is open, and only that one', () => {
-    pathname = '/app/archiv'
+    pathname = '/app/office-shelf'
     render(<OrgHeader {...baseProps} />)
     expect(screen.getByLabelText('Office filing')).toHaveAttribute('aria-current', 'page')
     expect(screen.getByLabelText('Inbox')).not.toHaveAttribute('aria-current')

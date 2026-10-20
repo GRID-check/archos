@@ -1,7 +1,7 @@
 /**
  * Archiv upload API — store a file in the org-wide Archiv and hand it to the
  * backend for ingestion into the shared `archiv_<orgId>` collection. Thin
- * handler; all logic (incl. `org:archiv:manage` authorization) lives in
+ * handler; all logic (incl. `org:office_shelf:manage` authorization) lives in
  * `@/lib/office-shelf/service`, which shares its pipeline with a project's upload
  * (`@/lib/documents/shelf-upload`, ADR-0078): optional `folderId` and
  * `originPath` form fields file the document into an Archiv folder (ADR-0024).

@@ -234,7 +234,7 @@ describe('IfcFilePreview', () => {
 
       await screen.findByTestId('ifc-canvas')
       const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', expect.stringContaining('/app/archiv?'))
+      expect(link).toHaveAttribute('href', expect.stringContaining('/app/office-shelf?'))
       // The model is named the same way it is named everywhere else, so a view
       // copied from one surface parses on the other.
       expect(link.getAttribute('href')).toContain('model=')

@@ -75,7 +75,7 @@ describe('inside a project', () => {
 
   it('lights "Mehr" where only the drawer reaches', () => {
     expect(lit(projectPhoneTabs('p1', '/app/projects/p1/automation', ALL))).toEqual(['more'])
-    expect(lit(projectPhoneTabs('p1', '/app/archiv', ALL))).toEqual(['more'])
+    expect(lit(projectPhoneTabs('p1', '/app/office-shelf', ALL))).toEqual(['more'])
   })
 
   it('names each tab with the rail label, and marks it as a tour stop', () => {
@@ -106,7 +106,7 @@ describe('inside a project', () => {
 
 describe('above a project', () => {
   it('carries Projekte, the Büroablage and the Postfach, and no "Mehr"', () => {
-    expect(keys(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects', 'archiv', 'inbox'])
+    expect(keys(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects', 'office_shelf', 'inbox'])
   })
 
   it('carries only what the organization has', () => {
@@ -115,7 +115,7 @@ describe('above a project', () => {
 
   it('lights Projekte on the projects home, a doorway while its sheet stands, and nothing on an account page', () => {
     expect(lit(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects'])
-    expect(lit(orgPhoneTabs('/app/archiv', ALL))).toEqual(['archiv'])
+    expect(lit(orgPhoneTabs('/app/office-shelf', ALL))).toEqual(['office_shelf'])
     expect(lit(orgPhoneTabs('/app/profile', ALL))).toEqual([])
     expect(lit(orgPhoneTabs('/app/organization/access', ALL))).toEqual([])
   })
@@ -176,10 +176,10 @@ describe('the phone header back', () => {
 describe('the Postfach looks like itself', () => {
   it('wears one glyph everywhere, and not the Büroablage’s box beside it', () => {
     const inboxTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'inbox')
-    const officeShelfTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'archiv')
+    const officeShelfTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'officeShelf')
     expect(inboxTab?.icon).toBe(projectSection('inbox')?.icon)
     expect(inboxTab?.icon).not.toBe(officeShelfTab?.icon)
-    expect(projectSection('inbox')?.icon).not.toBe(projectSection('archiv')?.icon)
+    expect(projectSection('inbox')?.icon).not.toBe(projectSection('officeShelf')?.icon)
     expect(projectSection('inbox')?.icon.displayName).toBe('Bell')
   })
 })

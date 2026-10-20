@@ -1646,12 +1646,12 @@ describe('reconcileDocumentStatuses announcing what settled', () => {
 
   it('tells the Archiv when a listing row on it settles: the listing carries its shelf', async () => {
     makeDbMock()
-    const row: ShelfRow = { ...makeRow(), projectId: null, scope: 'archiv' }
+    const row: ShelfRow = { ...makeRow(), projectId: null, scope: 'office_shelf' }
 
     await reconcileDocumentStatuses([row], 'org-1')
 
     expect(publishShelfChanged).toHaveBeenCalledTimes(1)
-    expect(publishShelfChanged).toHaveBeenCalledWith('org-1', { kind: 'archiv' })
+    expect(publishShelfChanged).toHaveBeenCalledWith('org-1', { kind: 'office_shelf' })
   })
 
   it('tells each shelf once, however many of its rows settled', async () => {

@@ -3055,7 +3055,7 @@
               "enum": [
                 "session",
                 "project",
-                "archiv"
+                "office_shelf"
               ],
               "type": "string"
             },

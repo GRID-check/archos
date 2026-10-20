@@ -18,20 +18,20 @@ describe('recordVisit', () => {
   test('appends each new location in visit order', () => {
     let trail = recordVisit([], '/app/projects')
     trail = recordVisit(trail, '/app/projects/p1/files')
-    trail = recordVisit(trail, '/app/archiv')
-    expect(trail).toEqual(visits('/app/projects', '/app/projects/p1/files', '/app/archiv'))
+    trail = recordVisit(trail, '/app/office-shelf')
+    expect(trail).toEqual(visits('/app/projects', '/app/projects/p1/files', '/app/office-shelf'))
   })
 
   test('collapses a repeat of the current location (a replace is not a step)', () => {
-    const trail = recordVisit(visits('/app/archiv'), '/app/archiv')
-    expect(trail).toEqual(visits('/app/archiv'))
+    const trail = recordVisit(visits('/app/office-shelf'), '/app/office-shelf')
+    expect(trail).toEqual(visits('/app/office-shelf'))
   })
 
   test('unwinds to an earlier location instead of stacking a second copy', () => {
     // The browser Back case: A → B → back to A leaves the same stack a fresh
     // walk to A would, so the entry below the top is still the true previous.
     const trail = recordVisit(
-      visits('/app/projects', '/app/projects/p1/files', '/app/archiv'),
+      visits('/app/projects', '/app/projects/p1/files', '/app/office-shelf'),
       '/app/projects/p1/files'
     )
     expect(trail).toEqual(visits('/app/projects', '/app/projects/p1/files'))
@@ -46,12 +46,12 @@ describe('recordVisit', () => {
   })
 
   test('ignores an empty path', () => {
-    expect(recordVisit(visits('/app/archiv'), '')).toEqual(visits('/app/archiv'))
+    expect(recordVisit(visits('/app/office-shelf'), '')).toEqual(visits('/app/office-shelf'))
   })
 
   test('returns the same trail object when nothing changed, so callers can skip the write', () => {
-    const trail = visits('/app/archiv')
-    expect(recordVisit(trail, '/app/archiv')).toBe(trail)
+    const trail = visits('/app/office-shelf')
+    expect(recordVisit(trail, '/app/office-shelf')).toBe(trail)
   })
 
   test('collapses sibling pages inside a tabbed settings shell into one step', () => {
@@ -69,24 +69,24 @@ describe('recordVisit', () => {
 
 describe('previousVisit', () => {
   test('returns the location one step back', () => {
-    expect(previousVisit(visits('/app/projects/p1/files', '/app/archiv'), '/app/archiv')).toEqual({
+    expect(previousVisit(visits('/app/projects/p1/files', '/app/office-shelf'), '/app/office-shelf')).toEqual({
       path: '/app/projects/p1/files',
     })
   })
 
   test('returns null for the first location of the session', () => {
-    expect(previousVisit(visits('/app/archiv'), '/app/archiv')).toBeNull()
+    expect(previousVisit(visits('/app/office-shelf'), '/app/office-shelf')).toBeNull()
   })
 
   test('returns null with no trail at all (new tab, direct link)', () => {
-    expect(previousVisit([], '/app/archiv')).toBeNull()
+    expect(previousVisit([], '/app/office-shelf')).toBeNull()
   })
 
   test('refuses to answer for a page that is not the top of the stack', () => {
     // The trail has moved on: guessing a "back" for a stale page would send the
     // reader somewhere `history.back()` does not go.
     expect(
-      previousVisit(visits('/app/projects', '/app/archiv', '/app/inbox'), '/app/archiv')
+      previousVisit(visits('/app/projects', '/app/office-shelf', '/app/inbox'), '/app/office-shelf')
     ).toBeNull()
   })
 
@@ -132,18 +132,18 @@ describe('navigationArea', () => {
     expect(navigationArea('/app/inbox')).toBe('inbox')
     expect(navigationArea('/app/profile')).toBe('profile')
     expect(navigationArea('/app/projects/p1/chat')).toBeNull()
-    expect(navigationArea('/app/archiv')).toBeNull()
+    expect(navigationArea('/app/office-shelf')).toBeNull()
   })
 })
 
 describe('labelVisit', () => {
   test('names a location on the trail, and the name survives a later unwind to it', () => {
     let trail = labelVisit(
-      visits('/app/projects/p1/files', '/app/archiv'),
+      visits('/app/projects/p1/files', '/app/office-shelf'),
       '/app/projects/p1/files',
       'Stadthaus Wien'
     )
-    expect(previousVisit(trail, '/app/archiv')).toEqual({
+    expect(previousVisit(trail, '/app/office-shelf')).toEqual({
       path: '/app/projects/p1/files',
       label: 'Stadthaus Wien',
     })
@@ -153,7 +153,7 @@ describe('labelVisit', () => {
   })
 
   test('ignores a name for a location that was never recorded', () => {
-    const trail = visits('/app/archiv')
+    const trail = visits('/app/office-shelf')
     expect(labelVisit(trail, '/app/projects/p9', 'Ghost')).toBe(trail)
   })
 

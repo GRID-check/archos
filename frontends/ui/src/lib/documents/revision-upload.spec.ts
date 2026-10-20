@@ -85,14 +85,14 @@ describe('resolveRevisionOf', () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ projectId: 'proj-2' }))
     await expect(resolveRevisionOf(session, OLDER_ID, target)).resolves.toEqual(ignored('different_shelf'))
 
-    vi.mocked(getAccessibleDocument).mockResolvedValue(older({ scope: 'archiv', projectId: null }))
+    vi.mocked(getAccessibleDocument).mockResolvedValue(older({ scope: 'office_shelf', projectId: null }))
     await expect(resolveRevisionOf(session, OLDER_ID, target)).resolves.toEqual(ignored('different_shelf'))
   })
 
   it('accepts an Archiv document for an Archiv upload', async () => {
-    vi.mocked(getAccessibleDocument).mockResolvedValue(older({ scope: 'archiv', projectId: null }))
+    vi.mocked(getAccessibleDocument).mockResolvedValue(older({ scope: 'office_shelf', projectId: null }))
 
-    await expect(resolveRevisionOf(session, OLDER_ID, { ...target, shelf: { kind: 'archiv' } })).resolves.toEqual(
+    await expect(resolveRevisionOf(session, OLDER_ID, { ...target, shelf: { kind: 'office_shelf' } })).resolves.toEqual(
       linked('Grundriss_EG_Index_B.pdf'),
     )
   })

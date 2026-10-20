@@ -103,7 +103,7 @@ async function assertDocumentReadable(
   // A held file's model is its uploader's and its reviewers' only (ADR-0086):
   // the caller loaded `document` through `findDocumentForSession`.
   switch (document.scope) {
-    case 'archiv':
+    case 'office_shelf':
       // Org-wide by design, and `findDocumentForSession` has already
       // established that the row belongs to the caller's organization.
       return
@@ -171,7 +171,7 @@ export async function getModelForDocument(
 async function modelListReader(session: AuthorizedSession, projectId: string): Promise<DocumentReader> {
   const [project, officeShelf] = await Promise.all([
     shelfReaderFor(session, { scope: 'project', projectId }),
-    shelfReaderFor(session, { scope: 'archiv', projectId: null }),
+    shelfReaderFor(session, { scope: 'office_shelf', projectId: null }),
   ])
   return { kind: 'shelves', project, officeShelf: officeShelf }
 }

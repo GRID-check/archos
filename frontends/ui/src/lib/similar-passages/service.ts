@@ -345,7 +345,7 @@ export async function findSimilarPassages(
   if (officeShelfDocuments.length > 0) {
     ranked.push({
       rank: bestRank(officeShelfDocuments),
-      group: { kind: 'archiv', project: null, documents: officeShelfDocuments.map((document) => document.document) },
+      group: { kind: 'office_shelf', project: null, documents: officeShelfDocuments.map((document) => document.document) },
     })
   }
   ranked.sort((a, b) => a.rank - b.rank)

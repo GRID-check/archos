@@ -67,11 +67,11 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('GET /api/archiv/folders', () => {
+describe('GET /api/office-shelf/folders', () => {
   it('answers { folders }, with a null project, like a project does', async () => {
     vi.mocked(listOfficeShelfFolders).mockResolvedValue([folder])
 
-    const response = await GET(new NextRequest('https://grid.test/api/archiv/folders'), noParams)
+    const response = await GET(new NextRequest('https://grid.test/api/office-shelf/folders'), noParams)
 
     expect(response.status).toBe(200)
     const body = await response.json()
@@ -80,11 +80,11 @@ describe('GET /api/archiv/folders', () => {
   })
 })
 
-describe('POST /api/archiv/folders', () => {
+describe('POST /api/office-shelf/folders', () => {
   it('creates a folder and answers 201 { folder }', async () => {
     vi.mocked(createOfficeShelfFolder).mockResolvedValue({ ok: true, folder })
 
-    const response = await POST(json('/api/archiv/folders', 'POST', { name: 'Normen' }), noParams)
+    const response = await POST(json('/api/office-shelf/folders', 'POST', { name: 'Normen' }), noParams)
 
     expect(response.status).toBe(201)
     expect((await response.json()).folder.name).toBe('Normen')
@@ -97,7 +97,7 @@ describe('POST /api/archiv/folders', () => {
   it('turns a refusal from the service into a 400', async () => {
     vi.mocked(createOfficeShelfFolder).mockResolvedValue({ ok: false, error: 'Folder name is reserved.' })
 
-    const response = await POST(json('/api/archiv/folders', 'POST', { name: 'CON' }), noParams)
+    const response = await POST(json('/api/office-shelf/folders', 'POST', { name: 'CON' }), noParams)
 
     expect(response.status).toBe(400)
   })
@@ -105,25 +105,25 @@ describe('POST /api/archiv/folders', () => {
   it('answers 403 for a member without org:archiv:manage', async () => {
     vi.mocked(createOfficeShelfFolder).mockRejectedValue(new ForbiddenError())
 
-    const response = await POST(json('/api/archiv/folders', 'POST', { name: 'Normen' }), noParams)
+    const response = await POST(json('/api/office-shelf/folders', 'POST', { name: 'Normen' }), noParams)
 
     expect(response.status).toBe(403)
   })
 
   it('rejects a body that is not { name, parentId? }', async () => {
-    const response = await POST(json('/api/archiv/folders', 'POST', { name: '' }), noParams)
+    const response = await POST(json('/api/office-shelf/folders', 'POST', { name: '' }), noParams)
 
     expect(response.status).toBe(400)
     expect(createOfficeShelfFolder).not.toHaveBeenCalled()
   })
 })
 
-describe('PATCH and DELETE /api/archiv/folders/[folderId]', () => {
+describe('PATCH and DELETE /api/office-shelf/folders/[folderId]', () => {
   it('renames and moves, an explicit null parent meaning the root', async () => {
     vi.mocked(updateOfficeShelfFolder).mockResolvedValue({ ok: true, folder })
 
     const response = await PATCH(
-      json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { name: 'Neu', parentId: null }),
+      json(`/api/office-shelf/folders/${FOLDER_ID}`, 'PATCH', { name: 'Neu', parentId: null }),
       item,
     )
 
@@ -140,32 +140,32 @@ describe('PATCH and DELETE /api/archiv/folders/[folderId]', () => {
     vi.mocked(updateOfficeShelfFolder).mockResolvedValue({ ok: true, folder: { ...folder, description: 'Gekaufte Normen' } })
 
     const response = await PATCH(
-      json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: 'Gekaufte Normen' }),
+      json(`/api/office-shelf/folders/${FOLDER_ID}`, 'PATCH', { description: 'Gekaufte Normen' }),
       item,
     )
     expect(response.status).toBe(200)
     expect((await response.json()).folder.description).toBe('Gekaufte Normen')
     expect(updateOfficeShelfFolder).toHaveBeenCalledWith(expect.anything(), { folderId: FOLDER_ID, description: 'Gekaufte Normen' })
 
-    await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: null }), item)
+    await PATCH(json(`/api/office-shelf/folders/${FOLDER_ID}`, 'PATCH', { description: null }), item)
     expect(updateOfficeShelfFolder).toHaveBeenLastCalledWith(expect.anything(), { folderId: FOLDER_ID, description: null })
   })
 
   it('refuses a service refusal of a description as a 400 in its words', async () => {
     vi.mocked(updateOfficeShelfFolder).mockResolvedValue({ ok: false, error: 'A folder description may be at most 500 characters.' })
-    const response = await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { description: 'x'.repeat(600) }), item)
+    const response = await PATCH(json(`/api/office-shelf/folders/${FOLDER_ID}`, 'PATCH', { description: 'x'.repeat(600) }), item)
     expect(response.status).toBe(400)
   })
 
   it('marks a taken name with its reason, so the browser can say which name is in the way', async () => {
     vi.mocked(updateOfficeShelfFolder).mockResolvedValue({ ok: false, error: 'A folder with this name already exists here.' })
-    const response = await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', { parentId: null }), item)
+    const response = await PATCH(json(`/api/office-shelf/folders/${FOLDER_ID}`, 'PATCH', { parentId: null }), item)
     expect(response.status).toBe(400)
     expect(await response.json()).toMatchObject({ details: { reason: 'folder-name-taken' } })
   })
 
   it('rejects an empty patch', async () => {
-    const response = await PATCH(json(`/api/archiv/folders/${FOLDER_ID}`, 'PATCH', {}), item)
+    const response = await PATCH(json(`/api/office-shelf/folders/${FOLDER_ID}`, 'PATCH', {}), item)
 
     expect(response.status).toBe(400)
   })
@@ -177,7 +177,7 @@ describe('PATCH and DELETE /api/archiv/folders/[folderId]', () => {
     })
 
     const response = await DELETE(
-      new NextRequest(`https://grid.test/api/archiv/folders/${FOLDER_ID}`, { method: 'DELETE' }),
+      new NextRequest(`https://grid.test/api/office-shelf/folders/${FOLDER_ID}`, { method: 'DELETE' }),
       item,
     )
 
@@ -190,7 +190,7 @@ describe('PATCH and DELETE /api/archiv/folders/[folderId]', () => {
     vi.mocked(deleteOfficeShelfFolder).mockResolvedValue({ ok: false, error: 'Folder not found.' })
 
     const response = await DELETE(
-      new NextRequest(`https://grid.test/api/archiv/folders/${FOLDER_ID}`, { method: 'DELETE' }),
+      new NextRequest(`https://grid.test/api/office-shelf/folders/${FOLDER_ID}`, { method: 'DELETE' }),
       item,
     )
 
@@ -198,7 +198,7 @@ describe('PATCH and DELETE /api/archiv/folders/[folderId]', () => {
   })
 })
 
-describe('POST /api/archiv/folders/ensure', () => {
+describe('POST /api/office-shelf/folders/ensure', () => {
   it('answers { folders, folderIdByPath }', async () => {
     vi.mocked(ensureOfficeShelfFolderPaths).mockResolvedValue({
       ok: true,
@@ -206,7 +206,7 @@ describe('POST /api/archiv/folders/ensure', () => {
       folderIdByPath: { Normen: FOLDER_ID },
     })
 
-    const response = await ENSURE(json('/api/archiv/folders/ensure', 'POST', { paths: ['Normen'] }), noParams)
+    const response = await ENSURE(json('/api/office-shelf/folders/ensure', 'POST', { paths: ['Normen'] }), noParams)
 
     expect(response.status).toBe(200)
     const body = await response.json()
@@ -217,7 +217,7 @@ describe('POST /api/archiv/folders/ensure', () => {
   it('refuses more than 300 paths at the edge', async () => {
     const paths = Array.from({ length: 301 }, (_, index) => `d${index}`)
 
-    const response = await ENSURE(json('/api/archiv/folders/ensure', 'POST', { paths }), noParams)
+    const response = await ENSURE(json('/api/office-shelf/folders/ensure', 'POST', { paths }), noParams)
 
     expect(response.status).toBe(400)
     expect(ensureOfficeShelfFolderPaths).not.toHaveBeenCalled()

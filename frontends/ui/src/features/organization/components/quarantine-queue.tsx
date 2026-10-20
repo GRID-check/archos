@@ -215,7 +215,7 @@ const QuarantineRow: FC<{
   const hasReasons = (item.verdict?.reasons.length ?? 0) > 0
 
   const where =
-    item.scope === 'archiv'
+    item.scope === 'office_shelf'
       ? t('quarantine.whereOfficeShelf')
       : item.scope === 'session'
         ? t('quarantine.whereSession')

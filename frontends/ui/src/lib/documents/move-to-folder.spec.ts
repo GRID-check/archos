@@ -303,7 +303,7 @@ describe('moveDocumentToFolder on the Archiv shelf', () => {
   const OFFICE_SHELF_DOCUMENT = {
     ...DOCUMENT,
     projectId: null,
-    scope: 'archiv',
+    scope: 'office_shelf',
     collectionName: 'archiv_org-1',
   }
 
@@ -339,7 +339,7 @@ describe('moveDocumentToFolder on the Archiv shelf', () => {
 
     const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'a-project-folder' }, SESSION)
 
-    expect(result).toEqual({ ok: false, error: 'Folder not found in the Archiv.' })
+    expect(result).toEqual({ ok: false, error: 'Folder not found in the office shelf.' })
     expect(db.updates).toHaveLength(0)
   })
 

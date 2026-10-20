@@ -189,7 +189,7 @@ chips and deep-links fall out of one decision (`backend-deep-dive.md` §6c).
 /projects/<slug>/work/…               NEW: Piloti's desk     (agent-authored)
 /projects/<slug>/views/<name>.view    NEW: saved filters     (§7)
 /projects/<slug>/memory/…             memory, projected      (read-only view of rows)
-/archiv/…                             Büroablage shelf       (documents, scope='archiv')
+/archiv/…                             Büroablage shelf       (documents, scope='office_shelf')
 /threads/<conv>/…                     chat-private shelf     (documents, scope='session')
 /skills/…                             org + platform skills
 /law/oib/…                            the corpus             (global, read-only)
@@ -212,7 +212,7 @@ context (`X-Grid-Request-Context`, `backend-deep-dive.md` §2b):
 |---|---|---|---|---|---|---|---|---|
 | `/law/oib` | projected | ✓ | ✓ | ✓ | — | — | — | — |
 | `/projects/*/files` | projected | ✓ | ✓ | ✓ | — | ✓¹ | trash¹ | — |
-| `/archiv` | projected | ✓ | ✓ | ✓ | — | ✓¹ | trash¹ | — |
+| `/office-shelf` | projected | ✓ | ✓ | ✓ | — | ✓¹ | trash¹ | — |
 | `/threads/<conv>` | **owned** | ✓ | ✓ | ✓ | ✓ | ✓ | trash | ✓ |
 | `/projects/*/work` | **owned** | ✓ | ✓ | ✓ | ✓ | ✓ | trash | ✓ |
 | `/projects/*/models` | projected | ✓ | ✓ | ✓ | — | — | — | — |
@@ -280,7 +280,7 @@ evidence**.
 |---|---|---|---|---|---|
 | **scratch** | `run:/` | nobody; the agent's own desk | the run | no | no |
 | **work** | `/projects/*/work`, `/threads/<c>` | the agent, inside quota | until GC or promotion | yes, provenance-tagged | **no** |
-| **estate** | `/projects/*/files`, `/archiv`, `/skills`, profile, memory | **a human click** | permanent | yes | yes |
+| **estate** | `/projects/*/files`, `/office-shelf`, `/skills`, profile, memory | **a human click** | permanent | yes | yes |
 
 The line between *work* and *estate* is the line between "a thing Piloti made"
 and "a thing the office asserts". In a product whose output ends up in an

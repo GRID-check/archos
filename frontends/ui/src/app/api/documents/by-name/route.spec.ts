@@ -43,7 +43,7 @@ import {
 } from '@/lib/documents/by-name-client'
 import { FILENAME_LOOKUP_MAX_NAMES } from '@/lib/documents/filename-lookup'
 import { POST as resolveProject } from './route'
-import { POST as resolveOfficeShelf } from '../../archiv/documents/by-name/route'
+import { POST as resolveOfficeShelf } from '../../office-shelf/documents/by-name/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
   [PROJECT_BY_NAME_PATH]: (request) => resolveProject(request, { params: Promise.resolve({}) }),
@@ -159,7 +159,7 @@ describe('POST /api/documents/by-name', () => {
   })
 })
 
-describe('POST /api/archiv/documents/by-name', () => {
+describe('POST /api/office-shelf/documents/by-name', () => {
   it('answers the Archiv', async () => {
     vi.mocked(resolveOfficeShelfDocumentsByName).mockResolvedValueOnce([
       { ...LISTED, id: 'a1', versionCount: null } as never,

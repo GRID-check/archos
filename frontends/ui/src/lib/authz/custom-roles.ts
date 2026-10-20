@@ -41,6 +41,11 @@ export const ASSIGNABLE_ROLE_PERMISSIONS: readonly string[] = ORG_PERMISSION_SPE
   (spec) => spec.tier === 'org'
 ).map((spec) => spec.slug)
 
+/** Organization permissions the catalog keeps only so existing grants work. */
+const DEPRECATED_ROLE_PERMISSIONS: ReadonlySet<string> = new Set(
+  ORG_PERMISSION_SPECS.filter((spec) => spec.deprecated).map((spec) => spec.slug)
+)
+
 const ROLE_LIST_TTL_MS = 60_000
 const roleListKey = (organizationId: string): string => `authz:org-roles:${organizationId}`
 /** The key `org-role-permissions` caches each organization's role → permissions map under. */
@@ -104,7 +109,8 @@ export interface AssignablePermissionView {
  */
 export function assignableRolePermissions(session: AuthorizedSession): AssignablePermissionView[] | null {
   if (!hasPermission(session, ORG_PERMISSIONS.membersManage)) return null
-  return ASSIGNABLE_ROLE_PERMISSIONS.map((slug) => ({
+  // A deprecated slug stays valid to SAVE (a role that still holds it keeps it) but is not offered anew.
+  return ASSIGNABLE_ROLE_PERMISSIONS.filter((slug) => !DEPRECATED_ROLE_PERMISSIONS.has(slug)).map((slug) => ({
     slug,
     grantable: hasPermission(session, slug as KnownPermission),
   }))

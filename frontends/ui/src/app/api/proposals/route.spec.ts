@@ -188,11 +188,11 @@ beforeEach(() => {
   SESSION.permissions = []
   store = new Map([
     [FILING, row(FILING)],
-    [OFFICE_SHELF, row(OFFICE_SHELF, { projectId: null, scope: 'archiv', payload: OFFICE_SHELF_MOVE })],
+    [OFFICE_SHELF, row(OFFICE_SHELF, { projectId: null, scope: 'office_shelf', payload: OFFICE_SHELF_MOVE })],
   ])
   vi.mocked(findProposedChange).mockImplementation(async (_org, id) => store.get(id) ?? null)
   vi.mocked(listShelfProposals).mockImplementation(async (_org, shelf) =>
-    [...store.values()].filter((entry) => (shelf.scope === 'archiv' ? entry.projectId === null : entry.projectId === shelf.projectId))
+    [...store.values()].filter((entry) => (shelf.scope === 'office_shelf' ? entry.projectId === null : entry.projectId === shelf.projectId))
   )
   vi.mocked(claimProposedChange).mockImplementation(async (_org, id, userId) => {
     const current = store.get(id)
@@ -244,13 +244,13 @@ describe('GET /api/proposals', () => {
   })
 
   it('lists the Büroablage’s with no project, to any member, decidable by its curators only', async () => {
-    const forMember = await listOpenProposals({ shelf: 'archiv' }, run)
+    const forMember = await listOpenProposals({ shelf: 'office_shelf' }, run)
     expect(forMember.proposals.map((entry) => [entry.proposal.id, entry.proposal.projectId, entry.proposal.canDecide])).toEqual([
       [OFFICE_SHELF, null, false],
     ])
     expect(requireProjectAccess).not.toHaveBeenCalled()
     SESSION.permissions = ['org:archiv:manage']
-    expect((await listOpenProposals({ shelf: 'archiv' }, run)).proposals[0].proposal.canDecide).toBe(true)
+    expect((await listOpenProposals({ shelf: 'office_shelf' }, run)).proposals[0].proposal.canDecide).toBe(true)
   })
 
   it('refuses a query that names no shelf, or two', async () => {
@@ -338,7 +338,7 @@ describe('the Büroablage', () => {
       conversationId: null,
       answerMessageId: null,
     })
-    expect(insertProposedChange).toHaveBeenCalledWith(expect.objectContaining({ projectId: null, scope: 'archiv' }))
+    expect(insertProposedChange).toHaveBeenCalledWith(expect.objectContaining({ projectId: null, scope: 'office_shelf' }))
     await expect(
       createProposal(SESSION, {
         projectId: null,

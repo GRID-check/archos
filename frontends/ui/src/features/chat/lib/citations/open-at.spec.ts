@@ -29,7 +29,7 @@ const officeDocument = () => {
       wire({
         fileName: 'Sockeldetail_Holzmassivbau.pdf',
         title: 'Sockeldetail Holzmassivbau',
-        shelf: 'archiv',
+        shelf: 'office_shelf',
         page: 18,
         citationKey: 'Sockeldetail_Holzmassivbau.pdf, p.18',
         isCited: true,
@@ -68,7 +68,7 @@ describe('a citation opens where the document was read (#621)', () => {
           id: 'doc-1',
           filename: 'Sockeldetail_Holzmassivbau.pdf',
           contentType: 'application/pdf',
-          shelf: 'archiv',
+          shelf: 'office_shelf',
         },
       ],
     })
@@ -144,7 +144,7 @@ describe('a citation opens where the document was read (#621)', () => {
           id: 'doc-1',
           filename: 'Sockeldetail_Holzmassivbau.pdf',
           contentType: 'application/pdf',
-          shelf: 'archiv',
+          shelf: 'office_shelf',
         },
       ],
     })
@@ -359,7 +359,7 @@ describe('an inline `[N]` binds to the locus that knows its page (#621)', () => 
         wire({
           fileName: 'Sockeldetail_Holzmassivbau.pdf',
           title: 'Sockeldetail Holzmassivbau',
-          shelf: 'archiv',
+          shelf: 'office_shelf',
           page: 18,
           number: 1,
           citationKey: 'Sockeldetail_Holzmassivbau.pdf, p.18',

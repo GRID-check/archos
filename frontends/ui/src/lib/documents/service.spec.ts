@@ -1927,7 +1927,7 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
         status: 'failed' as const,
         storageKey: 'org/org-1/archiv/doc/doc-99/norm.pdf',
         projectId: null,
-        scope: 'archiv',
+        scope: 'office_shelf',
         collectionName: 'archiv_org-1',
         folderId: 'folder-1',
       })
@@ -1978,7 +1978,7 @@ describe('deleteDocument', () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
       projectId: null,
-      scope: 'archiv',
+      scope: 'office_shelf',
     })
 
     await expect(deleteDocument(session, 'doc-1', new Request('http://x'))).rejects.toBeInstanceOf(
@@ -2311,7 +2311,7 @@ describe('renameDocument', () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
       projectId: null,
-      scope: 'archiv',
+      scope: 'office_shelf',
       collectionName: 'archiv_org-1',
     })
 
@@ -2362,11 +2362,11 @@ describe('getDocumentStatus', () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
       projectId: null,
-      scope: 'archiv',
+      scope: 'office_shelf',
       collectionName: 'archiv_org-1',
     })
 
-    await expect(getDocumentStatus(session, 'doc-1')).resolves.toMatchObject({ scope: 'archiv' })
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toMatchObject({ scope: 'office_shelf' })
   })
 
   // ADR-0113: a reader allowed to see a held row is told why as data, read

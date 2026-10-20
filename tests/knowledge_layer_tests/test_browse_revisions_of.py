@@ -286,7 +286,7 @@ class TestOnlyWhatTheTurnMayList:
             [
                 _doc("Plan_Index_A.pdf"),
                 _doc("Plan_Index_B.pdf"),
-                _doc("Plan_Index_C.pdf", shelf="archiv"),
+                _doc("Plan_Index_C.pdf", shelf="office_shelf"),
                 _doc("Plan_Index_D.pdf", shelf="base"),
             ]
         )
@@ -299,7 +299,7 @@ class TestOnlyWhatTheTurnMayList:
         assert _names(render_revisions(self._rows(), "Plan_Index_D.pdf", shelf="base")) == ["Plan_Index_D.pdf"]
 
     def test_a_turn_restricted_to_one_shelf_chains_only_that_shelf(self):
-        text = render_revisions(self._rows(), "Plan_Index_C.pdf", default_shelves=("archiv",))
+        text = render_revisions(self._rows(), "Plan_Index_C.pdf", default_shelves=("office_shelf",))
 
         assert _names(text) == ["Plan_Index_C.pdf"]
 
@@ -323,7 +323,7 @@ def scope(monkeypatch):
         [
             _doc("Plan_Index_A.pdf"),
             _doc("Plan_Index_B.pdf", change_summary="- Wand neu", change_basis="Plan_Index_A.pdf"),
-            _doc("Plan_Index_A.pdf", shelf="archiv"),
+            _doc("Plan_Index_A.pdf", shelf="office_shelf"),
         ]
     )
     yield
@@ -366,7 +366,7 @@ class TestTheTool:
     async def test_a_shelf_the_turn_did_not_ask_for_is_refused_as_the_listing_does(self, scope, monkeypatch):
         monkeypatch.setattr("aiq_agent.common.focus_file.get_turn_shelves", lambda: frozenset({"project"}))
 
-        text = await self._call(revisions_of="Plan_Index_A.pdf", shelf="archiv")
+        text = await self._call(revisions_of="Plan_Index_A.pdf", shelf="office_shelf")
 
         assert "beschränkt" in text and not _numbered(text)
 
@@ -451,7 +451,7 @@ class TestComparing:
         assert stored == []
 
     async def test_a_document_with_one_revision_has_nothing_to_compare(self, scope, stored):
-        text = await self._call(revisions_of="Plan_Index_A.pdf", compare_to="vorige", shelf="archiv")
+        text = await self._call(revisions_of="Plan_Index_A.pdf", compare_to="vorige", shelf="office_shelf")
         assert "nichts zu vergleichen" in text
 
     async def test_identical_revisions_with_several_chunks_on_a_page_compare_as_unchanged(

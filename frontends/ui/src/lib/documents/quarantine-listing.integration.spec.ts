@@ -48,12 +48,12 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     withTenant({ organizationId: ORG, userId: UPLOADER }, run)
 
   async function insert(
-    shelf: 'project' | 'archiv' | 'session',
+    shelf: 'project' | 'office_shelf' | 'session',
     filename: string,
     createdBy: string,
     status: string
   ): Promise<void> {
-    const collection = shelf === 'project' ? COLLECTION : shelf === 'archiv' ? `archiv_${ORG}` : `session_${ORG}`
+    const collection = shelf === 'project' ? COLLECTION : shelf === 'office_shelf' ? `archiv_${ORG}` : `session_${ORG}`
     await inTenant(() =>
       db.execute(sql`
         INSERT INTO documents
@@ -69,7 +69,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
    * One ready file, the uploader's quarantined one, somebody else's quarantined
    * one, and somebody else's still being screened.
    */
-  async function seed(shelf: 'project' | 'archiv' | 'session'): Promise<void> {
+  async function seed(shelf: 'project' | 'office_shelf' | 'session'): Promise<void> {
     await insert(shelf, `${shelf}-ready.pdf`, OTHER_UPLOADER, 'completed')
     await insert(shelf, `${shelf}-own.pdf`, UPLOADER, 'quarantined')
     await insert(shelf, `${shelf}-foreign.pdf`, OTHER_UPLOADER, 'quarantined')
@@ -104,7 +104,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       `)
     )
     await seed('project')
-    await seed('archiv')
+    await seed('office_shelf')
     await seed('session')
     // A model for each project file: an IFC is extracted before its digest is
     // screened, so a quarantined one has a `ready` model too.
@@ -234,7 +234,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       db.execute(sql`
         INSERT INTO bim_models (organization_id, project_id, document_id, status)
         SELECT organization_id, NULL, id, 'ready' FROM documents
-        WHERE organization_id = ${ORG} AND scope = 'archiv'
+        WHERE organization_id = ${ORG} AND scope = 'office_shelf'
       `)
     )
     // A project admin who does not curate the Büroablage: every project model,

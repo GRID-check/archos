@@ -7,7 +7,7 @@ import { writeTrail, type ReturnTrail } from '@/lib/navigation/return-trail'
 const visits = (...paths: string[]): ReturnTrail => paths.map((path) => ({ path }))
 
 const back = vi.fn()
-let pathname = '/app/archiv'
+let pathname = '/app/office-shelf'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ back, push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -30,7 +30,7 @@ function setHistoryLength(length: number): void {
 beforeEach(() => {
   vi.clearAllMocks()
   window.sessionStorage.clear()
-  pathname = '/app/archiv'
+  pathname = '/app/office-shelf'
   setHistoryLength(3)
 })
 
@@ -43,7 +43,7 @@ describe('BackLink — where it points', () => {
   })
 
   test('points at the page the reader actually came from, and names it', async () => {
-    writeTrail(visits('/app/projects/p1/files', '/app/archiv'))
+    writeTrail(visits('/app/projects/p1/files', '/app/office-shelf'))
     renderBackLink()
 
     const link = screen.getByTestId('back-link')
@@ -55,7 +55,7 @@ describe('BackLink — where it points', () => {
   test('names the PROJECT the reader came out of, when the project said its name', async () => {
     writeTrail([
       { path: '/app/projects/p1/files', label: 'Stadthaus Wien' },
-      { path: '/app/archiv' },
+      { path: '/app/office-shelf' },
     ])
     renderBackLink()
 
@@ -66,7 +66,7 @@ describe('BackLink — where it points', () => {
   })
 
   test('says only "Back" for a real page it cannot name', async () => {
-    writeTrail(visits('/app/onboarding/organization', '/app/archiv'))
+    writeTrail(visits('/app/onboarding/organization', '/app/office-shelf'))
     renderBackLink()
 
     const link = screen.getByTestId('back-link')
@@ -76,7 +76,7 @@ describe('BackLink — where it points', () => {
   })
 
   test('ignores a trail that has moved past this page', async () => {
-    writeTrail(visits('/app/projects/p1/files', '/app/archiv', '/app/inbox'))
+    writeTrail(visits('/app/projects/p1/files', '/app/office-shelf', '/app/inbox'))
     renderBackLink()
 
     const link = screen.getByTestId('back-link')
@@ -87,7 +87,7 @@ describe('BackLink — where it points', () => {
 
 describe('BackLink — how it navigates', () => {
   test('goes back through history, so the page is restored as it was left', async () => {
-    writeTrail(visits('/app/projects/p1/files', '/app/archiv'))
+    writeTrail(visits('/app/projects/p1/files', '/app/office-shelf'))
     const user = userEvent.setup()
     renderBackLink()
     await waitFor(() => expect(screen.getByTestId('back-link')).toHaveTextContent('Back to Files'))
@@ -97,7 +97,7 @@ describe('BackLink — how it navigates', () => {
   })
 
   test('leaves a modified click to the browser, so the target still opens in a new tab', async () => {
-    writeTrail(visits('/app/projects/p1/files', '/app/archiv'))
+    writeTrail(visits('/app/projects/p1/files', '/app/office-shelf'))
     const user = userEvent.setup()
     renderBackLink()
     await waitFor(() => expect(screen.getByTestId('back-link')).toHaveTextContent('Back to Files'))
@@ -126,7 +126,7 @@ describe('BackLink — how it navigates', () => {
     // A link opened in a new tab: the browser copies session storage, so the
     // trail is there, but the history behind it is not.
     setHistoryLength(1)
-    writeTrail(visits('/app/projects/p1/files', '/app/archiv'))
+    writeTrail(visits('/app/projects/p1/files', '/app/office-shelf'))
     const user = userEvent.setup()
     renderBackLink()
     await waitFor(() => expect(screen.getByTestId('back-link')).toHaveTextContent('Back to Files'))

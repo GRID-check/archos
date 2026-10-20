@@ -296,7 +296,7 @@ export async function buildCollectionScopeFromRequest(
   const shelfByCollection = new Map<string, CollectionShelf>()
   // The base knowledge corpus, and nothing else, is `base`.
   shelfByCollection.set(baseCollection, 'base')
-  if (officeShelfCollection) shelfByCollection.set(officeShelfCollection, 'archiv')
+  if (officeShelfCollection) shelfByCollection.set(officeShelfCollection, 'office_shelf')
   if (projectCollection) shelfByCollection.set(projectCollection, 'project')
   // A restricted folder's collection is the project's knowledge, filed apart.
   for (const restricted of restrictedCollections) shelfByCollection.set(restricted, 'project')

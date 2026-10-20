@@ -34,7 +34,7 @@ describe('shelfDocumentWhere', () => {
     const { sql, params } = compile(shelfDocumentWhere(OFFICE_SHELF, 'org-1'))
 
     expect(sql).not.toContain('project_id')
-    expect(params).toEqual(['org-1', 'archiv'])
+    expect(params).toEqual(['org-1', 'office_shelf'])
   })
 })
 
@@ -47,7 +47,7 @@ describe('shelfFolderWhere', () => {
     ])
     const officeShelf = compile(shelfFolderWhere(OFFICE_SHELF, 'org-1'))
     expect(officeShelf.sql).toContain('"project_folders"."organization_id" = $1')
-    expect(officeShelf.params).toEqual(['org-1', 'archiv'])
+    expect(officeShelf.params).toEqual(['org-1', 'office_shelf'])
   })
 })
 
@@ -60,7 +60,7 @@ describe('shelfOwner', () => {
     })
     expect(shelfOwner(OFFICE_SHELF, 'org-1')).toEqual({
       organizationId: 'org-1',
-      scope: 'archiv',
+      scope: 'office_shelf',
       projectId: null,
     })
   })
@@ -69,7 +69,7 @@ describe('shelfOwner', () => {
 describe('documentShelf', () => {
   it('reads the shelf off a stored row', () => {
     expect(documentShelf({ scope: 'project', projectId: 'proj-1' })).toEqual(projectShelf('proj-1'))
-    expect(documentShelf({ scope: 'archiv', projectId: null })).toEqual(OFFICE_SHELF)
+    expect(documentShelf({ scope: 'office_shelf', projectId: null })).toEqual(OFFICE_SHELF)
   })
 
   it('has none for a session attachment, which is filed nowhere', () => {

@@ -13,7 +13,7 @@ import { OFFICE_SHELF_ENDPOINTS, type CardExtras, type FileShelf } from '../lib/
 import { FileWorkspace } from './file-workspace'
 
 interface OfficeShelfWorkspaceProps {
-  /** Whether the viewer may change the Archiv (holds `org:archiv:manage`). */
+  /** Whether the viewer may change the Archiv (holds `org:office_shelf:manage`). */
   canManage: boolean
   /** Whether an `.ifc` here can reach the model workspace (`ifc-models`). */
   showModels?: boolean
@@ -36,7 +36,7 @@ const OFFICE_TINT = sourceTint('office')
  *
  * It is a project's Dateien with the project taken out. What it adds is the
  * office's own identity — the gold mark, name and count, the sheet's close
- * control — and the permission model: a member without `org:archiv:manage` gets
+ * control — and the permission model: a member without `org:office_shelf:manage` gets
  * the read-only view (list, folders, search, filters, preview, download).
  * There is no assignment (collaboration is project-scoped) and no „Frage zur
  * Datei" (there is no project chat to ask in).

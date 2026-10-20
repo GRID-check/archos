@@ -36,7 +36,7 @@
 import 'server-only'
 import { getCached } from '@/lib/cache'
 import { getWorkOS } from '@/lib/workos/client'
-import { permissionsForOrgRole, permissionsForPlatformRole } from './permissions'
+import { acceptedPermissionSlugs, permissionsForOrgRole, permissionsForPlatformRole } from './permissions'
 
 /**
  * How stale what a role holds may be. One minute, like the roles a person holds
@@ -88,17 +88,19 @@ export async function orgRoleHoldsPermission(
   organizationId?: string
 ): Promise<boolean> {
   if (!roleSlug) return false
+  const accepted = acceptedPermissionSlugs(permission)
+  const held = (slugs: readonly string[] | undefined): boolean => accepted.some((slug) => slugs?.includes(slug))
   if (organizationId) {
     try {
       const own = await organizationRolePermissionMap(organizationId)
-      if (own[roleSlug]?.includes(permission)) return true
+      if (held(own[roleSlug])) return true
     } catch (error) {
       console.warn(`[authz] organization role lookup failed for ${roleSlug}:`, error)
     }
   }
   try {
     const map = await environmentRolePermissionMap()
-    if (map[roleSlug]?.includes(permission)) return true
+    if (held(map[roleSlug])) return true
     // Falls through to the catalog on every miss, not only on an unknown slug.
     //
     // Returning `map[roleSlug].includes(permission)` directly was wrong in the
@@ -113,7 +115,8 @@ export async function orgRoleHoldsPermission(
   } catch (error) {
     console.warn(`[authz] environment role lookup failed for ${roleSlug}:`, error)
   }
-  return permissionsForOrgRole(roleSlug).has(permission)
+  const catalogued = permissionsForOrgRole(roleSlug)
+  return accepted.some((slug) => catalogued.has(slug))
 }
 
 /**
@@ -126,14 +129,16 @@ export async function organizationRoleHoldsPermission(
   permission: string
 ): Promise<boolean> {
   if (!roleSlug) return false
+  const accepted = acceptedPermissionSlugs(permission)
   try {
     const map = await organizationRolePermissionMap(organizationId)
-    if (map[roleSlug]?.includes(permission)) return true
+    if (accepted.some((slug) => map[roleSlug]?.includes(slug))) return true
     // Same union as above, for the same reason.
   } catch (error) {
     console.warn(`[authz] organization role lookup failed for ${roleSlug}:`, error)
   }
-  return permissionsForPlatformRole(roleSlug).has(permission)
+  const catalogued = permissionsForPlatformRole(roleSlug)
+  return accepted.some((slug) => catalogued.has(slug))
 }
 
 /**

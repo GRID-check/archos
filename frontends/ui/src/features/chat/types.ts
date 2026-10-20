@@ -57,7 +57,7 @@ export interface ComposerSubject {
    * does not walk the Archiv (#429); a project file does not mix in
    * Büro hits (#436).
    */
-  shelf?: 'project' | 'archiv' | 'session'
+  shelf?: 'project' | 'office_shelf' | 'session'
   /**
    * The subject's OPEN version — the one still being worked on — when it has
    * one, so the turn can read a document retrieval cannot see.

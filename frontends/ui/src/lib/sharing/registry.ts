@@ -324,7 +324,7 @@ const documentDescriptor: ShareableDescriptor = {
     const doc = encodeURIComponent(resourceId)
     // `review=1&mark=` opens the Prüfansicht at the mark (`features/documents/lib/open-review.ts`).
     const review = options?.markId ? `&review=1&mark=${encodeURIComponent(options.markId)}` : ''
-    if (!options?.projectId) return `/app/archiv?doc=${doc}${review}`
+    if (!options?.projectId) return `/app/office-shelf?doc=${doc}${review}`
     return `/app/projects/${encodeURIComponent(options.projectId)}/files?doc=${doc}${review}`
   },
   labelKey: 'document',

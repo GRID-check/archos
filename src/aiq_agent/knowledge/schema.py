@@ -492,7 +492,7 @@ class AvailableDocument(BaseModel):
 
     Identity is ``(collection, file_name)`` (ADR-0047): the same filename can
     sit on the Büroablage and in a project as two different documents. ``shelf``
-    is where it sits (``archiv`` / ``project`` / ``session`` / ``base``) and is
+    is where it sits (``office_shelf`` / ``project`` / ``session`` / ``base``) and is
     stamped at aggregation from the signed scope — never guessed back from the
     filename. Missing shelf is unknown, not ``base``.
 

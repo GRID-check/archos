@@ -51,7 +51,7 @@ const LISTED: ListedDocument = {
   assignees: [],
 }
 
-const get = (query = '') => GET(new NextRequest(`https://grid.test/api/archiv/documents${query}`), { params: Promise.resolve({}) })
+const get = (query = '') => GET(new NextRequest(`https://grid.test/api/office-shelf/documents${query}`), { params: Promise.resolve({}) })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -63,7 +63,7 @@ beforeEach(() => {
   })
 })
 
-describe('GET /api/archiv/documents', () => {
+describe('GET /api/office-shelf/documents', () => {
   it('serves the same wire row a project listing serves, field for field', async () => {
     const body = await (await get()).json()
 

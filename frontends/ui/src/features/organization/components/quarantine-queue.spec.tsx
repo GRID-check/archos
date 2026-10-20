@@ -25,7 +25,7 @@ const ITEMS = [
   {
     id: 'doc-2',
     filename: 'Konten.xlsx',
-    scope: 'archiv',
+    scope: 'office_shelf',
     projectId: null,
     conversationId: null,
     uploadedBy: 'user_02',
@@ -112,7 +112,7 @@ describe('QuarantineQueue', () => {
       'href',
       '/app/projects/proj_1/files?doc=doc-1'
     )
-    expect(screen.getByTestId('quarantine-open-doc-2')).toHaveAttribute('href', '/app/archiv?doc=doc-2')
+    expect(screen.getByTestId('quarantine-open-doc-2')).toHaveAttribute('href', '/app/office-shelf?doc=doc-2')
     // A chat attachment has no per-file view.
     expect(screen.queryByTestId('quarantine-open-doc-3')).not.toBeInTheDocument()
   })
@@ -133,7 +133,7 @@ describe('QuarantineQueue', () => {
 
   it.each([
     ['doc-1', '/api/documents/doc-1'],
-    ['doc-2', '/api/archiv/documents/doc-2'],
+    ['doc-2', '/api/office-shelf/documents/doc-2'],
     ['doc-3', '/api/session/documents/doc-3'],
   ])('delete of %s goes through its shelf route %s and removes the row', async (id, route) => {
     stubApi()

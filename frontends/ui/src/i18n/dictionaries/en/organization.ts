@@ -260,7 +260,7 @@ export const organization = {
         name: 'View the download log',
         hint: 'Who downloaded which document. Reading it is itself recorded.',
       },
-      archiv_manage: {
+      office_shelf_manage: {
         name: 'Manage Office filing',
         hint: 'Upload, delete and re-read documents in Office filing. Everyone can read it.',
       },

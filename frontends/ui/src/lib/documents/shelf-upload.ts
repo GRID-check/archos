@@ -134,7 +134,7 @@ function uploadStorageKey(
 /**
  * Data-provenance event: who brought which file onto which shelf. The two
  * shelves keep their own action names (`document.uploaded`,
- * `archiv.document.uploaded`) because the trail is read per shelf, and record
+ * `office_shelf.document.uploaded`) because the trail is read per shelf, and record
  * what locates the file there — the project, or the Archiv's collection.
  */
 async function uploadAuditEvent(
@@ -159,7 +159,7 @@ async function uploadAuditEvent(
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
-    action: shelf.kind === 'project' ? 'document.uploaded' : 'archiv.document.uploaded',
+    action: shelf.kind === 'project' ? 'document.uploaded' : 'office_shelf.document.uploaded',
     targetType: 'document',
     targetId: event.documentId,
     // A file put under a folder not every member may read is not named (ADR-0087).

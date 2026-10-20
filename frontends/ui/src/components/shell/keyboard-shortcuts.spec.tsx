@@ -179,7 +179,7 @@ describe('KeyboardShortcuts', () => {
 
     fireEvent.keyDown(window, { key: 'g' })
     fireEvent.keyDown(window, { key: 'a' })
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/app/archiv'))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/app/office-shelf'))
 
     unmount()
     push.mockClear()

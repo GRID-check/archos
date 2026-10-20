@@ -1,6 +1,6 @@
 /**
  * The query a document listing accepts — shared by `GET /api/documents` and
- * `GET /api/archiv/documents`, because a shelf's listing is one thing
+ * `GET /api/office-shelf/documents`, because a shelf's listing is one thing
  * (ADR-0078) and the Files workspace builds the same URL for both.
  *
  * Two reads share the URL (ADR-0102):

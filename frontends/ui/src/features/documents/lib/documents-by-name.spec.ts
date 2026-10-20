@@ -18,7 +18,7 @@ function server(options: { project?: Row[]; archiv?: Row[]; projectStatus?: numb
   const run = vi.fn(async (path: string, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { projectId?: string; names: string[] }
     calls.push({ path, body })
-    const officeShelf = path.startsWith('/api/archiv/')
+    const officeShelf = path.startsWith('/api/office-shelf/')
     const status = (officeShelf ? options.officeShelfStatus : options.projectStatus) ?? 200
     if (status !== 200) return new Response(null, { status })
     const wanted = new Set(body.names.map((name) => name.toLowerCase()))
@@ -58,7 +58,7 @@ describe('resolveDocumentsByName', () => {
 
     expect(a.get('a.pdf')?.project[0]?.id).toBe('p1')
     expect(b.get('b.pdf')?.project[0]?.id).toBe('p2')
-    expect(calls.map((call) => call.path)).toEqual(['/api/documents/by-name', '/api/archiv/documents/by-name'])
+    expect(calls.map((call) => call.path)).toEqual(['/api/documents/by-name', '/api/office-shelf/documents/by-name'])
     expect(calls[0].body).toEqual({ projectId: 'proj-1', names: ['A.pdf', 'B.pdf'] })
   })
 
@@ -94,7 +94,7 @@ describe('resolveDocumentsByName', () => {
     const result = await resolveDocumentsByName(null, ['A.pdf'])
 
     expect(result.get('a.pdf')?.officeShelf[0]?.id).toBe('a1')
-    expect(calls.map((call) => call.path)).toEqual(['/api/archiv/documents/by-name'])
+    expect(calls.map((call) => call.path)).toEqual(['/api/office-shelf/documents/by-name'])
   })
 
   it('asks nothing for no names', async () => {

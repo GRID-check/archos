@@ -31,7 +31,7 @@ const ROLES: OrganizationRole[] = [
     name: 'Geschäftsführung',
     description: 'Sieht Honorarvereinbarungen, Verträge und Personalakten.',
     custom: true,
-    permissions: ['org:archiv:manage', 'org:models:manage', 'org:projects:administer'],
+    permissions: ['org:office_shelf:manage', 'org:models:manage', 'org:projects:administer'],
   },
   {
     slug: 'org-projektleitung',
@@ -63,14 +63,14 @@ const ROLES: OrganizationRole[] = [
   },
 ]
 
-const HELD = new Set(['org:archiv:manage', 'org:members:manage', 'org:projects:create', 'org:skills:manage'])
+const HELD = new Set(['org:office_shelf:manage', 'org:members:manage', 'org:projects:create', 'org:skills:manage'])
 const ASSIGNABLE: AssignablePermission[] = [
   'org:settings:manage',
   'org:models:manage',
   'org:budgets:manage',
   'org:compliance:manage',
   'org:audit:view',
-  'org:archiv:manage',
+  'org:office_shelf:manage',
   'org:skills:manage',
   'org:projects:create',
   'org:projects:administer',

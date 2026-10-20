@@ -414,7 +414,7 @@ class TestLaneForHit:
         assert nr.lane_for_hit(collection="s_session42") == ("project", "Private Sitzung")
 
     def test_a_shelf_the_caller_knows_beats_the_collection_guess(self):
-        assert nr.lane_for_hit(collection="whatever", shelf="archiv") == ("office", "Büroablage")
+        assert nr.lane_for_hit(collection="whatever", shelf="office_shelf") == ("office", "Büroablage")
 
     def test_the_default_class_never_relabels_a_users_document(self):
         # Ingestion used to stamp "other" on every upload; on a user's own
@@ -485,7 +485,7 @@ class TestLaneForAgentAuthoredHit:
     def test_it_beats_an_explicit_doc_class(self):
         """doc_class is the first-priority signal for everything else, and its
         label fallback is "Baurecht" — law blue for a document we wrote."""
-        assert nr.lane_for_hit(doc_class="law", shelf="archiv", authored_by="agent") == (
+        assert nr.lane_for_hit(doc_class="law", shelf="office_shelf", authored_by="agent") == (
             "office_piloti",
             "Piloti-Dokument",
         )
@@ -504,7 +504,7 @@ class TestLaneForAgentAuthoredHit:
 
     def test_an_unmarked_hit_is_untouched(self):
         for authored_by in (None, "", "human", "Marianne"):
-            assert nr.lane_for_hit(shelf="archiv", authored_by=authored_by) == ("office", "Büroablage")
+            assert nr.lane_for_hit(shelf="office_shelf", authored_by=authored_by) == ("office", "Büroablage")
 
 
 class TestLaneForKnowledgeHit:

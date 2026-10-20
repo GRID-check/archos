@@ -153,7 +153,7 @@ describe('AppSidebar - office shelf nav item (ADR-0024)', () => {
     const links = screen.getAllByText('Office filing').map((el) => el.closest('a'))
     expect(links.length).toBeGreaterThan(0)
     for (const link of links) {
-      expect(link).toHaveAttribute('href', '/app/archiv')
+      expect(link).toHaveAttribute('href', '/app/office-shelf')
     }
   })
 
@@ -343,10 +343,10 @@ describe('AppSidebar - layout store mobile nav sync', () => {
 describe('AppSidebar - the org doorways stay reachable from inside a project', () => {
   test('marks the office shelf doorway current while its sheet is open over the project', () => {
     // Opening the Archiv from a project is an intercepted route: the URL is
-    // `/app/archiv` while the project page (and this rail) keep standing under
+    // `/app/office-shelf` while the project page (and this rail) keep standing under
     // the sheet. The rail must say where the reader IS — the doorway — without
     // un-marking the project scope it is still rendering.
-    pathname = '/app/archiv'
+    pathname = '/app/office-shelf'
     render(<AppSidebar {...baseProps} canAccessOfficeShelf />)
     const officeShelf = screen
       .getAllByText('Office filing')

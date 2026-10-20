@@ -31,7 +31,7 @@ export interface CanvasFocus {
   fileName: string | null
   versionId: string | null
   versionState: DocumentVersionState | null
-  shelf: 'session' | 'project' | 'archiv' | null
+  shelf: 'session' | 'project' | 'office_shelf' | null
   /** Null: the whole document. */
   region: CanvasFocusRegion | null
   replyInThread: boolean

@@ -8,7 +8,7 @@ import { FOLDER_DESCRIPTION_MAX_LENGTH } from '@/lib/projects/folders'
  * The shelves a folder can live on — the folder-carrying subset of
  * `DOCUMENT_SCOPES` (`session` documents are never filed).
  */
-export const FOLDER_SCOPES = ['project', 'archiv'] as const
+export const FOLDER_SCOPES = ['project', 'office_shelf'] as const
 export type FolderScope = (typeof FOLDER_SCOPES)[number]
 
 /**
@@ -24,7 +24,7 @@ export type FolderScope = (typeof FOLDER_SCOPES)[number]
 export const projectFolders = pgTable('project_folders', {
   id: uuid('id').primaryKey().defaultRandom(),
   /**
-   * The owning project, or NULL for an Archiv folder (`scope = 'archiv'`). The
+   * The owning project, or NULL for an Archiv folder (`scope = 'office_shelf'`). The
    * CHECK below ties the two: `(scope = 'project') = (project_id IS NOT NULL)`.
    */
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
@@ -138,7 +138,7 @@ export const projectFolders = pgTable('project_folders', {
     table.organizationId,
     table.scope,
   ),
-  scopeCheck: check('project_folders_scope_check', sql`${table.scope} IN ('project', 'archiv')`),
+  scopeCheck: check('project_folders_scope_check', sql`${table.scope} IN ('project', 'office_shelf')`),
   descriptionLength: check(
     'project_folders_description_length',
     sql`${table.description} IS NULL OR (char_length(${table.description}) <= ${sql.raw(String(FOLDER_DESCRIPTION_MAX_LENGTH))} AND btrim(${table.description}) <> '')`,

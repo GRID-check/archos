@@ -22,7 +22,7 @@ export class ByNameResolveError extends Error {
 }
 
 export const PROJECT_BY_NAME_PATH = '/api/documents/by-name'
-export const OFFICE_SHELF_BY_NAME_PATH = '/api/archiv/documents/by-name'
+export const OFFICE_SHELF_BY_NAME_PATH = '/api/office-shelf/documents/by-name'
 
 /** A listing row as the resolve returns it: the listing's own wire row. */
 export type ResolvedDocumentRow = DocumentWireRow & { collectionName?: string; updatedAt?: string }

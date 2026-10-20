@@ -44,7 +44,7 @@ export function documentFilesHref(projectId: string, documentId: string): string
  * carries no project field. Reading it back out of the link the row already
  * holds beats widening the inbox payload for one button.
  *
- * `null` for an Archiv document (`/app/archiv?doc=…`), which has no project
+ * `null` for an Archiv document (`/app/office-shelf?doc=…`), which has no project
  * chat to open, and for anything that is not a document deep link at all.
  */
 export function projectIdFromDocumentHref(href: string | null | undefined): string | null {

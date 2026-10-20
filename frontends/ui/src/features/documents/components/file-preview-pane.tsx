@@ -136,7 +136,7 @@ interface FilePreviewPaneProps {
   /**
    * Whether the viewer may mutate the document (edit tags, re-ingest). Defaults
    * to true (all project callers). The Archiv passes the caller's manage
-   * capability so members without `org:archiv:manage` get a read-only pane.
+   * capability so members without `org:office_shelf:manage` get a read-only pane.
    */
   canManage?: boolean
   onClose?: () => void

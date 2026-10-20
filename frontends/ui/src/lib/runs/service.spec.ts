@@ -810,7 +810,7 @@ describe('addRunDocument', () => {
     })
 
     it('never looks up an Archiv document: no project folder restricts the Archiv', async () => {
-      await addRunDocument(session, 'project-1', RUN, { name: 'Leitfaden.pdf', shelf: 'archiv' })
+      await addRunDocument(session, 'project-1', RUN, { name: 'Leitfaden.pdf', shelf: 'office_shelf' })
       expect(listProjectFolderTree).not.toHaveBeenCalled()
       expect(findProjectDocumentsByFilenames).not.toHaveBeenCalled()
       expect(addDocumentToBackendJob).toHaveBeenCalled()

@@ -32,12 +32,12 @@ hand is for an environment no stack deploys against.
 
 The check is read-only and exits non-zero on drift — run it in CI. It exists
 because the two ⚠️ rows this runbook used to carry (`org:audit:view`,
-`org:archiv:manage`, both "create this in Staging", both still absent three
+`org:office_shelf:manage`, both "create this in Staging", both still absent three
 weeks later) were invisible to everything except a human re-reading the file.
 
 **The catalog's wording follows the „Büroablage" rename on the next provisioning.**
 The product renamed the org-wide shelf from „Archiv" to „Büroablage" („Office
-filing" in English) on 6 Oct 2026. `org:archiv:manage` keeps its slug. Its
+filing" in English) on 6 Oct 2026. The slug is now `org:office_shelf:manage`; `org:archiv:manage` stays in the catalog, deprecated, until roles are re-granted ([runbook](office-shelf-rename-runbook.md)). Its
 label is NOT taken from the dictionary: Organisation → Zugriff
 (`frontends/ui/src/features/organization/components/permission-reference.tsx`) shows the `name` and `description` from
 `frontends/ui/src/lib/authz/catalog.ts`, so it still reads „Manage document Archiv" there until
@@ -169,7 +169,7 @@ About 5,000 resources of one type per organization is WorkOS's soft limit.
 | `org:compliance:manage` | Legal holds + deletion queue |
 | `org:audit:view` | Open the org's native audit-log viewer (Admin Portal) |
 | `org:downloads:view` | Read the download log: who took which document out, and who opened one under a folder with its own access list (ADR-0088). **New 2026-10-06: run `bun run provision:authz --apply` against every environment** before a custom role can hold it; `admin` holds it through the catalog. Reading the log is audited (`download_log.viewed`, needs `npm run provision:audit-schemas -- --apply`). |
-| `org:archiv:manage` | Upload/delete/reingest/retag in the org-wide document Archiv (ADR-0024). Reads are open to any member, so only mutations need it. |
+| `org:office_shelf:manage` | Upload/delete/reingest/retag in the org-wide document Archiv (ADR-0024). Reads are open to any member, so only mutations need it. |
 | `org:skills:manage` | Author, edit, clone and delete skills in the organization toolbox (Agent Skills). Reads are open to any member. |
 | `org:projects:create` | Create projects. Held by **Member** by default; withhold it to make project creation admin-only. |
 | `org:members:manage` | Open the **Access** section: the member directory, the role catalog and the WorkOS Users widget that invites, re-roles and removes people. |
@@ -244,7 +244,7 @@ environment-scoped role holds a `platform:*` permission.
 | `org-auditor` | environment | `org:audit:view` |
 | `org-billing-admin` | environment | `org:budgets:manage` |
 | `org-compliance-officer` | environment | `org:compliance:manage`, `org:audit:view` |
-| `org-knowledge-manager` | environment | `org:archiv:manage` |
+| `org-knowledge-manager` | environment | `org:office_shelf:manage` |
 | `org-user-admin` | environment | `org:members:manage`, `widgets:users-table:manage` |
 | `project-viewer` | environment (Project) | `project:view` |
 | `project-contributor` | environment (Project) | `project:view`, `project:chat` |
@@ -264,7 +264,7 @@ says nothing about which folders they reach.
 The five fine-grained org personas exist to keep ADR-0016's extensibility
 contract honest: each holds a strict subset of Admin and works with no code
 change, which is the property that silently broke for `org:audit:view` and
-`org:archiv:manage`.
+`org:office_shelf:manage`.
 
 **Reaching PROJECTS needs `org:projects:administer`.** The org-wide bypass used
 to key off the role slug `admin`, so a custom administrator role reached no

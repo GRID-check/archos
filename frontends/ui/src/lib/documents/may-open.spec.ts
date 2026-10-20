@@ -69,7 +69,7 @@ describe('mayOpenDocument', () => {
   })
 
   it('opens a document on the Büroablage for the organization’s members', async () => {
-    const allowed = await mayOpenDocument(session, doc({ scope: 'archiv', projectId: null }), ['user_a', 'user_gone'])
+    const allowed = await mayOpenDocument(session, doc({ scope: 'office_shelf', projectId: null }), ['user_a', 'user_gone'])
 
     expect(allowed).toEqual(new Set(['user_a']))
     // One read of the organization's directory, never a lookup per person: a picker passes the whole directory in.
@@ -152,7 +152,7 @@ describe('mayWriteDocument', () => {
       async (role, permission) => role === 'org-kuratorin' && permission === 'org:archiv:manage'
     )
 
-    const allowed = await mayWriteDocument(session, doc({ scope: 'archiv', projectId: null }), [
+    const allowed = await mayWriteDocument(session, doc({ scope: 'office_shelf', projectId: null }), [
       'user_curator',
       'user_a',
       'user_gone',
@@ -239,7 +239,7 @@ describe('mayOpenDocument on a held upload', () => {
         ])
       )
     )
-    const allowed = await mayOpenDocument(session, doc({ scope: 'archiv', projectId: null, status: 'quarantined' }), [
+    const allowed = await mayOpenDocument(session, doc({ scope: 'office_shelf', projectId: null, status: 'quarantined' }), [
       'user_uploader',
       'user_a',
     ])

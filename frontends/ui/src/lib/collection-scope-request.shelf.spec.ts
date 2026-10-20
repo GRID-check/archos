@@ -81,7 +81,7 @@ describe('X-Grid-Collection-Scope carries the shelf (ADR-0047)', () => {
 
     expect(decodeHeader(headerValue)).toEqual([
       { collection: 'oib_knowledge', shelf: 'base' },
-      { collection: `archiv_${ORG_ID}`, shelf: 'archiv' },
+      { collection: `archiv_${ORG_ID}`, shelf: 'office_shelf' },
       { collection: `proj_${PROJECT_ID}`, shelf: 'project' },
       { collection: `s_${CONVERSATION_ID}`, shelf: 'session' },
     ])
@@ -100,10 +100,10 @@ describe('X-Grid-Collection-Scope carries the shelf (ADR-0047)', () => {
     expect(shelfOf(decodeHeader(headerValue), 'kb_custom_7')).toBe('project')
   })
 
-  it('emits shelf `archiv` for the org-wide Archiv collection', async () => {
+  it('emits shelf `office_shelf` for the org-wide Archiv collection', async () => {
     const { headerValue } = await buildCollectionScopeFromRequest(session, {})
 
-    expect(shelfOf(decodeHeader(headerValue), `archiv_${ORG_ID}`)).toBe('archiv')
+    expect(shelfOf(decodeHeader(headerValue), `archiv_${ORG_ID}`)).toBe('office_shelf')
   })
 
   it('emits shelf `session` for a private chat attachment collection', async () => {

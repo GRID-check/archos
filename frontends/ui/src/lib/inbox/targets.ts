@@ -120,7 +120,7 @@ const ORGANIZATION_DESTINATIONS: Partial<Record<InboxItemType, string>> = {
   'document.quarantined': '/app/organization/quarantine',
   'document.release_requested': '/app/organization/quarantine',
   // A filing suggestion on the Büroablage waits on its file row there.
-  'piloti.proposal_waiting': '/app/archiv',
+  'piloti.proposal_waiting': '/app/office-shelf',
 }
 
 function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {

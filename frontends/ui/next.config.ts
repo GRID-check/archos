@@ -128,6 +128,22 @@ export const nextConfig: NextConfig = {
     return config
   },
 
+  // The office shelf's old German URLs. A stored link (an inbox item, a shared
+  // link: `/app/archiv?doc=<id>`) and a bookmark keep working through the
+  // permanent redirect, query string included. The API paths are REWRITTEN, not
+  // redirected: an open tab or an agent pod mid-rollout calls `/api/archiv/*`
+  // with a body, and a rewrite answers it from the new route in place.
+  // Remove both after one release.
+  async redirects() {
+    return [
+      { source: '/app/archiv', destination: '/app/office-shelf', permanent: true },
+      { source: '/app/archiv/:path*', destination: '/app/office-shelf/:path*', permanent: true },
+    ]
+  },
+  async rewrites() {
+    return [{ source: '/api/archiv/:path*', destination: '/api/office-shelf/:path*' }]
+  },
+
   // Baseline security headers. A full Content-Security-Policy needs nonce
   // plumbing for Next's inline scripts and is tracked as a follow-up —
   // these four are safe unconditionally. HSTS is terminated at the proxy.

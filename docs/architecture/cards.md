@@ -577,7 +577,7 @@ sanctioned path, carrying **real** data:
   already peek (`useCitationPeek`) without this card. **`filename=`**
   opens a named file; **`mode=one` + `query`** opens the best match;
   **`mode=many`** only when two or three files of the same kind are
-  nearly tied. **`shelf=archiv` / `shelf=project`** keeps the search on
+  nearly tied. **`shelf=office_shelf` / `shelf=project`** keeps the search on
   one shelf so a Büroablage browse cannot pull project files. A question
   that only *lists* what is on a shelf ("welche Dateien hast du im
   Büroablage") is answered from the shelf-grouped inventory, not this

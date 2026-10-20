@@ -77,11 +77,11 @@ class SourceEntry:
     citation_key: str | None = None
     source_type: str = ""
     tool_name: str = ""
-    # Retrieval collection the hit came from (oib_knowledge, s_*, proj_*, archiv_*),
+    # Retrieval collection the hit came from (oib_knowledge, s_*, proj_*, archiv_* or office_shelf_*),
     # parsed from the knowledge-layer tool output's `Collection:` field. None for
     # URL/web sources and for output produced before the field was threaded.
     collection: str | None = None
-    # The SHELF the hit came from (`archiv`/`project`/`session`/`base`), stated
+    # The SHELF the hit came from (`office_shelf`/`project`/`session`/`base`), stated
     # by the knowledge layer's ``Shelf:`` field (ADR-0047). None when the
     # producer did not state one — unknown, and never re-derived from the
     # collection id here.

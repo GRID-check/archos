@@ -66,7 +66,7 @@ export async function summarizeOfficeShelfDocuments(
   session: AuthorizedSession,
   options: ShelfSummaryOptions = {},
 ): Promise<ShelfSummary> {
-  const reader = await shelfReaderFor(session, { scope: 'archiv', projectId: null })
+  const reader = await shelfReaderFor(session, { scope: 'office_shelf', projectId: null })
   return readShelfSummary(OFFICE_SHELF, session.organizationId, {
     reader,
     authoredBy: options.authoredBy,

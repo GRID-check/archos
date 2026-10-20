@@ -331,7 +331,7 @@ describe('notifyNewRevision — a confirmed link', () => {
 
   it('reads the Büroablage as organization membership', async () => {
     vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
-      doc({ ...(id === 'doc-b' ? NEWER : OLDER), scope: 'archiv', projectId: null }),
+      doc({ ...(id === 'doc-b' ? NEWER : OLDER), scope: 'office_shelf', projectId: null }),
     )
     assignedTo('anna', 'gone')
     const member = (userId: string): [string, DirectoryPerson] => [

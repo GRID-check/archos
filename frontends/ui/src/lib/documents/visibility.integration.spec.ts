@@ -59,7 +59,7 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
   const inTenant = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: ORG, userId: UPLOADER }, run)
 
   async function insert(fields: {
-    scope: 'project' | 'archiv'
+    scope: 'project' | 'office_shelf'
     status: string
     outcome: (typeof OUTCOMES)[number]
     authoredBy: 'user' | 'agent'
@@ -126,7 +126,7 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
       for (const outcome of OUTCOMES) {
         for (const createdBy of [UPLOADER, OTHER]) {
           await insert({ scope: 'project', status, outcome, authoredBy: 'user', createdBy })
-          await insert({ scope: 'archiv', status, outcome, authoredBy: 'user', createdBy })
+          await insert({ scope: 'office_shelf', status, outcome, authoredBy: 'user', createdBy })
         }
         await insert({ scope: 'project', status, outcome, authoredBy: 'agent', createdBy: OTHER })
         // A verdict about other bytes than the row holds (a published draft, a

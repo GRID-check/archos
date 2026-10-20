@@ -49,9 +49,9 @@ describe('SourceCard — provenance tab', () => {
   })
 
   test('an org office shelf document is labelled office shelf', () => {
-    renderCard('archiv')
+    renderCard('office_shelf')
 
-    expect(screen.getByText(en.chat.sourceTabs.shelves.archiv)).toBeInTheDocument()
+    expect(screen.getByText(en.chat.sourceTabs.shelves.office_shelf)).toBeInTheDocument()
   })
 
   test('a document with no shelf claims none — it falls back to its display kind', () => {

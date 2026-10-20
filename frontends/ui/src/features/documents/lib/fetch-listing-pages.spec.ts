@@ -28,8 +28,8 @@ describe('fetchListingPages', () => {
     expect(withQuery.urls[1]).toBe('/api/documents?projectId=p&cursor=x%2Fy')
 
     const bare = pages({ documents: [], nextCursor: 'c' }, { documents: [] })
-    await fetchListingPages<string>('/api/archiv/documents', { fetcher: bare.fetcher })
-    expect(bare.urls[1]).toBe('/api/archiv/documents?cursor=c')
+    await fetchListingPages<string>('/api/office-shelf/documents', { fetcher: bare.fetcher })
+    expect(bare.urls[1]).toBe('/api/office-shelf/documents?cursor=c')
   })
 
   it('keeps the first body for the fields beside the rows', async () => {

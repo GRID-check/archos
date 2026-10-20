@@ -27,7 +27,7 @@ export const UnresolvedCard: FC<{ entry: ResolvedSurfacedDocument; projectId?: s
 }) => {
   const t = useTranslations('chat')
   const isOffice = entry.surfaced.source === 'office'
-  const href = isOffice ? '/app/archiv' : projectId ? `/app/projects/${projectId}/files` : '/app/archiv'
+  const href = isOffice ? '/app/office-shelf' : projectId ? `/app/projects/${projectId}/files` : '/app/office-shelf'
   const actionLabel = isOffice || !projectId ? t('documentGrid.openInOfficeShelf') : t('documentGrid.openInFiles')
 
   return (

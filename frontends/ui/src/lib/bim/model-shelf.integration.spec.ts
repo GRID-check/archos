@@ -100,7 +100,7 @@ describe.skipIf(!url)('listBimModels shelf scoping', () => {
      */
     const seedDocument = async (input: {
       filename: string
-      scope: 'project' | 'archiv' | 'session'
+      scope: 'project' | 'office_shelf' | 'session'
       projectId: string | null
       conversationId: string | null
     }): Promise<string> => {
@@ -154,7 +154,7 @@ describe.skipIf(!url)('listBimModels shelf scoping', () => {
     models.officeShelf = await seedModel(
       await seedDocument({
         filename: 'buero-archiv.ifc',
-        scope: 'archiv',
+        scope: 'office_shelf',
         projectId: null,
         conversationId: null,
       }),

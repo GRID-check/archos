@@ -34,7 +34,7 @@ const FLOOR_PLAN = doc('Grundriss EG', 'project', ['Achse C–E'])
 const OIB_2_3 = doc('OIB-Richtlinie 2.3, Ausgabe Mai 2023', 'base', ['Pkt. 3.1'])
 const EXPLANATORY_OIB_2 = doc('Erläuterungen zu OIB-Richtlinie 2', 'base', ['S. 4'])
 const WBTV = doc('Wiener Bautechnikverordnung 2020', 'base', ['§ 2'])
-const CHECKLIST = doc('Checkliste Brandschutz Einreichung', 'archiv', ['Abschnitt 3'])
+const CHECKLIST = doc('Checkliste Brandschutz Einreichung', 'office_shelf', ['Abschnitt 3'])
 const ONORM = doc('ÖNORM B 1300', 'base', ['Pkt. 5.2'])
 
 const PLAN_STEP = (at: Date): RunStep => ({

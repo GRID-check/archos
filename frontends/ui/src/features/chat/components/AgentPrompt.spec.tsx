@@ -504,7 +504,7 @@ describe('AgentPrompt — the plan card', () => {
     useChatStore.setState({ respondToInteractionFn: respond })
     const content = CONTENT.replace(
       '"depth":"quick_check"',
-      '"depth":"quick_check","basis":[],"excluded":[],"documents":[{"name":"Einreichplan.pdf","title":"Einreichplan EG","shelf":"project"},{"name":"alt.pdf","shelf":"archiv"}]'
+      '"depth":"quick_check","basis":[],"excluded":[],"documents":[{"name":"Einreichplan.pdf","title":"Einreichplan EG","shelf":"project"},{"name":"alt.pdf","shelf":"office_shelf"}]'
     )
     render(<AgentPrompt content={content} />)
     await user.click(screen.getByTestId('plan-documents-pick'))

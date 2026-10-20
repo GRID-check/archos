@@ -57,6 +57,7 @@ from typing import Any
 
 from pydantic import Field
 
+from aiq_agent.common.source_kinds import canonical_shelf_value
 from aiq_agent.knowledge.title_block import display_date
 from aiq_agent.knowledge.title_block import document_key
 from aiq_agent.knowledge.title_block import newest_first
@@ -93,7 +94,7 @@ MAX_SUMMARY_CHARS = 160
 
 #: The shelves a person calls "my files". Basiswissen is the platform corpus:
 #: listable on request (``shelf="base"``), never part of a default listing.
-USER_SHELVES = ("project", "archiv", "session")
+USER_SHELVES = ("project", "office_shelf", "session")
 KNOWN_SHELVES = (*USER_SHELVES, "base")
 
 #: How many chunks one exact search reads per collection. A bound
@@ -115,7 +116,7 @@ MAX_ALTERNATIVES = 6
 
 _SHELF_LABELS = {
     "project": "Projektwissen",
-    "archiv": "Büroablage",
+    "office_shelf": "Büroablage",
     "session": "Private Sitzung",
     "base": "Basiswissen",
 }
@@ -187,7 +188,7 @@ def file_row(row: Any) -> FileRow | None:
     revision_facts = _attr(row, "revision_facts")
     return FileRow(
         file_name=file_name,
-        shelf=str(shelf) if shelf else None,
+        shelf=canonical_shelf_value(str(shelf)) if shelf else None,
         collection=str(_attr(row, "collection") or ""),
         folder=str(_attr(row, "folder_path") or "").strip().strip("/"),
         display_title=(str(_attr(row, "display_title") or "").strip() or None),
@@ -1157,7 +1158,11 @@ def group_matches(chunks: Iterable[Any], pattern: str) -> list[FileMatches]:
         key = (collection, chunk.file_name)
         group = groups.get(key)
         if group is None:
-            group = groups[key] = FileMatches(chunk.file_name, metadata.get("shelf"), collection)
+            group = groups[key] = FileMatches(
+                chunk.file_name,
+                canonical_shelf_value(str(metadata["shelf"])) if metadata.get("shelf") else None,
+                collection,
+            )
         group.chunks.append(chunk)
         group.occurrences += count
     # The reader's own files first: „wo steht EI 90" is about the project, and
@@ -1293,7 +1298,7 @@ def _scope_entries(search_config: Any) -> list[Any]:
 
 def _entry_shelf(entry: Any) -> str | None:
     shelf = getattr(entry, "shelf", None)
-    return str(getattr(shelf, "value", shelf)) if shelf else None
+    return canonical_shelf_value(str(getattr(shelf, "value", shelf))) if shelf else None
 
 
 async def _turn_rows(search_config: Any) -> list[FileRow]:
@@ -1415,7 +1420,7 @@ _LIST_FILES_DESCRIPTION = (
     "case and umlaut spelling do not matter.\n"
     "- `doc_class=` one Dokumentart key; `added_since=` YYYY-MM-DD; `sort=newest` for recent uploads.\n"
     "- `topic=` a Thema Piloti recognised (Attika, Holzrahmenbau); matches part of a topic.\n"
-    "- `shelf=` project | archiv | session | base (base = the platform OIB corpus, listed only when asked).\n"
+    "- `shelf=` project | office_shelf | session | base (base = the platform OIB corpus, listed only when asked).\n"
     "- `offset=` the next page, as the result says.\n"
     "- `revisions_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, "
     "upload date and what changed against the one before. Call it for „welche Fassungen gibt es von X“; "
@@ -1456,7 +1461,7 @@ def _coerce_int(value: Any, default: int, *, low: int, high: int) -> int:
 
 
 def _check_shelf(shelf: str | None) -> tuple[str | None, str]:
-    shelf = (shelf or "").strip().lower() or None
+    shelf = canonical_shelf_value(shelf or "") or None
     if shelf is not None and shelf not in KNOWN_SHELVES:
         return None, f"`shelf` must be one of {', '.join(KNOWN_SHELVES)}, or omitted for the reader's own files."
     return shelf, ""
@@ -1488,7 +1493,7 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             name_contains (str | None): Words that must all appear in the file name or title.
             doc_class (str | None): One Dokumentart key (e.g. "oib_guideline", "law").
             added_since (str | None): Only files uploaded on or after this date, YYYY-MM-DD.
-            shelf (str | None): project | archiv | session | base. Omit for the reader's own files.
+            shelf (str | None): project | office_shelf | session | base. Omit for the reader's own files.
             sort (str | None): folder (default) | name | newest.
             offset (int | None): Start of the page; the result names the next one.
             limit (int | None): Page size, default 40, at most 100.

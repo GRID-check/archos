@@ -298,7 +298,7 @@ describe('a held document re-dispatched with an earlier pass on record', () => {
 
 describe('a quarantined Büroablage document', () => {
   beforeEach(() => {
-    store(quarantined({ scope: 'archiv', projectId: null }))
+    store(quarantined({ scope: 'office_shelf', projectId: null }))
   })
 
   it('does not exist for an org member who did not upload it', async () => {

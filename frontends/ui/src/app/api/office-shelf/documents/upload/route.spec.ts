@@ -27,7 +27,7 @@ const post = (fields: Record<string, string>) => {
   const form = new FormData()
   form.set('file', new File(['x'], 'plan.pdf', { type: 'application/pdf' }))
   for (const [key, value] of Object.entries(fields)) form.set(key, value)
-  return POST(new NextRequest('https://grid.test/api/archiv/documents/upload', { method: 'POST', body: form }), {
+  return POST(new NextRequest('https://grid.test/api/office-shelf/documents/upload', { method: 'POST', body: form }), {
     params: Promise.resolve({}),
   })
 }
@@ -42,7 +42,7 @@ beforeEach(() => {
   })
 })
 
-describe('POST /api/archiv/documents/upload', () => {
+describe('POST /api/office-shelf/documents/upload', () => {
   it('files into the named folder and passes the origin path on', async () => {
     const response = await post({ folderId: 'folder-1', originPath: 'Normen/plan.pdf' })
 
@@ -89,7 +89,7 @@ describe('POST /api/archiv/documents/upload', () => {
 
   it('refuses a request with no file', async () => {
     const response = await POST(
-      new NextRequest('https://grid.test/api/archiv/documents/upload', { method: 'POST', body: new FormData() }),
+      new NextRequest('https://grid.test/api/office-shelf/documents/upload', { method: 'POST', body: new FormData() }),
       { params: Promise.resolve({}) },
     )
 

@@ -618,12 +618,12 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
 
     const insertDocument = (
       org: string,
-      values: { id: string; scope: 'project' | 'archiv'; projectId: string | null; folderId?: string },
+      values: { id: string; scope: 'project' | 'office_shelf'; projectId: string | null; folderId?: string },
     ) =>
       db.execute(
         sql`insert into documents (id, organization_id, project_id, scope, folder_id, filename, storage_key, collection_name, created_by, status)
             values (${values.id}, ${org}, ${values.projectId}, ${values.scope}, ${values.folderId ?? null},
-                    ${values.id + '.pdf'}, ${'k/' + values.id}, ${values.scope === 'archiv' ? 'archiv_' + org : 'coll_' + org}, 'u', 'uploaded')`,
+                    ${values.id + '.pdf'}, ${'k/' + values.id}, ${values.scope === 'office_shelf' ? 'archiv_' + org : 'coll_' + org}, 'u', 'uploaded')`,
       )
 
     beforeAll(async () => {
@@ -634,14 +634,14 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
         projectA = String(project.id)
         await db.execute(
           sql`insert into project_folders (id, organization_id, scope, project_id, name, path)
-              values (${OFFICE_SHELF_FOLDER_A}, ${ORG_A}, 'archiv', NULL, 'Normen', 'Normen'),
+              values (${OFFICE_SHELF_FOLDER_A}, ${ORG_A}, 'office_shelf', NULL, 'Normen', 'Normen'),
                      (${PROJECT_FOLDER_A}, ${ORG_A}, 'project', ${projectA}, 'Plaene', 'Plaene')`,
         )
-        await insertDocument(ORG_A, { id: DOC_OFFICE_SHELF_A, scope: 'archiv', projectId: null })
+        await insertDocument(ORG_A, { id: DOC_OFFICE_SHELF_A, scope: 'office_shelf', projectId: null })
         await insertDocument(ORG_A, { id: DOC_PROJECT_A, scope: 'project', projectId: projectA })
       })
       await withTenant({ organizationId: ORG_B }, () =>
-        insertDocument(ORG_B, { id: DOC_OFFICE_SHELF_B, scope: 'archiv', projectId: null }),
+        insertDocument(ORG_B, { id: DOC_OFFICE_SHELF_B, scope: 'office_shelf', projectId: null }),
       )
     })
 
@@ -671,7 +671,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
         withTenant({ organizationId: ORG_B }, () =>
           db.execute(
             sql`insert into project_folders (organization_id, scope, name, path)
-                values (${ORG_A}, 'archiv', 'planted', 'planted')`,
+                values (${ORG_A}, 'office_shelf', 'planted', 'planted')`,
           ),
         ),
       )
@@ -683,7 +683,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
         withTenant({ organizationId: ORG_B }, () =>
           db.execute(
             sql`insert into project_folders (organization_id, scope, parent_id, name, path)
-                values (${ORG_B}, 'archiv', ${OFFICE_SHELF_FOLDER_A}, 'child', 'Normen/child')`,
+                values (${ORG_B}, 'office_shelf', ${OFFICE_SHELF_FOLDER_A}, 'child', 'Normen/child')`,
           ),
         ),
       )
@@ -748,7 +748,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
         withTenant({ organizationId: ORG_A }, () =>
           db.execute(
             sql`insert into project_folders (organization_id, scope, project_id, name, path)
-                values (${ORG_A}, 'archiv', ${projectA}, 'x', 'x')`,
+                values (${ORG_A}, 'office_shelf', ${projectA}, 'x', 'x')`,
           ),
         ),
       )
@@ -780,7 +780,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
         withTenant({ organizationId: ORG_A }, () =>
           db.execute(
             sql`insert into project_folders (organization_id, scope, name, path)
-                values (${ORG_A}, 'archiv', 'Normen', 'Normen')`,
+                values (${ORG_A}, 'office_shelf', 'Normen', 'Normen')`,
           ),
         ),
       )
@@ -790,7 +790,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
       await withTenant({ organizationId: ORG_B }, () =>
         db.execute(
           sql`insert into project_folders (organization_id, scope, name, path)
-              values (${ORG_B}, 'archiv', 'Normen', 'Normen')`,
+              values (${ORG_B}, 'office_shelf', 'Normen', 'Normen')`,
         ),
       )
     })

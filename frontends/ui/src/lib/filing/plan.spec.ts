@@ -70,7 +70,7 @@ describe('planFiling', () => {
   it('names the new folder a convention would create, and files the Büroablage as buero', () => {
     const plan = planFiling(
       input({
-        shelf: 'archiv',
+        shelf: 'office_shelf',
         moves: [move('d2', 'Korrespondenz', { newFolder: { description: 'Briefe und Mails' } })],
       })
     )

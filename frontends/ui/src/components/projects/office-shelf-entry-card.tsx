@@ -26,7 +26,7 @@ export function OfficeShelfEntryCard(): JSX.Element {
 
   return (
     <Link
-      href="/app/archiv"
+      href="/app/office-shelf"
       aria-label={t('officeShelfCard.aria')}
       // Scale values only (`px-4`, `size-9`, `size-4`) — the 2px/1px drift from
       // the old arbitraries is a one-time static alignment to the scale, not an

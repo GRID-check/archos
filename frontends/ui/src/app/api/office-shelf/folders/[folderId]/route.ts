@@ -3,7 +3,7 @@
  *
  * The twin of `/api/projects/[id]/folders/[folderId]`, with the same handlers
  * (`@/lib/documents/folder-route-handlers`). Authz and logic live in
- * `@/lib/office-shelf/folder-service` (`org:archiv:manage`; ADR-0024, ADR-0078).
+ * `@/lib/office-shelf/folder-service` (`org:office_shelf:manage`; ADR-0024, ADR-0078).
  */
 
 import { apiRoute } from '@/lib/api/handler'

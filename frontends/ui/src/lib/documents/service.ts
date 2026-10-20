@@ -2471,7 +2471,7 @@ export async function updateDocumentTags(
  * Rename a document — the label, never the file.
  *
  * Scope-aware like every other item operation here: `getAccessibleDocument`
- * applies per-project FGA to a project document and `org:archiv:manage` to an
+ * applies per-project FGA to a project document and `org:office_shelf:manage` to an
  * Archiv one, so both corpora rename through this one function and one route.
  *
  * ## What actually changes
@@ -2553,8 +2553,8 @@ export async function renameDocument(
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
     action:
-      doc.scope === 'archiv' || doc.projectId === null
-        ? 'archiv.document.renamed'
+      doc.scope === 'office_shelf' || doc.projectId === null
+        ? 'office_shelf.document.renamed'
         : 'document.renamed',
     targetType: 'document',
     targetId: documentId,
@@ -2638,10 +2638,10 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
  * the document, its project, its uploader or the organization refuses it with
  * a 409 before anything is erased (`@/lib/compliance/holds`). Mirrors
  * {@link import('@/lib/office-shelf/service').deleteOfficeShelfDocument}, differing only in
- * scope: per-project FGA instead of org-level `org:archiv:manage`.
+ * scope: per-project FGA instead of org-level `org:office_shelf:manage`.
  *
  * Only `project` documents are deletable here. An Archiv id goes through the
- * org-scoped `/api/archiv/documents/[id]` route and a session attachment
+ * org-scoped `/api/office-shelf/documents/[id]` route and a session attachment
  * through `/api/session/documents/[id]`, each with its own authorization — so
  * either surfaces as a 404 rather than being force-fit through project FGA.
  * The scope is asked for by name: "has no project" used to mean "is an Archiv

@@ -59,7 +59,7 @@ describe('continuationBrief', () => {
       message({
         citations: [
           { id: '1', content: '', timestamp: new Date(), shelf: 'project', fileName: 'Einreichplan.pdf', title: 'Einreichplan EG' },
-          { id: '2', content: '', timestamp: new Date(), shelf: 'archiv', fileName: 'Muster.pdf' },
+          { id: '2', content: '', timestamp: new Date(), shelf: 'office_shelf', fileName: 'Muster.pdf' },
           { id: '3', content: '', timestamp: new Date(), shelf: 'project', fileName: 'einreichplan.pdf' },
           { id: '4', content: '', timestamp: new Date(), shelf: 'base', fileName: 'OIB-RL 2.pdf' },
           { id: '5', content: '', timestamp: new Date(), url: 'https://ris.bka.gv.at/x' },
@@ -69,7 +69,7 @@ describe('continuationBrief', () => {
     expect(brief.documents).toEqual({
       basis: [
         { name: 'Einreichplan.pdf', title: 'Einreichplan EG', shelf: 'project' },
-        { name: 'Muster.pdf', shelf: 'archiv' },
+        { name: 'Muster.pdf', shelf: 'office_shelf' },
       ],
       excluded: [],
     })

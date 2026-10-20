@@ -122,7 +122,7 @@ describe('FileReferenceLink', () => {
       resolve: () => stored({ corpus: 'office' }),
     })
     await user.click(screen.getByTestId('file-reference'))
-    expect(useChatStore.getState().composerSubject?.shelf).toBe('archiv')
+    expect(useChatStore.getState().composerSubject?.shelf).toBe('office_shelf')
   })
 
   // `stored` is the agent's own report: readable, deliberately never indexed.

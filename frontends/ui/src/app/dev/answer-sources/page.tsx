@@ -82,7 +82,7 @@ const mixed: CitationSource[] = [
     timestamp: at,
   },
   {
-    id: 'archiv',
+    id: 'office_shelf',
     content: '[KB] Buero_Detail_Attika_Standard.pdf, p.2',
     citationKey: 'Buero_Detail_Attika_Standard.pdf, p.2',
     fileName: 'Buero_Detail_Attika_Standard.pdf',

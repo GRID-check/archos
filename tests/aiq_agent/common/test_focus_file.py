@@ -20,9 +20,9 @@ from aiq_agent.common.focus_file import shelves_for_turn
         # meets the escape-route requirement retrieved the plan and no OIB.
         ("session", "project", frozenset({"session", "base"})),
         ("project", None, frozenset({"project", "session", "base"})),
-        ("archiv", None, frozenset({"archiv", "session", "base"})),
+        ("office_shelf", None, frozenset({"office_shelf", "session", "base"})),
         (None, "project", frozenset({"project", "session", "base"})),
-        (None, "office", frozenset({"archiv", "session", "base"})),
+        (None, "office", frozenset({"office_shelf", "session", "base"})),
         (None, "law", frozenset({"base"})),
         (None, None, None),
         ("bogus", "nope", None),
@@ -52,7 +52,7 @@ def test_set_turn_intent_from_preset():
 
 
 def test_set_focus_ignores_client_include_shelves():
-    set_focus(file_name="Protokoll.pdf", shelf="session", include_shelves=["archiv", "base"])
+    set_focus(file_name="Protokoll.pdf", shelf="session", include_shelves=["office_shelf", "base"])
     assert get_focused_file_name() == "Protokoll.pdf"
     assert get_focused_shelf() == "session"
     # The server derives the set from the SHELF; the client's list is not
@@ -72,7 +72,7 @@ def test_a_subject_file_never_costs_the_turn_its_building_code():
     apply it. Only the explicit ``law`` preset subtracts everything else, because
     there the reader asked for the law alone.
     """
-    for shelf in ("session", "project", "archiv"):
+    for shelf in ("session", "project", "office_shelf"):
         shelves = shelves_for_turn(focus_shelf=shelf)
         assert shelves is not None
         assert "base" in shelves, shelf
@@ -83,6 +83,6 @@ def test_a_subject_still_narrows_the_document_shelves():
     # "Summarize this upload" does not walk the project or the Büroablage.
     assert shelves_for_turn(focus_shelf="session") == frozenset({"session", "base"})
     # A project question does not mix in Archiv hits.
-    assert "archiv" not in shelves_for_turn(focus_shelf="project")
+    assert "office_shelf" not in shelves_for_turn(focus_shelf="project")
     # And the law-only chip still means the law only.
     assert shelves_for_turn(source_preset="law") == frozenset({"base"})

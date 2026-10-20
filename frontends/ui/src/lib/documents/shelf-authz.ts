@@ -8,7 +8,7 @@
  *
  *   - project: `project:view` reads; `project:documents:write` or `project:edit`
  *     changes (ADR-0038).
- *   - archiv: any member of the organization reads; `org:archiv:manage`
+ *   - archiv: any member of the organization reads; `org:office_shelf:manage`
  *     (`canManageOfficeShelf`) changes. Reading is open because the Archiv is shared
  *     knowledge, so only mutations gate.
  *
@@ -25,7 +25,7 @@ import type { DocumentShelf } from './shelf'
 const PROJECT_WRITE_PERMISSIONS = ['project:documents:write', 'project:edit'] as const
 
 export async function requireShelfRead(session: AuthorizedSession, shelf: DocumentShelf): Promise<void> {
-  if (shelf.kind === 'archiv') return
+  if (shelf.kind === 'office_shelf') return
   await requireProjectAccess(session, shelf.projectId, 'project:view')
 }
 

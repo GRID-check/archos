@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The keyset page behind `GET /api/documents` and `GET /api/archiv/documents`.
+ * The keyset page behind `GET /api/documents` and `GET /api/office-shelf/documents`.
  *
  * The listing used to be one page of 500, newest first, with nothing saying it
  * had stopped: the oldest plans of a big project were not in it, so search,
@@ -190,7 +190,7 @@ describe('listOfficeShelfDocuments', () => {
     expect(sql).toMatch(/"documents"\."scope" = \$\d+/)
     expect(sql).toMatch(/order by "documents"\."created_at" desc, "documents"\."id" asc/i)
     expect(sql).toMatch(/"documents"\."id" > \$\d+::uuid/)
-    expect(params).toEqual(expect.arrayContaining(['org-1', 'archiv', cursor.id]))
+    expect(params).toEqual(expect.arrayContaining(['org-1', 'office_shelf', cursor.id]))
     expect(params.at(-1)).toBe(2)
     expect(page.rows).toHaveLength(1)
     expect(page.nextCursor?.id).toBe('00000000-0000-4000-8000-000000000001')
@@ -208,7 +208,7 @@ describe('findOfficeShelfDocumentsByFilenames', () => {
     await findOfficeShelfDocumentsByFilenames('org-1', [composed], { reader })
     const { sql, params } = onlyQuery()
     expect(sql).toMatch(/"documents"\."filename" in \(\$\d+, \$\d+\)/)
-    expect(params).toEqual(expect.arrayContaining([composed, composed.normalize('NFD'), 'archiv', 'org-1']))
+    expect(params).toEqual(expect.arrayContaining([composed, composed.normalize('NFD'), 'office_shelf', 'org-1']))
     expect(params.at(-1)).toBe(DOCUMENT_LIST_LIMIT)
   })
 
@@ -319,7 +319,7 @@ describe('findOfficeShelfDocumentsByNames', () => {
     expect(sql).toMatch(/"documents"\."scope" = \$\d+/)
     expect(sql).toMatch(/lower\("documents"\."filename"\) in/)
     expect(sql).not.toMatch(/"lifecycle" =/)
-    expect(params).toEqual(expect.arrayContaining(['org-1', 'archiv', 'user', 'EG.pdf', 'eg.pdf']))
+    expect(params).toEqual(expect.arrayContaining(['org-1', 'office_shelf', 'user', 'EG.pdf', 'eg.pdf']))
   })
 })
 
@@ -448,7 +448,7 @@ describe('listDocumentLevelPage', () => {
     const { sql, params } = onlyQuery()
     expect(sql).toMatch(/(?:"documents"\.)?"scope" = \$\d+/)
     expect(sql).not.toMatch(/(?:"documents"\.)?"project_id" = /)
-    expect(params).toEqual(expect.arrayContaining(['org-1', 'archiv']))
+    expect(params).toEqual(expect.arrayContaining(['org-1', 'office_shelf']))
   })
 })
 

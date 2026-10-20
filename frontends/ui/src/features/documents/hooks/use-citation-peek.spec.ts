@@ -125,7 +125,7 @@ describe('useCitationPeek', () => {
     })
     server.use(
       http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Plan.pdf')] })),
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({ documents: [] })),
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({ documents: [] })),
     )
   })
 

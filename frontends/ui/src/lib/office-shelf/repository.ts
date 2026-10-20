@@ -1,6 +1,6 @@
 /**
  * Archiv repository — the only module that queries the `documents` table for
- * the org-wide Archiv domain (rows with `scope = 'archiv'`, `project_id` NULL).
+ * the org-wide Archiv domain (rows with `scope = 'office_shelf'`, `project_id` NULL).
  *
  * Repository rules (docs/architecture/bff-service-architecture.md):
  *   - drizzle only; no HTTP, no auth, no SeaweedFS/backend calls.
@@ -90,7 +90,7 @@ export async function findOfficeShelfDocument(
       and(
         eq(documents.id, documentId),
         eq(documents.organizationId, organizationId),
-        eq(documents.scope, 'archiv'),
+        eq(documents.scope, 'office_shelf'),
         documentVisibleTo(reader),
       ),
     )
@@ -105,7 +105,7 @@ export async function findOfficeShelfDocument(
  *
  * `insertOfficeShelfDocument` is gone for the reason given in
  * `documents/repository.ts`: a second, ungated insert is how a ceiling stops
- * being one. The caller now states `scope: 'archiv'` and `projectId: null`
+ * being one. The caller now states `scope: 'office_shelf'` and `projectId: null`
  * itself — those defaults were the only thing this function added.
  */
 
@@ -118,7 +118,7 @@ export async function deleteOfficeShelfDocument(documentId: string, organization
       and(
         eq(documents.id, documentId),
         eq(documents.organizationId, organizationId),
-        eq(documents.scope, 'archiv'),
+        eq(documents.scope, 'office_shelf'),
       ),
     )
 }

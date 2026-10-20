@@ -1,6 +1,6 @@
 /**
  * Archiv document item API — delete an Archiv document (purges SeaweedFS, the RAG
- * chunks, and the DB row). Thin handler; authorization (`org:archiv:manage`)
+ * chunks, and the DB row). Thin handler; authorization (`org:office_shelf:manage`)
  * lives in `@/lib/office-shelf/service` (ADR-0024).
  *
  * Read/preview/download/reingest/tags reuse the shared, scope-aware item routes

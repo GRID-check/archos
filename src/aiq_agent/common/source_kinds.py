@@ -220,10 +220,58 @@ class Shelf(StrEnum):
     a generated artifact on the core retrieval path.
     """
 
-    OFFICE_SHELF = "archiv"
+    OFFICE_SHELF = "office_shelf"
     PROJECT = "project"
     SESSION = "session"
     BASE = "base"
+
+
+#: The shelf's wire value before it had an English name. A peer that has not
+#: rolled yet (an old BFF, a conversation or citation stored by an earlier build)
+#: still says ``archiv``; it reads as the office shelf and nothing writes it.
+#: The TypeScript twin is ``LEGACY_SHELF`` in ``features/chat/lib/source-kinds.ts``.
+#: Remove after one release.
+LEGACY_SHELF_VALUES: dict[str, str] = {"archiv": Shelf.OFFICE_SHELF.value}
+
+
+def canonical_shelf_value(value: str) -> str:
+    """A shelf wire value in its current spelling (trimmed, lower-cased, legacy names mapped)."""
+    key = value.strip().lower()
+    return LEGACY_SHELF_VALUES.get(key, key)
+
+
+#: Collection-name prefix of an office's shelf. The value is a stored name, not a
+#: spelling: every point of the shelf carries ``scope = <prefix><organization id>``
+#: in Qdrant (ADR-0116) and every document row ``collection_name`` the same, so
+#: the prefix changes only together with a re-tag of both
+#: (``docs/deployment/office-shelf-rename-runbook.md``). Until an operator has
+#: run it, writers keep the ACTIVE prefix; readers accept every one in
+#: :data:`OFFICE_SHELF_COLLECTION_PREFIXES`. The TypeScript twin is
+#: ``OFFICE_SHELF_COLLECTION_PREFIX`` in ``frontends/ui/src/lib/office-shelf/collection.ts``;
+#: ``frontends/ui/src/lib/office-shelf/collection-prefix.spec.ts`` holds the two equal.
+OFFICE_SHELF_COLLECTION_PREFIX = "archiv_"
+#: The prefix the shelf's collections take once re-tagged (the next release's value).
+OFFICE_SHELF_TARGET_COLLECTION_PREFIX = "office_shelf_"
+#: Every prefix a reader recognises as an office shelf. Remove the legacy entry
+#: after the re-tag has run everywhere.
+OFFICE_SHELF_COLLECTION_PREFIXES: tuple[str, ...] = (
+    OFFICE_SHELF_TARGET_COLLECTION_PREFIX,
+    OFFICE_SHELF_COLLECTION_PREFIX,
+)
+
+
+def is_office_shelf_collection(collection: str | None) -> bool:
+    """Whether ``collection`` names an office's shelf (either prefix)."""
+    return (collection or "").strip().lower().startswith(OFFICE_SHELF_COLLECTION_PREFIXES)
+
+
+def office_shelf_organization_id(collection: str | None) -> str | None:
+    """The organization id behind an office shelf collection name; ``None`` for any other name."""
+    name = (collection or "").strip()
+    for prefix in OFFICE_SHELF_COLLECTION_PREFIXES:
+        if name.lower().startswith(prefix):
+            return name[len(prefix) :] or None
+    return None
 
 
 def parse_shelf(value: object) -> Shelf | None:
@@ -237,7 +285,7 @@ def parse_shelf(value: object) -> Shelf | None:
     if not isinstance(value, str):
         return None
     try:
-        return Shelf(value.strip().lower())
+        return Shelf(canonical_shelf_value(value))
     except ValueError:
         return None
 
@@ -247,7 +295,7 @@ def parse_shelf(value: object) -> Shelf | None:
 #: travels. Deliberately shorter than ``SourceKind.label`` ("Baurecht &
 #: Richtlinien" reads badly inside a parenthetical) and stable: the strings are
 #: embedded in citation keys already persisted in messages, so changing one
-#: invalidates those keys unless the old string stays readable. The archiv
+#: invalidates those keys unless the old string stays readable. The office
 #: shelf was renamed from „Büroarchiv" to „Büroablage" (product decision,
 #: 6 Oct 2026); the old qualifier lives on in :data:`RETIRED_SHELF_QUALIFIERS`.
 SHELF_QUALIFIERS: dict[Shelf, str] = {
@@ -352,7 +400,7 @@ def legacy_shelf_for_collection_name(collection: str | None) -> Shelf | None:
     unknown shelf renders unattributed.
     """
     key = (collection or "").strip().lower()
-    if key.startswith("archiv_"):
+    if is_office_shelf_collection(key):
         return Shelf.OFFICE_SHELF
     if key.startswith("proj_"):
         return Shelf.PROJECT

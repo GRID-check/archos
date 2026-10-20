@@ -11,7 +11,7 @@
  *
  * Because both read the SAME structure, "the code says X but WorkOS says Y"
  * stops being possible to ship. That drift was a real finding: `org:audit:view`
- * and `org:archiv:manage` lived in the app's registry and in the runbook for
+ * and `org:archiv:manage` (now `org:office_shelf:manage`) lived in the app's registry and in the runbook for
  * three weeks while existing in no WorkOS environment, so no custom role could
  * ever hold them and only the legacy `admin` implication made them work.
  *
@@ -166,11 +166,23 @@ export const ORG_PERMISSION_SPECS: readonly PermissionSpec[] = [
     tier: 'org',
   },
   {
-    slug: 'org:archiv:manage',
-    name: 'Manage document Archiv',
+    slug: 'org:office_shelf:manage',
+    name: 'Manage the office shelf',
     description:
-      'Upload, delete, re-ingest and retag documents in the org-wide Archiv (ADR-0024). Reads stay open to every member.',
+      'Upload, delete, re-ingest and retag documents in the org-wide office shelf (ADR-0024). Reads stay open to every member.',
     tier: 'org',
+  },
+  {
+    // The slug before it had an English name. Every check accepts either
+    // (`acceptedPermissionSlugs`) for one release, so a custom role that still
+    // holds this keeps working until an operator re-grants it
+    // (`docs/deployment/office-shelf-rename-runbook.md`).
+    slug: 'org:archiv:manage',
+    name: 'Manage the office shelf (old name)',
+    description:
+      'Retired name of org:office_shelf:manage. Retained so existing grants keep working; new roles take org:office_shelf:manage.',
+    tier: 'org',
+    deprecated: true,
   },
   {
     slug: 'org:skills:manage',
@@ -523,10 +535,12 @@ export const ROLES: readonly RoleSpec[] = [
     slug: 'org-knowledge-manager',
     name: 'Knowledge Manager',
     description:
-      'Curates the org-wide document Archiv: upload, delete, re-ingest, retag. No other administrative access.',
+      'Curates the org-wide office shelf: upload, delete, re-ingest, retag. No other administrative access.',
     tier: 'org',
     scope: 'environment',
-    permissions: ['org:archiv:manage'],
+    // Both slugs for the release in which the old one is accepted: a session
+    // minted from either claim still holds the shelf. Drop the old one with it.
+    permissions: ['org:office_shelf:manage', 'org:archiv:manage'],
   },
   {
     slug: 'org-user-admin',

@@ -21,7 +21,7 @@ import { DOCUMENT_VERSION_STATES, type DocumentVersionState } from '@/lib/docume
 import { documentFilesHref } from '../lib/document-question'
 
 /** Shelves a composer subject can sit on; `documents.scope` uses these names. */
-const SUBJECT_SHELVES = ['project', 'archiv', 'session'] as const
+const SUBJECT_SHELVES = ['project', 'office_shelf', 'session'] as const
 
 /** The fields of `/api/documents/[id]/status` this bar reads. */
 interface DocumentSubjectStatus {

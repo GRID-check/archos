@@ -4,7 +4,7 @@ Two collections by data shape, not one per scope (ADR-0116):
 
 * ``corpus`` holds the shared legal corpus (``oib_knowledge`` and any other
   collection without a tenant prefix). Every office reads it.
-* ``office`` holds everything an office owns: Büroablage (``archiv_``),
+* ``office`` holds everything an office owns: Büroablage (``archiv_``, ``office_shelf_`` once re-tagged),
   projects and their restricted folders (``proj_``), conversation uploads
   (``s_``).
 
@@ -29,6 +29,7 @@ from typing import Any
 from qdrant_client import QdrantClient
 from qdrant_client import models
 
+from aiq_agent.common.source_kinds import OFFICE_SHELF_COLLECTION_PREFIXES
 from aiq_agent.knowledge.base import READING_ORDER
 
 from .config import replication_factor
@@ -171,7 +172,7 @@ BOOL_FIELDS: tuple[str, ...] = ("superseded",)
 INDEXED_FIELDS = frozenset(KEYWORD_FIELDS + INTEGER_FIELDS + BOOL_FIELDS + (TEXT_FIELD,))
 
 #: Prefixes of collections an office owns. Anything else is shared corpus.
-TENANT_PREFIXES = ("archiv_", "proj_", "s_")
+TENANT_PREFIXES = (*OFFICE_SHELF_COLLECTION_PREFIXES, "proj_", "s_")
 
 #: Collection metadata keys naming the embedder every dense vector came from.
 EMBED_IDENTITY_KEYS = ("aiq:embed_fingerprint", "aiq:embed_model")
