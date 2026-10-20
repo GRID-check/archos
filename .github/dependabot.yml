@@ -88,16 +88,20 @@ updates:
       # and 157 spec files. Lift this in the change that does the migration.
       - dependency-name: "zod"
         update-types: ["version-update:semver-major"]
-      # Test-harness majors that are migrations of the spec setup, not bumps.
-      # msw 3 intercepts none of happy-dom's fetches (a mocked handler, relative
-      # or absolute, never sees the request, so 360 specs fail on the network
-      # guard's 503). happy-dom 21 rejects a cancelled animation with an
-      # AbortError, which fails 9 motion specs and floods every shard with
-      # unhandled errors. Lift each in the change that adapts the setup.
+      # msw 3 is a migration of the spec setup, not a bump: it intercepts none
+      # of happy-dom's fetches (a mocked handler, relative or absolute, never
+      # sees the request, so 360 specs fail on the network guard's 503). Lift
+      # it in the change that adapts the setup.
       - dependency-name: "msw"
         update-types: ["version-update:semver-major"]
+      # From 20.12.0 (and in 21) happy-dom's `Animation.cancel()` rejects the
+      # `finished` promise without marking it handled, which the Web
+      # Animations spec requires and browsers do. `motion` cancels animations
+      # all the time, so every shard floods with "AbortError: The animation
+      # was canceled." and 9 motion specs fail. Our code is not at fault; lift
+      # this when a happy-dom release marks the rejection handled.
       - dependency-name: "happy-dom"
-        update-types: ["version-update:semver-major"]
+        versions: [">=20.12.0"]
       # @ifc-lite/geometry 7.8.1 spawns a worker it does not ship
       # ('./geometry.worker.ts'), which fails `next build`, and every renderer
       # from 6.3.0 to 6.4.0 requires it. Exact versions only, so a release that
