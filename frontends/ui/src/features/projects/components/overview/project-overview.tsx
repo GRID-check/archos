@@ -38,7 +38,8 @@ import { BentoCell, BentoGrid, BentoTile, type BentoSpan } from '@/components/ui
 import { Button } from '@/components/ui/button'
 import { ProjectStatusMark } from '@/components/projects/project-status'
 import type { SteckbriefView } from '@/lib/projects/steckbrief-types'
-import { useLocale, useTranslations } from '@/i18n'
+import type { IntakeCounts, IntakeStatus } from '@/lib/project-intake/types'
+import { useLocale, useTranslations, type Translator } from '@/i18n'
 import { formatBytes, formatDate } from '@/lib/format'
 import type { ProjectOverviewData } from '../../types'
 import { settingsSectionHref } from '../../lib/settings-sections'
@@ -66,6 +67,12 @@ export interface ProjectOverviewAccess {
   manageMembers: boolean
 }
 
+/** Where the open setup stands, for the note on its entry: the intake's status and its last counts. */
+export interface OverviewSetupProgress {
+  status: IntakeStatus
+  counts: IntakeCounts | null
+}
+
 export interface ProjectOverviewProps {
   data: ProjectOverviewData
   /** Questions asked, for everyone: counts only, never whose or which. */
@@ -82,6 +89,8 @@ export interface ProjectOverviewProps {
   similar?: ReactNode
   /** Piloti's reading of the project's documents is still open (ADR-0111): the hero links to it. */
   setupOpen?: boolean
+  /** What the open setup still asks for; given, the setup counts as open and its entry says what waits. */
+  setupProgress?: OverviewSetupProgress
   access: ProjectOverviewAccess
 }
 
@@ -92,6 +101,7 @@ export function ProjectOverview({
   steckbrief,
   similar,
   setupOpen = false,
+  setupProgress,
   access,
 }: ProjectOverviewProps): JSX.Element {
   const id = data.id
@@ -107,7 +117,13 @@ export function ProjectOverview({
   return (
     <div className="flex flex-col gap-4">
       <BentoGrid data-testid="project-overview">
-        <HeroTile data={data} activity={activity} access={access} setupOpen={setupOpen} />
+        <HeroTile
+          data={data}
+          activity={activity}
+          access={access}
+          setupOpen={setupOpen || setupProgress !== undefined}
+          setupProgress={setupProgress}
+        />
         <DocumentsTile
           documentCount={data.documentCount}
           totalFileSize={data.totalFileSize}
@@ -144,16 +160,33 @@ export function ProjectOverview({
   )
 }
 
+/**
+ * What the open setup waits for, in a few words on its one entry: Piloti is
+ * still reading, then what a person must decide (Rückfragen before
+ * Widersprüche, as the steps run), and once a reading has found something,
+ * the Steckbrief to check. A setup still waiting for its first reading gets no
+ * note: whether its documents are on the way is not known here.
+ */
+export function setupOpenNote({ status, counts }: OverviewSetupProgress, tSetup: Translator): string | undefined {
+  if (status === 'reading') return tSetup('overview.reading')
+  if (!counts) return undefined
+  if (counts.decisiveOpen > 0) return tSetup('overview.questions', { count: counts.decisiveOpen })
+  if (counts.contradictions > 0) return tSetup('overview.contradictions', { count: counts.contradictions })
+  return counts.suggested > 0 ? tSetup('overview.review') : undefined
+}
+
 function HeroTile({
   data,
   activity,
   access,
   setupOpen,
+  setupProgress,
 }: {
   data: ProjectOverviewData
   activity: ProjectActivityView
   access: ProjectOverviewAccess
   setupOpen: boolean
+  setupProgress?: OverviewSetupProgress
 }): JSX.Element {
   const t = useTranslations('settings')
   const { locale } = useLocale()
@@ -166,6 +199,8 @@ function HeroTile({
     canWriteMemory: access.writeMemory,
   })
   const tProjects = useTranslations('projects')
+  const tSetup = useTranslations('intakeShell')
+  const setupNote = setupProgress ? setupOpenNote(setupProgress, tSetup) : undefined
   const status = data.lifecycle.status
   const projectPath = `/app/projects/${encodeURIComponent(data.id)}`
   const summary = data.profileDisplay?.summary?.trim()
@@ -283,6 +318,11 @@ function HeroTile({
             <Link href={`${projectPath}/setup`}>
               <Sparkles className="size-4" aria-hidden />
               {t('project.overview.openSetup')}
+              {setupNote && (
+                <span className="text-muted-foreground font-normal" data-testid="overview-setup-note">
+                  · {setupNote}
+                </span>
+              )}
             </Link>
           </Button>
         )}
