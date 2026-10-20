@@ -380,8 +380,11 @@ Findings inside those upstream images that no digest bump can clear go in
 `expired_at`. Never by loosening the gate.
 
 Dependabot ([`dependabot.yml`](../../.github/dependabot.yml)) opens the
-dependency fix PRs. Package families that only build at matching versions
-(`@aws-sdk/*`, `@opentelemetry/*`) are grouped into one PR, and majors the
+dependency fix PRs, every Monday at 06:00 Vienna time. Each ecosystem gets one
+PR for all its minor and patch bumps and one for its security fixes; a major
+is its own PR, the only kind that needs reading. Package families that only
+build at matching versions (`@aws-sdk/*`, `@opentelemetry/*`, `@pulumi/*`)
+take their majors together, and majors the
 toolchain cannot take yet (TypeScript 7, an `@types/node` past the Node 22
 runtime) are ignored, each with a comment saying when to lift it. Dependabot
 PRs skip the automatic Claude review: the action refuses a bot actor, and CI
