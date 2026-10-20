@@ -16,6 +16,11 @@ vi.mock('./secret-store', () => ({
   storeSecret: vi.fn().mockResolvedValue({ secretBackend: 'local-aes-gcm', vaultObjectId: null, encryptedKey: '{}' }),
 }))
 
+const getOrganization = vi.fn()
+vi.mock('@/lib/workos/client', () => ({
+  getWorkOS: () => ({ organizations: { getOrganization } }),
+}))
+
 import { getActiveOrgKey, insertActiveOrgKey } from './org-keys-repository'
 import { monthlyLimitUsd, orgKeysEnabled, resolveOrgOpenrouterKey } from './org-keys'
 import { deleteSecret, revealSecret } from './secret-store'
@@ -47,6 +52,7 @@ describe('resolveOrgOpenrouterKey', () => {
     vi.stubEnv('OPENROUTER_ORG_KEY_MONTHLY_LIMIT_USD', '')
     vi.stubGlobal('fetch', fetchMock)
     vi.mocked(revealSecret).mockResolvedValue('sk-or-org')
+    getOrganization.mockResolvedValue({ id: 'org_1' })
   })
 
   afterEach(() => {
@@ -116,11 +122,32 @@ describe('resolveOrgOpenrouterKey', () => {
     expect(fetchMock.mock.calls[1][1].method).toBe('DELETE')
   })
 
-  it('fails closed when OpenRouter refuses to create the key', async () => {
+  it('fails closed when OpenRouter refuses to create the key, and does not retry at once', async () => {
     vi.mocked(getActiveOrgKey).mockResolvedValue(null)
     fetchMock.mockResolvedValue(new Response('{}', { status: 401 }))
-    await expect(resolveOrgOpenrouterKey('org_1')).rejects.toMatchObject({ status: 503 })
+    await expect(resolveOrgOpenrouterKey('org_refused')).rejects.toMatchObject({ status: 503 })
+    await expect(resolveOrgOpenrouterKey('org_refused')).rejects.toMatchObject({ status: 503 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(insertActiveOrgKey).not.toHaveBeenCalled()
+  })
+
+  it('retires the key it created when storing it fails for any other reason', async () => {
+    vi.mocked(getActiveOrgKey).mockResolvedValue(null)
+    vi.mocked(insertActiveOrgKey).mockRejectedValue(new Error('database down'))
+    fetchMock.mockResolvedValueOnce(created()).mockResolvedValueOnce(new Response('{"deleted":true}'))
+
+    await expect(resolveOrgOpenrouterKey('org_store_fails')).rejects.toThrow('database down')
+
+    expect(deleteSecret).toHaveBeenCalled()
+    expect(fetchMock.mock.calls[1][0]).toBe('https://openrouter.ai/api/v1/keys/hash-new')
+    expect(fetchMock.mock.calls[1][1].method).toBe('DELETE')
+  })
+
+  it('creates no key for an organization WorkOS does not know', async () => {
+    vi.mocked(getActiveOrgKey).mockResolvedValue(null)
+    getOrganization.mockRejectedValue(Object.assign(new Error('not found'), { status: 404 }))
+    await expect(resolveOrgOpenrouterKey('org_unknown')).rejects.toMatchObject({ status: 404 })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('fails closed when the stored key cannot be read', async () => {

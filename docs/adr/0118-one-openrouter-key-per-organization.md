@@ -83,9 +83,14 @@ What it means:
   organization's BYOK key if it is already on it, and otherwise carries the
   organization's platform key, whatever key the call site was built with.
   The organization is the ambient cost tracker's, else the signed request
-  context's, the same identity the ledger books the call to.
+  context's, the same identity the ledger books the call to. A route that
+  names the organization as an argument instead (titles, summaries, the
+  document helpers, dictation) gets the key from
+  `credential_resolution.resolve_llm_credential`, which answers the
+  organization's key and never the env chain's for an OpenRouter call.
 - **No fallback.** When an organization's keys cannot be resolved, the call is
-  refused (`OrgCredentialUnavailable`). The shared key never serves an
+  refused (`OrgCredentialUnavailable`; on the transports a final 403 carrying
+  `organization_keys_unavailable`, which the OpenAI SDK does not retry). The shared key never serves an
   organization's work again, and the same rule replaces BYOK's fail-open
   (ADR-0022, §3): a BYOK secret that cannot be revealed, or a credential that
   cannot be applied, refuses the call instead of moving it to the platform.
@@ -129,10 +134,13 @@ What it means:
   inference key, so it gets its own secret and is never sent to Python.
 * Bad, because the backfill runs once against production, and an organization
   it misses cannot call a model at all.
-* Bad, because a cold key cache on the LangChain path is a blocking BFF
-  round-trip (3 s timeout) inside the call. The turn and job entry points
-  resolve the organization's keys first, off the event loop, so the call
-  finds them cached; the transports resolve a cold cache on a thread.
+* Bad, because a call made with no organization in reach (no cost tracker, no
+  request context, no organization argument) keeps the key it was built with.
+  That is right for the shared corpus and CLI runs, and it is why every route
+  that serves an organization must name it.
+* Bad, because a turn that outlives a BYOK key rotation finishes on the
+  organization's platform key: the old key is no longer the one the cache
+  holds. The platform pays for at most the rest of that turn.
 * Neutral: OpenRouter governs rate limits for the whole account ("making
   additional accounts or API keys will not affect your rate limits"), so
   per-org keys add no capacity, and the fleet limiter (ADR-0081) is unchanged.

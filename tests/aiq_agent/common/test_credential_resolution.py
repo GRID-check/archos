@@ -243,11 +243,20 @@ _BYOK = OrgLLMCredential(
 )
 
 
+_ORG_KEYS = "aiq_agent.common.llm_credentials.resolve_org_keys"
+
+
+def _keys(**kwargs):
+    from aiq_agent.common.llm_credentials import OrgKeys
+
+    return OrgKeys(**kwargs)
+
+
 def test_byok_hit_swaps_key_and_base_url_not_model(monkeypatch):
     monkeypatch.setenv("PRIMARY_KEY", "env-key")
-    # The resolver imports resolve_org_llm_credential lazily from its source
-    # module, so patch it there.
-    with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=_BYOK):
+    # The resolver imports resolve_org_keys lazily from its source module, so
+    # patch it there.
+    with patch(_ORG_KEYS, return_value=_keys(byok=_BYOK, per_org_keys=True, platform_key="sk-or-org")):
         result = resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OTHER_HOST,
@@ -261,12 +270,40 @@ def test_byok_hit_swaps_key_and_base_url_not_model(monkeypatch):
     assert result.source == "byok"
 
 
-def test_byok_miss_falls_through_to_env(monkeypatch):
+def test_an_organization_without_byok_gets_its_own_openrouter_key(monkeypatch):
+    # ADR-0118: a route that names the organization (titles, summaries, ...)
+    # has nothing ambient for the transport to read it from, so the key is
+    # chosen here, and the shared env key is never handed out for it.
     monkeypatch.setenv("PRIMARY_KEY", "env-key")
-    with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-shared")
+    with patch(_ORG_KEYS, return_value=_keys(per_org_keys=True, platform_key="sk-or-org")):
+        result = resolve_llm_credential(
+            primary_env="PRIMARY_KEY",
+            default_base_url=_OPENROUTER,
+            default_model="m",
+            organization_id="org-1",
+        )
+    assert (result.api_key, result.source) == ("sk-or-org", "org-key")
+
+
+def test_the_organizations_key_never_goes_to_another_host(monkeypatch):
+    monkeypatch.setenv("PRIMARY_KEY", "env-key")
+    with patch(_ORG_KEYS, return_value=_keys(per_org_keys=True, platform_key="sk-or-org")):
         result = resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OTHER_HOST,
+            default_model="m",
+            organization_id="org-1",
+        )
+    assert (result.api_key, result.source) == ("env-key", "env")
+
+
+def test_without_per_org_keys_the_env_chain_names_the_key(monkeypatch):
+    monkeypatch.setenv("PRIMARY_KEY", "env-key")
+    with patch(_ORG_KEYS, return_value=_keys()):
+        result = resolve_llm_credential(
+            primary_env="PRIMARY_KEY",
+            default_base_url=_OPENROUTER,
             default_model="m",
             organization_id="org-1",
         )
@@ -274,25 +311,23 @@ def test_byok_miss_falls_through_to_env(monkeypatch):
     assert result.source == "env"
 
 
-def test_byok_fail_open_falls_through_to_env(monkeypatch):
-    # resolve_org_llm_credential fails open (returns None) on any error; the
-    # resolver must then continue down the env chain, never raise.
+def test_keys_that_cannot_be_resolved_refuse_rather_than_fall_through(monkeypatch):
+    from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
     monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
-    with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
-        result = resolve_llm_credential(
+    with patch(_ORG_KEYS, side_effect=OrgCredentialUnavailable("down")), pytest.raises(OrgCredentialUnavailable):
+        resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OPENROUTER,
             default_model="m",
             organization_id="org-1",
         )
-    assert result.api_key == "or-key"
-    assert result.source == "provider-default"
 
 
-def test_no_org_id_skips_byok(monkeypatch):
-    # With no org id the BYOK lookup must not even be attempted.
+def test_no_org_id_skips_the_organizations_keys(monkeypatch):
+    # With no org id the lookup must not even be attempted.
     monkeypatch.setenv("PRIMARY_KEY", "env-key")
-    with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential") as mock_resolve:
+    with patch(_ORG_KEYS) as mock_resolve:
         result = resolve_llm_credential(
             primary_env="PRIMARY_KEY",
             default_base_url=_OTHER_HOST,

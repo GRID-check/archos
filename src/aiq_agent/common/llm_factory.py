@@ -47,6 +47,7 @@ from typing import Any
 
 from aiq_agent.common import provider_limiter
 from aiq_agent.common.message_contract import normalize_chat_request
+from aiq_agent.common.openrouter import aopenrouter_key_for_call
 from aiq_agent.common.openrouter import attribution_fields
 from aiq_agent.common.openrouter import openrouter_key_for_call
 from aiq_agent.common.openrouter import targets_openrouter
@@ -194,7 +195,11 @@ def _request_organization_id() -> str | None:
         return None
 
 
-def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any]) -> Any:
+#: ``prepare_request``'s default: resolve the organization's key here, blocking on a cold cache.
+_RESOLVE_KEY: Any = object()
+
+
+def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any], *, org_key: Any = _RESOLVE_KEY) -> Any:
     """Apply the request-shaping rules to one outgoing call, in place on ``kwargs``.
 
     Returns the messages to send and mutates the call's ``kwargs`` with the
@@ -212,6 +217,10 @@ def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any]) -> Any:
     and attribution fields filled in — so nothing this adds can drop what was
     already there. A per-call ``extra_body`` replaces the instance's in the
     request LangChain builds, which is why the merged base is what gets set.
+
+    ``org_key`` is the key the async entry points resolved off the event loop
+    (:func:`_org_key_async`); left out, it is resolved here, which blocks on a
+    cold cache and is right only on the synchronous paths.
     """
     normalized = normalize_chat_request(messages)
     if not llm_targets_openrouter(llm):
@@ -232,10 +241,18 @@ def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any]) -> Any:
         extra_body = merged_base
     if extra_body is not None:
         kwargs["extra_body"] = with_attribution(extra_body, fields)
-    org_key = openrouter_key_for_call(_api_key(llm))
+    if org_key is _RESOLVE_KEY:
+        org_key = openrouter_key_for_call(_api_key(llm))
     if org_key:
         kwargs["extra_headers"] = {**(kwargs.get("extra_headers") or {}), "Authorization": f"Bearer {org_key}"}
     return normalized
+
+
+async def _org_key_async(llm: Any) -> str | None:
+    """The organization's key for a call to ``llm``, resolved off the event loop on a cold cache."""
+    if not llm_targets_openrouter(llm):
+        return None
+    return await aopenrouter_key_for_call(_api_key(llm))
 
 
 def _api_key(llm: Any) -> str | None:
@@ -293,7 +310,7 @@ def _contract_subclass(base: type) -> type:
             return base._generate(self, prepared, stop=stop, run_manager=run_manager, **kwargs)
 
     async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
-        prepared = prepare_request(self, messages, kwargs)
+        prepared = prepare_request(self, messages, kwargs, org_key=await _org_key_async(self))
         async with _provider_slot_async(self):
             return await base._agenerate(self, prepared, stop=stop, run_manager=run_manager, **kwargs)
 
@@ -303,7 +320,7 @@ def _contract_subclass(base: type) -> type:
             yield from base._stream(self, prepared, stop=stop, run_manager=run_manager, **kwargs)
 
     async def _astream(self, messages, stop=None, run_manager=None, **kwargs):
-        prepared = prepare_request(self, messages, kwargs)
+        prepared = prepare_request(self, messages, kwargs, org_key=await _org_key_async(self))
         async with _provider_slot_async(self):
             async for chunk in base._astream(self, prepared, stop=stop, run_manager=run_manager, **kwargs):
                 yield chunk

@@ -39,12 +39,27 @@ def _fresh_key_cache():
 class TestTargetsOpenRouter:
     @pytest.mark.parametrize(
         "url",
-        ["https://openrouter.ai/api/v1", "https://eu.openrouter.ai/api/v1", "https://openrouter.ai/api/v1/rerank"],
+        [
+            "https://openrouter.ai/api/v1",
+            "https://eu.openrouter.ai/api/v1",
+            "https://openrouter.ai/api/v1/rerank",
+            "openrouter.ai/api/v1",
+        ],
     )
     def test_openrouter_hosts(self, url):
         assert targets_openrouter(url)
 
-    @pytest.mark.parametrize("url", ["https://api.openai.com/v1", "", None, "https://evil.test/openrouter.ai"])
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://api.openai.com/v1",
+            "",
+            None,
+            "https://evil.test/openrouter.ai",
+            "https://openrouter.ai.evil.example/api/v1",
+            "https://notopenrouter.ai/api/v1",
+        ],
+    )
     def test_other_hosts(self, url):
         assert not targets_openrouter(url)
 
@@ -300,15 +315,29 @@ class TestEveryCallForAnOrganizationCarriesItsKey:
         ):
             assert self._sent().headers["authorization"] == "Bearer sk-shared"
 
-    def test_keys_that_cannot_be_resolved_refuse_the_call(self):
+    def test_keys_that_cannot_be_resolved_refuse_the_call_with_a_final_403(self):
+        # Never sent, and a 403 rather than a raise: the OpenAI SDK retries a
+        # raised transport error as a connection failure and drops the reason.
         from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
 
+        seen: list[httpx.Request] = []
+
+        def handler(request):
+            seen.append(request)
+            return httpx.Response(200, json={})
+
+        client = pinned_http_client(NO_RETENTION_LIMITS)
+        client._transport._inner = httpx.MockTransport(handler)
         with (
             _booked_to(organization_id="org_1"),
             patch("aiq_agent.common.llm_credentials.resolve_org_keys", side_effect=OrgCredentialUnavailable("down")),
-            pytest.raises(OrgCredentialUnavailable),
         ):
-            self._sent()
+            response = client.post(
+                "https://openrouter.ai/api/v1/embeddings", json={}, headers={"Authorization": "Bearer sk-shared"}
+            )
+        assert seen == []
+        assert response.status_code == 403
+        assert openrouter.ORG_KEYS_REFUSAL_MARKER in response.json()["error"]["message"]
 
     def test_another_host_never_gets_the_organizations_key(self):
         with (

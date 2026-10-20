@@ -24,9 +24,10 @@
 
 import 'server-only'
 import { randomUUID } from 'node:crypto'
-import { ServiceUnavailableError } from '@/lib/api/errors'
+import { NotFoundError, ServiceUnavailableError } from '@/lib/api/errors'
 import { isUniqueViolation } from '@/lib/db/errors'
 import type { OrgOpenrouterKey } from '@/lib/db/schema'
+import { getWorkOS } from '@/lib/workos/client'
 import { ACTIVE_KEY_INDEX, getActiveOrgKey, insertActiveOrgKey } from './org-keys-repository'
 import { deleteSecret, keyFingerprint, revealSecret, storeSecret } from './secret-store'
 
@@ -37,6 +38,9 @@ const MANAGEMENT_KEY_ENV = 'OPENROUTER_MANAGEMENT_KEY'
 const MONTHLY_LIMIT_ENV = 'OPENROUTER_ORG_KEY_MONTHLY_LIMIT_USD'
 
 const REQUEST_TIMEOUT_MS = 10_000
+
+/** How long a failed provisioning is remembered, so a failing org is not re-provisioned on every call. */
+const PROVISION_FAILURE_TTL_MS = 30_000
 
 /** What the backend receives for an organization's key — includes the PLAINTEXT key. */
 export interface ResolvedOrgKey {
@@ -128,12 +132,26 @@ async function reveal(row: OrgOpenrouterKey): Promise<ResolvedOrgKey> {
   }
 }
 
+/** A key is only ever created for an organization that exists: the internal caller names it, WorkOS vouches for it. */
+async function requireOrganization(organizationId: string): Promise<void> {
+  try {
+    await getWorkOS().organizations.getOrganization(organizationId)
+  } catch (error) {
+    if (error instanceof Error && 'status' in error && error.status === 404) {
+      throw new NotFoundError('Organization not found')
+    }
+    throw new ServiceUnavailableError('The organization could not be checked before its OpenRouter key was created')
+  }
+}
+
 async function provision(organizationId: string): Promise<ResolvedOrgKey> {
+  await requireOrganization(organizationId)
   const limitUsd = monthlyLimitUsd()
   const created = await createOpenrouterKey(organizationId, limitUsd)
   const id = randomUUID()
-  const secretRef = await storeSecret(organizationId, id, created.key)
+  let secretRef: Awaited<ReturnType<typeof storeSecret>> | null = null
   try {
+    secretRef = await storeSecret(organizationId, id, created.key)
     const row = await insertActiveOrgKey({
       id,
       organizationId,
@@ -144,10 +162,11 @@ async function provision(organizationId: string): Promise<ResolvedOrgKey> {
     })
     return { id: row.id, apiKey: created.key, keyFingerprint: row.keyFingerprint }
   } catch (error) {
-    if (!isUniqueViolation(error, ACTIVE_KEY_INDEX)) throw error
-    // Another replica provisioned first: keep its key, retire ours.
-    await deleteSecret({ id, organizationId, ...secretRef })
+    // Whatever failed, the key we created must not stay live at OpenRouter.
+    if (secretRef) await deleteSecret({ id, organizationId, ...secretRef })
     await deleteOpenrouterKey(created.hash)
+    if (!isUniqueViolation(error, ACTIVE_KEY_INDEX)) throw error
+    // Another replica provisioned first: keep its key.
     const winner = await getActiveOrgKey(organizationId)
     if (!winner) throw new ServiceUnavailableError('The organization’s OpenRouter key vanished while it was created')
     return reveal(winner)
@@ -156,6 +175,8 @@ async function provision(organizationId: string): Promise<ResolvedOrgKey> {
 
 /** In-flight provisioning per organization, so one replica creates one key however many calls race. */
 const provisioning = new Map<string, Promise<ResolvedOrgKey>>()
+/** Organizations whose provisioning just failed, until when: a failing org must not create a key per call. */
+const recentFailures = new Map<string, number>()
 
 /**
  * The organization's OpenRouter key, created at OpenRouter when it has none yet.
@@ -170,7 +191,15 @@ export async function resolveOrgOpenrouterKey(organizationId: string): Promise<R
 
   const inFlight = provisioning.get(organizationId)
   if (inFlight) return inFlight
-  const pending = provision(organizationId).finally(() => provisioning.delete(organizationId))
+  if ((recentFailures.get(organizationId) ?? 0) > Date.now()) {
+    throw new ServiceUnavailableError('The organization’s OpenRouter key could not be created; retrying shortly')
+  }
+  const pending = provision(organizationId)
+    .catch((error: unknown) => {
+      recentFailures.set(organizationId, Date.now() + PROVISION_FAILURE_TTL_MS)
+      throw error
+    })
+    .finally(() => provisioning.delete(organizationId))
   provisioning.set(organizationId, pending)
   return pending
 }

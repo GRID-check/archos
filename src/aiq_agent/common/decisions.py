@@ -125,6 +125,8 @@ SKIPPED_BYOK_HOST = "byok_host"
 SKIPPED_BREAKER = "breaker"
 SKIPPED_TIMEOUT = "timeout"
 SKIPPED_ERROR = "error"
+#: The organization's keys could not be resolved (ADR-0118): no fallback key.
+SKIPPED_ORG_KEYS = "org_keys_unavailable"
 #: The caller did not ask: a first message of fewer than three words (Piloti).
 SKIPPED_TOO_SHORT = "too_short"
 
@@ -300,6 +302,8 @@ def _resolve_endpoint_blocking(organization_id: str | None) -> tuple[_Endpoint |
     Blocking on a cold BYOK lookup, so the caller runs it off the loop.
     """
     model = os.environ.get(MODEL_ENV, "").strip() or DEFAULT_MODEL
+    from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
     try:
         from aiq_agent.common.credential_resolution import resolve_llm_credential
 
@@ -311,6 +315,8 @@ def _resolve_endpoint_blocking(organization_id: str | None) -> tuple[_Endpoint |
             organization_id=organization_id,
         )
         api_key, base_url, byok = resolved.api_key, resolved.base_url, resolved.source == "byok"
+    except OrgCredentialUnavailable:
+        return None, SKIPPED_ORG_KEYS
     except Exception:  # noqa: BLE001 — type only; the message can carry the key
         logger.warning("Decision credential resolution failed; trying the environment directly")
         api_key = os.environ.get(DEDICATED_ENV, "") or os.environ.get(_FALLBACK_KEY_ENV, "")

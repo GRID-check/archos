@@ -467,3 +467,50 @@ def test_the_configured_retry_messages_survive_the_merge():
     assert retry_messages(["Too Many Requests", "429"]) == ["Too Many Requests", "429", "rate_limit_exceeded"]
     assert retry_messages(None) == ["rate_limit_exceeded"]
     assert retry_messages(["rate_limit_exceeded"]) == ["rate_limit_exceeded"]
+
+
+async def test_an_async_chat_call_resolves_the_organizations_key_off_the_event_loop():
+    # A cold cache is a blocking BFF round-trip (3 s timeout); on the loop it
+    # would stall every conversation on the replica.
+    import threading
+    from unittest.mock import patch
+
+    import httpx
+    from langchain_core.messages import HumanMessage
+    from langchain_openai import ChatOpenAI
+
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+    from aiq_agent.common.llm_credentials import OrgKeys
+    from aiq_agent.common.llm_credentials import reset_credential_cache
+    from aiq_agent.common.llm_factory import enforce_chat_request_contract
+
+    seen: list[httpx.Request] = []
+    resolved_on: list[str] = []
+
+    async def handler(request):
+        seen.append(request)
+        return httpx.Response(500, json={"error": {"message": "stop"}})
+
+    def resolve(organization_id):
+        resolved_on.append(threading.current_thread().name)
+        return OrgKeys(per_org_keys=True, platform_key="sk-or-org")
+
+    llm = enforce_chat_request_contract(
+        ChatOpenAI(
+            model="openai/gpt-5.6-luna",
+            api_key="sk-shared",  # pragma: allowlist secret
+            base_url="https://openrouter.ai/api/v1",
+            max_retries=0,
+            http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        )
+    )
+    reset_credential_cache()
+    token = _booked_to(organization_id="org_async")
+    try:
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys", side_effect=resolve), pytest.raises(Exception):
+            await llm.ainvoke([HumanMessage(content="Hallo")])
+    finally:
+        grid_cost_tracker_var.reset(token)
+        reset_credential_cache()
+    assert seen and seen[0].headers["authorization"] == "Bearer sk-or-org"
+    assert resolved_on and resolved_on[0] != threading.main_thread().name

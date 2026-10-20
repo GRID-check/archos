@@ -281,6 +281,10 @@ def _resolve_credential(base_url: str, model: str, organization_id: str | None) 
         # knowledge_layer is usable without the aiq_agent package.
         logger.debug("credential_resolution unavailable; falling back to a direct env read")
     except Exception as e:
+        if type(e).__name__ == "OrgCredentialUnavailable":
+            # ADR-0118: an organization's call never falls back to the shared key.
+            # Matched by name: this module loads without the aiq_agent package.
+            raise
         # Type only, never the message. This is the credential-resolution path, so the
         # exception text can carry the key itself, a signed URL or a request body from
         # whatever backend resolved it — none of which belongs in a log line that exists

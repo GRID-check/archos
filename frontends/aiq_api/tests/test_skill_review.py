@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
+from aiq_agent.common.llm_credentials import OrgKeys
 from aiq_api.routes.skill_review import MAX_CHECK_CHARS
 from aiq_api.routes.skill_review import MAX_FINDINGS
 from aiq_api.routes.skill_review import MAX_FIX_CHARS
@@ -488,7 +489,7 @@ async def test_byok_credential_from_request_body(app, monkeypatch):
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=byok):
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=OrgKeys(byok=byok)):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post("/v1/skills/review", json=_body(organization_id="org-1"))
 
@@ -511,7 +512,7 @@ async def test_env_fallback_when_byok_absent(app, monkeypatch):
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=OrgKeys()):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/skills/review", json=_body(), headers={"x-grid-organization-id": "org-1"}

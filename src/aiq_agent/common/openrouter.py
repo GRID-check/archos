@@ -121,12 +121,17 @@ def preferred_providers() -> tuple[str, ...]:
 
 
 def targets_openrouter(url: object) -> bool:
-    """True when ``url`` (a base URL or a full request URL) is OpenRouter's."""
+    """True when ``url`` (a base URL or a full request URL, with or without a scheme) is OpenRouter's.
+
+    The host must BE ``openrouter.ai`` or one of its subdomains
+    (``eu.openrouter.ai``): an organization's key rides on every request this
+    accepts (ADR-0118), so ``openrouter.ai.example.com`` must not pass.
+    """
     if not url:
         return False
     text = str(url)
-    host = urlsplit(text).hostname if "://" in text else None
-    return OPENROUTER_HOST in (host or text)
+    host = (urlsplit(text if "://" in text else f"//{text}").hostname or "").rstrip(".")
+    return host == OPENROUTER_HOST or host.endswith(f".{OPENROUTER_HOST}")
 
 
 @dataclass(frozen=True)
@@ -409,6 +414,25 @@ def _rekey(request: httpx.Request, key: str | None) -> None:
         request.headers["Authorization"] = f"Bearer {key}"
 
 
+#: The marker a refused call's 403 carries: the organization's keys could not be resolved.
+ORG_KEYS_REFUSAL_MARKER = "organization_keys_unavailable"
+
+
+def _refusal(request: httpx.Request, error: Exception) -> httpx.Response:
+    """The answer to a call whose organization's keys could not be resolved (ADR-0118).
+
+    A 403 rather than a raised exception: the OpenAI SDK retries anything a
+    transport raises as a connection error, three times, and loses the reason;
+    a 403 is final, and its message says why.
+    """
+    logger.error("Refused an OpenRouter call to %s: %s", request.url.path, error)
+    return httpx.Response(
+        403,
+        json={"error": {"code": 403, "message": f"{ORG_KEYS_REFUSAL_MARKER}: {error}"}},
+        request=request,
+    )
+
+
 def _shaped_request(request: httpx.Request, policy: DataPolicy) -> httpx.Request:
     """``request`` with ``policy`` and the call's attribution merged into its JSON body.
 
@@ -573,7 +597,12 @@ class _PinningTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         if targets_openrouter(str(request.url)):
-            _rekey(request, openrouter_key_for_call(_bearer(request)))
+            from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+            try:
+                _rekey(request, openrouter_key_for_call(_bearer(request)))
+            except OrgCredentialUnavailable as error:
+                return _refusal(request, error)
         request = _shaped_request(request, self._policy)
         if not _takes_slot(request):
             return self._inner.handle_request(request)
@@ -611,7 +640,12 @@ class _AsyncPinningTransport(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         if targets_openrouter(str(request.url)):
-            _rekey(request, await aopenrouter_key_for_call(_bearer(request)))
+            from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+            try:
+                _rekey(request, await aopenrouter_key_for_call(_bearer(request)))
+            except OrgCredentialUnavailable as error:
+                return _refusal(request, error)
         request = _shaped_request(request, self._policy)
         if not _takes_slot(request):
             return await self._inner.handle_async_request(request)

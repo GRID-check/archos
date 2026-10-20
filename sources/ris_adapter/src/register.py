@@ -253,11 +253,15 @@ def _apply_org_llm_policy(llm):
         from aiq_agent.common import apply_model_override
         from aiq_agent.common import apply_org_credential
         from aiq_agent.common import apply_zdr_routing
+        from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
         from aiq_agent.common.model_overrides import AgentGroup
     except ImportError:
         return llm
     try:
         return apply_model_override(apply_org_credential(llm), AgentGroup.DEEP_RESEARCH_ROUTER)
+    except OrgCredentialUnavailable:
+        # ADR-0118: the planner never falls back to the shared key.
+        raise
     except Exception:
         logger.warning("ris_search: could not apply org LLM policy to the planner", exc_info=True)
         return apply_zdr_routing(llm)
