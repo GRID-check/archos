@@ -29,7 +29,7 @@ dependencies = [
     "deepagents>=0.6.12",
     "langgraph-checkpoint-postgres>=3.0.0",
     "langgraph-checkpoint-sqlite>=2.0.0",
-    "langchain-modal==0.0.5",
+    "langchain-modal==0.0.6",
     "psycopg[binary]>=3.3.4",
     "asyncpg>=0.29.0",
     "redis>=5.0.0,<9",
@@ -46,7 +46,7 @@ dependencies = [
     "cryptography>=50.0.0,<51",
     "pillow>=12.2.0,<14",
     "pygments>=2.20.0,<3",
-    "a2ui-core==0.1.1",
+    "a2ui-core==0.3.0",
     # Arrives through nvidia-nat-langchain[openai]; the floor is ours. Below 1.6.6 a
     # STREAMED Responses call drops the model's encrypted reasoning items, so
     # every tool round thinks from scratch and nothing fails
@@ -63,7 +63,7 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-env>=1.1.0",
     "pre-commit>=3.5.0",
-    "ruff~=0.16.9",
+    "ruff>=0.16.9,<0.18.0",
     "yapf>=0.40.0",
     "mypy>=2.3.0",
     "fakeredis[lua]>=2.20.0",
@@ -293,7 +293,7 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-env>=1.1.0",
     "pre-commit>=3.5.0",
-    "ruff~=0.16.9",
+    "ruff>=0.16.9,<0.18.0",
     "yapf>=0.40.0",
     "mypy>=2.3.0",
     "fakeredis[lua]>=2.20.0",
