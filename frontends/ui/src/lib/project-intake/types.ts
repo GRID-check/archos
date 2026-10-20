@@ -12,6 +12,7 @@
 
 import { z } from 'zod'
 import { geocodeResultSchema } from '@/lib/geocoding/types'
+import type { ApplicableStatus } from '@/lib/oib/applicable-standards'
 import {
   DERIVATION_RULES,
   derivationInputSchema,
@@ -322,6 +323,30 @@ export const intakeViewSchema = z.object({
   canDecide: z.boolean(),
   /** The reader may finish the review: `project:manage` for a closing intent, else profile write. */
   canComplete: z.boolean(),
+  // --- Step 5, Steckbrief (ticket 26) -------------------------------------
+  /**
+   * The rule set's Ampel: which OIB-Richtlinien apply, required / likely /
+   * check, as `getApplicableStandards` (`lib/oib/applicable-standards.ts`)
+   * computes it from the profile's confirmed values only, so a suggestion
+   * changes it once a person takes it. The same verdicts the overview's panel
+   * shows. `buildIntakeView` always sends it; optional so a view built
+   * elsewhere (a fixture) may leave the panel out.
+   */
+  applicableStandards: z
+    .array(
+      z.object({
+        code: z.string().min(1).max(32),
+        titleEn: z.string().max(300),
+        titleDe: z.string().max(300),
+        scope: z.string().max(1000),
+        oibUrl: z.string().max(500),
+        status: z.enum(['required', 'likely', 'check'] as const satisfies readonly ApplicableStatus[]),
+        reason: z.string().max(1000),
+      })
+    )
+    .max(40)
+    .optional(),
+  // --- end Step 5 ----------------------------------------------------------
 })
 export type IntakeView = z.infer<typeof intakeViewSchema>
 
