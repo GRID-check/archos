@@ -128,6 +128,14 @@ packages:
   - '.github/actions/setup-bun/**'
   - '.github/actions/setup-task/**'
 
+# The per-migration backfill and down checks at the end of
+# scripts/rls-test-db.sh. They read only the migrations and the script, so the
+# frontend job skips them unless one of those changed. The rest of the tenant
+# isolation suite runs with the frontend tier as before.
+migrations:
+  - 'frontends/ui/drizzle/**'
+  - 'scripts/rls-test-db.sh'
+
 # The pull request SAST scan. Semgrep is diff-aware, so it only ever reports
 # findings the change introduces; this decides whether there is code to scan.
 sast:
