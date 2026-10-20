@@ -24,6 +24,8 @@ export interface IntakeSetupProps {
   initial: IntakeView | null
   /** A closed project takes no documents (ADR-0090). */
   projectClosed: boolean
+  /** The key the create dialog held a dropped folder under, from the redirect; null when none. */
+  dropKey?: string | null
   /** The typed client; the real one unless a spec brings its own. */
   client?: ProjectIntakeClient
 }
@@ -62,16 +64,15 @@ function ConnectedSetup({
   collectionName,
   initial,
   projectClosed,
+  dropKey = null,
   client,
 }: Omit<IntakeSetupProps, 'initial'> & { initial: IntakeView }): JSX.Element {
   const intake = useIntake({ projectId, initial, client })
   const { view, watch, refresh } = intake
-  const waitingForDocuments =
-    view.status === 'waiting' && view.counts.documentsRead + view.counts.unreadDocuments === 0
   const { send, shelfUpload, upload } = useIntakeUpload({
     projectId,
     collectionName,
-    takeNewProjectDrop: waitingForDocuments,
+    dropKey: projectClosed ? null : dropKey,
     onSettled: () => {
       watch()
       void refresh()

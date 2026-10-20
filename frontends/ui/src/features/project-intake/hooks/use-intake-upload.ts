@@ -11,9 +11,9 @@
  * a second way. The `FolderUploadDialog` it plans with is the caller's to
  * render: `upload.decision` is what it takes.
  *
- * A drop made on the create dialog waits under {@link NEW_PROJECT_DROP_KEY}; the
- * first load of a project whose intake is still waiting for its documents takes
- * it. A drop made elsewhere in the app waits under the project's id, and
+ * A drop made on the create dialog waits under the dialog's own key, which the
+ * redirect after creating hands to this project's setup page (`?drop=`); only
+ * that page takes it. A drop made elsewhere in the app waits under the project's id, and
  * `useShelfUpload` takes that one itself.
  */
 
@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { useFolderTree } from '@/features/documents/hooks/use-folder-tree'
 import { useProjectDocuments } from '@/features/documents/hooks/use-project-documents'
 import { useShelfUpload } from '@/features/documents/hooks/use-shelf-upload'
-import { NEW_PROJECT_DROP_KEY, takeDroppedFiles } from '@/features/documents/lib/dropped-file-handover'
+import { takeDroppedFiles } from '@/features/documents/lib/dropped-file-handover'
 import type { DropInfo } from '@/features/documents/hooks/use-file-drag-drop'
 import { projectEndpoints } from '@/features/documents/lib/file-shelf'
 import { createDocumentNameProbeClient } from '@/lib/documents/name-probe-client'
@@ -29,8 +29,8 @@ import { createDocumentNameProbeClient } from '@/lib/documents/name-probe-client
 export interface UseIntakeUploadOptions {
   projectId: string
   collectionName: string
-  /** The intake still waits for its first documents: a drop from the create dialog is for this project. */
-  takeNewProjectDrop: boolean
+  /** The key the create dialog held a dropped folder under for THIS project, or null. */
+  dropKey: string | null
   /** An upload finished (or failed): the review may have moved. */
   onSettled: () => void
 }
@@ -38,7 +38,7 @@ export interface UseIntakeUploadOptions {
 const noop = (): void => undefined
 const reloadNothing = (): Promise<void> => Promise.resolve()
 
-export function useIntakeUpload({ projectId, collectionName, takeNewProjectDrop, onSettled }: UseIntakeUploadOptions) {
+export function useIntakeUpload({ projectId, collectionName, dropKey, onSettled }: UseIntakeUploadOptions) {
   const probe = useMemo(() => createDocumentNameProbeClient(), [])
   const endpoints = useMemo(() => projectEndpoints(projectId), [projectId])
   const upload = useProjectDocuments({ projectId, collectionName, onComplete: onSettled })
@@ -67,10 +67,10 @@ export function useIntakeUpload({ projectId, collectionName, takeNewProjectDrop,
 
   const foldersReady = !tree.isLoading && !tree.error
   useEffect(() => {
-    if (!takeNewProjectDrop || !foldersReady) return
-    const dropped = takeDroppedFiles(NEW_PROJECT_DROP_KEY)
+    if (!dropKey || !foldersReady) return
+    const dropped = takeDroppedFiles(dropKey)
     if (dropped.length > 0) handleUpload(dropped)
-  }, [takeNewProjectDrop, foldersReady, handleUpload])
+  }, [dropKey, foldersReady, handleUpload])
 
   // What a drop could not read is told, as Dateien tells it (`handleUpload`).
   const send = useCallback(

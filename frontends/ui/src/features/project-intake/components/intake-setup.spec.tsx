@@ -4,7 +4,7 @@
  */
 import { render, screen, waitFor } from '@/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { INTAKE_READY, INTAKE_WAITING } from '@/app/dev/_fixtures/project-intake'
+import { INTAKE_WAITING } from '@/app/dev/_fixtures/project-intake'
 import { IntakeSetup } from './intake-setup'
 
 vi.mock('@/shared/context', () => ({
@@ -62,17 +62,16 @@ describe('IntakeSetup', () => {
     expect(screen.getByRole('link', { name: 'Open the briefing' })).toHaveAttribute('href', '/app/projects/p1/intake')
   })
 
-  it('files uploads into the project\'s collection, and takes the create dialog\'s drop while it waits for documents', () => {
-    render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_WAITING} projectClosed={false} />)
+  it('files uploads into the project\'s collection, and takes only the drop the redirect named', () => {
+    const key = 'new-project:11111111-1111-4111-8111-111111111111'
+    render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_WAITING} projectClosed={false} dropKey={key} />)
 
-    expect(uploadHook).toHaveBeenCalledWith(
-      expect.objectContaining({ projectId: 'p1', collectionName: 'proj_1', takeNewProjectDrop: true })
-    )
+    expect(uploadHook).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'p1', collectionName: 'proj_1', dropKey: key }))
   })
 
-  it('takes that drop only while the intake waits for its first documents', () => {
-    render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_READY} projectClosed={false} />)
-    expect(uploadHook).toHaveBeenCalledWith(expect.objectContaining({ takeNewProjectDrop: false }))
+  it('takes no drop when the redirect named none', () => {
+    render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_WAITING} projectClosed={false} />)
+    expect(uploadHook).toHaveBeenCalledWith(expect.objectContaining({ dropKey: null }))
   })
 
   it('offers no upload on a closed project', async () => {

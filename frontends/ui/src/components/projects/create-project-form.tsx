@@ -38,7 +38,7 @@ import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
 import {
   discardDroppedFiles,
   handOverDroppedFiles,
-  NEW_PROJECT_DROP_KEY,
+  newProjectDropKey,
 } from '@/features/documents/lib/dropped-file-handover'
 import { useLocale, useTranslations } from '@/i18n'
 import { capturePosthog } from '@/lib/analytics/posthog'
@@ -87,6 +87,12 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   const [serverError, setServerError] = useState<string | null>(null)
   const [serverAbschluss, setServerAbschluss] = useState<AbschlussProblem>(null)
   const [dropped, setDropped] = useState<DroppedFolder | null>(null)
+  // The key this dialog holds a drop under, and the one the created project's
+  // setup page is sent to take it by: no other project can.
+  const [dropKey] = useState(newProjectDropKey)
+  // Whether files wait under it; a ref, because the form's submit handler is
+  // made once and would read the first render's state.
+  const holding = useRef(false)
   // A drop is held for the setup page only while the dialog may still create the
   // project; closing it any other way discards the files.
   const created = useRef(false)
@@ -124,7 +130,15 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
       // Piloti reads, and be filed there.
       if (value.setup === 'self') forgetDrop()
       created.current = true
-      const result = await createProject({}, toFormData(value))
+      let result: Awaited<ReturnType<typeof createProject>>
+      try {
+        result = await createProject({}, toFormData(value, holding.current && value.setup === 'piloti' ? dropKey : null))
+      } catch (error) {
+        // Thrown, not answered: nothing was created, so a held drop is let go
+        // of when the dialog closes, as for any dialog that created nothing.
+        created.current = false
+        throw error
+      }
       if (!result?.error) {
         capturePosthog('project_created', { state: value.state, setup: value.setup })
         return
@@ -144,13 +158,14 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
 
   useEffect(
     () => () => {
-      if (!created.current) discardDroppedFiles(NEW_PROJECT_DROP_KEY)
+      if (!created.current) discardDroppedFiles(dropKey)
     },
-    []
+    [dropKey]
   )
   /** Let go of a held drop, and of the note that names it. */
   function forgetDrop(): void {
-    discardDroppedFiles(NEW_PROJECT_DROP_KEY)
+    discardDroppedFiles(dropKey)
+    holding.current = false
     setDropped(null)
   }
 
@@ -169,7 +184,8 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   const takeDrop = (files: File[]): void => {
     if (files.length === 0) return
     const folder = folderNameOf(files)
-    handOverDroppedFiles(NEW_PROJECT_DROP_KEY, files)
+    handOverDroppedFiles(dropKey, files)
+    holding.current = true
     setDropped((previous) => ({ name: folder ?? previous?.name ?? null, count: (previous?.count ?? 0) + files.length }))
     form.setFieldValue('setup', 'piloti')
     if (folder && form.getFieldValue('name').trim() === '') form.setFieldValue('name', folder)
@@ -443,8 +459,9 @@ function toFormData(value: {
   outcome: string
   startedOn: string
   endedOn: string
-}): FormData {
+}, dropKey: string | null): FormData {
   const formData = new FormData()
+  if (dropKey) formData.set('dropKey', dropKey)
   formData.set('name', value.name.trim())
   formData.set('state', value.state)
   formData.set('setup', value.setup)

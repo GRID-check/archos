@@ -9,9 +9,11 @@ import { isProjectClosed } from '@/lib/projects/project-status'
 import { getIntakeView } from '@/lib/project-intake/service'
 import { getTranslations } from '@/i18n/server'
 import { IntakeSetup } from '@/features/project-intake/components/intake-setup'
+import { isNewProjectDropKey } from '@/features/documents/lib/dropped-file-handover'
 
 interface SetupPageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ drop?: string | string[] }>
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -27,9 +29,10 @@ export async function generateMetadata(): Promise<Metadata> {
  * A project set up by hand has no intake: the page says so and points to the
  * wizard.
  */
-export default async function SetupPage({ params }: SetupPageProps): Promise<JSX.Element> {
+export default async function SetupPage({ params, searchParams }: SetupPageProps): Promise<JSX.Element> {
   return withPageSession(async (session) => {
     const { id } = await params
+    const { drop } = await searchParams
     await requireProjectAccess(session, id, 'project:view')
 
     const project = await findProjectInOrg(id, session.organizationId)
@@ -46,6 +49,7 @@ export default async function SetupPage({ params }: SetupPageProps): Promise<JSX
         collectionName={project.collectionName}
         initial={initial}
         projectClosed={isProjectClosed(project)}
+        dropKey={isNewProjectDropKey(drop) ? drop : null}
       />
     )
   })

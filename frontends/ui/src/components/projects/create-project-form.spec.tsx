@@ -16,6 +16,12 @@ import type { GeocodeResponse, GeocodeResult } from '@/lib/geocoding/types'
 import { forgetGeocoderAnswer } from './address-field'
 import { CreateProjectForm, folderNameOf } from './create-project-form'
 
+/** The key this dialog holds a drop under: one per dialog, fixed here so a spec can look. */
+const DROP_KEY = 'new-project:00000000-0000-4000-8000-000000000000'
+vi.mock('@/features/documents/lib/dropped-file-handover', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/documents/lib/dropped-file-handover')>()),
+  newProjectDropKey: () => DROP_KEY,
+}))
 vi.mock('@/app/app/(shell)/projects/actions', () => ({ createProject: vi.fn() }))
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 vi.mock('@/shared/context', () => ({
@@ -86,7 +92,7 @@ describe('CreateProjectForm', () => {
     findSameAddress.mockReset()
     findSameAddress.mockResolvedValue({ projects: [] })
     forgetGeocoderAnswer()
-    takeDroppedFiles('new-project')
+    takeDroppedFiles(DROP_KEY)
   })
 
   afterEach(() => {
@@ -446,7 +452,7 @@ describe('CreateProjectForm', () => {
 
       expect(await screen.findByTestId('create-project-dropped')).toHaveTextContent('Folder “Wohnbau Nord”: 2 files')
       expect(screen.getByLabelText('Project name')).toHaveValue('Wohnbau Nord')
-      expect(takeDroppedFiles('new-project')).toEqual(files)
+      expect(takeDroppedFiles(DROP_KEY)).toEqual(files)
       // Taken once: put it back for the rest of the test.
       await user.click(screen.getByRole('button', { name: 'Remove the folder' }))
       expect(screen.queryByTestId('create-project-dropped')).toBeNull()
@@ -470,7 +476,7 @@ describe('CreateProjectForm', () => {
 
       first.unmount()
 
-      expect(takeDroppedFiles('new-project')).toEqual([])
+      expect(takeDroppedFiles(DROP_KEY)).toEqual([])
     })
 
     test('choosing to fill it in oneself lets go of the held folder: it would be filed in the next project', async () => {
@@ -481,13 +487,13 @@ describe('CreateProjectForm', () => {
 
       await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
       expect(screen.queryByTestId('create-project-dropped')).toBeNull()
-      expect(takeDroppedFiles('new-project')).toEqual([])
+      expect(takeDroppedFiles(DROP_KEY)).toEqual([])
 
       // And nothing is held for the setup page after the project is created.
       await user.click(submit())
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
       first.unmount()
-      expect(takeDroppedFiles('new-project')).toEqual([])
+      expect(takeDroppedFiles(DROP_KEY)).toEqual([])
     })
 
     test('a file dragged over the dialog that it cannot take says so', () => {
@@ -512,7 +518,33 @@ describe('CreateProjectForm', () => {
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
       first.unmount()
 
-      expect(takeDroppedFiles('new-project')).toEqual([file])
+      expect(takeDroppedFiles(DROP_KEY)).toEqual([file])
+      // The key goes with the creation, so the redirect sends only THIS project's setup page for them.
+      expect(sent().dropKey).toBe(DROP_KEY)
+    })
+
+    test('sends no key when nothing was dropped', async () => {
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+      await user.type(screen.getByLabelText('Project name'), 'Leer')
+      await user.click(submit())
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      expect(sent()).not.toHaveProperty('dropKey')
+    })
+
+    test('a create that throws lets go of the held files when the dialog goes', async () => {
+      action.mockRejectedValue(new Error('network'))
+      const user = userEvent.setup()
+      const first = render(<CreateProjectForm />)
+      dropFiles(screen.getByTestId('create-project-drop'), [withPath(new File(['a'], 'a.pdf'), 'Ordner/a.pdf')])
+      await screen.findByTestId('create-project-dropped')
+
+      await user.click(submit())
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      first.unmount()
+
+      // Held on, they would have been filed in the next project waiting for documents.
+      expect(takeDroppedFiles(DROP_KEY)).toEqual([])
     })
   })
 

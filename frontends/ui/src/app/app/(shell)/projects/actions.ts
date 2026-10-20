@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { isNewProjectDropKey } from '@/features/documents/lib/dropped-file-handover'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { BadRequestError } from '@/lib/api/errors'
 import { createProjectSchema } from '@/lib/projects/create-project-schema'
@@ -95,12 +96,17 @@ export async function createProject(
   // active until the review is finished, so it lands on the setup page too.
   // Outside the scope on purpose: `redirect()` reports itself by throwing, and a
   // throw is not something the tenant slot should be unwinding through.
-  redirect(createdProjectPath(projectId))
+  redirect(createdProjectPath(projectId, formData.get('dropKey')))
 }
 
 /** Where a project just created lands. */
-function createdProjectPath(created: { id: string; closed: boolean; setup: 'piloti' | 'self' }): string {
-  if (created.setup === 'piloti') return `/app/projects/${created.id}/setup`
+function createdProjectPath(created: { id: string; closed: boolean; setup: 'piloti' | 'self' }, dropKey: unknown): string {
+  // A folder dropped on the dialog waits under the dialog's own key; the setup
+  // page of THIS project is told it, and no other page takes it.
+  if (created.setup === 'piloti') {
+    const drop = isNewProjectDropKey(dropKey) ? `?drop=${encodeURIComponent(dropKey)}` : ''
+    return `/app/projects/${created.id}/setup${drop}`
+  }
   return created.closed ? `/app/projects/${created.id}/settings` : `/app/projects/${created.id}/intake`
 }
 

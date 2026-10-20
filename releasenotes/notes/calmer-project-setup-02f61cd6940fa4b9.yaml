@@ -16,3 +16,7 @@ fixes:
   - >
     The address in the new-project dialog keeps what you type. Before, it
     turned into a Bundesland list after three letters and dropped the text.
+  - >
+    A folder dropped on the new-project dialog now lands only in the project
+    it was dropped for. Before, if its setup page did not take it, the next new
+    project could.
