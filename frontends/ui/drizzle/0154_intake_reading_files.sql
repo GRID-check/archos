@@ -14,6 +14,9 @@
 ALTER TABLE "project_intakes"
   ADD COLUMN IF NOT EXISTS "reading_files" jsonb NOT NULL DEFAULT '[]'::jsonb;
 --> statement-breakpoint
+-- Dropped first so the migration re-applies cleanly.
+ALTER TABLE "project_intakes" DROP CONSTRAINT IF EXISTS "project_intakes_reading_files_array";
+--> statement-breakpoint
 ALTER TABLE "project_intakes"
   ADD CONSTRAINT "project_intakes_reading_files_array"
   CHECK (jsonb_typeof("reading_files") = 'array');

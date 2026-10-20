@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    While Piloti reads a new project's documents, the setup shows how far it
+    has got: the site, how many documents are read, and the values,
+    contradictions and gaps found so far. You can leave and ask the project
+    chat meanwhile; your Postfach tells you when Piloti is done.
+fixes:
+  - >
+    When reading a project's documents stops before it finishes, the person
+    who started it now gets a Postfach entry saying so, instead of nothing.
