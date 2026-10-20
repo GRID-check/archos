@@ -38,11 +38,10 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { useModifierLabel } from '@/components/shell/shortcut-keys'
 import { useTranslations } from '@/i18n'
-import { capturePosthog, sendPosthogSupportMessage } from '@/lib/analytics/posthog'
+import { capturePosthog, getPosthogSupportContext } from '@/lib/analytics/posthog'
 import {
   captureFeedbackContext,
   submitProductFeedback,
-  supportTicketText,
   type SubmitProductFeedbackRequest,
   type SubmitProductFeedbackResult,
 } from '@/lib/product-feedback/client'
@@ -74,25 +73,15 @@ export interface FeedbackDialogProps {
 }
 
 /**
- * After the first-party record exists, tell PostHog too: the product event (the
- * kind only, never the words) and, when the project has Support switched on, a
- * new Support ticket so it lands in the same inbox as the replay it can link
- * to. The ticket carries the report id and the SERVER's masked text
- * (`relayText`), never what was typed: the office's „Sensible Daten" policy
- * applies before words reach a third party (ADR-0086). The server answers
- * `null` for a reporter who unticked "You may contact me" (a ticket is a thread
- * that answers the reporter) or when it could not mask; then no ticket opens.
- * Fire-and-forget by design: the Postgres record and the inbox fan-out stay the
- * source of truth, and nothing here may delay or fail the thank-you. Both calls
- * no-op while PostHog is off. No email or name is sent.
+ * After the first-party record exists, tell PostHog the product event: the kind
+ * only, never the words. The Support ticket is not opened here: the SERVER
+ * opens it for every report, with the masked text the office's „Sensible
+ * Daten" policy allows (ADR-0086); the browser only hands over its widget and
+ * replay session ids with the submit (`getPosthogSupportContext`). No-op while
+ * PostHog is off.
  */
-function relayToPosthog(
-  report: SubmittedProductFeedbackView,
-  pagePath: string | null
-): void {
+function relayToPosthog(report: SubmittedProductFeedbackView): void {
   capturePosthog('product_feedback_submitted', { kind: report.kind })
-  if (report.relayText === null) return
-  void sendPosthogSupportMessage(supportTicketText(report.kind, report.id, pagePath, report.relayText))
 }
 
 type Phase = { kind: 'form' } | { kind: 'sending' } | { kind: 'sent' }
@@ -155,10 +144,11 @@ export function FeedbackDialog({
       allowContact,
       pagePath: captured.pagePath,
       context: captured.context,
+      posthog: getPosthogSupportContext(),
     })
     if (result.ok) {
       setPhase({ kind: 'sent' })
-      relayToPosthog(result.report, captured.pagePath)
+      relayToPosthog(result.report)
       return
     }
     setPhase({ kind: 'form' })

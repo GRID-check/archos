@@ -1,9 +1,10 @@
 /**
  * One product-feedback report (Platform → Feedback). Thin adapters (ADR-0017).
  *
- * GET   — the report, for the deep link a `feedback.submitted` inbox row lands on.
- * PATCH — move it through triage (`new` → `in_progress` → `resolved` /
- *         `dismissed`), attributed to the caller on the row itself.
+ * GET   — the report and its live PostHog ticket, for the deep link a
+ *         `feedback.submitted` inbox row lands on.
+ * PATCH — move its PostHog Support ticket to another status (ADR-0118);
+ *         PostHog records who did it.
  */
 
 import { z } from 'zod'

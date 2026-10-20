@@ -96,9 +96,12 @@ async def _close_during_a_ping(implementation: str) -> tuple[list[str], str]:
         writer.write(_masked(0x8, (1000).to_bytes(2, "big")))  # a normal close, ping still outstanding
         await asyncio.sleep(0.3)
         writer.close()
-        for _ in range(5):
-            await asyncio.sleep(0.05)
-            gc.collect()
+        # The legacy bug reports from a future's finaliser, so the closed
+        # connection's garbage has to be collected before `reports` is read.
+        # One full collection after the settle time finds all of it; five in
+        # a loop cost seconds each on a large heap.
+        await asyncio.sleep(0.25)
+        gc.collect()
         return reports, echoed
     finally:
         server.should_exit = True
