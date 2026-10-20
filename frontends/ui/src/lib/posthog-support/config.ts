@@ -8,6 +8,7 @@
 
 import 'server-only'
 import { posthogUiHost } from '@/lib/analytics/posthog-config'
+import { configuredAppOrigin } from '@/lib/app-origin'
 import type { PosthogSupportConfig } from './types'
 
 /**
@@ -21,6 +22,14 @@ export function posthogSupportConfigFromEnv(
   const ingestHost = (env.NEXT_PUBLIC_POSTHOG_HOST ?? '').trim().replace(/\/+$/, '')
   const personalApiKey = (env.POSTHOG_PERSONAL_API_KEY ?? '').trim()
   const projectId = (env.POSTHOG_PROJECT_ID ?? '').trim()
-  if (!ingestHost || !personalApiKey || !/^\d+$/.test(projectId)) return null
-  return { appHost: posthogUiHost(ingestHost), ingestHost, projectId, personalApiKey }
+  const projectToken = (env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ?? '').trim()
+  if (!ingestHost || !personalApiKey || !projectToken || !/^\d+$/.test(projectId)) return null
+  return {
+    appHost: posthogUiHost(ingestHost),
+    ingestHost,
+    projectId,
+    projectToken,
+    personalApiKey,
+    appOrigin: configuredAppOrigin(env),
+  }
 }

@@ -1198,8 +1198,8 @@ export interface GridConfig {
     releaseId: string;
     /**
      * Personal API key for PostHog Support (`grid-oib:posthogPersonalApiKey`,
-     * a secret in the stack's ESC environment; scopes `ticket:read`, `ticket:write`,
-     * `project:read`). The BFF opens a Support ticket per feedback report and
+     * a secret in the stack's ESC environment; scopes `ticket:read`, `ticket:write`).
+     * The BFF opens a Support ticket per feedback report and
      * lists and updates them on Platform -> Feedback
      * (`frontends/ui/src/lib/posthog-support/`). `undefined` when the stack
      * does not set it: then neither it nor `projectId` reaches a pod, and the

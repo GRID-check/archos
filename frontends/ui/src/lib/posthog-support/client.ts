@@ -56,10 +56,9 @@ const pageSchema = z
   .object({ count: z.number().int().nonnegative(), results: z.array(z.unknown()) })
   .passthrough()
 
-const projectSchema = z
-  .object({
-    conversations_settings: z.object({ widget_public_token: z.string().min(1) }).passthrough(),
-  })
+/** The public remote config posthog-js loads; its `conversations.token` is the widget token. */
+const remoteConfigSchema = z
+  .object({ conversations: z.object({ token: z.string().min(1) }).passthrough() })
   .passthrough()
 
 const widgetMessageSchema = z.object({ ticket_id: z.string().min(1) }).passthrough()
@@ -169,21 +168,21 @@ export function resetWidgetTokenCacheForTests(): void {
   widgetTokens.clear()
 }
 
+/**
+ * The project's Support widget token, read from the public remote config that
+ * posthog-js itself loads (`/array/<project token>/config`). It is public by
+ * design, so this needs no key: asking the private API for it needed
+ * `project:read`, and a key without that scope opened no ticket at all.
+ */
 async function widgetToken(config: PosthogSupportConfig, fetchImpl: typeof fetch): Promise<string> {
-  const cached = widgetTokens.get(config.projectId)
+  const cached = widgetTokens.get(config.projectToken)
   if (cached && cached.expiresAt > Date.now()) return cached.token
   const what = 'widget token'
-  const response = await send(
-    fetchImpl,
-    what,
-    `${config.appHost}/api/projects/${config.projectId}/`,
-    {
-      headers: privateHeaders(config),
-    }
-  )
-  const project = parseOrThrow(projectSchema, await jsonOf(response, what), what)
-  const token = project.conversations_settings.widget_public_token
-  widgetTokens.set(config.projectId, { token, expiresAt: Date.now() + WIDGET_TOKEN_TTL_MS })
+  const url = `${config.ingestHost}/array/${encodeURIComponent(config.projectToken)}/config`
+  const response = await send(fetchImpl, what, url, { headers: { Accept: 'application/json' } })
+  const remote = parseOrThrow(remoteConfigSchema, await jsonOf(response, what), what)
+  const token = remote.conversations.token
+  widgetTokens.set(config.projectToken, { token, expiresAt: Date.now() + WIDGET_TOKEN_TTL_MS })
   return token
 }
 
@@ -208,7 +207,13 @@ export async function openFeedbackTicket(
     `${config.ingestHost}/api/conversations/v1/widget/message`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Conversations-Token': token },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Conversations-Token': token,
+        // The project's Allowed domains apply to this call too; the browser
+        // would send the app's origin, so the server sends the same.
+        ...(config.appOrigin ? { Origin: config.appOrigin } : {}),
+      },
       body: JSON.stringify({
         message: input.message,
         traits: { name: null, email: null },
@@ -220,7 +225,7 @@ export async function openFeedbackTicket(
     }
   )
   // A refused token was probably rotated: fetch it afresh next time.
-  if (response.status === 401 || response.status === 403) widgetTokens.delete(config.projectId)
+  if (response.status === 401 || response.status === 403) widgetTokens.delete(config.projectToken)
   const { ticket_id: ticketId } = parseOrThrow(
     widgetMessageSchema,
     await jsonOf(response, what),

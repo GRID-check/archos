@@ -78,7 +78,9 @@ const config: PosthogSupportConfig = {
   appHost: 'https://eu.posthog.com',
   ingestHost: 'https://eu.i.posthog.com',
   projectId: '269895',
+  projectToken: 'phc_public',
   personalApiKey: 'phx_test',
+  appOrigin: 'https://app.piloti.at',
 }
 
 const at = new Date('2026-09-29T08:00:00Z')
