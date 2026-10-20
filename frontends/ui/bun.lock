@@ -15,9 +15,9 @@
         "@citation-js/plugin-ris": "^0.9.0",
         "@dagrejs/dagre": "3.1.1",
         "@ifc-lite/data": "^6.2.0",
-        "@ifc-lite/geometry": "^7.8.1",
+        "@ifc-lite/geometry": "^7.7.0",
         "@ifc-lite/parser": "^9.5.0",
-        "@ifc-lite/renderer": "^6.3.3",
+        "@ifc-lite/renderer": "^6.0.1",
         "@langfuse/client": "5.13.1",
         "@opentelemetry/api": "^1.9.0",
         "@opentelemetry/api-logs": "^0.223.0",
@@ -325,7 +325,7 @@
 
     "@ifc-lite/encoding": ["@ifc-lite/encoding@2.3.0", "", {}, "sha512-m4n4gifgHdZYv7uKCTE/5XU/Ex/3AwJmrEsCRyVoAYQJDNa7f8kpzR1OoslLwTxo1gyyhkABp044AsiSCGwI2w=="],
 
-    "@ifc-lite/geometry": ["@ifc-lite/geometry@7.8.1", "", { "dependencies": { "@ifc-lite/data": "^6.2.0", "@ifc-lite/load-trace": "^0.3.0", "@ifc-lite/wasm": "^10.4.0", "@ifc-lite/wasm-lifecycle": "^0.2.0" }, "optionalDependencies": { "@tauri-apps/api": "^2.12.2" } }, "sha512-0zz2sDSXwEwvL6XnA/fn0hdR/JCRCDn7B8AX+Kmgx52KaCnRxw728K3ECdW+8PbiOfdVkAVZLHJ3PPaSoIiRMg=="],
+    "@ifc-lite/geometry": ["@ifc-lite/geometry@7.7.0", "", { "dependencies": { "@ifc-lite/data": "^6.1.0", "@ifc-lite/wasm": "^10.3.0", "@ifc-lite/wasm-lifecycle": "^0.2.0" }, "optionalDependencies": { "@tauri-apps/api": "^2.11.1" } }, "sha512-eUIECdt/ANdyLTEapH5iWiS5PBiYUJZUn6xRIz9uhElr6ohaVd0/X46gRU5VLjUGi/Y9cc/1P67WZxrfykn6fA=="],
 
     "@ifc-lite/ifcx": ["@ifc-lite/ifcx@4.4.0", "", { "dependencies": { "@ifc-lite/data": "^6.2.0", "@ifc-lite/mutations": "^3.2.0", "@ifc-lite/pointcloud": "^0.12.0", "@noble/hashes": "^2.4.0" } }, "sha512-0cjQld8BirZgHmII2vIUwoaaRaGN0/QOYWxWm5+hlk7Z4Fr3O7v5UQ1XLvKltz7yM8RzMxK6m18AGvh8VfRflQ=="],
 
@@ -339,7 +339,7 @@
 
     "@ifc-lite/regex-guard": ["@ifc-lite/regex-guard@0.3.0", "", {}, "sha512-YbnbFjWfLzorpSJ071uwpOidCjshiKzPmT5ATKI48tpxcOffiX0mUOTHOMx+EktIG3ELxGh7VD5qZJPpAFoiGQ=="],
 
-    "@ifc-lite/renderer": ["@ifc-lite/renderer@6.3.3", "", { "dependencies": { "@ifc-lite/geometry": "^7.8.1", "@ifc-lite/load-trace": "^0.3.0", "@ifc-lite/spatial": "^1.15.0" } }, "sha512-LUJATIrOJ50D0G0t77gxza/fIFf3qor0iNEh/Lzro068LHTKT15Ua/IzsEe8rX6WPO6epA0SjWqEpds8cBvZAQ=="],
+    "@ifc-lite/renderer": ["@ifc-lite/renderer@6.0.1", "", { "dependencies": { "@ifc-lite/geometry": "^7.7.0", "@ifc-lite/spatial": "^1.15.0" } }, "sha512-xUA4Xl7AaAaQd60t/1nNMePcMtuXbgWzp4Z+4F03lbWLKZ6gc9B081p9VzeRIPLP5YQ1+oGBqyR2Kdl9WbFhSA=="],
 
     "@ifc-lite/spatial": ["@ifc-lite/spatial@1.15.0", "", { "dependencies": { "@ifc-lite/geometry": "^7.5.1" } }, "sha512-Cjic0oWaDO9pFbCEMl+8PgqilDB7fFBAjs1yn9hOJGIECyBfVuUKR0XyOHAJ6wvm2tMjBl0+thlq8E0OFgmyjw=="],
 
