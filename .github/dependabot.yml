@@ -64,6 +64,11 @@ updates:
         patterns:
           - "@opentelemetry/*"
     ignore:
+      # A2UI is pinned exactly (ADR-0065): nearly every 0.x minor has broken its
+      # API (0.13 moved every component into a custom element and changed the
+      # catalog), so an upgrade is its own change gated by the `features/a2ui`
+      # tests, not a line in the weekly group.
+      - dependency-name: "@a2ui/*"
       # `typescript-api` is TypeScript 6 under an npm alias, for the specs that
       # parse source with the compiler API TypeScript 7.0 does not ship
       # (ADR-0103). Moving it to 7 removes that API. It goes when 7.1's lands.
