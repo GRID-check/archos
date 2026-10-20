@@ -11,8 +11,11 @@
  * while working in `next dev`.
  *
  * This module is the single gate: call sites use `capturePosthog` /
- * `identifyPosthog` / `resetPosthog` / `sendPosthogSupportMessage` directly and
- * never touch `posthog-js` or branch on configuration themselves.
+ * `identifyPosthog` / `resetPosthog` / `getPosthogSupportContext` directly and
+ * never touch `posthog-js` or branch on configuration themselves. Support
+ * tickets are opened by the SERVER (`lib/posthog-support`); the browser only
+ * hands over its widget and replay session ids so the ticket lands in the
+ * reporter's widget and links their recording.
  *
  * PRIVACY POSTURE (the reasons are the contract; change one and re-read all):
  *
@@ -460,24 +463,31 @@ export const getPosthogSessionId = (): string | null => {
 }
 
 /**
- * Open a PostHog Support ticket with `message`, always a NEW ticket (each
- * feedback report is its own thread). Resolves `true` only when PostHog took
- * it; `false` when analytics is off, Support is not enabled for the project or
- * not loaded yet, or the request failed. Never throws, because it runs beside
- * the first-party submit and must not be able to fail it.
- *
- * No traits are passed. posthog-js falls back to the person's `email`/`name`
- * properties when none are given; we never set them, so the ticket carries the
- * distinct id and the replay link, nothing else.
+ * What the server needs from this browser to open a PostHog Support ticket for
+ * a feedback report: the Support widget's session (so replies show in the
+ * reporter's widget) and the replay session (so the ticket links the
+ * recording). Each is `null` when analytics is disabled, Support is not loaded
+ * in this project, or the SDK has no value yet. Never throws: it runs inside the
+ * first-party submit and must not be able to fail it.
  */
-export const sendPosthogSupportMessage = async (message: string): Promise<boolean> => {
-  if (!initialized) return false
+export const getPosthogSupportContext = (): { widgetSessionId: string | null; sessionId: string | null } => {
+  if (!initialized) return { widgetSessionId: null, sessionId: null }
+  return { widgetSessionId: readWidgetSessionId(), sessionId: readSessionIdSafely() }
+}
+
+const readWidgetSessionId = (): string | null => {
   try {
-    const support = posthog.conversations
-    if (!support?.isAvailable()) return false
-    const response = await support.sendMessage(message, undefined, true)
-    return response !== null
+    const id = posthog.conversations?.getWidgetSessionId?.()
+    return typeof id === 'string' && id.length > 0 ? id : null
   } catch {
-    return false
+    return null
+  }
+}
+
+const readSessionIdSafely = (): string | null => {
+  try {
+    return getPosthogSessionId()
+  } catch {
+    return null
   }
 }
