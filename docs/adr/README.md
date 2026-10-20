@@ -180,6 +180,7 @@ Consequences, where a reader looks for them.
 | [0116](0116-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md) | Retrieval scope is a payload filter compiled in one place, not a collection | Accepted |
 | [0117](0117-a-document-is-parsed-on-one-worker-in-a-bounded-page-pipeline.md) | A document is parsed on one worker, in a bounded page pipeline | Proposed |
 | [0118](0118-one-openrouter-key-per-organization.md) | One OpenRouter key per organization, with no fallback to a shared key | Accepted |
+| [0119](0119-rotating-self-generated-secrets.md) | Self-generated secrets rotate by redeploy, through a second credential where the consumer can hold one | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
