@@ -6,6 +6,7 @@
  */
 import { CONTACT_EMAIL, SITE_NAME } from '../consts'
 import { ui, languages, type Locale } from '../i18n/ui'
+import { getLocalizedPath } from '../i18n/utils'
 import { blogPath, CATEGORIES } from './categories'
 import { getBlogPosts, postSlug, type BlogPost } from './posts'
 import { absoluteUrl, faqItems, founderNames } from './seo'
@@ -15,7 +16,7 @@ import { SECTIONS, SECTION_IDS, landingPath, type Block, type LandingCopy } from
 const LOCALES = Object.keys(languages) as Locale[]
 
 type PageKey = keyof (typeof ui)['de']['seo']['pages']
-const PAGE_PATHS: [PageKey | 'home', string, string?][] = [
+const PAGE_PATHS: [PageKey | 'home', string][] = [
   ['home', '/'],
   ['blog', '/blog/'],
   ['journal', '/blog/journal/'],
@@ -28,14 +29,13 @@ const PAGE_PATHS: [PageKey | 'home', string, string?][] = [
   ['datenschutz', '/datenschutz/'],
 ]
 
-const localized = (locale: Locale, path: string) => (locale === 'en' ? `/en${path}` : path)
 const postUrl = (post: BlogPost, locale: Locale, site: URL | undefined) =>
   absoluteUrl(`${blogPath(locale)}${postSlug(post.id)}/`, site)
 
 function pageLinks(locale: Locale, site: URL | undefined) {
-  return PAGE_PATHS.map(([key, path, enPath]) => {
+  return PAGE_PATHS.map(([key, path]) => {
     const { title, description } = key === 'home' ? ui[locale].meta : ui[locale].seo.pages[key]
-    const href = locale === 'en' && enPath ? enPath : localized(locale, path)
+    const href = getLocalizedPath(path, locale)
     return `- [${title.split(' — ')[0]}](${absoluteUrl(href, site)}): ${description}`
   })
 }
