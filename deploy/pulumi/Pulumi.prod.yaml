@@ -39,6 +39,10 @@
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:workosCookiePassword  "$(openssl rand -hex 32)" --secret
 
+#   # PostHog Support for product feedback (ADR-0118). Optional: unset, no tickets open.
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:posthogPersonalApiKey "phx_..." --secret
+
 #   # Encrypts DB-claimed job payloads at rest (they carry the user auth token).
 
 #   # REQUIRED (the deploy fails closed without it; set
@@ -440,6 +444,13 @@ config:
   # the two lines above (repo, token) turn it on without deploying err2issue.
   grid-oib:protectDataResources: "true"
   grid-oib:seaweedfsPerOrgBuckets: "true"
+  # Every organization's bucket is a SeaweedFS collection, and SeaweedFS grows
+  # a new collection by up to 7 volumes at once (its `copy_1` default for
+  # replication 000), so the default 64 slots run out after roughly nine
+  # buckets, platform buckets included. The next new organization's first
+  # upload then fails with „Object storage is unavailable“ (2026-10-20). Slots
+  # are a ceiling, not a reservation: raising this costs nothing until used.
+  grid-oib:seaweedfsVolumeMaxCount: "512"
   grid-oib:dnsZoneName: piloti.at
   grid-oib:dnsZoneId: 66de14f8d07a729634f5d230418bb907 # pragma: allowlist secret (public zone id, Cloudflare zone Overview page)
   # Prod serves the apex, so it owns the zone-level records: the apex A record,

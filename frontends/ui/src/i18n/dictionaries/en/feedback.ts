@@ -60,11 +60,13 @@ export const feedback = {
       placeholder: 'What would you like to know?',
     },
   },
+  /** PostHog Support's ticket statuses, verbatim keys. */
   statuses: {
     new: 'New',
-    in_progress: 'In progress',
+    open: 'Open',
+    pending: 'Pending',
+    on_hold: 'On hold',
     resolved: 'Resolved',
-    dismissed: 'Dismissed',
   },
   platform: {
     filters: {
@@ -87,12 +89,23 @@ export const feedback = {
     contact: 'Reply by email',
     noContact: 'Does not want to be contacted',
     statusLabel: 'Status',
-    triagedBy: 'Triaged by {name}',
     triaged: 'Moved to “{status}”.',
     triageError: 'The status could not be changed.',
     details: 'Browser details',
     listTitle: 'Reports',
     linked: 'From your inbox',
+    ticketLink: 'Ticket #{number} in PostHog',
+    ticketLinkUnnumbered: 'Ticket in PostHog',
+    recordingsLink: 'Recordings in PostHog',
+    localSource: {
+      title: 'PostHog Support cannot be read right now.',
+      description:
+        'Either it is not configured here or PostHog is not reachable. This is the local log of every report, newest first; statuses are managed in PostHog.',
+    },
+    unticketed: {
+      title: 'Not in PostHog yet',
+      description: 'No ticket could be opened for these reports. They are kept here so none is lost.',
+    },
     focusMissing: {
       title: 'The linked report was not found.',
       description: 'It was deleted or is not visible to you. The other reports are listed below.',

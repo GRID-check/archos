@@ -72,7 +72,15 @@ TIERS = ["backend", "frontend", "web", "infra", "packages", "sast"]
 BUILD = json.dumps([{"name": "backend"}])
 
 
-def plan(*, event: str, parent_green: bool = False, hit: str | None = None, build: str = BUILD) -> dict:
+def plan(
+    *,
+    event: str,
+    parent_green: bool = False,
+    hit: str | None = None,
+    build: str = BUILD,
+    py_mode: str | None = None,
+    ui_mode: str | None = None,
+) -> dict:
     """The plan job's outputs, given what each of its scripts would answer."""
     github = {"event_name": event}
     steps: dict = {}
@@ -82,6 +90,8 @@ def plan(*, event: str, parent_green: bool = False, hit: str | None = None, buil
         steps["reuse"] = {"outputs": {"hit": hit}}
     if evaluate(STEPS["filter"]["if"], github=github, steps=steps):
         steps["filter"] = {"outputs": dict.fromkeys(TIERS, "true")}
+    if evaluate(STEPS["pysel"]["if"], github=github, steps=steps) and (py_mode or ui_mode):
+        steps["pysel"] = {"outputs": {"py_mode": py_mode or "", "ui_mode": ui_mode or ""}}
     steps["images"] = {"outputs": {"build": build, "images": "[]"}}
     if evaluate(STEPS["pins"]["if"], github=github, steps=steps):
         steps["pins"] = {"outputs": {"pins": '["x@sha256:' + "0" * 64 + '"]'}}
@@ -96,8 +106,11 @@ def runs(job: str, *, event: str, outputs: dict) -> bool:
     return bool(evaluate(condition, github={"event_name": event}, needs=needs))
 
 
-# Jobs that check the change. A reused push skips all of them.
-CHECKS = [job for job in JOBS if job not in ("changes", "ci-ok", "publish", "image", "image-push")]
+# Jobs that check the change. A reused push skips all of them. `backend-testmon`
+# checks nothing: it records the database pull requests select from.
+CHECKS = [job for job in JOBS if job not in ("changes", "ci-ok", "publish", "image", "image-push", "backend-testmon")]
+# The full Python suite, and the selection a pull request runs instead of it.
+FULL_PY = ["backend", "backend-coverage", "backend-suites"]
 
 
 # --- What a run diffs against ------------------------------------------------
@@ -174,7 +187,8 @@ def test_a_pull_request_result_counts_only_on_a_green_parent():
 
     assert outputs["reused"] == "false"
     assert [job for job in CHECKS if not runs(job, event="push", outputs=outputs) and job != "semgrep"] == [
-        "frontend-coverage"
+        "backend-affected",
+        "frontend-coverage",
     ]
 
 
@@ -183,16 +197,83 @@ def test_a_miss_runs_every_check_the_filter_selects(hit):
     outputs = plan(event="push", parent_green=True, hit=hit)
     skipped = [job for job in CHECKS if not runs(job, event="push", outputs=outputs)]
 
-    # Diff-aware SAST and the coverage comment have nothing to do on a push.
-    assert skipped == ["semgrep", "frontend-coverage"]
+    # Diff-aware SAST, the coverage comment and the selected Python run have
+    # nothing to do on a push: a push runs the full suite.
+    assert skipped == ["semgrep", "backend-affected", "frontend-coverage"]
 
 
 def test_a_pull_request_runs_every_check_the_filter_selects():
     outputs = plan(event="pull_request")
 
-    assert [job for job in CHECKS if not runs(job, event="pull_request", outputs=outputs)] == []
+    # No selection answer reads as full.
+    assert outputs["backend_mode"] == "full"
+    assert [job for job in CHECKS if not runs(job, event="pull_request", outputs=outputs)] == ["backend-affected"]
     assert runs("image", event="pull_request", outputs=outputs)
     assert not runs("image-push", event="pull_request", outputs=outputs)
+
+
+def test_a_selected_pull_request_runs_the_affected_tests_instead_of_the_full_suite():
+    selected = plan(event="pull_request", py_mode="select")
+    full = plan(event="pull_request", py_mode="full")
+
+    assert runs("backend-affected", event="pull_request", outputs=selected)
+    assert not any(runs(job, event="pull_request", outputs=selected) for job in FULL_PY)
+    assert not runs("backend-affected", event="pull_request", outputs=full)
+    assert all(runs(job, event="pull_request", outputs=full) for job in FULL_PY)
+
+
+def test_a_push_always_runs_the_full_python_suite():
+    # Even if a selection answer leaked into a push plan, the push runs it all:
+    # that is what catches a test a pull request's selection missed.
+    outputs = plan(event="push", py_mode="select")
+
+    assert all(runs(job, event="push", outputs=outputs) for job in FULL_PY)
+    assert not runs("backend-affected", event="push", outputs=outputs)
+
+
+def test_the_test_database_follows_every_develop_push_and_holds_nobody_up():
+    reused = plan(event="push", parent_green=True, hit="true")
+    job = JOBS["backend-testmon"]
+
+    develop = {"event_name": "push", "ref": "refs/heads/develop"}
+    assert evaluate(job["if"], github=develop, needs={"changes": {"outputs": reused}})
+    assert not evaluate(job["if"], github={"event_name": "pull_request", "ref": "refs/pull/1/merge"}, needs={})
+    assert "backend-testmon" not in JOBS["ci-ok"]["needs"]
+    assert "backend-testmon" not in JOBS["publish"]["needs"]
+    # Saved by a step after the tests, so a red run saves nothing.
+    steps = job["steps"]
+    run = next(i for i, step in enumerate(steps) if step.get("run") == "task be:test:testmon")
+    save = next(i for i, step in enumerate(steps) if step.get("uses", "").startswith("actions/cache/save"))
+    assert save > run and "if" not in steps[save]
+
+
+def test_a_ui_selection_runs_the_shards_without_the_coverage_comment():
+    selected = plan(event="pull_request", ui_mode="select")
+    nothing = plan(event="pull_request", ui_mode="none")
+    full = plan(event="pull_request", ui_mode="full")
+
+    assert runs("frontend-test", event="pull_request", outputs=selected)
+    assert not runs("frontend-coverage", event="pull_request", outputs=selected)
+    assert not runs("frontend-test", event="pull_request", outputs=nothing)
+    assert runs("frontend-test", event="pull_request", outputs=full)
+    assert runs("frontend-coverage", event="pull_request", outputs=full)
+    # Lint, types and tenant isolation are not selected: they always run.
+    assert runs("frontend", event="pull_request", outputs=nothing)
+
+
+def test_a_push_always_runs_every_ui_spec():
+    outputs = plan(event="push", ui_mode="none")
+
+    assert runs("frontend-test", event="push", outputs=outputs)
+    steps = {step.get("name", ""): step for step in JOBS["frontend-test"]["steps"]}
+    full = next(step for name, step in steps.items() if name.startswith("All specs"))
+    assert evaluate(full["if"], github={"event_name": "push"}, needs={"changes": {"outputs": outputs}})
+
+
+def test_a_failed_selection_step_reads_as_the_full_suite():
+    assert STEPS["pysel"]["continue-on-error"] is True
+    assert PLAN["outputs"]["backend_mode"] == "${{ steps.pysel.outputs.py_mode || 'full' }}"
+    assert PLAN["outputs"]["ui_mode"] == "${{ steps.pysel.outputs.ui_mode || 'full' }}"
 
 
 def test_the_reuse_lookup_cannot_fail_the_run():
@@ -210,7 +291,7 @@ def test_the_marker_is_uploaded_only_by_a_passing_pull_request_gate():
 
     assert JOBS["ci-ok"]["if"] == "always()"
     # Every job gates the marker, bar the coverage comment (see CI OK).
-    assert set(JOBS["ci-ok"]["needs"]) == set(JOBS) - {"ci-ok", "frontend-coverage"}
+    assert set(JOBS["ci-ok"]["needs"]) == set(JOBS) - {"ci-ok", "frontend-coverage", "backend-testmon"}
     assert len(uploads) == 1 and uploads[0] > check
     upload = steps[uploads[0]]
     # No status function: the implicit success() keeps a failed check from uploading.

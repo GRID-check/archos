@@ -1,16 +1,40 @@
 import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import type { ProductFeedbackReportView } from '@/lib/product-feedback/types'
+import type {
+  ProductFeedbackListResponse,
+  ProductFeedbackReportView,
+  SupportTicketStatus,
+} from '@/lib/product-feedback/types'
 import { FeedbackTriage, type FeedbackTriageClient } from './feedback-triage'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+function ticket(status: SupportTicketStatus, id = 't1', number: number | null = 42) {
+  return { id, number, status, url: `https://eu.posthog.com/project/1/support/tickets/${id}` }
+}
+
+function counts(overrides: Partial<Record<SupportTicketStatus, number>> = {}) {
+  return { new: 0, open: 0, pending: 0, on_hold: 0, resolved: 0, ...overrides }
+}
+
+function list(overrides: Partial<ProductFeedbackListResponse> = {}): ProductFeedbackListResponse {
+  return {
+    source: 'posthog',
+    reports: [report()],
+    counts: counts({ new: 1 }),
+    unticketed: [],
+    nextCursor: null,
+    ...overrides,
+  }
+}
 
 function report(overrides: Partial<ProductFeedbackReportView> = {}): ProductFeedbackReportView {
   return {
     id: 'r1',
     kind: 'bug',
-    status: 'new',
+    ticket: ticket('new', 'r1'),
+    posthogPersonUrl: 'https://eu.posthog.com/project/1/person/u1',
     message: 'The upload stops at 99 percent.',
     pagePath: '/app/projects/p1/files',
     context: { viewport: '1440×900' },
@@ -18,8 +42,6 @@ function report(overrides: Partial<ProductFeedbackReportView> = {}): ProductFeed
     organizationId: 'org_nord',
     organizationName: 'Büro Nord',
     reporter: { userId: 'u1', name: 'Maria Huber', email: 'maria@buero.test' },
-    triagedBy: null,
-    triagedAt: null,
     createdAt: '2026-09-29T08:00:00Z',
     updatedAt: '2026-09-29T08:00:00Z',
     ...overrides,
@@ -34,14 +56,15 @@ let client: {
 
 beforeEach(() => {
   client = {
-    list: vi.fn<FeedbackTriageClient['list']>().mockResolvedValue({
-      reports: [
-        report(),
-        report({ id: 'r2', kind: 'idea', message: 'Export plan lists, please.' }),
-      ],
-      counts: { new: 2, in_progress: 0, resolved: 0, dismissed: 0 },
-      nextCursor: null,
-    }),
+    list: vi.fn<FeedbackTriageClient['list']>().mockResolvedValue(
+      list({
+        reports: [
+          report(),
+          report({ id: 'r2', kind: 'idea', message: 'Export plan lists, please.', ticket: ticket('new', 't2', 43) }),
+        ],
+        counts: counts({ new: 2 }),
+      })
+    ),
     get: vi.fn<FeedbackTriageClient['get']>().mockResolvedValue(null),
     triage: vi.fn<FeedbackTriageClient['triage']>(),
   }
@@ -69,16 +92,16 @@ describe('FeedbackTriage', () => {
   })
 
   test('offers the reply link only to a reporter who agreed to be contacted', async () => {
-    client.list.mockResolvedValue({
-      reports: [
-        report({
-          reporter: { userId: 'u1', name: 'Maria Huber', email: null },
-          allowContact: false,
-        }),
-      ],
-      counts: { new: 1, in_progress: 0, resolved: 0, dismissed: 0 },
-      nextCursor: null,
-    })
+    client.list.mockResolvedValue(
+      list({
+        reports: [
+          report({
+            reporter: { userId: 'u1', name: 'Maria Huber', email: null },
+            allowContact: false,
+          }),
+        ],
+      })
+    )
 
     render(<FeedbackTriage canTriage client={client} />)
 
@@ -112,34 +135,32 @@ describe('FeedbackTriage', () => {
     let resolveSlow: (value: Awaited<ReturnType<FeedbackTriageClient['list']>>) => void = () =>
       undefined
     client.list
-      .mockResolvedValueOnce({
-        reports: [report()],
-        counts: { new: 1, in_progress: 0, resolved: 1, dismissed: 1 },
-        nextCursor: null,
-      })
+      .mockResolvedValueOnce(list({ counts: counts({ new: 1, resolved: 1, on_hold: 1 }) }))
       // "Resolved": slow, answers last.
       .mockReturnValueOnce(new Promise((resolve) => (resolveSlow = resolve)))
-      // "Dismissed": fast, answers first.
-      .mockResolvedValueOnce({
-        reports: [report({ id: 'r9', status: 'dismissed', message: 'Dismissed one.' })],
-        counts: { new: 1, in_progress: 0, resolved: 1, dismissed: 1 },
-        nextCursor: null,
-      })
+      // "On hold": fast, answers first.
+      .mockResolvedValueOnce(
+        list({
+          reports: [report({ id: 'r9', ticket: ticket('on_hold', 't9'), message: 'On hold one.' })],
+          counts: counts({ new: 1, resolved: 1, on_hold: 1 }),
+        })
+      )
     render(<FeedbackTriage canTriage client={client} />)
     await screen.findByText('The upload stops at 99 percent.')
 
     await user.click(screen.getByRole('button', { name: /Resolved/ }))
-    await user.click(screen.getByRole('button', { name: /Dismissed/ }))
-    await screen.findByText('Dismissed one.')
+    await user.click(screen.getByRole('button', { name: /On hold/ }))
+    await screen.findByText('On hold one.')
 
-    resolveSlow({
-      reports: [report({ id: 'r8', status: 'resolved', message: 'Stale resolved one.' })],
-      counts: { new: 1, in_progress: 0, resolved: 1, dismissed: 1 },
-      nextCursor: null,
-    })
+    resolveSlow(
+      list({
+        reports: [report({ id: 'r8', ticket: ticket('resolved', 't8'), message: 'Stale resolved one.' })],
+        counts: counts({ new: 1, resolved: 1, on_hold: 1 }),
+      })
+    )
     await waitFor(() => expect(client.list).toHaveBeenCalledTimes(3))
     expect(screen.queryByText('Stale resolved one.')).not.toBeInTheDocument()
-    expect(screen.getByText('Dismissed one.')).toBeInTheDocument()
+    expect(screen.getByText('On hold one.')).toBeInTheDocument()
   })
 
   test('keeps the previous rows, marked busy, while a filter refetches', async () => {
@@ -165,11 +186,7 @@ describe('FeedbackTriage', () => {
   })
 
   test('keeps the filters on screen when a filter has no reports', async () => {
-    client.list.mockResolvedValue({
-      reports: [],
-      counts: { new: 0, in_progress: 0, resolved: 3, dismissed: 0 },
-      nextCursor: null,
-    })
+    client.list.mockResolvedValue(list({ reports: [], counts: counts({ resolved: 3 }) }))
     render(<FeedbackTriage canTriage client={client} />)
 
     expect(await screen.findByText('No feedback here')).toBeInTheDocument()
@@ -180,5 +197,96 @@ describe('FeedbackTriage', () => {
     render(<FeedbackTriage canTriage client={client} />)
     await screen.findAllByTestId('feedback-report')
     expect(screen.queryByText(/What members report from inside Piloti/)).not.toBeInTheDocument()
+  })
+
+  test('names the PostHog statuses and counts each from PostHog', async () => {
+    client.list.mockResolvedValue(list({ counts: counts({ new: 1, open: 2, pending: 3, on_hold: 4, resolved: 5 }) }))
+    render(<FeedbackTriage canTriage client={client} />)
+    await screen.findAllByTestId('feedback-report')
+
+    const chips = within(screen.getByRole('group', { name: 'Filter by status' }))
+    expect(chips.getByRole('button', { name: 'All 15' })).toBeInTheDocument()
+    expect(chips.getByRole('button', { name: 'Open 2' })).toBeInTheDocument()
+    expect(chips.getByRole('button', { name: 'Pending 3' })).toBeInTheDocument()
+    expect(chips.getByRole('button', { name: 'On hold 4' })).toBeInTheDocument()
+  })
+
+  test('links each report to its PostHog ticket in a new tab', async () => {
+    render(<FeedbackTriage canTriage client={client} />)
+
+    const [row] = await screen.findAllByTestId('feedback-report')
+    const link = within(row!).getByRole('link', { name: 'Ticket #42 in PostHog' })
+    expect(link).toHaveAttribute('href', 'https://eu.posthog.com/project/1/support/tickets/r1')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(within(row!).queryByRole('link', { name: 'Recordings in PostHog' })).not.toBeInTheDocument()
+  })
+
+  test('moves the PostHog ticket and recounts the chips', async () => {
+    const user = userEvent.setup()
+    client.triage.mockResolvedValue(report({ ticket: ticket('open', 'r1') }))
+    render(<FeedbackTriage canTriage client={client} />)
+    const [row] = await screen.findAllByTestId('feedback-report')
+
+    await user.click(within(row!).getByRole('combobox', { name: 'Status' }))
+    await user.click(await screen.findByRole('option', { name: 'Open' }))
+
+    await waitFor(() => expect(client.triage).toHaveBeenCalledWith('r1', 'open'))
+    expect(await screen.findByRole('button', { name: 'Open 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New 1' })).toBeInTheDocument()
+  })
+
+  describe('when PostHog cannot be read (local log)', () => {
+    beforeEach(() => {
+      client.list.mockResolvedValue(
+        list({
+          source: 'local',
+          counts: null,
+          reports: [report({ ticket: null })],
+        })
+      )
+    })
+
+    test('says so, drops the status filter and offers no status control', async () => {
+      render(<FeedbackTriage canTriage client={client} />)
+
+      expect(await screen.findByTestId('feedback-local-source')).toHaveTextContent(
+        'PostHog Support cannot be read right now.'
+      )
+      expect(screen.queryByRole('group', { name: 'Filter by status' })).not.toBeInTheDocument()
+      const row = screen.getByTestId('feedback-report')
+      expect(within(row).queryByRole('combobox', { name: 'Status' })).not.toBeInTheDocument()
+    })
+
+    test('links the reporter\'s recordings in PostHog instead of a ticket', async () => {
+      render(<FeedbackTriage canTriage client={client} />)
+
+      const row = await screen.findByTestId('feedback-report')
+      expect(within(row).getByRole('link', { name: 'Recordings in PostHog' })).toHaveAttribute(
+        'href',
+        'https://eu.posthog.com/project/1/person/u1'
+      )
+    })
+  })
+
+  test('lists the reports with no ticket apart, without a status control', async () => {
+    client.list.mockResolvedValue(
+      list({
+        unticketed: [report({ id: 'r5', ticket: null, posthogPersonUrl: null, message: 'No ticket for me.' })],
+      })
+    )
+    render(<FeedbackTriage canTriage client={client} />)
+
+    const section = await screen.findByTestId('feedback-unticketed')
+    expect(within(section).getByRole('heading', { name: 'Not in PostHog yet' })).toBeInTheDocument()
+    expect(within(section).getByText('No ticket for me.')).toBeInTheDocument()
+    expect(within(section).queryByRole('combobox')).not.toBeInTheDocument()
+    expect(within(section).queryByRole('link', { name: /PostHog/ })).not.toBeInTheDocument()
+  })
+
+  test('shows no unticketed section when every report has a ticket', async () => {
+    render(<FeedbackTriage canTriage client={client} />)
+    await screen.findAllByTestId('feedback-report')
+    expect(screen.queryByTestId('feedback-unticketed')).not.toBeInTheDocument()
   })
 })

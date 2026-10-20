@@ -18,10 +18,12 @@
 # Adding a path: put it in the tier it belongs to, and say why if the reason is
 # not obvious from the path.
 
-# Every filter also watches the shared tooling each job depends on:
-# the root Taskfile (which defines the commands the jobs run) and the
-# composite setup actions. Otherwise a change to `fe:verify`,
-# `infra:types` or a setup action merges without its job running.
+# Every filter also watches the tooling its jobs depend on: the tier's own
+# task file (taskfiles/<tier>.yml, which defines the commands the jobs run),
+# the root Taskfile.yml (the variables every task reads) and the composite
+# setup actions the jobs use. Otherwise a change to `fe:verify`,
+# `infra:types` or a setup action merges without its job running. Only
+# what a tier's jobs use: a new backend task does not run the UI suite.
 backend:
   - 'src/**'
   - 'frontends/aiq_api/**'
@@ -34,21 +36,23 @@ backend:
   # The one-time Chroma exporter's own tests (`be:test:migration`).
   - 'deploy/migration/**'
   - 'tests/**'
-  - 'ci/**'
   - 'configs/**'
-  # `scripts/release_notes.py` is covered by tests/test_release_notes.py;
-  # without this a change to it merges without those tests running.
   - 'scripts/**'
-  - 'releasenotes/**'
   - 'pyproject.toml'
   - 'uv.lock'
   - 'Taskfile.yml'
-  # tests/test_ci_workflows.py reads every workflow (ci.yml, deploy.yml,
-  # security.yml) to pin how they fit together, so any of them is a backend
-  # change.
-  - '.github/workflows/**'
-  - '.github/filters.yml'
-  - '.github/actions/**'
+  - 'taskfiles/backend.yml'
+  # ci.yml defines how this job runs, and the setup actions it uses build
+  # its environment.
+  - '.github/workflows/ci.yml'
+  - '.github/actions/setup-python-env/**'
+  - '.github/actions/setup-task/**'
+# NOT here, though tests read them: `ci/**`, `releasenotes/**`, the other
+# workflows and this file. Their tests (`task be:test:harness`: the workflow,
+# plan-script and release-note suites, ~10s) run in the Repo checks job, which
+# runs on every pull request. These lines used to send every change that
+# carried a release note, which is most of them, through the whole 14-minute
+# backend lane for those ten seconds.
 # There was a `retrieval:` family here, feeding the `retrieval-eval` job. Both
 # are gone: the gate measured the real OIB Richtlinien, and those became
 # operator-provided and gitignored (data/oib/README.md), so no CI checkout can
@@ -67,14 +71,17 @@ frontend:
   # two lands green because no frontend job ran at all.
   - 'configs/**'
   - 'Taskfile.yml'
+  - 'taskfiles/frontend.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
   # `scripts/rls-test-db.sh` IS the tenant-isolation gate. Without
   # this line a change to it leaves `frontend` false, the gate job
   # is skipped, and `ci-ok` counts skipped as passed — so a broken
-  # row-level-security harness merges unverified.
-  - 'scripts/**'
+  # row-level-security harness merges unverified. It is the only root
+  # script the frontend jobs run (the UI's own are under frontends/ui).
+  - 'scripts/rls-test-db.sh'
   # The card schema is generated from these two into the Zod module
   # the UI validates with, and `task fe:cards:check` is the only gate
   # that sees the Zod half (repo-lint has no node_modules). Without
@@ -93,15 +100,19 @@ web:
   - 'frontends/ui/public/art/**'
   - 'frontends/ui/src/lib/art/**'
   - 'Taskfile.yml'
+  - 'taskfiles/web.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
 infra:
   - 'deploy/**'
   - 'Taskfile.yml'
+  - 'taskfiles/infra.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
 # The two standalone IFC packages (ADR-0045). Their own family rather than a
 # line in `backend:` or `frontend:`, because they are outside BOTH workspaces —
 # own bun.lock, own uv.lock, own toolchains — so nothing the backend or
@@ -111,9 +122,19 @@ infra:
 packages:
   - 'packages/**'
   - 'Taskfile.yml'
+  - 'taskfiles/packages.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
+
+# The per-migration backfill and down checks at the end of
+# scripts/rls-test-db.sh. They read only the migrations and the script, so the
+# frontend job skips them unless one of those changed. The rest of the tenant
+# isolation suite runs with the frontend tier as before.
+migrations:
+  - 'frontends/ui/drizzle/**'
+  - 'scripts/rls-test-db.sh'
 
 # The pull request SAST scan. Semgrep is diff-aware, so it only ever reports
 # findings the change introduces; this decides whether there is code to scan.

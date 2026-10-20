@@ -2,17 +2,20 @@ import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SubmitProductFeedbackRequest, SubmitProductFeedbackResult } from '@/lib/product-feedback/client'
-import { capturePosthog, sendPosthogSupportMessage } from '@/lib/analytics/posthog'
+import { capturePosthog, getPosthogSupportContext } from '@/lib/analytics/posthog'
 import { FeedbackDialog } from './feedback-dialog'
 
 vi.mock('@/lib/analytics/posthog', () => ({
   capturePosthog: vi.fn(),
-  sendPosthogSupportMessage: vi.fn(async () => true),
+  getPosthogSupportContext: vi.fn(() => ({
+    widgetSessionId: '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c',
+    sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
+  })),
 }))
 
 const ok: SubmitProductFeedbackResult = {
   ok: true,
-  report: { id: 'r1', kind: 'bug', createdAt: '2026-09-29T08:00:00Z', relayText: 'The upload stops at 99 percent.' },
+  report: { id: 'r1', kind: 'bug', createdAt: '2026-09-29T08:00:00Z' },
 }
 
 function setup(result: SubmitProductFeedbackResult = ok) {
@@ -101,43 +104,44 @@ describe('FeedbackDialog', () => {
       vi.clearAllMocks()
     })
 
-    test('opens a Support ticket with the report id and the masked text the server returned', async () => {
+    test('hands the server the PostHog widget and replay sessions, so it can open the ticket', async () => {
+      const { submit, user } = setup()
+
+      await user.type(message(), 'The upload stops at 99 percent.')
+      await user.click(send())
+
+      await waitFor(() => expect(submit).toHaveBeenCalledTimes(1))
+      expect(submit.mock.calls[0]![0].posthog).toEqual({
+        widgetSessionId: '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c',
+        sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
+      })
+    })
+
+    test('sends the product event with the kind and never the words', async () => {
       const { user } = setup({
         ok: true,
-        report: {
-          id: 'r7',
-          kind: 'idea',
-          createdAt: '2026-09-29T08:00:00Z',
-          relayText: 'Please add an export for [Honorar maskiert].',
-        },
+        report: { id: 'r7', kind: 'idea', createdAt: '2026-09-29T08:00:00Z' },
       })
 
       await user.click(screen.getByRole('radio', { name: /Idea/ }))
       await user.type(message(), 'Please add an export for the Honorar 48.000 EUR.')
       await user.click(send())
 
-      await waitFor(() => expect(sendPosthogSupportMessage).toHaveBeenCalledTimes(1))
-      // The typed words never go: the ticket carries what the server masked.
-      expect(sendPosthogSupportMessage).toHaveBeenCalledWith(
-        '[idea] #r7 /\nPlease add an export for [Honorar maskiert].',
+      await waitFor(() =>
+        expect(capturePosthog).toHaveBeenCalledWith('product_feedback_submitted', { kind: 'idea' }),
       )
-      // The event carries the kind and never the words.
-      expect(capturePosthog).toHaveBeenCalledWith('product_feedback_submitted', { kind: 'idea' })
+      expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toMatch(/Honorar/)
     })
 
-    test('opens no ticket when the server returned no text to relay (contact not allowed)', async () => {
-      const { user } = setup({
-        ok: true,
-        report: { id: 'r8', kind: 'bug', createdAt: '2026-09-29T08:00:00Z', relayText: null },
-      })
+    test('still sends with no PostHog state when PostHog is off in this browser', async () => {
+      vi.mocked(getPosthogSupportContext).mockReturnValueOnce({ widgetSessionId: null, sessionId: null })
+      const { submit, user } = setup()
 
       await user.type(message(), 'The upload stops at 99 percent.')
-      await user.click(screen.getByRole('checkbox', { name: 'You may contact me about this' }))
       await user.click(send())
 
       expect(await screen.findByTestId('feedback-sent')).toBeInTheDocument()
-      expect(sendPosthogSupportMessage).not.toHaveBeenCalled()
-      expect(capturePosthog).toHaveBeenCalledWith('product_feedback_submitted', { kind: 'bug' })
+      expect(submit.mock.calls[0]![0].posthog).toEqual({ widgetSessionId: null, sessionId: null })
     })
 
     test('does not involve PostHog when the report was not stored', async () => {
@@ -147,18 +151,7 @@ describe('FeedbackDialog', () => {
       await user.click(send())
 
       await screen.findByRole('alert')
-      expect(sendPosthogSupportMessage).not.toHaveBeenCalled()
       expect(capturePosthog).not.toHaveBeenCalled()
-    })
-
-    test('still thanks the reporter when PostHog Support is unavailable', async () => {
-      vi.mocked(sendPosthogSupportMessage).mockResolvedValueOnce(false)
-      const { user } = setup()
-
-      await user.type(message(), 'The upload stops at 99 percent.')
-      await user.click(send())
-
-      expect(await screen.findByTestId('feedback-sent')).toBeInTheDocument()
     })
   })
 })

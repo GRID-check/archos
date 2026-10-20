@@ -59,11 +59,13 @@ export const feedback: typeof en.feedback = {
       placeholder: 'Was möchten Sie wissen?',
     },
   },
+  /** Die Ticketstatus von PostHog Support, Schlüssel unverändert. */
   statuses: {
     new: 'Neu',
-    in_progress: 'In Arbeit',
+    open: 'Offen',
+    pending: 'Wartet auf Antwort',
+    on_hold: 'Pausiert',
     resolved: 'Erledigt',
-    dismissed: 'Verworfen',
   },
   platform: {
     filters: {
@@ -86,12 +88,23 @@ export const feedback: typeof en.feedback = {
     contact: 'Per E-Mail antworten',
     noContact: 'Möchte nicht kontaktiert werden',
     statusLabel: 'Status',
-    triagedBy: 'Gesichtet von {name}',
     triaged: 'Auf „{status}“ gesetzt.',
     triageError: 'Der Status konnte nicht geändert werden.',
     details: 'Browserdetails',
     listTitle: 'Meldungen',
     linked: 'Aus dem Postfach',
+    ticketLink: 'Ticket #{number} in PostHog',
+    ticketLinkUnnumbered: 'Ticket in PostHog',
+    recordingsLink: 'Aufzeichnungen in PostHog',
+    localSource: {
+      title: 'PostHog Support kann gerade nicht gelesen werden.',
+      description:
+        'Entweder ist es hier nicht eingerichtet oder PostHog ist nicht erreichbar. Dies ist das lokale Protokoll aller Meldungen, neueste zuerst; den Status verwalten Sie in PostHog.',
+    },
+    unticketed: {
+      title: 'Noch nicht in PostHog',
+      description: 'Für diese Meldungen konnte kein Ticket angelegt werden. Sie bleiben hier, damit keine verloren geht.',
+    },
     focusMissing: {
       title: 'Die verlinkte Meldung wurde nicht gefunden.',
       description: 'Sie wurde gelöscht oder ist für Sie nicht sichtbar. Die übrigen Meldungen stehen unten.',
