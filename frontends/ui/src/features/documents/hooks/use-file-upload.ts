@@ -371,7 +371,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
        */
       let policy: UploadScreeningPolicy
       try {
-        policy = options?.screeningPolicy ?? (await loadUploadScreeningPolicy())
+        policy = options?.screeningPolicy ?? (await loadUploadScreeningPolicy(shelf === 'project' ? projectId : null))
       } catch {
         setError(t('errors.screeningPolicyUnavailable'))
         return 0

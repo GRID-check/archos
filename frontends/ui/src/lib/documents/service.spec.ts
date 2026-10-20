@@ -91,6 +91,12 @@ vi.mock('@/lib/organizations/service', () => ({
   getOrgSettings: vi.fn().mockResolvedValue({ displayName: null, defaultLocale: 'de', settings: {} }),
 }))
 
+// A project may change the office's name terms for itself (migration 0157);
+// these projects change nothing, so the office's list is the one in force.
+vi.mock('@/lib/upload-screening/project-repository', () => ({
+  findProjectScreeningOverride: vi.fn().mockResolvedValue(null),
+}))
+
 // The server-side allow-list consults the derived VLM capability. Mock it so
 // tests drive the (flag × capability) matrix directly, without a backend probe.
 vi.mock('@/lib/documents/vlm-capability', () => ({

@@ -13,6 +13,7 @@ import { useProjectDocuments } from '../hooks/use-project-documents'
 import type { DocumentWireRow } from '../lib/file-item'
 import { handOverDroppedFiles, takeDroppedFiles } from '../lib/dropped-file-handover'
 import { SUGGESTED_SCREENING_POLICY } from '@/lib/upload-screening/policy'
+import { projectScreeningBody } from '@/mocks/handlers/upload-screening'
 
 function renderWorkspace(ui: ReactElement) {
   return render(
@@ -572,9 +573,8 @@ describe('ProjectFileWorkspace — a dropped folder', () => {
       await waitFor(() => expect(confirm).toBeEnabled())
 
       server.use(
-        http.get('/api/organization/upload-screening', () =>
-          HttpResponse.json({ policy: officePolicy, suggested: false, suggestion: SUGGESTED_SCREENING_POLICY }),
-        ),
+        // A project's upload reads the project's view of the office list.
+        http.get('/api/projects/:projectId/upload-screening', () => HttpResponse.json(projectScreeningBody(officePolicy))),
       )
       await userEvent.click(confirm)
 
@@ -591,7 +591,7 @@ describe('ProjectFileWorkspace — a dropped folder', () => {
       const confirm = await screen.findByTestId('folder-upload-confirm')
       await waitFor(() => expect(confirm).toBeEnabled())
 
-      server.use(http.get('/api/organization/upload-screening', () => HttpResponse.json({}, { status: 500 })))
+      server.use(http.get('/api/projects/:projectId/upload-screening', () => HttpResponse.json({}, { status: 500 })))
       await userEvent.click(confirm)
 
       await waitFor(() =>
@@ -837,7 +837,7 @@ describe('ProjectFileWorkspace — a picked file the project already holds', () 
   })
 
   it('sends nothing, not even the name, while the office list cannot be read', async () => {
-    server.use(http.get('/api/organization/upload-screening', () => HttpResponse.json({}, { status: 500 })))
+    server.use(http.get('/api/projects/:projectId/upload-screening', () => HttpResponse.json({}, { status: 500 })))
     renderWithCorpus()
     pick(new File(['x'], 'Notizen.pdf', { type: 'application/pdf' }))
 

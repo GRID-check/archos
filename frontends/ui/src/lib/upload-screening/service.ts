@@ -18,6 +18,8 @@ import { getOrgSettings, writeDedicatedOrgSetting } from '@/lib/organizations/se
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { buildContentRules, chatScreeningRules, maskText, type MaskedText } from './content-screen'
 import { screenUploadName, type NameMatch, type ScreenedName } from './name-screen'
+import { applyProjectOverride, type ProjectScreeningOverride } from './project-policy'
+import { findProjectScreeningOverride } from './project-repository'
 import {
   SUGGESTED_SCREENING_POLICY,
   resolveUploadScreeningPolicy,
@@ -34,12 +36,46 @@ export const UPLOAD_SCREENING_SETTING = 'uploadScreening'
 const POLICY_CACHE_TTL_MS = 30_000
 const policyCacheKey = (organizationId: string): string => `upload-screening:${organizationId}`
 
+const projectOverrideCacheKey = (organizationId: string, projectId: string): string =>
+  `upload-screening:${organizationId}:project:${projectId}`
+
 /** The policy in force for an organization: its saved one, else Piloti's suggestion. */
 export async function getUploadScreeningPolicy(organizationId: string): Promise<UploadScreeningPolicy> {
   return getCached(policyCacheKey(organizationId), POLICY_CACHE_TTL_MS, async () => {
     const { settings } = await getOrgSettings(organizationId)
     return resolveUploadScreeningPolicy(settings[UPLOAD_SCREENING_SETTING])
   })
+}
+
+/** What one project changes about the office's name terms (migration 0157), or null. */
+export async function getProjectScreeningOverride(
+  organizationId: string,
+  projectId: string
+): Promise<ProjectScreeningOverride | null> {
+  return getCached(projectOverrideCacheKey(organizationId, projectId), POLICY_CACHE_TTL_MS, () =>
+    findProjectScreeningOverride(organizationId, projectId)
+  )
+}
+
+/** After a project's override was saved: the next upload into it reads the new one. */
+export async function forgetProjectScreeningOverride(organizationId: string, projectId: string): Promise<void> {
+  await invalidateCached(projectOverrideCacheKey(organizationId, projectId))
+}
+
+/**
+ * The policy in force for uploads into one project: the office's, with the
+ * project's name terms added and the ones it sets aside left out
+ * (`applyProjectOverride`). Content terms and detectors stay the office's.
+ */
+export async function getProjectUploadScreeningPolicy(
+  organizationId: string,
+  projectId: string
+): Promise<UploadScreeningPolicy> {
+  const [office, override] = await Promise.all([
+    getUploadScreeningPolicy(organizationId),
+    getProjectScreeningOverride(organizationId, projectId),
+  ])
+  return applyProjectOverride(office, override)
 }
 
 /**
@@ -117,10 +153,16 @@ export class ScreeningPolicyUnavailableError extends ApiError {
   }
 }
 
-/** The office's own policy, for an upload gate; {@link ScreeningPolicyUnavailableError} when it cannot be read. */
-async function gatePolicy(organizationId: string): Promise<UploadScreeningPolicy> {
+/**
+ * The office's own policy for an upload gate, with the project's name terms
+ * when the upload goes into a project; {@link ScreeningPolicyUnavailableError}
+ * when either cannot be read.
+ */
+async function gatePolicy(organizationId: string, projectId?: string | null): Promise<UploadScreeningPolicy> {
   try {
-    return await getUploadScreeningPolicy(organizationId)
+    return projectId
+      ? await getProjectUploadScreeningPolicy(organizationId, projectId)
+      : await getUploadScreeningPolicy(organizationId)
   } catch (error) {
     console.error('[upload-screening] policy unreadable, refusing the upload:', error)
     throw new ScreeningPolicyUnavailableError()
@@ -142,13 +184,18 @@ export interface NameGateResult {
  *
  * `released` is the uploader's explicit per-file "upload anyway". Honoured, and
  * returned so the caller can audit it once the document has an id.
+ *
+ * `projectId` is the project the file goes into, when it goes into one: the
+ * project's own name terms apply there (migration 0157), exactly as the
+ * browser screened with them (`GET /api/projects/{id}/upload-screening`).
  */
 export async function assertUploadNameAllowed(
   organizationId: string,
   name: ScreenedName,
-  released: boolean
+  released: boolean,
+  projectId?: string | null
 ): Promise<NameGateResult> {
-  const policy = await gatePolicy(organizationId)
+  const policy = await gatePolicy(organizationId, projectId)
   const verdict = screenUploadName(policy, name)
   if (!verdict.blocked) return { overridden: [] }
   if (!released) throw new ScreenedUploadError(verdict.matches)

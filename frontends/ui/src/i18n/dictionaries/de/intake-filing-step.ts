@@ -1,4 +1,95 @@
 import type { en } from '../en'
 
 /** intakeFilingStep: step 2, Ablage: the project folder as a tree, chosen per folder, the blacklist and the folder access for this project. */
-export const intakeFilingStep: typeof en.intakeFilingStep = {}
+export const intakeFilingStep: typeof en.intakeFilingStep = {
+  choose: {
+    title: 'Projektordner wählen',
+    description:
+      'Wählen Sie den Projektordner auf dem Büroserver. Bevor etwas hochgeladen wird, sehen Sie ihn als Baum und entscheiden Ordner für Ordner, was Piloti liest.',
+    hint: 'Ganze Ordner, ZIP-Dateien und einzelne Dokumente gehen.',
+    addMore: 'Weitere Ordner wählen',
+    dropOverlay: 'Ordner hier ablegen',
+    unsupportedOverlay: 'Dieser Dateityp wird nicht unterstützt',
+  },
+  tree: {
+    heading: 'Was hochgeladen wird',
+    description: 'Schalten Sie ganze Ordner ein oder aus. Was ausgeschaltet ist, bleibt auf dem Büroserver.',
+    label: 'Ordner der Auswahl',
+    summary: '{files} von {total} Dateien · {size}',
+    files: '{count, plural, one {# Datei} other {# Dateien}}',
+    looseFiles: 'Dateien auf oberster Ebene',
+    include: '„{name}“ hochladen',
+    expand: '„{name}“ aufklappen',
+    collapse: '„{name}“ zuklappen',
+    held: '{count} zurückgehalten',
+    proposed:
+      'Piloti schlägt vor, {count, plural, one {# Ordner} other {# Ordner}} wegzulassen: Sicherungen, alte Stände und Systemordner. Sie können jeden wieder einschalten.',
+    reasons: {
+      backup: 'Sicherung',
+      old: 'alter Stand',
+      temp: 'Zwischenstand',
+      system: 'Systemordner',
+    },
+  },
+  actions: {
+    upload: '{count, plural, one {# Datei hochladen} other {# Dateien hochladen}}',
+    uploading: 'Wird hochgeladen …',
+    discard: 'Auswahl verwerfen',
+    nothing: 'Kein Ordner eingeschaltet',
+    sent: 'Die Auswahl ist unterwegs. Prüfen Sie im Dialog, wohin jede Datei kommt.',
+  },
+  screening: {
+    heading: 'Sensible Daten',
+    description:
+      'Was die Liste des Büros zurückhält, verlässt Ihren Rechner nicht. Für dieses Projekt gilt sie so, wie sie hier steht.',
+    heldNone: 'Die Liste hält in Ihrer Auswahl nichts zurück.',
+    held: '{count, plural, one {# Datei wird zurückgehalten} other {# Dateien werden zurückgehalten}}',
+    term: '„{term}“',
+    termFiles: '{count, plural, one {# Datei} other {# Dateien}}',
+    inFolders: 'in {folders}',
+    topLevel: 'der obersten Ebene',
+    officeList: 'Liste des Büros',
+    officeSuggested: 'Vorschlag von Piloti',
+    projectChanged: 'für dieses Projekt angepasst',
+    off: 'Das Büro hat die Prüfung sensibler Daten ausgeschaltet. Es wird nichts zurückgehalten.',
+    change: 'Für dieses Projekt ändern',
+    officeTerms: 'Begriffe des Büros',
+    officeTermsHint: 'Ein ausgeschalteter Begriff hält in diesem Projekt nichts zurück. Für das ganze Büro gilt er weiter.',
+    termOn: '„{term}“ gilt in diesem Projekt',
+    termOff: '„{term}“ gilt in diesem Projekt nicht',
+    added: 'Zusätzlich für dieses Projekt',
+    addedPlaceholder: 'Begriff eingeben, Enter drücken',
+    removeTerm: '„{term}“ entfernen',
+    contentNote: 'Inhalte prüft Piloti beim Lesen weiterhin mit der Liste des Büros.',
+    save: 'Für das Projekt speichern',
+    saving: 'Wird gespeichert …',
+    cancel: 'Abbrechen',
+    saved: 'Die Liste gilt jetzt so für dieses Projekt.',
+    saveError: 'Die Liste konnte nicht gespeichert werden. Bitte versuchen Sie es noch einmal.',
+    loadError:
+      'Die Liste sensibler Daten konnte nicht geladen werden. Hochladen geht erst, wenn sie geladen ist, damit nichts Sensibles durchrutscht.',
+    retry: 'Erneut laden',
+    readOnly: 'Ändern kann die Liste für das Projekt nur, wer das Projekt verwaltet.',
+  },
+  access: {
+    heading: 'Wer welchen Ordner öffnen darf',
+    description:
+      'Jede Person im Projekt öffnet einen Ordner nach ihrer Projektrolle, außer der Ordner hat eine eigene Liste. Schränken Sie einen Ordner am besten vor dem Hochladen ein: Dann liest Piloti ihn von Anfang an nur für diese Personen.',
+    inherit: 'Alle im Projekt, nach Projektrolle',
+    ownEveryoneReads: 'Alle lesen, bearbeiten nur die Personen auf der Liste',
+    own: 'Nur die Personen auf der eigenen Liste',
+    newFolder: 'neu',
+    change: 'Zugriff ändern',
+    restrict: 'Vorab einschränken',
+    changeAria: 'Zugriff auf „{name}“ ändern',
+    restrictAria: '„{name}“ vor dem Hochladen einschränken',
+    readOnly: 'Den Zugriff ändern kann nur, wer das Projekt verwaltet.',
+    none: 'Das Projekt hat noch keine Ordner.',
+    ensureError: 'Der Ordner konnte nicht angelegt werden. Bitte versuchen Sie es noch einmal.',
+    loadError: 'Die Ordner des Projekts konnten nicht geladen werden.',
+  },
+  next: {
+    label: 'Weiter – Piloti liest',
+    hint: 'Das Lesen läuft im Hintergrund weiter.',
+  },
+}
