@@ -1,6 +1,8 @@
 ---
 operators:
   - >
-    Feedback reports now reach PostHog Support as tickets. Until now no ticket
-    ever opened, because the app's PostHog relay dropped the header the Support
-    widget authenticates with.
+    Every feedback report now opens a ticket in PostHog Support, and the
+    Feedback page in the Platform area reads and changes those tickets'
+    status instead of keeping its own. It links each report to its ticket and
+    falls back to a read-only list while PostHog cannot be reached. Tickets
+    only open once the PostHog personal API key is set for the deployment.

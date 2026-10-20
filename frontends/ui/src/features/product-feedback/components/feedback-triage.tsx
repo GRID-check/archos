@@ -4,6 +4,15 @@
  * Platform → Feedback: every report members sent, across organizations, and
  * the one control that matters for each — where it is in triage.
  *
+ * Triage lives in PostHog Support. The server opens a ticket for every report,
+ * and the status shown and set here is that ticket's, read live and named as
+ * PostHog names it (`new`, `open`, `pending`, `on_hold`, `resolved`); each row
+ * links to its ticket. When PostHog cannot be read, or Support is not
+ * configured, the list is the local log (`source: 'local'`): read-only, no
+ * status filter, and an alert says where statuses are managed. Reports whose
+ * ticket failed to open are listed apart ("not in PostHog yet"), so nothing a
+ * member sent is out of sight.
+ *
  * The status is the work queue. `new` is what nobody has looked at, and the
  * page opens on it, because that is the question an owner arrives with ("what
  * came in?"). An inbox row lands here with `?report=<id>`; that report is
@@ -18,7 +27,7 @@
 
 import type { JSX } from 'react'
 import * as React from 'react'
-import { ChevronDown, Inbox, Mail, MessageSquarePlus, SearchX } from 'lucide-react'
+import { ChevronDown, CloudOff, ExternalLink, Inbox, Mail, MessageSquarePlus, SearchX } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -27,6 +36,7 @@ import { Button } from '@/components/ui/button'
 import { Chip, ChipCount } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SectionLabel } from '@/components/ui/section-label'
 import {
   Select,
   SelectContent,
@@ -45,11 +55,11 @@ import {
 } from '@/lib/product-feedback/client'
 import {
   PRODUCT_FEEDBACK_KINDS,
-  PRODUCT_FEEDBACK_STATUSES,
+  SUPPORT_TICKET_STATUSES,
   type ProductFeedbackKind,
   type ProductFeedbackListResponse,
   type ProductFeedbackReportView,
-  type ProductFeedbackStatus,
+  type SupportTicketStatus,
 } from '@/lib/product-feedback/types'
 import { cn } from '@/lib/utils'
 import { FEEDBACK_KIND_ICONS } from './feedback-dialog'
@@ -57,7 +67,7 @@ import { FEEDBACK_KIND_ICONS } from './feedback-dialog'
 export interface FeedbackTriageClient {
   list: (filters: ListFeedbackFilters) => Promise<ProductFeedbackListResponse>
   get: (id: string) => Promise<ProductFeedbackReportView | null>
-  triage: (id: string, status: ProductFeedbackStatus) => Promise<ProductFeedbackReportView>
+  triage: (id: string, status: SupportTicketStatus) => Promise<ProductFeedbackReportView>
 }
 
 const defaultClient: FeedbackTriageClient = {
@@ -66,11 +76,12 @@ const defaultClient: FeedbackTriageClient = {
   triage: triagePlatformFeedback,
 }
 
-const STATUS_CHIP: Record<ProductFeedbackStatus, 'info' | 'warning' | 'success' | 'muted'> = {
+const STATUS_CHIP: Record<SupportTicketStatus, 'info' | 'warning' | 'default' | 'success' | 'muted'> = {
   new: 'info',
-  in_progress: 'warning',
+  open: 'warning',
+  pending: 'default',
+  on_hold: 'muted',
   resolved: 'success',
-  dismissed: 'muted',
 }
 
 const KIND_CHIP: Record<ProductFeedbackKind, 'destructive' | 'default' | 'success' | 'secondary'> =
@@ -81,7 +92,7 @@ const KIND_CHIP: Record<ProductFeedbackKind, 'destructive' | 'default' | 'succes
     question: 'secondary',
   }
 
-type StatusFilter = ProductFeedbackStatus | 'all'
+type StatusFilter = SupportTicketStatus | 'all'
 type KindFilter = ProductFeedbackKind | 'all'
 
 export interface FeedbackTriageProps {
@@ -166,7 +177,10 @@ export function FeedbackTriage({
       // A filter change while the page was loading made this page stale.
       if (id !== requestId.current) return
       setData((current) =>
-        current ? { ...next, reports: [...current.reports, ...next.reports] } : next
+        // The unticketed reports belong to the first page; later pages only add tickets.
+        current
+          ? { ...next, reports: [...current.reports, ...next.reports], unticketed: current.unticketed }
+          : next
       )
     } catch {
       toast.error(t('platform.loadError'))
@@ -177,9 +191,10 @@ export function FeedbackTriage({
 
   async function changeStatus(
     report: ProductFeedbackReportView,
-    next: ProductFeedbackStatus
+    next: SupportTicketStatus
   ): Promise<void> {
-    if (next === report.status) return
+    const previous = report.ticket?.status
+    if (!previous || next === previous) return
     setBusyId(report.id)
     try {
       const updated = await client.triage(report.id, next)
@@ -189,9 +204,9 @@ export function FeedbackTriage({
           ? {
               ...current,
               reports: current.reports.map((row) => (row.id === updated.id ? updated : row)),
-              counts: {
+              counts: current.counts && {
                 ...current.counts,
-                [report.status]: Math.max(0, current.counts[report.status] - 1),
+                [previous]: Math.max(0, current.counts[previous] - 1),
                 [next]: current.counts[next] + 1,
               },
             }
@@ -206,7 +221,12 @@ export function FeedbackTriage({
   }
 
   const reports = (data?.reports ?? []).filter((report) => report.id !== focused?.id)
-  const total = data ? Object.values(data.counts).reduce((sum, value) => sum + value, 0) : 0
+  const unticketed = (data?.unticketed ?? []).filter((report) => report.id !== focused?.id)
+  const counts = data?.counts ?? null
+  const total = counts ? Object.values(counts).reduce((sum, value) => sum + value, 0) : undefined
+  // The local log has no triage state: the status filter would be a lie there.
+  const local = data?.source === 'local'
+  const live = data?.source === 'posthog'
   const nothingShown = !focused && reports.length === 0
 
   return (
@@ -235,29 +255,37 @@ export function FeedbackTriage({
       }
     >
       <div className="flex flex-col gap-4">
-        <div
-          role="group"
-          aria-label={t('platform.filters.label')}
-          className="flex flex-wrap gap-1.5"
-        >
-          <StatusFilterChip
-            active={status === 'all'}
-            onClick={() => setStatus('all')}
-            count={total}
+        {local ? (
+          <Alert variant="info" data-testid="feedback-local-source">
+            <CloudOff aria-hidden />
+            <AlertTitle className="line-clamp-none">{t('platform.localSource.title')}</AlertTitle>
+            <AlertDescription>{t('platform.localSource.description')}</AlertDescription>
+          </Alert>
+        ) : (
+          <div
+            role="group"
+            aria-label={t('platform.filters.label')}
+            className="flex flex-wrap gap-1.5"
           >
-            {t('platform.filters.all')}
-          </StatusFilterChip>
-          {PRODUCT_FEEDBACK_STATUSES.map((option) => (
             <StatusFilterChip
-              key={option}
-              active={status === option}
-              onClick={() => setStatus(option)}
-              count={data?.counts[option] ?? 0}
+              active={status === 'all'}
+              onClick={() => setStatus('all')}
+              count={total}
             >
-              {t(`statuses.${option}`)}
+              {t('platform.filters.all')}
             </StatusFilterChip>
-          ))}
-        </div>
+            {SUPPORT_TICKET_STATUSES.map((option) => (
+              <StatusFilterChip
+                key={option}
+                active={status === option}
+                onClick={() => setStatus(option)}
+                count={counts?.[option]}
+              >
+                {t(`statuses.${option}`)}
+              </StatusFilterChip>
+            ))}
+          </div>
+        )}
 
         {focusMissing ? (
           <Alert variant="warning" data-testid="feedback-focus-missing">
@@ -295,7 +323,7 @@ export function FeedbackTriage({
               <ReportRow
                 report={focused}
                 focused
-                canTriage={canTriage}
+                canTriage={canTriage && live}
                 busy={busyId === focused.id}
                 onStatusChange={(next) => void changeStatus(focused, next)}
               />
@@ -304,13 +332,37 @@ export function FeedbackTriage({
               <ReportRow
                 key={report.id}
                 report={report}
-                canTriage={canTriage}
+                canTriage={canTriage && live}
                 busy={busyId === report.id}
                 onStatusChange={(next) => void changeStatus(report, next)}
               />
             ))}
           </ul>
         )}
+
+        {unticketed.length > 0 ? (
+          <section
+            aria-labelledby="feedback-unticketed-title"
+            data-testid="feedback-unticketed"
+            className="flex flex-col gap-1 border-t pt-4"
+          >
+            <SectionLabel as="h3" id="feedback-unticketed-title">
+              {t('platform.unticketed.title')}
+            </SectionLabel>
+            <p className="text-muted-foreground text-xs">{t('platform.unticketed.description')}</p>
+            <ul className="flex flex-col divide-y">
+              {unticketed.map((report) => (
+                <ReportRow
+                  key={report.id}
+                  report={report}
+                  canTriage={false}
+                  busy={false}
+                  onStatusChange={() => undefined}
+                />
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {data?.nextCursor && (
           <Button
@@ -335,16 +387,41 @@ function StatusFilterChip({
 }: {
   active: boolean
   onClick: () => void
-  count: number
+  /** Absent until the PostHog counts are known. */
+  count?: number
   children: React.ReactNode
 }): JSX.Element {
   return (
     <Chip asChild interactive variant={active ? 'default' : 'outline'}>
       <button type="button" aria-pressed={active} onClick={onClick}>
         {children}
-        <ChipCount>{count}</ChipCount>
+        {count === undefined ? null : <ChipCount>{count}</ChipCount>}
       </button>
     </Chip>
+  )
+}
+
+/** A text link that leaves Piloti (PostHog), styled like the row's mail link. */
+function ExternalTextLink({
+  href,
+  testId,
+  children,
+}: {
+  href: string
+  testId: string
+  children: React.ReactNode
+}): JSX.Element {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-testid={testId}
+      className="text-primary pointer-coarse:min-h-11 inline-flex items-center gap-1 hover:underline"
+    >
+      <ExternalLink className="size-3.5" aria-hidden />
+      {children}
+    </a>
   )
 }
 
@@ -357,14 +434,16 @@ function ReportRow({
 }: {
   report: ProductFeedbackReportView
   focused?: boolean
+  /** Whether the status select shows: the reader may triage and the list is PostHog's. */
   canTriage: boolean
   busy: boolean
-  onStatusChange: (status: ProductFeedbackStatus) => void
+  onStatusChange: (status: SupportTicketStatus) => void
 }): JSX.Element {
   const t = useTranslations('feedback')
   const { locale } = useLocale()
   const ref = React.useRef<HTMLLIElement>(null)
   const KindIcon = FEEDBACK_KIND_ICONS[report.kind]
+  const { ticket } = report
 
   React.useEffect(() => {
     if (focused) ref.current?.scrollIntoView({ block: 'nearest' })
@@ -400,30 +479,32 @@ function ReportRow({
           locale={locale}
           className="text-muted-foreground text-xs"
         />
-        <div className="ml-auto">
-          {canTriage ? (
-            <Select
-              value={report.status}
-              onValueChange={(value) => onStatusChange(value as ProductFeedbackStatus)}
-              disabled={busy}
-            >
-              <SelectTrigger size="sm" aria-label={t('platform.statusLabel')} className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRODUCT_FEEDBACK_STATUSES.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {t(`statuses.${option}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Chip variant={STATUS_CHIP[report.status]} size="sm">
-              {t(`statuses.${report.status}`)}
-            </Chip>
-          )}
-        </div>
+        {ticket ? (
+          <div className="ml-auto">
+            {canTriage ? (
+              <Select
+                value={ticket.status}
+                onValueChange={(value) => onStatusChange(value as SupportTicketStatus)}
+                disabled={busy}
+              >
+                <SelectTrigger size="sm" aria-label={t('platform.statusLabel')} className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORT_TICKET_STATUSES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {t(`statuses.${option}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Chip variant={STATUS_CHIP[ticket.status]} size="sm">
+                {t(`statuses.${ticket.status}`)}
+              </Chip>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <p className="text-foreground whitespace-pre-wrap break-words text-sm leading-relaxed">
@@ -445,9 +526,17 @@ function ReportRow({
         ) : (
           <span>{t('platform.noContact')}</span>
         )}
-        {report.triagedBy && report.status !== 'new' && (
-          <span>{t('platform.triagedBy', { name: report.triagedBy })}</span>
-        )}
+        {ticket ? (
+          <ExternalTextLink href={ticket.url} testId="feedback-ticket-link">
+            {ticket.number === null
+              ? t('platform.ticketLinkUnnumbered')
+              : t('platform.ticketLink', { number: ticket.number })}
+          </ExternalTextLink>
+        ) : report.posthogPersonUrl ? (
+          <ExternalTextLink href={report.posthogPersonUrl} testId="feedback-recordings-link">
+            {t('platform.recordingsLink')}
+          </ExternalTextLink>
+        ) : null}
       </div>
 
       {(report.context.userAgent || report.context.viewport) && (

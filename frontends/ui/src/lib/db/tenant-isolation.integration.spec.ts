@@ -312,12 +312,15 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
     )
     expect(blank.message).toMatch(/product_feedback_message_not_blank/)
 
-    const unattributed = await rejectionCause(() =>
+    // The ticket id is browser-adjacent input that becomes a link on the platform page (0154).
+    const notAnId = await rejectionCause(() =>
       withTenant({ organizationId: ORG_A }, () =>
-        db.execute(sql`update product_feedback set status = 'resolved' where organization_id = ${ORG_A}`)
+        db.execute(
+          sql`update product_feedback set posthog_ticket_id = 'javascript:alert(1)' where organization_id = ${ORG_A}`
+        )
       )
     )
-    expect(unattributed.message).toMatch(/product_feedback_triage_attributed/)
+    expect(notAnId.message).toMatch(/product_feedback_posthog_ticket_id_shape/)
 
     await withPlatformAccess('test teardown: feedback', () =>
       db.execute(sql`delete from product_feedback where organization_id in (${ORG_A}, ${ORG_B})`)

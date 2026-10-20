@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 /**
@@ -17,6 +18,11 @@ import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-o
  * and resolving each author through WorkOS per row would make it O(reports).
  * They are display and reply data, never identity: `user_id` is.
  *
+ * Triage is not here. It lives on the PostHog Support ticket every report
+ * opens (`posthog_ticket_id`, ADR-0118); this table is the intake log the
+ * platform page joins to the tickets and falls back to while PostHog cannot be
+ * read.
+ *
  * The CHECK constraints in migration 0100 are the layer that holds the bounds;
  * the constants below are what the form and the zod schema count against.
  */
@@ -24,18 +30,6 @@ import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-o
 /** What kind of feedback this is — the form's first question. */
 export const PRODUCT_FEEDBACK_KINDS = ['bug', 'idea', 'praise', 'question'] as const
 export type ProductFeedbackKind = (typeof PRODUCT_FEEDBACK_KINDS)[number]
-
-/**
- * Where a report is in triage.
- *
- *  'new'         — nobody on the platform side has looked at it.
- *  'in_progress' — accepted and being worked on (or planned).
- *  'resolved'    — fixed, shipped or answered.
- *  'dismissed'   — read and deliberately not acted on (a duplicate, praise,
- *                  something that works as intended).
- */
-export const PRODUCT_FEEDBACK_STATUSES = ['new', 'in_progress', 'resolved', 'dismissed'] as const
-export type ProductFeedbackStatus = (typeof PRODUCT_FEEDBACK_STATUSES)[number]
 
 /** Upper bound of the message, in characters. Mirrored by a CHECK. */
 export const PRODUCT_FEEDBACK_MESSAGE_MAX = 5000
@@ -71,16 +65,19 @@ export const productFeedback = pgTable(
     context: jsonb('context').$type<ProductFeedbackContext>().notNull().default({}),
     /** Whether the reporter is happy to be contacted about this report. */
     allowContact: boolean('allow_contact').notNull().default(true),
-    status: text('status').$type<ProductFeedbackStatus>().notNull().default('new'),
-    triagedBy: text('triaged_by'),
-    triagedAt: timestamp('triaged_at', { withTimezone: true }),
+    /** The PostHog Support ticket this report opened (migration 0154). NULL: none opened. */
+    posthogTicketId: text('posthog_ticket_id'),
     /** Milliseconds, so the keyset cursor (a JS Date) is exact — see migration 0100. */
     createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    /** The platform triage list: filtered by status, newest first. */
-    statusCreatedIdx: index('product_feedback_status_created_idx').on(table.status, table.createdAt),
+    /** The local fallback list, newest first across organizations. */
+    createdIdx: index('product_feedback_created_idx').on(table.createdAt, table.id),
+    /** The join from a page of PostHog tickets to their reports. */
+    ticketIdx: index('product_feedback_posthog_ticket_idx')
+      .on(table.posthogTicketId)
+      .where(sql`${table.posthogTicketId} IS NOT NULL`),
     /** One tenant's own reports, and the per-user submission count. */
     orgUserCreatedIdx: index('product_feedback_org_user_created_idx').on(
       table.organizationId,
