@@ -2887,6 +2887,10 @@ async def test_a_failing_bff_neither_breaks_nor_holds_the_turn(harness, bff, per
 
     assert sock.events(WAKE)[-1]["outcome"] == "answered"
     assert persisted and persisted[0]["text"] == "Antwort [1]."
+    # The outcome report starts after the row is written, so it is not among the tasks
+    # _settle_background waits for: under load the assertion ran before its first try.
+    await until(lambda: bff.attempts >= 3)
+    await asyncio.sleep(0.05)
     assert bff.attempts == 3  # retried briefly, then given up on and logged
 
     sock.client(type="user_message", message_id=WAKE_2, text="??")  # the socket serves on
