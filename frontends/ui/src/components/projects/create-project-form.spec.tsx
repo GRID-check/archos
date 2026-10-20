@@ -7,6 +7,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
+import { redirect } from 'next/navigation'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createProject } from '@/app/app/(shell)/projects/actions'
 import { takeDroppedFiles } from '@/features/documents/lib/dropped-file-handover'
@@ -79,7 +80,8 @@ describe('CreateProjectForm', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-03-15T12:00:00Z'))
     action.mockReset()
-    action.mockResolvedValue({})
+    // What the real action does on success: it never returns, it redirects.
+    action.mockImplementation(async () => redirect('/app/projects/p1/setup'))
     vi.mocked(capturePosthog).mockClear()
     search.mockReset()
     findSameAddress.mockReset()

@@ -79,6 +79,17 @@ describe('request errors through @posthog/next', () => {
     }
   )
 
+  test('a post naming a server action this build lacks is not an exception', () => {
+    // Next's own message (action-handler, E975), verbatim.
+    const unknownAction = new Error(
+      'Failed to find Server Action. This request might be from an older or newer deployment.\n' +
+        'Read more: https://nextjs.org/docs/messages/failed-to-find-server-action'
+    )
+
+    expect(beforeCapture(capture(unknownAction, '/app/projects'))).toBe(false)
+    expect(beforeCapture(capture(new Error('Failed to find the project'), '/app/projects'))).not.toBe(false)
+  })
+
   test('adds where it came from, and takes a thrown non-Error value', () => {
     vi.stubEnv('OTEL_SERVICE_NAME', 'grid-ui')
 

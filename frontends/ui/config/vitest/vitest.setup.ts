@@ -48,8 +48,11 @@ vi.mock('next/navigation', () => ({
   }),
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
+  // The message names the target for specs to read; the digest is the shape
+  // Next's own redirect error carries, which is what code that tells a
+  // redirect apart reads (`isRedirectSignal`).
   redirect: (url: string) => {
-    throw new Error(`NEXT_REDIRECT:${url}`)
+    throw Object.assign(new Error(`NEXT_REDIRECT:${url}`), { digest: `NEXT_REDIRECT;replace;${url};307;` })
   },
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND')
