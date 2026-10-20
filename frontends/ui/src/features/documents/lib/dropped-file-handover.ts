@@ -31,12 +31,28 @@ export function takeDroppedFiles(projectId: string): File[] {
 }
 
 /**
- * The key a drop onto the create-project dialog is held under: the project does
- * not exist yet, so it has no id to be held for. The setup page of a project
- * Piloti is about to read takes it (`IntakeUpload`), and the dialog discards it
- * when it closes without creating anything.
+ * The key a drop onto the create-project dialog is held under. The project does
+ * not exist yet, so the dialog makes a key of its own, sends it with the
+ * creation, and the redirect hands it to that project's setup page
+ * (`/setup?drop=<key>`), which takes the drop (`IntakeUpload`). The dialog
+ * discards it when it closes without creating anything.
+ *
+ * One key per dialog, never a shared one: under the fixed key this replaced,
+ * a drop the first project's setup page did not take (left too early, a failed
+ * folder load, a create that threw) was taken by the NEXT project waiting for
+ * documents, and filed there (pilot onboarding, 2026-10-19).
  */
-export const NEW_PROJECT_DROP_KEY = 'new-project'
+export function newProjectDropKey(): string {
+  return `${NEW_PROJECT_DROP_PREFIX}${crypto.randomUUID()}`
+}
+
+const NEW_PROJECT_DROP_PREFIX = 'new-project:'
+const NEW_PROJECT_DROP_KEY_PATTERN = /^new-project:[0-9a-f-]{36}$/
+
+/** Whether a value is a key {@link newProjectDropKey} made: what the action and the setup page accept. */
+export function isNewProjectDropKey(value: unknown): value is string {
+  return typeof value === 'string' && NEW_PROJECT_DROP_KEY_PATTERN.test(value)
+}
 
 /** Forget what is held for this project (a dialog closed, a drop taken back). */
 export function discardDroppedFiles(projectId: string): void {

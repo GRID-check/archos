@@ -687,7 +687,9 @@ function UploadRow({
               {/* A file the server accepted failed while being read: its
                   message is the stored ingest failure, said in the reader's
                   language. One that never arrived failed its upload, and that
-                  message is already the upload's own. */}
+                  message is a dictionary sentence already: `use-file-upload`
+                  writes it through `uploadFailureSentence`, which never passes
+                  the server's or the transport's English on. */}
               {isFailed && file.errorMessage && failedWhileReading(file) ? (
                 <IngestFailureNotice
                   errorMessage={file.errorMessage}

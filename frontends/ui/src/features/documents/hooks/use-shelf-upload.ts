@@ -12,7 +12,15 @@ import { useUploadDecision, type SettledPlan } from './use-upload-decision'
 import { UploadScreeningPolicyUnavailableError } from '@/adapters/api/upload-screening-policy'
 
 export interface ShelfUploadOptions {
-  shelf: Pick<FileShelf, 'probeNames' | 'probeFassungen' | 'handoverKey'> & { endpoints: Pick<ShelfEndpoints, 'folders'> }
+  shelf: Pick<FileShelf, 'probeNames' | 'probeFassungen' | 'handoverKey'> & {
+    endpoints: Pick<ShelfEndpoints, 'folders'>
+    /**
+     * The project the shelf belongs to, when it is a project's: names are
+     * screened with the project's policy (ADR-0086, 2026-10-20). Absent or
+     * null screens with the office's list, as the Archiv does.
+     */
+    projectId?: string | null
+  }
   upload: Pick<ShelfUploadApi, 'uploadFiles'>
   folders: readonly FolderItem[]
   /** The folders have loaded: what a drop handed over from another page waits for, to be planned against them. */
@@ -85,7 +93,7 @@ export function useShelfUpload({
   uploading = false,
 }: ShelfUploadOptions) {
   const t = useTranslations('files')
-  const decision = useUploadDecision()
+  const decision = useUploadDecision({ projectId: shelf.projectId ?? null })
   const { propose, setReleased, settle, changeFassung, plan, setOpen, setPending } = decision
   const { uploadFiles } = upload
   const { probeNames, probeFassungen, handoverKey } = shelf

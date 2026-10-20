@@ -30,6 +30,12 @@ export const UID = {
   web: 1001,
   /** Gotenberg image (upstream `build/Dockerfile`): user `gotenberg` = 1001. */
   gotenberg: 1001,
+  /**
+   * The geocoder (ADR-0120). Neither image it runs fixes a user (`eclipse-temurin`
+   * and `alpine` start as root), so the UID is ours; `fsGroup` makes the index
+   * volume writable to it.
+   */
+  geocoder: 1000,
 } as const;
 
 /** Service/container ports. One definition; Services, probes, env and
@@ -75,6 +81,8 @@ export const PORT = {
   clickhouseMetrics: 9363,
   /** Gotenberg API (office → PDF, ADR-0070). Upstream default. */
   gotenberg: 3000,
+  /** Photon, the address search behind `GRID_GEOCODER_URL` (ADR-0120). Upstream default. */
+  geocoder: 2322,
   /** Qdrant REST API: clients, probes and the snapshot CronJob. Upstream default. */
   qdrantHttp: 6333,
   /** Qdrant gRPC API, which `qdrant-client` prefers (`prefer_grpc`). Upstream default. */
@@ -402,6 +410,57 @@ export const EDGE_RATE_LIMIT = {
      * that session, because every later turn rides the open socket (ADR-0009).
      */
     ws: "/websocket",
+  },
+} as const;
+
+/**
+ * The geocoder (ADR-0120): a self-hosted Photon over the Austrian OSM extract,
+ * behind the project creation dialog's address search (`GRID_GEOCODER_URL`,
+ * `frontends/ui/src/lib/geocoding/photon.ts`).
+ *
+ * Upstream publishes no Photon image, and a community one would put a third
+ * party's build between client addresses and us. So the pod runs two official,
+ * digest-pinned images (`geocoderImage`, `geocoderFetchImage` in config.ts) and
+ * fetches two artifacts itself: the release jar, pinned here by version AND
+ * sha256, and GraphHopper's weekly Austria index, checked against the md5 the
+ * same server publishes beside it. Bumping Photon means changing `photonVersion`
+ * and `photonJarSha256` together. A 1.x jar reads the 1.x index; a 2.x jar will
+ * need `geocoderIndexUrl` moved with it.
+ */
+export const GEOCODER = {
+  /** StatefulSet/Service name and `app.kubernetes.io/name`. */
+  name: "geocoder",
+  photonVersion: "1.3.0",
+  /** `sha256sum photon-1.3.0.jar`, taken from the GitHub release on 2026-10-20. */
+  photonJarSha256: "a89707c0045e4807b2a1180e132e68e108d998709f48b6c94b98a6e281f571a5",
+  /**
+   * Weekly Austria extract for Photon 1.x: 966 MB as tar.bz2 on 2026-10-13. It
+   * unpacks to one `photon_data/` directory. Its `.md5` sits beside it.
+   */
+  defaultIndexUrl:
+    "https://download1.graphhopper.com/public/europe/austria/photon-db-austria-1.0-latest.tar.bz2",
+  /** Where the index volume is mounted, in both containers. */
+  dataPath: "/data",
+  /**
+   * JVM heap. The embedded OpenSearch reads the index through the page cache,
+   * outside the heap, and the gap up to the memory limit is for that. Upstream
+   * sizes for the planet (64 GB); one country is a few GB. Measure before
+   * raising either: `kubectl top pod geocoder-0`.
+   */
+  javaHeap: "1g",
+  /**
+   * `-max-results`: the adapter asks for twice what the dialog shows
+   * (`photonUrl`), so at most 2 × `GEOCODE_MAX_LIMIT`.
+   */
+  maxResults: 16,
+  resources: {
+    requests: { cpu: "250m", memory: "1536Mi" },
+    limits: { cpu: "2", memory: "3Gi" },
+  },
+  /** The fetch init container: wget, checksums, bunzip2 and tar over a 1 GB file. */
+  fetchResources: {
+    requests: { cpu: "100m", memory: "128Mi" },
+    limits: { cpu: "1", memory: "512Mi" },
   },
 } as const;
 

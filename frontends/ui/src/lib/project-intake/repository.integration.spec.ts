@@ -112,6 +112,13 @@ describe.skipIf(!url)('project intakes against live Postgres', () => {
     expect(await repo.findProjectIntakeByJobId(OTHER_ORG, `job-a-${STAMP}`)).toBeNull()
   })
 
+  it('keeps the running reading’s opened files for its own job only', async () => {
+    expect(await repo.setIntakeReadingFiles(ORG, ids.project, `job-stale-${STAMP}`, ['a.pdf'])).toBeNull()
+    expect(await repo.setIntakeReadingFiles(OTHER_ORG, ids.project, `job-a-${STAMP}`, ['a.pdf'])).toBeNull()
+    const stored = await repo.setIntakeReadingFiles(ORG, ids.project, `job-a-${STAMP}`, ['Einreichplan.pdf', 'Schnitt.pdf'])
+    expect(stored?.readingFiles).toEqual(['Einreichplan.pdf', 'Schnitt.pdf'])
+  })
+
   it('ends a reading only for its own job, with what it read', async () => {
     const now = new Date()
     expect(await repo.endIntakeReading(ORG, ids.project, `job-stale-${STAMP}`, { status: 'ready', now })).toBeNull()
@@ -139,7 +146,8 @@ describe.skipIf(!url)('project intakes against live Postgres', () => {
       forgetRead: true,
       now,
     })
-    expect(forgetting).toMatchObject({ status: 'reading', documentsRead: [], rerunRequested: false })
+    // A new reading starts with nothing opened: the last one's files are not its own.
+    expect(forgetting).toMatchObject({ status: 'reading', documentsRead: [], readingFiles: [], rerunRequested: false })
     await repo.endIntakeReading(ORG, ids.project, `job-c-${STAMP}`, { status: 'failed', now })
   })
 

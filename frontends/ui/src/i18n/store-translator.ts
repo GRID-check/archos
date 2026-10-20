@@ -14,10 +14,10 @@
 
 import { getDictionary } from './dictionaries'
 import { createTranslator, type Translator } from './translate'
-import { LOCALE_COOKIE, defaultLocale, resolveLocale, type Locale } from './config'
+import { LOCALE_COOKIE, defaultLocale, isLocale, resolveLocale, type Locale } from './config'
 
 /**
- * Read the active locale from the mirror cookie (falls back to default).
+ * Read the active locale: the page's `lang`, else the mirror cookie, else the default.
  *
  * Exported for imperative, non-React callers (e.g. a store action that sends
  * the UI language to a backend generation endpoint). Not reactive — it reads
@@ -25,6 +25,13 @@ import { LOCALE_COOKIE, defaultLocale, resolveLocale, type Locale } from './conf
  */
 export function getActiveLocale(): Locale {
   if (typeof document === 'undefined') return defaultLocale
+  // The page's own language first: the server renders `<html lang>` and
+  // `I18nProvider` keeps it current. The cookie can be missing while the page
+  // is German (Safari drops a script-written cookie after seven days, and a
+  // render that read the saved preference writes none), and a missing cookie
+  // read as English.
+  const pageLang = document.documentElement.lang
+  if (isLocale(pageLang)) return pageLang
   const match = document.cookie.match(
     new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]+)`),
   )

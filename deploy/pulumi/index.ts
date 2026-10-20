@@ -32,6 +32,7 @@ import { installClickHouse } from "./src/data/clickhouse";
 import { installSeaweedFS, type SeaweedFS } from "./src/data/seaweedfs";
 import { installSeaweedFSBackup } from "./src/data/seaweedfs-backup";
 import { installQdrant } from "./src/data/qdrant";
+import { installGeocoder } from "./src/data/geocoder";
 import { AppWiring, PULL_SECRET_NAME, buildRegistryPullSecret, buildScalerSecret, buildSecrets } from "./src/app/config";
 import { runMigrations } from "./src/app/migrations-job";
 import { reconcileAuditSchemas } from "./src/app/audit-schemas-job";
@@ -188,6 +189,12 @@ const qdrant = installQdrant(cfg, provider, namespace, seaweed.internalEndpoint,
 const gotenberg = cfg.gotenberg.enabled
   ? installGotenberg(cfg, provider, namespace, [ns])
   : undefined;
+// Address search for the project dialog (ADR-0120): Photon over the Austrian
+// extract, in the cluster because an address is client data. Off by default
+// (`geocoderEnabled`). The frontend fails open without it, so nothing waits.
+const geocoder = cfg.geocoder.enabled
+  ? installGeocoder(cfg, provider, namespace, [ns])
+  : undefined;
 
 // ── Shared wiring for the app tier ─────────────────────────────────────────
 // Pull Secret for private app images (no-op when none are configured).
@@ -200,6 +207,7 @@ const wiring: AppWiring = {
   seaweedInternalEndpoint: seaweed.internalEndpoint,
   seaweedPublicEndpoint: seaweed.publicEndpoint,
   gotenbergUrl: gotenberg?.url,
+  geocoderUrl: geocoder?.url,
   qdrantUrl: qdrant.url,
   dsn: postgres.dsn,
   imagePullSecrets: pullSecret ? [{ name: PULL_SECRET_NAME }] : [],
@@ -488,6 +496,7 @@ export const appRoute = routes.app.metadata.name;
 export const webRoute = routes.web.metadata.name;
 export const gatewayName = gatewayResources.gateway.metadata.name;
 export const qdrantUrl = qdrant.url;
+export const geocoderUrl = geocoder ? geocoder.url : pulumi.output("(none: geocoderEnabled=false)");
 export const pgInstances = cfg.postgres.instances;
 export const pgBackupsEnabled = cfg.postgres.backups.enabled;
 export const networkPoliciesEnabled = cfg.networkPolicies;

@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, backendAutoscaled } from "../config";
-import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
+import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GEOCODER, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
 
@@ -53,8 +53,9 @@ export const QDRANT_CALLERS = [
  *     agent calls many external endpoints (OpenRouter, Tavily, WorkOS, ACME)
  *     plus cluster DNS, and an egress allow-list is the easiest way to silently
  *     break the product. Tightening egress is a follow-up that needs a live
- *     cluster to validate. The exception is Gotenberg (rule 13), which needs no
- *     egress at all, so denying all of it cannot break anything it does.
+ *     cluster to validate. The exceptions are Gotenberg (rule 13), which needs no
+ *     egress at all, so denying all of it cannot break anything it does, and the
+ *     geocoder (rule 20), which needs DNS and HTTPS only.
  *   - **Intra-namespace is allowed wholesale** (frontend→backend, backend→data,
  *     workers→data, backend→frontend BFF). Per-edge micro-policies buy little
  *     here and are far easier to get subtly wrong. The exceptions are the pods
@@ -121,6 +122,7 @@ export function installNetworkPolicies(
           values: [
             ...langfuseWithheld,
             ...(cfg.gotenberg.enabled ? [GOTENBERG.name] : []),
+            ...(cfg.geocoder.enabled ? [GEOCODER.name] : []),
             QDRANT.name,
           ],
         },
@@ -474,7 +476,40 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 20. otel-agent → ClickHouse's metrics listener (ADR-0119), which answers
+  // 20. The geocoder (ADR-0120): the frontend in, DNS and HTTPS out.
+  //
+  //     Every address a person types in the project dialog reaches it, so it
+  //     is withheld from rule 2: the frontend BFF (`/api/geocode`) is its one
+  //     caller. The bff-jobs pool inherits the frontend's environment but
+  //     not `GRID_GEOCODER_URL` (`BFF_JOBS_WITHHELD`), so it is not named.
+  //
+  //     Egress is the init container's: the jar from GitHub and the index
+  //     from download1.graphhopper.com, both over HTTPS. Photon itself dials
+  //     nothing. Port-scoped rather than host-scoped, because NetworkPolicy
+  //     has no hostnames and both hosts sit behind CDNs.
+  const geocoder = cfg.geocoder.enabled
+    ? mk("geocoder-frontend-only", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": GEOCODER.name } },
+        policyTypes: ["Ingress", "Egress"],
+        ingress: [
+          {
+            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }],
+            ports: [{ protocol: "TCP", port: PORT.geocoder }],
+          },
+        ],
+        egress: [
+          {
+            ports: [
+              { protocol: "UDP", port: 53 },
+              { protocol: "TCP", port: 53 },
+            ],
+          },
+          { ports: [{ protocol: "TCP", port: 443 }] },
+        ],
+      })
+    : undefined;
+
+  // 21. otel-agent → ClickHouse's metrics listener (ADR-0119), which answers
   //     `/metrics` without a login and nothing else (`PORT.clickhouseMetrics`).
   //     Rule 12 keeps the query ports to Langfuse; this admits the node
   //     agent, and to that port alone, so no scrape can become a query.
@@ -505,6 +540,7 @@ export function installNetworkPolicies(
     ...(backendToLangfuse ? [backendToLangfuse] : []),
     ...(langfuseToClickhouse ? [langfuseToClickhouse] : []),
     ...(gotenberg ? [gotenberg] : []),
+    ...(geocoder ? [geocoder] : []),
     appToQdrant,
     qdrantPeers,
     ...(collectorToQdrant ? [collectorToQdrant] : []),

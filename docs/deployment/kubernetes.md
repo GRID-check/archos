@@ -30,6 +30,7 @@ their own namespaces.
 | `postgres` (`aiq_jobs`, `aiq_checkpoints`, `grid_app`) | CloudNativePG `Cluster` | 1 (→3 HA) | RWO PVC | Add replicas |
 | `dragonfly` (Redis-proto cache) | Deployment | 1 | — (cache) | — |
 | `gotenberg` (office → PDF, ADR-0070; required to index Word, presentation, `.xls` and `.ods` files, ADR-0071; `gotenbergEnabled`, default on) | Deployment | `gotenbergReplicas` (sized to the `bff-jobs` pool's conversion ceiling, prod 2; §6.3c) | — | n/a (stateless. A conversion it drops fails that ingest retryably, so a rollout drains for up to 120s) |
+| `geocoder` (Photon, the project dialog's address search, ADR-0120; `geocoderEnabled`, default off) | StatefulSet | 1 | RWO PVC `/data` (the jar and the Austrian index, a download), `Retain` | n/a (the frontend fails open to a plain text field while it restarts) |
 | `qdrant` (the vector store, ADR-0115; always deployed) | StatefulSet (`Parallel`) + PDB + `qdrant-snapshot` CronJob | `qdrantReplicas` (default 3, one per node; 1 runs without cluster mode) | RWO PVC `/qdrant/storage` per peer, `Retain` | Peers by hand, shards moved by the runbook ([`qdrant-runbook.md`](qdrant-runbook.md)) |
 | `chroma-migration` (one-shot copy of the retired Chroma store into Qdrant; `chromaMigration`, default off) | Job | 1 pod | exports from the still-running `chroma` Service over HTTP, awaited before the backend tiers roll; scratch is a generic ephemeral claim | n/a ([runbook](qdrant-runbook.md#migrating-from-chroma-on-kubernetes)) |
 | `seaweedfs` (filer + S3 gateway) | StatefulSet | 1 (`single`) / N (`split`) | RWO PVC `/data` (unused under the Postgres filer store) | See §4 |
@@ -1602,6 +1603,10 @@ emitted somewhere it can read; see §10.
   With `networkPolicies` off that policy is gone; Gotenberg's
   `--libreoffice-deny-private-ips` and `--libreoffice-deny-public-ips` flags
   still refuse every URL LibreOffice would fetch.
+  The `geocoder` (`geocoder-frontend-only`, when `geocoderEnabled`) is the
+  second exception: every address a person types reaches it, so it admits the
+  frontend alone, and it may reach DNS and port 443 only, which its init
+  container needs to fetch the Photon jar and the Austrian index.
 - **Dragonfly authentication** (`grid-oib:dragonflyPassword` and
   `grid-oib:rateLimitStorePassword`, both **required**): `requirepass` on both
   instances, delivered as `DFLY_requirepass` from a Kubernetes Secret rather
@@ -1914,8 +1919,9 @@ Three things are true of this whole table and are easy to miss:
 | Frontend → backend (WebSocket chat) | **No** | `ws://` to the `chat` role (`BACKEND_CHAT_URL`), per-replica via the headless service (ADR-0028 conversation affinity). This is the full chat transport, including prompts and answers. |
 | Producers → OTel Collector, Collector → Langfuse | **No** | Plain OTLP on `http://otel-collector:4318`, and the collector's export to `http://langfuse-web:3000`. This traffic carries **prompts, retrieved snippets, LLM output and live presigned S3 URLs**, so it is the most sensitive plaintext channel in the namespace; Langfuse's store is likewise kept off-limits only by NetworkPolicy, which is why `langfuseEnabled` refuses to deploy with `networkPolicies=false`. |
 | Frontend and `bff-jobs` → Gotenberg | **No, and unauthenticated** | `http://gotenberg:3000`. It carries the bytes of every office file converted, and anyone who can reach it can have LibreOffice parse a file of their choosing. NetworkPolicy admits the frontend and the `bff-jobs` pool only. |
+| Frontend → geocoder | **No, and unauthenticated** | `http://geocoder:2322`, when `geocoderEnabled`. It carries every address typed into the project dialog, which is client data and the reason the geocoder runs in the cluster at all (ADR-0120). NetworkPolicy admits the frontend only. |
 | App → Qdrant | **No, but authenticated** | `http://qdrant.grid.svc.cluster.local:6333` (and gRPC 6334) with the read-write API key, which an observer of the pod network could read off the wire. NetworkPolicy admits the named callers only (`allow-app-to-qdrant`); the peers' p2p traffic (6335) is plaintext too, between the peers alone (`qdrant-peers`). The keyless metrics port (6336) admits the collector alone. |
-| Cluster egress (OpenRouter, Tavily, WorkOS, GitHub) | **Yes** | All HTTPS. |
+| Cluster egress (OpenRouter, Tavily, WorkOS, GitHub, and with the geocoder `download1.graphhopper.com`) | **Yes** | All HTTPS. |
 
 Everything in the "No" rows above is confined to the pod network of a
 single-tenant namespace, and the intra-namespace NetworkPolicy is what bounds

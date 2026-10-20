@@ -1000,6 +1000,11 @@ export const files: typeof en.files = {
     uploadNetwork: 'Keine Verbindung beim Hochladen. Bitte erneut versuchen.',
     uploadStalled: 'Die Verbindung hat nichts mehr übertragen, das Hochladen wurde abgebrochen.',
     uploadTimeout: 'Das Hochladen hat zu lange gedauert.',
+    // Die Ablehnungen des Servers nach Größe und Speicher: ihr englischer Text
+    // ist für Logs (`lib/upload-failure.ts`).
+    uploadTooLarge: '„{name}“ ist größer, als Ihr Büro hochladen darf.',
+    uploadTooLargeLimit: '„{name}“ ist größer, als Ihr Büro hochladen darf: höchstens {limit} pro Datei.',
+    uploadStorageFull: 'Der Speicher Ihres Büros ist voll. Es wurde nichts hochgeladen.',
     // Von der Namensprüfung nicht hochgeladen (ADR-0086): auf einem Weg ohne
     // Upload-Dialog, etwa im Chat, oder als Nachprüfung des Servers.
     screenedOut: '{count} Datei(en) nicht hochgeladen, weil Ihr Büro sie als sensibel einstuft: {files}',

@@ -45,7 +45,7 @@ const location: GeocodeResult = {
 
 describe('intakeSeedFacts', () => {
   it('turns a chosen address into address, country and Bundesland, the address with its geocoder evidence', () => {
-    const facts = intakeSeedFacts({ location }, NOW)
+    const facts = intakeSeedFacts({ location }, NOW, 'u1')
 
     expect(Object.keys(facts).sort()).toEqual(['bundesland', 'country', 'standort_adresse'])
     expect(facts.standort_adresse).toEqual({
@@ -63,18 +63,36 @@ describe('intakeSeedFacts', () => {
   })
 
   it('leaves the Bundesland out when the provider named none we can match', () => {
-    const facts = intakeSeedFacts({ location: { ...location, bundesland: null } }, NOW)
+    const facts = intakeSeedFacts({ location: { ...location, bundesland: null } }, NOW, 'u1')
     expect(Object.keys(facts).sort()).toEqual(['country', 'standort_adresse'])
   })
 
   it('takes a Bundesland chosen by hand, without evidence', () => {
-    const facts = intakeSeedFacts({ bundesland: 'salzburg' }, NOW)
+    const facts = intakeSeedFacts({ bundesland: 'salzburg' }, NOW, 'u1')
     expect(Object.keys(facts).sort()).toEqual(['bundesland', 'country'])
     expect(facts.bundesland?.evidence).toBeUndefined()
   })
 
+  it('keeps a typed address as the person\'s fact, and derives nothing from it', () => {
+    const facts = intakeSeedFacts({ address: '  Am Bahnhof 4, Gänserndorf ' }, NOW, 'u1')
+    expect(Object.keys(facts)).toEqual(['standort_adresse'])
+    expect(facts.standort_adresse).toEqual({
+      value: 'Am Bahnhof 4, Gänserndorf',
+      confidence: 'confirmed',
+      source: 'onboarding',
+      updatedAt: NOW.toISOString(),
+      evidence: [{ kind: 'person', userId: 'u1', at: NOW.toISOString() }],
+    })
+    expect(ProjectProfileSchema.parse({ facts })).toBeTruthy()
+  })
+
+  it('takes the chosen hit over a typed line', () => {
+    const facts = intakeSeedFacts({ location, address: 'something else' }, NOW, 'u1')
+    expect(facts.standort_adresse?.value).toBe('Innrain 1, 6020 Innsbruck')
+  })
+
   it('is empty without an address or a Bundesland', () => {
-    expect(intakeSeedFacts({}, NOW)).toEqual({})
+    expect(intakeSeedFacts({}, NOW, 'u1')).toEqual({})
   })
 })
 

@@ -72,6 +72,10 @@ describe('ProjectsGrid', () => {
 
     expect(screen.getByText('Start your first project')).toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: /search projects/i })).not.toBeInTheDocument()
+    // One way to create it: a header „New project" beside „Create your first
+    // project" read as two different actions in a pilot onboarding.
+    expect(screen.getByRole('button', { name: 'Create your first project' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'New project' })).not.toBeInTheDocument()
   })
 
   test('puts the three projects the viewer worked in most recently on the rail, the rest in the list', () => {
