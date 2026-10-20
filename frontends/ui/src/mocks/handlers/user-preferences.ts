@@ -5,7 +5,7 @@
  * hydrate a preference on mount (theme, the reasoning-skills toggle), and any
  * component that renders one of them — `AgentResponse` renders the
  * reasoning-skills disclosure — fires a GET on mount. With MSW set to
- * `onUnhandledFrame: 'bypass'`, an unhandled GET reaches `localhost` and the
+ * `onUnhandledRequest: 'bypass'`, an unhandled GET reaches `localhost` and the
  * refused socket surfaces as an unhandled `AggregateError` that fails the whole
  * run, even though `fetchUserPreferences` itself swallows the error. Answering
  * it here keeps that fetch inside MSW: empty prefs, so every hydration lands on

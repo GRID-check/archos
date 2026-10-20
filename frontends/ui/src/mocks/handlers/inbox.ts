@@ -3,7 +3,7 @@
  *
  * The review asks which of a document's marks have unread news
  * (`GET /api/inbox/unread-anchors`) as it opens. With MSW set to
- * `onUnhandledFrame: 'bypass'` that GET would reach `localhost` from every
+ * `onUnhandledRequest: 'bypass'` that GET would reach `localhost` from every
  * spec that renders a review (see `user-preferences.ts`). Nothing is unread
  * by default; a spec that cares overrides this with `server.use(...)`.
  */

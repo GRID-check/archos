@@ -76,6 +76,16 @@ updates:
       # and 157 spec files. Lift this in the change that does the migration.
       - dependency-name: "zod"
         update-types: ["version-update:semver-major"]
+      # Test-harness majors that are migrations of the spec setup, not bumps.
+      # msw 3 intercepts none of happy-dom's fetches (a mocked handler, relative
+      # or absolute, never sees the request, so 360 specs fail on the network
+      # guard's 503). happy-dom 21 rejects a cancelled animation with an
+      # AbortError, which fails 9 motion specs and floods every shard with
+      # unhandled errors. Lift each in the change that adapts the setup.
+      - dependency-name: "msw"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "happy-dom"
+        update-types: ["version-update:semver-major"]
       # @ifc-lite/geometry 7.8.1 spawns a worker it does not ship
       # ('./geometry.worker.ts'), which fails `next build`, and every renderer
       # from 6.3.0 to 6.4.0 requires it. Exact versions only, so a release that
