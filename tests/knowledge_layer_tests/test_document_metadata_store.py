@@ -362,6 +362,45 @@ class TestDocumentMetadataStore:
             engine.dispose()
             DocumentMetadataStore.dispose_engine(db_url)
 
+    def test_a_german_doc_class_is_rewritten_to_its_english_key_and_others_are_left(self):
+        """A row written before the English Dokumentart keys is honest again on the next start."""
+        from sqlalchemy import create_engine
+        from sqlalchemy import text
+
+        from aiq_agent.knowledge.document_metadata_store import TABLE_NAME
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url = f"sqlite:///{Path(tmpdir) / 'classes.db'}"
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            store = DocumentMetadataStore(db_url)
+            store.register("c", "rl.pdf", "OIB-RL 2")
+            store.register("c", "plan.pdf", "Grundriss")
+            store.register("c", "own.pdf", "Eigenes")
+            engine = create_engine(db_url)
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        f"UPDATE {TABLE_NAME} SET doc_class = 'oib_richtlinie', "
+                        "doc_class_suggestion = 'oib_leitfaden' WHERE filename = 'rl.pdf'"
+                    )
+                )
+                conn.execute(text(f"UPDATE {TABLE_NAME} SET doc_class = 'law' WHERE filename = 'own.pdf'"))
+
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)
+
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    text(f"SELECT filename, doc_class, doc_class_suggestion FROM {TABLE_NAME} ORDER BY filename")
+                ).all()
+            assert [tuple(row) for row in rows] == [
+                ("own.pdf", "law", None),
+                ("plan.pdf", None, None),
+                ("rl.pdf", "oib_guideline", "oib_guide"),
+            ]
+            engine.dispose()
+            DocumentMetadataStore.dispose_engine(db_url)
+
     def test_a_pod_that_has_not_rolled_yet_recreates_the_old_table_and_its_rows_are_moved_across(self):
         from sqlalchemy import create_engine
         from sqlalchemy import text

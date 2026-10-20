@@ -459,15 +459,20 @@ class DocumentMetadataStore:
         from sqlalchemy import text
 
         names = list(LEGACY_DOC_CLASSES.items())
+        # The keys travel as bound parameters; only the table and the two fixed column names are
+        # spliced in, and both come from this module.
+        params = {f"old{i}": legacy for i, (legacy, _) in enumerate(names)}
+        params |= {f"new{i}": current for i, (_, current) in enumerate(names)}
+        old_keys = ", ".join(f":old{i}" for i in range(len(names)))
+        cases = " ".join(f"WHEN :old{i} THEN :new{i}" for i in range(len(names)))
         for column in ("doc_class", "doc_class_suggestion"):
-            old_keys = ", ".join(f"'{legacy}'" for legacy, _ in names)
-            cases = " ".join(f"WHEN '{legacy}' THEN '{current}'" for legacy, current in names)
-            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             conn.execute(
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 text(
                     f"UPDATE {TABLE_NAME} SET {column} = CASE {column} {cases} ELSE {column} END "
                     f"WHERE {column} IN ({old_keys})"
-                )
+                ),
+                params,
             )
 
     def _create_retained_table(self, conn) -> None:
@@ -490,8 +495,8 @@ class DocumentMetadataStore:
             return
         if has_legacy:
             columns = ", ".join(("collection", "filename", *_RETAINED_COLUMNS))
-            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             conn.execute(
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 text(
                     f"INSERT INTO {RETAINED_TABLE_NAME} ({columns}) SELECT {columns} FROM {LEGACY_RETAINED_TABLE_NAME} "
                     "WHERE true ON CONFLICT (collection, filename) DO NOTHING"
