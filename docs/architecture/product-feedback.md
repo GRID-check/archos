@@ -77,8 +77,11 @@ report text to PostHog.
   platform page lists the report as not in PostHog yet.
 
 The server needs `POSTHOG_PERSONAL_API_KEY` (secret; scopes `ticket:read`,
-`ticket:write`, `project:read`) and `POSTHOG_PROJECT_ID`, from the Pulumi keys
-`grid-oib:posthogPersonalApiKey` and `grid-oib:posthogProjectId`. A person with
+`ticket:write`) and `POSTHOG_PROJECT_ID`, from the Pulumi keys
+`grid-oib:posthogPersonalApiKey` and `grid-oib:posthogProjectId`. The widget
+token is read keyless from the project's public remote config, and the ticket
+call carries this deployment's origin, which must be listed in PostHog's
+Support → Allowed domains. A person with
 PostHog access creates the key
 ([checklist](../observability/posthog-migration.md#checklist)). Without both,
 no ticket opens.

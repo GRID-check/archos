@@ -8,8 +8,10 @@
  * can inline a `NEXT_PUBLIC_` variable at build time, and the image is built
  * without one.
  */
-export function configuredAppOrigin(): string | null {
-  const configured = process.env.WORKOS_REDIRECT_URI || process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI
+export function configuredAppOrigin(
+  env: Record<string, string | undefined> = process.env
+): string | null {
+  const configured = env.WORKOS_REDIRECT_URI || env.NEXT_PUBLIC_WORKOS_REDIRECT_URI
   if (!configured) return null
   try {
     return new URL(configured).origin
