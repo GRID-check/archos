@@ -15,6 +15,7 @@ import {
   langfuseOtlpBasicAuth,
   langfuseOtlpTracesEndpoint,
 } from "./langfuse";
+import { CLUSTER_STATE_RULES, installCollectorIdentity } from "./collector-identity";
 import {
   CollectorFragment,
   HEALTH_PORT,
@@ -35,6 +36,8 @@ const COMPONENT = "otel-collector";
 export const METRICS_EXPORT_PORT = 8889;
 /** How often each Qdrant peer is scraped. Alert rules assume at least two scrapes in their shortest `for`. */
 const QDRANT_SCRAPE_INTERVAL = "30s";
+/** How often workload state is read from the API; PostHog charts at minute resolution. */
+const CLUSTER_STATE_INTERVAL = "30s";
 
 export interface OtelCollector {
   deployment: k8s.apps.v1.Deployment;
@@ -67,6 +70,12 @@ export interface OtelCollectorSources {
  * per consumer below, composed by `collector-config.ts`. Swapping or adding a
  * backend later is a fragment HERE, not a change in any app.
  *
+ * With PostHog metrics on it is also the one place the cluster's metrics leave
+ * from: the per-node agents (`otel-agent.ts`) send it their nodes' kubelet
+ * stats and scrapes over OTLP, and it reads workload state from the API
+ * itself (`k8s_cluster`). One replica on purpose: a second would report every
+ * workload twice.
+ *
  * NetworkPolicy: same-namespace ingress is already allowed and egress is open
  * by design (see network-policies.ts); the scrape of Qdrant's metrics port is
  * the one connection out of it that needs a rule of its own (rule 18).
@@ -82,14 +91,28 @@ export function installOtelCollector(
   const name = COMPONENT;
   const { langfuseSecretName, qdrantMetricsTargets } = sources;
 
+  const metrics = cfg.posthog.metricsEnabled;
   const configFor = (qdrant: string[] | undefined): string =>
     renderCollectorConfig(
       composeCollectorConfig([
         ...(langfuseSecretName ? [langfuseTraces()] : []),
         ...(cfg.posthog.logsEnabled ? [posthogLogs(cfg.posthog.host, cfg.posthog.projectToken)] : []),
         ...(qdrant ? [qdrantScrape(qdrant)] : []),
+        ...(metrics
+          ? [
+              clusterState(),
+              posthogMetrics(cfg.posthog.host, cfg.posthog.projectToken, pulumi.getStack(), [
+                OTLP_RECEIVER,
+                CLUSTER_STATE_RECEIVER,
+                ...(qdrant ? [QDRANT_RECEIVER] : []),
+              ]),
+            ]
+          : []),
       ]),
     );
+  // Read access to the API only when cluster state is collected; otherwise the
+  // pod gets no token at all.
+  const identity = metrics ? installCollectorIdentity(COMPONENT, CLUSTER_STATE_RULES, provider, namespace) : undefined;
   const config: pulumi.Input<string> = qdrantMetricsTargets
     ? pulumi.output(qdrantMetricsTargets).apply((targets) => configFor(targets))
     : configFor(undefined);
@@ -135,8 +158,9 @@ export function installOtelCollector(
           },
           spec: {
             enableServiceLinks: false,
-            // No K8s API access needed — don't hand the pod an API token.
-            automountServiceAccountToken: false,
+            ...(identity
+              ? { serviceAccountName: identity.serviceAccount.metadata.name, automountServiceAccountToken: true }
+              : { automountServiceAccountToken: false }),
             securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001 },
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.observability).terminationGracePeriodSeconds,
@@ -192,7 +216,7 @@ export function installOtelCollector(
         },
       },
     },
-    { provider, dependsOn: [...dependsOn, configMap] },
+    { provider, dependsOn: [...dependsOn, configMap, ...(identity ? [identity.binding] : [])] },
   );
 
   const service = new k8s.core.v1.Service(
@@ -288,6 +312,9 @@ export function posthogLogs(host: string, projectToken: string): CollectorFragme
   };
 }
 
+const QDRANT_RECEIVER = "prometheus/qdrant";
+const CLUSTER_STATE_RECEIVER = "k8s_cluster";
+
 /**
  * Scrape every Qdrant peer, and re-expose the series on
  * `otel-collector:8889/metrics` for the alert rules in `data/qdrant-alerts.ts`.
@@ -300,7 +327,7 @@ export function posthogLogs(host: string, projectToken: string): CollectorFragme
 export function qdrantScrape(targets: string[]): CollectorFragment {
   return {
     receivers: {
-      "prometheus/qdrant": {
+      [QDRANT_RECEIVER]: {
         config: {
           scrape_configs: [
             {
@@ -325,6 +352,66 @@ export function qdrantScrape(targets: string[]): CollectorFragment {
         metric_expiration: "5m",
       },
     },
-    pipelines: { "metrics/qdrant": { receivers: ["prometheus/qdrant"], exporters: ["prometheus"] } },
+    pipelines: { "metrics/qdrant": { receivers: [QDRANT_RECEIVER], exporters: ["prometheus"] } },
+  };
+}
+
+/**
+ * Workload state from the Kubernetes API: pod phases and restarts, deployment,
+ * statefulset and daemonset availability, HPA targets, job outcomes, node
+ * conditions and allocatable resources. What a pod is DOING is the agents'
+ * (`otel-agent.ts`); this is what the cluster says it should be.
+ */
+export function clusterState(): CollectorFragment {
+  return {
+    receivers: {
+      [CLUSTER_STATE_RECEIVER]: {
+        auth_type: "serviceAccount",
+        collection_interval: CLUSTER_STATE_INTERVAL,
+        node_conditions_to_report: ["Ready", "MemoryPressure", "DiskPressure", "PIDPressure"],
+        allocatable_types_to_report: ["cpu", "memory", "ephemeral-storage", "pods"],
+      },
+    },
+  };
+}
+
+/**
+ * Every metric the collector receives or reads, to PostHog Metrics: the
+ * application meters (OTLP from every tier), the agents' node and pod readings
+ * (OTLP), workload state and the Qdrant scrape.
+ *
+ * Its own exporter beside the logs one: one exporter per PostHog signal keeps
+ * each signal's switch and queue its own. The project token is the same
+ * public `phc_` key as the logs'. `deployment.environment.name` is the stack,
+ * so dev and prod stay apart in one PostHog project; `insert` leaves a value a
+ * producer set itself.
+ */
+export function posthogMetrics(
+  host: string,
+  projectToken: string,
+  environment: string,
+  receivers: string[],
+): CollectorFragment {
+  return {
+    processors: {
+      "resource/environment": {
+        attributes: [{ key: "deployment.environment.name", value: environment, action: "insert" }],
+      },
+    },
+    exporters: {
+      "otlp_http/posthog_metrics": {
+        metrics_endpoint: `${host.replace(/\/+$/, "")}/i/v1/metrics`,
+        headers: { Authorization: `Bearer ${projectToken}` },
+        compression: "gzip",
+        ...boundedDelivery(1000),
+      },
+    },
+    pipelines: {
+      "metrics/posthog": {
+        receivers,
+        processors: ["resource/environment"],
+        exporters: ["otlp_http/posthog_metrics"],
+      },
+    },
   };
 }

@@ -106,10 +106,9 @@ describe("PostHog logs in the collector, enabled", () => {
     expect(service.pipelines).not.toHaveProperty("logs");
   });
 
-  it("sends no traces or metrics to PostHog", () => {
+  it("sends no traces to PostHog", () => {
     // LLM traces reach PostHog through Langfuse's integration; APM is out of scope.
     expect(collector).not.toContain("traces_endpoint: https://eu.i.posthog.com");
-    expect(collector).not.toContain("metrics_endpoint");
   });
 
   it("needs no env var on the pod: the token is public config, not a secret", () => {
@@ -132,7 +131,9 @@ describe("PostHog logs in the collector, by default and off", () => {
     ["the flag is set but the token is empty", { "grid-oib:posthogLogsEnabled": "true", "grid-oib:posthogProjectToken": "" }],
   ])("is absent when %s", async (_why, values) => {
     const { collector } = await deploy(values);
-    expect(collector).not.toContain("posthog");
+    const { exporters, service } = parseCollectorConfig(collector);
+    expect(exporters).not.toHaveProperty("otlp_http/posthog");
+    expect(service.pipelines).not.toHaveProperty("logs/posthog");
     expect(collector).not.toContain("warn_and_above");
   }, 120_000);
 });
