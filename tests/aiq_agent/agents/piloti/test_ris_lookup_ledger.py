@@ -42,14 +42,14 @@ _LAW_URL = "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnu
 _GARAGE_URL = "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000098"
 
 
-def _passage(punkt: str, *, title: str = "Bauordnung für Wien", url: str = _LAW_URL) -> Passage:
+def _passage(clause: str, *, title: str = "Bauordnung für Wien", url: str = _LAW_URL) -> Passage:
     """One returned passage, as ``passages.build_passages`` builds it."""
     return Passage(
         title=title,
         url=url,
         collection="ris/LrKons/Wien",
-        punkt_label=punkt,
-        citation=f"{title}, {punkt}",
+        clause_label=clause,
+        citation=f"{title}, {clause}",
         body="…",
         score=1.0,
     )

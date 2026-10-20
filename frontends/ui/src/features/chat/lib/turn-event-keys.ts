@@ -12,6 +12,7 @@
  * that carries a key, so a technical record has nothing here to render.
  */
 
+import { modernizeTurnEventKey } from '@/lib/conversations/legacy-turn-event'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 
 /**
@@ -29,7 +30,7 @@ import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
  * `skill.activated` at `chat.thinking.skill.activated`.
  */
 export const TURN_EVENT_KEYS: Record<string, string> = {
-  'status.documents.archiv': 'thinking.turnStatus.',
+  'status.documents.officeShelf': 'thinking.turnStatus.',
   'status.documents.project': 'thinking.turnStatus.',
   'status.documents.session': 'thinking.turnStatus.',
   'status.documents.several': 'thinking.turnStatus.',
@@ -38,7 +39,7 @@ export const TURN_EVENT_KEYS: Record<string, string> = {
   'status.retrieval.plain': 'thinking.turnStatus.',
   // The locator rounds: a passage the agent already identified is being READ,
   // not searched for. No `{corpus}` slot — the document names itself.
-  'status.retrieval.punkt': 'thinking.turnStatus.',
+  'status.retrieval.clause': 'thinking.turnStatus.',
   'status.retrieval.page': 'thinking.turnStatus.',
   'status.retrieval.requery': 'thinking.turnStatus.',
   'status.action.remember': 'thinking.turnStatus.',
@@ -140,10 +141,12 @@ const corpusPhrase = (raw: string, t: StepEventTranslator): string | null => {
  * silence beats an identifier, and beats a template with a hole in it.
  */
 export const renderTurnEventKey = (
-  key: string,
+  storedKey: string,
   values: Record<string, string> | undefined,
   t: StepEventTranslator
 ): string | null => {
+  // A pod not yet rolled still says `status.documents.archiv`.
+  const key = modernizeTurnEventKey(storedKey)
   const prefix = TURN_EVENT_KEYS[key] ?? FOLD_EVENT_KEYS[key]
   if (prefix === undefined) return null
 

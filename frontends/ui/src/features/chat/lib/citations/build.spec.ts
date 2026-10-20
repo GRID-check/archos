@@ -29,8 +29,8 @@ const wireLocus = (number: number, page: number): CitationSource => ({
   content: `[KB] ${OIB_FILE}, p.${page}`,
   timestamp: new Date(0),
   origin: 'kb',
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   laneLabel: 'OIB-Richtlinie',
   title: OIB_TITLE,
   citationKey: `${OIB_FILE}, p.${page}`,
@@ -63,7 +63,7 @@ describe('buildCitationModel', () => {
     expect(doc.title).toBe(OIB_TITLE)
     expect(doc.authority).toBe('OIB')
     expect(doc.tint).toBe('oib')
-    expect(doc.kind).toBe('baurecht')
+    expect(doc.kind).toBe('building_law')
     expect(citedPages(doc)).toEqual([5, 12, 18, 22])
     expect(citationNumbers(doc)).toEqual([1, 2, 3, 4])
   })
@@ -94,24 +94,24 @@ describe('buildCitationModel', () => {
       id: 'p',
       content: 'Plan.pdf, p.1',
       timestamp: new Date(0),
-      kind: 'projekt',
+      kind: 'project',
       collection: 'proj_abc',
       fileName: 'Plan.pdf',
       page: 1,
       isCited: true,
     }
-    const archivPlan: CitationSource = {
+    const officeShelfPlan: CitationSource = {
       ...projectPlan,
       id: 'a',
-      kind: 'buero',
+      kind: 'office',
       collection: 'archiv_xyz',
     }
-    const docs = buildCitationModel({ citations: [projectPlan, archivPlan] })
+    const docs = buildCitationModel({ citations: [projectPlan, officeShelfPlan] })
     expect(docs).toHaveLength(2)
-    expect(docs.map((doc) => doc.kind).sort()).toEqual(['buero', 'projekt'])
+    expect(docs.map((doc) => doc.kind).sort()).toEqual(['office', 'project'])
   })
 
-  it('does not collapse a file that merely MENTIONS a Richtlinie onto the card naming it', () => {
+  it('does not collapse a file that merely MENTIONS a guideline onto the card naming it', () => {
     // „OIB-Richtlinie 6 Kommentar.pdf" is somebody's commentary ABOUT a
     // Richtlinie, not the Richtlinie. Merging them made two sources one chip
     // whose page-9 locus opened the commentary in place of the base-law
@@ -146,7 +146,7 @@ describe('buildCitationModel', () => {
     expect(accumulator.build()).toHaveLength(2)
   })
 
-  it('tells a corpus Richtlinie apart from a file that merely mentions one', () => {
+  it('tells a corpus guideline apart from a file that merely mentions one', () => {
     // The residue test, at the boundary it exists to hold. A name is the
     // Richtlinie when nothing is left after removing its number and the words
     // the key already models (role, Leitfaden, edition, month); anything else
@@ -190,9 +190,9 @@ describe('buildCitationModel', () => {
   it('separates what was read from what was used', () => {
     const lanes: TraceLaneCard[] = [
       {
-        key: 'baurecht_oib',
+        key: 'building_law_oib',
         label: 'OIB-Richtlinie',
-        kind: 'baurecht',
+        kind: 'building_law',
         signal: 'law',
         hitCount: 2,
         sources: [
@@ -221,9 +221,9 @@ describe('buildCitationModel', () => {
     // source is its one channel for the shelf, and the Herleitung colours by it.
     const lanes: TraceLaneCard[] = [
       {
-        key: 'projekt',
+        key: 'project',
         label: 'Projektwissen',
-        kind: 'projekt',
+        kind: 'project',
         signal: 'project',
         hitCount: 1,
         sources: [{ name: 'Plan.pdf', detail: 'p.2', shelf: 'project' }],
@@ -355,8 +355,8 @@ describe('a source known only from the written list', () => {
     // sitting beside an identical structured citation in a different colour.
     const [doc] = buildCitationModel({ entries: [writtenEntry(1, 9)] })
 
-    expect(doc!.lane).toBe('baurecht_oib')
-    expect(doc!.kind).toBe('baurecht')
+    expect(doc!.lane).toBe('building_law_oib')
+    expect(doc!.kind).toBe('building_law')
     expect(doc!.tint).toBe('oib')
     expect(doc!.authority).toBe('OIB')
   })
@@ -428,8 +428,8 @@ describe('a model-written filename spelling never doubles a chip', () => {
     content: `[KB] ${WIRE_FILE}, p.${page}`,
     timestamp: new Date(0),
     origin: 'kb',
-    kind: 'baurecht',
-    lane: 'baurecht_oib',
+    kind: 'building_law',
+    lane: 'building_law_oib',
     title: 'OIB-Richtlinie 2, Ausgabe Mai 2023',
     citationKey: `${WIRE_FILE}, p.${page}`,
     collection: 'oib_knowledge',
@@ -522,8 +522,8 @@ describe('a model-written filename spelling never doubles a chip', () => {
       citationKey: 'Bescheid - Kopie.pdf, p.4',
       collection: 'project_x',
       fileName: 'Bescheid - Kopie.pdf',
-      lane: 'projekt',
-      kind: 'projekt',
+      lane: 'project',
+      kind: 'project',
     }
     const docs = buildCitationModel({
       citations: [dashed],
@@ -561,8 +561,8 @@ describe('a model-written filename spelling never doubles a chip', () => {
       content: '[RIS] Wiener Bautechnikverordnung 2023',
       timestamp: new Date(0),
       origin: 'ris',
-      kind: 'baurecht',
-      lane: 'baurecht_ris',
+      kind: 'building_law',
+      lane: 'building_law_ris',
       laneLabel: 'Verordnung',
       title: 'Wiener Bautechnikverordnung 2023',
       url: 'https://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000456',
@@ -619,8 +619,8 @@ describe('a model-written filename spelling never doubles a chip', () => {
       content: '[KB] oib-rl_6_ausgabe_mai_2023.pdf, p.2',
       timestamp: new Date(0),
       origin: 'kb',
-      kind: 'baurecht',
-      lane: 'baurecht_oib',
+      kind: 'building_law',
+      lane: 'building_law_oib',
       title: 'OIB-Richtlinie 6, Ausgabe Mai 2023',
       citationKey: 'oib-rl_6_ausgabe_mai_2023.pdf, p.2',
       collection: 'oib_knowledge',

@@ -47,7 +47,7 @@ function atQuote(citation: CitationRef, stamp: ExcerptSourceProps['stamp']): Cit
       ...base,
       key: `${base.key}#quote`,
       page: stamp.page ?? base.page,
-      punkt: stamp.punkt ?? base.punkt,
+      clause: stamp.clause ?? base.clause,
       snippet: stamp.text,
     },
   }

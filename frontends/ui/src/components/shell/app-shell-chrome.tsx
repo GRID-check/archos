@@ -27,7 +27,7 @@
  * rather than over it, and the project switcher sheet its header opens.
  *
  * OVERLAY ROUTES KEEP THE CHROME OF THE PAGE THEY COVER. The Archiv and the
- * Postfach are intercepted routes: a soft navigation to `/app/archiv` changes
+ * Postfach are intercepted routes: a soft navigation to `/app/office-shelf` changes
  * the URL while the segment below keeps rendering the page the reader was on.
  * Deriving scope from the raw pathname would flip a project's rail into the
  * org header UNDER the sheet — the reflow this file exists to prevent — so
@@ -58,7 +58,7 @@ import type { TourEligibility } from '@/features/onboarding/lib/product-tour'
 
 // `/app/uploads/<id>` is the upload summary's dialog (ADR-0086), opened from
 // the Postfach over the page the reader was on.
-const OVERLAY_ROUTES = ['/app/archiv', '/app/inbox', '/app/uploads'] as const
+const OVERLAY_ROUTES = ['/app/office-shelf', '/app/inbox', '/app/uploads'] as const
 
 function isOverlayPath(pathname: string): boolean {
   return OVERLAY_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))
@@ -72,7 +72,7 @@ export interface AppShellChromeProps {
   canManageOrganization: boolean
   canViewOrganization: boolean
   canManagePlatform: boolean
-  canAccessArchiv: boolean
+  canAccessOfficeShelf: boolean
   canAccessInbox: boolean
   showSkills: boolean
   showModels: boolean
@@ -116,7 +116,7 @@ export function AppShellChrome({
 
   return (
     <ProductTour
-      canAccessArchiv={chrome.canAccessArchiv}
+      canAccessOfficeShelf={chrome.canAccessOfficeShelf}
       canAccessInbox={chrome.canAccessInbox}
       canManageOrganization={chrome.canManageOrganization}
       eligible={chrome.tours}
@@ -144,7 +144,7 @@ export function AppShellChrome({
           canManageOrganization={chrome.canManageOrganization}
           canViewOrganization={chrome.canViewOrganization}
           canManagePlatform={chrome.canManagePlatform}
-          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessOfficeShelf={chrome.canAccessOfficeShelf}
           canAccessInbox={chrome.canAccessInbox}
           showSkills={chrome.showSkills}
           showModels={chrome.showModels}
@@ -157,7 +157,7 @@ export function AppShellChrome({
           canManageOrganization={chrome.canManageOrganization}
           canViewOrganization={chrome.canViewOrganization}
           canManagePlatform={chrome.canManagePlatform}
-          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessOfficeShelf={chrome.canAccessOfficeShelf}
           canAccessInbox={chrome.canAccessInbox}
         />
       )}
@@ -165,7 +165,7 @@ export function AppShellChrome({
       {tabBarShown && (
         <PhoneTabBar
           projectId={projectId}
-          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessOfficeShelf={chrome.canAccessOfficeShelf}
           canAccessInbox={chrome.canAccessInbox}
         />
       )}
@@ -173,7 +173,7 @@ export function AppShellChrome({
         <PhoneMoreSheet
           projectId={projectId}
           authRequired={chrome.authRequired}
-          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessOfficeShelf={chrome.canAccessOfficeShelf}
           canAccessInbox={chrome.canAccessInbox}
           showSkills={chrome.showSkills}
           canViewOrganization={chrome.canViewOrganization}

@@ -15,7 +15,7 @@ const cited = (overrides: Partial<CitationSource> = {}): CitationSource => ({
   content: 'Plan.pdf, p.1',
   timestamp: new Date(0),
   isCited: true,
-  kind: 'projekt',
+  kind: 'project',
   fileName: 'Plan.pdf',
   collection: 'proj_abc',
   page: 1,
@@ -125,7 +125,7 @@ describe('useCitationPeek', () => {
     })
     server.use(
       http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Plan.pdf')] })),
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({ documents: [] })),
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({ documents: [] })),
     )
   })
 
@@ -198,7 +198,7 @@ describe('useCitationPeek', () => {
         answer({
           citations: [
             cited({
-              kind: 'baurecht',
+              kind: 'building_law',
               collection: 'oib_knowledge',
               fileName: 'oib-rl_2.pdf',
               content: 'oib-rl_2.pdf, p.5',

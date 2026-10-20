@@ -55,7 +55,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { AUDIT_ACTIONS, AUDIT_SCHEMAS } from './schemas.mjs'
+import { AUDIT_ACTIONS, AUDIT_SCHEMAS, RETIRED_AUDIT_ACTIONS } from './schemas.mjs'
 import { AUTHORED_REF_KINDS } from '@/lib/documents/document-authors'
 import { DOCUMENT_VERSION_TRANSITIONS } from '@/lib/documents/lifecycle-types'
 
@@ -143,8 +143,14 @@ describe('audit schema coverage', () => {
     // to compare `Object.keys(AUDIT_SCHEMAS)` with `AUDIT_ACTIONS`, which is the
     // same array, so it was green for a registry containing an action no call
     // site has ever passed. `EMITTED_ACTIONS` comes from the call sites.
-    const orphans = Object.keys(REGISTRY).filter((action) => !EMITTED_ACTIONS.has(action))
+    const retired = new Set<string>(RETIRED_AUDIT_ACTIONS)
+    const orphans = Object.keys(REGISTRY).filter((action) => !EMITTED_ACTIONS.has(action) && !retired.has(action))
     expect(orphans).toEqual([])
+  })
+
+  it('writes no retired action: those stay registered for history only', () => {
+    expect(RETIRED_AUDIT_ACTIONS.filter((action) => EMITTED_ACTIONS.has(action))).toEqual([])
+    expect(RETIRED_AUDIT_ACTIONS.filter((action) => !(action in REGISTRY))).toEqual([])
   })
 
   it('finds the emitters at all — the scan is evidence, not an empty set', () => {
@@ -153,7 +159,7 @@ describe('audit schema coverage', () => {
     // EVERY schema an orphan — which fails loudly — but a scan that collects
     // every string in the repository would make every schema look emitted and
     // fail silently. Naming a handful of call sites is what tells the two apart.
-    expect(EMITTED_ACTIONS.size).toBeGreaterThanOrEqual(AUDIT_ACTIONS.length)
+    expect(EMITTED_ACTIONS.size).toBeGreaterThanOrEqual(AUDIT_ACTIONS.length - RETIRED_AUDIT_ACTIONS.length)
     expect(EMITTED_ACTIONS).toContain('document.generated')
     // Picked by a ternary at one call site each, which is why the scan reads the
     // whole `action:` expression rather than a literal immediately after it.

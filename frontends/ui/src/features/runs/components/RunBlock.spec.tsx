@@ -29,7 +29,7 @@ const at = (s: number): Date => new Date(T0.getTime() + s * 1000)
 
 const ROUND_1: RunStep = {
   id: 'r1',
-  phase: 'recherchieren',
+  phase: 'researching',
   intent: 'Klären, welche Fluchtweglängen OIB 2 für Gebäudeklasse 4 vorsieht',
   startedAt: at(20).toISOString(),
   docs: [
@@ -39,7 +39,7 @@ const ROUND_1: RunStep = {
 }
 const ROUND_2: RunStep = {
   id: 'r2',
-  phase: 'recherchieren',
+  phase: 'researching',
   intent: 'Prüfen, ob das Atrium als Treppenraum gilt',
   startedAt: at(45).toISOString(),
   docs: [
@@ -51,17 +51,17 @@ const ROUND_2: RunStep = {
 
 function researching(): RunLedger {
   let ledger = emptyRunLedger('run-1', T0)
-  ledger = openPhase(ledger, 'planen', at(0))
-  ledger = closePhase(ledger, 'planen', at(12))
-  ledger = openPhase(ledger, 'recherchieren', at(12))
+  ledger = openPhase(ledger, 'planning', at(0))
+  ledger = closePhase(ledger, 'planning', at(12))
+  ledger = openPhase(ledger, 'researching', at(12))
   ledger = appendStep(ledger, ROUND_1, at(20))
   ledger = appendStep(ledger, ROUND_2, at(45))
   return ledger
 }
 
 function finished(fileId?: string): RunLedger {
-  let ledger = closePhase(researching(), 'recherchieren', at(90))
-  for (const phase of ['pruefen', 'schreiben', 'abgelegt'] as const) {
+  let ledger = closePhase(researching(), 'researching', at(90))
+  for (const phase of ['checking', 'writing', 'filed'] as const) {
     ledger = openPhase(ledger, phase, at(90))
     ledger = closePhase(ledger, phase, at(100))
   }
@@ -73,8 +73,8 @@ function finished(fileId?: string): RunLedger {
 }
 
 function failed(): RunLedger {
-  let ledger = closePhase(researching(), 'recherchieren', at(60))
-  ledger = openPhase(ledger, 'pruefen', at(60))
+  let ledger = closePhase(researching(), 'researching', at(60))
+  ledger = openPhase(ledger, 'checking', at(60))
   return failRun(ledger, 'Das Budget war aufgebraucht.', at(70))
 }
 
@@ -82,13 +82,13 @@ const TITLE = 'Brandschutzkonzept — Fluchtwege'
 
 describe('RunBlock — the stand', () => {
   it.each([
-    ['angelegt', emptyRunLedger('run-0', T0), 'Starting'],
-    ['laeuft', researching(), 'Running'],
-    ['wartet', setRunStatus(researching(), 'wartet', at(50)), 'Waiting for you'],
-    ['fertig', finished('doc-1'), 'Done'],
-    ['fehlgeschlagen', failed(), 'Failed'],
-    ['abgebrochen', setRunStatus(researching(), 'abgebrochen', at(50)), 'Cancelled'],
-    ['unterbrochen', setRunStatus(finished('doc-1'), 'unterbrochen', at(100)), 'Interrupted'],
+    ['created', emptyRunLedger('run-0', T0), 'Starting'],
+    ['running', researching(), 'Running'],
+    ['waiting', setRunStatus(researching(), 'waiting', at(50)), 'Waiting for you'],
+    ['done', finished('doc-1'), 'Done'],
+    ['failed', failed(), 'Failed'],
+    ['cancelled', setRunStatus(researching(), 'cancelled', at(50)), 'Cancelled'],
+    ['interrupted', setRunStatus(finished('doc-1'), 'interrupted', at(100)), 'Interrupted'],
   ] as const)('%s: the spoken word, the glyph and the title', (status, ledger, word) => {
     render(<RunBlock ledger={ledger} title={TITLE} />)
     const block = screen.getByTestId('run-block')
@@ -135,8 +135,8 @@ describe('RunBlock — the track', () => {
     expect(track).toHaveAttribute('data-active', 'true')
     expect(track).toHaveAttribute('data-tone', 'moving')
     expect(track.querySelectorAll('span')).toHaveLength(5)
-    expect(track.querySelector('[data-stage="planen"]')).toHaveAttribute('data-done', 'true')
-    expect(track.querySelector('[data-stage="recherchieren"]')).not.toHaveAttribute('data-done')
+    expect(track.querySelector('[data-stage="planning"]')).toHaveAttribute('data-done', 'true')
+    expect(track.querySelector('[data-stage="researching"]')).not.toHaveAttribute('data-done')
   })
 
   it('takes a register only once something has been asserted', () => {
@@ -148,7 +148,7 @@ describe('RunBlock — the track', () => {
     // The walk stopped short: the segment ahead is an outline, not a fill.
     expect(screen.getByTestId('run-track')).toHaveAttribute('data-halted', 'true')
 
-    rerender(<RunBlock ledger={setRunStatus(researching(), 'abgebrochen', at(50))} title={TITLE} />)
+    rerender(<RunBlock ledger={setRunStatus(researching(), 'cancelled', at(50))} title={TITLE} />)
     expect(screen.getByTestId('run-track')).toHaveAttribute('data-tone', 'retired')
   })
 
@@ -203,30 +203,30 @@ describe('RunBlock — the body', () => {
     const acts = screen.getByTestId('run-phase-acts')
     // `dt` and `dd` are laid out with a gap, so the text runs together — the
     // same shape the document history's acts have.
-    expect(acts.querySelector('[data-phase="planen"]')).toHaveTextContent(
+    expect(acts.querySelector('[data-phase="planning"]')).toHaveTextContent(
       /Planning\s*Research plan drawn up · 12 sec/
     )
     // Recherchieren's account is the list of rounds above; repeating its tally
     // here would be the same number twice on one screen.
-    expect(acts.querySelector('[data-phase="recherchieren"]')).toBeNull()
+    expect(acts.querySelector('[data-phase="researching"]')).toBeNull()
     // Nothing is claimed about phases the run has not reached.
-    expect(acts.querySelector('[data-phase="pruefen"]')).toBeNull()
-    expect(acts.querySelector('[data-phase="abgelegt"]')).toBeNull()
+    expect(acts.querySelector('[data-phase="checking"]')).toBeNull()
+    expect(acts.querySelector('[data-phase="filed"]')).toBeNull()
   })
 
   it('says what the checking phase is doing while it is live', () => {
-    let ledger = closePhase(researching(), 'recherchieren', at(60))
-    ledger = openPhase(ledger, 'pruefen', at(60))
+    let ledger = closePhase(researching(), 'researching', at(60))
+    ledger = openPhase(ledger, 'checking', at(60))
     render(<RunBlock ledger={ledger} title={TITLE} />)
     expect(
-      screen.getByTestId('run-phase-acts').querySelector('[data-phase="pruefen"]')
+      screen.getByTestId('run-phase-acts').querySelector('[data-phase="checking"]')
     ).toHaveTextContent('Checking citations against the sources')
   })
 
   it('does not claim a stopped run is still checking', () => {
     render(<RunBlock ledger={failed()} title={TITLE} defaultOpen />)
     const acts = screen.getByTestId('run-phase-acts')
-    expect(acts.querySelector('[data-phase="pruefen"]')).toBeNull()
+    expect(acts.querySelector('[data-phase="checking"]')).toBeNull()
   })
 })
 
@@ -255,7 +255,7 @@ describe('RunBlock — the fold', () => {
     const { rerender } = render(<RunBlock ledger={live} title={TITLE} />)
     fireEvent.click(trigger())
     expect(trigger()).toHaveAttribute('data-state', 'closed')
-    rerender(<RunBlock ledger={setRunStatus(live, 'wartet', at(50))} title={TITLE} />)
+    rerender(<RunBlock ledger={setRunStatus(live, 'waiting', at(50))} title={TITLE} />)
     // A question opens the block at once: there is nothing to watch finish,
     // and the round that asked it is inside.
     expect(trigger()).toHaveAttribute('data-state', 'open')
@@ -304,7 +304,7 @@ describe('RunBlock — the line and the affordances', () => {
 
   // The regression the default `!!projectId` caused: an escalated chat
   // question runs inside a project and files NOTHING, and was promised the
-  // project anyway — then contradicted by its own `fertig` line.
+  // project anyway — then contradicted by its own `done` line.
   it('promises no destination for a run in a project that never claimed to file', () => {
     render(<RunBlock ledger={emptyRunLedger('run-0', T0)} title={TITLE} projectId="p1" />)
     expect(screen.getByTestId('run-status-line')).not.toHaveTextContent('project')
@@ -319,7 +319,7 @@ describe('RunBlock — the line and the affordances', () => {
     const onAnswer = vi.fn()
     render(
       <RunBlock
-        ledger={setRunStatus(researching(), 'wartet', at(50))}
+        ledger={setRunStatus(researching(), 'waiting', at(50))}
         title={TITLE}
         onAnswer={onAnswer}
       />
@@ -417,7 +417,7 @@ describe('RunBlock — the line and the affordances', () => {
     // chooses a ZDR model.
     const reason =
       'Diese Frage konnte nicht beantwortet werden, weil das eingestellte Modell keinen Anbieter ohne Datenspeicherung hat und Ihre Organisation Zero Data Retention verlangt.'
-    let ledger = closePhase(researching(), 'recherchieren', at(60))
+    let ledger = closePhase(researching(), 'researching', at(60))
     ledger = failRun(ledger, reason, at(70))
     render(<RunBlock ledger={ledger} title={TITLE} defaultOpen onRetry={vi.fn()} />)
     expect(screen.getByTestId('run-status-line')).toHaveTextContent('keinen Anbieter ohne Datenspeicherung')
@@ -425,7 +425,7 @@ describe('RunBlock — the line and the affordances', () => {
   })
 
   it('failed with an internal fault that merely mentions ZDR: Retry stays', () => {
-    let ledger = closePhase(researching(), 'recherchieren', at(60))
+    let ledger = closePhase(researching(), 'researching', at(60))
     ledger = failRun(ledger, 'ZDR policy lookup failed', at(70))
     render(<RunBlock ledger={ledger} title={TITLE} defaultOpen onRetry={vi.fn()} />)
     expect(screen.getAllByTestId('run-action-retry').length).toBeGreaterThan(0)
@@ -434,7 +434,7 @@ describe('RunBlock — the line and the affordances', () => {
   it('cancelled: stopped at your request, and what was done by then', () => {
     render(
       <RunBlock
-        ledger={setRunStatus(researching(), 'abgebrochen', at(50))}
+        ledger={setRunStatus(researching(), 'cancelled', at(50))}
         title={TITLE}
         defaultOpen
       />
@@ -460,7 +460,7 @@ describe('RunBlock — the line and the affordances', () => {
 
   it('interrupted: says the report was written from what was there', () => {
     render(
-      <RunBlock ledger={setRunStatus(finished('doc-1'), 'unterbrochen', at(100))} title={TITLE} />
+      <RunBlock ledger={setRunStatus(finished('doc-1'), 'interrupted', at(100))} title={TITLE} />
     )
     expect(screen.getByTestId('run-status-line')).toHaveTextContent('written from what was there')
     expect(screen.queryByTestId('run-completed-before')).not.toBeInTheDocument()
@@ -547,7 +547,7 @@ describe('RunBlock — stopping a run', () => {
   it('a waiting run keeps Answer as its action and offers the stop beside it', () => {
     render(
       <RunBlock
-        ledger={setRunStatus(researching(), 'wartet', at(50))}
+        ledger={setRunStatus(researching(), 'waiting', at(50))}
         title={TITLE}
         onAnswer={() => {}}
         onCancel={() => {}}
@@ -588,7 +588,7 @@ describe('RunBlock — when the live view loses its line', () => {
 describe('RunBlock — the documents the reader named', () => {
   const named = (ledger: RunLedger): RunLedger => ({
     ...ledger,
-    grundlage: [
+    basis: [
       { name: 'Grundriss EG', shelf: 'project', loci: [] },
       { name: 'Einreichplan.pdf', title: 'Einreichplan EG', shelf: 'project', loci: [] },
     ],
@@ -596,9 +596,9 @@ describe('RunBlock — the documents the reader named', () => {
 
   it('prints the receipt: every named document read with its loci, or unread', () => {
     render(<RunBlock ledger={named(researching())} title={TITLE} />)
-    const receipt = screen.getByTestId('run-grundlage')
+    const receipt = screen.getByTestId('run-basis')
     expect(receipt).toHaveTextContent('1 of 2 named documents read')
-    const docs = screen.getAllByTestId('run-grundlage-doc')
+    const docs = screen.getAllByTestId('run-basis-doc')
     expect(docs[0]).toHaveAttribute('data-read', 'true')
     expect(docs[0]).toHaveTextContent('Grundriss EG · Achse C–E')
     expect(docs[1]).toHaveAttribute('data-read', 'false')
@@ -640,6 +640,6 @@ describe('RunBlock — the documents the reader named', () => {
 
   it('says nothing about documents when none was named', () => {
     render(<RunBlock ledger={researching()} title={TITLE} />)
-    expect(screen.queryByTestId('run-grundlage')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('run-basis')).not.toBeInTheDocument()
   })
 })

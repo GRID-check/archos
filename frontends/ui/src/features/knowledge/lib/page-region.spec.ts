@@ -37,10 +37,10 @@ describe('parsePageRegions', () => {
 
 describe('mergePageRegions', () => {
   it('folds one page’s boxes together without repeating one', () => {
-    const grundriss = { box: [0.1, 0.2, 0.5, 0.6] as [number, number, number, number] }
-    const schnitt = { box: [0.55, 0.2, 0.9, 0.6] as [number, number, number, number] }
-    expect(mergePageRegions([grundriss], [{ ...grundriss }, schnitt])).toEqual([grundriss, schnitt])
+    const floorPlan = { box: [0.1, 0.2, 0.5, 0.6] as [number, number, number, number] }
+    const section = { box: [0.55, 0.2, 0.9, 0.6] as [number, number, number, number] }
+    expect(mergePageRegions([floorPlan], [{ ...floorPlan }, section])).toEqual([floorPlan, section])
     expect(mergePageRegions(undefined, undefined)).toBeUndefined()
-    expect(mergePageRegions([grundriss], undefined)).toEqual([grundriss])
+    expect(mergePageRegions([floorPlan], undefined)).toEqual([floorPlan])
   })
 })

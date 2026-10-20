@@ -54,7 +54,7 @@ def traced(monkeypatch):
 
 def _sources() -> SourceRegistry:
     registry = SourceRegistry()
-    registry.add(SourceEntry(citation_key="rl2.pdf, p.3", title="OIB-RL 2", chunk_text=PASSAGE, punkt="3.1"))
+    registry.add(SourceEntry(citation_key="rl2.pdf, p.3", title="OIB-RL 2", chunk_text=PASSAGE, clause="3.1"))
     return registry
 
 
@@ -94,7 +94,7 @@ async def test_each_quote_line_is_stamped_with_the_passage_that_holds_it(traced)
     assert verbatim["status"] == "verbatim"
     assert verbatim["text"] == PASSAGE
     assert verbatim["number"] == 1
-    assert verbatim["file_name"] == "rl2.pdf" and verbatim["page"] == 3 and verbatim["punkt"] == "3.1"
+    assert verbatim["file_name"] == "rl2.pdf" and verbatim["page"] == 3 and verbatim["clause"] == "3.1"
     assert not_found == {"text": invented, "status": "not_found"}
 
 
@@ -134,5 +134,5 @@ async def test_the_stamps_travel_to_the_turn_result(traced):
         "title": "OIB-RL 2",
         "file_name": "rl2.pdf",
         "page": 3,
-        "punkt": "3.1",
+        "clause": "3.1",
     }

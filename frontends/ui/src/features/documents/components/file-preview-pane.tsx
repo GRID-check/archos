@@ -48,7 +48,7 @@ import { InspectorGroup, InspectorRow, InspectorSection } from '@/components/ui/
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { InsetStage } from '@/components/ui/inset-stage'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { FassungFacts } from '@/lib/documents/fassung'
+import type { RevisionLinks } from '@/lib/documents/revision-links'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import { ClampedText } from '@/components/ui/clamped-text'
 import { documentFileUrl } from '@/lib/documents/urls'
@@ -92,8 +92,8 @@ import { useFileFacts } from '../hooks/use-file-facts'
 import { IngestFailureNotice } from './ingest-failure-notice'
 import { AssignmentFaces } from './assignment-faces'
 import { AuthorshipLine } from './authorship-line'
-import { DocumentFassungen } from './document-fassungen'
-import { showsFassungenSection } from '../lib/fassung-timeline'
+import { DocumentRevisions } from './document-revisions'
+import { showsRevisionsSection } from '../lib/revision-timeline'
 import { DocumentVersionStateBadge } from './document-version-badge'
 import type {
   DocumentLifecyclePermission,
@@ -136,7 +136,7 @@ interface FilePreviewPaneProps {
   /**
    * Whether the viewer may mutate the document (edit tags, re-ingest). Defaults
    * to true (all project callers). The Archiv passes the caller's manage
-   * capability so members without `org:archiv:manage` get a read-only pane.
+   * capability so members without `org:office_shelf:manage` get a read-only pane.
    */
   canManage?: boolean
   onClose?: () => void
@@ -151,7 +151,7 @@ interface FilePreviewPaneProps {
   /** Open another document of this shelf here, from the Fassungen section. */
   onOpenDocument?: (fileId: string) => void
   /** A link was confirmed or taken back: the Fassung facts of one of the two documents, so the listing moves both cards. */
-  onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
+  onRevisionChanged?: (fileId: string, revision: RevisionLinks | null) => void
   /**
    * Whether the "Indexed by GRID" metadata panel (AI summary, key-value props,
    * editable tags) renders (FB-8). On by default, the chat peek included,
@@ -246,7 +246,7 @@ export function FilePreviewPane({
   onReingested,
   onTagsUpdated,
   onOpenDocument,
-  onFassungChanged,
+  onRevisionChanged,
   onRenamed,
   onDeleted,
   showMetadataPanel = true,
@@ -260,7 +260,7 @@ export function FilePreviewPane({
   // own (not an Archiv file, not another project's): the chip under the name.
   const currentProject = useCurrentProject()
   const closedProjectName =
-    currentProject?.status === 'closed' && scope !== 'archiv' && (projectId ?? currentProject.id) === currentProject.id
+    currentProject?.status === 'closed' && scope !== 'officeShelf' && (projectId ?? currentProject.id) === currentProject.id
       ? (projectName ?? currentProject.name)
       : null
   /**
@@ -305,8 +305,8 @@ export function FilePreviewPane({
   const assigneeNames = Object.fromEntries(
     (file.assignees ?? []).flatMap((person) => (person.name ? [[person.userId, person.name] as const] : [])),
   )
-  const fassungenShown = showsFassungenSection({
-    facts: file.fassung ?? null,
+  const revisionsShown = showsRevisionsSection({
+    facts: file.revision ?? null,
     versionCount: file.versionCount,
     hasViewer: reviewViewer !== undefined,
   })
@@ -639,19 +639,19 @@ export function FilePreviewPane({
   // Where the document stands among its Fassungen under other names, as the
   // reader may see them: the review says it, and lists the open marks of the
   // documents this one replaces to carry them on.
-  const replacedBy = file.fassung?.supersededBy ?? null
-  const replaces = file.fassung?.supersedes
-  const reviewFassung = useMemo(() => ({ replacedBy, replaces: replaces ?? [] }), [replacedBy, replaces])
+  const replacedBy = file.revision?.supersededBy ?? null
+  const replaces = file.revision?.supersedes
+  const reviewRevision = useMemo(() => ({ replacedBy, replaces: replaces ?? [] }), [replacedBy, replaces])
   const review = useDocumentReview(file.id, {
     enabled: reviewEnabled,
     viewerUserId,
-    fassung: reviewFassung,
+    revision: reviewRevision,
     // Piloti on the canvas. Over the chat (the pane is its peek) a question is
     // a turn of the chat's own conversation, through its driver, so closing
     // the review finds it in the transcript; elsewhere it goes into the
     // document's own conversation (`use-canvas-ask.ts`).
     piloti: {
-      projectId: scope === 'archiv' ? null : projectId,
+      projectId: scope === 'officeShelf' ? null : projectId,
       fileName: file.filename,
       versionState: file.versionState ?? null,
       shelf: 'project',
@@ -842,7 +842,7 @@ export function FilePreviewPane({
   )
   /** The review on its own, in a tab of its own: the document on its shelf, at the review. */
   const popoutHref =
-    projectId && scope !== 'archiv' && typeof window !== 'undefined'
+    projectId && scope !== 'officeShelf' && typeof window !== 'undefined'
       ? new URL(reviewFilesHref(projectId, { documentId: file.id }), window.location.origin).toString()
       : undefined
   const { locale } = useLocale()
@@ -1867,15 +1867,15 @@ export function FilePreviewPane({
               permissions, which only the Files workspace resolves; the Archiv
               sheet and the chat peek show the timeline and the suggestion
               without them. */}
-            {fassungenShown && (
-              <DocumentFassungen
+            {revisionsShown && (
+              <DocumentRevisions
                 key={file.id}
                 file={file}
                 canManage={canManage}
                 viewer={reviewViewer}
                 names={assigneeNames}
                 onOpenDocument={onOpenDocument}
-                onFassungChanged={onFassungChanged}
+                onRevisionChanged={onRevisionChanged}
                 onLifecycleChanged={(summary) =>
                   onLifecycleChanged?.(file.id, {
                     versionState: summary.state,
@@ -1896,7 +1896,7 @@ export function FilePreviewPane({
               <AnnotationsSummary
                 review={review}
                 onOpenReview={openReview}
-                className={cn((showIndexedHeading || fassungenShown) && 'mt-5')}
+                className={cn((showIndexedHeading || revisionsShown) && 'mt-5')}
               />
             )}
 
@@ -1913,7 +1913,7 @@ export function FilePreviewPane({
                 // PDF whose preview failed or is still loading has no page to
                 // turn to, and a link that does nothing is worse than none.
                 onShowPage={pdfInWell && showInlinePdf ? showPage : undefined}
-                className={cn((showIndexedHeading || fassungenShown) && 'mt-5')}
+                className={cn((showIndexedHeading || revisionsShown) && 'mt-5')}
               />
             )}
 
@@ -2110,9 +2110,9 @@ export function FilePreviewPane({
           onOpenChange={onReviewOpenChange}
           review={review}
           documentName={actions.name}
-          fassungLabel={
+          revisionLabel={
             file.versionCount && file.versionCount > 1
-              ? t('review.fassung', { number: file.versionCount })
+              ? t('review.revision', { number: file.versionCount })
               : null
           }
           canPickAssignee={canCollaborate}
@@ -2123,7 +2123,7 @@ export function FilePreviewPane({
           // The Protokoll filed as a document: a project's file, in its own folder. Who may file there
           // (write in that folder) the review knows, and decides (`canAnnotate`).
           protocolFiling={
-            projectId && scope !== 'archiv' && !closedProjectName ? { projectId, folderId: file.folderId } : null
+            projectId && scope !== 'officeShelf' && !closedProjectName ? { projectId, folderId: file.folderId } : null
           }
         />
       )}

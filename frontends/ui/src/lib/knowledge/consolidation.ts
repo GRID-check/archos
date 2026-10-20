@@ -90,7 +90,7 @@ const NEGATION_TOKENS = new Set([
 
 /**
  * Boolean literals, which flip meaning the same way a negation does — findings
- * routinely carry flag values verbatim ("betriebsanlage=false").
+ * routinely carry flag values verbatim ("commercial_facility=false").
  */
 const BOOLEAN_TOKENS = new Set(['true', 'false', 'yes', 'ja', 'nein', 'wahr', 'falsch'])
 

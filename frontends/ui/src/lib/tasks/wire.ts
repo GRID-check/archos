@@ -11,6 +11,7 @@
 import { z } from 'zod'
 import { planDocumentsSchema } from '@/lib/runs/plan-documents'
 import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema'
+import { canonicalTaskKind } from './task-vocabulary'
 
 /**
  * Bound on the goal: it is a sentence a person typed, and it becomes a title.
@@ -58,7 +59,7 @@ export const internalTaskRequestSchema = z.discriminatedUnion('op', [
     .object({
       op: z.literal('create'),
       projectId: z.string().uuid(),
-      kind: z.enum(DELEGATABLE_TASK_KINDS),
+      kind: z.preprocess(canonicalTaskKind, z.enum(DELEGATABLE_TASK_KINDS)),
       /** What was asked, in the requester's own words. */
       goal: z.string().trim().min(1).max(TASK_GOAL_MAX_CHARS),
       /**

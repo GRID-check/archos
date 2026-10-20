@@ -78,7 +78,7 @@ import {
   extractIngestJobId,
 } from './reconcile-status'
 import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
-import { loadFassungFacts } from './fassung-facts'
+import { loadRevisionLinks } from './revision-links-loader'
 import { documentShelf, projectShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
 import type { DocumentLevelQuery } from './list-query'
@@ -347,11 +347,11 @@ export interface DispatchIngestExtras {
   /**
    * The FILE NAME of the document in this collection that these bytes replace,
    * when a person filed the upload as its new Fassung (ADR-0099). Sent as
-   * `fassung_of`; once the file has been read, the ingest job writes the link
-   * `PUT /v1/collections/{c}/fassung` writes. Absent for every other dispatch,
+   * `revision_of`; once the file has been read, the ingest job writes the link
+   * `PUT /v1/collections/{c}/revision-links` writes. Absent for every other dispatch,
    * and then not sent at all.
    */
-  fassungOf?: string | null
+  revisionOf?: string | null
 }
 
 /**
@@ -495,7 +495,7 @@ export async function dispatchIngest(
     // Only a bulk dispatch says so: the backend's default is interactive.
     ...(extras.priority === 'bulk' ? { priority: 'bulk' } : {}),
     // Only an upload a person filed as a new Fassung says so (ADR-0099).
-    ...(extras.fassungOf ? { fassung_of: extras.fassungOf } : {}),
+    ...(extras.revisionOf ? { revision_of: extras.revisionOf } : {}),
     // Absent for every human document, and the Python side treats absent,
     // null and a non-agent author identically (`parse_agent_provenance`).
     // Spread so the four keys are the four keys, never a nested object the
@@ -963,7 +963,7 @@ export function joinHitsToFiles<
  * rows by collection and filename. Fail-open: a backend error/timeout yields `{ hits: [] }`,
  * never a crash.
  *
- * The rows are looked up BY THE HIT NAMES, as `searchArchivDocuments` does,
+ * The rows are looked up BY THE HIT NAMES, as `searchOfficeShelfDocuments` does,
  * never read from the listing: the listing is paged, and a hit on a document
  * past its first page used to be dropped as if the search had not found it.
  *
@@ -1053,7 +1053,7 @@ export async function hydrateProjectHits(
   // unless asked by name). The backend filters Qdrant's copy of the mark,
   // which can lag a person's confirmation; the row is the authority. A person
   // searching still sees it, badged by the listing.
-  return options.forModel ? joined.filter((row) => !row.fassung?.supersededBy) : joined
+  return options.forModel ? joined.filter((row) => !row.revision?.supersededBy) : joined
 }
 
 export interface UploadDocumentInput {
@@ -1080,8 +1080,8 @@ export interface UploadDocumentInput {
    * for this project; anything else is ignored rather than refused.
    */
   uploadBatchId?: string | null
-  /** See `ShelfUploadInput.fassungOf`: the document this is filed as the new Fassung of. */
-  fassungOf?: string | null
+  /** See `ShelfUploadInput.revisionOf`: the document this is filed as the new Fassung of. */
+  revisionOf?: string | null
   /** See `ShelfUploadInput.priority`: `bulk` for a machine filing on a person's behalf. */
   priority?: IngestPriority
 }
@@ -1205,10 +1205,10 @@ export interface DispatchDocumentInput extends BeginModelExtractionInput {
   provenance?: AgentDocumentProvenance | null
   /**
    * The file name of the older document this upload was filed as the new
-   * Fassung of, already checked (`resolveFassungOf`). Read by the ingest paths
+   * Fassung of, already checked (`resolveRevisionOf`). Read by the ingest paths
    * only: an IFC model's digest is not the file the row names.
    */
-  fassungOf?: string | null
+  revisionOf?: string | null
 }
 
 export interface DispatchDocumentResult {
@@ -1359,7 +1359,7 @@ export async function dispatchDocument(
       fileName: row.filename,
       provenance: input.provenance ?? null,
       priority: input.priority,
-      fassungOf: input.fassungOf ?? null,
+      revisionOf: input.revisionOf ?? null,
     }
   )
 }
@@ -1627,7 +1627,7 @@ export async function beginRenditionIngest(
     ...documentWorkPayload(input),
     fileName,
     provenance: input.provenance ?? null,
-    fassungOf: input.fassungOf ?? null,
+    revisionOf: input.revisionOf ?? null,
   })
 }
 
@@ -1648,7 +1648,7 @@ export async function runOfficeRenditionJob(
   const input = {
     ...dispatchInputOf(organizationId, payload),
     provenance: payload.provenance ?? null,
-    fassungOf: payload.fassungOf ?? null,
+    revisionOf: payload.revisionOf ?? payload.fassungOf ?? null,
   }
   if (!(await jobStillOwnsRow(input))) return
 
@@ -1687,7 +1687,7 @@ async function ingestThroughRendition(input: DispatchDocumentInput, fileName: st
       // structure-preserving extractor (see `extractsFromRendition`).
       extractionRef: indexesRendition ? renditionRef : null,
       priority: input.priority,
-      fassungOf: input.fassungOf ?? null,
+      revisionOf: input.revisionOf ?? null,
     }
   )
 }
@@ -2471,7 +2471,7 @@ export async function updateDocumentTags(
  * Rename a document — the label, never the file.
  *
  * Scope-aware like every other item operation here: `getAccessibleDocument`
- * applies per-project FGA to a project document and `org:archiv:manage` to an
+ * applies per-project FGA to a project document and `org:office_shelf:manage` to an
  * Archiv one, so both corpora rename through this one function and one route.
  *
  * ## What actually changes
@@ -2553,8 +2553,8 @@ export async function renameDocument(
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
     action:
-      doc.scope === 'archiv' || doc.projectId === null
-        ? 'archiv.document.renamed'
+      doc.scope === 'office_shelf' || doc.projectId === null
+        ? 'office_shelf.document.renamed'
         : 'document.renamed',
     targetType: 'document',
     targetId: documentId,
@@ -2637,11 +2637,11 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
  * owning project — the same permission the upload path checks. A legal hold on
  * the document, its project, its uploader or the organization refuses it with
  * a 409 before anything is erased (`@/lib/compliance/holds`). Mirrors
- * {@link import('@/lib/archiv/service').deleteArchivDocument}, differing only in
- * scope: per-project FGA instead of org-level `org:archiv:manage`.
+ * {@link import('@/lib/office-shelf/service').deleteOfficeShelfDocument}, differing only in
+ * scope: per-project FGA instead of org-level `org:office_shelf:manage`.
  *
  * Only `project` documents are deletable here. An Archiv id goes through the
- * org-scoped `/api/archiv/documents/[id]` route and a session attachment
+ * org-scoped `/api/office-shelf/documents/[id]` route and a session attachment
  * through `/api/session/documents/[id]`, each with its own authorization — so
  * either surfaces as a 404 rather than being force-fit through project FGA.
  * The scope is asked for by name: "has no project" used to mean "is an Archiv
@@ -3247,8 +3247,8 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     findOpenVersion(reconciled.id, session.organizationId),
     listDocumentVersionSummaries([reconciled.id], session.organizationId),
   ])
-  const fassung =
-    (await loadFassungFacts(session, [reconciled], await shelfReaderFor(session, reconciled))).get(reconciled.id) ?? null
+  const revision =
+    (await loadRevisionLinks(session, [reconciled], await shelfReaderFor(session, reconciled))).get(reconciled.id) ?? null
 
   return {
     id: reconciled.id,
@@ -3283,7 +3283,7 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     capture: reconciled.capture,
     revisionFacts: reconciled.revisionFacts,
     // Resolved for THIS reader: a document they may not open is not in it.
-    fassung,
+    revision,
     // The place in the ingest queue, null once the job is claimed or settled.
     queueAhead: reconciled.queueAhead ?? null,
     // Whose hand wrote the bytes. Added because this payload is how the CHAT

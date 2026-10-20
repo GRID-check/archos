@@ -40,11 +40,11 @@ import { SIMILARITY_WEIGHTS, similarityFacts } from './similarity'
 
 /** A project's fingerprint as the Python tier reads it (`ProjectFacts` in `models/requests.py`). */
 export interface ProjectFactsWire {
-  bundesland: string | null
-  gebaeudeklasse: number[]
-  bauweise: string[]
-  nutzungen: string[]
-  vorhabensart: string[]
+  federal_state: string | null
+  building_class: number[]
+  construction_method: string[]
+  uses: string[]
+  work_type: string[]
 }
 
 /** The body of `PUT /v1/collections/{c}/project-facts`, and an ingest job's `project_facts`. */
@@ -55,13 +55,13 @@ export interface ProjectFactsUpdateWire {
 
 /** The similarity weights in the Python tier's spelling; a weight added to `SIMILARITY_WEIGHTS` must be named here. */
 const WEIGHT_WIRE_NAMES: { readonly [K in keyof typeof SIMILARITY_WEIGHTS]: string } = {
-  bundesland: 'bundesland',
-  gebaeudeklasse: 'gebaeudeklasse',
-  gebaeudeklasseAdjacent: 'gebaeudeklasse_adjacent',
-  bauweise: 'bauweise',
-  nutzung: 'nutzung',
-  nutzungMax: 'nutzung_max',
-  vorhabensart: 'vorhabensart',
+  federalState: 'federal_state',
+  buildingClass: 'building_class',
+  buildingClassAdjacent: 'building_class_adjacent',
+  constructionMethod: 'construction_method',
+  use: 'use',
+  useMax: 'use_max',
+  workType: 'work_type',
 }
 
 /** The grouped search's `boost`: the current project's facts and the one set of hand-set weights. */
@@ -81,10 +81,10 @@ type Profile = Project['profile'] | null
  */
 export const PROJECT_FACTS_LIMITS = {
   token: 80,
-  gebaeudeklasse: 20,
-  bauweise: 20,
-  nutzungen: 40,
-  vorhabensart: 20,
+  building_class: 20,
+  construction_method: 20,
+  uses: 40,
+  work_type: 20,
 } as const
 
 /** Tokens the Python tier takes: none longer than it allows, no more of them than the list holds. */
@@ -97,11 +97,11 @@ export function projectFactsOf(profile: Profile): ProjectFactsWire {
   const facts = similarityFacts(profile)
   const limits = PROJECT_FACTS_LIMITS
   return {
-    bundesland: facts.bundesland && facts.bundesland.length <= limits.token ? facts.bundesland : null,
-    gebaeudeklasse: facts.gebaeudeklasse.slice(0, limits.gebaeudeklasse),
-    bauweise: wireTokens(facts.bauweise, limits.bauweise),
-    nutzungen: wireTokens(facts.nutzungen, limits.nutzungen),
-    vorhabensart: wireTokens(facts.vorhabensart, limits.vorhabensart),
+    federal_state: facts.federal_state && facts.federal_state.length <= limits.token ? facts.federal_state : null,
+    building_class: facts.building_class.slice(0, limits.building_class),
+    construction_method: wireTokens(facts.construction_method, limits.construction_method),
+    uses: wireTokens(facts.uses, limits.uses),
+    work_type: wireTokens(facts.work_type, limits.work_type),
   }
 }
 
@@ -119,8 +119,8 @@ export function projectFactsUpdateOf(project: Pick<Project, 'profile' | 'status'
 export function similarityBoostOf(profile: Profile): SearchBoostWire | null {
   const facts = projectFactsOf(profile)
   const empty =
-    facts.bundesland === null &&
-    facts.gebaeudeklasse.length + facts.bauweise.length + facts.nutzungen.length + facts.vorhabensart.length === 0
+    facts.federal_state === null &&
+    facts.building_class.length + facts.construction_method.length + facts.uses.length + facts.work_type.length === 0
   if (empty) return null
   const weights = Object.fromEntries(
     (Object.keys(WEIGHT_WIRE_NAMES) as Array<keyof typeof SIMILARITY_WEIGHTS>).map((key) => [

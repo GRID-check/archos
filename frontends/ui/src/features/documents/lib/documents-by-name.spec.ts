@@ -13,16 +13,16 @@ import {
 
 type Row = { id: string; filename: string }
 
-function server(options: { project?: Row[]; archiv?: Row[]; projectStatus?: number; archivStatus?: number }) {
+function server(options: { project?: Row[]; archiv?: Row[]; projectStatus?: number; officeShelfStatus?: number }) {
   const calls: Array<{ path: string; body: { projectId?: string; names: string[] } }> = []
   const run = vi.fn(async (path: string, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { projectId?: string; names: string[] }
     calls.push({ path, body })
-    const archiv = path.startsWith('/api/archiv/')
-    const status = (archiv ? options.archivStatus : options.projectStatus) ?? 200
+    const officeShelf = path.startsWith('/api/office-shelf/')
+    const status = (officeShelf ? options.officeShelfStatus : options.projectStatus) ?? 200
     if (status !== 200) return new Response(null, { status })
     const wanted = new Set(body.names.map((name) => name.toLowerCase()))
-    const rows = ((archiv ? options.archiv : options.project) ?? []).filter((row) =>
+    const rows = ((officeShelf ? options.archiv : options.project) ?? []).filter((row) =>
       wanted.has(row.filename.toLowerCase())
     )
     return Response.json({ documents: rows.map((row) => ({ ...row, createdAt: '2026-01-01T00:00:00Z' })) })
@@ -43,9 +43,9 @@ describe('resolveDocumentsByName', () => {
 
     const result = await resolveDocumentsByName('proj-1', ['PLAN.PDF', 'Detail.pdf', 'Fehlt.pdf'])
 
-    expect(result.get('plan.pdf')).toMatchObject({ projekt: [{ id: 'p1' }], buero: [], error: false })
-    expect(result.get('detail.pdf')).toMatchObject({ projekt: [], buero: [{ id: 'a1' }] })
-    expect(result.get('fehlt.pdf')).toMatchObject({ projekt: [], buero: [], error: false })
+    expect(result.get('plan.pdf')).toMatchObject({ project: [{ id: 'p1' }], officeShelf: [], error: false })
+    expect(result.get('detail.pdf')).toMatchObject({ project: [], officeShelf: [{ id: 'a1' }] })
+    expect(result.get('fehlt.pdf')).toMatchObject({ project: [], officeShelf: [], error: false })
   })
 
   it('sends the names asked in one task as one request per shelf', async () => {
@@ -56,9 +56,9 @@ describe('resolveDocumentsByName', () => {
       resolveDocumentsByName('proj-1', ['B.pdf']),
     ])
 
-    expect(a.get('a.pdf')?.projekt[0]?.id).toBe('p1')
-    expect(b.get('b.pdf')?.projekt[0]?.id).toBe('p2')
-    expect(calls.map((call) => call.path)).toEqual(['/api/documents/by-name', '/api/archiv/documents/by-name'])
+    expect(a.get('a.pdf')?.project[0]?.id).toBe('p1')
+    expect(b.get('b.pdf')?.project[0]?.id).toBe('p2')
+    expect(calls.map((call) => call.path)).toEqual(['/api/documents/by-name', '/api/office-shelf/documents/by-name'])
     expect(calls[0].body).toEqual({ projectId: 'proj-1', names: ['A.pdf', 'B.pdf'] })
   })
 
@@ -72,11 +72,11 @@ describe('resolveDocumentsByName', () => {
   })
 
   it('treats a gated Archiv as empty, not as a failure', async () => {
-    server({ project: [{ id: 'p1', filename: 'A.pdf' }], archivStatus: 403 })
+    server({ project: [{ id: 'p1', filename: 'A.pdf' }], officeShelfStatus: 403 })
 
     const result = await resolveDocumentsByName('proj-1', ['A.pdf'])
 
-    expect(result.get('a.pdf')).toMatchObject({ projekt: [{ id: 'p1' }], buero: [], error: false })
+    expect(result.get('a.pdf')).toMatchObject({ project: [{ id: 'p1' }], officeShelf: [], error: false })
   })
 
   it('reports a genuine failure and does not cache it', async () => {
@@ -85,7 +85,7 @@ describe('resolveDocumentsByName', () => {
     expect(failing.run).toHaveBeenCalled()
 
     server({ project: [{ id: 'p1', filename: 'A.pdf' }] })
-    expect((await resolveDocumentsByName('proj-1', ['A.pdf'])).get('a.pdf')?.projekt[0]?.id).toBe('p1')
+    expect((await resolveDocumentsByName('proj-1', ['A.pdf'])).get('a.pdf')?.project[0]?.id).toBe('p1')
   })
 
   it('asks only the Archiv without a project', async () => {
@@ -93,8 +93,8 @@ describe('resolveDocumentsByName', () => {
 
     const result = await resolveDocumentsByName(null, ['A.pdf'])
 
-    expect(result.get('a.pdf')?.buero[0]?.id).toBe('a1')
-    expect(calls.map((call) => call.path)).toEqual(['/api/archiv/documents/by-name'])
+    expect(result.get('a.pdf')?.officeShelf[0]?.id).toBe('a1')
+    expect(calls.map((call) => call.path)).toEqual(['/api/office-shelf/documents/by-name'])
   })
 
   it('asks nothing for no names', async () => {

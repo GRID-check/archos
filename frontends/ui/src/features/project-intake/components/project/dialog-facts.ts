@@ -4,8 +4,8 @@
  * intake view the frame hands every step.
  *
  * The profile is the record and the intake row is what the dialog was given.
- * So a value on the profile wins (the address as `standort_adresse`, the
- * description as `kontext_beschreibung`, both written through the review's
+ * So a value on the profile wins (the address as `site_address`, the
+ * description as `context_description`, both written through the review's
  * decisions, the profile's one door), and the intake row fills in what the
  * profile does not hold: the dialog's description, and the Gemeinde, which is
  * no profile fact. The Gemeinde is shown only while the address is still the
@@ -17,10 +17,10 @@ import type { GeocodeResult } from '@/lib/geocoding/types'
 import type { IntakeView, Suggestion } from '@/lib/project-intake/types'
 
 /** The profile keys step 1 reads and writes. */
-export const ADDRESS_KEY = 'standort_adresse'
-export const FEDERAL_STATE_KEY = 'bundesland'
+export const ADDRESS_KEY = 'site_address'
+export const FEDERAL_STATE_KEY = 'federal_state'
 export const COUNTRY_KEY = 'country'
-export const DESCRIPTION_KEY = 'kontext_beschreibung'
+export const DESCRIPTION_KEY = 'context_description'
 
 export interface DialogFacts {
   address: string | null
@@ -53,7 +53,7 @@ export function dialogFacts(view: IntakeView): DialogFacts {
   const federalStateItem = profileItem(view, FEDERAL_STATE_KEY)
   return {
     address,
-    municipality: fromHit ? location.gemeinde : null,
+    municipality: fromHit ? location.municipality : null,
     federalState: text(federalStateItem) ?? (fromHit ? location.state : null),
     federalStateSuggested: federalStateItem?.state === 'suggested',
     description: text(profileItem(view, DESCRIPTION_KEY)) ?? view.description,

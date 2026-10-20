@@ -1196,6 +1196,10 @@
     "de": "Ctrl+F (Cmd+F am Mac) durchsucht ein PDF. Die Suche zählt die Treffer und springt zwischen ihnen."
   },
   {
+    "en": "Custom roles grant the Büroablage under a new permission name. Roles that hold the old one keep their access; the role editor offers only the new one.",
+    "de": "Benutzerdefinierte Rollen gewähren unter einem neuen Berechtigungsnamen Zugriff auf die Büroablage. Rollen mit der alten Berechtigung behalten ihren Zugriff; der Rollen-Editor bietet nur die neue Berechtigung an."
+  },
+  {
     "en": "Dateien and the Archiv now update while you look at them: a colleague's upload, a file Piloti filed, a move, a rename or a new folder appears without reloading the page, and a file's status changes as soon as it has been read.",
     "de": "Dateien und das Archiv aktualisieren sich jetzt, während Sie sie ansehen: Der Upload eines Kollegen, eine von Piloti abgelegte Datei, ein Verschieben, eine Umbenennung oder ein neuer Ordner werden ohne Neuladen der Seite angezeigt, und der Status einer Datei ändert sich, sobald sie gelesen wird."
   },
@@ -2608,8 +2612,20 @@
     "de": "Der Bereich Automation eines Projekts hat einen neuen Tab „Tasks“. Er listet die Aufgaben auf, die Sie an Piloti übergeben haben, aus einem Chat, aus einer Prüfentscheidung oder aus einem Zeitplan, mit Aufgabenstellung, Fortschritt, Bewertung und einem Link zu dem Dokument oder Chat, in dem das Ergebnis gelandet ist."
   },
   {
+    "en": "The BCF file of open BIM check items downloads as compliance-checks-<model>-<revision>.bcfzip instead of pruefbuch-….",
+    "de": "Die BCF-Datei der offenen BIM-Prüfpunkte wird als compliance-checks-<model>-<revision>.bcfzip statt als pruefbuch-… heruntergeladen."
+  },
+  {
     "en": "The Belegt durch line shows „+N weitere“ beyond eight sources and expands on request, and Alle Quellen kopieren always copies every source.",
     "de": "Die Zeile „Belegt durch“ zeigt ab acht Quellen „+N weitere“ und klappt auf Wunsch alle auf, und „Alle Quellen kopieren“ übernimmt stets jede Quelle."
+  },
+  {
+    "en": "The Büroablage now opens at /app/office-shelf. Bookmarks, shared links and Postfach entries that point to /app/archiv keep working and lead there.",
+    "de": "Die Büroablage öffnet sich jetzt unter /app/office-shelf. Lesezeichen, geteilte Links und Postfach-Einträge, die auf /app/archiv verweisen, funktionieren weiterhin und führen dorthin."
+  },
+  {
+    "en": "The English website now has English addresses, for example /en/use-cases/ and /en/why-piloti/ instead of German words after /en/. Links you saved or shared before still work and lead to the new address.",
+    "de": "Die englische Website verwendet jetzt englische URLs, zum Beispiel /en/use-cases/ und /en/why-piloti/ statt deutscher Begriffe nach /en/. Links, die Sie zuvor gespeichert oder geteilt haben, funktionieren weiterhin und führen zur neuen Adresse."
   },
   {
     "en": "The Herleitung names what was actually searched instead of calling every search OIB knowledge.",
@@ -2714,6 +2730,10 @@
   {
     "en": "The built-in Project Editor and Project Admin roles receive the new filing permission. Grant it to a custom project role yourself, or leave it out if Piloti should only answer.",
     "de": "Die eingebauten Rollen Project Editor und Project Admin erhalten die neue Berechtigung zum Ablegen. Einer eigenen Projektrolle erteilen Sie sie selbst, oder Sie lassen sie weg, wenn Piloti nur antworten soll."
+  },
+  {
+    "en": "The built-in skills have English names: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development and /inspection-report-writer. The old names, such as /einreichcheck, still work when typed and in scheduled tasks, and typing one still finds the skill in the menu.",
+    "de": "Die integrierten Skills haben englische Namen: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development und /inspection-report-writer. Die bisherigen Namen, etwa /einreichcheck, funktionieren weiterhin bei der Eingabe und in geplanten Aufgaben. Wenn Sie einen davon eingeben, wird der Skill weiterhin im Menü angezeigt."
   },
   {
     "en": "The button that starts a conversation about a document now reads „Mit Piloti besprechen“, so it is clear it opens a chat with Piloti and not with a colleague.",

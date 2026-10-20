@@ -59,7 +59,7 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
   const inTenant = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: ORG, userId: UPLOADER }, run)
 
   async function insert(fields: {
-    scope: 'project' | 'archiv'
+    scope: 'project' | 'office_shelf'
     status: string
     outcome: (typeof OUTCOMES)[number]
     authoredBy: 'user' | 'agent'
@@ -126,7 +126,7 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
       for (const outcome of OUTCOMES) {
         for (const createdBy of [UPLOADER, OTHER]) {
           await insert({ scope: 'project', status, outcome, authoredBy: 'user', createdBy })
-          await insert({ scope: 'archiv', status, outcome, authoredBy: 'user', createdBy })
+          await insert({ scope: 'office_shelf', status, outcome, authoredBy: 'user', createdBy })
         }
         await insert({ scope: 'project', status, outcome, authoredBy: 'agent', createdBy: OTHER })
         // A verdict about other bytes than the row holds (a published draft, a
@@ -172,12 +172,12 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
     ['a project reviewer reading the Büroablage as a member', () => ({
       kind: 'shelves',
       project: REVIEWER_READER,
-      archiv: memberReader(UPLOADER),
+      officeShelf: memberReader(UPLOADER),
     })],
     ['a curator reading the project as a member', () => ({
       kind: 'shelves',
       project: memberReader('user_vis_nobody'),
-      archiv: REVIEWER_READER,
+      officeShelf: REVIEWER_READER,
     })],
     ['the projects grid, reviewing this project', () => ({ kind: 'projects', userId: 'user_vis_nobody', reviewedProjectIds: [projectId] })],
     ['the projects grid, reviewing none', () => ({ kind: 'projects', userId: UPLOADER, reviewedProjectIds: [] })],
@@ -507,8 +507,8 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
       await inTenant(() =>
         db.execute(sql`
           INSERT INTO document_roles (organization_id, project_id, document_id, role, created_by)
-          VALUES (${ORG}, ${projectId}::uuid, ${heldId}::uuid, 'bebauungsplan', ${OTHER}),
-                 (${ORG}, ${projectId}::uuid, ${passedId}::uuid, 'lageplan', ${OTHER})
+          VALUES (${ORG}, ${projectId}::uuid, ${heldId}::uuid, 'development_plan', ${OTHER}),
+                 (${ORG}, ${projectId}::uuid, ${passedId}::uuid, 'site_plan', ${OTHER})
         `)
       )
       await inTenant(() =>

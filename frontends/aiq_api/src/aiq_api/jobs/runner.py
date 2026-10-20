@@ -660,10 +660,10 @@ class CancellationMonitor:
                 self._note_added_document(event.get("data"))
 
     def _note_added_document(self, data: Any) -> None:
-        docs = sanitize_plan_documents({"grundlage": [data]}) if isinstance(data, dict) else None
+        docs = sanitize_plan_documents({"basis": [data]}) if isinstance(data, dict) else None
         if docs is None:
             return
-        doc = docs.grundlage[0]
+        doc = docs.basis[0]
         if any(d.name.casefold() == doc.name.casefold() for d in self.added_documents):
             return
         logger.info("Document added to the Grundlage of job %s: %s", self.job_id, doc.name)
@@ -1528,9 +1528,9 @@ async def run_agent_job(
                         job_id=job_id,
                         run_id=run_id,
                         event_store=event_store,
-                        grundlage=[doc.model_dump() for doc in plan_documents.grundlage] if plan_documents else None,
+                        basis=[doc.model_dump() for doc in plan_documents.basis] if plan_documents else None,
                     )
-                    cancellation_monitor.on_document_added = run_ledger_fold.add_grundlage
+                    cancellation_monitor.on_document_added = run_ledger_fold.add_basis
                     event_store = run_ledger_fold.observing(event_store)
                     agent_event_callback = AgentEventCallback(event_store)
                     callbacks.append(agent_event_callback)
@@ -2302,9 +2302,7 @@ def _reflection_text(report: str, findings: dict[str, Any] | None) -> str:
         if not isinstance(item, dict) or not item.get("requirement"):
             continue
         value = f" — {item['value']}" if item.get("value") else ""
-        comment = (
-            f" ({item['comment']})" if item.get("comment") and item.get("status") in ("offen", "nicht_erfuellt") else ""
-        )
+        comment = f" ({item['comment']})" if item.get("comment") and item.get("status") in ("open", "not_met") else ""
         # A row with no status states none: defaulting it to „offen" would
         # write an open question into memory that the report never raised.
         status = f" — {item['status']}" if item.get("status") else ""

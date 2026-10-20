@@ -66,6 +66,7 @@ from typing import get_args
 from typing import get_origin
 
 from pydantic import BaseModel
+from pydantic import BeforeValidator
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import SerializationInfo
@@ -73,6 +74,8 @@ from pydantic import SerializerFunctionWrapHandler
 from pydantic import TypeAdapter
 from pydantic import model_serializer
 from pydantic import model_validator
+
+from aiq_agent.common.source_kinds import LEGACY_SHELF_VALUES
 
 #: The only wire version. There is no ``v: 1`` reader anywhere (ADR-0068).
 WIRE_VERSION: Literal[2] = 2
@@ -126,7 +129,7 @@ class _OpenModel(BaseModel):
 # Payload value types
 # ---------------------------------------------------------------------------
 
-SourceKindKey = Literal["baurecht", "buero", "projekt", "web"]
+SourceKindKey = Literal["building_law", "office", "project", "web"]
 Channel = Literal["live", "technical"]
 Scope = Literal["chat", "deep"]
 
@@ -297,7 +300,7 @@ class QuoteStamp(_Model):
     title: str | None = None
     file_name: str | None = None
     page: int | None = None
-    punkt: str | None = None
+    clause: str | None = None
     url: str | None = None
 
 
@@ -828,6 +831,11 @@ def to_frame(event: Envelope | Hello) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _legacy_focus_shelf(value: object) -> object:
+    """Read the shelf's old wire value (``archiv``) as the office shelf. Remove after one release."""
+    return LEGACY_SHELF_VALUES.get(value, value) if isinstance(value, str) else value
+
+
 class _ClientBase(_Model):
     v: Literal[2] = WIRE_VERSION
     conversation_id: str = Field(min_length=1)
@@ -895,7 +903,9 @@ class UserMessage(_ClientBase):
     context_only: Literal[True] | None = None
     author_name: str | None = None
     focus_file_name: str | None = None
-    focus_shelf: Literal["session", "project", "archiv"] | None = None
+    focus_shelf: Annotated[
+        Literal["session", "project", "office_shelf"] | None, BeforeValidator(_legacy_focus_shelf)
+    ] = None
     source_preset: Literal["law", "project", "office"] | None = None
     focus_document_id: str | None = None
     focus_version_id: str | None = None

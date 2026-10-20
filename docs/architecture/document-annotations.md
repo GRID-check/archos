@@ -189,7 +189,7 @@ role name:
 | Who | May |
 |---|---|
 | whoever may open the document (`project:view` and read in its folder; on the Büroablage every member) | read the marks and their threads, export the Protokoll, be @mentioned and be told |
-| whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:archiv:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti, carry an open mark to the current Fassung (to a replacing document only with the right to write that one too); **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
+| whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:office_shelf:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti, carry an open mark to the current Fassung (to a replacing document only with the right to write that one too); **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
 | the author (`createdBy`, a person's own mark) | reword it („Bearbeiten“ in the card's menu; the server lets any writer change a `body`, the card offers it to the author) and delete it (`mayDeleteMark`), while nothing but its author and Piloti stands on it (below) |
 | the author of a reply (a person's own, `created_by`), who may still write the document | reword it and delete it, while the mark is live and Piloti has not taken the reply up (below); never a colleague's reply, never Piloti's (a note Piloti posted for them goes by the chat card's undo) |
 
@@ -487,7 +487,7 @@ settled stays settled.
 A mark is set on one Fassung, because a position is true of the sheet somebody
 looked at. When the document gets a new Fassung, its open marks stay open and
 are listed and drawn only as ghosts (above), and the people working on them are told how many to
-check (`document.new_fassung`, [`fassungen.md`](fassungen.md#notifications)).
+check (`document.new_revision`, [`revisions.md`](revisions.md#notifications)).
 A mark that still holds goes on with the new Fassung: „Auf aktuelle Fassung
 übernehmen“ in its card's first line, for whoever may edit an open mark
 (`carryToCurrent`, `lib/annotations/service.ts`). It keeps its place on the
@@ -496,7 +496,7 @@ longer fits is resolved and set again instead.
 
 - **Under the same name** the mark moves in place: `version_id` becomes the
   published version's, compared and swapped against the Fassung the mark was
-  read on and its status (`fassung` in `updateDocumentAnnotation`), so two
+  read on and its status (`revision` in `updateDocumentAnnotation`), so two
   people carrying it at once move it once. Its number, its thread, and every
   inbox row, wake and change record anchored on it stay whole, and it is drawn
   again. Nobody is told: the new Fassung already told them, and the room
@@ -505,7 +505,7 @@ longer fits is resolved and set again instead.
   (`CARRY_AT_ONCE`, `inPool`); a mark moved in place takes its PATCH's
   answer, and nothing is read again.
 - **Under another name** (Index B confirmed as replaced by Index C, `supersededBy`
-  in `lib/documents/fassung.ts`; through a chain, its end, read only through
+  in `lib/documents/revision-links.ts`; through a chain, its end, read only through
   documents the carrier may open, `lib/annotations/carry.ts`: a link the shelf
   shows into a document the carrier cannot open, a closed folder, ends the walk
   at the last one they can) the mark cannot
@@ -524,7 +524,7 @@ longer fits is resolved and set again instead.
   every link expects it; C's card says „Übernommen aus „B“, Anmerkung 4“ and
   B's „Weiter in „C“ als Anmerkung 7“, each a link to the other review where
   the page addresses documents by `?doc=` (Dateien, the Büroablage; over the
-  chat the name stands without a link, `features/documents/lib/fassung-links.ts`).
+  chat the name stands without a link, `features/documents/lib/revision-links.ts`).
   Closing B's mark settles what it asked of people; its Zuständige is asked
   again on C's mark (`annotation.assigned_to_you`), unless they carried it
   themselves. A mark Piloti works is taken back first: its running turn writes
@@ -544,14 +544,14 @@ whose chain cannot be read offers no carry rather than failing.
 The review shows both sides. C's review lists B's open marks read-only under
 „Aus Fassung „B““ (the hook reads B's list through the same typed client,
 `useDocumentReview`'s `carried`, the direct predecessors from the file's
-`fassung` facts, at most three), each with „Auf aktuelle Fassung übernehmen“
+`revision` facts, at most three), each with „Auf aktuelle Fassung übernehmen“
 where it has a `carryTarget` (labelled for a screen reader with its number,
 „Anmerkung 4 auf aktuelle Fassung übernehmen“), „Alle übernehmen“ for several
 (the same PATCHes, four at a time, and this list and B's read ONCE after the
 last, not after each: thirty marks are thirty PATCHes and two reads; a mark
 that did not go leaves „Nicht alle Anmerkungen konnten übernommen werden“),
 and „Fassungen vergleichen“, the comparison the inbox row opens
-(`compareFassungHref`). A list of B that could not be read stays as its group,
+(`compareRevisionHref`). A list of B that could not be read stays as its group,
 saying so, with „Erneut versuchen“ (`retryCarried`). In B's review an open
 mark's card says „Dieses Dokument ist durch „C“ ersetzt.“ and offers
 „In „D“ übernehmen“, D being its `carryTarget`. The header says
@@ -651,7 +651,7 @@ live marks the pane's review holds, before the signature, Piloti's untaken
 proposals apart from the open ones as the chip tells them: „2 offene
 Anmerkungen und 12 Vorschläge von Piloti – trotzdem freigeben?“, with „In der Prüfansicht öffnen“ beside it
 as a link in the sentence (`openMarks`, handed down from `file-preview-pane.tsx`
-through `DocumentFassungen`; drawn as `Button variant="inline"`, underlined at
+through `DocumentRevisions`; drawn as `Button variant="inline"`, underlined at
 rest, because `link` is ink like the sentence around it and underlines only on
 hover). It informs and never blocks: approving with open points
 is the reviewer's call, approving without knowing about them is the mistake.
@@ -1353,7 +1353,7 @@ A review ends outside the app: as the Protokoll of a Jour fixe, or sent to the
 client or a consultant. „Protokoll exportieren" in the Prüfansicht's header
 (`features/documents/components/review/review-export-menu.tsx`) downloads one.
 
-`GET /api/documents/[id]/annotations/export?format=pdf|docx|md&scope=open|all&fassung=current|all&includeProposals=1`
+`GET /api/documents/[id]/annotations/export?format=pdf|docx|md&scope=open|all&revision=current|all&includeProposals=1`
 (`frontends/ui/src/lib/annotations/export.ts`; the query and the link in
 `export-request.ts`, shared by the route and the menu). The defaults are a PDF
 of the open marks.
@@ -1362,8 +1362,8 @@ of the open marks.
 still open is in every Protokoll whichever Fassung it was set on, and its entry
 names that Fassung: Index C arriving the day before the Jour fixe does not
 answer the marks on Index B, and a default that dropped them would drop exactly
-the points the meeting is for. `fassung=current` leaves out what was CLOSED on
-earlier Fassungen; `fassung=all` takes that in too. So the menu offers the
+the points the meeting is for. `revision=current` leaves out what was CLOSED on
+earlier Fassungen; `revision=all` takes that in too. So the menu offers the
 Fassung only under „Auch erledigte“: with „Nur offene“ it would change
 nothing. This was chosen over defaulting the menu to „Alle Fassungen“ whenever
 an earlier Fassung has a live mark because it holds on every path (the bare
@@ -1550,7 +1550,7 @@ it, and the project is not closed (`protocolFiling`, `file-preview-pane.tsx`).
 
 ## Known debts
 
-- „Fassungen vergleichen“ compares two documents (`fassung-compare-service.ts`); two versions under the same name have no visual comparison yet, so a mark of an earlier Fassung of the same document is carried with only its ghost pin to show where it stood.
+- „Fassungen vergleichen“ compares two documents (`revision-compare-service.ts`); two versions under the same name have no visual comparison yet, so a mark of an earlier Fassung of the same document is carried with only its ghost pin to show where it stood.
 - A mark carried on to a replacing document starts a new thread there; the old one is read on the replaced document, by the link in the card. The two are not one timeline.
 
 - The chat-hosted canvas (the review open over the chat) still asks an @Piloti reply in the chat's conversation, under the chat's own message id, when wakes are off; only the standalone canvas uses the reply's turn id.

@@ -16,7 +16,7 @@
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import { RUN_FERTIG } from '@/app/dev/_fixtures/run-ledgers'
+import { RUN_DONE } from '@/app/dev/_fixtures/run-ledgers'
 import { TaskDetail } from './task-detail'
 import type { TaskWireRow } from '../lib/task-view'
 
@@ -34,7 +34,7 @@ beforeEach(() => {
     conversationId: 'conv-1',
     messageId: 'msg-1',
     status: 'succeeded',
-    ledger: RUN_FERTIG,
+    ledger: RUN_DONE,
   })
 })
 

@@ -433,7 +433,7 @@ def _free_floor(model: SpatialModel, space: Any, skip: set[str] | None = None) -
                 "name": model.label(element),
                 "ifcType": element.is_a(),
                 "area": round(float(intruding.area), 4),
-                "zaehlt": "möbliert" if loose else "fest",
+                "counts": "furnished" if loose else "fixed",
             }
         )
 
@@ -908,7 +908,7 @@ def turning_circle(model: SpatialModel, space_global_id: str, diameter: float | 
             ),
         )
 
-    loose = [o for o in free.obstacles if o["zaehlt"] == "möbliert"]
+    loose = [o for o in free.obstacles if o["counts"] == "furnished"]
     payload: dict[str, Any] = {
         "diameter": round(2 * fixed[0], 4),
         "radius": round(fixed[0], 4),
@@ -1230,7 +1230,7 @@ def balustrade_check(
     an Absturzkante** — which is coherent rather than evasive: whether a fall
     needs protecting is precisely what the parameter decides, so with no
     parameter there is no edge to protect. With it, the openings whose fall
-    exceeds it are collected under ``kanten`` and each carries what stands
+    exceeds it are collected under ``edges`` and each carries what stands
     there.
 
     ## Why a missing railing is undecidable and not „kein Geländer"
@@ -1252,15 +1252,15 @@ def balustrade_check(
     on the inside. The parapet — the sill height over the inside floor — is
     measured either way, because a wall under a window is protection too.
 
-    ## Two kinds of opening, two measurements — ``lage``
+    ## Two kinds of opening, two measurements — ``position``
 
     A hole in a WALL and a hole in a FLOOR are both Absturzkanten and they are
     not the same geometry, so every entry says which it is:
 
-    - ``lage`` „senkrecht" — the fall runs sideways past the opening, from the
+    - ``position`` „vertical" — the fall runs sideways past the opening, from the
       floor inside to the ground :data:`OUTSIDE_PROBE` in front of it, and
       ``parapet`` is the sill height over the inside floor.
-    - ``lage`` „waagrecht" — a gallery void, a stairwell, any slab opening. The
+    - ``position`` „horizontal" — a gallery void, a stairwell, any slab opening. The
       fall runs straight DOWN through it (:func:`_fall_through`) and ``parapet``
       is ``null``, because a hole in a floor has no Brüstung.
 
@@ -1271,7 +1271,7 @@ def balustrade_check(
     „Wohnen" (floor z = 0.000) is 2.700 m. It now reads 2.700 m with both
     railings at 1.000 m over the gallery floor.
 
-    A „waagrecht" entry with ``fall = null`` is not a failed measurement: it is
+    A „horizontal" entry with ``fall = null`` is not a failed measurement: it is
     a floor void that reaches this room's list without being an edge OF this
     room — because it sits in its ceiling, or because it is somewhere else in
     the same slab. ``outside.via`` says which, in numbers.
@@ -1374,7 +1374,7 @@ def balustrade_check(
 
     payload = {
         "openings": results,
-        "kanten": edges,
+        "edges": edges,
         "fallHeight": fall_height,
         "railingsInModel": len(railings),
     }
@@ -1437,7 +1437,7 @@ def _edge_text(edge: dict[str, Any]) -> str:
     """
     if edge["parapet"] is not None:
         parapet = f"Brüstungshöhe {edge['parapet']:.3f} m"
-    elif edge.get("lage") == "waagrecht":
+    elif edge.get("position") == "horizontal":
         parapet = "keine Brüstung (waagrechte Öffnung im Boden)"
     else:
         parapet = "Brüstungshöhe nicht messbar"
@@ -1524,7 +1524,7 @@ def _fall_at(model: SpatialModel, opening: Any, railings: list[Any], space: Any 
         "ifcType": opening.is_a(),
         "fall": round(fall, 4),
         "parapet": parapet,
-        "lage": "senkrecht",
+        "position": "vertical",
         "inside": inside,
         "outside": outside,
         "railings": _railings_at(model, frame, sign, float(inside["level"]), railings),
@@ -1626,7 +1626,7 @@ def _fall_through(model: SpatialModel, opening: Any, railings: list[Any], space:
         "ifcType": opening.is_a(),
         "fall": round(top - level, 4),
         "parapet": None,
-        "lage": "waagrecht",
+        "position": "horizontal",
         "inside": {
             "direction": [0.0, 0.0],
             "space": None if inside_space is None else inside_space.GlobalId,
@@ -1683,7 +1683,7 @@ def _void_away_from(model: SpatialModel, opening: Any, space: Any, floor: float,
         "ifcType": opening.is_a(),
         "fall": None,
         "parapet": None,
-        "lage": "waagrecht",
+        "position": "horizontal",
         "inside": {
             "direction": [0.0, 0.0],
             "space": space.GlobalId,
@@ -1724,7 +1724,7 @@ def _void_overhead(
         "ifcType": opening.is_a(),
         "fall": None,
         "parapet": None,
-        "lage": "waagrecht",
+        "position": "horizontal",
         "inside": {
             "direction": [0.0, 0.0],
             "space": space.GlobalId,
@@ -2032,7 +2032,7 @@ def _limiting(
     probe = _strip(frame, sign, base, width, depth + 0.10)
     found = []
     for obstacle in free.obstacles:
-        if not loose and obstacle["zaehlt"] == "möbliert":
+        if not loose and obstacle["counts"] == "furnished":
             continue
         geo = model.geometry(obstacle["globalId"])
         if geo is None:

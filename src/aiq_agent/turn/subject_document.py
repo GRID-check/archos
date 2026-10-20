@@ -27,7 +27,7 @@ directory.
 Three reasons, in the order they matter.
 
 **It is already the place.** ``ls`` / ``read_file`` / ``edit_file`` are on the
-turn, the model uses them, and a draft under ``/entwuerfe/`` is a file it can
+turn, the model uses them, and a draft under ``/drafts/`` is a file it can
 quote from and revise. Pasting the document into the prompt instead would pay
 for the whole text on every LLM call of the turn, including the ones that never
 mention it.
@@ -109,7 +109,7 @@ _UNSAFE = {"/", "\\", "\x00"}
 def draft_path(display_name: str) -> str:
     """Where a subject document is written in the working directory.
 
-    ``/entwuerfe/<name>.md``: the one directory the working directory has, so the
+    ``/drafts/<name>.md``: the one directory the working directory has, so the
     file appears in the same ``ls`` as anything the turn writes itself, under the
     name the reader sees in the Files pane. NFC first, for the same reason
     everything else in the store is (``draft_store``): a name typed decomposed

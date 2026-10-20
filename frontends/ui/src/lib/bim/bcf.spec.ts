@@ -26,7 +26,7 @@ const MODEL: BcfModelRef = {
 
 function result(overrides: Partial<BimRuleResultWithConfirmation> = {}): BimRuleResultWithConfirmation {
   return {
-    ruleId: 'oib2-feuerwiderstand-tragend',
+    ruleId: 'oib2-fire-resistance-load-bearing',
     richtlinie: 'OIB 2',
     clause: '3.1',
     titleDe: 'Feuerwiderstand tragender Bauteile',
@@ -98,7 +98,7 @@ describe('buildComplianceBcf', () => {
   it('names the file after the project and the revision it was run against', () => {
     // `Grüngasse` → `Gruengasse`: umlauts are spelled out rather than stripped
     // to a bare vowel. See the transliteration test at the bottom of this file.
-    expect(build([result()]).filename).toBe('pruefbuch-Wohnhaus-Gruengasse-2026-05-04.bcfzip')
+    expect(build([result()]).filename).toBe('compliance-checks-Wohnhaus-Gruengasse-2026-05-04.bcfzip')
   })
 
   it('keeps the topic guid stable across revisions of the same project', () => {
@@ -223,7 +223,7 @@ describe('buildComplianceBcf', () => {
       build([
         result({
           confirmation: {
-            ruleId: 'oib2-feuerwiderstand-tragend',
+            ruleId: 'oib2-fire-resistance-load-bearing',
             modelId: 'model-3',
             confirmedBy: 'brandschutz@example.at',
             note: 'Gutachten Kraus vom 12.03. liegt vor',
@@ -250,7 +250,7 @@ describe('buildComplianceBcf', () => {
       build([
         result({
           confirmation: {
-            ruleId: 'oib2-feuerwiderstand-tragend',
+            ruleId: 'oib2-fire-resistance-load-bearing',
             modelId: 'model-2',
             confirmedBy: 'brandschutz@example.at',
             note: null,
@@ -271,7 +271,7 @@ describe('buildComplianceBcf', () => {
       build([
         result({
           confirmation: {
-            ruleId: 'oib2-feuerwiderstand-tragend',
+            ruleId: 'oib2-fire-resistance-load-bearing',
             modelId: 'model-2',
             confirmedBy: 'brandschutz@example.at',
             note: 'Gutachten liegt vor',
@@ -427,7 +427,7 @@ describe('buildComplianceBcf', () => {
       author: 'planer@example.at',
     })
 
-    expect(export_.filename).toBe('pruefbuch-projekt-2026-05-04.bcfzip')
+    expect(export_.filename).toBe('compliance-checks-project-2026-05-04.bcfzip')
   })
 
   it('spells an Austrian project name instead of punching holes in it', () => {
@@ -444,21 +444,21 @@ describe('buildComplianceBcf', () => {
         author: 'planer@example.at',
       }).filename
 
-    expect(named('Beispielstraße 14')).toBe('pruefbuch-Beispielstrasse-14-2026-05-04.bcfzip')
+    expect(named('Beispielstraße 14')).toBe('compliance-checks-Beispielstrasse-14-2026-05-04.bcfzip')
     // Umlauts are spelled the way the office spells them on a form that
     // refuses one — `ue`, not the bare `u` NFKD would have left behind.
-    expect(named('Grünanger Höfe')).toBe('pruefbuch-Gruenanger-Hoefe-2026-05-04.bcfzip')
-    expect(named('ÖBB Ärztezentrum')).toBe('pruefbuch-OeBB-Aerztezentrum-2026-05-04.bcfzip')
+    expect(named('Grünanger Höfe')).toBe('compliance-checks-Gruenanger-Hoefe-2026-05-04.bcfzip')
+    expect(named('ÖBB Ärztezentrum')).toBe('compliance-checks-OeBB-Aerztezentrum-2026-05-04.bcfzip')
     // Arrives decomposed from a macOS filesystem: same output, or the table
     // would be silently bypassed for exactly the users who hit it most.
-    expect(named('Grünanger'.normalize('NFD'))).toBe('pruefbuch-Gruenanger-2026-05-04.bcfzip')
+    expect(named('Grünanger'.normalize('NFD'))).toBe('compliance-checks-Gruenanger-2026-05-04.bcfzip')
     // Everything NFKD DOES decompose still goes through it — no table per
     // language, and a name with no Latin letters at all still gets a filename.
-    expect(named('Rezidence Dvořák')).toBe('pruefbuch-Rezidence-Dvorak-2026-05-04.bcfzip')
-    expect(named('日本橋')).toBe('pruefbuch-projekt-2026-05-04.bcfzip')
+    expect(named('Rezidence Dvořák')).toBe('compliance-checks-Rezidence-Dvorak-2026-05-04.bcfzip')
+    expect(named('日本橋')).toBe('compliance-checks-project-2026-05-04.bcfzip')
     // Letters with a stroke or a ligature have no Unicode decomposition
     // either, so they used to be punched out the same way `ß` was:
     // `Øresund Łódź` downloaded as `resund-odz`.
-    expect(named('Øresund Łódź')).toBe('pruefbuch-Oeresund-Lodz-2026-05-04.bcfzip')
+    expect(named('Øresund Łódź')).toBe('compliance-checks-Oeresund-Lodz-2026-05-04.bcfzip')
   })
 })

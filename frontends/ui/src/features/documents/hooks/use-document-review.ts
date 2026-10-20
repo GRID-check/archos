@@ -25,7 +25,7 @@ import {
   type MarkMention,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
-import type { FassungRef } from '@/lib/documents/fassung'
+import type { RevisionRef } from '@/lib/documents/revision-links'
 import { inPool } from '@/lib/utils/in-pool'
 import { useChatStore } from '@/features/chat'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
@@ -89,12 +89,12 @@ function rebased(input: UpdateAnnotationRequest, held: HeldDecision): UpdateAnno
 
 /**
  * How the document stands among its Fassungen under other names, as the
- * reader may see it (`FassungFacts`, `lib/documents/fassung.ts`): the document
+ * reader may see it (`RevisionLinks`, `lib/documents/revision-links.ts`): the document
  * that replaces it, and the ones it replaces.
  */
-export interface ReviewFassung {
-  replacedBy: FassungRef | null
-  replaces: readonly FassungRef[]
+export interface ReviewRevision {
+  replacedBy: RevisionRef | null
+  replaces: readonly RevisionRef[]
 }
 
 /**
@@ -103,7 +103,7 @@ export interface ReviewFassung {
  * so the group says so and offers a retry rather than vanishing.
  */
 export interface CarriedGroup {
-  from: FassungRef
+  from: RevisionRef
   annotations: AnnotationView[]
   load: 'ready' | 'error'
 }
@@ -143,7 +143,7 @@ export function useDocumentReview(
     transport,
     piloti: pilotiOptions,
     viewerUserId,
-    fassung,
+    revision,
     inbox = inboxClient,
   }: {
     enabled: boolean
@@ -155,7 +155,7 @@ export function useDocumentReview(
     /** The signed-in person as the page knows them (the shelf's `currentUserId`), for when the room is not up. */
     viewerUserId?: string | null
     /** The documents it replaces and the one that replaces it, as the reader may see them. */
-    fassung?: ReviewFassung | null
+    revision?: ReviewRevision | null
   }
 ) {
   const room = useDocumentRoom(documentId, { enabled, transport })
@@ -301,11 +301,11 @@ export function useDocumentReview(
   const [carried, setCarried] = useState<CarriedGroup[]>([])
   // By value: a new array naming the same documents (every listing re-read) is not a change.
   const sourcesKey = JSON.stringify(
-    fassung?.replacedBy
+    revision?.replacedBy
       ? []
-      : (fassung?.replaces ?? []).slice(0, CARRY_GROUPS_MAX).map(({ id, filename }) => ({ id, filename }))
+      : (revision?.replaces ?? []).slice(0, CARRY_GROUPS_MAX).map(({ id, filename }) => ({ id, filename }))
   )
-  const sources = useMemo(() => JSON.parse(sourcesKey) as FassungRef[], [sourcesKey])
+  const sources = useMemo(() => JSON.parse(sourcesKey) as RevisionRef[], [sourcesKey])
   /** Which read of the replaced documents' marks may still land: the newest, for the document still shown. */
   const carriedRead = useRef(0)
   const fetchCarried = useCallback(async () => {
@@ -863,7 +863,7 @@ export function useDocumentReview(
       const walk = [
         ...shown.filter((annotation) => annotation.status === 'proposed'),
         ...shown.filter((annotation) => annotation.status !== 'proposed'),
-      ].filter((annotation) => annotation.onCurrentFassung || isGhostMark(annotation, documentId))
+      ].filter((annotation) => annotation.onCurrentRevision || isGhostMark(annotation, documentId))
       if (walk.length === 0) return null
       const index = walk.findIndex((annotation) => annotation.id === selectedId)
       const next =
@@ -918,7 +918,7 @@ export function useDocumentReview(
       remove,
       step,
       me,
-      fassung: fassung ?? null,
+      revision: revision ?? null,
       carried,
       retryCarried,
       carry,
@@ -959,7 +959,7 @@ export function useDocumentReview(
       removeReply,
       remove,
       step,
-      fassung,
+      revision,
       carried,
       retryCarried,
       carry,

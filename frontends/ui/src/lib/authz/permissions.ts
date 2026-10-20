@@ -39,8 +39,8 @@ export const ORG_PERMISSIONS = {
   auditView: 'org:audit:view',
   /** Read the download log: who took which document out (ADR-0088). Reading it is audited. */
   downloadLogView: 'org:downloads:view',
-  /** Manage the org-wide document Archiv (upload/delete/reingest/retag). */
-  archivManage: 'org:archiv:manage',
+  /** Manage the org-wide office shelf (upload/delete/reingest/retag). */
+  officeShelfManage: 'org:office_shelf:manage',
   /** Author/edit/delete skills in the org toolbox (Agent Skills). */
   skillsManage: 'org:skills:manage',
   /** Create new projects in the organization. */
@@ -128,6 +128,24 @@ export type KnownPermission = OrgPermission | PlatformPermission
 export type AnyPermission = KnownPermission | ProjectPermission | SkillPermission
 
 const EMPTY_PERMISSIONS: ReadonlySet<string> = new Set()
+
+/**
+ * Permissions that were renamed: the current slug, then the slugs it used to
+ * have. A grant under an old slug still counts for one release, because a custom
+ * role built in WorkOS keeps the slug it was given until an operator re-grants
+ * it (`docs/deployment/office-shelf-rename-runbook.md`). The ONE place the old
+ * names are known; every check that reads a claim or a role goes through
+ * {@link acceptedPermissionSlugs}. Remove an entry when the old slug is deleted
+ * from the catalog.
+ */
+const RENAMED_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
+  [ORG_PERMISSIONS.officeShelfManage]: ['org:archiv:manage'],
+}
+
+/** Every slug whose grant answers a check for `permission`: itself, then its retired names. */
+export function acceptedPermissionSlugs(permission: string): readonly string[] {
+  return [permission, ...(RENAMED_PERMISSIONS[permission] ?? [])]
+}
 
 /**
  * Permissions each ENVIRONMENT-SCOPED ORG role holds, straight from the catalog.
@@ -223,9 +241,11 @@ export function hasPermission(
   session: Pick<GridSession, 'role' | 'permissions'>,
   permission: KnownPermission
 ): boolean {
-  if (session.permissions.includes(permission)) return true
+  const accepted = acceptedPermissionSlugs(permission)
+  if (accepted.some((slug) => session.permissions.includes(slug))) return true
   if (!session.role) return false
-  return ORG_ROLE_PERMISSIONS.get(session.role)?.has(permission) ?? false
+  const implied = ORG_ROLE_PERMISSIONS.get(session.role)
+  return implied ? accepted.some((slug) => implied.has(slug)) : false
 }
 
 /** Every permission slug the catalog defines, for provisioning and tests. */

@@ -27,24 +27,27 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { DocumentRoleField } from './document-role-field'
 import { QuestionControl, QuestionHeader } from './intake-question-field'
-import { ProjektgrundlagenStep } from './projektgrundlagen-step'
+import { ProjectBasisStep } from './project-basis-step'
 import {
   createUploadTracker,
   pendingBindsFromDraft,
-  persistedBauwerkIds,
+  persistedBuildingIds,
   sendPendingBinds,
   withPendingBind,
-  withoutBauwerk,
+  withoutBuilding,
   withoutPendingBind,
   type PendingRoleBind,
 } from '../lib/pending-role-binds'
 import {
+  BUILDING_ID_PREFIX,
   answerKeyFor,
-  bauwerkIdFromAnswerKey,
+  buildingIdFromAnswerKey,
+  buildingNumber,
+  buildingTag,
   answersFromProfile,
   buildIntakeProfile,
-  bauwerkeFromAnswers,
-  defaultBauwerke,
+  buildingsFromAnswers,
+  defaultBuildings,
   evaluateIntakeCondition,
   formatIntakeAnswer,
   isIntakeAnswerProvided,
@@ -53,7 +56,7 @@ import {
   pruneStaleConditionalAnswers,
 } from '@/lib/project-profile/intake-definition'
 import type {
-  BauwerkInstance,
+  BuildingInstance,
   IntakeAnswerMode,
   ProjectIntakeDefinition,
   ProjectIntakeQuestion,
@@ -92,7 +95,7 @@ type Answers = Record<string, ProjectPrimitiveValue>
 /** Shape of the autosaved intake draft persisted in localStorage. */
 interface IntakeDraft {
   answers?: Answers
-  bauwerke?: BauwerkInstance[]
+  buildings?: BuildingInstance[]
   /** Role bindings held for buildings not saved yet (`pending-role-binds`). */
   pendingBinds?: PendingRoleBind[]
   currentStep?: number
@@ -141,7 +144,7 @@ function isQuestionSatisfied(
 ): boolean {
   const answer = answers[answerKey]
   if (question.type === 'number' || question.type === 'number_tri') {
-    if (answers[modeKeyFor(answerKey)] === 'offen') return true
+    if (answers[modeKeyFor(answerKey)] === 'open') return true
     if (!isIntakeAnswerProvided(answer)) return !question.required
     const numeric = typeof answer === 'number' ? answer : Number(answer)
     return Number.isFinite(numeric)
@@ -183,7 +186,7 @@ export function ProjectIntakeWizard({
   const [loading, setLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(initialStep)
   const [answers, setAnswers] = useState<Answers>({})
-  const [bauwerke, setBauwerke] = useState<BauwerkInstance[]>(defaultBauwerke())
+  const [buildings, setBuildings] = useState<BuildingInstance[]>(defaultBuildings())
   const [pendingBinds, setPendingBinds] = useState<PendingRoleBind[]>([])
   // The latest list, read by the save after the uploads it waited for have
   // added theirs: the state its closure captured predates them.
@@ -205,15 +208,20 @@ export function ProjectIntakeWizard({
   const [checking, setChecking] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   // Schnellstart (spec `core_flag`): show only Kernfragen. Everything skipped is
-  // persisted with mode 'offen', which is already what an unanswered question
+  // persisted with mode 'open', which is already what an unanswered question
   // becomes — so the mode is a VIEW, not a second answer state to reconcile.
   const [quickStart, setQuickStart] = useState(false)
   // Modules where the user chose "alle anzeigen" despite Schnellstart.
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
 
-  const STORAGE_KEY = `intake-draft-${projectId}`
+  // `-v3`: the answers a draft holds are keyed by building id and use-token names
+  // that changed (migration 0159), and since then the yes/no/open and value/estimated/open
+  // tokens were German (`ja`, `geschaetzt`), so a draft from before is not restorable.
+  // It is dropped, not read: a draft is one tab's unsent work.
+  const STORAGE_KEY = `intake-draft-v3-${projectId}`
+  const LEGACY_STORAGE_KEYS = [`intake-draft-${projectId}`, `intake-draft-v2-${projectId}`]
   const isEdit = mode === 'edit'
-  const bwCounter = useRef(1)
+  const buildingCounter = useRef(1)
   // The active module-stepper button, scrolled into view whenever the step changes
   // so the current pill never hides off the right edge on a narrow screen.
 
@@ -234,6 +242,11 @@ export function ProjectIntakeWizard({
 
         let restored = false
         try {
+          for (const legacyKey of LEGACY_STORAGE_KEYS) localStorage.removeItem(legacyKey)
+        } catch {
+          /* storage may be blocked */
+        }
+        try {
           const raw = localStorage.getItem(STORAGE_KEY)
           if (raw) {
             const parsed = JSON.parse(raw) as IntakeDraft
@@ -243,13 +256,13 @@ export function ProjectIntakeWizard({
                 !initialProfile ||
                 draftShouldWinInEditMode(parsed, initialProfile, initialProfileVersion)
               if (restoreDraft) {
-                const draftBauwerke =
-                  parsed.bauwerke && parsed.bauwerke.length > 0
-                    ? parsed.bauwerke
-                    : bauwerkeFromAnswers(parsed.answers)
-                setBauwerke(draftBauwerke)
+                const draftBuildings =
+                  parsed.buildings && parsed.buildings.length > 0
+                    ? parsed.buildings
+                    : buildingsFromAnswers(parsed.answers)
+                setBuildings(draftBuildings)
                 updatePendingBinds(() => pendingBindsFromDraft(parsed.pendingBinds))
-                bwCounter.current = maxBwNumber(draftBauwerke)
+                buildingCounter.current = maxBuildingNumber(draftBuildings)
                 setAnswers(pruneStaleConditionalAnswers(parsed.answers, data))
                 if (typeof parsed.currentStep === 'number') setCurrentStep(parsed.currentStep)
                 restored = true
@@ -269,8 +282,8 @@ export function ProjectIntakeWizard({
         if (!restored) {
           if (initialProfile) {
             const seeded = answersFromProfile(initialProfile, data)
-            setBauwerke(seeded.bauwerke)
-            bwCounter.current = maxBwNumber(seeded.bauwerke)
+            setBuildings(seeded.buildings)
+            buildingCounter.current = maxBuildingNumber(seeded.buildings)
             setAnswers(pruneStaleConditionalAnswers(seeded.answers, data))
           } else if (projectName && !isEdit) {
             // Seed the project name captured at creation so A1 opens prefilled.
@@ -305,7 +318,7 @@ export function ProjectIntakeWizard({
           STORAGE_KEY,
           JSON.stringify({
             answers,
-            bauwerke,
+            buildings,
             pendingBinds,
             currentStep,
             savedAt: Date.now(),
@@ -318,7 +331,7 @@ export function ProjectIntakeWizard({
       }
     }, 500)
     return () => clearTimeout(timer)
-  }, [answers, bauwerke, pendingBinds, currentStep, STORAGE_KEY, loading, initialProfileVersion])
+  }, [answers, buildings, pendingBinds, currentStep, STORAGE_KEY, loading, initialProfileVersion])
 
   useEffect(() => {
     if (draftSaved) {
@@ -332,7 +345,7 @@ export function ProjectIntakeWizard({
   const stage: ProjectIntakeStage | null = stages[currentStep] ?? null
   const isReview = stage?.id === 'H'
   /** Modul I renders document slots from the role registry, not questions. */
-  const isGrundlagen = stage?.id === 'I'
+  const isBasis = stage?.id === 'I'
 
   const setAnswer = useCallback(
     (key: string, value: ProjectPrimitiveValue) => {
@@ -352,7 +365,7 @@ export function ProjectIntakeWizard({
     (answerKey: string, nextMode: IntakeAnswerMode) => {
       setAnswers((prev) => {
         const next = { ...prev, [modeKeyFor(answerKey)]: nextMode }
-        if (nextMode === 'offen') delete next[answerKey]
+        if (nextMode === 'open') delete next[answerKey]
         return pruneStaleConditionalAnswers(next, definition)
       })
       setFindings(null)
@@ -360,9 +373,9 @@ export function ProjectIntakeWizard({
     [definition]
   )
 
-  /** Visible questions on a projekt/grundstueck stage (bauwerk stages iterate instances). */
+  /** Visible questions on a projekt/grundstueck stage (building stages iterate instances). */
   const stageVisibleQuestions = useMemo(() => {
-    if (!stage || stage.scope === 'bauwerk') return []
+    if (!stage || stage.scope === 'building') return []
     return stage.questions.filter((q) => evaluateIntakeCondition(q, answers))
   }, [stage, answers])
 
@@ -384,7 +397,7 @@ export function ProjectIntakeWizard({
   const hiddenByQuickStart = stageVisibleQuestions.length - flatVisibleQuestions.length
 
   /**
-   * The stage a bauwerk module renders under Schnellstart.
+   * The stage a building module renders under Schnellstart.
    *
    * Required questions survive the filter for the same reason they do on a
    * project-scope module: narrowing the view must never narrow the gate.
@@ -397,15 +410,15 @@ export function ProjectIntakeWizard({
 
   const stageValid = useMemo(() => {
     if (!stage) return true
-    if (stage.scope === 'bauwerk') {
-      return bauwerke.every((bw) =>
+    if (stage.scope === 'building') {
+      return buildings.every((bw) =>
         stage.questions
           .filter((q) => evaluateIntakeCondition(q, answers, bw.id))
           .every((q) => isQuestionSatisfied(q, answers, answerKeyFor(q.id, bw.id)))
       )
     }
     return stageVisibleQuestions.every((q) => isQuestionSatisfied(q, answers, q.id))
-  }, [stage, bauwerke, answers, stageVisibleQuestions])
+  }, [stage, buildings, answers, stageVisibleQuestions])
 
   /**
    * Answered / total per module, for the rail.
@@ -425,11 +438,11 @@ export function ProjectIntakeWizard({
         if (q.type === 'info_placeholder' || q.type === 'document_role' || q.type === 'upload')
           return
         total += 1
-        if (isIntakeAnswerProvided(answers[key]) || answers[modeKeyFor(key)] === 'offen')
+        if (isIntakeAnswerProvided(answers[key]) || answers[modeKeyFor(key)] === 'open')
           answered += 1
       }
-      if (s.scope === 'bauwerk') {
-        for (const bw of bauwerke) {
+      if (s.scope === 'building') {
+        for (const bw of buildings) {
           for (const q of s.questions) {
             if (evaluateIntakeCondition(q, answers, bw.id)) tally(q, answerKeyFor(q.id, bw.id))
           }
@@ -445,13 +458,13 @@ export function ProjectIntakeWizard({
       counts.set(s.id, { answered, total })
     }
     return counts
-  }, [stages, answers, bauwerke])
+  }, [stages, answers, buildings])
 
   /**
    * Record every unanswered question in this module as explicitly open.
    *
    * The spec's per-module "Rest überspringen – als offen übernehmen". Writing
-   * mode 'offen' rather than leaving the answer absent is the whole point: both
+   * mode 'open' rather than leaving the answer absent is the whole point: both
    * produce an `unknown` in the profile, but only the explicit one can be told
    * apart from "not reached yet" in Modul H's completion checklist.
    */
@@ -467,14 +480,14 @@ export function ProjectIntakeWizard({
         if (q.type === 'yes_no_open') {
           // Its own third state, not a mode sibling — so the control renders as
           // "noch offen" rather than merely unselected.
-          next[key] = 'offen'
+          next[key] = 'open'
           return
         }
-        next[modeKeyFor(key)] = 'offen'
+        next[modeKeyFor(key)] = 'open'
         delete next[key]
       }
-      if (stage.scope === 'bauwerk') {
-        for (const bw of bauwerke) {
+      if (stage.scope === 'building') {
+        for (const bw of buildings) {
           for (const q of stage.questions) {
             if (evaluateIntakeCondition(q, next, bw.id)) markOpen(q, answerKeyFor(q.id, bw.id))
           }
@@ -492,7 +505,7 @@ export function ProjectIntakeWizard({
       return pruneStaleConditionalAnswers(next, definition)
     })
     setFindings(null)
-  }, [stage, bauwerke, definition])
+  }, [stage, buildings, definition])
 
   const directionRef = useRef(1)
 
@@ -514,8 +527,8 @@ export function ProjectIntakeWizard({
     if (!stage) return
     setTouched((prev) => {
       const next = new Set(prev)
-      if (stage.scope === 'bauwerk') {
-        for (const bw of bauwerke) {
+      if (stage.scope === 'building') {
+        for (const bw of buildings) {
           for (const q of stage.questions) {
             const key = answerKeyFor(q.id, bw.id)
             if (evaluateIntakeCondition(q, answers, bw.id) && !isQuestionSatisfied(q, answers, key))
@@ -529,7 +542,7 @@ export function ProjectIntakeWizard({
       }
       return next
     })
-  }, [stage, bauwerke, answers, stageVisibleQuestions])
+  }, [stage, buildings, answers, stageVisibleQuestions])
 
   const handleNext = useCallback(() => {
     if (!stageValid) {
@@ -540,16 +553,16 @@ export function ProjectIntakeWizard({
   }, [stageValid, markStageTouched, goToStep, currentStep])
 
   // --- Bauwerk management (module C's C0 affordance) ---
-  const addBauwerk = useCallback(() => {
-    bwCounter.current += 1
-    const id = `bw${bwCounter.current}`
-    setBauwerke((prev) => [...prev, { id, name: `Bauwerk ${prev.length + 1}` }])
+  const addBuilding = useCallback(() => {
+    buildingCounter.current += 1
+    const id = `${BUILDING_ID_PREFIX}${buildingCounter.current}`
+    setBuildings((prev) => [...prev, { id, name: `Bauwerk ${prev.length + 1}` }])
   }, [])
 
-  const removeBauwerk = useCallback((id: string) => {
-    setBauwerke((prev) => (prev.length > 1 ? prev.filter((bw) => bw.id !== id) : prev))
+  const removeBuilding = useCallback((id: string) => {
+    setBuildings((prev) => (prev.length > 1 ? prev.filter((bw) => bw.id !== id) : prev))
     // A binding held for a building that is gone has nowhere to go.
-    updatePendingBinds((prev) => withoutBauwerk(prev, id))
+    updatePendingBinds((prev) => withoutBuilding(prev, id))
     // Drop every answer belonging to the removed building.
     setAnswers((prev) => {
       const next: Answers = {}
@@ -561,8 +574,8 @@ export function ProjectIntakeWizard({
   }, [updatePendingBinds])
 
   // The buildings the server already knows; a binding to any other waits for the save.
-  const savedBauwerkIds = useMemo(
-    () => persistedBauwerkIds(initialProfile, definition),
+  const savedBuildingIds = useMemo(
+    () => persistedBuildingIds(initialProfile, definition),
     [initialProfile, definition]
   )
   const deferBind = useCallback(
@@ -574,8 +587,8 @@ export function ProjectIntakeWizard({
     [updatePendingBinds]
   )
 
-  const renameBauwerk = useCallback((id: string, name: string) => {
-    setBauwerke((prev) => prev.map((bw) => (bw.id === id ? { ...bw, name } : bw)))
+  const renameBuilding = useCallback((id: string, name: string) => {
+    setBuildings((prev) => prev.map((bw) => (bw.id === id ? { ...bw, name } : bw)))
   }, [])
 
   const runSave = useCallback(async () => {
@@ -588,7 +601,7 @@ export function ProjectIntakeWizard({
       // An upload still running for a new building has not recorded its
       // binding yet; saving now would send the list without it.
       await deferredUploads.settled()
-      const built = buildIntakeProfile(answers, definition, { projectName, bauwerke })
+      const built = buildIntakeProfile(answers, definition, { projectName, buildings })
       const profile: ProjectProfile = mergeIntakeProfile(built, initialProfile, definition)
       const res = await fetch(`/api/projects/${projectId}/profile`, {
         method: 'PUT',
@@ -635,7 +648,7 @@ export function ProjectIntakeWizard({
   }, [
     definition,
     answers,
-    bauwerke,
+    buildings,
     initialProfile,
     initialProfileVersion,
     mode,
@@ -670,8 +683,8 @@ export function ProjectIntakeWizard({
   const firstMissingRequired = useCallback((): { stageIndex: number; key: string } | null => {
     if (!definition) return null
     for (const [stageIndex, s] of definition.stages.entries()) {
-      if (s.scope === 'bauwerk') {
-        for (const bw of bauwerke) {
+      if (s.scope === 'building') {
+        for (const bw of buildings) {
           for (const q of s.questions) {
             if (!q.required) continue
             const key = answerKeyFor(q.id, bw.id)
@@ -688,7 +701,7 @@ export function ProjectIntakeWizard({
       }
     }
     return null
-  }, [definition, bauwerke, answers])
+  }, [definition, buildings, answers])
 
   const handleSave = useCallback(async () => {
     if (!definition) return
@@ -941,7 +954,7 @@ export function ProjectIntakeWizard({
                       where there is something to skip, and never on the two
                       modules that carry no questions to skip. */}
                     {!isReview &&
-                      !isGrundlagen &&
+                      !isBasis &&
                       stageProgress.get(stage.id) !== undefined &&
                       stageProgress.get(stage.id)!.answered <
                         stageProgress.get(stage.id)!.total && (
@@ -958,13 +971,13 @@ export function ProjectIntakeWizard({
                   )}
                 </div>
 
-                {isGrundlagen ? (
-                  <ProjektgrundlagenStep
+                {isBasis ? (
+                  <ProjectBasisStep
                     projectId={projectId}
                     answers={answers}
-                    bauwerke={bauwerke}
+                    buildings={buildings}
                     pendingBinds={{
-                      persistedBauwerkIds: savedBauwerkIds,
+                      persistedBuildingIds: savedBuildingIds,
                       pending: pendingBinds,
                       onDefer: deferBind,
                       onDiscard: discardPendingBind,
@@ -976,7 +989,7 @@ export function ProjectIntakeWizard({
                     <ReviewStep
                       definition={definition}
                       answers={answers}
-                      bauwerke={bauwerke}
+                      buildings={buildings}
                       onEditStage={(stageIndex) => goToStep(stageIndex)}
                     />
                     {checking && (
@@ -1001,22 +1014,22 @@ export function ProjectIntakeWizard({
                       />
                     )}
                   </div>
-                ) : stage.scope === 'bauwerk' ? (
-                  <BauwerkStage
+                ) : stage.scope === 'building' ? (
+                  <BuildingStage
                     // Schnellstart is a view over the QUESTIONS, so it has to be
                     // applied here as well: passing the raw stage left modules
                     // C, D and E showing every question while the toggle claimed
                     // to be showing only Kernfragen.
                     stage={quickStartStage}
-                    bauwerke={bauwerke}
+                    buildings={buildings}
                     answers={answers}
                     touched={touched}
                     projectId={projectId}
                     onSetAnswer={setAnswer}
                     onSetMode={setMode}
-                    onAddBauwerk={addBauwerk}
-                    onRemoveBauwerk={removeBauwerk}
-                    onRenameBauwerk={renameBauwerk}
+                    onAddBuilding={addBuilding}
+                    onRemoveBuilding={removeBuilding}
+                    onRenameBuilding={renameBuilding}
                     validationMessageFor={(q) => validationMessage(q, t)}
                   />
                 ) : (
@@ -1356,10 +1369,10 @@ function QuickStartToggle({
         className="shrink-0"
       >
         <Sparkles className="size-4" aria-hidden />
-        {t('intake.schnellstart')}
+        {t('intake.quickStart')}
       </Button>
       <p id="intake-schnellstart-hint" className="text-muted-foreground max-w-[24rem] text-xs leading-snug sr-only sm:[@media(min-height:32rem)]:not-sr-only">
-        {enabled ? t('intake.schnellstartOn') : t('intake.schnellstartOff')}
+        {enabled ? t('intake.quickStartOn') : t('intake.quickStartOff')}
       </p>
     </div>
   )
@@ -1369,18 +1382,18 @@ function QuickStartToggle({
  * The zone questions a building currently renders (Modul D).
  *
  * Zones are implicit: each use selected in `D0` expands into `zoneCommon` plus
- * that use's own set. Anything walking a bauwerk stage has to expand them too,
+ * that use's own set. Anything walking a building stage has to expand them too,
  * or it silently sees a module of three questions where the user sees thirty —
  * which is how both the per-module count and "Rest überspringen" came to ignore
  * every field in Modul D.
  */
 function zoneQuestionsFor(
   stage: ProjectIntakeStage,
-  bauwerkId: string,
+  buildingId: string,
   answers: Answers
 ): Array<{ question: ProjectIntakeQuestion; use: string }> {
   if (!stage.zoneCommon && !stage.zoneDefinitions) return []
-  const selected = answers[answerKeyFor('D0', bauwerkId)]
+  const selected = answers[answerKeyFor('D0', buildingId)]
   if (!Array.isArray(selected)) return []
   const out: Array<{ question: ProjectIntakeQuestion; use: string }> = []
   for (const use of selected) {
@@ -1395,10 +1408,10 @@ function zoneQuestionsFor(
   return out
 }
 
-/** The highest bwN number present, so newly-added buildings never reuse an id. */
-function maxBwNumber(bauwerke: BauwerkInstance[]): number {
-  return bauwerke.reduce((max, bw) => {
-    const n = Number(bw.id.replace(/^bw/, ''))
+/** The highest building number present, so newly-added buildings never reuse an id. */
+function maxBuildingNumber(buildings: BuildingInstance[]): number {
+  return buildings.reduce((max, bw) => {
+    const n = buildingNumber(bw.id)
     return Number.isFinite(n) ? Math.max(max, n) : max
   }, 1)
 }
@@ -1407,29 +1420,29 @@ function maxBwNumber(bauwerke: BauwerkInstance[]): number {
 // Bauwerk stage (modules C / D / E) — repeatable building cards.
 // ---------------------------------------------------------------------------
 
-function BauwerkStage({
+function BuildingStage({
   stage,
-  bauwerke,
+  buildings,
   answers,
   touched,
   projectId,
   onSetAnswer,
   onSetMode,
-  onAddBauwerk,
-  onRemoveBauwerk,
-  onRenameBauwerk,
+  onAddBuilding,
+  onRemoveBuilding,
+  onRenameBuilding,
   validationMessageFor,
 }: {
   stage: ProjectIntakeStage
-  bauwerke: BauwerkInstance[]
+  buildings: BuildingInstance[]
   answers: Answers
   touched: Set<string>
   projectId: string
   onSetAnswer: (key: string, value: ProjectPrimitiveValue) => void
   onSetMode: (key: string, mode: IntakeAnswerMode) => void
-  onAddBauwerk: () => void
-  onRemoveBauwerk: (id: string) => void
-  onRenameBauwerk: (id: string, name: string) => void
+  onAddBuilding: () => void
+  onRemoveBuilding: (id: string) => void
+  onRenameBuilding: (id: string, name: string) => void
   validationMessageFor: (q: ProjectIntakeQuestion) => string
 }) {
   const t = useTranslations('projects')
@@ -1438,18 +1451,18 @@ function BauwerkStage({
 
   return (
     <div className="space-y-4">
-      {bauwerke.map((bw, index) => (
+      {buildings.map((bw, index) => (
         <div key={bw.id} className="bg-card shadow-xs overflow-hidden rounded-2xl border">
           <div className="bg-muted/40 flex items-center gap-3 border-b px-4 py-2.5">
             <Badge variant="default" className="font-mono">
-              {bw.id.toUpperCase()}
+              {buildingTag(bw.id)}
             </Badge>
             {canManage ? (
               <>
               <input
                 value={bw.name}
-                onChange={(e) => onRenameBauwerk(bw.id, e.target.value)}
-                aria-label={t('intake.bauwerk.nameAria')}
+                onChange={(e) => onRenameBuilding(bw.id, e.target.value)}
+                aria-label={t('intake.building.nameAria')}
                 // A raw `<input>`, so none of the Input primitive's phone
                 // handling reaches it: at 14px iOS Safari zooms the page in when
                 // the field takes focus — mid-way through a nine-step wizard, on
@@ -1469,16 +1482,16 @@ function BauwerkStage({
             ) : (
               <span className="flex-1 truncate text-sm font-medium">{bw.name}</span>
             )}
-            {canManage && bauwerke.length > 1 && (
+            {canManage && buildings.length > 1 && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => onRemoveBauwerk(bw.id)}
+                onClick={() => onRemoveBuilding(bw.id)}
                 className="text-muted-foreground hover:text-destructive h-auto gap-1 px-2 py-1 text-xs"
               >
                 <Trash2 className="size-3.5" aria-hidden />
-                {t('intake.bauwerk.remove')}
+                {t('intake.building.remove')}
               </Button>
             )}
           </div>
@@ -1533,15 +1546,15 @@ function BauwerkStage({
               />
             )}
           </div>
-          {index === bauwerke.length - 1 && canManage && (
+          {index === buildings.length - 1 && canManage && (
             <div className="border-t px-4 py-3 md:px-6">
               <button
                 type="button"
-                onClick={onAddBauwerk}
+                onClick={onAddBuilding}
                 className="border-border text-muted-foreground hover:border-primary/60 hover:bg-primary/5 hover:text-primary inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2.5 font-mono text-xs pointer-coarse:min-h-11 transition-colors duration-quick ease-out motion-reduce:transition-none"
               >
                 <Plus className="size-4" aria-hidden />
-                {t('intake.bauwerk.add')}
+                {t('intake.building.add')}
               </button>
             </div>
           )}
@@ -1561,7 +1574,7 @@ function ZoneBlocks({
   projectId,
 }: {
   stage: ProjectIntakeStage
-  bw: BauwerkInstance
+  bw: BuildingInstance
   answers: Answers
   onSetAnswer: (key: string, value: ProjectPrimitiveValue) => void
   onSetMode: (key: string, mode: IntakeAnswerMode) => void
@@ -1625,7 +1638,7 @@ function ZoneBlocks({
 interface ReviewItem {
   label: string
   value: string
-  mode?: 'geschaetzt' | 'offen'
+  mode?: 'estimated' | 'open'
 }
 
 function reviewItemsFor(
@@ -1643,29 +1656,29 @@ function reviewItemsFor(
     const raw = answers[key]
     if (q.type === 'number_tri') {
       const mode = answers[modeKeyFor(key)] as IntakeAnswerMode | undefined
-      if (mode === 'offen') {
-        items.push({ label: q.label, value: '—', mode: 'offen' })
+      if (mode === 'open') {
+        items.push({ label: q.label, value: '—', mode: 'open' })
       } else if (isIntakeAnswerProvided(raw)) {
         items.push({
           label: q.label,
           value: formatIntakeAnswer(q, raw),
-          mode: mode === 'geschaetzt' ? 'geschaetzt' : undefined,
+          mode: mode === 'estimated' ? 'estimated' : undefined,
         })
       }
       continue
     }
     if (q.type === 'yes_no_open') {
-      if (raw === 'offen') items.push({ label: q.label, value: '—', mode: 'offen' })
-      else if (raw === 'ja' || raw === 'nein')
-        items.push({ label: q.label, value: raw === 'ja' ? 'Ja' : 'Nein' })
+      if (raw === 'open') items.push({ label: q.label, value: '—', mode: 'open' })
+      else if (raw === 'yes' || raw === 'no')
+        items.push({ label: q.label, value: raw === 'yes' ? 'Ja' : 'Nein' })
       continue
     }
     // A plain question can be explicitly open too: "Rest überspringen" records
-    // an unanswered one as mode 'offen'. Reading the sibling only for
+    // an unanswered one as mode 'open'. Reading the sibling only for
     // `number_tri` made every skipped text/select question vanish from this
     // checklist — the one place the feature promises they reappear.
-    if (answers[modeKeyFor(key)] === 'offen') {
-      items.push({ label: q.label, value: '—', mode: 'offen' })
+    if (answers[modeKeyFor(key)] === 'open') {
+      items.push({ label: q.label, value: '—', mode: 'open' })
       continue
     }
     if (isIntakeAnswerProvided(raw))
@@ -1708,16 +1721,16 @@ function ReviewSection({
             <dd
               className={cn(
                 'mt-0.5 text-sm',
-                item.mode === 'offen' ? 'text-muted-foreground' : 'font-medium'
+                item.mode === 'open' ? 'text-muted-foreground' : 'font-medium'
               )}
             >
               {item.value}
-              {item.mode === 'geschaetzt' && (
+              {item.mode === 'estimated' && (
                 <Badge variant="warning" className="ml-2 align-middle">
                   geschätzt
                 </Badge>
               )}
-              {item.mode === 'offen' && (
+              {item.mode === 'open' && (
                 <Badge variant="outline" className="ml-2 align-middle">
                   noch offen
                 </Badge>
@@ -1733,30 +1746,30 @@ function ReviewSection({
 function ReviewStep({
   definition,
   answers,
-  bauwerke,
+  buildings,
   onEditStage,
 }: {
   definition: ProjectIntakeDefinition
   answers: Answers
-  bauwerke: BauwerkInstance[]
+  buildings: BuildingInstance[]
   onEditStage: (stageIndex: number) => void
 }) {
   const t = useTranslations('projects')
 
-  const projektStages = definition.stages
+  const projectStages = definition.stages
     .map((stage, index) => ({ stage, index }))
     // `H` is the summary itself. `I` holds document slots rather than answers,
     // so it would render as an empty section here — the bindings live in
     // `document_roles`, not in the answer map this summarises.
-    .filter(({ stage }) => stage.scope !== 'bauwerk' && stage.id !== 'H' && stage.id !== 'I')
-  const bauwerkStages = definition.stages
+    .filter(({ stage }) => stage.scope !== 'building' && stage.id !== 'H' && stage.id !== 'I')
+  const buildingStages = definition.stages
     .map((stage, index) => ({ stage, index }))
-    .filter(({ stage }) => stage.scope === 'bauwerk')
+    .filter(({ stage }) => stage.scope === 'building')
 
   return (
     <div className="space-y-4">
       <div className="divide-border bg-card shadow-xs divide-y overflow-hidden rounded-2xl border">
-        {projektStages.map(({ stage, index }) => (
+        {projectStages.map(({ stage, index }) => (
           <ReviewSection
             key={stage.id}
             title={stage.title}
@@ -1767,9 +1780,9 @@ function ReviewStep({
         ))}
       </div>
 
-      {bauwerke.map((bw) => {
+      {buildings.map((bw) => {
         const items: ReviewItem[] = []
-        for (const { stage } of bauwerkStages) {
+        for (const { stage } of buildingStages) {
           items.push(
             ...reviewItemsFor(stage.questions, answers, (q) => answerKeyFor(q.id, bw.id), bw.id)
           )
@@ -1792,7 +1805,7 @@ function ReviewStep({
             <ReviewSection
               title={bw.name}
               editLabel={t('intake.edit')}
-              onEdit={() => onEditStage(bauwerkStages[0]?.index ?? 0)}
+              onEdit={() => onEditStage(buildingStages[0]?.index ?? 0)}
               items={items}
             />
           </div>
@@ -1968,7 +1981,7 @@ function QuestionField({
         <DocumentRoleField
           projectId={projectId}
           role={question.role}
-          scopeInstanceId={bauwerkIdFromAnswerKey(answerKey)}
+          scopeInstanceId={buildingIdFromAnswerKey(answerKey)}
         />
       </div>
     )

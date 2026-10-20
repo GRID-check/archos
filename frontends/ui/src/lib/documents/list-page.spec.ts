@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The keyset page behind `GET /api/documents` and `GET /api/archiv/documents`.
+ * The keyset page behind `GET /api/documents` and `GET /api/office-shelf/documents`.
  *
  * The listing used to be one page of 500, newest first, with nothing saying it
  * had stopped: the oldest plans of a big project were not in it, so search,
@@ -52,11 +52,11 @@ import {
 } from './repository'
 import { FILENAME_LOOKUP_MAX_NAMES } from './filename-lookup'
 import {
-  findArchivDocumentsByFilenames,
-  findArchivDocumentsByNames,
-  listArchivDocumentLevel,
-  listArchivDocuments,
-} from '@/lib/archiv/repository'
+  findOfficeShelfDocumentsByFilenames,
+  findOfficeShelfDocumentsByNames,
+  listOfficeShelfDocumentLevel,
+  listOfficeShelfDocuments,
+} from '@/lib/office-shelf/repository'
 import {
   decodeDocumentLevelCursor,
   decodeDocumentListCursor,
@@ -181,39 +181,39 @@ describe('listProjectDocumentPage', () => {
   })
 })
 
-describe('listArchivDocuments', () => {
+describe('listOfficeShelfDocuments', () => {
   it('pages the Archiv with the same order, bound and cursor', async () => {
     const cursor = { createdAt: '2026-01-01T00:00:00.000001', id: '00000000-0000-4000-8000-000000000001' }
     answer = [wireRow(1), wireRow(2)]
-    const page = await listArchivDocuments('org-1', { reader, cursor, limit: 1 })
+    const page = await listOfficeShelfDocuments('org-1', { reader, cursor, limit: 1 })
     const { sql, params } = onlyQuery()
     expect(sql).toMatch(/"documents"\."scope" = \$\d+/)
     expect(sql).toMatch(/order by "documents"\."created_at" desc, "documents"\."id" asc/i)
     expect(sql).toMatch(/"documents"\."id" > \$\d+::uuid/)
-    expect(params).toEqual(expect.arrayContaining(['org-1', 'archiv', cursor.id]))
+    expect(params).toEqual(expect.arrayContaining(['org-1', 'office_shelf', cursor.id]))
     expect(params.at(-1)).toBe(2)
     expect(page.rows).toHaveLength(1)
     expect(page.nextCursor?.id).toBe('00000000-0000-4000-8000-000000000001')
   })
 })
 
-describe('findArchivDocumentsByFilenames', () => {
+describe('findOfficeShelfDocumentsByFilenames', () => {
   it('asks nothing for no names', async () => {
-    expect(await findArchivDocumentsByFilenames('org-1', [], { reader })).toEqual([])
+    expect(await findOfficeShelfDocumentsByFilenames('org-1', [], { reader })).toEqual([])
     expect(captured).toHaveLength(0)
   })
 
   it('looks the names up in both Unicode forms, bounded, inside the Archiv shelf', async () => {
     const composed = 'Übersicht.pdf'.normalize('NFC')
-    await findArchivDocumentsByFilenames('org-1', [composed], { reader })
+    await findOfficeShelfDocumentsByFilenames('org-1', [composed], { reader })
     const { sql, params } = onlyQuery()
     expect(sql).toMatch(/"documents"\."filename" in \(\$\d+, \$\d+\)/)
-    expect(params).toEqual(expect.arrayContaining([composed, composed.normalize('NFD'), 'archiv', 'org-1']))
+    expect(params).toEqual(expect.arrayContaining([composed, composed.normalize('NFD'), 'office_shelf', 'org-1']))
     expect(params.at(-1)).toBe(DOCUMENT_LIST_LIMIT)
   })
 
   it('matches a name the reader spelled in another case', async () => {
-    await findArchivDocumentsByFilenames('org-1', ['DETAIL.PDF'], { reader })
+    await findOfficeShelfDocumentsByFilenames('org-1', ['DETAIL.PDF'], { reader })
     const { sql, params } = onlyQuery()
     expect(sql).toMatch(/lower\("documents"\."filename"\) in/)
     expect(params).toEqual(expect.arrayContaining(['DETAIL.PDF', 'detail.pdf']))
@@ -312,14 +312,14 @@ describe('findProjectDocumentsByNames', () => {
   })
 })
 
-describe('findArchivDocumentsByNames', () => {
+describe('findOfficeShelfDocumentsByNames', () => {
   it('probes the Archiv shelf the same way', async () => {
-    await findArchivDocumentsByNames('org-1', ['EG.pdf'], { reader })
+    await findOfficeShelfDocumentsByNames('org-1', ['EG.pdf'], { reader })
     const { sql, params } = onlyQuery()
     expect(sql).toMatch(/"documents"\."scope" = \$\d+/)
     expect(sql).toMatch(/lower\("documents"\."filename"\) in/)
     expect(sql).not.toMatch(/"lifecycle" =/)
-    expect(params).toEqual(expect.arrayContaining(['org-1', 'archiv', 'user', 'EG.pdf', 'eg.pdf']))
+    expect(params).toEqual(expect.arrayContaining(['org-1', 'office_shelf', 'user', 'EG.pdf', 'eg.pdf']))
   })
 })
 
@@ -444,11 +444,11 @@ describe('listDocumentLevelPage', () => {
   })
 
   it('reads the Archiv shelf the same way', async () => {
-    await listArchivDocumentLevel('org-1', { reader, level: level() })
+    await listOfficeShelfDocumentLevel('org-1', { reader, level: level() })
     const { sql, params } = onlyQuery()
     expect(sql).toMatch(/(?:"documents"\.)?"scope" = \$\d+/)
     expect(sql).not.toMatch(/(?:"documents"\.)?"project_id" = /)
-    expect(params).toEqual(expect.arrayContaining(['org-1', 'archiv']))
+    expect(params).toEqual(expect.arrayContaining(['org-1', 'office_shelf']))
   })
 })
 

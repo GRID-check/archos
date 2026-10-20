@@ -8,8 +8,8 @@
  *
  *   - project: `project:view` reads; `project:documents:write` or `project:edit`
  *     changes (ADR-0038).
- *   - archiv: any member of the organization reads; `org:archiv:manage`
- *     (`canManageArchiv`) changes. Reading is open because the Archiv is shared
+ *   - archiv: any member of the organization reads; `org:office_shelf:manage`
+ *     (`canManageOfficeShelf`) changes. Reading is open because the Archiv is shared
  *     knowledge, so only mutations gate.
  *
  * Deliberately not a role-name check: both are permissions, so a custom role
@@ -18,14 +18,14 @@
 
 import { ForbiddenError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { DocumentShelf } from './shelf'
 
 const PROJECT_WRITE_PERMISSIONS = ['project:documents:write', 'project:edit'] as const
 
 export async function requireShelfRead(session: AuthorizedSession, shelf: DocumentShelf): Promise<void> {
-  if (shelf.kind === 'archiv') return
+  if (shelf.kind === 'office_shelf') return
   await requireProjectAccess(session, shelf.projectId, 'project:view')
 }
 
@@ -34,5 +34,5 @@ export async function requireShelfWrite(session: AuthorizedSession, shelf: Docum
     await requireProjectAccess(session, shelf.projectId, PROJECT_WRITE_PERMISSIONS)
     return
   }
-  if (!canManageArchiv(session)) throw new ForbiddenError()
+  if (!canManageOfficeShelf(session)) throw new ForbiddenError()
 }

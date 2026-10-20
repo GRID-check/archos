@@ -18,7 +18,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { isFolderVisibleTo, requireFolderWrite } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { requireResourceAccess } from '@/lib/sharing/access'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import type { Document } from '@/lib/db/schema'
 import { mayReviewQuarantine } from '@/lib/upload-screening/quarantine-reviewers'
 import { internalRead, memberReader } from './document-reader'
@@ -73,11 +73,11 @@ export async function getAccessibleDocument(
   if (!doc) throw new NotFoundError()
 
   switch (doc.scope) {
-    case 'archiv': {
+    case 'office_shelf': {
       // Org-scoped: findDocumentForSession already confirmed the row belongs to the
       // caller's org (so any member may read it). Only mutations need the
       // manage permission.
-      if (intent === 'write' && !canManageArchiv(session)) throw new ForbiddenError()
+      if (intent === 'write' && !canManageOfficeShelf(session)) throw new ForbiddenError()
       return doc
     }
     case 'session': {

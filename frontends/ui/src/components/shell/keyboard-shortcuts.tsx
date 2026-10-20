@@ -63,7 +63,7 @@ export interface KeyboardShortcutsProps {
    */
   showSkills?: boolean
   /** Whether the org-wide Archiv is reachable (ADR-0024). */
-  canAccessArchiv?: boolean
+  canAccessOfficeShelf?: boolean
   /** Whether the collaboration surfaces are reachable (`collaboration`, ADR-0032…0035). */
   canCollaborate?: boolean
   /** Inbox reachability — gates the `g i` jump (ADR-0042, see NavFlags). */
@@ -76,7 +76,7 @@ export function KeyboardShortcuts({
   showKnowledge = false,
   showModels = false,
   showSkills = false,
-  canAccessArchiv = false,
+  canAccessOfficeShelf = false,
   canCollaborate = false,
   canAccessInbox = false,
 }: KeyboardShortcutsProps) {
@@ -97,7 +97,7 @@ export function KeyboardShortcuts({
       showKnowledge,
       showSkills,
       showModels,
-      canAccessArchiv,
+      canAccessOfficeShelf,
       canCollaborate,
       canAccessInbox,
     }),
@@ -106,7 +106,7 @@ export function KeyboardShortcuts({
       showKnowledge,
       showSkills,
       showModels,
-      canAccessArchiv,
+      canAccessOfficeShelf,
       canCollaborate,
       canAccessInbox,
     ],
@@ -189,7 +189,7 @@ export function KeyboardShortcuts({
         showKnowledge={showKnowledge}
         showModels={showModels}
         showSkills={showSkills}
-        canAccessArchiv={canAccessArchiv}
+        canAccessOfficeShelf={canAccessOfficeShelf}
       />
       {/* Only `?` opens the cheatsheet, so it only ever opens for someone at a
           keyboard; with shortcuts off it is not mounted at all. */}
@@ -201,7 +201,7 @@ export function KeyboardShortcuts({
         showKnowledge={showKnowledge}
         showModels={showModels}
         showSkills={showSkills}
-        canAccessArchiv={canAccessArchiv}
+        canAccessOfficeShelf={canAccessOfficeShelf}
         canCollaborate={canCollaborate}
         canAccessInbox={canAccessInbox}
       />

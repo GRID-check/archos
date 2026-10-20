@@ -65,7 +65,7 @@ from dataclasses import dataclass
 
 from aiq_agent.knowledge.collection_pages import read_pages
 from aiq_agent.knowledge.permit_extraction import extract_permit_record
-from aiq_agent.knowledge.permit_extraction import is_bescheid
+from aiq_agent.knowledge.permit_extraction import is_permit_decision
 from aiq_agent.knowledge.permit_extraction import llm_model_name
 from aiq_agent.knowledge.permit_extraction import pages_with_markers
 from aiq_agent.knowledge.schema import AvailableDocument
@@ -160,7 +160,7 @@ def process_row(
     ``--document-ids`` was given: the record is stored by file name, with no id.
     """
     file_name = doc.file_name
-    if not is_bescheid(doc.tags):
+    if not is_permit_decision(doc.tags):
         return SKIPPED
     document_id = document_ids.get(file_name) or None
     if document_ids and document_id is None and not dry_run:
@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     configure_summary_db(args.summary_db)
     documents = get_available_documents(args.collection)
     logger.info("Collection %s: %d document(s)", args.collection, len(documents))
-    if not any(is_bescheid(doc.tags) for doc in documents):
+    if not any(is_permit_decision(doc.tags) for doc in documents):
         return 0
 
     page_fetcher = make_page_fetcher()

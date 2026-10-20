@@ -176,20 +176,20 @@ class BriefingDialectEntry:
 
 @dataclass(frozen=True)
 class BriefingRoomUse:
-    aufenthaltsraum: int
-    nebenraum: int
-    erschliessung: int
+    habitable_room: int
+    ancillary_room: int
+    circulation: int
     #: Spaces whose name matched no lexicon entry — including unnamed ones.
-    unklassifiziert: int
+    unclassified: int
     #: False when the model publishes no spaces; the counts are then meaningless.
     decidable: bool
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "aufenthaltsraum": self.aufenthaltsraum,
-            "nebenraum": self.nebenraum,
-            "erschliessung": self.erschliessung,
-            "unklassifiziert": self.unklassifiziert,
+            "habitable_room": self.habitable_room,
+            "ancillary_room": self.ancillary_room,
+            "circulation": self.circulation,
+            "unclassified": self.unclassified,
             "decidable": self.decidable,
         }
 
@@ -402,10 +402,10 @@ def briefing(model: SpatialModel, *, dialect_sample_size: int = DIALECT_SAMPLE_S
 
     classified = classify_rooms(model)
     room_use = BriefingRoomUse(
-        aufenthaltsraum=sum(1 for r in classified if r.kind == "aufenthaltsraum"),
-        nebenraum=sum(1 for r in classified if r.kind == "nebenraum"),
-        erschliessung=sum(1 for r in classified if r.kind == "erschliessung"),
-        unklassifiziert=sum(1 for r in classified if r.kind is None),
+        habitable_room=sum(1 for r in classified if r.kind == "habitable_room"),
+        ancillary_room=sum(1 for r in classified if r.kind == "ancillary_room"),
+        circulation=sum(1 for r in classified if r.kind == "circulation"),
+        unclassified=sum(1 for r in classified if r.kind is None),
         decidable=len(spaces) > 0,
     )
 
@@ -555,8 +555,8 @@ def render_briefing(model: SpatialModel, *, dialect_sample_size: int = DIALECT_S
         use = b.room_use
         add(
             "",
-            f"Lexikonvorschlag (unbestätigt): {use.aufenthaltsraum} Aufenthalts-, {use.nebenraum} Neben-, "
-            f"{use.erschliessung} Erschließungsräume, {use.unklassifiziert} ohne Zuordnung",
+            f"Lexikonvorschlag (unbestätigt): {use.habitable_room} Aufenthalts-, {use.ancillary_room} Neben-, "
+            f"{use.circulation} Erschließungsräume, {use.unclassified} ohne Zuordnung",
         )
         add("", "Aufenthaltsraum ist eine rechtliche Einstufung — dieser Vorschlag ersetzt keine Prüfung")
 
@@ -731,7 +731,7 @@ def storey_heights(model: SpatialModel) -> Answer[list[dict[str, Any]]]:
 
 # ── inventory() ─────────────────────────────────────────────────────────────
 
-RoomUseKind = Literal["aufenthaltsraum", "nebenraum", "erschliessung"]
+RoomUseKind = Literal["habitable_room", "ancillary_room", "circulation"]
 
 
 @dataclass(frozen=True)
@@ -782,7 +782,7 @@ def inventory(model: SpatialModel, kind: RoomUseKind) -> Answer[list[RoomProposa
     ## Why the longest match wins
 
     ``Waschküche`` contains ``küche``. Ranking matches by the length of the
-    matched term puts a laundry in ``nebenraum`` where it belongs, instead of
+    matched term puts a laundry in ``ancillary_room`` where it belongs, instead of
     proposing it as a habitable room because it has a kitchen in its name.
     """
     method = f"inventory(model, '{kind}')"
@@ -816,7 +816,7 @@ def inventory(model: SpatialModel, kind: RoomUseKind) -> Answer[list[RoomProposa
         f"Einstufung aus dem Raumnamen gegen ein deutsch/österreichisch-englisches Lexikon ({len(LEXICON)} Einträge), "
         "Groß-/Kleinschreibung und Umlautvarianten (Küche/Kueche/KÜCHE) vereinheitlicht.",
         "Bei mehreren Treffern gewinnt der längere Begriff (Waschküche vor Küche).",
-        f"{len(matching)} von {len(spaces)} Räumen als {GERMAN_KIND[kind]} vorgeschlagen.",
+        f"{len(matching)} von {len(spaces)} Räumen als {KIND_LABEL[kind]} vorgeschlagen.",
     ]
     lit_source = _window_assignment(model)
     if lit_source is not None:
@@ -840,7 +840,7 @@ def inventory(model: SpatialModel, kind: RoomUseKind) -> Answer[list[RoomProposa
         )
     if not value:
         caveat.append(
-            f"Kein Raumname in diesem Modell deutet auf {GERMAN_KIND[kind]} hin. Das heißt nicht, dass das "
+            f"Kein Raumname in diesem Modell deutet auf {KIND_LABEL[kind]} hin. Das heißt nicht, dass das "
             "Gebäude keine hat — es heißt, dass die Benennung im Export nichts dazu sagt."
         )
 
@@ -876,10 +876,17 @@ class LexiconEntry:
     note: str | None = None
 
 
-GERMAN_KIND: dict[str, str] = {
-    "aufenthaltsraum": "Aufenthaltsraum",
-    "nebenraum": "Nebenraum",
-    "erschliessung": "Erschließungsfläche",
+#: The German tokens ``room_inventory`` used to take. Remove after one release.
+LEGACY_ROOM_USE_KINDS: dict[str, str] = {
+    "aufenthaltsraum": "habitable_room",
+    "nebenraum": "ancillary_room",
+    "erschliessung": "circulation",
+}
+
+KIND_LABEL: dict[str, str] = {
+    "habitable_room": "Aufenthaltsraum",
+    "ancillary_room": "Nebenraum",
+    "circulation": "Erschließungsfläche",
 }
 
 _FREIBEREICH = "Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn"
@@ -890,135 +897,135 @@ _FREIBEREICH = "Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum i
 #: which means an entry can be added without reasoning about what it shadows.
 LEXICON: tuple[LexiconEntry, ...] = (
     # Aufenthaltsräume: rooms for more than transient occupancy.
-    LexiconEntry("wohnzimmer", "aufenthaltsraum"),
-    LexiconEntry("wohnraum", "aufenthaltsraum"),
-    LexiconEntry("wohnkueche", "aufenthaltsraum"),
-    LexiconEntry("wohnessbereich", "aufenthaltsraum"),
-    LexiconEntry("wohnen", "aufenthaltsraum"),
-    LexiconEntry("esszimmer", "aufenthaltsraum"),
-    LexiconEntry("essplatz", "aufenthaltsraum"),
-    LexiconEntry("essen", "aufenthaltsraum"),
-    LexiconEntry("speisesaal", "aufenthaltsraum"),
-    LexiconEntry("schlafzimmer", "aufenthaltsraum"),
-    LexiconEntry("schlafraum", "aufenthaltsraum"),
-    LexiconEntry("schlafen", "aufenthaltsraum"),
-    LexiconEntry("kinderzimmer", "aufenthaltsraum"),
-    LexiconEntry("jugendzimmer", "aufenthaltsraum"),
-    LexiconEntry("gaestezimmer", "aufenthaltsraum"),
-    LexiconEntry("zimmer", "aufenthaltsraum", weak=True, note='„Zimmer" allein sagt die Nutzung nicht'),
+    LexiconEntry("wohnzimmer", "habitable_room"),
+    LexiconEntry("wohnraum", "habitable_room"),
+    LexiconEntry("wohnkueche", "habitable_room"),
+    LexiconEntry("wohnessbereich", "habitable_room"),
+    LexiconEntry("wohnen", "habitable_room"),
+    LexiconEntry("esszimmer", "habitable_room"),
+    LexiconEntry("essplatz", "habitable_room"),
+    LexiconEntry("essen", "habitable_room"),
+    LexiconEntry("speisesaal", "habitable_room"),
+    LexiconEntry("schlafzimmer", "habitable_room"),
+    LexiconEntry("schlafraum", "habitable_room"),
+    LexiconEntry("schlafen", "habitable_room"),
+    LexiconEntry("kinderzimmer", "habitable_room"),
+    LexiconEntry("jugendzimmer", "habitable_room"),
+    LexiconEntry("gaestezimmer", "habitable_room"),
+    LexiconEntry("zimmer", "habitable_room", weak=True, note='„Zimmer" allein sagt die Nutzung nicht'),
     LexiconEntry(
         "kueche",
-        "aufenthaltsraum",
+        "habitable_room",
         note=(
             "Küchen zählen nur als Aufenthaltsraum, wenn sie zum nicht nur vorübergehenden Aufenthalt "
             "bestimmt sind — eine Kochnische nicht"
         ),
     ),
-    LexiconEntry("kochen", "aufenthaltsraum"),
-    LexiconEntry("arbeitszimmer", "aufenthaltsraum"),
-    LexiconEntry("arbeitsraum", "aufenthaltsraum"),
-    LexiconEntry("arbeiten", "aufenthaltsraum"),
-    LexiconEntry("bueroraum", "aufenthaltsraum"),
-    LexiconEntry("buero", "aufenthaltsraum"),
-    LexiconEntry("aufenthaltsraum", "aufenthaltsraum"),
-    LexiconEntry("aufenthalt", "aufenthaltsraum"),
-    LexiconEntry("wintergarten", "aufenthaltsraum"),
-    LexiconEntry("gastraum", "aufenthaltsraum"),
-    LexiconEntry("besprechungsraum", "aufenthaltsraum"),
-    LexiconEntry("besprechung", "aufenthaltsraum"),
-    LexiconEntry("konferenzraum", "aufenthaltsraum"),
-    LexiconEntry("seminarraum", "aufenthaltsraum"),
-    LexiconEntry("klassenzimmer", "aufenthaltsraum"),
-    LexiconEntry("gruppenraum", "aufenthaltsraum"),
-    LexiconEntry("spielzimmer", "aufenthaltsraum"),
-    LexiconEntry("spielraum", "aufenthaltsraum"),
-    LexiconEntry("atelier", "aufenthaltsraum"),
-    LexiconEntry("ordination", "aufenthaltsraum"),
-    LexiconEntry("verkaufsraum", "aufenthaltsraum"),
-    LexiconEntry("bibliothek", "aufenthaltsraum"),
+    LexiconEntry("kochen", "habitable_room"),
+    LexiconEntry("arbeitszimmer", "habitable_room"),
+    LexiconEntry("arbeitsraum", "habitable_room"),
+    LexiconEntry("arbeiten", "habitable_room"),
+    LexiconEntry("bueroraum", "habitable_room"),
+    LexiconEntry("buero", "habitable_room"),
+    LexiconEntry("aufenthaltsraum", "habitable_room"),
+    LexiconEntry("aufenthalt", "habitable_room"),
+    LexiconEntry("wintergarten", "habitable_room"),
+    LexiconEntry("gastraum", "habitable_room"),
+    LexiconEntry("besprechungsraum", "habitable_room"),
+    LexiconEntry("besprechung", "habitable_room"),
+    LexiconEntry("konferenzraum", "habitable_room"),
+    LexiconEntry("seminarraum", "habitable_room"),
+    LexiconEntry("klassenzimmer", "habitable_room"),
+    LexiconEntry("gruppenraum", "habitable_room"),
+    LexiconEntry("spielzimmer", "habitable_room"),
+    LexiconEntry("spielraum", "habitable_room"),
+    LexiconEntry("atelier", "habitable_room"),
+    LexiconEntry("ordination", "habitable_room"),
+    LexiconEntry("verkaufsraum", "habitable_room"),
+    LexiconEntry("bibliothek", "habitable_room"),
     # Nebenräume: served rooms, not meant for lasting occupancy.
-    LexiconEntry("badezimmer", "nebenraum"),
-    LexiconEntry("baderaum", "nebenraum"),
-    LexiconEntry("bad", "nebenraum"),
-    LexiconEntry("dusche", "nebenraum"),
-    LexiconEntry("duschbad", "nebenraum"),
-    LexiconEntry("wc", "nebenraum"),
-    LexiconEntry("toilette", "nebenraum"),
-    LexiconEntry("sanitaer", "nebenraum"),
-    LexiconEntry("abstellraum", "nebenraum"),
-    LexiconEntry("abstell", "nebenraum"),
-    LexiconEntry("abstellnische", "nebenraum"),
-    LexiconEntry("vorratsraum", "nebenraum"),
-    LexiconEntry("vorrat", "nebenraum"),
-    LexiconEntry("speisekammer", "nebenraum"),
-    LexiconEntry("speis", "nebenraum"),
-    LexiconEntry("hauswirtschaftsraum", "nebenraum"),
-    LexiconEntry("hausanschlussraum", "nebenraum"),
-    LexiconEntry("hwr", "nebenraum"),
-    LexiconEntry("technikraum", "nebenraum"),
-    LexiconEntry("haustechnik", "nebenraum"),
-    LexiconEntry("technik", "nebenraum"),
-    LexiconEntry("heizraum", "nebenraum"),
-    LexiconEntry("heizung", "nebenraum"),
-    LexiconEntry("lueftungszentrale", "nebenraum"),
-    LexiconEntry("elektroraum", "nebenraum"),
-    LexiconEntry("serverraum", "nebenraum"),
-    LexiconEntry("lagerraum", "nebenraum"),
-    LexiconEntry("lager", "nebenraum"),
-    LexiconEntry("kellerabteil", "nebenraum"),
-    LexiconEntry("keller", "nebenraum"),
-    LexiconEntry("waschkueche", "nebenraum"),
-    LexiconEntry("waschraum", "nebenraum"),
-    LexiconEntry("trockenraum", "nebenraum"),
-    LexiconEntry("putzraum", "nebenraum"),
-    LexiconEntry("muellraum", "nebenraum"),
-    LexiconEntry("abfall", "nebenraum"),
-    LexiconEntry("garage", "nebenraum"),
-    LexiconEntry("carport", "nebenraum"),
-    LexiconEntry("fahrradraum", "nebenraum"),
-    LexiconEntry("kinderwagenraum", "nebenraum"),
-    LexiconEntry("kinderwagen", "nebenraum"),
-    LexiconEntry("schrankraum", "nebenraum"),
-    LexiconEntry("ankleide", "nebenraum"),
-    LexiconEntry("garderobe", "nebenraum"),
-    LexiconEntry("sauna", "nebenraum"),
-    LexiconEntry("dachboden", "nebenraum"),
-    LexiconEntry("aufzugsschacht", "nebenraum"),
-    LexiconEntry("schacht", "nebenraum", weak=True),
+    LexiconEntry("badezimmer", "ancillary_room"),
+    LexiconEntry("baderaum", "ancillary_room"),
+    LexiconEntry("bad", "ancillary_room"),
+    LexiconEntry("dusche", "ancillary_room"),
+    LexiconEntry("duschbad", "ancillary_room"),
+    LexiconEntry("wc", "ancillary_room"),
+    LexiconEntry("toilette", "ancillary_room"),
+    LexiconEntry("sanitaer", "ancillary_room"),
+    LexiconEntry("abstellraum", "ancillary_room"),
+    LexiconEntry("abstell", "ancillary_room"),
+    LexiconEntry("abstellnische", "ancillary_room"),
+    LexiconEntry("vorratsraum", "ancillary_room"),
+    LexiconEntry("vorrat", "ancillary_room"),
+    LexiconEntry("speisekammer", "ancillary_room"),
+    LexiconEntry("speis", "ancillary_room"),
+    LexiconEntry("hauswirtschaftsraum", "ancillary_room"),
+    LexiconEntry("hausanschlussraum", "ancillary_room"),
+    LexiconEntry("hwr", "ancillary_room"),
+    LexiconEntry("technikraum", "ancillary_room"),
+    LexiconEntry("haustechnik", "ancillary_room"),
+    LexiconEntry("technik", "ancillary_room"),
+    LexiconEntry("heizraum", "ancillary_room"),
+    LexiconEntry("heizung", "ancillary_room"),
+    LexiconEntry("lueftungszentrale", "ancillary_room"),
+    LexiconEntry("elektroraum", "ancillary_room"),
+    LexiconEntry("serverraum", "ancillary_room"),
+    LexiconEntry("lagerraum", "ancillary_room"),
+    LexiconEntry("lager", "ancillary_room"),
+    LexiconEntry("kellerabteil", "ancillary_room"),
+    LexiconEntry("keller", "ancillary_room"),
+    LexiconEntry("waschkueche", "ancillary_room"),
+    LexiconEntry("waschraum", "ancillary_room"),
+    LexiconEntry("trockenraum", "ancillary_room"),
+    LexiconEntry("putzraum", "ancillary_room"),
+    LexiconEntry("muellraum", "ancillary_room"),
+    LexiconEntry("abfall", "ancillary_room"),
+    LexiconEntry("garage", "ancillary_room"),
+    LexiconEntry("carport", "ancillary_room"),
+    LexiconEntry("fahrradraum", "ancillary_room"),
+    LexiconEntry("kinderwagenraum", "ancillary_room"),
+    LexiconEntry("kinderwagen", "ancillary_room"),
+    LexiconEntry("schrankraum", "ancillary_room"),
+    LexiconEntry("ankleide", "ancillary_room"),
+    LexiconEntry("garderobe", "ancillary_room"),
+    LexiconEntry("sauna", "ancillary_room"),
+    LexiconEntry("dachboden", "ancillary_room"),
+    LexiconEntry("aufzugsschacht", "ancillary_room"),
+    LexiconEntry("schacht", "ancillary_room", weak=True),
     # Freibereiche are neither: they cannot be Aufenthaltsräume, and calling
     # them Nebenräume is a stretch. They are placed here rather than left
     # unmatched so that a terrace never lands in the habitable-room proposal,
     # and the `note` carries the qualification into the reasons.
-    LexiconEntry("balkon", "nebenraum", note=_FREIBEREICH),
-    LexiconEntry("terrasse", "nebenraum", note=_FREIBEREICH),
-    LexiconEntry("loggia", "nebenraum", note=_FREIBEREICH),
-    LexiconEntry("dachterrasse", "nebenraum", note=_FREIBEREICH),
+    LexiconEntry("balkon", "ancillary_room", note=_FREIBEREICH),
+    LexiconEntry("terrasse", "ancillary_room", note=_FREIBEREICH),
+    LexiconEntry("loggia", "ancillary_room", note=_FREIBEREICH),
+    LexiconEntry("dachterrasse", "ancillary_room", note=_FREIBEREICH),
     # Erschließung: circulation.
-    LexiconEntry("flur", "erschliessung"),
-    LexiconEntry("gang", "erschliessung"),
-    LexiconEntry("diele", "erschliessung"),
-    LexiconEntry("vorraum", "erschliessung"),
-    LexiconEntry("vorzimmer", "erschliessung"),
-    LexiconEntry("stiegenhaus", "erschliessung"),
-    LexiconEntry("stiege", "erschliessung"),
-    LexiconEntry("treppenhaus", "erschliessung"),
-    LexiconEntry("treppenraum", "erschliessung"),
-    LexiconEntry("treppe", "erschliessung"),
-    LexiconEntry("korridor", "erschliessung"),
-    LexiconEntry("erschliessung", "erschliessung"),
-    LexiconEntry("windfang", "erschliessung"),
-    LexiconEntry("eingangsbereich", "erschliessung"),
-    LexiconEntry("eingang", "erschliessung"),
-    LexiconEntry("foyer", "erschliessung"),
-    LexiconEntry("halle", "erschliessung", weak=True, note='„Halle" kann Eingangshalle oder Nutzungshalle sein'),
-    LexiconEntry("liftvorraum", "erschliessung"),
-    LexiconEntry("aufzug", "erschliessung"),
-    LexiconEntry("lift", "erschliessung"),
-    LexiconEntry("laubengang", "erschliessung"),
-    LexiconEntry("rampe", "erschliessung"),
-    LexiconEntry("fluchtweg", "erschliessung"),
-    LexiconEntry("schleuse", "erschliessung"),
-    LexiconEntry("podest", "erschliessung"),
+    LexiconEntry("flur", "circulation"),
+    LexiconEntry("gang", "circulation"),
+    LexiconEntry("diele", "circulation"),
+    LexiconEntry("vorraum", "circulation"),
+    LexiconEntry("vorzimmer", "circulation"),
+    LexiconEntry("stiegenhaus", "circulation"),
+    LexiconEntry("stiege", "circulation"),
+    LexiconEntry("treppenhaus", "circulation"),
+    LexiconEntry("treppenraum", "circulation"),
+    LexiconEntry("treppe", "circulation"),
+    LexiconEntry("korridor", "circulation"),
+    LexiconEntry("erschliessung", "circulation"),
+    LexiconEntry("windfang", "circulation"),
+    LexiconEntry("eingangsbereich", "circulation"),
+    LexiconEntry("eingang", "circulation"),
+    LexiconEntry("foyer", "circulation"),
+    LexiconEntry("halle", "circulation", weak=True, note='„Halle" kann Eingangshalle oder Nutzungshalle sein'),
+    LexiconEntry("liftvorraum", "circulation"),
+    LexiconEntry("aufzug", "circulation"),
+    LexiconEntry("lift", "circulation"),
+    LexiconEntry("laubengang", "circulation"),
+    LexiconEntry("rampe", "circulation"),
+    LexiconEntry("fluchtweg", "circulation"),
+    LexiconEntry("schleuse", "circulation"),
+    LexiconEntry("podest", "circulation"),
     # ── English, because the export language is not the building's country ───
     #
     # The file this library was first measured against is an Austrian sample
@@ -1029,77 +1036,77 @@ LEXICON: tuple[LexiconEntry, ...] = (
     # produces English room names for a building in Vienna. A lexicon that only
     # reads German silently reports "0 Aufenthaltsräume" about a house full of
     # them, which is worse than saying nothing.
-    LexiconEntry("living room", "aufenthaltsraum"),
-    LexiconEntry("livingroom", "aufenthaltsraum"),
-    LexiconEntry("sitting room", "aufenthaltsraum"),
-    LexiconEntry("family room", "aufenthaltsraum"),
-    LexiconEntry("dining room", "aufenthaltsraum"),
-    LexiconEntry("dining", "aufenthaltsraum"),
-    LexiconEntry("lounge", "aufenthaltsraum"),
-    LexiconEntry("kitchen", "aufenthaltsraum"),
-    LexiconEntry("master bedroom", "aufenthaltsraum"),
-    LexiconEntry("bedroom", "aufenthaltsraum"),
-    LexiconEntry("bed room", "aufenthaltsraum"),
-    LexiconEntry("guest room", "aufenthaltsraum"),
-    LexiconEntry("nursery", "aufenthaltsraum"),
-    LexiconEntry("children", "aufenthaltsraum"),
-    LexiconEntry("study", "aufenthaltsraum"),
-    LexiconEntry("home office", "aufenthaltsraum"),
-    LexiconEntry("office", "aufenthaltsraum"),
-    LexiconEntry("workroom", "aufenthaltsraum"),
-    LexiconEntry("classroom", "aufenthaltsraum"),
-    LexiconEntry("meeting room", "aufenthaltsraum"),
+    LexiconEntry("living room", "habitable_room"),
+    LexiconEntry("livingroom", "habitable_room"),
+    LexiconEntry("sitting room", "habitable_room"),
+    LexiconEntry("family room", "habitable_room"),
+    LexiconEntry("dining room", "habitable_room"),
+    LexiconEntry("dining", "habitable_room"),
+    LexiconEntry("lounge", "habitable_room"),
+    LexiconEntry("kitchen", "habitable_room"),
+    LexiconEntry("master bedroom", "habitable_room"),
+    LexiconEntry("bedroom", "habitable_room"),
+    LexiconEntry("bed room", "habitable_room"),
+    LexiconEntry("guest room", "habitable_room"),
+    LexiconEntry("nursery", "habitable_room"),
+    LexiconEntry("children", "habitable_room"),
+    LexiconEntry("study", "habitable_room"),
+    LexiconEntry("home office", "habitable_room"),
+    LexiconEntry("office", "habitable_room"),
+    LexiconEntry("workroom", "habitable_room"),
+    LexiconEntry("classroom", "habitable_room"),
+    LexiconEntry("meeting room", "habitable_room"),
     LexiconEntry(
-        "living", "aufenthaltsraum", weak=True, note='„living" allein kann auch Wohnbereich einer Erschließung sein'
+        "living", "habitable_room", weak=True, note='„living" allein kann auch Wohnbereich einer Erschließung sein'
     ),
-    LexiconEntry("room", "aufenthaltsraum", weak=True, note='„room" allein sagt die Nutzung nicht'),
-    LexiconEntry("bathroom", "nebenraum"),
-    LexiconEntry("shower room", "nebenraum"),
-    LexiconEntry("bath", "nebenraum"),
-    LexiconEntry("toilet", "nebenraum"),
-    LexiconEntry("restroom", "nebenraum"),
-    LexiconEntry("store room", "nebenraum"),
-    LexiconEntry("storeroom", "nebenraum"),
-    LexiconEntry("storage", "nebenraum"),
-    LexiconEntry("utility room", "nebenraum"),
-    LexiconEntry("utility", "nebenraum"),
-    LexiconEntry("laundry", "nebenraum"),
-    LexiconEntry("plant room", "nebenraum"),
-    LexiconEntry("technical room", "nebenraum"),
-    LexiconEntry("boiler room", "nebenraum"),
-    LexiconEntry("basement", "nebenraum"),
-    LexiconEntry("cellar", "nebenraum"),
-    LexiconEntry("pantry", "nebenraum"),
-    LexiconEntry("larder", "nebenraum"),
-    LexiconEntry("wardrobe", "nebenraum"),
-    LexiconEntry("closet", "nebenraum"),
-    LexiconEntry("cloakroom", "nebenraum"),
-    LexiconEntry("attic", "nebenraum"),
-    LexiconEntry("bin store", "nebenraum"),
-    LexiconEntry("bike store", "nebenraum"),
-    LexiconEntry("balcony", "nebenraum", note=_FREIBEREICH),
-    LexiconEntry("terrace", "nebenraum", note=_FREIBEREICH),
-    LexiconEntry("entrance hall", "erschliessung"),
-    LexiconEntry("entrance", "erschliessung"),
-    LexiconEntry("hallway", "erschliessung"),
-    LexiconEntry("corridor", "erschliessung"),
-    LexiconEntry("passage", "erschliessung"),
-    LexiconEntry("lobby", "erschliessung"),
-    LexiconEntry("foyer", "erschliessung"),
-    LexiconEntry("staircase", "erschliessung"),
-    LexiconEntry("stairwell", "erschliessung"),
-    LexiconEntry("stairs", "erschliessung"),
-    LexiconEntry("stair", "erschliessung"),
-    LexiconEntry("landing", "erschliessung"),
-    LexiconEntry("vestibule", "erschliessung"),
-    LexiconEntry("porch", "erschliessung"),
-    LexiconEntry("elevator", "erschliessung"),
-    LexiconEntry("circulation", "erschliessung"),
-    LexiconEntry("hall", "erschliessung", weak=True, note='„hall" kann Eingangshalle oder Nutzungshalle sein'),
+    LexiconEntry("room", "habitable_room", weak=True, note='„room" allein sagt die Nutzung nicht'),
+    LexiconEntry("bathroom", "ancillary_room"),
+    LexiconEntry("shower room", "ancillary_room"),
+    LexiconEntry("bath", "ancillary_room"),
+    LexiconEntry("toilet", "ancillary_room"),
+    LexiconEntry("restroom", "ancillary_room"),
+    LexiconEntry("store room", "ancillary_room"),
+    LexiconEntry("storeroom", "ancillary_room"),
+    LexiconEntry("storage", "ancillary_room"),
+    LexiconEntry("utility room", "ancillary_room"),
+    LexiconEntry("utility", "ancillary_room"),
+    LexiconEntry("laundry", "ancillary_room"),
+    LexiconEntry("plant room", "ancillary_room"),
+    LexiconEntry("technical room", "ancillary_room"),
+    LexiconEntry("boiler room", "ancillary_room"),
+    LexiconEntry("basement", "ancillary_room"),
+    LexiconEntry("cellar", "ancillary_room"),
+    LexiconEntry("pantry", "ancillary_room"),
+    LexiconEntry("larder", "ancillary_room"),
+    LexiconEntry("wardrobe", "ancillary_room"),
+    LexiconEntry("closet", "ancillary_room"),
+    LexiconEntry("cloakroom", "ancillary_room"),
+    LexiconEntry("attic", "ancillary_room"),
+    LexiconEntry("bin store", "ancillary_room"),
+    LexiconEntry("bike store", "ancillary_room"),
+    LexiconEntry("balcony", "ancillary_room", note=_FREIBEREICH),
+    LexiconEntry("terrace", "ancillary_room", note=_FREIBEREICH),
+    LexiconEntry("entrance hall", "circulation"),
+    LexiconEntry("entrance", "circulation"),
+    LexiconEntry("hallway", "circulation"),
+    LexiconEntry("corridor", "circulation"),
+    LexiconEntry("passage", "circulation"),
+    LexiconEntry("lobby", "circulation"),
+    LexiconEntry("foyer", "circulation"),
+    LexiconEntry("staircase", "circulation"),
+    LexiconEntry("stairwell", "circulation"),
+    LexiconEntry("stairs", "circulation"),
+    LexiconEntry("stair", "circulation"),
+    LexiconEntry("landing", "circulation"),
+    LexiconEntry("vestibule", "circulation"),
+    LexiconEntry("porch", "circulation"),
+    LexiconEntry("elevator", "circulation"),
+    LexiconEntry("circulation", "circulation"),
+    LexiconEntry("hall", "circulation", weak=True, note='„hall" kann Eingangshalle oder Nutzungshalle sein'),
 )
 
 #: Confidence by how the term was found. Exact beats word beats substring.
-MATCH_CONFIDENCE = {"exakt": 0.9, "wort": 0.8, "teil": 0.65}
+MATCH_CONFIDENCE = {"exact": 0.9, "word": 0.8, "part": 0.65}
 
 #: Terms shorter than this are only matched on a word boundary.
 #:
@@ -1109,7 +1116,7 @@ MATCH_CONFIDENCE = {"exakt": 0.9, "wort": 0.8, "teil": 0.65}
 #: false positives are exactly the confident-wrong kind.
 MIN_SUBSTRING_TERM = 4
 
-QUALITY_TEXT = {"exakt": "exakter Name", "wort": "als ganzes Wort", "teil": "als Wortbestandteil"}
+QUALITY_TEXT = {"exact": "exakter Name", "word": "als ganzes Wort", "part": "als Wortbestandteil"}
 
 
 @dataclass(frozen=True)
@@ -1176,7 +1183,7 @@ def classify_rooms(model: SpatialModel) -> list[ClassifiedRoom]:
         kind, (winner, quality) = ranked[0]
         runner_up = ranked[1] if len(ranked) > 1 else None
 
-        because = [f'Name „{name}" enthält „{winner.term}" ({QUALITY_TEXT[quality]}) → {GERMAN_KIND[kind]}.']
+        because = [f'Name „{name}" enthält „{winner.term}" ({QUALITY_TEXT[quality]}) → {KIND_LABEL[kind]}.']
         confidence = MATCH_CONFIDENCE[quality]
 
         if winner.weak:
@@ -1189,10 +1196,10 @@ def classify_rooms(model: SpatialModel) -> list[ClassifiedRoom]:
             other_kind, (other, _) = runner_up
             if len(other.term) == len(winner.term):
                 confidence *= 0.85
-                because.append(f'Mehrdeutig: „{other.term}" spricht gleich stark für {GERMAN_KIND[other_kind]}.')
+                because.append(f'Mehrdeutig: „{other.term}" spricht gleich stark für {KIND_LABEL[other_kind]}.')
             else:
                 because.append(
-                    f'„{winner.term}" schlägt „{other.term}" ({GERMAN_KIND[other_kind]}) als längerer Treffer.'
+                    f'„{winner.term}" schlägt „{other.term}" ({KIND_LABEL[other_kind]}) als längerer Treffer.'
                 )
 
         # The window signal is only evidence in a file that publishes the
@@ -1203,7 +1210,7 @@ def classify_rooms(model: SpatialModel) -> list[ClassifiedRoom]:
             if global_id in lit_rooms:
                 confidence += 0.05
                 because.append("Dem Raum ist mindestens ein Fenster zugeordnet (opensTo).")
-            elif kind == "aufenthaltsraum":
+            elif kind == "habitable_room":
                 confidence -= 0.05
                 because.append("Diesem Raum ist kein Fenster zugeordnet, obwohl das Modell Fensterzuordnungen führt.")
 
@@ -1222,11 +1229,11 @@ def classify_rooms(model: SpatialModel) -> list[ClassifiedRoom]:
 
 def match_quality(normalised: str, term: str) -> str | None:
     if normalised == term:
-        return "exakt"
+        return "exact"
     if re.search(rf"(^| ){re.escape(term)}( |$)", normalised):
-        return "wort"
+        return "word"
     if len(term) >= MIN_SUBSTRING_TERM and term in normalised:
-        return "teil"
+        return "part"
     return None
 
 
@@ -1514,8 +1521,8 @@ def _geometry_blind_spots(model: SpatialModel) -> list[BlindSpot]:
 
     „sie sind aber berechenbar, dieser Export trägt Geometrie" was emitted
     unconditionally, on files that contain no body at all. Four of the five
-    fixtures — ``haus-mit-raeumen.ifc``, ``einheiten-fuss.ifc``,
-    ``geschossdecke-und-fenster.ifc`` and ``strasse-ifc4x3.ifc`` — carry a
+    fixtures — ``house-with-rooms.ifc``, ``units-feet.ifc``,
+    ``floor-slab-and-window.ifc`` and ``road-ifc4x3.ifc`` — carry a
     ``Representation`` on **0** of their ``IfcProduct`` entities, and every one
     of them was told the geometric answers were only a call away. A false
     capability claim in the block whose whole job is to say what the file cannot

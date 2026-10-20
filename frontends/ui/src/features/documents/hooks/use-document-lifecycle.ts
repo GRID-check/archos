@@ -4,7 +4,7 @@
  * One document's versions and the gestures that move them, as state.
  *
  * Extracted from the lifecycle panel when its two halves (the Freigabe controls
- * and the Fassung timeline) became one section (`document-fassungen.tsx`): the
+ * and the Fassung timeline) became one section (`document-revisions.tsx`): the
  * data handling is the part that must not be written twice, and the part a
  * component should not own.
  *
@@ -112,7 +112,7 @@ export interface UseDocumentLifecycleOptions {
   onChanged?: (summary: DocumentLifecycleSummary) => void
 }
 
-export interface DocumentLifecycleState {
+export interface DocumentLifecyclePosition {
   /** The server's list, with a gesture applied optimistically while it is in flight. `null` until read. */
   listing: DocumentVersionListResponse | null
   loading: boolean
@@ -131,7 +131,7 @@ export function useDocumentLifecycle({
   withReviewers = false,
   client = documentLifecycleClient,
   onChanged,
-}: UseDocumentLifecycleOptions): DocumentLifecycleState {
+}: UseDocumentLifecycleOptions): DocumentLifecyclePosition {
   const t = useTranslations('files')
   const [listing, setListing] = useState<DocumentVersionListResponse | null>(null)
   const [loading, setLoading] = useState(enabled)

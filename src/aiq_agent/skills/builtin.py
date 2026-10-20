@@ -21,6 +21,31 @@ logger = logging.getLogger(__name__)
 #: Root of the platform's builtin skills: ``<collection>/<name>/SKILL.md``.
 BUILTIN_SKILLS_DIR = Path(__file__).resolve().parent / "builtin"
 
+#: Builtin skills renamed to English (migration 0169), old name -> current name.
+#:
+#: A skill's name is what people type after a slash, what a stored schedule's prompt
+#: says (``/einreichcheck``) and what an older message lists as activated, so the old
+#: names keep resolving: :func:`canonical_skill_name` is the one place that maps them,
+#: and the ``use_skill`` tool, the skills the model reports followed and the turn-start
+#: decision all go through it. Mirrored in ``frontends/ui/src/lib/skills/legacy-names.ts``;
+#: ``test_builtin.py`` pins the two against the same table. Nothing writes an old name
+#: again. Remove after one release.
+LEGACY_SKILL_NAMES: dict[str, str] = {
+    "einreichcheck": "submission-check",
+    "brandschutz": "fire-safety",
+    "bestand": "existing-building",
+    "nutzungssicherheit": "safety-in-use",
+    "gebaeudeklasse": "building-class",
+    "waermeschutz": "thermal-protection",
+    "bebauung": "plot-development",
+    "pruefbericht-writer": "inspection-report-writer",
+}
+
+
+def canonical_skill_name(name: str) -> str:
+    """The current name for ``name``, following one renamed builtin; any other name as given."""
+    return LEGACY_SKILL_NAMES.get(name, name)
+
 
 def discover_builtin_skills(root: Path = BUILTIN_SKILLS_DIR) -> tuple[Skill, ...]:
     """Strictly parse every ``<root>/<collection>/<name>/SKILL.md`` file.

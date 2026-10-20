@@ -72,7 +72,7 @@ const answer = (id: string, project: CitationProject): ChatMessage => ({
       collection: `proj_${project.id.slice(0, 8)}`,
       title: 'Detail Traufe',
       origin: 'kb',
-      kind: 'projekt',
+      kind: 'project',
       shelf: 'project',
       sourceType: 'knowledge_layer',
       page: 3,

@@ -8,7 +8,7 @@
  */
 
 import { z } from 'zod'
-import type { FassungTag } from '@/features/documents/lib/fassung-timeline'
+import type { RevisionTag } from '@/features/documents/lib/revision-timeline'
 import type { ProjectStatus } from '@/lib/cross-project/types'
 
 /** Longer than this, a selection is a page and not a passage; the server reads its head. */
@@ -59,12 +59,12 @@ export interface SimilarDocument {
   displayName: string | null
   contentType: string | null
   /** The Fassung the office gave it (Index C, or the date it is stamped with), when it says one. */
-  stand: FassungTag | null
+  stand: RevisionTag | null
   passages: SimilarPassage[]
 }
 
 /** Where a group of documents sits: the reader's own project, another project, or the Büroablage. */
-export type SimilarGroupKind = 'current' | 'project' | 'archiv'
+export type SimilarGroupKind = 'current' | 'project' | 'office_shelf'
 
 export interface SimilarGroup {
   kind: SimilarGroupKind

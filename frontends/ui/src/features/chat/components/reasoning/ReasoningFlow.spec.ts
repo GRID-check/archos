@@ -29,7 +29,7 @@ const card = (id: string): CitedDocument => ({
   id,
   title: id,
   fileName: `${id}.pdf`,
-  kind: 'baurecht',
+  kind: 'building_law',
   tint: 'law',
   loci: [{ key: 'whole', isCited: true }],
 })
@@ -59,9 +59,9 @@ const toolHit = (id: string, file: string, round?: number): StoredThinkingStep =
     tool: 'knowledge_search',
     lanes: [
       {
-        key: 'baurecht_oib',
+        key: 'building_law_oib',
         label: 'OIB-Richtlinie',
-        kind: 'baurecht',
+        kind: 'building_law',
         hit_count: 1,
         sources: [{ name: `${file}.pdf`, ...(round !== undefined ? { round } : {}) }],
       },
@@ -259,8 +259,8 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
       kind: 'sources',
       tool: 'knowledge_search',
       lanes: [
-        { key: 'baurecht_oib', label: 'OIB-Richtlinie', kind: 'baurecht', hit_count: 1, sources: [{ name: 'a.pdf', round: 0 }] },
-        { key: 'projekt', label: 'Projektwissen', kind: 'projekt', hit_count: 1, sources: [{ name: 'b.pdf', round: 1 }] },
+        { key: 'building_law_oib', label: 'OIB-Richtlinie', kind: 'building_law', hit_count: 1, sources: [{ name: 'a.pdf', round: 0 }] },
+        { key: 'project', label: 'Projektwissen', kind: 'project', hit_count: 1, sources: [{ name: 'b.pdf', round: 1 }] },
       ],
     })
     const g = buildGraph(
@@ -667,13 +667,13 @@ describe('a deep run that was cut off or degraded says so under the assessment',
 
   test('a degraded answer is marked as one the reader should check', () => {
     const g = build([
-      degradedStep(['no_report_file', 'no_valid_citations', 'cards_generation_failed', 'grundlage_unread']),
+      degradedStep(['no_report_file', 'no_valid_citations', 'cards_generation_failed', 'basis_unread']),
     ])
     expect(limits(g)?.lines).toEqual([
       { text: 'thinking.node.limits.degraded.noReport', warn: true },
       { text: 'thinking.node.limits.degraded.noCitations', warn: true },
       { text: 'thinking.node.limits.degraded.noCards', warn: true },
-      { text: 'thinking.node.limits.degraded.grundlageUnread', warn: true },
+      { text: 'thinking.node.limits.degraded.basisUnread', warn: true },
     ])
   })
 
@@ -1081,7 +1081,7 @@ describe('a ledger round draws its own fan', () => {
     expect(fanSlots(g, 0).map((s) => s.loci?.map((l) => l.detail))).toEqual([[undefined], [undefined]])
   })
 
-  test('one document opened at two Punkte is ONE slot carrying both', () => {
+  test('one document opened at two clauses is ONE slot carrying both', () => {
     const g = build(ledger)
     const slots = fanSlots(g, 2)
     expect(slots.map((s) => s.card?.id)).toEqual(['a'])

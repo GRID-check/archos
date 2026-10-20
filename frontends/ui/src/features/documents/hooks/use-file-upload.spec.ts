@@ -281,10 +281,10 @@ describe('useFileUpload', () => {
       )
       expect(project.result.current.validationContext.durableCorpus).toBe(true)
 
-      const archiv = renderHook(() =>
-        useFileUpload({ collectionName: 'archiv_org-1', archiv: true })
+      const officeShelf = renderHook(() =>
+        useFileUpload({ collectionName: 'archiv_org-1', officeShelf: true })
       )
-      expect(archiv.result.current.validationContext.durableCorpus).toBe(true)
+      expect(officeShelf.result.current.validationContext.durableCorpus).toBe(true)
     })
   })
 
@@ -742,7 +742,7 @@ describe('useFileUpload — durable document uploads', () => {
 
     let pending!: Promise<unknown>
     await act(async () => {
-      pending = result.current.uploadFiles([filed, plain], { fassungOf: (file) => (file === filed ? 'doc-older' : null) })
+      pending = result.current.uploadFiles([filed, plain], { revisionOf: (file) => (file === filed ? 'doc-older' : null) })
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -752,8 +752,8 @@ describe('useFileUpload — durable document uploads', () => {
     })
 
     const bodies = new Map(xhr.requests.map((request) => [(request.body as FormData).get('file'), request.body as FormData]))
-    expect(bodies.get(filed)?.get('fassungOf')).toBe('doc-older')
-    expect(bodies.get(plain)?.has('fassungOf')).toBe(false)
+    expect(bodies.get(filed)?.get('revisionOf')).toBe('doc-older')
+    expect(bodies.get(plain)?.has('revisionOf')).toBe(false)
   })
 
   test('retries a file into the same Fassung it was filed as', async () => {
@@ -768,7 +768,7 @@ describe('useFileUpload — durable document uploads', () => {
         progress: 0,
         collectionName: 'proj-collection',
         uploadedAt: new Date().toISOString(),
-        uploadIntent: { folderId: null, folderPath: null, screeningReleased: false, fassungOf: 'doc-older' },
+        uploadIntent: { folderId: null, folderPath: null, screeningReleased: false, revisionOf: 'doc-older' },
       },
     ]
     const { result } = renderUpload()
@@ -783,7 +783,7 @@ describe('useFileUpload — durable document uploads', () => {
       await pending
     })
 
-    expect((xhr.last().body as FormData).get('fassungOf')).toBe('doc-older')
+    expect((xhr.last().body as FormData).get('revisionOf')).toBe('doc-older')
   })
 
   test('records where each file went and what the reader released, for a retry to repeat', async () => {
@@ -1252,7 +1252,7 @@ describe('useFileUpload — durable document uploads', () => {
 
   test('the Archiv posts to its own endpoint and never names a project', async () => {
     const { result } = renderHook(() =>
-      useFileUpload({ collectionName: 'archiv_org-1', archiv: true })
+      useFileUpload({ collectionName: 'archiv_org-1', officeShelf: true })
     )
 
     let pending!: Promise<unknown>
@@ -1265,13 +1265,13 @@ describe('useFileUpload — durable document uploads', () => {
       await pending
     })
 
-    expect(xhr.last().url).toBe('/api/archiv/documents/upload')
+    expect(xhr.last().url).toBe('/api/office-shelf/documents/upload')
     expect((xhr.last().body as FormData).get('projectId')).toBeNull()
   })
 
   test('the Archiv files into the folder the reader stands in, and records where a tree came from', async () => {
     const { result } = renderHook(() =>
-      useFileUpload({ collectionName: 'archiv_org-1', archiv: true, folderId: 'folder-3' })
+      useFileUpload({ collectionName: 'archiv_org-1', officeShelf: true, folderId: 'folder-3' })
     )
     const [file] = makeFiles(1)
     Object.defineProperty(file, 'webkitRelativePath', { value: 'Planung/EG/plan-0.pdf' })
@@ -1294,7 +1294,7 @@ describe('useFileUpload — durable document uploads', () => {
 
   test('a folder upload files each Archiv document into its own folder', async () => {
     const { result } = renderHook(() =>
-      useFileUpload({ collectionName: 'archiv_org-1', archiv: true, folderId: 'folder-3' })
+      useFileUpload({ collectionName: 'archiv_org-1', officeShelf: true, folderId: 'folder-3' })
     )
     const files = makeFiles(2)
 

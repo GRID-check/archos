@@ -2,7 +2,7 @@
 
 /**
  * Dev preview for the document-role surfaces — the real `DocumentRoleField` and
- * `ProjektgrundlagenStep` with a module-scope fetch shim and no backend, so the
+ * `ProjectBasisStep` with a module-scope fetch shim and no backend, so the
  * design can be reviewed and screenshotted (`docs/ux/visual-screenshots.md`).
  * Not linked from anywhere; 404s outside development.
  *
@@ -28,7 +28,7 @@ import { notFound } from 'next/navigation'
 
 import { I18nProvider } from '@/i18n'
 import { DocumentRoleField } from '@/features/projects/components/document-role-field'
-import { ProjektgrundlagenStep } from '@/features/projects/components/projektgrundlagen-step'
+import { ProjectBasisStep } from '@/features/projects/components/project-basis-step'
 
 const PROJECT_ID = 'preview-project'
 
@@ -36,7 +36,7 @@ const BINDINGS = [
   {
     id: 'b1',
     documentId: 'd1',
-    role: 'bebauungsplan',
+    role: 'development_plan',
     scopeInstanceId: null,
     confidence: 'declared',
     filename: 'bebauungsplan-1042.pdf',
@@ -45,8 +45,8 @@ const BINDINGS = [
   {
     id: 'b2',
     documentId: 'd2',
-    role: 'bestandsplan',
-    scopeInstanceId: 'bw1',
+    role: 'existing_plans',
+    scopeInstanceId: 'bldg1',
     confidence: 'declared',
     filename: 'bestand-eg.pdf',
     displayName: 'Bestand Erdgeschoß',
@@ -54,8 +54,8 @@ const BINDINGS = [
   {
     id: 'b3',
     documentId: 'd3',
-    role: 'bestandsplan',
-    scopeInstanceId: 'bw1',
+    role: 'existing_plans',
+    scopeInstanceId: 'bldg1',
     confidence: 'suggested',
     filename: 'schnitt-a-a.pdf',
     displayName: null,
@@ -90,15 +90,15 @@ if (typeof window !== 'undefined') {
 }
 
 const ANSWERS = {
-  B2: 'ja',
+  B2: 'yes',
   A5: ['Neubau', 'Abbruch'],
-  'C2@bw1': 'bestand',
-  'C2@bw2': 'neubau',
+  'C2@bldg1': 'existing',
+  'C2@bldg2': 'new_build',
 }
 
-const BAUWERKE = [
-  { id: 'bw1', name: 'Bestandsgebäude Hoftrakt' },
-  { id: 'bw2', name: 'Neubau Straßentrakt' },
+const BUILDINGS = [
+  { id: 'bldg1', name: 'Bestandsgebäude Hoftrakt' },
+  { id: 'bldg2', name: 'Neubau Straßentrakt' },
 ]
 
 export default function DocumentRolesPreviewPage() {
@@ -112,7 +112,7 @@ export default function DocumentRolesPreviewPage() {
           <div className="rounded-xl border bg-card p-4">
             <DocumentRoleField
               projectId={PROJECT_ID}
-              role="bebauungsplan"
+              role="development_plan"
               label="Bebauungsplan ablegen"
             />
           </div>
@@ -123,8 +123,8 @@ export default function DocumentRolesPreviewPage() {
           <div className="rounded-xl border bg-card p-4">
             <DocumentRoleField
               projectId={PROJECT_ID}
-              role="bestandsplan"
-              scopeInstanceId="bw1"
+              role="existing_plans"
+              scopeInstanceId="bldg1"
               label="Bestandspläne — Bestandsgebäude Hoftrakt"
             />
           </div>
@@ -132,7 +132,7 @@ export default function DocumentRolesPreviewPage() {
 
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold tracking-tight">Modul I · Projektgrundlagen</h2>
-          <ProjektgrundlagenStep projectId={PROJECT_ID} answers={ANSWERS} bauwerke={BAUWERKE} />
+          <ProjectBasisStep projectId={PROJECT_ID} answers={ANSWERS} buildings={BUILDINGS} />
         </section>
       </main>
     </I18nProvider>

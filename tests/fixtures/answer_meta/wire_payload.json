@@ -14,7 +14,7 @@
   "topic": "Brandschutz",
   "context": "OIB-RL 2, Ausgabe Mai 2023 · Wien",
   "callout": {
-    "kind": "frist",
+    "kind": "deadline",
     "text": "Die Bauverhandlung ist binnen sechs Wochen nach Einreichung anzuberaumen.",
     "detail": "Die Frist ruht, solange eine Ergänzung des Einreichplans verlangt ist."
   },

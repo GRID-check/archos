@@ -20,39 +20,39 @@ const keys = (items: readonly { key: string }[]) => items.map((item) => item.key
 
 describe('profileReview', () => {
   it('leaves a contested value out of the table: the Rückfragen decide it', () => {
-    expect(keys(findings(PROFILE_REVIEW.groups))).not.toContain('geschosse_oberirdisch@bw1')
+    expect(keys(findings(PROFILE_REVIEW.groups))).not.toContain('storeys_above_ground@bldg1')
   })
 
   it('puts the decisive suggestions first, then the class’s inputs, then what a document says', () => {
     expect(keys(topFindings(PROFILE_REVIEW.groups, PROFILE_REVIEW.derivations))).toEqual([
-      'fluchtniveau_m@bw1',
-      'nutzungseinheiten@bw1',
-      'bauwerkstyp@bw1',
-      'gebaeudestellung@bw1',
-      'oib_ausgabe',
+      'escape_level_m@bldg1',
+      'use_units@bldg1',
+      'building_type@bldg1',
+      'building_position@bldg1',
+      'oib_edition',
     ])
   })
 
   it('keeps a confirmed input of the class up front once nothing decisive is open', () => {
     const top = keys(topFindings(PROFILE_CONFIRMED.groups, PROFILE_CONFIRMED.derivations))
-    expect(top).toContain('geschosse_oberirdisch@bw1')
-    expect(top).not.toContain('standort_adresse')
+    expect(top).toContain('storeys_above_ground@bldg1')
+    expect(top).not.toContain('site_address')
   })
 
   it('folds the rest by topic, without the rows shown and without an empty topic', () => {
     const top = topFindings(PROFILE_REVIEW.groups, PROFILE_REVIEW.derivations)
     const rest = restByTopic(PROFILE_REVIEW.groups, top)
     expect(rest.map((group) => group.stage)).toEqual(['A'])
-    expect(keys(rest[0].items)).toEqual(['standort_adresse', 'projektphase'])
+    expect(keys(rest[0].items)).toEqual(['site_address', 'project_phase'])
   })
 
   it('takes every open suggestion at once, never a confirmed or contested one', () => {
     expect(takeAllDecisions(PROFILE_REVIEW.groups)).toEqual([
-      { key: 'oib_ausgabe', action: 'confirm' },
-      { key: 'bauwerkstyp@bw1', action: 'confirm' },
-      { key: 'fluchtniveau_m@bw1', action: 'confirm' },
-      { key: 'gebaeudestellung@bw1', action: 'confirm' },
-      { key: 'nutzungseinheiten@bw1', action: 'confirm' },
+      { key: 'oib_edition', action: 'confirm' },
+      { key: 'building_type@bldg1', action: 'confirm' },
+      { key: 'escape_level_m@bldg1', action: 'confirm' },
+      { key: 'building_position@bldg1', action: 'confirm' },
+      { key: 'use_units@bldg1', action: 'confirm' },
     ])
   })
 
@@ -66,16 +66,16 @@ describe('profileReview', () => {
   })
 
   it('opens the class card on the Bauwerk with a class to take', () => {
-    expect(leadDerivation([DERIVATION_OPEN, DERIVATION_READY])?.bauwerkId).toBe('bw1')
-    expect(leadDerivation([DERIVATION_OPEN])?.bauwerkId).toBe('bw2')
+    expect(leadDerivation([DERIVATION_OPEN, DERIVATION_READY])?.buildingId).toBe('bldg1')
+    expect(leadDerivation([DERIVATION_OPEN])?.buildingId).toBe('bldg2')
     expect(leadDerivation([])).toBeNull()
   })
 
   it('names at most three inputs in the one-line reason, the escape level first', () => {
     expect(reasonInputs(DERIVATION_READY).map((input) => input.base)).toEqual([
-      'fluchtniveau_m',
-      'geschosse_oberirdisch',
-      'nutzungseinheiten',
+      'escape_level_m',
+      'storeys_above_ground',
+      'use_units',
     ])
   })
 })

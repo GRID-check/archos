@@ -60,7 +60,7 @@ export function resetExcerptDocuments(): void {
 
 async function documentIdOf(projectId: string | null, fileName: string): Promise<string | null> {
   const named = (await resolveDocumentsByName(projectId, [fileName])).get(documentNameLookupKey(fileName))
-  const row = named?.projekt.find((candidate) => !candidate.contentType || candidate.contentType === 'application/pdf')
+  const row = named?.project.find((candidate) => !candidate.contentType || candidate.contentType === 'application/pdf')
   return row?.id ?? null
 }
 

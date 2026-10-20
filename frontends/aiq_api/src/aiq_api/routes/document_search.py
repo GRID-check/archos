@@ -63,7 +63,7 @@ def _verified_collection_scope(http_request: Request) -> list[str] | None:
 
     Only the HMAC-signed ``X-Grid-Request-Context`` envelope is honored — never
     the raw, forgeable ``X-Grid-Collection-Scope`` header on its own — because
-    collection names are guessable (``proj_<uuid>`` / ``archiv_<orgId>``), so an
+    collection names are guessable (``proj_<uuid>`` / ``archiv_<orgId>`` / ``office_shelf_<orgId>``), so an
     attacker who could set a raw scope header would read another tenant's corpus.
     When ``GRID_INTERNAL_API_TOKEN`` is unset (dev), ``from_envelope`` accepts the
     envelope on shape alone, mirroring the rest of the codebase's fail-open dev
@@ -209,7 +209,7 @@ def _ranked_group_hits(
 #: unless asked for by name, and the grouped search names no file). ``$ne``
 #: keeps a point the mirror has not stamped yet, as ``knowledge_search``'s
 #: pre-filter and the similar-passages query do; the BFF checks the row again.
-CURRENT_FASSUNGEN: dict[str, Any] = {"superseded": {"$ne": True}}
+CURRENT_REVISIONS: dict[str, Any] = {"superseded": {"$ne": True}}
 
 
 def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
@@ -220,13 +220,13 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
     tag group is a separate any-of, as the BFF's ``matchesTags`` reads them.
     """
     if filters is None:
-        return CURRENT_FASSUNGEN
+        return CURRENT_REVISIONS
     parts: list[dict[str, Any]] = []
     for group in (filters.document_types, filters.disciplines):
         if group:
             parts.append({"tags": {"$in": list(group)}})
     if filters.project_facts is not None:
-        facts = filters.project_facts.model_dump(mode="json")
+        facts = filters.project_facts.to_store()
         for key, value in facts.items():
             values = [value] if isinstance(value, str) else list(value or [])
             if values:
@@ -234,8 +234,8 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
     if filters.project_status:
         parts.append({"project_status": {"$in": list(filters.project_status)}})
     if not parts:
-        return CURRENT_FASSUNGEN
-    return {"$and": [*parts, CURRENT_FASSUNGEN]}
+        return CURRENT_REVISIONS
+    return {"$and": [*parts, CURRENT_REVISIONS]}
 
 
 def add_document_search_routes(router: APIRouter):
@@ -269,7 +269,11 @@ def add_document_search_routes(router: APIRouter):
                 groups=request.groups,
                 group_size=request.files_per_group * GROUP_CHUNKS_PER_FILE,
                 filters=grouped_filters(request.filters),
-                boost=request.boost.model_dump(mode="json") if request.boost else None,
+                boost=(
+                    {"facts": request.boost.facts.to_store(), "weights": request.boost.weights.to_store()}
+                    if request.boost
+                    else None
+                ),
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e

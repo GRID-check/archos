@@ -29,7 +29,7 @@ export const nav = {
     jobs: 'Jobs',
     /** The tab that leads: work delegated to Piloti, one card per task (ADR-0051). */
     tasks: 'Tasks',
-    archiv: 'Office filing',
+    officeShelf: 'Office filing',
     settings: 'Overview',
     // The intake wizard, labelled "Setup" in the product (⌘K palette only).
     intake: 'Setup',

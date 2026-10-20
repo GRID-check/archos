@@ -14,26 +14,26 @@ describe('sanitizeFindings', () => {
     expect(findings?.items[0]).toEqual({
       requirement: 'Feuerwiderstand tragender Bauteile',
       value: 'REI 60',
-      status: 'erfuellt',
-      grounding: 'belegt',
+      status: 'met',
+      grounding: 'sourced',
       reference: { document: 'OIB-Richtlinie 2', section: 'Tabelle 1b', page: 12 },
       citations: [1],
       comment: 'Gilt für GK 4; im Kellergeschoß REI 90.',
       area: 'Brandschutz',
     })
     expect(findingCounts(findings!)).toEqual({
-      erfuellt: 1,
-      nicht_erfuellt: 0,
-      offen: 1,
-      nicht_anwendbar: 1,
+      met: 1,
+      not_met: 0,
+      open: 1,
+      not_applicable: 1,
     })
   })
 
   it('drops a row outside the contract and keeps the rest', () => {
     const findings = sanitizeFindings({
       items: [
-        { requirement: 'A', status: 'erfuellt', grounding: 'belegt' },
-        { requirement: 'B', status: 'vielleicht', grounding: 'belegt' },
+        { requirement: 'A', status: 'met', grounding: 'sourced' },
+        { requirement: 'B', status: 'vielleicht', grounding: 'sourced' },
         'not a row',
       ],
     })
@@ -45,8 +45,8 @@ describe('sanitizeFindings', () => {
       items: [
         {
           requirement: 'x'.repeat(500),
-          status: 'offen',
-          grounding: 'offen',
+          status: 'open',
+          grounding: 'open',
           comment: 'y'.repeat(2000),
           citations: [1, '2', 0, 3, 4, 5, 6, 7, 8, 9, 10],
         },
@@ -60,20 +60,29 @@ describe('sanitizeFindings', () => {
   it('keeps a row without a verdict, and drops one with a verdict it does not know', () => {
     const findings = sanitizeFindings({
       items: [
-        { requirement: 'Kriterium', value: '12 m', grounding: 'belegt' },
-        { requirement: 'B', status: 'vielleicht', grounding: 'belegt' },
+        { requirement: 'Kriterium', value: '12 m', grounding: 'sourced' },
+        { requirement: 'B', status: 'vielleicht', grounding: 'sourced' },
       ],
     })
     expect(findings?.items).toEqual([
-      { requirement: 'Kriterium', value: '12 m', grounding: 'belegt', citations: [] },
+      { requirement: 'Kriterium', value: '12 m', grounding: 'sourced', citations: [] },
     ])
     expect(hasFindingStatuses(findings!)).toBe(false)
     expect(findingCounts(findings!)).toEqual({
-      erfuellt: 0,
-      nicht_erfuellt: 0,
-      offen: 0,
-      nicht_anwendbar: 0,
+      met: 0,
+      not_met: 0,
+      open: 0,
+      not_applicable: 0,
     })
+  })
+
+  it('reads the German spellings a row stored before the rename still carries', () => {
+    const findings = sanitizeFindings({
+      items: [{ requirement: 'A', status: 'nicht_erfuellt', grounding: 'abgeleitet' }],
+    })
+    expect(findings?.items).toEqual([
+      { requirement: 'A', status: 'not_met', grounding: 'derived', citations: [] },
+    ])
   })
 
   it('is null for nothing usable, never an empty table', () => {

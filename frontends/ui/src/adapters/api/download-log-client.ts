@@ -21,7 +21,8 @@ const EntrySchema = z.object({
   person: z.object({ name: z.string(), email: z.string().nullable() }).nullable(),
   kind: z.enum(DOWNLOAD_LOG_KINDS),
   access: z.enum(['download', 'open']),
-  scope: z.enum(DOWNLOAD_LOG_SCOPES),
+  // An entry written before the rename keeps `archiv` (the log is immutable); a server not yet rolled sends it as is.
+  scope: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(DOWNLOAD_LOG_SCOPES)),
   projectId: z.string().nullable(),
   projectName: z.string().nullable(),
   // Optional for a response from a build before ADR-0090.

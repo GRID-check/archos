@@ -44,9 +44,9 @@ from aiq_agent.knowledge.inventory import get_turn_documents
 #: The two shelves a workspace operation can touch. `base` is the platform
 #: corpus (nobody's to organise) and `session` is this chat's own attachments,
 #: which are not project documents and have no folder to move into.
-DocumentSource = Literal["projekt", "buero"]
+DocumentSource = Literal["project", "office"]
 
-_SHELF_SOURCES: dict[Shelf, DocumentSource] = {Shelf.PROJECT: "projekt", Shelf.ARCHIV: "buero"}
+_SHELF_SOURCES: dict[Shelf, DocumentSource] = {Shelf.PROJECT: "project", Shelf.OFFICE_SHELF: "office"}
 
 #: How many candidate names an ambiguity message lists before it stops. The
 #: message exists so the model can ask a precise question; twenty names is not

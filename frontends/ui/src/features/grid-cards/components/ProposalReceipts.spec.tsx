@@ -89,7 +89,7 @@ const memoryCard = (
   />
 )
 
-const PATCH: ProjectProfilePatchOperation[] = [{ op: 'add', path: '/facts/waermeversorgung', value: 'waermepumpe' }]
+const PATCH: ProjectProfilePatchOperation[] = [{ op: 'add', path: '/facts/heat_supply', value: 'heat_pump' }]
 
 const profileProposal = (patch: Partial<ProfileProposal> = {}): ProfileProposal => ({
   ...proposalBase(),
@@ -102,7 +102,7 @@ const profileProposal = (patch: Partial<ProfileProposal> = {}): ProfileProposal 
 // can only come from the profile and „after“ only from the patch.
 const storedProfile: ProjectProfile = {
   facts: {
-    waermeversorgung: {
+    heat_supply: {
       value: 'gas',
       confidence: 'confirmed',
       source: 'onboarding',

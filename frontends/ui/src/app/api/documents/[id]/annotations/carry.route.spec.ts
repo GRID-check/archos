@@ -32,7 +32,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 }))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('@/lib/documents/may-open', () => ({ mayOpenDocument: vi.fn(), mayWriteDocument: vi.fn() }))
-vi.mock('@/lib/documents/fassung-facts', () => ({ loadFassungFacts: vi.fn() }))
+vi.mock('@/lib/documents/revision-links-loader', () => ({ loadRevisionLinks: vi.fn() }))
 vi.mock('@/lib/upload-screening/quarantine-reviewers', () => ({
   shelfReaderFor: vi.fn(async () => ({ kind: 'member', userId: 'user_me' })),
 }))
@@ -80,8 +80,8 @@ import { NotFoundError } from '@/lib/api/errors'
 import { captureServer } from '@/lib/analytics/posthog-server'
 import type { Document, DocumentAnnotationRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import type { FassungFacts } from '@/lib/documents/fassung'
-import { loadFassungFacts } from '@/lib/documents/fassung-facts'
+import type { RevisionLinks } from '@/lib/documents/revision-links'
+import { loadRevisionLinks } from '@/lib/documents/revision-links-loader'
 import { mayOpenDocument, mayWriteDocument } from '@/lib/documents/may-open'
 import type { InboxEmission } from '@/lib/inbox/service'
 import { emitInboxItems, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
@@ -163,23 +163,23 @@ const MARK: AnnotationRecord = {
   delegatedBy: null,
   delegatedAt: null,
   carriedFromId: null,
-  fassungNumber: 1,
+  revisionNumber: 1,
   replies: [],
 }
 
-const ON_B: AnnotationRecord = { ...MARK, id: 'ann_b', documentId: 'doc_b', versionId: 'doc_b_ver_2', fassungNumber: 2 }
+const ON_B: AnnotationRecord = { ...MARK, id: 'ann_b', documentId: 'doc_b', versionId: 'doc_b_ver_2', revisionNumber: 2 }
 const ON_C: AnnotationRecord = {
   ...MARK,
   id: 'ann_c',
   documentId: 'doc_c',
   versionId: 'doc_c_ver_2',
   number: 1,
-  fassungNumber: 2,
+  revisionNumber: 2,
   carriedFromId: 'ann_b',
   carriedFrom: { annotationId: 'ann_b', documentId: 'doc_b', number: 4 },
 }
 
-const replacedBy = (older: Document, newer: Document): Map<string, FassungFacts> =>
+const replacedBy = (older: Document, newer: Document): Map<string, RevisionLinks> =>
   new Map([[older.id, { supersededBy: { id: newer.id, filename: newer.filename }, supersedes: [], suggestion: null, changeSummary: null }]])
 
 async function rows(): Promise<InboxEmission[]> {
@@ -197,7 +197,7 @@ beforeEach(() => {
     if (!found) throw new NotFoundError()
     return found
   })
-  vi.mocked(loadFassungFacts).mockResolvedValue(new Map())
+  vi.mocked(loadRevisionLinks).mockResolvedValue(new Map())
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map())
   vi.mocked(mayOpenDocument).mockImplementation(async (_tenant, _doc, userIds) => new Set(userIds))
   vi.mocked(mayWriteDocument).mockImplementation(async (_tenant, _doc, userIds) => new Set(userIds))
@@ -214,14 +214,14 @@ describe('carrying a mark to the current Fassung of its own document', () => {
     vi.mocked(updateDocumentAnnotation).mockResolvedValue({ ...MARK, versionId: 'doc_a_ver_2' } as DocumentAnnotationRow)
     vi.mocked(findDocumentAnnotation)
       .mockResolvedValueOnce(MARK)
-      .mockResolvedValueOnce({ ...MARK, versionId: 'doc_a_ver_2', fassungNumber: 2 })
+      .mockResolvedValueOnce({ ...MARK, versionId: 'doc_a_ver_2', revisionNumber: 2 })
 
     const annotation = await carry('doc_a', 'ann_1')
 
     expect(updateDocumentAnnotation).toHaveBeenCalledWith('org_1', 'doc_a', 'ann_1', 'open', {
-      fassung: { from: 'doc_a_ver_1', to: 'doc_a_ver_2' },
+      revision: { from: 'doc_a_ver_1', to: 'doc_a_ver_2' },
     })
-    expect(annotation).toMatchObject({ id: 'ann_1', number: 4, onCurrentFassung: true, x: 0.2, y: 0.3 })
+    expect(annotation).toMatchObject({ id: 'ann_1', number: 4, onCurrentRevision: true, x: 0.2, y: 0.3 })
     expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_a', expect.objectContaining({ annotationIds: ['ann_1'] }))
     expect(await rows()).toEqual([])
     expect(carryAnnotationToDocument).not.toHaveBeenCalled()
@@ -236,7 +236,7 @@ describe('carrying a mark to the current Fassung of its own document', () => {
   it('changes nothing for a mark already on the current Fassung', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, versionId: 'doc_a_ver_2' })
 
-    await expect(carry('doc_a', 'ann_1')).resolves.toMatchObject({ onCurrentFassung: true })
+    await expect(carry('doc_a', 'ann_1')).resolves.toMatchObject({ onCurrentRevision: true })
     expect(updateDocumentAnnotation).not.toHaveBeenCalled()
   })
 
@@ -274,7 +274,7 @@ describe('carrying a mark to the current Fassung of its own document', () => {
 
 describe('carrying a mark of a document another one replaced', () => {
   beforeEach(() => {
-    vi.mocked(loadFassungFacts).mockImplementation(async (_session, subjects) =>
+    vi.mocked(loadRevisionLinks).mockImplementation(async (_session, subjects) =>
       subjects[0]?.id === 'doc_b' ? replacedBy(B, C) : new Map()
     )
     vi.mocked(carryAnnotationToDocument).mockResolvedValue({ ...ON_C } as DocumentAnnotationRow)
@@ -293,7 +293,7 @@ describe('carrying a mark of a document another one replaced', () => {
     expect(annotation).toMatchObject({
       id: 'ann_c',
       documentId: 'doc_c',
-      onCurrentFassung: true,
+      onCurrentRevision: true,
       carriedFrom: { annotationId: 'ann_b', documentId: 'doc_b', number: 4, documentName: 'Grundriss EG Index B.pdf' },
     })
     const rooms = vi.mocked(publishToDocumentRoom).mock.calls.map(([documentId, event]) => [documentId, event.kind === 'annotations.changed' ? event.change : null])
@@ -318,7 +318,7 @@ describe('carrying a mark of a document another one replaced', () => {
   it('follows the chain to its end, and drops a Zuständige who could not answer on the new document', async () => {
     const D = doc('doc_d', { filename: 'Grundriss EG Index D.pdf' })
     DOCS.set('doc_d', D)
-    vi.mocked(loadFassungFacts).mockImplementation(async (_session, subjects) => {
+    vi.mocked(loadRevisionLinks).mockImplementation(async (_session, subjects) => {
       if (subjects[0]?.id === 'doc_b') return replacedBy(B, C)
       if (subjects[0]?.id === 'doc_c') return replacedBy(C, D)
       return new Map()
@@ -362,7 +362,7 @@ describe('what a list offers to carry, and where to', () => {
   const chain = async (_session: unknown, subjects: readonly { id: string }[]) => {
     if (subjects[0]?.id === 'doc_b') return replacedBy(B, C)
     if (subjects[0]?.id === 'doc_c') return replacedBy(C, D)
-    return new Map<string, FassungFacts>()
+    return new Map<string, RevisionLinks>()
   }
   const targets = async (documentId: string) =>
     Object.fromEntries((await listAnnotations(documentId, run)).annotations.map((mark) => [mark.id, mark.carryTarget]))
@@ -385,7 +385,7 @@ describe('what a list offers to carry, and where to', () => {
   })
 
   it('names the end of the chain, where the carry lands (B→C→D lands in D), and nothing for a mark Piloti works', async () => {
-    vi.mocked(loadFassungFacts).mockImplementation(chain)
+    vi.mocked(loadRevisionLinks).mockImplementation(chain)
     vi.mocked(listDocumentAnnotations).mockResolvedValue([
       ON_B,
       { ...ON_B, id: 'ann_delegated', delegatedBy: 'user_me', delegatedAt: new Date() },
@@ -398,7 +398,7 @@ describe('what a list offers to carry, and where to', () => {
   })
 
   it('offers nothing where the carry would be refused: a replacing document the reader may not write, or a source they may not', async () => {
-    vi.mocked(loadFassungFacts).mockImplementation(chain)
+    vi.mocked(loadRevisionLinks).mockImplementation(chain)
     vi.mocked(listDocumentAnnotations).mockResolvedValue([ON_B])
     vi.mocked(getAccessibleDocument).mockImplementation(async (_session, id, intent) => {
       if (id === 'doc_d' && intent === 'write') throw new NotFoundError()
@@ -415,7 +415,7 @@ describe('what a list offers to carry, and where to', () => {
 
   it('answers the list, offering no carry, when the chain cannot be read', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    vi.mocked(loadFassungFacts).mockRejectedValue(new Error('listing down'))
+    vi.mocked(loadRevisionLinks).mockRejectedValue(new Error('listing down'))
     vi.mocked(listDocumentAnnotations).mockResolvedValue([ON_B])
 
     expect(await targets('doc_b')).toEqual({ ann_b: null })

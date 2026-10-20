@@ -23,7 +23,7 @@ Adding a country therefore means:
 4. registering a ``CountryProfile`` instance below with its two code hooks.
 
 Consumers (kept current — update when re-pointing):
-- ``states``/``state_probe_order`` → ``norm_registry.extract_bundesland``/``resolve_bundesland``
+- ``states``/``state_probe_order`` → ``norm_registry.extract_federal_state``/``resolve_federal_state``
 - ``doctrine`` → ``{{ norm_doctrine }}`` in researcher/planner/writer prompts
 - ``corpus_collection`` → retrieval base-collection routing + admin store passthrough
 - ``corpus_note`` → ``norm_registry.render_prompt_block`` corpus section
@@ -119,7 +119,7 @@ def _register_austria() -> None:
         CountryProfile(
             country="at",
             language="de-AT",
-            states=dict(nr.BUNDESLAND_TOKENS),
+            states=dict(nr.FEDERAL_STATE_TOKENS),
             state_probe_order=tuple(nr.BUNDESLAENDER),
             corpus_collection="oib_knowledge",
             corpus_note=nr.OIB_CORPUS_NOTE,

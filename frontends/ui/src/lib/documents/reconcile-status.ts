@@ -23,7 +23,7 @@ import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import type { DocumentAuthor } from '@/lib/db/schema'
 import { collectionFileRef, type CollectionFileRef } from './collection-file-ref'
 import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
-import { parseFassungNames, type FassungNames, type RawFassungFields } from './fassung'
+import { parseRevisionLinkNames, type RevisionLinkNames, type RawRevisionLinkFields } from './revision-links'
 import { parsePhotoCapture, type PhotoCapture } from './photo-capture'
 import { parseRevisionFacts, type RevisionFacts } from './revision-facts'
 import { setDocumentReconciledStatus } from './repository'
@@ -408,9 +408,9 @@ interface BackendFileEntry {
    * {@link DocumentMetadata} field: that type is spread onto rows several
    * callers hand to a browser, and a name here is a fact about a document the
    * reader may not be allowed to see. It leaves this module only through
-   * {@link readFassungNames}, to the code that resolves it for a reader.
+   * {@link readRevisionLinkNames}, to the code that resolves it for a reader.
    */
-  fassung?: FassungNames | null
+  revision?: RevisionLinkNames | null
 }
 
 /**
@@ -423,7 +423,7 @@ interface CollectionFiles {
   ambiguousNames: Set<string>
 }
 
-interface RawBackendFile extends RawFassungFields {
+interface RawBackendFile extends RawRevisionLinkFields {
   file_name?: string
   status?: string
   error_message?: string | null
@@ -467,7 +467,7 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       topics: file.topics,
       capture: file.capture,
       revision_facts: file.revision_facts,
-      fassung: parseFassungNames(file),
+      revision: parseRevisionLinkNames(file),
     })
   }
   return { byName, ambiguousNames }
@@ -554,13 +554,13 @@ export const clearCollectionFilesCache = (): void => {
  * (the same gate as {@link extractMetadata}). Reads the short-TTL listing the
  * metadata enrichment shares, so it costs no backend call in the steady state.
  *
- * The names are NOT safe to show: resolve them with `resolveFassungFacts` for a
+ * The names are NOT safe to show: resolve them with `resolveRevisionLinks` for a
  * reader before anything leaves the BFF.
  */
-export const readFassungNames = async (ref: CollectionFileRef): Promise<FassungNames | null> => {
+export const readRevisionLinkNames = async (ref: CollectionFileRef): Promise<RevisionLinkNames | null> => {
   const files = await loadCollectionFilesCached(ref.collectionName)
   if (!files || files.ambiguousNames.has(ref.filename)) return null
-  return files.byName.get(ref.filename)?.fassung ?? null
+  return files.byName.get(ref.filename)?.revision ?? null
 }
 
 /**
@@ -801,7 +801,7 @@ function announceSettledShelves(
   for (const row of rows) {
     if (!settledIds.has(row.id) || !('projectId' in row)) continue
     const shelf = documentShelf(row as { projectId: string | null; scope?: string })
-    if (shelf) shelves.set(shelf.kind === 'project' ? shelf.projectId : 'archiv', shelf)
+    if (shelf) shelves.set(shelf.kind === 'project' ? shelf.projectId : 'office_shelf', shelf)
   }
   for (const shelf of shelves.values()) publishShelfChanged(organizationId, shelf)
 }

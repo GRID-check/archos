@@ -19,14 +19,14 @@ const fact = (at: string, userId = 'user_1') => ({
 })
 
 const profile = (entry: ReturnType<typeof fact>): ProjectProfile => ({
-  facts: { 'geschosse_oberirdisch@bw1': entry },
+  facts: { 'storeys_above_ground@bldg1': entry },
   goals: {},
   unknowns: [],
   assumptions: {},
 })
 
 const write = (entry: ReturnType<typeof fact>): ProjectProfilePatchOperation[] => [
-  { op: 'add', path: '/facts/geschosse_oberirdisch@bw1', value: entry },
+  { op: 'add', path: '/facts/storeys_above_ground@bldg1', value: entry },
 ]
 
 describe('isPatchAlreadyApplied', () => {

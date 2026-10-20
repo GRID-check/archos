@@ -156,13 +156,13 @@ export default function FilePreviewModelDevPage(): JSX.Element {
 
   // Read in an effect, not during render, so the first paint is identical on
   // server and client — the same rule the other /dev previews follow.
-  const [archiv, setArchiv] = useState(false)
+  const [officeShelf, setOfficeShelf] = useState(false)
   useEffect(() => {
-    setArchiv(new URLSearchParams(window.location.search).get('shelf') === 'archiv')
+    setOfficeShelf(new URLSearchParams(window.location.search).get('shelf') === 'office_shelf')
   }, [])
 
-  return archiv ? (
-    <FilePreviewDialog file={FIXTURE} scope="archiv" canManage onClose={() => {}} />
+  return officeShelf ? (
+    <FilePreviewDialog file={FIXTURE} scope="officeShelf" canManage onClose={() => {}} />
   ) : (
     <FilePreviewDialog
       file={FIXTURE}

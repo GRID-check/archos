@@ -223,8 +223,20 @@ class AnswerMetaTakeaway(_EnvelopeModel):
     )
 
 
+#: The German kinds a callout carried before the English names. A model that
+#: imitates an earlier turn in its history can still emit one, and a stored
+#: payload from an older build holds them; read-only, nothing writes these.
+LEGACY_CALLOUT_KIND = {"hinweis": "note", "achtung": "warning", "frist": "deadline", "tipp": "tip"}
+
+
 class AnswerMetaCallout(_EnvelopeModel):
-    kind: Literal["hinweis", "achtung", "frist", "tipp"]
+    kind: Literal["note", "warning", "deadline", "tip"]
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _legacy_kind(cls, value: object) -> object:
+        return LEGACY_CALLOUT_KIND.get(value, value) if isinstance(value, str) else value
+
     text: str = Field(min_length=1, description="the one sentence that changes what the reader DOES")
     title: str | None = Field(default=None, description="short headline; omit when text says it")
     detail: str | None = Field(default=None, description="background revealed on expand; omit rather than pad")
@@ -955,7 +967,7 @@ def _headless_tail(tail: str) -> dict | None:
 
     The whole tail must be ONE object whose keys are all envelope keys, and
     whose kind, if it has one, is an answer kind. A nested card's `", "kind":`
-    (a callout's ``hinweis``) leaves `]}` after its own object and a kind that
+    (a callout's ``note``) leaves `]}` after its own object and a kind that
     is no answer kind, so it is refused rather than cut at; an object with a
     key the envelope does not have is someone else's JSON.
     """

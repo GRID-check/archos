@@ -207,7 +207,7 @@ German, and explains each verdict.
   the same answer for every status, verdict, author and reader against Postgres, and proves the
   trigger of migration 0122.
 * `documents/dispatch.spec.ts` proves a quarantined row is dispatched for nobody;
-  `quarantine-access.spec.ts`, `archiv/service.spec.ts` and `session-documents/service.spec.ts`
+  `quarantine-access.spec.ts`, `office-shelf/service.spec.ts` and `session-documents/service.spec.ts`
   that a row the listing's reconcile turns quarantined is narrowed again.
 
 ## Pros and Cons of the Options

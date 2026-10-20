@@ -5,7 +5,7 @@
  *
  * The two used to be answered by two sets of queries that agreed by copy: a
  * project's `projectListingWhere` and the Archiv repository's own
- * `scope = 'archiv'` clauses. Folders made that untenable — the Archiv would
+ * `scope = 'office_shelf'` clauses. Folders made that untenable — the Archiv would
  * have grown a second copy of every folder query — so the shelf is a value, and
  * each question about it (documents, folders, the row a new folder is inserted
  * as) is one function over it.
@@ -18,20 +18,20 @@
 import { and, eq, isNull, type SQL } from 'drizzle-orm'
 import { documents, projectFolders } from '@/lib/db/schema'
 
-export type DocumentShelf = { kind: 'project'; projectId: string } | { kind: 'archiv' }
+export type DocumentShelf = { kind: 'project'; projectId: string } | { kind: 'office_shelf' }
 
 /** The Archiv's shelf as a type: what an Archiv-only operation (a folder's re-filing delete) takes. */
-export type ArchivShelf = Extract<DocumentShelf, { kind: 'archiv' }>
+export type OfficeShelf = Extract<DocumentShelf, { kind: 'office_shelf' }>
 
 /** The org-wide Archiv. A constant, because it has no identity beyond the tenant. */
-export const ARCHIV_SHELF: ArchivShelf = { kind: 'archiv' }
+export const OFFICE_SHELF: OfficeShelf = { kind: 'office_shelf' }
 
 export function projectShelf(projectId: string): DocumentShelf {
   return { kind: 'project', projectId }
 }
 
 /** The `scope` column value of the shelf's rows (`documents.scope`, `project_folders.scope`). */
-export function shelfScope(shelf: DocumentShelf): 'project' | 'archiv' {
+export function shelfScope(shelf: DocumentShelf): 'project' | 'office_shelf' {
   return shelf.kind
 }
 
@@ -48,7 +48,7 @@ export function documentShelf(doc: {
   projectId: string | null
 }): DocumentShelf | null {
   if (doc.projectId) return projectShelf(doc.projectId)
-  if (doc.scope === 'archiv') return ARCHIV_SHELF
+  if (doc.scope === 'office_shelf') return OFFICE_SHELF
   return null
 }
 
@@ -85,7 +85,7 @@ export function shelfFolderWhere(shelf: DocumentShelf, organizationId: string): 
 export function shelfOwner(
   shelf: DocumentShelf,
   organizationId: string,
-): { organizationId: string; scope: 'project' | 'archiv'; projectId: string | null } {
+): { organizationId: string; scope: 'project' | 'office_shelf'; projectId: string | null } {
   return {
     organizationId,
     scope: shelfScope(shelf),

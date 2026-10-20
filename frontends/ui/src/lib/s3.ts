@@ -160,19 +160,19 @@ export function buildStorageKey(
 }
 
 /**
- * Storage key for an org-wide Archiv document. Mirrors {@link buildStorageKey}
- * but scopes under the organization instead of a project (Archiv documents
+ * Storage key for an org-wide office-shelf document. Mirrors {@link buildStorageKey}
+ * but scopes under the organization instead of a project (office-shelf documents
  * belong to the org, not any single project) — so the same bucket layout
  * convention holds, folder segments included (ADR-0078): the one thing that
  * differs between the two is the owner prefix.
  */
-export function buildArchivStorageKey(
+export function buildOfficeShelfStorageKey(
   organizationId: string,
   documentId: string,
   filename: string,
   folderPath?: string | null,
 ): string {
-  return shelfStorageKey(`org/${organizationId}/archiv`, documentId, filename, folderPath)
+  return shelfStorageKey(`org/${organizationId}/office_shelf`, documentId, filename, folderPath)
 }
 
 /**

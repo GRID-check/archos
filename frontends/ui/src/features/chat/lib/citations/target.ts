@@ -13,7 +13,7 @@
  * than opening a viewer that cannot render.
  */
 
-import type { FassungRef } from '@/lib/documents/fassung'
+import type { RevisionRef } from '@/lib/documents/revision-links'
 import type { Shelf } from '../source-kinds'
 import { citedLoci, isHttpUrl, type CitationLocus, type CitedDocument } from './model'
 import { parseKbLocator, type KbCitationLocator } from './locator'
@@ -27,7 +27,7 @@ import {
  * The minimal shape of a STORED document a citation can resolve against — a
  * project upload (`GET /api/documents?projectId=…`), a private chat attachment
  * (`GET /api/session/documents?conversationId=…`) or an org Archiv document
- * (`GET /api/archiv/documents`). All three are DB-backed rows opened through the
+ * (`GET /api/office-shelf/documents`). All three are DB-backed rows opened through the
  * same scope-aware `/api/documents/{id}/preview`, so they share one list.
  *
  * `shelf` says which of the three a row came from, so a citation that knows its
@@ -42,10 +42,10 @@ export interface StoredDocumentRef {
   shelf?: Shelf
   /**
    * The newer document a person confirmed replaces this one — the reader-visible
-   * `fassung.supersededBy` of the resolved listing row (CONTEXT.md, „Fassung"). Set
+   * `revision.supersededBy` of the resolved listing row (CONTEXT.md, „Fassung"). Set
    * means the row IS an older Fassung, and a citation of it says so.
    */
-  supersededBy?: FassungRef | null
+  supersededBy?: RevisionRef | null
 }
 
 /**
@@ -58,7 +58,7 @@ export interface StoredDocumentRef {
  * must be resolved against the corpus alone rather than quietly matching a
  * same-named upload (ADR-0047: the shelf is part of a document's identity).
  */
-const STORED_SHELVES: ReadonlySet<Shelf> = new Set<Shelf>(['project', 'archiv', 'session'])
+const STORED_SHELVES: ReadonlySet<Shelf> = new Set<Shelf>(['project', 'office_shelf', 'session'])
 
 /**
  * Where a clicked citation can take the user:
@@ -113,7 +113,7 @@ export type CitationTarget =
         | { type: 'stored'; id: string; filename: string; contentType: string | null }
         | { type: 'base'; fileName: string }
       /** Set when the cited document is an older Fassung: the one that replaces it. */
-      supersededBy?: FassungRef
+      supersededBy?: RevisionRef
     }
   | {
       /**
@@ -138,7 +138,7 @@ export type CitationTarget =
       snippet?: string
       document: { type: 'stored'; id: string; filename: string; contentType: string | null }
       /** Set when the cited document is an older Fassung: the one that replaces it. */
-      supersededBy?: FassungRef
+      supersededBy?: RevisionRef
     }
   | { kind: 'info'; title: string; snippet?: string }
 
@@ -177,7 +177,7 @@ const renditionPage = (filename: string, locus: CitationLocus | undefined): numb
 }
 
 /** The key a target carries when its document is an older Fassung, and nothing otherwise. */
-const supersededByOf = (row: StoredDocumentRef): { supersededBy?: FassungRef } =>
+const supersededByOf = (row: StoredDocumentRef): { supersededBy?: RevisionRef } =>
   row.supersededBy ? { supersededBy: row.supersededBy } : {}
 
 /** The document's filename + shelf, however it can be recovered. */
@@ -360,7 +360,7 @@ export const resolveCitationTarget = (
       }
     }
     // The corpus is only the right answer for a citation that names the `base`
-    // shelf or names none at all — a `project`/`session`/`archiv` citation must
+    // shelf or names none at all — a `project`/`session`/`office_shelf` citation must
     // not slide onto a corpus file of the same name either.
     if (baseFile && !isStoredShelf) {
       return {

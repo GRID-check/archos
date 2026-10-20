@@ -182,7 +182,7 @@ describe('listAssignmentCandidates', () => {
 
   it('lists the org directory when the resource has no project container', async () => {
     stubCallerRole('collaborator', null)
-    vi.mocked(findDocumentForSession).mockResolvedValue({ id: 'doc_1', scope: 'archiv', projectId: null, folderId: null } as Partial<Document> as Document)
+    vi.mocked(findDocumentForSession).mockResolvedValue({ id: 'doc_1', scope: 'office_shelf', projectId: null, folderId: null } as Partial<Document> as Document)
     // Every person in the directory is a member; the Büroablage asks each membership, not a role.
     vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
 

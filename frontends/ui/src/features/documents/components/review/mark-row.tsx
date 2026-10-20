@@ -96,11 +96,11 @@ export function MarkRowContent({
             </span>
           )}
         </span>
-        {!annotation.onCurrentFassung && (
-          <span className="text-muted-foreground mt-0.5 block text-xs italic" title={t('annotations.earlierFassungHint')}>
-            {annotation.fassungNumber
-              ? t('annotations.earlierFassung', { number: annotation.fassungNumber })
-              : t('annotations.earlierFassungUnnumbered')}
+        {!annotation.onCurrentRevision && (
+          <span className="text-muted-foreground mt-0.5 block text-xs italic" title={t('annotations.earlierRevisionHint')}>
+            {annotation.revisionNumber
+              ? t('annotations.earlierRevision', { number: annotation.revisionNumber })
+              : t('annotations.earlierRevisionUnnumbered')}
           </span>
         )}
       </span>

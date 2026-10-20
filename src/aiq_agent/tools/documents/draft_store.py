@@ -53,13 +53,18 @@ from .cards import emit_draft_card
 
 logger = logging.getLogger(__name__)
 
-#: The one directory the working directory has. German because the model writes
-#: German documents and the path is shown to the reader on the draft card; one
+#: The one directory the working directory has. One
 #: root because a tree the model invents is a tree nobody else can find. Every
 #: write and every edit is refused outside it, by the backend AND by a
 #: ``FilesystemPermission`` on the tools (``tools.py``), so neither side is the
 #: only thing standing between a draft and ``/etc``.
-DRAFT_ROOT = "/entwuerfe/"
+DRAFT_ROOT = "/drafts/"
+
+#: The root drafts lived under before it had an English name. Stored cards,
+#: LangGraph store keys, a model's earlier turns and an older pod still say it.
+#: Read-only: nothing writes it any more (:func:`modernize_draft_path` maps it,
+#: :func:`rename_legacy_draft_keys` moves the stored keys).
+LEGACY_DRAFT_ROOT = "/entwuerfe/"
 
 #: Byte ceiling for ONE conversation's working directory, across all its files.
 #:
@@ -122,8 +127,8 @@ FILING_KEYS = (FILED_DOCUMENT_KEY, FILED_VERSION_KEY, FILED_HASH_KEY, FILED_STAT
 #: which is the safe answer — the draft is filed again before it is submitted.
 FILED_AT_DRAFT_VERSION_KEY = "grid_filed_at_draft_version"
 
-#: The root without its trailing slash: the middleware normalises ``/entwuerfe/``
-#: to ``/entwuerfe`` before the permission check, so both spellings name the
+#: The root without its trailing slash: the middleware normalises ``/drafts/``
+#: to ``/drafts`` before the permission check, so both spellings name the
 #: listing and both are allowed.
 _DRAFT_ROOT_BARE = DRAFT_ROOT.rstrip("/")
 
@@ -143,6 +148,21 @@ _store_lock = asyncio.Lock()
 def draft_namespace(conversation_id: str) -> tuple[str, str, str]:
     """The store namespace holding one conversation's drafts."""
     return ("conversation", conversation_id, "drafts")
+
+
+def modernize_draft_path(path: str) -> str:
+    """A draft path with its root spelled the English way; anything else as it came.
+
+    ``/entwuerfe/a.md`` and ``entwuerfe/a.md`` (the bare suffix spelling) both
+    become ``/drafts/a.md``.
+    """
+    candidate = path.strip()
+    legacy_bare = LEGACY_DRAFT_ROOT.rstrip("/")
+    if candidate == legacy_bare or candidate.startswith(LEGACY_DRAFT_ROOT):
+        return DRAFT_ROOT.rstrip("/") + candidate[len(legacy_bare) :]
+    if candidate == legacy_bare.lstrip("/") or candidate.startswith(LEGACY_DRAFT_ROOT.lstrip("/")):
+        return DRAFT_ROOT.rstrip("/") + "/" + candidate[len(legacy_bare) :].lstrip("/")
+    return path
 
 
 def normalize_draft_text(text: str) -> str:
@@ -509,8 +529,43 @@ async def _build_store(dsn: str) -> BaseStore:
     # As for the checkpointer (`common.get_checkpointer`): every role runs this, and `setup()` is not safe against it.
     async with keyed_lock_async("langgraph-setup:store"):
         await store.setup()
+    await rename_legacy_draft_keys(store)
     logger.info("Chat working directory on Postgres store (shared checkpoint pool).")
     return store
+
+
+async def rename_legacy_draft_keys(store: BaseStore) -> int:
+    """Move every stored draft key from the German root to the English one.
+
+    Idempotent and cheap on a store that has none: the ``UPDATE`` matches
+    nothing. A key whose English twin already exists is left alone (an older pod
+    wrote it after a newer one did; the newer file wins, the older one is
+    harmless and stays readable under its own key). Runs on every start, so an
+    older pod's writes during a rolling deploy are moved by the next restart.
+    Returns the number of keys moved; ``0`` for a store that is not Postgres.
+    """
+    pool = getattr(store, "conn", None)
+    if pool is None or not hasattr(pool, "connection"):
+        return 0
+    prefix_len = len(LEGACY_DRAFT_ROOT) + 1
+    statement = (
+        "UPDATE store SET key = %(new)s || substr(key, %(cut)s) "
+        "WHERE prefix LIKE 'conversation.%%.drafts' AND key LIKE %(like)s "
+        "AND NOT EXISTS (SELECT 1 FROM store twin WHERE twin.prefix = store.prefix "
+        "AND twin.key = %(new)s || substr(store.key, %(cut)s))"
+    )
+    try:
+        async with pool.connection() as conn:
+            cursor = await conn.execute(
+                statement, {"new": DRAFT_ROOT, "cut": prefix_len, "like": f"{LEGACY_DRAFT_ROOT}%"}
+            )
+            moved = cursor.rowcount or 0
+    except Exception:
+        logger.warning("Could not rename legacy draft keys; they stay readable under their old root", exc_info=True)
+        return 0
+    if moved:
+        logger.info("Moved %d draft keys from %s to %s", moved, LEGACY_DRAFT_ROOT, DRAFT_ROOT)
+    return moved
 
 
 async def get_draft_store(dsn: str | None = None) -> BaseStore:

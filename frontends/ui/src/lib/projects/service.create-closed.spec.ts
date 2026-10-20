@@ -74,7 +74,7 @@ describe('createProject', () => {
     deleteProjectRow.mockResolvedValue(undefined)
   })
 
-  it('creates an active project as before: no Beginn, no close, one audit event', async () => {
+  it('creates an active project as before: no start, no close, one audit event', async () => {
     const project = await createProject(session, { name: 'Volksschule Aspern' }, undefined, NOW)
 
     expect(insertProject).toHaveBeenCalledWith({
@@ -92,7 +92,7 @@ describe('createProject', () => {
     expect(project.id).toBe('p1')
   })
 
-  it('creates a past project closed: Beginn on insert, then closed with outcome and Abschluss, audited twice', async () => {
+  it('creates a past project closed: start on insert, then closed with outcome and closing, audited twice', async () => {
     const closed = makeProject({
       id: 'p1',
       name: 'Volksschule Aspern',
@@ -139,7 +139,7 @@ describe('createProject', () => {
     expect(deleteProjectRow).not.toHaveBeenCalled()
   })
 
-  it('creates a closed project with no Beginn, and one that was not realized says so', async () => {
+  it('creates a closed project with no start, and one that was not realized says so', async () => {
     setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed', closedOutcome: 'cancelled' }))
 
     await createProject(session, { name: 'Wettbewerb', closing: { outcome: 'cancelled', startedOn: null, endedOn: '2026-10' } }, undefined, NOW)
@@ -153,7 +153,7 @@ describe('createProject', () => {
     ['before the Beginn', '2019-03', '2019-02', 'abschluss-before-beginn'],
     ['that is no month', null, '2026-13', 'invalid-month'],
     ['with a Beginn that is no month', '2019-3', '2022-08', 'invalid-month'],
-  ])('refuses an Abschluss %s with a 400, before anything is written', async (_, startedOn, endedOn, reason) => {
+  ])('refuses a closing %s with a 400, before anything is written', async (_, startedOn, endedOn, reason) => {
     await expect(
       createProject(
         session,
@@ -167,7 +167,7 @@ describe('createProject', () => {
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })
 
-  it('accepts an Abschluss in the Beginn\'s month when the Beginn lies ahead, as a close does', async () => {
+  it('accepts a closing in the start\'s month when the start lies ahead, as a close does', async () => {
     setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed' }))
     await createProject(session, { name: 'X', closing: { outcome: 'cancelled', startedOn: '2027-03', endedOn: '2027-03' } }, undefined, NOW)
     expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', 'active', expect.objectContaining({ endedOn: '2027-03-01' }))

@@ -92,8 +92,8 @@ const mark = (overrides: Partial<AnnotationView> = {}): AnnotationView => ({
   assigneeUserId: null,
   assigneeName: null,
   dueOn: null,
-  fassungNumber: 3,
-  onCurrentFassung: true,
+  revisionNumber: 3,
+  onCurrentRevision: true,
   createdBy: 'user_anna',
   createdByName: 'Anna Berger',
   createdAt: '2026-10-07T08:00:00.000Z',
@@ -143,11 +143,11 @@ const ANNOTATIONS: AnnotationView[] = [
     closedByName: 'Bernd Huber',
     closedAt: '2026-10-09T12:00:00.000Z',
   }),
-  mark({ number: 3, onCurrentFassung: false, fassungNumber: 2, body: 'Auf der alten Fassung.' }),
+  mark({ number: 3, onCurrentRevision: false, revisionNumber: 2, body: 'Auf der alten Fassung.' }),
   mark({
     number: 8,
-    onCurrentFassung: false,
-    fassungNumber: 2,
+    onCurrentRevision: false,
+    revisionNumber: 2,
     status: 'resolved',
     body: 'Auf der alten Fassung erledigt.',
     closedBy: 'user_bernd',
@@ -166,11 +166,11 @@ const ANNOTATIONS: AnnotationView[] = [
   mark({ number: 7, authorKind: 'piloti', status: 'dismissed', body: 'Verworfener Vorschlag.' }),
 ]
 
-const OPTIONS: AnnotationExportOptions = { format: 'md', scope: 'open', fassung: 'current', includeProposals: false }
+const OPTIONS: AnnotationExportOptions = { format: 'md', scope: 'open', revision: 'current', includeProposals: false }
 
 const HEADER: ProtocolHeader = {
   documentName: 'Grundriss EG.pdf',
-  fassung: { number: 3, total: 5, createdAt: '2026-08-14T10:00:00.000Z' },
+  revision: { number: 3, total: 5, createdAt: '2026-08-14T10:00:00.000Z' },
   projectName: 'Wohnhaus Lindengasse',
   exportedAt: new Date('2026-10-13T12:30:00.000Z'),
   exportedBy: 'Anna Berger',
@@ -193,12 +193,12 @@ describe('selectMarks', () => {
     const { marks, proposals } = selectMarks(ANNOTATIONS, OPTIONS)
     expect(numbers(marks)).toEqual([1, 3, 4, 5])
     expect(proposals).toEqual([])
-    expect(numbers(selectMarks(ANNOTATIONS, { ...OPTIONS, fassung: 'all' }).marks)).toEqual([1, 3, 4, 5])
+    expect(numbers(selectMarks(ANNOTATIONS, { ...OPTIONS, revision: 'all' }).marks)).toEqual([1, 3, 4, 5])
   })
 
-  it('takes closed marks in with scope=all, and those closed on earlier Fassungen only with fassung=all', () => {
+  it('takes closed marks in with scope=all, and those closed on earlier Fassungen only with revision=all', () => {
     expect(numbers(selectMarks(ANNOTATIONS, { ...OPTIONS, scope: 'all' }).marks)).toEqual([1, 2, 3, 4, 5])
-    expect(numbers(selectMarks(ANNOTATIONS, { ...OPTIONS, scope: 'all', fassung: 'all' }).marks)).toEqual([
+    expect(numbers(selectMarks(ANNOTATIONS, { ...OPTIONS, scope: 'all', revision: 'all' }).marks)).toEqual([
       1, 2, 3, 4, 5, 8,
     ])
   })
@@ -260,7 +260,7 @@ describe('the Protokoll', () => {
   })
 
   it('names the Fassungen it covers as they are: the current one alone only while nothing earlier came along', () => {
-    const currentOnly = ANNOTATIONS.filter((annotation) => annotation.onCurrentFassung)
+    const currentOnly = ANNOTATIONS.filter((annotation) => annotation.onCurrentRevision)
     const cover = (annotations: AnnotationView[], options: Partial<AnnotationExportOptions>) => {
       const all = { ...OPTIONS, ...options }
       const scope = buildProtocol(HEADER, selectMarks(annotations, all), all, t, 'de').facts.find(
@@ -272,13 +272,13 @@ describe('the Protokoll', () => {
     expect(cover(ANNOTATIONS, { scope: 'all' })).toBe(
       'Alle Anmerkungen, auch erledigte und verworfene · aktuelle Fassung, dazu Offenes aus früheren Fassungen'
     )
-    expect(cover(ANNOTATIONS, { scope: 'all', fassung: 'all' })).toBe(
+    expect(cover(ANNOTATIONS, { scope: 'all', revision: 'all' })).toBe(
       'Alle Anmerkungen, auch erledigte und verworfene · alle Fassungen'
     )
   })
 
   it('says who closed a closed mark, and on which Fassung an earlier mark was set', () => {
-    const md = markdownOf({ scope: 'all', fassung: 'all' })
+    const md = markdownOf({ scope: 'all', revision: 'all' })
     expect(md).toContain('### Nr. 2 · Seite 1 · Hinweis · erledigt')
     expect(md).toContain('*Erledigt von Bernd Huber · 09.10.2026*')
     expect(md).toContain('*auf Fassung 2 gesetzt*')
@@ -297,13 +297,13 @@ describe('the Protokoll', () => {
 
 describe('protocolFileName', () => {
   it('names the document and the Fassung, as the office files it', () => {
-    expect(protocolFileName(HEADER, { format: 'pdf', fassung: 'current' }, t)).toBe(
+    expect(protocolFileName(HEADER, { format: 'pdf', revision: 'current' }, t)).toBe(
       'Anmerkungen – Grundriss EG – Fassung 3.pdf'
     )
-    expect(protocolFileName(HEADER, { format: 'docx', fassung: 'all' }, t)).toBe(
+    expect(protocolFileName(HEADER, { format: 'docx', revision: 'all' }, t)).toBe(
       'Anmerkungen – Grundriss EG – alle Fassungen.docx'
     )
-    expect(protocolFileName({ ...HEADER, fassung: null }, { format: 'md', fassung: 'current' }, t)).toBe(
+    expect(protocolFileName({ ...HEADER, revision: null }, { format: 'md', revision: 'current' }, t)).toBe(
       'Anmerkungen – Grundriss EG.md'
     )
   })
@@ -354,7 +354,7 @@ describe('exportAnnotationProtocol', () => {
         metadata: {
           format: 'md',
           scope: 'open',
-          fassung: 'current',
+          revision: 'current',
           includeProposals: false,
           markCount: 4,
           proposalCount: 0,

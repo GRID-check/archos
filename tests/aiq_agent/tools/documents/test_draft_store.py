@@ -452,3 +452,59 @@ class TestDroppingAConversationsWorkingDirectory:
         assert await draft_store.delete_conversation_drafts("conv-a") == 1
         assert deletes == [f"{DRAFT_ROOT}befund.md"]
         assert self._keys(stubborn, "conv-a") == [f"{DRAFT_ROOT}befund.md"]
+
+
+class TestTheGermanRootStillReads:
+    """Drafts lived under ``/entwuerfe/`` before the root had an English name."""
+
+    @pytest.mark.parametrize(
+        ("old", "new"),
+        [
+            ("/entwuerfe/a.md", "/drafts/a.md"),
+            ("entwuerfe/a.md", "/drafts/a.md"),
+            (" /entwuerfe/a.md", "/drafts/a.md"),
+            ("/entwuerfe", "/drafts"),
+            ("/drafts/a.md", "/drafts/a.md"),
+            ("/elsewhere/a.md", "/elsewhere/a.md"),
+        ],
+    )
+    def test_a_legacy_path_reads_as_the_english_root(self, old: str, new: str):
+        assert draft_store.modernize_draft_path(old) == new
+
+    @pytest.mark.asyncio
+    async def test_a_store_without_a_pool_has_nothing_to_rename(self):
+        assert await draft_store.rename_legacy_draft_keys(InMemoryStore()) == 0
+
+    @pytest.mark.asyncio
+    async def test_the_rename_moves_only_draft_namespaces_and_keeps_an_existing_twin(self):
+        sent: list[tuple[str, dict]] = []
+
+        class _Cursor:
+            rowcount = 3
+
+        class _Conn:
+            async def execute(self, statement: str, params: dict) -> _Cursor:
+                sent.append((statement, params))
+                return _Cursor()
+
+        class _Pool:
+            def connection(self):
+                conn = _Conn()
+
+                class _Ctx:
+                    async def __aenter__(self_inner):
+                        return conn
+
+                    async def __aexit__(self_inner, *exc):
+                        return False
+
+                return _Ctx()
+
+        class _Store:
+            conn = _Pool()
+
+        assert await draft_store.rename_legacy_draft_keys(_Store()) == 3  # type: ignore[arg-type]
+        statement, params = sent[0]
+        assert "prefix LIKE 'conversation.%%.drafts'" in statement
+        assert "NOT EXISTS" in statement
+        assert params == {"new": "/drafts/", "cut": len("/entwuerfe/") + 1, "like": "/entwuerfe/%"}

@@ -37,7 +37,7 @@ Calls = list[tuple[dict[str, Any], SignedEnvelope]]
 INVENTORY = [
     AvailableDocument(file_name="Grundriss_EG.pdf", shelf="project", collection="proj_1"),
     AvailableDocument(file_name="Grundriss_OG.pdf", shelf="project", collection="proj_1"),
-    AvailableDocument(file_name="Schnitt A-A.pdf", shelf="archiv", collection="archiv_1"),
+    AvailableDocument(file_name="Schnitt A-A.pdf", shelf="office_shelf", collection="archiv_1"),
     AvailableDocument(file_name="OIB-RL2.pdf", shelf="base", collection="oib"),
 ]
 
@@ -57,7 +57,7 @@ def listed(**extra: Any) -> dict[str, Any]:
         "basis": "OIB-RL 2, Pkt. 5.1.1",
         "assigneeName": "Anna Berger",
         "dueOn": "2026-10-20",
-        "onCurrentFassung": True,
+        "onCurrentRevision": True,
         "createdByName": "Martin Huber",
         "createdAt": "2026-10-01T08:00:00.000Z",
         "replies": [{"authorKind": "person", "body": "Prüfe ich.", "createdByName": "Anna Berger"}],

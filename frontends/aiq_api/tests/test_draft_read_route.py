@@ -203,7 +203,7 @@ class TestTheRead:
     async def test_a_bare_path_gains_its_leading_slash(self, client, prod_token, store) -> None:
         await _write(store, CONVERSATION, "befund")
 
-        response = _read(client, "entwuerfe/befund.md")
+        response = _read(client, "drafts/befund.md")
 
         assert response.status_code == 200
         assert response.json()["path"] == PATH

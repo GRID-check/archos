@@ -400,7 +400,7 @@ def test_served_skills_leave_the_builtin_FILES_where_they_are(monkeypatch: pytes
             # The BFF also re-sends machinery, stamped origin=org. The mount
             # already has the file; serving it here would put execute-skills
             # in front of the writer.
-            _row("brandschutz", metadata={"grid-agents": "researcher,deep_researcher"}),
+            _row("fire-safety", metadata={"grid-agents": "researcher,deep_researcher"}),
         ],
     ):
         served = resolve_served_skills("deep_researcher", "org-1")

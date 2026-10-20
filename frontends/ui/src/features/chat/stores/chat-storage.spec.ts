@@ -204,7 +204,7 @@ describe('chat storage, one key per conversation', () => {
       ...conv('running', 1, 2_000),
       messages: [
         text('r-a', 'Recherche läuft', {
-          runLedger: { runId: 'run-1', status: 'laeuft', phases: [] } as unknown as ChatMessage['runLedger'],
+          runLedger: { runId: 'run-1', status: 'running', phases: [] } as unknown as ChatMessage['runLedger'],
         }),
       ],
     }
@@ -271,7 +271,7 @@ describe('an older stored shape: the index is kept, the cached messages are drop
     await expectIndexKeptAndMessagesDropped()
   })
 
-  test('an index written before the Herleitung was the wire v2 step', async () => {
+  test('an index written before the derivation was the wire v2 step', async () => {
     const a: Conversation = { ...conv('a', 2), enabledDataSourceIds: ['web_search'] }
     const storage = createResilientStorage()!
     storage.setItem(KEY, value([a, conv('b', 1)], null, { b: 'halb geschrieben' }))

@@ -51,7 +51,7 @@ import { jobRuns, jobs } from './jobs'
  *     `jobs.output`.
  *   - `compliance_check` — a norm check over the project, run by the general
  *     agent with its retrieval tools (`TASK_ENGINES` in `lib/tasks/delegation.ts`).
- *   - `einreichcheck` — the builtin Einreichcheck skill, whose "Done" section
+ *   - `submission_check` — the builtin submission-check skill, whose "Done" section
  *     is literally the work list.
  *   - `document` — write a document and file it as a draft version.
  *   - `revision` — revise a version a reviewer sent back, and file the result
@@ -72,7 +72,7 @@ export { TASK_KINDS, type TaskKind }
  */
 export const DELEGATABLE_TASK_KINDS = [
   'compliance_check',
-  'einreichcheck',
+  'submission_check',
   'document',
   'revision',
 ] as const satisfies readonly TaskKind[]

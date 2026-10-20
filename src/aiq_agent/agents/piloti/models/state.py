@@ -36,7 +36,7 @@ class ResearchAgentState(BaseModel):
         tools_info: Information about available tools.
         available_documents: User-uploaded documents with summaries for context.
         focus_file_name: Filename of the composer's "Asking about <file>" subject.
-        focus_shelf: Shelf that focused file sits on (session/project/archiv).
+        focus_shelf: Shelf that focused file sits on (session/project/office_shelf).
         collection_name: Knowledge collection name (for fetching documents).
         tool_iterations: Counter for tool-calling ROUNDS (the research budget).
         source_lookup_attempted: Whether the turn called a data-source tool at

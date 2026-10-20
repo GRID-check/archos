@@ -74,8 +74,8 @@ context builder and the agent's internal routes and fails on an import of it.
 
 ### Confirmation
 
-`lib/projects/steckbrief.integration.spec.ts` on real Postgres (tenancy, CHECKs, the closed-project
-guard, the cascade, closing filling the Abschluss), `steckbrief-service.spec.ts` (who may, account
+`lib/projects/project-record.integration.spec.ts` on real Postgres (tenancy, CHECKs, the closed-project
+guard, the cascade, closing filling the Abschluss), `project-record-service.spec.ts` (who may, account
 check, audit without names), `people-stay-out-of-the-prompt.spec.ts`, and the 0116 down/up in
 `scripts/rls-test-db.sh`.
 

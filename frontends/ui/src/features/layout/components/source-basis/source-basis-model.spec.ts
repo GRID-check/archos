@@ -28,7 +28,7 @@ const LABELS = {
 
 const RIS = { id: 'ris', name: 'RIS – Österreichisches Recht', description: 'Rechtsinformationssystem' }
 const WEB = { id: 'web_search', name: 'Web Search', description: 'Offenes Web' }
-const ARCHIVE = { id: 'office_archive', name: 'Büroablage Connector', description: 'Archiv' }
+const OFFICE_SHELF = { id: 'office_archive', name: 'Büroablage Connector', description: 'Archiv' }
 
 const build = (over: Partial<BuildSourceBasisInput> = {}) =>
   buildSourceBasis({
@@ -59,7 +59,7 @@ describe('buildSourceBasis', () => {
   })
 
   test('sorts external sources authority-descending, web search last', () => {
-    const basis = build({ sources: [WEB, RIS, ARCHIVE], enabledIds: [] })
+    const basis = build({ sources: [WEB, RIS, OFFICE_SHELF], enabledIds: [] })
     expect(basis.external.map((e) => e.id)).toEqual(['ris', 'office_archive', 'web_search'])
   })
 
@@ -118,7 +118,7 @@ describe('summariseBasis', () => {
 
   test('a hand-picked mix names its strata, authority-descending', () => {
     const summary = summariseBasis(
-      build({ sources: [WEB, RIS, ARCHIVE], enabledIds: ['ris'] }),
+      build({ sources: [WEB, RIS, OFFICE_SHELF], enabledIds: ['ris'] }),
       null
     )
 
@@ -129,7 +129,7 @@ describe('summariseBasis', () => {
 
   test('caps the named strata at two and reports the rest as overflow', () => {
     const summary = summariseBasis(
-      build({ sources: [WEB, RIS, ARCHIVE], enabledIds: ['ris', 'office_archive', 'web_search'] }),
+      build({ sources: [WEB, RIS, OFFICE_SHELF], enabledIds: ['ris', 'office_archive', 'web_search'] }),
       null,
       2
     )
@@ -138,7 +138,7 @@ describe('summariseBasis', () => {
     // shape by leaving one off.
     const partial = summariseBasis(
       build({
-        sources: [WEB, RIS, ARCHIVE, { id: 'projekt_x', name: 'Projektablage' }],
+        sources: [WEB, RIS, OFFICE_SHELF, { id: 'projekt_x', name: 'Projektablage' }],
         enabledIds: ['ris', 'office_archive', 'web_search'],
       }),
       null,

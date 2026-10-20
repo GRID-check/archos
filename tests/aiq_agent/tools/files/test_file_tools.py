@@ -45,7 +45,7 @@ INVENTORY = [
         folder_path="Einreichung/Pläne",
     ),
     AvailableDocument(file_name="Grundriss OG.pdf", shelf="project", collection="proj_1", folder_path=None),
-    AvailableDocument(file_name="Musterbescheid.pdf", shelf="archiv", collection="archiv_1"),
+    AvailableDocument(file_name="Musterbescheid.pdf", shelf="office_shelf", collection="archiv_1"),
     # Neither shelf is the reader's to organise: the platform corpus belongs to
     # nobody here, and a session attachment is not a project document.
     AvailableDocument(file_name="OIB-RL2.pdf", shelf="base", collection="oib"),
@@ -92,7 +92,7 @@ class TestResolution:
     def test_an_exact_name_resolves_with_its_shelf_and_folder(self):
         hit = resolve.resolve_document("Brandschutzkonzept.pdf")
         assert isinstance(hit, resolve.ResolvedDocument)
-        assert (hit.source, hit.folder_path) == ("projekt", "Nachweise")
+        assert (hit.source, hit.folder_path) == ("project", "Nachweise")
 
     def test_the_name_without_its_extension_is_the_same_name(self):
         hit = resolve.resolve_document("brandschutzkonzept")
@@ -146,7 +146,7 @@ class TestProposalsNeverWrite:
         assert card["operations"] == [
             {
                 "document": "Brandschutzkonzept.pdf",
-                "source": "projekt",
+                "source": "project",
                 "current": "Nachweise",
                 "target_folder": "Einreichung",
             }

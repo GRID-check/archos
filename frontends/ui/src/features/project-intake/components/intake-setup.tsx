@@ -130,7 +130,7 @@ function ConnectedSetup({
         pending={shelfUpload.decision.pending}
         kind={shelfUpload.decision.kind}
         onReleaseChange={shelfUpload.onReleaseChange}
-        onFassungChange={shelfUpload.onFassungChange}
+        onRevisionChange={shelfUpload.onRevisionChange}
       />
     </IntakeSetupView>
   )

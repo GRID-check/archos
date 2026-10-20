@@ -1,8 +1,8 @@
 /**
  * Model → project profile.
  *
- * GRID's compliance reasoning runs off the project brief: `gebaeudeklasse`,
- * `fluchtniveau`, `geschosse_oberirdisch`, `hauptnutzung`. Those are asked in
+ * GRID's compliance reasoning runs off the project brief: `building_class`,
+ * `escape_level`, `storeys_above_ground`, `main_use`. Those are asked in
  * the intake wizard, by hand, from a person who already drew them.
  *
  * A model knows most of them exactly. Storey elevations give the number of
@@ -14,7 +14,7 @@
  * ## Why this proposes rather than writes
  *
  * A derived fact is an inference from an export, and an export can be a working
- * file. `geschosse_oberirdisch` is used to pick a Gebäudeklasse, and a wrong
+ * file. `storeys_above_ground` is used to pick a Gebäudeklasse, and a wrong
  * Gebäudeklasse is a wrong answer about fire safety. So this module produces
  * SUGGESTIONS with the evidence they came from, and the agent offers them
  * through the existing `project_profile_patch` card — the user confirms, as
@@ -29,7 +29,7 @@ import type { BimModelSummary } from './types'
 export type BimSuggestionConfidence = 'low' | 'medium' | 'high'
 
 export interface BimProfileSuggestion {
-  /** Profile fact key, e.g. `geschosse_oberirdisch`. */
+  /** Profile fact key, e.g. `storeys_above_ground`. */
   key: string
   value: string | number
   confidence: BimSuggestionConfidence
@@ -46,7 +46,7 @@ export interface BimProfileSuggestion {
  * a storey elevation is a good proxy for that and not the same thing — which is
  * why every suggestion here carries its evidence and stays a proposal.
  */
-const FLUCHTNIVEAU_BANDS: Array<{ limit: number; band: string }> = [
+const ESCAPE_LEVEL_BANDS: Array<{ limit: number; band: string }> = [
   { limit: 7, band: '<=7m' },
   { limit: 11, band: '7-11m' },
   { limit: 22, band: '11-22m' },
@@ -59,13 +59,13 @@ const FLUCHTNIVEAU_BANDS: Array<{ limit: number; band: string }> = [
  * convention ("WE 03 Wohnzimmer", "Büro 2.14").
  */
 const USE_MARKERS: Array<{ use: string; markers: string[] }> = [
-  { use: 'wohnen', markers: ['wohn', 'schlafzimmer', 'kinderzimmer', 'küche', 'kueche', 'bad', 'wc '] },
-  { use: 'buero', markers: ['büro', 'buero', 'besprechung', 'office'] },
-  { use: 'beherbergung', markers: ['hotel', 'gästezimmer', 'gaestezimmer', 'zimmer '] },
-  { use: 'versammlung', markers: ['saal', 'versammlung', 'foyer', 'aula'] },
-  { use: 'gesundheit', markers: ['patienten', 'behandlung', 'ordination', 'station'] },
-  { use: 'produzierend', markers: ['produktion', 'werkstatt', 'fertigung'] },
-  { use: 'lager', markers: ['lager', 'archiv', 'abstellraum'] },
+  { use: 'residential', markers: ['wohn', 'schlafzimmer', 'kinderzimmer', 'küche', 'kueche', 'bad', 'wc '] },
+  { use: 'office', markers: ['büro', 'buero', 'besprechung', 'office'] },
+  { use: 'lodging', markers: ['hotel', 'gästezimmer', 'gaestezimmer', 'zimmer '] },
+  { use: 'assembly', markers: ['saal', 'versammlung', 'foyer', 'aula'] },
+  { use: 'healthcare', markers: ['patienten', 'behandlung', 'ordination', 'station'] },
+  { use: 'manufacturing', markers: ['produktion', 'werkstatt', 'fertigung'] },
+  { use: 'storage', markers: ['lager', 'archiv', 'abstellraum'] },
 ]
 
 /** Space names that are circulation or service, never a main use. */
@@ -92,8 +92,8 @@ function classifyUse(spaceNames: readonly string[]): { use: string; hits: number
   // one would be a guess dressed as a derivation.
   //
   // `>= top` could only ever be an exact tie — the list is sorted descending —
-  // so twelve `wohnen` rooms against eleven `buero` ones was published as a
-  // Hauptnutzung of `wohnen`, at `medium` confidence, and a Hauptnutzung
+  // so twelve `residential` rooms against eleven `office` ones was published as a
+  // Hauptnutzung of `residential`, at `medium` confidence, and a Hauptnutzung
   // decides which rules apply. The comment said "within one room"; now the
   // code does too.
   if (ranked[1] && top[1] - ranked[1][1] <= 1) return null
@@ -125,7 +125,7 @@ export function deriveProfileSuggestions(input: BimProfileInput): BimProfileSugg
     const below = placed.filter((storey) => (storey.elevation ?? 0) < 0)
 
     suggestions.push({
-      key: 'geschosse_oberirdisch',
+      key: 'storeys_above_ground',
       value: above.length,
       confidence: placed.length === summary.storeys.length ? 'high' : 'medium',
       evidence: `${above.length} Geschoße mit Höhenlage ≥ 0 im Modell: ${above
@@ -135,7 +135,7 @@ export function deriveProfileSuggestions(input: BimProfileInput): BimProfileSugg
 
     if (below.length > 0) {
       suggestions.push({
-        key: 'geschosse_unterirdisch',
+        key: 'storeys_below_ground',
         value: below.length,
         // The same qualification its sibling above carries. A basement among
         // the storeys with no published elevation is a basement this count
@@ -157,10 +157,10 @@ export function deriveProfileSuggestions(input: BimProfileInput): BimProfileSugg
       null
     )
     if (highest !== null) {
-      const band = FLUCHTNIVEAU_BANDS.find((entry) => highest <= entry.limit)?.band
+      const band = ESCAPE_LEVEL_BANDS.find((entry) => highest <= entry.limit)?.band
       if (band) {
         suggestions.push({
-          key: 'fluchtniveau',
+          key: 'escape_level',
           value: band,
           // Medium, always: a storey elevation is a proxy for the Fluchtniveau,
           // not the thing itself, and the difference decides a Gebäudeklasse.
@@ -176,7 +176,7 @@ export function deriveProfileSuggestions(input: BimProfileInput): BimProfileSugg
   const use = classifyUse(spaceNames)
   if (use) {
     suggestions.push({
-      key: 'hauptnutzung',
+      key: 'main_use',
       value: use.use,
       confidence: use.hits >= 5 ? 'medium' : 'low',
       evidence: `${use.hits} Räume im Modell tragen Namen dieser Nutzung`,
@@ -185,7 +185,7 @@ export function deriveProfileSuggestions(input: BimProfileInput): BimProfileSugg
 
   if (summary.totals.spaces > 0) {
     suggestions.push({
-      key: 'anzahl_einheiten',
+      key: 'unit_count',
       value: summary.totals.spaces,
       // Rooms are not units — a flat is several rooms — so this is offered as
       // the room count it is, at the lowest confidence, rather than pretending

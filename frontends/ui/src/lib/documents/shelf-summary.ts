@@ -15,7 +15,7 @@ import { getHiddenFolderIds } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { DocumentAuthor } from '@/lib/db/schema'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
-import { ARCHIV_SHELF, projectShelf, type DocumentShelf } from './shelf'
+import { OFFICE_SHELF, projectShelf, type DocumentShelf } from './shelf'
 import { listShelfFailedDocuments, summarizeShelfFolders, type ShelfReadFilters } from './repository'
 import type { ShelfSummary } from './shelf-summary-types'
 
@@ -58,16 +58,16 @@ export async function summarizeProjectDocuments(
 }
 
 /**
- * The organization's Archiv. Any member may read it, as with `listArchiv`; a
+ * The organization's Archiv. Any member may read it, as with `listOfficeShelf`; a
  * held upload is its uploader's and the curators' (ADR-0086). The Archiv has
  * no hidden folders.
  */
-export async function summarizeArchivDocuments(
+export async function summarizeOfficeShelfDocuments(
   session: AuthorizedSession,
   options: ShelfSummaryOptions = {},
 ): Promise<ShelfSummary> {
-  const reader = await shelfReaderFor(session, { scope: 'archiv', projectId: null })
-  return readShelfSummary(ARCHIV_SHELF, session.organizationId, {
+  const reader = await shelfReaderFor(session, { scope: 'office_shelf', projectId: null })
+  return readShelfSummary(OFFICE_SHELF, session.organizationId, {
     reader,
     authoredBy: options.authoredBy,
     includeArchived: options.includeArchived,

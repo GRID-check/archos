@@ -80,7 +80,7 @@ export interface PermitRecordInput {
   kind: PermitRecordKind
   authority: string | null
   municipality: string | null
-  bundesland: string | null
+  federalState: string | null
   /** `YYYY-MM-DD`. */
   issuedOn: string | null
   reference: string | null
@@ -121,7 +121,7 @@ export interface FoundPermitRecord {
   kind: PermitRecordKind
   authority: string | null
   municipality: string | null
-  bundesland: string | null
+  federalState: string | null
   issuedOn: string | null
   reference: string | null
   /** Only the requirements that matched, best first. */
@@ -212,7 +212,7 @@ export async function replacePermitRecord(input: PermitRecordInput): Promise<voi
         kind: input.kind,
         authority: input.authority,
         municipality: input.municipality,
-        bundesland: input.bundesland,
+        federalState: input.federalState,
         issuedOn: input.issuedOn,
         reference: input.reference,
         model: input.model,
@@ -306,7 +306,7 @@ export async function searchPermitRequirements(
       recordKind: permitRecords.kind,
       authority: permitRecords.authority,
       municipality: permitRecords.municipality,
-      bundesland: permitRecords.bundesland,
+      federalState: permitRecords.federalState,
       issuedOn: permitRecords.issuedOn,
       reference: permitRecords.reference,
     })
@@ -356,7 +356,7 @@ export async function searchPermitRequirements(
       kind: row.recordKind,
       authority: row.authority,
       municipality: row.municipality,
-      bundesland: row.bundesland,
+      federalState: row.federalState,
       issuedOn: row.issuedOn === null ? null : String(row.issuedOn),
       reference: row.reference,
       // Where the document is now, not where it was when read: the hand-out records this.

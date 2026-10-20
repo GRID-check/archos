@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
 import type { DocumentScope } from '../components/document-actions'
 import type { FileItem } from '../file-types'
 import type { UploadFilesOptions } from '../hooks/use-file-upload'
-import type { DocumentNameMatch, FassungCandidateMatch } from '@/lib/documents/name-probe-types'
+import type { DocumentNameMatch, RevisionCandidateMatch } from '@/lib/documents/name-probe-types'
 import type { DocumentLifecyclePermission } from '@/lib/documents/lifecycle-types'
 import type { TrackedFile } from '../types'
 
@@ -111,12 +111,12 @@ export interface FileShelf {
   currentUserId?: string
   /** Opens a chat about one file. Only a project has a chat to open it in. */
   askAbout?: (file: FileItem) => void
-  /** The shelf's own upload engine (`useProjectDocuments`, `useArchivDocuments`). */
+  /** The shelf's own upload engine (`useProjectDocuments`, `useOfficeShelfDocuments`). */
   useUpload: (input: ShelfUploadInput) => ShelfUploadApi
   /** Which of the shelf's documents already carry these names (upload plan). */
   probeNames: (names: readonly string[]) => Promise<DocumentNameMatch[]>
   /** Which of the shelf's documents these names would be the next Fassung of (upload plan, ADR-0099). */
-  probeFassungen: (names: readonly string[], landsIn: ReadonlyMap<string, string | null>) => Promise<FassungCandidateMatch[]>
+  probeRevisions: (names: readonly string[], landsIn: ReadonlyMap<string, string | null>) => Promise<RevisionCandidateMatch[]>
   /** Where a drop made elsewhere in the app waits for this shelf (project only). */
   handoverKey?: string
   /**
@@ -137,7 +137,7 @@ export interface FileShelf {
 }
 
 export interface CardExtras {
-  source?: 'projekt' | 'buero' | null
+  source?: 'project' | 'office' | null
   sourceLabel?: string
   footerLead?: ReactNode
 }
@@ -148,8 +148,8 @@ export function projectSearchScope(projectId: string): Pick<ShelfEndpoints, 'sea
 }
 
 /** The semantic search scope of the office Archiv. */
-export const ARCHIV_SEARCH_SCOPE: Pick<ShelfEndpoints, 'search' | 'searchBody'> = {
-  search: '/api/archiv/documents/search',
+export const OFFICE_SHELF_SEARCH_SCOPE: Pick<ShelfEndpoints, 'search' | 'searchBody'> = {
+  search: '/api/office-shelf/documents/search',
 }
 
 export function projectEndpoints(projectId: string): ShelfEndpoints {
@@ -161,8 +161,8 @@ export function projectEndpoints(projectId: string): ShelfEndpoints {
   }
 }
 
-export const ARCHIV_ENDPOINTS: ShelfEndpoints = {
-  list: '/api/archiv/documents',
-  folders: '/api/archiv/folders',
-  ...ARCHIV_SEARCH_SCOPE,
+export const OFFICE_SHELF_ENDPOINTS: ShelfEndpoints = {
+  list: '/api/office-shelf/documents',
+  folders: '/api/office-shelf/folders',
+  ...OFFICE_SHELF_SEARCH_SCOPE,
 }

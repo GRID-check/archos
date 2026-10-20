@@ -589,7 +589,7 @@ export function IfcProfileSuggestions({
           </ul>
           {/*
             No Apply button here on purpose. These are inferences from an export
-            that may be a working file, and `geschosse_oberirdisch` picks a
+            that may be a working file, and `storeys_above_ground` picks a
             Gebäudeklasse — so they go through the same confirm-the-patch card
             every other agent-proposed brief change uses (ADR-0030), rather than
             being written by a button that looks like a checkbox.

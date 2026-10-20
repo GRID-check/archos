@@ -92,7 +92,7 @@ const BUNDESLAENDER = [
   'Burgenland',
 ] as const
 
-const BUNDESLAND_LIST_ID = 'norm-bundesland-options'
+const FEDERAL_STATE_LIST_ID = 'norm-federal-state-options'
 
 /**
  * The RIS consolidation application to search in. Only the two consolidated
@@ -100,10 +100,10 @@ const BUNDESLAND_LIST_ID = 'norm-bundesland-options'
  * BrKons, state law in LrKons (see KNOWN_APPLICATIONS in norm_registry.py).
  * An ordinance can be either — the Bundesland decides.
  */
-function defaultApplication(rank: NormRank | '', bundesland: string): string {
-  if (rank === 'bundesgesetz') return 'BrKons'
-  if (rank === 'landesgesetz') return 'LrKons'
-  if (rank === 'verordnung') return bundesland.trim() ? 'LrKons' : 'BrKons'
+function defaultApplication(rank: NormRank | '', federalState: string): string {
+  if (rank === 'federal_law') return 'BrKons'
+  if (rank === 'state_law') return 'LrKons'
+  if (rank === 'ordinance') return federalState.trim() ? 'LrKons' : 'BrKons'
   return ''
 }
 
@@ -141,7 +141,7 @@ export interface EntryFormValues {
   short: string
   /** '' only while a NEW entry still awaits step 1 — the schema rejects it. */
   rank: NormRank | ''
-  bundesland: string
+  federalState: string
   topics: string
   relevance: string
   application: string
@@ -155,7 +155,7 @@ export interface EntryFormValues {
   verify_title_query: string
   verify_expect: string
   verify_exclude: string
-  verify_gesetzesnummer: string
+  verify_statute_number: string
   verified_at: string
 }
 
@@ -173,7 +173,7 @@ function createEntryFormSchema(t: Translator) {
       title: z.string().min(1, required),
       short: z.string().min(1, required),
       rank: z.union([z.enum(NORM_RANKS), z.literal('')]),
-      bundesland: z.string(),
+      federalState: z.string(),
       topics: z.string(),
       relevance: z.string(),
       application: z.string(),
@@ -187,7 +187,7 @@ function createEntryFormSchema(t: Translator) {
       verify_title_query: z.string(),
       verify_expect: z.string(),
       verify_exclude: z.string(),
-      verify_gesetzesnummer: z.string(),
+      verify_statute_number: z.string(),
       verified_at: z.string(),
     })
     .superRefine((values, ctx) => {
@@ -216,11 +216,11 @@ function createEntryFormSchema(t: Translator) {
       }
       // A state act without a state cannot be placed in a lane, and the backend
       // drops it outright — so it is a hard requirement, not a nicety.
-      if (values.rank === 'landesgesetz' && !values.bundesland.trim()) {
+      if (values.rank === 'state_law' && !values.federalState.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['bundesland'],
-          message: t('norms.errors.needBundesland'),
+          path: ['federalState'],
+          message: t('norms.errors.needFederalState'),
         })
       }
     })
@@ -233,7 +233,7 @@ export function entryToForm(entry: NormEntry, isNew = false): EntryFormValues {
     short: entry.short,
     // A new entry starts with NO kind so step 1 is a real decision.
     rank: isNew ? '' : entry.rank,
-    bundesland: entry.bundesland,
+    federalState: entry.federal_state,
     topics: joinList(entry.topics),
     relevance: entry.relevance,
     application: entry.application,
@@ -247,7 +247,7 @@ export function entryToForm(entry: NormEntry, isNew = false): EntryFormValues {
     verify_title_query: entry.verify?.title_query ?? '',
     verify_expect: entry.verify?.expect ?? '',
     verify_exclude: joinList(entry.verify?.exclude),
-    verify_gesetzesnummer: entry.verify?.gesetzesnummer ?? '',
+    verify_statute_number: entry.verify?.statute_number ?? '',
     verified_at: entry.verified_at,
   }
 }
@@ -256,17 +256,17 @@ export function formToEntry(values: EntryFormValues): NormEntry {
   const titleQuery = values.verify_title_query.trim()
   const exclude = splitList(values.verify_exclude)
   const expect = values.verify_expect.trim()
-  const gesetzesnummer = values.verify_gesetzesnummer.trim()
+  const statuteNumber = values.verify_statute_number.trim()
   // Any populated verification field is worth persisting on its own: the seed
   // schema defaults `title_query` to '', so keying the whole object off the
   // query would silently drop a curated expect/exclude/Gesetzesnummer on save.
   const verify =
-    titleQuery || expect || gesetzesnummer || exclude.length > 0
+    titleQuery || expect || statuteNumber || exclude.length > 0
       ? {
           title_query: titleQuery,
           exclude,
           ...(expect ? { expect } : {}),
-          ...(gesetzesnummer ? { gesetzesnummer } : {}),
+          ...(statuteNumber ? { statute_number: statuteNumber } : {}),
         }
       : undefined
   const bindingNote = values.binding_note.trim()
@@ -276,8 +276,8 @@ export function formToEntry(values: EntryFormValues): NormEntry {
     title: values.title.trim(),
     short: values.short.trim(),
     // Submit is blocked while the rank is unset; the fallback only satisfies the type.
-    rank: (values.rank || 'bundesgesetz') as NormRank,
-    bundesland: values.bundesland.trim(),
+    rank: (values.rank || 'federal_law') as NormRank,
+    federal_state: values.federalState.trim(),
     topics: splitList(values.topics),
     relevance: values.relevance.trim(),
     application: values.application.trim(),
@@ -298,8 +298,8 @@ export function emptyEntry(): NormEntry {
     id: '',
     title: '',
     short: '',
-    rank: 'bundesgesetz',
-    bundesland: '',
+    rank: 'federal_law',
+    federal_state: '',
     topics: [],
     relevance: '',
     application: '',
@@ -444,7 +444,7 @@ export function NormEntryEditor({
   })
 
   const rank = useStore(form.store, (state) => state.values.rank)
-  const bundesland = useStore(form.store, (state) => state.values.bundesland)
+  const federalState = useStore(form.store, (state) => state.values.federalState)
   const shortName = useStore(form.store, (state) => state.values.short)
   const idValue = useStore(form.store, (state) => state.values.id)
   const documentNumber = useStore(form.store, (state) => state.values.document_number)
@@ -478,9 +478,9 @@ export function NormEntryEditor({
   useEffect(() => {
     if (rank === '' || !isLawRank(rank)) return
     if (form.state.values.application.trim()) return
-    const derived = defaultApplication(rank, form.state.values.bundesland)
+    const derived = defaultApplication(rank, form.state.values.federalState)
     if (derived) form.setFieldValue('application', derived)
-  }, [rank, bundesland, form])
+  }, [rank, federalState, form])
 
   const chooseRank = useCallback(
     (next: NormRank) => {
@@ -496,7 +496,7 @@ export function NormEntryEditor({
     const values = form.state.values
     const titleQuery = values.verify_title_query.trim() || values.title.trim()
     const application =
-      values.application.trim() || defaultApplication(values.rank, values.bundesland)
+      values.application.trim() || defaultApplication(values.rank, values.federalState)
     if (!titleQuery || !application) {
       toast.error(t('norms.verify.missingInput'))
       return
@@ -504,7 +504,7 @@ export function NormEntryEditor({
     setIsVerifying(true)
     setCandidates(null)
     const exclude = splitList(values.verify_exclude)
-    const gesetzesnummer = values.verify_gesetzesnummer.trim()
+    const statuteNumber = values.verify_statute_number.trim()
     const expect = values.verify_expect.trim()
     fetch('/api/platform/norms/verify', {
       method: 'POST',
@@ -512,10 +512,10 @@ export function NormEntryEditor({
       body: JSON.stringify({
         title_query: titleQuery,
         application,
-        ...(values.bundesland.trim() ? { bundesland: values.bundesland.trim() } : {}),
+        ...(values.federalState.trim() ? { federal_state: values.federalState.trim() } : {}),
         ...(expect ? { expect } : {}),
         ...(exclude.length ? { exclude } : {}),
-        ...(gesetzesnummer ? { gesetzesnummer } : {}),
+        ...(statuteNumber ? { statute_number: statuteNumber } : {}),
       }),
     })
       .then(async (r) => {
@@ -563,23 +563,23 @@ export function NormEntryEditor({
   )
 
   const applicationLabel =
-    form.state.values.application.trim() || defaultApplication(rank, bundesland)
+    form.state.values.application.trim() || defaultApplication(rank, federalState)
 
   /* ---------------------------------------------------------------- render */
 
-  const bundeslandField = (
-    <form.AppField name="bundesland">
+  const federalStateField = (
+    <form.AppField name="federalState">
       {(field) => (
         <field.TextField
           label={t('norms.fields.bundesland')}
           description={
-            rank === 'landesgesetz'
-              ? t('norms.fields.bundeslandRequired')
-              : t('norms.fields.bundeslandHint')
+            rank === 'state_law'
+              ? t('norms.fields.federalStateRequired')
+              : t('norms.fields.federalStateHint')
           }
-          placeholder={t('norms.fields.bundeslandPlaceholder')}
-          required={rank === 'landesgesetz'}
-          list={BUNDESLAND_LIST_ID}
+          placeholder={t('norms.fields.federalStatePlaceholder')}
+          required={rank === 'state_law'}
+          list={FEDERAL_STATE_LIST_ID}
         />
       )}
     </form.AppField>
@@ -606,9 +606,9 @@ export function NormEntryEditor({
       </SheetHeader>
 
       {/* Suggestions for the Bundesland input; free text still round-trips. */}
-      <datalist id={BUNDESLAND_LIST_ID}>
-        {BUNDESLAENDER.map((land) => (
-          <option key={land} value={land} />
+      <datalist id={FEDERAL_STATE_LIST_ID}>
+        {BUNDESLAENDER.map((state) => (
+          <option key={state} value={state} />
         ))}
       </datalist>
 
@@ -684,7 +684,7 @@ export function NormEntryEditor({
                         )}
                       </form.AppField>
 
-                      {rank !== 'bundesgesetz' && bundeslandField}
+                      {rank !== 'federal_law' && federalStateField}
 
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-muted-foreground text-xs">
@@ -833,7 +833,7 @@ export function NormEntryEditor({
                       />
                     )}
                   </form.AppField>
-                  {bundeslandField}
+                  {federalStateField}
                 </Step>
               )}
 
@@ -956,9 +956,9 @@ export function NormEntryEditor({
                     )}
                   </form.AppField>
 
-                  {/* bundesland lives in step 2 for every rank that can carry one;
+                  {/* The federal state lives in step 2 for every rank that can carry one;
                     a federal act still needs it reachable to clear a stale value. */}
-                  {rank === 'bundesgesetz' && bundeslandField}
+                  {rank === 'federal_law' && federalStateField}
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <form.AppField name="application">
@@ -1052,12 +1052,12 @@ export function NormEntryEditor({
                       </form.AppField>
                     )}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <form.AppField name="verify_gesetzesnummer">
+                      <form.AppField name="verify_statute_number">
                         {(field) => (
                           <field.TextField
-                            label={t('norms.fields.gesetzesnummer')}
-                            description={t('norms.fields.gesetzesnummerHint')}
-                            placeholder={t('norms.fields.gesetzesnummerPlaceholder')}
+                            label={t('norms.fields.statuteNumber')}
+                            description={t('norms.fields.statuteNumberHint')}
+                            placeholder={t('norms.fields.statuteNumberPlaceholder')}
                           />
                         )}
                       </form.AppField>

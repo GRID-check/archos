@@ -50,7 +50,7 @@ export interface AuthorizedJobScope {
  */
 export type JobSubmitContext = Pick<
   GridRequestContextInput,
-  'modelOverrides' | 'orgInstructions' | 'bundesland'
+  'modelOverrides' | 'orgInstructions' | 'federalState'
 >
 
 /**

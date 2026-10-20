@@ -36,7 +36,7 @@ class TestTranslate:
     def test_explicit_operators(self):
         flt = translate(
             {
-                "richtlinie": {"$eq": "2"},
+                "folder_path": {"$eq": "2"},
                 "chunking": {"$nin": ["page"]},
                 "file_name": {"$in": ["oib-rl-2.pdf", "oib-rl-3.pdf"]},
                 "doc_class": {"$ne": "plan"},
@@ -50,7 +50,7 @@ class TestTranslate:
         assert ne.must_not[0].match == models.MatchValue(value="plan")
 
     def test_multiple_fields_are_anded(self):
-        flt = translate({"doc_class": "a", "richtlinie": "2", "chunking": "punkt"})
+        flt = translate({"doc_class": "a", "folder_path": "2", "chunking": "page"})
 
         assert len(flt.must) == 3 and not flt.should
 
@@ -84,7 +84,7 @@ class TestFiltersFingerprint:
 
 class TestNestedLogicalFilters:
     def test_or_group_translates_to_should(self):
-        flt = translate({"$or": [{"punkt_id": "a"}, {"punkt_id": "b"}]})
+        flt = translate({"$or": [{"file_name": "a"}, {"file_name": "b"}]})
 
         assert len(flt.should) == 2
         assert [c.match.value for c in _conditions(flt)] == ["a", "b"]
@@ -100,13 +100,13 @@ class TestNestedLogicalFilters:
         flt = translate(
             {
                 "file_name": {"$nin": ["x.pdf"]},
-                "$or": [{"doc_class": {"$ne": "plan"}}, {"punkt_id": "d", "richtlinie": "e"}],
+                "$or": [{"doc_class": {"$ne": "plan"}}, {"file_name": "d", "folder_path": "e"}],
             }
         )
 
         file_part, or_part = flt.must
         assert file_part.must_not[0].key == "file_name"
-        assert {c.key for c in _conditions(or_part.should[1])} == {"punkt_id", "richtlinie"}
+        assert {c.key for c in _conditions(or_part.should[1])} == {"file_name", "folder_path"}
 
     def test_empty_logical_group_raises(self):
         with pytest.raises(ValueError, match="expects a non-empty list"):
@@ -120,3 +120,37 @@ class TestNestedLogicalFilters:
         a = _filters_fingerprint({"$or": [{"doc_id": "a"}, {"doc_id": "b"}]})
         b = _filters_fingerprint({"$or": [{"doc_id": "b"}, {"doc_id": "a"}]})
         assert a != b
+
+
+class TestLegacySpellings:
+    """Points written before the English rename keep German keys and values until the operator rewrite."""
+
+    def test_a_positive_condition_matches_either_key(self):
+        flt = translate({"clause_id": "3.5"})
+
+        assert len(flt.should) == 2
+        assert [c.key for c in _conditions(flt)] == ["clause_id", "punkt_id"]
+
+    def test_a_fact_filter_asks_the_old_key_with_the_german_token(self):
+        flt = translate({"project_facts.federal_state": {"$in": ["vienna"]}})
+
+        new, old = flt.should
+        assert (new.must[0].key, new.must[0].match.any) == ("project_facts.federal_state", ["vienna"])
+        assert (old.must[0].key, old.must[0].match.any) == ("project_facts.bundesland", ["wien"])
+
+    def test_chunking_accepts_both_values(self):
+        flt = translate({"chunking": "clause"})
+
+        assert sorted(c.match.value for c in _conditions(flt)) == ["clause", "punkt"]
+
+    def test_a_negative_condition_excludes_both_spellings(self):
+        flt = translate({"chunking": {"$ne": "clause"}})
+
+        assert not flt.should
+        assert sorted(c.match.value for part in flt.must for c in part.must_not) == ["clause", "punkt"]
+
+    def test_a_condition_without_another_spelling_is_unchanged(self):
+        flt = translate({"chunking": {"$ne": "page"}})
+
+        assert not flt.should
+        assert [c.match.value for c in _conditions(flt)] == ["page"]

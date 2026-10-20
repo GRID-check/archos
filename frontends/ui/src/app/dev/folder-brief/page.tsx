@@ -40,7 +40,7 @@ import {
 } from '@/features/documents/lib/folder-knowledge'
 import type { FileItem } from '@/features/documents/file-types'
 import type { ShelfFolderTally, ShelfSummary } from '@/lib/documents/shelf-summary-types'
-import { withoutOlderFassungen } from '@/features/documents/lib/fassung-chain'
+import { withoutOlderRevisions } from '@/features/documents/lib/revision-chain'
 import type { BulkReingestProgress } from '@/features/documents/hooks/use-bulk-reingest'
 import { FILES, FOLDERS, PROJECT_NAME } from './fixtures'
 
@@ -48,11 +48,11 @@ const SECTIONS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const
 type SectionId = (typeof SECTIONS)[number]
 
 const ROOT_BRIEF = buildFolderBrief(FILES, FOLDERS, null)
-const EINREICHUNG_BRIEF = buildFolderBrief(FILES, FOLDERS, 'f-03')
-const GRUNDLAGEN_BRIEF = buildFolderBrief(FILES, FOLDERS, 'f-01')
+const SUBMISSION_BRIEF = buildFolderBrief(FILES, FOLDERS, 'f-03')
+const BASIS_BRIEF = buildFolderBrief(FILES, FOLDERS, 'f-01')
 // The tiles count what the listing shows: one entry per document, the three
 // replaced Fassungen in `alt` left out (as `file-browser-pane.tsx` does).
-const LISTED = withoutOlderFassungen(FILES, false)
+const LISTED = withoutOlderRevisions(FILES, false)
 const TALLIES = subtreeTallies(LISTED, FOLDERS)
 const ROOT_FOLDERS = FOLDERS.filter((folder) => folder.parentId === null)
 
@@ -150,9 +150,9 @@ function LiveRootBrief(): JSX.Element {
 
 /** What the intake answers would expect of this project — `loadMissingDocuments`' shape. */
 const MISSING: readonly MissingDocument[] = [
-  { role: 'grundbuchauszug', label: 'Grundbuchauszug', bauwerkName: null },
-  { role: 'gutachten_baugrund', label: 'Baugrundgutachten', bauwerkName: null },
-  { role: 'bestandsplan', label: 'Bestandspläne', bauwerkName: 'Hoftrakt' },
+  { role: 'land_register_extract', label: 'Grundbuchauszug', buildingName: null },
+  { role: 'expert_report_ground', label: 'Baugrundgutachten', buildingName: null },
+  { role: 'existing_plans', label: 'Bestandspläne', buildingName: 'Hoftrakt' },
 ]
 
 function Section({ id, title, children }: { id: SectionId; title: string; children: ReactNode }): JSX.Element {
@@ -227,7 +227,7 @@ function FolderBriefPreview(): JSX.Element {
         {shows('b') && (
           <Section id="b" title="Folder 03_Einreichung">
             <FolderBrief
-              brief={EINREICHUNG_BRIEF}
+              brief={SUBMISSION_BRIEF}
               folderName="03_Einreichung"
               shelfKind="project"
               onSelect={noop}
@@ -257,7 +257,7 @@ function FolderBriefPreview(): JSX.Element {
         {shows('d') && (
           <Section id="d" title="Everything read">
             <FolderBrief
-              brief={GRUNDLAGEN_BRIEF}
+              brief={BASIS_BRIEF}
               folderName="01_Grundlagen"
               shelfKind="project"
               onSelect={noop}

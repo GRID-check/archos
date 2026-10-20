@@ -166,7 +166,7 @@ const expectSignedProject = (caller: JobControlCaller): void => {
 
 const step = {
   id: 'batch-1',
-  phase: 'recherchieren' as const,
+  phase: 'researching' as const,
   intent: 'OIB-2 auf Fluchtwegbreiten prüfen',
   startedAt: T1.toISOString(),
   docs: [],
@@ -258,7 +258,7 @@ describe('the ledger stays under the lock', () => {
     // fold must build on; the stored row is read INSIDE the merge.
     await applyRunLedgerOp(RUN, { op: 'append', steps: [step] }, T1)
     const [[, , patch]] = vi.mocked(mergeMessageMetadata).mock.calls
-    const landed = openPhase(emptyRunLedger(RUN, T0), 'planen', T0)
+    const landed = openPhase(emptyRunLedger(RUN, T0), 'planning', T0)
     const written = (patch as (m: Record<string, unknown>) => Record<string, unknown>)({ run_ledger: landed })
     expect((written.run_ledger as { phases: unknown[] }).phases).toHaveLength(1)
   })
@@ -291,7 +291,7 @@ describe('ledgerOpForEnding', () => {
       op: 'finish',
       result: { filedAt: T1.toISOString() },
     })
-    expect(ledgerOpForEnding({ status: 'interrupted' }, T1)).toEqual({ op: 'append', status: 'abgebrochen' })
+    expect(ledgerOpForEnding({ status: 'interrupted' }, T1)).toEqual({ op: 'append', status: 'cancelled' })
     expect(ledgerOpForEnding({ status: 'failure', error: 'Zeitüberschreitung' }, T1)).toEqual({
       op: 'finish',
       error: { reason: 'Zeitüberschreitung' },
@@ -305,18 +305,18 @@ describe('ledgerOpForEnding', () => {
 
 describe('settleRunLedger', () => {
   it('ends a block that still reads as live — the run whose worker was gone', async () => {
-    const live = openPhase(emptyRunLedger(RUN, T0), 'recherchieren', T0)
+    const live = openPhase(emptyRunLedger(RUN, T0), 'researching', T0)
     vi.mocked(findMessageInConversation).mockResolvedValue(message({ run_ledger: live }))
 
     expect(await settleRunLedger(run, { status: 'failure', error: 'Job timed out' }, T1)).toBe(true)
 
     const [written] = writes
-    expect(written?.run_ledger).toMatchObject({ status: 'fehlgeschlagen', error: { reason: 'Job timed out' } })
+    expect(written?.run_ledger).toMatchObject({ status: 'failed', error: { reason: 'Job timed out' } })
   })
 
   it('says abgebrochen for a cancel, the status the block’s „Abbrechen" waits for', async () => {
     expect(await settleRunLedger(run, { status: 'interrupted' }, T1)).toBe(true)
-    expect(writes[0]?.run_ledger).toMatchObject({ status: 'abgebrochen' })
+    expect(writes[0]?.run_ledger).toMatchObject({ status: 'cancelled' })
   })
 
   it('leaves a ledger the worker already settled alone, whatever the ending says', async () => {
@@ -349,13 +349,13 @@ describe('applyRunLedgerOp', () => {
   it('folds an append onto the stored ledger and writes only its own key', async () => {
     const { ledger } = await applyRunLedgerOp(
       RUN,
-      { op: 'append', steps: [step], phases: [{ phase: 'recherchieren', startedAt: T0.toISOString() }] },
+      { op: 'append', steps: [step], phases: [{ phase: 'researching', startedAt: T0.toISOString() }] },
       T1,
     )
 
     expect(ledger.steps).toEqual([step])
-    expect(ledger.phases).toEqual([{ phase: 'recherchieren', startedAt: T0.toISOString() }])
-    expect(ledger.status).toBe('laeuft')
+    expect(ledger.phases).toEqual([{ phase: 'researching', startedAt: T0.toISOString() }])
+    expect(ledger.status).toBe('running')
     // One top-level key. The report, its sources and the transparency keys are
     // written by the path that produces them, into the same message.
     expect(mergeMessageMetadata).toHaveBeenCalledWith(CONVERSATION, runMessageId(RUN), expect.any(Function))
@@ -368,7 +368,7 @@ describe('applyRunLedgerOp', () => {
   })
 
   it('tells the requester once when the run turns to wartet, with the ids that land on the block', async () => {
-    await applyRunLedgerOp(RUN, { op: 'append', status: 'wartet' }, T1)
+    await applyRunLedgerOp(RUN, { op: 'append', status: 'waiting' }, T1)
 
     expect(emitInboxItems).toHaveBeenCalledTimes(1)
     const [[[emission]]] = vi.mocked(emitInboxItems).mock.calls
@@ -392,17 +392,17 @@ describe('applyRunLedgerOp', () => {
 
     // A second flush that is still waiting says nothing new.
     vi.mocked(findMessageInConversation).mockResolvedValue(
-      message({ run_ledger: { ...emptyRunLedger(RUN, T0), status: 'wartet' } }),
+      message({ run_ledger: { ...emptyRunLedger(RUN, T0), status: 'waiting' } }),
     )
-    await applyRunLedgerOp(RUN, { op: 'append', status: 'wartet' }, T1)
+    await applyRunLedgerOp(RUN, { op: 'append', status: 'waiting' }, T1)
     expect(emitInboxItems).toHaveBeenCalledTimes(1)
   })
 
   it('settles the waiting row when the run moves on, so it never sits in the badge for good', async () => {
     vi.mocked(findMessageInConversation).mockResolvedValue(
-      message({ run_ledger: { ...emptyRunLedger(RUN, T0), status: 'wartet' } }),
+      message({ run_ledger: { ...emptyRunLedger(RUN, T0), status: 'waiting' } }),
     )
-    await applyRunLedgerOp(RUN, { op: 'append', status: 'laeuft' }, T1)
+    await applyRunLedgerOp(RUN, { op: 'append', status: 'running' }, T1)
 
     expect(emitInboxItems).not.toHaveBeenCalled()
     expect(resolveInboxItemsFor).toHaveBeenCalledWith([
@@ -416,8 +416,8 @@ describe('applyRunLedgerOp', () => {
 
   it('writes the ledger even when the inbox refuses', async () => {
     vi.mocked(emitInboxItems).mockRejectedValue(new Error('inbox down'))
-    const { ledger } = await applyRunLedgerOp(RUN, { op: 'append', status: 'wartet' }, T1)
-    expect(ledger.status).toBe('wartet')
+    const { ledger } = await applyRunLedgerOp(RUN, { op: 'append', status: 'waiting' }, T1)
+    expect(ledger.status).toBe('waiting')
     expect(mergeMessageMetadata).toHaveBeenCalledTimes(1)
   })
 
@@ -427,7 +427,7 @@ describe('applyRunLedgerOp', () => {
       { op: 'finish', result: { filedAt: T1.toISOString(), fileId: 'doc-1' } },
       T1,
     )
-    expect(ledger.status).toBe('fertig')
+    expect(ledger.status).toBe('done')
     expect(ledger.result).toEqual({ filedAt: T1.toISOString(), fileId: 'doc-1' })
     expect(ledger.finishedAt).toBe(T1.toISOString())
   })
@@ -437,7 +437,7 @@ describe('applyRunLedgerOp', () => {
       message({
         run_ledger: {
           ...emptyRunLedger(RUN, T0),
-          phases: [{ phase: 'planen', startedAt: T0.toISOString(), endedAt: T0.toISOString() }],
+          phases: [{ phase: 'planning', startedAt: T0.toISOString(), endedAt: T0.toISOString() }],
         },
       }),
     )
@@ -447,10 +447,10 @@ describe('applyRunLedgerOp', () => {
       { op: 'finish', error: { reason: 'Der Anbieter hat abgebrochen.' } },
       T1,
     )
-    expect(ledger.status).toBe('fehlgeschlagen')
+    expect(ledger.status).toBe('failed')
     expect(ledger.error).toEqual({
       reason: 'Der Anbieter hat abgebrochen.',
-      completedBefore: ['planen'],
+      completedBefore: ['planning'],
     })
   })
 
@@ -810,7 +810,7 @@ describe('addRunDocument', () => {
     })
 
     it('never looks up an Archiv document: no project folder restricts the Archiv', async () => {
-      await addRunDocument(session, 'project-1', RUN, { name: 'Leitfaden.pdf', shelf: 'archiv' })
+      await addRunDocument(session, 'project-1', RUN, { name: 'Leitfaden.pdf', shelf: 'office_shelf' })
       expect(listProjectFolderTree).not.toHaveBeenCalled()
       expect(findProjectDocumentsByFilenames).not.toHaveBeenCalled()
       expect(addDocumentToBackendJob).toHaveBeenCalled()

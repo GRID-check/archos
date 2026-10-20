@@ -57,6 +57,7 @@ from typing import Any
 
 from pydantic import Field
 
+from aiq_agent.common.source_kinds import canonical_shelf_value
 from aiq_agent.knowledge.title_block import display_date
 from aiq_agent.knowledge.title_block import document_key
 from aiq_agent.knowledge.title_block import newest_first
@@ -93,7 +94,7 @@ MAX_SUMMARY_CHARS = 160
 
 #: The shelves a person calls "my files". Basiswissen is the platform corpus:
 #: listable on request (``shelf="base"``), never part of a default listing.
-USER_SHELVES = ("project", "archiv", "session")
+USER_SHELVES = ("project", "office_shelf", "session")
 KNOWN_SHELVES = (*USER_SHELVES, "base")
 
 #: How many chunks one exact search reads per collection. A bound
@@ -115,7 +116,7 @@ MAX_ALTERNATIVES = 6
 
 _SHELF_LABELS = {
     "project": "Projektwissen",
-    "archiv": "Büroablage",
+    "office_shelf": "Büroablage",
     "session": "Private Sitzung",
     "base": "Basiswissen",
 }
@@ -187,7 +188,7 @@ def file_row(row: Any) -> FileRow | None:
     revision_facts = _attr(row, "revision_facts")
     return FileRow(
         file_name=file_name,
-        shelf=str(shelf) if shelf else None,
+        shelf=canonical_shelf_value(str(shelf)) if shelf else None,
         collection=str(_attr(row, "collection") or ""),
         folder=str(_attr(row, "folder_path") or "").strip().strip("/"),
         display_title=(str(_attr(row, "display_title") or "").strip() or None),
@@ -521,7 +522,7 @@ def select_files(
 
 #: What a row says of a file's change: a glance, so the model reads the files themselves for more.
 MAX_CHANGE_CHARS = 160
-#: The same line when the question IS the change (``fassungen_of``): what „was hat sich geändert“ is answered from.
+#: The same line when the question IS the change (``revisions_of``): what „was hat sich geändert“ is answered from.
 MAX_CHAIN_CHANGE_CHARS = 700
 
 
@@ -568,9 +569,9 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
         bits.append(f"aufgenommen {row.captured_at[:10]}{camera}")
     elif row.camera:
         bits.append(f"Kamera: {row.camera}")
-    plankopf = title_block_label(row.revision_facts)
-    if plankopf:
-        bits.append(f"Plankopf: {plankopf}")
+    title_block = title_block_label(row.revision_facts)
+    if title_block:
+        bits.append(f"Plankopf: {title_block}")
     if mark:
         bits.append(mark)
     change = _change_bit(row)
@@ -679,7 +680,7 @@ def render_listing(listing: Listing, *, in_flight: Sequence[str] = ()) -> str:
 
 
 # ---------------------------------------------------------------------------
-# The Fassungen of one document (list_files fassungen_of=)
+# The Fassungen of one document (list_files revisions_of=)
 # ---------------------------------------------------------------------------
 
 #: Fassungen one answer lists before it counts the rest.
@@ -804,9 +805,9 @@ def _chain_line(position: int, row: FileRow, *, current: bool, mark: str | None,
     revision = parse_revision_name(row.file_name)
     label = revision_label(revision) if revision is not None else ""
     bits = [label or "kein Index und kein Datum im Namen"]
-    plankopf = title_block_label(row.revision_facts)
-    if plankopf:
-        bits.append(f"Plankopf: {plankopf}")
+    title_block = title_block_label(row.revision_facts)
+    if title_block:
+        bits.append(f"Plankopf: {title_block}")
     if current:
         bits.append("aktuelle Fassung" + ("" if mark else f" ({basis})"))
     elif not mark:
@@ -846,7 +847,7 @@ def _resolve_chain(
 ) -> tuple[list[FileRow], str]:
     """The ordered chain of Fassungen ``wanted`` names, newest first, or the sentence that says why there is none.
 
-    One lookup for the listing (:func:`render_fassungen`) and the compare
+    One lookup for the listing (:func:`render_revisions`) and the compare
     (:func:`resolve_compare`), so the two cannot disagree about which document
     a name means.
     """
@@ -868,13 +869,13 @@ def _resolve_chain(
         rest = len(matches) - len(names)
         return [], (
             f"„{wanted.strip()}“ passt zu {len(chains)} verschiedenen Dokumenten: {', '.join(names)}"
-            f"{f' und {rest} weitere' if rest > 0 else ''}. Rufe `list_files(fassungen_of=…)` mit dem genauen "
+            f"{f' und {rest} weitere' if rest > 0 else ''}. Rufe `list_files(revisions_of=…)` mit dem genauen "
             "Dateinamen eines davon auf."
         )
     return _chain_order(_with_supersedes(next(iter(chains.values())))), ""
 
 
-def render_fassungen(
+def render_revisions(
     rows: Sequence[FileRow],
     wanted: str,
     *,
@@ -919,7 +920,7 @@ def render_fassungen(
         "Die Änderungsangabe steht an der NEUEREN Fassung und vergleicht sie mit der darunter genannten Basis; "
         "zwischen zwei nicht benachbarten Fassungen lies die Zeilen dazwischen zusammen. Sie ist eine "
         "Zusammenfassung von Piloti, kein Beweis: was sich Seite für Seite geändert hat, zeigt "
-        "`list_files(fassungen_of=…, compare_to=…)`, und ein Maß prüfst du mit `read_passage(document=…)`. "
+        "`list_files(revisions_of=…, compare_to=…)`, und ein Maß prüfst du mit `read_passage(document=…)`. "
         "Eine ältere Fassung bleibt auf Wunsch lesbar; sonst stütze dich auf die aktuelle. "
         "Schreibe Dateinamen genau so, wie sie hier stehen."
     )
@@ -938,12 +939,12 @@ def resolve_compare(
     shelf: str | None = None,
     default_shelves: Sequence[str] = USER_SHELVES,
 ) -> tuple[FileRow | None, FileRow | None, str]:
-    """``(older, newer, "")`` for ``list_files(fassungen_of=…, compare_to=…)``, or ``(None, None, refusal)``.
+    """``(older, newer, "")`` for ``list_files(revisions_of=…, compare_to=…)``, or ``(None, None, refusal)``.
 
     ``wanted`` names the document and, when it names one Fassung exactly, that
     Fassung; otherwise the current one. ``compare_to`` names the other Fassung
     in the same chain, or says „vorige“ (the default) for the one right before.
-    Pure, over the rows the turn may list, like :func:`render_fassungen`.
+    Pure, over the rows the turn may list, like :func:`render_revisions`.
     """
     members, refusal = _resolve_chain(rows, wanted, shelf=shelf, default_shelves=default_shelves)
     if refusal:
@@ -955,7 +956,7 @@ def resolve_compare(
             (
                 f"Von „{wanted.strip()}“ gibt es auf diesem Regal nur diese eine Datei, also nichts zu vergleichen. "
                 "Frühere Hochladungen unter DEMSELBEN Dateinamen sind noch nicht im Index; was sich dort geändert hat, "
-                "steht als Änderungszeile in `list_files(fassungen_of=…)`."
+                "steht als Änderungszeile in `list_files(revisions_of=…)`."
             ),
         )
     exact = [row for row in members if fold(wanted.strip()) in (fold(row.file_name), fold(row.display_title or ""))]
@@ -991,7 +992,7 @@ def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
     None when the index holds no chunk of the file; raises when the store cannot be read.
     """
     from aiq_agent.knowledge.collection_pages import read_chunks
-    from aiq_agent.knowledge.fassung_diff import chunk_from_store
+    from aiq_agent.knowledge.revision_diff import chunk_from_store
 
     stored = read_chunks(collection, file_name)
     if stored is None:
@@ -999,12 +1000,12 @@ def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
     return [chunk for text, meta in stored if (chunk := chunk_from_store(text, meta)) is not None]
 
 
-async def compare_fassungen(older: FileRow, newer: FileRow) -> str:
+async def compare_revisions(older: FileRow, newer: FileRow) -> str:
     """The compare of two Fassungen the turn may list, from their stored chunks and title blocks (ADR-0104)."""
     from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
-    from aiq_agent.knowledge.fassung_diff import diff_fassungen
-    from aiq_agent.knowledge.fassung_diff import render_diff
     from aiq_agent.knowledge.restricted_use import note_collections_read
+    from aiq_agent.knowledge.revision_diff import diff_revisions
+    from aiq_agent.knowledge.revision_diff import render_diff
 
     try:
         older_chunks, newer_chunks = await asyncio.gather(
@@ -1012,7 +1013,7 @@ async def compare_fassungen(older: FileRow, newer: FileRow) -> str:
             asyncio.to_thread(_stored_chunks, newer.collection, newer.file_name),
         )
     except Exception:  # noqa: BLE001 - an outage is said as one, never as "not in the index"
-        logger.warning("compare_fassungen: the index did not answer", exc_info=True)
+        logger.warning("compare_revisions: the index did not answer", exc_info=True)
         # Marked like read_passage's failed fetch, so a retry is not refused as a repeat.
         return (
             f"{FETCH_FAILED_MARKER} Der Index ist gerade nicht erreichbar, „{older.file_name}“ und "
@@ -1028,7 +1029,7 @@ async def compare_fassungen(older: FileRow, newer: FileRow) -> str:
     # The report quotes both files' content: reported for the restricted-use
     # admission (ADR-0088), as every read of a document's text is.
     note_collections_read({older.collection, newer.collection})
-    diff = diff_fassungen(
+    diff = diff_revisions(
         older_chunks or [],
         newer_chunks or [],
         older_facts=older.revision_facts,
@@ -1157,7 +1158,11 @@ def group_matches(chunks: Iterable[Any], pattern: str) -> list[FileMatches]:
         key = (collection, chunk.file_name)
         group = groups.get(key)
         if group is None:
-            group = groups[key] = FileMatches(chunk.file_name, metadata.get("shelf"), collection)
+            group = groups[key] = FileMatches(
+                chunk.file_name,
+                canonical_shelf_value(str(metadata["shelf"])) if metadata.get("shelf") else None,
+                collection,
+            )
         group.chunks.append(chunk)
         group.occurrences += count
     # The reader's own files first: „wo steht EI 90" is about the project, and
@@ -1293,7 +1298,7 @@ def _scope_entries(search_config: Any) -> list[Any]:
 
 def _entry_shelf(entry: Any) -> str | None:
     shelf = getattr(entry, "shelf", None)
-    return str(getattr(shelf, "value", shelf)) if shelf else None
+    return canonical_shelf_value(str(getattr(shelf, "value", shelf))) if shelf else None
 
 
 async def _turn_rows(search_config: Any) -> list[FileRow]:
@@ -1415,12 +1420,12 @@ _LIST_FILES_DESCRIPTION = (
     "case and umlaut spelling do not matter.\n"
     "- `doc_class=` one Dokumentart key; `added_since=` YYYY-MM-DD; `sort=newest` for recent uploads.\n"
     "- `topic=` a Thema Piloti recognised (Attika, Holzrahmenbau); matches part of a topic.\n"
-    "- `shelf=` project | archiv | session | base (base = the platform OIB corpus, listed only when asked).\n"
+    "- `shelf=` project | office_shelf | session | base (base = the platform OIB corpus, listed only when asked).\n"
     "- `offset=` the next page, as the result says.\n"
-    "- `fassungen_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, "
+    "- `revisions_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, "
     "upload date and what changed against the one before. Call it for „welche Fassungen gibt es von X“; "
     "every other filter is ignored.\n"
-    '- `fassungen_of=` plus `compare_to=` another Fassung of that chain (its file name, or "vorige" for the one '
+    '- `revisions_of=` plus `compare_to=` another Fassung of that chain (its file name, or "previous" for the one '
     "before): what changed, page by page, in the printed text and in your reading of the drawings, with the "
     "Plankopf's Index and Stand. Call it for „was hat sich zwischen Index B und C geändert“.\n"
     "WHEN NOT TO CALL — to learn what a file SAYS: that is `read_passage` / `knowledge_search`. To "
@@ -1456,7 +1461,7 @@ def _coerce_int(value: Any, default: int, *, low: int, high: int) -> int:
 
 
 def _check_shelf(shelf: str | None) -> tuple[str | None, str]:
-    shelf = (shelf or "").strip().lower() or None
+    shelf = canonical_shelf_value(shelf or "") or None
     if shelf is not None and shelf not in KNOWN_SHELVES:
         return None, f"`shelf` must be one of {', '.join(KNOWN_SHELVES)}, or omitted for the reader's own files."
     return shelf, ""
@@ -1477,7 +1482,7 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         offset: int | str | None = None,
         limit: int | str | None = None,
         topic: str | None = None,
-        fassungen_of: str | None = None,
+        revisions_of: str | None = None,
         compare_to: str | None = None,
     ) -> str:
         """List the reader's files, like opening a folder in the Files pane.
@@ -1486,16 +1491,16 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             folder (str | None): Folder path as a previous listing or the inventory printed it
                 ("Brandschutz/Fluchtwege"); includes everything below it. Omit to list every file.
             name_contains (str | None): Words that must all appear in the file name or title.
-            doc_class (str | None): One Dokumentart key (e.g. "plan", "gutachten").
+            doc_class (str | None): One Dokumentart key (e.g. "oib_guideline", "law").
             added_since (str | None): Only files uploaded on or after this date, YYYY-MM-DD.
-            shelf (str | None): project | archiv | session | base. Omit for the reader's own files.
+            shelf (str | None): project | office_shelf | session | base. Omit for the reader's own files.
             sort (str | None): folder (default) | name | newest.
             offset (int | None): Start of the page; the result names the next one.
             limit (int | None): Page size, default 40, at most 100.
             topic (str | None): A Thema Piloti recognised (e.g. "Attika", "Holzrahmenbau"); matches part of a topic.
-            fassungen_of (str | None): A file name; returns that document's chain of Fassungen instead of a listing.
-            compare_to (str | None): With `fassungen_of`: compare that Fassung with this one (a file name of the
-                same chain, or "vorige" for the one before) and return what changed, page by page.
+            revisions_of (str | None): A file name; returns that document's chain of Fassungen instead of a listing.
+            compare_to (str | None): With `revisions_of`: compare that Fassung with this one (a file name of the
+                same chain, or "previous" for the one before) and return what changed, page by page.
 
         Returns:
             str: A count, the subfolders with counts, and one line per file with its exact name.
@@ -1503,19 +1508,19 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         shelf, refusal = _check_shelf(shelf)
         if refusal:
             return refusal
-        if (fassungen_of or "").strip():
+        if (revisions_of or "").strip():
             # A chain is not a listing: no other filter applies, so none is validated either.
             turn = restrict_rows_to_turn(await _turn_rows(search_config))
             if shelf and turn.allowed is not None and shelf not in turn.allowed:
                 return shelf_restricted_message(shelf, turn.allowed)
             if compare_to is not None:
                 older, newer, refusal = resolve_compare(
-                    turn.rows, fassungen_of or "", compare_to, shelf=shelf, default_shelves=turn.own_shelves
+                    turn.rows, revisions_of or "", compare_to, shelf=shelf, default_shelves=turn.own_shelves
                 )
                 if refusal or older is None or newer is None:
                     return refusal
-                return await compare_fassungen(older, newer)
-            return render_fassungen(turn.rows, fassungen_of or "", shelf=shelf, default_shelves=turn.own_shelves)
+                return await compare_revisions(older, newer)
+            return render_revisions(turn.rows, revisions_of or "", shelf=shelf, default_shelves=turn.own_shelves)
         sort = (sort or "folder").strip().lower()
         if sort not in ("folder", "name", "newest"):
             return "`sort` must be folder, name or newest."
@@ -1525,10 +1530,12 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         doc_class = (doc_class or "").strip() or None
         if doc_class is not None:
             from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
-            from aiq_agent.knowledge.document_classification import is_valid_doc_class
+            from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-            if not is_valid_doc_class(doc_class):
+            current_doc_class = canonical_doc_class(doc_class)
+            if current_doc_class is None:
                 return f"Invalid doc_class {doc_class!r}. Valid values: {', '.join(DOCUMENT_CLASSES)}."
+            doc_class = current_doc_class
 
         turn = restrict_rows_to_turn(await _turn_rows(search_config))
         if shelf and turn.allowed is not None and shelf not in turn.allowed:

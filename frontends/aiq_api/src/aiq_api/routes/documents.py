@@ -29,7 +29,7 @@ from aiq_agent.common import provider_limiter
 from aiq_agent.common.openrouter import limited_async_http_client
 from aiq_agent.knowledge import dismiss_document_revision_suggestion
 from aiq_agent.knowledge import get_available_documents_async
-from aiq_agent.knowledge import link_document_fassung
+from aiq_agent.knowledge import link_document_revision
 from aiq_agent.knowledge import rewrite_document_folder_paths
 from aiq_agent.knowledge import set_document_change_summary
 from aiq_agent.knowledge import set_document_display_title
@@ -130,9 +130,9 @@ def _attach_derived_suggestions(
     files: list[FileInfo], summaries: list[AvailableDocument], held_names: Callable[[], set[str] | None]
 ) -> None:
     """Fill ``revision_suggestion`` of the files that have none from the collection's own rows (on read)."""
-    from knowledge_layer.llamaindex import fassungen
+    from knowledge_layer.llamaindex import revisions
 
-    derived = fassungen.derive_suggestions(summaries, held_names)
+    derived = revisions.derive_suggestions(summaries, held_names)
     for file in files:
         suggestion = derived.get(file.file_name)
         if suggestion is not None and file.revision_suggestion is None:
@@ -143,9 +143,9 @@ def _held_names_of(collection_name: str) -> Callable[[], set[str] | None]:
     """The reader of a collection's held and in-flight file names, for suggestions derived on read."""
 
     def held() -> set[str] | None:
-        from knowledge_layer.llamaindex import fassungen
+        from knowledge_layer.llamaindex import revisions
 
-        return fassungen.held_file_names(collection_name)
+        return revisions.held_file_names(collection_name)
 
     return held
 
@@ -282,7 +282,7 @@ def _checked_topics(raw: list[str]) -> list[str]:
     return topics
 
 
-async def _refuse_fassung(collection_name: str, newer: AvailableDocument, older: AvailableDocument) -> dict[str, Any]:
+async def _refuse_revision(collection_name: str, newer: AvailableDocument, older: AvailableDocument) -> dict[str, Any]:
     """The ``linked=false`` half of the Fassung route: lift the link, drop its change line, dismiss the suggestion.
 
     Answers the link ``older`` has and the change line ``newer`` has once this is done.
@@ -519,7 +519,7 @@ def add_document_routes(router: APIRouter):
             response["tags"] = tags
         return response
 
-    class FassungRequest(BaseModel):
+    class RevisionRequest(BaseModel):
         model_config = ConfigDict(extra="forbid")
 
         newer: str = Field(..., min_length=1, max_length=512, description="File name of the newer Fassung.")
@@ -529,14 +529,16 @@ def add_document_routes(router: APIRouter):
             description="True: a person confirms newer replaces older. False: a person lifts or refuses that.",
         )
 
+    # The pre-rename path, kept for one release: the BFF and this API deploy separately. Remove after one release.
+    @router.put("/v1/collections/{collection_name}/fassung", include_in_schema=False)
     @router.put(
-        "/v1/collections/{collection_name}/fassung",
+        "/v1/collections/{collection_name}/revision",
         tags=["documents"],
         summary="Confirm or refuse that one file replaces another (a Fassung across different names)",
     )
-    async def put_fassung_route(
+    async def put_revision_route(
         collection_name: str,
-        request: FassungRequest,
+        request: RevisionRequest,
         ingestor: BaseIngestor = Depends(_require_ingestor),
         x_grid_organization_id: str | None = Header(default=None),
     ) -> dict[str, Any]:
@@ -551,7 +553,7 @@ def add_document_routes(router: APIRouter):
           that pointed at ``older`` is cleared; when ``older`` was replaced by another
           file until now, that file's change line told against ``older`` goes. The
           loop check and these writes are one locked transaction
-          (``link_document_fassung``), so two concurrent confirmations cannot store
+          (``link_document_revision``), so two concurrent confirmations cannot store
           A over B and B over A. A link that would close a loop (the newer file
           already replaced by the older, directly or through others) is a 409. Then
           what changed is written by the summary model (traced as ``change-summary``)
@@ -578,9 +580,9 @@ def add_document_routes(router: APIRouter):
         newer, older = documents[request.newer], documents[request.older]
 
         if not request.linked:
-            return await _refuse_fassung(collection_name, newer, older)
+            return await _refuse_revision(collection_name, newer, older)
 
-        outcome = await asyncio.to_thread(link_document_fassung, collection_name, request.older, request.newer)
+        outcome = await asyncio.to_thread(link_document_revision, collection_name, request.older, request.newer)
         if outcome is LinkOutcome.LOOP:
             raise HTTPException(
                 status_code=409,

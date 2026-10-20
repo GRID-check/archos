@@ -219,7 +219,7 @@ context/memory, model overrides, budget, disabled sources) — one audited case
 (async-job submit, §8b) simply forgot one. `frontends/ui/src/lib/request-context.ts`
 is now the single builder: `buildGridRequestContextWireHeaders` returns every
 individual header PLUS one consolidated, signed `X-Grid-Request-Context`
-header (base64url JSON of the same fields, plus the structured `bundesland`
+header (base64url JSON of the same fields, plus the structured `federal_state`
 fact — §6b) and `X-Grid-Request-Context-Sig` (hex HMAC-SHA256 of the raw
 JSON, keyed on `GRID_INTERNAL_API_TOKEN`). Legacy HTTP/job producers retain
 this **dual-write transition**. Authenticated WebSocket handshakes instead
@@ -584,7 +584,7 @@ subfolder" `+` on each folder row and makes root creation explicit.
 (rename and/or move) and `deleteProjectFolder`, which is the Papierkorb's
 `moveFolderToBin` in `folder-bin.ts` (ADR-0088). They sit behind
 `POST`/`PATCH`/`DELETE` on `/api/projects/{id}/folders[/{folderId}]`; the
-Archiv's folders (`/api/archiv/folders`, ADR-0078) share the shelf core in
+Archiv's folders (`/api/office-shelf/folders`, ADR-0078) share the shelf core in
 `lib/documents/shelf-folders.ts`, delete included. Two invariants are
 load-bearing:
 
@@ -860,7 +860,7 @@ document summary:
    heuristic, so a drawing that is pure linework plus a stamped watermark does
    not read as "has text". Each line's font size and weight are kept
    (`line_styles`): a tenant PDF is chunked on its own headings
-   (`section_chunking`), an OIB Richtlinie on its Punkte (`punkt_chunking`);
+   (`section_chunking`), an OIB Richtlinie on its Punkte (`clause_chunking`);
    the table of chunk locators is in
    [`document-ingestion.md`](../technical-reference/document-ingestion.md#_run_ingestionjob_id-file_paths-collection_name-config).
 2. **Tables** — `_extract_tables_from_pdf` (pdfplumber), gated on
@@ -1138,15 +1138,15 @@ a round the run does not get back.
 
 `read_passage` (`sources/knowledge_layer/src/read_passage.py`) is that lookup:
 `document` (exact indexed name, stored display title, or the derived OIB title)
-plus `punkt` (the `punkt_id` the Punkt chunker verified against the corpus's own
-contents pages) or `page`. `document` with neither is the **outline**: the
+plus `clause` (the `clause_id` the Punkt chunker verified against the corpus's own
+contents pages) or `page` (`punkt` is accepted as the former name of `clause` for one release). `document` with neither is the **outline**: the
 document's scope passage (Punkt 0, else the first top-level Punkt) followed by a
 `## Gliederung` of its depth-1 and depth-2 Punkte with their pages. That is the
 overview question ("worum geht es in der OIB 2?"), which names no Punkt and no
 page; refusing it sent the model to a search that returns cover pages and then to
 a Punkt number it had guessed. The Gliederung is an index, not evidence — only
 the passages carry a Citation, and a listed Punkt is read by calling again with
-`punkt=`. A document with no Punkte at all — most project uploads — returns its
+`clause=`. A document with no Punkte at all — most project uploads — returns its
 opening passages instead: the first chunks in document order, because `page_label` is not always a page number.
 
 The same lookup one granularity up is a whole Richtlinie, and it is reached
@@ -1416,7 +1416,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   plus behoerdliche_info for non-RIS practice guidance with a plain
   `source_url`, e.g. the MA-37 Merkblätter, and norm_extern for
   ÖNORM/TRVB stubs without accessible full text),
-  `bundesland` (canonical name, empty = federal), `topics`, `relevance`, the
+  `federal_state` (canonical name, empty = federal), `topics`, `relevance`, the
   **verified** RIS pointer (application, document number, citation URL,
   entire-consolidated-law URL), optional `aliases`, `binding_note` (curated
   prose legal fact rendered into researcher prompts — e.g. how the WBTV makes
@@ -1480,13 +1480,13 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
    prompt now carries a **Jurisdiction & Country Handling** block that instructs
    the agent: for `at` → full OIB/RIS pipeline, binding precision; for non-AT →
    Austrian corpus only, comparative guidance, recommend local verification.
-- **Bundesland** — `resolve_bundesland`: the validated envelope token wins
+- **Bundesland** — `resolve_federal_state`: the validated envelope token wins
    (`ausserhalb_oesterreichs` → None is final), then the structured
-   `bundesland=<token>` prompt fact, then free-text state-name probing.
+   `federal_state=<token>` prompt fact, then free-text state-name probing.
    `focus_entries` drops other states' law and sorts the project's state first;
    the same rule filters `ris_search`'s catalog short-circuit and
    `ris_catalog_lookup` before truncation. When the country is non-AT, the
-   profile save derives `bundesland=ausserhalb_oesterreichs`, so the downstream
+   profile save derives `federal_state=ausserhalb_oesterreichs`, so the downstream
    pipeline consistently treats non-Austrian projects as jurisdiction-neutral.
 - **Hard limits** — Every research-facing prompt now includes a **Project Hard
    Limits & Grounding** block that instructs agents to treat confirmed wizard
@@ -1658,7 +1658,7 @@ therefore read identical numbers from one code path.
 Each carries its own blind spot in the payload rather than in a footnote:
 `roomsWithoutArea` per storey and per building, `missing` per take-off row, and
 an `evidence` string plus a confidence on every derived fact. `profile` is
-deliberately advisory — `geschosse_oberirdisch` picks a Gebäudeklasse, so the
+deliberately advisory — `storeys_above_ground` picks a Gebäudeklasse, so the
 suggestions travel to the user through the existing `project_profile_patch`
 confirm-the-patch card (ADR-0030), never as a direct write.
 
@@ -1698,8 +1698,8 @@ A compliance answer carries one more path: `_bcf_link` appends a
 the open requirements can also hand over the BCF file that puts them back in
 ArchiCAD or Revit. It is addressed by file NAME for the same reason the tool
 itself is — a UUID carried through a conversation is a reliable source of
-hallucinated identifiers — and it carries the same `gebaeudeklasse` /
-`hauptnutzung` the run used, so the archive can never be built against
+hallucinated identifiers — and it carries the same `building_class` /
+`main_use` the run used, so the archive can never be built against
 thresholds the answer did not apply.
 
 ### Geometry stays in the browser

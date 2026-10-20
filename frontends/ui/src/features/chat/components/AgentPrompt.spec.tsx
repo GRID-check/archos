@@ -410,8 +410,8 @@ describe('AgentPrompt — the plan card', () => {
   const PLAN = {
     title: 'Brandschutz in Wien',
     sections: ['Gebäudeklasse', 'Fluchtwege'],
-    genre: 'pruefbericht',
-    depth: 'kurzpruefung',
+    genre: 'inspection_report',
+    depth: 'quick_check',
   }
   const CONTENT =
     '**Research Plan Preview**\n\n**Title:** Brandschutz in Wien\n\n**Sections:**\n  1. Gebäudeklasse\n  2. Fluchtwege\n\n' +
@@ -467,10 +467,10 @@ describe('AgentPrompt — the plan card', () => {
     expect(reply.startsWith('approve {')).toBe(true)
     expect(JSON.parse(reply.slice('approve '.length))).toEqual({
       sections: ['Gebäudeklasse', 'Landesabweichungen'],
-      genre: 'pruefbericht',
-      depth: 'gutachten',
-      grundlage: [],
-      ausgeschlossen: [],
+      genre: 'inspection_report',
+      depth: 'expert_report',
+      basis: [],
+      excluded: [],
     })
   })
 
@@ -486,8 +486,8 @@ describe('AgentPrompt — the plan card', () => {
     })
     try {
       render(<AgentPrompt content={CONTENT} />)
-      expect(screen.getByTestId('plan-rahmen')).toHaveTextContent('Wissensbasis')
-      expect(screen.getByTestId('plan-rahmen')).not.toHaveTextContent('Web')
+      expect(screen.getByTestId('plan-frame')).toHaveTextContent('Wissensbasis')
+      expect(screen.getByTestId('plan-frame')).not.toHaveTextContent('Web')
       await userEvent.setup().click(screen.getByRole('button', { name: /approve plan/i }))
       const reply = respond.mock.calls[0]?.[0] as string
       expect(JSON.parse(reply.slice('approve '.length))).toMatchObject({
@@ -503,21 +503,21 @@ describe('AgentPrompt — the plan card', () => {
     const respond = vi.fn()
     useChatStore.setState({ respondToInteractionFn: respond })
     const content = CONTENT.replace(
-      '"depth":"kurzpruefung"',
-      '"depth":"kurzpruefung","grundlage":[],"ausgeschlossen":[],"unterlagen":[{"name":"Einreichplan.pdf","title":"Einreichplan EG","shelf":"project"},{"name":"alt.pdf","shelf":"archiv"}]'
+      '"depth":"quick_check"',
+      '"depth":"quick_check","basis":[],"excluded":[],"documents":[{"name":"Einreichplan.pdf","title":"Einreichplan EG","shelf":"project"},{"name":"alt.pdf","shelf":"office_shelf"}]'
     )
     render(<AgentPrompt content={content} />)
-    await user.click(screen.getByTestId('plan-unterlagen-pick'))
+    await user.click(screen.getByTestId('plan-documents-pick'))
     await user.click(screen.getByRole('button', { name: 'Read in full: Einreichplan EG' }))
     await user.click(screen.getByRole('button', { name: 'Exclude: alt.pdf' }))
     await user.click(screen.getByRole('button', { name: 'Done' }))
-    expect(screen.getByTestId('plan-grundlage')).toHaveTextContent('Einreichplan EG')
-    expect(screen.getByTestId('plan-ausgeschlossen')).toHaveTextContent('alt.pdf')
+    expect(screen.getByTestId('plan-basis')).toHaveTextContent('Einreichplan EG')
+    expect(screen.getByTestId('plan-excluded')).toHaveTextContent('alt.pdf')
     await user.click(screen.getByRole('button', { name: /approve plan/i }))
     const reply = respond.mock.calls[0]?.[0] as string
     expect(JSON.parse(reply.slice('approve '.length))).toMatchObject({
-      grundlage: ['Einreichplan.pdf'],
-      ausgeschlossen: ['alt.pdf'],
+      basis: ['Einreichplan.pdf'],
+      excluded: ['alt.pdf'],
     })
   })
 
@@ -528,7 +528,7 @@ describe('AgentPrompt — the plan card', () => {
       <AgentPrompt
         content={CONTENT}
         isResponded
-        response='approve {"sections":["Gebäudeklasse","Fluchtwege","Brandabschnitte"],"depth":"gutachten"}'
+        response='approve {"sections":["Gebäudeklasse","Fluchtwege","Brandabschnitte"],"depth":"expert_report"}'
       />
     )
     expect(screen.getByTestId('plan-record')).toHaveTextContent('Plan approved · 3 sections')

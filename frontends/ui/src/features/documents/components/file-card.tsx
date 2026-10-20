@@ -18,8 +18,8 @@ import { DocumentKindThumbnail } from './document-kind-thumbnail'
 import { AuthorshipLine } from './authorship-line'
 import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 import { DocumentVersionStateBadge } from './document-version-badge'
-import { FassungCount, OlderFassungBadge, isOlderFassungEntry } from './fassung-badge'
-import { fassungCount } from '../lib/fassung-chain'
+import { RevisionCount, OlderRevisionBadge, isOlderRevisionEntry } from './revision-badge'
+import { revisionCount } from '../lib/revision-chain'
 import { DocumentStatusBadge, isCitableStatus, isSettlingStatus } from './document-status'
 import { SemanticMatch } from './semantic-match'
 import { useIngestFailureText } from './ingest-failure-notice'
@@ -32,9 +32,9 @@ import { FileName } from './file-name'
 import { OpenMarksChip } from './open-marks-chip'
 
 /** Provenance tint per corpus, from the shared `--source-*` token family. */
-const SOURCE_TINT: Record<'projekt' | 'buero', CSSProperties> = {
-  projekt: sourceTint('project'),
-  buero: sourceTint('office'),
+const SOURCE_TINT: Record<'project' | 'office', CSSProperties> = {
+  project: sourceTint('project'),
+  office: sourceTint('office'),
 }
 
 /** Thumbnail request lifecycle for a single card. */
@@ -229,7 +229,7 @@ export interface FileCardProps {
   /** Present on a semantic/surfaced result: the snippet + page + score to show WHY it matched. */
   match?: { snippet: string; page: number | null; score: number }
   /** Coarse corpus for a provenance chip in the metadata row (project vs Büroablage). */
-  source?: 'projekt' | 'buero' | null
+  source?: 'project' | 'office' | null
   /** Localized label for the provenance chip. */
   sourceLabel?: string
   /** Accessible label for the click action (defaults to the filename content). */
@@ -453,12 +453,12 @@ export const FileCard = memo(function FileCard({
                 than a second badge, „3 Fassungen": the history is not a state.
                 On a 220px card the count beside the name cut the name in half,
                 so here it rides on this line; the list puts it by the name. */}
-            {isOlderFassungEntry(file) ? (
+            {isOlderRevisionEntry(file) ? (
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <OlderFassungBadge file={file} />
+                <OlderRevisionBadge file={file} />
               </div>
             ) : (
-              ((file.versionCount ?? 0) > 1 || fassungCount(file) > 1) && (
+              ((file.versionCount ?? 0) > 1 || revisionCount(file) > 1) && (
                 <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   {(file.versionCount ?? 0) > 1 && (
                     <DocumentVersionStateBadge
@@ -467,7 +467,7 @@ export const FileCard = memo(function FileCard({
                       authoredBy={file.authoredBy}
                     />
                   )}
-                  <FassungCount file={file} />
+                  <RevisionCount file={file} />
                 </div>
               )
             )}

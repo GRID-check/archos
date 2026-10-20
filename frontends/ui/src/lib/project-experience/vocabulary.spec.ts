@@ -18,17 +18,17 @@ describe('experienceVocabulary', () => {
   })
 
   it('reads the choice-type of each fact off the intake definition', () => {
-    expect(vocabulary.bundesland.multiple).toBe(false)
-    expect(vocabulary.bauweise.multiple).toBe(true)
-    expect(vocabulary.nutzungen.multiple).toBe(true)
-    expect(vocabulary.vorhabensart.multiple).toBe(true)
+    expect(vocabulary.federal_state.multiple).toBe(false)
+    expect(vocabulary.construction_method.multiple).toBe(true)
+    expect(vocabulary.uses.multiple).toBe(true)
+    expect(vocabulary.work_type.multiple).toBe(true)
   })
 
   it('labels the tokens as the intake wizard does', () => {
-    const bundesland = vocabulary.bundesland.options
-    expect(bundesland).toContainEqual({ token: 'niederoesterreich', label: 'Niederösterreich' })
-    const bauweise = vocabulary.bauweise.options
-    expect(bauweise).toContainEqual({ token: 'holzbau', label: 'Holzbau' })
+    const federalState = vocabulary.federal_state.options
+    expect(federalState).toContainEqual({ token: 'lower_austria', label: 'Niederösterreich' })
+    const bauweise = vocabulary.construction_method.options
+    expect(bauweise).toContainEqual({ token: 'timber', label: 'Holzbau' })
   })
 
   it('leaves out the wizard\'s „noch offen": no document states that a question is undecided', () => {
@@ -37,16 +37,16 @@ describe('experienceVocabulary', () => {
     }
   })
 
-  it('gives the Gebäudeklasse as tokens 1 to 5, labelled GK n', () => {
-    expect(vocabulary.gebaeudeklasse).toEqual({
+  it('gives the building class as tokens 1 to 5, labelled GK n', () => {
+    expect(vocabulary.building_class).toEqual({
       multiple: false,
       options: ['1', '2', '3', '4', '5'].map((grade) => ({ token: grade, label: `GK ${grade}` })),
     })
   })
 
   it('gives the OIB edition as the six editions, labelled OIB-Richtlinien <year>', () => {
-    expect(vocabulary.oib_ausgabe.multiple).toBe(false)
-    expect(vocabulary.oib_ausgabe.options.map((option) => option.token)).toEqual([
+    expect(vocabulary.oib_edition.multiple).toBe(false)
+    expect(vocabulary.oib_edition.options.map((option) => option.token)).toEqual([
       '2007',
       '2011',
       '2015',
@@ -54,7 +54,7 @@ describe('experienceVocabulary', () => {
       '2023',
       '2025',
     ])
-    expect(vocabulary.oib_ausgabe.options[3]).toEqual({ token: '2019', label: 'OIB-Richtlinien 2019' })
+    expect(vocabulary.oib_edition.options[3]).toEqual({ token: '2019', label: 'OIB-Richtlinien 2019' })
   })
 
   it('is valid against the wire schema the backend request carries', () => {

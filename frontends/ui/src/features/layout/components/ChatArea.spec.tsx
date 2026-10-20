@@ -461,7 +461,7 @@ describe('ChatArea', () => {
   test('dispatches a message with a run ledger to the run block', () => {
     const runLedger = {
       runId: 'run-1',
-      status: 'laeuft' as const,
+      status: 'running' as const,
       phases: [],
       steps: [],
       startedAt: '2026-09-16T08:00:00.000Z',
@@ -496,7 +496,7 @@ describe('ChatArea', () => {
     render(<ChatArea isAuthenticated={true} />)
 
     const block = screen.getByTestId('run-block')
-    expect(block).toHaveAttribute('data-status', 'laeuft')
+    expect(block).toHaveAttribute('data-status', 'running')
     expect(block).toHaveTextContent('Normprüfung: Fluchtwege')
     expect(mockUseRunLedger).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1106,7 +1106,7 @@ describe('ChatArea', () => {
  * its header stays live until the answer has settled, so the settle itself
  * changes no height.
  */
-describe('ChatArea — the live Herleitung', () => {
+describe('ChatArea — the live derivation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSharedThread = { ...INERT_SHARED_THREAD }
@@ -1152,7 +1152,7 @@ describe('ChatArea — the live Herleitung', () => {
     retryLastUserMessage: vi.fn(),
     ...extra,
   })
-  type HerleitungProps = {
+  type DerivationProps = {
     isThinking?: boolean
     autoOpen?: boolean
     answering?: boolean
@@ -1160,7 +1160,7 @@ describe('ChatArea — the live Herleitung', () => {
     isInterrupted?: boolean
     isStopped?: boolean
   }
-  const herleitung = () => mockChatThinking.mock.calls.at(-1)![0] as HerleitungProps
+  const derivation = () => mockChatThinking.mock.calls.at(-1)![0] as DerivationProps
 
   test('is there from the send, before any step — and no typing bubble stands in for it', () => {
     use(turnState([question({ thinkingSteps: [] })], true))
@@ -1168,7 +1168,7 @@ describe('ChatArea — the live Herleitung', () => {
 
     expect(screen.getByTestId('chat-thinking')).toBeInTheDocument()
     // Nothing to open yet: the header alone is the working cue.
-    expect(herleitung()).toMatchObject({ isThinking: true, autoOpen: false, answering: false })
+    expect(derivation()).toMatchObject({ isThinking: true, autoOpen: false, answering: false })
     expect(screen.queryByRole('status', { name: 'Thinking …' })).not.toBeInTheDocument()
   })
 
@@ -1176,37 +1176,37 @@ describe('ChatArea — the live Herleitung', () => {
     use(turnState([question()], true))
     render(<ChatArea isAuthenticated={true} />)
 
-    expect(herleitung().since).toBe(sentAt)
+    expect(derivation().since).toBe(sentAt)
   })
 
   test('folds when the answer starts, and its header stays live until the answer settles', () => {
     use(turnState([question(), answer('')], true))
     const { rerender } = render(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
-    expect(herleitung()).toMatchObject({ isThinking: true, autoOpen: true, answering: false })
+    expect(derivation()).toMatchObject({ isThinking: true, autoOpen: true, answering: false })
 
     // The first words: folded, still live.
     use(turnState([question(), answer('Die')], true))
     rerender(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
-    expect(herleitung()).toMatchObject({ isThinking: true, autoOpen: false, answering: true })
+    expect(derivation()).toMatchObject({ isThinking: true, autoOpen: false, answering: true })
 
     // The stream ends; the answer is still finishing its held-back words.
     useAnswerRevealStore.setState({ revealingId: 'answer-1' })
     use(turnState([question(), answer('Die Antwort.')], false))
     rerender(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
-    expect(herleitung()).toMatchObject({ isThinking: true, autoOpen: false })
+    expect(derivation()).toMatchObject({ isThinking: true, autoOpen: false })
 
     // The settle changes the status and nothing that has a height.
     act(() => useAnswerRevealStore.getState().end('answer-1'))
-    expect(herleitung()).toMatchObject({ isThinking: false, autoOpen: false })
+    expect(derivation()).toMatchObject({ isThinking: false, autoOpen: false })
   })
 
   test('a masthead (or a card) before the first word folds it too', () => {
     use(turnState([question(), answer('', { answerMeta: { v: 1, topic: 'Fluchtwege' } })], true))
     render(<ChatArea isAuthenticated={true} />)
-    expect(herleitung()).toMatchObject({ isThinking: true, autoOpen: false, answering: true })
+    expect(derivation()).toMatchObject({ isThinking: true, autoOpen: false, answering: true })
   })
 
-  test('the answer is withheld while the Herleitung above it folds, then placed under the bar', async () => {
+  test('the answer is withheld while the derivation above it folds, then placed under the bar', async () => {
     // The answer message exists from its first drawable content on.
     use(turnState([question()], true))
     const { rerender } = render(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
@@ -1225,7 +1225,7 @@ describe('ChatArea — the live Herleitung', () => {
     use(turnState([question({ thinkingSteps: [] }), answer('Hallo')], false))
     rerender(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
     expect(screen.getByTestId('chat-thinking')).toBeInTheDocument()
-    expect(herleitung().isThinking).toBe(false)
+    expect(derivation().isThinking).toBe(false)
   })
 
   test('says the settle once, in a polite status, with the answer\'s gist', () => {
@@ -1248,7 +1248,7 @@ describe('ChatArea — the live Herleitung', () => {
     use(turnState([question(), answer('Die Antw', { stopped: true })], false))
     rerender(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
 
-    expect(herleitung().isStopped).toBe(true)
+    expect(derivation().isStopped).toBe(true)
     expect(container.textContent).toContain('Stopped')
   })
 
@@ -1335,7 +1335,7 @@ describe('ChatArea — the live Herleitung', () => {
       })
     )
     render(<ChatArea isAuthenticated={true} />)
-    expect(herleitung().isInterrupted).toBe(false)
+    expect(derivation().isInterrupted).toBe(false)
   })
 
   test('a run message counts as the response, and an error card explains a failure', () => {
@@ -1355,7 +1355,7 @@ describe('ChatArea — the live Herleitung', () => {
       )
     )
     render(<ChatArea isAuthenticated={true} />)
-    expect(herleitung().isInterrupted).toBe(false)
+    expect(derivation().isInterrupted).toBe(false)
   })
 
   // The network is not the turn: when the socket gives up on it, the words the
@@ -1386,7 +1386,7 @@ describe('ChatArea — the live Herleitung', () => {
 
     expect(screen.getByText(/Die Fluchtweglänge beträgt/)).toBeInTheDocument()
     // Not a lost turn: it has words, and the server is being asked for the rest.
-    expect(herleitung().isInterrupted).toBe(false)
+    expect(derivation().isInterrupted).toBe(false)
     expect(screen.getByTestId('thread-status-dock')).toHaveTextContent(
       /connection lost.*carries on/i
     )
@@ -1395,7 +1395,7 @@ describe('ChatArea — the live Herleitung', () => {
   test('a turn this client lost track of, with nothing after it, is interrupted', () => {
     use(turnState([question()], false))
     render(<ChatArea isAuthenticated={true} />)
-    expect(herleitung().isInterrupted).toBe(true)
+    expect(derivation().isInterrupted).toBe(true)
   })
 })
 
@@ -2504,7 +2504,7 @@ describe('ChatArea — opening a thread, its endings and its dock', () => {
     retryLastUserMessage: vi.fn(),
     ...extra,
   })
-  const herleitung = () => mockChatThinking.mock.calls.at(-1)![0] as { endedAs?: string; isInterrupted?: boolean; answering?: boolean }
+  const derivation = () => mockChatThinking.mock.calls.at(-1)![0] as { endedAs?: string; isInterrupted?: boolean; answering?: boolean }
 
   test('a thread whose messages are on their way shows the skeleton, never the greeting', () => {
     // The awaiting flag used to be a module Set nothing re-rendered on: a
@@ -2549,7 +2549,7 @@ describe('ChatArea — opening a thread, its endings and its dock', () => {
           id: 'run-message-1',
           runLedger: {
             runId: 'run-1',
-            status: 'laeuft',
+            status: 'running',
             phases: [],
             steps: [],
             startedAt: '2026-10-09T08:00:00.000Z',
@@ -2561,14 +2561,14 @@ describe('ChatArea — opening a thread, its endings and its dock', () => {
     rerender(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
 
     expect(document.getElementById('message-run-message-1')).toBe(row)
-    expect(herleitung().endedAs).toBe('handed_off')
+    expect(derivation().endedAs).toBe('handed_off')
   })
 
   test('a turn that failed reads as failed, never as interrupted or done', () => {
     use(thread([question(), answer('Halber Satz', { failed: true })]))
     render(<ChatArea isAuthenticated={true} />)
 
-    expect(herleitung()).toMatchObject({ endedAs: 'failed', isInterrupted: false })
+    expect(derivation()).toMatchObject({ endedAs: 'failed', isInterrupted: false })
   })
 
   test('a turn the queue refused is not handled, not failed and not done', () => {
@@ -2586,19 +2586,19 @@ describe('ChatArea — opening a thread, its endings and its dock', () => {
     )
     render(<ChatArea isAuthenticated={true} />)
 
-    expect(herleitung()).toMatchObject({ endedAs: 'refused', isInterrupted: false })
+    expect(derivation()).toMatchObject({ endedAs: 'refused', isInterrupted: false })
   })
 
-  test('a retraction does not reopen the Herleitung over the answer it folded for', () => {
+  test('a retraction does not reopen the derivation over the answer it folded for', () => {
     use(thread([question(), answer('Erster Satz.', { isStreaming: true })], { isStreaming: true, currentUserMessageId: 'user-1' }))
     const { rerender } = render(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
-    expect(herleitung().answering).toBe(true)
+    expect(derivation().answering).toBe(true)
 
     // The answer is retracted: empty again while the next round works.
     use(thread([question(), answer('', { isStreaming: true })], { isStreaming: true, currentUserMessageId: 'user-1' }))
     rerender(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
 
-    expect(herleitung().answering).toBe(true)
+    expect(derivation().answering).toBe(true)
   })
 
   test('a dropped connection is a quiet line above the composer, not a card in the thread', async () => {

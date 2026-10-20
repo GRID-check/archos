@@ -11,7 +11,7 @@ import type { FolderAccessLevel } from '../lib/file-shelf'
 import { refusalOf, shelfRefusalOf, throwUnlessOk } from '../lib/move-refusal'
 
 export interface FolderTreeOptions {
-  /** The shelf's folder collection (`/api/projects/{id}/folders`, `/api/archiv/folders`). */
+  /** The shelf's folder collection (`/api/projects/{id}/folders`, `/api/office-shelf/folders`). */
   foldersUrl: string
   /** The tree as the server already read it, for the first paint. */
   initialFolders?: readonly FolderItem[]

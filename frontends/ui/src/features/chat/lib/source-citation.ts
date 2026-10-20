@@ -124,12 +124,12 @@ const displayTitle = (ref: CitationRef): string => ref.document.title.trim()
 const isOib = (ref: CitationRef): boolean =>
   ref.document.authority === 'OIB' ||
   ref.document.tint === 'oib' ||
-  (ref.document.lane ?? '').toLowerCase().startsWith('baurecht_oib')
+  (ref.document.lane ?? '').toLowerCase().startsWith('building_law_oib')
 
 const isNorm = (ref: CitationRef): boolean => ref.document.authority === 'ÖNORM'
 
 const isLaw = (ref: CitationRef): boolean =>
-  (ref.document.lane ?? '').toLowerCase().startsWith('baurecht') ||
+  (ref.document.lane ?? '').toLowerCase().startsWith('building_law') ||
   ref.document.origin === 'ris'
 
 /** Characters a CSL `id` may carry — citation-js writes it as the BibTeX key. */
@@ -194,7 +194,7 @@ export const toCslItem = (ref: CitationRef, now: Date): CslItem => {
   // The Punkt of THIS reference. Document-level references have none: a Punkt
   // is a place inside a document, and claiming one the citation does not name
   // would be the same overstatement `refPage` refuses for pages.
-  const section = ref.locus?.punkt?.trim() || undefined
+  const section = ref.locus?.clause?.trim() || undefined
   const url = ref.document.url
   const id = cslId(ref)
 
@@ -263,7 +263,7 @@ const formatAustrianDate = (now: Date): string =>
  * documents use: the OIB's own "OIB-Richtlinie N, Ausgabe …, S. x" form, and a
  * legal source cited with its Fundstelle plus the RIS retrieval note.
  */
-export const toFachtext = (ref: CitationRef, now: Date): string => {
+export const toTechnicalText = (ref: CitationRef, now: Date): string => {
   const csl = toCslItem(ref, now)
   const parts: string[] = [csl.title]
 
@@ -302,9 +302,9 @@ export const toFachtext = (ref: CitationRef, now: Date): string => {
 }
 
 /** The numbered Fachtext bibliography for a whole answer. */
-export const toFachtextList = (refs: CitationRef[], now: Date): string =>
+export const toTechnicalTextList = (refs: CitationRef[], now: Date): string =>
   refs
-    .map((ref, index) => `[${refNumber(ref) ?? index + 1}] ${toFachtext(ref, now)}`)
+    .map((ref, index) => `[${refNumber(ref) ?? index + 1}] ${toTechnicalText(ref, now)}`)
     .join('\n')
 
 /**
@@ -326,7 +326,7 @@ export const toQuoteList = (refs: CitationRef[], now: Date): string => {
       .join(', ')
     return [`„${snippet}“ — ${source}`]
   })
-  return lines.length > 0 ? lines.join('\n\n') : toFachtextList(refs, now)
+  return lines.length > 0 ? lines.join('\n\n') : toTechnicalTextList(refs, now)
 }
 
 /** CSL-JSON for a whole answer, ready for Zotero / Word / pandoc import. */

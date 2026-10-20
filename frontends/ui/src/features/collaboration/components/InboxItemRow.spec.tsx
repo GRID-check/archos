@@ -451,7 +451,7 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
   // before interacting so the `ifMatch` each decision sends is deterministic
   // — which STAND the test acts on — rather than a race between the clicks
   // below and the promise.
-  const settleStand = () => act(async () => {})
+  const settleState = () => act(async () => {})
 
   test('offers the three decisions and the file beside them', () => {
     render(<InboxItemRow item={reviewRequest()} reviewClient={reviewClient()} />)
@@ -470,14 +470,14 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
   test('approval is signed, never one click', async () => {
     const client = reviewClient()
     render(<InboxItemRow item={reviewRequest()} reviewClient={client} />)
-    await settleStand()
+    await settleState()
 
     fireEvent.click(screen.getByTestId('inbox-review-approve'))
     expect(client.approve).not.toHaveBeenCalled()
     // The Fassung number is required: the stand already names which version
     // the signature releases, and the send stays shut until it is signed.
     await waitFor(() =>
-      expect(screen.getByTestId('inbox-review-approve-stand')).toHaveTextContent('revision 2'),
+      expect(screen.getByTestId('inbox-review-approve-as-of')).toHaveTextContent('revision 2'),
     )
     const send = screen.getByTestId('inbox-review-approve-send')
     expect(send).toBeDisabled()
@@ -499,7 +499,7 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
     render(<InboxItemRow item={reviewRequest()} reviewClient={client} />)
 
     fireEvent.click(screen.getByTestId('inbox-review-approve'))
-    expect(screen.getByTestId('inbox-review-approve-stand')).toHaveTextContent('…')
+    expect(screen.getByTestId('inbox-review-approve-as-of')).toHaveTextContent('…')
     fireEvent.click(screen.getByRole('checkbox', { name: 'I approve this revision' }))
     expect(screen.getByTestId('inbox-review-approve-send')).toBeDisabled()
     expect(client.approve).not.toHaveBeenCalled()
@@ -526,7 +526,7 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
     fireEvent.click(screen.getByTestId('inbox-review-stand-retry'))
 
     await waitFor(() =>
-      expect(screen.getByTestId('inbox-review-approve-stand')).toHaveTextContent('revision 2'),
+      expect(screen.getByTestId('inbox-review-approve-as-of')).toHaveTextContent('revision 2'),
     )
     expect(screen.queryByTestId('inbox-review-stand-failed')).toBeNull()
     expect(screen.getByTestId('inbox-review-approve-send')).toBeEnabled()
@@ -538,7 +538,7 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
     // is the clock frozen, so the acting line — which stamps the viewer's own
     // press — is asserted in full, never just its prefix.
     render(<InboxItemRow item={reviewRequest()} reviewClient={reviewClient()} />)
-    await settleStand()
+    await settleState()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-04T10:00:00Z'))
     try {
@@ -546,7 +546,7 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
 
       // Which stand: the document, its Fassung number (required — file-pane
       // parity) and when the round opened (≈ submission).
-      expect(screen.getByTestId('inbox-review-approve-stand')).toHaveTextContent(
+      expect(screen.getByTestId('inbox-review-approve-as-of')).toHaveTextContent(
         `Brandschutzkonzept_Wohnbau-Nord.md · revision 2 · as of ${formatAbsoluteTime('2026-07-24T09:00:00Z', 'en')}`,
       )
       // Actor identity: whose request this stand answers — no name is stamped
@@ -566,7 +566,7 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
   test('requesting changes requires words', async () => {
     const client = reviewClient()
     render(<InboxItemRow item={reviewRequest()} reviewClient={client} />)
-    await settleStand()
+    await settleState()
 
     fireEvent.click(screen.getByTestId('inbox-review-request-changes'))
     // The STAND read runs when the decision opens; its `contentHash` rides the
@@ -597,7 +597,7 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
   test('rejecting requires a reason', async () => {
     const client = reviewClient()
     render(<InboxItemRow item={reviewRequest()} reviewClient={client} />)
-    await settleStand()
+    await settleState()
 
     fireEvent.click(screen.getByTestId('inbox-review-reject'))
     await waitFor(() => expect(client.getVersion).toHaveBeenCalled())
@@ -616,10 +616,10 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
   test('a refused decision says so and keeps the row decidable', async () => {
     const client = reviewClient({ approve: vi.fn().mockRejectedValue(new Error('403')) })
     render(<InboxItemRow item={reviewRequest()} reviewClient={client} />)
-    await settleStand()
+    await settleState()
 
     fireEvent.click(screen.getByTestId('inbox-review-approve'))
-    expect(await screen.findByTestId('inbox-review-approve-stand')).toHaveTextContent('revision 2')
+    expect(await screen.findByTestId('inbox-review-approve-as-of')).toHaveTextContent('revision 2')
     fireEvent.click(screen.getByRole('checkbox', { name: 'I approve this revision' }))
     fireEvent.click(screen.getByTestId('inbox-review-approve-send'))
 
@@ -641,10 +641,10 @@ describe('InboxItemRow — inline review decisions (triage without Files)', () =
         .mockRejectedValue(new DocumentLifecycleError(409, 'CONFLICT', 'state changed')),
     })
     render(<InboxItemRow item={reviewRequest()} reviewClient={client} />)
-    await settleStand()
+    await settleState()
 
     fireEvent.click(screen.getByTestId('inbox-review-approve'))
-    expect(await screen.findByTestId('inbox-review-approve-stand')).toHaveTextContent('revision 2')
+    expect(await screen.findByTestId('inbox-review-approve-as-of')).toHaveTextContent('revision 2')
     fireEvent.click(screen.getByRole('checkbox', { name: 'I approve this revision' }))
     fireEvent.click(screen.getByTestId('inbox-review-approve-send'))
 
@@ -728,15 +728,15 @@ describe('InboxItemRow — a row whose target is a document', () => {
   })
 
   test('offers nothing for an Archiv document, which has no project chat', () => {
-    render(<InboxItemRow item={reviewRequest({ href: '/app/archiv?doc=doc-7' })} />)
+    render(<InboxItemRow item={reviewRequest({ href: '/app/office-shelf?doc=doc-7' })} />)
     expect(screen.queryByTestId('discuss-document')).not.toBeInTheDocument()
   })
 })
 
-describe('InboxItemRow — a new Fassung (document.new_fassung)', () => {
-  const newFassung = (overrides: Partial<InboxItemView> = {}) =>
+describe('InboxItemRow — a new Fassung (document.new_revision)', () => {
+  const newRevision = (overrides: Partial<InboxItemView> = {}) =>
     item({
-      type: 'document.new_fassung',
+      type: 'document.new_revision',
       state: 'unread',
       archived: false,
       actionable: false,
@@ -753,7 +753,7 @@ describe('InboxItemRow — a new Fassung (document.new_fassung)', () => {
     })
 
   test('is a sentence about the person who uploaded it, with what changed as its only body', () => {
-    render(<InboxItemRow item={newFassung()} />)
+    render(<InboxItemRow item={newRevision()} />)
     expect(screen.getByText('Anna Weber uploaded a new revision of “Grundriss EG A”')).toBeInTheDocument()
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Wand im EG verschoben.')
     // No sentence above the excerpt repeating that something changed, so the
@@ -769,17 +769,17 @@ describe('InboxItemRow — a new Fassung (document.new_fassung)', () => {
   test('reads in German as a sentence about the person', () => {
     renderPlain(
       <I18nProvider initialLocale="de" fixedLocale>
-        <InboxItemRow item={newFassung()} />
+        <InboxItemRow item={newRevision()} />
       </I18nProvider>,
     )
     expect(screen.getByText('Anna Weber hat eine neue Fassung von „Grundriss EG A“ hochgeladen')).toBeInTheDocument()
-    expect(screen.getByTestId('inbox-compare-fassungen')).toHaveTextContent('Fassungen vergleichen')
+    expect(screen.getByTestId('inbox-compare-revisions')).toHaveTextContent('Fassungen vergleichen')
   })
 
   test('offers „Compare revisions" first, opening the newer document with the comparison against the older', () => {
     const onOpen = vi.fn()
-    render(<InboxItemRow item={newFassung()} onOpen={onOpen} />)
-    const compare = screen.getByTestId('inbox-compare-fassungen')
+    render(<InboxItemRow item={newRevision()} onOpen={onOpen} />)
+    const compare = screen.getByTestId('inbox-compare-revisions')
     expect(compare).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-b&compare=doc-a')
     expect(compare).toHaveAccessibleName('Compare the new and the older revision of “Grundriss EG A”')
     // „Discuss" stays, after it: the secondary move.
@@ -797,36 +797,36 @@ describe('InboxItemRow — a new Fassung (document.new_fassung)', () => {
           <InboxItemRow item={row} />
         </I18nProvider>,
       )
-    const many = de(newFassung({ ...same, variant: 'marks', openMarks: 4, marksFassung: 2 }))
+    const many = de(newRevision({ ...same, variant: 'marks', openMarks: 4, marksRevision: 2 }))
     expect(screen.getByText('4 offene Anmerkungen aus Fassung 2 prüfen')).toBeInTheDocument()
     many.unmount()
 
     // Beside what changed, and from another document: „the previous Fassung".
-    de(newFassung({ variant: 'mark_earlier', openMarks: 1, marksFassung: null }))
+    de(newRevision({ variant: 'mark_earlier', openMarks: 1, marksRevision: null }))
     expect(screen.getByText('1 offene Anmerkung aus der vorigen Fassung prüfen')).toBeInTheDocument()
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Wand im EG verschoben.')
   })
 
   test('says where the change is when there is no excerpt', () => {
-    render(<InboxItemRow item={newFassung({ excerpt: null })} />)
+    render(<InboxItemRow item={newRevision({ excerpt: null })} />)
     expect(screen.getByText('Open the revision to see what changed.')).toBeInTheDocument()
   })
 
   test('without a known actor, it does not say „Someone uploaded"', () => {
-    render(<InboxItemRow item={newFassung({ actorName: null })} />)
+    render(<InboxItemRow item={newRevision({ actorName: null })} />)
     expect(screen.getByText('New revision of “Grundriss EG A”')).toBeInTheDocument()
     expect(screen.queryByText(/Someone/)).not.toBeInTheDocument()
   })
 
   test('a same-name version has no second document, so nothing to lay side by side', () => {
-    render(<InboxItemRow item={newFassung({ related: null, resourceId: 'doc-a', anchorId: 'ver-2', excerpt: null })} />)
+    render(<InboxItemRow item={newRevision({ related: null, resourceId: 'doc-a', anchorId: 'ver-2', excerpt: null })} />)
     expect(screen.getByText('Anna Weber uploaded a new revision of “Grundriss EG A”')).toBeInTheDocument()
     expect(screen.queryByText(/Grundriss EG B/)).not.toBeInTheDocument()
-    expect(screen.queryByTestId('inbox-compare-fassungen')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('inbox-compare-revisions')).not.toBeInTheDocument()
   })
 
   test('a row the reader can no longer reach names neither document and is not a link', () => {
-    render(<InboxItemRow item={newFassung({ href: null, subject: null, related: null, excerpt: null })} />)
+    render(<InboxItemRow item={newRevision({ href: null, subject: null, related: null, excerpt: null })} />)
     expect(screen.queryByText(/Grundriss EG/)).not.toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
@@ -1591,7 +1591,7 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
     const onOpen = vi.fn()
     render(
       <InboxItemRow
-        item={item({ type: 'document.new_fassung', actionable: false, resourceType: 'document', resourceId: 'doc-7', anchorId: 'ver-2', href: '/app/projects/p1/files?doc=doc-7', subject: 'Befund', related: null })}
+        item={item({ type: 'document.new_revision', actionable: false, resourceType: 'document', resourceId: 'doc-7', anchorId: 'ver-2', href: '/app/projects/p1/files?doc=doc-7', subject: 'Befund', related: null })}
         onOpen={onOpen}
       />,
     )

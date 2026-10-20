@@ -15,21 +15,21 @@
 export const runs = {
   /** The five phases, as the rail and the phase list name them. */
   phase: {
-    planen: 'Planning',
-    recherchieren: 'Researching',
-    pruefen: 'Checking',
-    schreiben: 'Writing',
-    abgelegt: 'Filed',
+    planning: 'Planning',
+    researching: 'Researching',
+    checking: 'Checking',
+    writing: 'Writing',
+    filed: 'Filed',
   },
   /** The seven display states — the bold word in the header. */
   status: {
-    angelegt: 'Starting',
-    laeuft: 'Running',
-    wartet: 'Waiting for you',
-    fertig: 'Done',
-    fehlgeschlagen: 'Failed',
-    abgebrochen: 'Cancelled',
-    unterbrochen: 'Interrupted',
+    created: 'Starting',
+    running: 'Running',
+    waiting: 'Waiting for you',
+    done: 'Done',
+    failed: 'Failed',
+    cancelled: 'Cancelled',
+    interrupted: 'Interrupted',
   },
   /**
    * The second clause of the status line — the one fact the state owes the
@@ -38,13 +38,13 @@ export const runs = {
   line: {
     /** angelegt, inside a project: where the result will end up. */
     filing: 'result goes to the project',
-    wartet: 'answer below in the thread',
-    fertigFiled: 'report filed in Project › Reports',
-    fertigInline: 'the report is here in the thread',
+    waiting: 'answer below in the thread',
+    doneFiled: 'report filed in Project › Reports',
+    doneInline: 'the report is here in the thread',
     /** Leads with the word itself, because the reason has to follow it. */
-    fehlgeschlagen: 'Failed: {reason}',
-    abgebrochen: 'stopped at your request',
-    unterbrochen: 'report written from what was there',
+    failed: 'Failed: {reason}',
+    cancelled: 'stopped at your request',
+    interrupted: 'report written from what was there',
   },
   /** What was already done when the run stopped. */
   completedBefore: 'Done so far: {phases}',
@@ -61,11 +61,11 @@ export const runs = {
   },
   /** The one line a finished phase folds to, and the live line of an active one. */
   phaseLine: {
-    planen: 'Research plan drawn up',
-    pruefen: 'Citations checked against the sources',
-    pruefenLive: 'Checking citations against the sources',
-    schreiben: 'Report written',
-    schreibenLive: 'Writing the report',
+    planning: 'Research plan drawn up',
+    checking: 'Citations checked against the sources',
+    checkingLive: 'Checking citations against the sources',
+    writing: 'Report written',
+    writingLive: 'Writing the report',
   },
   tallies: {
     rounds: '{count, plural, one {# round} other {# rounds}}',
@@ -96,7 +96,7 @@ export const runs = {
    * The Unterlagen: the documents the reader named for the run. The receipt
    * says which were read and where; the picker over the thread names more.
    */
-  unterlagen: {
+  documents: {
     receiptLabel: 'Documents named for this task',
     receipt: '{read} of {total} named documents read',
     unread: 'not read',
@@ -125,7 +125,7 @@ export const runs = {
     restrictedReason:
       'Sits in a folder with restricted access. A run’s documents and its report are visible to everyone in the project, so it cannot be added.',
     done: 'Done',
-    shelf: { project: 'Project', archiv: 'Office filing', session: 'This chat', base: 'Regulations' },
+    shelf: { project: 'Project', office_shelf: 'Office filing', session: 'This chat', base: 'Regulations' },
   },
   cancel: {
     confirmTitle: 'Stop this task?',

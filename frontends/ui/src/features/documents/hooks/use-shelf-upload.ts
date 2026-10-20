@@ -12,12 +12,12 @@ import { useUploadDecision, type SettledPlan } from './use-upload-decision'
 import { UploadScreeningPolicyUnavailableError } from '@/adapters/api/upload-screening-policy'
 
 export interface ShelfUploadOptions {
-  shelf: Pick<FileShelf, 'probeNames' | 'probeFassungen' | 'handoverKey'> & {
+  shelf: Pick<FileShelf, 'probeNames' | 'probeRevisions' | 'handoverKey'> & {
     endpoints: Pick<ShelfEndpoints, 'folders'>
     /**
      * The project the shelf belongs to, when it is a project's: names are
      * screened with the project's policy (ADR-0086, 2026-10-20). Absent or
-     * null screens with the office's list, as the Archiv does.
+     * null screens with the office's list, as the office shelf does.
      */
     projectId?: string | null
   }
@@ -73,7 +73,7 @@ interface QueuedDrop {
  *
  * A file whose name continues a document already on the shelf (index or date in
  * the name, newer than it) is offered „Als neue Fassung von X ablegen" in the
- * same dialog, decided with `fassungOffers: probeFassungen` and sent as `fassungOf`
+ * same dialog, decided with `revisionOffers: probeRevisions` and sent as `revisionOf`
  * (ADR-0099).
  *
  * Every path is screened against the office's sensitive-data list (ADR-0086),
@@ -94,9 +94,9 @@ export function useShelfUpload({
 }: ShelfUploadOptions) {
   const t = useTranslations('files')
   const decision = useUploadDecision({ projectId: shelf.projectId ?? null })
-  const { propose, setReleased, settle, changeFassung, plan, setOpen, setPending } = decision
+  const { propose, setReleased, settle, changeRevision, plan, setOpen, setPending } = decision
   const { uploadFiles } = upload
-  const { probeNames, probeFassungen, handoverKey } = shelf
+  const { probeNames, probeRevisions, handoverKey } = shelf
   const ensureUrl = `${shelf.endpoints.folders}/ensure`
 
   /**
@@ -156,7 +156,7 @@ export function useShelfUpload({
             {
               files,
               documents: probeNames,
-              fassungOffers: probeFassungen,
+              revisionOffers: probeRevisions,
               folders,
               currentFolderId: target.folderId,
               screeningBasePath: target.path,
@@ -173,7 +173,7 @@ export function useShelfUpload({
           )
         })
     },
-    [unpackArchives, propose, probeNames, probeFassungen, uploadFiles, folders, pathOf, t]
+    [unpackArchives, propose, probeNames, probeRevisions, uploadFiles, folders, pathOf, t]
   )
 
   /*
@@ -367,8 +367,8 @@ export function useShelfUpload({
               screeningReleased: (file) => plannedByFile.get(file)?.screeningReleased === true,
               // The reader's tick on „Als neue Fassung von X ablegen" (ADR-0099): the older
               // document's id, which the server checks again before the link is written.
-              fassungOf: (file) => {
-                const offer = plannedByFile.get(file)?.fassungOf
+              revisionOf: (file) => {
+                const offer = plannedByFile.get(file)?.revisionOf
                 return offer?.chosen ? offer.of.id : null
               },
               // The policy this plan was just settled against: read once, so
@@ -416,5 +416,5 @@ export function useShelfUpload({
     ]
   )
 
-  return { handleUpload, applyFolderPlan, onReleaseChange, onFassungChange: changeFassung, decision }
+  return { handleUpload, applyFolderPlan, onReleaseChange, onRevisionChange: changeRevision, decision }
 }

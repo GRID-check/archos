@@ -25,7 +25,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import type { BimComparison } from '@/lib/bim/compare'
-import { rulesWithOpenWork, type BimRuleResult } from '@/lib/bim/rules'
+import { canonicalBimRuleId, rulesWithOpenWork, type BimRuleResult } from '@/lib/bim/rules'
 import { roomScheduleToCsv, type BimRoomSchedule } from '@/lib/bim/schedule'
 import { buildModelHref } from '@/features/bim/lib/model-link'
 import { formatPropertyValue } from '@/features/bim/lib/format-value'
@@ -603,10 +603,10 @@ export function IfcComplianceCard({
   const request = useMemo(
     () => ({
       op: 'compliance' as const,
-      ...(facts.gebaeudeklasse === null ? {} : { gebaeudeklasse: facts.gebaeudeklasse }),
-      ...(facts.hauptnutzung === null ? {} : { hauptnutzung: facts.hauptnutzung }),
+      ...(facts.buildingClass === null ? {} : { buildingClass: facts.buildingClass }),
+      ...(facts.mainUse === null ? {} : { mainUse: facts.mainUse }),
     }),
-    [facts.gebaeudeklasse, facts.hauptnutzung]
+    [facts.buildingClass, facts.mainUse]
   )
   // WAIT for the brief. Without the guard the catalogue runs once with no
   // Gebäudeklasse and again with it, and the first run is both discarded and
@@ -624,14 +624,14 @@ export function IfcComplianceCard({
   const selected = useMemo(() => {
     if (!rules) return null
     if (ruleIds.length === 0) return rules
-    const wanted = new Set(ruleIds)
+    const wanted = new Set(ruleIds.map(canonicalBimRuleId))
     return rules.filter((rule) => wanted.has(rule.ruleId))
   }, [rules, ruleIds])
 
   const unresolved = useMemo(() => {
     if (!rules || ruleIds.length === 0) return 0
     const known = new Set(rules.map((rule) => rule.ruleId))
-    return ruleIds.filter((id) => !known.has(id)).length
+    return ruleIds.filter((id) => !known.has(canonicalBimRuleId(id))).length
   }, [rules, ruleIds])
 
   // Rendered here rather than left to the answer text: the agent is told to
@@ -641,10 +641,10 @@ export function IfcComplianceCard({
   const bcfHref = useMemo(() => {
     if (!model || !projectId || !selected || rulesWithOpenWork(selected).length === 0) return null
     const query = new URLSearchParams({ modelId: model.id })
-    if (facts.gebaeudeklasse !== null) query.set('gebaeudeklasse', String(facts.gebaeudeklasse))
-    if (facts.hauptnutzung !== null) query.set('hauptnutzung', facts.hauptnutzung)
+    if (facts.buildingClass !== null) query.set('buildingClass', String(facts.buildingClass))
+    if (facts.mainUse !== null) query.set('mainUse', facts.mainUse)
     return `/api/projects/${projectId}/bim/checks/export?${query.toString()}`
-  }, [model, projectId, selected, facts.gebaeudeklasse, facts.hauptnutzung])
+  }, [model, projectId, selected, facts.buildingClass, facts.mainUse])
 
   return (
     <CardShell

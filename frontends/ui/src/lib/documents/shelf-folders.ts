@@ -5,7 +5,7 @@
  * Every function here takes the {@link DocumentShelf} and authorizes through
  * `requireShelfRead` / `requireShelfWrite` — the one place the two shelves'
  * permissions differ. `@/lib/projects/folder-service` and
- * `@/lib/archiv/folder-service` are only the names each shelf's callers know
+ * `@/lib/office-shelf/folder-service` are only the names each shelf's callers know
  * these by. What a folder IS — its name rules,
  * its materialised path, the cycle check, the re-filing before a delete, the
  * mirror to the backend — is the same on both shelves, so it is written once.
@@ -43,7 +43,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireShelfRead, requireShelfWrite } from './shelf-authz'
 import { shelfCollectionName } from './shelf-collection'
 import { publishShelfChanged } from './shelf-live'
-import { shelfDocumentWhere, shelfOwner, shelfFolderWhere, type ArchivShelf, type DocumentShelf } from './shelf'
+import { shelfDocumentWhere, shelfOwner, shelfFolderWhere, type OfficeShelf, type DocumentShelf } from './shelf'
 import { escapeLikePattern } from '@/lib/text/like-pattern'
 
 /** Backend calls here are decoration on a committed write — keep them short. */
@@ -718,7 +718,7 @@ export async function updateShelfFolder(
  */
 export async function deleteShelfFolder(
   session: AuthorizedSession,
-  shelf: ArchivShelf,
+  shelf: OfficeShelf,
   folderId: string,
 ): Promise<Outcome<{ result: DeleteFolderResult }>> {
   await requireShelfWrite(session, shelf)

@@ -38,7 +38,7 @@ const FOLDER_B = 'aaaaaaaa-0000-4000-8000-00000000000a'
 const document = { documentId: DOC, projectId: PROJECT, projectCollection: 'proj_1', fileName: 'Bescheid.pdf' }
 
 const requirement = (content: string, evidence: string | null = null) => ({
-  kind: 'auflage' as const,
+  kind: 'condition' as const,
   content,
   evidence,
   legalBasis: null,
@@ -52,10 +52,10 @@ const body = (overrides: Partial<StorePermitRecordRequest> = {}): StorePermitRec
   fileName: 'ignored-name.pdf',
   model: 'summary-model',
   record: {
-    kind: 'bewilligung',
+    kind: 'approval',
     authority: 'Stadtgemeinde Mödling',
     municipality: 'Mödling',
-    bundesland: 'niederoesterreich',
+    federalState: 'niederoesterreich',
     issuedOn: '2021-05-04',
     reference: 'Bau-123/2021',
     requirements: [requirement('Brandschutzkonzept vorzulegen.', 'Gutachten'), requirement('Fluchtwege zu bemaßen.')],
@@ -133,7 +133,7 @@ describe('storePermitRecord', () => {
         fileName: 'Bescheid.pdf',
         restrictedFolderIds: null,
         model: 'summary-model',
-        kind: 'bewilligung',
+        kind: 'approval',
         authority: 'Stadtgemeinde Mödling',
         issuedOn: '2021-05-04',
         requirements: [

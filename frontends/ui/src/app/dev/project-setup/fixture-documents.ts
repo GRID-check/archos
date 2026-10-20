@@ -82,7 +82,7 @@ export function installFixtureDocuments(view: IntakeView): void {
           .map((name) => ({ id: idOf(name), filename: name, createdAt: '2026-10-14T08:30:00.000Z', contentType: 'application/pdf' })),
       })
     }
-    if (url.pathname === '/api/archiv/documents/by-name') return json({ documents: [] })
+    if (url.pathname === '/api/office-shelf/documents/by-name') return json({ documents: [] })
     const route = /^\/api\/documents\/([^/]+)\/(preview|file)$/.exec(url.pathname)
     const bytes = route ? byId.get(decodeURIComponent(route[1])) : undefined
     if (route && bytes) {

@@ -11,7 +11,7 @@ import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
  * key or a moved cap on either side fails one of the two tests instead of
  * shipping green with the Herleitung's account silently dropped.
  */
-const FIXTURE_PATH = resolve(__dirname, '../../../../../tests/fixtures/herleitung/retrieval_ledger_wire.json')
+const FIXTURE_PATH = resolve(__dirname, '../../../../../tests/fixtures/derivation/retrieval_ledger_wire.json')
 
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as unknown
 
@@ -32,7 +32,7 @@ const ROUND_0 = {
 
 const ROUND_1 = {
   index: 1,
-  key: 'status.retrieval.punkt',
+  key: 'status.retrieval.clause',
   tools: ['read_passage'],
   corpora: ['knowledge'],
   reason: 'Die Grundregel steht.',
@@ -53,7 +53,7 @@ const ROUND_1 = {
 /** One file, three Punkte — the round the fan folds to a single card. */
 const ROUND_2 = {
   index: 2,
-  key: 'status.retrieval.punkt',
+  key: 'status.retrieval.clause',
   tools: ['read_passage'],
   corpora: ['knowledge'],
   reason: 'Die Fluchtweglänge hängt an drei Punkten.',

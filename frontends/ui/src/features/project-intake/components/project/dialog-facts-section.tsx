@@ -26,12 +26,12 @@ import { Chip } from '@/components/ui/chip'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
-import { useProjectPeriodText, useSteckbriefFormat } from '@/features/projects/components/steckbrief-editor'
+import { useProjectPeriodText, useProjectRecordFormat } from '@/features/projects/components/project-record-editor'
 import { useTranslations } from '@/i18n'
 import { MAX_INTAKE_DESCRIPTION_LENGTH, type IntakeDecision, type IntakeView } from '@/lib/project-intake/types'
 import type { ProjectBasics } from '@/lib/projects/participants-client'
 import { createSameAddressClient, type SameAddressClient } from '@/lib/projects/same-address-client'
-import type { SteckbriefView } from '@/lib/projects/steckbrief-types'
+import type { ProjectRecordView } from '@/lib/projects/project-record-types'
 import { ADDRESS_KEY, FEDERAL_STATE_KEY, COUNTRY_KEY, DESCRIPTION_KEY, dialogFacts } from './dialog-facts'
 import { FactRow, StepCard } from './step-card'
 
@@ -39,7 +39,7 @@ export interface DialogFactsSectionProps {
   view: IntakeView
   projectId: string
   project: ProjectBasics | null
-  peopleRecord: SteckbriefView | null
+  peopleRecord: ProjectRecordView | null
   canDecide: boolean
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
@@ -57,7 +57,7 @@ export function factDecisions(
     const place = after.address.place
     if (place && place.label === address) {
       decisions.push({ key: COUNTRY_KEY, action: 'answer', value: place.country })
-      if (place.bundesland) decisions.push({ key: FEDERAL_STATE_KEY, action: 'answer', value: place.bundesland })
+      if (place.federalState) decisions.push({ key: FEDERAL_STATE_KEY, action: 'answer', value: place.federalState })
     }
   }
   const description = after.description.trim()
@@ -156,9 +156,9 @@ export function DialogFactsSection({ view, projectId, project, peopleRecord, can
 }
 
 /** „Aktiv · seit März 2026", „Fertiggestellt, wird nach der Prüfung abgeschlossen · März 2024 – Juni 2026". */
-function useStatusText(view: IntakeView, project: ProjectBasics | null, peopleRecord: SteckbriefView | null): string {
+function useStatusText(view: IntakeView, project: ProjectBasics | null, peopleRecord: ProjectRecordView | null): string {
   const t = useTranslations('intakeProjectStep')
-  const { span } = useSteckbriefFormat()
+  const { span } = useProjectRecordFormat()
   const period = useProjectPeriodText(peopleRecord ?? { startedOn: null, endedOn: null })
   const closing = view.closing && project?.status !== 'closed' ? view.closing : null
   const label = closing ? t(`facts.closingIntent.${closing.outcome}`) : project ? t(`facts.statuses.${project.status}`) : null

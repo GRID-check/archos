@@ -39,14 +39,14 @@ beforeEach(() => {
   vi.mocked(uploadDocument).mockResolvedValue({ documentId: 'd1', jobId: null, status: 'uploaded', filename: 'x.pdf' })
 })
 
-describe('POST /api/documents/upload — fassungOf', () => {
+describe('POST /api/documents/upload — revision link', () => {
   it('passes the older document’s id to the service, which checks it', async () => {
-    const response = await post({ fassungOf: OLDER })
+    const response = await post({ revisionOf: OLDER })
 
     expect(response.status).toBe(200)
     expect(uploadDocument).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ projectId: 'proj-1', fassungOf: OLDER }),
+      expect.objectContaining({ projectId: 'proj-1', revisionOf: OLDER }),
       expect.any(Request),
     )
   })
@@ -54,11 +54,11 @@ describe('POST /api/documents/upload — fassungOf', () => {
   it('sends none for an upload nobody filed as a Fassung', async () => {
     await post({})
 
-    expect(uploadDocument).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ fassungOf: null }), expect.any(Request))
+    expect(uploadDocument).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ revisionOf: null }), expect.any(Request))
   })
 
-  it('refuses a fassungOf that is a file name, before anything is stored', async () => {
-    const response = await post({ fassungOf: 'EG_Grundriss_Index_B.pdf' })
+  it('refuses a revision-of value that is a file name, before anything is stored', async () => {
+    const response = await post({ revisionOf: 'EG_Grundriss_Index_B.pdf' })
 
     expect(response.status).toBe(400)
     expect(uploadDocument).not.toHaveBeenCalled()

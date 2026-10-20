@@ -37,7 +37,7 @@ _RESULT = (
     "Diese Richtlinie gilt für …\n"
     "\n"
     "## Trace-Lanes\n"
-    '{"lanes": [{"key": "baurecht_oib", "sources": [{"name": "oib-rl_2_ausgabe_mai_2023.pdf"}]}]}\n'
+    '{"lanes": [{"key": "building_law_oib", "sources": [{"name": "oib-rl_2_ausgabe_mai_2023.pdf"}]}]}\n'
     "\n"
     "## Gliederung\n"
     "- Punkt 0: Vorbemerkungen (S. 3)\n"

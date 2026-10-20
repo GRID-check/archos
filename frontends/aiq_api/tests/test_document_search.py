@@ -446,7 +446,7 @@ async def test_grouped_search_names_the_searched_collection_not_the_chunks_claim
 async def test_grouped_search_hands_filters_and_boost_to_the_retriever_as_its_grammar(app):
     retriever = _grouped_retriever([])
     set_active_retriever(retriever)
-    weights = {"bundesland": 4, "gebaeudeklasse": 3, "gebaeudeklasse_adjacent": 1, "bauweise": 2}
+    weights = {"federal_state": 4, "building_class": 3, "building_class_adjacent": 1, "construction_method": 2}
 
     async with _client(app) as client:
         res = await client.post(
@@ -457,10 +457,10 @@ async def test_grouped_search_hands_filters_and_boost_to_the_retriever_as_its_gr
                 "filters": {
                     "document_types": ["Detail"],
                     "disciplines": ["Brandschutz", "Schallschutz"],
-                    "project_facts": {"bauweise": ["holzbau"], "bundesland": "niederoesterreich"},
+                    "project_facts": {"construction_method": ["timber"], "federal_state": "lower_austria"},
                     "project_status": ["closed"],
                 },
-                "boost": {"facts": {"bundesland": "wien", "gebaeudeklasse": [4]}, "weights": weights},
+                "boost": {"facts": {"federal_state": "vienna", "building_class": [4]}, "weights": weights},
             },
         )
 
@@ -470,14 +470,15 @@ async def test_grouped_search_hands_filters_and_boost_to_the_retriever_as_its_gr
         "$and": [
             {"tags": {"$in": ["Detail"]}},
             {"tags": {"$in": ["Brandschutz", "Schallschutz"]}},
-            {"project_facts.bundesland": {"$in": ["niederoesterreich"]}},
-            {"project_facts.bauweise": {"$in": ["holzbau"]}},
+            {"project_facts.federal_state": {"$in": ["lower_austria"]}},
+            {"project_facts.construction_method": {"$in": ["timber"]}},
             {"project_status": {"$in": ["closed"]}},
             {"superseded": {"$ne": True}},
         ]
     }
-    assert kwargs["boost"]["facts"]["gebaeudeklasse"] == [4]
-    assert kwargs["boost"]["weights"]["bundesland"] == 4 and kwargs["boost"]["weights"]["nutzung"] == 0
+    # The vector store holds the English names and tokens; points not yet rewritten are matched in the retriever.
+    assert kwargs["boost"]["facts"]["building_class"] == [4] and kwargs["boost"]["facts"]["federal_state"] == "vienna"
+    assert kwargs["boost"]["weights"]["federal_state"] == 4 and kwargs["boost"]["weights"]["use"] == 0
 
 
 @pytest.mark.asyncio

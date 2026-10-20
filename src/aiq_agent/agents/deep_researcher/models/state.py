@@ -55,7 +55,7 @@ class DeepResearchAgentState(BaseModel):
     plan_documents: PlanDocuments | None = None
     # The Grundlage the run did NOT reach, by file name. Set by ``run()`` only
     # when there is one, so presence is the fact.
-    grundlage_unread: list[str] | None = None
+    basis_unread: list[str] | None = None
     available_documents: list[AvailableDocument] | None = None
     project_context: str | None = None
     # The rendered PLATFORM_LESSONS block — anonymized fleet-wide process

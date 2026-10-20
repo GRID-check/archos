@@ -6,9 +6,9 @@ describe('sanitizeQuoteStamps', () => {
   it('reads the wire spelling and keeps the closed key set', () => {
     expect(
       sanitizeQuoteStamps([
-        { text: ' Wände sind in REI 90 auszuführen. ', status: 'verbatim', number: 1, file_name: 'oib.pdf', page: 4, punkt: '3.1', title: 'OIB-RL 2', extra: 'x' },
+        { text: ' Wände sind in REI 90 auszuführen. ', status: 'verbatim', number: 1, file_name: 'oib.pdf', page: 4, clause: '3.1', title: 'OIB-RL 2', extra: 'x' },
       ])
-    ).toEqual([{ text: 'Wände sind in REI 90 auszuführen.', status: 'verbatim', number: 1, fileName: 'oib.pdf', page: 4, punkt: '3.1', title: 'OIB-RL 2' }])
+    ).toEqual([{ text: 'Wände sind in REI 90 auszuführen.', status: 'verbatim', number: 1, fileName: 'oib.pdf', page: 4, clause: '3.1', title: 'OIB-RL 2' }])
   })
 
   it('drops what cannot be a stamp', () => {
@@ -34,5 +34,11 @@ describe('stampForQuote', () => {
     expect(stampForQuote(stamps ?? [], '„wände sind in REI 90 auszuführen" [1]', 1)?.status).toBe('verbatim')
     expect(stampForQuote(stamps ?? [], '„Nichts davon." [1]', 1)).toBeNull()
     expect(stampForQuote(undefined, 'x')).toBeNull()
+  })
+
+  it('reads the Punkt an older pod stored under its old name', () => {
+    expect(
+      sanitizeQuoteStamps([{ text: 'Wände sind in REI 90 auszuführen.', status: 'verbatim', punkt: '3.1' }])
+    ).toEqual([{ text: 'Wände sind in REI 90 auszuführen.', status: 'verbatim', clause: '3.1' }])
   })
 })

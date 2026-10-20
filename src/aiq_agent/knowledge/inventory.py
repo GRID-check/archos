@@ -62,7 +62,7 @@ _turn_documents: ContextVar[tuple[Any, ...]] = ContextVar("grid_turn_documents",
 _norm_families: ContextVar[tuple[Any, ...]] = ContextVar("grid_norm_families", default=())
 
 # User-facing shelves first; base last so the OIB corpus cannot evict them.
-_USER_SHELF_ORDER: tuple[Shelf, ...] = (Shelf.ARCHIV, Shelf.PROJECT, Shelf.SESSION)
+_USER_SHELF_ORDER: tuple[Shelf, ...] = (Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION)
 _INVENTORY_ORDER: tuple[Shelf, ...] = (*_USER_SHELF_ORDER, Shelf.BASE)
 
 #: How many in-flight filenames the prompt names before it counts the rest.
@@ -77,7 +77,7 @@ _SHELF_BLURBS: dict[Shelf, str] = {
     Shelf.BASE: (
         "always on this request — platform OIB / law corpus. Every turn has this, project or not. Never the Büroablage."
     ),
-    Shelf.ARCHIV: (
+    Shelf.OFFICE_SHELF: (
         "on every project in this organization — the office's own files. NOT base/OIB, NOT this project's files."
     ),
     Shelf.PROJECT: ("on every session of this project — this project's files only. NOT the Büroablage, NOT base/OIB."),
@@ -138,7 +138,7 @@ _SHELF_ONLY_FOLLOWUPS = frozenset(
 
 _SHELF_HINTS: tuple[tuple[Shelf, tuple[str, ...]], ...] = (
     (
-        Shelf.ARCHIV,
+        Shelf.OFFICE_SHELF,
         (
             "büroablage",
             "bueroablage",
@@ -398,9 +398,9 @@ def _query_variants(query: str) -> tuple[str, str]:
 def shelf_hint_from_query(query: str) -> Shelf | None:
     """Shelf a *listing* question is about, or ``None`` for a content question.
 
-    "welche Dateien hast du in der Büroablage" → ``archiv``.
+    "welche Dateien hast du in der Büroablage" → ``office_shelf``.
     "was sagt OIB-RL 2 zum Brandschutz" → ``None``.
-    When both project and archiv are mentioned ("nicht im projekt … im archiv")
+    When both project and office shelf are mentioned ("nicht im projekt … im archiv")
     the archive token wins — that is the clarification the user just made.
     """
     raw, folded = _query_variants(query)
@@ -517,8 +517,8 @@ def _implied_shelves(groups: dict[Shelf, list[Any]]) -> list[Shelf]:
         return []
     implied: set[Shelf] = set(present)
     implied.add(Shelf.BASE)
-    if present & {Shelf.ARCHIV, Shelf.PROJECT, Shelf.SESSION}:
-        implied.add(Shelf.ARCHIV)
+    if present & {Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION}:
+        implied.add(Shelf.OFFICE_SHELF)
         implied.add(Shelf.BASE)
     if present & {Shelf.PROJECT, Shelf.SESSION}:
         implied.add(Shelf.PROJECT)
@@ -623,7 +623,7 @@ def render_inventory_block(
         "",
         "Files sit on four nested shelves. A wider shelf is NOT the narrower one:",
         "- **Basiswissen** (base) — always on this request. Platform OIB / law. Every turn has this.",
-        "- **Büroablage** (archiv) — on every project in this organization. "
+        "- **Büroablage** (office_shelf) — on every project in this organization. "
         "The office's own files. NOT base/OIB, NOT this project.",
         "- **Projektwissen** (project) — on every session of this project. This project's files. NOT the Büroablage.",
         "- **Private Sitzung** (session) — only this chat. Attachments uploaded here.",

@@ -25,7 +25,7 @@ Relevance Score: 0.71
 … und ist so zu lesen.
 
 ## Trace-Lanes
-{"lanes": [{"key": "baurecht_oib", "label": "OIB-Richtlinie", "kind": "baurecht", "hitCount": 2, "sources": [{"name": "oib-rl_2_ausgabe_mai_2023.pdf", "title": "OIB-Richtlinie 2, Ausgabe Mai 2023", "detail": "Pkt. 0 p.3", "shelf": "base"}]}]}
+{"lanes": [{"key": "building_law_oib", "label": "OIB-Richtlinie", "kind": "building_law", "hitCount": 2, "sources": [{"name": "oib-rl_2_ausgabe_mai_2023.pdf", "title": "OIB-Richtlinie 2, Ausgabe Mai 2023", "detail": "Pkt. 0 p.3", "shelf": "base"}]}]}
 
 ## Gliederung
 - Punkt 0: Vorbemerkungen (S. 3) — Diese Richtlinie gilt für …
@@ -35,4 +35,4 @@ Relevance Score: 0.71
   - Punkt 2.9: Löschwasser (S. 5)
   - Punkt 2.10: Blitzschutz (S. 5)
 
-Einen gelisteten Punkt öffnest du mit `read_passage(document=…, punkt=…)`; die Gliederung ist ein Index, keine Evidenz — nur die Passage(n) oben tragen eine Citation.
+Einen gelisteten Punkt öffnest du mit `read_passage(document=…, clause=…)`; die Gliederung ist ein Index, keine Evidenz — nur die Passage(n) oben tragen eine Citation.

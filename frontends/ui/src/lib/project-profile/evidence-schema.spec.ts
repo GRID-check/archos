@@ -25,9 +25,9 @@ const PAGE: ProfileEvidence = {
 
 const DERIVED: ProfileEvidence = {
   kind: 'derivation',
-  rule: 'gebaeudeklasse',
+  rule: 'building_class',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023)',
-  inputs: [{ key: 'fluchtniveau_m@bw1', value: 10.85, suggested: true }],
+  inputs: [{ key: 'escape_level_m@bldg1', value: 10.85, suggested: true }],
 }
 
 const OTHER: ProfileAlternative = {
@@ -51,8 +51,8 @@ describe('evidence on the profile', () => {
   })
 
   it('reads a fact without either field as before', () => {
-    const fact = ProjectFactSchema.parse({ value: 'wien', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW })
-    expect(fact).toEqual({ value: 'wien', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW })
+    const fact = ProjectFactSchema.parse({ value: 'vienna', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW })
+    expect(fact).toEqual({ value: 'vienna', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW })
   })
 
   it('drops a malformed evidence list and keeps the fact', () => {
@@ -95,8 +95,8 @@ describe('evidence on the profile', () => {
   it('loses nothing in the salvage for a malformed evidence: the profile parses whole', () => {
     const raw = {
       facts: {
-        bundesland: {
-          value: 'wien',
+        federal_state: {
+          value: 'vienna',
           confidence: 'confirmed',
           source: 'onboarding',
           updatedAt: NOW,
@@ -109,14 +109,14 @@ describe('evidence on the profile', () => {
     }
     const salvaged = salvageProjectProfile(raw)
     expect(salvaged.dropped).toEqual([])
-    expect(salvaged.profile?.facts.bundesland?.value).toBe('wien')
-    expect(salvaged.profile?.facts.bundesland?.evidence).toBeUndefined()
+    expect(salvaged.profile?.facts.federal_state?.value).toBe('vienna')
+    expect(salvaged.profile?.facts.federal_state?.evidence).toBeUndefined()
   })
 
   it('survives a write through the patch engine, on facts and on assumptions', () => {
     const profile: ProjectProfile = ProjectProfileSchema.parse({
       facts: {
-        'fluchtniveau_m@bw1': {
+        'escape_level_m@bldg1': {
           value: 10.85,
           confidence: 'confirmed',
           source: 'user_confirmed',
@@ -129,7 +129,7 @@ describe('evidence on the profile', () => {
     const next = applyProjectProfilePatch(profile, [
       {
         op: 'add',
-        path: '/assumptions/gebaeudeklasse@bw1',
+        path: '/assumptions/building_class@bldg1',
         value: {
           value: 3,
           status: 'unconfirmed',
@@ -140,9 +140,9 @@ describe('evidence on the profile', () => {
         },
       },
     ])
-    expect(next.facts['fluchtniveau_m@bw1']?.evidence).toEqual([PAGE])
-    expect(next.facts['fluchtniveau_m@bw1']?.alternatives).toEqual([OTHER])
-    expect(next.assumptions['gebaeudeklasse@bw1']?.evidence).toEqual([DERIVED])
+    expect(next.facts['escape_level_m@bldg1']?.evidence).toEqual([PAGE])
+    expect(next.facts['escape_level_m@bldg1']?.alternatives).toEqual([OTHER])
+    expect(next.assumptions['building_class@bldg1']?.evidence).toEqual([DERIVED])
 
     // And a second pass, as every later write re-parses the stored profile.
     const again = applyProjectProfilePatch(JSON.parse(JSON.stringify(next)) as ProjectProfile, [])
@@ -153,11 +153,11 @@ describe('evidence on the profile', () => {
     const next = applyProjectProfilePatch(emptyProjectProfile(), [
       {
         op: 'add',
-        path: '/facts/bundesland',
-        value: { value: 'tirol', confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW, evidence: 'x' },
+        path: '/facts/federal_state',
+        value: { value: 'tyrol', confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW, evidence: 'x' },
       },
     ])
-    expect(next.facts.bundesland?.value).toBe('tirol')
-    expect(next.facts.bundesland?.evidence).toBeUndefined()
+    expect(next.facts.federal_state?.value).toBe('tyrol')
+    expect(next.facts.federal_state?.evidence).toBeUndefined()
   })
 })

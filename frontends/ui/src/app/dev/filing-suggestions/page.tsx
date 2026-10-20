@@ -62,19 +62,19 @@ const proposal = (id: string, patch: Partial<FileProposal>): FileProposal => ({
   ...patch,
 })
 
-const BESCHEIDE = proposal('00000000-0000-4000-8000-0000000000f1', {
+const PERMIT_DECISIONS = proposal('00000000-0000-4000-8000-0000000000f1', {
   payload: {
     operation: 'move',
     operations: [
       {
         document: 'MA37_Baubewilligung_2026-09.pdf',
-        source: 'projekt',
+        source: 'project',
         target_folder: 'Behörde/Bescheide',
         reason: 'Ein Bescheid der MA 37; „Bescheide“ hält laut Beschreibung Bescheide und Stellungnahmen.',
       },
       {
         document: 'Stellungnahme_MA22.pdf',
-        source: 'projekt',
+        source: 'project',
         target_folder: 'Behörde/Bescheide',
         reason: 'Eine Stellungnahme der MA 22 zum Bauverfahren.',
       },
@@ -83,13 +83,13 @@ const BESCHEIDE = proposal('00000000-0000-4000-8000-0000000000f1', {
   },
 })
 
-const KORRESPONDENZ = proposal('00000000-0000-4000-8000-0000000000f2', {
+const CORRESPONDENCE = proposal('00000000-0000-4000-8000-0000000000f2', {
   payload: {
     operation: 'move',
     operations: [
       {
         document: 'Schreiben_Fristerstreckung.pdf',
-        source: 'projekt',
+        source: 'project',
         target_folder: 'Korrespondenz',
         reason: 'Ein Brief an die Behörde. Das Büro legt Briefe in vier Projekten unter „Korrespondenz“ ab.',
       },
@@ -101,13 +101,13 @@ const KORRESPONDENZ = proposal('00000000-0000-4000-8000-0000000000f2', {
 
 const LISTED: ListedProposal[] = [
   {
-    proposal: BESCHEIDE,
+    proposal: PERMIT_DECISIONS,
     documents: [
       { id: 'doc-bescheid', name: 'MA37_Baubewilligung_2026-09.pdf' },
       { id: 'doc-stellungnahme', name: 'Stellungnahme_MA22.pdf' },
     ],
   },
-  { proposal: KORRESPONDENZ, documents: [{ id: 'doc-brief', name: 'Schreiben_Fristerstreckung.pdf' }] },
+  { proposal: CORRESPONDENCE, documents: [{ id: 'doc-brief', name: 'Schreiben_Fristerstreckung.pdf' }] },
 ]
 
 /** The same suggestions, held under ids of their own, for a reader the server says may not decide. */
@@ -162,11 +162,11 @@ const doc = (id: string, filename: string, summary: string | null, fileSize = 1.
   capture: null,
 })
 
-const EG = doc('doc-eg', 'Einreichplan_EG.pdf', 'Grundriss Erdgeschoß, Einreichung.')
-const BESCHEID = doc('doc-bescheid', 'MA37_Baubewilligung_2026-09.pdf', 'Baubewilligung für den Zubau, mit Auflagen zum Brandschutz.')
+const GROUND_FLOOR_PLAN = doc('doc-eg', 'Einreichplan_EG.pdf', 'Grundriss Erdgeschoß, Einreichung.')
+const PERMIT_DECISION = doc('doc-bescheid', 'MA37_Baubewilligung_2026-09.pdf', 'Baubewilligung für den Zubau, mit Auflagen zum Brandschutz.')
 const BRIEF = doc('doc-brief', 'Schreiben_Fristerstreckung.pdf', 'Ansuchen um Erstreckung der Frist für die Nachreichung.')
-const STELLUNGNAHME = doc('doc-stellungnahme', 'Stellungnahme_MA22.pdf', 'Stellungnahme der Umweltschutzabteilung.', 0.6 * MB)
-const LISTING: FileItem[] = [EG, BESCHEID, BRIEF, STELLUNGNAHME]
+const STATEMENT = doc('doc-stellungnahme', 'Stellungnahme_MA22.pdf', 'Stellungnahme der Umweltschutzabteilung.', 0.6 * MB)
+const LISTING: FileItem[] = [GROUND_FLOOR_PLAN, PERMIT_DECISION, BRIEF, STATEMENT]
 const LISTING_IDS = LISTING.map((file) => file.id)
 
 const DESCRIBED: FolderItem = {
@@ -270,9 +270,9 @@ export default function FilingSuggestionsDevPage(): JSX.Element {
             title="2 · Popover offen: bestehender Ordner"
             note="Der Weg vorher und nachher, der Grund, „Alle 2 verschieben“. Die zweite Datei, die mitwandert, ist umrandet."
           >
-            <Shelf open={BESCHEID.id}>
+            <Shelf open={PERMIT_DECISION.id}>
               <div className="p-4">
-                <FileGrid>{[EG, BESCHEID, STELLUNGNAHME].map(card)}</FileGrid>
+                <FileGrid>{[GROUND_FLOOR_PLAN, PERMIT_DECISION, STATEMENT].map(card)}</FileGrid>
               </div>
             </Shelf>
           </Stage>
@@ -283,7 +283,7 @@ export default function FilingSuggestionsDevPage(): JSX.Element {
           >
             <Shelf open={BRIEF.id}>
               <div className="p-4">
-                <FileGrid>{[EG, BRIEF].map(card)}</FileGrid>
+                <FileGrid>{[GROUND_FLOOR_PLAN, BRIEF].map(card)}</FileGrid>
               </div>
             </Shelf>
           </Stage>
@@ -303,10 +303,10 @@ export default function FilingSuggestionsDevPage(): JSX.Element {
           </Stage>
 
           <Stage title="5 · Wer nur lesen darf" note="Weg und Grund, und wer verschieben darf; keine Knöpfe, auch nicht in der Leiste.">
-            <Shelf readOnly open={BESCHEID.id}>
+            <Shelf readOnly open={PERMIT_DECISION.id}>
               <FilingViewBar documentIds={LISTING_IDS} className="px-4 pt-4" />
               <div className="p-4">
-                <FileGrid>{[EG, BESCHEID, STELLUNGNAHME].map(card)}</FileGrid>
+                <FileGrid>{[GROUND_FLOOR_PLAN, PERMIT_DECISION, STATEMENT].map(card)}</FileGrid>
               </div>
             </Shelf>
           </Stage>

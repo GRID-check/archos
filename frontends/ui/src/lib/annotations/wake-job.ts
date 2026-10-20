@@ -103,7 +103,7 @@ export function wakeMessage(input: {
     text: input.text,
     author_name: input.authorName,
     focus_file_name: doc.displayName?.trim() || doc.filename,
-    focus_shelf: doc.scope === 'archiv' ? 'archiv' : 'project',
+    focus_shelf: doc.scope === 'office_shelf' ? 'office_shelf' : 'project',
     focus_document_id: doc.id,
     focus_region: { ...regionAround(mark), annotation_id: mark.id },
     reply_in_thread: true,

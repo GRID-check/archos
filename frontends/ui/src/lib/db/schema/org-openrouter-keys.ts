@@ -3,7 +3,7 @@ import { index, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'dri
 
 /**
  * `org_openrouter_keys` — the OpenRouter key the platform provisioned for one
- * organization (migration 0159, ADR-0121). METADATA ONLY, like
+ * organization (migration 0173, ADR-0121). METADATA ONLY, like
  * `org_llm_credentials`: the key itself is in the secret store
  * (`lib/llm-credentials/secret-store.ts`), `vault_object_id` or
  * `encrypted_key` set to match `secret_backend`.

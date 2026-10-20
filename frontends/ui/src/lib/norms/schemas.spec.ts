@@ -14,8 +14,8 @@ const validEntry = {
   id: 'oib-rl2-2023',
   title: 'OIB-Richtlinie 2 — Brandschutz (Ausgabe 2023)',
   short: 'OIB-RL 2',
-  rank: 'verordnung',
-  bundesland: 'Wien',
+  rank: 'ordinance',
+  federal_state: 'Wien',
   topics: ['Brandschutz', 'Fluchtwege'],
   relevance: 'hoch',
   application: 'LrKons',
@@ -25,7 +25,7 @@ const validEntry = {
   aliases: ['Richtlinie 2'],
   binding_note: 'Verbindlich in Wien.',
   review_note: 'Neuauflage 2024 prüfen.',
-  verify: { title_query: 'OIB Richtlinie 2', exclude: ['Salzburg'], gesetzesnummer: '20000123' },
+  verify: { title_query: 'OIB Richtlinie 2', exclude: ['Salzburg'], statute_number: '20000123' },
   verified_at: '2026-01-15',
 }
 
@@ -33,7 +33,7 @@ describe('normEntrySchema', () => {
   it('parses a fully-populated valid entry', () => {
     const parsed = normEntrySchema.parse(validEntry)
     expect(parsed.id).toBe('oib-rl2-2023')
-    expect(parsed.rank).toBe('verordnung')
+    expect(parsed.rank).toBe('ordinance')
     expect(parsed.topics).toEqual(['Brandschutz', 'Fluchtwege'])
     expect(parsed.verify?.exclude).toEqual(['Salzburg'])
   })
@@ -43,9 +43,9 @@ describe('normEntrySchema', () => {
       id: 'bo-wien',
       title: 'Bauordnung',
       short: 'BO',
-      rank: 'landesgesetz',
+      rank: 'state_law',
     })
-    expect(parsed.bundesland).toBe('')
+    expect(parsed.federal_state).toBe('')
     expect(parsed.topics).toEqual([])
     expect(parsed.aliases).toEqual([])
     expect(parsed.verified_at).toBe('')
@@ -53,31 +53,37 @@ describe('normEntrySchema', () => {
     expect(parsed.binding_note).toBeUndefined()
   })
 
-  it('parses a behoerdliche_info entry with only a source_url (no RIS pointer)', () => {
+  it('parses an authority_info entry with only a source_url (no RIS pointer)', () => {
     const parsed = normEntrySchema.parse({
       id: 'ma37-merkblatt-stellplatz',
       title: 'MA 37 — Merkblatt Stellplatzverpflichtung',
       short: 'MA 37 Stellplatz',
-      rank: 'behoerdliche_info',
+      rank: 'authority_info',
       source_url: 'https://www.wien.gv.at/stadtentwicklung/ma37/merkblatt.pdf',
     })
-    expect(parsed.rank).toBe('behoerdliche_info')
+    expect(parsed.rank).toBe('authority_info')
     expect(parsed.source_url).toBe('https://www.wien.gv.at/stadtentwicklung/ma37/merkblatt.pdf')
     expect(parsed.application).toBe('')
     expect(parsed.document_number).toBe('')
   })
 
-  it('parses a norm_extern entry with no pointer at all', () => {
+  it('parses an external_standard entry with no pointer at all', () => {
     const parsed = normEntrySchema.parse({
       id: 'oenorm-b-1300',
       title: 'ÖNORM B 1300',
       short: 'ÖNORM B 1300',
-      rank: 'norm_extern',
+      rank: 'external_standard',
     })
-    expect(parsed.rank).toBe('norm_extern')
+    expect(parsed.rank).toBe('external_standard')
     expect(parsed.application).toBe('')
     expect(parsed.document_number).toBe('')
     expect(parsed.source_url).toBe('')
+  })
+
+  it('reads the German ranks a stored registry still carries', () => {
+    expect(normEntrySchema.parse({ ...validEntry, rank: 'landesgesetz' }).rank).toBe('state_law')
+    expect(normEntrySchema.parse({ ...validEntry, rank: 'behoerdliche_info' }).rank).toBe('authority_info')
+    expect(normEntrySchema.parse({ ...validEntry, rank: 'norm_extern' }).rank).toBe('external_standard')
   })
 
   it('rejects an invalid rank', () => {
@@ -164,8 +170,8 @@ describe('backend null contract (regression: Register konnte nicht geladen werde
       id: 'ma37-merkblaetter',
       title: 'MA 37 Merkblätter',
       short: 'MA 37',
-      rank: 'behoerdliche_info',
-      bundesland: 'Wien',
+      rank: 'authority_info',
+      federal_state: 'Wien',
       source_url: 'https://www.wien.gv.at/x',
       binding_note: null,
       review_note: null,
@@ -188,12 +194,28 @@ describe('backend null contract (regression: Register konnte nicht geladen werde
         parcel_tags: [],
         entries: [
           validEntry,
-          { id: 'ma37', title: 'MA 37', short: 'MA 37', rank: 'behoerdliche_info', verify: null },
+          { id: 'ma37', title: 'MA 37', short: 'MA 37', rank: 'authority_info', verify: null },
         ],
       },
     }
     const parsed = putNormRegistryBodySchema.parse(envelope)
     expect(parsed.registry.entries).toHaveLength(2)
-    expect(parsed.registry.states.ausserhalb_oesterreichs).toBeNull()
+    expect(parsed.registry.states.outside_austria).toBeNull()
+  })
+})
+
+describe('a registry stored before the English names', () => {
+  it('reads `bundesland` as `federal_state` and the German tokens of `states` as English ones', () => {
+    const parsed = putNormRegistryBodySchema.parse({
+      version: 1,
+      registry: {
+        version: 1,
+        states: { wien: 'Wien', ausserhalb_oesterreichs: null },
+        entries: [{ id: 'bo-wien', title: 'Bauordnung für Wien', short: 'BO', rank: 'state_law', bundesland: 'Wien' }],
+      },
+    })
+    expect(parsed.registry.entries[0]).toMatchObject({ federal_state: 'Wien' })
+    expect(parsed.registry.entries[0]).not.toHaveProperty('bundesland')
+    expect(parsed.registry.states).toEqual({ vienna: 'Wien', outside_austria: null })
   })
 })

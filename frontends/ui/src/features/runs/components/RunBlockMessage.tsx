@@ -13,7 +13,7 @@
  *   - whether the message's content is shown yet. The content IS the report,
  *     and it renders as today's answer card BELOW the block, so the reader gets
  *     the same sources and Herleitung a chat answer has. It appears once the
- *     run has produced it: `fertig`, and `unterbrochen` too, because that
+ *     run has produced it: `done`, and `interrupted` too, because that
  *     sentence says the report was written from what was there — hiding it
  *     would contradict the block's own words.
  *
@@ -32,14 +32,14 @@ import type { RunStatus } from '@/lib/runs/run-ledger-types'
 import { runDisplayStatus } from '@/lib/runs/run-vocabulary'
 import { useRunLedger } from '../hooks/use-run-ledger'
 import { useProjectInventory } from '../hooks/use-project-inventory'
-import { UnterlagenDialog } from './UnterlagenDialog'
+import { DocumentsDialog } from './DocumentsDialog'
 import { openFilePeek } from '@/features/documents/lib/open-file-peek'
 import type { RunLedgerDoc } from '@/lib/runs/run-ledger-types'
 import { landingDelays } from '../lib/choreography'
 import { RunBlock } from './RunBlock'
 
 /** The states in which the message's content is a report the reader may have. */
-const REPORT_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['fertig', 'unterbrochen'])
+const REPORT_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['done', 'interrupted'])
 
 export interface RunBlockMessageProps {
   message: ChatMessage
@@ -128,19 +128,19 @@ export function RunBlockMessage({
             : null
         }
         addDocumentFailure={
-          addDocumentFailure ? (addDocumentFailure.message ?? t('unterlagen.addFailed')) : null
+          addDocumentFailure ? (addDocumentFailure.message ?? t('documents.addFailed')) : null
         }
         onOpenDocument={projectId ? openDocument : null}
         onContinue={onContinue ?? null}
       />
       {addDocument && (
-        <UnterlagenDialog
+        <DocumentsDialog
           mode="add"
           open={picking}
           onOpenChange={setPicking}
           documents={inventory.documents ?? []}
           loading={inventory.loading}
-          named={(ledger.grundlage ?? []).map((doc) => doc.name)}
+          named={(ledger.basis ?? []).map((doc) => doc.name)}
           onAdd={(doc) => addDocument(doc)}
         />
       )}

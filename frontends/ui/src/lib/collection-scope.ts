@@ -13,7 +13,7 @@ import type { GridSession } from './auth/types'
  * so the low-level request-context contract can name the type without taking a
  * dependency on the service-heavy builder that produces it.
  */
-export type CollectionShelf = 'archiv' | 'project' | 'session' | 'base'
+export type CollectionShelf = 'office_shelf' | 'project' | 'session' | 'base'
 
 /**
  * One entry of the `X-Grid-Collection-Scope` payload and of the signed
@@ -61,7 +61,7 @@ export interface ScopeContext {
    * enabled for the caller's org. Added to every scope alongside the base
    * corpus so every project's retrieval also sees the shared Archiv (ADR-0024).
    */
-  archivCollectionName?: string
+  officeShelfCollectionName?: string
   /**
    * The project's restricted-folder collections this turn may search
    * (ADR-0087), placed right after the project collection. The caller decides
@@ -82,8 +82,8 @@ export function computeCollectionScope(
 
   // Org-wide Archiv: shared across every project in the org, so it rides in the
   // scope right next to the base corpus (independent of the active project).
-  if (context.archivCollectionName) {
-    scope.push(context.archivCollectionName)
+  if (context.officeShelfCollectionName) {
+    scope.push(context.officeShelfCollectionName)
   }
 
   if (context.includeProject !== false) {

@@ -393,7 +393,7 @@ emitted_card_types: frozenset[str], answer_confidence
 > **[as built]** Two corrections. `locale` is **not** a field: there is no locale
 > in the signed request-context envelope or in any `X-Grid-*` header, so it could
 > only ever have been `None` — and a fact that is always absent is worse than no
-> field, because a gate can be written against it and never fire. `bundesland` is
+> field, because a gate can be written against it and never fire. `federal_state` is
 > there and is real. One field was added: `enabled_stages: frozenset[str] | None`,
 > the per-turn flag set (§7.8), read fail-closed — `None` means "unknown", which
 > means nothing enabled.
@@ -805,7 +805,7 @@ FOLLOW_UPS = StageSpec(
 > **The prompt does not see the "project profile".** `TurnFacts` never carried
 > it — the composed profile's substantive half is the memory digest, capped at
 > 6,000 characters, which would roughly double a per-turn cost accepted for a
-> navigation aid. `bundesland` is carried instead: a handful of tokens, and it
+> navigation aid. `federal_state` is carried instead: a handful of tokens, and it
 > is what makes a Land-specific next question possible at all. The "narrower
 > onto this project" move is anchored by the answer's own words.
 >

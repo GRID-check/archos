@@ -70,7 +70,7 @@ export const onboarding: typeof en.onboarding = {
         title: 'Alles beginnt mit einem Projekt',
         body: 'Ein Projekt umfasst ein Gebäude: seine Dokumente, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem Piloti mit Ihnen arbeitet. Jede Quelle ist belegt, ob Baurecht oder Ihre eigenen Unterlagen. Eine kurze Einrichtung fragt nach dem Gebäude, danach zeigen wir Ihnen das Projekt.',
       },
-      archiv: {
+      officeShelf: {
         title: 'Büroablage',
         body: 'Die gemeinsamen Unterlagen Ihres Büros — Regeldetails, Leistungsbeschreibungen, Vorlagen. Einmal hier abgelegt, kann jedes Projekt darauf zurückgreifen.',
       },
@@ -112,21 +112,21 @@ export const onboarding: typeof en.onboarding = {
         title: 'Dateien: die Unterlagen dieses Projekts',
         body: 'Laden Sie Zeichnungen, Gutachten und Schriftverkehr zu diesem Gebäude hoch. Sobald eine Datei gelesen ist, kann Piloti daraus zitieren, und zwar nur in diesem Projekt.',
       },
-      projectArchiv: {
+      projectOfficeShelf: {
         title: 'Büroablage: die Unterlagen Ihres Büros',
         body: 'Die Büroablage steht über Ihren Projekten, und jedes Projekt durchsucht sie automatisch mit. Sie ist anfangs leer: Administratoren legen Unterlagen ab, alle in der Organisation können sie lesen und zitieren.',
       },
-      projectArchivPhone: {
+      projectOfficeShelfPhone: {
         title: 'Büroablage: die Unterlagen Ihres Büros',
         body: 'Die Büroablage steht über Ihren Projekten, und jedes Projekt durchsucht sie automatisch mit. Sie finden sie unter „Mehr“, mit allem, was nicht in der Leiste steht.',
       },
-      filesOrArchiv: {
+      filesOrOfficeShelf: {
         title: 'Dateien oder Büroablage?',
         body: 'Entscheidend ist, wem die Unterlage gehört.',
         filesTerm: 'Dateien — dieses Gebäude',
         filesDetail: 'Seine Zeichnungen, Gutachten, Schriftverkehr. Zitiert nur in diesem Projekt.',
-        archivTerm: 'Büroablage — das Büro',
-        archivDetail: 'Regeldetails, Leistungsbeschreibungen, Vorlagen, frühere Einreichungen, die sich wiederverwenden lassen. Zitiert in jedem Projekt.',
+        officeShelfTerm: 'Büroablage — das Büro',
+        officeShelfDetail: 'Regeldetails, Leistungsbeschreibungen, Vorlagen, frühere Einreichungen, die sich wiederverwenden lassen. Zitiert in jedem Projekt.',
       },
       projectSources: {
         title: 'Jede Antwort zeigt ihre Quellen',

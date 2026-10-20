@@ -31,7 +31,7 @@ describe('answerCompletionOf', () => {
       ended({}),
       running,
       answer({
-        citations: [citation('a', 'baurecht'), citation('b', 'buero'), citation('c', 'baurecht')],
+        citations: [citation('a', 'building_law'), citation('b', 'office'), citation('c', 'building_law')],
         reasoningEffort: 'medium',
       }),
       4200
@@ -40,7 +40,7 @@ describe('answerCompletionOf', () => {
       outcome: 'ok',
       duration_ms: 4200,
       citation_count: 3,
-      source_kinds: 'baurecht,buero',
+      source_kinds: 'building_law,office',
       effort: 'medium',
       has_run: false,
     })
@@ -73,7 +73,7 @@ describe('answerCompletionOf', () => {
     const completion = answerCompletionOf(
       ended({}),
       running,
-      answer({ content: 'Brüstungshöhe', citations: [{ ...citation('a', 'projekt'), title: 'Plan_EG.pdf', fileName: 'Plan_EG.pdf' }] }),
+      answer({ content: 'Brüstungshöhe', citations: [{ ...citation('a', 'project'), title: 'Plan_EG.pdf', fileName: 'Plan_EG.pdf' }] }),
       1
     )
     expect(JSON.stringify(completion)).not.toMatch(/Brüstung|Plan_EG|turn-1|conv-1|answer-1/)

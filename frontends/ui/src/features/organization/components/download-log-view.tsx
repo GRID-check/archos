@@ -104,7 +104,7 @@ export const DownloadLogView: FC<DownloadLogViewProps> = ({ people }) => {
     entry.person ? `${entry.person.name}${entry.person.email ? ` (${entry.person.email})` : ''}` : entry.userId
 
   const placeLabel = (entry: DownloadLogEntry): string => {
-    if (entry.scope === 'archiv') return t('downloadLog.place.archiv')
+    if (entry.scope === 'office_shelf') return t('downloadLog.place.officeShelf')
     if (entry.scope === 'session') return t('downloadLog.place.session')
     const project = entry.projectName ?? t('downloadLog.place.projectGone')
     if (!entry.folderId) return `${project} · ${t('downloadLog.place.root')}`

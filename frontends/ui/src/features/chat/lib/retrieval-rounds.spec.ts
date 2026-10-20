@@ -27,7 +27,7 @@ const sources = (id: string, round: number | undefined, hits: Array<{ name: stri
     kind: 'sources',
     tool: 'knowledge_search',
     ...(round !== undefined ? { round } : {}),
-    lanes: [{ key: 'baurecht_oib', label: 'OIB-Richtlinie', kind: 'baurecht', hit_count: hits.length, sources: hits }],
+    lanes: [{ key: 'building_law_oib', label: 'OIB-Richtlinie', kind: 'building_law', hit_count: hits.length, sources: hits }],
   })
 
 describe('retrievalRounds', () => {
@@ -107,7 +107,7 @@ describe('documentsForRound', () => {
     id,
     title: id,
     fileName,
-    kind: 'baurecht',
+    kind: 'building_law',
     tint: 'law',
     loci: [{ key: 'whole', isCited: true }],
   })
@@ -147,7 +147,7 @@ describe('roundFan', () => {
     id,
     title: id,
     fileName,
-    kind: 'baurecht',
+    kind: 'building_law',
     tint: 'law',
     loci: [{ key: 'whole', isCited: true }],
   })
@@ -172,7 +172,7 @@ describe('roundFan', () => {
       readFileSync(
         fileURLToPath(
           new URL(
-            '../../../../../../tests/fixtures/herleitung/retrieval_ledger_wire.json',
+            '../../../../../../tests/fixtures/derivation/retrieval_ledger_wire.json',
             import.meta.url
           )
         ),
@@ -199,16 +199,16 @@ describe('roundFan', () => {
   test('five opens of one document are ONE card listing its five loci', () => {
     // The shape this fold exists for: five Punkte of one Richtlinie used to be
     // five identical cards, which reads as five fetches of the same file.
-    const punkte = ['Pkt. 3.1', 'Pkt. 3.2', 'Pkt. 3.3', 'Pkt. 3.4', 'Pkt. 3.5']
+    const clauses = ['Pkt. 3.1', 'Pkt. 3.2', 'Pkt. 3.3', 'Pkt. 3.4', 'Pkt. 3.5']
     const entry = {
       ...ledger[2]!,
-      docs: punkte.map((detail) => ({ name: 'OIB-RL_2.pdf', detail, repeat: false })),
+      docs: clauses.map((detail) => ({ name: 'OIB-RL_2.pdf', detail, repeat: false })),
       newDocs: ['OIB-RL_2.pdf'],
     }
     const fan = roundFan(rounds[2]!, [oib, konzept], [ledger[0]!, ledger[1]!, entry])
     expect(fan).toHaveLength(1)
     expect(fan[0]?.card?.id).toBe('oib')
-    expect(details(fan)).toEqual([punkte])
+    expect(details(fan)).toEqual([clauses])
   })
 
   test('a search that only ranked a file does not make the later open a repeat', () => {

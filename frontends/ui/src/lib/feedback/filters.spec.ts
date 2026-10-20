@@ -14,7 +14,7 @@ import {
 const full: RatingsFilters = {
   verdict: 'down',
   reasons: ['inaccurate', 'other'],
-  topics: ['brandschutz'],
+  topics: ['fire_safety'],
   modes: ['deep'],
   confidences: ['high'],
   hasComment: true,
@@ -39,7 +39,7 @@ describe('the ratings filters in a URL', () => {
   it('drops what it does not know when reading the page URL', () => {
     expect(readRatingsFilters(new URLSearchParams('verdict=maybe&reason=nope&topic=Brandschutz&mode=error'))).toEqual({
       ...NO_RATINGS_FILTERS,
-      topics: ['brandschutz'],
+      topics: ['fire_safety'],
     })
   })
 
@@ -50,9 +50,9 @@ describe('the ratings filters in a URL', () => {
   it('puts the scope first and the filters after it in the API query string', () => {
     const search = feedbackQueryString({
       scope: { from: '2026-09-01', to: '2026-09-30', organizationIds: ['org_a'], projectIds: [] },
-      ratings: { ...NO_RATINGS_FILTERS, topics: ['statik', 'brandschutz'] },
+      ratings: { ...NO_RATINGS_FILTERS, topics: ['structural', 'fire_safety'] },
     })
-    expect(search).toBe('from=2026-09-01&to=2026-09-30&org=org_a&topic=brandschutz&topic=statik')
+    expect(search).toBe('from=2026-09-01&to=2026-09-30&org=org_a&topic=fire_safety&topic=structural')
   })
 })
 

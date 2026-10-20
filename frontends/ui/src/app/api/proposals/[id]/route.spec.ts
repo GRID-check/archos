@@ -40,8 +40,8 @@ vi.mock('@/lib/documents/service', () => ({
   resolveProjectDocumentsByName: vi.fn(),
   renameDocument: vi.fn(),
 }))
-vi.mock('@/lib/archiv/service', () => ({ resolveArchivDocumentsByName: vi.fn() }))
-vi.mock('@/lib/archiv/folder-service', () => ({ listArchivFolders: vi.fn() }))
+vi.mock('@/lib/office-shelf/service', () => ({ resolveOfficeShelfDocumentsByName: vi.fn() }))
+vi.mock('@/lib/office-shelf/folder-service', () => ({ listOfficeShelfFolders: vi.fn() }))
 vi.mock('@/lib/projects/folder-service', () => ({ listProjectFolders: vi.fn(), createProjectFolder: vi.fn() }))
 vi.mock('@/lib/documents/move-to-folder', () => ({ moveDocumentToFolder: vi.fn() }))
 vi.mock('@/lib/assignments/service', () => ({
@@ -87,8 +87,8 @@ import {
   NotFoundError,
 } from '@/lib/api/errors'
 import { addResourceAssignment, listAssignmentCandidates } from '@/lib/assignments/service'
-import { listArchivFolders } from '@/lib/archiv/folder-service'
-import { resolveArchivDocumentsByName } from '@/lib/archiv/service'
+import { listOfficeShelfFolders } from '@/lib/office-shelf/folder-service'
+import { resolveOfficeShelfDocumentsByName } from '@/lib/office-shelf/service'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { requireMayRememberFrom } from '@/lib/conversations/cross-project-use'
 import { findConversationInOrg } from '@/lib/conversations/repository'
@@ -150,8 +150,8 @@ const CONVERSATION = 'conv_1'
 const MOVE: FileOperationPayload = {
   operation: 'move',
   operations: [
-    { document: 'Grundriss EG.pdf', source: 'projekt', target_folder: 'Einreichung/Pläne' },
-    { document: 'Schnitt A-A.pdf', source: 'projekt', target_folder: 'Einreichung/Pläne' },
+    { document: 'Grundriss EG.pdf', source: 'project', target_folder: 'Einreichung/Pläne' },
+    { document: 'Schnitt A-A.pdf', source: 'project', target_folder: 'Einreichung/Pläne' },
   ],
 }
 
@@ -409,16 +409,16 @@ describe('POST /api/proposals/[id]/apply', () => {
   })
 
   it('moves an Archiv document within the Archiv’s own folders, and to the root on an empty path', async () => {
-    vi.mocked(resolveArchivDocumentsByName).mockResolvedValue([listed('doc_b', 'Vorlage.docx')])
-    vi.mocked(listArchivFolders).mockResolvedValue([folder('a_vorlagen', 'Vorlagen')])
+    vi.mocked(resolveOfficeShelfDocumentsByName).mockResolvedValue([listed('doc_b', 'Vorlage.docx')])
+    vi.mocked(listOfficeShelfFolders).mockResolvedValue([folder('a_vorlagen', 'Vorlagen')])
     store.set(
       ID,
       row({
         payload: {
           operation: 'move',
           operations: [
-            { document: 'Vorlage.docx', source: 'buero', target_folder: 'Vorlagen' },
-            { document: 'Vorlage.docx', source: 'buero', target_folder: '' },
+            { document: 'Vorlage.docx', source: 'office', target_folder: 'Vorlagen' },
+            { document: 'Vorlage.docx', source: 'office', target_folder: '' },
           ],
         },
       })
@@ -657,7 +657,7 @@ describe('createProposal — the inbox is told', () => {
     await createProposal(SESSION as never, {
       projectId: PROJECT,
       kind: 'file_operation',
-      payload: { operation: 'move', operations: [...MOVE.operations, { document: 'Lageplan.pdf', source: 'projekt', target_folder: 'Einreichung' }] },
+      payload: { operation: 'move', operations: [...MOVE.operations, { document: 'Lageplan.pdf', source: 'project', target_folder: 'Einreichung' }] },
       conversationId: null,
       answerMessageId: null,
     })
@@ -705,7 +705,7 @@ const NOTE: MemoryPayload = {
 const PROFILE: ProjectProfilePayload = {
   title: 'Bundesland: Tirol',
   rationale: 'Laut Lageplan liegt das Grundstück in Innsbruck.',
-  patch: [{ op: 'replace', path: '/facts/bundesland/value', value: 'tirol' }],
+  patch: [{ op: 'replace', path: '/facts/federal_state/value', value: 'tirol' }],
 }
 
 const memoryRow = (payload: Partial<MemoryPayload> = {}, extra: Partial<ProposedChangeRow> = {}) =>
@@ -979,7 +979,7 @@ describe('createProposal — every kind, once per card', () => {
     await expect(
       create({
         kind: 'project_profile',
-        payload: { ...PROFILE, patch: [{ op: 'replace', path: '/facts/bundesland/value', value: 'atlantis' }] },
+        payload: { ...PROFILE, patch: [{ op: 'replace', path: '/facts/federal_state/value', value: 'atlantis' }] },
       })
     ).rejects.toMatchObject({ status: 422, details: { reason: 'proposal-profile-vocabulary' } })
     expect(insertProposedChange).not.toHaveBeenCalled()

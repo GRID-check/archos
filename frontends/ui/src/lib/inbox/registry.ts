@@ -227,9 +227,9 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     push: { category: 'results', urgency: 'normal' },
   },
   /*
-    A run has a question for the person who asked for it (ADR-0062, `wartet`).
+    A run has a question for the person who asked for it (ADR-0062, `waiting`).
     Actionable, because the run is stopped until they answer and the badge is
-    what makes a stopped run visible; resolved by the ledger leaving `wartet`
+    what makes a stopped run visible; resolved by the ledger leaving `waiting`
     (`lib/runs/service.ts`), so it never sits in the badge for good. Anchored
     on the RUN: a second question from the same run folds into the row it
     already has, which is the row the reader is about to open anyway.
@@ -353,7 +353,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     like `document.review_requested`: documents are not a chat feature, and an
     office without collaboration still has uploaders to tell.
   */
-  'document.new_fassung': {
+  'document.new_revision': {
     actionable: false,
     grouping: 'per-anchor',
     retentionDays: 60,

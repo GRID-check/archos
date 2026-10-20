@@ -46,7 +46,7 @@ const OTHER_USER = `${USER}_2`
 
 const PAYLOAD: FileOperationPayload = {
   operation: 'move',
-  operations: [{ document: 'Grundriss EG.pdf', source: 'projekt', target_folder: 'Einreichung' }],
+  operations: [{ document: 'Grundriss EG.pdf', source: 'project', target_folder: 'Einreichung' }],
 }
 
 describe('the proposed-changes suite is not silently skipped in CI', () => {
@@ -337,17 +337,17 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
   })
 
   describe('the Büroablage (0146)', () => {
-    const ARCHIV_MOVE: FileOperationPayload = {
+    const OFFICE_SHELF_MOVE: FileOperationPayload = {
       operation: 'move',
-      operations: [{ document: 'ÖNORM B 1800.pdf', source: 'buero', target_folder: 'Normen', reason: 'Eine Norm.' }],
+      operations: [{ document: 'ÖNORM B 1800.pdf', source: 'office', target_folder: 'Normen', reason: 'Eine Norm.' }],
       basis: 'name',
     }
-    const shelved = (organizationId: string, payload: FileOperationPayload = ARCHIV_MOVE) =>
+    const shelved = (organizationId: string, payload: FileOperationPayload = OFFICE_SHELF_MOVE) =>
       inOrg(organizationId, () =>
         repo.insertProposedChange({
           organizationId,
           projectId: null,
-          scope: 'archiv',
+          scope: 'office_shelf',
           kind: 'file_operation',
           payload,
           proposedByKind: 'piloti',
@@ -360,9 +360,9 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
 
     it('stores a move of Büroablage documents without a project, and lists it on its shelf only', async () => {
       const { row } = await shelved(ORG)
-      expect(row).toMatchObject({ projectId: null, scope: 'archiv', originTraceId: 'abcdef0123456789abcdef0123456789' })
-      const archiv = await repo.listShelfProposals(ORG, { scope: 'archiv' }, { statuses: ['proposed'], limit: 50 })
-      expect(archiv.map((entry) => entry.id)).toContain(row.id)
+      expect(row).toMatchObject({ projectId: null, scope: 'office_shelf', originTraceId: 'abcdef0123456789abcdef0123456789' })
+      const officeShelf = await repo.listShelfProposals(ORG, { scope: 'office_shelf' }, { statuses: ['proposed'], limit: 50 })
+      expect(officeShelf.map((entry) => entry.id)).toContain(row.id)
       const project = await repo.listShelfProposals(
         ORG,
         { scope: 'project', projectId: ids.project },
@@ -373,7 +373,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
 
     it('refuses a Büroablage proposal that would reach into a project', async () => {
       await expect(
-        shelved(ORG, { operation: 'move', operations: [{ document: 'a.pdf', source: 'projekt', target_folder: 'X' }] })
+        shelved(ORG, { operation: 'move', operations: [{ document: 'a.pdf', source: 'project', target_folder: 'X' }] })
       ).rejects.toThrow()
       await expect(
         shelved(ORG, { operation: 'create_folder', operations: [{ folder_name: 'X' }] })
@@ -387,7 +387,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
         db.execute<{ id: string }>(sql`select id from proposed_changes where id = ${row.id}::uuid`)
       )
       expect(Array.from(seen)).toHaveLength(0)
-      const theirs = await repo.listShelfProposals(OTHER_ORG, { scope: 'archiv' }, { statuses: ['proposed'], limit: 50 })
+      const theirs = await repo.listShelfProposals(OTHER_ORG, { scope: 'office_shelf' }, { statuses: ['proposed'], limit: 50 })
       expect(theirs.map((entry) => entry.id)).not.toContain(row.id)
     })
 

@@ -22,14 +22,14 @@ export const MAX_PROFILE_EVIDENCE = 5
 export const MAX_PROFILE_ALTERNATIVES = 5
 /** Longest quote kept from a document, after masking (ADR-0086). */
 export const MAX_EVIDENCE_QUOTE_LENGTH = 400
-/** Most inputs a derivation names. The Gebäudeklasse has seven. */
+/** Most inputs a derivation names. The building class has seven. */
 export const MAX_DERIVATION_INPUTS = 20
 
 export const PROFILE_EVIDENCE_KINDS = ['document', 'geocoder', 'derivation', 'person'] as const
 export type ProfileEvidenceKind = (typeof PROFILE_EVIDENCE_KINDS)[number]
 
 /** The derivations the intake computes. One today; each more is a row. */
-export const DERIVATION_RULES = ['gebaeudeklasse'] as const
+export const DERIVATION_RULES = ['building_class'] as const
 export type DerivationRule = (typeof DERIVATION_RULES)[number]
 
 const instant = z.string().datetime({ offset: true })

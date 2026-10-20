@@ -1,0 +1,23 @@
+/**
+ * Documents API — which documents of the project would these dropped names be
+ * the next Fassung of?
+ *
+ * The upload dialog's „Als neue Fassung von X ablegen" (ADR-0099); the client is
+ * `lib/documents/name-probe-client.ts`, the contract `name-probe-types.ts`. Asked
+ * with the name probe's body, plus where each name lands (`folders`), and gated
+ * like it. POST because a folder drop
+ * carries up to two thousand names. Thin handler; the logic lives in
+ * `@/lib/documents/revision-candidates`.
+ */
+
+import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { probeProjectRevisionCandidates } from '@/lib/documents/revision-candidates'
+import { projectRevisionCandidatesRequestSchema, type RevisionCandidatesResponse } from '@/lib/documents/name-probe-types'
+
+export const POST = apiRoute(
+  async ({ session, request }): Promise<RevisionCandidatesResponse> => {
+    const { projectId, names, folders } = await parseJsonBody(request, projectRevisionCandidatesRequestSchema)
+    return { candidates: await probeProjectRevisionCandidates(session, projectId, names, folders) }
+  },
+  { authz: { enforcedBy: 'probeProjectRevisionCandidates (requireProjectAccess project:view)' } }
+)

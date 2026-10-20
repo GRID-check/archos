@@ -16,7 +16,7 @@ vi.mock('@/lib/upload-batches/repository', () => ({ findUploadBatch: vi.fn(), li
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn(), listProjectsInOrg: vi.fn() }))
 vi.mock('@/lib/projects/service', () => ({ projectsHolding: vi.fn() }))
 vi.mock('@/lib/projects/folder-service', () => ({ listProjectFolders: vi.fn() }))
-vi.mock('@/lib/archiv/folder-service', () => ({ listArchivFolders: vi.fn() }))
+vi.mock('@/lib/office-shelf/folder-service', () => ({ listOfficeShelfFolders: vi.fn() }))
 vi.mock('@/lib/authz/folder-access-repository', () => ({ listProjectFolderTree: vi.fn() }))
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn() }))
 vi.mock('@/lib/proposals/service', () => ({
@@ -27,7 +27,7 @@ vi.mock('@/lib/proposals/service', () => ({
 vi.mock('./repository', () => ({ listFiledDocuments: vi.fn(), listProjectsFolders: vi.fn() }))
 vi.mock('./judge', () => ({ judgeFiling: vi.fn() }))
 
-import { listArchivFolders } from '@/lib/archiv/folder-service'
+import { listOfficeShelfFolders } from '@/lib/office-shelf/folder-service'
 import { listProjectFolderTree } from '@/lib/authz/folder-access-repository'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { listProjectFolders } from '@/lib/projects/folder-service'
@@ -94,7 +94,7 @@ beforeEach(() => {
   vi.mocked(findUploadBatch).mockResolvedValue(batch())
   vi.mocked(findProjectInOrg).mockResolvedValue(makeProject({ id: 'proj-1', status: 'active' }))
   vi.mocked(listProjectFolders).mockResolvedValue(FOLDERS)
-  vi.mocked(listArchivFolders).mockResolvedValue([])
+  vi.mocked(listOfficeShelfFolders).mockResolvedValue([])
   // „Honorare" has an own access list: not every member reads it.
   vi.mocked(listProjectFolderTree).mockResolvedValue([
     { id: 'f-bescheide', parentId: null, accessMode: 'inherit', everyoneReads: false },
@@ -128,7 +128,7 @@ describe('reviewUploadFiling', () => {
       payload: {
         operation: 'move',
         operations: [
-          { document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Bescheide', reason: 'Ein Bescheid der MA 37.' },
+          { document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Bescheide', reason: 'Ein Bescheid der MA 37.' },
         ],
         basis: 'name',
         new_folder: null,
@@ -205,7 +205,7 @@ describe('reviewUploadFiling', () => {
           kind: 'file_operation',
           payload: {
             operation: 'move',
-            operations: [{ document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Bescheide' }],
+            operations: [{ document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Bescheide' }],
             basis: 'name',
           },
         },
@@ -218,17 +218,17 @@ describe('reviewUploadFiling', () => {
   })
 
   it('files a Büroablage upload on the office shelf, with no project and no conventions', async () => {
-    vi.mocked(findUploadBatch).mockResolvedValue(batch({ scope: 'archiv', projectId: null }))
-    vi.mocked(listArchivFolders).mockResolvedValue([{ ...FOLDERS[0], projectId: null }])
+    vi.mocked(findUploadBatch).mockResolvedValue(batch({ scope: 'office_shelf', projectId: null }))
+    vi.mocked(listOfficeShelfFolders).mockResolvedValue([{ ...FOLDERS[0], projectId: null }])
     await reviewUploadFiling(SESSION, 'batch-1', 'name')
     expect(judgedInput().conventions).toEqual([])
-    expect(judgedInput().trace.shelf).toBe('archiv')
+    expect(judgedInput().trace.shelf).toBe('office_shelf')
     expect(createProposal).toHaveBeenCalledWith(
       SESSION,
       expect.objectContaining({
         projectId: null,
         payload: expect.objectContaining({
-          operations: [expect.objectContaining({ source: 'buero', target_folder: 'Bescheide' })],
+          operations: [expect.objectContaining({ source: 'office', target_folder: 'Bescheide' })],
         }),
       })
     )

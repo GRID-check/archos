@@ -335,13 +335,13 @@ export const annotationViewSchema = z.object({
   assigneeName: z.string().nullable(),
   dueOn: z.string().nullable(),
   /** The Fassung number it was set on, when the document has a version row for it. */
-  fassungNumber: z.number().int().nullable(),
+  revisionNumber: z.number().int().nullable(),
   /**
    * Whether it was set on the Fassung the document shows now. False once a
    * newer Fassung replaced that one: it is listed, and not drawn over a sheet
    * whose geometry may have moved.
    */
-  onCurrentFassung: z.boolean(),
+  onCurrentRevision: z.boolean(),
   /** The person who set it, or on whose behalf Piloti proposed it. */
   createdBy: z.string(),
   createdByName: z.string().nullable(),
@@ -488,10 +488,10 @@ export function isForReader(
  * on this one.
  */
 export function isGhostMark(
-  annotation: Pick<AnnotationView, 'documentId' | 'onCurrentFassung' | 'status'>,
+  annotation: Pick<AnnotationView, 'documentId' | 'onCurrentRevision' | 'status'>,
   documentId: string
 ): boolean {
-  return annotation.documentId === documentId && !annotation.onCurrentFassung && annotation.status === 'open'
+  return annotation.documentId === documentId && !annotation.onCurrentRevision && annotation.status === 'open'
 }
 
 /**
@@ -695,7 +695,7 @@ export const internalAnnotationSchema = z.object({
   basis: z.string().nullable(),
   assigneeName: z.string().nullable(),
   dueOn: z.string().nullable(),
-  onCurrentFassung: z.boolean(),
+  onCurrentRevision: z.boolean(),
   createdByName: z.string().nullable(),
   createdAt: z.string(),
   replies: z.array(

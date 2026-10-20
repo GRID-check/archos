@@ -37,7 +37,7 @@ _TAKEAWAYS = [
     {"text": "Maßgeblich ist das Fluchtniveau, nicht die Geschoßzahl"},
     {"text": "Tragende Bauteile mindestens REI 60", "detail": "In Kellergeschossen gilt REI 90."},
 ]
-_CALLOUT = {"kind": "frist", "text": "Die Bauverhandlung ist binnen sechs Wochen anzuberaumen."}
+_CALLOUT = {"kind": "deadline", "text": "Die Bauverhandlung ist binnen sechs Wochen anzuberaumen."}
 
 
 _PROSE = "Die Antwort [1].\n\n**Quellen:**\n- [1] OIB-Richtlinie 2 - https://example.com\n[CONFIDENCE:high]"
@@ -230,7 +230,7 @@ class TestGating:
         assert payload == {
             "v": ENVELOPE_VERSION,
             "callout": {
-                "kind": "frist",
+                "kind": "deadline",
                 "text": _CALLOUT["text"],
                 "detail": "Die Frist ruht bei Ergänzungsauftrag.",
             },
@@ -423,7 +423,7 @@ class TestRenderedSchema:
         for name in ("answer*", "confidence", "escalate_to_deep", "kind", "verdict", "takeaways", "callout"):
             assert name in schema
         # And the enum values the frontend switches on.
-        assert '"hinweis" | "achtung" | "frist" | "tipp"' in schema
+        assert '"note" | "warning" | "deadline" | "tip"' in schema
         assert '"low" | "medium" | "high"' in schema
         assert '"direct" | "walkthrough" | "ruling" | "handoff"' in schema
         assert "kind=ruling" in schema
@@ -502,7 +502,7 @@ class TestStrictResponseFormat:
         assert order[: len(MASTHEAD_FIELDS) + 1] == [*MASTHEAD_FIELDS, "answer"]
         assert schema["properties"]["answer"]["type"] == "string"
         callout = schema["properties"]["callout"]["anyOf"][0]
-        assert callout["properties"]["kind"]["enum"] == ["hinweis", "achtung", "frist", "tipp"]
+        assert callout["properties"]["kind"]["enum"] == ["note", "warning", "deadline", "tip"]
         confidence = schema["properties"]["confidence"]["anyOf"][0]
         assert confidence["properties"]["level"]["enum"] == ["low", "medium", "high"]
         assert "kind=ruling" in schema["properties"]["kind"]["description"]
@@ -700,9 +700,9 @@ class TestSkillsApplied:
         from aiq_agent.common.answer_envelope import gate_answer_meta
 
         _content, meta = extract_answer_envelope(
-            _fenced({"answer": _PROSE, "kind": "walkthrough", "skills_applied": ["brandschutz"]})
+            _fenced({"answer": _PROSE, "kind": "walkthrough", "skills_applied": ["fire-safety"]})
         )
-        assert meta is not None and meta.skills_applied == ["brandschutz"]
+        assert meta is not None and meta.skills_applied == ["fire-safety"]
         gated = gate_answer_meta(meta, prose_chars=len(_PROSE)) or {}
         assert "skills_applied" not in json.dumps(gated)
 
@@ -722,9 +722,7 @@ class TestHeadlessSalvage:
         assert meta is not None and meta.kind == "ruling"
 
     def test_a_headless_tail_is_cut_at_its_own_kind_not_a_nested_cards(self):
-        content = (
-            'Die Antwort.", "kind":"ruling", "cards":[{"type":"callout", "kind":"hinweis", "text":"Achtung"}]}\n```'
-        )
+        content = 'Die Antwort.", "kind":"ruling", "cards":[{"type":"callout", "kind":"note", "text":"Achtung"}]}\n```'
         prose, meta = extract_answer_envelope(content)
         assert prose == "Die Antwort."
         assert meta is not None and meta.kind == "ruling"
@@ -733,7 +731,7 @@ class TestHeadlessSalvage:
         # The only `", "kind":` is the callout's: cutting there shipped a JSON
         # fragment as prose under an invented kind. The cut is at `"cards"`,
         # the envelope's own key, and the callout's kind invents nothing.
-        content = 'Mehr Text hier.", "cards":[{"type":"callout", "kind":"hinweis", "text":"Achtung"}]}\n```'
+        content = 'Mehr Text hier.", "cards":[{"type":"callout", "kind":"note", "text":"Achtung"}]}\n```'
         prose, meta = extract_answer_envelope(content)
         assert prose == "Mehr Text hier."
         assert meta is not None and meta.kind is None
@@ -762,7 +760,7 @@ class TestHeadlessSalvage:
         assert extract_answer_envelope(content) == (content, None)
 
     def test_a_tail_with_a_kind_that_is_no_answer_kind_is_not_salvaged(self):
-        content = 'Text.", "kind":"hinweis", "summary":"x"}'
+        content = 'Text.", "kind":"note", "summary":"x"}'
         assert extract_answer_envelope(content) == (content, None)
 
     def test_an_unparseable_object_with_its_opening_is_not_cut_at_a_nested_kind(self):
@@ -770,13 +768,21 @@ class TestHeadlessSalvage:
         # tail: salvage would ship a JSON fragment as prose under an invented kind.
         content = (
             '{"kind":"direct","answer":"Die Höhe gilt \\q nach Tabelle.", '
-            '"callout":{"title":"T", "kind":"achtung", "text":"x"}}'
+            '"callout":{"title":"T", "kind":"warning", "text":"x"}}'
         )
         assert extract_answer_envelope(content) == (content, None)
 
     def test_an_unparseable_fenced_object_is_not_salvaged_either(self):
         content = (
             '```answer_json\n{"kind":"direct","answer":"Die Höhe gilt \\q nach Tabelle.", '
-            '"callout":{"title":"T", "kind":"achtung", "text":"x"}}\n```'
+            '"callout":{"title":"T", "kind":"warning", "text":"x"}}\n```'
         )
         assert extract_answer_envelope(content) == (content, None)
+
+
+class TestTheGermanCalloutKindsStillRead:
+    def test_a_model_that_imitates_an_earlier_turn_may_still_say_hinweis(self):
+        from aiq_agent.common.answer_envelope import AnswerMetaCallout
+
+        assert AnswerMetaCallout.model_validate({"kind": "frist", "text": "x"}).kind == "deadline"
+        assert AnswerMetaCallout.model_validate({"kind": "tip", "text": "x"}).kind == "tip"

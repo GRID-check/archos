@@ -11,8 +11,8 @@ entries:
 - id: bo-wien
   title: Bauordnung für Wien
   short: BO für Wien
-  rank: landesgesetz
-  bundesland: Wien
+  rank: state_law
+  federal_state: Wien
   topics:
   - bauordnung
   - bauantrag
@@ -31,8 +31,8 @@ entries:
 - id: garagengesetz-wien
   title: Wiener Garagengesetz 2008
   short: Garagengesetz Wien
-  rank: landesgesetz
-  bundesland: Wien
+  rank: state_law
+  federal_state: Wien
   topics:
   - garagengesetz
   - garage
@@ -51,8 +51,8 @@ entries:
 - id: bo-noe
   title: NÖ Bauordnung 2014
   short: NÖ BO 2014
-  rank: landesgesetz
-  bundesland: Niederösterreich
+  rank: state_law
+  federal_state: Niederösterreich
   topics:
   - bauordnung
   - bauantrag
@@ -72,8 +72,8 @@ entries:
 - id: bo-ooe
   title: Oö. Bauordnung 1994
   short: Oö. BauO 1994
-  rank: landesgesetz
-  bundesland: Oberösterreich
+  rank: state_law
+  federal_state: Oberösterreich
   topics:
   - bauordnung
   - bauantrag
@@ -91,8 +91,8 @@ entries:
 - id: bo-stmk
   title: Steiermärkisches Baugesetz
   short: Stmk. BauG
-  rank: landesgesetz
-  bundesland: Steiermark
+  rank: state_law
+  federal_state: Steiermark
   topics:
   - baugesetz
   - bauordnung
@@ -110,8 +110,8 @@ entries:
 - id: bo-ktn
   title: Kärntner Bauordnung 1996 - K-BO 1996
   short: Ktn. BO
-  rank: landesgesetz
-  bundesland: Kärnten
+  rank: state_law
+  federal_state: Kärnten
   topics:
   - bauordnung
   - bauantrag
@@ -128,8 +128,8 @@ entries:
 - id: bo-sbg
   title: Salzburger Bautechnikgesetz 2015
   short: Sbg. BTG
-  rank: landesgesetz
-  bundesland: Salzburg
+  rank: state_law
+  federal_state: Salzburg
   topics:
   - bautechnikgesetz
   - bauordnung
@@ -145,8 +145,8 @@ entries:
 - id: baupolg-sbg
   title: Baupolizeigesetz 1997
   short: Sbg. BauPolG
-  rank: landesgesetz
-  bundesland: Salzburg
+  rank: state_law
+  federal_state: Salzburg
   topics:
   - bauordnung
   - bauantrag
@@ -165,8 +165,8 @@ entries:
 - id: bo-tirol
   title: Bauordnung 2022, Tiroler
   short: Tiroler BO
-  rank: landesgesetz
-  bundesland: Tirol
+  rank: state_law
+  federal_state: Tirol
   topics:
   - bauordnung
   - bauantrag
@@ -183,8 +183,8 @@ entries:
 - id: bo-vbg
   title: Baugesetz
   short: Vbg. BauG
-  rank: landesgesetz
-  bundesland: Vorarlberg
+  rank: state_law
+  federal_state: Vorarlberg
   topics:
   - baugesetz
   - bauordnung
@@ -198,13 +198,13 @@ entries:
   verify:
     title_query: Baugesetz
     expect: Baugesetz
-    gesetzesnummer: '20000734'
+    statute_number: '20000734'
   verified_at: '2026-07-17'
 - id: bo-bgld
   title: Burgenländisches Baugesetz 1997
   short: Bgld. BO
-  rank: landesgesetz
-  bundesland: Burgenland
+  rank: state_law
+  federal_state: Burgenland
   topics:
   - bauordnung
   - bauantrag
@@ -221,8 +221,8 @@ entries:
 - id: aschg
   title: ArbeitnehmerInnenschutzgesetz
   short: ASchG
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - arbeitnehmerinnenschutz
   - arbeitsstätten
@@ -240,8 +240,8 @@ entries:
 - id: astv
   title: Arbeitsstättenverordnung
   short: AStV
-  rank: verordnung
-  bundesland: ''
+  rank: ordinance
+  federal_state: ''
   topics:
   - arbeitsstättenverordnung
   - arbeitsstätten
@@ -255,13 +255,13 @@ entries:
   verify:
     title_query: Arbeitsstättenverordnung
     expect: Arbeitsstätten
-    gesetzesnummer: '10009098'
+    statute_number: '10009098'
   verified_at: '2026-07-17'
 - id: bkag
   title: Bauarbeitenkoordinationsgesetz
   short: BKAG
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - bauarbeitenkoordination
   - baustellenkoordination
@@ -279,8 +279,8 @@ entries:
 - id: ztg
   title: Ziviltechnikergesetz 2019
   short: ZTG 2019
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - ziviltechnikergesetz
   - ziviltechniker
@@ -298,8 +298,8 @@ entries:
 - id: wgg
   title: Wohnungsgemeinnützigkeitsgesetz
   short: WGG
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - wohnungsgemeinnützigkeit
   - gemeinnütziger wohnbau
@@ -316,8 +316,8 @@ entries:
 - id: wbtv
   title: Wiener Bautechnikverordnung 2023
   short: WBTV
-  rank: verordnung
-  bundesland: Wien
+  rank: ordinance
+  federal_state: Wien
   topics:
   - bautechnikverordnung
   - wbtv
@@ -344,8 +344,8 @@ entries:
 - id: klgg-wien
   title: Wiener Kleingartengesetz 1996
   short: KlGG Wien
-  rank: landesgesetz
-  bundesland: Wien
+  rank: state_law
+  federal_state: Wien
   topics:
   - kleingartengesetz
   - kleingarten
@@ -365,8 +365,8 @@ entries:
 - id: dmsg
   title: Denkmalschutzgesetz
   short: DMSG
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - denkmalschutz
   - denkmalschutzgesetz
@@ -385,8 +385,8 @@ entries:
 - id: uvpg
   title: Umweltverträglichkeitsprüfungsgesetz 2000
   short: UVP-G 2000
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - umweltverträglichkeitsprüfung
   - uvp
@@ -403,8 +403,8 @@ entries:
 - id: wrg
   title: Wasserrechtsgesetz 1959
   short: WRG 1959
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - wasserrechtsgesetz
   - wasserrecht
@@ -418,13 +418,13 @@ entries:
   verify:
     title_query: Wasserrechtsgesetz
     expect: Wasserrecht
-    gesetzesnummer: '10010290'
+    statute_number: '10010290'
   verified_at: '2026-07-17'
 - id: forstg
   title: Forstgesetz 1975
   short: ForstG 1975
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - forstgesetz
   - wald
@@ -442,8 +442,8 @@ entries:
 - id: gewo
   title: Gewerbeordnung 1994
   short: GewO 1994
-  rank: bundesgesetz
-  bundesland: ''
+  rank: federal_law
+  federal_state: ''
   topics:
   - gewerbeordnung
   - betriebsanlage
@@ -458,13 +458,13 @@ entries:
   verify:
     title_query: Gewerbeordnung
     expect: Gewerbeordnung
-    gesetzesnummer: '10007517'
+    statute_number: '10007517'
   verified_at: '2026-07-17'
 - id: ma37-merkblaetter
   title: MA 37 (Baupolizei Wien) — Merkblätter, Weisungen und Checklisten
   short: MA-37-Merkblätter
-  rank: behoerdliche_info
-  bundesland: Wien
+  rank: authority_info
+  federal_state: Wien
   topics:
   - merkblatt
   - weisung

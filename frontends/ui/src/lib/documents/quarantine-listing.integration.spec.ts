@@ -38,7 +38,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   let db: ReturnType<typeof import('@/lib/db').getDb>
   let withTenant: typeof import('@/lib/db/tenant-context').withTenant
   let repo: typeof import('./repository')
-  let archiv: typeof import('@/lib/archiv/repository')
+  let officeShelf: typeof import('@/lib/office-shelf/repository')
   let sessions: typeof import('@/lib/session-documents/repository')
   let bim: typeof import('@/lib/bim/repository')
   let projectId: string
@@ -48,12 +48,12 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     withTenant({ organizationId: ORG, userId: UPLOADER }, run)
 
   async function insert(
-    shelf: 'project' | 'archiv' | 'session',
+    shelf: 'project' | 'office_shelf' | 'session',
     filename: string,
     createdBy: string,
     status: string
   ): Promise<void> {
-    const collection = shelf === 'project' ? COLLECTION : shelf === 'archiv' ? `archiv_${ORG}` : `session_${ORG}`
+    const collection = shelf === 'project' ? COLLECTION : shelf === 'office_shelf' ? `archiv_${ORG}` : `session_${ORG}`
     await inTenant(() =>
       db.execute(sql`
         INSERT INTO documents
@@ -69,7 +69,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
    * One ready file, the uploader's quarantined one, somebody else's quarantined
    * one, and somebody else's still being screened.
    */
-  async function seed(shelf: 'project' | 'archiv' | 'session'): Promise<void> {
+  async function seed(shelf: 'project' | 'office_shelf' | 'session'): Promise<void> {
     await insert(shelf, `${shelf}-ready.pdf`, OTHER_UPLOADER, 'completed')
     await insert(shelf, `${shelf}-own.pdf`, UPLOADER, 'quarantined')
     await insert(shelf, `${shelf}-foreign.pdf`, OTHER_UPLOADER, 'quarantined')
@@ -84,7 +84,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     withTenant = context.withTenant
     db = (await import('@/lib/db')).getDb()
     repo = await import('./repository')
-    archiv = await import('@/lib/archiv/repository')
+    officeShelf = await import('@/lib/office-shelf/repository')
     sessions = await import('@/lib/session-documents/repository')
     bim = await import('@/lib/bim/repository')
 
@@ -104,7 +104,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       `)
     )
     await seed('project')
-    await seed('archiv')
+    await seed('office_shelf')
     await seed('session')
     // A model for each project file: an IFC is extracted before its digest is
     // screened, so a quarantined one has a `ready` model too.
@@ -168,11 +168,11 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       'project-own.pdf',
       'project-ready.pdf',
     ])
-    const archived = ['archiv-ready.pdf', 'archiv-own.pdf', 'archiv-foreign.pdf', 'archiv-pending.pdf']
-    expect(names(await archiv.findArchivDocumentsByNames(ORG, archived, { reader: member }))).toEqual([
-      'archiv-ready.pdf',
+    const archived = ['office_shelf-ready.pdf', 'office_shelf-own.pdf', 'office_shelf-foreign.pdf', 'office_shelf-pending.pdf']
+    expect(names(await officeShelf.findOfficeShelfDocumentsByNames(ORG, archived, { reader: member }))).toEqual([
+      'office_shelf-ready.pdf',
     ])
-    expect(await archiv.findArchivDocumentsByNames(ORG, archived, { reader: REVIEWER_READER })).toHaveLength(4)
+    expect(await officeShelf.findOfficeShelfDocumentsByNames(ORG, archived, { reader: REVIEWER_READER })).toHaveLength(4)
   })
 
   it('narrows the project overview the same way', async () => {
@@ -195,8 +195,8 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   })
 
   it('narrows the Büroablage listing the same way', async () => {
-    const page = await archiv.listArchivDocuments(ORG, { reader: member })
-    expect(names(page.rows)).toEqual(['archiv-ready.pdf'])
+    const page = await officeShelf.listOfficeShelfDocuments(ORG, { reader: member })
+    expect(names(page.rows)).toEqual(['office_shelf-ready.pdf'])
   })
 
   it("narrows a chat's attachments the same way", async () => {
@@ -215,10 +215,10 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   })
 
   it('narrows the IFC model list the same way, and gives the agent none', async () => {
-    const shelves = (project: ShelfReader, archivShelf: ShelfReader): DocumentReader => ({
+    const shelves = (project: ShelfReader, officeShelf: ShelfReader): DocumentReader => ({
       kind: 'shelves',
       project,
-      archiv: archivShelf,
+      officeShelf: officeShelf,
     })
     const forMember = await bim.listBimModels(ORG, { projectId, reader: shelves(member, member) })
     expect(names(forMember)).toEqual(['project-ready.pdf'])
@@ -234,18 +234,18 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       db.execute(sql`
         INSERT INTO bim_models (organization_id, project_id, document_id, status)
         SELECT organization_id, NULL, id, 'ready' FROM documents
-        WHERE organization_id = ${ORG} AND scope = 'archiv'
+        WHERE organization_id = ${ORG} AND scope = 'office_shelf'
       `)
     )
     // A project admin who does not curate the Büroablage: every project model,
     // and of the Büroablage's only what is not held back.
     const forProjectAdmin = await bim.listBimModels(ORG, {
       projectId,
-      includeArchiv: true,
-      reader: { kind: 'shelves', project: REVIEWER_READER, archiv: memberReader(MEMBER) },
+      includeOfficeShelf: true,
+      reader: { kind: 'shelves', project: REVIEWER_READER, officeShelf: memberReader(MEMBER) },
     })
     expect(names(forProjectAdmin)).toEqual([
-      'archiv-ready.pdf',
+      'office_shelf-ready.pdf',
       'project-foreign.pdf',
       'project-own.pdf',
       'project-pending.pdf',
@@ -254,14 +254,14 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     // A curator who is a plain member of the project: the reverse.
     const forCurator = await bim.listBimModels(ORG, {
       projectId,
-      includeArchiv: true,
-      reader: { kind: 'shelves', project: memberReader(MEMBER), archiv: REVIEWER_READER },
+      includeOfficeShelf: true,
+      reader: { kind: 'shelves', project: memberReader(MEMBER), officeShelf: REVIEWER_READER },
     })
     expect(names(forCurator)).toEqual([
-      'archiv-foreign.pdf',
-      'archiv-own.pdf',
-      'archiv-pending.pdf',
-      'archiv-ready.pdf',
+      'office_shelf-foreign.pdf',
+      'office_shelf-own.pdf',
+      'office_shelf-pending.pdf',
+      'office_shelf-ready.pdf',
       'project-ready.pdf',
     ])
   })

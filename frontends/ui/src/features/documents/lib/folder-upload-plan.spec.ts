@@ -663,10 +663,10 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
 
   it('attaches the offer to a new file and ticks it when the match is unambiguous', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
-    const result = plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B])]]) })
+    const result = plan({ files: [file], revisionOffers: new Map([[file.name, offer(file.name, [B])]]) })
 
     expect(result.files[0].action).toBe('new')
-    expect(result.files[0].fassungOf).toMatchObject({
+    expect(result.files[0].revisionOf).toMatchObject({
       of: { id: 'b', filename: 'EG_Grundriss_Index_B.pdf', name: 'EG_Grundriss_Index_B.pdf', label: 'Index B' },
       unambiguous: true,
       chosen: true,
@@ -677,39 +677,39 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
     const result = plan({
       files: [file],
-      fassungOffers: new Map([[file.name, offer(file.name, [{ ...B, displayName: 'Grundriss EG' }])]]),
+      revisionOffers: new Map([[file.name, offer(file.name, [{ ...B, displayName: 'Grundriss EG' }])]]),
     })
 
-    expect(result.files[0].fassungOf?.of.name).toBe('Grundriss EG')
+    expect(result.files[0].revisionOf?.of.name).toBe('Grundriss EG')
   })
 
   it('leaves an ambiguous offer unticked, and takes the newest candidate as the one it is about', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
     const other = { id: 'a', filename: 'EG_Grundriss_Index_A.pdf' }
-    const result = plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B, other])]]) })
+    const result = plan({ files: [file], revisionOffers: new Map([[file.name, offer(file.name, [B, other])]]) })
 
-    expect(result.files[0].fassungOf).toMatchObject({ of: { id: 'b' }, unambiguous: false, chosen: false })
+    expect(result.files[0].revisionOf).toMatchObject({ of: { id: 'b' }, unambiguous: false, chosen: false })
   })
 
   it('leaves a file that is not newer unticked', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_A.pdf')
     const result = plan({
       files: [file],
-      fassungOffers: new Map([[file.name, offer(file.name, [B], { newer: false, unambiguous: false })]]),
+      revisionOffers: new Map([[file.name, offer(file.name, [B], { newer: false, unambiguous: false })]]),
     })
 
-    expect(result.files[0].fassungOf).toMatchObject({ newer: false, chosen: false })
+    expect(result.files[0].revisionOf).toMatchObject({ newer: false, chosen: false })
   })
 
   it('takes the reader’s tick over the default, and their pick among the candidates', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
     const other = { id: 'a', filename: 'EG_Grundriss_Index_A.pdf' }
-    const input = { files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B, other])]]) }
+    const input = { files: [file], revisionOffers: new Map([[file.name, offer(file.name, [B, other])]]) }
 
-    expect(plan({ ...input, fassungChoices: new Map([[file, { chosen: true }]]) }).files[0].fassungOf?.chosen).toBe(true)
-    const picked = plan({ ...input, fassungChoices: new Map([[file, { targetId: 'a', chosen: true }]]) }).files[0]
-    expect(picked.fassungOf).toMatchObject({ of: { id: 'a' }, chosen: true })
-    expect(plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B])]]), fassungChoices: new Map([[file, { chosen: false }]]) }).files[0].fassungOf?.chosen).toBe(false)
+    expect(plan({ ...input, revisionChoices: new Map([[file, { chosen: true }]]) }).files[0].revisionOf?.chosen).toBe(true)
+    const picked = plan({ ...input, revisionChoices: new Map([[file, { targetId: 'a', chosen: true }]]) }).files[0]
+    expect(picked.revisionOf).toMatchObject({ of: { id: 'a' }, chosen: true })
+    expect(plan({ files: [file], revisionOffers: new Map([[file.name, offer(file.name, [B])]]), revisionChoices: new Map([[file, { chosen: false }]]) }).files[0].revisionOf?.chosen).toBe(false)
   })
 
   it('offers nothing to a file whose name the shelf already holds: that is a new version (ADR-0054)', () => {
@@ -717,11 +717,11 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
     const result = plan({
       files: [file],
       documents: [doc({ id: 'c', filename: 'EG_Grundriss_Index_C.pdf', fileSize: 999 })],
-      fassungOffers: new Map([[file.name, offer(file.name, [B])]]),
+      revisionOffers: new Map([[file.name, offer(file.name, [B])]]),
     })
 
     expect(result.files[0].action).toBe('update')
-    expect(result.files[0].fassungOf).toBeUndefined()
+    expect(result.files[0].revisionOf).toBeUndefined()
   })
 
   it('leaves an unchanged re-export unchanged and skipped: same name, same bytes, no proposal', () => {
@@ -730,11 +730,11 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
       files: [file],
       documents: [doc({ id: 'c', filename: 'EG_Grundriss_Index_C.pdf', fileSize: 100, contentHash: 'sha-1' })],
       digests: new Map([[file, 'sha-1']]),
-      fassungOffers: new Map([[file.name, offer(file.name, [B])]]),
+      revisionOffers: new Map([[file.name, offer(file.name, [B])]]),
     })
 
     expect(result.files[0]).toMatchObject({ action: 'unchanged' })
-    expect(result.files[0].fassungOf).toBeUndefined()
+    expect(result.files[0].revisionOf).toBeUndefined()
     expect(result.counts.uploading).toBe(0)
   })
 
@@ -742,11 +742,11 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
     const file = new File(['x'], 'Rechnung_Index_C.pdf')
     const result = plan({
       files: [file],
-      fassungOffers: new Map([[file.name, offer(file.name, [B])]]),
+      revisionOffers: new Map([[file.name, offer(file.name, [B])]]),
       screening: { policy: SUGGESTED_SCREENING_POLICY, basePath: null },
     })
 
-    if (result.files[0].action === 'excluded') expect(result.files[0].fassungOf).toBeUndefined()
+    if (result.files[0].action === 'excluded') expect(result.files[0].revisionOf).toBeUndefined()
   })
 
   it('does not tick two files of one drop for one document: only the newest of them is the successor', () => {
@@ -754,13 +754,13 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
     const d = new File(['x'], 'EG_Grundriss_Index_D.pdf')
     const result = plan({
       files: [c, d],
-      fassungOffers: new Map([
+      revisionOffers: new Map([
         [c.name, offer(c.name, [B])],
         [d.name, offer(d.name, [B])],
       ]),
     })
 
-    const byName = new Map(result.files.map((file) => [file.file.name, file.fassungOf]))
+    const byName = new Map(result.files.map((file) => [file.file.name, file.revisionOf]))
     expect(byName.get(d.name)).toMatchObject({ unambiguous: true, chosen: true })
     expect(byName.get(c.name)).toMatchObject({ unambiguous: false, chosen: false })
   })
@@ -768,7 +768,7 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
   it('asks about a drop of loose files that only continue documents', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
     const without = plan({ files: [file] })
-    const withOffer = plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B])]]) })
+    const withOffer = plan({ files: [file], revisionOffers: new Map([[file.name, offer(file.name, [B])]]) })
 
     expect(needsUploadDecision(without)).toBe(false)
     expect(needsUploadDecision(withOffer)).toBe(true)
@@ -776,7 +776,7 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
 
   it('counts a file filed as a Fassung like any new file, and uploads it', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
-    const result = plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B])]]) })
+    const result = plan({ files: [file], revisionOffers: new Map([[file.name, offer(file.name, [B])]]) })
 
     expect(filesToUpload(result, true).map((planned) => planned.file)).toEqual([file])
     expect(result.counts.new).toBe(1)
@@ -787,8 +787,8 @@ describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
     const offers = new Map([[file.name, offer(file.name, [B])]])
 
-    const ticked = plan({ files: [file], fassungOffers: offers })
-    const unticked = plan({ files: [file], fassungOffers: offers, fassungChoices: new Map([[file, { chosen: false }]]) })
+    const ticked = plan({ files: [file], revisionOffers: offers })
+    const unticked = plan({ files: [file], revisionOffers: offers, revisionChoices: new Map([[file, { chosen: false }]]) })
 
     expect(samePlanOutcome(ticked, ticked)).toBe(true)
     expect(samePlanOutcome(ticked, unticked)).toBe(false)

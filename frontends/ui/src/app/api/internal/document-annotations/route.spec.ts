@@ -462,7 +462,7 @@ const record = (patch: Partial<AnnotationRecord> = {}): AnnotationRecord => ({
   delegatedAt: null,
   carriedFromId: null,
   mentions: [],
-  fassungNumber: null,
+  revisionNumber: null,
   replies: [],
   ...patch,
 })

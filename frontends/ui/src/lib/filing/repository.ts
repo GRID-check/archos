@@ -66,7 +66,7 @@ export const MAX_DESCRIBED_FOLDERS = 120
 /** A living folder somebody described, on a project's shelf or the Büroablage. */
 export interface DescribedFolderRow {
   id: string
-  scope: 'project' | 'archiv'
+  scope: 'project' | 'office_shelf'
   path: string
   description: string
 }
@@ -95,11 +95,11 @@ export async function listDescribedFolders(
         .orderBy(projectFolders.path)
         .limit(MAX_DESCRIBED_FOLDERS)
     )
-  const [project, archiv] = await Promise.all([
+  const [project, officeShelf] = await Promise.all([
     projectId ? read(and(eq(projectFolders.scope, 'project'), eq(projectFolders.projectId, projectId))) : Promise.resolve([]),
-    read(eq(projectFolders.scope, 'archiv')),
+    read(eq(projectFolders.scope, 'office_shelf')),
   ])
-  return [...project, ...archiv].flatMap((row) => (row.description ? [{ ...row, description: row.description }] : []))
+  return [...project, ...officeShelf].flatMap((row) => (row.description ? [{ ...row, description: row.description }] : []))
 }
 
 /**

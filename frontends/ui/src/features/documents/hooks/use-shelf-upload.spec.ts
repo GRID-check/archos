@@ -30,7 +30,7 @@ vi.mock('./use-upload-decision', () => ({
     kind: 'files',
     setReleased: vi.fn(),
     settle: vi.fn(),
-    changeFassung: vi.fn(),
+    changeRevision: vi.fn(),
     setOpen: vi.fn(),
     setPending: vi.fn(),
   }),
@@ -53,7 +53,7 @@ function setup(overrides: Partial<ShelfUploadOptions> = {}) {
   const initial: ShelfUploadOptions = {
     shelf: {
       probeNames: vi.fn(),
-      probeFassungen: vi.fn(),
+      probeRevisions: vi.fn(),
       handoverKey: null,
       endpoints: { folders: '/api/projects/p1/folders' },
     } as unknown as ShelfUploadOptions['shelf'],

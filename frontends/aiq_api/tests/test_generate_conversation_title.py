@@ -51,7 +51,7 @@ _BODY = {
         {"role": "user", "content": "Welche Brandschutzanforderungen gelten für Stiegenhäuser über 22 m?"},
         {"role": "assistant", "content": "Für Gebäude über 22 m gelten laut OIB 2 …"},
     ],
-    "allowed_tags": ["brandschutz", "schallschutz", "statik"],
+    "allowed_tags": ["fire_safety", "sound_insulation", "structural"],
 }
 
 
@@ -60,7 +60,7 @@ async def test_success_returns_title_and_filtered_tags(app):
     """A clean JSON reply yields the title and only allowed tags (deduped, capped)."""
     mock_post = AsyncMock(
         return_value=_title_response(
-            '{"title": "Brandschutz bei Stiegenhäusern", "tags": ["brandschutz", "brandschutz", "unknown-tag"]}'
+            '{"title": "Brandschutz bei Stiegenhäusern", "tags": ["fire_safety", "fire_safety", "unknown-tag"]}'
         )
     )
 
@@ -72,7 +72,7 @@ async def test_success_returns_title_and_filtered_tags(app):
     data = response.json()
     assert data["title"] == "Brandschutz bei Stiegenhäusern"
     # Deduped, and the out-of-vocabulary tag is dropped.
-    assert data["tags"] == ["brandschutz"]
+    assert data["tags"] == ["fire_safety"]
     assert data["error"] is None
 
 
@@ -80,7 +80,7 @@ async def test_success_returns_title_and_filtered_tags(app):
 async def test_parses_json_wrapped_in_code_fence(app):
     """The model sometimes fences its JSON; the route recovers the object."""
     mock_post = AsyncMock(
-        return_value=_title_response('```json\n{"title": "Schallschutz Wohnbau", "tags": ["schallschutz"]}\n```')
+        return_value=_title_response('```json\n{"title": "Schallschutz Wohnbau", "tags": ["sound_insulation"]}\n```')
     )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -89,7 +89,7 @@ async def test_parses_json_wrapped_in_code_fence(app):
 
     data = response.json()
     assert data["title"] == "Schallschutz Wohnbau"
-    assert data["tags"] == ["schallschutz"]
+    assert data["tags"] == ["sound_insulation"]
 
 
 @pytest.mark.asyncio
@@ -97,7 +97,7 @@ async def test_parses_json_in_unterminated_code_fence(app):
     """The token cap eats the CLOSING fence first. An opening fence with no
     closing one must still be stripped rather than read as "not fenced"."""
     mock_post = AsyncMock(
-        return_value=_title_response('```json\n{"title": "Schallschutz Wohnbau", "tags": ["schallschutz"]}')
+        return_value=_title_response('```json\n{"title": "Schallschutz Wohnbau", "tags": ["sound_insulation"]}')
     )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -115,7 +115,7 @@ async def test_parses_json_surrounded_by_prose(app):
     mock_post = AsyncMock(
         return_value=_title_response(
             "Sure! Here is the JSON you asked for:\n"
-            '{"title": "Brandschutz Stiegenhaus", "tags": ["brandschutz"]}\n'
+            '{"title": "Brandschutz Stiegenhaus", "tags": ["fire_safety"]}\n'
             "Hope that helps :}"
         )
     )
@@ -126,7 +126,7 @@ async def test_parses_json_surrounded_by_prose(app):
 
     data = response.json()
     assert data["title"] == "Brandschutz Stiegenhaus"
-    assert data["tags"] == ["brandschutz"]
+    assert data["tags"] == ["fire_safety"]
     assert data["error"] is None
 
 
@@ -134,7 +134,7 @@ async def test_parses_json_surrounded_by_prose(app):
 async def test_brace_inside_title_does_not_end_the_object(app):
     """A `}` inside a string value is data, not the end of the object."""
     mock_post = AsyncMock(
-        return_value=_title_response('{"title": "Regel {OIB 2} für Stiegen", "tags": ["brandschutz"]}')
+        return_value=_title_response('{"title": "Regel {OIB 2} für Stiegen", "tags": ["fire_safety"]}')
     )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -143,7 +143,7 @@ async def test_brace_inside_title_does_not_end_the_object(app):
 
     data = response.json()
     assert data["title"] == "Regel {OIB 2} für Stiegen"
-    assert data["tags"] == ["brandschutz"]
+    assert data["tags"] == ["fire_safety"]
 
 
 @pytest.mark.asyncio
@@ -171,7 +171,7 @@ async def test_reply_truncated_mid_title_is_recovered(app):
 async def test_reply_truncated_mid_tag_list_is_recovered(app):
     """Same cut, landing inside the tag array — the title is still recoverable."""
     mock_post = AsyncMock(
-        return_value=_title_response('{"title": "Brandschutz Stiegen", "tags": ["brandschutz", "sta', "length")
+        return_value=_title_response('{"title": "Brandschutz Stiegen", "tags": ["fire_safety", "sta', "length")
     )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -181,7 +181,7 @@ async def test_reply_truncated_mid_tag_list_is_recovered(app):
     data = response.json()
     assert data["title"] == "Brandschutz Stiegen"
     # "sta" was cut mid-word and is not in the allow-list, so it is dropped.
-    assert data["tags"] == ["brandschutz"]
+    assert data["tags"] == ["fire_safety"]
     assert data["error"] is None
 
 
@@ -248,7 +248,7 @@ async def test_empty_messages_short_circuits(app):
         with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
             response = await client.post(
                 "/v1/generate-conversation-title",
-                json={"messages": [{"role": "user", "content": "   "}], "allowed_tags": ["brandschutz"]},
+                json={"messages": [{"role": "user", "content": "   "}], "allowed_tags": ["fire_safety"]},
             )
 
     assert response.status_code == 200

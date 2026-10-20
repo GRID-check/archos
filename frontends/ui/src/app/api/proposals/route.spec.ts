@@ -39,11 +39,11 @@ vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn(asy
 vi.mock('@/lib/conversations/repository', () => ({ findConversationInOrg: vi.fn() }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
 vi.mock('@/lib/documents/service', () => ({ resolveProjectDocumentsByName: vi.fn(), renameDocument: vi.fn() }))
-vi.mock('@/lib/archiv/service', () => ({ resolveArchivDocumentsByName: vi.fn() }))
-vi.mock('@/lib/archiv/folder-service', () => ({
-  listArchivFolders: vi.fn(),
-  ensureArchivFolderPaths: vi.fn(),
-  updateArchivFolder: vi.fn(),
+vi.mock('@/lib/office-shelf/service', () => ({ resolveOfficeShelfDocumentsByName: vi.fn() }))
+vi.mock('@/lib/office-shelf/folder-service', () => ({
+  listOfficeShelfFolders: vi.fn(),
+  ensureOfficeShelfFolderPaths: vi.fn(),
+  updateOfficeShelfFolder: vi.fn(),
 }))
 vi.mock('@/lib/projects/folder-service', () => ({
   listProjectFolders: vi.fn(),
@@ -84,8 +84,8 @@ vi.mock('@/lib/proposals/repository', () => ({
 }))
 
 import { UnprocessableError } from '@/lib/api/errors'
-import { ensureArchivFolderPaths, listArchivFolders, updateArchivFolder } from '@/lib/archiv/folder-service'
-import { resolveArchivDocumentsByName } from '@/lib/archiv/service'
+import { ensureOfficeShelfFolderPaths, listOfficeShelfFolders, updateOfficeShelfFolder } from '@/lib/office-shelf/folder-service'
+import { resolveOfficeShelfDocumentsByName } from '@/lib/office-shelf/service'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { ProposedChangeRow } from '@/lib/db/schema/proposed-changes'
 import { moveDocumentToFolder } from '@/lib/documents/move-to-folder'
@@ -134,21 +134,21 @@ const run = async (path: string, init?: RequestInit) => {
 
 const PROJECT = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f'
 const FILING = '0b7c8f5e-1d1e-4c39-9d2c-3f0f6c1a2b3c'
-const ARCHIV = '1c8d9f6e-2e2f-4d4a-8e3d-4a1f7d2b3c4d'
+const OFFICE_SHELF = '1c8d9f6e-2e2f-4d4a-8e3d-4a1f7d2b3c4d'
 
 const FILING_MOVE: FileOperationPayload = {
   operation: 'move',
   operations: [
-    { document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Behörde/Bescheide', reason: 'Ein Bescheid.' },
-    { document: 'Stellungnahme.pdf', source: 'projekt', target_folder: 'Behörde/Bescheide', reason: 'Eine Stellungnahme.' },
+    { document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Behörde/Bescheide', reason: 'Ein Bescheid.' },
+    { document: 'Stellungnahme.pdf', source: 'project', target_folder: 'Behörde/Bescheide', reason: 'Eine Stellungnahme.' },
   ],
   basis: 'name',
   new_folder: { path: 'Behörde/Bescheide', description: 'Bescheide und Stellungnahmen der Behörden' },
 }
 
-const ARCHIV_MOVE: FileOperationPayload = {
+const OFFICE_SHELF_MOVE: FileOperationPayload = {
   operation: 'move',
-  operations: [{ document: 'ÖNORM B 1800.pdf', source: 'buero', target_folder: 'Normen', reason: 'Eine Norm.' }],
+  operations: [{ document: 'ÖNORM B 1800.pdf', source: 'office', target_folder: 'Normen', reason: 'Eine Norm.' }],
   basis: 'content',
 }
 
@@ -188,11 +188,11 @@ beforeEach(() => {
   SESSION.permissions = []
   store = new Map([
     [FILING, row(FILING)],
-    [ARCHIV, row(ARCHIV, { projectId: null, scope: 'archiv', payload: ARCHIV_MOVE })],
+    [OFFICE_SHELF, row(OFFICE_SHELF, { projectId: null, scope: 'office_shelf', payload: OFFICE_SHELF_MOVE })],
   ])
   vi.mocked(findProposedChange).mockImplementation(async (_org, id) => store.get(id) ?? null)
   vi.mocked(listShelfProposals).mockImplementation(async (_org, shelf) =>
-    [...store.values()].filter((entry) => (shelf.scope === 'archiv' ? entry.projectId === null : entry.projectId === shelf.projectId))
+    [...store.values()].filter((entry) => (shelf.scope === 'office_shelf' ? entry.projectId === null : entry.projectId === shelf.projectId))
   )
   vi.mocked(claimProposedChange).mockImplementation(async (_org, id, userId) => {
     const current = store.get(id)
@@ -214,11 +214,11 @@ beforeEach(() => {
       name === 'MA37_Bescheid.pdf' ? [listed('doc_1', name)] : name === 'Stellungnahme.pdf' ? [listed('doc_2', name)] : []
     )
   )
-  vi.mocked(resolveArchivDocumentsByName).mockImplementation(async (_session, names) =>
+  vi.mocked(resolveOfficeShelfDocumentsByName).mockImplementation(async (_session, names) =>
     names.flatMap((name) => (name === 'ÖNORM B 1800.pdf' ? [listed('doc_n', name)] : []))
   )
   vi.mocked(listProjectFolders).mockResolvedValue([folder('f_behoerde', 'Behörde')])
-  vi.mocked(listArchivFolders).mockResolvedValue([folder('f_normen', 'Normen')])
+  vi.mocked(listOfficeShelfFolders).mockResolvedValue([folder('f_normen', 'Normen')])
   vi.mocked(moveDocumentToFolder).mockResolvedValue({ ok: true } as Awaited<ReturnType<typeof moveDocumentToFolder>>)
 })
 
@@ -244,13 +244,13 @@ describe('GET /api/proposals', () => {
   })
 
   it('lists the Büroablage’s with no project, to any member, decidable by its curators only', async () => {
-    const forMember = await listOpenProposals({ shelf: 'archiv' }, run)
+    const forMember = await listOpenProposals({ shelf: 'office_shelf' }, run)
     expect(forMember.proposals.map((entry) => [entry.proposal.id, entry.proposal.projectId, entry.proposal.canDecide])).toEqual([
-      [ARCHIV, null, false],
+      [OFFICE_SHELF, null, false],
     ])
     expect(requireProjectAccess).not.toHaveBeenCalled()
     SESSION.permissions = ['org:archiv:manage']
-    expect((await listOpenProposals({ shelf: 'archiv' }, run)).proposals[0].proposal.canDecide).toBe(true)
+    expect((await listOpenProposals({ shelf: 'office_shelf' }, run)).proposals[0].proposal.canDecide).toBe(true)
   })
 
   it('refuses a query that names no shelf, or two', async () => {
@@ -317,13 +317,13 @@ describe('a proposal no conversation made', () => {
 
 describe('the Büroablage', () => {
   it('is decided by its curators: a member gets a 403', async () => {
-    await expect(applyProposal(ARCHIV, run)).rejects.toMatchObject({ status: 403 })
+    await expect(applyProposal(OFFICE_SHELF, run)).rejects.toMatchObject({ status: 403 })
     SESSION.permissions = ['org:archiv:manage']
-    const { proposal } = await applyProposal(ARCHIV, run)
+    const { proposal } = await applyProposal(OFFICE_SHELF, run)
     expect(proposal.status).toBe('applied')
     expect(moveDocumentToFolder).toHaveBeenCalledWith({ documentId: 'doc_n', folderId: 'f_normen' }, SESSION)
-    expect(ensureArchivFolderPaths).not.toHaveBeenCalled()
-    expect(updateArchivFolder).not.toHaveBeenCalled()
+    expect(ensureOfficeShelfFolderPaths).not.toHaveBeenCalled()
+    expect(updateOfficeShelfFolder).not.toHaveBeenCalled()
   })
 
   it('is filed with no project, and only as a move of its own documents', async () => {
@@ -334,16 +334,16 @@ describe('the Büroablage', () => {
     await createProposal(SESSION, {
       projectId: null,
       kind: 'file_operation',
-      payload: ARCHIV_MOVE,
+      payload: OFFICE_SHELF_MOVE,
       conversationId: null,
       answerMessageId: null,
     })
-    expect(insertProposedChange).toHaveBeenCalledWith(expect.objectContaining({ projectId: null, scope: 'archiv' }))
+    expect(insertProposedChange).toHaveBeenCalledWith(expect.objectContaining({ projectId: null, scope: 'office_shelf' }))
     await expect(
       createProposal(SESSION, {
         projectId: null,
         kind: 'file_operation',
-        payload: { operation: 'move', operations: [{ document: 'a.pdf', source: 'projekt', target_folder: 'X' }] },
+        payload: { operation: 'move', operations: [{ document: 'a.pdf', source: 'project', target_folder: 'X' }] },
         conversationId: null,
         answerMessageId: null,
       })

@@ -29,7 +29,7 @@ import { en } from './dictionaries/en'
  */
 const FILE_NAMESPACES = [
   'files',
-  'archiv',
+  'officeShelf',
   'uploadBatches',
   'knowledge',
   'onboarding',
@@ -73,13 +73,13 @@ function leaves(node: unknown, path: string, found: Array<[string, string]> = []
  */
 const REVISION_SUBTREES = [
   'files.lifecycle',
-  'files.preview.fassung',
-  'files.fassungBadge',
+  'files.preview.revision',
+  'files.revisionBadge',
   'files.compare',
   'chat.cards.documentDraft',
   'collaboration.inbox.review',
   'collaboration.inbox.types.documentReviewRequested',
-  'collaboration.inbox.types.documentNewFassung',
+  'collaboration.inbox.types.documentNewRevision',
   // The upload dialog asks which files come in as a new Fassung, and the upload
   // summary says which did.
   'files.folderUpload',
@@ -120,8 +120,10 @@ describe('file copy never calls a file a plan', () => {
     ['en', en],
   ] as const) {
     it(`${locale}: no „Plan“ wording in the file namespaces`, () => {
-      const scanned = FILE_NAMESPACES.filter((ns) => ns in dictionary)
-      expect(scanned).toContain('files')
+      // Every listed namespace must exist: a renamed one used to drop out of the
+      // scan without a word (`archiv` became `officeShelf` and went unchecked).
+      expect(FILE_NAMESPACES.filter((ns) => !(ns in dictionary))).toEqual([])
+      const scanned = FILE_NAMESPACES
       const offenders = scanned
         .flatMap((ns) => leaves((dictionary as Record<string, unknown>)[ns], ns))
         .filter(([, text]) => FORBIDDEN[locale].test(text))

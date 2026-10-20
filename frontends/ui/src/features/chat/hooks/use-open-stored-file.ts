@@ -16,7 +16,7 @@ export const useOpenStoredFile = (): ((stored: StoredFile) => void) => {
     (stored: StoredFile) => {
       openFilePeek({
         file: stored.file,
-        source: stored.corpus === 'buero' ? 'buero' : stored.corpus === 'session' ? 'session' : 'projekt',
+        source: stored.corpus === 'office' ? 'office' : stored.corpus === 'session' ? 'session' : 'project',
         projectId,
         presentation: isMobile ? 'modal' : 'peek',
         // Every other door into this pane binds the subject, and the reader

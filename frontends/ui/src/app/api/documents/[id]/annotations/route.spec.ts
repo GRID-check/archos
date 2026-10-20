@@ -168,7 +168,7 @@ const RECORD: AnnotationRecord = {
   delegatedAt: null,
   carriedFromId: null,
   mentions: [],
-  fassungNumber: 2,
+  revisionNumber: 2,
   replies: [],
 }
 
@@ -220,7 +220,7 @@ describe('GET /api/documents/[id]/annotations', () => {
   it('lists live ones first, by page, and says which were set on an earlier Fassung', async () => {
     vi.mocked(listDocumentAnnotations).mockResolvedValue([
       { ...RECORD, id: 'a', number: 1, status: 'resolved', closedBy: 'user_2', closedAt: new Date() },
-      { ...RECORD, id: 'b', number: 2, page: 4, versionId: 'ver_1', fassungNumber: 1 },
+      { ...RECORD, id: 'b', number: 2, page: 4, versionId: 'ver_1', revisionNumber: 1 },
       { ...PROPOSAL, id: 'c', number: 3, page: 3 },
     ])
 
@@ -228,7 +228,7 @@ describe('GET /api/documents/[id]/annotations', () => {
 
     expect(result.canAnnotate).toBe(true)
     expect(result.annotations.map((a) => a.id)).toEqual(['c', 'b', 'a'])
-    expect(result.annotations.map((a) => a.onCurrentFassung)).toEqual([true, false, true])
+    expect(result.annotations.map((a) => a.onCurrentRevision)).toEqual([true, false, true])
     expect(result.annotations[0]).toMatchObject({
       shape: 'region',
       w: 0.2,

@@ -69,11 +69,11 @@ describe('createProject (server action)', () => {
 
   it('lands a project Piloti sets up on its setup page, with what the form said about it', async () => {
     await expect(
-      createProject({}, form({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', bundesland: 'wien' }))
+      createProject({}, form({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', federal_state: 'vienna' }))
     ).rejects.toThrow('NEXT_REDIRECT /app/projects/p1/setup')
     expect(createProjectInOrg).toHaveBeenCalledWith(
       session,
-      expect.objectContaining({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', bundesland: 'wien' })
+      expect.objectContaining({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', federalState: 'vienna' })
     )
   })
 

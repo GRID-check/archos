@@ -11,6 +11,7 @@ import type { ProjectStatus } from '@/lib/projects/project-status'
 import { and, desc, eq, gte, ilike, lt, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
+import { modernizeDocumentScope } from '@/lib/db/schema/documents'
 import { ACCESS_LOG_MAX_LIMIT } from './kinds'
 import {
   documentAccessLog,
@@ -200,7 +201,7 @@ export async function listAccessLog(
     cursor: { occurredAt: String(row.cursorAt), id: row.id },
     userId: row.userId,
     kind: row.kind,
-    scope: row.scope,
+    scope: modernizeDocumentScope(row.scope),
     projectId: row.projectId,
     projectName: row.projectName,
     projectStatus: row.projectStatus ?? null,

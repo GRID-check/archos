@@ -139,10 +139,10 @@ export async function findBimModelByDocument(
 
 /**
  * Models in a project, newest first, plus the org-wide Archiv models when
- * `includeArchiv` is set — the same scope rule document retrieval uses, so a
+ * `includeOfficeShelf` is set — the same scope rule document retrieval uses, so a
  * chat that can cite an Archiv document can also query its model.
  *
- * ## The Archiv is `scope = 'archiv'`, never "no project"
+ * ## The Archiv is `scope = 'office_shelf'`, never "no project"
  *
  * This used to read `project_id IS NULL` for both of those cases, which was an
  * exact description of the Archiv right up until there was a second
@@ -162,7 +162,7 @@ export async function listBimModels(
   organizationId: string,
   options: {
     projectId?: string | null
-    includeArchiv?: boolean
+    includeOfficeShelf?: boolean
     limit?: number
     /**
      * Folders whose models this reader may not see (ADR-0087), from the
@@ -181,14 +181,14 @@ export async function listBimModels(
 ): Promise<BimModelHeader[]> {
   const db = getDb()
   const limit = Math.min(Math.max(1, Math.trunc(options.limit ?? 50)), 200)
-  const archivScope = eq(documents.scope, 'archiv')
+  const officeShelfScope = eq(documents.scope, 'office_shelf')
   const scope =
     options.projectId === undefined
       ? undefined
-      : options.includeArchiv
-        ? sql`(${bimModels.projectId} = ${options.projectId} OR ${archivScope})`
+      : options.includeOfficeShelf
+        ? sql`(${bimModels.projectId} = ${options.projectId} OR ${officeShelfScope})`
         : options.projectId === null
-          ? archivScope
+          ? officeShelfScope
           : eq(bimModels.projectId, options.projectId)
   const hidden = options.hiddenFolderIds ?? []
   const outsideHiddenFolders =

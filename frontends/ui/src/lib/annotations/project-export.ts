@@ -78,7 +78,7 @@ export function groupByDocument(marks: readonly ProjectMarkView[]): ProjectProto
   return [...groups.values()].map(({ documentName, marks: documentMarks }) => ({
     documentName,
     // Every mark here is live; the filter decided whether proposals are in it.
-    selection: selectMarks(documentMarks, { scope: 'open', fassung: 'current', includeProposals: true }),
+    selection: selectMarks(documentMarks, { scope: 'open', revision: 'current', includeProposals: true }),
   }))
 }
 

@@ -55,7 +55,7 @@ def _ingestor(*, enabled: bool = True, llm: object | None = "llm") -> LlamaIndex
 CONFIG = {"organization_id": "org_1", "document_id": "d1"}
 
 
-def test_a_bescheid_is_extracted_over_its_pages_and_stored_for_its_document(calls):
+def test_a_permit_decision_is_extracted_over_its_pages_and_stored_for_its_document(calls):
     pages = [_page("1", "Seite eins"), _page("2", "Seite zwei")]
 
     _ingestor()._remember_permit(CONFIG, "proj_1", "Bescheid.pdf", ["Bescheid", "Brandschutz"], pages)

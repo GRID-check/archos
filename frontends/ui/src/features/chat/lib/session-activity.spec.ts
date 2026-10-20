@@ -54,11 +54,11 @@ describe('hasLiveRun', () => {
     expect(hasLiveRun([makeMessage({ messageType: 'agent_response' })])).toBe(false)
   })
 
-  it.each([['angelegt'], ['laeuft'], ['wartet']] as const)('is true while a run is %s', (status) => {
+  it.each([['created'], ['running'], ['waiting']] as const)('is true while a run is %s', (status) => {
     expect(hasLiveRun([runMessage('a', status)])).toBe(true)
   })
 
-  it.each([['fertig'], ['fehlgeschlagen'], ['abgebrochen'], ['unterbrochen']] as const)(
+  it.each([['done'], ['failed'], ['cancelled'], ['interrupted']] as const)(
     'is false once every run is %s',
     (status) => {
       expect(hasLiveRun([runMessage('a', status)])).toBe(false)
@@ -66,7 +66,7 @@ describe('hasLiveRun', () => {
   )
 
   it('is true when ANY run in the thread is live, not only the latest', () => {
-    expect(hasLiveRun([runMessage('a', 'laeuft'), runMessage('b', 'fertig')])).toBe(true)
+    expect(hasLiveRun([runMessage('a', 'running'), runMessage('b', 'done')])).toBe(true)
   })
 
   it('reads a ledger with no status word off its terminal fields', () => {
@@ -85,8 +85,8 @@ describe('hasLiveRun', () => {
 
 describe('liveRunMessages', () => {
   it('returns only the run messages whose run is still live', () => {
-    const live = runMessage('a', 'laeuft')
-    const done = runMessage('b', 'fertig')
+    const live = runMessage('a', 'running')
+    const done = runMessage('b', 'done')
     const chat = makeMessage({ id: 'c', messageType: 'agent_response' })
     expect(liveRunMessages([chat, live, done])).toEqual([live])
   })
@@ -94,12 +94,12 @@ describe('liveRunMessages', () => {
 
 describe('hasFinishedRun', () => {
   it('is true when a run finished with a report', () => {
-    expect(hasFinishedRun([runMessage('a', 'fertig')])).toBe(true)
+    expect(hasFinishedRun([runMessage('a', 'done')])).toBe(true)
   })
 
   it('is false for a failed, stopped or still-going run', () => {
-    expect(hasFinishedRun([runMessage('a', 'fehlgeschlagen')])).toBe(false)
-    expect(hasFinishedRun([runMessage('a', 'abgebrochen')])).toBe(false)
-    expect(hasFinishedRun([runMessage('a', 'laeuft')])).toBe(false)
+    expect(hasFinishedRun([runMessage('a', 'failed')])).toBe(false)
+    expect(hasFinishedRun([runMessage('a', 'cancelled')])).toBe(false)
+    expect(hasFinishedRun([runMessage('a', 'running')])).toBe(false)
   })
 })

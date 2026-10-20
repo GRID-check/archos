@@ -107,7 +107,7 @@ export const projectIntake: typeof en.projectIntake = {
     inputs: 'Grundlage',
     suggestedMark: 'vorgeschlagen',
     confirm: 'Gebäudeklasse übernehmen',
-    confirmAria: 'Gebäudeklasse {value} für {bauwerk} übernehmen',
+    confirmAria: 'Gebäudeklasse {value} für {building} übernehmen',
     confirmed: 'Bestätigt',
   },
   evidence: {

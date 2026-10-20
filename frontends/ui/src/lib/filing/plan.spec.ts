@@ -40,7 +40,7 @@ const recorded = (
   status,
   payload: {
     operation: 'move',
-    operations: items.map(([document, target]) => ({ document, source: 'projekt', target_folder: target })),
+    operations: items.map(([document, target]) => ({ document, source: 'project', target_folder: target })),
     basis: extra.basis === undefined ? 'name' : extra.basis,
   },
   originConversationId: null,
@@ -55,14 +55,14 @@ describe('planFiling', () => {
     )
     expect(plan.withdraw).toEqual([])
     expect(plan.create).toHaveLength(2)
-    const bescheide = plan.create.find((payload) => payload.operations[0].target_folder === 'Bescheide')
-    expect(bescheide).toMatchObject({
+    const permitDecisions = plan.create.find((payload) => payload.operations[0].target_folder === 'Bescheide')
+    expect(permitDecisions).toMatchObject({
       operation: 'move',
       basis: 'name',
       new_folder: null,
       operations: [
-        { document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Bescheide', reason: 'd1 gehört nach Bescheide.' },
-        { document: 'EG.pdf', source: 'projekt', target_folder: 'Bescheide', reason: 'd3 gehört nach Bescheide.' },
+        { document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Bescheide', reason: 'd1 gehört nach Bescheide.' },
+        { document: 'EG.pdf', source: 'project', target_folder: 'Bescheide', reason: 'd3 gehört nach Bescheide.' },
       ],
     })
   })
@@ -70,7 +70,7 @@ describe('planFiling', () => {
   it('names the new folder a convention would create, and files the Büroablage as buero', () => {
     const plan = planFiling(
       input({
-        shelf: 'archiv',
+        shelf: 'office_shelf',
         moves: [move('d2', 'Korrespondenz', { newFolder: { description: 'Briefe und Mails' } })],
       })
     )
@@ -80,7 +80,7 @@ describe('planFiling', () => {
         operations: [
           {
             document: 'Fristerstreckung.pdf',
-            source: 'buero',
+            source: 'office',
             target_folder: 'Korrespondenz',
             reason: 'd2 gehört nach Korrespondenz.',
           },

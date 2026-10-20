@@ -89,7 +89,7 @@ const projectDocument = {
   citationKey: 'Brandschutzkonzept.pdf, p.3',
   fileName: 'Brandschutzkonzept.pdf',
   collection: 'proj_1',
-  kind: 'projekt',
+  kind: 'project',
   page: 3,
   number: 1,
   isCited: true,
@@ -200,7 +200,7 @@ describe('source chips mount their peek lazily', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 
-  test('a Herleitung source card mounts nothing until tapped, then opens its document', async () => {
+  test('a derivation source card mounts nothing until tapped, then opens its document', async () => {
     const user = userEvent.setup()
     const document = documentOf(projectDocument)
     render(

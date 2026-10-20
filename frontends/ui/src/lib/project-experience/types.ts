@@ -23,7 +23,7 @@ export const EXPERIENCE_QUOTE_MAX_CHARS = 300
 
 export const EXPERIENCE_ERRORS = ['no_documents', 'no_model', 'extraction_failed'] as const
 export const EXPERIENCE_DECISION_KINDS = ['decision', 'constraint'] as const
-export const EXPERIENCE_OUTCOMES = ['accepted', 'auflage', 'rejected', 'unknown'] as const
+export const EXPERIENCE_OUTCOMES = ['accepted', 'condition', 'rejected', 'unknown'] as const
 
 /** One answer the intake wizard accepts for a key: the stored token and the label a reader sees. */
 export const experienceVocabularyEntrySchema = z.object({
@@ -32,12 +32,12 @@ export const experienceVocabularyEntrySchema = z.object({
 })
 
 export const experienceVocabularySchema = z.object({
-  bundesland: experienceVocabularyEntrySchema,
-  gebaeudeklasse: experienceVocabularyEntrySchema,
-  bauweise: experienceVocabularyEntrySchema,
-  nutzungen: experienceVocabularyEntrySchema,
-  vorhabensart: experienceVocabularyEntrySchema,
-  oib_ausgabe: experienceVocabularyEntrySchema,
+  federal_state: experienceVocabularyEntrySchema,
+  building_class: experienceVocabularyEntrySchema,
+  construction_method: experienceVocabularyEntrySchema,
+  uses: experienceVocabularyEntrySchema,
+  work_type: experienceVocabularyEntrySchema,
+  oib_edition: experienceVocabularyEntrySchema,
 })
 
 export const experienceRequestSchema = z.object({
@@ -75,7 +75,8 @@ export const experienceFingerprintSchema = z.object({
 export const experienceDecisionSchema = z.object({
   kind: z.enum(EXPERIENCE_DECISION_KINDS),
   content: text(EXPERIENCE_DECISION_MAX_CHARS),
-  outcome: z.enum(EXPERIENCE_OUTCOMES),
+  // An extraction from a pod that has not rolled yet still says `auflage`.
+  outcome: z.preprocess((value) => (value === 'auflage' ? 'condition' : value), z.enum(EXPERIENCE_OUTCOMES)),
   evidence: z.array(experienceEvidenceSchema),
 })
 

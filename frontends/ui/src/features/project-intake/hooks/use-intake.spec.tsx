@@ -82,16 +82,16 @@ describe('useIntake', () => {
   })
 
   it('replaces the view with the review a decision answers with', async () => {
-    client.decide.mockResolvedValue({ results: [{ key: 'oib_ausgabe', ok: true }], intake: INTAKE_WAITING })
+    client.decide.mockResolvedValue({ results: [{ key: 'oib_edition', ok: true }], intake: INTAKE_WAITING })
     const { result } = mount()
 
     let ok = false
     await act(async () => {
-      ok = await result.current.decide([{ key: 'oib_ausgabe', action: 'confirm' }])
+      ok = await result.current.decide([{ key: 'oib_edition', action: 'confirm' }])
     })
 
     expect(ok).toBe(true)
-    expect(client.decide).toHaveBeenCalledWith(ID, [{ key: 'oib_ausgabe', action: 'confirm' }])
+    expect(client.decide).toHaveBeenCalledWith(ID, [{ key: 'oib_edition', action: 'confirm' }])
     expect(result.current.view).toBe(INTAKE_WAITING)
     expect(toast.error).not.toHaveBeenCalled()
     expect(result.current.busy).toBe(false)

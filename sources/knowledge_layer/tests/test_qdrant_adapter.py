@@ -261,14 +261,14 @@ def test_copy_facts_repairs_a_copy_refresh_facts_swallowed_and_counts_the_files(
 
 def test_an_ingest_job_stamps_the_projects_facts_on_its_chunks(retriever):
     """A new document is boosted and filtered like its siblings from its first search."""
-    facts = {"bundesland": "wien", "gebaeudeklasse": [4], "bauweise": ["holzbau"]}
+    facts = {"federal_state": "wien", "building_class": [4], "construction_method": ["holzbau"]}
     _ingest(retriever, "proj_a", [_row("eins", "a.pdf")], project_facts=facts, project_status="closed")
     _ingest(retriever, "proj_a", [_row("zwei", "b.pdf")])
     store = store_module.get_store()
-    assert store.count("proj_a", {"project_facts.bauweise": "holzbau", "project_status": "closed"}) == 1
+    assert store.count("proj_a", {"project_facts.construction_method": "holzbau", "project_status": "closed"}) == 1
     # A job with a status it does not know writes no facts rather than failing the file.
     _ingest(retriever, "proj_a", [_row("drei", "c.pdf")], project_facts=facts, project_status="archived")
-    assert store.count("proj_a", {"project_facts.bauweise": "holzbau"}) == 1
+    assert store.count("proj_a", {"project_facts.construction_method": "holzbau"}) == 1
 
 
 async def test_search_grouped_carries_each_chunks_fused_score(retriever):
@@ -667,20 +667,20 @@ async def test_health_is_qdrants(retriever, monkeypatch):
 # ---------------------------------------------------------------- superseded follows the newer row
 
 
-def test_removing_the_newer_fassung_makes_the_older_one_findable_again(retriever, metadata_store):
+def test_removing_the_newer_revision_makes_the_older_one_findable_again(retriever, metadata_store):
     """A link counts only while the newer row exists; the points must say what the rows say.
 
     Left ``superseded: true``, the ``superseded != true`` pre-filter hid the
     Fassung that had become the current one from every search.
     """
-    from aiq_agent.knowledge import link_document_fassung
+    from aiq_agent.knowledge import link_document_revision
     from aiq_agent.knowledge import register_summary
     from aiq_agent.knowledge import unregister_summary
 
     _ingest(retriever, "proj_a", [_row("Alte Statik", "alt.pdf"), _row("Neue Statik", "neu.pdf")])
     register_summary("proj_a", "alt.pdf", "A")
     register_summary("proj_a", "neu.pdf", "N")
-    link_document_fassung("proj_a", "alt.pdf", "neu.pdf")
+    link_document_revision("proj_a", "alt.pdf", "neu.pdf")
     store = store_module.get_store()
     assert store.count("proj_a", {"superseded": True, "file_name": "alt.pdf"}) == 1
 

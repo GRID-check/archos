@@ -14,14 +14,14 @@ import { POST } from './route'
 const DOC_ID = '4f9c1d2e-3b4a-4c5d-8e6f-7a8b9c0d1e2f'
 
 const record = {
-  kind: 'nachforderung',
+  kind: 'information_request',
   authority: 'Magistratsabteilung 37',
   municipality: 'Wien',
-  bundesland: 'wien',
+  federalState: 'vienna',
   issuedOn: '2020-03-14',
   reference: 'MA37/123456/2020',
   requirements: [
-    { kind: 'nachforderung', content: 'Statischer Nachweis vorzulegen.', evidence: 'Gutachten', legalBasis: '§ 13 Abs. 3 AVG', page: 2 },
+    { kind: 'information_request', content: 'Statischer Nachweis vorzulegen.', evidence: 'Gutachten', legalBasis: '§ 13 Abs. 3 AVG', page: 2 },
   ],
 }
 
@@ -67,6 +67,16 @@ describe('POST /api/internal/permit-records', () => {
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ stored: true, requirements: 1 })
+    expect(storePermitRecord).toHaveBeenCalledWith(body())
+  })
+
+  it('reads a worker that has not rolled yet: its `bundesland` becomes the federal state', async () => {
+    const { federalState: _current, ...rest } = record
+    void _current
+
+    const response = await POST(request(body({ record: { ...rest, bundesland: 'wien' } })))
+
+    expect(response.status).toBe(200)
     expect(storePermitRecord).toHaveBeenCalledWith(body())
   })
 

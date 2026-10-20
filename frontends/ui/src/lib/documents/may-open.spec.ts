@@ -69,7 +69,7 @@ describe('mayOpenDocument', () => {
   })
 
   it('opens a document on the Büroablage for the organization’s members', async () => {
-    const allowed = await mayOpenDocument(session, doc({ scope: 'archiv', projectId: null }), ['user_a', 'user_gone'])
+    const allowed = await mayOpenDocument(session, doc({ scope: 'office_shelf', projectId: null }), ['user_a', 'user_gone'])
 
     expect(allowed).toEqual(new Set(['user_a']))
     // One read of the organization's directory, never a lookup per person: a picker passes the whole directory in.
@@ -142,24 +142,24 @@ describe('mayWriteDocument', () => {
     expect(allowed).toEqual(new Set(['user_legacy']))
   })
 
-  it('on the Büroablage keeps whoever holds org:archiv:manage, asked of their membership’s role, never its name', async () => {
+  it('on the Büroablage keeps whoever holds org:office_shelf:manage, asked of their membership’s role, never its name', async () => {
     vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) =>
       userId === 'user_gone'
         ? null
         : { organizationMembershipId: `om_${userId}`, role: userId === 'user_curator' ? 'org-kuratorin' : 'member' }
     )
     vi.mocked(orgRoleHoldsPermission).mockImplementation(
-      async (role, permission) => role === 'org-kuratorin' && permission === 'org:archiv:manage'
+      async (role, permission) => role === 'org-kuratorin' && permission === 'org:office_shelf:manage'
     )
 
-    const allowed = await mayWriteDocument(session, doc({ scope: 'archiv', projectId: null }), [
+    const allowed = await mayWriteDocument(session, doc({ scope: 'office_shelf', projectId: null }), [
       'user_curator',
       'user_a',
       'user_gone',
     ])
 
     expect(allowed).toEqual(new Set(['user_curator']))
-    expect(orgRoleHoldsPermission).toHaveBeenCalledWith('org-kuratorin', 'org:archiv:manage', 'org_1')
+    expect(orgRoleHoldsPermission).toHaveBeenCalledWith('org-kuratorin', 'org:office_shelf:manage', 'org_1')
     expect(userHoldsProjectPermission).not.toHaveBeenCalled()
   })
 
@@ -239,7 +239,7 @@ describe('mayOpenDocument on a held upload', () => {
         ])
       )
     )
-    const allowed = await mayOpenDocument(session, doc({ scope: 'archiv', projectId: null, status: 'quarantined' }), [
+    const allowed = await mayOpenDocument(session, doc({ scope: 'office_shelf', projectId: null, status: 'quarantined' }), [
       'user_uploader',
       'user_a',
     ])

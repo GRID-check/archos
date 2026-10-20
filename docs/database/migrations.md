@@ -240,7 +240,8 @@ This table was originally named `summaries` (class `SummaryStore`) and has since
 
 - **Legacy `summaries` table present, `document_metadata` absent** (an existing deployment): `ALTER TABLE summaries RENAME TO document_metadata` — the rows are preserved untouched — then the collection index is recreated under `idx_document_metadata_collection` and the old `idx_summaries_collection` is dropped.
 - **Fresh table** (neither present): `document_metadata` is created with all columns.
-- **Every open**: `document_fassung_retained` (the Fassung facts a reversible purge keeps, `docs/architecture/fassungen.md`) is created with `CREATE TABLE IF NOT EXISTS`, under the same schema lock.
+- **Every open**: `document_revision_retained` (the Fassung facts a reversible purge keeps, `docs/architecture/revisions.md`) is created with `CREATE TABLE IF NOT EXISTS`, under the same schema lock. A table still named `document_fassung_retained` is renamed in place; one a pod that has not rolled yet created again beside it has its rows moved across and is emptied (`LEGACY_RETAINED_TABLE_NAME`).
+- **Dokumentart keys** (every open): a `doc_class` or `doc_class_suggestion` still spelled the German way (`oib_richtlinie` …, `gesetz`, `sonstiges`) is rewritten to the English key (`LEGACY_DOC_CLASSES`). The vector store keeps the German spelling until its rebuild; `qdrant_doc_class` is the one place the two meet.
 - **Column backfill** (always, after the above): each optional column (`tags`, `doc_class`, `display_title`) is added if missing.
   - **PostgreSQL** — `ALTER TABLE document_metadata ADD COLUMN IF NOT EXISTS <col> TEXT`.
   - **SQLite** — no `IF NOT EXISTS` for columns, so a `PRAGMA table_info(document_metadata)` existence check runs first, then `ALTER TABLE ... ADD COLUMN` only when missing.

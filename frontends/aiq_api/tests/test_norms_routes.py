@@ -65,7 +65,7 @@ def _valid_body(entry_id: str = "custom-fed", version: int = 1) -> dict:
                     "id": entry_id,
                     "title": "Custom Federal Law",
                     "short": "CFL",
-                    "rank": "bundesgesetz",
+                    "rank": "federal_law",
                     "application": "BrKons",
                     "document_number": "NOR00000001",
                 }
@@ -163,7 +163,7 @@ async def test_put_get_roundtrips_profile_overrides(app, monkeypatch):
     monkeypatch.setattr(norms_module, "_ADMIN_TOKEN", None)
     body = _valid_body(entry_id="fed-overrides")
     body["registry"]["doctrine"] = "Custom Normenhierarchie doctrine"
-    body["registry"]["states"] = {"wien": "Wien", "ausserhalb_oesterreichs": None}
+    body["registry"]["states"] = {"vienna": "Wien", "outside_austria": None}
     body["registry"]["language"] = "de-AT"
     body["registry"]["parcel_tags"] = ["Bebauungsplan", "Flächenwidmungsplan"]
     body["registry"]["corpus_note"] = "Korpus-Hinweis"
@@ -176,7 +176,7 @@ async def test_put_get_roundtrips_profile_overrides(app, monkeypatch):
     assert get.status_code == 200
     registry = get.json()["registry"]
     assert registry["doctrine"] == "Custom Normenhierarchie doctrine"
-    assert registry["states"] == {"wien": "Wien", "ausserhalb_oesterreichs": None}
+    assert registry["states"] == {"vienna": "Wien", "outside_austria": None}
     assert registry["language"] == "de-AT"
     assert registry["parcel_tags"] == ["Bebauungsplan", "Flächenwidmungsplan"]
     assert registry["corpus_note"] == "Korpus-Hinweis"
@@ -247,7 +247,7 @@ async def test_verify_returns_filtered_candidates(app, monkeypatch):
     body = {
         "title_query": "Bauordnung für Wien",
         "application": "LrKons",
-        "bundesland": "Wien",
+        "federal_state": "Wien",
         "expect": "Bauordnung",
         "exclude": ["Novelle"],
     }

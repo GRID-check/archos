@@ -22,8 +22,8 @@ export type AnnotationExportScope = (typeof ANNOTATION_EXPORT_SCOPES)[number]
  * still open from an earlier one. `all`: the closed marks of earlier Fassungen
  * too. Open work is never narrowed by Fassung (`selectMarks`).
  */
-export const ANNOTATION_EXPORT_FASSUNGEN = ['current', 'all'] as const
-export type AnnotationExportFassung = (typeof ANNOTATION_EXPORT_FASSUNGEN)[number]
+export const ANNOTATION_EXPORT_REVISIONS = ['current', 'all'] as const
+export type AnnotationExportRevision = (typeof ANNOTATION_EXPORT_REVISIONS)[number]
 
 /**
  * The query. Every field has a default, so a bare link exports every open
@@ -32,20 +32,24 @@ export type AnnotationExportFassung = (typeof ANNOTATION_EXPORT_FASSUNGEN)[numbe
  * `includeProposals=1` adds Piloti's proposals nobody took over, under a
  * heading of their own; they never mix with the office's marks.
  */
-export const annotationExportQuerySchema = z.object({
-  format: z.enum(ANNOTATION_EXPORT_FORMATS).default('pdf'),
-  scope: z.enum(ANNOTATION_EXPORT_SCOPES).default('open'),
-  fassung: z.enum(ANNOTATION_EXPORT_FASSUNGEN).default('current'),
-  includeProposals: z
-    .enum(['0', '1'])
-    .default('0')
-    .transform((value) => value === '1'),
-})
+export const annotationExportQuerySchema = z
+  .object({
+    format: z.enum(ANNOTATION_EXPORT_FORMATS).default('pdf'),
+    scope: z.enum(ANNOTATION_EXPORT_SCOPES).default('open'),
+    revision: z.enum(ANNOTATION_EXPORT_REVISIONS).optional(),
+    /** The name before the rename: a link a person saved still works. Remove after one release. */
+    fassung: z.enum(ANNOTATION_EXPORT_REVISIONS).optional(),
+    includeProposals: z
+      .enum(['0', '1'])
+      .default('0')
+      .transform((value) => value === '1'),
+  })
+  .transform(({ fassung, revision, ...rest }) => ({ ...rest, revision: revision ?? fassung ?? 'current' }))
 
 export interface AnnotationExportOptions {
   format: AnnotationExportFormat
   scope: AnnotationExportScope
-  fassung: AnnotationExportFassung
+  revision: AnnotationExportRevision
   includeProposals: boolean
 }
 
@@ -54,7 +58,7 @@ export function annotationExportHref(documentId: string, options: AnnotationExpo
   const query = new URLSearchParams({
     format: options.format,
     scope: options.scope,
-    fassung: options.fassung,
+    revision: options.revision,
   })
   if (options.includeProposals) query.set('includeProposals', '1')
   return `/api/documents/${encodeURIComponent(documentId)}/annotations/export?${query.toString()}`

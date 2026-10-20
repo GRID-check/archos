@@ -78,7 +78,7 @@ READ_AND_RECORD = [
         "record_values",
         values=[
             {
-                "key": "geschosse_oberirdisch@bw1",
+                "key": "storeys_above_ground@bldg1",
                 "value": 3,
                 "file_name": "Baubeschreibung.pdf",
                 "page": 3,
@@ -163,7 +163,7 @@ class TestTheLoop:
 
         first = model.seen[0]
         opening = next(message for message in first if isinstance(message, HumanMessage)).content
-        assert "geschosse_oberirdisch@bw1" in opening and "Occasion: Neue Dokumente hochgeladen" in opening
+        assert "storeys_above_ground@bldg1" in opening and "Occasion: Neue Dokumente hochgeladen" in opening
         assert "What the last reading found" not in opening, "no note before a first reading finished"
         # The finish reads the needs first: nothing decisive is open, so it finishes.
         assert [body["op"] for body in fake.bodies()] == ["needs", "progress", "record", "needs", "finish"]
@@ -235,7 +235,7 @@ class TestTheFinishHold:
         ops = [body["op"] for body in fake.bodies() if body["op"] != "progress"]
         assert ops == ["needs", "record", "needs", "finish"]
         held = model.seen[3][-1].content
-        assert held.startswith("Not finished yet.") and "geschosse_oberirdisch@bw1" in held
+        assert held.startswith("Not finished yet.") and "storeys_above_ground@bldg1" in held
         # The file this run read is not named; the one nobody opened is.
         assert "Einreichplan.pdf" in held and "Baubeschreibung.pdf" not in held
         assert len(model.seen) == 4, "the second call finishes, and nothing runs after it"
@@ -301,7 +301,7 @@ class TestTheOpening:
         )
         assert "as it stands" in opening
         assert "What the last reading found (its own summary): Einreichplan gelesen; Fluchtniveau offen." in opening
-        assert "geschosse_oberirdisch@bw1" in opening and "Baubeschreibung.pdf" in opening
+        assert "storeys_above_ground@bldg1" in opening and "Baubeschreibung.pdf" in opening
 
 
 class TestThePrompt:

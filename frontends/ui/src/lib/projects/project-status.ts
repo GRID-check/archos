@@ -71,7 +71,7 @@ export function toProjectStatus(value: unknown): ProjectStatus {
  * the old month as the next close's suggestion), so every surface and every
  * period search reads it through here.
  */
-export function abschlussOf(project: { status?: ProjectStatus | string | null; endedOn?: string | null }): string | null {
+export function closingOf(project: { status?: ProjectStatus | string | null; endedOn?: string | null }): string | null {
   return isProjectClosed(project) ? (project.endedOn ?? null) : null
 }
 
@@ -121,7 +121,7 @@ export function lifecycleViewOf(project: LifecycleRow): ProjectLifecycleView {
     closedAt: iso(project.closedAt),
     closedOutcome: isProjectClosed(project) ? project.closedOutcome : null,
     suggestedOutcome: project.closedOutcome,
-    endedOn: dateToMonth(abschlussOf(project)),
+    endedOn: dateToMonth(closingOf(project)),
     startedOn,
     suggestedEndedOn: stored && isOrderedPeriod(startedOn, stored) ? stored : null,
   }
@@ -133,26 +133,26 @@ export function lifecycleViewOf(project: LifecycleRow): ProjectLifecycleView {
  * competition not won, say) ends in the Beginn's month, the one month that is
  * neither before it nor invented.
  */
-export function abschlussBounds(startedOn: Month | null, thisMonth: Month): { min: Month | null; max: Month } {
+export function closingBounds(startedOn: Month | null, thisMonth: Month): { min: Month | null; max: Month } {
   return { min: startedOn, max: startedOn && startedOn > thisMonth ? startedOn : thisMonth }
 }
 
-/** Why a month cannot be a close's Abschluss, or null: it must be a month within `abschlussBounds`. */
-export function abschlussProblem(
+/** Why a month cannot be a close's Abschluss, or null: it must be a month within `closingBounds`. */
+export function closingProblem(
   endedOn: string,
   startedOn: Month | null,
   thisMonth: Month
 ): 'invalid' | 'future' | 'beforeStart' | null {
   if (!isMonth(endedOn)) return 'invalid'
-  const { min, max } = abschlussBounds(startedOn, thisMonth)
+  const { min, max } = closingBounds(startedOn, thisMonth)
   if (endedOn > max) return 'future'
   if (min && endedOn < min) return 'beforeStart'
   return null
 }
 
 /** The month a close offers first: an earlier close's, when it still fits, else the latest allowed. */
-export function defaultAbschluss(suggested: Month | null, startedOn: Month | null, thisMonth: Month): Month {
-  const { min, max } = abschlussBounds(startedOn, thisMonth)
+export function defaultClosing(suggested: Month | null, startedOn: Month | null, thisMonth: Month): Month {
+  const { min, max } = closingBounds(startedOn, thisMonth)
   if (suggested && suggested <= max && (!min || suggested >= min)) return suggested
   return max
 }

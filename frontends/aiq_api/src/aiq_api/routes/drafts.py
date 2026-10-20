@@ -63,6 +63,7 @@ from aiq_agent.tools.documents.draft_store import delete_conversation_drafts
 from aiq_agent.tools.documents.draft_store import draft_bytes
 from aiq_agent.tools.documents.draft_store import draft_namespace
 from aiq_agent.tools.documents.draft_store import filing_from_value
+from aiq_agent.tools.documents.draft_store import modernize_draft_path
 from aiq_agent.tools.documents.draft_store import path_refusal
 
 from .internal_auth import _require_internal_token
@@ -98,13 +99,15 @@ def _checked_conversation_id(conversation_id: str) -> str:
 
 
 def _checked_draft_path(path: str) -> str:
-    """The one read path, normalised to the stored key shape (``/entwuerfe/….md``).
+    """The one read path, normalised to the stored key shape (``/drafts/….md``).
 
     The ``?path=`` spelling and the ``/{path...}`` suffix spelling meet here: a
-    bare ``entwuerfe/…`` gains its leading slash, and then the SAME refusal the
+    bare ``drafts/…`` gains its leading slash, and then the SAME refusal the
     write verbs enforce decides — one definition of what the working directory
-    may hold, kept in ``draft_store``.
+    may hold, kept in ``draft_store``. A path under the root's German name (a
+    stored card, an older tab) reads as the English one.
     """
+    path = modernize_draft_path(path)
     candidate = path if path.startswith("/") else f"/{path}"
     if path_refusal(candidate) is not None:
         raise HTTPException(status_code=400, detail="Invalid draft path")
@@ -197,7 +200,7 @@ def add_draft_routes(router: APIRouter) -> None:
     async def list_drafts(
         conversation_id: str,
         request: Request,
-        path: str | None = Query(default=None, description="Draft path to read, e.g. /entwuerfe/befund.md"),
+        path: str | None = Query(default=None, description="Draft path to read, e.g. /drafts/befund.md"),
     ) -> dict:
         _require_internal_token(request)
         _checked_conversation_id(conversation_id)

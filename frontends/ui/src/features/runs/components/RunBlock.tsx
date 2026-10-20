@@ -22,7 +22,7 @@
  * already solved „where does this stand": a track whose walked segments are
  * filled, the state NAMED in one muted line under it, and the history below as
  * `Item` rows with hairlines rather than as stacked cards (`ItemList`, the same
- * atoms `document-fassungen.tsx` composes). The track itself is the shared
+ * atoms `document-revisions.tsx` composes). The track itself is the shared
  * atom, `components/ui/stage-track.tsx`, lifted out of that stand when this
  * block needed the same shape — two surfaces showing the same thing compose the
  * same atom, or they drift on the first token retune.
@@ -105,7 +105,7 @@ import {
   activePhase,
   completedBefore,
   elapsedMs,
-  grundlageReceipt,
+  basisReceipt,
   isLiveStatus,
   phaseDurationMs,
   phaseState,
@@ -152,9 +152,9 @@ export interface RunBlockProps {
   connection?: 'live' | 'reconnecting' | 'lost' | null
   /** Default: open while live, collapsed once terminal. */
   defaultOpen?: boolean
-  /** wartet: focus the composer. */
+  /** waiting: focus the composer. */
   onAnswer?: () => void
-  /** fehlgeschlagen / abgebrochen: offered only when provided. */
+  /** fehlgeschlagen / cancelled: offered only when provided. */
   onRetry?: () => void
   /**
    * Stop a run still going. Offered only while it IS going and only when a
@@ -239,28 +239,28 @@ function statusLine(
   filesToProject: boolean
 ): string {
   switch (status) {
-    case 'angelegt':
-      return clauses(t('status.angelegt'), filesToProject ? t('line.filing') : null)
-    case 'laeuft': {
+    case 'created':
+      return clauses(t('status.created'), filesToProject ? t('line.filing') : null)
+    case 'running': {
       const phase = activePhase(ledger)
       return clauses(
-        phase ? t(`phase.${phase}`) : t('status.laeuft'),
+        phase ? t(`phase.${phase}`) : t('status.running'),
         talliesLabel(t, tallies) || null
       )
     }
-    case 'wartet':
-      return clauses(t('status.wartet'), t('line.wartet'))
-    case 'fertig':
+    case 'waiting':
+      return clauses(t('status.waiting'), t('line.waiting'))
+    case 'done':
       return clauses(
-        t('status.fertig'),
-        ledger.result?.fileId ? t('line.fertigFiled') : t('line.fertigInline')
+        t('status.done'),
+        ledger.result?.fileId ? t('line.doneFiled') : t('line.doneInline')
       )
-    case 'fehlgeschlagen':
-      return t('line.fehlgeschlagen', { reason: ledger.error?.reason ?? '' })
-    case 'abgebrochen':
-      return clauses(t('status.abgebrochen'), t('line.abgebrochen'))
-    case 'unterbrochen':
-      return clauses(t('status.unterbrochen'), t('line.unterbrochen'))
+    case 'failed':
+      return t('line.failed', { reason: ledger.error?.reason ?? '' })
+    case 'cancelled':
+      return clauses(t('status.cancelled'), t('line.cancelled'))
+    case 'interrupted':
+      return clauses(t('status.interrupted'), t('line.interrupted'))
   }
 }
 
@@ -274,7 +274,7 @@ function completedBeforeLabel(
   if (phases.length === 0) return null
   const named = phases.map((phase) => {
     const label = t(`phase.${phase}`)
-    if (phase !== 'recherchieren' || (tallies.rounds === 0 && tallies.docs === 0)) return label
+    if (phase !== 'researching' || (tallies.rounds === 0 && tallies.docs === 0)) return label
     return t('completedBeforeTallies', {
       phase: label,
       rounds: t('tallies.rounds', { count: tallies.rounds }),
@@ -288,19 +288,19 @@ function completedBeforeLabel(
  * What the walked segments are coloured by — the lifecycle stand's own rule:
  * ink while nothing has been asserted, a register once something has.
  *
- * `unterbrochen` is `settled` and not a third colour: there IS a report, only a
+ * `interrupted` is `settled` and not a third colour: there IS a report, only a
  * narrower one, and the line under the track is what says so. The palette holds
  * no further chroma family that is not a provenance source, and borrowing the
  * Büroablage gold for it would put an archive collision back as a colour.
  */
 function trackTone(status: RunStatus): StageTrackTone {
   switch (status) {
-    case 'fertig':
-    case 'unterbrochen':
+    case 'done':
+    case 'interrupted':
       return 'settled'
-    case 'fehlgeschlagen':
+    case 'failed':
       return 'stopped'
-    case 'abgebrochen':
+    case 'cancelled':
       return 'retired'
     default:
       return 'moving'
@@ -457,23 +457,23 @@ const RoundRow: FC<{ step: RunStep; index: number; reduced: boolean }> = ({
 /** The one line a finished phase folds to, after its name. */
 function doneLine(t: Translator, phase: RunPhase, tallies: RunTallies): string | null {
   switch (phase) {
-    case 'planen':
-      return t('phaseLine.planen')
-    case 'recherchieren':
+    case 'planning':
+      return t('phaseLine.planning')
+    case 'researching':
       return talliesLabel(t, tallies) || null
-    case 'pruefen':
-      return t('phaseLine.pruefen')
-    case 'schreiben':
-      return t('phaseLine.schreiben')
-    case 'abgelegt':
+    case 'checking':
+      return t('phaseLine.checking')
+    case 'writing':
+      return t('phaseLine.writing')
+    case 'filed':
       return null
   }
 }
 
 /** The live line of an active phase that has no rounds to show for itself. */
 function liveLine(t: Translator, phase: RunPhase): string | null {
-  if (phase === 'pruefen') return t('phaseLine.pruefenLive')
-  if (phase === 'schreiben') return t('phaseLine.schreibenLive')
+  if (phase === 'checking') return t('phaseLine.checkingLive')
+  if (phase === 'writing') return t('phaseLine.writingLive')
   return null
 }
 
@@ -499,7 +499,7 @@ const PhaseActs: FC<{
   const rows = RUN_PHASES.flatMap((phase) => {
     const state = phaseState(ledger, phase)
     if (state === 'pending') return []
-    if (phase === 'recherchieren' && stepsInPhase(ledger, phase).length > 0) return []
+    if (phase === 'researching' && stepsInPhase(ledger, phase).length > 0) return []
     if (state === 'active') {
       const line = live ? liveLine(t, phase) : null
       return line ? [{ phase, line, duration: null as number | null }] : []
@@ -609,10 +609,10 @@ export function RunBlock({
   const name = title?.trim() || t('block.untitled')
 
   // Open-state policy, the Herleitung bar's: open while live, folded once
-  // terminal; the reader's own toggle wins over both; entering `wartet` always
+  // terminal; the reader's own toggle wins over both; entering `waiting` always
   // opens, because the stand says a question is waiting and the body is where
   // the round that asked it sits.
-  const [open, setOpen] = useState<boolean>(status === 'wartet' || (defaultOpen ?? live))
+  const [open, setOpen] = useState<boolean>(status === 'waiting' || (defaultOpen ?? live))
   const userToggledRef = useRef(false)
   const autoOpenedRef = useRef(defaultOpen ?? live)
   const prevLiveRef = useRef(live)
@@ -637,7 +637,7 @@ export function RunBlock({
   }, [live])
   const prevStatusRef = useRef(status)
   useEffect(() => {
-    const enteredWait = status === 'wartet' && prevStatusRef.current !== 'wartet'
+    const enteredWait = status === 'waiting' && prevStatusRef.current !== 'waiting'
     prevStatusRef.current = status
     if (enteredWait) setOpen(true)
   }, [status])
@@ -651,11 +651,11 @@ export function RunBlock({
   // shouts across a thread.
   const reviewed = !!review
   const fileHref =
-    status === 'fertig' && projectId && ledger.result?.fileId
+    status === 'done' && projectId && ledger.result?.fileId
       ? documentFilesHref(projectId, ledger.result.fileId)
       : null
   const action: ReactNode =
-    status === 'wartet' && onAnswer ? (
+    status === 'waiting' && onAnswer ? (
       <Button
         size="sm"
         variant="secondary"
@@ -665,7 +665,7 @@ export function RunBlock({
       >
         {t('action.answer')}
       </Button>
-    ) : status === 'fertig' && !reviewed && reviewHref ? (
+    ) : status === 'done' && !reviewed && reviewHref ? (
       <Button
         size="sm"
         variant="secondary"
@@ -675,7 +675,7 @@ export function RunBlock({
       >
         <Link href={reviewHref}>{t('action.review')}</Link>
       </Button>
-    ) : status === 'fertig' && reviewed && reportHref ? (
+    ) : status === 'done' && reviewed && reportHref ? (
       <Button
         size="sm"
         variant="secondary"
@@ -685,7 +685,7 @@ export function RunBlock({
       >
         <Link href={reportHref}>{t('action.openReport')}</Link>
       </Button>
-    ) : (status === 'fehlgeschlagen' || status === 'abgebrochen') && onRetry && !isZdrPolicyRefusal(ledger.error?.reason) ? (
+    ) : (status === 'failed' || status === 'cancelled') && onRetry && !isZdrPolicyRefusal(ledger.error?.reason) ? (
       // A zero-data-retention refusal fails the same way on every retry: the
       // reason already says an admin must choose a ZDR model.
       <Button
@@ -710,7 +710,7 @@ export function RunBlock({
     ) : null
 
   const writeNow: ReactNode =
-    onWriteNow && live && activePhase(ledger) === 'recherchieren' ? (
+    onWriteNow && live && activePhase(ledger) === 'researching' ? (
       <Button
         size="sm"
         variant="outline"
@@ -732,20 +732,20 @@ export function RunBlock({
         data-testid="run-action-add-document"
       >
         <BookOpen className="size-3.5" aria-hidden />
-        {t('unterlagen.addAction')}
+        {t('documents.addAction')}
       </Button>
     ) : null
 
-  const receipt = grundlageReceipt(ledger)
+  const receipt = basisReceipt(ledger)
 
   // A closed project commissions nothing (ADR-0090): say so where „Bericht fortschreiben“ would be.
   const closedProject = useCurrentProject()?.status === 'closed'
   const carryForward: ReactNode =
-    closedProject && (status === 'fertig' || status === 'unterbrochen') ? (
+    closedProject && (status === 'done' || status === 'interrupted') ? (
       <span className="text-muted-foreground text-xs" data-testid="run-action-continue-closed">
         {t('action.continueClosed')}
       </span>
-    ) : onContinue && (status === 'fertig' || status === 'unterbrochen') ? (
+    ) : onContinue && (status === 'done' || status === 'interrupted') ? (
       <Button
         size="sm"
         variant="ghost"
@@ -780,14 +780,14 @@ export function RunBlock({
   // `filesToProject` is a CLAIM a caller makes, never inferred. It used to
   // default to „there is a project", which made every freshly-commissioned run
   // in a chat promise „Ergebnis kommt ins Projekt" — including an escalated
-  // question whose report lands inline in the thread, which the `fertig` line
-  // then correctly contradicts (`fertigFiled` vs `fertigInline`). A block that
+  // question whose report lands inline in the thread, which the `done` line
+  // then correctly contradicts (`doneFiled` vs `doneInline`). A block that
   // promises a destination at the start and names a different one at the end
   // has spent the reader's trust to say nothing. Unclaimed, it says only that
   // the run is angelegt, which is the part that is true either way.
   const line = statusLine(t, ledger, status, tallies, filesToProject ?? false)
   const before =
-    status === 'fehlgeschlagen' || status === 'abgebrochen'
+    status === 'failed' || status === 'cancelled'
       ? completedBeforeLabel(t, ledger, tallies)
       : null
   const reviewLine = !review
@@ -800,9 +800,9 @@ export function RunBlock({
         ? t('review.rejected', { reason: review.reason })
         : t('review.rejectedAnon')
 
-  const rounds = stepsInPhase(ledger, 'recherchieren')
+  const rounds = stepsInPhase(ledger, 'researching')
   const reached = RUN_PHASES.filter((phase) => phaseState(ledger, phase) === 'done').length
-  const halted = !live && status !== 'fertig' && reached < RUN_PHASES.length
+  const halted = !live && status !== 'done' && reached < RUN_PHASES.length
   const closing = before !== null || reviewLine !== null || connectionLine !== null
 
   return (
@@ -876,7 +876,7 @@ export function RunBlock({
           <p
             className={cn(
               'text-xs leading-relaxed',
-              status === 'fehlgeschlagen' ? 'text-error' : 'text-muted-foreground'
+              status === 'failed' ? 'text-error' : 'text-muted-foreground'
             )}
             role={live ? 'status' : undefined}
             data-testid="run-status-line"
@@ -947,11 +947,11 @@ export function RunBlock({
               {receipt.length > 0 && (
                 <div
                   className="border-border flex flex-col gap-1 border-t px-3 py-2"
-                  data-testid="run-grundlage"
-                  aria-label={t('unterlagen.receiptLabel')}
+                  data-testid="run-basis"
+                  aria-label={t('documents.receiptLabel')}
                 >
                   <p className="text-muted-foreground text-xs font-medium">
-                    {t('unterlagen.receipt', {
+                    {t('documents.receipt', {
                       read: receipt.filter((row) => row.read).length,
                       total: receipt.length,
                     })}
@@ -964,14 +964,14 @@ export function RunBlock({
                         <>
                           {label}
                           {row.read && loci && <span className="opacity-70"> · {loci}</span>}
-                          {!row.read && <span className="italic"> · {t('unterlagen.unread')}</span>}
+                          {!row.read && <span className="italic"> · {t('documents.unread')}</span>}
                         </>
                       )
                       return (
                         <li
                           key={row.doc.name}
                           className="inline-flex max-w-full"
-                          data-testid="run-grundlage-doc"
+                          data-testid="run-basis-doc"
                           data-read={row.read ? 'true' : 'false'}
                         >
                           {onOpenDocument ? (
@@ -979,7 +979,7 @@ export function RunBlock({
                               type="button"
                               onClick={() => onOpenDocument(row.doc)}
                               className="focus-visible:ring-ring/60 max-w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2"
-                              aria-label={t('unterlagen.open', { name: label })}
+                              aria-label={t('documents.open', { name: label })}
                             >
                               <SourceSignalChip
                                 signal={docProvenance(row.doc).tint}

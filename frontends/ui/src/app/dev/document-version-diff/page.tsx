@@ -31,7 +31,7 @@ import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { DocumentVersionDiff } from '@/features/documents/components/document-version-diff'
 
-const AKTENVERMERK_V1 = `Aktenvermerk — Brandschutz, Bauteil B
+const FILE_NOTE_V1 = `Aktenvermerk — Brandschutz, Bauteil B
 
 1. Ausgangslage
 Das Gebäude ist der Gebäudeklasse 4 zugeordnet.
@@ -41,7 +41,7 @@ Die Fluchtweglänge im 2. Obergeschoss beträgt 38 m.
 Die Anforderung nach OIB-Richtlinie 2 ist erfüllt.
 Für den zweiten Fluchtweg ist kein Nachweis nötig.`
 
-const AKTENVERMERK_V2 = `Aktenvermerk — Brandschutz, Bauteil B
+const FILE_NOTE_V2 = `Aktenvermerk — Brandschutz, Bauteil B
 
 1. Ausgangslage
 Das Gebäude ist der Gebäudeklasse 5 zugeordnet.
@@ -114,8 +114,8 @@ export default function DocumentVersionDiffDevPage(): JSX.Element {
           note="Eine korrigierte Gebäudeklasse, ein umformulierter Satz, ein neuer Abschnitt."
         >
           <DocumentVersionDiff
-            from={{ versionNumber: 1, content: AKTENVERMERK_V1 }}
-            to={{ versionNumber: 2, content: AKTENVERMERK_V2 }}
+            from={{ versionNumber: 1, content: FILE_NOTE_V1 }}
+            to={{ versionNumber: 2, content: FILE_NOTE_V2 }}
           />
         </Block>
 

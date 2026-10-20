@@ -1,0 +1,51 @@
+---
+name: building-class
+description: >
+  Die OIB-Gebäudeklasse (GK 1 bis 5), an der jede spätere OIB-Zahl hängt.
+  Nicht die Bauklasse der Bauordnung.
+metadata:
+  grid-agents: researcher,deep_researcher
+  grid-cards: building_section
+---
+
+# Gebäudeklasse feststellen, bevor eine Zahl fällt
+
+Die Klasse ist keine Meinung. Sie folgt aus Fluchtniveau, Geschoßzahl, Fläche
+und Nutzung. Die Tabelle selbst steht in der Richtlinie. Hier steht nur, wann
+du sie holst und wann du ohne sie nicht weiterarbeitest.
+
+## 1. Nimm die bestätigte Klasse
+
+Steht im Projektkontext eine Gebäudeklasse als bestätigt, nimm sie. Nicht neu
+ableiten. Widerspricht die Frage der bestätigten Klasse, sag den Widerspruch
+und arbeit unter der bestätigten weiter, bis jemand sie ändert.
+
+**Fertig**, sobald die Klasse einen Fundstellenanker hat oder ausdrücklich als
+unbestätigt geführt wird.
+
+## 2. Fehlt sie, und ändert sie die Antwort: eine Frage
+
+Ohne Klasse eine Feuerwiderstandsklasse zu nennen ist eine Zahl ohne Anspruch.
+Frag genau das, was die Klasse entscheidet: Fluchtniveau, oberirdische
+Geschoße, Nutzung. Eine Frage, nicht vier.
+
+Kannst du unter einer klar benannten Annahme sinnvoll antworten, tu das und
+markier die Annahme. Nicht raten und die Klasse verschweigen.
+
+## 3. Die Edition bindet mit
+
+Jedes Land erklärt eine andere Ausgabe verbindlich. Nenn die Ausgabe, sobald
+sie den Wert verschiebt. Hol sie aus der Wissensbasis oder aus RIS, nicht aus
+dem Gedächtnis.
+
+## 4. Zeigen
+
+Die Antwort gabelt sich an der Klasse → als Fallunterscheidung (eine Tabelle
+der Fälle), der Fall dieses Projekts benannt, sobald seine Klasse bekannt ist.
+Höhe und Fluchtniveau sind der Gegenstand → `building_section`.
+Die Stelle, an deren Wortlaut die Antwort hängt → als Zitatzeile `> „…“ [N]`.
+
+## Done
+
+Eine Klasse mit Fundstelle, oder die eine fehlende Tatsache, ohne die keine
+Klasse existiert. Keine Tabelle aus dem Gedächtnis.

@@ -36,7 +36,7 @@ import { Suspense } from 'react'
 import { I18nProvider } from '@/i18n'
 import { TaskDetail } from '@/features/tasks/components/task-detail'
 import type { TaskWireRow } from '@/features/tasks/lib/task-view'
-import { RUN_FERTIG } from '../_fixtures/run-ledgers'
+import { RUN_DONE } from '../_fixtures/run-ledgers'
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const w = window as unknown as { __taskDetailShim?: boolean }
@@ -52,7 +52,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           conversationId: 'conv-1',
           messageId: 'msg-1',
           status: 'succeeded',
-          ledger: RUN_FERTIG,
+          ledger: RUN_DONE,
         })
       }
       return real(input, init)
@@ -78,7 +78,7 @@ const BASE: TaskWireRow = {
   createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
   finishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   error: null,
-  runSummary: { status: 'fertig', rounds: 3, docs: 9 },
+  runSummary: { status: 'done', rounds: 3, docs: 9 },
 }
 
 /** The same task as it arrived before run messages existed: no run to read. */

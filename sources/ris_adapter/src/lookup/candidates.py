@@ -44,7 +44,7 @@ class Candidate:
     citation_url: str = ""
     document_number: str = ""
     application: str = ""
-    bundesland: str = ""
+    federal_state: str = ""
     origin: str = ""  # "address" | "catalog" | "live"
     version_date: str = ""
     unavailable: str = ""  # why there is no full text, stated verbatim to the model
@@ -101,7 +101,7 @@ def catalog_candidates(question: str, address: Address, catalog_path: str) -> li
     if catalog is None:
         return []
     needle = " ".join(part for part in (address.law, question) if part)
-    matches = focus_entries(match_entries(catalog, needle), address.bundesland)
+    matches = focus_entries(match_entries(catalog, needle), address.federal_state)
     return [candidate_from_entry(entry) for entry in matches[:MAX_CANDIDATES]]
 
 
@@ -125,7 +125,7 @@ def candidate_from_entry(entry) -> Candidate:
         citation_url=entry.citation_url or entry.source_url,
         document_number=entry.document_number,
         application=entry.application,
-        bundesland=entry.bundesland,
+        federal_state=entry.federal_state,
         origin="catalog",
         unavailable=unavailable,
     )
@@ -144,7 +144,7 @@ def candidate_from_hit(hit: RisHit) -> Candidate:
         citation_url=hit.citation_url or hit.fetch_url,
         document_number=hit.document_number,
         application=hit.application,
-        bundesland=hit.metadata.get("Bundesland", ""),
+        federal_state=hit.metadata.get("Bundesland", ""),
         origin="live",
         version_date=hit.metadata.get("In Kraft seit", ""),
     )
@@ -154,7 +154,7 @@ async def live_candidates(client, planner, question, address: Address, trace: Lo
     """A live OGD-RIS search, planned by the same LLM ``ris_search`` uses."""
     plan = await search_plan(planner, question, address, trace)
     try:
-        params = _build_search_params(plan["application"], plan["query"], plan["title"], plan["bundesland"], "", "")
+        params = _build_search_params(plan["application"], plan["query"], plan["title"], plan["federal_state"], "", "")
         result = await client.search(application=plan["application"], params=params, page=1, page_size=LIVE_PAGE_SIZE)
     except RisError as exc:
         logger.info("ris_lookup: live RIS search failed (%s)", exc)
@@ -168,10 +168,10 @@ async def live_candidates(client, planner, question, address: Address, trace: Lo
 async def search_plan(planner, question: str, address: Address, trace: LookupTrace) -> dict:
     """The effective search parameters, planned when a planner is configured."""
     effective = {
-        "application": trace.application or ("LrKons" if address.bundesland else "BrKons"),
+        "application": trace.application or ("LrKons" if address.federal_state else "BrKons"),
         "query": question,
         "title": address.law,
-        "bundesland": address.bundesland,
+        "federal_state": address.federal_state,
     }
     if planner is not None:
         effective = await _planned(planner, effective, address)
@@ -184,7 +184,7 @@ async def _planned(planner, effective: dict, address: Address) -> dict:
     """Run the planner; the caller's arguments survive a planner failure."""
     try:
         plan = await planner(
-            effective["query"], effective["application"], effective["title"], effective["bundesland"], "", ""
+            effective["query"], effective["application"], effective["title"], effective["federal_state"], "", ""
         )
     except Exception:  # noqa: BLE001 — same fail-open as ris_search's planner
         logger.warning("ris_lookup: planner failed, using the caller's words", exc_info=True)
@@ -198,5 +198,5 @@ async def _planned(planner, effective: dict, address: Address) -> dict:
         # The caller's / project's Bundesland outranks the planner's guess: it
         # is a request FACT, and a planner that drops it hands a Tyrolean
         # project Viennese law.
-        "bundesland": address.bundesland or plan.bundesland,
+        "federal_state": address.federal_state or plan.federal_state,
     }

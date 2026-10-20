@@ -122,7 +122,7 @@ _KNOWLEDGE_HIT = """\
 Source: OIB-Richtlinie 4 – Nutzungssicherheit und Barrierefreiheit (Ausgabe April 2019)
 Collection: oib_knowledge
 Shelf: basiswissen
-Dokumentart: oib_richtlinie — OIB-Richtlinie
+Dokumentart: oib_guideline — OIB-Richtlinie
 Page: 5
 Punkt: 4.2.1
 Citation: oib-rl_4_ausgabe_april_2019.pdf, p.5

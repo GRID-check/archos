@@ -534,10 +534,10 @@ describe('completeRunForOutcome, by kind', () => {
     expect(closed.filingStatus).toBe('failed')
   })
 
-  it('files nothing for a `compliance_check` or an `einreichcheck`', async () => {
+  it('files nothing for a `compliance_check` or a `submission_check`', async () => {
     // Their result IS the conversation the run wrote into; filing the prose as
     // a second document would put a copy of the thread in Berichte.
-    for (const kind of ['compliance_check', 'einreichcheck'] as const) {
+    for (const kind of ['compliance_check', 'submission_check'] as const) {
       vi.clearAllMocks()
       const { filed } = await completeRunForOutcome(delegated({ kind }), { status: 'success', report: '# Ergebnis' })
       expect(filed).toBeNull()

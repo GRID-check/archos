@@ -27,7 +27,7 @@ const oibSources = (hits: Array<{ name: string; detail: string }>) =>
     tool: 'knowledge_search',
     round: 0,
     lanes: [
-      { key: 'baurecht_oib', label: 'OIB-Richtlinie', kind: 'baurecht', hit_count: hits.length, sources: hits },
+      { key: 'building_law_oib', label: 'OIB-Richtlinie', kind: 'building_law', hit_count: hits.length, sources: hits },
     ],
   })
 
@@ -307,7 +307,7 @@ describe('ChatThinking', () => {
 
     test('the trigger is marked for the lifecycle fixtures', () => {
       render(<ChatThinking steps={[createStep()]} isThinking />)
-      expect(screen.getByRole('button')).toHaveAttribute('data-herleitung-trigger')
+      expect(screen.getByRole('button')).toHaveAttribute('data-derivation-trigger')
     })
 
     test('defaults to isThinking true', () => {
@@ -634,7 +634,7 @@ describe('ChatThinking', () => {
       expect(screen.getByText('Web search')).toBeVisible()
     })
 
-    test('enabled sources alone never conjure a Herleitung panel', () => {
+    test('enabled sources alone never conjure a derivation panel', () => {
       const { container } = render(
         <ChatThinking steps={[]} isThinking={false} enabledDataSources={enabled} />
       )
@@ -753,16 +753,16 @@ describe('ChatThinking', () => {
           id: 'c1',
           content: '',
           timestamp: new Date(),
-          kind: 'baurecht' as const,
-          lane: 'baurecht_oib',
+          kind: 'building_law' as const,
+          lane: 'building_law_oib',
           laneLabel: 'OIB-Richtlinie',
         },
         {
           id: 'c2',
           content: '',
           timestamp: new Date(),
-          kind: 'baurecht' as const,
-          lane: 'baurecht_oib',
+          kind: 'building_law' as const,
+          lane: 'building_law_oib',
           laneLabel: 'OIB-Richtlinie',
         },
       ]
@@ -796,9 +796,9 @@ describe('ChatThinking', () => {
       oibSources(Array.from({ length: n }, (_, i) => ({ name: `OIB-RL_${i + 1}.pdf`, detail: 'p.1' }))),
     ]
     const labels = (container: HTMLElement) =>
-      Array.from(container.querySelectorAll('[data-herleitung-label]'))
+      Array.from(container.querySelectorAll('[data-derivation-label]'))
     const counts = (container: HTMLElement) =>
-      Array.from(container.querySelectorAll('[data-herleitung-count]')).map((n) => n.textContent)
+      Array.from(container.querySelectorAll('[data-derivation-count]')).map((n) => n.textContent)
 
     test('a new count keeps the words and rolls only the digits', async () => {
       // At the settle the count often moves (9 → 11 Quellen). Re-keying the

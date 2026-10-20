@@ -48,9 +48,9 @@ FIXTURES = Path(__file__).resolve().parents[4] / "packages" / "ifc-spatial" / "t
 HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
 #: Two named rooms and four walls, and not one body the geometry kernel accepts.
 #: Every measurement over it comes back ``decidable: false``.
-NO_GEOMETRY = FIXTURES / "haus-mit-raeumen.ifc"
-#: No IfcBuildingStorey at all — the export `fire kind=fluchtniveau` refuses on.
-NO_STOREYS = FIXTURES / "strasse-ifc4x3.ifc"
+NO_GEOMETRY = FIXTURES / "house-with-rooms.ifc"
+#: No IfcBuildingStorey at all — the export `fire kind=escape_level` refuses on.
+NO_STOREYS = FIXTURES / "road-ifc4x3.ifc"
 
 
 @pytest.fixture(scope="module")
@@ -181,9 +181,9 @@ class TestMeasurementDetectionAgainstTheRealEngine:
         assert "NICHT ENTSCHEIDBAR" in result
         assert tool_result_is_measurement("ifc_measure", result) is False
 
-    def test_an_undecidable_fluchtniveau_is_not_grounding(self, run):
+    def test_an_undecidable_escape_level_is_not_grounding(self, run):
         """The report that started this: a refusal whose REMEDY says „gemessen"."""
-        result = run(NO_STOREYS, "fire", kind="fluchtniveau")
+        result = run(NO_STOREYS, "fire", kind="escape_level")
         assert result.startswith("NICHT ENTSCHEIDBAR")
         assert "gemessen werden könnte" in result
         assert tool_result_is_measurement("ifc_measure", result) is False
@@ -1074,7 +1074,7 @@ class TestMeasurementSignalReachesTheState:
     async def test_a_refused_measurement_plus_an_invented_number_grounds_nothing(self, mock_llm_provider, mock_llm):
         """The report this fix came from, through the whole agent.
 
-        `fire kind=fluchtniveau` on an export without storeys refuses, and the
+        `fire kind=escape_level` on an export without storeys refuses, and the
         remedy sentence ends „…dessen Höhe gemessen werden könnte". The model
         then writes a number that is in no file anywhere. Nothing was measured,
         so nothing may be measurement-grounded — otherwise the invention rides
@@ -1083,7 +1083,7 @@ class TestMeasurementSignalReachesTheState:
         engine = pytest.importorskip("ifc_spatial.tools", reason="the spatial engine is not installed")
         tools = engine.create_tools()
         handle = engine.call(tools, "open_model", {"path": str(NO_STOREYS)})["model"]
-        refusal = _render("fire", engine.call(tools, "fire", {"model": handle, "kind": "fluchtniveau"}))
+        refusal = _render("fire", engine.call(tools, "fire", {"model": handle, "kind": "escape_level"}))
         _MEASURE_RESULT.append(refusal)
 
         result = await self._run(

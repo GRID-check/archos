@@ -54,7 +54,7 @@ export function FindingsCard({
   const top = topFindings(groups, derivations)
   const rest = restByTopic(groups, top)
   const confirmed = all.filter((item) => item.state === 'confirmed').length
-  const severalBuildings = new Set(all.map((item) => item.bauwerkId).filter(Boolean)).size > 1
+  const severalBuildings = new Set(all.map((item) => item.buildingId).filter(Boolean)).size > 1
   const restCount = rest.reduce((sum, group) => sum + group.items.length, 0)
 
   return (
@@ -158,7 +158,7 @@ function FindingRow({ item, severalBuildings, ...decide }: Decide & { item: Sugg
   const t = useTranslations('intakeProfileStep')
   const label = shortLabel(item.label)
   const building =
-    severalBuildings && item.bauwerkId ? t('findings.building', { number: buildingNumber(item.bauwerkId) }) : null
+    severalBuildings && item.buildingId ? t('findings.building', { number: buildingNumber(item.buildingId) }) : null
   return (
     <li
       className={cn(

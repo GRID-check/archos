@@ -109,9 +109,9 @@ async def test_a_skill_activation_is_a_skill_step() -> None:
 
 LANES = (
     TraceLane(
-        key="projekt",
+        key="project",
         label="Projektwissen",
-        kind="projekt",
+        kind="project",
         hit_count=1,
         sources=[TraceLaneSource(name="plan.pdf", detail="p.4", shelf="project", round=1)],
     ),
@@ -126,7 +126,7 @@ HIT = GroundingHit(
     doc_class=None,
     display_title="plan.pdf",
     folder_path=None,
-    punkt=None,
+    clause=None,
     score=0.5,
     content_type="text",
     provenance=None,
@@ -209,7 +209,7 @@ async def test_the_setup_phase_returns_its_steps_and_emits_nothing() -> None:
     async def work() -> None:
         returned.append(turn_status.documents_loading_step(["project"]))
         returned.append(turn_status.documents_waiting_step(file_count=2))
-        returned.append(turn_status.subject_document_step(loaded=True, path="/entwuerfe/a.md"))
+        returned.append(turn_status.subject_document_step(loaded=True, path="/drafts/a.md"))
 
     assert await stream_custom(work) == []
     assert [step.id for step in returned] == [

@@ -124,7 +124,7 @@ const record = (documentId: string, number: number, extra: Partial<ProjectAnnota
   delegatedAt: null,
   carriedFromId: null,
   mentions: [],
-  fassungNumber: 1,
+  revisionNumber: 1,
   replies: [],
   document: DOCS[documentId],
   ...extra,
@@ -263,7 +263,7 @@ describe('GET /api/projects/[id]/annotations', () => {
     vi.mocked(listProjectAnnotationPage).mockResolvedValue(
       page([
         record(DOC_A, 2, { assigneeUserId: 'user_2', dueOn: '2026-10-20' }),
-        record(DOC_A, 5, { versionId: 'ver_old', fassungNumber: 1 }),
+        record(DOC_A, 5, { versionId: 'ver_old', revisionNumber: 1 }),
         record(DOC_B, 1),
       ])
     )
@@ -276,8 +276,8 @@ describe('GET /api/projects/[id]/annotations', () => {
       ['Grundriss EG.pdf', 5],
       ['Schnitt A-A.pdf', 1],
     ])
-    expect(marks[0]).toMatchObject({ assigneeName: 'Jakob Huber', dueOn: '2026-10-20', onCurrentFassung: true })
-    expect(marks[1]).toMatchObject({ onCurrentFassung: false })
+    expect(marks[0]).toMatchObject({ assigneeName: 'Jakob Huber', dueOn: '2026-10-20', onCurrentRevision: true })
+    expect(marks[1]).toMatchObject({ onCurrentRevision: false })
     // What THIS reader may do is asked per document: Grundriss they may write, Schnitt only read.
     expect(marks.map((mark) => mark.canEdit)).toEqual([true, true, false])
     // The directory is read once for the page, however many documents it holds.

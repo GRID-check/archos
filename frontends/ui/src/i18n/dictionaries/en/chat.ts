@@ -39,9 +39,9 @@ export const chat = {
     // terms of art an Austrian architect works in, and translating "verbindlich
     // erklärt" to "declared binding" loses the phrase they would search for.
     binding: {
-      bindend: 'Bindend',
-      verbindlich_erklaert: 'Verbindlich erklärt',
-      auslegend: 'Auslegend',
+      binding: 'Bindend',
+      declared_binding: 'Verbindlich erklärt',
+      interpretive: 'Auslegend',
     },
     openExternal: 'Open in RIS',
     // Office files (Word, Excel, PowerPoint, ODF, RTF) are shown as a PDF Piloti
@@ -54,9 +54,9 @@ export const chat = {
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
     kinds: {
-      baurecht: 'Building law & guidelines',
-      buero: 'Office filing',
-      projekt: 'Project knowledge',
+      building_law: 'Building law & guidelines',
+      office: 'Office filing',
+      project: 'Project knowledge',
       praezedenz: 'Precedent',
       web: 'Web source',
     },
@@ -76,14 +76,14 @@ export const chat = {
     forQuery: '“{query}”',
     // Provenance badge on a card.
     source: {
-      projekt: 'Project',
-      buero: 'Office',
+      project: 'Project',
+      office: 'Office',
     },
     // A surfaced file that no longer resolves to a live document row — an honest,
     // actionable card (the assistant referenced it; open in Office filing / project
     // files) rather than a silent dead tile.
     unresolvedHint: 'The assistant referenced this file.',
-    openInArchive: 'Open in Office filing',
+    openInOfficeShelf: 'Open in Office filing',
     openInFiles: 'Open in project files',
     // The resolve fetch failed — a retry affordance, not a permanent dead tile.
     loadError: 'Documents couldn’t be loaded.',
@@ -112,8 +112,8 @@ export const chat = {
     // Which shelf the file came from — the same distinction the sources draw:
     // shared project knowledge, Office filing, a private attachment.
     shelf: {
-      projekt: 'Project files',
-      buero: 'Office filing',
+      project: 'Project files',
+      office: 'Office filing',
       session: 'Attachment in this chat',
     },
     notIndexed: 'Filed, not read. You can open it, but Piloti does not cite it.',
@@ -169,7 +169,7 @@ export const chat = {
     auto: 'Web',
     model: 'Model measurement',
     shelves: {
-      archiv: 'Office filing',
+      office_shelf: 'Office filing',
       project: 'Project knowledge',
       session: 'Private session',
       base: 'Base knowledge',
@@ -226,12 +226,12 @@ export const chat = {
       note: 'Note',
     },
     status: {
-      erfuellt: 'met',
-      nicht_erfuellt: 'not met',
-      offen: 'open',
-      nicht_anwendbar: 'not applicable',
+      met: 'met',
+      not_met: 'not met',
+      open: 'open',
+      not_applicable: 'not applicable',
     },
-    grounding: { belegt: 'sourced', abgeleitet: 'derived', offen: 'unsourced' },
+    grounding: { sourced: 'sourced', derived: 'derived', open: 'unsourced' },
     clarify: 'Clarify',
     /** Under the matrix in a closed project, where „Clarify“ would be (ADR-0090). */
     clarifyClosed: 'Closed project: no new research to clarify open findings.',
@@ -262,8 +262,8 @@ export const chat = {
     // sources use: the count first, every name on expand.
     more: '+{count} more',
     less: 'Show fewer',
-    punkt: 'Pkt. {punkt}',
-    punktPage: 'Pkt. {punkt} · p. {page}',
+    clause: 'Pkt. {clause}',
+    clausePage: 'Pkt. {clause} · p. {page}',
     // Citations the user can actually paste somewhere — per source (Fachtext)
     // and for the whole answer in the formats external tools ingest.
     copyCitation: 'Copy citation',
@@ -322,7 +322,7 @@ export const chat = {
         'No citation survived verification — please check the figures yourself before relying on them',
       cards_generation_failed:
         'The report is complete, but the proposals derived from it could not be produced',
-      grundlage_unread:
+      basis_unread:
         'Not every document named as the basis was read — the end of the report lists which',
     },
     // The verification's own reasons for dropping a citation, in the reader's
@@ -390,9 +390,9 @@ export const chat = {
     retrievedOnly: 'Read',
     // The cited document is a Fassung a person has since replaced. The citation stays true of the file it names;
     // the reader should know before relying on it.
-    olderFassung: 'Older revision. Current:',
-    openCurrentFassungAria: 'Open the current revision: {name}',
-    currentFassungUnavailable: 'The current revision cannot be opened.',
+    olderRevision: 'Older revision. Current:',
+    openCurrentRevisionAria: 'Open the current revision: {name}',
+    currentRevisionUnavailable: 'The current revision cannot be opened.',
   },
   breadcrumb: {
     ariaLabel: 'Conversation breadcrumb',
@@ -444,20 +444,20 @@ export const chat = {
       groupAria: 'Follow-up questions',
       // The one client-side chip under a long answer: the offer nobody
       // otherwise discovers — Piloti writes, too (ledger 23).
-      aktenvermerk: 'Write this up as a file note',
+      fileNote: 'Write this up as a file note',
       // What the chip types into the composer. Deliberately not the label: the
       // label is a sentence fragment, not a request. It is prefill and not a
       // command, so the reader can edit it before pressing send.
-      aktenvermerkPrefill: 'Write that up as a file note in my project.',
+      fileNotePrefill: 'Write that up as a file note in my project.',
     },
     keyTakeaways: {
       eyebrow: 'What matters most',
     },
     callout: {
-      hinweis: 'Note',
-      achtung: 'Caution',
-      frist: 'Deadline',
-      tipp: 'Tip',
+      note: 'Note',
+      warning: 'Caution',
+      deadline: 'Deadline',
+      tip: 'Tip',
       more: 'More on this',
       less: 'Less',
     },
@@ -548,7 +548,7 @@ export const chat = {
       // The four kinds, in the words somebody would use to ask for them.
       kind: {
         complianceCheck: 'Compliance check',
-        einreichcheck: 'Submission check',
+        submissionCheck: 'Submission check',
         document: 'Document',
         revision: 'Revision',
       },
@@ -747,26 +747,26 @@ export const chat = {
       fireAccess: {
         routeWidth: 'Access route width',
         gateClearance: 'Gateway clear height',
-        aufstellflaecheWidth: 'Aufstellfläche width',
-        aufstellflaecheLength: 'Aufstellfläche length',
+        stagingAreaWidth: 'Aufstellfläche width',
+        stagingAreaLength: 'Aufstellfläche length',
         facadeDistance: 'Distance to facade',
         walkToEntrance: 'Walk to entrance',
         parcel: 'Parcel {width} × {depth} m',
         route: 'ACCESS',
         building: 'Building',
-        aufstellflaeche: 'Aufstellfläche',
+        stagingArea: 'Aufstellfläche',
         entrance: 'Entrance',
         street: 'STREET',
-        gebaeudeklasse: 'Gebäudeklasse',
+        buildingClass: 'Gebäudeklasse',
         walkTooFar: ' — the walk to the entrance exceeds the permitted distance.',
       },
       guardrail: {
         context: {
-          balkon: 'Balcony',
+          balcony: 'Balcony',
           loggia: 'Loggia',
-          stiege: 'Stairs',
-          fenster: 'Window',
-          dachterrasse: 'Roof terrace',
+          staircase: 'Stairs',
+          window: 'Window',
+          roof_terrace: 'Roof terrace',
         },
         elevation: 'ELEVATION · {context}',
         fallHeight: 'Fall height',
@@ -810,26 +810,26 @@ export const chat = {
       removePoint: 'Remove section: {point}',
       genre: 'Kind of report',
       genres: {
-        pruefbericht: 'Compliance review',
-        aktenvermerk: 'Memo',
-        vergleich: 'Comparison',
-        checkliste: 'Checklist',
-        bericht: 'Report',
+        inspection_report: 'Compliance review',
+        file_note: 'Memo',
+        comparison: 'Comparison',
+        checklist: 'Checklist',
+        report: 'Report',
       },
       depth: 'Depth',
-      depths: { kurzpruefung: 'Short review', gutachten: 'Full opinion' },
+      depths: { quick_check: 'Short review', expert_report: 'Full opinion' },
       /** The documents the reader names for the run, and the sources it may use. */
-      unterlagen: {
+      documents: {
         label: 'Documents',
-        grundlage: 'Read in full:',
-        ausgeschlossen: 'Excluded:',
+        basis: 'Read in full:',
+        excluded: 'Excluded:',
         none: 'No documents named — the research reads what it finds.',
         choose: 'Choose documents',
         removeRead: 'No longer read in full: {name}',
         removeExcluded: 'No longer excluded: {name}',
       },
-      rahmen: 'Sources',
-      rahmenNote: 'The sources selected in the composer. Change them there before approving.',
+      frame: 'Sources',
+      frameNote: 'The sources selected in the composer. Change them there before approving.',
     },
     needsInput: 'Piloti needs your input',
     receivedInput: 'Piloti received your input',
@@ -986,7 +986,7 @@ export const chat = {
         // once, because the collective noun for them is OURS, not theirs, so
         // `several` states plainly WHAT is being read.
         documents: {
-          archiv: 'Reviewing documents from Office filing …',
+          officeShelf: 'Reviewing documents from Office filing …',
           project: 'Reviewing documents from the project …',
           session: 'Reviewing documents from this conversation …',
           several: 'Reviewing your documents …',
@@ -1003,7 +1003,7 @@ export const chat = {
           // names the document instead of a corpus. `{document}` is the name
           // the publisher or the office gave it — a proper noun, sent as
           // itself and never translated.
-          punkt: 'Reading {document}, Pkt. {punkt} …',
+          clause: 'Reading {document}, Pkt. {clause} …',
           page: 'Reading {document}, p. {page} …',
           // Other formulations are being tried — the action, not the verdict:
           // the line says what is happening NOW, replacing the round's search
@@ -1117,8 +1117,8 @@ export const chat = {
     // not turns or calls (see ChatThinking). The sources clause is ABSENT when
     // there are none: "0 sources" is a true number that reads as a failure, and
     // an answer grounded in a measurement of the model rightly has no citations.
-    herleitungSummary: 'Trace',
-    herleitungSummaryWithSources: 'Trace · {count, plural, one {# source} other {# sources}}',
+    derivationSummary: 'Trace',
+    derivationSummaryWithSources: 'Trace · {count, plural, one {# source} other {# sources}}',
     // aria-label naming the reasoning graph as one region for screen readers.
     reasoningGraphLabel: 'Reasoning trace',
     stepsLabel: 'Thinking steps',
@@ -1175,8 +1175,8 @@ export const chat = {
       // The locus half of `roundFoldOne`, in the answer's own words (cf.
       // `answerSources.punktPage`): the passage, not the mechanism.
       roundFoldLocusPage: 'p. {page}',
-      roundFoldLocusPunkt: 'Pkt. {punkt}',
-      roundFoldLocusPunktPage: 'Pkt. {punkt} · p. {page}',
+      roundFoldLocusClause: 'Pkt. {clause}',
+      roundFoldLocusClausePage: 'Pkt. {clause} · p. {page}',
       // Accessible name of the control that folds and unfolds the layer. The
       // card's own text is a conclusion and makes a poor control name.
       roundFold: 'Collapse step {n}',
@@ -1251,7 +1251,7 @@ export const chat = {
             'No citation held up under checking. Please verify the figures yourself before using them.',
           noCards:
             'The report is complete, but the proposals derived from it could not be produced.',
-          grundlageUnread:
+          basisUnread:
             'Not every document named as the basis could be read; the answer does not reflect its contents. The end of the report lists which.',
         },
       },

@@ -6,6 +6,7 @@
  */
 import PageHead from '../molecules/PageHead.astro'
 import { type Locale } from '../../i18n/ui'
+import { getLocalizedPath } from '../../i18n/utils'
 import { LANDING } from '../../data/landing'
 import { SECTIONS, SECTION_IDS, landingPath, type SectionId } from '../../lib/landing'
 
@@ -46,7 +47,7 @@ const more = locale === 'de' ? 'Mehr von Piloti' : 'More from Piloti'
         ))
       }
       <li>
-        <a href={locale === 'de' ? '/warum-piloti/' : '/en/warum-piloti/'} class="text-accent-600 underline underline-offset-4">
+        <a href={getLocalizedPath('/warum-piloti/', locale)} class="text-accent-600 underline underline-offset-4">
           {locale === 'de' ? 'Warum Piloti' : 'Why Piloti'}
         </a>
       </li>

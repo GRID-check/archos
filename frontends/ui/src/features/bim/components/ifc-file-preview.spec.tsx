@@ -89,7 +89,7 @@ function renderPreview(): void {
 }
 
 /** The same preview on a shelf that has no project — the org-wide Archiv. */
-function renderArchivPreview(props: { canOpenWorkspace?: boolean } = {}): void {
+function renderOfficeShelfPreview(props: { canOpenWorkspace?: boolean } = {}): void {
   render(<IfcFilePreview documentId="doc-1" filename="Haus-A.ifc" {...props} />)
 }
 
@@ -198,7 +198,7 @@ describe('IfcFilePreview', () => {
       // a list this surface must never have asked for.
       state.models = { data: [], isLoading: false, error: null }
       state.documentModel = { data: model({ projectId: null }), isLoading: false, error: null }
-      renderArchivPreview()
+      renderOfficeShelfPreview()
 
       const canvas = await screen.findByTestId('ifc-canvas')
       expect(canvas.dataset.source).toBe('https://example.test/model.ifc')
@@ -211,7 +211,7 @@ describe('IfcFilePreview', () => {
         isLoading: false,
         error: null,
       }
-      renderArchivPreview()
+      renderOfficeShelfPreview()
 
       expect(screen.getByText(/still reading this model/)).toBeInTheDocument()
       expect(screen.queryByTestId('ifc-canvas')).not.toBeInTheDocument()
@@ -230,11 +230,11 @@ describe('IfcFilePreview', () => {
     it('offers the workspace on the Archiv’s own route, not a project’s', async () => {
       setWebGpu(true)
       state.documentModel = { data: model({ projectId: null }), isLoading: false, error: null }
-      renderArchivPreview()
+      renderOfficeShelfPreview()
 
       await screen.findByTestId('ifc-canvas')
       const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', expect.stringContaining('/app/archiv?'))
+      expect(link).toHaveAttribute('href', expect.stringContaining('/app/office-shelf?'))
       // The model is named the same way it is named everywhere else, so a view
       // copied from one surface parses on the other.
       expect(link.getAttribute('href')).toContain('model=')
@@ -245,7 +245,7 @@ describe('IfcFilePreview', () => {
     it('offers nothing when the model surfaces are switched off for the org', async () => {
       setWebGpu(true)
       state.documentModel = { data: model({ projectId: null }), isLoading: false, error: null }
-      renderArchivPreview({ canOpenWorkspace: false })
+      renderOfficeShelfPreview({ canOpenWorkspace: false })
 
       await screen.findByTestId('ifc-canvas')
       expect(screen.queryByRole('link')).not.toBeInTheDocument()

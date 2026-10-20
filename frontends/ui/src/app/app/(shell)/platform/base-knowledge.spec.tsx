@@ -56,7 +56,7 @@ function file(
     currentSha256: null,
     ingestedAt: null,
     summary: null,
-    docClass: 'sonstiges',
+    docClass: 'other',
     docClassSuggestion: null,
     displayTitle: null,
     ...overrides,
@@ -78,9 +78,9 @@ const STATUS: KnowledgeBaseStatus = {
     totalChunks: 12,
   },
   files: [
-    file({ fileName: 'oib-richtlinie-2.pdf', docClass: 'oib_richtlinie' }),
-    file({ fileName: 'oenorm-b-1600.pdf', docClass: 'norm_extern' }),
-    file({ fileName: 'sonstiges-notiz.pdf', docClass: 'sonstiges' }),
+    file({ fileName: 'oib-richtlinie-2.pdf', docClass: 'oib_guideline' }),
+    file({ fileName: 'oenorm-b-1600.pdf', docClass: 'external_standard' }),
+    file({ fileName: 'sonstiges-notiz.pdf', docClass: 'other' }),
   ],
 }
 
@@ -91,7 +91,7 @@ const MANY: KnowledgeBaseStatus = {
   files: Array.from({ length: 14 }, (_, index) =>
     file({
       fileName: `base-${String(index + 1).padStart(2, '0')}.pdf`,
-      docClass: index === 0 ? 'oib_richtlinie' : 'sonstiges',
+      docClass: index === 0 ? 'oib_guideline' : 'other',
     })
   ),
 }
@@ -217,15 +217,15 @@ describe('BaseKnowledge', () => {
         (init as RequestInit | undefined)?.method === 'PATCH'
     )
     expect(JSON.parse((patchCall![1] as RequestInit).body as string)).toEqual({
-      doc_class: 'gesetz',
+      doc_class: 'law',
     })
   })
 
   test('a Dokumentart read from the text is offered, and accepting it is the same PATCH', async () => {
     const suggested = file({
       fileName: 'BO_Wien_konsolidiert.pdf',
-      docClass: 'sonstiges',
-      docClassSuggestion: 'gesetz',
+      docClass: 'other',
+      docClassSuggestion: 'law',
     })
     const fetchSpy = vi
       .fn()
@@ -255,7 +255,7 @@ describe('BaseKnowledge', () => {
           (init as RequestInit | undefined)?.method === 'PATCH'
       )
       expect(patch && JSON.parse((patch[1] as RequestInit).body as string)).toEqual({
-        doc_class: 'gesetz',
+        doc_class: 'law',
       })
     })
   })
@@ -263,8 +263,8 @@ describe('BaseKnowledge', () => {
   test('a suggestion equal to the stored class offers nothing', async () => {
     const same = file({
       fileName: 'b1600.pdf',
-      docClass: 'norm_extern',
-      docClassSuggestion: 'norm_extern',
+      docClass: 'external_standard',
+      docClassSuggestion: 'external_standard',
     })
     vi.stubGlobal(
       'fetch',
@@ -437,7 +437,7 @@ describe('BaseKnowledge', () => {
             status: 'pending',
             kind: 'file',
             fileName: 'new-doc.pdf',
-            docClass: 'sonstiges',
+            docClass: 'other',
             message: '',
             accepted: 1,
             rejected: 0,
@@ -479,14 +479,14 @@ describe('BaseKnowledge', () => {
       accepted: 2,
       rejected: 0,
       members: [
-        { fileName: 'a.pdf', status: 'pending', docClass: 'sonstiges', reason: null },
-        { fileName: 'b.pdf', status: 'pending', docClass: 'sonstiges', reason: null },
+        { fileName: 'a.pdf', status: 'pending', docClass: 'other', reason: null },
+        { fileName: 'b.pdf', status: 'pending', docClass: 'other', reason: null },
       ],
     }
     // Status snapshot where a.pdf has finished indexing but b.pdf hasn't appeared yet.
     const statusWithA: KnowledgeBaseStatus = {
       ...STATUS,
-      files: [...STATUS.files, file({ fileName: 'a.pdf', docClass: 'sonstiges' })],
+      files: [...STATUS.files, file({ fileName: 'a.pdf', docClass: 'other' })],
     }
     const fetchSpy = vi.fn((url: string, init?: RequestInit) => {
       if (

@@ -119,7 +119,7 @@ describe('CalloutCard', () => {
   it('names its kind in words beside the remark', () => {
     render(
       <CalloutCard
-        kind="frist"
+        kind="deadline"
         title="Nur in Wien"
         text="Die Bauverhandlung ist binnen sechs Wochen anzuberaumen."
         detail={null}
@@ -132,7 +132,7 @@ describe('CalloutCard', () => {
   })
 
   it('renders no disclosure at all when there is no background to show', () => {
-    render(<CalloutCard kind="tipp" text="Ein Schnitt durch das Treppenhaus erspart Rückfragen." />)
+    render(<CalloutCard kind="tip" text="Ein Schnitt durch das Treppenhaus erspart Rückfragen." />)
 
     expect(screen.getByText('Tipp')).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
@@ -142,7 +142,7 @@ describe('CalloutCard', () => {
     const user = userEvent.setup()
     render(
       <CalloutCard
-        kind="achtung"
+        kind="warning"
         text="Die Wiener Bauordnung weicht bei der Berechnung des Fluchtniveaus ab."
         detail="Für Zubauten im Bestand ist zusätzlich § 60 zu beachten."
       />,
@@ -161,7 +161,7 @@ describe('CalloutCard', () => {
     // short of it reads as an aside, which is what a callout is. `ch` rather
     // than px so the cap is a measure and follows the type.
     const { container } = render(
-      <CalloutCard kind="hinweis" text="Die Frist läuft ab Zustellung des Bescheids." />,
+      <CalloutCard kind="note" text="Die Frist läuft ab Zustellung des Bescheids." />,
     )
 
     expect(
@@ -223,7 +223,7 @@ describe('KeyTakeawaysCard distillation marker', () => {
 describe('CalloutCard action-axis tiers', () => {
   it('marks Frist amber: rule, clock and a washed kind pill — the one warm constant', () => {
     const { container } = render(
-      <CalloutCard kind="frist" text="Die Bauverhandlung ist binnen sechs Wochen anzuberaumen." />,
+      <CalloutCard kind="deadline" text="Die Bauverhandlung ist binnen sechs Wochen anzuberaumen." />,
     )
 
     const card = container.querySelector('[data-slot="card"]')
@@ -238,7 +238,7 @@ describe('CalloutCard action-axis tiers', () => {
 
   it('marks Achtung brick red: rule, triangle and a washed kind pill', () => {
     const { container } = render(
-      <CalloutCard kind="achtung" text="Die Wiener Bauordnung weicht bei der Berechnung ab." />,
+      <CalloutCard kind="warning" text="Die Wiener Bauordnung weicht bei der Berechnung ab." />,
     )
 
     const card = container.querySelector('[data-slot="card"]')
@@ -252,7 +252,7 @@ describe('CalloutCard action-axis tiers', () => {
 
   it('keeps Hinweis neutral: slate rule, almost no wash, subdued eyebrow', () => {
     const { container } = render(
-      <CalloutCard kind="hinweis" text="Die Frist läuft ab Zustellung des Bescheids." />,
+      <CalloutCard kind="note" text="Die Frist läuft ab Zustellung des Bescheids." />,
     )
 
     const card = container.querySelector('[data-slot="card"]')
@@ -282,7 +282,7 @@ describe('CalloutCard action-axis tiers', () => {
     // distillation marker with a different meaning — the bulb and the word
     // carry it instead.
     const { container } = render(
-      <CalloutCard kind="tipp" text="Ein Schnitt durch das Treppenhaus erspart Rückfragen." />,
+      <CalloutCard kind="tip" text="Ein Schnitt durch das Treppenhaus erspart Rückfragen." />,
     )
 
     const card = container.querySelector('[data-slot="card"]')
@@ -296,7 +296,7 @@ describe('CalloutCard action-axis tiers', () => {
 
   it('carries the tier edge in the flat register, the wash on the kind pill alone', () => {
     const { container } = render(
-      <CalloutCard flat kind="frist" text="Binnen sechs Wochen anzuberaumen." />,
+      <CalloutCard flat kind="deadline" text="Binnen sechs Wochen anzuberaumen." />,
     )
 
     const flat = container.firstElementChild

@@ -68,7 +68,7 @@ const MODELS = {
 }
 
 const PROFILE = {
-  facts: { gebaeudeklasse: { value: 4 }, hauptnutzung: { value: 'wohnen' } },
+  facts: { building_class: { value: 4 }, main_use: { value: 'residential' } },
 }
 
 const SCHEDULE = {
@@ -161,7 +161,7 @@ const ELEMENT = {
 const COMPLIANCE = {
   compliance: [
     {
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       richtlinie: 'OIB 2',
       clause: '3',
       titleDe: 'Tragende Bauteile — Feuerwiderstand',
@@ -176,7 +176,7 @@ const COMPLIANCE = {
       missing: [{ path: 'Pset_WallCommon.FireRating', elements: 34 }],
     },
     {
-      ruleId: 'oib3-raumhoehe',
+      ruleId: 'oib3-room-height',
       richtlinie: 'OIB 3',
       clause: '2',
       titleDe: 'Aufenthaltsräume — lichte Raumhöhe',

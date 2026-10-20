@@ -37,11 +37,11 @@ vi.mock('@/lib/model-config/service', () => ({
   getEffectiveModelOverrides: vi.fn(),
 }))
 
-// Structured bundesland fact lookup (backlog T3-9 follow-up, 2026-07-16,
+// Structured federalState fact lookup (backlog T3-9 follow-up, 2026-07-16,
 // user-mandated) — avoids pulling in the real @/lib/db chain; controlled
 // per-test below like getEffectiveModelOverrides.
 vi.mock('@/lib/project-profile/prompt-view', () => ({
-  loadProjectBundesland: vi.fn().mockResolvedValue(null),
+  loadProjectFederalState: vi.fn().mockResolvedValue(null),
 }))
 
 // The commissioned-report filing, mocked at its own module so this suite
@@ -63,7 +63,7 @@ import { DELETE, GET, POST } from './route'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
-import { loadProjectBundesland } from '@/lib/project-profile/prompt-view'
+import { loadProjectFederalState } from '@/lib/project-profile/prompt-view'
 import {
   findFiledResearchReport,
   findReportFilingRefusal,
@@ -201,7 +201,7 @@ describe('/api/jobs/async/[...path] proxy — POST org model overrides', () => {
     // suites above.
     process.env.REQUIRE_AUTH = 'true'
     vi.mocked(requireAuthorizedSession).mockResolvedValue(session)
-    vi.mocked(loadProjectBundesland).mockResolvedValue(null)
+    vi.mocked(loadProjectFederalState).mockResolvedValue(null)
     fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ job_id: 'job-1' }), {
         status: 200,
@@ -297,7 +297,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
       verifiedConversationId: undefined,
     })
     vi.mocked(getEffectiveModelOverrides).mockResolvedValue(null)
-    vi.mocked(loadProjectBundesland).mockResolvedValue(null)
+    vi.mocked(loadProjectFederalState).mockResolvedValue(null)
     fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ job_id: 'job-1' }), {
         status: 200,
@@ -386,8 +386,8 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     expect(headers['X-Grid-Request-Context']).toBeDefined()
   })
 
-  it('carries the resolved bundesland fact structurally on the envelope (backlog T3-9 follow-up, 2026-07-16)', async () => {
-    vi.mocked(loadProjectBundesland).mockResolvedValue('tirol')
+  it('carries the resolved federal-state fact structurally on the envelope (backlog T3-9 follow-up, 2026-07-16)', async () => {
+    vi.mocked(loadProjectFederalState).mockResolvedValue('tyrol')
 
     const res = await POST(
       postRequest('https://grid.example/api/jobs/async/submit', { agent_type: 'deep_research' }),
@@ -395,17 +395,17 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     )
 
     expect(res.status).toBe(200)
-    expect(loadProjectBundesland).toHaveBeenCalledWith('proj-1', 'org-1')
+    expect(loadProjectFederalState).toHaveBeenCalledWith('proj-1', 'org-1')
     const init = fetchSpy.mock.calls[0][1] as RequestInit
     const headers = init.headers as Record<string, string>
     const decoded = JSON.parse(
       Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
     )
-    expect(decoded.bundesland).toBe('tirol')
+    expect(decoded.federalState).toBe('tyrol')
   })
 
-  it('omits bundesland from the envelope cleanly when the project has no valid fact', async () => {
-    vi.mocked(loadProjectBundesland).mockResolvedValue(null)
+  it('omits the federal state from the envelope cleanly when the project has no valid fact', async () => {
+    vi.mocked(loadProjectFederalState).mockResolvedValue(null)
 
     const res = await POST(
       postRequest('https://grid.example/api/jobs/async/submit', { agent_type: 'deep_research' }),
@@ -418,11 +418,11 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     const decoded = JSON.parse(
       Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
     )
-    expect(decoded.bundesland).toBeUndefined()
+    expect(decoded.federalState).toBeUndefined()
   })
 
-  it('still proxies the submission without bundesland when the lookup throws (best-effort)', async () => {
-    vi.mocked(loadProjectBundesland).mockRejectedValue(new Error('db unavailable'))
+  it('still proxies the submission without the federal state when the lookup throws (best-effort)', async () => {
+    vi.mocked(loadProjectFederalState).mockRejectedValue(new Error('db unavailable'))
 
     const res = await POST(
       postRequest('https://grid.example/api/jobs/async/submit', { agent_type: 'deep_research' }),
@@ -436,7 +436,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     const decoded = JSON.parse(
       Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
     )
-    expect(decoded.bundesland).toBeUndefined()
+    expect(decoded.federalState).toBeUndefined()
   })
 })
 

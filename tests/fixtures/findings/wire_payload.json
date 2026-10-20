@@ -4,8 +4,8 @@
     {
       "requirement": "Feuerwiderstand tragender Bauteile",
       "value": "REI 60",
-      "status": "erfuellt",
-      "grounding": "belegt",
+      "status": "met",
+      "grounding": "sourced",
       "reference": { "document": "OIB-Richtlinie 2", "section": "Tabelle 1b", "page": 12 },
       "citations": [1],
       "comment": "Gilt für GK 4; im Kellergeschoß REI 90.",
@@ -14,8 +14,8 @@
     {
       "requirement": "Zweiter Fluchtweg",
       "value": null,
-      "status": "offen",
-      "grounding": "offen",
+      "status": "open",
+      "grounding": "open",
       "reference": null,
       "citations": [],
       "comment": "Das Fluchtniveau des obersten Geschoßes ist nicht bekannt.",
@@ -24,8 +24,8 @@
     {
       "requirement": "Barrierefreier Zugang",
       "value": "nicht anwendbar",
-      "status": "nicht_anwendbar",
-      "grounding": "abgeleitet",
+      "status": "not_applicable",
+      "grounding": "derived",
       "reference": { "document": "OIB-Richtlinie 4", "section": "Pkt. 2.1", "page": null },
       "citations": [2, 3],
       "comment": null,

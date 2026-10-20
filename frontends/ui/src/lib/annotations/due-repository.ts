@@ -45,7 +45,7 @@ const dueWithin = (window: DueWindow) =>
     gte(documentAnnotations.dueOn, window.from),
     lte(documentAnnotations.dueOn, window.through),
     eq(documents.lifecycle, 'active'),
-    inArray(documents.scope, ['project', 'archiv']),
+    inArray(documents.scope, ['project', 'office_shelf']),
     documentVisibleTo(SCREENED_ONLY)
   )
 

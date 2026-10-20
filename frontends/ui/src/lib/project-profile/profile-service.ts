@@ -26,8 +26,8 @@ import { requireProjectAccess, type ProjectPermission } from '@/lib/authz/projec
  */
 const PROFILE_WRITE: readonly ProjectPermission[] = ['project:memory:write', 'project:edit']
 import { getBackendUrl } from '@/lib/backend-proxy'
-import { deleteBindingsOutsideBauwerke } from '@/lib/document-roles/repository'
-import { bauwerkIds } from '@/lib/document-roles/service'
+import { deleteBindingsOutsideBuildings } from '@/lib/document-roles/repository'
+import { buildingIds } from '@/lib/document-roles/service'
 import { BadRequestError, ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Locale } from '@/i18n/config'
@@ -59,6 +59,7 @@ import {
   type ProjectIntakeDefinition,
 } from './intake-definition'
 import type { AiConsistencyFinding, ConsistencyCheckField } from './intake-consistency'
+import { normalizeLegacyProfile } from './legacy-names'
 import type { ProjectProfile, ProjectProfilePatchOperation } from './types'
 
 /**
@@ -111,18 +112,20 @@ export async function saveProjectProfile(
   if (expectedVersion !== undefined && current.profileVersion !== expectedVersion) {
     throw new ConflictError('Conflict: profile was modified since it was loaded')
   }
-  return persistProfile(projectId, session.organizationId, profile, current, {
+  // A tab that has not reloaded since the English names still sends the German ones.
+  const named = normalizeLegacyProfile(profile) as ProjectProfile
+  return persistProfile(projectId, session.organizationId, named, current, {
     resetSummary: true,
     // The wizard is where buildings are removed, and this is its save: the
-    // bindings of a building it no longer has go with it. Removing a Bauwerk
+    // bindings of a building it no longer has go with it. Removing a building
     // used to keep them, invisible in every slot and still read by the agent
-    // (as "Bestandspläne (bw2)"), and a building added later under the reused
+    // (as "Bestandspläne (bldg2)"), and a building added later under the reused
     // id inherited them. In the save's transaction, under the row lock the
     // update holds: committed with the profile or not at all, and never after
     // a later save that brought the building back
     // (docs/architecture/document-roles.md).
     inTransaction: (tx, saved) =>
-      deleteBindingsOutsideBauwerke(projectId, bauwerkIds(saved.profile), tx).then(() => undefined),
+      deleteBindingsOutsideBuildings(projectId, buildingIds(saved.profile), tx).then(() => undefined),
   })
 }
 
@@ -247,7 +250,7 @@ async function persistProfile(
 ): Promise<ProjectProfileState> {
   // Single choke point for BOTH the wizard save and agent patches: a confirmed
   // fact always retires an unconfirmed assumption under the same key (e.g. the
-  // migration-backfilled `bundesland=wien` default once the user answers the
+  // migration-backfilled `federal_state=wien` default once the user answers the
   // location question).
   const profile = pruneResolvedAssumptions(rawProfile)
   const updated = await updateProjectProfileIfVersion(
@@ -272,7 +275,7 @@ async function persistProfile(
   )
   if (!updated) throw new ConflictError('Conflict: profile was modified by another request')
 
-  // Drop BOTH profile-derived caches (prompt-view AND bundesland): a location
+  // Drop BOTH profile-derived caches (prompt-view AND federal_state): a location
   // change must not leave a stale jurisdiction on the WS handshake for up to
   // the 5-min TTL. This is the single choke point for the wizard save and agent
   // patches, so both write paths are covered here.
@@ -389,7 +392,7 @@ export async function checkProjectConsistency(
  * auto/manual generate) can render a state instead of a blown-up request.
  *
  * The LLM is fed the human-readable brief rendering (question/option labels),
- * not the machine prompt view — raw tokens like `fluchtniveau=7-11m` were
+ * not the machine prompt view — raw tokens like `escape_level=7-11m` were
  * leaking verbatim into the generated prose. `locale` controls the output
  * language (mirrors the consistency check; defaults to German).
  */

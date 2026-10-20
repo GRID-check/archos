@@ -1,6 +1,6 @@
 /**
  * A document's Anmerkungen as a Protokoll file: PDF, Word or Markdown
- * (`?format=pdf|docx|md&scope=open|all&fassung=current|all&includeProposals=1`).
+ * (`?format=pdf|docx|md&scope=open|all&revision=current|all&includeProposals=1`).
  *
  * A GET, as the answer and BCF exports are: nothing here writes but the audit
  * event, the browser's own download handles the file, and a link pasted to a

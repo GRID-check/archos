@@ -79,14 +79,18 @@ from aiq_agent.common.grounding_block import GroundingBlock
 from aiq_agent.common.grounding_block import GroundingHit
 from aiq_agent.common.grounding_block import SourceProject
 from aiq_agent.common.grounding_block import render_grounding_block
-from aiq_agent.common.norm_registry import BUNDESLAND_TOKENS
+from aiq_agent.common.norm_registry import FEDERAL_STATE_TOKENS
 from aiq_agent.common.source_kinds import Shelf
+from aiq_agent.knowledge.permit_extraction import canonical_record_kind
+from aiq_agent.knowledge.permit_extraction import canonical_requirement_kind
 from aiq_agent.knowledge.restricted_collections import is_restricted_collection
 from aiq_agent.knowledge.restricted_use import note_collections_read
 from aiq_agent.knowledge.restricted_use import note_cross_project_hand_out
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.retrieval_trace import PICK_LIMIT
 from aiq_agent.observability.retrieval_trace import emit_retrieval_span
+from aiq_agent.profile_names import LEGACY_PROFILE_TOKENS
+from aiq_agent.profile_names import normalize_profile_token
 from aiq_agent.turn.response import turn_answer_message_id
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
@@ -150,42 +154,49 @@ Scope = Annotated[Literal["similar", "closed", "all", "named"], BeforeValidator(
 #: value belongs to, and the schema the model sees stays one short enum.
 #: ``test_project_lookup.py`` holds these to the BFF's JSON Schema.
 _FACT_LABELS: dict[str, dict[str, str]] = {
-    "bundesland": {token: label for token, label in BUNDESLAND_TOKENS.items() if label},
-    "gebaeudeklasse": {f"gk{grade}": f"GK {grade}" for grade in range(1, 6)},
-    "bauweise": {
-        "mauerwerk_massivbau": "Mauerwerk/Massivbau",
-        "stahlbeton": "Stahlbeton",
-        "holzbau": "Holzbau",
-        "stahlbau": "Stahlbau",
+    "federal_state": {token: label for token, label in FEDERAL_STATE_TOKENS.items() if label},
+    "building_class": {f"gk{grade}": f"GK {grade}" for grade in range(1, 6)},
+    "construction_method": {
+        "masonry_solid": "Mauerwerk/Massivbau",
+        "reinforced_concrete": "Stahlbeton",
+        "timber": "Holzbau",
+        "steel": "Stahlbau",
     },
-    "nutzungen": {
-        "wohnen": "Wohnen",
-        "buero": "Büro/Verwaltung",
-        "handel": "Handel",
-        "gastro": "Gastronomie",
-        "beherbergung": "Beherbergung",
-        "versammlung": "Versammlung",
-        "bildung": "Bildung/Betreuung",
-        "gesundheit": "Gesundheit/Pflege",
-        "produktion": "Produktion/Gewerbe/Lager",
+    "uses": {
+        "residential": "Wohnen",
+        "office": "Büro/Verwaltung",
+        "retail": "Handel",
+        "catering": "Gastronomie",
+        "lodging": "Beherbergung",
+        "assembly": "Versammlung",
+        "education": "Bildung/Betreuung",
+        "healthcare": "Gesundheit/Pflege",
+        "production": "Produktion/Gewerbe/Lager",
         "garage": "Garage",
-        "landwirtschaft": "Landwirtschaft",
-        "technik": "Technik/Sonstiges",
+        "agriculture": "Landwirtschaft",
+        "technical": "Technik/Sonstiges",
     },
-    "vorhabensart": {
-        "neubau": "Neubau",
-        "zubau": "Zubau",
-        "umbau": "Umbau",
-        "sanierung": "Sanierung",
-        "nutzungsaenderung": "Nutzungsänderung",
-        "abbruch": "Abbruch",
-        "aussenanlagen": "Außenanlagen",
+    "work_type": {
+        "new_build": "Neubau",
+        "extension": "Zubau",
+        "conversion": "Umbau",
+        "refurbishment": "Sanierung",
+        "change_of_use": "Nutzungsänderung",
+        "demolition": "Abbruch",
+        "external_works": "Außenanlagen",
     },
 }
 #: Each token's fact, in the BFF's spelling.
 FACT_OF_TOKEN: dict[str, str] = {token: fact for fact, labels in _FACT_LABELS.items() for token in labels}
 _FACT_LABEL: dict[str, str] = {token: label for labels in _FACT_LABELS.values() for token, label in labels.items()}
 _GK_SPELLING = re.compile(r"^(?:gk|gebaeudeklasse)?[\s_]*([1-5])$")
+#: The five vocabularies share no German token either, so one flat map names each legacy token's English one.
+_LEGACY_FACT_TOKENS: dict[str, str] = {
+    old: new
+    for fact in _FACT_LABELS
+    for old, new in LEGACY_PROFILE_TOKENS.get(fact, {}).items()
+    if new in FACT_OF_TOKEN
+}
 
 
 def fact_token(value: object) -> object:
@@ -202,7 +213,9 @@ def fact_token(value: object) -> object:
         folded = folded.replace(umlaut, spelled)
     if match := _GK_SPELLING.match(folded):
         return f"gk{match.group(1)}"
-    return folded.replace(" ", "_")
+    token = folded.replace(" ", "_")
+    # A German token (``tirol``) from a prompt the model still remembers is read as the English one.
+    return _LEGACY_FACT_TOKENS.get(token, token)
 
 
 ProjectFact = Annotated[Literal[tuple(FACT_OF_TOKEN)], BeforeValidator(fact_token)]  # type: ignore[valid-type]
@@ -319,20 +332,20 @@ async def _call(path: str, payload: dict[str, Any]) -> dict[str, Any]:
         raise _Refused(_UNREACHABLE, "unreachable") from exc
 
 
-def _land_note(project: dict[str, Any]) -> str | None:
+def _federal_state_note(project: dict[str, Any]) -> str | None:
     """The project's Land, and a warning when it is not this chat's project's.
 
     Said by the tool, not left to the model: a precedent from another Land
     was decided under another Bauordnung, and nothing else on the hit shows it.
     """
-    theirs = project.get("bundesland")
+    # `bundesland` and the German token are what a BFF that has not rolled yet answers with.
+    theirs = project.get("federal_state", project.get("bundesland"))
     if not isinstance(theirs, str) or not theirs:
         return None
-    label = BUNDESLAND_TOKENS.get(theirs) or (
-        "außerhalb Österreichs" if theirs == "ausserhalb_oesterreichs" else theirs
-    )
+    theirs = normalize_profile_token("federal_state", theirs)
+    label = FEDERAL_STATE_TOKENS.get(theirs) or ("außerhalb Österreichs" if theirs == "outside_austria" else theirs)
     context = project_context.get_signed_request_context()
-    ours = context.bundesland if context is not None else None
+    ours = context.federal_state if context is not None else None
     if ours and ours != theirs:
         return f"{label} — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung"
     return label
@@ -343,7 +356,7 @@ def _source_project(project: dict[str, Any], name: str) -> SourceProject:
         id=str(project.get("id")),
         name=name,
         status=str(project.get("status") or "active"),
-        land_note=_land_note(project),
+        federal_state_note=_federal_state_note(project),
     )
 
 
@@ -375,7 +388,7 @@ def project_facts_filter(values: list[str]) -> dict[str, list[str | int]]:
         if fact is None:
             unknown.append(str(raw))
             continue
-        value: str | int = int(token.removeprefix("gk")) if fact == "gebaeudeklasse" else token
+        value: str | int = int(token.removeprefix("gk")) if fact == "building_class" else token
         if value not in grouped.setdefault(fact, []):
             grouped[fact].append(value)
     if unknown:
@@ -388,7 +401,7 @@ def project_facts_filter(values: list[str]) -> dict[str, list[str | int]]:
 def _facts_line(facts: dict[str, list[str | int]]) -> str:
     """The facts a lookup was narrowed by, as a reader names them; the warning that unrecorded facts do not match."""
     labels = [
-        _FACT_LABEL[f"gk{value}" if fact == "gebaeudeklasse" else str(value)]
+        _FACT_LABEL[f"gk{value}" if fact == "building_class" else str(value)]
         for fact, values in facts.items()
         for value in values
     ]
@@ -464,7 +477,7 @@ def _hit(raw: dict[str, Any]) -> GroundingHit | None:
         doc_class=None,
         display_title=_text(raw.get("title")) or filename,
         folder_path=None,
-        punkt=None,
+        clause=None,
         score=float(raw.get("score") or 0.0),
         content_type="text",
         provenance=None,
@@ -565,7 +578,7 @@ def _decision_hits(decisions: list[dict[str, Any]]) -> list[GroundingHit]:
                 doc_class=None,
                 display_title="Festgehaltene Entscheidungen (aus dem Projektgedächtnis, kein Dokument)",
                 folder_path=None,
-                punkt=None,
+                clause=None,
                 score=1.0,
                 content_type="text",
                 provenance=None,
@@ -581,12 +594,12 @@ def _decision_hits(decisions: list[dict[str, Any]]) -> list[GroundingHit]:
 
 #: How a record's kind reads in a permit source: labels for the closed enums the BFF stores, not a reading of any text.
 _PERMIT_KIND = {
-    "bewilligung": "Bewilligung",
-    "nachforderung": "Nachforderung",
-    "ablehnung": "Ablehnung",
-    "sonstiges": "Bescheid",
+    "approval": "Bewilligung",
+    "information_request": "Nachforderung",
+    "refusal": "Ablehnung",
+    "other": "Bescheid",
 }
-_PERMIT_REQUIREMENT_KIND = {"auflage": "Auflage", "nachforderung": "Nachforderung", "hinweis": "Hinweis"}
+_PERMIT_REQUIREMENT_KIND = {"condition": "Auflage", "information_request": "Nachforderung", "note": "Hinweis"}
 
 
 def _permits(body: dict[str, Any]) -> list[dict[str, Any]]:
@@ -604,7 +617,8 @@ def _german_day(value: object) -> str:
 
 
 def _requirement_line(item: dict[str, Any]) -> str:
-    label = _PERMIT_REQUIREMENT_KIND.get(str(item.get("kind")), _text(item.get("kind")) or "Auflage")
+    kind = item.get("kind")
+    label = _PERMIT_REQUIREMENT_KIND.get(canonical_requirement_kind(kind), _text(kind) or "Auflage")
     page = item.get("page")
     line = f"{label}{f' (S. {page})' if isinstance(page, int) and page > 0 else ''}: {_text(item.get('content'))}"
     if evidence := _text(item.get("evidence")):
@@ -615,7 +629,7 @@ def _requirement_line(item: dict[str, Any]) -> str:
 
 
 def _permit_title(item: dict[str, Any]) -> str:
-    kind = _PERMIT_KIND.get(str(item.get("kind")), "Bescheid")
+    kind = _PERMIT_KIND.get(canonical_record_kind(item.get("kind")), "Bescheid")
     title = f"{kind} – {_text(item.get('authority'))}" if _text(item.get("authority")) else kind
     return f"{title}, {_german_day(item['issuedOn'])}" if item.get("issuedOn") else title
 
@@ -672,7 +686,7 @@ def _permit_hits(permits: list[dict[str, Any]]) -> list[GroundingHit]:
                 doc_class=None,
                 display_title=_permit_title(item),
                 folder_path=None,
-                punkt=None,
+                clause=None,
                 score=1.0,
                 content_type="text",
                 provenance=None,
@@ -788,8 +802,8 @@ def _project_line(project: dict[str, Any]) -> str:
     parts = [f"{_text(project.get('name'))} — {_status_label(project.get('status'))}"]
     if period := _period(project.get("period")):
         parts.append(period)
-    if land := _land_note(project):
-        parts.append(land)
+    if federal_state := _federal_state_note(project):
+        parts.append(federal_state)
     if edition := _edition_note(project):
         parts.append(edition)
     if address := _text(project.get("address")):
@@ -849,7 +863,7 @@ def _brief_hit(project: dict[str, Any], body: str) -> GroundingHit:
         doc_class=None,
         display_title="Eckdaten und Zusammenfassung (aus den Projektdaten, kein Dokument)",
         folder_path=None,
-        punkt=None,
+        clause=None,
         score=1.0,
         content_type="text",
         provenance=None,

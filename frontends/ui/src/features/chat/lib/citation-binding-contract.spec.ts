@@ -7,14 +7,14 @@
  * `binding_classification_for_entry` classifies a source, `source_entry_to_wire`
  * puts a coarse `binding_status` on EVERY citation, `citationFromWire` maps it,
  * and `CitationPeek` badges it. The rule that matters most has no positive
- * evidence anywhere on screen: `unbekannt` must render NOTHING, because a
+ * evidence anywhere on screen: `unknown` must render NOTHING, because a
  * missing pill has to read as "we do not know" and a fabricated one would be a
  * false legal claim.
  *
  * Both ends of that rule were pinned, and the CROSSING was not.
  * `test_citation_verification.py` proves the backend emits `binding_status`,
- * including `unbekannt`, and `wire-citation.spec.ts` proves the frontend drops
- * `unbekannt` to undefined — but each side spelled the field out for itself, so
+ * including `unknown`, and `wire-citation.spec.ts` proves the frontend drops
+ * `unknown` to undefined — but each side spelled the field out for itself, so
  * renaming the wire key on the Python side (with its own tests renamed along
  * with it, as a refactor would) left all 3,909 backend tests and this suite
  * green while every binding pill in the product went dark.
@@ -57,20 +57,20 @@ describe('the binding status the backend actually emits', () => {
     }
   })
 
-  test('a Richtlinie the backend classified arrives as its classification', () => {
+  test('a guideline the backend classified arrives as its classification', () => {
     const [oib] = WIRE_SOURCES
     expect(oib.file_name).toBe('oib-rl_2_ausgabe_mai_2023.pdf')
-    expect(oib.binding_status).toBe('verbindlich_erklaert')
-    expect(citationFromWire(oib).bindingStatus).toBe('verbindlich_erklaert')
+    expect(oib.binding_status).toBe('declared_binding')
+    expect(citationFromWire(oib).bindingStatus).toBe('declared_binding')
   })
 
-  test("the backend's own `unbekannt` becomes no pill at all", () => {
+  test("the backend's own `unknown` becomes no pill at all", () => {
     // The whole rule, on the real value the real serializer produced for a
     // source that matched no catalogued norm: absence must read as "not known",
     // never as "not binding", so nothing is rendered rather than a hedge.
     const [, projekt] = WIRE_SOURCES
     expect(projekt.file_name).toBe('einreichplan_og.pdf')
-    expect(projekt.binding_status).toBe('unbekannt')
+    expect(projekt.binding_status).toBe('unknown')
     expect(citationFromWire(projekt).bindingStatus).toBeUndefined()
   })
 
@@ -82,7 +82,7 @@ describe('the binding status the backend actually emits', () => {
     expect([citation.fileName, citation.page, citation.lane]).toEqual([
       'einreichplan_og.pdf',
       4,
-      'projekt',
+      'project',
     ])
   })
 })

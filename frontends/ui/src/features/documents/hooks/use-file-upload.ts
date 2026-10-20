@@ -46,7 +46,7 @@ import { toast } from 'sonner'
 
 /**
  * The upload endpoints' response: `/api/documents/upload`,
- * `/api/archiv/documents/upload` and `/api/session/documents/upload`.
+ * `/api/office-shelf/documents/upload` and `/api/session/documents/upload`.
  */
 interface UploadDocumentResponse {
   documentId?: string
@@ -57,13 +57,13 @@ interface UploadDocumentResponse {
 }
 
 /** Where each shelf deletes one of its documents. */
-const DELETE_ROUTE: Record<'project' | 'archiv', (id: string) => string> = {
+const DELETE_ROUTE: Record<'project' | 'office_shelf', (id: string) => string> = {
   project: (id) => `/api/documents/${encodeURIComponent(id)}`,
-  archiv: (id) => `/api/archiv/documents/${encodeURIComponent(id)}`,
+  office_shelf: (id) => `/api/office-shelf/documents/${encodeURIComponent(id)}`,
 }
 
 /** Delete one document through its shelf's first-party route. Already gone is success. */
-async function deleteShelfDocument(shelf: 'project' | 'archiv' | 'session', documentId: string): Promise<void> {
+async function deleteShelfDocument(shelf: 'project' | 'office_shelf' | 'session', documentId: string): Promise<void> {
   if (shelf === 'session') return deleteSessionDocument(documentId)
   const response = await fetch(DELETE_ROUTE[shelf](documentId), { method: 'DELETE' })
   if (response.ok || response.status === 404) return
@@ -81,13 +81,13 @@ interface UseFileUploadOptions {
   folderId?: string
   /**
    * Upload into the org-wide Archiv instead of a project corpus. Mutually
-   * exclusive with `projectId`: files POST to `/api/archiv/documents/upload`
+   * exclusive with `projectId`: files POST to `/api/office-shelf/documents/upload`
    * (the org is resolved server-side from the session) and land in the shared
    * `archiv_<orgId>` collection passed as `collectionName`.
    */
-  archiv?: boolean
+  officeShelf?: boolean
   /**
-   * For a chat upload (no `projectId`, not `archiv`): the project the chat
+   * For a chat upload (no `projectId`, not `office_shelf`): the project the chat
    * belongs to. The server uses it only if it has to create the conversation
    * row, so a chat attached to before its first message still lands in its
    * project.
@@ -132,10 +132,10 @@ export interface UploadFilesOptions {
   /**
    * The document this file is filed as the new Fassung of (its id), when the
    * reader ticked „Als neue Fassung von X ablegen" in the upload dialog
-   * (ADR-0099). Sent as `fassungOf`; the server checks that the reader may
+   * (ADR-0099). Sent as `revisionOf`; the server checks that the reader may
    * change that document before the ingest job writes the link.
    */
-  fassungOf?: (file: File) => string | null | undefined
+  revisionOf?: (file: File) => string | null | undefined
   /**
    * What the upload dialog's screening already held back, one entry per file
    * (its matches). Recorded on the upload's batch by term and count, so the
@@ -175,13 +175,13 @@ interface UseFileUploadReturn {
 }
 
 export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUploadReturn => {
-  const { collectionName, projectId, folderId, archiv, conversationProjectId, onComplete, onError } =
+  const { collectionName, projectId, folderId, officeShelf, conversationProjectId, onComplete, onError } =
     options
   /**
    * Which shelf this upload surface files into. The caller says so through its
    * options; nothing reads it off the collection name (ADR-0047).
    */
-  const shelf: 'project' | 'archiv' | 'session' = archiv ? 'archiv' : projectId ? 'project' : 'session'
+  const shelf: 'project' | 'office_shelf' | 'session' = officeShelf ? 'office_shelf' : projectId ? 'project' : 'session'
 
   const { idToken } = useAuth()
   const t = useTranslations('files')
@@ -248,9 +248,9 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       existingTotalSize: sessionFiles.reduce((sum, f) => sum + f.fileSize, 0),
       existingFileCount: sessionFiles.length,
       existingFileNames: new Set(sessionFiles.map((f) => f.fileName)),
-      durableCorpus: Boolean(projectId || archiv),
+      durableCorpus: Boolean(projectId || officeShelf),
     }),
-    [sessionFiles, projectId, archiv]
+    [sessionFiles, projectId, officeShelf]
   )
 
   useEffect(() => {
@@ -420,7 +420,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       }
 
       // The older document a file is filed as the new Fassung of (ADR-0099), or null.
-      const fassungOfFile = (file: File): string | null => options?.fassungOf?.(file) ?? null
+      const revisionOfFile = (file: File): string | null => options?.revisionOf?.(file) ?? null
 
       // Paired by INDEX, not by filename: two files selected in one batch can
       // legitimately share a name (from different folders), and a name-keyed map
@@ -441,7 +441,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             folderId: resolvedFolderId(file),
             folderPath: options?.folderPathFor?.(file) ?? null,
             screeningReleased: options?.screeningReleased?.(file) === true,
-            ...(fassungOfFile(file) ? { fassungOf: fassungOfFile(file) } : {}),
+            ...(revisionOfFile(file) ? { revisionOf: revisionOfFile(file) } : {}),
           },
         } satisfies TrackedFile as TrackedFile,
       }))
@@ -492,8 +492,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         // API, so a serial loop left the connection idle for most of every
         // file and made the batch take the SUM of all of them.
         const uploadUrl =
-          shelf === 'archiv'
-            ? '/api/archiv/documents/upload'
+          shelf === 'office_shelf'
+            ? '/api/office-shelf/documents/upload'
             : shelf === 'session'
               ? '/api/session/documents/upload'
               : '/api/documents/upload'
@@ -518,8 +518,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           }
           formData.append('file', file)
           if (options?.screeningReleased?.(file)) formData.append('screeningRelease', 'name')
-          const fassungOf = shelf === 'session' ? null : fassungOfFile(file)
-          if (fassungOf) formData.append('fassungOf', fassungOf)
+          const revisionOf = shelf === 'session' ? null : revisionOfFile(file)
+          if (revisionOf) formData.append('revisionOf', revisionOf)
           if (batchId) formData.append('uploadBatchId', batchId)
           // Where the file sat before it came here. Set by a folder INPUT
           // (`webkitdirectory`) and stamped onto a dropped tree's files by
@@ -927,7 +927,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           folderIdFor: (each) => intentOf(each)?.folderId,
           folderPathFor: (each) => intentOf(each)?.folderPath,
           screeningReleased: (each) => intentOf(each)?.screeningReleased === true,
-          fassungOf: (each) => intentOf(each)?.fassungOf,
+          revisionOf: (each) => intentOf(each)?.revisionOf,
         }
         try {
           if (shelf !== 'session') {

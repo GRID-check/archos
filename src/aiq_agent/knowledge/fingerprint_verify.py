@@ -50,19 +50,30 @@ SLOT = "experience_verify"
 STATED_THRESHOLD = 0.1
 
 #: Keys the check leaves to the pen: their value may be derived, not stated.
-UNCHECKED_KEYS = frozenset({"gebaeudeklasse"})
+#: ``gebaeudeklasse`` is the name a BFF that has not rolled yet still sends.
+UNCHECKED_KEYS = frozenset({"building_class", "gebaeudeklasse"})
 
 #: How many of a value's quotes the decider reads.
 MAX_QUOTES = 3
 
 #: The facts as a German reader names them; the state carries the user's language, the question English.
 FACT_LABELS = {
-    "bundesland": "Bundesland",
-    "bauweise": "Bauweise",
-    "nutzungen": "Nutzung",
-    "vorhabensart": "Art des Vorhabens",
-    "oib_ausgabe": "OIB-Richtlinien-Ausgabe, nach der geplant wurde",
+    "federal_state": "Bundesland",
+    "construction_method": "Bauweise",
+    "uses": "Nutzung",
+    "work_type": "Art des Vorhabens",
+    "oib_edition": "OIB-Richtlinien-Ausgabe, nach der geplant wurde",
 }
+# The German keys a BFF that has not rolled yet still sends.
+FACT_LABELS.update(
+    {
+        "bundesland": FACT_LABELS["federal_state"],
+        "bauweise": FACT_LABELS["construction_method"],
+        "nutzungen": FACT_LABELS["uses"],
+        "vorhabensart": FACT_LABELS["work_type"],
+        "oib_ausgabe": FACT_LABELS["oib_edition"],
+    }
+)
 
 STATED_QUESTION = {
     "type": "noul",

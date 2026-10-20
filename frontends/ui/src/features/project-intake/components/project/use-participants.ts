@@ -9,13 +9,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ParticipantsClient, ProjectBasics, ProjectRoster } from '@/lib/projects/participants-client'
-import type { SteckbriefView } from '@/lib/projects/steckbrief-types'
+import type { ProjectRecordView } from '@/lib/projects/project-record-types'
 
 export interface ParticipantsState {
   /** Still reading for the first time. */
   loading: boolean
   project: ProjectBasics | null
-  peopleRecord: SteckbriefView | null
+  peopleRecord: ProjectRecordView | null
   /** Null while loading, when it failed, or when the reader may not manage the members. */
   roster: ProjectRoster | null
   reload: () => Promise<void>

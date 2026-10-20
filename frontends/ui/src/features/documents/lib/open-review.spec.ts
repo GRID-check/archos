@@ -147,7 +147,7 @@ describe('back to the page the link came from', () => {
       `/app/projects/p1/files?doc=${DOC}&review=1&mark=ann-7&back=%2Fapp%2Finbox%3Ffilter%3Dunread`
     )
     expect(withReviewBack(`/app/projects/p1/files?doc=${DOC}`, '/app/inbox')).toBe(`/app/projects/p1/files?doc=${DOC}`)
-    expect(withReviewBack(`/app/archiv?doc=${DOC}&review=1`, null)).toBe(`/app/archiv?doc=${DOC}&review=1`)
+    expect(withReviewBack(`/app/office-shelf?doc=${DOC}&review=1`, null)).toBe(`/app/office-shelf?doc=${DOC}&review=1`)
   })
 })
 

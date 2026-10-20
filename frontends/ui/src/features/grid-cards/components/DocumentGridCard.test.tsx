@@ -53,7 +53,7 @@ describe('DocumentGridCard', () => {
           documents: [row('p1', 'Fluchtwegplan.pdf', { summary: 'Fluchtwegplan EG mit zweitem Ausgang.' })],
         }),
       ),
-      http.post('/api/archiv/documents/by-name', () =>
+      http.post('/api/office-shelf/documents/by-name', () =>
         HttpResponse.json({
           documents: [row('a1', 'Referenzprojekt.pdf', { summary: 'Vergleichbarer Grundriss aus dem Archiv.' })],
           collectionName: 'archiv_o',
@@ -75,9 +75,9 @@ describe('DocumentGridCard', () => {
             snippet: '[DRAWING from page 1] ZEICHNUNGSTYP: Fluchtwegplan',
             page: 2,
             score: 0.83,
-            source: 'projekt',
+            source: 'project',
           },
-          { file_name: 'Referenzprojekt.pdf', snippet: 'Ähnlicher Grundriss…', page: null, score: 0.6, source: 'buero' },
+          { file_name: 'Referenzprojekt.pdf', snippet: 'Ähnlicher Grundriss…', page: null, score: 0.6, source: 'office' },
         ]}
       />,
     )
@@ -105,13 +105,13 @@ describe('DocumentGridCard', () => {
     server.use(
       http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [] })),
       // 403 = feature gate, fail-open — NOT a fetch error, so no retry state.
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({}, { status: 403 }))
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 }))
     )
 
     render(
       <DocumentGridCard
         title="Dokumente"
-        documents={[{ file_name: 'Verschwunden.pdf', snippet: 'war mal da', source: 'projekt' }]}
+        documents={[{ file_name: 'Verschwunden.pdf', snippet: 'war mal da', source: 'project' }]}
         projectId="proj-1"
       />
     )
@@ -136,14 +136,14 @@ describe('DocumentGridCard', () => {
           ? HttpResponse.json({}, { status: 500 })
           : HttpResponse.json({ documents: [row('p1', 'Fluchtwegplan.pdf')] })
       }),
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
       http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 }))
     )
 
     render(
       <DocumentGridCard
         title="Dokumente"
-        documents={[{ file_name: 'Fluchtwegplan.pdf', source: 'projekt' }]}
+        documents={[{ file_name: 'Fluchtwegplan.pdf', source: 'project' }]}
         projectId="proj-1"
       />
     )
@@ -170,14 +170,14 @@ describe('DocumentGridCard', () => {
       http.post('/api/documents/by-name', () =>
         HttpResponse.json({ documents: [row('p1', 'Plan.dwg', { contentType: 'application/acad' })] })
       ),
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
       http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 })),
       http.get('/api/documents/:id/preview', () => HttpResponse.json({ url: null })),
       http.get('/api/documents/:id/visual-details', () => HttpResponse.json({ details: [] }))
     )
 
     render(
-      <DocumentGridCard title="CAD" documents={[{ file_name: 'Plan.dwg', source: 'projekt' }]} projectId="proj-1" />
+      <DocumentGridCard title="CAD" documents={[{ file_name: 'Plan.dwg', source: 'project' }]} projectId="proj-1" />
     )
 
     await waitFor(() => expect(screen.getByTestId('document-grid-card')).toHaveAttribute('data-layout', 'receipt'))
@@ -188,17 +188,17 @@ describe('DocumentGridCard', () => {
   })
 
   it('does NOT cross corpora when the backend tagged a source (avoids opening a same-named file)', async () => {
-    // Same filename in BOTH corpora; the surfaced hit is tagged 'buero' but the
+    // Same filename in BOTH corpora; the surfaced hit is tagged 'office' but the
     // Archiv list is empty — it must resolve to nothing, never the project file.
     server.use(
       http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Bericht.pdf')] })),
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({ documents: [] }))
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({ documents: [] }))
     )
 
     render(
       <DocumentGridCard
         title="Test"
-        documents={[{ file_name: 'Bericht.pdf', source: 'buero' }]}
+        documents={[{ file_name: 'Bericht.pdf', source: 'office' }]}
         projectId="proj-1"
       />
     )
@@ -207,7 +207,7 @@ describe('DocumentGridCard', () => {
     // Resolved to nothing → honest unresolved card linking to the ARCHIV (buero
     // source), never the same-named project file's card.
     expect(screen.getByText('The assistant referenced this file.')).toBeInTheDocument()
-    expect(screen.getByTestId('document-grid-unresolved')).toHaveAttribute('href', '/app/archiv')
+    expect(screen.getByTestId('document-grid-unresolved')).toHaveAttribute('href', '/app/office-shelf')
     expect(screen.getByText('Open in Office filing')).toBeInTheDocument()
     expect(screen.queryByText('Project')).not.toBeInTheDocument()
   })

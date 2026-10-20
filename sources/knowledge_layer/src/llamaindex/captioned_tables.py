@@ -14,7 +14,7 @@ requirement and one column per GK. So a table that carries a caption („Tabelle
 3: …"), or continues one from the previous page, is taken OUT of the page text
 and indexed on its own: a Markdown table under its caption, split into row
 groups that each repeat the header so no chunk loses its columns, addressable
-as ``punkt_id = "Tabelle 3"`` exactly as a Punkt is.
+as ``clause_id = "Tabelle 3"`` exactly as a Punkt is.
 
 Only captioned tables: a ruled box without a caption may be a note or a form,
 and removing it from the text would lose prose. Everything here is pure except

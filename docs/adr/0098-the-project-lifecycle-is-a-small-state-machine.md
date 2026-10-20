@@ -91,20 +91,20 @@ preselected, unless an earlier close of the project named one, which a reopen
 keeps as the next close's suggestion, as it keeps the Abschluss.
 
 **The Abschluss is the closing's.** `ended_on` is no longer a field of the
-Steckbrief: the Steckbrief edits the Beginn only (`PUT …/steckbrief` refuses an
+Steckbrief: the Steckbrief edits the Beginn only (`PUT …/project-record` refuses an
 `endedOn`), and a running project shows „laufend" where the Abschluss would be.
 Closing names the month, defaulting to this one, not after it and not before the
 Beginn (400 `abschluss-in-future` / `abschluss-before-beginn`); when the Beginn
 lies ahead (a competition lost before the commission would have started), its
-month is the one that fits (`abschlussBounds`). A closed project
+month is the one that fits (`closingBounds`). A closed project
 always has one (CHECK). A reopen keeps the stored month as the next close's
 suggestion; no surface and no period search reads it while the project runs
-(`abschlussOf`). This amends ADR-0091's "closing pre-fills Abschluss".
+(`closingOf`). This amends ADR-0091's "closing pre-fills Abschluss".
 
 **A past project may be created closed** (added 2026-10-13). An office adding a
 finished project as a reference creates it with `closing` (`POST
 /api/projects`, the projects page's form): outcome, Beginn and Abschluss. The
-Abschluss is checked against the same `abschlussBounds` before anything is
+Abschluss is checked against the same `closingBounds` before anything is
 written (400 `abschluss-in-future` / `abschluss-before-beginn`), the Beginn is
 inserted with the row, and once the creator holds `project-admin` the row
 makes the ordinary `active → closed` move through `setProjectStatusInOrg`, so
@@ -148,7 +148,7 @@ The last four are open product questions put to the product owner with this ADR 
 * `projects_status_check`, `projects_paused_state_check` and `projects_closed_outcome_check` (migration 0129): a paused row without its date, a closed row without its outcome or its Abschluss, and an unknown state are refused by the database. `scripts/rls-test-db.sh` exercises them, the backfill and the down migration.
 * `project-status.spec.ts` pins the exact set of moves; `service.status.spec.ts` the conflicts, the Abschluss bounds and the audit names; `project-status.integration.spec.ts` the moves on real Postgres, and that pausing leaves access untouched.
 * `schemas.spec.ts` fails if a move's audit action is emitted without a registered schema, or registered and never emitted.
-* `steckbrief-service.spec.ts` refuses an `endedOn` on the period route and shows none on a running project.
+* `project-record-service.spec.ts` refuses an `endedOn` on the period route and shows none on a running project.
 * `service.create-closed.spec.ts` pins creating a project closed: the bounds refused before any insert, the close after the grant, both audit events, and the rollback when the close write fails.
 
 ## Pros and Cons of the Options

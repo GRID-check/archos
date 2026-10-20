@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from knowledge_layer.register import _trace_lanes_for_chunks
 from ris_adapter.lookup.address import Address
-from ris_adapter.lookup.address import land_sentence
+from ris_adapter.lookup.address import federal_state_sentence
 from ris_adapter.lookup.passages import DOC_CLASS
 from ris_adapter.lookup.passages import Passage
 
@@ -51,8 +51,8 @@ def _preamble_lines(passages: list[Passage], ingested_name: str | None, address:
     """The count, the jurisdiction the call assumed, and what it ingested."""
     documents = len({passage.url for passage in passages})
     lines = [f"Found {len(passages)} relevant passage(s) in {documents} document(s):"]
-    if address.bundesland:
-        lines.append(land_sentence(address))
+    if address.federal_state:
+        lines.append(federal_state_sentence(address))
     if address.unread:
         lines.append(_unread_sentence(address))
     if ingested_name:
@@ -114,7 +114,7 @@ def _hit(passage: Passage) -> GroundingHit:
         folder_path=None,
         # The locus as a lawyer reads it, ``§ 63 Abs 1``: the same string the
         # citation key carries and the chip shows.
-        punkt=passage.punkt_label or None,
+        clause=passage.clause_label or None,
         score=passage.score,
         content_type="text",
         provenance=None,

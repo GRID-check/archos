@@ -15,17 +15,17 @@ from ris_adapter.lookup.candidates import Candidate
 from ris_adapter.lookup.extract import Selection
 from ris_adapter.lookup.grammar import PASSAGE_MAX_CHARS
 from ris_adapter.lookup.grammar import SECTION_MAX_CHARS
-from ris_adapter.lookup.grammar import absatz_body
-from ris_adapter.lookup.grammar import cut_on_absatz
-from ris_adapter.register import _RIS_TITLE_FASSUNG_RE
+from ris_adapter.lookup.grammar import cut_on_subsection
+from ris_adapter.lookup.grammar import subsection_body
 from ris_adapter.register import _RIS_TITLE_PREFIX_RE
+from ris_adapter.register import _RIS_TITLE_REVISION_RE
 from ris_adapter.register import _legal_status_note
 
 #: The doc_class every RIS passage carries. Human-set classes beat filename
 #: guesses everywhere else in this repo; here the producer KNOWS the class, and
 #: stating it is what puts the hit in the Rechtsquelle lane instead of "unknown"
 #: (``norm_registry.lane_for_hit`` reads doc_class first).
-DOC_CLASS = "gesetz"
+DOC_CLASS = "law"
 
 #: What the ``Relevance Score:`` line means for RIS. It is NOT a similarity:
 #: this tool resolves an ADDRESS, it does not embed anything. A passage the
@@ -45,7 +45,7 @@ class Passage:
     title: str
     url: str
     collection: str
-    punkt_label: str
+    clause_label: str
     citation: str
     body: str
     score: float
@@ -67,17 +67,17 @@ def _passages_for(selection: Selection, address: Address, limit: int) -> list[Pa
     status_note = _legal_status_note(document.url) or ""
     collection = collection_for(candidate)
     out: list[Passage] = []
-    for rank, (section, absatz) in enumerate(selection.picks):
-        body, resolved = absatz_body(section, absatz)
+    for rank, (section, subsection) in enumerate(selection.picks):
+        body, resolved = subsection_body(section, subsection)
         label = f"{section.label} Abs {resolved}" if resolved else section.label
         out.append(
             Passage(
                 title=title,
                 url=document.url,
                 collection=collection,
-                punkt_label=label,
+                clause_label=label,
                 citation=citation_for(title, label, candidate.version_date),
-                body=cut_on_absatz(body, limit),
+                body=cut_on_subsection(body, limit),
                 score=score_for(rank, address.has_section),
                 status_note=status_note,
             )
@@ -109,12 +109,12 @@ def collection_for(candidate: Candidate) -> str:
     is — and the lanes read the doc_class, never this string.
     """
     parts = ["ris", candidate.application or "kons"]
-    if candidate.bundesland:
-        parts.append(candidate.bundesland)
+    if candidate.federal_state:
+        parts.append(candidate.federal_state)
     return "/".join(parts)
 
 
-def citation_for(title: str, punkt_label: str, version_date: str) -> str:
+def citation_for(title: str, clause_label: str, version_date: str) -> str:
     """``<Kurztitel>, § 63 Abs 1 (Fassung 2026-03-14)`` — the key the answer copies.
 
     The Fassung parenthetical is emitted ONLY when RIS stated an in-force date
@@ -123,14 +123,14 @@ def citation_for(title: str, punkt_label: str, version_date: str) -> str:
     the same law ingest anew every day); putting it in a citation key would make
     the key change daily, which is the same defect one layer up.
     """
-    key = ", ".join(part for part in (title.strip(), punkt_label.strip()) if part) or "RIS-Dokument"
+    key = ", ".join(part for part in (title.strip(), clause_label.strip()) if part) or "RIS-Dokument"
     return f"{key} (Fassung {version_date})" if version_date else key
 
 
 def document_title(candidate: Candidate, document) -> str:
     """The Kurztitel a citation names, without the retrieval stamp."""
     raw = candidate.title or document.title or ""
-    return _RIS_TITLE_FASSUNG_RE.sub("", _RIS_TITLE_PREFIX_RE.sub("", raw)).strip(" ,-–—") or "RIS-Dokument"
+    return _RIS_TITLE_REVISION_RE.sub("", _RIS_TITLE_PREFIX_RE.sub("", raw)).strip(" ,-–—") or "RIS-Dokument"
 
 
 def score_for(rank: int, addressed: bool) -> float:

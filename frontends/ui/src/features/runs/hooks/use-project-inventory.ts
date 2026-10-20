@@ -21,7 +21,7 @@ import type { PlanDocument } from '@/lib/runs/plan-documents'
 
 export interface InventoryDocument extends PlanDocument {
   file: FileItem
-  source: 'projekt' | 'buero'
+  source: 'project' | 'office'
   /**
    * Filed under a folder not every project member may read (ADR-0087): its row
    * sits in that folder's restricted collection. Listed to a cleared reader,
@@ -54,7 +54,7 @@ const toInventory = (rows: InventoryWireRow[], source: InventoryDocument['source
     return {
       name: file.filename,
       ...(title && title !== file.filename ? { title } : {}),
-      shelf: source === 'buero' ? 'archiv' : 'project',
+      shelf: source === 'office' ? 'office_shelf' : 'project',
       file,
       source,
       restricted: restrictedCollectionBase(row.collectionName ?? '') !== null,
@@ -79,12 +79,12 @@ export function useProjectInventory(projectId: string | null, enabled: boolean):
     setLoading(true)
     void Promise.all([
       listing(`/api/documents?projectId=${encodeURIComponent(projectId)}`),
-      listing('/api/archiv/documents'),
-    ]).then(([project, archiv]) => {
+      listing('/api/office-shelf/documents'),
+    ]).then(([project, officeShelf]) => {
       if (cancelled) return
       setLoaded({
         projectId,
-        documents: [...toInventory(project, 'projekt'), ...toInventory(archiv, 'buero')],
+        documents: [...toInventory(project, 'project'), ...toInventory(officeShelf, 'office')],
       })
       setLoading(false)
     })

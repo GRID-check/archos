@@ -634,7 +634,7 @@
                   }
                 ]
               },
-              "onCurrentFassung": {
+              "onCurrentRevision": {
                 "type": "boolean"
               },
               "createdByName": {
@@ -698,7 +698,7 @@
               "basis",
               "assigneeName",
               "dueOn",
-              "onCurrentFassung",
+              "onCurrentRevision",
               "createdByName",
               "createdAt",
               "replies"

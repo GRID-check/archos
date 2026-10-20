@@ -24,7 +24,7 @@ import {
 const DESKTOP = { width: 1280, height: 820 }
 const PHONE = { width: 390, height: 844 }
 /** The creator, handed over: every feature on, organization admin. */
-const ALL_ON: TourReader = { canAccessArchiv: true, canAccessInbox: true, canManageOrganization: true, handover: true }
+const ALL_ON: TourReader = { canAccessOfficeShelf: true, canAccessInbox: true, canManageOrganization: true, handover: true }
 const BOX: AnchorBox = { left: 900, right: 1000, top: 20, bottom: 56 }
 const everywhere = (): AnchorBox => BOX
 const nowhere = (): AnchorBox | null => null
@@ -36,7 +36,7 @@ describe('welcome tour', () => {
     expect(ids(placeStops(TOURS.welcome, ALL_ON, everywhere, DESKTOP))).toEqual([
       'welcome',
       'createProject',
-      'archiv',
+      'officeShelf',
       'inbox',
       'account',
       'shortcuts',
@@ -44,7 +44,7 @@ describe('welcome tour', () => {
   })
 
   it('drops the Archiv and the Postfach for an organization without them', () => {
-    const reader = { ...ALL_ON, canAccessArchiv: false, canAccessInbox: false }
+    const reader = { ...ALL_ON, canAccessOfficeShelf: false, canAccessInbox: false }
     expect(ids(placeStops(TOURS.welcome, reader, everywhere, DESKTOP))).toEqual([
       'welcome',
       'createProject',
@@ -60,8 +60,8 @@ describe('project tour', () => {
       'projectWelcome',
       'projectChat',
       'projectFiles',
-      'projectArchiv',
-      'filesOrArchiv',
+      'projectOfficeShelf',
+      'filesOrOfficeShelf',
       'projectSources',
       'projectSettings',
     ])
@@ -69,13 +69,13 @@ describe('project tour', () => {
 
   it('points at the rail items the sidebar marks, by section key', () => {
     const anchors = TOURS.project.flatMap((stop) => (stop.anchor ? [stop.anchor] : []))
-    expect(anchors).toEqual(['chat', 'files', 'archiv', 'settings'].map(sectionAnchor))
+    expect(anchors).toEqual(['chat', 'files', 'officeShelf', 'settings'].map(sectionAnchor))
   })
 
   it('drops both Archiv stops when the organization has no Archiv', () => {
-    const placed = placeStops(TOURS.project, { ...ALL_ON, canAccessArchiv: false }, everywhere, DESKTOP)
-    expect(ids(placed)).not.toContain('projectArchiv')
-    expect(ids(placed)).not.toContain('filesOrArchiv')
+    const placed = placeStops(TOURS.project, { ...ALL_ON, canAccessOfficeShelf: false }, everywhere, DESKTOP)
+    expect(ids(placed)).not.toContain('projectOfficeShelf')
+    expect(ids(placed)).not.toContain('filesOrOfficeShelf')
   })
 
   it('keeps every stop on a phone, centred, when the rail is a closed drawer', () => {
@@ -100,13 +100,13 @@ describe('project tour', () => {
       'projectWelcome',
       'projectChat',
       'projectFiles',
-      'projectArchivPhone',
-      'filesOrArchiv',
+      'projectOfficeShelfPhone',
+      'filesOrOfficeShelf',
       'projectSources',
       'projectSettings',
     ])
-    const archiv = placed.find((stop) => stop.id === 'projectArchivPhone')
-    expect(archiv).toMatchObject({ anchor: TOUR_ANCHORS.more, side: 'top' })
+    const officeShelf = placed.find((stop) => stop.id === 'projectOfficeShelfPhone')
+    expect(officeShelf).toMatchObject({ anchor: TOUR_ANCHORS.more, side: 'top' })
     // Every card above a tab stays inside the 16px gutters of a 390px screen.
     for (const stop of placed.filter((each) => each.side === 'top')) {
       const box = tabs[tourAnchorSelector(stop.anchor!)]!
@@ -119,8 +119,8 @@ describe('project tour', () => {
 
   it('keeps the desktop stop on a desktop — the phone variant is only for a phone', () => {
     const placed = placeStops(TOURS.project, ALL_ON, everywhere, DESKTOP)
-    expect(ids(placed)).toContain('projectArchiv')
-    expect(ids(placed)).not.toContain('projectArchivPhone')
+    expect(ids(placed)).toContain('projectOfficeShelf')
+    expect(ids(placed)).not.toContain('projectOfficeShelfPhone')
   })
 
   it('waits for nothing on arrival — the rail is shell chrome, already standing', () => {
@@ -163,13 +163,13 @@ describe('cardShift', () => {
 describe('the welcome tour on a phone', () => {
   it('trades the keyboard stop for the search button, and finds the doorways in the tab bar', () => {
     const anchors: Record<string, AnchorBox> = {
-      [tourAnchorSelector(TOUR_ANCHORS.archiv)]: { left: 131, right: 262, top: 760, bottom: 812, placement: 'above' },
+      [tourAnchorSelector(TOUR_ANCHORS.officeShelf)]: { left: 131, right: 262, top: 760, bottom: 812, placement: 'above' },
       [tourAnchorSelector(TOUR_ANCHORS.search)]: { left: 293, right: 337, top: 6, bottom: 50 },
     }
     const placed = placeStops(TOURS.welcome, { ...ALL_ON, phone: true }, (selector) => anchors[selector] ?? null, PHONE)
     expect(ids(placed)).toContain('searchPhone')
     expect(ids(placed)).not.toContain('shortcuts')
-    expect(placed.find((stop) => stop.id === 'archiv')).toMatchObject({ side: 'top' })
+    expect(placed.find((stop) => stop.id === 'officeShelf')).toMatchObject({ side: 'top' })
     expect(placed.find((stop) => stop.id === 'searchPhone')).toMatchObject({ side: 'bottom-right' })
   })
 })

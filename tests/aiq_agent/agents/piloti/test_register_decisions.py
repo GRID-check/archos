@@ -56,7 +56,7 @@ def _runtime() -> SkillRuntime:
     """Two skills, nothing inlined by budget — the shipped default."""
     ifc = Skill(name=IFC, description="Am Modell messen.", body="x" * 5000, origin="platform")
     short = Skill(
-        name="brandschutz",
+        name="fire-safety",
         description="Brandabschnitt, Fluchtweg.",
         body="short",
         metadata={"grid-cards": "fire_access_plan,egress_diagram,calculation"},
@@ -70,13 +70,13 @@ class TestTheFacts:
         state = ResearchAgentState(
             messages=[HumanMessage(content="Wie hoch?")],
             focus_file_name="EG.pdf",
-            project_context="confirmed:\n- gebaeudeklasse=4\n",
+            project_context="confirmed:\n- building_class=4\n",
         )
         facts = _turn_facts(state, _runtime())
         assert facts.question == "Wie hoch?" and facts.focus_file_name == "EG.pdf"
         # Every resolved skill is an option of the choice, the long IFC one included.
-        assert facts.skills == [("brandschutz", "Brandabschnitt, Fluchtweg."), (IFC, "Am Modell messen.")]
-        assert facts.project_facts == {"gebaeudeklasse": "4"}
+        assert facts.skills == [("fire-safety", "Brandabschnitt, Fluchtweg."), (IFC, "Am Modell messen.")]
+        assert facts.project_facts == {"building_class": "4"}
         # The card types are the content cards beyond the shapes the envelope teaches.
         names = {t for t, _ in facts.card_types}
         assert "fire_access_plan" in names and "calculation" not in names
@@ -93,7 +93,7 @@ class TestTheEffects:
         )
         assert [s.name for s in runtime.inlined] == [IFC]
         block = runtime.prompt_block() or ""
-        assert "x" * 100 in block and "- `brandschutz`:" in block
+        assert "x" * 100 in block and "- `fire-safety`:" in block
 
     def test_chosen_cards_become_the_shapes_block(self):
         state = ResearchAgentState(messages=[])
@@ -105,10 +105,10 @@ class TestTheEffects:
 
     def test_the_chosen_skills_preferred_shapes_beyond_the_contracts_ride_the_turn(self):
         state = ResearchAgentState(messages=[])
-        decided = TurnDecisions(decided=True, skill="brandschutz", skill_p=0.8, skill_fit=0.9)
+        decided = TurnDecisions(decided=True, skill="fire-safety", skill_p=0.8, skill_fit=0.9)
         runtime = _runtime()
         _apply_decisions(decided, state, runtime)
-        assert [s.name for s in runtime.inlined] == ["brandschutz"]
+        assert [s.name for s in runtime.inlined] == ["fire-safety"]
         block = state.card_shapes_block or ""
         assert "fire_access_plan" in block and "egress_diagram" in block
         # `calculation` is the shape the envelope already teaches.
@@ -151,7 +151,7 @@ class TestTheEffects:
         def row(name: str, shelf: Shelf) -> AvailableDocument:
             return stamp_document(AvailableDocument(file_name=name), collection="c", shelf=shelf)
 
-        docs = [row(f"p{i}.pdf", Shelf.PROJECT) for i in range(3)] + [row("a.pdf", Shelf.ARCHIV)]
+        docs = [row(f"p{i}.pdf", Shelf.PROJECT) for i in range(3)] + [row("a.pdf", Shelf.OFFICE_SHELF)]
         state = ResearchAgentState(messages=[HumanMessage(content="Was steht im Bescheid?")], available_documents=docs)
         facts = _turn_facts(state, None)
         assert (facts.project_files, facts.archive_files) == (3, 1)

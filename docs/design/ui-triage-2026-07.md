@@ -259,7 +259,7 @@ documented `text-xl` title-size question becomes a single knob.
   deterministic checks per-stage as calm in-context help; **no exit / save-and-
   leave** (a room with one door, acute in edit mode).
 - **[backlog] componentization** · the 1601-line monolith → extract field
-  renderers, `BauwerkStage`, `ReviewStep`, `ConflictFindings`, `IntakeStepper`,
+  renderers, `BuildingStage`, `ReviewStep`, `ConflictFindings`, `IntakeStepper`,
   and `useIntakeDraft`/`useStageValidation`/`useIntakeSubmit`. Reuse the `Chip`
   primitive instead of the hand-rolled `Segmented`/`ChipMultiSelect`. Share a
   `FactGrid` between `project-brief` and the wizard Review.

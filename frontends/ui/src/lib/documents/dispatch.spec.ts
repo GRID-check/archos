@@ -519,18 +519,18 @@ describe('the ingest dispatch sends the document folder path', () => {
   })
 
   it('sends the older file’s name when the upload was filed as its new Fassung (ADR-0099)', async () => {
-    // The backend twin is `frontends/aiq_api/tests/test_ingest_fassung_of.py`: the same `fassung_of` key.
-    await dispatchDocument({ ...input('Grundriss_EG_Index_C.pdf'), fassungOf: 'Grundriss_EG_Index_B.pdf' })
+    // The backend twin is `frontends/aiq_api/tests/test_ingest_fassung_of.py`: the same `revision_of` key.
+    await dispatchDocument({ ...input('Grundriss_EG_Index_C.pdf'), revisionOf: 'Grundriss_EG_Index_B.pdf' })
 
-    expect(bodyOf(0).fassung_of).toBe('Grundriss_EG_Index_B.pdf')
+    expect(bodyOf(0).revision_of).toBe('Grundriss_EG_Index_B.pdf')
   })
 
-  it('sends no fassung_of at all for an upload nobody filed as a Fassung', async () => {
+  it('sends no revision_of at all for an upload nobody filed as a Fassung', async () => {
     await dispatchDocument(input('plan.pdf'))
-    await dispatchDocument({ ...input('plan.pdf'), fassungOf: null })
+    await dispatchDocument({ ...input('plan.pdf'), revisionOf: null })
 
-    expect(bodyOf(0)).not.toHaveProperty('fassung_of')
-    expect(bodyOf(1)).not.toHaveProperty('fassung_of')
+    expect(bodyOf(0)).not.toHaveProperty('revision_of')
+    expect(bodyOf(1)).not.toHaveProperty('revision_of')
   })
 
   it('sends null for a document at the project root', async () => {
@@ -645,16 +645,16 @@ describe('an office file is converted, by a job, before it is ingested', () => {
   })
 
   it('carries the Fassung a person chose through the conversion to the ingest (ADR-0099)', async () => {
-    await dispatchDocument({ ...input('Baubeschreibung.docx'), fassungOf: 'Baubeschreibung_Index_A.docx' })
+    await dispatchDocument({ ...input('Baubeschreibung.docx'), revisionOf: 'Baubeschreibung_Index_A.docx' })
 
     expect(queuedJob()).toMatchObject({
       kind: 'office_rendition',
-      payload: expect.objectContaining({ fassungOf: 'Baubeschreibung_Index_A.docx' }),
+      payload: expect.objectContaining({ revisionOf: 'Baubeschreibung_Index_A.docx' }),
     })
     await runQueuedJob()
     await ingested()
 
-    expect(bodyOf(0).fassung_of).toBe('Baubeschreibung_Index_A.docx')
+    expect(bodyOf(0).revision_of).toBe('Baubeschreibung_Index_A.docx')
   })
 
   it('keeps a workbook on its own extractor: preview_ref only', async () => {

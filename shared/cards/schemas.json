@@ -1,36 +1,5 @@
 {
   "$defs": {
-    "AufstellflaechePlan": {
-      "description": "The fire-brigade Aufstellfl\u00e4che geometry.",
-      "properties": {
-        "distance_to_facade": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/DimensionCheck"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Distance to the facade (m)"
-        },
-        "length": {
-          "$ref": "#/$defs/DimensionCheck",
-          "description": "Aufstellfl\u00e4che length (m)"
-        },
-        "width": {
-          "$ref": "#/$defs/DimensionCheck",
-          "description": "Aufstellfl\u00e4che width (m)"
-        }
-      },
-      "required": [
-        "width",
-        "length"
-      ],
-      "title": "AufstellflaechePlan",
-      "type": "object"
-    },
     "BuildingSectionCard": {
       "description": "A to-scale building cross-section (schematic) drawn from storey heights.\n\nEmit for height/Geb\u00e4udeklasse/Fluchtniveau questions where seeing the\nbuilding against threshold lines helps (e.g. 'am I below the GK4 limit with\na Fluchtniveau of 9.8 m?'). Draws stacked storeys, the ground line, and\ndashed marker lines (Fluchtniveau, GK/Hochhaus limits) with labels.",
       "properties": {
@@ -1200,7 +1169,7 @@
           "title": "Document Id"
         },
         "path": {
-          "description": "Path in the working directory, e.g. '/entwuerfe/aktenvermerk.md'",
+          "description": "Path in the working directory, e.g. '/drafts/aktenvermerk.md'",
           "minLength": 1,
           "title": "Path",
           "type": "string"
@@ -1499,8 +1468,8 @@
           "anyOf": [
             {
               "enum": [
-                "projekt",
-                "buero"
+                "project",
+                "office"
               ],
               "type": "string"
             },
@@ -1604,9 +1573,18 @@
     "FireAccessPlanCard": {
       "description": "A fire-brigade access (Feuerwehrzufahrt) site plan schematic.\n\nEmit for fire-access questions (OIB 2 / TRVB). Top-down plan: access route\nfrom the road, the Aufstellfl\u00e4che beside the facade, and the reach distance\nfrom the Aufstellfl\u00e4che to the farthest necessary entrance (typically\n<=80 m). Numeric minimums vary by Land \u2014 always corpus-grounded per check.",
       "properties": {
-        "aufstellflaeche": {
-          "$ref": "#/$defs/AufstellflaechePlan",
-          "description": "The fire-brigade standing-area geometry"
+        "building_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The building's Geb\u00e4udeklasse (drives the limit)",
+          "title": "Building Class"
         },
         "building_depth_m": {
           "description": "Building footprint depth in metres",
@@ -1631,19 +1609,6 @@
           ],
           "default": null,
           "description": "Durchfahrt clear height (m)"
-        },
-        "gebaeudeklasse": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "The building's Geb\u00e4udeklasse (drives the limit)",
-          "title": "Gebaeudeklasse"
         },
         "note": {
           "anyOf": [
@@ -1678,6 +1643,10 @@
           "$ref": "#/$defs/DimensionCheck",
           "description": "Zufahrt clear width (m) vs the minimum"
         },
+        "staging_area": {
+          "$ref": "#/$defs/StagingAreaPlan",
+          "description": "The fire-brigade standing-area geometry"
+        },
         "title": {
           "description": "Title, e.g. 'Feuerwehrzufahrt & Aufstellfl\u00e4che'",
           "minLength": 1,
@@ -1702,7 +1671,7 @@
         "building_width_m",
         "building_depth_m",
         "route_width",
-        "aufstellflaeche",
+        "staging_area",
         "walk_distance_to_entrance",
         "reference"
       ],
@@ -1727,11 +1696,11 @@
         "context": {
           "description": "Railing location",
           "enum": [
-            "balkon",
+            "balcony",
             "loggia",
-            "stiege",
-            "fenster",
-            "dachterrasse"
+            "staircase",
+            "window",
+            "roof_terrace"
           ],
           "title": "Context",
           "type": "string"
@@ -1832,7 +1801,7 @@
           "title": "Note"
         },
         "rule_ids": {
-          "description": "Rule ids from ifc_query operation='compliance' (e.g. 'oib2-feuerwiderstand-tragend') to narrow the card to the requirements this answer is about. Empty shows all. Use ONLY ids the tool reported; the card says so when one does not resolve.",
+          "description": "Rule ids from ifc_query operation='compliance' (e.g. 'oib2-fire-resistance-load-bearing') to narrow the card to the requirements this answer is about. Empty shows all. Use ONLY ids the tool reported; the card says so when one does not resolve.",
           "items": {
             "type": "string"
           },
@@ -2601,7 +2570,7 @@
           "type": "string"
         },
         "path": {
-          "description": "For a confirmed hard fact use \"/facts/<key>\" with op \"add\" (works for both new and changed values). For an uncertain inference use \"/assumptions/<key>\". Known fact keys and values: hauptnutzung: wohnen|buero|beherbergung|versammlung|gesundheit|landwirtschaft|produzierend|lager|sonstiges; gebaeudeklasse: GK1|GK2|GK3|GK4|GK5; fluchtniveau: <=7m|7-11m|11-22m|>22m; bestand_neubau: bestand|neubau|zu_und_umbau; widmung: bauland|verkehrsflaeche|freiland|kerngebiet|gemischt; bauweise: offen|gekuppelt|geschlossen; sicherheitskategorie: low|medium|high; bestandsalter: <10|10-30|30-50|>50; geschosse_oberirdisch / geschosse_unterirdisch / anzahl_betten / anzahl_einheiten: number; grundgrenze / fluchtlinie / schutzzone / abweichender_bebauungsplan: boolean; hohe_gebaeude_details: free text",
+          "description": "For a confirmed hard fact use \"/facts/<key>\" with op \"add\" (works for both new and changed values). For an uncertain inference use \"/assumptions/<key>\". Known fact keys and values: main_use: residential|office|lodging|assembly|healthcare|agriculture|manufacturing|storage|other; building_class: GK1|GK2|GK3|GK4|GK5; escape_level: <=7m|7-11m|11-22m|>22m; existing_or_new: existing|new_build|extension_and_conversion; land_designation: building_land|traffic_area|open_land|core|mixed; development_pattern: open|semi_detached|closed; safety_category: low|medium|high; existing_age: <10|10-30|30-50|>50; storeys_above_ground / storeys_below_ground / bed_count / unit_count: number; plot_boundary / building_line / protection_zone / deviating_development_plan: boolean; high_rise_details: free text",
           "title": "Path",
           "type": "string"
         },
@@ -2654,7 +2623,7 @@
           "default": "reference",
           "description": "Styling role",
           "enum": [
-            "fluchtniveau",
+            "escape_level",
             "threshold",
             "reference"
           ],
@@ -2914,6 +2883,37 @@
       "title": "SetbackSide",
       "type": "object"
     },
+    "StagingAreaPlan": {
+      "description": "The fire-brigade Aufstellfl\u00e4che geometry.",
+      "properties": {
+        "distance_to_facade": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DimensionCheck"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Distance to the facade (m)"
+        },
+        "length": {
+          "$ref": "#/$defs/DimensionCheck",
+          "description": "Aufstellfl\u00e4che length (m)"
+        },
+        "width": {
+          "$ref": "#/$defs/DimensionCheck",
+          "description": "Aufstellfl\u00e4che width (m)"
+        }
+      },
+      "required": [
+        "width",
+        "length"
+      ],
+      "title": "StagingAreaPlan",
+      "type": "object"
+    },
     "StairDiagramCard": {
       "description": "A staircase drawn to scale (schematic section) with step-geometry checks.\n\nEmit for stair questions (e.g. 'does a flight of 17 steps with 18 cm\nSteigung, 27 cm Auftritt and 100 cm width fit?'). Draws the step profile to\nscale and checks riser/going/width and the comfort rule (2\u00d7Steigung +\nAuftritt \u2248 59\u201365 cm) against OIB 4.",
       "properties": {
@@ -3067,8 +3067,8 @@
           "anyOf": [
             {
               "enum": [
-                "projekt",
-                "buero"
+                "project",
+                "office"
               ],
               "type": "string"
             },
@@ -3077,7 +3077,7 @@
             }
           ],
           "default": null,
-          "description": "Which corpus it came from: 'projekt' (project) or 'buero' (B\u00fcroablage)",
+          "description": "Which corpus it came from: 'project' or 'office' (B\u00fcroablage)",
           "title": "Source"
         },
         "summary": {
@@ -3140,7 +3140,7 @@
           "description": "What kind of work was delegated",
           "enum": [
             "compliance_check",
-            "einreichcheck",
+            "submission_check",
             "document",
             "revision"
           ],

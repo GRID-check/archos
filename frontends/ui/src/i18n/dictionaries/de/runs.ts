@@ -11,29 +11,29 @@ import type { en } from '../en'
  */
 export const runs: typeof en.runs = {
   phase: {
-    planen: 'Planen',
-    recherchieren: 'Recherchieren',
-    pruefen: 'Prüfen',
-    schreiben: 'Schreiben',
-    abgelegt: 'Abgelegt',
+    planning: 'Planen',
+    researching: 'Recherchieren',
+    checking: 'Prüfen',
+    writing: 'Schreiben',
+    filed: 'Abgelegt',
   },
   status: {
-    angelegt: 'Wird gestartet',
-    laeuft: 'Läuft',
-    wartet: 'Wartet auf Sie',
-    fertig: 'Fertig',
-    fehlgeschlagen: 'Fehlgeschlagen',
-    abgebrochen: 'Abgebrochen',
-    unterbrochen: 'Unterbrochen',
+    created: 'Wird gestartet',
+    running: 'Läuft',
+    waiting: 'Wartet auf Sie',
+    done: 'Fertig',
+    failed: 'Fehlgeschlagen',
+    cancelled: 'Abgebrochen',
+    interrupted: 'Unterbrochen',
   },
   line: {
     filing: 'Ergebnis kommt ins Projekt',
-    wartet: 'Antworten Sie unten im Verlauf',
-    fertigFiled: 'Bericht abgelegt in Projekt › Berichte',
-    fertigInline: 'Der Bericht liegt hier im Verlauf',
-    fehlgeschlagen: 'Fehlgeschlagen: {reason}',
-    abgebrochen: 'auf Ihren Wunsch beendet',
-    unterbrochen: 'Bericht aus dem Vorhandenen geschrieben',
+    waiting: 'Antworten Sie unten im Verlauf',
+    doneFiled: 'Bericht abgelegt in Projekt › Berichte',
+    doneInline: 'Der Bericht liegt hier im Verlauf',
+    failed: 'Fehlgeschlagen: {reason}',
+    cancelled: 'auf Ihren Wunsch beendet',
+    interrupted: 'Bericht aus dem Vorhandenen geschrieben',
   },
   completedBefore: 'Bis dahin: {phases}',
   completedBeforeTallies: '{phase} ({rounds}, {docs})',
@@ -45,11 +45,11 @@ export const runs: typeof en.runs = {
     findings: 'Bisher belegt',
   },
   phaseLine: {
-    planen: 'Rechercheplan erstellt',
-    pruefen: 'Zitate gegen die Quellen geprüft',
-    pruefenLive: 'Zitate werden gegen die Quellen geprüft',
-    schreiben: 'Bericht geschrieben',
-    schreibenLive: 'Bericht wird geschrieben',
+    planning: 'Rechercheplan erstellt',
+    checking: 'Zitate gegen die Quellen geprüft',
+    checkingLive: 'Zitate werden gegen die Quellen geprüft',
+    writing: 'Bericht geschrieben',
+    writingLive: 'Bericht wird geschrieben',
   },
   tallies: {
     rounds: '{count, plural, one {# Runde} other {# Runden}}',
@@ -69,7 +69,7 @@ export const runs: typeof en.runs = {
     /** Statt „Bericht fortschreiben“ in einem abgeschlossenen Projekt (ADR-0090): ein Lauf legt dort ab. */
     continueClosed: 'Abgeschlossenes Projekt: keine neue Recherche',
   },
-  unterlagen: {
+  documents: {
     receiptLabel: 'Für diesen Auftrag benannte Unterlagen',
     receipt: '{read} von {total} benannten Unterlagen gelesen',
     unread: 'nicht gelesen',
@@ -98,7 +98,7 @@ export const runs: typeof en.runs = {
     restrictedReason:
       'Liegt in einem Ordner mit eingeschränktem Zugriff. Unterlagen und Bericht einer Recherche sind für alle im Projekt sichtbar, deshalb lässt sie sich nicht hinzufügen.',
     done: 'Fertig',
-    shelf: { project: 'Projekt', archiv: 'Büroablage', session: 'Dieser Chat', base: 'Regelwerke' },
+    shelf: { project: 'Projekt', office_shelf: 'Büroablage', session: 'Dieser Chat', base: 'Regelwerke' },
   },
   cancel: {
     confirmTitle: 'Auftrag abbrechen?',

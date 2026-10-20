@@ -38,7 +38,7 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `conversation-source-projects.ts` | `conversation_source_projects` |
 | `document-access-log.ts` | `document_access_log` (the download log) |
 | `document-quarantine-decisions.ts` | `document_quarantine_decisions` (the content gate's decisions owed to the audit trail) |
-| `document-fassung-announcements.ts` | `document_fassung_announcements` (which new Fassungen `document.new_fassung` has announced, once each) |
+| `document-revision-announcements.ts` | `document_revision_announcements` (which new Fassungen `document.new_revision` has announced, once each) |
 | `project-memory.ts` | `project_memory` (documented in [`project-memory-design.md`](../architecture/project-memory-design.md); the restricted-memory column below; `evidence` (0127, `jsonb`, CHECK array or NULL): the file names and pages a source-grounded decision was read from, set by the closing extraction) |
 | `jobs.ts` | `skills`, `jobs`, `job_runs` — the last two LEGACY since 0086; they are not written or read after the cutover and migration 0087 drops them |
 | `tasks.ts` | `tasks` — LEGACY since 0086, same |
@@ -78,7 +78,7 @@ export const projects = pgTable('projects', {
 | `closed_by` | `text` | set exactly when `status = 'closed'` | WorkOS user id of whoever closed it |
 | `closed_outcome` | `text` | NOT NULL when closed, `completed` or `cancelled` | How it ended: handed over, or not realized (0129). Kept across a reopen as the next close's suggestion, read only while closed |
 | `started_on` | `date` | first of a month, CHECK | Steckbrief Beginn (ADR-0091, migration 0117) |
-| `ended_on` | `date` | first of a month, not before `started_on`; NOT NULL when closed | Abschluss, named by closing (ADR-0098). Kept across a reopen as the next close's suggestion and read only while closed (`abschlussOf`) |
+| `ended_on` | `date` | first of a month, not before `started_on`; NOT NULL when closed | Abschluss, named by closing (ADR-0098). Kept across a reopen as the next close's suggestion and read only while closed (`closingOf`) |
 | `deleted_at` | `timestamptz` | | Soft delete (ADR-0011) |
 | `created_at` | `timestamptz` | NOT NULL, `defaultNow()` | |
 
@@ -210,6 +210,32 @@ produced by a different deployable. The shape is defined once in zod
 `frontends/ui/tests/fixtures/run-ledger.schema.json`, which the Python models
 (`src/aiq_agent/common/run_ledger.py`) validate against (ADR-0055, ADR-0062).
 
+**English names in the metadata (migrations `0163`, `0164`).** The closed
+vocabularies inside `metadata` were German identifiers and are English now.
+Migration `0163` rewrote, in one pass over the rows that hold an old name:
+`findings` status (`met` \| `not_met` \| `open` \| `not_applicable`) and
+grounding (`sourced` \| `derived` \| `open`); a callout's `kind` (`note` \|
+`warning` \| `deadline` \| `tip`); the run ledger's `status` (`created`,
+`running`, `waiting`, `done`, `failed`, `cancelled`, `interrupted`), its phases
+(`planning`, `researching`, `checking`, `writing`, `filed`) and the `grundlage`
+key, now `basis`; a citation's `kind` (`building_law`, `office`, `project`,
+`web`, `measurement`), `lane` (`building_law_oib`, `office_piloti`, …),
+`binding_status` (`binding`, `declared_binding`, `interpretive`, `unknown`),
+`rank` (`federal_law`, `state_law`, `ordinance`, `authority_info`,
+`external_standard`) and the key `punkt`, now `clause` (also on quote stamps);
+the Herleitung's trace lanes, its locator event `status.retrieval.clause` and
+the degraded reason `basis_unread`; and the card fields `staging_area`,
+`building_class`, the railing `context`, a section marker's `escape_level`, the
+`/drafts/` root of a draft's path and a document's `source` (`project` \|
+`office`), inside a `surface` card too. Migration `0164` did the same for the
+plan: the `plan_json` fence of a plan preview and the `approve {…}` reply
+(`basis`, `excluded`, `documents`; genre `inspection_report` \| `file_note` \|
+`comparison` \| `checklist` \| `report`; depth `quick_check` \| `expert_report`),
+`plan.documents` on `tasks`, `task_definitions` and `task_runs`, and
+`proposed_changes.payload.operations[].source`, with the CHECK that reads it.
+Both have a `.down.sql`. The readers keep one table per vocabulary for the old
+spellings (`LEGACY_*`, listed in each migration's header) for one release.
+
 **Indexes:** `messages_conversation_created_idx` on `(conversation_id, created_at)` — conversation history reads (migration `0014`; Postgres does not auto-index FK columns); `idx_messages_run_id` on `(run_id)` **partial**, `WHERE run_id IS NOT NULL` (migration `0091`) — a run message is a small minority of all messages, and an index entry per chat message would be paid for on every insert. Drizzle's builder cannot express a partial index, so it lives only in the migration.
 
 ---
@@ -276,8 +302,8 @@ export const documents = pgTable('documents', {
 |--------|------|-------------|-------|
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | |
-| `project_id` | `uuid` | FK → `projects.id` ON DELETE CASCADE | **Nullable since ADR-0024**: `NULL` for org-wide `archiv` documents; set for `project` documents. |
-| `scope` | `text` | NOT NULL, DEFAULT `'project'` | ADR-0024 discriminator: `'project'` (hangs off `project_id`) or `'archiv'` (org-wide, `project_id` NULL, `collection_name = archiv_<orgId>`). |
+| `project_id` | `uuid` | FK → `projects.id` ON DELETE CASCADE | **Nullable since ADR-0024**: `NULL` for org-wide `office_shelf` documents; set for `project` documents. |
+| `scope` | `text` | NOT NULL, DEFAULT `'project'` | ADR-0024 discriminator: `'project'` (hangs off `project_id`) or `'office_shelf'` (org-wide, `project_id` NULL, `collection_name = archiv_<orgId>`). |
 | `created_by` | `text` | NOT NULL | Uploading user ID — for an agent-authored document, the **commissioning** user. Provenance of the row, never responsibility for the content (ADR-0047); who is on the hook lives in `resource_assignments`. |
 | `authored_by` | `text` | NOT NULL, DEFAULT `'user'` | **Migration `0063`**: whose hand wrote the bytes. `user` (somebody uploaded a file) and `agent` (a commissioned run produced it) are the members that exist today, declared as the `DOCUMENT_AUTHORS` tuple the way `DOCUMENT_SCOPES` is. No CHECK on the value, so a later producer (`system` for a scheduled sync, `import` for a partner feed) is a TypeScript change — anticipated, not promised, and nothing writes either today. Every row predating the column is `user` by definition, so there is no backfill (the `storage_bucket` reasoning again). |
 | `authored_by_producer` | `text` | | **Migration `0063`**: WHAT wrote a non-`user` document, as a producer identifier (`deep_research`, `diagram_svg`, `diagram_pdf`), never a display label. A producer is a KIND OF DELIVERABLE, not a piece of software — which is why one run can carry two of them, and why migration `0065` makes it half of the idempotency key. `NULL` for everything a person uploaded. Separate from `authored_by_ref` because a reference identifies the producer only while there is exactly one of them; recovering it later from pruned job history is archaeology. Since migration `0066` it is also what the reference KIND is derived from. |
@@ -318,7 +344,7 @@ export const documents = pgTable('documents', {
 The three `authored_by` partial indexes above live **only in the migration** — drizzle's index builder cannot express a `WHERE` clause — with a NOTE beside the relevant column in `schema/documents.ts`; the filename one is declared in the schema as well. `documents.spec.ts` pins each one to its migration so a regeneration cannot quietly drop it.
 
 **Constraints:**
-- `documents_folder_requires_project` — `folder_id IS NULL OR project_id IS NOT NULL OR scope = 'archiv'`: a filed document is a project document or an Archiv one. Introduced as "a document with a folder has a project" so the composite `(folder_id, project_id)` FK checks anything under MATCH SIMPLE (migrations `0030`, `0031`); widened by migration `0102`, whose next constraint now checks every folder reference whatever the project
+- `documents_folder_requires_project` — `folder_id IS NULL OR project_id IS NOT NULL OR scope = 'office_shelf'`: a filed document is a project document or an Archiv one. Introduced as "a document with a folder has a project" so the composite `(folder_id, project_id)` FK checks anything under MATCH SIMPLE (migrations `0030`, `0031`); widened by migration `0102`, whose next constraint now checks every folder reference whatever the project
 - `documents_folder_id_organization_id_scope_fkey` — FK (`folder_id`, `organization_id`, `scope`) → `project_folders (id, organization_id, scope)`, `ON DELETE CASCADE` (migration `0102`, ADR-0078). A document's folder is on its own **shelf and tenant**: a project document cannot be filed in an Archiv folder (nor the reverse), neither in another tenant's folder, and a `session` attachment cannot be filed at all — no folder row can carry scope `session`, so the key has nothing to match. MATCH SIMPLE skips it when `folder_id` is NULL. The cascade is only a backstop and agrees with `documents_folder_id_project_id_fkey`: `deleteShelfFolder` re-files a folder's documents and children into its parent before it removes the row
 - `documents_session_requires_conversation` — the scope partition: a `session` row has a conversation, nothing else does, and a `session` row has no project (migration `0049`)
 - `documents_authorship_requires_provenance` — `authored_by = 'user' OR (authored_by_producer IS NOT NULL AND authored_by_ref IS NOT NULL AND authored_by_ref_kind IS NOT NULL)`. A document no person wrote can always say what wrote it, which one, and what kind of identifier that is; one that cannot is an audit trail in appearance only. The third conjunct is migration `0066`'s: the first two were satisfiable by a row whose reference nobody could resolve, because the column's name asserted a job id over a value that was not one. Written against `<> 'user'` rather than against `agent` so a member added to `DOCUMENT_AUTHORS` arrives already constrained instead of arriving as a hole nothing notices (migration `0063`). One-directional: a `user` row carrying all three is legal.
@@ -453,7 +479,7 @@ transaction as the supersede (`insertPublishedVersion`), supersede first. Before
 that, **every re-upload of a document failed** on the constraint.
 
 **Bytes:** a superseded version keeps its object. They are purged when the
-document is deleted — `deleteDocument`, `deleteArchivDocument` and
+document is deleted — `deleteDocument`, `deleteOfficeShelfDocument` and
 `deleteSessionDocument` each walk every version (`listDocumentVersionObjects`
 pages through all of them; it used to stop at the 500-row list page and leak
 the rest) — and not when one is replaced.
@@ -587,7 +613,7 @@ pinned, the plan frozen, and review as an axis of its own.
 is why the vocabulary lives in one place — `TASK_KINDS` in
 `lib/db/schema/tasks.ts` — rather than in a column and a tuple that can disagree.
 It holds six members: `deep-research` and `chat` are `jobs.output` and describe
-how a JOB delivers its result; `compliance_check`, `einreichcheck`, `document`
+how a JOB delivers its result; `compliance_check`, `submission_check`, `document`
 and `revision` are what a person DELEGATES (`DELEGATABLE_TASK_KINDS`, derived as
 the complement rather than listed again). `status`, `review` and `filing_status`
 DO carry CHECKs naming their members.
@@ -720,7 +746,7 @@ trigger (`once`, no due date), which is what lets chat say „jeden Montag".
 
 ## project_folders
 
-Folders of a **shelf**: a project's Dateien (`scope = 'project'`) or the org-wide Archiv (`scope = 'archiv'`) — migration `0102`, [ADR-0078](../adr/0078-folders-are-a-property-of-a-shelf-not-of-a-project.md).
+Folders of a **shelf**: a project's Dateien (`scope = 'project'`) or the org-wide Archiv (`scope = 'office_shelf'`) — migration `0102`, [ADR-0078](../adr/0078-folders-are-a-property-of-a-shelf-not-of-a-project.md).
 
 > **The name is a deliberate deferral.** `project_folders` is a misnomer for the Archiv half of its rows. Renaming it touches the Python mirror (`document_metadata.folder_path`, ADR-0049) and ten earlier migrations and turns a column change into a table swap, so it waits for something that forces a table swap anyway. Read it as "shelf folders"; the same note sits beside the table in `schema/project-folders.ts`.
 
@@ -730,7 +756,7 @@ export const projectFolders = pgTable('project_folders', {
   id: uuid('id').primaryKey().defaultRandom(),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }), // NULL for an Archiv folder
   organizationId: text('organization_id').notNull(),
-  scope: text('scope').$type<'project' | 'archiv'>().notNull().default('project'),
+  scope: text('scope').$type<'project' | 'office_shelf'>().notNull().default('project'),
   parentId: uuid('parent_id'),
   name: varchar('name', { length: 255 }).notNull(),
   path: varchar('path', { length: 1024 }).notNull(),
@@ -744,7 +770,7 @@ export const projectFolders = pgTable('project_folders', {
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `project_id` | `uuid` | nullable, FK → `projects.id` ON DELETE CASCADE | `NULL` exactly for an Archiv folder (`project_folders_scope_owner_check`) |
 | `organization_id` | `text` | NOT NULL | The tenant, on the row (migration `0102`, backfilled from `projects.organization_id`). Pinned by the RLS policy and the composite keys below |
-| `scope` | `text` | NOT NULL, default `'project'`, CHECK in (`project`, `archiv`) | The shelf, in `documents.scope`'s vocabulary minus `session`: a chat attachment is never filed |
+| `scope` | `text` | NOT NULL, default `'project'`, CHECK in (`project`, `office_shelf`) | The shelf, in `documents.scope`'s vocabulary minus `session`: a chat attachment is never filed |
 | `parent_id` | `uuid` | | `NULL` for a folder at the root of its shelf |
 | `name` | `varchar(255)` | NOT NULL | |
 | `path` | `varchar(1024)` | NOT NULL | Materialised path, for breadcrumbs and the backend mirror |
@@ -766,7 +792,7 @@ export const projectFolders = pgTable('project_folders', {
 - `project_folders_id_organization_id_scope_key` — UNIQUE on (`id`, `organization_id`, `scope`), the target of the two shelf keys below (migration `0102`).
 - `project_folders_parent_id_project_id_fkey` — a folder's parent lives in the same project. This replaced an RLS policy that referenced `project_folders` from its own predicate, which Postgres answers with "infinite recursion detected in policy" — and because `documents`' policy joined this table, both became unreadable for the runtime role. MATCH SIMPLE skips an Archiv folder (NULL project); the next key covers it.
 - `project_folders_parent_id_organization_id_scope_fkey` — a folder's parent is on its own **shelf and tenant** (migration `0102`). Skipped for a root folder (NULL parent).
-- `project_folders_scope_check` — `scope IN ('project', 'archiv')`; `project_folders_scope_owner_check` — `(scope = 'project') = (project_id IS NOT NULL)`, so the three columns tell one story.
+- `project_folders_scope_check` — `scope IN ('project', 'office_shelf')`; `project_folders_scope_owner_check` — `(scope = 'project') = (project_id IS NOT NULL)`, so the three columns tell one story.
 - `uniq_project_folders_parent_name` — UNIQUE on (`organization_id`, `COALESCE(project_id, nil uuid)`, `COALESCE(parent_id, nil uuid)`, `name`) (migration `0063`, widened by `0102` from (`project_id`, `COALESCE(parent_id, …)`, `name`)). **PARTIAL** `WHERE deleted_at IS NULL` since `0111`, so a tombstone does not hold its name. One living folder per name per parent **on a shelf**. The `COALESCE`s are load-bearing: `parent_id` is `NULL` at a root and `project_id` is `NULL` for the whole Archiv, `NULL` never equals `NULL` in a unique index, so a plain index would police nested project folders and leave **root** folders — where a fixed, created-on-first-use destination like `Berichte` lands — and every Archiv folder uncontrolled. The nil UUID cannot collide with a real id (`gen_random_uuid()` is v4). Get-or-create is not a transaction, and before this index two runs finishing at once produced two `Berichte` folders with no way to say which was real. Case- and whitespace-sensitive on purpose: it stops a race between identical writes, it does not police folder naming. An EXPRESSION index, so it lives only in the migration; `documents.spec.ts` pins it. Within one tenant a project id determines the organization, so for every row that predates `0109` the widened index rejects exactly what the old one did.
 - **RLS:** `grid_tenant_isolation` on `organization_id = grid_current_org()` (`0102`; `0031` joined `projects`). No table read, so no recursion, and cheaper per row.
 
@@ -849,7 +875,7 @@ who started it ([`mail-import.md`](../architecture/mail-import.md#what-the-perso
 | `id` | `uuid` | PK | Chosen by the browser, so every file can carry it before the batch is confirmed. A mail import's is derived from the import's id and a generation (`lib/mail-import/upload-batch.ts`) |
 | `organization_id` | `text` | NOT NULL | RLS: `organization_id = grid_current_org()` |
 | `created_by` | `text` | NOT NULL | The uploader; the summary is theirs only |
-| `scope` | `text` | NOT NULL, CHECK `project`/`archiv`/`session` | The shelf |
+| `scope` | `text` | NOT NULL, CHECK `project`/`office_shelf`/`session` | The shelf |
 | `project_id` | `uuid` | FK → `projects.id` ON DELETE CASCADE; set exactly when `scope = 'project'` | |
 | `conversation_id` | `text` | | The chat, for a session upload |
 | `expected_count` | `integer` | NOT NULL, 0–10 000 | Files the browser announced; a job opens with 0 and its seal writes the documents that carry the batch |
@@ -955,6 +981,8 @@ carry access:
 | `permit_records.collection_name` | `text` | NOT NULL | the collection the document sat in when it was read |
 | `restricted_folder_ids` (both tables) | `uuid[]` | NULL, canonical, 1..20 when set | the document's restricting folders when it was read |
 | `permit_requirements.embedding` / `embedding_model` | `real[]` / `text` | NULL | ranked only against the current model's vectors |
+| `permit_records.kind` | `text` | NOT NULL, CHECK `permit_records_kind_check` | **Migration `0166`**: `approval` \| `information_request` \| `refusal` \| `other` (were `bewilligung` \| `nachforderung` \| `ablehnung` \| `sonstiges`) |
+| `permit_requirements.kind` | `text` | NOT NULL, CHECK `permit_requirements_kind_check` | **Migration `0166`**: `condition` \| `information_request` \| `note` (were `auflage` \| `nachforderung` \| `hinweis`) |
 
 The stored restriction is a snapshot of where the document was read, and no
 reader consults it for access. The search (`searchPermitRequirements`) joins
@@ -985,7 +1013,7 @@ read it: [`user-guides/download-log.md`](../user-guides/download-log.md).
 | `occurred_at` | `timestamptz` | NOT NULL, `now()` | The database's clock; the keyset cursor reads it as text to the microsecond |
 | `user_id` | `text` | NOT NULL | The WorkOS user id. Names and emails are resolved from WorkOS when the admin page is read, never copied here |
 | `kind` | `text` | NOT NULL, CHECK `download`/`preview`/`pdf`/`text`/`version`/`model` | |
-| `scope` | `text` | NOT NULL, CHECK `project`/`archiv`/`session` | Same names as `documents.scope` |
+| `scope` | `text` | NOT NULL, CHECK `project`/`office_shelf`/`session` | Same names as `documents.scope` |
 | `project_id` | `uuid` | | CHECK `(scope = 'project') = (project_id IS NOT NULL)` |
 | `document_id` | `uuid` | NOT NULL | No FK: the row outlives the document |
 | `document_name` | `text` | NOT NULL, CHECK 1–500 characters | The name the document was shown under then |
@@ -1039,7 +1067,7 @@ exists. The audit trail holds the event under its own retention.
 | `document_id` | `uuid` | NOT NULL | No FK: a reviewer may delete the file before the decision reaches the trail. The retention, not the document, ends the row |
 | `job_id` | `text` | UNIQUE with `document_id` (`document_quarantine_decisions_dispatch_key`) | The ingest job whose gate decided: one dispatch, one decision. NULL only when the row carried no job (the backend's file list said quarantined). A row that carries a job takes a failure only from that job, never from the file list, whose failed entry under the name may be an earlier dispatch's (`attributableFailure`, `lib/documents/reconcile-status.ts`) |
 | `decided_at` | `timestamptz` | NOT NULL, `now()` | The event's `occurredAt` |
-| `scope` | `text` | NOT NULL, CHECK `project`/`archiv`/`session` | |
+| `scope` | `text` | NOT NULL, CHECK `project`/`office_shelf`/`session` | |
 | `project_id` | `uuid` | | CHECK `(scope = 'project') = (project_id IS NOT NULL)` |
 | `folder_id` | `uuid` | | The folder the document was filed in when quarantined; NULL at a shelf's root. No FK. The event's `filedIn`: under a folder not every project member may read, the name is withheld (`nameWithheld`, ADR-0087) |
 | `filename` | `text` | NOT NULL, CHECK 1–500 characters | The name at the time |
@@ -1060,16 +1088,16 @@ not yet audited.
 
 ---
 
-## document_fassung_announcements (migration 0130, ADR-0099)
+## document_revision_announcements (migration 0130, ADR-0099)
 
 Which new Fassungen have been announced to the people who followed the older
-document (`document.new_fassung`, `lib/documents/fassung-notify.ts`). One row
+document (`document.new_revision`, `lib/documents/revision-notify.ts`). One row
 per Fassung: the newer document and the anchor its inbox item uses (the new
 version for a same-name Fassung, the older document for a confirmed link).
-`notifyNewFassung` inserts the row (`claimFassungAnnouncement`, ON CONFLICT DO
+`notifyNewRevision` inserts the row (`claimRevisionAnnouncement`, ON CONFLICT DO
 NOTHING) after both documents read as screened and before any item is
 written, and writes only when its insert took the row; a failed announcement
-deletes it again (`releaseFassungAnnouncement`). The settle hook runs on every
+deletes it again (`releaseRevisionAnnouncement`). The settle hook runs on every
 re-read, so without the row a person assigned since, or whose item had aged
 out, was told about the same Fassung again.
 
@@ -1186,8 +1214,8 @@ This PostgreSQL entrypoint script runs on first container startup and creates tw
 | `job_info` | NAT JobStore metadata | `job_id` (PK), `status`, `config_file`, `error`, `output_path`, `created_at`, `updated_at`, `expiry_seconds`, `is_expired` |
 | `job_access` | Who may reach a job: its owner, and callers whose signed scope matches its organization and project or conversation (ADR-0084) | `job_id` (PK), `owner_auth_type`, `owner_subject`, `owner_email`, `conversation_id`, `project_collection`, `organization_id`, `created_at` |
 | `job_events` | SSE streaming event persistence | `id` (serial PK), `job_id`, `event_type`, `event_data`, `created_at` |
-| `document_metadata` | Per-document metadata (was `summaries`) | `collection` + `filename` (composite PK), `summary`, `tags` (`TEXT`, JSON list; nullable), `doc_class` (`TEXT`; nullable), `display_title` (`TEXT`; nullable), `folder_path` (`TEXT`; nullable — the BFF's materialised `project_folders.path`, ADR-0049), `provenance` (`TEXT`, JSON object; nullable — who wrote a published Piloti document and who released it, ADR-0054; deleted with the chunks by `unregister_summary`), `tags_set_by` (`TEXT`; nullable — `person` when a person chose the tags through the tag edit; ingest and the backfill then leave `tags` alone, and a re-ingest carries them to the new version), `topics` (`TEXT`, JSON list; nullable — open Themen the summary model recognised, or a person's; kept with the tags on the same `tags_set_by` marker), `capture` (`TEXT`, JSON object; nullable — what a camera wrote into a photo: `captured_at`, `latitude`, `longitude`, `camera`; the position is for the BFF and never rendered to a model), `superseded_by` (`TEXT`; nullable — on the OLDER document's row: the `filename` of the newer document in the same collection that a PERSON confirmed replaces it; written only by a person's confirmation (`PUT /v1/collections/{collection}/fassung` or `fassung_of` at upload, both through `link_fassung`), kept across a re-ingest; a purge that can be undone leaves it and it reads as nothing until the newer row is back, a permanent delete of the newer document clears it; search leaves the file out of the ranking unless a call names it), `revision_suggestion` (`TEXT`, JSON object; nullable — on the NEWER document's row: Piloti's suggestion that it is a newer Fassung of another, `{of, confidence, reason, basis: title_block\|name\|content, dismissed, dismissed_of}`; advice only, links and hides nothing; `dismissed_of` lists every file a person refused, kept across every write so none is suggested again), `change_summary` (`TEXT`; nullable — German bullet lines on what changed against the Fassung `change_basis` names) `change_basis` (`TEXT`; nullable — the `filename` compared against: the document's own name for its previous upload, another name for a confirmed Fassung) and `revision_facts` (`TEXT`, JSON object; nullable — what the title block (Plankopf) of the document's first drawing page that has one says, read by the vision model during ingestion in the same call as the drawing analysis: `document_number` (Plannummer, as printed), `revision` (the Index as printed, letter or number), `revision_date` (ISO `YYYY-MM-DD`), `scale`, `title` (Planinhalt) and `page` (1-based, where it was read); present keys only, never guessed; replaced by a re-upload, so a re-upload without a title block clears it; decoded through `aiq_agent.knowledge.title_block.normalise_revision_facts`). `supersedes` (the files a document replaces) is derived on read, never stored |
-| `document_fassung_retained` | The Fassung facts a person made, kept while a purge that can be undone has taken the `document_metadata` row away (archive, folder bin, a publish that re-reads) | `collection` + `filename` (composite PK), `superseded_by`, `revision_suggestion` (refusals only), `change_summary` + `change_basis` (only when the basis is another file). Written by `DocumentMetadataStore.unregister` without `permanent`; taken back and deleted by the next `register` of the name; a permanent delete removes it and clears `superseded_by` pointing at the file. Created by the store at init, like `document_metadata` |
+| `document_metadata` | Per-document metadata (was `summaries`) | `collection` + `filename` (composite PK), `summary`, `tags` (`TEXT`, JSON list; nullable), `doc_class` (`TEXT`; nullable), `display_title` (`TEXT`; nullable), `folder_path` (`TEXT`; nullable — the BFF's materialised `project_folders.path`, ADR-0049), `provenance` (`TEXT`, JSON object; nullable — who wrote a published Piloti document and who released it, ADR-0054; deleted with the chunks by `unregister_summary`), `tags_set_by` (`TEXT`; nullable — `person` when a person chose the tags through the tag edit; ingest and the backfill then leave `tags` alone, and a re-ingest carries them to the new version), `topics` (`TEXT`, JSON list; nullable — open Themen the summary model recognised, or a person's; kept with the tags on the same `tags_set_by` marker), `capture` (`TEXT`, JSON object; nullable — what a camera wrote into a photo: `captured_at`, `latitude`, `longitude`, `camera`; the position is for the BFF and never rendered to a model), `superseded_by` (`TEXT`; nullable — on the OLDER document's row: the `filename` of the newer document in the same collection that a PERSON confirmed replaces it; written only by a person's confirmation (`PUT /v1/collections/{collection}/revision` or `revision_of` at upload, both through `link_revision`), kept across a re-ingest; a purge that can be undone leaves it and it reads as nothing until the newer row is back, a permanent delete of the newer document clears it; search leaves the file out of the ranking unless a call names it), `revision_suggestion` (`TEXT`, JSON object; nullable — on the NEWER document's row: Piloti's suggestion that it is a newer Fassung of another, `{of, confidence, reason, basis: title_block\|name\|content, dismissed, dismissed_of}`; advice only, links and hides nothing; `dismissed_of` lists every file a person refused, kept across every write so none is suggested again), `change_summary` (`TEXT`; nullable — German bullet lines on what changed against the Fassung `change_basis` names) `change_basis` (`TEXT`; nullable — the `filename` compared against: the document's own name for its previous upload, another name for a confirmed Fassung) and `revision_facts` (`TEXT`, JSON object; nullable — what the title block (Plankopf) of the document's first drawing page that has one says, read by the vision model during ingestion in the same call as the drawing analysis: `document_number` (Plannummer, as printed), `revision` (the Index as printed, letter or number), `revision_date` (ISO `YYYY-MM-DD`), `scale`, `title` (Planinhalt) and `page` (1-based, where it was read); present keys only, never guessed; replaced by a re-upload, so a re-upload without a title block clears it; decoded through `aiq_agent.knowledge.title_block.normalise_revision_facts`). `supersedes` (the files a document replaces) is derived on read, never stored |
+| `document_revision_retained` | The Fassung facts a person made, kept while a purge that can be undone has taken the `document_metadata` row away (archive, folder bin, a publish that re-reads) | `collection` + `filename` (composite PK), `superseded_by`, `revision_suggestion` (refusals only), `change_summary` + `change_basis` (only when the basis is another file). Written by `DocumentMetadataStore.unregister` without `permanent`; taken back and deleted by the next `register` of the name; a permanent delete removes it and clears `superseded_by` pointing at the file. Created by the store at init, like `document_metadata` |
 
 Indexes: `job_info(status)`, `job_info(created_at)`, `job_access(owner_auth_type, owner_subject)`, `job_events(job_id)`, `job_events(job_id, id)`, `document_metadata(collection)`.
 
@@ -1769,7 +1797,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_fassung` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_revision` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |

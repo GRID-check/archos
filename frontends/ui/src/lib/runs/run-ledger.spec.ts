@@ -18,7 +18,7 @@ import {
   finishRun,
   openPhase,
   sanitizeRunLedger,
-  setGrundlage,
+  setBasis,
   setRunStatus,
 } from './run-ledger'
 import {
@@ -29,6 +29,8 @@ import {
   MAX_NAME_CHARS,
   MAX_OPEN_POINTS,
   MAX_STEPS,
+  modernizeRunLedger,
+  runLedgerRequestSchema,
   type RunStep,
 } from './run-ledger-types'
 
@@ -38,7 +40,7 @@ const T2 = new Date('2026-09-16T08:09:00.000Z')
 
 const step = (overrides: Partial<RunStep> = {}): RunStep => ({
   id: 'step-1',
-  phase: 'recherchieren',
+  phase: 'researching',
   intent: 'OIB-2 auf Fluchtwegbreiten prüfen',
   startedAt: T1.toISOString(),
   docs: [],
@@ -47,8 +49,8 @@ const step = (overrides: Partial<RunStep> = {}): RunStep => ({
 
 const wire = (overrides: Record<string, unknown> = {}) => ({
   runId: 'run-1',
-  status: 'laeuft',
-  phases: [{ phase: 'recherchieren', startedAt: T0.toISOString() }],
+  status: 'running',
+  phases: [{ phase: 'researching', startedAt: T0.toISOString() }],
   steps: [step()],
   startedAt: T0.toISOString(),
   updatedAt: T1.toISOString(),
@@ -69,7 +71,7 @@ describe('sanitizeRunLedger', () => {
 
   it('refuses a ledger with no instant anywhere, and keeps one with any', () => {
     expect(
-      sanitizeRunLedger({ runId: 'run-1', status: 'laeuft', phases: [], steps: [] }),
+      sanitizeRunLedger({ runId: 'run-1', status: 'running', phases: [], steps: [] }),
     ).toBeNull()
     // `startedAt` is not optional in the type and inventing "now" for a stored
     // row would date a week-old run to whenever somebody opened it, so it falls
@@ -86,7 +88,7 @@ describe('sanitizeRunLedger', () => {
     const fresh = sanitizeRunLedger(emptyRunLedger('run-1', T0))
     expect(fresh).toEqual({
       runId: 'run-1',
-      status: 'angelegt',
+      status: 'created',
       phases: [],
       steps: [],
       startedAt: T0.toISOString(),
@@ -183,13 +185,13 @@ describe('sanitizeRunLedger', () => {
     const ledger = sanitizeRunLedger({
       ...wire(),
       phases: [
-        { phase: 'planen', startedAt: T0.toISOString() },
-        { phase: 'planen', startedAt: T2.toISOString(), endedAt: T2.toISOString() },
+        { phase: 'planning', startedAt: T0.toISOString() },
+        { phase: 'planning', startedAt: T2.toISOString(), endedAt: T2.toISOString() },
         { phase: 'schwebt', startedAt: T0.toISOString() },
-        { phase: 'schreiben', startedAt: 'irgendwann' },
+        { phase: 'writing', startedAt: 'irgendwann' },
       ],
     })
-    expect(ledger?.phases).toEqual([{ phase: 'planen', startedAt: T0.toISOString() }])
+    expect(ledger?.phases).toEqual([{ phase: 'planning', startedAt: T0.toISOString() }])
   })
 
   it('normalises every instant to UTC', () => {
@@ -205,39 +207,39 @@ describe('sanitizeRunLedger', () => {
 
   it('derives the status when the payload names one it does not know', () => {
     const running = sanitizeRunLedger({ ...wire(), status: 'in_progress' })
-    expect(running?.status).toBe('laeuft')
+    expect(running?.status).toBe('running')
 
     const finished = sanitizeRunLedger({
       ...wire(),
       status: undefined,
       result: { filedAt: T2.toISOString(), fileId: 'doc-1' },
     })
-    expect(finished?.status).toBe('fertig')
+    expect(finished?.status).toBe('done')
 
     const failed = sanitizeRunLedger({
       ...wire(),
       status: 'angelegt ',
       error: { reason: 'Der Anbieter hat abgebrochen.', completedBefore: [] },
     })
-    expect(failed?.status).toBe('fehlgeschlagen')
+    expect(failed?.status).toBe('failed')
 
     const idle = sanitizeRunLedger({ ...wire(), status: 'wer weiß', phases: [], steps: [] })
-    expect(idle?.status).toBe('angelegt')
+    expect(idle?.status).toBe('created')
   })
 
   it('believes a claimed completedBefore only for phases that actually ended', () => {
     const ledger = sanitizeRunLedger({
       ...wire(),
       phases: [
-        { phase: 'planen', startedAt: T0.toISOString(), endedAt: T1.toISOString() },
-        { phase: 'recherchieren', startedAt: T1.toISOString() },
+        { phase: 'planning', startedAt: T0.toISOString(), endedAt: T1.toISOString() },
+        { phase: 'researching', startedAt: T1.toISOString() },
       ],
       error: {
         reason: 'Die Recherche ist gescheitert.',
-        completedBefore: ['planen', 'recherchieren', 'schreiben', 'planen', 'unsinn'],
+        completedBefore: ['planning', 'researching', 'writing', 'planning', 'unsinn'],
       },
     })
-    expect(ledger?.error?.completedBefore).toEqual(['planen'])
+    expect(ledger?.error?.completedBefore).toEqual(['planning'])
   })
 
   it('drops a result with no filing instant and an error with no reason', () => {
@@ -253,7 +255,7 @@ describe('sanitizeRunLedger', () => {
   it('survives a hostile payload', () => {
     const hostile = {
       runId: 'r'.repeat(5_000),
-      status: { toString: () => 'fertig' },
+      status: { toString: () => 'done' },
       phases: 'alle',
       steps: [null, 42, [], { docs: 'viele' }, step()],
       result: 'fertig!',
@@ -267,7 +269,7 @@ describe('sanitizeRunLedger', () => {
     expect(ledger?.runId).toHaveLength(64)
     expect(ledger?.phases).toEqual([])
     expect(ledger?.steps).toEqual([step()])
-    expect(ledger?.status).toBe('laeuft')
+    expect(ledger?.status).toBe('running')
     expect(ledger?.updatedAt).toBe(T0.toISOString())
     expect(ledger).not.toHaveProperty('finishedAt')
     expect(({} as Record<string, unknown>).polluted).toBeUndefined()
@@ -279,57 +281,57 @@ describe('the moves', () => {
     const before = emptyRunLedger('run-1', T0)
     const frozen = structuredClone(before)
     appendStep(before, step(), T1)
-    openPhase(before, 'planen', T1)
+    openPhase(before, 'planning', T1)
     finishRun(before, { filedAt: T2.toISOString() }, T2)
     expect(before).toEqual(frozen)
   })
 
   it('appends a step and starts the run', () => {
     const after = appendStep(emptyRunLedger('run-1', T0), step(), T1)
-    expect(after.status).toBe('laeuft')
+    expect(after.status).toBe('running')
     expect(after.steps).toEqual([step()])
     expect(after.updatedAt).toBe(T1.toISOString())
   })
 
   it('enters a phase once', () => {
-    const opened = openPhase(emptyRunLedger('run-1', T0), 'planen', T1)
-    expect(opened.phases).toEqual([{ phase: 'planen', startedAt: T1.toISOString() }])
-    expect(openPhase(opened, 'planen', T2)).toBe(opened)
+    const opened = openPhase(emptyRunLedger('run-1', T0), 'planning', T1)
+    expect(opened.phases).toEqual([{ phase: 'planning', startedAt: T1.toISOString() }])
+    expect(openPhase(opened, 'planning', T2)).toBe(opened)
   })
 
   it('leaves a phase once, and only one it entered', () => {
-    const opened = openPhase(emptyRunLedger('run-1', T0), 'planen', T1)
-    const closed = closePhase(opened, 'planen', T2)
+    const opened = openPhase(emptyRunLedger('run-1', T0), 'planning', T1)
+    const closed = closePhase(opened, 'planning', T2)
     expect(closed.phases[0].endedAt).toBe(T2.toISOString())
-    expect(closePhase(closed, 'planen', T2)).toBe(closed)
-    expect(closePhase(closed, 'schreiben', T2)).toBe(closed)
+    expect(closePhase(closed, 'planning', T2)).toBe(closed)
+    expect(closePhase(closed, 'writing', T2)).toBe(closed)
   })
 
   it('moves the status on its own, and says nothing twice', () => {
     const ledger = emptyRunLedger('run-1', T0)
-    const waiting = setRunStatus(ledger, 'wartet', T1)
-    expect(waiting.status).toBe('wartet')
+    const waiting = setRunStatus(ledger, 'waiting', T1)
+    expect(waiting.status).toBe('waiting')
     expect(waiting.updatedAt).toBe(T1.toISOString())
-    expect(setRunStatus(waiting, 'wartet', T2)).toBe(waiting)
+    expect(setRunStatus(waiting, 'waiting', T2)).toBe(waiting)
   })
 
   it('finishes: the result is on the ledger and no phase is left running', () => {
-    const running = openPhase(emptyRunLedger('run-1', T0), 'schreiben', T1)
+    const running = openPhase(emptyRunLedger('run-1', T0), 'writing', T1)
     const done = finishRun(running, { filedAt: T2.toISOString(), fileId: 'doc-1' }, T2)
-    expect(done.status).toBe('fertig')
+    expect(done.status).toBe('done')
     expect(done.finishedAt).toBe(T2.toISOString())
     expect(done.result).toEqual({ filedAt: T2.toISOString(), fileId: 'doc-1' })
     expect(done.phases[0].endedAt).toBe(T2.toISOString())
   })
 
   it('fails: the phase it died in stays open, and completedBefore is derived', () => {
-    const planned = closePhase(openPhase(emptyRunLedger('run-1', T0), 'planen', T0), 'planen', T1)
-    const searching = openPhase(planned, 'recherchieren', T1)
+    const planned = closePhase(openPhase(emptyRunLedger('run-1', T0), 'planning', T0), 'planning', T1)
+    const searching = openPhase(planned, 'researching', T1)
     const failed = failRun(searching, 'Der Anbieter hat abgebrochen.', T2)
-    expect(failed.status).toBe('fehlgeschlagen')
+    expect(failed.status).toBe('failed')
     expect(failed.error).toEqual({
       reason: 'Der Anbieter hat abgebrochen.',
-      completedBefore: ['planen'],
+      completedBefore: ['planning'],
     })
     expect(failed.phases[1].endedAt).toBeUndefined()
   })
@@ -344,32 +346,69 @@ describe('the moves', () => {
       emptyRunLedger('run-1', T0),
       {
         phases: [
-          { phase: 'planen', startedAt: T0.toISOString(), endedAt: T1.toISOString() },
-          { phase: 'recherchieren', startedAt: T1.toISOString() },
+          { phase: 'planning', startedAt: T0.toISOString(), endedAt: T1.toISOString() },
+          { phase: 'researching', startedAt: T1.toISOString() },
         ],
         steps: [step()],
-        status: 'wartet',
+        status: 'waiting',
       },
       T2,
     )
     expect(applied.phases).toEqual([
-      { phase: 'planen', startedAt: T0.toISOString(), endedAt: T1.toISOString() },
-      { phase: 'recherchieren', startedAt: T1.toISOString() },
+      { phase: 'planning', startedAt: T0.toISOString(), endedAt: T1.toISOString() },
+      { phase: 'researching', startedAt: T1.toISOString() },
     ])
     expect(applied.steps).toEqual([step()])
     // The stated status wins over the „läuft" a step implies: a run that has
     // asked the person a question is waiting, whatever it did just before.
-    expect(applied.status).toBe('wartet')
+    expect(applied.status).toBe('waiting')
   })
 
   it('applies a finish op either way', () => {
     const ledger = emptyRunLedger('run-1', T0)
     expect(
       applyRunLedgerFinish(ledger, { result: { filedAt: T2.toISOString() } }, T2).status,
-    ).toBe('fertig')
+    ).toBe('done')
     expect(applyRunLedgerFinish(ledger, { error: { reason: 'Zeitüberschreitung' } }, T2).status).toBe(
-      'fehlgeschlagen',
+      'failed',
     )
+  })
+})
+
+describe('a ledger stored before the English names', () => {
+  it('reads its statuses, phases and basis key in English', () => {
+    const ledger = sanitizeRunLedger(
+      wire({
+        status: 'fehlgeschlagen',
+        phases: [
+          { phase: 'planen', startedAt: '2026-09-16T08:00:00.000Z', endedAt: '2026-09-16T08:00:12.000Z' },
+          { phase: 'recherchieren', startedAt: '2026-09-16T08:00:12.000Z' },
+        ],
+        steps: [
+          {
+            id: 'runde-1',
+            phase: 'recherchieren',
+            intent: 'Brandschutz lesen',
+            startedAt: '2026-09-16T08:00:12.000Z',
+            docs: [],
+          },
+        ],
+        error: { reason: 'Zeitüberschreitung', completedBefore: ['planen'] },
+        grundlage: [{ name: 'a.pdf', loci: [] }],
+      })
+    )
+    expect(ledger?.status).toBe('failed')
+    expect(ledger?.phases.map((entry) => entry.phase)).toEqual(['planning', 'researching'])
+    expect(ledger?.steps[0]?.phase).toBe('researching')
+    expect(ledger?.error?.completedBefore).toEqual(['planning'])
+    expect(ledger?.basis?.map((doc) => doc.name)).toEqual(['a.pdf'])
+    expect(ledger).not.toHaveProperty('grundlage')
+  })
+
+  it('reads an append request from a worker that has not rolled yet', () => {
+    const request = modernizeRunLedger({ op: 'append', status: 'laeuft', phases: [{ phase: 'pruefen' }], grundlage: [] })
+    expect(request).toEqual({ op: 'append', status: 'running', phases: [{ phase: 'checking' }], basis: [] })
+    expect(runLedgerRequestSchema.safeParse(modernizeRunLedger({ op: 'append', status: 'wartet' })).success).toBe(true)
   })
 })
 
@@ -377,27 +416,27 @@ describe('the Grundlage on the ledger', () => {
   it('is sanitised, deduplicated by name and carried without loci', () => {
     const ledger = sanitizeRunLedger(
       wire({
-        grundlage: [
+        basis: [
           { name: 'Einreichplan.pdf', title: 'Einreichplan EG', shelf: 'project', loci: ['S. 1'] },
           { name: 'einreichplan.PDF' },
           { title: 'no name' },
         ],
       })
     )
-    expect(ledger?.grundlage).toEqual([
+    expect(ledger?.basis).toEqual([
       { name: 'Einreichplan.pdf', loci: [], title: 'Einreichplan EG', shelf: 'project' },
     ])
-    expect(sanitizeRunLedger(wire({}))?.grundlage).toBeUndefined()
+    expect(sanitizeRunLedger(wire({}))?.basis).toBeUndefined()
   })
 
   it('an append re-sends the whole list, and the same list changes nothing', () => {
     const base = emptyRunLedger('run-1', T0)
-    const named = applyRunLedgerAppend(base, { grundlage: [{ name: 'a.pdf', loci: [] }] }, T1)
-    expect(named.grundlage).toEqual([{ name: 'a.pdf', loci: [] }])
+    const named = applyRunLedgerAppend(base, { basis: [{ name: 'a.pdf', loci: [] }] }, T1)
+    expect(named.basis).toEqual([{ name: 'a.pdf', loci: [] }])
     expect(named.updatedAt).toBe(T1.toISOString())
-    expect(setGrundlage(named, [{ name: 'a.pdf', loci: [] }], T2)).toBe(named)
-    const grown = setGrundlage(named, [{ name: 'a.pdf', loci: [] }, { name: 'b.pdf', loci: [] }], T2)
-    expect(grown.grundlage?.map((doc) => doc.name)).toEqual(['a.pdf', 'b.pdf'])
-    expect(setGrundlage(grown, [], T2).grundlage).toBeUndefined()
+    expect(setBasis(named, [{ name: 'a.pdf', loci: [] }], T2)).toBe(named)
+    const grown = setBasis(named, [{ name: 'a.pdf', loci: [] }, { name: 'b.pdf', loci: [] }], T2)
+    expect(grown.basis?.map((doc) => doc.name)).toEqual(['a.pdf', 'b.pdf'])
+    expect(setBasis(grown, [], T2).basis).toBeUndefined()
   })
 })

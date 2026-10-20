@@ -459,7 +459,7 @@ def bounds(model: SpatialModel, space_global_id: str) -> Answer[list[ElementRef]
     credited the north wall 4.3802 m² of aperture „aus 2 Öffnung(en)" for a
     single window — enough to outrank a genuinely larger facade and measure the
     depth in the wrong direction; `fire.separating_elements` listed one wall
-    twice under `trennend` and `ohneFeuerwiderstand` and answered „6 Bauteile"
+    twice under `separating` and `ohneFeuerwiderstand` and answered „6 Bauteile"
     one way round and „4 Bauteile" the other. The duplicate is an artefact of
     how the export writes geometry, never a second element, so it is removed
     here rather than in each of the six call sites — the next consumer would
@@ -839,7 +839,7 @@ def adjacent_spaces(model: SpatialModel, space_global_id: str) -> Answer[list[El
             continue
         # A shared FLOOR is not adjacency. Two rooms stacked on either side of
         # the same slab share a bounding element and are not neighbours in any
-        # sense a person means — `geschossdecke-und-fenster.ifc` exists to pin
+        # sense a person means — `floor-slab-and-window.ifc` exists to pin
         # exactly this, and its header records a real export where one slab
         # produced 4 278 false pairs. Being above or below something is a
         # different question, and `above`/`below` answer it.
@@ -2500,7 +2500,7 @@ def light_entry_area(model: SpatialModel, space_global_id: str) -> Answer[dict[s
     if internal:
         caveat += (
             f" {len(internal)} innenliegende Öffnung(en) sind NICHT eingerechnet (eine Innentür belichtet "
-            "nicht von außen); sie stehen unter „innenliegend“ mit Begründung."
+            "nicht von außen); sie stehen unter „interior“ mit Begründung."
         )
     if unknown:
         caveat += (
@@ -2533,8 +2533,8 @@ def light_entry_area(model: SpatialModel, space_global_id: str) -> Answer[dict[s
             "ratio": round(ratio, 5),
             "percent": round(ratio * 100.0, 2),
             "openings": external,
-            "innenliegend": internal,
-            "unbestimmt": unknown,
+            "interior": internal,
+            "undetermined": unknown,
         },
         unit="m²",
         tolerance=abs(total) * AREA_RELATIVE_TOLERANCE,

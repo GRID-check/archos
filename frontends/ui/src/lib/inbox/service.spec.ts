@@ -136,7 +136,7 @@ const ALL_TYPES = [
   'mail_import.failed',
   // A newer Fassung of a document you follow (ADR-0054): documents are not a
   // chat feature, and an office without collaboration still has uploaders.
-  'document.new_fassung',
+  'document.new_revision',
   // Piloti's work on marks and proposals (ADR-0105, ADR-0106): Anmerkungen are
   // not a chat feature either.
   'piloti.work_done',
@@ -175,7 +175,7 @@ const OPERATIONAL_TYPES = [
   'mail_import.failed',
   // A newer Fassung of a document you follow (ADR-0054): documents are not a
   // chat feature, and an office without collaboration still has uploaders.
-  'document.new_fassung',
+  'document.new_revision',
   // Piloti's work on marks and proposals (ADR-0105, ADR-0106): Anmerkungen are
   // not a chat feature either.
   'piloti.work_done',
@@ -419,10 +419,10 @@ describe('listInbox — projection', () => {
 
   it('carries the second name of a row (a new Fassung\'s newer document) and withholds it with the rest of the payload', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([
-      row({ id: 'ok', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: '  Grundriss B  ' } }),
-      row({ id: 'junk', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: 42 } }),
-      row({ id: 'inert', type: 'document.new_fassung', inertAt: at, payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
-      row({ id: 'gone', type: 'document.new_fassung', resourceId: 'conv_gone', payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+      row({ id: 'ok', type: 'document.new_revision', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: '  Grundriss B  ' } }),
+      row({ id: 'junk', type: 'document.new_revision', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: 42 } }),
+      row({ id: 'inert', type: 'document.new_revision', inertAt: at, payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+      row({ id: 'gone', type: 'document.new_revision', resourceId: 'conv_gone', payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
     ])
     vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
       if (resourceId === 'conv_gone') throw new NotFoundError()
@@ -466,9 +466,9 @@ describe('listInbox — projection', () => {
 
   it('carries a mark’s date and a new Fassung’s open marks only in their shape, and withholds them when redacted', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([
-      row({ id: 'ok', resourceId: 'conv_ok', payload: { dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 } }),
-      row({ id: 'junk', resourceId: 'conv_ok', payload: { dueOn: '24.10.2026', openMarks: '4', marksFassung: 2.5 } }),
-      row({ id: 'gone', resourceId: 'conv_gone', payload: { dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 } }),
+      row({ id: 'ok', resourceId: 'conv_ok', payload: { dueOn: '2026-10-24', openMarks: 4, marksRevision: 2 } }),
+      row({ id: 'junk', resourceId: 'conv_ok', payload: { dueOn: '24.10.2026', openMarks: '4', marksRevision: 2.5 } }),
+      row({ id: 'gone', resourceId: 'conv_gone', payload: { dueOn: '2026-10-24', openMarks: 4, marksRevision: 2 } }),
     ])
     vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
       if (resourceId === 'conv_gone') throw new NotFoundError()
@@ -478,9 +478,9 @@ describe('listInbox — projection', () => {
     const { items } = await listInbox(session)
     const byId = new Map(items.map((item) => [item.id, item]))
 
-    expect(byId.get('ok')).toMatchObject({ dueOn: '2026-10-24', openMarks: 4, marksFassung: 2 })
-    expect(byId.get('junk')).toMatchObject({ dueOn: null, openMarks: null, marksFassung: null })
-    expect(byId.get('gone')).toMatchObject({ dueOn: null, openMarks: null, marksFassung: null })
+    expect(byId.get('ok')).toMatchObject({ dueOn: '2026-10-24', openMarks: 4, marksRevision: 2 })
+    expect(byId.get('junk')).toMatchObject({ dueOn: null, openMarks: null, marksRevision: null })
+    expect(byId.get('gone')).toMatchObject({ dueOn: null, openMarks: null, marksRevision: null })
   })
 
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {

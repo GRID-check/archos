@@ -79,7 +79,7 @@ carries them.
   the `kind`, the cited Richtlinie family, and a few `mentions` and `shape`
   expectations (3 of 29 questions have `mentions`).
 - The question file says so: "It is NOT a correctness benchmark"
-  (`tests/fixtures/herleitung/loop_eval_questions.yaml`).
+  (`tests/fixtures/derivation/loop_eval_questions.yaml`).
 - Nothing checks that the first line answers, that a value is right, that a
   citation resolves, calibration, length or duplication. Those are what most
   of the prompt's rules are about. "76/80 checks held" means well-shaped, not

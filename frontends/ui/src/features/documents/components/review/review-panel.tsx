@@ -10,10 +10,10 @@ import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange } from '@/lib/format'
 import { isForReader, isLive, type AnnotationView, type CarryTargetView } from '@/lib/annotations/types'
-import type { FassungRef } from '@/lib/documents/fassung'
+import type { RevisionRef } from '@/lib/documents/revision-links'
 import { cn } from '@/lib/utils'
 import type { CarriedGroup, DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
-import { compareFromReviewHref } from '../../lib/fassung-links'
+import { compareFromReviewHref } from '../../lib/revision-links'
 import { MarkBody } from './mark-body'
 import { MarkRowContent, markRowClassName } from './mark-row'
 import { markInk } from './review-page-layer'
@@ -25,7 +25,7 @@ export type OpenMark = (annotation: AnnotationView, byKeyboard?: boolean) => voi
  * Have Piloti check which of these open marks of an earlier Fassung look fixed
  * now: of this document (`from` null), or of the document `from` it replaces.
  */
-export type CheckFixed = (marks: readonly AnnotationView[], from: FassungRef | null) => void
+export type CheckFixed = (marks: readonly AnnotationView[], from: RevisionRef | null) => void
 
 /**
  * „Piloti prüfen lassen, was behoben ist" under a group of marks set on an
@@ -41,7 +41,7 @@ function CheckFixedButton({
 }: {
   review: DocumentReview
   marks: readonly AnnotationView[]
-  from: FassungRef | null
+  from: RevisionRef | null
   onCheckFixed: CheckFixed
 }): JSX.Element {
   const t = useTranslations('files')
@@ -171,7 +171,7 @@ function useCarrying(review: DocumentReview) {
 function EarlierBar({ review, onCheckFixed }: { review: DocumentReview; onCheckFixed?: CheckFixed }): JSX.Element | null {
   const t = useTranslations('files')
   const { busy, failed, carry } = useCarrying(review)
-  const marks = review.annotations.filter((annotation) => !annotation.onCurrentFassung && annotation.carryTarget)
+  const marks = review.annotations.filter((annotation) => !annotation.onCurrentRevision && annotation.carryTarget)
   if (marks.length === 0) return null
   return (
     <div className="bg-muted/40 mx-0.5 mb-2 space-y-1 rounded-xl px-2.5 py-2" data-testid="review-earlier-bar">
@@ -266,10 +266,10 @@ function CarriedFrom({
           <NextLink
             href={compare}
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] underline underline-offset-2"
-            data-testid="review-compare-fassungen"
+            data-testid="review-compare-revisions"
           >
             <GitCompare className="size-3" aria-hidden />
-            {t('review.compareFassungen')}
+            {t('review.compareRevisions')}
           </NextLink>
         )}
       </div>

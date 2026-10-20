@@ -29,7 +29,7 @@ async def test_nothing_matched_anywhere_still_says_what_was_searched(lookup, mon
     assert "Retry once" in output
 
 
-async def test_an_unresolved_bundesland_is_the_first_thing_the_retry_asks_for(lookup):
+async def test_an_unresolved_federal_state_is_the_first_thing_the_retry_asks_for(lookup):
     output = await lookup.run(question="Was verlangt die Bauordnung?")
 
     assert "No Bundesland was resolved" in output
@@ -49,7 +49,7 @@ async def test_a_catalog_entry_with_no_full_text_is_named_and_not_invented(looku
             document_number="",
             citation_url="",
             full_law_url="",
-            bundesland="",
+            federal_state="",
             topics=["bauordnung", "objektsicherheit"],
         )
     )
@@ -74,7 +74,7 @@ async def test_a_web_only_catalog_entry_hands_the_web_tool_its_next_move(lookup,
             citation_url="",
             full_law_url="",
             source_url="https://www.wien.gv.at/merkblatt",
-            bundesland="Wien",
+            federal_state="Wien",
             topics=["bauordnung", "einreichung"],
         )
     )

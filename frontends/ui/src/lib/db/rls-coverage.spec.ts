@@ -173,9 +173,12 @@ const BOUNDARY_MIGRATIONS = [
   // office's sensitive-data name terms (ADR-0086, 2026-10-20). Keyed by its
   // organization; the composite foreign key ties it to the project's.
   '0158_project_upload_screening.sql',
+  // Renames document_fassung_announcements to document_revision_announcements and
+  // secures it under the new name, as 0043 did for jobs.
+  '0165_revision_names.sql',
   // Adds org_openrouter_keys — the OpenRouter key the platform provisions for
   // each organization (ADR-0121). Keyed directly by its organization.
-  '0159_org_openrouter_keys.sql',
+  '0173_org_openrouter_keys.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

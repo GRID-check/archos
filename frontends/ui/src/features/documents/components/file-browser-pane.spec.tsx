@@ -662,7 +662,7 @@ describe('FileBrowserPane — folder aggregates', () => {
       id: 'older',
       folderId: 'root-a',
       status: 'failed',
-      fassung: { supersededBy: { id: 'in-root', filename: 'x.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+      revision: { supersededBy: { id: 'in-root', filename: 'x.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
     }
     const nav = {
       folders: tree,
@@ -685,7 +685,7 @@ describe('FileBrowserPane — folder aggregates', () => {
     )
     list.unmount()
 
-    renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav, showOlderFassungen: true })
+    renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav, showOlderRevisions: true })
     expect(within(screen.getByTestId('folder-card-root-a')).getByText('3 items')).toBeInTheDocument()
   })
 
@@ -779,13 +779,13 @@ describe('FileBrowserPane — older Fassungen in search', () => {
     ...files[0],
     id: 'old',
     filename: 'plan_v1.pdf',
-    fassung: { supersededBy: { id: 'current', filename: 'current.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+    revision: { supersededBy: { id: 'current', filename: 'current.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
   }
   const current: FileItem = {
     ...files[1],
     id: 'current',
     filename: 'current.pdf',
-    fassung: {
+    revision: {
       supersededBy: null,
       supersedes: [{ id: 'old', filename: 'plan_v1.pdf' }],
       suggestion: null,
@@ -805,7 +805,7 @@ describe('FileBrowserPane — older Fassungen in search', () => {
 
   it('lists the older Fassung among the matches when older Fassungen are shown', async () => {
     const user = userEvent.setup()
-    renderPane({ files: [older, current], showOlderFassungen: true })
+    renderPane({ files: [older, current], showOlderRevisions: true })
 
     await user.type(screen.getByRole('textbox', { name: /search files/i }), 'plan_v1')
     expect(screen.getByText('current.pdf')).toBeInTheDocument()

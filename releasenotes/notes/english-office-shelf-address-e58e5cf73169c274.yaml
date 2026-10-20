@@ -1,0 +1,12 @@
+---
+upgrade:
+  - >
+    The Büroablage now opens at /app/office-shelf. Bookmarks, shared links and
+    Postfach entries that point to /app/archiv keep working and lead there.
+  - >
+    The BCF file of open BIM check items downloads as
+    compliance-checks-<model>-<revision>.bcfzip instead of pruefbuch-….
+  - >
+    Custom roles grant the Büroablage under a new permission name. Roles that
+    hold the old one keep their access; the role editor offers only the new
+    one.

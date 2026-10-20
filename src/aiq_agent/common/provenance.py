@@ -8,7 +8,7 @@ them:
 
 - ``doc_class`` cannot. It is a closed nine-value vocabulary describing a
   document's role in the NORM HIERARCHY (``document_classification.py``), it is
-  human-set, and its fail-open lane is ``baurecht_basis`` — "Basisdokument", in
+  human-set, and its fail-open lane is ``building_law_base`` — "Basisdokument", in
   law blue. Adding ``agent_authored`` to it would file authorship under the
   hierarchy of authority, where a missing value reads as a weak norm rather
   than as an unknown author.

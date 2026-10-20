@@ -28,6 +28,7 @@
     "prepare": "husky",
     "provision:authz": "bun scripts/provision-workos-authz.ts",
     "migrate:folder-grants": "bun scripts/migrate-folder-grants-to-workos.ts",
+    "regrant:office-shelf": "bun scripts/regrant-office-shelf-permission.ts",
     "provision:workos-env": "bun scripts/provision-workos-environment.ts"
   },
   "dependencies": {

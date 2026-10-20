@@ -44,7 +44,7 @@ Die Geschoßhöhe ist nicht die lichte Raumhöhe. Die Herkunft der Zahl gehört
 in den Satz.
 
 Bestand, Zubau und größere Renovierung holen oft andere Anforderungen als
-Neubau. `bestand_neubau` im Projektkontext lesen, bevor eine Neubau-Klausel
+Neubau. `existing_or_new` im Projektkontext lesen, bevor eine Neubau-Klausel
 zitiert wird.
 
 ## Done

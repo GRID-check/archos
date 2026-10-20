@@ -26,7 +26,7 @@ describe('ChatStore - Session Busy Selectors', () => {
     content: '',
     messageType: 'agent_response',
     timestamp: new Date(),
-    runLedger: setRunStatus(emptyRunLedger('run-1'), 'laeuft'),
+    runLedger: setRunStatus(emptyRunLedger('run-1'), 'running'),
   }
 
   beforeEach(() => {

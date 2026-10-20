@@ -35,7 +35,7 @@ describe('readsWholeShelf', () => {
       ...NO_FILE_FILTERS,
       agentAuthoredOnly: true,
       includeArchived: true,
-      showOlderFassungen: true,
+      showOlderRevisions: true,
       statuses: ['failed'],
     }
     expect(readsWholeShelf(serverAnswered, { key: 'name', direction: 'asc' }, true)).toBe(false)

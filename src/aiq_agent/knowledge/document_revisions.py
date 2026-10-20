@@ -8,7 +8,7 @@ is the model's half of reading that:
 * :func:`judge_revision` — is the new document a newer Fassung of ONE of a few
   candidates from the same collection? An answer is a SUGGESTION. Nothing here
   links, hides or re-files a document; a person confirms
-  (``PUT /v1/collections/{collection}/fassung``), and only that confirmation
+  (``PUT /v1/collections/{collection}/revision``), and only that confirmation
   writes ``superseded_by``.
 * :func:`summarize_change` — what changed between two Fassungen, in German,
   from what the two descriptions support and nothing else.

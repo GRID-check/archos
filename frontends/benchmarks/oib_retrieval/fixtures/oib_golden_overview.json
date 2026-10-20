@@ -131,7 +131,7 @@
       "expected_files": [
         "oib-rl_2_ausgabe_mai_2023.pdf"
       ],
-      "notes": "Punkt 5.1.1 verified in fixtures/punkt_index.json (RL 2). The OIB uses 'Punkt', not '§' — users write § anyway (item 11). The § half matches no chunk text; the OIB-RL half must carry the recall.",
+      "notes": "Punkt 5.1.1 verified in fixtures/clause_index.json (RL 2). The OIB uses 'Punkt', not '§' — users write § anyway (item 11). The § half matches no chunk text; the OIB-RL half must carry the recall.",
       "calibration_pending": true
     },
     {
@@ -141,7 +141,7 @@
       "expected_files": [
         "oib-rl_4_ausgabe_mai_2023.pdf"
       ],
-      "notes": "Punkt 2.4.1 verified in fixtures/punkt_index.json (RL 4). Same loose-§ shape as ex-paragraph-rl2.",
+      "notes": "Punkt 2.4.1 verified in fixtures/clause_index.json (RL 4). Same loose-§ shape as ex-paragraph-rl2.",
       "calibration_pending": true
     },
     {
@@ -151,7 +151,7 @@
       "expected_files": [
         "oib-rl_6_ausgabe_mai_2023.pdf"
       ],
-      "notes": "Punkt 3 verified in fixtures/punkt_index.json (RL 6). Bare §-ref with no content noun.",
+      "notes": "Punkt 3 verified in fixtures/clause_index.json (RL 6). Bare §-ref with no content noun.",
       "calibration_pending": true
     },
     {

@@ -3,7 +3,7 @@
   "model": "openai/gpt-6-luna",
   "records": {
     "doc-baden-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadtgemeinde Baden, Baubehörde erster Instanz",
       "municipality": "Baden",
       "bundesland": null,
@@ -11,21 +11,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Das Brandschutzgutachten vom 3. Juli 2020 ist Bestandteil dieser Bewilligung und bei der Ausführung einzuhalten.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Mit der Fertigstellungsanzeige ist eine Bestätigung des Brandschutzplaners über die plan- und gutachtensgemäße Ausführung der Kapselung vorzulegen.",
           "evidence": "Bestätigung des Brandschutzplaners",
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Brandsperren der Fassade sind vor dem Schließen der Fassade fotografisch zu dokumentieren.",
           "evidence": "Fotografische Dokumentation der Brandsperren der Fassade",
           "legalBasis": null,
@@ -34,7 +34,7 @@
       ]
     },
     "doc-moedling-nachforderung": {
-      "kind": "nachforderung",
+      "kind": "information_request",
       "authority": "Stadtgemeinde Mödling, Baubehörde erster Instanz",
       "municipality": "Mödling",
       "bundesland": "niederoesterreich",
@@ -42,21 +42,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Die Einreichunterlagen sind um den Nachweis der lichten Breite der Fluchtwege im Stiegenhaus von mindestens 1,20 m, bemaßt in den Grundrissen aller Geschoße, zu ergänzen.",
           "evidence": "Nachweis der lichten Breite der Fluchtwege im Stiegenhaus",
           "legalBasis": "§ 13 Abs. 3 AVG",
           "page": 1
         },
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Die Einreichunterlagen sind um die Darstellung der Rauchabzugsöffnung an der obersten Stelle des Stiegenhauses mit mindestens 1 m² geometrisch freier Fläche zu ergänzen.",
           "evidence": "Darstellung der Rauchabzugsöffnung",
           "legalBasis": "§ 13 Abs. 3 AVG",
           "page": 1
         },
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Die Einreichunterlagen sind um eine Bestätigung über die Erreichbarkeit der außenliegenden Fluchttreppe von jeder Wohnung zu ergänzen.",
           "evidence": "Bestätigung über die Erreichbarkeit der außenliegenden Fluchttreppe von jeder Wohnung",
           "legalBasis": "§ 13 Abs. 3 AVG",
@@ -65,7 +65,7 @@
       ]
     },
     "doc-moedling-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadtgemeinde Mödling, Baubehörde erster Instanz",
       "municipality": "Mödling",
       "bundesland": "niederoesterreich",
@@ -73,21 +73,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Vor Baubeginn ist ein Brandschutzkonzept eines befugten Fachplaners vorzulegen.",
           "evidence": "Brandschutzkonzept eines befugten Fachplaners",
           "legalBasis": null,
           "page": 2
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die außenliegende Fluchttreppe ist nichtbrennbar (A2) herzustellen.",
           "evidence": null,
           "legalBasis": null,
           "page": 2
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Stellplatzverpflichtung ist durch 18 Stellplätze am Bauplatz zu erfüllen.",
           "evidence": null,
           "legalBasis": null,
@@ -96,7 +96,7 @@
       ]
     },
     "doc-moedling-kanal": {
-      "kind": "sonstiges",
+      "kind": "other",
       "authority": "Stadtgemeinde Mödling, Baubehörde erster Instanz",
       "municipality": "Mödling",
       "bundesland": null,
@@ -104,14 +104,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Prüfbefunde der Aufzugsanlage und der Blitzschutzanlage sind innerhalb von vier Wochen nachzureichen.",
           "evidence": "Prüfbefunde der Aufzugsanlage und der Blitzschutzanlage",
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Regenwässer sind auf Eigengrund zu versickern, der Anschluss an den Mischwasserkanal ist aufzulassen.",
           "evidence": null,
           "legalBasis": null,
@@ -120,7 +120,7 @@
       ]
     },
     "doc-wien22-ma37": {
-      "kind": "nachforderung",
+      "kind": "information_request",
       "authority": "Magistrat der Stadt Wien, Magistratsabteilung 37 – Baupolizei",
       "municipality": "Wien",
       "bundesland": "wien",
@@ -128,7 +128,7 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Für das Sicherheitstreppenhaus ist vor Erteilung der Baubewilligung ein rechnerischer Nachweis der Druckbelüftung samt Prüfbericht einer akkreditierten Stelle sowie die Darstellung der Zuluft- und Abströmöffnungen vorzulegen.",
           "evidence": "Rechnerischer Nachweis der Druckbelüftung, Prüfbericht einer akkreditierten Stelle und Darstellung der Zuluft- und Abströmöffnungen",
           "legalBasis": null,
@@ -137,7 +137,7 @@
       ]
     },
     "doc-gaenserndorf-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadtgemeinde Gänserndorf, Baubehörde erster Instanz",
       "municipality": "Gänserndorf",
       "bundesland": null,
@@ -145,14 +145,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Einfriedung zur Straße darf eine Gesamthöhe von 1,5 m nicht überschreiten.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Zufahrt ist mit Rasengittersteinen zu befestigen.",
           "evidence": null,
           "legalBasis": null,
@@ -161,7 +161,7 @@
       ]
     },
     "doc-wien7-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Magistrat der Stadt Wien, Magistratsabteilung 37 – Baupolizei",
       "municipality": "Wien",
       "bundesland": "wien",
@@ -169,7 +169,7 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Zwischen dem Dachgeschoßausbau und dem Bestand ist eine brandabschnittsbildende Decke in REI 90 herzustellen; die bestehende Holzbalkendecke ist von unten mit einer Bekleidung K2 60 zu versehen.",
           "evidence": null,
           "legalBasis": null,
@@ -178,7 +178,7 @@
       ]
     },
     "doc-hinterbruehl-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Marktgemeinde Hinterbrühl, Baubehörde erster Instanz",
       "municipality": "Hinterbrühl",
       "bundesland": null,
@@ -186,7 +186,7 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Ausführung der Verglasung in Sicherheitsglas.",
           "evidence": null,
           "legalBasis": null,
@@ -195,7 +195,7 @@
       ]
     },
     "doc-wolfurt-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Marktgemeinde Wolfurt, Bürgermeister als Baubehörde",
       "municipality": "Wolfurt",
       "bundesland": null,
@@ -203,21 +203,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Dachwässer sind auf dem Grundstück zu versickern; der Nachweis der Sickerfähigkeit ist vor Baubeginn vorzulegen.",
           "evidence": "Nachweis der Sickerfähigkeit",
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Photovoltaikanlage ist mit einem Feuerwehrschalter auszuführen.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Vier standortgerechte Laubbäume sind nachweislich zu pflanzen.",
           "evidence": null,
           "legalBasis": null,
@@ -226,7 +226,7 @@
       ]
     },
     "doc-lehen-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Magistrat der Stadt Salzburg, Baubehörde",
       "municipality": "Stadt Salzburg",
       "bundesland": "salzburg",
@@ -234,21 +234,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Kinderspielfläche von mindestens 120 m² ist vor der Benützungsbewilligung herzustellen.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Für die 36 Stellplätze am Bauplatz ist die Entwässerung über einen Leichtflüssigkeitsabscheider nachzuweisen.",
           "evidence": "Nachweis der Entwässerung über einen Leichtflüssigkeitsabscheider",
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Fassadenbegrünung ist durch eine Pflegevereinbarung zu sichern.",
           "evidence": "Pflegevereinbarung",
           "legalBasis": null,
@@ -257,7 +257,7 @@
       ]
     },
     "doc-seefeld-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Gemeinde Seefeld in Tirol, Bürgermeister als Baubehörde",
       "municipality": "Seefeld in Tirol",
       "bundesland": "tirol",
@@ -265,21 +265,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Außenbeleuchtung ist nach unten abstrahlend mit höchstens 3.000 Kelvin auszuführen.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Das Oberflächenwasser der Zufahrt ist über einen Ölabscheider zu leiten.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Dachfarbe ist matt dunkelgrau auszuführen.",
           "evidence": null,
           "legalBasis": null,
@@ -288,7 +288,7 @@
       ]
     },
     "doc-wels-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Magistrat der Stadt Wels, Baubehörde",
       "municipality": "Wels",
       "bundesland": "oberoesterreich",
@@ -296,21 +296,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Lüftungsanlage auf dem Dach darf am nächstgelegenen Nachbarfenster 45 dB tags und 35 dB nachts nicht überschreiten.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Betriebsabwässer sind vor der Einleitung zu neutralisieren.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Einfahrt ist mit einer Schmutzschleuse auszustatten.",
           "evidence": null,
           "legalBasis": null,
@@ -319,7 +319,7 @@
       ]
     },
     "doc-leoben-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadtgemeinde Leoben, Baubehörde",
       "municipality": "Leoben",
       "bundesland": null,
@@ -327,21 +327,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Absturzsicherungen der Fensterbrüstungen müssen in Klassenräumen eine Höhe von mindestens 1,00 m aufweisen.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Bauarbeiten sind außerhalb der Unterrichtszeiten lärmintensiv nicht auszuführen.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Erdwärmesonden sind der Wasserrechtsbehörde anzuzeigen.",
           "evidence": null,
           "legalBasis": null,
@@ -350,7 +350,7 @@
       ]
     },
     "doc-villach-verbesserung": {
-      "kind": "nachforderung",
+      "kind": "information_request",
       "authority": "Magistrat der Stadt Villach, Baubehörde",
       "municipality": "Villach",
       "bundesland": "kaernten",
@@ -358,21 +358,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Der Antrag ist um den Nachweis über die Barrierefreiheit der Gemeinschaftsräume mit Bewegungsflächen zu ergänzen.",
           "evidence": "Nachweis über die Barrierefreiheit der Gemeinschaftsräume mit Bewegungsflächen",
           "legalBasis": "§ 13 Abs. 3 AVG",
           "page": 1
         },
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Der Antrag ist um den Energieausweis des Gebäudes zu ergänzen.",
           "evidence": "Energieausweis des Gebäudes",
           "legalBasis": "§ 13 Abs. 3 AVG",
           "page": 1
         },
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Der Antrag ist um den Lageplan mit Darstellung der Bepflanzung zu ergänzen.",
           "evidence": "Lageplan mit Darstellung der Bepflanzung",
           "legalBasis": "§ 13 Abs. 3 AVG",
@@ -381,7 +381,7 @@
       ]
     },
     "doc-villach-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Magistrat der Stadt Villach, Baubehörde",
       "municipality": "Villach",
       "bundesland": "kaernten",
@@ -389,14 +389,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Notstromanlage ist halbjährlich auf ihre Funktion zu prüfen und das Prüfbuch bereitzuhalten.",
           "evidence": "Prüfbuch",
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Bettenaufzüge sind vor der Benützung von einer akkreditierten Stelle abzunehmen.",
           "evidence": "Abnahme durch eine akkreditierte Stelle",
           "legalBasis": null,
@@ -405,7 +405,7 @@
       ]
     },
     "doc-oberwart-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadtgemeinde Oberwart, Baubehörde",
       "municipality": "Oberwart",
       "bundesland": "burgenland",
@@ -413,21 +413,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Gruppenräume sind mit je zwei Fluchtmöglichkeiten ins Freie auszuführen.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Steckdosen in den Gruppenräumen sind mit Kindersicherung auszustatten.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Der Nachweis der Wärmedämmung nach OIB-Richtlinie 6 ist beim Fertigstellungsakt vorzulegen.",
           "evidence": "Nachweis der Wärmedämmung nach OIB-Richtlinie 6",
           "legalBasis": null,
@@ -436,7 +436,7 @@
       ]
     },
     "doc-graz-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadt Graz, Baurechtsamt",
       "municipality": "Graz",
       "bundesland": "steiermark",
@@ -444,21 +444,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Straßenfassade ist nach den Vorgaben der Altstadtsachverständigenkommission in Putzgliederung und Fensterteilung zu erhalten.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Das Dachgeschoß darf nicht ausgebaut werden.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Asbesthaltige Bauteile sind vor dem Abbruch durch einen Fachbetrieb zu entfernen.",
           "evidence": null,
           "legalBasis": null,
@@ -467,7 +467,7 @@
       ]
     },
     "doc-wien14-ma37": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Magistrat der Stadt Wien, Magistratsabteilung 37 – Baupolizei",
       "municipality": "Wien",
       "bundesland": "wien",
@@ -475,14 +475,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Das Wärmedämmverbundsystem mit EPS ist mit umlaufenden Brandriegeln aus Mineralwolle in jedem zweiten Geschoß auszuführen.",
           "evidence": null,
           "legalBasis": null,
           "page": 2
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Gerüstaufstellung im Gehsteigbereich ist mit der MA 46 abzustimmen.",
           "evidence": null,
           "legalBasis": null,
@@ -491,7 +491,7 @@
       ]
     },
     "doc-pettenbach-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Gemeinde Pettenbach, Bürgermeister als Baubehörde",
       "municipality": "Pettenbach",
       "bundesland": null,
@@ -499,14 +499,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Lärmemissionen des Saales sind durch einen Schallpegelbegrenzer auf 85 dB(A) zu beschränken.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Zahl der Besucher ist mit 220 Personen zu begrenzen und im Saal anzuschlagen.",
           "evidence": null,
           "legalBasis": null,
@@ -515,7 +515,7 @@
       ]
     },
     "doc-lienz-verbesserung": {
-      "kind": "nachforderung",
+      "kind": "information_request",
       "authority": "Stadtgemeinde Lienz, Bürgermeister als Baubehörde",
       "municipality": "Lienz",
       "bundesland": "tirol",
@@ -523,21 +523,21 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Das Ansuchen ist um den Nachweis der Versickerungsfähigkeit des Untergrundes zu ergänzen.",
           "evidence": "Nachweis der Versickerungsfähigkeit des Untergrundes",
           "legalBasis": "§ 13 Abs. 3 AVG",
           "page": 1
         },
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Das Ansuchen ist um die Bemessung der Rückhaltung für ein zehnjährliches Regenereignis zu ergänzen.",
           "evidence": "Bemessung der Rückhaltung für ein zehnjährliches Regenereignis",
           "legalBasis": "§ 13 Abs. 3 AVG",
           "page": 1
         },
         {
-          "kind": "nachforderung",
+          "kind": "information_request",
           "content": "Das Ansuchen ist um die Pläne der Entwässerungsanlage zu ergänzen.",
           "evidence": "Pläne der Entwässerungsanlage",
           "legalBasis": "§ 13 Abs. 3 AVG",
@@ -546,7 +546,7 @@
       ]
     },
     "doc-lienz-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadtgemeinde Lienz, Bürgermeister als Baubehörde",
       "municipality": "Lienz",
       "bundesland": "tirol",
@@ -554,14 +554,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Anlieferung ist werktags auf 6 bis 20 Uhr zu beschränken.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Werbeanlagen sind in Größe und Leuchtdichte mit der Ortsbildschutzkommission abzustimmen.",
           "evidence": null,
           "legalBasis": null,
@@ -570,7 +570,7 @@
       ]
     },
     "doc-klagenfurt-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Magistrat der Landeshauptstadt Klagenfurt, Baubehörde",
       "municipality": "Klagenfurt",
       "bundesland": "kaernten",
@@ -578,14 +578,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Für die Dachbegrünung ist ein Pflegekonzept vorzulegen.",
           "evidence": "Pflegekonzept",
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die 22 Stellplätze sind mit Leerverrohrung für Ladestationen auszuführen.",
           "evidence": null,
           "legalBasis": null,
@@ -594,7 +594,7 @@
       ]
     },
     "doc-dornbirn-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadt Dornbirn, Bürgermeister als Baubehörde",
       "municipality": "Dornbirn",
       "bundesland": "vorarlberg",
@@ -602,14 +602,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Der Schulbetrieb ist während der Bauzeit durch eine Staubschutzwand und getrennte Zugänge aufrechtzuerhalten.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Absturzsicherung der Baustelle ist täglich zu kontrollieren.",
           "evidence": null,
           "legalBasis": null,
@@ -618,7 +618,7 @@
       ]
     },
     "doc-steyr-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Magistrat der Stadt Steyr, Baubehörde",
       "municipality": "Stadt Steyr",
       "bundesland": null,
@@ -626,14 +626,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Flutlichtanlage ist ab 22 Uhr abzuschalten.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Für Veranstaltungen über 200 Personen ist ein Sicherheitskonzept vorzulegen.",
           "evidence": "Sicherheitskonzept",
           "legalBasis": null,
@@ -642,7 +642,7 @@
       ]
     },
     "doc-eisenstadt-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Magistrat der Freistadt Eisenstadt, Baubehörde",
       "municipality": "Eisenstadt",
       "bundesland": "burgenland",
@@ -650,7 +650,7 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Entwässerung ist an den Regenwasserkanal anzuschließen, eine Versickerung am Grundstück ist nicht zulässig.",
           "evidence": null,
           "legalBasis": null,
@@ -659,7 +659,7 @@
       ]
     },
     "doc-hallein-bescheid": {
-      "kind": "bewilligung",
+      "kind": "approval",
       "authority": "Stadtgemeinde Hallein, Baubehörde",
       "municipality": "Hallein",
       "bundesland": "salzburg",
@@ -667,14 +667,14 @@
       "reference": null,
       "requirements": [
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Dacheindeckung ist in dunkler Farbe auszuführen.",
           "evidence": null,
           "legalBasis": null,
           "page": 1
         },
         {
-          "kind": "auflage",
+          "kind": "condition",
           "content": "Die Traufenhöhe von 3,0 m darf nicht überschritten werden.",
           "evidence": null,
           "legalBasis": null,

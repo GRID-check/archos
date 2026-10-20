@@ -33,7 +33,7 @@ def read_pages(collection: str, file_name: str) -> list[tuple[Any, str]] | None:
 def read_chunks(collection: str, file_name: str) -> list[tuple[str, dict[str, Any]]] | None:
     """``(chunk text, metadata)`` of one file in reading order; None when the collection or file has none.
 
-    The compare of two Fassungen (``fassung_diff``) needs what ``read_pages``
+    The compare of two Fassungen (``revision_diff``) needs what ``read_pages``
     drops: the ``content_type`` that tells printed text from a drawing reading,
     and the ``drawing_data`` that holds the reading's structure. The same
     structural fetch and order, with the chunk's own metadata

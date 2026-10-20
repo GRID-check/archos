@@ -617,7 +617,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   // by their target and `olderDocumentId`, so the event needs no `filedIn` and a
   // restricted folder's names never reach the trail (ADR-0087). Archiv documents
   // use it too; `collectionName` says which shelf.
-  'document.fassung_changed': {
+  'document.revision_changed': {
     targets: [{ type: 'document' }],
     metadata: { olderDocumentId: 'string', linked: 'boolean', collectionName: 'string' },
   },
@@ -630,7 +630,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     metadata: {
       format: 'string',
       scope: 'string',
-      fassung: 'string',
+      revision: 'string',
       includeProposals: 'boolean',
       markCount: 'number',
       proposalCount: 'number',
@@ -652,6 +652,18 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
       proposalCount: 'number',
     },
   },
+  'office_shelf.document.uploaded': {
+    targets: [{ type: 'document' }],
+    metadata: { filename: 'string', fileSize: 'number', collectionName: 'string' },
+  },
+  'office_shelf.document.deleted': {
+    targets: [{ type: 'document' }],
+    metadata: { filename: 'string', collectionName: 'string' },
+  },
+  // The three `archiv.document.*` actions below are what the office shelf's trail
+  // was called before it had an English name. Nothing writes them any more; the
+  // history keeps them, so they stay in the catalogue for every reader, filter
+  // and label. Never remove them while rows with the old name exist.
   'archiv.document.uploaded': {
     targets: [{ type: 'document' }],
     metadata: { filename: 'string', fileSize: 'number', collectionName: 'string' },
@@ -672,6 +684,16 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'document' }],
     metadata: { conversationId: 'string', filename: 'string', collectionName: 'string' },
   },
+  'office_shelf.document.renamed': {
+    targets: [{ type: 'document' }],
+    metadata: {
+      filename: 'string',
+      previousName: 'string',
+      displayName: 'string',
+      collectionName: 'string',
+    },
+  },
+  // Retired name of `office_shelf.document.renamed`; history only (see above).
   'archiv.document.renamed': {
     targets: [{ type: 'document' }],
     metadata: {
@@ -890,4 +912,16 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
  *
  * @type {readonly AuditAction[]}
  */
+/**
+ * Actions kept only so history reads: their schemas stay registered and their
+ * labels resolve, but nothing writes them. `schemas.spec.ts` holds both halves:
+ * no call site emits one, and none counts as an orphan. Remove an entry once no
+ * event under the old name is left in the retention window.
+ */
+export const RETIRED_AUDIT_ACTIONS = /** @type {const} */ ([
+  'archiv.document.uploaded',
+  'archiv.document.deleted',
+  'archiv.document.renamed',
+])
+
 export const AUDIT_ACTIONS = /** @type {AuditAction[]} */ (Object.keys(AUDIT_SCHEMAS))

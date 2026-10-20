@@ -26,6 +26,11 @@ describe('sanitizeAnswerMeta', () => {
     expect(sanitizeAnswerMeta(fixture)).toEqual(fixture)
   })
 
+  test('a callout stored with a German kind reads as the English kind', () => {
+    const meta = sanitizeAnswerMeta({ v: 1, callout: { kind: 'frist', text: 'Binnen sechs Wochen.' } })
+    expect(meta?.callout).toEqual({ kind: 'deadline', text: 'Binnen sechs Wochen.' })
+  })
+
   test('nothing usable yields null, never an empty object', () => {
     expect(sanitizeAnswerMeta(undefined)).toBeNull()
     expect(sanitizeAnswerMeta('answer')).toBeNull()

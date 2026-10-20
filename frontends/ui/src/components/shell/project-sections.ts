@@ -53,7 +53,7 @@ export type ProjectSectionKey =
   | 'automation'
   | 'files'
   | 'knowledge'
-  | 'archiv'
+  | 'officeShelf'
   | 'inbox'
   | 'intake'
   | 'settings'
@@ -74,7 +74,7 @@ export interface ProjectSectionFlags {
   /** Agent Skills page — feature-flagged, default off (ADR-0046). */
   showSkills?: boolean
   /** Org-wide Archiv (ADR-0024). */
-  canAccessArchiv?: boolean
+  canAccessOfficeShelf?: boolean
   /** Project knowledge page — feature-flagged, default off. */
   showKnowledge?: boolean
   /** Collaboration surfaces — `collaboration` flag / env opt-in (ADR-0032…0035). */
@@ -188,12 +188,12 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   {
     // The org-wide Archiv (ADR-0024) keeps its org-scoped route; the entry is a
     // cross-project doorway, not a project subpage.
-    key: 'archiv',
+    key: 'officeShelf',
     segment: null,
-    href: '/app/archiv',
+    href: '/app/office-shelf',
     icon: Archive,
-    i18nKey: 'archiv',
-    gate: 'canAccessArchiv',
+    i18nKey: 'officeShelf',
+    gate: 'canAccessOfficeShelf',
     inRail: true,
     inPalette: true,
     shortcutKey: 'a',

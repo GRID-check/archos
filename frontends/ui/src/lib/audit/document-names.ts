@@ -46,6 +46,10 @@ export const UNRESTRICTED_NAME_ACTIONS: Partial<Record<AuditAction, string>> = {
   'project.reopened': 'a project name; projects are not folder-restricted',
   'project.paused': 'a project name; projects are not folder-restricted',
   'project.resumed': 'a project name; projects are not folder-restricted',
+  'office_shelf.document.uploaded': 'the Büroablage has no per-role folder access',
+  'office_shelf.document.deleted': 'the Büroablage has no per-role folder access',
+  'office_shelf.document.renamed': 'the Büroablage has no per-role folder access',
+  // The retired names of the three above, still in the history.
   'archiv.document.uploaded': 'the Büroablage has no per-role folder access',
   'archiv.document.deleted': 'the Büroablage has no per-role folder access',
   'archiv.document.renamed': 'the Büroablage has no per-role folder access',

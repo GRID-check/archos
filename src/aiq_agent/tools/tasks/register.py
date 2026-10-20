@@ -77,7 +77,12 @@ MAX_CADENCE_CHARS = 120
 #: (`frontends/ui/src/lib/db/schema/tasks.ts`). Same parse-independently rule the
 #: request-context headers follow; `tests/aiq_agent/tools/tasks/` is what catches
 #: the drift.
-TASK_KINDS: tuple[str, ...] = ("compliance_check", "einreichcheck", "document", "revision")
+TASK_KINDS: tuple[str, ...] = ("compliance_check", "submission_check", "document", "revision")
+
+#: Kinds as they were stored before migration 0167. A conversation that already holds a
+#: ``create_task(kind="einreichcheck")`` call invites the model to repeat it, so the tool
+#: maps the old name; the request it sends carries the new one. Remove after one release.
+LEGACY_TASK_KINDS: dict[str, str] = {"einreichcheck": "submission_check"}
 
 #: What each kind is called when the refusal has to name the set.
 _KIND_LIST = ", ".join(f"`{kind}`" for kind in TASK_KINDS)
@@ -117,6 +122,7 @@ def _project_or_refuse() -> str:
 
 def _kind_or_refuse(kind: str) -> str:
     normalized = (kind or "").strip().lower()
+    normalized = LEGACY_TASK_KINDS.get(normalized, normalized)
     if normalized not in TASK_KINDS:
         raise _Refused(f"Fehler: `{kind}` ist keine Auftragsart. Möglich sind {_KIND_LIST}. Es wurde nichts angelegt.")
     return normalized
@@ -175,7 +181,7 @@ _CREATE_TASK_DESCRIPTION = (
     "Antwort („mach den Einreichcheck bis Freitag“, „@Piloti prüf das“, „schreib mir bis Montag den "
     "Aktenvermerk“) — nicht für eine Frage, die sich jetzt beantworten lässt. "
     "`kind` ist eine von " + _KIND_LIST + ": `compliance_check` ist die Normprüfung eines Dokuments "
-    "gegen die OIB-Richtlinien, `einreichcheck` prüft die Vollständigkeit der Einreichung, `document` "
+    "gegen die OIB-Richtlinien, `submission_check` prüft die Vollständigkeit der Einreichung, `document` "
     "schreibt ein Dokument und legt es als Entwurf ab, `revision` überarbeitet einen zurückgegebenen "
     "Entwurf. "
     "`goal` ist der Auftrag in den Worten der Nutzerin. `due` ist optional das gewünschte Datum als "

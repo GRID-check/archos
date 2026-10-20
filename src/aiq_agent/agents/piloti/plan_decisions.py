@@ -20,20 +20,20 @@ SLOT = "plan"
 THRESHOLD = 0.5
 
 GENRES: dict[str, str] = {
-    "pruefbericht": (
+    "inspection_report": (
         "A Prüfbericht: requirements read against this project, one finding per requirement with status and Fundstelle"
     ),
-    "aktenvermerk": "An Aktenvermerk: a short decision memo recording a question, the rule and the decision taken",
-    "vergleich": "A Vergleich: two or more variants, jurisdictions or options compared on the same criteria",
-    "checkliste": "A Checkliste: the documents, proofs or steps a submission or procedure needs, as a list",
-    "bericht": "A Bericht: an explanatory long-form report on a subject with sections and depth",
+    "file_note": "An Aktenvermerk: a short decision memo recording a question, the rule and the decision taken",
+    "comparison": "A Vergleich: two or more variants, jurisdictions or options compared on the same criteria",
+    "checklist": "A Checkliste: the documents, proofs or steps a submission or procedure needs, as a list",
+    "report": "A Bericht: an explanatory long-form report on a subject with sections and depth",
 }
 
 DEPTHS: dict[str, str] = {
-    "kurzpruefung": (
+    "quick_check": (
         "A Kurzprüfung: the smallest complete answer, the governing rule and the finding per point, no narrative"
     ),
-    "gutachten": "A Gutachten: full depth, the derivation and the caveats written out per point",
+    "expert_report": "A Gutachten: full depth, the derivation and the caveats written out per point",
 }
 
 QUESTIONS: dict[str, dict[str, Any]] = {

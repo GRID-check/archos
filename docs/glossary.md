@@ -8,6 +8,55 @@ Befund, Laufblock and the rest of what users and the product say) lives in
 When a term here and its defining file disagree, the file wins: fix this page in
 the same change.
 
+## German domain term, English code name
+
+Product copy is German and the code is English. Each term here is defined in
+[`CONTEXT.md`](../CONTEXT.md); this table only says what to call it in an
+identifier, a file name or a module. Say the German term to users and the code
+name to the compiler. The stored values, URLs and permission slugs that still
+read German are listed after the table.
+
+| Domain term | Code name | Not |
+|---|---|---|
+| Fassung | `revision` (`lib/documents/revision-*`, `DocumentRevisions`, `revision_diff.py`) | `version`, which is the approval states |
+| the links between Fassungen | `RevisionLinks` (`revision-links.ts`) | `RevisionFacts`, the Index and Rev printed in a title block |
+| Büroablage, Archiv | `officeShelf` (`OFFICE_SHELF`, `lib/office-shelf`, `canManageOfficeShelf`) | `archive`, which already means soft-archived |
+| Steckbrief | `projectRecord` (`ProjectRecordView`, `project-record-types.ts`, `/api/projects/{id}/project-record`) | |
+| Grundstück, Bauwerk, Projekt (the scope of an intake question) | `plot`, `building`, `project` (`ProjectIntakeScope`); a building's id on the wire is `buildingId` | |
+| ja, nein, offen (an intake answer) | `yes`, `no`, `open` (`YesNoOpen`); the answer mode is `value`, `estimated`, `open` (`IntakeAnswerMode`) | |
+| Bundesland, Gemeinde | `federalState`, `municipality` | |
+| Gebäudeklasse, Bauwerk | `buildingClass`, `building` | |
+| Herleitung | `derivation` (`/dev/derivation`) | |
+| Papierkorb | `bin` (`/dev/bin`) | |
+| Punkt, Absatz (of a norm) | `clause`, `subsection` (`clause_chunking.py`, `build_clause_index.py`; the Qdrant keys `clause_id`, `clause_path`, `chunking: "clause"`; the `read_passage` argument `clause`) | |
+| Richtlinie (OIB) | `guideline` (the Qdrant key `guideline`; `norm_registry.oib_doc_class` returns `guideline`, `guide`, `explanatory_note`, `definitions`, `referenced_standards`, `amendment`) | |
+| Nutzung, Bauweise, Vorhabensart | `use` / `uses`, `construction_method`, `work_type` (the boost weights `use`, `use_max`; the `project_facts` payload keys) | |
+| Hauptnutzung | `mainUse` / `main_use` (the `ifc_query` compliance argument, the BCF export query) | |
+| Aufenthaltsraum, Nebenraum, Erschließung (a room's suspected use) | `habitable_room`, `ancillary_room`, `circulation`; unmatched `unclassified` (`room_inventory`, `RoomUseKind`). The lexicon terms (`buero`, `flur`) stay German: they are the room names to match | |
+| Fluchtniveau (the `fire` aspect) | `escape_level` | |
+| Gesetzesnummer (RIS law number in a norm's verify seed) | `statute_number` | the RIS URL parameter `Gesetzesnummer`, which is the external API's |
+| Spatial result keys (`warum`, `abhilfe`, `lage`, `trennend`, `gemeinsam`, `oeffnungen` …) | `why`, `remedy`, `position`, `separating`, `shared`, `openings` … (`ifc-spatial`, `ifc-spatial-py`) | |
+| Befund, Befundmatrix | `finding`, `findingsMatrix` | |
+| erfüllt, nicht erfüllt, offen, nicht anwendbar | `met`, `notMet`, `open`, `notApplicable` | |
+| Laufblock | `RunBlock`; states `running`, `waiting`, `done`, `cancelled`, `interrupted` | |
+| Aktenvermerk | `fileNote` | |
+| Unterlagen | `documents` (`DocumentsDialog`) | |
+
+Office shelf (Büroablage): `office_shelf` / `officeShelf` everywhere, including
+the scope value, `/app/office-shelf`, `/api/office-shelf`, `org:office_shelf:manage`
+and `office_shelf.document.*` audit actions. Never `archive`, which means
+soft-deleted. The one name still `archiv` is the collection prefix `archiv_<org>`
+and the old audit and permission names, which are read beside the new ones until
+the [operator runbook](deployment/office-shelf-rename-runbook.md) has run.
+
+Qdrant points written before the payload rename still hold the German keys
+(`punkt_id`, `project_facts.bundesland`, ...); every read accepts both until the
+rewrite in [`qdrant-payload-rename-runbook.md`](deployment/qdrant-payload-rename-runbook.md).
+
+The `grid-fassung-link:` advisory-lock salt in `document_metadata_store.py` stays
+German for good: every running pod derives the same lock from it, so a rename
+would let two pods take different locks.
+
 ## Architecture and runtime
 
 | Term | Meaning | Defined in |
@@ -17,8 +66,8 @@ the same change.
 | Signed request context | The `X-Grid-Request-Context` envelope the BFF mints for every agent request, HMAC-signed, carrying the scope, project context and memory the agent may use | [`frontends/ui/src/lib/request-context.ts`](../frontends/ui/src/lib/request-context.ts) |
 | Workspace primitive, typed client | A workspace capability exposed as one HTTP API with a typed client, which the UI, the agent's tools and tasks all call as equal clients (ADR-0055) | [`docs/adr/0055-api-first-workspace-primitives.md`](adr/0055-api-first-workspace-primitives.md) |
 | Route factories | `apiRoute`, `internalApiRoute`, `publicApiRoute`, `platformApiRoute`: the only sanctioned wrappers for a BFF route handler, each declaring its authorization | [`frontends/ui/src/lib/api/handler.ts`](../frontends/ui/src/lib/api/handler.ts) |
-| `SourceKind` | The code form of a source kind (`baurecht`, `buero`, `projekt`, `web`, plus `messung` for model measurements). Defined in Python and mirrored by hand in `source-kinds.ts`; changing one and not the other renders the chip as unknown | [`src/aiq_agent/common/source_kinds.py`](../src/aiq_agent/common/source_kinds.py) |
-| `doc_class`, norm lanes | The stored Dokumentart (human-set, beats any filename guess), and the finer `norm_registry` lanes (`baurecht_oib`, `baurecht_land`, …) that sub-label a source kind | [`src/aiq_agent/knowledge/document_classification.py`](../src/aiq_agent/knowledge/document_classification.py) |
+| `SourceKind` | The code form of a source kind (`building_law`, `office`, `project`, `web`, plus `measurement` for model measurements). Defined in Python and mirrored by hand in `source-kinds.ts`; changing one and not the other renders the chip as unknown | [`src/aiq_agent/common/source_kinds.py`](../src/aiq_agent/common/source_kinds.py) |
+| `doc_class`, norm lanes | The stored Dokumentart (human-set, beats any filename guess), and the finer `norm_registry` lanes (`building_law_oib`, `building_law_state`, …) that sub-label a source kind | [`src/aiq_agent/knowledge/document_classification.py`](../src/aiq_agent/knowledge/document_classification.py) |
 | Answer envelope | The one JSON object a research answer is generated as: the `answer` prose plus optional anatomy (kind, verdict, takeaways, callout, cards) | [`src/aiq_agent/common/answer_envelope.py`](../src/aiq_agent/common/answer_envelope.py) |
 | Grounding block | The single renderer for what an evidence tool returns: each hit becomes a `--- Result N ---` block with source, citation and score, and a `## Trace-Lanes` line names the collections searched | [`src/aiq_agent/common/grounding_block.py`](../src/aiq_agent/common/grounding_block.py) |
 | Knowledge layer | The `sources/knowledge_layer` package (LlamaIndex ingestion, Qdrant storage) behind `knowledge_search` | [`sources/AGENTS.md`](../sources/AGENTS.md) |

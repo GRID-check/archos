@@ -43,7 +43,7 @@ vi.mock('@/lib/model-config/service', () => ({
 
 vi.mock('@/lib/project-profile/prompt-view', () => ({
   loadProjectPromptView: vi.fn(),
-  loadProjectBundesland: vi.fn(),
+  loadProjectFederalState: vi.fn(),
 }))
 
 vi.mock('@/lib/collection-scope', () => ({
@@ -104,7 +104,7 @@ import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { computeCollectionScope } from '@/lib/collection-scope'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
-import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
+import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { resolveSelectableSkills, resolveSkillSnapshot } from '@/lib/skills/service'
 import { insertConversation } from '@/lib/conversations/repository'
 import { createRunMessage } from '@/lib/runs/service'
@@ -134,7 +134,7 @@ import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
 
 const emptySkill = {} as SkillSnapshot
 const skillSnapshot: SkillSnapshot = {
-  name: 'einreichcheck',
+  name: 'submission-check',
   description: 'Was fehlt',
   body: '# Einreichcheck',
   metadata: {},
@@ -222,7 +222,7 @@ beforeEach(() => {
   vi.mocked(computeCollectionScope).mockReturnValue(['proj_x'])
   vi.mocked(getEffectiveModelOverrides).mockResolvedValue(null)
   vi.mocked(loadProjectPromptView).mockResolvedValue(null)
-  vi.mocked(loadProjectBundesland).mockResolvedValue(null)
+  vi.mocked(loadProjectFederalState).mockResolvedValue(null)
   vi.mocked(insertConversation).mockResolvedValue({ id: 's_conv_1' } as never)
   vi.mocked(repository.insertDefinition).mockImplementation(async (values) => ({ ...definitionRow(), ...values }) as TaskDefinition)
   vi.mocked(repository.updateDefinition).mockImplementation(async (_id, _org, patch) => ({ ...definitionRow(), ...patch }) as TaskDefinition)
@@ -323,12 +323,12 @@ describe('createJob', () => {
     await createJob(session, PROJECT, {
       name: 'Wochencheck',
       prompt: 'Prüf das',
-      skillName: 'einreichcheck',
+      skillName: 'submission-check',
       dataSources: ['web'],
     })
 
     const insert = vi.mocked(repository.insertDefinition).mock.calls[0][0]
-    expect(resolveSkillSnapshot).toHaveBeenCalledWith('einreichcheck', 'org_1')
+    expect(resolveSkillSnapshot).toHaveBeenCalledWith('submission-check', 'org_1')
     expect(insert.plan.skill).toEqual(skillSnapshot)
     // The always-on sources are always included; the stored list is
     // "additional". RIS joined the knowledge layer there: the law a project's
@@ -478,7 +478,7 @@ describe('getJob', () => {
     expect(job).toMatchObject({
       name: 'Wochencheck',
       prompt: 'Prüf das',
-      skillName: 'einreichcheck',
+      skillName: 'submission-check',
       scheduleCron: '0 8 * * 1',
       createdBy: 'user_1',
     })
@@ -790,8 +790,8 @@ describe('submitAgentRun', () => {
 
   it('carries the approved plan and the Unterlagen to the worker', async () => {
     const documents = {
-      grundlage: [{ name: 'Einreichplan.pdf', shelf: 'project' as const }],
-      ausgeschlossen: [{ name: 'Altbestand.pdf' }],
+      basis: [{ name: 'Einreichplan.pdf', shelf: 'project' as const }],
+      excluded: [{ name: 'Altbestand.pdf' }],
     }
     await submitAgentRun({ ...spec, clarifierResult: 'Rechercheplan: …', documents })
 

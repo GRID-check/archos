@@ -44,7 +44,8 @@ const UploadSummaryDocumentSchema = z.object({
 
 const UploadSummarySchema = z.object({
   id: z.string(),
-  scope: z.enum(['project', 'archiv', 'session']),
+  // `archiv` is what a server not yet rolled still sends. Remove after one release.
+  scope: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(['project', 'office_shelf', 'session'])),
   projectId: z.string().nullable(),
   conversationId: z.string().nullable(),
   createdAt: z.string(),

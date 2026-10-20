@@ -44,7 +44,7 @@ const mockFetch = (status: number, body: unknown = {}) =>
 const profile: ProjectProfile = {
   facts: {
     hauptnutzung: {
-      value: 'wohnen',
+      value: 'residential',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: '2026-01-01T00:00:00.000Z',
@@ -68,7 +68,7 @@ const profileWithAssumption: ProjectProfile = {
   unknowns: [],
   assumptions: {
     hauptnutzung: {
-      value: 'wohnen',
+      value: 'residential',
       status: 'unconfirmed',
       reason: 'Inferred from the uploaded plans.',
       source: 'agent_suggested',

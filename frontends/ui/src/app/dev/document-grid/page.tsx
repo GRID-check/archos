@@ -53,7 +53,7 @@ const PROJECT_ROWS = [
   }),
 ]
 
-const ARCHIV_ROWS = [
+const OFFICE_SHELF_ROWS = [
   makeRow('a1', 'Referenzprojekt_Stadthaus-Wien.pdf', {
     fileSize: 6_900_000,
     summary: 'Vergleichbares Wohngebäude der GK 4 mit innenliegendem Sicherheitstreppenhaus.',
@@ -76,8 +76,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (url.startsWith('/api/documents?')) {
         return Response.json({ documents: PROJECT_ROWS })
       }
-      if (url.startsWith('/api/archiv/documents')) {
-        return Response.json({ documents: ARCHIV_ROWS, collectionName: 'archiv_org', canManage: false })
+      if (url.startsWith('/api/office-shelf/documents')) {
+        return Response.json({ documents: OFFICE_SHELF_ROWS, collectionName: 'archiv_org', canManage: false })
       }
       if (/\/api\/documents\/.+\/thumbnail$/.test(url)) {
         return new Response(null, { status: 404 })
@@ -117,7 +117,7 @@ export default function DocumentGridDevPage(): JSX.Element {
               'Der zweite Fluchtweg ist über das nördliche Treppenhaus sichergestellt; die Gehweglänge beträgt 34 m.',
             page: 12,
             score: 0.91,
-            source: 'projekt',
+            source: 'project',
           },
         ]}
       />
@@ -134,48 +134,48 @@ export default function DocumentGridDevPage(): JSX.Element {
               'Der zweite Fluchtweg ist über das nördliche Treppenhaus sichergestellt; die Gehweglänge beträgt 34 m und liegt damit unter dem Grenzwert von 40 m gemäß OIB-Richtlinie 2.',
             page: 12,
             score: 0.91,
-            source: 'projekt',
+            source: 'project',
           },
           {
             file_name: 'Fluchtwegplan_EG-2OG.pdf',
             snippet: 'Fluchtwegführung für EG bis 2. OG mit Kennzeichnung der Notausgänge und Sammelstelle.',
             page: 2,
             score: 0.84,
-            source: 'projekt',
+            source: 'project',
           },
           {
             file_name: 'Referenzprojekt_Stadthaus-Wien.pdf',
             snippet: 'Vergleichbares Wohngebäude der Gebäudeklasse 4 mit innenliegendem Sicherheitstreppenhaus.',
             page: 5,
             score: 0.72,
-            source: 'buero',
+            source: 'office',
           },
           {
             file_name: 'Detailkatalog_Treppen.pdf',
             snippet: 'Regeldetails für Treppenläufe, Steigungsverhältnisse und Geländerhöhen.',
             page: null,
             score: 0.63,
-            source: 'buero',
+            source: 'office',
           },
           {
             file_name: 'Grundriss_Regelgeschoss.dwg',
             snippet: 'Regelgeschoss mit Wohnungstrennwänden und Erschließungskern.',
             page: null,
             score: 0.58,
-            source: 'projekt',
+            source: 'project',
           },
           {
             file_name: 'Fassadenschnitt_Nord.png',
             snippet: 'Nordfassade mit Fensteranordnung und Fluchtbalkon.',
             page: null,
             score: 0.51,
-            source: 'projekt',
+            source: 'project',
           },
           // Unresolvable (removed) file → lean "not available" fallback card.
           {
             file_name: 'Altes_Gutachten_2019.pdf',
             snippet: 'Historisches Brandschutzgutachten (nicht mehr im Projekt).',
-            source: 'projekt',
+            source: 'project',
           },
         ]}
       />
@@ -191,7 +191,7 @@ export default function DocumentGridDevPage(): JSX.Element {
             snippet: 'Stellplatznachweis: 1 Kfz-Stellplatz je Wohneinheit, Fahrradabstellräume im UG.',
             page: 9,
             score: 0.79,
-            source: 'buero',
+            source: 'office',
           },
         ]}
       />

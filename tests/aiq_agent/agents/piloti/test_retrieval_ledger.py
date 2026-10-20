@@ -102,14 +102,14 @@ def test_a_family_search_opens_its_members_so_the_later_outline_read_is_a_repeat
     assert ledger[1]["new_docs"] == []
 
 
-def test_one_document_opened_at_five_punkte_is_one_new_document():
+def test_one_document_opened_at_five_clauses_is_one_new_document():
     """Five loci of one file are five hits and ONE document the round did work on."""
     announcements = [
         _announcement(0, ["knowledge_search"], ["knowledge"], query="Fluchtweg"),
         _announcement(1, ["read_passage"], ["knowledge"]),
     ]
     punkte = [f"Pkt. 3.{n}" for n in range(1, 6)]
-    hits = [_hit(0, "oib-rl_2.pdf"), *(_hit(1, "oib-rl_2.pdf", punkt) for punkt in punkte)]
+    hits = [_hit(0, "oib-rl_2.pdf"), *(_hit(1, "oib-rl_2.pdf", clause) for clause in punkte)]
     ledger = build_retrieval_ledger(announcements, hits)
     assert ledger is not None
     assert [doc["detail"] for doc in ledger[1]["docs"]] == punkte
@@ -222,7 +222,7 @@ def test_the_same_passage_opened_twice_is_a_repeat():
     assert [doc["repeat"] for doc in ledger[1]["docs"]] == [True]
 
 
-def test_reopening_a_document_at_another_punkt_is_a_repeat():
+def test_reopening_a_document_at_another_clause_is_a_repeat():
     """An earlier round OPENED the file; reading further into it is a re-fetch.
 
     The reader has the document open already — the distinction the marker
@@ -309,7 +309,7 @@ def _state(**overrides):
 def test_charge_threads_two_rounds_with_their_facts():
     """Two charge calls accumulate rounds with their facts, in slot order."""
     search = [{"name": "knowledge_search", "args": {"query": "OIB 2"}}]
-    opens = [{"name": "read_passage", "args": {"document": "oib-rl_2.pdf", "punkt": "3.5.2"}}]
+    opens = [{"name": "read_passage", "args": {"document": "oib-rl_2.pdf", "clause": "3.5.2"}}]
     state = _state()
     rounds, retrieval_round, first = _charge_tool_calls(_response(search), state, 9)
     assert (rounds, retrieval_round) == (1, 1)
@@ -329,7 +329,7 @@ def test_charge_threads_two_rounds_with_their_facts():
     )
     assert retrieval_round == 2
     assert second is not None
-    assert second["key"] == "status.retrieval.punkt"
+    assert second["key"] == "status.retrieval.clause"
     assert second["reason"] == "Die Richtlinie gilt grundsätzlich."
 
 
@@ -372,7 +372,7 @@ def test_builder_output_matches_the_wire_fixture():
     fixture = json.loads(
         Path(__file__)
         .parents[4]
-        .joinpath("tests/fixtures/herleitung/retrieval_ledger_wire.json")
+        .joinpath("tests/fixtures/derivation/retrieval_ledger_wire.json")
         .read_text(encoding="utf-8")
     )
     announcements = [
@@ -382,14 +382,14 @@ def test_builder_output_matches_the_wire_fixture():
             ["read_passage"],
             ["knowledge"],
             reason="Die Grundregel steht.",
-            key="status.retrieval.punkt",
+            key="status.retrieval.clause",
         ),
         _announcement(
             2,
             ["read_passage"],
             ["knowledge"],
             reason="Die Fluchtweglänge hängt an drei Punkten.",
-            key="status.retrieval.punkt",
+            key="status.retrieval.clause",
         ),
     ]
     hits = [
@@ -407,9 +407,9 @@ def test_builder_output_matches_the_wire_fixture():
                 "round": 2,
                 "name": "OIB-RL_2.pdf",
                 "title": "OIB-Richtlinie 2, Ausgabe Mai 2023",
-                "detail": punkt,
+                "detail": clause,
             }
-            for punkt in ("Pkt. 3.1", "Pkt. 3.2", "Pkt. 3.3")
+            for clause in ("Pkt. 3.1", "Pkt. 3.2", "Pkt. 3.3")
         ),
     ]
     assert build_retrieval_ledger(announcements, hits) == fixture

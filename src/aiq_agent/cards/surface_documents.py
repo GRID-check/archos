@@ -19,6 +19,7 @@ import asyncio
 import logging
 from typing import Literal
 
+from aiq_agent.common.source_kinds import is_office_shelf_collection
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -33,7 +34,7 @@ MAX_SURFACED_FILES = 3
 #: A surfaced document's source kind → the shelf token a lane hit carries
 #: (``common.source_kinds.Shelf``), so the Herleitung files it beside the
 #: passages the knowledge layer records from the same shelves.
-_SHELF_OF_SOURCE: dict[str, str] = {"projekt": "project", "buero": "archiv"}
+_SHELF_OF_SOURCE: dict[str, str] = {"project": "project", "office": "office_shelf"}
 
 # ---------------------------------------------------------------------------
 # The three constants below were calibrated against `Chunk.score` when it was
@@ -83,27 +84,27 @@ _QUERY_KIND_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
 SurfaceMode = Literal["one", "many"]
 
 
-def _source_for_collection(collection: str) -> Literal["projekt", "buero"] | None:
+def _source_for_collection(collection: str) -> Literal["project", "office"] | None:
     """LEGACY: guess a card label from a collection-id prefix.
 
     Live retrieval must not call this when a signed shelf map is present
     (ADR-0047). Kept for names-only / pre-shelf callers.
     """
     if collection.startswith("proj_"):
-        return "projekt"
-    if collection.startswith("archiv_"):
-        return "buero"
+        return "project"
+    if is_office_shelf_collection(collection):
+        return "office"
     return None
 
 
 def _source_for_target(
     collection: str,
     source_by_collection: dict[str, str],
-) -> Literal["projekt", "buero"] | None:
+) -> Literal["project", "office"] | None:
     """Label a retrieve target. A signed map is exclusive — no prefix guess."""
     if source_by_collection:
         raw = source_by_collection.get(collection)
-        return raw if raw in ("projekt", "buero") else None
+        return raw if raw in ("project", "office") else None
     return _source_for_collection(collection)
 
 
@@ -115,7 +116,7 @@ def _target_collections(
 ) -> list[str]:
     """Project + Büroablage only. Never the OIB corpus (that is citations).
 
-    ``shelf`` narrows further: ``archiv`` keeps only the Büroablage,
+    ``shelf`` narrows further: ``office_shelf`` keeps only the Büroablage,
     ``project`` only this project's files. A listing question that names a
     shelf must not surface the other one.
 
@@ -144,7 +145,7 @@ def _target_collections(
                 continue
             if wanted is not None and entry_shelf != wanted:
                 continue
-            if wanted is None and entry_shelf not in (Shelf.PROJECT, Shelf.ARCHIV):
+            if wanted is None and entry_shelf not in (Shelf.PROJECT, Shelf.OFFICE_SHELF):
                 continue
             seen.add(collection)
             targets.append(collection)
@@ -153,9 +154,9 @@ def _target_collections(
         source = _source_for_collection(collection)
         if source is None or is_restricted_collection(collection):
             continue
-        if wanted is Shelf.ARCHIV and source != "buero":
+        if wanted is Shelf.OFFICE_SHELF and source != "office":
             continue
-        if wanted is Shelf.PROJECT and source != "projekt":
+        if wanted is Shelf.PROJECT and source != "project":
             continue
         if collection not in seen:
             seen.add(collection)
@@ -304,7 +305,7 @@ _TOOL_DESCRIPTION = (
     "- `mode=many` + `query=` only when they are choosing among two or three "
     "NEARLY EQUALLY relevant files of the same kind. Never a catalogue, never "
     "the inventory.\n"
-    "- `shelf=archiv` / `shelf=project` when they asked to see files on ONE "
+    "- `shelf=office_shelf` / `shelf=project` when they asked to see files on ONE "
     "shelf (Büroablage vs this project). Do not mix the two.\n"
     "Asking for files of a KIND ('hab ich sonst noch Grundrisse', 'welche Fotos "
     "vom Bestand') is a browse: `mode=many` on that shelf, so they can open them.\n"
@@ -336,15 +337,17 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
             filename: Exact indexed file name to open (e.g. "Brandschutzplan_EG.pdf").
             title: Optional card heading. Leave empty to use the file name or query.
             mode: `one` (default) opens a single file; `many` offers a short browse choice.
-            shelf: `archiv` (Büroablage) or `project` (this project). Omit to search both.
+            shelf: `office_shelf` (Büroablage) or `project` (this project). Omit to search both.
         """
         query = (query or "").strip()
         filename = (filename or "").strip() or None
         shelf = (shelf or "").strip() or None
         if mode is not None and mode not in ("one", "many"):
             return "Error: `mode` must be `one` (open the best file) or `many` (short browse choice)."
-        if shelf is not None and shelf not in ("archiv", "project"):
-            return "Error: `shelf` must be `archiv` (Büroablage) or `project` (this project)."
+        if shelf == "archiv":  # the argument's old value; remove after one release
+            shelf = "office_shelf"
+        if shelf is not None and shelf not in ("office_shelf", "project"):
+            return "Error: `shelf` must be `office_shelf` (Büroablage) or `project` (this project)."
         if not query and not filename:
             return "Provide `filename=` (open this named file) or `query=` (search). Use `mode=many` only to browse."
 
@@ -365,10 +368,10 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
 
         hinted = shelf_hint_from_query(query)
         hinted_value = hinted.value if hinted is not None else None
-        resolved_shelf = shelf or (hinted_value if hinted_value in ("archiv", "project") else None)
+        resolved_shelf = shelf or (hinted_value if hinted_value in ("office_shelf", "project") else None)
         targets = _target_collections(scope, shelf=resolved_shelf, scoped=scoped_entries)
         if not targets:
-            if resolved_shelf == "archiv":
+            if resolved_shelf == "office_shelf":
                 return (
                     "No Büroablage documents are in scope to search. The OIB corpus is "
                     "Basiswissen, not the Büroablage — answer from the inventory's "
@@ -480,7 +483,7 @@ async def _surface_named(
 ) -> list[dict]:
     """Open one known file. Search only to fetch a matching passage."""
     info = meta.get(file_name) or {}
-    source = "projekt"
+    source = "project"
     hits = await _retrieve_all(targets, retrieve_query, chunk_top_k)
     for chunk, src in hits:
         if getattr(chunk, "file_name", None) == file_name:
@@ -538,10 +541,10 @@ async def _retrieve_all(
         from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
 
         for entry in get_scoped_collections_from_context() or []:
-            if entry.shelf is Shelf.ARCHIV:
-                source_by_collection[entry.collection] = "buero"
+            if entry.shelf is Shelf.OFFICE_SHELF:
+                source_by_collection[entry.collection] = "office"
             elif entry.shelf is Shelf.PROJECT:
-                source_by_collection[entry.collection] = "projekt"
+                source_by_collection[entry.collection] = "project"
     except Exception:
         logger.debug("surface_documents: no scoped shelves for retrieve", exc_info=True)
 
@@ -588,7 +591,7 @@ async def _fetch_document_metadata(collections: list[str]) -> dict[str, dict]:
     return out
 
 
-_SOURCE_LABEL = {"projekt": "Projekt", "buero": "Büroablage"}
+_SOURCE_LABEL = {"project": "Projekt", "office": "Büroablage"}
 _BRIEF_SNIPPET_MAX = 120
 _BRIEF_SUMMARY_MAX = 160
 

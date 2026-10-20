@@ -51,7 +51,7 @@ async def test_file_draft_updates_the_document_the_turn_read(monkeypatch, calls)
     monkeypatch.setattr(subject_document, "get_document_version_content", lambda *_: dict(BODY))
     step = await subject_document.load_subject_document(SUBJECT, conversation_id=CONVERSATION, organization_id="org_1")
     path = step.detail["path"]
-    assert path == "/entwuerfe/Befund Fluchtwege.md"
+    assert path == "/drafts/Befund Fluchtwege.md"
 
     monkeypatch.setattr(
         filing_tools,

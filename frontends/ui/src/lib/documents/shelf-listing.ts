@@ -15,8 +15,8 @@ import { tallyLiveMarks } from '@/lib/annotations/repository'
 import type { MarkTally } from '@/lib/annotations/types'
 import { encodeDocumentLevelCursor, encodeDocumentListCursor } from './list-cursor'
 import { reconcileDocumentStatuses, type DocumentMetadata } from './reconcile-status'
-import type { FassungFacts } from './fassung'
-import { loadFassungFacts } from './fassung-facts'
+import type { RevisionLinks } from './revision-links'
+import { loadRevisionLinks } from './revision-links-loader'
 import type { DocumentLevelPage, DocumentListPage, DocumentListRow } from './repository'
 import { keepReadable, type ListingReader, type ShelfReader } from './document-reader'
 import { canRetryRow } from './retry-policy'
@@ -58,9 +58,9 @@ export type ListedDocument = Omit<
     /**
      * Which documents this one replaces or is replaced by (CONTEXT.md,
      * „Fassung"), resolved for THIS reader: a document they may not open is
-     * not in it, name and all (`fassung-facts.ts`).
+     * not in it, name and all (`revision-links-loader.ts`).
      */
-    fassung?: FassungFacts | null
+    revision?: RevisionLinks | null
     /**
      * When a folder this report was drawn from was purged (ADR-0088): the
      * purge marks a filed report it finds (`metadata.sourceDeleted`), and the
@@ -108,8 +108,8 @@ export async function toListedDocuments(
   const reconciled = keepReadable(await reconcileDocumentStatuses(rows, session.organizationId), reader)
 
   // Both keyed by the rows the reader may see, each one query for the page.
-  const [fassung, marks] = await Promise.all([
-    loadFassungFacts(session, reconciled, reader),
+  const [revision, marks] = await Promise.all([
+    loadRevisionLinks(session, reconciled, reader),
     tallyLiveMarks(
       session.organizationId,
       reconciled.map((row) => row.id),
@@ -144,7 +144,7 @@ export async function toListedDocuments(
         ingestReaderVersion,
       }),
       sourceDeletedAt: sourceDeletedAtOf(metadata),
-      fassung: fassung.get(row.id) ?? null,
+      revision: revision.get(row.id) ?? null,
       marks: marks.get(row.id) ?? null,
     })
   )

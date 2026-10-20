@@ -75,7 +75,7 @@ from aiq_agent.knowledge.schema import QuarantineVerdict
 from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.schema import stable_file_id
 
-from . import fassungen
+from . import revisions
 from .pdfium_lock import detached_pil
 from .pdfium_lock import pdfium_lock
 
@@ -529,7 +529,7 @@ PERMIT_RECORD_TIMEOUT_SECONDS = 90
 #: Dropping a record is one internal call, no model: it must never hold up an ingest.
 PERMIT_RECORD_DROP_TIMEOUT_SECONDS = 5
 #: The bound on one file's Fassung step (a suggestion for a new name, a change line for a re-upload).
-FASSUNG_TIMEOUT_SECONDS = 45
+REVISION_TIMEOUT_SECONDS = 45
 
 # The per-file error of an attempt whose document was deleted while it indexed
 # (see `document_presence`). FAILED rather than SUCCESS so the end-of-job
@@ -734,7 +734,7 @@ def _fit_rendered_metadata(document: Any, limit: int) -> list[str]:
 
     ``SentenceSplitter`` prepends the rendered metadata to every chunk and raises when it
     alone exceeds the chunk size, which fails the whole file, not the one chunk. Keys
-    such as ``punkt_title``/``punkt_path`` carry text read out of the document, so their
+    such as ``clause_title``/``clause_path`` carry text read out of the document, so their
     length is the document's to choose. The value stays stored for display and
     filtering; it only leaves the embedded header, and the chunk body already starts
     with the same breadcrumb. Returns the keys dropped, for the caller to log.
@@ -1778,7 +1778,7 @@ def text_documents_for_pages(text_pages: list[dict[str, Any]], file_name: str, f
 
     A numbered corpus cut on its own outline yields one requirement per chunk instead of
     roughly fifteen blended into a 1024-token block, and gives every chunk a Punkt to
-    cite rather than only a page. ``punkt_documents`` returns ``None`` for anything
+    cite rather than only a page. ``clause_documents`` returns ``None`` for anything
     without a usable outline -- a glossary, a list of standards, any tenant upload.
 
     A tenant PDF (anything not published by the OIB) is cut on its own headings FIRST
@@ -1794,7 +1794,7 @@ def text_documents_for_pages(text_pages: list[dict[str, Any]], file_name: str, f
     Extracted from ``_run_ingestion`` so the choice between the strategies is
     testable without a job, a vector store or an embedder.
     """
-    from knowledge_layer.llamaindex.punkt_chunking import punkt_documents
+    from knowledge_layer.llamaindex.clause_chunking import clause_documents
     from knowledge_layer.llamaindex.section_chunking import section_documents
     from llama_index.core import Document
 
@@ -1803,7 +1803,7 @@ def text_documents_for_pages(text_pages: list[dict[str, Any]], file_name: str, f
     sectioned = None if oib_doc_class(file_name) else section_documents(text_pages, file_name, file_size)
     if sectioned is not None:
         return sectioned
-    structured = punkt_documents(text_pages, file_name, file_size)
+    structured = clause_documents(text_pages, file_name, file_size)
     if structured is not None:
         return structured
     from knowledge_layer.llamaindex.captioned_tables import page_text_with_tables
@@ -4579,14 +4579,14 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         record whenever the tagger was slow or unsure (docs/design/permitting-memory.md).
         """
         from aiq_agent.knowledge.permit_extraction import extract_and_store_permit_record
-        from aiq_agent.knowledge.permit_extraction import is_bescheid
+        from aiq_agent.knowledge.permit_extraction import is_permit_decision
         from aiq_agent.knowledge.permit_extraction import typed_as_something_else
         from aiq_agent.knowledge.permit_records_client import store_permit_record
 
         organization_id, document_id = config.get("organization_id"), config.get("document_id")
         if not (organization_id and document_id):
             return
-        if not is_bescheid(tags):
+        if not is_permit_decision(tags):
             if typed_as_something_else(tags):
                 self._bounded(
                     "Permit record drop",
@@ -4843,14 +4843,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     base_corpus = legacy_shelf_for_collection_name(collection_name) is None
                     # The Dokumentart an admin chose at upload (`config["doc_class"]`, validated
                     # by the route) beats a stored one and the guess: choosing is the point.
-                    from aiq_agent.knowledge.document_classification import is_valid_doc_class
+                    from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-                    requested_doc_class = config.get("doc_class")
-                    explicit_doc_class = (
-                        requested_doc_class
-                        if isinstance(requested_doc_class, str) and is_valid_doc_class(requested_doc_class)
-                        else None
-                    )
+                    # A job queued before the English keys carries the German one.
+                    explicit_doc_class = canonical_doc_class(config.get("doc_class"))
                     doc_class = (
                         explicit_doc_class or stored_doc_class or (guess_doc_class(file_name) if base_corpus else None)
                     )
@@ -5509,26 +5505,27 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # that one. A job is one file; a name meant for it is never read for
                     # another. The base corpus has no Fassungen: it replaces by its own hash
                     # registry.
-                    confirmed_older = (config.get("fassung_of") or "").strip() or None
+                    # ``fassung_of`` is the key a job queued before the rename carries.
+                    confirmed_older = (config.get("revision_of") or config.get("fassung_of") or "").strip() or None
                     if base_corpus or len(file_paths) != 1:
                         confirmed_older = None
                     # Whether the summary model reads Fassungen for this file: a suggestion,
                     # a change line. The link a person chose never waits for it (below).
-                    fassung_model = bool(not base_corpus and self.generate_summary_enabled and self.summary_llm)
+                    revision_model = bool(not base_corpus and self.generate_summary_enabled and self.summary_llm)
 
                     # Store summary + tags in FileInfo and centralized registry
                     if summary:
                         # The rows as they are BEFORE the new summary overwrites this
                         # name's: the previous summary is what a re-upload's change
                         # line is told against, and the other rows are the candidates
-                        # a new name may be a newer Fassung of (`fassungen.py`).
-                        fassung_rows = (
-                            fassungen.read_rows(collection_name)
+                        # a new name may be a newer Fassung of (`revisions.py`).
+                        revision_rows = (
+                            revisions.read_rows(collection_name)
                             if not base_corpus and self.generate_summary_enabled and self.summary_llm
                             else []
                         )
-                        summary_before = fassungen.previous_summary(
-                            fassung_rows, previous.stored_names if previous else ()
+                        summary_before = revisions.previous_summary(
+                            revision_rows, previous.stored_names if previous else ()
                         )
                         # Register in centralized summary registry (backend-agnostic).
                         # Tags ride along in the same upsert (may be None).
@@ -5541,7 +5538,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # page that has one: Plannummer, Index, Datum. Read from the same
                         # analysis as the chunks, so it costs no further call. A re-upload
                         # without one clears the old sheet's facts.
-                        revision_facts = fassungen.revision_facts_from_documents(all_documents)
+                        revision_facts = revisions.revision_facts_from_documents(all_documents)
                         if revision_facts or previous is not None:
                             from aiq_agent.knowledge import set_document_revision_facts
 
@@ -5620,7 +5617,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # A person's confirmed link and a dismissed suggestion survive
                         # the re-read, the way their tags do: the same-name row keeps
                         # them by itself, this carries them from another spelling.
-                        carried_link, carried_suggestion = fassungen.carried_links(preserved)
+                        carried_link, carried_suggestion = revisions.carried_links(preserved)
                         if carried_link:
                             from aiq_agent.knowledge import set_document_superseded_by
 
@@ -5634,16 +5631,16 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # (a suggestion), a re-upload says what changed (ADR-0054). Bounded,
                         # fail-open, and only on a shelf of user documents: the base corpus
                         # replaces by its own hash registry.
-                        if fassung_model:
+                        if revision_model:
                             self._bounded(
                                 "Fassung",
                                 file_name,
-                                FASSUNG_TIMEOUT_SECONDS,
-                                fassungen.record_fassungen,
+                                REVISION_TIMEOUT_SECONDS,
+                                revisions.record_revisions,
                                 collection_name,
                                 file_name,
                                 replaced=previous is not None,
-                                rows=fassung_rows,
+                                rows=revision_rows,
                                 previous=summary_before,
                                 summary=summary,
                                 doc_class=doc_class,
@@ -5658,12 +5655,12 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # The link a person chose at upload is theirs, whatever the summary model
                     # could do: written without a summary (the row it waits for may come from
                     # the reconciliation backfill) and without the model (no change line).
-                    if confirmed_older and not (summary and fassung_model):
+                    if confirmed_older and not (summary and revision_model):
                         self._bounded(
                             "Fassung",
                             file_name,
-                            FASSUNG_TIMEOUT_SECONDS,
-                            fassungen.confirm_fassung,
+                            REVISION_TIMEOUT_SECONDS,
+                            revisions.confirm_revision,
                             collection_name,
                             file_name,
                             confirmed_older,
@@ -6453,7 +6450,7 @@ class LlamaIndexRetriever(BaseRetriever):
             # Create display citation based on content type
             if content_type == ContentType.TABLE and "table_index" not in metadata:
                 # A captioned table (``captioned_tables``) is addressed by its
-                # ``punkt_id`` („Tabelle 3"), not by an index on the page, and
+                # ``clause_id`` („Tabelle 3"), not by an index on the page, and
                 # is cited by the page key every other hit renders under.
                 display_citation = f"{file_name}, p.{page_number}" if page_number else file_name
             elif content_type == ContentType.TABLE:

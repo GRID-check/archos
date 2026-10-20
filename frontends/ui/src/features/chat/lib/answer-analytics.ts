@@ -22,7 +22,7 @@ export interface AnswerCompletion {
   /** Wall time from send to the terminal, on this page; absent when the page did not time the turn. */
   duration_ms: number | undefined
   citation_count: number
-  /** Distinct coarse source kinds of the answer's citations, sorted, comma-separated (`baurecht,buero`). */
+  /** Distinct coarse source kinds of the answer's citations, sorted, comma-separated (`building_law,office`). */
   source_kinds: string
   /** The reasoning level the turn ran at, when known. */
   effort: string | undefined

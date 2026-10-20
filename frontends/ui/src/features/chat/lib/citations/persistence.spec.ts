@@ -24,8 +24,8 @@ const source = (page: number, number: number): CitationSource => ({
   documentId: 'doc:oib_knowledge:oib-rl_2.1_ausgabe_mai_2023.pdf',
   collection: 'oib_knowledge',
   fileName: 'oib-rl_2.1_ausgabe_mai_2023.pdf',
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   laneLabel: 'OIB-Richtlinie',
   origin: 'kb',
   page,
@@ -62,7 +62,7 @@ describe('citation persistence', () => {
       id: 'p9',
       name: 'Wohnbau Graz',
       status: 'closed' as const,
-      landNote: 'Steiermark — nicht das Bundesland dieses Projekts',
+      federalStateNote: 'Steiermark — nicht das Bundesland dieses Projekts',
     }
     const [restored] = decodeCitations(encodeCitations([{ ...source(3, 1), project }]), WHEN)!
     expect(restored!.project).toEqual(project)
@@ -95,8 +95,8 @@ describe('citation persistence', () => {
         citationKey: 'oib-rl_2.1_ausgabe_mai_2023.pdf, p.5',
         fileName: 'oib-rl_2.1_ausgabe_mai_2023.pdf',
         laneLabel: 'OIB-Richtlinie',
-        lane: 'baurecht_oib',
-        kind: 'baurecht',
+        lane: 'building_law_oib',
+        kind: 'building_law',
         page: 5,
         number: 1,
         isCited: true,
@@ -145,5 +145,22 @@ describe('untrusted stored payloads', () => {
     // All-or-nothing: a partially-decoded provenance row is a false claim about
     // where the answer came from, which is worse than visibly having none.
     expect(decodeCitations(rows, WHEN)).toBeUndefined()
+  })
+})
+
+describe('a message stored before the English names', () => {
+  it('still decodes the old project note', () => {
+    const stored = {
+      v: 1,
+      sources: [
+        {
+          citation_key: 'k',
+          content: 'c',
+          project: { id: 'p9', name: 'Wohnbau Graz', status: 'closed', landNote: 'Steiermark' },
+        },
+      ],
+    }
+    const [source] = decodeCitations(stored, new Date(0)) ?? []
+    expect(source?.project?.federalStateNote).toBe('Steiermark')
   })
 })

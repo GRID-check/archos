@@ -103,19 +103,19 @@ describe('QualityWorkspace', () => {
   })
 
   test('hands the ratings filters from the URL to the ratings view, and writes a change back', async () => {
-    nav.search = 'from=2026-09-01&to=2026-09-30&topic=statik'
+    nav.search = 'from=2026-09-01&to=2026-09-30&topic=structural'
     render(<QualityWorkspace />)
-    expect(screen.getByTestId('ratings-view')).toHaveTextContent('topics=statik')
+    expect(screen.getByTestId('ratings-view')).toHaveTextContent('topics=structural')
 
     await userEvent.click(screen.getByRole('button', { name: 'only commented' }))
     expect(nav.push).toHaveBeenCalledWith(
-      '/app/platform/quality?from=2026-09-01&to=2026-09-30&topic=statik&has_comment=1',
+      '/app/platform/quality?from=2026-09-01&to=2026-09-30&topic=structural&has_comment=1',
       { scroll: false }
     )
   })
 
   test('writes a range preset into the URL as from/to, keeping the view and the filters', async () => {
-    nav.search = 'view=citations&topic=statik&days=7'
+    nav.search = 'view=citations&topic=structural&days=7'
     render(<QualityWorkspace />)
     await userEvent.click(screen.getByRole('radio', { name: '90 days' }))
 
@@ -123,7 +123,7 @@ describe('QualityWorkspace', () => {
     const params = new URLSearchParams(String(url).split('?')[1])
     expect(options).toEqual({ scroll: false })
     expect(params.get('view')).toBe('citations')
-    expect(params.get('topic')).toBe('statik')
+    expect(params.get('topic')).toBe('structural')
     expect(params.get('days')).toBeNull()
     expect(params.get('to')).toBe(today)
   })

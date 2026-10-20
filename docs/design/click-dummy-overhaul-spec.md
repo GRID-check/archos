@@ -266,7 +266,7 @@ don't churn):
 /                          marketing (unchanged)
 /app/projects              Home: project grid + Archiv entry card   [OrgTopbar]
 /app/organization          org settings (restyle only)              [OrgTopbar]
-/app/archiv                Archiv, org scope (library restyle)      [OrgTopbar]
+/app/office-shelf                Archiv, org scope (library restyle)      [OrgTopbar]
 /app/platform, /app/profile, onboarding, legal   (unchanged)
 /app/projects/[id]/
   chat        ← project landing (root redirects here)               [Sidebar]

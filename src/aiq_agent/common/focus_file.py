@@ -7,7 +7,7 @@ searches is a subtractive subset of that ceiling.
 The client states **intent**, never an expanded collection list:
 
 * ``focus_file_name`` — the file this send is about (composer subject)
-* ``focus_shelf`` — the shelf that file sits on (``session`` / ``project`` / ``archiv``)
+* ``focus_shelf`` — the shelf that file sits on (``session`` / ``project`` / ``office_shelf``)
 * ``source_preset`` — the composer chip (``law`` / ``project`` / ``office``)
 
 :func:`shelves_for_turn` is the one mapping from that intent to the
@@ -23,7 +23,9 @@ from __future__ import annotations
 
 from contextvars import ContextVar
 
-SHELVES = frozenset({"archiv", "project", "session", "base"})
+from aiq_agent.common.source_kinds import canonical_shelf_value
+
+SHELVES = frozenset({"office_shelf", "project", "session", "base"})
 PRESETS = frozenset({"law", "project", "office"})
 
 _focused_file_name: ContextVar[str | None] = ContextVar("grid_focused_file_name", default=None)
@@ -37,7 +39,7 @@ _focused_document_id: ContextVar[str | None] = ContextVar("grid_focused_document
 def _normalize_shelf(value: object) -> str | None:
     if not isinstance(value, str):
         return None
-    trimmed = value.strip().lower()
+    trimmed = canonical_shelf_value(value)
     return trimmed if trimmed in SHELVES else None
 
 
@@ -59,7 +61,7 @@ def shelves_for_turn(*, focus_shelf: object = None, source_preset: object = None
     #
     # A subject narrows WHICH DOCUMENTS a turn reads — that is what #429 and
     # #436 asked for: "summarize this upload" must not walk the whole corpus,
-    # and a project question must not mix in Archiv hits. Neither complaint was
+    # and a project question must not mix in office-shelf hits. Neither complaint was
     # about the building-code corpus, and dropping it made the product unable to
     # answer its own central question: bind a plan, ask whether it meets the
     # escape-route requirement, and retrieval held the plan and no OIB at all.
@@ -73,15 +75,15 @@ def shelves_for_turn(*, focus_shelf: object = None, source_preset: object = None
         return frozenset({"session", "base"})
     if shelf == "project":
         return frozenset({"project", "session", "base"})
-    if shelf == "archiv":
-        return frozenset({"archiv", "session", "base"})
+    if shelf == "office_shelf":
+        return frozenset({"office_shelf", "session", "base"})
     preset = _normalize_preset(source_preset)
     if preset == "law":
         return frozenset({"base"})
     if preset == "project":
         return frozenset({"project", "session", "base"})
     if preset == "office":
-        return frozenset({"archiv", "session", "base"})
+        return frozenset({"office_shelf", "session", "base"})
     return None
 
 

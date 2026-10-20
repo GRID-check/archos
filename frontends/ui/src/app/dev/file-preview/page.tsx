@@ -315,7 +315,7 @@ const DRAWING_FIXTURE: FileItem = {
 const isPdfVariant = (value: string | undefined): value is PdfVariant =>
   (PDF_VARIANTS as readonly string[]).includes(value ?? '')
 
-const BRANDSCHUTZ_PAGES: readonly (readonly PdfLine[])[] = [
+const FIRE_SAFETY_PAGES: readonly (readonly PdfLine[])[] = [
   [
     ['Brandschutzkonzept Wohnbau Nord', 22, true],
     ['Gebäudeklasse 4 · OIB-Richtlinie 2 (2023)', 11, false],
@@ -349,7 +349,7 @@ const BRANDSCHUTZ_PAGES: readonly (readonly PdfLine[])[] = [
   ],
 ]
 
-const RAUMPROGRAMM_PAGES: readonly (readonly PdfLine[])[] = [
+const ROOM_PROGRAMME_PAGES: readonly (readonly PdfLine[])[] = [
   [
     ['Raumprogramm Wohnbau Nord', 22, true],
     ['Flächen je Nutzungseinheit und Geschoss', 11, false],
@@ -550,7 +550,7 @@ function ScrollRailIntoView(): null {
   useEffect(() => {
     const timer = setInterval(() => {
       if (scrolledIntoView) return clearInterval(timer)
-      const panel = document.querySelector('[data-testid="document-fassungen"]')
+      const panel = document.querySelector('[data-testid="document-revisions"]')
       if (!panel) return
       panel.scrollIntoView({ block: 'start', behavior: 'instant' })
       const box = panel.getBoundingClientRect()
@@ -639,7 +639,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       }
       if (fileMatch) {
         const pages =
-          fileMatch[1] === 'dev-doc-office-converted' ? RAUMPROGRAMM_PAGES : BRANDSCHUTZ_PAGES
+          fileMatch[1] === 'dev-doc-office-converted' ? ROOM_PROGRAMME_PAGES : FIRE_SAFETY_PAGES
         return new Response(buildPdf(pages), { headers: { 'Content-Type': 'application/pdf' } })
       }
       if (/\/api\/documents\/.+\/preview$/.test(url)) {
@@ -658,7 +658,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         return Response.json({ text: body, truncated: textMatch[1] === 'dev-doc-txt' })
       }
       // ── the review rail ─────────────────────────────────────────────────
-      // `?variant=review` mounts `DocumentFassungen` INSIDE the pane's
+      // `?variant=review` mounts `DocumentRevisions` INSIDE the pane's
       // rail, which is the only place it actually ships and the one place it
       // had never been photographed (ledger 40). The panel reaches the network
       // through the typed client, so the fixture goes here rather than through

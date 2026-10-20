@@ -6,22 +6,23 @@
  *
  * Also the two readings of a key the rest of the intake shares: which question
  * a profile key answers ({@link questionForKey}, the record gate's vocabulary),
- * and a Bauwerk's Gebäudeklasse inputs as the wizard's answers hold them
- * ({@link gebaeudeklasseInputsFor}, the derivation and the decisive needs).
+ * and a building's building class inputs as the wizard's answers hold them
+ * ({@link buildingClassInputsFor}, the derivation and the decisive needs).
  *
- * The wizard's walk, replayed: project and Grundstück questions once, Bauwerk
- * questions per Bauwerk (`key@bwN`), and the Nutzungszonen of each selected
- * D0 use (`key@bwN@use`). Conditions are evaluated on what is known, facts
- * first and suggestions under them, so a suggested `bauwerkstyp = gebaeude`
- * already opens the Gebäude questions the reading should look for.
+ * The wizard's walk, replayed: project and Grundstück questions once, building
+ * questions per building (`key@bldgN`), and the Nutzungszonen of each selected
+ * D0 use (`key@bldgN@use`). Conditions are evaluated on what is known, facts
+ * first and suggestions under them, so a suggested `building_type = gebaeude`
+ * already opens the building questions the reading should look for.
  */
 
 import {
   answerKeyFor,
   answersFromProfile,
   evaluateIntakeCondition,
+  isBuildingId,
   modeKeyFor,
-  type BauwerkInstance,
+  type BuildingInstance,
   type ProjectIntakeDefinition,
   type ProjectIntakeQuestion,
   type ProjectIntakeStage,
@@ -31,7 +32,7 @@ import type {
   ProjectPrimitiveValue,
   ProjectProfile,
 } from '@/lib/project-profile/types'
-import { decisiveInputs, GEBAEUDEKLASSE_DERIVATION } from './derivations'
+import { decisiveInputs, BUILDING_CLASS_DERIVATION } from './derivations'
 import {
   INTAKE_NEED_TYPES,
   MAX_INTAKE_NEEDS,
@@ -57,10 +58,10 @@ type Answers = Record<string, ProjectPrimitiveValue>
 interface Candidate {
   question: ProjectIntakeQuestion
   type: IntakeNeedType
-  /** The profile key (`geschosse_oberirdisch@bw1`). */
+  /** The profile key (`storeys_above_ground@bldg1`). */
   key: string
   baseKey: string
-  bauwerkId: string | null
+  buildingId: string | null
   /** The D0 use of a Nutzungszone question, or null. */
   zone: string | null
 }
@@ -98,18 +99,18 @@ function knownProfile(profile: ProjectProfile): ProjectProfile {
 function candidateFor(
   question: ProjectIntakeQuestion,
   answers: Answers,
-  scope: { bauwerk?: BauwerkInstance; zone?: string }
+  scope: { building?: BuildingInstance; zone?: string }
 ): Candidate | null {
   const baseKey = baseKeyOf(question)
   if (!baseKey || !isNeedType(question.type)) return null
-  if (!evaluateIntakeCondition(question, answers, scope.bauwerk?.id)) return null
-  const bauwerkId = scope.bauwerk?.id ?? null
+  if (!evaluateIntakeCondition(question, answers, scope.building?.id)) return null
+  const buildingId = scope.building?.id ?? null
   return {
     question,
     type: question.type,
-    key: answerKeyFor(baseKey, bauwerkId ?? undefined, scope.zone),
+    key: answerKeyFor(baseKey, buildingId ?? undefined, scope.zone),
     baseKey,
-    bauwerkId,
+    buildingId,
     zone: scope.zone ?? null,
   }
 }
@@ -118,17 +119,17 @@ function zoneQuestions(stage: ProjectIntakeStage, use: string): ProjectIntakeQue
   return [...(stage.zoneCommon ?? []), ...(stage.zoneDefinitions?.[use]?.questions ?? [])]
 }
 
-function bauwerkCandidates(
+function buildingCandidates(
   stage: ProjectIntakeStage,
-  bauwerk: BauwerkInstance,
+  building: BuildingInstance,
   answers: Answers
 ): Candidate[] {
-  const own = stage.questions.map((question) => candidateFor(question, answers, { bauwerk }))
-  const uses = answers[answerKeyFor('D0', bauwerk.id)]
+  const own = stage.questions.map((question) => candidateFor(question, answers, { building }))
+  const uses = answers[answerKeyFor('D0', building.id)]
   const zones = Array.isArray(uses)
     ? uses.flatMap((zone) =>
         zoneQuestions(stage, zone).map((question) =>
-          candidateFor(question, answers, { bauwerk, zone })
+          candidateFor(question, answers, { building, zone })
         )
       )
     : []
@@ -139,21 +140,21 @@ function bauwerkCandidates(
 function candidatesFor(
   definition: ProjectIntakeDefinition,
   answers: Answers,
-  bauwerke: BauwerkInstance[]
+  buildings: BuildingInstance[]
 ): Candidate[] {
   return definition.stages.flatMap((stage) => {
-    if (stage.scope === 'bauwerk')
-      return bauwerke.flatMap((bauwerk) => bauwerkCandidates(stage, bauwerk, answers))
+    if (stage.scope === 'building')
+      return buildings.flatMap((building) => buildingCandidates(stage, building, answers))
     return stage.questions
       .map((question) => candidateFor(question, answers, {}))
       .filter((candidate): candidate is Candidate => candidate !== null)
   })
 }
 
-/** „noch offen" is the wizard's way to defer an answer, never a value a document states. B3_weise's `offen` is a real Bebauungsweise. */
+/** „noch offen" is the wizard's way to defer an answer, never a value a document states. B3_weise's `open` is a real Bebauungsweise. */
 function isUndecidedOption(option: { value: string; label: string }): boolean {
   return (
-    (option.value === 'offen' || option.value === 'noch_offen') && option.label.startsWith('noch')
+    (option.value === 'open' || option.value === 'undecided') && option.label.startsWith('noch')
   )
 }
 
@@ -176,7 +177,7 @@ export function needOptionsFor(
     .map((option) => ({ token: option.value, label: option.label }))
 }
 
-/** The D0 uses a Bauwerk can have: each opens its Nutzungszone (`key@bwN@use`). */
+/** The D0 uses a building can have: each opens its Nutzungszone (`key@bldgN@use`). */
 function zoneUses(definition: ProjectIntakeDefinition): Array<{ value: string; label: string }> {
   return (
     definition.stages.flatMap((stage) => stage.questions).find((question) => question.id === 'D0')
@@ -194,81 +195,81 @@ function labelFor(candidate: Candidate, definition: ProjectIntakeDefinition): st
 
 /** A known answer as the derivation reads it: `offen` and a number_tri left open are missing. */
 function knownAnswer(answers: Answers, answerKey: string): ProjectPrimitiveValue | undefined {
-  if (answers[modeKeyFor(answerKey)] === 'offen') return undefined
+  if (answers[modeKeyFor(answerKey)] === 'open') return undefined
   const value = answers[answerKey]
-  return value === 'offen' ? undefined : value
+  return value === 'open' ? undefined : value
 }
 
-/** Which Bauwerk question writes each Gebäudeklasse input, in the wizard's order. */
-function gebaeudeklasseReaders(
+/** Which building question writes each building class input, in the wizard's order. */
+function buildingClassReaders(
   definition: ProjectIntakeDefinition
 ): Array<{ questionId: string; input: string }> {
-  const inputs: readonly string[] = GEBAEUDEKLASSE_DERIVATION.inputs
+  const inputs: readonly string[] = BUILDING_CLASS_DERIVATION.inputs
   return definition.stages
-    .filter((stage) => stage.scope === 'bauwerk')
+    .filter((stage) => stage.scope === 'building')
     .flatMap((stage) => stage.questions)
     .map((question) => ({ questionId: question.id, input: baseKeyOf(question) ?? '' }))
     .filter(({ input }) => inputs.includes(input))
 }
 
 /**
- * One Bauwerk's Gebäudeklasse inputs from the wizard's answers, by base key;
+ * One building's building class inputs from the wizard's answers, by base key;
  * undefined where nothing is known. Read through the answers, not the
- * profile, so the wizard's legacy bridges (C8's inverted `ne_unter_400`)
+ * profile, so the wizard's legacy bridges (C8's inverted `units_under_400`)
  * reach the derivation too.
  */
 function inputsFromAnswers(
   readers: ReadonlyArray<{ questionId: string; input: string }>,
   answers: Answers,
-  bauwerkId: string
+  buildingId: string
 ): Record<string, ProjectPrimitiveValue | undefined> {
   return Object.fromEntries(
     readers.map(({ questionId, input }) => [
       input,
-      knownAnswer(answers, answerKeyFor(questionId, bauwerkId)),
+      knownAnswer(answers, answerKeyFor(questionId, buildingId)),
     ])
   )
 }
 
 /**
- * One Bauwerk's Gebäudeklasse inputs, by base key, as the derivation reads
+ * One building's building class inputs, by base key, as the derivation reads
  * them: facts first and suggestions under them, through the wizard's answers.
  * Every input the definition asks for is a key; undefined where it is unknown.
  */
-export function gebaeudeklasseInputsFor(
+export function buildingClassInputsFor(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition,
-  bauwerkId: string
+  buildingId: string
 ): Record<string, ProjectPrimitiveValue | undefined> {
   const { answers } = answersFromProfile(knownProfile(profile), definition)
-  return inputsFromAnswers(gebaeudeklasseReaders(definition), answers, bauwerkId)
+  return inputsFromAnswers(buildingClassReaders(definition), answers, buildingId)
 }
 
-/** Per Bauwerk, the Gebäudeklasse inputs that are open and could still change the class. */
+/** Per building, the building class inputs that are open and could still change the class. */
 function decisiveKeysFor(
   definition: ProjectIntakeDefinition,
   answers: Answers,
-  bauwerke: BauwerkInstance[]
+  buildings: BuildingInstance[]
 ): Set<string> {
-  const readers = gebaeudeklasseReaders(definition)
+  const readers = buildingClassReaders(definition)
   const decisive = new Set<string>()
-  for (const bauwerk of bauwerke) {
-    const known = inputsFromAnswers(readers, answers, bauwerk.id)
-    for (const input of decisiveInputs(known)) decisive.add(answerKeyFor(input, bauwerk.id))
+  for (const building of buildings) {
+    const known = inputsFromAnswers(readers, answers, building.id)
+    for (const input of decisiveInputs(known)) decisive.add(answerKeyFor(input, building.id))
   }
   return decisive
 }
 
-const GEBAEUDEKLASSE_INPUTS: readonly string[] = GEBAEUDEKLASSE_DERIVATION.inputs
+const BUILDING_CLASS_INPUTS: readonly string[] = BUILDING_CLASS_DERIVATION.inputs
 
 /**
  * What the project still needs: every question whose conditions hold for what
  * is known and that writes a profile key, minus keys a person marked unknown
- * and minus confirmed keys, except a confirmed Gebäudeklasse input: that one
+ * and minus confirmed keys, except a confirmed building class input: that one
  * stays as `confirmed`, never decisive, so a reading can corroborate it or
  * contradict it from a newer Stand. A key with only a suggestion stays, as
- * `suggested`. Decisive needs first (filling one could change a Bauwerk's
- * Gebäudeklasse; none in `closing` mode), then the wizard's order, the
+ * `suggested`. Decisive needs first (filling one could change a building's
+ * building class; none in `closing` mode), then the wizard's order, the
  * confirmed ones last; at most {@link MAX_INTAKE_NEEDS}.
  */
 export function computeNeeds(
@@ -276,15 +277,15 @@ export function computeNeeds(
   definition: ProjectIntakeDefinition,
   options: ComputeNeedsOptions
 ): Need[] {
-  const { answers, bauwerke } = answersFromProfile(knownProfile(profile), definition)
+  const { answers, buildings } = answersFromProfile(knownProfile(profile), definition)
   const unknown = new Set(options.unknownKeys ?? profile.unknowns)
   const decisive =
-    options.mode === 'closing' ? new Set<string>() : decisiveKeysFor(definition, answers, bauwerke)
-  const needs = candidatesFor(definition, answers, bauwerke)
+    options.mode === 'closing' ? new Set<string>() : decisiveKeysFor(definition, answers, buildings)
+  const needs = candidatesFor(definition, answers, buildings)
     .filter((candidate) => !(candidate.key in profile.goals))
     .filter(
       (candidate) =>
-        !(candidate.key in profile.facts) || GEBAEUDEKLASSE_INPUTS.includes(candidate.baseKey)
+        !(candidate.key in profile.facts) || BUILDING_CLASS_INPUTS.includes(candidate.baseKey)
     )
     .filter((candidate) => !unknown.has(candidate.key))
     .map((candidate) =>
@@ -300,7 +301,7 @@ export function computeNeeds(
 
 /**
  * The needs `after` lists that `before` did not, still open: what a write
- * opened (`bauwerkstyp = gebaeude` opens the Gebäude's questions), decisive
+ * opened (`building_type = gebaeude` opens the building's questions), decisive
  * first as {@link computeNeeds} orders them.
  */
 export function openedNeeds(before: readonly Need[], after: readonly Need[]): OpenedNeed[] {
@@ -323,7 +324,7 @@ function toNeed(
   return {
     key: candidate.key,
     baseKey: candidate.baseKey,
-    bauwerkId: candidate.bauwerkId,
+    buildingId: candidate.buildingId,
     label: labelFor(candidate, definition),
     type: candidate.type,
     ...(needOptions ? { options: needOptions } : {}),
@@ -349,36 +350,34 @@ export interface KeyQuestion {
   question: ProjectIntakeQuestion
   type: IntakeNeedType
   baseKey: string
-  bauwerkId: string | null
+  buildingId: string | null
   /** The D0 use of a Nutzungszone key, or null. */
   zone: string | null
 }
 
-const BAUWERK_ID = /^bw[1-9]\d*$/
-
 /** The key's scope parts, when it has the shape the question's scope asks for. */
 function scopedParts(
-  scope: 'project' | 'bauwerk' | 'zone',
+  scope: 'project' | 'building' | 'zone',
   parts: string[]
-): { bauwerkId: string | null; zone: string | null } | null {
-  const [, bauwerkId, zone] = parts
-  if (scope === 'project') return parts.length === 1 ? { bauwerkId: null, zone: null } : null
-  if (!BAUWERK_ID.test(bauwerkId ?? '')) return null
-  if (scope === 'bauwerk') return parts.length === 2 ? { bauwerkId, zone: null } : null
-  return parts.length === 3 && zone ? { bauwerkId, zone } : null
+): { buildingId: string | null; zone: string | null } | null {
+  const [, buildingId, zone] = parts
+  if (scope === 'project') return parts.length === 1 ? { buildingId: null, zone: null } : null
+  if (!isBuildingId(buildingId ?? '')) return null
+  if (scope === 'building') return parts.length === 2 ? { buildingId, zone: null } : null
+  return parts.length === 3 && zone ? { buildingId, zone } : null
 }
 
 /** Every question that writes a profile key, with the scope its keys take and the zone uses it is asked for. */
 function writers(definition: ProjectIntakeDefinition): Array<{
   question: ProjectIntakeQuestion
-  scope: 'project' | 'bauwerk' | 'zone'
+  scope: 'project' | 'building' | 'zone'
   uses: readonly string[] | null
 }> {
   const allUses = zoneUses(definition).map((option) => option.value)
   return definition.stages.flatMap((stage) => [
     ...stage.questions.map((question) => ({
       question,
-      scope: stage.scope === 'bauwerk' ? ('bauwerk' as const) : ('project' as const),
+      scope: stage.scope === 'building' ? ('building' as const) : ('project' as const),
       uses: null,
     })),
     ...(stage.zoneCommon ?? []).map((question) => ({ question, scope: 'zone' as const, uses: allUses })),
@@ -390,8 +389,8 @@ function writers(definition: ProjectIntakeDefinition): Array<{
 
 /**
  * The question `key` answers: its base key is one a question writes, and its
- * `@bwN` / `@bwN@use` suffix is the scope that question is asked in (a
- * project key has none, a Bauwerk key one, a Nutzungszone key a Bauwerk and
+ * `@bldgN` / `@bldgN@use` suffix is the scope that question is asked in (a
+ * project key has none, a building key one, a Nutzungszone key a building and
  * one of D0's uses). Null for any other key. Whether the question is asked
  * yet, whether its conditions hold, is not consulted: a reading may find a
  * value before the answer that opens its question.
@@ -414,16 +413,16 @@ export function questionForKey(
 
 /**
  * The question `key` answers, when a reading may record it on this profile:
- * {@link questionForKey}, and its Bauwerk is one the profile describes
- * (`bauwerkIdsOf` in `derivation-view.ts`: `bw1` when it names none). A
- * reading does not add a Bauwerk; a person does, in the wizard.
+ * {@link questionForKey}, and its building is one the profile describes
+ * (`buildingIdsOf` in `derivation-view.ts`: `bldg1` when it names none). A
+ * reading does not add a building; a person does, in the wizard.
  */
 export function recordableKey(
   definition: ProjectIntakeDefinition,
   key: string,
-  bauwerkIds: readonly string[]
+  buildingIds: readonly string[]
 ): KeyQuestion | null {
   const found = questionForKey(definition, key)
   if (!found) return null
-  return found.bauwerkId === null || bauwerkIds.includes(found.bauwerkId) ? found : null
+  return found.buildingId === null || buildingIds.includes(found.buildingId) ? found : null
 }

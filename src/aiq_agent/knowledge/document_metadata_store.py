@@ -40,7 +40,9 @@ from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
 from aiq_agent.common.db_utils import present_columns
 from aiq_agent.common.db_utils import present_indexes
 from aiq_agent.common.db_utils import redact_db_url
+from aiq_agent.knowledge.document_classification import LEGACY_DOC_CLASSES
 from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
+from aiq_agent.knowledge.document_classification import canonical_doc_class
 from aiq_agent.knowledge.title_block import normalise_revision_facts
 
 if TYPE_CHECKING:
@@ -103,7 +105,10 @@ _DOCUMENT_COLUMNS = (
 #: Where the Fassung facts a person made outlive a purge that can be undone (an archive, the folder
 #: bin, a publish that re-reads a document). One row per ``(collection, filename)`` whose metadata row
 #: went; the next :meth:`DocumentMetadataStore.register` of that name takes them back and deletes it.
-RETAINED_TABLE_NAME = "document_fassung_retained"
+RETAINED_TABLE_NAME = "document_revision_retained"
+#: The name this table had before the English rename: renamed in place on the first open that finds it
+#: (see :meth:`DocumentMetadataStore._create_retained_table`), the way ``summaries`` became ``document_metadata``.
+LEGACY_RETAINED_TABLE_NAME = "document_fassung_retained"
 
 #: What :data:`RETAINED_TABLE_NAME` keeps: the link a person confirmed, the suggestions a person
 #: refused, and the change line told against a linked Fassung (its basis is another file).
@@ -114,7 +119,7 @@ REFUSAL_REASON = "Von einer Person abgelehnt."
 
 
 class LinkOutcome(StrEnum):
-    """What :meth:`DocumentMetadataStore.link_fassung` did."""
+    """What :meth:`DocumentMetadataStore.link_revision` did."""
 
     LINKED = "linked"
     #: ``newer`` already leads to ``older`` through replacements; nothing was written.
@@ -123,7 +128,12 @@ class LinkOutcome(StrEnum):
     MISSING = "missing"
 
 
-def dismissed_fassungen(suggestion: Any) -> list[str]:
+def _current_doc_class(value: str | None) -> str | None:
+    """``value`` in the current vocabulary; a value outside it (a future class) as stored."""
+    return canonical_doc_class(value) or value
+
+
+def dismissed_revisions(suggestion: Any) -> list[str]:
     """The file names a person refused as the older Fassung of a document, oldest refusal first.
 
     Reads the stored record in both shapes: the current one carries ``dismissed_of``; a record
@@ -139,14 +149,19 @@ def dismissed_fassungen(suggestion: Any) -> list[str]:
 
 
 def _link_lock_key(collection: str) -> int:
-    """The signed 64-bit advisory-lock key that serialises link writes within one collection (Postgres)."""
+    """The signed 64-bit advisory-lock key that serialises link writes within one collection (Postgres).
+
+    The ``grid-fassung-link:`` salt stays German on purpose. It is the key every running pod derives, so renaming
+    it would let an old pod and a new pod take different locks for the same collection during a rollout and
+    store a loop (A over B and B over A). It names no code identifier; it is a value that has to stay as it was.
+    """
     digest = hashlib.sha256(f"grid-fassung-link:{collection}".encode()).digest()
     return int.from_bytes(digest[:8], "big", signed=True)
 
 
 @dataclass(frozen=True, slots=True)
 class _LinkRow:
-    """What :meth:`DocumentMetadataStore.link_fassung` reads of each row of the collection."""
+    """What :meth:`DocumentMetadataStore.link_revision` reads of each row of the collection."""
 
     superseded_by: str | None
     change_basis: str | None
@@ -187,7 +202,7 @@ def _merged_suggestion(stored: dict[str, Any] | None, new: dict[str, Any] | None
 
     ``new`` of ``None`` clears the open suggestion; what is left is the refusals, or nothing.
     """
-    refused = list(dict.fromkeys(dismissed_fassungen(stored) + dismissed_fassungen(new)))
+    refused = list(dict.fromkeys(dismissed_revisions(stored) + dismissed_revisions(new)))
     if new is None:
         return _refusal_record(refused)
     return {**new, "dismissed": new["of"] in refused, "dismissed_of": refused}
@@ -195,7 +210,7 @@ def _merged_suggestion(stored: dict[str, Any] | None, new: dict[str, Any] | None
 
 def _with_refusal(stored: dict[str, Any] | None, older: str) -> dict[str, Any]:
     """``stored`` with ``older`` refused: the open suggestion dismissed when it names ``older``, else kept open."""
-    refused = [name for name in dismissed_fassungen(stored) if name != older] + [older]
+    refused = [name for name in dismissed_revisions(stored) if name != older] + [older]
     if stored is None or stored["of"] == older or stored["dismissed"]:
         return {**(stored or {}), **_refusal_record(refused), **_kept_reason(stored, older)}
     return {**stored, "dismissed_of": refused}
@@ -269,7 +284,7 @@ class DocumentMetadataStore:
     _sync_engine_cache: dict[str, tuple[Any, float]] = {}
     _cache_lock = threading.Lock()
     _tables_initialized: set[str] = set()
-    #: Serialises :meth:`link_fassung` on SQLite, which has no advisory lock (dev and tests run one process).
+    #: Serialises :meth:`link_revision` on SQLite, which has no advisory lock (dev and tests run one process).
     _link_lock = threading.Lock()
 
     def __init__(self, db_url: str):
@@ -436,11 +451,65 @@ class DocumentMetadataStore:
 
         self._ensure_index(conn)
         self._create_retained_table(conn)
+        self._rename_legacy_doc_classes(conn)
 
-    def _create_retained_table(self, conn) -> None:
-        """Create :data:`RETAINED_TABLE_NAME` if it is missing: the Fassung facts a reversible purge keeps."""
+    def _rename_legacy_doc_classes(self, conn) -> None:
+        """Rewrite a ``doc_class`` still spelled the German way to the English key (idempotent).
+
+        The nine Dokumentart keys became English; a row written before, or by a pod that has not
+        rolled yet, still holds one. Reads map them anyway (:func:`canonical_doc_class`), so this
+        only keeps the stored values honest: it touches nothing once no row holds an old key.
+        Remove with ``LEGACY_DOC_CLASSES``, after one release.
+        """
         from sqlalchemy import text
 
+        names = list(LEGACY_DOC_CLASSES.items())
+        # The keys travel as bound parameters; only the table and the two fixed column names are
+        # spliced in, and both come from this module.
+        params = {f"old{i}": legacy for i, (legacy, _) in enumerate(names)}
+        params |= {f"new{i}": current for i, (_, current) in enumerate(names)}
+        old_keys = ", ".join(f":old{i}" for i in range(len(names)))
+        cases = " ".join(f"WHEN :old{i} THEN :new{i}" for i in range(len(names)))
+        for column in ("doc_class", "doc_class_suggestion"):
+            conn.execute(
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(
+                    f"UPDATE {TABLE_NAME} SET {column} = CASE {column} {cases} ELSE {column} END "
+                    f"WHERE {column} IN ({old_keys})"
+                ),
+                params,
+            )
+
+    def _create_retained_table(self, conn) -> None:
+        """Make :data:`RETAINED_TABLE_NAME` exist: the Fassung facts a reversible purge keeps.
+
+        A table still under :data:`LEGACY_RETAINED_TABLE_NAME` is renamed in place, rows kept. A pod
+        that has not rolled yet creates the legacy table again beside the new one; its rows are moved
+        across (a name already retained under the new table wins) and the legacy table is emptied, not
+        dropped, so that pod keeps working until it is replaced.
+        """
+        from sqlalchemy import inspect
+        from sqlalchemy import text
+
+        inspector = inspect(conn)
+        has_legacy = inspector.has_table(LEGACY_RETAINED_TABLE_NAME)
+        if has_legacy and not inspector.has_table(RETAINED_TABLE_NAME):
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            conn.execute(text(f"ALTER TABLE {LEGACY_RETAINED_TABLE_NAME} RENAME TO {RETAINED_TABLE_NAME}"))
+            logger.info("Renamed '%s' to '%s' (rows preserved)", LEGACY_RETAINED_TABLE_NAME, RETAINED_TABLE_NAME)
+            return
+        if has_legacy:
+            columns = ", ".join(("collection", "filename", *_RETAINED_COLUMNS))
+            conn.execute(
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(
+                    f"INSERT INTO {RETAINED_TABLE_NAME} ({columns}) SELECT {columns} FROM {LEGACY_RETAINED_TABLE_NAME} "
+                    "WHERE true ON CONFLICT (collection, filename) DO NOTHING"
+                )
+            )
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            conn.execute(text(f"DELETE FROM {LEGACY_RETAINED_TABLE_NAME}"))
+            return
         conn.execute(
             # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
@@ -809,7 +878,7 @@ class DocumentMetadataStore:
         for ``(collection, filename)`` — so ingestion/edit callers never create a
         summary-less, NOT NULL-violating row. A ``None`` value clears the column.
         """
-        return self._update_column(collection, filename, "doc_class", doc_class)
+        return self._update_column(collection, filename, "doc_class", _current_doc_class(doc_class))
 
     def get_doc_class(self, collection: str, filename: str) -> str | None:
         """Return the stored explicit ``doc_class`` for a document, or ``None`` (sync).
@@ -818,11 +887,12 @@ class DocumentMetadataStore:
         set" — callers treat both as "no explicit class yet" and fall back to the
         filename guess.
         """
-        return self._get_column(collection, filename, "doc_class")
+        return _current_doc_class(self._get_column(collection, filename, "doc_class"))
 
     def get_doc_classes_batch(self, collection: str, filenames: list[str]) -> dict[str, str]:
         """Return stored explicit ``doc_class`` values for many documents in one query."""
-        return self._get_column_batch(collection, filenames, "doc_class")
+        found = self._get_column_batch(collection, filenames, "doc_class")
+        return {name: _current_doc_class(value) for name, value in found.items()}
 
     def set_doc_class_suggestion(self, collection: str, filename: str, doc_class: str | None) -> bool:
         """Store (or clear, with ``None``) the decided Dokumentart a human has not confirmed.
@@ -831,11 +901,12 @@ class DocumentMetadataStore:
         page, which offers it to the platform owner. Same UPDATE-only contract
         as :meth:`set_doc_class`.
         """
-        return self._update_column(collection, filename, "doc_class_suggestion", doc_class)
+        return self._update_column(collection, filename, "doc_class_suggestion", _current_doc_class(doc_class))
 
     def get_doc_class_suggestions_batch(self, collection: str, filenames: list[str]) -> dict[str, str]:
         """Stored Dokumentart suggestions for many documents in one query."""
-        return self._get_column_batch(collection, filenames, "doc_class_suggestion")
+        found = self._get_column_batch(collection, filenames, "doc_class_suggestion")
+        return {name: _current_doc_class(value) for name, value in found.items()}
 
     def set_display_title(self, collection: str, filename: str, display_title: str | None) -> bool:
         """Replace only the ``display_title`` of an existing metadata row (sync).
@@ -966,7 +1037,7 @@ class DocumentMetadataStore:
 
         Without a loop check, so it is for lifting a link (``None``) and for
         carrying one that already exists onto another spelling. A NEW link goes
-        through :meth:`link_fassung`, which refuses a loop in the same transaction.
+        through :meth:`link_revision`, which refuses a loop in the same transaction.
         """
         return self._update_column(collection, older, "superseded_by", newer or None)
 
@@ -1033,7 +1104,7 @@ class DocumentMetadataStore:
             logger.warning("Failed to write the revision suggestion for %s: %s", filename, e)
             return False
 
-    def link_fassung(self, collection: str, older: str, newer: str) -> LinkOutcome:
+    def link_revision(self, collection: str, older: str, newer: str) -> LinkOutcome:
         """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop, in one locked transaction.
 
         The loop check and the write are one step: two people confirming A over B
@@ -1049,11 +1120,11 @@ class DocumentMetadataStore:
         still missing has the link waiting for it (:meth:`_attach_supersedes`).
         """
         if self._is_postgres():
-            return self._link_fassung_locked(collection, older, newer)
+            return self._link_revision_locked(collection, older, newer)
         with DocumentMetadataStore._link_lock:
-            return self._link_fassung_locked(collection, older, newer)
+            return self._link_revision_locked(collection, older, newer)
 
-    def _link_fassung_locked(self, collection: str, older: str, newer: str) -> LinkOutcome:
+    def _link_revision_locked(self, collection: str, older: str, newer: str) -> LinkOutcome:
         from sqlalchemy import text
 
         from .document_revisions import would_loop
@@ -1459,7 +1530,7 @@ class DocumentMetadataStore:
         ``of`` is the older file name, ``confidence`` a number in 0..1 (a flag is
         not one, and NaN is not one), ``reason`` a non-empty text, ``basis`` one
         of :data:`SUGGESTION_BASES`. ``dismissed_of`` lists every file a person
-        refused as the older Fassung (:func:`dismissed_fassungen`, which also reads
+        refused as the older Fassung (:func:`dismissed_revisions`, which also reads
         the older record with one dismissed ``of``), and ``dismissed`` says whether
         ``of`` is among them. A suggestion missing any of the first four is no suggestion.
         """
@@ -1473,7 +1544,7 @@ class DocumentMetadataStore:
             return None
         if not isinstance(reason, str) or not reason.strip() or basis not in SUGGESTION_BASES:
             return None
-        refused = dismissed_fassungen(value)
+        refused = dismissed_revisions(value)
         return {
             "of": older,
             "confidence": float(confidence),
@@ -1502,7 +1573,7 @@ class DocumentMetadataStore:
             file_name=row[0],
             summary=row[1],
             tags=self._decode_tags(row[2]),
-            doc_class=row[3] or None,
+            doc_class=_current_doc_class(row[3] or None),
             display_title=row[4] or None,
             folder_path=row[5] or None,
             added_at=self._iso_date(row[6]) if len(row) > 6 else None,

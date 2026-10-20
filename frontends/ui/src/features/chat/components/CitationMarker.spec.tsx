@@ -79,8 +79,8 @@ const locus = (page: number, number: number, passage?: string): CitationSource =
   collection: 'oib_knowledge',
   title: 'OIB-Richtlinie 2.1, Ausgabe Mai 2023',
   origin: 'kb',
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   laneLabel: 'OIB-Richtlinie',
   page,
   number,
@@ -383,7 +383,7 @@ describe('an inline citation marker', () => {
    */
   describe('the link to the document\'s home shelf', () => {
     const projectFile = 'brandschutzkonzept_ausgabe_2026.pdf'
-    const shelved = (shelf: 'project' | 'archiv'): CitationSource => ({
+    const shelved = (shelf: 'project' | 'office_shelf'): CitationSource => ({
       id: 'c9',
       content: `[KB] ${projectFile}, p.3`,
       citationKey: `${projectFile}, p.3`,
@@ -391,7 +391,7 @@ describe('an inline citation marker', () => {
       collection: 'project_docs',
       title: 'Brandschutzkonzept',
       origin: 'kb',
-      kind: 'projekt',
+      kind: 'project',
       shelf,
       page: 3,
       number: 1,
@@ -427,18 +427,18 @@ describe('an inline citation marker', () => {
 
     test('an archive document links to the office archive', async () => {
       const user = userEvent.setup()
-      answerWith(shelved('archiv'))
+      answerWith(shelved('office_shelf'))
 
       await user.click(screen.getByRole('button', { name: /Source 1: Brandschutzkonzept/i }))
       const peek = await screen.findByRole('dialog')
 
       expect(within(peek).getByRole('link', { name: 'Open in Office filing' })).toHaveAttribute(
         'href',
-        '/app/archiv'
+        '/app/office-shelf'
       )
     })
 
-    test('a document a person replaced says so in the peek and names the current Fassung', async () => {
+    test('a document a person replaced says so in the peek and names the current revision', async () => {
       chatStore.projectId = 'p-42'
       fetchMock.mockImplementation((input: RequestInfo | URL) =>
         Promise.resolve(
@@ -450,7 +450,7 @@ describe('an inline citation marker', () => {
                     filename: projectFile,
                     contentType: 'application/pdf',
                     createdAt: '2026-08-01T00:00:00.000Z',
-                    fassung: {
+                    revision: {
                       supersededBy: { id: 'doc-new', filename: 'brandschutzkonzept_ausgabe_2026_b.pdf' },
                       supersedes: [],
                       suggestion: null,

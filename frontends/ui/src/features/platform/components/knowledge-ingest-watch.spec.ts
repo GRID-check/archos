@@ -19,7 +19,7 @@ function file(fileName: string, state: KnowledgeFile['state']): KnowledgeFile {
     currentSha256: null,
     ingestedAt: null,
     summary: null,
-    docClass: 'sonstiges',
+    docClass: 'other',
     docClassSuggestion: null,
     displayTitle: null,
   }

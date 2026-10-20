@@ -52,7 +52,7 @@ except ImportError:
 
 FIXTURES = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures"
 GOLDEN_PATH = FIXTURES / "oib_golden_overview.json"
-PUNKT_INDEX_PATH = FIXTURES / "punkt_index.json"
+CLAUSE_INDEX_PATH = FIXTURES / "clause_index.json"
 
 #: The HEAD baseline the thresholds below are derived from. Re-record (code +
 #: table + module docstring) whenever a retrieval change moves the harness.
@@ -129,9 +129,9 @@ def test_every_expected_file_is_a_real_oib_corpus_name(entries):
             assert oib_doc_class(name) is not None, f"{entry.id}: {name!r} is not an OIB-corpus name"
 
 
-def test_the_normative_expected_files_resolve_against_the_punkt_index(entries):
+def test_the_normative_expected_files_resolve_against_the_clause_index(entries):
     """The 12 normative PDFs are the committed Punkt index's file set."""
-    payload = json.loads(PUNKT_INDEX_PATH.read_text(encoding="utf-8"))
+    payload = json.loads(CLAUSE_INDEX_PATH.read_text(encoding="utf-8"))
     indexed_files = {
         punkt["file_name"] for rl, punkte in payload.items() if rl != "_unresolved" for punkt in punkte.values()
     }

@@ -56,7 +56,7 @@ describe('oibDocumentKey', () => {
     expect(oibDocumentKey('OIB RL 2')).toBe('oib:2')
   })
 
-  test('distinguishes Richtlinie, Leitfaden, sub-numbers, and roles', () => {
+  test('distinguishes guideline, guide, sub-numbers, and roles', () => {
     expect(oibDocumentKey('oib-rl_2.3_ausgabe_mai_2023.pdf')).toBe('oib:2.3')
     expect(oibDocumentKey('oib-rl_2_leitfaden_ausgabe_mai_2023.pdf')).toBe('oib:2:lf')
     expect(oibDocumentKey('erlaeuterungen_oib-rl_2_ausgabe_mai_2023.pdf')).toBe('oib:erl:2')
@@ -174,7 +174,7 @@ describe('parseKbLocator', () => {
     expect(parseKbLocator('Plan.pdf (Büroablage)')).toEqual({
       filename: 'Plan.pdf',
       page: undefined,
-      shelf: 'archiv',
+      shelf: 'office_shelf',
     })
   })
 
@@ -227,7 +227,7 @@ describe('resolveCitationTarget', () => {
   const baseCorpusFiles = ['oib-rl_2_ausgabe_mai_2023.pdf']
 
   /** An org Archiv document — a different scope, the SAME preview route. */
-  const archivDocument: StoredDocumentRef = {
+  const officeShelfDocument: StoredDocumentRef = {
     id: 'archiv-1',
     filename: 'Bueroe_Detail_Attika.pdf',
     contentType: 'application/pdf',
@@ -270,14 +270,14 @@ describe('resolveCitationTarget', () => {
     })
   })
 
-  test('an org Archiv document opens like any other stored document', () => {
+  test('an org office shelf document opens like any other stored document', () => {
     // The Buero (Archiv) kind used to be structurally unopenable: the preview
     // index only ever listed project uploads and the base corpus, so every
     // Archiv citation degraded to a dead info popover even though the
     // scope-aware preview route would have served it.
     const target = targetFor(
       { url: '', content: '[KB] Bueroe_Detail_Attika.pdf, p.2' },
-      [...storedDocuments, archivDocument],
+      [...storedDocuments, officeShelfDocument],
       baseCorpusFiles
     )
 
@@ -288,7 +288,7 @@ describe('resolveCitationTarget', () => {
     })
   })
 
-  test('a project upload wins over an Archiv document of the same name', () => {
+  test('a project upload wins over an office shelf document of the same name', () => {
     const shadowed: StoredDocumentRef = {
       id: 'archiv-2',
       filename: 'Brandschutzkonzept.pdf',
@@ -310,12 +310,12 @@ describe('resolveCitationTarget', () => {
     // data (ADR-0047); the collection id is never prefix-matched for it.
     const shelvedDocuments: StoredDocumentRef[] = [
       { id: 'doc-1', filename: 'Plan.pdf', contentType: 'application/pdf', shelf: 'project' },
-      { id: 'archiv-9', filename: 'Plan.pdf', contentType: 'application/pdf', shelf: 'archiv' },
+      { id: 'archiv-9', filename: 'Plan.pdf', contentType: 'application/pdf', shelf: 'office_shelf' },
     ]
 
-    test('the wire shelf resolves to the Archiv copy', () => {
+    test('the wire shelf resolves to the office shelf copy', () => {
       const target = targetFor(
-        { url: '', content: '[KB] Plan.pdf, p.2', collection: 'archiv_org1', shelf: 'archiv' },
+        { url: '', content: '[KB] Plan.pdf, p.2', collection: 'archiv_org1', shelf: 'office_shelf' },
         shelvedDocuments
       )
 
@@ -379,10 +379,10 @@ describe('resolveCitationTarget', () => {
     })
 
     test('a stored-shelf citation does not slide onto a base-corpus file either', () => {
-      // The corpus is the `base` shelf. An `archiv` citation naming a filename
+      // The corpus is the `base` shelf. An `office_shelf` citation naming a filename
       // the corpus also carries must not be answered with the corpus copy.
       const target = targetFor(
-        { url: '', content: '[KB] Handbuch.pdf, p.2', shelf: 'archiv' },
+        { url: '', content: '[KB] Handbuch.pdf, p.2', shelf: 'office_shelf' },
         shelvedDocuments,
         ['Handbuch.pdf']
       )
@@ -597,7 +597,7 @@ describe('resolveCitationTarget', () => {
  * catastrophic as an identity: every document whose name merely mentions OIB or
  * "Richtlinie" was identified by its number alone.
  */
-describe('two documents are not one because their names share a Richtlinie', () => {
+describe('two documents are not one because their names share a guideline', () => {
   const corpusHit = (fileName: string, page: number): CitationSource =>
     citation({
       url: '',
@@ -625,7 +625,7 @@ describe('two documents are not one because their names share a Richtlinie', () 
     expect(docs.map((doc) => doc.fileName).sort()).toEqual([base, rev].sort())
   })
 
-  test('a project upload that mentions a Richtlinie is not swallowed by the corpus', () => {
+  test('a project upload that mentions a guideline is not swallowed by the corpus', () => {
     // The cross-shelf half, and the worse one: the reader's own document did
     // not merely get mislabelled, it disappeared from the answer — one chip,
     // the corpus filename, the base shelf — while its page carried on pointing
@@ -650,7 +650,7 @@ describe('two documents are not one because their names share a Richtlinie', () 
     expect(docs.map((doc) => doc.shelf).sort()).toEqual(['base', 'project'])
   })
 
-  test('the merge the key IS for still happens: a bare name joins its Richtlinie', () => {
+  test('the merge the key IS for still happens: a bare name joins its guideline', () => {
     const docs = buildCitationModel({
       citations: [corpusHit('oib-rl_6_ausgabe_mai_2023.pdf', 2)],
       entries: [{ number: 1, markdown: 'OIB-Richtlinie 6', sourceKind: 'kb' }],
@@ -689,7 +689,7 @@ describe('two documents are not one because their names share a Richtlinie', () 
       entries: [{ number: 1, markdown: '[KB] oib-rl_2.1_ausgabe_mai_2023.pdf, p.9' }],
     })
 
-    expect(doc!.lane).toBe('baurecht_oib')
+    expect(doc!.lane).toBe('building_law_oib')
     expect(doc!.authority).toBe('OIB')
   })
 })

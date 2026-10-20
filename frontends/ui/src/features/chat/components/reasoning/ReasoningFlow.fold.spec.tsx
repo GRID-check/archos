@@ -39,9 +39,9 @@ const spineSteps = (n: number) =>
         tool: 'knowledge_search',
         lanes: [
           {
-            key: 'baurecht_oib',
+            key: 'building_law_oib',
             label: 'OIB-Richtlinie',
-            kind: 'baurecht',
+            kind: 'building_law',
             hit_count: 1,
             sources: [{ name: `Quelle_${i}.pdf` }],
           },

@@ -267,8 +267,8 @@ export function AnswerBlockquote({ node, children }: React.ComponentPropsWithout
 }
 
 /** Where a verified quote stands: „S. 12 · Pkt. 3.5.2". */
-function stampLocus(stamp: { page?: number; punkt?: string }): string | undefined {
-  const parts = [stamp.punkt ? `Pkt. ${stamp.punkt}` : null, stamp.page ? `S. ${stamp.page}` : null].filter(Boolean)
+function stampLocus(stamp: { page?: number; clause?: string }): string | undefined {
+  const parts = [stamp.clause ? `Pkt. ${stamp.clause}` : null, stamp.page ? `S. ${stamp.page}` : null].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : undefined
 }
 

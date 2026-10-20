@@ -16,12 +16,12 @@ from aiq_agent.common.tool_errors import render_tool_error
 
 class _TwoFields(BaseModel):
     document: str
-    punkt: str
+    clause: str
 
 
 def _two_field_error() -> ValidationError:
     with pytest.raises(ValidationError) as caught:
-        _TwoFields.model_validate({"punkt": 3})
+        _TwoFields.model_validate({"clause": 3})
     return caught.value
 
 
@@ -31,7 +31,7 @@ class TestAValidationFailureReadsAsClauses:
 
         assert rendered.startswith("Error: the call was rejected. ")
         assert "document: Field required" in rendered
-        assert "punkt: Input should be a valid string" in rendered
+        assert "clause: Input should be a valid string" in rendered
         assert rendered.endswith("Fix the arguments and call again.")
 
     def test_a_short_rejected_value_is_echoed_back(self):

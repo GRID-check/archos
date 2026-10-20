@@ -631,7 +631,7 @@ type Translate = ReturnType<typeof useTranslations>
  */
 export function pinLabel(
   t: Translate,
-  annotation: Pick<AnnotationView, 'number' | 'kind' | 'status' | 'fassungNumber'>,
+  annotation: Pick<AnnotationView, 'number' | 'kind' | 'status' | 'revisionNumber'>,
   pilotiLine: string | undefined,
   openBy: readonly RoomPeerState[] | undefined,
   { ghost = false, unread = false }: { ghost?: boolean; unread?: boolean } = {}
@@ -646,8 +646,8 @@ export function pinLabel(
           : null
   const earlier = !ghost
     ? null
-    : annotation.fassungNumber
-      ? t('review.pinState.ghost', { number: annotation.fassungNumber })
+    : annotation.revisionNumber
+      ? t('review.pinState.ghost', { number: annotation.revisionNumber })
       : t('review.pinState.ghostUnnumbered')
   return [
     t('review.pinLabel', { number: annotation.number, kind: t(`annotations.kinds.${annotation.kind}`) }),
@@ -871,7 +871,7 @@ export function ReviewPageLayer({
       annotations.filter(
         (annotation) =>
           annotation.page === page &&
-          annotation.onCurrentFassung &&
+          annotation.onCurrentRevision &&
           (isLive(annotation) || (focused && filter === 'closed') || annotation.id === selectedId)
       ),
     [annotations, page, focused, filter, selectedId]

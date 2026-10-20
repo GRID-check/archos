@@ -3,7 +3,8 @@ import { loadDocumentRolesPromptSection } from '@/lib/document-roles/prompt-load
 import { loadUnreadableDocumentsSection } from './unreadable-section'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { buildProjectBriefView } from './brief-view'
-import { isValidBundeslandToken } from './intake-definition'
+import { normalizeLegacyPromptView } from './legacy-names'
+import { isValidFederalStateToken } from './intake-definition'
 import { ProjectProfileSchema } from './types'
 import type {
   ProjectAssumption,
@@ -37,10 +38,13 @@ const ANONYMOUS_TENANT = 'anon'
  * project context straight out of the cache. Partitioning by tenant is what
  * makes the cached path obey the same boundary as the query behind it.
  */
+// `-v2` and `federal-state:` are new prefixes on purpose: a cache is shared by the
+// pods of a rolling deploy, and an older pod fills the old keys with the German
+// names. A new pod never reads those.
 const promptViewCacheKey = (projectId: string, organizationId: string | null | undefined) =>
-  `promptview:${organizationId ?? ANONYMOUS_TENANT}:${projectId}`
-const bundeslandCacheKey = (projectId: string, organizationId: string | null | undefined) =>
-  `bundesland:${organizationId ?? ANONYMOUS_TENANT}:${projectId}`
+  `promptview-v2:${organizationId ?? ANONYMOUS_TENANT}:${projectId}`
+const federalStateCacheKey = (projectId: string, organizationId: string | null | undefined) =>
+  `federal-state:${organizationId ?? ANONYMOUS_TENANT}:${projectId}`
 
 /**
  * Cached read of the project-context prompt view injected into the agent on
@@ -69,7 +73,12 @@ export async function loadProjectPromptView(
       // (`lib/document-roles/service`), so the block cannot go stale either.
       loadDocumentRolesPromptSection(projectId, organizationId),
     ])
-    const combined = [stored?.trim(), documents].filter(Boolean).join('\n\n').trim()
+    // A view an older pod stored after the rename still names the German keys
+    // and tokens; the agent reads them in English only.
+    const combined = [stored ? normalizeLegacyPromptView(stored).trim() : null, documents]
+      .filter(Boolean)
+      .join('\n\n')
+      .trim()
     return combined || null
   }
 
@@ -113,10 +122,10 @@ function tenantVariants(
 
 /**
  * Invalidate EVERY per-project cache derived from the stored profile. Both the
- * prompt-view text (`promptview:`) and the structured `bundesland` fact
- * (`bundesland:`) are read from `projects.profile` with a 5-min TTL, so a
+ * prompt-view text (`promptview:`) and the structured `federal_state` fact
+ * (`federal_state:`) are read from `projects.profile` with a 5-min TTL, so a
  * profile write must drop BOTH keys — otherwise a wizard save that changes the
- * location leaves the jurisdiction-dependent `bundesland` on the WS handshake
+ * location leaves the jurisdiction-dependent `federal_state` on the WS handshake
  * (RIS logic) stale for up to 5 minutes. This is the single invalidation every
  * profile write path (`saveProjectProfile`, `patchProjectProfile`) must call.
  */
@@ -127,38 +136,38 @@ export async function invalidateProjectProfileCaches(
   await Promise.all(
     [
       ...tenantVariants(promptViewCacheKey, projectId, organizationId),
-      ...tenantVariants(bundeslandCacheKey, projectId, organizationId),
+      ...tenantVariants(federalStateCacheKey, projectId, organizationId),
     ].map((key) => invalidateCached(key))
   )
 }
 
 /**
- * Cached read of the project's validated `bundesland` fact, straight off the
- * stored structured profile (`projects.profile.facts.bundesland.value`) —
+ * Cached read of the project's validated `federal_state` fact, straight off the
+ * stored structured profile (`projects.profile.facts.federal_state.value`) —
  * the SAME source `buildProjectPromptView` reads to emit the
- * `bundesland=<token>` text line `loadProjectPromptView` above serves.
+ * `federal_state=<token>` text line `loadProjectPromptView` above serves.
  *
  * Backlog T3-9 follow-up (2026-07-16, user-mandated): jurisdiction is a
  * cross-cutting request fact and must travel STRUCTURED on the
  * `X-Grid-Request-Context` envelope, not be re-parsed out of that prompt
- * text — this is the read producers resolve `GridRequestContextInput.bundesland`
+ * text — this is the read producers resolve `GridRequestContextInput.federal_state`
  * from. Returns `null` for no project, no fact, or a value outside the
  * validated intake vocabulary (a stale/corrupt row must never leak an
  * unvalidated token onto the wire).
  */
-export async function loadProjectBundesland(
+export async function loadProjectFederalState(
   projectId: string | undefined,
   organizationId: string | null | undefined
 ): Promise<string | null> {
   if (!projectId) return null
 
   return getCached(
-    bundeslandCacheKey(projectId, organizationId),
+    federalStateCacheKey(projectId, organizationId),
     PROMPT_VIEW_CACHE_TTL_MS,
     async () => {
       const profile = await findProjectProfile(projectId, organizationId)
-      const value = profile?.facts?.bundesland?.value
-      return typeof value === 'string' && isValidBundeslandToken(value) ? value : null
+      const value = profile?.facts?.federal_state?.value
+      return typeof value === 'string' && isValidFederalStateToken(value) ? value : null
     }
   )
 }
@@ -169,11 +178,11 @@ export function buildProjectPromptView(profile: ProjectProfile): string {
 
   const factKeys = Object.keys(normalized.facts).sort()
 
-  // Legacy profile: no country fact but valid AT bundesland → derive country=at
+  // Legacy profile: no country fact but valid AT federal_state → derive country=at
   const countryInFacts = normalized.facts.country
-  if (!countryInFacts && normalized.facts.bundesland?.value) {
-    const bv = normalized.facts.bundesland.value
-    if (typeof bv === 'string' && bv !== 'ausserhalb_oesterreichs' && isValidBundeslandToken(bv)) {
+  if (!countryInFacts && normalized.facts.federal_state?.value) {
+    const bv = normalized.facts.federal_state.value
+    if (typeof bv === 'string' && bv !== 'outside_austria' && isValidFederalStateToken(bv)) {
       factKeys.unshift('country')
       normalized.facts.country = {
         value: 'at',

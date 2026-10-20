@@ -221,7 +221,7 @@ def render_passages(fixture: Fixture, hits: list[tuple[Passage, float]], tool: s
             doc_class=None,
             display_title=passage.file.name,
             folder_path=passage.file.folder or None,
-            punkt=None,
+            clause=None,
             score=score,
             content_type="text",
             provenance=None,
@@ -284,15 +284,15 @@ def read_passage_tool(fixture: Fixture, index: PassageIndex) -> StructuredTool:
     from knowledge_layer.read_passage import _READ_PASSAGE_DESCRIPTION
 
     async def read_passage(
-        document: str, punkt: str | int | None = None, page: int | str | None = None, conclusion: str = ""
+        document: str, clause: str | int | None = None, page: int | str | None = None, conclusion: str = ""
     ) -> str:
         file = fixture.file(document)
         if file is None:
             close = difflib.get_close_matches(document, fixture.names, n=3, cutoff=0.5)
             guesses = f" Vermutlich gemeint: {', '.join(close)}." if close else ""
             return f"Kein Dokument „{document}“ in diesem Umfang.{guesses}"
-        if punkt not in (None, ""):
-            return f"„{file.name}“ hat keinen Punkt „{punkt}“; lies es mit `page=`."
+        if clause not in (None, ""):
+            return f"„{file.name}“ hat keinen Punkt „{clause}“; lies es mit `page=`."
         wanted = int(page) if str(page or "").strip().isdigit() else 1
         hits = [(p, 1.0) for p in index.passages if p.file is file and p.page == wanted]
         if not hits:
@@ -323,15 +323,15 @@ def list_files_tool(fixture: Fixture) -> StructuredTool:
         offset: int | None = None,
         limit: int | None = None,
         topic: str | None = None,
-        fassungen_of: str | None = None,
+        revisions_of: str | None = None,
         compare_to: str | None = None,
     ) -> str:
-        from knowledge_layer.browse import render_fassungen
         from knowledge_layer.browse import render_listing
+        from knowledge_layer.browse import render_revisions
         from knowledge_layer.browse import select_files
 
-        if fassungen_of:
-            return render_fassungen(rows, fassungen_of, default_shelves=("project",))
+        if revisions_of:
+            return render_revisions(rows, revisions_of, default_shelves=("project",))
         listing = select_files(
             rows,
             default_shelves=("project",),

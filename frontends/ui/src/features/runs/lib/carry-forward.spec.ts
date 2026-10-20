@@ -8,16 +8,16 @@ const findings: Findings = {
   items: [
     {
       requirement: 'Zweiter Fluchtweg',
-      status: 'offen',
-      grounding: 'offen',
+      status: 'open',
+      grounding: 'open',
       citations: [],
       comment: 'Fluchtniveau unbekannt.',
     },
     {
       requirement: 'Feuerwiderstand',
       value: 'REI 60',
-      status: 'erfuellt',
-      grounding: 'belegt',
+      status: 'met',
+      grounding: 'sourced',
       citations: [1],
       reference: { document: 'OIB-RL 2', section: 'Tabelle 1b' },
     },
@@ -59,7 +59,7 @@ describe('continuationBrief', () => {
       message({
         citations: [
           { id: '1', content: '', timestamp: new Date(), shelf: 'project', fileName: 'Einreichplan.pdf', title: 'Einreichplan EG' },
-          { id: '2', content: '', timestamp: new Date(), shelf: 'archiv', fileName: 'Muster.pdf' },
+          { id: '2', content: '', timestamp: new Date(), shelf: 'office_shelf', fileName: 'Muster.pdf' },
           { id: '3', content: '', timestamp: new Date(), shelf: 'project', fileName: 'einreichplan.pdf' },
           { id: '4', content: '', timestamp: new Date(), shelf: 'base', fileName: 'OIB-RL 2.pdf' },
           { id: '5', content: '', timestamp: new Date(), url: 'https://ris.bka.gv.at/x' },
@@ -67,11 +67,11 @@ describe('continuationBrief', () => {
       })
     )
     expect(brief.documents).toEqual({
-      grundlage: [
+      basis: [
         { name: 'Einreichplan.pdf', title: 'Einreichplan EG', shelf: 'project' },
-        { name: 'Muster.pdf', shelf: 'archiv' },
+        { name: 'Muster.pdf', shelf: 'office_shelf' },
       ],
-      ausgeschlossen: [],
+      excluded: [],
     })
   })
 
@@ -80,7 +80,7 @@ describe('continuationBrief', () => {
       message({
         findings: {
           v: 1,
-          items: [{ requirement: 'Kriterium A', value: '12 m', grounding: 'belegt', citations: [] }],
+          items: [{ requirement: 'Kriterium A', value: '12 m', grounding: 'sourced', citations: [] }],
         },
       })
     )
@@ -92,7 +92,7 @@ describe('continuationBrief', () => {
 describe('previousRunFindings', () => {
   const ledger = {
     runId: 'r',
-    status: 'fertig',
+    status: 'done',
     phases: [],
     steps: [],
     startedAt: 'x',

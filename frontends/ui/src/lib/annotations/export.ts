@@ -71,7 +71,7 @@ export interface ExportedProtocol {
 }
 
 /** The Fassung the document shows now, among all of its Fassungen. */
-export interface ProtocolFassung {
+export interface ProtocolRevision {
   number: number
   total: number
   /** When this Fassung was filed (ISO). */
@@ -82,7 +82,7 @@ export interface ProtocolFassung {
 export interface ProtocolHeader {
   /** The name a person sees, with its extension. */
   documentName: string
-  fassung: ProtocolFassung | null
+  revision: ProtocolRevision | null
   projectName: string | null
   exportedAt: Date
   exportedBy: string
@@ -112,19 +112,19 @@ const byNumber = (a: AnnotationView, b: AnnotationView): number => a.number - b.
  * Which marks the export carries, and in which section. Pure.
  *
  * The Fassung narrows the RECORD, never the work: a mark still open from an
- * earlier Fassung is in every Protokoll, whatever `fassung` says, and its
+ * earlier Fassung is in every Protokoll, whatever `revision-links` says, and its
  * entry names the Fassung it was set on. A new Index arriving the day before
  * the Jour fixe does not answer the marks on the one before it, so a default
  * export that dropped them would drop exactly the points the meeting is for.
- * `fassung=current` leaves out what was CLOSED on earlier Fassungen.
+ * `revision-links=current` leaves out what was CLOSED on earlier Fassungen.
  */
 export function selectMarks(
   annotations: readonly AnnotationView[],
-  options: Pick<AnnotationExportOptions, 'scope' | 'fassung' | 'includeProposals'>
+  options: Pick<AnnotationExportOptions, 'scope' | 'revision' | 'includeProposals'>
 ): ProtocolSelection {
   const wanted = annotations.filter(
     (annotation) =>
-      (options.fassung === 'all' || annotation.onCurrentFassung || isLive(annotation)) &&
+      (options.revision === 'all' || annotation.onCurrentRevision || isLive(annotation)) &&
       (options.scope === 'all' || isLive(annotation))
   )
   return {
@@ -208,12 +208,12 @@ function factLines(annotation: AnnotationView, t: Translator, f: Formatters): Do
     const overdue = isOverdue(annotation, f.today) ? ` · ${t('review.overdue')}` : ''
     blocks.push(labelled(t('review.export.document.due'), `${due}${overdue}`))
   }
-  if (!annotation.onCurrentFassung) {
+  if (!annotation.onCurrentRevision) {
     blocks.push(
       paragraph(
-        annotation.fassungNumber === null
-          ? t('annotations.earlierFassungUnnumbered')
-          : t('annotations.earlierFassung', { number: annotation.fassungNumber }),
+        annotation.revisionNumber === null
+          ? t('annotations.earlierRevisionUnnumbered')
+          : t('annotations.earlierRevision', { number: annotation.revisionNumber }),
         'meta'
       )
     )
@@ -251,7 +251,7 @@ export function entryBlocks(annotation: AnnotationView, t: Translator, f: Format
 
 /** Whether the selection carries a mark set on an earlier Fassung. */
 const carriesEarlier = (selection: ProtocolSelection): boolean =>
-  [...selection.marks, ...selection.proposals].some((annotation) => !annotation.onCurrentFassung)
+  [...selection.marks, ...selection.proposals].some((annotation) => !annotation.onCurrentRevision)
 
 /**
  * Which Fassungen the Protokoll covers, as it IS: „aktuelle Fassung" only
@@ -260,20 +260,20 @@ const carriesEarlier = (selection: ProtocolSelection): boolean =>
  * of them; one that keeps the record of the current Fassung says the open ones
  * of earlier Fassungen came along.
  */
-function fassungPart(options: AnnotationExportOptions, selection: ProtocolSelection, t: Translator): string {
-  if (options.fassung === 'all') return t('review.export.document.fassungen.all')
-  if (!carriesEarlier(selection)) return t('review.export.document.fassungen.current')
+function revisionPart(options: AnnotationExportOptions, selection: ProtocolSelection, t: Translator): string {
+  if (options.revision === 'all') return t('review.export.document.revisions.all')
+  if (!carriesEarlier(selection)) return t('review.export.document.revisions.current')
   return t(
     options.scope === 'open'
-      ? 'review.export.document.fassungen.all'
-      : 'review.export.document.fassungen.currentWithOpenFromEarlier'
+      ? 'review.export.document.revisions.all'
+      : 'review.export.document.revisions.currentWithOpenFromEarlier'
   )
 }
 
 function scopeLine(options: AnnotationExportOptions, selection: ProtocolSelection, t: Translator): string {
   return [
     t(`review.export.document.scopes.${options.scope}`),
-    fassungPart(options, selection, t),
+    revisionPart(options, selection, t),
     ...(options.includeProposals ? [t('review.export.document.withProposals')] : []),
   ].join(' · ')
 }
@@ -285,17 +285,17 @@ function headerFacts(
   t: Translator,
   f: Formatters
 ): CoverFact[] {
-  const fassung = header.fassung
+  const revision = header.revision
   return [
     { label: t('review.export.document.document'), value: header.documentName },
-    ...(fassung
+    ...(revision
       ? [
           {
-            label: t('review.export.document.fassung'),
-            value: t('review.export.document.fassungOf', {
-              number: fassung.number,
-              total: fassung.total,
-              date: f.date(fassung.createdAt),
+            label: t('review.export.document.revision'),
+            value: t('review.export.document.revisionOf', {
+              number: revision.number,
+              total: revision.total,
+              date: f.date(revision.createdAt),
             }),
           },
         ]
@@ -453,16 +453,16 @@ async function renderPdf(protocol: Protocol): Promise<Uint8Array> {
 
 /** „Anmerkungen – Grundriss EG – Fassung 3.pdf": what the office files it under. */
 export function protocolFileName(
-  header: Pick<ProtocolHeader, 'documentName' | 'fassung'>,
-  options: Pick<AnnotationExportOptions, 'format' | 'fassung'>,
+  header: Pick<ProtocolHeader, 'documentName' | 'revision'>,
+  options: Pick<AnnotationExportOptions, 'format' | 'revision'>,
   t: Translator
 ): string {
   const name = splitDocumentName(header.documentName).stem
   const stem =
-    options.fassung === 'all'
+    options.revision === 'all'
       ? t('review.export.document.fileNameAll', { name })
-      : header.fassung
-        ? t('review.export.document.fileNameFassung', { name, number: header.fassung.number })
+      : header.revision
+        ? t('review.export.document.fileNameRevision', { name, number: header.revision.number })
         : t('review.export.document.fileName', { name })
   return protocolFileNameOf(stem, options.format)
 }
@@ -474,7 +474,7 @@ export async function renderProtocol(protocol: Protocol, format: AnnotationExpor
 }
 
 /** The Fassung the document shows now: its number among all of them, and when it was filed. */
-async function currentFassung(session: AuthorizedSession, doc: Document): Promise<ProtocolFassung | null> {
+async function currentRevision(session: AuthorizedSession, doc: Document): Promise<ProtocolRevision | null> {
   if (!doc.publishedVersionId) return null
   const versions = await listDocumentVersions(doc.id, session.organizationId)
   const current = versions.find((version) => version.id === doc.publishedVersionId)
@@ -483,13 +483,13 @@ async function currentFassung(session: AuthorizedSession, doc: Document): Promis
 }
 
 async function readHeader(session: AuthorizedSession, doc: Document, now: Date): Promise<ProtocolHeader> {
-  const [fassung, project] = await Promise.all([
-    currentFassung(session, doc),
+  const [revision, project] = await Promise.all([
+    currentRevision(session, doc),
     doc.projectId ? findProjectInOrg(doc.projectId, session.organizationId) : Promise.resolve(null),
   ])
   return {
     documentName: documentDisplayName(doc),
-    fassung,
+    revision,
     projectName: project?.name ?? null,
     exportedAt: now,
     exportedBy: session.name ?? session.email,
@@ -527,7 +527,7 @@ export async function exportAnnotationProtocol(
     metadata: {
       format: options.format,
       scope: options.scope,
-      fassung: options.fassung,
+      revision: options.revision,
       includeProposals: options.includeProposals,
       markCount: selection.marks.length,
       proposalCount: selection.proposals.length,

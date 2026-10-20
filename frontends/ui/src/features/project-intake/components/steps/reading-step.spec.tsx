@@ -121,7 +121,7 @@ describe('ReadingStep', () => {
 
     it('calls a value that arrives while the page is open just found, and puts it first', () => {
       const { rerender } = setup(READING_RUNNING)
-      const extra = READING_READY.groups.flatMap((group) => group.items).find((item) => item.key.startsWith('fluchtniveau'))
+      const extra = READING_READY.groups.flatMap((group) => group.items).find((item) => item.key.startsWith('escape_level'))
       expect(extra).toBeDefined()
       const next: IntakeView = {
         ...READING_RUNNING,

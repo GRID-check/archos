@@ -953,18 +953,18 @@ def _ingest_base_corpus(ing, tmp_path, file_name: str, config: dict | None = Non
 def test_the_dokumentart_an_admin_chose_at_upload_is_stamped_by_the_job(tmp_path, live_ingestor, stores):
     from aiq_agent.knowledge import get_document_doc_class
 
-    _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "gesetz"})
+    _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "law"})
 
-    assert get_document_doc_class("oib_knowledge", "statik.txt") == "gesetz"
+    assert get_document_doc_class("oib_knowledge", "statik.txt") == "law"
 
 
 def test_the_admins_choice_beats_the_class_a_replaced_version_carried(tmp_path, live_ingestor, stores):
     from aiq_agent.knowledge import get_document_doc_class
 
     _seed_previous_version(live_ingestor, stores, "oib_knowledge", "statik.txt")  # a person set "tragwerk"
-    _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "gesetz"})
+    _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "law"})
 
-    assert get_document_doc_class("oib_knowledge", "statik.txt") == "gesetz"
+    assert get_document_doc_class("oib_knowledge", "statik.txt") == "law"
 
 
 def test_a_replacement_with_no_choice_keeps_what_a_person_set(tmp_path, live_ingestor, stores):
@@ -981,7 +981,7 @@ def test_without_a_choice_the_class_is_guessed_from_the_file_name(tmp_path, live
 
     _ingest_base_corpus(live_ingestor, tmp_path, "oib-rl_2_ausgabe_mai_2023.txt")
 
-    assert get_document_doc_class("oib_knowledge", "oib-rl_2_ausgabe_mai_2023.txt") == "oib_richtlinie"
+    assert get_document_doc_class("oib_knowledge", "oib-rl_2_ausgabe_mai_2023.txt") == "oib_guideline"
 
 
 def test_a_class_outside_the_vocabulary_is_not_stamped(tmp_path, live_ingestor, stores):
@@ -989,7 +989,7 @@ def test_a_class_outside_the_vocabulary_is_not_stamped(tmp_path, live_ingestor, 
 
     _ingest_base_corpus(live_ingestor, tmp_path, "statik.txt", {"doc_class": "not_a_real_class"})
 
-    assert get_document_doc_class("oib_knowledge", "statik.txt") == "sonstiges"
+    assert get_document_doc_class("oib_knowledge", "statik.txt") == "other"
 
 
 def test_an_oib_document_gets_its_starting_display_title_from_its_name(tmp_path, live_ingestor, stores):

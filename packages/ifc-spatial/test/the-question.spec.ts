@@ -82,7 +82,7 @@ describe('the question that started this', () => {
 
   it('proposes the room use without asserting it', () => {
     const bedroom = opensTo(graph, WINDOW).value![0]!.globalId
-    const habitable = inventory(graph, 'aufenthaltsraum')
+    const habitable = inventory(graph, 'habitable_room')
     const match = habitable.value!.find((room) => room.globalId === bedroom)
     expect(match).toBeTruthy()
     // Aufenthaltsraum is a legal classification, not a geometric one. It stays

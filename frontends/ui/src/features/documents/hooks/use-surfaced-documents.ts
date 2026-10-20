@@ -21,7 +21,7 @@ export interface SurfacedDocument {
   snippet?: string | null
   page?: number | null
   score?: number | null
-  source?: 'projekt' | 'buero' | null
+  source?: 'project' | 'office' | null
 }
 
 /**
@@ -32,7 +32,7 @@ export interface SurfacedDocument {
  * the question the other way round — {@link storedFileIndex}, which is how an
  * answer's prose reaches a file the reader attached to this very conversation.
  */
-export type DocumentCorpus = 'projekt' | 'buero' | 'session'
+export type DocumentCorpus = 'project' | 'office' | 'session'
 
 /** A surfaced document resolved (or not) to its live document row. */
 export interface ResolvedSurfacedDocument {
@@ -42,14 +42,14 @@ export interface ResolvedSurfacedDocument {
   /** The live document row (id, status, thumbnail…) or `null` when unresolvable. */
   file: FileItem | null
   /** Which corpus the resolved row came from (drives the provenance badge). */
-  docSource: 'projekt' | 'buero' | null
+  docSource: 'project' | 'office' | null
 }
 
 interface SurfacedIndex {
   /** filename → row, project corpus. */
-  projekt: Map<string, FileItem>
+  project: Map<string, FileItem>
   /** filename → row, Büroablage. */
-  buero: Map<string, FileItem>
+  officeShelf: Map<string, FileItem>
   /**
    * filename → row, THIS conversation's private attachments (ADR-0047's
    * `session` shelf). Empty unless the caller named a conversation.
@@ -151,10 +151,10 @@ const corpusLookup = (corpus: Map<string, FileItem>, fileName: string): FileItem
 export async function resolveStoredDocument(
   projectId: string | null,
   fileName: string,
-  source: 'projekt' | 'buero',
+  source: 'project' | 'office',
 ): Promise<FileItem | null> {
   const index = await loadNamedIndex(projectId, [fileName])
-  return corpusLookup(source === 'buero' ? index.buero : index.projekt, fileName) ?? null
+  return corpusLookup(source === 'office' ? index.officeShelf : index.project, fileName) ?? null
 }
 
 /**
@@ -166,8 +166,8 @@ async function loadNamedIndex(projectId: string | null, names: readonly string[]
   const named = await resolveDocumentsByName(projectId, names)
   const answers = [...named.values()]
   return {
-    projekt: indexByFilename(answers.flatMap((answer) => answer.projekt)),
-    buero: indexByFilename(answers.flatMap((answer) => answer.buero)),
+    project: indexByFilename(answers.flatMap((answer) => answer.project)),
+    officeShelf: indexByFilename(answers.flatMap((answer) => answer.officeShelf)),
     session: new Map(),
     error: answers.some((answer) => answer.error),
   }
@@ -200,8 +200,8 @@ export async function storedFileIndex(
   const byName = new Map<string, StoredFile>()
   const corpora: ReadonlyArray<readonly [DocumentCorpus, Map<string, FileItem>]> = [
     ['session', index.session],
-    ['buero', index.buero],
-    ['projekt', index.projekt],
+    ['office', index.officeShelf],
+    ['project', index.project],
   ]
   // Written least-specific first, so the project's copy overwrites the rest.
   for (const [corpus, rows] of corpora) {
@@ -219,14 +219,14 @@ function loadSurfacedIndex(
   if (existing) return existing
 
   const promise = (async (): Promise<SurfacedIndex> => {
-    const [projektRes, bueroRes, sessionRes] = await Promise.all([
+    const [projectRes, officeShelfRes, sessionRes] = await Promise.all([
       // The project list is the primary corpus — any non-ok is a genuine error.
       projectId
         ? fetchCorpus(`/api/documents?projectId=${encodeURIComponent(projectId)}`, [])
         : Promise.resolve({ rows: null, failed: false }),
       // Büroablage is org-scoped (no projectId) — a 403 (a session without an
       // organization) or a 404 is fail-open (no Archiv resolutions), NOT an error.
-      fetchCorpus('/api/archiv/documents', [403, 404]),
+      fetchCorpus('/api/office-shelf/documents', [403, 404]),
       // This conversation's private attachments. A caller that names no
       // conversation gets an empty session corpus and no extra request.
       conversationId
@@ -237,10 +237,10 @@ function loadSurfacedIndex(
         : Promise.resolve({ rows: null, failed: false }),
     ])
     return {
-      projekt: indexByFilename(projektRes.rows),
-      buero: indexByFilename(bueroRes.rows),
+      project: indexByFilename(projectRes.rows),
+      officeShelf: indexByFilename(officeShelfRes.rows),
       session: indexByFilename(sessionRes.rows),
-      error: projektRes.failed || bueroRes.failed || sessionRes.failed,
+      error: projectRes.failed || officeShelfRes.failed || sessionRes.failed,
     }
   })()
 
@@ -299,7 +299,7 @@ export function useSurfacedDocuments(
       })
       .catch(() => {
         if (!cancelled) {
-          setIndex({ projekt: new Map(), buero: new Map(), session: new Map(), error: true })
+          setIndex({ project: new Map(), officeShelf: new Map(), session: new Map(), error: true })
         }
       })
     return () => {
@@ -327,18 +327,18 @@ export function useSurfacedDocuments(
         // never cross over (that would open the wrong file). Cross-corpus
         // resolution is allowed only when the tool gave no source, purely as a
         // best-effort last resort.
-        if (surfaced.source === 'projekt' || surfaced.source === 'buero') {
-          const map = surfaced.source === 'buero' ? index.buero : index.projekt
+        if (surfaced.source === 'project' || surfaced.source === 'office') {
+          const map = surfaced.source === 'office' ? index.officeShelf : index.project
           const hit = corpusLookup(map, surfaced.file_name)
           return hit
             ? { key, surfaced, file: hit, docSource: surfaced.source }
             : { key, surfaced, file: null, docSource: null }
         }
 
-        const inProjekt = corpusLookup(index.projekt, surfaced.file_name)
-        if (inProjekt) return { key, surfaced, file: inProjekt, docSource: 'projekt' }
-        const inBuero = corpusLookup(index.buero, surfaced.file_name)
-        if (inBuero) return { key, surfaced, file: inBuero, docSource: 'buero' }
+        const inProject = corpusLookup(index.project, surfaced.file_name)
+        if (inProject) return { key, surfaced, file: inProject, docSource: 'project' }
+        const inOfficeShelf = corpusLookup(index.officeShelf, surfaced.file_name)
+        if (inOfficeShelf) return { key, surfaced, file: inOfficeShelf, docSource: 'office' }
         return { key, surfaced, file: null, docSource: null }
       }),
     [documents, index]

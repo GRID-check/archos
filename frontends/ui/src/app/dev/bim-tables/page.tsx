@@ -122,26 +122,26 @@ const TAKEOFF: BimQuantityRow[] = [
 
 const SUGGESTIONS: BimProfileSuggestion[] = [
   {
-    key: 'geschosse_oberirdisch',
+    key: 'storeys_above_ground',
     value: 3,
     confidence: 'high',
     evidence: '3 Geschosse mit Höhenlage ≥ 0 im Modell: Erdgeschoss, 1. Obergeschoss, Dachgeschoss',
   },
   {
-    key: 'geschosse_unterirdisch',
+    key: 'storeys_below_ground',
     value: 1,
     confidence: 'high',
     evidence: '1 Geschosse mit negativer Höhenlage: Kellergeschoss (-2.85 m)',
   },
   {
-    key: 'fluchtniveau',
+    key: 'escape_level',
     value: '<=7m',
     confidence: 'medium',
     evidence: 'Oberstes belegtes Geschoss liegt bei 6 m (Dachgeschoss)',
   },
   {
-    key: 'hauptnutzung',
-    value: 'wohnen',
+    key: 'main_use',
+    value: 'residential',
     confidence: 'medium',
     evidence: '7 Räume im Modell tragen Namen dieser Nutzung',
   },

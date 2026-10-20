@@ -28,10 +28,10 @@ backfill = _load_backfill()
 
 REPLY = {
     "record": {
-        "kind": "nachforderung",
+        "kind": "information_request",
         "authority": "MA 37",
         "municipality": None,
-        "bundesland": "wien",
+        "federal_state": "vienna",
         "issued_on": "2017-12-04",
         "reference": None,
         "requirements": [],
@@ -87,7 +87,7 @@ def _run(docs, *, store=None, fetch=_fetch, ids=None, dry_run=False, llm=None):
     return stats, store
 
 
-def test_a_bescheid_is_extracted_and_stored_under_its_document_id():
+def test_a_permit_decision_is_extracted_and_stored_under_its_document_id():
     llm = FakeLLM()
     stats, store = _run([_doc()], llm=llm)
 
@@ -97,7 +97,7 @@ def test_a_bescheid_is_extracted_and_stored_under_its_document_id():
     assert record.authority == "MA 37"
 
 
-def test_documents_the_tags_do_not_call_a_bescheid_are_skipped():
+def test_documents_the_tags_do_not_call_a_permit_decision_are_skipped():
     stats, store = _run([_doc("a.pdf", ("Gutachten",)), _doc("b.pdf", None)])
     assert (stats.skipped, stats.stored) == (2, 0)
     assert store.calls == []
@@ -109,7 +109,7 @@ def test_a_dry_run_extracts_and_writes_nothing_and_needs_no_ids():
     assert store.calls == []
 
 
-def test_with_document_ids_a_bescheid_without_an_entry_fails_before_any_model_call():
+def test_with_document_ids_a_permit_decision_without_an_entry_fails_before_any_model_call():
     llm = FakeLLM()
     stats, store = _run([_doc()], ids={"other.pdf": "d9"}, llm=llm)
     assert stats.failed == 1

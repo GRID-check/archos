@@ -621,7 +621,7 @@ def set_document_revision_facts(collection: str, filename: str, facts: dict[str,
 def set_document_superseded_by(collection: str, older: str, newer: str | None) -> bool:
     """Record that a PERSON confirmed ``newer`` replaces ``older`` in this collection; ``None`` lifts it.
 
-    A NEW link goes through :func:`link_document_fassung`, which refuses a loop in the same
+    A NEW link goes through :func:`link_document_revision`, which refuses a loop in the same
     transaction; this one lifts a link (``None``) and carries an existing one onto another spelling.
     A model's reading of two documents goes through :func:`set_document_revision_suggestion`, which
     hides nothing. UPDATE-only: ``False`` when ``older`` has no metadata row.
@@ -632,15 +632,15 @@ def set_document_superseded_by(collection: str, older: str, newer: str | None) -
     return changed
 
 
-def link_document_fassung(collection: str, older: str, newer: str) -> "LinkOutcome":
+def link_document_revision(collection: str, older: str, newer: str) -> "LinkOutcome":
     """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop in the same transaction.
 
-    The writer of a NEW link, for the ``PUT /v1/collections/{collection}/fassung`` route and for a
-    link a person chose at upload (``fassung_of``). ``LOOP`` and ``MISSING`` write nothing. Also
+    The writer of a NEW link, for the ``PUT /v1/collections/{collection}/revision`` route and for a
+    link a person chose at upload (``revision_of``). ``LOOP`` and ``MISSING`` write nothing. Also
     clears a suggestion on ``newer`` that named ``older``, and the change line of the file ``older``
     was replaced by until now when it was told against ``older``.
     """
-    outcome = _get_document_metadata_store().link_fassung(collection, older, newer)
+    outcome = _get_document_metadata_store().link_revision(collection, older, newer)
     _mirror_facts(collection, [older, newer])
     return outcome
 

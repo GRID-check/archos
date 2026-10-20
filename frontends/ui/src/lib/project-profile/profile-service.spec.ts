@@ -23,7 +23,7 @@ vi.mock('@/lib/cache', () => ({
 }))
 
 vi.mock('@/lib/document-roles/repository', () => ({
-  deleteBindingsOutsideBauwerke: vi.fn().mockResolvedValue(0),
+  deleteBindingsOutsideBuildings: vi.fn().mockResolvedValue(0),
 }))
 
 vi.mock('@/lib/cross-project/project-facts-mirror', () => ({
@@ -33,8 +33,8 @@ vi.mock('@/lib/cross-project/project-facts-mirror', () => ({
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { invalidateCached } from '@/lib/cache'
 import { syncProjectFacts } from '@/lib/cross-project/project-facts-mirror'
-import { deleteBindingsOutsideBauwerke } from '@/lib/document-roles/repository'
-import { bauwerkIds } from '@/lib/document-roles/service'
+import { deleteBindingsOutsideBuildings } from '@/lib/document-roles/repository'
+import { buildingIds } from '@/lib/document-roles/service'
 import {
   findProjectProfileInOrg,
   setProjectProfileSummaryInOrg,
@@ -52,8 +52,8 @@ const session = { userId: 'user-1', organizationId: 'org-1' } as never
 
 const storedProfile: ProjectProfile = {
   facts: {
-    bundesland: {
-      value: 'wien',
+    federal_state: {
+      value: 'vienna',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: '2026-01-01T00:00:00.000Z',
@@ -201,18 +201,18 @@ describe('saveProjectProfile optimistic concurrency (If-Match)', () => {
     // under the row lock: committed with the profile or not at all.
     const inTransaction = vi.mocked(updateProjectProfileIfVersion).mock.calls[0][4]
     expect(inTransaction).toBeDefined()
-    expect(deleteBindingsOutsideBauwerke).not.toHaveBeenCalled()
+    expect(deleteBindingsOutsideBuildings).not.toHaveBeenCalled()
 
     const tx = {} as never
     await inTransaction?.(tx, storedState)
-    expect(deleteBindingsOutsideBauwerke).toHaveBeenCalledWith('proj-1', bauwerkIds(storedProfile), tx)
+    expect(deleteBindingsOutsideBuildings).toHaveBeenCalledWith('proj-1', buildingIds(storedProfile), tx)
   })
 
   it('touches no binding when the save is refused', async () => {
     await expect(saveProjectProfile(session, 'proj-1', storedProfile, 4)).rejects.toThrow()
 
     expect(updateProjectProfileIfVersion).not.toHaveBeenCalled()
-    expect(deleteBindingsOutsideBauwerke).not.toHaveBeenCalled()
+    expect(deleteBindingsOutsideBuildings).not.toHaveBeenCalled()
   })
 
   it('copies the fingerprint onto the project’s chunks after the write, and not when the save is refused', async () => {
@@ -232,7 +232,7 @@ describe('saveProjectProfile optimistic concurrency (If-Match)', () => {
 
 /**
  * Fix 1 (WP-C): every profile write path must drop BOTH profile-derived caches,
- * not just `promptview:` — otherwise the structured `bundesland` served on the
+ * not just `promptview:` — otherwise the structured `federal_state` served on the
  * WS handshake stays stale for the 5-min TTL after a location change.
  *
  * `@/lib/cache` is mocked here, so `./prompt-view` runs for real and we assert
@@ -246,18 +246,18 @@ describe('profile writes invalidate both profile-derived cache keys (Fix 1)', ()
     vi.mocked(updateProjectProfileIfVersion).mockResolvedValue(storedState)
   })
 
-  it('saveProjectProfile drops promptview: AND bundesland:', async () => {
+  it('saveProjectProfile drops promptview-v2: AND federal-state:', async () => {
     await saveProjectProfile(session, 'proj-1', storedProfile, 5)
 
-    expect(invalidateCached).toHaveBeenCalledWith('promptview:org-1:proj-1')
-    expect(invalidateCached).toHaveBeenCalledWith('bundesland:org-1:proj-1')
+    expect(invalidateCached).toHaveBeenCalledWith('promptview-v2:org-1:proj-1')
+    expect(invalidateCached).toHaveBeenCalledWith('federal-state:org-1:proj-1')
   })
 
-  it('patchProjectProfile drops promptview: AND bundesland:', async () => {
+  it('patchProjectProfile drops promptview-v2: AND federal-state:', async () => {
     await patchProjectProfile(session, 'proj-1', [])
 
-    expect(invalidateCached).toHaveBeenCalledWith('promptview:org-1:proj-1')
-    expect(invalidateCached).toHaveBeenCalledWith('bundesland:org-1:proj-1')
+    expect(invalidateCached).toHaveBeenCalledWith('promptview-v2:org-1:proj-1')
+    expect(invalidateCached).toHaveBeenCalledWith('federal-state:org-1:proj-1')
   })
 })
 
@@ -286,7 +286,7 @@ describe('generateProjectSummary', () => {
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe('http://backend:8000/v1/generate-summary')
     const body = JSON.parse(String((init as RequestInit).body))
-    // Labels, not machine tokens: "bundesland=wien" must never leak into the prose.
+    // Labels, not machine tokens: "federal_state=vienna" must never leak into the prose.
     expect(body.profile_text).toBe('Bundesland: Wien')
     expect(body.locale).toBe('de')
     // The locale is persisted alongside the prose so a later UI language switch

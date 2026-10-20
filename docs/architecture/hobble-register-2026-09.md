@@ -44,7 +44,7 @@ to beat.
 The other number that matters: trace A **ran out of research budget on
 "what do you know about OIB 2"** — the single most ordinary question the
 product answers, and row `was-weisst-du-ueber-oib-2` of the loop eval
-(`tests/fixtures/herleitung/loop_eval_questions.yaml`). Not an exotic six-hop
+(`tests/fixtures/derivation/loop_eval_questions.yaml`). Not an exotic six-hop
 chain. A family overview.
 
 Static prompt weight, measured (`piloti.j2`, 57 007 chars ≈ 14 250 tokens):
@@ -278,7 +278,7 @@ question ─┬─► [1] address parse (deterministic)
           │      § / Art / Abs in question or instrument?   → §-locator
           │      named law?                                 → catalog / title filter
           │      Bundesland: jurisdiction > instrument > question > project brief `bundesland=`
-          │        (reuses extract_bundesland / focus_entries, ris_adapter/catalog)
+          │        (reuses extract_federal_state / focus_entries, ris_adapter/catalog)
           │
           ├─► [2] candidates, CAP 3
           │      a. norm registry: match_entries → focus_entries
@@ -348,13 +348,13 @@ Relevance Score: 0.91
 Four load-bearing details:
 
 * **`Citation:`** carries the Kurztitel, the § and the Fassung date, and the
-  Fassung date rather than the retrieval date — `_RIS_TITLE_FASSUNG_RE` exists
+  Fassung date rather than the retrieval date — `_RIS_TITLE_REVISION_RE` exists
   because the retrieval stamp made the same law ingest as a new document daily.
   The same reasoning applies to the citation key: a citation must name a
   *version*, not a *download*.
 * **`Punkt:`** is the § (with Absatz where the extractor resolved one). The
   knowledge parser reads it into `SourceEntry.punkt`
-  (`citation_verification.py::_parse_knowledge_layer`, `_KL_PUNKT_RE`), which
+  (`citation_verification.py::_parse_knowledge_layer`, `_KL_CLAUSE_RE`), which
   is what puts a paragraph number in front of the reader instead of a URL.
 * **`Dokumentart: gesetz`** is what `lane_for_hit` reads first, so the chip
   renders as law rather than unknown, and `source_kinds` maps it to the coarse
@@ -457,7 +457,7 @@ unnecessary once the sequence is inside the tool.
   `_QUERY_KEYS` tuple already contains `"question"`, so the status line quotes
   the right string with no change.
 * `emit_retrieval_span` with `tool_name="ris_lookup"` plus `citation_keys` and
-  `punkt_ids` in `picks`, mirroring `knowledge_search` — that is what makes
+  `clause_ids` in `picks`, mirroring `knowledge_search` — that is what makes
   `loop_eval`'s `cross_turn`, `repeat_query` and `punkt_match` columns see RIS
   at all. They currently cannot.
 
@@ -508,7 +508,7 @@ nothing committed here can verify one"). Suggested:
 Then lift the file's own rule and add a **`paragraph`** field for Bauordnung
 rows: not a remembered § but one read off the fetched consolidated text and
 committed alongside, the same discipline `punkt` gets from
-`punkt_index.json`. That gives the harness a checkable fact for the half of the
+`clause_index.json`. That gives the harness a checkable fact for the half of the
 corpus it currently cannot check.
 
 New `loop_eval.py` columns:

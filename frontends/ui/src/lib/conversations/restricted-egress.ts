@@ -47,6 +47,7 @@ import 'server-only'
 import { ConversationConfinedError } from '@/lib/api/errors'
 import { getDictionary } from '@/i18n/dictionaries'
 import type { Locale } from '@/i18n/config'
+import { asShelf } from '@/features/chat/lib/source-kinds'
 import { folderTree, readableByEveryMember } from '@/lib/authz/folder-access'
 import { listProjectFolderTree } from '@/lib/authz/folder-access-repository'
 import { internalRead } from '@/lib/documents/document-reader'
@@ -172,8 +173,6 @@ export async function folderRestrictsReading(
   return !readableByEveryMember(tree, folderId)
 }
 
-/** The Archiv is the organization's shelf: every member reads it, and no project folder restricts it. */
-const ARCHIV_SHELF = 'archiv'
 
 /**
  * Refuse a run's Unterlagen when one of them is a project document filed in a
@@ -199,7 +198,8 @@ export async function requirePlanDocumentsOpen(
   documents: readonly PlanDocument[],
   locale: Locale
 ): Promise<void> {
-  const names = documents.filter((document) => document.shelf !== ARCHIV_SHELF).map((document) => document.name)
+  const names = documents.filter((document) => // A plan stored before the rename says `archiv`; asShelf reads it as the office shelf.
+      asShelf(document.shelf) !== 'office_shelf').map((document) => document.name)
   if (names.length === 0) return
   const folders = await listProjectFolderTree(organizationId, projectId)
   // No folder has its own list, so every folder is read by every member.

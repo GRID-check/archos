@@ -146,7 +146,7 @@ iteration recomputes: `_documents_dump` (2 `model_dump`s per doc), the full
 Jinja render (`prompt_utils.py:57-74`, compile is LRU-cached, render is not),
 and on research turns `render_block_for_prompt` + `doctrine_for` + `parcel_note`
 (the ~1400-token catalog block + the finding-#1 store reads). Additionally
-`render_block_for_prompt` → `resolve_bundesland` (`norm_registry.py:397-414`) →
+`render_block_for_prompt` → `resolve_federal_state` (`norm_registry.py:397-414`) →
 `GridRequestContext.from_context()` re-runs the base64 + HMAC-SHA256 + JSON
 parse of the ~6 KB signed envelope **per iteration** (audit #7 fixed only the
 chat-register call sites).

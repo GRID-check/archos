@@ -60,11 +60,11 @@ def test_one_search_names_no_more_collections_than_both_routes_accept():
 def test_the_project_facts_the_bff_sends_fit_the_model():
     limits = _ts_facts_limits()
     longest = "x" * limits["token"]
-    ProjectFacts(bundesland=longest, bauweise=[longest])
+    ProjectFacts(federal_state=longest, construction_method=[longest])
     with pytest.raises(ValidationError):
-        ProjectFacts(bauweise=[longest + "x"])
-    for key in ("gebaeudeklasse", "bauweise", "nutzungen", "vorhabensart"):
-        value = 4 if key == "gebaeudeklasse" else "t"
+        ProjectFacts(construction_method=[longest + "x"])
+    for key in ("building_class", "construction_method", "uses", "work_type"):
+        value = 4 if key == "building_class" else "t"
         ProjectFacts(**{key: [value] * limits[key]})
         with pytest.raises(ValidationError):
             ProjectFacts(**{key: [value] * (limits[key] + 1)})

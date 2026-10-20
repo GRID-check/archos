@@ -30,8 +30,8 @@ const RUN = 'run-1'
 
 const ledger = (overrides: Partial<RunLedger> = {}): RunLedger => ({
   runId: RUN,
-  status: 'laeuft',
-  phases: [{ phase: 'recherchieren', startedAt: '2026-09-16T08:00:00.000Z' }],
+  status: 'running',
+  phases: [{ phase: 'researching', startedAt: '2026-09-16T08:00:00.000Z' }],
   steps: [],
   startedAt: '2026-09-16T08:00:00.000Z',
   updatedAt: '2026-09-16T08:00:05.000Z',
@@ -97,7 +97,7 @@ describe('useRunLedger', () => {
     await waitFor(() => expect(connected).toHaveLength(1))
 
     act(() => {
-      callbacksOf().onLedger?.(ledger({ status: 'fertig', updatedAt: '2026-09-16T08:30:00.000Z' }))
+      callbacksOf().onLedger?.(ledger({ status: 'done', updatedAt: '2026-09-16T08:30:00.000Z' }))
     })
 
     expect(result.current.connection).toBeNull()
@@ -109,7 +109,7 @@ describe('useRunLedger', () => {
     // arrives as a NEW object with identical facts. Taking it would set state
     // on every render — a loop, not a refresh — and this is the assertion that
     // says so, because the loop only shows up as a hung test.
-    const stored = ledger({ status: 'fertig' })
+    const stored = ledger({ status: 'done' })
     const { result, rerender } = renderHook(
       ({ runLedger }) => useRunLedger({ message: { id: 'msg-1', runLedger }, projectId: 'p1' }),
       { initialProps: { runLedger: stored } },
@@ -122,7 +122,7 @@ describe('useRunLedger', () => {
   })
 
   it('shows the stored ledger and touches no network once the run is over', () => {
-    const stored = ledger({ status: 'fertig', finishedAt: '2026-09-16T08:10:00.000Z' })
+    const stored = ledger({ status: 'done', finishedAt: '2026-09-16T08:10:00.000Z' })
 
     const { result } = renderHook(() => useRunLedger({ message: { id: 'msg-1', runLedger: stored }, projectId: 'p1' }))
 
@@ -149,7 +149,7 @@ describe('useRunLedger', () => {
       steps: [
         {
           id: 'batch-1',
-          phase: 'recherchieren',
+          phase: 'researching',
           intent: 'OIB 2 auf Fluchtweglängen prüfen',
           startedAt: '2026-09-16T08:00:30.000Z',
           docs: [{ name: 'OIB-RL_2.pdf', loci: ['Pkt. 4.2'] }],
@@ -169,7 +169,7 @@ describe('useRunLedger', () => {
     act(() =>
       callbacksOf().onLedger?.(
         ledger({
-          status: 'fertig',
+          status: 'done',
           updatedAt: '2026-09-16T08:10:00.000Z',
           finishedAt: '2026-09-16T08:10:00.000Z',
           result: { filedAt: '2026-09-16T08:10:00.000Z' },
@@ -177,7 +177,7 @@ describe('useRunLedger', () => {
       ),
     )
 
-    expect(result.current.ledger?.status).toBe('fertig')
+    expect(result.current.ledger?.status).toBe('done')
     expect(result.current.live).toBe(false)
     expect(connected[0].disconnect).toHaveBeenCalled()
     // The terminal state re-runs the effect to a no-op: one fetch, one client.
@@ -207,16 +207,16 @@ describe('useRunLedger', () => {
 
   it('takes the fetched ledger when it is newer, and does not stream a run that has already ended', async () => {
     const finished = ledger({
-      status: 'fehlgeschlagen',
+      status: 'failed',
       updatedAt: '2026-09-16T08:12:00.000Z',
       finishedAt: '2026-09-16T08:12:00.000Z',
-      error: { reason: 'Budget aufgebraucht', completedBefore: ['planen'] },
+      error: { reason: 'Budget aufgebraucht', completedBefore: ['planning'] },
     })
     vi.mocked(fetchRunView).mockResolvedValue(view({ ledger: finished }))
 
     const { result } = renderHook(() => useRunLedger({ message: { id: 'msg-1', runLedger: ledger() }, projectId: 'p1' }))
 
-    await waitFor(() => expect(result.current.ledger?.status).toBe('fehlgeschlagen'))
+    await waitFor(() => expect(result.current.ledger?.status).toBe('failed'))
     expect(createDeepResearchClient).not.toHaveBeenCalled()
     expect(result.current.live).toBe(false)
   })
@@ -255,7 +255,7 @@ describe('useRunLedger', () => {
 
   it('offers no way to stop a run that is over, or one it cannot reach', () => {
     const done = renderHook(() =>
-      useRunLedger({ message: { id: 'msg-1', runLedger: ledger({ status: 'fertig' }) }, projectId: 'p1' }),
+      useRunLedger({ message: { id: 'msg-1', runLedger: ledger({ status: 'done' }) }, projectId: 'p1' }),
     )
     expect(done.result.current.cancel).toBeNull()
 
@@ -264,7 +264,7 @@ describe('useRunLedger', () => {
   })
 
   it('stops the run through the read door and takes the ledger the cancel returns', async () => {
-    const stopped = ledger({ status: 'abgebrochen', updatedAt: '2026-09-16T08:02:00.000Z' })
+    const stopped = ledger({ status: 'cancelled', updatedAt: '2026-09-16T08:02:00.000Z' })
     vi.mocked(cancelRun).mockResolvedValue(view({ status: 'cancelled', ledger: stopped }))
 
     const { result } = renderHook(() => useRunLedger({ message: { id: 'msg-1', runLedger: ledger() }, projectId: 'p1' }))
@@ -299,7 +299,7 @@ describe('useRunLedger', () => {
     // and the server settled the block since. „Abbrechen" used to close its
     // dialog on the 409 and leave „Läuft" on screen for good.
     const ended = ledger({
-      status: 'fehlgeschlagen',
+      status: 'failed',
       error: { reason: 'Job timed out', completedBefore: [] },
       updatedAt: '2026-09-16T08:30:00.000Z',
     })
@@ -342,10 +342,10 @@ describe('useRunLedger', () => {
     expect(patch).not.toHaveBeenCalled()
     // A status change is what the thread reads: it lands on the message.
     act(() => {
-      callbacksOf().onLedger?.(ledger({ status: 'fertig', updatedAt: '2026-09-16T08:00:09.000Z' }))
+      callbacksOf().onLedger?.(ledger({ status: 'done', updatedAt: '2026-09-16T08:00:09.000Z' }))
     })
     expect(patch).toHaveBeenCalledWith('conv-1', 'msg-1', {
-      runLedger: expect.objectContaining({ status: 'fertig' }),
+      runLedger: expect.objectContaining({ status: 'done' }),
     })
   })
 })
@@ -354,7 +354,7 @@ describe('useRunLedger — adding a document while the run goes', () => {
   it('hands the document to the run through the read door and takes the ledger it answers', async () => {
     const withDoc = ledger({
       updatedAt: '2026-09-16T08:02:00.000Z',
-      grundlage: [{ name: 'Nachtrag.pdf', loci: [] }],
+      basis: [{ name: 'Nachtrag.pdf', loci: [] }],
     })
     vi.mocked(addRunDocument).mockResolvedValue(view({ ledger: withDoc }))
 
@@ -368,7 +368,7 @@ describe('useRunLedger — adding a document while the run goes', () => {
     })
 
     expect(addRunDocument).toHaveBeenCalledWith('p1', RUN, { name: 'Nachtrag.pdf', shelf: 'project' })
-    expect(result.current.ledger?.grundlage?.map((doc) => doc.name)).toEqual(['Nachtrag.pdf'])
+    expect(result.current.ledger?.basis?.map((doc) => doc.name)).toEqual(['Nachtrag.pdf'])
   })
 
   it('keeps the API’s sentence for a restricted-folder refusal until the next try', async () => {
@@ -408,7 +408,7 @@ describe('useRunLedger — adding a document while the run goes', () => {
 
   it('offers no addition once the run is over', () => {
     const { result } = renderHook(() =>
-      useRunLedger({ message: { id: 'msg-1', runLedger: ledger({ status: 'fertig' }) }, projectId: 'p1' })
+      useRunLedger({ message: { id: 'msg-1', runLedger: ledger({ status: 'done' }) }, projectId: 'p1' })
     )
     expect(result.current.addDocument).toBeNull()
   })

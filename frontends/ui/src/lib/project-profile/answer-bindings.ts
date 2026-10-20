@@ -84,7 +84,7 @@ function display(key: ProjectKey, value: ProjectPrimitiveValue): { text: string;
 
 /**
  * The stored entry for a fact key: the key itself, or the first scoped copy
- * (`fluchtniveau_m@bw1`) when the profile records it per Bauwerk.
+ * (`escape_level_m@bldg1`) when the profile records it per building.
  */
 function entryFor<T>(record: Record<string, T>, factKey: string): T | undefined {
   if (record[factKey] !== undefined) return record[factKey]

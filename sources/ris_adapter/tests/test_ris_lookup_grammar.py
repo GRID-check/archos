@@ -8,10 +8,10 @@ text it failed on, instead of in an end-to-end test that says only "no passage".
 from __future__ import annotations
 
 from ris_adapter.lookup.grammar import PASSAGE_MAX_CHARS
-from ris_adapter.lookup.grammar import absatz_body
-from ris_adapter.lookup.grammar import cut_on_absatz
+from ris_adapter.lookup.grammar import cut_on_subsection
 from ris_adapter.lookup.grammar import headings_index
 from ris_adapter.lookup.grammar import split_sections
+from ris_adapter.lookup.grammar import subsection_body
 
 _LAW = """Bauordnung für Wien
 
@@ -107,44 +107,44 @@ class TestSplitting:
         assert [s.label for s in sections] == ["§ 8", "§ 9"]
         assert "(entfällt)" in sections[0].body
 
-    def test_an_absatz_under_the_marker_is_not_a_heading(self):
+    def test_a_subsection_under_the_marker_is_not_a_heading(self):
         assert split_sections("Dies ist Text.\n§ 1.\n(1)\nDer Inhalt.")[0].heading == ""
 
 
 class TestAbsaetze:
-    def test_the_named_absatz_is_cut_out_of_the_section(self):
+    def test_the_named_subsection_is_cut_out_of_the_section(self):
         section = split_sections(_LAW)[0]
 
-        body, absatz = absatz_body(section, "2")
+        body, subsection = subsection_body(section, "2")
 
-        assert absatz == "2"
+        assert subsection == "2"
         assert body.startswith("(2) Die Baupläne")
         assert "Nachweis des Eigentums" not in body
 
-    def test_the_run_in_first_absatz_is_found_too(self):
+    def test_the_run_in_first_subsection_is_found_too(self):
         """RIS writes "§ 63. (1) Dem …" on one line — Abs 1 has no line of its own."""
-        body, absatz = absatz_body(split_sections(_LAW)[0], "1")
+        body, subsection = subsection_body(split_sections(_LAW)[0], "1")
 
-        assert absatz == "1"
+        assert subsection == "1"
         assert "Nachweis des Eigentums" in body
         assert "Die Baupläne" not in body
 
-    def test_an_absatz_the_section_does_not_have_returns_the_whole_section(self):
+    def test_a_subsection_the_section_does_not_have_returns_the_whole_section(self):
         """Never an empty passage, and never the wrong Absatz."""
-        body, absatz = absatz_body(split_sections(_LAW)[0], "9")
+        body, subsection = subsection_body(split_sections(_LAW)[0], "9")
 
-        assert absatz == ""
+        assert subsection == ""
         assert "Nachweis des Eigentums" in body
 
 
 class TestCutting:
     def test_a_short_passage_is_returned_untouched(self):
-        assert cut_on_absatz("(1) Kurz.") == "(1) Kurz."
+        assert cut_on_subsection("(1) Kurz.") == "(1) Kurz."
 
-    def test_a_long_passage_is_cut_on_an_absatz_boundary(self):
+    def test_a_long_passage_is_cut_on_a_subsection_boundary(self):
         text = "\n".join(f"({index}) " + "Wort " * 120 for index in range(1, 12))
 
-        cut = cut_on_absatz(text)
+        cut = cut_on_subsection(text)
 
         assert len(cut) <= PASSAGE_MAX_CHARS + len("... [truncated]")
         assert cut.endswith("... [truncated]")
@@ -152,10 +152,10 @@ class TestCutting:
         kept = cut.removesuffix("... [truncated]")
         assert kept.count("(") == kept.count(")")
 
-    def test_one_enormous_absatz_still_gets_cut(self):
+    def test_one_enormous_subsection_still_gets_cut(self):
         """The boundary is preferred, not required — a 900 kB single Absatz
         must not reach the transcript because no boundary was available."""
-        cut = cut_on_absatz("(1) " + "Wort " * 200_000)
+        cut = cut_on_subsection("(1) " + "Wort " * 200_000)
 
         assert len(cut) <= PASSAGE_MAX_CHARS + len("... [truncated]")
 

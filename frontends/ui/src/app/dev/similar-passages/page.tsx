@@ -127,7 +127,7 @@ const RESPONSE: SimilarPassagesResponse = {
       ],
     },
     {
-      kind: 'archiv',
+      kind: 'office_shelf',
       project: null,
       documents: [
         {
@@ -223,8 +223,8 @@ const SOURCES: CitationSource[] = [
     collection: 'oib_knowledge',
     title: TITLE,
     origin: 'kb',
-    kind: 'baurecht',
-    lane: 'baurecht_oib',
+    kind: 'building_law',
+    lane: 'building_law_oib',
     laneLabel: 'OIB-Richtlinie',
     sourceType: 'knowledge_layer',
     page: 2,

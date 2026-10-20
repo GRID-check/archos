@@ -94,7 +94,7 @@ describe('ProfileStep', () => {
     it('switches between Bauwerke, and sends an open class to the questions', async () => {
       setup(PROFILE_REVIEW)
       await userEvent.click(screen.getByRole('radio', { name: 'Building 2' }))
-      const card = screen.getByTestId('profile-class-bw2')
+      const card = screen.getByTestId('profile-class-bldg2')
       expect(within(card).getByTestId('profile-class-title')).toHaveTextContent('Gebäudeklasse still open')
       expect(within(card).getByTestId('profile-class-reason')).toHaveTextContent('Still missing:')
       await userEvent.click(within(card).getByRole('button', { name: 'Answer the questions' }))
@@ -140,13 +140,13 @@ describe('ProfileStep', () => {
     it('shows the most decisive few, the class’s inputs first, and never a contested value', () => {
       setup(PROFILE_REVIEW)
       expect(rows()).toEqual([
-        'fluchtniveau_m@bw1',
-        'nutzungseinheiten@bw1',
-        'bauwerkstyp@bw1',
-        'gebaeudestellung@bw1',
-        'oib_ausgabe',
+        'escape_level_m@bldg1',
+        'use_units@bldg1',
+        'building_type@bldg1',
+        'building_position@bldg1',
+        'oib_edition',
       ])
-      expect(screen.queryByTestId('profile-finding-geschosse_oberirdisch@bw1')).toBeNull()
+      expect(screen.queryByTestId('profile-finding-storeys_above_ground@bldg1')).toBeNull()
       expect(screen.getByTestId('profile-findings-counts')).toHaveTextContent('7 values · 2 by you')
     })
 
@@ -156,38 +156,38 @@ describe('ProfileStep', () => {
       await userEvent.click(screen.getByRole('button', { name: 'See all 7 values by topic' }))
       const topic = screen.getByTestId('profile-topic-A')
       expect(topic).toHaveTextContent('Projektbasis')
-      expect(within(topic).getByTestId('profile-finding-standort_adresse')).toHaveTextContent('By you')
-      expect(within(topic).getByTestId('profile-finding-projektphase')).toHaveTextContent('Your answer')
+      expect(within(topic).getByTestId('profile-finding-site_address')).toHaveTextContent('By you')
+      expect(within(topic).getByTestId('profile-finding-project_phase')).toHaveTextContent('Your answer')
     })
 
     it('asks nothing to be approved row by row: a value is changed or struck out', async () => {
       setup(PROFILE_REVIEW)
       expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
       await userEvent.click(screen.getByRole('button', { name: '2023 for OIB-Ausgabe is not right: discard' }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'dismiss' }])
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_edition', action: 'dismiss' }])
     })
 
     it('changes a value with the wizard’s own control, written as the person’s answer', async () => {
       setup(PROFILE_REVIEW)
       await userEvent.click(screen.getByRole('button', { name: 'Change Anzahl Nutzungseinheiten' }))
-      const editor = await screen.findByTestId('profile-edit-nutzungseinheiten@bw1')
+      const editor = await screen.findByTestId('profile-edit-use_units@bldg1')
       const field = within(editor).getByRole('spinbutton')
       await userEvent.clear(field)
       await userEvent.type(field, '16')
       await userEvent.click(within(editor).getByRole('button', { name: 'Use' }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'nutzungseinheiten@bw1', action: 'answer', value: 16 }])
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'use_units@bldg1', action: 'answer', value: 16 }])
     })
 
     it('lets the OIB edition be changed too, though no wizard question asks it', async () => {
       setup(PROFILE_REVIEW)
       await userEvent.click(screen.getByRole('button', { name: 'Change OIB-Ausgabe' }))
-      const editor = await screen.findByTestId('profile-edit-oib_ausgabe')
+      const editor = await screen.findByTestId('profile-edit-oib_edition')
       expect(within(editor).getByRole('combobox')).toHaveTextContent('2023')
     })
 
     it('names the source without its file type, and shows its quote when it is focused', async () => {
       setup(PROFILE_REVIEW)
-      const row = screen.getByTestId('profile-finding-fluchtniveau_m@bw1')
+      const row = screen.getByTestId('profile-finding-escape_level_m@bldg1')
       const source = within(row).getByRole('button', { name: 'Source of Fluchtniveau: E-02 Schnitt A-A · p. 1' })
       expect(source).toHaveTextContent('+1')
       source.focus()
@@ -199,7 +199,7 @@ describe('ProfileStep', () => {
 
     it('offers the document itself once the source is pinned', async () => {
       setup(PROFILE_REVIEW)
-      const row = screen.getByTestId('profile-finding-nutzungseinheiten@bw1')
+      const row = screen.getByTestId('profile-finding-use_units@bldg1')
       await userEvent.click(within(row).getByTestId('source-peek'))
       const panel = await screen.findByTestId('source-peek-panel')
       const chips = within(panel).getByTestId('evidence-chips')
@@ -210,8 +210,8 @@ describe('ProfileStep', () => {
     it('names the address search and the person’s answer, with nothing to peek at', async () => {
       setup(PROFILE_REVIEW)
       await userEvent.click(screen.getByRole('button', { name: 'See all 7 values by topic' }))
-      expect(screen.getByTestId('profile-finding-standort_adresse')).toHaveTextContent('Address search')
-      expect(within(screen.getByTestId('profile-finding-standort_adresse')).queryByTestId('source-peek')).toBeNull()
+      expect(screen.getByTestId('profile-finding-site_address')).toHaveTextContent('Address search')
+      expect(within(screen.getByTestId('profile-finding-site_address')).queryByTestId('source-peek')).toBeNull()
     })
 
     it('keeps the briefing editor as a quiet way to change everything', () => {
@@ -239,7 +239,7 @@ describe('ProfileStep', () => {
   it('lets a reader look without deciding', () => {
     setup(PROFILE_READONLY)
     expect(screen.queryByRole('button', { name: /^(Use|Discard|Confirm) / })).toBeNull()
-    expect(screen.getByTestId('profile-finding-fluchtniveau_m@bw1')).toHaveTextContent('Suggestion')
+    expect(screen.getByTestId('profile-finding-escape_level_m@bldg1')).toHaveTextContent('Suggestion')
     expect(screen.queryByTestId('profile-finish')).toBeNull()
   })
 
@@ -264,12 +264,12 @@ describe('ProfileStep', () => {
       expect(footer()).toHaveTextContent('What you did not change, Piloti takes as it is, with its source.')
       await userEvent.click(within(footer()).getByRole('button', { name: 'Take everything and finish' }))
       expect(onDecide).toHaveBeenCalledWith([
-        { key: 'oib_ausgabe', action: 'confirm' },
-        { key: 'bauwerkstyp@bw1', action: 'confirm' },
-        { key: 'fluchtniveau_m@bw1', action: 'confirm' },
-        { key: 'gebaeudestellung@bw1', action: 'confirm' },
-        { key: 'nutzungseinheiten@bw1', action: 'confirm' },
-        { key: 'gebaeudeklasse@bw1', action: 'confirm' },
+        { key: 'oib_edition', action: 'confirm' },
+        { key: 'building_type@bldg1', action: 'confirm' },
+        { key: 'escape_level_m@bldg1', action: 'confirm' },
+        { key: 'building_position@bldg1', action: 'confirm' },
+        { key: 'use_units@bldg1', action: 'confirm' },
+        { key: 'building_class@bldg1', action: 'confirm' },
       ])
       expect(onComplete).toHaveBeenCalledTimes(1)
       expect(screen.queryByRole('dialog')).toBeNull()

@@ -14,7 +14,7 @@
 
 import type { SourcePresetId } from '../types'
 
-export type RetrievalShelf = 'archiv' | 'project' | 'session' | 'base'
+export type RetrievalShelf = 'office_shelf' | 'project' | 'session' | 'base'
 
 /**
  * Shelves this turn may retrieve from, or `undefined` when the signed
@@ -30,9 +30,9 @@ export function includeShelvesForTurn(input: {
   // `project` SHELF did not) that exposed it.
   if (input.subjectShelf === 'session') return ['session', 'base']
   if (input.subjectShelf === 'project') return ['project', 'session', 'base']
-  if (input.subjectShelf === 'archiv') return ['archiv', 'session', 'base']
+  if (input.subjectShelf === 'office_shelf') return ['office_shelf', 'session', 'base']
   if (input.preset === 'law') return ['base']
   if (input.preset === 'project') return ['project', 'session', 'base']
-  if (input.preset === 'office') return ['archiv', 'session', 'base']
+  if (input.preset === 'office') return ['office_shelf', 'session', 'base']
   return undefined
 }

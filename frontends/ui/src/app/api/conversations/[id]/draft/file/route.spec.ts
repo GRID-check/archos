@@ -276,7 +276,7 @@ describe('filingReference — parity with the agent tier', () => {
     expect(filingReference('conv-1', '/entwuerfe/Fluchtweglänge.md')).toBe('conv-1-fluchtwegl-nge')
     // A bare name files under itself; a name with nothing left is still a key.
     expect(filingReference('conv-1', 'notiz')).toBe('conv-1-notiz')
-    expect(filingReference('conv-1', '/entwuerfe/---.md')).toBe('conv-1-entwurf')
+    expect(filingReference('conv-1', '/entwuerfe/---.md')).toBe('conv-1-draft')
   })
 
   it('bounds the reference like the agent tier', () => {

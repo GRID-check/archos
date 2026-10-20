@@ -4,7 +4,7 @@ The registry is a FLAT catalog (``configs/norms/<country>/registry.yml``): one e
 per legal norm. Entries that carry a ``verify`` seed are re-checked against the live
 OGD-RIS search API; only the machine-derived pointer fields
 (``application``/``document_number``/``citation_url``/``full_law_url``/``verified_at``)
-are written back. Every curated field (title/short/rank/bundesland/topics/relevance/
+are written back. Every curated field (title/short/rank/federal_state/topics/relevance/
 aliases/binding_note/review_note/verify) is left untouched. Entries WITHOUT a verify
 seed are skipped with a logged note.
 
@@ -55,7 +55,7 @@ def _standalone_module(module_name: str, module_path: Path):
 def _load_norm_registry_module():
     """Import norm_registry.py standalone (the package __init__ pulls langgraph/nat).
 
-    The flat module only needs pydantic + yaml at import time (``resolve_bundesland``
+    The flat module only needs pydantic + yaml at import time (``resolve_federal_state``
     imports project_context lazily), so stubbing the aiq_agent package chain is enough.
     """
     import types
@@ -69,6 +69,8 @@ def _load_norm_registry_module():
     # norm_registry imports source_kinds, which is stdlib-only; loaded the same
     # way, or the builder dies on import before it verifies anything.
     _standalone_module("aiq_agent.common.source_kinds", common_dir / "source_kinds.py")
+    # So does profile_names (stdlib only), for the federal-state tokens.
+    _standalone_module("aiq_agent.profile_names", common_dir.parent / "profile_names.py")
     return _standalone_module("aiq_agent.common.norm_registry", common_dir / "norm_registry.py")
 
 
@@ -77,7 +79,7 @@ _nr = _load_norm_registry_module()
 NORMS_ROOT = REPO_ROOT / "configs" / "norms"
 
 # Canonical Bundesland name -> OGD-RIS Landesrecht search parameter.
-_BUNDESLAND_PARAMS: dict[str, str] = {
+_FEDERAL_STATE_PARAMS: dict[str, str] = {
     "Wien": "SucheInWien",
     "Niederösterreich": "SucheInNiederoesterreich",
     "Oberösterreich": "SucheInOberoesterreich",
@@ -93,7 +95,7 @@ _BUNDESLAND_PARAMS: dict[str, str] = {
 def _pick_hit(entry_id: str, verify, hits):
     """Select the currently-in-force whole-law anchor (the '§ 0' document).
 
-    Applies the verify seed's expect/exclude/gesetzesnummer guards and fails loud
+    Applies the verify seed's expect/exclude/statute_number guards and fails loud
     (SystemExit) when the number of surviving candidates is not exactly one.
     """
     candidates = []
@@ -107,7 +109,7 @@ def _pick_hit(entry_id: str, verify, hits):
             continue
         if not hit.full_law_url:
             continue
-        if verify.gesetzesnummer and f"Gesetzesnummer={verify.gesetzesnummer}" not in hit.full_law_url:
+        if verify.statute_number and f"Gesetzesnummer={verify.statute_number}" not in hit.full_law_url:
             continue
         candidates.append(hit)
     in_force = [h for h in candidates if not h.metadata.get("Außer Kraft seit")]
@@ -124,15 +126,15 @@ async def verify_entry(client: RisClient, entry) -> dict:
     """Live-verify ONE registry entry and return its merged pointer fields.
 
     ``entry`` is a NormEntry (or any object exposing ``id``/``application``/
-    ``bundesland``/``verify``). Reused by the build loop below and by the future
+    ``federal_state``/``verify``). Reused by the build loop below and by the future
     admin verify API. Raises SystemExit on an ambiguous/missing hit.
     """
     verify = entry.verify
     if verify is None:
         raise ValueError(f"entry '{entry.id}' has no verify seed")
     params: dict[str, str] = {"Titel": verify.title_query}
-    if entry.bundesland:
-        params[f"Bundesland.{_BUNDESLAND_PARAMS[entry.bundesland]}"] = "true"
+    if entry.federal_state:
+        params[f"Bundesland.{_FEDERAL_STATE_PARAMS[entry.federal_state]}"] = "true"
     hits = []
     page = 1
     while True:

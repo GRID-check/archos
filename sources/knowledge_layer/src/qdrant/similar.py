@@ -181,7 +181,7 @@ def _excluded(source: PassageSource) -> models.Filter:
 
 #: The superseded Fassung of a document drops out, as from every answer (ADR-0099).
 #: ``$ne`` keeps a point that carries no ``superseded`` at all.
-CURRENT_FASSUNGEN: dict[str, Any] = {"superseded": {"$ne": True}}
+CURRENT_REVISIONS: dict[str, Any] = {"superseded": {"$ne": True}}
 
 
 def group_by_document(points: Sequence[Any], documents: int, per_document: int) -> list[SimilarDocument]:
@@ -256,7 +256,7 @@ def find_similar(
         query=query,
         using=DENSE,
         lookup_from=lookup,
-        query_filter=scope_filter(scopes, CURRENT_FASSUNGEN, _excluded(source)),
+        query_filter=scope_filter(scopes, CURRENT_REVISIONS, _excluded(source)),
         # The scores are shown as a match percentage: rescored from the original
         # vectors rather than read off the 4-bit quantized copy.
         search_params=models.SearchParams(quantization=models.QuantizationSearchParams(rescore=True)),

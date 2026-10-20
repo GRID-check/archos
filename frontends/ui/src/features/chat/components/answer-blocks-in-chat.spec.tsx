@@ -80,8 +80,8 @@ const locus = (page: number, number: number, passage?: string): CitationSource =
   collection: 'oib_knowledge',
   title: 'OIB-Richtlinie 2.1, Ausgabe Mai 2023',
   origin: 'kb',
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   laneLabel: 'OIB-Richtlinie',
   page,
   number,
@@ -106,7 +106,7 @@ const citations = [locus(5, 1, 'Garagen sind mechanisch zu entlüften.'), locus(
 const renderAnswer = () =>
   render(<AgentResponse content={answer} messageId="m1" citations={citations} routingDecision="deep" />)
 
-describe('a Fundstelle excerpt', () => {
+describe('a locus excerpt', () => {
   beforeEach(() => {
     resetSourcePreviewIndexCache()
     fetchMock.mockClear()

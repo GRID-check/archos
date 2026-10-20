@@ -317,7 +317,7 @@ function FilingDecisionBody({
       ? undefined
       : folderPath !== ''
         ? folderPath
-        : suggestion.shelf === 'buero'
+        : suggestion.shelf === 'office'
           ? t('filing.rootOffice')
           : t('filing.rootProject')
 

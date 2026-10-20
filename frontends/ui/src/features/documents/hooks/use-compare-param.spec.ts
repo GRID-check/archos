@@ -11,9 +11,9 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => search,
 }))
 
-const openFassungCompare = vi.fn()
-vi.mock('../components/fassung-compare', () => ({
-  useFassungCompare: () => ({ openFassungCompare, compareElement: null }),
+const openRevisionCompare = vi.fn()
+vi.mock('../components/revision-compare', () => ({
+  useRevisionCompare: () => ({ openRevisionCompare, compareElement: null }),
 }))
 
 const row = (id: string, filename: string): FileItem =>
@@ -32,13 +32,13 @@ const OLDER = row('doc-a', 'Grundriss EG Index B.pdf')
 describe('useCompareParam', () => {
   beforeEach(() => {
     replace.mockReset()
-    openFassungCompare.mockReset()
+    openRevisionCompare.mockReset()
   })
 
   it('opens the comparison the link asks for, older against newer, and drops the parameter', () => {
     search = new URLSearchParams('doc=doc-b&compare=doc-a&folder=f1')
     renderHook(() => useCompareParam([NEWER, OLDER]))
-    expect(openFassungCompare).toHaveBeenCalledWith(
+    expect(openRevisionCompare).toHaveBeenCalledWith(
       { id: 'doc-a', filename: 'Grundriss EG Index B.pdf' },
       { id: 'doc-b', filename: 'Grundriss EG Index C.pdf' }
     )
@@ -53,17 +53,17 @@ describe('useCompareParam', () => {
     const { rerender } = renderHook(({ files }) => useCompareParam(files), {
       initialProps: { files: [] as FileItem[] },
     })
-    expect(openFassungCompare).not.toHaveBeenCalled()
+    expect(openRevisionCompare).not.toHaveBeenCalled()
     expect(replace).not.toHaveBeenCalled()
     rerender({ files: [NEWER, OLDER] })
     rerender({ files: [NEWER, OLDER] })
-    expect(openFassungCompare).toHaveBeenCalledTimes(1)
+    expect(openRevisionCompare).toHaveBeenCalledTimes(1)
   })
 
   it('drops the parameter without opening anything when the older document is not in the listing', () => {
     search = new URLSearchParams('doc=doc-b&compare=doc-gone')
     renderHook(() => useCompareParam([NEWER]))
-    expect(openFassungCompare).not.toHaveBeenCalled()
+    expect(openRevisionCompare).not.toHaveBeenCalled()
     expect(replace).toHaveBeenCalledWith('/app/projects/p1/files?doc=doc-b', { scroll: false })
   })
 
@@ -76,14 +76,14 @@ describe('useCompareParam', () => {
     })
     expect(replace).not.toHaveBeenCalled()
     rerender({ files: [NEWER, OLDER], complete: true })
-    expect(openFassungCompare).toHaveBeenCalledTimes(1)
+    expect(openRevisionCompare).toHaveBeenCalledTimes(1)
     expect(replace).toHaveBeenCalledWith('/app/projects/p1/files?doc=doc-b', { scroll: false })
   })
 
   it('does nothing without the parameter', () => {
     search = new URLSearchParams('doc=doc-b')
     renderHook(() => useCompareParam([NEWER, OLDER]))
-    expect(openFassungCompare).not.toHaveBeenCalled()
+    expect(openRevisionCompare).not.toHaveBeenCalled()
     expect(replace).not.toHaveBeenCalled()
   })
 })

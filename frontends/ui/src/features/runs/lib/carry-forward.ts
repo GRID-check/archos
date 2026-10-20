@@ -22,10 +22,10 @@ export interface RunBrief {
 }
 
 const STATUS_WORD: Record<FindingStatus, string> = {
-  erfuellt: 'erfüllt',
-  nicht_erfuellt: 'nicht erfüllt',
-  offen: 'offen',
-  nicht_anwendbar: 'nicht anwendbar',
+  met: 'erfüllt',
+  not_met: 'nicht erfüllt',
+  open: 'offen',
+  not_applicable: 'nicht anwendbar',
 }
 
 const findingLine = (finding: Finding): string => {
@@ -59,7 +59,7 @@ export function reportDocuments(message: ChatMessage): PlanDocument[] {
   const out: PlanDocument[] = []
   const seen = new Set<string>()
   for (const source of message.citations ?? []) {
-    if (source.shelf !== 'project' && source.shelf !== 'archiv') continue
+    if (source.shelf !== 'project' && source.shelf !== 'office_shelf') continue
     const name = source.fileName?.trim()
     if (!name) continue
     const key = name.toLocaleLowerCase()
@@ -81,9 +81,9 @@ export function continuationBrief(message: ChatMessage): RunBrief {
     ...(lines.length > 0 ? lines : ['(keine Befundliste vorhanden)']),
     'Prüfen Sie jeden Befund gegen den aktuellen Projektstand, kennzeichnen Sie, was sich geändert hat, und schließen Sie offene Punkte, wo die Quellen es erlauben.',
   ].join('\n')
-  const grundlage = reportDocuments(message)
-  return grundlage.length > 0
-    ? { question, context, documents: { grundlage, ausgeschlossen: [] } }
+  const basis = reportDocuments(message)
+  return basis.length > 0
+    ? { question, context, documents: { basis: basis, excluded: [] } }
     : { question, context }
 }
 

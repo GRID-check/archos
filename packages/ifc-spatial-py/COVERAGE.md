@@ -85,7 +85,7 @@ implementation, and the port uses it (and says so in the docstring).
 |---|---|---|---|
 | `briefing()` / `renderBriefing()` | composition + `util.selector` for the coverage counts | **derived** | the DIALEKT block is a `util.selector` aggregation; the BLIND block stays our judgment |
 | `storeyHeights()` | `IfcBuildingStorey.Elevation` + `get_bbox` | **direct** | |
-| `inventory('aufenthaltsraum')` | — | **not available** | a German room-name lexicon with umlaut folding and longest-match ranking. No geometry kernel has an opinion about whether *Waschküche* is an Aufenthaltsraum. Stays hand-written, stays `inferred` |
+| `inventory('habitable_room')` | — | **not available** | a German room-name lexicon with umlaut folding and longest-match ranking. No geometry kernel has an opinion about whether *Waschküche* is an Aufenthaltsraum. Stays hand-written, stays `inferred` |
 | `graph/build.ts` (CSR relation graph) | — | **not needed** | ~1 300 lines of parser and index replaced by inverse attributes. This is the single largest deletion the swap makes possible |
 | `geometry/pass.ts` | `geom.iterator` (8 threads) | **better than ours** | 74 products, float64, no triangle budget. The TS pass retains 24 494 triangles under a cap and degrades operators to bounding boxes when it truncates — a whole class of caveat that disappears |
 | `geometry/boundaries.ts` (derived 2nd-level boundaries) | `space_contacts()` over `tree.select` | **better than ours** | 30 cm box contact → 5 cm exact solid contact |

@@ -60,7 +60,7 @@ import {
   useProjectBimModels,
 } from '../hooks/use-bim-model'
 import { supportsWebGpu } from '../lib/model-index'
-import { buildArchivModelHref, buildModelHref } from '../lib/model-link'
+import { buildOfficeShelfModelHref, buildModelHref } from '../lib/model-link'
 import { IfcModelViewer } from './ifc-model-viewer'
 
 interface IfcFilePreviewProps {
@@ -137,7 +137,7 @@ export function IfcFilePreview({
   // Undefined without a project, and that is no longer the end of the offer:
   // `ModelProjectPicker` below asks which project to open in and builds the
   // same link from the answer. The stage can already reach an Archiv model
-  // from any project (`listAccessibleModels` passes `includeArchiv`), so the
+  // from any project (`listAccessibleModels` passes `includeOfficeShelf`), so the
   // only thing missing was somebody to name the project — which is a question,
   // not an impossibility.
   // The Archiv gets the SAME offer on its own route: the stage no longer needs
@@ -147,7 +147,7 @@ export function IfcFilePreview({
     ? undefined
     : projectId
       ? buildModelHref(projectId, { model: filename })
-      : buildArchivModelHref({ model: filename })
+      : buildOfficeShelfModelHref({ model: filename })
 
   // Only while there is nothing to show. The list polls every four seconds
   // whenever any model in the project is extracting and keeps its previous

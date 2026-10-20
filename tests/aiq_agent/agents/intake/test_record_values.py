@@ -41,7 +41,7 @@ def _value(key: str, value, quote: str, *, file_name: str = "Baubeschreibung.pdf
 class TestTheQuoteMustHaveBeenRead:
     async def test_a_quote_nobody_read_is_refused_before_any_request(self, signed_run, route, session, pages_read):
         fake = route(record=recorded_all())
-        text = await record_values(session, [_value("geschosse_oberirdisch@bw1", 4, "vier oberirdische Geschoße")])
+        text = await record_values(session, [_value("storeys_above_ground@bldg1", 4, "vier oberirdische Geschoße")])
 
         assert "does not stand in what you read" in text
         assert "Closest passage you read on page 3: „Gebäude hat drei oberirdische Geschoße“" in text
@@ -52,16 +52,20 @@ class TestTheQuoteMustHaveBeenRead:
         self, signed_run, route, session, pages_read
     ):
         route(record=recorded_all())
-        text = await record_values(session, [_value("bundesland", "wien", "Bundesland Wien laut Grundbuch", page=1)])
+        text = await record_values(
+            session, [_value("federal_state", "vienna", "Bundesland Wien laut Grundbuch", page=1)]
+        )
         assert "Closest passage" not in text and "read_document" in text and "exact words" in text
 
     async def test_the_closest_passage_offered_is_itself_a_quote_that_passes(
         self, signed_run, route, session, pages_read
     ):
         route(record=recorded_all())
-        refused = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdischen Geschosse")])
+        refused = await record_values(
+            session, [_value("storeys_above_ground@bldg1", 3, "drei oberirdischen Geschosse")]
+        )
         offered = refused.split("„")[-1].split("“")[0]
-        accepted = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, offered)])
+        accepted = await record_values(session, [_value("storeys_above_ground@bldg1", 3, offered)])
         assert "suggested" in accepted
 
     async def test_the_citation_a_reading_tool_printed_names_the_file_and_page(
@@ -74,7 +78,7 @@ class TestTheQuoteMustHaveBeenRead:
             "Baubeschreibung.pdf (Projektwissen), Seite 3",
         ):
             item = RecordedValue(
-                key="geschosse_oberirdisch@bw1", value=3, citation=citation, quote="drei oberirdische Geschoße"
+                key="storeys_above_ground@bldg1", value=3, citation=citation, quote="drei oberirdische Geschoße"
             )
             text = await record_values(session, [item])
             assert "suggested" in text, citation
@@ -84,7 +88,7 @@ class TestTheQuoteMustHaveBeenRead:
 
     async def test_a_value_that_names_no_file_is_not_sent(self, signed_run, route, session, pages_read):
         fake = route(record=recorded_all())
-        item = RecordedValue(key="geschosse_oberirdisch@bw1", value=3, quote="drei oberirdische Geschoße")
+        item = RecordedValue(key="storeys_above_ground@bldg1", value=3, quote="drei oberirdische Geschoße")
         text = await record_values(session, [item])
         assert "citation or file_name" in text and fake.bodies("record") == []
 
@@ -93,7 +97,7 @@ class TestTheQuoteMustHaveBeenRead:
     ):
         fake = route(record=recorded_all())
         text = await record_values(
-            session, [_value("bundesland", "wien", "Bundesland: Wien", file_name="Einreichplan.pdf", page=1)]
+            session, [_value("federal_state", "vienna", "Bundesland: Wien", file_name="Einreichplan.pdf", page=1)]
         )
 
         assert "have not read „Einreichplan.pdf“" in text and "read_document" in text
@@ -104,20 +108,20 @@ class TestTheQuoteMustHaveBeenRead:
     ):
         fake = route(record=recorded_all())
         quote = "das GEBÄUDE hat drei   oberirdische\nGeschoße".replace("Ä", "Ä")
-        text = await record_values(session, [_value("geschosse_oberirdisch@bw1", "3", quote, page=None)])
+        text = await record_values(session, [_value("storeys_above_ground@bldg1", "3", quote, page=None)])
 
         (body,) = fake.bodies("record")
         (sent,) = body["values"]
         assert sent["value"] == 3, "a number the model wrote as text goes out as a number"
         assert sent["evidence"] == {"fileName": "Baubeschreibung.pdf", "page": 3, "quote": " ".join(quote.split())}
         assert not list(validator(intake_schema, "InternalIntakeRequest").iter_errors(body))
-        assert "geschosse_oberirdisch@bw1 = 3: suggested" in text
+        assert "storeys_above_ground@bldg1 = 3: suggested" in text
 
     async def test_the_quote_is_clipped_to_what_a_person_reads(self, signed_run, route, session, read_log):
         long_text = "Holzbau " * 80
         read_log.log("Baubeschreibung.pdf", 2, long_text)
         fake = route(record=recorded_all())
-        await record_values(session, [_value("bauweise", ["holzbau"], long_text, page=2)])
+        await record_values(session, [_value("construction_method", ["timber"], long_text, page=2)])
         (sent,) = fake.bodies("record")[0]["values"]
         assert len(sent["evidence"]["quote"]) <= 300
 
@@ -125,9 +129,11 @@ class TestTheQuoteMustHaveBeenRead:
 class TestTheVocabulary:
     async def test_a_token_outside_the_options_is_refused_with_the_tokens(self, signed_run, route, session, pages_read):
         fake = route(record=recorded_all())
-        text = await record_values(session, [_value("bauweise", ["holzbauweise"], "in Holzbauweise errichtet", page=2)])
+        text = await record_values(
+            session, [_value("construction_method", ["holzbauweise"], "in Holzbauweise errichtet", page=2)]
+        )
 
-        assert "holzbauweise is not an option" in text and "holzbau, massivbau" in text
+        assert "holzbauweise is not an option" in text and "timber, massivbau" in text
         assert fake.bodies("record") == []
 
 
@@ -141,15 +147,15 @@ class TestTheQuoteMustStateTheValue:
         text = await record_values(
             session,
             [
-                _value("bauweise", ["massivbau"], "in Holzbauweise errichtet", page=2),
-                _value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße"),
+                _value("construction_method", ["massivbau"], "in Holzbauweise errichtet", page=2),
+                _value("storeys_above_ground@bldg1", 3, "drei oberirdische Geschoße"),
             ],
         )
 
         assert [state["fact"] for state in seen] == ["Bauweise"], "the question's own label names the fact"
         (body,) = fake.bodies("record")
-        assert [value["key"] for value in body["values"]] == ["geschosse_oberirdisch@bw1"]
-        assert "bauweise: not sent: read as not stating this value" in text
+        assert [value["key"] for value in body["values"]] == ["storeys_above_ground@bldg1"]
+        assert "construction_method: not sent: read as not stating this value" in text
         assert session.refusals["local:not-stated"] == 1
 
     async def test_a_multi_select_keeps_the_tokens_its_quote_states(
@@ -158,11 +164,11 @@ class TestTheQuoteMustStateTheValue:
         decider({"Holzbau": 0.92, "Massivbau": 0.05})
         fake = route(record=recorded_all())
         await record_values(
-            session, [_value("bauweise", ["holzbau", "massivbau"], "in Holzbauweise errichtet", page=2)]
+            session, [_value("construction_method", ["timber", "massivbau"], "in Holzbauweise errichtet", page=2)]
         )
 
         (sent,) = fake.bodies("record")[0]["values"]
-        assert sent["value"] == ["holzbau"]
+        assert sent["value"] == ["timber"]
 
     async def test_a_decision_model_that_is_down_leaves_the_value_as_it_was(
         self, signed_run, route, session, pages_read, monkeypatch
@@ -172,9 +178,9 @@ class TestTheQuoteMustStateTheValue:
 
         monkeypatch.setattr("aiq_agent.common.decisions.decide_many_blocking", broken)
         fake = route(record=recorded_all())
-        await record_values(session, [_value("bauweise", ["holzbau"], "in Holzbauweise errichtet", page=2)])
+        await record_values(session, [_value("construction_method", ["timber"], "in Holzbauweise errichtet", page=2)])
         (sent,) = fake.bodies("record")[0]["values"]
-        assert sent["value"] == ["holzbau"]
+        assert sent["value"] == ["timber"]
 
 
 class TestTheBffDecides:
@@ -187,9 +193,9 @@ class TestTheBffDecides:
         text = await record_values(
             session,
             [
-                _value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße"),
-                _value("bauweise", ["holzbau"], "in Holzbauweise errichtet", page=2),
-                _value("bundesland", "wien", "1010 Wien", page=1, file_name="Baubeschreibung.pdf"),
+                _value("storeys_above_ground@bldg1", 3, "drei oberirdische Geschoße"),
+                _value("construction_method", ["timber"], "in Holzbauweise errichtet", page=2),
+                _value("federal_state", "vienna", "1010 Wien", page=1, file_name="Baubeschreibung.pdf"),
             ],
         )
 
@@ -209,25 +215,25 @@ class TestTheBffDecides:
                 "results": [{"key": v["key"], "outcome": "refused", "reason": "unknown-key"} for v in body["values"]]
             }
         )
-        text = await record_values(session, [_value("geschosse_oberirdish@bw1", 3, "drei oberirdische Geschoße")])
+        text = await record_values(session, [_value("geschosse_oberirdish@bldg1", 3, "drei oberirdische Geschoße")])
         assert "no question of the intake writes this key" in text
-        assert "closest keys intake_needs listed: geschosse_oberirdisch@bw1" in text
+        assert "closest keys intake_needs listed: storeys_above_ground@bldg1" in text
         assert session.refusals["refused:unknown-key"] == 1
 
-    async def test_a_recorded_gebaeudeklasse_is_refused_as_derived(self, signed_run, route, session, pages_read):
+    async def test_a_recorded_building_class_is_refused_as_derived(self, signed_run, route, session, pages_read):
         route(
             record=lambda body: {
-                "results": [{"key": "gebaeudeklasse@bw1", "outcome": "refused", "reason": "unknown-key"}]
+                "results": [{"key": "building_class@bldg1", "outcome": "refused", "reason": "unknown-key"}]
             }
         )
-        text = await record_values(session, [_value("gebaeudeklasse@bw1", 1, "drei oberirdische Geschoße")])
+        text = await record_values(session, [_value("building_class@bldg1", 1, "drei oberirdische Geschoße")])
         assert "the Gebäudeklasse is derived from the inputs you record" in text
         assert "closest keys" not in text
 
     async def test_a_stale_reading_stops_every_later_record(self, signed_run, route, session, pages_read):
         fake = route(record=409)
-        first = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße")])
-        second = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße")])
+        first = await record_values(session, [_value("storeys_above_ground@bldg1", 3, "drei oberirdische Geschoße")])
+        second = await record_values(session, [_value("storeys_above_ground@bldg1", 3, "drei oberirdische Geschoße")])
 
         assert "stale-reading" in first
         assert session.stale and "no longer the project's current one" in second
@@ -235,7 +241,7 @@ class TestTheBffDecides:
 
     async def test_without_an_envelope_nothing_is_recorded(self, unsigned_run, route, session, pages_read):
         fake = route(record=recorded_all())
-        text = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße")])
+        text = await record_values(session, [_value("storeys_above_ground@bldg1", 3, "drei oberirdische Geschoße")])
         assert "no signed identity" in text
         assert fake.requests == []
 
@@ -245,20 +251,20 @@ class TestWhatARecordOpened:
         self, signed_run, route, session, pages_read, intake_schema
     ):
         answer = {
-            "results": [{"key": "bauwerkstyp@bw1", "outcome": "suggested"}],
+            "results": [{"key": "building_type@bldg1", "outcome": "suggested"}],
             "opened": [
-                {"key": "fluchtniveau_m@bw1", "decisive": True},
-                {"key": "gebaeudestellung@bw1", "decisive": False},
+                {"key": "escape_level_m@bldg1", "decisive": True},
+                {"key": "building_position@bldg1", "decisive": False},
             ],
         }
         assert not list(validator(intake_schema, "InternalIntakeRecordResponse").iter_errors(answer))
         route(record=answer)
-        text = await record_values(session, [_value("bauwerkstyp@bw1", "gebaeude", "Das Gebäude hat drei")])
-        assert text.splitlines()[-1].startswith("opened: fluchtniveau_m@bw1 [decisive], gebaeudestellung@bw1 (")
+        text = await record_values(session, [_value("building_type@bldg1", "building", "Das Gebäude hat drei")])
+        assert text.splitlines()[-1].startswith("opened: escape_level_m@bldg1 [decisive], building_position@bldg1 (")
 
     async def test_nothing_opened_adds_no_line(self, signed_run, route, session, pages_read):
         route(record=lambda body: {**recorded_all()(body), "opened": []})
-        text = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße")])
+        text = await record_values(session, [_value("storeys_above_ground@bldg1", 3, "drei oberirdische Geschoße")])
         assert "opened" not in text
 
 
@@ -266,18 +272,24 @@ class TestWithdrawingOwnSuggestions:
     async def test_each_key_says_what_became_of_it_and_is_counted(self, signed_run, route, session, intake_schema):
         answer = {
             "results": [
-                {"key": "projektphase", "outcome": "withdrawn"},
-                {"key": "bundesland", "outcome": "refused", "reason": "not-this-reading"},
-                {"key": "bauweise", "outcome": "refused", "reason": "confirmed"},
+                {"key": "project_phase", "outcome": "withdrawn"},
+                {"key": "federal_state", "outcome": "refused", "reason": "not-this-reading"},
+                {"key": "construction_method", "outcome": "refused", "reason": "confirmed"},
             ]
         }
         assert not list(validator(intake_schema, "InternalIntakeWithdrawResponse").iter_errors(answer))
         fake = route(withdraw=answer)
 
-        text = await withdraw_values(session, ["projektphase", "bundesland", "bauweise", "projektphase"])
+        text = await withdraw_values(
+            session, ["project_phase", "federal_state", "construction_method", "project_phase"]
+        )
 
         (body,) = fake.bodies("withdraw")
-        assert body == {"op": "withdraw", "jobId": JOB, "keys": ["projektphase", "bundesland", "bauweise"]}
+        assert body == {
+            "op": "withdraw",
+            "jobId": JOB,
+            "keys": ["project_phase", "federal_state", "construction_method"],
+        }
         assert not list(validator(intake_schema, "InternalIntakeRequest").iter_errors(body))
         lines = text.splitlines()
         assert "withdrawn" in lines[0] and "a later reading may record it again" in lines[0]
@@ -288,8 +300,8 @@ class TestWithdrawingOwnSuggestions:
 
     async def test_a_stale_reading_withdraws_nothing(self, signed_run, route, session):
         fake = route(withdraw=409)
-        first = await withdraw_values(session, ["projektphase"])
-        second = await withdraw_values(session, ["projektphase"])
+        first = await withdraw_values(session, ["project_phase"])
+        second = await withdraw_values(session, ["project_phase"])
         assert "stale-reading" in first and "no longer the project's current one" in second
         assert len(fake.bodies("withdraw")) == 1
 
@@ -303,11 +315,11 @@ class TestTheNeedsAnswer:
     def test_a_confirmed_input_is_shown_as_confirmed_after_the_open_ones(self):
         from aiq_agent.agents.intake.tools import render_needs
 
-        confirmed = {**NEEDS_BODY["needs"][0], "key": "bauwerkstyp@bw1", "decisive": False, "state": "confirmed"}
+        confirmed = {**NEEDS_BODY["needs"][0], "key": "building_type@bldg1", "decisive": False, "state": "confirmed"}
         text = render_needs({**NEEDS_BODY, "needs": [confirmed, *NEEDS_BODY["needs"]]})
         assert "(2 open, 1 suggested so far, 1 confirmed by a person)" in text
         lines = [line for line in text.splitlines() if line.startswith("- ") and "—" in line]
-        assert lines[-1].startswith("- bauwerkstyp@bw1") and lines[-1].endswith(
+        assert lines[-1].startswith("- building_type@bldg1") and lines[-1].endswith(
             "· confirmed · found in: Einreichplan, Schnitte"
         )
 

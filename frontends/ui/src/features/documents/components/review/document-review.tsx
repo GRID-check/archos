@@ -101,10 +101,10 @@ const DOCKED_CARDS = '(max-width: 639px), (pointer: coarse) and (max-height: 500
  * them. Null for anything that is not one of them.
  */
 export function walkPosition(
-  annotations: readonly Pick<AnnotationView, 'id' | 'status' | 'onCurrentFassung'>[],
+  annotations: readonly Pick<AnnotationView, 'id' | 'status' | 'onCurrentRevision'>[],
   id: string | null
 ): { index: number; total: number } | null {
-  const walk = annotations.filter((annotation) => annotation.status === 'proposed' && annotation.onCurrentFassung)
+  const walk = annotations.filter((annotation) => annotation.status === 'proposed' && annotation.onCurrentRevision)
   const index = walk.findIndex((annotation) => annotation.id === id)
   return index === -1 ? null : { index: index + 1, total: walk.length }
 }
@@ -608,7 +608,7 @@ export function DocumentReviewMode({
   onOpenChange,
   review,
   documentName,
-  fassungLabel,
+  revisionLabel,
   canPickAssignee,
   focusRequest,
   popoutHref = null,
@@ -621,7 +621,7 @@ export function DocumentReviewMode({
   review: ReviewState
   documentName: string
   /** „Fassung 3", when the document has Fassungen to tell apart. */
-  fassungLabel?: string | null
+  revisionLabel?: string | null
   canPickAssignee: boolean
   /** A mark to open at, when the review was entered from one. */
   focusRequest?: { annotationId: string; key: number } | null
@@ -731,7 +731,7 @@ export function DocumentReviewMode({
       setDraft(null)
       select(annotation.id)
       // A ghost (an open mark of an earlier Fassung) is drawn where it stood: the view goes there too.
-      if (annotation.onCurrentFassung || isGhostMark(annotation, review.documentId)) {
+      if (annotation.onCurrentRevision || isGhostMark(annotation, review.documentId)) {
         setFocus({ page: annotation.page, y: annotation.y + (annotation.h ?? 0) / 2, key: `${annotation.id}:${Date.now()}` })
       }
     },
@@ -881,7 +881,7 @@ export function DocumentReviewMode({
   // A mark of an earlier Fassung is not drawn as a mark of this sheet (an open
   // one is a ghost, where it stood on its own): selected, its thread opens over
   // the sheet, never beside a place the current drawing may not have.
-  const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentFassung) ?? null
+  const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentRevision) ?? null
   const selected = annotations.find((annotation) => annotation.id === selectedId) ?? null
   // The card a phone docks: Piloti's answer on a box, the draft, or the open thread.
   const dockedAsk = openAsk && openAsk.region && !openAsk.replyInThread ? openAsk : null
@@ -1054,14 +1054,14 @@ export function DocumentReviewMode({
   const exportMenu = annotations.length > 0 && (
     <ReviewExportMenu
       documentId={review.documentId}
-      hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
+      hasRevisions={annotations.some((annotation) => !annotation.onCurrentRevision)}
       hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
       // Filing is an upload into the document's folder: offered to whoever may write there, which is
       // what `canAnnotate` says (the document's write, folder included, ADR-0088). The upload checks again.
       filing={protocolFiling && review.canAnnotate ? { target: protocolFiling, documentName } : null}
     />
   )
-  const checkFixed = useCheckFixed(review, { documentName, fassungLabel: fassungLabel ?? null })
+  const checkFixed = useCheckFixed(review, { documentName, revisionLabel: revisionLabel ?? null })
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
@@ -1097,12 +1097,12 @@ export function DocumentReviewMode({
             </DialogTitle>
             <DialogDescription className="text-muted-foreground text-xs sm:truncate">
               {[
-                fassungLabel,
+                revisionLabel,
                 // Another document replaces this one, or this one replaces another: the header says so.
-                review.fassung?.replacedBy
-                  ? t('review.replacedBy', { name: review.fassung.replacedBy.filename })
-                  : review.fassung?.replaces[0]
-                    ? t('review.replaces', { name: review.fassung.replaces[0].filename })
+                review.revision?.replacedBy
+                  ? t('review.replacedBy', { name: review.revision.replacedBy.filename })
+                  : review.revision?.replaces[0]
+                    ? t('review.replaces', { name: review.revision.replaces[0].filename })
                     : null,
                 // „2 offen · 12 Vorschläge": Piloti's untaken proposals are not counted as open, as in Dateien.
                 hasLiveMarks(review.counts) ? openMarksShortLabel(t, review.counts) : t('review.nothingOpen'),

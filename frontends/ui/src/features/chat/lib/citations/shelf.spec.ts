@@ -31,7 +31,7 @@ const wire = (overrides: Partial<WireCitationSource>): WireCitationSource => ({
   file_name: 'Grundriss.pdf',
   page: 2,
   origin: 'kb',
-  kind: 'projekt',
+  kind: 'project',
   ...overrides,
 })
 
@@ -53,16 +53,16 @@ const t = (key: string): string =>
 describe('the shelf arrives explicitly', () => {
   test('the wire field survives the mapping onto a citation', () => {
     expect(citationFromWire(wire({ shelf: 'session' }), { timestamp: NOW }).shelf).toBe('session')
-    expect(citationFromWire(wire({ shelf: 'archiv' }), { timestamp: NOW }).shelf).toBe('archiv')
+    expect(citationFromWire(wire({ shelf: 'office_shelf' }), { timestamp: NOW }).shelf).toBe('office_shelf')
   })
 
   test('the model takes the shelf the payload states', () => {
     expect(documentFor(wire({ shelf: 'session' })).shelf).toBe('session')
-    expect(documentFor(wire({ shelf: 'base', kind: 'baurecht' })).shelf).toBe('base')
+    expect(documentFor(wire({ shelf: 'base', kind: 'building_law' })).shelf).toBe('base')
   })
 
   test('the shelf outranks the collection id, which no longer says anything', () => {
-    // The prefix table is deleted: `proj_alpha` used to force `projekt` on this
+    // The prefix table is deleted: `proj_alpha` used to force `project` on this
     // document no matter what the payload said.
     const doc = documentFor(wire({ collection: 'proj_alpha', shelf: 'session' }))
 
@@ -82,14 +82,14 @@ describe('an unknown shelf renders unattributed', () => {
   test('a payload with no shelf leaves the document unattributed', () => {
     // Not "base", not "project": nothing. The collection id is present and would
     // have been prefix-matched into a shelf before ADR-0047.
-    const doc = documentFor(wire({ collection: 'archiv_org1', kind: 'buero' }))
+    const doc = documentFor(wire({ collection: 'archiv_org1', kind: 'office' }))
 
     expect(doc.shelf).toBeUndefined()
     expect(documentShelfLabel(doc, t)).toBeUndefined()
   })
 
   test('an unrecognised shelf value is dropped, not defaulted to base law', () => {
-    const doc = documentFor(wire({ shelf: 'baurecht', collection: 'oib_knowledge' }))
+    const doc = documentFor(wire({ shelf: 'building_law', collection: 'oib_knowledge' }))
 
     expect(doc.shelf).toBeUndefined()
     expect(documentShelfLabel(doc, t)).toBeUndefined()
@@ -98,9 +98,9 @@ describe('an unknown shelf renders unattributed', () => {
   test('an unattributed document still renders its display taxonomy', () => {
     // Shelf and SourceKind are separate axes: losing the shelf must not cost the
     // document its provenance family, it must only stop it claiming a shelf.
-    const doc = documentFor(wire({ collection: 'archiv_org1', kind: 'buero' }))
+    const doc = documentFor(wire({ collection: 'archiv_org1', kind: 'office' }))
 
-    expect(doc.kind).toBe('buero')
+    expect(doc.kind).toBe('office')
     expect(documentTabLabel(doc, t)).toBe('Büroablage')
   })
 
@@ -116,7 +116,7 @@ describe('an unknown shelf renders unattributed', () => {
 
 describe('a private session attachment is not project knowledge', () => {
   test('a session source is labelled "Private Sitzung", never "Projektwissen"', () => {
-    const doc = documentFor(wire({ shelf: 'session', kind: 'projekt' }))
+    const doc = documentFor(wire({ shelf: 'session', kind: 'project' }))
 
     expect(documentShelfLabel(doc, t)).toBe('Private Sitzung')
     expect(documentTabLabel(doc, t)).toBe('Private Sitzung')
@@ -124,14 +124,14 @@ describe('a private session attachment is not project knowledge', () => {
   })
 
   test('a genuine project document is still Projektwissen', () => {
-    const doc = documentFor(wire({ shelf: 'project', kind: 'projekt' }))
+    const doc = documentFor(wire({ shelf: 'project', kind: 'project' }))
 
     expect(documentTabLabel(doc, t)).toBe('Projektwissen')
   })
 
   test('a fine lane label still wins — the shelf does not overwrite the taxonomy', () => {
     const doc = documentFor(
-      wire({ shelf: 'base', kind: 'baurecht', lane: 'baurecht_oib', lane_label: 'OIB-Richtlinie' })
+      wire({ shelf: 'base', kind: 'building_law', lane: 'building_law_oib', lane_label: 'OIB-Richtlinie' })
     )
 
     expect(doc.shelf).toBe('base')
@@ -149,11 +149,11 @@ describe('legacy citation keys still parse', () => {
   })
 
   test('a German qualifier in a persisted key names the shelf', () => {
-    const [buero] = buildCitationModel({ citations: [legacy('Plan.pdf (Büroablage), p.3')] })
+    const [officeShelf] = buildCitationModel({ citations: [legacy('Plan.pdf (Büroablage), p.3')] })
     const [projekt] = buildCitationModel({ citations: [legacy('Plan.pdf (Projektwissen), p.3')] })
     const [basis] = buildCitationModel({ citations: [legacy('Plan.pdf (Basiswissen), p.3')] })
 
-    expect(buero?.shelf).toBe('archiv')
+    expect(officeShelf?.shelf).toBe('office_shelf')
     expect(projekt?.shelf).toBe('project')
     expect(basis?.shelf).toBe('base')
   })
@@ -236,7 +236,7 @@ describe('legacy citation keys still parse', () => {
 
     test('a second explicit shelf does not unseat the first', () => {
       const [doc] = buildCitationModel({
-        citations: [stated, { ...guessed, id: 'c-later', shelf: 'archiv' }],
+        citations: [stated, { ...guessed, id: 'c-later', shelf: 'office_shelf' }],
       })
 
       expect(doc?.shelf).toBe('session')
@@ -263,7 +263,7 @@ describe('legacy citation keys still parse', () => {
         entries: [{ number: 1, markdown: 'Plan.pdf (Projektwissen), p.4' }],
       })
 
-      expect(doc?.shelf).toBe('archiv')
+      expect(doc?.shelf).toBe('office_shelf')
     })
   })
 
@@ -296,13 +296,13 @@ describe('legacy citation keys still parse', () => {
  */
 describe('citation-key qualifiers the backend can write', () => {
   const cases: ReadonlyArray<readonly [qualifier: string, shelf: string]> = [
-    ['Büroablage', 'archiv'],
+    ['Büroablage', 'office_shelf'],
     ['Projektwissen', 'project'],
     ['Basiswissen', 'base'],
     ['Private Sitzung', 'session'],
     // The archiv shelf's name until 6 Oct 2026: no writer emits it any more,
     // and keys persisted before the rename still carry it.
-    ['Büroarchiv', 'archiv'],
+    ['Büroarchiv', 'office_shelf'],
   ]
 
   test.each(cases)('strips %s and resolves it to the %s shelf', (qualifier, shelf) => {

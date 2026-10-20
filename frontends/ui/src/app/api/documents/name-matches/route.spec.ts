@@ -27,24 +27,24 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 vi.mock('@/lib/documents/service', () => ({ probeProjectDocumentNames: vi.fn() }))
-vi.mock('@/lib/archiv/service', () => ({ probeArchivDocumentNames: vi.fn() }))
+vi.mock('@/lib/office-shelf/service', () => ({ probeOfficeShelfDocumentNames: vi.fn() }))
 
 import { ForbiddenError } from '@/lib/api/errors'
 import { probeProjectDocumentNames } from '@/lib/documents/service'
-import { probeArchivDocumentNames } from '@/lib/archiv/service'
+import { probeOfficeShelfDocumentNames } from '@/lib/office-shelf/service'
 import {
-  ARCHIV_NAME_PROBE_PATH,
+  OFFICE_SHELF_NAME_PROBE_PATH,
   PROJECT_NAME_PROBE_PATH,
   NameProbeError,
   createDocumentNameProbeClient,
 } from '@/lib/documents/name-probe-client'
 import { NAME_PROBE_MAX_NAMES, type DocumentNameMatch } from '@/lib/documents/name-probe-types'
 import { POST as probeProject } from './route'
-import { POST as probeArchiv } from '../../archiv/documents/name-matches/route'
+import { POST as probeOfficeShelf } from '../../office-shelf/documents/name-matches/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
   [PROJECT_NAME_PROBE_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
-  [ARCHIV_NAME_PROBE_PATH]: (request) => probeArchiv(request, { params: Promise.resolve({}) }),
+  [OFFICE_SHELF_NAME_PROBE_PATH]: (request) => probeOfficeShelf(request, { params: Promise.resolve({}) }),
 }
 
 const client = createDocumentNameProbeClient(async (path, init) => {
@@ -67,7 +67,7 @@ const MATCH: DocumentNameMatch = {
 
 beforeEach(() => {
   vi.mocked(probeProjectDocumentNames).mockResolvedValue([MATCH])
-  vi.mocked(probeArchivDocumentNames).mockResolvedValue([MATCH])
+  vi.mocked(probeOfficeShelfDocumentNames).mockResolvedValue([MATCH])
 })
 
 describe('POST /api/documents/name-matches', () => {
@@ -113,18 +113,18 @@ describe('POST /api/documents/name-matches', () => {
   })
 })
 
-describe('POST /api/archiv/documents/name-matches', () => {
+describe('POST /api/office-shelf/documents/name-matches', () => {
   it('answers the Archiv', async () => {
-    expect(await client.archiv(['EG.pdf'])).toEqual([MATCH])
-    expect(probeArchivDocumentNames).toHaveBeenCalledWith(
+    expect(await client.officeShelf(['EG.pdf'])).toEqual([MATCH])
+    expect(probeOfficeShelfDocumentNames).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_1' }),
       ['EG.pdf'],
     )
   })
 
   it('refuses a malformed body', async () => {
-    const response = await probeArchiv(
-      new Request('https://grid.test/api/archiv/documents/name-matches', {
+    const response = await probeOfficeShelf(
+      new Request('https://grid.test/api/office-shelf/documents/name-matches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ names: [] }),

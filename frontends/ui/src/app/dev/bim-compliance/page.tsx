@@ -42,7 +42,7 @@ function rule(
 
 const RULES: BimRuleResultWithConfirmation[] = [
   rule({
-    ruleId: 'oib4-tuer-durchgangsbreite',
+    ruleId: 'oib4-door-clear-width',
     richtlinie: 'OIB 4',
     clause: '3',
     titleDe: 'Türen — lichte Durchgangsbreite',
@@ -67,7 +67,7 @@ const RULES: BimRuleResultWithConfirmation[] = [
     ],
   }),
   rule({
-    ruleId: 'oib4-treppe-steigungsverhaeltnis',
+    ruleId: 'oib4-stair-rise-run-ratio',
     richtlinie: 'OIB 4',
     clause: '2.2',
     titleDe: 'Treppen — Steigungsverhältnis',
@@ -75,7 +75,7 @@ const RULES: BimRuleResultWithConfirmation[] = [
     passed: 3,
   }),
   rule({
-    ruleId: 'oib2-feuerwiderstand-tragend',
+    ruleId: 'oib2-fire-resistance-load-bearing',
     undecidable: 34,
     unknowns: [
       {
@@ -96,7 +96,7 @@ const RULES: BimRuleResultWithConfirmation[] = [
     missing: [{ path: 'Pset_WallCommon.FireRating', elements: 34 }],
   }),
   rule({
-    ruleId: 'oib3-raumhoehe',
+    ruleId: 'oib3-room-height',
     richtlinie: 'OIB 3',
     clause: '2',
     titleDe: 'Aufenthaltsräume — lichte Raumhöhe',
@@ -115,7 +115,7 @@ const RULES: BimRuleResultWithConfirmation[] = [
     missing: [{ path: 'Qto_SpaceBaseQuantities.FinishCeilingHeight', elements: 2 }],
   }),
   rule({
-    ruleId: 'oib6-u-wert-aussenwand',
+    ruleId: 'oib6-u-value-external-wall',
     richtlinie: 'OIB 6',
     clause: '4.1',
     titleDe: 'Außenwände — Wärmedurchgangskoeffizient',
@@ -125,7 +125,7 @@ const RULES: BimRuleResultWithConfirmation[] = [
       'Gebäudeklasse in den Projektangaben nicht gesetzt — die Anforderung hängt daran',
   }),
   rule({
-    ruleId: 'oib5-schalldaemmung-deklariert',
+    ruleId: 'oib5-sound-insulation-declared',
     richtlinie: 'OIB 5',
     titleDe: 'Trennbauteile — Schalldämmung deklariert',
     thresholdDe: 'bewertetes Schalldämm-Maß am Bauteil hinterlegt',
@@ -153,21 +153,21 @@ export default function BimCompliancePreviewPage(): JSX.Element {
             {
               path: 'Pset_WallCommon.FireRating',
               elements: 34,
-              rules: ['oib2-feuerwiderstand-tragend'],
+              rules: ['oib2-fire-resistance-load-bearing'],
             },
             {
               path: 'Qto_SpaceBaseQuantities.FinishCeilingHeight',
               elements: 2,
-              rules: ['oib3-raumhoehe'],
+              rules: ['oib3-room-height'],
             },
           ]}
           isLoading={false}
           error={null}
           projectId="p1"
           modelFilename="wohnhaus-beispielgasse_V3.ifc"
-          missingFacts={['gebaeudeklasse']}
+          missingFacts={['buildingClass']}
           askHref="/app/projects/p1/chat?ask=x"
-          bcfHref="/api/projects/p1/bim/checks/export?modelId=m1&gebaeudeklasse=4"
+          bcfHref="/api/projects/p1/bim/checks/export?modelId=m1&buildingClass=4"
         />
 
       </div>

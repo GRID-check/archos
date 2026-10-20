@@ -167,7 +167,9 @@ def _annotation_lines(item: dict[str, Any]) -> list[str]:
     elif item.get("dueOn"):
         lines.append(f"  Fällig: {_text(item.get('dueOn'))}")
     lines.extend(_reply_lines(item.get("replies") or []))
-    where = _place(item) + ("" if item.get("onCurrentFassung", True) else "; auf einer früheren Fassung gesetzt")
+    # ``onCurrentFassung`` is the name a BFF that has not rolled yet sends (renamed with migration 0165).
+    on_current = item.get("onCurrentRevision", item.get("onCurrentFassung", True))
+    where = _place(item) + ("" if on_current else "; auf einer früheren Fassung gesetzt")
     lines.append(f"  {where} · id {item.get('id')}")
     return lines
 

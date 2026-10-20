@@ -15,7 +15,7 @@ import { and, asc, count, desc, eq, inArray, isNull, lt, ne, notInArray, or, sql
 import { getDb } from '@/lib/db'
 import type { DbExecutor, DbTransaction } from '@/lib/db/executor'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
-import { ARCHIV_SHELF, documentShelf, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
+import { OFFICE_SHELF, documentShelf, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
 import { documentAliasKey, documentNameKey, documentNameVariants } from './name-match'
 import { FILENAME_LOOKUP_MAX_NAMES } from './filename-lookup'
@@ -780,7 +780,7 @@ export function findProjectDocumentsByFilenames(
 }
 
 /** A document a Fassung link may point to, as the resolution needs it. */
-export interface FassungCounterpartRow {
+export interface RevisionCounterpartRow {
   id: string
   filename: string
   projectId: string | null
@@ -790,7 +790,7 @@ export interface FassungCounterpartRow {
 
 /**
  * The documents of ONE collection named `filenames` that `reader` may see, for
- * resolving a Fassung link's file names to documents (`fassung-facts.ts`).
+ * resolving a Fassung link's file names to documents (`revision-links-loader.ts`).
  *
  * The link is stored by file name in the backend's index, which knows nothing
  * of who may read what, so this is where a name becomes a document or stays a
@@ -805,28 +805,28 @@ export interface FassungCounterpartRow {
  * query carries, and a name left out was a link silently lost (the older
  * Fassung shown as current, the count wrong).
  */
-export async function findFassungCounterparts(
+export async function findRevisionCounterparts(
   organizationId: string,
   collectionName: string,
   filenames: readonly string[],
   reader: DocumentReader,
-): Promise<FassungCounterpartRow[]> {
+): Promise<RevisionCounterpartRow[]> {
   const unique = [...new Set(filenames)]
-  const byId = new Map<string, FassungCounterpartRow>()
+  const byId = new Map<string, RevisionCounterpartRow>()
   for (let start = 0; start < unique.length; start += FILENAME_LOOKUP_MAX_NAMES) {
     const chunk = unique.slice(start, start + FILENAME_LOOKUP_MAX_NAMES)
-    for (const row of await findFassungCounterpartChunk(organizationId, collectionName, chunk, reader)) byId.set(row.id, row)
+    for (const row of await findRevisionCounterpartChunk(organizationId, collectionName, chunk, reader)) byId.set(row.id, row)
   }
   return [...byId.values()]
 }
 
-/** One bounded query of {@link findFassungCounterparts}: at most {@link FILENAME_LOOKUP_MAX_NAMES} names. */
-async function findFassungCounterpartChunk(
+/** One bounded query of {@link findRevisionCounterparts}: at most {@link FILENAME_LOOKUP_MAX_NAMES} names. */
+async function findRevisionCounterpartChunk(
   organizationId: string,
   collectionName: string,
   filenames: readonly string[],
   reader: DocumentReader,
-): Promise<FassungCounterpartRow[]> {
+): Promise<RevisionCounterpartRow[]> {
   const variants = [...new Set(filenames.flatMap(documentNameVariants))]
   if (variants.length === 0) return []
   const db = getDb()
@@ -1564,7 +1564,7 @@ export async function deleteProjectDocument(
  * document and an org-wide Archiv document (which has no project), and the
  * caller has already established which of the two access rules applies —
  * `getAccessibleDocument` in the service is where project FGA vs
- * `org:archiv:manage` is decided.
+ * `org:office_shelf:manage` is decided.
  */
 export async function setDocumentDisplayName(
   documentId: string,
@@ -1871,8 +1871,8 @@ export function findFolderPathInProject(
 }
 
 /** An Archiv folder's path — see {@link findFolderPathOnShelf}. */
-export function findFolderPathInArchiv(folderId: string, organizationId: string): Promise<string | null> {
-  return findFolderPathOnShelf(ARCHIV_SHELF, folderId, organizationId)
+export function findFolderPathInOfficeShelf(folderId: string, organizationId: string): Promise<string | null> {
+  return findFolderPathOnShelf(OFFICE_SHELF, folderId, organizationId)
 }
 
 /**

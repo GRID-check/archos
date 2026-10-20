@@ -51,7 +51,7 @@ import { ClampedText } from './ClampedText'
 /** The four delegatable kinds, as the dictionary names them. */
 const KIND_LABEL = {
   compliance_check: 'complianceCheck',
-  einreichcheck: 'einreichcheck',
+  submission_check: 'submissionCheck',
   document: 'document',
   revision: 'revision',
 } as const
@@ -103,7 +103,7 @@ export const TaskCreatedCard: FC<TaskCreatedCardProps> = ({
       <p className="card-caption flex flex-wrap items-center gap-x-3 text-muted-foreground">
         <span className="flex items-center gap-x-2">
           <span data-testid="task-created-kind">
-            {t(`cards.taskCreated.kind.${KIND_LABEL[kind]}` as 'cards.taskCreated.kind.einreichcheck')}
+            {t(`cards.taskCreated.kind.${KIND_LABEL[kind]}` as 'cards.taskCreated.kind.submissionCheck')}
           </span>
           {dueLabel && (
             <>

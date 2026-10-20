@@ -72,7 +72,7 @@ class TestDecoding:
 class TestMarkdown:
     def test_one_section_per_heading_addressed_by_its_path(self, tmp_path):
         docs = extract_text_format_documents(_write(tmp_path, "digest.md", DIGEST.encode()), "digest.md", 1)
-        ids = [doc.metadata.get("punkt_id") for doc in docs]
+        ids = [doc.metadata.get("clause_id") for doc in docs]
         # The lone "#" heading is the document's title: its own text is addressed by it,
         # and the chapters are addressed below it.
         assert ids == [
@@ -83,27 +83,27 @@ class TestMarkdown:
             "Geschoße › 1. OG",
             "Materialien",
         ]
-        assert "punkt_depth" not in docs[0].metadata
+        assert "clause_depth" not in docs[0].metadata
 
     def test_chunks_carry_the_breadcrumb_and_no_page(self, tmp_path):
         docs = extract_text_format_documents(_write(tmp_path, "digest.md", DIGEST.encode()), "digest.md", 1)
-        eg = next(doc for doc in docs if doc.metadata.get("punkt_id") == "Geschoße › EG")
+        eg = next(doc for doc in docs if doc.metadata.get("clause_id") == "Geschoße › EG")
         assert eg.text == "BIM-Modell: Wohnanlage Musterstraße › Geschoße › EG\n\nNettofläche 412 m²."
         assert "page_label" not in eg.metadata
-        assert eg.metadata["punkt_depth"] == 2
+        assert eg.metadata["clause_depth"] == 2
         assert eg.metadata["line_start"] > 1
 
     def test_a_heading_inside_a_code_fence_is_code(self, tmp_path):
         docs = extract_text_format_documents(_write(tmp_path, "digest.md", DIGEST.encode()), "digest.md", 1)
-        assert not any("kein Heading" in (doc.metadata.get("punkt_id") or "") for doc in docs)
+        assert not any("kein Heading" in (doc.metadata.get("clause_id") or "") for doc in docs)
         assert any("# kein Heading" in doc.text for doc in docs)
 
     def test_a_heading_whose_content_is_in_subsections_still_has_its_chunk(self, tmp_path):
         """It is what gives the Gliederung its chapter line."""
         docs = extract_text_format_documents(_write(tmp_path, "digest.md", DIGEST.encode()), "digest.md", 1)
-        geschosse = [doc for doc in docs if doc.metadata.get("punkt_id") == "Geschoße"]
-        assert [doc.text for doc in geschosse] == ["BIM-Modell: Wohnanlage Musterstraße › Geschoße"]
-        assert geschosse[0].metadata["punkt_depth"] == 1
+        storeys = [doc for doc in docs if doc.metadata.get("clause_id") == "Geschoße"]
+        assert [doc.text for doc in storeys] == ["BIM-Modell: Wohnanlage Musterstraße › Geschoße"]
+        assert storeys[0].metadata["clause_depth"] == 1
 
     def test_section_order_is_document_order(self, tmp_path):
         docs = extract_text_format_documents(_write(tmp_path, "digest.md", DIGEST.encode()), "digest.md", 1)
@@ -117,7 +117,7 @@ class TestText:
         data = "\n\n".join(paragraphs).encode("cp1252")
         docs = extract_text_format_documents(_write(tmp_path, "notiz.txt", data), "notiz.txt", 1)
         assert len(docs) > 1
-        assert docs[0].metadata["punkt_id"].startswith("Zeile")
+        assert docs[0].metadata["clause_id"].startswith("Zeile")
         assert docs[0].metadata["line_start"] == 1
         assert docs[-1].metadata["line_end"] == 11
         assert all("auszuführen" in doc.text for doc in docs)
@@ -139,9 +139,9 @@ class TestCsv:
         assert len(docs) > 1
         assert all("| Raum | Fläche | Nutzung |" in doc.text for doc in docs)
         assert "| Büro 0 | 0,5 m² | Besprechung für Größere Gruppen |" in docs[0].text
-        assert docs[0].metadata["punkt_id"].startswith("Zeilen 2-")
-        assert docs[-1].metadata["punkt_id"].endswith("-201")
-        assert docs[0].text.startswith(f"räume.csv, {docs[0].metadata['punkt_id']} (Teil 1 von {len(docs)})")
+        assert docs[0].metadata["clause_id"].startswith("Zeilen 2-")
+        assert docs[-1].metadata["clause_id"].endswith("-201")
+        assert docs[0].text.startswith(f"räume.csv, {docs[0].metadata['clause_id']} (Teil 1 von {len(docs)})")
 
     def test_row_ranges_tile_the_file(self, tmp_path):
         rows = ["a,b"] + [f"{n},x" for n in range(300)]
@@ -153,7 +153,7 @@ class TestCsv:
     def test_a_quoted_newline_keeps_line_numbers_true(self, tmp_path):
         data = b'Raum,Notiz\nA,"zwei\nZeilen"\nB,eins\n'
         docs = extract_text_format_documents(_write(tmp_path, "t.csv", data), "t.csv", 1)
-        assert docs[0].metadata["punkt_id"] == "Zeilen 2-4"
+        assert docs[0].metadata["clause_id"] == "Zeilen 2-4"
 
 
 class TestRouting:
@@ -163,7 +163,7 @@ class TestRouting:
     def test_the_original_name_decides_over_the_temp_path(self, tmp_path):
         path = _write(tmp_path, "tmpabc123", b"# Titel\n\n## Teil\n\nText.")
         docs = extract_text_format_documents(path, "notiz.md", 1)
-        assert [doc.metadata.get("punkt_id") for doc in docs] == ["Teil"]
+        assert [doc.metadata.get("clause_id") for doc in docs] == ["Teil"]
 
 
 # =============================================================================
@@ -224,7 +224,7 @@ class TestThroughTheIngestJob:
 
         assert status.file_details[0].status == "success", status.file_details[0].error_message
         docs = _indexed()
-        assert [doc.metadata["punkt_id"] for doc in docs] == ["Zeilen 2-3"]
+        assert [doc.metadata["clause_id"] for doc in docs] == ["Zeilen 2-3"]
         assert "| Großraum | 80 m² |" in docs[0].text
         assert docs[0].metadata["source_encoding"] == "cp1252"
 

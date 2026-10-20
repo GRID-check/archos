@@ -8,7 +8,7 @@ import { z } from 'zod'
  * mounts on a live run, for two things the stored message cannot tell it: the
  * backend job id its event stream hangs off, and a ledger that may be newer
  * than the one the message was loaded with. It cancels when the person asks,
- * and then waits for the stream to say `abgebrochen` — the cancel answers the
+ * and then waits for the stream to say `cancelled` — the cancel answers the
  * view as it stands, never a ledger it invented.
  *
  * Parsed with `runViewSchema`, never cast, for the reason the ledger client
@@ -157,7 +157,7 @@ export async function writeNowRun(
  * the status — 404 for a run the session cannot see, 409 for one that has
  * already ended or never reached the worker — and a zod error on a strange
  * body. The view it answers is the run BEFORE the cancel took; the ledger
- * turns `abgebrochen` on the stream.
+ * turns `cancelled` on the stream.
  */
 export async function cancelRun(
   projectId: string,

@@ -20,6 +20,7 @@
 
 import 'server-only'
 import { and, ilike, inArray, or, sql, type SQL } from 'drizzle-orm'
+import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import { likeContains } from '@/lib/text/like-pattern'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/errors'
@@ -133,7 +134,7 @@ export type BimPropertyFilter = z.infer<typeof propertyFilterSchema>
  * The Hauptnutzung vocabulary the rest of the system uses.
  *
  * Free text before, and the rule catalogue silently stands rules down for
- * anything it does not recognise — so `hauptnutzung: "wohnbau"` or
+ * anything it does not recognise — so `mainUse: "wohnbau"` or
  * `"Wohngebäude"` produced "OIB 5 nicht einschlägig — für diese Nutzung nicht
  * lärmempfindlich" on a residential building. A plausible-sounding
  * stand-down reads as a verdict and is not one.
@@ -141,20 +142,28 @@ export type BimPropertyFilter = z.infer<typeof propertyFilterSchema>
  * Mirrors `projectProfilePatchOperation`'s published list; an unknown value is
  * now a rejection the agent is told to correct, not a quiet non-answer.
  */
-export const BIM_HAUPTNUTZUNG = [
-  'wohnen',
-  'buero',
-  'beherbergung',
-  'versammlung',
-  'gesundheit',
-  'landwirtschaft',
-  'produzierend',
-  'lager',
-  'sonstiges',
+export const BIM_MAIN_USE = [
+  'residential',
+  'office',
+  'lodging',
+  'assembly',
+  'healthcare',
+  'agriculture',
+  'manufacturing',
+  'storage',
+  'other',
 ] as const
 
+/**
+ * A request from a tab that has not reloaded, or an agent image that has not
+ * rolled, still names the main use in German (`wohnen`). Read-only; remove with
+ * `legacy-names.ts`.
+ */
+export const canonicalBimMainUse = (value: unknown): unknown =>
+  typeof value === 'string' ? normalizeProfileToken('main_use', value) : value
+
 /** The Hauptnutzung values the rule catalogue understands. */
-export type BimHauptnutzung = (typeof BIM_HAUPTNUTZUNG)[number]
+export type BimMainUse = (typeof BIM_MAIN_USE)[number]
 
 export const bimFilterSchema = z.object({
   /** Canonical IFC type names (`IfcWall`). Matched case-insensitively. */
@@ -226,7 +235,7 @@ const aggregateSchema = z.object({
  * unfiltered number reported as a filtered one, which is precisely the failure
  * the strictness one level down was added to prevent.
  */
-export const bimQuerySchema = z.discriminatedUnion('op', [
+const bimQueryObjectSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('overview') }).strict(),
   z.object({ op: z.literal('health') }).strict(),
   z.object({ op: z.literal('schedule') }).strict(),
@@ -240,16 +249,16 @@ export const bimQuerySchema = z.discriminatedUnion('op', [
      * the mildest Gebaeudeklasse would turn a GK5 building's missing R 90 into
      * a pass, which is the exact failure this subsystem exists to prevent.
      */
-    gebaeudeklasse: z.number().int().min(1).max(5).nullish(),
-    hauptnutzung: z.enum(BIM_HAUPTNUTZUNG).nullish(),
+    buildingClass: z.number().int().min(1).max(5).nullish(),
+    mainUse: z.preprocess(canonicalBimMainUse, z.enum(BIM_MAIN_USE).nullish()),
   }).strict(),
   z.object({
     /** The same catalog over two revisions, reporting only what MOVED. */
     op: z.literal('compliance-diff'),
     /** The OLDER revision; this model is the newer one. */
     baseModelId: z.string().uuid().optional(),
-    gebaeudeklasse: z.number().int().min(1).max(5).nullish(),
-    hauptnutzung: z.enum(BIM_HAUPTNUTZUNG).nullish(),
+    buildingClass: z.number().int().min(1).max(5).nullish(),
+    mainUse: z.preprocess(canonicalBimMainUse, z.enum(BIM_MAIN_USE).nullish()),
   }).strict(),
   z.object({ op: z.literal('profile') }).strict(),
   z.object({
@@ -321,7 +330,27 @@ export const bimQuerySchema = z.discriminatedUnion('op', [
   }
 })
 
-export type BimQuery = z.infer<typeof bimQuerySchema>
+/**
+ * The German fact names the compliance query and the BCF export used to take.
+ * Remove after one release.
+ */
+const LEGACY_BIM_FACT_NAMES = { gebaeudeklasse: 'buildingClass', hauptnutzung: 'mainUse' } as const
+
+/** Rewrite the old fact names to the new ones; a new name wins when both are sent. */
+export function renameLegacyBimFactNames(raw: unknown): unknown {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return raw
+  const next: Record<string, unknown> = { ...(raw as Record<string, unknown>) }
+  for (const [oldName, newName] of Object.entries(LEGACY_BIM_FACT_NAMES)) {
+    if (!(oldName in next)) continue
+    if (!(newName in next)) next[newName] = next[oldName]
+    delete next[oldName]
+  }
+  return next
+}
+
+export const bimQuerySchema = z.preprocess(renameLegacyBimFactNames, bimQueryObjectSchema)
+
+export type BimQuery = z.infer<typeof bimQueryObjectSchema>
 
 export interface BimQueryResult {
   op: BimQuery['op']
@@ -434,9 +463,9 @@ function storeyFacts(
 async function complianceRun(
   header: BimModelHeader,
   organizationId: string,
-  facts: { gebaeudeklasse: number | null; hauptnutzung: string | null }
+  facts: { buildingClass: number | null; mainUse: string | null }
 ): Promise<CachedCompliance> {
-  const cached = readComplianceCache(header.id, facts.gebaeudeklasse, facts.hauptnutzung)
+  const cached = readComplianceCache(header.id, facts.buildingClass, facts.mainUse)
   if (cached) return cached
 
   // The fast path: a single column of a single row, ~120 bytes per element
@@ -488,7 +517,7 @@ async function complianceRun(
     complianceSummary: summarizeBimRules(compliance),
     complianceShoppingList: missingPropertyShoppingList(compliance),
   }
-  writeComplianceCache(header.id, facts.gebaeudeklasse, facts.hauptnutzung, computed)
+  writeComplianceCache(header.id, facts.buildingClass, facts.mainUse, computed)
   return computed
 }
 
@@ -1173,8 +1202,8 @@ export async function runBimQuery(
       return finish({
         ...modelBase,
         ...(await complianceRun(model, context.organizationId, {
-          gebaeudeklasse: request.gebaeudeklasse ?? null,
-          hauptnutzung: request.hauptnutzung ?? null,
+          buildingClass: request.buildingClass ?? null,
+          mainUse: request.mainUse ?? null,
         })),
       })
     }
@@ -1204,8 +1233,8 @@ export async function runBimQuery(
         throw new BimModelNotReadyError(base?.status ?? 'failed', 'Base model is not ready')
       }
       const facts = {
-        gebaeudeklasse: request.gebaeudeklasse ?? null,
-        hauptnutzung: request.hauptnutzung ?? null,
+        buildingClass: request.buildingClass ?? null,
+        mainUse: request.mainUse ?? null,
       }
       const [before, after] = await Promise.all([
         complianceRun(base, context.organizationId, facts),

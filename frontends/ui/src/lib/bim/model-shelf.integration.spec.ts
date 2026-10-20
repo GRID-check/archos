@@ -3,7 +3,7 @@
  *
  * Which models a project can see, against a REAL Postgres.
  *
- * `listBimModels(..., { includeArchiv: true })` is the predicate behind three
+ * `listBimModels(..., { includeOfficeShelf: true })` is the predicate behind three
  * surfaces: the project's model list, the agent's model resolution
  * (`/api/internal/bim/query`), and the revision series a compliance
  * confirmation is scoped to. It used to spell "the org-wide Archiv" as
@@ -50,10 +50,10 @@ describe.skipIf(!url)('listBimModels shelf scoping', () => {
   let closeDb: typeof import('@/lib/db').closeDb
 
   /** The models seeded below, by the shelf their document sits on. */
-  const models: { project: string; otherProject: string; archiv: string; session: string } = {
+  const models: { project: string; otherProject: string; officeShelf: string; session: string } = {
     project: '',
     otherProject: '',
-    archiv: '',
+    officeShelf: '',
     session: '',
   }
   let PROJECT: string
@@ -100,7 +100,7 @@ describe.skipIf(!url)('listBimModels shelf scoping', () => {
      */
     const seedDocument = async (input: {
       filename: string
-      scope: 'project' | 'archiv' | 'session'
+      scope: 'project' | 'office_shelf' | 'session'
       projectId: string | null
       conversationId: string | null
     }): Promise<string> => {
@@ -151,10 +151,10 @@ describe.skipIf(!url)('listBimModels shelf scoping', () => {
       }),
       OTHER_PROJECT
     )
-    models.archiv = await seedModel(
+    models.officeShelf = await seedModel(
       await seedDocument({
         filename: 'buero-archiv.ifc',
-        scope: 'archiv',
+        scope: 'office_shelf',
         projectId: null,
         conversationId: null,
       }),
@@ -176,17 +176,17 @@ describe.skipIf(!url)('listBimModels shelf scoping', () => {
   })
 
   it('gives a project its own models and the Archiv’s, and nobody else’s', async () => {
-    const listed = await listBimModels(ORG, { projectId: PROJECT, includeArchiv: true, reader: REVIEWER_READER })
+    const listed = await listBimModels(ORG, { projectId: PROJECT, includeOfficeShelf: true, reader: REVIEWER_READER })
     const ids = listed.map((model) => model.id).sort()
 
-    expect(ids).toEqual([models.archiv, models.project].sort())
+    expect(ids).toEqual([models.officeShelf, models.project].sort())
   })
 
   it('never hands a private chat’s model to a project', async () => {
     // The regression this suite exists for. `privater-chat.ifc` is readable
     // only inside its conversation; before the predicate read the SHELF it
     // appeared here, in every project in the organization.
-    const listed = await listBimModels(ORG, { projectId: PROJECT, includeArchiv: true, reader: REVIEWER_READER })
+    const listed = await listBimModels(ORG, { projectId: PROJECT, includeOfficeShelf: true, reader: REVIEWER_READER })
 
     expect(listed.map((model) => model.filename)).not.toContain('privater-chat.ifc')
     expect(listed.map((model) => model.id)).not.toContain(models.session)
@@ -195,9 +195,9 @@ describe.skipIf(!url)('listBimModels shelf scoping', () => {
   it('never hands a private chat’s model to a project-less caller either', async () => {
     // What `/api/internal/bim/query` passes for a conversation with no project:
     // the org Archiv is what such a chat is entitled to, and nothing more.
-    const listed = await listBimModels(ORG, { projectId: null, includeArchiv: true, reader: REVIEWER_READER })
+    const listed = await listBimModels(ORG, { projectId: null, includeOfficeShelf: true, reader: REVIEWER_READER })
 
-    expect(listed.map((model) => model.id)).toEqual([models.archiv])
+    expect(listed.map((model) => model.id)).toEqual([models.officeShelf])
   })
 
   it('keeps a project’s own scoping exact when the Archiv is not included', async () => {

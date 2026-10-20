@@ -12,7 +12,7 @@ look like they could say it both fail:
 
 | Axis | Why it cannot carry authorship |
 |---|---|
-| `doc_class` ("Dokumentart") | A closed nine-value NORM-HIERARCHY vocabulary (`knowledge/document_classification.py`), human-set, whose fail-open lane is `baurecht_basis` — "Basisdokument", in law blue. Filing authorship here files it under authority, where an unknown value reads as a weak norm. `agent_authored` is deliberately NOT a member |
+| `doc_class` ("Dokumentart") | A closed nine-value NORM-HIERARCHY vocabulary (`knowledge/document_classification.py`), human-set, whose fail-open lane is `building_law_base` — "Basisdokument", in law blue. Filing authorship here files it under authority, where an unknown value reads as a weak norm. `agent_authored` is deliberately NOT a member |
 | Shelf (ADR-0047) | The shelf says WHERE the document sits, and a published Piloti document really does sit on the project or the Archiv shelf. It would render as Projektwissen or Büroablage, both true and both silent about the author |
 
 So authorship is its own axis, and it beats both.
@@ -35,7 +35,7 @@ unchanged through the whole pipeline.
 
 ## The lane
 
-`buero_piloti`, label "Piloti-Dokument", inside the `buero` source kind
+`office_piloti`, label "Piloti-Dokument", inside the `office` source kind
 (`common/source_kinds.py`, mirrored in
 `frontends/ui/src/features/chat/lib/source-kinds.ts`). It is a sub-label within
 a coarse kind, never a kind of its own — the document IS office knowledge and

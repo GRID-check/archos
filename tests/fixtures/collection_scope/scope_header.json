@@ -13,7 +13,7 @@
         },
         {
           "collection": "archiv_org_1",
-          "shelf": "archiv"
+          "shelf": "office_shelf"
         },
         {
           "collection": "proj_3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -31,7 +31,7 @@
         },
         {
           "collection": "archiv_org_1",
-          "shelf": "archiv"
+          "shelf": "office_shelf"
         },
         {
           "collection": "proj_3f2504e0-4f89-11d3-9a0c-0305e82c3301",
@@ -42,7 +42,7 @@
           "shelf": "session"
         }
       ],
-      "header": "W3siY29sbGVjdGlvbiI6Im9pYl9rbm93bGVkZ2UiLCJzaGVsZiI6ImJhc2UifSx7ImNvbGxlY3Rpb24iOiJhcmNoaXZfb3JnXzEiLCJzaGVsZiI6ImFyY2hpdiJ9LHsiY29sbGVjdGlvbiI6InByb2pfM2YyNTA0ZTAtNGY4OS0xMWQzLTlhMGMtMDMwNWU4MmMzMzAxIiwic2hlbGYiOiJwcm9qZWN0In0seyJjb2xsZWN0aW9uIjoic19jb252X2FiYyIsInNoZWxmIjoic2Vzc2lvbiJ9XQ"
+      "header": "W3siY29sbGVjdGlvbiI6Im9pYl9rbm93bGVkZ2UiLCJzaGVsZiI6ImJhc2UifSx7ImNvbGxlY3Rpb24iOiJhcmNoaXZfb3JnXzEiLCJzaGVsZiI6Im9mZmljZV9zaGVsZiJ9LHsiY29sbGVjdGlvbiI6InByb2pfM2YyNTA0ZTAtNGY4OS0xMWQzLTlhMGMtMDMwNWU4MmMzMzAxIiwic2hlbGYiOiJwcm9qZWN0In0seyJjb2xsZWN0aW9uIjoic19jb252X2FiYyIsInNoZWxmIjoic2Vzc2lvbiJ9XQ"
     },
     {
       "name": "a project collection whose name carries no prefix still states its shelf",
@@ -95,6 +95,23 @@
         }
       ],
       "header": "WyJvaWJfa25vd2xlZGdlIiwic19jb252X2FiYyJd"
+    },
+    {
+      "name": "an old BFF's `archiv` shelf reads as the office shelf (one release)",
+      "emittedByBff": false,
+      "entries": [
+        {
+          "collection": "archiv_org_1",
+          "shelf": "archiv"
+        }
+      ],
+      "parsed": [
+        {
+          "collection": "archiv_org_1",
+          "shelf": "office_shelf"
+        }
+      ],
+      "header": "W3siY29sbGVjdGlvbiI6ImFyY2hpdl9vcmdfMSIsInNoZWxmIjoiYXJjaGl2In1d"
     }
   ]
 }

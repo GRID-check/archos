@@ -16,7 +16,7 @@ what kept the previous country abstraction honest-free and got it deleted).
 
 | Field | Kind | Consumer today |
 |---|---|---|
-| `states` / `state_probe_order` | data (registry-overridable) | jurisdiction resolution (`extract_bundesland`/`resolve_bundesland`) |
+| `states` / `state_probe_order` | data (registry-overridable) | jurisdiction resolution (`extract_federal_state`/`resolve_federal_state`) |
 | `language` | data | classification/prompt language (consumer grows with i18n work below) |
 | `doctrine` | data | `{{ norm_doctrine }}` in researcher/planner/writer prompts. Piloti holds the AT text inline in `prompts/piloti_static.md` (`<dokumentrollen>`), above its KV-cache boundary, because only `at` is registered and the text is therefore constant per deployment. **Registering a second country moves it back to a rendered variable below that boundary** — ADR-0060 amendment |
 | `corpus_collection` | data | retrieval base-collection routing; admin store |
@@ -57,21 +57,21 @@ Phase 3 — vocabulary and language surfaces (scoped per country):
    German prompt ("österreichisches Architekturbüro") need per-country
    vocabulary/prompt variants keyed off `language`.
 6. Intake facts: `intake-definition.ts` carries AT-specific vocabularies
-   (bundesland options, `gebaeudeklasse` GK1–5, `fluchtniveau` >22m bands,
-   `widmung` options, the four AT boolean triggers) — country #2 needs its own
+   (bundesland options, `building_class` GK1–5, `escape_level` >22m bands,
+   `land_designation` options, the four AT boolean triggers) — country #2 needs its own
    question set; the intake machinery itself is versioned and generic.
 7. Agent identity prompts: the j2 prompts hardcode "Austrian building
    regulations / RIS / OIB" framing — template off the profile
    (`country_name`, `legal_source_tools`) when country #2 ships.
-8. Request envelope: `GridRequestContext.bundesland` is AT-vocabulary; add a
+8. Request envelope: `GridRequestContext.federal_state` is AT-vocabulary; add a
    `country` envelope field alongside it (the structured `country=<cc>` prompt
    fact is already parsed by `resolve_country`).
 
 ## Known duplications (consolidate opportunistically, never let them drift)
 
 - **9-state vocabulary — 4 copies:** `norm_registry.BUNDESLAND_TOKENS` (source
-  of truth), `project_context._BUNDESLAND_TOKENS` (deliberate mirror, import
-  cycle), `ris_adapter._BUNDESLAND_PARAMS` (RIS filter keys), and
+  of truth), `project_context._FEDERAL_STATE_TOKENS` (deliberate mirror, import
+  cycle), `ris_adapter._FEDERAL_STATE_PARAMS` (RIS filter keys), and
   `intake-definition.ts` options. A parity test pinning the Python copies to
   `norm_registry` is the cheap guard.
 - **`oib_knowledge` default — 6 sites:** NormsFile default, AT profile, three

@@ -25,8 +25,8 @@ from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.common.grounding_block import render_grounding_block
 
-GRUNDRISS = SourceRegion(box=(0.1, 0.2, 0.5, 0.6), label="Grundriss EG")
-SCHNITT = SourceRegion(box=(0.55, 0.2, 0.9, 0.6), label=None)
+FLOOR_PLAN = SourceRegion(box=(0.1, 0.2, 0.5, 0.6), label="Grundriss EG")
+SECTION = SourceRegion(box=(0.55, 0.2, 0.9, 0.6), label=None)
 
 
 def _hit(**overrides) -> GroundingHit:
@@ -39,7 +39,7 @@ def _hit(**overrides) -> GroundingHit:
         "doc_class": None,
         "display_title": "plan.pdf",
         "folder_path": None,
-        "punkt": None,
+        "clause": None,
         "score": 0.7,
         "content_type": "drawing",
         "provenance": None,
@@ -68,32 +68,32 @@ def capturing():
 
 
 def test_the_model_reads_the_same_bytes_with_or_without_a_region():
-    assert render_grounding_block(_block(_hit(regions=(GRUNDRISS,)))) == render_grounding_block(_block(_hit()))
+    assert render_grounding_block(_block(_hit(regions=(FLOOR_PLAN,)))) == render_grounding_block(_block(_hit()))
 
 
 def test_the_record_carries_the_region_into_the_registry(capturing):
-    rendered = render_grounding_block(_block(_hit(regions=(GRUNDRISS,))))
+    rendered = render_grounding_block(_block(_hit(regions=(FLOOR_PLAN,))))
 
     [entry] = extract_sources_from_tool_result("knowledge_search", rendered)
 
-    assert entry.regions == [GRUNDRISS]
+    assert entry.regions == [FLOOR_PLAN]
 
 
 def test_two_depictions_on_one_page_are_both_marked(capturing):
     """Dedup folds the page's chunks into one source; it must not fold their boxes away."""
     rendered = render_grounding_block(
-        _block(_hit(regions=(GRUNDRISS,)), _hit(regions=(SCHNITT,), body="Schnitt A-A durch die Sitztreppe."))
+        _block(_hit(regions=(FLOOR_PLAN,)), _hit(regions=(SECTION,), body="Schnitt A-A durch die Sitztreppe."))
     )
     registry = SourceRegistry()
     for entry in extract_sources_from_tool_result("knowledge_search", rendered):
         registry.add(entry)
 
     [source] = registry._citation_keys
-    assert source.regions == [GRUNDRISS, SCHNITT]
+    assert source.regions == [FLOOR_PLAN, SECTION]
 
 
 def test_the_wire_carries_the_boxes_and_omits_an_unknown_label():
-    entry = SourceEntry(citation_key="plan.pdf, p.3", source_type="knowledge_layer", regions=[GRUNDRISS, SCHNITT])
+    entry = SourceEntry(citation_key="plan.pdf, p.3", source_type="knowledge_layer", regions=[FLOOR_PLAN, SECTION])
 
     assert source_entry_to_wire(entry)["regions"] == [
         {"box": [0.1, 0.2, 0.5, 0.6], "label": "Grundriss EG"},
@@ -109,18 +109,18 @@ def test_running_text_carries_no_regions_key():
 
 def test_a_source_that_was_only_read_carries_no_regions():
     """The uncited channel names documents; a box is a claim about where the evidence is."""
-    entry = SourceEntry(citation_key="plan.pdf, p.3", source_type="knowledge_layer", regions=[GRUNDRISS])
+    entry = SourceEntry(citation_key="plan.pdf, p.3", source_type="knowledge_layer", regions=[FLOOR_PLAN])
 
     assert "regions" not in read_source_to_wire(entry)
 
 
 def test_a_resumed_conversation_keeps_its_boxes():
     """The session registry is cached as ``asdict``; a replica move must not drop the boxes."""
-    entry = SourceEntry(citation_key="plan.pdf, p.3", source_type="knowledge_layer", regions=[GRUNDRISS])
+    entry = SourceEntry(citation_key="plan.pdf, p.3", source_type="knowledge_layer", regions=[FLOOR_PLAN])
 
     hydrated = _registry_from_cached_entries([dataclasses.asdict(entry)])
 
-    assert hydrated._all[0].regions == [GRUNDRISS]
+    assert hydrated._all[0].regions == [FLOOR_PLAN]
 
 
 def test_a_malformed_cached_box_is_dropped_not_guessed():

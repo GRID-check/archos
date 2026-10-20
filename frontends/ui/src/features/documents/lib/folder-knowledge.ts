@@ -25,7 +25,7 @@ import { documentReadFamily, type DocumentReadFamily } from '@/lib/documents/doc
 import type { ShelfSummary } from '@/lib/documents/shelf-summary-types'
 import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS, documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import type { FileItem, FolderItem } from '../file-types'
-import { withoutOlderFassungen } from './fassung-chain'
+import { withoutOlderRevisions } from './revision-chain'
 
 /**
  * Where a document stands with Piloti, in the five answers a reader acts on.
@@ -383,7 +383,7 @@ function compareSeverity(a: KnowledgeTally, b: KnowledgeTally): number {
  * or stale. Their existence is counted; what they say is not.
  *
  * One entry per document, as the listing shows it (ADR-0099,
- * `fassung-chain.ts`): an older Fassung whose newer one is in the corpus is
+ * `revision-chain.ts`): an older Fassung whose newer one is in the corpus is
  * left out before anything is counted, whatever the listing's „Ältere
  * Fassungen" filter says. Otherwise the headline would count Index A, B and C
  * as three documents, the pages of a replaced Fassung would be summed, and
@@ -396,7 +396,7 @@ export function buildFolderBrief(
   folders: readonly FolderItem[],
   folderId: string | null
 ): FolderBrief {
-  const files = withoutOlderFassungen(allFiles, false)
+  const files = withoutOlderRevisions(allFiles, false)
   const subtree = filesInSubtree(files, folders, folderId)
   const tally = tallyOf(subtree)
 

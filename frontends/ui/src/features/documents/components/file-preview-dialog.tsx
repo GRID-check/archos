@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslations } from '@/i18n'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { documentDisplayName } from '@/lib/documents/display-name'
-import type { FassungFacts } from '@/lib/documents/fassung'
+import type { RevisionLinks } from '@/lib/documents/revision-links'
 import type { MarkTally } from '@/lib/annotations/types'
 import type { DocumentScope } from './document-actions'
 import type { FileItem } from './project-file-workspace'
@@ -24,7 +24,7 @@ interface FilePreviewDialogProps {
   /** The pane asks for another document of this shelf to be opened here. */
   onOpenDocument?: (fileId: string) => void
   /** A link was confirmed or taken back: the Fassung facts of one of the two documents, so the listing moves both cards. */
-  onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
+  onRevisionChanged?: (fileId: string, revision: RevisionLinks | null) => void
   /** The review read or changed the document's marks: the listing's tally for its chip. */
   onMarksChanged?: (fileId: string, marks: MarkTally | null) => void
   /** The document was renamed in the pane's header menu. */
@@ -71,7 +71,7 @@ export function FilePreviewDialog({
   onReingested,
   onTagsUpdated,
   onOpenDocument,
-  onFassungChanged,
+  onRevisionChanged,
   onMarksChanged,
   onRenamed,
   onDeleted,
@@ -169,7 +169,7 @@ export function FilePreviewDialog({
             onReingested={onReingested}
             onTagsUpdated={onTagsUpdated}
             onOpenDocument={onOpenDocument}
-            onFassungChanged={onFassungChanged}
+            onRevisionChanged={onRevisionChanged}
             onMarksChanged={onMarksChanged}
             onRenamed={onRenamed}
             onDeleted={onDeleted}

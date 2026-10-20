@@ -210,7 +210,7 @@ describe('why the run stopped, and what it cost', () => {
           'no_report_file',
           'no_valid_citations',
           'cards_generation_failed',
-          'grundlage_unread',
+          'basis_unread',
           'no_report_file',
         ],
       })
@@ -219,7 +219,7 @@ describe('why the run stopped, and what it cost', () => {
         'no_report_file',
         'no_valid_citations',
         'cards_generation_failed',
-        'grundlage_unread',
+        'basis_unread',
       ],
     })
   })
@@ -243,7 +243,7 @@ describe('why the run stopped, and what it cost', () => {
 describe('a stored step is the wire v2 shape and nothing else', () => {
   it('keeps each kind with the fields it carries', () => {
     const lanes = [
-      { key: 'baurecht_oib', label: 'OIB-Richtlinie', hitCount: 2, sources: [], signal: 'law' },
+      { key: 'building_law_oib', label: 'OIB-Richtlinie', hitCount: 2, sources: [], signal: 'law' },
     ]
     const result = sanitizeProvenance({
       thinkingSteps: [
@@ -396,6 +396,36 @@ describe('a stopped answer says so after a reload', () => {
     expect(sanitizeProvenance({ stopped: true })).toEqual({ stopped: true })
     expect(sanitizeProvenance({ stopped: 'yes' })).toBeNull()
     expect(sanitizeProvenance({ stopped: false })).toBeNull()
+  })
+})
+
+describe('a step stored before the English names', () => {
+  it('reads its lanes, its locator event and its degraded reason in English', () => {
+    const result = sanitizeProvenance({
+      degradedReasons: ['grundlage_unread'],
+      thinkingSteps: [
+        step({
+          kind: 'sources',
+          traceLanes: [
+            { key: 'building_law_ris', label: 'Rechtsquelle', hitCount: 1, sources: [], signal: 'law', kind: 'building_law' },
+            { key: 'office_piloti', label: 'Piloti-Dokument', hitCount: 1, sources: [], signal: 'office', kind: 'office' },
+          ],
+        }),
+        step({
+          kind: 'retrieval',
+          turnEvent: { key: 'status.retrieval.punkt', values: { document: 'OIB-RL 2', punkt: '3.5.2' } },
+        }),
+      ],
+    })
+    expect(result!.degradedReasons).toEqual(['basis_unread'])
+    expect(result!.thinkingSteps![0].traceLanes!.map((lane) => [lane.key, lane.kind])).toEqual([
+      ['building_law_ris', 'building_law'],
+      ['office_piloti', 'office'],
+    ])
+    expect(result!.thinkingSteps![1].turnEvent).toEqual({
+      key: 'status.retrieval.clause',
+      values: { document: 'OIB-RL 2', clause: '3.5.2' },
+    })
   })
 })
 

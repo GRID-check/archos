@@ -57,8 +57,8 @@ class TestVocabulary:
             assert name in DIRECTIVE_BLOCKS
 
     def test_project_keys_are_english_and_map_to_profile_facts(self):
-        assert PROJECT_KEYS["building_class"] == "gebaeudeklasse"
-        assert PROJECT_KEYS["escape_level_m"] == "fluchtniveau_m"
+        assert PROJECT_KEYS["building_class"] == "building_class"
+        assert PROJECT_KEYS["escape_level_m"] == "escape_level_m"
         assert "parcel_area_m2" not in PROJECT_KEYS  # the profile records no Grundstücksfläche
         assert all(key.isascii() and key == key.lower() for key in PROJECT_KEYS)
 

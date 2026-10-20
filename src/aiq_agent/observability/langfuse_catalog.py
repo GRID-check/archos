@@ -130,10 +130,10 @@ RULES: tuple[RuleDefinition, ...] = (
 )
 
 GOLDEN_DATASET_NAME = "golden-questions"
-GOLDEN_QUESTIONS_PATH = Path("tests/fixtures/herleitung/loop_eval_questions.yaml")
+GOLDEN_QUESTIONS_PATH = Path("tests/fixtures/derivation/loop_eval_questions.yaml")
 
 #: The fields of a golden question that say what a right answer is.
-_EXPECTATION_KEYS = ("family", "punkt", "paragraph", "kind", "kind_also", "expect")
+_EXPECTATION_KEYS = ("family", "clause", "paragraph", "kind", "kind_also", "expect")
 
 
 def golden_dataset_items(repo_root: Path) -> list[dict[str, Any]]:

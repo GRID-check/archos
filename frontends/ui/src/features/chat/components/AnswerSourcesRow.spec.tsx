@@ -33,8 +33,8 @@ const oibDoc: CitedDocument = {
   id: 'doc-oib',
   title: 'OIB-Richtlinie 2',
   fileName: 'oib-rl_2.pdf',
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   tint: 'oib',
   authority: 'OIB',
   loci: [{ key: 'l1', page: 12, number: 1, isCited: true }],
@@ -43,8 +43,8 @@ const oibDoc: CitedDocument = {
 const risDoc: CitedDocument = {
   id: 'doc-ris',
   title: 'Wiener Bauordnung',
-  kind: 'baurecht',
-  lane: 'baurecht_ris',
+  kind: 'building_law',
+  lane: 'building_law_ris',
   tint: 'law',
   loci: [{ key: 'l1', page: 3, number: 2, isCited: true }],
 }
@@ -60,7 +60,7 @@ describe('AnswerSourcesRow past the cap', () => {
     id: `doc-${n}`,
     title: `Unterlage ${n}`,
     fileName: `unterlage-${n}.pdf`,
-    kind: 'projekt',
+    kind: 'project',
     tint: 'project',
     loci: [{ key: 'l1', page: 1, isCited: true }],
   })
@@ -137,7 +137,7 @@ describe('AnswerSourcesRow in a closed project (ADR-0090)', () => {
     id: 'doc-plan',
     title: 'Einreichplan EG',
     fileName: 'einreichplan-eg.pdf',
-    kind: 'projekt',
+    kind: 'project',
     tint: 'project',
     loci: [{ key: 'l1', page: 4, number: 1, isCited: true }],
   }
@@ -184,7 +184,7 @@ describe('AnswerSourcesRow precedents from another project (ADR-0094)', () => {
     id: 'doc-traufe',
     title: 'Detail Traufe',
     fileName: 'detail-traufe.pdf',
-    kind: 'projekt',
+    kind: 'project',
     tint: 'project',
     snippet: 'Die Traufe ist hinterlüftet ausgeführt.',
     loci: [{ key: 'l1', page: 3, number: 1, isCited: true }],
@@ -202,7 +202,7 @@ describe('AnswerSourcesRow precedents from another project (ADR-0094)', () => {
         id: 'p9',
         name: 'Wohnbau Graz',
         status: 'closed',
-        landNote: 'Steiermark — nicht das Bundesland dieses Projekts',
+        federalStateNote: 'Steiermark — nicht das Bundesland dieses Projekts',
       },
     }
     render(

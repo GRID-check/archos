@@ -184,11 +184,11 @@ export const bim = {
      * `Gebäudeklasse` stays German in both locales — it is the legal term, it
      * appears on the Einreichung, and an English translation of it would name
      * nothing. `Hauptnutzung` has an English name and this is where it lives,
-     * matching `profile.key.hauptnutzung` on the same screen.
+     * matching `profile.key.main_use` on the same screen.
      */
     factName: {
-      gebaeudeklasse: 'Gebäudeklasse',
-      hauptnutzung: 'Main use',
+      buildingClass: 'Gebäudeklasse',
+      mainUse: 'Main use',
     },
     factsFailed:
       'The project brief could not be read, so the rules that depend on it stood down. This says nothing about the brief itself.',
@@ -325,11 +325,11 @@ export const bim = {
     empty: 'No project data can be derived from this model.',
     failed: 'The project data could not be derived.',
     key: {
-      geschosse_oberirdisch: 'Storeys above ground',
-      geschosse_unterirdisch: 'Storeys below ground',
-      fluchtniveau: 'Escape level',
-      hauptnutzung: 'Main use',
-      anzahl_einheiten: 'Units',
+      storeys_above_ground: 'Storeys above ground',
+      storeys_below_ground: 'Storeys below ground',
+      escape_level: 'Escape level',
+      main_use: 'Main use',
+      unit_count: 'Units',
     },
     confidence: {
       high: 'High confidence',

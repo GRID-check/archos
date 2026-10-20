@@ -40,7 +40,7 @@ export interface PromptRoleBinding {
 }
 
 /** A building's display name, so a scoped role reads as more than an opaque id. */
-export type BauwerkNames = Readonly<Record<string, string>>
+export type BuildingNames = Readonly<Record<string, string>>
 
 /**
  * A role the intake answers say this project should hold, at one scope instance.
@@ -70,7 +70,7 @@ function label(binding: PromptRoleBinding): string {
   return binding.displayName?.trim() || binding.filename
 }
 
-function scopeSuffix(scopeInstanceId: string | null, names: BauwerkNames): string {
+function scopeSuffix(scopeInstanceId: string | null, names: BuildingNames): string {
   if (!scopeInstanceId) return ''
   return ` (${names[scopeInstanceId] ?? scopeInstanceId})`
 }
@@ -103,7 +103,7 @@ function groupIntoSlots(bindings: readonly PromptRoleBinding[]): Slot[] {
   return [...byKey.values()]
 }
 
-function renderSlot(slot: Slot, names: BauwerkNames): string {
+function renderSlot(slot: Slot, names: BuildingNames): string {
   const definition = documentRoleDefinition(slot.role)
   const head = `- ${definition.label}${scopeSuffix(slot.scopeInstanceId, names)}`
 
@@ -151,13 +151,13 @@ export function missingSlots(
 export function buildDocumentRolesSection(
   bindings: readonly PromptRoleBinding[],
   recommended: readonly RecommendedSlot[] = [],
-  bauwerkNames: BauwerkNames = {}
+  buildingNames: BuildingNames = {}
 ): string {
   if (bindings.length === 0 && recommended.length === 0) return ''
 
   const slots = groupIntoSlots(bindings)
   const shown = slots.slice(0, MAX_SLOT_LINES)
-  const present = shown.map((slot) => renderSlot(slot, bauwerkNames))
+  const present = shown.map((slot) => renderSlot(slot, buildingNames))
 
   // The cap covers BOTH lists. Bounding only the filled slots left `missing`
   // free to grow — and it is the list that grows fastest, since every
@@ -171,7 +171,7 @@ export function buildDocumentRolesSection(
     .slice(0, missingBudget)
     .map(
       (entry) =>
-        `- ${documentRoleDefinition(entry.role).label}${scopeSuffix(entry.scopeInstanceId, bauwerkNames)}`
+        `- ${documentRoleDefinition(entry.role).label}${scopeSuffix(entry.scopeInstanceId, buildingNames)}`
     )
 
   const lines: string[] = []

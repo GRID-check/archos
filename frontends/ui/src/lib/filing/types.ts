@@ -58,7 +58,7 @@ export interface FilingJudgementInput {
   folders: FilingFolderInput[]
   conventions: FilingConventionInput[]
   documents: FilingDocumentInput[]
-  trace: { batchId: string; projectId: string | null; shelf: 'project' | 'archiv' }
+  trace: { batchId: string; projectId: string | null; shelf: 'project' | 'office_shelf' }
 }
 
 /** The route's answer, as it is parsed. Anything else is no answer. */

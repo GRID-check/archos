@@ -19,7 +19,7 @@ def _kb(
     citation_key: str,
     *,
     collection: str = "oib_knowledge",
-    doc_class: str | None = "oib_richtlinie",
+    doc_class: str | None = "oib_guideline",
     tool_name: str = "knowledge_tool",
 ) -> SourceEntry:
     return SourceEntry(
@@ -86,9 +86,9 @@ class TestReadButUncited:
         assert entry["document_id"] == "doc:oib_knowledge:oib-rl_2.pdf"
         assert entry["file_name"] == "oib-rl_2.pdf"
         assert entry["page"] == 12
-        assert entry["kind"] == "baurecht"
-        assert entry["lane"].startswith("baurecht")
-        for prose in ("snippet", "content", "score", "punkt", "number", "binding_status"):
+        assert entry["kind"] == "building_law"
+        assert entry["lane"].startswith("building_law")
+        for prose in ("snippet", "content", "score", "clause", "number", "binding_status"):
             assert prose not in entry, f"{prose} must not travel on the read-but-uncited channel"
 
     def test_a_web_source_keeps_its_url_identity(self):

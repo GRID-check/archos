@@ -12,12 +12,12 @@
  *  3. refused `unreadable-file`: evidence from a file outside the project's
  *     main collection (`extractableFileNames`);
  *  4. refused `unknown-key`: a key no wizard question writes, in the scope
- *     that question is asked in (`questionForKey`), or on a Bauwerk the
+ *     that question is asked in (`questionForKey`), or on a building the
  *     profile does not describe. Whether the question is asked yet is not
  *     consulted: a reading may find the Wohnungen before the Nutzungen that
  *     open their question, and the values of one batch do not depend on their
  *     order. A key with a confirmed fact is never refused here: the reading
- *     may corroborate or contradict it. The derived `gebaeudeklasse@bwN` is
+ *     may corroborate or contradict it. The derived `building_class@bldgN` is
  *     always refused, a confirmed one included: it is derived from its inputs
  *     and proposed, and a class taken from a document would skip the inputs a
  *     person checks (and is what an injected line asks for). Checked against
@@ -30,7 +30,7 @@
  *  7. otherwise a new suggestion (`agent_suggested`), with its evidence and
  *     the reading that suggested it (`readingId`).
  *
- * Then the class of every Bauwerk whose inputs moved is derived again and
+ * Then the class of every building whose inputs moved is derived again and
  * written (`withDerivedClass`), and the answer names the needs the batch
  * opened (`openedNeeds`: listed after it, not before).
  *
@@ -47,10 +47,10 @@ import {
 import type { DocumentEvidence } from '@/lib/project-profile/evidence-schema'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import {
-  bauwerkeTouchedBy,
-  bauwerkIdsOf,
-  gebaeudeklasseKey,
-  isGebaeudeklasseKey,
+  buildingsTouchedBy,
+  buildingIdsOf,
+  buildingClassKey,
+  isBuildingClassKey,
   withDerivedClass,
 } from './derivation-view'
 import {
@@ -140,7 +140,7 @@ function applyValue(
 ): { profile: ProjectProfile; result: RecordResult } {
   const { now } = context
   const { key, value, evidence } = item
-  if (isGebaeudeklasseKey(key)) return { profile, result: { key, outcome: 'refused', reason: 'unknown-key' } }
+  if (isBuildingClassKey(key)) return { profile, result: { key, outcome: 'refused', reason: 'unknown-key' } }
   const fact = profile.facts[key]
   if (fact) {
     const corroborates = sameProfileValue(fact.value, value)
@@ -182,7 +182,7 @@ export interface RecordPlan {
   opened: OpenedNeed[]
 }
 
-/** The profile with the class of every Bauwerk whose inputs changed derived again; the class keys that moved join `changed`. */
+/** The profile with the class of every building whose inputs changed derived again; the class keys that moved join `changed`. */
 function withClassesDerived(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition,
@@ -190,10 +190,10 @@ function withClassesDerived(
   now: string
 ): ProjectProfile {
   let current = profile
-  for (const bauwerkId of bauwerkeTouchedBy(changed, bauwerkIdsOf(current, definition))) {
-    const derived = withDerivedClass(current, definition, bauwerkId, now)
+  for (const buildingId of buildingsTouchedBy(changed, buildingIdsOf(current, definition))) {
+    const derived = withDerivedClass(current, definition, buildingId, now)
     current = derived.profile
-    if (derived.changed) changed.add(gebaeudeklasseKey(bauwerkId))
+    if (derived.changed) changed.add(buildingClassKey(buildingId))
   }
   return current
 }
@@ -209,9 +209,9 @@ export function planRecord(
   values: ReadonlyArray<{ key: string; screened: ScreenedValue | null; refusal: RecordRefusalReason | null }>,
   context: RecordContext
 ): RecordPlan {
-  // The Bauwerke as the profile describes them before the batch: no value of it can add one.
-  const bauwerkIds = bauwerkIdsOf(profile, definition)
-  const recordable = (key: string) => recordableKey(definition, key, bauwerkIds) !== null
+  // The buildings as the profile describes them before the batch: no value of it can add one.
+  const buildingIds = buildingIdsOf(profile, definition)
+  const recordable = (key: string) => recordableKey(definition, key, buildingIds) !== null
   let current = profile
   const results: RecordResult[] = []
   const changed = new Set<string>()
@@ -253,7 +253,7 @@ export interface WithdrawPlan {
 /**
  * The profile without the suggestions this reading takes back, and what became
  * of each key. A withdrawn suggestion goes with the alternatives found beside
- * it in the same reading; the class of a Bauwerk whose input went is derived
+ * it in the same reading; the class of a building whose input went is derived
  * again (and goes, when it can no longer be derived). Nothing is remembered as
  * dismissed.
  */

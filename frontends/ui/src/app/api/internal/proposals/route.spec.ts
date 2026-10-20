@@ -38,8 +38,8 @@ vi.mock('@/lib/proposals/executors', async (original) => ({
   applyFileOperations: vi.fn(),
 }))
 vi.mock('@/lib/assignments/service', () => ({}))
-vi.mock('@/lib/archiv/folder-service', () => ({}))
-vi.mock('@/lib/archiv/service', () => ({}))
+vi.mock('@/lib/office-shelf/folder-service', () => ({}))
+vi.mock('@/lib/office-shelf/service', () => ({}))
 vi.mock('@/lib/documents/move-to-folder', () => ({}))
 vi.mock('@/lib/documents/service', () => ({}))
 vi.mock('@/lib/projects/folder-service', () => ({}))
@@ -86,7 +86,7 @@ const MOVE: InternalProposalRequest = {
   kind: 'file_operation',
   payload: {
     operation: 'move',
-    operations: [{ document: 'Grundriss EG.pdf', source: 'projekt', current: '', target_folder: 'Einreichung' }],
+    operations: [{ document: 'Grundriss EG.pdf', source: 'project', current: '', target_folder: 'Einreichung' }],
     note: 'Für die Einreichung gesammelt',
   },
   answerMessageId: ANSWER,
@@ -205,7 +205,7 @@ describe('POST /api/internal/proposals', () => {
 
     const profile = {
       title: 'Bundesland: Tirol',
-      patch: [{ op: 'replace', path: '/facts/bundesland/value', value: 'tirol' }],
+      patch: [{ op: 'replace', path: '/facts/federal_state/value', value: 'tirol' }],
     }
     expect((await post({ op: 'create', kind: 'project_profile', payload: profile })).status).toBe(200)
     expect(insertProposedChange).toHaveBeenLastCalledWith(
@@ -219,7 +219,7 @@ describe('POST /api/internal/proposals', () => {
     const outside = await post({
       op: 'create',
       kind: 'project_profile',
-      payload: { title: 'Bundesland', patch: [{ op: 'replace', path: '/facts/bundesland/value', value: 'atlantis' }] },
+      payload: { title: 'Bundesland', patch: [{ op: 'replace', path: '/facts/federal_state/value', value: 'atlantis' }] },
     })
     expect(outside.status).toBe(422)
     await expect(outside.json()).resolves.toMatchObject({ details: { reason: 'proposal-profile-vocabulary' } })

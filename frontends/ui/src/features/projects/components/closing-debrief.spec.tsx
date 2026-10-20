@@ -32,15 +32,15 @@ const wire = (overrides: Parameters<typeof makeMemoryItem>[0]) => ({
 })
 
 // Built by the intake's own producer, so the debrief is tested on the shape
-// production stores (a building's answers under `@bw1`).
+// production stores (a building's answers under `@bldg1`).
 const built = (answers: Record<string, ProjectPrimitiveValue>) =>
-  buildIntakeProfile(answers, projectIntakeDefinitionV1, { bauwerke: [{ id: 'bw1', name: 'Bauwerk 1' }] })
+  buildIntakeProfile(answers, projectIntakeDefinitionV1, { buildings: [{ id: 'bldg1', name: 'Bauwerk 1' }] })
 
 const profile: ProjectProfile = built({
   A2_country: 'at',
-  A2_land: 'niederoesterreich',
-  'C1@bw1': 'gebaeude',
-  'C10@bw1': ['holzbau'],
+  A2_land: 'lower_austria',
+  'C1@bldg1': 'building',
+  'C10@bldg1': ['timber'],
 })
 
 /** A value the closing extraction read from a document, as the profile stores it. */
@@ -122,7 +122,7 @@ describe('ClosingDebrief', () => {
 
   test('a structure that is no building is not asked for its construction, and no link promises otherwise', async () => {
     stubFetch()
-    const wall = built({ A2_country: 'at', A2_land: 'tirol', A5: ['neubau'], 'C1@bw1': 'sonstig' })
+    const wall = built({ A2_country: 'at', A2_land: 'tyrol', A5: ['new_build'], 'C1@bldg1': 'other' })
     render(<ClosingDebrief projectId="p1" profile={wall} canWriteMemory />)
 
     const debrief = screen.getByTestId('closing-debrief')
@@ -259,7 +259,7 @@ describe('ClosingDebrief', () => {
 
   test('a suggested fact shows its reason, still counts as missing, and Accept writes it as a fact', async () => {
     const fetchMock = stubFetch()
-    const withSuggestion = { ...profile, assumptions: { vorhabensart: suggestion(['neubau'], 'Baubeschreibung.pdf, S. 2: „Neubau eines Wohnhauses“') } }
+    const withSuggestion = { ...profile, assumptions: { work_type: suggestion(['new_build'], 'Baubeschreibung.pdf, S. 2: „Neubau eines Wohnhauses“') } }
     render(<ClosingDebrief projectId="p1" profile={withSuggestion} canWriteMemory />)
 
     const debrief = screen.getByTestId('closing-debrief')
@@ -276,7 +276,7 @@ describe('ClosingDebrief', () => {
       '/api/projects/p1/profile/patches',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ patch: [{ op: 'add', path: '/facts/vorhabensart', value: ['neubau'] }] }),
+        body: JSON.stringify({ patch: [{ op: 'add', path: '/facts/work_type', value: ['new_build'] }] }),
       })
     )
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
@@ -287,8 +287,8 @@ describe('ClosingDebrief', () => {
     const withSuggestions = {
       ...profile,
       assumptions: {
-        gebaeudeklasse: suggestion(4, 'Baubeschreibung.pdf, S. 3: „Gebäudeklasse 4“'),
-        oib_ausgabe: suggestion('2019', 'Einreichplan.pdf, S. 1: „OIB-Richtlinien 2019“'),
+        building_class: suggestion(4, 'Baubeschreibung.pdf, S. 3: „Gebäudeklasse 4“'),
+        oib_edition: suggestion('2019', 'Einreichplan.pdf, S. 1: „OIB-Richtlinien 2019“'),
       },
     }
     render(<ClosingDebrief projectId="p1" profile={withSuggestions} canWriteMemory />)
@@ -306,7 +306,7 @@ describe('ClosingDebrief', () => {
       '/api/projects/p1/profile/patches',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ patch: [{ op: 'add', path: '/facts/gebaeudeklasse', value: 4 }] }),
+        body: JSON.stringify({ patch: [{ op: 'add', path: '/facts/building_class', value: 4 }] }),
       })
     )
   })
@@ -333,7 +333,7 @@ describe('ClosingDebrief', () => {
 
   test('a reader who may not write the memory or the profile sees the suggestions, and no control that would change them', async () => {
     stubFetch({ memory: [...memory, drafted] })
-    const withSuggestion = { ...profile, assumptions: { vorhabensart: suggestion(['neubau'], 'Baubeschreibung.pdf, S. 2: „Neubau“') } }
+    const withSuggestion = { ...profile, assumptions: { work_type: suggestion(['new_build'], 'Baubeschreibung.pdf, S. 2: „Neubau“') } }
     render(<ClosingDebrief projectId="p1" profile={withSuggestion} canWriteMemory={false} />)
 
     await screen.findByText('Fluchttreppe außen in Stahl statt eines zweiten Stiegenhauses.')

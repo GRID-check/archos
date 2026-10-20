@@ -46,7 +46,7 @@ export interface UploadIntent {
   /** Released from the name screening in the upload dialog. */
   screeningReleased: boolean
   /** The document this file was filed as the new Fassung of, chosen in the upload dialog (ADR-0099); null for none. */
-  fassungOf?: string | null
+  revisionOf?: string | null
 }
 
 /** Every status a {@link TrackedFile} can be in; see its `status` field. */

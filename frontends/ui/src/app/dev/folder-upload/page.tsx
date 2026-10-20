@@ -33,17 +33,17 @@
  * re-filed in Piloti, so it is moved rather than left where it is under a
  * dialog that promises to reproduce the tree.
  *
- * `?variant=fassungen` is an ArchiCAD publisher export of the same project: the
+ * `?variant=revisions` is an ArchiCAD publisher export of the same project: the
  * files continue documents already on the shelf (ADR-0099). The clear matches
  * are ONE list under a sticky master box, ticked and grouped by folder; the ones
  * that need the reader (two current documents, or not newer than the one there)
  * sit apart and unticked with the documents to choose from. The boxes work, so
  * the shot can show the master half-filled and the confirm label moving.
- * `?variant=fassungen-40` is the same at the size it arrives in: forty rows in
+ * `?variant=revisions-40` is the same at the size it arrives in: forty rows in
  * four folders, two same-name updates in the same block (one concept, ADR-0099),
  * long names whose index and date must survive the cut.
  *
- * `?variant=single-fassung`, `single-unclear` and `single-older` are ONE loose
+ * `?variant=single-revision`, `single-unclear` and `single-older` are ONE loose
  * file that continues a document under another name: a clear match, a file that
  * could continue two documents, and one that is not newer than the document it
  * would continue. Each is the light layout with two named outcomes.
@@ -60,11 +60,11 @@ import { notFound, useSearchParams } from 'next/navigation'
 import { FolderUploadDialog } from '@/features/documents/components/folder-upload-dialog'
 import {
   buildFolderUploadPlan,
-  type FassungChoice,
+  type RevisionChoice,
   type FolderUploadPlan,
 } from '@/features/documents/lib/folder-upload-plan'
-import type { FassungChange } from '@/features/documents/lib/fassung-proposals'
-import type { FassungCandidateMatch } from '@/lib/documents/name-probe-types'
+import type { RevisionChange } from '@/features/documents/lib/revision-proposals'
+import type { RevisionCandidateMatch } from '@/lib/documents/name-probe-types'
 import type { FileItem, FolderItem } from '@/features/documents/components/project-file-workspace'
 
 /** A `File` carrying the path a folder input would report. */
@@ -214,14 +214,14 @@ function knownPlan(): FolderUploadPlan {
 }
 
 /** What the Fassung probe answered for the export's files, built from the dropped names. */
-function exportOffers(files: readonly File[]): Map<string, FassungCandidateMatch> {
-  const one = (name: string, held: string, label: string): FassungCandidateMatch => ({
+function exportOffers(files: readonly File[]): Map<string, RevisionCandidateMatch> {
+  const one = (name: string, held: string, label: string): RevisionCandidateMatch => ({
     name,
     candidates: [{ id: `doc-${held}`, filename: held, displayName: null, label }],
     newer: true,
     unambiguous: true,
   })
-  const offers = new Map<string, FassungCandidateMatch>()
+  const offers = new Map<string, RevisionCandidateMatch>()
   for (const file of files) {
     const sheet = /Blatt_(\d+)_Index_C/.exec(file.name)
     if (sheet) offers.set(file.name, one(file.name, `Blatt_${sheet[1]}_Index_B.pdf`, 'Index B · 02.07.2026'))
@@ -247,7 +247,7 @@ function exportOffers(files: readonly File[]): Map<string, FassungCandidateMatch
 /** A drop with offers, and the documents and digests it is planned against. */
 interface OfferedDrop {
   files: File[]
-  offers: Map<string, FassungCandidateMatch>
+  offers: Map<string, RevisionCandidateMatch>
   documents?: FileItem[]
   digests?: Map<File, string>
 }
@@ -273,7 +273,7 @@ function fortyDrop(): OfferedDrop {
     ['03_Ansichten', 'Ansicht_Nordfassade', 8],
     ['04_Details', 'Detail_Fensteranschluss', 4],
   ] as const
-  const offers = new Map<string, FassungCandidateMatch>()
+  const offers = new Map<string, RevisionCandidateMatch>()
   const sheets = folders.flatMap(([folder, title, count], f) =>
     Array.from({ length: count }, (_, i) => {
       const sheet = `${['EG', 'SN', 'AN', 'DT'][f]}-${100 + i * 4}_${title}`
@@ -317,7 +317,7 @@ function fortyDrop(): OfferedDrop {
 }
 
 /** One loose file that continues a document: clear, between two documents, or older than the one there. */
-function soleDrop(variant: 'single-fassung' | 'single-unclear' | 'single-older'): OfferedDrop {
+function soleDrop(variant: 'single-revision' | 'single-unclear' | 'single-older'): OfferedDrop {
   const name =
     variant === 'single-older' ? 'EG_Grundriss_Index_A_2026-05-02.pdf' : 'EG_Grundriss_Index_C_2026-10-02.pdf'
   const candidates =
@@ -330,7 +330,7 @@ function soleDrop(variant: 'single-fassung' | 'single-unclear' | 'single-older')
   return {
     files: [pathed(name, 1_000)],
     offers: new Map([
-      [name, { name, candidates, newer: variant !== 'single-older', unambiguous: variant === 'single-fassung' }],
+      [name, { name, candidates, newer: variant !== 'single-older', unambiguous: variant === 'single-revision' }],
     ]),
   }
 }
@@ -339,7 +339,7 @@ function soleDrop(variant: 'single-fassung' | 'single-unclear' | 'single-older')
 function OfferedPreview({ drop, kind }: { drop: () => OfferedDrop; kind: 'folder' | 'files' }): JSX.Element {
   // Built once per mount (the variant is the key): the answers are kept by File, so the files must stay the same objects.
   const [built] = useState(drop)
-  const [choices, setChoices] = useState<Map<File, FassungChoice>>(new Map())
+  const [choices, setChoices] = useState<Map<File, RevisionChoice>>(new Map())
   const [confirmed, setConfirmed] = useState<string | null>(null)
   const plan = useMemo(
     () =>
@@ -349,12 +349,12 @@ function OfferedPreview({ drop, kind }: { drop: () => OfferedDrop; kind: 'folder
         currentFolderId: null,
         documents: built.documents ?? [],
         digests: built.digests,
-        fassungOffers: built.offers,
-        fassungChoices: choices,
+        revisionOffers: built.offers,
+        revisionChoices: choices,
       }),
     [built, choices]
   )
-  const change = ({ files: changed, chosen, targetId }: FassungChange) =>
+  const change = ({ files: changed, chosen, targetId }: RevisionChange) =>
     setChoices((previous) => {
       const next = new Map(previous)
       for (const file of changed) next.set(file, { ...next.get(file), ...(targetId ? { targetId, chosen: chosen ?? true } : { chosen }) })
@@ -363,7 +363,7 @@ function OfferedPreview({ drop, kind }: { drop: () => OfferedDrop; kind: 'folder
   // What the confirm would send, so the preview shows the answer reached the plan.
   const confirm = () =>
     setConfirmed(
-      plan.files.map((file) => `${file.file.name} → ${file.fassungOf?.chosen ? file.fassungOf.of.name : 'eigenes Dokument'}`).join('\n')
+      plan.files.map((file) => `${file.file.name} → ${file.revisionOf?.chosen ? file.revisionOf.of.name : 'eigenes Dokument'}`).join('\n')
     )
   return (
     <>
@@ -373,7 +373,7 @@ function OfferedPreview({ drop, kind }: { drop: () => OfferedDrop; kind: 'folder
         plan={plan}
         currentFolderName={null}
         onConfirm={confirm}
-        onFassungChange={change}
+        onRevisionChange={change}
         kind={kind}
       />
       {confirmed && (
@@ -406,11 +406,11 @@ export default function FolderUploadPreviewPage(): JSX.Element {
       <h1 className="mx-auto mb-6 max-w-lg font-mono text-xs text-muted-foreground">
         /dev/folder-upload — {variant}
       </h1>
-      {variant === 'fassungen' ? (
+      {variant === 'revisions' ? (
         <OfferedPreview drop={exportDrop} kind="folder" />
-      ) : variant === 'fassungen-40' ? (
+      ) : variant === 'revisions-40' ? (
         <OfferedPreview drop={fortyDrop} kind="folder" />
-      ) : variant === 'single-fassung' || variant === 'single-unclear' || variant === 'single-older' ? (
+      ) : variant === 'single-revision' || variant === 'single-unclear' || variant === 'single-older' ? (
         <OfferedPreview key={variant} drop={() => soleDrop(variant)} kind="files" />
       ) : (
         <FolderUploadDialog

@@ -57,7 +57,7 @@ const PATCH = {
   type: 'project_profile_patch',
   title: 'Fluchtniveau aktualisieren',
   rationale: 'Das Fluchtniveau liegt bei 25 m.',
-  patch: [{ op: 'add', path: '/facts/fluchtniveau', value: '>22m' }],
+  patch: [{ op: 'add', path: '/facts/escape_level', value: '>22m' }],
 }
 
 describe('a card the union knows keeps every card after it in place', () => {

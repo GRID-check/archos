@@ -22,7 +22,7 @@ vi.mock('@/lib/download-log/service', () => ({ recordDocumentAccess: vi.fn(async
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
 vi.mock('@/lib/authz/organizations', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authz/organizations')>()),
-  canManageArchiv: vi.fn(() => false),
+  canManageOfficeShelf: vi.fn(() => false),
 }))
 vi.mock('@/lib/s3', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/s3')>()),
@@ -44,8 +44,8 @@ vi.mock('@/lib/projects/repository', () => ({
   findProjectInOrg: vi.fn().mockResolvedValue({ id: 'proj-1', collectionName: 'proj_abc' }),
 }))
 vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend:8000' }))
-// Which documents a Fassung link names, resolved for the reader, is `fassung-facts.spec.ts`'s subject.
-vi.mock('./fassung-facts', () => ({ loadFassungFacts: vi.fn(async () => new Map()) }))
+// Which documents a Fassung link names, resolved for the reader, is `revision-links-loader.spec.ts`'s subject.
+vi.mock('./revision-links-loader', () => ({ loadRevisionLinks: vi.fn(async () => new Map()) }))
 vi.mock('@/lib/annotations/repository', () => ({ tallyLiveMarks: vi.fn(async () => new Map()) }))
 vi.mock('./reconcile-status', () => ({
   reconcileDocumentStatuses: vi.fn(async (rows: unknown[]) => rows),
@@ -54,7 +54,7 @@ vi.mock('./reconcile-status', () => ({
 
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { Document } from '@/lib/db/schema'
@@ -130,7 +130,7 @@ beforeEach(() => {
     if (permission === 'project:manage' && session.userId !== 'admin-1') throw new ForbiddenError()
     return { role: 'project-viewer' } as Awaited<ReturnType<typeof requireProjectAccess>>
   })
-  vi.mocked(canManageArchiv).mockReturnValue(false)
+  vi.mocked(canManageOfficeShelf).mockReturnValue(false)
   vi.mocked(s3Client.send).mockResolvedValue({
     ContentLength: 64,
     Body: { transformToByteArray: async () => new TextEncoder().encode('iban;betrag\n') },
@@ -298,7 +298,7 @@ describe('a held document re-dispatched with an earlier pass on record', () => {
 
 describe('a quarantined Büroablage document', () => {
   beforeEach(() => {
-    store(quarantined({ scope: 'archiv', projectId: null }))
+    store(quarantined({ scope: 'office_shelf', projectId: null }))
   })
 
   it('does not exist for an org member who did not upload it', async () => {
@@ -307,7 +307,7 @@ describe('a quarantined Büroablage document', () => {
 
   it('is served to its uploader and to a curator', async () => {
     await expect(getDocumentDownload(uploader, 'doc-q')).resolves.toBeDefined()
-    vi.mocked(canManageArchiv).mockReturnValue(true)
+    vi.mocked(canManageOfficeShelf).mockReturnValue(true)
     await expect(getDocumentDownload(member, 'doc-q')).resolves.toBeDefined()
   })
 })

@@ -58,13 +58,13 @@ interface FixtureOffice {
 
 /**
  * The facts the intake wizard asks per building, read off its definition: the
- * wizard stores those under the building (`bauweise@bw1`), and the fixture
+ * wizard stores those under the building (`construction_method@bldg1`), and the fixture
  * office must be stored the same way, or the eval measures a profile shape
  * production never has. `office.json` names facts plainly; this stores them.
  */
 const PER_BUILDING: ReadonlySet<string> = new Set(
   projectIntakeDefinitionV1.stages
-    .filter((stage) => stage.scope === 'bauwerk')
+    .filter((stage) => stage.scope === 'building')
     .flatMap((stage) => stage.questions)
     .map((question) => /^\/facts\/([a-z_]+)\/value$/.exec(question.writesTo ?? '')?.[1])
     .filter((key): key is string => Boolean(key))
@@ -73,7 +73,7 @@ const PER_BUILDING: ReadonlySet<string> = new Set(
 function asProject(office: FixtureOffice, fixture: FixtureProject): Project {
   const facts = Object.fromEntries(
     Object.entries(fixture.facts).map(([key, value]) => [
-      PER_BUILDING.has(key) ? `${key}@bw1` : key,
+      PER_BUILDING.has(key) ? `${key}@bldg1` : key,
       { value, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '2026-01-01T00:00:00.000Z' },
     ])
   )

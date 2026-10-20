@@ -32,7 +32,7 @@
  *      above it is a thousand pixels of sources, and a button that scrolls away
  *      with them is a button nobody finds.
  *   2. **„Im Verlauf öffnen".** The drawer reads a run; the thread is where a
- *      live one is followed and where a `wartet` question is answered. The
+ *      live one is followed and where a `waiting` question is answered. The
  *      drawer must never become the only door to it.
  *   3. **„Als Zeitplan speichern".** The moment a person has just read a result
  *      they liked is the moment they are most willing to commit to getting it

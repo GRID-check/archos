@@ -40,8 +40,8 @@ from ifc_spatial.model import WrongKindError
 
 FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtures"
 SAMPLE_HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
-NO_NORTH = FIXTURES / "haus-mit-raeumen.ifc"
-FEET = FIXTURES / "einheiten-fuss.ifc"
+NO_NORTH = FIXTURES / "house-with-rooms.ifc"
+FEET = FIXTURES / "units-feet.ifc"
 
 BEDROOM = "3w0zWKm7n8SB1qbfwUzt0J"
 LIVING_ROOM = "3w0zWKm7n8SB1qbfwUzt0U"
@@ -304,7 +304,7 @@ def test_a_hallucinated_id_raises_rather_than_answering(model: SpatialModel) -> 
 
 
 def test_a_space_the_kernel_cannot_build_is_reported_as_such(no_north: SpatialModel) -> None:
-    """`haus-mit-raeumen.ifc` carries rooms whose bodies OCCT rejects.
+    """`house-with-rooms.ifc` carries rooms whose bodies OCCT rejects.
 
     The refusal has to be about the BODY, not about a missing facade — sending
     the architect to set ``IsExternal`` on a file whose room solids will not

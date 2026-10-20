@@ -305,12 +305,12 @@ const ITEMS: InboxItemView[] = [
   },
   // A newer Fassung of a document you follow (ADR-0099), as a sentence about
   // the person who uploaded it. The older document is the subject (without its
-  // extension, as `fassungRowNames` writes it), the newer one the second name,
+  // extension, as `revisionRowNames` writes it), the newer one the second name,
   // and the excerpt is the first line of what changed: the row's only body.
   // „Fassungen vergleichen" opens the newer one with the comparison open.
   {
-    id: 'i-fassung',
-    type: 'document.new_fassung',
+    id: 'i-revision',
+    type: 'document.new_revision',
     state: 'unread',
     archived: false,
     actionable: false,
@@ -328,15 +328,15 @@ const ITEMS: InboxItemView[] = [
     // The open marks Index B leaves behind: the row says how many to check.
     variant: 'marks_earlier',
     openMarks: 4,
-    marksFassung: null,
+    marksRevision: null,
     answerIn: null,
     createdAt: ago(9),
     updatedAt: ago(9),
   },
   // A same-name Fassung: its open marks all sit on Fassung 2.
   {
-    id: 'i-fassung-marks',
-    type: 'document.new_fassung',
+    id: 'i-revision-marks',
+    type: 'document.new_revision',
     state: 'read',
     archived: false,
     actionable: false,
@@ -353,7 +353,7 @@ const ITEMS: InboxItemView[] = [
     mentions: [],
     variant: 'marks',
     openMarks: 3,
-    marksFassung: 2,
+    marksRevision: 2,
     answerIn: null,
     createdAt: ago(55),
     updatedAt: ago(55),
@@ -772,8 +772,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const annotation: AnnotationView = {
           id: reply[1], documentId: 'd-eg-c', number: 11, page: 1, shape: 'point', x: 0.4, y: 0.4, w: null, h: null,
           kind: 'question', body: 'Fluchtwegbreite im Gang nachweisen.', mentions: [], basis: null, authorKind: 'person',
-          status: 'open', assigneeUserId: VIEWER_ID, assigneeName: 'Miriam Hofer', dueOn: null, fassungNumber: 3,
-          onCurrentFassung: true, createdBy: 'u-jakob', createdByName: 'Jakob Huber', createdAt: now, updatedAt: now,
+          status: 'open', assigneeUserId: VIEWER_ID, assigneeName: 'Miriam Hofer', dueOn: null, revisionNumber: 3,
+          onCurrentRevision: true, createdBy: 'u-jakob', createdByName: 'Jakob Huber', createdAt: now, updatedAt: now,
           acceptedBy: null, acceptedByName: null, closedBy: null, closedByName: null, closedAt: null,
           delegatedBy: null, delegatedByName: null, delegatedAt: null, canEdit: true, canDelete: false,
           replies: [{

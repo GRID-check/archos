@@ -33,7 +33,7 @@ vi.mock('@/lib/authz/projects', () => ({
   requireProjectAccess: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/lib/authz/organizations', () => ({ canManageArchiv: vi.fn().mockReturnValue(true) }))
+vi.mock('@/lib/authz/organizations', () => ({ canManageOfficeShelf: vi.fn().mockReturnValue(true) }))
 
 vi.mock('@/lib/backend-proxy', () => ({
   getBackendUrl: vi.fn().mockReturnValue('http://backend:8000'),
@@ -87,7 +87,7 @@ vi.mock('@/lib/db/schema', () => ({
 import { getProjectFolderAccess, requireFolderWrite, type ProjectFolderAccess } from '@/lib/authz/folder-access'
 import { folderReadOnlyError } from '@/lib/authz/folder-access-rule'
 import { placeProjectDocuments } from '@/lib/projects/collection-placement'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { ForbiddenError } from '@/lib/api/errors'
 import { moveDocumentToFolder } from './move-to-folder'
@@ -300,15 +300,15 @@ describe('moveDocumentToFolder across a restriction (ADR-0087)', () => {
  * may move it and which folders are valid destinations.
  */
 describe('moveDocumentToFolder on the Archiv shelf', () => {
-  const ARCHIV_DOCUMENT = {
+  const OFFICE_SHELF_DOCUMENT = {
     ...DOCUMENT,
     projectId: null,
-    scope: 'archiv',
+    scope: 'office_shelf',
     collectionName: 'archiv_org-1',
   }
 
   it('files an Archiv document and mirrors the path onto the Archiv collection', async () => {
-    db.selects = [[ARCHIV_DOCUMENT], [{ id: 'folder-1', path: 'Normen/Brandschutz' }]]
+    db.selects = [[OFFICE_SHELF_DOCUMENT], [{ id: 'folder-1', path: 'Normen/Brandschutz' }]]
 
     const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1' }, SESSION)
 
@@ -322,8 +322,8 @@ describe('moveDocumentToFolder on the Archiv shelf', () => {
   })
 
   it('takes org:archiv:manage, not a project permission', async () => {
-    vi.mocked(canManageArchiv).mockReturnValueOnce(false)
-    db.selects = [[ARCHIV_DOCUMENT]]
+    vi.mocked(canManageOfficeShelf).mockReturnValueOnce(false)
+    db.selects = [[OFFICE_SHELF_DOCUMENT]]
 
     await expect(moveDocumentToFolder({ documentId: 'doc-1', folderId: null }, SESSION)).rejects.toBeInstanceOf(
       ForbiddenError,
@@ -335,11 +335,11 @@ describe('moveDocumentToFolder on the Archiv shelf', () => {
   it('refuses a folder that is not on the Archiv shelf', async () => {
     // A project's folder, another tenant's, or none: the lookup is scoped to the
     // Archiv shelf and the tenant, so none of them is found.
-    db.selects = [[ARCHIV_DOCUMENT], []]
+    db.selects = [[OFFICE_SHELF_DOCUMENT], []]
 
     const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'a-project-folder' }, SESSION)
 
-    expect(result).toEqual({ ok: false, error: 'Folder not found in the Archiv.' })
+    expect(result).toEqual({ ok: false, error: 'Folder not found in the office shelf.' })
     expect(db.updates).toHaveLength(0)
   })
 
@@ -349,6 +349,6 @@ describe('moveDocumentToFolder on the Archiv shelf', () => {
     const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: null }, SESSION)
 
     expect(result).toEqual({ ok: false, error: 'Only project and Archiv documents live in folders.' })
-    expect(canManageArchiv).not.toHaveBeenCalled()
+    expect(canManageOfficeShelf).not.toHaveBeenCalled()
   })
 })

@@ -34,7 +34,7 @@ does this stand".
   first token retune.
 - **The body** is `ItemList` + `Item`: one block with hairlines between its
   rows, which is what a list of rounds is — the same three atoms
-  `document-fassungen.tsx` composes, and for the same stated reason (three
+  `document-revisions.tsx` composes, and for the same stated reason (three
   bordered boxes read as three cards rather than as one history).
 - **The phase acts** are `dt`/`dd` rows at the version history's own weight: the
   same kind of fact („eingereicht von X am Y") in another vocabulary.
@@ -78,13 +78,13 @@ the turning glyph.
 
 | State | The status line | The track |
 |---|---|---|
-| `angelegt` | Wird gestartet · Ergebnis kommt ins Projekt | empty, ink |
-| `laeuft` | Recherchieren · 3 Runden · 9 Dokumente | walked segments ink, the live one at half weight |
-| `wartet` | Wartet auf Sie · Antworten Sie unten im Verlauf | unchanged; the block opens itself |
-| `fertig` | Fertig · Bericht abgelegt in Projekt › Berichte | full, settled |
-| `fehlgeschlagen` | Fehlgeschlagen: `<reason>` | stops short: the next segment is a dashed outline, in the error register |
-| `abgebrochen` | Abgebrochen · auf Ihren Wunsch beendet | quiet: nothing is broken |
-| `unterbrochen` | Unterbrochen · Bericht aus dem Vorhandenen geschrieben | settled — there IS a report, only a narrower one |
+| `created` | Wird gestartet · Ergebnis kommt ins Projekt | empty, ink |
+| `running` | Recherchieren · 3 Runden · 9 Dokumente | walked segments ink, the live one at half weight |
+| `waiting` | Wartet auf Sie · Antworten Sie unten im Verlauf | unchanged; the block opens itself |
+| `done` | Fertig · Bericht abgelegt in Projekt › Berichte | full, settled |
+| `failed` | Fehlgeschlagen: `<reason>` | stops short: the next segment is a dashed outline, in the error register |
+| `cancelled` | Abgebrochen · auf Ihren Wunsch beendet | quiet: nothing is broken |
+| `interrupted` | Unterbrochen · Bericht aus dem Vorhandenen geschrieben | settled — there IS a report, only a narrower one |
 
 The failure's reason is in the LINE and not behind the chevron: a failure the
 reader has to go looking for is a failure nobody reads. So is the way to a filed
@@ -135,8 +135,8 @@ researcher's own output (`run_ledger_fold._add_findings`); the ledger's
 
 When the reader named documents on the plan card, the block carries a receipt
 under the phases: each Grundlage row, read — with the pages or Punkte the
-rounds reached, derived from the steps (`grundlageReceipt`) — or not yet read.
-The ledger's `grundlage` field is the list; the loci are never stored twice.
+rounds reached, derived from the steps (`basisReceipt`) — or not yet read.
+The ledger's `basis` field is the list; the loci are never stored twice.
 A row opens the document as a dialog over the thread, never a pane beside it.
 
 ## The actions
@@ -156,7 +156,7 @@ things sit beside it rather than instead of it:
   (`POST /v1/jobs/async/job/{id}/write-now`), the worker's monitor sets a
   per-run signal the research tool reads before every batch
   (`deep_researcher/control.py`), and the report lands marked
-  `unterbrochen` with a banner that says it was the reader's choice.
+  `interrupted` with a banner that says it was the reader's choice.
 - **„Dokument hinzufügen"**, while the run is *researching*, when a caller
   offers it: a dialog over the thread lists the project's and the Archiv's
   documents, and one press names one as Grundlage. The addition goes through
@@ -203,7 +203,7 @@ Three surfaces, one organism:
 
 1. **The thread** (`RunBlockMessage`). The only one that holds a subscription —
    this is where a live run is watched, where „Abbrechen" is offered, and where
-   a `wartet` question is answered. When the stream moves the run from one
+   a `waiting` question is answered. When the stream moves the run from one
    status word to the next, the block writes that ledger back onto its message
    in the chat store, so everything outside the block — the composer, the
    toolbar's „läuft" pill, the history's row, the delete that stops a live run
@@ -235,11 +235,11 @@ alike.
 project". It used to default to `!!projectId`, which made every freshly
 commissioned run in a chat say „Ergebnis kommt ins Projekt" — including an
 escalated question whose report lands inline in the thread, and whose own
-`fertig` line then said so. A block that promises one destination at the start
+`done` line then said so. A block that promises one destination at the start
 and names a different one at the end has spent the reader's trust to say
 nothing.
 
-The clock stops when the run does, and `wartet` counts as stopped: elapsed runs
+The clock stops when the run does, and `waiting` counts as stopped: elapsed runs
 to `updatedAt`, which is the instant the run asked its question, because nothing
 folds into the ledger between the ask and the answer. Running it on to now made
 a run that asked on Friday read „68 h" on Monday — a true number about the wrong

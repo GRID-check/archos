@@ -14,7 +14,7 @@ import { docProvenance } from './doc-provenance'
 describe('docProvenance', () => {
   it('paints the base shelf as Baurecht and badges a named OIB document in the OIB accent', () => {
     expect(docProvenance({ name: 'OIB-Richtlinie 2', shelf: 'base' })).toEqual({
-      kind: 'baurecht',
+      kind: 'building_law',
       tint: 'oib',
       authority: 'OIB',
     })
@@ -32,30 +32,30 @@ describe('docProvenance', () => {
 
   it('leaves a base-shelf document without a legal name unbadged, in the law family', () => {
     expect(docProvenance({ name: 'Leitfaden Barrierefreiheit', shelf: 'base' })).toEqual({
-      kind: 'baurecht',
+      kind: 'building_law',
       tint: 'law',
       authority: null,
     })
   })
 
   it('paints the Archiv as office knowledge and the project and session shelves as project knowledge', () => {
-    expect(docProvenance({ name: 'Checkliste Brandschutz', shelf: 'archiv' })).toMatchObject({
-      kind: 'buero',
+    expect(docProvenance({ name: 'Checkliste Brandschutz', shelf: 'office_shelf' })).toMatchObject({
+      kind: 'office',
       tint: 'office',
       authority: null,
     })
     expect(docProvenance({ name: 'Grundriss EG', shelf: 'project' })).toMatchObject({
-      kind: 'projekt',
+      kind: 'project',
       tint: 'project',
     })
     expect(docProvenance({ name: 'Grundriss EG', shelf: 'session' })).toMatchObject({
-      kind: 'projekt',
+      kind: 'project',
     })
   })
 
   it('does not promote a project file that mentions a § to law', () => {
     expect(docProvenance({ name: 'Aktenvermerk § 108', shelf: 'project' })).toMatchObject({
-      kind: 'projekt',
+      kind: 'project',
       authority: null,
     })
   })
@@ -67,7 +67,7 @@ describe('docProvenance', () => {
       authority: null,
     })
     expect(docProvenance({ name: 'ÖNORM B 1300' })).toEqual({
-      kind: 'baurecht',
+      kind: 'building_law',
       tint: 'law',
       authority: 'ÖNORM',
     })

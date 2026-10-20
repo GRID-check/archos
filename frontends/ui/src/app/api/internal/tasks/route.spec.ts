@@ -116,7 +116,7 @@ function call(body: unknown, headers: Record<string, string> = envelopeHeaders()
   )
 }
 
-const CREATE = { op: 'create', projectId: PROJECT, kind: 'einreichcheck', goal: 'Prüf die Einreichung' }
+const CREATE = { op: 'create', projectId: PROJECT, kind: 'submission_check', goal: 'Prüf die Einreichung' }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -229,7 +229,7 @@ describe('the answer', () => {
     expect(response.status).toBe(201)
     expect(await response.json()).toEqual({
       taskId: 'task-1',
-      kind: 'einreichcheck',
+      kind: 'submission_check',
       title: 'Einreichcheck: Bauansuchen Haus A',
       status: 'running',
       conversationId: 's_conv_2',
@@ -346,11 +346,11 @@ describe('the research op — an escalated question becomes a run', () => {
     await call({
       ...RESEARCH,
       dataSources: ['knowledge_base'],
-      documents: { grundlage: [{ name: 'Einreichplan.pdf', shelf: 'project' }], ausgeschlossen: [] },
+      documents: { basis: [{ name: 'Einreichplan.pdf', shelf: 'project' }], excluded: [] },
     })
     expect(vi.mocked(commissionResearchRun).mock.calls[0][1]).toMatchObject({
       dataSources: ['knowledge_base'],
-      documents: { grundlage: [{ name: 'Einreichplan.pdf', shelf: 'project' }], ausgeschlossen: [] },
+      documents: { basis: [{ name: 'Einreichplan.pdf', shelf: 'project' }], excluded: [] },
     })
   })
 

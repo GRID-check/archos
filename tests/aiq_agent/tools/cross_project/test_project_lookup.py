@@ -48,12 +48,12 @@ SCHEMA_PATH = (
 HEADER, SIGNATURE = "eyJzaWduZWQiOiJ0dXJuIn0", "c0ffee"
 OTHER = "22222222-0000-4000-8000-000000000002"
 OTHER_COLLECTION = "proj_22222222"
-HONORARE = f"{OTHER_COLLECTION}_rabcdef012345"
+FEES = f"{OTHER_COLLECTION}_rabcdef012345"
 
 
 def _hit(filename: str, collection: str = OTHER_COLLECTION, **extra: Any) -> dict[str, Any]:
     return {
-        "project": {"id": OTHER, "name": "Wohnbau Graz", "status": "closed", "bundesland": "steiermark"},
+        "project": {"id": OTHER, "name": "Wohnbau Graz", "status": "closed", "federal_state": "styria"},
         "documentId": "doc-1",
         "filename": filename,
         "title": None,
@@ -73,7 +73,7 @@ def _listed_project(**extra: Any) -> dict[str, Any]:
         "id": OTHER,
         "name": "Wohnbau Graz",
         "status": "closed",
-        "bundesland": "steiermark",
+        "federal_state": "styria",
         "collection": OTHER_COLLECTION,
         "address": None,
         "period": {"start": "2019-03-01", "end": "2021-06-30"},
@@ -86,7 +86,7 @@ def _listed_project(**extra: Any) -> dict[str, Any]:
 SEARCH_BODY = {
     "decisions": [],
     "permits": [],
-    "hits": [_hit("Detail Traufe.pdf"), _hit("Honorar.pdf", HONORARE)],
+    "hits": [_hit("Detail Traufe.pdf"), _hit("Honorar.pdf", FEES)],
     "projectsInScope": 12,
     "projectsSearched": 8,
     "nextOffset": 8,
@@ -222,8 +222,11 @@ class TestTheSearchAnswer:
     @pytest.mark.parametrize(
         ("ours", "line"),
         [
-            ("wien", "Bundesland: Steiermark — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung"),
-            ("steiermark", "Bundesland: Steiermark\n"),
+            (
+                "vienna",
+                "Bundesland: Steiermark — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung",
+            ),
+            ("styria", "Bundesland: Steiermark\n"),
             (None, "Bundesland: Steiermark\n"),
         ],
     )
@@ -231,19 +234,19 @@ class TestTheSearchAnswer:
         self, monkeypatch, calls, turn, ours, line
     ) -> None:
         """A precedent from another Land was decided under another Bauordnung: the tool says so, not the model."""
-        context = None if ours is None else type("Context", (), {"bundesland": ours})()
+        context = None if ours is None else type("Context", (), {"federal_state": ours})()
         monkeypatch.setattr(project_context, "get_signed_request_context", lambda: context)
         _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [_hit("Detail Traufe.pdf")]})
 
         result = await lookup.run_project_lookup("search", query="Traufe")
 
         assert line in result
-        if ours != "wien":
+        if ours != "vienna":
             assert "andere Bauordnung" not in result
 
     async def test_a_project_without_a_land_gets_no_land_line(self, monkeypatch, calls, turn) -> None:
         hit = _hit("Detail Traufe.pdf")
-        hit["project"] = {**hit["project"], "bundesland": None}
+        hit["project"] = {**hit["project"], "federal_state": None}
         _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [hit]})
 
         assert "Bundesland:" not in await lookup.run_project_lookup("search", query="Traufe")
@@ -289,7 +292,7 @@ class TestTheSearchAnswer:
     async def test_a_running_projects_passage_shuts_the_doors(self, monkeypatch, calls, turn) -> None:
         running = _hit(
             "Detail Attika.pdf",
-            project={"id": OTHER, "name": "Schule Linz", "status": "active", "bundesland": "oberoesterreich"},
+            project={"id": OTHER, "name": "Schule Linz", "status": "active", "federal_state": "upper_austria"},
         )
         _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [running], "nextOffset": None})
 
@@ -330,19 +333,19 @@ async def test_project_lookup_admits_what_the_bff_handed_out_and_shuts_the_turns
 ) -> None:
     _answering(monkeypatch, calls, SEARCH_BODY)
     result = await lookup.run_project_lookup("search", query="Traufe")
-    message = ToolMessage(content=result, tool_call_id="c1", response_metadata={COLLECTIONS_READ_KEY: [HONORARE]})
+    message = ToolMessage(content=result, tool_call_id="c1", response_metadata={COLLECTIONS_READ_KEY: [FEES]})
 
     [admitted] = await admit_tool_results([message])
 
     assert admitted.content == result
     assert turn.drew_on_others
-    assert may_name(HONORARE)
+    assert may_name(FEES)
 
 
 def _decision(content: str, *, status: str = "closed", restricted: bool = False, **extra: Any) -> dict[str, Any]:
     confirmed = extra.get("confirmed", True)
     return {
-        "project": {"id": OTHER, "name": "Wohnbau Graz", "status": status, "bundesland": "steiermark"},
+        "project": {"id": OTHER, "name": "Wohnbau Graz", "status": status, "federal_state": "styria"},
         "collection": OTHER_COLLECTION,
         "kind": "decision",
         "content": content,
@@ -357,24 +360,24 @@ def _decision(content: str, *, status: str = "closed", restricted: bool = False,
 
 def _permit(*, status: str = "closed", restricted: bool = False, **extra: Any) -> dict[str, Any]:
     return {
-        "project": {"id": OTHER, "name": "Wohnbau Graz", "status": status, "bundesland": "steiermark"},
+        "project": {"id": OTHER, "name": "Wohnbau Graz", "status": status, "federal_state": "styria"},
         "collection": OTHER_COLLECTION,
         "fileName": "Baubescheid_Baden_2020.pdf",
-        "kind": "nachforderung",
+        "kind": "information_request",
         "authority": "Stadtgemeinde Baden",
         "municipality": "Baden",
         "issuedOn": "2020-03-12",
         "reference": "BA-123/2020",
         "requirements": [
             {
-                "kind": "nachforderung",
+                "kind": "information_request",
                 "content": "Ein Brandschutzgutachten ist vorzulegen.",
                 "evidence": "Gutachten eines Sachverständigen",
                 "legalBasis": "§ 13 Abs. 3 AVG",
                 "page": 2,
             },
             {
-                "kind": "hinweis",
+                "kind": "note",
                 "content": "Die Frist beträgt vier Wochen.",
                 "evidence": None,
                 "legalBasis": None,
@@ -428,7 +431,7 @@ class TestThePermitRecords:
 
     async def test_a_record_without_a_page_is_cited_by_its_file_alone(self, monkeypatch, calls, turn) -> None:
         unpaged = _permit(
-            requirements=[{"kind": "auflage", "content": "x", "evidence": None, "legalBasis": None, "page": None}]
+            requirements=[{"kind": "condition", "content": "x", "evidence": None, "legalBasis": None, "page": None}]
         )
         _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [], "permits": [unpaged]})
 
@@ -466,7 +469,7 @@ class TestThePermitRecords:
 
     @pytest.mark.parametrize(
         "permit",
-        [{"status": "active"}, {"restricted": True}, {"collection": HONORARE}],
+        [{"status": "active"}, {"restricted": True}, {"collection": FEES}],
         ids=["running project", "restricted folder flag", "restricted folder collection"],
     )
     async def test_a_running_projects_or_a_restricted_permit_shuts_the_doors(
@@ -503,7 +506,7 @@ class TestThePermitRecords:
     async def test_a_record_longer_than_the_cap_is_cut_and_marked_as_truncated(self, monkeypatch, calls, turn) -> None:
         long_requirements = [
             {
-                "kind": "auflage",
+                "kind": "condition",
                 "content": f"Auflage {n:02d} " + "x" * 300,
                 "evidence": None,
                 "legalBasis": None,
@@ -647,16 +650,16 @@ class TestTheRecordedDecisions:
 
 class TestTheAdmission:
     async def test_another_projects_restricted_collection_not_handed_out_is_withheld(self, turn) -> None:
-        stray = ToolMessage(content=f"Aus {HONORARE}: Honorar 48.000 €", tool_call_id="c2")
+        stray = ToolMessage(content=f"Aus {FEES}: Honorar 48.000 €", tool_call_id="c2")
 
         [withheld] = await admit_tool_results([stray])
 
         assert withheld.content == WITHHELD_NOTICE
-        assert not may_name(HONORARE)
+        assert not may_name(FEES)
 
     async def test_without_a_bound_turn_nothing_is_admitted(self) -> None:
-        restricted_use.note_cross_project_hand_out([HONORARE], restricting=True)
-        stray = ToolMessage(content=f"Aus {HONORARE}", tool_call_id="c3")
+        restricted_use.note_cross_project_hand_out([FEES], restricting=True)
+        stray = ToolMessage(content=f"Aus {FEES}", tool_call_id="c3")
 
         [withheld] = await admit_tool_results([stray])
 
@@ -671,7 +674,7 @@ class TestFindAndBrief:
             "id": "own",
             "name": "Dieses",
             "status": "active",
-            "bundesland": "niederoesterreich",
+            "federal_state": "lower_austria",
             "collection": "proj_own",
             "address": None,
             "period": {"start": "2026-01-01", "end": None},
@@ -696,7 +699,7 @@ class TestFindAndBrief:
             "id": OTHER,
             "name": "Schule Linz",
             "status": "active",
-            "bundesland": "oberoesterreich",
+            "federal_state": "upper_austria",
             "collection": OTHER_COLLECTION,
             "address": None,
             "period": {"start": "2026-01-01", "end": None},
@@ -715,7 +718,7 @@ class TestFindAndBrief:
             "id": "own",
             "name": "Dieses",
             "status": "active",
-            "bundesland": "niederoesterreich",
+            "federal_state": "lower_austria",
             "collection": "proj_own",
             "address": None,
             "period": {"start": "2026-01-01", "end": None},
@@ -732,13 +735,13 @@ class TestFindAndBrief:
     async def test_find_prints_each_projects_land_after_its_period_and_names_one_that_is_not_this_chats(
         self, monkeypatch, calls, turn, schema
     ) -> None:
-        """The Land is printed; one other than this chat's project's carries the Bauordnung warning of `_land_note`."""
+        """The Land is printed; one other than this chat's project's carries the warning of `_federal_state_note`."""
         monkeypatch.setattr(
-            project_context, "get_signed_request_context", lambda: type("Context", (), {"bundesland": "wien"})()
+            project_context, "get_signed_request_context", lambda: type("Context", (), {"federal_state": "vienna"})()
         )
         graz = _listed_project()
         unknown = _listed_project(
-            id="33333333-0000-4000-8000-000000000003", name="Lagerhalle", bundesland=None, collection="proj_33"
+            id="33333333-0000-4000-8000-000000000003", name="Lagerhalle", federal_state=None, collection="proj_33"
         )
         body = {"projects": [graz, unknown], "total": 2}
         _answering(monkeypatch, calls, body)
@@ -801,7 +804,7 @@ class TestFindAndBrief:
         body = {
             "project": _listed_project(status="active", period={"start": "2026-08-03", "end": None}),
             "summary": "Zubau eines fünfgeschoßigen Wohngebäudes in Holzbauweise.",
-            "facts": "confirmed:\n- bauweise@bw1=holzbau",
+            "facts": "confirmed:\n- construction_method@bldg1=holzbau",
         }
         _validator(schema, "CrossProjectBriefResponse").validate(body)
         _answering(monkeypatch, calls, body)
@@ -816,7 +819,7 @@ class TestFindAndBrief:
 
         assert [s.citation_key for s in sources] == ["Projektdaten (Wohnbau Graz)"]
         assert (sources[0].project_id, sources[0].collection) == (OTHER, OTHER_COLLECTION)
-        assert "bauweise@bw1=holzbau" in result
+        assert "construction_method@bldg1=holzbau" in result
         assert "Zusammenfassung: Zubau" in result
         assert "laufende andere Projekte" in result
         assert verification.removed_citations == []
@@ -1028,25 +1031,25 @@ class TestTheProjectFacts:
         _answering(monkeypatch, calls, SEARCH_BODY)
 
         await lookup.run_project_lookup(
-            "search", query="Traufe", project_facts=["tirol", "gk4", "gk5", "wohnen", "neubau", "tirol"]
+            "search", query="Traufe", project_facts=["tyrol", "gk4", "gk5", "residential", "new_build", "tyrol"]
         )
 
         assert calls[0][1]["projectFacts"] == {
-            "bundesland": ["tirol"],
-            "gebaeudeklasse": [4, 5],
-            "nutzungen": ["wohnen"],
-            "vorhabensart": ["neubau"],
+            "federal_state": ["tyrol"],
+            "building_class": [4, 5],
+            "uses": ["residential"],
+            "work_type": ["new_build"],
         }
         _validator(schema, "CrossProjectSearchRequest").validate(calls[0][1])
 
     async def test_find_narrows_too_and_a_brief_ignores_them(self, monkeypatch, calls, turn, schema) -> None:
         _answering(monkeypatch, calls, {"projects": [], "total": 0})
-        await lookup.run_project_lookup("find", project_facts=["holzbau"])
+        await lookup.run_project_lookup("find", project_facts=["timber"])
         _answering(monkeypatch, calls, {"project": {}, "summary": None, "facts": ""})
-        await lookup.run_project_lookup("brief", project_id=OTHER, project_facts=["holzbau"])
+        await lookup.run_project_lookup("brief", project_id=OTHER, project_facts=["timber"])
 
         (_, listed, _), (_, brief, _) = calls
-        assert listed["projectFacts"] == {"bauweise": ["holzbau"]}
+        assert listed["projectFacts"] == {"construction_method": ["timber"]}
         _validator(schema, "CrossProjectListRequest").validate(listed)
         assert "projectFacts" not in brief
 
@@ -1061,7 +1064,7 @@ class TestTheProjectFacts:
     async def test_a_value_no_vocabulary_holds_is_refused_before_anything_is_asked(self, monkeypatch, calls, turn):
         _answering(monkeypatch, calls, SEARCH_BODY)
 
-        result = await lookup.run_project_lookup("search", query="Traufe", project_facts=["tirol", "Mars", "gk7"])
+        result = await lookup.run_project_lookup("search", query="Traufe", project_facts=["tyrol", "Mars", "gk7"])
 
         assert result.startswith("Fehler: unbekannte `project_facts`: Mars, gk7.")
         assert calls == []
@@ -1069,14 +1072,14 @@ class TestTheProjectFacts:
     @pytest.mark.parametrize(
         ("spelled", "token"),
         [
-            ("Tirol", "tirol"),
-            ("Niederösterreich", "niederoesterreich"),
+            ("Tirol", "tyrol"),
+            ("Niederösterreich", "lower_austria"),
             ("GK 4", "gk4"),
             (4, "gk4"),
             ("Gebäudeklasse 2", "gk2"),
-            ("Nutzungsänderung", "nutzungsaenderung"),
-            ("Außenanlagen", "aussenanlagen"),
-            (" Holzbau ", "holzbau"),
+            ("Nutzungsänderung", "change_of_use"),
+            ("Außenanlagen", "external_works"),
+            (" Holzbau ", "timber"),
         ],
     )
     def test_the_schema_the_model_sees_folds_a_labels_spelling_to_its_token(self, spelled, token) -> None:
@@ -1087,7 +1090,7 @@ class TestTheProjectFacts:
     def test_the_schema_the_model_sees_refuses_anything_else(self) -> None:
         model = FunctionInfo.from_fn(lookup.run_project_lookup).input_schema
 
-        for refused in ("Mars", "ausserhalb_oesterreichs", "offen", "gk6", 6):
+        for refused in ("Mars", "outside_austria", "offen", "gk6", 6):
             with pytest.raises(ValidationError):
                 model.model_validate({"action": "search", "project_facts": [refused]})
 
@@ -1095,23 +1098,26 @@ class TestTheProjectFacts:
         """The tool's enum and the BFF's ``crossProjectFactsSchema`` cannot drift: the fixture is the BFF's zod."""
         facts = schema["$defs"]["CrossProjectSearchRequest"]["properties"]["projectFacts"]["properties"]
         theirs = {
-            fact: set(facts[fact]["items"]["enum"]) for fact in ("bundesland", "bauweise", "nutzungen", "vorhabensart")
+            fact: set(facts[fact]["items"]["enum"])
+            for fact in ("federal_state", "construction_method", "uses", "work_type")
         }
         ours: dict[str, set[str]] = {}
         for token, fact in lookup.FACT_OF_TOKEN.items():
             ours.setdefault(fact, set()).add(token)
 
-        assert ours.pop("gebaeudeklasse") == {f"gk{grade}" for grade in range(1, 6)}
+        assert ours.pop("building_class") == {f"gk{grade}" for grade in range(1, 6)}
         assert ours == theirs
-        assert facts["gebaeudeklasse"]["items"]["type"] == "integer"
+        assert facts["building_class"]["items"]["type"] == "integer"
 
     async def test_the_answer_says_which_facts_narrowed_it_and_that_unrecorded_ones_are_missing(
         self, monkeypatch, calls, turn
     ) -> None:
         _answering(monkeypatch, calls, SEARCH_BODY)
-        searched = await lookup.run_project_lookup("search", query="Traufe", project_facts=["tirol", "gk4", "wohnen"])
+        searched = await lookup.run_project_lookup(
+            "search", query="Traufe", project_facts=["tyrol", "gk4", "residential"]
+        )
         _answering(monkeypatch, calls, {"projects": [_listed_project()], "total": 1})
-        found = await lookup.run_project_lookup("find", project_facts=["niederoesterreich", "nutzungsaenderung"])
+        found = await lookup.run_project_lookup("find", project_facts=["lower_austria", "change_of_use"])
         _answering(monkeypatch, calls, {"projects": [], "total": 0})
         none = await lookup.run_project_lookup("find", project_facts=["vorarlberg"])
         plain = await lookup.run_project_lookup("find")
@@ -1136,4 +1142,4 @@ class TestTheProjectFacts:
 
         await lookup.run_project_lookup("search", query="Traufe", project_facts=["Tirol", "GK 4"])
 
-        assert seen[0]["projectFacts"] == {"bundesland": ["tirol"], "gebaeudeklasse": [4]}
+        assert seen[0]["projectFacts"] == {"federal_state": ["tyrol"], "building_class": [4]}

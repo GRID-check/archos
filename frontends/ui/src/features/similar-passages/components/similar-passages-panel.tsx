@@ -75,7 +75,7 @@ const walkPassages = (event: KeyboardEvent<HTMLElement>): void => {
 }
 
 /** The places in the order the reader asks about them: this project, the other projects, the Büroablage. */
-const PLACE_ORDER: Record<SimilarGroup['kind'], number> = { current: 0, project: 1, archiv: 2 }
+const PLACE_ORDER: Record<SimilarGroup['kind'], number> = { current: 0, project: 1, office_shelf: 2 }
 const inPlaceOrder = (groups: SimilarGroup[]): SimilarGroup[] =>
   [...groups].sort((a, b) => PLACE_ORDER[a.kind] - PLACE_ORDER[b.kind])
 
@@ -83,7 +83,7 @@ const TILE = 'size-8 text-[11px]'
 
 const GroupHead: FC<{ group: SimilarGroup }> = ({ group }) => {
   const t = useTranslations('knowledge')
-  if (group.kind === 'archiv' || !group.project) {
+  if (group.kind === 'office_shelf' || !group.project) {
     return (
       <SimilarGroupHeading
         tile={
@@ -91,7 +91,7 @@ const GroupHead: FC<{ group: SimilarGroup }> = ({ group }) => {
             <Archive className="size-4" />
           </span>
         }
-        name={t('similar.groupArchiv')}
+        name={t('similar.groupOfficeShelf')}
       />
     )
   }
@@ -113,10 +113,10 @@ const GroupHead: FC<{ group: SimilarGroup }> = ({ group }) => {
 
 /** The answer in one line: in how many projects, and whether the Büroablage holds it too. */
 const headlineOf = (groups: SimilarGroup[], t: ReturnType<typeof useTranslations>): string => {
-  const projects = groups.filter((group) => group.kind !== 'archiv').length
-  const archiv = groups.some((group) => group.kind === 'archiv')
-  if (projects === 0) return t('similar.foundOnlyArchiv')
-  return archiv ? t('similar.foundWithArchiv', { count: projects }) : t('similar.found', { count: projects })
+  const projects = groups.filter((group) => group.kind !== 'office_shelf').length
+  const officeShelf = groups.some((group) => group.kind === 'office_shelf')
+  if (projects === 0) return t('similar.foundOnlyOfficeShelf')
+  return officeShelf ? t('similar.foundWithOfficeShelf', { count: projects }) : t('similar.found', { count: projects })
 }
 
 const Results: FC<{
@@ -127,7 +127,7 @@ const Results: FC<{
   const t = useTranslations('knowledge')
   const documents = similarDocumentsOf(response)
   const groupLabelOf = (group: SimilarGroup): string => {
-    if (group.kind === 'archiv') return t('similar.groupArchiv')
+    if (group.kind === 'office_shelf') return t('similar.groupOfficeShelf')
     if (group.kind === 'current') return t('similar.groupCurrent')
     return group.project?.name ?? ''
   }
@@ -147,19 +147,19 @@ const Results: FC<{
   return (
     <SimilarList>
       {groups.map((group) => (
-        <section key={group.project?.id ?? 'archiv'} className="flex flex-col gap-2" data-similar-group={group.kind}>
+        <section key={group.project?.id ?? 'office_shelf'} className="flex flex-col gap-2" data-similar-group={group.kind}>
           <GroupHead group={group} />
           <div className="flex flex-col gap-1.5">
             {group.documents.flatMap((document) => {
               const rank = documents.indexOf(document)
-              const fassung = document.stand
+              const revision = document.stand
                 ? document.stand.kind === 'index'
                   ? document.stand.text
-                  : t('similar.standDate', { date: document.stand.text })
+                  : t('similar.datedOn', { date: document.stand.text })
                 : null
               return document.passages.map((passage, index) => {
                 const key = passageKey(document, index)
-                const where = [nameOf(document), fassung].filter(Boolean)
+                const where = [nameOf(document), revision].filter(Boolean)
                 return (
                   <SimilarPassageButton
                     key={key}

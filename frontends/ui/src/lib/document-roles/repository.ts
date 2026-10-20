@@ -14,6 +14,7 @@ import { documentVisibleTo, internalRead, type DocumentReader } from '@/lib/docu
 import { documentRoles, documents } from '@/lib/db/schema'
 import type { DbTransaction } from '@/lib/storage/repository'
 import type { DocumentRole, RoleConfidence, RoleSource } from '@/lib/project-profile/document-roles'
+import { legacyBuildingId, normalizeBuildingId } from '@/lib/project-profile/legacy-names'
 
 export interface DocumentRoleBinding {
   id: string
@@ -58,7 +59,8 @@ function toBinding(row: RoleRowShape): DocumentRoleBinding {
     projectId: row.projectId,
     documentId: row.documentId,
     role: row.role as DocumentRole,
-    scopeInstanceId: row.scopeInstanceId,
+    // A row an older pod wrote after migration 0160 still holds `bw1`.
+    scopeInstanceId: row.scopeInstanceId === null ? null : normalizeBuildingId(row.scopeInstanceId),
     confidence: row.confidence as RoleConfidence,
     source: row.source as RoleSource,
     createdBy: row.createdBy,
@@ -147,7 +149,7 @@ export async function findBindingsForRole(
         // have it — the single-holder ones.
         scopeInstanceId === null
           ? isNull(documentRoles.scopeInstanceId)
-          : eq(documentRoles.scopeInstanceId, scopeInstanceId),
+          : inArray(documentRoles.scopeInstanceId, [scopeInstanceId, legacyBuildingId(scopeInstanceId)]),
         // Every holder of the slot, held or not: cardinality counts them all,
         // and the caller names only those its reader may see (`keepVisible`).
         documentVisibleTo(internalRead('identity'))
@@ -253,17 +255,19 @@ export async function deleteBindings(projectId: string, ids: readonly string[]):
 /**
  * Remove the building-scoped bindings of every building not in `keep`; how many.
  *
- * A non-null scope instance is always a Bauwerk id: no other scope takes one
+ * A non-null scope instance is always a building id: no other scope takes one
  * (`roleRequiresScopeInstance`).
  */
-export async function deleteBindingsOutsideBauwerke(
+export async function deleteBindingsOutsideBuildings(
   projectId: string,
   keep: readonly string[],
   tx: DbTransaction
 ): Promise<number> {
+  // The ids an older pod wrote (`bw1`) are the same buildings as `bldg1`.
+  const kept = [...new Set(keep.flatMap((id) => [id, legacyBuildingId(id)]))]
   const outside =
     keep.length > 0
-      ? and(isNotNull(documentRoles.scopeInstanceId), notInArray(documentRoles.scopeInstanceId, [...keep]))
+      ? and(isNotNull(documentRoles.scopeInstanceId), notInArray(documentRoles.scopeInstanceId, kept))
       : isNotNull(documentRoles.scopeInstanceId)
   const removed = await tx
     .delete(documentRoles)

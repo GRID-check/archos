@@ -13,14 +13,14 @@ import userEvent from '@testing-library/user-event'
 import { DocumentActionsTrigger, DocumentObjectMenu } from './document-object-menu'
 
 const DOCUMENT = { id: 'doc-1', filename: 'Einreichplan_EG.pdf', displayName: null, folderId: null }
-const BRANDSCHUTZ = { id: 'f1', name: 'Brandschutz', parentId: null }
+const FIRE_SAFETY = { id: 'f1', name: 'Brandschutz', parentId: null }
 
 function Row() {
   return (
     <DocumentObjectMenu
       document={DOCUMENT}
       scope="files"
-      destinations={[{ folder: BRANDSCHUTZ, label: 'Brandschutz' }]}
+      destinations={[{ folder: FIRE_SAFETY, label: 'Brandschutz' }]}
     >
       <div data-testid="tile">
         Einreichplan_EG.pdf

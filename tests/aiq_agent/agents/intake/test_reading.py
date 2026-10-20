@@ -58,7 +58,7 @@ class TestReadDocument:
         assert "No document named „Baubeschreibng.pdf“" in text and "„Baubeschreibung.pdf“" in text
         assert read_log.documents_read == []
 
-    async def test_an_older_fassung_names_the_current_one(self, project, read_log, monkeypatch):
+    async def test_an_older_revision_names_the_current_one(self, project, read_log, monkeypatch):
         older = reading.ProjectDocument(
             collection="proj_1",
             document=AvailableDocument(
@@ -89,7 +89,7 @@ class TestOnlyTheProjectShelves:
         scope = [
             ScopedCollection("oib_knowledge", Shelf.BASE),
             ScopedCollection("proj_1", Shelf.PROJECT),
-            ScopedCollection("archiv_1", Shelf.ARCHIV),
+            ScopedCollection("archiv_1", Shelf.OFFICE_SHELF),
             ScopedCollection("legacy", None),
         ]
         monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
@@ -114,7 +114,7 @@ def _hit(file_name: str, page: int, body: str, shelf: Shelf | None = Shelf.PROJE
         doc_class=None,
         display_title=file_name,
         folder_path=None,
-        punkt=None,
+        clause=None,
         score=0.7,
         content_type="text",
         provenance=None,

@@ -55,7 +55,10 @@ from typing import Any
 
 from qdrant_client import models
 
+from aiq_agent.profile_names import legacy_profile_token
+
 from .payload import project_payload
+from .schema import LEGACY_FIELDS
 from .schema import PROJECT_FACTS_FIELD
 from .schema import fact_field
 
@@ -68,20 +71,20 @@ LIKENESS = 0.05
 
 #: Uses compared for "at least n shared". The combinations grow as n choose
 #: k, and the intake records a handful of uses per project.
-MAX_NUTZUNGEN = 6
+MAX_USES = 6
 
 
 @dataclass(frozen=True)
 class FactWeights:
     """The BFF's ``SIMILARITY_WEIGHTS``, in snake case: what each shared fact is worth."""
 
-    bundesland: float = 0.0
-    gebaeudeklasse: float = 0.0
-    gebaeudeklasse_adjacent: float = 0.0
-    bauweise: float = 0.0
-    nutzung: float = 0.0
-    nutzung_max: float = 0.0
-    vorhabensart: float = 0.0
+    federal_state: float = 0.0
+    building_class: float = 0.0
+    building_class_adjacent: float = 0.0
+    construction_method: float = 0.0
+    use: float = 0.0
+    use_max: float = 0.0
+    work_type: float = 0.0
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> FactWeights:
@@ -97,11 +100,11 @@ class FactWeights:
     def most(self) -> float:
         """The highest likeness two projects can reach: ``similarity()`` when every fact is shared."""
         return (
-            self.bundesland
-            + max(self.gebaeudeklasse, self.gebaeudeklasse_adjacent)
-            + self.bauweise
-            + self.nutzung_max
-            + self.vorhabensart
+            self.federal_state
+            + max(self.building_class, self.building_class_adjacent)
+            + self.construction_method
+            + self.use_max
+            + self.work_type
         )
 
 
@@ -121,39 +124,49 @@ def parse_boost(raw: Mapping[str, Any] | None) -> Boost | None:
     return Boost(facts=facts, weights=FactWeights.from_mapping(raw.get("weights") or {}))
 
 
-def _any(key: str, values: list[Any]) -> models.FieldCondition:
-    return models.FieldCondition(key=fact_field(key), match=models.MatchAny(any=values))
+def _any(key: str, values: list[Any]) -> models.Filter:
+    """The point holds one of ``values`` for fact ``key``, under the English key or the German one it may still carry.
+
+    A point written before the rename keeps ``project_facts.bundesland`` and German tokens until
+    the operator rewrite (``schema.LEGACY_FIELDS``). Remove the second branch with them.
+    """
+    field = fact_field(key)
+    legacy_values = [legacy_profile_token(key, value) if isinstance(value, str) else value for value in values]
+    return models.Filter(
+        should=[
+            models.FieldCondition(key=field, match=models.MatchAny(any=values)),
+            models.FieldCondition(key=LEGACY_FIELDS[field], match=models.MatchAny(any=legacy_values)),
+        ]
+    )
 
 
 def _class_terms(classes: list[int], weights: FactWeights) -> list[tuple[float, Any]]:
     """The same class as any building scores the full weight; only a neighbouring one, the adjacent weight."""
     if not classes:
         return []
-    exact = _any("gebaeudeklasse", classes)
-    terms: list[tuple[float, Any]] = [(weights.gebaeudeklasse, exact)]
+    exact = _any("building_class", classes)
+    terms: list[tuple[float, Any]] = [(weights.building_class, exact)]
     neighbours = sorted({gk + step for gk in classes for step in (-1, 1)} - set(classes))
     if neighbours:
-        adjacent = models.Filter(must=[_any("gebaeudeklasse", neighbours)], must_not=[exact])
-        terms.append((weights.gebaeudeklasse_adjacent, adjacent))
+        adjacent = models.Filter(must=[_any("building_class", neighbours)], must_not=[exact])
+        terms.append((weights.building_class_adjacent, adjacent))
     return terms
 
 
 def _use_terms(uses: list[str], weights: FactWeights) -> list[tuple[float, Any]]:
-    """``min(shared * nutzung, nutzung_max)`` as steps: "at least n uses shared" for n = 1, 2, ..."""
-    if weights.nutzung <= 0 or not uses:
+    """``min(shared * use, use_max)`` as steps: "at least n uses shared" for n = 1, 2, ..."""
+    if weights.use <= 0 or not uses:
         return []
-    uses = uses[:MAX_NUTZUNGEN]
+    uses = uses[:MAX_USES]
     terms: list[tuple[float, Any]] = []
     for shared in range(1, len(uses) + 1):
-        step = min(weights.nutzung, weights.nutzung_max - (shared - 1) * weights.nutzung)
+        step = min(weights.use, weights.use_max - (shared - 1) * weights.use)
         if step <= 0:
             break
         if shared == 1:
-            terms.append((step, _any("nutzungen", uses)))
+            terms.append((step, _any("uses", uses)))
             continue
-        groups = [
-            models.Filter(must=[_any("nutzungen", [use]) for use in group]) for group in combinations(uses, shared)
-        ]
+        groups = [models.Filter(must=[_any("uses", [use]) for use in group]) for group in combinations(uses, shared)]
         terms.append((step, models.Filter(should=groups)))
     return terms
 
@@ -166,15 +179,14 @@ def boost_terms(boost: Boost) -> list[tuple[float, Any]]:
     """
     facts, weights = boost.facts, boost.weights
     terms: list[tuple[float, Any]] = []
-    if facts.get("bundesland"):
-        land = models.FieldCondition(key=fact_field("bundesland"), match=models.MatchValue(value=facts["bundesland"]))
-        terms.append((weights.bundesland, land))
-    terms.extend(_class_terms(list(facts.get("gebaeudeklasse") or []), weights))
-    if facts.get("bauweise"):
-        terms.append((weights.bauweise, _any("bauweise", list(facts["bauweise"]))))
-    terms.extend(_use_terms(list(facts.get("nutzungen") or []), weights))
-    if facts.get("vorhabensart"):
-        terms.append((weights.vorhabensart, _any("vorhabensart", list(facts["vorhabensart"]))))
+    if facts.get("federal_state"):
+        terms.append((weights.federal_state, _any("federal_state", [facts["federal_state"]])))
+    terms.extend(_class_terms(list(facts.get("building_class") or []), weights))
+    if facts.get("construction_method"):
+        terms.append((weights.construction_method, _any("construction_method", list(facts["construction_method"]))))
+    terms.extend(_use_terms(list(facts.get("uses") or []), weights))
+    if facts.get("work_type"):
+        terms.append((weights.work_type, _any("work_type", list(facts["work_type"]))))
     return [(weight, condition) for weight, condition in terms if weight > 0]
 
 

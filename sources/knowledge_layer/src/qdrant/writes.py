@@ -20,6 +20,8 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
 
+from aiq_agent.common.source_kinds import office_shelf_organization_id
+
 from .payload import ChunkRecord
 from .payload import document_facts
 from .payload import project_payload
@@ -62,8 +64,8 @@ def enrichment(scope: str, config: Mapping[str, Any] | None = None) -> dict[str,
     """
     config = config or {}
     office_id = config.get("organization_id")
-    if not office_id and scope.startswith("archiv_"):
-        office_id = scope.removeprefix("archiv_")
+    if not office_id:
+        office_id = office_shelf_organization_id(scope)
     base: dict[str, Any] = {
         "office_id": office_id,
         "project_id": config.get("project_id"),

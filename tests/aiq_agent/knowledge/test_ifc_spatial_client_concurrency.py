@@ -44,9 +44,9 @@ FIXTURES = Path(__file__).resolve().parents[3] / "packages" / "ifc-spatial" / "t
 #: Four different buildings, because the failure is about a table sized for two.
 MODELS = {
     "a": FIXTURES / "Ifc4_SampleHouse.ifc",
-    "b": FIXTURES / "geschossdecke-und-fenster.ifc",
-    "c": FIXTURES / "haus-mit-raeumen.ifc",
-    "d": FIXTURES / "einheiten-fuss.ifc",
+    "b": FIXTURES / "floor-slab-and-window.ifc",
+    "c": FIXTURES / "house-with-rooms.ifc",
+    "d": FIXTURES / "units-feet.ifc",
 }
 
 

@@ -98,7 +98,7 @@ describe('EvidenceChips', () => {
     render(
       ui([
         { kind: 'geocoder', provider: 'photon', label: 'Lacknergasse 12, 1170 Wien', resolvedAt: '2026-10-14T08:30:00.000Z' },
-        { kind: 'derivation', rule: 'gebaeudeklasse', citation: 'OIB', inputs: [] },
+        { kind: 'derivation', rule: 'building_class', citation: 'OIB', inputs: [] },
         { kind: 'person', userId: 'u', at: '2026-10-14T08:30:00.000Z' },
       ])
     )
@@ -113,7 +113,7 @@ describe('EvidenceChips', () => {
 
   it('cites a project file at the page and passage, and a page-less one by its passage alone', () => {
     const withPage = citationOfEvidence(document as Extract<ProfileEvidence, { kind: 'document' }>)
-    expect(withPage.document).toMatchObject({ kind: 'projekt', tint: 'project', shelf: 'project', fileName: 'Baubeschreibung.pdf' })
+    expect(withPage.document).toMatchObject({ kind: 'project', tint: 'project', shelf: 'project', fileName: 'Baubeschreibung.pdf' })
     expect(withPage.locus).toMatchObject({ page: 3, snippet: QUOTE, isCited: true })
 
     const noPage = citationOfEvidence({ kind: 'document', fileName: 'Wohnungsliste.xlsx', page: null, quote: 'Top 1 bis Top 14' })

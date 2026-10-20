@@ -24,46 +24,46 @@ function keys(findings: ReturnType<typeof check>): string[] {
 
 describe('checkIntakeConsistency — fossil heat source on a new build', () => {
   it('flags a gas heat supply on a new build (Erneuerbare-Wärme-Gesetz)', () => {
-    const findings = check({ A5: ['neubau'], 'E1@bw1': 'gas' })
-    const finding = findings.find((f) => f.messageKey === 'fossilNeubauConflict')!
+    const findings = check({ A5: ['new_build'], 'E1@bldg1': 'gas' })
+    const finding = findings.find((f) => f.messageKey === 'fossilNewBuildConflict')!
     expect(finding).toBeDefined()
     expect(finding.severity).toBe('inconsistency')
-    expect(finding.params).toMatchObject({ bauwerk: 'Bauwerk 1' })
+    expect(finding.params).toMatchObject({ building: 'Bauwerk 1' })
     expect(finding.fields[0]).toBe('Art des Vorhabens (Projekt gesamt)')
   })
 
   it('flags each offending building independently', () => {
     const findings = check({
-      A5: ['neubau'],
-      'E1@bw1': 'gas',
-      'E1@bw2': 'waermepumpe',
-      'E1@bw3': 'gas',
+      A5: ['new_build'],
+      'E1@bldg1': 'gas',
+      'E1@bldg2': 'heat_pump',
+      'E1@bldg3': 'gas',
     })
-    expect(findings.filter((f) => f.messageKey === 'fossilNeubauConflict')).toHaveLength(2)
+    expect(findings.filter((f) => f.messageKey === 'fossilNewBuildConflict')).toHaveLength(2)
   })
 
   it('does NOT flag gas on an existing-building project', () => {
-    expect(check({ A5: ['umbau', 'sanierung'], 'E1@bw1': 'gas' })).toEqual([])
+    expect(check({ A5: ['conversion', 'refurbishment'], 'E1@bldg1': 'gas' })).toEqual([])
   })
 
   it('does NOT flag a non-fossil supply on a new build', () => {
-    expect(check({ A5: ['neubau'], 'E1@bw1': 'fernwaerme' })).toEqual([])
+    expect(check({ A5: ['new_build'], 'E1@bldg1': 'district_heating' })).toEqual([])
   })
 
   it('never triggers when either answer is skipped', () => {
-    expect(check({ A5: ['neubau'] })).toEqual([])
-    expect(check({ 'E1@bw1': 'gas' })).toEqual([])
+    expect(check({ A5: ['new_build'] })).toEqual([])
+    expect(check({ 'E1@bldg1': 'gas' })).toEqual([])
   })
 })
 
 describe('checkIntakeConsistency — profile entry point', () => {
   it('runs the rules against a reconstructed profile', () => {
-    const profile = buildIntakeProfile({ A5: ['neubau'], 'E1@bw1': 'gas' }, definition)
-    expect(keys(checkIntakeConsistency(profile, definition))).toContain('fossilNeubauConflict')
+    const profile = buildIntakeProfile({ A5: ['new_build'], 'E1@bldg1': 'gas' }, definition)
+    expect(keys(checkIntakeConsistency(profile, definition))).toContain('fossilNewBuildConflict')
   })
 
   it('returns [] for a consistent (or too-sparse) profile', () => {
-    const profile = buildIntakeProfile({ A5: ['neubau'], 'E1@bw1': 'waermepumpe' }, definition)
+    const profile = buildIntakeProfile({ A5: ['new_build'], 'E1@bldg1': 'heat_pump' }, definition)
     expect(checkIntakeConsistency(profile, definition)).toEqual([])
     expect(checkIntakeConsistency(buildIntakeProfile({}, definition), definition)).toEqual([])
   })
@@ -92,8 +92,8 @@ describe('collectStructuredContextFields', () => {
   it('renders applicable structured answers with option labels, excluding free text', () => {
     const answers: Answers = {
       A2_country: 'at',
-      A2_land: 'wien',
-      A5: ['neubau'],
+      A2_land: 'vienna',
+      A5: ['new_build'],
       G1: 'Ein Freitext, der nicht im strukturierten Kontext auftauchen darf.',
     }
     const fields = collectStructuredContextFields(answers, definition)

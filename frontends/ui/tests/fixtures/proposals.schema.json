@@ -55,8 +55,8 @@
                           {
                             "type": "string",
                             "enum": [
-                              "projekt",
-                              "buero"
+                              "project",
+                              "office"
                             ]
                           },
                           {
@@ -437,8 +437,8 @@
                   {
                     "type": "string",
                     "enum": [
-                      "projekt",
-                      "buero"
+                      "project",
+                      "office"
                     ]
                   },
                   {
@@ -890,8 +890,8 @@
                           {
                             "type": "string",
                             "enum": [
-                              "projekt",
-                              "buero"
+                              "project",
+                              "office"
                             ]
                           },
                           {
@@ -1695,8 +1695,8 @@
                               {
                                 "type": "string",
                                 "enum": [
-                                  "projekt",
-                                  "buero"
+                                  "project",
+                                  "office"
                                 ]
                               },
                               {

@@ -257,7 +257,7 @@ async def test_documents_and_passages_are_capped_in_ranking_order(stack):
     assert [len(document["passages"]) for document in documents] == [2, 1]
 
 
-async def test_a_superseded_fassung_and_another_copy_of_the_source_document_stay_out(stack):
+async def test_a_superseded_revision_and_another_copy_of_the_source_document_stay_out(stack):
     app, store, _ = stack
     ids = _seed(store)
     _put(store, "proj_a", "Brandschutzkonzept-alt.pdf", (0.99, 4), superseded=True)

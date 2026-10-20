@@ -43,8 +43,8 @@ const locus = (page: number, number: number, snippet?: string): CitationSource =
   collection: 'oib_knowledge',
   title: 'OIB-Richtlinie 2.1, Ausgabe Mai 2023',
   origin: 'kb',
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   laneLabel: 'OIB-Richtlinie',
   sourceType: 'knowledge_layer',
   page,
@@ -67,8 +67,8 @@ const citations: CitationSource[] = [
     content: '[RIS] Bauordnung für Wien § 108',
     title: 'Bauordnung für Wien § 108 — Fluchtwege',
     origin: 'ris',
-    kind: 'baurecht',
-    lane: 'baurecht_land',
+    kind: 'building_law',
+    lane: 'building_law_state',
     laneLabel: 'Landesrecht',
     bindingNote: 'Macht die OIB-Richtlinien in Wien verbindlich (WBTV 2020).',
     number: 4,
@@ -101,19 +101,19 @@ const answer = [
 ].join('\n')
 
 /** A project document a person has since replaced by Index C: the peek of a citation of the older one. */
-const olderFassungRef = () => {
+const olderRevisionRef = () => {
   const fileName = 'EG_Grundriss_Index_B.pdf'
   const [document] = buildCitationModel({
     citations: [
       {
-        id: 'older-fassung',
+        id: 'older-revision',
         content: `[KB] ${fileName}, p.1`,
         citationKey: `${fileName}, p.1`,
         fileName,
         collection: 'proj_1',
         title: 'EG Grundriss, Index B',
         origin: 'kb',
-        kind: 'projekt',
+        kind: 'project',
         shelf: 'project',
         page: 1,
         number: 1,
@@ -244,7 +244,7 @@ export default function CitationInteractionPreview() {
       >
         <div className="w-80 rounded-lg border bg-popover p-3">
           {(() => {
-            const ref = olderFassungRef()
+            const ref = olderRevisionRef()
             return ref ? (
               <CitationPeek
                 citation={ref}

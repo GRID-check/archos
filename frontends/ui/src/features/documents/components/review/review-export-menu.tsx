@@ -20,11 +20,11 @@ import { useTranslations } from '@/i18n'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { downloadFetched } from '@/lib/browser-download'
 import {
-  ANNOTATION_EXPORT_FASSUNGEN,
+  ANNOTATION_EXPORT_REVISIONS,
   ANNOTATION_EXPORT_FORMATS,
   ANNOTATION_EXPORT_SCOPES,
   annotationExportHref,
-  type AnnotationExportFassung,
+  type AnnotationExportRevision,
   type AnnotationExportFormat,
   type AnnotationExportScope,
 } from '@/lib/annotations/export-request'
@@ -61,13 +61,13 @@ const keepOpen = (event: Event) => event.preventDefault()
  */
 export function ReviewExportMenu({
   documentId,
-  hasFassungen,
+  hasRevisions,
   hasProposals,
   filing = null,
 }: {
   documentId: string
   /** The document has earlier Fassungen, whose marks the export may carry too. */
-  hasFassungen: boolean
+  hasRevisions: boolean
   /** Piloti proposed marks nobody took over; they can be appended under their own heading. */
   hasProposals: boolean
   /** Where „Im Projekt ablegen" files it, and the document's name the file is named after; absent, it is not offered. */
@@ -75,7 +75,7 @@ export function ReviewExportMenu({
 }): JSX.Element {
   const t = useTranslations('files')
   const [scope, setScope] = useState<AnnotationExportScope>('open')
-  const [fassung, setFassung] = useState<AnnotationExportFassung>('current')
+  const [revision, setRevision] = useState<AnnotationExportRevision>('current')
   const [includeProposals, setIncludeProposals] = useState(false)
   const [busy, setBusy] = useState(false)
   const router = useRouter()
@@ -86,7 +86,7 @@ export function ReviewExportMenu({
     ({
       format,
       scope,
-      fassung: hasFassungen && scope === 'all' ? fassung : 'current',
+      revision: hasRevisions && scope === 'all' ? revision : 'current',
       includeProposals: hasProposals && includeProposals,
     }) as const
 
@@ -154,19 +154,19 @@ export function ReviewExportMenu({
         {/* Only for the record: open marks come from every Fassung whatever is
             chosen here (`selectMarks`), so with „Nur offene" the choice
             would change nothing and is not offered. */}
-        {hasFassungen && scope === 'all' && (
+        {hasRevisions && scope === 'all' && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>{t('review.export.fassungLabel')}</DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={fassung} onValueChange={(value) => setFassung(value as AnnotationExportFassung)}>
-              {ANNOTATION_EXPORT_FASSUNGEN.map((option) => (
+            <DropdownMenuLabel>{t('review.export.revisionLabel')}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={revision} onValueChange={(value) => setRevision(value as AnnotationExportRevision)}>
+              {ANNOTATION_EXPORT_REVISIONS.map((option) => (
                 <DropdownMenuRadioItem
                   key={option}
                   value={option}
                   onSelect={keepOpen}
-                  data-testid={`review-export-fassung-${option}`}
+                  data-testid={`review-export-revision-${option}`}
                 >
-                  {t(`review.export.fassungen.${option}`)}
+                  {t(`review.export.revisions.${option}`)}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>

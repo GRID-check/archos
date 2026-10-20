@@ -668,8 +668,8 @@ describe('AgentResponse', () => {
               content: '',
               timestamp: new Date(),
               isCited: true,
-              kind: 'baurecht',
-              lane: 'baurecht_oib',
+              kind: 'building_law',
+              lane: 'building_law_oib',
               fileName: 'oib-rl_4_ausgabe_mai_2023.pdf',
               title: 'OIB-Richtlinie 4, Ausgabe Mai 2023',
               page: 9,
@@ -908,7 +908,7 @@ describe('AgentResponse', () => {
         title: 'OIB-Richtlinie 2',
         fileName: 'oib-rl_2.pdf',
         collection: 'oib_knowledge',
-        kind: 'baurecht' as const,
+        kind: 'building_law' as const,
         origin: 'kb' as const,
         page: 18,
         number: 1,
@@ -951,7 +951,7 @@ describe('AgentResponse', () => {
       v: 1,
       summary: 'In GK 4 gilt REI 60; maßgeblich ist das Fluchtniveau.',
       verdict: { value: 'REI 60', subject: 'Feuerwiderstand tragender Bauteile' },
-      callout: { kind: 'frist' as const, text: 'Binnen sechs Wochen anzuberaumen.' },
+      callout: { kind: 'deadline' as const, text: 'Binnen sechs Wochen anzuberaumen.' },
       takeaways: [
         { text: 'Maßgeblich ist das Fluchtniveau' },
         { text: 'Tragende Bauteile mindestens REI 60' },
@@ -1099,7 +1099,7 @@ describe('AgentResponse', () => {
         citationKey: 'oib-rl_2.pdf, p.12',
         fileName: 'oib-rl_2.pdf',
         collection: 'oib_knowledge',
-        kind: 'baurecht' as const,
+        kind: 'building_law' as const,
         origin: 'kb' as const,
         page: 12,
         number: 1,
@@ -1136,7 +1136,7 @@ describe('AgentResponse', () => {
           answerMeta={{
             v: 1,
             kind: 'walkthrough',
-            callout: { kind: 'frist' as const, text: 'Binnen sechs Wochen anzuberaumen.' },
+            callout: { kind: 'deadline' as const, text: 'Binnen sechs Wochen anzuberaumen.' },
             takeaways,
           }}
         />
@@ -1154,7 +1154,7 @@ describe('AgentResponse', () => {
           answerMeta={{
             v: 1,
             kind: 'walkthrough',
-            callout: { kind: 'hinweis' as const, text: 'Die Frist läuft ab Zustellung.' },
+            callout: { kind: 'note' as const, text: 'Die Frist läuft ab Zustellung.' },
             takeaways,
           }}
         />

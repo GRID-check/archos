@@ -39,7 +39,7 @@ PROJECT = "proj_prefilter"
 BASE = "oib_knowledge"
 TOP_K = 5
 #: Dokumentarten from the real vocabulary (``is_valid_doc_class`` refuses others).
-REPORT, PERMIT, DRAWING = "sonstiges", "gesetz", "norm_extern"
+REPORT, PERMIT, DRAWING = "other", "law", "external_standard"
 
 
 # ---------------------------------------------------------------- pure units
@@ -59,7 +59,7 @@ def test_only_filters_left_after_the_search_over_fetch():
 
 def test_narrow_only_ever_adds_conditions():
     base = {"chunking": {"$ne": "page"}}
-    pushdown = Pushdown(doc_class="gesetz", folder="brandschutz")
+    pushdown = Pushdown(doc_class="law", folder="brandschutz")
     assert pushdown.narrow(base, user_shelf=False) == {
         "$and": [base, {"doc_class": "gesetz"}, {"folder_ancestors": "brandschutz"}]
     }
@@ -71,7 +71,7 @@ def test_narrow_only_ever_adds_conditions():
 
 
 def test_trace_fields_name_fields_never_values():
-    assert Pushdown(doc_class="gesetz", folder="a").fields(user_shelves=True) == [
+    assert Pushdown(doc_class="law", folder="a").fields(user_shelves=True) == [
         "doc_class",
         "folder_ancestors",
         "superseded",
@@ -365,7 +365,7 @@ async def test_doc_class_and_folder_run_inside_the_search_with_no_over_fetch(sea
     assert span["prefiltered"] == ["doc_class", "folder_ancestors", "superseded"]
 
 
-async def test_a_replaced_fassung_stays_out_without_a_file_list(search):
+async def test_a_replaced_revision_stays_out_without_a_file_list(search):
     search.ingest()
     out, calls, _ = await search(doc_class=PERMIT)
     assert not any(_uses_file_lists(call["filters"]) for call in calls)
@@ -373,7 +373,7 @@ async def test_a_replaced_fassung_stays_out_without_a_file_list(search):
     assert _cited_files(out) == {"Bescheid.pdf"}
 
 
-async def test_a_stale_fact_never_shows_a_replaced_fassung(search):
+async def test_a_stale_fact_never_shows_a_replaced_revision(search):
     """Postgres says replaced, the payload never heard: the backstop still drops it."""
     search.ingest(skip_facts=frozenset({"Altbescheid.pdf"}))
     # `title_contains` over-fetches the whole pool (3 x 5 >= 14 chunks), so the

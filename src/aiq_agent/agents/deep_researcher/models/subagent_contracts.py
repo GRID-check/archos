@@ -8,6 +8,8 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 
+from aiq_agent.common.plan_vocabulary import LEGACY_PLAN_GENRE
+
 
 class _StrictContract(BaseModel):
     """Base model for structured response schemas."""
@@ -37,10 +39,9 @@ class AnswerStrategy(_StrictContract):
     """Planner guidance for the final answer shape and synthesis logic."""
 
     answer_type: Literal[
-        "pruefbericht",
-        "aktenvermerk",
-        "vergleich",
-        "checkliste",
+        "inspection_report",
+        "file_note",
+        "checklist",
         "long_form_report",
         "brief_answer",
         "table",
@@ -50,6 +51,13 @@ class AnswerStrategy(_StrictContract):
         "data_extraction",
         "custom",
     ] = Field(description="The intended final output shape.")
+
+    @field_validator("answer_type", mode="before")
+    @classmethod
+    def _legacy_answer_type(cls, value: object) -> object:
+        """A checkpointed strategy still names the German genre."""
+        return LEGACY_PLAN_GENRE.get(value, value) if isinstance(value, str) else value
+
     title: str = Field(description="Concise human-facing title for the final output.")
     required_components: list[AnswerComponent] = Field(
         description="Evidence and synthesis components that must be covered in the final answer."

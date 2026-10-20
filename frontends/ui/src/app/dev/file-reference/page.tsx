@@ -81,7 +81,7 @@ const PROJECT_DOCUMENTS = [
   }),
 ]
 
-const ARCHIV_DOCUMENTS = [
+const OFFICE_SHELF_DOCUMENTS = [
   doc('a1', 'Wien-Lacknergasse-Ansichten-views.pdf', {
     summary: 'Ansichten aller vier Fassaden, Stand Vorentwurf 1.',
     pageCount: 4,
@@ -107,7 +107,7 @@ if (typeof window !== 'undefined') {
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     if (url.includes('/api/session/documents')) return json(SESSION_DOCUMENTS)
-    if (url.includes('/api/archiv/documents')) return json(ARCHIV_DOCUMENTS)
+    if (url.includes('/api/office-shelf/documents')) return json(OFFICE_SHELF_DOCUMENTS)
     if (url.includes('/api/documents')) return json(PROJECT_DOCUMENTS)
     return real(input as RequestInfo, init)
   }
@@ -124,8 +124,8 @@ const citations: CitationSource[] = [
     collection: 'oib_knowledge',
     title: 'OIB-Richtlinie 2, Ausgabe Mai 2023',
     origin: 'kb',
-    kind: 'baurecht',
-    lane: 'baurecht_oib',
+    kind: 'building_law',
+    lane: 'building_law_oib',
     laneLabel: 'OIB-Richtlinie',
     sourceType: 'knowledge_layer',
     page: 14,

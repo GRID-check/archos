@@ -12,8 +12,8 @@ import {
 } from './phone-tabs'
 import { projectSection } from './project-sections'
 
-const ALL = { canAccessArchiv: true, canAccessInbox: true }
-const NONE = { canAccessArchiv: false, canAccessInbox: false }
+const ALL = { canAccessOfficeShelf: true, canAccessInbox: true }
+const NONE = { canAccessOfficeShelf: false, canAccessInbox: false }
 const keys = (tabs: { key: string }[]): string[] => tabs.map((tab) => tab.key)
 const lit = (tabs: { key: string; active: boolean }[]): string[] =>
   tabs.filter((tab) => tab.active).map((tab) => tab.key)
@@ -75,7 +75,7 @@ describe('inside a project', () => {
 
   it('lights "Mehr" where only the drawer reaches', () => {
     expect(lit(projectPhoneTabs('p1', '/app/projects/p1/automation', ALL))).toEqual(['more'])
-    expect(lit(projectPhoneTabs('p1', '/app/archiv', ALL))).toEqual(['more'])
+    expect(lit(projectPhoneTabs('p1', '/app/office-shelf', ALL))).toEqual(['more'])
   })
 
   it('names each tab with the rail label, and marks it as a tour stop', () => {
@@ -106,7 +106,7 @@ describe('inside a project', () => {
 
 describe('above a project', () => {
   it('carries Projekte, the Büroablage and the Postfach, and no "Mehr"', () => {
-    expect(keys(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects', 'archiv', 'inbox'])
+    expect(keys(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects', 'officeShelf', 'inbox'])
   })
 
   it('carries only what the organization has', () => {
@@ -115,14 +115,14 @@ describe('above a project', () => {
 
   it('lights Projekte on the projects home, a doorway while its sheet stands, and nothing on an account page', () => {
     expect(lit(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects'])
-    expect(lit(orgPhoneTabs('/app/archiv', ALL))).toEqual(['archiv'])
+    expect(lit(orgPhoneTabs('/app/office-shelf', ALL))).toEqual(['officeShelf'])
     expect(lit(orgPhoneTabs('/app/profile', ALL))).toEqual([])
     expect(lit(orgPhoneTabs('/app/organization/access', ALL))).toEqual([])
   })
 
   it('points the welcome tour at its doorways', () => {
-    const [, archiv, inbox] = orgPhoneTabs('/app/projects', ALL)
-    expect(archiv?.tourAnchor).toBe('archiv')
+    const [, officeShelf, inbox] = orgPhoneTabs('/app/projects', ALL)
+    expect(officeShelf?.tourAnchor).toBe('office-shelf')
     expect(inbox?.tourAnchor).toBe('inbox')
   })
 })
@@ -176,10 +176,10 @@ describe('the phone header back', () => {
 describe('the Postfach looks like itself', () => {
   it('wears one glyph everywhere, and not the Büroablage’s box beside it', () => {
     const inboxTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'inbox')
-    const archivTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'archiv')
+    const officeShelfTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'officeShelf')
     expect(inboxTab?.icon).toBe(projectSection('inbox')?.icon)
-    expect(inboxTab?.icon).not.toBe(archivTab?.icon)
-    expect(projectSection('inbox')?.icon).not.toBe(projectSection('archiv')?.icon)
+    expect(inboxTab?.icon).not.toBe(officeShelfTab?.icon)
+    expect(projectSection('inbox')?.icon).not.toBe(projectSection('officeShelf')?.icon)
     expect(projectSection('inbox')?.icon.displayName).toBe('Bell')
   })
 })

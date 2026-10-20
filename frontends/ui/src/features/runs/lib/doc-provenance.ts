@@ -39,12 +39,12 @@ const RIS_RE = /Bauordnung|\bBO\s|Gesetz|Verordnung|§/i
 function laneForShelf(shelf: string | undefined): string | undefined {
   switch (asShelf(shelf)) {
     case 'base':
-      return 'baurecht'
-    case 'archiv':
-      return 'buero'
+      return 'building_law'
+    case 'office_shelf':
+      return 'office'
     case 'project':
     case 'session':
-      return 'projekt'
+      return 'project'
     default:
       return undefined
   }
@@ -57,9 +57,9 @@ export function docProvenance(doc: Pick<RunLedgerDoc, 'name' | 'title' | 'shelf'
   const shelfLane = laneForShelf(doc.shelf)
   // A name that says OIB or ÖNORM is law wherever it sits; otherwise the shelf
   // decides, and no shelf reads as unattributed (web).
-  const kind: SourceKind = isOib || isOnorm ? 'baurecht' : kindForLane(shelfLane)
+  const kind: SourceKind = isOib || isOnorm ? 'building_law' : kindForLane(shelfLane)
   const authority =
-    kind !== 'baurecht'
+    kind !== 'building_law'
       ? null
       : isOib
         ? 'OIB'

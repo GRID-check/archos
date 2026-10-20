@@ -51,13 +51,13 @@ describe('getListedDocument', () => {
   })
 
   it('reads an Archiv document on the Archiv shelf, which hides no folders', async () => {
-    vi.mocked(getAccessibleDocument).mockResolvedValue(makeDocument({ id: 'doc-1', projectId: null, scope: 'archiv' }))
+    vi.mocked(getAccessibleDocument).mockResolvedValue(makeDocument({ id: 'doc-1', projectId: null, scope: 'office_shelf' }))
     vi.mocked(findShelfDocumentListRow).mockResolvedValue(ROW)
 
     await getListedDocument(session, 'doc-1')
 
     expect(getHiddenFolderIds).not.toHaveBeenCalled()
-    expect(findShelfDocumentListRow).toHaveBeenCalledWith({ kind: 'archiv' }, 'org-1', 'doc-1', expect.anything())
+    expect(findShelfDocumentListRow).toHaveBeenCalledWith({ kind: 'office_shelf' }, 'org-1', 'doc-1', expect.anything())
   })
 
   it('refuses what the item gate refuses, before reading anything', async () => {

@@ -773,7 +773,7 @@ const selectCompliance = (body: BimQueryResponse): BimComplianceView | null =>
 export function useBimCompliance(
   projectId: string | null,
   modelId: string | null,
-  facts: { gebaeudeklasse: number | null; hauptnutzung: string | null; ready?: boolean },
+  facts: { buildingClass: number | null; mainUse: string | null; ready?: boolean },
   /**
    * Every revision of the building on screen.
    *
@@ -800,10 +800,10 @@ export function useBimCompliance(
   const request = useMemo(
     () => ({
       op: 'compliance' as const,
-      ...(facts.gebaeudeklasse === null ? {} : { gebaeudeklasse: facts.gebaeudeklasse }),
-      ...(facts.hauptnutzung === null ? {} : { hauptnutzung: facts.hauptnutzung }),
+      ...(facts.buildingClass === null ? {} : { buildingClass: facts.buildingClass }),
+      ...(facts.mainUse === null ? {} : { mainUse: facts.mainUse }),
     }),
-    [facts.gebaeudeklasse, facts.hauptnutzung]
+    [facts.buildingClass, facts.mainUse]
   )
   // Held until the brief has settled: running now would spend a full
   // catalogue pass on facts we are about to replace.
@@ -906,7 +906,7 @@ export function useBimCompliance(
 export function useBimComplianceDiff(
   modelId: string | null,
   baseModelId: string | null,
-  facts: { gebaeudeklasse: number | null; hauptnutzung: string | null }
+  facts: { buildingClass: number | null; mainUse: string | null }
 ): AsyncState<{ changes: BimComplianceChange[]; truncated: boolean }> & { run: () => void } {
   const [state, setState] = useState<
     AsyncState<{ changes: BimComplianceChange[]; truncated: boolean }>
@@ -936,7 +936,7 @@ export function useBimComplianceDiff(
   useEffect(() => {
     generation.current += 1
     setState(IDLE)
-  }, [modelId, baseModelId, facts.gebaeudeklasse, facts.hauptnutzung])
+  }, [modelId, baseModelId, facts.buildingClass, facts.mainUse])
 
   // Unmounting is one more way the question stops being asked: this is the
   // longest request in the product (both revisions read in full), and the
@@ -961,8 +961,8 @@ export function useBimComplianceDiff(
       body: JSON.stringify({
         op: 'compliance-diff',
         baseModelId,
-        ...(facts.gebaeudeklasse === null ? {} : { gebaeudeklasse: facts.gebaeudeklasse }),
-        ...(facts.hauptnutzung === null ? {} : { hauptnutzung: facts.hauptnutzung }),
+        ...(facts.buildingClass === null ? {} : { buildingClass: facts.buildingClass }),
+        ...(facts.mainUse === null ? {} : { mainUse: facts.mainUse }),
       }),
     })
       .then((body) => {
@@ -977,7 +977,7 @@ export function useBimComplianceDiff(
         if (generation.current !== ticket) return
         setState({ data: null, isLoading: false, error: 'load-failed' })
       })
-  }, [modelId, baseModelId, facts.gebaeudeklasse, facts.hauptnutzung])
+  }, [modelId, baseModelId, facts.buildingClass, facts.mainUse])
 
   return { ...state, run }
 }
@@ -997,11 +997,11 @@ export function useBimComplianceDiff(
  * translated as "Main use" two keys away — and a hook has no business
  * choosing either.
  */
-export type BimRuleFactKey = 'gebaeudeklasse' | 'hauptnutzung'
+export type BimRuleFactKey = 'buildingClass' | 'mainUse'
 
 export function useProjectRuleFacts(projectId: string | null): {
-  gebaeudeklasse: number | null
-  hauptnutzung: string | null
+  buildingClass: number | null
+  mainUse: string | null
   missing: BimRuleFactKey[]
   /**
    * The brief has been read (or there is none to read).
@@ -1028,9 +1028,9 @@ export function useProjectRuleFacts(projectId: string | null): {
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
   const [tick, setTick] = useState(0)
-  const [facts, setFacts] = useState<{ gebaeudeklasse: number | null; hauptnutzung: string | null }>({
-    gebaeudeklasse: null,
-    hauptnutzung: null,
+  const [facts, setFacts] = useState<{ buildingClass: number | null; mainUse: string | null }>({
+    buildingClass: null,
+    mainUse: null,
   })
 
   useEffect(() => {
@@ -1044,7 +1044,7 @@ export function useProjectRuleFacts(projectId: string | null): {
     // The facts on hand belong to the brief that has just stopped being the
     // question. Keeping them across the change would let the catalogue run
     // against the previous project's Gebäudeklasse.
-    setFacts({ gebaeudeklasse: null, hauptnutzung: null })
+    setFacts({ buildingClass: null, mainUse: null })
     let cancelled = false
     getJson<{ facts?: Record<string, { value?: unknown }> }>(`/api/projects/${projectId}/profile`)
       .then((profile) => {
@@ -1060,11 +1060,11 @@ export function useProjectRuleFacts(projectId: string | null): {
         //
         // A bare number is still accepted: nothing forbids one, and refusing
         // it would trade one silent stand-down for another.
-        const klasse = Number(String(raw.gebaeudeklasse?.value ?? '').trim().replace(/^GK\s*/i, ''))
-        const nutzung = raw.hauptnutzung?.value
+        const klasse = Number(String(raw.building_class?.value ?? '').trim().replace(/^GK\s*/i, ''))
+        const use = raw.main_use?.value
         setFacts({
-          gebaeudeklasse: Number.isInteger(klasse) && klasse >= 1 && klasse <= 5 ? klasse : null,
-          hauptnutzung: typeof nutzung === 'string' && nutzung.trim() !== '' ? nutzung : null,
+          buildingClass: Number.isInteger(klasse) && klasse >= 1 && klasse <= 5 ? klasse : null,
+          mainUse: typeof use === 'string' && use.trim() !== '' ? use : null,
         })
       })
       .catch(() => {
@@ -1072,7 +1072,7 @@ export function useProjectRuleFacts(projectId: string | null): {
         // reading of a brief nobody could load. Left in place, the catalogue
         // ran against another project's Gebäudeklasse while the panel said the
         // rules had stood down for want of one.
-        if (!cancelled) setFacts({ gebaeudeklasse: null, hauptnutzung: null })
+        if (!cancelled) setFacts({ buildingClass: null, mainUse: null })
         // For the RULES this is the same situation as a profile that does not
         // carry the fact: they stand down, which is correct either way.
         //
@@ -1114,8 +1114,8 @@ export function useProjectRuleFacts(projectId: string | null): {
     // translates the second of those as "Main use" — one English sentence,
     // two names for one fact. The panel resolves them.
     const gaps: BimRuleFactKey[] = []
-    if (facts.gebaeudeklasse === null) gaps.push('gebaeudeklasse')
-    if (facts.hauptnutzung === null) gaps.push('hauptnutzung')
+    if (facts.buildingClass === null) gaps.push('buildingClass')
+    if (facts.mainUse === null) gaps.push('mainUse')
     return gaps
   }, [facts, failed, ready])
 

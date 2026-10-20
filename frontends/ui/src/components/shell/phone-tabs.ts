@@ -34,7 +34,7 @@ import {
  * label), so a destination has one name on every surface.
  */
 
-export type PhoneTabKey = 'chat' | 'files' | 'settings' | 'inbox' | 'projects' | 'archiv' | 'more'
+export type PhoneTabKey = 'chat' | 'files' | 'settings' | 'inbox' | 'projects' | 'officeShelf' | 'more'
 
 export interface PhoneTabLabel {
   namespace: 'nav' | 'collaboration'
@@ -53,12 +53,12 @@ export interface PhoneTab {
 }
 
 export interface PhoneTabFlags {
-  canAccessArchiv: boolean
+  canAccessOfficeShelf: boolean
   canAccessInbox: boolean
 }
 
 const INBOX_HREF = '/app/inbox'
-const ARCHIV_HREF = '/app/archiv'
+const OFFICE_SHELF_HREF = '/app/office-shelf'
 const PROJECTS_HREF = '/app/projects'
 
 function isUnder(pathname: string, href: string): boolean {
@@ -141,14 +141,14 @@ export function orgPhoneTabs(pathname: string, flags: PhoneTabFlags): PhoneTab[]
       tourAnchor: 'tab-projects',
     },
   ]
-  if (flags.canAccessArchiv) {
+  if (flags.canAccessOfficeShelf) {
     tabs.push({
-      key: 'archiv',
-      href: ARCHIV_HREF,
+      key: 'officeShelf',
+      href: OFFICE_SHELF_HREF,
       icon: Archive,
-      label: { namespace: 'nav', key: 'sections.archiv' },
-      active: isUnder(pathname, ARCHIV_HREF),
-      tourAnchor: TOUR_ANCHORS.archiv,
+      label: { namespace: 'nav', key: 'sections.officeShelf' },
+      active: isUnder(pathname, OFFICE_SHELF_HREF),
+      tourAnchor: TOUR_ANCHORS.officeShelf,
     })
   }
   if (flags.canAccessInbox) tabs.push(inboxTab(pathname, TOUR_ANCHORS.inbox))

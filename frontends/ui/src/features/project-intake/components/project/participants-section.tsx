@@ -39,7 +39,7 @@ import {
   type ProjectMemberRoleSlug,
   type ProjectRoster,
 } from '@/lib/projects/participants-client'
-import type { ProjectPersonInput, ProjectPersonView, SteckbriefView } from '@/lib/projects/steckbrief-types'
+import type { ProjectPersonInput, ProjectPersonView, ProjectRecordView } from '@/lib/projects/project-record-types'
 import { cn } from '@/lib/utils'
 import { ColleagueForm, type ColleagueChoice } from './colleague-form'
 import { colleagueCandidates, participantRows, type ParticipantRow } from './participants'
@@ -52,7 +52,7 @@ type SheetTask = { kind: 'colleague' } | { kind: 'external' } | { kind: 'describ
 export interface ParticipantsSectionProps {
   projectId: string
   client: ParticipantsClient
-  peopleRecord: SteckbriefView | null
+  peopleRecord: ProjectRecordView | null
   roster: ProjectRoster | null
   loading: boolean
   reload: () => Promise<void>

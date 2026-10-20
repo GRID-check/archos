@@ -48,8 +48,8 @@ import type { JSX } from 'react'
 import { use, useEffect, useRef } from 'react'
 import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
-import { DocumentFassungen } from '@/features/documents/components/document-fassungen'
-import { DocumentLifecycleStand } from '@/features/documents/components/document-lifecycle-stand'
+import { DocumentRevisions } from '@/features/documents/components/document-revisions'
+import { DocumentLifecyclePosition } from '@/features/documents/components/document-lifecycle-position'
 import { DocumentVersionStateBadge } from '@/features/documents/components/document-version-badge'
 import type { DocumentLifecycleClient } from '@/lib/documents/lifecycle-client'
 import type {
@@ -258,7 +258,7 @@ function ArchiveFixture(): JSX.Element {
         </p>
       </div>
       <div className="rounded-xl border p-4" data-preview-block="archive">
-        <DocumentFassungen
+        <DocumentRevisions
           file={devFile('doc_0', 'Aktenvermerk Fluchtwege.pdf', 'user')}
             canManage
           viewer={REVIEWER_VIEWER}
@@ -329,11 +329,11 @@ const DRIVEN_BLOCKS: readonly (readonly [block: string, steps: readonly DriveSte
   ],
   // Nothing outstanding here, so the section is shut and the shot has to open
   // it. That IS the behaviour under review: the history is behind one click.
-  ['published', [{ click: 'document-fassungen-toggle', settled: 'fassung-timeline-row' }]],
+  ['published', [{ click: 'document-revisions-toggle', settled: 'revision-timeline-row' }]],
   [
     'archive',
     [
-      { click: 'document-fassungen-toggle', settled: 'document-lifecycle-archive' },
+      { click: 'document-revisions-toggle', settled: 'document-lifecycle-archive' },
       {
         click: 'document-lifecycle-archive',
         settled: 'document-archive-consequences',
@@ -414,7 +414,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
         </p>
         <div className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
           {TRACK_STATES.map(({ state }) => (
-            <DocumentLifecycleStand
+            <DocumentLifecyclePosition
               key={state}
               version={{ state }}
               lifecycle="active"
@@ -422,7 +422,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
             />
           ))}
           {/* Item-level, so it is not a stage: the whole track reads as history. */}
-          <DocumentLifecycleStand
+          <DocumentLifecyclePosition
             version={{ state: 'published' }}
             lifecycle="archived"
           />
@@ -439,7 +439,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
           Satz — Fassungen, Entscheidungen und das Stilllegen liegen dahinter.
         </p>
         <div className="rounded-xl border p-4">
-          <DocumentFassungen
+          <DocumentRevisions
             file={devFile('doc_0', 'Aktenvermerk Fluchtwege.pdf', 'user')}
             canManage
             viewer={REVIEWER_VIEWER}
@@ -452,7 +452,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
       <section className="space-y-3">
         <h2 className="text-muted-foreground text-sm font-medium">Entwurf</h2>
         <div className="rounded-xl border p-4">
-          <DocumentFassungen
+          <DocumentRevisions
             file={devFile('doc_1', 'Bericht.md', 'agent')}
             canManage
             viewer={REVIEWER_VIEWER}
@@ -465,7 +465,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
       <section className="space-y-3">
         <h2 className="text-muted-foreground text-sm font-medium">In Prüfung</h2>
         <div className="rounded-xl border p-4" data-preview-block="in-review">
-          <DocumentFassungen
+          <DocumentRevisions
             file={devFile('doc_2', 'Bericht.md', 'agent')}
             canManage
             viewer={REVIEWER_VIEWER}
@@ -485,7 +485,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
           entscheidet, wer freigibt.
         </p>
         <div className="rounded-xl border p-4" data-preview-block="approve-open-marks">
-          <DocumentFassungen
+          <DocumentRevisions
             file={devFile('doc_5', 'Einreichplan_Grundriss_EG.pdf', 'user')}
             canManage
             viewer={REVIEWER_VIEWER}
@@ -501,7 +501,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
           Zurückgeben — und Piloti überarbeiten lassen
         </h2>
         <div className="rounded-xl border p-4" data-preview-block="delegate">
-          <DocumentFassungen
+          <DocumentRevisions
             file={devFile('doc_4', 'Bericht.md', 'agent')}
             canManage
             viewer={REVIEWER_VIEWER}
@@ -516,7 +516,7 @@ function DocumentLifecycleFixtures(): JSX.Element {
           Veröffentlicht — aufgeklappt
         </h2>
         <div className="rounded-xl border p-4" data-preview-block="published">
-          <DocumentFassungen
+          <DocumentRevisions
             file={devFile('doc_3', 'Bericht.md', 'user')}
             canManage
             viewer={REVIEWER_VIEWER}

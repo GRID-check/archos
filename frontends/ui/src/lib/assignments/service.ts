@@ -98,7 +98,7 @@ async function whoMay(
     const doc = await findDocumentForSession(session, resourceId)
     if (!doc) throw new NotFoundError()
     if (needed === 'write') return mayWriteDocument(session, doc, userIds)
-    if (doc.scope === 'project' || doc.scope === 'archiv') return mayOpenDocument(session, doc, userIds)
+    if (doc.scope === 'project' || doc.scope === 'office_shelf') return mayOpenDocument(session, doc, userIds)
   }
   if (!projectId) return new Set(userIds)
   return filterUsersWithProjectAccess(session, projectId, userIds)

@@ -11,7 +11,7 @@
  * is a duration somebody chose for this block, so a retune of the scale moves
  * the whole sequence with it.
  *
- * The sequence, for a run that lands `fertig`:
+ * The sequence, for a run that lands `done`:
  *
  *   0                    the last swatch's check draws in (springSnap)
  *   check settled        the spinner leaves, the check pops in (snap, twice)
@@ -21,7 +21,7 @@
  *   + two stagger steps  the report beneath the block rises
  *
  * Every other status has no check to wait for, so its glyph swaps at once and
- * the rest follows at the same spacing. `wartet` folds nothing — the body is
+ * the rest follows at the same spacing. `waiting` folds nothing — the body is
  * forced open, because the sentence telling the reader what to do is inside it
  * — so its footer follows the word directly.
  */
@@ -60,13 +60,13 @@ const WORD_SWAP = 2 * seconds(motionQuick.duration)
 /**
  * When each move starts after the block's status became `status`.
  *
- * `fertig` waits for the rail's last check to settle before touching the
+ * `done` waits for the rail's last check to settle before touching the
  * header, so the eye that watched the rail finish is led up to the verdict
  * rather than pulled two ways. Nothing else on the rail moves on the other
  * landings — a failed run's live phase keeps its ring — so they start at once.
  */
 export function landingDelays(status: RunStatus): LandingDelays {
-  const glyph = status === 'fertig' ? springSnapSettleSeconds : 0
+  const glyph = status === 'done' ? springSnapSettleSeconds : 0
   const word = glyph + GLYPH_SWAP
   const wordDone = word + WORD_SWAP
   const fold = isTerminalRunStatus(status) ? wordDone + seconds(motionDeliberate.duration) : null

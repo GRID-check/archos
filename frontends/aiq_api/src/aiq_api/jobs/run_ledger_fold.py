@@ -42,7 +42,7 @@ documents on another office's report, which is the failure this rule exists for.
     how it ended. A failure carries its sanitized reason; a cancellation IS its
     status (there is neither a result nor an error to state, and the finish op
     carries exactly one of those); a degraded run is one that was cut off and
-    salvaged — ``unterbrochen`` — and still has a report, so it finishes with a
+    salvaged — ``interrupted`` — and still has a report, so it finishes with a
     RESULT and carries its caveat in the message's transparency keys, where the
     reader's banner already reads it.
 
@@ -72,11 +72,11 @@ from datetime import UTC
 from datetime import datetime
 from typing import Any
 
+from aiq_agent.common.run_ledger import MAX_BASIS_DOCS
 from aiq_agent.common.run_ledger import MAX_DOCS_PER_STEP
 from aiq_agent.common.run_ledger import MAX_ERROR_REASON_CHARS
 from aiq_agent.common.run_ledger import MAX_FINDING_CHARS
 from aiq_agent.common.run_ledger import MAX_FINDINGS_PER_STEP
-from aiq_agent.common.run_ledger import MAX_GRUNDLAGE_DOCS
 from aiq_agent.common.run_ledger import MAX_INTENT_CHARS
 from aiq_agent.common.run_ledger import MAX_LOCI_PER_DOC
 from aiq_agent.common.run_ledger import MAX_LOCUS_CHARS
@@ -123,16 +123,16 @@ JOB_ERROR_EVENT_TYPE = "job.error"
 JOB_CANCELLED_EVENT_TYPE = "job.cancelled"
 JOB_DEGRADED_EVENT_TYPE = "job.degraded"
 
-#: ``job.phase`` name → ledger phase. Citation verification maps to ``pruefen``
-#: and the writer to ``schreiben`` although the deep researcher enters them the
+#: ``job.phase`` name → ledger phase. Citation verification maps to ``checking``
+#: and the writer to ``writing`` although the deep researcher enters them the
 #: other way round (verification is inferred when the writer returns): a phase
 #: list is the order things HAPPENED, not the order they are listed in.
 PHASE_KEYS: dict[str, str] = {
-    PHASE_PLANNING_STARTED: "planen",
-    PHASE_RESEARCH_STARTED: "recherchieren",
-    PHASE_CITATION_VERIFICATION_STARTED: "pruefen",
-    PHASE_WRITING_STARTED: "schreiben",
-    PHASE_DONE: "abgelegt",
+    PHASE_PLANNING_STARTED: "planning",
+    PHASE_RESEARCH_STARTED: "researching",
+    PHASE_CITATION_VERIFICATION_STARTED: "checking",
+    PHASE_WRITING_STARTED: "writing",
+    PHASE_DONE: "filed",
 }
 
 #: What a phase's own step is for, when the run did not say it itself. German
@@ -141,9 +141,9 @@ PHASE_KEYS: dict[str, str] = {
 #: ``run-ledger-types.ts``. The research phase has no default here because every
 #: one of its steps states its own.
 DEFAULT_INTENTS: dict[str, str] = {
-    "planen": "Rechercheplan erstellen",
-    "pruefen": "Zitate gegen die belegten Quellen prüfen",
-    "schreiben": "Bericht schreiben",
+    "planning": "Rechercheplan erstellen",
+    "checking": "Zitate gegen die belegten Quellen prüfen",
+    "writing": "Bericht schreiben",
 }
 
 #: What a cut-off, salvaged run is called. The transparency key the runner emits
@@ -172,11 +172,11 @@ def _locus(source: dict[str, Any]) -> str | None:
     the same page differently.
     """
     page = source.get("page")
-    punkt = source.get("punkt")
+    clause = source.get("clause") or source.get("punkt")
     page_text = f"p.{page}" if page is not None else ""
-    if not punkt:
+    if not clause:
         return page_text or None
-    return f"Pkt. {punkt} {page_text}".strip()
+    return f"Pkt. {clause} {page_text}".strip()
 
 
 @dataclass
@@ -270,7 +270,7 @@ class RunLedgerFold:
         client: RunLedgerClient | None = None,
         loop: asyncio.AbstractEventLoop | None = None,
         autoflush: bool = True,
-        grundlage: list[dict[str, Any]] | None = None,
+        basis: list[dict[str, Any]] | None = None,
     ) -> None:
         """
         Args:
@@ -289,10 +289,10 @@ class RunLedgerFold:
             autoflush: Whether an ingest may schedule its own flush. False hands
                 the timing to the caller, which is what a test wants and what a
                 caller with no loop of its own has anyway.
-            grundlage: The documents the reader named as Grundlage, as
+            basis: The documents the reader named as Grundlage, as
                 ``plan_documents`` rows (name, title, shelf). On the ledger
                 from the first snapshot, so the block can print the receipt
-                against the steps; ``add_grundlage`` extends it live.
+                against the steps; ``add_basis`` extends it live.
         """
         self._job_id = job_id
         self._run_id = run_id
@@ -303,7 +303,7 @@ class RunLedgerFold:
 
         started = _now()
         self._started_at = started
-        self._status = "angelegt"
+        self._status = "created"
         self._phases: list[_Phase] = []
         self._steps: list[_Step] = []
         self._open_step: _Step | None = None
@@ -313,10 +313,8 @@ class RunLedgerFold:
         self._error_reason: str | None = None
         self._finished_at: str | None = None
         self._updated_at = started
-        self._grundlage: list[RunLedgerDoc] = [doc for doc in map(_grundlage_doc, grundlage or []) if doc][
-            :MAX_GRUNDLAGE_DOCS
-        ]
-        self._sent_grundlage: int = 0
+        self._basis: list[RunLedgerDoc] = [doc for doc in map(_basis_doc, basis or []) if doc][:MAX_BASIS_DOCS]
+        self._sent_basis: int = 0
 
         self._dirty = False
         self._flush_now = False
@@ -327,22 +325,22 @@ class RunLedgerFold:
 
     # -- ingest ---------------------------------------------------------------
 
-    def add_grundlage(self, doc: Any) -> None:
+    def add_basis(self, doc: Any) -> None:
         """A document the reader added to the Grundlage while the run goes.
 
         Idempotent by name, bounded like the list it joins, and flushed at
         once: the addition is the reader's own act, and the block should show
         it before the next round does.
         """
-        wire = _grundlage_doc(doc.model_dump() if hasattr(doc, "model_dump") else doc)
+        wire = _basis_doc(doc.model_dump() if hasattr(doc, "model_dump") else doc)
         if wire is None:
             return
         with self._lock:
-            if any(existing.name.casefold() == wire.name.casefold() for existing in self._grundlage):
+            if any(existing.name.casefold() == wire.name.casefold() for existing in self._basis):
                 return
-            if len(self._grundlage) >= MAX_GRUNDLAGE_DOCS:
+            if len(self._basis) >= MAX_BASIS_DOCS:
                 return
-            self._grundlage.append(wire)
+            self._basis.append(wire)
             self._updated_at = _now()
             self._dirty = True
             self._flush_now = True
@@ -383,10 +381,10 @@ class RunLedgerFold:
         phase = PHASE_KEYS.get(str(data.get("phase") or ""))
         if phase is None:
             return False
-        if phase == "recherchieren":
+        if phase == "researching":
             return self._open_round(data)
         self._enter_phase(phase)
-        if phase == "abgelegt":
+        if phase == "filed":
             # Filing is the run's last act and has no step of its own: what it
             # produced is the result, which the terminal flush states.
             self._seal_open_step()
@@ -396,11 +394,11 @@ class RunLedgerFold:
 
     def _open_round(self, data: dict[str, Any]) -> bool:
         """One research batch: its own step, carrying the batch's stated conclusion."""
-        self._enter_phase("recherchieren")
+        self._enter_phase("researching")
         index = data.get("batch_index")
         self._rounds = index if isinstance(index, int) and index > 0 else self._rounds + 1
         intent = _clip(data.get("conclusion"), MAX_INTENT_CHARS) or f"Recherche-Runde {self._rounds}"
-        self._begin_step(f"runde-{self._rounds}", "recherchieren", intent)
+        self._begin_step(f"runde-{self._rounds}", "researching", intent)
         return True
 
     def _ingest_artifact(self, data: dict[str, Any]) -> bool:
@@ -421,7 +419,7 @@ class RunLedgerFold:
     def _ingest_error(self, data: dict[str, Any]) -> bool:
         reason = _clip(data.get("error"), MAX_ERROR_REASON_CHARS)
         self._error_reason = reason or "Der Lauf ist fehlgeschlagen."
-        self._status = "fehlgeschlagen"
+        self._status = "failed"
         self._flush_now = True
         return True
 
@@ -429,7 +427,7 @@ class RunLedgerFold:
         # No finish op: that one carries a result or an error, and a cancelled
         # run has neither. „abgebrochen" IS the terminal fact, and it travels as
         # the status of the last append.
-        self._status = "abgebrochen"
+        self._status = "cancelled"
         self._flush_now = True
         return True
 
@@ -439,7 +437,7 @@ class RunLedgerFold:
         # Cut off and salvaged: the run still has a report to show, so this moves
         # the status and nothing else. The caveat itself is already on the
         # message (``_TRANSPARENCY_METADATA_KEYS``), in the product's voice.
-        self._status = "unterbrochen"
+        self._status = "interrupted"
         return True
 
     def note_result(self, *, report_message_id: str | None = None, file_id: str | None = None) -> None:
@@ -463,8 +461,8 @@ class RunLedgerFold:
         # same inference (``openPhase``); making it here too is what keeps the
         # live snapshot and the stored ledger from telling the reader two
         # different things about the same instant.
-        if self._status == "angelegt":
-            self._status = "laeuft"
+        if self._status == "created":
+            self._status = "running"
         now = _now()
         for entry in self._phases:
             if entry.phase == self._current_phase and entry.ended_at is None:
@@ -541,8 +539,8 @@ class RunLedgerFold:
             self._seal_open_step()
             if status is not None:
                 self._status = status
-            elif self._result is not None and self._status not in ("unterbrochen", "abgebrochen"):
-                self._status = "fertig"
+            elif self._result is not None and self._status not in ("interrupted", "cancelled"):
+                self._status = "done"
             self._finished_at = _now()
             self._flush_now = True
         await self.flush(force=True)
@@ -593,7 +591,7 @@ class RunLedgerFold:
             steps=[step.wire() for step in self._steps],
             result=self._result,
             error=error,
-            grundlage=list(self._grundlage) or None,
+            basis=list(self._basis) or None,
             startedAt=self._started_at,
             updatedAt=self._updated_at,
             finishedAt=self._finished_at,
@@ -604,10 +602,10 @@ class RunLedgerFold:
         phases = [entry.wire() for entry in self._phases if self._sent_phases.get(entry.phase, "") != entry.ended_at]
         steps = [step.wire() for step in self._steps if step is not self._open_step and step.id not in self._sent_steps]
         status = self._status if self._status != self._sent_status else None
-        grundlage = list(self._grundlage) if len(self._grundlage) != self._sent_grundlage else None
-        if not phases and not steps and status is None and grundlage is None:
+        basis = list(self._basis) if len(self._basis) != self._sent_basis else None
+        if not phases and not steps and status is None and basis is None:
             return None
-        return RunLedgerAppendRequest(steps=steps or None, phases=phases or None, status=status, grundlage=grundlage)
+        return RunLedgerAppendRequest(steps=steps or None, phases=phases or None, status=status, basis=basis)
 
     def _mark_sent(self, body: RunLedgerAppendRequest) -> None:
         """Remember what the store accepted, so the next append does not repeat it.
@@ -625,8 +623,8 @@ class RunLedgerFold:
                 self._sent_phases[entry.phase] = entry.ended_at
             if body.status is not None:
                 self._sent_status = body.status
-            if body.grundlage is not None:
-                self._sent_grundlage = len(body.grundlage)
+            if body.basis is not None:
+                self._sent_basis = len(body.basis)
 
     def _emit_snapshot(self, ledger: dict[str, Any] | None) -> None:
         """Put the whole ledger on the job's own stream, for whoever is watching."""
@@ -674,7 +672,7 @@ class FoldingEventStore:
             flush()
 
 
-def _grundlage_doc(row: Any) -> RunLedgerDoc | None:
+def _basis_doc(row: Any) -> RunLedgerDoc | None:
     """One Grundlage row as the ledger carries it: no loci, the receipt is the steps'."""
     if not isinstance(row, dict):
         return None

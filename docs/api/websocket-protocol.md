@@ -98,7 +98,7 @@ The `server.js` gateway handles WebSocket upgrade requests:
 
 Alongside every individual `x-grid-*` header above, `server.js` now also sends
 `X-Grid-Request-Context` (base64url JSON consolidating all of them into one
-object, plus `bundesland` — a structured jurisdiction field with no
+object, plus `federal_state` — a structured jurisdiction field with no
 individual-header equivalent — and `requester`, `{ name, email,
 organizationName }`: who `userId` is, which the agent's prompt names, signed
 from the session the envelope is minted for, live or pinned) and `X-Grid-Request-Context-Sig` (hex
@@ -406,7 +406,7 @@ expanded collection list:
 | Field | Type | Meaning |
 |-------|------|---------|
 | `focus_file_name` | `string` | Filename of the file this send is about (the composer "Asking about …" subject). Retrieval prefers it, AND it is named in the prompts. |
-| `focus_shelf` | `"session"` \| `"project"` \| `"archiv"` | Shelf that file sits on. Wins over `source_preset`. |
+| `focus_shelf` | `"session"` \| `"project"` \| `"office_shelf"` | Shelf that file sits on. Wins over `source_preset`. |
 | `source_preset` | `"law"` \| `"project"` \| `"office"` | Composer shortcut chip. Used only when no subject shelf is set. |
 
 ```json

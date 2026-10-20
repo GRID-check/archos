@@ -38,7 +38,7 @@ KNOWN = {
     "cleanup_proposal.py",
     "consistency_check.py",
     "documents.py",
-    "fassung_compare.py",
+    "revision_compare.py",
     "feedback_digest.py",
     "filing_fit.py",
     "generate_conversation_title.py",

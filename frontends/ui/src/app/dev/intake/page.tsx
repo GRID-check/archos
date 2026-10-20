@@ -27,23 +27,23 @@ const fact = (value: unknown) => ({
 })
 
 /** A Bestandsgebäude mid-Sanierung: enough to unfold Modul C's whole block. */
-const BESTAND_PROFILE: ProjectProfile = {
+const EXISTING_PROFILE: ProjectProfile = {
   facts: {
     project_name: fact('Demo · Hoftrakt Lacknergasse'),
-    standort_adresse: fact('Lacknergasse 12, 1170 Wien'),
+    site_address: fact('Lacknergasse 12, 1170 Wien'),
     country: fact('at'),
-    bundesland: fact('wien'),
-    vorhabensart: fact(['sanierung', 'umbau']),
-    projektphase: fact('vorentwurf'),
-    'bauwerk_name@bw1': fact('Hoftrakt'),
-    'bauwerkstyp@bw1': fact('gebaeude'),
-    'errichtungsstatus@bw1': fact('bestand'),
-    'baujahr_bestand@bw1': fact(1962),
-    'bestand_nutzung@bw1': fact('Werkstatt und Lager'),
-    'denkmalschutz@bw1': fact(false),
-    'bestand_massnahmen@bw1': fact(['huelle_sanierung', 'umbau_innen']),
-    'bestand_geschosse_oberirdisch@bw1': fact(3),
-    'geschosse_oberirdisch@bw1': fact(4),
+    federal_state: fact('vienna'),
+    work_type: fact(['refurbishment', 'conversion']),
+    project_phase: fact('preliminary_design'),
+    'building_name@bldg1': fact('Hoftrakt'),
+    'building_type@bldg1': fact('building'),
+    'construction_status@bldg1': fact('existing'),
+    'existing_year_built@bldg1': fact(1962),
+    'existing_use@bldg1': fact('Werkstatt und Lager'),
+    'heritage_protection@bldg1': fact(false),
+    'existing_measures@bldg1': fact(['envelope_refurbishment', 'interior_conversion']),
+    'existing_storeys_above_ground@bldg1': fact(3),
+    'storeys_above_ground@bldg1': fact(4),
   },
   goals: {},
   unknowns: [],
@@ -59,17 +59,17 @@ export default function IntakeGalleryPage({
     notFound()
   }
   const params = use(searchParams)
-  const bestand = params.variant === 'bestand'
+  const existing = params.variant === 'existing'
 
   return (
     <main className="bg-background min-h-screen">
       <ProjectIntakeWizard
-        key={bestand ? 'bestand' : 'default'}
-        projectId={bestand ? 'dev-bestand' : 'dev'}
-        projectName={bestand ? 'Demo · Hoftrakt Lacknergasse' : 'Demo · WHA Quellenstraße'}
-        mode={bestand ? 'edit' : 'create'}
-        initialStep={bestand ? 2 : 0}
-        initialProfile={bestand ? BESTAND_PROFILE : null}
+        key={existing ? 'existing' : 'default'}
+        projectId={existing ? 'dev-bestand' : 'dev'}
+        projectName={existing ? 'Demo · Hoftrakt Lacknergasse' : 'Demo · WHA Quellenstraße'}
+        mode={existing ? 'edit' : 'create'}
+        initialStep={existing ? 2 : 0}
+        initialProfile={existing ? EXISTING_PROFILE : null}
         definitionOverride={projectIntakeDefinitionV1}
       />
     </main>

@@ -62,7 +62,7 @@ row cannot name another tenant's project or conversation.
 | Column | Holds |
 |---|---|
 | `project_id` | the project the change is for: the turn's, taken from the signed envelope, or the upload's for a filing suggestion. NULL for a Büroablage proposal |
-| `scope` | the shelf, `project` or `archiv` (0146), `project_folders.scope`'s vocabulary: `project` exactly when there is a project |
+| `scope` | the shelf, `project` or `office_shelf` (0146), `project_folders.scope`'s vocabulary: `project` exactly when there is a project |
 | `origin_trace_id` | the Langfuse trace of the judgement that proposed it, for a proposal no turn made (a filing suggestion); the decision score goes there |
 | `kind`, `payload` | one of the three kinds and its payload, below |
 | `status` | `proposed`, `applied`, `partially_applied`, `failed`, `dismissed` |
@@ -87,7 +87,7 @@ The CHECKs hold the lifecycle, so no code path can break it:
   (a card index names a card of one answer).
 - `scope` is known and is `project` exactly when `project_id` is set; a
   Büroablage proposal is a `file_operation` that moves one or more items, every
-  one with `source: buero` (`proposed_changes_archiv_move`, which reads a
+  one with `source: buero` (`proposed_changes_office_shelf_move`, which reads a
   missing key as a refusal, not as a pass).
 
 `scripts/rls-test-db.sh` refuses each CHECK and each cross-tenant foreign key
@@ -253,8 +253,8 @@ operation the server did not store stays in the registry (below).
 | Act | Takes | Refused with |
 |---|---|---|
 | Read | `project:view` on the project (any member for the Büroablage), and `viewer` on the conversation the proposal was made in; one made in no conversation needs every document it names to resolve for the reader on their shelf | 404, for "missing" and "not yours" alike |
-| Apply, dismiss | the read, plus the kind's right (table above) on the project, or `org:archiv:manage` for the Büroablage | 403 (`proposal-decider-needs-write`, which names the kind); a closed project gets its own 403 |
-| List (`GET /api/proposals?projectId=` or `?shelf=archiv`, optionally `&kind=`) | `project:view` on the project; each open proposal is listed only when the reader may read it, with the documents it names resolved to ids | 400 for a query naming no shelf or two; a proposal the reader may not read is left out |
+| Apply, dismiss | the read, plus the kind's right (table above) on the project, or `org:office_shelf:manage` for the Büroablage | 403 (`proposal-decider-needs-write`, which names the kind); a closed project gets its own 403 |
+| List (`GET /api/proposals?projectId=` or `?shelf=office_shelf`, optionally `&kind=`) | `project:view` on the project; each open proposal is listed only when the reader may read it, with the documents it names resolved to ids | 400 for a query naming no shelf or two; a proposal the reader may not read is left out |
 
 The conversation counts because the card in that conversation is the
 proposal's surface, and the payload names files, folders, notes or facts. A
@@ -288,7 +288,7 @@ item fails, and its reason says why.
 
    | Verb | Resolves | Calls |
    |---|---|---|
-   | `move` | the document by name on its shelf (`source`), the folder by path among that shelf's folders; a missing folder the payload names as `new_folder` is made first through the shelf's folder walk (`ensureProjectFolderPaths`, `ensureArchivFolderPaths`) and given its description when this apply made it | `moveDocumentToFolder` |
+   | `move` | the document by name on its shelf (`source`), the folder by path among that shelf's folders; a missing folder the payload names as `new_folder` is made first through the shelf's folder walk (`ensureProjectFolderPaths`, `ensureOfficeShelfFolderPaths`) and given its description when this apply made it | `moveDocumentToFolder` |
    | `rename` | the document by name | `renameDocument` |
    | `create_folder` | the parent by path among the project's folders | `createProjectFolder` |
    | `assign` | the document by name, the person by name or email among the assignment candidates and the decider | `addResourceAssignment` |

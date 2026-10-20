@@ -240,7 +240,7 @@
                 "minLength": 1,
                 "maxLength": 200
               },
-              "bauwerkId": {
+              "buildingId": {
                 "anyOf": [
                   {
                     "type": "string",
@@ -326,7 +326,7 @@
             "required": [
               "key",
               "baseKey",
-              "bauwerkId",
+              "buildingId",
               "label",
               "type",
               "foundIn",
@@ -373,7 +373,7 @@
                 "country": {
                   "const": "at"
                 },
-                "bundesland": {
+                "federalState": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -393,7 +393,7 @@
                     }
                   ]
                 },
-                "gemeinde": {
+                "municipality": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -427,9 +427,9 @@
                 "lat",
                 "lon",
                 "country",
-                "bundesland",
+                "federalState",
                 "state",
-                "gemeinde",
+                "municipality",
                 "postcode",
                 "kind"
               ],
@@ -625,7 +625,7 @@
           "minLength": 1,
           "maxLength": 200
         },
-        "bauwerkId": {
+        "buildingId": {
           "anyOf": [
             {
               "type": "string",
@@ -711,7 +711,7 @@
       "required": [
         "key",
         "baseKey",
-        "bauwerkId",
+        "buildingId",
         "label",
         "type",
         "foundIn",
@@ -793,7 +793,7 @@
             "rule": {
               "type": "string",
               "enum": [
-                "gebaeudeklasse"
+                "building_class"
               ]
             },
             "citation": {
@@ -936,7 +936,7 @@
                 "country": {
                   "const": "at"
                 },
-                "bundesland": {
+                "federalState": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -956,7 +956,7 @@
                     }
                   ]
                 },
-                "gemeinde": {
+                "municipality": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -990,9 +990,9 @@
                 "lat",
                 "lon",
                 "country",
-                "bundesland",
+                "federalState",
                 "state",
-                "gemeinde",
+                "municipality",
                 "postcode",
                 "kind"
               ],
@@ -1116,7 +1116,7 @@
                 "minLength": 1,
                 "maxLength": 200
               },
-              "bauwerkId": {
+              "buildingId": {
                 "anyOf": [
                   {
                     "type": "string",
@@ -1242,7 +1242,7 @@
                         "rule": {
                           "type": "string",
                           "enum": [
-                            "gebaeudeklasse"
+                            "building_class"
                           ]
                         },
                         "citation": {
@@ -1436,7 +1436,7 @@
                               "rule": {
                                 "type": "string",
                                 "enum": [
-                                  "gebaeudeklasse"
+                                  "building_class"
                                 ]
                               },
                               "citation": {
@@ -1549,7 +1549,7 @@
             "required": [
               "key",
               "baseKey",
-              "bauwerkId",
+              "buildingId",
               "label",
               "value",
               "display",
@@ -1576,7 +1576,7 @@
                 "minLength": 1,
                 "maxLength": 200
               },
-              "bauwerkId": {
+              "buildingId": {
                 "anyOf": [
                   {
                     "type": "string",
@@ -1662,7 +1662,7 @@
             "required": [
               "key",
               "baseKey",
-              "bauwerkId",
+              "buildingId",
               "label",
               "type",
               "foundIn",
@@ -1688,7 +1688,7 @@
                 "minLength": 1,
                 "maxLength": 200
               },
-              "bauwerkId": {
+              "buildingId": {
                 "anyOf": [
                   {
                     "type": "string",
@@ -1774,7 +1774,7 @@
             "required": [
               "key",
               "baseKey",
-              "bauwerkId",
+              "buildingId",
               "label",
               "type",
               "foundIn",
@@ -1815,7 +1815,7 @@
                       "minLength": 1,
                       "maxLength": 200
                     },
-                    "bauwerkId": {
+                    "buildingId": {
                       "anyOf": [
                         {
                           "type": "string",
@@ -1941,7 +1941,7 @@
                               "rule": {
                                 "type": "string",
                                 "enum": [
-                                  "gebaeudeklasse"
+                                  "building_class"
                                 ]
                               },
                               "citation": {
@@ -2135,7 +2135,7 @@
                                     "rule": {
                                       "type": "string",
                                       "enum": [
-                                        "gebaeudeklasse"
+                                        "building_class"
                                       ]
                                     },
                                     "citation": {
@@ -2248,7 +2248,7 @@
                   "required": [
                     "key",
                     "baseKey",
-                    "bauwerkId",
+                    "buildingId",
                     "label",
                     "value",
                     "display",
@@ -2274,7 +2274,7 @@
           "items": {
             "type": "object",
             "properties": {
-              "bauwerkId": {
+              "buildingId": {
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 32
@@ -2282,7 +2282,7 @@
               "rule": {
                 "type": "string",
                 "enum": [
-                  "gebaeudeklasse"
+                  "building_class"
                 ]
               },
               "citation": {
@@ -2372,7 +2372,7 @@
                         "minLength": 1,
                         "maxLength": 200
                       },
-                      "bauwerkId": {
+                      "buildingId": {
                         "anyOf": [
                           {
                             "type": "string",
@@ -2498,7 +2498,7 @@
                                 "rule": {
                                   "type": "string",
                                   "enum": [
-                                    "gebaeudeklasse"
+                                    "building_class"
                                   ]
                                 },
                                 "citation": {
@@ -2692,7 +2692,7 @@
                                       "rule": {
                                         "type": "string",
                                         "enum": [
-                                          "gebaeudeklasse"
+                                          "building_class"
                                         ]
                                       },
                                       "citation": {
@@ -2805,7 +2805,7 @@
                     "required": [
                       "key",
                       "baseKey",
-                      "bauwerkId",
+                      "buildingId",
                       "label",
                       "value",
                       "display",
@@ -2823,7 +2823,7 @@
               }
             },
             "required": [
-              "bauwerkId",
+              "buildingId",
               "rule",
               "citation",
               "value",
@@ -2935,7 +2935,7 @@
                     "minLength": 1,
                     "maxLength": 200
                   },
-                  "bauwerkId": {
+                  "buildingId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -3021,7 +3021,7 @@
                 "required": [
                   "key",
                   "baseKey",
-                  "bauwerkId",
+                  "buildingId",
                   "label",
                   "type",
                   "foundIn",
@@ -3086,7 +3086,7 @@
                           "minLength": 1,
                           "maxLength": 200
                         },
-                        "bauwerkId": {
+                        "buildingId": {
                           "anyOf": [
                             {
                               "type": "string",
@@ -3172,7 +3172,7 @@
                       "required": [
                         "key",
                         "baseKey",
-                        "bauwerkId",
+                        "buildingId",
                         "label",
                         "type",
                         "foundIn",

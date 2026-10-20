@@ -302,9 +302,9 @@ def test_a_priority_nobody_defined_is_422(client, prod_token, submit_mock):
     submit_mock.assert_not_awaited()
 
 
-def test_the_settled_plan_and_the_unterlagen_reach_the_worker(client, prod_token, submit_mock):
+def test_the_settled_plan_and_the_documents_reach_the_worker(client, prod_token, submit_mock):
     """The commissioning turn's approved plan binds the worker's planner; the named documents its reading."""
-    documents = {"grundlage": [{"name": "Einreichplan.pdf", "shelf": "project"}], "ausgeschlossen": []}
+    documents = {"basis": [{"name": "Einreichplan.pdf", "shelf": "project"}], "excluded": []}
     resp = _post(client, _valid_body(clarifier_result="Rechercheplan: Fluchtwege", documents=documents))
     assert resp.status_code == 200
 

@@ -216,6 +216,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/audit/schemas.mjs ./src/l
 # they import needs a copy here too.
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/images/avatar-hosts.ts ./src/lib/images/avatar-hosts.ts
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/images/optimizable.ts ./src/lib/images/optimizable.ts
+# The renamed API paths' redirects (`redirects()`); import-free like the two above.
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/api/legacy-routes.ts ./src/lib/api/legacy-routes.ts
 # The request-body ceiling, which becomes `proxyClientMaxBodySize` and the
 # server-action body limit. It has to clear the largest file any route admits —
 # an `.ifc` at BIM_MAX_IFC_BYTES, not the 100 MB document limit — or a model is

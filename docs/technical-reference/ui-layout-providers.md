@@ -93,7 +93,7 @@ MainLayout reads from `useChatStore` via `useShallow`:
 
 Derives session list for the SessionsPanel, annotating each with:
 - `hasActiveDeepResearch` — a run message in the thread whose stored ledger is still live (`hasLiveRun`, `chat/lib/session-activity`).
-- `hasCompletedReport` — a run message whose ledger says `fertig` (`hasFinishedRun`).
+- `hasCompletedReport` — a run message whose ledger says `done` (`hasFinishedRun`).
 
 ### URL Sync
 

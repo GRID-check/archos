@@ -1,6 +1,6 @@
 import type { MarkTally } from '@/lib/annotations/types'
 import type { DocumentAuthor } from '@/lib/db/schema'
-import type { FassungFacts } from '@/lib/documents/fassung'
+import type { RevisionLinks } from '@/lib/documents/revision-links'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
 import type { RevisionFacts } from '@/lib/documents/revision-facts'
 import type { QuarantineVerdict } from '@/lib/upload-screening/quarantine'
@@ -99,11 +99,11 @@ export interface FileItem {
   /**
    * Which documents this one replaces or is replaced by, Piloti's suggestion
    * and what changed (CONTEXT.md, „Fassung"). Every reference is a document the
-   * reader may open; one they may not is not in it (`fassung-facts.ts`).
+   * reader may open; one they may not is not in it (`revision-facts.ts`).
    * Optional so a listing that did not read it says nothing; `null` is "read,
    * and there is nothing".
    */
-  fassung?: FassungFacts | null
+  revision?: RevisionLinks | null
   /**
    * How many of this office's uploads wait ahead of this one in the ingest
    * queue, or null when it is not waiting there (`DocumentMetadata.queueAhead`).

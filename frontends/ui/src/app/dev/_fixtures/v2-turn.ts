@@ -129,9 +129,9 @@ const ROUND_MS = 4_000
 /** One knowledge search's fan-out, as `render_grounding_block` builds it. */
 const lanes = (round: number) => [
   {
-    key: 'baurecht_oib',
+    key: 'building_law_oib',
     label: 'OIB-Richtlinie',
-    kind: 'baurecht',
+    kind: 'building_law',
     hit_count: 6,
     sources: [
       { name: 'oib-rl_2_ausgabe_mai_2023.pdf', title: 'OIB-Richtlinie 2, Ausgabe Mai 2023', detail: `p.${4 + round}`, shelf: 'base', round },
@@ -139,9 +139,9 @@ const lanes = (round: number) => [
     ],
   },
   {
-    key: 'projekt',
+    key: 'project',
     label: 'Projektwissen',
-    kind: 'projekt',
+    kind: 'project',
     hit_count: 3,
     sources: Array.from({ length: 3 }, (_, i) => ({ name: `Brandschutzkonzept_Stiege_${i + 1}.pdf`, detail: `p.${3 + i}`, shelf: 'project', round })),
   },

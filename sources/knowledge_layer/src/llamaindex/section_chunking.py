@@ -1,6 +1,6 @@
 """Heading-aware chunking for tenant documents: cut on the document's own sections.
 
-Only the OIB Richtlinien had a structure-aware path (``punkt_chunking``). Every other
+Only the OIB Richtlinien had a structure-aware path (``clause_chunking``). Every other
 PDF -- a Brandschutzkonzept, a Baubeschreibung, a Gutachten -- was one ``Document`` per
 page, cut by ``SentenceSplitter(1024/128)``: the overlap never crossed a page, a section
 that began at the foot of page 4 was split from its body on page 5, and one 1024-token
@@ -23,8 +23,8 @@ This module reads the headings the document already has and chunks within them:
   because the section, not the page, is the unit.
 * ``page_label`` stays numeric: the page the chunk's own text starts on. ``page_end``
   records where it ends. The heading's number (or, unnumbered, its title path) is the
-  chunk's ``punkt_id``, so ``read_passage(punkt=…)`` opens a section the way it opens a
-  Punkt, and ``punkt_depth`` gives the document a Gliederung.
+  chunk's ``clause_id``, so ``read_passage(clause=…)`` opens a section the way it opens a
+  Punkt, and ``clause_depth`` gives the document a Gliederung.
 
 When the document has no usable heading structure (:func:`structure_is_usable`) the
 caller keeps the per-page chunks. Pure over page dicts and line lists; llama-index is
@@ -60,7 +60,7 @@ OVERLAP_TOKENS = 96
 #: Metadata that orders, ranges or diagnoses a chunk and carries no retrieval signal.
 SECTION_EMBED_EXCLUDED_METADATA_KEYS = (
     "page_end",
-    "punkt_depth",
+    "clause_depth",
     "chunking",
     "table_part",
     "section_order",
@@ -79,7 +79,7 @@ logger = logging.getLogger(__name__)
 # --- Heading recognition ---------------------------------------------------------------
 
 #: ``3``, ``3.2``, ``3.2.1.`` then a title. Segments of at most two digits: ``1.200 m²``
-#: is a number, never a heading (the same guard ``punkt_chunking`` measured).
+#: is a number, never a heading (the same guard ``clause_chunking`` measured).
 _NUMBERED_RE = re.compile(r"^(?P<num>\d{1,2}(?:\.\d{1,2}){0,4})\.?\s+(?P<title>\S.*)$")
 #: Legal and annex numbering. The title may sit on the next line (``§ 3`` / ``Begriffe``).
 _WORD_NUMBERED_RE = re.compile(
@@ -446,7 +446,7 @@ def _goes_backwards(number: str, numbering: tuple[int, ...]) -> bool:
     """Whether a numbered line falls behind the outline so far: a table's row label.
 
     A document's numbering only moves forward, and a table laid out with a numbered
-    first column restarts at 1 (the guard ``punkt_chunking`` measured on the OIB corpus,
+    first column restarts at 1 (the guard ``clause_chunking`` measured on the OIB corpus,
     in its weakest form: no chain search, no contents page).
     """
     candidate = _numeric(number)
@@ -635,7 +635,7 @@ def join_lines(lines: list[Line]) -> str:
 
 
 def apply_exclusions(document: Any) -> None:
-    """The adapter's embed/LLM exclusions plus this module's own (see ``punkt_chunking``)."""
+    """The adapter's embed/LLM exclusions plus this module's own (see ``clause_chunking``)."""
     try:
         from knowledge_layer.llamaindex.adapter import _apply_metadata_exclusions
 
@@ -655,10 +655,10 @@ def section_metadata(section: Section, order: int) -> dict[str, Any]:
         return metadata
     metadata.update(
         {
-            "punkt_id": section.locator,
-            "punkt_title": section.heading.title,
-            "punkt_path": BREADCRUMB_SEP.join(section.path),
-            "punkt_depth": section.heading.level,
+            "clause_id": section.locator,
+            "clause_title": section.heading.title,
+            "clause_path": BREADCRUMB_SEP.join(section.path),
+            "clause_depth": section.heading.level,
         }
     )
     return metadata
@@ -717,9 +717,9 @@ def _table_documents(text_pages: list[dict[str, Any]], base: dict[str, Any]) -> 
                 "page_end": str(table.page_end),
                 "content_type": "table",
                 "chunking": "table",
-                "punkt_id": label,
-                "punkt_title": table.title,
-                "punkt_path": caption,
+                "clause_id": label,
+                "clause_title": table.title,
+                "clause_path": caption,
                 "table_part": part,
             }
             documents.append(Document(text=f"{caption}{suffix}\n\n{markdown}", metadata=metadata))

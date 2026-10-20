@@ -185,8 +185,8 @@ class SkillSubmitPayload(BaseModel):
     documents: dict | None = Field(
         None,
         description=(
-            "The Unterlagen the reader named on the plan: {grundlage: [{name,title?,shelf?}], "
-            "ausgeschlossen: [...]}. Sanitised in the worker; absent when none were named."
+            "The Unterlagen the reader named on the plan: {basis: [{name,title?,shelf?}], "
+            "excluded: [...]}. Sanitised in the worker; absent when none were named."
         ),
     )
     priority: Literal["interactive", "bulk"] = Field(

@@ -105,7 +105,7 @@ export const projectIntake = {
     inputs: 'Based on',
     suggestedMark: 'suggested',
     confirm: 'Use Gebäudeklasse',
-    confirmAria: 'Use Gebäudeklasse {value} for {bauwerk}',
+    confirmAria: 'Use Gebäudeklasse {value} for {building}',
     confirmed: 'Confirmed',
   },
   evidence: {

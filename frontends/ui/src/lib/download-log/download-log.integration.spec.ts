@@ -79,7 +79,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
     }) as import('@/lib/auth/types').AuthorizedSession
 
   /** A document row, as `recordDocumentAccess` receives it from the access check. */
-  const logged = (id: string, folderId: string | null, scope: 'project' | 'archiv' = 'project', filename = 'Plan.pdf') =>
+  const logged = (id: string, folderId: string | null, scope: 'project' | 'office_shelf' = 'project', filename = 'Plan.pdf') =>
     ({
       id,
       scope,
@@ -130,7 +130,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
             (organization_id, occurred_at, user_id, kind, scope, document_id, document_name, own_list)
           VALUES
             (${values.org ?? ORG}, ${values.at}::timestamptz, ${values.user ?? USER}, ${values.kind ?? 'download'},
-             'archiv', ${values.docId ?? randomUUID()}::uuid, ${values.name ?? 'Plan.pdf'}, ${values.ownList ?? false})
+             'office_shelf', ${values.docId ?? randomUUID()}::uuid, ${values.name ?? 'Plan.pdf'}, ${values.ownList ?? false})
         `),
       values.org ?? ORG
     )
@@ -207,7 +207,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
       await clear()
       await service.recordDocumentAccess(session(), logged(doc.plain, folder.open), 'download')
       await service.recordDocumentAccess(session(), logged(doc.own, folder.own), 'download')
-      await service.recordDocumentAccess(session(), logged(doc.archiv, null, 'archiv'), 'download')
+      await service.recordDocumentAccess(session(), logged(doc.archiv, null, 'office_shelf'), 'download')
 
       const written = await rows()
       expect(written.map((row) => [row.document_id, row.kind, row.own_list])).toEqual([
@@ -220,7 +220,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
     it('records an open only under a folder with its own list, a plain subfolder of one included', async () => {
       await clear()
       await service.recordDocumentAccess(session(), logged(doc.plain, folder.open), 'preview')
-      await service.recordDocumentAccess(session(), logged(doc.archiv, null, 'archiv'), 'pdf')
+      await service.recordDocumentAccess(session(), logged(doc.archiv, null, 'office_shelf'), 'pdf')
       await service.recordDocumentAccess(session(), logged(doc.own, folder.own), 'preview')
       await service.recordDocumentAccess(session(), logged(doc.child, folder.child), 'text')
 
@@ -313,7 +313,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
         inTenant(() =>
           db.execute(sql`
             INSERT INTO document_access_log (organization_id, user_id, kind, scope, document_id, document_name)
-            VALUES (${OTHER_ORG}, ${USER}, 'download', 'archiv', gen_random_uuid(), 'x')`)
+            VALUES (${OTHER_ORG}, ${USER}, 'download', 'office_shelf', gen_random_uuid(), 'x')`)
         )
       )
       expect(foreign).toContain('row-level security')
@@ -454,7 +454,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
               db.execute(sql`
                 INSERT INTO document_access_log
                   (organization_id, occurred_at, user_id, kind, scope, document_id, document_name)
-                VALUES (${org}, ${sql.raw(`${DAY} '${age} days'`)}, ${USER}, 'download', 'archiv', gen_random_uuid(), ${`${age} Tage`})`),
+                VALUES (${org}, ${sql.raw(`${DAY} '${age} days'`)}, ${USER}, 'download', 'office_shelf', gen_random_uuid(), ${`${age} Tage`})`),
             org
           )
         }
@@ -486,7 +486,7 @@ describe.skipIf(!url)('the download log against Postgres', () => {
         () =>
           db.execute(sql`
             INSERT INTO document_access_log (organization_id, occurred_at, user_id, kind, scope, document_id, document_name)
-            VALUES (${BAD_ORG}, now() - interval '100 days', ${USER}, 'download', 'archiv', gen_random_uuid(), '100 Tage')`),
+            VALUES (${BAD_ORG}, now() - interval '100 days', ${USER}, 'download', 'office_shelf', gen_random_uuid(), '100 Tage')`),
         BAD_ORG
       )
 

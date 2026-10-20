@@ -37,13 +37,13 @@ export const proposedChanges = pgTable(
     organizationId: text('organization_id').notNull(),
     /**
      * The project the change is for; NULL for a Büroablage proposal (0146),
-     * exactly when `scope` is `archiv` (`proposed_changes_scope_owner`).
+     * exactly when `scope` is `office_shelf` (`proposed_changes_scope_owner`).
      */
     projectId: uuid('project_id'),
     /**
      * The shelf (0146), `project_folders.scope`'s vocabulary. A Büroablage
      * proposal moves Büroablage documents and nothing else
-     * (`proposed_changes_archiv_move`).
+     * (`proposed_changes_office_shelf_move`).
      */
     scope: text('scope').$type<ProposalScope>().notNull().default('project'),
     kind: text('kind').$type<ProposedChangeKind>().notNull(),
@@ -88,9 +88,9 @@ export const proposedChanges = pgTable(
       .where(sql`${table.status} = 'proposed'`),
     scopeKnown: check('proposed_changes_scope_known', sql`${table.scope} IN (${list(PROPOSAL_SCOPES)})`),
     scopeOwner: check('proposed_changes_scope_owner', sql`(${table.scope} = 'project') = (${table.projectId} IS NOT NULL)`),
-    archivMove: check(
-      'proposed_changes_archiv_move',
-      sql`${table.scope} = 'project' OR COALESCE(${table.kind} = 'file_operation' AND ${table.payload}->>'operation' = 'move' AND jsonb_typeof(${table.payload}->'operations') = 'array' AND jsonb_path_exists(${table.payload}, '$.operations[0]') AND NOT jsonb_path_exists(${table.payload}, '$.operations[*] ? (!(@.source == "buero"))'), false)`
+    officeShelfMove: check(
+      'proposed_changes_office_shelf_move',
+      sql`${table.scope} = 'project' OR COALESCE(${table.kind} = 'file_operation' AND ${table.payload}->>'operation' = 'move' AND jsonb_typeof(${table.payload}->'operations') = 'array' AND jsonb_path_exists(${table.payload}, '$.operations[0]') AND NOT jsonb_path_exists(${table.payload}, '$.operations[*] ? (!(@.source == "office"))'), false)`
     ),
     originCardUidx: uniqueIndex('uniq_proposed_changes_origin_card')
       .on(table.organizationId, table.originMessageId, table.originCardIndex)

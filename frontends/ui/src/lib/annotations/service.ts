@@ -209,7 +209,7 @@ export function deleteRefusalOf(
 }
 
 /** Whether the document sits on a shelf that carries Anmerkungen. */
-const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'archiv'
+const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'office_shelf'
 
 /** Display names by user id; empty when the directory cannot be read, which costs names and nothing else. */
 type Names = ReadonlyMap<string, { name: string }>
@@ -274,10 +274,10 @@ function toView(
     assigneeUserId: record.assigneeUserId,
     assigneeName: nameOf(names, record.assigneeUserId),
     dueOn: record.dueOn,
-    fassungNumber: record.fassungNumber,
+    revisionNumber: record.revisionNumber,
     // A document with no version row shows the bytes its row holds, which is
     // where an Anmerkung set without a version was set.
-    onCurrentFassung: (record.versionId ?? null) === (doc.publishedVersionId ?? null),
+    onCurrentRevision: (record.versionId ?? null) === (doc.publishedVersionId ?? null),
     createdBy: record.createdBy,
     createdByName: nameOf(names, record.createdBy),
     createdAt: record.createdAt.toISOString(),
@@ -1109,7 +1109,7 @@ export async function updateAnnotation(
  * published version's, compared and swapped against the Fassung it was read
  * on, so its number, its thread and every inbox row and wake anchored on it
  * stay whole. Nobody is told: the new Fassung told the people working on its
- * marks (`lib/documents/fassung-notify.ts`), and the room re-reads.
+ * marks (`lib/documents/revision-notify.ts`), and the room re-reads.
  *
  * When another document replaces this one, the mark goes on there instead
  * ({@link carryAcross}).
@@ -1131,7 +1131,7 @@ async function carryToCurrent(
   const current = doc.publishedVersionId ?? null
   if ((existing.versionId ?? null) === current) return { annotation: await viewOf(session, doc, existing.id) }
   const updated = await updateDocumentAnnotation(session.organizationId, doc.id, existing.id, 'open', {
-    fassung: { from: existing.versionId ?? null, to: current },
+    revision: { from: existing.versionId ?? null, to: current },
   })
   // Closed, or carried by a colleague a moment ago: say so rather than guess.
   if (!updated) throw conflict()
@@ -1662,7 +1662,7 @@ export async function listAnnotationsForAgent(
       basis: annotation.basis,
       assigneeName: annotation.assigneeName,
       dueOn: annotation.dueOn,
-      onCurrentFassung: annotation.onCurrentFassung,
+      onCurrentRevision: annotation.onCurrentRevision,
       createdByName: annotation.createdByName,
       createdAt: annotation.createdAt,
       replies: annotation.replies.map((reply) => ({

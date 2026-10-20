@@ -270,13 +270,13 @@ class TestTheDokumentartIsSuggested:
 
     def test_the_options_are_the_vocabulary(self, endpoint):
         install, seen = endpoint
-        with install(self._answer("gesetz", 1.0)):
-            assert document_classification.suggest_doc_class("Bauordnung für Wien …", "BO.pdf") == "gesetz"
+        with install(self._answer("law", 1.0)):
+            assert document_classification.suggest_doc_class("Bauordnung für Wien …", "BO.pdf") == "law"
         assert list(seen["body"]["questions"]["doc_class"]["criteria"]) == list(
             document_classification.DOCUMENT_CLASSES
         )
 
-    @pytest.mark.parametrize(("chosen", "p"), [("sonstiges", 1.0), ("gesetz", 0.6), ("erfunden", 1.0)])
+    @pytest.mark.parametrize(("chosen", "p"), [("other", 1.0), ("law", 0.6), ("erfunden", 1.0)])
     def test_nothing_is_offered_for_the_default_an_unsure_pick_or_an_unknown_one(self, endpoint, chosen, p):
         install, _ = endpoint
         with install(self._answer(chosen, p)):
@@ -298,7 +298,7 @@ class TestReconcileImageTags:
     vision model saw a photograph, Foto is added first; what the classifier read
     stays — a photo of a plan is a Foto AND a Grundriss."""
 
-    def test_a_photo_of_a_plan_is_foto_and_grundriss(self):
+    def test_a_photo_of_a_plan_is_foto_and_floor_plan(self):
         result = reconcile_image_tags(
             ["Grundriss", "Brandschutz", "Schallschutz"], content_type="image", segment_types=["photo"]
         )

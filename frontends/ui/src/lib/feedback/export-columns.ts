@@ -198,7 +198,7 @@ export const FEEDBACK_EXPORT_COLUMNS: readonly ExportColumn<FeedbackExportRecord
   }),
   voteColumn('bundesland', {
     format: 'text',
-    source: "projects.profile -> facts.bundesland.value",
+    source: "projects.profile -> facts.federal_state.value",
     width: 14,
     value: (r) => r.bundesland,
   }),

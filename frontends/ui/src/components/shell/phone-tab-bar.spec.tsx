@@ -51,7 +51,7 @@ const bar = (): HTMLElement => screen.getByRole('navigation', { name: 'Main navi
 
 describe('PhoneTabBar — inside a project', () => {
   test('five tabs, labelled as the rail labels them, the current one marked', () => {
-    render(<PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox />)
+    render(<PhoneTabBar projectId="p1" canAccessOfficeShelf canAccessInbox />)
     const links = within(bar()).getAllByRole('link')
     expect(links.map((link) => link.textContent)).toEqual([
       'Ask Piloti',
@@ -72,7 +72,7 @@ describe('PhoneTabBar — inside a project', () => {
 
   test('"Mehr" opens the sheet of destinations the bar does not carry', async () => {
     const user = userEvent.setup()
-    render(<PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox />)
+    render(<PhoneTabBar projectId="p1" canAccessOfficeShelf canAccessInbox />)
     const more = within(bar()).getByRole('button', { name: 'More' })
     expect(more).toHaveAttribute('aria-expanded', 'false')
 
@@ -83,20 +83,20 @@ describe('PhoneTabBar — inside a project', () => {
   })
 
   test('the Postfach carries its badge on a phone', () => {
-    render(<PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox />)
+    render(<PhoneTabBar projectId="p1" canAccessOfficeShelf canAccessInbox />)
     expect(within(bar()).getByTestId('inbox-badge')).toHaveAttribute('data-pending', '3')
   })
 
   test('at md and up the bar is display:none and opens no badge subscription of its own', () => {
     mobile = false
-    render(<PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox />)
+    render(<PhoneTabBar projectId="p1" canAccessOfficeShelf canAccessInbox />)
     expect(bar().className).toContain('md:hidden')
     expect(badge).toHaveBeenCalledWith(false)
     expect(within(bar()).queryByTestId('inbox-badge')).toBeNull()
   })
 
   test('every tab is a 52px row (44px on its side), and owns the home-indicator inset', () => {
-    render(<PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox />)
+    render(<PhoneTabBar projectId="p1" canAccessOfficeShelf canAccessInbox />)
     expect(bar().className).toContain('pb-[env(safe-area-inset-bottom)]')
     for (const tab of [
       ...within(bar()).getAllByRole('link'),
@@ -110,7 +110,7 @@ describe('PhoneTabBar — inside a project', () => {
   test('a preview can pin the route it stands in for', () => {
     pathname = '/dev/app-rail'
     render(
-      <PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox pathname="/app/projects/p1/chat" />
+      <PhoneTabBar projectId="p1" canAccessOfficeShelf canAccessInbox pathname="/app/projects/p1/chat" />
     )
     expect(within(bar()).getByRole('link', { name: 'Ask Piloti' })).toHaveAttribute(
       'aria-current',
@@ -122,11 +122,11 @@ describe('PhoneTabBar — inside a project', () => {
 describe('PhoneTabBar — above a project', () => {
   test('Projekte, the Büroablage and the Postfach, no "Mehr"', () => {
     pathname = '/app/projects'
-    render(<PhoneTabBar projectId={null} canAccessArchiv canAccessInbox />)
+    render(<PhoneTabBar projectId={null} canAccessOfficeShelf canAccessInbox />)
     const links = within(bar()).getAllByRole('link')
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/app/projects',
-      '/app/archiv',
+      '/app/office-shelf',
       '/app/inbox',
     ])
     expect(within(bar()).getByRole('link', { name: 'Projects' })).toHaveAttribute(

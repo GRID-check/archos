@@ -13,7 +13,7 @@ const cited = (overrides: Partial<CitationSource> = {}): CitationSource => ({
   content: overrides.content ?? 'Plan.pdf, p.1',
   timestamp: new Date(0),
   isCited: true,
-  kind: 'projekt',
+  kind: 'project',
   fileName: 'Plan.pdf',
   collection: 'proj_abc',
   page: 1,
@@ -34,16 +34,16 @@ describe('peekableCitedFile', () => {
     const docs = buildCitationModel({ citations: [cited()] })
     expect(peekableCitedFile(docs)).toEqual({
       fileName: 'Plan.pdf',
-      source: 'projekt',
+      source: 'project',
       title: 'Plan',
     })
   })
 
-  it('returns the one cited Büro file', () => {
+  it('returns the one cited office file', () => {
     const docs = buildCitationModel({
-      citations: [cited({ kind: 'buero', collection: 'archiv_xyz', fileName: 'Referenz.pdf' })],
+      citations: [cited({ kind: 'office', collection: 'archiv_xyz', fileName: 'Referenz.pdf' })],
     })
-    expect(peekableCitedFile(docs)?.source).toBe('buero')
+    expect(peekableCitedFile(docs)?.source).toBe('office')
     expect(peekableCitedFile(docs)?.fileName).toBe('Referenz.pdf')
   })
 
@@ -52,7 +52,7 @@ describe('peekableCitedFile', () => {
       citations: [
         cited({
           id: 'oib',
-          kind: 'baurecht',
+          kind: 'building_law',
           collection: 'oib_knowledge',
           fileName: 'oib-rl_2.pdf',
           content: 'oib-rl_2.pdf, p.5',
@@ -69,11 +69,11 @@ describe('peekableCitedFile', () => {
     expect(peekableCitedFile(docs)).toBeNull()
   })
 
-  it('does not peek when two project/Büro files are cited', () => {
+  it('does not peek when two project/office files are cited', () => {
     const docs = buildCitationModel({
       citations: [
         cited({ id: 'a', fileName: 'A.pdf' }),
-        cited({ id: 'b', kind: 'buero', collection: 'archiv_x', fileName: 'B.pdf' }),
+        cited({ id: 'b', kind: 'office', collection: 'archiv_x', fileName: 'B.pdf' }),
       ],
     })
     expect(peekableCitedFile(docs)).toBeNull()
@@ -99,7 +99,7 @@ describe('peekableCitedFile', () => {
         cited(),
         cited({
           id: 'oib',
-          kind: 'baurecht',
+          kind: 'building_law',
           collection: 'oib_knowledge',
           fileName: 'oib-rl_2.pdf',
           content: 'oib-rl_2.pdf, p.5',
@@ -150,7 +150,7 @@ describe('peekableFileForMessage', () => {
     expect(peekableFileForMessage(message({ citations: [cited()] }))?.fileName).toBe('Plan.pdf')
   })
 
-  it('does not peek a finished answer with no project/Büro citation', () => {
+  it('does not peek a finished answer with no project/office citation', () => {
     expect(peekableFileForMessage(message())).toBeNull()
   })
 })

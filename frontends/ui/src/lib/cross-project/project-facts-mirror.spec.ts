@@ -45,11 +45,11 @@ const profile = (facts: Record<string, unknown>, assumptions: Record<string, unk
   }) as unknown as Project['profile']
 
 const HOLZBAU_WIEN = profile({
-  bundesland: 'Wien',
-  'gebaeudeklasse@bw1': 4,
-  'bauweise@bw1': ['holzbau'],
-  nutzungen: ['wohnen', 'offen'],
-  vorhabensart: 'neubau',
+  federal_state: 'Wien',
+  'building_class@bldg1': 4,
+  'construction_method@bldg1': ['timber'],
+  uses: ['residential', 'open'],
+  work_type: 'new_build',
 })
 
 beforeEach(() => {
@@ -62,19 +62,19 @@ beforeEach(() => {
 describe('what is copied', () => {
   it('is exactly what the similarity reads: tokens, every building, „offen“ left out', () => {
     expect(projectFactsOf(HOLZBAU_WIEN)).toEqual({
-      bundesland: 'wien',
-      gebaeudeklasse: [4],
-      bauweise: ['holzbau'],
-      nutzungen: ['wohnen'],
-      vorhabensart: ['neubau'],
+      federal_state: 'vienna',
+      building_class: [4],
+      construction_method: ['timber'],
+      uses: ['residential'],
+      work_type: ['new_build'],
     })
     const facts = similarityFacts(HOLZBAU_WIEN)
-    expect(projectFactsOf(HOLZBAU_WIEN).gebaeudeklasse).toEqual([...facts.gebaeudeklasse])
+    expect(projectFactsOf(HOLZBAU_WIEN).building_class).toEqual([...facts.building_class])
   })
 
   it('takes the agent’s suggestion where no fact is confirmed, as the similarity does', () => {
-    const suggested = profile({}, { bauweise: { value: ['massivbau'], source: 'agent_suggested' } })
-    expect(projectFactsOf(suggested).bauweise).toEqual(['massivbau'])
+    const suggested = profile({}, { construction_method: { value: ['massivbau'], source: 'agent_suggested' } })
+    expect(projectFactsOf(suggested).construction_method).toEqual(['massivbau'])
   })
 })
 
@@ -82,29 +82,29 @@ describe('what the Python tier accepts (`ProjectFacts` in `models/requests.py`)'
   // A value it refuses is a 422 on every upload of the project and on every
   // boosted search, so the wire carries only what it accepts.
   const MALFORMED = profile({
-    bundesland: 'x'.repeat(81),
-    'gebaeudeklasse@bw1': 'Fluchtniveau 8 m → GK4',
-    'gebaeudeklasse@bw2': 0,
-    'gebaeudeklasse@bw3': 6,
-    bauweise: Array.from({ length: 25 }, (_, n) => `bauweise${n}`),
-    nutzungen: [...Array.from({ length: 45 }, (_, n) => `nutzung${n}`), 'y'.repeat(81)],
-    vorhabensart: ['neubau', 'z'.repeat(81)],
+    federal_state: 'x'.repeat(81),
+    'building_class@bldg1': 'Fluchtniveau 8 m → GK4',
+    'building_class@bldg2': 0,
+    'building_class@bldg3': 6,
+    construction_method: Array.from({ length: 25 }, (_, n) => `bauweise${n}`),
+    uses: [...Array.from({ length: 45 }, (_, n) => `nutzung${n}`), 'y'.repeat(81)],
+    work_type: ['new_build', 'z'.repeat(81)],
   })
 
-  it('keeps a Gebäudeklasse of 1 to 5 only, tokens of at most 80 characters, and lists the Python tier’s length', () => {
+  it('keeps a building class of 1 to 5 only, tokens of at most 80 characters, and lists the Python tier’s length', () => {
     const facts = projectFactsOf(MALFORMED)
-    expect(facts.bundesland).toBeNull()
-    expect(facts.gebaeudeklasse).toEqual([4])
-    expect(facts.bauweise).toHaveLength(PROJECT_FACTS_LIMITS.bauweise)
-    expect(facts.nutzungen).toHaveLength(PROJECT_FACTS_LIMITS.nutzungen)
-    expect(facts.nutzungen).not.toContain('y'.repeat(81))
-    expect(facts.vorhabensart).toEqual(['neubau'])
-    expect(PROJECT_FACTS_LIMITS).toEqual({ token: 80, gebaeudeklasse: 20, bauweise: 20, nutzungen: 40, vorhabensart: 20 })
+    expect(facts.federal_state).toBeNull()
+    expect(facts.building_class).toEqual([4])
+    expect(facts.construction_method).toHaveLength(PROJECT_FACTS_LIMITS.construction_method)
+    expect(facts.uses).toHaveLength(PROJECT_FACTS_LIMITS.uses)
+    expect(facts.uses).not.toContain('y'.repeat(81))
+    expect(facts.work_type).toEqual(['new_build'])
+    expect(PROJECT_FACTS_LIMITS).toEqual({ token: 80, building_class: 20, construction_method: 20, uses: 40, work_type: 20 })
   })
 
   it('sends the same bounded facts as the boost, and no boost when nothing valid is left', () => {
     expect(similarityBoostOf(MALFORMED)?.facts).toEqual(projectFactsOf(MALFORMED))
-    expect(similarityBoostOf(profile({ gebaeudeklasse: 7, bundesland: 'x'.repeat(90) }))).toBeNull()
+    expect(similarityBoostOf(profile({ building_class: 7, federal_state: 'x'.repeat(90) }))).toBeNull()
   })
 })
 
@@ -113,13 +113,13 @@ describe('the boost', () => {
     const boost = similarityBoostOf(HOLZBAU_WIEN)
     expect(boost?.facts).toEqual(projectFactsOf(HOLZBAU_WIEN))
     expect(boost?.weights).toEqual({
-      bundesland: SIMILARITY_WEIGHTS.bundesland,
-      gebaeudeklasse: SIMILARITY_WEIGHTS.gebaeudeklasse,
-      gebaeudeklasse_adjacent: SIMILARITY_WEIGHTS.gebaeudeklasseAdjacent,
-      bauweise: SIMILARITY_WEIGHTS.bauweise,
-      nutzung: SIMILARITY_WEIGHTS.nutzung,
-      nutzung_max: SIMILARITY_WEIGHTS.nutzungMax,
-      vorhabensart: SIMILARITY_WEIGHTS.vorhabensart,
+      federal_state: SIMILARITY_WEIGHTS.federalState,
+      building_class: SIMILARITY_WEIGHTS.buildingClass,
+      building_class_adjacent: SIMILARITY_WEIGHTS.buildingClassAdjacent,
+      construction_method: SIMILARITY_WEIGHTS.constructionMethod,
+      use: SIMILARITY_WEIGHTS.use,
+      use_max: SIMILARITY_WEIGHTS.useMax,
+      work_type: SIMILARITY_WEIGHTS.workType,
     })
   })
 

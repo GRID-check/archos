@@ -209,16 +209,16 @@ describe('delegateTask', () => {
   // forcing, spelled out in German, reached through a code table instead of a
   // picker. ADR-0060 says nothing may impose a skill on a turn, and a table in
   // our own source is no more allowed to than a job or a request is.
-  it('names the einreichcheck skill in the prompt and pastes no body', async () => {
-    await delegateTask(session, { projectId: PROJECT, kind: 'einreichcheck', goal: 'Prüf die Einreichung' })
+  it('names the submission-check skill in the prompt and pastes no body', async () => {
+    await delegateTask(session, { projectId: PROJECT, kind: 'submission_check', goal: 'Prüf die Einreichung' })
 
-    expect(insertedDefinition.plan.prompt).toContain('/einreichcheck')
+    expect(insertedDefinition.plan.prompt).toContain('/submission-check')
     expect(insertedDefinition.plan.prompt).not.toContain('verbindlich')
     expect(resolveSkillSnapshot).not.toHaveBeenCalled()
   })
 
   it('freezes no snapshot, so nothing can be delivered without the model asking', async () => {
-    await delegateTask(session, { projectId: PROJECT, kind: 'einreichcheck', goal: 'Prüf die Einreichung' })
+    await delegateTask(session, { projectId: PROJECT, kind: 'submission_check', goal: 'Prüf die Einreichung' })
 
     // `emptySkillSnapshot()` is literally `{}` — the honest expression of "this
     // row was configured with no skill", and what the pair CHECK expects
@@ -367,7 +367,7 @@ describe('delegateTask', () => {
 
 describe('isDelegatableTaskKind', () => {
   it('accepts the four engines and refuses the two job outputs', () => {
-    for (const kind of ['compliance_check', 'einreichcheck', 'document', 'revision']) {
+    for (const kind of ['compliance_check', 'submission_check', 'document', 'revision']) {
       expect(isDelegatableTaskKind(kind)).toBe(true)
     }
     // `chat` and `deep-research` describe how a definition delivers a result;
@@ -539,8 +539,8 @@ describe('commissionResearchRun — an escalated question becomes a run', () => 
 
   it('carries the Rahmen and the Unterlagen onto the run and to the worker, and the context as the clarifier result', async () => {
     const documents = {
-      grundlage: [{ name: 'Einreichplan.pdf', title: 'Einreichplan EG', shelf: 'project' }],
-      ausgeschlossen: [{ name: 'alt.pdf' }],
+      basis: [{ name: 'Einreichplan.pdf', title: 'Einreichplan EG', shelf: 'project' }],
+      excluded: [{ name: 'alt.pdf' }],
     }
     await commissionResearchRun(session, {
       projectId: PROJECT,
@@ -569,7 +569,7 @@ describe('commissionResearchRun — an escalated question becomes a run', () => 
       projectId: PROJECT,
       conversationId: THREAD,
       question: QUESTION,
-      documents: { grundlage: [], ausgeschlossen: [] },
+      documents: { basis: [], excluded: [] },
     })
     const inserted = vi.mocked(repository.insertRun).mock.calls[0][0]
     expect(inserted.plan).not.toHaveProperty('documents')
@@ -699,8 +699,8 @@ describe('a run’s Unterlagen never name a document from a restricted folder (A
       conversationId: THREAD,
       question: QUESTION,
       documents: {
-        grundlage: [{ name: 'Abmahnung_Meier_2026.pdf', title: 'Abmahnung Meier', shelf: 'project' }],
-        ausgeschlossen: [],
+        basis: [{ name: 'Abmahnung_Meier_2026.pdf', title: 'Abmahnung Meier', shelf: 'project' }],
+        excluded: [],
       },
     }).catch((caught: unknown) => caught)
 
@@ -721,7 +721,7 @@ describe('a run’s Unterlagen never name a document from a restricted folder (A
       projectId: PROJECT,
       conversationId: THREAD,
       question: QUESTION,
-      documents: { grundlage: [], ausgeschlossen: [{ name: 'Abmahnung_Meier_2026.pdf' }] },
+      documents: { basis: [], excluded: [{ name: 'Abmahnung_Meier_2026.pdf' }] },
     }).catch((caught: unknown) => caught)
     expect(error).toBeInstanceOf(ConversationConfinedError)
     expect(submitAgentRun).not.toHaveBeenCalled()
@@ -733,11 +733,11 @@ describe('a run’s Unterlagen never name a document from a restricted folder (A
       conversationId: THREAD,
       question: QUESTION,
       documents: {
-        grundlage: [
+        basis: [
           { name: 'Einreichplan.pdf', shelf: 'project' },
-          { name: 'Abmahnung_Meier_2026.pdf', shelf: 'archiv' },
+          { name: 'Abmahnung_Meier_2026.pdf', shelf: 'office_shelf' },
         ],
-        ausgeschlossen: [],
+        excluded: [],
       },
     })
     expect(findProjectDocumentsByFilenames).toHaveBeenCalledWith(PROJECT, 'org_1', ['Einreichplan.pdf'], {

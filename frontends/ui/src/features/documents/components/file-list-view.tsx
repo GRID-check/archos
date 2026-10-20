@@ -8,7 +8,7 @@ import type { FileItem } from './project-file-workspace'
 import { DocumentStatusBadge } from './document-status'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DocumentVersionStateBadge } from './document-version-badge'
-import { FassungCount, OlderFassungBadge, isOlderFassungEntry } from './fassung-badge'
+import { RevisionCount, OlderRevisionBadge, isOlderRevisionEntry } from './revision-badge'
 import { documentBadgeState } from '../lib/document-lifecycle'
 import { FileExtChip } from './file-ext-chip'
 import { DEFAULT_FILE_SORT, RELEVANCE_SORT, nextSort, sortFiles, type FileSort, type FileSortKey } from '../lib/file-sort'
@@ -418,7 +418,7 @@ const FileListRowItem = memo(function FileListRowItem({
                 column, and here it never makes a row taller. */}
             <span className="flex min-w-0 items-baseline gap-1.5 text-xs font-medium leading-[1.4] text-foreground">
               <FileName text={documentDisplayName(file)} />
-              <FassungCount file={file} />
+              <RevisionCount file={file} />
               {/* What is still open on its pages; a press opens the review, not the row. */}
               <OpenMarksChip file={file} name={documentDisplayName(file)} className="self-center" />
               {/* Where Piloti would file it: the same chip as on the card,
@@ -503,8 +503,8 @@ const FileListRowItem = memo(function FileListRowItem({
         {/* An older Fassung shows one badge, „Ältere Fassung", with
             what replaced it on hover: the lifecycle's „Ersetzt" said
             the same thing again. One badge, so the cell never wraps. */}
-        {isOlderFassungEntry(file) ? (
-          <OlderFassungBadge file={file} className="max-w-full truncate" />
+        {isOlderRevisionEntry(file) ? (
+          <OlderRevisionBadge file={file} className="max-w-full truncate" />
         ) : approvalState ? (
           <DocumentVersionStateBadge
             versionState={approvalSubject.versionState}

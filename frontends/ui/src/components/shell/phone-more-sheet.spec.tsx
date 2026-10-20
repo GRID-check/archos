@@ -28,7 +28,7 @@ vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => true }))
 afterEach(() => useShellOverlays.setState({ moreSheetOpen: false }))
 
 const flags = {
-  canAccessArchiv: true,
+  canAccessOfficeShelf: true,
   canAccessInbox: true,
   showSkills: true,
   canViewOrganization: true,
@@ -41,7 +41,7 @@ describe('PhoneMoreSheet', () => {
     const user = userEvent.setup()
     render(
       <>
-        <PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox />
+        <PhoneTabBar projectId="p1" canAccessOfficeShelf canAccessInbox />
         <PhoneMoreSheet projectId="p1" authRequired {...flags} />
       </>
     )
@@ -51,7 +51,7 @@ describe('PhoneMoreSheet', () => {
 
     const sheet = await screen.findByRole('dialog')
     const links = within(sheet).getAllByRole('link').map((link) => link.getAttribute('data-destination'))
-    expect(links).toEqual(['automation', 'archiv', 'profile', 'organization'])
+    expect(links).toEqual(['automation', 'officeShelf', 'profile', 'organization'])
     // None of the bar's own tabs is repeated.
     for (const name of ['Ask Piloti', 'Files', 'Overview']) {
       expect(within(sheet).queryByRole('link', { name })).toBeNull()

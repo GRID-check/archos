@@ -31,7 +31,7 @@ import type {
 } from '@/lib/db/schema'
 import { getProjectOverviewData, type ProjectOverviewReader } from './overview-query'
 import {
-  abschlussProblem,
+  closingProblem,
   canTransition,
   isProjectClosed,
   keptWhenClosed,
@@ -231,10 +231,10 @@ export interface CreateProjectInput {
   description?: string
   /** The address search's hit. Seeds the profile (address, country, Bundesland). */
   location?: GeocodeResult
-  /** The address as the person typed it, when no search hit was chosen. Seeds `standort_adresse` only. */
+  /** The address as the person typed it, when no search hit was chosen. Seeds `site_address` only. */
   address?: string
   /** A Bundesland token chosen by hand (API callers; the dialog no longer asks). */
-  bundesland?: string
+  federalState?: string
 }
 
 /**
@@ -331,7 +331,7 @@ export async function createProject(
           description: input.description,
           location: input.location,
           address: input.address,
-          bundesland: input.bundesland,
+          federalState: input.federalState,
           closing: closing && { outcome: closing.outcome, startedOn: closing.startedOn, endedOn: closing.endedOn },
         },
         now
@@ -374,12 +374,12 @@ export async function createProject(
   return project
 }
 
-/** The closing of a project being created, or a 400: months, and an Abschluss within `abschlussBounds`. */
+/** The closing of a project being created, or a 400: months, and an Abschluss within `closingBounds`. */
 function closingOrRefuse(closing: ProjectClosing, thisMonth: Month): ProjectClosing {
   if (closing.startedOn !== null && !isMonth(closing.startedOn)) {
     throw new BadRequestError('The Beginn must be a month, YYYY-MM.', { reason: 'invalid-month' })
   }
-  abschlussOrRefuse(closing.endedOn, closing.startedOn, thisMonth)
+  endedOnOrRefuse(closing.endedOn, closing.startedOn, thisMonth)
   return closing
 }
 
@@ -517,7 +517,7 @@ export async function setProjectStatus(
           at: now,
           closedBy: session.userId,
           outcome: change.outcome,
-          endedOn: monthToDate(abschlussOrRefuse(change.endedOn, dateToMonth(current.startedOn), currentMonth(now))),
+          endedOn: monthToDate(endedOnOrRefuse(change.endedOn, dateToMonth(current.startedOn), currentMonth(now))),
         }
       : change.status === 'paused'
         ? { status: 'paused', at: now }
@@ -568,9 +568,9 @@ async function rearmParkedOneShots(projectId: string, organizationId: string): P
   }
 }
 
-/** The Abschluss a close names, or a 400: a month within `abschlussBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
-function abschlussOrRefuse(endedOn: Month, startedOn: Month | null, thisMonth: Month): Month {
-  const problem = abschlussProblem(endedOn, startedOn, thisMonth)
+/** The Abschluss a close names, or a 400: a month within `closingBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
+function endedOnOrRefuse(endedOn: Month, startedOn: Month | null, thisMonth: Month): Month {
+  const problem = closingProblem(endedOn, startedOn, thisMonth)
   if (problem === 'invalid') {
     throw new BadRequestError('The Abschluss must be a month, YYYY-MM.', { reason: 'invalid-month' })
   }

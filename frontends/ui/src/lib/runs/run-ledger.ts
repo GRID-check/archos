@@ -32,7 +32,7 @@
 import {
   MAX_DOCS_PER_STEP,
   MAX_ERROR_REASON_CHARS,
-  MAX_GRUNDLAGE_DOCS,
+  MAX_BASIS_DOCS,
   MAX_INTENT_CHARS,
   MAX_LOCI_PER_DOC,
   MAX_LOCUS_CHARS,
@@ -48,6 +48,7 @@ import {
   MAX_TITLE_CHARS,
   RUN_PHASES,
   RUN_STATUSES,
+  modernizeRunLedger,
   type RunError,
   type RunLedger,
   type RunLedgerDoc,
@@ -118,12 +119,12 @@ function sanitizeDoc(input: unknown): RunLedgerDoc | undefined {
 }
 
 /** The Grundlage rows, bounded and deduplicated by name; loci are the steps' to carry. */
-export function sanitizeGrundlage(input: unknown): RunLedgerDoc[] {
+export function sanitizeBasis(input: unknown): RunLedgerDoc[] {
   if (!Array.isArray(input)) return []
   const out: RunLedgerDoc[] = []
   const seen = new Set<string>()
   for (const raw of input) {
-    if (out.length >= MAX_GRUNDLAGE_DOCS) break
+    if (out.length >= MAX_BASIS_DOCS) break
     const doc = sanitizeDoc(raw)
     if (!doc) continue
     const key = doc.name.toLocaleLowerCase()
@@ -168,7 +169,7 @@ function sanitizeStep(input: unknown): RunStep | undefined {
  * The phases, at most one entry per key.
  *
  * Deduplicated by key rather than truncated by count: a phase is entered once,
- * and a payload naming `recherchieren` five times is a replaying fold or a
+ * and a payload naming `researching` five times is a replaying fold or a
  * tampered blob, not five phases. The first entry wins, so a later copy cannot
  * rewrite when a phase began.
  */
@@ -238,9 +239,9 @@ function deriveStatus(ledger: {
   steps: readonly RunStep[]
   phases: readonly RunPhaseEntry[]
 }): RunStatus {
-  if (ledger.error) return 'fehlgeschlagen'
-  if (ledger.result) return 'fertig'
-  return ledger.steps.length > 0 || ledger.phases.length > 0 ? 'laeuft' : 'angelegt'
+  if (ledger.error) return 'failed'
+  if (ledger.result) return 'done'
+  return ledger.steps.length > 0 || ledger.phases.length > 0 ? 'running' : 'created'
 }
 
 /**
@@ -273,7 +274,8 @@ function resolveStartedAt(
  * state the reader most needs to see. Null means the payload did not identify a
  * run at all — no id, or no instant anywhere — which is corruption, not a state.
  */
-export function sanitizeRunLedger(input: unknown): RunLedger | null {
+export function sanitizeRunLedger(stored: unknown): RunLedger | null {
+  const input = modernizeRunLedger(stored)
   if (!isRecord(input)) return null
   const runId = cap(input.runId, MAX_RUN_ID_CHARS)
   if (!runId) return null
@@ -292,7 +294,7 @@ export function sanitizeRunLedger(input: unknown): RunLedger | null {
 
   const result = sanitizeResult(input.result)
   const error = sanitizeError(input.error, phases)
-  const grundlage = sanitizeGrundlage(input.grundlage)
+  const basis = sanitizeBasis(input.basis)
   const ledger: RunLedger = {
     runId,
     status: isStatus(input.status) ? input.status : deriveStatus({ error, result, steps, phases }),
@@ -303,7 +305,7 @@ export function sanitizeRunLedger(input: unknown): RunLedger | null {
   }
   if (result) ledger.result = result
   if (error) ledger.error = error
-  if (grundlage.length > 0) ledger.grundlage = grundlage
+  if (basis.length > 0) ledger.basis = basis
   const finishedAt = instant(input.finishedAt)
   if (finishedAt !== undefined) ledger.finishedAt = finishedAt
   return ledger
@@ -329,7 +331,7 @@ export function emptyRunLedger(runId: string, at: Date = new Date()): RunLedger 
   const startedAt = at.toISOString()
   return {
     runId: runId.trim().slice(0, MAX_RUN_ID_CHARS),
-    status: 'angelegt',
+    status: 'created',
     phases: [],
     steps: [],
     startedAt,
@@ -363,7 +365,7 @@ export function appendStep(ledger: RunLedger, step: RunStep, at: Date = new Date
   return settled(
     {
       ...ledger,
-      status: ledger.status === 'angelegt' ? 'laeuft' : ledger.status,
+      status: ledger.status === 'created' ? 'running' : ledger.status,
       steps: [...ledger.steps, step],
       updatedAt: at.toISOString(),
     },
@@ -383,7 +385,7 @@ export function openPhase(ledger: RunLedger, phase: RunPhase, at: Date = new Dat
   return settled(
     {
       ...ledger,
-      status: ledger.status === 'angelegt' ? 'laeuft' : ledger.status,
+      status: ledger.status === 'created' ? 'running' : ledger.status,
       phases: [...ledger.phases, { phase, startedAt: now }],
       updatedAt: now,
     },
@@ -430,7 +432,7 @@ export function finishRun(ledger: RunLedger, result: RunResult, at: Date = new D
   return settled(
     {
       ...ledger,
-      status: 'fertig',
+      status: 'done',
       phases: ledger.phases.map((entry) => (entry.endedAt ? entry : { ...entry, endedAt: now })),
       result,
       updatedAt: now,
@@ -453,7 +455,7 @@ export function failRun(ledger: RunLedger, reason: string, at: Date = new Date()
   return settled(
     {
       ...ledger,
-      status: 'fehlgeschlagen',
+      status: 'failed',
       error: {
         reason,
         completedBefore: ledger.phases.filter((entry) => entry.endedAt).map((entry) => entry.phase),
@@ -478,7 +480,7 @@ export function applyRunLedgerAppend(
     phases?: readonly RunPhaseEntry[]
     steps?: readonly RunStep[]
     status?: RunStatus
-    grundlage?: readonly RunLedgerDoc[]
+    basis?: readonly RunLedgerDoc[]
   },
   at: Date = new Date(),
 ): RunLedger {
@@ -488,7 +490,7 @@ export function applyRunLedgerAppend(
     if (entry.endedAt) next = closePhase(next, entry.phase, new Date(entry.endedAt))
   }
   for (const step of patch.steps ?? []) next = appendStep(next, step, at)
-  if (patch.grundlage) next = setGrundlage(next, patch.grundlage, at)
+  if (patch.basis) next = setBasis(next, patch.basis, at)
   return patch.status ? setRunStatus(next, patch.status, at) : next
 }
 
@@ -497,19 +499,19 @@ export function applyRunLedgerAppend(
  * re-sends it on a live addition, and a list is the one shape that cannot be
  * applied twice.
  */
-export function setGrundlage(
+export function setBasis(
   ledger: RunLedger,
   docs: readonly RunLedgerDoc[],
   at: Date = new Date(),
 ): RunLedger {
-  const grundlage = sanitizeGrundlage(docs)
+  const basis = sanitizeBasis(docs)
   const same =
-    grundlage.length === (ledger.grundlage?.length ?? 0) &&
-    grundlage.every((doc, i) => doc.name === ledger.grundlage?.[i]?.name)
+    basis.length === (ledger.basis?.length ?? 0) &&
+    basis.every((doc, i) => doc.name === ledger.basis?.[i]?.name)
   if (same) return ledger
   const next: RunLedger = { ...ledger, updatedAt: at.toISOString() }
-  if (grundlage.length > 0) next.grundlage = grundlage
-  else delete next.grundlage
+  if (basis.length > 0) next.basis = basis
+  else delete next.basis
   return next
 }
 

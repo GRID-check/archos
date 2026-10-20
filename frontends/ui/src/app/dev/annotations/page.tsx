@@ -164,7 +164,7 @@ const FILE: FileItem = {
   versionCount: 3,
   assignees: [{ userId: 'u-1', name: 'Miriam Hofer', email: 'm.hofer@example.at', profilePictureUrl: null }],
   // Index B, filed under another name and confirmed as the Fassung this one replaces.
-  fassung: {
+  revision: {
     supersededBy: null,
     supersedes: [{ id: 'dev-doc-index-b', filename: 'Grundriss_RG_Index-B.pdf' }],
     suggestion: null,
@@ -200,8 +200,8 @@ const base = {
   w: null,
   h: null,
   basis: null,
-  fassungNumber: 3,
-  onCurrentFassung: true,
+  revisionNumber: 3,
+  onCurrentRevision: true,
   createdBy: 'u-1',
   createdByName: ME.name,
   createdAt: minutesAgo(140),
@@ -326,8 +326,8 @@ let annotations: AnnotationView[] = [
     ...pt(120, 200),
     kind: 'defect',
     body: 'Fensterbrüstung Zimmer 1 unter 1,00 m.',
-    fassungNumber: 2,
-    onCurrentFassung: false,
+    revisionNumber: 2,
+    onCurrentRevision: false,
     carryTarget: CARRY_HERE,
   },
   {
@@ -341,8 +341,8 @@ let annotations: AnnotationView[] = [
     createdBy: 'u-2',
     createdByName: ANNA.name,
     canDelete: false,
-    fassungNumber: 2,
-    onCurrentFassung: false,
+    revisionNumber: 2,
+    onCurrentRevision: false,
     carryTarget: CARRY_HERE,
   },
   {
@@ -384,7 +384,7 @@ let indexB: AnnotationView[] = [
     assigneeUserId: 'u-3',
     assigneeName: JAKOB.name,
     dueOn: '2026-10-24',
-    fassungNumber: 2,
+    revisionNumber: 2,
     carryTarget: CARRY_HERE,
   },
   {
@@ -399,7 +399,7 @@ let indexB: AnnotationView[] = [
     createdBy: 'u-2',
     createdByName: ANNA.name,
     canDelete: false,
-    fassungNumber: 2,
+    revisionNumber: 2,
     carryTarget: CARRY_HERE,
   },
   {
@@ -415,7 +415,7 @@ let indexB: AnnotationView[] = [
     closedBy: 'u-1',
     closedByName: ME.name,
     closedAt: minutesAgo(400),
-    fassungNumber: 2,
+    revisionNumber: 2,
   },
 ]
 
@@ -747,8 +747,8 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
         id: 'step-punkt',
         kind: 'status',
         slot: 'retrieval',
-        key: 'status.retrieval.punkt',
-        values: { document: 'OIB-RL 4', punkt: '2.2.1' },
+        key: 'status.retrieval.clause',
+        values: { document: 'OIB-RL 4', clause: '2.2.1' },
       } as const)
   const writing = thread
     ? ({ id: 'step-reply', kind: 'status', slot: 'annotations', key: 'status.action.annotationsReply' } as const)
@@ -803,7 +803,7 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
             lanes: [
               {
                 key: 'oib',
-                kind: 'baurecht',
+                kind: 'building_law',
                 label: 'OIB-Richtlinien',
                 hit_count: 1,
                 sources: [{ name: 'OIB-RL_4_2023.pdf', title: OIB_RL_4.file_name, detail: 'Pkt. 2.2.1 S. 4' }],
@@ -926,7 +926,7 @@ const checkFixed = (turn: ScriptedTurn, question: string) => {
         if (onIndexB) {
           indexB = indexB.map((one) => (one.status === 'open' ? answer(one) : one))
         } else {
-          const checked = annotations.filter((one) => !one.onCurrentFassung && one.status === 'open')
+          const checked = annotations.filter((one) => !one.onCurrentRevision && one.status === 'open')
           annotations = annotations.map((one) => (checked.includes(one) ? answer(one) : one))
           broadcast({
             kind: 'annotations.changed',
@@ -1162,8 +1162,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           id: `ann-${nextNumber}`,
           documentId: FILE.id,
           number: nextNumber,
-          fassungNumber: 3,
-          onCurrentFassung: true,
+          revisionNumber: 3,
+          onCurrentRevision: true,
           createdAt: now,
           updatedAt: now,
           carriedFrom: { annotationId: source.id, documentId: INDEX_B.id, number: source.number, documentName: INDEX_B.filename },
@@ -1269,7 +1269,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const now = new Date().toISOString()
         // „Auf aktuelle Fassung übernehmen": the same mark, its number and thread, now on Fassung 3 and drawn.
         if (carryToCurrent) {
-          const carried = { ...current, fassungNumber: 3, onCurrentFassung: true, carryTarget: null, updatedAt: now }
+          const carried = { ...current, revisionNumber: 3, onCurrentRevision: true, carryTarget: null, updatedAt: now }
           annotations = annotations.map((annotation) => (annotation.id === carried.id ? carried : annotation))
           return json({ annotation: carried })
         }
@@ -1291,7 +1291,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
             ? { closedBy: ME.userId, closedByName: ME.name, closedAt: now, carryTarget: null }
             : {}),
           ...(moved && status === 'open'
-            ? { closedBy: null, closedByName: null, closedAt: null, carryTarget: current.onCurrentFassung ? null : CARRY_HERE }
+            ? { closedBy: null, closedByName: null, closedAt: null, carryTarget: current.onCurrentRevision ? null : CARRY_HERE }
             : {}),
           ...(moved && status === 'open' && current.authorKind === 'piloti' && !current.acceptedBy
             ? { acceptedBy: ME.userId, acceptedByName: ME.name }

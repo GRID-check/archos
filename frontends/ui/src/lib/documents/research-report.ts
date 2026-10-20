@@ -120,12 +120,12 @@ export function splitReportTitle(report: string): { title: string | null; body: 
  *   - **Projekt** — the object, as the app names it. The one fact a reader
  *     away from the app cannot recover; the .docx has carried it since the
  *     saved-answer export shipped.
- *   - **Standort** (`standort_adresse`, intake A2_adr) — the object, as a
+ *   - **Standort** (`site_address`, intake A2_adr) — the object, as a
  *     Behörde names it. A project name is an internal label; an Einreichung is
  *     about an address, and two projects in one office may share a name.
- *   - **Bundesland** (`bundesland`, intake A2_land) — the jurisdiction. Each
+ *   - **Bundesland** (`federal_state`, intake A2_land) — the jurisdiction. Each
  *     Bundesland declares its own edition of the OIB-Richtlinien verbindlich
- *     and has its own Bauordnung (`skills/builtin/oib/brandschutz/SKILL.md`
+ *     and has its own Bauordnung (`skills/builtin/oib/fire-safety/SKILL.md`
  *     says the edition binds), so a compliance statement without it is not
  *     checkable — the reader cannot tell which law it was checked against.
  *   - **Gebäudeklasse** — the classification nearly everything hangs off.
@@ -147,7 +147,7 @@ export function splitReportTitle(report: string): { title: string | null; body: 
  *
  * Deliberately NOT on it, and each for a reason:
  *
- *   - **Nutzung** (`hauptnutzung`). It belongs by every other measure — it is
+ *   - **Nutzung** (`main_use`). It belongs by every other measure — it is
  *     the second axis `applicable-standards.ts` reads. It is left off because
  *     its stored values are wire tokens (`wohnen`, `produzierend`) and this
  *     repo has no label set for them: `NUTZUNGEN` in `intake-definition.ts` is
@@ -217,18 +217,18 @@ function coverRows(
     brief.groups.flatMap((group) => group.facts.map((fact) => [fact.key, fact.value] as const))
   )
 
-  const location = briefFact(facts, 'standort_adresse')
+  const location = briefFact(facts, 'site_address')
   if (location) rows.push({ label: t('reportCover.location'), value: location })
 
-  const bundesland = briefFact(facts, 'bundesland')
-  if (bundesland) rows.push({ label: t('reportCover.bundesland'), value: bundesland })
+  const federalState = briefFact(facts, 'federal_state')
+  if (federalState) rows.push({ label: t('reportCover.bundesland'), value: federalState })
 
   // `fields.gebaeudeklasse` and not a new key: the .docx already labels this
   // exact fact on a card, and two names for the Gebäudeklasse across the two
   // documents an architect puts side by side is the drift `answerExport` exists
   // to prevent.
-  const gebaeudeklasse = briefFact(facts, 'gebaeudeklasse')
-  if (gebaeudeklasse) rows.push({ label: t('fields.gebaeudeklasse'), value: gebaeudeklasse })
+  const buildingClass = briefFact(facts, 'building_class')
+  if (buildingClass) rows.push({ label: t('fields.gebaeudeklasse'), value: buildingClass })
 
   rows.push({
     label: t('createdAt'),

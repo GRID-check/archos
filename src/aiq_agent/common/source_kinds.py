@@ -5,16 +5,16 @@ sources section).
 The product surfaces five *coarse* source kinds, four of them mirroring the
 click-dummy ``TYPES`` registry:
 
-- ``baurecht`` — authoritative building law: the OIB Richtlinien corpus **and**
+- ``building_law`` — authoritative building law: the OIB Richtlinien corpus **and**
   RIS (Bauordnung, Verordnungen, Bundes-/Landesrecht) **and** external Normen.
   OIB corpus hits and RIS hits are the *same* kind — they differ only in the
   fine sub-lane, never in the pathway or the chip.
-- ``buero`` — Büroablage (the organization's standards, details, experience).
-- ``projekt`` — Projektwissen (this project's plans, Bescheide, uploads).
+- ``office`` — Büroablage (the organization's standards, details, experience).
+- ``project`` — Projektwissen (this project's plans, Bescheide, uploads).
 - ``web`` — web-search results.
-- ``messung`` — a value measured off the project's BIM model.
+- ``measurement`` — a value measured off the project's BIM model.
 
-``messung`` is the odd one out and deliberately so. The first four are
+``measurement`` is the odd one out and deliberately so. The first four are
 RETRIEVED PASSAGES: a chunk of a document that a citation resolves to, captured
 into :class:`~aiq_agent.common.citation_verification.SourceRegistry` and
 verifiable by reading the passage back. A measurement has no passage. It
@@ -73,23 +73,23 @@ class SourceKind:
 #: tokens + the mirror in ``frontends/ui/.../source-kinds.ts``) to introduce a
 #: new kind — every rendering surface picks it up automatically.
 SOURCE_KINDS: dict[str, SourceKind] = {
-    "baurecht": SourceKind(
-        key="baurecht",
+    "building_law": SourceKind(
+        key="building_law",
         label="Baurecht & Richtlinien",
         description="Bauordnung, OIB-Richtlinien, Normen.",
-        css_token="baurecht",
+        css_token="building_law",
     ),
-    "buero": SourceKind(
-        key="buero",
+    "office": SourceKind(
+        key="office",
         label="Büroablage",
         description="Standards, Details und Erfahrung deines Büros.",
-        css_token="buero",
+        css_token="office",
     ),
-    "projekt": SourceKind(
-        key="projekt",
+    "project": SourceKind(
+        key="project",
         label="Projektwissen",
         description="Unterlagen, Bescheide und Dateien dieses Projekts.",
-        css_token="projekt",
+        css_token="project",
     ),
     "web": SourceKind(
         key="web",
@@ -97,14 +97,14 @@ SOURCE_KINDS: dict[str, SourceKind] = {
         description="Rechercheergebnisse aus dem Web.",
         css_token="web",
     ),
-    "messung": SourceKind(
-        key="messung",
+    "measurement": SourceKind(
+        key="measurement",
         label="Modellmessung",
         description="Am BIM-Modell gemessen — mit Herkunft, Toleranz und Methode.",
         # The one kind whose ``css_token`` is honest about the promise this
         # field's docstring makes: ``--source-model`` really exists on the
         # frontend. The older four predate the `--source-*` families and name
-        # the KIND (`baurecht`) where the token names the SIGNAL (`law`); they
+        # the KIND (`building_law`) where the token names the SIGNAL (`law`); they
         # are left alone rather than renamed, because the tokens are what
         # `KIND_TO_SIGNAL` resolves to and nothing reads this field.
         css_token="model",
@@ -112,7 +112,7 @@ SOURCE_KINDS: dict[str, SourceKind] = {
 }
 
 #: The fine lane of a PUBLISHED, human-approved, agent-authored document, and
-#: the German sub-label it renders as. A ``buero`` kind — office knowledge, in
+#: the German sub-label it renders as. An ``office`` kind — office knowledge, in
 #: the office colour — with its own lane inside that kind, because "the office
 #: approved this" and "Piloti wrote it and the office approved it" are different
 #: claims and only the second one needs the reader to be told.
@@ -128,13 +128,13 @@ SOURCE_KINDS: dict[str, SourceKind] = {
 #: it (the grounding block via ``provenance.provenance_label``, the frontend
 #: from the ``provenance`` payload), so the lane table stays a taxonomy rather
 #: than a sentence with a hole in it.
-AGENT_AUTHORED_LANE = "buero_piloti"
+AGENT_AUTHORED_LANE = "office_piloti"
 AGENT_AUTHORED_LANE_LABEL = "Piloti-Dokument"
 
 #: The kind a model-derived measurement renders as. Named rather than spelled
 #: out at the call sites so the one place that decides "this is a measurement,
 #: not a retrieved passage" is greppable.
-MEASUREMENT_SOURCE_KIND = "messung"
+MEASUREMENT_SOURCE_KIND = "measurement"
 
 #: Fail-open kind for an unclassifiable source, matching ``lane_for_hit``'s
 #: ``("web", "Web")`` fallback.
@@ -146,21 +146,21 @@ DEFAULT_SOURCE_KIND = "web"
 TOOL_RESULT_SOURCE_TYPE = "tool_result"
 
 # Fine lane stratum-key → coarse source kind. A prefix match on the lane family
-# keeps this table small and forward-compatible: any new ``baurecht_*`` sub-lane
-# (a new OIB document class, a new RIS rank) maps to ``baurecht`` without a code
+# keeps this table small and forward-compatible: any new ``building_law_*`` sub-lane
+# (a new OIB document class, a new RIS rank) maps to ``building_law`` without a code
 # change here. Kept in sync with ``norm_registry``'s ``_RANK_LANES`` /
 # ``_OIB_CLASS_LANES`` and ``lane_for_hit``.
 _LANE_KIND_PREFIXES: tuple[tuple[str, str], ...] = (
-    ("baurecht", "baurecht"),  # baurecht_oib*, baurecht_ris, baurecht_bund/land/verordnung
-    ("behoerde", "baurecht"),  # behördliche Information — authoritative building law
-    ("norm_extern", "baurecht"),  # externe Normen belong to the Baurecht kind
-    ("buero", "buero"),
-    ("projekt", "projekt"),
+    ("building_law", "building_law"),  # building_law_oib*, _ris, _federal/_state/_ordinance
+    ("authority", "building_law"),  # behördliche Information — authoritative building law
+    ("external_standard", "building_law"),  # externe Normen belong to the Baurecht kind
+    ("office", "office"),
+    ("project", "project"),
     ("web", "web"),
     # No retrieval lane maps here — ``lane_for_hit`` cannot produce it, because
     # nothing retrieves a measurement. The measurement channel stamps this lane
     # on itself, and the entry exists so the two ends agree when it does.
-    ("messung", "messung"),
+    ("measurement", "measurement"),
 )
 
 
@@ -220,10 +220,58 @@ class Shelf(StrEnum):
     a generated artifact on the core retrieval path.
     """
 
-    ARCHIV = "archiv"
+    OFFICE_SHELF = "office_shelf"
     PROJECT = "project"
     SESSION = "session"
     BASE = "base"
+
+
+#: The shelf's wire value before it had an English name. A peer that has not
+#: rolled yet (an old BFF, a conversation or citation stored by an earlier build)
+#: still says ``archiv``; it reads as the office shelf and nothing writes it.
+#: The TypeScript twin is ``LEGACY_SHELF`` in ``features/chat/lib/source-kinds.ts``.
+#: Remove after one release.
+LEGACY_SHELF_VALUES: dict[str, str] = {"archiv": Shelf.OFFICE_SHELF.value}
+
+
+def canonical_shelf_value(value: str) -> str:
+    """A shelf wire value in its current spelling (trimmed, lower-cased, legacy names mapped)."""
+    key = value.strip().lower()
+    return LEGACY_SHELF_VALUES.get(key, key)
+
+
+#: Collection-name prefix of an office's shelf. The value is a stored name, not a
+#: spelling: every point of the shelf carries ``scope = <prefix><organization id>``
+#: in Qdrant (ADR-0116) and every document row ``collection_name`` the same, so
+#: the prefix changes only together with a re-tag of both
+#: (``docs/deployment/office-shelf-rename-runbook.md``). Until an operator has
+#: run it, writers keep the ACTIVE prefix; readers accept every one in
+#: :data:`OFFICE_SHELF_COLLECTION_PREFIXES`. The TypeScript twin is
+#: ``OFFICE_SHELF_COLLECTION_PREFIX`` in ``frontends/ui/src/lib/office-shelf/collection.ts``;
+#: ``frontends/ui/src/lib/office-shelf/collection-prefix.spec.ts`` holds the two equal.
+OFFICE_SHELF_COLLECTION_PREFIX = "archiv_"
+#: The prefix the shelf's collections take once re-tagged (the next release's value).
+OFFICE_SHELF_TARGET_COLLECTION_PREFIX = "office_shelf_"
+#: Every prefix a reader recognises as an office shelf. Remove the legacy entry
+#: after the re-tag has run everywhere.
+OFFICE_SHELF_COLLECTION_PREFIXES: tuple[str, ...] = (
+    OFFICE_SHELF_TARGET_COLLECTION_PREFIX,
+    OFFICE_SHELF_COLLECTION_PREFIX,
+)
+
+
+def is_office_shelf_collection(collection: str | None) -> bool:
+    """Whether ``collection`` names an office's shelf (either prefix)."""
+    return (collection or "").strip().lower().startswith(OFFICE_SHELF_COLLECTION_PREFIXES)
+
+
+def office_shelf_organization_id(collection: str | None) -> str | None:
+    """The organization id behind an office shelf collection name; ``None`` for any other name."""
+    name = (collection or "").strip()
+    for prefix in OFFICE_SHELF_COLLECTION_PREFIXES:
+        if name.lower().startswith(prefix):
+            return name[len(prefix) :] or None
+    return None
 
 
 def parse_shelf(value: object) -> Shelf | None:
@@ -237,7 +285,7 @@ def parse_shelf(value: object) -> Shelf | None:
     if not isinstance(value, str):
         return None
     try:
-        return Shelf(value.strip().lower())
+        return Shelf(canonical_shelf_value(value))
     except ValueError:
         return None
 
@@ -247,11 +295,11 @@ def parse_shelf(value: object) -> Shelf | None:
 #: travels. Deliberately shorter than ``SourceKind.label`` ("Baurecht &
 #: Richtlinien" reads badly inside a parenthetical) and stable: the strings are
 #: embedded in citation keys already persisted in messages, so changing one
-#: invalidates those keys unless the old string stays readable. The archiv
+#: invalidates those keys unless the old string stays readable. The office
 #: shelf was renamed from „Büroarchiv" to „Büroablage" (product decision,
 #: 6 Oct 2026); the old qualifier lives on in :data:`RETIRED_SHELF_QUALIFIERS`.
 SHELF_QUALIFIERS: dict[Shelf, str] = {
-    Shelf.ARCHIV: "Büroablage",
+    Shelf.OFFICE_SHELF: "Büroablage",
     Shelf.PROJECT: "Projektwissen",
     Shelf.SESSION: "Private Sitzung",
     Shelf.BASE: "Basiswissen",
@@ -263,7 +311,7 @@ SHELF_QUALIFIERS: dict[Shelf, str] = {
 #: keys keep PARSING. ``session`` never existed in that vocabulary, so it takes
 #: the shelf's own name. Do not treat this table as transport.
 SCOPE_QUALIFIERS: dict[str, str] = {
-    "buero": SHELF_QUALIFIERS[Shelf.ARCHIV],
+    "buero": SHELF_QUALIFIERS[Shelf.OFFICE_SHELF],
     "projekt": SHELF_QUALIFIERS[Shelf.PROJECT],
     "baurecht": SHELF_QUALIFIERS[Shelf.BASE],
     "session": SHELF_QUALIFIERS[Shelf.SESSION],
@@ -274,7 +322,7 @@ SCOPE_QUALIFIERS: dict[str, str] = {
 #: shown to the model. The frontend mirror lists the same strings in
 #: ``CITATION_KEY_QUALIFIERS``.
 RETIRED_SHELF_QUALIFIERS: dict[str, Shelf] = {
-    "Büroarchiv": Shelf.ARCHIV,
+    "Büroarchiv": Shelf.OFFICE_SHELF,
 }
 
 #: Every qualifier a reader strips from a key: what writers emit now, then the
@@ -304,8 +352,8 @@ def shelf_qualifier(shelf: Shelf | str | None) -> str | None:
     rendering as unattributed.
     """
     match parse_shelf(shelf):
-        case Shelf.ARCHIV:
-            return SHELF_QUALIFIERS[Shelf.ARCHIV]
+        case Shelf.OFFICE_SHELF:
+            return SHELF_QUALIFIERS[Shelf.OFFICE_SHELF]
         case Shelf.PROJECT:
             return SHELF_QUALIFIERS[Shelf.PROJECT]
         case Shelf.SESSION:
@@ -352,8 +400,8 @@ def legacy_shelf_for_collection_name(collection: str | None) -> Shelf | None:
     unknown shelf renders unattributed.
     """
     key = (collection or "").strip().lower()
-    if key.startswith("archiv_"):
-        return Shelf.ARCHIV
+    if is_office_shelf_collection(key):
+        return Shelf.OFFICE_SHELF
     if key.startswith("proj_"):
         return Shelf.PROJECT
     if key.startswith("s_"):

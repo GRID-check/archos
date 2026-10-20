@@ -32,7 +32,7 @@ import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 
 import { I18nProvider } from '@/i18n'
-import { answerSteckbrief } from '../_fixtures/steckbrief'
+import { answerProjectRecord } from '../_fixtures/project-record'
 import { ProjectLifecycleCard } from '@/features/projects/components/project-lifecycle-card'
 import { buildIntakeProfile, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
 import type { ProjectAssumption, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
@@ -87,7 +87,7 @@ const MEMORY = [
 
 // Built by the intake's own producer, in the shape production stores.
 const built = (answers: Record<string, ProjectPrimitiveValue>): ProjectProfile =>
-  buildIntakeProfile(answers, projectIntakeDefinitionV1, { bauwerke: [{ id: 'bw1', name: 'Haupthaus' }] })
+  buildIntakeProfile(answers, projectIntakeDefinitionV1, { buildings: [{ id: 'bldg1', name: 'Haupthaus' }] })
 
 /** A value the closing extraction read from a document, not yet a person's answer. */
 const suggested = (value: ProjectPrimitiveValue, reason: string): ProjectAssumption => ({
@@ -101,19 +101,19 @@ const suggested = (value: ProjectPrimitiveValue, reason: string): ProjectAssumpt
 const PROFILE: ProjectProfile = {
   ...built({
     A2_country: 'at',
-    A2_land: 'niederoesterreich',
-    'C1@bw1': 'gebaeude',
-    'C10@bw1': ['holzbau', 'stahlbeton'],
-    'D0@bw1': ['wohnen'],
+    A2_land: 'lower_austria',
+    'C1@bldg1': 'building',
+    'C10@bldg1': ['timber', 'reinforced_concrete'],
+    'D0@bldg1': ['residential'],
   }),
   assumptions: {
-    vorhabensart: suggested(['neubau'], 'Baubeschreibung.pdf, S. 2: „Neubau eines viergeschoßigen Wohnhauses“'),
-    oib_ausgabe: suggested('2019', 'Einreichplan.pdf, S. 1: „Nachweis nach OIB-Richtlinien 2019“'),
+    work_type: suggested(['new_build'], 'Baubeschreibung.pdf, S. 2: „Neubau eines viergeschoßigen Wohnhauses“'),
+    oib_edition: suggested('2019', 'Einreichplan.pdf, S. 1: „Nachweis nach OIB-Richtlinien 2019“'),
   },
 }
 
 /** A Stützmauer: no Gebäudeklasse, no Bauweise to ask for. */
-const STRUCTURE = built({ A2_country: 'at', A2_land: 'tirol', A5: ['neubau'], 'C1@bw1': 'sonstig' })
+const STRUCTURE = built({ A2_country: 'at', A2_land: 'tyrol', A5: ['new_build'], 'C1@bldg1': 'other' })
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const w = window as unknown as { __closingDebriefShim?: boolean }
@@ -123,8 +123,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
       // „Wer war dabei": the Steckbrief of every variant, editable in the preview.
-      const steckbrief = await answerSteckbrief(PROJECT, url, init)
-      if (steckbrief) return steckbrief
+      const projectRecord = await answerProjectRecord(PROJECT, url, init)
+      if (projectRecord) return projectRecord
       if (url === `/api/projects/${EMPTY}/memory`) return Response.json({ items: [] })
       if (url === `/api/projects/${PROJECT}/memory` && init?.method === 'POST') {
         const body = JSON.parse(String(init.body)) as { content: string }

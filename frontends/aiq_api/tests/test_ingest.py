@@ -314,13 +314,14 @@ async def test_ingest_carries_the_projects_facts_for_the_chunks(app, mock_ingest
     body = {
         "file_ref": "http://seaweedfs.test/bucket/plan.pdf",
         "collection": "proj_1",
-        "project_facts": {"facts": {"bundesland": "wien", "gebaeudeklasse": [4]}, "status": "closed"},
+        "project_facts": {"facts": {"federal_state": "vienna", "building_class": [4]}, "status": "closed"},
     }
     sent = await _post_json(app, body)
     assert sent.status_code == 202
     config = mock_ingestor.submit_job.call_args[1]["config"]
     assert config["project_status"] == "closed"
-    assert config["project_facts"]["bundesland"] == "wien" and config["project_facts"]["gebaeudeklasse"] == [4]
+    # The vector store holds the wire names and English tokens: the job config carries them as sent.
+    assert config["project_facts"]["federal_state"] == "vienna" and config["project_facts"]["building_class"] == [4]
 
     without = await _post(app, "http://seaweedfs.test/bucket/plan.pdf", collection="oib")
     assert without.status_code == 202
@@ -330,12 +331,12 @@ async def test_ingest_carries_the_projects_facts_for_the_chunks(app, mock_ingest
 @pytest.mark.parametrize(
     "facts",
     [
-        {"gebaeudeklasse": [8]},
-        {"gebaeudeklasse": [0]},
-        {"gebaeudeklasse": [6]},
-        {"bauweise": ["x" * 81]},
-        {"nutzungen": [f"n{n}" for n in range(41)]},
-        {"unknown_fact": "wien"},
+        {"building_class": [8]},
+        {"building_class": [0]},
+        {"building_class": [6]},
+        {"construction_method": ["x" * 81]},
+        {"uses": [f"n{n}" for n in range(41)]},
+        {"unknown_fact": "vienna"},
     ],
 )
 @pytest.mark.asyncio
@@ -350,7 +351,7 @@ async def test_ingest_drops_project_facts_it_cannot_read_and_keeps_the_upload(
     body = {
         "file_ref": "http://seaweedfs.test/bucket/plan.pdf",
         "collection": "proj_1",
-        "project_facts": {"facts": {"bundesland": "wien", **facts}, "status": "active"},
+        "project_facts": {"facts": {"federal_state": "vienna", **facts}, "status": "active"},
     }
     with caplog.at_level(logging.WARNING, logger="aiq_api.models.requests"):
         sent = await _post_json(app, body)

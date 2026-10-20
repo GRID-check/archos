@@ -40,7 +40,7 @@ export async function onIntakeReady(input: {
   projectName: string | null
   /** How the reading ended. */
   outcome: 'ready' | 'failed'
-  /** Questions that decide a Gebäudeklasse; named in the title when there are any. */
+  /** Questions that decide a building class; named in the title when there are any. */
   decisiveOpen: number
   /** The reading's own summary, already masked. */
   summary: string | null

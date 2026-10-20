@@ -102,16 +102,16 @@ const hasReview = (entry: NormEntry): boolean => (entry.review_note ?? '').trim(
  * rank and scope columns carry the label that the section heading used to.
  */
 function laneOrder(entry: NormEntry): number {
-  if (entry.rank === 'behoerdliche_info') return 2
-  if (entry.rank === 'norm_extern') return 3
-  return entry.bundesland.trim() ? 1 : 0
+  if (entry.rank === 'authority_info') return 2
+  if (entry.rank === 'external_standard') return 3
+  return entry.federal_state.trim() ? 1 : 0
 }
 
 function compareEntries(a: NormEntry, b: NormEntry): number {
   const lane = laneOrder(a) - laneOrder(b)
   if (lane !== 0) return lane
-  const land = a.bundesland.trim().localeCompare(b.bundesland.trim(), 'de')
-  if (land !== 0) return land
+  const federalState = a.federal_state.trim().localeCompare(b.federal_state.trim(), 'de')
+  if (federalState !== 0) return federalState
   return a.short.localeCompare(b.short, 'de')
 }
 
@@ -122,7 +122,7 @@ function matchesQuery(entry: NormEntry, query: string): boolean {
     entry.short,
     entry.title,
     entry.document_number,
-    entry.bundesland,
+    entry.federal_state,
     entry.application,
     ...entry.topics,
     ...entry.aliases,
@@ -274,12 +274,12 @@ export function NormRegistry(): JSX.Element {
   const openReviewCount = useMemo(() => entries.filter(hasReview).length, [entries])
 
   const scopes = useMemo(() => {
-    const lands = new Set<string>()
+    const federalStates = new Set<string>()
     for (const entry of entries) {
-      const land = entry.bundesland.trim()
-      if (land) lands.add(land)
+      const federalState = entry.federal_state.trim()
+      if (federalState) federalStates.add(federalState)
     }
-    return [...lands].sort((a, b) => a.localeCompare(b, 'de'))
+    return [...federalStates].sort((a, b) => a.localeCompare(b, 'de'))
   }, [entries])
 
   const filtered = useMemo(() => {
@@ -287,11 +287,11 @@ export function NormRegistry(): JSX.Element {
     return [...entries]
       .filter((entry) => {
         if (rankFilter !== ALL && entry.rank !== rankFilter) return false
-        if (scopeFilter === FEDERAL && entry.bundesland.trim() !== '') return false
+        if (scopeFilter === FEDERAL && entry.federal_state.trim() !== '') return false
         if (
           scopeFilter !== ALL &&
           scopeFilter !== FEDERAL &&
-          entry.bundesland.trim() !== scopeFilter
+          entry.federal_state.trim() !== scopeFilter
         ) {
           return false
         }
@@ -418,9 +418,9 @@ export function NormRegistry(): JSX.Element {
                   <SelectContent>
                     <SelectItem value={ALL}>{t('norms.filters.allScopes')}</SelectItem>
                     <SelectItem value={FEDERAL}>{t('norms.federal')}</SelectItem>
-                    {scopes.map((land) => (
-                      <SelectItem key={land} value={land}>
-                        {land}
+                    {scopes.map((federalState) => (
+                      <SelectItem key={federalState} value={federalState}>
+                        {federalState}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -541,7 +541,7 @@ function NormRow({
 }): JSX.Element {
   const stale = isStale(entry.verified_at)
   const review = (entry.review_note ?? '').trim()
-  const scope = entry.bundesland.trim() || t('norms.federal')
+  const scope = entry.federal_state.trim() || t('norms.federal')
   const document = entry.document_number
     ? [entry.application, entry.document_number].filter(Boolean).join(' · ')
     : sourceHost(entry.source_url) || t('norms.row.noFullText')

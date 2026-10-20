@@ -32,7 +32,7 @@ export function ClassCard({ derivations, onAnswer }: ClassCardProps): JSX.Elemen
   const tIntake = useTranslations('projectIntake')
   const lead = leadDerivation(derivations)
   const [chosen, setChosen] = useState<string | null>(null)
-  const derivation = derivations.find((candidate) => candidate.bauwerkId === chosen) ?? lead
+  const derivation = derivations.find((candidate) => candidate.buildingId === chosen) ?? lead
   return (
     <section
       aria-label={t('class.label')}
@@ -49,14 +49,14 @@ export function ClassCard({ derivations, onAnswer }: ClassCardProps): JSX.Elemen
                 type="single"
                 size="sm"
                 segmented
-                value={derivation.bauwerkId}
+                value={derivation.buildingId}
                 onValueChange={(value) => value && setChosen(value)}
                 aria-label={t('class.buildings')}
                 className="shrink-0"
               >
                 {derivations.map((candidate) => (
-                  <ToggleGroupItem key={candidate.bauwerkId} value={candidate.bauwerkId} className="h-7 px-2 text-xs">
-                    {tIntake('derivations.building', { number: buildingNumber(candidate.bauwerkId) })}
+                  <ToggleGroupItem key={candidate.buildingId} value={candidate.buildingId} className="h-7 px-2 text-xs">
+                    {tIntake('derivations.building', { number: buildingNumber(candidate.buildingId) })}
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
@@ -105,7 +105,7 @@ function useReason(derivation: DerivationReview): string {
   }
   return reasonInputs(derivation)
     .map(({ base, key, value }) => {
-      if (base === 'einheiten_ueber_400') {
+      if (base === 'units_over_400') {
         return value === true ? t('class.reason.unitOver400') : t('class.reason.unitOver400None')
       }
       return t(`class.reason.${REASON_INPUT_IDS[base]}`, { value: displayValue(key, value) })
@@ -131,7 +131,7 @@ function ClassResult({
   const missingAsked = derivation.value === null && !derivation.highRise && derivation.missing.length > 0
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} data-testid={`profile-class-${derivation.bauwerkId}`}>
+    <Collapsible open={open} onOpenChange={setOpen} data-testid={`profile-class-${derivation.buildingId}`}>
       <div className="flex items-center gap-4 md:gap-5">
         <ClassTile value={derivation.value} highRise={derivation.highRise} />
         <div className="min-w-0 flex-1">

@@ -150,7 +150,7 @@ describe('openUploadBatch', () => {
 
   it("refuses a Büroablage batch to someone who does not curate it, as if it didn't exist", async () => {
     await expect(
-      openUploadBatch(session, { id: BATCH_ID, scope: 'archiv', projectId: null, conversationId: null, expectedCount: 1, excluded: [] })
+      openUploadBatch(session, { id: BATCH_ID, scope: 'office_shelf', projectId: null, conversationId: null, expectedCount: 1, excluded: [] })
     ).rejects.toBeInstanceOf(NotFoundError)
     expect(insertUploadBatch).not.toHaveBeenCalled()
   })
@@ -167,7 +167,7 @@ describe('acceptedUploadBatchId', () => {
     ['another member’s batch', batch({ createdBy: 'someone-else' })],
     ['a sealed batch', batch({ sealedAt: new Date() })],
     ['another project’s batch', batch({ projectId: 'proj-2' })],
-    ['a batch for another shelf', batch({ scope: 'archiv', projectId: null })],
+    ['a batch for another shelf', batch({ scope: 'office_shelf', projectId: null })],
   ])('ignores %s rather than failing the upload', async (_label, row) => {
     vi.mocked(findUploadBatch).mockResolvedValue(row)
     expect(await acceptedUploadBatchId(session, BATCH_ID, project)).toBeNull()
@@ -392,7 +392,7 @@ describe('getUploadSummary', () => {
   })
 
   it('marks nothing protected on a shelf without folder access lists', async () => {
-    vi.mocked(findUploadBatch).mockResolvedValue(batch({ scope: 'archiv', projectId: null }))
+    vi.mocked(findUploadBatch).mockResolvedValue(batch({ scope: 'office_shelf', projectId: null }))
     vi.mocked(listBatchDocuments).mockResolvedValue([makeDocument({ id: 'a', folderId: 'f-1' })])
     const summary = await getUploadSummary(session, BATCH_ID)
     expect(summary.documents[0]?.restricted).toBe(false)

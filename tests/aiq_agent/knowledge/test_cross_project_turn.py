@@ -44,7 +44,7 @@ PATCH = {
     "type": "project_profile_patch",
     "title": "Projektkontext aktualisieren",
     "rationale": "Laut Brief des anderen Projekts.",
-    "patch": [{"op": "add", "path": "/facts/gebaeudeklasse", "value": "GK4"}],
+    "patch": [{"op": "add", "path": "/facts/building_class", "value": "GK4"}],
 }
 
 
@@ -83,7 +83,7 @@ class TestTheTurnLearnsIt:
                 SimpleNamespace(deep_research_allowed=True, tasks_allowed=True, enabled_stages=())
             ),
         )
-        request = SimpleNamespace(organization_id="org", project_id="p1", user_id="u1", bundesland=None)
+        request = SimpleNamespace(organization_id="org", project_id="p1", user_id="u1", federal_state=None)
 
         await turn_context._load_turn_context(request, conversation_id="c1", query_text="q", resolve_stages=False)
 

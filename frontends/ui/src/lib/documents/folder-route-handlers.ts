@@ -1,10 +1,10 @@
 /**
  * The route handlers for a shelf's folders — written ONCE for a project's
  * Dateien (`/api/projects/[id]/folders*`) and the org-wide Archiv
- * (`/api/archiv/folders*`), because the two are the same routes (ADR-0078).
+ * (`/api/office-shelf/folders*`), because the two are the same routes (ADR-0078).
  *
  * What differs per shelf is passed in: the service call (which carries its own
- * authorization — `@/lib/projects/folder-service`, `@/lib/archiv/folder-service`).
+ * authorization — `@/lib/projects/folder-service`, `@/lib/office-shelf/folder-service`).
  * What does not differ — the request schemas and their limits, the mapping of a
  * refused request to a 400, the response shapes — lives here, so the browser can
  * share one client and one row mapper.

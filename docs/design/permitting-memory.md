@@ -63,7 +63,7 @@ ingest (per document, adapter.py loop)
 | `kind` | text not null | CHECK in (`bewilligung`, `nachforderung`, `ablehnung`, `sonstiges`) |
 | `authority` | text null | as the document names it („Magistratsabteilung 37", „Stadtgemeinde Mödling"); null when the document does not name it (a scan without its letterhead) |
 | `municipality` | text null | the Gemeinde the procedure is in, as written |
-| `bundesland` | text null | intake token (`wien`, `niederoesterreich`, …) when the document makes it clear |
+| `federal_state` | text null | intake token (`wien`, `niederoesterreich`, …) when the document makes it clear |
 | `issued_on` | date null | the notice's date |
 | `reference` | text null | Geschäftszahl / Aktenzahl |
 | `model` | text not null | the model that extracted it |
@@ -107,7 +107,7 @@ Request:
   "model": "…",
   "record": null | {
     "kind": "bewilligung|nachforderung|ablehnung|sonstiges",
-    "authority": "…"|null, "municipality": "…"|null, "bundesland": "…"|null,
+    "authority": "…"|null, "municipality": "…"|null, "federal_state": "…"|null,
     "issuedOn": "YYYY-MM-DD"|null, "reference": "…"|null,
     "requirements": [
       { "kind": "auflage|nachforderung|hinweis", "content": "…",

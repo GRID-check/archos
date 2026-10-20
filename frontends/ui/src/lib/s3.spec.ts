@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { BadRequestError } from '@/lib/api/errors'
 import {
   MAX_STORED_IMAGES_PER_DOCUMENT,
-  buildArchivStorageKey,
+  buildOfficeShelfStorageKey,
   buildBaseCorpusStorageKey,
   buildImageDerivedPrefix,
   buildImageStorageKey,
@@ -115,10 +115,10 @@ describe('buildStorageKey', () => {
   })
 })
 
-describe('buildArchivStorageKey', () => {
+describe('buildOfficeShelfStorageKey', () => {
   it('scopes to the organization rather than a project', () => {
-    expect(buildArchivStorageKey('org-1', 'doc-1', 'plan.pdf')).toBe(
-      'org/org-1/archiv/doc/doc-1/plan.pdf',
+    expect(buildOfficeShelfStorageKey('org-1', 'doc-1', 'plan.pdf')).toBe(
+      'org/org-1/office_shelf/doc/doc-1/plan.pdf',
     )
   })
 })

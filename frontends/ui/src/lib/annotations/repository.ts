@@ -50,7 +50,7 @@ export interface CarryLink {
  * service shows them only to a reader who may open that document.
  */
 export interface AnnotationRecord extends DocumentAnnotationRow {
-  fassungNumber: number | null
+  revisionNumber: number | null
   replies: DocumentAnnotationReplyRow[]
   /** The replaced document's mark this one went on from; absent from a fake that predates carrying. */
   carriedFrom?: CarryLink | null
@@ -65,7 +65,7 @@ export const carriedCopy = alias(documentAnnotations, 'carried_copy')
 /** The columns every read of a mark selects; `project-repository.ts` selects them too. */
 export const selection = {
   row: documentAnnotations,
-  fassungNumber: documentVersions.versionNumber,
+  revisionNumber: documentVersions.versionNumber,
   fromId: carriedSource.id,
   fromDocumentId: carriedSource.documentId,
   fromNumber: carriedSource.number,
@@ -76,7 +76,7 @@ export const selection = {
 
 export type SelectedRow = {
   row: DocumentAnnotationRow
-  fassungNumber: number | null
+  revisionNumber: number | null
   fromId: string | null
   fromDocumentId: string | null
   fromNumber: number | null
@@ -119,9 +119,9 @@ export async function withThreads(organizationId: string, rows: SelectedRow[]): 
     organizationId,
     rows.map(({ row }) => row.id)
   )
-  return rows.map(({ row, fassungNumber, ...links }) => ({
+  return rows.map(({ row, revisionNumber, ...links }) => ({
     ...row,
-    fassungNumber: fassungNumber === null ? null : Number(fassungNumber),
+    revisionNumber: revisionNumber === null ? null : Number(revisionNumber),
     replies: threads.get(row.id) ?? [],
     carriedFrom: linkOf(links.fromId, links.fromDocumentId, links.fromNumber),
     carriedTo: linkOf(links.toId, links.toDocumentId, links.toNumber),
@@ -454,7 +454,7 @@ export interface AnnotationChanges {
    * `to`, compared and swapped against `from` (the Fassung it was read on), so
    * two people carrying it at once move it once.
    */
-  fassung?: { from: string | null; to: string | null }
+  revision?: { from: string | null; to: string | null }
 }
 
 /**
@@ -477,7 +477,7 @@ export async function updateDocumentAnnotation(
   /** Runs in the update's transaction when a row was changed. */
   afterUpdate?: InTransaction<DocumentAnnotationRow>
 ): Promise<DocumentAnnotationRow | null> {
-  const { transition, delegation, fassung, ...fields } = changes
+  const { transition, delegation, revision: revision, ...fields } = changes
   const db = getDb()
   return withTenant({ organizationId }, () =>
     db.transaction(async (tx) => {
@@ -487,7 +487,7 @@ export async function updateDocumentAnnotation(
           ...fields,
           ...(transition ?? {}),
           ...(delegation ?? {}),
-          ...(fassung ? { versionId: fassung.to } : {}),
+          ...(revision ? { versionId: revision.to } : {}),
           updatedAt: new Date(),
         })
         .where(
@@ -496,7 +496,7 @@ export async function updateDocumentAnnotation(
             eq(documentAnnotations.documentId, documentId),
             eq(documentAnnotations.id, annotationId),
             eq(documentAnnotations.status, expectedStatus),
-            ...(fassung ? [sql`${documentAnnotations.versionId} IS NOT DISTINCT FROM ${fassung.from}`] : [])
+            ...(revision ? [sql`${documentAnnotations.versionId} IS NOT DISTINCT FROM ${revision.from}`] : [])
           )
         )
         .returning()

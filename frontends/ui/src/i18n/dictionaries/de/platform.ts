@@ -193,18 +193,18 @@ export const platform: typeof en.platform = {
       reviews: 'Offene Prüfungen ({count})',
     },
     ranks: {
-      bundesgesetz: 'Bundesgesetz',
-      landesgesetz: 'Landesgesetz',
-      verordnung: 'Verordnung',
-      behoerdliche_info: 'Behördliche Information (z. B. MA 37)',
-      norm_extern: 'Externe Norm (ÖNORM/TRVB — kein Volltext)',
+      federal_law: 'Bundesgesetz',
+      state_law: 'Landesgesetz',
+      ordinance: 'Verordnung',
+      authority_info: 'Behördliche Information (z. B. MA 37)',
+      external_standard: 'Externe Norm (ÖNORM/TRVB — kein Volltext)',
     },
     rankShort: {
-      bundesgesetz: 'Bundesgesetz',
-      landesgesetz: 'Landesgesetz',
-      verordnung: 'Verordnung',
-      behoerdliche_info: 'Behördliche Info',
-      norm_extern: 'Externe Norm',
+      federal_law: 'Bundesgesetz',
+      state_law: 'Landesgesetz',
+      ordinance: 'Verordnung',
+      authority_info: 'Behördliche Info',
+      external_standard: 'Externe Norm',
     },
     columns: {
       norm: 'Norm',
@@ -243,24 +243,24 @@ export const platform: typeof en.platform = {
       legend: 'Um welche Art von Quelle handelt es sich?',
       hint: 'Die Art bestimmt, was der Katalog von Ihnen braucht und wo der Agent den Eintrag einordnet.',
       required: 'Wählen Sie zuerst die Art der Quelle — alles Weitere ergibt sich daraus.',
-      bundesgesetz: {
+      federal_law: {
         label: 'Bundesgesetz',
         description: 'Gilt österreichweit. Im RIS auffindbar.',
       },
-      landesgesetz: {
+      state_law: {
         label: 'Landesgesetz (Bauordnung, Bautechnikgesetz)',
         description: 'Das Baurecht eines einzelnen Bundeslandes. Im RIS auffindbar.',
       },
-      verordnung: {
+      ordinance: {
         label: 'Verordnung oder Richtlinie',
         description: 'Per Verordnung verbindlich gestellt — z. B. eine OIB-Richtlinie. Im RIS auffindbar.',
       },
-      behoerdliche_info: {
+      authority_info: {
         label: 'Behördliche Information',
         description:
           'Vollzugshilfe einer Behörde (z. B. ein Merkblatt der MA 37). Kein Gesetz, nicht im RIS.',
       },
-      norm_extern: {
+      external_standard: {
         label: 'Externe Norm',
         description: 'ÖNORM, TRVB, EU-Norm — meist ohne frei zugänglichen Volltext. Nicht im RIS.',
       },
@@ -299,9 +299,9 @@ export const platform: typeof en.platform = {
       titlePlaceholder: 'Voller Titel der Norm',
       rank: 'Rang',
       bundesland: 'Bundesland',
-      bundeslandHint: 'Kanonischer Name (z. B. Wien) — leer lassen, wenn österreichweit gültig',
-      bundeslandRequired: 'Kanonischer Name (z. B. Wien). Ohne Bundesland lässt sich ein Landesgesetz nicht einordnen.',
-      bundeslandPlaceholder: 'Wien',
+      federalStateHint: 'Kanonischer Name (z. B. Wien) — leer lassen, wenn österreichweit gültig',
+      federalStateRequired: 'Kanonischer Name (z. B. Wien). Ohne Bundesland lässt sich ein Landesgesetz nicht einordnen.',
+      federalStatePlaceholder: 'Wien',
       application: 'RIS-Anwendung (Application)',
       applicationHint:
         'Der RIS-Bestand, in dem gesucht wird: BrKons = Bundesrecht konsolidiert, LrKons = Landesrecht konsolidiert. Wird aus der Art der Quelle vorbelegt.',
@@ -346,10 +346,10 @@ export const platform: typeof en.platform = {
       titleQuery: 'Hinterlegte RIS-Abfrage',
       titleQueryHint: 'Die Abfrage, mit der eine spätere Neuverifizierung beginnt.',
       titleQueryPlaceholder: 'RIS-Titelsuche',
-      gesetzesnummer: 'Gesetzesnummer',
-      gesetzesnummerHint:
+      statuteNumber: 'Gesetzesnummer',
+      statuteNumberHint:
         'Die RIS-interne Nummer des Gesetzes über alle Fassungen hinweg, z. B. 20001234. Grenzt mehrdeutige Titel ein.',
-      gesetzesnummerPlaceholder: 'z. B. 20001234',
+      statuteNumberPlaceholder: 'z. B. 20001234',
       expect: 'Im Titel erwartet',
       expectHint: 'Es werden nur Treffer angeboten, deren Titel diesen Text enthält.',
       exclude: 'Im Titel ausgeschlossen',
@@ -363,7 +363,7 @@ export const platform: typeof en.platform = {
       lawNeedsRis: 'Noch kein RIS-Treffer übernommen — suchen Sie die Norm und wählen Sie eine Fassung.',
       needApplication: 'Ein Gesetz benötigt eine RIS-Anwendung',
       needDocumentNumber: 'Ein Gesetz benötigt eine Dokumentnummer aus dem RIS',
-      needBundesland: 'Ein Landesgesetz benötigt das zugehörige Bundesland',
+      needFederalState: 'Ein Landesgesetz benötigt das zugehörige Bundesland',
     },
     verify: {
       searchLabel: 'Titel im RIS',
@@ -766,14 +766,14 @@ export const platform: typeof en.platform = {
     topicsHeading: 'Nach Thema',
     topicsCaveat: 'Nur Unterhaltungen mit Themen-Schlagwort, daher ergeben sich die Summen oben nicht daraus.',
     topics: {
-      brandschutz: 'Brandschutz',
-      schallschutz: 'Schallschutz',
-      barrierefreiheit: 'Barrierefreiheit',
-      energie: 'Energie & Wärme',
-      statik: 'Statik',
+      fire_safety: 'Brandschutz',
+      sound_insulation: 'Schallschutz',
+      accessibility: 'Barrierefreiheit',
+      energy: 'Energie & Wärme',
+      structural: 'Statik',
       hygiene: 'Hygiene & Umwelt',
-      nutzungssicherheit: 'Nutzungssicherheit',
-      allgemein: 'Allgemein',
+      safety_in_use: 'Nutzungssicherheit',
+      general: 'Allgemein',
     },
     tooFewShort: 'k. A.',
     tooFewVotes: 'Weniger als {min} Bewertungen — zu wenige für eine aussagekräftige Quote.',
@@ -1180,15 +1180,15 @@ export const platform: typeof en.platform = {
     // Dokumentarten. Deutsch identisch mit DOCUMENT_CLASS_LABELS im Backend
     // (`lib/knowledge/doc-class.ts`); base-knowledge.spec.tsx prüft das.
     docClasses: {
-      oib_richtlinie: 'OIB-Richtlinie (verbindlich)',
-      oib_leitfaden: 'OIB-Leitfaden',
-      oib_erlaeuterung: 'OIB-Erläuterung',
-      oib_begriffe: 'OIB-Begriffsbestimmungen',
-      oib_referenz: 'OIB-Referenzdokument',
-      oib_aenderung: 'OIB-Änderungsdokument',
-      norm_extern: 'Norm (ÖNORM u.a.)',
-      gesetz: 'Gesetz / Bauordnung',
-      sonstiges: 'Sonstiges Basisdokument',
+      oib_guideline: 'OIB-Richtlinie (verbindlich)',
+      oib_guide: 'OIB-Leitfaden',
+      oib_explanatory_note: 'OIB-Erläuterung',
+      oib_definitions: 'OIB-Begriffsbestimmungen',
+      oib_reference: 'OIB-Referenzdokument',
+      oib_amendment: 'OIB-Änderungsdokument',
+      external_standard: 'Norm (ÖNORM u.a.)',
+      law: 'Gesetz / Bauordnung',
+      other: 'Sonstiges Basisdokument',
     },
     dropBusy: 'Bitte warten, bis der laufende Upload oder Abgleich fertig ist.',
     dropSkipped: '{count, plural, one {# Datei wurde} other {# Dateien wurden}} ausgelassen: Aufgenommen werden nur PDF- und ZIP-Dateien.',

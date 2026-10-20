@@ -3,7 +3,7 @@
  * first step (ticket 26) reads and writes, each written once here.
  *
  *   - `GET /api/projects/[id]`: the name and the status;
- *   - `GET /api/projects/[id]/steckbrief`: the people (ADR-0091, ADR-0101):
+ *   - `GET /api/projects/[id]/project-record`: the people (ADR-0091, ADR-0101):
  *     members listed from the roster, everyone else stored by hand;
  *   - `GET|POST /api/projects/[id]/members`: the organization's roster with each
  *     member's project role, and a role given or taken. Only who may manage
@@ -11,7 +11,7 @@
  *   - `POST|PATCH|DELETE /api/projects/[id]/people[/personId]`: a person added,
  *     described or erased.
  *
- * Who may do what is the services' (`members-service`, `steckbrief-service`);
+ * Who may do what is the services' (`members-service`, `project-record-service`);
  * this client only says what the answer was. Responses are parsed with zod,
  * not cast. No `server-only`: the browser imports this.
  */
@@ -19,7 +19,7 @@
 import { z } from 'zod'
 import { isMonth, type Month } from './month'
 import { PROJECT_STATUSES } from './project-status'
-import type { ProjectPersonInput, SteckbriefView } from './steckbrief-types'
+import type { ProjectPersonInput, ProjectRecordView } from './project-record-types'
 
 /** The project roles a member can hold, as the members route takes them. */
 export const PROJECT_MEMBER_ROLES = ['project-viewer', 'project-contributor', 'project-editor', 'project-admin'] as const
@@ -54,7 +54,7 @@ const peopleRecordSchema = z.object({
   rosterKnown: z.boolean(),
   canEdit: z.boolean(),
   canErase: z.boolean(),
-}) satisfies z.ZodType<SteckbriefView>
+}) satisfies z.ZodType<ProjectRecordView>
 
 const rosterMemberSchema = z.object({
   organizationMembershipId: z.string().min(1),
@@ -91,7 +91,7 @@ export class ParticipantsRequestError extends Error {
 
 export interface ParticipantsClient {
   project(projectId: string): Promise<ProjectBasics>
-  peopleRecord(projectId: string): Promise<SteckbriefView>
+  peopleRecord(projectId: string): Promise<ProjectRecordView>
   /** The roster with roles, or null when the reader may not manage the project's members. */
   roster(projectId: string): Promise<ProjectRoster | null>
   /** Give a member a role, or take their access away with `''`. */
@@ -124,7 +124,7 @@ export function createParticipantsClient(fetchImpl: ParticipantsFetch = defaultF
       return projectBasicsSchema.parse(await request(fetchImpl, projectPath(projectId), 'GET'))
     },
     async peopleRecord(projectId) {
-      return peopleRecordSchema.parse(await request(fetchImpl, `${projectPath(projectId)}/steckbrief`, 'GET'))
+      return peopleRecordSchema.parse(await request(fetchImpl, `${projectPath(projectId)}/project-record`, 'GET'))
     },
     async roster(projectId) {
       try {

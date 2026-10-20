@@ -2,7 +2,7 @@
  * The copy of /warum-piloti/, the argument page. Kept out of ui.ts because it
  * is a page of prose, not interface strings; its title and description stay
  * in ui.ts `seo.pages` with every other page's. The comparisons are search
- * pages now (src/data/landing/vergleich.ts).
+ * pages now (src/data/landing/comparison.ts).
  *
  * Same rules as ui.ts: both locales, German typography, and only what the
  * product does (each capability below shipped and is in the changelog). The

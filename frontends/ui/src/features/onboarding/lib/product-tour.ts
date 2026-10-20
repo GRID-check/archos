@@ -61,12 +61,12 @@ export function projectTourUrl(projectId: string): string {
 /** `data-tour` values. The element that renders each one owns the attribute. */
 export const TOUR_ANCHORS = {
   createProject: 'create-project',
-  archiv: 'archiv',
+  officeShelf: 'office-shelf',
   inbox: 'inbox',
   account: 'account-menu',
   sectionChat: 'section-chat',
   sectionFiles: 'section-files',
-  sectionArchiv: 'section-archiv',
+  sectionOfficeShelf: 'section-officeShelf',
   sectionSettings: 'section-settings',
   /** The phone tab bar's "Mehr", which opens the drawer the rail becomes. */
   more: 'tab-more',
@@ -100,7 +100,7 @@ export const TOUR_PLACEMENT_ATTRIBUTE = 'data-tour-placement'
 
 /** What the reader can reach and do — decides which stops exist and their copy. */
 export interface TourFlags {
-  canAccessArchiv: boolean
+  canAccessOfficeShelf: boolean
   canAccessInbox: boolean
   canManageOrganization: boolean
 }
@@ -128,7 +128,7 @@ export interface TourStop {
   anchor?: TourAnchor
   placement?: TourPlacement
   /** The flag the stop's place is behind; dropped when it is off. */
-  gate?: 'canAccessArchiv' | 'canAccessInbox'
+  gate?: 'canAccessOfficeShelf' | 'canAccessInbox'
   /** Copy for a reader who arrived rather than being handed over. */
   arrivalId?: string
   /** Copy for a reader who cannot manage the organization. */
@@ -161,7 +161,7 @@ export interface PlacedTourStop extends TourStop {
 const WELCOME_STOPS: readonly TourStop[] = [
   { id: 'welcome', arrivalId: 'welcomeJoined' },
   { id: 'createProject', anchor: TOUR_ANCHORS.createProject, placement: 'below', arrivalId: 'createProjectJoined' },
-  { id: 'archiv', anchor: TOUR_ANCHORS.archiv, placement: 'below', gate: 'canAccessArchiv' },
+  { id: 'officeShelf', anchor: TOUR_ANCHORS.officeShelf, placement: 'below', gate: 'canAccessOfficeShelf' },
   { id: 'inbox', anchor: TOUR_ANCHORS.inbox, placement: 'below', gate: 'canAccessInbox' },
   { id: 'account', anchor: TOUR_ANCHORS.account, placement: 'below', memberId: 'accountMember' },
   // A phone has no ⌘K; it has the search button, and the stop says so.
@@ -180,17 +180,17 @@ const PROJECT_STOPS: readonly TourStop[] = [
   { id: 'projectChat', anchor: TOUR_ANCHORS.sectionChat, placement: 'beside' },
   { id: 'projectFiles', anchor: TOUR_ANCHORS.sectionFiles, placement: 'beside' },
   {
-    id: 'projectArchiv',
-    anchor: TOUR_ANCHORS.sectionArchiv,
+    id: 'projectOfficeShelf',
+    anchor: TOUR_ANCHORS.sectionOfficeShelf,
     placement: 'beside',
-    gate: 'canAccessArchiv',
+    gate: 'canAccessOfficeShelf',
     // On a phone the Büroablage is inside the drawer; point at the door to it.
-    phone: { id: 'projectArchivPhone', anchor: TOUR_ANCHORS.more },
+    phone: { id: 'projectOfficeShelfPhone', anchor: TOUR_ANCHORS.more },
   },
   // Centred on purpose: the comparison is the longest card in either tour, and
   // pinned beside an Archiv link near the bottom of the rail it ran off a
   // 680px-tall window.
-  { id: 'filesOrArchiv', gate: 'canAccessArchiv' },
+  { id: 'filesOrOfficeShelf', gate: 'canAccessOfficeShelf' },
   { id: 'projectSources' },
   { id: 'projectSettings', anchor: TOUR_ANCHORS.sectionSettings, placement: 'beside' },
 ]

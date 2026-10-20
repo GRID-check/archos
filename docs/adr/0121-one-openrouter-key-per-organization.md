@@ -67,7 +67,7 @@ What it means:
   organization needs one (`frontends/ui/src/lib/llm-credentials/org-keys.ts`),
   so existing organizations need no backfill and a lost row heals itself. It
   is stored like a BYOK key (WorkOS Vault or the local envelope, ADR-0022) in
-  its own table, `org_openrouter_keys` (migration 0159), whose partial unique
+  its own table, `org_openrouter_keys` (migration 0173), whose partial unique
   index allows one active key per organization: two replicas provisioning at
   once cannot both win, and the loser deletes the key it created. A table of
   its own rather than a kind on `org_llm_credentials`, because that table

@@ -14,7 +14,7 @@ import { revokeCollaborationForProjectMember } from '@/lib/collaboration/cleanup
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { dateToMonth, type Month } from './month'
 import { findProjectWorkosResourceId } from './repository'
-import { recordMemberLeft, recordMemberRejoined } from './steckbrief-service'
+import { recordMemberLeft, recordMemberRejoined } from './project-record-service'
 
 /**
  * The project roles a member can be assigned, exactly as the catalog defines

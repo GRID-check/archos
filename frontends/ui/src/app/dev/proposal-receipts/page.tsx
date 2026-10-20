@@ -34,11 +34,11 @@ import { ProjectProfilePatchCard } from '@/features/grid-cards/components/Projec
 import { DEMO, DEMO_PROJECT_ID, useFakeProposalClient } from '../_fixtures/fake-proposals'
 
 const MOVES = [
-  { document: 'Grundriss EG.pdf', source: 'projekt' as const, current: 'Nachweise', target_folder: 'Einreichung/Pläne' },
-  { document: 'Grundriss OG.pdf', source: 'projekt' as const, current: '', target_folder: 'Einreichung/Pläne' },
+  { document: 'Grundriss EG.pdf', source: 'project' as const, current: 'Nachweise', target_folder: 'Einreichung/Pläne' },
+  { document: 'Grundriss OG.pdf', source: 'project' as const, current: '', target_folder: 'Einreichung/Pläne' },
   {
     document: 'Schnitt A-A – Bestand und Neubau (Revision 3).pdf',
-    source: 'projekt' as const,
+    source: 'project' as const,
     current: 'Nachweise',
     target_folder: 'Einreichung/Pläne',
   },
@@ -47,8 +47,8 @@ const MOVES = [
 const NOTE = 'Das Büro setzt bei GK 4 durchgängig REI 90 an, auch wo REI 60 genügen würde.'
 
 const PATCH = [
-  { op: 'add' as const, path: '/facts/waermeversorgung', value: 'waermepumpe' },
-  { op: 'add' as const, path: '/facts/fluchtniveau_m', value: 25 },
+  { op: 'add' as const, path: '/facts/heat_supply', value: 'waermepumpe' },
+  { op: 'add' as const, path: '/facts/escape_level_m', value: 25 },
 ]
 const PROFILE_TITLE = 'Projektkontext aktualisieren: Wärmeversorgung und Fluchtniveau'
 const PROFILE_RATIONALE = 'Sie haben im Gespräch eine Wärmepumpe und ein oberstes Fluchtniveau von 25 m genannt.'

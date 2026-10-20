@@ -63,9 +63,9 @@ def test_trace_lanes_lane_is_decided_by_the_stated_shelf_not_a_collection_guess(
     the hit already carries settles it.
     """
     (lane,) = _trace_lanes_for_chunks(
-        [_chunk(file_name="Plan.pdf", page=2, collection="c_9f2a", shelf="project", doc_class="sonstiges")]
+        [_chunk(file_name="Plan.pdf", page=2, collection="c_9f2a", shelf="project", doc_class="other")]
     )
-    assert lane.key == "projekt"
+    assert lane.key == "project"
 
 
 def test_trace_lanes_group_by_lane():
@@ -75,13 +75,13 @@ def test_trace_lanes_group_by_lane():
         _chunk(file_name="Vorlage.pdf", collection="archiv_org1"),
     ]
     lanes = _trace_lanes_for_chunks(chunks)
-    assert [lane.key for lane in lanes] == ["baurecht_oib", "projekt", "buero"]
+    assert [lane.key for lane in lanes] == ["building_law_oib", "project", "office"]
     # `name` is document identity (dedup / preview resolution); `title` is the
     # user-facing display name the Herleitung fan-out renders.
     assert lanes[0] == TraceLane(
-        key="baurecht_oib",
+        key="building_law_oib",
         label="OIB-Richtlinie",
-        kind="baurecht",
+        kind="building_law",
         hit_count=1,
         sources=[TraceLaneSource(name="OIB-RL_2_Brandschutz.pdf", title="OIB-Richtlinie 2", detail="p.12")],
     )
@@ -159,7 +159,7 @@ def test_format_results_appends_trace_lanes_block():
     )
     text = _format_results(result, "test query")
     assert "## Trace-Lanes" in text
-    assert "baurecht_oib" in text
+    assert "building_law_oib" in text
     assert "OIB-RL_4.pdf" in text
 
 
@@ -195,8 +195,8 @@ def test_a_published_piloti_document_gets_its_own_lane_inside_the_office_kind():
         ]
     )
     # The shelf says project. Without the provenance rule this lane would be
-    # "projekt"/"Projektwissen" and nothing would say who wrote the document.
-    assert (lane.key, lane.label, lane.kind) == ("buero_piloti", "Piloti-Dokument", "buero")
+    # "project"/"Projektwissen" and nothing would say who wrote the document.
+    assert (lane.key, lane.label, lane.kind) == ("office_piloti", "Piloti-Dokument", "office")
 
 
 def test_the_fan_out_carries_the_provenance_as_data_not_as_a_sentence():

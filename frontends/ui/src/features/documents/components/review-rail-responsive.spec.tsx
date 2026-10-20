@@ -103,14 +103,14 @@ describe('the review rail is a column on a wide container and a stacked block on
   it('mounts at all when the surface passes lifecycle permissions', async () => {
     renderPane()
     // The whole of ADR-0054's reader-facing half hangs off this one condition.
-    expect(await screen.findByTestId('document-fassungen')).toBeInTheDocument()
+    expect(await screen.findByTestId('document-revisions')).toBeInTheDocument()
   })
 
   it('the rail is full width by default and only becomes a 280px column at @2xl', async () => {
     const { container } = renderPane()
-    await screen.findByTestId('document-fassungen')
+    await screen.findByTestId('document-revisions')
 
-    const rail = container.querySelector('[data-testid="document-fassungen"]')
+    const rail = container.querySelector('[data-testid="document-revisions"]')
       ?.parentElement as HTMLElement
     expect(rail).toBeTruthy()
     const cls = rail.className
@@ -132,9 +132,9 @@ describe('the review rail is a column on a wide container and a stacked block on
 
   it('the body stacks vertically and only becomes a row at @2xl', async () => {
     const { container } = renderPane()
-    await screen.findByTestId('document-fassungen')
+    await screen.findByTestId('document-revisions')
 
-    const rail = container.querySelector('[data-testid="document-fassungen"]')
+    const rail = container.querySelector('[data-testid="document-revisions"]')
       ?.parentElement as HTMLElement
     const body = rail.parentElement as HTMLElement
     expect(body.className).toContain('flex-col')
@@ -146,7 +146,7 @@ describe('the review rail is a column on a wide container and a stacked block on
 
   it('the type chip may shrink, so it cannot run under the header controls', async () => {
     const { container } = renderPane()
-    await screen.findByTestId('document-fassungen')
+    await screen.findByTestId('document-revisions')
     // Scoped to the HEADER: the same tag is also a chip down in the rail's tag
     // list, and only the header one is squeezed by the controls beside it.
     const nameColumn = container.querySelector('h3')?.parentElement as HTMLElement

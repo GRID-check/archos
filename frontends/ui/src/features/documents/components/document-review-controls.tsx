@@ -23,7 +23,7 @@
  * ## It no longer speaks when it has nothing to offer
  *
  * The stand — what the version is waiting for — moved OUT of here and onto
- * `DocumentLifecycleStand`, which the panel renders whether or not this strip
+ * `DocumentLifecyclePosition`, which the panel renders whether or not this strip
  * does. The reason is that the line used to appear only when there were NO
  * controls, so the case that actually confused people was the one it skipped: a
  * published upload, where the only available gesture was „Archivieren" and the
@@ -147,7 +147,7 @@ export interface DocumentReviewControlsProps {
    * The number the reader knows this Fassung by („Fassung 5" in the rail, which
    * counts linked older documents too). Defaults to the stored `versionNumber`.
    */
-  fassungNumber?: number
+  revisionNumber?: number
   /**
    * Leave out the publish section's heading and blurb, keeping its button: for
    * a surface whose header already says publishing is the next step and what it
@@ -186,7 +186,7 @@ export function DocumentReviewControls({
   onAct,
   reviewers = [],
   actingName = null,
-  fassungNumber,
+  revisionNumber,
   publishBare = false,
   openMarks = null,
   className,
@@ -288,7 +288,7 @@ export function DocumentReviewControls({
     }))
   const primary = visibleGestures.filter((gesture) => PRIMARY_ACTION[gesture])
   const secondary = visibleGestures.filter((gesture) => !PRIMARY_ACTION[gesture])
-  const shownNumber = fassungNumber ?? version?.versionNumber ?? 0
+  const shownNumber = revisionNumber ?? version?.versionNumber ?? 0
   const decisionButton = (gesture: DocumentLifecycleGesture) => (
     <Button
       key={gesture}
@@ -470,8 +470,8 @@ export function DocumentReviewControls({
           className="space-y-2 rounded-lg border p-2.5"
           data-testid="document-review-approve-confirm"
         >
-          <p className="text-xs font-medium" data-testid="document-review-approve-stand">
-            {t('lifecycle.approveConfirm.stand', {
+          <p className="text-xs font-medium" data-testid="document-review-approve-as-of">
+            {t('lifecycle.approveConfirm.asOf', {
               number: shownNumber,
               date: formatAbsoluteTime(version.updatedAt, locale),
             })}

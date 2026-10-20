@@ -30,7 +30,7 @@ import { NewFolderDialog } from './new-folder-dialog'
 import { DEFAULT_FILE_SORT, sortFiles, type FileSort } from '../lib/file-sort'
 import { subtreeTallies, type KnowledgeTally } from '../lib/folder-knowledge'
 import { LoadMore } from '@/components/ui/load-more'
-import { withoutOlderFassungen } from '../lib/fassung-chain'
+import { withoutOlderRevisions } from '../lib/revision-chain'
 import {
   FolderBreadcrumbRow,
   FolderBreadcrumbRowSkeleton,
@@ -152,7 +152,7 @@ interface FileBrowserPaneProps {
    * Whether older Fassungen are listed. A search keeps one entry per document
    * too: an older match is dropped when its current Fassung matched as well.
    */
-  showOlderFassungen?: boolean
+  showOlderRevisions?: boolean
   /**
    * The query and semantic mode, owned by the caller — see {@link FileSearch}.
    * The pane filters and renders results; it does not draw the field, because
@@ -297,8 +297,8 @@ const FileTile = memo(function FileTile({
 })
 
 /** The names a document's older Fassungen are stored under: what a search for them should find the document by. */
-function olderFassungNames(file: FileItem): string[] {
-  const facts = file.fassung
+function olderRevisionNames(file: FileItem): string[] {
+  const facts = file.revision
   if (!facts) return []
   return (facts.history ?? facts.supersedes).map((ref) => ref.filename)
 }
@@ -312,7 +312,7 @@ export function FileBrowserPane({
   uploadCard,
   folderNav,
   searchFiles,
-  showOlderFassungen = false,
+  showOlderRevisions = false,
   search,
   view = 'cards',
   showAssignment = false,
@@ -370,10 +370,10 @@ export function FileBrowserPane({
         (f.summary ?? '').toLowerCase().includes(q) ||
         (f.tags ?? []).some((tag) => tag.toLowerCase().includes(q)) ||
         (f.topics ?? []).some((topic) => topic.toLowerCase().includes(q)) ||
-        olderFassungNames(f).some((name) => name.toLowerCase().includes(q))
+        olderRevisionNames(f).some((name) => name.toLowerCase().includes(q))
     )
-    return sortFiles(withoutOlderFassungen(matches, showOlderFassungen), sort, locale)
-  }, [orderedFiles, files, searchFiles, query, sort, locale, showOlderFassungen])
+    return sortFiles(withoutOlderRevisions(matches, showOlderRevisions), sort, locale)
+  }, [orderedFiles, files, searchFiles, query, sort, locale, showOlderRevisions])
 
   const currentFolderId = folderNav?.currentFolderId ?? null
   // A level the reader may only read offers no upload and no new folder
@@ -601,7 +601,7 @@ export function FileBrowserPane({
     // One entry per document, like the cards below the tiles: a folder holding
     // Index A, B and C of one drawing counts one item unless older Fassungen
     // are asked for (ADR-0099).
-    const corpus = withoutOlderFassungen(searchFiles ?? files, showOlderFassungen)
+    const corpus = withoutOlderRevisions(searchFiles ?? files, showOlderRevisions)
     const allFolders = folderNav?.folders ?? []
     const counts = new Map<string, number>()
     const bump = (id: string | null | undefined) => {
@@ -610,7 +610,7 @@ export function FileBrowserPane({
     for (const file of corpus) bump(file.folderId)
     for (const folder of allFolders) bump(folder.parentId)
     return { counts, tallies: subtreeTallies(corpus, allFolders) }
-  }, [folderStats, files, searchFiles, folderNav?.folders, showOlderFassungen])
+  }, [folderStats, files, searchFiles, folderNav?.folders, showOlderRevisions])
 
   /** Documents + subfolders directly inside `folderId`, for the count line. */
   const folderItemCount = (folderId: string): number => folderAggregates.counts.get(folderId) ?? 0

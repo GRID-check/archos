@@ -65,10 +65,10 @@ def _option(token: str, label: str | None = None) -> VocabularyOption:
 
 
 VOCABULARY = {
-    "bundesland": VocabularyEntry(multiple=False, options=[_option("niederoesterreich"), _option("wien")]),
-    "gebaeudeklasse": VocabularyEntry(multiple=False, options=[_option("4", "GK 4"), _option("3", "GK 3")]),
-    "bauweise": VocabularyEntry(multiple=True, options=[_option("holzbau"), _option("stahlbeton")]),
-    "nutzungen": VocabularyEntry(multiple=True, options=[]),
+    "federal_state": VocabularyEntry(multiple=False, options=[_option("lower_austria"), _option("vienna")]),
+    "building_class": VocabularyEntry(multiple=False, options=[_option("4", "GK 4"), _option("3", "GK 3")]),
+    "construction_method": VocabularyEntry(multiple=True, options=[_option("timber"), _option("reinforced_concrete")]),
+    "uses": VocabularyEntry(multiple=True, options=[]),
 }
 
 
@@ -155,30 +155,30 @@ def test_a_summary_is_cut_to_400_characters():
 
 # --- extract_fingerprint --------------------------------------------------------------------
 
-BUNDESLAND_QUOTE = "Das Vorhaben liegt in Niederösterreich."
+FEDERAL_STATE_QUOTE = "Das Vorhaben liegt in Niederösterreich."
 
 
 def test_a_token_outside_the_vocabulary_is_dropped():
     llm = FakeLLM(
         {
             "values": [
-                {"key": "gebaeudeklasse", "value": "5", "evidence": [_ev("b.pdf", "Gebäudeklasse 5")]},
-                {"key": "bauweise", "value": ["holzbau"], "evidence": [_ev("b.pdf", "Holzbau")]},
+                {"key": "building_class", "value": "5", "evidence": [_ev("b.pdf", "Gebäudeklasse 5")]},
+                {"key": "construction_method", "value": ["timber"], "evidence": [_ev("b.pdf", "Holzbau")]},
             ]
         }
     )
 
     values = extract_fingerprint("Text", VOCABULARY, [], llm)
 
-    assert [value.key for value in values] == ["bauweise"]
+    assert [value.key for value in values] == ["construction_method"]
 
 
 def test_a_value_without_a_quote_is_dropped():
     llm = FakeLLM(
         {
             "values": [
-                {"key": "gebaeudeklasse", "value": "4", "evidence": [_ev("b.pdf", "")]},
-                {"key": "bauweise", "value": ["holzbau"], "evidence": [_ev("b.pdf", "   ")]},
+                {"key": "building_class", "value": "4", "evidence": [_ev("b.pdf", "")]},
+                {"key": "construction_method", "value": ["timber"], "evidence": [_ev("b.pdf", "   ")]},
             ]
         }
     )
@@ -187,7 +187,7 @@ def test_a_value_without_a_quote_is_dropped():
 
 
 def test_a_value_without_evidence_is_dropped():
-    llm = FakeLLM({"values": [{"key": "gebaeudeklasse", "value": "4", "evidence": []}]})
+    llm = FakeLLM({"values": [{"key": "building_class", "value": "4", "evidence": []}]})
 
     assert extract_fingerprint("Text", VOCABULARY, [], llm) == []
 
@@ -201,11 +201,11 @@ def test_a_key_the_vocabulary_does_not_have_is_dropped():
 def test_a_confirmed_fact_is_not_asked_and_is_not_in_the_prompt():
     llm = FakeLLM({"values": []})
 
-    extract_fingerprint(f"Der Bau ist fertig. {BUNDESLAND_QUOTE}", VOCABULARY, ["bundesland"], llm)
+    extract_fingerprint(f"Der Bau ist fertig. {FEDERAL_STATE_QUOTE}", VOCABULARY, ["federal_state"], llm)
 
-    assert "bundesland" not in llm.user_prompt()
-    assert "bundesland" not in llm.system_prompt()
-    assert "gebaeudeklasse" in llm.user_prompt()
+    assert "federal_state" not in llm.user_prompt()
+    assert "federal_state" not in llm.system_prompt()
+    assert "building_class" in llm.user_prompt()
 
 
 def test_a_key_with_no_options_is_not_asked():
@@ -213,33 +213,37 @@ def test_a_key_with_no_options_is_not_asked():
 
     extract_fingerprint("Text", VOCABULARY, [], llm)
 
-    assert "nutzungen" not in llm.user_prompt()
+    assert "uses" not in llm.user_prompt()
 
 
 def test_a_multi_valued_key_keeps_its_valid_tokens_and_drops_the_others_one_by_one():
     llm = FakeLLM(
         {
             "values": [
-                {"key": "bauweise", "value": ["holzbau", "lehm", "stahlbeton"], "evidence": [_ev("b.pdf", "Holz")]}
+                {
+                    "key": "construction_method",
+                    "value": ["timber", "lehm", "reinforced_concrete"],
+                    "evidence": [_ev("b.pdf", "Holz")],
+                }
             ]
         }
     )
 
     [value] = extract_fingerprint("Text", VOCABULARY, [], llm)
 
-    assert value.value == ["holzbau", "stahlbeton"]
+    assert value.value == ["timber", "reinforced_concrete"]
 
 
 def test_a_single_valued_key_refuses_a_list_of_several_tokens():
     llm = FakeLLM(
-        {"values": [{"key": "gebaeudeklasse", "value": ["4", "3"], "evidence": [_ev("b.pdf", "GK 3 und 4")]}]}
+        {"values": [{"key": "building_class", "value": ["4", "3"], "evidence": [_ev("b.pdf", "GK 3 und 4")]}]}
     )
 
     assert extract_fingerprint("Text", VOCABULARY, [], llm) == []
 
 
 def test_a_single_valued_key_answers_with_one_token_not_a_list():
-    llm = FakeLLM({"values": [{"key": "gebaeudeklasse", "value": "4", "evidence": [_ev("b.pdf", "Gebäudeklasse 4")]}]})
+    llm = FakeLLM({"values": [{"key": "building_class", "value": "4", "evidence": [_ev("b.pdf", "Gebäudeklasse 4")]}]})
 
     [value] = extract_fingerprint("Text", VOCABULARY, [], llm)
 
@@ -247,7 +251,7 @@ def test_a_single_valued_key_answers_with_one_token_not_a_list():
 
 
 def test_a_quote_longer_than_300_characters_is_cut():
-    llm = FakeLLM({"values": [{"key": "gebaeudeklasse", "value": "4", "evidence": [_ev("b.pdf", "q" * 500)]}]})
+    llm = FakeLLM({"values": [{"key": "building_class", "value": "4", "evidence": [_ev("b.pdf", "q" * 500)]}]})
 
     [value] = extract_fingerprint("Text", VOCABULARY, [], llm)
 
@@ -332,11 +336,11 @@ def test_the_known_decisions_are_shown_as_already_known():
 
 
 def test_the_request_reads_the_contract_spelling():
-    request = _request(knownFacts=["bundesland"], knownDecisions=["Brandsperre"])
+    request = _request(knownFacts=["federal_state"], knownDecisions=["Brandsperre"])
 
-    assert request.known_facts == ["bundesland"]
+    assert request.known_facts == ["federal_state"]
     assert request.known_decisions == ["Brandsperre"]
-    assert request.vocabulary["bauweise"].multiple is True
+    assert request.vocabulary["construction_method"].multiple is True
 
 
 def test_more_than_sixty_known_decisions_are_refused():
@@ -368,7 +372,7 @@ def test_every_field_of_a_strict_reply_is_required(model):
 def test_a_closed_project_is_read_end_to_end_and_each_value_names_its_file():
     llm = FakeLLM(
         {"file_names": ["Baubeschreibung.pdf"]},
-        {"values": [{"key": "gebaeudeklasse", "value": "4", "evidence": [_ev("Baubeschreibung.pdf", "GK 4", "2")]}]},
+        {"values": [{"key": "building_class", "value": "4", "evidence": [_ev("Baubeschreibung.pdf", "GK 4", "2")]}]},
         {
             "decisions": [
                 {
@@ -393,9 +397,9 @@ def test_a_closed_project_is_read_end_to_end_and_each_value_names_its_file():
     assert response.error is None
     assert response.model == "fake/model"
     assert response.documents_read == ["Baubeschreibung.pdf"]
-    assert [(value.key, value.value) for value in response.fingerprint] == [("gebaeudeklasse", "4")]
+    assert [(value.key, value.value) for value in response.fingerprint] == [("building_class", "4")]
     assert response.fingerprint[0].evidence[0].file_name == "Baubeschreibung.pdf"
-    assert response.decisions[0].outcome == "auflage"
+    assert response.decisions[0].outcome == "condition"
 
 
 def test_evidence_that_names_a_file_nobody_read_is_dropped_and_the_value_with_only_such_is_too():
@@ -403,10 +407,10 @@ def test_evidence_that_names_a_file_nobody_read_is_dropped_and_the_value_with_on
         {"file_names": ["a.pdf", "b.pdf"]},
         {
             "values": [
-                {"key": "gebaeudeklasse", "value": "4", "evidence": [_ev("b.pdf", "GK 4")]},
+                {"key": "building_class", "value": "4", "evidence": [_ev("b.pdf", "GK 4")]},
                 {
-                    "key": "bauweise",
-                    "value": ["holzbau"],
+                    "key": "construction_method",
+                    "value": ["timber"],
                     "evidence": [_ev("b.pdf", "Holz"), _ev("a.pdf", "Holzbau")],
                 },
             ]
@@ -422,7 +426,7 @@ def test_evidence_that_names_a_file_nobody_read_is_dropped_and_the_value_with_on
     )
 
     assert response.documents_read == ["a.pdf"]
-    assert [value.key for value in response.fingerprint] == ["bauweise"]
+    assert [value.key for value in response.fingerprint] == ["construction_method"]
     assert [entry.file_name for entry in response.fingerprint[0].evidence] == ["a.pdf"]
 
 
@@ -527,7 +531,7 @@ def test_a_fingerprint_pen_that_fails_answers_extraction_failed_with_empty_lists
 def test_a_decision_pen_that_fails_drops_the_fingerprint_too():
     llm = FakeLLM(
         {"file_names": ["a.pdf"]},
-        {"values": [{"key": "gebaeudeklasse", "value": "4", "evidence": [_ev("a.pdf", "GK 4")]}]},
+        {"values": [{"key": "building_class", "value": "4", "evidence": [_ev("a.pdf", "GK 4")]}]},
         RuntimeError("timeout"),
     )
 
@@ -556,7 +560,7 @@ def test_a_failure_to_list_the_documents_is_extraction_failed_not_a_raise():
 def _read_one(text: str, quote: str):
     llm = FakeLLM(
         {"file_names": ["Baubeschreibung.pdf"]},
-        {"values": [{"key": "gebaeudeklasse", "value": "4", "evidence": [_ev("Baubeschreibung.pdf", quote, "1")]}]},
+        {"values": [{"key": "building_class", "value": "4", "evidence": [_ev("Baubeschreibung.pdf", quote, "1")]}]},
         {"decisions": []},
     )
     return read_project_experience(
@@ -591,7 +595,7 @@ def test_a_file_the_request_does_not_name_is_never_offered_nor_read():
     # screen holds: the BFF leaves it out of fileNames, and nothing of it may reach a pen.
     llm = FakeLLM(
         {"file_names": ["a.pdf", "Honorare.pdf"]},
-        {"values": [{"key": "gebaeudeklasse", "value": "5", "evidence": [_ev("Honorare.pdf", "GK 5")]}]},
+        {"values": [{"key": "building_class", "value": "5", "evidence": [_ev("Honorare.pdf", "GK 5")]}]},
         {"decisions": []},
     )
     fetched: list[str] = []

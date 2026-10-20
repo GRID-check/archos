@@ -92,7 +92,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
   it('exports the scope and the ratings filters it is given, named for the one organization', async () => {
     isOwner.value = true
     const res = await GET(
-      request('?from=2026-10-01&to=2026-10-07&org=org_2&verdict=down&reason=inaccurate&topic=brandschutz&mode=deep&has_comment=1&q=GK&format=xlsx')
+      request('?from=2026-10-01&to=2026-10-07&org=org_2&verdict=down&reason=inaccurate&topic=fire_safety&mode=deep&has_comment=1&q=GK&format=xlsx')
     )
 
     expect(getAnswerFeedbackExport).toHaveBeenCalledWith(expect.anything(), {
@@ -101,7 +101,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
         ratings: expect.objectContaining({
           verdict: 'down',
           reasons: ['inaccurate'],
-          topics: ['brandschutz'],
+          topics: ['fire_safety'],
           modes: ['deep'],
           hasComment: true,
           query: 'GK',
@@ -126,12 +126,12 @@ describe('GET /api/platform/answer-feedback/export', () => {
   it('keeps the old `scope` links working', async () => {
     isOwner.value = true
     await GET(request('?scope=all&days=7&verdict=down&reason=inaccurate&org=org_2'))
-    await GET(request('?scope=selection&days=7&topic=brandschutz'))
+    await GET(request('?scope=selection&days=7&topic=fire_safety'))
 
     const [all, selection] = vi.mocked(getAnswerFeedbackExport).mock.calls.map((call) => call[1].query)
     expect(all.scope.organizationIds).toEqual(['org_2'])
     expect(all.ratings).toMatchObject({ verdict: null, reasons: [] })
-    expect(selection.ratings).toMatchObject({ verdict: 'down', topics: ['brandschutz'] })
+    expect(selection.ratings).toMatchObject({ verdict: 'down', topics: ['fire_safety'] })
   })
 
   it('names an unfiltered file by its range alone', async () => {
@@ -218,7 +218,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
   describe('?summary=weekly', () => {
     it('answers with per-org, per-week counts, the denominator and the rates, and passes the filters', async () => {
       isOwner.value = true
-      const res = await GET(request('?summary=weekly&from=2026-09-01&to=2026-10-09&org=org_2&topic=statik'))
+      const res = await GET(request('?summary=weekly&from=2026-09-01&to=2026-10-09&org=org_2&topic=structural'))
       const text = new TextDecoder().decode(await bytesOf(res))
       const [header, row] = text.split('\r\n')
 
@@ -235,7 +235,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
         expect.anything(),
         expect.objectContaining({
           scope: expect.objectContaining({ from: '2026-09-01', organizationIds: ['org_2'] }),
-          ratings: expect.objectContaining({ topics: ['statik'] }),
+          ratings: expect.objectContaining({ topics: ['structural'] }),
         })
       )
       expect(res.headers.get('X-Grid-Export-Ignored-Filters')).toBeNull()
@@ -265,7 +265,7 @@ describe('GET /api/platform/answer-feedback/export', () => {
     /** A rate cannot honour a verdict or a reason; the script that asked is told which it lost. */
     it('names the filters a rate cannot honour in a header', async () => {
       isOwner.value = true
-      const res = await GET(request('?summary=weekly&verdict=down&reason=inaccurate&topic=statik'))
+      const res = await GET(request('?summary=weekly&verdict=down&reason=inaccurate&topic=structural'))
       expect(res.headers.get('X-Grid-Export-Ignored-Filters')).toBe('verdict,reason')
     })
   })

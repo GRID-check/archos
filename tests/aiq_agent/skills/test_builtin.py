@@ -12,20 +12,20 @@ from aiq_agent.skills.models import SkillValidationError
 
 EXPECTED = {
     ("bim", "ifc-spatial-reasoning"),
-    ("oib", "bebauung"),
-    ("oib", "bestand"),
-    ("oib", "brandschutz"),
-    ("oib", "einreichcheck"),
-    ("oib", "gebaeudeklasse"),
+    ("oib", "plot-development"),
+    ("oib", "existing-building"),
+    ("oib", "fire-safety"),
+    ("oib", "submission-check"),
+    ("oib", "building-class"),
     ("oib", "hygiene"),
-    ("oib", "nutzungssicherheit"),
-    ("oib", "waermeschutz"),
+    ("oib", "safety-in-use"),
+    ("oib", "thermal-protection"),
     ("research", "data-table-analysis"),
     ("research", "forecast-analysis"),
     ("research", "lightweight-calculation"),
     ("synthesis", "long-form-report-writer"),
     ("synthesis", "prediction-report-writer"),
-    ("synthesis", "pruefbericht-writer"),
+    ("synthesis", "inspection-report-writer"),
 }
 
 
@@ -92,7 +92,7 @@ def test_builtin_frontmatter_declares_only_its_audience() -> None:
 
     # Job playbooks are offers: on the Skills tab, chat-usable files start ON.
     # Genre methods stay machinery so a fire question still auto-loads.
-    for name in ("einreichcheck", "bestand"):
+    for name in ("submission-check", "existing-building"):
         assert by_name[name].metadata.get("grid-catalog") == "curated", name
     for name in (
         "forecast-analysis",
@@ -101,7 +101,7 @@ def test_builtin_frontmatter_declares_only_its_audience() -> None:
         "lightweight-calculation",
     ):
         assert by_name[name].metadata.get("grid-catalog") == "curated", name
-    for name in ("brandschutz", "gebaeudeklasse", "hygiene", "long-form-report-writer"):
+    for name in ("fire-safety", "building-class", "hygiene", "long-form-report-writer"):
         assert "grid-catalog" not in by_name[name].metadata, name
 
 
@@ -120,3 +120,18 @@ def test_discovery_rejects_name_mismatch(tmp_path: Path) -> None:
 def test_discovery_missing_dir() -> None:
     with pytest.raises(FileNotFoundError):
         discover_builtin_skills(BUILTIN_SKILLS_DIR / "nonexistent")
+
+
+def test_a_renamed_builtin_still_answers_to_the_name_it_had():
+    """Migration 0169 renamed eight builtins; a stored schedule, a typed slash and an old
+    message still say the old name, so `canonical_skill_name` maps it and nothing ships under it."""
+    from aiq_agent.skills.builtin import LEGACY_SKILL_NAMES
+    from aiq_agent.skills.builtin import canonical_skill_name
+
+    shipped = {skill.name for skill in discover_builtin_skills()}
+    for legacy, current in LEGACY_SKILL_NAMES.items():
+        assert current in shipped
+        assert legacy not in shipped
+        assert canonical_skill_name(legacy) == current
+    assert canonical_skill_name("hygiene") == "hygiene"
+    assert canonical_skill_name("an-org-skill") == "an-org-skill"

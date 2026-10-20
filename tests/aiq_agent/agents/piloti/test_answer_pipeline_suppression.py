@@ -44,7 +44,7 @@ WINDOW_PROSE = "x" * 500
 #: Below both floors: the trailer shrinks to the callout alone.
 SHORT_PROSE = "x" * 300
 
-_CALLOUT = {"kind": "frist", "text": "Die Bauverhandlung ist binnen sechs Wochen anzuberaumen."}
+_CALLOUT = {"kind": "deadline", "text": "Die Bauverhandlung ist binnen sechs Wochen anzuberaumen."}
 _TAKEAWAYS = [
     {"text": "Massgeblich ist das Fluchtniveau, nicht die Geschosszahl"},
     {"text": "Tragende Bauteile mindestens REI 60", "detail": "Nach OIB-Richtlinie 2, Tabelle 1b."},
@@ -162,7 +162,7 @@ class TestCalloutSurvival:
         final = await finalize_answer(messages, registry=registry, tools=[], repair=None)
 
         assert final.answer_meta is not None
-        assert final.answer_meta["callout"]["kind"] == "frist"
+        assert final.answer_meta["callout"]["kind"] == "deadline"
         assert final.content is not None and final.content.count("[[callout]]") == 1
 
 
@@ -318,7 +318,7 @@ class TestTrailerValueWiring:
             confidence_reason=None,
         )
 
-    def test_a_verdict_with_a_resolving_fundstelle_survives(self):
+    def test_a_verdict_with_a_resolving_locus_survives(self):
         extracted = self._extracted(
             {
                 "verdict": {
@@ -332,12 +332,12 @@ class TestTrailerValueWiring:
 
         assert meta is not None and meta["verdict"]["value"] == "100 cm"
 
-    def test_a_verdict_with_no_fundstelle_in_the_captures_drops(self):
+    def test_a_verdict_with_no_locus_in_the_captures_drops(self):
         extracted = self._extracted({"verdict": {"value": "100 cm", "subject": "Erforderliche Gelanderhohe"}})
         stranger = SourceEntry(citation_key="plan.pdf, p.1", title="Plan", source_type="knowledge_layer")
         assert _gated_meta(extracted, "x" * 700, SourceRegistry(), turn_sources=[stranger]) is None
 
-    def test_a_takeaway_with_a_fundstelle_in_its_detail_survives(self):
+    def test_a_takeaway_with_a_locus_in_its_detail_survives(self):
         extracted = self._extracted({"takeaways": _TAKEAWAYS})
         meta = _gated_meta(extracted, "x" * 700, SourceRegistry(), turn_sources=[_oib_source()])
 

@@ -37,7 +37,7 @@ function rule(
 }
 
 const FAILING = rule({
-  ruleId: 'oib4-tuer-durchgangsbreite',
+  ruleId: 'oib4-door-clear-width',
   richtlinie: 'OIB 4',
   clause: '3',
   titleDe: 'Türen — lichte Durchgangsbreite',
@@ -63,7 +63,7 @@ const FAILING = rule({
 })
 
 const UNDECIDABLE = rule({
-  ruleId: 'oib2-feuerwiderstand-tragend',
+  ruleId: 'oib2-fire-resistance-load-bearing',
   undecidable: 34,
   unknowns: [
     {
@@ -78,7 +78,7 @@ const UNDECIDABLE = rule({
 })
 
 const STOOD_DOWN = rule({
-  ruleId: 'oib6-u-wert-fenster',
+  ruleId: 'oib6-u-value-window',
   richtlinie: 'OIB 6',
   titleDe: 'Fenster — Wärmedurchgangskoeffizient',
   applicable: false,
@@ -102,7 +102,7 @@ function panel(overrides: Partial<React.ComponentProps<typeof IfcCompliancePanel
       rules={[FAILING, UNDECIDABLE, STOOD_DOWN]}
       summary={SUMMARY}
       shoppingList={[
-        { path: 'Pset_WallCommon.FireRating', elements: 34, rules: ['oib2-feuerwiderstand-tragend'] },
+        { path: 'Pset_WallCommon.FireRating', elements: 34, rules: ['oib2-fire-resistance-load-bearing'] },
       ]}
       isLoading={false}
       error={null}
@@ -213,7 +213,7 @@ describe('IfcCompliancePanel', () => {
   })
 
   it('names the project data the brief is missing and offers to fix it', () => {
-    panel({ missingFacts: ['gebaeudeklasse'] })
+    panel({ missingFacts: ['buildingClass'] })
     expect(screen.getByText(/project data this brief does not carry: Gebäudeklasse/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Set it with the assistant' })).toHaveAttribute(
       'href',
@@ -242,10 +242,10 @@ describe('IfcCompliancePanel', () => {
 
   describe('human confirmations', () => {
     const CONFIRMED = rule({
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       undecidable: 34,
       confirmation: {
-        ruleId: 'oib2-feuerwiderstand-tragend',
+        ruleId: 'oib2-fire-resistance-load-bearing',
         modelId: 'rev-3',
         confirmedBy: 'a.muster',
         note: 'Mit dem Brandschutzplaner abgeklärt.',
@@ -272,11 +272,11 @@ describe('IfcCompliancePanel', () => {
 
     it('records a confirmation with the note the user typed', async () => {
       const onConfirm = vi.fn().mockResolvedValue(undefined)
-      panel({ rules: [rule({ ruleId: 'oib2-feuerwiderstand-tragend', undecidable: 34 })], onConfirm })
+      panel({ rules: [rule({ ruleId: 'oib2-fire-resistance-load-bearing', undecidable: 34 })], onConfirm })
       await userEvent.click(screen.getByRole('button', { name: 'Confirm manually' }))
       await userEvent.type(screen.getByLabelText('Why this is settled'), 'Anhand des Plans geprüft')
       await userEvent.click(screen.getByRole('button', { name: 'Save confirmation' }))
-      expect(onConfirm).toHaveBeenCalledWith('oib2-feuerwiderstand-tragend', 'Anhand des Plans geprüft')
+      expect(onConfirm).toHaveBeenCalledWith('oib2-fire-resistance-load-bearing', 'Anhand des Plans geprüft')
     })
 
     it('lands the reader in the note field they just asked for', async () => {
@@ -285,13 +285,13 @@ describe('IfcCompliancePanel', () => {
       // has to Tab back through the whole Prüfbuch to reach a textarea that
       // appeared because of them — a signature a keyboard cannot complete
       // without counting Tab stops.
-      panel({ rules: [rule({ ruleId: 'oib2-feuerwiderstand-tragend', undecidable: 34 })], onConfirm: vi.fn() })
+      panel({ rules: [rule({ ruleId: 'oib2-fire-resistance-load-bearing', undecidable: 34 })], onConfirm: vi.fn() })
       await userEvent.click(screen.getByRole('button', { name: 'Confirm manually' }))
       expect(document.activeElement).toBe(screen.getByLabelText('Why this is settled'))
     })
 
     it('gives focus back to the button that opened the form when it is cancelled', async () => {
-      panel({ rules: [rule({ ruleId: 'oib2-feuerwiderstand-tragend', undecidable: 34 })], onConfirm: vi.fn() })
+      panel({ rules: [rule({ ruleId: 'oib2-fire-resistance-load-bearing', undecidable: 34 })], onConfirm: vi.fn() })
       await userEvent.click(screen.getByRole('button', { name: 'Confirm manually' }))
       await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Confirm manually' }))
@@ -310,7 +310,7 @@ describe('IfcCompliancePanel', () => {
       expect(screen.getByText('Delete this confirmation and its note?')).toBeInTheDocument()
 
       await userEvent.click(screen.getByRole('button', { name: 'Withdraw' }))
-      expect(onWithdraw).toHaveBeenCalledWith('oib2-feuerwiderstand-tragend')
+      expect(onWithdraw).toHaveBeenCalledWith('oib2-fire-resistance-load-bearing')
     })
 
     it('lets the reader back out of the withdrawal', async () => {
@@ -328,7 +328,7 @@ describe('IfcCompliancePanel', () => {
       // panel's own prop doc says the write callbacks are absent for a viewer
       // without `project:edit`; nothing ever omits them.
       const onConfirm = vi.fn().mockRejectedValue(new Error('403'))
-      panel({ rules: [rule({ ruleId: 'oib2-feuerwiderstand-tragend', undecidable: 34 })], onConfirm })
+      panel({ rules: [rule({ ruleId: 'oib2-fire-resistance-load-bearing', undecidable: 34 })], onConfirm })
 
       await userEvent.click(screen.getByRole('button', { name: 'Confirm manually' }))
       await userEvent.type(screen.getByLabelText('Why this is settled'), 'Geprüft')
@@ -345,7 +345,7 @@ describe('IfcCompliancePanel', () => {
       // and no caller passed `factsFailed`. The two sentences send the reader
       // to different places, and only one of them can help.
       panel({
-        rules: [rule({ ruleId: 'oib3-raumhoehe', passed: 9 })],
+        rules: [rule({ ruleId: 'oib3-room-height', passed: 9 })],
         factsFailed: true,
         missingFacts: [],
       })
@@ -355,7 +355,7 @@ describe('IfcCompliancePanel', () => {
 
     it('offers nothing to confirm on a rule the model settled cleanly', () => {
       // A signature there would be one nobody needs.
-      panel({ rules: [rule({ ruleId: 'oib3-raumhoehe', passed: 9 })], onConfirm: vi.fn() })
+      panel({ rules: [rule({ ruleId: 'oib3-room-height', passed: 9 })], onConfirm: vi.fn() })
       expect(screen.queryByRole('button', { name: 'Confirm manually' })).not.toBeInTheDocument()
     })
 
@@ -370,7 +370,7 @@ describe('IfcCompliancePanel', () => {
 
 describe('a confirmation that could not be saved', () => {
   const unsettled = rule({
-    ruleId: 'oib2-feuerwiderstand-tragend',
+    ruleId: 'oib2-fire-resistance-load-bearing',
     undecidable: 34,
     unknowns: [
       {

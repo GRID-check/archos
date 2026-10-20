@@ -1,60 +1,60 @@
 /**
- * The Gebäudeklasse per Bauwerk, as the review shows it and as a reading
+ * The building class per building, as the review shows it and as a reading
  * writes it (ADR-0111, „The Gebäudeklasse derivation"). Pure.
  *
  * The inputs are read by the reader `computeNeeds` weighs decisive needs
- * with (`gebaeudeklasseInputsFor`): through the wizard's answers, facts first
+ * with (`buildingClassInputsFor`): through the wizard's answers, facts first
  * and suggestions under them, so the wizard's legacy bridges reach the
  * derivation and the class the review shows is the class the needs were
  * computed against. Each input says whether it is only suggested.
  *
  * Writing: when every input that matters has a value, the class is written as
- * the suggestion `gebaeudeklasse@bwN` with `derivation` evidence. It is never
+ * the suggestion `building_class@bldgN` with `derivation` evidence. It is never
  * written over a confirmed class: a different one becomes an alternative on
- * the fact, as a document's would. A Hochhaus, or a Bauwerk that is no
- * Gebäude, gets nothing.
+ * the fact, as a document's would. A Hochhaus, or a building that is no
+ * building, gets nothing.
  */
 
 import { answersFromProfile, type ProjectIntakeDefinition } from '@/lib/project-profile/intake-definition'
 import type { DerivationEvidence, DerivationInput, ProfileAlternative } from '@/lib/project-profile/evidence-schema'
 import type { ProjectProfile } from '@/lib/project-profile/types'
-import { deriveGebaeudeklasse, GEBAEUDEKLASSE_DERIVATION } from './derivations'
-import { gebaeudeklasseInputsFor } from './needs'
+import { deriveBuildingClass, BUILDING_CLASS_DERIVATION } from './derivations'
+import { buildingClassInputsFor } from './needs'
 import { sameProfileValue, suggestedAssumption, withAlternative } from './profile-edits'
 import type { DerivationView } from './types'
 
-/** The profile key the class of one Bauwerk is stored under. */
-export const gebaeudeklasseKey = (bauwerkId: string): string => `gebaeudeklasse@${bauwerkId}`
+/** The profile key the class of one building is stored under. */
+export const buildingClassKey = (buildingId: string): string => `building_class@${buildingId}`
 
-/** Whether `key` holds a class, of a Bauwerk or flat: derived here, never recorded by a reading. */
-export const isGebaeudeklasseKey = (key: string): boolean => key.split('@')[0] === 'gebaeudeklasse'
+/** Whether `key` holds a class, of a building or flat: derived here, never recorded by a reading. */
+export const isBuildingClassKey = (key: string): boolean => key.split('@')[0] === 'building_class'
 
 /** The reason a derived suggestion carries, beside its evidence. Read by a person and by the agent's prompt view. */
-export const DERIVED_REASON = `Abgeleitet: ${GEBAEUDEKLASSE_DERIVATION.citation}`
+export const DERIVED_REASON = `Abgeleitet: ${BUILDING_CLASS_DERIVATION.citation}`
 
-/** The Bauwerke the profile describes, in order (`bw1` when it names none). */
-export function bauwerkIdsOf(profile: ProjectProfile, definition: ProjectIntakeDefinition): string[] {
-  return answersFromProfile(profile, definition).bauwerke.map((bauwerk) => bauwerk.id)
+/** The buildings the profile describes, in order (`bldg1` when it names none). */
+export function buildingIdsOf(profile: ProjectProfile, definition: ProjectIntakeDefinition): string[] {
+  return answersFromProfile(profile, definition).buildings.map((building) => building.id)
 }
 
-/** The class of one Bauwerk and what it read. */
-export function deriveForBauwerk(
+/** The class of one building and what it read. */
+export function deriveForBuilding(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition,
-  bauwerkId: string
+  buildingId: string
 ): DerivationView {
-  const known = gebaeudeklasseInputsFor(profile, definition, bauwerkId)
+  const known = buildingClassInputsFor(profile, definition, buildingId)
   const inputs: DerivationInput[] = []
   for (const [input, value] of Object.entries(known)) {
     if (value === undefined) continue
-    const key = `${input}@${bauwerkId}`
+    const key = `${input}@${buildingId}`
     inputs.push({ key, value, suggested: !(key in profile.facts) })
   }
-  const result = deriveGebaeudeklasse(known)
+  const result = deriveBuildingClass(known)
   return {
-    bauwerkId,
-    rule: GEBAEUDEKLASSE_DERIVATION.rule,
-    citation: GEBAEUDEKLASSE_DERIVATION.citation,
+    buildingId: buildingId,
+    rule: BUILDING_CLASS_DERIVATION.rule,
+    citation: BUILDING_CLASS_DERIVATION.citation,
     value: result.value,
     highRise: result.hochhaus,
     inputs,
@@ -62,22 +62,22 @@ export function deriveForBauwerk(
   }
 }
 
-/** Every Bauwerk's class. */
+/** Every building's class. */
 export function deriveAll(profile: ProjectProfile, definition: ProjectIntakeDefinition): DerivationView[] {
-  return bauwerkIdsOf(profile, definition).map((bauwerkId) => deriveForBauwerk(profile, definition, bauwerkId))
+  return buildingIdsOf(profile, definition).map((buildingId) => deriveForBuilding(profile, definition, buildingId))
 }
 
-/** The Bauwerke whose class may have moved when these keys changed: a project-wide input moves every one. */
-export function bauwerkeTouchedBy(keys: Iterable<string>, allBauwerke: readonly string[]): string[] {
-  const inputs: readonly string[] = GEBAEUDEKLASSE_DERIVATION.inputs
+/** The buildings whose class may have moved when these keys changed: a project-wide input moves every one. */
+export function buildingsTouchedBy(keys: Iterable<string>, allBuildings: readonly string[]): string[] {
+  const inputs: readonly string[] = BUILDING_CLASS_DERIVATION.inputs
   const touched = new Set<string>()
   for (const key of keys) {
     const [base, scope] = key.split('@')
     if (!inputs.includes(base)) continue
-    if (!scope) return [...allBauwerke]
-    if (allBauwerke.includes(scope)) touched.add(scope)
+    if (!scope) return [...allBuildings]
+    if (allBuildings.includes(scope)) touched.add(scope)
   }
-  return allBauwerke.filter((bauwerkId) => touched.has(bauwerkId))
+  return allBuildings.filter((buildingId) => touched.has(buildingId))
 }
 
 function derivationEvidence(view: DerivationView): DerivationEvidence {
@@ -96,7 +96,7 @@ function withoutDerivedSuggestion(profile: ProjectProfile, key: string): { profi
 }
 
 /**
- * The profile with the class of `bauwerkId` written as the derivation says,
+ * The profile with the class of `buildingId` written as the derivation says,
  * and whether it changed. While the class is unknown, a class an earlier
  * derivation suggested goes with the inputs it was derived from (a reading
  * withdrew one); a confirmed class, or one a document stated, stays.
@@ -104,11 +104,11 @@ function withoutDerivedSuggestion(profile: ProjectProfile, key: string): { profi
 export function withDerivedClass(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition,
-  bauwerkId: string,
+  buildingId: string,
   now: string
 ): { profile: ProjectProfile; changed: boolean } {
-  const view = deriveForBauwerk(profile, definition, bauwerkId)
-  const key = gebaeudeklasseKey(bauwerkId)
+  const view = deriveForBuilding(profile, definition, buildingId)
+  const key = buildingClassKey(buildingId)
   if (view.value === null) return withoutDerivedSuggestion(profile, key)
   const evidence = derivationEvidence(view)
 

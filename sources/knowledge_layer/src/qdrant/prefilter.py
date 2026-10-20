@@ -53,6 +53,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from aiq_agent.knowledge.document_classification import qdrant_doc_class
+
 #: Payload field the folder filter matches (see :func:`folder_ancestors`).
 FOLDER_FIELD = "folder_ancestors"
 
@@ -101,7 +103,8 @@ class Pushdown:
         """
         clauses: list[dict[str, Any]] = []
         if self.doc_class:
-            clauses.append({"doc_class": self.doc_class})
+            # The vector store still holds the German spelling until its rebuild (qdrant_doc_class).
+            clauses.append({"doc_class": qdrant_doc_class(self.doc_class)})
         if self.folder:
             clauses.append({FOLDER_FIELD: self.folder})
         if self.hide_superseded and user_shelf:

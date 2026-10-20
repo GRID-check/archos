@@ -113,14 +113,14 @@ class TestLoadTurnContext:
         """The old code wrapped the digest AND the stage facts in one try:
         one failure dropped both. The facts are the stages' only input."""
         stubs["digest"] = RuntimeError("GRID_INTERNAL_API_TOKEN is not configured")
-        request = _request(project_id="p1", organization_id="org", project_memory="FROZEN", bundesland="wien")
+        request = _request(project_id="p1", organization_id="org", project_memory="FROZEN", federal_state="vienna")
 
         context = await load_turn_context(request, conversation_id="c1", query_text="q", resolve_stages=True)
 
         assert context.project_context == "FROZEN"
         assert context.stage_facts.organization_id == "org"
         assert context.stage_facts.memory_digest == "FROZEN"
-        assert context.stage_facts.bundesland == "wien"
+        assert context.stage_facts.federal_state == "vienna"
         assert context.stage_facts.enabled_stages == frozenset({"follow_ups"})
 
     async def test_a_bug_in_the_digest_fetch_drops_the_context_instead_of_faking_it(self, stubs, caplog):

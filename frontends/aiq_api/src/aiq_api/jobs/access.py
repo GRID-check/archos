@@ -19,6 +19,7 @@ from aiq_agent.auth import get_current_principal
 from aiq_agent.common.db_utils import ensure_schema
 from aiq_agent.common.db_utils import present_columns
 from aiq_agent.common.db_utils import present_indexes
+from aiq_agent.common.source_kinds import is_office_shelf_collection
 from aiq_agent.knowledge.restricted_collections import base_collection_of
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
@@ -356,8 +357,8 @@ def _base_collection_name() -> str:
 def derive_project_collection(collection_scope: list[str] | None) -> str | None:
     """Extract the project collection from a request's collection scope.
 
-    The collection scope contains the base/OIB collection, the office Archiv
-    (``archiv_<org>``), the project collection, and an ``s_<conversation>``
+    The collection scope contains the base/OIB collection, the office shelf
+    (``archiv_<org>`` or ``office_shelf_<org>``), the project collection, and an ``s_<conversation>``
     scoped collection. The project collection is the single remaining entry
     once those others are excluded. Returns None if no such entry exists (or
     more than one candidate remains, which indicates an ambiguous scope not
@@ -382,7 +383,9 @@ def derive_project_collection(collection_scope: list[str] | None) -> str | None:
     candidates = {
         base_collection_of(collection)
         for collection in collection_scope
-        if collection != base_collection and not collection.startswith("s_") and not collection.startswith("archiv_")
+        if collection != base_collection
+        and not collection.startswith("s_")
+        and not is_office_shelf_collection(collection)
     }
     if len(candidates) == 1:
         return candidates.pop()

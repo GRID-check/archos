@@ -22,7 +22,7 @@ export class ByNameResolveError extends Error {
 }
 
 export const PROJECT_BY_NAME_PATH = '/api/documents/by-name'
-export const ARCHIV_BY_NAME_PATH = '/api/archiv/documents/by-name'
+export const OFFICE_SHELF_BY_NAME_PATH = '/api/office-shelf/documents/by-name'
 
 /** A listing row as the resolve returns it: the listing's own wire row. */
 export type ResolvedDocumentRow = DocumentWireRow & { collectionName?: string; updatedAt?: string }
@@ -31,7 +31,7 @@ export interface DocumentByNameClient {
   /** The project's documents with these filenames. */
   project: (projectId: string, names: readonly string[]) => Promise<ResolvedDocumentRow[]>
   /** The organization Archiv's documents with these filenames. */
-  archiv: (names: readonly string[]) => Promise<ResolvedDocumentRow[]>
+  officeShelf: (names: readonly string[]) => Promise<ResolvedDocumentRow[]>
 }
 
 function chunks(names: readonly string[]): string[][] {
@@ -66,6 +66,6 @@ export function createDocumentByNameClient(
     (await Promise.all(chunks(names).map((batch) => post(path, { ...extra, names: batch })))).flat()
   return {
     project: (projectId, names) => batched(PROJECT_BY_NAME_PATH, names, { projectId }),
-    archiv: (names) => batched(ARCHIV_BY_NAME_PATH, names, {}),
+    officeShelf: (names) => batched(OFFICE_SHELF_BY_NAME_PATH, names, {}),
   }
 }

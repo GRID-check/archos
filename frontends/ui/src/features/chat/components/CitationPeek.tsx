@@ -26,12 +26,12 @@ import { PRESSABLE } from '@/components/ui/press'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
-import type { FassungRef } from '@/lib/documents/fassung'
+import type { RevisionRef } from '@/lib/documents/revision-links'
 import { SourceSignalChip } from '@/features/layout/components/SourceSignalChip'
 import { documentPages, refPage, type CitationRef, type CitedDocument } from '../lib/citations'
 import { isPrecedent } from '../lib/precedent'
 import type { Shelf } from '../lib/source-kinds'
-import { useOpenCurrentFassung } from '../hooks/use-open-current-fassung'
+import { useOpenCurrentRevision } from '../hooks/use-open-current-revision'
 import { useChatStore } from '../store'
 import { CopySourceCitationButton } from './CopyCitation'
 import { CopyCitationLinkButton } from './CopyCitationLink'
@@ -70,7 +70,7 @@ interface CitationPeekProps {
    * the cited document IS an older Fassung and the reader may open the newer one.
    * The peek says so in one line and opens the current Fassung.
    */
-  supersededBy?: FassungRef | null
+  supersededBy?: RevisionRef | null
   /**
    * Where the peek is drawn. `popover` is the glance beside a marker; `sheet` is
    * the same content as the body of the phone's bottom sheet, where the open
@@ -82,21 +82,21 @@ interface CitationPeekProps {
 /**
  * Whether the source BINDS, as a compact pill beside the tier label.
  *
- * Orthogonal to the authority badge (which names OIB/RIS): `bindend` for
- * statute and ordinance, `verbindlich_erklaert` for an OIB-Richtlinie a Land
- * declared binding, `auslegend` for interpretive material. The classification
+ * Orthogonal to the authority badge (which names OIB/RIS): `binding` for
+ * statute and ordinance, `declared_binding` for an OIB-Richtlinie a Land
+ * declared binding, `interpretive` for interpretive material. The classification
  * the reader most wants — "does this actually apply to me?" — and the reason
  * the backend went to the trouble of carrying rank onto every source.
  *
- * `unbekannt` never reaches here: it is dropped to undefined at the wire, so an
+ * `unknown` never reaches here: it is dropped to undefined at the wire, so an
  * unclassified source shows no pill rather than a hedged one. Colour is never
  * the only carrier — the German word is always spelled out (the a11y rule the
  * rest of this file follows).
  */
 const BINDING_TONE: Record<string, string> = {
-  bindend: 'border-transparent bg-[var(--source-law,var(--foreground))] text-[var(--background)]',
-  verbindlich_erklaert: 'border-[var(--source-law,var(--foreground))] text-foreground',
-  auslegend: 'border-border text-muted-foreground',
+  binding: 'border-transparent bg-[var(--source-law,var(--foreground))] text-[var(--background)]',
+  declared_binding: 'border-[var(--source-law,var(--foreground))] text-foreground',
+  interpretive: 'border-border text-muted-foreground',
 }
 
 const BindingStatusChip: FC<{ status?: string }> = ({ status }) => {
@@ -148,14 +148,14 @@ export const LocusLine: FC<{ citation: CitationRef }> = ({ citation }) => {
   // identifier Austrian building law actually cites by, in favour of saying
   // nothing. The chunker measures it against the corpus's contents pages
   // precisely so it can be shown.
-  const punkt = citation.locus?.punkt?.trim()
+  const clause = citation.locus?.clause?.trim()
   const text = citation.locus
     ? page != null
-      ? punkt
-        ? t('answerSources.punktPage', { punkt, page })
+      ? clause
+        ? t('answerSources.clausePage', { clause, page })
         : t('answerSources.page', { page })
-      : punkt
-        ? t('answerSources.punkt', { punkt })
+      : clause
+        ? t('answerSources.clause', { clause })
         : t('citationPeek.wholeDocument')
     : pages.length === 1
       ? t('answerSources.page', { page: pages[0]! })
@@ -193,8 +193,8 @@ const DocumentHomeLink: FC<{ shelf?: Shelf; tint: CitedDocument['tint'] }> = ({
           href: `/app/projects/${encodeURIComponent(projectId)}/files`,
           label: t('documentGrid.openInFiles'),
         }
-      : shelf === 'archiv'
-        ? { href: '/app/archiv', label: t('documentGrid.openInArchive') }
+      : shelf === 'office_shelf'
+        ? { href: '/app/office-shelf', label: t('documentGrid.openInOfficeShelf') }
         : null
   if (!target) return null
 
@@ -301,20 +301,20 @@ export const PeekDownloadButton: FC<{
  * relying on it. Muted, because the citation itself is still true of the file it
  * names (an older Fassung is read on request); the name is the control.
  */
-const OlderFassungLine: FC<{ current: FassungRef }> = ({ current }) => {
+const OlderRevisionLine: FC<{ current: RevisionRef }> = ({ current }) => {
   const t = useTranslations('chat')
-  const openCurrent = useOpenCurrentFassung()
+  const openCurrent = useOpenCurrentRevision()
   return (
     <p
-      data-citation-older-fassung=""
+      data-citation-older-revision=""
       className="flex flex-wrap items-baseline gap-x-1 text-xs leading-relaxed text-muted-foreground"
     >
       <History aria-hidden="true" className="size-3.5 shrink-0 self-center" />
-      <span>{t('citationPeek.olderFassung')}</span>
+      <span>{t('citationPeek.olderRevision')}</span>
       <button
         type="button"
         onClick={() => void openCurrent(current)}
-        aria-label={t('citationPeek.openCurrentFassungAria', { name: current.filename })}
+        aria-label={t('citationPeek.openCurrentRevisionAria', { name: current.filename })}
         className={cn(PEEK_ACTION_CLASSES, 'break-all text-foreground underline')}
       >
         {current.filename}
@@ -358,7 +358,7 @@ export const CitationPeek: FC<CitationPeekProps> = ({
         <LocusLine citation={citation} />
       </div>
 
-      {supersededBy && <OlderFassungLine current={supersededBy} />}
+      {supersededBy && <OlderRevisionLine current={supersededBy} />}
 
       {/* Does this actually bind me? The highest-value fact for a legal source. */}
       {doc.bindingNote && (

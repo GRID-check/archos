@@ -11,6 +11,7 @@ import type { A2uiMessage } from '@a2ui/web_core/v0_9'
 
 import type { GridCard } from '@/shared/cards/schemas'
 import { gridCardSchema } from '@/shared/cards/schemas'
+import { modernizeGridCard } from '@/shared/cards/legacy'
 import { cardTypeOf, PILOTI_CATALOG_ID, SURFACE_EXCLUDED_LEAVES, TEXT_COMPONENT } from './catalog'
 
 const CARD_TYPES: ReadonlySet<string> = new Set(gridCardSchema.options.map(cardTypeOf))
@@ -60,7 +61,7 @@ export function surfaceLeaves(card: GridCard): SurfaceLeaf[] {
     if (component === TEXT_COMPONENT && typeof props.text === 'string') return [{ id: leafId, leaf: { text: props.text } }]
     const type = String(component)
     if (!CARD_TYPES.has(type) || SURFACE_EXCLUDED_LEAVES.has(type)) return []
-    const result = gridCardSchema.safeParse({ ...props, type })
+    const result = gridCardSchema.safeParse(modernizeGridCard({ ...props, type }))
     if (result.success) return [{ id: leafId, leaf: result.data }]
     console.warn('[GridCards] Dropping surface leaf that failed schema validation', type, leafId, result.error.issues)
     return []

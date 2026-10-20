@@ -71,7 +71,7 @@ export function toFileItem(row: DocumentWireRow): FileItem {
     topics: row.topics ?? null,
     capture: row.capture ?? null,
     revisionFacts: row.revisionFacts ?? null,
-    fassung: row.fassung ?? null,
+    revision: row.revision ?? null,
     queueAhead: row.queueAhead ?? null,
     assignees: row.assignees ?? EMPTY_ASSIGNEES,
     authoredBy: row.authoredBy ?? 'user',

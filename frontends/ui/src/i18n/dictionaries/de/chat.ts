@@ -34,9 +34,9 @@ export const chat: typeof en.chat = {
     // Coarse binding classification beside the tier badge. `unbekannt` has no
     // entry on purpose — an unclassified source shows no pill at all.
     binding: {
-      bindend: 'Bindend',
-      verbindlich_erklaert: 'Verbindlich erklärt',
-      auslegend: 'Auslegend',
+      binding: 'Bindend',
+      declared_binding: 'Verbindlich erklärt',
+      interpretive: 'Auslegend',
     },
     openExternal: 'Im RIS öffnen',
     // Office-Dateien (Word, Excel, PowerPoint, ODF, RTF) zeigt der Viewer als
@@ -49,9 +49,9 @@ export const chat: typeof en.chat = {
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
     kinds: {
-      baurecht: 'Baurecht & Richtlinien',
-      buero: 'Büroablage',
-      projekt: 'Projektwissen',
+      building_law: 'Baurecht & Richtlinien',
+      office: 'Büroablage',
+      project: 'Projektwissen',
       // Eine Quelle aus einem anderen Projekt, die als Vorbild dient (ADR-0094); gleiche Farbe wie „Projektwissen“.
       praezedenz: 'Präzedenzfall',
       web: 'Webquelle',
@@ -69,14 +69,14 @@ export const chat: typeof en.chat = {
     countOther: '{count} Dokumente',
     forQuery: '„{query}“',
     source: {
-      projekt: 'Projekt',
-      buero: 'Büro',
+      project: 'Projekt',
+      office: 'Büro',
     },
     // Eine referenzierte Datei, die sich nicht mehr auf eine Dokumentzeile
     // auflösen lässt — eine ehrliche, handlungsfähige Karte (in der Büroablage / in den
     // Projektdateien öffnen) statt einer stummen toten Kachel.
     unresolvedHint: 'Der Assistent hat diese Datei referenziert.',
-    openInArchive: 'In der Büroablage öffnen',
+    openInOfficeShelf: 'In der Büroablage öffnen',
     openInFiles: 'In den Projektdateien öffnen',
     // Der Auflösungs-Abruf ist fehlgeschlagen — eine Wiederholaktion statt einer
     // dauerhaft toten Kachel.
@@ -105,8 +105,8 @@ export const chat: typeof en.chat = {
     // Regal, aus dem die Datei stammt — dieselbe Unterscheidung wie bei den
     // Quellen: geteiltes Projektwissen, die Büroablage, private Beilage.
     shelf: {
-      projekt: 'Projektdateien',
-      buero: 'Büroablage',
+      project: 'Projektdateien',
+      office: 'Büroablage',
       session: 'Beilage in diesem Chat',
     },
     notIndexed:
@@ -165,7 +165,7 @@ export const chat: typeof en.chat = {
     auto: 'Web',
     model: 'Modellmessung',
     shelves: {
-      archiv: 'Büroablage',
+      office_shelf: 'Büroablage',
       project: 'Projektwissen',
       session: 'Private Sitzung',
       base: 'Basiswissen',
@@ -217,12 +217,12 @@ export const chat: typeof en.chat = {
       note: 'Anmerkung',
     },
     status: {
-      erfuellt: 'erfüllt',
-      nicht_erfuellt: 'nicht erfüllt',
-      offen: 'offen',
-      nicht_anwendbar: 'nicht anwendbar',
+      met: 'erfüllt',
+      not_met: 'nicht erfüllt',
+      open: 'offen',
+      not_applicable: 'nicht anwendbar',
     },
-    grounding: { belegt: 'belegt', abgeleitet: 'abgeleitet', offen: 'ohne Beleg' },
+    grounding: { sourced: 'belegt', derived: 'abgeleitet', open: 'ohne Beleg' },
     // Ein offener Befund lässt sich als eigener Auftrag klären; der Lauf
     // erscheint als Block in diesem Verlauf.
     clarify: 'Klären',
@@ -258,8 +258,8 @@ export const chat: typeof en.chat = {
     less: 'Weniger anzeigen',
     // Die Fundstelle in der Zählung des Gesetzes selbst: ein Punkt der
     // Richtlinie, wenn der Chunker einen ermittelt hat, sonst nur die Seite.
-    punkt: 'Pkt. {punkt}',
-    punktPage: 'Pkt. {punkt} · S. {page}',
+    clause: 'Pkt. {clause}',
+    clausePage: 'Pkt. {clause} · S. {page}',
     // Zitate zum Weiterverwenden — je Quelle als Fachtext, für die ganze
     // Antwort in den Formaten, die externe Werkzeuge einlesen.
     copyCitation: 'Zitat kopieren',
@@ -318,7 +318,7 @@ export const chat: typeof en.chat = {
         'Keine Quellenangabe hielt der Prüfung stand — bitte prüfen Sie die Angaben vor der Verwendung selbst',
       cards_generation_failed:
         'Der Bericht ist vollständig, aber die daraus abgeleiteten Vorschläge konnten nicht erzeugt werden',
-      grundlage_unread:
+      basis_unread:
         'Nicht alle als Grundlage benannten Unterlagen wurden gelesen — welche fehlen, steht am Ende des Berichts',
     },
     // Die Gründe der Zitatprüfung, in der Sprache des Lesers. Das Backend nennt
@@ -388,9 +388,9 @@ export const chat: typeof en.chat = {
     retrievedOnly: 'Gelesen',
     // Das Dokument ist eine Fassung, die eine Person durch eine neuere ersetzt hat. Die Zitation bleibt wahr
     // für die Datei, die sie nennt; der Leser soll es nur wissen, bevor er sich darauf verlässt.
-    olderFassung: 'Ältere Fassung – aktuell:',
-    openCurrentFassungAria: 'Aktuelle Fassung öffnen: {name}',
-    currentFassungUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
+    olderRevision: 'Ältere Fassung – aktuell:',
+    openCurrentRevisionAria: 'Aktuelle Fassung öffnen: {name}',
+    currentRevisionUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
   },
   breadcrumb: {
     ariaLabel: 'Navigationspfad',
@@ -440,20 +440,20 @@ export const chat: typeof en.chat = {
       groupAria: 'Weiterführende Fragen',
       // Der eine clientseitige Chip unter einer langen Antwort: das Angebot,
       // das sonst niemand entdeckt — Piloti schreibt auch (Ledger 23).
-      aktenvermerk: 'Als Aktenvermerk schreiben',
+      fileNote: 'Als Aktenvermerk schreiben',
       // Was der Chip in den Eingabebereich schreibt. Bewusst nicht die
       // Beschriftung: „Als Aktenvermerk schreiben“ ist ein Satzfragment und
       // keine Bitte.
-      aktenvermerkPrefill: 'Schreib das als Aktenvermerk in mein Projekt.',
+      fileNotePrefill: 'Schreib das als Aktenvermerk in mein Projekt.',
     },
     keyTakeaways: {
       eyebrow: 'Das Wichtigste',
     },
     callout: {
-      hinweis: 'Hinweis',
-      achtung: 'Achtung',
-      frist: 'Frist',
-      tipp: 'Tipp',
+      note: 'Hinweis',
+      warning: 'Achtung',
+      deadline: 'Frist',
+      tip: 'Tipp',
       more: 'Mehr dazu',
       less: 'Weniger',
     },
@@ -545,7 +545,7 @@ export const chat: typeof en.chat = {
       // Die vier Arten, in den Worten, in denen die Nutzerin sie beauftragt hat.
       kind: {
         complianceCheck: 'Normprüfung',
-        einreichcheck: 'Einreichcheck',
+        submissionCheck: 'Einreichcheck',
         document: 'Dokument',
         revision: 'Überarbeitung',
       },
@@ -751,26 +751,26 @@ export const chat: typeof en.chat = {
       fireAccess: {
         routeWidth: 'Zufahrt Breite',
         gateClearance: 'Durchfahrt lichte Höhe',
-        aufstellflaecheWidth: 'Aufstellfläche Breite',
-        aufstellflaecheLength: 'Aufstellfläche Länge',
+        stagingAreaWidth: 'Aufstellfläche Breite',
+        stagingAreaLength: 'Aufstellfläche Länge',
         facadeDistance: 'Abstand zur Fassade',
         walkToEntrance: 'Weg zum Eingang',
         parcel: 'Grundstück {width} × {depth} m',
         route: 'ZUFAHRT',
         building: 'Gebäude',
-        aufstellflaeche: 'Aufstellfläche',
+        stagingArea: 'Aufstellfläche',
         entrance: 'Eingang',
         street: 'STRASSE',
-        gebaeudeklasse: 'Gebäudeklasse',
+        buildingClass: 'Gebäudeklasse',
         walkTooFar: ' — der Weg zum Eingang überschreitet das zulässige Maß.',
       },
       guardrail: {
         context: {
-          balkon: 'Balkon',
+          balcony: 'Balkon',
           loggia: 'Loggia',
-          stiege: 'Stiege',
-          fenster: 'Fenster',
-          dachterrasse: 'Dachterrasse',
+          staircase: 'Stiege',
+          window: 'Fenster',
+          roof_terrace: 'Dachterrasse',
         },
         elevation: 'ANSICHT · {context}',
         fallHeight: 'Absturzhöhe',
@@ -814,25 +814,25 @@ export const chat: typeof en.chat = {
       removePoint: 'Abschnitt streichen: {point}',
       genre: 'Art des Berichts',
       genres: {
-        pruefbericht: 'Prüfbericht',
-        aktenvermerk: 'Aktenvermerk',
-        vergleich: 'Vergleich',
-        checkliste: 'Checkliste',
-        bericht: 'Bericht',
+        inspection_report: 'Prüfbericht',
+        file_note: 'Aktenvermerk',
+        comparison: 'Vergleich',
+        checklist: 'Checkliste',
+        report: 'Bericht',
       },
       depth: 'Tiefe',
-      depths: { kurzpruefung: 'Kurzprüfung', gutachten: 'Gutachten' },
-      unterlagen: {
+      depths: { quick_check: 'Kurzprüfung', expert_report: 'Gutachten' },
+      documents: {
         label: 'Unterlagen',
-        grundlage: 'Vollständig lesen:',
-        ausgeschlossen: 'Ausgeschlossen:',
+        basis: 'Vollständig lesen:',
+        excluded: 'Ausgeschlossen:',
         none: 'Keine Unterlagen benannt – die Recherche liest, was sie findet.',
         choose: 'Unterlagen wählen',
         removeRead: 'Nicht mehr vollständig lesen: {name}',
         removeExcluded: 'Nicht mehr ausgeschlossen: {name}',
       },
-      rahmen: 'Datengrundlage',
-      rahmenNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie den Plan genehmigen.',
+      frame: 'Datengrundlage',
+      frameNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie den Plan genehmigen.',
     },
     awaitingOther: 'Piloti wartet auf {name}',
     awaitingSomeone: 'Piloti wartet auf eine andere Person',
@@ -962,7 +962,7 @@ export const chat: typeof en.chat = {
         // es keinen: der Sammelbegriff dafür ist unser Wort, nicht ihres, also
         // sagt `several` schlicht, WAS gelesen wird.
         documents: {
-          archiv: 'Unterlagen aus der Büroablage werden gesichtet …',
+          officeShelf: 'Unterlagen aus der Büroablage werden gesichtet …',
           project: 'Unterlagen aus dem Projekt werden gesichtet …',
           session: 'Unterlagen aus dieser Unterhaltung werden gesichtet …',
           several: 'Ihre Unterlagen werden gesichtet …',
@@ -979,7 +979,7 @@ export const chat: typeof en.chat = {
           // die Zeile das Dokument statt eines Korpus. `{document}` ist der
           // Name, den Herausgeber oder Büro vergeben haben: ein Eigenname, der
           // unübersetzt durchgereicht wird.
-          punkt: 'Liest {document}, Pkt. {punkt} …',
+          clause: 'Liest {document}, Pkt. {clause} …',
           page: 'Liest {document}, S. {page} …',
           // Es wird mit anderen Formulierungen weitergesucht — die Aktion,
           // nicht das Urteil: Die Zeile sagt, was GERADE geschieht, und sie
@@ -1129,8 +1129,8 @@ export const chat: typeof en.chat = {
     // Quellen-Klausel FEHLT, wenn es keine gibt: „0 Quellen“ ist eine wahre
     // Zahl, die sich wie ein Fehlschlag liest, und eine Antwort aus einer
     // Messung am Modell hat zu Recht keine Zitate.
-    herleitungSummary: 'Herleitung',
-    herleitungSummaryWithSources: 'Herleitung · {count, plural, one {# Quelle} other {# Quellen}}',
+    derivationSummary: 'Herleitung',
+    derivationSummaryWithSources: 'Herleitung · {count, plural, one {# Quelle} other {# Quellen}}',
     // aria-label naming the reasoning graph as one region for screen readers.
     reasoningGraphLabel: 'Herleitung',
     stepsLabel: 'Denkschritte',
@@ -1189,8 +1189,8 @@ export const chat: typeof en.chat = {
       // Die Fundstellen-Hälfte von `roundFoldOne`, in den Worten der Antwort
       // (vgl. `answerSources.punktPage`): die Stelle, nicht der Mechanismus.
       roundFoldLocusPage: 'S. {page}',
-      roundFoldLocusPunkt: 'Pkt. {punkt}',
-      roundFoldLocusPunktPage: 'Pkt. {punkt} · S. {page}',
+      roundFoldLocusClause: 'Pkt. {clause}',
+      roundFoldLocusClausePage: 'Pkt. {clause} · S. {page}',
       // Barrierefreier Name der Schaltfläche, die die Schicht auf- und zuklappt.
       // Der Kartentext selbst ist eine Folgerung und taugt nicht als Name.
       roundFold: 'Schritt {n} zuklappen',
@@ -1268,7 +1268,7 @@ export const chat: typeof en.chat = {
             'Keine Belegstelle hielt der Prüfung stand. Bitte schlagen Sie die Angaben vor der Verwendung selbst nach.',
           noCards:
             'Der Bericht ist vollständig, aber die daraus abgeleiteten Vorschläge konnten nicht erzeugt werden.',
-          grundlageUnread:
+          basisUnread:
             'Nicht alle als Grundlage benannten Unterlagen konnten gelesen werden; ihr Inhalt ist in der Antwort nicht berücksichtigt. Welche es sind, steht am Ende des Berichts.',
         },
       },

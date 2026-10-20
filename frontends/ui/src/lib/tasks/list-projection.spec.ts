@@ -45,15 +45,15 @@ const run = (overrides: Partial<TaskRun> = {}): TaskRun =>
 
 const ledger = (overrides: Partial<RunLedger> = {}): RunLedger => ({
   runId: 'run-1',
-  status: 'laeuft',
+  status: 'running',
   phases: [
-    { phase: 'planen', startedAt: T0, endedAt: '2026-09-16T08:00:12.000Z' },
-    { phase: 'recherchieren', startedAt: '2026-09-16T08:00:12.000Z' },
+    { phase: 'planning', startedAt: T0, endedAt: '2026-09-16T08:00:12.000Z' },
+    { phase: 'researching', startedAt: '2026-09-16T08:00:12.000Z' },
   ],
   steps: [
     {
       id: 'b1',
-      phase: 'recherchieren',
+      phase: 'researching',
       intent: 'OIB 2 auf Fluchtweglängen prüfen',
       startedAt: '2026-09-16T08:00:20.000Z',
       docs: [
@@ -63,7 +63,7 @@ const ledger = (overrides: Partial<RunLedger> = {}): RunLedger => ({
     },
     {
       id: 'b2',
-      phase: 'recherchieren',
+      phase: 'researching',
       intent: 'Landesabweichung Wien',
       startedAt: '2026-09-16T08:01:00.000Z',
       docs: [{ name: 'OIB-RL_2.pdf', loci: ['S. 18'], repeat: true }],
@@ -81,12 +81,12 @@ beforeEach(() => {
 
 describe('runSummaryOf', () => {
   it('names the display status and counts rounds and DISTINCT documents', () => {
-    expect(runSummaryOf(ledger())).toEqual({ status: 'laeuft', rounds: 2, docs: 2 })
+    expect(runSummaryOf(ledger())).toEqual({ status: 'running', rounds: 2, docs: 2 })
   })
 
   it('counts nothing for a run that has not started, and nothing for no ledger', () => {
-    expect(runSummaryOf(ledger({ phases: [], steps: [], status: 'angelegt' }))).toEqual({
-      status: 'angelegt',
+    expect(runSummaryOf(ledger({ phases: [], steps: [], status: 'created' }))).toEqual({
+      status: 'created',
       rounds: 0,
       docs: 0,
     })
@@ -99,7 +99,7 @@ describe('loadRunSummaries', () => {
     vi.mocked(listRunLedgersByMessageIds).mockResolvedValue(
       new Map([
         ['msg-1', ledger()],
-        ['msg-2', ledger({ status: 'fertig' })],
+        ['msg-2', ledger({ status: 'done' })],
       ]),
     )
 
@@ -112,9 +112,9 @@ describe('loadRunSummaries', () => {
 
     expect(listRunLedgersByMessageIds).toHaveBeenCalledTimes(1)
     expect(listRunLedgersByMessageIds).toHaveBeenCalledWith(['msg-1', 'msg-2', 'msg-4'])
-    expect(summaries.get('run-1')).toEqual({ status: 'laeuft', rounds: 2, docs: 2 })
+    expect(summaries.get('run-1')).toEqual({ status: 'running', rounds: 2, docs: 2 })
     // A finished row keeps its tallies: that is how much work stands behind it.
-    expect(summaries.get('run-2')).toEqual({ status: 'fertig', rounds: 2, docs: 2 })
+    expect(summaries.get('run-2')).toEqual({ status: 'done', rounds: 2, docs: 2 })
     // A row whose ledger is missing simply has no entry.
     expect(summaries.has('run-4')).toBe(false)
   })
@@ -140,7 +140,7 @@ describe('loadRunSummaries', () => {
 
 describe('toTaskWireRow', () => {
   it('carries the summary, and null when there is none', () => {
-    const summary = { status: 'laeuft' as const, phase: 'recherchieren' as const, rounds: 2, docs: 2 }
+    const summary = { status: 'running' as const, phase: 'researching' as const, rounds: 2, docs: 2 }
     expect(toTaskWireRow(run(), 'Anna', summary).runSummary).toEqual(summary)
     expect(toTaskWireRow(run(), 'Anna').runSummary).toBeNull()
   })

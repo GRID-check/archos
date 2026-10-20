@@ -12,6 +12,7 @@ import { z } from 'zod'
 import { PERMIT_RECORD_KINDS, PERMIT_REQUIREMENT_KINDS } from '@/lib/db/schema/permit-records'
 import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS } from '@/lib/documents/tag-vocabulary'
 import { experienceVocabulary } from '@/lib/project-experience/vocabulary'
+import { normalizeProfileBaseKey, normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import { PROJECT_STATUSES, type ProjectStatus } from '@/lib/projects/project-status'
 
 /**
@@ -53,20 +54,40 @@ export const isoDay = z
   })
 
 /** The tokens the intake wizard stores for one fingerprint fact, „noch offen" left out. */
-function factTokens(key: 'bundesland' | 'bauweise' | 'nutzungen' | 'vorhabensart'): [string, ...string[]] {
+function factTokens(key: 'federal_state' | 'construction_method' | 'uses' | 'work_type'): [string, ...string[]] {
   const tokens = experienceVocabulary()[key].options.map((option) => option.token)
   // A site abroad has no Land the similarity reads (`similarityFacts`), so no project could match it.
-  const kept = key === 'bundesland' ? tokens.filter((token) => token !== 'ausserhalb_oesterreichs') : tokens
+  const kept = key === 'federal_state' ? tokens.filter((token) => token !== 'outside_austria') : tokens
   const [first, ...rest] = kept
   if (first === undefined) throw new Error(`The intake definition has no tokens for ${key}`)
   return [first, ...rest]
 }
 
 /** The intake's own vocabularies, read off its definition, so the filter cannot drift from what a profile holds. */
-export const CROSS_PROJECT_FACT_BUNDESLAENDER = factTokens('bundesland')
-export const CROSS_PROJECT_FACT_BAUWEISEN = factTokens('bauweise')
-export const CROSS_PROJECT_FACT_NUTZUNGEN = factTokens('nutzungen')
-export const CROSS_PROJECT_FACT_VORHABENSARTEN = factTokens('vorhabensart')
+export const CROSS_PROJECT_FACT_FEDERAL_STATES = factTokens('federal_state')
+export const CROSS_PROJECT_FACT_CONSTRUCTION_METHODS = factTokens('construction_method')
+export const CROSS_PROJECT_FACT_USES = factTokens('uses')
+export const CROSS_PROJECT_FACT_WORK_TYPES = factTokens('work_type')
+
+/**
+ * An agent image that has not rolled yet names the five facts in German
+ * (`bundesland`, `bauweise`, …) and their values by the German token. Read-only:
+ * nothing writes those names again. Remove with `legacy-names.ts`.
+ */
+function renameLegacyFactFilter(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value
+  return Object.fromEntries(
+    Object.entries(value).map(([key, values]) => {
+      const renamed = normalizeProfileBaseKey(key)
+      return [
+        renamed,
+        Array.isArray(values)
+          ? values.map((item) => (typeof item === 'string' ? normalizeProfileToken(renamed, item) : item))
+          : values,
+      ]
+    })
+  )
+}
 
 /**
  * Only projects with these facts (the fingerprint, `similarity.ts`): within a
@@ -78,16 +99,19 @@ export const CROSS_PROJECT_FACT_VORHABENSARTEN = factTokens('vorhabensart')
  * schema does not know is refused rather than ignored, because an ignored
  * filter would answer for projects the asker excluded.
  */
-export const crossProjectFactsSchema = z
+export const crossProjectFactsSchema = z.preprocess(
+  renameLegacyFactFilter,
+  z
   .object({
-    bundesland: z.array(z.enum(CROSS_PROJECT_FACT_BUNDESLAENDER)).min(1).max(CROSS_PROJECT_FACT_BUNDESLAENDER.length),
-    gebaeudeklasse: z.array(z.number().int().min(1).max(5)).min(1).max(5),
-    bauweise: z.array(z.enum(CROSS_PROJECT_FACT_BAUWEISEN)).min(1).max(CROSS_PROJECT_FACT_BAUWEISEN.length),
-    nutzungen: z.array(z.enum(CROSS_PROJECT_FACT_NUTZUNGEN)).min(1).max(CROSS_PROJECT_FACT_NUTZUNGEN.length),
-    vorhabensart: z.array(z.enum(CROSS_PROJECT_FACT_VORHABENSARTEN)).min(1).max(CROSS_PROJECT_FACT_VORHABENSARTEN.length),
+    federal_state: z.array(z.enum(CROSS_PROJECT_FACT_FEDERAL_STATES)).min(1).max(CROSS_PROJECT_FACT_FEDERAL_STATES.length),
+    building_class: z.array(z.number().int().min(1).max(5)).min(1).max(5),
+    construction_method: z.array(z.enum(CROSS_PROJECT_FACT_CONSTRUCTION_METHODS)).min(1).max(CROSS_PROJECT_FACT_CONSTRUCTION_METHODS.length),
+    uses: z.array(z.enum(CROSS_PROJECT_FACT_USES)).min(1).max(CROSS_PROJECT_FACT_USES.length),
+    work_type: z.array(z.enum(CROSS_PROJECT_FACT_WORK_TYPES)).min(1).max(CROSS_PROJECT_FACT_WORK_TYPES.length),
   })
   .partial()
   .strict()
+)
 export type CrossProjectFacts = z.infer<typeof crossProjectFactsSchema>
 
 /**
@@ -154,7 +178,7 @@ export const crossProjectRefSchema = z.object({
    * precedent from another Land was decided under another Bauordnung, and the
    * agent says so: it cannot tell without the Land.
    */
-  bundesland: z.string().nullable(),
+  federal_state: z.string().nullable(),
 })
 export type CrossProjectRef = z.infer<typeof crossProjectRefSchema>
 

@@ -33,7 +33,7 @@
  * - **The Büroablage** (0146): a proposal with no project is the office
  *   shelf's, and can only move its documents. Any member reads the Büroablage,
  *   so reading needs no project right; deciding needs its curators' right
- *   (`canManageArchiv`), the one every write to it asks.
+ *   (`canManageOfficeShelf`), the one every write to it asks.
  * - **A proposal no conversation made** (a filing suggestion, `lib/filing`)
  *   has no card to borrow a reader from, so it is read through the documents
  *   it names: every one must resolve for the reader on their shelf, or it is
@@ -48,7 +48,7 @@ import 'server-only'
 import { defaultLocale, type Locale } from '@/i18n/config'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { requireResourceAccess } from '@/lib/sharing/access'
@@ -124,7 +124,7 @@ export interface CreateProposalInput {
  * first proposal as it stands, and tells nobody again.
  */
 export async function createProposal(session: AuthorizedSession, input: CreateProposalInput): Promise<ProposedChangeRow> {
-  const scope = input.projectId ? ('project' as const) : ('archiv' as const)
+  const scope = input.projectId ? ('project' as const) : ('office_shelf' as const)
   // Any member reads the Büroablage; a project is read with `project:view`.
   if (input.projectId) await requireProjectAccess(session, input.projectId, 'project:view')
   const typed = parseKindPayload(input.kind, input.payload)
@@ -270,7 +270,7 @@ const deciderNeedsWrite = (kind: ProposedChangeKind) =>
 async function requireDecider(session: AuthorizedSession, row: ProposedChangeRow): Promise<void> {
   if (!row.projectId) {
     // The Büroablage: its curators write it, so they decide what moves in it.
-    if (!canManageArchiv(session)) throw deciderNeedsWrite(row.kind)
+    if (!canManageOfficeShelf(session)) throw deciderNeedsWrite(row.kind)
     return
   }
   try {
@@ -297,7 +297,7 @@ const alreadyDecided = (row: ProposedChangeRow) =>
 
 const beingApplied = () => new ConflictError('This proposal is being applied', { reason: 'proposal-applying' })
 
-/** The project of a kind that always has one; `proposed_changes_archiv_move` makes a miss a bug. */
+/** The project of a kind that always has one; `proposed_changes_office_shelf_move` makes a miss a bug. */
 function projectOf(row: ProposedChangeRow): string {
   if (!row.projectId) throw new Error(`A ${row.kind} proposal without a project`)
   return row.projectId
@@ -411,7 +411,7 @@ export async function dismissProposal(session: AuthorizedSession, id: string): P
  * per kind, because it is a property of the shelf and the kind, not the row.
  */
 export async function listOpenProposals(session: AuthorizedSession, query: ProposalListQuery): Promise<ListedProposal[]> {
-  const shelf: ProposalShelf = query.projectId ? { scope: 'project', projectId: query.projectId } : { scope: 'archiv' }
+  const shelf: ProposalShelf = query.projectId ? { scope: 'project', projectId: query.projectId } : { scope: 'office_shelf' }
   if (shelf.scope === 'project') await requireProjectAccess(session, shelf.projectId, 'project:view')
   const rows = await listShelfProposals(session.organizationId, shelf, {
     statuses: ['proposed'],

@@ -6,7 +6,7 @@ with no ``page_label`` -- citable only as the whole file, and unreachable for
 from Excel lost every umlaut without a trace („Geschoßfläche" became „Geschofläche").
 
 Each format is now cut on its own structure, and every chunk carries a locator in
-``punkt_id`` -- the key ``read_passage(punkt=…)`` addresses and the grounding block
+``clause_id`` -- the key ``read_passage(clause=…)`` addresses and the grounding block
 prints as ``Punkt:``:
 
 * ``.md``: one section per ATX heading (``#`` … ``######``, outside code fences),
@@ -133,14 +133,14 @@ def _markdown_locator(path: list[str], skip_title: int, taken: set[str]) -> str:
 
 
 def _markdown_locator_fields(path: list[str], level: int, skip_title: int, taken: set[str]) -> dict[str, Any]:
-    """``punkt_*`` fields of one section. The document title has no depth: it is not a chapter."""
+    """``clause_*`` fields of one section. The document title has no depth: it is not a chapter."""
     fields: dict[str, Any] = {
-        "punkt_id": _markdown_locator(path, skip_title, taken),
-        "punkt_title": path[-1],
-        "punkt_path": BREADCRUMB_SEP.join(path),
+        "clause_id": _markdown_locator(path, skip_title, taken),
+        "clause_title": path[-1],
+        "clause_path": BREADCRUMB_SEP.join(path),
     }
     if level - skip_title >= 1:
-        fields["punkt_depth"] = level - skip_title
+        fields["clause_depth"] = level - skip_title
     return fields
 
 
@@ -154,7 +154,7 @@ def markdown_documents(text: str, base: dict[str, Any]) -> list[Document]:
         locator = _markdown_locator_fields(path, level, skip_title, taken) if path else {}
         body_lines = lines[1:] if path else lines
         documents.extend(_packed_documents(body_lines, path, order, {**base, **locator}))
-        if "punkt_depth" in locator and not any(line.text.strip() for line in body_lines):
+        if "clause_depth" in locator and not any(line.text.strip() for line in body_lines):
             # A chapter whose content is all in subsections: its own chunk is the
             # breadcrumb, which is what puts it in the Gliederung.
             line = lines[0].position
@@ -223,7 +223,7 @@ def text_documents(text: str, base: dict[str, Any]) -> list[Document]:
             **base,
             "content_type": "text",
             "chunking": "lines",
-            "punkt_id": locator,
+            "clause_id": locator,
             "section_part": part,
             "line_start": first,
             "line_end": last,
@@ -290,7 +290,7 @@ def delimited_documents(text: str, extension: str, base: dict[str, Any], label: 
             **base,
             "content_type": "table",
             "chunking": "table",
-            "punkt_id": locator,
+            "clause_id": locator,
             "table_part": part,
             "line_start": starts[first],
             "line_end": lines[last],

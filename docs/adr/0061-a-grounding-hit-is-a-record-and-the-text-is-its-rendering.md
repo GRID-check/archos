@@ -35,7 +35,7 @@ patches on a channel that discards what the producer knew and asks a third
 module to recover it.
 
 The Punkt line is the same story from the other side. The chunker computes
-`punkt_id`, measured 946 of 946 against the corpus contents pages, and for a
+`clause_id`, measured 946 of 946 against the corpus contents pages, and for a
 long release it was dropped before the citation a reader sees, because nothing
 between the producer and the registry carried it.
 

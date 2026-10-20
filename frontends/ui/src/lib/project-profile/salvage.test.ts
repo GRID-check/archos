@@ -30,17 +30,17 @@ function assumption(value: ProjectAssumption['value']): ProjectAssumption {
 describe('salvageProjectProfile', () => {
   it('returns a fully valid profile unchanged with nothing dropped', () => {
     const raw = {
-      facts: { hauptnutzung: fact('wohnen'), geschosse_oberirdisch: fact(3) },
+      facts: { main_use: fact('residential'), storeys_above_ground: fact(3) },
       goals: { focus_areas: ['einreichung'] },
-      unknowns: ['widmung'],
+      unknowns: ['land_designation'],
       assumptions: {},
     }
     const { profile, dropped } = salvageProjectProfile(raw)
     expect(dropped).toEqual([])
     expect(profile).not.toBeNull()
-    expect(profile!.facts.hauptnutzung.value).toBe('wohnen')
+    expect(profile!.facts.main_use.value).toBe('residential')
     expect(profile!.goals.focus_areas).toEqual(['einreichung'])
-    expect(profile!.unknowns).toEqual(['widmung'])
+    expect(profile!.unknowns).toEqual(['land_designation'])
   })
 
   it('treats the empty {} default as absent — no salvage, no banner', () => {
@@ -59,9 +59,9 @@ describe('salvageProjectProfile', () => {
   it('salvages the valid facts and drops only the invalid ones (partial → banner)', () => {
     const raw = {
       facts: {
-        hauptnutzung: fact('wohnen'), // valid
+        main_use: fact('residential'), // valid
         broken: { value: 'x', confidence: 'guessed' }, // invalid confidence + missing fields
-        geschosse_oberirdisch: fact(3), // valid
+        storeys_above_ground: fact(3), // valid
       },
       goals: {},
       unknowns: [],
@@ -69,8 +69,8 @@ describe('salvageProjectProfile', () => {
     }
     const { profile, dropped } = salvageProjectProfile(raw)
     expect(profile).not.toBeNull()
-    expect(profile!.facts.hauptnutzung.value).toBe('wohnen')
-    expect(profile!.facts.geschosse_oberirdisch.value).toBe(3)
+    expect(profile!.facts.main_use.value).toBe('residential')
+    expect(profile!.facts.storeys_above_ground.value).toBe(3)
     // The invalid fact is gone...
     expect(profile!.facts.broken).toBeUndefined()
     // ...and reported so the wizard can warn.
@@ -91,7 +91,7 @@ describe('salvageProjectProfile', () => {
     it('keeps the value of a fact whose evidence or alternatives are malformed, and reports nothing dropped', () => {
       const raw = {
         facts: {
-          geschosse_oberirdisch: { ...fact(3), evidence: malformed, alternatives: [{ value: {} }] },
+          storeys_above_ground: { ...fact(3), evidence: malformed, alternatives: [{ value: {} }] },
         },
         goals: {},
         unknowns: [],
@@ -99,9 +99,9 @@ describe('salvageProjectProfile', () => {
       }
       const { profile, dropped } = salvageProjectProfile(raw)
       expect(dropped).toEqual([])
-      expect(profile!.facts.geschosse_oberirdisch.value).toBe(3)
-      expect(profile!.facts.geschosse_oberirdisch.evidence).toBeUndefined()
-      expect(profile!.facts.geschosse_oberirdisch.alternatives).toBeUndefined()
+      expect(profile!.facts.storeys_above_ground.value).toBe(3)
+      expect(profile!.facts.storeys_above_ground.evidence).toBeUndefined()
+      expect(profile!.facts.storeys_above_ground.alternatives).toBeUndefined()
     })
 
     it('keeps the value of an assumption whose evidence or alternatives are malformed, fact by fact', () => {
@@ -109,13 +109,13 @@ describe('salvageProjectProfile', () => {
       const raw = {
         facts: {
           broken: { value: 'x', confidence: 'guessed' },
-          bundesland: { ...fact('wien'), evidence: 'Seite 4' },
+          federal_state: { ...fact('vienna'), evidence: 'Seite 4' },
         },
         goals: {},
         unknowns: [],
         assumptions: {
-          geschosse_oberirdisch: { ...assumption(3), evidence: malformed, alternatives: 'viele' },
-          fluchtniveau_m: {
+          storeys_above_ground: { ...assumption(3), evidence: malformed, alternatives: 'viele' },
+          escape_level_m: {
             ...assumption(9),
             evidence: goodEvidence,
             alternatives: [goodAlternative],
@@ -124,14 +124,14 @@ describe('salvageProjectProfile', () => {
       }
       const { profile, dropped } = salvageProjectProfile(raw)
       expect(dropped).toEqual(['facts.broken'])
-      expect(profile!.facts.bundesland).toMatchObject({ value: 'wien' })
-      expect(profile!.facts.bundesland.evidence).toBeUndefined()
-      expect(profile!.assumptions.geschosse_oberirdisch.value).toBe(3)
-      expect(profile!.assumptions.geschosse_oberirdisch.evidence).toBeUndefined()
-      expect(profile!.assumptions.geschosse_oberirdisch.alternatives).toBeUndefined()
+      expect(profile!.facts.federal_state).toMatchObject({ value: 'vienna' })
+      expect(profile!.facts.federal_state.evidence).toBeUndefined()
+      expect(profile!.assumptions.storeys_above_ground.value).toBe(3)
+      expect(profile!.assumptions.storeys_above_ground.evidence).toBeUndefined()
+      expect(profile!.assumptions.storeys_above_ground.alternatives).toBeUndefined()
       // Well-formed evidence is not collateral damage.
-      expect(profile!.assumptions.fluchtniveau_m.evidence).toEqual(goodEvidence)
-      expect(profile!.assumptions.fluchtniveau_m.alternatives).toEqual([goodAlternative])
+      expect(profile!.assumptions.escape_level_m.evidence).toEqual(goodEvidence)
+      expect(profile!.assumptions.escape_level_m.alternatives).toEqual([goodAlternative])
     })
 
     it('opens an assumptions-only profile with malformed evidence in edit mode, without a banner', () => {
@@ -139,7 +139,7 @@ describe('salvageProjectProfile', () => {
         facts: {},
         goals: {},
         unknowns: [],
-        assumptions: { geschosse_oberirdisch: { ...assumption(3), evidence: malformed } },
+        assumptions: { storeys_above_ground: { ...assumption(3), evidence: malformed } },
       })
       expect(entry.mode).toBe('edit')
       expect(entry.salvageNotice).toBeNull()
@@ -150,14 +150,14 @@ describe('salvageProjectProfile', () => {
     const raw = {
       facts: {},
       goals: { focus_areas: ['einreichung'], bad: { not: 'a primitive' } },
-      unknowns: ['widmung', 42, 'bauweise'],
+      unknowns: ['land_designation', 42, 'construction_method'],
       assumptions: {},
     }
     const { profile, dropped } = salvageProjectProfile(raw)
     expect(profile).not.toBeNull()
     expect(profile!.goals.focus_areas).toEqual(['einreichung'])
     expect(profile!.goals.bad).toBeUndefined()
-    expect(profile!.unknowns).toEqual(['widmung', 'bauweise'])
+    expect(profile!.unknowns).toEqual(['land_designation', 'construction_method'])
     expect(dropped).toContain('goals.bad')
     expect(dropped).toContain('unknowns[1]')
   })
@@ -197,12 +197,12 @@ describe('deriveIntakeEntry', () => {
       facts: {},
       goals: {},
       unknowns: [],
-      assumptions: { widmung: assumption('wohnen') },
+      assumptions: { land_designation: assumption('residential') },
     }
     const entry = deriveIntakeEntry(raw)
     expect(entry.mode).toBe('edit')
     expect(entry.initialProfile).not.toBeNull()
-    expect(entry.initialProfile?.assumptions.widmung?.value).toBe('wohnen')
+    expect(entry.initialProfile?.assumptions.land_designation?.value).toBe('residential')
     // Fully valid → nothing dropped → no banner.
     expect(entry.salvageNotice).toBeNull()
   })
@@ -212,11 +212,11 @@ describe('deriveIntakeEntry', () => {
       facts: { a: { bogus: true } },
       goals: {},
       unknowns: [],
-      assumptions: { widmung: assumption('wohnen') },
+      assumptions: { land_designation: assumption('residential') },
     }
     const entry = deriveIntakeEntry(raw)
     expect(entry.mode).toBe('edit')
-    expect(entry.initialProfile?.assumptions.widmung?.value).toBe('wohnen')
+    expect(entry.initialProfile?.assumptions.land_designation?.value).toBe('residential')
     expect(entry.salvageNotice).toBe('partial')
   })
 
@@ -229,14 +229,14 @@ describe('deriveIntakeEntry', () => {
 
   it('opens an edit session for a facts-bearing profile', () => {
     const raw = {
-      facts: { hauptnutzung: fact('wohnen') },
+      facts: { main_use: fact('residential') },
       goals: {},
       unknowns: [],
       assumptions: {},
     }
     const entry = deriveIntakeEntry(raw)
     expect(entry.mode).toBe('edit')
-    expect(entry.initialProfile?.facts.hauptnutzung?.value).toBe('wohnen')
+    expect(entry.initialProfile?.facts.main_use?.value).toBe('residential')
     expect(entry.salvageNotice).toBeNull()
   })
 

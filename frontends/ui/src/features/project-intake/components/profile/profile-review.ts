@@ -104,21 +104,21 @@ export function leadDerivation(derivations: readonly DerivationReview[]): Deriva
 
 /** The inputs the one-line reason names, in the order a reader weighs them. */
 export const REASON_INPUTS = [
-  'fluchtniveau_m',
-  'geschosse_oberirdisch',
-  'nutzungseinheiten',
-  'einheiten_ueber_400',
-  'bgf_oberirdisch',
+  'escape_level_m',
+  'storeys_above_ground',
+  'use_units',
+  'units_over_400',
+  'gfa_above_ground',
 ] as const
 export type ReasonInput = (typeof REASON_INPUTS)[number]
 
 /** Each input's words under `intakeProfileStep.class.reason`, by its base key. */
 export const REASON_INPUT_IDS = {
-  fluchtniveau_m: 'escapeLevel',
-  geschosse_oberirdisch: 'storeysAboveGround',
-  nutzungseinheiten: 'units',
-  einheiten_ueber_400: 'unitOver400',
-  bgf_oberirdisch: 'grossFloorArea',
+  escape_level_m: 'escapeLevel',
+  storeys_above_ground: 'storeysAboveGround',
+  use_units: 'units',
+  units_over_400: 'unitOver400',
+  gfa_above_ground: 'grossFloorArea',
 } as const satisfies Record<ReasonInput, string>
 
 /** Up to three inputs of a derivation for its one-line reason, each with its base key. */

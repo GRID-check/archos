@@ -69,6 +69,15 @@ route. A competitor's column says only what its own site says, with the month
 it was read (`checked`). Audiences, the keyword map and the open gaps:
 [`docs/product/website-conversion-and-seo.md`](../../docs/product/website-conversion-and-seo.md).
 
+**URLs.** German pages keep their German URLs; the English mirror spells the
+first segment in English (`/vergleich/` is `/en/comparisons/`). The one table is
+`EN_SEGMENT` in `src/i18n/paths.ts`: the page folders under `src/pages/en/`,
+`useTranslatedPath`, the language switch and hreflang, `landingPath`,
+`llms.txt`, the sitemap pairs and the 301 for the old `/en/<german>` URLs
+(`src/pages/en/[...path].astro`) all read it, so a new translated segment is one
+row plus the renamed folder. Entry slugs below a section (`/en/glossary/<slug>/`)
+are the German content ids in both locales; there is no per-locale slug field.
+
 Every page type has its own riso share card, by art id in `SHARE_ART`
 (`src/lib/seo.ts`), passed as `ogArt`; a page that passes none shares the
 landing page's column (Tragwerk I). Give a new page type its own card rather than the

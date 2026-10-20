@@ -237,11 +237,26 @@ somebody wrote. The door exists so a builtin can become org-facing without
 first becoming a database row; day to day, curation happens in `platform_skills`.
 Genre methods (Brandschutz, Gebäudeklasse, Hygiene) stay
 machinery so an ordinary question still auto-loads them. Job playbooks
-(`einreichcheck`, `bestand`) declare `grid-catalog: curated`: they appear on
+(`submission-check`, `existing-building`) declare `grid-catalog: curated`: they appear on
 the Skills tab. A chat-usable FILE offer starts ON; a dashboard offer starts
 OFF. The org can still switch a file offer off. Deep research's skill
 filesystem hides curated directories, so an offer the org did not take up is
 not readable via `read_file` either.
+
+## Renamed builtins and their old names
+
+Eight builtins were renamed to English (migration `0169`): `einreichcheck` →
+`submission-check`, `brandschutz` → `fire-safety`, `bestand` → `existing-building`,
+`nutzungssicherheit` → `safety-in-use`, `gebaeudeklasse` → `building-class`,
+`waermeschutz` → `thermal-protection`, `bebauung` → `plot-development`,
+`pruefbericht-writer` → `inspection-report-writer`. A skill's name is what people
+type after a slash, what a stored schedule's prompt says and what the activation
+rows refer to, so the old names keep resolving for one release: `LEGACY_SKILL_NAMES`
+(`skills/builtin.py`, mirrored in `lib/skills/legacy-names.ts` and pinned against
+each other by `legacy-names.spec.ts`) is the one table. `use_skill`, the skills a
+reply reports as followed, the slash chip and menu, a job's skill snapshot and the
+organization's switch all pass a name through `canonical_skill_name` /
+`canonicalSkillName`; nothing writes an old name again.
 
 The split is enforced on both tiers, and both must agree:
 

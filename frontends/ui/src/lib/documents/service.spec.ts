@@ -117,7 +117,7 @@ vi.mock('./repository', () => ({
   setDocumentIngestJob: vi.fn().mockResolvedValue(undefined),
   markDocumentIngestFailed: vi.fn().mockResolvedValue(undefined),
   findFolderPathInProject: vi.fn().mockResolvedValue(null),
-  findFolderPathInArchiv: vi.fn().mockResolvedValue(null),
+  findFolderPathInOfficeShelf: vi.fn().mockResolvedValue(null),
   findDocumentInOrg: vi.fn(),
   // Default: no collision, so the upload path is the insert path it has always
   // been. The replace path is driven per-test.
@@ -143,8 +143,8 @@ vi.mock('@/lib/jobs-queue/repository', () => ({
   findOpenJobId: vi.fn().mockResolvedValue(null),
 }))
 
-// Which documents a Fassung link names, resolved for the reader, is `fassung-facts.spec.ts`'s subject.
-vi.mock('./fassung-facts', () => ({ loadFassungFacts: vi.fn(async () => new Map()) }))
+// Which documents a Fassung link names, resolved for the reader, is `revision-links-loader.spec.ts`'s subject.
+vi.mock('./revision-links-loader', () => ({ loadRevisionLinks: vi.fn(async () => new Map()) }))
 vi.mock('@/lib/annotations/repository', () => ({ tallyLiveMarks: vi.fn(async () => new Map()) }))
 vi.mock('./reconcile-status', async (importOriginal) => ({
   // Reading the job id off a row is pure; the reconciler itself is mocked.
@@ -170,7 +170,7 @@ vi.mock('@/lib/compliance/repository', () => ({
 }))
 
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { loadFassungFacts } from './fassung-facts'
+import { loadRevisionLinks } from './revision-links-loader'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { isCoveredByActiveHold } from '@/lib/compliance/repository'
 import { eraseDocumentObjectsOrKeepRow } from '@/lib/documents/object-cleanup'
@@ -186,7 +186,7 @@ import {
   findDocumentInOrg,
   findLiveDocumentByFilename,
   findFolderPathInProject,
-  findFolderPathInArchiv,
+  findFolderPathInOfficeShelf,
   listProjectDocumentPage,
   listDocumentLevelPage,
   findProjectDocumentsByFilenames,
@@ -715,9 +715,9 @@ describe('uploadDocument ingest dispatch', () => {
 /*
  * „Als neue Fassung von X ablegen" end to end through the upload (ADR-0099):
  * the browser sends the older document's ID, the upload checks it before a byte
- * is stored (`resolveFassungOf`), the ingest job gets the older document's FILE
- * NAME as `fassung_of`, and the trail records the choice. Each link has its own
- * spec (`fassung-upload.spec.ts`, `dispatch.spec.ts`, the route specs); this is
+ * is stored (`resolveRevisionOf`), the ingest job gets the older document's FILE
+ * NAME as `revision_of`, and the trail records the choice. Each link has its own
+ * spec (`revision-upload.spec.ts`, `dispatch.spec.ts`, the route specs); this is
  * the chain between them.
  */
 describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
@@ -748,13 +748,13 @@ describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
 
     await uploadDocument(
       session,
-      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID },
+      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), revisionOf: OLDER_ID },
       new Request('http://x'),
     )
 
-    expect(ingestBody().fassung_of).toBe('Grundriss_EG_Index_B.pdf')
+    expect(ingestBody().revision_of).toBe('Grundriss_EG_Index_B.pdf')
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'document.uploaded', metadata: expect.objectContaining({ fassungOf: OLDER_ID }) }),
+      expect.objectContaining({ action: 'document.uploaded', metadata: expect.objectContaining({ revisionOf: OLDER_ID }) }),
     )
   })
 
@@ -770,23 +770,23 @@ describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
 
     const result = await uploadDocument(
       session,
-      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID },
+      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), revisionOf: OLDER_ID },
       new Request('http://x'),
     )
 
     expect(putCalls()).toHaveLength(1)
-    expect(result).toMatchObject({ fassungOfIgnored: reason })
-    expect(ingestBody()).not.toHaveProperty('fassung_of')
+    expect(result).toMatchObject({ revisionOfIgnored: reason })
+    expect(ingestBody()).not.toHaveProperty('revision_of')
     const metadata = vi.mocked(recordAuditEvent).mock.calls.find(([event]) => event.action === 'document.uploaded')?.[0].metadata
-    expect(metadata).toMatchObject({ fassungOfIgnored: reason })
-    expect(metadata).not.toHaveProperty('fassungOf')
+    expect(metadata).toMatchObject({ revisionOfIgnored: reason })
+    expect(metadata).not.toHaveProperty('revisionOf')
   })
 
-  it('sends no fassung_of, and records none, for an upload nobody filed as a Fassung', async () => {
+  it('sends no revision_of, and records none, for an upload nobody filed as a Fassung', async () => {
     await uploadDocument(session, makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), new Request('http://x'))
 
-    expect(ingestBody()).not.toHaveProperty('fassung_of')
-    expect(vi.mocked(recordAuditEvent).mock.calls.at(-1)?.[0].metadata).not.toHaveProperty('fassungOf')
+    expect(ingestBody()).not.toHaveProperty('revision_of')
+    expect(vi.mocked(recordAuditEvent).mock.calls.at(-1)?.[0].metadata).not.toHaveProperty('revisionOf')
   })
 })
 
@@ -1138,7 +1138,7 @@ describe('joinHitsToFiles', () => {
   // There is deliberately no test for a row that omits `authoredBy`: the
   // signature requires the column, so a caller that forgets it is a compile
   // error, not a runtime fail-open. Both callers select it — `listProjectDocuments`
-  // (documents/repository.ts) and `listArchiv` (archiv/repository.ts).
+  // (documents/repository.ts) and `listOfficeShelf` (archiv/repository.ts).
   it('takes the authorship of each row, not of the first one seen', () => {
     // Guards the loop shape: a `break`-like early exit, or hoisting the check out
     // of the loop, would let a generated row ride in behind a user row.
@@ -1259,7 +1259,7 @@ describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0116)', 
   })
 
   it('sends the pre-filters and the boost in the one request, and nothing when there are none', async () => {
-    const boost = { facts: { bundesland: 'wien', gebaeudeklasse: [4], bauweise: [], nutzungen: [], vorhabensart: [] }, weights: { bundesland: 4 } }
+    const boost = { facts: { federal_state: 'vienna', building_class: [4], construction_method: [], uses: [], work_type: [] }, weights: { federal_state: 4 } }
     mockFetch.mockResolvedValueOnce(ok([]))
     await fetchGroupedSemanticHits(['proj_a'], 'q', 10, 900, { filters: { document_types: ['Bescheid'] }, boost })
     expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({ filters: { document_types: ['Bescheid'] }, boost })
@@ -1475,7 +1475,7 @@ describe('searchProjectDocuments', () => {
           { supersededBy: { id: 'doc-b', filename: 'permit.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
         ],
       ])
-    vi.mocked(loadFassungFacts).mockResolvedValueOnce(replaced()).mockResolvedValueOnce(replaced())
+    vi.mocked(loadRevisionLinks).mockResolvedValueOnce(replaced()).mockResolvedValueOnce(replaced())
 
     const forPerson = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20)
     const forModel = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20, { forModel: true })
@@ -1881,8 +1881,8 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
         status: 'closed',
         profile: {
           facts: {
-            bundesland: { value: 'Wien', source: 'user_confirmed' },
-            bauweise: { value: ['holzbau'], source: 'user_confirmed' },
+            federal_state: { value: 'vienna', source: 'user_confirmed' },
+            construction_method: { value: ['timber'], source: 'user_confirmed' },
           },
           goals: {},
           unknowns: [],
@@ -1894,7 +1894,7 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
     await uploadDocument(session, makeInput(), new Request('http://x'))
 
     expect(ingestBody().project_facts).toEqual({
-      facts: { bundesland: 'wien', gebaeudeklasse: [], bauweise: ['holzbau'], nutzungen: [], vorhabensart: [] },
+      facts: { federal_state: 'vienna', building_class: [], construction_method: ['timber'], uses: [], work_type: [] },
       status: 'closed',
     })
   })
@@ -1933,17 +1933,17 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
         status: 'failed' as const,
         storageKey: 'org/org-1/archiv/doc/doc-99/norm.pdf',
         projectId: null,
-        scope: 'archiv',
+        scope: 'office_shelf',
         collectionName: 'archiv_org-1',
         folderId: 'folder-1',
       })
     )
-    vi.mocked(findFolderPathInArchiv).mockResolvedValue('Normen/Brandschutz')
+    vi.mocked(findFolderPathInOfficeShelf).mockResolvedValue('Normen/Brandschutz')
 
     // An admin holds `org:archiv:manage`, which re-ingesting an Archiv document takes.
     await reingestDocument({ ...session, role: 'admin' }, 'doc-99')
 
-    expect(findFolderPathInArchiv).toHaveBeenCalledWith('folder-1', 'org-1')
+    expect(findFolderPathInOfficeShelf).toHaveBeenCalledWith('folder-1', 'org-1')
     expect(findFolderPathInProject).not.toHaveBeenCalled()
     expect(ingestBody().folder_path).toBe('Normen/Brandschutz')
   })
@@ -1984,7 +1984,7 @@ describe('deleteDocument', () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
       projectId: null,
-      scope: 'archiv',
+      scope: 'office_shelf',
     })
 
     await expect(deleteDocument(session, 'doc-1', new Request('http://x'))).rejects.toBeInstanceOf(
@@ -2312,12 +2312,12 @@ describe('renameDocument', () => {
   it('renames an Archiv document too, under the Archiv action', async () => {
     // Scope-aware: the Archiv has no project, so `getAccessibleDocument` applies
     // the org-level manage check instead of project FGA. The session here holds
-    // it (admin role in `canManageArchiv` terms is asserted in the archiv specs);
+    // it (admin role in `canManageOfficeShelf` terms is asserted in the archiv specs);
     // what this asserts is that the path is not project-only, as DELETE is.
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
       projectId: null,
-      scope: 'archiv',
+      scope: 'office_shelf',
       collectionName: 'archiv_org-1',
     })
 
@@ -2325,7 +2325,7 @@ describe('renameDocument', () => {
       renameDocument({ ...session, role: 'admin' }, 'doc-1', 'Musterordner.pdf', request())
     ).resolves.toMatchObject({ displayName: 'Musterordner.pdf' })
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'archiv.document.renamed', filedIn: null })
+      expect.objectContaining({ action: 'office_shelf.document.renamed', filedIn: null })
     )
   })
 })
@@ -2356,23 +2356,23 @@ describe('getDocumentStatus', () => {
   })
 
   it('carries the Fassung facts resolved for the reader, and null when there are none', async () => {
-    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('fassung', null)
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('revision', null)
 
     const facts = { supersededBy: { id: 'doc-2', filename: 'b.pdf' }, supersedes: [], suggestion: null, changeSummary: null }
-    vi.mocked(loadFassungFacts).mockResolvedValueOnce(new Map([[projectDoc.id, facts]]))
+    vi.mocked(loadRevisionLinks).mockResolvedValueOnce(new Map([[projectDoc.id, facts]]))
 
-    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('fassung', facts)
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('revision', facts)
   })
 
   it('carries the shelf for a document that is not on the project shelf', async () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
       projectId: null,
-      scope: 'archiv',
+      scope: 'office_shelf',
       collectionName: 'archiv_org-1',
     })
 
-    await expect(getDocumentStatus(session, 'doc-1')).resolves.toMatchObject({ scope: 'archiv' })
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toMatchObject({ scope: 'office_shelf' })
   })
 
   // ADR-0113: a reader allowed to see a held row is told why as data, read

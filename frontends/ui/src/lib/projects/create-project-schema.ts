@@ -6,7 +6,8 @@
 
 import { z } from 'zod'
 import { geocodeResultSchema } from '@/lib/geocoding/types'
-import { isValidBundeslandToken } from '@/lib/project-profile/intake-definition'
+import { isValidFederalStateToken } from '@/lib/project-profile/intake-definition'
+import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import { isMonth, type Month } from './month'
 import { PROJECT_OUTCOMES } from './project-status'
@@ -20,7 +21,7 @@ const monthSchema = z.custom<Month>((value) => typeof value === 'string' && isMo
 export const PROJECT_SETUPS = ['piloti', 'self'] as const
 export type ProjectSetup = (typeof PROJECT_SETUPS)[number]
 
-export const createProjectSchema = z
+export const createProjectFieldsSchema = z
   .object({
     name: z.string().min(1).max(255).trim(),
     closing: z
@@ -49,12 +50,25 @@ export const createProjectSchema = z
       .max(MAX_ADDRESS_LENGTH)
       .transform((value) => value || undefined)
       .optional(),
-    /** An A2_land token chosen by hand when no geocoder is configured. */
-    bundesland: z
+    /** A federal-state token chosen by hand when no geocoder is configured. A tab that has not reloaded still sends the German token. */
+    federalState: z
       .string()
-      .refine(isValidBundeslandToken, 'A Bundesland token.')
+      .transform((token) => normalizeProfileToken('federal_state', token))
+      .refine(isValidFederalStateToken, 'A Bundesland token.')
       .optional(),
   })
   .strict()
+
+/**
+ * A tab that has not reloaded still posts `bundesland`. Read for one release
+ * (remove after); a body that sends both keeps the new one.
+ */
+const renameLegacyFederalState = (value: unknown): unknown => {
+  if (typeof value !== 'object' || value === null || !('bundesland' in value)) return value
+  const { bundesland, ...rest } = value as Record<string, unknown>
+  return 'federalState' in rest ? rest : { ...rest, federalState: bundesland }
+}
+
+export const createProjectSchema = z.preprocess(renameLegacyFederalState, createProjectFieldsSchema)
 
 export type CreateProjectBody = z.infer<typeof createProjectSchema>

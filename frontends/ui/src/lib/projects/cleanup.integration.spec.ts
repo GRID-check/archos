@@ -141,11 +141,11 @@ describe.skipIf(!url)('Ausmisten against Postgres', () => {
         `)
       )
     ).id
-    folder.vertraege = await insertFolder('Verträge', [[GF, 'write']])
-    folder.plaene = await insertFolder('Pläne', null)
-    doc.werkvertragAlt = await insertDocument('Werkvertrag_alt.pdf', folder.vertraege, restrictedCollectionName(COLLECTION, folder.vertraege))
-    doc.planV1 = await insertDocument('Grundriss_v1.pdf', folder.plaene, COLLECTION)
-    doc.planV2 = await insertDocument('Grundriss_v2.pdf', folder.plaene, COLLECTION)
+    folder.contracts = await insertFolder('Verträge', [[GF, 'write']])
+    folder.plans = await insertFolder('Pläne', null)
+    doc.oldWorkContract = await insertDocument('Werkvertrag_alt.pdf', folder.contracts, restrictedCollectionName(COLLECTION, folder.contracts))
+    doc.planV1 = await insertDocument('Grundriss_v1.pdf', folder.plans, COLLECTION)
+    doc.planV2 = await insertDocument('Grundriss_v2.pdf', folder.plans, COLLECTION)
   })
 
   afterAll(async () => {
@@ -160,45 +160,45 @@ describe.skipIf(!url)('Ausmisten against Postgres', () => {
 
   it('does not let someone remove what they may not write, and removes nothing at all then', async () => {
     await expect(
-      inOrg(() => cleanup.confirmCleanup(member, projectId, { documentIds: [doc.werkvertragAlt, doc.planV1], proposedIds: [], aiUsed: false }))
+      inOrg(() => cleanup.confirmCleanup(member, projectId, { documentIds: [doc.oldWorkContract, doc.planV1], proposedIds: [], aiUsed: false }))
     ).rejects.toMatchObject({ details: { reason: 'not-writable' } })
-    expect((await documentRow(doc.planV1)).folder_id).toBe(folder.plaene)
+    expect((await documentRow(doc.planV1)).folder_id).toBe(folder.plans)
   })
 
   it('moves each document into an inheriting subfolder of its own folder, and puts that in the Papierkorb', async () => {
     const result = await inOrg(() =>
       cleanup.confirmCleanup(gf, projectId, {
-        documentIds: [doc.werkvertragAlt, doc.planV1],
-        proposedIds: [doc.werkvertragAlt, doc.planV1],
+        documentIds: [doc.oldWorkContract, doc.planV1],
+        proposedIds: [doc.oldWorkContract, doc.planV1],
         aiUsed: true,
       })
     )
     expect(result).toEqual({ removed: 2, binEntries: 2 })
 
-    const contract = await documentRow(doc.werkvertragAlt)
+    const contract = await documentRow(doc.oldWorkContract)
     const holder = await folderRow(contract.folder_id)
-    expect(holder).toMatchObject({ parent_id: folder.vertraege, access_mode: 'inherit' })
+    expect(holder).toMatchObject({ parent_id: folder.contracts, access_mode: 'inherit' })
     expect(holder.name).toMatch(/^Ausgemistet /)
     expect(holder.deleted_at).not.toBeNull()
     // Same readers, same collection: the restricted one of Verträge, never the open project collection.
-    expect(contract.collection_name).toBe(restrictedCollectionName(COLLECTION, folder.vertraege))
-    expect((await folderRow((await documentRow(doc.planV1)).folder_id)).parent_id).toBe(folder.plaene)
+    expect(contract.collection_name).toBe(restrictedCollectionName(COLLECTION, folder.contracts))
+    expect((await folderRow((await documentRow(doc.planV1)).folder_id)).parent_id).toBe(folder.plans)
 
     // In the bin, hidden from everyone, the closer included; the newest version stays.
     expect((await inOrg(() => access.getProjectFolderAccess(gf, projectId, COLLECTION))).isVisible(contract.folder_id)).toBe(false)
-    expect((await documentRow(doc.planV2)).folder_id).toBe(folder.plaene)
+    expect((await documentRow(doc.planV2)).folder_id).toBe(folder.plans)
 
     // A restore puts it back inside Verträge, where only Geschäftsführung reads it.
     await inOrg(() => bin.restoreFolderFromBin(gf, { projectId, folderId: contract.folder_id }))
-    expect(await folderRow(contract.folder_id)).toMatchObject({ parent_id: folder.vertraege, deleted_at: null })
+    expect(await folderRow(contract.folder_id)).toMatchObject({ parent_id: folder.contracts, deleted_at: null })
     expect((await inOrg(() => access.getProjectFolderAccess(member, projectId, COLLECTION))).isVisible(contract.folder_id)).toBe(false)
     expect((await inOrg(() => access.getProjectFolderAccess(gf, projectId, COLLECTION))).isVisible(contract.folder_id)).toBe(true)
   })
 
   it('undoes everything when the second folder cannot go to the bin (the index does not confirm)', async () => {
     const { purgeIngestedChunks } = await import('@/lib/documents/collection-file-ref')
-    const plan = await insertDocument('Lageplan_alt.pdf', folder.plaene, COLLECTION)
-    const contract = await insertDocument('Nachtrag_Entwurf.pdf', folder.vertraege, restrictedCollectionName(COLLECTION, folder.vertraege))
+    const plan = await insertDocument('Lageplan_alt.pdf', folder.plans, COLLECTION)
+    const contract = await insertDocument('Nachtrag_Entwurf.pdf', folder.contracts, restrictedCollectionName(COLLECTION, folder.contracts))
     const folderCount = async () =>
       Number(one(await inOrg(() => db.execute<{ n: string }>(sql`SELECT count(*) AS n FROM project_folders WHERE project_id = ${projectId}::uuid`))).n)
     const binCount = async () =>
@@ -212,15 +212,15 @@ describe.skipIf(!url)('Ausmisten against Postgres', () => {
     ).rejects.toMatchObject({ status: 502 })
 
     // Every document where it was, in the collection it was in; no subfolder, no bin entry left.
-    expect(await documentRow(plan)).toMatchObject({ folder_id: folder.plaene, collection_name: COLLECTION })
+    expect(await documentRow(plan)).toMatchObject({ folder_id: folder.plans, collection_name: COLLECTION })
     expect(await documentRow(contract)).toMatchObject({
-      folder_id: folder.vertraege,
-      collection_name: restrictedCollectionName(COLLECTION, folder.vertraege),
+      folder_id: folder.contracts,
+      collection_name: restrictedCollectionName(COLLECTION, folder.contracts),
     })
     expect(await folderCount()).toBe(foldersBefore)
     expect(await binCount()).toBe(binBefore)
     const visible = await inOrg(() => access.getProjectFolderAccess(gf, projectId, COLLECTION))
-    expect(visible.isVisible(folder.plaene) && visible.isVisible(folder.vertraege)).toBe(true)
+    expect(visible.isVisible(folder.plans) && visible.isVisible(folder.contracts)).toBe(true)
   })
 
   it('never bins a file someone else filed into the subfolder: the bin checks its contents under its lock', async () => {

@@ -51,9 +51,9 @@ FAILING: set[str] = set()
 
 
 @tool
-def read_passage(document: str, punkt: str | None = None) -> str:
+def read_passage(document: str, clause: str | None = None) -> str:
     """Open a named passage of a known document."""
-    RAN.append(f"read_passage:{document}|{punkt or ''}")
+    RAN.append(f"read_passage:{document}|{clause or ''}")
     if document in FAILING:
         FAILING.discard(document)
         return f"{FETCH_FAILED_MARKER} Der Speicher antwortet nicht. Versuche denselben Aufruf noch einmal."
@@ -130,8 +130,8 @@ def _answer_for(result, call_id: str) -> str:
 class TestTheRepeatGetsTheResult:
     async def test_the_second_call_carries_the_first_results_text(self):
         agent = _agent(
-            _batch(_call("read_passage", "a", document="OIB-Richtlinie 2", punkt="3.5.2")),
-            _batch(_call("read_passage", "b", document="OIB-Richtlinie 2", punkt="3.5.2")),
+            _batch(_call("read_passage", "a", document="OIB-Richtlinie 2", clause="3.5.2")),
+            _batch(_call("read_passage", "b", document="OIB-Richtlinie 2", clause="3.5.2")),
             AIMessage(content="Die Antwort [1]."),
         )
 
@@ -161,8 +161,8 @@ class TestTheRepeatGetsTheResult:
         waiting for a later round to have cached anything."""
         agent = _agent(
             _batch(
-                _call("read_passage", "a", document="OIB-Richtlinie 2", punkt="3.5.2"),
-                _call("read_passage", "b", document="OIB-Richtlinie 2", punkt="3.5.2"),
+                _call("read_passage", "a", document="OIB-Richtlinie 2", clause="3.5.2"),
+                _call("read_passage", "b", document="OIB-Richtlinie 2", clause="3.5.2"),
             ),
             AIMessage(content="Die Antwort [1]."),
         )
@@ -232,8 +232,8 @@ class TestWhatIsStillTheSentence:
         FAILING.add("OIB-Richtlinie 2")
         agent = _agent(
             _batch(
-                _call("read_passage", "a", document="OIB-Richtlinie 2", punkt="3.5.2"),
-                _call("read_passage", "b", document="OIB-Richtlinie 2", punkt="3.5.2"),
+                _call("read_passage", "a", document="OIB-Richtlinie 2", clause="3.5.2"),
+                _call("read_passage", "b", document="OIB-Richtlinie 2", clause="3.5.2"),
             ),
             AIMessage(content="Die Antwort [1]."),
         )
@@ -252,10 +252,10 @@ class TestWhatIsStillTheSentence:
         FAILING.add("OIB-Richtlinie 2")
         agent = _agent(
             _batch(
-                _call("read_passage", "a", document="OIB-Richtlinie 2", punkt="3.5.2"),
-                _call("read_passage", "b", document="OIB-Richtlinie 2", punkt="3.5.2"),
+                _call("read_passage", "a", document="OIB-Richtlinie 2", clause="3.5.2"),
+                _call("read_passage", "b", document="OIB-Richtlinie 2", clause="3.5.2"),
             ),
-            _batch(_call("read_passage", "c", document="OIB-Richtlinie 2", punkt="3.5.2")),
+            _batch(_call("read_passage", "c", document="OIB-Richtlinie 2", clause="3.5.2")),
             AIMessage(content="Die Antwort [1]."),
         )
 
@@ -268,8 +268,8 @@ class TestWhatIsStillTheSentence:
         """The failure branch must not swallow the ordinary same-batch case."""
         agent = _agent(
             _batch(
-                _call("read_passage", "a", document="OIB-Richtlinie 2", punkt="3.5.2"),
-                _call("read_passage", "b", document="OIB-Richtlinie 2", punkt="3.5.2"),
+                _call("read_passage", "a", document="OIB-Richtlinie 2", clause="3.5.2"),
+                _call("read_passage", "b", document="OIB-Richtlinie 2", clause="3.5.2"),
             ),
             AIMessage(content="Die Antwort [1]."),
         )

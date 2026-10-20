@@ -68,7 +68,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { isAgentDocumentFilename } from './agent-namespace'
 import { collectionFileRef, purgeIngestedChunks } from './collection-file-ref'
 import { documentDisplayName } from './display-name'
-import { announceNewFassung } from './fassung-notify'
+import { announceNewRevision } from './revision-notify'
 import { findDocumentInOrg } from './repository'
 import { hasPassedScreening, internalRead } from '@/lib/documents/document-reader'
 import { resolveDocumentFolderPath } from './folder-path'
@@ -531,7 +531,7 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
 
   /**
    * A published version that replaces an earlier one is a new Fassung of the
-   * document: tell the people who follow it (`./fassung-notify`).
+   * document: tell the people who follow it (`./revision-notify`).
    *
    * `previous` is the version this transition superseded, so it is `null` for a
    * document's first version, which is news to nobody. For a person's upload the
@@ -540,9 +540,9 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
    * Detached because it asks the directory about each person, and the
    * publisher's answer should not wait for that.
    */
-  announceNewFassung: async ({ session, document, version, previous }) => {
+  announceNewRevision: async ({ session, document, version, previous }) => {
     if (!previous) return
-    void announceNewFassung({
+    void announceNewRevision({
       organizationId: session.organizationId,
       actorUserId: session.userId,
       newerId: document.id,

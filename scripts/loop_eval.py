@@ -10,7 +10,7 @@ slot the model fills rather than prose it usually skips, and the first round is
 capped at two searches so the budget survives to the round that knows what it is
 looking for. Each of those is measurable, and a claim about behaviour that nobody
 measured is a preference. This script measures them: it runs
-`tests/fixtures/herleitung/loop_eval_questions.yaml` through a live backend,
+`tests/fixtures/derivation/loop_eval_questions.yaml` through a live backend,
 writes one CSV row per question, and `--compare before.csv after.csv` prints what
 moved.
 
@@ -66,7 +66,7 @@ from dataclasses import fields as dataclass_fields
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "herleitung" / "loop_eval_questions.yaml"
+DEFAULT_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.yaml"
 
 #: Environment variable naming the backend to measure. Deliberately its own name
 #: rather than reusing a deployment variable: pointing this at production by
@@ -79,7 +79,7 @@ BASE_URL_ENV = "GRID_LOOP_EVAL_URL"
 DEFAULT_TIMEOUT_SECONDS = 240.0
 
 #: A Punkt as it appears in an answer: "Pkt. 3.5.2", "Punkt 5.1", "Pkt 4".
-_PUNKT_NUMBER_RE = re.compile(r"\b(?:Pkt\.?|Punkt)\s*(\d+(?:\.\d+)*)")
+_CLAUSE_NUMBER_RE = re.compile(r"\b(?:Pkt\.?|Punkt)\s*(\d+(?:\.\d+)*)")
 
 #: Step names the loop's own telemetry uses. The eval reads the SAME events the
 #: product emits — inventing a second measurement channel is how a harness ends
@@ -97,7 +97,7 @@ class Question:
     id: str
     question: str
     family: str | None
-    punkt: str | None
+    clause: str | None
     kind: str
     #: The § a Bauordnung row's citation should name, or None. Optional, and
     #: None everywhere today: nothing committed in this repo can verify a RIS
@@ -123,13 +123,13 @@ class Observation:
 
     id: str = ""
     expected_family: str = ""
-    expected_punkt: str = ""
+    expected_clause: str = ""
     expected_kind: str = ""
     kind: str = ""
     verdict: str = ""
     rounds: str = ""
     read_passage: str = ""
-    punkt_match: str = ""
+    clause_match: str = ""
     truncated: str = ""
     checkpoint_sources: str = ""
     #: How much of each Richtlinien-Familie the turn read, as `<family> o/l`
@@ -154,7 +154,7 @@ class Observation:
     #: the whole claim of that change, as one integer.
     ris_calls: str = ""
     #: Did the answer cite a § the turn actually retrieved (or the § the row
-    #: expects, when it names one)? Same three-value shape as `punkt_match`.
+    #: expects, when it names one)? Same three-value shape as `clause_match`.
     paragraph_match: str = ""
     #: Did a RIS citation key survive into the answer? The answer this harness
     #: reads is the POST-verification one, so a key still in it is a key
@@ -193,6 +193,12 @@ def _yes_no(value: bool) -> str:
     return "yes" if value else "no"
 
 
+def _question_clause(row: dict) -> str | None:
+    """A question row's expected clause: ``clause``, or ``punkt`` in a question set written before the rename."""
+    value = row.get("clause", row.get("punkt"))
+    return None if value is None else str(value)
+
+
 def load_questions(path: Path) -> list[Question]:
     """Read the question set. Fails loudly on a row missing a field."""
     import yaml
@@ -204,7 +210,7 @@ def load_questions(path: Path) -> list[Question]:
             id=str(row["id"]),
             question=str(row["question"]).strip(),
             family=row.get("family"),
-            punkt=None if row.get("punkt") is None else str(row["punkt"]),
+            clause=_question_clause(row),
             kind=str(row["kind"]),
             paragraph=None if row.get("paragraph") is None else str(row["paragraph"]),
         )
@@ -231,12 +237,12 @@ def _status_payloads(steps: Iterable[dict]) -> list[tuple[str, dict]]:
     return out
 
 
-def cited_punkte(answer: str) -> list[str]:
+def cited_clauses(answer: str) -> list[str]:
     """Every Punkt number the answer names, in order of appearance."""
-    return [match.group(1) for match in _PUNKT_NUMBER_RE.finditer(answer or "")]
+    return [match.group(1) for match in _CLAUSE_NUMBER_RE.finditer(answer or "")]
 
 
-def punkt_matches(expected: str | None, cited: Sequence[str]) -> str:
+def clause_matches(expected: str | None, cited: Sequence[str]) -> str:
     """Did the answer cite the expected Punkt, or one of its children?
 
     Empty when the question names no expected Punkt — an unmeasured cell, which
@@ -485,7 +491,7 @@ def _retrieved_paragraphs(payloads: Sequence[tuple[str, dict]]) -> set[str]:
         if not name.startswith("retrieve.ris"):
             continue
         out = _as_payload_dict(body.get("output"))
-        for value in out.get("punkt_ids") or []:
+        for value in out.get("clause_ids") or out.get("punkt_ids") or []:
             found.update(_paragraph_keys(value))
     return found
 
@@ -582,13 +588,13 @@ def observe(question: Question, steps: Sequence[dict], answer: str, envelope: di
     return Observation(
         id=question.id,
         expected_family=question.family or "",
-        expected_punkt=question.punkt or "",
+        expected_clause=question.clause or "",
         expected_kind=question.kind,
         kind=str(envelope.get("kind") or ""),
         verdict=_yes_no(bool(envelope.get("verdict"))),
         rounds=str(len(rounds)),
         read_passage=_yes_no("read_passage" in tools),
-        punkt_match=punkt_matches(question.punkt, cited_punkte(answer)),
+        clause_match=clause_matches(question.clause, cited_clauses(answer)),
         truncated=_yes_no(truncated),
         checkpoint_sources=">".join(checkpoints[index] for index in sorted(checkpoints)),
         family_coverage=family_cell,
@@ -617,6 +623,10 @@ def write_csv(path: Path, rows: Sequence[Observation]) -> None:
             writer.writerow(asdict(row))
 
 
+#: Column names of a run written before the rename, as this script spells them now. Remove after one release.
+_LEGACY_COLUMNS = {"expected_punkt": "expected_clause", "punkt_match": "clause_match"}
+
+
 def read_csv(path: Path) -> list[Observation]:
     """Read a run back, refusing a file this script did not write.
 
@@ -630,7 +640,8 @@ def read_csv(path: Path) -> list[Observation]:
     """
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
-        header = tuple(reader.fieldnames or ())
+        header = tuple(_LEGACY_COLUMNS.get(name, name) for name in reader.fieldnames or ())
+        reader.fieldnames = list(header)
         if header != FIELDS:
             missing = [name for name in FIELDS if name not in header]
             extra = [name for name in header if name not in FIELDS]
@@ -656,8 +667,8 @@ class Summary:
     answered: int = 0
     rounds_total: int = 0
     kind_as_expected: int = 0
-    punkt_measured: int = 0
-    punkt_matched: int = 0
+    clause_measured: int = 0
+    clause_matched: int = 0
     paragraph_measured: int = 0
     paragraph_matched: int = 0
     ris_calls: int = 0
@@ -697,8 +708,8 @@ def summarise(rows: Sequence[Observation]) -> Summary:
         answered=sum(1 for row in rows if not row.error),
         rounds_total=sum(int(row.rounds or 0) for row in rows),
         kind_as_expected=sum(1 for row in rows if row.kind and row.kind == row.expected_kind),
-        punkt_measured=sum(1 for row in rows if row.punkt_match),
-        punkt_matched=sum(1 for row in rows if row.punkt_match == "yes"),
+        clause_measured=sum(1 for row in rows if row.clause_match),
+        clause_matched=sum(1 for row in rows if row.clause_match == "yes"),
         paragraph_measured=sum(1 for row in rows if row.paragraph_match),
         paragraph_matched=sum(1 for row in rows if row.paragraph_match == "yes"),
         ris_calls=sum(int(row.ris_calls or 0) for row in rows),
@@ -717,7 +728,7 @@ _COMPARED_FIELDS = (
     "verdict",
     "rounds",
     "read_passage",
-    "punkt_match",
+    "clause_match",
     "truncated",
     "checkpoint_sources",
     "family_coverage",
@@ -758,8 +769,8 @@ def format_comparison(before: Sequence[Observation], after: Sequence[Observation
         f"answered without error: {_delta(old.answered, new.answered)}",
         f"kind as expected: {_delta(old.kind_as_expected, new.kind_as_expected)}",
         f"retrieval rounds, total: {_delta(old.rounds_total, new.rounds_total)}",
-        f"cited Punkt matched: {_delta(old.punkt_matched, new.punkt_matched)}"
-        f" of {_delta(old.punkt_measured, new.punkt_measured)} measured",
+        f"cited Punkt matched: {_delta(old.clause_matched, new.clause_matched)}"
+        f" of {_delta(old.clause_measured, new.clause_measured)} measured",
         f"cited § matched: {_delta(old.paragraph_matched, new.paragraph_matched)}"
         f" of {_delta(old.paragraph_measured, new.paragraph_measured)} measured",
         f"RIS tool calls, total: {_delta(old.ris_calls, new.ris_calls)}",
@@ -941,7 +952,7 @@ def run(questions: Sequence[Question], base_url: str, timeout: float) -> list[Ob
                 Observation(
                     id=question.id,
                     expected_family=question.family or "",
-                    expected_punkt=question.punkt or "",
+                    expected_clause=question.clause or "",
                     expected_kind=question.kind,
                     error=f"{type(exc).__name__}: {exc}"[:200],
                 )

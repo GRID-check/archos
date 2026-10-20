@@ -73,8 +73,8 @@ export function canManageMembers(session: SessionSlice): boolean {
  * shared knowledge — so only mutations gate on this permission. Org admins hold
  * it via the `hasPermission` back-compat rule.
  */
-export function canManageArchiv(session: SessionSlice): boolean {
-  return hasPermission(session, ORG_PERMISSIONS.archivManage)
+export function canManageOfficeShelf(session: SessionSlice): boolean {
+  return hasPermission(session, ORG_PERMISSIONS.officeShelfManage)
 }
 
 /**

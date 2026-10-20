@@ -34,18 +34,18 @@ import { StatCardIcon, type StatCardIconTone } from '@/components/ui/stat-card'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import {
-  countNewFassungen,
+  countNewRevisions,
   groupByFolder,
-  groupFassungProposals,
+  groupRevisionProposals,
   masterTarget,
   soleProposal,
-  type FassungChange,
-  type FassungProposals,
+  type RevisionChange,
+  type RevisionProposals,
   type ProposedFile,
-} from '../lib/fassung-proposals'
+} from '../lib/revision-proposals'
 import {
   countPlan,
-  type FassungTarget,
+  type RevisionTarget,
   type FolderUploadCounts,
   type FolderUploadPlan,
   type PlannedAction,
@@ -125,7 +125,7 @@ export interface FolderUploadDialogProps {
    * The reader's answer to „Als neue Fassung von X ablegen" for one file
    * (ADR-0099). Absent: the offers are listed without a way to answer.
    */
-  onFassungChange?: (change: FassungChange) => void
+  onRevisionChange?: (change: RevisionChange) => void
 }
 
 export function FolderUploadDialog({
@@ -137,7 +137,7 @@ export function FolderUploadDialog({
   pending = false,
   kind = 'folder',
   onReleaseChange,
-  onFassungChange,
+  onRevisionChange,
 }: FolderUploadDialogProps): JSX.Element {
   const t = useTranslations('files')
   const contentRef = useRef<HTMLDivElement>(null)
@@ -189,27 +189,27 @@ export function FolderUploadDialog({
 
   /*
    * The one file's answer is a choice AND a confirm. The choice goes into the
-   * plan first (`onFassungChange`), and the confirm waits until the plan the
+   * plan first (`onRevisionChange`), and the confirm waits until the plan the
    * dialog is shown carries it: the caller applies the plan it last rendered,
    * and checks it against the settled one, so confirming in the same tick would
    * send the answer the reader just changed.
    */
   useEffect(() => {
-    if (soleAnswer === null || !sole || sole.fassungOf.chosen !== soleAnswer) return
+    if (soleAnswer === null || !sole || sole.revisionOf.chosen !== soleAnswer) return
     setSoleAnswer(null)
     void onConfirm(true)
   }, [soleAnswer, sole, onConfirm])
 
-  const answerSole = (asFassung: boolean) => {
+  const answerSole = (asRevision: boolean) => {
     if (!sole) return
-    if (sole.fassungOf.chosen !== asFassung) onFassungChange?.({ files: [sole.file], chosen: asFassung })
-    setSoleAnswer(asFassung)
+    if (sole.revisionOf.chosen !== asRevision) onRevisionChange?.({ files: [sole.file], chosen: asRevision })
+    setSoleAnswer(asRevision)
   }
 
   const { title, description, HeaderIcon } = describeHeader({ t, plan, single, sole, isFolder, destination })
   const nothingToDo = !counts || counts.uploading + counts.moving === 0
   const batch = Boolean(plan && counts && !single && !sole)
-  const fassungen = plan ? countNewFassungen(plan.files, includeUpdates) : 0
+  const revisions = plan ? countNewRevisions(plan.files, includeUpdates) : 0
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
@@ -237,7 +237,7 @@ export function FolderUploadDialog({
         }}
         aria-busy={pending || undefined}
         data-testid="folder-upload-dialog"
-        data-kind={sole ? 'single-fassung' : single ? `single-${single.action}` : kind}
+        data-kind={sole ? 'single-revision' : single ? `single-${single.action}` : kind}
       >
         <DialogHeader className="px-4 pt-6 pb-4 pr-12 text-left sm:px-6 sm:pr-12">
           <div className="flex items-start gap-3.5">
@@ -260,7 +260,7 @@ export function FolderUploadDialog({
               {t('folderUpload.planning')}
             </div>
           ) : sole ? (
-            <SoleCandidatePick file={sole} disabled={pending || soleAnswer !== null} onFassungChange={onFassungChange} />
+            <SoleCandidatePick file={sole} disabled={pending || soleAnswer !== null} onRevisionChange={onRevisionChange} />
           ) : single ? (
             <SingleNotes single={single} destination={destination} />
           ) : (
@@ -273,7 +273,7 @@ export function FolderUploadDialog({
               pending={pending}
               destination={destination}
               onReleaseChange={onReleaseChange}
-              onFassungChange={onFassungChange}
+              onRevisionChange={onRevisionChange}
             />
           )}
         </DialogBody>
@@ -283,7 +283,7 @@ export function FolderUploadDialog({
             <SoleFooter
               file={sole}
               busy={pending || soleAnswer !== null}
-              canChange={Boolean(onFassungChange)}
+              canChange={Boolean(onRevisionChange)}
               onAnswer={answerSole}
             />
           ) : single && nothingToDo ? (
@@ -314,7 +314,7 @@ export function FolderUploadDialog({
                 data-testid="folder-upload-confirm"
               >
                 {pending && <Spinner size="sm" />}
-                {confirmLabel({ t, counts, single, nothingToDo, fassungen })}
+                {confirmLabel({ t, counts, single, nothingToDo, revisions })}
               </Button>
             </>
           )}
@@ -347,7 +347,7 @@ function describeHeader({
     const shownAs = single.existingName ?? single.file.name
     return single.action === 'update'
       ? {
-          title: t('folderUpload.single.newFassungTitle', { name: single.file.name }),
+          title: t('folderUpload.single.newRevisionTitle', { name: single.file.name }),
           description: t('folderUpload.single.updateExplain', { name: shownAs }),
           HeaderIcon: History,
         }
@@ -375,7 +375,7 @@ function describeHeader({
 
 /** The one file's question: a clear match, a choice between documents, or a file not newer than the one there. */
 function describeSole(t: Translate, sole: ProposedFile): { title: string; description: string } {
-  const { of, candidates, newer } = sole.fassungOf
+  const { of, candidates, newer } = sole.revisionOf
   const file = sole.file.name
   if (candidates.length > 1) {
     return { title: t('folderUpload.single.unclearTitle', { file }), description: t('folderUpload.single.unclearExplain') }
@@ -387,8 +387,8 @@ function describeSole(t: Translate, sole: ProposedFile): { title: string; descri
     }
   }
   return {
-    title: t('folderUpload.single.newFassungTitle', { name: of.name }),
-    description: t('folderUpload.single.fassungExplain', { file, name: of.name }),
+    title: t('folderUpload.single.newRevisionTitle', { name: of.name }),
+    description: t('folderUpload.single.revisionExplain', { file, name: of.name }),
   }
 }
 
@@ -398,19 +398,19 @@ function confirmLabel({
   counts,
   single,
   nothingToDo,
-  fassungen,
+  revisions,
 }: {
   t: Translate
   counts: FolderUploadCounts | null
   single: PlannedFile | null
   nothingToDo: boolean
-  fassungen: number
+  revisions: number
 }): string {
   if (nothingToDo || !counts) return t('folderUpload.nothingToDo')
-  if (single?.action === 'update') return t('folderUpload.single.confirmFassung')
+  if (single?.action === 'update') return t('folderUpload.single.confirmRevision')
   if (counts.uploading === 0) return t('folderUpload.confirmMoveOnly', { count: counts.moving })
-  return fassungen > 0
-    ? t('folderUpload.confirmWithFassungen', { count: counts.uploading, fassungen })
+  return revisions > 0
+    ? t('folderUpload.confirmWithRevisions', { count: counts.uploading, revisions })
     : t('folderUpload.confirm', { count: counts.uploading })
 }
 
@@ -449,16 +449,16 @@ function SingleNotes({ single, destination }: { single: PlannedFile; destination
 function SoleCandidatePick({
   file,
   disabled,
-  onFassungChange,
+  onRevisionChange,
 }: {
   file: ProposedFile
   disabled: boolean
-  onFassungChange?: (change: FassungChange) => void
+  onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element | null {
-  if (file.fassungOf.candidates.length < 2) return null
+  if (file.revisionOf.candidates.length < 2) return null
   return (
     <div className="pb-1">
-      <CandidatePick file={file} disabled={disabled || !onFassungChange} onFassungChange={onFassungChange} />
+      <CandidatePick file={file} disabled={disabled || !onRevisionChange} onRevisionChange={onRevisionChange} />
     </div>
   )
 }
@@ -479,19 +479,19 @@ function SoleFooter({
   file: ProposedFile
   busy: boolean
   canChange: boolean
-  onAnswer: (asFassung: boolean) => void
+  onAnswer: (asRevision: boolean) => void
 }): JSX.Element {
   const t = useTranslations('files')
-  const { chosen, newer, candidates } = file.fassungOf
+  const { chosen, newer, candidates } = file.revisionOf
   const needsPick = candidates.length > 1 && !chosen
   // Without a handler the answer cannot change, so only the outcome already chosen can be confirmed.
-  const fassungBlocked = needsPick || (!canChange && !chosen)
+  const revisionBlocked = needsPick || (!canChange && !chosen)
   const separateBlocked = !canChange && chosen
-  const leadWithFassung = newer
+  const leadWithRevision = newer
   return (
     <>
       <Button
-        variant={leadWithFassung ? 'outline' : 'default'}
+        variant={leadWithRevision ? 'outline' : 'default'}
         onClick={() => onAnswer(false)}
         disabled={busy || separateBlocked}
         data-testid="folder-upload-sole-separate"
@@ -499,12 +499,12 @@ function SoleFooter({
         {t('folderUpload.single.confirmSeparate')}
       </Button>
       <Button
-        variant={leadWithFassung ? 'default' : 'outline'}
+        variant={leadWithRevision ? 'default' : 'outline'}
         onClick={() => onAnswer(true)}
-        disabled={busy || fassungBlocked}
-        data-testid="folder-upload-sole-fassung"
+        disabled={busy || revisionBlocked}
+        data-testid="folder-upload-sole-revision"
       >
-        {t('folderUpload.single.confirmFassung')}
+        {t('folderUpload.single.confirmRevision')}
       </Button>
     </>
   )
@@ -520,7 +520,7 @@ function BatchPlan({
   pending,
   destination,
   onReleaseChange,
-  onFassungChange,
+  onRevisionChange,
 }: {
   plan: FolderUploadPlan
   counts: FolderUploadCounts
@@ -530,7 +530,7 @@ function BatchPlan({
   pending: boolean
   destination: string
   onReleaseChange?: (file: File, released: boolean) => void
-  onFassungChange?: (change: FassungChange) => void
+  onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element {
   const t = useTranslations('files')
   return (
@@ -570,14 +570,14 @@ function BatchPlan({
       </div>
 
       {/* The decision comes right after the numbers: it is what the reader is here for. */}
-      <FassungSection
+      <RevisionSection
         plan={plan}
         updates={counts.update}
         includeUpdates={includeUpdates}
         onIncludeUpdatesChange={onIncludeUpdatesChange}
         pending={pending}
         destination={destination}
-        onFassungChange={onFassungChange}
+        onRevisionChange={onRevisionChange}
       />
 
       {/* Where documents END UP, which is the part a reader does not see
@@ -682,7 +682,7 @@ function PlanCount({
  *   name replaces the live document whatever the reader says about one file;
  *   unticked, they are skipped.
  * - **Namensreihe** (ADR-0099): a publisher export brings forty at once, so the
- *   clear matches are one decision (`groupFassungProposals`) under a master box
+ *   clear matches are one decision (`groupRevisionProposals`) under a master box
  *   that sticks to the top while its rows, grouped by folder, go past; each
  *   row can be overridden, and unticked it comes in as a document of its own.
  * - The ones that need the reader (several documents could be meant, or the
@@ -693,14 +693,14 @@ function PlanCount({
  * index and date survive, then where it goes. One sentence says what all of it
  * does.
  */
-function FassungSection({
+function RevisionSection({
   plan,
   updates,
   includeUpdates,
   onIncludeUpdatesChange,
   pending,
   destination,
-  onFassungChange,
+  onRevisionChange,
 }: {
   plan: FolderUploadPlan
   updates: number
@@ -708,20 +708,20 @@ function FassungSection({
   onIncludeUpdatesChange: (include: boolean) => void
   pending: boolean
   destination: string
-  onFassungChange?: (change: FassungChange) => void
+  onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element | null {
   const t = useTranslations('files')
-  const proposals = useMemo(() => groupFassungProposals(plan.files), [plan.files])
+  const proposals = useMemo(() => groupRevisionProposals(plan.files), [plan.files])
   const { detected, unclear } = proposals
   if (updates === 0 && detected.length === 0 && unclear.length === 0) return null
-  const disabled = pending || !onFassungChange
+  const disabled = pending || !onRevisionChange
   return (
     <DecisionSection
       icon={History}
-      title={t('folderUpload.fassung.title', { count: updates + detected.length || unclear.length })}
-      data-testid="folder-upload-fassungen"
+      title={t('folderUpload.revision.title', { count: updates + detected.length || unclear.length })}
+      data-testid="folder-upload-revisions"
     >
-      {(detected.length > 0 || unclear.length > 0) && <DecisionNote>{t('folderUpload.fassung.consequence')}</DecisionNote>}
+      {(detected.length > 0 || unclear.length > 0) && <DecisionNote>{t('folderUpload.revision.consequence')}</DecisionNote>}
 
       {updates > 0 && (
         <DecisionRow
@@ -732,39 +732,39 @@ function FassungSection({
               checked={includeUpdates}
               onCheckedChange={(checked) => onIncludeUpdatesChange(checked === true)}
               disabled={pending}
-              aria-label={t('folderUpload.fassung.sameNameTitle', { count: updates })}
+              aria-label={t('folderUpload.revision.sameNameTitle', { count: updates })}
             />
           }
-          title={<span className="font-medium">{t('folderUpload.fassung.sameNameTitle', { count: updates })}</span>}
-          detail={t('folderUpload.fassung.sameNameReason')}
+          title={<span className="font-medium">{t('folderUpload.revision.sameNameTitle', { count: updates })}</span>}
+          detail={t('folderUpload.revision.sameNameReason')}
         />
       )}
 
       {detected.length > 0 && (
-        <DetectedProposals proposals={proposals} disabled={disabled} destination={destination} onFassungChange={onFassungChange} />
+        <DetectedProposals proposals={proposals} disabled={disabled} destination={destination} onRevisionChange={onRevisionChange} />
       )}
 
       {unclear.length > 0 && (
         <DecisionSubgroup
-          title={t('folderUpload.fassung.unclearTitle', { count: unclear.length })}
-          data-testid="folder-upload-fassungen-unclear"
+          title={t('folderUpload.revision.unclearTitle', { count: unclear.length })}
+          data-testid="folder-upload-revisions-unclear"
         >
-          <DecisionNote>{t('folderUpload.fassung.unclearHint')}</DecisionNote>
+          <DecisionNote>{t('folderUpload.revision.unclearHint')}</DecisionNote>
           {unclear.map((file, index) => (
-            <div key={`${index}:${file.originPath}`} data-testid="folder-upload-fassung-unclear-row">
+            <div key={`${index}:${file.originPath}`} data-testid="folder-upload-revision-unclear-row">
               <DecisionRow
-                muted={!file.fassungOf.chosen}
-                control={<ProposalBox file={file} disabled={disabled} onFassungChange={onFassungChange} />}
+                muted={!file.revisionOf.chosen}
+                control={<ProposalBox file={file} disabled={disabled} onRevisionChange={onRevisionChange} />}
                 title={<DecisionFileName name={file.file.name} />}
                 detail={
-                  file.fassungOf.newer
-                    ? t('folderUpload.fassung.reasonSeveral')
-                    : t('folderUpload.fassung.reasonNotNewer', { name: file.fassungOf.of.name })
+                  file.revisionOf.newer
+                    ? t('folderUpload.revision.reasonSeveral')
+                    : t('folderUpload.revision.reasonNotNewer', { name: file.revisionOf.of.name })
                 }
               />
-              {file.fassungOf.candidates.length > 1 && (
+              {file.revisionOf.candidates.length > 1 && (
                 <DecisionRowExtra>
-                  <CandidatePick file={file} disabled={disabled} onFassungChange={onFassungChange} />
+                  <CandidatePick file={file} disabled={disabled} onRevisionChange={onRevisionChange} />
                 </DecisionRowExtra>
               )}
             </div>
@@ -780,41 +780,41 @@ function DetectedProposals({
   proposals,
   disabled,
   destination,
-  onFassungChange,
+  onRevisionChange,
 }: {
-  proposals: FassungProposals
+  proposals: RevisionProposals
   disabled: boolean
   destination: string
-  onFassungChange?: (change: FassungChange) => void
+  onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element {
   const t = useTranslations('files')
   const { detected, master, ticked } = proposals
   const runs = groupByFolder(detected)
   const masterLabel =
     master === 'all'
-      ? t('folderUpload.fassung.masterAll', { count: detected.length })
+      ? t('folderUpload.revision.masterAll', { count: detected.length })
       : master === 'some'
-        ? t('folderUpload.fassung.masterSome', { ticked, count: detected.length })
-        : t('folderUpload.fassung.masterNone', { count: detected.length })
+        ? t('folderUpload.revision.masterSome', { ticked, count: detected.length })
+        : t('folderUpload.revision.masterNone', { count: detected.length })
   return (
-    <div data-testid="folder-upload-fassungen-detected">
+    <div data-testid="folder-upload-revisions-detected">
       <DecisionBar>
         <DecisionRow
           control={
             <Checkbox
               checked={master === 'all' ? true : master === 'some' ? 'indeterminate' : false}
-              onCheckedChange={() => onFassungChange?.({ files: detected.map((file) => file.file), chosen: masterTarget(master) })}
+              onCheckedChange={() => onRevisionChange?.({ files: detected.map((file) => file.file), chosen: masterTarget(master) })}
               disabled={disabled}
               aria-label={masterLabel}
-              data-testid="folder-upload-fassung-master"
+              data-testid="folder-upload-revision-master"
             />
           }
           title={
-            <span className="font-medium tabular-nums" data-testid="folder-upload-fassung-master-label">
+            <span className="font-medium tabular-nums" data-testid="folder-upload-revision-master-label">
               {masterLabel}
             </span>
           }
-          detail={t('folderUpload.fassung.seriesReason')}
+          detail={t('folderUpload.revision.seriesReason')}
         />
       </DecisionBar>
       {runs.map((run) => (
@@ -827,15 +827,15 @@ function DetectedProposals({
           {run.files.map((file, index) => (
             <DecisionRow
               key={`${index}:${file.originPath}`}
-              data-testid="folder-upload-fassung-row"
-              muted={!file.fassungOf.chosen}
-              control={<ProposalBox file={file} disabled={disabled} onFassungChange={onFassungChange} />}
+              data-testid="folder-upload-revision-row"
+              muted={!file.revisionOf.chosen}
+              control={<ProposalBox file={file} disabled={disabled} onRevisionChange={onRevisionChange} />}
               title={<DecisionFileName name={file.file.name} />}
               detail={
                 <DecisionTarget
-                  prefix={t('folderUpload.fassung.ofPrefix')}
-                  name={file.fassungOf.of.name}
-                  label={file.fassungOf.of.label}
+                  prefix={t('folderUpload.revision.ofPrefix')}
+                  name={file.revisionOf.of.name}
+                  label={file.revisionOf.of.label}
                 />
               }
             />
@@ -850,20 +850,20 @@ function DetectedProposals({
 function ProposalBox({
   file,
   disabled,
-  onFassungChange,
+  onRevisionChange,
 }: {
   file: ProposedFile
   disabled: boolean
-  onFassungChange?: (change: FassungChange) => void
+  onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element {
   const t = useTranslations('files')
   return (
     <Checkbox
-      checked={file.fassungOf.chosen}
-      onCheckedChange={(checked) => onFassungChange?.({ files: [file.file], chosen: checked === true })}
+      checked={file.revisionOf.chosen}
+      onCheckedChange={(checked) => onRevisionChange?.({ files: [file.file], chosen: checked === true })}
       disabled={disabled}
-      aria-label={t('folderUpload.fassung.offer', { name: file.fassungOf.of.name })}
-      data-testid="folder-upload-fassung-choice"
+      aria-label={t('folderUpload.revision.offer', { name: file.revisionOf.of.name })}
+      data-testid="folder-upload-revision-choice"
     />
   )
 }
@@ -876,23 +876,23 @@ function ProposalBox({
 function CandidatePick({
   file,
   disabled,
-  onFassungChange,
+  onRevisionChange,
 }: {
   file: ProposedFile
   disabled: boolean
-  onFassungChange?: (change: FassungChange) => void
+  onRevisionChange?: (change: RevisionChange) => void
 }): JSX.Element {
   const t = useTranslations('files')
-  const { candidates, of, chosen } = file.fassungOf
-  const describe = (candidate: FassungTarget) => (candidate.label ? `${candidate.name} · ${candidate.label}` : candidate.name)
+  const { candidates, of, chosen } = file.revisionOf
+  const describe = (candidate: RevisionTarget) => (candidate.label ? `${candidate.name} · ${candidate.label}` : candidate.name)
   return (
     <Select
       value={chosen ? of.id : ''}
-      onValueChange={(targetId) => onFassungChange?.({ files: [file.file], targetId })}
+      onValueChange={(targetId) => onRevisionChange?.({ files: [file.file], targetId })}
       disabled={disabled}
     >
-      <SelectTrigger size="sm" className="w-full min-w-0" aria-label={t('folderUpload.fassung.pick')} data-testid="folder-upload-fassung-pick">
-        <SelectValue placeholder={t('folderUpload.fassung.pick')} />
+      <SelectTrigger size="sm" className="w-full min-w-0" aria-label={t('folderUpload.revision.pick')} data-testid="folder-upload-revision-pick">
+        <SelectValue placeholder={t('folderUpload.revision.pick')} />
       </SelectTrigger>
       <SelectContent>
         {candidates.map((candidate) => (
@@ -1027,7 +1027,7 @@ function PlanDetails({
 }
 
 /** What one row will actually do, given the reader's answers. */
-type EffectiveAction = Exclude<PlannedAction, 'update'> | 'fassung' | 'skipped'
+type EffectiveAction = Exclude<PlannedAction, 'update'> | 'revision' | 'skipped'
 
 /**
  * A same-name update the reader keeps, and a new file whose offer is ticked,
@@ -1036,8 +1036,8 @@ type EffectiveAction = Exclude<PlannedAction, 'update'> | 'fassung' | 'skipped'
  * upload that is not going to happen.
  */
 function effectiveAction(file: PlannedFile, includeUpdates: boolean): EffectiveAction {
-  if (file.action === 'update') return includeUpdates ? 'fassung' : 'skipped'
-  if (file.action === 'new' && file.fassungOf?.chosen) return 'fassung'
+  if (file.action === 'update') return includeUpdates ? 'revision' : 'skipped'
+  if (file.action === 'new' && file.revisionOf?.chosen) return 'revision'
   return file.action
 }
 
@@ -1047,7 +1047,7 @@ function ActionTag({ file, includeUpdates }: { file: PlannedFile; includeUpdates
   const effective = effectiveAction(file, includeUpdates)
   return (
     <CountPill
-      tone={effective === 'new' || effective === 'fassung' ? 'attention' : 'muted'}
+      tone={effective === 'new' || effective === 'revision' ? 'attention' : 'muted'}
       className="min-w-[5.5rem]"
       data-testid={`folder-upload-action-${effective}`}
     >

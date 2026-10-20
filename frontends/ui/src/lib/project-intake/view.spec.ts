@@ -48,27 +48,27 @@ const row = {
 
 const profile: ProjectProfile = {
   facts: {
-    bundesland: {
-      value: 'wien',
+    federal_state: {
+      value: 'vienna',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: NOW,
-      alternatives: [{ value: 'niederoesterreich', evidence: [DOCUMENT], recordedAt: NOW }],
+      alternatives: [{ value: 'lower_austria', evidence: [DOCUMENT], recordedAt: NOW }],
     },
     nicht_im_assistenten: { value: 'x', confidence: 'confirmed', source: 'admin_edit', updatedAt: NOW },
   },
   goals: {},
   unknowns: [],
   assumptions: {
-    'bauwerkstyp@bw1': { value: 'gebaeude', status: 'unconfirmed', reason: 'r', source: 'agent_suggested', updatedAt: NOW, evidence: [DOCUMENT] },
-    'gebaeudeklasse@bw1': { value: 3, status: 'unconfirmed', reason: 'r', source: 'agent_suggested', updatedAt: NOW },
+    'building_type@bldg1': { value: 'building', status: 'unconfirmed', reason: 'r', source: 'agent_suggested', updatedAt: NOW, evidence: [DOCUMENT] },
+    'building_class@bldg1': { value: 3, status: 'unconfirmed', reason: 'r', source: 'agent_suggested', updatedAt: NOW },
   },
 }
 
 const need = (key: string, decisive: boolean, state: Need['state'] = 'open'): Need => ({
   key,
   baseKey: key.split('@')[0],
-  bauwerkId: 'bw1',
+  buildingId: 'bldg1',
   label: key,
   type: 'number_tri',
   foundIn: [],
@@ -80,7 +80,7 @@ const input = () => ({
   row,
   profile,
   definition: projectIntakeDefinitionV1,
-  needs: [need('fluchtniveau_m@bw1', true), need('bgf_oberirdisch@bw1', false), need('bauwerkstyp@bw1', true, 'suggested')],
+  needs: [need('escape_level_m@bldg1', true), need('gfa_above_ground@bldg1', false), need('building_type@bldg1', true, 'suggested')],
   unreadDocuments: 3,
   canDecide: true,
   canComplete: false,
@@ -95,14 +95,14 @@ describe('buildIntakeView', () => {
     const buildings = groups.find((group) => group.title === 'Bauwerke')
 
     expect(projectBasis?.items).toEqual([
-      expect.objectContaining({ key: 'bundesland', value: 'wien', display: 'Wien', state: 'contested', bauwerkId: null }),
+      expect.objectContaining({ key: 'federal_state', value: 'vienna', display: 'Wien', state: 'contested', buildingId: null }),
     ])
     expect(buildings?.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          key: 'bauwerkstyp@bw1',
-          baseKey: 'bauwerkstyp',
-          bauwerkId: 'bw1',
+          key: 'building_type@bldg1',
+          baseKey: 'building_type',
+          buildingId: 'bldg1',
           label: 'Bauwerkstyp',
           display: 'Gebäude',
           state: 'suggested',
@@ -116,10 +116,10 @@ describe('buildIntakeView', () => {
 
   it('shows the derived class only in the derivations, never again in its module', () => {
     const result = view()
-    expect(result.groups.flatMap((group) => group.items).map((item) => item.key)).not.toContain('gebaeudeklasse@bw1')
-    expect(result.derivations.map((derivation) => derivation.bauwerkId)).toEqual(['bw1'])
+    expect(result.groups.flatMap((group) => group.items).map((item) => item.key)).not.toContain('building_class@bldg1')
+    expect(result.derivations.map((derivation) => derivation.buildingId)).toEqual(['bldg1'])
     // …and carried there, so the review has a row to confirm it through.
-    expect(result.derivations[0]?.suggestion).toMatchObject({ key: 'gebaeudeklasse@bw1', state: 'suggested' })
+    expect(result.derivations[0]?.suggestion).toMatchObject({ key: 'building_class@bldg1', state: 'suggested' })
   })
 
   it('still lists a contested derived class among the contradictions', () => {
@@ -127,7 +127,7 @@ describe('buildIntakeView', () => {
       ...profile,
       facts: {
         ...profile.facts,
-        'gebaeudeklasse@bw1': {
+        'building_class@bldg1': {
           value: 2,
           confidence: 'confirmed',
           source: 'user_confirmed',
@@ -138,25 +138,25 @@ describe('buildIntakeView', () => {
     }
     const result = buildIntakeView({ ...input(), profile: contested })
     expect(result.contradictions).toEqual(
-      expect.arrayContaining([expect.objectContaining({ key: 'gebaeudeklasse@bw1', display: 'GK 2', state: 'contested' })])
+      expect.arrayContaining([expect.objectContaining({ key: 'building_class@bldg1', display: 'GK 2', state: 'contested' })])
     )
     expect(result.counts.contradictions).toBe(2)
-    expect(result.groups.flatMap((group) => group.items).map((item) => item.key)).not.toContain('gebaeudeklasse@bw1')
+    expect(result.groups.flatMap((group) => group.items).map((item) => item.key)).not.toContain('building_class@bldg1')
   })
 
   it('asks only the decisive OPEN needs: a suggested or confirmed one is no question', () => {
     const result = buildIntakeView({
       ...input(),
-      needs: [need('fluchtniveau_m@bw1', true), need('bauwerkstyp@bw1', true, 'suggested'), need('geschosse_oberirdisch@bw1', false, 'confirmed')],
+      needs: [need('escape_level_m@bldg1', true), need('building_type@bldg1', true, 'suggested'), need('storeys_above_ground@bldg1', false, 'confirmed')],
     })
-    expect(result.questions.map((question) => question.key)).toEqual(['fluchtniveau_m@bw1'])
+    expect(result.questions.map((question) => question.key)).toEqual(['escape_level_m@bldg1'])
     expect(result.counts.decisiveOpen).toBe(1)
   })
 
   it('lists contradictions first, the decisive open needs as questions, and counts', () => {
     const result = view()
-    expect(result.contradictions.map((item) => item.key)).toEqual(['bundesland'])
-    expect(result.questions.map((question) => question.key)).toEqual(['fluchtniveau_m@bw1'])
+    expect(result.contradictions.map((item) => item.key)).toEqual(['federal_state'])
+    expect(result.questions.map((question) => question.key)).toEqual(['escape_level_m@bldg1'])
     expect(result.counts).toEqual({ documentsRead: 1, unreadDocuments: 3, suggested: 2, contradictions: 1, decisiveOpen: 1 })
     expect(result).toMatchObject({ status: 'ready', summary: 'Gelesen.', readingFinishedAt: NOW, canDecide: true, canComplete: false })
   })
@@ -164,21 +164,21 @@ describe('buildIntakeView', () => {
   it('carries the location register for step 4: the Bundesland it read and the documents it asks for', () => {
     const result = buildIntakeView({
       ...input(),
-      needs: [{ ...need('grundstueck_ez', false), bauwerkId: null }],
+      needs: [{ ...need('plot_register_number', false), buildingId: null }],
     })
-    expect(result.locationRegister).toMatchObject({ federalState: 'wien', municipality: 'Wien', questions: [] })
+    expect(result.locationRegister).toMatchObject({ federalState: 'vienna', municipality: 'Wien', questions: [] })
     expect(result.locationRegister?.documentRequests[0]).toMatchObject({
       determinant: 'plot',
       document: 'Grundbuchauszug',
       satisfied: false,
-      needs: [expect.objectContaining({ key: 'grundstueck_ez' })],
+      needs: [expect.objectContaining({ key: 'plot_register_number' })],
     })
   })
 
   it('shows each Bauwerk’s class with what it read and what it lacks', () => {
     const [derivation] = view().derivations
-    expect(derivation).toMatchObject({ bauwerkId: 'bw1', rule: 'gebaeudeklasse', value: null })
-    expect(derivation.inputs).toEqual([{ key: 'bauwerkstyp@bw1', value: 'gebaeude', suggested: true }])
+    expect(derivation).toMatchObject({ buildingId: 'bldg1', rule: 'building_class', value: null })
+    expect(derivation.inputs).toEqual([{ key: 'building_type@bldg1', value: 'building', suggested: true }])
     expect(derivation.missing.length).toBeGreaterThan(0)
   })
 
@@ -187,7 +187,7 @@ describe('buildIntakeView', () => {
     const highRise = { value: 25, status: 'unconfirmed' as const, reason: 'r', source: 'agent_suggested' as const, updatedAt: NOW }
     const suggested = buildIntakeView({
       ...input(),
-      profile: { ...profile, assumptions: { ...profile.assumptions, 'fluchtniveau_m@bw1': highRise } },
+      profile: { ...profile, assumptions: { ...profile.assumptions, 'escape_level_m@bldg1': highRise } },
     })
     expect(suggested.applicableStandards?.map((standard) => standard.code)).not.toContain('OIB 2.3')
 
@@ -197,7 +197,7 @@ describe('buildIntakeView', () => {
         ...profile,
         facts: {
           ...profile.facts,
-          'fluchtniveau_m@bw1': { value: 25, confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
+          'escape_level_m@bldg1': { value: 25, confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
         },
       },
     })
@@ -244,9 +244,9 @@ describe('step 3, Erfassung: the reading’s live milestones', () => {
     lat: 48.2,
     lon: 16.3,
     country: 'at' as const,
-    bundesland: 'wien',
+    federalState: 'vienna',
     state: 'Wien',
-    gemeinde: 'Wien',
+    municipality: 'Wien',
     postcode: '1170',
     kind: 'address' as const,
   }
@@ -255,8 +255,8 @@ describe('step 3, Erfassung: the reading’s live milestones', () => {
     const profile: ProjectProfile = {
       ...empty,
       facts: {
-        bundesland: { value: 'wien', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
-        standort_adresse: { value: location.label, confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
+        federal_state: { value: 'vienna', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
+        site_address: { value: location.label, confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
       },
     }
     expect(readingSite({ ...row, location }, profile, projectIntakeDefinitionV1)).toEqual({
@@ -272,8 +272,8 @@ describe('step 3, Erfassung: the reading’s live milestones', () => {
     const profile: ProjectProfile = {
       ...empty,
       assumptions: {
-        bundesland: {
-          value: 'niederoesterreich',
+        federal_state: {
+          value: 'lower_austria',
           status: 'unconfirmed',
           reason: 'r',
           source: 'agent_suggested',
@@ -295,7 +295,7 @@ describe('step 3, Erfassung: the reading’s live milestones', () => {
     const profile: ProjectProfile = {
       ...empty,
       facts: {
-        standort_adresse: { value: 'Hauptstraße 3', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
+        site_address: { value: 'Hauptstraße 3', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
       },
     }
     expect(readingSite(row, profile, projectIntakeDefinitionV1)).toEqual({

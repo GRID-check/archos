@@ -359,13 +359,13 @@ def build_user_prompt(facts: TurnFacts) -> str:
     carried: the profile's substantive half is the project-memory digest, capped
     at 6,000 characters, which would roughly double a per-turn cost the product
     owner accepted for a navigation aid — and the "narrower onto this project"
-    move is anchored by the answer's own words anyway. ``bundesland`` is
+    move is anchored by the answer's own words anyway. ``federal_state`` is
     carried because it costs a handful of tokens and is what makes a
     Land-specific next question possible at all.
     """
     parts = []
-    if facts.bundesland:
-        parts.append(f"## Bundesland\n{facts.bundesland}")
+    if facts.federal_state:
+        parts.append(f"## Bundesland\n{facts.federal_state}")
     parts.append(f"## Reader's question\n{_slice(facts.query, MAX_QUERY_CHARS, ' … (gekürzt)')}")
     parts.append(f"## The answer they received\n{_slice(facts.answer, MAX_ANSWER_CHARS, ' … (Antwort gekürzt)')}")
     return "\n\n".join(parts)

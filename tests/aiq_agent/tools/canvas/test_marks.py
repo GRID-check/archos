@@ -168,8 +168,14 @@ class TestWhatItSays:
         assert "Vorschlag, noch nicht übernommen" in result and "von Piloti, für Martin Huber" in result
         assert "Punkt x 0.10, y 0.20" in result
 
-    async def test_an_older_fassung_is_named(self, monkeypatch, calls) -> None:
-        answering(monkeypatch, calls, {**LIST_BODY, "annotations": [listed(onCurrentFassung=False)]})
+    async def test_an_older_revision_is_named(self, monkeypatch, calls) -> None:
+        answering(monkeypatch, calls, {**LIST_BODY, "annotations": [listed(onCurrentRevision=False)]})
+
+        assert "früheren Fassung" in await run_marks()
+
+    async def test_a_bff_that_has_not_rolled_yet_names_the_older_revision_the_old_way(self, monkeypatch, calls) -> None:
+        mark = {key: value for key, value in listed().items() if key != "onCurrentRevision"}
+        answering(monkeypatch, calls, {**LIST_BODY, "annotations": [{**mark, "onCurrentFassung": False}]})
 
         assert "früheren Fassung" in await run_marks()
 

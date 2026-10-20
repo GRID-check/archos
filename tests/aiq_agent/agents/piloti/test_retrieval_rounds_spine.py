@@ -51,11 +51,11 @@ def knowledge_search(query: str) -> str:
 
 
 @tool
-def read_passage(document: str, punkt: str = "") -> str:
+def read_passage(document: str, clause: str = "") -> str:
     """Open a named passage of a named document."""
     SEEN.append(("read_passage", current_retrieval_round()))
-    turn_status.record_lane_hit(f"{document}.pdf", detail=f"p.{punkt}" if punkt else None)
-    return f"{document}, Pkt. {punkt}"
+    turn_status.record_lane_hit(f"{document}.pdf", detail=f"p.{clause}" if clause else None)
+    return f"{document}, Pkt. {clause}"
 
 
 @tool
@@ -159,7 +159,7 @@ class TestTheRoundStampReachesTheTool:
                 tool_calls=[
                     {
                         "name": "read_passage",
-                        "args": {"document": "OIB-Richtlinie 2", "punkt": "3.5.2"},
+                        "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"},
                         "id": "p1",
                     }
                 ],
@@ -229,7 +229,7 @@ class TestTheLaneCaptureReachesTheLedger:
             _search("k1", "OIB 2", "Ich brauche zuerst die Grundregel."),
             AIMessage(
                 content="Die Grundregel steht; den Punkt noch nicht gelesen.",
-                tool_calls=[{"name": "read_passage", "args": {"document": "OIB 2", "punkt": "3.5.2"}, "id": "p1"}],
+                tool_calls=[{"name": "read_passage", "args": {"document": "OIB 2", "clause": "3.5.2"}, "id": "p1"}],
             ),
             AIMessage(content="Die Antwort [1]."),
         )

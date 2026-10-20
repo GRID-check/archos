@@ -11,7 +11,7 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { EMPTY_FASSUNG } from '@/lib/documents/fassung'
+import { EMPTY_REVISION_LINKS } from '@/lib/documents/revision-links'
 import type { ShelfSummary } from '@/lib/documents/shelf-summary-types'
 import type { FileItem, FolderItem } from '../file-types'
 import { buildFolderBrief, buildFolderBriefFromSummary } from '../lib/folder-knowledge'
@@ -66,7 +66,7 @@ const renderBrief = (
       onReadAgain={vi.fn()}
       collapsed={false}
       onCollapsedChange={vi.fn()}
-      missing={[{ role: 'grundbuchauszug', label: 'Land register extract', bauwerkName: null }]}
+      missing={[{ role: 'land_register_extract', label: 'Land register extract', buildingName: null }]}
       {...props}
     />
   )
@@ -90,13 +90,13 @@ describe('FolderBrief — the numbers add up', () => {
   it('counts one document with three Fassungen once, and never asks to re-read a replaced one', () => {
     const ref = (id: string) => ({ id, filename: `${id}.pdf` })
     renderBrief([
-      file({ id: 'c', tags: ['Grundriss'], fassung: { ...EMPTY_FASSUNG, supersedes: [ref('b')] } }),
+      file({ id: 'c', tags: ['Grundriss'], revision: { ...EMPTY_REVISION_LINKS, supersedes: [ref('b')] } }),
       file({
         id: 'b',
         status: 'failed',
-        fassung: { ...EMPTY_FASSUNG, supersededBy: ref('c'), supersedes: [ref('a')] },
+        revision: { ...EMPTY_REVISION_LINKS, supersededBy: ref('c'), supersedes: [ref('a')] },
       }),
-      file({ id: 'a', fassung: { ...EMPTY_FASSUNG, supersededBy: ref('b') } }),
+      file({ id: 'a', revision: { ...EMPTY_REVISION_LINKS, supersededBy: ref('b') } }),
     ])
     expect(screen.getByText(/The document is read/)).toBeInTheDocument()
     expect(screen.queryByTestId('folder-brief-needs-failed')).not.toBeInTheDocument()

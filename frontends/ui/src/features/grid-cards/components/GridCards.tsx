@@ -257,9 +257,9 @@ export const GridCardView: FC<GridCardViewProps> = ({
           building_depth_m={card.building_depth_m}
           route_width={card.route_width}
           gate_clearance_height={card.gate_clearance_height}
-          aufstellflaeche={card.aufstellflaeche}
+          staging_area={card.staging_area}
           walk_distance_to_entrance={card.walk_distance_to_entrance}
-          gebaeudeklasse={card.gebaeudeklasse}
+          building_class={card.building_class}
           reference={card.reference}
           note={card.note}
         />

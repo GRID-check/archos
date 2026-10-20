@@ -79,7 +79,7 @@ Body: { projectId: string, file: File }
 4. **Insert DB row** — Drizzle `documents` table with `status: 'uploaded'`, storing `documentId`, `organizationId`, `projectId`, `createdBy`, `filename`, `storageKey`, `collectionName`, `fileSize`, `contentType`
 5. **Generate presigned GET URL** — `getSignedUrl(s3Client, GetObjectCommand, { expiresIn: INGEST_JOB_REF_TTL_SECONDS })`. 24 hours, not the 600 s `SEAWEED_PRESIGNED_URL_TTL_SECONDS` default the other signed reads use: the ingest job downloads the file when the bounded ingest pool reaches it, which can be well after dispatch (Step 3)
 6. **Trigger ingestion** — POST to `{BACKEND_URL}/v1/ingest` with `{ file_ref: presignedUrl, collection: collectionName, document_id: documentId, file_name: filename, folder_path }`. `file_name` is the row's own `documents.filename`, stated rather than derived from the presigned URL's last path segment, because it is the join key every chunk purge addresses
-   When the upload dialog filed the file as the new Fassung of another document (`fassungOf` form field, a document id), `uploadToShelf` checks it first (`resolveFassungOf`: write access to the older document, same shelf and collection, active, past screening, person-uploaded; equal names are a version and ignore it) and the dispatch adds `fassung_of: <older file name>`. It travels through the office-rendition job payload too; an IFC model's digest is not the file the row names, so it carries none. In `_ingest_job`, `fassungen.record_fassungen(..., confirmed_older=…)` calls `confirm_fassung` after the summary row is written: loop and existence checks (`document_revisions.would_loop`, shared with the PUT route), `superseded_by` on the older row, then `summarize_change` onto the new file. It replaces the suggestion for that file; when it cannot link it runs the ordinary path.
+   When the upload dialog filed the file as the new Fassung of another document (`revisionOf` form field, a document id), `uploadToShelf` checks it first (`resolveRevisionOf`: write access to the older document, same shelf and collection, active, past screening, person-uploaded; equal names are a version and ignore it) and the dispatch adds `revision_of: <older file name>`. It travels through the office-rendition job payload too; an IFC model's digest is not the file the row names, so it carries none. In `_ingest_job`, `fassungen.record_revisions(..., confirmed_older=…)` calls `confirm_revision` after the summary row is written: loop and existence checks (`document_revisions.would_loop`, shared with the PUT route), `superseded_by` on the older row, then `summarize_change` onto the new file. It replaces the suggestion for that file; when it cannot link it runs the ordinary path.
 7. **Record the job** — on success the row is updated to `status: 'pending'` with `metadata: { ingestJobId }` so status reads can later reconcile the row against the backend job (see Step 5)
 8. **Return response** — `{ documentId, jobId, status: 'pending' | 'uploaded' | 'processing' }`
 
@@ -149,7 +149,7 @@ Body: {
   file_ref: str, collection: str, document_id: str,
   file_name: str | None, folder_path: str | None, thumbnail_upload_url: str | None,
   # the older file this upload replaces, when a person filed it as a new Fassung (ADR-0099)
-  fassung_of: str | None,
+  revision_of: str | None,
   # office renditions (ADR-0070, ADR-0071): presigned GETs of _render.pdf
   preview_ref: str | None, extraction_ref: str | None,
   # provenance, all four together or none (ADR-0054)
@@ -209,11 +209,11 @@ For each file:
 
 0. **Download and thumbnail** — a deferred original is downloaded first (`knowledge_layer.deferred_files.resolve_original`): one GET without redirects, into a temp file whose suffix comes from the response's `Content-Type` (the object path as fallback, scrubbed), owned and deleted by the job whether or not `cleanup_files` is set. A failed download fails the file with the stable error `original_download_failed: …` and nothing else is fetched for it, the rendition included; the log names the error class and HTTP status, never the URL. Then the rendition, when there is one. The 400px card thumbnail is drawn later, once the file's upload screen has passed (ADR-0086): from the rendition or a PDF original after its text screen, from an image once it passes on its name, from a spreadsheet's `preview_paths` rendition after its extracted text is screened. A quarantined file has none
 1. **Text extraction** — a PDF is read per page with pdfplumber, recording each line's font size and weight (`line_styles`). `.xlsx`/`.xlsm` go through `office_extractors`; `.md`, `.txt`, `.csv` and `.tsv` through `text_formats`, which decodes without dropping a byte (BOM, else strict UTF-8, else cp1252, else Latin-1; the encoding is stored as `source_encoding`). Any other extension falls to `SimpleDirectoryReader`. When the job carries an extraction path for the file, the PDF rendition is read instead and every later step treats it as a PDF: pages, tables, images and visual pages. For a `.pptx` or `.pptm` a companion reads the speaker notes from the original, one unit per slide labelled with its rendition page, because a PDF export drops them. On a job whose config carries `screening`, the [upload screen](#upload-screening-before-the-first-model-call) runs on this extracted text before anything below
-   **Chunking.** Every text chunk carries a locator a citation and `read_passage(punkt=…)` can use:
+   **Chunking.** Every text chunk carries a locator a citation and `read_passage(clause=…)` can use:
 
-   | Source | Unit | Locator (`punkt_id`) | `page_label` |
+   | Source | Unit | Locator (`clause_id`) | `page_label` |
    |---|---|---|---|
-   | OIB Richtlinie (`oib_doc_class` set) | a Punkt (`punkt_chunking`) | `3.5.2`, `Tabelle 3` | first page |
+   | OIB Richtlinie (`oib_doc_class` set) | a Punkt (`clause_chunking`) | `3.5.2`, `Tabelle 3` | first page |
    | Any other PDF with a heading structure | chunks of ~640 tokens inside a section that may span pages, 96 tokens of overlap inside the section, heading breadcrumb as the first line (`section_chunking`) | the heading's number (`3.2`, `§ 4`, `Artikel 2`), else its title path (`Brandschutz › Allgemeines`) | page the chunk's own text starts on; `page_end` where it ends |
    | A PDF without one | one Document per page, split by `SentenceSplitter` | none | the page |
    | `.md` (the IFC digest too) | one section per ATX heading, packed to the same budget, breadcrumb first | the heading path under the document title (`Geschoße › EG`) | none |
@@ -254,7 +254,7 @@ Each file of a screened job gets `file_details[].screening` on its job status: `
 
 ### Fassungen across file names (ADR-0099)
 
-Two steps run per file after its summary row is written, on the same `summary_llm` (`sources/knowledge_layer/src/llamaindex/fassungen.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `FASSUNG_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/fassung` writes `superseded_by`.
+Two steps run per file after its summary row is written, on the same `summary_llm` (`sources/knowledge_layer/src/llamaindex/revisions.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `REVISION_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/revision` writes `superseded_by`.
 
 | The file's name is | Step | Stored on the file's own row |
 |---|---|---|
@@ -275,7 +275,7 @@ feld72 asked that Index and date be read from the Plankopf rather than guessed f
 
 A page without a title block (a photo, a chart, a text page) answers every field `null`, and the parser stores `title_block: null`. Nothing is taken from the drawing body or the file name. The line `Title block: Nr. …, Index …, Stand …, Scale …, <title>` is added to the first chunk of the page, so a search for a plan number or an Index finds the sheet it is printed on.
 
-**Which page.** `fassungen.revision_facts_from_documents` reads the `drawing_data` of the file's analysed chunks and takes the first page, in page order, whose title block names the document or its state (a number, an Index or a date); failing that the first page with any field. Pages are not merged. The record carries the `page` it came from and is written to `document_metadata.revision_facts` right after the summary row (`set_document_revision_facts`); a re-upload replaces it, so one without a title block clears it. Documents ingested before this shipped have none until they are read again („Erneut lesen“); the schema bump to v5 (`SCHEMA_VERSION`, part of the vision cache key) makes that re-read ask the model afresh.
+**Which page.** `revisions.revision_facts_from_documents` reads the `drawing_data` of the file's analysed chunks and takes the first page, in page order, whose title block names the document or its state (a number, an Index or a date); failing that the first page with any field. Pages are not merged. The record carries the `page` it came from and is written to `document_metadata.revision_facts` right after the summary row (`set_document_revision_facts`); a re-upload replaces it, so one without a title block clears it. Documents ingested before this shipped have none until they are read again („Erneut lesen“); the schema bump to v5 (`SCHEMA_VERSION`, part of the vision cache key) makes that re-read ask the model afresh.
 
 **Cost.** The prompt grows by about 1,300 characters (roughly 330 input tokens) per analysed page, and a page's reply by roughly 50 to 70 output tokens when it has a title block (about 40 for the null object when it has none), inside the existing 3,000-token output budget. No page and no file gets an extra call.
 
@@ -414,8 +414,8 @@ The BFF's delete purges the chunks first and deletes the row last, after the
 objects, so an ingest whose check lands between the two still sees the row and
 keeps the chunks it inserted after that purge. Every immediate delete therefore
 purges once more after the row is gone: the project and Archiv deletes
-(`deleteDocument` in `lib/documents/service.ts`, `deleteArchivDocument` in
-`lib/archiv/service.ts`), the chat-attachment delete (`deleteSessionDocument`
+(`deleteDocument` in `lib/documents/service.ts`, `deleteOfficeShelfDocument` in
+`lib/office-shelf/service.ts`), the chat-attachment delete (`deleteSessionDocument`
 in `lib/session-documents/service.ts`) and a whole chat's attachment purge
 (`purgeSessionDocuments` in `lib/session-documents/cleanup.ts`, for the rows
 that pass erased). An ingest that asked before the row went has indexed by

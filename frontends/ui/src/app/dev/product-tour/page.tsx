@@ -59,7 +59,7 @@ function Preview(): JSX.Element {
   // preview must not then mistake itself for a replay and start it again.
   const [handover] = useState(() => params.has('tour'))
   const flags = {
-    canAccessArchiv: params.get('archiv') !== '0',
+    canAccessOfficeShelf: params.get('office_shelf') !== '0',
     canAccessInbox: params.get('inbox') !== '0',
     canManageOrganization: params.get('member') !== '1',
   }
@@ -90,7 +90,7 @@ function Preview(): JSX.Element {
               className="m-auto"
             />
           </main>
-          <PhoneTabBar projectId="p-1" pathname="/app/projects/p-1/chat" canAccessArchiv={flags.canAccessArchiv} canAccessInbox={flags.canAccessInbox} />
+          <PhoneTabBar projectId="p-1" pathname="/app/projects/p-1/chat" canAccessOfficeShelf={flags.canAccessOfficeShelf} canAccessInbox={flags.canAccessInbox} />
         </div>
       ) : (
         <div className="bg-background text-foreground flex h-dvh flex-col overflow-hidden">
@@ -100,7 +100,7 @@ function Preview(): JSX.Element {
               <ProjectsGrid projects={[]} docCounts={{}} viewerActivity={{}} />
             </ShellContent>
           </main>
-          <PhoneTabBar projectId={null} pathname="/app/projects" canAccessArchiv={flags.canAccessArchiv} canAccessInbox={flags.canAccessInbox} />
+          <PhoneTabBar projectId={null} pathname="/app/projects" canAccessOfficeShelf={flags.canAccessOfficeShelf} canAccessInbox={flags.canAccessInbox} />
         </div>
       )}
       {!joined && !handover && <Replay />}

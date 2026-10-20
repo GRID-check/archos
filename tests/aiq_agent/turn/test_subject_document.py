@@ -125,11 +125,11 @@ class TestAnUnpublishedSubject:
                 "document_id": "doc-9",
                 "version_id": "ver-9",
                 "state": "draft",
-                "path": "/entwuerfe/Befund Fluchtwege.md",
+                "path": "/drafts/Befund Fluchtwege.md",
                 "chars": len(TEXT),
             },
         )
-        path = "/entwuerfe/Befund Fluchtwege.md"
+        path = "/drafts/Befund Fluchtwege.md"
         assert reads == [("ver-9", ORGANIZATION, CONVERSATION, ASKER, answer_message_id(CONVERSATION, None))]
         assert _stored(store, path)["content"] == TEXT
 
@@ -158,7 +158,7 @@ class TestAnUnpublishedSubject:
         monkeypatch.setattr(subject_document, "get_document_version_content", lambda *_: oversized)
 
         assert await _miss(OPEN) == "not_stored"
-        assert _stored(store, "/entwuerfe/Befund Fluchtwege.md") is None
+        assert _stored(store, "/drafts/Befund Fluchtwege.md") is None
 
 
 class TestASecondTurnOfTheSameConversation:
@@ -201,7 +201,7 @@ class TestASecondTurnOfTheSameConversation:
         monkeypatch.setattr(subject_document, "get_document_version_content", lambda *_: other)
 
         assert await _miss(SubjectVersion("doc-11", "ver-11", "draft")) == "not_stored"
-        assert _stored(store, "/entwuerfe/Befund Fluchtwege.md")[FILED_DOCUMENT_KEY] == "doc-9"
+        assert _stored(store, "/drafts/Befund Fluchtwege.md")[FILED_DOCUMENT_KEY] == "doc-9"
 
     async def test_it_announces_no_draft_card_for_a_document_nobody_wrote(self, store, reads) -> None:
         # Every write through the backend normally puts a „Entwurf geschrieben"
@@ -223,7 +223,7 @@ class TestAPublishedSubject:
     async def test_nothing_is_read_and_nothing_is_written(self, store, reads) -> None:
         assert await _load(PUBLISHED) is None
         assert reads == []
-        assert _stored(store, "/entwuerfe/Befund Fluchtwege.md") is None
+        assert _stored(store, "/drafts/Befund Fluchtwege.md") is None
 
     async def test_a_turn_with_no_subject_at_all_is_a_no_op(self, store, reads) -> None:
         assert await _load(SubjectVersion()) is None
@@ -275,7 +275,7 @@ class TestWhenTheBytesDoNotArrive:
     async def test_empty_bytes_write_nothing(self, store, monkeypatch) -> None:
         monkeypatch.setattr(subject_document, "get_document_version_content", lambda *_: dict(BODY, content="   "))
         assert await _miss(OPEN) == "empty"
-        assert _stored(store, "/entwuerfe/Befund Fluchtwege.md") is None
+        assert _stored(store, "/drafts/Befund Fluchtwege.md") is None
 
     async def test_an_unexpected_failure_never_reaches_the_turn(self, store, monkeypatch) -> None:
         def _explode(
@@ -368,7 +368,7 @@ class TestTheReadIsScopedToTheConversation:
         with caplog.at_level(logging.INFO):
             assert await _miss(OPEN) == "absent"
 
-        assert _stored(store, "/entwuerfe/Befund Fluchtwege.md") is None
+        assert _stored(store, "/drafts/Befund Fluchtwege.md") is None
         absent = [record for record in caplog.records if "ver-9" in record.getMessage()]
         assert absent, "the miss is recorded"
         # Logged at INFO, where every other miss is a WARNING: a turn about a
@@ -382,12 +382,12 @@ class TestTheNameItBuilds:
     @pytest.mark.parametrize(
         ("display_name", "expected"),
         [
-            ("Befund", "/entwuerfe/Befund.md"),
-            ("piloti/doc-9/Befund", "/entwuerfe/piloti-doc-9-Befund.md"),
-            ("../../etc/passwd", "/entwuerfe/-.-etc-passwd.md"),
-            ("Befund.md", "/entwuerfe/Befund.md"),
-            ("  ", "/entwuerfe/dokument.md"),
-            ("", "/entwuerfe/dokument.md"),
+            ("Befund", "/drafts/Befund.md"),
+            ("piloti/doc-9/Befund", "/drafts/piloti-doc-9-Befund.md"),
+            ("../../etc/passwd", "/drafts/-.-etc-passwd.md"),
+            ("Befund.md", "/drafts/Befund.md"),
+            ("  ", "/drafts/dokument.md"),
+            ("", "/drafts/dokument.md"),
         ],
     )
     def test_it_is_always_one_file_in_the_one_directory(self, display_name: str, expected: str) -> None:

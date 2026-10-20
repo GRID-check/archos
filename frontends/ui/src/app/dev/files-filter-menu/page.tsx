@@ -76,7 +76,7 @@ function FilesFilterMenuPreview(): JSX.Element {
               <FileFilterMenu
                 defaultOpen
                 canCollaborate
-                filters={{ ...NO_FILE_FILTERS, showOlderFassungen: true, includeArchived: true }}
+                filters={{ ...NO_FILE_FILTERS, showOlderRevisions: true, includeArchived: true }}
                 onFiltersChange={noop}
                 sort={DEFAULT_FILE_SORT}
                 onSortChange={noop}
@@ -135,7 +135,7 @@ function FilesFilterMenuPreview(): JSX.Element {
               {/* Older Fassungen shown: one constraint, one count. */}
               <FileFilterMenu
                 canCollaborate
-                filters={{ ...NO_FILE_FILTERS, showOlderFassungen: true }}
+                filters={{ ...NO_FILE_FILTERS, showOlderRevisions: true }}
                 onFiltersChange={noop}
                 sort={DEFAULT_FILE_SORT}
                 onSortChange={noop}

@@ -43,7 +43,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const open = async (props: Partial<Parameters<typeof ReviewExportMenu>[0]> = {}) => {
   const user = userEvent.setup()
-  render(<ReviewExportMenu documentId="doc_1" hasFassungen={false} hasProposals={false} {...props} />)
+  render(<ReviewExportMenu documentId="doc_1" hasRevisions={false} hasProposals={false} {...props} />)
   await user.click(screen.getByRole('button', { name: 'Export minutes' }))
   return user
 }
@@ -53,7 +53,7 @@ describe('ReviewExportMenu', () => {
     const user = await open()
     await user.click(await screen.findByRole('menuitem', { name: 'PDF' }))
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=open&fassung=current')
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=open&revision=current')
     await vi.waitFor(() =>
       expect(downloads).toEqual([{ href: 'blob:protokoll', download: 'Anmerkungen – Grundriss EG – Fassung 3.pdf' }])
     )
@@ -67,19 +67,19 @@ describe('ReviewExportMenu', () => {
   })
 
   it('carries the scope, the Fassung and the proposals into the link, and stays open while choosing', async () => {
-    const user = await open({ hasFassungen: true, hasProposals: true })
+    const user = await open({ hasRevisions: true, hasProposals: true })
     await user.click(await screen.findByRole('menuitemradio', { name: 'Resolved ones too' }))
     await user.click(screen.getByRole('menuitemradio', { name: 'All revisions' }))
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Add Piloti’s proposals' }))
     await user.click(screen.getByRole('menuitem', { name: 'Word (.docx)' }))
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/documents/doc_1/annotations/export?format=docx&scope=all&fassung=all&includeProposals=1'
+      '/api/documents/doc_1/annotations/export?format=docx&scope=all&revision=all&includeProposals=1'
     )
   })
 
   it('offers the Fassung only for the record: open marks come from every Fassung whatever it says', async () => {
-    const user = await open({ hasFassungen: true })
+    const user = await open({ hasRevisions: true })
     expect(await screen.findByRole('menuitemradio', { name: 'Open only' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitemradio', { name: 'All revisions' })).toBeNull()
     await user.click(screen.getByRole('menuitemradio', { name: 'Resolved ones too' }))
@@ -134,7 +134,7 @@ describe('filing the Protokoll in the project', () => {
     await user.click(screen.getByRole('menuitem', { name: 'File in the project' }))
 
     await vi.waitFor(() => expect(uploads).toHaveLength(1))
-    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=all&fassung=current')
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=all&revision=current')
     const form = uploads[0] as FormData
     expect((form.get('file') as File).name).toBe('Minutes – Grundriss EG – 2026-10-18.pdf')
     expect(form.get('projectId')).toBe('proj_1')
@@ -173,7 +173,7 @@ describe('filing the Protokoll in the project', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'File in the project' }))
 
     await vi.waitFor(() => expect(uploads).toHaveLength(1))
-    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=docx&scope=open&fassung=current')
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=docx&scope=open&revision=current')
     expect(((uploads[0] as FormData).get('file') as File).name).toBe('Minutes – Grundriss EG – 2026-10-18.docx')
   })
 

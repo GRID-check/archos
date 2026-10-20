@@ -2,7 +2,7 @@
 
 Against a real Qdrant (``test_qdrant_store.py`` says why and how). The corpus
 is seeded through the write ingestion uses (``writes.write_chunks``), shaped like the OIB
-corpus (Punkt chunks with ``punkt_id``/``punkt_depth``/``page_label``/
+corpus (Punkt chunks with ``clause_id``/``clause_depth``/``page_label``/
 ``page_end``, a split Punkt, a captioned table in row groups) next to a
 page-chunked report, a workbook and a Markdown file.
 
@@ -72,14 +72,14 @@ def _row(text: str, file_name: str, **metadata: Any) -> dict[str, Any]:
     }
 
 
-def _punkt(file_name: str, punkt: str, depth: int, title: str, page: int, *, end: int | None = None, body: str = ""):
+def _clause(file_name: str, punkt: str, depth: int, title: str, page: int, *, end: int | None = None, body: str = ""):
     return _row(
         f"{punkt} {title}\n\n{body or f'Text zu {title}. Weiterer Satz.'}",
         file_name,
-        chunking="punkt",
-        punkt_id=punkt,
-        punkt_depth=depth,
-        punkt_title=title,
+        chunking="clause",
+        clause_id=punkt,
+        clause_depth=depth,
+        clause_title=title,
         page_label=str(page),
         page_end=str(end if end is not None else page),
     )
@@ -87,17 +87,17 @@ def _punkt(file_name: str, punkt: str, depth: int, title: str, page: int, *, end
 
 def _oib(file_name: str = OIB) -> list[dict[str, Any]]:
     rows = [
-        _punkt(file_name, "0", 1, "Vorbemerkungen", 3, body="Diese Richtlinie gilt für alle Gebäude."),
-        _punkt(file_name, "0", 1, "Vorbemerkungen", 3, body="Sie ist so zu lesen."),
-        _punkt(file_name, "1", 1, "Begriffsbestimmungen", 3),
-        _punkt(file_name, "2", 1, "Allgemeine Anforderungen", 4),
-        _punkt(file_name, "2.1", 2, "Abstände", 4, end=6),
-        _punkt(file_name, "2.1.1", 3, "Abstand zur Nachbargrenze", 5),
-        _punkt(file_name, "2.9", 2, "Löschwasser", 7),
-        _punkt(file_name, "2.10", 2, "Blitzschutz", 7),
-        _punkt(file_name, "3", 1, "Brandabschnitte", 8),
-        _punkt(file_name, "3.5.2", 3, "Fluchtwege", 9, body="Erster Teil des Punktes."),
-        _punkt(file_name, "3.5.2", 3, "Fluchtwege", 9, end=10, body="Zweiter Teil des Punktes."),
+        _clause(file_name, "0", 1, "Vorbemerkungen", 3, body="Diese Richtlinie gilt für alle Gebäude."),
+        _clause(file_name, "0", 1, "Vorbemerkungen", 3, body="Sie ist so zu lesen."),
+        _clause(file_name, "1", 1, "Begriffsbestimmungen", 3),
+        _clause(file_name, "2", 1, "Allgemeine Anforderungen", 4),
+        _clause(file_name, "2.1", 2, "Abstände", 4, end=6),
+        _clause(file_name, "2.1.1", 3, "Abstand zur Nachbargrenze", 5),
+        _clause(file_name, "2.9", 2, "Löschwasser", 7),
+        _clause(file_name, "2.10", 2, "Blitzschutz", 7),
+        _clause(file_name, "3", 1, "Brandabschnitte", 8),
+        _clause(file_name, "3.5.2", 3, "Fluchtwege", 9, body="Erster Teil des Punktes."),
+        _clause(file_name, "3.5.2", 3, "Fluchtwege", 9, end=10, body="Zweiter Teil des Punktes."),
     ]
     for part in (3, 1, 2):
         rows.append(
@@ -106,7 +106,7 @@ def _oib(file_name: str = OIB) -> list[dict[str, Any]]:
                 file_name,
                 chunking="table",
                 content_type="table",
-                punkt_id="Tabelle 1a",
+                clause_id="Tabelle 1a",
                 table_part=part,
                 page_label="11",
                 page_end="11",
@@ -124,7 +124,7 @@ def _report(file_name: str = REPORT, pages: int = 20) -> list[dict[str, Any]]:
 
 def _sheet() -> list[dict[str, Any]]:
     return [
-        _row(f"Blatt {name}: Positionen.", SHEET, chunking="table", page_label=name, punkt_id=f"{name}: Zeilen 2-41")
+        _row(f"Blatt {name}: Positionen.", SHEET, chunking="table", page_label=name, clause_id=f"{name}: Zeilen 2-41")
         for name in ("Übersicht", "Rohbau", "Ausbau")
     ]
 
@@ -136,9 +136,9 @@ def _markdown() -> list[dict[str, Any]]:
             f"Digest › {title}\n\nText zu {title}.",
             MARKDOWN,
             chunking="section",
-            punkt_id=title,
-            punkt_depth=depth,
-            punkt_title=title,
+            clause_id=title,
+            clause_depth=depth,
+            clause_title=title,
             section_order=order,
             line_start=line,
         )

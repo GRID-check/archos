@@ -431,7 +431,7 @@ export async function ensureTenantBucket(
  * when the truth is "storage is unavailable, and it is not your upload", and
  * the error tracker files a bug against this application for a disk that
  * needs attention — which is how a full staging volume arrived as
- * `[api] Unhandled error in POST /api/archiv/documents/upload`.
+ * `[api] Unhandled error in POST /api/office-shelf/documents/upload`.
  *
  * Only STORE faults are converted. A `ForbiddenError` from the ownership claim,
  * a bad argument, a programming mistake — all keep their own shape, because

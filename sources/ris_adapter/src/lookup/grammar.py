@@ -32,9 +32,9 @@ MAX_HEADINGS = 120
 #: start it replaced § 65 itself wherever a lookup kept the last § of a label.
 SECTION_LINE_RE = re.compile(r"^\s*(?:(§)+\s*|(Art)(?:ikel)?\.?\s*)(\d+[a-z]?)\s*(?:\.|$)", re.IGNORECASE)
 #: An Absatz marker at the start of a line — the boundary a passage is cut on.
-ABSATZ_LINE_RE = re.compile(r"(?m)^\(\s*(\d+[a-z]?)\s*\)")
+SUBSECTION_LINE_RE = re.compile(r"(?m)^\(\s*(\d+[a-z]?)\s*\)")
 #: The same marker where RIS runs it into the section head: "§ 63. (1) Dem …".
-ABSATZ_INLINE_RE = re.compile(r"^\s*(?:§|Art(?:ikel)?\.?)\s*\d+[a-z]?\s*\.?\s*\(\s*(\d+[a-z]?)\s*\)")
+SUBSECTION_INLINE_RE = re.compile(r"^\s*(?:§|Art(?:ikel)?\.?)\s*\d+[a-z]?\s*\.?\s*\(\s*(\d+[a-z]?)\s*\)")
 #: A line that can serve as a section's Überschrift: short, and not a sentence.
 _HEADING_MAX_CHARS = 120
 
@@ -130,7 +130,7 @@ def _heading_below(lines: list[str], index: int, marker: re.Match[str]) -> str:
     if lines[index][marker.end() :].strip():
         return ""
     below = lines[index + 1].strip() if index + 1 < len(lines) else ""
-    return below if _is_heading(below) and not ABSATZ_LINE_RE.match(below) else ""
+    return below if _is_heading(below) and not SUBSECTION_LINE_RE.match(below) else ""
 
 
 def _has_text(section: Section) -> bool:
@@ -145,34 +145,34 @@ def _is_heading(line: str) -> bool:
     return not line.endswith((".", ":", ",", ";")) and not SECTION_LINE_RE.match(line)
 
 
-def absatz_body(section: Section, absatz: str) -> tuple[str, str]:
-    """``(body, absatz)`` narrowed to one Absatz, or the whole section.
+def subsection_body(section: Section, subsection: str) -> tuple[str, str]:
+    """``(body, subsection)`` narrowed to one Absatz, or the whole section.
 
     An Absatz the document does not carry returns the section unchanged: the
     honest answer to "§ 63 Abs 9" in a § with three Absätze is § 63, never an
     empty passage and never the wrong Absatz.
     """
-    if not absatz or not section.number:
+    if not subsection or not section.number:
         return section.body, ""
-    marks = _absatz_marks(section.body)
+    marks = _subsection_marks(section.body)
     for position, (number, start) in enumerate(marks):
-        if number.lower() != absatz.lower():
+        if number.lower() != subsection.lower():
             continue
         end = marks[position + 1][1] if position + 1 < len(marks) else len(section.body)
         return section.body[start:end].strip(), number
     return section.body, ""
 
 
-def _absatz_marks(body: str) -> list[tuple[str, int]]:
-    """``(absatz, offset)`` for every Absatz marker, the run-in one included."""
-    marks = [(match.group(1), match.start()) for match in ABSATZ_LINE_RE.finditer(body)]
-    inline = ABSATZ_INLINE_RE.match(body)
+def _subsection_marks(body: str) -> list[tuple[str, int]]:
+    """``(subsection, offset)`` for every Absatz marker, the run-in one included."""
+    marks = [(match.group(1), match.start()) for match in SUBSECTION_LINE_RE.finditer(body)]
+    inline = SUBSECTION_INLINE_RE.match(body)
     if inline:
         marks.insert(0, (inline.group(1), 0))
     return marks
 
 
-def cut_on_absatz(text: str, limit: int = PASSAGE_MAX_CHARS) -> str:
+def cut_on_subsection(text: str, limit: int = PASSAGE_MAX_CHARS) -> str:
     """Truncate a passage on an Absatz boundary, never mid-Absatz.
 
     The default bound is the knowledge layer's own ``_CHUNK_TRUNCATE_CHARS``
@@ -184,7 +184,7 @@ def cut_on_absatz(text: str, limit: int = PASSAGE_MAX_CHARS) -> str:
     if len(text) <= limit:
         return text
     window = text[:limit]
-    marks = [match.start() for match in ABSATZ_LINE_RE.finditer(window)]
+    marks = [match.start() for match in SUBSECTION_LINE_RE.finditer(window)]
     cut = marks[-1] if marks and marks[-1] > limit // 2 else window.rfind("\n")
     return text[: cut if cut > 0 else limit].rstrip() + "... [truncated]"
 

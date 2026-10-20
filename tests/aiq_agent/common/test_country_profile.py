@@ -30,8 +30,8 @@ def _norms_file(**overrides) -> nr.NormsFile:
             "id": "bo-wien",
             "title": "Bauordnung für Wien",
             "short": "BO Wien",
-            "rank": "landesgesetz",
-            "bundesland": "Wien",
+            "rank": "state_law",
+            "federal_state": "Wien",
             "application": "LrKons",
             "document_number": "LWI40000225",
         }
@@ -55,7 +55,7 @@ class TestAustriaProfile:
         assert profile.corpus_collection == "oib_knowledge"
         assert profile.doctrine == nr.NORM_DOCTRINE
         assert profile.corpus_note == nr.OIB_CORPUS_NOTE
-        assert profile.states == nr.BUNDESLAND_TOKENS
+        assert profile.states == nr.FEDERAL_STATE_TOKENS
         assert profile.state_probe_order == tuple(nr.BUNDESLAENDER)
         assert "Bebauungsplan" in profile.parcel_tags
         assert "Flächenwidmungsplan" in profile.parcel_tags

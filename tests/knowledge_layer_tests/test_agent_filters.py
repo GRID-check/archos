@@ -42,20 +42,20 @@ def test_overfetch_constant() -> None:
 
 
 def test_doc_class_filter_uses_store_value_when_available(monkeypatch) -> None:
-    # Store says oib_richtlinie for this file even though chunk metadata disagrees.
-    chunk = _chunk(file_name="oib-3.pdf", doc_class="sonstiges")
+    # Store says oib_guideline for this file even though chunk metadata disagrees.
+    chunk = _chunk(file_name="oib-3.pdf", doc_class="other")
     monkeypatch.setattr(
         "aiq_agent.knowledge.factory.get_document_doc_classes",
-        lambda *args, **kwargs: {"oib-3.pdf": "oib_richtlinie"},
+        lambda *args, **kwargs: {"oib-3.pdf": "oib_guideline"},
     )
-    # The resolved store value must win, so the oib_richtlinie filter keeps it.
-    kept = _apply_agent_filters([chunk], doc_class="oib_richtlinie", title_contains=None)
+    # The resolved store value must win, so the oib_guideline filter keeps it.
+    kept = _apply_agent_filters([chunk], doc_class="oib_guideline", title_contains=None)
     assert len(kept) == 1
 
 
 def test_doc_class_filter_drops_non_matching() -> None:
-    chunks = [_chunk(file_name="a.pdf", doc_class="oib_richtlinie"), _chunk(file_name="b.pdf", doc_class="gesetz")]
-    kept = _apply_agent_filters(chunks, doc_class="oib_richtlinie", title_contains=None)
+    chunks = [_chunk(file_name="a.pdf", doc_class="oib_guideline"), _chunk(file_name="b.pdf", doc_class="law")]
+    kept = _apply_agent_filters(chunks, doc_class="oib_guideline", title_contains=None)
     assert [c.file_name for c in kept] == ["a.pdf"]
 
 
@@ -84,19 +84,19 @@ def test_no_filters_keeps_all() -> None:
 
 def test_doc_class_and_title_combined() -> None:
     chunks = [
-        _chunk(file_name="a.pdf", doc_class="oib_richtlinie"),
-        _chunk(file_name="b.pdf", doc_class="gesetz"),
-        _chunk(file_name="c.pdf", doc_class="oib_richtlinie"),
+        _chunk(file_name="a.pdf", doc_class="oib_guideline"),
+        _chunk(file_name="b.pdf", doc_class="law"),
+        _chunk(file_name="c.pdf", doc_class="oib_guideline"),
     ]
-    kept = _apply_agent_filters(chunks, doc_class="oib_richtlinie", title_contains="c")
+    kept = _apply_agent_filters(chunks, doc_class="oib_guideline", title_contains="c")
     assert [c.file_name for c in kept] == ["c.pdf"]
 
 
 def test_document_classes_vocabulary_is_known() -> None:
     # Guards the vocabulary the tool validates against.
-    assert "oib_richtlinie" in DOCUMENT_CLASSES
-    assert "gesetz" in DOCUMENT_CLASSES
-    assert "sonstiges" in DOCUMENT_CLASSES
+    assert "oib_guideline" in DOCUMENT_CLASSES
+    assert "law" in DOCUMENT_CLASSES
+    assert "other" in DOCUMENT_CLASSES
 
 
 def test_file_name_matches_exact_and_contained() -> None:

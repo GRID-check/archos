@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DOCUMENT_STATUS_FACTS, type KnownDocumentStatus } from '@/lib/documents/document-status'
-import { EMPTY_FASSUNG } from '@/lib/documents/fassung'
+import { EMPTY_REVISION_LINKS } from '@/lib/documents/revision-links'
 import type { ShelfSummary } from '@/lib/documents/shelf-summary-types'
 import type { FileItem, FolderItem } from '../file-types'
 import {
@@ -652,8 +652,8 @@ describe('selectInBrief', () => {
  */
 describe('buildFolderBrief over Fassungen', () => {
   const ref = (id: string) => ({ id, filename: `${id}.pdf` })
-  const fassung = (overrides: Partial<NonNullable<FileItem['fassung']>>): FileItem['fassung'] => ({
-    ...EMPTY_FASSUNG,
+  const revision = (overrides: Partial<NonNullable<FileItem['revision']>>): FileItem['revision'] => ({
+    ...EMPTY_REVISION_LINKS,
     ...overrides,
   })
   const tree = [folder('P', 'Pläne'), folder('ALT', 'alt', 'P'), folder('X', 'Anderswo')]
@@ -666,9 +666,9 @@ describe('buildFolderBrief over Fassungen', () => {
     pageCount: 4,
     tags: ['Grundriss'],
     topics: ['Fluchtweg'],
-    fassung: fassung({ supersedes: [ref('b')], history: [{ ...ref('b'), createdAt: null, changeSummary: null }, { ...ref('a'), createdAt: null, changeSummary: null }] }),
+    revision: revision({ supersedes: [ref('b')], history: [{ ...ref('b'), createdAt: null, changeSummary: null }, { ...ref('a'), createdAt: null, changeSummary: null }] }),
   })
-  const indexB = file({ id: 'b', folderId: 'ALT', status: 'failed', fassung: fassung({ supersededBy: ref('c'), supersedes: [ref('a')] }) })
+  const indexB = file({ id: 'b', folderId: 'ALT', status: 'failed', revision: revision({ supersededBy: ref('c'), supersedes: [ref('a')] }) })
   const indexA = file({
     id: 'a',
     folderId: 'ALT',
@@ -676,10 +676,10 @@ describe('buildFolderBrief over Fassungen', () => {
     pageCount: 30,
     tags: ['Grundriss'],
     topics: ['Fluchtweg'],
-    fassung: fassung({ supersededBy: ref('b') }),
+    revision: revision({ supersededBy: ref('b') }),
   })
-  const schnitt = file({ id: 's', folderId: 'P', status: 'ready', pageCount: 2, tags: ['Schnitt'] })
-  const corpus = [indexC, indexB, indexA, schnitt]
+  const section = file({ id: 's', folderId: 'P', status: 'ready', pageCount: 2, tags: ['Schnitt'] })
+  const corpus = [indexC, indexB, indexA, section]
 
   it('counts the current Fassung only, in the tally and the pages', () => {
     const brief = buildFolderBrief(corpus, tree, null)

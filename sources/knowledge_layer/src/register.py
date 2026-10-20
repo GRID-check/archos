@@ -79,7 +79,7 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "WHEN TO CALL — any question that needs a passage from a stored document. "
     "If the user named a file and asked what it says, pass `file_name=` that "
     "exact indexed name (from the inventory or the user). Narrow with "
-    "`doc_class=` (Dokumentart key, e.g. oib_richtlinie) or `title_contains=` "
+    "`doc_class=` (Dokumentart key, e.g. oib_guideline) or `title_contains=` "
     "when you already know the class or a title fragment. Pass `folder=` (the "
     "path the inventory prints after 'Ordner:', e.g. Brandschutz/Fluchtwege) "
     "when the user scoped the question to a folder — it also covers everything "
@@ -110,7 +110,7 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "try again; do not invent a citation around a gap you could still close. "
     "Never invent a `file_name`; take it from the inventory or the user. The "
     "OIB base corpus "
-    "is not enumerated there — reach it by `doc_class` (e.g. `oib_richtlinie`) "
+    "is not enumerated there — reach it by `doc_class` (e.g. `oib_guideline`) "
     "or by plain semantic search, never a guessed name. Do not pass a raw "
     "`filters` object unless you need `content_type`. "
     "A query that names a Richtlinie and nothing else ('OIB 2', "
@@ -558,8 +558,8 @@ def _resolve_target_collections(
 
 #: The ``chunking`` value the base corpus uses for text that is not evidence.
 #:
-#: ``punkt_documents`` (``llamaindex/punkt_chunking.py``) cuts a Punkt-structured
-#: Richtlinie into one chunk per numbered Punkt, tagged ``chunking: "punkt"``, and
+#: ``clause_documents`` (``llamaindex/clause_chunking.py``) cuts a Punkt-structured
+#: Richtlinie into one chunk per numbered Punkt, tagged ``chunking: "clause"``, and
 #: emits everything outside that run -- the cover page and the Impressum -- as
 #: per-page Documents tagged ``chunking: "page"``. Neither is citable: pdfplumber
 #: returns the cover's display type as garble, and the Impressum is furniture. A
@@ -569,7 +569,7 @@ def _resolve_target_collections(
 #:
 #: The exclusion is a STORE filter rather than a post-retrieval drop because a
 #: dropped hit still costs its candidate slot. It is ``$ne`` rather than a
-#: whitelist of ``punkt`` on purpose: only Punkt-structured documents carry the
+#: whitelist of ``clause`` on purpose: only Punkt-structured documents carry the
 #: key at all -- Begriffsbestimmungen, Zitierte Normen, project uploads and office
 #: files carry no ``chunking`` key -- and a whitelist would delete them from
 #: search. ``$ne`` KEEPS records that lack the key (``qdrant.scope.translate``
@@ -1298,9 +1298,9 @@ def _lane_detail(hit) -> str | None:
     comma inside one locus would read as two.
     """
     page = f"p.{hit.page}" if hit.page is not None else ""
-    if not hit.punkt:
+    if not hit.clause:
         return page or None
-    return f"Pkt. {hit.punkt} {page}".strip()
+    return f"Pkt. {hit.clause} {page}".strip()
 
 
 def _lane_sources(hits, opened_files: frozenset[str]) -> list[TraceLaneSource]:
@@ -1520,7 +1520,7 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         doc_class=_hit_doc_class(chunk, resolved),
         display_title=_hit_display_title(chunk, resolved_titles) or chunk.file_name,
         folder_path=_hit_folder_path(chunk, resolved_folders),
-        punkt=_metadata_text(metadata.get("punkt_id")),
+        clause=_metadata_text(metadata.get("clause_id")),
         score=chunk.score,
         content_type=chunk.content_type.value,
         provenance=_hit_provenance(chunk),
@@ -1672,7 +1672,7 @@ _FAMILY_OVERVIEW_FAILED_NOTICE = (
 
 
 #: Replaced files one notice names before it counts the rest.
-_HIDDEN_FASSUNGEN_NAMED = 5
+_HIDDEN_REVISIONS_NAMED = 5
 
 
 async def _superseded_files(collections: Sequence[str]) -> dict[str, dict[str, str]]:
@@ -1695,19 +1695,19 @@ async def _superseded_files(collections: Sequence[str]) -> dict[str, dict[str, s
     }
 
 
-def _named_older_fassung_notice(file_name: str | None, superseded: dict[str, dict[str, str]]) -> str:
+def _named_older_revision_notice(file_name: str | None, superseded: dict[str, dict[str, str]]) -> str:
     """The line that tells the model the file it named (``file_name=…``) is an older Fassung, and which is current.
 
     Naming the file is how an older Fassung is read on purpose, so its passages are not withheld;
     the line keeps the answer from presenting them as the document's current state. Follows the
     links to the end of the chain, and names nothing in a restricted collection nobody admitted.
-    The same words as ``read_passage``'s notice (:func:`older_fassung_line`).
+    The same words as ``read_passage``'s notice (:func:`older_revision_line`).
     """
     if not file_name:
         return ""
     from aiq_agent.knowledge.restricted_use import may_name
 
-    from .read_passage import older_fassung_line
+    from .read_passage import older_revision_line
 
     lines = []
     for collection, links in superseded.items():
@@ -1717,17 +1717,17 @@ def _named_older_fassung_notice(file_name: str | None, superseded: dict[str, dic
         while current in links and current not in seen:
             seen.add(current)
             current = links[current]
-        lines.append(older_fassung_line(file_name, current))
+        lines.append(older_revision_line(file_name, current))
     return "".join(sorted(set(lines)))
 
 
-def _hidden_fassungen_notice(superseded: dict[str, dict[str, str]]) -> str:
+def _hidden_revisions_notice(superseded: dict[str, dict[str, str]]) -> str:
     """The one line that tells the model older Fassungen were left out of the ranking, and how to read one."""
     names = sorted({name for hidden in superseded.values() for name in hidden})
     if not names:
         return ""
-    shown = ", ".join(names[:_HIDDEN_FASSUNGEN_NAMED])
-    rest = len(names) - _HIDDEN_FASSUNGEN_NAMED
+    shown = ", ".join(names[:_HIDDEN_REVISIONS_NAMED])
+    rest = len(names) - _HIDDEN_REVISIONS_NAMED
     tail = f" und {rest} weitere" if rest > 0 else ""
     return f"Ältere Fassungen ausgeblendet: {shown}{tail} — mit file_name=… gezielt lesbar.\n\n"
 
@@ -1978,8 +1978,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 inventory or the user). Never invent a name. Base-corpus
                 files are not listed in the inventory — filter those with
                 `doc_class` instead.
-            doc_class (str | None): Dokumentart key (e.g. "oib_richtlinie",
-                "gesetz"). Store-authoritative; reclassifications apply
+            doc_class (str | None): Dokumentart key (e.g. "oib_guideline",
+                "law"). Store-authoritative; reclassifications apply
                 without re-ingest.
             title_contains (str | None): Case-insensitive substring of the
                 file name OR display title.
@@ -2021,14 +2021,17 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             )
         if doc_class is not None:
             from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
-            from aiq_agent.knowledge.document_classification import is_valid_doc_class
+            from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-            if not is_valid_doc_class(doc_class):
+            # A conversation that already holds a search by the German key invites the model to repeat it.
+            current_doc_class = canonical_doc_class(doc_class)
+            if current_doc_class is None:
                 valid = ", ".join(DOCUMENT_CLASSES)
                 return (
                     f"Invalid doc_class {doc_class!r}. Valid values: {valid}. "
                     "Omit `doc_class` to search every Dokumentart."
                 )
+            doc_class = current_doc_class
 
         # Platform-tunable counts (Platform → Retrieval), resolved per call so
         # an admin save takes effect without a redeploy; fail-open to the YAML
@@ -2114,7 +2117,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         superseded = await _superseded_files(
             [entry.collection for entry in target_collections if entry.collection != base_collection]
         )
-        hidden_fassungen = {} if file_name else superseded
+        hidden_revisions = {} if file_name else superseded
 
         # Cross-lingual bridge. The corpus is German; an English question reaches it
         # only weakly by embedding and not at all lexically. Measured on the golden
@@ -2175,9 +2178,9 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             result = await retriever.retrieve(
                 query=search_query, collection_name=coll, top_k=candidate_k, filters=coll_filters
             )
-            if hidden_fassungen.get(coll) and getattr(result, "chunks", None):
+            if hidden_revisions.get(coll) and getattr(result, "chunks", None):
                 result = result.model_copy(
-                    update={"chunks": qdrant_prefilter.without_files(result.chunks, hidden_fassungen[coll])}
+                    update={"chunks": qdrant_prefilter.without_files(result.chunks, hidden_revisions[coll])}
                 )
             # Tag each chunk with its collection so the merge does not lose the
             # per-hit stratum — the trace UI's lane labels and source_lane read it.
@@ -2600,10 +2603,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                     keys = [key for key in keys if key]
                     if keys:
                         picks["citation_keys"] = keys
-                    punkt_ids = [(getattr(chunk, "metadata", None) or {}).get("punkt_id") for chunk in merged.chunks]
-                    punkt_ids = [str(value) for value in punkt_ids if value]
-                    if punkt_ids:
-                        picks["punkt_ids"] = punkt_ids
+                    clause_ids = [(getattr(chunk, "metadata", None) or {}).get("clause_id") for chunk in merged.chunks]
+                    clause_ids = [str(value) for value in clause_ids if value]
+                    if clause_ids:
+                        picks["clause_ids"] = clause_ids
                 except Exception:
                     logger.debug("Retrieval picks enrichment skipped", exc_info=True)
                 emit_retrieval_span(
@@ -2623,8 +2626,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             from knowledge_layer.requery import requery_notice
 
             notice = (
-                _hidden_fassungen_notice(hidden_fassungen)
-                + _named_older_fassung_notice(file_name, superseded)
+                _hidden_revisions_notice(hidden_revisions)
+                + _named_older_revision_notice(file_name, superseded)
                 + requery_notice(requery_queries)
             )
             # The overview raised, and the passages below are what is left of

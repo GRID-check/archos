@@ -44,7 +44,7 @@ def _sample_norms_file() -> NormsFile:
                 id="test-fed",
                 title="Test Federal Law",
                 short="TFL",
-                rank="bundesgesetz",
+                rank="federal_law",
                 application="BrKons",
                 document_number="NOR12345678",
             )
@@ -117,7 +117,7 @@ def test_configure_registers_loader_and_falls_back_to_yaml(db_url):
                     id="only-in-store",
                     title="Store Only",
                     short="SO",
-                    rank="bundesgesetz",
+                    rank="federal_law",
                     application="BrKons",
                     document_number="NOR99999999",
                 )
@@ -144,3 +144,24 @@ def test_configure_registers_loader_and_falls_back_to_yaml(db_url):
     finally:
         norm_store._norm_store = None
         NormRegistryStore.dispose_all_engines()
+
+
+def test_a_row_stored_with_german_keys_is_rewritten_in_place(store, db_url):
+    """Remove with ``NormRegistryStore._rewrite_legacy_keys``."""
+    legacy = (
+        '{"entries": [{"id": "bo-wien", "title": "BO", "short": "BO", "rank": "state_law", "bundesland": "Wien",'
+        ' "verify": {"title_query": "Bauordnung", "gesetzesnummer": "20000006"}}]}'
+    )
+    engine = create_engine(db_url)
+    with engine.begin() as conn:
+        conn.execute(
+            text("INSERT INTO norm_registry (country, data, version) VALUES ('at', :data, 4)"), {"data": legacy}
+        )
+    store._rewrite_legacy_keys()
+    with engine.connect() as conn:
+        data, version = conn.execute(text("SELECT data, version FROM norm_registry")).fetchone()
+    assert "gesetzesnummer" not in data and "bundesland" not in data
+    assert '"statute_number":"20000006"' in data and '"federal_state":"Wien"' in data
+    assert version == 4
+    norms_file, _ = store.get("at")
+    assert norms_file.entries[0].verify.statute_number == "20000006"

@@ -41,14 +41,18 @@
 
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { applyRunLedgerOp } from '@/lib/runs/service'
-import { runLedgerRequestSchema } from '@/lib/runs/run-ledger-types'
+import { z } from 'zod'
+import { modernizeRunLedger, runLedgerRequestSchema } from '@/lib/runs/run-ledger-types'
+
+// A worker that has not rolled yet still posts `laeuft` / `grundlage`.
+const requestSchema = z.preprocess(modernizeRunLedger, runLedgerRequestSchema)
 
 type Params = { runId: string }
 
 export const POST = internalApiRoute<Params>(
   'Run Ledger',
   async ({ request, params }) => {
-    const op = await parseJsonBody(request, runLedgerRequestSchema)
+    const op = await parseJsonBody(request, requestSchema)
     return applyRunLedgerOp(params.runId, op)
   },
   {

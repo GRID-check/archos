@@ -12,7 +12,7 @@ import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profil
 import { LOCATION_REGISTER, locationRegisterFor, type LocationRegisterInput } from './location-register'
 import { computeNeeds } from './needs'
 import { flattenIntakeQuestions } from '@/lib/project-profile/intake-definition'
-import { BUNDESLAND_TOKENS } from '@/lib/project-profile/intake-definition'
+import { FEDERAL_STATE_TOKENS } from '@/lib/project-profile/intake-definition'
 import { locationRegisterViewSchema, type IntakeMode } from './types'
 
 const at = '2026-10-20T08:00:00.000Z'
@@ -49,7 +49,7 @@ const determinants = (view: ReturnType<typeof register>) => view.documentRequest
 const request = (view: ReturnType<typeof register>, determinant: string) =>
   view.documentRequests.find((entry) => entry.determinant === determinant)
 
-const AT_NEW_BUILD = { country: 'at', vorhabensart: ['neubau'] }
+const AT_NEW_BUILD = { country: 'at', work_type: ['new_build'] }
 
 describe('the register as data', () => {
   it('settles only keys a wizard question writes', () => {
@@ -63,7 +63,7 @@ describe('the register as data', () => {
     for (const entry of LOCATION_REGISTER) {
       expect(entry.sources.length).toBeGreaterThan(0)
       for (const [land, variant] of Object.entries(entry.byFederalState ?? {})) {
-        expect(BUNDESLAND_TOKENS).toContain(land)
+        expect(FEDERAL_STATE_TOKENS).toContain(land)
         expect(variant?.sources.length).toBeGreaterThan(0)
       }
       for (const local of entry.byMunicipality ?? []) expect(local.sources.length).toBeGreaterThan(0)
@@ -73,50 +73,50 @@ describe('the register as data', () => {
   it('has a Widmung source for each of the nine Bundesländer', () => {
     const zoning = LOCATION_REGISTER.find((entry) => entry.determinant === 'zoning')
     expect(Object.keys(zoning?.byFederalState ?? {}).sort()).toEqual(
-      BUNDESLAND_TOKENS.filter((token) => token !== 'ausserhalb_oesterreichs').sort()
+      FEDERAL_STATE_TOKENS.filter((token) => token !== 'outside_austria').sort()
     )
   })
 })
 
 describe('locationRegisterFor', () => {
   it('asks for the Bundesland and the Vorhaben when a typed address left them open', () => {
-    const view = register(profileWith({ standort_adresse: 'Hauptplatz 1, Irgendwo' }))
+    const view = register(profileWith({ site_address: 'Hauptplatz 1, Irgendwo' }))
     expect(view.federalState).toBeNull()
-    expect(view.questions.map((need) => need.key)).toEqual(['bundesland', 'vorhabensart'])
+    expect(view.questions.map((need) => need.key)).toEqual(['federal_state', 'work_type'])
     // Without a Bundesland the register still asks, in the words that hold everywhere.
     expect(request(view, 'zoning')).toMatchObject({ document: 'Auszug aus Flächenwidmungs- und Bebauungsplan' })
   })
 
   it('takes the Bundesland from the geocoder when the profile has none', () => {
-    const view = register(profileWith({ country: 'at' }), { location: { bundesland: 'wien', gemeinde: 'Wien' } })
-    expect(view).toMatchObject({ federalState: 'wien', municipality: 'Wien' })
+    const view = register(profileWith({ country: 'at' }), { location: { federalState: 'vienna', municipality: 'Wien' } })
+    expect(view).toMatchObject({ federalState: 'vienna', municipality: 'Wien' })
   })
 
   it('does not ask for a Bundesland a reading already suggested', () => {
-    const view = register(profileWith(AT_NEW_BUILD, { bundesland: 'tirol' }))
-    expect(view.federalState).toBe('tirol')
+    const view = register(profileWith(AT_NEW_BUILD, { federal_state: 'tyrol' }))
+    expect(view.federalState).toBe('tyrol')
     expect(view.questions).toEqual([])
   })
 
   it('asks Wien for its Plandokument, with the Bauordnung as source', () => {
-    const view = register(profileWith({ ...AT_NEW_BUILD, bundesland: 'wien' }))
+    const view = register(profileWith({ ...AT_NEW_BUILD, federal_state: 'vienna' }))
     expect(view.municipality).toBe('Wien')
     const zoning = request(view, 'zoning')
     expect(zoning?.document).toBe('Plandokument (Flächenwidmungs- und Bebauungsplan)')
     expect(zoning?.reason).toContain('Plandokument')
     expect(zoning?.sources[0]?.title).toBe('Bauordnung für Wien (BO für Wien)')
-    expect(zoning?.keys).toEqual(['flaechenwidmung', 'bebauungsplan'])
+    expect(zoning?.keys).toEqual(['zoning', 'development_plan'])
   })
 
   it('cites the Land’s Raumordnungsgesetz outside Wien, and adds the Altstadt law in Graz', () => {
-    const leoben = register(profileWith({ ...AT_NEW_BUILD, bundesland: 'steiermark' }), {
-      location: { bundesland: 'steiermark', gemeinde: 'Leoben' },
+    const leoben = register(profileWith({ ...AT_NEW_BUILD, federal_state: 'styria' }), {
+      location: { federalState: 'styria', municipality: 'Leoben' },
     })
     expect(request(leoben, 'zoning')?.sources.map((source) => source.title)).toEqual([
       'Steiermärkisches Raumordnungsgesetz 2010 (StROG)',
     ])
-    const graz = register(profileWith({ ...AT_NEW_BUILD, bundesland: 'steiermark' }), {
-      location: { bundesland: 'steiermark', gemeinde: 'Graz' },
+    const graz = register(profileWith({ ...AT_NEW_BUILD, federal_state: 'styria' }), {
+      location: { federalState: 'styria', municipality: 'Graz' },
     })
     expect(request(graz, 'zoning')?.reason).toContain('Grazer Altstadterhaltungsgesetz')
     expect(request(graz, 'zoning')?.sources.map((source) => source.title)).toContain(
@@ -125,18 +125,18 @@ describe('locationRegisterFor', () => {
   })
 
   it('asks a Neubau for the Grundbuch, Widmung, Gefahrenzonen and, until the Nutzungen are known, Lärm', () => {
-    const view = register(profileWith({ ...AT_NEW_BUILD, bundesland: 'tirol' }))
+    const view = register(profileWith({ ...AT_NEW_BUILD, federal_state: 'tyrol' }))
     expect(determinants(view)).toEqual(['plot', 'zoning', 'hazards', 'noise'])
     expect(request(view, 'plot')).toMatchObject({
       document: 'Grundbuchauszug',
-      keys: ['grundstueck_ez', 'grundstuecksflaeche'],
+      keys: ['plot_register_number', 'plot_area'],
       satisfied: false,
     })
-    expect(request(view, 'plot')?.needs.map((need) => need.key)).toEqual(['grundstueck_ez', 'grundstuecksflaeche'])
+    expect(request(view, 'plot')?.needs.map((need) => need.key)).toEqual(['plot_register_number', 'plot_area'])
   })
 
   it('leaves Lärm out for a use the outside noise does not concern', () => {
-    const view = register(profileWith({ ...AT_NEW_BUILD, bundesland: 'tirol', 'bauwerkstyp@bw1': 'gebaeude', 'nutzungen@bw1': ['garage'] }))
+    const view = register(profileWith({ ...AT_NEW_BUILD, federal_state: 'tyrol', 'building_type@bldg1': 'building', 'uses@bldg1': ['garage'] }))
     expect(determinants(view)).not.toContain('noise')
   })
 
@@ -144,29 +144,29 @@ describe('locationRegisterFor', () => {
     const view = register(
       profileWith({
         country: 'at',
-        bundesland: 'salzburg',
-        vorhabensart: ['sanierung'],
-        'bauwerkstyp@bw1': 'gebaeude',
-        'errichtungsstatus@bw1': 'bestand',
-        'nutzungen@bw1': ['wohnen'],
+        federal_state: 'salzburg',
+        work_type: ['refurbishment'],
+        'building_type@bldg1': 'building',
+        'construction_status@bldg1': 'existing',
+        'uses@bldg1': ['residential'],
       })
     )
     expect(determinants(view)).toEqual(['plot', 'heritage', 'noise'])
-    expect(request(view, 'heritage')).toMatchObject({ keys: ['denkmalschutz@bw1'], satisfied: false })
-    expect(request(view, 'heritage')?.needs.map((need) => need.key)).toEqual(['denkmalschutz@bw1'])
+    expect(request(view, 'heritage')).toMatchObject({ keys: ['heritage_protection@bldg1'], satisfied: false })
+    expect(request(view, 'heritage')?.needs.map((need) => need.key)).toEqual(['heritage_protection@bldg1'])
   })
 
   it('asks no Denkmalschutz of a Neubau', () => {
-    const view = register(profileWith({ ...AT_NEW_BUILD, bundesland: 'wien', 'errichtungsstatus@bw1': 'neubau' }))
+    const view = register(profileWith({ ...AT_NEW_BUILD, federal_state: 'vienna', 'construction_status@bldg1': 'new_build' }))
     expect(determinants(view)).not.toContain('heritage')
   })
 
   it('settles a request when each key holds a value, a suggestion or „nicht bekannt"', () => {
     const view = register(
       profileWith(
-        { ...AT_NEW_BUILD, bundesland: 'wien', flaechenwidmung: 'wohngebiet', grundstueck_ez: 'EZ 1234, KG Hernals' },
-        { bebauungsplan: 'ja', gefahrenzonen: ['keine'] },
-        ['grundstuecksflaeche']
+        { ...AT_NEW_BUILD, federal_state: 'vienna', zoning: 'residential', plot_register_number: 'EZ 1234, KG Hernals' },
+        { development_plan: 'yes', hazard_zones: ['none'] },
+        ['plot_area']
       )
     )
     expect(request(view, 'plot')).toMatchObject({ satisfied: true, needs: [] })
@@ -177,17 +177,17 @@ describe('locationRegisterFor', () => {
 
   it('asks a past project only for its Bundesland, and for no document', () => {
     const open = register(profileWith({}), { mode: 'closing' })
-    expect(open.questions.map((need) => need.key)).toEqual(['bundesland'])
+    expect(open.questions.map((need) => need.key)).toEqual(['federal_state'])
     expect(open.documentRequests).toEqual([])
   })
 
   it('has nothing to say about a project outside Austria', () => {
-    expect(register(profileWith({ country: 'de', vorhabensart: ['neubau'] }))).toEqual({
+    expect(register(profileWith({ country: 'de', work_type: ['new_build'] }))).toEqual({
       federalState: null,
       municipality: null,
       questions: [],
       documentRequests: [],
     })
-    expect(register(profileWith({ bundesland: 'ausserhalb_oesterreichs' })).documentRequests).toEqual([])
+    expect(register(profileWith({ federal_state: 'outside_austria' })).documentRequests).toEqual([])
   })
 })
