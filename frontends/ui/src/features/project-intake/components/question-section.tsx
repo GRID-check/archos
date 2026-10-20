@@ -1,6 +1,6 @@
 'use client'
 
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { useMemo, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { BusyButton } from '@/components/ui/busy-button'
@@ -56,7 +56,88 @@ export function QuestionSection({
   )
 }
 
-function QuestionCard({
+/**
+ * One need's answer: the wizard's own control for its question, where the
+ * value is usually found, „Übernehmen", and (unless the caller offers it for
+ * several needs at once) „Nicht bekannt". Shared by the question card and a
+ * document request, which may hold more than one need.
+ */
+export function NeedAnswer({
+  need,
+  canDecide,
+  busy,
+  onDecide,
+  withUnknown = true,
+  showFoundIn = true,
+  trailing,
+}: {
+  need: Need
+  canDecide: boolean
+  busy: boolean
+  onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
+  /** Offer „Nicht bekannt" for this need alone. */
+  withUnknown?: boolean
+  /** Say where the value is usually found; off where the document is already named. */
+  showFoundIn?: boolean
+  /** A further control in the row (the interview's „Überspringen"). */
+  trailing?: ReactNode
+}): JSX.Element {
+  const t = useTranslations('projectIntake')
+  const question = useMemo(() => questionOfNeed(need), [need])
+  const [draft, setDraft] = useState<ProjectPrimitiveValue>(need.type === 'multi_select' ? [] : '')
+  const [answering, answer] = usePressed()
+  const [markingUnknown, markUnknown] = usePressed()
+
+  return (
+    <div className="space-y-3" data-testid={`intake-need-${need.key}`}>
+      <QuestionControl
+        question={question}
+        answerKey={need.key}
+        answers={{ [need.key]: draft }}
+        error={null}
+        onSetAnswer={(_key, value) => setDraft(value)}
+        onSetMode={() => undefined}
+      />
+      {showFoundIn && need.foundIn.length > 0 && (
+        <p className="text-muted-foreground text-xs">
+          {t('questions.foundIn', { documents: need.foundIn.join(', ') })}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <BusyButton
+          type="button"
+          size="sm"
+          disabled={!canDecide || !isIntakeAnswerProvided(draft)}
+          busy={answering}
+          blocked={busy}
+          busyLabel={t('busy.confirm')}
+          aria-label={t('questions.answerAria', { label: need.label })}
+          onClick={() => answer(() => onDecide([{ key: need.key, action: 'answer', value: draft }]))}
+        >
+          {t('questions.answer')}
+        </BusyButton>
+        {withUnknown && (
+          <BusyButton
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={!canDecide}
+            busy={markingUnknown}
+            blocked={busy}
+            busyLabel={t('busy.unknown')}
+            aria-label={t('questions.unknownAria', { label: need.label })}
+            onClick={() => markUnknown(() => onDecide([{ key: need.key, action: 'unknown' }]))}
+          >
+            {t('questions.unknown')}
+          </BusyButton>
+        )}
+        {trailing}
+      </div>
+    </div>
+  )
+}
+
+export function QuestionCard({
   need,
   canDecide,
   busy,
@@ -77,62 +158,25 @@ function QuestionCard({
   position?: string
 }): JSX.Element {
   const t = useTranslations('projectIntake')
-  const question = useMemo(() => questionOfNeed(need), [need])
-  const [draft, setDraft] = useState<ProjectPrimitiveValue>(need.type === 'multi_select' ? [] : '')
-  const [answering, answer] = usePressed()
-  const [markingUnknown, markUnknown] = usePressed()
-
   return (
     <RaisedCard data-testid={`intake-question-${need.key}`}>
       <RaisedCardBody className="divide-border divide-y p-0">
         <div className="space-y-3 px-4 pt-3.5 pb-3">
           {position && <p className="text-muted-foreground text-xs tabular-nums">{position}</p>}
-          <QuestionControl
-            question={question}
-            answerKey={need.key}
-            answers={{ [need.key]: draft }}
-            error={null}
-            onSetAnswer={(_key, value) => setDraft(value)}
-            onSetMode={() => undefined}
+          <NeedAnswer
+            need={need}
+            canDecide={canDecide}
+            busy={busy}
+            onDecide={onDecide}
+            trailing={
+              onSkip && (
+                <Button type="button" size="sm" variant="ghost" className="sm:ml-auto" onClick={onSkip}>
+                  {t('interview.skip')}
+                  <ArrowRight aria-hidden />
+                </Button>
+              )
+            }
           />
-          {need.foundIn.length > 0 && (
-            <p className="text-muted-foreground text-xs">
-              {t('questions.foundIn', { documents: need.foundIn.join(', ') })}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <BusyButton
-              type="button"
-              size="sm"
-              disabled={!canDecide || !isIntakeAnswerProvided(draft)}
-              busy={answering}
-              blocked={busy}
-              busyLabel={t('busy.confirm')}
-              aria-label={t('questions.answerAria', { label: need.label })}
-              onClick={() => answer(() => onDecide([{ key: need.key, action: 'answer', value: draft }]))}
-            >
-              {t('questions.answer')}
-            </BusyButton>
-            <BusyButton
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={!canDecide}
-              busy={markingUnknown}
-              blocked={busy}
-              busyLabel={t('busy.unknown')}
-              aria-label={t('questions.unknownAria', { label: need.label })}
-              onClick={() => markUnknown(() => onDecide([{ key: need.key, action: 'unknown' }]))}
-            >
-              {t('questions.unknown')}
-            </BusyButton>
-            {onSkip && (
-              <Button type="button" size="sm" variant="ghost" className="sm:ml-auto" onClick={onSkip}>
-                {t('interview.skip')}
-                <ArrowRight aria-hidden />
-              </Button>
-            )}
-          </div>
         </div>
         {onFiles && (
           <div className="px-2 py-1.5">
@@ -158,11 +202,14 @@ export function InterviewSection({
   canDecide,
   busy,
   onDecide,
+  bare = false,
 }: {
   needs: readonly Need[]
   canDecide: boolean
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
+  /** Without its own heading: the caller frames it (step 4 folds it away). */
+  bare?: boolean
 }): JSX.Element | null {
   const t = useTranslations('projectIntake')
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set())
@@ -170,13 +217,8 @@ export function InterviewSection({
   if (needs.length === 0) return null
   const current = waiting[0]
   const answered = needs.length - waiting.length
-  return (
-    <IntakeSection
-      label={t('interview.heading')}
-      count={needs.length}
-      description={t('interview.description')}
-      testId="intake-interview"
-    >
+  const body = (
+    <>
       {current ? (
         // Keyed by the question: a new one starts with an empty draft.
         <QuestionCard
@@ -196,6 +238,17 @@ export function InterviewSection({
           </Button>
         </p>
       )}
+    </>
+  )
+  if (bare) return <div data-testid="intake-interview">{body}</div>
+  return (
+    <IntakeSection
+      label={t('interview.heading')}
+      count={needs.length}
+      description={t('interview.description')}
+      testId="intake-interview"
+    >
+      {body}
     </IntakeSection>
   )
 }
