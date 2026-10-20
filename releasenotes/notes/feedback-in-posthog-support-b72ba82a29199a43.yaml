@@ -1,0 +1,6 @@
+---
+operators:
+  - >
+    Feedback reports now reach PostHog Support as tickets. Until now no ticket
+    ever opened, because the app's PostHog relay dropped the header the Support
+    widget authenticates with.
