@@ -41,6 +41,7 @@ export const APP_ROUTE_URLS: readonly string[] = [
   '/app/platform/maintenance',
   '/app/platform/models',
   '/app/platform/norms',
+  '/app/platform/organizations/[id]',
   '/app/platform/quality',
   '/app/platform/retrieval',
   '/app/platform/skills',

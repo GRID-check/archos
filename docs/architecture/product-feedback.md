@@ -27,7 +27,7 @@ Platform → Feedback ──▶ reads PostHog tickets live ──▶ PATCH statu
 | Submit route, rate limited by `FEEDBACK_REPORT_LIMIT` (10 an hour per person) | `frontends/ui/src/app/api/feedback/reports/route.ts` |
 | Store, announce, open the ticket | `frontends/ui/src/lib/product-feedback/service.ts`, `announce.ts` |
 | The PostHog Support client (open, list, read, change status) | `frontends/ui/src/lib/posthog-support/client.ts`, `config.ts`, `types.ts` |
-| Table, bounds, RLS | `frontends/ui/drizzle/0100_product_feedback.sql`, `0154_product_feedback_posthog_ticket.sql` |
+| Table, bounds, RLS | `frontends/ui/drizzle/0100_product_feedback.sql`, `0155_product_feedback_posthog_ticket.sql` |
 | Platform routes (`platform:settings:view` to read, `:manage` to change status) | `frontends/ui/src/app/api/platform/feedback/` |
 | Platform page | `frontends/ui/src/features/product-feedback/components/feedback-triage.tsx` |
 
@@ -100,7 +100,7 @@ The page reads PostHog live and keeps no status of its own.
 
 `product_feedback` is the intake log: what was sent, by whom, from where, and
 the ticket id. Its `status`, `triaged_by` and `triaged_at` columns were dropped
-in migration `0154`. It stays because a report must survive PostHog being off
+in migration `0155`. It stays because a report must survive PostHog being off
 or failing, and because the inbox announcement points at it.
 
 ## No GitHub issues

@@ -61,6 +61,10 @@
               "de": "Dateien sind in einem geschlossenen Projekt wieder verfügbar. Sie können die Dateien wie bisher lesen; Änderungen bleiben gesperrt, bis Sie das Projekt erneut öffnen."
             },
             {
+              "en": "Suggested follow-up questions now appear under every answer when your office has chosen a model that always thinks before it answers. Before, those suggestions quietly went missing on such models.",
+              "de": "Wenn Ihr Büro ein Modell ausgewählt hat, das vor jeder Antwort immer nachdenkt, erscheinen jetzt unter jeder Antwort Folgefragen. Bisher wurden diese Vorschläge bei solchen Modellen nicht angezeigt."
+            },
+            {
               "en": "Large files full of CAD drawings, such as a project's collected documents or a fire safety concept with many drawing sheets, now upload and become searchable. Before, such a file could fail every time it was read, and a retry failed the same way.",
               "de": "Große Dateien mit CAD-Zeichnungen, etwa gesammelte Projektunterlagen oder ein Brandschutzkonzept mit vielen Planblättern, lassen sich jetzt hochladen und durchsuchen. Bisher schlägt das Einlesen solcher Dateien jedes Mal fehl, und auch ein erneuter Versuch scheitert."
             },

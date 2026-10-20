@@ -1,4 +1,4 @@
--- Reverse 0154: our own triage columns come back, every report at `new`.
+-- Reverse 0155: our own triage columns come back, every report at `new`.
 --
 -- Lossy by necessity: the triage state lived in PostHog meanwhile and is not
 -- copied back. The tickets stay in PostHog, and each one's first message names

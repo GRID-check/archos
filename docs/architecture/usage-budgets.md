@@ -24,6 +24,14 @@ Usage, limits, the seeded allowance and the model-picker hint all follow that
 unit; an own-key organization is seeded with no limit and sets its own, in
 tokens.
 
+**The same numbers, elsewhere.** A platform operator opens one organization's
+Budgets view read-only from Platform → Übersicht (`/app/platform/organizations/[id]`,
+`platform:usage:view`), drawn by the components the office's own card uses
+(`features/budgets/components/usage-overview.tsx`) from the same assembly
+(`getOrganizationUsageOverview`). PostHog receives the ledger as hourly
+aggregates and each organization's limits as an hourly snapshot:
+[`org-spend-in-posthog.md`](../observability/org-spend-in-posthog.md).
+
 There is no currency conversion anywhere. The old `GRID_BUDGET_EUR_PER_USD`
 rate is gone: a hand-set rate was neither the bank's nor OpenRouter's, and a
 figure nobody is charged is not worth showing. What a credit costs a tenant in

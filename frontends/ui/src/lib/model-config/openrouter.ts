@@ -368,8 +368,10 @@ export const REASONING_MANDATORY_IDS: string[] = []
  *     reasoning-mandatory family/id (REASONING_MANDATORY_PREFIXES via
  *     startsWith, REASONING_MANDATORY_IDS via exact match), which ops can
  *     extend. A false-inclusion (a mandatory model not yet on the denylist)
- *     breaks that group with an OpenRouter 400 until the id is added; that is
- *     the accepted cost of not hiding the whole catalog.
+ *     is caught by the agent instead: its call is refused with an OpenRouter
+ *     400 and re-sent at the lowest reasoning effort (`llm_factory.py`), which
+ *     logs the model id to add here. Reasoning tokens still count against the
+ *     group's output ceiling, so the id belongs on the list all the same.
  */
 export function isReasoningSafeForOff(model: OpenRouterModel): boolean {
   if (REASONING_MANDATORY_IDS.includes(model.id)) return false

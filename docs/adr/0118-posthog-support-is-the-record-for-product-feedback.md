@@ -74,7 +74,7 @@ What that means:
 | Status | PostHog Support | PostHog's own statuses, verbatim: `new`, `open`, `pending`, `on_hold`, `resolved` |
 | Platform → Feedback | BFF, reading PostHog live | Lists the tickets tagged `piloti-feedback` joined to their local rows, counts per status, a link to each ticket. A status change PATCHes the ticket. Reports from the last 30 days without a ticket are listed as not in PostHog yet, with a link to the reporter's PostHog person page |
 | Fallback | Postgres | While Support is not configured or PostHog cannot be read, the page lists the local log, read-only |
-| The intake log | Postgres, `product_feedback` | What was sent, by whom, from where, and `posthog_ticket_id`. Its `status`, `triaged_by` and `triaged_at` are dropped (migration `0154`) |
+| The intake log | Postgres, `product_feedback` | What was sent, by whom, from where, and `posthog_ticket_id`. Its `status`, `triaged_by` and `triaged_at` are dropped (migration `0155`) |
 | The inbox announcement | Postgres, `feedback.submitted` | Unchanged |
 | Server configuration | BFF environment | `POSTHOG_PERSONAL_API_KEY` (secret; scopes `ticket:read`, `ticket:write`, `project:read`) and `POSTHOG_PROJECT_ID`, from the Pulumi keys `grid-oib:posthogPersonalApiKey` and `grid-oib:posthogProjectId`. Without both, no ticket opens and the page shows the local log |
 
@@ -100,13 +100,13 @@ Votes on answers (`answer_feedback`) are not product feedback and do not change.
   the endpoint posthog-js uses, not a documented server API. A change to it
   breaks ticket opening; reports are still stored and shown as not in PostHog
   yet.
-* Bad, because the local status history is dropped with migration `0154`.
+* Bad, because the local status history is dropped with migration `0155`.
   Reports filed before it have no ticket; those under 30 days old show as not
   in PostHog yet, and older ones are only in the local log.
 
 ### Confirmation
 
-* Migration `0154_product_feedback_posthog_ticket.sql` drops the local status
+* Migration `0155_product_feedback_posthog_ticket.sql` drops the local status
   columns, so nothing can write a second status. A CHECK bounds
   `posthog_ticket_id` to an id-shaped string, because it ends up in a link.
 * The specs beside `frontends/ui/src/lib/posthog-support/client.ts` and

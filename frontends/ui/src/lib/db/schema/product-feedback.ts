@@ -65,7 +65,7 @@ export const productFeedback = pgTable(
     context: jsonb('context').$type<ProductFeedbackContext>().notNull().default({}),
     /** Whether the reporter is happy to be contacted about this report. */
     allowContact: boolean('allow_contact').notNull().default(true),
-    /** The PostHog Support ticket this report opened (migration 0154). NULL: none opened. */
+    /** The PostHog Support ticket this report opened (migration 0155). NULL: none opened. */
     posthogTicketId: text('posthog_ticket_id'),
     /** Milliseconds, so the keyset cursor (a JS Date) is exact — see migration 0100. */
     createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
