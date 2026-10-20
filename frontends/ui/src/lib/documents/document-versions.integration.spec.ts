@@ -610,7 +610,7 @@ describe.skipIf(!url)('document versions under concurrency', () => {
   })
 
   /** An Archiv row: `project_id` NULL, the shelf the composite key checks nothing on. */
-  async function seedArchivDocument(): Promise<{ id: string; storageKey: string }> {
+  async function seedOfficeShelfDocument(): Promise<{ id: string; storageKey: string }> {
     seq += 1
     const storageKey = `org/${ORG}/archiv/doc/a${seq}/norm-${seq}.pdf`
     const rows = await inTenant(() =>
@@ -626,7 +626,7 @@ describe.skipIf(!url)('document versions under concurrency', () => {
   }
 
   it('takes an Archiv document’s versions with it when it is deleted (migration 0094)', async () => {
-    const doc = await seedArchivDocument()
+    const doc = await seedOfficeShelfDocument()
     await inTenant(() =>
       repo.insertPublishedVersion({ ...published(doc.id, doc.storageKey), projectId: null }),
     )
@@ -642,8 +642,8 @@ describe.skipIf(!url)('document versions under concurrency', () => {
   it.each([
     ['a project document', false],
     ['an Archiv document', true],
-  ])('refuses a version for %s deleted first, as DocumentDeletedError', async (_label, archiv) => {
-    const doc = archiv ? await seedArchivDocument() : await seedDocument()
+  ])('refuses a version for %s deleted first, as DocumentDeletedError', async (_label, officeShelf) => {
+    const doc = officeShelf ? await seedOfficeShelfDocument() : await seedDocument()
     // The upload wrote the row and pointed it at its bytes; a delete commits
     // before the upload records its version.
     await inTenant(() => db.execute(sql`DELETE FROM documents WHERE id = ${doc.id}::uuid`))
@@ -651,7 +651,7 @@ describe.skipIf(!url)('document versions under concurrency', () => {
     const recorded = inTenant(() =>
       repo.insertPublishedVersion({
         ...published(doc.id, `${doc.storageKey}.upload`),
-        projectId: archiv ? null : projectId,
+        projectId: officeShelf ? null : projectId,
       }),
     )
 

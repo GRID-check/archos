@@ -39,7 +39,7 @@ describe('peekableCitedFile', () => {
     })
   })
 
-  it('returns the one cited Büro file', () => {
+  it('returns the one cited office file', () => {
     const docs = buildCitationModel({
       citations: [cited({ kind: 'buero', collection: 'archiv_xyz', fileName: 'Referenz.pdf' })],
     })
@@ -69,7 +69,7 @@ describe('peekableCitedFile', () => {
     expect(peekableCitedFile(docs)).toBeNull()
   })
 
-  it('does not peek when two project/Büro files are cited', () => {
+  it('does not peek when two project/office files are cited', () => {
     const docs = buildCitationModel({
       citations: [
         cited({ id: 'a', fileName: 'A.pdf' }),
@@ -150,7 +150,7 @@ describe('peekableFileForMessage', () => {
     expect(peekableFileForMessage(message({ citations: [cited()] }))?.fileName).toBe('Plan.pdf')
   })
 
-  it('does not peek a finished answer with no project/Büro citation', () => {
+  it('does not peek a finished answer with no project/office citation', () => {
     expect(peekableFileForMessage(message())).toBeNull()
   })
 })

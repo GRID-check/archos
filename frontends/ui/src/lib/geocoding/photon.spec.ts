@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, expect, it, vi } from 'vitest'
-import { BUNDESLAND_TOKENS } from '@/lib/project-profile/intake-definition'
+import { FEDERAL_STATE_TOKENS } from '@/lib/project-profile/intake-definition'
 import { parsePhotonResponse, searchPhoton } from './photon'
 import {
   PHOTON_BERLIN,
@@ -99,7 +99,7 @@ describe('parsePhotonResponse', () => {
       expect(result?.bundesland, state).toBe(token)
     }
     expect(new Set(labels.map(([, token]) => token))).toEqual(
-      new Set(BUNDESLAND_TOKENS.filter((token) => token !== 'ausserhalb_oesterreichs')),
+      new Set(FEDERAL_STATE_TOKENS.filter((token) => token !== 'ausserhalb_oesterreichs')),
     )
   })
 

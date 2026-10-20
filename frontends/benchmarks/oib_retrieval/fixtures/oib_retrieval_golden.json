@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Golden retrieval set for the OIB corpus. Labels are Punkte, not chunks, and are expanded to (file_name, page) units through fixtures/punkt_index.json at load time. Every German question has an English sibling with IDENTICAL qrels, so a measured language gap is a retrieval defect rather than a labelling artefact. calibration_pending is true on every entry: the labels are read from the corpus, but the grades have not yet been reviewed by a second Austrian building-law reader.",
+  "description": "Golden retrieval set for the OIB corpus. Labels are Punkte, not chunks, and are expanded to (file_name, page) units through fixtures/clause_index.json at load time. Every German question has an English sibling with IDENTICAL qrels, so a measured language gap is a retrieval defect rather than a labelling artefact. calibration_pending is true on every entry: the labels are read from the corpus, but the grades have not yet been reviewed by a second Austrian building-law reader.",
   "forbidden_file_prefixes": [
     "aenderungen_"
   ],

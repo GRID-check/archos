@@ -55,13 +55,13 @@ export interface ProjectFactsUpdateWire {
 
 /** The similarity weights in the Python tier's spelling; a weight added to `SIMILARITY_WEIGHTS` must be named here. */
 const WEIGHT_WIRE_NAMES: { readonly [K in keyof typeof SIMILARITY_WEIGHTS]: string } = {
-  bundesland: 'bundesland',
-  gebaeudeklasse: 'gebaeudeklasse',
-  gebaeudeklasseAdjacent: 'gebaeudeklasse_adjacent',
-  bauweise: 'bauweise',
-  nutzung: 'nutzung',
-  nutzungMax: 'nutzung_max',
-  vorhabensart: 'vorhabensart',
+  federalState: 'bundesland',
+  buildingClass: 'gebaeudeklasse',
+  buildingClassAdjacent: 'gebaeudeklasse_adjacent',
+  constructionMethod: 'bauweise',
+  use: 'nutzung',
+  useMax: 'nutzung_max',
+  workType: 'vorhabensart',
 }
 
 /** The grouped search's `boost`: the current project's facts and the one set of hand-set weights. */

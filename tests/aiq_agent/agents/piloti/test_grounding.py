@@ -48,9 +48,9 @@ FIXTURES = Path(__file__).resolve().parents[4] / "packages" / "ifc-spatial" / "t
 HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
 #: Two named rooms and four walls, and not one body the geometry kernel accepts.
 #: Every measurement over it comes back ``decidable: false``.
-NO_GEOMETRY = FIXTURES / "haus-mit-raeumen.ifc"
+NO_GEOMETRY = FIXTURES / "house-with-rooms.ifc"
 #: No IfcBuildingStorey at all — the export `fire kind=fluchtniveau` refuses on.
-NO_STOREYS = FIXTURES / "strasse-ifc4x3.ifc"
+NO_STOREYS = FIXTURES / "road-ifc4x3.ifc"
 
 
 @pytest.fixture(scope="module")
@@ -181,7 +181,7 @@ class TestMeasurementDetectionAgainstTheRealEngine:
         assert "NICHT ENTSCHEIDBAR" in result
         assert tool_result_is_measurement("ifc_measure", result) is False
 
-    def test_an_undecidable_fluchtniveau_is_not_grounding(self, run):
+    def test_an_undecidable_escape_level_is_not_grounding(self, run):
         """The report that started this: a refusal whose REMEDY says „gemessen"."""
         result = run(NO_STOREYS, "fire", kind="fluchtniveau")
         assert result.startswith("NICHT ENTSCHEIDBAR")

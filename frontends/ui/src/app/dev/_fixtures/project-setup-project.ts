@@ -22,7 +22,7 @@ import type {
   ProjectRoster,
   RosterMember,
 } from '@/lib/projects/participants-client'
-import type { ProjectPersonView, SteckbriefView } from '@/lib/projects/steckbrief-types'
+import type { ProjectPersonView, ProjectRecordView } from '@/lib/projects/project-record-types'
 import { FIXTURE_PROJECT_ID, INTAKE_CLOSING, INTAKE_READY, INTAKE_WAITING } from './project-intake'
 
 export const PROJECT_STEP_STATES = ['fresh', 'team', 'viewer', 'closing'] as const
@@ -35,7 +35,7 @@ export function isProjectStepState(value: unknown): value is ProjectStepState {
 export interface ProjectStepFixture {
   view: IntakeView
   project: ProjectBasics
-  peopleRecord: SteckbriefView
+  peopleRecord: ProjectRecordView
   /** Null: the reader may not manage the project's members. */
   roster: ProjectRoster | null
 }
@@ -84,7 +84,7 @@ const OFFICE = [
   roster('user-tw', 'Thomas Wimmer', 't.wimmer@buero-kogler.at', null),
 ]
 
-const PEOPLE_RECORD: SteckbriefView = {
+const PEOPLE_RECORD: ProjectRecordView = {
   address: 'Lacknergasse 12, 1170 Wien',
   startedOn: '2026-10',
   startedOnIsDefault: true,
@@ -95,7 +95,7 @@ const PEOPLE_RECORD: SteckbriefView = {
   canErase: true,
 }
 
-const TEAM_PEOPLE_RECORD: SteckbriefView = {
+const TEAM_PEOPLE_RECORD: ProjectRecordView = {
   ...PEOPLE_RECORD,
   startedOn: '2026-03',
   startedOnIsDefault: false,

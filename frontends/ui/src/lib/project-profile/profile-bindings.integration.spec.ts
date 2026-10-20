@@ -162,7 +162,7 @@ describe.skipIf(!url)('profile saves and building bindings against Postgres', ()
       before,
       { ...values, profile: profileWith(['bw1']) as never, profileVersion: before + 1 },
       async (tx) => {
-        await roles.deleteBindingsOutsideBauwerke(projectId, ['bw1'], tx)
+        await roles.deleteBindingsOutsideBuildings(projectId, ['bw1'], tx)
       }
     )
 

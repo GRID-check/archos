@@ -3,7 +3,7 @@ import { loadDocumentRolesPromptSection } from '@/lib/document-roles/prompt-load
 import { loadUnreadableDocumentsSection } from './unreadable-section'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { buildProjectBriefView } from './brief-view'
-import { isValidBundeslandToken } from './intake-definition'
+import { isValidFederalStateToken } from './intake-definition'
 import { ProjectProfileSchema } from './types'
 import type {
   ProjectAssumption,
@@ -39,7 +39,7 @@ const ANONYMOUS_TENANT = 'anon'
  */
 const promptViewCacheKey = (projectId: string, organizationId: string | null | undefined) =>
   `promptview:${organizationId ?? ANONYMOUS_TENANT}:${projectId}`
-const bundeslandCacheKey = (projectId: string, organizationId: string | null | undefined) =>
+const federalStateCacheKey = (projectId: string, organizationId: string | null | undefined) =>
   `bundesland:${organizationId ?? ANONYMOUS_TENANT}:${projectId}`
 
 /**
@@ -127,7 +127,7 @@ export async function invalidateProjectProfileCaches(
   await Promise.all(
     [
       ...tenantVariants(promptViewCacheKey, projectId, organizationId),
-      ...tenantVariants(bundeslandCacheKey, projectId, organizationId),
+      ...tenantVariants(federalStateCacheKey, projectId, organizationId),
     ].map((key) => invalidateCached(key))
   )
 }
@@ -146,19 +146,19 @@ export async function invalidateProjectProfileCaches(
  * validated intake vocabulary (a stale/corrupt row must never leak an
  * unvalidated token onto the wire).
  */
-export async function loadProjectBundesland(
+export async function loadProjectFederalState(
   projectId: string | undefined,
   organizationId: string | null | undefined
 ): Promise<string | null> {
   if (!projectId) return null
 
   return getCached(
-    bundeslandCacheKey(projectId, organizationId),
+    federalStateCacheKey(projectId, organizationId),
     PROMPT_VIEW_CACHE_TTL_MS,
     async () => {
       const profile = await findProjectProfile(projectId, organizationId)
       const value = profile?.facts?.bundesland?.value
-      return typeof value === 'string' && isValidBundeslandToken(value) ? value : null
+      return typeof value === 'string' && isValidFederalStateToken(value) ? value : null
     }
   )
 }
@@ -173,7 +173,7 @@ export function buildProjectPromptView(profile: ProjectProfile): string {
   const countryInFacts = normalized.facts.country
   if (!countryInFacts && normalized.facts.bundesland?.value) {
     const bv = normalized.facts.bundesland.value
-    if (typeof bv === 'string' && bv !== 'ausserhalb_oesterreichs' && isValidBundeslandToken(bv)) {
+    if (typeof bv === 'string' && bv !== 'ausserhalb_oesterreichs' && isValidFederalStateToken(bv)) {
       factKeys.unshift('country')
       normalized.facts.country = {
         value: 'at',

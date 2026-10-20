@@ -72,7 +72,7 @@ export interface AppShellChromeProps {
   canManageOrganization: boolean
   canViewOrganization: boolean
   canManagePlatform: boolean
-  canAccessArchiv: boolean
+  canAccessOfficeShelf: boolean
   canAccessInbox: boolean
   showSkills: boolean
   showModels: boolean
@@ -116,7 +116,7 @@ export function AppShellChrome({
 
   return (
     <ProductTour
-      canAccessArchiv={chrome.canAccessArchiv}
+      canAccessOfficeShelf={chrome.canAccessOfficeShelf}
       canAccessInbox={chrome.canAccessInbox}
       canManageOrganization={chrome.canManageOrganization}
       eligible={chrome.tours}
@@ -144,7 +144,7 @@ export function AppShellChrome({
           canManageOrganization={chrome.canManageOrganization}
           canViewOrganization={chrome.canViewOrganization}
           canManagePlatform={chrome.canManagePlatform}
-          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessOfficeShelf={chrome.canAccessOfficeShelf}
           canAccessInbox={chrome.canAccessInbox}
           showSkills={chrome.showSkills}
           showModels={chrome.showModels}
@@ -157,7 +157,7 @@ export function AppShellChrome({
           canManageOrganization={chrome.canManageOrganization}
           canViewOrganization={chrome.canViewOrganization}
           canManagePlatform={chrome.canManagePlatform}
-          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessOfficeShelf={chrome.canAccessOfficeShelf}
           canAccessInbox={chrome.canAccessInbox}
         />
       )}
@@ -165,7 +165,7 @@ export function AppShellChrome({
       {tabBarShown && (
         <PhoneTabBar
           projectId={projectId}
-          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessOfficeShelf={chrome.canAccessOfficeShelf}
           canAccessInbox={chrome.canAccessInbox}
         />
       )}
@@ -173,7 +173,7 @@ export function AppShellChrome({
         <PhoneMoreSheet
           projectId={projectId}
           authRequired={chrome.authRequired}
-          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessOfficeShelf={chrome.canAccessOfficeShelf}
           canAccessInbox={chrome.canAccessInbox}
           showSkills={chrome.showSkills}
           canViewOrganization={chrome.canViewOrganization}

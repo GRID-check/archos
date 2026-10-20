@@ -507,7 +507,7 @@ class TestGridRequestContextEnvelopePrecedence:
         assert pc.GridRequestContext.from_headers(headers).context_transport is None
 
 
-class TestBundeslandField:
+class TestFederalStateField:
     """`bundesland` (backlog T3-9 follow-up, 2026-07-16, user-mandated):
     ENVELOPE-ONLY structured jurisdiction field — no individual
     `X-Grid-Bundesland` header exists, so it can only ever come from
@@ -564,7 +564,7 @@ class TestBundeslandField:
         assert ctx is not None
         assert ctx.bundesland is None
 
-    def test_from_context_legacy_individual_headers_never_populate_bundesland(self, monkeypatch):
+    def test_from_context_legacy_individual_headers_never_populate_federal_state(self, monkeypatch):
         # No envelope at all -- from_context falls back to individual
         # headers, which have no bundesland source whatsoever.
         headers = {pc.ORGANIZATION_ID_HEADER: "org_1"}
@@ -572,7 +572,7 @@ class TestBundeslandField:
         ctx = pc.GridRequestContext.from_context()
         assert ctx.bundesland is None
 
-    def test_from_headers_legacy_individual_headers_never_populate_bundesland(self):
+    def test_from_headers_legacy_individual_headers_never_populate_federal_state(self):
         ctx = pc.GridRequestContext.from_headers({pc.ORGANIZATION_ID_HEADER: "org_1"})
         assert ctx.bundesland is None
 

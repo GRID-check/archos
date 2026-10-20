@@ -91,7 +91,7 @@ describe('what the Python tier accepts (`ProjectFacts` in `models/requests.py`)'
     vorhabensart: ['neubau', 'z'.repeat(81)],
   })
 
-  it('keeps a Gebäudeklasse of 1 to 5 only, tokens of at most 80 characters, and lists the Python tier’s length', () => {
+  it('keeps a building class of 1 to 5 only, tokens of at most 80 characters, and lists the Python tier’s length', () => {
     const facts = projectFactsOf(MALFORMED)
     expect(facts.bundesland).toBeNull()
     expect(facts.gebaeudeklasse).toEqual([4])
@@ -113,13 +113,13 @@ describe('the boost', () => {
     const boost = similarityBoostOf(HOLZBAU_WIEN)
     expect(boost?.facts).toEqual(projectFactsOf(HOLZBAU_WIEN))
     expect(boost?.weights).toEqual({
-      bundesland: SIMILARITY_WEIGHTS.bundesland,
-      gebaeudeklasse: SIMILARITY_WEIGHTS.gebaeudeklasse,
-      gebaeudeklasse_adjacent: SIMILARITY_WEIGHTS.gebaeudeklasseAdjacent,
-      bauweise: SIMILARITY_WEIGHTS.bauweise,
-      nutzung: SIMILARITY_WEIGHTS.nutzung,
-      nutzung_max: SIMILARITY_WEIGHTS.nutzungMax,
-      vorhabensart: SIMILARITY_WEIGHTS.vorhabensart,
+      bundesland: SIMILARITY_WEIGHTS.federalState,
+      gebaeudeklasse: SIMILARITY_WEIGHTS.buildingClass,
+      gebaeudeklasse_adjacent: SIMILARITY_WEIGHTS.buildingClassAdjacent,
+      bauweise: SIMILARITY_WEIGHTS.constructionMethod,
+      nutzung: SIMILARITY_WEIGHTS.use,
+      nutzung_max: SIMILARITY_WEIGHTS.useMax,
+      vorhabensart: SIMILARITY_WEIGHTS.workType,
     })
   })
 

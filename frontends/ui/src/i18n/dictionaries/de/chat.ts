@@ -76,7 +76,7 @@ export const chat: typeof en.chat = {
     // auflösen lässt — eine ehrliche, handlungsfähige Karte (in der Büroablage / in den
     // Projektdateien öffnen) statt einer stummen toten Kachel.
     unresolvedHint: 'Der Assistent hat diese Datei referenziert.',
-    openInArchive: 'In der Büroablage öffnen',
+    openInOfficeShelf: 'In der Büroablage öffnen',
     openInFiles: 'In den Projektdateien öffnen',
     // Der Auflösungs-Abruf ist fehlgeschlagen — eine Wiederholaktion statt einer
     // dauerhaft toten Kachel.
@@ -258,8 +258,8 @@ export const chat: typeof en.chat = {
     less: 'Weniger anzeigen',
     // Die Fundstelle in der Zählung des Gesetzes selbst: ein Punkt der
     // Richtlinie, wenn der Chunker einen ermittelt hat, sonst nur die Seite.
-    punkt: 'Pkt. {punkt}',
-    punktPage: 'Pkt. {punkt} · S. {page}',
+    clause: 'Pkt. {clause}',
+    clausePage: 'Pkt. {clause} · S. {page}',
     // Zitate zum Weiterverwenden — je Quelle als Fachtext, für die ganze
     // Antwort in den Formaten, die externe Werkzeuge einlesen.
     copyCitation: 'Zitat kopieren',
@@ -388,9 +388,9 @@ export const chat: typeof en.chat = {
     retrievedOnly: 'Gelesen',
     // Das Dokument ist eine Fassung, die eine Person durch eine neuere ersetzt hat. Die Zitation bleibt wahr
     // für die Datei, die sie nennt; der Leser soll es nur wissen, bevor er sich darauf verlässt.
-    olderFassung: 'Ältere Fassung – aktuell:',
-    openCurrentFassungAria: 'Aktuelle Fassung öffnen: {name}',
-    currentFassungUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
+    olderRevision: 'Ältere Fassung – aktuell:',
+    openCurrentRevisionAria: 'Aktuelle Fassung öffnen: {name}',
+    currentRevisionUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
   },
   breadcrumb: {
     ariaLabel: 'Navigationspfad',
@@ -440,11 +440,11 @@ export const chat: typeof en.chat = {
       groupAria: 'Weiterführende Fragen',
       // Der eine clientseitige Chip unter einer langen Antwort: das Angebot,
       // das sonst niemand entdeckt — Piloti schreibt auch (Ledger 23).
-      aktenvermerk: 'Als Aktenvermerk schreiben',
+      fileNote: 'Als Aktenvermerk schreiben',
       // Was der Chip in den Eingabebereich schreibt. Bewusst nicht die
       // Beschriftung: „Als Aktenvermerk schreiben“ ist ein Satzfragment und
       // keine Bitte.
-      aktenvermerkPrefill: 'Schreib das als Aktenvermerk in mein Projekt.',
+      fileNotePrefill: 'Schreib das als Aktenvermerk in mein Projekt.',
     },
     keyTakeaways: {
       eyebrow: 'Das Wichtigste',
@@ -751,17 +751,17 @@ export const chat: typeof en.chat = {
       fireAccess: {
         routeWidth: 'Zufahrt Breite',
         gateClearance: 'Durchfahrt lichte Höhe',
-        aufstellflaecheWidth: 'Aufstellfläche Breite',
-        aufstellflaecheLength: 'Aufstellfläche Länge',
+        stagingAreaWidth: 'Aufstellfläche Breite',
+        stagingAreaLength: 'Aufstellfläche Länge',
         facadeDistance: 'Abstand zur Fassade',
         walkToEntrance: 'Weg zum Eingang',
         parcel: 'Grundstück {width} × {depth} m',
         route: 'ZUFAHRT',
         building: 'Gebäude',
-        aufstellflaeche: 'Aufstellfläche',
+        stagingArea: 'Aufstellfläche',
         entrance: 'Eingang',
         street: 'STRASSE',
-        gebaeudeklasse: 'Gebäudeklasse',
+        buildingClass: 'Gebäudeklasse',
         walkTooFar: ' — der Weg zum Eingang überschreitet das zulässige Maß.',
       },
       guardrail: {
@@ -822,17 +822,17 @@ export const chat: typeof en.chat = {
       },
       depth: 'Tiefe',
       depths: { kurzpruefung: 'Kurzprüfung', gutachten: 'Gutachten' },
-      unterlagen: {
+      documents: {
         label: 'Unterlagen',
-        grundlage: 'Vollständig lesen:',
-        ausgeschlossen: 'Ausgeschlossen:',
+        basis: 'Vollständig lesen:',
+        excluded: 'Ausgeschlossen:',
         none: 'Keine Unterlagen benannt – die Recherche liest, was sie findet.',
         choose: 'Unterlagen wählen',
         removeRead: 'Nicht mehr vollständig lesen: {name}',
         removeExcluded: 'Nicht mehr ausgeschlossen: {name}',
       },
-      rahmen: 'Datengrundlage',
-      rahmenNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie den Plan genehmigen.',
+      frame: 'Datengrundlage',
+      frameNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie den Plan genehmigen.',
     },
     awaitingOther: 'Piloti wartet auf {name}',
     awaitingSomeone: 'Piloti wartet auf eine andere Person',
@@ -1129,8 +1129,8 @@ export const chat: typeof en.chat = {
     // Quellen-Klausel FEHLT, wenn es keine gibt: „0 Quellen“ ist eine wahre
     // Zahl, die sich wie ein Fehlschlag liest, und eine Antwort aus einer
     // Messung am Modell hat zu Recht keine Zitate.
-    herleitungSummary: 'Herleitung',
-    herleitungSummaryWithSources: 'Herleitung · {count, plural, one {# Quelle} other {# Quellen}}',
+    derivationSummary: 'Herleitung',
+    derivationSummaryWithSources: 'Herleitung · {count, plural, one {# Quelle} other {# Quellen}}',
     // aria-label naming the reasoning graph as one region for screen readers.
     reasoningGraphLabel: 'Herleitung',
     stepsLabel: 'Denkschritte',
@@ -1189,8 +1189,8 @@ export const chat: typeof en.chat = {
       // Die Fundstellen-Hälfte von `roundFoldOne`, in den Worten der Antwort
       // (vgl. `answerSources.punktPage`): die Stelle, nicht der Mechanismus.
       roundFoldLocusPage: 'S. {page}',
-      roundFoldLocusPunkt: 'Pkt. {punkt}',
-      roundFoldLocusPunktPage: 'Pkt. {punkt} · S. {page}',
+      roundFoldLocusClause: 'Pkt. {clause}',
+      roundFoldLocusClausePage: 'Pkt. {clause} · S. {page}',
       // Barrierefreier Name der Schaltfläche, die die Schicht auf- und zuklappt.
       // Der Kartentext selbst ist eine Folgerung und taugt nicht als Name.
       roundFold: 'Schritt {n} zuklappen',

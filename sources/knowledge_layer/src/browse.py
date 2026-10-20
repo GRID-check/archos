@@ -568,9 +568,9 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
         bits.append(f"aufgenommen {row.captured_at[:10]}{camera}")
     elif row.camera:
         bits.append(f"Kamera: {row.camera}")
-    plankopf = title_block_label(row.revision_facts)
-    if plankopf:
-        bits.append(f"Plankopf: {plankopf}")
+    title_block = title_block_label(row.revision_facts)
+    if title_block:
+        bits.append(f"Plankopf: {title_block}")
     if mark:
         bits.append(mark)
     change = _change_bit(row)
@@ -804,9 +804,9 @@ def _chain_line(position: int, row: FileRow, *, current: bool, mark: str | None,
     revision = parse_revision_name(row.file_name)
     label = revision_label(revision) if revision is not None else ""
     bits = [label or "kein Index und kein Datum im Namen"]
-    plankopf = title_block_label(row.revision_facts)
-    if plankopf:
-        bits.append(f"Plankopf: {plankopf}")
+    title_block = title_block_label(row.revision_facts)
+    if title_block:
+        bits.append(f"Plankopf: {title_block}")
     if current:
         bits.append("aktuelle Fassung" + ("" if mark else f" ({basis})"))
     elif not mark:
@@ -846,7 +846,7 @@ def _resolve_chain(
 ) -> tuple[list[FileRow], str]:
     """The ordered chain of Fassungen ``wanted`` names, newest first, or the sentence that says why there is none.
 
-    One lookup for the listing (:func:`render_fassungen`) and the compare
+    One lookup for the listing (:func:`render_revisions`) and the compare
     (:func:`resolve_compare`), so the two cannot disagree about which document
     a name means.
     """
@@ -874,7 +874,7 @@ def _resolve_chain(
     return _chain_order(_with_supersedes(next(iter(chains.values())))), ""
 
 
-def render_fassungen(
+def render_revisions(
     rows: Sequence[FileRow],
     wanted: str,
     *,
@@ -943,7 +943,7 @@ def resolve_compare(
     ``wanted`` names the document and, when it names one Fassung exactly, that
     Fassung; otherwise the current one. ``compare_to`` names the other Fassung
     in the same chain, or says „vorige“ (the default) for the one right before.
-    Pure, over the rows the turn may list, like :func:`render_fassungen`.
+    Pure, over the rows the turn may list, like :func:`render_revisions`.
     """
     members, refusal = _resolve_chain(rows, wanted, shelf=shelf, default_shelves=default_shelves)
     if refusal:
@@ -991,7 +991,7 @@ def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
     None when the index holds no chunk of the file; raises when the store cannot be read.
     """
     from aiq_agent.knowledge.collection_pages import read_chunks
-    from aiq_agent.knowledge.fassung_diff import chunk_from_store
+    from aiq_agent.knowledge.revision_diff import chunk_from_store
 
     stored = read_chunks(collection, file_name)
     if stored is None:
@@ -999,12 +999,12 @@ def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
     return [chunk for text, meta in stored if (chunk := chunk_from_store(text, meta)) is not None]
 
 
-async def compare_fassungen(older: FileRow, newer: FileRow) -> str:
+async def compare_revisions(older: FileRow, newer: FileRow) -> str:
     """The compare of two Fassungen the turn may list, from their stored chunks and title blocks (ADR-0104)."""
     from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
-    from aiq_agent.knowledge.fassung_diff import diff_fassungen
-    from aiq_agent.knowledge.fassung_diff import render_diff
     from aiq_agent.knowledge.restricted_use import note_collections_read
+    from aiq_agent.knowledge.revision_diff import diff_revisions
+    from aiq_agent.knowledge.revision_diff import render_diff
 
     try:
         older_chunks, newer_chunks = await asyncio.gather(
@@ -1012,7 +1012,7 @@ async def compare_fassungen(older: FileRow, newer: FileRow) -> str:
             asyncio.to_thread(_stored_chunks, newer.collection, newer.file_name),
         )
     except Exception:  # noqa: BLE001 - an outage is said as one, never as "not in the index"
-        logger.warning("compare_fassungen: the index did not answer", exc_info=True)
+        logger.warning("compare_revisions: the index did not answer", exc_info=True)
         # Marked like read_passage's failed fetch, so a retry is not refused as a repeat.
         return (
             f"{FETCH_FAILED_MARKER} Der Index ist gerade nicht erreichbar, „{older.file_name}“ und "
@@ -1028,7 +1028,7 @@ async def compare_fassungen(older: FileRow, newer: FileRow) -> str:
     # The report quotes both files' content: reported for the restricted-use
     # admission (ADR-0088), as every read of a document's text is.
     note_collections_read({older.collection, newer.collection})
-    diff = diff_fassungen(
+    diff = diff_revisions(
         older_chunks or [],
         newer_chunks or [],
         older_facts=older.revision_facts,
@@ -1514,8 +1514,8 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
                 )
                 if refusal or older is None or newer is None:
                     return refusal
-                return await compare_fassungen(older, newer)
-            return render_fassungen(turn.rows, fassungen_of or "", shelf=shelf, default_shelves=turn.own_shelves)
+                return await compare_revisions(older, newer)
+            return render_revisions(turn.rows, fassungen_of or "", shelf=shelf, default_shelves=turn.own_shelves)
         sort = (sort or "folder").strip().lower()
         if sort not in ("folder", "name", "newest"):
             return "`sort` must be folder, name or newest."

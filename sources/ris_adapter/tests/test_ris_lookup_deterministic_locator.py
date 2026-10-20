@@ -92,7 +92,7 @@ async def test_a_list_of_paragraphs_comes_back_whole_in_one_call(lookup, catalog
     assert "Bauverhandlung anzuberaumen" in output
 
 
-async def test_an_absatz_the_paragraph_lacks_comes_back_once(lookup, catalog):
+async def test_a_subsection_the_paragraph_lacks_comes_back_once(lookup, catalog):
     """ "§ 63 Abs 9" of a § with three Absätze is § 63, once, never twice under one key."""
     output = await lookup.run(question="Was verlangt § 63 Abs 9 BO Wien?", instrument="§ 63 Abs 9 BO Wien")
 

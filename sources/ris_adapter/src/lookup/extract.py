@@ -27,9 +27,9 @@ from ris_adapter.lookup.address import section_in
 from ris_adapter.lookup.fetch import FetchedDocument
 from ris_adapter.lookup.grammar import SECTION_MAX_CHARS
 from ris_adapter.lookup.grammar import Section
-from ris_adapter.lookup.grammar import absatz_body
 from ris_adapter.lookup.grammar import headings_index
 from ris_adapter.lookup.grammar import split_sections
+from ris_adapter.lookup.grammar import subsection_body
 from ris_adapter.lookup.trace import LookupTrace
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ def _addressed(section: Section, address: Address) -> list[tuple[Section, str]]:
         return [(section, address.absatz)]
     # An Absatz the § does not carry resolves to the whole § already: a second
     # pick would be the same passage under the same citation key.
-    if not absatz_body(section, address.absatz)[1]:
+    if not subsection_body(section, address.absatz)[1]:
         return [(section, address.absatz)]
     return [(section, address.absatz), (section, "")]
 

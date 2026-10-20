@@ -19,7 +19,7 @@ import 'server-only'
 import { ConflictError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { isFolderVisibleTo } from '@/lib/authz/folder-access'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { hasPermission, ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { Document } from '@/lib/db/schema'
@@ -38,7 +38,7 @@ type ReviewedDocument = Pick<Document, 'scope' | 'projectId' | 'folderId'>
 /** Whether this session may release or delete this quarantined document. Never throws. */
 export async function mayReviewQuarantine(session: AuthorizedSession, doc: ReviewedDocument): Promise<boolean> {
   if (hasPermission(session, ORG_PERMISSIONS.projectsAdminister)) return true
-  if (doc.scope === 'archiv') return canManageArchiv(session)
+  if (doc.scope === 'archiv') return canManageOfficeShelf(session)
   if (doc.scope !== 'project' || !doc.projectId) return false
   try {
     await requireProjectAccess(session, doc.projectId, 'project:manage')

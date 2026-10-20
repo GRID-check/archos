@@ -33,7 +33,7 @@ describe.skipIf(!url)('restricted folders in the overview and the role bindings'
   let roles: typeof import('@/lib/document-roles/repository')
   let documentsRepository: typeof import('@/lib/documents/repository')
   let projectId: string
-  const folder = { verwaltung: '', vertraege: '' }
+  const folder = { admin: '', contracts: '' }
   const doc: Record<string, string> = {}
 
   const inTenant = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: ORG, userId: USER }, run)
@@ -98,11 +98,11 @@ describe.skipIf(!url)('restricted folders in the overview and the role bindings'
     //   Lageplan.pdf             (root, 100 bytes)
     //   Verwaltung/              (open)    Protokoll.pdf (200)
     //     Verträge/              (own list) Honorarvertrag.pdf (4000)
-    folder.verwaltung = await insertFolder('Verwaltung', null, 'Verwaltung', false)
-    folder.vertraege = await insertFolder('Verträge', folder.verwaltung, 'Verwaltung/Verträge', true)
+    folder.admin = await insertFolder('Verwaltung', null, 'Verwaltung', false)
+    folder.contracts = await insertFolder('Verträge', folder.admin, 'Verwaltung/Verträge', true)
     await insertDocument('Lageplan.pdf', null, 100)
-    await insertDocument('Protokoll.pdf', folder.verwaltung, 200)
-    await insertDocument('Honorarvertrag.pdf', folder.vertraege, 4000)
+    await insertDocument('Protokoll.pdf', folder.admin, 200)
+    await insertDocument('Honorarvertrag.pdf', folder.contracts, 4000)
     await bindRole('Lageplan.pdf', 'lageplan')
     await bindRole('Protokoll.pdf', 'protokoll')
     await bindRole('Honorarvertrag.pdf', 'vertrag')
@@ -115,7 +115,7 @@ describe.skipIf(!url)('restricted folders in the overview and the role bindings'
   })
 
   it('finds every folder under a restriction, for a reader with no clearance', async () => {
-    expect(await access.getRestrictedFolderIds(ORG, projectId)).toEqual([folder.vertraege])
+    expect(await access.getRestrictedFolderIds(ORG, projectId)).toEqual([folder.contracts])
   })
 
   it('leaves a hidden folder out of the overview count, size and recent list', async () => {

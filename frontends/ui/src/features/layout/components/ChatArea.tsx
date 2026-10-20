@@ -48,7 +48,7 @@ import type { UserMessageAuthor } from '@/features/chat/components/UserMessage'
 // reason the collaboration imports above are: existing specs mock that barrel,
 // and a new export on it would have to be added to every one of those mocks.
 import { FollowUpsRail } from '@/features/chat/components/FollowUpsRail'
-import { offersAktenvermerk } from '@/features/chat/lib/aktenvermerk-chip'
+import { offersFileNote } from '@/features/chat/lib/file-note-chip'
 // Its own module rather than a barrel, for the reason FollowUpsRail is: the
 // specs that mock `@/features/chat` must not have to know about the run block.
 import type { Finding, Findings } from '@/lib/conversations/message-findings'
@@ -1585,7 +1585,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                         const isCurrentlyStreaming =
                           isUserMessage && turnLive && message.id === currentUserMessageId
                         if (isCurrentlyStreaming) liveShownIdsRef.current.add(message.id)
-                        const showHerleitung =
+                        const showDerivation =
                           isUserMessage &&
                           (hasThinkingSteps || liveShownIdsRef.current.has(message.id))
 
@@ -1662,7 +1662,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                         // Whether this ANSWER earns the „Als Aktenvermerk schreiben"
                         // chip — a walkthrough or a ruling, in a project, long enough
                         // that the reader is already thinking about where to put it
-                        // (`features/chat/lib/aktenvermerk-chip`). Decided in the
+                        // (`features/chat/lib/file-note-chip`). Decided in the
                         // answer's own row, once it has settled: decided in the
                         // question's row, the chip's rail mounted BETWEEN the
                         // Herleitung and the answer at the settle and pushed the
@@ -1671,9 +1671,9 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                           message.messageType === 'agent_response' &&
                           !message.isStreaming &&
                           revealingId !== message.id
-                        const aktenvermerk =
+                        const fileNote =
                           answerSettled &&
-                          offersAktenvermerk({
+                          offersFileNote({
                             kind: message.answerMeta?.kind,
                             projectId: activeProjectId,
                             body: message.content,
@@ -1760,7 +1760,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                         works, folded to its one-line bar when the answer's first
                         words arrive; the bar stays live until the settle, which
                         then changes only its status. */}
-                            {showHerleitung && (
+                            {showDerivation && (
                               <div className="w-full">
                                 <ChatThinking
                                   steps={messageSteps}
@@ -1809,10 +1809,10 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                         answer would be a second thing to learn. Decided in the
                         answer's row once it has settled, so the chip cannot
                         appear mid-stream, and appears below the answer. */}
-                            {(message.stages?.followUps || aktenvermerk) && (
+                            {(message.stages?.followUps || fileNote) && (
                               <FollowUpsRail
                                 items={message.stages?.followUps?.items}
-                                offerAktenvermerk={aktenvermerk}
+                                offerFileNote={fileNote}
                                 // Only a rail that arrives under the reader fades in:
                                 // on a restored or reopened thread it is simply there.
                                 animateIn={

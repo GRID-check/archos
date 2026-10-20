@@ -558,7 +558,7 @@ def _resolve_target_collections(
 
 #: The ``chunking`` value the base corpus uses for text that is not evidence.
 #:
-#: ``punkt_documents`` (``llamaindex/punkt_chunking.py``) cuts a Punkt-structured
+#: ``clause_documents`` (``llamaindex/clause_chunking.py``) cuts a Punkt-structured
 #: Richtlinie into one chunk per numbered Punkt, tagged ``chunking: "punkt"``, and
 #: emits everything outside that run -- the cover page and the Impressum -- as
 #: per-page Documents tagged ``chunking: "page"``. Neither is citable: pdfplumber
@@ -1672,7 +1672,7 @@ _FAMILY_OVERVIEW_FAILED_NOTICE = (
 
 
 #: Replaced files one notice names before it counts the rest.
-_HIDDEN_FASSUNGEN_NAMED = 5
+_HIDDEN_REVISIONS_NAMED = 5
 
 
 async def _superseded_files(collections: Sequence[str]) -> dict[str, dict[str, str]]:
@@ -1695,19 +1695,19 @@ async def _superseded_files(collections: Sequence[str]) -> dict[str, dict[str, s
     }
 
 
-def _named_older_fassung_notice(file_name: str | None, superseded: dict[str, dict[str, str]]) -> str:
+def _named_older_revision_notice(file_name: str | None, superseded: dict[str, dict[str, str]]) -> str:
     """The line that tells the model the file it named (``file_name=…``) is an older Fassung, and which is current.
 
     Naming the file is how an older Fassung is read on purpose, so its passages are not withheld;
     the line keeps the answer from presenting them as the document's current state. Follows the
     links to the end of the chain, and names nothing in a restricted collection nobody admitted.
-    The same words as ``read_passage``'s notice (:func:`older_fassung_line`).
+    The same words as ``read_passage``'s notice (:func:`older_revision_line`).
     """
     if not file_name:
         return ""
     from aiq_agent.knowledge.restricted_use import may_name
 
-    from .read_passage import older_fassung_line
+    from .read_passage import older_revision_line
 
     lines = []
     for collection, links in superseded.items():
@@ -1717,17 +1717,17 @@ def _named_older_fassung_notice(file_name: str | None, superseded: dict[str, dic
         while current in links and current not in seen:
             seen.add(current)
             current = links[current]
-        lines.append(older_fassung_line(file_name, current))
+        lines.append(older_revision_line(file_name, current))
     return "".join(sorted(set(lines)))
 
 
-def _hidden_fassungen_notice(superseded: dict[str, dict[str, str]]) -> str:
+def _hidden_revisions_notice(superseded: dict[str, dict[str, str]]) -> str:
     """The one line that tells the model older Fassungen were left out of the ranking, and how to read one."""
     names = sorted({name for hidden in superseded.values() for name in hidden})
     if not names:
         return ""
-    shown = ", ".join(names[:_HIDDEN_FASSUNGEN_NAMED])
-    rest = len(names) - _HIDDEN_FASSUNGEN_NAMED
+    shown = ", ".join(names[:_HIDDEN_REVISIONS_NAMED])
+    rest = len(names) - _HIDDEN_REVISIONS_NAMED
     tail = f" und {rest} weitere" if rest > 0 else ""
     return f"Ältere Fassungen ausgeblendet: {shown}{tail} — mit file_name=… gezielt lesbar.\n\n"
 
@@ -2114,7 +2114,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         superseded = await _superseded_files(
             [entry.collection for entry in target_collections if entry.collection != base_collection]
         )
-        hidden_fassungen = {} if file_name else superseded
+        hidden_revisions = {} if file_name else superseded
 
         # Cross-lingual bridge. The corpus is German; an English question reaches it
         # only weakly by embedding and not at all lexically. Measured on the golden
@@ -2175,9 +2175,9 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             result = await retriever.retrieve(
                 query=search_query, collection_name=coll, top_k=candidate_k, filters=coll_filters
             )
-            if hidden_fassungen.get(coll) and getattr(result, "chunks", None):
+            if hidden_revisions.get(coll) and getattr(result, "chunks", None):
                 result = result.model_copy(
-                    update={"chunks": qdrant_prefilter.without_files(result.chunks, hidden_fassungen[coll])}
+                    update={"chunks": qdrant_prefilter.without_files(result.chunks, hidden_revisions[coll])}
                 )
             # Tag each chunk with its collection so the merge does not lose the
             # per-hit stratum — the trace UI's lane labels and source_lane read it.
@@ -2600,10 +2600,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                     keys = [key for key in keys if key]
                     if keys:
                         picks["citation_keys"] = keys
-                    punkt_ids = [(getattr(chunk, "metadata", None) or {}).get("punkt_id") for chunk in merged.chunks]
-                    punkt_ids = [str(value) for value in punkt_ids if value]
-                    if punkt_ids:
-                        picks["punkt_ids"] = punkt_ids
+                    clause_ids = [(getattr(chunk, "metadata", None) or {}).get("punkt_id") for chunk in merged.chunks]
+                    clause_ids = [str(value) for value in clause_ids if value]
+                    if clause_ids:
+                        picks["punkt_ids"] = clause_ids
                 except Exception:
                     logger.debug("Retrieval picks enrichment skipped", exc_info=True)
                 emit_retrieval_span(
@@ -2623,8 +2623,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             from knowledge_layer.requery import requery_notice
 
             notice = (
-                _hidden_fassungen_notice(hidden_fassungen)
-                + _named_older_fassung_notice(file_name, superseded)
+                _hidden_revisions_notice(hidden_revisions)
+                + _named_older_revision_notice(file_name, superseded)
                 + requery_notice(requery_queries)
             )
             # The overview raised, and the passages below are what is left of

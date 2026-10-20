@@ -18,7 +18,7 @@ vi.mock('@/lib/documents/repository', () => ({
   findFolderPathsInProject: vi.fn(),
 }))
 
-const WEITERE = '- (weitere nicht lesbare Dateien nicht aufgeführt)'
+const MORE = '- (weitere nicht lesbare Dateien nicht aufgeführt)'
 
 type UnreadableRow = Awaited<ReturnType<typeof listUnreadableProjectDocuments>>[number]
 
@@ -69,12 +69,12 @@ describe('buildUnreadableDocumentsSection', () => {
 
     expect(lines).toHaveLength(1 + MAX_UNREADABLE_LINES + 1)
     expect(lines[MAX_UNREADABLE_LINES]).toBe(`- datei-${MAX_UNREADABLE_LINES}.pdf`)
-    expect(lines.at(-1)).toBe(WEITERE)
+    expect(lines.at(-1)).toBe(MORE)
   })
 
   it('states that more were left out when the caller says so, even for a short list', () => {
     expect(buildUnreadableDocumentsSection([doc()], true)).toBe(
-      `documents_unreadable:\n- Honorarnote.pdf\n${WEITERE}`
+      `documents_unreadable:\n- Honorarnote.pdf\n${MORE}`
     )
   })
 })
@@ -137,7 +137,7 @@ describe('loadUnreadableDocumentsSection', () => {
     const lines = (await loadUnreadableDocumentsSection('proj-1', 'org-1')).split('\n')
 
     expect(lines).toHaveLength(1 + MAX_UNREADABLE_LINES + 1)
-    expect(lines.at(-1)).toBe(WEITERE)
+    expect(lines.at(-1)).toBe(MORE)
     expect(lines).not.toContain(`- datei-${MAX_UNREADABLE_LINES + 1}.pdf`)
   })
 

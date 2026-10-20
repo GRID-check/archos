@@ -18,10 +18,10 @@ const read = (...parts: string[]): string =>
   blankComments(readFileSync(join(FEATURES, ...parts), 'utf8')) as string
 
 describe('Archiv header', () => {
-  const source = read('documents', 'components', 'archiv-workspace.tsx')
+  const source = read('documents', 'components', 'office-shelf-workspace.tsx')
 
   it('lets the controls group shrink to the card instead of keeping its single-line width', () => {
-    const group = source.match(/data-testid="archiv-controls"/)
+    const group = source.match(/data-testid="office-shelf-controls"/)
     expect(group).not.toBeNull()
     const open = source.lastIndexOf('<div', group!.index)
     const classes = source.slice(open, group!.index)

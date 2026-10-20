@@ -107,48 +107,48 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
   })
 
   it('keeps one folder per name per parent on each shelf, and the same name on both', async () => {
-    const archiv = await inTenant(() =>
-      folders.createShelfFolder(session(), shelf.ARCHIV_SHELF, { name: 'Normen' }),
+    const officeShelf = await inTenant(() =>
+      folders.createShelfFolder(session(), shelf.OFFICE_SHELF, { name: 'Normen' }),
     )
     const project = await inTenant(() =>
       folders.createShelfFolder(session(), shelf.projectShelf(projectId), { name: 'Normen' }),
     )
     const duplicate = await inTenant(() =>
-      folders.createShelfFolder(session(), shelf.ARCHIV_SHELF, { name: 'Normen' }),
+      folders.createShelfFolder(session(), shelf.OFFICE_SHELF, { name: 'Normen' }),
     )
     // The same name in another tenant's Archiv is another folder.
     const elsewhere = await inTenant(
-      () => folders.createShelfFolder(session(OTHER_ORG), shelf.ARCHIV_SHELF, { name: 'Normen' }),
+      () => folders.createShelfFolder(session(OTHER_ORG), shelf.OFFICE_SHELF, { name: 'Normen' }),
       OTHER_ORG,
     )
 
-    expect(archiv.ok && project.ok && elsewhere.ok).toBe(true)
+    expect(officeShelf.ok && project.ok && elsewhere.ok).toBe(true)
     expect(duplicate).toEqual({ ok: false, error: 'A folder with this name already exists here.' })
-    expect(archiv.ok && archiv.folder.projectId).toBeNull()
+    expect(officeShelf.ok && officeShelf.folder.projectId).toBeNull()
     expect(project.ok && project.folder.projectId).toBe(projectId)
   })
 
   it('lists a shelf and nothing of another shelf or tenant', async () => {
-    const archivRows = await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))
+    const officeShelfRows = await inTenant(() => folders.listShelfFolders(session(), shelf.OFFICE_SHELF))
     const projectRows = await inTenant(() => folders.listShelfFolders(session(), shelf.projectShelf(projectId)))
     const otherRows = await inTenant(
-      () => folders.listShelfFolders(session(OTHER_ORG), shelf.ARCHIV_SHELF),
+      () => folders.listShelfFolders(session(OTHER_ORG), shelf.OFFICE_SHELF),
       OTHER_ORG,
     )
 
-    expect(archivRows.map((row) => row.projectId)).toEqual([null])
+    expect(officeShelfRows.map((row) => row.projectId)).toEqual([null])
     expect(projectRows.map((row) => row.projectId)).toEqual([projectId])
     expect(otherRows).toHaveLength(1)
-    expect(otherRows[0].id).not.toBe(archivRows[0].id)
+    expect(otherRows[0].id).not.toBe(officeShelfRows[0].id)
   })
 
   it('renames an Archiv subtree without touching a project folder of the same path', async () => {
     const root = await inTenant(() =>
-      folders.createShelfFolder(session(), shelf.ARCHIV_SHELF, { name: 'Pläne' }),
+      folders.createShelfFolder(session(), shelf.OFFICE_SHELF, { name: 'Pläne' }),
     )
     if (!root.ok) throw new Error(root.error)
     const child = await inTenant(() =>
-      folders.createShelfFolder(session(), shelf.ARCHIV_SHELF, { name: 'EG', parentId: root.folder.id }),
+      folders.createShelfFolder(session(), shelf.OFFICE_SHELF, { name: 'EG', parentId: root.folder.id }),
     )
     const projectTwin = await inTenant(() =>
       folders.createShelfFolder(session(), shelf.projectShelf(projectId), { name: 'Pläne' }),
@@ -156,11 +156,11 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
     if (!child.ok || !projectTwin.ok) throw new Error('setup')
 
     const renamed = await inTenant(() =>
-      folders.updateShelfFolder(session(), shelf.ARCHIV_SHELF, { folderId: root.folder.id, name: 'Plaene' }),
+      folders.updateShelfFolder(session(), shelf.OFFICE_SHELF, { folderId: root.folder.id, name: 'Plaene' }),
     )
 
     expect(renamed.ok).toBe(true)
-    const after = await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))
+    const after = await inTenant(() => folders.listShelfFolders(session(), shelf.OFFICE_SHELF))
     expect(after.map((row) => row.path)).toEqual(expect.arrayContaining(['Plaene', 'Plaene/EG']))
     const projectAfter = await inTenant(() => folders.listShelfFolders(session(), shelf.projectShelf(projectId)))
     expect(projectAfter.map((row) => row.path)).toContain('Pläne')
@@ -168,19 +168,19 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
   })
 
   it('refuses to move an Archiv folder into its own subfolder, and to a folder of another shelf', async () => {
-    const [root] = (await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))).filter(
+    const [root] = (await inTenant(() => folders.listShelfFolders(session(), shelf.OFFICE_SHELF))).filter(
       (row) => row.path === 'Plaene',
     )
-    const [child] = (await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))).filter(
+    const [child] = (await inTenant(() => folders.listShelfFolders(session(), shelf.OFFICE_SHELF))).filter(
       (row) => row.path === 'Plaene/EG',
     )
     const [projectFolder] = await inTenant(() => folders.listShelfFolders(session(), shelf.projectShelf(projectId)))
 
     const intoSubtree = await inTenant(() =>
-      folders.updateShelfFolder(session(), shelf.ARCHIV_SHELF, { folderId: root.id, parentId: child.id }),
+      folders.updateShelfFolder(session(), shelf.OFFICE_SHELF, { folderId: root.id, parentId: child.id }),
     )
     const intoProject = await inTenant(() =>
-      folders.updateShelfFolder(session(), shelf.ARCHIV_SHELF, { folderId: root.id, parentId: projectFolder.id }),
+      folders.updateShelfFolder(session(), shelf.OFFICE_SHELF, { folderId: root.id, parentId: projectFolder.id }),
     )
 
     expect(intoSubtree).toEqual({ ok: false, error: 'A folder cannot be moved into its own subfolder.' })
@@ -188,60 +188,60 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
   })
 
   it('says a sibling of the same name is in the way, for a move and for a rename, and changes nothing', async () => {
-    const loose = await inTenant(() => folders.createShelfFolder(session(), shelf.ARCHIV_SHELF, { name: 'EG' }))
+    const loose = await inTenant(() => folders.createShelfFolder(session(), shelf.OFFICE_SHELF, { name: 'EG' }))
     if (!loose.ok) throw new Error(loose.error)
-    const [plaene] = (await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))).filter(
+    const [plans] = (await inTenant(() => folders.listShelfFolders(session(), shelf.OFFICE_SHELF))).filter(
       (row) => row.path === 'Plaene',
     )
 
     const moved = await inTenant(() =>
-      folders.updateShelfFolder(session(), shelf.ARCHIV_SHELF, { folderId: loose.folder.id, parentId: plaene.id }),
+      folders.updateShelfFolder(session(), shelf.OFFICE_SHELF, { folderId: loose.folder.id, parentId: plans.id }),
     )
     const renamed = await inTenant(() =>
-      folders.updateShelfFolder(session(), shelf.ARCHIV_SHELF, { folderId: loose.folder.id, name: 'Normen' }),
+      folders.updateShelfFolder(session(), shelf.OFFICE_SHELF, { folderId: loose.folder.id, name: 'Normen' }),
     )
 
     expect(moved).toEqual({ ok: false, error: 'A folder with this name already exists here.' })
     expect(renamed).toEqual({ ok: false, error: 'A folder with this name already exists here.' })
-    const after = await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))
+    const after = await inTenant(() => folders.listShelfFolders(session(), shelf.OFFICE_SHELF))
     expect(after.find((row) => row.id === loose.folder.id)?.path).toBe('EG')
   })
 
   it('files an Archiv document, refuses a project document there, and re-files on delete', async () => {
-    const archivDoc = '00000000-0000-4000-8000-0000000f0001'
+    const officeShelfDoc = '00000000-0000-4000-8000-0000000f0001'
     const projectDoc = '00000000-0000-4000-8000-0000000f0002'
-    await insertDocument(archivDoc, 'archiv')
+    await insertDocument(officeShelfDoc, 'archiv')
     await insertDocument(projectDoc, 'project')
-    const all = await inTenant(() => folders.listShelfFolders(session(), shelf.ARCHIV_SHELF))
+    const all = await inTenant(() => folders.listShelfFolders(session(), shelf.OFFICE_SHELF))
     const root = all.find((row) => row.path === 'Plaene')!
     const child = all.find((row) => row.path === 'Plaene/EG')!
 
-    const filed = await inTenant(() => move.moveDocumentToFolder({ documentId: archivDoc, folderId: child.id }, session()))
+    const filed = await inTenant(() => move.moveDocumentToFolder({ documentId: officeShelfDoc, folderId: child.id }, session()))
     const refused = await inTenant(() =>
       move.moveDocumentToFolder({ documentId: projectDoc, folderId: child.id }, session()),
     )
 
     expect(filed.ok).toBe(true)
-    expect(await folderOf(archivDoc)).toBe(child.id)
+    expect(await folderOf(officeShelfDoc)).toBe(child.id)
     expect(refused).toEqual({ ok: false, error: 'Folder not found in this project.' })
     expect(await folderOf(projectDoc)).toBeNull()
 
     // Deleting the folder re-files its document into the parent: nothing is
     // left for the ON DELETE CASCADE to find.
-    const deleted = await inTenant(() => folders.deleteShelfFolder(session(), shelf.ARCHIV_SHELF, child.id))
+    const deleted = await inTenant(() => folders.deleteShelfFolder(session(), shelf.OFFICE_SHELF, child.id))
     expect(deleted.ok && deleted.result).toEqual({ documentsMoved: 1, foldersMoved: 0 })
-    expect(await folderOf(archivDoc)).toBe(root.id)
+    expect(await folderOf(officeShelfDoc)).toBe(root.id)
     // The row is gone, not a tombstone: the Archiv has no Papierkorb (ADR-0088),
     // and `project_folders_bin_state_check` would refuse a deleted Archiv folder.
     const left = await inTenant(() => db.execute(sql`SELECT id FROM project_folders WHERE id = ${child.id}`))
     expect(Array.from(left)).toHaveLength(0)
 
-    const rootDeleted = await inTenant(() => folders.deleteShelfFolder(session(), shelf.ARCHIV_SHELF, root.id))
+    const rootDeleted = await inTenant(() => folders.deleteShelfFolder(session(), shelf.OFFICE_SHELF, root.id))
     expect(rootDeleted.ok && rootDeleted.result).toEqual({ documentsMoved: 1, foldersMoved: 0 })
-    expect(await folderOf(archivDoc)).toBeNull()
+    expect(await folderOf(officeShelfDoc)).toBeNull()
     // The document itself survived both deletes.
     const survivors = await inTenant(() =>
-      db.execute(sql`SELECT id FROM documents WHERE id = ${archivDoc}`),
+      db.execute(sql`SELECT id FROM documents WHERE id = ${officeShelfDoc}`),
     )
     expect(Array.from(survivors)).toHaveLength(1)
   })
@@ -254,26 +254,26 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
     await insertDocument('00000000-0000-4000-8000-0000000f0022', 'project', { lifecycle: 'archived' })
     await insertDocument('00000000-0000-4000-8000-0000000f0023', 'project', { agent: true })
 
-    const archiv = (options = {}) => repo.listDocumentPage(shelf.ARCHIV_SHELF, ORG, { reader: REVIEWER_READER, ...options })
+    const officeShelf = (options = {}) => repo.listDocumentPage(shelf.OFFICE_SHELF, ORG, { reader: REVIEWER_READER, ...options })
     const project = (options = {}) => repo.listDocumentPage(shelf.projectShelf(projectId), ORG, { reader: REVIEWER_READER, ...options })
-    const ids = async (page: ReturnType<typeof archiv>) => (await page).rows.map((row) => row.id.slice(-2)).sort()
+    const ids = async (page: ReturnType<typeof officeShelf>) => (await page).rows.map((row) => row.id.slice(-2)).sort()
 
     // The working set by default, both shelves alike.
     // (`01` and `02` are the documents the previous test left behind.)
-    expect(await ids(archiv())).toEqual(['01', '11', '13'])
+    expect(await ids(officeShelf())).toEqual(['01', '11', '13'])
     expect(await ids(project())).toEqual(['02', '21', '23'])
     // Archived ones on request.
-    expect(await ids(archiv({ includeArchived: true }))).toContain('12')
+    expect(await ids(officeShelf({ includeArchived: true }))).toContain('12')
     expect(await ids(project({ includeArchived: true }))).toContain('22')
     // The author filter.
-    expect(await ids(archiv({ authoredBy: 'agent' }))).toEqual(['13'])
+    expect(await ids(officeShelf({ authoredBy: 'agent' }))).toEqual(['13'])
     expect(await ids(project({ authoredBy: 'agent' }))).toEqual(['23'])
 
     // One row shape: the key sets cannot diverge because the query is one.
-    const archivRow = (await archiv()).rows[0]
+    const officeShelfRow = (await officeShelf()).rows[0]
     const projectRow = (await project()).rows[0]
-    expect(Object.keys(archivRow).sort()).toEqual(Object.keys(projectRow).sort())
-    expect(Object.keys(archivRow)).toEqual(
+    expect(Object.keys(officeShelfRow).sort()).toEqual(Object.keys(projectRow).sort())
+    expect(Object.keys(officeShelfRow)).toEqual(
       expect.arrayContaining(['folderId', 'originPath', 'authoredBy', 'lifecycle', 'contentHash']),
     )
   })

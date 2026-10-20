@@ -45,7 +45,7 @@ export const fromDocument = (fileName: string, page: number | null, quote: strin
 })
 
 const BUILDING_DESCRIPTION = 'Baubeschreibung.pdf'
-const SECTION_A_A = 'E-02 Schnitt A-A.pdf'
+const SECTION = 'E-02 Schnitt A-A.pdf'
 
 const suggestion = (
   key: string,
@@ -94,7 +94,7 @@ export const SUGGESTION_STOREYS = suggestion(
       {
         value: 7,
         recordedAt: AT,
-        evidence: [fromDocument(SECTION_A_A, 1, 'EG, 1.OG, 2.OG, 3.OG, 4.OG, 5.OG, DG (neu)')],
+        evidence: [fromDocument(SECTION, 1, 'EG, 1.OG, 2.OG, 3.OG, 4.OG, 5.OG, DG (neu)')],
       },
     ],
   }
@@ -102,7 +102,7 @@ export const SUGGESTION_STOREYS = suggestion(
 
 export const SUGGESTION_ESCAPE_LEVEL = suggestion('fluchtniveau_m@bw1', 'Fluchtniveau (Zielzustand)', 18.4, '18,4 m', {
   decisive: true,
-  evidence: [fromDocument(SECTION_A_A, 1, 'Fluchtniveau +18,40 m über Gelände')],
+  evidence: [fromDocument(SECTION, 1, 'Fluchtniveau +18,40 m über Gelände')],
 })
 
 export const SUGGESTION_TYPE = suggestion('bauwerkstyp@bw1', 'Art des Bauwerks', 'gebaeude', 'Gebäude', {

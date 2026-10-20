@@ -11,10 +11,10 @@
 
 import {
   NAME_PROBE_MAX_NAMES,
-  fassungCandidatesResponseSchema,
+  revisionCandidatesResponseSchema,
   nameProbeResponseSchema,
   type DocumentNameMatch,
-  type FassungCandidateMatch,
+  type RevisionCandidateMatch,
 } from './name-probe-types'
 
 export type NameProbeFetch = (path: string, init?: RequestInit) => Promise<Response>
@@ -28,15 +28,15 @@ export class NameProbeError extends Error {
 }
 
 export const PROJECT_NAME_PROBE_PATH = '/api/documents/name-matches'
-export const ARCHIV_NAME_PROBE_PATH = '/api/archiv/documents/name-matches'
-export const PROJECT_FASSUNG_CANDIDATES_PATH = '/api/documents/fassung-candidates'
-export const ARCHIV_FASSUNG_CANDIDATES_PATH = '/api/archiv/documents/fassung-candidates'
+export const OFFICE_SHELF_NAME_PROBE_PATH = '/api/archiv/documents/name-matches'
+export const PROJECT_REVISION_CANDIDATES_PATH = '/api/documents/fassung-candidates'
+export const OFFICE_SHELF_REVISION_CANDIDATES_PATH = '/api/archiv/documents/fassung-candidates'
 
 export interface DocumentNameProbeClient {
   /** Matches on a project's shelf. */
   project: (projectId: string, names: readonly string[]) => Promise<DocumentNameMatch[]>
   /** Matches in the organization's Archiv. */
-  archiv: (names: readonly string[]) => Promise<DocumentNameMatch[]>
+  officeShelf: (names: readonly string[]) => Promise<DocumentNameMatch[]>
   /**
    * What the names continue on a project's shelf: the documents they would be
    * the next Fassung of (ADR-0099). `landsIn` says where each name lands (the
@@ -44,13 +44,13 @@ export interface DocumentNameProbeClient {
    * creates; null is the root), so only documents of the collection that
    * folder files into are offered (ADR-0087).
    */
-  projectFassungen: (
+  projectRevisions: (
     projectId: string,
     names: readonly string[],
     landsIn?: ReadonlyMap<string, string | null>,
-  ) => Promise<FassungCandidateMatch[]>
+  ) => Promise<RevisionCandidateMatch[]>
   /** What the names continue in the Archiv. */
-  archivFassungen: (names: readonly string[]) => Promise<FassungCandidateMatch[]>
+  officeShelfRevisions: (names: readonly string[]) => Promise<RevisionCandidateMatch[]>
 }
 
 /**
@@ -102,15 +102,15 @@ export function createDocumentNameProbeClient(
         : {}
     const answers = await Promise.all(
       chunks(names).map(async (batch) =>
-        fassungCandidatesResponseSchema.parse(await send(path, { ...extra, names: batch, ...foldersOf(batch) })).candidates
+        revisionCandidatesResponseSchema.parse(await send(path, { ...extra, names: batch, ...foldersOf(batch) })).candidates
       )
     )
     return [...new Map(answers.flat().map((candidate) => [candidate.name, candidate])).values()]
   }
   return {
     project: (projectId, names) => batched(PROJECT_NAME_PROBE_PATH, names, { projectId }),
-    archiv: (names) => batched(ARCHIV_NAME_PROBE_PATH, names, {}),
-    projectFassungen: (projectId, names, landsIn) => candidates(PROJECT_FASSUNG_CANDIDATES_PATH, names, { projectId }, landsIn),
-    archivFassungen: (names) => candidates(ARCHIV_FASSUNG_CANDIDATES_PATH, names, {}),
+    officeShelf: (names) => batched(OFFICE_SHELF_NAME_PROBE_PATH, names, {}),
+    projectRevisions: (projectId, names, landsIn) => candidates(PROJECT_REVISION_CANDIDATES_PATH, names, { projectId }, landsIn),
+    officeShelfRevisions: (names) => candidates(OFFICE_SHELF_REVISION_CANDIDATES_PATH, names, {}),
   }
 }

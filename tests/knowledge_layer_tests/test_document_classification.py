@@ -298,7 +298,7 @@ class TestReconcileImageTags:
     vision model saw a photograph, Foto is added first; what the classifier read
     stays — a photo of a plan is a Foto AND a Grundriss."""
 
-    def test_a_photo_of_a_plan_is_foto_and_grundriss(self):
+    def test_a_photo_of_a_plan_is_foto_and_floor_plan(self):
         result = reconcile_image_tags(
             ["Grundriss", "Brandschutz", "Schallschutz"], content_type="image", segment_types=["photo"]
         )

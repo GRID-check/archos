@@ -56,7 +56,7 @@ import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-revie
 import { useFollowEnd } from '../../hooks/use-follow-end'
 import { AssignPopover } from '../assign-popover'
 import { Composer, type ComposerSend } from './composer'
-import { otherReviewHref } from '../../lib/fassung-links'
+import { otherReviewHref } from '../../lib/revision-links'
 import { MarkBody } from './mark-body'
 import { usePilotiByline } from './piloti-attribution'
 import type { CardSide } from './review-page-layer'
@@ -615,7 +615,7 @@ export function DraftCard({
  * replacements, not the direct successor the notice names; and where a carried
  * mark came from or went on to, linked where the page can open that document.
  */
-function FassungLines({
+function RevisionLines({
   review,
   annotation,
   busy,
@@ -627,7 +627,7 @@ function FassungLines({
   onCarry: () => void
 }): JSX.Element | null {
   const t = useTranslations('files')
-  const replacedBy = review.fassung?.replacedBy ?? null
+  const replacedBy = review.revision?.replacedBy ?? null
   const target = annotation.carryTarget ?? null
   const earlier = !annotation.onCurrentFassung
   const where = typeof window === 'undefined' ? null : window.location
@@ -636,16 +636,16 @@ function FassungLines({
   const lines: JSX.Element[] = []
   if (earlier || (replacedBy && target)) {
     lines.push(
-      <div key="fassung" className="flex flex-col gap-1.5" data-testid="thread-earlier">
+      <div key="revision" className="flex flex-col gap-1.5" data-testid="thread-earlier">
         <p className="flex items-start gap-1.5">
           <History className="mt-px size-3 shrink-0" aria-hidden />
           {earlier
             ? annotation.fassungNumber
               ? // An open one is drawn as a ghost where it stood; a closed one is not drawn.
-                t(isGhostMark(annotation, review.documentId) ? 'review.earlierFassungGhost' : 'review.earlierFassung', {
+                t(isGhostMark(annotation, review.documentId) ? 'review.earlierRevisionGhost' : 'review.earlierRevision', {
                   number: annotation.fassungNumber,
                 })
-              : t('annotations.earlierFassungUnnumbered')
+              : t('annotations.earlierRevisionUnnumbered')
             : t('review.replacedNotice', { name: replacedBy?.filename ?? '' })}
         </p>
         {target && (
@@ -1054,7 +1054,7 @@ export function ThreadCard({
 
   return (
     <ReviewCard placement={placement} testId="review-thread" labelledBy={headerId}>
-      <FassungLines review={review} annotation={annotation} busy={busy} onCarry={() => void act(() => review.carry(annotation))} />
+      <RevisionLines review={review} annotation={annotation} busy={busy} onCarry={() => void act(() => review.carry(annotation))} />
       {walk && proposed && (
         <div className="bg-muted/40 flex items-center gap-2 border-b py-1 pr-1.5 pl-3" data-testid="thread-walk">
           <span className="text-muted-foreground text-[11px] font-medium tabular-nums">

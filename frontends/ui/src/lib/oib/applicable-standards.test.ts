@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { fluchtniveauBand, getApplicableStandards } from './applicable-standards'
+import { escapeLevelBand, getApplicableStandards } from './applicable-standards'
 import type { ProjectProfile, ProjectPrimitiveValue } from '@/lib/project-profile/types'
 
 /** Build a minimal, schema-shaped ProjectProfile from a flat map of fact values. */
@@ -81,7 +81,7 @@ describe('getApplicableStandards', () => {
 const verdictOf = (standards: ReturnType<typeof getApplicableStandards>, code: string) =>
   standards.find((s) => s.code === code)
 
-describe('fluchtniveauBand', () => {
+describe('escapeLevelBand', () => {
   it.each([
     [7, '<=7m'],
     [7.5, '7-11m'],
@@ -90,42 +90,42 @@ describe('fluchtniveauBand', () => {
     [22, '11-22m'],
     [22.5, '>22m'],
   ])('derives the band for %s m from a Bauwerk fluchtniveau_m', (metres, band) => {
-    expect(fluchtniveauBand(profileWith({ 'fluchtniveau_m@bw1': metres }))).toBe(band)
+    expect(escapeLevelBand(profileWith({ 'fluchtniveau_m@bw1': metres }))).toBe(band)
   })
 
-  it('takes the highest fluchtniveau_m across Bauwerke, flat or scoped', () => {
+  it('takes the highest fluchtniveau_m across buildings, flat or scoped', () => {
     expect(
-      fluchtniveauBand(profileWith({ 'fluchtniveau_m@bw1': 5, 'fluchtniveau_m@bw2': 23 }))
+      escapeLevelBand(profileWith({ 'fluchtniveau_m@bw1': 5, 'fluchtniveau_m@bw2': 23 }))
     ).toBe('>22m')
-    expect(fluchtniveauBand(profileWith({ fluchtniveau_m: 9, 'fluchtniveau_m@bw2': 4 }))).toBe(
+    expect(escapeLevelBand(profileWith({ fluchtniveau_m: 9, 'fluchtniveau_m@bw2': 4 }))).toBe(
       '7-11m'
     )
   })
 
   it('keeps a stated flat fluchtniveau over the metres', () => {
-    expect(fluchtniveauBand(profileWith({ fluchtniveau: '<=7m', 'fluchtniveau_m@bw1': 30 }))).toBe(
+    expect(escapeLevelBand(profileWith({ fluchtniveau: '<=7m', 'fluchtniveau_m@bw1': 30 }))).toBe(
       '<=7m'
     )
   })
 
   it('reads an empty stated fluchtniveau as no answer, so the metres still count', () => {
-    expect(fluchtniveauBand(profileWith({ fluchtniveau: '', 'fluchtniveau_m@bw1': 30 }))).toBe(
+    expect(escapeLevelBand(profileWith({ fluchtniveau: '', 'fluchtniveau_m@bw1': 30 }))).toBe(
       '>22m'
     )
   })
 
   it('reads nothing from a use-zone copy, and nothing without metres', () => {
-    expect(fluchtniveauBand(profileWith({ 'fluchtniveau_m@bw1@wohnen': 30 }))).toBeUndefined()
-    expect(fluchtniveauBand(profileWith({ hauptnutzung: 'wohnen' }))).toBeUndefined()
+    expect(escapeLevelBand(profileWith({ 'fluchtniveau_m@bw1@wohnen': 30 }))).toBeUndefined()
+    expect(escapeLevelBand(profileWith({ hauptnutzung: 'wohnen' }))).toBeUndefined()
   })
 
   it('does not read a non-finite metre value', () => {
-    expect(fluchtniveauBand(profileWith({ 'fluchtniveau_m@bw1': 'NaN' }))).toBeUndefined()
+    expect(escapeLevelBand(profileWith({ 'fluchtniveau_m@bw1': 'NaN' }))).toBeUndefined()
   })
 })
 
 describe('getApplicableStandards reads the keys the wizard writes', () => {
-  it('flags OIB 2.3 as a Hochhaus from a Bauwerk fluchtniveau_m above 22 m', () => {
+  it('flags OIB 2.3 as a Hochhaus from a building fluchtniveau_m above 22 m', () => {
     const result = getApplicableStandards(
       profileWith({ gebaeudeklasse: 'GK5', 'fluchtniveau_m@bw1': 22.5 })
     )
@@ -161,14 +161,14 @@ describe('getApplicableStandards reads the keys the wizard writes', () => {
     expect(scoped).toEqual(flat)
   })
 
-  it('takes the highest gebaeudeklasse across Bauwerke', () => {
+  it('takes the highest gebaeudeklasse across buildings', () => {
     const result = getApplicableStandards(
       profileWith({ 'gebaeudeklasse@bw1': '4', 'gebaeudeklasse@bw2': 'GK5' })
     )
     expect(verdictOf(result, 'OIB 2.3')?.status).toBe('check')
   })
 
-  it('takes the highest geschosse_unterirdisch across Bauwerke', () => {
+  it('takes the highest geschosse_unterirdisch across buildings', () => {
     const basement = getApplicableStandards(
       profileWith({ 'geschosse_unterirdisch@bw1': 0, 'geschosse_unterirdisch@bw2': 2 })
     )
@@ -180,7 +180,7 @@ describe('getApplicableStandards reads the keys the wizard writes', () => {
     expect(verdictOf(none, 'OIB 2.2')).toBeUndefined()
   })
 
-  it('reads the one verdict use the Bauwerke share as hauptnutzung', () => {
+  it('reads the one verdict use the buildings share as hauptnutzung', () => {
     const result = getApplicableStandards(
       profileWith({ 'nutzungen@bw1': ['wohnen'], 'nutzungen@bw2': ['wohnen'] })
     )
@@ -197,7 +197,7 @@ describe('getApplicableStandards reads the keys the wizard writes', () => {
     expect(verdictOf(result, 'OIB 2.1')?.status).toBe('check')
   })
 
-  it('leaves hauptnutzung unknown when the Bauwerke name two verdict uses', () => {
+  it('leaves hauptnutzung unknown when the buildings name two verdict uses', () => {
     const result = getApplicableStandards(
       profileWith({ 'nutzungen@bw1': ['wohnen'], 'nutzungen@bw2': ['buero'] })
     )

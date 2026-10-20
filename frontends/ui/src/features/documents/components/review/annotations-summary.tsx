@@ -102,12 +102,12 @@ export function AnnotationsSummary({
                 {!annotation.onCurrentFassung && (
                   <span
                     className="text-muted-foreground mt-0.5 block text-[11px] italic"
-                    title={t('annotations.earlierFassungHint')}
+                    title={t('annotations.earlierRevisionHint')}
                     data-testid="annotations-summary-earlier"
                   >
                     {annotation.fassungNumber
-                      ? t('annotations.earlierFassung', { number: annotation.fassungNumber })
-                      : t('annotations.earlierFassungUnnumbered')}
+                      ? t('annotations.earlierRevision', { number: annotation.fassungNumber })
+                      : t('annotations.earlierRevisionUnnumbered')}
                   </span>
                 )}
               </span>

@@ -17,8 +17,8 @@ import pytest
 
 from aiq_agent.knowledge.collection_pages import read_chunks
 from aiq_agent.knowledge.collection_pages import read_pages
-from aiq_agent.knowledge.fassung_diff import chunk_from_store
-from aiq_agent.knowledge.fassung_diff import diff_fassungen
+from aiq_agent.knowledge.revision_diff import chunk_from_store
+from aiq_agent.knowledge.revision_diff import diff_revisions
 from sources.knowledge_layer.tests import qdrant_testing as qt
 
 LINES = [f"Zeile {i}: Brandabschnitt {i} hat Feuerwiderstand REI {30 + i}" for i in range(12)]
@@ -38,7 +38,7 @@ def _ingested_records(file_name: str, lines: list[str], page: str = "1"):
     return ingestor._embedded_records(documents, chunk_size=1024, chunk_overlap=128)
 
 
-def _fassung(collection: str, file_name: str):
+def _revision(collection: str, file_name: str):
     stored = read_chunks(collection, file_name) or []
     return [chunk for text, meta in stored if (chunk := chunk_from_store(text, meta)) is not None]
 
@@ -49,13 +49,13 @@ def test_ingestion_numbers_each_chunk_by_its_place_in_the_file():
     assert [record.ordinal for record in records] == list(range(len(LINES)))
 
 
-def test_two_identical_fassungen_with_twelve_chunks_on_one_page_diff_as_unchanged(qdrant_store):  # noqa: ARG001
+def test_two_identical_revisions_with_twelve_chunks_on_one_page_diff_as_unchanged(qdrant_store):  # noqa: ARG001
     qt.write("proj_order", _ingested_records("plan_A.pdf", LINES))
     qt.write("proj_order", _ingested_records("plan_B.pdf", LINES))
 
     assert [text for text, _meta in read_chunks("proj_order", "plan_A.pdf")] == LINES
-    diff = diff_fassungen(
-        _fassung("proj_order", "plan_A.pdf"), _fassung("proj_order", "plan_B.pdf"), older_facts=None, newer_facts=None
+    diff = diff_revisions(
+        _revision("proj_order", "plan_A.pdf"), _revision("proj_order", "plan_B.pdf"), older_facts=None, newer_facts=None
     )
     assert diff.pages == ()
     assert diff.unchanged_pages == 1

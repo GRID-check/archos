@@ -358,7 +358,7 @@ class TestConversationGraph:
             ConversationState(messages=[HumanMessage(content="welche Dateien hast du in der Büroablage")]),
             thread_id="t",
         )
-        assert seen["shelf"] == Shelf.ARCHIV
+        assert seen["shelf"] == Shelf.OFFICE_SHELF
 
         await turn(
             agent,

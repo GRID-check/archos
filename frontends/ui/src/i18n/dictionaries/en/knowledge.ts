@@ -104,9 +104,9 @@ export const knowledge = {
     close: 'Close “Handled in your office”',
     backToSource: 'Back to the passage',
     found: '{count, plural, one {Found in # project} other {Found in # projects}}',
-    foundWithArchiv:
+    foundWithOfficeShelf:
       '{count, plural, one {Found in # project and the Büroablage} other {Found in # projects and the Büroablage}}',
-    foundOnlyArchiv: 'Found in the Büroablage',
+    foundOnlyOfficeShelf: 'Found in the Büroablage',
     loading: 'Piloti is checking your projects…',
     emptyTitle: 'Not handled in your office yet',
     emptyBody:
@@ -117,9 +117,9 @@ export const knowledge = {
     heldBody: 'Once screening is done, Piloti can check your projects.',
     retry: 'Try again',
     groupCurrent: 'This project',
-    groupArchiv: 'Büroablage',
+    groupOfficeShelf: 'Büroablage',
     groupClosed: 'closed',
-    standDate: 'Dated {date}',
+    datedOn: 'Dated {date}',
     page: 'p. {page}',
     open: 'Open',
     openPassage: 'Open {document}, page {page}',

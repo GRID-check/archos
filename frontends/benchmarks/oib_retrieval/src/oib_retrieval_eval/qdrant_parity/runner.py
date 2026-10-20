@@ -628,12 +628,12 @@ def load_inputs(embedder_name: str, cache_dir: Path) -> Inputs:
 
     fixtures = corpus.package_root() / "fixtures"
     golden = qrels.load_golden(fixtures / "oib_retrieval_golden.json")
-    punkt_index = qrels.load_punkt_index(fixtures / "punkt_index.json")
+    clause_index = qrels.load_clause_index(fixtures / "clause_index.json")
     excluded = corpus.production_retrieval_settings().exclude_file_names
     inputs = Inputs(
-        chunks=indexed_chunks(corpus.build_arm(corpus.ARM_PUNKT)),
+        chunks=indexed_chunks(corpus.build_arm(corpus.ARM_CLAUSE)),
         doc_vectors=np.zeros((0, 0), dtype=np.float32),
-        judgements=list(qrels.build_judgements(golden, punkt_index)),
+        judgements=list(qrels.build_judgements(golden, clause_index)),
         overview=overview.load_golden(overview.default_golden_path()),
         hard_cases=evaluation.load_hard_cases(fixtures / "qdrant_lexical_hard_cases.json"),
         excluded=frozenset(excluded),

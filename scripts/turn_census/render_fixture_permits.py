@@ -7,7 +7,7 @@ strict schema reading the document, so the fixture's records must too: a record
 written by hand would test the agent against what its author thinks the pen
 says, and hide the day the pen reads a Bescheid differently. This runs the pen
 over every document of ``office.json`` the ingest's own type decision tagged
-``Bescheid`` (``is_bescheid``) and writes what it returned.
+``Bescheid`` (``is_permit_decision``) and writes what it returned.
 
     PYTHONPATH=src .venv/bin/python scripts/turn_census/render_fixture_permits.py
 
@@ -37,7 +37,7 @@ from backfill_permit_records import build_extraction_llm  # noqa: E402
 from aiq_agent.common.openrouter import PLATFORM_FIXED  # noqa: E402
 from aiq_agent.common.openrouter import pin_chat_model  # noqa: E402
 from aiq_agent.knowledge.permit_extraction import extract_permit_record  # noqa: E402
-from aiq_agent.knowledge.permit_extraction import is_bescheid  # noqa: E402
+from aiq_agent.knowledge.permit_extraction import is_permit_decision  # noqa: E402
 from aiq_agent.knowledge.permit_extraction import llm_model_name  # noqa: E402
 from aiq_agent.knowledge.permit_extraction import pages_with_markers  # noqa: E402
 
@@ -57,7 +57,7 @@ def render(llm: object, office: dict) -> tuple[dict[str, dict], list[str]]:
     missing: list[str] = []
     for project in office["projects"]:
         for document in project.get("documents") or []:
-            if not is_bescheid(document.get("tags")):
+            if not is_permit_decision(document.get("tags")):
                 continue
             text = pages_with_markers([(document.get("page", 1), document["text"])])
             record = extract_permit_record(text, llm, file_name=document["filename"])

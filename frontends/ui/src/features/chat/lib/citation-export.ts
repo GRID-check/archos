@@ -24,7 +24,7 @@
  */
 
 import type { CitationRef } from './citations'
-import { toCslItem, toCslJson, toFachtextList, toQuoteList } from './source-citation'
+import { toCslItem, toCslJson, toTechnicalTextList, toQuoteList } from './source-citation'
 
 /** The formats the source block can hand out. */
 export type CitationFormat = 'quotes' | 'fachtext' | 'apa' | 'bibtex' | 'ris' | 'csl-json'
@@ -64,7 +64,7 @@ export const renderCitations = async (
   if (refs.length === 0) return ''
   if (format === 'quotes') return toQuoteList(refs, now)
   if (format === 'csl-json') return toCslJson(refs, now)
-  if (!SERVER_RENDERED.has(format)) return toFachtextList(refs, now)
+  if (!SERVER_RENDERED.has(format)) return toTechnicalTextList(refs, now)
 
   try {
     const response = await fetch('/api/citations/format', {
@@ -75,12 +75,12 @@ export const renderCitations = async (
         items: refs.map((ref) => toCslItem(ref, now)),
       }),
     })
-    if (!response.ok) return toFachtextList(refs, now)
+    if (!response.ok) return toTechnicalTextList(refs, now)
     const data = (await response.json()) as { text?: unknown }
     return typeof data.text === 'string' && data.text.trim()
       ? data.text
-      : toFachtextList(refs, now)
+      : toTechnicalTextList(refs, now)
   } catch {
-    return toFachtextList(refs, now)
+    return toTechnicalTextList(refs, now)
   }
 }

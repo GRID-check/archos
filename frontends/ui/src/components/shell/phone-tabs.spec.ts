@@ -12,8 +12,8 @@ import {
 } from './phone-tabs'
 import { projectSection } from './project-sections'
 
-const ALL = { canAccessArchiv: true, canAccessInbox: true }
-const NONE = { canAccessArchiv: false, canAccessInbox: false }
+const ALL = { canAccessOfficeShelf: true, canAccessInbox: true }
+const NONE = { canAccessOfficeShelf: false, canAccessInbox: false }
 const keys = (tabs: { key: string }[]): string[] => tabs.map((tab) => tab.key)
 const lit = (tabs: { key: string; active: boolean }[]): string[] =>
   tabs.filter((tab) => tab.active).map((tab) => tab.key)
@@ -121,8 +121,8 @@ describe('above a project', () => {
   })
 
   it('points the welcome tour at its doorways', () => {
-    const [, archiv, inbox] = orgPhoneTabs('/app/projects', ALL)
-    expect(archiv?.tourAnchor).toBe('archiv')
+    const [, officeShelf, inbox] = orgPhoneTabs('/app/projects', ALL)
+    expect(officeShelf?.tourAnchor).toBe('office-shelf')
     expect(inbox?.tourAnchor).toBe('inbox')
   })
 })
@@ -176,9 +176,9 @@ describe('the phone header back', () => {
 describe('the Postfach looks like itself', () => {
   it('wears one glyph everywhere, and not the Büroablage’s box beside it', () => {
     const inboxTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'inbox')
-    const archivTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'archiv')
+    const officeShelfTab = orgPhoneTabs('/app/projects', ALL).find((tab) => tab.key === 'archiv')
     expect(inboxTab?.icon).toBe(projectSection('inbox')?.icon)
-    expect(inboxTab?.icon).not.toBe(archivTab?.icon)
+    expect(inboxTab?.icon).not.toBe(officeShelfTab?.icon)
     expect(projectSection('inbox')?.icon).not.toBe(projectSection('archiv')?.icon)
     expect(projectSection('inbox')?.icon.displayName).toBe('Bell')
   })

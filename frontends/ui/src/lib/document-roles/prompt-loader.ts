@@ -42,11 +42,11 @@ async function readerFor(
  */
 export function recommendedSlotsFor(profile: Awaited<ReturnType<typeof findProjectProfile>>): {
   recommended: RecommendedSlot[]
-  bauwerkNames: Record<string, string>
+  buildingNames: Record<string, string>
 } {
-  const bauwerkNames: Record<string, string> = {}
-  if (!profile) return { recommended: [], bauwerkNames }
-  const { answers, bauwerke } = answersFromProfile(profile, projectIntakeDefinitionV1)
+  const buildingNames: Record<string, string> = {}
+  if (!profile) return { recommended: [], buildingNames }
+  const { answers, buildings } = answersFromProfile(profile, projectIntakeDefinitionV1)
   // Project-scope recommendations once, then each building's own. A
   // `bauwerk` condition read without an instance resolves against the
   // project-global answer, which would recommend Bestandspläne for every
@@ -60,13 +60,13 @@ export function recommendedSlotsFor(profile: Awaited<ReturnType<typeof findProje
     collected.set(`${role}@${scopeInstanceId ?? ''}`, { role, scopeInstanceId })
   }
   for (const role of recommendedRoles(answers)) add(role, null)
-  for (const bauwerk of bauwerke) {
-    bauwerkNames[bauwerk.id] = bauwerk.name
-    for (const role of recommendedRoles(answers, bauwerk.id)) {
-      add(role, documentRoleDefinition(role).scope === 'bauwerk' ? bauwerk.id : null)
+  for (const building of buildings) {
+    buildingNames[building.id] = building.name
+    for (const role of recommendedRoles(answers, building.id)) {
+      add(role, documentRoleDefinition(role).scope === 'bauwerk' ? building.id : null)
     }
   }
-  return { recommended: [...collected.values()], bauwerkNames }
+  return { recommended: [...collected.values()], buildingNames }
 }
 
 export interface MissingDocument {
@@ -74,7 +74,7 @@ export interface MissingDocument {
   /** The role's label, e.g. „Energieausweis". */
   label: string
   /** The building it is missing for, when the role is per building. */
-  bauwerkName: string | null
+  buildingName: string | null
 }
 
 /**
@@ -95,11 +95,11 @@ export async function loadMissingDocuments(
       readerFor(projectId, organizationId).then((reader) => listProjectDocumentRoles(projectId, reader)),
       findProjectProfile(projectId, organizationId),
     ])
-    const { recommended, bauwerkNames } = recommendedSlotsFor(profile)
+    const { recommended, buildingNames } = recommendedSlotsFor(profile)
     return missingSlots(bindings, recommended).map((slot) => ({
       role: slot.role,
       label: documentRoleDefinition(slot.role).label,
-      bauwerkName: slot.scopeInstanceId ? (bauwerkNames[slot.scopeInstanceId] ?? null) : null,
+      buildingName: slot.scopeInstanceId ? (buildingNames[slot.scopeInstanceId] ?? null) : null,
     }))
   } catch {
     return null
@@ -116,8 +116,8 @@ export async function loadDocumentRolesPromptSection(
       findProjectProfile(projectId, organizationId),
     ])
 
-    const { recommended, bauwerkNames } = recommendedSlotsFor(profile)
-    return buildDocumentRolesSection(bindings, recommended, bauwerkNames)
+    const { recommended, buildingNames } = recommendedSlotsFor(profile)
+    return buildDocumentRolesSection(bindings, recommended, buildingNames)
   } catch {
     return ''
   }

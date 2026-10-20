@@ -9,7 +9,7 @@ skipped, and a held or in-flight name is never named; when the job store cannot 
 from __future__ import annotations
 
 import pytest
-from knowledge_layer.llamaindex import fassungen
+from knowledge_layer.llamaindex import revisions
 
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import FileInfo
@@ -32,7 +32,7 @@ class TestByTheFileNames:
     def test_the_current_member_gets_the_newest_older_one(self):
         rows = [_row("Grundriss_EG_Index_A.pdf"), _row(B), _row(C)]
 
-        derived = fassungen.derive_suggestions(rows, _held())
+        derived = revisions.derive_suggestions(rows, _held())
 
         assert list(derived) == [C]
         assert derived[C] == {
@@ -44,29 +44,29 @@ class TestByTheFileNames:
 
     def test_the_date_orders_a_series_without_an_index(self):
         rows = [_row("Statik_2026-05-01.pdf"), _row("Statik_2026-08-14.pdf")]
-        derived = fassungen.derive_suggestions(rows, _held())
+        derived = revisions.derive_suggestions(rows, _held())
         assert derived["Statik_2026-08-14.pdf"]["of"] == "Statik_2026-05-01.pdf"
         assert derived["Statik_2026-08-14.pdf"]["reason"] == "Index/Datum im Dateinamen: 14.08.2026 nach 01.05.2026"
 
     def test_one_state_twice_or_two_formats_are_no_series(self):
-        assert fassungen.derive_suggestions([_row("a_Index_B.pdf"), _row("a_Index_B.PDF")], _held()) == {}
-        assert fassungen.derive_suggestions([_row("a_Index_B.pdf"), _row("a_Index_C.dwg")], _held()) == {}
+        assert revisions.derive_suggestions([_row("a_Index_B.pdf"), _row("a_Index_B.PDF")], _held()) == {}
+        assert revisions.derive_suggestions([_row("a_Index_B.pdf"), _row("a_Index_C.dwg")], _held()) == {}
 
     def test_a_pair_a_person_dismissed_is_skipped(self):
         dismissed = {"of": B, "confidence": 0.9, "reason": "x", "basis": "name", "dismissed": True}
-        assert fassungen.derive_suggestions([_row(B), _row(C, revision_suggestion=dismissed)], _held()) == {}
+        assert revisions.derive_suggestions([_row(B), _row(C, revision_suggestion=dismissed)], _held()) == {}
 
     def test_a_dismissal_of_another_pair_does_not_block(self):
         elsewhere = {"of": "Anderes.pdf", "confidence": 0.9, "reason": "x", "basis": "name", "dismissed": True}
-        derived = fassungen.derive_suggestions([_row(B), _row(C, revision_suggestion=elsewhere)], _held())
+        derived = revisions.derive_suggestions([_row(B), _row(C, revision_suggestion=elsewhere)], _held())
         assert derived[C]["of"] == B
 
     def test_a_stored_open_suggestion_speaks_for_the_file(self):
         stored = {"of": "Entwurf.pdf", "confidence": 0.8, "reason": "x", "basis": "content", "dismissed": False}
-        assert fassungen.derive_suggestions([_row(B), _row(C, revision_suggestion=stored)], _held()) == {}
+        assert revisions.derive_suggestions([_row(B), _row(C, revision_suggestion=stored)], _held()) == {}
 
     def test_a_linked_pair_is_skipped(self):
-        assert fassungen.derive_suggestions([_row(B, superseded_by=C), _row(C, supersedes=[B])], _held()) == {}
+        assert revisions.derive_suggestions([_row(B, superseded_by=C), _row(C, supersedes=[B])], _held()) == {}
 
     def test_an_older_member_already_replaced_by_another_is_passed_over(self):
         rows = [
@@ -74,10 +74,10 @@ class TestByTheFileNames:
             _row(B, superseded_by="Sonst.pdf"),
             _row(C),
         ]
-        assert fassungen.derive_suggestions(rows, _held())[C]["of"] == "Grundriss_EG_Index_A.pdf"
+        assert revisions.derive_suggestions(rows, _held())[C]["of"] == "Grundriss_EG_Index_A.pdf"
 
     def test_a_current_member_that_is_itself_replaced_gets_nothing(self):
-        assert fassungen.derive_suggestions([_row(B), _row(C, superseded_by="Neu.pdf")], _held()) == {}
+        assert revisions.derive_suggestions([_row(B), _row(C, superseded_by="Neu.pdf")], _held()) == {}
 
 
 class TestByTheTitleBlocks:
@@ -87,7 +87,7 @@ class TestByTheTitleBlocks:
             _row("Entwurf neu.pdf", {"document_number": "A 101", "revision": "C"}),
         ]
 
-        derived = fassungen.derive_suggestions(rows, _held())
+        derived = revisions.derive_suggestions(rows, _held())
 
         assert list(derived) == ["Entwurf neu.pdf"]
         assert derived["Entwurf neu.pdf"]["basis"] == "title_block"
@@ -100,7 +100,7 @@ class TestByTheTitleBlocks:
             _row(C, {"document_number": "A-101", "revision": "B"}),
             _row(B, {"document_number": "A-101", "revision": "C"}),
         ]
-        derived = fassungen.derive_suggestions(rows, _held())
+        derived = revisions.derive_suggestions(rows, _held())
         assert list(derived) == [B] and derived[B]["of"] == C and derived[B]["basis"] == "title_block"
 
     def test_an_index_on_one_side_only_is_not_a_guess(self):
@@ -108,24 +108,24 @@ class TestByTheTitleBlocks:
             _row("a.pdf", {"document_number": "A-101"}),
             _row("b.pdf", {"document_number": "A-101", "revision": "B"}),
         ]
-        assert fassungen.derive_suggestions(rows, _held()) == {}
+        assert revisions.derive_suggestions(rows, _held()) == {}
 
     def test_the_same_state_twice_is_a_copy(self):
         facts = {"document_number": "A-101", "revision": "B"}
-        assert fassungen.derive_suggestions([_row("a.pdf", facts), _row("b.pdf", facts)], _held()) == {}
+        assert revisions.derive_suggestions([_row("a.pdf", facts), _row("b.pdf", facts)], _held()) == {}
 
     def test_a_dismissed_or_linked_pair_is_skipped(self):
         older = {"document_number": "A-101", "revision": "B"}
         newer = {"document_number": "A-101", "revision": "C"}
         dismissed = {"of": "alt.pdf", "confidence": 0.9, "reason": "x", "basis": "title_block", "dismissed": True}
         assert (
-            fassungen.derive_suggestions(
+            revisions.derive_suggestions(
                 [_row("alt.pdf", older), _row("neu.pdf", newer, revision_suggestion=dismissed)], _held()
             )
             == {}
         )
         assert (
-            fassungen.derive_suggestions(
+            revisions.derive_suggestions(
                 [_row("alt.pdf", older, superseded_by="neu.pdf"), _row("neu.pdf", newer)], _held()
             )
             == {}
@@ -136,27 +136,27 @@ class TestByTheTitleBlocks:
             _row(B, {"document_number": "A-101", "revision": "B"}),
             _row(C, {"document_number": "A-101", "revision": "C"}),
         ]
-        assert fassungen.derive_suggestions(rows, _held())[C]["basis"] == "title_block"
+        assert revisions.derive_suggestions(rows, _held())[C]["basis"] == "title_block"
 
 
 class TestHeldNames:
     def test_a_held_name_is_never_named(self):
         rows = [_row(B), _row(C)]
-        assert fassungen.derive_suggestions(rows, _held([B])) == {}
-        assert fassungen.derive_suggestions(rows, _held([C])) == {}
+        assert revisions.derive_suggestions(rows, _held([B])) == {}
+        assert revisions.derive_suggestions(rows, _held([C])) == {}
 
     def test_a_held_file_is_taken_out_before_the_pair_is_chosen(self):
         rows = [_row("Grundriss_EG_Index_A.pdf"), _row(B), _row(C)]
-        assert fassungen.derive_suggestions(rows, _held([B]))[C]["of"] == "Grundriss_EG_Index_A.pdf"
+        assert revisions.derive_suggestions(rows, _held([B]))[C]["of"] == "Grundriss_EG_Index_A.pdf"
 
     def test_when_the_job_store_cannot_be_read_nothing_is_suggested(self):
-        assert fassungen.derive_suggestions([_row(B), _row(C)], lambda: None) == {}
+        assert revisions.derive_suggestions([_row(B), _row(C)], lambda: None) == {}
 
     def test_the_job_store_is_not_read_when_there_is_nothing_to_suggest(self):
         def boom():
             raise AssertionError("read")
 
-        assert fassungen.derive_suggestions([_row("a.pdf"), _row("b.pdf")], boom) == {}
+        assert revisions.derive_suggestions([_row("a.pdf"), _row("b.pdf")], boom) == {}
 
 
 def _file(name: str) -> FileInfo:
@@ -198,6 +198,6 @@ class TestInTheListing:
         from aiq_api.routes.documents import _held_names_of
 
         seen = []
-        monkeypatch.setattr(fassungen, "held_file_names", lambda collection: seen.append(collection) or {"x.pdf"})
+        monkeypatch.setattr(revisions, "held_file_names", lambda collection: seen.append(collection) or {"x.pdf"})
         assert _held_names_of("proj_a")() == {"x.pdf"}
         assert seen == ["proj_a"]

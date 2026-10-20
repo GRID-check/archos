@@ -24,12 +24,12 @@ class TestResolveOibApplicability:
         for code in ("OIB 1", "OIB 2", "OIB 3"):
             assert _by_code({"hauptnutzung": "wohnen"})[code].verdict == "required"
 
-    def test_gk5_undefined_fluchtniveau_flags_2_3_check(self):
+    def test_gk5_undefined_escape_level_flags_2_3_check(self):
         verdicts = _by_code({"hauptnutzung": "wohnen", "gebaeudeklasse": "GK5"})
         assert verdicts["OIB 2.3"].verdict == "check"
         assert "22 m" in verdicts["OIB 2.3"].reason_de
 
-    def test_fluchtniveau_over_22m_makes_2_3_required_hochhaus(self):
+    def test_escape_level_over_22m_makes_2_3_required_high_rise(self):
         verdicts = _by_code({"hauptnutzung": "wohnen", "gebaeudeklasse": "GK5", "fluchtniveau": ">22m"})
         assert verdicts["OIB 2.3"].verdict == "required"
         assert "Hochhaus" in verdicts["OIB 2.3"].reason_de
@@ -205,40 +205,40 @@ class TestRenderProjectBlock:
         assert "Kleingartengebiet" not in block
 
 
-class TestFluchtniveauBand:
+class TestEscapeLevelBand:
     @pytest.mark.parametrize(
         ("metres", "band"),
         [(7, "<=7m"), (7.5, "7-11m"), (11, "7-11m"), (11.5, "11-22m"), (22, "11-22m"), (22.5, ">22m")],
     )
-    def test_band_from_bauwerk_metres(self, metres, band):
-        assert applicability.fluchtniveau_band({"fluchtniveau_m@bw1": metres}) == band
+    def test_band_from_building_metres(self, metres, band):
+        assert applicability.escape_level_band({"fluchtniveau_m@bw1": metres}) == band
 
-    def test_highest_metres_across_bauwerke(self):
-        assert applicability.fluchtniveau_band({"fluchtniveau_m@bw1": 5, "fluchtniveau_m@bw2": 23}) == ">22m"
-        assert applicability.fluchtniveau_band({"fluchtniveau_m": 9, "fluchtniveau_m@bw2": 4}) == "7-11m"
+    def test_highest_metres_across_buildings(self):
+        assert applicability.escape_level_band({"fluchtniveau_m@bw1": 5, "fluchtniveau_m@bw2": 23}) == ">22m"
+        assert applicability.escape_level_band({"fluchtniveau_m": 9, "fluchtniveau_m@bw2": 4}) == "7-11m"
 
     def test_stated_flat_band_wins(self):
-        assert applicability.fluchtniveau_band({"fluchtniveau": "<=7m", "fluchtniveau_m@bw1": 30}) == "<=7m"
+        assert applicability.escape_level_band({"fluchtniveau": "<=7m", "fluchtniveau_m@bw1": 30}) == "<=7m"
 
     def test_empty_stated_band_is_no_answer(self):
-        assert applicability.fluchtniveau_band({"fluchtniveau": "", "fluchtniveau_m@bw1": 30}) == ">22m"
+        assert applicability.escape_level_band({"fluchtniveau": "", "fluchtniveau_m@bw1": 30}) == ">22m"
 
     def test_zone_copy_and_missing_metres_are_not_read(self):
-        assert applicability.fluchtniveau_band({"fluchtniveau_m@bw1@wohnen": 30}) is None
-        assert applicability.fluchtniveau_band({"hauptnutzung": "wohnen"}) is None
+        assert applicability.escape_level_band({"fluchtniveau_m@bw1@wohnen": 30}) is None
+        assert applicability.escape_level_band({"hauptnutzung": "wohnen"}) is None
 
     def test_non_finite_metres_are_not_read(self):
-        assert applicability.fluchtniveau_band({"fluchtniveau_m@bw1": "nan"}) is None
+        assert applicability.escape_level_band({"fluchtniveau_m@bw1": "nan"}) is None
 
 
 class TestWizardScopedFacts:
-    def test_scoped_metres_above_22_flag_hochhaus(self):
+    def test_scoped_metres_above_22_flag_high_rise(self):
         assert _by_code({"gebaeudeklasse": "GK5", "fluchtniveau_m@bw1": 22.5})["OIB 2.3"].verdict == "required"
 
     def test_exactly_22_metres_does_not_flag_2_3(self):
         assert "OIB 2.3" not in _by_code({"gebaeudeklasse": "GK5", "fluchtniveau_m@bw1": 22})
 
-    def test_scoped_gebaeudeklasse_accepts_bare_number_and_gk_prefix(self):
+    def test_scoped_building_class_accepts_bare_number_and_gk_prefix(self):
         assert _by_code({"gebaeudeklasse@bw1": 5})["OIB 2.3"].verdict == "check"
         assert _by_code({"gebaeudeklasse@bw1": "5"})["OIB 2.3"].verdict == "check"
         assert _by_code({"gebaeudeklasse@bw1": "GK5"})["OIB 2.3"].verdict == "check"
@@ -249,17 +249,17 @@ class TestWizardScopedFacts:
         assert bare == prefixed
         assert "OIB 2.3" not in _by_code({"gebaeudeklasse@bw1": "4"})
 
-    def test_highest_gebaeudeklasse_across_bauwerke(self):
+    def test_highest_building_class_across_buildings(self):
         verdicts = _by_code({"gebaeudeklasse@bw1": "4", "gebaeudeklasse@bw2": "GK5"})
         assert verdicts["OIB 2.3"].verdict == "check"
 
-    def test_highest_basement_count_across_bauwerke(self):
+    def test_highest_basement_count_across_buildings(self):
         assert _by_code({"geschosse_unterirdisch@bw1": 0, "geschosse_unterirdisch@bw2": 2})["OIB 2.2"].verdict == (
             "check"
         )
         assert "OIB 2.2" not in _by_code({"geschosse_unterirdisch@bw1": 0, "geschosse_unterirdisch@bw2": 0})
 
-    def test_one_verdict_use_shared_by_bauwerke_is_hauptnutzung(self):
+    def test_one_verdict_use_shared_by_buildings_is_main_use(self):
         verdicts = _by_code({"nutzungen@bw1": ["wohnen"], "nutzungen@bw2": ["wohnen"]})
         assert "OIB 2.1" not in verdicts
         assert verdicts["OIB 5"].verdict == "required"
@@ -272,12 +272,12 @@ class TestWizardScopedFacts:
     def test_produktion_alone_names_no_verdict_use(self):
         assert _by_code({"nutzungen@bw1": ["produktion"]})["OIB 2.1"].verdict == "check"
 
-    def test_two_verdict_uses_leave_hauptnutzung_unknown(self):
+    def test_two_verdict_uses_leave_main_use_unknown(self):
         verdicts = _by_code({"nutzungen@bw1": ["wohnen"], "nutzungen@bw2": ["buero"]})
         assert verdicts["OIB 2.1"].verdict == "check"
         assert verdicts["OIB 5"].verdict == "likely"
 
-    def test_stated_hauptnutzung_beats_nutzungen(self):
+    def test_stated_main_use_beats_uses(self):
         assert _by_code({"hauptnutzung": "lager", "nutzungen@bw1": ["wohnen"]})["OIB 2.1"].verdict == "required"
 
 
@@ -298,7 +298,7 @@ class TestWizardPromptText:
         assert verdicts["OIB 2.2"].verdict == "check"
         assert verdicts["OIB 2.1"].verdict == "check"  # garage names no verdict use
 
-    def test_comma_joined_nutzungen_with_two_verdict_uses_is_ambiguous(self):
+    def test_comma_joined_uses_with_two_verdict_uses_is_ambiguous(self):
         text = "PROJECT_CONTEXT v1\nconfirmed:\n- nutzungen@bw1=wohnen,buero\n"
         verdicts = _by_code(facts_from_project_context(text))
         assert verdicts["OIB 2.1"].verdict == "check"

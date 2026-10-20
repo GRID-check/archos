@@ -29,7 +29,7 @@ async def test_nothing_matched_anywhere_still_says_what_was_searched(lookup, mon
     assert "Retry once" in output
 
 
-async def test_an_unresolved_bundesland_is_the_first_thing_the_retry_asks_for(lookup):
+async def test_an_unresolved_federal_state_is_the_first_thing_the_retry_asks_for(lookup):
     output = await lookup.run(question="Was verlangt die Bauordnung?")
 
     assert "No Bundesland was resolved" in output

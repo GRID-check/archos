@@ -67,12 +67,12 @@ interface FollowUpsRailProps {
   /**
    * Offer „Als Aktenvermerk schreiben" beside the questions (ledger 23). The
    * CONDITION is decided by the caller through
-   * `features/chat/lib/aktenvermerk-chip`, because it depends on the turn (its
+   * `features/chat/lib/file-note-chip`, because it depends on the turn (its
    * answer kind, its project, the length of its body) and this component is
    * handed one message's worth of chips; the COPY is decided here, because it
    * is chat copy and this is the chat feature.
    */
-  offerAktenvermerk?: boolean
+  offerFileNote?: boolean
   /**
    * Whether the rail arrives with its entrance. Only a rail that lands under
    * a reader who is already reading earns one; on a restored or reopened
@@ -85,26 +85,26 @@ interface FollowUpsRailProps {
 
 export const FollowUpsRail: FC<FollowUpsRailProps> = ({
   items = NO_ITEMS,
-  offerAktenvermerk = false,
+  offerFileNote = false,
   animateIn = true,
 }) => {
   const t = useTranslations('chat')
   const actions = useMemo<FollowUpAction[]>(
     () =>
-      offerAktenvermerk
+      offerFileNote
         ? [
             {
               key: 'aktenvermerk',
-              label: t('cards.followUps.aktenvermerk'),
+              label: t('cards.followUps.fileNote'),
               // The label is the offer; this is the ask. A chip that typed its
               // own label would send „Als Aktenvermerk schreiben" as a message,
               // which is a fragment and not a request.
-              prefill: t('cards.followUps.aktenvermerkPrefill'),
+              prefill: t('cards.followUps.fileNotePrefill'),
               icon: PenLine,
             },
           ]
         : [],
-    [offerAktenvermerk, t]
+    [offerFileNote, t]
   )
 
   // Checked HERE and not left to `FollowUpChips`, which would return null from

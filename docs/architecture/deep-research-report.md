@@ -65,14 +65,14 @@ Prüfpunkt in a fixed shape, which is also what the findings extraction reads.
 
 The plan card names documents as well as sections. The fence carries the turn's
 inventory (`unterlagen`, the project's and the Archiv's documents by name,
-title and shelf), and a dialog over the card (`UnterlagenDialog.tsx`, mode
+title and shelf), and a dialog over the card (`DocumentsDialog.tsx`, mode
 `pick`) lets the reader mark each one:
 
 - **Grundlage** — read in full, whatever else the research finds. The planner
   is told to plan one dedicated query per document; the finalizer marks any it
   never opened (`## Nicht gelesene Unterlagen`, degraded token
   `grundlage_unread`), and the block's receipt lists each one as read, with
-  the loci the rounds reached, or unread (`run-vocabulary.grundlageReceipt`).
+  the loci the rounds reached, or unread (`run-vocabulary.basisReceipt`).
 - **Ausgeschlossen** — never used, not even when a search returns it. Enforced
   in `SourceRegistryMiddleware`, on the tool result, not in a prompt: a
   passage from an excluded file is refused as a source (a citation to it is

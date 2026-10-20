@@ -21,7 +21,7 @@ import { FILENAME_LOOKUP_MAX_NAMES } from './filename-lookup'
 
 const names = z.array(z.string().min(1).max(1024)).min(1).max(FILENAME_LOOKUP_MAX_NAMES)
 
-export const archivByNameRequestSchema = z.object({ names })
+export const officeShelfByNameRequestSchema = z.object({ names })
 export const projectByNameRequestSchema = z.object({ projectId: z.string().min(1), names })
 
 /**

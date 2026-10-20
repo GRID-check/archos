@@ -12,7 +12,7 @@
  *     by hand against the plan (three external walls, two partitions, two
  *     curtain walls, a ground slab, a ceiling slab, four windows, three doors).
  *
- *   - `haus-mit-raeumen.ifc` declares six of them, and carries no geometric
+ *   - `house-with-rooms.ifc` declares six of them, and carries no geometric
  *     representation at all. It is the fixture for honesty rule 2: a declared
  *     relation is never duplicated by a measured one. Because the file has no
  *     shapes, the duplication test needs boxes — so it gets a hand-built
@@ -196,15 +196,15 @@ describe('Ifc4_SampleHouse — an export with no space boundaries at all', () =>
   })
 })
 
-describe('haus-mit-raeumen — an export that states its boundaries', () => {
+describe('house-with-rooms — an export that states its boundaries', () => {
   let graph: BuildingGraph
 
   beforeAll(async () => {
-    graph = await buildGraph(bytesOf('haus-mit-raeumen.ifc'))
+    graph = await buildGraph(bytesOf('house-with-rooms.ifc'))
   }, 120000)
 
   it('derives nothing from a file with no shapes, and says which spaces it skipped', async () => {
-    const geometry = await runGeometryPass(bytesOf('haus-mit-raeumen.ifc'), graph)
+    const geometry = await runGeometryPass(bytesOf('house-with-rooms.ifc'), graph)
     const derived = deriveBoundaries(graph, geometry)
 
     expect(derived.edges).toHaveLength(0)
@@ -215,7 +215,7 @@ describe('haus-mit-raeumen — an export that states its boundaries', () => {
 
     const merged = withDerivedBoundaries(graph, geometry)
     expect(merged.stats.edgesByKind['interfaceOf']).toBe(6)
-    expect(bounds(merged, IDS.wohnzimmer).provenance).toBe('declared')
+    expect(bounds(merged, IDS.livingRoom).provenance).toBe('declared')
   })
 
   it('never re-emits a relation the file already declares', () => {
@@ -235,12 +235,12 @@ describe('haus-mit-raeumen — an export that states its boundaries', () => {
 
     // Specifically: the four declared boundaries of the Wohnzimmer are absent
     // from the derived set even though the boxes reproduce every one of them.
-    const derivedForRoom = targets(derived.edges, 'interfaceOf', IDS.wohnzimmer)
-    expect(derivedForRoom).not.toContain(IDS.wandSued)
-    expect(derivedForRoom).not.toContain(IDS.trennwand)
-    expect(derivedForRoom).not.toContain(IDS.fenster)
+    const derivedForRoom = targets(derived.edges, 'interfaceOf', IDS.livingRoom)
+    expect(derivedForRoom).not.toContain(IDS.wallSouth)
+    expect(derivedForRoom).not.toContain(IDS.partitionWall)
+    expect(derivedForRoom).not.toContain(IDS.window)
     // What it adds is what the file left out — nobody declared the floor.
-    expect(derivedForRoom).toContain(IDS.bodenplatte)
+    expect(derivedForRoom).toContain(IDS.groundSlab)
 
     // The rooms are already neighbours by the file's own account, so no second
     // adjacency in either direction.
@@ -256,25 +256,25 @@ describe('haus-mit-raeumen — an export that states its boundaries', () => {
     // Each declared boundary appears exactly once — `bounds()` must not list the
     // same wall twice, once read and once measured.
     expect(new Set(declaredBoundaries.map((e) => `${e.from} ${e.to}`)).size).toBe(6)
-    expect(merged.out.get('interfaceOf')!.get(IDS.wohnzimmer)!).toContain(IDS.wandSued)
+    expect(merged.out.get('interfaceOf')!.get(IDS.livingRoom)!).toContain(IDS.wallSouth)
   })
 })
 
-/** GlobalIds, verbatim from `haus-mit-raeumen.ifc`. */
+/** GlobalIds, verbatim from `house-with-rooms.ifc`. */
 const IDS = {
-  wandSued: '2Haus0Raeume00Wall0001',
-  wandNord: '2Haus0Raeume00Wall0002',
-  trennwand: '2Haus0Raeume00Wall0003',
-  wandWest: '2Haus0Raeume00Wall0004',
-  bodenplatte: '2Haus0Raeume00Slab0001',
-  fenster: '2Haus0Raeume00Window01',
-  tuer: '2Haus0Raeume00Door0001',
-  wohnzimmer: '2Haus0Raeume00Space001',
-  kueche: '2Haus0Raeume00Space002',
+  wallSouth: '2Haus0Raeume00Wall0001',
+  wallNorth: '2Haus0Raeume00Wall0002',
+  partitionWall: '2Haus0Raeume00Wall0003',
+  wallWest: '2Haus0Raeume00Wall0004',
+  groundSlab: '2Haus0Raeume00Slab0001',
+  window: '2Haus0Raeume00Window01',
+  door: '2Haus0Raeume00Door0001',
+  livingRoom: '2Haus0Raeume00Space001',
+  kitchen: '2Haus0Raeume00Space002',
 } as const
 
 /**
- * A hand-laid GeometryIndex for `haus-mit-raeumen.ifc`, in metres.
+ * A hand-laid GeometryIndex for `house-with-rooms.ifc`, in metres.
  *
  * Two rooms side by side with a party wall between them, an external wall on
  * each free side, a floor slab under both, a window in the south wall and a door
@@ -284,15 +284,15 @@ const IDS = {
  */
 function synthetic(): GeometryIndex {
   const boxes: Record<string, Box> = {
-    [IDS.wohnzimmer]: box([0, 0, 0], [5, 4, 2.5]),
-    [IDS.kueche]: box([5.2, 0, 0], [8, 4, 2.5]),
-    [IDS.trennwand]: box([5.0, 0, 0], [5.2, 4, 2.5]),
-    [IDS.wandSued]: box([0, -0.2, 0], [5, 0, 2.5]),
-    [IDS.wandNord]: box([0, 4, 0], [5, 4.2, 2.5]),
-    [IDS.wandWest]: box([8, 0, 0], [8.2, 4, 2.5]),
-    [IDS.bodenplatte]: box([-0.5, -0.5, -0.2], [8.5, 4.5, 0]),
-    [IDS.fenster]: box([1, -0.15, 0.9], [2.4, 0.05, 2.1]),
-    [IDS.tuer]: box([5.0, 1, 0], [5.2, 1.9, 2.1]),
+    [IDS.livingRoom]: box([0, 0, 0], [5, 4, 2.5]),
+    [IDS.kitchen]: box([5.2, 0, 0], [8, 4, 2.5]),
+    [IDS.partitionWall]: box([5.0, 0, 0], [5.2, 4, 2.5]),
+    [IDS.wallSouth]: box([0, -0.2, 0], [5, 0, 2.5]),
+    [IDS.wallNorth]: box([0, 4, 0], [5, 4.2, 2.5]),
+    [IDS.wallWest]: box([8, 0, 0], [8.2, 4, 2.5]),
+    [IDS.groundSlab]: box([-0.5, -0.5, -0.2], [8.5, 4.5, 0]),
+    [IDS.window]: box([1, -0.15, 0.9], [2.4, 0.05, 2.1]),
+    [IDS.door]: box([5.0, 1, 0], [5.2, 1.9, 2.1]),
   }
 
   const elements = new Map<string, ElementGeometry>()

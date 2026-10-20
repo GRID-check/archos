@@ -1055,7 +1055,7 @@ describe('fileGeneratedDocument', () => {
  */
 describe('filing out of a conversation that drew on a restricted folder (ADR-0087, ADR-0088)', () => {
   /** The source folder the conversation recorded. */
-  const VERTRAEGE = 'folder-vertraege'
+  const CONTRACTS = 'folder-vertraege'
   const fileFromChat = () =>
     fileGeneratedDocument({
       session: SESSION,
@@ -1066,13 +1066,13 @@ describe('filing out of a conversation that drew on a restricted folder (ADR-008
       render,
       origin: { conversationId: 's_conv_1', locale: 'de' },
     })
-  const tree = (berichteUnderVertraege: boolean) => [
-    { id: VERTRAEGE, parentId: null, accessMode: 'custom', grants: [{ role: 'org-gf', level: 'write' }] },
-    { id: FOLDER.id, parentId: berichteUnderVertraege ? VERTRAEGE : null, accessMode: 'inherit', grants: [] },
+  const tree = (reportsUnderContracts: boolean) => [
+    { id: CONTRACTS, parentId: null, accessMode: 'custom', grants: [{ role: 'org-gf', level: 'write' }] },
+    { id: FOLDER.id, parentId: reportsUnderContracts ? CONTRACTS : null, accessMode: 'inherit', grants: [] },
   ]
 
   beforeEach(() => {
-    recordedRestrictedFolders.mockResolvedValue([VERTRAEGE])
+    recordedRestrictedFolders.mockResolvedValue([CONTRACTS])
     listProjectFolderTree.mockResolvedValue(tree(false))
   })
 

@@ -33,7 +33,7 @@ function setup() {
   const changed = vi.fn()
   const unsubscribe = onDocumentsChanged(changed)
   // `archiv` carries the copy in this change; the same keys are asked of `files`.
-  const hook = renderHook(() => useDocumentActions({ document: DOCUMENT, scope: 'archiv', onReingested }))
+  const hook = renderHook(() => useDocumentActions({ document: DOCUMENT, scope: 'officeShelf', onReingested }))
   return { hook, onReingested, changed, unsubscribe }
 }
 

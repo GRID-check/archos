@@ -37,7 +37,7 @@ from aiq_agent.common.turn_status import CUTOFF_STEP_LIMIT
 from aiq_agent.common.turn_status import CUTOFF_UPSTREAM_TIMEOUT
 from aiq_agent.common.turn_status import CUTOFF_USER_REQUESTED
 from aiq_agent.common.turn_status import CUTOFF_WALL_CLOCK
-from aiq_agent.common.turn_status import DEGRADED_GRUNDLAGE_UNREAD
+from aiq_agent.common.turn_status import DEGRADED_BASIS_UNREAD
 from aiq_agent.common.turn_status import DEGRADED_NO_VALID_CITATIONS
 from aiq_agent.common.turn_status import DEGRADED_UNVERIFIED_QUOTES
 from aiq_agent.common.turn_status import emit_answer_degraded
@@ -204,7 +204,7 @@ def _prepend_honesty_banner(
         )
     # An unread Grundlage is said by its own section at the foot of the report
     # (`_append_unread_grundlage`); it is not a verification failure.
-    if any(reason != DEGRADED_GRUNDLAGE_UNREAD for reason in degraded_reasons or ()):
+    if any(reason != DEGRADED_BASIS_UNREAD for reason in degraded_reasons or ()):
         sentences.append(
             "The statements could not be fully verified and are only partly reliable."
             if english
@@ -530,7 +530,7 @@ class FinalizedReport:
     grundlage_unread: list[str] = field(default_factory=list)
 
 
-def _append_unread_grundlage(report: str, unread: Sequence[str]) -> str:
+def _append_unread_basis(report: str, unread: Sequence[str]) -> str:
     """Name, at the end of the report, the Grundlage the run never reached.
 
     At the END, as its own section, in the report's language: the banner at
@@ -575,7 +575,7 @@ def finalize_report(
     """
     degraded = [*degraded_reasons, *verification.degraded_reasons]
     if grundlage_unread:
-        degraded.append(DEGRADED_GRUNDLAGE_UNREAD)
+        degraded.append(DEGRADED_BASIS_UNREAD)
     sanitization = sanitize_report(verification.report)
     wire_sources = _apply_renumbering(
         verification.wire_sources,
@@ -583,7 +583,7 @@ def finalize_report(
         getattr(sanitization, "removed_citation_numbers", None),
     )
     report = _prepend_honesty_banner(
-        _append_unread_grundlage(sanitization.sanitized_report, grundlage_unread),
+        _append_unread_basis(sanitization.sanitized_report, grundlage_unread),
         cutoff_reason=cutoff_reason,
         degraded_reasons=degraded,
     )

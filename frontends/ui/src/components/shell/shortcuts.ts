@@ -226,7 +226,7 @@ if (process.env.NODE_ENV !== 'production') {
   const keys = jumpTargets({
     canViewOrganization: true,
     showKnowledge: true,
-    canAccessArchiv: true,
+    canAccessOfficeShelf: true,
     canCollaborate: true,
     canAccessInbox: true,
   }).map((target) => target.key)

@@ -52,7 +52,7 @@ describe('DocumentActionsMenu — what it offers', () => {
     render(
       <DocumentActionsMenu
         document={DOCUMENT}
-        scope="archiv"
+        scope="officeShelf"
         actions={['rename', 'delete']}
         canManage={false}
       />
@@ -62,7 +62,7 @@ describe('DocumentActionsMenu — what it offers', () => {
 
   it('keeps download for a read-only viewer and drops the mutations', async () => {
     const user = userEvent.setup()
-    render(<DocumentActionsMenu document={DOCUMENT} scope="archiv" canManage={false} />)
+    render(<DocumentActionsMenu document={DOCUMENT} scope="officeShelf" canManage={false} />)
     await openMenu(user)
 
     expect(await screen.findByRole('menuitem', { name: /download/i })).toBeInTheDocument()
@@ -97,7 +97,7 @@ describe('DocumentActionsMenu — deleting', () => {
       })
     )
     const user = userEvent.setup()
-    render(<DocumentActionsMenu document={DOCUMENT} scope="archiv" />)
+    render(<DocumentActionsMenu document={DOCUMENT} scope="officeShelf" />)
 
     await openMenu(user)
     await user.click(await screen.findByRole('menuitem', { name: /delete/i }))
@@ -294,7 +294,7 @@ describe('DocumentActionsMenu — re-reading an indexed document', () => {
     )
     const user = userEvent.setup()
     const onReingested = vi.fn()
-    render(<DocumentActionsMenu document={INDEXED} scope="archiv" onReingested={onReingested} />)
+    render(<DocumentActionsMenu document={INDEXED} scope="officeShelf" onReingested={onReingested} />)
 
     await user.click(screen.getByTestId('document-actions-trigger'))
     await user.click(await screen.findByTestId('document-action-reingest'))

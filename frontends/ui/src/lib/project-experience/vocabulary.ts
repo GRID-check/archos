@@ -20,7 +20,7 @@ import type { ExperienceVocabulary, ExperienceVocabularyEntry } from './types'
 export const OIB_EDITIONS = ['2007', '2011', '2015', '2019', '2023', '2025'] as const
 
 /** The building classes of the OIB-RL 2 (Gebäudeklasse 1 to 5). */
-const GEBAEUDEKLASSEN = ['1', '2', '3', '4', '5'] as const
+const BUILDING_CLASSES = ['1', '2', '3', '4', '5'] as const
 
 /** The fact's options as the intake wizard shows them, read off the question that writes it. */
 function intakeEntry(key: Exclude<FingerprintKey, 'gebaeudeklasse'>): ExperienceVocabularyEntry {
@@ -42,7 +42,7 @@ export function experienceVocabulary(): ExperienceVocabulary {
     bundesland: intakeEntry('bundesland'),
     gebaeudeklasse: {
       multiple: false,
-      options: GEBAEUDEKLASSEN.map((grade) => ({ token: grade, label: `GK ${grade}` })),
+      options: BUILDING_CLASSES.map((grade) => ({ token: grade, label: `GK ${grade}` })),
     },
     bauweise: intakeEntry('bauweise'),
     nutzungen: intakeEntry('nutzungen'),

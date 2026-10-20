@@ -186,7 +186,7 @@ export type InternalDocumentRead =
  */
 export type DocumentReader =
   | ShelfReader
-  | { readonly kind: 'shelves'; readonly project: ShelfReader; readonly archiv: ShelfReader }
+  | { readonly kind: 'shelves'; readonly project: ShelfReader; readonly officeShelf: ShelfReader }
   | { readonly kind: 'projects'; readonly userId: string; readonly reviewedProjectIds: readonly string[] }
   | { readonly kind: 'screened-only' }
   | { readonly kind: 'internal'; readonly why: InternalDocumentRead }
@@ -220,7 +220,7 @@ export function mayReadDocument(row: ReadableFacts, reader: DocumentReader): boo
       return shelfMayRead(row, reader)
     case 'shelves':
       if (row.scope === 'project') return shelfMayRead(row, reader.project)
-      if (row.scope === 'archiv') return shelfMayRead(row, reader.archiv)
+      if (row.scope === 'archiv') return shelfMayRead(row, reader.officeShelf)
       return false
     case 'projects':
       return (

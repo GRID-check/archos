@@ -8,7 +8,7 @@ from aiq_agent.common.plan_documents import PlanDocuments
 from aiq_agent.common.plan_documents import documents_from_plan
 from aiq_agent.common.plan_documents import resolve_documents
 from aiq_agent.common.plan_documents import sanitize_plan_documents
-from aiq_agent.common.plan_documents import unread_grundlage
+from aiq_agent.common.plan_documents import unread_basis
 
 
 class TestSanitize:
@@ -58,13 +58,13 @@ class TestResolve:
 
 
 class TestUnread:
-    def test_the_grundlage_without_a_passage_is_unread(self):
+    def test_the_basis_without_a_passage_is_unread(self):
         docs = PlanDocuments(grundlage=[PlanDocument(name="A.pdf"), PlanDocument(name="b.pdf")])
-        assert [d.name for d in unread_grundlage(docs, {"a.pdf"})] == ["b.pdf"]
-        assert unread_grundlage(None, set()) == []
+        assert [d.name for d in unread_basis(docs, {"a.pdf"})] == ["b.pdf"]
+        assert unread_basis(None, set()) == []
 
-    def test_a_live_addition_is_grundlage_too_and_named_once(self):
+    def test_a_live_addition_is_basis_too_and_named_once(self):
         docs = PlanDocuments(grundlage=[PlanDocument(name="a.pdf"), PlanDocument(name="b.pdf")])
         added = [PlanDocument(name="C.pdf"), PlanDocument(name="B.PDF"), PlanDocument(name="d.pdf")]
-        assert [d.name for d in unread_grundlage(docs, {"a.pdf", "d.pdf"}, added)] == ["b.pdf", "C.pdf"]
-        assert [d.name for d in unread_grundlage(None, set(), added)] == ["C.pdf", "B.PDF", "d.pdf"]
+        assert [d.name for d in unread_basis(docs, {"a.pdf", "d.pdf"}, added)] == ["b.pdf", "C.pdf"]
+        assert [d.name for d in unread_basis(None, set(), added)] == ["C.pdf", "B.PDF", "d.pdf"]

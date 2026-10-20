@@ -337,12 +337,12 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
   })
 
   describe('the Büroablage (0146)', () => {
-    const ARCHIV_MOVE: FileOperationPayload = {
+    const OFFICE_SHELF_MOVE: FileOperationPayload = {
       operation: 'move',
       operations: [{ document: 'ÖNORM B 1800.pdf', source: 'buero', target_folder: 'Normen', reason: 'Eine Norm.' }],
       basis: 'name',
     }
-    const shelved = (organizationId: string, payload: FileOperationPayload = ARCHIV_MOVE) =>
+    const shelved = (organizationId: string, payload: FileOperationPayload = OFFICE_SHELF_MOVE) =>
       inOrg(organizationId, () =>
         repo.insertProposedChange({
           organizationId,
@@ -361,8 +361,8 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
     it('stores a move of Büroablage documents without a project, and lists it on its shelf only', async () => {
       const { row } = await shelved(ORG)
       expect(row).toMatchObject({ projectId: null, scope: 'archiv', originTraceId: 'abcdef0123456789abcdef0123456789' })
-      const archiv = await repo.listShelfProposals(ORG, { scope: 'archiv' }, { statuses: ['proposed'], limit: 50 })
-      expect(archiv.map((entry) => entry.id)).toContain(row.id)
+      const officeShelf = await repo.listShelfProposals(ORG, { scope: 'archiv' }, { statuses: ['proposed'], limit: 50 })
+      expect(officeShelf.map((entry) => entry.id)).toContain(row.id)
       const project = await repo.listShelfProposals(
         ORG,
         { scope: 'project', projectId: ids.project },

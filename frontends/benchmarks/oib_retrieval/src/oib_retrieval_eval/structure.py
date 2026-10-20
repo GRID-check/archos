@@ -47,16 +47,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from oib_retrieval_eval.corpus import ARM_CLAUSE
 from oib_retrieval_eval.corpus import ARM_PAGE
-from oib_retrieval_eval.corpus import ARM_PUNKT
 from oib_retrieval_eval.corpus import CHUNK_OVERLAP
 from oib_retrieval_eval.corpus import CHUNK_SIZE
 from oib_retrieval_eval.corpus import CorpusMissingError
+from oib_retrieval_eval.corpus import clause_or_page_documents
 from oib_retrieval_eval.corpus import default_corpus_dir
 from oib_retrieval_eval.corpus import extract_pages
 from oib_retrieval_eval.corpus import page_documents
-from oib_retrieval_eval.corpus import punkt_or_page_documents
-from oib_retrieval_eval.qrels import PunktIndex
+from oib_retrieval_eval.qrels import ClauseIndex
 
 #: A table-of-contents leader line ("3.1 Brandabschnitte ....... 5") points at a Punkt and
 #: is never the Punkt itself, so it must not be mistaken for its heading.
@@ -73,7 +73,7 @@ def _normalise(text: str) -> str:
     analyzer (``german_text.fold``/``tokenize``, the lexical channel's own) removes every
     difference that is not a difference in what the chunk contains.
     """
-    from knowledge_layer.llamaindex.punkt_chunking import _dehyphenate
+    from knowledge_layer.llamaindex.clause_chunking import _dehyphenate
 
     from aiq_agent.common.german_text import fold
     from aiq_agent.common.german_text import tokenize
@@ -87,7 +87,7 @@ def _content_lines(pages: list[dict[str, Any]]) -> list[tuple[int, str]]:
     Keeping ToC pages is what lets a content page the chunker wrongly drops as a ToC be
     attributed to that arm — see the module docstring.
     """
-    from knowledge_layer.llamaindex.punkt_chunking import _is_furniture
+    from knowledge_layer.llamaindex.clause_chunking import _is_furniture
 
     collected: list[tuple[int, str]] = []
     for page in pages:
@@ -105,7 +105,7 @@ def _body_end(lines: list[tuple[int, str]]) -> int:
     address and back cover, and would then fail containment on every arm for a reason that
     has nothing to do with chunking.
     """
-    from knowledge_layer.llamaindex.punkt_chunking import _END_OF_BODY_RE
+    from knowledge_layer.llamaindex.clause_chunking import _END_OF_BODY_RE
 
     for position, (_page, line) in enumerate(lines):
         if _END_OF_BODY_RE.match(line):
@@ -114,7 +114,7 @@ def _body_end(lines: list[tuple[int, str]]) -> int:
 
 
 def _locate_spans(
-    index: PunktIndex, richtlinie: str, lines: list[tuple[int, str]], body_end: int
+    index: ClauseIndex, richtlinie: str, lines: list[tuple[int, str]], body_end: int
 ) -> tuple[dict[str, tuple[int, int]], list[str]]:
     """Line span ``[start, end)`` per indexed Punkt, plus the ids that could not be located.
 
@@ -122,7 +122,7 @@ def _locate_spans(
     keeps a cross-reference elsewhere in the document ("gemäß Punkt 5.1.1") from being
     mistaken for the heading. A line already claimed by another Punkt is never reused.
     """
-    punkte = index.punkte(richtlinie)
+    punkte = index.clauses(richtlinie)
     starts: dict[str, int] = {}
     claimed: set[int] = set()
     for punkt, meta in punkte.items():
@@ -149,7 +149,7 @@ class ArmStructure:
     """One chunking strategy's structural result for one Richtlinie (or summed)."""
 
     arm: str
-    leaf_punkte: int
+    leaf_clauses: int
     contiguous: int
     isolated: int
     chunks: int
@@ -157,35 +157,35 @@ class ArmStructure:
     #: LOWER BOUND on blending: a leaf split across a chunk boundary is not counted at
     #: all, so the true number of requirements a page chunk touches is higher.
     contained_total: int
-    chunks_with_punkte: int
+    chunks_with_clauses: int
 
     @property
     def contiguous_pct(self) -> float:
-        return 100.0 * self.contiguous / self.leaf_punkte if self.leaf_punkte else 0.0
+        return 100.0 * self.contiguous / self.leaf_clauses if self.leaf_clauses else 0.0
 
     @property
     def isolated_pct(self) -> float:
-        return 100.0 * self.isolated / self.leaf_punkte if self.leaf_punkte else 0.0
+        return 100.0 * self.isolated / self.leaf_clauses if self.leaf_clauses else 0.0
 
     @property
-    def punkte_per_chunk(self) -> float:
-        return self.contained_total / self.chunks_with_punkte if self.chunks_with_punkte else 0.0
+    def clauses_per_chunk(self) -> float:
+        return self.contained_total / self.chunks_with_clauses if self.chunks_with_clauses else 0.0
 
 
 @dataclass(frozen=True)
 class StructureReport:
     """The before/after table, per Richtlinie and summed."""
 
-    per_richtlinie: dict[str, dict[str, ArmStructure]]
+    per_guideline: dict[str, dict[str, ArmStructure]]
     totals: dict[str, ArmStructure]
-    indexed_punkte: int
-    located_punkte: int
+    indexed_clauses: int
+    located_clauses: int
     structural_parents: int
     unlocated: dict[str, list[str]]
 
 
 def measure_document(
-    index: PunktIndex,
+    index: ClauseIndex,
     richtlinie: str,
     pages: list[dict[str, Any]],
     file_name: str,
@@ -209,15 +209,15 @@ def measure_document(
     }
 
     results: dict[str, ArmStructure] = {}
-    for arm, builder in ((ARM_PAGE, page_documents), (ARM_PUNKT, punkt_or_page_documents)):
+    for arm, builder in ((ARM_PAGE, page_documents), (ARM_CLAUSE, clause_or_page_documents)):
         documents = builder(pages, file_name, file_size)
         chunk_texts = _chunk_texts(documents)
         contained_counts = [sum(1 for text in leaf_text.values() if text in chunk) for chunk in chunk_texts]
 
         contiguous = 0
         isolated = 0
-        for punkt_text in leaf_text.values():
-            counts = [contained_counts[position] for position, chunk in enumerate(chunk_texts) if punkt_text in chunk]
+        for clause_text in leaf_text.values():
+            counts = [contained_counts[position] for position, chunk in enumerate(chunk_texts) if clause_text in chunk]
             if not counts:
                 continue
             contiguous += 1
@@ -226,16 +226,16 @@ def measure_document(
 
         results[arm] = ArmStructure(
             arm=arm,
-            leaf_punkte=len(leaves),
+            leaf_clauses=len(leaves),
             contiguous=contiguous,
             isolated=isolated,
             chunks=len(chunk_texts),
             contained_total=sum(contained_counts),
-            chunks_with_punkte=sum(1 for count in contained_counts if count),
+            chunks_with_clauses=sum(1 for count in contained_counts if count),
         )
     # Parents are counted from the INDEX, not from what was located, so an unlocated
     # Punkt cannot quietly move between the parent and leaf tallies.
-    parents = sum(1 for punkt in index.punkte(richtlinie) if index.has_children(richtlinie, punkt))
+    parents = sum(1 for punkt in index.clauses(richtlinie) if index.has_children(richtlinie, punkt))
     return results, len(spans), parents, unlocated
 
 
@@ -250,26 +250,26 @@ def _sum_arms(rows: Iterable[ArmStructure], arm: str) -> ArmStructure:
     rows = list(rows)
     return ArmStructure(
         arm=arm,
-        leaf_punkte=sum(row.leaf_punkte for row in rows),
+        leaf_clauses=sum(row.leaf_clauses for row in rows),
         contiguous=sum(row.contiguous for row in rows),
         isolated=sum(row.isolated for row in rows),
         chunks=sum(row.chunks for row in rows),
         contained_total=sum(row.contained_total for row in rows),
-        chunks_with_punkte=sum(row.chunks_with_punkte for row in rows),
+        chunks_with_clauses=sum(row.chunks_with_clauses for row in rows),
     )
 
 
-def _require_corpus(index: PunktIndex, corpus_dir: Path) -> None:
+def _require_corpus(index: ClauseIndex, corpus_dir: Path) -> None:
     """Fail with an instruction, before the first extraction, if the corpus is not here."""
     missing = [
         index.file_name(richtlinie)
-        for richtlinie in index.richtlinien
+        for richtlinie in index.guidelines
         if not (corpus_dir / index.file_name(richtlinie)).is_file()
     ]
     if not missing:
         return
     raise CorpusMissingError(
-        f"no OIB corpus to measure: {len(missing)} of {len(index.richtlinien)} Richtlinien PDFs "
+        f"no OIB corpus to measure: {len(missing)} of {len(index.guidelines)} Richtlinien PDFs "
         f"named by the Punkt index are not in {corpus_dir}.\n"
         f"First missing: {missing[0]}\n"
         "The corpus is operator-provided and gitignored — see data/oib/README.md for how to "
@@ -279,7 +279,7 @@ def _require_corpus(index: PunktIndex, corpus_dir: Path) -> None:
 
 
 def measure_structure(
-    index: PunktIndex,
+    index: ClauseIndex,
     corpus_dir: Path | None = None,
     cache_dir: Path | None = None,
 ) -> StructureReport:
@@ -294,29 +294,29 @@ def measure_structure(
     corpus_dir = default_corpus_dir() if corpus_dir is None else corpus_dir
     _require_corpus(index, corpus_dir)
 
-    per_richtlinie: dict[str, dict[str, ArmStructure]] = {}
+    per_guideline: dict[str, dict[str, ArmStructure]] = {}
     unlocated: dict[str, list[str]] = {}
     located = 0
     parents = 0
-    for richtlinie in index.richtlinien:
+    for richtlinie in index.guidelines:
         file_name = index.file_name(richtlinie)
         pdf_path = corpus_dir / file_name
         pages = extract_pages(pdf_path, cache_dir=cache_dir)
         results, located_here, parents_here, missing = measure_document(
             index, richtlinie, pages, file_name, pdf_path.stat().st_size
         )
-        per_richtlinie[richtlinie] = results
+        per_guideline[richtlinie] = results
         located += located_here
         parents += parents_here
         if missing:
             unlocated[richtlinie] = missing
 
-    totals = {arm: _sum_arms((row[arm] for row in per_richtlinie.values()), arm) for arm in (ARM_PAGE, ARM_PUNKT)}
+    totals = {arm: _sum_arms((row[arm] for row in per_guideline.values()), arm) for arm in (ARM_PAGE, ARM_CLAUSE)}
     return StructureReport(
-        per_richtlinie=per_richtlinie,
+        per_guideline=per_guideline,
         totals=totals,
-        indexed_punkte=index.total_punkte(),
-        located_punkte=located,
+        indexed_clauses=index.total_clauses(),
+        located_clauses=located,
         structural_parents=parents,
         unlocated=unlocated,
     )

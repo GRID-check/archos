@@ -35,8 +35,8 @@ import { requireProjectAccess, type ProjectPermission } from '@/lib/authz/projec
 
 /** Writes into a project's corpus, accepting the pre-split umbrella too. */
 const PROJECT_UPLOAD: readonly ProjectPermission[] = ['project:documents:write', 'project:edit']
-import { canManageArchiv } from '@/lib/authz/organizations'
-import { archivCollectionName } from '@/lib/archiv/collection'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
+import { officeShelfCollectionName } from '@/lib/office-shelf/collection'
 import { sessionCollectionName } from '@/lib/collection-scope'
 import { getProjectFolderAccess, restrictedCollectionBase } from '@/lib/authz/folder-access'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
@@ -261,8 +261,8 @@ async function authorizeCollection(
       return handleAuthzError(new Error('Forbidden'))
     }
     if (
-      collectionName !== archivCollectionName(session.organizationId) ||
-      !canManageArchiv(session)
+      collectionName !== officeShelfCollectionName(session.organizationId) ||
+      !canManageOfficeShelf(session)
     ) {
       return handleAuthzError(new Error('Forbidden'))
     }

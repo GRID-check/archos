@@ -32,7 +32,7 @@ describe('Dateien on a phone', () => {
     expect(briefHasNothingToSay(read, null)).toBe(true)
     expect(briefHasNothingToSay(read, [])).toBe(true)
     expect(briefHasNothingToSay({ ...read, unplaced: 1 }, null)).toBe(false)
-    expect(briefHasNothingToSay(read, [{ role: DOCUMENT_ROLES[0], label: 'Energieausweis', bauwerkName: null }])).toBe(false)
+    expect(briefHasNothingToSay(read, [{ role: DOCUMENT_ROLES[0], label: 'Energieausweis', buildingName: null }])).toBe(false)
   })
 
   it('the brief renders nothing on a phone only when it has nothing to say (gate is in the component)', () => {

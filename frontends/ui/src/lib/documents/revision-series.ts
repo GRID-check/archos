@@ -20,7 +20,7 @@
  * the agent's `list_files` cannot disagree about which Fassung is current.
  *
  * Lives in `lib/` because both sides of the BFF read it: the folder brief in the
- * browser, and the upload's Fassung probe (`fassung-candidates.ts`) on the server.
+ * browser, and the upload's Fassung probe (`revision-candidates.ts`) on the server.
  *
  * Pure: no React, no I/O.
  */
@@ -225,11 +225,11 @@ export function revisionSeriesKeyOf(filename: string): string | null {
 }
 
 /** What a dropped file continues: the current documents of its series, and whether it is clearly their successor. */
-export interface FassungCandidate<T> {
+export interface RevisionCandidate<T> {
   /**
    * The current (not yet replaced) documents of the series, newest first, each
    * with how its own name reads: „Index B · 02.07.2026", or '' when only the
-   * series says so. At most {@link FASSUNG_MAX_CANDIDATES}.
+   * series says so. At most {@link REVISION_MAX_CANDIDATES}.
    */
   candidates: Array<{ item: T; label: string }>
   /** The dropped file is NEWER than the newest of them by the series' order. */
@@ -245,7 +245,7 @@ export interface FassungCandidate<T> {
 }
 
 /** Candidates one dropped file lists: a series has a handful of current documents, never dozens. */
-export const FASSUNG_MAX_CANDIDATES = 5
+export const REVISION_MAX_CANDIDATES = 5
 
 /**
  * Which documents a dropped file may be the next Fassung of, if any.
@@ -258,10 +258,10 @@ export const FASSUNG_MAX_CANDIDATES = 5
  * date) is a duplicate, never a successor. A name the shelf already holds is a
  * new VERSION of that document (ADR-0054), not a Fassung, and has no candidate.
  */
-export function findFassungCandidate<T extends { filename: string; createdAt?: string | null }>(
+export function findRevisionCandidate<T extends { filename: string; createdAt?: string | null }>(
   droppedName: string,
   current: readonly T[]
-): FassungCandidate<T> | null {
+): RevisionCandidate<T> | null {
   const dropped = parseRevisionName(droppedName)
   const key = revisionSeriesKeyOf(droppedName)
   if (!dropped || !key) return null
@@ -284,7 +284,7 @@ export function findFassungCandidate<T extends { filename: string; createdAt?: s
   const newer = ranked[0] === arrival && signature(newest.revision) !== signature(dropped)
   return {
     candidates: ordered
-      .slice(0, FASSUNG_MAX_CANDIDATES)
+      .slice(0, REVISION_MAX_CANDIDATES)
       .map((member) => ({ item: member.item, label: revisionLabel(member.revision) })),
     newer,
     unambiguous: newer && members.length === 1,

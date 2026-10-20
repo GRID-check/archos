@@ -287,7 +287,7 @@ const takeResume = (): (ResumeTurn & { question: string }) | null => {
  * its `aria-controls`. When the structure changes the action reads
  * `(no header)` in the probe's `actions`.
  */
-const herleitungTrigger = (): HTMLButtonElement | null =>
+const derivationTrigger = (): HTMLButtonElement | null =>
   [...document.querySelectorAll<HTMLButtonElement>('.bg-muted > [data-state] > button[aria-expanded]')].at(-1) ?? null
 
 /** Press the composer's Stop, as a reader would; the store's handler if the button is not there. */
@@ -323,7 +323,7 @@ const scheduleInterruptions = (
   }
   for (const toggle of params.toggles) {
     schedule(toggle.at, () => {
-      const trigger = herleitungTrigger()
+      const trigger = derivationTrigger()
       const isOpen = trigger?.getAttribute('data-state') === 'open'
       note(`${toggle.open ? 'open' : 'close'}${trigger ? (isOpen === toggle.open ? ' (already)' : '') : ' (no header)'}`)
       if (trigger && isOpen !== toggle.open) trigger.click()

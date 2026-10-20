@@ -6,7 +6,7 @@
 
 import { z } from 'zod'
 import { geocodeResultSchema } from '@/lib/geocoding/types'
-import { isValidBundeslandToken } from '@/lib/project-profile/intake-definition'
+import { isValidFederalStateToken } from '@/lib/project-profile/intake-definition'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import { isMonth, type Month } from './month'
 import { PROJECT_OUTCOMES } from './project-status'
@@ -52,7 +52,7 @@ export const createProjectSchema = z
     /** An A2_land token chosen by hand when no geocoder is configured. */
     bundesland: z
       .string()
-      .refine(isValidBundeslandToken, 'A Bundesland token.')
+      .refine(isValidFederalStateToken, 'A Bundesland token.')
       .optional(),
   })
   .strict()

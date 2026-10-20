@@ -7,7 +7,7 @@ import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import {
   computeNeeds,
-  gebaeudeklasseInputsFor,
+  buildingClassInputsFor,
   openedNeeds,
   questionForKey,
   recordableKey,
@@ -47,10 +47,10 @@ function needs(profile: ProjectProfile, options: Partial<ComputeNeedsOptions> = 
 
 const byKey = (list: Need[]) => new Map(list.map((need) => [need.key, need]))
 
-const gebaeude = { 'bauwerkstyp@bw1': 'gebaeude' }
+const building = { 'bauwerkstyp@bw1': 'gebaeude' }
 
 describe('computeNeeds', () => {
-  it('asks an empty project for its A module and its first Bauwerk', () => {
+  it('asks an empty project for its A module and its first building', () => {
     const list = needs(emptyProjectProfile())
     const found = byKey(list)
     expect(found.get('project_name')).toMatchObject({
@@ -65,7 +65,7 @@ describe('computeNeeds', () => {
       bauwerkId: 'bw1',
       decisive: true,
     })
-    // The Gebäude questions wait for C1. The Bundesland does not wait for the
+    // The building questions wait for C1. The federal state does not wait for the
     // country: Piloti is Austria's, and a document names the Land first.
     expect(found.has('geschosse_oberirdisch@bw1')).toBe(false)
     expect(found.get('bundesland')).toMatchObject({ type: 'single_select', state: 'open' })
@@ -76,15 +76,15 @@ describe('computeNeeds', () => {
     ).toBe(true)
   })
 
-  it('asks for the Bundesland unless another country was chosen', () => {
+  it('asks for the federal state unless another country was chosen', () => {
     expect(byKey(needs(profileWith({ country: 'at' }))).has('bundesland')).toBe(true)
     expect(byKey(needs(profileWith({}, { country: 'at' }))).has('bundesland')).toBe(true)
     expect(byKey(needs(profileWith({ country: 'de' }))).has('bundesland')).toBe(false)
     expect(byKey(needs(profileWith({ country: 'other' }))).has('bundesland')).toBe(false)
   })
 
-  it('says what a recorded Gebäude opened: its Gebäudeklasse inputs, decisive', () => {
-    const opened = openedNeeds(needs(emptyProjectProfile()), needs(profileWith({}, gebaeude)))
+  it('says what a recorded building opened: its building class inputs, decisive', () => {
+    const opened = openedNeeds(needs(emptyProjectProfile()), needs(profileWith({}, building)))
     const keys = new Map(opened.map((need) => [need.key, need.decisive]))
     expect(keys.get('geschosse_oberirdisch@bw1')).toBe(true)
     expect(keys.get('fluchtniveau_m@bw1')).toBe(true)
@@ -95,13 +95,13 @@ describe('computeNeeds', () => {
   })
 
   it('names the documents a value is usually in', () => {
-    const found = byKey(needs(profileWith(gebaeude)))
+    const found = byKey(needs(profileWith(building)))
     expect(found.get('geschosse_oberirdisch@bw1')?.foundIn).toContain('Einreichplan (Schnitt)')
     expect(found.get('fluchtniveau_m@bw1')).toMatchObject({ unit: 'm', type: 'number_tri' })
   })
 
   it('opens the Nutzungszonen of each use: Wohnungen for Wohnen, the garage area for a garage', () => {
-    const wohnen = byKey(needs(profileWith({ ...gebaeude, 'nutzungen@bw1': ['wohnen'] })))
+    const wohnen = byKey(needs(profileWith({ ...building, 'nutzungen@bw1': ['wohnen'] })))
     expect(wohnen.get('wohneinheiten@bw1@wohnen')).toMatchObject({
       baseKey: 'wohneinheiten',
       bauwerkId: 'bw1',
@@ -111,22 +111,22 @@ describe('computeNeeds', () => {
     expect(wohnen.get('zone_flaeche@bw1@wohnen')?.label).toBe('Fläche der Zone (BGF) (Wohnen)')
     expect(wohnen.has('garagenflaeche@bw1@garage')).toBe(false)
 
-    const mitGarage = byKey(
-      needs(profileWith({ ...gebaeude, 'nutzungen@bw1': ['wohnen', 'garage'] }))
+    const withGarage = byKey(
+      needs(profileWith({ ...building, 'nutzungen@bw1': ['wohnen', 'garage'] }))
     )
-    expect(mitGarage.get('garagenflaeche@bw1@garage')).toMatchObject({
+    expect(withGarage.get('garagenflaeche@bw1@garage')).toMatchObject({
       unit: 'm²',
       bauwerkId: 'bw1',
     })
-    expect(mitGarage.has('stellplaetze@bw1@garage')).toBe(true)
-    expect(mitGarage.has('zone_flaeche@bw1@garage')).toBe(true)
+    expect(withGarage.has('stellplaetze@bw1@garage')).toBe(true)
+    expect(withGarage.has('zone_flaeche@bw1@garage')).toBe(true)
   })
 
   it('drops a confirmed key, keeps a suggested one as suggested', () => {
     const found = byKey(
       needs(
         profileWith(
-          { ...gebaeude, 'geschosse_oberirdisch@bw1': 3, 'bauweise@bw1': ['holzbau'] },
+          { ...building, 'geschosse_oberirdisch@bw1': 3, 'bauweise@bw1': ['holzbau'] },
           { 'fluchtniveau_m@bw1': 6.5 }
         )
       )
@@ -136,8 +136,8 @@ describe('computeNeeds', () => {
     expect(found.get('bgf_oberirdisch@bw1')?.state).toBe('open')
   })
 
-  it('keeps a confirmed Gebäudeklasse input as confirmed, never decisive, after every other need', () => {
-    const list = needs(profileWith({ ...gebaeude, 'geschosse_oberirdisch@bw1': 3 }))
+  it('keeps a confirmed building class input as confirmed, never decisive, after every other need', () => {
+    const list = needs(profileWith({ ...building, 'geschosse_oberirdisch@bw1': 3 }))
     const found = byKey(list)
     expect(found.get('geschosse_oberirdisch@bw1')).toMatchObject({ state: 'confirmed', decisive: false })
     expect(found.get('bauwerkstyp@bw1')).toMatchObject({ state: 'confirmed', decisive: false })
@@ -160,16 +160,16 @@ describe('computeNeeds', () => {
 
   it('leaves out a key a person marked unknown', () => {
     expect(
-      byKey(needs(profileWith(gebaeude), { unknownKeys: ['fluchtniveau_m@bw1'] })).has(
+      byKey(needs(profileWith(building), { unknownKeys: ['fluchtniveau_m@bw1'] })).has(
         'fluchtniveau_m@bw1'
       )
     ).toBe(false)
     expect(
-      byKey(needs(profileWith(gebaeude, {}, ['fluchtniveau_m@bw1']))).has('fluchtniveau_m@bw1')
+      byKey(needs(profileWith(building, {}, ['fluchtniveau_m@bw1']))).has('fluchtniveau_m@bw1')
     ).toBe(false)
     // An explicit list replaces the profile's.
     expect(
-      byKey(needs(profileWith(gebaeude, {}, ['fluchtniveau_m@bw1']), { unknownKeys: [] })).has(
+      byKey(needs(profileWith(building, {}, ['fluchtniveau_m@bw1']), { unknownKeys: [] })).has(
         'fluchtniveau_m@bw1'
       )
     ).toBe(true)
@@ -177,7 +177,7 @@ describe('computeNeeds', () => {
 
   it('does not offer a value a person dismissed, nor „noch offen"', () => {
     const found = byKey(
-      needs(profileWith({ ...gebaeude, bebauungsplan: true }), {
+      needs(profileWith({ ...building, bebauungsplan: true }), {
         dismissed: [{ key: 'gebaeudestellung@bw1', value: 'freistehend' }],
       })
     )
@@ -193,10 +193,10 @@ describe('computeNeeds', () => {
     ])
   })
 
-  it('marks what could change the Gebäudeklasse, first', () => {
+  it('marks what could change the building class, first', () => {
     const list = needs(
       profileWith({
-        ...gebaeude,
+        ...building,
         'geschosse_oberirdisch@bw1': 2,
         'bgf_oberirdisch@bw1': 300,
         'gebaeudestellung@bw1': 'angebaut',
@@ -217,7 +217,7 @@ describe('computeNeeds', () => {
   it('weighs a v1.0 answer through the wizard’s bridge (C8’s inverted ne_unter_400)', () => {
     const list = needs(
       profileWith({
-        ...gebaeude,
+        ...building,
         'geschosse_oberirdisch@bw1': 2,
         'bgf_oberirdisch@bw1': 300,
         'gebaeudestellung@bw1': 'angebaut',
@@ -234,7 +234,7 @@ describe('computeNeeds', () => {
     const list = needs(
       profileWith(
         {
-          ...gebaeude,
+          ...building,
           'geschosse_oberirdisch@bw1': 2,
           'bgf_oberirdisch@bw1': 300,
           'gebaeudestellung@bw1': 'angebaut',
@@ -251,7 +251,7 @@ describe('computeNeeds', () => {
   })
 
   it('has nothing decisive for a Hochhaus', () => {
-    const list = needs(profileWith({ ...gebaeude, 'fluchtniveau_m@bw1': 25 }))
+    const list = needs(profileWith({ ...building, 'fluchtniveau_m@bw1': 25 }))
     expect(list.some((need) => need.key === 'geschosse_oberirdisch@bw1')).toBe(true)
     expect(list.filter((need) => need.decisive)).toEqual([])
   })
@@ -262,9 +262,9 @@ describe('computeNeeds', () => {
     expect(list.filter((need) => need.decisive)).toEqual([])
   })
 
-  it('scopes each Bauwerk’s keys to it', () => {
+  it('scopes each building’s keys to it', () => {
     const list = needs(
-      profileWith({ ...gebaeude, 'bauwerkstyp@bw2': 'sonstig', 'bauwerk_name@bw2': 'Flugdach' })
+      profileWith({ ...building, 'bauwerkstyp@bw2': 'sonstig', 'bauwerk_name@bw2': 'Flugdach' })
     )
     const found = byKey(list)
     expect(found.get('geschosse_oberirdisch@bw1')).toMatchObject({
@@ -287,9 +287,9 @@ describe('questionForKey', () => {
   const question = (key: string) => questionForKey(projectIntakeDefinitionV1, key)
 
   it('resolves a key to the question that writes it, in the scope it is asked in', () => {
-    expect(question('bundesland')).toMatchObject({ baseKey: 'bundesland', bauwerkId: null, zone: null, type: 'single_select' })
-    expect(question('geschosse_oberirdisch@bw2')).toMatchObject({ bauwerkId: 'bw2', zone: null, type: 'number_tri' })
-    expect(question('zone_flaeche@bw1@garage')).toMatchObject({ bauwerkId: 'bw1', zone: 'garage' })
+    expect(question('bundesland')).toMatchObject({ baseKey: 'bundesland', buildingId: null, zone: null, type: 'single_select' })
+    expect(question('geschosse_oberirdisch@bw2')).toMatchObject({ buildingId: 'bw2', zone: null, type: 'number_tri' })
+    expect(question('zone_flaeche@bw1@garage')).toMatchObject({ buildingId: 'bw1', zone: 'garage' })
     expect(question('wohneinheiten@bw1@wohnen')).toMatchObject({ baseKey: 'wohneinheiten', zone: 'wohnen' })
   })
 
@@ -321,7 +321,7 @@ describe('questionForKey', () => {
 })
 
 describe('recordableKey', () => {
-  it('takes a Bauwerk the profile describes and no other', () => {
+  it('takes a building the profile describes and no other', () => {
     expect(recordableKey(projectIntakeDefinitionV1, 'geschosse_oberirdisch@bw1', ['bw1'])).not.toBeNull()
     expect(recordableKey(projectIntakeDefinitionV1, 'geschosse_oberirdisch@bw2', ['bw1'])).toBeNull()
     expect(recordableKey(projectIntakeDefinitionV1, 'bundesland', [])).not.toBeNull()
@@ -329,12 +329,12 @@ describe('recordableKey', () => {
 })
 
 describe('gebaeudeklasseInputsFor', () => {
-  it('reads one Bauwerk’s inputs, facts over suggestions, every input a key', () => {
+  it('reads one building’s inputs, facts over suggestions, every input a key', () => {
     const profile = profileWith(
-      { ...gebaeude, 'geschosse_oberirdisch@bw1': 3 },
+      { ...building, 'geschosse_oberirdisch@bw1': 3 },
       { 'geschosse_oberirdisch@bw1': 9, 'fluchtniveau_m@bw1': 6.5 }
     )
-    const inputs = gebaeudeklasseInputsFor(profile, projectIntakeDefinitionV1, 'bw1')
+    const inputs = buildingClassInputsFor(profile, projectIntakeDefinitionV1, 'bw1')
     expect(inputs).toMatchObject({ bauwerkstyp: 'gebaeude', geschosse_oberirdisch: 3, fluchtniveau_m: 6.5 })
     expect('bgf_oberirdisch' in inputs && inputs.bgf_oberirdisch === undefined).toBe(true)
   })

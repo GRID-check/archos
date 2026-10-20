@@ -1109,7 +1109,7 @@ export async function updateAnnotation(
  * published version's, compared and swapped against the Fassung it was read
  * on, so its number, its thread and every inbox row and wake anchored on it
  * stay whole. Nobody is told: the new Fassung told the people working on its
- * marks (`lib/documents/fassung-notify.ts`), and the room re-reads.
+ * marks (`lib/documents/revision-notify.ts`), and the room re-reads.
  *
  * When another document replaces this one, the mark goes on there instead
  * ({@link carryAcross}).
@@ -1131,7 +1131,7 @@ async function carryToCurrent(
   const current = doc.publishedVersionId ?? null
   if ((existing.versionId ?? null) === current) return { annotation: await viewOf(session, doc, existing.id) }
   const updated = await updateDocumentAnnotation(session.organizationId, doc.id, existing.id, 'open', {
-    fassung: { from: existing.versionId ?? null, to: current },
+    revision: { from: existing.versionId ?? null, to: current },
   })
   // Closed, or carried by a colleague a moment ago: say so rather than guess.
   if (!updated) throw conflict()

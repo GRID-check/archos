@@ -137,7 +137,7 @@ function closingFromForm(formData: FormData): ProjectClosing | FormRefusal | und
 /** The form's Einrichtung, „Worum geht es?", address (chosen or typed) and Bundesland, checked as the route checks its body. */
 function setupFromForm(
   formData: FormData
-): (Required<Pick<CreateProjectInput, 'setup'>> & Pick<CreateProjectInput, 'description' | 'location' | 'address' | 'bundesland'>) | FormRefusal {
+): (Required<Pick<CreateProjectInput, 'setup'>> & Pick<CreateProjectInput, 'description' | 'location' | 'address' | 'federalState'>) | FormRefusal {
   const location = formData.get('location')
   const parsed = createProjectSchema.pick({ setup: true, description: true, location: true, address: true, bundesland: true }).safeParse({
     setup: formData.get('setup') ?? 'self',
@@ -147,12 +147,12 @@ function setupFromForm(
     bundesland: formData.get('bundesland') || undefined,
   })
   if (!parsed.success) return { error: 'The setup details are not valid.', reason: 'invalid-setup' }
-  const { setup, description, location: place, address, bundesland } = parsed.data
+  const { setup, description, location: place, address, bundesland: federalState } = parsed.data
   return {
     setup,
     ...(description ? { description } : {}),
     ...(place ? { location: place } : address ? { address } : {}),
-    ...(bundesland ? { bundesland } : {}),
+    ...(federalState ? { federalState } : {}),
   }
 }
 

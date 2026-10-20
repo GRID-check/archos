@@ -46,7 +46,7 @@ export interface BimProfileSuggestion {
  * a storey elevation is a good proxy for that and not the same thing — which is
  * why every suggestion here carries its evidence and stays a proposal.
  */
-const FLUCHTNIVEAU_BANDS: Array<{ limit: number; band: string }> = [
+const ESCAPE_LEVEL_BANDS: Array<{ limit: number; band: string }> = [
   { limit: 7, band: '<=7m' },
   { limit: 11, band: '7-11m' },
   { limit: 22, band: '11-22m' },
@@ -157,7 +157,7 @@ export function deriveProfileSuggestions(input: BimProfileInput): BimProfileSugg
       null
     )
     if (highest !== null) {
-      const band = FLUCHTNIVEAU_BANDS.find((entry) => highest <= entry.limit)?.band
+      const band = ESCAPE_LEVEL_BANDS.find((entry) => highest <= entry.limit)?.band
       if (band) {
         suggestions.push({
           key: 'fluchtniveau',

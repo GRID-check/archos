@@ -105,7 +105,7 @@ import {
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
-import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
+import { compareRevisionHref } from '@/features/documents/lib/revision-compare-link'
 import { withReviewBack } from '@/features/documents/lib/open-review'
 import { Composer, type ComposerSend } from '@/features/documents/components/review/composer'
 import { useUndoableArchive } from '../hooks/use-undoable-archive'
@@ -243,7 +243,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     item.related !== null &&
     item.anchorId !== null &&
     item.anchorId !== item.resourceId
-      ? compareFassungHref(item.href, item.anchorId)
+      ? compareRevisionHref(item.href, item.anchorId)
       : null
 
   const inert = item.state === 'inert'
@@ -780,8 +780,8 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                   className="space-y-2 rounded-lg border p-2"
                   data-testid="inbox-review-approve-confirm"
                 >
-                  <p className="text-xs font-medium" data-testid="inbox-review-approve-stand">
-                    {t('inbox.review.approveStand', {
+                  <p className="text-xs font-medium" data-testid="inbox-review-approve-as-of">
+                    {t('inbox.review.approveSummary', {
                       subject: item.subject ?? t('inbox.untitledConversation'),
                       number: reviewVersion?.versionNumber ?? '…',
                       date: formatAbsoluteTime(
@@ -803,7 +803,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                       '…' would read as a bug rather than as a blocked signature. */}
                   {reviewVersionError && (
                     <p className="text-error text-xs" data-testid="inbox-review-stand-failed">
-                      {t('inbox.review.standFailed')}{' '}
+                      {t('inbox.review.revisionUnreadable')}{' '}
                       <button
                         type="button"
                         className="text-primary font-medium hover:underline"
@@ -964,14 +964,14 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               <Button asChild size="sm" className="relative z-10">
                 <Link
                   href={compareHref}
-                  aria-label={t('inbox.compareFassungenLabel', { subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation') })}
+                  aria-label={t('inbox.compareRevisionsLabel', { subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation') })}
                   onClick={(event) => {
                     if (isPlainClick(event)) onOpen?.(item)
                   }}
-                  data-testid="inbox-compare-fassungen"
+                  data-testid="inbox-compare-revisions"
                 >
                   <Layers aria-hidden />
-                  {t('inbox.compareFassungen')}
+                  {t('inbox.compareRevisions')}
                 </Link>
               </Button>
             )}

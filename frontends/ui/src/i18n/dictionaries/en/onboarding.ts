@@ -68,7 +68,7 @@ export const onboarding = {
         title: 'Start with a project',
         body: 'A project holds one building: its documents, the people working on it, its tasks and research, and a chat where Piloti works with you. Every source is cited, whether building law or your own files. A short setup asks about the building, then we show you around inside.',
       },
-      archiv: {
+      officeShelf: {
         title: 'Office filing',
         body: 'Your office’s shared documents — standard details, specifications, templates. File something here once and every project can draw on it.',
       },
@@ -110,21 +110,21 @@ export const onboarding = {
         title: 'Files: this project’s documents',
         body: 'Upload drawings, reports and correspondence for this building. Once a file has been read, Piloti can quote it, but only inside this project.',
       },
-      projectArchiv: {
+      projectOfficeShelf: {
         title: 'Office filing: your office’s documents',
         body: 'Office filing sits above your projects, and every project searches it automatically. It starts empty: admins add documents, and everyone in the organization can read and cite them.',
       },
-      projectArchivPhone: {
+      projectOfficeShelfPhone: {
         title: 'Office filing: your office’s documents',
         body: 'Office filing sits above your projects, and every project searches it automatically. You find it under “More”, with everything that is not in the bar.',
       },
-      filesOrArchiv: {
+      filesOrOfficeShelf: {
         title: 'Files or Office filing?',
         body: 'Ask who the document belongs to.',
         filesTerm: 'Files — this building',
         filesDetail: 'Its drawings, reports, correspondence. Cited only in this project.',
-        archivTerm: 'Office filing — the office',
-        archivDetail: 'Standard details, specifications, templates, earlier submissions worth reusing. Cited in every project.',
+        officeShelfTerm: 'Office filing — the office',
+        officeShelfDetail: 'Standard details, specifications, templates, earlier submissions worth reusing. Cited in every project.',
       },
       projectSources: {
         title: 'Every answer shows its sources',

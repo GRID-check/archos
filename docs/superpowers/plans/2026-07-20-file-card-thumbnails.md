@@ -346,7 +346,7 @@ function ThumbnailWithFallback({ file }: { file: FileItem }) {
 
 **Files:**
 - Modify: `frontends/ui/src/features/documents/components/project-file-workspace.tsx` (the map creating FileItem from API response)
-- Modify: `frontends/ui/src/features/documents/components/archiv-workspace.tsx` (same)
+- Modify: `frontends/ui/src/features/documents/components/office-shelf-workspace.tsx` (same)
 
 The `thumbnailUrl` is computed by the BFF's thumbnail route per request, not from the list API response. So we don't need to map it in `loadFiles`/`loadDocuments`. The `FileCard` fetches it lazily.
 

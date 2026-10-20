@@ -58,7 +58,7 @@ being filed into one — the correct rule, not a limitation.
 | Authorization and the rules | `lib/document-roles/service.ts` |
 | Routes | `app/api/projects/[id]/document-roles/` |
 | The agent's block | `lib/document-roles/prompt-section.ts` (pure) and `prompt-loader.ts` (I/O) |
-| Wizard field and Modul I | `features/projects/components/document-role-field.tsx`, `projektgrundlagen-step.tsx` |
+| Wizard field and Modul I | `features/projects/components/document-role-field.tsx`, `project-basis-step.tsx` |
 | Shared client state | `features/projects/lib/use-document-roles.ts` |
 
 ## Rules the service enforces

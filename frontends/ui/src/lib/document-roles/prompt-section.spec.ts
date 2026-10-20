@@ -149,11 +149,11 @@ describe('buildDocumentRolesSection', () => {
 })
 
 describe('buildDocumentRolesSection — a recommendation is per scope instance', () => {
-  const plan = (bauwerkId: string): PromptRoleBinding => ({
+  const plan = (buildingId: string): PromptRoleBinding => ({
     role: 'bestandsplan',
-    scopeInstanceId: bauwerkId,
+    scopeInstanceId: buildingId,
     confidence: 'declared',
-    filename: `bestand-${bauwerkId}.pdf`,
+    filename: `bestand-${buildingId}.pdf`,
     displayName: null,
   })
 

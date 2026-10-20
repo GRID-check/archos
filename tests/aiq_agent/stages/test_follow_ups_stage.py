@@ -287,7 +287,7 @@ class TestPromptInputs:
         assert "(Antwort gekürzt)" in prompt
         assert len(prompt) < 7000
 
-    def test_the_bundesland_rides_along(self):
+    def test_the_federal_state_rides_along(self):
         assert "Tirol" in build_user_prompt(_facts(bundesland="Tirol"))
 
     def test_the_project_memory_digest_does_not(self):

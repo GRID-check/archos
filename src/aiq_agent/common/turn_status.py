@@ -355,7 +355,7 @@ KEY_RETRIEVAL_PLAIN = "status.retrieval.plain"
 #: template with one slot cannot carry both. The document travels as a VALUE
 #: because it is a proper noun — the office's or the publisher's own name for
 #: the document, the same word in every locale (rule 1 of the module docstring).
-KEY_RETRIEVAL_PUNKT = "status.retrieval.punkt"
+KEY_RETRIEVAL_CLAUSE = "status.retrieval.punkt"
 KEY_RETRIEVAL_PAGE = "status.retrieval.page"
 #: The retrieval loop trying other formulations after judging the first pool
 #: insufficient. Value-less on purpose: the alternative queries are the
@@ -885,7 +885,7 @@ def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
     values = {"document": clip(document, MAX_DOCUMENT_CHARS)}
     punkt = str(args.get("punkt") or "").strip()
     if punkt:
-        return KEY_RETRIEVAL_PUNKT, {**values, "punkt": punkt}
+        return KEY_RETRIEVAL_CLAUSE, {**values, "punkt": punkt}
     page = args.get("page")
     if page is not None and str(page).strip():
         return KEY_RETRIEVAL_PAGE, {**values, "page": str(page).strip()}
@@ -1618,7 +1618,7 @@ DEGRADED_CARDS_GENERATION_FAILED = "cards_generation_failed"
 #: A document the reader named as Grundlage was never reached: the run has no
 #: passage from it. The report names the document; the token is what the chip
 #: and the dashboard read.
-DEGRADED_GRUNDLAGE_UNREAD = "grundlage_unread"
+DEGRADED_BASIS_UNREAD = "grundlage_unread"
 
 
 def emit_deep_research_cutoff(

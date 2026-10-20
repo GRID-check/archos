@@ -52,7 +52,7 @@ from nat.plugin_api import register_function
 
 try:
     from aiq_agent.common.norm_registry import NormEntry
-    from aiq_agent.common.norm_registry import extract_bundesland
+    from aiq_agent.common.norm_registry import extract_federal_state
     from aiq_agent.common.norm_registry import focus_entries
     from aiq_agent.common.norm_registry import load_registry
     from aiq_agent.common.norm_registry import match_entries
@@ -60,7 +60,7 @@ try:
     _CATALOG_AVAILABLE = True
 except ImportError:  # adapter used standalone, without the Grid agent package
     NormEntry = None  # type: ignore[assignment]
-    extract_bundesland = None  # type: ignore[assignment]
+    extract_federal_state = None  # type: ignore[assignment]
     focus_entries = None  # type: ignore[assignment]
     load_registry = None  # type: ignore[assignment]
     match_entries = None  # type: ignore[assignment]
@@ -77,7 +77,7 @@ except ImportError:  # adapter used standalone, without the Grid agent package
 logger = logging.getLogger(__name__)
 
 # Austrian federal states accepted by the Landesrecht (LrKons) filter.
-_BUNDESLAND_PARAMS: dict[str, str] = {
+_FEDERAL_STATE_PARAMS: dict[str, str] = {
     "burgenland": "Bundesland.SucheInBurgenland",
     "kaernten": "Bundesland.SucheInKaernten",
     "niederoesterreich": "Bundesland.SucheInNiederoesterreich",
@@ -110,7 +110,7 @@ _CASE_LAW_SIGNALS = re.compile(
 )
 
 
-def _normalize_bundesland(value: str) -> str:
+def _normalize_federal_state(value: str) -> str:
     """Map a user-supplied state name to the API filter key (empty if unknown)."""
     normalized = (
         value.strip()
@@ -122,7 +122,7 @@ def _normalize_bundesland(value: str) -> str:
         .replace(" ", "")
         .replace("-", "")
     )
-    return _BUNDESLAND_PARAMS.get(normalized, "")
+    return _FEDERAL_STATE_PARAMS.get(normalized, "")
 
 
 def _build_search_params(
@@ -141,7 +141,7 @@ def _build_search_params(
         params["Titel"] = title
 
     if bundesland and application in ("LrKons", "Lgbl", "LgblAuth", "Vbl"):
-        key = _normalize_bundesland(bundesland)
+        key = _normalize_federal_state(bundesland)
         if key:
             params[key] = "true"
 
@@ -495,7 +495,7 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
                 # state named in the query. Other states' law is dropped and the
                 # project's own state sorts first — never hand a Tyrolean
                 # project the Viennese Bauordnung.
-                detected_land = extract_bundesland(bundesland) or extract_bundesland(query)
+                detected_land = extract_federal_state(bundesland) or extract_federal_state(query)
                 matches = focus_entries(matches, detected_land)
                 if matches:
                     shown = matches[:max_results]
@@ -721,7 +721,7 @@ async def ris_catalog_lookup(tool_config: RisCatalogLookupToolConfig, builder: B
         # state codes all match the generic "bauordnung" topic, and without the
         # filter the catalog-order head (Wien, NÖ, ...) would crowd Tirol out of
         # max_matches entirely.
-        matches = focus_entries(match_entries(catalog, topic), extract_bundesland(topic))
+        matches = focus_entries(match_entries(catalog, topic), extract_federal_state(topic))
         # Platform-tunable cap (Platform → Retrieval), resolved per call.
         from aiq_agent.common.retrieval_settings import get_retrieval_setting
 
@@ -787,7 +787,7 @@ class RisFetchDocumentToolConfig(FunctionBaseConfig, name="ris_fetch_document"):
 #    accumulated near-duplicate snapshots and a citation pointed at whichever
 #    day's copy happened to be retrieved.
 _RIS_TITLE_PREFIX_RE = re.compile(r"^\s*RIS\s*[-–—:]+\s*", re.IGNORECASE)
-_RIS_TITLE_FASSUNG_RE = re.compile(r"[,;]?\s*Fassung\s+vom\s+[\d.]+\s*$", re.IGNORECASE)
+_RIS_TITLE_REVISION_RE = re.compile(r"[,;]?\s*Fassung\s+vom\s+[\d.]+\s*$", re.IGNORECASE)
 
 #: Room for the readable part of the name, leaving space for the document
 #: number that anchors it.
@@ -845,7 +845,7 @@ def _safe_document_name(reference: str, title: str) -> str:
     document instead of piling up date-stamped copies, and the reader can still
     tell which law it is.
     """
-    base = _RIS_TITLE_FASSUNG_RE.sub("", _RIS_TITLE_PREFIX_RE.sub("", title or ""))
+    base = _RIS_TITLE_REVISION_RE.sub("", _RIS_TITLE_PREFIX_RE.sub("", title or ""))
     base = re.sub(r"[^\w.\- ]+", "_", base).strip("_ ").replace(" ", "_")
     # Trim on the truncation boundary too: cutting mid-token used to leave a
     # trailing "." that collided with the extension ("…vom_28..txt").

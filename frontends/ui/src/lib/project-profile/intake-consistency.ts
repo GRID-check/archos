@@ -18,7 +18,7 @@
 import {
   answerKeyFor,
   answersFromProfile,
-  bauwerkeFromAnswers,
+  buildingsFromAnswers,
   evaluateIntakeCondition,
   flattenIntakeQuestions,
   formatIntakeAnswer,
@@ -76,23 +76,23 @@ function labelFor(definition: ProjectIntakeDefinition, id: string): string {
 // that survives the move to derived building classes.
 // ---------------------------------------------------------------------------
 
-function checkFossilNeubauConflict(
+function checkFossilNewBuildConflict(
   answers: Answers,
   definition: ProjectIntakeDefinition
 ): DeterministicConsistencyFinding[] {
-  const vorhaben = answers['A5']
-  const isNeubau = Array.isArray(vorhaben) && vorhaben.includes('neubau')
-  if (!isNeubau) return []
+  const plannedWork = answers['A5']
+  const isNewBuild = Array.isArray(plannedWork) && plannedWork.includes('neubau')
+  if (!isNewBuild) return []
 
   const findings: DeterministicConsistencyFinding[] = []
-  for (const bw of bauwerkeFromAnswers(answers)) {
-    if (answers[answerKeyFor('E1', bw.id)] === 'gas') {
+  for (const building of buildingsFromAnswers(answers)) {
+    if (answers[answerKeyFor('E1', building.id)] === 'gas') {
       findings.push({
         kind: 'deterministic',
-        fields: [labelFor(definition, 'A5'), `${bw.name} · ${labelFor(definition, 'E1')}`],
+        fields: [labelFor(definition, 'A5'), `${building.name} · ${labelFor(definition, 'E1')}`],
         severity: 'inconsistency',
-        messageKey: 'fossilNeubauConflict',
-        params: { bauwerk: bw.name },
+        messageKey: 'fossilNewBuildConflict',
+        params: { building: building.name },
       })
     }
   }
@@ -107,7 +107,7 @@ export function checkIntakeConsistencyFromAnswers(
   answers: Answers,
   definition: ProjectIntakeDefinition = projectIntakeDefinitionV1
 ): DeterministicConsistencyFinding[] {
-  return [...checkFossilNeubauConflict(answers, definition)]
+  return [...checkFossilNewBuildConflict(answers, definition)]
 }
 
 export function checkIntakeConsistency(

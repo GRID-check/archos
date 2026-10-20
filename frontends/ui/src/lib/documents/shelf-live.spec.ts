@@ -28,7 +28,7 @@ const WRITES_A_SHELF =
 /** Writers whose writes another module announces, or that change nothing a shelf listing shows. */
 const ANNOUNCED_ELSEWHERE: Record<string, string> = {
   'lib/storage/repository.ts': 'the insert and the replace; `lib/storage/service.ts` and `lib/documents/shelf-upload.ts` announce them',
-  'lib/archiv/repository.ts': 'the Archiv delete; `lib/archiv/service.ts` announces it',
+  'lib/office-shelf/repository.ts': 'the Archiv delete; `lib/office-shelf/service.ts` announces it',
   'lib/projects/folder-bin-repository.ts': 'binning and restoring; `lib/projects/folder-bin.ts` announces them after their transaction',
   'lib/projects/cleanup-repository.ts': 'the empty holder folder; `lib/projects/cleanup-service.ts` announces it',
   'lib/documents/version-repository.ts': 'a version’s state, its bytes and archiving; `lib/documents/lifecycle.ts` and `lib/documents/version-content.ts` announce them',
@@ -53,7 +53,7 @@ describe('every write to a shelf', () => {
     const announcers = [
       'lib/storage/service.ts',
       'lib/documents/shelf-upload.ts',
-      'lib/archiv/service.ts',
+      'lib/office-shelf/service.ts',
       'lib/projects/folder-bin.ts',
       'lib/projects/cleanup-service.ts',
       'lib/documents/lifecycle.ts',

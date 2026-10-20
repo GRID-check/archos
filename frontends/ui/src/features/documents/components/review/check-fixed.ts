@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { useLocale, useTranslations } from '@/i18n'
 import type { AnnotationView } from '@/lib/annotations/types'
 import { splitDocumentName } from '@/lib/documents/display-name'
-import type { FassungRef } from '@/lib/documents/fassung'
+import type { RevisionRef } from '@/lib/documents/revision-links'
 import type { DocumentReview } from '../../hooks/use-document-review'
 import type { CheckFixed } from './review-panel'
 
@@ -23,12 +23,12 @@ export function checkFixedQuestion(
     marks,
     from,
     documentName,
-    fassungLabel,
+    revisionLabel,
   }: {
     marks: readonly Pick<AnnotationView, 'number'>[]
-    from: FassungRef | null
+    from: RevisionRef | null
     documentName: string
-    fassungLabel: string | null
+    revisionLabel: string | null
   }
 ): string {
   const numbers = new Intl.ListFormat(locale, { type: 'conjunction' }).format(
@@ -45,7 +45,7 @@ export function checkFixedQuestion(
   return t('review.checkFixed.seed', {
     count: marks.length,
     numbers,
-    current: fassungLabel ?? t('review.checkFixed.currentFassung'),
+    current: revisionLabel ?? t('review.checkFixed.currentRevision'),
   })
 }
 
@@ -59,7 +59,7 @@ export function checkFixedQuestion(
  */
 export function useCheckFixed(
   review: DocumentReview,
-  { documentName, fassungLabel }: { documentName: string; fassungLabel: string | null }
+  { documentName, revisionLabel }: { documentName: string; revisionLabel: string | null }
 ): CheckFixed | undefined {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -68,12 +68,12 @@ export function useCheckFixed(
   const check = useCallback<CheckFixed>(
     (marks, from) =>
       void ask({
-        text: checkFixedQuestion(t, locale, { marks, from, documentName, fassungLabel }),
+        text: checkFixedQuestion(t, locale, { marks, from, documentName, revisionLabel }),
         region: null,
         effort: 'medium',
         checkFixed: { documentId: from?.id ?? documentId, annotationIds: marks.map((mark) => mark.id) },
       }),
-    [ask, t, locale, documentName, fassungLabel, documentId]
+    [ask, t, locale, documentName, revisionLabel, documentId]
   )
   return piloti.available && canAnnotate ? check : undefined
 }

@@ -438,7 +438,7 @@ describe('an inline citation marker', () => {
       )
     })
 
-    test('a document a person replaced says so in the peek and names the current Fassung', async () => {
+    test('a document a person replaced says so in the peek and names the current revision', async () => {
       chatStore.projectId = 'p-42'
       fetchMock.mockImplementation((input: RequestInfo | URL) =>
         Promise.resolve(

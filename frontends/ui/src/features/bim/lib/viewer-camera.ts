@@ -87,7 +87,7 @@ export interface BimSection {
  * doors and windows and low enough to stay under a lintel. A cut at the storey
  * elevation itself would slice the floor slab and show nothing.
  */
-export const GRUNDRISS_CUT_ABOVE_FLOOR_M = 1
+export const FLOOR_PLAN_CUT_ABOVE_FLOOR_M = 1
 
 /**
  * The default cut for a storey, or for the building when no storey is chosen.
@@ -99,7 +99,7 @@ export const GRUNDRISS_CUT_ABOVE_FLOOR_M = 1
  */
 export function defaultCutForStorey(elevationMetres: number | null | undefined): number | null {
   if (typeof elevationMetres !== 'number' || !Number.isFinite(elevationMetres)) return null
-  return round(elevationMetres + GRUNDRISS_CUT_ABOVE_FLOOR_M)
+  return round(elevationMetres + FLOOR_PLAN_CUT_ABOVE_FLOOR_M)
 }
 
 /** Centimetre precision: below that, a slider step is noise in a URL. */

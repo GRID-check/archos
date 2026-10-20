@@ -486,8 +486,8 @@ describe('AgentPrompt — the plan card', () => {
     })
     try {
       render(<AgentPrompt content={CONTENT} />)
-      expect(screen.getByTestId('plan-rahmen')).toHaveTextContent('Wissensbasis')
-      expect(screen.getByTestId('plan-rahmen')).not.toHaveTextContent('Web')
+      expect(screen.getByTestId('plan-frame')).toHaveTextContent('Wissensbasis')
+      expect(screen.getByTestId('plan-frame')).not.toHaveTextContent('Web')
       await userEvent.setup().click(screen.getByRole('button', { name: /approve plan/i }))
       const reply = respond.mock.calls[0]?.[0] as string
       expect(JSON.parse(reply.slice('approve '.length))).toMatchObject({
@@ -507,12 +507,12 @@ describe('AgentPrompt — the plan card', () => {
       '"depth":"kurzpruefung","grundlage":[],"ausgeschlossen":[],"unterlagen":[{"name":"Einreichplan.pdf","title":"Einreichplan EG","shelf":"project"},{"name":"alt.pdf","shelf":"archiv"}]'
     )
     render(<AgentPrompt content={content} />)
-    await user.click(screen.getByTestId('plan-unterlagen-pick'))
+    await user.click(screen.getByTestId('plan-documents-pick'))
     await user.click(screen.getByRole('button', { name: 'Read in full: Einreichplan EG' }))
     await user.click(screen.getByRole('button', { name: 'Exclude: alt.pdf' }))
     await user.click(screen.getByRole('button', { name: 'Done' }))
-    expect(screen.getByTestId('plan-grundlage')).toHaveTextContent('Einreichplan EG')
-    expect(screen.getByTestId('plan-ausgeschlossen')).toHaveTextContent('alt.pdf')
+    expect(screen.getByTestId('plan-basis')).toHaveTextContent('Einreichplan EG')
+    expect(screen.getByTestId('plan-excluded')).toHaveTextContent('alt.pdf')
     await user.click(screen.getByRole('button', { name: /approve plan/i }))
     const reply = respond.mock.calls[0]?.[0] as string
     expect(JSON.parse(reply.slice('approve '.length))).toMatchObject({

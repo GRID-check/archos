@@ -19,7 +19,7 @@ import {
 const ALL: ShortcutFlags = {
   canViewOrganization: true,
   showKnowledge: true,
-  canAccessArchiv: true,
+  canAccessOfficeShelf: true,
   canCollaborate: true,
   // Separate from `canCollaborate` since ADR-0042: the inbox carries operational
   // alerts as well as collaboration events, so it is reachable on its own gate.

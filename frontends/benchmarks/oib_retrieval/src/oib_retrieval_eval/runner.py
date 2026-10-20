@@ -318,9 +318,9 @@ def _refusal_fill(judgements: list[qrels.Judgements], rankings: list[list[tuple[
 def print_structure(report: structure.StructureReport, stream) -> None:
     print("\n=== 1. STRUCTURAL RETRIEVABILITY (real; no embedder, no key, no model) ===", file=stream)
     print(
-        f"Punkt index: {report.indexed_punkte} Punkte, {report.located_punkte} located in the extracted text, "
+        f"Punkt index: {report.indexed_clauses} Punkte, {report.located_clauses} located in the extracted text, "
         f"{report.structural_parents} structural parents excluded "
-        f"-> {report.totals[corpus.ARM_PAGE].leaf_punkte} leaf Punkte measured.",
+        f"-> {report.totals[corpus.ARM_PAGE].leaf_clauses} leaf Punkte measured.",
         file=stream,
     )
     if report.unlocated:
@@ -334,7 +334,7 @@ def print_structure(report: structure.StructureReport, stream) -> None:
             f"{arm:<8}{row.chunks:>8}"
             f"{row.contiguous:>7} ({row.contiguous_pct:5.1f}%)"
             f"{row.isolated:>9} ({row.isolated_pct:5.1f}%)"
-            f"{row.punkte_per_chunk:>20.2f}",
+            f"{row.clauses_per_chunk:>20.2f}",
             file=stream,
         )
     print(
@@ -380,7 +380,7 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
     stream = sys.stdout
 
-    index = qrels.load_punkt_index(fixtures_dir() / "punkt_index.json")
+    index = qrels.load_clause_index(fixtures_dir() / "clause_index.json")
     golden = qrels.load_golden(fixtures_dir() / "oib_retrieval_golden.json")
     qrels.assert_siblings_share_qrels(golden, index)
     judgements = list(qrels.build_judgements(golden, index))
@@ -407,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print_structure(report, stream)
     if args.fail_below is not None:
-        citable_pct = report.totals[corpus.ARM_PUNKT].isolated_pct
+        citable_pct = report.totals[corpus.ARM_CLAUSE].isolated_pct
         if citable_pct < args.fail_below:
             print(
                 f"\nFAIL: the Punkt arm's citable-unit share is {citable_pct:.1f}%, "

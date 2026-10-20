@@ -49,7 +49,7 @@ import {
   type BimModelHeader,
   type BimStoredConfirmation,
 } from './repository'
-import { runBimQuery, type BimHauptnutzung, type BimQuery, type BimQueryResult } from './query'
+import { runBimQuery, type BimMainUse, type BimQuery, type BimQueryResult } from './query'
 
 const presignTtlSeconds = (): number => Number(process.env.SEAWEED_PRESIGNED_URL_TTL_SECONDS || 600)
 
@@ -169,11 +169,11 @@ export async function getModelForDocument(
  * project's admins for one, the Büroablage's curators for the other.
  */
 async function modelListReader(session: AuthorizedSession, projectId: string): Promise<DocumentReader> {
-  const [project, archiv] = await Promise.all([
+  const [project, officeShelf] = await Promise.all([
     shelfReaderFor(session, { scope: 'project', projectId }),
     shelfReaderFor(session, { scope: 'archiv', projectId: null }),
   ])
-  return { kind: 'shelves', project, archiv }
+  return { kind: 'shelves', project, officeShelf: officeShelf }
 }
 
 /**
@@ -190,7 +190,7 @@ export async function listAccessibleModels(
   await requireProjectAccess(session, projectId, 'project:view')
   return listBimModels(session.organizationId, {
     projectId,
-    includeArchiv: true,
+    includeOfficeShelf: true,
     hiddenFolderIds: await getHiddenFolderIds(session, projectId),
     reader: await modelListReader(session, projectId),
   })
@@ -322,7 +322,7 @@ async function revisionSiblingIds(
   // for or withdraw a signature from (ADR-0086).
   const models = await listBimModels(session.organizationId, {
     projectId,
-    includeArchiv: true,
+    includeOfficeShelf: true,
     limit: 200,
     reader: await modelListReader(session, projectId),
   })
@@ -422,7 +422,7 @@ async function resolveModelByName(
   const models = (
     await listBimModels(session.organizationId, {
       projectId,
-      includeArchiv: true,
+      includeOfficeShelf: true,
       limit: 200,
       hiddenFolderIds: await getHiddenFolderIds(session, projectId),
       reader: await modelListReader(session, projectId),
@@ -458,7 +458,7 @@ export async function exportAccessibleComplianceBcf(
     gebaeudeklasse: number | null
     // The vocabulary, not free text: the catalogue stands rules down for a
     // value it does not recognise, and a stand-down reads as a verdict.
-    hauptnutzung: BimHauptnutzung | null
+    hauptnutzung: BimMainUse | null
   }
 ): Promise<BcfExport> {
   assertIfcModelsEnabled(session)

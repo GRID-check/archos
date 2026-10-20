@@ -23,7 +23,7 @@ describe('buildProjectBriefView', () => {
       project_name: fact('Wohnhaus Lerchenfelder'),
       bundesland: fact('wien'),
       vorhabensart: fact(['neubau']),
-      // Scoped bauwerk facts + the structural building-name fact used to label them.
+      // Scoped building facts + the structural building-name fact used to label them.
       'bauwerk_name@bw1': fact('Haupthaus'),
       'bauwerkstyp@bw1': fact('gebaeude'),
       'geschosse_oberirdisch@bw1': fact(5),

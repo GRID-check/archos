@@ -46,7 +46,7 @@ from aiq_agent.knowledge.inventory import get_turn_documents
 #: which are not project documents and have no folder to move into.
 DocumentSource = Literal["projekt", "buero"]
 
-_SHELF_SOURCES: dict[Shelf, DocumentSource] = {Shelf.PROJECT: "projekt", Shelf.ARCHIV: "buero"}
+_SHELF_SOURCES: dict[Shelf, DocumentSource] = {Shelf.PROJECT: "projekt", Shelf.OFFICE_SHELF: "buero"}
 
 #: How many candidate names an ambiguity message lists before it stops. The
 #: message exists so the model can ask a precise question; twenty names is not

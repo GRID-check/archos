@@ -182,7 +182,7 @@ class TestAggregateDocumentsAcrossCollections:
             aggregate_documents_across_collections(
                 [
                     ScopedCollection("oib_knowledge", Shelf.BASE),
-                    ScopedCollection("archiv_org", Shelf.ARCHIV),
+                    ScopedCollection("archiv_org", Shelf.OFFICE_SHELF),
                 ],
                 fetch_one,
                 max_documents=5,
@@ -273,13 +273,13 @@ class TestScope:
 
     def test_a_stated_scope_wins_and_an_empty_one_falls_back(self, monkeypatch):
         monkeypatch.setenv("COLLECTION_NAME", "oib_knowledge")
-        stated = [ScopedCollection("archiv_org", Shelf.ARCHIV)]
+        stated = [ScopedCollection("archiv_org", Shelf.OFFICE_SHELF)]
         assert resolve_scope(stated, "conv-1") == stated
         assert resolve_scope([], "conv-1") == fallback_scope("conv-1")
         assert resolve_scope(None, None) == fallback_scope(None)
 
     def test_shelves_in_scope_skips_unknown_shelves(self):
-        scope = [ScopedCollection("archiv_org", Shelf.ARCHIV), ScopedCollection("legacy")]
+        scope = [ScopedCollection("archiv_org", Shelf.OFFICE_SHELF), ScopedCollection("legacy")]
         assert shelves_in_scope(scope) == ["archiv"]
 
     def test_in_flight_names_dedupes_across_collections(self):

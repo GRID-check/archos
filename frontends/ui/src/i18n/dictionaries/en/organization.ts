@@ -104,7 +104,7 @@ export const organization = {
     access: { download: 'Download', open: 'Opened' },
     columns: { when: 'When', person: 'Person', action: 'What', document: 'Document', place: 'Where' },
     place: {
-      archiv: 'Office filing',
+      officeShelf: 'Office filing',
       session: 'Chat attachment',
       project: 'Project',
       root: 'Project root',
@@ -533,7 +533,7 @@ export const organization = {
     overQuota: 'Quota reached — new uploads are refused until space is freed',
     nearQuota: 'Almost full — new uploads will soon be refused',
     projectDocuments: 'Project documents',
-    archivDocuments: 'Office filing',
+    officeShelfDocuments: 'Office filing',
     /** Count-neutral: a scope with exactly one document renders this too. */
     documentCount: 'Documents: {count}',
     /** The per-file upload limit, read-only; `size` is formatted with its unit. */
@@ -687,7 +687,7 @@ export const organization = {
     emptyHint: 'When the content check holds a file back, it appears here. You see the files you may review.',
     whereProject: 'Project {name}',
     whereProjectUnknown: 'A project',
-    whereArchiv: 'Office filing',
+    whereOfficeShelf: 'Office filing',
     whereSession: 'Chat attachment',
     noReason: 'No reason stored. Open the file to check it yourself.',
     unscreened: 'Not checked: the file could not be read to the end. It stays held back until someone reviews it.',

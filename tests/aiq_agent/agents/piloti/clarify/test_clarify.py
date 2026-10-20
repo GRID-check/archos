@@ -903,7 +903,7 @@ class TestThePlanCard:
             {"name": "Notiz.md", "shelf": "session"},
         ]
 
-    def test_the_unterlagen_edits_land_and_resolve_against_the_inventory(self):
+    def test_the_documents_edits_land_and_resolve_against_the_inventory(self):
         from aiq_agent.agents.piloti.clarify import apply_plan_edits
         from aiq_agent.agents.piloti.clarify import plan_data_sources
         from aiq_agent.agents.piloti.clarify import plan_documents
@@ -929,14 +929,14 @@ class TestThePlanCard:
         assert plan_data_sources(reply) == ["knowledge_base", "web_search"]
         assert plan_data_sources('{"sections": ["A"]}') is None
 
-    def test_an_excluded_name_beats_the_same_name_in_the_grundlage(self):
+    def test_an_excluded_name_beats_the_same_name_in_the_basis(self):
         from aiq_agent.agents.piloti.clarify import plan_documents
 
         plan = PlanResponse(title="T", sections=["A"], grundlage=["a.pdf"], ausgeschlossen=["a.pdf"])
         docs = plan_documents(plan, [{"file_name": "a.pdf"}])
         assert docs is not None and docs.grundlage == [] and [d.name for d in docs.ausgeschlossen] == ["a.pdf"]
 
-    def test_the_approved_context_names_the_unterlagen(self):
+    def test_the_approved_context_names_the_documents(self):
         from aiq_agent.agents.piloti.clarify import approved_plan_context
         from aiq_agent.common.plan_documents import PlanDocument
         from aiq_agent.common.plan_documents import PlanDocuments

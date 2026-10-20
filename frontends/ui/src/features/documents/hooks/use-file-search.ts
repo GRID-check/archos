@@ -35,7 +35,7 @@ export interface FileSearch {
 
 /**
  * @param scope The shelf's semantic search route and fixed body fields
- * (`projectSearchScope`, `ARCHIV_SEARCH_SCOPE`). Omit to offer the substring
+ * (`projectSearchScope`, `OFFICE_SHELF_SEARCH_SCOPE`). Omit to offer the substring
  * filter alone — `canSearch` then reports false and the run control is not
  * drawn.
  */

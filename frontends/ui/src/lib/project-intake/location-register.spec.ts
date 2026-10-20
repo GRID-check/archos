@@ -12,7 +12,7 @@ import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profil
 import { LOCATION_REGISTER, locationRegisterFor, type LocationRegisterInput } from './location-register'
 import { computeNeeds } from './needs'
 import { flattenIntakeQuestions } from '@/lib/project-profile/intake-definition'
-import { BUNDESLAND_TOKENS } from '@/lib/project-profile/intake-definition'
+import { FEDERAL_STATE_TOKENS } from '@/lib/project-profile/intake-definition'
 import { locationRegisterViewSchema, type IntakeMode } from './types'
 
 const at = '2026-10-20T08:00:00.000Z'
@@ -63,7 +63,7 @@ describe('the register as data', () => {
     for (const entry of LOCATION_REGISTER) {
       expect(entry.sources.length).toBeGreaterThan(0)
       for (const [land, variant] of Object.entries(entry.byFederalState ?? {})) {
-        expect(BUNDESLAND_TOKENS).toContain(land)
+        expect(FEDERAL_STATE_TOKENS).toContain(land)
         expect(variant?.sources.length).toBeGreaterThan(0)
       }
       for (const local of entry.byMunicipality ?? []) expect(local.sources.length).toBeGreaterThan(0)
@@ -73,7 +73,7 @@ describe('the register as data', () => {
   it('has a Widmung source for each of the nine Bundesländer', () => {
     const zoning = LOCATION_REGISTER.find((entry) => entry.determinant === 'zoning')
     expect(Object.keys(zoning?.byFederalState ?? {}).sort()).toEqual(
-      BUNDESLAND_TOKENS.filter((token) => token !== 'ausserhalb_oesterreichs').sort()
+      FEDERAL_STATE_TOKENS.filter((token) => token !== 'ausserhalb_oesterreichs').sort()
     )
   })
 })

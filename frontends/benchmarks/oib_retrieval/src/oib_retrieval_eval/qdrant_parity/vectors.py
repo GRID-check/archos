@@ -52,11 +52,11 @@ EMBED_BATCH = 64
 def embed_text(text: str, metadata: dict[str, Any]) -> str:
     """The string production embeds for one chunk: the EMBED header, then the body."""
     from knowledge_layer.llamaindex.adapter import EMBED_EXCLUDED_METADATA_KEYS
-    from knowledge_layer.llamaindex.punkt_chunking import PUNKT_EMBED_EXCLUDED_METADATA_KEYS
+    from knowledge_layer.llamaindex.clause_chunking import CLAUSE_EMBED_EXCLUDED_METADATA_KEYS
     from llama_index.core.schema import MetadataMode
     from llama_index.core.schema import TextNode
 
-    excluded = list(dict.fromkeys([*EMBED_EXCLUDED_METADATA_KEYS, *PUNKT_EMBED_EXCLUDED_METADATA_KEYS]))
+    excluded = list(dict.fromkeys([*EMBED_EXCLUDED_METADATA_KEYS, *CLAUSE_EMBED_EXCLUDED_METADATA_KEYS]))
     node = TextNode(
         text=text,
         metadata=dict(metadata),

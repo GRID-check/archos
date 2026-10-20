@@ -288,7 +288,7 @@ item fails, and its reason says why.
 
    | Verb | Resolves | Calls |
    |---|---|---|
-   | `move` | the document by name on its shelf (`source`), the folder by path among that shelf's folders; a missing folder the payload names as `new_folder` is made first through the shelf's folder walk (`ensureProjectFolderPaths`, `ensureArchivFolderPaths`) and given its description when this apply made it | `moveDocumentToFolder` |
+   | `move` | the document by name on its shelf (`source`), the folder by path among that shelf's folders; a missing folder the payload names as `new_folder` is made first through the shelf's folder walk (`ensureProjectFolderPaths`, `ensureOfficeShelfFolderPaths`) and given its description when this apply made it | `moveDocumentToFolder` |
    | `rename` | the document by name | `renameDocument` |
    | `create_folder` | the parent by path among the project's folders | `createProjectFolder` |
    | `assign` | the document by name, the person by name or email among the assignment candidates and the decider | `addResourceAssignment` |

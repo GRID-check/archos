@@ -20,12 +20,12 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 
-vi.mock('@/lib/archiv/service', () => ({ listArchiv: vi.fn() }))
+vi.mock('@/lib/office-shelf/service', () => ({ listOfficeShelf: vi.fn() }))
 vi.mock('@/lib/documents/lifecycle', () => ({
   summarizeDocumentVersions: vi.fn().mockResolvedValue(new Map([['d1', { versionCount: 2, state: 'published' }]])),
 }))
 
-import { listArchiv } from '@/lib/archiv/service'
+import { listOfficeShelf } from '@/lib/office-shelf/service'
 import { toDocumentWireRow } from '@/lib/documents/list-projection'
 import type { ListedDocument } from '@/lib/documents/shelf-listing'
 import { GET } from './route'
@@ -55,7 +55,7 @@ const get = (query = '') => GET(new NextRequest(`https://grid.test/api/archiv/do
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(listArchiv).mockResolvedValue({
+  vi.mocked(listOfficeShelf).mockResolvedValue({
     documents: [LISTED],
     nextCursor: null,
     collectionName: 'archiv_org-1',
@@ -94,7 +94,7 @@ describe('GET /api/archiv/documents', () => {
   it('defaults to the working set and forwards no author filter', async () => {
     await get()
 
-    expect(listArchiv).toHaveBeenCalledWith(expect.anything(), {
+    expect(listOfficeShelf).toHaveBeenCalledWith(expect.anything(), {
       authoredBy: undefined,
       includeArchived: false,
       cursor: undefined,
@@ -104,7 +104,7 @@ describe('GET /api/archiv/documents', () => {
   it('forwards ?includeArchived=true and ?authoredBy=agent', async () => {
     await get('?includeArchived=true&authoredBy=agent')
 
-    expect(listArchiv).toHaveBeenCalledWith(
+    expect(listOfficeShelf).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ includeArchived: true, authoredBy: 'agent' }),
     )
@@ -114,7 +114,7 @@ describe('GET /api/archiv/documents', () => {
     const response = await get('?authoredBy=robot')
 
     expect(response.status).toBe(400)
-    expect(listArchiv).not.toHaveBeenCalled()
+    expect(listOfficeShelf).not.toHaveBeenCalled()
   })
 
   it('refuses includeArchived with any value but true', async () => {
@@ -126,7 +126,7 @@ describe('GET /api/archiv/documents', () => {
   it('forwards a level read to the service', async () => {
     await get('?folderId=root&sort=size&limit=25')
 
-    expect(listArchiv).toHaveBeenCalledWith(
+    expect(listOfficeShelf).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ level: { folderId: null, sort: 'size', dir: 'desc', limit: 25 } }),
     )
@@ -134,6 +134,6 @@ describe('GET /api/archiv/documents', () => {
 
   it('refuses an unknown order', async () => {
     expect((await get('?folderId=root&sort=status')).status).toBe(400)
-    expect(listArchiv).not.toHaveBeenCalled()
+    expect(listOfficeShelf).not.toHaveBeenCalled()
   })
 })

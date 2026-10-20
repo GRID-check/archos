@@ -119,9 +119,9 @@ export async function withThreads(organizationId: string, rows: SelectedRow[]): 
     organizationId,
     rows.map(({ row }) => row.id)
   )
-  return rows.map(({ row, fassungNumber, ...links }) => ({
+  return rows.map(({ row, fassungNumber: revisionNumber, ...links }) => ({
     ...row,
-    fassungNumber: fassungNumber === null ? null : Number(fassungNumber),
+    fassungNumber: revisionNumber === null ? null : Number(revisionNumber),
     replies: threads.get(row.id) ?? [],
     carriedFrom: linkOf(links.fromId, links.fromDocumentId, links.fromNumber),
     carriedTo: linkOf(links.toId, links.toDocumentId, links.toNumber),
@@ -454,7 +454,7 @@ export interface AnnotationChanges {
    * `to`, compared and swapped against `from` (the Fassung it was read on), so
    * two people carrying it at once move it once.
    */
-  fassung?: { from: string | null; to: string | null }
+  revision?: { from: string | null; to: string | null }
 }
 
 /**
@@ -477,7 +477,7 @@ export async function updateDocumentAnnotation(
   /** Runs in the update's transaction when a row was changed. */
   afterUpdate?: InTransaction<DocumentAnnotationRow>
 ): Promise<DocumentAnnotationRow | null> {
-  const { transition, delegation, fassung, ...fields } = changes
+  const { transition, delegation, revision: revision, ...fields } = changes
   const db = getDb()
   return withTenant({ organizationId }, () =>
     db.transaction(async (tx) => {
@@ -487,7 +487,7 @@ export async function updateDocumentAnnotation(
           ...fields,
           ...(transition ?? {}),
           ...(delegation ?? {}),
-          ...(fassung ? { versionId: fassung.to } : {}),
+          ...(revision ? { versionId: revision.to } : {}),
           updatedAt: new Date(),
         })
         .where(
@@ -496,7 +496,7 @@ export async function updateDocumentAnnotation(
             eq(documentAnnotations.documentId, documentId),
             eq(documentAnnotations.id, annotationId),
             eq(documentAnnotations.status, expectedStatus),
-            ...(fassung ? [sql`${documentAnnotations.versionId} IS NOT DISTINCT FROM ${fassung.from}`] : [])
+            ...(revision ? [sql`${documentAnnotations.versionId} IS NOT DISTINCT FROM ${revision.from}`] : [])
           )
         )
         .returning()

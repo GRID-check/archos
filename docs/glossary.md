@@ -8,6 +8,37 @@ Befund, Laufblock and the rest of what users and the product say) lives in
 When a term here and its defining file disagree, the file wins: fix this page in
 the same change.
 
+## German domain term, English code name
+
+Product copy is German and the code is English. Each term here is defined in
+[`CONTEXT.md`](../CONTEXT.md); this table only says what to call it in an
+identifier, a file name or a module. Say the German term to users and the code
+name to the compiler. The stored values, URLs and permission slugs that still
+read German are listed after the table.
+
+| Domain term | Code name | Not |
+|---|---|---|
+| Fassung | `revision` (`lib/documents/revision-*`, `DocumentRevisions`, `revision_diff.py`) | `version`, which is the approval states |
+| the links between Fassungen | `RevisionLinks` (`revision-links.ts`) | `RevisionFacts`, the Index and Rev printed in a title block |
+| Büroablage, Archiv | `officeShelf` (`OFFICE_SHELF`, `lib/office-shelf`, `canManageOfficeShelf`) | `archive`, which already means soft-archived |
+| Steckbrief | `projectRecord` (`ProjectRecordView`, `project-record-types.ts`) | |
+| Bundesland, Gemeinde | `federalState`, `municipality` | |
+| Gebäudeklasse, Bauwerk | `buildingClass`, `building` | |
+| Herleitung | `derivation` (`/dev/derivation`) | |
+| Papierkorb | `bin` (`/dev/bin`) | |
+| Punkt, Absatz (of a norm) | `clause`, `subsection` (`clause_chunking.py`, `build_clause_index.py`) | |
+| Befund, Befundmatrix | `finding`, `findingsMatrix` | |
+| erfüllt, nicht erfüllt, offen, nicht anwendbar | `met`, `notMet`, `open`, `notApplicable` | |
+| Laufblock | `RunBlock`; states `running`, `waiting`, `done`, `cancelled`, `interrupted` | |
+| Aktenvermerk | `fileNote` | |
+| Unterlagen | `documents` (`DocumentsDialog`) | |
+
+Not renamed yet, on purpose: the shelf value `archiv` in the database and on the
+wire, the `/archiv` and `/api/archiv` URLs, the permission slug
+`org:archiv:manage`, the `document_fassung_announcements` table and the
+`fassung` wire field. They change in the migration PRs, never as a side effect
+of a rename in code.
+
 ## Architecture and runtime
 
 | Term | Meaning | Defined in |

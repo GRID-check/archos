@@ -4,7 +4,7 @@ import { getNavFlags } from '@/lib/authz/nav'
 import { canManageCompliance } from '@/lib/authz/organizations'
 import { getProjectsGridData } from '@/lib/projects/service'
 import { ProjectsGrid } from '@/components/projects/projects-grid'
-import { ArchivEntryCard } from '@/components/projects/archiv-entry-card'
+import { OfficeShelfEntryCard } from '@/components/projects/office-shelf-entry-card'
 import { ShellContent } from '@/components/shell'
 import { RecentlyDeleted } from '@/features/projects/components/recently-deleted'
 import { getTranslations } from '@/i18n/server'
@@ -50,10 +50,10 @@ export default async function ProjectsPage({
         />
 
         {/* Org-wide Archiv entry — every member of an organization reaches it
-            (`canAccessArchiv`, ADR-0024). */}
-        {navFlags.canAccessArchiv && (
-          <section className="mt-6" aria-label={t('archivCard.title')}>
-            <ArchivEntryCard />
+            (`canAccessOfficeShelf`, ADR-0024). */}
+        {navFlags.canAccessOfficeShelf && (
+          <section className="mt-6" aria-label={t('officeShelfCard.title')}>
+            <OfficeShelfEntryCard />
           </section>
         )}
 

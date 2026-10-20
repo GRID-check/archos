@@ -79,7 +79,7 @@ class TestTheQuestionSet:
         "what is in my Brandschutz folder" into a ruling."""
         assert any(q.kind == "direct" and q.family is None for q in questions)
 
-    def test_it_spans_more_than_one_richtlinie_and_reaches_provincial_law(self, questions):
+    def test_it_spans_more_than_one_guideline_and_reaches_provincial_law(self, questions):
         families = {q.family for q in questions}
         assert len({f for f in families if f and f.startswith("OIB-RL")}) >= 6
         assert "Bauordnung" in families
@@ -102,16 +102,16 @@ class TestTheQuestionSet:
         in, this test is the line that says where it must come from."""
         assert [q.id for q in questions if q.paragraph] == []
 
-    def test_every_expected_punkt_exists_in_the_committed_structural_index(self, questions):
+    def test_every_expected_clause_exists_in_the_committed_structural_index(self, questions):
         """A remembered Punkt number scores a correct answer as wrong.
 
         The index is the same one the retrieval harness uses, built from the
-        real PDFs by `scripts/build_punkt_index.py`, so a Punkt named here is a
+        real PDFs by `scripts/build_clause_index.py`, so a Punkt named here is a
         Punkt the corpus actually has.
         """
         import json
 
-        index_path = REPO_ROOT / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures" / "punkt_index.json"
+        index_path = REPO_ROOT / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures" / "clause_index.json"
         index = json.loads(index_path.read_text(encoding="utf-8"))
         unknown = [
             (q.id, q.family, q.punkt)
@@ -149,19 +149,19 @@ class TestOneRow:
 
         assert loop_eval.observe(question, steps, "", {}).truncated == "yes"
 
-    def test_a_child_punkt_counts_and_a_sibling_does_not(self):
-        assert loop_eval.punkt_matches("5.1", ["5.1.2"]) == "yes"
-        assert loop_eval.punkt_matches("5.1", ["5.2"]) == "no"
+    def test_a_child_clause_counts_and_a_sibling_does_not(self):
+        assert loop_eval.clause_matches("5.1", ["5.1.2"]) == "yes"
+        assert loop_eval.clause_matches("5.1", ["5.2"]) == "no"
         # `5.11` is not a child of `5.1`; a bare prefix test would say it is.
-        assert loop_eval.punkt_matches("5.1", ["5.11"]) == "no"
+        assert loop_eval.clause_matches("5.1", ["5.11"]) == "no"
 
-    def test_an_unmeasured_punkt_is_blank_and_not_a_miss(self):
+    def test_an_unmeasured_clause_is_blank_and_not_a_miss(self):
         """A question with no expected Punkt must not drag the match rate down."""
-        assert loop_eval.punkt_matches(None, ["3.1"]) == ""
+        assert loop_eval.clause_matches(None, ["3.1"]) == ""
         assert loop_eval.summarise([_row("a", expected_punkt="", punkt_match="")]).punkt_measured == 0
 
-    def test_the_punkt_scan_reads_the_forms_an_answer_actually_writes(self):
-        assert loop_eval.cited_punkte("Pkt. 3.5.2 und Punkt 5.1, siehe Pkt 4") == ["3.5.2", "5.1", "4"]
+    def test_the_clause_scan_reads_the_forms_an_answer_actually_writes(self):
+        assert loop_eval.cited_clauses("Pkt. 3.5.2 und Punkt 5.1, siehe Pkt 4") == ["3.5.2", "5.1", "4"]
 
     def test_the_coverage_event_becomes_the_family_column(self):
         """The runner reads the product's own `status:coverage` records, one
@@ -182,7 +182,7 @@ class TestOneRow:
 class TestLocatorEligible:
     """A search that names a file the locator could open is eligible."""
 
-    def test_the_name_the_oib_publishes_a_richtlinie_under_counts(self):
+    def test_the_name_the_oib_publishes_a_guideline_under_counts(self):
         """The OIB publishes 2.2 as ``oib-richtlinie_2.2_ausgabe_mai_2023.pdf``.
         The stem alone, without the ``.pdf`` that another alternative matches,
         must still read as a file."""

@@ -169,7 +169,7 @@ def documents_from_plan(
     return None if docs.is_empty() else docs
 
 
-def unread_grundlage(
+def unread_basis(
     documents: PlanDocuments | None, read_names: set[str], added: Sequence[PlanDocument] = ()
 ) -> list[PlanDocument]:
     """The Grundlage the run did not reach, given the file names it did read.

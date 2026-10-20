@@ -66,8 +66,8 @@ export function sanitizePlanDocuments(input: unknown): PlanDocuments | null {
     }
     return out
   }
-  const ausgeschlossen = take(parsed.data.ausgeschlossen)
-  const grundlage = take(parsed.data.grundlage)
-  if (grundlage.length === 0 && ausgeschlossen.length === 0) return null
-  return { grundlage, ausgeschlossen }
+  const excluded = take(parsed.data.ausgeschlossen)
+  const basis = take(parsed.data.grundlage)
+  if (basis.length === 0 && excluded.length === 0) return null
+  return { grundlage: basis, ausgeschlossen: excluded }
 }

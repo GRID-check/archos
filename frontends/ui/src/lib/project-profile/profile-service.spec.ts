@@ -23,7 +23,7 @@ vi.mock('@/lib/cache', () => ({
 }))
 
 vi.mock('@/lib/document-roles/repository', () => ({
-  deleteBindingsOutsideBauwerke: vi.fn().mockResolvedValue(0),
+  deleteBindingsOutsideBuildings: vi.fn().mockResolvedValue(0),
 }))
 
 vi.mock('@/lib/cross-project/project-facts-mirror', () => ({
@@ -33,8 +33,8 @@ vi.mock('@/lib/cross-project/project-facts-mirror', () => ({
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { invalidateCached } from '@/lib/cache'
 import { syncProjectFacts } from '@/lib/cross-project/project-facts-mirror'
-import { deleteBindingsOutsideBauwerke } from '@/lib/document-roles/repository'
-import { bauwerkIds } from '@/lib/document-roles/service'
+import { deleteBindingsOutsideBuildings } from '@/lib/document-roles/repository'
+import { buildingIds } from '@/lib/document-roles/service'
 import {
   findProjectProfileInOrg,
   setProjectProfileSummaryInOrg,
@@ -201,18 +201,18 @@ describe('saveProjectProfile optimistic concurrency (If-Match)', () => {
     // under the row lock: committed with the profile or not at all.
     const inTransaction = vi.mocked(updateProjectProfileIfVersion).mock.calls[0][4]
     expect(inTransaction).toBeDefined()
-    expect(deleteBindingsOutsideBauwerke).not.toHaveBeenCalled()
+    expect(deleteBindingsOutsideBuildings).not.toHaveBeenCalled()
 
     const tx = {} as never
     await inTransaction?.(tx, storedState)
-    expect(deleteBindingsOutsideBauwerke).toHaveBeenCalledWith('proj-1', bauwerkIds(storedProfile), tx)
+    expect(deleteBindingsOutsideBuildings).toHaveBeenCalledWith('proj-1', buildingIds(storedProfile), tx)
   })
 
   it('touches no binding when the save is refused', async () => {
     await expect(saveProjectProfile(session, 'proj-1', storedProfile, 4)).rejects.toThrow()
 
     expect(updateProjectProfileIfVersion).not.toHaveBeenCalled()
-    expect(deleteBindingsOutsideBauwerke).not.toHaveBeenCalled()
+    expect(deleteBindingsOutsideBuildings).not.toHaveBeenCalled()
   })
 
   it('copies the fingerprint onto the project’s chunks after the write, and not when the save is refused', async () => {

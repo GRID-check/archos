@@ -45,7 +45,7 @@ function matchKeys(value: string): string[] {
 }
 
 /** The intake token for a state label, or null. */
-function bundeslandToken(state: string | null): string | null {
+function federalStateToken(state: string | null): string | null {
   if (!state) return null
   const keys = matchKeys(state)
   return LAND_OPTIONS.find((option) => option.keys.some((key) => keys.includes(key)))?.token ?? null
@@ -80,20 +80,20 @@ function kindOf(properties: Properties): GeocodeKind {
 }
 
 /** The Gemeinde: Photon's `city`, or the hit itself when it is the town ("type": "city"). */
-function gemeindeOf(properties: Properties): string | null {
+function municipalityOf(properties: Properties): string | null {
   if (properties.city) return properties.city
   return properties.type === 'city' ? (properties.name ?? null) : null
 }
 
 /** "Straße Nr, PLZ Ort". A town hit is just "PLZ Ort": its name is the Ort. */
-function labelOf(properties: Properties, gemeinde: string | null): string | null {
-  const ort = [properties.postcode, gemeinde].filter(Boolean).join(' ')
+function labelOf(properties: Properties, municipality: string | null): string | null {
+  const place = [properties.postcode, municipality].filter(Boolean).join(' ')
   const firstLine = properties.housenumber
     ? [properties.street ?? properties.name, properties.housenumber].filter(Boolean).join(' ')
-    : properties.type === 'city' && gemeinde === properties.name
+    : properties.type === 'city' && municipality === properties.name
       ? undefined
       : (properties.name ?? properties.street)
-  const label = [firstLine, ort].filter(Boolean).join(', ')
+  const label = [firstLine, place].filter(Boolean).join(', ')
   return label || null
 }
 
@@ -104,23 +104,23 @@ function toResult(raw: unknown): GeocodeResult | null {
   if (properties.countrycode?.toUpperCase() !== 'AT') return null
 
   const [lon, lat] = geometry.coordinates
-  const gemeinde = gemeindeOf(properties)
-  const label = labelOf(properties, gemeinde)
+  const municipality = municipalityOf(properties)
+  const label = labelOf(properties, municipality)
   if (!label || !(Math.abs(lat) <= 90) || !(Math.abs(lon) <= 180)) return null
 
   // Vienna is a city-state: Photon names no state for it, only the city.
-  const bundesland =
-    bundeslandToken(properties.state ?? null) ?? (gemeinde && bundeslandToken(gemeinde) === 'wien' ? 'wien' : null)
-  const state = properties.state ?? (bundesland === 'wien' ? 'Wien' : null)
+  const federalState =
+    federalStateToken(properties.state ?? null) ?? (municipality && federalStateToken(municipality) === 'wien' ? 'wien' : null)
+  const state = properties.state ?? (federalState === 'wien' ? 'Wien' : null)
 
   return {
     label,
     lat,
     lon,
     country: 'at',
-    bundesland,
+    bundesland: federalState,
     state,
-    gemeinde,
+    gemeinde: municipality,
     postcode: properties.postcode ?? null,
     kind: kindOf(properties),
   }
@@ -180,7 +180,7 @@ async function fetchSameOrigin(url: URL, signal: AbortSignal, fetchImpl: typeof 
 /**
  * Search Photon at `baseUrl`. Never throws: any failure (timeout, refusal,
  * bad JSON, a redirect off the host) is logged and answers `[]`, so the
- * dialog falls back to choosing the Bundesland by hand.
+ * dialog falls back to choosing the federal state by hand.
  */
 export async function searchPhoton(
   baseUrl: string,

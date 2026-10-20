@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _ADMIN_TOKEN = os.environ.get("GRID_ADMIN_TOKEN")
 
 # Bundesland -> OGD-RIS "SucheIn<State>" query flag (mirrors scripts/build_ris_catalog.py).
-_BUNDESLAND_PARAMS: dict[str, str] = {
+_FEDERAL_STATE_PARAMS: dict[str, str] = {
     "Wien": "SucheInWien",
     "Niederösterreich": "SucheInNiederoesterreich",
     "Oberösterreich": "SucheInOberoesterreich",
@@ -163,7 +163,7 @@ def add_norm_routes(router: APIRouter) -> None:
 
         params: dict[str, str] = {"Titel": body.title_query}
         if body.bundesland:
-            flag = _BUNDESLAND_PARAMS.get(body.bundesland)
+            flag = _FEDERAL_STATE_PARAMS.get(body.bundesland)
             if flag is None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -191,8 +191,8 @@ def add_norm_routes(router: APIRouter) -> None:
 
         candidates = []
         for hit in hits:
-            kurztitel = hit.metadata.get("Kurztitel") or hit.title or ""
-            lower = kurztitel.lower()
+            short_title = hit.metadata.get("Kurztitel") or hit.title or ""
+            lower = short_title.lower()
             if body.expect and body.expect.lower() not in lower:
                 continue
             if any(term.lower() in lower for term in body.exclude):
@@ -207,7 +207,7 @@ def add_norm_routes(router: APIRouter) -> None:
                 continue
             candidates.append(
                 {
-                    "title": kurztitel,
+                    "title": short_title,
                     "document_number": hit.document_number,
                     "citation_url": hit.citation_url,
                     "full_law_url": hit.full_law_url,

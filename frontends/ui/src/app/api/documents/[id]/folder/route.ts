@@ -32,7 +32,7 @@ export const PATCH = apiRoute<Params>(
   {
     authz: {
       enforcedBy:
-        'moveDocumentToFolder (org scope; requireProjectAccess project:documents:write for a project document, canManageArchiv for an Archiv document)',
+        'moveDocumentToFolder (org scope; requireProjectAccess project:documents:write for a project document, canManageOfficeShelf for an Archiv document)',
     },
   }
 )

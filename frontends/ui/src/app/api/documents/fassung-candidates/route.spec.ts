@@ -21,25 +21,25 @@ vi.mock('@/lib/auth/require-auth', () => ({
     featureFlags: null,
   }),
 }))
-vi.mock('@/lib/documents/fassung-candidates', () => ({ probeProjectFassungCandidates: vi.fn() }))
-vi.mock('@/lib/archiv/service', () => ({ probeArchivFassungCandidates: vi.fn() }))
+vi.mock('@/lib/documents/revision-candidates', () => ({ probeProjectRevisionCandidates: vi.fn() }))
+vi.mock('@/lib/office-shelf/service', () => ({ probeOfficeShelfRevisionCandidates: vi.fn() }))
 
 import { ForbiddenError } from '@/lib/api/errors'
-import { probeArchivFassungCandidates } from '@/lib/archiv/service'
-import { probeProjectFassungCandidates } from '@/lib/documents/fassung-candidates'
+import { probeOfficeShelfRevisionCandidates } from '@/lib/office-shelf/service'
+import { probeProjectRevisionCandidates } from '@/lib/documents/revision-candidates'
 import {
-  ARCHIV_FASSUNG_CANDIDATES_PATH,
-  PROJECT_FASSUNG_CANDIDATES_PATH,
+  OFFICE_SHELF_REVISION_CANDIDATES_PATH,
+  PROJECT_REVISION_CANDIDATES_PATH,
   NameProbeError,
   createDocumentNameProbeClient,
 } from '@/lib/documents/name-probe-client'
-import { NAME_PROBE_MAX_NAMES, type FassungCandidateMatch } from '@/lib/documents/name-probe-types'
+import { NAME_PROBE_MAX_NAMES, type RevisionCandidateMatch } from '@/lib/documents/name-probe-types'
 import { POST as probeProject } from './route'
-import { POST as probeArchiv } from '../../archiv/documents/fassung-candidates/route'
+import { POST as probeOfficeShelf } from '../../archiv/documents/fassung-candidates/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
-  [PROJECT_FASSUNG_CANDIDATES_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
-  [ARCHIV_FASSUNG_CANDIDATES_PATH]: (request) => probeArchiv(request, { params: Promise.resolve({}) }),
+  [PROJECT_REVISION_CANDIDATES_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
+  [OFFICE_SHELF_REVISION_CANDIDATES_PATH]: (request) => probeOfficeShelf(request, { params: Promise.resolve({}) }),
 }
 
 const client = createDocumentNameProbeClient(async (path, init) => {
@@ -48,7 +48,7 @@ const client = createDocumentNameProbeClient(async (path, init) => {
   return handler(new Request(new URL(path, 'https://grid.test'), init))
 })
 
-const MATCH: FassungCandidateMatch = {
+const MATCH: RevisionCandidateMatch = {
   name: 'EG_Index_C.pdf',
   candidates: [{ id: 'doc_b', filename: 'EG_Index_B.pdf', displayName: null, label: 'Index B' }],
   newer: true,
@@ -56,14 +56,14 @@ const MATCH: FassungCandidateMatch = {
 }
 
 beforeEach(() => {
-  vi.mocked(probeProjectFassungCandidates).mockReset().mockResolvedValue([MATCH])
-  vi.mocked(probeArchivFassungCandidates).mockReset().mockResolvedValue([MATCH])
+  vi.mocked(probeProjectRevisionCandidates).mockReset().mockResolvedValue([MATCH])
+  vi.mocked(probeOfficeShelfRevisionCandidates).mockReset().mockResolvedValue([MATCH])
 })
 
 describe('POST /api/documents/fassung-candidates', () => {
   it('answers what the names continue on the project shelf', async () => {
-    expect(await client.projectFassungen('proj_1', ['EG_Index_C.pdf'])).toEqual([MATCH])
-    expect(probeProjectFassungCandidates).toHaveBeenCalledWith(
+    expect(await client.projectRevisions('proj_1', ['EG_Index_C.pdf'])).toEqual([MATCH])
+    expect(probeProjectRevisionCandidates).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_1' }),
       'proj_1',
       ['EG_Index_C.pdf'],
@@ -77,9 +77,9 @@ describe('POST /api/documents/fassung-candidates', () => {
       ['OG_Index_B.pdf', null],
     ])
 
-    await client.projectFassungen('proj_1', ['EG_Index_C.pdf', 'OG_Index_B.pdf'], landsIn)
+    await client.projectRevisions('proj_1', ['EG_Index_C.pdf', 'OG_Index_B.pdf'], landsIn)
 
-    expect(probeProjectFassungCandidates).toHaveBeenCalledWith(
+    expect(probeProjectRevisionCandidates).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_1' }),
       'proj_1',
       ['EG_Index_C.pdf', 'OG_Index_B.pdf'],
@@ -90,21 +90,21 @@ describe('POST /api/documents/fassung-candidates', () => {
   it('splits a long drop into probes the route accepts and answers each name once', async () => {
     const names = Array.from({ length: NAME_PROBE_MAX_NAMES + 5 }, (_, i) => `Blatt_${i}_Index_C.pdf`)
 
-    const found = await client.projectFassungen('proj_1', names)
+    const found = await client.projectRevisions('proj_1', names)
 
-    expect(probeProjectFassungCandidates).toHaveBeenCalledTimes(2)
+    expect(probeProjectRevisionCandidates).toHaveBeenCalledTimes(2)
     expect(found).toHaveLength(1)
   })
 
   it('surfaces a refusal as a probe error with its status', async () => {
-    vi.mocked(probeProjectFassungCandidates).mockRejectedValue(new ForbiddenError())
+    vi.mocked(probeProjectRevisionCandidates).mockRejectedValue(new ForbiddenError())
 
-    await expect(client.projectFassungen('proj_1', ['x_Index_C.pdf'])).rejects.toEqual(expect.any(NameProbeError))
-    await expect(client.projectFassungen('proj_1', ['x_Index_C.pdf'])).rejects.toMatchObject({ status: 403 })
+    await expect(client.projectRevisions('proj_1', ['x_Index_C.pdf'])).rejects.toEqual(expect.any(NameProbeError))
+    await expect(client.projectRevisions('proj_1', ['x_Index_C.pdf'])).rejects.toMatchObject({ status: 403 })
   })
 
   it('refuses a body without names', async () => {
-    const response = await handlers[PROJECT_FASSUNG_CANDIDATES_PATH](
+    const response = await handlers[PROJECT_REVISION_CANDIDATES_PATH](
       new Request('https://grid.test/x', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -118,8 +118,8 @@ describe('POST /api/documents/fassung-candidates', () => {
 
 describe('POST /api/archiv/documents/fassung-candidates', () => {
   it('answers what the names continue in the Archiv', async () => {
-    expect(await client.archivFassungen(['EG_Index_C.pdf'])).toEqual([MATCH])
-    expect(probeArchivFassungCandidates).toHaveBeenCalledWith(
+    expect(await client.officeShelfRevisions(['EG_Index_C.pdf'])).toEqual([MATCH])
+    expect(probeOfficeShelfRevisionCandidates).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_1' }),
       ['EG_Index_C.pdf'],
     )

@@ -77,7 +77,7 @@ class TestWhatItAsksFor:
 
         assert "context" not in commissioning[0][0]
 
-    async def test_the_rahmen_and_the_unterlagen_ride_the_commission(self, commissioning):
+    async def test_the_frame_and_the_documents_ride_the_commission(self, commissioning):
         from aiq_agent.common.plan_documents import PlanDocument
         from aiq_agent.common.plan_documents import PlanDocuments
 
@@ -94,7 +94,7 @@ class TestWhatItAsksFor:
             "ausgeschlossen": [{"name": "alt.pdf"}],
         }
 
-    async def test_an_empty_unterlagen_list_is_absent(self, commissioning):
+    async def test_an_empty_documents_list_is_absent(self, commissioning):
         from aiq_agent.common.plan_documents import PlanDocuments
 
         await commission_research_run(QUESTION, documents=PlanDocuments())

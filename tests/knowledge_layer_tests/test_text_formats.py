@@ -101,9 +101,9 @@ class TestMarkdown:
     def test_a_heading_whose_content_is_in_subsections_still_has_its_chunk(self, tmp_path):
         """It is what gives the Gliederung its chapter line."""
         docs = extract_text_format_documents(_write(tmp_path, "digest.md", DIGEST.encode()), "digest.md", 1)
-        geschosse = [doc for doc in docs if doc.metadata.get("punkt_id") == "Geschoße"]
-        assert [doc.text for doc in geschosse] == ["BIM-Modell: Wohnanlage Musterstraße › Geschoße"]
-        assert geschosse[0].metadata["punkt_depth"] == 1
+        storeys = [doc for doc in docs if doc.metadata.get("punkt_id") == "Geschoße"]
+        assert [doc.text for doc in storeys] == ["BIM-Modell: Wohnanlage Musterstraße › Geschoße"]
+        assert storeys[0].metadata["punkt_depth"] == 1
 
     def test_section_order_is_document_order(self, tmp_path):
         docs = extract_text_format_documents(_write(tmp_path, "digest.md", DIGEST.encode()), "digest.md", 1)

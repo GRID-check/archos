@@ -167,12 +167,12 @@ class TestTheShelfTravelsInTheHeader:
         with patch("aiq_agent.knowledge.scoping.Context.get", return_value=ctx):
             assert get_scoped_collections_from_context() == [
                 ScopedCollection("oib_knowledge", Shelf.BASE),
-                ScopedCollection("archiv_org1", Shelf.ARCHIV),
+                ScopedCollection("archiv_org1", Shelf.OFFICE_SHELF),
                 ScopedCollection("proj_alpha", Shelf.PROJECT),
                 ScopedCollection("s_9f2a4c", Shelf.SESSION),
             ]
 
-    def test_a_session_collection_is_session_not_projekt(self):
+    def test_a_session_collection_is_session_not_project(self):
         # The headline bug: `('s_', 'projekt')` was the only guess available, so
         # a private chat attachment was attributed to project knowledge.
         ctx = self._ctx([{"collection": "s_9f2a4c", "shelf": "session"}])

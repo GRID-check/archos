@@ -1,6 +1,6 @@
 import type { Document } from '@/lib/db/schema'
 import { documentShelf, type DocumentShelf } from './shelf'
-import { findFolderPathInArchiv, findFolderPathInProject } from './repository'
+import { findFolderPathInOfficeShelf, findFolderPathInProject } from './repository'
 
 /**
  * A folder's materialised path on `shelf`, or `null` when no such folder is on
@@ -14,7 +14,7 @@ export function resolveShelfFolderPath(
 ): Promise<string | null> {
   return shelf.kind === 'project'
     ? findFolderPathInProject(folderId, shelf.projectId, organizationId)
-    : findFolderPathInArchiv(folderId, organizationId)
+    : findFolderPathInOfficeShelf(folderId, organizationId)
 }
 
 /**

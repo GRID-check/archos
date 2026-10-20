@@ -28,7 +28,7 @@ vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => true }))
 afterEach(() => useShellOverlays.setState({ moreSheetOpen: false }))
 
 const flags = {
-  canAccessArchiv: true,
+  canAccessOfficeShelf: true,
   canAccessInbox: true,
   showSkills: true,
   canViewOrganization: true,
@@ -41,7 +41,7 @@ describe('PhoneMoreSheet', () => {
     const user = userEvent.setup()
     render(
       <>
-        <PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox />
+        <PhoneTabBar projectId="p1" canAccessOfficeShelf canAccessInbox />
         <PhoneMoreSheet projectId="p1" authRequired {...flags} />
       </>
     )

@@ -208,7 +208,7 @@ function reviewOf(annotations: AnnotationView[]): DocumentReview {
     select: () => {},
     setFilter: () => {},
     setMine: () => {},
-    fassung: null,
+    revision: null,
     carried: [],
   }
   return review as DocumentReview

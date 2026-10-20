@@ -32,11 +32,11 @@ import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { folderTree, isUnderOwnList, type FolderTree } from '@/lib/authz/folder-access-rule'
 import { listProjectFolderTree } from '@/lib/authz/folder-access-repository'
-import { listArchivFolders } from '@/lib/archiv/folder-service'
+import { listOfficeShelfFolders } from '@/lib/office-shelf/folder-service'
 import type { Document, UploadBatch } from '@/lib/db/schema'
 import { hasPassedScreening, memberReader, SCREENED_ONLY } from '@/lib/documents/document-reader'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
-import { ARCHIV_SHELF, projectShelf, type DocumentShelf } from '@/lib/documents/shelf'
+import { OFFICE_SHELF, projectShelf, type DocumentShelf } from '@/lib/documents/shelf'
 import { surfaceStateOf } from '@/lib/documents/surface-state'
 import { documentTypeOf, DISCIPLINE_TAGS } from '@/lib/documents/tag-vocabulary'
 import type { FolderRow } from '@/lib/documents/shelf-folders'
@@ -88,7 +88,7 @@ interface ShelfFolders {
 
 async function shelfFolders(session: AuthorizedSession, shelf: DocumentShelf): Promise<ShelfFolders> {
   const [rows, tree] = await Promise.all([
-    shelf.kind === 'project' ? listProjectFolders(shelf.projectId, session) : listArchivFolders(session),
+    shelf.kind === 'project' ? listProjectFolders(shelf.projectId, session) : listOfficeShelfFolders(session),
     shelf.kind === 'project'
       ? listProjectFolderTree(session.organizationId, shelf.projectId).then(folderTree)
       : Promise.resolve<FolderTree>(new Map()),
@@ -196,7 +196,7 @@ export async function reviewUploadFiling(
   if (batch.scope === 'session') return skipped('chat-attachments')
   // The content basis will judge this batch with more to go on.
   if (basis === 'name' && batch.completedAt) return skipped('already-read')
-  let shelf: DocumentShelf = ARCHIV_SHELF
+  let shelf: DocumentShelf = OFFICE_SHELF
   if (batch.scope === 'project') {
     if (!batch.projectId) return skipped('no-project')
     const project = await findProjectInOrg(batch.projectId, organizationId)

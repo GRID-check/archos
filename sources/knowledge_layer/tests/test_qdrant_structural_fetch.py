@@ -72,7 +72,7 @@ def _row(text: str, file_name: str, **metadata: Any) -> dict[str, Any]:
     }
 
 
-def _punkt(file_name: str, punkt: str, depth: int, title: str, page: int, *, end: int | None = None, body: str = ""):
+def _clause(file_name: str, punkt: str, depth: int, title: str, page: int, *, end: int | None = None, body: str = ""):
     return _row(
         f"{punkt} {title}\n\n{body or f'Text zu {title}. Weiterer Satz.'}",
         file_name,
@@ -87,17 +87,17 @@ def _punkt(file_name: str, punkt: str, depth: int, title: str, page: int, *, end
 
 def _oib(file_name: str = OIB) -> list[dict[str, Any]]:
     rows = [
-        _punkt(file_name, "0", 1, "Vorbemerkungen", 3, body="Diese Richtlinie gilt für alle Gebäude."),
-        _punkt(file_name, "0", 1, "Vorbemerkungen", 3, body="Sie ist so zu lesen."),
-        _punkt(file_name, "1", 1, "Begriffsbestimmungen", 3),
-        _punkt(file_name, "2", 1, "Allgemeine Anforderungen", 4),
-        _punkt(file_name, "2.1", 2, "Abstände", 4, end=6),
-        _punkt(file_name, "2.1.1", 3, "Abstand zur Nachbargrenze", 5),
-        _punkt(file_name, "2.9", 2, "Löschwasser", 7),
-        _punkt(file_name, "2.10", 2, "Blitzschutz", 7),
-        _punkt(file_name, "3", 1, "Brandabschnitte", 8),
-        _punkt(file_name, "3.5.2", 3, "Fluchtwege", 9, body="Erster Teil des Punktes."),
-        _punkt(file_name, "3.5.2", 3, "Fluchtwege", 9, end=10, body="Zweiter Teil des Punktes."),
+        _clause(file_name, "0", 1, "Vorbemerkungen", 3, body="Diese Richtlinie gilt für alle Gebäude."),
+        _clause(file_name, "0", 1, "Vorbemerkungen", 3, body="Sie ist so zu lesen."),
+        _clause(file_name, "1", 1, "Begriffsbestimmungen", 3),
+        _clause(file_name, "2", 1, "Allgemeine Anforderungen", 4),
+        _clause(file_name, "2.1", 2, "Abstände", 4, end=6),
+        _clause(file_name, "2.1.1", 3, "Abstand zur Nachbargrenze", 5),
+        _clause(file_name, "2.9", 2, "Löschwasser", 7),
+        _clause(file_name, "2.10", 2, "Blitzschutz", 7),
+        _clause(file_name, "3", 1, "Brandabschnitte", 8),
+        _clause(file_name, "3.5.2", 3, "Fluchtwege", 9, body="Erster Teil des Punktes."),
+        _clause(file_name, "3.5.2", 3, "Fluchtwege", 9, end=10, body="Zweiter Teil des Punktes."),
     ]
     for part in (3, 1, 2):
         rows.append(

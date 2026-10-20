@@ -85,7 +85,7 @@ def footer(page: int) -> PdfLine:
     return ("R", 8, f"Brandschutzkonzept Musterstraße, Seite {page}")
 
 
-def brandschutzkonzept_pages() -> list[list[PdfLine]]:
+def fire_safety_concept_pages() -> list[list[PdfLine]]:
     """A three-page German report: title 18 pt, chapters 14 pt, sub-sections 12 pt, body 10 pt.
 
     Section 1.1 starts on page 1 and ends on page 2; a line opening with ``1.200 m²``
@@ -346,5 +346,5 @@ if __name__ == "__main__":  # pragma: no cover - a shell entry point, not a test
             seed=args.seed,
         )
     else:
-        target = write_pdf(args.path, brandschutzkonzept_pages())
+        target = write_pdf(args.path, fire_safety_concept_pages())
     print(f"{target} - {target.stat().st_size / 1e6:.1f} MB on disk")

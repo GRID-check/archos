@@ -22,7 +22,7 @@ import type { CitationSource } from '@/features/chat/types'
 import type { Findings } from '@/lib/conversations/message-findings'
 import type { PlanDocument } from '@/lib/runs/plan-documents'
 
-const UNTERLAGEN: PlanDocument[] = [
+const DOCUMENTS: PlanDocument[] = [
   { name: 'Einreichplan_EG.pdf', title: 'Einreichplan Erdgeschoß', shelf: 'project' },
   { name: 'Brandschutzkonzept_v3.pdf', title: 'Brandschutzkonzept, Stand 3', shelf: 'project' },
   { name: 'Baubeschreibung.docx', shelf: 'project' },
@@ -42,7 +42,7 @@ const PLAN: PlanShape = {
   depth: 'kurzpruefung',
   grundlage: ['Brandschutzkonzept_v3.pdf', 'Einreichplan_EG.pdf'],
   ausgeschlossen: ['Stellungnahme_MA37_alt.pdf'],
-  unterlagen: UNTERLAGEN,
+  documents: DOCUMENTS,
 }
 
 const JUDGED: Findings = {

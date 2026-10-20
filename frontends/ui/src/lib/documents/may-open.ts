@@ -23,7 +23,7 @@
  * rows, a new Fassung's announcement.
  *
  * Only the organization is read, so a detached announcement with no session
- * (`./fassung-notify`) asks the same question a request does.
+ * (`./revision-notify`) asks the same question a request does.
  */
 
 import 'server-only'
@@ -101,7 +101,7 @@ async function mayOpenOnItsShelf(
  * Zuständige: a person who could only read the document would be on the hook
  * for a mark they cannot answer.
  *
- * On the Büroablage, whoever holds `org:archiv:manage` (`canManageArchiv`). In
+ * On the Büroablage, whoever holds `org:archiv:manage` (`canManageOfficeShelf`). In
  * a project, whoever holds `project:documents:write` or the older umbrella
  * `project:edit` on it (`DOCUMENT_WRITE_PERMISSIONS`, the ceiling) AND may
  * write in the folder it is filed in (ADR-0088). A held upload is written, as
@@ -123,7 +123,7 @@ export async function mayWriteDocument(
     const curators = await inPool(people, PERMISSION_CHECKS_AT_ONCE, async (userId) => {
       const membership = await resolveSubjectMembership(organizationId, userId)
       if (!membership) return null
-      return (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.archivManage, organizationId)) ? userId : null
+      return (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.officeShelfManage, organizationId)) ? userId : null
     })
     return new Set(curators.filter((userId): userId is string => userId !== null))
   }

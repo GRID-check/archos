@@ -111,7 +111,7 @@ function noop(): void {}
 
 function ProductTourRunner({
   children,
-  canAccessArchiv,
+  canAccessOfficeShelf,
   canAccessInbox,
   canManageOrganization,
   eligible = NO_TOURS,
@@ -142,7 +142,7 @@ function ProductTourRunner({
   // the same pass that opens the tour.
   const startHere = React.useCallback(
     (tour: TourId, handover: boolean) => {
-      const reader = { canAccessArchiv, canAccessInbox, canManageOrganization, handover, phone }
+      const reader = { canAccessOfficeShelf, canAccessInbox, canManageOrganization, handover, phone }
       const stops = placeStops(TOURS[tour], reader, locateAnchor, {
         width: window.innerWidth,
         height: window.innerHeight,
@@ -154,7 +154,7 @@ function ProductTourRunner({
         void patchUserPreferences({ [TOUR_SEEN_KEYS[tour]]: new Date().toISOString() })
       }
     },
-    [canAccessArchiv, canAccessInbox, canManageOrganization, phone, startNextStep],
+    [canAccessOfficeShelf, canAccessInbox, canManageOrganization, phone, startNextStep],
   )
 
   const start = React.useCallback(() => {
@@ -334,16 +334,16 @@ function StopBody({ stop }: { stop: PlacedTourStop }): JSX.Element {
       </div>
     )
   }
-  if (stop.id === 'filesOrArchiv') {
+  if (stop.id === 'filesOrOfficeShelf') {
     return (
       <div className="space-y-3">
-        <p>{t('stops.filesOrArchiv.body')}</p>
+        <p>{t('stops.filesOrOfficeShelf.body')}</p>
         <dl className="space-y-2.5">
-          <TourDetailRow term={t('stops.filesOrArchiv.filesTerm')} stacked>
-            {t('stops.filesOrArchiv.filesDetail')}
+          <TourDetailRow term={t('stops.filesOrOfficeShelf.filesTerm')} stacked>
+            {t('stops.filesOrOfficeShelf.filesDetail')}
           </TourDetailRow>
-          <TourDetailRow term={t('stops.filesOrArchiv.archivTerm')} stacked>
-            {t('stops.filesOrArchiv.archivDetail')}
+          <TourDetailRow term={t('stops.filesOrOfficeShelf.officeShelfTerm')} stacked>
+            {t('stops.filesOrOfficeShelf.officeShelfDetail')}
           </TourDetailRow>
         </dl>
       </div>

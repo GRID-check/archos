@@ -21,7 +21,7 @@ import type { FileItem, FolderItem } from '@/features/documents/file-types'
 import type { DocumentAuthor } from '@/lib/documents/document-authors'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
 import type { DocumentTypeTag, DisciplineTag } from '@/lib/documents/tag-vocabulary'
-import { EMPTY_FASSUNG, type FassungFacts, type FassungRef } from '@/lib/documents/fassung'
+import { EMPTY_REVISION_LINKS, type RevisionLinks, type RevisionRef } from '@/lib/documents/revision-links'
 
 type ContentType = 'text' | 'table' | 'image' | 'chart' | 'drawing'
 
@@ -45,7 +45,7 @@ interface DocSpec {
   /** What the camera wrote, for a photo. */
   capture?: PhotoCapture | null
   /** The confirmed Fassung links, as the listing carries them. */
-  fassung?: FassungFacts | null
+  fassung?: RevisionLinks | null
 }
 
 const PDF = 'application/pdf'
@@ -77,18 +77,18 @@ function doc(spec: DocSpec): FileItem {
 }
 
 /** Three Fassung chains: the current one lists its history, each older one what replaced it. */
-const EG_C: FassungRef = { id: 'd-03-02', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' }
-const EG_B: FassungRef = { id: 'd-03-alt-1', filename: 'EG_Grundriss_Index_B_2026-07-02.pdf' }
-const SCHNITT_B: FassungRef = { id: 'd-03-04', filename: 'Schnitt_B-B_Index_B.pdf' }
-const SCHNITT_A: FassungRef = { id: 'd-03-alt-2', filename: 'Schnitt_B-B_Index_A.pdf' }
-const STELLPLATZ_A: FassungRef = { id: 'd-03-08', filename: 'Stellplatzplan_UG_Index_A.pdf' }
-const STELLPLATZ_VORABZUG: FassungRef = { id: 'd-03-alt-3', filename: 'Stellplatzplan_UG_Vorabzug.pdf' }
-const current = (older: FassungRef): FassungFacts => ({
-  ...EMPTY_FASSUNG,
+const GROUND_FLOOR_C: RevisionRef = { id: 'd-03-02', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' }
+const GROUND_FLOOR_B: RevisionRef = { id: 'd-03-alt-1', filename: 'EG_Grundriss_Index_B_2026-07-02.pdf' }
+const SECTION_B: RevisionRef = { id: 'd-03-04', filename: 'Schnitt_B-B_Index_B.pdf' }
+const SECTION_A: RevisionRef = { id: 'd-03-alt-2', filename: 'Schnitt_B-B_Index_A.pdf' }
+const PARKING_A: RevisionRef = { id: 'd-03-08', filename: 'Stellplatzplan_UG_Index_A.pdf' }
+const PARKING_PRELIMINARY: RevisionRef = { id: 'd-03-alt-3', filename: 'Stellplatzplan_UG_Vorabzug.pdf' }
+const current = (older: RevisionRef): RevisionLinks => ({
+  ...EMPTY_REVISION_LINKS,
   supersedes: [older],
   history: [{ ...older, createdAt: null, changeSummary: null }],
 })
-const replacedBy = (newer: FassungRef): FassungFacts => ({ ...EMPTY_FASSUNG, supersededBy: newer })
+const replacedBy = (newer: RevisionRef): RevisionLinks => ({ ...EMPTY_REVISION_LINKS, supersededBy: newer })
 
 export const PROJECT_NAME = 'Wohnbau Seestadt Nord'
 
@@ -198,7 +198,7 @@ export const FILES: FileItem[] = [
     // The last topic is 40 characters, the longest Piloti writes
     // (`MAX_TOPIC_LENGTH`): its chip truncates instead of widening the page.
     topics: ['Fluchtweg', 'Brandabschnitt', 'Stellplatzzufahrt', 'Brandabschnitte zwischen Tiefgarage & UG'],
-    fassung: current(EG_B),
+    fassung: current(GROUND_FLOOR_B),
   }),
   doc({
     id: 'd-03-03', filename: 'Regelgeschoss_Grundriss_Index_B.pdf', folderId: 'f-03-plaene',
@@ -213,7 +213,7 @@ export const FILES: FileItem[] = [
     pageCount: 1, chunkCount: 6, contentTypes: ['drawing'], tags: ['Schnitt'],
     summary: 'Gebäudeschnitt B-B durch das Stiegenhaus mit Lichtkuppel und Rauchabzug.',
     topics: ['Rauchabzug', 'Stiegenhaus'],
-    fassung: current(SCHNITT_A),
+    fassung: current(SECTION_A),
   }),
   doc({
     id: 'd-03-05', filename: 'Ansicht_Ost_Index_B.pdf', folderId: 'f-03-plaene',
@@ -236,7 +236,7 @@ export const FILES: FileItem[] = [
     status: 'completed', createdAt: '2026-07-30T13:25:00Z', fileSize: 980_000,
     pageCount: 1, chunkCount: 4, contentTypes: ['drawing'], tags: ['Grundriss'],
     summary: 'Tiefgaragenplan mit 38 Stellplätzen, Rampe und Brandabschnittsgrenzen.',
-    fassung: current(STELLPLATZ_VORABZUG),
+    fassung: current(PARKING_PRELIMINARY),
   }),
 
   // 03_Einreichung/alt: the earlier Fassungen an office keeps, named with their index.
@@ -246,22 +246,22 @@ export const FILES: FileItem[] = [
     pageCount: 1, chunkCount: 12, contentTypes: ['drawing', 'text'], tags: ['Grundriss', 'Brandschutz'],
     summary: 'Grundriss Erdgeschoß Index B mit Fluchtwegen und Brandabschnitten, noch ohne Stellplatzzufahrt.',
     topics: ['Fluchtweg', 'Brandabschnitt'],
-    fassung: replacedBy(EG_C),
+    fassung: replacedBy(GROUND_FLOOR_C),
   }),
   doc({
     id: 'd-03-alt-2', filename: 'Schnitt_B-B_Index_A.pdf', folderId: 'f-03-alt',
     status: 'completed', createdAt: '2026-06-18T11:30:00Z', fileSize: 1_350_000,
     pageCount: 1, chunkCount: 6, contentTypes: ['drawing'], tags: ['Schnitt'],
     summary: 'Gebäudeschnitt B-B durch das Stiegenhaus, Rauchabzug noch als Fenster.',
-    fassung: replacedBy(SCHNITT_B),
+    fassung: replacedBy(SECTION_B),
   }),
   // A replaced Fassung that failed to read: never listed under „Hier sind Sie
   // gefragt“, never re-read by „Alle erneut lesen“.
   doc({
-    id: STELLPLATZ_VORABZUG.id, filename: STELLPLATZ_VORABZUG.filename, folderId: 'f-03-alt',
+    id: PARKING_PRELIMINARY.id, filename: PARKING_PRELIMINARY.filename, folderId: 'f-03-alt',
     status: 'failed', createdAt: '2026-07-12T08:00:00Z', fileSize: 940_000,
     errorMessage: 'Datei ist beschädigt: Querverweistabelle fehlt',
-    fassung: replacedBy(STELLPLATZ_A),
+    fassung: replacedBy(PARKING_A),
   }),
 
   // 03_Einreichung/Gutachten: one in flight.

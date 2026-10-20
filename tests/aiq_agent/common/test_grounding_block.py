@@ -138,7 +138,7 @@ KB_HITS = [
         citation_key="einreichplan_og.pdf (Büroablage), p.9",
         file_name="einreichplan_og.pdf",
         page=9,
-        shelf=Shelf.ARCHIV,
+        shelf=Shelf.OFFICE_SHELF,
         collection="archiv_org1",
         display_title="einreichplan_og.pdf",
         punkt="§ 63 Abs 1",
@@ -306,7 +306,7 @@ class TestTheCoverageGap:
         assert COVERAGE_GAP_LABEL.removesuffix(" —") in prompt.read_text(encoding="utf-8")
 
 
-class TestTheHerleitungGetsTheRecords:
+class TestTheDerivationGetsTheRecords:
     """One ``sources`` step per rendered block, built from its lanes and never read back out of its text."""
 
     LANES = (
@@ -461,7 +461,7 @@ class TestAHeaderValueCannotForgeAHeaderLine:
         (entry,) = extract_sources_from_tool_result("knowledge_search", self.rendered())
         assert entry.shelf is None
 
-    def test_the_text_reader_keeps_the_dokumentart_the_hit_did_state(self):
+    def test_the_text_reader_keeps_the_doc_class_the_hit_did_state(self):
         """The forged line sits ABOVE the real one, so it would have won."""
         (entry,) = extract_sources_from_tool_result("knowledge_search", self.rendered())
         assert entry.doc_class == "sonstiges"

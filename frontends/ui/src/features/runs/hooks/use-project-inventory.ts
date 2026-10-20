@@ -80,11 +80,11 @@ export function useProjectInventory(projectId: string | null, enabled: boolean):
     void Promise.all([
       listing(`/api/documents?projectId=${encodeURIComponent(projectId)}`),
       listing('/api/archiv/documents'),
-    ]).then(([project, archiv]) => {
+    ]).then(([project, officeShelf]) => {
       if (cancelled) return
       setLoaded({
         projectId,
-        documents: [...toInventory(project, 'projekt'), ...toInventory(archiv, 'buero')],
+        documents: [...toInventory(project, 'projekt'), ...toInventory(officeShelf, 'buero')],
       })
       setLoading(false)
     })

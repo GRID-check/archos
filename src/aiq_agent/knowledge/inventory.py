@@ -62,7 +62,7 @@ _turn_documents: ContextVar[tuple[Any, ...]] = ContextVar("grid_turn_documents",
 _norm_families: ContextVar[tuple[Any, ...]] = ContextVar("grid_norm_families", default=())
 
 # User-facing shelves first; base last so the OIB corpus cannot evict them.
-_USER_SHELF_ORDER: tuple[Shelf, ...] = (Shelf.ARCHIV, Shelf.PROJECT, Shelf.SESSION)
+_USER_SHELF_ORDER: tuple[Shelf, ...] = (Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION)
 _INVENTORY_ORDER: tuple[Shelf, ...] = (*_USER_SHELF_ORDER, Shelf.BASE)
 
 #: How many in-flight filenames the prompt names before it counts the rest.
@@ -77,7 +77,7 @@ _SHELF_BLURBS: dict[Shelf, str] = {
     Shelf.BASE: (
         "always on this request — platform OIB / law corpus. Every turn has this, project or not. Never the Büroablage."
     ),
-    Shelf.ARCHIV: (
+    Shelf.OFFICE_SHELF: (
         "on every project in this organization — the office's own files. NOT base/OIB, NOT this project's files."
     ),
     Shelf.PROJECT: ("on every session of this project — this project's files only. NOT the Büroablage, NOT base/OIB."),
@@ -138,7 +138,7 @@ _SHELF_ONLY_FOLLOWUPS = frozenset(
 
 _SHELF_HINTS: tuple[tuple[Shelf, tuple[str, ...]], ...] = (
     (
-        Shelf.ARCHIV,
+        Shelf.OFFICE_SHELF,
         (
             "büroablage",
             "bueroablage",
@@ -517,8 +517,8 @@ def _implied_shelves(groups: dict[Shelf, list[Any]]) -> list[Shelf]:
         return []
     implied: set[Shelf] = set(present)
     implied.add(Shelf.BASE)
-    if present & {Shelf.ARCHIV, Shelf.PROJECT, Shelf.SESSION}:
-        implied.add(Shelf.ARCHIV)
+    if present & {Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION}:
+        implied.add(Shelf.OFFICE_SHELF)
         implied.add(Shelf.BASE)
     if present & {Shelf.PROJECT, Shelf.SESSION}:
         implied.add(Shelf.PROJECT)

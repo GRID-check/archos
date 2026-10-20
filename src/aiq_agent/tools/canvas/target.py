@@ -57,7 +57,7 @@ _MAX_PROBED_COLLECTIONS = 8
 
 #: The shelves a person's document sits on. The platform corpus (`base`) is
 #: nobody's to mark.
-_DOCUMENT_SHELVES = frozenset({Shelf.PROJECT, Shelf.ARCHIV, Shelf.SESSION})
+_DOCUMENT_SHELVES = frozenset({Shelf.PROJECT, Shelf.OFFICE_SHELF, Shelf.SESSION})
 
 
 def is_uuid(value: str) -> bool:

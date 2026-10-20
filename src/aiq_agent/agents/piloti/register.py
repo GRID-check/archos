@@ -348,7 +348,7 @@ def _turn_facts(state: ResearchAgentState, runtime: SkillRuntime | None) -> Turn
         project_facts={k: str(v) for k, v in facts_from_project_context(state.project_context or "").items()},
         families=get_norm_families(),
         project_files=sum(1 for doc in documents if getattr(doc, "shelf", None) == Shelf.PROJECT),
-        archive_files=sum(1 for doc in documents if getattr(doc, "shelf", None) == Shelf.ARCHIV),
+        archive_files=sum(1 for doc in documents if getattr(doc, "shelf", None) == Shelf.OFFICE_SHELF),
         # `surface`'s shape IS the compose rule the envelope contract already
         # carries: attached, it would ride twice and take a shape slot.
         card_types=[

@@ -73,7 +73,7 @@ describe('createProject (server action)', () => {
     ).rejects.toThrow('NEXT_REDIRECT /app/projects/p1/setup')
     expect(createProjectInOrg).toHaveBeenCalledWith(
       session,
-      expect.objectContaining({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', bundesland: 'wien' })
+      expect.objectContaining({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', federalState: 'wien' })
     )
   })
 

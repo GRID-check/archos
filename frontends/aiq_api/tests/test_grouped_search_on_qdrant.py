@@ -150,7 +150,7 @@ async def test_facts_put_then_filter_and_lift_through_the_routes(stack):
     assert missing.json() == {"collection": "proj_new", "applied": False}
 
 
-async def test_a_superseded_fassung_stays_out_of_the_grouped_search(stack):
+async def test_a_superseded_revision_stays_out_of_the_grouped_search(stack):
     """ADR-0099: search leaves a replaced Fassung out; the cross-project lookup would hand it to the model."""
     app, store = stack
     _put(store, "proj_a", ("plan_index_b.pdf", 0.90), ("plan_index_c.pdf", 0.80))

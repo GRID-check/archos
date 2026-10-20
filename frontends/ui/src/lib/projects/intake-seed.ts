@@ -62,7 +62,7 @@ export function intakeSeedFacts(
 ): Record<string, ProjectFact> {
   const { location } = input
   const typed = input.address?.trim()
-  const bundesland = location?.bundesland ?? input.bundesland ?? null
+  const federalState = location?.bundesland ?? input.bundesland ?? null
   const facts: Record<string, ProjectFact> = {}
   if (location) {
     facts.standort_adresse = fact(location.label, now, [
@@ -71,8 +71,8 @@ export function intakeSeedFacts(
   } else if (typed) {
     facts.standort_adresse = fact(typed, now, [{ kind: 'person', userId, at: now.toISOString() }])
   }
-  if (location || bundesland) facts.country = fact('at', now)
-  if (bundesland) facts.bundesland = fact(bundesland, now)
+  if (location || federalState) facts.country = fact('at', now)
+  if (federalState) facts.bundesland = fact(federalState, now)
   return facts
 }
 

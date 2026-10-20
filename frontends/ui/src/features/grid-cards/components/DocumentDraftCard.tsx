@@ -298,7 +298,7 @@ export const DocumentDraftCard: FC<DocumentDraftCardProps> = ({
   // one is a draft by definition — and no count ever numbers it here. One
   // write is no history and ten writes are still no headline: the counter, like
   // the size, lives in the preview dialog beside the words it measures.
-  const stand =
+  const stateLabel =
     filed && submitted && stateKey
       ? t(`cards.documentDraft.${stateKey}` as 'cards.documentDraft.inReview')
       : filedKnown
@@ -393,13 +393,13 @@ export const DocumentDraftCard: FC<DocumentDraftCardProps> = ({
             both, and a card mounted already filed paints its word at once. */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
-            key={stand}
+            key={stateLabel}
             data-testid="document-draft-state"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: reduced ? motionInstant : motionQuick }}
             exit={{ opacity: 0, transition: reduced ? motionInstant : motionQuickExit }}
           >
-            {stand}
+            {stateLabel}
           </motion.span>
         </AnimatePresence>
 

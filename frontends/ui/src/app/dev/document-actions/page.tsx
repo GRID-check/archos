@@ -103,11 +103,11 @@ function useOpenMoveMenu(pick: boolean): void {
         const items = Array.from(
           document.querySelectorAll<HTMLElement>('[data-slot="dropdown-menu-sub-content"] [role="menuitem"]')
         )
-        const statik = items.find((item) => item.textContent?.trim() === 'Statik')
-        statik?.focus()
+        const structuralFolder = items.find((item) => item.textContent?.trim() === 'Statik')
+        structuralFolder?.focus()
         // A real pointer click: this is the path a user takes, and the one
         // jsdom cannot reproduce for a submenu item.
-        statik?.click()
+        structuralFolder?.click()
       })
     })
   }, [pick])

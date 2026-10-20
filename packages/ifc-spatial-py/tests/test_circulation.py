@@ -47,9 +47,9 @@ from ifc_spatial.model import WrongKindError
 
 FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtures"
 SAMPLE_HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
-TWO_ROOMS = FIXTURES / "haus-mit-raeumen.ifc"
-NO_DOORS = FIXTURES / "geschossdecke-und-fenster.ifc"
-NO_SPACES = FIXTURES / "einheiten-fuss.ifc"
+TWO_ROOMS = FIXTURES / "house-with-rooms.ifc"
+NO_DOORS = FIXTURES / "floor-slab-and-window.ifc"
+NO_SPACES = FIXTURES / "units-feet.ifc"
 
 LIVING = "3w0zWKm7n8SB1qbfwUzt0U"
 BEDROOM = "3w0zWKm7n8SB1qbfwUzt0J"
@@ -305,7 +305,7 @@ def test_a_model_without_doors_refuses_with_a_remedy() -> None:
 
 
 def test_a_door_whose_rooms_cannot_be_resolved_is_reported_not_dropped() -> None:
-    """``haus-mit-raeumen.ifc`` carries a door with no body at all.
+    """``house-with-rooms.ifc`` carries a door with no body at all.
 
     ``opens_to`` is undecidable for it, and the graph must not quietly become a
     building with no doors: the door is listed under ``unbestimmt`` with the

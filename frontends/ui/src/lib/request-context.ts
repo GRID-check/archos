@@ -144,7 +144,7 @@ export interface GridRequestContextInput {
    * The validated jurisdiction token the intake wizard collects (PR #71) as
    * a structured project-profile fact (nine Bundesland tokens plus
    * `ausserhalb_oesterreichs` — see
-   * `@/lib/project-profile/intake-definition`'s `BUNDESLAND_TOKENS`),
+   * `@/lib/project-profile/intake-definition`'s `FEDERAL_STATE_TOKENS`),
    * carried STRUCTURED alongside the unchanged `bundesland=<token>` text
    * line inside `projectContext` (still read by the LLM — this is a
    * parallel channel, not a replacement). Omitted when falsy: a producer

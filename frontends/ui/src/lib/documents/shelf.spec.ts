@@ -9,7 +9,7 @@
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { describe, expect, it } from 'vitest'
 import {
-  ARCHIV_SHELF,
+  OFFICE_SHELF,
   documentShelf,
   projectShelf,
   shelfDocumentWhere,
@@ -31,7 +31,7 @@ describe('shelfDocumentWhere', () => {
   })
 
   it('names the tenant and the scope — and no project — for the Archiv', () => {
-    const { sql, params } = compile(shelfDocumentWhere(ARCHIV_SHELF, 'org-1'))
+    const { sql, params } = compile(shelfDocumentWhere(OFFICE_SHELF, 'org-1'))
 
     expect(sql).not.toContain('project_id')
     expect(params).toEqual(['org-1', 'archiv'])
@@ -45,9 +45,9 @@ describe('shelfFolderWhere', () => {
       'project',
       'proj-1',
     ])
-    const archiv = compile(shelfFolderWhere(ARCHIV_SHELF, 'org-1'))
-    expect(archiv.sql).toContain('"project_folders"."organization_id" = $1')
-    expect(archiv.params).toEqual(['org-1', 'archiv'])
+    const officeShelf = compile(shelfFolderWhere(OFFICE_SHELF, 'org-1'))
+    expect(officeShelf.sql).toContain('"project_folders"."organization_id" = $1')
+    expect(officeShelf.params).toEqual(['org-1', 'archiv'])
   })
 })
 
@@ -58,7 +58,7 @@ describe('shelfOwner', () => {
       scope: 'project',
       projectId: 'proj-1',
     })
-    expect(shelfOwner(ARCHIV_SHELF, 'org-1')).toEqual({
+    expect(shelfOwner(OFFICE_SHELF, 'org-1')).toEqual({
       organizationId: 'org-1',
       scope: 'archiv',
       projectId: null,
@@ -69,7 +69,7 @@ describe('shelfOwner', () => {
 describe('documentShelf', () => {
   it('reads the shelf off a stored row', () => {
     expect(documentShelf({ scope: 'project', projectId: 'proj-1' })).toEqual(projectShelf('proj-1'))
-    expect(documentShelf({ scope: 'archiv', projectId: null })).toEqual(ARCHIV_SHELF)
+    expect(documentShelf({ scope: 'archiv', projectId: null })).toEqual(OFFICE_SHELF)
   })
 
   it('has none for a session attachment, which is filed nowhere', () => {

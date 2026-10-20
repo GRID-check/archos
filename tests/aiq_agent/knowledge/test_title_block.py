@@ -111,7 +111,7 @@ class TestTheRecord:
         assert identifies_document({"revision_date": "2026-08-14"}) is True
         assert identifies_document(None) is False
 
-    def test_the_label_names_number_index_and_stand(self):
+    def test_the_label_names_number_index_and_state(self):
         assert title_block_label(_facts(revision="C", day="2026-08-14")) == "Nr. A-101, Index C, Stand 14.08.2026"
         assert title_block_label({"title": "Grundriss"}) == ""
         assert title_block_label(None) == ""
@@ -207,7 +207,7 @@ class TestCandidatesRankByTheNumber:
 
 
 class TestTheTitleBlocksDecide:
-    def test_the_new_document_with_the_higher_index_is_a_newer_fassung_of_the_one_with_the_same_number(self):
+    def test_the_new_document_with_the_higher_index_is_a_newer_revision_of_the_one_with_the_same_number(self):
         new = _doc("Neu_Entwurf.pdf", facts=_facts(revision="C", day="2026-08-14"))
         older = _doc("Zeichnung 7.pdf", facts=_facts(revision="B", day="2026-06-01"))
 

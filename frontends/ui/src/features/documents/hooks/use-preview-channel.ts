@@ -14,7 +14,7 @@ export interface PreviewHandlers {
   onReingested: (fileId: string, status: string) => void
   onTagsUpdated: (fileId: string, tags: string[], topics?: string[]) => void
   onOpenDocument: (fileId: string) => void
-  onFassungChanged: NonNullable<FilePreviewContext['onFassungChanged']>
+  onRevisionChanged: NonNullable<FilePreviewContext['onRevisionChanged']>
   onLifecycleChanged: NonNullable<FilePreviewContext['onLifecycleChanged']>
   onMarksChanged: NonNullable<FilePreviewContext['onMarksChanged']>
 }

@@ -720,7 +720,7 @@ times stops being a physical cue and becomes texture.
   graph has no animated edge. The cost is accepted and bounded: one marching
   edge measured ~245 ms of main thread per second on a 4x throttled phone, so
   the flag is limited to the frontier edges and to live turns
-  (`renderedEdges` in `ReasoningFlow.tsx`, preview `/dev/herleitung?variant=live`).
+  (`renderedEdges` in `ReasoningFlow.tsx`, preview `/dev/derivation?variant=live`).
 - Hover: `transition-colors` on interactive rows and links; never transform on
   hover for dense UI. The raised card's lift is the documented exception, and it
   is a tween.

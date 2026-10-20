@@ -27,7 +27,7 @@ const fact = (value: unknown) => ({
 })
 
 /** A Bestandsgebäude mid-Sanierung: enough to unfold Modul C's whole block. */
-const BESTAND_PROFILE: ProjectProfile = {
+const EXISTING_PROFILE: ProjectProfile = {
   facts: {
     project_name: fact('Demo · Hoftrakt Lacknergasse'),
     standort_adresse: fact('Lacknergasse 12, 1170 Wien'),
@@ -59,17 +59,17 @@ export default function IntakeGalleryPage({
     notFound()
   }
   const params = use(searchParams)
-  const bestand = params.variant === 'bestand'
+  const existing = params.variant === 'bestand'
 
   return (
     <main className="bg-background min-h-screen">
       <ProjectIntakeWizard
-        key={bestand ? 'bestand' : 'default'}
-        projectId={bestand ? 'dev-bestand' : 'dev'}
-        projectName={bestand ? 'Demo · Hoftrakt Lacknergasse' : 'Demo · WHA Quellenstraße'}
-        mode={bestand ? 'edit' : 'create'}
-        initialStep={bestand ? 2 : 0}
-        initialProfile={bestand ? BESTAND_PROFILE : null}
+        key={existing ? 'bestand' : 'default'}
+        projectId={existing ? 'dev-bestand' : 'dev'}
+        projectName={existing ? 'Demo · Hoftrakt Lacknergasse' : 'Demo · WHA Quellenstraße'}
+        mode={existing ? 'edit' : 'create'}
+        initialStep={existing ? 2 : 0}
+        initialProfile={existing ? EXISTING_PROFILE : null}
         definitionOverride={projectIntakeDefinitionV1}
       />
     </main>

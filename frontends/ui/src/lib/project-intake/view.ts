@@ -8,7 +8,7 @@
  * was found for it. A value with alternatives is a contradiction, listed again
  * on top. The questions are the decisive needs nothing has filled (a
  * `suggested` or `confirmed` need is not a question). The class of each
- * Bauwerk is shown once, in `derivations`, with the inputs it read and the
+ * building is shown once, in `derivations`, with the inputs it read and the
  * ones it lacks, never again in the modules; a contested class is still listed
  * among the contradictions.
  */
@@ -25,7 +25,7 @@ import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'
 import { getApplicableStandards } from '@/lib/oib/applicable-standards'
 import { deriveAll } from './derivation-view'
 import { locationRegisterFor } from './location-register'
-import { GEBAEUDEKLASSE_DERIVATION } from './derivations'
+import { BUILDING_CLASS_DERIVATION } from './derivations'
 import { profileKeyParts } from './profile-edits'
 import {
   MAX_INTAKE_NEEDS,
@@ -60,7 +60,7 @@ export function keyHomes(definition: ProjectIntakeDefinition): Map<string, KeyHo
     for (const question of stageQuestions(stage)) {
       const written = /^\/facts\/([^/]+)/.exec(question.writesTo ?? '')?.[1]
       if (written && !homes.has(written)) homes.set(written, { stage, question })
-      if (question.derives === GEBAEUDEKLASSE_DERIVATION.rule && !homes.has(question.derives)) {
+      if (question.derives === BUILDING_CLASS_DERIVATION.rule && !homes.has(question.derives)) {
         homes.set(question.derives, { stage, question })
       }
     }
@@ -70,7 +70,7 @@ export function keyHomes(definition: ProjectIntakeDefinition): Map<string, KeyHo
 
 function displayOf(home: KeyHome, value: ProjectFact['value']): string {
   const { question } = home
-  if (question?.derives === GEBAEUDEKLASSE_DERIVATION.rule) return `GK ${String(value)}`
+  if (question?.derives === BUILDING_CLASS_DERIVATION.rule) return `GK ${String(value)}`
   return question ? formatIntakeAnswer(question, value) : String(value)
 }
 
@@ -87,12 +87,12 @@ function suggestionOf(
   definition: ProjectIntakeDefinition,
   decisive: ReadonlySet<string>
 ): Suggestion {
-  const { baseKey, bauwerkId } = profileKeyParts(key)
+  const { baseKey, buildingId } = profileKeyParts(key)
   const label = home.question?.derives ? home.question.label : labelForProfileKey(definition, key)
   return {
     key,
     baseKey,
-    bauwerkId,
+    bauwerkId: buildingId,
     label,
     value: entry.value,
     display: displayOf(home, entry.value),
@@ -124,7 +124,7 @@ function profileItems(
 }
 
 /** The derived class: shown and decided in `derivations`, so not again in its module. */
-const isDerivedClass = (item: Suggestion) => item.baseKey === GEBAEUDEKLASSE_DERIVATION.rule
+const isDerivedClass = (item: Suggestion) => item.baseKey === BUILDING_CLASS_DERIVATION.rule
 
 /** Every value on the profile under a key the definition knows, grouped by module in the wizard's order; the derived class is not among them. */
 export function suggestionGroups(
@@ -142,7 +142,7 @@ export function suggestionGroups(
     .map((stage) => ({ stage: stage.id, title: stage.title, items: byStage.get(stage.id) ?? [] }))
 }
 
-/** Each Bauwerk's derivation, with the suggestion of its class: the row the review confirms it through. */
+/** Each building's derivation, with the suggestion of its class: the row the review confirms it through. */
 function derivationReviews(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition,
@@ -155,7 +155,7 @@ function derivationReviews(
   )
   return deriveAll(profile, definition).map((derivation) => ({
     ...derivation,
-    suggestion: classes.get(`${GEBAEUDEKLASSE_DERIVATION.rule}@${derivation.bauwerkId}`) ?? null,
+    suggestion: classes.get(`${BUILDING_CLASS_DERIVATION.rule}@${derivation.bauwerkId}`) ?? null,
   }))
 }
 

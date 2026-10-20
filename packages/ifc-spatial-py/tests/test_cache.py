@@ -19,8 +19,8 @@ from ifc_spatial.cache import hash_file
 from ifc_spatial.model import SpatialModel
 
 FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtures"
-SMALL = FIXTURES / "haus-mit-raeumen.ifc"
-OTHER = FIXTURES / "geschossdecke-und-fenster.ifc"
+SMALL = FIXTURES / "house-with-rooms.ifc"
+OTHER = FIXTURES / "floor-slab-and-window.ifc"
 
 
 def test_the_key_is_the_content_and_not_the_name(tmp_path: Path) -> None:

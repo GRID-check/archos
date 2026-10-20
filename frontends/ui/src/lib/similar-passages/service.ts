@@ -55,15 +55,15 @@ import {
 } from '@/lib/documents/service'
 import type { ListedDocument } from '@/lib/documents/shelf-listing'
 import { toListedDocuments } from '@/lib/documents/shelf-listing'
-import { archivCollectionName } from '@/lib/archiv/collection'
-import { findArchivDocumentsByFilenames } from '@/lib/archiv/repository'
+import { officeShelfCollectionName } from '@/lib/office-shelf/collection'
+import { findOfficeShelfDocumentsByFilenames } from '@/lib/office-shelf/repository'
 import { BadRequestError, ServiceUnavailableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { rankBySimilarity } from '@/lib/cross-project/similarity'
 import { CROSS_PROJECT_PAGE_PROJECTS } from '@/lib/cross-project/types'
 import type { Project } from '@/lib/db/schema'
-import { fassungTag } from '@/features/documents/lib/fassung-timeline'
+import { revisionTag } from '@/features/documents/lib/revision-timeline'
 import { listChatProjects } from '@/lib/projects/service'
 import { toProjectStatus } from '@/lib/projects/project-status'
 import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
@@ -205,12 +205,12 @@ export function asSearchHits(documents: readonly BackendSimilarDocument[]): Back
 }
 
 /** The Büroablage's hits as rows, screened ones only. */
-async function hydrateArchivHits(
+async function hydrateOfficeShelfHits(
   session: AuthorizedSession,
   hits: BackendSearchHit[]
 ): Promise<Array<SearchedDocument<ListedDocument>>> {
   if (hits.length === 0) return []
-  const rows = await findArchivDocumentsByFilenames(
+  const rows = await findOfficeShelfDocumentsByFilenames(
     session.organizationId,
     hits.map((hit) => hit.file_name),
     { reader: SCREENED_ONLY }
@@ -249,7 +249,7 @@ export function foldDocuments(
           filename: row.filename,
           displayName: row.displayName && row.displayName !== row.filename ? row.displayName : null,
           contentType: row.contentType,
-          stand: fassungTag(row.filename, row.revisionFacts ?? null),
+          stand: revisionTag(row.filename, row.revisionFacts ?? null),
           passages: [],
         },
       } satisfies RankedDocument)
@@ -305,8 +305,8 @@ export async function findSimilarPassages(
       projectCap
     )
   )
-  const archiv = archivCollectionName(session.organizationId)
-  const collections = [...new Set([...plans.flatMap((plan) => plan.collections).slice(0, projectCap), archiv])]
+  const officeShelf = officeShelfCollectionName(session.organizationId)
+  const collections = [...new Set([...plans.flatMap((plan) => plan.collections).slice(0, projectCap), officeShelf])]
 
   const backend = await fetchSimilarFromBackend(source, request.passage, collections)
   const hits = asSearchHits(backend.documents)
@@ -321,10 +321,10 @@ export async function findSimilarPassages(
     if (documents.length === 0) return null
     return { plan, documents }
   })
-  const archivDocuments = foldDocuments(
-    await hydrateArchivHits(
+  const officeShelfDocuments = foldDocuments(
+    await hydrateOfficeShelfHits(
       session,
-      hits.filter((hit) => hit.collection === archiv)
+      hits.filter((hit) => hit.collection === officeShelf)
     ).catch(joinFailed),
     source.documentId
   )
@@ -342,10 +342,10 @@ export async function findSimilarPassages(
       },
     })
   }
-  if (archivDocuments.length > 0) {
+  if (officeShelfDocuments.length > 0) {
     ranked.push({
-      rank: bestRank(archivDocuments),
-      group: { kind: 'archiv', project: null, documents: archivDocuments.map((document) => document.document) },
+      rank: bestRank(officeShelfDocuments),
+      group: { kind: 'archiv', project: null, documents: officeShelfDocuments.map((document) => document.document) },
     })
   }
   ranked.sort((a, b) => a.rank - b.rank)

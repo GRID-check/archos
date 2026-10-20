@@ -305,7 +305,7 @@ const ITEMS: InboxItemView[] = [
   },
   // A newer Fassung of a document you follow (ADR-0099), as a sentence about
   // the person who uploaded it. The older document is the subject (without its
-  // extension, as `fassungRowNames` writes it), the newer one the second name,
+  // extension, as `revisionRowNames` writes it), the newer one the second name,
   // and the excerpt is the first line of what changed: the row's only body.
   // „Fassungen vergleichen" opens the newer one with the comparison open.
   {

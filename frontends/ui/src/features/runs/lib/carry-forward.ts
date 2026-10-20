@@ -81,9 +81,9 @@ export function continuationBrief(message: ChatMessage): RunBrief {
     ...(lines.length > 0 ? lines : ['(keine Befundliste vorhanden)']),
     'Prüfen Sie jeden Befund gegen den aktuellen Projektstand, kennzeichnen Sie, was sich geändert hat, und schließen Sie offene Punkte, wo die Quellen es erlauben.',
   ].join('\n')
-  const grundlage = reportDocuments(message)
-  return grundlage.length > 0
-    ? { question, context, documents: { grundlage, ausgeschlossen: [] } }
+  const basis = reportDocuments(message)
+  return basis.length > 0
+    ? { question, context, documents: { grundlage: basis, ausgeschlossen: [] } }
     : { question, context }
 }
 

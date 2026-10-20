@@ -284,12 +284,12 @@ export function FileFilterMenu({
             label={t('filters.alsoShow.retired')}
           />
           <CheckRow
-            id="file-filter-older-fassungen"
-            checked={filters.showOlderFassungen}
+            id="file-filter-older-revisions"
+            checked={filters.showOlderRevisions}
             onChange={() =>
-              onFiltersChange({ ...filters, showOlderFassungen: !filters.showOlderFassungen })
+              onFiltersChange({ ...filters, showOlderRevisions: !filters.showOlderRevisions })
             }
-            label={t('filters.alsoShow.olderFassungen')}
+            label={t('filters.alsoShow.olderRevisions')}
           />
         </FilterSection>
 

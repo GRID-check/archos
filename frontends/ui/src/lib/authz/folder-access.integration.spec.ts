@@ -39,11 +39,11 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
   let accessRepo: typeof import('./folder-access-repository')
   let documentsRepo: typeof import('@/lib/documents/repository')
   let projectId: string
-  const folder: Record<'verwaltung' | 'vertraege' | 'honorare' | 'statik', string> = {
-    verwaltung: '',
-    vertraege: '',
-    honorare: '',
-    statik: '',
+  const folder: Record<'admin' | 'contracts' | 'fees' | 'structural', string> = {
+    admin: '',
+    contracts: '',
+    fees: '',
+    structural: '',
   }
 
   const inTenant = <T>(run: () => Promise<T>, organizationId = ORG): Promise<T> =>
@@ -98,16 +98,16 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
     //     Verträge/                its own list (in WorkOS: GF write, PL write, BH read)
     //       Honorare/              its own list (in WorkOS: GF write)
     //   Statik/                    its own list, everyone reads
-    folder.verwaltung = await insertFolder('Verwaltung', null, 'Verwaltung', null)
-    folder.vertraege = await insertFolder('Verträge', folder.verwaltung, 'Verwaltung/Verträge', { everyoneReads: false })
-    folder.honorare = await insertFolder('Honorare', folder.vertraege, 'Verwaltung/Verträge/Honorare', { everyoneReads: false })
-    folder.statik = await insertFolder('Statik', null, 'Statik', { everyoneReads: true })
+    folder.admin = await insertFolder('Verwaltung', null, 'Verwaltung', null)
+    folder.contracts = await insertFolder('Verträge', folder.admin, 'Verwaltung/Verträge', { everyoneReads: false })
+    folder.fees = await insertFolder('Honorare', folder.contracts, 'Verwaltung/Verträge/Honorare', { everyoneReads: false })
+    folder.structural = await insertFolder('Statik', null, 'Statik', { everyoneReads: true })
 
     await insertDocument('Lageplan.pdf', null, COLLECTION)
-    await insertDocument('Protokoll.pdf', folder.verwaltung, COLLECTION)
-    await insertDocument('Werkvertrag.pdf', folder.vertraege, access.restrictedCollectionName(COLLECTION, folder.vertraege))
-    await insertDocument('Honorarnote.pdf', folder.honorare, access.restrictedCollectionName(COLLECTION, folder.honorare))
-    await insertDocument('Statik.pdf', folder.statik, COLLECTION)
+    await insertDocument('Protokoll.pdf', folder.admin, COLLECTION)
+    await insertDocument('Werkvertrag.pdf', folder.contracts, access.restrictedCollectionName(COLLECTION, folder.contracts))
+    await insertDocument('Honorarnote.pdf', folder.fees, access.restrictedCollectionName(COLLECTION, folder.fees))
+    await insertDocument('Statik.pdf', folder.structural, COLLECTION)
   })
 
   afterAll(async () => {
@@ -118,15 +118,15 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
   it('reads the tree the decision needs, whether everyone reads and all, and finds an own list in one probe', async () => {
     expect(await accessRepo.projectHasCustomFolders(ORG, projectId)).toBe(true)
     const tree = await accessRepo.listProjectFolderTree(ORG, projectId)
-    expect(tree.find((entry) => entry.id === folder.honorare)).toEqual({
-      id: folder.honorare,
-      parentId: folder.vertraege,
+    expect(tree.find((entry) => entry.id === folder.fees)).toEqual({
+      id: folder.fees,
+      parentId: folder.contracts,
       accessMode: 'custom',
       everyoneReads: false,
       deleted: false,
     })
-    expect(tree.find((entry) => entry.id === folder.statik)).toMatchObject({ accessMode: 'custom', everyoneReads: true })
-    expect(tree.find((entry) => entry.id === folder.verwaltung)).toMatchObject({ accessMode: 'inherit', everyoneReads: false })
+    expect(tree.find((entry) => entry.id === folder.structural)).toMatchObject({ accessMode: 'custom', everyoneReads: true })
+    expect(tree.find((entry) => entry.id === folder.admin)).toMatchObject({ accessMode: 'inherit', everyoneReads: false })
     expect(await accessRepo.listProjectDocumentCollections(ORG, projectId)).toHaveLength(3)
   })
 
@@ -148,7 +148,7 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
 
     const page = await documentsRepo.listProjectDocumentPage(projectId, ORG, { hiddenFolderIds, reader: REVIEWER_READER })
     expect(page.rows.map((row) => row.filename).sort()).toEqual(['Lageplan.pdf', 'Protokoll.pdf', 'Statik.pdf'])
-    expect(intern.levelOf(folder.statik)).toBe('read')
+    expect(intern.levelOf(folder.structural)).toBe('read')
 
     const byName = await documentsRepo.findProjectDocumentsByFilenames(
       projectId,
@@ -167,14 +167,14 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
 
   it('lists the contracts to someone holding folder-reader there, read-only, and not the fees; an admin everything', async () => {
     const tree = await accessRepo.listProjectFolderTree(ORG, projectId)
-    const accountant = access.computeFolderAccess(tree, holding({ [folder.vertraege]: 'read' }), COLLECTION)
+    const accountant = access.computeFolderAccess(tree, holding({ [folder.contracts]: 'read' }), COLLECTION)
     const page = await documentsRepo.listProjectDocumentPage(projectId, ORG, {
       hiddenFolderIds: [...accountant.hiddenFolderIds],
       reader: REVIEWER_READER,
     })
     expect(page.rows.map((row) => row.filename).sort()).toEqual(['Lageplan.pdf', 'Protokoll.pdf', 'Statik.pdf', 'Werkvertrag.pdf'])
-    expect(accountant.levelOf(folder.vertraege)).toBe('read')
-    expect(accountant.levelOf(folder.honorare)).toBe('none')
+    expect(accountant.levelOf(folder.contracts)).toBe('read')
+    expect(accountant.levelOf(folder.fees)).toBe('none')
 
     const admin = access.computeFolderAccess(tree, access.EVERY_FOLDER, COLLECTION)
     const adminPage = await documentsRepo.listProjectDocumentPage(projectId, ORG, {
@@ -186,7 +186,7 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
 
   it('knows a name is taken under another restriction, which the per-collection index cannot', async () => {
     const holders = await documentsRepo.findProjectCollectionsHoldingFilename(ORG, projectId, 'Honorarnote.pdf')
-    expect(holders).toEqual([access.restrictedCollectionName(COLLECTION, folder.honorare)])
+    expect(holders).toEqual([access.restrictedCollectionName(COLLECTION, folder.fees)])
   })
 
   it('takes a custom folder with no grant row (0128 dropped the 1–20 trigger), and still refuses one nobody set', async () => {
@@ -215,7 +215,7 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
       inTenant(() =>
         db.execute(sql`
           INSERT INTO project_folder_grants (organization_id, project_id, folder_id, role_slug, level)
-          VALUES (${ORG}, ${projectId}::uuid, ${folder.honorare}::uuid, ${role}, ${level})
+          VALUES (${ORG}, ${projectId}::uuid, ${folder.fees}::uuid, ${role}, ${level})
         `)
       )
     await expect(insertGrant('org-projektleitung', 'admin')).rejects.toThrow()
@@ -227,19 +227,19 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
     await inTenant(() =>
       db.execute(sql`
         INSERT INTO project_folder_grants (organization_id, project_id, folder_id, role_slug, level)
-        VALUES (${ORG}, ${projectId}::uuid, ${folder.vertraege}::uuid, 'org-geschaeftsfuehrung', 'write')
+        VALUES (${ORG}, ${projectId}::uuid, ${folder.contracts}::uuid, 'org-geschaeftsfuehrung', 'write')
       `)
     )
     const own = await inTenant(() =>
       db.execute<{ n: number }>(
-        sql`SELECT count(*)::int AS n FROM project_folder_grants WHERE folder_id = ${folder.vertraege}::uuid`
+        sql`SELECT count(*)::int AS n FROM project_folder_grants WHERE folder_id = ${folder.contracts}::uuid`
       )
     )
     expect(Number(Array.from(own)[0]?.n)).toBe(1)
     const seen = await inTenant(
       () =>
         db.execute<{ n: number }>(
-          sql`SELECT count(*)::int AS n FROM project_folder_grants WHERE folder_id = ${folder.vertraege}::uuid`
+          sql`SELECT count(*)::int AS n FROM project_folder_grants WHERE folder_id = ${folder.contracts}::uuid`
         ),
       OTHER_ORG
     )
@@ -249,7 +249,7 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
         () =>
           db.execute(sql`
             INSERT INTO project_folder_grants (organization_id, project_id, folder_id, role_slug, level)
-            VALUES (${ORG}, ${projectId}::uuid, ${folder.vertraege}::uuid, 'org-forged', 'write')
+            VALUES (${ORG}, ${projectId}::uuid, ${folder.contracts}::uuid, 'org-forged', 'write')
           `),
         OTHER_ORG
       )
@@ -257,22 +257,22 @@ describe.skipIf(!url)('read/write folder access against Postgres', () => {
   })
 
   it('keeps a deleted folder as a tombstone that frees its name and still answers for its access', async () => {
-    const archiv = await insertFolder('Archiv', null, 'Archiv', { everyoneReads: false })
+    const officeShelf = await insertFolder('Archiv', null, 'Archiv', { everyoneReads: false })
     await inTenant(() =>
-      db.execute(sql`UPDATE project_folders SET deleted_at = now(), deleted_by = ${USER} WHERE id = ${archiv}::uuid`)
+      db.execute(sql`UPDATE project_folders SET deleted_at = now(), deleted_by = ${USER} WHERE id = ${officeShelf}::uuid`)
     )
     // The name is free again for a living sibling.
     const again = await insertFolder('Archiv', null, 'Archiv', null)
-    expect(again).not.toBe(archiv)
+    expect(again).not.toBe(officeShelf)
 
     const tree = await accessRepo.listProjectFolderTree(ORG, projectId)
-    const tombstone = tree.find((entry) => entry.id === archiv)
+    const tombstone = tree.find((entry) => entry.id === officeShelf)
     expect(tombstone).toMatchObject({ deleted: true, accessMode: 'custom' })
     const lookup = access.folderTree(tree)
-    expect(access.effectiveFolderLevel(lookup, holding({ [archiv]: 'read' }), archiv)).toBe('read')
-    expect(access.effectiveFolderLevel(lookup, access.ANY_MEMBER, archiv)).toBe('none')
+    expect(access.effectiveFolderLevel(lookup, holding({ [officeShelf]: 'read' }), officeShelf)).toBe('read')
+    expect(access.effectiveFolderLevel(lookup, access.ANY_MEMBER, officeShelf)).toBe('none')
     // Hidden from every listing, for everyone.
-    expect(access.computeFolderAccess(tree, access.EVERY_FOLDER, COLLECTION).isVisible(archiv)).toBe(false)
+    expect(access.computeFolderAccess(tree, access.EVERY_FOLDER, COLLECTION).isVisible(officeShelf)).toBe(false)
   })
 })
 
@@ -289,7 +289,7 @@ describe.skipIf(!url)('IFC models and restricted folders against Postgres', () =
   let bimRepo: typeof import('@/lib/bim/repository')
   let projectId: string
   let modelle: string
-  let plaene: string
+  let plans: string
   let hiddenModel: string
   let openModel: string
 
@@ -352,11 +352,11 @@ describe.skipIf(!url)('IFC models and restricted folders against Postgres', () =
       )
     )
     modelle = await insertFolder('Modelle')
-    plaene = await insertFolder('Pläne')
+    plans = await insertFolder('Pläne')
     hiddenModel = await insertModel(await insertDocument('Haus-A.ifc', modelle))
     await insertDocument(' Haus-B.IFCZIP ', modelle)
     await insertDocument('Haus-A.ifc.pdf', modelle)
-    await insertDocument('Grundriss.pdf', plaene)
+    await insertDocument('Grundriss.pdf', plans)
     openModel = await insertModel(await insertDocument('Bestand.ifc', null))
   })
 
@@ -368,15 +368,15 @@ describe.skipIf(!url)('IFC models and restricted folders against Postgres', () =
 
   it('counts the IFC models filed in the given folders, by the name the dispatcher reads', async () => {
     expect(await accessRepo.countIfcDocumentsInFolders(IFC_ORG, projectId, [modelle])).toBe(2)
-    expect(await accessRepo.countIfcDocumentsInFolders(IFC_ORG, projectId, [plaene])).toBe(0)
+    expect(await accessRepo.countIfcDocumentsInFolders(IFC_ORG, projectId, [plans])).toBe(0)
     expect(await accessRepo.countIfcDocumentsInFolders(IFC_ORG, projectId, [])).toBe(0)
   })
 
   it('leaves a hidden folder’s model out of the model list', async () => {
-    const all = await bimRepo.listBimModels(IFC_ORG, { projectId, includeArchiv: true, reader: REVIEWER_READER })
+    const all = await bimRepo.listBimModels(IFC_ORG, { projectId, includeOfficeShelf: true, reader: REVIEWER_READER })
     expect(all.map((model) => model.id).sort()).toEqual([hiddenModel, openModel].sort())
 
-    const visible = await bimRepo.listBimModels(IFC_ORG, { projectId, includeArchiv: true, hiddenFolderIds: [modelle], reader: REVIEWER_READER })
+    const visible = await bimRepo.listBimModels(IFC_ORG, { projectId, includeOfficeShelf: true, hiddenFolderIds: [modelle], reader: REVIEWER_READER })
     expect(visible.map((model) => model.id)).toEqual([openModel])
   })
 })

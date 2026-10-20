@@ -41,7 +41,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
   let db: ReturnType<typeof import('@/lib/db').getDb>
   let withTenant: typeof import('@/lib/db/tenant-context').withTenant
   let repo: typeof import('./repository')
-  let archiv: typeof import('@/lib/archiv/repository')
+  let officeShelf: typeof import('@/lib/office-shelf/repository')
   let projectId: string
 
   const inTenant = <T>(run: () => Promise<T>): Promise<T> =>
@@ -82,7 +82,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
     withTenant = context.withTenant
     db = (await import('@/lib/db')).getDb()
     repo = await import('./repository')
-    archiv = await import('@/lib/archiv/repository')
+    officeShelf = await import('@/lib/office-shelf/repository')
 
     const rows = await inTenant(() =>
       db.execute<{ id: string }>(sql`
@@ -125,7 +125,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
     const seen: string[] = []
     let cursor: import('./list-cursor').DocumentListCursor | undefined
     for (let guard = 0; guard < 10; guard++) {
-      const page = await inTenant(() => archiv.listArchivDocuments(ORG, { limit: 3, cursor, reader: REVIEWER_READER }))
+      const page = await inTenant(() => officeShelf.listOfficeShelfDocuments(ORG, { limit: 3, cursor, reader: REVIEWER_READER }))
       seen.push(...page.rows.map((row) => row.id))
       if (!page.nextCursor) break
       cursor = page.nextCursor
@@ -183,7 +183,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
 
   it('finds an Archiv document by name whatever page it is on', async () => {
     const oldest = `norm-${CREATED_AT.length - 1}.pdf`
-    const rows = await inTenant(() => archiv.findArchivDocumentsByFilenames(ORG, [oldest], { reader: REVIEWER_READER }))
+    const rows = await inTenant(() => officeShelf.findOfficeShelfDocumentsByFilenames(ORG, [oldest], { reader: REVIEWER_READER }))
     expect(rows.map((row) => row.filename)).toEqual([oldest])
   })
 

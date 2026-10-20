@@ -63,15 +63,15 @@ const folder = (
 }
 
 const TREE = {
-  verwaltung: folder('f-verwaltung', 'Verwaltung', 'Verwaltung', null),
-  vertraege: folder('f-vertraege', 'Verträge', 'Verwaltung/Verträge', 'f-verwaltung', { 'om-gf': 'write', 'om-bh': 'read' }),
-  alt: folder('f-alt', 'Alt', 'Verwaltung/Verträge/Alt', 'f-vertraege'),
+  admin: folder('f-verwaltung', 'Verwaltung', 'Verwaltung', null),
+  contracts: folder('f-vertraege', 'Verträge', 'Verwaltung/Verträge', 'f-verwaltung', { 'om-gf': 'write', 'om-bh': 'read' }),
+  old: folder('f-alt', 'Alt', 'Verwaltung/Verträge/Alt', 'f-vertraege'),
   sub: folder('f-sub', 'Sub', 'Verwaltung/Verträge/Sub', 'f-vertraege'),
   geheim: folder('f-geheim', 'Geheim', 'Verwaltung/Verträge/Sub/Geheim', 'f-sub', { 'om-hr': 'write' }),
-  projektordner: folder('f-projektordner', 'Projektordner', 'Verwaltung/Projektordner', 'f-verwaltung'),
-  ablage: folder('f-ablage', 'Ablage', 'Ablage', null),
-  honorare: folder('f-honorare', 'Honorare', 'Honorare', null, { 'om-hr': 'write' }),
-  statik: folder('f-statik', 'Statik', 'Statik', null, { 'om-gf': 'write' }, true),
+  projectFolder: folder('f-projektordner', 'Projektordner', 'Verwaltung/Projektordner', 'f-verwaltung'),
+  officeShelf: folder('f-ablage', 'Ablage', 'Ablage', null),
+  fees: folder('f-honorare', 'Honorare', 'Honorare', null, { 'om-hr': 'write' }),
+  structural: folder('f-statik', 'Statik', 'Statik', null, { 'om-gf': 'write' }, true),
 }
 const byId = new Map(Object.values(TREE).map((row) => [row.id, row]))
 
@@ -199,10 +199,10 @@ beforeEach(() => {
 
 describe('moving a folder', () => {
   it('needs project:manage to take a folder out from under a restricted one', async () => {
-    reads(TREE.alt, TREE.ablage)
+    reads(TREE.old, TREE.officeShelf)
 
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.alt.id, parentId: TREE.ablage.id }, session)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.old.id, parentId: TREE.officeShelf.id }, session)
     ).rejects.toThrow(/project:manage/)
     expect(state.transactions).toBe(0)
     expect(recordAuditEvent).not.toHaveBeenCalled()
@@ -210,10 +210,10 @@ describe('moving a folder', () => {
 
   it('records the change when a manager makes it', async () => {
     state.granted = new Set(MANAGER)
-    reads(TREE.alt, TREE.ablage)
+    reads(TREE.old, TREE.officeShelf)
 
     const result = await updateProjectFolder(
-      { projectId: 'proj-1', folderId: TREE.alt.id, parentId: TREE.ablage.id },
+      { projectId: 'proj-1', folderId: TREE.old.id, parentId: TREE.officeShelf.id },
       session
     )
 
@@ -223,25 +223,25 @@ describe('moving a folder', () => {
         action: 'project.folder.access_changed',
         targetType: 'project',
         targetId: 'proj-1',
-        metadata: { folderId: TREE.alt.id, grants: '', roles: '', documentsMoved: 3 },
+        metadata: { folderId: TREE.old.id, grants: '', roles: '', documentsMoved: 3 },
       })
     )
   })
 
   it('needs project:manage to put a folder under a restriction, and records what now governs it', async () => {
-    reads(TREE.projektordner, TREE.vertraege)
+    reads(TREE.projectFolder, TREE.contracts)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.projektordner.id, parentId: TREE.vertraege.id }, session)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.projectFolder.id, parentId: TREE.contracts.id }, session)
     ).rejects.toThrow(/project:manage/)
 
     state.granted = new Set(MANAGER)
-    reads(TREE.projektordner, TREE.vertraege)
+    reads(TREE.projectFolder, TREE.contracts)
     await updateProjectFolder(
-      { projectId: 'proj-1', folderId: TREE.projektordner.id, parentId: TREE.vertraege.id },
+      { projectId: 'proj-1', folderId: TREE.projectFolder.id, parentId: TREE.contracts.id },
       session
     )
     expect(vi.mocked(recordAuditEvent).mock.calls[0][0].metadata).toEqual({
-      folderId: TREE.projektordner.id,
+      folderId: TREE.projectFolder.id,
       // The folder that now governs it, by id: who is on its list is WorkOS's (ADR-0097).
       grants: 'folder:f-vertraege',
       roles: '',
@@ -251,12 +251,12 @@ describe('moving a folder', () => {
 
   it('names a folder everyone reads with `+*` in what now governs the moved folder', async () => {
     state.granted = new Set(MANAGER)
-    reads(TREE.projektordner, TREE.statik)
+    reads(TREE.projectFolder, TREE.structural)
 
-    await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.projektordner.id, parentId: TREE.statik.id }, session)
+    await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.projectFolder.id, parentId: TREE.structural.id }, session)
 
     expect(vi.mocked(recordAuditEvent).mock.calls[0][0].metadata).toEqual({
-      folderId: TREE.projektordner.id,
+      folderId: TREE.projectFolder.id,
       grants: 'folder:f-statik+*',
       roles: '',
       documentsMoved: 3,
@@ -269,10 +269,10 @@ describe('moving a folder', () => {
     // the mover could not see what they changed.
     it('refuses to move it out from under a restricting folder, even for a manager, and writes nothing', async () => {
       state.granted = new Set(MANAGER)
-      reads(TREE.sub, TREE.ablage)
+      reads(TREE.sub, TREE.officeShelf)
 
       const error = await updateProjectFolder(
-        { projectId: 'proj-1', folderId: TREE.sub.id, parentId: TREE.ablage.id },
+        { projectId: 'proj-1', folderId: TREE.sub.id, parentId: TREE.officeShelf.id },
         session
       ).catch((caught: unknown) => caught)
 
@@ -283,11 +283,11 @@ describe('moving a folder', () => {
 
     it('lets an organization admin, who reads everything, move it', async () => {
       state.granted = new Set(MANAGER)
-      reads(TREE.sub, TREE.ablage)
+      reads(TREE.sub, TREE.officeShelf)
       const admin = { ...session, permissions: ['org:projects:administer'] } as unknown as AuthorizedSession
 
       const result = await updateProjectFolder(
-        { projectId: 'proj-1', folderId: TREE.sub.id, parentId: TREE.ablage.id },
+        { projectId: 'proj-1', folderId: TREE.sub.id, parentId: TREE.officeShelf.id },
         admin
       )
 
@@ -296,10 +296,10 @@ describe('moving a folder', () => {
 
     it('does not stop a move that leaves the lists above it as they were', async () => {
       state.granted = new Set(WRITE_ONLY)
-      reads(TREE.sub, TREE.alt)
+      reads(TREE.sub, TREE.old)
       // Sub into Alt: both sit under Verträge, so who reads Geheim does not change.
       const result = await updateProjectFolder(
-        { projectId: 'proj-1', folderId: TREE.sub.id, parentId: TREE.alt.id },
+        { projectId: 'proj-1', folderId: TREE.sub.id, parentId: TREE.old.id },
         session
       )
 
@@ -308,10 +308,10 @@ describe('moving a folder', () => {
   })
 
   it('leaves a move between open folders to the write permission, unaudited', async () => {
-    reads(TREE.projektordner, TREE.ablage)
+    reads(TREE.projectFolder, TREE.officeShelf)
 
     const result = await updateProjectFolder(
-      { projectId: 'proj-1', folderId: TREE.projektordner.id, parentId: TREE.ablage.id },
+      { projectId: 'proj-1', folderId: TREE.projectFolder.id, parentId: TREE.officeShelf.id },
       session
     )
 
@@ -321,9 +321,9 @@ describe('moving a folder', () => {
   })
 
   it('leaves a rename inside a restricted folder to the write permission', async () => {
-    reads(TREE.alt, TREE.vertraege)
+    reads(TREE.old, TREE.contracts)
 
-    const result = await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.alt.id, name: 'Archiv' }, session)
+    const result = await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.old.id, name: 'Archiv' }, session)
 
     expect(result.ok).toBe(true)
     expect(recordAuditEvent).not.toHaveBeenCalled()
@@ -334,48 +334,48 @@ describe('a folder the session may only read (ADR-0088)', () => {
   it('refuses a new folder inside it with a typed 403, and one inside a folder it may not read as missing', async () => {
     state.granted = new Set(MANAGER)
     await expect(
-      createProjectFolder({ projectId: 'proj-1', parentId: TREE.vertraege.id, name: 'Neu' }, reader)
+      createProjectFolder({ projectId: 'proj-1', parentId: TREE.contracts.id, name: 'Neu' }, reader)
     ).rejects.toMatchObject({ status: 403, details: { reason: 'folder-read-only' } })
     await expect(
-      createProjectFolder({ projectId: 'proj-1', parentId: TREE.honorare.id, name: 'Neu' }, reader)
+      createProjectFolder({ projectId: 'proj-1', parentId: TREE.fees.id, name: 'Neu' }, reader)
     ).rejects.toBeInstanceOf(NotFoundError)
     expect(state.transactions).toBe(0)
   })
 
   it('refuses rename and move with a typed 403, and writes nothing', async () => {
     state.granted = new Set(MANAGER)
-    reads(TREE.alt)
+    reads(TREE.old)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.alt.id, name: 'X' }, reader)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.old.id, name: 'X' }, reader)
     ).rejects.toBeInstanceOf(ForbiddenError)
-    reads(TREE.alt)
+    reads(TREE.old)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.alt.id, parentId: TREE.ablage.id }, reader)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.old.id, parentId: TREE.officeShelf.id }, reader)
     ).rejects.toBeInstanceOf(ForbiddenError)
     expect(state.transactions).toBe(0)
   })
 
   it('refuses moving a folder the session may write INTO one it may only read', async () => {
-    reads(TREE.ablage)
+    reads(TREE.officeShelf)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.ablage.id, parentId: TREE.vertraege.id }, reader)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.officeShelf.id, parentId: TREE.contracts.id }, reader)
     ).rejects.toBeInstanceOf(ForbiddenError)
     expect(state.transactions).toBe(0)
   })
 
   it('keeps the project permission the ceiling: without document write, a granted writer is refused too', async () => {
     state.granted = new Set(['project:view'])
-    reads(TREE.alt)
+    reads(TREE.old)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.alt.id, name: 'X' }, session)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.old.id, name: 'X' }, session)
     ).rejects.toThrow(/Forbidden: project:documents:write/)
     expect(state.transactions).toBe(0)
   })
 
   it('lets an organization admin change a folder whose list does not name them', async () => {
     const admin = { ...session, roles: [], role: 'admin', permissions: ['org:projects:administer'] } as unknown as AuthorizedSession
-    reads(TREE.honorare)
-    const result = await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.honorare.id, name: 'Gehälter' }, admin)
+    reads(TREE.fees)
+    const result = await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.fees.id, name: 'Gehälter' }, admin)
     expect(result.ok).toBe(true)
   })
 })
@@ -386,17 +386,17 @@ describe('a folder the session may not read', () => {
   })
 
   it('cannot be renamed or moved, even by a manager: it is not found', async () => {
-    reads(TREE.honorare)
+    reads(TREE.fees)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.honorare.id, name: 'X' }, session)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.fees.id, name: 'X' }, session)
     ).rejects.toBeInstanceOf(NotFoundError)
     expect(state.transactions).toBe(0)
   })
 
   it('cannot be moved into', async () => {
-    reads(TREE.ablage)
+    reads(TREE.officeShelf)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.ablage.id, parentId: TREE.honorare.id }, session)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.officeShelf.id, parentId: TREE.fees.id }, session)
     ).rejects.toBeInstanceOf(NotFoundError)
     expect(state.transactions).toBe(0)
   })
@@ -404,9 +404,9 @@ describe('a folder the session may not read', () => {
 
 describe('describing a folder (migration 0145)', () => {
   it('lets a writer say what belongs in it, stored folded and trimmed, without moving or auditing anything', async () => {
-    reads(TREE.ablage)
+    reads(TREE.officeShelf)
     const result = await updateProjectFolder(
-      { projectId: 'proj-1', folderId: TREE.ablage.id, description: '  Bescheide   und Stellungnahmen  ' },
+      { projectId: 'proj-1', folderId: TREE.officeShelf.id, description: '  Bescheide   und Stellungnahmen  ' },
       session
     )
     expect(result.ok).toBe(true)
@@ -417,13 +417,13 @@ describe('describing a folder (migration 0145)', () => {
   })
 
   it('clears it with an empty text, and refuses one over 500 characters in words', async () => {
-    reads(TREE.ablage)
-    await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.ablage.id, description: '   ' }, session)
+    reads(TREE.officeShelf)
+    await updateProjectFolder({ projectId: 'proj-1', folderId: TREE.officeShelf.id, description: '   ' }, session)
     expect(state.written).toMatchObject({ description: null })
     state.written = null
-    reads(TREE.ablage)
+    reads(TREE.officeShelf)
     const tooLong = await updateProjectFolder(
-      { projectId: 'proj-1', folderId: TREE.ablage.id, description: 'x'.repeat(501) },
+      { projectId: 'proj-1', folderId: TREE.officeShelf.id, description: 'x'.repeat(501) },
       session
     )
     expect(tooLong).toEqual({ ok: false, error: 'A folder description may be at most 500 characters.' })
@@ -432,23 +432,23 @@ describe('describing a folder (migration 0145)', () => {
 
   it('refuses a reader who may only read the folder with a typed 403, and writes nothing', async () => {
     state.granted = new Set(MANAGER)
-    reads(TREE.alt)
+    reads(TREE.old)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.alt.id, description: 'Alte Verträge' }, reader)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.old.id, description: 'Alte Verträge' }, reader)
     ).rejects.toBeInstanceOf(ForbiddenError)
     expect(state.written).toBeNull()
   })
 
   it('answers a folder the session may not read as missing, and keeps the project write the ceiling', async () => {
     state.granted = new Set(MANAGER)
-    reads(TREE.honorare)
+    reads(TREE.fees)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.honorare.id, description: 'x' }, session)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.fees.id, description: 'x' }, session)
     ).rejects.toBeInstanceOf(NotFoundError)
     state.granted = new Set(['project:view'])
-    reads(TREE.ablage)
+    reads(TREE.officeShelf)
     await expect(
-      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.ablage.id, description: 'x' }, session)
+      updateProjectFolder({ projectId: 'proj-1', folderId: TREE.officeShelf.id, description: 'x' }, session)
     ).rejects.toThrow(/Forbidden: project:documents:write/)
     expect(state.written).toBeNull()
   })

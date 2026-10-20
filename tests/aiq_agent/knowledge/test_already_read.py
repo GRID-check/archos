@@ -53,7 +53,7 @@ class TestAppend:
             "oib-rl_3_ausgabe_mai_2023.pdf | oib_knowledge | Seiten 4 | Punkte - | Turn 2",
         ]
 
-    def test_a_page_without_a_punkt_and_vice_versa(self):
+    def test_a_page_without_a_clause_and_vice_versa(self):
         lines = merge_digest(
             None,
             [
@@ -169,7 +169,7 @@ class TestParse:
         assert parsed is not None
         assert (parsed.file_name, parsed.collection, parsed.turn) == ("a.pdf", "proj_1", 7)
         assert parsed.pages == {1, 3}
-        assert parsed.punkts == {"3.5.2", "4.1"}
+        assert parsed.clauses == {"3.5.2", "4.1"}
 
     def test_malformed_lines_are_skipped_not_fatal(self):
         bad_lines = (

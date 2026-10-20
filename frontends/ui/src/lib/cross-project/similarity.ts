@@ -88,12 +88,12 @@ function token(value: unknown): string | null {
 const ABROAD = 'ausserhalb_oesterreichs'
 
 /** The project's Bundesland as the intake stores it, folded to its token; `ausserhalb_oesterreichs` is kept as the answer it is. */
-export function bundeslandOf(profile: Profile | null): string | null {
+export function federalStateOf(profile: Profile | null): string | null {
   return tokens(factValues(profile, 'bundesland'))[0] ?? null
 }
 
 /** The Land the ranking compares: a site abroad has none, so two such projects share no jurisdiction. */
-function land(profile: Profile | null): string | null {
+function comparedState(profile: Profile | null): string | null {
   const found = tokens(readKey(profile, 'bundesland'))[0] ?? null
   return found === ABROAD ? null : found
 }
@@ -112,7 +112,7 @@ const CLASS_NAMED = /\bgk\s*([1-5])\b/i
  * names no class from 1 to 5 → null. A class outside that range is no
  * Gebäudeklasse, and the Python tier refuses it (a 422 on the upload).
  */
-function gebaeudeklasse(value: unknown): number | null {
+function buildingClassOf(value: unknown): number | null {
   if (typeof value === 'number') {
     return Number.isInteger(value) && value >= LOWEST_CLASS && value <= HIGHEST_CLASS ? value : null
   }
@@ -141,11 +141,11 @@ function overlap(a: readonly string[], b: readonly string[]): string[] {
  */
 export function similarityFacts(profile: Profile | null): SimilarityFacts {
   return {
-    bundesland: land(profile),
+    bundesland: comparedState(profile),
     gebaeudeklasse: [
       ...new Set(
         readKey(profile, 'gebaeudeklasse')
-          .map(gebaeudeklasse)
+          .map(buildingClassOf)
           .filter((value): value is number => value !== null)
       ),
     ].sort((a, b) => a - b),
@@ -162,13 +162,13 @@ export function confirmedSimilarityFacts(profile: Profile | null): SimilarityFac
 
 /** The weights, exported so the spec states the order they produce. */
 export const SIMILARITY_WEIGHTS = {
-  bundesland: 4,
-  gebaeudeklasse: 3,
-  gebaeudeklasseAdjacent: 1,
-  bauweise: 2,
-  nutzung: 1,
-  nutzungMax: 2,
-  vorhabensart: 1,
+  federalState: 4,
+  buildingClass: 3,
+  buildingClassAdjacent: 1,
+  constructionMethod: 2,
+  use: 1,
+  useMax: 2,
+  workType: 1,
 } as const
 
 /** The smallest class distance between any building of one and any of the other; null when either knows none. */
@@ -181,14 +181,14 @@ function closestClass(a: readonly number[], b: readonly number[]): number | null
 export function similarity(current: SimilarityFacts, candidate: SimilarityFacts): number {
   const w = SIMILARITY_WEIGHTS
   let score = 0
-  if (current.bundesland && current.bundesland === candidate.bundesland) score += w.bundesland
+  if (current.bundesland && current.bundesland === candidate.bundesland) score += w.federalState
   const distance = closestClass(current.gebaeudeklasse, candidate.gebaeudeklasse)
-  if (distance === 0) score += w.gebaeudeklasse
-  else if (distance === 1) score += w.gebaeudeklasseAdjacent
-  if (overlap(current.bauweise, candidate.bauweise).length > 0) score += w.bauweise
+  if (distance === 0) score += w.buildingClass
+  else if (distance === 1) score += w.buildingClassAdjacent
+  if (overlap(current.bauweise, candidate.bauweise).length > 0) score += w.constructionMethod
   const shared = overlap(current.nutzungen, candidate.nutzungen).length
-  score += Math.min(shared * w.nutzung, w.nutzungMax)
-  if (overlap(current.vorhabensart, candidate.vorhabensart).length > 0) score += w.vorhabensart
+  score += Math.min(shared * w.use, w.useMax)
+  if (overlap(current.vorhabensart, candidate.vorhabensart).length > 0) score += w.workType
   return score
 }
 

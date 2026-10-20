@@ -150,7 +150,7 @@ class TestAListOfParagraphs:
     def test_a_range_from_a_lettered_paragraph_continues_after_it(self):
         assert parse_address("x", "§§ 7a bis 9 BO Wien", "").sections == ("7a", "8", "9")
 
-    def test_an_absatz_list_leaves_nothing_in_the_laws_name(self):
+    def test_a_subsection_list_leaves_nothing_in_the_laws_name(self):
         assert parse_address("x", "§ 5 Abs 2 und 3 BO Wien", "").law == "BO Wien"
         assert parse_address("x", "§ 81 Abs. 1 bis 3 BO Wien", "").law == "BO Wien"
 
@@ -159,7 +159,7 @@ class TestAListOfParagraphs:
 
         assert (address.kind, address.sections, address.law) == ("Art", ("5", "7"), "B-VG")
 
-    def test_an_absatz_narrows_one_paragraph_never_a_list(self):
+    def test_a_subsection_narrows_one_paragraph_never_a_list(self):
         single = parse_address("x", "§ 2 Abs. 5 Baupolizeigesetz", "")
         listed = parse_address("x", "§§ 2 und 3 Abs. 4 Baupolizeigesetz", "")
 
@@ -220,7 +220,7 @@ class TestTheListReaderAgainstPracticeInputs:
         parse_address("x", "§ 3 BO Wien (s." + " (s." * 40 + "x", "")
         assert time.perf_counter() - started < 1.0
 
-    def test_an_absatz_between_two_paragraphs_does_not_end_the_list(self):
+    def test_a_subsection_between_two_paragraphs_does_not_end_the_list(self):
         address = parse_address("x", "§ 5 Abs 2 und § 7 BO Wien", "")
         assert (address.sections, address.absatz, address.law) == (("5", "7"), "", "BO Wien")
 

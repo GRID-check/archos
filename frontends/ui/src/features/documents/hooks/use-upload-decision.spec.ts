@@ -135,12 +135,12 @@ describe('useUploadDecision — Fassungen across names', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
 
     await act(async () => {
-      await result.current.propose({ ...base, files: [file], fassungOffers: offers }, sendDirect)
+      await result.current.propose({ ...base, files: [file], revisionOffers: offers }, sendDirect)
     })
 
     expect(sendDirect).not.toHaveBeenCalled()
     expect(offers).toHaveBeenCalledWith(['EG_Grundriss_Index_C.pdf'], new Map([['EG_Grundriss_Index_C.pdf', null]]))
-    await waitFor(() => expect(result.current.plan?.files[0].fassungOf).toMatchObject({ chosen: true, of: { id: 'b' } }))
+    await waitFor(() => expect(result.current.plan?.files[0].revisionOf).toMatchObject({ chosen: true, of: { id: 'b' } }))
     expect(result.current.open).toBe(true)
   })
 
@@ -151,7 +151,7 @@ describe('useUploadDecision — Fassungen across names', () => {
     const files = [new File(['x'], 'Baubeschreibung.pdf'), new File(['x'], 'EG_Grundriss_Index_C.pdf')]
 
     await act(async () => {
-      await result.current.propose({ ...base, files, fassungOffers: offers }, sendDirect)
+      await result.current.propose({ ...base, files, revisionOffers: offers }, sendDirect)
     })
 
     expect(offers).toHaveBeenCalledWith(['EG_Grundriss_Index_C.pdf'], expect.any(Map))
@@ -172,7 +172,7 @@ describe('useUploadDecision — Fassungen across names', () => {
     ]
 
     await act(async () => {
-      await result.current.propose({ documents: [], folders, currentFolderId: 'f-root', files, fassungOffers: offers }, vi.fn())
+      await result.current.propose({ documents: [], folders, currentFolderId: 'f-root', files, revisionOffers: offers }, vi.fn())
     })
 
     expect(offers).toHaveBeenCalledWith(
@@ -190,7 +190,7 @@ describe('useUploadDecision — Fassungen across names', () => {
     const { result } = renderHook(() => useUploadDecision())
 
     await act(async () => {
-      await result.current.propose({ ...base, files: [new File(['x'], 'Baubeschreibung.pdf')], fassungOffers: offers }, vi.fn())
+      await result.current.propose({ ...base, files: [new File(['x'], 'Baubeschreibung.pdf')], revisionOffers: offers }, vi.fn())
     })
 
     expect(offers).not.toHaveBeenCalled()
@@ -203,7 +203,7 @@ describe('useUploadDecision — Fassungen across names', () => {
 
     await act(async () => {
       await result.current.propose(
-        { ...base, files: [file], fassungOffers: vi.fn().mockRejectedValue(new Error('offline')) },
+        { ...base, files: [file], revisionOffers: vi.fn().mockRejectedValue(new Error('offline')) },
         sendDirect
       )
     })
@@ -218,18 +218,18 @@ describe('useUploadDecision — Fassungen across names', () => {
     const second = new File(['x'], 'OG_Grundriss_Index_C.pdf')
 
     await act(async () => {
-      await result.current.propose({ ...base, files: [first, second], fassungOffers: offers }, vi.fn())
+      await result.current.propose({ ...base, files: [first, second], revisionOffers: offers }, vi.fn())
     })
-    await waitFor(() => expect(result.current.plan?.files[0].fassungOf).toBeDefined())
-    const chosen = () => result.current.plan?.files.map((file) => file.fassungOf?.chosen)
+    await waitFor(() => expect(result.current.plan?.files[0].revisionOf).toBeDefined())
+    const chosen = () => result.current.plan?.files.map((file) => file.revisionOf?.chosen)
 
     expect(chosen()).toEqual([false, false])
-    act(() => result.current.changeFassung({ files: [first, second], chosen: true }))
+    act(() => result.current.changeRevision({ files: [first, second], chosen: true }))
     expect(chosen()).toEqual([true, true])
-    act(() => result.current.changeFassung({ files: [second], chosen: false }))
+    act(() => result.current.changeRevision({ files: [second], chosen: false }))
     expect(chosen()).toEqual([true, false])
-    act(() => result.current.changeFassung({ files: [second], targetId: 'a' }))
-    expect(result.current.plan?.files[1].fassungOf).toMatchObject({ of: { id: 'a' }, chosen: true })
+    act(() => result.current.changeRevision({ files: [second], targetId: 'a' }))
+    expect(result.current.plan?.files[1].revisionOf).toMatchObject({ of: { id: 'a' }, chosen: true })
   })
 
   it('carries the answers into the settled plan the upload applies', async () => {
@@ -238,16 +238,16 @@ describe('useUploadDecision — Fassungen across names', () => {
     const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
 
     await act(async () => {
-      await result.current.propose({ ...base, files: [file], fassungOffers: offers }, vi.fn())
+      await result.current.propose({ ...base, files: [file], revisionOffers: offers }, vi.fn())
     })
-    await waitFor(() => expect(result.current.plan?.files[0].fassungOf).toBeDefined())
-    act(() => result.current.changeFassung({ files: [file], chosen: false }))
+    await waitFor(() => expect(result.current.plan?.files[0].revisionOf).toBeDefined())
+    act(() => result.current.changeRevision({ files: [file], chosen: false }))
 
     let settled: Awaited<ReturnType<typeof result.current.settle>> = null
     await act(async () => {
       settled = await result.current.settle()
     })
 
-    expect(settled!.plan.files[0].fassungOf?.chosen).toBe(false)
+    expect(settled!.plan.files[0].revisionOf?.chosen).toBe(false)
   })
 })

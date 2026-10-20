@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createUploadTracker,
   pendingBindsFromDraft,
-  persistedBauwerkIds,
+  persistedBuildingIds,
   sendPendingBinds,
   withPendingBind,
-  withoutBauwerk,
+  withoutBuilding,
   withoutPendingBind,
   type PendingRoleBind,
 } from './pending-role-binds'
@@ -19,7 +19,7 @@ const plan = (documentId: string, scopeInstanceId = 'bw2'): PendingRoleBind => (
 
 describe('pending role binds', () => {
   it('without a stored profile, only the default building is saved', () => {
-    expect([...persistedBauwerkIds(null, null)]).toEqual(['bw1'])
+    expect([...persistedBuildingIds(null, null)]).toEqual(['bw1'])
   })
 
   it('a many-holder slot keeps every document, once each', () => {
@@ -38,7 +38,7 @@ describe('pending role binds', () => {
   it('removing a building drops its held bindings and no other', () => {
     const pending = [plan('a', 'bw2'), plan('b', 'bw3')]
 
-    expect(withoutBauwerk(pending, 'bw2')).toEqual([plan('b', 'bw3')])
+    expect(withoutBuilding(pending, 'bw2')).toEqual([plan('b', 'bw3')])
   })
 
   it('taking one back leaves the rest', () => {

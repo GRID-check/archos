@@ -51,7 +51,7 @@ const answer = (status, body = {}) => ({
   json: () => Promise.resolve(body),
 })
 
-describe('purgeFolder (a folder from the Papierkorb)', () => {
+describe('purgeFolder (a folder from the bin)', () => {
   it('asks the BFF to purge it, in the queue row’s organization, with the service token', async () => {
     const { tx } = makeTx()
     const { deps, fetchImpl } = makeDeps(answer(200, { status: 'purged', counts: { documents: 3 }, traceConversationIds: [] }))

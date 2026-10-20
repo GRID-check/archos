@@ -163,7 +163,7 @@ class TestFolderReachesTheModel:
 
         assert "Ordner: Brandschutz/Fluchtwege" in rendered
 
-    def test_a_document_at_the_root_gets_no_ordner_line_at_all(self, monkeypatch) -> None:
+    def test_a_document_at_the_root_gets_no_folder_line_at_all(self, monkeypatch) -> None:
         # Absence must read as absence. An "Ordner: /" or "Ordner: -" would be a
         # folder the user never made.
         _folders(monkeypatch, {})

@@ -132,8 +132,8 @@ const ONE_FACT_ONE_WORD: Record<string, string[]> = {
   'document: read it again': [
     'files.actions.reingest',
     'files.preview.retryIngestion',
-    'archiv.actions.reingest',
-    'archiv.actions.reingestConfirmAction',
+    'officeShelf.actions.reingest',
+    'officeShelf.actions.reingestConfirmAction',
   ],
 
   /**
@@ -141,7 +141,7 @@ const ONE_FACT_ONE_WORD: Record<string, string[]> = {
    * „Ansicht". The Archiv said only „Schnitt", so an elevation filed there was
    * labelled as something it is not, and the two libraries disagreed.
    */
-  'document kind: section or elevation': ['files.filters.kind.section', 'archiv.library.kind.section'],
+  'document kind: section or elevation': ['files.filters.kind.section', 'officeShelf.library.kind.section'],
 
   /**
    * The approval status of a Fassung (CONTEXT.md, „Freigabe“). The file pane's

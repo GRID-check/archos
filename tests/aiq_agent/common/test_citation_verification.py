@@ -1081,7 +1081,7 @@ class TestVerifyCitations:
         result = verify_citations(report, registry)
         assert len(result.valid_citations) == 1
 
-    def test_german_quellen_heading_is_treated_as_source_section(self, registry):
+    def test_german_sources_heading_is_treated_as_source_section(self, registry):
         """German reports with '## Quellen' verify in place — no duplicate English section."""
         report = (
             "Erkenntnis eins [1]. Erfundene Behauptung [2].\n\n"
@@ -1113,7 +1113,7 @@ class TestVerifyCitations:
         assert "## Quellen" in result.verified_report
         assert "## Sources" not in result.verified_report
 
-    def test_german_knowledge_layer_citation_in_quellen_section(self, registry):
+    def test_german_knowledge_layer_citation_in_sources_section(self, registry):
         """Internal document citations verify under a German heading too."""
         report = "Interner Befund [1].\n\n## Quellen\n[1] report.pdf, p.15"
         result = verify_citations(report, registry)
@@ -1526,7 +1526,7 @@ class TestSanitizeReport:
         assert result.body_urls_removed == 1
         assert result.body_urls_replaced == 0
 
-    def test_german_quellen_section_sanitized_like_english(self):
+    def test_german_sources_section_sanitized_like_english(self):
         """A German '## Quellen' section gets the same URL hygiene as '## Sources'."""
         report = (
             "Siehe https://nvidia.com/artikel im Text [1]. Verkuerzt [2].\n\n"
@@ -1864,11 +1864,11 @@ class TestSourceLane:
         entry = SourceEntry(citation_key="oib-rl_2_ausgabe_mai_2023.pdf, p.12", source_type="knowledge_layer")
         assert source_lane(entry) == ("baurecht_oib", "OIB-Richtlinie")
 
-    def test_leitfaden_file_is_leitfaden_lane(self):
+    def test_guide_file_is_guide_lane(self):
         entry = SourceEntry(citation_key="oib-rl_2_leitfaden_ausgabe_mai_2023.pdf, p.3", source_type="knowledge_layer")
         assert source_lane(entry) == ("baurecht_oib_leitfaden", "OIB-Leitfaden")
 
-    def test_project_document_is_projektwissen(self):
+    def test_project_document_is_project_knowledge(self):
         entry = SourceEntry(citation_key="einreichplan_rev04.pdf, p.1", source_type="knowledge_layer")
         assert source_lane(entry) == ("projekt", "Projektwissen")
 
@@ -2006,7 +2006,7 @@ class TestPrecedentLandOnTheWire:
 
         assert entry.project_land_note == self.LAND_NOTE
 
-    def test_a_replayed_hit_without_a_bundesland_line_states_none(self):
+    def test_a_replayed_hit_without_a_federal_state_line_states_none(self):
         from aiq_agent.common.citation_verification import _parse_knowledge_layer
 
         (entry,) = _parse_knowledge_layer(self.RESULT.format(project=self.PROJECT_LINE, land=""), "project_lookup")
@@ -3119,7 +3119,7 @@ class TestDocumentIdentityIsCollectionAndFilename:
     """
 
     @staticmethod
-    def _two_shelves(*, project_key: str, archiv_key: str) -> SourceRegistry:
+    def _two_shelves(*, project_key: str, office_shelf_key: str) -> SourceRegistry:
         registry = SourceRegistry()
         registry.add(
             SourceEntry(
@@ -3131,7 +3131,7 @@ class TestDocumentIdentityIsCollectionAndFilename:
         )
         registry.add(
             SourceEntry(
-                citation_key=archiv_key,
+                citation_key=office_shelf_key,
                 source_type="knowledge_layer",
                 collection="archiv_org1",
                 chunk_text="Aus der Büroablage.",
@@ -3143,7 +3143,7 @@ class TestDocumentIdentityIsCollectionAndFilename:
         # Same filename AND same page: keying on (filename, page) collapsed these
         # onto whichever chunk arrived first and discarded the other document's
         # evidence — including its chunk body, which quote verification needs.
-        registry = self._two_shelves(project_key="Plan.pdf, p.3", archiv_key="Plan.pdf, p.3")
+        registry = self._two_shelves(project_key="Plan.pdf, p.3", office_shelf_key="Plan.pdf, p.3")
         assert len(registry._citation_keys) == 2
         assert {entry.chunk_text for entry in registry._citation_keys} == {
             "Aus dem Projekt.",
@@ -3171,7 +3171,7 @@ class TestDocumentIdentityIsCollectionAndFilename:
     def test_a_qualified_key_resolves_to_the_shelf_it_names(self):
         registry = self._two_shelves(
             project_key="Plan.pdf (Projektwissen), p.3",
-            archiv_key="Plan.pdf (Büroablage), p.3",
+            office_shelf_key="Plan.pdf (Büroablage), p.3",
         )
         assert registry.entry_for_citation_key("Plan.pdf (Büroablage), p.3").collection == "archiv_org1"
         assert registry.entry_for_citation_key("Plan.pdf (Projektwissen), p.3").collection == "proj_alpha"
@@ -3183,13 +3183,13 @@ class TestDocumentIdentityIsCollectionAndFilename:
         # qualifier.
         registry = self._two_shelves(
             project_key="Plan.pdf (Projektwissen), p.3",
-            archiv_key="Plan.pdf (Büroablage), p.3",
+            office_shelf_key="Plan.pdf (Büroablage), p.3",
         )
         assert registry.has_citation_key("Plan.pdf, p.3") is True
         assert registry.entry_for_citation_key("Plan.pdf, p.3") is not None
 
     def test_a_qualifier_naming_no_retrieved_shelf_is_ignored_not_rejected(self):
-        registry = self._two_shelves(project_key="Plan.pdf, p.3", archiv_key="Plan.pdf, p.9")
+        registry = self._two_shelves(project_key="Plan.pdf, p.3", office_shelf_key="Plan.pdf, p.9")
         # Nothing was retrieved from the base corpus, so the qualifier matches no
         # entry. The citation is still valid — the document WAS retrieved.
         assert registry.has_citation_key("Plan.pdf (Basiswissen), p.3") is True
@@ -3386,7 +3386,7 @@ class TestBindingClassification:
         assert result.rank == "bundesgesetz"
         assert result.binding_status == "bindend"
 
-    def test_oib_richtlinie_matched_by_alias_is_verbindlich_erklaert(self):
+    def test_oib_guideline_matched_by_alias_is_declared_binding(self):
         # The OIB corpus is NOT in the registry, but a curated entry can catalogue
         # it: matching WIDENS beyond RIS URLs to the entry's alias against the
         # source's filename. behoerdliche_info (the OIB-covering lane) -> declared binding.
@@ -3410,7 +3410,7 @@ class TestBindingClassification:
         assert result.rank == "behoerdliche_info"
         assert result.binding_status == "verbindlich_erklaert"
 
-    def test_oib_richtlinie_from_corpus_filename_is_verbindlich_erklaert(self):
+    def test_oib_guideline_from_corpus_filename_is_declared_binding(self):
         # No registry entry at all: the OIB Richtlinie is recognised from its
         # corpus filename convention. rank stays None (the corpus carries no RIS
         # rank) but the role is honest — the Richtlinie is what a Land declares binding.
@@ -3424,7 +3424,7 @@ class TestBindingClassification:
         assert result.rank is None
         assert result.binding_status == "verbindlich_erklaert"
 
-    def test_oib_leitfaden_is_auslegend(self):
+    def test_oib_guide_is_interpretive(self):
         from aiq_agent.common.citation_verification import binding_classification_for_entry
 
         entry = SourceEntry(
@@ -3477,7 +3477,7 @@ class TestBindingClassification:
         assert for_tirol.rank is None
         assert for_tirol.binding_status == "unbekannt"
 
-    def test_norm_extern_is_auslegend(self):
+    def test_norm_extern_is_interpretive(self):
         from aiq_agent.common.citation_verification import binding_classification_for_entry
 
         registry = self._registry(
@@ -3530,7 +3530,7 @@ class TestBindingClassification:
 class TestWireCarriesBindingStatus:
     """``source_entry_to_wire`` emits rank + binding_status alongside binding_note."""
 
-    def test_oib_richtlinie_wire_binding_status(self):
+    def test_oib_guideline_wire_binding_status(self):
         from aiq_agent.common.citation_verification import source_entry_to_wire
 
         entry = SourceEntry(
@@ -3629,7 +3629,7 @@ class TestQuoteWordElision:
         assert len(verify_quoted_spans(answer, self._registry())) == 1
 
 
-class TestPunktAndScoreReachTheWire:
+class TestClauseAndScoreReachTheWire:
     """The chunker's Punkt and the retrieval score were printed for the model and
     dropped before the citation the reader sees. Both now ride the entry, fold
     sensibly under page dedup, and reach the wire."""
@@ -3649,7 +3649,7 @@ class TestPunktAndScoreReachTheWire:
         "Tragende Bauteile muessen nicht brennbar sein.\n"
     )
 
-    def test_punkt_and_score_are_parsed_from_a_knowledge_block(self):
+    def test_clause_and_score_are_parsed_from_a_knowledge_block(self):
         from aiq_agent.common.citation_verification import extract_sources_from_tool_result
 
         entries = extract_sources_from_tool_result("knowledge_search", self.BLOCK)
@@ -3657,7 +3657,7 @@ class TestPunktAndScoreReachTheWire:
         assert entries[0].punkt == "3.5.2"
         assert entries[0].score == 0.87
 
-    def test_a_block_without_a_punkt_line_carries_none(self):
+    def test_a_block_without_a_clause_line_carries_none(self):
         from aiq_agent.common.citation_verification import extract_sources_from_tool_result
 
         block = self.BLOCK.replace("Punkt: 3.5.2\n", "")
@@ -3665,7 +3665,7 @@ class TestPunktAndScoreReachTheWire:
         assert entries[0].punkt is None
         assert entries[0].score == 0.87
 
-    def test_page_dedup_keeps_the_first_punkt_and_the_best_score(self):
+    def test_page_dedup_keeps_the_first_clause_and_the_best_score(self):
         from aiq_agent.common.citation_verification import SourceEntry
 
         registry = SourceRegistry()
@@ -3690,10 +3690,10 @@ class TestPunktAndScoreReachTheWire:
         from aiq_agent.common.citation_verification import SourceEntry
         from aiq_agent.common.citation_verification import source_entry_to_wire
 
-        with_punkt = SourceEntry(
+        with_clause = SourceEntry(
             citation_key="oib_rl2.pdf, p.7", source_type="knowledge_layer", punkt="3.5.2", score=0.87
         )
-        wire = source_entry_to_wire(with_punkt)
+        wire = source_entry_to_wire(with_clause)
         assert wire["punkt"] == "3.5.2"
         assert wire["score"] == 0.87
         bare = SourceEntry(url="https://example.at/x", source_type="web")

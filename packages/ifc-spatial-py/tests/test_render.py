@@ -30,7 +30,7 @@ from ifc_spatial.model import SpatialModel
 
 FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtures"
 HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
-NO_SPACES = FIXTURES / "einheiten-fuss.ifc"
+NO_SPACES = FIXTURES / "units-feet.ifc"
 
 WINDOW = "3cUkl32yn9qRSPvBJVyWcE"
 INTERNAL_DOOR = "3cUkl32yn9qRSPvBJVyWax"
@@ -180,7 +180,7 @@ def test_north_is_declared_or_absent_never_invented(house: SpatialModel) -> None
     """An invented north arrow makes an orientation claim about a file that
     never made one, on a picture that reads as authoritative."""
     assert render._true_north_degrees(house) is not None
-    assert render._true_north_degrees(SpatialModel(str(FIXTURES / "haus-mit-raeumen.ifc"))) is None
+    assert render._true_north_degrees(SpatialModel(str(FIXTURES / "house-with-rooms.ifc"))) is None
 
 
 def test_only_may_not_pull_an_element_out_of_another_storey(house: SpatialModel) -> None:

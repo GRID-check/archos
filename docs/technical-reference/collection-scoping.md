@@ -24,7 +24,7 @@ and dispatches it into `s_{conversationId}`, the listing and delete go through
 collection. The `/api/v1` proxy only reads an `s_` collection
 ([BFF routes](../api/bff-routes.md#chat-attachments-session-documents-adr-0047-phase-2)).
 
-The Archiv collection is injected in `buildCollectionScopeFromRequest` (which has `session.organizationId`) and passed to `computeCollectionScope` as `archivCollectionName`; it rides right after the base corpus, so every project in the org retrieves across the shared Archiv with no per-project configuration.
+The Archiv collection is injected in `buildCollectionScopeFromRequest` (which has `session.organizationId`) and passed to `computeCollectionScope` as `officeShelfCollectionName`; it rides right after the base corpus, so every project in the org retrieves across the shared Archiv with no per-project configuration.
 
 ---
 

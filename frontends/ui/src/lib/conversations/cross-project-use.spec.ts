@@ -20,7 +20,7 @@ const CONV = 's_conv_1'
 const OWNER = 'user_owner'
 const OTHER = '22222222-0000-4000-8000-000000000002'
 const OWN = '11111111-0000-4000-8000-000000000001'
-const HONORARE_ID = 'abcdef01-2345-4678-89ab-cdef01234567'
+const FEES_ID = 'abcdef01-2345-4678-89ab-cdef01234567'
 const ANSWER = '5a5a5a5a-0000-4000-8000-000000000001'
 
 const state = vi.hoisted(() => ({
@@ -113,17 +113,17 @@ describe('recordCrossProjectHandOut', () => {
   it('records the projects and the restricted folders, deduplicated, after the audience check under the lock', async () => {
     await recordCrossProjectHandOut(
       party,
-      { projectIds: [OTHER, OTHER], folderIds: [HONORARE_ID, HONORARE_ID] },
+      { projectIds: [OTHER, OTHER], folderIds: [FEES_ID, FEES_ID] },
       audienceKey(solo)
     )
 
-    expect(state.steps).toEqual(['lock', 'audience', `projects:${OTHER}`, `folders:${HONORARE_ID}`])
+    expect(state.steps).toEqual(['lock', 'audience', `projects:${OTHER}`, `folders:${FEES_ID}`])
   })
 
   it('marks the answer the turn is writing in the same transaction, after the record (ADR-0093)', async () => {
     await recordCrossProjectHandOut(
       { ...party, answerMessageId: ANSWER },
-      { projectIds: [OTHER], folderIds: [HONORARE_ID] },
+      { projectIds: [OTHER], folderIds: [FEES_ID] },
       audienceKey(solo)
     )
 
@@ -134,13 +134,13 @@ describe('recordCrossProjectHandOut', () => {
       'lock',
       'audience',
       `projects:${OTHER}`,
-      `folders:${HONORARE_ID}`,
+      `folders:${FEES_ID}`,
       `mark:${ANSWER}:{"tx":true}`,
     ])
   })
 
   it('marks nothing without an answer id, and nothing when the chat is refused', async () => {
-    await recordCrossProjectHandOut(party, { projectIds: [OTHER], folderIds: [HONORARE_ID] }, audienceKey(solo))
+    await recordCrossProjectHandOut(party, { projectIds: [OTHER], folderIds: [FEES_ID] }, audienceKey(solo))
     state.audiences = [{ ...solo, grantees: ['user_ina'] }]
     const refused = recordCrossProjectHandOut(
       { ...party, answerMessageId: ANSWER },
@@ -196,7 +196,7 @@ describe('requireMayRememberFrom', () => {
     // The project is closed (not restricting), the folder of it still is: the
     // agent's own restriction evidence only knows this project's folders.
     state.audiences = [{ ...solo, projectId: OWN }]
-    state.foreignFolders = new Map([[HONORARE_ID, OTHER]])
+    state.foreignFolders = new Map([[FEES_ID, OTHER]])
 
     await expect(requireMayRememberFrom(CONV, ORG)).rejects.toBeInstanceOf(CrossProjectMemoryError)
   })
@@ -217,7 +217,7 @@ describe('drewOnOtherProjects', () => {
     expect(await drewOnOtherProjects(CONV, ORG)).toBe(true)
 
     state.recordedProjects = []
-    state.foreignFolders = new Map([[HONORARE_ID, OTHER]])
+    state.foreignFolders = new Map([[FEES_ID, OTHER]])
     expect(await drewOnOtherProjects(CONV, ORG)).toBe(true)
   })
 })
@@ -248,7 +248,7 @@ describe('restrictingOtherProjects', () => {
   })
 
   it('lists the project that owns a recorded restricted folder, although the project is closed and not in the restricting record', async () => {
-    state.foreignFolders = new Map([[HONORARE_ID, OTHER]])
+    state.foreignFolders = new Map([[FEES_ID, OTHER]])
 
     expect(await restrictingOtherProjects(CONV, ORG)).toEqual([{ id: OTHER, name: 'Wohnbau Graz' }])
     expect(await drewOnOtherProjects(CONV, ORG)).toBe(true)
@@ -257,7 +257,7 @@ describe('restrictingOtherProjects', () => {
 
   it('names a project once when the record and a folder both say it, sorted by name', async () => {
     state.recordedProjects = [LINZ, OTHER]
-    state.foreignFolders = new Map([[HONORARE_ID, OTHER]])
+    state.foreignFolders = new Map([[FEES_ID, OTHER]])
 
     expect((await restrictingOtherProjects(CONV, ORG)).map((project) => project.name)).toEqual([
       'Schule Linz',
@@ -272,11 +272,11 @@ describe('restrictingOtherProjects', () => {
   })
 
   it('counts a restricted folder no project holds any more, standing in nameless for its project', async () => {
-    state.foreignFolders = new Map([[HONORARE_ID, null]])
+    state.foreignFolders = new Map([[FEES_ID, null]])
 
     const found = await restrictingOtherProjects(CONV, ORG)
 
-    expect(found).toEqual([{ id: HONORARE_ID, name: null }])
+    expect(found).toEqual([{ id: FEES_ID, name: null }])
     expect(await drewOnOtherProjects(CONV, ORG)).toBe(true)
   })
 })

@@ -26,7 +26,7 @@ vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/fol
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
 vi.mock('@/lib/authz/organizations', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authz/organizations')>()),
-  canManageArchiv: vi.fn(() => false),
+  canManageOfficeShelf: vi.fn(() => false),
 }))
 vi.mock('@/lib/documents/repository', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/documents/repository')>()),
@@ -60,7 +60,7 @@ vi.mock('./query', () => ({ runBimQuery: vi.fn() }))
 
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { makeDocument } from '@/test-utils/db-fixtures'
@@ -80,7 +80,7 @@ const personOf = (userId: string): AuthorizedSession =>
 const member = personOf('member-1')
 const uploader = personOf('uploader-1')
 
-const quarantinedArchivIfc = (): Document =>
+const quarantinedOfficeShelfIfc = (): Document =>
   makeDocument({
     id: 'doc-q',
     scope: 'archiv',
@@ -95,9 +95,9 @@ beforeEach(() => {
   vi.clearAllMocks()
   // The repository answers each read by the reader it is given (the in-memory
   // twin of `documentVisibleTo`).
-  const row = quarantinedArchivIfc()
+  const row = quarantinedOfficeShelfIfc()
   vi.mocked(findDocumentInOrg).mockImplementation(async (_id, _org, reader) => (mayReadDocument(row, reader) ? row : null))
-  vi.mocked(canManageArchiv).mockReturnValue(false)
+  vi.mocked(canManageOfficeShelf).mockReturnValue(false)
   vi.mocked(requireProjectAccess).mockImplementation(async (_session, _projectId, permission) => {
     if (permission === 'project:manage') throw new NotFoundError('Project not found')
     return { role: 'project-viewer' } as Awaited<ReturnType<typeof requireProjectAccess>>
@@ -112,7 +112,7 @@ describe('the model of a quarantined IFC', () => {
 
   it('is served to its uploader and to a curator of the Büroablage', async () => {
     await expect(getAccessibleModel(uploader, 'model-1')).resolves.toMatchObject({ id: 'model-1' })
-    vi.mocked(canManageArchiv).mockReturnValue(true)
+    vi.mocked(canManageOfficeShelf).mockReturnValue(true)
     await expect(getAccessibleModel(member, 'model-1')).resolves.toMatchObject({ id: 'model-1' })
   })
 
@@ -121,7 +121,7 @@ describe('the model of a quarantined IFC', () => {
     expect(vi.mocked(listBimModels).mock.calls[0][1]?.reader).toEqual({
       kind: 'shelves',
       project: memberReader('member-1'),
-      archiv: memberReader('member-1'),
+      officeShelf: memberReader('member-1'),
     })
   })
 
@@ -136,19 +136,19 @@ describe('the model of a quarantined IFC', () => {
     expect(vi.mocked(listBimModels).mock.calls[0][1]?.reader).toEqual({
       kind: 'shelves',
       project: REVIEWER_READER,
-      archiv: memberReader('member-1'),
+      officeShelf: memberReader('member-1'),
     })
 
     vi.mocked(requireProjectAccess).mockImplementation(async (_session, _projectId, permission) => {
       if (permission === 'project:manage') throw new NotFoundError('Project not found')
       return { role: 'project-viewer' } as Awaited<ReturnType<typeof requireProjectAccess>>
     })
-    vi.mocked(canManageArchiv).mockReturnValue(true)
+    vi.mocked(canManageOfficeShelf).mockReturnValue(true)
     await listAccessibleModels(member, 'proj-1')
     expect(vi.mocked(listBimModels).mock.calls[1][1]?.reader).toEqual({
       kind: 'shelves',
       project: memberReader('member-1'),
-      archiv: REVIEWER_READER,
+      officeShelf: REVIEWER_READER,
     })
   })
 
@@ -159,7 +159,7 @@ describe('the model of a quarantined IFC', () => {
     expect(vi.mocked(listBimCheckConfirmations).mock.calls[0]).toEqual([
       'org-1',
       'proj-1',
-      { kind: 'shelves', project: memberReader('member-1'), archiv: memberReader('member-1') },
+      { kind: 'shelves', project: memberReader('member-1'), officeShelf: memberReader('member-1') },
     ])
   })
 

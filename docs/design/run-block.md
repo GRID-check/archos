@@ -34,7 +34,7 @@ does this stand".
   first token retune.
 - **The body** is `ItemList` + `Item`: one block with hairlines between its
   rows, which is what a list of rounds is — the same three atoms
-  `document-fassungen.tsx` composes, and for the same stated reason (three
+  `document-revisions.tsx` composes, and for the same stated reason (three
   bordered boxes read as three cards rather than as one history).
 - **The phase acts** are `dt`/`dd` rows at the version history's own weight: the
   same kind of fact („eingereicht von X am Y") in another vocabulary.
@@ -135,7 +135,7 @@ researcher's own output (`run_ledger_fold._add_findings`); the ledger's
 
 When the reader named documents on the plan card, the block carries a receipt
 under the phases: each Grundlage row, read — with the pages or Punkte the
-rounds reached, derived from the steps (`grundlageReceipt`) — or not yet read.
+rounds reached, derived from the steps (`basisReceipt`) — or not yet read.
 The ledger's `grundlage` field is the list; the loci are never stored twice.
 A row opens the document as a dialog over the thread, never a pane beside it.
 

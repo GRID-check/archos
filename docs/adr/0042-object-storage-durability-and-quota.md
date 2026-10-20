@@ -103,7 +103,7 @@ key in that bag, which the generic tenant settings route refuses to write — se
 decision 3.
 
 **There is one way to insert a `documents` row, and it is the admitting one.**
-`insertDocument` and `insertArchivDocument` were removed rather than left beside
+`insertDocument` and `insertOfficeShelfDocument` were removed rather than left beside
 it: a ceiling is only a ceiling if every insert passes through it, and a second
 ungated path is how that stops being true.
 

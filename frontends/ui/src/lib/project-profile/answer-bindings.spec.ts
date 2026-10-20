@@ -26,7 +26,7 @@ describe('bindProjectFact', () => {
     expect(bindProjectFact(profile, 'use').text).toBe('Wohnen, Büro / Verwaltung')
   })
 
-  it('reads a fact recorded per Bauwerk', () => {
+  it('reads a fact recorded per building', () => {
     expect(bindProjectFact(profile, 'escape_level_m')).toMatchObject({ state: 'confirmed', text: '10,8 m', number: 10.8 })
   })
 

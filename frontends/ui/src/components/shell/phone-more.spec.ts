@@ -4,7 +4,7 @@ import { moreDestinations, type MoreFlags } from './phone-more'
 import { orgPhoneTabs, projectPhoneTabs } from './phone-tabs'
 
 const ALL: MoreFlags = {
-  canAccessArchiv: true,
+  canAccessOfficeShelf: true,
   canAccessInbox: true,
   showSkills: true,
   canViewOrganization: true,
@@ -12,7 +12,7 @@ const ALL: MoreFlags = {
   canManagePlatform: true,
 }
 const NONE: MoreFlags = {
-  canAccessArchiv: false,
+  canAccessOfficeShelf: false,
   canAccessInbox: false,
   showSkills: false,
   canViewOrganization: false,
@@ -46,7 +46,7 @@ describe('moreDestinations: what "Mehr" lists', () => {
     expect(keys(ALL)).toEqual(['automation', 'archiv', 'profile', 'organization', 'platform'])
     expect(keys(NONE)).toEqual(['profile'])
     expect(keys({ ...ALL, showSkills: false })).not.toContain('automation')
-    expect(keys({ ...ALL, canAccessArchiv: false })).not.toContain('archiv')
+    expect(keys({ ...ALL, canAccessOfficeShelf: false })).not.toContain('archiv')
   })
 
   test('the account links are gated as the avatar menu gates them', () => {

@@ -95,11 +95,11 @@ export async function listDescribedFolders(
         .orderBy(projectFolders.path)
         .limit(MAX_DESCRIBED_FOLDERS)
     )
-  const [project, archiv] = await Promise.all([
+  const [project, officeShelf] = await Promise.all([
     projectId ? read(and(eq(projectFolders.scope, 'project'), eq(projectFolders.projectId, projectId))) : Promise.resolve([]),
     read(eq(projectFolders.scope, 'archiv')),
   ])
-  return [...project, ...archiv].flatMap((row) => (row.description ? [{ ...row, description: row.description }] : []))
+  return [...project, ...officeShelf].flatMap((row) => (row.description ? [{ ...row, description: row.description }] : []))
 }
 
 /**

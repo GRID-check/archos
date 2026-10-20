@@ -69,7 +69,7 @@ export const runs: typeof en.runs = {
     /** Statt „Bericht fortschreiben“ in einem abgeschlossenen Projekt (ADR-0090): ein Lauf legt dort ab. */
     continueClosed: 'Abgeschlossenes Projekt: keine neue Recherche',
   },
-  unterlagen: {
+  documents: {
     receiptLabel: 'Für diesen Auftrag benannte Unterlagen',
     receipt: '{read} von {total} benannten Unterlagen gelesen',
     unread: 'nicht gelesen',

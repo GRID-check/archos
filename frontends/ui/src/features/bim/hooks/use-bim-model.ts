@@ -1061,10 +1061,10 @@ export function useProjectRuleFacts(projectId: string | null): {
         // A bare number is still accepted: nothing forbids one, and refusing
         // it would trade one silent stand-down for another.
         const klasse = Number(String(raw.gebaeudeklasse?.value ?? '').trim().replace(/^GK\s*/i, ''))
-        const nutzung = raw.hauptnutzung?.value
+        const use = raw.hauptnutzung?.value
         setFacts({
           gebaeudeklasse: Number.isInteger(klasse) && klasse >= 1 && klasse <= 5 ? klasse : null,
-          hauptnutzung: typeof nutzung === 'string' && nutzung.trim() !== '' ? nutzung : null,
+          hauptnutzung: typeof use === 'string' && use.trim() !== '' ? use : null,
         })
       })
       .catch(() => {

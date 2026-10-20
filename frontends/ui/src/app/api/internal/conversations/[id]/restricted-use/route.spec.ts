@@ -35,7 +35,7 @@ const TOKEN = 'a-real-secret-token'
 const CONVERSATION_ID = 's_7d1e2c3b_0000_4000_8000_00000000000c'
 const ORG_ID = 'org_1'
 const ASKER = 'user_me'
-const VERTRAEGE = 'proj_abc_r0123456789ab'
+const CONTRACTS = 'proj_abc_r0123456789ab'
 
 const ask = (body: unknown, token: string = TOKEN, id: string = CONVERSATION_ID) =>
   POST(
@@ -58,7 +58,7 @@ const REQUEST = {
 
 beforeEach(() => {
   vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
-  vi.mocked(drawableRestrictedCollections).mockResolvedValue([VERTRAEGE])
+  vi.mocked(drawableRestrictedCollections).mockResolvedValue([CONTRACTS])
   vi.mocked(recordedRestrictedFolders).mockResolvedValue(['folder-vertraege'])
 })
 
@@ -69,37 +69,37 @@ afterEach(() => {
 
 describe('POST /api/internal/conversations/[id]/restricted-use', () => {
   it('answers a turn start with what may be drawn on and the folders already recorded, in the stated organization', async () => {
-    const response = await ask({ organizationId: ORG_ID, userId: ASKER, projectId: 'proj-1', candidates: [VERTRAEGE] })
+    const response = await ask({ organizationId: ORG_ID, userId: ASKER, projectId: 'proj-1', candidates: [CONTRACTS] })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({
-      drawable: [VERTRAEGE],
+      drawable: [CONTRACTS],
       admitted: [],
       refused: [],
       recorded: ['folder-vertraege'],
     })
     expect(withTenant).toHaveBeenCalledWith({ organizationId: ORG_ID }, expect.any(Function))
-    expect(drawableRestrictedCollections).toHaveBeenCalledWith(REQUEST, [VERTRAEGE])
+    expect(drawableRestrictedCollections).toHaveBeenCalledWith(REQUEST, [CONTRACTS])
     expect(recordedRestrictedFolders).toHaveBeenCalledWith(CONVERSATION_ID, ORG_ID)
     expect(admitRestrictedUse).not.toHaveBeenCalled()
   })
 
   it('admits a tool round’s collections and hands back the admission', async () => {
     vi.mocked(admitRestrictedUse).mockResolvedValue({
-      admitted: [VERTRAEGE],
+      admitted: [CONTRACTS],
       refused: [],
       recorded: ['folder-vertraege'],
     })
 
-    const response = await ask({ organizationId: ORG_ID, userId: ASKER, projectId: 'proj-1', admit: [VERTRAEGE] })
+    const response = await ask({ organizationId: ORG_ID, userId: ASKER, projectId: 'proj-1', admit: [CONTRACTS] })
 
     expect(await response.json()).toEqual({
-      drawable: [VERTRAEGE],
-      admitted: [VERTRAEGE],
+      drawable: [CONTRACTS],
+      admitted: [CONTRACTS],
       refused: [],
       recorded: ['folder-vertraege'],
     })
-    expect(admitRestrictedUse).toHaveBeenCalledWith(REQUEST, [VERTRAEGE])
+    expect(admitRestrictedUse).toHaveBeenCalledWith(REQUEST, [CONTRACTS])
   })
 
   /**
@@ -108,30 +108,30 @@ describe('POST /api/internal/conversations/[id]/restricted-use', () => {
    * the transaction that records the folder. Both before the model reads.
    */
   it('hands the answer the turn writes to the mark, at turn start and at admission', async () => {
-    vi.mocked(admitRestrictedUse).mockResolvedValue({ admitted: [VERTRAEGE], refused: [], recorded: [] })
+    vi.mocked(admitRestrictedUse).mockResolvedValue({ admitted: [CONTRACTS], refused: [], recorded: [] })
     const withAnswer = { ...REQUEST, answerMessageId: ANSWER_ID }
 
-    await ask({ organizationId: ORG_ID, userId: ASKER, projectId: 'proj-1', candidates: [VERTRAEGE], answerMessageId: ANSWER_ID })
+    await ask({ organizationId: ORG_ID, userId: ASKER, projectId: 'proj-1', candidates: [CONTRACTS], answerMessageId: ANSWER_ID })
     expect(markTurnAnswer).toHaveBeenCalledWith(withAnswer)
 
-    await ask({ organizationId: ORG_ID, userId: ASKER, projectId: 'proj-1', admit: [VERTRAEGE], answerMessageId: ANSWER_ID })
-    expect(admitRestrictedUse).toHaveBeenCalledWith(withAnswer, [VERTRAEGE])
+    await ask({ organizationId: ORG_ID, userId: ASKER, projectId: 'proj-1', admit: [CONTRACTS], answerMessageId: ANSWER_ID })
+    expect(admitRestrictedUse).toHaveBeenCalledWith(withAnswer, [CONTRACTS])
   })
 
   it('refuses an answer id that is not one the agent mints', async () => {
-    const response = await ask({ organizationId: ORG_ID, userId: ASKER, admit: [VERTRAEGE], answerMessageId: 'not-a-uuid' })
+    const response = await ask({ organizationId: ORG_ID, userId: ASKER, admit: [CONTRACTS], answerMessageId: 'not-a-uuid' })
     expect(response.status).toBe(400)
     expect(admitRestrictedUse).not.toHaveBeenCalled()
   })
 
   it('refuses a caller without the internal token, and asks nothing', async () => {
-    const response = await ask({ organizationId: ORG_ID, userId: ASKER, candidates: [VERTRAEGE] }, 'wrong-token')
+    const response = await ask({ organizationId: ORG_ID, userId: ASKER, candidates: [CONTRACTS] }, 'wrong-token')
     expect(response.status).toBe(403)
     expect(drawableRestrictedCollections).not.toHaveBeenCalled()
   })
 
   it('refuses an asker it was not told, and an id too long to record', async () => {
-    expect((await ask({ organizationId: ORG_ID, candidates: [VERTRAEGE] })).status).toBe(400)
+    expect((await ask({ organizationId: ORG_ID, candidates: [CONTRACTS] })).status).toBe(400)
     expect((await ask({ organizationId: ORG_ID, userId: ASKER }, TOKEN, 's_'.padEnd(129, 'x'))).status).toBe(400)
     expect(admitRestrictedUse).not.toHaveBeenCalled()
   })

@@ -31,13 +31,13 @@ import { TaskCreatedCard } from '@/features/grid-cards/components/TaskCreatedCar
 import { RunBlock } from '@/features/runs/components/RunBlock'
 import { RunBlockLine } from '@/features/runs/components/RunBlockLine'
 import {
-  RUN_ABGEBROCHEN,
-  RUN_ANGELEGT,
-  RUN_FEHLGESCHLAGEN,
-  RUN_FERTIG,
-  RUN_LAEUFT,
-  RUN_UNTERBROCHEN,
-  RUN_WARTET,
+  RUN_CANCELLED,
+  RUN_CREATED,
+  RUN_FAILED,
+  RUN_DONE,
+  RUN_RUNNING,
+  RUN_INTERRUPTED,
+  RUN_WAITING,
   runSequence,
 } from '../_fixtures/run-ledgers'
 
@@ -71,7 +71,7 @@ function Transition() {
         dueAt="2026-09-18T23:59:59.999Z"
         conversationId="s_00000000_0000_4000_8000_0000000000a2"
       />
-      <RunBlock ledger={RUN_ANGELEGT} title={TITLE} projectId={PROJECT} live />
+      <RunBlock ledger={RUN_CREATED} title={TITLE} projectId={PROJECT} live />
     </div>
   )
 }
@@ -155,14 +155,14 @@ export default function RunBlockPreview(): JSX.Element {
               title="Wird gestartet"
               note="Die ersten Sekunden nach der Übergabe: die Spur noch leer, die Zeile darunter nennt den Stand und wohin das Ergebnis kommt. Der Spinner ist die einzige Bewegung im Block."
             >
-              <RunBlock ledger={RUN_ANGELEGT} title={TITLE} projectId={PROJECT} live />
+              <RunBlock ledger={RUN_CREATED} title={TITLE} projectId={PROJECT} live />
             </Panel>
 
             <Panel
               title="Läuft — Recherchieren, dritte Runde"
               note="Der Stand: Titel, Laufzeit, die Spur, und eine Zeile, die die laufende Phase und die Zahlen nennt. Darunter jede Runde als eigene Zeile mit dem Vorsatz des Läufers, den erreichten Dokumenten als „Belegt durch“-Chips (Familie nach Regal, OIB/RIS-Kennung nach Namen) und den offenen Punkten; ein zweites Mal gelesenes Dokument sagt das im Chip, statt noch einmal gezählt zu werden. Abgeschlossene Phasen stehen als Akte darunter — dieselbe Form wie die Versionshistorie eines Dokuments. „Abbrechen“ ist der leise Ausweg und fragt nach, bevor es beendet."
             >
-              <RunBlock ledger={RUN_LAEUFT} title={TITLE} projectId={PROJECT} live onCancel={() => {}} />
+              <RunBlock ledger={RUN_RUNNING} title={TITLE} projectId={PROJECT} live onCancel={() => {}} />
             </Panel>
 
             <Panel
@@ -170,7 +170,7 @@ export default function RunBlockPreview(): JSX.Element {
               note="„Unterlage hinzufügen“ hat eine Unterlage aus einem eingeschränkten Ordner genannt. Der Auswahldialog ist schon zu; die Ablehnung steht deshalb unter der Statuszeile, im Wortlaut der API, bis zum nächsten Versuch. Ohne sie sähe die Unterlage aus, als käme sie in der nächsten Runde dran."
             >
               <RunBlock
-                ledger={RUN_LAEUFT}
+                ledger={RUN_RUNNING}
                 title={TITLE}
                 projectId={PROJECT}
                 live
@@ -185,7 +185,7 @@ export default function RunBlockPreview(): JSX.Element {
               note="Die Leitung ist abgerissen, der Auftrag nicht. Eine gedämpfte Zeile unter dem Block sagt beides — zuerst, dass weitergearbeitet wird. Schweigen an dieser Stelle läse sich als ein Lauf, der stehen geblieben ist."
             >
               <RunBlock
-                ledger={RUN_LAEUFT}
+                ledger={RUN_RUNNING}
                 title={TITLE}
                 projectId={PROJECT}
                 live
@@ -199,7 +199,7 @@ export default function RunBlockPreview(): JSX.Element {
               note="Piloti hat eine Rückfrage. Der Block öffnet sich von selbst, die Zeile sagt, wo geantwortet wird, „Antworten“ ist die eine Aktion im Stand und „Abbrechen“ steht leise daneben. Die Uhr läuft weiter: gewartet wird auf die Person, nicht auf Piloti."
             >
               <RunBlock
-                ledger={RUN_WARTET}
+                ledger={RUN_WAITING}
                 title="Stellplatznachweis für die Einreichung"
                 projectId={PROJECT}
                 live
@@ -213,7 +213,7 @@ export default function RunBlockPreview(): JSX.Element {
               note="Die Spur ist voll und grün, die Zeile sagt in vier Wörtern, wo der Bericht liegt. Darunter die Akte jeder Phase mit ihrer Dauer und, in den Worten der Prüferin, wer ihn angenommen hat. „Bericht öffnen“ ist die Aktion, weil schon beurteilt wurde."
             >
               <RunBlock
-                ledger={RUN_FERTIG}
+                ledger={RUN_DONE}
                 title={TITLE}
                 projectId={PROJECT}
                 defaultOpen
@@ -227,7 +227,7 @@ export default function RunBlockPreview(): JSX.Element {
               note="Die Form, in der ein fertiger Lauf über seinem Bericht sitzt: Titel, Spur, eine Zeile. Drei Zeilen hoch, damit der Bericht darunter die Seite bekommt. Der Bericht selbst steht als Antwortkarte darunter (hier nicht gezeigt)."
             >
               <RunBlock
-                ledger={RUN_FERTIG}
+                ledger={RUN_DONE}
                 title={TITLE}
                 projectId={PROJECT}
                 review={{
@@ -243,7 +243,7 @@ export default function RunBlockPreview(): JSX.Element {
               title="Fehlgeschlagen"
               note="Der Grund steht in der Statuszeile selbst, rot gedämpft — ein Fehlschlag, den man erst aufklappen muss, wird nicht gelesen. Die Spur hält an: das nächste Segment ist gestrichelt statt gefüllt, in derselben Farbe. Was bis dahin fertig war, steht im Block, damit niemand die Recherche ein zweites Mal beauftragt."
             >
-              <RunBlock ledger={RUN_FEHLGESCHLAGEN} title={TITLE} projectId={PROJECT} onRetry={() => {}} />
+              <RunBlock ledger={RUN_FAILED} title={TITLE} projectId={PROJECT} onRetry={() => {}} />
             </Panel>
 
             <Panel
@@ -251,7 +251,7 @@ export default function RunBlockPreview(): JSX.Element {
               note="Auf Wunsch der Person beendet, nach der ersten Runde. Kein Rot: nichts ist kaputt — die Spur wird still, nicht rot."
             >
               <RunBlock
-                ledger={RUN_ABGEBROCHEN}
+                ledger={RUN_CANCELLED}
                 title="Normprüfung Bestandsplan Bauteil B"
                 projectId={PROJECT}
               />
@@ -262,7 +262,7 @@ export default function RunBlockPreview(): JSX.Element {
               note="Die Recherche wurde abgebrochen, der Bericht aus dem Vorhandenen geschrieben und abgelegt. Die Spur ist grün, weil es ein Ergebnis gibt; die Zeile sagt, dass es ein schmaleres ist."
             >
               <RunBlock
-                ledger={RUN_UNTERBROCHEN}
+                ledger={RUN_INTERRUPTED}
                 title={TITLE}
                 projectId={PROJECT}
                 defaultOpen
@@ -283,25 +283,25 @@ export default function RunBlockPreview(): JSX.Element {
             >
               <div className="flex flex-col divide-y rounded-lg border bg-card px-4" data-testid="run-block-lines">
                 <RunBlockLine
-                  ledger={RUN_FERTIG}
+                  ledger={RUN_DONE}
                   title={TITLE}
                   href="/app/chat?session=s1&run=run-fertig#message-m1"
                   at={HOURS_AGO(3)}
                 />
                 <RunBlockLine
-                  ledger={RUN_LAEUFT}
+                  ledger={RUN_RUNNING}
                   title="Aktenvermerk Stellplatzverpflichtung"
                   href="/app/chat?session=s2&run=run-laeuft#message-m2"
                   at={HOURS_AGO(0.03)}
                 />
                 <RunBlockLine
-                  ledger={RUN_WARTET}
+                  ledger={RUN_WAITING}
                   title="Einreichcheck vor Abgabe"
                   href="/app/chat?session=s3&run=run-wartet#message-m3"
                   at={HOURS_AGO(1)}
                 />
                 <RunBlockLine
-                  ledger={RUN_FEHLGESCHLAGEN}
+                  ledger={RUN_FAILED}
                   title="Normprüfung Bestandsplan Bauteil B"
                   href="/app/chat?session=s4&run=run-fehlgeschlagen#message-m4"
                   at={HOURS_AGO(26)}

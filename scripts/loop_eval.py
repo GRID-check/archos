@@ -79,7 +79,7 @@ BASE_URL_ENV = "GRID_LOOP_EVAL_URL"
 DEFAULT_TIMEOUT_SECONDS = 240.0
 
 #: A Punkt as it appears in an answer: "Pkt. 3.5.2", "Punkt 5.1", "Pkt 4".
-_PUNKT_NUMBER_RE = re.compile(r"\b(?:Pkt\.?|Punkt)\s*(\d+(?:\.\d+)*)")
+_CLAUSE_NUMBER_RE = re.compile(r"\b(?:Pkt\.?|Punkt)\s*(\d+(?:\.\d+)*)")
 
 #: Step names the loop's own telemetry uses. The eval reads the SAME events the
 #: product emits — inventing a second measurement channel is how a harness ends
@@ -231,12 +231,12 @@ def _status_payloads(steps: Iterable[dict]) -> list[tuple[str, dict]]:
     return out
 
 
-def cited_punkte(answer: str) -> list[str]:
+def cited_clauses(answer: str) -> list[str]:
     """Every Punkt number the answer names, in order of appearance."""
-    return [match.group(1) for match in _PUNKT_NUMBER_RE.finditer(answer or "")]
+    return [match.group(1) for match in _CLAUSE_NUMBER_RE.finditer(answer or "")]
 
 
-def punkt_matches(expected: str | None, cited: Sequence[str]) -> str:
+def clause_matches(expected: str | None, cited: Sequence[str]) -> str:
     """Did the answer cite the expected Punkt, or one of its children?
 
     Empty when the question names no expected Punkt — an unmeasured cell, which
@@ -588,7 +588,7 @@ def observe(question: Question, steps: Sequence[dict], answer: str, envelope: di
         verdict=_yes_no(bool(envelope.get("verdict"))),
         rounds=str(len(rounds)),
         read_passage=_yes_no("read_passage" in tools),
-        punkt_match=punkt_matches(question.punkt, cited_punkte(answer)),
+        punkt_match=clause_matches(question.punkt, cited_clauses(answer)),
         truncated=_yes_no(truncated),
         checkpoint_sources=">".join(checkpoints[index] for index in sorted(checkpoints)),
         family_coverage=family_cell,

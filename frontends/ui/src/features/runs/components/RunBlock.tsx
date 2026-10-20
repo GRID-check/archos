@@ -105,7 +105,7 @@ import {
   activePhase,
   completedBefore,
   elapsedMs,
-  grundlageReceipt,
+  basisReceipt,
   isLiveStatus,
   phaseDurationMs,
   phaseState,
@@ -732,11 +732,11 @@ export function RunBlock({
         data-testid="run-action-add-document"
       >
         <BookOpen className="size-3.5" aria-hidden />
-        {t('unterlagen.addAction')}
+        {t('documents.addAction')}
       </Button>
     ) : null
 
-  const receipt = grundlageReceipt(ledger)
+  const receipt = basisReceipt(ledger)
 
   // A closed project commissions nothing (ADR-0090): say so where „Bericht fortschreiben“ would be.
   const closedProject = useCurrentProject()?.status === 'closed'
@@ -947,11 +947,11 @@ export function RunBlock({
               {receipt.length > 0 && (
                 <div
                   className="border-border flex flex-col gap-1 border-t px-3 py-2"
-                  data-testid="run-grundlage"
-                  aria-label={t('unterlagen.receiptLabel')}
+                  data-testid="run-basis"
+                  aria-label={t('documents.receiptLabel')}
                 >
                   <p className="text-muted-foreground text-xs font-medium">
-                    {t('unterlagen.receipt', {
+                    {t('documents.receipt', {
                       read: receipt.filter((row) => row.read).length,
                       total: receipt.length,
                     })}
@@ -964,14 +964,14 @@ export function RunBlock({
                         <>
                           {label}
                           {row.read && loci && <span className="opacity-70"> · {loci}</span>}
-                          {!row.read && <span className="italic"> · {t('unterlagen.unread')}</span>}
+                          {!row.read && <span className="italic"> · {t('documents.unread')}</span>}
                         </>
                       )
                       return (
                         <li
                           key={row.doc.name}
                           className="inline-flex max-w-full"
-                          data-testid="run-grundlage-doc"
+                          data-testid="run-basis-doc"
                           data-read={row.read ? 'true' : 'false'}
                         >
                           {onOpenDocument ? (
@@ -979,7 +979,7 @@ export function RunBlock({
                               type="button"
                               onClick={() => onOpenDocument(row.doc)}
                               className="focus-visible:ring-ring/60 max-w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2"
-                              aria-label={t('unterlagen.open', { name: label })}
+                              aria-label={t('documents.open', { name: label })}
                             >
                               <SourceSignalChip
                                 signal={docProvenance(row.doc).tint}

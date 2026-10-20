@@ -225,7 +225,7 @@ export const oibDocumentKey = (nameOrLabel: string | undefined | null): string |
     : /[äa]nderung|aenderung/.test(raw)
       ? 'aen'
       : ''
-  const leitfaden = /leitfaden/.test(raw) ? 'lf' : ''
+  const guide = /leitfaden/.test(raw) ? 'lf' : ''
 
   let subject: string | null = null
   if (/begriffsbestimmung/.test(raw)) subject = 'begriffe'
@@ -233,7 +233,7 @@ export const oibDocumentKey = (nameOrLabel: string | undefined | null): string |
   else subject = OIB_NUMBER_RE.exec(raw)?.[1] ?? null
 
   if (!subject) return null
-  return ['oib', role, subject, leitfaden].filter(Boolean).join(':')
+  return ['oib', role, subject, guide].filter(Boolean).join(':')
 }
 
 /** Identity prefix of a document known only as a law name — see `documentIdentity`. */

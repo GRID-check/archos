@@ -29,7 +29,7 @@ import type { AnnotationView } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
 import { createCanvasTurnClient, type CanvasTurnClientOptions } from '../../lib/canvas-turn-client'
-import { CARRY_AT_ONCE, useDocumentReview, type ReviewFassung } from '../../hooks/use-document-review'
+import { CARRY_AT_ONCE, useDocumentReview, type ReviewRevision } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
 import { useCheckFixed } from './check-fixed'
 import { PilotiAnswerCard } from './piloti-answer-card'
@@ -149,22 +149,22 @@ function Harness({
   onReady,
   piloti,
   canPickAssignee = false,
-  fassung = null,
+  revision = null,
 }: {
   transport: RoomTransport
   onReady?: (review: ReturnType<typeof useDocumentReview>) => void
   piloti?: ReturnType<typeof scriptedPiloti>
   canPickAssignee?: boolean
-  fassung?: ReviewFassung | null
+  revision?: ReviewRevision | null
 }) {
   const review = useDocumentReview('doc_1', {
     enabled: true,
     transport,
-    fassung,
+    revision,
     piloti: piloti ? { projectId: 'proj_1', fileName: 'Grundriss.pdf', createClient: piloti.createClient } : undefined,
   })
   // As the review wires it: „Piloti prüfen lassen, was behoben ist" under the earlier Fassungen' marks.
-  const checkFixed = useCheckFixed(review, { documentName: 'Grundriss Index C.pdf', fassungLabel: 'Revision 3' })
+  const checkFixed = useCheckFixed(review, { documentName: 'Grundriss Index C.pdf', revisionLabel: 'Revision 3' })
   useEffect(() => {
     onReady?.(review)
   })
@@ -1934,7 +1934,7 @@ describe('a mark goes on with the current Fassung', () => {
     render(
       <Harness
         transport={scriptedRoom().transport}
-        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+        revision={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
       />
     )
     const group = await screen.findByTestId('review-carried-group')
@@ -1981,7 +1981,7 @@ describe('a mark goes on with the current Fassung', () => {
     render(
       <Harness
         transport={scriptedRoom().transport}
-        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+        revision={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
       />
     )
 
@@ -2015,7 +2015,7 @@ describe('a mark goes on with the current Fassung', () => {
     render(
       <Harness
         transport={scriptedRoom().transport}
-        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+        revision={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
       />
     )
 
@@ -2036,7 +2036,7 @@ describe('a mark goes on with the current Fassung', () => {
     render(
       <Harness
         transport={scriptedRoom().transport}
-        fassung={{
+        revision={{
           replacedBy: { id: 'doc_d', filename: 'Grundriss Index D.pdf' },
           replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }],
         }}
@@ -2065,7 +2065,7 @@ describe('a mark goes on with the current Fassung', () => {
     render(
       <Harness
         transport={scriptedRoom().transport}
-        fassung={{ replacedBy: { id: 'doc_c', filename: 'Grundriss Index C.pdf' }, replaces: [] }}
+        revision={{ replacedBy: { id: 'doc_c', filename: 'Grundriss Index C.pdf' }, replaces: [] }}
       />
     )
 
@@ -2162,7 +2162,7 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
       <Harness
         transport={scriptedRoom().transport}
         piloti={piloti}
-        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+        revision={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
       />
     )
 
@@ -2253,7 +2253,7 @@ describe('a mark of an earlier Fassung on the sheet', () => {
     render(
       <Harness
         transport={scriptedRoom().transport}
-        fassung={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
+        revision={{ replacedBy: null, replaces: [{ id: 'doc_b', filename: 'Grundriss Index B.pdf' }] }}
       />
     )
     await screen.findByTestId('review-carried-group')

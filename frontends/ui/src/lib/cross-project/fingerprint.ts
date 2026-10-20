@@ -17,7 +17,7 @@
 import {
   answerKeyFor,
   answersFromProfile,
-  defaultBauwerke,
+  defaultBuildings,
   evaluateIntakeCondition,
   flattenIntakeQuestions,
   isIntakeAnswerProvided,
@@ -130,15 +130,15 @@ function valueOf(key: FingerprintKey, facts: SimilarityFacts): string | null {
 export function fingerprintOf(profile: ProjectProfile | null | undefined): FingerprintFact[] {
   const facts = similarityFacts(profile ?? null)
   const confirmed = confirmedSimilarityFacts(profile ?? null)
-  const { answers, bauwerke } = profile
+  const { answers, buildings } = profile
     ? answersFromProfile(profile, DEFINITION)
-    : { answers: {} as Record<string, ProjectPrimitiveValue>, bauwerke: defaultBauwerke() }
+    : { answers: {} as Record<string, ProjectPrimitiveValue>, buildings: defaultBuildings() }
   return FINGERPRINT_KEYS.map((key) => {
     const askers = ASKERS.get(key) ?? []
     const applies =
       askers.length === 0 ||
       askers.some(({ question, perBuilding }) =>
-        perBuilding ? bauwerke.some((building) => asked(question, answers, building.id)) : asked(question, answers)
+        perBuilding ? buildings.some((building) => asked(question, answers, building.id)) : asked(question, answers)
       )
     const value = valueOf(key, facts)
     return {
