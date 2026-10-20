@@ -88,6 +88,13 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          # Every commit and tree, no file contents: the diff base, the merge
+          # base and `git diff --name-only` need only those. The full history
+          # is 1.1 GB and fetching it cost this job, which every other job
+          # waits for, ~29s; blobless it is 16 MB. The few blobs the image and
+          # pin scripts read at the base are fetched on demand by the two
+          # steps below that source ci/git_auth.sh.
+          filter: blob:none
           # synchronize checks out the PR head. The default PR checkout is a
           # merge commit, which would mix develop into the diff.
           ref: ${{ github.event.action == 'synchronize' && (github.event.pull_request.head.sha || github.sha) || github.sha }}
@@ -136,6 +143,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
+          . ci/git_auth.sh
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             python3 ci/image_inputs.py plan --base "$BASE"
           else
@@ -146,8 +154,11 @@ jobs:
         id: pins
         if: steps.reuse.outputs.hit != 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           BASE: ${{ github.event.pull_request.base.sha || steps.green.outputs.sha }}
-        run: python3 ci/pinned_images.py new "$BASE"
+        run: |
+          . ci/git_auth.sh
+          python3 ci/pinned_images.py new "$BASE"
 
       # A skipped job reads as passed, so the run page says what was decided
       # and why: the diff base, reuse, tiers, images, pins.
@@ -213,6 +224,11 @@ jobs:
       # `github` output makes each finding an annotation on the diff.
       - name: Backend lint (ruff)
         run: task be:lint -- --output-format=github
+      # The tests of ci/, the workflows and the release-note pipeline. Here
+      # rather than only in the backend suite, so the backend filter need not
+      # fire for a change that only touches those (.github/filters.yml).
+      - name: Repository machinery tests (CI, release notes)
+        run: task be:test:harness
       # The notes are published verbatim to piloti.at, so their prose is linted
       # on every run, a push straight to release/** included.
       - name: Release notes (lint)
