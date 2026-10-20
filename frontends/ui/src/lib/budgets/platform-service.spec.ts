@@ -22,8 +22,10 @@ vi.mock('@/lib/workos/client', () => ({
 const getOrgBudget = vi.fn()
 const getSpendTotals = vi.fn()
 const setBudgetPolicy = vi.fn()
+const getOrganizationUsageOverview = vi.fn()
 vi.mock('./service', () => ({
   BudgetValidationError: class extends Error {},
+  getOrganizationUsageOverview: (...args: unknown[]) => getOrganizationUsageOverview(...args),
   getOrgBudget: (...args: unknown[]) => getOrgBudget(...args),
   getSpendTotals: (...args: unknown[]) => getSpendTotals(...args),
   setBudgetPolicy: (...args: unknown[]) => setBudgetPolicy(...args),
@@ -34,7 +36,13 @@ vi.mock('@/lib/audit/service', () => ({
   recordAuditEvent: (...args: unknown[]) => recordAuditEvent(...args),
 }))
 
-import { getPlatformOrgBudget, savePlatformOrgBudget } from './platform-service'
+const listOrganizationMembers = vi.fn()
+vi.mock('@/lib/organizations/service', () => ({
+  getOrganizationDisplayName: async () => 'Büro Nord',
+  listOrganizationMembers: (...args: unknown[]) => listOrganizationMembers(...args),
+}))
+
+import { getPlatformOrgBudget, getPlatformOrgUsage, savePlatformOrgBudget } from './platform-service'
 
 const session: GridSession = {
   userId: 'user_operator',
@@ -154,5 +162,44 @@ describe('platform organization allowances', () => {
     setBudgetPolicy.mockRejectedValue(new Error('Database unavailable'))
     await expect(savePlatformOrgBudget(session, 'org_tenant', input, request)).rejects.toThrow('Database unavailable')
     expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+})
+
+describe('platform organization usage', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    requirePlatformPermission.mockResolvedValue(undefined)
+    getOrganization.mockResolvedValue({ id: 'org_tenant' })
+    listOrganizationMembers.mockResolvedValue([
+      { id: 'user_a', email: 'a@buero.test', name: 'A' },
+      { id: 'user_idle', email: 'idle@buero.test', name: null },
+    ])
+  })
+
+  it('reads the office’s own usage view inside its tenant scope, under the usage-view permission', async () => {
+    getOrganizationUsageOverview.mockImplementation(async () => {
+      expect(getTenantContext()).toMatchObject({ organizationId: 'org_tenant', userId: 'user_operator' })
+      return { unit: 'credit', perMember: [{ userId: 'user_a' }] }
+    })
+
+    const result = await getPlatformOrgUsage(session, 'org_tenant')
+
+    expect(requirePlatformPermission).toHaveBeenCalledWith(session, PLATFORM_PERMISSIONS.usageView)
+    expect(getOrganizationUsageOverview).toHaveBeenCalledWith('org_tenant')
+    expect(result.organization).toEqual({ id: 'org_tenant', name: 'Büro Nord' })
+    // Labels only for the people who spent: the directory itself is not the payload.
+    expect(result.members).toEqual([{ id: 'user_a', email: 'a@buero.test', name: 'A' }])
+  })
+
+  it('still shows the spend when the directory cannot be listed', async () => {
+    getOrganizationUsageOverview.mockResolvedValue({ unit: 'credit', perMember: [{ userId: 'user_a' }] })
+    listOrganizationMembers.mockRejectedValue(new Error('WorkOS down'))
+
+    expect((await getPlatformOrgUsage(session, 'org_tenant')).members).toEqual([])
+  })
+
+  it('answers 404 for an organization WorkOS does not know', async () => {
+    getOrganization.mockRejectedValue(Object.assign(new Error('nope'), { status: 404 }))
+    await expect(getPlatformOrgUsage(session, 'org_missing')).rejects.toBeInstanceOf(NotFoundError)
   })
 })

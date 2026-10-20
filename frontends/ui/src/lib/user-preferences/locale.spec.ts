@@ -38,7 +38,7 @@ describe('findSavedLocale', () => {
     await expect(findSavedLocale()).resolves.toEqual({ known: true, locale: 'de' })
   })
 
-  it('says nothing was chosen when the office never picked one (NULL since 0154)', async () => {
+  it('says nothing was chosen when the office never picked one (NULL since 0155)', async () => {
     findOrganization.mockResolvedValue({ defaultLocale: null })
     await expect(findSavedLocale()).resolves.toEqual({ known: true, locale: null })
   })

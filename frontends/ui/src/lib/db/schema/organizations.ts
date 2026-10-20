@@ -24,7 +24,7 @@ export const organizations = pgTable('organizations', {
   displayName: text('display_name'),
   /**
    * Interface language for members who never picked one; NULL until an admin
-   * chooses (migration 0154). It used to default to 'en', which no reader could
+   * chooses (migration 0155). It used to default to 'en', which no reader could
    * tell from a choice, and German offices were switched to English by it.
    */
   defaultLocale: text('default_locale'),

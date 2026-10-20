@@ -56,6 +56,7 @@ import {
   defaultAbschluss,
   type ProjectOutcome,
 } from '@/lib/projects/project-status'
+import { isRedirectSignal } from '@/lib/utils/redirect-signal'
 
 export type CreateProjectState = 'active' | 'closed'
 type AbschlussProblem = ReturnType<typeof abschlussProblem>
@@ -147,7 +148,15 @@ export function CreateProjectForm({
       try {
         result = await createProject({}, toFormData(value, holding.current ? dropKey : null))
       } catch (error) {
-        // Thrown, not answered (the network, the action itself): nothing was
+        // A created project answers with `redirect()`: Next has navigated to
+        // it already and rejects the call with the redirect. That rejection is
+        // the success, so it is recorded here and not rethrown; the held drop
+        // goes on to the setup page the redirect named.
+        if (isRedirectSignal(error)) {
+          capturePosthog('project_created', { state: value.state, setup: 'piloti' })
+          return
+        }
+        // Thrown for real (the network, the action itself): nothing was
         // created, so a held drop is let go of when the dialog closes, as for
         // any dialog that created nothing, and the person may try again.
         created.current = false

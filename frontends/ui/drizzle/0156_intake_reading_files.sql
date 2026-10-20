@@ -1,4 +1,4 @@
--- 0155: `project_intakes.reading_files` — what the current reading has opened
+-- 0156: `project_intakes.reading_files` — what the current reading has opened
 -- so far (ADR-0111; the setup page's step „Erfassung", ticket 26).
 --
 -- `documents_read` is written only when a reading finishes, because a reading
@@ -22,4 +22,4 @@ ALTER TABLE "project_intakes"
   CHECK (jsonb_typeof("reading_files") = 'array');
 --> statement-breakpoint
 COMMENT ON COLUMN "project_intakes"."reading_files" IS
-  'File names the current or last reading opened, as the run reported them while reading (migration 0155). Live progress only; documents_read is what a finished reading read.';
+  'File names the current or last reading opened, as the run reported them while reading (migration 0156). Live progress only; documents_read is what a finished reading read.';
