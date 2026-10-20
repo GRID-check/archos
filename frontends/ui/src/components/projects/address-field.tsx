@@ -179,10 +179,7 @@ export function AddressField({
 
   return (
     <Field>
-      <FieldLabel htmlFor={`${id}-input`}>
-        {t('form.addressLabel')}
-        <span className="text-muted-foreground font-normal">({t('form.closed.optional')})</span>
-      </FieldLabel>
+      <FieldLabel htmlFor={`${id}-input`}>{t('form.addressLabel')}</FieldLabel>
       <div className="relative">
         <Input
           id={`${id}-input`}
@@ -207,32 +204,47 @@ export function AddressField({
           <Spinner className="absolute top-1/2 right-3 size-4 -translate-y-1/2" aria-label={t('form.address.searching')} />
         )}
         {listed && (
-          <Listbox
-            id={listId}
-            aria-label={t('form.address.suggestions')}
-            className="absolute inset-x-0 top-full z-20 mt-1 shadow-md"
+          // One floating panel: the hits, and under them the reminder that
+          // none has to be chosen. The reminder sits outside the listbox,
+          // which may hold options only.
+          <div
+            className="bg-popover text-popover-foreground border-border absolute inset-x-0 top-full z-20 mt-1.5 rounded-[10px] border p-1 shadow-lg"
+            data-testid="create-project-address-suggestions"
           >
-            {results.map((place, index) => (
-              <ListboxOption
-                key={`${place.label}-${place.lat}-${place.lon}`}
-                id={`${id}-option-${index}`}
-                active={index === active}
-                onChoose={() => choose(place)}
-              >
-                <span className="truncate">{place.label}</span>
-                {placeLine(place) && <span className="text-muted-foreground truncate text-xs">{placeLine(place)}</span>}
-              </ListboxOption>
-            ))}
-          </Listbox>
+            <Listbox
+              id={listId}
+              aria-label={t('form.address.suggestions')}
+              className="rounded-none border-0 p-0 shadow-none"
+            >
+              {results.map((place, index) => (
+                <ListboxOption
+                  key={`${place.label}-${place.lat}-${place.lon}`}
+                  id={`${id}-option-${index}`}
+                  active={index === active}
+                  onChoose={() => choose(place)}
+                  className="flex-row items-center justify-start gap-2.5 py-2"
+                >
+                  <MapPin className="text-muted-foreground size-4 shrink-0" aria-hidden />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate">{place.label}</span>
+                    {placeLine(place) && (
+                      <span className="text-muted-foreground truncate text-xs">{placeLine(place)}</span>
+                    )}
+                  </span>
+                </ListboxOption>
+              ))}
+            </Listbox>
+            <p className="text-muted-foreground border-border mt-1 border-t px-2.5 pt-2 pb-1.5 text-xs">
+              {t('form.address.keepTyped')}
+            </p>
+          </div>
         )}
       </div>
-      {chosen && placeLine(chosen) ? (
+      {chosen && placeLine(chosen) && (
         <FieldDescription className="flex items-center gap-1.5" data-testid="create-project-address-place">
           <MapPin className="size-3.5 shrink-0" aria-hidden />
           {placeLine(chosen)}
         </FieldDescription>
-      ) : (
-        <FieldDescription>{t('form.addressHelp')}</FieldDescription>
       )}
       {chosen && <SameAddressNotice place={chosen} client={sameAddress.current} />}
     </Field>

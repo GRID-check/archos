@@ -6,15 +6,39 @@
  * fails without one; the dialog shows its calm error then.
  *
  * The address search and the same-address lookup answer from fixtures here:
- * type „Haupt" for suggestions; the first one has an earlier project.
+ * type „Haupt" or „Lack" for suggestions; the first Hauptstraße has an earlier
+ * project. `?filled=1` opens it filled in, the description unfolded.
  */
 
+import { use } from 'react'
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
 import type { GeocodingClient } from '@/lib/geocoding/client'
 import type { GeocodeResult } from '@/lib/geocoding/types'
 import type { SameAddressClient } from '@/lib/projects/same-address-client'
 
 const FIXTURE_RESULTS: GeocodeResult[] = [
+  {
+    label: 'Lacknergasse 12, 1170 Wien',
+    lat: 48.2236,
+    lon: 16.3302,
+    country: 'at',
+    bundesland: 'wien',
+    state: 'Wien',
+    gemeinde: 'Hernals',
+    postcode: '1170',
+    kind: 'address',
+  },
+  {
+    label: 'Lacknergasse 12, 2340 Mödling',
+    lat: 48.0861,
+    lon: 16.2834,
+    country: 'at',
+    bundesland: 'niederoesterreich',
+    state: 'Niederösterreich',
+    gemeinde: 'Mödling',
+    postcode: '2340',
+    kind: 'address',
+  },
   {
     label: 'Hauptstraße 12, 1010 Wien',
     lat: 48.2085,
@@ -60,7 +84,7 @@ const geocoder: GeocodingClient = {
 const sameAddress: SameAddressClient = {
   find: async (place) => ({
     projects:
-      place.label === FIXTURE_RESULTS[0].label
+      place.label === FIXTURE_RESULTS[2].label
         ? [
             { id: 'preview-1', name: 'Wohnhaus Hauptstraße 12', status: 'closed' },
             { id: 'preview-2', name: 'Dachausbau Hauptstraße 12', status: 'active' },
@@ -69,11 +93,26 @@ const sameAddress: SameAddressClient = {
   }),
 }
 
-export default function CreateProjectPreviewPage() {
+const FILLED = {
+  name: 'Aufstockung Lacknergasse',
+  address: 'Lacknergasse 12',
+  description: 'Aufstockung eines Gründerzeithauses um zwei Geschoße, Dachgeschoßausbau mit 6 Wohnungen.',
+}
+
+export default function CreateProjectPreviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const filled = use(searchParams).filled === '1'
   return (
     <main className="min-h-dvh bg-background px-4 py-10" data-testid="create-project-preview">
       <h1 className="mx-auto mb-6 max-w-lg font-mono text-xs text-muted-foreground">/dev/create-project</h1>
-      <CreateProjectDialog defaultOpen addressClients={{ client: geocoder, sameAddressClient: sameAddress }} />
+      <CreateProjectDialog
+        defaultOpen
+        addressClients={{ client: geocoder, sameAddressClient: sameAddress }}
+        initial={filled ? FILLED : undefined}
+      />
     </main>
   )
 }

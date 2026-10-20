@@ -3,8 +3,8 @@
  * action, and what keeps the submit shut. And the setup: the address (a text
  * field that keeps what is typed, with the address search's hits where one is
  * configured),
- * „Worum geht es?", Piloti or the person setting it up, and a project folder
- * dropped on the dialog.
+ * „Worum geht es?" folded behind a line, and a project folder dropped on the
+ * dialog or chosen in its zone.
  */
 import { fireEvent, render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
@@ -235,9 +235,18 @@ describe('CreateProjectForm', () => {
       expect(screen.getByLabelText('Project name')).toHaveFocus()
     })
 
-    test('the drag-a-folder hint, which a touch screen cannot act on, is hidden there', () => {
+    test('the folder zone offers documents, not a drag or a folder picker a touch screen does not have', () => {
+      pointer('coarse')
       render(<CreateProjectForm />)
-      expect(screen.getByTestId('create-project-drop-hint')).toHaveClass('pointer-coarse:hidden')
+      expect(screen.getByTestId('create-project-folder-zone')).toHaveTextContent('Add the project documents')
+      expect(screen.getByTestId('create-project-folder-input')).not.toHaveAttribute('webkitdirectory')
+    })
+
+    test('a mouse is offered the drag and the folder picker', () => {
+      pointer('fine')
+      render(<CreateProjectForm />)
+      expect(screen.getByTestId('create-project-folder-zone')).toHaveTextContent('Drag the project folder here')
+      expect(screen.getByTestId('create-project-folder-input')).toHaveAttribute('webkitdirectory')
     })
   })
 
@@ -248,6 +257,9 @@ describe('CreateProjectForm', () => {
       render(<CreateProjectForm />)
 
       await user.type(screen.getByLabelText('Project name'), 'Aufstockung')
+      // Folded until asked for.
+      expect(screen.queryByRole('textbox', { name: 'What is it about?' })).toBeNull()
+      await user.click(screen.getByRole('button', { name: 'Briefly describe what it is about' }))
       await user.type(screen.getByRole('textbox', { name: 'What is it about?' }), 'Zwei Geschoße mehr')
       await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Hauptstraße')
       await user.click(await screen.findByRole('option', { name: /Hauptstraße 12, 1010 Wien/ }))
@@ -460,6 +472,20 @@ describe('CreateProjectForm', () => {
       expect(screen.queryByTestId('create-project-dropped')).toBeNull()
     })
 
+    test('a folder chosen in the picker is held the same way as a dropped one', async () => {
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+      const files = [withPath(new File(['a'], 'a.pdf'), 'Schule Nord/a.pdf')]
+
+      await user.upload(screen.getByTestId('create-project-folder-input'), files)
+
+      expect(await screen.findByTestId('create-project-dropped')).toHaveTextContent('Folder “Schule Nord”: 1 file')
+      expect(screen.getByLabelText('Project name')).toHaveValue('Schule Nord')
+      await user.click(submit())
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      expect(sent().dropKey).toBe(DROP_KEY)
+    })
+
     test('a dropped folder does not rename a project that already has a name', async () => {
       const user = userEvent.setup()
       render(<CreateProjectForm />)
@@ -548,8 +574,8 @@ describe('CreateProjectForm', () => {
       const user = userEvent.setup()
       render(<CreateProjectForm />)
 
-      // The only choice cards are the project's state.
-      expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual(['active', 'closed'])
+      // The only choice is the project's state.
+      expect(screen.getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Ongoing', 'Closed, as a reference'])
       expect(screen.queryByRole('button', { name: /myself/i })).toBeNull()
 
       await user.type(screen.getByLabelText('Project name'), 'Villa K')

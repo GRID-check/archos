@@ -323,7 +323,7 @@ export const projects = {
   dialog: {
     newProject: 'New project',
     title: 'New project',
-    description: 'A project keeps its documents, its team and the conversations about it together in one place.',
+    description: 'Next you add the documents. Piloti does the rest.',
   },
   form: {
     nameRequired: 'Project name is required.',
@@ -332,11 +332,9 @@ export const projects = {
     nameLabel: 'Project name',
     namePlaceholder: 'e.g. Apartment building, 12 Main Street',
     state: {
-      label: 'Status',
+      label: 'Project is',
       active: 'Ongoing',
-      activeHint: 'We are working on it now.',
-      closed: 'Closed',
-      closedHint: 'A past project, kept as a reference for the office.',
+      closed: 'Closed, as a reference',
     },
     closed: {
       startedOn: 'Start',
@@ -347,10 +345,10 @@ export const projects = {
     },
     addressLabel: 'Address',
     addressPlaceholder: 'Street and number, or the town',
-    addressHelp: 'Piloti finds the Gemeinde and Bundesland in the documents.',
     address: {
       searching: 'Searching…',
       suggestions: 'Address suggestions',
+      keepTyped: 'Or leave it as it is: Piloti takes the address as you type it.',
     },
     sameAddress: {
       heading: 'There is already a project at this address',
@@ -359,12 +357,16 @@ export const projects = {
       opensInNewTab: 'Opens in a new tab',
     },
     description: {
+      open: 'Briefly describe what it is about',
       label: 'What is it about?',
       placeholder: 'e.g. Adding two storeys to a Gründerzeit building, attic conversion with 6 flats',
       help: 'One or two sentences help Piloti read the documents.',
     },
     drop: {
-      hint: 'You can also drop the project folder on this window.',
+      title: 'Drag the project folder here',
+      titleTouch: 'Add the project documents',
+      help: 'Optional. In the next step you choose which folders Piloti reads.',
+      choose: 'Choose',
       overlay: 'Drop the project folder',
       held: 'Folder “{name}”: {count, plural, one {# file} other {# files}} will be filed once the project exists.',
       heldNoName: '{count, plural, one {# file} other {# files}} will be filed once the project exists.',

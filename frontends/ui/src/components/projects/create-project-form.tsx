@@ -13,6 +13,10 @@
  * the project is, and a project folder dropped on the dialog names the project
  * and is filed once it exists.
  *
+ * Laid out as the approved mockup (2026-10): name, address, the state as a
+ * segmented control, a zone for the project folder (dropped anywhere on the
+ * dialog, or chosen), and „Worum geht es?" folded behind a line.
+ *
  * A closed project is how an office brings a past project in as a reference
  * (ADR-0098): it is created closed, with the facts a close would have asked
  * for (how it ended, Beginn, Abschluss), rather than created running and then
@@ -24,16 +28,16 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@tanstack/react-form'
-import { Archive, CircleCheck, CircleSlash, FolderInput, PlayCircle, X } from 'lucide-react'
+import { FolderUp, Plus, X } from 'lucide-react'
 import { z } from 'zod'
 import { useAppForm } from '@/components/form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { ChoiceCard, ChoiceCardGroup } from '@/components/ui/choice-card'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { DialogFooter } from '@/components/ui/dialog'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { MonthInput } from '@/components/ui/month-input'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AddressField, type AddressFieldProps, type AddressValue } from './address-field'
 import { createProject } from '@/app/app/(shell)/projects/actions'
 import {
@@ -66,6 +70,8 @@ export interface CreateProjectFormProps {
   onCancel?: () => void
   /** The address lookups; the real ones unless the `/dev` preview brings fixtures. */
   addressClients?: Pick<AddressFieldProps, 'client' | 'sameAddressClient'>
+  /** What the fields start with; the `/dev` preview shows the dialog filled in. */
+  initial?: { name?: string; address?: string; description?: string }
 }
 
 /** What the server action may name as the reason a closed project was refused. */
@@ -95,6 +101,7 @@ export function folderNameOf(files: readonly File[]): string | null {
 export function CreateProjectForm({
   onCancel,
   addressClients,
+  initial,
 }: CreateProjectFormProps): JSX.Element {
   const t = useTranslations('projects')
   const tFiles = useTranslations('files')
@@ -102,6 +109,7 @@ export function CreateProjectForm({
   const [serverError, setServerError] = useState<string | null>(null)
   const [serverAbschluss, setServerAbschluss] = useState<AbschlussProblem>(null)
   const [dropped, setDropped] = useState<DroppedFolder | null>(null)
+  const [describing, setDescribing] = useState(Boolean(initial?.description))
   // The key this dialog holds a drop under, and the one the created project's
   // setup page is sent to take it by: no other project can.
   const [dropKey] = useState(newProjectDropKey)
@@ -113,9 +121,9 @@ export function CreateProjectForm({
   const created = useRef(false)
   // Focusing the name opens the soft keyboard the moment the dialog appears, on
   // top of the fields and the action. Only a fine pointer is taken to be at a
-  // keyboard already; where the media query cannot be asked (an old engine, a
-  // test renderer) the desktop behaviour stays.
-  const [focusNameOnOpen] = useState(() =>
+  // keyboard already (and to drag folders); where the media query cannot be
+  // asked (an old engine, a test renderer) the desktop behaviour stays.
+  const [finePointer] = useState(() =>
     typeof window === 'undefined' || typeof window.matchMedia !== 'function'
       ? true
       : window.matchMedia('(pointer: fine)').matches
@@ -132,9 +140,9 @@ export function CreateProjectForm({
 
   const form = useAppForm({
     defaultValues: {
-      name: '',
-      address: { text: '', place: null } as AddressValue,
-      description: '',
+      name: initial?.name ?? '',
+      address: { text: initial?.address ?? '', place: null } as AddressValue,
+      description: initial?.description ?? '',
       state: 'active' as CreateProjectState,
       outcome: '' as ProjectOutcome | '',
       startedOn: '',
@@ -239,7 +247,7 @@ export function CreateProjectForm({
           event.stopPropagation()
           if (ready) void form.handleSubmit()
         }}
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-[18px]"
         noValidate
       >
         <form.AppField name="name" validators={{ onChange: nameSchema }}>
@@ -247,117 +255,129 @@ export function CreateProjectForm({
             <field.TextField
               label={t('form.nameLabel')}
               placeholder={t('form.namePlaceholder')}
-              autoFocus={focusNameOnOpen}
+              autoFocus={finePointer}
               autoComplete="off"
               disabled={isSubmitting}
             />
           )}
         </form.AppField>
 
-        <FieldGroup className="gap-5" data-testid="create-project-piloti-fields">
-          <form.Field name="address">
-            {(address) => (
-              <AddressField
-                value={address.state.value}
-                onChange={address.handleChange}
-                disabled={isSubmitting}
-                {...addressClients}
-              />
-            )}
-          </form.Field>
-          <form.AppField
-            name="description"
-            validators={{ onChange: z.string().max(MAX_INTAKE_DESCRIPTION_LENGTH) }}
-          >
-            {(field) => (
-              <field.TextAreaField
-                label={t('form.description.label')}
-                description={t('form.description.help')}
-                placeholder={t('form.description.placeholder')}
-                maxLength={MAX_INTAKE_DESCRIPTION_LENGTH}
-                rows={3}
-                disabled={isSubmitting}
-              />
-            )}
-          </form.AppField>
-        </FieldGroup>
-
-        <form.Field name="state">
-          {(field) => (
-            <Field>
-              <FieldLabel id="create-project-state-label">{t('form.state.label')}</FieldLabel>
-              <ChoiceCardGroup
-                value={field.state.value}
-                onValueChange={(next) =>
-                  field.handleChange(next === 'closed' ? 'closed' : 'active')
-                }
-                aria-labelledby="create-project-state-label"
-                disabled={isSubmitting}
-                className="sm:grid-cols-2"
-              >
-                <ChoiceCard
-                  value="active"
-                  icon={PlayCircle}
-                  label={t('form.state.active')}
-                  hint={t('form.state.activeHint')}
-                />
-                <ChoiceCard
-                  value="closed"
-                  icon={Archive}
-                  label={t('form.state.closed')}
-                  hint={t('form.state.closedHint')}
-                />
-              </ChoiceCardGroup>
-            </Field>
+        <form.Field name="address">
+          {(address) => (
+            <AddressField
+              value={address.state.value}
+              onChange={address.handleChange}
+              disabled={isSubmitting}
+              {...addressClients}
+            />
           )}
         </form.Field>
 
-        <Collapsible open={closed}>
+        {/* The state and what a closed project adds stay one block, so the
+            folded part costs no gap of its own while it is shut. */}
+        <div className="flex flex-col">
+          <form.Field name="state">
+            {(field) => (
+              <Field>
+                <FieldLabel id="create-project-state-label">{t('form.state.label')}</FieldLabel>
+                <Segmented
+                  value={field.state.value}
+                  onChange={(next) => field.handleChange(next === 'closed' ? 'closed' : 'active')}
+                  labelledBy="create-project-state-label"
+                  disabled={isSubmitting}
+                  options={[
+                    { value: 'active', label: t('form.state.active') },
+                    { value: 'closed', label: t('form.state.closed') },
+                  ]}
+                />
+              </Field>
+            )}
+          </form.Field>
+
+          <Collapsible open={closed}>
+            <CollapsibleContent>
+              <FieldGroup className="gap-[18px] pt-[18px]" data-testid="create-project-closed">
+                <form.Field name="outcome">
+                  {(field) => (
+                    <OutcomeField
+                      value={field.state.value}
+                      onChange={(next) => field.handleChange(next)}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                </form.Field>
+                <PeriodFields
+                  startedOn={values.startedOn}
+                  endedOn={values.endedOn}
+                  thisMonth={thisMonth}
+                  problem={abschlussError}
+                  disabled={isSubmitting}
+                  onStartedOn={(next) => {
+                    setServerAbschluss(null)
+                    form.setFieldValue('startedOn', next)
+                  }}
+                  onEndedOn={(next) => {
+                    setServerAbschluss(null)
+                    form.setFieldValue('endedOn', next)
+                  }}
+                />
+                <p
+                  className="text-muted-foreground text-xs"
+                  data-testid="create-project-closed-note"
+                >
+                  {t('form.closed.readOnlyPiloti')}
+                </p>
+              </FieldGroup>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+        <FolderZone
+          dropped={dropped}
+          finePointer={finePointer}
+          disabled={isSubmitting}
+          onPick={takeDrop}
+          onRemove={forgetDrop}
+        />
+
+        {/* „Worum geht es?" helps the reading but is never needed to begin:
+            folded behind a line until someone wants to write it. */}
+        <Collapsible open={describing}>
+          {!describing && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setDescribing(true)}
+              disabled={isSubmitting}
+              className="text-muted-foreground hover:text-foreground -mx-2 h-8 self-start px-2 text-[13px] font-normal hover:bg-transparent"
+              data-testid="create-project-describe"
+            >
+              <Plus className="size-3.5" aria-hidden />
+              {t('form.description.open')}
+            </Button>
+          )}
           <CollapsibleContent>
-            <FieldGroup className="gap-5" data-testid="create-project-closed">
-              <form.Field name="outcome">
-                {(field) => (
-                  <OutcomeField
-                    value={field.state.value}
-                    onChange={(next) => field.handleChange(next)}
-                    disabled={isSubmitting}
-                  />
-                )}
-              </form.Field>
-              <PeriodFields
-                startedOn={values.startedOn}
-                endedOn={values.endedOn}
-                thisMonth={thisMonth}
-                problem={abschlussError}
-                disabled={isSubmitting}
-                onStartedOn={(next) => {
-                  setServerAbschluss(null)
-                  form.setFieldValue('startedOn', next)
-                }}
-                onEndedOn={(next) => {
-                  setServerAbschluss(null)
-                  form.setFieldValue('endedOn', next)
-                }}
-              />
-              <p className="text-muted-foreground text-sm" data-testid="create-project-closed-note">
-                {t('form.closed.readOnlyPiloti')}
-              </p>
-            </FieldGroup>
+            <form.AppField
+              name="description"
+              validators={{ onChange: z.string().max(MAX_INTAKE_DESCRIPTION_LENGTH) }}
+            >
+              {(field) => (
+                <field.TextAreaField
+                  label={t('form.description.label')}
+                  description={t('form.description.help')}
+                  placeholder={t('form.description.placeholder')}
+                  maxLength={MAX_INTAKE_DESCRIPTION_LENGTH}
+                  rows={3}
+                  // Opened by the line, the field takes the cursor; filled in
+                  // from the start, nothing jumps to it.
+                  autoFocus={!initial?.description}
+                  disabled={isSubmitting}
+                />
+              )}
+            </form.AppField>
           </CollapsibleContent>
         </Collapsible>
-
-        {dropped && <DroppedFolderNote dropped={dropped} onRemove={forgetDrop} />}
-
-        {!dropped && (
-          // Dragging a folder onto the window is a desktop gesture; on a touch
-          // device the line describes something the reader cannot do.
-          <p
-            className="text-muted-foreground pointer-coarse:hidden text-xs"
-            data-testid="create-project-drop-hint"
-          >
-            {t('form.drop.hint')}
-          </p>
-        )}
 
         {serverError && (
           <Alert variant="destructive">
@@ -366,17 +386,24 @@ export function CreateProjectForm({
         )}
 
         {/* On a phone `DialogContent` pins the footer to the bottom edge while
-            the fields scroll: the form is longer than the viewport once Piloti
-            sets it up. Cancel and the action share one row (the action takes
-            the width) so the bar costs one button's height. */}
-        <DialogFooter className="phone:pt-3 pt-1 max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:[&>:last-child]:flex-1">
+            the fields scroll. Cancel and the action share one row (the action
+            takes the width) so the bar costs one button's height. */}
+        <DialogFooter className="mt-2 gap-2.5 max-sm:flex-row max-sm:items-center max-sm:[&>:last-child]:flex-1">
           {onCancel && (
-            <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onCancel}
+              disabled={isSubmitting}
+              className="h-10 px-4"
+            >
               {t('form.cancel')}
             </Button>
           )}
           <form.AppForm>
-            <form.SubmitButton disabled={!ready}>{t('form.submit')}</form.SubmitButton>
+            <form.SubmitButton disabled={!ready} className="h-10 px-[18px]">
+              {t('form.submit')}
+            </form.SubmitButton>
           </form.AppForm>
         </DialogFooter>
       </form>
@@ -384,35 +411,136 @@ export function CreateProjectForm({
   )
 }
 
-function DroppedFolderNote({
+/** Two or three choices side by side, one always set: the state, the outcome. */
+function Segmented({
+  value,
+  onChange,
+  options,
+  labelledBy,
+  disabled,
+  required,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: ReadonlyArray<{ value: string; label: string }>
+  labelledBy: string
+  disabled: boolean
+  required?: boolean
+}): JSX.Element {
+  return (
+    <ToggleGroup
+      type="single"
+      segmented
+      variant="outline"
+      value={value}
+      // A pressed segment pressed again would clear the group; it stays set.
+      onValueChange={(next: string) => {
+        if (next) onChange(next)
+      }}
+      aria-labelledby={labelledBy}
+      aria-required={required}
+      disabled={disabled}
+      className="bg-muted gap-0.5 border-transparent p-[3px] shadow-none"
+    >
+      {options.map((option) => (
+        <ToggleGroupItem
+          key={option.value}
+          value={option.value}
+          className="h-[34px] border-0 px-4 shadow-none data-[state=off]:font-normal data-[state=on]:shadow-none"
+        >
+          {option.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  )
+}
+
+/**
+ * Where the project folder goes: dragged onto the dialog (anywhere on it, the
+ * zone only says so) or chosen. Under a finger there is no folder picker
+ * (iOS opens the plain file sheet for `webkitdirectory`), so it offers files.
+ * Once something is held the zone names it, and dropping more adds to it.
+ */
+function FolderZone({
   dropped,
+  finePointer,
+  disabled,
+  onPick,
   onRemove,
 }: {
-  dropped: DroppedFolder
+  dropped: DroppedFolder | null
+  finePointer: boolean
+  disabled: boolean
+  onPick: (files: File[]) => void
   onRemove: () => void
 }): JSX.Element {
   const t = useTranslations('projects')
+  const input = useRef<HTMLInputElement>(null)
   return (
     <div
-      className="bg-muted/50 border-border flex items-center gap-3 rounded-lg border px-3.5 py-2.5"
-      data-testid="create-project-dropped"
+      className="border-border bg-muted/40 flex items-center gap-3.5 rounded-xl border-[1.5px] border-dashed px-[18px] py-4 max-sm:px-4"
+      data-testid={dropped ? 'create-project-dropped' : 'create-project-folder-zone'}
     >
-      <FolderInput className="text-muted-foreground size-4 shrink-0" aria-hidden />
-      <p className="min-w-0 flex-1 text-sm">
-        {dropped.name
-          ? t('form.drop.held', { name: dropped.name, count: dropped.count })
-          : t('form.drop.heldNoName', { count: dropped.count })}
-      </p>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={onRemove}
-        aria-label={t('form.drop.remove')}
-        title={t('form.drop.remove')}
-      >
-        <X aria-hidden />
-      </Button>
+      <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-[10px]">
+        <FolderUp className="size-5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        {dropped ? (
+          <p className="text-sm font-medium">
+            {dropped.name
+              ? t('form.drop.held', { name: dropped.name, count: dropped.count })
+              : t('form.drop.heldNoName', { count: dropped.count })}
+          </p>
+        ) : (
+          <>
+            <p className="text-sm font-medium">
+              {finePointer ? t('form.drop.title') : t('form.drop.titleTouch')}
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-xs">{t('form.drop.help')}</p>
+          </>
+        )}
+      </div>
+      {dropped ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onRemove}
+          disabled={disabled}
+          aria-label={t('form.drop.remove')}
+          title={t('form.drop.remove')}
+        >
+          <X aria-hidden />
+        </Button>
+      ) : (
+        <>
+          <input
+            ref={input}
+            type="file"
+            multiple
+            className="hidden"
+            // Both spellings, as strings: React forwards them only that way.
+            {...(finePointer
+              ? ({ webkitdirectory: '', directory: '' } as Record<string, string>)
+              : {})}
+            onChange={(event) => {
+              onPick(Array.from(event.target.files ?? []))
+              event.target.value = ''
+            }}
+            data-testid="create-project-folder-input"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => input.current?.click()}
+            disabled={disabled}
+            className="bg-card h-[34px] px-3 text-[13px]"
+          >
+            {t('form.drop.choose')}
+          </Button>
+        </>
+      )}
     </div>
   )
 }
@@ -463,27 +591,21 @@ function OutcomeField({
       <FieldLabel id="create-project-outcome-label">
         {t('lifecycle.closeDialog.outcome.label')}
       </FieldLabel>
-      <ChoiceCardGroup
+      {/* Chosen, never preselected: a default would nudge the record. */}
+      <Segmented
         value={value}
-        onValueChange={(next) => onChange(next === 'cancelled' ? 'cancelled' : 'completed')}
-        aria-labelledby="create-project-outcome-label"
-        aria-required
+        onChange={(next) => onChange(next === 'cancelled' ? 'cancelled' : 'completed')}
+        labelledBy="create-project-outcome-label"
+        required
         disabled={disabled}
-        className="sm:grid-cols-2"
-      >
-        <ChoiceCard
-          value="completed"
-          icon={CircleCheck}
-          label={t('lifecycle.outcome.completed')}
-          hint={t('lifecycle.closeDialog.outcome.completedHint')}
-        />
-        <ChoiceCard
-          value="cancelled"
-          icon={CircleSlash}
-          label={t('lifecycle.outcome.cancelled')}
-          hint={t('lifecycle.closeDialog.outcome.cancelledHint')}
-        />
-      </ChoiceCardGroup>
+        options={[
+          { value: 'completed', label: t('lifecycle.outcome.completed') },
+          { value: 'cancelled', label: t('lifecycle.outcome.cancelled') },
+        ]}
+      />
+      {value !== '' && (
+        <FieldDescription>{t(`lifecycle.closeDialog.outcome.${value}Hint`)}</FieldDescription>
+      )}
     </Field>
   )
 }
@@ -498,7 +620,7 @@ interface PeriodFieldsProps {
   onEndedOn: (value: string) => void
 }
 
-/** Beginn (optional) and Abschluss (required), side by side from `sm` up. */
+/** Beginn (optional) and Abschluss (required), one under the other: two month pickers do not fit the dialog's width side by side. */
 function PeriodFields({
   startedOn,
   endedOn,
@@ -520,7 +642,7 @@ function PeriodFields({
         : null
 
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+    <div className="grid grid-cols-1 gap-[18px]">
       <Field>
         <FieldLabel htmlFor="create-project-started-on">
           {t('form.closed.startedOn')}
