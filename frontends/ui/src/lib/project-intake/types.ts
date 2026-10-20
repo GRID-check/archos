@@ -12,6 +12,7 @@
 
 import { z } from 'zod'
 import { geocodeResultSchema } from '@/lib/geocoding/types'
+import type { ApplicableStatus } from '@/lib/oib/applicable-standards'
 import {
   DERIVATION_RULES,
   derivationInputSchema,
@@ -259,7 +260,7 @@ export const derivationViewSchema = z.object({
   /** The Fundstelle, as the derivation's evidence names it. */
   citation: z.string().min(1).max(300),
   value: z.number().int().min(1).max(5).nullable(),
-  hochhaus: z.boolean(),
+  highRise: z.boolean(),
   inputs: z.array(derivationInputSchema).max(20),
   missing: z.array(key).max(20),
 })
@@ -280,6 +281,64 @@ export const suggestionGroupSchema = z.object({
   items: z.array(suggestionSchema),
 })
 export type SuggestionGroup = z.infer<typeof suggestionGroupSchema>
+
+// ---------------------------------------------------------------------------
+// Step 4, Rückfragen: the location register (`location-register.ts`)
+// ---------------------------------------------------------------------------
+
+/**
+ * What the location decides about a project, by the ticket's table
+ * „Standortinformationen aus den Unterlagen": the plot (Grundbuch), Widmung
+ * and Bebauungsbestimmungen, Denkmalschutz, Naturgefahren and Altlasten (one
+ * profile key holds both, `gefahrenzonen`), and Lärm.
+ */
+export const LOCATION_DETERMINANTS = ['plot', 'zoning', 'heritage', 'hazards', 'noise'] as const
+export type LocationDeterminant = (typeof LOCATION_DETERMINANTS)[number]
+
+/**
+ * Where a register entry comes from. `needsReview`: the entry names the law
+ * but nobody has checked the cited section against its current text yet; the
+ * entry is kept conservative (it asks rather than concludes).
+ */
+export const registerSourceSchema = z.object({
+  title: z.string().min(1).max(300),
+  reference: z.string().min(1).max(300).optional(),
+  needsReview: z.boolean(),
+})
+export type RegisterSource = z.infer<typeof registerSourceSchema>
+
+/**
+ * A document the location register asks for: which determinant it settles,
+ * the document by the name an Austrian office uses, why (for this Bundesland
+ * and Gemeinde where they differ), the profile keys it answers, the open
+ * needs among them (so the step can take an answer as well as a document),
+ * and whether every key already holds a value, a suggestion or „nicht
+ * bekannt" (`satisfied`).
+ */
+export const documentRequestSchema = z.object({
+  determinant: z.enum(LOCATION_DETERMINANTS),
+  label: z.string().min(1).max(200),
+  document: z.string().min(1).max(200),
+  reason: z.string().min(1).max(1000),
+  keys: z.array(key).min(1).max(20),
+  needs: z.array(needSchema).max(20),
+  satisfied: z.boolean(),
+  sources: z.array(registerSourceSchema).max(6),
+})
+export type DocumentRequest = z.infer<typeof documentRequestSchema>
+
+/**
+ * The register as the review shows it: the Bundesland and Gemeinde it read
+ * (null where unknown), the register's own inputs still open (the
+ * Bundesland, the Vorhaben), and the documents it asks for.
+ */
+export const locationRegisterViewSchema = z.object({
+  federalState: z.string().min(1).max(64).nullable(),
+  municipality: z.string().min(1).max(200).nullable(),
+  questions: z.array(needSchema).max(10),
+  documentRequests: z.array(documentRequestSchema).max(LOCATION_DETERMINANTS.length),
+})
+export type LocationRegisterView = z.infer<typeof locationRegisterViewSchema>
 
 // ---------------------------------------------------------------------------
 // Person routes (`lib/project-intake/client.ts`, ADR-0055)
@@ -309,14 +368,85 @@ export const intakeViewSchema = z.object({
   summary: z.string().max(MAX_INTAKE_SUMMARY_LENGTH).nullable(),
   contradictions: z.array(suggestionSchema),
   questions: z.array(needSchema).max(MAX_INTAKE_NEEDS),
+  /**
+   * Every other need no document has answered and no person has, in the
+   * wizard's order: what the review asks one at a time after the decisive
+   * questions. Without it a project with no documents yet had two questions
+   * and no way to say anything else (the „interview" a pilot sync missed).
+   */
+  openQuestions: z.array(needSchema).max(MAX_INTAKE_NEEDS),
   groups: z.array(suggestionGroupSchema),
   derivations: z.array(derivationReviewSchema),
   /** The reader may decide (profile write: `project:memory:write` or `project:edit`) and start a reading. */
   canDecide: z.boolean(),
   /** The reader may finish the review: `project:manage` for a closing intent, else profile write. */
   canComplete: z.boolean(),
+  // --- Step 5, Steckbrief (ticket 26) -------------------------------------
+  /**
+   * The rule set's Ampel: which OIB-Richtlinien apply, required / likely /
+   * check, as `getApplicableStandards` (`lib/oib/applicable-standards.ts`)
+   * computes it from the profile's confirmed values only, so a suggestion
+   * changes it once a person takes it. The same verdicts the overview's panel
+   * shows. `buildIntakeView` always sends it; optional so a view built
+   * elsewhere (a fixture) may leave the panel out.
+   */
+  applicableStandards: z
+    .array(
+      z.object({
+        code: z.string().min(1).max(32),
+        titleEn: z.string().max(300),
+        titleDe: z.string().max(300),
+        scope: z.string().max(1000),
+        oibUrl: z.string().max(500),
+        status: z.enum(['required', 'likely', 'check'] as const satisfies readonly ApplicableStatus[]),
+        reason: z.string().max(1000),
+      })
+    )
+    .max(40)
+    .optional(),
+  // --- end Step 5 ----------------------------------------------------------
+  // -- Step 4, Rückfragen ----------------------------------------------------
+  /**
+   * The location register: what the Bundesland, the Gemeinde and the Vorhaben
+   * decide, and the documents to hand in for it. Optional on the wire: a view
+   * from a BFF without the register (a rolling deploy) shows no requests.
+   */
+  locationRegister: locationRegisterViewSchema.optional(),
+  // --- Step 3, Erfassung (`reading`, `steps/reading-step.tsx`) ---------------
+  // The reading's milestones, live while it runs. Values, contradictions and
+  // decisive gaps are `counts` above: computed from the profile on every read,
+  // so they move with each `record`. What only the run knows (which documents
+  // it has opened) and where the site stands are here.
+  readingProgress: z.object({
+    /**
+     * Readable documents the current or last reading opened, as the run
+     * reported them while reading (`op: 'progress'`, `reading_files`).
+     */
+    documentsOpened: count,
+    /**
+     * The documents that reading has before it: the ones no finished reading
+     * has read, and the ones it opened. „{documentsOpened} von {documentsTotal}".
+     */
+    documentsTotal: count,
+    /**
+     * Where the site stands: the Bundesland (as a person reads it), the
+     * Gemeinde and the address, and where the Bundesland came from. `source`
+     * is null while no Bundesland is known; `confirmed` is true when a person
+     * or the address search set it, false while it is a reading's suggestion.
+     */
+    site: z.object({
+      federalState: z.string().max(200).nullable(),
+      municipality: z.string().max(200).nullable(),
+      address: z.string().max(500).nullable(),
+      source: z.enum(['geocoder', 'document', 'person']).nullable(),
+      confirmed: z.boolean(),
+    }),
+  }),
+  // --- end of step 3 ---------------------------------------------------------
 })
 export type IntakeView = z.infer<typeof intakeViewSchema>
+/** Step 3's live milestones (`IntakeView.readingProgress`). */
+export type ReadingProgress = IntakeView['readingProgress']
 
 /** What every person route answers with: the intake as it stands after the call. */
 export const intakeResponseSchema = z.object({ intake: intakeViewSchema })
@@ -412,6 +542,15 @@ export const internalIntakeRequestSchema = z.discriminatedUnion('op', [
     .strict(),
   z
     .object({
+      // Every file the run has opened so far, sent whole each time it opens a
+      // new one: the setup page's live „x von y gelesen" (step 3).
+      op: z.literal('progress'),
+      jobId,
+      filesOpened: z.array(z.string().min(1).max(512)).max(MAX_DOCUMENTS_READ),
+    })
+    .strict(),
+  z
+    .object({
       op: z.literal('finish'),
       jobId,
       summary: z.string().max(MAX_INTAKE_SUMMARY_LENGTH),
@@ -476,6 +615,12 @@ export const internalIntakeWithdrawResponseSchema = z.object({
 })
 export type InternalIntakeWithdrawResponse = z.infer<typeof internalIntakeWithdrawResponseSchema>
 
+/** `progress`: how many files the intake now holds as opened by this reading. */
+export const internalIntakeProgressResponseSchema = z.object({
+  filesOpened: count,
+})
+export type InternalIntakeProgressResponse = z.infer<typeof internalIntakeProgressResponseSchema>
+
 /** `finish`: the status the intake is in afterwards. */
 export const internalIntakeFinishResponseSchema = z.object({
   status: z.enum(INTAKE_STATUSES),
@@ -487,6 +632,7 @@ export const INTERNAL_INTAKE_RESPONSE_SCHEMAS = {
   needs: internalIntakeNeedsResponseSchema,
   record: internalIntakeRecordResponseSchema,
   withdraw: internalIntakeWithdrawResponseSchema,
+  progress: internalIntakeProgressResponseSchema,
   finish: internalIntakeFinishResponseSchema,
 } as const satisfies Record<InternalIntakeOp, z.ZodTypeAny>
 

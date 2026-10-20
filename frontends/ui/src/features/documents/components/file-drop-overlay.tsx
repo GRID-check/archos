@@ -45,12 +45,6 @@ interface FileDropOverlayProps {
   refusal?: string | null
   /** A quieter line under the label: where the files go, or what is accepted. Not shown with a refusal. */
   hint?: ReactNode
-  /**
-   * The surface is taller than the viewport (a page that scrolls): the label is
-   * kept in view instead of centred on the whole surface, where it sat below
-   * the fold and the reader saw a dashed edge with nothing in it.
-   */
-  followScroll?: boolean
   testId: string
 }
 
@@ -66,7 +60,6 @@ export function FileDropOverlay({
   unsupportedLabel,
   refusal,
   hint,
-  followScroll = false,
   testId,
 }: FileDropOverlayProps) {
   const refused = Boolean(refusal)
@@ -83,12 +76,7 @@ export function FileDropOverlay({
       role="status"
       aria-live="polite"
     >
-      {/* Sticky against the scroll container, both edges: centred while the
-          surface's middle is on screen, held inside the viewport while it is not. */}
-      <div
-        className={cn('flex flex-col items-center gap-2 px-4', followScroll && 'sticky top-[30dvh] bottom-[30dvh]')}
-        data-follow-scroll={followScroll ? '' : undefined}
-      >
+      <div className="flex flex-col items-center gap-2 px-4">
         <Icon className={cn('size-6', negative ? 'text-destructive' : 'text-primary')} aria-hidden />
         <p className={cn('text-sm font-medium', negative ? 'text-destructive' : 'text-primary')}>
           {refusal ?? (isUnsupported ? unsupportedLabel : uploadLabel)}

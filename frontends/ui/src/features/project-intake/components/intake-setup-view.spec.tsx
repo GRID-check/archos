@@ -1,26 +1,26 @@
 /**
- * The setup page drawn from the review fixtures: what each state shows, and
- * the exact decisions each control sends.
+ * The setup page's frame: which step it opens on, that the step lives in the
+ * address, the stepper's notes, the drop on every step, and the notices above
+ * the step. The five step organisms are stubbed: each owns its content and its
+ * specs; here they only show the props the frame hands them.
  */
-import { fireEvent, render, screen, within } from '@/test-utils'
+import { act, fireEvent, render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { server } from '@/mocks/server'
-import { resetKit, useFakeStream } from '@/features/grid-cards/components/proposal-test-kit'
-import { suggestionsByFolder } from '@/features/documents/lib/filing-suggestions'
 import {
   INTAKE_CLOSING,
   INTAKE_COMPLETED,
   INTAKE_FAILED,
-  INTAKE_FILING,
   INTAKE_FIXTURES,
   INTAKE_READING,
   INTAKE_READY,
   INTAKE_WAITING,
 } from '@/app/dev/_fixtures/project-intake'
 import type { IntakeView } from '@/lib/project-intake/types'
-import { IntakeSetupView, type IntakeSetupViewProps } from './intake-setup-view'
+import { defaultSetupStep, IntakeSetupView, type IntakeSetupViewProps } from './intake-setup-view'
+import { QUESTIONS_READY } from '@/app/dev/_fixtures/project-setup-questions'
+import type { SetupStepId, SetupStepProps } from './steps/types'
+import { StepFooter } from './setup-frame'
 
 vi.mock('@/shared/context', () => ({
   useAppConfig: () => ({
@@ -34,7 +34,84 @@ vi.mock('@/shared/context', () => ({
     },
   }),
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+
+// Next's router follows `history.pushState` into `useSearchParams`; this does
+// the same from the address jsdom keeps, so a step written there is read back.
+const address = vi.hoisted(() => {
+  const listeners = new Set<() => void>()
+  return {
+    listeners,
+    notify: () => {
+      for (const listener of listeners) listener()
+    },
+  }
+})
+vi.mock('next/navigation', async () => {
+  const { useSyncExternalStore } = await import('react')
+  return {
+    useRouter: () => ({ push: vi.fn() }),
+    usePathname: () => window.location.pathname,
+    useSearchParams: () => {
+      const search = useSyncExternalStore(
+        (listener) => {
+          address.listeners.add(listener)
+          return () => address.listeners.delete(listener)
+        },
+        () => window.location.search
+      )
+      return new URLSearchParams(search)
+    },
+  }
+})
+
+// Each step as a stub that names itself and the props the frame gave it.
+vi.mock('./steps/project-step', () => ({ ProjectStep: (props: SetupStepProps) => <StubStep id="project" {...props} /> }))
+vi.mock('./steps/filing-step', () => ({
+  FilingStep: (props: SetupStepProps & { children?: React.ReactNode; filing?: unknown }) => (
+    <StubStep id="filing" {...props}>
+      {props.filing ? <p>filing given</p> : null}
+      {props.children}
+    </StubStep>
+  ),
+}))
+vi.mock('./steps/reading-step', () => ({ ReadingStep: (props: SetupStepProps) => <StubStep id="reading" {...props} /> }))
+vi.mock('./steps/questions-step', () => ({ QuestionsStep: (props: SetupStepProps) => <StubStep id="questions" {...props} /> }))
+vi.mock('./steps/profile-step', () => ({
+  ProfileStep: (props: SetupStepProps & { onComplete: () => Promise<boolean> }) => (
+    <StubStep id="profile" {...props}>
+      <StepFooter
+        primary={
+          <button type="button" onClick={() => void props.onComplete()}>
+            stub complete
+          </button>
+        }
+        aside={<button type="button">stub aside</button>}
+        progress={{ done: 1, total: 6, label: '1 of 6 done' }}
+      />
+    </StubStep>
+  ),
+}))
+
+function StubStep({ id, children, ...props }: SetupStepProps & { id: SetupStepId; children?: React.ReactNode }) {
+  return (
+    <section
+      data-testid={`setup-step-${id}`}
+      data-can-decide={String(props.canDecide)}
+      data-can-upload={String(props.canUpload)}
+      data-busy={String(props.busy)}
+    >
+      {props.onNext && (
+        <button type="button" onClick={props.onNext}>
+          stub next
+        </button>
+      )}
+      <button type="button" onClick={() => props.onGoTo('questions')}>
+        stub to questions
+      </button>
+      {children}
+    </section>
+  )
+}
 
 const onDecide = vi.fn()
 const onFiles = vi.fn()
@@ -47,6 +124,7 @@ function setup(view: IntakeView, props: Partial<IntakeSetupViewProps> = {}) {
     <IntakeSetupView
       view={view}
       projectId={view.projectId}
+      projectName="Wohnanlage Gartenstraße 12"
       busy={false}
       stale={false}
       canUpload
@@ -61,544 +139,348 @@ function setup(view: IntakeView, props: Partial<IntakeSetupViewProps> = {}) {
   )
 }
 
+/** Open the page at an address, as a link or a reload would. */
+function at(search: string): void {
+  window.history.replaceState(null, '', `/app/projects/p1/setup${search}`)
+}
+
+const shown = (): string | null => screen.getByTestId('intake-setup').getAttribute('data-step')
+const rail = () => screen.getByRole('navigation', { name: 'Steps of the setup' })
+const stepButton = (name: RegExp) => within(rail()).getByRole('button', { name })
+
 describe('IntakeSetupView', () => {
+  let pushState: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.clearAllMocks()
     onDecide.mockResolvedValue(true)
     onComplete.mockResolvedValue(true)
+    at('')
+    const push = window.history.pushState.bind(window.history)
+    pushState = vi.spyOn(window.history, 'pushState').mockImplementation((...args) => {
+      push(...args)
+      address.notify()
+    })
   })
 
-  describe('states', () => {
-    it('waits for documents with the drop zone, no review and nothing to read', () => {
-      setup(INTAKE_WAITING)
+  afterEach(() => {
+    pushState.mockRestore()
+  })
 
-      expect(screen.getByText('Waiting for documents')).toBeInTheDocument()
-      expect(screen.getByTestId('intake-upload-zone')).toHaveTextContent('Drop the project folder')
-      expect(screen.queryByTestId('intake-review')).toBeNull()
-      expect(screen.queryByRole('button', { name: /Read the documents that have not been read yet/ })).toBeNull()
+  describe('which step it opens on', () => {
+    it.each<[string, IntakeView, SetupStepId]>([
+      ['no documents yet', INTAKE_WAITING, 'filing'],
+      ['a reading that has found something', INTAKE_READING, 'profile'],
+      ['decisive questions open', INTAKE_READY, 'questions'],
+      ['nothing left to ask', INTAKE_CLOSING, 'profile'],
+      ['a finished setup', INTAKE_COMPLETED, 'profile'],
+    ])('%s', (_, view, step) => {
+      expect(defaultSetupStep(view)).toBe(step)
+      setup(view)
+      expect(shown()).toBe(step)
+      expect(screen.getByTestId(`setup-step-${step}`)).toBeInTheDocument()
     })
 
-    it('shows ONE upload control while it waits for documents, and no finish button', () => {
-      setup(INTAKE_WAITING)
-
-      // The empty state's picker is the only one: the header's is hidden while it shows.
-      expect(within(screen.getByTestId('intake-header')).queryByRole('button', { name: 'Add documents' })).toBeNull()
-      expect(within(screen.getByTestId('intake-upload-zone')).getAllByRole('button').length).toBeGreaterThan(0)
-      expect(screen.queryByTestId('intake-complete')).toBeNull()
+    it('opens on the reading while it has found nothing yet, and while a reading that found nothing failed', () => {
+      const nothing = { counts: { ...INTAKE_READING.counts, suggested: 0 }, groups: [] }
+      expect(defaultSetupStep({ ...INTAKE_READING, ...nothing })).toBe('reading')
+      expect(defaultSetupStep({ ...INTAKE_FAILED, ...nothing })).toBe('reading')
+      // Documents are in and the first reading has not begun.
+      expect(defaultSetupStep({ ...INTAKE_WAITING, counts: { ...INTAKE_WAITING.counts, unreadDocuments: 4 }, groups: [] })).toBe(
+        'reading'
+      )
     })
 
-    it('offers the header\'s upload once there are documents', () => {
+    it('opens on the Rückfragen when only a location document is missing, and counts it in the stepper', () => {
+      // Nothing decisive is open, but the register still asks for the Grundbuchauszug.
+      const view = { ...QUESTIONS_READY, contradictions: [], questions: [] }
+      expect(defaultSetupStep(view)).toBe('questions')
+      expect(defaultSetupStep({ ...view, locationRegister: undefined })).toBe('profile')
+    })
+
+    it('stays on its step while the reading changes the view underneath', () => {
+      const { rerender } = setup(INTAKE_WAITING)
+      expect(shown()).toBe('filing')
+      rerender(
+        <IntakeSetupView
+          view={INTAKE_READY}
+          projectId={INTAKE_READY.projectId}
+          busy={false}
+          stale={false}
+          canUpload
+          uploading={false}
+          onFiles={onFiles}
+          onDecide={onDecide}
+          onReread={onReread}
+          onComplete={onComplete}
+          onRetry={onRetry}
+        />
+      )
+      expect(shown()).toBe('filing')
+    })
+  })
+
+  describe('the step in the address', () => {
+    it('opens the step the address names, whatever the default', () => {
+      at('?step=project')
       setup(INTAKE_READY)
-      expect(within(screen.getByTestId('intake-header')).getByRole('button', { name: 'Add documents' })).toBeInTheDocument()
+      expect(shown()).toBe('project')
     })
 
-    it('says Piloti is reading, with the counts so far, and no drop zone', () => {
-      setup(INTAKE_READING)
-
-      expect(screen.getByText('Piloti is reading the documents …')).toBeInTheDocument()
-      expect(screen.getByTestId('intake-status-line')).toHaveTextContent('9 documents read · 6 values · 0 contradictions · 0 questions')
-      expect(screen.queryByTestId('intake-upload-zone')).toBeNull()
-      // Waiting, not disabled: a control that started this reading keeps its focus.
-      const reread = screen.getByRole('button', { name: /Read the documents that have not been read yet/ })
-      expect(reread).toHaveAttribute('aria-disabled', 'true')
-      expect(reread).not.toBeDisabled()
-    })
-
-    it('shows reading as progress and section-shaped skeletons, with nothing that spins', () => {
-      setup(INTAKE_READING)
-
-      expect(screen.getByRole('progressbar', { name: 'Reading progress: 9 of 23 documents' })).toBeInTheDocument()
-      expect(screen.getByTestId('intake-reading-skeleton')).toHaveAttribute('aria-hidden', 'true')
-      expect(screen.getByTestId('intake-status-line').querySelector('[data-slot="spinner"]')).toBeNull()
-    })
-
-    it('shows no skeleton once the reading is over', () => {
+    it('ignores a step it does not know', () => {
+      at('?step=documents')
       setup(INTAKE_READY)
-      expect(screen.queryByTestId('intake-reading-skeleton')).toBeNull()
+      expect(shown()).toBe('questions')
     })
 
-    it('keeps the finish button while reading with something to review, as a secondary', () => {
-      setup(INTAKE_READING)
-      expect(screen.getByTestId('intake-complete')).not.toHaveAttribute('data-primary')
-    })
-
-    it('hides the finish button while reading with nothing found yet', () => {
-      setup({ ...INTAKE_READING, counts: { ...INTAKE_READING.counts, suggested: 0 }, groups: [] })
-      expect(screen.queryByTestId('intake-complete')).toBeNull()
-    })
-
-    it('shows the review in order: contradictions, questions, review, derivations, finish', () => {
+    it('writes the chosen step into the address, keeps the rest, and drops the create dialog’s handover', async () => {
+      at('?drop=new-project:abc&from=inbox')
       setup(INTAKE_READY)
 
-      expect(screen.getByTestId('intake-status-line')).toHaveTextContent('23 documents read · 41 values · 1 contradiction · 3 questions')
-      const order = ['intake-contradictions', 'intake-questions', 'intake-review', 'intake-derivations', 'intake-complete']
-      const nodes = order.map((id) => screen.getByTestId(id))
-      nodes.slice(1).forEach((node, index) => {
-        expect(nodes[index].compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      await userEvent.click(stepButton(/^2\. Filing/))
+
+      expect(shown()).toBe('filing')
+      const params = new URLSearchParams(window.location.search)
+      expect(params.get('step')).toBe('filing')
+      expect(params.get('from')).toBe('inbox')
+      expect(params.get('drop')).toBeNull()
+      // A new history entry, so back returns to the step before.
+      expect(pushState).toHaveBeenCalledTimes(1)
+    })
+
+    it('follows back and forward', async () => {
+      setup(INTAKE_READY)
+      await userEvent.click(stepButton(/^5\. Profile/))
+      expect(shown()).toBe('profile')
+
+      // Back to the entry without a step: the step it opened on.
+      act(() => {
+        window.history.replaceState(null, '', '/app/projects/p1/setup')
+        address.notify()
       })
+      expect(shown()).toBe('questions')
     })
 
-    it('marks a decisive row, a confirmed one and a contested one in words', () => {
+    it('scrolls to the top when the step changes, not on the first paint', async () => {
+      const scroll = vi.fn()
+      const before = Element.prototype.scrollTo
+      Element.prototype.scrollTo = scroll
+      try {
+        setup(INTAKE_READY)
+        expect(scroll).not.toHaveBeenCalled()
+
+        await userEvent.click(screen.getByRole('button', { name: 'stub next' }))
+        expect(shown()).toBe('profile')
+        expect(scroll).toHaveBeenCalledWith({ top: 0 })
+      } finally {
+        Element.prototype.scrollTo = before
+      }
+    })
+
+    it('does not push a step that is already shown', async () => {
       setup(INTAKE_READY)
-
-      const row = screen.getByTestId('intake-suggestion-fluchtniveau_m@bw1')
-      expect(row).toHaveTextContent('Decisive')
-      // A property of the value, not an alarm: neutral, with a glyph; warning is for the contradiction.
-      const decisive = within(row).getByText('Decisive')
-      expect(decisive.className).not.toMatch(/warning/)
-      expect(decisive.querySelector('svg')).not.toBeNull()
-      expect(
-        within(screen.getByTestId('intake-suggestion-geschosse_oberirdisch@bw1')).getByText('Contradiction').className
-      ).toMatch(/warning/)
-      expect(screen.getByTestId('intake-suggestion-standort_adresse')).toHaveTextContent('Confirmed')
-      expect(screen.getByTestId('intake-suggestion-geschosse_oberirdisch@bw1')).toHaveTextContent('Contradiction')
+      await userEvent.click(stepButton(/^4\. Questions/))
+      expect(pushState).not.toHaveBeenCalled()
     })
+  })
 
-    it('shows the Gebäudeklasse of a Bauwerk with its inputs, and „still open“ with what is missing', () => {
+  describe('the stepper', () => {
+    it('names the five steps, all of them reachable, with a note on each that has one', () => {
       setup(INTAKE_READY)
-
-      const done = screen.getByTestId('intake-derivation-bw1')
-      expect(done).toHaveTextContent('GK 5')
-      expect(done).toHaveTextContent('Anzahl oberirdischer Geschoße (Zielzustand): 6 · suggested')
-      expect(done).toHaveTextContent('Gebäudestellung: angebaut')
-      expect(done).not.toHaveTextContent('Gebäudestellung: angebaut · suggested')
-      // Suggested inputs are muted chips whose words say so, never gold.
-      const suggested = within(done).getByText(/Anzahl oberirdischer Geschoße \(Zielzustand\): 6 · suggested/)
-      expect(suggested.closest('[data-slot="chip"]')?.className).not.toMatch(/warning/)
-      expect(done).toHaveTextContent('OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023)')
-
-      const open = screen.getByTestId('intake-derivation-bw2')
-      expect(open).toHaveTextContent('still open')
-      expect(open).toHaveTextContent('Still missing:')
-      expect(within(open).queryByRole('button')).toBeNull()
+      const names = within(rail())
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label'))
+      expect(names).toEqual([
+        '1. Project',
+        '2. Filing — 23 documents',
+        '3. Reading — 23 read',
+        '4. Questions — 4 open',
+        '5. Profile — 41 values',
+      ])
+      for (const button of within(rail()).getAllByRole('button')) expect(button).toBeEnabled()
+      expect(within(screen.getByTestId('intake-setup-footer')).getByText('Step 4 of 5')).toBeInTheDocument()
     })
 
-    it('says a Hochhaus has no building class', () => {
-      setup({
-        ...INTAKE_READY,
-        derivations: [{ ...INTAKE_READY.derivations[1], bauwerkId: 'bw3', hochhaus: true, missing: [] }],
-      })
-      expect(screen.getByTestId('intake-derivation-bw3')).toHaveTextContent('High-rise')
-    })
-
-    it('says the reading failed in an error alert, keeps what was found, and offers another', async () => {
+    it('says how far the reading is while it runs, and that a failed one was interrupted', () => {
+      const { unmount } = setup(INTAKE_READING)
+      expect(stepButton(/^3\. Reading/)).toHaveAccessibleName('3. Reading — 9 of 23')
+      unmount()
       setup(INTAKE_FAILED)
+      expect(stepButton(/^3\. Reading/)).toHaveAccessibleName('3. Reading — interrupted')
+    })
 
-      const alert = screen.getByTestId('intake-failed')
-      expect(alert).toHaveAttribute('role', 'alert')
-      expect(alert).toHaveTextContent('Piloti could not finish reading')
-      expect(alert).toHaveTextContent('You can try again.')
-      expect(screen.getByTestId('intake-review')).toBeInTheDocument()
+    it('says a finished setup is finished', () => {
+      setup(INTAKE_COMPLETED)
+      expect(stepButton(/^5\. Profile/)).toHaveAccessibleName('5. Profile — finished')
+    })
 
-      await userEvent.click(within(alert).getByRole('button', { name: 'Start reading again' }))
-      expect(onReread).toHaveBeenCalledTimes(1)
-      // One way to read again, not two.
-      expect(screen.getAllByRole('button', { name: /Read again|Start reading again/ })).toHaveLength(1)
+    it('gives each step its way on, and none on the last', async () => {
+      at('?step=project')
+      setup(INTAKE_READY)
+      for (const step of ['filing', 'reading', 'questions', 'profile']) {
+        await userEvent.click(screen.getByRole('button', { name: 'stub next' }))
+        expect(shown()).toBe(step)
+      }
+      expect(screen.queryByRole('button', { name: 'stub next' })).toBeNull()
+    })
+
+    it('lets a step send the person to another', async () => {
+      at('?step=profile')
+      setup(INTAKE_READY)
+      await userEvent.click(screen.getByRole('button', { name: 'stub to questions' }))
+      expect(shown()).toBe('questions')
+      expect(new URLSearchParams(window.location.search).get('step')).toBe('questions')
+    })
+  })
+
+  describe('what the frame hands a step', () => {
+    it('lets a person who may decide decide, and takes uploads', () => {
+      setup(INTAKE_READY, { busy: true })
+      const step = screen.getByTestId('setup-step-questions')
+      expect(step).toHaveAttribute('data-can-decide', 'true')
+      expect(step).toHaveAttribute('data-can-upload', 'true')
+      expect(step).toHaveAttribute('data-busy', 'true')
+    })
+
+    it('decides nothing and takes nothing on a finished setup', () => {
+      setup(INTAKE_COMPLETED)
+      const step = screen.getByTestId('setup-step-profile')
+      expect(step).toHaveAttribute('data-can-decide', 'false')
+      expect(step).toHaveAttribute('data-can-upload', 'false')
+    })
+
+    it('takes no documents on a closed project', () => {
+      at('?step=filing')
+      setup(INTAKE_READY, { canUpload: false })
+      expect(screen.getByTestId('setup-step-filing')).toHaveAttribute('data-can-upload', 'false')
+    })
+
+    it('hands the Ablage the filing suggestions and the upload tray', () => {
+      at('?step=filing')
+      setup(INTAKE_READY, { filing: { entries: [], onSettled: vi.fn() }, children: <p>upload tray</p> })
+      const step = screen.getByTestId('setup-step-filing')
+      expect(step).toHaveTextContent('filing given')
+      expect(step).toHaveTextContent('upload tray')
+    })
+
+  })
+
+  describe('the bar and the footer', () => {
+    it('names the setup and the project, and offers to continue later from the overview', () => {
+      setup(INTAKE_READY)
+      const head = screen.getByTestId('intake-setup-head')
+      expect(head).toHaveTextContent('Setup')
+      expect(head).toHaveTextContent('Wohnanlage Gartenstraße 12')
+      // One link on a desk, one (the back arrow) on a phone; both go to the overview.
+      const later = within(head).getAllByRole('link', { name: /Leave the setup for the project overview/ })
+      expect(later).toHaveLength(2)
+      for (const link of later) expect(link).toHaveAttribute('href', `/app/projects/${INTAKE_READY.projectId}/settings`)
+      expect(later[0]).toHaveTextContent('Continue later')
+    })
+
+    it('marks a step before the shown one done only when it asks nothing more', () => {
+      at('?step=profile')
+      setup(INTAKE_READY)
+      // Filing asks nothing (documents are in); the Rückfragen still have three open.
+      expect(stepButton(/^2\. Filing/).querySelector('svg')).not.toBeNull()
+      expect(stepButton(/^4\. Questions/)).toHaveTextContent('4')
+      expect(stepButton(/^4\. Questions/).querySelector('svg')).toBeNull()
+      expect(stepButton(/^5\. Profile/)).toHaveAttribute('aria-current', 'step')
+    })
+
+    it('names the step and its count on a phone, with a menu of all five', async () => {
+      setup(INTAKE_READY)
+      await userEvent.click(screen.getByRole('button', { name: 'Step 4 of 5: Questions. Choose another step' }))
+      await userEvent.click(await screen.findByRole('menuitem', { name: /Profile/ }))
+      expect(shown()).toBe('profile')
+    })
+
+    it('offers the next step in the footer when a step names no action of its own', async () => {
+      setup(INTAKE_READY)
+      const footer = screen.getByTestId('intake-setup-footer')
+      await userEvent.click(within(footer).getByRole('button', { name: 'On to Profile' }))
+      expect(shown()).toBe('profile')
+    })
+
+    it('draws the action, the second way on and the progress a step hands it', async () => {
+      at('?step=profile')
+      setup(INTAKE_CLOSING)
+      const footer = screen.getByTestId('intake-setup-footer')
+      expect(within(footer).queryByRole('button', { name: /^On to/ })).toBeNull()
+      // The aside twice: beside the count on a desk, under the action on a phone.
+      expect(within(footer).getAllByRole('button', { name: 'stub aside' })).toHaveLength(2)
+      expect(screen.getAllByRole('progressbar', { name: '1 of 6 done' })).toHaveLength(2)
+      await userEvent.click(within(footer).getByRole('button', { name: 'stub complete' }))
+      expect(onComplete).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('notices above the step', () => {
+    it('says the reading failed, on every step, and offers another', async () => {
+      for (const step of ['project', 'profile']) {
+        at(`?step=${step}`)
+        const { unmount } = setup(INTAKE_FAILED)
+        const alert = screen.getByTestId('intake-failed')
+        expect(alert).toHaveTextContent('Piloti could not finish reading')
+        await userEvent.click(within(alert).getByRole('button', { name: 'Start reading again' }))
+        unmount()
+      }
+      expect(onReread).toHaveBeenCalledTimes(2)
     })
 
     it('offers no retry in the failed alert to a reader who may not decide', () => {
-      setup({ ...INTAKE_FAILED, canDecide: false, canComplete: false })
+      setup({ ...INTAKE_FAILED, canDecide: false })
       expect(within(screen.getByTestId('intake-failed')).queryByRole('button')).toBeNull()
     })
 
     it('offers to retry when the last refresh failed', async () => {
       setup(INTAKE_READY, { stale: true })
+      expect(screen.getByText('We could not load the setup.')).toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
       expect(onRetry).toHaveBeenCalledTimes(1)
     })
 
-    it('shows a finished setup read-only, with the way to the project', () => {
-      setup(INTAKE_COMPLETED)
-
-      expect(screen.getByTestId('intake-completed')).toHaveTextContent('The setup is finished.')
-      expect(screen.getByRole('link', { name: 'To the overview' })).toHaveAttribute('href', `/app/projects/${INTAKE_COMPLETED.projectId}/settings`)
-      expect(screen.queryByRole('button', { name: /Use/ })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Use all' })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Add documents' })).toBeNull()
-      expect(screen.queryByRole('link', { name: /Open the briefing wizard/ })).toBeNull()
-    })
-
-    it('shows a reader who may not decide the review with no controls and says why', () => {
-      setup({ ...INTAKE_READY, canDecide: false, canComplete: false })
-
+    it('says why a reader who may not decide cannot', () => {
+      setup({ ...INTAKE_READY, canDecide: false })
       expect(screen.getByText('You can look at the setup, not change it.')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /^Use$/ })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Use all' })).toBeNull()
-      for (const control of screen.getAllByRole('button', { name: /^Use .* for / })) expect(control).toBeDisabled()
-      expect(screen.queryByTestId('intake-complete')).toBeNull()
-      expect(screen.queryByRole('button', { name: /Read the documents/ })).toBeNull()
+      expect(screen.getByTestId('setup-step-questions')).toHaveAttribute('data-can-decide', 'false')
     })
 
-    it('offers no documents on a closed project', () => {
-      setup(INTAKE_WAITING, { canUpload: false })
-      expect(screen.queryByTestId('intake-upload-zone')).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Add documents' })).toBeNull()
-    })
-
-    it('links the wizard, which stays the way to fill the same profile', () => {
-      setup(INTAKE_READY)
-      expect(screen.getByRole('link', { name: /Open the briefing wizard/ })).toHaveAttribute(
+    it('says a finished setup is finished, with the way to the project', () => {
+      setup(INTAKE_COMPLETED)
+      const note = screen.getByTestId('intake-completed')
+      expect(note).toHaveTextContent('The setup is finished.')
+      expect(within(note).getByRole('link', { name: 'To the overview' })).toHaveAttribute(
         'href',
-        `/app/projects/${INTAKE_READY.projectId}/intake`
+        `/app/projects/${INTAKE_COMPLETED.projectId}/settings`
       )
-    })
-  })
-
-  describe('evidence', () => {
-    it('names the file and the page, and shows the quote on hover', async () => {
-      setup(INTAKE_READY)
-      const contradictions = screen.getByTestId('intake-contradictions')
-
-      const chip = await within(contradictions).findByRole('button', { name: /Baubeschreibung\.pdf, p\. 3/ })
-      expect(chip).toHaveTextContent('Baubeschreibung.pdf, p. 3')
-      await userEvent.hover(chip)
-
-      expect(await screen.findByText(/insgesamt sechs oberirdische Geschoße/)).toBeInTheDocument()
-    })
-
-    it('says a spreadsheet\'s source without a page', () => {
-      setup(INTAKE_READY)
-      expect(screen.getByTestId('intake-suggestion-nutzungseinheiten@bw1')).toHaveTextContent('Wohnungsliste.xlsx')
-      expect(screen.getByTestId('intake-suggestion-nutzungseinheiten@bw1')).not.toHaveTextContent('Wohnungsliste.xlsx, p.')
-    })
-  })
-
-  describe('decisions', () => {
-    it('confirms the profile\'s own value of a contradiction', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Use 6 for Anzahl oberirdischer Geschoße/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'geschosse_oberirdisch@bw1', action: 'confirm' }])
-    })
-
-    it('confirms an alternative with its index', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Use 7 for Anzahl oberirdischer Geschoße/ }))
-      expect(onDecide).toHaveBeenCalledWith([
-        { key: 'geschosse_oberirdisch@bw1', action: 'confirm', alternativeIndex: 0 },
-      ])
-    })
-
-    it('discards an alternative, and offers no discard for the profile\'s own value', async () => {
-      setup(INTAKE_READY)
-      expect(screen.getAllByRole('button', { name: /Discard .* for Anzahl oberirdischer Geschoße/ })).toHaveLength(1)
-      await userEvent.click(screen.getByRole('button', { name: /Discard 7 for Anzahl oberirdischer Geschoße/ }))
-      expect(onDecide).toHaveBeenCalledWith([
-        { key: 'geschosse_oberirdisch@bw1', action: 'dismiss', alternativeIndex: 0 },
-      ])
-    })
-
-    it('answers a Rückfrage with the typed number, only once there is one', async () => {
-      setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
-      const answer = within(card).getByRole('button', { name: /Use this answer for Brutto-Grundfläche/ })
-      expect(answer).toBeDisabled()
-
-      await userEvent.type(within(card).getByRole('spinbutton'), '1250')
-      expect(answer).toBeEnabled()
-      await userEvent.click(answer)
-
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'answer', value: 1250 }])
-    })
-
-    it('answers a yes/no Rückfrage with a boolean', async () => {
-      setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-einheiten_ueber_400@bw1')
-
-      await userEvent.click(within(card).getByRole('button', { name: 'No' }))
-      await userEvent.click(within(card).getByRole('button', { name: /Use this answer/ }))
-
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'einheiten_ueber_400@bw1', action: 'answer', value: false }])
-    })
-
-    it('answers a select Rückfrage with the option\'s token', async () => {
-      setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-gebaeudestellung@bw1')
-
-      await userEvent.click(within(card).getByRole('combobox'))
-      await userEvent.click(await screen.findByRole('option', { name: 'Reihenhaus' }))
-      await userEvent.click(within(card).getByRole('button', { name: /Use this answer/ }))
-
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudestellung@bw1', action: 'answer', value: 'reihenhaus' }])
-    })
-
-    it('says why Piloti asks and where the answer is usually found', async () => {
-      setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
-
-      expect(card).toHaveTextContent('Usually found in: Einreichplan (Plankopf), Baubeschreibung')
-      await userEvent.click(within(card).getByRole('button', { name: /why/i }))
-      expect(card).toHaveTextContent('Die Fläche entscheidet bei Gebäuden')
-    })
-
-    it('records „Nicht bekannt“ as unknown', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /^Brutto-Grundfläche.*: not known/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'unknown' }])
-    })
-
-    it('hands a document in as a row of the card, with a drop ring only while a file is over it', () => {
-      setup(INTAKE_READY)
-      const row = within(screen.getByTestId('intake-question-bgf_oberirdisch@bw1')).getByTestId('document-hand-in')
-
-      expect(row.className).not.toMatch(/\bborder\b/)
-      expect(row).not.toHaveAttribute('data-dragging')
-      fireEvent.dragEnter(row, { dataTransfer: { types: ['Files'], files: [], items: [] } })
-      expect(row).toHaveAttribute('data-dragging')
-      expect(row.className).toMatch(/ring-2/)
-    })
-
-    it('hands a document in on a Rückfrage by choosing it', async () => {
-      setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
-      const file = new File(['%PDF'], 'Flaechenaufstellung.pdf', { type: 'application/pdf' })
-
-      fireEvent.change(within(card).getByTestId('document-hand-in-input'), { target: { files: [file] } })
-
-      expect(onFiles).toHaveBeenCalledWith([file])
-    })
-
-    it('hands a document in on a Rückfrage by dropping it there', () => {
-      setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
-      const file = new File(['%PDF'], 'Flaechenaufstellung.pdf', { type: 'application/pdf' })
-
-      fireEvent.drop(within(card).getByTestId('document-hand-in'), {
-        dataTransfer: { types: ['Files'], files: [file], items: [] },
-      })
-
-      // With what the drop could not read, for the upload to tell.
-      return vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
-    })
-
-    it('confirms and dismisses one suggestion', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Use 2023 for OIB-Ausgabe/ }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'confirm' }])
-
-      await userEvent.click(screen.getByRole('button', { name: /Discard 2023 for OIB-Ausgabe/ }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'dismiss' }])
-    })
-
-    it('„Alle übernehmen“ confirms the group\'s suggestions in one call, not the confirmed or contested ones', async () => {
-      setup(INTAKE_READY)
-
-      await userEvent.click(screen.getByRole('button', { name: 'Use all 4 suggestions in Bauwerke' }))
-
-      expect(onDecide).toHaveBeenCalledTimes(1)
-      expect(onDecide).toHaveBeenCalledWith([
-        { key: 'bauwerkstyp@bw1', action: 'confirm' },
-        { key: 'fluchtniveau_m@bw1', action: 'confirm' },
-        { key: 'gebaeudestellung@bw1', action: 'confirm' },
-        { key: 'nutzungseinheiten@bw1', action: 'confirm' },
-      ])
-    })
-
-    it('confirms the building class through the suggestion its derivation carries', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Use Gebäudeklasse GK 5 for Building 1/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudeklasse@bw1', action: 'confirm' }])
-    })
-
-    it('holds every control while a call is in flight, without ever disabling one', async () => {
-      setup(INTAKE_READY, { busy: true })
-      for (const name of [/Use 6 for Anzahl/, /Use all 4/, 'Finish setup']) {
-        const control = screen.getByRole('button', { name })
-        expect(control).toHaveAttribute('aria-disabled', 'true')
-        expect(control).not.toBeDisabled()
-      }
-
-      await userEvent.click(screen.getByRole('button', { name: /Use 6 for Anzahl/ }))
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      expect(onDecide).not.toHaveBeenCalled()
-      expect(screen.queryByRole('dialog')).toBeNull()
-    })
-
-    it('shows the busy label on the control that was pressed, once the wait is noticeable, and keeps its focus', async () => {
-      let settle: (ok: boolean) => void = () => undefined
-      onDecide.mockReturnValue(new Promise<boolean>((resolve) => (settle = resolve)))
-      setup(INTAKE_READY)
-      const confirm = screen.getByRole('button', { name: /Use 6 for Anzahl/ })
-
-      confirm.focus()
-      await userEvent.click(confirm)
-      expect(confirm).toHaveAttribute('aria-busy', 'true')
-      expect(confirm).toHaveFocus()
-      // Another press while it is in flight is swallowed.
-      await userEvent.click(confirm)
-      expect(onDecide).toHaveBeenCalledTimes(1)
-
-      await vi.waitFor(() => expect(confirm).toHaveTextContent('Using …'))
-      settle(true)
-      await vi.waitFor(() => expect(confirm).not.toHaveAttribute('aria-busy'))
-    })
-
-    it('starts a reading of what is new', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Read the documents that have not been read yet/ }))
-      expect(onReread).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('finishing', () => {
-    it('is the ink primary only when nothing is open', () => {
-      setup({ ...INTAKE_READY, contradictions: [], questions: [] })
-      expect(screen.getByTestId('intake-complete')).toHaveAttribute('data-primary')
-      expect(screen.queryByTestId('intake-open')).toBeNull()
-    })
-
-    it('stays on screen on a phone once nothing is open, and never floats while something is', () => {
-      setup({ ...INTAKE_READY, contradictions: [], questions: [] })
-      expect(screen.getByTestId('intake-complete')).toHaveClass('max-sm:sticky', 'max-sm:bottom-0')
-    })
-
-    it('does not float over the work that is still to do', () => {
-      setup(INTAKE_READY)
-      expect(screen.getByTestId('intake-complete')).not.toHaveClass('max-sm:sticky')
-    })
-
-    it('is a secondary button and says what is still open while a contradiction or Rückfrage waits', () => {
-      setup(INTAKE_READY)
-
-      expect(screen.getByTestId('intake-complete')).not.toHaveAttribute('data-primary')
-      expect(screen.getByTestId('intake-open')).toHaveTextContent('Still open: 1 contradiction, 3 questions – you can finish anyway.')
-      expect(screen.getByRole('button', { name: 'Finish setup' }).className).toMatch(/bg-secondary/)
-    })
-
-    it('names only what is open', () => {
-      setup({ ...INTAKE_READY, contradictions: [] })
-      expect(screen.getByTestId('intake-open')).toHaveTextContent('Still open: 3 questions')
-    })
-
-    it('asks before it finishes, then completes', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      expect(onComplete).not.toHaveBeenCalled()
-
-      const dialog = await screen.findByRole('dialog')
-      expect(dialog).toHaveTextContent('The review ends and the confirmed values stay on the project.')
-      await userEvent.click(within(dialog).getByRole('button', { name: 'Finish setup' }))
-
-      expect(onComplete).toHaveBeenCalledTimes(1)
-    })
-
-    it('says a closing intent closes the project with outcome and period', async () => {
-      setup(INTAKE_CLOSING)
-
-      expect(screen.getByTestId('intake-complete')).toHaveTextContent('This closes the project: outcome “Completed”, period 03/2019 to 08/2022.')
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      expect(await screen.findByRole('dialog')).toHaveTextContent('the project is closed: outcome “Completed”, period 03/2019 to 08/2022.')
-    })
-
-    it('says so when the project is closed, in a closed review', () => {
-      setup({ ...INTAKE_COMPLETED, mode: 'closing', closing: INTAKE_CLOSING.closing })
-      expect(screen.getByTestId('intake-completed')).toHaveTextContent('closed')
-    })
-
-    it('offers no finish to a reader who may not', () => {
-      setup({ ...INTAKE_READY, canComplete: false })
-      expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
     })
   })
 
   describe('drops', () => {
-    it('files a folder dropped anywhere on the page', async () => {
+    const dataTransfer = (file: File) => ({ dataTransfer: { types: ['Files'], files: [file], items: [] } })
+
+    it.each(['project', 'reading', 'questions', 'profile'])('files a document dropped anywhere on the %s step', async (step) => {
+      at(`?step=${step}`)
       setup(INTAKE_READY)
       const file = new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })
 
-      fireEvent.drop(screen.getByTestId('intake-setup'), { dataTransfer: { types: ['Files'], files: [file], items: [] } })
+      fireEvent.drop(screen.getByTestId('intake-setup'), dataTransfer(file))
 
       await vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
     })
 
-    it('keeps the overlay’s label in view on a page that scrolls', () => {
+    it('leaves a drop on the Ablage to its tree, which chooses before anything is uploaded', () => {
+      at('?step=filing')
       setup(INTAKE_READY)
-      const file = new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })
-
-      fireEvent.dragEnter(screen.getByTestId('intake-setup'), {
-        dataTransfer: { types: ['Files'], files: [file], items: [] },
-      })
-
-      // Centred on the whole page, the label sat below the fold of a long review.
-      const overlay = screen.getByTestId('intake-drop-overlay')
-      expect(overlay.querySelector('[data-follow-scroll]')).toHaveClass('sticky')
-    })
-
-    it('takes no drop on a finished setup', () => {
-      setup(INTAKE_COMPLETED)
-      const file = new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })
-
-      fireEvent.drop(screen.getByTestId('intake-setup'), { dataTransfer: { types: ['Files'], files: [file], items: [] } })
-
+      fireEvent.drop(screen.getByTestId('intake-setup'), dataTransfer(new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })))
       expect(onFiles).not.toHaveBeenCalled()
     })
-  })
 
-  describe('Ablage: Piloti\'s open filing suggestions', () => {
-    const [permitDecisions] = INTAKE_FILING
-    const onSettled = vi.fn()
-    const filing = (entries = suggestionsByFolder(INTAKE_FILING)) => ({ filing: { entries, onSettled } })
-    let current = permitDecisions.proposal
-
-    beforeEach(() => {
-      useFakeStream()
-      current = permitDecisions.proposal
-      server.use(
-        http.get('/api/proposals/:id', ({ params }) =>
-          HttpResponse.json({ proposal: INTAKE_FILING.find((entry) => entry.proposal.id === params.id)?.proposal ?? current })
-        ),
-        http.post(`/api/proposals/${permitDecisions.proposal.id}/apply`, () => {
-          current = { ...permitDecisions.proposal, status: 'applied', canDecide: false, results: [] }
-          return HttpResponse.json({ proposal: current })
-        })
-      )
-    })
-    afterEach(resetKit)
-
-    it('renders the filing bar, one line per target folder with the files that go there, after Prüfen and before Ableitungen', async () => {
-      setup(INTAKE_READY, filing())
-
-      const section = screen.getByTestId('intake-filing')
-      expect(within(section).getByRole('heading', { name: 'Filing' })).toBeInTheDocument()
-      // The same FilingBar as above a folder in Files, not a lookalike.
-      const bar = within(section).getByTestId('filing-bar')
-      expect(bar).toHaveAttribute('role', 'group')
-      const lines = within(bar).getAllByTestId('filing-bar-line')
-      expect(lines).toHaveLength(2)
-      expect(lines[0]).toHaveTextContent('Behörde/Bescheide')
-      expect(lines[0]).toHaveTextContent('2 files')
-      expect(lines[0]).toHaveTextContent('Bescheid_MA37_Aufstockung.pdf, Stellungnahme_MA19_Ortsbild.pdf')
-      expect(lines[1]).toHaveTextContent('Gutachten')
-      expect(within(lines[1]).getByText('new')).toBeInTheDocument()
-      expect(await within(lines[1]).findByRole('button', { name: 'Create and move' })).toBeInTheDocument()
-      const follows = (a: HTMLElement, b: HTMLElement) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
-      expect(follows(screen.getByTestId('intake-review'), section)).toBeTruthy()
-      expect(follows(section, screen.getByTestId('intake-derivations'))).toBeTruthy()
-    })
-
-    it('applies through the proposals service and tells the page to re-read', async () => {
-      const user = userEvent.setup()
-      setup(INTAKE_READY, filing())
-
-      const [permitDecisionsLine] = screen.getAllByTestId('filing-bar-line')
-      await user.click(await within(permitDecisionsLine).findByRole('button', { name: 'Move' }))
-
-      expect(await screen.findByText('Moved to “Behörde/Bescheide”.')).toBeInTheDocument()
-      await vi.waitFor(() => expect(onSettled).toHaveBeenCalled())
-    })
-
-    it('draws nothing when there is no open suggestion', () => {
-      setup(INTAKE_READY, filing([]))
-      expect(screen.queryByTestId('intake-filing')).toBeNull()
-    })
-
-    it('draws nothing when the page is given no suggestions', () => {
-      setup(INTAKE_READY)
-      expect(screen.queryByTestId('intake-filing')).toBeNull()
-    })
-
-    it('draws nothing in the completed state', () => {
-      setup(INTAKE_COMPLETED, filing())
-      expect(screen.queryByTestId('intake-filing')).toBeNull()
+        it('takes no drop on a finished setup', () => {
+      setup(INTAKE_COMPLETED)
+      fireEvent.drop(screen.getByTestId('intake-setup'), dataTransfer(new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })))
+      expect(onFiles).not.toHaveBeenCalled()
     })
   })
 

@@ -376,11 +376,20 @@ class IntakeToolMiddleware(AgentMiddleware):
     ``return_direct``, because a first call it holds must reach the model.
     """
 
-    def __init__(self, *, max_steps: int, finish_tool: str, finished: Callable[[], bool] = lambda: False) -> None:
+    def __init__(
+        self,
+        *,
+        max_steps: int,
+        finish_tool: str,
+        finished: Callable[[], bool] = lambda: False,
+        after_call: Callable[[], Awaitable[None]] | None = None,
+    ) -> None:
         super().__init__()
         self.max_steps = max_steps
         self.finish_tool = finish_tool
         self.finished = finished
+        #: Run after every tool call, once the read log has it: the run's progress report.
+        self.after_call = after_call
         self.steps = 0
 
     @property
@@ -419,4 +428,13 @@ class IntakeToolMiddleware(AgentMiddleware):
                 stripped = strip_trace_lanes(result.content)
                 if stripped != result.content:
                     result = result.model_copy(update={"content": stripped})
+        await self._after_call()
         return result
+
+    async def _after_call(self) -> None:
+        if self.after_call is None:
+            return
+        try:
+            await self.after_call()
+        except Exception:  # noqa: BLE001 — a progress report never costs the run a tool result
+            logger.debug("Intake: the after-call hook failed", exc_info=True)

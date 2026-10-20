@@ -192,6 +192,13 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
       detectors: 'string',
     },
   },
+  // One project's changes to the office's sensitive-data name terms (ADR-0086,
+  // 2026-10-20; migration 0154): terms added for the project and office terms
+  // set aside there. Counts, never the terms, as for the office's list.
+  'project.upload_screening.updated': {
+    targets: [{ type: 'project' }],
+    metadata: { addedNameTerms: 'number', removedNameTerms: 'number' },
+  },
   // The download log (ADR-0088): who took which document's bytes. It is
   // personal data about staff, so READING it is recorded, one event per request
   // (every page, every filter). The filters are named, not their values' hits:

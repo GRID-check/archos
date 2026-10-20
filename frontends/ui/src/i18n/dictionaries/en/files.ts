@@ -1025,6 +1025,11 @@ export const files = {
     uploadNetwork: 'No connection while uploading. Please try again.',
     uploadStalled: 'The connection stopped sending, so the upload was stopped.',
     uploadTimeout: 'The upload took too long.',
+    // The server's size and storage refusals; their own words are for logs
+    // (`lib/upload-failure.ts`).
+    uploadTooLarge: '“{name}” is larger than your office may upload.',
+    uploadTooLargeLimit: '“{name}” is larger than your office may upload: at most {limit} per file.',
+    uploadStorageFull: "Your office's storage is full. Nothing was uploaded.",
     // Not uploaded by the name check (ADR-0086): on a path with no upload
     // dialog, such as a chat attachment, or by the server's repeat of it.
     screenedOut: '{count} file(s) not uploaded because your office marks them as sensitive: {files}',

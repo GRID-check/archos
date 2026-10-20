@@ -34,7 +34,7 @@ export const settings = {
       summaryEmpty: 'No briefing yet. Set one up so Piloti knows what this project is before it answers.',
       setUpBrief: 'Set up briefing',
       editBrief: 'Edit briefing',
-      openSetup: 'Open project setup',
+      openSetup: 'Continue setup',
       askPiloti: 'Ask Piloti',
       openFiles: 'Open files',
       actions: 'Project actions',

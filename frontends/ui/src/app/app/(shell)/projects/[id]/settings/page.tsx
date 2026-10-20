@@ -6,6 +6,7 @@ import { withPageSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getProjectUsage } from '@/lib/budgets/service'
 import { findProjectIntake } from '@/lib/project-intake/repository'
+import { getIntakeView } from '@/lib/project-intake/service'
 import { getProjectActivity } from '@/lib/projects/activity'
 import { getProjectOverviewData } from '@/lib/projects/overview-query'
 import { projectOverviewReader } from '@/lib/projects/service'
@@ -55,6 +56,10 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
     if (!data) notFound()
 
     const usage = access.manageBudget ? await getProjectUsage(session, id) : null
+    // What the open setup still waits for, as the review counts it now: the row's
+    // counts are from the end of the last reading and go stale as answers come in.
+    const setupOpen = intake !== null && intake.status !== 'completed'
+    const setupView = setupOpen ? await getIntakeView(session, id).catch(() => null) : null
 
     return (
       <ProjectOverview
@@ -62,7 +67,8 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
         activity={activity}
         usage={usage}
         projectRecord={projectRecord}
-        setupOpen={intake !== null && intake.status !== 'completed'}
+        setupOpen={setupOpen}
+        setupProgress={setupView ? { status: setupView.status, counts: setupView.counts } : undefined}
         similar={
           <Suspense
             fallback={

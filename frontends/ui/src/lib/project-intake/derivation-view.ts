@@ -56,7 +56,7 @@ export function deriveForBuilding(
     rule: BUILDING_CLASS_DERIVATION.rule,
     citation: BUILDING_CLASS_DERIVATION.citation,
     value: result.value,
-    hochhaus: result.hochhaus,
+    highRise: result.hochhaus,
     inputs,
     missing: [...result.missing],
   }

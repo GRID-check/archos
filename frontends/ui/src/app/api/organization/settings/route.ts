@@ -19,7 +19,7 @@ import { CHAT_EFFORT_SETTING, CHAT_EFFORTS, isChatEffort } from '@/lib/reasoning
 
 const putSchema = z.object({
   displayName: z.string().trim().max(200).nullable().optional(),
-  defaultLocale: z.enum(locales).optional(),
+  defaultLocale: z.enum(locales).nullable().optional(),
   settings: z
     .record(z.unknown())
     .refine((bag) => !(CHAT_EFFORT_SETTING in bag) || isChatEffort(bag[CHAT_EFFORT_SETTING]), {

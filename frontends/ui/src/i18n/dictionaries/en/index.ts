@@ -38,6 +38,12 @@ import { feedbackExport } from './feedback-export'
 import { uploadBatches } from './upload-batches'
 import { references } from './references'
 import { projectIntake } from './project-intake'
+import { intakeProfileStep } from './intake-profile-step'
+import { intakeQuestionsStep } from './intake-questions-step'
+import { intakeReadingStep } from './intake-reading-step'
+import { intakeFilingStep } from './intake-filing-step'
+import { intakeProjectStep } from './intake-project-step'
+import { intakeShell } from './intake-shell'
 import { notifications } from './notifications'
 
 export const en = {
@@ -73,5 +79,11 @@ export const en = {
   uploadBatches,
   references,
   projectIntake,
+  intakeProfileStep,
+  intakeQuestionsStep,
+  intakeReadingStep,
+  intakeFilingStep,
+  intakeProjectStep,
+  intakeShell,
   notifications,
 } as const

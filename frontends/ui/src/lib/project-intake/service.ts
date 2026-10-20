@@ -52,10 +52,12 @@ import {
   findProjectIntake,
   findProjectIntakeByJobId,
   requestIntakeRerun,
+  setIntakeReadingFiles,
 } from './repository'
 import { mintIntakeJobId, submitIntakeRun, type IntakeTrigger } from './run'
 import { enqueueIntakeRead } from './trigger'
 import {
+  MAX_DOCUMENTS_READ,
   MAX_INTAKE_NEEDS,
   MAX_UNREAD_FILES,
   STALE_READING_REASON,
@@ -65,6 +67,7 @@ import {
   type IntakeStatus,
   type IntakeView,
   type InternalIntakeNeedsResponse,
+  type InternalIntakeProgressResponse,
   type InternalIntakeRecordResponse,
   type InternalIntakeWithdrawResponse,
   type Need,
@@ -157,6 +160,38 @@ async function requireProfileWriter(session: AuthorizedSession, projectId: strin
   }
 }
 
+/**
+ * A reading ended without its own `finish` (the worker's outcome, the stale
+ * reconcile, a refused submission): its requester is told all the same, that
+ * it is ready or that it failed. The person was told „Sie können gehen";
+ * that promise holds only if every ending reaches them. Best-effort: a
+ * notification never fails the ending that triggered it.
+ */
+async function tellRequester(ended: ProjectIntakeRow): Promise<void> {
+  if (!ended.requestedBy || (ended.status !== 'ready' && ended.status !== 'failed')) return
+  try {
+    const project = await findProjectInOrg(ended.projectId, ended.organizationId)
+    const decisiveOpen =
+      ended.status === 'ready'
+        ? needsOf(await loadProfile(ended.organizationId, ended.projectId), ended).filter(
+            (need) => need.decisive && need.state === 'open'
+          ).length
+        : 0
+    await onIntakeReady({
+      organizationId: ended.organizationId,
+      projectId: ended.projectId,
+      intakeId: ended.id,
+      recipientUserId: ended.requestedBy,
+      projectName: project?.name ?? null,
+      outcome: ended.status,
+      decisiveOpen,
+      summary: null,
+    })
+  } catch (error) {
+    console.warn(`[project-intake] the requester of ${ended.projectId}'s reading could not be told:`, error)
+  }
+}
+
 const staleReading = () =>
   new ConflictError('This reading is no longer the intake’s current one.', { reason: STALE_READING_REASON })
 
@@ -176,12 +211,14 @@ async function viewOf(session: AuthorizedSession, row: ProjectIntakeRow): Promis
     row.mode === 'closing' ? holds(session, row.projectId, 'project:manage') : Promise.resolve(false),
   ])
   const open = row.status !== 'completed'
+  const unread = unreadDocuments(documents, row.documentsRead)
   return buildIntakeView({
     row,
     profile,
     definition,
     needs: needsOf(profile, row),
-    unreadDocuments: unreadDocuments(documents, row.documentsRead).length,
+    unreadDocuments: unread.length,
+    readingDocuments: { readable: documents, unread },
     canDecide,
     canComplete: open && (row.mode === 'closing' ? canManage : canDecide),
   })
@@ -206,6 +243,7 @@ async function reconcileStaleReading(row: ProjectIntakeRow, now: Date): Promise<
   if (outcome && (outcome.status === 'submitted' || outcome.status === 'running')) return row
   const status = outcome?.status === 'success' ? 'ready' : 'failed'
   const ended = await endIntakeReading(row.organizationId, row.projectId, row.jobId, { status, now })
+  if (ended) await tellRequester(ended)
   return ended ?? (await requireIntake(row.organizationId, row.projectId))
 }
 
@@ -260,7 +298,10 @@ async function beginReading(
     if (submitted !== jobId) console.warn(`[project-intake] the backend ran ${jobId} as ${submitted}`)
     return claimed
   } catch (error) {
-    await endIntakeReading(organizationId, projectId, jobId, { status: 'failed', now: new Date() })
+    const ended = await endIntakeReading(organizationId, projectId, jobId, { status: 'failed', now: new Date() })
+    // A click sees the error; an upload's reading has nobody watching, so the
+    // requester is told either way, on the row a later reading folds into.
+    if (ended) await tellRequester(ended)
     console.error(`[project-intake] submitting the reading of ${projectId} failed:`, error)
     throw new ServiceUnavailableError('Piloti could not start reading the documents. Try again in a moment.', {
       reason: 'submit-failed',
@@ -509,6 +550,26 @@ export async function withdrawIntakeValues(
   return { results }
 }
 
+/**
+ * `progress`: the files the reading has opened so far, for the setup page's
+ * live „x von y gelesen" (step 3). Stored as the run names them, deduplicated
+ * and bounded; the view counts the readable documents among them. Never what
+ * decides the next reading's unread files: a reading that fails part-way
+ * leaves its documents unread (`finish` writes `documents_read`).
+ */
+export async function reportIntakeProgress(
+  session: AuthorizedSession,
+  projectId: string,
+  jobId: string,
+  filesOpened: readonly string[]
+): Promise<InternalIntakeProgressResponse> {
+  await requireCurrentReading(session, projectId, jobId)
+  const names = [...new Set(filesOpened.map((name) => name.trim()).filter(Boolean))].slice(0, MAX_DOCUMENTS_READ)
+  const stored = await setIntakeReadingFiles(session.organizationId, projectId, jobId, names)
+  if (!stored) throw staleReading()
+  return { filesOpened: stored.readingFiles.length }
+}
+
 /** The file names a reading reports as read, as `{ documentId, contentHash }`, merged over what was read before. */
 export function mergeDocumentsRead(
   previous: readonly DocumentRead[],
@@ -562,6 +623,7 @@ export async function finishIntakeReading(
     intakeId: ended.id,
     recipientUserId: ended.requestedBy ?? session.userId,
     projectName: project.name,
+    outcome: 'ready',
     decisiveOpen: counts.decisiveOpen,
     summary,
   })
@@ -597,6 +659,7 @@ export async function settleIntakeOutcome(
     status: status === 'success' ? 'ready' : 'failed',
     now: new Date(),
   })
+  if (ended) await tellRequester(ended)
   // A trigger that arrived during the reading is not lost with it: queued as
   // the person whose reading it was, who is re-checked when it runs.
   if (ended?.rerunRequested && ended.requestedBy) {

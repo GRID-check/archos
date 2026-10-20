@@ -1,0 +1,27 @@
+---
+features:
+  - >
+    Creating a project asks for its name, its address, whether it is running
+    or finished, and optionally its folder. The setup that follows has five
+    short steps (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), each on
+    one screen with one button to go on, and you can leave at any point with
+    „Später fortsetzen“.
+  - >
+    The Rückfragen ask one question at a time, together with the documents
+    the location calls for and any values the documents contradict each
+    other on.
+  - >
+    The Steckbrief shows the Gebäudeklasse with how it was worked out, which
+    OIB-Richtlinien apply, and the values Piloti found in one table. Pointing
+    at a source shows the passage on its page.
+fixes:
+  - >
+    With no project yet, the projects page shows one button to create the
+    first project instead of two.
+  - >
+    The address in the new-project dialog keeps what you type. Before, it
+    turned into a Bundesland list after three letters and dropped the text.
+  - >
+    A folder dropped on the new-project dialog now lands only in the project
+    it was dropped for. Before, if its setup page did not take it, the next new
+    project could.
