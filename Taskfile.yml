@@ -666,30 +666,56 @@ tasks:
     cmds:
       - >-
         {{.PY}} -X faulthandler -m pytest tests/ -q {{.XDIST}}
-        --junitxml=report-core.xml
         --cov=src/aiq_agent --cov-report=xml:coverage.xml --cov-report=term
         --cov-fail-under=65
+
+  be:test:shard:
+    desc: 'One shard of the core suite with coverage data, no gate (CI: SHARD=1/4 task be:test:shard)'
+    vars:
+      INDEX: '{{splitList "/" .SHARD | first}}'
+      TOTAL: '{{splitList "/" .SHARD | last}}'
+    env:
+      # One data file per shard; be:test:coverage combines them and gates.
+      COVERAGE_FILE: .coverage.shard{{.INDEX}}
+    cmds:
+      # pytest-split assigns whole tests by their recorded time
+      # (tests/.test_durations; refresh with be:test:durations). A test that is
+      # not in the file is counted at the average, so a stale file only
+      # unbalances the shards, never drops a test.
+      - >-
+        {{.PY}} -X faulthandler -m pytest tests/ -q {{.XDIST}}
+        --splits {{.TOTAL}} --group {{.INDEX}} --splitting-algorithm least_duration
+        --durations-path tests/.test_durations
+        --cov=src/aiq_agent --cov-report=
+
+  be:test:coverage:
+    desc: Combine the core shards' coverage data and apply the gate CI enforces
+    cmds:
+      - '{{.PY}} -m coverage combine --keep .coverage.shard*'
+      - '{{.PY}} -m coverage xml -o coverage.xml'
+      - '{{.PY}} -m coverage report --fail-under=65'
+
+  be:test:durations:
+    desc: Re-record the core suite's per-test times that be:test:shard splits by
+    cmds:
+      # Re-run when the shards' times in CI drift apart. Rounded to keep the
+      # file's churn down; the split needs proportions, not precision.
+      - '{{.PY}} -X faulthandler -m pytest tests/ -q {{.XDIST}} --store-durations --durations-path tests/.test_durations'
+      - >-
+        {{.PY}} -c "import json, pathlib; p = pathlib.Path('tests/.test_durations');
+        d = json.loads(p.read_text()); p.write_text(json.dumps({k: round(v, 3) for k, v in sorted(d.items())}, indent=0) + chr(10))"
 
   be:test:api:
     desc: aiq_api plugin suite
     cmds:
       - '{{.PY}} -X faulthandler -m pytest frontends/aiq_api/tests/ -q {{.XDIST}}'
 
-  be:test:api:ci:
-    desc: aiq_api plugin suite with coverage reporting
-    cmds:
-      - >-
-        {{.PY}} -X faulthandler -m pytest frontends/aiq_api/tests/ -q {{.XDIST}}
-        --junitxml=report-aiqapi.xml
-        --cov=frontends/aiq_api/src/aiq_api --cov-report=xml:coverage-aiqapi.xml
-        --cov-report=term
-
   be:verify:
     desc: Everything CI runs for the backend tier
     cmds:
       - task: be:lint
       - task: be:test:ci
-      - task: be:test:api:ci
+      - task: be:test:api
       # sources/ is part of the tier, and CI's backend-test job runs it too.
       - task: be:test:sources
 
