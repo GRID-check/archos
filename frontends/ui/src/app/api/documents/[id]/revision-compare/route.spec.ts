@@ -25,7 +25,7 @@ const OLDER = '2f1c6e0e-4f0a-4c53-9a3e-0f2b7d8f6a11'
 
 const call = (id: string, body: unknown) =>
   POST(
-    new Request(`https://grid.test/api/documents/${id}/fassung-compare`, {
+    new Request(`https://grid.test/api/documents/${id}/revision-compare`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -33,7 +33,7 @@ const call = (id: string, body: unknown) =>
     { params: Promise.resolve({ id }) },
   )
 
-describe('POST /api/documents/[id]/fassung-compare', () => {
+describe('POST /api/documents/[id]/revision-compare', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('compares the older document with the one in the path and returns regions and summary', async () => {

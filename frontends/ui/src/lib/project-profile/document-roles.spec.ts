@@ -94,8 +94,8 @@ describe('scope instances', () => {
 describe('recommendedRoles', () => {
   it('pushes the Bebauungsplan once the project says one exists', () => {
     expect(recommendedRoles({})).not.toContain('development_plan')
-    expect(recommendedRoles({ B2: 'ja' })).toContain('development_plan')
-    expect(recommendedRoles({ B2: 'nein' })).not.toContain('development_plan')
+    expect(recommendedRoles({ B2: 'yes' })).toContain('development_plan')
+    expect(recommendedRoles({ B2: 'no' })).not.toContain('development_plan')
   })
 
   it('reads a building condition from the building it was asked about', () => {
@@ -112,7 +112,7 @@ describe('recommendedRoles', () => {
   it('never pushes a role that states no condition', () => {
     // Offerable is not the same as recommended: the checklist lists every role,
     // but only a stated condition claims the project needs one.
-    const everything = recommendedRoles({ B2: 'ja', A5: ['Abbruch'], 'C2@bldg1': 'existing' }, 'bldg1')
+    const everything = recommendedRoles({ B2: 'yes', A5: ['Abbruch'], 'C2@bldg1': 'existing' }, 'bldg1')
     expect(everything).not.toContain('preliminary_design_study')
     expect(everything).not.toContain('other_project_basis')
   })

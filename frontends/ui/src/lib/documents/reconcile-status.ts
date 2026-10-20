@@ -410,7 +410,7 @@ interface BackendFileEntry {
    * reader may not be allowed to see. It leaves this module only through
    * {@link readRevisionLinkNames}, to the code that resolves it for a reader.
    */
-  fassung?: RevisionLinkNames | null
+  revision?: RevisionLinkNames | null
 }
 
 /**
@@ -467,7 +467,7 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       topics: file.topics,
       capture: file.capture,
       revision_facts: file.revision_facts,
-      fassung: parseRevisionLinkNames(file),
+      revision: parseRevisionLinkNames(file),
     })
   }
   return { byName, ambiguousNames }
@@ -560,7 +560,7 @@ export const clearCollectionFilesCache = (): void => {
 export const readRevisionLinkNames = async (ref: CollectionFileRef): Promise<RevisionLinkNames | null> => {
   const files = await loadCollectionFilesCached(ref.collectionName)
   if (!files || files.ambiguousNames.has(ref.filename)) return null
-  return files.byName.get(ref.filename)?.fassung ?? null
+  return files.byName.get(ref.filename)?.revision ?? null
 }
 
 /**

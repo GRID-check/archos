@@ -121,7 +121,7 @@ export interface FileFilters {
    * Show the older Fassungen of a document beside its current one.
    *
    * Answered by the WORKSPACE, not by `applyFileFilters`: the rule is "an older
-   * Fassung leaves the listing when its newer one is listed" (`fassung-chain.ts`),
+   * Fassung leaves the listing when its newer one is listed" (`revision-chain.ts`),
    * and it has to be asked after every other filter, over what those filters
    * kept. Like `includeArchived` it WIDENS, and the menu says „auch“.
    */

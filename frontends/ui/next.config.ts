@@ -1,6 +1,7 @@
 import path from 'node:path'
 import type { NextConfig } from 'next'
 import type { withPostHogConfig } from '@posthog/nextjs-config'
+import { LEGACY_ROUTES } from './src/lib/api/legacy-routes'
 import { AVATAR_IMAGE_PATTERNS } from './src/lib/images/avatar-hosts'
 import { LOCAL_IMAGE_PATTERNS } from './src/lib/images/optimizable'
 import { requestBodyLimitBytes } from './src/shared/config/request-body-limit'
@@ -23,6 +24,11 @@ const requestBodyLimitMB = Math.ceil(requestBodyLimitBytes(process.env) / (1024 
 /** The config as written; the default export below adds PostHog source maps on the upload path. */
 export const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // Renamed API paths keep answering for one release (src/lib/api/legacy-routes.ts).
+  async redirects() {
+    return LEGACY_ROUTES.map(({ from, to }) => ({ source: from, destination: to, permanent: true }))
+  },
 
   // PostHog's endpoints end in a slash (`/e/`, `/s/`, `/flags/`). With the
   // default, Next answers `/ingest/e/` with a 308 to `/ingest/e`, and a

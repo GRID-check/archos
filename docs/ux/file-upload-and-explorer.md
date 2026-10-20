@@ -625,7 +625,7 @@ controls, last in the rail), which described one history in two places.
 - **Body, a disclosure:** the suggestion card, then ONE timeline, newest first and
   numbered „Fassung 3, 2, 1“ (`buildRevisionTimeline`) across the uploads under
   this name (`useDocumentLifecycle`) and the older documents under other names
-  (`file.fassung.history`), merged by date. An older Fassung that was opened has
+  (`file.revision.history`), merged by date. An older Fassung that was opened has
   the newer document as its top row. The index or date is a secondary tag;
   „aktuell“ marks only the Fassung Piloti answers from; no row says „Ersetzt“.
   Each fact once: the person and date on the act line („Hochgeladen von Anna

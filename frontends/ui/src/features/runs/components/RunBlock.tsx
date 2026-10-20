@@ -22,7 +22,7 @@
  * already solved „where does this stand": a track whose walked segments are
  * filled, the state NAMED in one muted line under it, and the history below as
  * `Item` rows with hairlines rather than as stacked cards (`ItemList`, the same
- * atoms `document-fassungen.tsx` composes). The track itself is the shared
+ * atoms `document-revisions.tsx` composes). The track itself is the shared
  * atom, `components/ui/stage-track.tsx`, lifted out of that stand when this
  * block needed the same shape — two surfaces showing the same thing compose the
  * same atom, or they drift on the first token retune.

@@ -102,20 +102,20 @@ describe('buildIntakeProfile', () => {
     const base: Answers = { 'C1@bldg1': 'building' }
 
     const confirmed = buildIntakeProfile(
-      { ...base, 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'wert' },
+      { ...base, 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'value' },
       definition
     )
     expect(confirmed.facts['storeys_above_ground@bldg1']?.value).toBe(3)
 
     const estimated = buildIntakeProfile(
-      { ...base, 'C3@bldg1': 4, [modeKeyFor('C3@bldg1')]: 'geschaetzt' },
+      { ...base, 'C3@bldg1': 4, [modeKeyFor('C3@bldg1')]: 'estimated' },
       definition
     )
     expect(estimated.facts['storeys_above_ground@bldg1']).toBeUndefined()
     expect(estimated.assumptions['storeys_above_ground@bldg1']?.value).toBe(4)
     expect(estimated.assumptions['storeys_above_ground@bldg1']?.status).toBe('unconfirmed')
 
-    const open = buildIntakeProfile({ ...base, [modeKeyFor('C3@bldg1')]: 'offen' }, definition)
+    const open = buildIntakeProfile({ ...base, [modeKeyFor('C3@bldg1')]: 'open' }, definition)
     expect(open.unknowns).toContain('storeys_above_ground@bldg1')
   })
 
@@ -145,13 +145,13 @@ describe('buildIntakeProfile', () => {
   })
 
   it('maps yes_no_open onto a boolean fact or an unknown', () => {
-    const yes = buildIntakeProfile({ B8: 'ja' }, definition)
+    const yes = buildIntakeProfile({ B8: 'yes' }, definition)
     expect(yes.facts.build_to_plot_boundary?.value).toBe(true)
 
-    const no = buildIntakeProfile({ B8: 'nein' }, definition)
+    const no = buildIntakeProfile({ B8: 'no' }, definition)
     expect(no.facts.build_to_plot_boundary?.value).toBe(false)
 
-    const open = buildIntakeProfile({ B8: 'offen' }, definition)
+    const open = buildIntakeProfile({ B8: 'open' }, definition)
     expect(open.facts.build_to_plot_boundary).toBeUndefined()
     expect(open.unknowns).toContain('build_to_plot_boundary')
   })
@@ -164,11 +164,11 @@ describe('buildIntakeProfile', () => {
     const answers: Answers = {
       'C1@bldg1': 'building',
       'C3@bldg1': 5,
-      [modeKeyFor('C3@bldg1')]: 'wert',
+      [modeKeyFor('C3@bldg1')]: 'value',
       'C1@bldg2': 'building',
       'D0@bldg1': ['residential'],
       'D_we@bldg1@residential': 12,
-      [modeKeyFor('D_we@bldg1@residential')]: 'wert',
+      [modeKeyFor('D_we@bldg1@residential')]: 'value',
     }
 
     const profile = buildIntakeProfile(answers, definition, { buildings })
@@ -189,8 +189,8 @@ describe('answersFromProfile', () => {
       A5: ['new_build', 'conversion'],
       'C1@bldg1': 'building',
       'C5@bldg1': 9,
-      [modeKeyFor('C5@bldg1')]: 'geschaetzt',
-      B8: 'ja',
+      [modeKeyFor('C5@bldg1')]: 'estimated',
+      B8: 'yes',
     }
 
     const profile = buildIntakeProfile(answers, definition, { buildings })
@@ -200,8 +200,8 @@ describe('answersFromProfile', () => {
     expect(restored.answers.A5).toEqual(['new_build', 'conversion'])
     expect(restored.answers['C1@bldg1']).toBe('building')
     expect(restored.answers['C5@bldg1']).toBe(9)
-    expect(restored.answers[modeKeyFor('C5@bldg1')]).toBe('geschaetzt')
-    expect(restored.answers.B8).toBe('ja')
+    expect(restored.answers[modeKeyFor('C5@bldg1')]).toBe('estimated')
+    expect(restored.answers.B8).toBe('yes')
     expect(restored.buildings).toEqual([{ id: 'bldg1', name: 'Haupthaus' }])
   })
 })
@@ -312,7 +312,7 @@ describe('pruneStaleConditionalAnswers', () => {
   it('drops a conditional answer once its condition no longer holds', () => {
     // CB1 (Baujahr) belongs to a Bestandsgebäude. Flip C2 to Neubau → prune it.
     const pruned = pruneStaleConditionalAnswers(
-      { 'C2@bldg1': 'new_build', 'CB1@bldg1': 1962, [modeKeyFor('CB1@bldg1')]: 'wert' },
+      { 'C2@bldg1': 'new_build', 'CB1@bldg1': 1962, [modeKeyFor('CB1@bldg1')]: 'value' },
       definition
     )
     expect(pruned['CB1@bldg1']).toBeUndefined()
@@ -321,7 +321,7 @@ describe('pruneStaleConditionalAnswers', () => {
   })
 
   it('keeps a conditional answer whose condition still holds', () => {
-    const answers = { 'C2@bldg1': 'existing', 'CB1@bldg1': 1962, [modeKeyFor('CB1@bldg1')]: 'wert' }
+    const answers = { 'C2@bldg1': 'existing', 'CB1@bldg1': 1962, [modeKeyFor('CB1@bldg1')]: 'value' }
     const pruned = pruneStaleConditionalAnswers(answers, definition)
     expect(pruned['CB1@bldg1']).toBe(1962)
   })
@@ -329,7 +329,7 @@ describe('pruneStaleConditionalAnswers', () => {
   it('prunes a building-scope conditional within its instance', () => {
     // C2@bldg1 depends on C1@bldg1 === 'building'. Flip the building type → prune C2.
     const pruned = pruneStaleConditionalAnswers(
-      { 'C1@bldg1': 'small', 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'wert' },
+      { 'C1@bldg1': 'small', 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'value' },
       definition
     )
     expect(pruned['C3@bldg1']).toBeUndefined()
@@ -456,7 +456,7 @@ describe('mergeIntakeProfile', () => {
     it('drops a suggestion the save estimates instead', () => {
       const previous = previousWith({ assumptions: { 'storeys_above_ground@bldg1': suggestion(3) } })
       const built = buildIntakeProfile(
-        { 'C1@bldg1': 'building', 'C3@bldg1': 4, [modeKeyFor('C3@bldg1')]: 'geschaetzt' },
+        { 'C1@bldg1': 'building', 'C3@bldg1': 4, [modeKeyFor('C3@bldg1')]: 'estimated' },
         definition,
         { buildings: [{ id: 'bldg1', name: 'Bauwerk 1' }] }
       )
@@ -638,7 +638,7 @@ describe('evaluateIntakeCondition', () => {
         expect(
           evaluateIntakeCondition(
             c8,
-            { ...building, 'C3@bldg1': storeys, [modeKeyFor('C3@bldg1')]: 'wert' },
+            { ...building, 'C3@bldg1': storeys, [modeKeyFor('C3@bldg1')]: 'value' },
             'bldg1'
           )
         ).toBe(true)
@@ -646,23 +646,23 @@ describe('evaluateIntakeCondition', () => {
       expect(
         evaluateIntakeCondition(
           c8,
-          { ...building, 'C3@bldg1': 5, [modeKeyFor('C3@bldg1')]: 'wert' },
+          { ...building, 'C3@bldg1': 5, [modeKeyFor('C3@bldg1')]: 'value' },
           'bldg1'
         )
       ).toBe(false)
     })
 
     it('an estimate can satisfy it, an explicitly open value cannot', () => {
-      // Spec conventions: lte needs a present value whose mode is not 'offen'.
+      // Spec conventions: lte needs a present value whose mode is not 'open'.
       expect(
         evaluateIntakeCondition(
           c8,
-          { ...building, 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'geschaetzt' },
+          { ...building, 'C3@bldg1': 3, [modeKeyFor('C3@bldg1')]: 'estimated' },
           'bldg1'
         )
       ).toBe(true)
       expect(
-        evaluateIntakeCondition(c8, { ...building, [modeKeyFor('C3@bldg1')]: 'offen' }, 'bldg1')
+        evaluateIntakeCondition(c8, { ...building, [modeKeyFor('C3@bldg1')]: 'open' }, 'bldg1')
       ).toBe(false)
     })
 
@@ -777,18 +777,18 @@ describe('v1.0 → v1.2 legacy bridges (answersFromProfile)', () => {
       { ...empty, facts: { 'units_under_400@bldg1': fact(true) } },
       definition
     )
-    expect(allSmall.answers['C8@bldg1']).toBe('nein')
+    expect(allSmall.answers['C8@bldg1']).toBe('no')
 
     const hasLarge = answersFromProfile(
       { ...empty, facts: { 'units_under_400@bldg1': fact(false) } },
       definition
     )
-    expect(hasLarge.answers['C8@bldg1']).toBe('ja')
+    expect(hasLarge.answers['C8@bldg1']).toBe('yes')
   })
 
   it('keeps an openly-unknown ne_unter_400 open', () => {
     const restored = answersFromProfile({ ...empty, unknowns: ['units_under_400@bldg1'] }, definition)
-    expect(restored.answers['C8@bldg1']).toBe('offen')
+    expect(restored.answers['C8@bldg1']).toBe('open')
   })
 
   it('C8 writes einheiten_ueber_400, never the legacy key', () => {
@@ -796,8 +796,8 @@ describe('v1.0 → v1.2 legacy bridges (answersFromProfile)', () => {
       {
         'C1@bldg1': 'building',
         'C3@bldg1': 3,
-        [modeKeyFor('C3@bldg1')]: 'wert',
-        'C8@bldg1': 'ja',
+        [modeKeyFor('C3@bldg1')]: 'value',
+        'C8@bldg1': 'yes',
       },
       definition
     )
@@ -813,8 +813,8 @@ describe('v1.0 → v1.2 legacy bridges (answersFromProfile)', () => {
       definition
     )
     expect(restored.answers['CB1@bldg1']).toBe(1962)
-    expect(restored.answers[modeKeyFor('CB1@bldg1')]).toBe('wert')
-    expect(restored.answers['CB3@bldg1']).toBe('ja')
+    expect(restored.answers[modeKeyFor('CB1@bldg1')]).toBe('value')
+    expect(restored.answers['CB3@bldg1']).toBe('yes')
     expect(restored.answers['C2@bldg1']).toBe('existing')
   })
 
@@ -851,7 +851,7 @@ describe('v1.0 → v1.2 legacy bridges (answersFromProfile)', () => {
   })
 
   it('condenses the three Erschließungs-booleans, refusing a partial picture', () => {
-    // Never 'ja': B6 also covers electricity, which v1.0 never asked, so all
+    // Never 'yes': B6 also covers electricity, which v1.0 never asked, so all
     // three legacy yeses still leave the new question genuinely unanswered.
     const full = answersFromProfile(
       {
@@ -1127,13 +1127,13 @@ describe('where a value is found, and what it feeds', () => {
     const answers: Answers = {
       'C1@bldg1': 'building',
       'C9@bldg1': 'freestanding',
-      'C9_zugang@bldg1': 'ja',
+      'C9_zugang@bldg1': 'yes',
     }
     const profile = buildIntakeProfile(answers, definition, {
       buildings: [{ id: 'bldg1', name: 'Haus' }],
     })
     expect(profile.facts['access_three_sides@bldg1']?.value).toBe(true)
-    expect(answersFromProfile(profile, definition).answers['C9_zugang@bldg1']).toBe('ja')
+    expect(answersFromProfile(profile, definition).answers['C9_zugang@bldg1']).toBe('yes')
   })
 
   it('defines the Fluchtniveau as the OIB does', () => {

@@ -152,7 +152,7 @@ suggested.
 
 | Where | What happens | Code |
 |---|---|---|
-| **Upload dialog** | The dropped names are read with the grammar and probed against the shelf (`POST /api/documents/fassung-candidates`), each with the folder it lands in (`PlannedFile.landsInFolderId`: the existing folder, or the nearest existing one above a folder the upload creates). Only documents of the collection that folder files into are offered, because a restricted folder is a collection of its own (ADR-0087) and a link lives in one. A name that continues a document offers „Als neue Fassung von X ablegen“. Forty such names become one decision with „Alle als neue Fassung ablegen“. | `lib/documents/revision-candidates.ts`, `features/documents/lib/revision-proposals.ts`, `components/folder-upload-dialog.tsx` |
+| **Upload dialog** | The dropped names are read with the grammar and probed against the shelf (`POST /api/documents/revision-candidates`), each with the folder it lands in (`PlannedFile.landsInFolderId`: the existing folder, or the nearest existing one above a folder the upload creates). Only documents of the collection that folder files into are offered, because a restricted folder is a collection of its own (ADR-0087) and a link lives in one. A name that continues a document offers „Als neue Fassung von X ablegen“. Forty such names become one decision with „Alle als neue Fassung ablegen“. | `lib/documents/revision-candidates.ts`, `features/documents/lib/revision-proposals.ts`, `components/folder-upload-dialog.tsx` |
 | **Preview** | The section asks „Ist das eine neuere Fassung von …?“ with the reason and the basis. Yes links. No dismisses the suggestion. | `components/revision-notices.tsx`, `components/document-revisions.tsx` |
 | **Older data** | The same question, on the file, from the suggestion derived on read. | `revisions.derive_suggestions` |
 
@@ -177,14 +177,14 @@ reconciliation backfill, and the link counts from then). An older file the
 collection no longer holds, or a link that would close a loop, falls back to the
 ordinary suggestion.
 
-**After reading.** `PUT /api/documents/[id]/fassung` takes `{ older, linked }`.
+**After reading.** `PUT /api/documents/[id]/revision` takes `{ older, linked }`.
 `setRevisionLink` loads both documents with write access and refuses a held
 upload, a chat attachment, an archived document and two collections. It calls
-`PUT /v1/collections/{c}/fassung` with `{ newer, older, linked }` by file name
+`PUT /v1/collections/{c}/revision` with `{ newer, older, linked }` by file name
 and the organization and user headers, so the change summary runs on the
 organization's credential and data policy (BYOK, ZDR) and its spend is booked
 to it,
-audits `document.fassung_changed`, and answers with the facts of both documents
+audits `document.revision_changed`, and answers with the facts of both documents
 as this reader now sees them.
 
 On the Python side, `linked=true` goes through `link_revision`
@@ -286,10 +286,10 @@ Four things, in rising cost.
 | **Marks** | On request, Piloti boxes what changed on the newer page and says it in words | One vision call per page pair, cached | `lib/documents/revision-compare-service.ts`, `routes/revision_compare.py`, `src/aiq_agent/knowledge/revision_compare.py` |
 | **Words** | The change summary: what differs between two descriptions | Summary model, at ingest or at confirmation | `document_revisions.py`, `summarize_change` |
 
-`POST /api/documents/[id]/fassung-compare` takes `{ older, page }`.
+`POST /api/documents/[id]/revision-compare` takes `{ older, page }`.
 `compareRevisionVisually` requires read access to both, neither held, both active,
 one collection, and refuses a restricted folder (422, `restricted_folder`). It
-forwards to `POST /v1/collections/{c}/fassung-compare`, which
+forwards to `POST /v1/collections/{c}/revision-compare`, which
 
 1. renders the same page of both stored originals,
 2. sends both pages, older first, in one call on the organization's vision
@@ -346,7 +346,7 @@ name, each labelled as what it is.
   who made the change, then cut to those who may open both documents. The row
   then says how many open marks to check and from which Fassung („4 offene
   Anmerkungen aus Fassung 2 prüfen“; „aus der vorigen Fassung“ when they sit on
-  several, or on another document): `openMarks`, `marksFassung` and the
+  several, or on another document): `openMarks`, `marksRevision` and the
   `variant` that picks the words (`openMarksFacts`). Each is carried on in the
   Prüfansicht ([`document-annotations.md`](document-annotations.md#a-mark-goes-on-with-a-new-fassung)).
 - **What.** The first line of the change summary, at most 200 characters, and
@@ -426,8 +426,8 @@ an earlier upload's bytes is kept on its version: `document_versions.screened_ha
 |---|---|---|
 | Title block | Inside the drawing analysis, the vision call that reads the page | No generation of its own. Ingest spend is on the usage ledger as `activity=ingest` |
 | Judge and ingest-time change summary | On the summary model at ingest (`record_revisions`) | Same as above |
-| Change summary at confirmation | `PUT /v1/collections/{c}/fassung` | Generation `change-summary` |
-| Visual compare | `POST /v1/collections/{c}/fassung-compare` | Generation `fassung-visual-compare`, pixels left out |
+| Change summary at confirmation | `PUT /v1/collections/{c}/revision` | Generation `change-summary` |
+| Visual compare | `POST /v1/collections/{c}/revision-compare` | Generation `revision-visual-compare`, pixels left out |
 
 `frontends/aiq_api/tests/test_model_calls_are_traced.py` keeps both route calls
 observable. The catalogue of trace names is in
@@ -447,7 +447,7 @@ sequenceDiagram
     participant AG as Piloti
 
     P->>UI: drops EG_Grundriss_Index_C.pdf
-    UI->>BFF: probe the names (fassung-candidates)
+    UI->>BFF: probe the names (revision-candidates)
     BFF-->>UI: continues EG_Grundriss_Index_B.pdf
     UI-->>P: Als neue Fassung von Index B ablegen?
     P->>UI: ticks it
@@ -465,8 +465,8 @@ sequenceDiagram
     opt suggestion only
         PV-->>P: Ist das eine neuere Fassung von …?
         P->>PV: yes
-        PV->>BFF: PUT /api/documents/[id]/fassung
-        BFF->>KL: PUT /v1/collections/c/fassung
+        PV->>BFF: PUT /api/documents/[id]/revision
+        BFF->>KL: PUT /v1/collections/c/revision
     end
     P->>AG: What are the dimensions of the ground floor?
     AG->>KL: knowledge_search leaves Index B out

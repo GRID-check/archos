@@ -42,7 +42,7 @@ export interface StoredDocumentRef {
   shelf?: Shelf
   /**
    * The newer document a person confirmed replaces this one — the reader-visible
-   * `fassung.supersededBy` of the resolved listing row (CONTEXT.md, „Fassung"). Set
+   * `revision.supersededBy` of the resolved listing row (CONTEXT.md, „Fassung"). Set
    * means the row IS an older Fassung, and a citation of it says so.
    */
   supersededBy?: RevisionRef | null

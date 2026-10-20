@@ -60,7 +60,7 @@ export type ListedDocument = Omit<
      * „Fassung"), resolved for THIS reader: a document they may not open is
      * not in it, name and all (`revision-links-loader.ts`).
      */
-    fassung?: RevisionLinks | null
+    revision?: RevisionLinks | null
     /**
      * When a folder this report was drawn from was purged (ADR-0088): the
      * purge marks a filed report it finds (`metadata.sourceDeleted`), and the
@@ -144,7 +144,7 @@ export async function toListedDocuments(
         ingestReaderVersion,
       }),
       sourceDeletedAt: sourceDeletedAtOf(metadata),
-      fassung: revision.get(row.id) ?? null,
+      revision: revision.get(row.id) ?? null,
       marks: marks.get(row.id) ?? null,
     })
   )

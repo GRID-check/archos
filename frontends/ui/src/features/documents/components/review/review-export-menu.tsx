@@ -86,7 +86,7 @@ export function ReviewExportMenu({
     ({
       format,
       scope,
-      fassung: hasRevisions && scope === 'all' ? revision : 'current',
+      revision: hasRevisions && scope === 'all' ? revision : 'current',
       includeProposals: hasProposals && includeProposals,
     }) as const
 

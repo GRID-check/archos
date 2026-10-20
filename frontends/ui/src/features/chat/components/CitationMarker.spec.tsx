@@ -450,7 +450,7 @@ describe('an inline citation marker', () => {
                     filename: projectFile,
                     contentType: 'application/pdf',
                     createdAt: '2026-08-01T00:00:00.000Z',
-                    fassung: {
+                    revision: {
                       supersededBy: { id: 'doc-new', filename: 'brandschutzkonzept_ausgabe_2026_b.pdf' },
                       supersedes: [],
                       suggestion: null,

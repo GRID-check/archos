@@ -164,7 +164,7 @@ const FILE: FileItem = {
   versionCount: 3,
   assignees: [{ userId: 'u-1', name: 'Miriam Hofer', email: 'm.hofer@example.at', profilePictureUrl: null }],
   // Index B, filed under another name and confirmed as the Fassung this one replaces.
-  fassung: {
+  revision: {
     supersededBy: null,
     supersedes: [{ id: 'dev-doc-index-b', filename: 'Grundriss_RG_Index-B.pdf' }],
     suggestion: null,

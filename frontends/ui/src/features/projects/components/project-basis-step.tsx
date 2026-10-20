@@ -86,7 +86,7 @@ export function ProjectBasisStep({
 
     const collected: Slot[] = []
     for (const definition of DOCUMENT_ROLE_DEFINITIONS) {
-      if (definition.scope === 'bauwerk') {
+      if (definition.scope === 'building') {
         // One slot per building, because the binding is per building. A single
         // "Bestandspläne" box would have nowhere to put the second building's.
         for (const building of buildings) {

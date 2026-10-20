@@ -90,13 +90,13 @@ describe('FolderBrief — the numbers add up', () => {
   it('counts one document with three Fassungen once, and never asks to re-read a replaced one', () => {
     const ref = (id: string) => ({ id, filename: `${id}.pdf` })
     renderBrief([
-      file({ id: 'c', tags: ['Grundriss'], fassung: { ...EMPTY_REVISION_LINKS, supersedes: [ref('b')] } }),
+      file({ id: 'c', tags: ['Grundriss'], revision: { ...EMPTY_REVISION_LINKS, supersedes: [ref('b')] } }),
       file({
         id: 'b',
         status: 'failed',
-        fassung: { ...EMPTY_REVISION_LINKS, supersededBy: ref('c'), supersedes: [ref('a')] },
+        revision: { ...EMPTY_REVISION_LINKS, supersededBy: ref('c'), supersedes: [ref('a')] },
       }),
-      file({ id: 'a', fassung: { ...EMPTY_REVISION_LINKS, supersededBy: ref('b') } }),
+      file({ id: 'a', revision: { ...EMPTY_REVISION_LINKS, supersededBy: ref('b') } }),
     ])
     expect(screen.getByText(/The document is read/)).toBeInTheDocument()
     expect(screen.queryByTestId('folder-brief-needs-failed')).not.toBeInTheDocument()

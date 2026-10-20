@@ -75,7 +75,7 @@ export function useRevisionVisualChanges(
       setState('loading')
       setErrorStatus(null)
       try {
-        const response = await fetch(`/api/documents/${encodeURIComponent(newerId)}/fassung-compare`, {
+        const response = await fetch(`/api/documents/${encodeURIComponent(newerId)}/revision-compare`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ older: olderId, page }),

@@ -32,9 +32,9 @@ const BACKEND_TIMEOUT_MS = 10_000
 export interface RevisionLinkResult {
   /** The newer document, whose facts changed. */
   id: string
-  fassung: RevisionLinks | null
+  revision: RevisionLinks | null
   /** The older one: its `supersededBy` changed with the link. */
-  older: { id: string; fassung: RevisionLinks | null }
+  older: { id: string; revision: RevisionLinks | null }
 }
 
 /**
@@ -42,7 +42,7 @@ export interface RevisionLinkResult {
  * on the Python side is a one-line fix here.
  */
 const revisionUrl = (backendUrl: string, collectionName: string): string =>
-  `${backendUrl}/v1/collections/${encodeURIComponent(collectionName)}/fassung`
+  `${backendUrl}/v1/collections/${encodeURIComponent(collectionName)}/revision`
 
 /** Load a document for a change: write access to its shelf and folder, not held, in the working set. */
 async function loadForLinking(session: AuthorizedSession, documentId: string): Promise<Document> {
@@ -112,7 +112,7 @@ export async function setRevisionLink(
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
-    action: 'document.fassung_changed',
+    action: 'document.revision_changed',
     targetType: 'document',
     targetId: newer.id,
     metadata: { olderDocumentId: older.id, linked, collectionName: newer.collectionName },
@@ -141,7 +141,7 @@ export async function setRevisionLink(
 
   return {
     id: newer.id,
-    fassung: newerRevision,
-    older: { id: older.id, fassung: facts.get(older.id) ?? null },
+    revision: newerRevision,
+    older: { id: older.id, revision: facts.get(older.id) ?? null },
   }
 }

@@ -610,7 +610,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   // by their target and `olderDocumentId`, so the event needs no `filedIn` and a
   // restricted folder's names never reach the trail (ADR-0087). Archiv documents
   // use it too; `collectionName` says which shelf.
-  'document.fassung_changed': {
+  'document.revision_changed': {
     targets: [{ type: 'document' }],
     metadata: { olderDocumentId: 'string', linked: 'boolean', collectionName: 'string' },
   },
@@ -623,7 +623,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     metadata: {
       format: 'string',
       scope: 'string',
-      fassung: 'string',
+      revision: 'string',
       includeProposals: 'boolean',
       markCount: 'number',
       proposalCount: 'number',

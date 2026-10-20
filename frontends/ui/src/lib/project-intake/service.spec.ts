@@ -149,7 +149,7 @@ const intake = (overrides: Partial<ProjectIntakeRow> = {}): ProjectIntakeRow => 
 const need = (key: string, extra: Partial<Need> = {}): Need => ({
   key,
   baseKey: key.split('@')[0],
-  bauwerkId: /@(bldg\d+)/.exec(key)?.[1] ?? null,
+  buildingId: /@(bldg\d+)/.exec(key)?.[1] ?? null,
   label: key,
   type: 'text',
   foundIn: [],

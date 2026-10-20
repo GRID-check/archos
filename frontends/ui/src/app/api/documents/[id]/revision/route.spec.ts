@@ -25,7 +25,7 @@ const OLDER = '2f1c6e0e-4f0a-4c53-9a3e-0f2b7d8f6a11'
 
 const call = (id: string, body: unknown) =>
   PUT(
-    new Request(`https://grid.test/api/documents/${id}/fassung`, {
+    new Request(`https://grid.test/api/documents/${id}/revision`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -33,11 +33,11 @@ const call = (id: string, body: unknown) =>
     { params: Promise.resolve({ id }) }
   )
 
-describe('PUT /api/documents/[id]/fassung', () => {
+describe('PUT /api/documents/[id]/revision', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('links the older document to the one in the path and returns both documents’ facts', async () => {
-    const answer = { id: 'doc-b', fassung: null, older: { id: OLDER, fassung: null } }
+    const answer = { id: 'doc-b', revision: null, older: { id: OLDER, revision: null } }
     vi.mocked(setRevisionLink).mockResolvedValue(answer)
 
     const response = await call('doc-b', { older: OLDER, linked: true })
@@ -54,7 +54,7 @@ describe('PUT /api/documents/[id]/fassung', () => {
   })
 
   it('unlinks with linked: false', async () => {
-    vi.mocked(setRevisionLink).mockResolvedValue({ id: 'doc-b', fassung: null, older: { id: OLDER, fassung: null } })
+    vi.mocked(setRevisionLink).mockResolvedValue({ id: 'doc-b', revision: null, older: { id: OLDER, revision: null } })
 
     expect((await call('doc-b', { older: OLDER, linked: false })).status).toBe(200)
     expect(setRevisionLink).toHaveBeenCalledWith(expect.anything(), 'doc-b', OLDER, false, expect.any(Request))

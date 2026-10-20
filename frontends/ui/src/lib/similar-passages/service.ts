@@ -239,7 +239,7 @@ export function foldDocuments(
 ): RankedDocument[] {
   const byId = new Map<string, RankedDocument>()
   for (const row of found) {
-    if (row.id === excludedDocumentId || row.fassung?.supersededBy) continue
+    if (row.id === excludedDocumentId || row.revision?.supersededBy) continue
     const entry =
       byId.get(row.id) ??
       ({

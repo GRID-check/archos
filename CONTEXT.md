@@ -128,9 +128,9 @@ Dokument, Datei, Fassung or Stand. Also avoid „Version“ and “version” wh
 reader sees it, „Upload 3“ as the name of a Fassung, and „Stand“ for a state.
 _Code_: `revision`. The links between the Fassungen of one document are
 `RevisionLinks` (`lib/documents/revision-links.ts`); `RevisionFacts` is the
-Index and Rev read off a title block, a different thing. Stored names such as
-the `document_revision_announcements` table and the `fassung` wire field keep the
-German word until the migration PRs.
+Index and Rev read off a title block, a different thing. The routes are
+`/api/documents/{id}/revision`, `…/revision-compare` and `…/revision-candidates`
+(the `fassung` paths redirect for one release), and the listing property is `revision`.
 
 **Freigabe** (approval):
 The office approving one Fassung, and only that. Its status (*Freigabestatus*)

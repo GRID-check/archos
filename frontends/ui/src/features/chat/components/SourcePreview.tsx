@@ -137,7 +137,7 @@ interface ListedRow {
   id: string
   filename: string
   contentType?: string | null
-  fassung?: { supersededBy?: RevisionRef | null } | null
+  revision?: { supersededBy?: RevisionRef | null } | null
 }
 
 const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
@@ -154,7 +154,7 @@ const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
           shelf,
           // Only what the server resolved for THIS reader: a newer Fassung they
           // may not open is not in the row, name and all.
-          supersededBy: doc.fassung?.supersededBy ?? null,
+          supersededBy: doc.revision?.supersededBy ?? null,
         }))
     : []
 

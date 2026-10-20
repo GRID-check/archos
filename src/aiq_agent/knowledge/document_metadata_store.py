@@ -149,7 +149,12 @@ def dismissed_revisions(suggestion: Any) -> list[str]:
 
 
 def _link_lock_key(collection: str) -> int:
-    """The signed 64-bit advisory-lock key that serialises link writes within one collection (Postgres)."""
+    """The signed 64-bit advisory-lock key that serialises link writes within one collection (Postgres).
+
+    The ``grid-fassung-link:`` salt stays German on purpose. It is the key every running pod derives, so renaming
+    it would let an old pod and a new pod take different locks for the same collection during a rollout and
+    store a loop (A over B and B over A). It names no code identifier; it is a value that has to stay as it was.
+    """
     digest = hashlib.sha256(f"grid-fassung-link:{collection}".encode()).digest()
     return int.from_bytes(digest[:8], "big", signed=True)
 

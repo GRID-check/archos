@@ -288,7 +288,7 @@ class IngestRequest(BaseModel):
         description=(
             "File name of the document in this collection that this file replaces, when a person chose "
             "'als neue Fassung ablegen' in the upload dialog (CONTEXT.md, Fassung). Once the file has been "
-            "read, the ingest job writes the same confirmed link `PUT /v1/collections/{c}/fassung` writes, "
+            "read, the ingest job writes the same confirmed link `PUT /v1/collections/{c}/revision` writes, "
             "with the change summary. The BFF checks that the person may change the older document; an "
             "older file the collection does not hold, or a link that would close a loop, falls back to "
             "the ordinary suggestion. Omit for every other upload."

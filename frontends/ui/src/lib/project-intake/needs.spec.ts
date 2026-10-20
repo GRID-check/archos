@@ -55,14 +55,14 @@ describe('computeNeeds', () => {
     const found = byKey(list)
     expect(found.get('project_name')).toMatchObject({
       baseKey: 'project_name',
-      bauwerkId: null,
+      buildingId: null,
       type: 'text',
       state: 'open',
     })
-    expect(found.get('work_type')).toMatchObject({ type: 'multi_select', bauwerkId: null })
+    expect(found.get('work_type')).toMatchObject({ type: 'multi_select', buildingId: null })
     expect(found.get('building_type@bldg1')).toMatchObject({
       baseKey: 'building_type',
-      bauwerkId: 'bldg1',
+      buildingId: 'bldg1',
       decisive: true,
     })
     // The building questions wait for C1. The federal state does not wait for the
@@ -104,7 +104,7 @@ describe('computeNeeds', () => {
     const wohnen = byKey(needs(profileWith({ ...building, 'uses@bldg1': ['residential'] })))
     expect(wohnen.get('dwelling_units@bldg1@residential')).toMatchObject({
       baseKey: 'dwelling_units',
-      bauwerkId: 'bldg1',
+      buildingId: 'bldg1',
       label: 'Anzahl Wohneinheiten (Wohnen)',
     })
     expect(wohnen.has('residential_form@bldg1@residential')).toBe(true)
@@ -116,7 +116,7 @@ describe('computeNeeds', () => {
     )
     expect(withGarage.get('garage_area@bldg1@garage')).toMatchObject({
       unit: 'm²',
-      bauwerkId: 'bldg1',
+      buildingId: 'bldg1',
     })
     expect(withGarage.has('parking_spaces@bldg1@garage')).toBe(true)
     expect(withGarage.has('zone_area@bldg1@garage')).toBe(true)
@@ -268,16 +268,16 @@ describe('computeNeeds', () => {
     )
     const found = byKey(list)
     expect(found.get('storeys_above_ground@bldg1')).toMatchObject({
-      bauwerkId: 'bldg1',
+      buildingId: 'bldg1',
       decisive: true,
     })
     expect(found.has('storeys_above_ground@bldg2')).toBe(false)
     expect(found.get('uses@bldg2')).toMatchObject({
       baseKey: 'uses',
-      bauwerkId: 'bldg2',
+      buildingId: 'bldg2',
       decisive: false,
     })
-    expect(list.filter((need) => need.bauwerkId === 'bldg2').every((need) => !need.decisive)).toBe(
+    expect(list.filter((need) => need.buildingId === 'bldg2').every((need) => !need.decisive)).toBe(
       true
     )
   })

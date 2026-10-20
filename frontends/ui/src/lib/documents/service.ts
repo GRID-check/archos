@@ -1053,7 +1053,7 @@ export async function hydrateProjectHits(
   // unless asked by name). The backend filters Qdrant's copy of the mark,
   // which can lag a person's confirmation; the row is the authority. A person
   // searching still sees it, badged by the listing.
-  return options.forModel ? joined.filter((row) => !row.fassung?.supersededBy) : joined
+  return options.forModel ? joined.filter((row) => !row.revision?.supersededBy) : joined
 }
 
 export interface UploadDocumentInput {
@@ -3283,7 +3283,7 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     capture: reconciled.capture,
     revisionFacts: reconciled.revisionFacts,
     // Resolved for THIS reader: a document they may not open is not in it.
-    fassung: revision,
+    revision,
     // The place in the ingest queue, null once the job is claimed or settled.
     queueAhead: reconciled.queueAhead ?? null,
     // Whose hand wrote the bytes. Added because this payload is how the CHAT

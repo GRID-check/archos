@@ -29,7 +29,7 @@ export class NameProbeError extends Error {
 
 export const PROJECT_NAME_PROBE_PATH = '/api/documents/name-matches'
 export const OFFICE_SHELF_NAME_PROBE_PATH = '/api/archiv/documents/name-matches'
-export const PROJECT_REVISION_CANDIDATES_PATH = '/api/documents/fassung-candidates'
+export const PROJECT_REVISION_CANDIDATES_PATH = '/api/documents/revision-candidates'
 export const OFFICE_SHELF_REVISION_CANDIDATES_PATH = '/api/archiv/documents/fassung-candidates'
 
 export interface DocumentNameProbeClient {

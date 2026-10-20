@@ -80,7 +80,7 @@ export function inboxItemCopy(item: InboxItemView, t: Translator, dictionary: un
     // Fassung's open marks: the words a row says by when, and how many to check.
     due: item.dueOn ? formatDayRange(item.dueOn, item.dueOn, locale) : '',
     marks: item.openMarks ?? 0,
-    revision: item.marksFassung ?? '',
+    revision: item.marksRevision ?? '',
   }
 
   const countedTitles =

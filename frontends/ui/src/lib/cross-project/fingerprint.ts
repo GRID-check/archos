@@ -73,7 +73,7 @@ const ASKERS: ReadonlyMap<string, readonly Asker[]> = (() => {
     for (const question of stage.questions) {
       const key = FACT_PATH.exec(question.writesTo ?? '')?.[1] ?? question.derives
       if (!key) continue
-      askers.set(key, [...(askers.get(key) ?? []), { question, perBuilding: stage.scope === 'bauwerk' }])
+      askers.set(key, [...(askers.get(key) ?? []), { question, perBuilding: stage.scope === 'building' }])
     }
   }
   return askers

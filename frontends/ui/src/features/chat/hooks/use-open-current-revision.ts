@@ -13,7 +13,7 @@ import { useOpenStoredFile } from './use-open-stored-file'
  * Open the current Fassung of a cited document, beside the conversation.
  *
  * The citation's resolved row names the newer document by id and file name
- * (`fassung.supersededBy`, already cut to what this reader may open). The peek
+ * (`revision.supersededBy`, already cut to what this reader may open). The peek
  * needs the whole row to show it, so the id is asked of the by-name resolve the
  * chips already use (one cached request per name) and the row is opened the way
  * a file reference opens one. A Fassung always lives on its predecessor's shelf,

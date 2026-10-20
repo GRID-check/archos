@@ -19,7 +19,7 @@ interface Seen {
 function answerWith(respond: (seen: Seen) => Response | Promise<Response>) {
   const seen: Seen[] = []
   server.use(
-    http.post('/api/documents/:id/fassung-compare', async ({ request, params }) => {
+    http.post('/api/documents/:id/revision-compare', async ({ request, params }) => {
       const entry = { id: String(params.id), body: (await request.json()) as Seen['body'] }
       seen.push(entry)
       return respond(entry)

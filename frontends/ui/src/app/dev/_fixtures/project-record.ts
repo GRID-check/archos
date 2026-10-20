@@ -79,8 +79,8 @@ export async function answerProjectRecord(projectId: string, url: string, init?:
   const base = `/api/projects/${projectId}`
   const method = init?.method ?? 'GET'
   const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {}
-  if (url === `${base}/steckbrief` && method === 'GET') return Response.json(current)
-  if (url === `${base}/steckbrief` && method === 'PUT') {
+  if (url === `${base}/project-record` && method === 'GET') return Response.json(current)
+  if (url === `${base}/project-record` && method === 'PUT') {
     publish({ ...current, startedOn: (body.startedOn as ProjectRecordView['startedOn']) ?? null, startedOnIsDefault: false })
     return Response.json({ startedOn: current.startedOn })
   }

@@ -48,7 +48,7 @@ export function recommendedSlotsFor(profile: Awaited<ReturnType<typeof findProje
   if (!profile) return { recommended: [], buildingNames }
   const { answers, buildings } = answersFromProfile(profile, projectIntakeDefinitionV1)
   // Project-scope recommendations once, then each building's own. A
-  // `bauwerk` condition read without an instance resolves against the
+  // `building` condition read without an instance resolves against the
   // project-global answer, which would recommend Bestandspläne for every
   // building the moment any one of them is a Bestand.
   //
@@ -63,7 +63,7 @@ export function recommendedSlotsFor(profile: Awaited<ReturnType<typeof findProje
   for (const building of buildings) {
     buildingNames[building.id] = building.name
     for (const role of recommendedRoles(answers, building.id)) {
-      add(role, documentRoleDefinition(role).scope === 'bauwerk' ? building.id : null)
+      add(role, documentRoleDefinition(role).scope === 'building' ? building.id : null)
     }
   }
   return { recommended: [...collected.values()], buildingNames }

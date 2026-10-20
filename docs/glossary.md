@@ -21,7 +21,9 @@ read German are listed after the table.
 | Fassung | `revision` (`lib/documents/revision-*`, `DocumentRevisions`, `revision_diff.py`) | `version`, which is the approval states |
 | the links between Fassungen | `RevisionLinks` (`revision-links.ts`) | `RevisionFacts`, the Index and Rev printed in a title block |
 | Büroablage, Archiv | `officeShelf` (`OFFICE_SHELF`, `lib/office-shelf`, `canManageOfficeShelf`) | `archive`, which already means soft-archived |
-| Steckbrief | `projectRecord` (`ProjectRecordView`, `project-record-types.ts`) | |
+| Steckbrief | `projectRecord` (`ProjectRecordView`, `project-record-types.ts`, `/api/projects/{id}/project-record`) | |
+| Grundstück, Bauwerk, Projekt (the scope of an intake question) | `plot`, `building`, `project` (`ProjectIntakeScope`); a building's id on the wire is `buildingId` | |
+| ja, nein, offen (an intake answer) | `yes`, `no`, `open` (`YesNoOpen`); the answer mode is `value`, `estimated`, `open` (`IntakeAnswerMode`) | |
 | Bundesland, Gemeinde | `federalState`, `municipality` | |
 | Gebäudeklasse, Bauwerk | `buildingClass`, `building` | |
 | Herleitung | `derivation` (`/dev/derivation`) | |
@@ -34,10 +36,11 @@ read German are listed after the table.
 | Unterlagen | `documents` (`DocumentsDialog`) | |
 
 Not renamed yet, on purpose: the shelf value `archiv` in the database and on the
-wire, the `/archiv` and `/api/archiv` URLs, the permission slug
-`org:archiv:manage`, the `document_revision_announcements` table and the
-`fassung` wire field. They change in the migration PRs, never as a side effect
-of a rename in code.
+wire, the `/archiv` and `/api/archiv` URLs and the permission slug
+`org:archiv:manage`. They change in the migration PRs, never as a side effect
+of a rename in code. The `grid-fassung-link:` advisory-lock salt in
+`document_metadata_store.py` stays German for good: every running pod derives
+the same lock from it, so a rename would let two pods take different locks.
 
 ## Architecture and runtime
 

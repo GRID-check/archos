@@ -93,8 +93,8 @@ function readNumber(raw: ProjectPrimitiveValue | undefined): number | undefined 
 /** `true` / `false` as the profile stores a yes_no_open answer, or `ja` / `nein` as the wizard holds it. `offen` is missing. */
 function readBoolean(raw: ProjectPrimitiveValue | undefined): boolean | undefined {
   if (typeof raw === 'boolean') return raw
-  if (raw === 'ja') return true
-  if (raw === 'nein') return false
+  if (raw === 'yes') return true
+  if (raw === 'no') return false
   return undefined
 }
 

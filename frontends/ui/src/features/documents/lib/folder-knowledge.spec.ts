@@ -652,7 +652,7 @@ describe('selectInBrief', () => {
  */
 describe('buildFolderBrief over Fassungen', () => {
   const ref = (id: string) => ({ id, filename: `${id}.pdf` })
-  const revision = (overrides: Partial<NonNullable<FileItem['fassung']>>): FileItem['fassung'] => ({
+  const revision = (overrides: Partial<NonNullable<FileItem['revision']>>): FileItem['revision'] => ({
     ...EMPTY_REVISION_LINKS,
     ...overrides,
   })
@@ -666,9 +666,9 @@ describe('buildFolderBrief over Fassungen', () => {
     pageCount: 4,
     tags: ['Grundriss'],
     topics: ['Fluchtweg'],
-    fassung: revision({ supersedes: [ref('b')], history: [{ ...ref('b'), createdAt: null, changeSummary: null }, { ...ref('a'), createdAt: null, changeSummary: null }] }),
+    revision: revision({ supersedes: [ref('b')], history: [{ ...ref('b'), createdAt: null, changeSummary: null }, { ...ref('a'), createdAt: null, changeSummary: null }] }),
   })
-  const indexB = file({ id: 'b', folderId: 'ALT', status: 'failed', fassung: revision({ supersededBy: ref('c'), supersedes: [ref('a')] }) })
+  const indexB = file({ id: 'b', folderId: 'ALT', status: 'failed', revision: revision({ supersededBy: ref('c'), supersedes: [ref('a')] }) })
   const indexA = file({
     id: 'a',
     folderId: 'ALT',
@@ -676,7 +676,7 @@ describe('buildFolderBrief over Fassungen', () => {
     pageCount: 30,
     tags: ['Grundriss'],
     topics: ['Fluchtweg'],
-    fassung: revision({ supersededBy: ref('b') }),
+    revision: revision({ supersededBy: ref('b') }),
   })
   const section = file({ id: 's', folderId: 'P', status: 'ready', pageCount: 2, tags: ['Schnitt'] })
   const corpus = [indexC, indexB, indexA, section]

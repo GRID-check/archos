@@ -60,7 +60,7 @@ beforeEach(() => {
   vi.mocked(probeOfficeShelfRevisionCandidates).mockReset().mockResolvedValue([MATCH])
 })
 
-describe('POST /api/documents/fassung-candidates', () => {
+describe('POST /api/documents/revision-candidates', () => {
   it('answers what the names continue on the project shelf', async () => {
     expect(await client.projectRevisions('proj_1', ['EG_Index_C.pdf'])).toEqual([MATCH])
     expect(probeProjectRevisionCandidates).toHaveBeenCalledWith(

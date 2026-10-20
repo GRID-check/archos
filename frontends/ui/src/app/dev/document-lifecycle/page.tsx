@@ -329,11 +329,11 @@ const DRIVEN_BLOCKS: readonly (readonly [block: string, steps: readonly DriveSte
   ],
   // Nothing outstanding here, so the section is shut and the shot has to open
   // it. That IS the behaviour under review: the history is behind one click.
-  ['published', [{ click: 'document-fassungen-toggle', settled: 'fassung-timeline-row' }]],
+  ['published', [{ click: 'document-revisions-toggle', settled: 'revision-timeline-row' }]],
   [
     'archive',
     [
-      { click: 'document-fassungen-toggle', settled: 'document-lifecycle-archive' },
+      { click: 'document-revisions-toggle', settled: 'document-lifecycle-archive' },
       {
         click: 'document-lifecycle-archive',
         settled: 'document-archive-consequences',

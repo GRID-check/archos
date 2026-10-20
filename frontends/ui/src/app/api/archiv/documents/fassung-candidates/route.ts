@@ -2,7 +2,7 @@
  * Archiv API — which Archiv documents would these dropped names be the next
  * Fassung of?
  *
- * The org-wide twin of `POST /api/documents/fassung-candidates`, same contract
+ * The org-wide twin of `POST /api/documents/revision-candidates`, same contract
  * (`lib/documents/name-probe-types.ts`). Thin handler; the logic lives in
  * `@/lib/office-shelf/service` (ADR-0024).
  */

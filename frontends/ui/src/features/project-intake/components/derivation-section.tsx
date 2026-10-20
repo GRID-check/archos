@@ -40,7 +40,7 @@ export function DerivationSection({
     >
       <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {derivations.map((derivation) => (
-          <li key={derivation.bauwerkId} className="min-w-0">
+          <li key={derivation.buildingId} className="min-w-0">
             <DerivationCard
               derivation={derivation}
               suggestion={derivation.suggestion}
@@ -76,11 +76,11 @@ function DerivationCard({
 }): JSX.Element {
   const t = useTranslations('projectIntake')
   const [confirming, confirm] = usePressed()
-  const building = t('derivations.building', { number: buildingNumber(derivation.bauwerkId) })
+  const building = t('derivations.building', { number: buildingNumber(derivation.buildingId) })
   const value = derivation.value === null ? null : t('derivations.value', { value: derivation.value })
 
   return (
-    <RaisedCard data-testid={`intake-derivation-${derivation.bauwerkId}`}>
+    <RaisedCard data-testid={`intake-derivation-${derivation.buildingId}`}>
       <RaisedCardBody className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">

@@ -88,7 +88,7 @@ const REQUIRED_ANSWERS: Record<string, ProjectPrimitiveValue> = {
 /** Seed a draft so the wizard restores these answers and opens on the Review step (module H). */
 function seedReviewDraft(answers: Record<string, ProjectPrimitiveValue>, savedAt?: number): void {
   localStorage.setItem(
-    `intake-draft-v2-${PROJECT_ID}`,
+    `intake-draft-v3-${PROJECT_ID}`,
     JSON.stringify({
       answers: { ...REQUIRED_ANSWERS, ...answers },
       currentStep: REVIEW_STEP,
@@ -572,7 +572,7 @@ describe('ProjectIntakeWizard — stale conditional answers pruned on load', () 
     const stub = stubFetch()
     // A6 (Baujahr) only applies to existing-building work. A restored draft with
     // pure Neubau + a stale Baujahr must be pruned on load like an interactive edit.
-    seedReviewDraft({ A5: ['new_build'], A6: 1990, A6__mode: 'wert' })
+    seedReviewDraft({ A5: ['new_build'], A6: 1990, A6__mode: 'value' })
     renderWizard(false)
 
     await user.click(await screen.findByRole('button', { name: /save/i }))
@@ -603,7 +603,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   it('discards a draft older than the persisted profile and prefills from the profile', async () => {
     stubFetch()
     localStorage.setItem(
-      `intake-draft-v2-${PROJECT_ID}`,
+      `intake-draft-v3-${PROJECT_ID}`,
       JSON.stringify({
         answers: { A5: ['refurbishment'] },
         currentStep: 0,
@@ -632,7 +632,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   it('restores a draft newer than the persisted profile (genuine local edits survive)', async () => {
     stubFetch()
     localStorage.setItem(
-      `intake-draft-v2-${PROJECT_ID}`,
+      `intake-draft-v3-${PROJECT_ID}`,
       JSON.stringify({
         answers: { A5: ['refurbishment'] },
         currentStep: 0,
@@ -661,7 +661,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   it('discards a draft whose base profileVersion is behind the loaded version', async () => {
     stubFetch()
     localStorage.setItem(
-      `intake-draft-v2-${PROJECT_ID}`,
+      `intake-draft-v3-${PROJECT_ID}`,
       JSON.stringify({
         answers: { A5: ['refurbishment'] },
         currentStep: 0,
@@ -692,7 +692,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   it('migration window: a legacy draft with neither baseVersion nor savedAt does not win over the profile', async () => {
     stubFetch()
     localStorage.setItem(
-      `intake-draft-v2-${PROJECT_ID}`,
+      `intake-draft-v3-${PROJECT_ID}`,
       JSON.stringify({ answers: { A5: ['refurbishment'] }, currentStep: 0 })
     )
     const initialProfile = {
@@ -764,7 +764,7 @@ describe('ProjectIntakeWizard — Fix 5 non-finite number rejected', () => {
     const stub = stubFetch()
     // Land on module C (index 2) with the building set to a Gebäude so C2 shows.
     localStorage.setItem(
-      `intake-draft-v2-${PROJECT_ID}`,
+      `intake-draft-v3-${PROJECT_ID}`,
       JSON.stringify({ answers: { 'C1@bldg1': 'building' }, currentStep: 2 })
     )
     render(<ProjectIntakeWizard projectId={PROJECT_ID} projectName="Test" />)
@@ -973,7 +973,7 @@ describe('ProjectIntakeWizard — required answers gate the save', () => {
     const answers: Record<string, ProjectPrimitiveValue> = { ...REQUIRED_ANSWERS }
     delete answers[omit]
     localStorage.setItem(
-      `intake-draft-v2-${PROJECT_ID}`,
+      `intake-draft-v3-${PROJECT_ID}`,
       JSON.stringify({ answers, currentStep: REVIEW_STEP })
     )
   }

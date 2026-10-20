@@ -212,7 +212,7 @@
                 "minLength": 1,
                 "maxLength": 200
               },
-              "bauwerkId": {
+              "buildingId": {
                 "anyOf": [
                   {
                     "type": "string",
@@ -298,7 +298,7 @@
             "required": [
               "key",
               "baseKey",
-              "bauwerkId",
+              "buildingId",
               "label",
               "type",
               "foundIn",
@@ -585,7 +585,7 @@
           "minLength": 1,
           "maxLength": 200
         },
-        "bauwerkId": {
+        "buildingId": {
           "anyOf": [
             {
               "type": "string",
@@ -671,7 +671,7 @@
       "required": [
         "key",
         "baseKey",
-        "bauwerkId",
+        "buildingId",
         "label",
         "type",
         "foundIn",
@@ -1076,7 +1076,7 @@
                 "minLength": 1,
                 "maxLength": 200
               },
-              "bauwerkId": {
+              "buildingId": {
                 "anyOf": [
                   {
                     "type": "string",
@@ -1509,7 +1509,7 @@
             "required": [
               "key",
               "baseKey",
-              "bauwerkId",
+              "buildingId",
               "label",
               "value",
               "display",
@@ -1536,7 +1536,7 @@
                 "minLength": 1,
                 "maxLength": 200
               },
-              "bauwerkId": {
+              "buildingId": {
                 "anyOf": [
                   {
                     "type": "string",
@@ -1622,7 +1622,7 @@
             "required": [
               "key",
               "baseKey",
-              "bauwerkId",
+              "buildingId",
               "label",
               "type",
               "foundIn",
@@ -1663,7 +1663,7 @@
                       "minLength": 1,
                       "maxLength": 200
                     },
-                    "bauwerkId": {
+                    "buildingId": {
                       "anyOf": [
                         {
                           "type": "string",
@@ -2096,7 +2096,7 @@
                   "required": [
                     "key",
                     "baseKey",
-                    "bauwerkId",
+                    "buildingId",
                     "label",
                     "value",
                     "display",
@@ -2122,7 +2122,7 @@
           "items": {
             "type": "object",
             "properties": {
-              "bauwerkId": {
+              "buildingId": {
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 32
@@ -2220,7 +2220,7 @@
                         "minLength": 1,
                         "maxLength": 200
                       },
-                      "bauwerkId": {
+                      "buildingId": {
                         "anyOf": [
                           {
                             "type": "string",
@@ -2653,7 +2653,7 @@
                     "required": [
                       "key",
                       "baseKey",
-                      "bauwerkId",
+                      "buildingId",
                       "label",
                       "value",
                       "display",
@@ -2671,7 +2671,7 @@
               }
             },
             "required": [
-              "bauwerkId",
+              "buildingId",
               "rule",
               "citation",
               "value",
