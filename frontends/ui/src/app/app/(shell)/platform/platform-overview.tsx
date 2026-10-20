@@ -34,6 +34,7 @@ import { WorkOsWidgets, UsersManagement } from '@workos-inc/widgets'
 // Radix's own `--gray-1`…`--yellow-12` scales, which no token or class of ours
 // reads. Checked against the installed sheet before keeping the import here.
 import '@radix-ui/themes/styles.css'
+import Link from 'next/link'
 import { AlertTriangle, Building2, RefreshCw, SearchX } from 'lucide-react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -568,6 +569,7 @@ const OrganizationRow: FC<{
 }> = ({ org, canManage, onOpenBudget }) => {
   const t = useTranslations('platform')
   const { locale } = useLocale()
+  const canViewUsage = usePlatformCan(PLATFORM_PERMISSIONS.usageView)
   const ingest = org.month.ingestCostUsd ?? 0
 
   return (
@@ -576,7 +578,17 @@ const OrganizationRow: FC<{
           truncates it there, instead of letting it push them off the card. */}
       <TableCell className="w-full max-w-0">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-medium">{org.name}</span>
+          {canViewUsage ? (
+            <Link
+              href={`/app/platform/organizations/${encodeURIComponent(org.id)}`}
+              className="truncate text-sm font-medium underline-offset-4 hover:underline"
+              aria-label={t('orgUsage.open', { name: org.name })}
+            >
+              {org.name}
+            </Link>
+          ) : (
+            <span className="truncate text-sm font-medium">{org.name}</span>
+          )}
           {org.isPlatformOrg ? (
             <Badge variant="secondary" className="shrink-0">
               {t('orgs.platformBadge')}
