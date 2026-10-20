@@ -20,7 +20,7 @@
  * the buttons can be pressed; a decided suggestion leaves the section.
  */
 
-import { use, useState } from 'react'
+import { use, useMemo, useState } from 'react'
 import { ProjectSectionHeader } from './section-header'
 import { useFakeProposalClient } from '@/app/dev/_fixtures/fake-proposals'
 import {
@@ -31,6 +31,7 @@ import {
 } from '@/app/dev/_fixtures/project-intake'
 import { installFixtureDocuments } from './fixture-documents'
 import { IntakeSetupView } from '@/features/project-intake/components/intake-setup-view'
+import { createFixtureParticipantsClient, isProjectStepState } from '@/app/dev/_fixtures/project-setup-project'
 import { useFilingSuggestions } from '@/features/documents/hooks/use-filing-suggestions'
 import type { IntakeDecision } from '@/lib/project-intake/types'
 
@@ -54,6 +55,10 @@ export default function ProjectSetupPreviewPage({
   const busy = params.busy === '1'
   const view = INTAKE_FIXTURES[name]
   const [sent, setSent] = useState<string | null>(null)
+  // Step 1 reads the Beteiligte from its own API; here from an in-memory one
+  // (`?project=fresh | team | viewer | closing`), made once per state.
+  const projectState = isProjectStepState(params.project) ? params.project : 'team'
+  const participantsClient = useMemo(() => createFixtureParticipantsClient(projectState), [projectState])
   // The connected page's own hook, against a faked proposals API: a decided
   // suggestion is read away, as it is there.
   const proposalsReady = useFakeProposalClient(INTAKE_FILING)
@@ -67,7 +72,8 @@ export default function ProjectSetupPreviewPage({
       <ProjectSectionHeader state={name} />
       <IntakeSetupView
         // A new state is a new page: the step it opens on is chosen again.
-        key={name}
+        key={`${name}-${projectState}`}
+        participantsClient={participantsClient}
         view={view}
         projectId={view.projectId}
         projectName={FIXTURE_PROJECT_NAME}

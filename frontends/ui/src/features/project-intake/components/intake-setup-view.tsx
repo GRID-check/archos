@@ -25,6 +25,7 @@ import { IntakeHeader } from './intake-header'
 import { FilingStep } from './steps/filing-step'
 import { ProfileStep } from './steps/profile-step'
 import { ProjectStep } from './steps/project-step'
+import type { ParticipantsClient } from '@/lib/projects/participants-client'
 import { QuestionsStep } from './steps/questions-step'
 import { ReadingStep } from './steps/reading-step'
 import {
@@ -59,6 +60,8 @@ export interface IntakeSetupViewProps {
   filing?: { entries: readonly FilingFolderSuggestion[]; onSettled: () => void }
   /** The upload's tray and plan dialog, which the connected page owns; drawn on the Ablage. */
   children?: ReactNode
+  /** The participants API step 1 uses; the real one unless the `/dev` preview brings fixtures. */
+  participantsClient?: ParticipantsClient
 }
 
 /** The URL parameter that holds the step being shown (`?step=questions`). */
@@ -178,6 +181,7 @@ export function IntakeSetupView({
   onRetry,
   filing,
   children,
+  participantsClient,
 }: IntakeSetupViewProps): JSX.Element {
   const tShell = useTranslations('intakeShell')
   const t = useTranslations('projectIntake')
@@ -285,7 +289,7 @@ export function IntakeSetupView({
         {finished && <CompletedNote view={view} />}
         {view.status === 'failed' && <FailedReading canRetry={view.canDecide} busy={busy} onReread={onReread} />}
 
-        {step === 'project' && <ProjectStep {...stepProps} />}
+        {step === 'project' && <ProjectStep {...stepProps} client={participantsClient} />}
         {step === 'filing' && (
           <FilingStep {...stepProps} filing={filing}>
             {children}
