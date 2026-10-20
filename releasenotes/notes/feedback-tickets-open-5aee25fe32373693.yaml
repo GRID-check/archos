@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Feedback reports now actually open their PostHog Support ticket. The server
+    asked PostHog for the widget token with a permission the API key does not
+    need to have, so every report stayed under "Not in PostHog yet". The key
+    needs only the two ticket scopes, and the deployment's address must be in
+    Support's allowed domains.

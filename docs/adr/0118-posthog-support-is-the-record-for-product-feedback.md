@@ -76,7 +76,7 @@ What that means:
 | Fallback | Postgres | While Support is not configured or PostHog cannot be read, the page lists the local log, read-only |
 | The intake log | Postgres, `product_feedback` | What was sent, by whom, from where, and `posthog_ticket_id`. Its `status`, `triaged_by` and `triaged_at` are dropped (migration `0155`) |
 | The inbox announcement | Postgres, `feedback.submitted` | Unchanged |
-| Server configuration | BFF environment | `POSTHOG_PERSONAL_API_KEY` (secret; scopes `ticket:read`, `ticket:write`, `project:read`) and `POSTHOG_PROJECT_ID`, from the Pulumi keys `grid-oib:posthogPersonalApiKey` and `grid-oib:posthogProjectId`. Without both, no ticket opens and the page shows the local log |
+| Server configuration | BFF environment | `POSTHOG_PERSONAL_API_KEY` (secret; scopes `ticket:read`, `ticket:write`) and `POSTHOG_PROJECT_ID`, from the Pulumi keys `grid-oib:posthogPersonalApiKey` and `grid-oib:posthogProjectId`. Without both, no ticket opens and the page shows the local log |
 
 Votes on answers (`answer_feedback`) are not product feedback and do not change.
 

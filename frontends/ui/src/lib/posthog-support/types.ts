@@ -57,8 +57,20 @@ export interface PosthogSupportConfig {
   ingestHost: string
   /** Numeric project id (`/api/projects/:project_id/...`). */
   projectId: string
-  /** Personal API key with `ticket:read` and `ticket:write` (and `project:read` for the widget token). */
+  /**
+   * The public project token (`phc_…`), which names the project's public remote
+   * config, where the Support widget token is read without any key.
+   */
+  projectToken: string
+  /** Personal API key with `ticket:read` and `ticket:write`. */
   personalApiKey: string
+  /**
+   * This app's own origin (`https://app.piloti.at`), sent as `Origin` when the
+   * server opens a ticket. PostHog checks every conversations call against the
+   * project's Allowed domains, and a server request carries no Origin of its
+   * own; `null` when the deployment does not pin one.
+   */
+  appOrigin: string | null
 }
 
 /** Thrown when PostHog cannot be reached or refuses; callers fall back to the local log. */

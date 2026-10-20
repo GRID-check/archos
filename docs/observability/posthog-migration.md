@@ -104,7 +104,7 @@ date.
   `organization:read`, `annotation:write`) and repository variable
   `POSTHOG_PROJECT_ID=269895` ([`contributing/ci.md`](../contributing/ci.md)).
 - [ ] **Support key for product feedback**: a person with PostHog access creates a
-  personal API key with scopes `ticket:read`, `ticket:write`, `project:read`, and
+  personal API key with scopes `ticket:read` and `ticket:write`, and
   puts it in each stack's ESC environment: `esc env set
   matthiasbigl/grid-oib/<dev|prod> pulumiConfig.grid-oib:posthogPersonalApiKey
   "phx_..." --secret`. `grid-oib:posthogProjectId` defaults to `269895`. Until
