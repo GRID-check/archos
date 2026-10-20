@@ -39,10 +39,11 @@ backend:
   - 'pyproject.toml'
   - 'uv.lock'
   - 'Taskfile.yml'
-  # ci.yml defines how this job runs, and the setup actions build its
-  # environment.
+  # ci.yml defines how this job runs, and the setup actions it uses build
+  # its environment.
   - '.github/workflows/ci.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-python-env/**'
+  - '.github/actions/setup-task/**'
 # NOT here, though tests read them: `ci/**`, `releasenotes/**`, the other
 # workflows and this file. Their tests (`task be:test:harness`: the workflow,
 # plan-script and release-note suites, ~10s) run in the Repo checks job, which
@@ -69,12 +70,14 @@ frontend:
   - 'Taskfile.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
   # `scripts/rls-test-db.sh` IS the tenant-isolation gate. Without
   # this line a change to it leaves `frontend` false, the gate job
   # is skipped, and `ci-ok` counts skipped as passed — so a broken
-  # row-level-security harness merges unverified.
-  - 'scripts/**'
+  # row-level-security harness merges unverified. It is the only root
+  # script the frontend jobs run (the UI's own are under frontends/ui).
+  - 'scripts/rls-test-db.sh'
   # The card schema is generated from these two into the Zod module
   # the UI validates with, and `task fe:cards:check` is the only gate
   # that sees the Zod half (repo-lint has no node_modules). Without
@@ -95,13 +98,15 @@ web:
   - 'Taskfile.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
 infra:
   - 'deploy/**'
   - 'Taskfile.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
 # The two standalone IFC packages (ADR-0045). Their own family rather than a
 # line in `backend:` or `frontend:`, because they are outside BOTH workspaces —
 # own bun.lock, own uv.lock, own toolchains — so nothing the backend or
@@ -113,7 +118,8 @@ packages:
   - 'Taskfile.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
-  - '.github/actions/**'
+  - '.github/actions/setup-bun/**'
+  - '.github/actions/setup-task/**'
 
 # The pull request SAST scan. Semgrep is diff-aware, so it only ever reports
 # findings the change introduces; this decides whether there is code to scan.
