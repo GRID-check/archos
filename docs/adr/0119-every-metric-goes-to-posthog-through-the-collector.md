@@ -63,7 +63,7 @@ does not already have.
   resource names the pod and process, so replicas' cumulative series stay
   apart.
 * **The node agent** (`otel-agent`, a DaemonSet on every node) reads its own
-  kubelet (`kubeletstats`) and scrapes the pods on its own node annotated
+  kubelet (`kubelet_stats`) and scrapes the pods on its own node annotated
   `prometheus.io/scrape: "true"` (`prometheus/pods`, discovery filtered to
   `spec.nodeName`). It sends OTLP to the gateway and holds no credential.
 * **The services opt in** with three pod annotations (`scrape.ts`):
@@ -81,6 +81,12 @@ does not already have.
   get/list/watch rules only.
 * `grid-oib:posthogMetricsEnabled` (default on, the same dependencies as the
   logs) switches the export and the agents together.
+* **Alerting is in PostHog too.** Five insight alerts, one per domain
+  (workloads, background work, data stores, application, and a telemetry
+  heartbeat), each on a SQL insight that returns one row per rule and fires
+  when any row breaches, naming it. Five because the free plan allows five;
+  rows, not alerts, are where a new rule goes. The rules:
+  [`metrics.md`](../observability/metrics.md#alerts).
 * The collector config is composed from one typed fragment per consumer or
   source (`collector-config.ts`), which holds the invariants once.
 
@@ -95,9 +101,13 @@ does not already have.
 * Bad, because PostHog Metrics is in open alpha: the endpoint may move, and
   data is kept 30 days. Moving it is one fragment in the gateway; longer
   history is not available until general availability.
-* Bad, because PostHog does not evaluate PromQL, so the Qdrant alert rules
-  (`data/qdrant-alerts.ts`) still need a `vmalert` at `otel-collector:8889`, or
-  a rewrite as PostHog alerts. Qdrant alerting stays inactive until one exists.
+* Bad, because PostHog does not evaluate PromQL, so the finer Qdrant alert
+  rules (`data/qdrant-alerts.ts`) still need a `vmalert` at
+  `otel-collector:8889`, or a rewrite as rows of the data-store alert. Only a
+  peer being down is covered until then.
+* Bad, because the alerts check hourly at best on the free plan, and live in
+  PostHog rather than in this repository: their SQL is the insight, recorded in
+  `metrics.md`, and a change to one is made in both places by hand.
 * Bad, because the gateway now mounts an API token when metrics are on, and
   each node runs one more pod (50m CPU, 64 MiB requested).
 * Bad, because the first deploy restarts the stores whose command or config

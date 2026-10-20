@@ -2048,7 +2048,7 @@ call gateway and agent:
   would report every workload twice.
 - **`otel-agent`** (`deploy/pulumi/src/platform/otel-agent.ts`), a DaemonSet on
   every node, deployed only with PostHog metrics on. It reads its node's
-  kubelet (`kubeletstats`) and scrapes the annotated pods scheduled on its node
+  kubelet (`kubelet_stats`) and scrapes the annotated pods scheduled on its node
   (`prometheus/pods`), and sends both to the gateway. It holds no credential.
 
 The config each one runs is composed from one fragment per consumer or source
@@ -2086,15 +2086,20 @@ one of them, to PostHog Metrics** ([ADR-0119](../adr/0119-every-metric-goes-to-p
   `otel-collector:8889/metrics` for the alert rules in the
   `qdrant-alert-rules` ConfigMap; `kubectl port-forward svc/otel-collector
   8889` reads them by hand ([`qdrant-runbook.md`](qdrant-runbook.md)).
-  **Qdrant alerting is still not active on any stack, and connecting it is a
-  precondition for prod**: the rules are PromQL, which PostHog does not
-  evaluate, so either point a `vmalert` at `otel-collector:8889` and load
-  `qdrant.rules.yaml`, or rewrite them as PostHog alerts. The runbook's
-  "Alerts" says how and how to prove it pages someone.
+  A peer down for 15 minutes is a row of the data-store alert in PostHog
+  ([`metrics.md`](../observability/metrics.md#alerts), created disabled until
+  metrics arrive). **The finer Qdrant rules are still not active on any stack,
+  and connecting them is a precondition for prod**: they are PromQL, which
+  PostHog does not evaluate, so either point a `vmalert` at
+  `otel-collector:8889` and load `qdrant.rules.yaml`, or rewrite them as rows
+  of that alert. The runbook's "Alerts" says how and how to prove it pages
+  someone.
 
-Every series carries `service.name`, and the gateway stamps
-`deployment.environment.name` with the stack, so dev and prod stay apart in the
-one PostHog project.
+The gateway stamps `deployment.environment.name` with the stack on every
+series, so dev and prod stay apart in the one PostHog project. Application and
+scraped series also carry `service.name` (the tier, or the scraped workload's
+`app.kubernetes.io/name`); the kubelet and cluster-state series are named by
+their `k8s.*` resource attributes instead.
 
 ```text
 grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purger
