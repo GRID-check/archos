@@ -2504,6 +2504,10 @@
     "de": "Wenn Sie eine Antwort stoppen, bleibt genau der Text erhalten, den Sie in diesem Moment gesehen haben, mit der Markierung „Gestoppt“ und den bisherigen Quellenangaben."
   },
   {
+    "en": "Suggested follow-up questions now appear under every answer when your office has chosen a model that always thinks before it answers. Before, those suggestions quietly went missing on such models.",
+    "de": "Wenn Ihr Büro ein Modell ausgewählt hat, das vor jeder Antwort immer nachdenkt, erscheinen jetzt unter jeder Antwort Folgefragen. Bisher wurden diese Vorschläge bei solchen Modellen nicht angezeigt."
+  },
+  {
     "en": "Switching to another conversation and back, or reloading during an answer, shows the text that had already arrived at once instead of typing it out again, and each conversation reopens where you left it.",
     "de": "Wenn Sie zu einer anderen Unterhaltung wechseln und zurückkehren oder während einer Antwort die Seite neu laden, wird der bereits eingetroffene Text sofort vollständig angezeigt, statt erneut schrittweise eingeblendet zu werden. Außerdem öffnet sich jede Unterhaltung wieder an der Stelle, an der Sie sie verlassen haben."
   },
