@@ -78,7 +78,7 @@ async def test_retrieve_applies_the_callers_filter(retriever):
     _ingest(
         retriever,
         "oib_knowledge",
-        [_row("Punkt eins", "rl2.pdf", clause_id="1"), _row("Seite", "rl2.pdf", chunking="page")],
+        [_row("Punkt eins", "rl2.pdf", punkt_id="1"), _row("Seite", "rl2.pdf", chunking="page")],
     )
     result = await retriever.retrieve("Punkt", "oib_knowledge", top_k=5, filters={"chunking": {"$ne": "page"}})
     assert [chunk.content for chunk in result.chunks] == ["Punkt eins"]
