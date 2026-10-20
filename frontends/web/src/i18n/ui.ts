@@ -1209,7 +1209,7 @@ const en: typeof de = {
     monthCount: '{count} weeks',
     monthCountOne: '1 week',
   },
-  // The week 41 launch page (/en/neu). Its notes are not here: they come from
+  // The week 41 launch page (/en/whats-new). Its notes are not here: they come from
   // src/data/changelog.json, resolved by src/components/launch/picks.ts.
   launch: {
     kicker: 'Week 41, 5 to 11 October 2026',

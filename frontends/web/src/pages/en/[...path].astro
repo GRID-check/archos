@@ -1,0 +1,13 @@
+---
+// Old English URLs that still carry a German segment (/en/anwendungen/x/) were
+// indexed before the English site had its own segments. They move permanently;
+// the table is src/i18n/paths.ts. Anything else under /en/ that no page claimed
+// is a 404, in the visitor's language.
+export const prerender = false
+
+import { legacyEnglishPath } from '../../i18n/paths'
+
+const moved = legacyEnglishPath(Astro.url.pathname)
+if (moved) return Astro.redirect(`${moved}${Astro.url.search}`, 301)
+return Astro.rewrite('/404')
+---

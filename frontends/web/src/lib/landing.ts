@@ -2,7 +2,7 @@
  * The site's search pages: comparisons, use cases, audiences, the nine states
  * and the glossary. Each is one entry in `src/data/landing/<section>.ts`,
  * rendered by `components/landing/LandingPage.astro` at
- * `/<section>/<slug>/` (and `/en/<section>/<slug>/`), listed on its section's
+ * `/<section>/<slug>/` (and `/en/<english section>/<slug>/`), listed on its section's
  * hub, in the sitemap and in /llms.txt. Adding a page is adding an entry.
  *
  * Copy rules are the rest of the site's: both locales, German typography
@@ -14,6 +14,7 @@
  * Nothing is said about what Piloti's corpus holds or which OIB edition it has.
  */
 import type { Locale } from '../i18n/ui'
+import { EN_SEGMENT } from '../i18n/paths'
 import type { OgArtId } from './seo'
 
 export interface Row {
@@ -172,8 +173,8 @@ export const SECTIONS: Record<SectionId, { og: OgArtId } & Record<Locale, Sectio
   },
 }
 
-/** `/vergleich/` or `/en/vergleich/reiner-ai/`. */
+/** `/vergleich/` or `/en/comparisons/reiner-ai/` (the segment comes from `i18n/paths.ts`). */
 export function landingPath(locale: Locale, section: SectionId, slug?: string) {
-  const base = `${locale === 'en' ? '/en' : ''}/${section}/`
+  const base = locale === 'en' ? `/en/${EN_SEGMENT[section]}/` : `/${section}/`
   return slug ? `${base}${slug}/` : base
 }
