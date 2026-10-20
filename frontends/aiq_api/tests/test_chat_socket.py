@@ -464,7 +464,7 @@ async def test_a_malformed_message_is_refused(harness):
     h = harness()
     sock = h.connect()
 
-    sock.client(type="user_message", message_id="t1", text="?", include_shelves=["archiv"])
+    sock.client(type="user_message", message_id="t1", text="?", include_shelves=["office_shelf"])
     await until(lambda: sock.rejected())
 
     assert sock.rejected() == [{"of": "user_message", "code": "invalid_message"}]

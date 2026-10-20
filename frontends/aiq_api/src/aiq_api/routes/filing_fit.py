@@ -42,6 +42,7 @@ import asyncio
 import json
 import logging
 import unicodedata
+from typing import Annotated
 from typing import Any
 from typing import Literal
 
@@ -49,11 +50,13 @@ import httpx
 from fastapi import APIRouter
 from fastapi import Header
 from pydantic import BaseModel
+from pydantic import BeforeValidator
 from pydantic import ConfigDict
 from pydantic import Field
 
 from aiq_agent.common import provider_limiter
 from aiq_agent.common.openrouter import limited_async_http_client
+from aiq_agent.common.source_kinds import LEGACY_SHELF_VALUES
 from aiq_agent.observability.direct_trace import observed_generation
 
 from ._llm_json import extract_json_object
@@ -130,6 +133,11 @@ class FilingDocument(BaseModel):
     summary: str | None = Field(None, max_length=800)
 
 
+def _legacy_shelf(value: object) -> object:
+    """Read the shelf's old wire value (``archiv``) as ``office_shelf``. Remove after one release."""
+    return LEGACY_SHELF_VALUES.get(value, value) if isinstance(value, str) else value
+
+
 class FilingTrace(BaseModel):
     """What the generation carries as trace metadata. Ids only."""
 
@@ -137,7 +145,7 @@ class FilingTrace(BaseModel):
 
     batch_id: str = Field(..., min_length=1, max_length=64)
     project_id: str | None = Field(None, max_length=64)
-    shelf: Literal["project", "archiv"] = "project"
+    shelf: Annotated[Literal["project", "office_shelf"], BeforeValidator(_legacy_shelf)] = "project"
 
 
 class FilingFitRequest(BaseModel):

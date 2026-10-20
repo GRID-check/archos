@@ -39,7 +39,7 @@ describe('docProvenance', () => {
   })
 
   it('paints the Archiv as office knowledge and the project and session shelves as project knowledge', () => {
-    expect(docProvenance({ name: 'Checkliste Brandschutz', shelf: 'archiv' })).toMatchObject({
+    expect(docProvenance({ name: 'Checkliste Brandschutz', shelf: 'office_shelf' })).toMatchObject({
       kind: 'office',
       tint: 'office',
       authority: null,

@@ -564,12 +564,12 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
       const kept = await document(ORG, own, name('bleibt'))
       const moved = await document(ORG, own, name('verschoben'))
       const binned = await document(ORG, own, name('papierkorb'))
-      const archived = await document(ORG, own, name('archiv'))
-      for (const [id, suffix] of [[kept, 'bleibt'], [moved, 'verschoben'], [binned, 'papierkorb'], [archived, 'archiv']] as const) {
+      const archived = await document(ORG, own, name('office_shelf'))
+      for (const [id, suffix] of [[kept, 'bleibt'], [moved, 'verschoben'], [binned, 'papierkorb'], [archived, 'office_shelf']] as const) {
         await store(ORG, own, id, name(suffix), [requirement(`Auflage ${suffix}`)])
       }
       expect((await list(own, [])).map((record) => record.fileName).sort()).toEqual(
-        [name('archiv'), name('bleibt'), name('papierkorb'), name('verschoben')].sort()
+        [name('office_shelf'), name('bleibt'), name('papierkorb'), name('verschoben')].sort()
       )
 
       const change = (statement: ReturnType<typeof sql>) => inOrg(ORG, () => db.execute(statement))

@@ -64,7 +64,7 @@ export interface SimilarDocument {
 }
 
 /** Where a group of documents sits: the reader's own project, another project, or the Büroablage. */
-export type SimilarGroupKind = 'current' | 'project' | 'archiv'
+export type SimilarGroupKind = 'current' | 'project' | 'office_shelf'
 
 export interface SimilarGroup {
   kind: SimilarGroupKind

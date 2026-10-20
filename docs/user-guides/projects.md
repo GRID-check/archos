@@ -16,7 +16,7 @@ Each card is split into a raised header — project name, the same status chip w
 
 The header row carries the page title, a search field, and the **New project** button. Searching collapses both sections into a single **Matches** list — with a query on screen, "continue where you left off" is not the question being asked.
 
-When the Büroablage is enabled for your org, a full-width **Büroablage** entry card appears below the grid and opens `/app/archiv` — the office's shared, org-wide knowledge.
+When the Büroablage is enabled for your org, a full-width **Büroablage** entry card appears below the grid and opens `/app/office-shelf` — the office's shared, org-wide knowledge.
 
 Organization admins additionally see a **Recently deleted** section at the bottom, from which soft-deleted projects can be restored during the grace period.
 
@@ -43,7 +43,7 @@ Opening a project (`/app/projects/{id}`) lands you in **Ask Piloti** — the pro
 | **History** | `/app/projects/{id}/history` | All conversations and deep-research runs; rows reopen in chat |
 | **Jobs** | `/app/projects/{id}/jobs` | This project's scheduled prompts, and their run history (feature-flagged) |
 | **Skills** | `/app/projects/{id}/skills` | The organization's skill toolbox (feature-flagged) |
-| **Büroablage** | `/app/archiv` | The office's org-wide shared files (feature-flagged) |
+| **Büroablage** | `/app/office-shelf` | The office's org-wide shared files (feature-flagged) |
 | **Inbox** | `/app/inbox` | Mentions, shares, and operational notices (feature-flagged) |
 | **Overview** | `/app/projects/{id}/settings` | The project hub, pinned at the bottom of the sidebar: a dashboard of tiles, among them [Similar projects](#similar-projects), with members, memory, usage, documents and similar projects as sections behind it |
 

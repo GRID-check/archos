@@ -91,7 +91,7 @@ describe('DocumentActionsMenu — deleting', () => {
   it('deletes an Archiv document through the org-scoped route', async () => {
     const hits: string[] = []
     server.use(
-      http.delete('/api/archiv/documents/:id', ({ params }) => {
+      http.delete('/api/office-shelf/documents/:id', ({ params }) => {
         hits.push(String(params.id))
         return new HttpResponse(null, { status: 204 })
       })

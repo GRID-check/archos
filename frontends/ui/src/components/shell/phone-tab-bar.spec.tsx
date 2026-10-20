@@ -126,7 +126,7 @@ describe('PhoneTabBar — above a project', () => {
     const links = within(bar()).getAllByRole('link')
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/app/projects',
-      '/app/archiv',
+      '/app/office-shelf',
       '/app/inbox',
     ])
     expect(within(bar()).getByRole('link', { name: 'Projects' })).toHaveAttribute(

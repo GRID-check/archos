@@ -108,7 +108,7 @@ describe('auditQuarantineDecision', () => {
   })
 
   it('says a decision off any project shelf is filed in no folder', async () => {
-    await auditQuarantineDecision(decision({ scope: 'archiv', projectId: null, folderId: null }))
+    await auditQuarantineDecision(decision({ scope: 'office_shelf', projectId: null, folderId: null }))
 
     expect(vi.mocked(recordAuditEventOrThrow).mock.calls[0][0]).toMatchObject({ filedIn: null })
   })

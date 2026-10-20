@@ -27,7 +27,7 @@ import {
  * The minimal shape of a STORED document a citation can resolve against — a
  * project upload (`GET /api/documents?projectId=…`), a private chat attachment
  * (`GET /api/session/documents?conversationId=…`) or an org Archiv document
- * (`GET /api/archiv/documents`). All three are DB-backed rows opened through the
+ * (`GET /api/office-shelf/documents`). All three are DB-backed rows opened through the
  * same scope-aware `/api/documents/{id}/preview`, so they share one list.
  *
  * `shelf` says which of the three a row came from, so a citation that knows its
@@ -58,7 +58,7 @@ export interface StoredDocumentRef {
  * must be resolved against the corpus alone rather than quietly matching a
  * same-named upload (ADR-0047: the shelf is part of a document's identity).
  */
-const STORED_SHELVES: ReadonlySet<Shelf> = new Set<Shelf>(['project', 'archiv', 'session'])
+const STORED_SHELVES: ReadonlySet<Shelf> = new Set<Shelf>(['project', 'office_shelf', 'session'])
 
 /**
  * Where a clicked citation can take the user:
@@ -360,7 +360,7 @@ export const resolveCitationTarget = (
       }
     }
     // The corpus is only the right answer for a citation that names the `base`
-    // shelf or names none at all — a `project`/`session`/`archiv` citation must
+    // shelf or names none at all — a `project`/`session`/`office_shelf` citation must
     // not slide onto a corpus file of the same name either.
     if (baseFile && !isStoredShelf) {
       return {

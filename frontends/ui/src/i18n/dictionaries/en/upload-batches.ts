@@ -12,12 +12,12 @@ export const uploadBatches = {
     // Where the upload went, when the project's name cannot be read.
     place: {
       project: 'Project',
-      archiv: 'Office filing',
+      office_shelf: 'Office filing',
       session: 'Chat',
     },
     open: {
       project: 'Open files',
-      archiv: 'Open Office filing',
+      office_shelf: 'Open Office filing',
       session: 'Open chat',
     },
     state: {
@@ -50,7 +50,7 @@ export const uploadBatches = {
       title: 'Files',
       root: {
         project: 'Project folder',
-        archiv: 'Office filing',
+        office_shelf: 'Office filing',
         session: 'Chat',
       },
       empty: 'No file from this upload reached Piloti.',

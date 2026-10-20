@@ -106,7 +106,7 @@ export function toDocumentWireRow(
  * which does not stringify a `Date` — see the module header.
  *
  * ONE projection for both shelves (ADR-0078): a project's `GET /api/documents`
- * and the Archiv's `GET /api/archiv/documents` serve the same row, so the
+ * and the Archiv's `GET /api/office-shelf/documents` serve the same row, so the
  * browser maps it with one function.
  */
 export async function toDocumentWireRows(

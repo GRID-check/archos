@@ -16,7 +16,7 @@
  *
  * ## Scope
  *
- * `files` and `archiv` differ in exactly one place — the DELETE endpoint, which
+ * `files` and `office_shelf` differ in exactly one place — the DELETE endpoint, which
  * is org-gated for the Archiv — and in which namespace holds the words. Rename
  * goes to the same scope-aware route for both, because the service resolves the
  * permission from the document row rather than from the URL.
@@ -188,7 +188,7 @@ export function useDocumentActions({
     try {
       const url =
         scope === 'officeShelf'
-          ? `/api/archiv/documents/${document.id}`
+          ? `/api/office-shelf/documents/${document.id}`
           : `/api/documents/${document.id}`
       const res = await fetch(url, { method: 'DELETE' })
       if (res.status === 409 && (await isLegalHoldRefusal(res))) {

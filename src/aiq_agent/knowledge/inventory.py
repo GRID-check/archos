@@ -398,9 +398,9 @@ def _query_variants(query: str) -> tuple[str, str]:
 def shelf_hint_from_query(query: str) -> Shelf | None:
     """Shelf a *listing* question is about, or ``None`` for a content question.
 
-    "welche Dateien hast du in der Büroablage" → ``archiv``.
+    "welche Dateien hast du in der Büroablage" → ``office_shelf``.
     "was sagt OIB-RL 2 zum Brandschutz" → ``None``.
-    When both project and archiv are mentioned ("nicht im projekt … im archiv")
+    When both project and office shelf are mentioned ("nicht im projekt … im archiv")
     the archive token wins — that is the clarification the user just made.
     """
     raw, folded = _query_variants(query)
@@ -623,7 +623,7 @@ def render_inventory_block(
         "",
         "Files sit on four nested shelves. A wider shelf is NOT the narrower one:",
         "- **Basiswissen** (base) — always on this request. Platform OIB / law. Every turn has this.",
-        "- **Büroablage** (archiv) — on every project in this organization. "
+        "- **Büroablage** (office_shelf) — on every project in this organization. "
         "The office's own files. NOT base/OIB, NOT this project.",
         "- **Projektwissen** (project) — on every session of this project. This project's files. NOT the Büroablage.",
         "- **Private Sitzung** (session) — only this chat. Attachments uploaded here.",

@@ -73,8 +73,8 @@ describe('summarizeOfficeShelfDocuments', () => {
     await summarizeOfficeShelfDocuments(session)
 
     expect(requireProjectAccess).not.toHaveBeenCalled()
-    expect(shelfReaderFor).toHaveBeenCalledWith(session, { scope: 'archiv', projectId: null })
-    expect(summarizeShelfFolders).toHaveBeenCalledWith({ kind: 'archiv' }, 'org-1', {
+    expect(shelfReaderFor).toHaveBeenCalledWith(session, { scope: 'office_shelf', projectId: null })
+    expect(summarizeShelfFolders).toHaveBeenCalledWith({ kind: 'office_shelf' }, 'org-1', {
       reader: { kind: 'member', userId: 'user-1' },
       authoredBy: undefined,
       includeArchived: undefined,

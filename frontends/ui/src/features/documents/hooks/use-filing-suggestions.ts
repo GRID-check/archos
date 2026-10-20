@@ -40,21 +40,21 @@ export function useFilingSuggestions({
   refreshKey,
   watching,
 }: {
-  /** The shelf: a project's (`projectId`) or the Büroablage's (`shelf: 'archiv'`); null asks nothing. */
+  /** The shelf: a project's (`projectId`) or the Büroablage's (`shelf: 'office_shelf'`); null asks nothing. */
   query: ProposalListQuery | null
   refreshKey?: unknown
   watching: boolean
 }): FilingSuggestions {
   const [listed, setListed] = useState<readonly ListedProposal[]>(EMPTY)
   const projectId = query?.projectId
-  const officeShelf = query?.shelf === 'archiv'
+  const officeShelf = query?.shelf === 'office_shelf'
   const asked = query !== null
   const generation = useRef(0)
 
   const reload = useCallback(() => {
     if (!asked) return
     const mine = ++generation.current
-    const shelf: ProposalListQuery = projectId ? { projectId, kind: 'file_operation' } : { shelf: 'archiv', kind: 'file_operation' }
+    const shelf: ProposalListQuery = projectId ? { projectId, kind: 'file_operation' } : { shelf: 'office_shelf', kind: 'file_operation' }
     listOpenProposals(shelf).then(
       ({ proposals }) => {
         if (mine === generation.current) setListed(proposals)

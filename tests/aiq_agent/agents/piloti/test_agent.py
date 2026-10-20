@@ -2885,7 +2885,7 @@ class TestKnowledgeInventoryIsNotCitable:
             {
                 "file_name": "Buero-Standard.pdf",
                 "summary": "Detail.",
-                "shelf": "archiv",
+                "shelf": "office_shelf",
                 "collection": "archiv_org",
             },
         ]

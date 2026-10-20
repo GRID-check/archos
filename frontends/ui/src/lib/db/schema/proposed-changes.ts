@@ -37,7 +37,7 @@ export const proposedChanges = pgTable(
     organizationId: text('organization_id').notNull(),
     /**
      * The project the change is for; NULL for a Büroablage proposal (0146),
-     * exactly when `scope` is `archiv` (`proposed_changes_scope_owner`).
+     * exactly when `scope` is `office_shelf` (`proposed_changes_scope_owner`).
      */
     projectId: uuid('project_id'),
     /**

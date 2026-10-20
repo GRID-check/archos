@@ -32,7 +32,7 @@ const corpora = (options: {
       options.onProjectFetch?.()
       return HttpResponse.json({ documents: options.projekt ?? [] })
     }),
-    http.get('/api/archiv/documents', () => HttpResponse.json({ documents: options.archiv ?? [] })),
+    http.get('/api/office-shelf/documents', () => HttpResponse.json({ documents: options.archiv ?? [] })),
     http.get('/api/session/documents', () =>
       HttpResponse.json({ documents: options.session ?? [] })
     )
@@ -89,7 +89,7 @@ describe('useAnswerFileReferences', () => {
           ? HttpResponse.json({ documents: [row('p-old', 'Bestand-1962.pdf')], nextCursor: null })
           : HttpResponse.json({ documents: [row('p-new', 'Statik.pdf')], nextCursor: 'page-2' })
       ),
-      http.get('/api/archiv/documents', () => HttpResponse.json({ documents: [] })),
+      http.get('/api/office-shelf/documents', () => HttpResponse.json({ documents: [] })),
       http.get('/api/session/documents', () => HttpResponse.json({ documents: [] }))
     )
     const { result } = referencesFor('Vergleichen Sie Bestand-1962.pdf.')
@@ -169,7 +169,7 @@ describe('useAnswerFileReferences', () => {
   it('degrades to plain prose when the index cannot be read', async () => {
     server.use(
       http.get('/api/documents', () => HttpResponse.error()),
-      http.get('/api/archiv/documents', () => HttpResponse.error()),
+      http.get('/api/office-shelf/documents', () => HttpResponse.error()),
       http.get('/api/session/documents', () => HttpResponse.error())
     )
     const { result } = referencesFor('Beginnen Sie mit pd8280-2.pdf.')

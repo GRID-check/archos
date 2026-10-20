@@ -34,6 +34,7 @@
 import 'server-only'
 import { auditLogsEnabled, recordAuditEventOrThrow, SYSTEM_ACTORS } from '@/lib/audit/service'
 import type { DocumentQuarantineDecision } from '@/lib/db/schema'
+import { modernizeDocumentScope } from '@/lib/db/schema/documents'
 import {
   deleteSpentQuarantineDecisions,
   listOwedQuarantineDecisions,
@@ -74,7 +75,7 @@ export async function auditQuarantineDecision(
       metadata: {
         projectId: decision.projectId ?? '',
         filename: decision.filename.slice(0, 200),
-        scope: decision.scope,
+        scope: modernizeDocumentScope(decision.scope),
         reasons: decision.reasons,
         // Not zero: `reasons` is a partial list (migration 0148).
         reasonsOmitted: decision.reasonsOmitted,

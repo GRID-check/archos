@@ -54,7 +54,7 @@ const toInventory = (rows: InventoryWireRow[], source: InventoryDocument['source
     return {
       name: file.filename,
       ...(title && title !== file.filename ? { title } : {}),
-      shelf: source === 'office' ? 'archiv' : 'project',
+      shelf: source === 'office' ? 'office_shelf' : 'project',
       file,
       source,
       restricted: restrictedCollectionBase(row.collectionName ?? '') !== null,
@@ -79,7 +79,7 @@ export function useProjectInventory(projectId: string | null, enabled: boolean):
     setLoading(true)
     void Promise.all([
       listing(`/api/documents?projectId=${encodeURIComponent(projectId)}`),
-      listing('/api/archiv/documents'),
+      listing('/api/office-shelf/documents'),
     ]).then(([project, officeShelf]) => {
       if (cancelled) return
       setLoaded({

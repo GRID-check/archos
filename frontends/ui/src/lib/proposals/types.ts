@@ -33,10 +33,10 @@ export type ProposedChangeStatus = (typeof PROPOSED_CHANGE_STATUSES)[number]
 
 /**
  * The shelf a proposal is on (0146), `project_folders.scope`'s vocabulary. A
- * Büroablage (`archiv`) proposal has no project and can only move Büroablage
+ * Büroablage (`office_shelf`) proposal has no project and can only move Büroablage
  * documents (`proposed_changes_office_shelf_move`).
  */
-export const PROPOSAL_SCOPES = ['project', 'archiv'] as const
+export const PROPOSAL_SCOPES = ['project', 'office_shelf'] as const
 export type ProposalScope = (typeof PROPOSAL_SCOPES)[number]
 
 export const FILE_OPERATIONS = ['move', 'rename', 'create_folder', 'assign'] as const
@@ -253,7 +253,7 @@ export type InternalProposalResponse = z.infer<typeof internalProposalResponseSc
  * by a click on a proposal that did not ask for it). Ignored for other kinds.
  */
 /**
- * `GET /api/proposals?projectId=<id>` (a project's shelf) or `?shelf=archiv`
+ * `GET /api/proposals?projectId=<id>` (a project's shelf) or `?shelf=office_shelf`
  * (the Büroablage), optionally with `kind`: the OPEN proposals of that shelf
  * this reader may read, newest first, at most {@link MAX_LISTED_PROPOSALS}.
  * Each carries the documents its items name, resolved to ids as this reader
@@ -275,11 +275,12 @@ export type ProposalListResponse = z.infer<typeof proposalListResponseSchema>
 export const proposalListQuerySchema = z
   .object({
     projectId: z.string().uuid().optional(),
-    shelf: z.enum(PROPOSAL_SCOPES).optional(),
+    // `archiv` is the value an open tab or an agent pod not yet rolled still sends. Remove after one release.
+    shelf: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(PROPOSAL_SCOPES).optional()),
     kind: z.enum(PROPOSED_CHANGE_KINDS).optional(),
   })
-  .refine((query) => (query.shelf === 'archiv') !== Boolean(query.projectId), {
-    message: 'Name a project, or the Büroablage with shelf=archiv',
+  .refine((query) => (query.shelf === 'office_shelf') !== Boolean(query.projectId), {
+    message: 'Name a project, or the Büroablage with shelf=office_shelf',
   })
 export type ProposalListQuery = z.infer<typeof proposalListQuerySchema>
 

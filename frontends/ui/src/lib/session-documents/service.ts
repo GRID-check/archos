@@ -9,7 +9,7 @@
  * ADR-0045 — no way to reach the model pipeline at all, so an IFC dropped into
  * a chat was embedded as raw STEP text instead of being parsed into a building.
  *
- * Like the Archiv (`lib/archiv/*`), this REUSES the document pipeline wholesale
+ * Like the Archiv (`lib/office-shelf/*`), this REUSES the document pipeline wholesale
  * — the SeaweedFS upload, the quota admission, the model-vs-ingest dispatcher
  * (`dispatchDocument`), the upload allow-list, status reconciliation, and the
  * scope-aware item routes. Only the authorization differs, and here it differs

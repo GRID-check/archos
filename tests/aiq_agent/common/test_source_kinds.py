@@ -154,12 +154,12 @@ class TestShelf:
     def test_the_enum_holds_exactly_the_four_shelves(self):
         # A fifth member is a wire change: the header, chunk metadata, the
         # citation payload and the TS twin all have to learn it together.
-        assert {shelf.value for shelf in Shelf} == {"archiv", "project", "session", "base"}
+        assert {shelf.value for shelf in Shelf} == {"office_shelf", "project", "session", "base"}
 
     @pytest.mark.parametrize(
         "value,expected",
         [
-            ("archiv", Shelf.OFFICE_SHELF),
+            ("office_shelf", Shelf.OFFICE_SHELF),
             ("project", Shelf.PROJECT),
             ("session", Shelf.SESSION),
             ("base", Shelf.BASE),
@@ -249,3 +249,21 @@ class TestLegacyShelfFallback:
         # `collection_scope` returned "baurecht" here, which is the fail-open
         # ADR-0047 calls out: an unknown collection claimed base-law authority.
         assert legacy_shelf_for_collection_name(collection) is None
+
+
+class TestLegacyShelfValue:
+    """`archiv` was the shelf's wire value before it had an English name."""
+
+    def test_the_old_value_reads_as_the_office_shelf(self):
+        assert parse_shelf("archiv") is Shelf.OFFICE_SHELF
+        assert parse_shelf("office_shelf") is Shelf.OFFICE_SHELF
+
+    def test_both_collection_prefixes_are_an_office_shelf(self):
+        from aiq_agent.common.source_kinds import is_office_shelf_collection
+        from aiq_agent.common.source_kinds import office_shelf_organization_id
+
+        assert is_office_shelf_collection("archiv_org1") and is_office_shelf_collection("office_shelf_org1")
+        assert not is_office_shelf_collection("proj_x")
+        assert office_shelf_organization_id("office_shelf_org1") == "org1"
+        assert office_shelf_organization_id("archiv_org1") == "org1"
+        assert office_shelf_organization_id("proj_x") is None

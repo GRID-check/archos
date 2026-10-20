@@ -16,7 +16,7 @@ describe('useFileSearch', () => {
     }
     server.use(
       http.post('/api/documents/search', answer),
-      http.post('/api/archiv/documents/search', answer)
+      http.post('/api/office-shelf/documents/search', answer)
     )
   })
 
@@ -35,7 +35,7 @@ describe('useFileSearch', () => {
     act(() => result.current.run())
 
     await waitFor(() => expect(requests).toHaveLength(1))
-    expect(requests[0]).toEqual({ path: '/api/archiv/documents/search', body: { q: 'Brandschutz' } })
+    expect(requests[0]).toEqual({ path: '/api/office-shelf/documents/search', body: { q: 'Brandschutz' } })
   })
 
   it('offers the substring filter alone without a scope', () => {

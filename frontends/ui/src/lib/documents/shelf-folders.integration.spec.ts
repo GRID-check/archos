@@ -51,7 +51,7 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
 
   async function insertDocument(
     id: string,
-    scope: 'project' | 'archiv',
+    scope: 'project' | 'office_shelf',
     extra: { lifecycle?: 'active' | 'archived'; agent?: boolean } = {},
   ): Promise<void> {
     await inTenant(() =>
@@ -210,7 +210,7 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
   it('files an Archiv document, refuses a project document there, and re-files on delete', async () => {
     const officeShelfDoc = '00000000-0000-4000-8000-0000000f0001'
     const projectDoc = '00000000-0000-4000-8000-0000000f0002'
-    await insertDocument(officeShelfDoc, 'archiv')
+    await insertDocument(officeShelfDoc, 'office_shelf')
     await insertDocument(projectDoc, 'project')
     const all = await inTenant(() => folders.listShelfFolders(session(), shelf.OFFICE_SHELF))
     const root = all.find((row) => row.path === 'Plaene')!
@@ -247,9 +247,9 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
   })
 
   it('serves a project and the Archiv one listing: same columns, same filters', async () => {
-    await insertDocument('00000000-0000-4000-8000-0000000f0011', 'archiv')
-    await insertDocument('00000000-0000-4000-8000-0000000f0012', 'archiv', { lifecycle: 'archived' })
-    await insertDocument('00000000-0000-4000-8000-0000000f0013', 'archiv', { agent: true })
+    await insertDocument('00000000-0000-4000-8000-0000000f0011', 'office_shelf')
+    await insertDocument('00000000-0000-4000-8000-0000000f0012', 'office_shelf', { lifecycle: 'archived' })
+    await insertDocument('00000000-0000-4000-8000-0000000f0013', 'office_shelf', { agent: true })
     await insertDocument('00000000-0000-4000-8000-0000000f0021', 'project')
     await insertDocument('00000000-0000-4000-8000-0000000f0022', 'project', { lifecycle: 'archived' })
     await insertDocument('00000000-0000-4000-8000-0000000f0023', 'project', { agent: true })

@@ -220,7 +220,7 @@ export function mayReadDocument(row: ReadableFacts, reader: DocumentReader): boo
       return shelfMayRead(row, reader)
     case 'shelves':
       if (row.scope === 'project') return shelfMayRead(row, reader.project)
-      if (row.scope === 'archiv') return shelfMayRead(row, reader.officeShelf)
+      if (row.scope === 'office_shelf') return shelfMayRead(row, reader.officeShelf)
       return false
     case 'projects':
       return (

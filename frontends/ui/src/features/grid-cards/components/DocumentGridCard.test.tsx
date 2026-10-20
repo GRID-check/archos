@@ -53,7 +53,7 @@ describe('DocumentGridCard', () => {
           documents: [row('p1', 'Fluchtwegplan.pdf', { summary: 'Fluchtwegplan EG mit zweitem Ausgang.' })],
         }),
       ),
-      http.post('/api/archiv/documents/by-name', () =>
+      http.post('/api/office-shelf/documents/by-name', () =>
         HttpResponse.json({
           documents: [row('a1', 'Referenzprojekt.pdf', { summary: 'Vergleichbarer Grundriss aus dem Archiv.' })],
           collectionName: 'archiv_o',
@@ -105,7 +105,7 @@ describe('DocumentGridCard', () => {
     server.use(
       http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [] })),
       // 403 = feature gate, fail-open — NOT a fetch error, so no retry state.
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({}, { status: 403 }))
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 }))
     )
 
     render(
@@ -136,7 +136,7 @@ describe('DocumentGridCard', () => {
           ? HttpResponse.json({}, { status: 500 })
           : HttpResponse.json({ documents: [row('p1', 'Fluchtwegplan.pdf')] })
       }),
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
       http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 }))
     )
 
@@ -170,7 +170,7 @@ describe('DocumentGridCard', () => {
       http.post('/api/documents/by-name', () =>
         HttpResponse.json({ documents: [row('p1', 'Plan.dwg', { contentType: 'application/acad' })] })
       ),
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
       http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 })),
       http.get('/api/documents/:id/preview', () => HttpResponse.json({ url: null })),
       http.get('/api/documents/:id/visual-details', () => HttpResponse.json({ details: [] }))
@@ -192,7 +192,7 @@ describe('DocumentGridCard', () => {
     // Archiv list is empty — it must resolve to nothing, never the project file.
     server.use(
       http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Bericht.pdf')] })),
-      http.post('/api/archiv/documents/by-name', () => HttpResponse.json({ documents: [] }))
+      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({ documents: [] }))
     )
 
     render(
@@ -207,7 +207,7 @@ describe('DocumentGridCard', () => {
     // Resolved to nothing → honest unresolved card linking to the ARCHIV (buero
     // source), never the same-named project file's card.
     expect(screen.getByText('The assistant referenced this file.')).toBeInTheDocument()
-    expect(screen.getByTestId('document-grid-unresolved')).toHaveAttribute('href', '/app/archiv')
+    expect(screen.getByTestId('document-grid-unresolved')).toHaveAttribute('href', '/app/office-shelf')
     expect(screen.getByText('Open in Office filing')).toBeInTheDocument()
     expect(screen.queryByText('Project')).not.toBeInTheDocument()
   })

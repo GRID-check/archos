@@ -645,6 +645,18 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
       proposalCount: 'number',
     },
   },
+  'office_shelf.document.uploaded': {
+    targets: [{ type: 'document' }],
+    metadata: { filename: 'string', fileSize: 'number', collectionName: 'string' },
+  },
+  'office_shelf.document.deleted': {
+    targets: [{ type: 'document' }],
+    metadata: { filename: 'string', collectionName: 'string' },
+  },
+  // The three `archiv.document.*` actions below are what the office shelf's trail
+  // was called before it had an English name. Nothing writes them any more; the
+  // history keeps them, so they stay in the catalogue for every reader, filter
+  // and label. Never remove them while rows with the old name exist.
   'archiv.document.uploaded': {
     targets: [{ type: 'document' }],
     metadata: { filename: 'string', fileSize: 'number', collectionName: 'string' },
@@ -665,6 +677,16 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'document' }],
     metadata: { conversationId: 'string', filename: 'string', collectionName: 'string' },
   },
+  'office_shelf.document.renamed': {
+    targets: [{ type: 'document' }],
+    metadata: {
+      filename: 'string',
+      previousName: 'string',
+      displayName: 'string',
+      collectionName: 'string',
+    },
+  },
+  // Retired name of `office_shelf.document.renamed`; history only (see above).
   'archiv.document.renamed': {
     targets: [{ type: 'document' }],
     metadata: {

@@ -87,7 +87,7 @@ describe('settleUploadBatches', () => {
 
   it('names no place for the Büroablage or a chat: the payload is rendered in every language as it is', async () => {
     vi.mocked(completeSettledBatches).mockResolvedValue([
-      batch({ id: 'batch-a', scope: 'archiv', projectId: null }),
+      batch({ id: 'batch-a', scope: 'office_shelf', projectId: null }),
       batch({ id: 'batch-s', scope: 'session', projectId: null, conversationId: 'conv-1' }),
     ])
 

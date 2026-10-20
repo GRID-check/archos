@@ -67,17 +67,20 @@ class TestDocumentsLoading:
     """A setup-phase line: RETURNED for ``_run`` to yield, never emitted."""
 
     def test_a_shelf_of_the_readers_own_is_named(self, steps) -> None:
-        step = turn_status.documents_loading_step(["archiv"])
+        step = turn_status.documents_loading_step(["office_shelf"])
         # The SHELF is in the key, not in the values: German needs the dative
         # ("aus der Büroablage") and English needs no article at all, so a
         # shelf name cannot be interpolated into one shared template.
         assert step == StatusStep(
-            id="status:documents", slot="documents", key="status.documents.archiv", detail={"shelves": ["archiv"]}
+            id="status:documents",
+            slot="documents",
+            key="status.documents.officeShelf",
+            detail={"shelves": ["office_shelf"]},
         )
         assert steps == []
 
     def test_several_shelves_collapse_into_one_line(self) -> None:
-        assert turn_status.documents_loading_step(["archiv", "project"]).key == "status.documents.several"
+        assert turn_status.documents_loading_step(["office_shelf", "project"]).key == "status.documents.several"
 
     def test_the_base_corpus_alone_says_nothing(self) -> None:
         """It is read on every research turn — announcing it announces a constant."""
@@ -645,10 +648,10 @@ _GERMAN_WORDS = (
 def _every_live_payload(steps) -> list:
     """One of every live step this repo can produce, the setup phase's included."""
     setup = [
-        turn_status.documents_loading_step(["archiv"]),
+        turn_status.documents_loading_step(["office_shelf"]),
         turn_status.documents_loading_step(["project"]),
         turn_status.documents_loading_step(["session"]),
-        turn_status.documents_loading_step(["archiv", "project"]),
+        turn_status.documents_loading_step(["office_shelf", "project"]),
         turn_status.documents_waiting_step(file_count=1),
     ]
     turn_status.emit_retrieval(

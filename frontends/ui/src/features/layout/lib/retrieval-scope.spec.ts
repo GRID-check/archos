@@ -21,8 +21,8 @@ describe('includeShelvesForTurn', () => {
   })
 
   test('asking about an office shelf file drops the project corpus', () => {
-    expect(includeShelvesForTurn({ subjectShelf: 'archiv' })).toEqual([
-      'archiv',
+    expect(includeShelvesForTurn({ subjectShelf: 'office_shelf' })).toEqual([
+      'office_shelf',
       'session',
       'base',
     ])
@@ -36,7 +36,7 @@ describe('includeShelvesForTurn', () => {
    * SHELF did not, although a reader reaches for either to say the same thing.
    */
   test('no subject shelf costs the turn its building code', () => {
-    for (const subjectShelf of ['session', 'project', 'archiv'] as const) {
+    for (const subjectShelf of ['session', 'project', 'office_shelf'] as const) {
       expect(includeShelvesForTurn({ subjectShelf })).toContain('base')
     }
   })
@@ -46,7 +46,7 @@ describe('includeShelvesForTurn', () => {
   })
 
   test('the office shelf chip keeps law + session, not project files', () => {
-    expect(includeShelvesForTurn({ preset: 'office' })).toEqual(['archiv', 'session', 'base'])
+    expect(includeShelvesForTurn({ preset: 'office' })).toEqual(['office_shelf', 'session', 'base'])
   })
 
   test('the Baurecht chip stays on the base corpus', () => {

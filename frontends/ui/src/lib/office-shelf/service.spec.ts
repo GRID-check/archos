@@ -105,7 +105,7 @@ vi.mock('@/lib/documents/repository', () => ({
   // mid-upload, which is a 409 of its own (ADR-0054 correction 17), so the
   // default is the row existing.
   findDocumentInOrg: vi.fn(async (id: string) =>
-    (await import('@/test-utils/db-fixtures')).makeDocument({ id, projectId: null, scope: 'archiv' }),
+    (await import('@/test-utils/db-fixtures')).makeDocument({ id, projectId: null, scope: 'office_shelf' }),
   ),
 }))
 
@@ -187,7 +187,7 @@ const makeFile = (name = 'plan.pdf') =>
     arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
   }) as unknown as File
 
-const request = new Request('http://localhost/api/archiv/documents/upload')
+const request = new Request('http://localhost/api/office-shelf/documents/upload')
 
 beforeEach(() => {
   // happy-dom's crypto has no randomUUID; the id value is irrelevant here.
@@ -423,7 +423,7 @@ describe('uploadOfficeShelfDocument', () => {
     expect(admitOrDiscard).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      expect.objectContaining({ organizationId: 'org-1', scope: 'archiv', projectId: null, collectionName: 'archiv_org-1' }),
+      expect.objectContaining({ organizationId: 'org-1', scope: 'office_shelf', projectId: null, collectionName: 'archiv_org-1' }),
     )
     // The bucket travels with the key (ADR-0043): both presigned URLs the
     // ingest dispatch mints — the download and the thumbnail slot — have to
@@ -464,7 +464,7 @@ describe('uploadOfficeShelfDocument', () => {
         // The key carries the folder AT UPLOAD, as a project's does.
         expect.stringMatching(/^org\/org-1\/archiv\/Normen\/Brandschutz\/doc\/[^/]+\/plan\.pdf$/),
         expect.objectContaining({
-          scope: 'archiv',
+          scope: 'office_shelf',
           projectId: null,
           folderId: 'folder-1',
           originPath: 'Normen/Brandschutz/plan.pdf',
@@ -553,7 +553,7 @@ describe('deleteOfficeShelfDocument', () => {
     vi.mocked(findOfficeShelfDocument).mockResolvedValue(
       makeDocument({
         id: 'd1',
-        scope: 'archiv',
+        scope: 'office_shelf',
         projectId: null,
         collectionName: 'archiv_org-1',
         storageKey: 'org/org-1/archiv/doc/d1/plan.pdf',
@@ -587,7 +587,7 @@ describe('deleteOfficeShelfDocument', () => {
   it('purges the chunks again once the row is gone, and a failure there is not surfaced', async () => {
     const doc = makeDocument({
       id: 'd1',
-      scope: 'archiv',
+      scope: 'office_shelf',
       projectId: null,
       collectionName: 'archiv_org-1',
       storageKey: 'org/org-1/archiv/doc/d1/plan.pdf',
@@ -628,7 +628,7 @@ describe('deleteOfficeShelfDocument', () => {
     vi.mocked(findOfficeShelfDocument).mockResolvedValue(
       makeDocument({
         id: 'd1',
-        scope: 'archiv',
+        scope: 'office_shelf',
         projectId: null,
         collectionName: 'archiv_org-1',
         storageKey: 'org/org-1/archiv/doc/d1/plan.pdf',
@@ -657,7 +657,7 @@ describe('deleteOfficeShelfDocument', () => {
   it('erases every stored object through the shared cleanup, and keeps the row when it fails', async () => {
     const doc = makeDocument({
       id: 'd1',
-      scope: 'archiv',
+      scope: 'office_shelf',
       projectId: null,
       collectionName: 'archiv_org-1',
       storageKey: 'org/org-1/archiv/doc/d1/plan.pdf',
@@ -686,7 +686,7 @@ describe('deleteOfficeShelfDocument', () => {
     vi.mocked(findOfficeShelfDocument).mockResolvedValue(
       makeDocument({
         id: 'd1',
-        scope: 'archiv',
+        scope: 'office_shelf',
         projectId: null,
         authoredBy: 'agent',
         collectionName: 'archiv_org-1',
@@ -704,7 +704,7 @@ describe('deleteOfficeShelfDocument', () => {
 
   /**
    * The Archiv is not a different filing system — it is the same `documents`
-   * table with `scope = 'archiv'` — so it carried the same ghost: a second
+   * table with `scope = 'office_shelf'` — so it carried the same ghost: a second
    * upload of one filename wrote a second row and a second stored object, while
    * the ingest pipeline's filename-keyed chunk replacement killed the first
    * row's chunks. Listed, downloadable, findable by nothing, billed twice.
@@ -749,7 +749,7 @@ describe('deleteOfficeShelfDocument', () => {
     const result = await uploadOfficeShelfDocument(session, makeFile('norm.pdf'), request)
 
     const inserted = vi.mocked(admitOrDiscard).mock.calls.at(-1)
-    expect(inserted?.[2]).toMatchObject({ scope: 'archiv', filename: 'norm.pdf' })
+    expect(inserted?.[2]).toMatchObject({ scope: 'office_shelf', filename: 'norm.pdf' })
     expect(result.documentId).not.toBe('archiv-deleted')
     expect(result.documentId).toBe(inserted?.[2].id)
   })

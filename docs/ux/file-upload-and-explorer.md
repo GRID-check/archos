@@ -775,8 +775,8 @@ What a shelf may differ in is exactly the fields of `FileShelf`:
 
 | Field | Project | Archiv | Why it is inherent |
 |---|---|---|---|
-| `endpoints` | `/api/documents?projectId`, `/api/projects/{id}/folders` | `/api/archiv/documents`, `/api/archiv/folders` | Two stores |
-| `canManage` | always | `org:archiv:manage` | Archiv writes are an org permission; a read-only member sees folders, search, filters, preview and download, nothing that mutates |
+| `endpoints` | `/api/documents?projectId`, `/api/projects/{id}/folders` | `/api/office-shelf/documents`, `/api/office-shelf/folders` | Two stores |
+| `canManage` | always | `org:office_shelf:manage` | Archiv writes are an org permission; a read-only member sees folders, search, filters, preview and download, nothing that mutates |
 | `canCollaborate`, `currentUserId` | collaboration flag | off | Assignment is project-scoped |
 | `askAbout` | opens the project chat | absent | There is no Archiv chat to open |
 | `preview` | `store` (the project shell hosts it; chat shares it) | `dialog` (the sheet has no host) | Where a preview can be mounted |
@@ -787,7 +787,7 @@ What a shelf may differ in is exactly the fields of `FileShelf`:
 
 The tag chips of the old Archiv grid are „Kategorie" in the shared filter menu
 (`FileFilters.tags`, any-of), so they work under folders and on every shelf. The
-Archiv's semantic search is the pane's own, pointed at `/api/archiv/documents/search`
+Archiv's semantic search is the pane's own, pointed at `/api/office-shelf/documents/search`
 (`projectSearchScope` / `OFFICE_SHELF_SEARCH_SCOPE`); a search is shelf-wide and
 escapes the open folder exactly as in Dateien.
 
@@ -960,7 +960,7 @@ never drains the shelf for the default view.
   A move or delete patches the loaded rows at once and re-reads the summary, so
   the tiles' counts follow.
 - **Changes made elsewhere arrive live.** The workspace joins its shelf's live
-  channel (`shelf:project-<id>` or `shelf:archiv`, ADR-0110) through
+  channel (`shelf:project-<id>` or `shelf:office_shelf`, ADR-0110) through
   `useShelfLive`. The server says `shelf.changed` after every write to the
   shelf: a new or replaced document (a person's, a mail import, one Piloti
   filed), a rename, a delete, a move, a folder made, renamed, moved, binned,

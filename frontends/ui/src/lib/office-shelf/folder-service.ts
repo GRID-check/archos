@@ -5,7 +5,7 @@
  * The twin of `@/lib/projects/folder-service`, and the same code underneath,
  * authorization included (`@/lib/documents/shelf-authz`): any member of the
  * organization may read the tree, as they may read the Archiv itself; changing
- * it takes `org:archiv:manage` (`canManageOfficeShelf`), the permission that already
+ * it takes `org:office_shelf:manage` (`canManageOfficeShelf`), the permission that already
  * gates uploading and deleting there — a folder is a label on those documents,
  * so it is gated like them.
  */

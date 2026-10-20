@@ -1,12 +1,12 @@
 """The office shelf is called „Büroablage", everywhere a person or the model reads it.
 
 Product decision of 6 Oct 2026 (docs/audit/upload-and-filing-retriage-2026-10-06.md,
-Q-0): the org-wide shelf `scope = 'archiv'` is „Büroablage" in German copy and
+Q-0): the org-wide shelf `scope = 'office_shelf'` is „Büroablage" in German copy and
 „Office filing" in English copy. Before that it went by three names at once —
 „Archiv" in the navigation, „Büroarchiv" on chips and in the prompt, „Büroablage"
 in the upload code — and a fourth meaning was arriving with the Bibliothek.
 
-The code keeps its identifiers (`archiv`, `archiv_<org>`, `/app/archiv`, the
+The code keeps its identifiers (`office_shelf`, `archiv_<org>`, `/app/office-shelf`, the
 `office` kind). This file is the ratchet on the COPY: it scans what a reader or
 the model reads and fails on the old names, so a string copied from an old
 branch or an old doc cannot bring them back. The document action „Archivieren"
@@ -142,7 +142,7 @@ class TestOneNameInBothRuntimes:
             # The coarse kind in the source popover (ADR-0026).
             r"kinds:\s*\{[^}]*?office:\s*'([^']+)'",
             # The shelf tab of a source card (ADR-0047).
-            r"shelves:\s*\{\s*archiv:\s*'([^']+)'",
+            r"shelves:\s*\{\s*office_shelf:\s*'([^']+)'",
             # The shelf in the reasoning view's file chips.
             r"shelf:\s*\{[^}]*?office:\s*'([^']+)'",
         ],
@@ -160,5 +160,5 @@ class TestOneNameInBothRuntimes:
         if not all(path.is_file() for path in nav.values()):
             pytest.skip("frontend not present in this checkout")
         for lang, expected in (("de", NAME_DE), ("en", NAME_EN)):
-            match = re.search(r"\barchiv:\s*'([^']+)'", nav[lang].read_text(encoding="utf-8"))
+            match = re.search(r"\bofficeShelf:\s*'([^']+)'", nav[lang].read_text(encoding="utf-8"))
             assert match and match.group(1) == expected, lang

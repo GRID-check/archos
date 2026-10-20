@@ -37,7 +37,7 @@ Calls = list[tuple[dict[str, Any], SignedEnvelope]]
 INVENTORY = [
     AvailableDocument(file_name="Grundriss_EG.pdf", shelf="project", collection="proj_1"),
     AvailableDocument(file_name="Grundriss_OG.pdf", shelf="project", collection="proj_1"),
-    AvailableDocument(file_name="Schnitt A-A.pdf", shelf="archiv", collection="archiv_1"),
+    AvailableDocument(file_name="Schnitt A-A.pdf", shelf="office_shelf", collection="archiv_1"),
     AvailableDocument(file_name="OIB-RL2.pdf", shelf="base", collection="oib"),
 ]
 

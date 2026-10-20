@@ -47,7 +47,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
   const inTenant = <T>(run: () => Promise<T>): Promise<T> =>
     withTenant({ organizationId: ORG, userId: USER }, run)
 
-  async function seed(scope: 'project' | 'archiv', prefix: string): Promise<void> {
+  async function seed(scope: 'project' | 'office_shelf', prefix: string): Promise<void> {
     for (const [index, createdAt] of CREATED_AT.entries()) {
       const collection = scope === 'project' ? 'coll_listpage' : `archiv_${ORG}`
       await inTenant(() =>
@@ -64,7 +64,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
   }
 
   /** The order the listing promises, as Postgres itself computes it. */
-  async function expectedIds(scope: 'project' | 'archiv'): Promise<string[]> {
+  async function expectedIds(scope: 'project' | 'office_shelf'): Promise<string[]> {
     const rows = await inTenant(async () =>
       Array.from(
         await db.execute<{ id: string }>(sql`
@@ -93,7 +93,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
     )
     projectId = String(Array.from(rows)[0].id)
     await seed('project', 'plan')
-    await seed('archiv', 'norm')
+    await seed('office_shelf', 'norm')
   }, 60_000)
 
   afterAll(async () => {
@@ -130,7 +130,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
       if (!page.nextCursor) break
       cursor = page.nextCursor
     }
-    expect(seen).toEqual(await expectedIds('archiv'))
+    expect(seen).toEqual(await expectedIds('office_shelf'))
   })
 
   it('says a full last page is the last one', async () => {

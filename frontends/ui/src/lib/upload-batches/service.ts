@@ -75,7 +75,7 @@ export async function openUploadBatch(session: AuthorizedSession, input: OpenUpl
   if (input.scope === 'project') {
     if (!input.projectId) throw new BadRequestError('A project upload names its project')
     await requireProjectAccess(session, input.projectId, ['project:documents:write', 'project:edit'])
-  } else if (input.scope === 'archiv' && !canManageOfficeShelf(session)) {
+  } else if (input.scope === 'office_shelf' && !canManageOfficeShelf(session)) {
     throw new NotFoundError('Upload not found')
   }
   await insertUploadBatch({

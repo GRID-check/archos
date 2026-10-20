@@ -92,13 +92,13 @@ describe('isSettling', () => {
 describe('links', () => {
   it('opens a project file in the Files view, an Archiv file in the Archiv, and links no chat file', () => {
     expect(documentHref(MIXED_SUMMARY, 'doc-1')).toBe('/app/projects/proj-stadthaus/files?doc=doc-1')
-    expect(documentHref({ scope: 'archiv', projectId: null }, 'doc 1')).toBe('/app/archiv?doc=doc%201')
+    expect(documentHref({ scope: 'office_shelf', projectId: null }, 'doc 1')).toBe('/app/office-shelf?doc=doc%201')
     expect(documentHref({ scope: 'session', projectId: null }, 'doc-1')).toBeNull()
   })
 
   it('links where the upload went', () => {
     expect(placeHref(MIXED_SUMMARY)).toBe('/app/projects/proj-stadthaus/files')
-    expect(placeHref({ scope: 'archiv', projectId: null, conversationId: null })).toBe('/app/archiv')
+    expect(placeHref({ scope: 'office_shelf', projectId: null, conversationId: null })).toBe('/app/office-shelf')
     expect(placeHref({ scope: 'session', projectId: null, conversationId: 'c 1' })).toBe('/app/chat?session=c%201')
   })
 })

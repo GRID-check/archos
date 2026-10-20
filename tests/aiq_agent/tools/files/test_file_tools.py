@@ -45,7 +45,7 @@ INVENTORY = [
         folder_path="Einreichung/Pläne",
     ),
     AvailableDocument(file_name="Grundriss OG.pdf", shelf="project", collection="proj_1", folder_path=None),
-    AvailableDocument(file_name="Musterbescheid.pdf", shelf="archiv", collection="archiv_1"),
+    AvailableDocument(file_name="Musterbescheid.pdf", shelf="office_shelf", collection="archiv_1"),
     # Neither shelf is the reader's to organise: the platform corpus belongs to
     # nobody here, and a session attachment is not a project document.
     AvailableDocument(file_name="OIB-RL2.pdf", shelf="base", collection="oib"),

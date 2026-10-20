@@ -118,7 +118,7 @@ describe('resolveJump', () => {
   test('cross-project doorways resolve from anywhere', () => {
     expect(resolveJump('p', ALL, null)).toBe('/app/projects')
     expect(resolveJump('o', ALL, null)).toBe('/app/organization')
-    expect(resolveJump('a', ALL, null)).toBe('/app/archiv')
+    expect(resolveJump('a', ALL, null)).toBe('/app/office-shelf')
     expect(resolveJump('i', ALL, null)).toBe('/app/inbox')
   })
 

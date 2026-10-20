@@ -131,13 +131,13 @@ export function isSettling(summary: UploadSummary): boolean {
 
 /** Where the person reads one file: the project's Files view or the Archiv, opened on it. A chat has no per-file view. */
 export function documentHref(summary: Pick<UploadSummary, 'scope' | 'projectId'>, documentId: string): string | null {
-  if (summary.scope === 'archiv') return `/app/archiv?doc=${encodeURIComponent(documentId)}`
+  if (summary.scope === 'office_shelf') return `/app/office-shelf?doc=${encodeURIComponent(documentId)}`
   return summary.scope === 'project' && summary.projectId ? documentFilesHref(summary.projectId, documentId) : null
 }
 
 /** Where the upload went, as a link. */
 export function placeHref(summary: Pick<UploadSummary, 'scope' | 'projectId' | 'conversationId'>): string | null {
-  if (summary.scope === 'archiv') return '/app/archiv'
+  if (summary.scope === 'office_shelf') return '/app/office-shelf'
   if (summary.scope === 'session') {
     return summary.conversationId ? `/app/chat?session=${encodeURIComponent(summary.conversationId)}` : null
   }

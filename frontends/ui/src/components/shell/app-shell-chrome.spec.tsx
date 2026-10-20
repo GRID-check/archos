@@ -71,12 +71,12 @@ describe('AppShellChrome — which chrome stands', () => {
 
 describe('AppShellChrome — overlay routes keep the chrome of the covered page', () => {
   test('opening the office shelf over a project keeps the project rail standing', () => {
-    // An intercepted navigation changes the URL to /app/archiv while the
+    // An intercepted navigation changes the URL to /app/office-shelf while the
     // segment below keeps rendering the project page. Flipping the rail into
     // the org header UNDER the sheet is the reflow this logic exists to
     // prevent.
     const { rerender } = render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
-    pathname = '/app/archiv'
+    pathname = '/app/office-shelf'
     rerender(<AppShellChrome {...baseProps}>page</AppShellChrome>)
     expect(screen.getByTestId('rail')).toHaveAttribute('data-project-id', 'p1')
     expect(screen.queryByTestId('org-header')).not.toBeInTheDocument()
@@ -91,7 +91,7 @@ describe('AppShellChrome — overlay routes keep the chrome of the covered page'
   })
 
   test('a hard load of an overlay URL has no covered page — org header stands', () => {
-    pathname = '/app/archiv'
+    pathname = '/app/office-shelf'
     render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
     expect(screen.getByTestId('org-header')).toBeInTheDocument()
     expect(screen.queryByTestId('rail')).not.toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('AppShellChrome — overlay routes keep the chrome of the covered page'
 
   test('navigating on from an overlay releases the remembered scope', () => {
     const { rerender } = render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
-    pathname = '/app/archiv'
+    pathname = '/app/office-shelf'
     rerender(<AppShellChrome {...baseProps}>page</AppShellChrome>)
     pathname = '/app/projects'
     rerender(<AppShellChrome {...baseProps}>page</AppShellChrome>)

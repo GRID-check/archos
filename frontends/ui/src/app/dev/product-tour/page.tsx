@@ -59,7 +59,7 @@ function Preview(): JSX.Element {
   // preview must not then mistake itself for a replay and start it again.
   const [handover] = useState(() => params.has('tour'))
   const flags = {
-    canAccessOfficeShelf: params.get('archiv') !== '0',
+    canAccessOfficeShelf: params.get('office_shelf') !== '0',
     canAccessInbox: params.get('inbox') !== '0',
     canManageOrganization: params.get('member') !== '1',
   }

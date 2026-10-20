@@ -13,7 +13,7 @@
  * documents into the collection their new access calls for. A delete is the
  * other thing only a project has: the folder goes to the Papierkorb with its
  * contents (`./folder-bin.ts`) instead of the shelf's re-filing delete, which
- * stays the Archiv's. The Archiv's twin is `@/lib/archiv/folder-service`.
+ * stays the Archiv's. The Archiv's twin is `@/lib/office-shelf/folder-service`.
  */
 
 import type { AuthorizedSession } from '@/lib/auth/types'

@@ -43,10 +43,10 @@ describe('moreDestinations: what "Mehr" lists', () => {
 
   test('in a project it lists the rail sections without a tab, gated as the rail gates them', () => {
     const keys = (flags: MoreFlags) => moreDestinations('p1', '/app/projects/p1/chat', flags).map((d) => d.key)
-    expect(keys(ALL)).toEqual(['automation', 'archiv', 'profile', 'organization', 'platform'])
+    expect(keys(ALL)).toEqual(['automation', 'office_shelf', 'profile', 'organization', 'platform'])
     expect(keys(NONE)).toEqual(['profile'])
     expect(keys({ ...ALL, showSkills: false })).not.toContain('automation')
-    expect(keys({ ...ALL, canAccessOfficeShelf: false })).not.toContain('archiv')
+    expect(keys({ ...ALL, canAccessOfficeShelf: false })).not.toContain('office_shelf')
   })
 
   test('the account links are gated as the avatar menu gates them', () => {

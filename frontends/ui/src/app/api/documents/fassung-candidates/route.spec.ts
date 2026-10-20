@@ -35,7 +35,7 @@ import {
 } from '@/lib/documents/name-probe-client'
 import { NAME_PROBE_MAX_NAMES, type RevisionCandidateMatch } from '@/lib/documents/name-probe-types'
 import { POST as probeProject } from './route'
-import { POST as probeOfficeShelf } from '../../archiv/documents/fassung-candidates/route'
+import { POST as probeOfficeShelf } from '../../office-shelf/documents/fassung-candidates/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
   [PROJECT_REVISION_CANDIDATES_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
@@ -116,7 +116,7 @@ describe('POST /api/documents/fassung-candidates', () => {
   })
 })
 
-describe('POST /api/archiv/documents/fassung-candidates', () => {
+describe('POST /api/office-shelf/documents/fassung-candidates', () => {
   it('answers what the names continue in the Archiv', async () => {
     expect(await client.officeShelfRevisions(['EG_Index_C.pdf'])).toEqual([MATCH])
     expect(probeOfficeShelfRevisionCandidates).toHaveBeenCalledWith(

@@ -57,7 +57,7 @@ export interface RenameDocumentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   document: ActionableDocument
-  /** Which namespace holds the words ('files' or 'archiv'). */
+  /** Which namespace holds the words ('files' or 'office_shelf'). */
   scope: DocumentScope
   /** `null` restores the file's own name. Resolves once the request settles. */
   onRename: (displayName: string | null) => Promise<boolean>

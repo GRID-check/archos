@@ -63,7 +63,7 @@ def _verified_collection_scope(http_request: Request) -> list[str] | None:
 
     Only the HMAC-signed ``X-Grid-Request-Context`` envelope is honored — never
     the raw, forgeable ``X-Grid-Collection-Scope`` header on its own — because
-    collection names are guessable (``proj_<uuid>`` / ``archiv_<orgId>``), so an
+    collection names are guessable (``proj_<uuid>`` / ``archiv_<orgId>`` / ``office_shelf_<orgId>``), so an
     attacker who could set a raw scope header would read another tenant's corpus.
     When ``GRID_INTERNAL_API_TOKEN`` is unset (dev), ``from_envelope`` accepts the
     envelope on shape alone, mirroring the rest of the codebase's fail-open dev

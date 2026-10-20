@@ -728,7 +728,7 @@ describe('InboxItemRow — a row whose target is a document', () => {
   })
 
   test('offers nothing for an Archiv document, which has no project chat', () => {
-    render(<InboxItemRow item={reviewRequest({ href: '/app/archiv?doc=doc-7' })} />)
+    render(<InboxItemRow item={reviewRequest({ href: '/app/office-shelf?doc=doc-7' })} />)
     expect(screen.queryByTestId('discuss-document')).not.toBeInTheDocument()
   })
 })

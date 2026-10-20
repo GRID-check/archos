@@ -38,7 +38,7 @@ type ReviewedDocument = Pick<Document, 'scope' | 'projectId' | 'folderId'>
 /** Whether this session may release or delete this quarantined document. Never throws. */
 export async function mayReviewQuarantine(session: AuthorizedSession, doc: ReviewedDocument): Promise<boolean> {
   if (hasPermission(session, ORG_PERMISSIONS.projectsAdminister)) return true
-  if (doc.scope === 'archiv') return canManageOfficeShelf(session)
+  if (doc.scope === 'office_shelf') return canManageOfficeShelf(session)
   if (doc.scope !== 'project' || !doc.projectId) return false
   try {
     await requireProjectAccess(session, doc.projectId, 'project:manage')

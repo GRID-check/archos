@@ -4,7 +4,7 @@
  * and one document by id live, so no hook spells a path of its own.
  *
  * - A level page: `GET {list}?folderId=&sort=&dir=&q=&state=&limit=&cursor=`
- *   on the shelf's listing route (`/api/documents`, `/api/archiv/documents`).
+ *   on the shelf's listing route (`/api/documents`, `/api/office-shelf/documents`).
  * - The shelf summary: `GET {list}/summary`.
  * - One document as a listing row: `GET /api/documents/{id}` (both shelves).
  *

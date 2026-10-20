@@ -29,7 +29,7 @@ describe('buildFolderDescriptionsBlock', () => {
       { id: 'f-bescheide', scope: 'project', path: 'Bescheide', description: 'Bescheide der Behörden, keine Lohnzettel' },
       { id: 'f-honorare', scope: 'project', path: 'Honorare', description: 'Honorarnoten' },
       { id: 'f-2026', scope: 'project', path: 'Honorare/2026', description: 'Honorarnoten 2026' },
-      { id: 'f-normen', scope: 'archiv', path: 'Normen', description: 'Gekaufte ÖNORMEN' },
+      { id: 'f-normen', scope: 'office_shelf', path: 'Normen', description: 'Gekaufte ÖNORMEN' },
     ])
     expect(await buildFolderDescriptionsBlock('org-1', 'proj-1')).toBe(
       [

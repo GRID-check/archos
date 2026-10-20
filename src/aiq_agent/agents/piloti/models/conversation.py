@@ -50,7 +50,7 @@ class ConversationState(BaseModel):
             exactly like a file that does not exist, and the answer omits it
             silently instead of saying it could not be read yet.
         focus_file_name: Filename of the composer's "Asking about <file>" subject.
-        focus_shelf: Shelf that focused file sits on (session/project/archiv).
+        focus_shelf: Shelf that focused file sits on (session/project/office_shelf).
         skip_clarifier: When True the clarifier node is bypassed regardless of
             ``enable_clarifier``.  Set automatically for API-key and anonymous
             callers so headless workflows do not stall waiting for user input.

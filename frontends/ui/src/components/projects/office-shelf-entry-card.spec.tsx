@@ -7,7 +7,7 @@ describe('ArchivEntryCard', () => {
     render(<OfficeShelfEntryCard />)
 
     const link = screen.getByRole('link', { name: /office filing/i })
-    expect(link).toHaveAttribute('href', '/app/archiv')
+    expect(link).toHaveAttribute('href', '/app/office-shelf')
     expect(screen.getByText('Office filing')).toBeInTheDocument()
     expect(screen.getByText(/organization-wide knowledge/i)).toBeInTheDocument()
   })

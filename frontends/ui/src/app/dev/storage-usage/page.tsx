@@ -25,7 +25,7 @@ const GB = 1e9
 const STORAGE = {
   usage: {
     project: { bytes: 38.4 * GB, documents: 1284 },
-    archiv: { bytes: 2.6 * GB, documents: 96 },
+    office_shelf: { bytes: 2.6 * GB, documents: 96 },
     total: { bytes: 41 * GB, documents: 1380 },
   },
   quotaBytes: 50 * GB,
@@ -35,7 +35,7 @@ const STORAGE = {
 const OVER_QUOTA = {
   usage: {
     project: { bytes: 49.2 * GB, documents: 1602 },
-    archiv: { bytes: 3.4 * GB, documents: 118 },
+    office_shelf: { bytes: 3.4 * GB, documents: 118 },
     total: { bytes: 52.6 * GB, documents: 1720 },
   },
   quotaBytes: 50 * GB,

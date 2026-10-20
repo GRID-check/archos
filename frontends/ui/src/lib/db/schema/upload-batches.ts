@@ -15,7 +15,7 @@ import { projects } from './projects'
  * did not reach the server as files and may themselves be personal data.
  */
 
-export const UPLOAD_BATCH_SCOPES = ['project', 'archiv', 'session'] as const
+export const UPLOAD_BATCH_SCOPES = ['project', 'office_shelf', 'session'] as const
 export type UploadBatchScope = (typeof UPLOAD_BATCH_SCOPES)[number]
 
 /** One term of the office's screening and how many files it kept back. */

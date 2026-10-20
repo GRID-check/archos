@@ -65,7 +65,7 @@ class TestTargetCollections:
 
     def test_shelf_office_shelf_drops_project(self):
         scope = ["proj_a", "archiv_o", "oib_knowledge"]
-        assert _target_collections(scope, shelf="archiv") == ["archiv_o"]
+        assert _target_collections(scope, shelf="office_shelf") == ["archiv_o"]
 
     def test_shelf_project_drops_office_shelf(self):
         scope = ["proj_a", "archiv_o"]
@@ -80,7 +80,7 @@ class TestTargetCollections:
             ScopedCollection("custom_office_store", Shelf.OFFICE_SHELF),
             ScopedCollection("oib_knowledge", Shelf.BASE),
         ]
-        assert _target_collections([], shelf="archiv", scoped=scoped) == ["custom_office_store"]
+        assert _target_collections([], shelf="office_shelf", scoped=scoped) == ["custom_office_store"]
         assert _target_collections([], shelf="project", scoped=scoped) == ["custom_project_store"]
         assert _target_collections([], scoped=scoped) == ["custom_project_store", "custom_office_store"]
 

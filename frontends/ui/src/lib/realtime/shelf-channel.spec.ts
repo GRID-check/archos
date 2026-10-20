@@ -38,7 +38,7 @@ describe('the shelf channel', () => {
     expect(resolveChannel(shelfChannelKey({ kind: 'project', projectId: PROJECT }))).toMatchObject({
       params: { kind: 'project', projectId: PROJECT },
     })
-    expect(resolveChannel(shelfChannelKey({ kind: 'archiv' }))).toMatchObject({ params: { kind: 'archiv' } })
+    expect(resolveChannel(shelfChannelKey({ kind: 'office_shelf' }))).toMatchObject({ params: { kind: 'office_shelf' } })
   })
 
   it('refuses a key that names no shelf', () => {
@@ -58,8 +58,8 @@ describe('the shelf channel', () => {
   })
 
   it('listens to the session’s own Archiv, never another tenant’s', () => {
-    expect(shelfChannel.topics({ kind: 'archiv' }, 'org_1')).toEqual(['rt:shelf:org_1:archiv'])
-    expect(shelfChannel.topics({ kind: 'archiv' }, 'org_2')).toEqual(['rt:shelf:org_2:archiv'])
+    expect(shelfChannel.topics({ kind: 'office_shelf' }, 'org_1')).toEqual(['rt:shelf:org_1:archiv'])
+    expect(shelfChannel.topics({ kind: 'office_shelf' }, 'org_2')).toEqual(['rt:shelf:org_2:archiv'])
   })
 
   it('takes nothing from a browser, and re-checks an open stream', () => {
@@ -91,7 +91,7 @@ describe('publishShelfChanged', () => {
 
   it('says nothing for a row on no shelf (a chat attachment)', async () => {
     const heard: unknown[] = []
-    const release = subscribe(shelfTopic('org_1', { kind: 'archiv' }), (payload) => heard.push(payload))
+    const release = subscribe(shelfTopic('org_1', { kind: 'office_shelf' }), (payload) => heard.push(payload))
     publishShelfChanged('org_1', null)
     release()
     expect(heard).toEqual([])

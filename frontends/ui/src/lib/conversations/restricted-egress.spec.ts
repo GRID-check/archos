@@ -142,7 +142,7 @@ describe('requireMayFileFrom — only where every reader is cleared for what the
     await refusal(
       requireMayFileFrom(
         { conversationId: CONV, locale: 'de' },
-        { ...destination('archiv'), projectId: null, projectCollection: 'archiv_org_1' }
+        { ...destination('office_shelf'), projectId: null, projectCollection: 'archiv_org_1' }
       )
     )
   })

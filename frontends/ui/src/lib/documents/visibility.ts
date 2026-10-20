@@ -86,7 +86,7 @@ export function documentVisibleTo(reader: DocumentReader): SQL | undefined {
       return or(
         passedScreening(),
         and(eq(documents.scope, 'project'), heldRowFor(reader.project)),
-        and(eq(documents.scope, 'archiv'), heldRowFor(reader.officeShelf)),
+        and(eq(documents.scope, 'office_shelf'), heldRowFor(reader.officeShelf)),
       )
     case 'projects':
       return or(

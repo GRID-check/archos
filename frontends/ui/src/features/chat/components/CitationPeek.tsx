@@ -193,8 +193,8 @@ const DocumentHomeLink: FC<{ shelf?: Shelf; tint: CitedDocument['tint'] }> = ({
           href: `/app/projects/${encodeURIComponent(projectId)}/files`,
           label: t('documentGrid.openInFiles'),
         }
-      : shelf === 'archiv'
-        ? { href: '/app/archiv', label: t('documentGrid.openInOfficeShelf') }
+      : shelf === 'office_shelf'
+        ? { href: '/app/office-shelf', label: t('documentGrid.openInOfficeShelf') }
         : null
   if (!target) return null
 

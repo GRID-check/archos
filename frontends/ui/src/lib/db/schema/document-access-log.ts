@@ -1,6 +1,6 @@
 import { boolean, check, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
-import { DOWNLOAD_LOG_KINDS, DOWNLOAD_LOG_SCOPES } from '@/lib/download-log/kinds'
+import { DOWNLOAD_LOG_KINDS, DOWNLOAD_LOG_SCOPES, DOWNLOAD_LOG_STORED_SCOPES } from '@/lib/download-log/kinds'
 
 export { DOWNLOAD_LOG_KINDS, DOWNLOAD_LOG_SCOPES }
 export type { DownloadLogKind, DownloadLogScope } from '@/lib/download-log/kinds'
@@ -49,7 +49,7 @@ export const documentAccessLog = pgTable(
     /** The WorkOS user id of the person the bytes went to. */
     userId: text('user_id').notNull(),
     kind: text('kind', { enum: DOWNLOAD_LOG_KINDS }).notNull(),
-    scope: text('scope', { enum: DOWNLOAD_LOG_SCOPES }).notNull(),
+    scope: text('scope', { enum: DOWNLOAD_LOG_STORED_SCOPES }).notNull(),
     /** NULL for the Archiv and a chat's attachments, exactly as on `documents`. */
     projectId: uuid('project_id'),
     documentId: uuid('document_id').notNull(),
@@ -64,7 +64,7 @@ export const documentAccessLog = pgTable(
   },
   (table) => ({
     kindCheck: check('document_access_log_kind_check', sql`${table.kind} IN (${list(DOWNLOAD_LOG_KINDS)})`),
-    scopeCheck: check('document_access_log_scope_check', sql`${table.scope} IN (${list(DOWNLOAD_LOG_SCOPES)})`),
+    scopeCheck: check('document_access_log_scope_check', sql`${table.scope} IN (${list(DOWNLOAD_LOG_STORED_SCOPES)})`),
     scopeProject: check(
       'document_access_log_scope_project',
       sql`(${table.scope} = 'project') = (${table.projectId} IS NOT NULL)`

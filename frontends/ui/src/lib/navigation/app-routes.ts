@@ -19,7 +19,7 @@
  */
 export const APP_ROUTE_URLS: readonly string[] = [
   '/app',
-  '/app/archiv',
+  '/app/office-shelf',
   '/app/chat',
   '/app/inbox',
   '/app/onboarding/organization',

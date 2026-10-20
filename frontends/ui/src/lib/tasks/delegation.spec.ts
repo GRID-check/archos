@@ -735,7 +735,7 @@ describe('a run’s Unterlagen never name a document from a restricted folder (A
       documents: {
         basis: [
           { name: 'Einreichplan.pdf', shelf: 'project' },
-          { name: 'Abmahnung_Meier_2026.pdf', shelf: 'archiv' },
+          { name: 'Abmahnung_Meier_2026.pdf', shelf: 'office_shelf' },
         ],
         excluded: [],
       },

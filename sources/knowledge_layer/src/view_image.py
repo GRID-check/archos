@@ -57,6 +57,7 @@ from aiq_agent.common import seaweed_s3
 from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
 from aiq_agent.common.image_view_budget import note_region_viewed
 from aiq_agent.common.image_view_budget import try_consume_image_view
+from aiq_agent.common.source_kinds import office_shelf_organization_id
 from aiq_agent.knowledge.restricted_use import note_collections_read
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
@@ -361,8 +362,8 @@ async def _resolve_storage_location(
     so a base-corpus-only deployment with no BFF wiring simply never resolves.
 
     An optional ``organization_id`` is forwarded as the ``organizationId``
-    query param (needed to scope Archiv documents); when not passed it is
-    derived from the collection prefix (``archiv_org_123`` -> ``org_123``).
+    query param (needed to scope office-shelf documents); when not passed it is
+    derived from the collection prefix (``archiv_org_123`` or ``office_shelf_org_123`` -> ``org_123``).
     The param is only added to the request when one was derived/provided.
     """
     base_url = os.environ.get(_FRONTEND_INTERNAL_URL_ENV, "").strip()
@@ -372,8 +373,8 @@ async def _resolve_storage_location(
     try:
         import httpx
 
-        if organization_id is None and collection.startswith("archiv_"):
-            organization_id = collection[len("archiv_") :]
+        if organization_id is None:
+            organization_id = office_shelf_organization_id(collection)
         params: dict[str, str] = {"collection": collection, "filename": file_name}
         if organization_id:
             params["organizationId"] = organization_id

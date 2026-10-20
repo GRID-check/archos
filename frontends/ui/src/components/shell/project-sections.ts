@@ -53,7 +53,7 @@ export type ProjectSectionKey =
   | 'automation'
   | 'files'
   | 'knowledge'
-  | 'archiv'
+  | 'officeShelf'
   | 'inbox'
   | 'intake'
   | 'settings'
@@ -188,11 +188,11 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   {
     // The org-wide Archiv (ADR-0024) keeps its org-scoped route; the entry is a
     // cross-project doorway, not a project subpage.
-    key: 'archiv',
+    key: 'officeShelf',
     segment: null,
-    href: '/app/archiv',
+    href: '/app/office-shelf',
     icon: Archive,
-    i18nKey: 'archiv',
+    i18nKey: 'officeShelf',
     gate: 'canAccessOfficeShelf',
     inRail: true,
     inPalette: true,

@@ -165,7 +165,7 @@ export const chat: typeof en.chat = {
     auto: 'Web',
     model: 'Modellmessung',
     shelves: {
-      archiv: 'Büroablage',
+      office_shelf: 'Büroablage',
       project: 'Projektwissen',
       session: 'Private Sitzung',
       base: 'Basiswissen',
@@ -962,7 +962,7 @@ export const chat: typeof en.chat = {
         // es keinen: der Sammelbegriff dafür ist unser Wort, nicht ihres, also
         // sagt `several` schlicht, WAS gelesen wird.
         documents: {
-          archiv: 'Unterlagen aus der Büroablage werden gesichtet …',
+          officeShelf: 'Unterlagen aus der Büroablage werden gesichtet …',
           project: 'Unterlagen aus dem Projekt werden gesichtet …',
           session: 'Unterlagen aus dieser Unterhaltung werden gesichtet …',
           several: 'Ihre Unterlagen werden gesichtet …',

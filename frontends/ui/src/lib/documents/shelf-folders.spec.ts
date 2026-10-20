@@ -60,7 +60,7 @@ const NOW = new Date('2026-10-01T00:00:00Z')
 const folder = (id: string, name: string, path: string, parentId: string | null = null) => ({
   id,
   organizationId: 'org-1',
-  scope: 'archiv' as const,
+  scope: 'office_shelf' as const,
   projectId: null,
   parentId,
   name,
@@ -171,7 +171,7 @@ describe('a folder row on the Archiv shelf', () => {
 
     expect(result.ok).toBe(true)
     expect(fake.writes.inserted).toEqual([
-      { organizationId: 'org-1', scope: 'archiv', projectId: null, parentId: null, name: 'Normen', path: 'Normen' },
+      { organizationId: 'org-1', scope: 'office_shelf', projectId: null, parentId: null, name: 'Normen', path: 'Normen' },
     ])
   })
 
@@ -207,7 +207,7 @@ describe('a folder row on the Archiv shelf', () => {
     const created = await getOrCreateShelfRootFolder(OFFICE_SHELF, 'org-1', 'Berichte')
 
     expect(created.path).toBe('Berichte')
-    expect(fake.writes.inserted[0]).toMatchObject({ scope: 'archiv', projectId: null, organizationId: 'org-1' })
+    expect(fake.writes.inserted[0]).toMatchObject({ scope: 'office_shelf', projectId: null, organizationId: 'org-1' })
   })
 })
 

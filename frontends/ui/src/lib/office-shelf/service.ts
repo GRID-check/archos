@@ -3,14 +3,14 @@
  *
  * The Archiv is a hierarchical add-on on top of the existing documents domain
  * and, since ADR-0078, has folders like a project's Dateien:
- * an Archiv document is a `documents` row with `scope = 'archiv'`, `projectId`
+ * an Archiv document is a `documents` row with `scope = 'office_shelf'`, `projectId`
  * NULL, and `collectionName = archiv_<orgId>`. That lets this service REUSE the
  * document pipeline wholesale — the SeaweedFS upload, the model-vs-ingest
  * dispatcher (`dispatchDocument`), the server-side upload allow-list (`assertUploadTypeAllowed`),
  * status reconciliation (`reconcileDocumentStatuses`), and the item routes
  * (download/preview/status/reingest/tags, which are scope-aware in
  * `lib/documents/service`). The ONLY thing that differs is authorization scope:
- * org-level (`org:archiv:manage` for writes, any member for reads) instead of
+ * org-level (`org:office_shelf:manage` for writes, any member for reads) instead of
  * per-project FGA.
  *
  * Route handlers stay thin; failures are signalled with typed errors from
@@ -66,7 +66,7 @@ export interface OfficeShelfListResult {
 
 /** How this session reads the Büroablage: as a curator of its quarantine or not (`shelfReaderFor`, ADR-0086). */
 function officeShelfReader(session: AuthorizedSession): Promise<ShelfReader> {
-  return shelfReaderFor(session, { scope: 'archiv', projectId: null })
+  return shelfReaderFor(session, { scope: 'office_shelf', projectId: null })
 }
 
 /**
@@ -146,7 +146,7 @@ export async function searchOfficeShelfDocuments(
 /**
  * The Archiv documents NAMED `filenames` (case-insensitive, either Unicode
  * form), as listing rows — the by-name resolve
- * (`POST /api/archiv/documents/by-name`). For the readers that want particular
+ * (`POST /api/office-shelf/documents/by-name`). For the readers that want particular
  * documents (citations, surfaced-document cards), which used to look them up in
  * the listing's first page and missed every one past it. Any org member may
  * read, as with `listOfficeShelf`.
@@ -189,12 +189,12 @@ export type UploadOfficeShelfDocumentResult = UploadDocumentResult
 
 /**
  * Store an uploaded file in SeaweedFS under the org's Archiv prefix, record it as
- * an `archiv`-scoped document, and hand it to the backend for ingestion into the
+ * an `office_shelf`-scoped document, and hand it to the backend for ingestion into the
  * org's shared `archiv_<orgId>` collection — the Archiv's name for the
  * shelf-parameterised pipeline in `@/lib/documents/shelf-upload`, which a
  * project's Dateien share. Ingest is best-effort (the file is already durable in
  * SeaweedFS + Postgres); status reads reconcile the outcome. Requires
- * `org:archiv:manage`.
+ * `org:office_shelf:manage`.
  *
  * `folderId` files the document into one of the Archiv's folders and
  * `originPath` records where a folder upload found it, as on a project.
@@ -217,7 +217,7 @@ export function uploadOfficeShelfDocument(
 /**
  * Delete an Archiv document: purge its RAG chunks (best-effort), remove the
  * SeaweedFS object, delete the row, purge the chunks once more, and audit.
- * Requires `org:archiv:manage`.
+ * Requires `org:office_shelf:manage`.
  */
 export async function deleteOfficeShelfDocument(
   session: AuthorizedSession,
@@ -269,7 +269,7 @@ export async function deleteOfficeShelfDocument(
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
-    action: 'archiv.document.deleted',
+    action: 'office_shelf.document.deleted',
     targetType: 'document',
     targetId: documentId,
     metadata: { filename: doc.filename.slice(0, 200), collectionName: doc.collectionName, chunksPurged },

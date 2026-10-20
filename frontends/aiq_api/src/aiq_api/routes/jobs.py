@@ -65,7 +65,7 @@ class JobDocumentRequest(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=256, description="The file name, as the inventory lists it")
     title: str | None = Field(None, max_length=256, description="The document's display title")
-    shelf: str | None = Field(None, max_length=64, description="Where it sits: archiv / project / session / base")
+    shelf: str | None = Field(None, max_length=64, description="Where it sits: office_shelf / project / session / base")
 
 
 class JobSubmitRequest(BaseModel):

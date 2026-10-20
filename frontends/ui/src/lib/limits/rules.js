@@ -239,7 +239,7 @@ const RIS_DOCUMENT_LIMIT = {
 }
 
 /**
- * Document uploads (`POST /api/archiv/documents/upload`, `/api/documents/upload`,
+ * Document uploads (`POST /api/office-shelf/documents/upload`, `/api/documents/upload`,
  * `/api/session/documents/upload`), one request per file.
  *
  * Its own bucket for the same reason `bim-query` has one: on the shared

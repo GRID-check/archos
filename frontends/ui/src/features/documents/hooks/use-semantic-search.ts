@@ -16,7 +16,7 @@ export interface SemanticHit extends FileItem {
 }
 
 interface UseSemanticSearchOptions {
-  /** BFF search route, e.g. `/api/documents/search` or `/api/archiv/documents/search`. */
+  /** BFF search route, e.g. `/api/documents/search` or `/api/office-shelf/documents/search`. */
   endpoint: string
   /** Extra body fields merged into every request (e.g. `{ projectId }`). */
   extraBody?: Record<string, unknown>

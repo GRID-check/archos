@@ -177,7 +177,7 @@ function documentInput(
 }
 
 const proposalShelfOf = (shelf: DocumentShelf): ProposalShelf =>
-  shelf.kind === 'project' ? { scope: 'project', projectId: shelf.projectId } : { scope: 'archiv' }
+  shelf.kind === 'project' ? { scope: 'project', projectId: shelf.projectId } : { scope: 'office_shelf' }
 
 /**
  * Judge one upload batch as its uploader and file the proposals. Never throws

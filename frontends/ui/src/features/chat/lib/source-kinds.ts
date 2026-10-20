@@ -156,7 +156,7 @@ export const kindForLane = (lane: string | null | undefined): SourceKind => {
 //
 // The shelf TRAVELS AS DATA. It is carried explicitly by the scope header, the
 // chunk metadata and the citation payload; nothing here derives it from a
-// collection-id prefix (`archiv_` / `proj_` / `s_`) and nothing parses it back
+// collection-id prefix (`archiv_` / `office_shelf_` / `proj_` / `s_`) and nothing parses it back
 // out of a German label. The prefix table that used to live at this spot
 // (`COLLECTION_SCOPE_PREFIXES`) is deleted — its absence is ADR-0047's
 // acceptance test, because while it existed the shelf was still a guess.
@@ -165,7 +165,7 @@ export const kindForLane = (lane: string | null | undefined): SourceKind => {
 // the defects the ADR names:
 //
 //   Shelf      — whose document is this / which collection retrieval searched.
-//                `archiv | project | session | base`.
+//                `office_shelf | project | session | base`.
 //   SourceKind — the ADR-0026 DISPLAY taxonomy driving chip colour and badge:
 //                `building_law | office | project | web`.
 //
@@ -174,12 +174,21 @@ export const kindForLane = (lane: string | null | undefined): SourceKind => {
 // enum is derivable from the other, so neither is defined in terms of the other.
 
 /** The four shelves a retrieved chunk can come from. */
-export type Shelf = 'archiv' | 'project' | 'session' | 'base'
+export type Shelf = 'office_shelf' | 'project' | 'session' | 'base'
 
 /** Every shelf, for iteration. Kept in step with {@link Shelf} by `satisfies`. */
-export const SHELVES = ['archiv', 'project', 'session', 'base'] as const satisfies readonly Shelf[]
+export const SHELVES = ['office_shelf', 'project', 'session', 'base'] as const satisfies readonly Shelf[]
 
 const SHELF_SET: ReadonlySet<string> = new Set<string>(SHELVES)
+
+/**
+ * The shelf's wire value before it had an English name. A message, citation or
+ * peer from before the rename still says `archiv`; it reads as the office
+ * shelf and nothing writes it. Python twin: `LEGACY_SHELF_VALUES` in
+ * `src/aiq_agent/common/source_kinds.py` (parity: `source-kinds.spec.ts`).
+ * Remove after one release.
+ */
+export const LEGACY_SHELF_VALUES: Readonly<Record<string, Shelf>> = { archiv: 'office_shelf' }
 
 /**
  * Narrow an untrusted wire value to a Shelf, else undefined.
@@ -190,7 +199,8 @@ const SHELF_SET: ReadonlySet<string> = new Set<string>(SHELVES)
  * the strongest provenance claim this UI can make.
  */
 export const asShelf = (value: string | null | undefined): Shelf | undefined => {
-  const key = (value ?? '').trim().toLowerCase()
+  const raw = (value ?? '').trim().toLowerCase()
+  const key = LEGACY_SHELF_VALUES[raw] ?? raw
   return SHELF_SET.has(key) ? (key as Shelf) : undefined
 }
 
@@ -227,7 +237,7 @@ export const asShelf = (value: string | null | undefined): Shelf | undefined => 
  * retired name in `RETIRED_SHELF_QUALIFIERS`.
  */
 export const CITATION_KEY_QUALIFIERS: ReadonlyArray<readonly [qualifier: string, shelf: Shelf]> = [
-  ['Büroablage', 'archiv'],
+  ['Büroablage', 'office_shelf'],
   ['Projektwissen', 'project'],
   ['Basiswissen', 'base'],
   // `session` DOES appear in keys written from ADR-0047 onward, even though no
@@ -245,7 +255,7 @@ export const CITATION_KEY_QUALIFIERS: ReadonlyArray<readonly [qualifier: string,
   ['Private Sitzung', 'session'],
   // Retired: the archiv shelf's name until 6 Oct 2026. No writer emits it; keys
   // persisted before the rename still carry it and must keep stripping.
-  ['Büroarchiv', 'archiv'],
+  ['Büroarchiv', 'office_shelf'],
 ]
 
 /**

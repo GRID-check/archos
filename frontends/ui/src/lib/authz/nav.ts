@@ -26,7 +26,7 @@ export interface NavFlags {
   /**
    * Whether the org-wide Archiv is reachable (ADR-0024). True for any session
    * with an organization — the Archiv is shared, read-open knowledge; only
-   * uploads/deletes gate on `org:archiv:manage`, enforced on the page and its
+   * uploads/deletes gate on `org:office_shelf:manage`, enforced on the page and its
    * routes. A break-glass session has no organization and so no Archiv.
    */
   canAccessOfficeShelf: boolean

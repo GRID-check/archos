@@ -37,7 +37,7 @@ describe('describeAppPath', () => {
   })
 
   test('names the org-level surfaces', () => {
-    expect(describeAppPath('/app/archiv')?.key).toBe('sections.archiv')
+    expect(describeAppPath('/app/office-shelf')?.key).toBe('sections.archiv')
     expect(describeAppPath('/app/organization/members')?.key).toBe('returnTargets.organization')
     expect(describeAppPath('/app/platform/storage')?.key).toBe('returnTargets.platform')
     expect(describeAppPath('/app/profile')?.key).toBe('returnTargets.profile')
@@ -75,7 +75,7 @@ describe('describeAppPath', () => {
       '/app/projects/p1/research',
       '/app/projects/p1/members',
       '/app/projects/p1/model',
-      '/app/archiv',
+      '/app/office-shelf',
       '/app/inbox',
       '/app/chat',
       '/app/organization',

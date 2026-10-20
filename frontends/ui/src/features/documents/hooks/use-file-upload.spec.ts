@@ -1263,7 +1263,7 @@ describe('useFileUpload — durable document uploads', () => {
       await pending
     })
 
-    expect(xhr.last().url).toBe('/api/archiv/documents/upload')
+    expect(xhr.last().url).toBe('/api/office-shelf/documents/upload')
     expect((xhr.last().body as FormData).get('projectId')).toBeNull()
   })
 

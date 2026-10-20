@@ -618,7 +618,7 @@ describe.skipIf(!url)('document versions under concurrency', () => {
         INSERT INTO documents
           (organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
         VALUES
-          (${ORG}, ${USER}, ${`norm-${seq}.pdf`}, ${storageKey}, ${`archiv_${ORG}`}, 'uploaded', 'archiv', NULL)
+          (${ORG}, ${USER}, ${`norm-${seq}.pdf`}, ${storageKey}, ${`archiv_${ORG}`}, 'uploaded', 'office_shelf', NULL)
         RETURNING id
       `),
     )

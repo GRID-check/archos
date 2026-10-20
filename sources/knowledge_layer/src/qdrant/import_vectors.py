@@ -54,6 +54,8 @@ from typing import Any
 
 from qdrant_client import models
 
+from aiq_agent.common.source_kinds import office_shelf_organization_id
+
 from .payload import ChunkRecord
 from .payload import document_facts
 from .schema import ALIASES
@@ -298,8 +300,9 @@ def scope_enrichment(scope: str) -> dict[str, Any]:
     like an ingested one's (a point ingestion already wrote keeps its own).
     """
     base: dict[str, Any] = {INDEXED_AT_FIELD: int(time.time())}
-    if scope.startswith("archiv_"):
-        base["office_id"] = scope.removeprefix("archiv_")
+    office_id = office_shelf_organization_id(scope)
+    if office_id:
+        base["office_id"] = office_id
     return base
 
 

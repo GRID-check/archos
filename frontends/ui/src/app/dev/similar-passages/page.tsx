@@ -127,7 +127,7 @@ const RESPONSE: SimilarPassagesResponse = {
       ],
     },
     {
-      kind: 'archiv',
+      kind: 'office_shelf',
       project: null,
       documents: [
         {

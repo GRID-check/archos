@@ -40,7 +40,7 @@ import {
 } from '@/lib/documents/name-probe-client'
 import { NAME_PROBE_MAX_NAMES, type DocumentNameMatch } from '@/lib/documents/name-probe-types'
 import { POST as probeProject } from './route'
-import { POST as probeOfficeShelf } from '../../archiv/documents/name-matches/route'
+import { POST as probeOfficeShelf } from '../../office-shelf/documents/name-matches/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
   [PROJECT_NAME_PROBE_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
@@ -113,7 +113,7 @@ describe('POST /api/documents/name-matches', () => {
   })
 })
 
-describe('POST /api/archiv/documents/name-matches', () => {
+describe('POST /api/office-shelf/documents/name-matches', () => {
   it('answers the Archiv', async () => {
     expect(await client.officeShelf(['EG.pdf'])).toEqual([MATCH])
     expect(probeOfficeShelfDocumentNames).toHaveBeenCalledWith(
@@ -124,7 +124,7 @@ describe('POST /api/archiv/documents/name-matches', () => {
 
   it('refuses a malformed body', async () => {
     const response = await probeOfficeShelf(
-      new Request('https://grid.test/api/archiv/documents/name-matches', {
+      new Request('https://grid.test/api/office-shelf/documents/name-matches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ names: [] }),

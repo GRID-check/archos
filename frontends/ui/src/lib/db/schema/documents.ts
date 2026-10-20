@@ -22,7 +22,7 @@ import { type ResourceVisibility } from './resource-shares'
  * The shelf a stored document lives on (ADR-0047, "DB scope").
  *
  *   - `project` — hangs off a single project. The default, and every legacy row.
- *   - `archiv`  — the org-wide "Archiv": NULL `projectId`, in the per-org
+ *   - `office_shelf`  — the org-wide "Archiv": NULL `projectId`, in the per-org
  *                 `archiv_<orgId>` collection, shared across every project.
  *   - `session` — a file the user dropped into one chat: NULL `projectId`, a
  *                 non-NULL `conversationId`, in that conversation's own
@@ -37,8 +37,22 @@ import { type ResourceVisibility } from './resource-shares'
  * migration for the VALUE itself. What `session` did need is the
  * `conversation_id` column below (migration 0049).
  */
-export const DOCUMENT_SCOPES = ['project', 'archiv', 'session'] as const
+export const DOCUMENT_SCOPES = ['project', 'office_shelf', 'session'] as const
 export type DocumentScope = (typeof DOCUMENT_SCOPES)[number]
+
+/**
+ * The scope values from before the shelf had an English name. Migration 0170
+ * rewrote them on every table that holds them and may change; the append-only
+ * tables (`document_access_log`, `document_quarantine_decisions`) keep the old
+ * value in their history, and a peer not yet rolled still sends it. Whatever
+ * reads a stored or received scope runs it through {@link modernizeDocumentScope}.
+ * Remove after one release, together with the legacy value in those two CHECKs.
+ */
+export const LEGACY_DOCUMENT_SCOPES: Readonly<Record<string, DocumentScope>> = { archiv: 'office_shelf' }
+
+/** A scope in its current spelling; any other value comes back unchanged. */
+export const modernizeDocumentScope = <T extends string>(scope: T): Exclude<T, 'archiv'> | DocumentScope =>
+  (LEGACY_DOCUMENT_SCOPES[scope] ?? scope) as Exclude<T, 'archiv'> | DocumentScope
 
 /** The content gate's verdict on a document's current bytes (ADR-0086). */
 export const DOCUMENT_SCREENING_OUTCOMES = ['clean', 'partial', 'unchecked', 'quarantined', 'released'] as const
@@ -96,7 +110,7 @@ export { DOCUMENT_LIFECYCLES, type DocumentLifecycle }
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: text('organization_id').notNull(),
-  // NULL for org-wide `archiv` documents, which belong to the organization
+  // NULL for org-wide `office_shelf` documents, which belong to the organization
   // rather than any single project.
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   scope: text('scope').$type<DocumentScope>().notNull().default('project'),
@@ -562,7 +576,7 @@ export const documents = pgTable('documents', {
    */
   folderRequiresShelf: check(
     'documents_folder_requires_project',
-    sql`${table.folderId} IS NULL OR ${table.projectId} IS NOT NULL OR ${table.scope} = 'archiv'`
+    sql`${table.folderId} IS NULL OR ${table.projectId} IS NOT NULL OR ${table.scope} = 'office_shelf'`
   ),
   /**
    * A session document belongs to a conversation in its OWN tenant (migration
@@ -595,7 +609,7 @@ export const documents = pgTable('documents', {
    *   2. a session row has NO project.
    *
    * Before `session` existed, "which shelf is this row on" was answered in
-   * three different ways across the codebase — `scope = 'archiv'`,
+   * three different ways across the codebase — `scope = 'office_shelf'`,
    * `project_id IS NULL`, and `project_id = $1` — and they agreed only because
    * there were two shelves and the second one happened to be the only one with
    * a null project. A third shelf with a null project is what breaks that, so

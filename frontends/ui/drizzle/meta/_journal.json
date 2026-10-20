@@ -1170,6 +1170,20 @@
       "when": 1792454400055,
       "tag": "0169_skill_names",
       "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1792454400056,
+      "tag": "0170_office_shelf_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1792454400057,
+      "tag": "0171_office_shelf_scope_logs",
+      "breakpoints": true
     }
   ]
 }

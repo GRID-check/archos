@@ -69,7 +69,7 @@ describe('the organization target', () => {
   it('deep-links a Büroablage filing suggestion to the Büroablage, where its file row carries it', async () => {
     const access = await organizationTarget.resolve(makeSession(), 'org_1')
 
-    expect(access!.deepLink({ itemType: 'piloti.proposal_waiting', anchorId: 'prop-1' })).toBe('/app/archiv')
+    expect(access!.deepLink({ itemType: 'piloti.proposal_waiting', anchorId: 'prop-1' })).toBe('/app/office-shelf')
   })
 
   it('falls back to the organization overview for a type with no destination', async () => {

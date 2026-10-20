@@ -1564,7 +1564,7 @@ export async function deleteProjectDocument(
  * document and an org-wide Archiv document (which has no project), and the
  * caller has already established which of the two access rules applies —
  * `getAccessibleDocument` in the service is where project FGA vs
- * `org:archiv:manage` is decided.
+ * `org:office_shelf:manage` is decided.
  */
 export async function setDocumentDisplayName(
   documentId: string,

@@ -1255,7 +1255,7 @@ def lane_for_hit(
 
     Strata match the product's data placement: Baurecht (authority: registry law +
     OIB corpus), Projektwissen (project/session collections), Büroablage (org
-    archiv), Web. Unknown inputs land in ("web", "Web") fail-open.
+    office shelf), Web. Unknown inputs land in ("web", "Web") fail-open.
 
     An explicit, human-set ``doc_class`` (the "Dokumentart") is FIRST priority:
     when valid it fully determines the lane, overriding every collection/filename/
@@ -1317,7 +1317,7 @@ def lane_for_hit(
     # Mirrors the frontend laneForHitClient so both render paths agree.
     if _host_matches(source_url, "wien.gv.at"):
         return ("authority", "Behördliche Information")
-    if collection:  # a named KB collection that is not project/archiv: the base corpus
+    if collection:  # a named KB collection that is not project/office_shelf: the base corpus
         return ("building_law_oib", "OIB-Richtlinie")
     return ("web", "Web")
 

@@ -26,7 +26,7 @@ export const PUT = apiRoute<Params>(
   {
     authz: {
       enforcedBy:
-        'setRevisionLink -> getAccessibleDocument x2 (project:documents:write / project:edit, write on the folder; org:archiv:manage for the Büroablage)',
+        'setRevisionLink -> getAccessibleDocument x2 (project:documents:write / project:edit, write on the folder; org:office_shelf:manage for the Büroablage)',
     },
   }
 )

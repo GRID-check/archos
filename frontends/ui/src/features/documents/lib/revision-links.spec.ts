@@ -21,6 +21,6 @@ describe('compareFromReviewHref', () => {
   })
 
   it('gives no link where the page does not address the shown document', () => {
-    expect(compareFromReviewHref({ pathname: '/app/archiv', search: '?doc=other' }, 'doc-c', 'doc-b')).toBeNull()
+    expect(compareFromReviewHref({ pathname: '/app/office-shelf', search: '?doc=other' }, 'doc-c', 'doc-b')).toBeNull()
   })
 })

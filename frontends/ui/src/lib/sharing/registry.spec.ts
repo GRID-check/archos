@@ -50,7 +50,7 @@ describe('a document deep link to a mark', () => {
   })
 
   it('does the same for a Büroablage document', () => {
-    expect(link('doc-1', { markId: 'ann-1' })).toBe('/app/archiv?doc=doc-1&review=1&mark=ann-1')
+    expect(link('doc-1', { markId: 'ann-1' })).toBe('/app/office-shelf?doc=doc-1&review=1&mark=ann-1')
   })
 
   it('does not read a plain anchor as a mark: a Fassung anchors its rows too', () => {

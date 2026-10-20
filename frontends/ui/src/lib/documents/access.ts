@@ -73,7 +73,7 @@ export async function getAccessibleDocument(
   if (!doc) throw new NotFoundError()
 
   switch (doc.scope) {
-    case 'archiv': {
+    case 'office_shelf': {
       // Org-scoped: findDocumentForSession already confirmed the row belongs to the
       // caller's org (so any member may read it). Only mutations need the
       // manage permission.

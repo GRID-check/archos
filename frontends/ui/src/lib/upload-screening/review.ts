@@ -8,7 +8,7 @@
  * shelf's ordinary delete. Reviewers are the organization's admins
  * (`org:projects:administer`) and, for a project document, that project's
  * admins (`project:manage`); for the Büroablage, whoever curates it
- * (`org:archiv:manage`). A chat attachment has no project admin, so only the
+ * (`org:office_shelf:manage`). A chat attachment has no project admin, so only the
  * organization's admins review it.
  */
 

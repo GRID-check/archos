@@ -164,7 +164,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
         db.execute<{ id: string }>(sql`
           insert into documents (organization_id, project_id, scope, filename, storage_key, collection_name, created_by,
                                  status, screening_outcome, folder_id)
-          values (${organizationId}, ${projectId}::uuid, ${projectId ? 'project' : 'archiv'}, ${filename},
+          values (${organizationId}, ${projectId}::uuid, ${projectId ? 'project' : 'office_shelf'}, ${filename},
                   ${`k/${STAMP}/${(keys += 1)}`}, ${collection}, ${extra.createdBy ?? COLLEAGUE}, ${status},
                   ${outcome}, ${extra.folderId ?? null}::uuid) returning id`)
       )
@@ -307,7 +307,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
     ])
     expect(shown).toEqual([
       ['current', 'Wohnhaus Mödling', ['Baubeschreibung.pdf', 'Werkvertrag.pdf']],
-      ['archiv', null, ['Musterdetail-Treppe.pdf']],
+      ['office_shelf', null, ['Musterdetail-Treppe.pdf']],
       ['project', 'Schule Baden', ['Treppendetail.pdf']],
       ['project', 'Kindergarten Wien', ['Fluchtweg-Nachweis.pdf']],
     ])

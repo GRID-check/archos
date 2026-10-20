@@ -33,11 +33,12 @@ read German are listed after the table.
 | Aktenvermerk | `fileNote` | |
 | Unterlagen | `documents` (`DocumentsDialog`) | |
 
-Not renamed yet, on purpose: the shelf value `archiv` in the database and on the
-wire, the `/archiv` and `/api/archiv` URLs, the permission slug
-`org:archiv:manage`, the `document_revision_announcements` table and the
-`fassung` wire field. They change in the migration PRs, never as a side effect
-of a rename in code.
+Office shelf (Büroablage): `office_shelf` / `officeShelf` everywhere, including
+the scope value, `/app/office-shelf`, `/api/office-shelf`, `org:office_shelf:manage`
+and `office_shelf.document.*` audit actions. Never `archive`, which means
+soft-deleted. The one name still `archiv` is the collection prefix `archiv_<org>`
+and the old audit and permission names, which are read beside the new ones until
+the [operator runbook](deployment/office-shelf-rename-runbook.md) has run.
 
 ## Architecture and runtime
 

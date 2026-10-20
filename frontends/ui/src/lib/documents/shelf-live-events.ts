@@ -1,7 +1,7 @@
 /**
  * A shelf as a live channel hint (ADR-0110, ADR-0078): the vocabulary of
  * `shelf:<id>`, shared by the server that publishes it and the Files and
- * Archiv workspaces that read it. No `server-only`: the browser parses these.
+ * office-shelf workspaces that read it. No `server-only`: the browser parses these.
  *
  * The hint says that the shelf's documents changed, and whether its folders
  * did too, and nothing else. The receiver re-reads the level, the counts and,
@@ -16,19 +16,20 @@ import { z } from 'zod'
  * The shelf as the channel names it. Structurally `DocumentShelf`
  * (`./shelf`), restated here so the browser does not import the schema.
  */
-export type LiveShelf = { kind: 'project'; projectId: string } | { kind: 'archiv' }
+export type LiveShelf = { kind: 'project'; projectId: string } | { kind: 'office_shelf' }
 
 const PROJECT_PREFIX = 'project-'
 const PROJECT_ID = /^[A-Za-z0-9_-]{1,120}$/
 
-/** The channel key a workspace opens for its shelf. The Archiv is the tenant's, so the session names it. */
+/** The channel key a workspace opens for its shelf. The office shelf is the tenant's, so the session names it. */
 export function shelfChannelKey(shelf: LiveShelf): string {
-  return shelf.kind === 'archiv' ? 'shelf:archiv' : `shelf:${PROJECT_PREFIX}${shelf.projectId}`
+  return shelf.kind === 'office_shelf' ? 'shelf:office_shelf' : `shelf:${PROJECT_PREFIX}${shelf.projectId}`
 }
 
 /** The shelf the part of a key after `shelf:` names, or null. */
 export function parseShelfChannelId(id: string): LiveShelf | null {
-  if (id === 'archiv') return { kind: 'archiv' }
+  // `archiv` is the id a tab opened before the rename still sends. Remove after one release.
+  if (id === 'office_shelf' || id === 'archiv') return { kind: 'office_shelf' }
   if (!id.startsWith(PROJECT_PREFIX)) return null
   const projectId = id.slice(PROJECT_PREFIX.length)
   return PROJECT_ID.test(projectId) ? { kind: 'project', projectId } : null
@@ -36,8 +37,8 @@ export function parseShelfChannelId(id: string): LiveShelf | null {
 
 /** The hub topic a shelf's hints travel on, in one tenant. */
 export function shelfTopic(organizationId: string, shelf: LiveShelf): string {
-  return shelf.kind === 'archiv'
-    ? `rt:shelf:${organizationId}:archiv`
+  return shelf.kind === 'office_shelf'
+    ? `rt:shelf:${organizationId}:office_shelf`
     : `rt:shelf:${organizationId}:project:${shelf.projectId}`
 }
 

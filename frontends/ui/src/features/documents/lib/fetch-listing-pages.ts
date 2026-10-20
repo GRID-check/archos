@@ -1,7 +1,7 @@
 /**
  * Read a paged document listing to its end.
  *
- * `GET /api/documents` and `GET /api/archiv/documents` answer one bounded
+ * `GET /api/documents` and `GET /api/office-shelf/documents` answer one bounded
  * keyset page at a time and say where the next one starts (`nextCursor`). The
  * surfaces that read them — the Files pane, the Archiv — filter, search, count
  * folders and plan folder uploads over the corpus IN THE BROWSER, so for them

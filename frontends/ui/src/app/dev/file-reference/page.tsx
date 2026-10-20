@@ -107,7 +107,7 @@ if (typeof window !== 'undefined') {
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     if (url.includes('/api/session/documents')) return json(SESSION_DOCUMENTS)
-    if (url.includes('/api/archiv/documents')) return json(OFFICE_SHELF_DOCUMENTS)
+    if (url.includes('/api/office-shelf/documents')) return json(OFFICE_SHELF_DOCUMENTS)
     if (url.includes('/api/documents')) return json(PROJECT_DOCUMENTS)
     return real(input as RequestInfo, init)
   }
