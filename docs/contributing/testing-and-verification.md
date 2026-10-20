@@ -109,7 +109,7 @@ release rather than trusting a green suite.
 
 CI calls the Taskfile, so there is no second copy of the commands. Only the
 scheduling differs: the frontend tier's card check, lint, types and the
-tenant-isolation suite share one job, the suite is sharded four ways
+tenant-isolation suite share one job, the suite is sharded six ways
 (`fe:test:shard`) and stitched back together by `fe:test:merge` for the coverage
 comment, and the production UI build runs inside the frontend image build
 rather than as `fe:build`. The backend core suite is sharded four ways too
