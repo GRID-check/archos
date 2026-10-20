@@ -122,7 +122,8 @@ request whose change testmon can see runs only the Python tests that change
 reaches (`be:test:affected`, from the database `be:test:testmon` records on
 every push to `develop`); the full suite runs on the push. To run the same
 selection locally, record once with `task be:test:testmon` and then
-`task be:test:affected SUITE=core`. Locally `task fe:verify` runs lint, types, tests and
+`task be:test:affected SUITE=core`. The UI equivalent is
+`task fe:test:related SHARD=1/1 FILES="src/path/changed.ts"`. Locally `task fe:verify` runs lint, types, tests and
 build in order instead.
 
 What decides which jobs run (a pull request against its base, a push against the

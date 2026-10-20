@@ -68,7 +68,7 @@ It also lists the third-party image pins the change adds or moves
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
 | Backend suites (`backend-suites`) | backend tier | the aiq_api suite, the `sources/` suites, the migration test, and the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
-| Frontend tests (`frontend-test`) | frontend tier | the vitest suite in 6 shards |
+| Frontend tests (`frontend-test`) | frontend tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 6 shards; on a PR whose change a selection can see, only the specs it reaches (`task fe:test:related`) |
 | Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
 | Web, Infra, Standalone packages | their tier | `task web:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |
@@ -289,7 +289,7 @@ plus every test file that names a changed non-Python file (a config, a prompt,
 a schema), which coverage cannot connect to anything. The full sharded suite
 and the 65% coverage gate run on every push to `develop`, which the deploy
 waits for, so a test a selection missed turns `develop` red before staging,
-not production. [`ci/py_selection.py`](../../ci/py_selection.py) decides, and
+not production. [`ci/pr_selection.py`](../../ci/pr_selection.py) decides, and
 runs the full suite on a pull request whenever testmon cannot see the change:
 a conftest, the lockfile or a `pyproject.toml`, how the backend jobs run,
 Python outside the tested packages (tests load `scripts/` and
@@ -297,6 +297,27 @@ Python outside the tested packages (tests load `scripts/` and
 names, or no recorded database. Known blind spot: a test that only exercises
 code in a subprocess is selected when its own file changes, not when the code
 it spawns does; the push run is what catches that.
+
+**The UI suite selects the same way, by import graph.** `vitest related`
+keeps the specs whose imports reach a changed file, split over the same six
+shards. Every spec that reads the tree from disk instead of importing it (the
+route, key and migration walkers; ~100 found by what they call, not by a
+list) runs on every selection, because no import graph connects them to a
+change. Changes to what every spec loads (the manifest, the vitest config and
+setup, the mocks the setup installs, tsconfig) run the whole suite. A median
+change still reaches ~45% of the specs, because shared modules sit behind
+barrels; the saving is the other half, and a leaf change reaches a handful.
+The coverage comment comes only from a full run.
+
+**What a later push to the same pull request re-runs.** Both selections are
+taken against the pull request's last green run, not its base: the tests that
+run passed, so the next push owes only what changed since. That set is the pull
+request's own diff since that run's head, plus every file the base branch
+changed since an hour before that run started (the merge commit CI tests
+carries both). The backend keeps its testmon database per pull request for the
+same reason, so tests that failed keep running until they pass. A push that
+only answers a review comment runs the few tests that comment touched, and one
+that touches nothing a UI spec reads runs no UI spec at all.
 
 Not done, and why: a prebuilt container with the toolchain and venv baked in
 saves ~28s of setup per backend job and costs 20 to 30s to pull and unpack on
