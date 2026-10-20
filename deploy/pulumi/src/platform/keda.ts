@@ -56,7 +56,7 @@ export function installKeda(provider: k8s.Provider): k8s.helm.v3.Release {
           webhooks: PLATFORM_RESOURCES.kedaWebhooks,
         },
         // The operator runs every scaler, so its metrics are the ones that say
-        // whether a trigger can read its queue (`keda_scaler_errors_total`,
+        // whether a trigger can read its queue (`keda_scaled_object_errors_total`,
         // `keda_scaler_metrics_value`): a trigger that cannot leaves its tier
         // at its count while the queue grows, and nothing else reports it. The
         // node agents scrape them (ADR-0119); nothing outside `keda` is

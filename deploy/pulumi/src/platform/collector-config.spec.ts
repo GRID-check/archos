@@ -48,7 +48,7 @@ describe("composeCollectorConfig", () => {
 
   it("adds no OTLP receiver, and so no nop pipelines, to a collector that takes none", () => {
     const config = composeCollectorConfig(
-      [{ receivers: { kubeletstats: {} }, exporters: { x: null }, pipelines: { metrics: { receivers: ["kubeletstats"], exporters: ["x"] } } }],
+      [{ receivers: { kubelet_stats: {} }, exporters: { x: null }, pipelines: { metrics: { receivers: ["kubelet_stats"], exporters: ["x"] } } }],
       { otlpReceiver: false },
     );
     expect(config.receivers).not.toHaveProperty("otlp");

@@ -59,7 +59,7 @@ async function renderedConfigs(values: Record<string, string>): Promise<Record<s
 
 /**
  * The config as it reads outside a pod. `validate` builds every receiver, and
- * kubeletstats reads the pod's service account certificate while it does; a
+ * kubelet_stats reads the pod's service account certificate while it does; a
  * CI runner has none. That identity is the one thing swapped, and only it:
  * every other key still reaches the build.
  */

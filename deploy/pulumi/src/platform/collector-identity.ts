@@ -38,13 +38,12 @@ export const CLUSTER_STATE_RULES: ReadRule[] = [
 ];
 
 /**
- * What the per-node agent reads: its node's kubelet stats (`nodes/stats`, and
- * `nodes/proxy` for the pod metadata kubeletstats joins in), and the pods it
- * discovers scrape targets among.
+ * What the per-node agent reads: its node's kubelet summary (`nodes/stats`, all
+ * `kubelet_stats` calls with this config) and the pods it discovers scrape
+ * targets among. Never `nodes/proxy`: the kubelet authorises an exec upgrade
+ * as `get nodes/proxy`, so that one "read" verb is a shell in every pod.
  */
-export const NODE_AGENT_RULES: ReadRule[] = [
-  { apiGroups: [""], resources: ["nodes", "nodes/stats", "nodes/proxy", "pods"] },
-];
+export const NODE_AGENT_RULES: ReadRule[] = [{ apiGroups: [""], resources: ["nodes/stats", "pods"] }];
 
 export interface CollectorIdentity {
   serviceAccount: k8s.core.v1.ServiceAccount;

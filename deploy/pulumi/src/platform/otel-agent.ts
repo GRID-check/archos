@@ -20,6 +20,7 @@ const KUBELET_PORT = 10250;
 /** How often each node's kubelet is read and each annotated pod scraped. */
 const SCRAPE_INTERVAL = "30s";
 const GATEWAY_EXPORTER = "otlp_http/gateway";
+const KUBELET_RECEIVER = "kubelet_stats";
 
 export interface OtelAgent {
   daemonSet: k8s.apps.v1.DaemonSet;
@@ -29,7 +30,7 @@ export interface OtelAgent {
 /**
  * One collector per node: what that node and its pods are doing.
  *
- * - **kubeletstats**: CPU, memory, network and filesystem of the node, of every
+ * - **kubelet_stats**: CPU, memory, network and filesystem of the node, of every
  *   pod and container on it, and of their volumes, read from the node's own
  *   kubelet.
  * - **prometheus/pods**: every pod on the node annotated
@@ -136,7 +137,8 @@ export function installOtelAgent(
 export function nodeStats(): CollectorFragment {
   return {
     receivers: {
-      kubeletstats: {
+      // `kubelet_stats`, not the `kubeletstats` alias upstream deprecated.
+      [KUBELET_RECEIVER]: {
         auth_type: "serviceAccount",
         endpoint: `https://\${env:K8S_NODE_IP}:${KUBELET_PORT}`,
         insecure_skip_verify: true,
@@ -144,14 +146,13 @@ export function nodeStats(): CollectorFragment {
         metric_groups: ["node", "pod", "container", "volume"],
       },
     },
-    pipelines: { "metrics/node": { receivers: ["kubeletstats"], exporters: [GATEWAY_EXPORTER] } },
+    pipelines: { "metrics/node": { receivers: [KUBELET_RECEIVER], exporters: [GATEWAY_EXPORTER] } },
   };
 }
 
 /**
- * Every annotated pod on this node. The relabelling is Prometheus's own
- * `kubernetes-pods` convention; `$$` is how the collector config writes the
- * `$` of a capture group, because a single `$` is its own env expansion.
+ * Every annotated pod on this node, at the one container port its annotation
+ * names, labelled by Prometheus's own `kubernetes-pods` convention.
  */
 export function annotatedPods(): CollectorFragment {
   const meta = (annotation: string) =>
@@ -172,18 +173,21 @@ export function annotatedPods(): CollectorFragment {
                 { source_labels: [meta(SCRAPE_ANNOTATION.scrape)], action: "keep", regex: "true" },
                 // A pod not yet running has no address to scrape.
                 { source_labels: ["__meta_kubernetes_pod_phase"], action: "keep", regex: "Running" },
+                // Discovery yields one target per declared container port and
+                // one per port-less container, init containers included. Keep
+                // only the port the annotation names, or a pod with several
+                // ports (every Postgres instance) is scraped once per port.
+                // That port must be declared, which index-scrape-targets.spec.ts holds.
+                {
+                  source_labels: ["__meta_kubernetes_pod_container_port_number"],
+                  action: "keepequal",
+                  target_label: meta(SCRAPE_ANNOTATION.port),
+                },
                 {
                   source_labels: [meta(SCRAPE_ANNOTATION.path)],
                   action: "replace",
                   regex: "(.+)",
                   target_label: "__metrics_path__",
-                },
-                {
-                  source_labels: ["__meta_kubernetes_pod_ip", meta(SCRAPE_ANNOTATION.port)],
-                  action: "replace",
-                  regex: "(.+);(\\d+)",
-                  replacement: "$$1:$$2",
-                  target_label: "__address__",
                 },
                 { source_labels: ["__meta_kubernetes_namespace"], target_label: "k8s_namespace_name" },
                 { source_labels: ["__meta_kubernetes_pod_name"], target_label: "k8s_pod_name" },

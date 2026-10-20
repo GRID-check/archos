@@ -60,7 +60,8 @@ describe("the node agent, with PostHog metrics on (the default)", () => {
   }, 120_000);
 
   it("reads its own node's kubelet, every group of readings", () => {
-    expect(agent.receivers.kubeletstats).toMatchObject({
+    // `kubelet_stats`, the current id: upstream deprecated the `kubeletstats` alias.
+    expect(agent.receivers.kubelet_stats).toMatchObject({
       auth_type: "serviceAccount",
       endpoint: "https://${env:K8S_NODE_IP}:10250",
       metric_groups: ["node", "pod", "container", "volume"],
@@ -78,17 +79,23 @@ describe("the node agent, with PostHog metrics on (the default)", () => {
     ]);
   });
 
-  it("writes a capture group's $ escaped, so the collector does not expand it", () => {
+  it("scrapes each pod once, at the container port its annotation names", () => {
+    // Discovery yields a target per declared port and per port-less (init)
+    // container; without this a multi-port pod is scraped once per port.
     const [scrape] = (agent.receivers["prometheus/pods"] as any).config.scrape_configs;
-    const address = scrape.relabel_configs.find((r: { target_label: string }) => r.target_label === "__address__");
-    expect(address.replacement).toBe("$$1:$$2");
+    expect(scrape.relabel_configs).toContainEqual({
+      source_labels: ["__meta_kubernetes_pod_container_port_number"],
+      action: "keepequal",
+      target_label: "__meta_kubernetes_pod_annotation_prometheus_io_port",
+    });
+    expect(scrape.relabel_configs.some((r: { target_label?: string }) => r.target_label === "__address__")).toBe(false);
   });
 
   it("sends everything to the gateway over OTLP, and takes no OTLP itself", () => {
     expect(agent.exporters["otlp_http/gateway"]).toMatchObject({ endpoint: "http://otel-collector:4318" });
     expect(agent.receivers).not.toHaveProperty("otlp");
     expect(agent.service.pipelines).toEqual({
-      "metrics/node": pipeline(["otlp_http/gateway"], { receivers: ["kubeletstats"] }),
+      "metrics/node": pipeline(["otlp_http/gateway"], { receivers: ["kubelet_stats"] }),
       "metrics/pods": pipeline(["otlp_http/gateway"], { receivers: ["prometheus/pods"] }),
     });
   });
@@ -104,13 +111,13 @@ describe("the node agent, with PostHog metrics on (the default)", () => {
     expect(names).toEqual(["K8S_NODE_NAME", "K8S_NODE_IP"]);
   });
 
-  it("reads the API as its own service account, with read-only node and pod rules", async () => {
+  it("reads the API as its own service account, and never holds nodes/proxy, which is exec on every pod", async () => {
     expect(pod.serviceAccountName).toBe("otel-agent");
     const rules = await resolve<Array<{ resources: string[]; verbs: string[] }>>(
       find("kubernetes:rbac.authorization.k8s.io/v1:ClusterRole", "otel-agent").inputs.rules,
     );
     expect(rules).toEqual([
-      { apiGroups: [""], resources: ["nodes", "nodes/stats", "nodes/proxy", "pods"], verbs: ["get", "list", "watch"] },
+      { apiGroups: [""], resources: ["nodes/stats", "pods"], verbs: ["get", "list", "watch"] },
     ]);
   });
 });
