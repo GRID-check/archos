@@ -48,7 +48,7 @@ def _document(file_name: str, display_title: str | None = None) -> SimpleNamespa
 
 
 def _clause_chunk(
-    punkt: str,
+    clause: str,
     depth: int,
     title: str,
     page: int,
@@ -60,18 +60,18 @@ def _clause_chunk(
     """A Punkt chunk as ``clause_documents`` writes it: depth is an int, page a string,
     and the text opens with the Punkt's own heading line, the body after a blank line."""
     return Chunk(
-        chunk_id=chunk_id or f"{file_name}:{punkt}",
-        content=content or f"{punkt} {title}\n\nText zu {title}.",
+        chunk_id=chunk_id or f"{file_name}:{clause}",
+        content=content or f"{clause} {title}\n\nText zu {title}.",
         score=0.71,
         file_name=file_name,
         page_number=page,
         display_citation=f"{file_name}, p.{page}",
         content_type=ContentType.TEXT,
         metadata={
-            "chunking": "punkt",
-            "punkt_id": punkt,
-            "punkt_depth": depth,
-            "punkt_title": title,
+            "chunking": "clause",
+            "clause_id": clause,
+            "clause_depth": depth,
+            "clause_title": title,
             "page_label": str(page),
         },
     )
@@ -195,9 +195,9 @@ def _section_chunk(locator: str, depth: int, title: str, order: int, *, file_nam
         content_type=ContentType.TEXT,
         metadata={
             "chunking": "section",
-            "punkt_id": locator,
-            "punkt_depth": depth,
-            "punkt_title": title,
+            "clause_id": locator,
+            "clause_depth": depth,
+            "clause_title": title,
             "section_order": order,
         },
     )
@@ -303,7 +303,7 @@ class TestTheClauseOutline:
 
     async def test_a_split_clause_is_one_line_not_two(self, store):
         """A Punkt long enough for `SentenceSplitter` to cut arrives as several
-        chunks carrying one `punkt_id`; listing it twice would read as two Punkte."""
+        chunks carrying one `clause_id`; listing it twice would read as two Punkte."""
         store.outline_chunks = _oib_outline()
 
         lines = _outline(await _read(document=OIB))
@@ -342,7 +342,7 @@ class TestTheClauseOutline:
 
         out = await _read(document=OIB)
 
-        assert "read_passage(document=…, punkt=…)" in out
+        assert "read_passage(document=…, clause=…)" in out
         assert "keine Evidenz" in out
 
     async def test_a_document_without_clause_zero_opens_its_first_clause(self, store):
@@ -384,10 +384,10 @@ class TestTheRecheckHoldsWhenTheBackendDoesNot:
         assert not any("2.1.1" in line or "2.1.2" in line for line in lines)
 
     async def test_a_depth_stored_as_a_string_still_counts(self, store):
-        """A backend that round-trips metadata through JSON may hand `punkt_depth`
+        """A backend that round-trips metadata through JSON may hand `clause_depth`
         back as "1". Dropping it would empty the outline of a whole corpus."""
         chunk = _clause_chunk("2", 1, "Allgemeine Anforderungen", 4)
-        chunk.metadata["punkt_depth"] = "1"
+        chunk.metadata["clause_depth"] = "1"
         store.outline_chunks = [chunk]
 
         assert (
@@ -472,9 +472,9 @@ class TestWhatTheStoreIsAsked:
                 {"file_name": {"$eq": OIB}},
                 {
                     "$or": [
-                        {"punkt_id": {"$eq": "0"}},
-                        {"punkt_depth": {"$in": [1, 2]}},
-                        {"punkt_depth": {"$in": ["1", "2"]}},
+                        {"clause_id": {"$eq": "0"}},
+                        {"clause_depth": {"$in": [1, 2]}},
+                        {"clause_depth": {"$in": ["1", "2"]}},
                     ]
                 },
             ]
@@ -558,20 +558,22 @@ class TestTheDepthClauseMatchesTheRecheck:
         is typed `list[int] | list[str] | …`, so a mixed list fails validation
         before it reaches any store."""
         assert rp._outline_filters(OIB)["$and"][1]["$or"][1:] == [
-            {"punkt_depth": {"$in": [1, 2]}},
-            {"punkt_depth": {"$in": ["1", "2"]}},
+            {"clause_depth": {"$in": [1, 2]}},
+            {"clause_depth": {"$in": ["1", "2"]}},
         ]
 
     def test_every_spelling_it_asks_for_passes_the_recheck(self):
         from types import SimpleNamespace as NS
 
         asked = [
-            depth for clause in rp._outline_filters(OIB)["$and"][1]["$or"][1:] for depth in clause["punkt_depth"]["$in"]
+            depth
+            for clause in rp._outline_filters(OIB)["$and"][1]["$or"][1:]
+            for depth in clause["clause_depth"]["$in"]
         ]
 
         assert asked == [1, 2, "1", "2"]
         for depth in asked:
-            assert rp._is_outline_chunk(NS(metadata={"punkt_id": "2", "punkt_depth": depth})), depth
+            assert rp._is_outline_chunk(NS(metadata={"clause_id": "2", "clause_depth": depth})), depth
 
 
 class TestResolutionIsUnchanged:
@@ -594,11 +596,11 @@ class TestTheContract:
         first = rp._READ_PASSAGE_DESCRIPTION.split("\n")[0]
 
         assert "OUTLINE" in first
-        assert "`punkt=`" in first and "`page=`" in first
+        assert "`clause=`" in first and "`page=`" in first
 
     def test_the_refusal_that_sent_the_model_back_to_a_search_is_gone(self):
-        assert "Provide `punkt=`" not in rp._READ_PASSAGE_DESCRIPTION
-        assert "Provide `punkt=`" not in (rp.read_passage.__doc__ or "")
+        assert "Provide `clause=`" not in rp._READ_PASSAGE_DESCRIPTION
+        assert "Provide `clause=`" not in (rp.read_passage.__doc__ or "")
 
     def test_it_still_says_not_to_read_the_same_clause_twice(self):
         assert "Do not call it twice for the same Punkt" in rp._READ_PASSAGE_DESCRIPTION
@@ -667,7 +669,7 @@ class TestTheOutlineIsReadAsRecords:
 class TestANumericClause:
     """A whole-numbered Punkt arrives as a number, and must open that Punkt.
 
-    Providers answer the schema's type, so `punkt=3` is what a top-level Punkt
+    Providers answer the schema's type, so `clause=3` is what a top-level Punkt
     looks like on the wire. Typed `str` only, the call died in argument
     validation before the tool ran, and the model was handed pydantic's own
     message instead of a passage.
@@ -676,7 +678,7 @@ class TestANumericClause:
     async def test_an_int_clause_opens_that_clause(self, store):
         store.outline_chunks = [_clause_chunk("3", 5, "Brandschutz", 2)]
 
-        out = await _read(document=OIB, punkt=3)
+        out = await _read(document=OIB, clause=3)
 
         assert "Brandschutz" in out
-        assert {"punkt_id": {"$eq": "3"}} in store.calls[-1]["filters"]["$and"]
+        assert {"clause_id": {"$eq": "3"}} in store.calls[-1]["filters"]["$and"]

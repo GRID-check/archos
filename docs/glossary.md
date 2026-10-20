@@ -26,7 +26,9 @@ read German are listed after the table.
 | Gebäudeklasse, Bauwerk | `buildingClass`, `building` | |
 | Herleitung | `derivation` (`/dev/derivation`) | |
 | Papierkorb | `bin` (`/dev/bin`) | |
-| Punkt, Absatz (of a norm) | `clause`, `subsection` (`clause_chunking.py`, `build_clause_index.py`) | |
+| Punkt, Absatz (of a norm) | `clause`, `subsection` (`clause_chunking.py`, `build_clause_index.py`; the Qdrant keys `clause_id`, `clause_path`, `chunking: "clause"`; the `read_passage` argument `clause`) | |
+| Richtlinie (OIB) | `guideline` (the Qdrant key `guideline`; `norm_registry.oib_doc_class` returns `guideline`, `guide`, `explanatory_note`, `definitions`, `referenced_standards`, `amendment`) | |
+| Nutzung, Bauweise, Vorhabensart | `use` / `uses`, `construction_method`, `work_type` (the boost weights `use`, `use_max`; the `project_facts` payload keys) | |
 | Befund, Befundmatrix | `finding`, `findingsMatrix` | |
 | erfüllt, nicht erfüllt, offen, nicht anwendbar | `met`, `notMet`, `open`, `notApplicable` | |
 | Laufblock | `RunBlock`; states `running`, `waiting`, `done`, `cancelled`, `interrupted` | |
@@ -37,7 +39,10 @@ Not renamed yet, on purpose: the shelf value `archiv` in the database and on the
 wire, the `/archiv` and `/api/archiv` URLs, the permission slug
 `org:archiv:manage`, the `document_revision_announcements` table and the
 `fassung` wire field. They change in the migration PRs, never as a side effect
-of a rename in code.
+of a rename in code. Qdrant points written before the payload rename still hold
+the German keys (`punkt_id`, `project_facts.bundesland`, ...); every read accepts
+both until the rewrite in
+[`qdrant-payload-rename-runbook.md`](deployment/qdrant-payload-rename-runbook.md).
 
 ## Architecture and runtime
 

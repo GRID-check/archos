@@ -60,7 +60,7 @@ def _chunk(collection: str, *, punkt: str = "1", page: int = 1, content: str = S
         page_number=page,
         display_citation=f"{SALARIES}, p.{page}",
         content_type=ContentType.TEXT,
-        metadata={"punkt_id": punkt, "page_label": str(page), "collection": collection},
+        metadata={"clause_id": punkt, "page_label": str(page), "collection": collection},
     )
 
 

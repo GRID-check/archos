@@ -23,8 +23,8 @@ This module reads the headings the document already has and chunks within them:
   because the section, not the page, is the unit.
 * ``page_label`` stays numeric: the page the chunk's own text starts on. ``page_end``
   records where it ends. The heading's number (or, unnumbered, its title path) is the
-  chunk's ``punkt_id``, so ``read_passage(punkt=…)`` opens a section the way it opens a
-  Punkt, and ``punkt_depth`` gives the document a Gliederung.
+  chunk's ``clause_id``, so ``read_passage(clause=…)`` opens a section the way it opens a
+  Punkt, and ``clause_depth`` gives the document a Gliederung.
 
 When the document has no usable heading structure (:func:`structure_is_usable`) the
 caller keeps the per-page chunks. Pure over page dicts and line lists; llama-index is
@@ -60,7 +60,7 @@ OVERLAP_TOKENS = 96
 #: Metadata that orders, ranges or diagnoses a chunk and carries no retrieval signal.
 SECTION_EMBED_EXCLUDED_METADATA_KEYS = (
     "page_end",
-    "punkt_depth",
+    "clause_depth",
     "chunking",
     "table_part",
     "section_order",
@@ -655,10 +655,10 @@ def section_metadata(section: Section, order: int) -> dict[str, Any]:
         return metadata
     metadata.update(
         {
-            "punkt_id": section.locator,
-            "punkt_title": section.heading.title,
-            "punkt_path": BREADCRUMB_SEP.join(section.path),
-            "punkt_depth": section.heading.level,
+            "clause_id": section.locator,
+            "clause_title": section.heading.title,
+            "clause_path": BREADCRUMB_SEP.join(section.path),
+            "clause_depth": section.heading.level,
         }
     )
     return metadata
@@ -717,9 +717,9 @@ def _table_documents(text_pages: list[dict[str, Any]], base: dict[str, Any]) -> 
                 "page_end": str(table.page_end),
                 "content_type": "table",
                 "chunking": "table",
-                "punkt_id": label,
-                "punkt_title": table.title,
-                "punkt_path": caption,
+                "clause_id": label,
+                "clause_title": table.title,
+                "clause_path": caption,
                 "table_part": part,
             }
             documents.append(Document(text=f"{caption}{suffix}\n\n{markdown}", metadata=metadata))

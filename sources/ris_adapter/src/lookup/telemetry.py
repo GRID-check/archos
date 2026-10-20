@@ -88,5 +88,5 @@ def _span_picks(passages: list[Passage]) -> dict:
         picks["citation_keys"] = keys
     clause_ids = [p.clause_label for p in passages if p.clause_label]
     if clause_ids:
-        picks["punkt_ids"] = clause_ids
+        picks["clause_ids"] = clause_ids
     return picks

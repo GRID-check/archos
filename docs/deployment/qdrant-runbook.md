@@ -638,6 +638,13 @@ the old collection once you are sure: `q -X DELETE $P0/collections/piloti_office
 A copy of a large collection runs for a while: run it in a pod that survives
 your terminal (`kubectl exec` dies with it).
 
+## Rename payload keys
+
+The knowledge layer's payload keys were renamed to English
+(`project_facts.federal_state`, `clause_id`, `guideline` ...). Reads accept
+both spellings until the points are rewritten:
+[`qdrant-payload-rename-runbook.md`](qdrant-payload-rename-runbook.md).
+
 ## OOM crash loop
 
 A peer killed by the kernel while loading its segments restarts, loads again

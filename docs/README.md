@@ -130,6 +130,7 @@ Index: [`contributing/README.md`](contributing/README.md).
 | [Kubernetes](deployment/kubernetes.md) | The Pulumi stack |
 | [Ingest memory runbook](deployment/ingest-memory-runbook.md) | Verifying the bounded raster decode in production: which build is running, the OOM signature, the `[ingest-mem]` lines, queue depth. Read-only throughout |
 | [Qdrant runbook](deployment/qdrant-runbook.md) | Operating the vector store: metrics and alerts, restore from snapshots, peer replacement, rebuilds, upgrades, key rotation, the backend flip; every procedure with its drill |
+| [Qdrant payload rename runbook](deployment/qdrant-payload-rename-runbook.md) | The English payload keys (`federal_state`, `clause_id`, `guideline`, `chunking: "clause"`), what still reads the German ones, and the rewrite that lets the fallback go |
 | [Coolify](deployment/coolify.md) | The Coolify deployment path |
 | [CD](deployment/cd.md) | Continuous delivery |
 | [Startup Flow](deployment/startup-flow.md) | Boot sequence: PostgreSQL init, SeaweedFS, uvicorn, gateway |

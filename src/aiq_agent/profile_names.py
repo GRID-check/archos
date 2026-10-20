@@ -420,14 +420,10 @@ def normalize_prompt_view(view: str) -> str:
 def legacy_profile_token(base_key: str, token: str) -> str:
     """The German token the vector store still holds for an English one (``vienna`` -> ``wien``).
 
-    Qdrant's ``project_facts`` payload keeps the German names until its own rename (an index
-    rebuild); the English ones are translated back at the single place that writes or filters it.
-    Delete with that rename.
+    Points in Qdrant written before the payload rename keep German fact tokens until the operator
+    rewrite (``docs/deployment/qdrant-payload-rename-runbook.md``); a filter or boost over the
+    English ones asks for these too (``knowledge_layer.qdrant.scope`` and ``boost``). Delete
+    with the fallback.
     """
     table = LEGACY_PROFILE_TOKENS.get(normalize_profile_base_key(base_key), {})
     return next((old for old, new in table.items() if new == token), token)
-
-
-def legacy_profile_base_key(base_key: str) -> str:
-    """The German key the vector store still holds for an English one (``federal_state`` -> ``bundesland``)."""
-    return next((old for old, new in LEGACY_PROFILE_KEYS.items() if new == base_key), base_key)

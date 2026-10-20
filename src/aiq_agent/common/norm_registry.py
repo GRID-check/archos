@@ -781,10 +781,10 @@ def parcel_note(available_documents: list[dict] | None, country: str | None = No
 
 # data/oib filename prefixes -> OIB document class.
 _OIB_CLASS_PREFIXES: tuple[tuple[str, str], ...] = (
-    ("aenderungen_", "aenderungen"),
-    ("erlaeuterungen_", "erlaeuterungen"),
-    ("oib-rl_begriffsbestimmungen", "begriffsbestimmungen"),
-    ("oib-rl_zitierte_normen", "zitierte_normen"),
+    ("aenderungen_", "amendment"),
+    ("erlaeuterungen_", "explanatory_note"),
+    ("oib-rl_begriffsbestimmungen", "definitions"),
+    ("oib-rl_zitierte_normen", "referenced_standards"),
 )
 
 _RANK_LANES: dict[str, tuple[str, str]] = {
@@ -796,12 +796,12 @@ _RANK_LANES: dict[str, tuple[str, str]] = {
 }
 
 _OIB_CLASS_LANES: dict[str, tuple[str, str]] = {
-    "richtlinie": ("building_law_oib", "OIB-Richtlinie"),
-    "leitfaden": ("building_law_oib_guide", "OIB-Leitfaden"),
-    "erlaeuterungen": ("building_law_oib_explanatory_note", "OIB-Erläuterung"),
-    "begriffsbestimmungen": ("building_law_oib_definitions", "OIB-Begriffsbestimmungen"),
-    "zitierte_normen": ("building_law_oib_reference", "OIB-Referenzdokument"),
-    "aenderungen": ("building_law_oib_amendment", "OIB-Änderungsdokument"),
+    "guideline": ("building_law_oib", "OIB-Richtlinie"),
+    "guide": ("building_law_oib_guide", "OIB-Leitfaden"),
+    "explanatory_note": ("building_law_oib_explanatory_note", "OIB-Erläuterung"),
+    "definitions": ("building_law_oib_definitions", "OIB-Begriffsbestimmungen"),
+    "referenced_standards": ("building_law_oib_reference", "OIB-Referenzdokument"),
+    "amendment": ("building_law_oib_amendment", "OIB-Änderungsdokument"),
 }
 
 # Label for a lane key, aggregated from the OIB-class + rank tables plus the
@@ -855,19 +855,19 @@ def oib_doc_class(file_name: str) -> str | None:
         if name.startswith(prefix):
             return doc_class
     if "leitfaden" in name:
-        return "leitfaden"
-    return "richtlinie"
+        return "guide"
+    return "guideline"
 
 
 # Maps the coarse ``oib_doc_class`` filename guess to the explicit doc_class
 # vocabulary key (``document_classification.DOCUMENT_CLASSES``).
 _OIB_CLASS_TO_DOC_CLASS: dict[str, str] = {
-    "richtlinie": "oib_guideline",
-    "leitfaden": "oib_guide",
-    "erlaeuterungen": "oib_explanatory_note",
-    "begriffsbestimmungen": "oib_definitions",
-    "zitierte_normen": "oib_reference",
-    "aenderungen": "oib_amendment",
+    "guideline": "oib_guideline",
+    "guide": "oib_guide",
+    "explanatory_note": "oib_explanatory_note",
+    "definitions": "oib_definitions",
+    "referenced_standards": "oib_reference",
+    "amendment": "oib_amendment",
 }
 
 
@@ -1040,7 +1040,7 @@ def oib_family_member(file_name: str) -> str | None:
     make an overview answer look complete for having opened a reading aid.
     """
     name = canonical_oib_file_name(Path(file_name or "").name)
-    if oib_doc_class(name) != "richtlinie":
+    if oib_doc_class(name) != "guideline":
         return None
     match = _OIB_FAMILY_NUMBER_RE.match(name[len("oib-rl_") :])
     return match.group(1) if match else None

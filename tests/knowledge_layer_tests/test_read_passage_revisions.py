@@ -49,7 +49,7 @@ def _chunk(name: str = "Statik_Index_B.pdf") -> Chunk:
         page_number=1,
         display_citation=f"{name}, p.1",
         content_type=ContentType.TEXT,
-        metadata={"punkt_id": "2.1", "page_label": "1", "collection": PROJECT},
+        metadata={"clause_id": "2.1", "page_label": "1", "collection": PROJECT},
     )
 
 
@@ -92,7 +92,7 @@ async def _read(**kwargs) -> str:
 
 class TestAnOlderRevisionIsReadOnRequestAndSaysSo:
     async def test_it_is_read_not_refused_and_the_passage_is_there(self, store):
-        out = await _read(document="Statik_Index_B.pdf", punkt="2.1")
+        out = await _read(document="Statik_Index_B.pdf", clause="2.1")
 
         assert "Die Bewehrung der Decke beträgt 10 mm." in out
         assert "Citation: Statik_Index_B.pdf, p.1" in out
@@ -100,7 +100,7 @@ class TestAnOlderRevisionIsReadOnRequestAndSaysSo:
         assert all("$nin" not in repr(call["filters"]) for call in store.calls)
 
     async def test_the_first_line_names_the_current_revision_at_the_end_of_the_chain(self, store):
-        out = await _read(document="Statik_Index_A.pdf", punkt="2.1")
+        out = await _read(document="Statik_Index_A.pdf", clause="2.1")
 
         first = out.splitlines()[0]
         assert first.startswith(NOTICE)
@@ -108,7 +108,7 @@ class TestAnOlderRevisionIsReadOnRequestAndSaysSo:
         assert "Statik_Index_B.pdf" not in first
 
     async def test_one_line_only_and_before_the_block(self, store):
-        out = await _read(document="Statik_Index_B.pdf", punkt="2.1")
+        out = await _read(document="Statik_Index_B.pdf", clause="2.1")
 
         assert out.count(NOTICE) == 1
         assert out.index(NOTICE) < out.index("Citation:")
@@ -119,12 +119,12 @@ class TestAnOlderRevisionIsReadOnRequestAndSaysSo:
         assert out.splitlines()[0].startswith(NOTICE)
 
     async def test_the_current_revision_reads_without_a_notice(self, store):
-        out = await _read(document="Statik_Index_C.pdf", punkt="2.1")
+        out = await _read(document="Statik_Index_C.pdf", clause="2.1")
 
         assert NOTICE not in out
 
     async def test_a_file_nobody_replaced_reads_without_a_notice(self, store):
-        out = await _read(document="Brandschutz.pdf", punkt="2.1")
+        out = await _read(document="Brandschutz.pdf", clause="2.1")
 
         assert NOTICE not in out
 
@@ -138,7 +138,7 @@ class TestTheNoticeKeepsTheBlockReadable:
 
         token = begin_grounding_capture()
         try:
-            out = await _read(document="Statik_Index_B.pdf", punkt="2.1")
+            out = await _read(document="Statik_Index_B.pdf", clause="2.1")
             block = get_grounding_block(out)
         finally:
             end_grounding_capture(token)

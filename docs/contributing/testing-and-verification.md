@@ -281,7 +281,7 @@ locator (`read_passage`) was used instead of a second search, whether the cited
 Punkt is the one the question is about, whether the Herleitung checkpoint came
 from the tool argument or from prose or from nowhere, and whether the research
 budget ran out. Thirty-one realistic German questions from a Wiener Planungsbüro
-live in [`tests/fixtures/herleitung/loop_eval_questions.yaml`](../../tests/fixtures/herleitung/loop_eval_questions.yaml)
+live in [`tests/fixtures/derivation/loop_eval_questions.yaml`](../../tests/fixtures/derivation/loop_eval_questions.yaml)
 — every expected Punkt in it is read off the committed structural index rather
 than remembered — and [`scripts/loop_eval.py`](../../scripts/loop_eval.py) runs
 them, writes a CSV, and diffs two CSVs with `--compare`. Each question is one
@@ -582,8 +582,8 @@ The script
 drafts a case for each down-vote that has a question and an `expected_answer`
 and writes no organisation, conversation or answer text. Nothing is appended to
 the golden set. What the user says the answer should be is a claim: check it
-against the corpus, fill `family`, `punkt` and `expect` from the PDF, and add
-the case to `tests/fixtures/herleitung/loop_eval_questions.yaml` with a
+against the corpus, fill `family`, `clause` and `expect` from the PDF, and add
+the case to `tests/fixtures/derivation/loop_eval_questions.yaml` with a
 `Source: answer feedback <date>` comment. A question answered from the web has no
 `family`, which the suite treats as needing a project, so it cannot be a case.
 

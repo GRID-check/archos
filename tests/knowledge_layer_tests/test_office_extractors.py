@@ -52,8 +52,8 @@ class TestXlsx:
         assert len(docs) > 1
         assert all("| Tür | Brandschutzklasse | Geschoß |" in doc.text for doc in docs)
         assert all(doc.metadata["page_label"] == "Türliste" for doc in docs)
-        assert docs[0].metadata["punkt_id"].startswith("Türliste: Zeilen 2-")
-        assert docs[-1].metadata["punkt_id"].endswith("-1501")
+        assert docs[0].metadata["clause_id"].startswith("Türliste: Zeilen 2-")
+        assert docs[-1].metadata["clause_id"].endswith("-1501")
         assert docs[0].text.startswith("Tabellenblatt „Türliste“, Zeilen 2-")
         body = "".join(doc.text for doc in docs)
         assert "| T1499 |" in body, "rows past the old 1000-row cap were dropped"

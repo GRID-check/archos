@@ -21,7 +21,7 @@ This module rebuilds the unit: join the page stream first, cut on the Punkt numb
 and emit one ``Document`` per Punkt carrying a breadcrumb the embedder can use. Over-long
 Punkte need no special handling -- the ``Document`` is left whole and ``SentenceSplitter``
 splits it downstream, where llama-index copies parent metadata onto every child node, so
-sub-chunks inherit ``punkt_id`` for free.
+sub-chunks inherit ``clause_id`` for free.
 
 The module is deliberately pure and dependency-light: ``clause_documents`` takes the
 already-extracted, watermark-stripped page dicts, so it is fully testable without a PDF.
@@ -112,7 +112,7 @@ _MAX_FIRST_ID = 1
 #: the adapter's ``EMBED_EXCLUDED_METADATA_KEYS`` rather than replacing it.
 #: ``table_part`` orders a table's row groups for ``read_passage``; embedded, it read
 #: ``table_part: 1`` to the embedder and the model alike.
-CLAUSE_EMBED_EXCLUDED_METADATA_KEYS = ("page_end", "punkt_depth", "chunking", "table_part")
+CLAUSE_EMBED_EXCLUDED_METADATA_KEYS = ("page_end", "clause_depth", "chunking", "table_part")
 
 #: Separator for the ancestor breadcrumb. A guillemet reads as hierarchy to the embedder
 #: without colliding with the ">" that appears in the corpus' own comparison operators.
@@ -340,7 +340,7 @@ def _title_key(title: str) -> str:
 
 
 def _listed_headings(text_pages: list[dict[str, Any]]) -> dict[str, str]:
-    """``{punkt_id: normalised title}`` for what the document's contents page announces.
+    """``{clause_id: normalised title}`` for what the document's contents page announces.
 
     The chain search below has to choose between two readings of the same numbering, and
     on the tables that imitate it there is no local evidence either way -- a page-density
@@ -580,7 +580,7 @@ def guideline_key(file_name: str) -> str:
 
 
 #: Private alias kept for callers inside this module and its tests. The public name is
-#: what `scripts/build_punkt_index.py` imports: the eval index and the chunk metadata
+#: what `scripts/build_clause_index.py` imports: the eval index and the chunk metadata
 #: MUST derive the same key for the same file, because the golden set joins on it, and
 #: two copies of this function had already drifted apart -- the script stripped only
 #: `ausgabe_mai_<year>`, so `oib-rl_2_ausgabe_april_2019.pdf` keyed as
@@ -645,7 +645,7 @@ def clause_documents(text_pages: list[dict[str, Any]], file_name: str, file_size
                     "page_label": str(page_number),
                     "content_type": "text",
                     "chunking": "page",
-                    "richtlinie": guideline,
+                    "guideline": guideline,
                 },
             )
         )
@@ -663,13 +663,13 @@ def clause_documents(text_pages: list[dict[str, Any]], file_name: str, file_size
                     "page_label": str(segment.page_start),
                     "page_end": str(segment.page_end),
                     "content_type": "text",
-                    "chunking": "punkt",
-                    "punkt_id": segment.clause_id,
-                    "punkt_path": _BREADCRUMB_SEP.join([*path, f"{segment.clause_id} {segment.title}"]),
-                    "punkt_parent_id": segment.parent_id,
-                    "punkt_title": segment.title,
-                    "punkt_depth": segment.depth,
-                    "richtlinie": guideline,
+                    "chunking": "clause",
+                    "clause_id": segment.clause_id,
+                    "clause_path": _BREADCRUMB_SEP.join([*path, f"{segment.clause_id} {segment.title}"]),
+                    "clause_parent_id": segment.parent_id,
+                    "clause_title": segment.title,
+                    "clause_depth": segment.depth,
+                    "guideline": guideline,
                 },
             )
         )
@@ -687,8 +687,8 @@ def _table_documents(
 ) -> list[Document]:
     """One Document per row group of every captioned table (``captioned_tables``).
 
-    Addressed like a Punkt (``punkt_id = "Tabelle 3"``), so ``read_passage``
-    fetches it by name and a citation names it; no ``punkt_depth``, so the
+    Addressed like a Punkt (``clause_id = "Tabelle 3"``), so ``read_passage``
+    fetches it by name and a citation names it; no ``clause_depth``, so the
     Gliederung stays the document's own outline.
     """
     from knowledge_layer.llamaindex.captioned_tables import join_fragments
@@ -712,11 +712,11 @@ def _table_documents(
                         "page_end": str(table.page_end),
                         "content_type": "table",
                         "chunking": "table",
-                        "punkt_id": clause_id,
-                        "punkt_title": table.title,
-                        "punkt_path": caption,
-                        "richtlinie": guideline,
-                        # Every row group shares page and punkt_id; this is
+                        "clause_id": clause_id,
+                        "clause_title": table.title,
+                        "clause_path": caption,
+                        "guideline": guideline,
+                        # Every row group shares page and clause_id; this is
                         # what ``read_passage`` orders them by.
                         "table_part": index,
                     },

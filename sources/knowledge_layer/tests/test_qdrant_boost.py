@@ -34,21 +34,21 @@ IDENTITY = {"aiq:embed_fingerprint": "test-fp", "aiq:embed_model": "test-model"}
 
 #: The BFF's SIMILARITY_WEIGHTS (frontends/ui/src/lib/cross-project/similarity.ts), as the request carries them.
 WEIGHTS = {
-    "bundesland": 4,
-    "gebaeudeklasse": 3,
-    "gebaeudeklasse_adjacent": 1,
-    "bauweise": 2,
-    "nutzung": 1,
-    "nutzung_max": 2,
-    "vorhabensart": 1,
+    "federal_state": 4,
+    "building_class": 3,
+    "building_class_adjacent": 1,
+    "construction_method": 2,
+    "use": 1,
+    "use_max": 2,
+    "work_type": 1,
 }
 
 CURRENT = {
-    "bundesland": "niederoesterreich",
-    "gebaeudeklasse": [4],
-    "bauweise": ["holzbau"],
-    "nutzungen": ["wohnen", "buero"],
-    "vorhabensart": ["neubau"],
+    "federal_state": "niederoesterreich",
+    "building_class": [4],
+    "construction_method": ["holzbau"],
+    "uses": ["wohnen", "buero"],
+    "work_type": ["neubau"],
 }
 
 
@@ -139,7 +139,7 @@ def test_terms_mirror_similarity_term_by_term():
 
 
 def test_use_steps_cap_at_nutzung_max():
-    boost = parse_boost({"facts": {"nutzungen": ["a", "b", "c", "d"]}, "weights": {"nutzung": 1, "nutzung_max": 2.5}})
+    boost = parse_boost({"facts": {"uses": ["a", "b", "c", "d"]}, "weights": {"use": 1, "use_max": 2.5}})
     assert [weight for weight, _ in boost_terms(boost)] == [1, 1, 0.5]
 
 
@@ -165,20 +165,26 @@ def test_a_full_match_scales_by_one_plus_likeness():
 
 def test_negative_weight_is_refused():
     with pytest.raises(ValueError):
-        parse_boost({"facts": CURRENT, "weights": {"bundesland": -1}})
+        parse_boost({"facts": CURRENT, "weights": {"federal_state": -1}})
 
 
 def test_project_payload_is_typed_and_whole():
     payload = project_payload(
-        {"bundesland": ["wien"], "gebaeudeklasse": ["4", 2, None], "bauweise": "holzbau", "farbe": ["rot"]}, "paused"
+        {
+            "federal_state": ["wien"],
+            "building_class": ["4", 2, None],
+            "construction_method": "holzbau",
+            "farbe": ["rot"],
+        },
+        "paused",
     )
     assert payload == {
         "project_facts": {
-            "bundesland": "wien",
-            "gebaeudeklasse": [2, 4],
-            "bauweise": ["holzbau"],
-            "nutzungen": [],
-            "vorhabensart": [],
+            "federal_state": "wien",
+            "building_class": [2, 4],
+            "construction_method": ["holzbau"],
+            "uses": [],
+            "work_type": [],
         },
         "project_status": "paused",
     }
@@ -199,17 +205,17 @@ def test_set_scope_payload_mirrors_facts_onto_every_point_of_one_scope(store):
     _project(store, "proj_b", None, _record("b1.pdf", _unit("b1")))
 
     assert store.set_scope_payload("proj_a", project_payload(CURRENT, "active"))
-    assert store.count("proj_a", {"project_facts.bauweise": "holzbau"}) == 2
-    assert store.count("proj_a", {"project_facts.gebaeudeklasse": {"$in": ["4"]}}) == 2
+    assert store.count("proj_a", {"project_facts.construction_method": "holzbau"}) == 2
+    assert store.count("proj_a", {"project_facts.building_class": {"$in": ["4"]}}) == 2
     assert store.count("proj_a", {"project_status": "active"}) == 2
     # The restricted folder's scope and another project are separate calls.
     assert store.count("proj_a_r0123456789ab", {"project_status": "active"}) == 0
     assert store.count("proj_b", {"project_status": "active"}) == 0
 
     # A removed fact disappears: the object is replaced whole, not merged.
-    store.set_scope_payload("proj_a", project_payload({"bundesland": "wien"}, "closed"))
-    assert store.count("proj_a", {"project_facts.bauweise": "holzbau"}) == 0
-    assert store.count("proj_a", {"project_facts.bundesland": "wien", "project_status": "closed"}) == 2
+    store.set_scope_payload("proj_a", project_payload({"federal_state": "wien"}, "closed"))
+    assert store.count("proj_a", {"project_facts.construction_method": "holzbau"}) == 0
+    assert store.count("proj_a", {"project_facts.federal_state": "wien", "project_status": "closed"}) == 2
 
 
 def test_set_scope_payload_retries_a_transient_failure(store, monkeypatch):
@@ -244,17 +250,21 @@ def test_missing_indexes_are_added_to_an_existing_collection(store):
     _project(store, "proj_a", CURRENT, _record("a.pdf", _unit("a")))
     alias = store.alias("proj_a")
     # A collection created before the project facts were indexed.
-    store.client.delete_payload_index(alias, "project_facts.bauweise", wait=True)
+    store.client.delete_payload_index(alias, "project_facts.construction_method", wait=True)
     with pytest.raises(Exception, match="(?i)index"):
         store.client.count(
             alias,
             count_filter=models.Filter(
-                must=[models.FieldCondition(key="project_facts.bauweise", match=models.MatchValue(value="holzbau"))]
+                must=[
+                    models.FieldCondition(
+                        key="project_facts.construction_method", match=models.MatchValue(value="holzbau")
+                    )
+                ]
             ),
         )
-    assert schema.ensure_payload_indexes(store.client, alias) == ["project_facts.bauweise"]
+    assert schema.ensure_payload_indexes(store.client, alias) == ["project_facts.construction_method"]
     assert schema.ensure_payload_indexes(store.client, alias) == []
-    assert store.count("proj_a", {"project_facts.bauweise": "holzbau"}) == 1
+    assert store.count("proj_a", {"project_facts.construction_method": "holzbau"}) == 1
 
 
 # ---------------------------------------------------------------- server: filters
@@ -265,14 +275,14 @@ def test_fact_and_tag_filters_narrow_inside_the_one_query(store):
     _project(
         store,
         "proj_holz",
-        {"bauweise": ["holzbau"]},
+        {"construction_method": ["holzbau"]},
         _record("dach.pdf", _near(query, 0.1, "h1"), tags=["detail", "brandschutz"]),
         _record("bescheid.pdf", _near(query, 0.1, "h2"), tags=["bescheid"]),
     )
     _project(
         store,
         "proj_beton",
-        {"bauweise": ["stahlbeton"]},
+        {"construction_method": ["stahlbeton"]},
         _record("dach.pdf", _near(query, 0.05, "b1"), tags=["detail"]),
     )
 
@@ -289,7 +299,7 @@ def test_fact_and_tag_filters_narrow_inside_the_one_query(store):
         )
 
     assert set(_order(search(None))) == {"proj_holz", "proj_beton"}
-    assert _order(search({"project_facts.bauweise": {"$in": ["holzbau"]}})) == ["proj_holz"]
+    assert _order(search({"project_facts.construction_method": {"$in": ["holzbau"]}})) == ["proj_holz"]
     # Document type AND discipline, each any-of: the tags filter the BFF sends.
     narrowed = search({"$and": [{"tags": {"$in": ["detail"]}}, {"tags": {"$in": ["brandschutz"]}}]})
     assert [(scope, [hit.payload["file_name"] for hit in hits]) for scope, hits in narrowed] == [
@@ -351,12 +361,12 @@ SHARE = {"proj_a": 0, "proj_b": 4 / 12, "proj_c": 9 / 12}
 
 def _three_projects(store: QdrantStore, query: list[float]) -> None:
     # Close in relevance; they differ in what they share with CURRENT (SHARE).
-    _project(store, "proj_a", {"bundesland": "tirol"}, _record("a.pdf", _at(query, 0.800, "a")))
-    _project(store, "proj_b", {"bundesland": "niederoesterreich"}, _record("b.pdf", _at(query, 0.790, "b")))
+    _project(store, "proj_a", {"federal_state": "tirol"}, _record("a.pdf", _at(query, 0.800, "a")))
+    _project(store, "proj_b", {"federal_state": "niederoesterreich"}, _record("b.pdf", _at(query, 0.790, "b")))
     _project(
         store,
         "proj_c",
-        {"bundesland": "niederoesterreich", "gebaeudeklasse": [4], "bauweise": ["holzbau"]},
+        {"federal_state": "niederoesterreich", "building_class": [4], "construction_method": ["holzbau"]},
         _record("c.pdf", _at(query, 0.785, "c")),
     )
 
@@ -375,7 +385,7 @@ def test_likeness_reorders_by_score_times_shared_facts(store):
 
 def test_likeness_is_a_nudge_not_a_filter(store):
     query = _unit("q")
-    _project(store, "proj_a", {"bundesland": "tirol"}, _record("a.pdf", _at(query, 0.95, "a")))
+    _project(store, "proj_a", {"federal_state": "tirol"}, _record("a.pdf", _at(query, 0.95, "a")))
     _project(store, "proj_c", CURRENT, _record("c.pdf", _at(query, 0.50, "c")))
     scopes = ["proj_a", "proj_c"]
     # Sharing every fact is worth 5 % of a score: a far better passage keeps its place, and nothing is dropped.
@@ -385,7 +395,7 @@ def test_likeness_is_a_nudge_not_a_filter(store):
 def test_a_full_match_gains_exactly_likeness(store):
     query = _unit("q")
     _project(store, "proj_c", CURRENT, _record("c.pdf", _at(query, 0.6, "c")))
-    _project(store, "proj_a", {"bundesland": "tirol"}, _record("a.pdf", _at(query, 0.6, "a")))
+    _project(store, "proj_a", {"federal_state": "tirol"}, _record("a.pdf", _at(query, 0.6, "a")))
     served = _served_scores(store, query, ["proj_c", "proj_a"])
     formula = likeness_formula(parse_boost({"facts": CURRENT, "weights": WEIGHTS}))
     dense = models.Prefetch(query=query, using=schema.DENSE, limit=10)
@@ -452,11 +462,11 @@ def test_grouped_search_keeps_the_flat_fused_order(store):
 
 PROJECTS = 20
 FACT_CHOICES = {
-    "bundesland": ["niederoesterreich", "wien", "tirol"],
-    "gebaeudeklasse": [[3], [4], [5]],
-    "bauweise": [["holzbau"], ["stahlbeton"]],
-    "nutzungen": [["wohnen"], ["buero"], ["wohnen", "buero"]],
-    "vorhabensart": [["neubau"], ["zubau"]],
+    "federal_state": ["niederoesterreich", "wien", "tirol"],
+    "building_class": [[3], [4], [5]],
+    "construction_method": [["holzbau"], ["stahlbeton"]],
+    "uses": [["wohnen"], ["buero"], ["wohnen", "buero"]],
+    "work_type": [["neubau"], ["zubau"]],
 }
 
 

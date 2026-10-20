@@ -44,7 +44,7 @@ def konzept(tmp_path) -> list[Any]:
 def _by_clause(docs: list[Any]) -> dict[str, list[Any]]:
     grouped: dict[str, list[Any]] = {}
     for doc in docs:
-        grouped.setdefault(doc.metadata.get("punkt_id", ""), []).append(doc)
+        grouped.setdefault(doc.metadata.get("clause_id", ""), []).append(doc)
     return grouped
 
 
@@ -92,8 +92,8 @@ class TestPdfSections:
         assert first.text.startswith(
             "Brandschutzkonzept Wohnanlage Musterstraße › 1 Allgemeines › 1.1 Gebäudebeschreibung\n\n"
         )
-        assert first.metadata["punkt_path"].endswith("1 Allgemeines › 1.1 Gebäudebeschreibung")
-        assert first.metadata["punkt_depth"] == 2
+        assert first.metadata["clause_path"].endswith("1 Allgemeines › 1.1 Gebäudebeschreibung")
+        assert first.metadata["clause_depth"] == 2
 
     def test_a_section_spans_pages_and_its_page_label_stays_numeric(self, konzept):
         parts = _by_clause(konzept)["1.1"]
@@ -117,7 +117,7 @@ class TestPdfSections:
 
     def test_a_bare_paragraph_sign_takes_its_title_from_the_next_line(self, konzept):
         paragraph = _by_clause(konzept)["§ 3"][0]
-        assert paragraph.metadata["punkt_title"] == "Fluchtwege"
+        assert paragraph.metadata["clause_title"] == "Fluchtwege"
         assert "Fluchtwege" not in paragraph.text.split("\n\n", 1)[1]
 
     def test_the_running_footer_is_not_indexed(self, konzept):
@@ -138,7 +138,7 @@ class TestPdfSections:
         pages = _pages_of(write_pdf(tmp_path / "brief.pdf", plain))
         docs = text_documents_for_pages(pages, "brief.pdf", 1)
         assert [doc.metadata["page_label"] for doc in docs] == ["1", "2", "3"]
-        assert "punkt_id" not in docs[0].metadata
+        assert "clause_id" not in docs[0].metadata
 
 
 def _line(text: str, size: float = 10.0, bold: bool = False, position: int = 1) -> Line:
@@ -206,8 +206,8 @@ class TestHeadingRecognition:
     def test_a_long_run_in_heading_type_is_a_block_not_a_heading(self):
         """A plan sheet's legend, set large: joined it was one 470-token "heading".
 
-        The breadcrumb metadata carried it three times (punkt_id, punkt_title,
-        punkt_path), past the splitter's chunk size, and the whole file failed
+        The breadcrumb metadata carried it three times (clause_id, clause_title,
+        clause_path), past the splitter's chunk size, and the whole file failed
         (2026-10, ``WR_25003_P1240_0.pdf``).
         """
         legend = [

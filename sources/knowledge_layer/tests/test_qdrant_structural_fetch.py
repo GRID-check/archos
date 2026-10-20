@@ -2,7 +2,7 @@
 
 Against a real Qdrant (``test_qdrant_store.py`` says why and how). The corpus
 is seeded through the write ingestion uses (``writes.write_chunks``), shaped like the OIB
-corpus (Punkt chunks with ``punkt_id``/``punkt_depth``/``page_label``/
+corpus (Punkt chunks with ``clause_id``/``clause_depth``/``page_label``/
 ``page_end``, a split Punkt, a captioned table in row groups) next to a
 page-chunked report, a workbook and a Markdown file.
 
@@ -76,7 +76,7 @@ def _clause(file_name: str, punkt: str, depth: int, title: str, page: int, *, en
     return _row(
         f"{punkt} {title}\n\n{body or f'Text zu {title}. Weiterer Satz.'}",
         file_name,
-        chunking="punkt",
+        chunking="clause",
         clause_id=punkt,
         clause_depth=depth,
         clause_title=title,

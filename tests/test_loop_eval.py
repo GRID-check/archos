@@ -34,20 +34,20 @@ def _load_loop_eval():
 
 loop_eval = _load_loop_eval()
 
-QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "herleitung" / "loop_eval_questions.yaml"
+QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.yaml"
 
 
 def _row(question_id: str, **overrides) -> loop_eval.Observation:
     base = {
         "id": question_id,
         "expected_family": "OIB-RL 2",
-        "expected_punkt": "5.1",
+        "expected_clause": "5.1",
         "expected_kind": "ruling",
         "kind": "ruling",
         "verdict": "yes",
         "rounds": "2",
         "read_passage": "yes",
-        "punkt_match": "yes",
+        "clause_match": "yes",
         "truncated": "no",
         "checkpoint_sources": "none>argument",
         "family_coverage": "2 3/4",
@@ -96,7 +96,7 @@ class TestTheQuestionSet:
         assert "Salzburg" in asked
 
     def test_no_bauordnung_row_claims_a_paragraph_nothing_here_can_verify(self, questions):
-        """`paragraph` follows `punkt`'s discipline: a § read off a committed
+        """`paragraph` follows `clause`'s discipline: a § read off a committed
         fixture, never one somebody remembered. There is no committed RIS
         fixture yet, so every one of them is null — and the day one is filled
         in, this test is the line that says where it must come from."""
@@ -114,9 +114,9 @@ class TestTheQuestionSet:
         index_path = REPO_ROOT / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures" / "clause_index.json"
         index = json.loads(index_path.read_text(encoding="utf-8"))
         unknown = [
-            (q.id, q.family, q.punkt)
+            (q.id, q.family, q.clause)
             for q in questions
-            if q.punkt and q.punkt not in index.get(str(q.family or "").removeprefix("OIB-RL ").strip(), {})
+            if q.clause and q.clause not in index.get(str(q.family or "").removeprefix("OIB-RL ").strip(), {})
         ]
         assert unknown == []
 
@@ -130,7 +130,7 @@ class TestOneRow:
         return [{"name": name, "payload": json.dumps(body)} for name, body in payloads]
 
     def test_rounds_checkpoints_and_the_locator_come_off_the_status_events(self):
-        question = loop_eval.Question(id="q", question="?", family="OIB-RL 2", punkt="5.1", kind="ruling")
+        question = loop_eval.Question(id="q", question="?", family="OIB-RL 2", clause="5.1", kind="ruling")
         steps = self._steps(
             ("status:retrieval:0", {"tools": ["knowledge_search"]}),
             ("status:checkpoint:0", {"round": 0, "hasConclusion": False, "source": "none"}),
@@ -141,10 +141,10 @@ class TestOneRow:
         row = loop_eval.observe(question, steps, "… OIB-RL 2, Pkt. 5.1.2 …", {"kind": "ruling", "verdict": {"v": "x"}})
 
         assert (row.rounds, row.read_passage, row.checkpoint_sources) == ("2", "yes", "none>argument")
-        assert (row.kind, row.verdict, row.punkt_match, row.truncated) == ("ruling", "yes", "yes", "no")
+        assert (row.kind, row.verdict, row.clause_match, row.truncated) == ("ruling", "yes", "yes", "no")
 
     def test_truncation_is_read_off_the_budget_event(self):
-        question = loop_eval.Question(id="q", question="?", family=None, punkt=None, kind="direct")
+        question = loop_eval.Question(id="q", question="?", family=None, clause=None, kind="direct")
         steps = self._steps(("status:budget", {"truncated": True, "spent": 7}))
 
         assert loop_eval.observe(question, steps, "", {}).truncated == "yes"
@@ -158,7 +158,7 @@ class TestOneRow:
     def test_an_unmeasured_clause_is_blank_and_not_a_miss(self):
         """A question with no expected Punkt must not drag the match rate down."""
         assert loop_eval.clause_matches(None, ["3.1"]) == ""
-        assert loop_eval.summarise([_row("a", expected_punkt="", punkt_match="")]).punkt_measured == 0
+        assert loop_eval.summarise([_row("a", expected_clause="", clause_match="")]).clause_measured == 0
 
     def test_the_clause_scan_reads_the_forms_an_answer_actually_writes(self):
         assert loop_eval.cited_clauses("Pkt. 3.5.2 und Punkt 5.1, siehe Pkt 4") == ["3.5.2", "5.1", "4"]
@@ -166,7 +166,7 @@ class TestOneRow:
     def test_the_coverage_event_becomes_the_family_column(self):
         """The runner reads the product's own `status:coverage` records, one
         per family, and folds them into one cell."""
-        question = loop_eval.Question(id="q", question="?", family="OIB-RL 2", punkt=None, kind="walkthrough")
+        question = loop_eval.Question(id="q", question="?", family="OIB-RL 2", clause=None, kind="walkthrough")
         steps = [
             {"name": "status:coverage:2", "payload": '{"family":"2","listed":4,"opened":3}'},
             {"name": "status:coverage:4", "payload": '{"family":"4","listed":1,"opened":1}'},
@@ -175,7 +175,7 @@ class TestOneRow:
         assert loop_eval.observe(question, steps, "", {}).family_coverage == "2 3/4 4 1/1"
 
     def test_a_turn_that_touched_no_family_leaves_the_cell_empty(self):
-        question = loop_eval.Question(id="q", question="?", family=None, punkt=None, kind="direct")
+        question = loop_eval.Question(id="q", question="?", family=None, clause=None, kind="direct")
         assert loop_eval.observe(question, [], "", {}).family_coverage == ""
 
 
@@ -186,7 +186,7 @@ class TestLocatorEligible:
         """The OIB publishes 2.2 as ``oib-richtlinie_2.2_ausgabe_mai_2023.pdf``.
         The stem alone, without the ``.pdf`` that another alternative matches,
         must still read as a file."""
-        question = loop_eval.Question(id="q", question="?", family=None, punkt=None, kind="walkthrough")
+        question = loop_eval.Question(id="q", question="?", family=None, clause=None, kind="walkthrough")
         payloads = [("retrieve.knowledge_search", {"input": {"query": "oib-richtlinie_2.2_ausgabe_mai_2023"}})]
 
         assert loop_eval.flag_locator_eligible(question, payloads, ["knowledge_search"]) == "yes"
@@ -194,7 +194,7 @@ class TestLocatorEligible:
 
 class TestTheCsv:
     def test_a_run_survives_the_round_trip(self, tmp_path: Path):
-        rows = [_row("a"), _row("b", rounds="1", read_passage="no", punkt_match="no")]
+        rows = [_row("a"), _row("b", rounds="1", read_passage="no", clause_match="no")]
         path = tmp_path / "run.csv"
 
         loop_eval.write_csv(path, rows)
@@ -353,7 +353,7 @@ class TestTheRisColumns:
             "id": "einreichung-wien-unterlagen",
             "question": "Welche Unterlagen verlangt die Baubehörde in Wien?",
             "family": "Bauordnung",
-            "punkt": None,
+            "clause": None,
             "kind": "walkthrough",
         }
         return loop_eval.Question(**{**base, **overrides})
@@ -363,12 +363,12 @@ class TestTheRisColumns:
 
         return [{"name": name, "payload": json.dumps(body)} for name, body in payloads]
 
-    def _span(self, *, keys: list[str] | None = None, punkte: list[str] | None = None) -> tuple[str, dict]:
+    def _span(self, *, keys: list[str] | None = None, clauses: list[str] | None = None) -> tuple[str, dict]:
         output: dict = {"picked": []}
         if keys:
             output["citation_keys"] = keys
-        if punkte:
-            output["punkt_ids"] = punkte
+        if clauses:
+            output["clause_ids"] = clauses
         return ("retrieve.ris_lookup", {"input": {"round": 0, "tool": "ris_lookup"}, "output": output})
 
     def test_the_old_three_tool_shape_counts_three_calls(self):
@@ -391,19 +391,19 @@ class TestTheRisColumns:
         assert row.ris_calls == "1"
 
     def test_a_cited_paragraph_the_turn_retrieved_matches(self):
-        payloads = [self._span(punkte=["§63Abs1"])]
+        payloads = [self._span(clauses=["§63Abs1"])]
 
         assert loop_eval.paragraph_matches(self._question(), "… § 63 Abs 1 BO Wien …", payloads) == "yes"
 
     def test_a_cited_paragraph_the_turn_never_retrieved_does_not(self):
-        payloads = [self._span(punkte=["§63Abs1"])]
+        payloads = [self._span(clauses=["§63Abs1"])]
 
         assert loop_eval.paragraph_matches(self._question(), "… § 99 BO Wien …", payloads) == "no"
 
     def test_a_committed_expectation_outranks_what_the_turn_retrieved(self):
-        """The same precedence `punkt` has: a fact somebody checked beats the
+        """The same precedence `clause` has: a fact somebody checked beats the
         turn's own account of itself."""
-        payloads = [self._span(punkte=["§63"])]
+        payloads = [self._span(clauses=["§63"])]
         question = self._question(paragraph="§ 70")
 
         assert loop_eval.paragraph_matches(question, "… § 63 …", payloads) == "no"
@@ -479,7 +479,7 @@ class TestTheSocket:
 
     def test_an_answered_turn_becomes_a_row(self):
         turn, replies = self._fold("turn-answered.jsonl")
-        question = loop_eval.Question(id="q", question="Fluchtweg GK 4?", family="OIB-RL 2", punkt=None, kind="ruling")
+        question = loop_eval.Question(id="q", question="Fluchtweg GK 4?", family="OIB-RL 2", clause=None, kind="ruling")
 
         row = loop_eval.observe(question, loop_eval.step_records(turn), turn.result.text, turn.result.answer_meta)
 
@@ -579,3 +579,32 @@ class TestTheSocket:
         assert answer.startswith("Für **Gebäudeklasse 4**")
         assert envelope["kind"] == "ruling"
         assert any(step["name"] == "status:retrieval:0" for step in steps)
+
+
+class TestRunsAndQuestionSetsWrittenBeforeTheRename:
+    """`punkt` was the question key and `punkt_match` / `expected_punkt` the columns; both still read."""
+
+    def test_a_question_row_with_the_old_key_reads_as_the_clause(self, tmp_path):
+        path = tmp_path / "questions.yaml"
+        path.write_text(
+            "questions:\n  - {id: a, question: '?', family: OIB-RL 2, punkt: '5.1', kind: ruling}\n"
+            "  - {id: b, question: '?', family: OIB-RL 2, clause: '3.2', kind: ruling}\n",
+            encoding="utf-8",
+        )
+
+        assert [question.clause for question in loop_eval.load_questions(path)] == ["5.1", "3.2"]
+
+    def test_a_run_with_the_old_columns_still_compares(self, tmp_path):
+        path = tmp_path / "before.csv"
+        header = [
+            {"expected_punkt": "expected_clause", "punkt_match": "clause_match"}.get(name, name)
+            for name in loop_eval.FIELDS
+        ]
+        old_header = [
+            {"expected_clause": "expected_punkt", "clause_match": "punkt_match"}.get(name, name) for name in header
+        ]
+        path.write_text(",".join(old_header) + "\n" + ",".join("x" for _ in old_header) + "\n", encoding="utf-8")
+
+        [row] = loop_eval.read_csv(path)
+
+        assert row.expected_clause == "x" and row.clause_match == "x"

@@ -9,7 +9,7 @@ more search, one more reranker pass and one more requery judge for a lookup it
 could already address.
 
 This tool is that lookup. Given a document the inventory knows and a Punkt or a
-page, it fetches exactly the chunks carrying that Punkt (``punkt_id``, the
+page, it fetches exactly the chunks carrying that Punkt (``clause_id``, the
 identifier the Punkt chunker verified against the corpus's own contents pages)
 or that page, and returns them in the SAME grounding block ``knowledge_search``
 returns — same ``Citation:`` keys, same ``Punkt:`` line, same ``## Trace-Lanes``
@@ -63,6 +63,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from pydantic import AliasChoices
+from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Field
 
 from nat.plugin_api import Builder
@@ -87,7 +90,7 @@ _MAX_PASSAGE_CHUNKS = 12
 #:
 #: Larger than the passage bound because the set is the whole top of a
 #: document: OIB 2 carries ~214 Punkte, far fewer of them at depth 1 or 2, and a
-#: long Punkt may arrive as several chunks that share one ``punkt_id``. Still a
+#: long Punkt may arrive as several chunks that share one ``clause_id``. Still a
 #: guard rather than a relevance budget — the metadata filter has already
 #: decided WHICH chunks exist.
 _MAX_OUTLINE_CHUNKS = 160
@@ -114,7 +117,7 @@ _MAX_OUTLINE_LINES = 80
 _READ_PASSAGE_DESCRIPTION = (
     "Open a document you can already NAME: `document=` alone returns its OUTLINE — the "
     "document's opening passage plus a Gliederung of its top-level Punkte — and `document=` "
-    "with `punkt=` or `page=` returns exactly that passage. "
+    "with `clause=` or `page=` returns exactly that passage. "
     "Deterministic lookup, not a search — no ranking, no second guess at your wording. "
     "Returns the same quotable excerpts with a Citation key that `knowledge_search` returns.\n"
     "WHEN TO CALL — you know WHICH document and want to know what it covers ('worum geht es "
@@ -125,10 +128,10 @@ _READ_PASSAGE_DESCRIPTION = (
     "Pkt. 3.5.2'), or the user named chapter and verse. "
     "Pass `document=` the exact name or display title as the inventory or a previous hit "
     "printed it (e.g. 'OIB-Richtlinie 2, Ausgabe Mai 2023' or 'oib-rl_2_ausgabe_mai_2023.pdf'), "
-    "and `punkt=` the number alone ('3.5.2', no 'Pkt.') or a table's caption ('Tabelle 3') — "
+    "and `clause=` the number alone ('3.5.2', no 'Pkt.') or a table's caption ('Tabelle 3') — "
     "for a project document, exactly what a hit's `Punkt:` line printed ('§ 4', 'Geschoße', "
     "'Zeilen 2-41'), "
-    "or `page=` the page number. With `punkt=`, `page=` is ignored: the Punkt alone names "
+    "or `page=` the page number. With `clause=`, `page=` is ignored: the Punkt alone names "
     "the passage.\n"
     "ALWAYS pass `conclusion=` — one sentence saying what you now know and what you still "
     "need, which is why you are opening THIS passage. It is the Herleitung checkpoint the "
@@ -138,15 +141,30 @@ _READ_PASSAGE_DESCRIPTION = (
     "topic: that is `knowledge_search`, and this tool cannot search for you. To put a file "
     "on screen it is `surface_documents`. Do not call it twice for the same Punkt, and do not "
     "ask a second time for an outline you already have.\n"
-    "RETURNS — with `punkt=` or `page=`, the passages under that Punkt or page, in document "
+    "RETURNS — with `clause=` or `page=`, the passages under that Punkt or page, in document "
     "order. With neither, the document's opening passage plus a `## Gliederung` listing its "
     "Punkte with their pages: that list is an index, not evidence — only the passages carry a "
-    "Citation, and a listed Punkt is read by calling again with `punkt=`. Every passage "
+    "Citation, and a listed Punkt is read by calling again with `clause=`. Every passage "
     "carries Source, Citation (copy verbatim), Dokumentart, Punkt and page. An unknown "
     "document name is REFUSED with up to three verbatim guesses from this turn's readable "
     "inventory when anything is close (labelled as guesses — pass one back exactly, or "
     "resolve the name with `knowledge_search` first) rather than inventing one."
 )
+
+
+# The arguments of one ``read_passage`` call, as the model sees them. No docstring: pydantic
+# would put it in the tool schema the model reads.
+#
+# ``punkt`` is the argument's former name: accepted for one release so a replayed turn, a
+# cached plan or a model that learned the old name still opens its passage. Only ``clause``
+# appears in the tool schema. Remove the alias after one release.
+class ReadPassageInput(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    document: str
+    clause: str | int | None = Field(default=None, validation_alias=AliasChoices("clause", "punkt"))
+    page: int | str | None = None
+    conclusion: str = ""
 
 
 class ReadPassageConfig(FunctionBaseConfig, name="read_passage"):
@@ -350,7 +368,7 @@ def _passage_filters(file_name: str, clause: str | None, page: int | None) -> di
     clauses: list[dict[str, Any]] = [{"file_name": {"$eq": file_name}}]
     if clause:
         spellings = _clause_spellings(clause)
-        clauses.append({"punkt_id": {"$eq": clause} if len(spellings) == 1 else {"$in": spellings}})
+        clauses.append({"clause_id": {"$eq": clause} if len(spellings) == 1 else {"$in": spellings}})
     if page is not None:
         clauses.append({"page_label": {"$in": _page_window(page)}})
     if len(clauses) == 1:
@@ -359,7 +377,7 @@ def _passage_filters(file_name: str, clause: str | None, page: int | None) -> di
 
 
 #: The two heading levels an outline lists. The Punkt chunker writes
-#: ``punkt_depth`` as an int and a backend that round-trips metadata through
+#: ``clause_depth`` as an int and a backend that round-trips metadata through
 #: JSON hands it back as a string, so :func:`_outline_filters` asks for both
 #: spellings and :func:`_clause_depth` normalises them.
 _OUTLINE_DEPTHS = (1, 2)
@@ -370,7 +388,7 @@ def _outline_filters(file_name: str) -> dict[str, Any]:
 
     Punkt ``0`` (``Vorbemerkungen``, the passage that says what the Richtlinie
     is for) plus everything at depth 1 or 2 — the headings a reader would scan
-    a contents page for. ``punkt_depth`` is stored as an int by the Punkt
+    a contents page for. ``clause_depth`` is stored as an int by the Punkt
     chunker, and a backend that round-trips metadata through JSON may hand it
     back as a string, so the clause asks for BOTH spellings: :func:`_clause_depth`
     accepts either, and a clause that admitted only the int would leave that
@@ -386,9 +404,9 @@ def _outline_filters(file_name: str) -> dict[str, Any]:
             {"file_name": {"$eq": file_name}},
             {
                 "$or": [
-                    {"punkt_id": {"$eq": "0"}},
-                    {"punkt_depth": {"$in": list(_OUTLINE_DEPTHS)}},
-                    {"punkt_depth": {"$in": [str(depth) for depth in _OUTLINE_DEPTHS]}},
+                    {"clause_id": {"$eq": "0"}},
+                    {"clause_depth": {"$in": list(_OUTLINE_DEPTHS)}},
+                    {"clause_depth": {"$in": [str(depth) for depth in _OUTLINE_DEPTHS]}},
                 ]
             },
         ]
@@ -449,7 +467,7 @@ def _addresses(chunk: Any, clause: str | None, page: int | None) -> bool:
     right.
     """
     metadata = getattr(chunk, "metadata", None) or {}
-    if clause and str(metadata.get("punkt_id") or "") not in _clause_spellings(clause):
+    if clause and str(metadata.get("clause_id") or "") not in _clause_spellings(clause):
         return False
     return page is None or _covers_page(chunk, page)
 
@@ -467,14 +485,14 @@ def _clause_number(raw: str) -> tuple[int, ...]:
 
 
 def _clause_of(chunk: Any) -> str:
-    """The ``punkt_id`` this chunk carries, or ``""``."""
-    return str((getattr(chunk, "metadata", None) or {}).get("punkt_id") or "")
+    """The ``clause_id`` this chunk carries, or ``""``."""
+    return str((getattr(chunk, "metadata", None) or {}).get("clause_id") or "")
 
 
 def _clause_sort_key(chunk: Any) -> tuple:
     """Page, then Punkt numerically, then a table's row-group order, then chunk id: stable across calls.
 
-    Every row group of one captioned table shares its page and ``punkt_id``
+    Every row group of one captioned table shares its page and ``clause_id``
     („Tabelle 1a" has no number to sort on), and the chunk id is a random
     uuid, so without ``table_part`` its "Teil 1 von 5" … "Teil 5 von 5" came
     back shuffled.
@@ -512,13 +530,13 @@ def _table_part(chunk: Any) -> int:
 
 
 def _clause_depth(chunk: Any) -> int | None:
-    """``punkt_depth`` as an int — ``None`` when absent or not a number.
+    """``clause_depth`` as an int — ``None`` when absent or not a number.
 
     Accepts the int the chunker writes and the string a backend that
     round-trips metadata through JSON may hand back, because the depth decides
     whether a chunk belongs in the outline at all.
     """
-    raw = (getattr(chunk, "metadata", None) or {}).get("punkt_depth")
+    raw = (getattr(chunk, "metadata", None) or {}).get("clause_depth")
     if isinstance(raw, bool) or raw is None:
         return None
     try:
@@ -583,7 +601,7 @@ def _excerpt_of(chunk: Any) -> str:
 def _outline_entries(chunks: Sequence[Any]) -> list[OutlineEntry]:
     """One entry per distinct Punkt at depth 1 or 2, ordered by the NUMBERING.
 
-    Deduped by ``punkt_id``: a Punkt long enough for ``SentenceSplitter`` to cut
+    Deduped by ``clause_id``: a Punkt long enough for ``SentenceSplitter`` to cut
     arrives as several chunks carrying the same id, and listing it twice would
     read as two Punkte.
 
@@ -602,7 +620,7 @@ def _outline_entries(chunks: Sequence[Any]) -> list[OutlineEntry]:
             continue
         entries[clause_id] = OutlineEntry(
             clause_id=clause_id,
-            title=str(metadata.get("punkt_title") or "").strip(),
+            title=str(metadata.get("clause_title") or "").strip(),
             page=str(metadata.get("page_label") or getattr(chunk, "page_number", "") or ""),
             depth=depth,
             excerpt=_excerpt_of(chunk) if depth == 1 else "",
@@ -657,7 +675,7 @@ def _outline_lines(entries: Sequence[OutlineEntry], limit: int = _MAX_OUTLINE_LI
 #: because it is read by the same model that writes the German answer, and it
 #: has to be unmistakable that a heading is not a source.
 _OUTLINE_INSTRUCTION = (
-    "Einen gelisteten Punkt öffnest du mit `read_passage(document=…, punkt=…)`; die "
+    "Einen gelisteten Punkt öffnest du mit `read_passage(document=…, clause=…)`; die "
     "Gliederung ist ein Index, keine Evidenz — nur die Passage(n) oben tragen eine Citation."
 )
 
@@ -1185,44 +1203,40 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             return message
         return await _unknown(document)
 
-    async def _read(
-        document: str,
-        punkt: str | int | None = None,
-        page: int | str | None = None,
-        conclusion: str = "",
-    ) -> str:
-        """Open a document you can name: one Punkt or page of it, or its outline.
+    async def _read(arguments: ReadPassageInput) -> str:
+        """Open a document you can name: one clause (Punkt) or page of it, or its outline.
 
-        With neither `punkt` nor `page`, the document's OUTLINE is returned: its
+        With neither `clause` nor `page`, the document's OUTLINE is returned: its
         opening passage plus a `## Gliederung` of its top-level Punkte with
         their pages. That is what to call when you know the document but not yet
         which Punkt holds the answer — never guess a Punkt number.
         Several documents or several Punkte are one call each, issued in the
         same round: a round costs one however many calls it holds.
 
-        Args:
-            document (str): The document's exact indexed file name or display
+        Arguments (``ReadPassageInput``):
+            document: The document's exact indexed file name or display
                 title, as the inventory or a previous hit printed it. Never
                 invented, never a fragment.
-            punkt (str | int | None): Optional. The Punkt number alone, e.g.
-                "3.5.2" — no "Pkt.", no title — or a table's caption,
-                "Tabelle 3". A top-level Punkt often arrives
-                as a number (`3`) and is read as its digits, the way `page`
-                accepts a numeric string. Omit it, and `page`, for the outline.
-            page (int | str | None): Optional. The page number, 1-based. Ignored
-                when `punkt` is given: the Punkt alone names the passage. ``''`` is
-                treated as omitted (#656: providers send empty string for "no
-                page"). Omit it, and `punkt`, for the outline.
-            conclusion (str): ONE sentence: what you now know and what you
-                still need, which is why you are opening this passage. It is
-                the Herleitung checkpoint the reader sees above this fetch; it
+            clause: Optional. The Punkt number alone, e.g. "3.5.2" — no
+                "Pkt.", no title — or a table's caption, "Tabelle 3". A
+                top-level Punkt often arrives as a number (`3`) and is read as
+                its digits, the way `page` accepts a numeric string. Omit it,
+                and `page`, for the outline. ``punkt`` is accepted as the
+                former name of this argument.
+            page: Optional. The page number, 1-based. Ignored when `clause` is
+                given: the clause alone names the passage. ``''`` is treated as
+                omitted (#656: providers send empty string for "no page"). Omit
+                it, and `clause`, for the outline.
+            conclusion: ONE sentence: what you now know and what you still
+                need, which is why you are opening this passage. It is the
+                Herleitung checkpoint the reader sees above this fetch; it
                 does not change what is opened and does not belong in your
                 answer.
 
         Returns:
             str: The passages, in the same grounding-block format
             `knowledge_search` returns, with Citation keys to copy verbatim —
-            followed by the Gliederung when no Punkt and no page was named.
+            followed by the Gliederung when no clause and no page was named.
         """
         from aiq_agent.common.turn_status import READ_PASSAGE_TOOL
         from aiq_agent.common.turn_status import lane_tool_scope
@@ -1230,10 +1244,10 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # `conclusion` is unread here on purpose — see the note in
         # `register.search`. It is a checkpoint channel read off the tool CALL,
         # never an input to what gets opened.
-        document = (document or "").strip()
-        punkt = str(punkt if punkt is not None else "").strip().strip(".") or None
-        page = _coerce_page(page)
-        if punkt is not None and page is not None:
+        document = (arguments.document or "").strip()
+        clause = str(arguments.clause if arguments.clause is not None else "").strip().strip(".") or None
+        page = _coerce_page(arguments.page)
+        if clause is not None and page is not None:
             # A Punkt (or „Tabelle 3") names one passage in a document, and
             # every chunk of it is filed under its FIRST page. A page beside it
             # can only repeat that page or empty the read: a Tabelle filed
@@ -1254,9 +1268,9 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # sitting inside them: `_format_results` runs in `asyncio.to_thread`,
         # which copies the context at call time.
         with lane_tool_scope(READ_PASSAGE_TOOL):
-            if punkt is None and page is None:
+            if clause is None and page is None:
                 return await _outline(document)
-            return await _open(document, punkt, page)
+            return await _open(document, clause, page)
 
     async def _open(document: str, clause: str | None, page: int | None) -> str:
         from .register import _format_results
@@ -1344,7 +1358,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         logger.info("read_passage: %s outlined %d opening chunk(s)", query, len(merged.chunks))
         return formatted
 
-    yield FunctionInfo.from_fn(_read, description=_READ_PASSAGE_DESCRIPTION)
+    yield FunctionInfo.from_fn(_read, input_schema=ReadPassageInput, description=_READ_PASSAGE_DESCRIPTION)
 
 
 def _session_collection() -> str | None:

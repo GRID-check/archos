@@ -68,7 +68,7 @@ def _seed(path: pathlib.Path) -> dict[str, dict[str, dict]]:
         ids = [str(uuid.uuid4()) for _ in range(count - 1)] + [f"{name}-not-a-uuid"]
         texts = [f"Fluchtweg § {index} – Größe" for index in range(count)]
         metadatas = [
-            {"file_name": "a.pdf" if index % 2 else "b.pdf", "page_label": str(index), "punkt_depth": index % 3}
+            {"file_name": "a.pdf" if index % 2 else "b.pdf", "page_label": str(index), "clause_depth": index % 3}
             for index in range(count)
         ]
         embeddings = [_vector(chunk_id) for chunk_id in ids]

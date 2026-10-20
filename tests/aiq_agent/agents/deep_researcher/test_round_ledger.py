@@ -33,7 +33,7 @@ from aiq_agent.common.turn_status import get_lane_captures
 from aiq_agent.common.turn_status import lane_tool_scope
 from aiq_agent.common.turn_status import record_lane_hit
 
-FIXTURE = Path(__file__).resolve().parents[4] / "tests/fixtures/herleitung/retrieval_ledger_wire.json"
+FIXTURE = Path(__file__).resolve().parents[4] / "tests/fixtures/derivation/retrieval_ledger_wire.json"
 
 
 def _query(text: str, tool: str = "knowledge_search") -> ResearchQuery:
@@ -140,7 +140,7 @@ class TestTwoBatchesAreTwoRounds:
 class TestTheLedgerIsTheSharedWireShape:
     """The crossing test: deep research writes what the chat turn writes.
 
-    ``tests/fixtures/herleitung/retrieval_ledger_wire.json`` is the wire the
+    ``tests/fixtures/derivation/retrieval_ledger_wire.json`` is the wire the
     frontend's sanitizer and the chat suite both read. A second producer that
     drifted from it would render as an unknown round, and nothing in either
     suite alone would say so.

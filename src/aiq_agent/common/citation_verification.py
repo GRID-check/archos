@@ -2172,7 +2172,7 @@ def _oib_binding_status(entry: SourceEntry) -> str | None:
         filename, _page = _parse_citation_key(entry.citation_key)
         basename = filename.rsplit("/", 1)[-1] if filename else ""
         oib_class = oib_doc_class(basename) if basename else None
-        if oib_class == "richtlinie":
+        if oib_class == "guideline":
             return "declared_binding"
         if oib_class is not None:
             return "interpretive"

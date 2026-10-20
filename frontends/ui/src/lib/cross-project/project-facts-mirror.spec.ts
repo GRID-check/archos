@@ -115,10 +115,10 @@ describe('the boost', () => {
     expect(boost?.weights).toEqual({
       federal_state: SIMILARITY_WEIGHTS.federalState,
       building_class: SIMILARITY_WEIGHTS.buildingClass,
-      gebaeudeklasse_adjacent: SIMILARITY_WEIGHTS.buildingClassAdjacent,
+      building_class_adjacent: SIMILARITY_WEIGHTS.buildingClassAdjacent,
       construction_method: SIMILARITY_WEIGHTS.constructionMethod,
-      nutzung: SIMILARITY_WEIGHTS.use,
-      nutzung_max: SIMILARITY_WEIGHTS.useMax,
+      use: SIMILARITY_WEIGHTS.use,
+      use_max: SIMILARITY_WEIGHTS.useMax,
       work_type: SIMILARITY_WEIGHTS.workType,
     })
   })

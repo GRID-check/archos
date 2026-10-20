@@ -11,7 +11,7 @@ import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
  * key or a moved cap on either side fails one of the two tests instead of
  * shipping green with the Herleitung's account silently dropped.
  */
-const FIXTURE_PATH = resolve(__dirname, '../../../../../tests/fixtures/herleitung/retrieval_ledger_wire.json')
+const FIXTURE_PATH = resolve(__dirname, '../../../../../tests/fixtures/derivation/retrieval_ledger_wire.json')
 
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as unknown
 

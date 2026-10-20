@@ -180,13 +180,13 @@ full-text index.
 | `doc_class` | keyword | Dokumentart, as a person set it or ingestion suggested it |
 | `tags[]`, `topics[]`, `disciplines[]` | keyword | Mirror of person-set tags (12 document types, 6 OIB disciplines) |
 | `project_status` | keyword | `active` / `paused` / `closed` (ADR-0098) |
-| `project_facts.*` | keyword / integer | Fingerprint: `bundesland`, `gebaeudeklasse`, `bauweise`, `nutzungen[]`, `vorhabensart` |
-| `content_type`, `chunking` | keyword | text / table / image / drawing; punkt / section / page |
+| `project_facts.*` | keyword / integer | Fingerprint: `federal_state`, `building_class`, `construction_method`, `uses[]`, `work_type` |
+| `content_type`, `chunking` | keyword | text / table / image / drawing; clause / section / page |
 | `evidence` | bool | Replaces `chunking != page` and the YAML change-log list |
 | `page`, `page_end`, `section_order` | integer | Locators; `section_order` is `is_principal` for ordered reads |
 | `reading_order` | integer | The page a chunk starts on, 0 when it has none; derived at write time, what a structural fetch orders by (§6) |
 | `chunk_ordinal` | integer | The chunk's place in its file, 0 for the first the chunker cut; written at ingest and by the import (in the export's order). Point ids are random node ids, so it is what orders the chunks of one page (§6) |
-| `richtlinie`, `punkt_id`, `punkt_path`, `punkt_depth` | keyword / integer | Corpus structure (corpus only) |
+| `richtlinie`, `clause_id`, `clause_path`, `clause_depth` | keyword / integer | Corpus structure (corpus only) |
 | `country`, `edition` | keyword | Corpus profile and OIB edition |
 | `file_name`, `title` | keyword, `text` | Display, plus the title-contains filter |
 | `text` | `text` index (`word` tokenizer, lowercased, `ascii_folding`, `phrase_matching`; no stemmer, so a phrase is the literal words) | Chunk body. Feeds phrase and exact queries. `word` keeps digits: `multilingual` drops them, and "5.1.1" or "43" matched nothing (§12) |
@@ -375,7 +375,7 @@ The consequences:
 | Folder ACL change means re-ingest with a lag | Restriction is a collection |
 | No counts ("6 von 8 Projekten in NÖ") | No shared index to facet |
 | Projects past the 500 newest are invisible | `PROJECT_LIST_LIMIT` in the BFF, not the store |
-| `gebaeudeklasse` is mostly empty, so similarity is starved | Data quality, not the store |
+| `building_class` is mostly empty, so similarity is starved | Data quality, not the store |
 
 ### On Qdrant
 
@@ -385,10 +385,10 @@ One query over `office_chunks`:
 filter: compile_scope(envelope, purpose=cross_project)
         # office_id = O, project_id in reach (or project_status = closed for wide chats),
         # restriction_id empty or cleared, superseded = false
-        + optional: project_facts.bauweise = holz, doc_class = detail
+        + optional: project_facts.construction_method = timber, doc_class = detail
 prefetch: dense + lexical (as §6), rrf
-formula:  $score + 0.10 * (project_facts.gebaeudeklasse = current.gk)
-                 + 0.05 * (project_facts.bundesland = current.bl)
+formula:  $score + 0.10 * (project_facts.building_class = current.gk)
+                 + 0.05 * (project_facts.federal_state = current.bl)
 group_by: project_id, group_size: 3, limit: 20
 with_lookup: documents                       # title, Fassung, date per hit
 ```
@@ -411,10 +411,10 @@ What this enables:
    projects got searched at all. The weights are still hand-set, but a wrong weight now
    nudges a ranking instead of hiding a project.
 4. **Real filters.** "Alle Dachdetails von Holzbauten in NÖ" is a pre-filter
-   (`doc_class`, `project_facts.bauweise`, `project_facts.bundesland`) inside
+   (`doc_class`, `project_facts.construction_method`, `project_facts.federal_state`) inside
    the vector search. The retriage document asks for exactly this
    (`docs/audit/upload-and-filing-retriage-2026-10-06.md` l. 228).
-5. **Counts.** `facet(project_id)` and `facet(project_facts.bundesland)` on the
+5. **Counts.** `facet(project_id)` and `facet(project_facts.federal_state)` on the
    same filter give "6 von 8 Projekten in Mödling" without fetching passages.
 6. **A cheap catalog.** The `<referenzprojekte>` list (ADR-0094 l. 134) can be
    ranked by a `recommend` over project-level vectors (the mean of a project's
@@ -430,8 +430,8 @@ Items 3 and 4 are built (2026-10-13). Three things the sketch above assumes
 did not hold on Qdrant 1.19.2, and the build differs from it there.
 
 **Facts on points.** Every chunk of a project's collections carries
-`project_facts.{bundesland, gebaeudeklasse, bauweise, nutzungen, vorhabensart}`
-and `project_status`, indexed (`qdrant/schema.py`; a collection created
+`project_facts.{federal_state, building_class, construction_method, uses, work_type}`
+and `project_status`, indexed (`qdrant/schema.py`; points written before the English key rename still hold the German names, which every read accepts until the rewrite in [`qdrant-payload-rename-runbook.md`](../deployment/qdrant-payload-rename-runbook.md); a collection created
 before them gains the indexes in place, `ensure_indexes`). What is copied is
 what the BFF's similarity reads (`similarityFacts`: confirmed facts, else the
 agent's suggestion). One endpoint writes it, `PUT
@@ -754,10 +754,10 @@ index changes went in place.
 | A writer dying between `create_collection` and the alias wedged every later writer on the conflict, and the loser of a create race raised | A conflict finishes the collection: indexes added, alias made if missing; two writers finishing it at once agree | `schema._create_or_adopt` |
 | `find_text` scrolled the whole scope (20k chunks: about 79 requests, 29 MB) | Narrowed on the server by the words every match of the pattern must hold as whole tokens; the regex still decides. A pattern without such a word (one word over three characters, which matches inside longer words) reads the whole scope as before | `retrieval.literal_tokens`, `find_text` |
 | `coerce_field("superseded", "false")` was True; a one-file fact refresh loaded every document of the scope; a folder rename sent one request per file; a cleared Dokumentart stayed on the points | String booleans read for what they say; `get_documents(collection, names)` reads only the named rows; payload updates go in batches of 128, a folder move copies only the folder of the moved files; clearing a stored class puts back the chunk's own (`chunk_doc_class`, written at ingest), which is also what a hit's metadata now carries, as on Chroma | `payload.py`, `mirror.refresh_facts`, `store.set_file_payloads`, `DocumentMetadataStore.get_many` |
-| Raw `filters` a model may pass (`punkt_path`, `page_end`, `table_index`, `section_part`, `drawing_type`, …) raised under `qdrant` | Every metadata key the chunkers write and a filter can plausibly name is indexed, with its stored type; large fields (`drawing_data`, `description`) stay unindexed and still raise, naming the field | `schema.KEYWORD_FIELDS`, `INTEGER_FIELDS` |
+| Raw `filters` a model may pass (`clause_path`, `page_end`, `table_index`, `section_part`, `drawing_type`, …) raised under `qdrant` | Every metadata key the chunkers write and a filter can plausibly name is indexed, with its stored type; large fields (`drawing_data`, `description`) stay unindexed and still raise, naming the field | `schema.KEYWORD_FIELDS`, `INTEGER_FIELDS` |
 | `health_check` under `qdrant` ignored Chroma, which is still the write record and serves the registry reads | Healthy only when both answer | `adapter.py` `health_check` |
 | Integration review of the merged branches: the project-facts write (`set_scope_payload`) and the rebuild's copy skipped the store's retry, so one 503 from a restarting peer failed a profile save's mirror, or ended a rebuild with a half-copied `_vN` a person had to drop | Both go through `store.with_retry` like every other write | `store.set_scope_payload`, `rebuild.copy_collection` |
-| A list-valued equality filter (`{"project_facts.nutzungen": ["wohnen"]}`) was coerced whole into the string `"['wohnen']"` on a keyword field and matched nothing | A list is any of its values, on every field type | `scope._match` |
+| A list-valued equality filter (`{"project_facts.uses": ["residential"]}`) was coerced whole into the string `"['wohnen']"` on a keyword field and matched nothing | A list is any of its values, on every field type | `scope._match` |
 | Compose's `qdrant` service had neither the metrics port nor the write quotas of the Pulumi peers | Both set, the quotas from `QDRANT_QUOTA_MEMORY_PERCENT` / `QDRANT_QUOTA_DISK_PERCENT` (90 / 85) | `deploy/compose/docker-compose.yaml` |
 
 ### Hardened after the data-safety review (2026-10-14)

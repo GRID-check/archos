@@ -122,7 +122,7 @@ class Hit:
             ("collection", self.collection),
             ("doc_class", self.doc_class),
             ("shelf", self.shelf),
-            ("punkt_id", self.clause),
+            ("clause_id", self.clause),
         ):
             if value:
                 metadata[key] = value

@@ -280,7 +280,7 @@ def apply(api: Any, plan: Plan) -> None:
     if plan.dataset:
         api.datasets.create(
             name=GOLDEN_DATASET_NAME,
-            description="The answer suite's golden questions (tests/fixtures/herleitung/loop_eval_questions.yaml).",
+            description="The answer suite's golden questions (tests/fixtures/derivation/loop_eval_questions.yaml).",
         )
     for item in plan.dataset_items:
         api.dataset_items.create(dataset_name=GOLDEN_DATASET_NAME, **item)

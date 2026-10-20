@@ -84,7 +84,7 @@ def test_filter_translation_keeps_missing_keys_on_negations():
 
 
 def test_filter_translation_coerces_types_to_the_index():
-    flt = translate({"punkt_depth": {"$in": ["1", 2]}, "page_label": 3})
+    flt = translate({"section_order": {"$in": ["1", 2]}, "page_label": 3})
     conditions = [part.must[0] for part in flt.must]
     assert conditions[0].match.any == [1, 2]
     assert conditions[1].match.value == "3"
@@ -201,9 +201,25 @@ def test_ne_keeps_points_without_the_field(store):
     assert store.count("oib_knowledge", {"chunking": {"$ne": "page"}}) == 2
 
 
+def test_a_point_still_carrying_the_old_punkt_keys_is_found_under_the_clause_names(store):
+    """Points written before the rename keep ``punkt_*`` and ``chunking: "punkt"`` until the operator rewrite."""
+    store.upsert(
+        "oib_knowledge",
+        [
+            _record("alt", "a.pdf", punkt_id="3.5", punkt_depth=2, chunking="punkt"),
+            _record("neu", "a.pdf", clause_id="3.5", clause_depth=2, chunking="clause"),
+            _record("andere", "a.pdf", clause_id="4.1", clause_depth=1, chunking="clause"),
+        ],
+    )
+    assert store.count("oib_knowledge", {"clause_id": {"$eq": "3.5"}}) == 2
+    assert store.count("oib_knowledge", {"clause_depth": {"$in": [2]}}) == 2
+    assert store.count("oib_knowledge", {"chunking": "clause"}) == 3
+    assert store.count("oib_knowledge", {"chunking": {"$ne": "clause"}}) == 0
+
+
 def test_int_and_string_spellings_meet(store):
     store.upsert("oib_knowledge", [_record("Punkt", "rl.pdf", clause_depth=1, page_label=4)])
-    assert store.count("oib_knowledge", {"punkt_depth": {"$in": ["1"]}}) == 1
+    assert store.count("oib_knowledge", {"clause_depth": {"$in": ["1"]}}) == 1
     assert store.count("oib_knowledge", {"page_label": {"$in": [4]}}) == 1
 
 
@@ -517,8 +533,8 @@ def test_the_metadata_keys_the_chunkers_write_are_filterable(store):
         ],
     )
     for filters in (
-        {"punkt_path": "5 Treppen > 5.1 Allgemein"},
-        {"punkt_parent_id": "5"},
+        {"clause_path": "5 Treppen > 5.1 Allgemein"},
+        {"clause_parent_id": "5"},
         {"page_end": 7},
         {"section_part": "2"},
         {"table_part": 1},
@@ -549,10 +565,10 @@ def test_a_list_value_is_any_of_on_every_field_type(store):
     store.upsert(
         "proj_a",
         [_record("x", "a.pdf", section_order=2)],
-        project_payload({"nutzungen": ["wohnen", "buero"], "gebaeudeklasse": [4]}, "active"),
+        project_payload({"uses": ["wohnen", "buero"], "building_class": [4]}, "active"),
     )
-    assert store.count("proj_a", {"project_facts.nutzungen": ["buero", "handel"]}) == 1
-    assert store.count("proj_a", {"project_facts.nutzungen": ["handel"]}) == 0
-    assert store.count("proj_a", {"project_facts.gebaeudeklasse": [3, "4"]}) == 1
+    assert store.count("proj_a", {"project_facts.uses": ["buero", "handel"]}) == 1
+    assert store.count("proj_a", {"project_facts.uses": ["handel"]}) == 0
+    assert store.count("proj_a", {"project_facts.building_class": [3, "4"]}) == 1
     assert store.count("proj_a", {"section_order": ["2"]}) == 1
     assert store.count("proj_a", {"file_name": ["a.pdf"]}) == 1
