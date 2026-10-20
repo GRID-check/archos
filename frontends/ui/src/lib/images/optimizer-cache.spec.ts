@@ -26,7 +26,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { getMaxAge, ImageOptimizerCache } from 'next/dist/server/image-optimizer'
+import { ImageOptimizerCache } from 'next/dist/server/image-optimizer'
+import { getMaxAge } from 'next/dist/server/image-optimizer/get-max-age'
 import { imageConfigDefault } from 'next/dist/shared/lib/image-config'
 import { afterEach, describe, expect, it } from 'vitest'
 

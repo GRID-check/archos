@@ -403,7 +403,9 @@ describe('scrubEvent (before_send)', () => {
       $set_once: { $initial_current_url: 'https://app.example/cb?code=c' },
     } as NonNullable<Parameters<typeof scrubEvent>[0]>)
     expect(scrubbed?.$set_once).toEqual({ $initial_current_url: 'https://app.example/cb' })
-    expect(scrubEvent(null)).toBeNull()
+    // posthog-js no longer types the argument as nullable; the guard stays for a
+    // before_send chain that hands on an earlier hook's dropped event.
+    expect(scrubEvent(null as unknown as Parameters<typeof scrubEvent>[0])).toBeNull()
   })
 
   test('leaves a replay chunk payload alone but still scrubs its envelope', () => {

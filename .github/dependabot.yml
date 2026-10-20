@@ -64,6 +64,19 @@ updates:
         patterns:
           - "@opentelemetry/*"
     ignore:
+      # A2UI is pinned exactly (ADR-0065): nearly every 0.x minor has broken its
+      # API (0.13 moved every component into a custom element and changed the
+      # catalog), so an upgrade is its own change gated by the `features/a2ui`
+      # tests, not a line in the weekly group.
+      - dependency-name: "@a2ui/*"
+      # @ifc-lite/geometry 7.8.1 spawns a worker it does not ship
+      # ('./geometry.worker.ts'), which fails `next build`, and every renderer
+      # from 6.3.0 to 6.4.0 requires it. Exact versions only, so a release that
+      # fixes the path still arrives (docs/contributing/gotchas.md).
+      - dependency-name: "@ifc-lite/geometry"
+        versions: ["7.8.1"]
+      - dependency-name: "@ifc-lite/renderer"
+        versions: ["6.3.0", "6.3.1", "6.3.2", "6.3.3", "6.4.0"]
       # `typescript-api` is TypeScript 6 under an npm alias, for the specs that
       # parse source with the compiler API TypeScript 7.0 does not ship
       # (ADR-0103). Moving it to 7 removes that API. It goes when 7.1's lands.

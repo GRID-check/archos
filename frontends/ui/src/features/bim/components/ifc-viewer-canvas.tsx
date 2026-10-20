@@ -78,7 +78,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
  * renderer's own `RenderOptions` the contract. A misspelled option is now a
  * type error at the call site, which is where it was always meant to be caught.
  */
-import type { Camera, RenderOptions, Renderer, Scene } from '@ifc-lite/renderer'
+import type { Camera, RenderOptions, Renderer, SceneContents } from '@ifc-lite/renderer'
 import { useLocale, useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
@@ -298,7 +298,7 @@ type CameraLike = Pick<
 >
 
 type SceneLike = Pick<
-  Scene,
+  SceneContents,
   | 'setColorOverrides'
   | 'clearColorOverrides'
   | 'getEntityBoundingBox'
