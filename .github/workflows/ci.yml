@@ -293,24 +293,28 @@ jobs:
         continue-on-error: true
         run: python3 ci/semgrep_summary.py semgrep.json "new findings this pull request introduces" >> "$GITHUB_STEP_SUMMARY"
 
-  # Core suite (coverage-gated), the aiq_api plugin suite and the sources/
-  # suites, in one job: they share the environment, and the plugin suites
-  # (~1 min) fit inside the time the frontend lane takes anyway, so a second
-  # job bought no wall clock and cost a queued runner slot.
+  # The core suite, in four shards. It is ~900 CPU-seconds on a 2-vCPU runner
+  # and nothing in it dominates (docs/contributing/ci.md#the-backend-lane), so
+  # as one job it was the whole run's critical path: 7-8 of a 14-minute run,
+  # with the other suites queued behind it in the same job. Each shard takes
+  # its share by recorded test time (pytest-split), writes coverage data and
+  # gates nothing; `backend-coverage` combines the data and applies the gate.
   backend:
-    name: Backend tests
+    name: Backend core (shard ${{ matrix.shard }}/4)
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      pull-requests: write # coverage sticky comment
+    timeout-minutes: 15
+    strategy:
+      # One shard's failure should not hide the others' results.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     # A real Qdrant for every Python suite (ADR-0115): it is the only vector
     # store, and the behaviour under test (German BM25, fusion, strict mode,
     # group_by) is the server's, so a mock would only test the mock. Same
-    # version as production. Job-wide, so a suite that gains a store test
-    # cannot run it against nothing.
+    # version as production. In every backend job, so a suite that gains a
+    # store test cannot run it against nothing.
     services:
       qdrant:
         image: qdrant/qdrant:v1.19.2
@@ -327,10 +331,81 @@ jobs:
         with:
           python-version: "3.14"
       - uses: ./.github/actions/setup-task
-      - name: Core suite (coverage-gated)
-        run: task be:test:ci
+      - name: Core suite, shard ${{ matrix.shard }}/4
+        run: task be:test:shard SHARD=${{ matrix.shard }}/4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-coverage-${{ matrix.shard }}
+          path: .coverage.shard${{ matrix.shard }}
+          include-hidden-files: true
+          retention-days: 1
+
+  # The core suite's coverage gate (65% of src/aiq_agent) over all four shards,
+  # and the PR comment. In `CI OK`, unlike the frontend's comment-only merge,
+  # because the gate is a check.
+  backend-coverage:
+    name: Backend coverage gate
+    needs: [changes, backend]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # coverage sticky comment
+    steps:
+      # The sources the data names, for the report; no environment beyond
+      # coverage itself, at the version the shards ran.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: backend-coverage-*
+          merge-multiple: true
+      - name: Combine the shards and apply the gate
+        run: |
+          coverage="coverage==$(uv export --frozen --only-group dev --no-hashes --no-emit-workspace | sed -n 's/^coverage==\([^ ;]*\).*/\1/p')"
+          uvx --from "$coverage" coverage combine --keep .coverage.shard*
+          uvx --from "$coverage" coverage xml -o coverage.xml
+          uvx --from "$coverage" coverage report --fail-under=65
+      - name: Coverage comment (backend)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true # never fail CI on a comment hiccup
+        uses: MishaKav/pytest-coverage-comment@9ee59af31bd7bcada1cc496f086b407122602dbd # v1.12.3
+        with:
+          pytest-xml-coverage-path: coverage.xml
+          # The whole-tree table passed GitHub's 65,536-character comment
+          # limit, and the action then posted only the badge.
+          report-only-changed-files: true
+          title: Backend coverage (src/aiq_agent)
+          unique-id-for-comment: backend-coverage
+
+  # Every Python suite but the core one: they share the environment and fit
+  # beside a core shard.
+  backend-suites:
+    name: Backend suites (aiq_api, sources, migration, claim queues)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
+    env:
+      AIQ_QDRANT_TEST_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.14"
+      - uses: ./.github/actions/setup-task
       - name: aiq_api plugin suite
-        run: task be:test:api:ci
+        run: task be:test:api
       - name: sources/ package suites
         run: task be:test:sources
       - name: Chroma exporter and the one-time migration, end to end
@@ -345,17 +420,6 @@ jobs:
         env:
           # Turns "the Postgres branch skipped" into a failure for THIS step only.
           AIQ_TEST_POSTGRES_REQUIRED: "1"
-      - name: Coverage comment (backend)
-        if: github.event_name == 'pull_request'
-        continue-on-error: true # never fail CI on a comment hiccup
-        uses: MishaKav/pytest-coverage-comment@9ee59af31bd7bcada1cc496f086b407122602dbd # v1.12.3
-        with:
-          pytest-xml-coverage-path: coverage.xml
-          # The whole-tree table passed GitHub's 65,536-character comment
-          # limit, and the action then posted only the badge.
-          report-only-changed-files: true
-          title: Backend coverage (src/aiq_agent)
-          unique-id-for-comment: backend-coverage
 
   # Everything on the UI's toolchain except the test shards. The production
   # build is NOT here: the frontend image build (`image`) runs the same
@@ -670,7 +734,7 @@ jobs:
   # has all three images, and no commit CI failed has any.
   publish:
     name: Tag images for this commit
-    needs: [changes, repo, backend, frontend, frontend-test, web, infra, packages, trivy, image-push]
+    needs: [changes, repo, backend, backend-coverage, backend-suites, frontend, frontend-test, web, infra, packages, trivy, image-push]
     if: >-
       always() && github.event_name == 'push' && needs.changes.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -720,7 +784,7 @@ jobs:
     # checkout can hold a corpus to measure, and a job that can only pass
     # vacuously is worse than none. It survives as `task be:eval:retrieval`;
     # ADR-0058 "Update (2026-09-09)" says what restoring the gate would take.
-    needs: [changes, repo, semgrep, backend, frontend, frontend-test, web, infra, packages, trivy, image, image-push, publish]
+    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, frontend, frontend-test, web, infra, packages, trivy, image, image-push, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

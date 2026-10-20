@@ -112,7 +112,11 @@ scheduling differs: the frontend tier's card check, lint, types and the
 tenant-isolation suite share one job, the suite is sharded four ways
 (`fe:test:shard`) and stitched back together by `fe:test:merge` for the coverage
 comment, and the production UI build runs inside the frontend image build
-rather than as `fe:build`. Locally `task fe:verify` runs lint, types, tests and
+rather than as `fe:build`. The backend core suite is sharded four ways too
+(`be:test:shard`, split by `tests/.test_durations`), and `be:test:coverage`
+combines the shards' data and applies the 65% gate that `be:test:ci` applies
+in one go locally. The tests of `ci/`, the workflows and the release notes run
+in the Repo checks job as `be:test:harness`, on every pull request. Locally `task fe:verify` runs lint, types, tests and
 build in order instead.
 
 What decides which jobs run (a pull request against its base, a push against the
