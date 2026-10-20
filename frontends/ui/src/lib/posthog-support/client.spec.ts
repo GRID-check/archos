@@ -21,7 +21,9 @@ const config: PosthogSupportConfig = {
   appHost: 'https://eu.posthog.com',
   ingestHost: 'https://eu.i.posthog.com',
   projectId: '269895',
+  projectToken: 'phc_public',
   personalApiKey: 'phx_secret', // pragma: allowlist secret
+  appOrigin: 'https://app.piloti.at',
 }
 
 const TICKETS = 'https://eu.posthog.com/api/projects/269895/conversations/tickets/'
@@ -236,7 +238,7 @@ describe('updateSupportTicketStatus', () => {
 })
 
 describe('openFeedbackTicket', () => {
-  const PROJECT = 'https://eu.posthog.com/api/projects/269895/'
+  const PROJECT = 'https://eu.i.posthog.com/array/phc_public/config'
   const WIDGET = 'https://eu.i.posthog.com/api/conversations/v1/widget/message'
   const input = {
     message: '[bug] #17 /projects/1\nDer Export hängt.',
@@ -248,7 +250,7 @@ describe('openFeedbackTicket', () => {
 
   const happy = (call: Call): Response => {
     if (call.url === PROJECT)
-      return json(200, { id: 269895, conversations_settings: { widget_public_token: 'wt_1' } })
+      return json(200, { conversations: { token: 'wt_1', enabled: true } })
     if (call.url === WIDGET) return json(200, { ticket_id: 'ticket-1', message_id: 'm-1' })
     if (call.method === 'PATCH') return json(200, row({ id: 'ticket-1' }))
     return json(500, {})
@@ -267,8 +269,11 @@ describe('openFeedbackTicket', () => {
       `POST ${WIDGET}`,
       `PATCH ${TICKETS}ticket-1/`,
     ])
-    expect(calls[0].headers.authorization).toBe('Bearer phx_secret')
+    // The widget token is public: reading it sends no key.
+    expect(calls[0].headers.authorization).toBeUndefined()
     expect(calls[1].headers['x-conversations-token']).toBe('wt_1')
+    // Allowed domains are checked on this call: it carries the app's origin.
+    expect(calls[1].headers.origin).toBe('https://app.piloti.at')
     expect(calls[1].headers.authorization).toBeUndefined()
     expect(calls[1].body).toEqual({
       message: input.message,
@@ -336,9 +341,9 @@ describe('openFeedbackTicket', () => {
     expect(calls.some((c) => c.method === 'PATCH')).toBe(false)
   })
 
-  test('a project without a widget token is PosthogSupportUnavailableError', async () => {
+  test('a project without Support in its remote config is PosthogSupportUnavailableError', async () => {
     const { impl } = fakeFetch((call) =>
-      call.url === PROJECT ? json(200, { conversations_settings: null }) : happy(call)
+      call.url === PROJECT ? json(200, { conversations: false }) : happy(call)
     )
 
     await expect(openFeedbackTicket(config, input, impl)).rejects.toBeInstanceOf(

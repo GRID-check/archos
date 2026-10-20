@@ -9,6 +9,8 @@ const full = {
   NEXT_PUBLIC_POSTHOG_HOST: 'https://eu.i.posthog.com/',
   POSTHOG_PERSONAL_API_KEY: 'phx_test', // pragma: allowlist secret
   POSTHOG_PROJECT_ID: '269895',
+  NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: 'phc_public',
+  WORKOS_REDIRECT_URI: 'https://app.piloti.at/callback',
 }
 
 describe('posthogSupportConfigFromEnv', () => {
@@ -17,7 +19,9 @@ describe('posthogSupportConfigFromEnv', () => {
       appHost: 'https://eu.posthog.com',
       ingestHost: 'https://eu.i.posthog.com',
       projectId: '269895',
+      projectToken: 'phc_public',
       personalApiKey: 'phx_test', // pragma: allowlist secret
+      appOrigin: 'https://app.piloti.at',
     })
   })
 
@@ -38,6 +42,7 @@ describe('posthogSupportConfigFromEnv', () => {
     ['no project id', { ...full, POSTHOG_PROJECT_ID: undefined }],
     ['a project id that is not digits', { ...full, POSTHOG_PROJECT_ID: '26989x' }],
     ['a project id that is a slug', { ...full, POSTHOG_PROJECT_ID: 'piloti' }],
+    ['no project token', { ...full, NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: undefined }],
   ])('is null with %s', (_label, env) => {
     expect(posthogSupportConfigFromEnv(env)).toBeNull()
   })
