@@ -105,9 +105,10 @@ date.
   `POSTHOG_PROJECT_ID=269895` ([`contributing/ci.md`](../contributing/ci.md)).
 - [ ] **Support key for product feedback**: a person with PostHog access creates a
   personal API key with scopes `ticket:read`, `ticket:write`, `project:read`, and
-  sets it per stack as `grid-oib:posthogPersonalApiKey` (`pulumi config set
-  --secret`), with `grid-oib:posthogProjectId` (the numeric project id). Until
-  both are set, feedback reports open no Support ticket and Platform → Feedback
+  puts it in each stack's ESC environment: `esc env set
+  matthiasbigl/grid-oib/<dev|prod> pulumiConfig.grid-oib:posthogPersonalApiKey
+  "phx_..." --secret`. `grid-oib:posthogProjectId` defaults to `269895`. Until
+  the key is set, feedback reports open no Support ticket and Platform → Feedback
   shows the local log, read-only ([ADR-0118](../adr/0118-posthog-support-is-the-record-for-product-feedback.md)).
   The key belongs to that person: rotate it when they leave.
 - [ ] **Turn the scouts on**: once consent and GitHub are in place, set the dry-run

@@ -1168,8 +1168,8 @@ export interface GridConfig {
      */
     releaseId: string;
     /**
-     * Personal API key for PostHog Support (`--secret
-     * grid-oib:posthogPersonalApiKey`, scopes `ticket:read`, `ticket:write`,
+     * Personal API key for PostHog Support (`grid-oib:posthogPersonalApiKey`,
+     * a secret in the stack's ESC environment; scopes `ticket:read`, `ticket:write`,
      * `project:read`). The BFF opens a Support ticket per feedback report and
      * lists and updates them on Platform -> Feedback
      * (`frontends/ui/src/lib/posthog-support/`). `undefined` when the stack
