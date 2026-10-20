@@ -24,6 +24,7 @@ from collections.abc import Mapping
 from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
 
+from aiq_agent.observability.otlp_resource import ENDPOINT_ENV
 from aiq_agent.observability.otlp_resource import resource_attributes
 from aiq_agent.observability.otlp_resource import signal_endpoint
 
@@ -45,6 +46,17 @@ def install(endpoint: str, env: Mapping[str, str] | None = None) -> MeterProvide
             _provider = _build(endpoint, os.environ if env is None else env)
             metrics.set_meter_provider(_provider)
         return _provider
+
+
+def install_from_env(env: Mapping[str, str] | None = None) -> MeterProvider | None:
+    """``install`` from the collector endpoint the deployment injects; None (no provider) without one.
+
+    For a process that reports before it builds a workflow: the research
+    worker observes its queue from start, but builds a workflow per job.
+    """
+    env = os.environ if env is None else env
+    endpoint = env.get(ENDPOINT_ENV, "").strip()
+    return install(endpoint, env) if endpoint else None
 
 
 def _build(endpoint: str, env: Mapping[str, str]) -> MeterProvider:
