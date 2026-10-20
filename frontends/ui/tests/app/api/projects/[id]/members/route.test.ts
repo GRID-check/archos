@@ -236,6 +236,7 @@ describe('/api/projects/[id]/members', () => {
           role: 'project-editor',
         },
       ],
+      viewerUserId: 'user_1',
     })
   })
 })
