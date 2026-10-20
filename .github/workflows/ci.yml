@@ -77,6 +77,7 @@ jobs:
       web: ${{ steps.filter.outputs.web || 'false' }}
       infra: ${{ steps.filter.outputs.infra || 'false' }}
       packages: ${{ steps.filter.outputs.packages || 'false' }}
+      migrations: ${{ steps.filter.outputs.migrations || 'false' }}
       sast: ${{ steps.filter.outputs.sast || 'false' }}
       # The images this run builds (a matrix), and all three with their hashes.
       build: ${{ steps.images.outputs.build }}
@@ -464,6 +465,8 @@ jobs:
           # Turns "the suite skipped" into a failure for THIS step only: the
           # unit shards legitimately have no database.
           GRID_RLS_SUITE_REQUIRED: "1"
+          # The per-migration checks only when a migration or the script moved.
+          GRID_RLS_MIGRATION_CHECKS: ${{ needs.changes.outputs.migrations == 'true' && '1' || '0' }}
 
   frontend-test:
     name: Frontend tests (shard ${{ matrix.shard }}/6)
