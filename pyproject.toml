@@ -307,6 +307,8 @@ dev = [
     "pytest-xdist>=3.8.0",
     # Splits the core suite across CI's backend shards (ci.yml `backend`).
     "pytest-split>=0.11.0",
+    # Runs only the tests a pull request's change reaches (ci.yml `backend-affected`).
+    "pytest-testmon>=2.2.0",
 ]
 
 [tool.uv]
