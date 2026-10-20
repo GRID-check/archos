@@ -83,7 +83,7 @@ export function CompletedNote({ view }: { view: IntakeView }): JSX.Element {
           <p className="text-muted-foreground text-sm">{t('complete.doneHint')}</p>
         </div>
       </div>
-      <Button asChild className="sm:shrink-0">
+      <Button asChild variant="outline" size="sm" className="sm:shrink-0">
         <Link href={`/app/projects/${view.projectId}/settings`}>{t('complete.openProject')}</Link>
       </Button>
     </section>

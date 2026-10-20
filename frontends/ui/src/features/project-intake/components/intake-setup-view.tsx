@@ -213,6 +213,8 @@ export function IntakeSetupView({
     top.current?.scrollTo?.({ top: 0 })
   }, [step])
 
+  // The Erfassung says a failed reading itself, with the retry as its action.
+  const failedElsewhere = view.status === 'failed' && step !== 'reading'
   const index = SETUP_STEP_IDS.indexOf(step)
   const next = SETUP_STEP_IDS[index + 1]
   const summaries = setupStepSummaries(view, tShell)
@@ -263,7 +265,7 @@ export function IntakeSetupView({
             className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-6 md:px-8 md:pt-9"
             aria-label={tShell(`steps.${step}`)}
           >
-            {(stale || (!view.canDecide && !finished) || finished || view.status === 'failed') && (
+            {(stale || (!view.canDecide && !finished) || finished || failedElsewhere) && (
               <div className="mx-auto mb-6 w-full max-w-[1040px] space-y-3">
                 {stale && (
                   <Alert variant="destructive">
@@ -283,7 +285,7 @@ export function IntakeSetupView({
                   </Alert>
                 )}
                 {finished && <CompletedNote view={view} />}
-                {view.status === 'failed' && (
+                {failedElsewhere && (
                   <FailedReading canRetry={view.canDecide} busy={busy} onReread={onReread} />
                 )}
               </div>

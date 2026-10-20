@@ -2,82 +2,84 @@ import type { en } from '../en'
 
 /**
  * intakeReadingStep: Schritt 3, Erfassung. Piloti liest im Hintergrund; die
- * Seite zeigt, was dabei schon feststeht, und sagt, dass man gehen kann.
+ * Seite zeigt, was dabei schon feststeht, und sagt, dass man nicht warten muss.
  * Ruhig und ehrlich: nur Zahlen, die der Server wirklich kennt.
  */
 export const intakeReadingStep: typeof en.intakeReadingStep = {
   heading: {
     waiting: 'Noch keine Unterlagen',
-    waitingWithDocuments: 'Die Unterlagen sind da',
+    waitingWithDocuments: 'Piloti liest gleich Ihre Unterlagen',
     reading: 'Piloti liest Ihre Unterlagen',
     ready: 'Piloti hat Ihre Unterlagen gelesen',
-    failed: 'Das Lesen wurde unterbrochen',
-    completed: 'Die Erfassung ist abgeschlossen',
+    failed: 'Piloti hat das Lesen unterbrochen',
+    completed: 'Piloti hat Ihre Unterlagen gelesen',
   },
   lead: {
+    failed: 'Was Piloti bis dahin gefunden hat, bleibt. Ein neuer Versuch liest, was noch fehlt.',
     waiting: 'Piloti liest, sobald Dokumente in der Ablage liegen.',
-    waitingWithDocuments: 'Piloti beginnt gleich mit dem Lesen.',
-    reading:
-      'Der Dokumenten-Agent liest jedes Dokument und sucht dabei auch nach Angaben zum Standort. Was er findet, erscheint hier, sobald er es hat.',
-    ready: 'Was Piloti gefunden hat, prüfen Sie in den nächsten Schritten.',
-    failed: 'Was Piloti bis dahin gefunden hat, bleibt. Einen neuen Versuch starten Sie in der Meldung oben.',
-    completed: 'Alle Werte sind bestätigt.',
+    waitingWithDocuments: 'Die Unterlagen sind da. Das Lesen beginnt in einem Moment.',
   },
-  toFiling: 'Zur Ablage',
+  retry: 'Erneut lesen',
+  retryBusy: 'Wird gestartet …',
+  nextAnyway: 'Trotzdem weiter zu den Rückfragen',
+  documents: {
+    of: '{read} von {total} gelesen',
+    read: '{count, plural, one {# Dokument gelesen} other {# Dokumente gelesen}}',
+    aria: '{read} von {total} Dokumenten gelesen',
+    unread: '{count, plural, one {# Dokument noch nicht gelesen} other {# Dokumente noch nicht gelesen}}',
+    reread: 'Jetzt lesen',
+    rereadAria: '{count, plural, one {Das Dokument lesen, das noch nicht gelesen ist} other {Die # Dokumente lesen, die noch nicht gelesen sind}}',
+    rereadBusy: 'Wird gestartet …',
+    add: 'Dokumente hinzufügen',
+    addFiles: 'Dateien auswählen',
+    addFolder: 'Ordner auswählen',
+    uploading: 'Wird hochgeladen …',
+  },
   milestones: {
     label: 'Fortschritt der Erfassung',
+    later: 'nach dem Lesen',
+    none: 'keine',
+    noneYet: 'bisher keine',
     site: {
       done: 'Standort ermittelt',
+      suggested: 'Standort gefunden',
       searching: 'Standort wird gesucht',
       open: 'Standort noch offen',
-      openDetail: 'Piloti fragt bei den Rückfragen danach.',
-      searchingDetail: 'Bundesland und Gemeinde stehen meist im Schriftfeld oder in der Baubeschreibung.',
-      sources: {
-        geocoder: 'aus der Adresssuche',
-        document: 'aus den Unterlagen',
-        documentSuggested: 'aus den Unterlagen, noch zu bestätigen',
-        person: 'Ihre Angabe',
-      },
+      asked: 'bei den Rückfragen',
+      toConfirm: 'zu bestätigen',
     },
-    documents: {
-      title: '{read} von {total} Dokumenten gelesen',
-      none: 'Noch kein Dokument gelesen',
-      all: '{count, plural, one {# Dokument gelesen} other {# Dokumente gelesen}}',
-      aria: 'Lesefortschritt: {read} von {total} Dokumenten',
-      rest: '{count, plural, one {# Dokument ist noch nicht gelesen} other {# Dokumente sind noch nicht gelesen}}',
-    },
-    values: {
-      title: '{count, plural, one {# Wert gefunden} other {# Werte gefunden}}',
-      none: 'Noch keine Werte gefunden',
-      detail: 'Jeder mit der Seite, auf der er steht.',
-    },
-    contradictions: {
-      title: '{count, plural, one {# Widerspruch} other {# Widersprüche}}',
-      none: 'Keine Widersprüche',
-      detail: 'Die Unterlagen nennen für dieselbe Angabe verschiedene Werte. Sie entscheiden im Steckbrief.',
-    },
-    gaps: {
-      title: '{count, plural, one {# Lücke} other {# Lücken}}',
-      none: 'Keine Lücken',
-      detail: 'Angaben, die die Gebäudeklasse entscheiden und in keinem Dokument stehen.',
-      noneDetail: 'Alles, was die Gebäudeklasse entscheidet, steht in den Unterlagen.',
-    },
+    values: { label: 'Werte gefunden' },
+    contradictions: { label: 'Widersprüche' },
+    gaps: { label: 'Lücken, die die Gebäudeklasse entscheiden' },
     states: {
       done: 'erledigt',
       active: 'läuft',
-      pending: 'ausstehend',
+      pending: 'noch nicht',
       attention: 'braucht Sie',
     },
   },
+  found: {
+    fresh: 'Gerade gefunden',
+    soFar: 'Bisher gefunden',
+    sample: 'Gefunden, unter anderem',
+    source: '{name}, S. {page}',
+    all: '{count, plural, one {Im Steckbrief ansehen} other {Alle # im Steckbrief}}',
+  },
   summary: {
-    heading: 'Was Piloti dazu sagt',
-    pending: 'Piloti fasst zusammen, sobald es fertig gelesen hat.',
+    toggle: 'Was Piloti dazu sagt',
   },
-  leave: {
-    title: 'Sie können diese Seite verlassen',
-    body: 'Wir benachrichtigen Sie, wenn Piloti fertig ist. Fragen zu den hochgeladenen Unterlagen stellen Sie schon jetzt im Projekt-Chat.',
+  band: {
+    waiting: 'Im Chat können Sie Piloti schon jetzt fragen, mit oder ohne Unterlagen.',
+    reading: 'Sie müssen nicht warten. Piloti meldet sich, wenn es fertig ist.',
+    ready: 'Zu allem, was Piloti gelesen hat, können Sie jetzt im Chat fragen.',
+    failed: 'Zu dem, was Piloti bis dahin gelesen hat, können Sie schon im Chat fragen.',
   },
-  askChat: 'Im Chat fragen',
-  askChatAria: 'Den Projekt-Chat öffnen und Piloti zu den Unterlagen fragen',
+  chat: {
+    early: 'Schon jetzt im Chat fragen',
+    label: 'Im Chat fragen',
+    aria: 'Den Projekt-Chat öffnen und Piloti zu den Unterlagen fragen',
+  },
+  toFiling: 'Zur Ablage',
+  withoutDocuments: 'Ohne Unterlagen weiter',
   next: 'Weiter zu den Rückfragen',
 }
