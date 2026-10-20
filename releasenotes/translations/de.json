@@ -2612,6 +2612,10 @@
     "de": "Die Zeile „Belegt durch“ zeigt ab acht Quellen „+N weitere“ und klappt auf Wunsch alle auf, und „Alle Quellen kopieren“ übernimmt stets jede Quelle."
   },
   {
+    "en": "The English website now has English addresses, for example /en/use-cases/ and /en/why-piloti/ instead of German words after /en/. Links you saved or shared before still work and lead to the new address.",
+    "de": "Die englische Website verwendet jetzt englische URLs, zum Beispiel /en/use-cases/ und /en/why-piloti/ statt deutscher Begriffe nach /en/. Links, die Sie zuvor gespeichert oder geteilt haben, funktionieren weiterhin und führen zur neuen Adresse."
+  },
+  {
     "en": "The Herleitung names what was actually searched instead of calling every search OIB knowledge.",
     "de": "Die Herleitung benennt, wonach tatsächlich gesucht wurde, statt jede Suche als OIB-Wissen zu bezeichnen."
   },

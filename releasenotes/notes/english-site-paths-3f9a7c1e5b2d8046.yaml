@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    The English website now has English addresses, for example /en/use-cases/
+    and /en/why-piloti/ instead of German words after /en/. Links you saved
+    or shared before still work and lead to the new address.

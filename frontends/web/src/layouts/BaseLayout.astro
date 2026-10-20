@@ -5,7 +5,7 @@ import SheetIndex from '../components/molecules/SheetIndex.astro'
 import Footer from '../components/molecules/Footer.astro'
 import SeoHead from '../components/seo/SeoHead.astro'
 import { ui, defaultLang, type Locale } from '../i18n/ui'
-import { getLangFromUrl, getPathWithoutLocale } from '../i18n/utils'
+import { getLangFromUrl, getLocalizedPath, getPathWithoutLocale } from '../i18n/utils'
 import type { Article, OgArtId, OgImage } from '../lib/seo'
 
 interface Props {
@@ -41,7 +41,7 @@ const {
 const t = ui[locale]
 
 const autoDe = getPathWithoutLocale(Astro.url.pathname)
-const auto = { de: autoDe, en: `/en${autoDe === '/' ? '/' : autoDe}` }
+const auto = { de: autoDe, en: getLocalizedPath(autoDe, 'en') }
 const paths = alternates === false ? null : (alternates ?? auto)
 const other: Locale = locale === defaultLang ? 'en' : defaultLang
 const switchPath = switchTo ?? (paths ?? auto)[other]
