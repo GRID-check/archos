@@ -40,6 +40,7 @@ const postgres = require('postgres')
 const queue = require('../job-queue')
 const { createFailureStreak, escalationTicks } = require('../failure-streak')
 const { createRunner, createSliceRunner } = require('./runner')
+const { createQueueMeters } = require('./queue-metrics')
 const { initOtelLogs } = require('../../observability/otel-logs')
 const { initOtelMetrics, shutdownOtelMetrics } = require('../../observability/otel-metrics')
 
@@ -124,6 +125,7 @@ async function main() {
     queue,
     runSlice: createSliceRunner({ url: config.url, token: config.internalToken, timeoutMs: config.sliceTimeoutMs }),
     streak: createFailureStreak({ label: `${LOG} queue`, escalateAfter: escalationTicks(config.runner.pollMs) }),
+    meters: createQueueMeters(() => queue.stats(sql), console.warn),
   })
 
   /** @param {string} signal */

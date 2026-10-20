@@ -51,7 +51,16 @@ function runnerOver(queue, slices, extra = {}) {
   for (const outcome of slices) runSlice.mockResolvedValueOnce(outcome)
   const runner = createRunner(
     { ...CONFIG, ...extra },
-    { sql: /** @type {never} */ ({}), queue, runSlice, streak, log, sleep: () => Promise.resolve(), now: extra.now },
+    {
+      sql: /** @type {never} */ ({}),
+      queue,
+      runSlice,
+      streak,
+      log,
+      sleep: () => Promise.resolve(),
+      now: extra.now,
+      meters: extra.meters,
+    },
   )
   return { runner, runSlice, log }
 }
@@ -304,6 +313,40 @@ describe('the claim loop', () => {
     expect(await runner.step('w-0')).toBe(false)
 
     expect(log.error).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('the queue meters', () => {
+  const meters = () => ({ claimed: vi.fn(), ran: vi.fn(), died: vi.fn() })
+
+  it('times every claim, and every run by its kind', async () => {
+    const m = meters()
+    let clock = 0
+    const queue = fakeQueue({ claimNext: vi.fn().mockResolvedValue(CLAIM) })
+    const { runner } = runnerOver(queue, [{ kind: 'done' }], { meters: m, now: () => (clock += 1000) })
+    await runner.step('w-0')
+    expect(m.claimed).toHaveBeenCalledWith(1000)
+    expect(m.ran).toHaveBeenCalledWith('reindex_project', expect.any(Number))
+  })
+
+  it('counts a job that failed its last attempt, and the exhausted claims a reap marks dead', async () => {
+    const m = meters()
+    const queue = fakeQueue({
+      claimNext: vi.fn().mockResolvedValue(CLAIM),
+      fail: vi.fn().mockResolvedValue('dead'),
+      reapExhausted: vi.fn().mockResolvedValue(['job-2', 'job-3']),
+    })
+    const { runner } = runnerOver(queue, [{ kind: 'error', message: 'boom' }], { meters: m, reapEveryMs: 0 })
+    await runner.step('w-0')
+    expect(m.died.mock.calls).toEqual([[2], [1]])
+  })
+
+  it('counts nothing for an attempt that leaves the job queued', async () => {
+    const m = meters()
+    const queue = fakeQueue({ claimNext: vi.fn().mockResolvedValue(CLAIM) })
+    const { runner } = runnerOver(queue, [{ kind: 'error', message: 'boom' }], { meters: m })
+    await runner.step('w-0')
+    expect(m.died).not.toHaveBeenCalled()
   })
 })
 
