@@ -150,7 +150,7 @@
     "@vitest/coverage-v8": "^5.0.4",
     "autoprefixer": "^10.6.1",
     "concurrently": "^10.0.6",
-    "happy-dom": "^20.3.4",
+    "happy-dom": "^21.0.1",
     "husky": "^9.1.7",
     "json-schema-to-zod": "^2.6.1",
     "msw": "^2.15.0",
