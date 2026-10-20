@@ -115,8 +115,8 @@ const FRONTEND_REPLICAS = Math.max(1, parseInt(process.env.FRONTEND_REPLICAS || 
 // ── Metrics (OTLP to the collector, which forwards to PostHog Metrics) ──
 // Installed before the server listens, so the first request is measured. No-op
 // without OTEL_EXPORTER_OTLP_ENDPOINT. Flushed by `exitAfterHooks`.
-const { initOtelMetrics, shutdownOtelMetrics } = require('./observability/otel-metrics')
-const { measureRequest } = require('./observability/http-metrics')
+const { initOtelMetrics, shutdownOtelMetrics } = require('./observability/otel-metrics.js')
+const { measureRequest } = require('./observability/http-metrics.js')
 initOtelMetrics()
 
 // ── Graceful shutdown / rolling-update drain ──
