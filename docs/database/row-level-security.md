@@ -176,6 +176,13 @@ than the boundary — the BIM query suites and the memory service's
 consolidation suite (`memory-service.integration.spec.ts`). The list is fixed
 in `scripts/rls-test-db.sh`; a new database-backed spec is added there.
 
+After the suites, the script checks single migrations, each with its down, on a
+database of its own. A new section gets that database from `migrate_until <db>
+<tag>` or `migrate_before <db> <tag>`, which clone a template the script
+migrates once and only moves forward. Never write a loop that replays the
+journal for one section: those replays were 90 of the run's 150 seconds before
+the template replaced them, and the cost grew with every migration.
+
 or against your own database:
 
 ```bash
