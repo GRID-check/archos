@@ -84,6 +84,11 @@ jobs:
       images: ${{ steps.images.outputs.images }}
       # Third-party image pins this change adds or moves, for trivy.
       pins: ${{ steps.pins.outputs.pins || '[]' }}
+      # A pull request's Python lane: 'select' runs only the tests its change
+      # reaches (testmon), 'full' the sharded, coverage-gated suite. A push is
+      # always full. ci/py_selection.py says why.
+      backend_mode: ${{ steps.pysel.outputs.mode || 'full' }}
+      py_extra: ${{ steps.pysel.outputs.extra || '[]' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -150,6 +155,16 @@ jobs:
           else
             python3 ci/image_inputs.py plan --registry "$GITHUB_REPOSITORY_OWNER"
           fi
+
+      - name: Python tests this change reaches
+        id: pysel
+        if: github.event_name == 'pull_request' && steps.filter.outputs.backend == 'true'
+        # A failure here leaves the mode unset, which reads 'full'.
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: python3 ci/py_selection.py "$BASE"
 
       - name: Image pins this change adds
         id: pins
@@ -303,7 +318,7 @@ jobs:
   backend:
     name: Backend core (shard ${{ matrix.shard }}/4)
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' && (github.event_name == 'push' || needs.changes.outputs.backend_mode == 'full')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -347,7 +362,7 @@ jobs:
   backend-coverage:
     name: Backend coverage gate
     needs: [changes, backend]
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' && (github.event_name == 'push' || needs.changes.outputs.backend_mode == 'full')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -387,7 +402,7 @@ jobs:
   backend-suites:
     name: Backend suites (aiq_api, sources, migration, claim queues)
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' && (github.event_name == 'push' || needs.changes.outputs.backend_mode == 'full')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -421,6 +436,92 @@ jobs:
         env:
           # Turns "the Postgres branch skipped" into a failure for THIS step only.
           AIQ_TEST_POSTGRES_REQUIRED: "1"
+
+  # A pull request whose change testmon can see runs only the tests that
+  # change reaches, per suite, from the database the last green develop push
+  # recorded (`backend-testmon`). The full sharded suite and the coverage gate
+  # run on every push to develop, which the deploy waits for, so a test this
+  # selection misses still turns develop red before staging. What forces the
+  # full suite on a pull request instead: ci/py_selection.py.
+  backend-affected:
+    name: Backend affected tests (${{ matrix.suite }})
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.backend == 'true' && needs.changes.outputs.backend_mode == 'select'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [core, api, sources]
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
+    env:
+      AIQ_QDRANT_TEST_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.14"
+      - uses: ./.github/actions/setup-task
+      - name: Restore the recorded test database
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .testmondata-*
+          key: testmon-${{ github.event.pull_request.base.sha }}
+          restore-keys: testmon-
+      - name: The ${{ matrix.suite }} tests this change reaches
+        env:
+          SUITE: ${{ matrix.suite }}
+          EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
+        run: |
+          # The named test files that belong to this suite.
+          case "$SUITE" in core) root=tests/ ;; api) root=frontends/aiq_api/tests/ ;; sources) root=sources/ ;; esac
+          extra="$(jq -r --arg root "$root" '[.[] | select(startswith($root))] | join(" ")' <<<"$EXTRA_JSON")"
+          task be:test:affected SUITE="$SUITE" EXTRA="$extra"
+      # Production's claim SQL, beside the suite whose queue it is cheapest to
+      # pair with. 14 seconds; not worth selecting.
+      - name: Claim queues on real Postgres
+        if: matrix.suite == 'api'
+        run: task be:test:postgres
+        env:
+          AIQ_TEST_POSTGRES_REQUIRED: "1"
+
+  # Records which test runs which code, for `backend-affected`. On every push
+  # to develop, reused or not: a squash merge of a green pull request skips the
+  # checks, and the database would otherwise stop following develop. Saved only
+  # when every test passed, because testmon re-runs a recorded failure forever.
+  # Not a check, so not in `CI OK` or `publish`: it holds nobody up.
+  backend-testmon:
+    name: Backend test database (testmon)
+    needs: changes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
+    env:
+      AIQ_QDRANT_TEST_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.14"
+      - uses: ./.github/actions/setup-task
+      - run: task be:test:testmon
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .testmondata-*
+          key: testmon-${{ github.sha }}
 
   # Everything on the UI's toolchain except the test shards. The production
   # build is NOT here: the frontend image build (`image`) runs the same
@@ -785,7 +886,7 @@ jobs:
     # checkout can hold a corpus to measure, and a job that can only pass
     # vacuously is worse than none. It survives as `task be:eval:retrieval`;
     # ADR-0058 "Update (2026-09-09)" says what restoring the gate would take.
-    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, frontend, frontend-test, web, infra, packages, trivy, image, image-push, publish]
+    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, backend-affected, frontend, frontend-test, web, infra, packages, trivy, image, image-push, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

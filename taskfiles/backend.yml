@@ -5,6 +5,16 @@
 
 version: '3'
 
+vars:
+  # The pull request selection (be:test:testmon, be:test:affected): one testmon
+  # database per suite, and the arguments each suite runs with.
+  TESTMON_ENV: TESTMON_DATAFILE=.testmondata-
+  TESTMON_PATHS:
+    map:
+      core: tests/
+      api: frontends/aiq_api/tests/
+      sources: sources --dist loadfile
+
 tasks:
   # ── backend (src/, sources/, frontends/aiq_api) ─────────────────────────────
 
@@ -38,6 +48,7 @@ tasks:
         tests/test_ci_workflows.py tests/test_reuse_green_run.py tests/test_last_green.py
         tests/test_image_inputs.py tests/test_pinned_images.py tests/test_plan_summary.py
         tests/test_release_notes.py tests/test_pr_closing_keywords.py tests/test_bun_version_pin.py
+        tests/test_py_selection.py
 
   be:test:sources:
     desc: The sources/ package suites
@@ -48,6 +59,30 @@ tasks:
       # Whole files per worker (loadfile): a file's Qdrant collections and
       # module fixtures then stay on one worker.
       - '"{{.PY}}" -X faulthandler -m pytest sources -q {{.XDIST}} --dist loadfile'
+
+  be:test:testmon:
+    desc: Record which test runs which code, for the pull request selection (CI runs this on develop)
+    cmds:
+      # One database per suite: three runs with their own conftests, and a
+      # pull request selects from each. Never under coverage: testmon switches
+      # itself off under pytest-cov. CI saves these only from a green run,
+      # because a failed test is recorded as failed and re-runs every time.
+      - for: [core, api, sources]
+        cmd: '{{.TESTMON_ENV}}{{.ITEM}} "{{.PY}}" -X faulthandler -m pytest {{index .TESTMON_PATHS .ITEM}} -q {{.XDIST}} --testmon'
+
+  be:test:affected:
+    desc: 'The tests a change reaches, from the recorded database (CI: SUITE=core|api|sources, EXTRA="test files")'
+    requires:
+      vars: [SUITE]
+    cmds:
+      # --testmon-forceselect, because pyproject's addopts carries `-m` and
+      # testmon otherwise switches selection off whenever `-m` is set. Exit 5
+      # (nothing selected) is a pass: the change reached nothing in this suite.
+      - '{{.TESTMON_ENV}}{{.SUITE}} "{{.PY}}" -X faulthandler -m pytest {{index .TESTMON_PATHS .SUITE}} -q {{.XDIST}} --testmon-forceselect || [ $? -eq 5 ]'
+      # Test files that name a changed non-Python file (ci/py_selection.py),
+      # which coverage cannot connect to the change.
+      - cmd: '"{{.PY}}" -X faulthandler -m pytest {{.EXTRA}} -q {{.XDIST}}'
+        if: '[ -n "{{.EXTRA}}" ]'
 
   be:test:migration:
     desc: The Chroma exporter and the whole move (exporter, importer, Qdrant), in a throwaway chromadb environment

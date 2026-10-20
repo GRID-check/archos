@@ -117,7 +117,12 @@ rather than as `fe:build`. The backend core suite is sharded four ways too
 (`be:test:shard`, split by `tests/.test_durations`), and `be:test:coverage`
 combines the shards' data and applies the 65% gate that `be:test:ci` applies
 in one go locally. The tests of `ci/`, the workflows and the release notes run
-in the Repo checks job as `be:test:harness`, on every pull request. Locally `task fe:verify` runs lint, types, tests and
+in the Repo checks job as `be:test:harness`, on every pull request. A pull
+request whose change testmon can see runs only the Python tests that change
+reaches (`be:test:affected`, from the database `be:test:testmon` records on
+every push to `develop`); the full suite runs on the push. To run the same
+selection locally, record once with `task be:test:testmon` and then
+`task be:test:affected SUITE=core`. Locally `task fe:verify` runs lint, types, tests and
 build in order instead.
 
 What decides which jobs run (a pull request against its base, a push against the
